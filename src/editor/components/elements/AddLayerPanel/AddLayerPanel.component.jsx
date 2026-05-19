@@ -160,12 +160,18 @@ const createEntity = (mixinId, mixinName) => {
   AFRAME.INSPECTOR.execute('entitycreate', newEntityObject);
 };
 
-const cardMouseEnter = (mixinId) => {
+// Creates the yellow arrow + pulsating ring placement cursor as a child of
+// the shared `#previewEntity`. Idempotent — the cursor is only appended once
+// per previewEntity. Used by the AddLayer card hover *and* the file/asset
+// drag-and-drop flows so they share the same visual language.
+const ensureDropCursor = () => {
   let previewEntity = document.getElementById('previewEntity');
   if (!previewEntity) {
     previewEntity = document.createElement('a-entity');
     previewEntity.setAttribute('id', 'previewEntity');
     AFRAME.scenes[0].appendChild(previewEntity);
+  }
+  if (!previewEntity.querySelector('#drop-cursor')) {
     const dropCursorEntity = document.createElement('a-entity');
     dropCursorEntity.classList.add('hideFromSceneGraph');
     dropCursorEntity.innerHTML = `
@@ -180,6 +186,16 @@ const cardMouseEnter = (mixinId) => {
       </a-ring>`;
     previewEntity.appendChild(dropCursorEntity);
   }
+  return previewEntity;
+};
+
+const removeDropCursor = () => {
+  const previewEntity = document.getElementById('previewEntity');
+  if (previewEntity) previewEntity.remove();
+};
+
+const cardMouseEnter = (mixinId) => {
+  const previewEntity = ensureDropCursor();
 
   if (mixinId) {
     previewEntity.setAttribute('mixin', mixinId);
@@ -317,6 +333,17 @@ const AddLayerPanel = () => {
       if (dropPlaneEl.current) {
         fadeInDropPlane();
       }
+
+      // Track the placement point with the same yellow-arrow + pulsating-ring
+      // cursor the AddLayer panel uses on card hover.
+      const previewEntity = ensureDropCursor();
+      const position = pickPointOnGroundPlane({
+        x: e.clientX,
+        y: e.clientY,
+        canvas: AFRAME.scenes[0].canvas,
+        camera: AFRAME.INSPECTOR.camera
+      });
+      if (position) previewEntity.object3D.position.copy(position);
     };
 
     const handleGlobalDrop = (e) => {
@@ -346,6 +373,7 @@ const AddLayerPanel = () => {
         }
 
         if (dropPlaneEl.current) fadeOutDropPlane();
+        removeDropCursor();
         return;
       }
 
@@ -368,6 +396,7 @@ const AddLayerPanel = () => {
           console.warn('[AddLayerPanel] bad asset drag payload', err);
         }
         if (dropPlaneEl.current) fadeOutDropPlane();
+        removeDropCursor();
       }
     };
 
@@ -377,6 +406,7 @@ const AddLayerPanel = () => {
         if (dropPlaneEl.current) {
           fadeOutDropPlane();
         }
+        removeDropCursor();
       }
     };
 

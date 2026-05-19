@@ -107,7 +107,10 @@
                     canvas.width = img.naturalWidth;
                     canvas.height = img.naturalHeight;
                     const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = '#ffffff';
+                    // Matches the gallery's mesh placeholder card bg so the
+                    // captured thumbnail blends with the dark gallery chrome
+                    // instead of fighting it with a white square.
+                    ctx.fillStyle = '#393939';
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     ctx.drawImage(img, 0, 0);
 
