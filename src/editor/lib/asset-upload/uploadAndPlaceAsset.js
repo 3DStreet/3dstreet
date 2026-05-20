@@ -16,6 +16,7 @@
  * attributes. It does not survive scene save/reload — by design.
  */
 
+import posthog from 'posthog-js';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
 import { assetsService, ASSET_TYPES, ASSET_CATEGORIES } from '@shared/assets';
@@ -31,6 +32,36 @@ import {
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 
 export { FILE_PICKER_ACCEPT, isAcceptedAssetFile };
+
+function captureUploadEvent(kind, status, durationMs, optimizationMetadata) {
+  const props = {
+    file_type: kind,
+    status,
+    duration_ms: durationMs
+  };
+  if (kind === 'glb' && optimizationMetadata) {
+    const {
+      inputBytes,
+      outputBytes,
+      optimizationSkipped,
+      reason,
+      hadDraco,
+      hadWebP
+    } = optimizationMetadata;
+    props.file_size_input = inputBytes;
+    props.file_size_optimized = outputBytes;
+    props.compression_ratio =
+      inputBytes > 0
+        ? Math.round((outputBytes / inputBytes) * 1000) / 1000
+        : null;
+    props.optimization_skipped = optimizationSkipped;
+    props.skip_reason = reason ?? null;
+    props.optimization_made_bigger = reason === 'not_smaller';
+    props.already_had_draco = hadDraco ?? false;
+    props.already_had_webp = hadWebP ?? false;
+  }
+  posthog.capture('asset_uploaded', props);
+}
 
 function notifyError(msg) {
   if (window.STREET?.notify?.errorMessage) {
@@ -260,7 +291,9 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     return { entity, assetId: null, kind };
   }
 
+  const uploadStartTime = Date.now();
   let pendingAssetId = null;
+  let optimizationMetadata = null;
   const onProgress = (e) => {
     const detail = e.detail || {};
     if (pendingAssetId && detail.assetId !== pendingAssetId) return;
@@ -272,7 +305,6 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
 
   try {
     let optimizedBlob = null;
-    let optimizationMetadata = null;
     if (kind === 'glb') {
       setUpload(entityId, { status: 'optimizing', progress: 0 });
       currentUploadStore.update({ status: 'optimizing', progress: 0 });
@@ -412,6 +444,12 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     }
 
     notifySuccess(`Uploaded ${file.name}`);
+    captureUploadEvent(
+      kind,
+      'success',
+      Date.now() - uploadStartTime,
+      optimizationMetadata
+    );
     return { entity, assetId, kind };
   } catch (err) {
     if (err.name === 'AbortError') {
@@ -421,12 +459,24 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       }
       if (blobUrl) URL.revokeObjectURL(blobUrl);
       clearUpload(entityId);
+      captureUploadEvent(
+        kind,
+        'cancelled',
+        Date.now() - uploadStartTime,
+        optimizationMetadata
+      );
       // currentUploadStore already cleared by cancel()
       return { entity: null, assetId: null, kind };
     }
     console.error('[asset-upload] failed', err);
     notifyError(`Upload failed: ${err.message || err}`);
     setUpload(entityId, { status: 'failed' });
+    captureUploadEvent(
+      kind,
+      'failed',
+      Date.now() - uploadStartTime,
+      optimizationMetadata
+    );
     return { entity, assetId: null, kind };
   } finally {
     assetsService.events.removeEventListener('uploadProgress', onProgress);

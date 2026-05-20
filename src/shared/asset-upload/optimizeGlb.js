@@ -99,7 +99,9 @@ export async function optimizeGlb(file) {
         optimizationSkipped: true,
         reason: 'already_optimized',
         inputBytes,
-        outputBytes: inputBytes
+        outputBytes: inputBytes,
+        hadDraco: true,
+        hadWebP: true
       }
     };
   }
@@ -130,13 +132,21 @@ export async function optimizeGlb(file) {
         optimizationSkipped: true,
         reason: 'not_smaller',
         inputBytes,
-        outputBytes
+        outputBytes,
+        hadDraco: hasDraco,
+        hadWebP: hasWebP
       }
     };
   }
 
   return {
     blob: new Blob([output], { type: 'model/gltf-binary' }),
-    metadata: { optimizationSkipped: false, inputBytes, outputBytes }
+    metadata: {
+      optimizationSkipped: false,
+      inputBytes,
+      outputBytes,
+      hadDraco: hasDraco,
+      hadWebP: hasWebP
+    }
   };
 }
