@@ -79,6 +79,7 @@ const AssetsItem = ({
         assetId: item.id,
         ownerUid: item.userId,
         storageUrl: item.storageUrl,
+        optimizedSourceUrl: item.optimizedSourceUrl,
         name: item.name || item.originalFilename || '',
         type: item.type
       })

@@ -113,35 +113,42 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
       };
     }
 
-    let blobToUpload = file;
+    let optimizedBlob = null;
+    let optimizationMetadata = null;
     if (kind === 'glb') {
       onStatus?.('optimizing');
       uploadStore.update({ status: 'optimizing', progress: 0 });
       const { optimizeGlb } = await import('./optimizeGlb.js');
-      blobToUpload = await optimizeGlb(file);
+      ({ blob: optimizedBlob, metadata: optimizationMetadata } =
+        await optimizeGlb(file));
       if (signal?.aborted) {
         throw new DOMException('Upload cancelled', 'AbortError');
       }
-      if (blobToUpload.size > GLB_MAX_BYTES) {
+      // Gate on original file size — the original is always what gets stored as
+      // the source, and quota should reflect that even when optimization succeeds.
+      if (file.size > GLB_MAX_BYTES) {
         return {
           ok: false,
           kind,
-          error: `Optimized GLB still exceeds ${Math.round(GLB_MAX_BYTES / 1000 / 1000)} MB.`
+          error: `GLB exceeds ${Math.round(GLB_MAX_BYTES / 1000 / 1000)} MB.`
         };
       }
-      uploadStore.update({ sizeBytes: blobToUpload.size });
+      // Don't pass optimizedBlob when optimization was skipped — in that case
+      // the blob is identical to the original and we'd upload the same bytes twice.
+      if (optimizationMetadata.optimizationSkipped) optimizedBlob = null;
+      uploadStore.update({ sizeBytes: file.size, optimizationMetadata });
     }
 
     onStatus?.('uploading');
     uploadStore.update({ status: 'uploading', progress: 0 });
     const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
     const assetId = await assetsService.addAsset(
-      blobToUpload,
+      file,
       { originalFilename: file.name },
       assetType,
       ASSET_CATEGORIES.UPLOAD,
       userId,
-      { signal }
+      { signal, optimizedFile: optimizedBlob, optimizationMetadata }
     );
     pendingAssetId = assetId;
 

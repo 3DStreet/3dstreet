@@ -19,6 +19,7 @@
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
 import { assetsService, ASSET_TYPES, ASSET_CATEGORIES } from '@shared/assets';
+import { getServedUrl } from '@shared/assets/utils.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
   GLB_MAX_BYTES,
@@ -98,6 +99,7 @@ function createPlaceholderEntity(file, position, kind) {
 export function placeCloudAsset(asset, position) {
   if (!asset?.assetId || !asset.storageUrl) return;
   const isMesh = asset.type === 'mesh';
+  const servedUrl = getServedUrl(asset);
   const baseComponents = {
     position: position ?? '0 0 0',
     'data-layer-name': asset.name || asset.assetId,
@@ -108,7 +110,7 @@ export function placeCloudAsset(asset, position) {
     ? {
         components: {
           ...baseComponents,
-          'gltf-model': `url(${asset.storageUrl})`,
+          'gltf-model': `url(${servedUrl})`,
           shadow: 'receive: true; cast: true;'
         }
       }
@@ -116,7 +118,7 @@ export function placeCloudAsset(asset, position) {
         element: 'a-image',
         components: {
           ...baseComponents,
-          src: asset.storageUrl,
+          src: servedUrl,
           width: 4,
           height: 4
         }
@@ -269,47 +271,55 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   assetsService.events.addEventListener('uploadProgress', onProgress);
 
   try {
-    let blobToUpload = file;
+    let optimizedBlob = null;
+    let optimizationMetadata = null;
     if (kind === 'glb') {
       setUpload(entityId, { status: 'optimizing', progress: 0 });
       currentUploadStore.update({ status: 'optimizing', progress: 0 });
       const { optimizeGlb } =
         await import('@shared/asset-upload/optimizeGlb.js');
-      blobToUpload = await optimizeGlb(file);
+      ({ blob: optimizedBlob, metadata: optimizationMetadata } =
+        await optimizeGlb(file));
       if (signal?.aborted) {
         throw new DOMException('Upload cancelled', 'AbortError');
       }
-      if (blobToUpload.size > GLB_MAX_BYTES) {
+      // Gate on original file size — the original is always what gets stored as
+      // the source, and quota should reflect that even when optimization succeeds.
+      if (file.size > GLB_MAX_BYTES) {
         notifyError(
-          `Optimized GLB still exceeds ${Math.round(
+          `GLB exceeds ${Math.round(
             GLB_MAX_BYTES / 1000 / 1000
           )} MB — kept local for preview only.`
         );
         setUpload(entityId, {
           status: 'local_error',
-          reason: 'optimized_too_large'
+          reason: 'source_too_large'
         });
         return { entity, assetId: null, kind };
       }
-      setUpload(entityId, { sizeBytes: blobToUpload.size });
-      currentUploadStore.update({ sizeBytes: blobToUpload.size });
+      // Don't pass optimizedBlob when optimization was skipped — in that case
+      // the blob is identical to the original and we'd upload the same bytes twice.
+      if (optimizationMetadata.optimizationSkipped) optimizedBlob = null;
+      setUpload(entityId, { sizeBytes: file.size, optimizationMetadata });
+      currentUploadStore.update({ sizeBytes: file.size, optimizationMetadata });
     }
 
     setUpload(entityId, { status: 'uploading', progress: 0 });
     currentUploadStore.update({ status: 'uploading', progress: 0 });
     const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
     const assetId = await assetsService.addAsset(
-      blobToUpload,
+      file,
       { originalFilename: file.name },
       assetType,
       ASSET_CATEGORIES.UPLOAD,
       userId,
-      { signal }
+      { signal, optimizedFile: optimizedBlob, optimizationMetadata }
     );
     pendingAssetId = assetId;
 
     const asset = await assetsService.getAsset(assetId, userId);
-    const cloudUrl = asset?.storageUrl;
+    // Prefer the optimized GLB when available; fall back to the original source.
+    const cloudUrl = asset?.optimizedSourceUrl ?? asset?.storageUrl;
     if (!cloudUrl) {
       throw new Error('Upload succeeded but no cloud URL returned');
     }

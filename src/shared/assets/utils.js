@@ -50,6 +50,16 @@ export function getAssetTitle(item) {
   return `${getAssetTypeLabel(item)} · ${getAssetSourceLabel(item)}`;
 }
 
+/**
+ * URL to use when loading or placing a GLB asset. Prefers the client-optimized
+ * version (Draco + WebP) when available; falls back to the original source.
+ * Safe to call on image/video assets too — they never have optimizedSourceUrl
+ * so storageUrl is always returned.
+ */
+export function getServedUrl(item) {
+  return item?.optimizedSourceUrl ?? item?.storageUrl;
+}
+
 export function formatDate(ts) {
   if (!ts) return '';
   try {

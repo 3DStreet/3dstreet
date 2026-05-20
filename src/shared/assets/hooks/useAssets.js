@@ -43,6 +43,7 @@ const assetToDisplayItem = (asset) => {
     objectURL: asset.thumbnailUrl || asset.storageUrl,
     fullImageURL: asset.storageUrl,
     storageUrl: asset.storageUrl,
+    optimizedSourceUrl: asset.optimizedSourceUrl,
     thumbnailUrl: asset.thumbnailUrl,
     metadata: {
       ...asset.generationMetadata,

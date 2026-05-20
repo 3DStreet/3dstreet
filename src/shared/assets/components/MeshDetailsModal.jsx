@@ -13,7 +13,12 @@ import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
 import { DownloadIcon, TrashIcon, Cross24Icon } from '@shared/icons';
 import assetsService from '../services/assetsService.js';
-import { formatBytes, formatDate, getAssetTitle } from '../utils.js';
+import {
+  formatBytes,
+  formatDate,
+  getAssetTitle,
+  getServedUrl
+} from '../utils.js';
 import styles from './MeshDetailsModal.module.scss';
 
 const IconTooltip = ({ children, label }) => (
@@ -112,12 +117,7 @@ const MeshDetailsModal = ({
 
   const onDownload = () => {
     if (!data?.storageUrl) return;
-    const a = document.createElement('a');
-    a.href = data.storageUrl;
-    a.download = data.originalFilename || `${assetId}.glb`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    window.open(data.storageUrl);
   };
 
   const onDelete = async () => {
@@ -179,6 +179,7 @@ const MeshDetailsModal = ({
       assetId,
       ownerUid,
       storageUrl: data.storageUrl,
+      optimizedSourceUrl: data.optimizedSourceUrl,
       name: savedName || data.name || data.originalFilename || '',
       type: data.type
     });
@@ -302,7 +303,7 @@ const MeshDetailsModal = ({
                 // string drives the iframe's load; baking savedName in
                 // would cause model-viewer to reload on every Save name
                 // click. The iframe title above is enough for a11y.
-                src={`/model-viewer.html?src=${encodeURIComponent(data.storageUrl)}`}
+                src={`/model-viewer.html?src=${encodeURIComponent(getServedUrl(data))}`}
               />
             )}
           </div>

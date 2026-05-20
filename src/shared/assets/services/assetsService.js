@@ -115,11 +115,25 @@ class AssetsServiceV2 {
 
   /**
    * Add a new asset to gallery (uploads to Storage + saves metadata to Firestore)
-   * @param {File|Blob|string} file - File, Blob, or data URI
+   *
+   * Storage URL convention:
+   *   storageUrl / storagePath  — always point to the ORIGINAL source file.
+   *   optimizedSourceUrl / optimizedSourcePath — present only for GLB assets
+   *     where client-side optimization (Draco + WebP) produced a smaller file.
+   *   Scene loaders should prefer `optimizedSourceUrl ?? storageUrl` for GLBs
+   *   so they use the compressed version when available.
+   *
+   * @param {File|Blob|string} file - Source file (original, unoptimized)
    * @param {object} metadata - Asset metadata
    * @param {string} type - Asset type (use ASSET_TYPES constants)
    * @param {string} category - Asset category (use ASSET_CATEGORIES constants)
    * @param {string} userId - User ID
+   * @param {object} [options]
+   * @param {AbortSignal} [options.signal] - Cancellation signal
+   * @param {Blob} [options.optimizedFile] - Optimized GLB blob (only when
+   *   optimization ran and produced a file smaller than the original)
+   * @param {object} [options.optimizationMetadata] - Details from the
+   *   optimization attempt: { optimizationSkipped, reason?, inputBytes, outputBytes }
    * @returns {Promise<string>} - Returns the asset ID
    */
   // Quota policy: addAsset intentionally does NOT call getUploadQuota.
@@ -135,7 +149,7 @@ class AssetsServiceV2 {
     type = ASSET_TYPES.IMAGE,
     category = ASSET_CATEGORIES.AI_RENDER,
     userId,
-    { signal } = {}
+    { signal, optimizedFile, optimizationMetadata } = {}
   ) {
     if (!userId) {
       throw new Error('User ID is required to add assets');
@@ -160,32 +174,69 @@ class AssetsServiceV2 {
       // conversion can be unreliable (may incorrectly report image/png)
       let mimeType;
       if (type === ASSET_TYPES.VIDEO) {
-        // Force video MIME type - trust the caller's asset type over blob.type
         mimeType = 'video/mp4';
+      } else if (type === ASSET_TYPES.MESH) {
+        // .glb files report an empty blob.type in many browsers
+        mimeType = 'model/gltf-binary';
       } else {
-        // For images, use blob type if available, otherwise default to image/jpeg
         mimeType = blob.type && blob.type !== '' ? blob.type : 'image/jpeg';
       }
       const extension = this.getExtensionFromMimeType(mimeType);
       const filename = `${assetId}.${extension}`;
 
-      // Get storage path
+      // Get storage path (original source)
       const storagePath = this.getStoragePath(userId, type, filename);
 
       // IMPORTANT: Upload to Storage FIRST before creating Firestore doc
-      // This ensures no orphaned Firestore documents if upload fails
-      const downloadURL = await this.uploadToStorage(
-        blob,
-        storagePath,
-        (progress) => {
-          this.events.dispatchEvent(
-            new CustomEvent('uploadProgress', {
-              detail: { assetId, progress }
-            })
-          );
-        },
-        signal
-      );
+      // This ensures no orphaned Firestore documents if upload fails.
+      //
+      // Original and optimized uploads run in parallel. Progress events only
+      // track the original (primary) upload so the UI stays coherent.
+      const uploadPromises = [
+        this.uploadToStorage(
+          blob,
+          storagePath,
+          (progress) => {
+            this.events.dispatchEvent(
+              new CustomEvent('uploadProgress', {
+                detail: { assetId, progress }
+              })
+            );
+          },
+          signal
+        )
+      ];
+
+      let optimizedStoragePath = null;
+      if (optimizedFile) {
+        const optimizedFilename = `${assetId}-optimized.${extension}`;
+        optimizedStoragePath = this.getStoragePath(
+          userId,
+          type,
+          optimizedFilename
+        );
+        uploadPromises.push(
+          this.uploadToStorage(
+            optimizedFile,
+            optimizedStoragePath,
+            null,
+            signal
+          ).catch((err) => {
+            // Propagate abort so Promise.all fails fast and no orphaned
+            // Storage file is left behind without a Firestore doc.
+            if (err.name === 'AbortError') throw err;
+            console.warn(
+              '[assetsService] optimized upload failed, asset saved without optimization',
+              err
+            );
+            optimizedStoragePath = null;
+            return null;
+          })
+        );
+      }
+
+      const [downloadURL, optimizedDownloadURL] =
+        await Promise.all(uploadPromises);
 
       // If the caller cancelled during the storage upload, bail before
       // writing any Firestore doc.
@@ -241,7 +292,10 @@ class AssetsServiceV2 {
         type,
         category,
 
-        // Storage
+        // Storage — storageUrl/storagePath always point to the original source
+        // file. For GLB assets, optimizedSourceUrl/optimizedSourcePath hold the
+        // client-optimized (Draco + WebP) version when it exists. Scene loaders
+        // should prefer `optimizedSourceUrl ?? storageUrl` for GLBs.
         storagePath,
         storageUrl: downloadURL,
         ...(thumbnailUrl && {
@@ -249,7 +303,19 @@ class AssetsServiceV2 {
           thumbnailUrl: thumbnailUrl
         }),
 
-        // File Metadata
+        // Optimized GLB (present only when optimization produced a smaller file)
+        ...(optimizedDownloadURL
+          ? {
+              optimizedSourceUrl: optimizedDownloadURL,
+              optimizedSourcePath: optimizedStoragePath,
+              optimizedSize: optimizedFile.size
+            }
+          : {}),
+
+        // Optimization attempt details (present for all GLB uploads)
+        ...(optimizationMetadata ? { optimizationMetadata } : {}),
+
+        // File Metadata — size reflects the original source file
         name: metadata.name || defaultName,
         filename,
         originalFilename: originalFilenameForName,
