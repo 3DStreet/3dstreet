@@ -191,11 +191,11 @@ const AssetsPanelBody = ({
       <div className={styles.usageRow}>
         {planKnown ? (
           <>
-            Cloud storage: {formatBytes(usage.bytesUsed)} /{' '}
+            Uploads: {formatBytes(usage.bytesUsed)} /{' '}
             {formatBytes(usage.planLimit)} ({usage.planName})
           </>
         ) : (
-          <>Cloud storage: {formatBytes(usage.bytesUsed)}</>
+          <>Uploads: {formatBytes(usage.bytesUsed)}</>
         )}
         <div className={styles.usageBar}>
           <div

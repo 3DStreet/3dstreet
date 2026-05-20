@@ -17,6 +17,7 @@ import {
   formatBytes,
   formatDate,
   getAssetTitle,
+  getOptimizationDisplay,
   getServedUrl
 } from '../utils.js';
 import styles from './MeshDetailsModal.module.scss';
@@ -115,9 +116,14 @@ const MeshDetailsModal = ({
     }
   };
 
-  const onDownload = () => {
+  const onDownloadOriginal = () => {
     if (!data?.storageUrl) return;
     window.open(data.storageUrl);
+  };
+
+  const onDownloadOptimized = () => {
+    if (!data?.optimizedSourceUrl) return;
+    window.open(data.optimizedSourceUrl);
   };
 
   const onDelete = async () => {
@@ -349,7 +355,30 @@ const MeshDetailsModal = ({
               </div>
               <div>
                 <span className={styles.metaLabel}>Size:</span>
-                {formatBytes(data?.size)}
+                {(() => {
+                  const opt = getOptimizationDisplay(data);
+                  if (opt.skipReason) {
+                    return (
+                      <>
+                        {formatBytes(opt.origSize)}{' '}
+                        <span className={styles.optimizationNote}>
+                          ({opt.skipReason})
+                        </span>
+                      </>
+                    );
+                  }
+                  if (opt.optSize) {
+                    return (
+                      <>
+                        {formatBytes(opt.origSize)} → {formatBytes(opt.optSize)}{' '}
+                        <span className={styles.optimizationSaved}>
+                          (−{opt.savePct}%)
+                        </span>
+                      </>
+                    );
+                  }
+                  return formatBytes(opt.origSize);
+                })()}
               </div>
               <div>
                 <span className={styles.metaLabel}>Type:</span>
@@ -412,17 +441,46 @@ const MeshDetailsModal = ({
                       </button>
                     </IconTooltip>
                   ))}
-                <IconTooltip label="Download">
-                  <button
-                    type="button"
-                    onClick={onDownload}
-                    disabled={!data}
-                    className={styles.iconButton}
-                    aria-label="Download"
-                  >
-                    <DownloadIcon />
-                  </button>
-                </IconTooltip>
+                {data?.optimizedSourceUrl ? (
+                  <>
+                    <IconTooltip label="Download original">
+                      <button
+                        type="button"
+                        onClick={onDownloadOriginal}
+                        disabled={!data}
+                        className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
+                        aria-label="Download original"
+                      >
+                        <DownloadIcon />
+                        <span className={styles.downloadBtnLabel}>Orig</span>
+                      </button>
+                    </IconTooltip>
+                    <IconTooltip label="Download optimized">
+                      <button
+                        type="button"
+                        onClick={onDownloadOptimized}
+                        disabled={!data}
+                        className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
+                        aria-label="Download optimized"
+                      >
+                        <DownloadIcon />
+                        <span className={styles.downloadBtnLabel}>Opt</span>
+                      </button>
+                    </IconTooltip>
+                  </>
+                ) : (
+                  <IconTooltip label="Download">
+                    <button
+                      type="button"
+                      onClick={onDownloadOriginal}
+                      disabled={!data}
+                      className={styles.iconButton}
+                      aria-label="Download"
+                    >
+                      <DownloadIcon />
+                    </button>
+                  </IconTooltip>
+                )}
                 {onPlace && (
                   <button
                     type="button"

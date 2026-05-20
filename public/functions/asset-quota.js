@@ -3,10 +3,13 @@
  *
  * Two functions:
  *   - onAssetWritten   : Firestore trigger maintaining users/{uid}/usage.bytesUsed
- *                        as the running sum of size on non-deleted asset docs.
+ *                        as the running sum of `size` (original source) on
+ *                        non-deleted asset docs. `optimizedSourceSize` is
+ *                        excluded — it's a platform-derived artifact.
  *   - getUploadQuota   : Callable returning { bytesUsed, planLimit, allowed,
- *                        planName }. Client uses this for the inline pre-flight
- *                        check before starting an upload.
+ *                        planName }. bytesUsed reflects original uploads only.
+ *                        Client uses this for the inline pre-flight check
+ *                        before starting an upload.
  *
  * Plan limits:
  *   FREE: 100 MB · PRO: 5 GB · MAX/TEAM: 25 GB
@@ -46,6 +49,12 @@ async function resolvePlanForUser(uid) {
 /**
  * Firestore trigger: maintain users/{uid}/usage.bytesUsed.
  * Path: users/{userId}/assets/{assetId}
+ *
+ * Quota policy: only the `size` field (original source file) counts toward the
+ * user's storage quota. `optimizedSourceSize` is a platform-derived artifact
+ * stored at 3DStreet's expense and is intentionally excluded from this tally.
+ * Storage files are tagged with `customMetadata.assetRole = 'original'|'optimized'`
+ * so admin audit scripts can verify this split at the byte level.
  */
 const onAssetWritten = functions.firestore
   .document('users/{userId}/assets/{assetId}')
@@ -54,6 +63,7 @@ const onAssetWritten = functions.firestore
     const before = change.before.exists ? change.before.data() : null;
     const after = change.after.exists ? change.after.data() : null;
 
+    // Read `size` only (original source). `optimizedSourceSize` is excluded.
     const sizeBefore = before && !before.deleted ? Number(before.size) || 0 : 0;
     const sizeAfter = after && !after.deleted ? Number(after.size) || 0 : 0;
     const delta = sizeAfter - sizeBefore;

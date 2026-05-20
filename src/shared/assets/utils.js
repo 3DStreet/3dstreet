@@ -60,6 +60,38 @@ export function getServedUrl(item) {
   return item?.optimizedSourceUrl ?? item?.storageUrl;
 }
 
+/**
+ * Derives optimization display info from a GLB asset doc.
+ *
+ * Returns one of three shapes:
+ *   { origSize }                          — no optimization metadata (image/video, or pre-opt upload)
+ *   { origSize, skipReason }              — optimization ran but was skipped
+ *   { origSize, optSize, savePct }        — optimization succeeded and saved bytes
+ */
+export function getOptimizationDisplay(data) {
+  const meta = data?.optimizationMetadata;
+  const origSize = Number(data?.size) || 0;
+  if (!meta) return { origSize };
+
+  if (meta.optimizationSkipped) {
+    const skipReason =
+      meta.reason === 'already_optimized'
+        ? 'Already optimized'
+        : meta.reason === 'not_smaller'
+          ? "Optimization didn't reduce size"
+          : 'Optimization skipped';
+    return { origSize, skipReason };
+  }
+
+  const optSize = Number(data?.optimizedSourceSize) || 0;
+  if (optSize > 0 && optSize < origSize) {
+    const savePct = Math.round((1 - optSize / origSize) * 100);
+    return { origSize, optSize, savePct };
+  }
+
+  return { origSize };
+}
+
 export function formatDate(ts) {
   if (!ts) return '';
   try {

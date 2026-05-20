@@ -358,6 +358,28 @@
   }
 }
 
+.optimizationNote {
+  color: variables.$lightgray-300;
+  font-style: italic;
+}
+
+.optimizationSaved {
+  color: #2bb673;
+  font-weight: 600;
+}
+
+.downloadLabelBtn {
+  width: auto !important;
+  padding: 0 10px !important;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.downloadBtnLabel {
+  line-height: 1;
+  font-weight: 500;
+}
+
 .tooltipContent {
   background-color: variables.$darkgray-500;
   color: variables.$lightgray-100;

@@ -202,7 +202,10 @@ class AssetsServiceV2 {
               })
             );
           },
-          signal
+          signal,
+          // Tag so storage-level audit scripts can distinguish quota-counted
+          // originals from platform-derived optimized artifacts.
+          { assetRole: 'original', assetId }
         )
       ];
 
@@ -219,7 +222,10 @@ class AssetsServiceV2 {
             optimizedFile,
             optimizedStoragePath,
             null,
-            signal
+            signal,
+            // assetRole: 'optimized' marks this file as a platform-derived
+            // artifact; quota scripts should exclude it from user quota.
+            { assetRole: 'optimized', assetId }
           ).catch((err) => {
             // Propagate abort so Promise.all fails fast and no orphaned
             // Storage file is left behind without a Firestore doc.
@@ -302,12 +308,14 @@ class AssetsServiceV2 {
           thumbnailUrl: thumbnailUrl
         }),
 
-        // Optimized GLB (present only when optimization produced a smaller file)
+        // Optimized GLB (present only when optimization produced a smaller file).
+        // optimizedSourceSize is intentionally excluded from the quota tally
+        // (onAssetWritten only reads `size`) — it's a platform-derived artifact.
         ...(optimizedDownloadURL
           ? {
               optimizedSourceUrl: optimizedDownloadURL,
               optimizedSourcePath: optimizedStoragePath,
-              optimizedSize: optimizedFile.size
+              optimizedSourceSize: optimizedFile.size
             }
           : {}),
 
@@ -406,13 +414,21 @@ class AssetsServiceV2 {
    * @param {Function} onProgress - Progress callback
    * @returns {Promise<string>} - Download URL
    */
-  async uploadToStorage(blob, storagePath, onProgress = null, signal = null) {
+  async uploadToStorage(
+    blob,
+    storagePath,
+    onProgress = null,
+    signal = null,
+    customMetadata = {}
+  ) {
     const storageRef = ref(storage, storagePath);
 
-    // Set metadata with cache control for browser caching
     const metadata = {
       cacheControl: 'public, max-age=31536000', // 1 year cache
-      contentType: blob.type
+      contentType: blob.type,
+      // customMetadata is readable by admin quota scripts; assetRole
+      // distinguishes user-uploaded originals from platform-optimized artifacts.
+      customMetadata
     };
 
     const uploadTask = uploadBytesResumable(storageRef, blob, metadata);
