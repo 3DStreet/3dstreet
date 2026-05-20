@@ -276,6 +276,21 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     blobUrl
   });
 
+  // Revoke the blob URL when the entity is removed from the scene (undo,
+  // delete), preventing local/local_error blobs from leaking across the session.
+  // The success and AbortError paths explicitly revoke and clear the slot
+  // first, so this listener is a no-op in those cases.
+  if (!existingEntity && entity) {
+    entity.addEventListener(
+      'removed',
+      () => {
+        const slot = useAssetUploadStore.getState().uploads[entityId];
+        if (slot?.blobUrl) URL.revokeObjectURL(slot.blobUrl);
+      },
+      { once: true }
+    );
+  }
+
   const sizeCap = kind === 'glb' ? GLB_MAX_BYTES : IMAGE_MAX_BYTES;
   if (file.size > sizeCap) {
     const limitMb = Math.round(sizeCap / 1000 / 1000);
