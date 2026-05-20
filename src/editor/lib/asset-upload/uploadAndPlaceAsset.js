@@ -315,20 +315,6 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       if (signal?.aborted) {
         throw new DOMException('Upload cancelled', 'AbortError');
       }
-      // Gate on original file size — the original is always what gets stored as
-      // the source, and quota should reflect that even when optimization succeeds.
-      if (file.size > GLB_MAX_BYTES) {
-        notifyError(
-          `GLB exceeds ${Math.round(
-            GLB_MAX_BYTES / 1000 / 1000
-          )} MB — kept local for preview only.`
-        );
-        setUpload(entityId, {
-          status: 'local_error',
-          reason: 'source_too_large'
-        });
-        return { entity, assetId: null, kind };
-      }
       // Don't pass optimizedBlob when optimization was skipped — in that case
       // the blob is identical to the original and we'd upload the same bytes twice.
       if (optimizationMetadata.optimizationSkipped) optimizedBlob = null;

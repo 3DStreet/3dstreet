@@ -35,7 +35,6 @@
   "dependencies": {
     "@fortawesome/free-regular-svg-icons": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
-    "@gltf-transform/cli": "^4.3.0",
     "@gltf-transform/core": "^4.3.0",
     "@gltf-transform/extensions": "^4.3.0",
     "@gltf-transform/functions": "^4.3.0",
@@ -51,6 +50,7 @@
     "aframe-extras": "^7.6.1",
     "classnames": "^2.5.1",
     "date-fns": "^2.30.0",
+    "draco3dgltf": "^1.5.7",
     "expr-eval": "^2.0.2",
     "firebase": "^12.0.0",
     "firebase-admin": "^12.7.0",

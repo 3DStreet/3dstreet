@@ -124,15 +124,6 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
       if (signal?.aborted) {
         throw new DOMException('Upload cancelled', 'AbortError');
       }
-      // Gate on original file size — the original is always what gets stored as
-      // the source, and quota should reflect that even when optimization succeeds.
-      if (file.size > GLB_MAX_BYTES) {
-        return {
-          ok: false,
-          kind,
-          error: `GLB exceeds ${Math.round(GLB_MAX_BYTES / 1000 / 1000)} MB.`
-        };
-      }
       // Don't pass optimizedBlob when optimization was skipped — in that case
       // the blob is identical to the original and we'd upload the same bytes twice.
       if (optimizationMetadata.optimizationSkipped) optimizedBlob = null;
