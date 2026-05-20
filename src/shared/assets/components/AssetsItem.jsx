@@ -81,7 +81,9 @@ const AssetsItem = ({
         storageUrl: item.storageUrl,
         optimizedSourceUrl: item.optimizedSourceUrl,
         name: item.name || item.originalFilename || '',
-        type: item.type
+        type: item.type,
+        width: item.width ?? item.metadata?.width,
+        height: item.height ?? item.metadata?.height
       })
     );
     e.dataTransfer.effectAllowed = 'copy';

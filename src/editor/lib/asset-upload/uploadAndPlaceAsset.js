@@ -77,7 +77,38 @@ function notifySuccess(msg) {
   }
 }
 
-function createPlaceholderEntity(file, position, kind) {
+// Longest side of a placed image plane, in meters. The other side is scaled
+// to preserve aspect ratio. Keeps the 4m default for square images so existing
+// behavior is unchanged.
+const IMAGE_PLANE_MAX_DIM = 4;
+
+function imagePlaneSize(width, height) {
+  if (!width || !height) {
+    return { width: IMAGE_PLANE_MAX_DIM, height: IMAGE_PLANE_MAX_DIM };
+  }
+  const aspect = width / height;
+  return aspect >= 1
+    ? { width: IMAGE_PLANE_MAX_DIM, height: IMAGE_PLANE_MAX_DIM / aspect }
+    : { width: IMAGE_PLANE_MAX_DIM * aspect, height: IMAGE_PLANE_MAX_DIM };
+}
+
+function readImageDimensions(blob) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: 0, height: 0 });
+    };
+    img.src = url;
+  });
+}
+
+async function createPlaceholderEntity(file, position, kind) {
   const blobUrl = URL.createObjectURL(file);
   const baseComponents = {
     position: position ?? '0 0 0',
@@ -87,24 +118,28 @@ function createPlaceholderEntity(file, position, kind) {
     'data-temporary-file': 'true'
   };
 
-  const definition =
-    kind === 'glb'
-      ? {
-          components: {
-            ...baseComponents,
-            'gltf-model': `url(${blobUrl})`,
-            shadow: 'receive: true; cast: true;'
-          }
-        }
-      : {
-          element: 'a-image',
-          components: {
-            ...baseComponents,
-            src: blobUrl,
-            width: 4,
-            height: 4
-          }
-        };
+  let definition;
+  if (kind === 'glb') {
+    definition = {
+      components: {
+        ...baseComponents,
+        'gltf-model': `url(${blobUrl})`,
+        shadow: 'receive: true; cast: true;'
+      }
+    };
+  } else {
+    const { width, height } = await readImageDimensions(file);
+    const plane = imagePlaneSize(width, height);
+    definition = {
+      element: 'a-image',
+      components: {
+        ...baseComponents,
+        src: blobUrl,
+        width: plane.width,
+        height: plane.height
+      }
+    };
+  }
 
   return new Promise((resolve) => {
     AFRAME.INSPECTOR.execute('entitycreate', definition, undefined, (entity) =>
@@ -145,15 +180,18 @@ export function placeCloudAsset(asset, position) {
           shadow: 'receive: true; cast: true;'
         }
       }
-    : {
-        element: 'a-image',
-        components: {
-          ...baseComponents,
-          src: servedUrl,
-          width: 4,
-          height: 4
-        }
-      };
+    : (() => {
+        const plane = imagePlaneSize(asset.width, asset.height);
+        return {
+          element: 'a-image',
+          components: {
+            ...baseComponents,
+            src: servedUrl,
+            width: plane.width,
+            height: plane.height
+          }
+        };
+      })();
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
