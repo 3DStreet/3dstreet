@@ -170,13 +170,12 @@ class AssetsServiceV2 {
       }
 
       // Determine file extension and MIME type
-      // For video assets, force video MIME type since blob type from data URI
-      // conversion can be unreliable (may incorrectly report image/png)
+      // For video and mesh asset types force MIME types
+      // since blob type from data URI conversion can be unreliable
       let mimeType;
       if (type === ASSET_TYPES.VIDEO) {
         mimeType = 'video/mp4';
       } else if (type === ASSET_TYPES.MESH) {
-        // .glb files report an empty blob.type in many browsers
         mimeType = 'model/gltf-binary';
       } else {
         mimeType = blob.type && blob.type !== '' ? blob.type : 'image/jpeg';
