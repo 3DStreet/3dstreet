@@ -163,7 +163,7 @@ async function createPlaceholderEntity(file, position, kind) {
  * @param {THREE.Vector3 | string} position
  */
 export function placeCloudAsset(asset, position) {
-  if (!asset?.assetId || !asset.storageUrl) return;
+  if (!asset?.assetId || !getServedUrl(asset)) return;
   const isMesh = asset.type === 'mesh';
   const servedUrl = getServedUrl(asset);
   const baseComponents = {

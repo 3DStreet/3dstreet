@@ -66,13 +66,15 @@ service cloud.firestore {
       // — letting clients rewrite it would let them spoof their storage usage.
       // Long-term, `size` should be set server-side from the actual Storage
       // object; this rule is the short-term guard.
+      //
+      // Uses diff().affectedKeys() so legacy docs missing optional fields
+      // (e.g. AI-generated images without optimizedSourceSize) update cleanly:
+      // a field absent from both before and after never appears in affectedKeys.
       allow update: if request.auth != null
         && request.auth.uid == userId
-        && request.resource.data.size == resource.data.size
-        && request.resource.data.optimizedSourceSize == resource.data.optimizedSourceSize
-        && request.resource.data.storagePath == resource.data.storagePath
-        && request.resource.data.optimizedSourcePath == resource.data.optimizedSourcePath
-        && request.resource.data.userId == resource.data.userId;
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['size', 'optimizedSourceSize', 'storagePath',
+                     'optimizedSourcePath', 'userId']);
 
       // Hard delete is disallowed for clients. The UI calls `updateDoc` with
       // `deleted: true` (soft delete); the GC Cloud Function performs the

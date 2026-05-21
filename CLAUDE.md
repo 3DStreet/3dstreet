@@ -110,7 +110,7 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 
 **Cloud Functions:**
 - `onAssetWritten` — Firestore trigger, maintains `users/{uid}/meta/usage.bytesUsed` via transaction. Only `size` (original) counts toward quota; `optimizedSourceSize` is excluded (platform cost).
-- `getUploadQuota` — callable, reads plan from `context.auth.token.plan` (decoded JWT, no Admin SDK call). Returns `{ bytesUsed, planLimit, planName, allowed }`.
+- `getUploadQuota` — callable, reads plan via `getAuth().getUser(uid)` (Admin SDK, always fresh custom claims). Returns `{ bytesUsed, planLimit, planName, allowed }`.
 
 **Plan limits (decimal MB):** (see code for latest plan limits). Per-file caps: GLB 50 MB · image 10 MB.
 
@@ -152,7 +152,9 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 
 **Build:** `npm run dist` (production) or `npm run dist:staging`
 
-**Test:** `npm test` (Mocha), `npm run lint`, `npm run prettier`
+**Test:** `npm test` (Mocha + Vitest), `npm run lint`, `npm run prettier`
+
+**Firestore rules tests:** `npm run test:rules` — local-only (boots the firestore emulator via `firebase emulators:exec`, runs vitest against `test/rules/`). Not wired into CI to keep CI cheap; run manually when touching `public/firestore.rules`.
 
 **Deploy:** `npm run deploy` or `npm run deploy:staging`
 
