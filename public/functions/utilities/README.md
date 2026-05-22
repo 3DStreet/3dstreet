@@ -24,7 +24,7 @@ await adminTools.auditUsers(true)
 **Report includes:**
 - Total users with PRO claims
 - Total active Stripe subscribers
-- Domain-based pro users (e.g., `uoregon.edu`)
+- Domain-based pro users (configured via the `ALLOWED_PRO_TEAM_DOMAINS` secret)
 - Valid pro users (claim matches Stripe)
 - Detailed list of each discrepancy
 

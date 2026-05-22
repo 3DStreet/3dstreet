@@ -18,16 +18,27 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 
-// Domain-based pro users (from token-management.js pattern)
-const ALLOWED_PRO_TEAM_DOMAINS = ['uoregon.edu'];
-
 /**
- * Check if a user has domain-based pro status
+ * Check if a user has domain-based pro status.
+ * Reads allowed domains from the ALLOWED_PRO_TEAM_DOMAINS secret (JSON array).
+ * Functions calling this must register the secret via runWith().
  */
 function isDomainBasedPro(email) {
   if (!email) return false;
   const domain = email.split('@')[1]?.toLowerCase();
-  return ALLOWED_PRO_TEAM_DOMAINS.includes(domain);
+  if (!domain) return false;
+
+  const allowedDomainsSecret = process.env.ALLOWED_PRO_TEAM_DOMAINS;
+  if (!allowedDomainsSecret) return false;
+
+  try {
+    const domains = JSON.parse(allowedDomainsSecret);
+    if (!Array.isArray(domains)) return false;
+    return domains.includes(domain);
+  } catch (parseError) {
+    console.error('[user-audit] Error parsing ALLOWED_PRO_TEAM_DOMAINS secret:', parseError);
+    return false;
+  }
 }
 
 /**
@@ -187,7 +198,7 @@ async function getActiveStripeSubscribers(stripe) {
  */
 exports.auditUserSubscriptions = functions
   .runWith({
-    secrets: ["STRIPE_SECRET_KEY"],
+    secrets: ["STRIPE_SECRET_KEY", "ALLOWED_PRO_TEAM_DOMAINS"],
     timeoutSeconds: 540 // 9 minutes for large user bases
   })
   .https
@@ -392,7 +403,7 @@ exports.auditUserSubscriptions = functions
  */
 exports.auditUserSubscriptionsHttp = functions
   .runWith({
-    secrets: ["STRIPE_SECRET_KEY"],
+    secrets: ["STRIPE_SECRET_KEY", "ALLOWED_PRO_TEAM_DOMAINS"],
     timeoutSeconds: 540
   })
   .https
