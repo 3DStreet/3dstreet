@@ -40,6 +40,23 @@ async function resolvePlanForUser(uid) {
     if (claims.plan === 'MAX') return 'MAX';
     if (claims.plan === 'TEAM') return 'TEAM';
     if (claims.plan === 'PRO') return 'PRO';
+
+    // Domain-based TEAM access (mirrors token-management.js validateUserDomain)
+    const email = record.email;
+    const allowedDomainsSecret = process.env.ALLOWED_PRO_TEAM_DOMAINS;
+    if (email && allowedDomainsSecret) {
+      const userDomain = email.split('@')[1];
+      if (userDomain) {
+        try {
+          const domains = JSON.parse(allowedDomainsSecret);
+          if (Array.isArray(domains) && domains.includes(userDomain)) {
+            return 'TEAM';
+          }
+        } catch (parseError) {
+          console.error('[asset-quota] Error parsing ALLOWED_PRO_TEAM_DOMAINS secret:', parseError);
+        }
+      }
+    }
   } catch (err) {
     console.warn('[asset-quota] failed to read user claims', err);
   }
@@ -98,7 +115,7 @@ const onAssetWritten = functions.firestore
  * Input:  { proposedBytes }
  * Output: { bytesUsed, planLimit, planName, allowed, reason? }
  */
-const getUploadQuota = functions.https.onCall(async (data, context) => {
+const getUploadQuota = functions.runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS'] }).https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated',
