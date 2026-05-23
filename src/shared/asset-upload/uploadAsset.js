@@ -10,12 +10,7 @@
 
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
-import {
-  assetsService,
-  ASSET_TYPES,
-  ASSET_CATEGORIES,
-  getServedUrl
-} from '@shared/assets';
+import { assetsService, ASSET_TYPES, ASSET_CATEGORIES } from '@shared/assets';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
   extractGlbAttribution,
@@ -148,6 +143,22 @@ export async function uploadAsset(
       uploadStore.update({ sizeBytes: file.size, optimizationMetadata });
     }
 
+    // Kick off thumbnail capture in parallel with the upload — the model
+    // renders from the in-memory Blob (no network), so the captured JPEG
+    // is usually ready by the time addAsset resolves and we have an
+    // assetId to attach it to. Prefer the optimized GLB when available
+    // (smaller = faster to parse in the iframe).
+    let thumbnailCapture = null;
+    if (kind === 'glb') {
+      const blobToCapture = optimizedBlob || file;
+      thumbnailCapture = import('./captureThumbnail.js')
+        .then(({ captureGlbThumbnail }) => captureGlbThumbnail(blobToCapture))
+        .catch((err) => {
+          console.warn('[asset-upload] thumbnail capture failed', err);
+          return null;
+        });
+    }
+
     onStatus?.('uploading');
     uploadStore.update({ status: 'uploading', progress: 0 });
     const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
@@ -170,21 +181,17 @@ export async function uploadAsset(
     );
     pendingAssetId = assetId;
 
-    if (kind === 'glb') {
+    if (kind === 'glb' && thumbnailCapture) {
       onStatus?.('thumbnailing');
       uploadStore.update({ status: 'thumbnailing', progress: 100 });
       // Fire-and-forget: thumbnail errors are non-fatal (the asset doc is
       // already written; missing thumbnail just leaves a placeholder card).
-      const asset = await assetsService.getAsset(assetId, userId);
-      // Prefer the optimized GLB when available; the iframe re-downloads the
-      // file in its own document, so saving 25 MB on a 30 → 5 MB optimization
-      // is real bandwidth, not just cache reuse.
-      const cloudUrl = getServedUrl(asset);
-      if (cloudUrl) {
-        import('./captureThumbnail.js').then(({ captureAndUploadThumbnail }) =>
-          captureAndUploadThumbnail(assetId, userId, cloudUrl)
+      thumbnailCapture.then((jpegBlob) => {
+        if (!jpegBlob) return;
+        import('./captureThumbnail.js').then(({ uploadCapturedThumbnail }) =>
+          uploadCapturedThumbnail(assetId, userId, jpegBlob)
         );
-      }
+      });
     }
 
     // Card stays up until the asset actually lands in the gallery items

@@ -26,10 +26,12 @@
   </head>
   <body>
     <!-- Headless thumbnail capture. The parent (gallery upload pipeline)
-         mounts this in a hidden iframe with ?src=<glb url>, waits for our
-         postMessage, then uploads the resulting blob as the asset
-         thumbnail. Same stabilisation pattern as @shopify/screenshot-glb:
-         poster-dismissed → 3× rAF → modelViewer.toBlob(). -->
+         mounts this in a hidden iframe, postMessages the GLB Blob in
+         (so we don't re-download the bytes the parent already has in
+         memory), waits for our postMessage back, then uploads the
+         resulting blob as the asset thumbnail. Same stabilisation pattern
+         as @shopify/screenshot-glb: poster-dismissed → 3× rAF →
+         modelViewer.toBlob(). -->
     <model-viewer
       id="mv"
       loading="eager"
@@ -41,13 +43,13 @@
     ></model-viewer>
     <script>
       const params = new URLSearchParams(location.search);
-      const src = params.get('src');
       const width = parseInt(params.get('w') || '512', 10);
       const height = parseInt(params.get('h') || '512', 10);
       document.body.style.width = width + 'px';
       document.body.style.height = height + 'px';
 
       const mv = document.getElementById('mv');
+      let modelBlobUrl = null;
 
       function post(msg) {
         if (window.parent && window.parent !== window) {
@@ -59,80 +61,108 @@
         console.log('[screenshot-iframe]', ...args);
       }
 
-      if (!src) {
-        post({ type: '3dstreet:screenshot-error', error: 'no src' });
-      } else {
-        log('loading', src);
-        mv.src = src;
+      function cleanupModelBlobUrl() {
+        if (modelBlobUrl) {
+          URL.revokeObjectURL(modelBlobUrl);
+          modelBlobUrl = null;
+        }
+      }
 
-        mv.addEventListener('error', (e) => {
-          try {
-            log('error', e, e && e.detail);
-          } catch {
-            // ignore
-          }
+      function loadFromBlob(blob) {
+        if (!(blob instanceof Blob)) {
           post({
             type: '3dstreet:screenshot-error',
-            error: String((e && (e.detail?.sourceError || e.detail)) || 'model load failed')
+            error: 'expected Blob, got ' + typeof blob
           });
+          return;
+        }
+        modelBlobUrl = URL.createObjectURL(blob);
+        log('loading from blob', blob.size, 'bytes');
+        mv.src = modelBlobUrl;
+      }
+
+      window.addEventListener('message', (e) => {
+        const data = e.data;
+        if (!data || typeof data !== 'object') return;
+        if (data.type === '3dstreet:load-blob' && data.blob) {
+          loadFromBlob(data.blob);
+        }
+      });
+
+      mv.addEventListener('error', (e) => {
+        try {
+          log('error', e, e && e.detail);
+        } catch {
+          // ignore
+        }
+        cleanupModelBlobUrl();
+        post({
+          type: '3dstreet:screenshot-error',
+          error: String((e && (e.detail?.sourceError || e.detail)) || 'model load failed')
         });
+      });
 
-        mv.addEventListener('load', () => log('load fired'), { once: true });
+      mv.addEventListener('load', () => log('load fired'), { once: true });
 
-        mv.addEventListener(
-          'poster-dismissed',
-          () => {
-            log('poster-dismissed, capturing…');
+      mv.addEventListener(
+        'poster-dismissed',
+        () => {
+          log('poster-dismissed, capturing…');
+          requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                requestAnimationFrame(async () => {
-                  try {
-                    // model-viewer.toBlob reads the WebGL canvas directly.
-                    // Capture as PNG (preserves alpha), then composite onto
-                    // a white 2D canvas so the exported JPEG has a white
-                    // background instead of black-from-dropped-alpha.
-                    const png = await mv.toBlob({
-                      idealAspect: true,
-                      mimeType: 'image/png'
-                    });
-                    const img = new Image();
-                    img.src = URL.createObjectURL(png);
-                    await new Promise((resolve, reject) => {
-                      img.onload = resolve;
-                      img.onerror = reject;
-                    });
-                    URL.revokeObjectURL(img.src);
+              requestAnimationFrame(async () => {
+                try {
+                  // model-viewer.toBlob reads the WebGL canvas directly.
+                  // Capture as PNG (preserves alpha), then composite onto
+                  // a 2D canvas with the gallery card background so the
+                  // exported JPEG blends with dark gallery chrome.
+                  const png = await mv.toBlob({
+                    idealAspect: true,
+                    mimeType: 'image/png'
+                  });
+                  const img = new Image();
+                  img.src = URL.createObjectURL(png);
+                  await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                  });
+                  URL.revokeObjectURL(img.src);
 
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.naturalWidth;
-                    canvas.height = img.naturalHeight;
-                    const ctx = canvas.getContext('2d');
-                    // Matches the gallery's mesh placeholder card bg so the
-                    // captured thumbnail blends with the dark gallery chrome
-                    // instead of fighting it with a white square.
-                    ctx.fillStyle = '#393939';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0);
+                  const canvas = document.createElement('canvas');
+                  canvas.width = img.naturalWidth;
+                  canvas.height = img.naturalHeight;
+                  const ctx = canvas.getContext('2d');
+                  // Matches the gallery's mesh placeholder card bg so the
+                  // captured thumbnail blends with the dark gallery chrome
+                  // instead of fighting it with a white square.
+                  ctx.fillStyle = '#393939';
+                  ctx.fillRect(0, 0, canvas.width, canvas.height);
+                  ctx.drawImage(img, 0, 0);
 
-                    const blob = await new Promise((resolve) =>
-                      canvas.toBlob(resolve, 'image/jpeg', 0.85)
-                    );
-                    log('captured', blob.size, 'bytes');
-                    post({ type: '3dstreet:screenshot-blob', blob });
-                  } catch (err) {
-                    log('toBlob failed', err);
-                    post({
-                      type: '3dstreet:screenshot-error',
-                      error: String(err)
-                    });
-                  }
-                });
+                  const blob = await new Promise((resolve) =>
+                    canvas.toBlob(resolve, 'image/jpeg', 0.85)
+                  );
+                  log('captured', blob.size, 'bytes');
+                  cleanupModelBlobUrl();
+                  post({ type: '3dstreet:screenshot-blob', blob });
+                } catch (err) {
+                  log('toBlob failed', err);
+                  cleanupModelBlobUrl();
+                  post({
+                    type: '3dstreet:screenshot-error',
+                    error: String(err)
+                  });
+                }
               });
             });
-          },
-          { once: true }
-        );
-      }
+          });
+        },
+        { once: true }
+      );
+
+      // Announce readiness so the parent posts the blob without racing
+      // the script-execution / load timing.
+      post({ type: '3dstreet:screenshot-ready' });
     </script>
   </body>
 </html>

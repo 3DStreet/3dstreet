@@ -384,6 +384,21 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       currentUploadStore.update({ sizeBytes: file.size, optimizationMetadata });
     }
 
+    // Kick off thumbnail capture in parallel with the upload — the model
+    // renders from the in-memory Blob (no network), so the captured JPEG
+    // is usually ready by the time addAsset resolves and we have an
+    // assetId to attach it to. Prefer the optimized GLB when available.
+    let thumbnailCapture = null;
+    if (kind === 'glb') {
+      const blobToCapture = optimizedBlob || file;
+      thumbnailCapture = import('@shared/asset-upload/captureThumbnail.js')
+        .then(({ captureGlbThumbnail }) => captureGlbThumbnail(blobToCapture))
+        .catch((err) => {
+          console.warn('[asset-upload] thumbnail capture failed', err);
+          return null;
+        });
+    }
+
     setUpload(entityId, { status: 'uploading', progress: 0 });
     currentUploadStore.update({ status: 'uploading', progress: 0 });
     const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
@@ -491,16 +506,19 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     currentUploadStore.awaitArrival(assetId);
     armArrivalTimeout(assetId, kind);
 
-    // Client-side thumbnail capture for GLBs. Fire-and-forget: errors are
-    // logged but never block the success toast. The 'assetUpdated' event
-    // from updateAsset will replace the gallery card placeholder with the
-    // generated JPEG when it lands.
-    if (kind === 'glb') {
-      import('@shared/asset-upload/captureThumbnail.js').then(
-        ({ captureAndUploadThumbnail }) => {
-          captureAndUploadThumbnail(assetId, userId, cloudUrl);
-        }
-      );
+    // Thumbnail capture ran in parallel with the upload. Fire-and-forget
+    // the upload step — errors are logged but never block the success
+    // toast. The 'assetUpdated' event from updateAsset will replace the
+    // gallery card placeholder with the generated JPEG when it lands.
+    if (thumbnailCapture) {
+      thumbnailCapture.then((jpegBlob) => {
+        if (!jpegBlob) return;
+        import('@shared/asset-upload/captureThumbnail.js').then(
+          ({ uploadCapturedThumbnail }) => {
+            uploadCapturedThumbnail(assetId, userId, jpegBlob);
+          }
+        );
+      });
     }
 
     notifySuccess(`Uploaded ${file.name}`);
