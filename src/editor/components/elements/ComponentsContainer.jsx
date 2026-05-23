@@ -3,6 +3,7 @@ import AdvancedComponents from './AdvancedComponents';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Events from '../../lib/Events';
+import MixinMetadata from './MixinMetadata';
 
 export default class ComponentsContainer extends React.Component {
   static propTypes = {
@@ -39,6 +40,11 @@ export default class ComponentsContainer extends React.Component {
         ) : (
           <div className="sidepanelContent">
             <CommonComponents entity={entity} />
+          </div>
+        )}
+        {!!entity.mixinEls.length && (
+          <div className="details">
+            <MixinMetadata entity={entity} />
           </div>
         )}
         {entity.classList.contains('flattening') && (
