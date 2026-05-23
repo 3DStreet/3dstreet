@@ -27,7 +27,10 @@ import {
   IMAGE_MAX_BYTES,
   FILE_PICKER_ACCEPT,
   getAssetKind,
-  isAcceptedAssetFile
+  isAcceptedAssetFile,
+  extractGlbAttribution,
+  buildStoredAttribution,
+  optimizeGlb
 } from '@shared/asset-upload';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 
@@ -356,13 +359,19 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   };
   assetsService.events.addEventListener('uploadProgress', onProgress);
 
+  let attribution = null;
   try {
     let optimizedBlob = null;
     if (kind === 'glb') {
       setUpload(entityId, { status: 'optimizing', progress: 0 });
       currentUploadStore.update({ status: 'optimizing', progress: 0 });
-      const { optimizeGlb } =
-        await import('@shared/asset-upload/optimizeGlb.js');
+
+      // Extract attribution from the GLB header before the optimization pass
+      // touches the document. Cheap (single arrayBuffer read of an already-on-
+      // disk File) and always best-effort — a failed parse just yields an
+      // object with hasMetadata=false and we proceed without it.
+      attribution = await extractGlbAttribution(file);
+
       ({ blob: optimizedBlob, metadata: optimizationMetadata } =
         await optimizeGlb(file));
       if (signal?.aborted) {
@@ -378,13 +387,25 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     setUpload(entityId, { status: 'uploading', progress: 0 });
     currentUploadStore.update({ status: 'uploading', progress: 0 });
     const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
+    // The extracted `title` (if any) seeds the asset doc's Display name —
+    // it's typically richer than the filename basename (e.g. "Generic
+    // passenger car pack" vs. "passenger-car-pack-v2"). `title` itself is
+    // not persisted on the attribution object; once it's the Display name
+    // there's no second source of truth needed.
+    const initialName = attribution?.title?.trim() || undefined;
+    const storedAttribution = buildStoredAttribution(attribution);
     const assetId = await assetsService.addAsset(
       file,
-      { originalFilename: file.name },
+      { originalFilename: file.name, name: initialName },
       assetType,
       ASSET_CATEGORIES.UPLOAD,
       userId,
-      { signal, optimizedFile: optimizedBlob, optimizationMetadata }
+      {
+        signal,
+        optimizedFile: optimizedBlob,
+        optimizationMetadata,
+        attribution: storedAttribution
+      }
     );
     pendingAssetId = assetId;
 

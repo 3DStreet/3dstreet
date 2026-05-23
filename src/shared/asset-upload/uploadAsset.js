@@ -12,6 +12,11 @@ import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
 import { assetsService, ASSET_TYPES, ASSET_CATEGORIES } from '@shared/assets';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
+import {
+  extractGlbAttribution,
+  buildStoredAttribution
+} from './extractGlbAttribution.js';
+import { optimizeGlb } from './optimizeGlb.js';
 
 export const GLB_MAX_BYTES = 50 * 1000 * 1000;
 export const IMAGE_MAX_BYTES = 10 * 1000 * 1000;
@@ -115,10 +120,11 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
 
     let optimizedBlob = null;
     let optimizationMetadata = null;
+    let attribution = null;
     if (kind === 'glb') {
       onStatus?.('optimizing');
       uploadStore.update({ status: 'optimizing', progress: 0 });
-      const { optimizeGlb } = await import('./optimizeGlb.js');
+      attribution = await extractGlbAttribution(file);
       ({ blob: optimizedBlob, metadata: optimizationMetadata } =
         await optimizeGlb(file));
       if (signal?.aborted) {
@@ -133,13 +139,22 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
     onStatus?.('uploading');
     uploadStore.update({ status: 'uploading', progress: 0 });
     const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
+    // Seed Display name from the extracted title when richer than the
+    // filename; `title` itself is never persisted on the attribution object.
+    const initialName = attribution?.title?.trim() || undefined;
+    const storedAttribution = buildStoredAttribution(attribution);
     const assetId = await assetsService.addAsset(
       file,
-      { originalFilename: file.name },
+      { originalFilename: file.name, name: initialName },
       assetType,
       ASSET_CATEGORIES.UPLOAD,
       userId,
-      { signal, optimizedFile: optimizedBlob, optimizationMetadata }
+      {
+        signal,
+        optimizedFile: optimizedBlob,
+        optimizationMetadata,
+        attribution: storedAttribution
+      }
     );
     pendingAssetId = assetId;
 

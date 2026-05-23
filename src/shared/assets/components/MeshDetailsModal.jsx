@@ -12,6 +12,7 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
 import { DownloadIcon, TrashIcon, Cross24Icon } from '@shared/icons';
+import { composeAttributionString } from '@shared/asset-upload/extractGlbAttribution.js';
 import assetsService from '../services/assetsService.js';
 import {
   formatBytes,
@@ -21,6 +22,37 @@ import {
   getServedUrl
 } from '../utils.js';
 import styles from './MeshDetailsModal.module.scss';
+
+// User-editable attribution fields. `title` deliberately is NOT here — the
+// asset doc's `name` (Display name) is the single source of truth for the
+// model title. sourceName / generator are diagnostic, surfaced read-only.
+const ATTRIBUTION_FIELDS = ['author', 'license', 'source'];
+
+const EMPTY_ATTRIBUTION = {
+  author: '',
+  license: '',
+  source: '',
+  sourceName: '',
+  generator: ''
+};
+
+function pickAttribution(doc) {
+  const a = doc?.attribution || {};
+  return {
+    author: a.author || '',
+    license: a.license || '',
+    source: a.source || '',
+    sourceName: a.sourceName || '',
+    generator: a.generator || ''
+  };
+}
+
+function attributionEquals(a, b) {
+  for (const key of ATTRIBUTION_FIELDS) {
+    if ((a[key] || '') !== (b[key] || '')) return false;
+  }
+  return true;
+}
 
 const IconTooltip = ({ children, label }) => (
   <Tooltip.Root delayDuration={150}>
@@ -56,12 +88,16 @@ const MeshDetailsModal = ({
 
   const [name, setName] = useState('');
   const [savedName, setSavedName] = useState('');
+  const [attribution, setAttribution] = useState(EMPTY_ATTRIBUTION);
+  const [savedAttribution, setSavedAttribution] = useState(EMPTY_ATTRIBUTION);
+  const [editingAttribution, setEditingAttribution] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setEditingAttribution(false);
     assetsService
       .getAsset(assetId, ownerUid)
       .then((doc) => {
@@ -70,6 +106,9 @@ const MeshDetailsModal = ({
         const initial = doc?.name || doc?.originalFilename || '';
         setName(initial);
         setSavedName(initial);
+        const attr = pickAttribution(doc);
+        setAttribution(attr);
+        setSavedAttribution(attr);
       })
       .catch(() => {
         if (cancelled) return;
@@ -97,23 +136,61 @@ const MeshDetailsModal = ({
   }, [onNavigate, onClose]);
 
   const isOwner = !!auth.currentUser && auth.currentUser.uid === ownerUid;
-  const dirty = isOwner && name.trim() !== savedName && name.trim() !== '';
+  const nameDirty = isOwner && name.trim() !== savedName && name.trim() !== '';
+  const attributionDirty =
+    isOwner && !attributionEquals(attribution, savedAttribution);
+  const dirty = nameDirty || attributionDirty;
 
-  const onSaveName = async () => {
+  const onSave = async () => {
     if (!dirty || !data) return;
     setSaving(true);
     setError(null);
     try {
-      const trimmed = name.trim();
-      await assetsService.updateAsset(assetId, ownerUid, { name: trimmed });
-      setData((prev) => (prev ? { ...prev, name: trimmed } : prev));
-      setSavedName(trimmed);
+      const updates = {};
+      let nextName = savedName;
+      if (nameDirty) {
+        nextName = name.trim();
+        updates.name = nextName;
+      }
+      let nextAttribution = savedAttribution;
+      if (attributionDirty) {
+        const trimmed = ATTRIBUTION_FIELDS.reduce(
+          (acc, key) => {
+            acc[key] = (attribution[key] || '').trim();
+            return acc;
+          },
+          {
+            sourceName: savedAttribution.sourceName || '',
+            generator: savedAttribution.generator || ''
+          }
+        );
+        const attributionStr = composeAttributionString(trimmed);
+        updates.attribution = {
+          ...trimmed,
+          attribution: attributionStr,
+          attributionUrl: trimmed.source
+        };
+        nextAttribution = { ...trimmed };
+      }
+      await assetsService.updateAsset(assetId, ownerUid, updates);
+      setData((prev) => (prev ? { ...prev, ...updates } : prev));
+      if (nameDirty) setSavedName(nextName);
+      if (attributionDirty) {
+        setSavedAttribution(nextAttribution);
+        setAttribution(nextAttribution);
+      }
+      setEditingAttribution(false);
     } catch (err) {
       console.error('[MeshDetailsModal] save failed', err);
       setError(err.message || 'Save failed');
     } finally {
       setSaving(false);
     }
+  };
+
+  const cancelAttributionEdit = () => {
+    setAttribution(savedAttribution);
+    setEditingAttribution(false);
   };
 
   const onDownloadOriginal = () => {
@@ -192,7 +269,11 @@ const MeshDetailsModal = ({
     onClose();
   };
 
-  const handleBackgroundClick = (e) => {
+  // Use mousedown, not click: a `click` fires on the common ancestor of
+  // mousedown+mouseup, so dragging from an input inside the modal to a
+  // mouseup on the backdrop would land `click` on the backdrop and close.
+  // Closing on mousedown only triggers when the press itself starts here.
+  const handleBackgroundMouseDown = (e) => {
     if (e.target === e.currentTarget) onClose();
   };
 
@@ -210,7 +291,7 @@ const MeshDetailsModal = ({
   const hasNext = showNav && currentIndex < totalItems - 1;
 
   return createPortal(
-    <div className={styles.modal} onClick={handleBackgroundClick}>
+    <div className={styles.modal} onMouseDown={handleBackgroundMouseDown}>
       {hasPrev && (
         <button
           type="button"
@@ -336,17 +417,28 @@ const MeshDetailsModal = ({
                 onChange={(e) => setName(e.target.value)}
                 disabled={!isOwner || saving || !data}
               />
-              {dirty && (
-                <button
-                  type="button"
-                  onClick={onSaveName}
-                  disabled={saving}
-                  className={styles.saveNameBtn}
-                >
-                  {saving ? 'Saving…' : 'Save name'}
-                </button>
-              )}
             </div>
+
+            <AttributionBlock
+              attribution={attribution}
+              setAttribution={setAttribution}
+              editing={editingAttribution}
+              onEnterEdit={() => setEditingAttribution(true)}
+              onCancel={cancelAttributionEdit}
+              isOwner={isOwner && !!data}
+              disabled={saving || !data}
+            />
+
+            {dirty && (
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={saving}
+                className={styles.saveNameBtn}
+              >
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
+            )}
 
             <div className={styles.metaList}>
               <div>
@@ -499,6 +591,194 @@ const MeshDetailsModal = ({
     </div>,
     document.body
   );
+};
+
+// Attribution block — switches between a compact read-only view (composed
+// string + clickable source link) and an inline editor for license / author /
+// source URL. Title is intentionally absent; the asset doc's `name` field
+// (Display name above this block) is the canonical title.
+const AttributionBlock = ({
+  attribution,
+  setAttribution,
+  editing,
+  onEnterEdit,
+  onCancel,
+  isOwner,
+  disabled
+}) => {
+  const composed = composeAttributionString(attribution);
+  const hasAnything =
+    composed ||
+    attribution.source ||
+    attribution.sourceName ||
+    attribution.generator;
+
+  if (!editing) {
+    return (
+      <div className={styles.attributionGroup}>
+        <div className={styles.attributionHeader}>
+          <span>Attribution</span>
+          {isOwner && (
+            <button
+              type="button"
+              className={styles.attributionEditBtn}
+              onClick={onEnterEdit}
+              disabled={disabled}
+            >
+              Edit
+            </button>
+          )}
+        </div>
+        {hasAnything ? (
+          <AttributionView attribution={attribution} composed={composed} />
+        ) : (
+          <div className={styles.attributionEmpty}>
+            No attribution info.
+            {isOwner && ' Click Edit to add one.'}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const setField = (key) => (e) =>
+    setAttribution((prev) => ({ ...prev, [key]: e.target.value }));
+
+  return (
+    <div className={styles.attributionGroup}>
+      <div className={styles.attributionHeader}>
+        <span>Attribution</span>
+        <button
+          type="button"
+          className={styles.attributionEditBtn}
+          onClick={onCancel}
+          disabled={disabled}
+        >
+          Cancel
+        </button>
+      </div>
+      <div className={styles.attributionFields}>
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor="meshAttrAuthor">
+            Author
+          </label>
+          <input
+            id="meshAttrAuthor"
+            type="text"
+            className={styles.fieldInput}
+            value={attribution.author}
+            onChange={setField('author')}
+            disabled={disabled}
+          />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor="meshAttrLicense">
+            License
+          </label>
+          <input
+            id="meshAttrLicense"
+            type="text"
+            className={styles.fieldInput}
+            value={attribution.license}
+            onChange={setField('license')}
+            disabled={disabled}
+            placeholder="e.g. CC-BY-4.0"
+          />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor="meshAttrSource">
+            Source URL
+          </label>
+          <input
+            id="meshAttrSource"
+            type="url"
+            className={styles.fieldInput}
+            value={attribution.source}
+            onChange={setField('source')}
+            disabled={disabled}
+            placeholder="https://…"
+          />
+        </div>
+      </div>
+      {/* Read-only context — where the file came from. Surfacing this in
+          the editor reminds the user what was auto-detected without making
+          it look editable (it's derived from the source URL / generator). */}
+      {(attribution.sourceName || attribution.generator) && (
+        <div className={styles.attributionContext}>
+          {attribution.sourceName && (
+            <span>
+              <span className={styles.metaLabel}>Source:</span>
+              {attribution.sourceName}
+            </span>
+          )}
+          {attribution.generator && (
+            <span>
+              <span className={styles.metaLabel}>Generator:</span>
+              {attribution.generator}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+AttributionBlock.propTypes = {
+  attribution: PropTypes.object.isRequired,
+  setAttribution: PropTypes.func.isRequired,
+  editing: PropTypes.bool.isRequired,
+  onEnterEdit: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  isOwner: PropTypes.bool,
+  disabled: PropTypes.bool
+};
+
+// Source URLs come from user-editable input and arbitrary GLB metadata, so
+// only render http(s) links — block javascript:, data:, and other schemes
+// that could execute on click.
+const safeHref = (url) => {
+  if (typeof url !== 'string') return null;
+  try {
+    // No base URL: requires an absolute URL. A bare path like "/admin" or
+    // "foo/bar" would otherwise resolve against window.location.origin and
+    // render as a link back into our own app.
+    const parsed = new URL(url);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href;
+    }
+  } catch {
+    // not a parseable absolute URL
+  }
+  return null;
+};
+
+const AttributionView = ({ attribution, composed }) => {
+  const { source, sourceName } = attribution;
+  const linkLabel = sourceName ? `View on ${sourceName}` : 'View source';
+  const href = safeHref(source);
+  return (
+    <div className={styles.attributionView}>
+      {composed && <div className={styles.attributionComposed}>{composed}</div>}
+      {href && (
+        <a
+          className={styles.attributionLink}
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {linkLabel} →
+        </a>
+      )}
+      {sourceName && !href && (
+        <div className={styles.attributionSourceName}>{sourceName}</div>
+      )}
+    </div>
+  );
+};
+
+AttributionView.propTypes = {
+  attribution: PropTypes.object.isRequired,
+  composed: PropTypes.string
 };
 
 MeshDetailsModal.propTypes = {

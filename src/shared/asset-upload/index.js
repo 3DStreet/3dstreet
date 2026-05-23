@@ -11,3 +11,9 @@ export {
   captureGlbThumbnail
 } from './captureThumbnail.js';
 export { optimizeGlb } from './optimizeGlb.js';
+export {
+  extractGlbAttribution,
+  composeAttributionString,
+  normalizeAttributionFromGltfJson,
+  buildStoredAttribution
+} from './extractGlbAttribution.js';
