@@ -167,8 +167,9 @@ export function normalizeAttributionFromGltfJson(json) {
 
 /**
  * Extract attribution metadata from a GLB file/blob/ArrayBuffer.
- * Returns a normalized object even on failure (with hasMetadata=false) so
- * callers can plumb the result through without null-guards on every field.
+ * Best-effort: returns a normalized object even on failure (with
+ * hasMetadata=false) so a malformed or unparseable header never blocks an
+ * otherwise-valid upload. Parse errors are logged for visibility.
  *
  * @param {File | Blob | ArrayBuffer | Uint8Array} input
  * @returns {Promise<ReturnType<typeof normalizeAttributionFromGltfJson>>}
@@ -204,4 +205,26 @@ export async function extractGlbAttribution(input) {
       hasMetadata: false
     };
   }
+}
+
+/**
+ * Strip `title` and `hasMetadata` from the extracted attribution before
+ * persisting — `title` becomes the asset doc's Display name, `hasMetadata`
+ * is a parse-time flag. Returns null when there's nothing worth saving so
+ * callers can conditionally omit the field from the doc.
+ */
+export function buildStoredAttribution(extracted) {
+  if (!extracted?.hasMetadata) return null;
+  const { author, license, source, sourceName, generator, attributionUrl } =
+    extracted;
+  if (!author && !license && !source && !sourceName) return null;
+  return {
+    author: author || '',
+    license: license || '',
+    source: source || '',
+    sourceName: sourceName || '',
+    generator: generator || '',
+    attribution: extracted.attribution || '',
+    attributionUrl: attributionUrl || source || ''
+  };
 }

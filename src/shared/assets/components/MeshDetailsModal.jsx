@@ -732,23 +732,40 @@ AttributionBlock.propTypes = {
   disabled: PropTypes.bool
 };
 
+// Source URLs come from user-editable input and arbitrary GLB metadata, so
+// only render http(s) links — block javascript:, data:, and other schemes
+// that could execute on click.
+const safeHref = (url) => {
+  if (typeof url !== 'string') return null;
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href;
+    }
+  } catch {
+    // not a parseable URL
+  }
+  return null;
+};
+
 const AttributionView = ({ attribution, composed }) => {
   const { source, sourceName } = attribution;
   const linkLabel = sourceName ? `View on ${sourceName}` : 'View source';
+  const href = safeHref(source);
   return (
     <div className={styles.attributionView}>
       {composed && <div className={styles.attributionComposed}>{composed}</div>}
-      {source && (
+      {href && (
         <a
           className={styles.attributionLink}
-          href={source}
+          href={href}
           target="_blank"
           rel="noreferrer"
         >
           {linkLabel} →
         </a>
       )}
-      {sourceName && !source && (
+      {sourceName && !href && (
         <div className={styles.attributionSourceName}>{sourceName}</div>
       )}
     </div>

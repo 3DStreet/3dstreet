@@ -12,6 +12,11 @@ import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
 import { assetsService, ASSET_TYPES, ASSET_CATEGORIES } from '@shared/assets';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
+import {
+  extractGlbAttribution,
+  buildStoredAttribution
+} from './extractGlbAttribution.js';
+import { optimizeGlb } from './optimizeGlb.js';
 
 export const GLB_MAX_BYTES = 50 * 1000 * 1000;
 export const IMAGE_MAX_BYTES = 10 * 1000 * 1000;
@@ -31,24 +36,6 @@ export function getAssetKind(file) {
 
 export function isAcceptedAssetFile(file) {
   return getAssetKind(file) !== null;
-}
-
-// Strip `title` and `hasMetadata` from the extracted attribution before
-// persisting — title becomes the Display name, hasMetadata is a parse flag.
-function buildStoredAttribution(extracted) {
-  if (!extracted?.hasMetadata) return null;
-  const { author, license, source, sourceName, generator, attributionUrl } =
-    extracted;
-  if (!author && !license && !source && !sourceName) return null;
-  return {
-    author: author || '',
-    license: license || '',
-    source: source || '',
-    sourceName: sourceName || '',
-    generator: generator || '',
-    attribution: extracted.attribution || '',
-    attributionUrl: attributionUrl || source || ''
-  };
 }
 
 async function preflightQuota(proposedBytes) {
@@ -137,10 +124,7 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
     if (kind === 'glb') {
       onStatus?.('optimizing');
       uploadStore.update({ status: 'optimizing', progress: 0 });
-      const { extractGlbAttribution } =
-        await import('./extractGlbAttribution.js');
       attribution = await extractGlbAttribution(file);
-      const { optimizeGlb } = await import('./optimizeGlb.js');
       ({ blob: optimizedBlob, metadata: optimizationMetadata } =
         await optimizeGlb(file));
       if (signal?.aborted) {

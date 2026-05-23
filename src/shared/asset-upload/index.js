@@ -14,5 +14,6 @@ export { optimizeGlb } from './optimizeGlb.js';
 export {
   extractGlbAttribution,
   composeAttributionString,
-  normalizeAttributionFromGltfJson
+  normalizeAttributionFromGltfJson,
+  buildStoredAttribution
 } from './extractGlbAttribution.js';

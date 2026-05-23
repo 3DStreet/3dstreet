@@ -27,7 +27,10 @@ import {
   IMAGE_MAX_BYTES,
   FILE_PICKER_ACCEPT,
   getAssetKind,
-  isAcceptedAssetFile
+  isAcceptedAssetFile,
+  extractGlbAttribution,
+  buildStoredAttribution,
+  optimizeGlb
 } from '@shared/asset-upload';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 
@@ -61,25 +64,6 @@ function captureUploadEvent(kind, status, durationMs, optimizationMetadata) {
     props.already_had_webp = hadWebP ?? false;
   }
   posthog.capture('asset_uploaded', props);
-}
-
-// Strip `title` and `hasMetadata` from the extracted attribution before
-// persisting — title becomes the Display name, hasMetadata is a parse-time
-// flag. Returns null when there's nothing worth saving.
-function buildStoredAttribution(extracted) {
-  if (!extracted?.hasMetadata) return null;
-  const { author, license, source, sourceName, generator, attributionUrl } =
-    extracted;
-  if (!author && !license && !source && !sourceName) return null;
-  return {
-    author: author || '',
-    license: license || '',
-    source: source || '',
-    sourceName: sourceName || '',
-    generator: generator || '',
-    attribution: extracted.attribution || '',
-    attributionUrl: attributionUrl || source || ''
-  };
 }
 
 function notifyError(msg) {
@@ -386,12 +370,8 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       // touches the document. Cheap (single arrayBuffer read of an already-on-
       // disk File) and always best-effort — a failed parse just yields an
       // object with hasMetadata=false and we proceed without it.
-      const { extractGlbAttribution } =
-        await import('@shared/asset-upload/extractGlbAttribution.js');
       attribution = await extractGlbAttribution(file);
 
-      const { optimizeGlb } =
-        await import('@shared/asset-upload/optimizeGlb.js');
       ({ blob: optimizedBlob, metadata: optimizationMetadata } =
         await optimizeGlb(file));
       if (signal?.aborted) {
