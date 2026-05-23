@@ -38,7 +38,6 @@ async function resolvePlanForUser(uid) {
     const record = await getAuth().getUser(uid);
     const claims = record.customClaims || {};
     if (claims.plan === 'MAX') return 'MAX';
-    if (claims.plan === 'TEAM') return 'TEAM';
     if (claims.plan === 'PRO') return 'PRO';
 
     // Domain-based TEAM access (mirrors token-management.js validateUserDomain)
