@@ -4,7 +4,7 @@
  */
 
 import FluxUI from './main.js';
-import { galleryServiceV2 as galleryService } from '@shared/gallery';
+import { assetsService as galleryService } from '@shared/assets';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
 import { httpsCallable } from 'firebase/functions';
@@ -113,7 +113,7 @@ class GeneratorTabBase {
    */
   checkForPendingGalleryItem() {
     try {
-      const pendingItemJson = localStorage.getItem('pendingGalleryItem');
+      const pendingItemJson = localStorage.getItem('pendingAssetItem');
       if (!pendingItemJson) return;
 
       const pendingItem = JSON.parse(pendingItemJson);
@@ -137,11 +137,11 @@ class GeneratorTabBase {
           );
         }
 
-        localStorage.removeItem('pendingGalleryItem');
+        localStorage.removeItem('pendingAssetItem');
       }
     } catch (error) {
       console.error('Failed to load pending gallery item:', error);
-      localStorage.removeItem('pendingGalleryItem');
+      localStorage.removeItem('pendingAssetItem');
     }
   }
 

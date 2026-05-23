@@ -92,7 +92,32 @@ public/
 
 **Auth:** Google, Email/Password, user claims for plan levels
 
-**Functions:** getScene, createStripeSession, stripeWebhook, serveWebXRVariant, geoid, generateReplicateImage, generateFalImage
+**Functions:** getScene, createStripeSession, stripeWebhook, serveWebXRVariant, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota
+
+## User Asset Upload
+
+Drag-and-drop GLB/image upload with client-side optimization, cloud persistence, quota enforcement, and per-entity status UI.
+
+**Persistence — two identity attributes written to saved JSON:**
+- `data-asset-id` — Firestore doc id under the owner's subcollection
+- `data-asset-owner-uid` — needed to reconstruct the owner-only Firestore path (`users/{ownerUid}/assets/{assetId}`) without auth context (e.g. for anonymous viewers)
+
+The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens allow anonymous viewers to load the file without Firestore access.
+
+**`data-temporary-file` sentinel:** placeholder entities carrying a transient `blob:` URL are marked with this attribute; the scene serializer (`json-utils_1.1.js`) skips them. Removed by `uploadAndPlaceAsset.js` on success.
+
+**All other metadata** (`size`, `originalFilename`, etc.) lives in Firestore and is fetched on demand — never saved in the scene JSON.
+
+**Cloud Functions:**
+- `onAssetWritten` — Firestore trigger, maintains `users/{uid}/meta/usage.bytesUsed` via transaction. Only `size` (original) counts toward quota; `optimizedSourceSize` is excluded (platform cost).
+- `getUploadQuota` — callable, reads plan via `getAuth().getUser(uid)` (Admin SDK, always fresh custom claims). Returns `{ bytesUsed, planLimit, planName, allowed }`.
+
+**Plan limits (decimal):** FREE 100 MB · PRO 5 GB · MAX 25 GB (reserved; no users today). Per-file caps: GLB 50 MB · image 10 MB.
+
+**Security rules:**
+- `size`, `storagePath`, `optimizedSourcePath`, `userId` immutable after create — prevents quota spoofing
+- Client hard-delete (`deleteDoc`) disallowed; UI soft-deletes (`deleted: true`); GC Cloud Function purges via Admin SDK
+- `users/{uid}/meta/usage` owner-readable, write-only via Cloud Functions
 
 ## Generator
 
@@ -127,7 +152,9 @@ public/
 
 **Build:** `npm run dist` (production) or `npm run dist:staging`
 
-**Test:** `npm test` (Mocha), `npm run lint`, `npm run prettier`
+**Test:** `npm test` (Mocha + Vitest), `npm run lint`, `npm run prettier`
+
+**Firestore rules tests:** `npm run test:rules` — local-only (boots the firestore emulator via `firebase emulators:exec`, runs vitest against `test/rules/`). Not wired into CI to keep CI cheap; run manually when touching `public/firestore.rules`. Requires JDK 21+ on `PATH` (Firestore emulator dependency).
 
 **Deploy:** `npm run deploy` or `npm run deploy:staging`
 

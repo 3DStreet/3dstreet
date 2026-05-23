@@ -18,7 +18,7 @@ import { ImgComparisonSlider } from '@img-comparison-slider/react';
 import 'img-comparison-slider/dist/styles.css';
 import { canUseImageFeature } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
-import { galleryServiceV2 } from '@shared/gallery';
+import { assetsService } from '@shared/assets';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import AIModelSelector from '@shared/components/AIModelSelector';
 
@@ -403,9 +403,9 @@ function ScreenshotModal() {
         if (currentUser?.uid) {
           try {
             // Initialize gallery service V2 if needed
-            await galleryServiceV2.init();
+            await assetsService.init();
 
-            await galleryServiceV2.addAsset(
+            await assetsService.addAsset(
               result.data.image_url,
               {
                 timestamp: new Date().toISOString(),
@@ -673,12 +673,12 @@ function ScreenshotModal() {
                 const jpegDataUri = canvas.toDataURL('image/jpeg', 0.95);
 
                 // Initialize gallery service V2 if needed
-                await galleryServiceV2.init();
+                await assetsService.init();
 
                 console.log('Uploading screenshot to gallery (JPEG format)...');
 
                 // Add to gallery using V2 API
-                const assetId = await galleryServiceV2.addAsset(
+                const assetId = await assetsService.addAsset(
                   jpegDataUri, // JPEG Data URI (will be auto-converted to blob)
                   {
                     timestamp: new Date().toISOString(),

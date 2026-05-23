@@ -64,6 +64,10 @@ This uses a subcollection pattern for better security isolation and consistency 
   thumbnailUrl: "https://...",
 
   // File Metadata
+  name: "IMG_20250121",               // Editable display name (default = basename of originalFilename).
+                                      //   Surfaced in the gallery card label, the SceneGraph row,
+                                      //   and the mesh details modal. Older docs without this field
+                                      //   fall back to originalFilename in the UI.
   filename: "my-image.jpg",
   originalFilename: "IMG_20250121.jpg",
   size: 2500000,                      // bytes
@@ -115,7 +119,7 @@ users/
         ├── videos/
         │   ├── {assetId}.mp4
         │   └── {assetId}-thumb.jpg
-        └── models/
+        └── meshes/
             ├── {assetId}.ply
             ├── {assetId}.glb
             └── {assetId}-thumb.jpg
@@ -142,6 +146,18 @@ Firestore-based service with full CRUD operations:
 - `getAssetsByCategory()` - Filter by category
 - `searchAssets()` - Simple text search
 - `dataUriToBlob()` - Convert data URI to blob
+
+**Events (`galleryServiceV2.events`, EventTarget):**
+
+| Event | Detail | Fired by |
+|---|---|---|
+| `assetAdded` | `{ assetId, userId, asset }` (full doc) | `addAsset` |
+| `assetAddedReload` | `{ assetId, userId }` (delayed reload fallback) | `addAsset` after 1.5s |
+| `assetUpdated` | `{ assetId, userId, updates }` (partial — fields written) | `updateAsset` |
+| `assetDeleted` | `{ assetId, userId, hard, size }` (size in bytes for optimistic UI) | `deleteAsset` |
+| `uploadProgress` | `{ assetId, progress }` (0–100) | `addAsset` during Storage upload |
+
+Subscribers include `useGallery` (panel list optimistic updates) and the editor's `assetUploadStore` (Zustand cache for the SceneGraph row, props pill, and layer dot — kept in sync without manual refresh).
 
 ## Security Rules
 
