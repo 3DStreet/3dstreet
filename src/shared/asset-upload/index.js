@@ -13,6 +13,6 @@ export {
 export { optimizeGlb } from './optimizeGlb.js';
 export {
   extractGlbAttribution,
-  buildAbbreviatedAttribution,
+  composeAttributionString,
   normalizeAttributionFromGltfJson
 } from './extractGlbAttribution.js';

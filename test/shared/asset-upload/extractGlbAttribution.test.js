@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   extractGlbAttribution,
   normalizeAttributionFromGltfJson,
-  buildAbbreviatedAttribution
+  composeAttributionString
 } from '../../../src/shared/asset-upload/extractGlbAttribution.js';
 
 // Build a minimal valid GLB binary with a JSON-only chunk so we can drive
@@ -70,9 +70,8 @@ describe('normalizeAttributionFromGltfJson', () => {
     );
     expect(out.sourceName).toBe('Sketchfab');
     expect(out.attributionUrl).toBe(out.source);
-    expect(out.attribution).toBe(
-      "CC-BY-4.0: 'Generic passenger car pack' by Comrade1280"
-    );
+    // Title is NOT in the composite — it surfaces as the Display name.
+    expect(out.attribution).toBe('by Comrade1280 · CC-BY-4.0');
   });
 
   it('falls back to copyright when extras.author is missing', () => {
@@ -164,25 +163,26 @@ describe('extractGlbAttribution (binary)', () => {
   });
 });
 
-describe('buildAbbreviatedAttribution', () => {
-  it('combines title and author when both present', () => {
-    expect(buildAbbreviatedAttribution({ title: 'Foo', author: 'Bar' })).toBe(
-      'Foo by Bar'
+describe('composeAttributionString', () => {
+  it('joins author and license with a middle dot', () => {
+    expect(
+      composeAttributionString({ author: 'Bar', license: 'CC-BY-4.0' })
+    ).toBe('by Bar · CC-BY-4.0');
+  });
+  it('returns just author when license is missing', () => {
+    expect(composeAttributionString({ author: 'Bar' })).toBe('by Bar');
+  });
+  it('returns just license when author is missing', () => {
+    expect(composeAttributionString({ license: 'CC-BY-4.0' })).toBe(
+      'CC-BY-4.0'
     );
   });
-  it('prefers license · author when title is missing', () => {
-    expect(
-      buildAbbreviatedAttribution({ license: 'CC-BY-4.0', author: 'Bar' })
-    ).toBe('CC-BY-4.0 · Bar');
+  it('returns empty string when both are missing', () => {
+    expect(composeAttributionString({})).toBe('');
   });
-  it('falls back to attribution composite string', () => {
-    expect(
-      buildAbbreviatedAttribution({
-        attribution: 'CC-BY-4.0: by Bar'
-      })
-    ).toBe('CC-BY-4.0: by Bar');
-  });
-  it('returns empty string for null input', () => {
-    expect(buildAbbreviatedAttribution(null)).toBe('');
+  it('ignores title (it lives in the Display name field, not here)', () => {
+    expect(composeAttributionString({ title: 'Foo', author: 'Bar' })).toBe(
+      'by Bar'
+    );
   });
 });

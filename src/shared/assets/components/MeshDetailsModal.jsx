@@ -5,13 +5,14 @@
  * which aren't loaded in the generator or bollardbuddy bundles.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
 import { DownloadIcon, TrashIcon, Cross24Icon } from '@shared/icons';
+import { composeAttributionString } from '@shared/asset-upload/extractGlbAttribution.js';
 import assetsService from '../services/assetsService.js';
 import {
   formatBytes,
@@ -22,13 +23,12 @@ import {
 } from '../utils.js';
 import styles from './MeshDetailsModal.module.scss';
 
-// Attribution fields exposed by extractGlbAttribution + editable by the owner.
-// Keep this list in lockstep with the form below so a missing field never
-// silently leaks back to Firestore as `undefined`.
-const ATTRIBUTION_FIELDS = ['title', 'author', 'license', 'source'];
+// User-editable attribution fields. `title` deliberately is NOT here — the
+// asset doc's `name` (Display name) is the single source of truth for the
+// model title. sourceName / generator are diagnostic, surfaced read-only.
+const ATTRIBUTION_FIELDS = ['author', 'license', 'source'];
 
 const EMPTY_ATTRIBUTION = {
-  title: '',
   author: '',
   license: '',
   source: '',
@@ -39,7 +39,6 @@ const EMPTY_ATTRIBUTION = {
 function pickAttribution(doc) {
   const a = doc?.attribution || {};
   return {
-    title: a.title || '',
     author: a.author || '',
     license: a.license || '',
     source: a.source || '',
@@ -53,17 +52,6 @@ function attributionEquals(a, b) {
     if ((a[key] || '') !== (b[key] || '')) return false;
   }
   return true;
-}
-
-function composeAttributionString({ title, author, license }) {
-  const titlePart = title ? `'${title}'` : '';
-  const authorPart = author ? `by ${author}` : '';
-  const licensePart = license ? `${license}:` : '';
-  const body = [titlePart, authorPart].filter(Boolean).join(' ');
-  if (!licensePart && !body) return '';
-  if (!licensePart) return body;
-  if (!body) return license;
-  return `${licensePart} ${body}`;
 }
 
 const IconTooltip = ({ children, label }) => (
@@ -102,6 +90,7 @@ const MeshDetailsModal = ({
   const [savedName, setSavedName] = useState('');
   const [attribution, setAttribution] = useState(EMPTY_ATTRIBUTION);
   const [savedAttribution, setSavedAttribution] = useState(EMPTY_ATTRIBUTION);
+  const [editingAttribution, setEditingAttribution] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -175,26 +164,12 @@ const MeshDetailsModal = ({
           }
         );
         const attributionStr = composeAttributionString(trimmed);
-        const attributionDoc = {
+        updates.attribution = {
           ...trimmed,
           attribution: attributionStr,
-          attributionUrl: trimmed.source,
-          hasMetadata: !!(
-            trimmed.title ||
-            trimmed.author ||
-            trimmed.license ||
-            trimmed.source
-          )
+          attributionUrl: trimmed.source
         };
-        updates.attribution = attributionDoc;
-        nextAttribution = {
-          title: trimmed.title,
-          author: trimmed.author,
-          license: trimmed.license,
-          source: trimmed.source,
-          sourceName: trimmed.sourceName || '',
-          generator: trimmed.generator || ''
-        };
+        nextAttribution = { ...trimmed };
       }
       await assetsService.updateAsset(assetId, ownerUid, updates);
       setData((prev) => (prev ? { ...prev, ...updates } : prev));
@@ -203,12 +178,18 @@ const MeshDetailsModal = ({
         setSavedAttribution(nextAttribution);
         setAttribution(nextAttribution);
       }
+      setEditingAttribution(false);
     } catch (err) {
       console.error('[MeshDetailsModal] save failed', err);
       setError(err.message || 'Save failed');
     } finally {
       setSaving(false);
     }
+  };
+
+  const cancelAttributionEdit = () => {
+    setAttribution(savedAttribution);
+    setEditingAttribution(false);
   };
 
   const onDownloadOriginal = () => {
@@ -433,10 +414,14 @@ const MeshDetailsModal = ({
               />
             </div>
 
-            <AttributionForm
+            <AttributionBlock
               attribution={attribution}
               setAttribution={setAttribution}
-              disabled={!isOwner || saving || !data}
+              editing={editingAttribution}
+              onEnterEdit={() => setEditingAttribution(true)}
+              onCancel={cancelAttributionEdit}
+              isOwner={isOwner && !!data}
+              disabled={saving || !data}
             />
 
             {dirty && (
@@ -603,35 +588,71 @@ const MeshDetailsModal = ({
   );
 };
 
-// Editable attribution block — five inputs. Rendered inside the sidebar of
-// the mesh details modal. The composed display string is shown read-only
-// underneath so the user can see what catalog.json-style attribution will
-// look like after their edits.
-const AttributionForm = ({ attribution, setAttribution, disabled }) => {
-  const composed = useMemo(
-    () => composeAttributionString(attribution),
-    [attribution]
-  );
+// Attribution block — switches between a compact read-only view (composed
+// string + clickable source link) and an inline editor for license / author /
+// source URL. Title is intentionally absent; the asset doc's `name` field
+// (Display name above this block) is the canonical title.
+const AttributionBlock = ({
+  attribution,
+  setAttribution,
+  editing,
+  onEnterEdit,
+  onCancel,
+  isOwner,
+  disabled
+}) => {
+  const composed = composeAttributionString(attribution);
+  const hasAnything =
+    composed ||
+    attribution.source ||
+    attribution.sourceName ||
+    attribution.generator;
+
+  if (!editing) {
+    return (
+      <div className={styles.attributionGroup}>
+        <div className={styles.attributionHeader}>
+          <span>Attribution</span>
+          {isOwner && (
+            <button
+              type="button"
+              className={styles.attributionEditBtn}
+              onClick={onEnterEdit}
+              disabled={disabled}
+            >
+              Edit
+            </button>
+          )}
+        </div>
+        {hasAnything ? (
+          <AttributionView attribution={attribution} composed={composed} />
+        ) : (
+          <div className={styles.attributionEmpty}>
+            No attribution info.
+            {isOwner && ' Click Edit to add one.'}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const setField = (key) => (e) =>
     setAttribution((prev) => ({ ...prev, [key]: e.target.value }));
 
   return (
     <div className={styles.attributionGroup}>
-      <div className={styles.attributionHeader}>Attribution</div>
+      <div className={styles.attributionHeader}>
+        <span>Attribution</span>
+        <button
+          type="button"
+          className={styles.attributionEditBtn}
+          onClick={onCancel}
+          disabled={disabled}
+        >
+          Cancel
+        </button>
+      </div>
       <div className={styles.attributionFields}>
-        <div className={styles.field}>
-          <label className={styles.fieldLabel} htmlFor="meshAttrTitle">
-            Title
-          </label>
-          <input
-            id="meshAttrTitle"
-            type="text"
-            className={styles.fieldInput}
-            value={attribution.title}
-            onChange={setField('title')}
-            disabled={disabled}
-          />
-        </div>
         <div className={styles.field}>
           <label className={styles.fieldLabel} htmlFor="meshAttrAuthor">
             Author
@@ -674,15 +695,22 @@ const AttributionForm = ({ attribution, setAttribution, disabled }) => {
           />
         </div>
       </div>
-      {(composed || attribution.sourceName) && (
-        <div className={styles.attributionPreview}>
+      {/* Read-only context — where the file came from. Surfacing this in
+          the editor reminds the user what was auto-detected without making
+          it look editable (it's derived from the source URL / generator). */}
+      {(attribution.sourceName || attribution.generator) && (
+        <div className={styles.attributionContext}>
           {attribution.sourceName && (
-            <span className={styles.attributionSourceName}>
+            <span>
+              <span className={styles.metaLabel}>Source:</span>
               {attribution.sourceName}
             </span>
           )}
-          {composed && (
-            <span className={styles.attributionComposed}>{composed}</span>
+          {attribution.generator && (
+            <span>
+              <span className={styles.metaLabel}>Generator:</span>
+              {attribution.generator}
+            </span>
           )}
         </div>
       )}
@@ -690,10 +718,42 @@ const AttributionForm = ({ attribution, setAttribution, disabled }) => {
   );
 };
 
-AttributionForm.propTypes = {
+AttributionBlock.propTypes = {
   attribution: PropTypes.object.isRequired,
   setAttribution: PropTypes.func.isRequired,
+  editing: PropTypes.bool.isRequired,
+  onEnterEdit: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  isOwner: PropTypes.bool,
   disabled: PropTypes.bool
+};
+
+const AttributionView = ({ attribution, composed }) => {
+  const { source, sourceName } = attribution;
+  const linkLabel = sourceName ? `View on ${sourceName}` : 'View source';
+  return (
+    <div className={styles.attributionView}>
+      {composed && <div className={styles.attributionComposed}>{composed}</div>}
+      {source && (
+        <a
+          className={styles.attributionLink}
+          href={source}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {linkLabel} →
+        </a>
+      )}
+      {sourceName && !source && (
+        <div className={styles.attributionSourceName}>{sourceName}</div>
+      )}
+    </div>
+  );
+};
+
+AttributionView.propTypes = {
+  attribution: PropTypes.object.isRequired,
+  composed: PropTypes.string
 };
 
 MeshDetailsModal.propTypes = {

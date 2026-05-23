@@ -63,6 +63,25 @@ function captureUploadEvent(kind, status, durationMs, optimizationMetadata) {
   posthog.capture('asset_uploaded', props);
 }
 
+// Strip `title` and `hasMetadata` from the extracted attribution before
+// persisting — title becomes the Display name, hasMetadata is a parse-time
+// flag. Returns null when there's nothing worth saving.
+function buildStoredAttribution(extracted) {
+  if (!extracted?.hasMetadata) return null;
+  const { author, license, source, sourceName, generator, attributionUrl } =
+    extracted;
+  if (!author && !license && !source && !sourceName) return null;
+  return {
+    author: author || '',
+    license: license || '',
+    source: source || '',
+    sourceName: sourceName || '',
+    generator: generator || '',
+    attribution: extracted.attribution || '',
+    attributionUrl: attributionUrl || source || ''
+  };
+}
+
 function notifyError(msg) {
   if (window.STREET?.notify?.errorMessage) {
     window.STREET.notify.errorMessage(msg);
@@ -388,9 +407,16 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     setUpload(entityId, { status: 'uploading', progress: 0 });
     currentUploadStore.update({ status: 'uploading', progress: 0 });
     const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
+    // The extracted `title` (if any) seeds the asset doc's Display name —
+    // it's typically richer than the filename basename (e.g. "Generic
+    // passenger car pack" vs. "passenger-car-pack-v2"). `title` itself is
+    // not persisted on the attribution object; once it's the Display name
+    // there's no second source of truth needed.
+    const initialName = attribution?.title?.trim() || undefined;
+    const storedAttribution = buildStoredAttribution(attribution);
     const assetId = await assetsService.addAsset(
       file,
-      { originalFilename: file.name },
+      { originalFilename: file.name, name: initialName },
       assetType,
       ASSET_CATEGORIES.UPLOAD,
       userId,
@@ -398,7 +424,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
         signal,
         optimizedFile: optimizedBlob,
         optimizationMetadata,
-        attribution: attribution?.hasMetadata ? attribution : null
+        attribution: storedAttribution
       }
     );
     pendingAssetId = assetId;

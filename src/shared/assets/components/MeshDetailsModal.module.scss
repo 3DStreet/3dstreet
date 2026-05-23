@@ -406,9 +406,35 @@
 }
 
 .attributionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 0.875rem;
   font-weight: 600;
   color: variables.$lightgray-100;
+}
+
+.attributionEditBtn {
+  padding: 2px 10px;
+  background: transparent;
+  color: variables.$lightgray-200;
+  border: 1px solid variables.$darkgray-500;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover:not(:disabled) {
+    background: variables.$darkgray-500;
+    color: variables.$lightgray-100;
+    border-color: variables.$darkgray-400;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .attributionFields {
@@ -422,7 +448,42 @@
   }
 }
 
-.attributionPreview {
+.attributionView {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: variables.$lightgray-200;
+}
+
+.attributionComposed {
+  line-height: 1.4;
+}
+
+.attributionLink {
+  align-self: flex-start;
+  color: variables.$purple-300;
+  text-decoration: none;
+  font-size: 12px;
+
+  &:hover {
+    color: variables.$purple-200;
+    text-decoration: underline;
+  }
+}
+
+.attributionSourceName {
+  font-weight: 600;
+  color: variables.$lightgray-300;
+}
+
+.attributionEmpty {
+  font-size: 12px;
+  color: variables.$lightgray-400;
+  font-style: italic;
+}
+
+.attributionContext {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -431,13 +492,4 @@
   padding: 6px 8px;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 4px;
-}
-
-.attributionSourceName {
-  font-weight: 600;
-  color: variables.$lightgray-200;
-}
-
-.attributionComposed {
-  font-style: italic;
 }

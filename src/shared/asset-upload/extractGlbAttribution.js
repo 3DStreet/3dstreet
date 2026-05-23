@@ -11,21 +11,26 @@
  * Poly Pizza and a few Khronos sample assets use similar shapes; the
  * `KHR_xmp_json_ld` path covers the Dublin Core / structured-licensing case.
  *
- * The normalized shape returned here mirrors the existing `attribution` /
- * `attributionUrl` fields in src/catalog.json plus a few structured fields so
- * the modal can render and edit each one independently:
+ * Returned shape:
  *
  *   {
- *     title,           // extras.title || xmp.dc:title || ''
+ *     title,           // extras.title || xmp.dc:title || ''  — used as the
+ *                      // default Display name on upload; NOT persisted in
+ *                      // the stored attribution object (callers strip it).
  *     author,          // extras.author || extras.creator || copyright || xmp.dc:creator || ''
  *     license,         // extras.license || extras.rights || xmp model3d:spdxLicense || ''
  *     source,          // extras.source || extras.url || ''  (URL)
  *     sourceName,      // 'Sketchfab' | 'Poly Pizza' | <inferred> | ''
  *     generator,       // raw asset.generator string — useful as a diagnostic
- *     attribution,     // composed display string (catalog.json compatible)
+ *     attribution,     // composed display string (license / author / source)
  *     attributionUrl,  // mirror of `source` (catalog.json compatible)
  *     hasMetadata      // true if any of the above were populated
  *   }
+ *
+ * The Display name is the canonical "title" surface in the UI, so we do NOT
+ * persist `title` as part of the attribution object — the upload pipeline
+ * uses the extracted title (if any) to seed the asset doc's `name` field
+ * and then drops it.
  */
 
 const GLB_MAGIC = 0x46546c67; // 'glTF' little-endian
@@ -94,17 +99,21 @@ function extractFromXmp(json) {
   };
 }
 
-function composeAttributionString({ title, author, license }) {
-  // Mirrors the shape used in src/catalog.json:
-  //   "Creative Commons Attribution: 'Generic passenger car pack' by Sketchfab User @Comrade1280"
-  const titlePart = title ? `'${title}'` : '';
-  const authorPart = author ? `by ${author}` : '';
-  const licensePart = license ? `${license}:` : '';
-  const body = [titlePart, authorPart].filter(Boolean).join(' ');
-  if (!licensePart && !body) return '';
-  if (!licensePart) return body;
-  if (!body) return license;
-  return `${licensePart} ${body}`;
+/**
+ * Build the read-only display string shown in the mesh details modal.
+ * Title is intentionally NOT included — it's surfaced via the Display name
+ * field above the attribution block.
+ *
+ * Examples:
+ *   { author: 'Bar', license: 'CC-BY-4.0' } -> "by Bar · CC-BY-4.0"
+ *   { author: 'Bar' }                       -> "by Bar"
+ *   { license: 'CC-BY-4.0' }                -> "CC-BY-4.0"
+ */
+export function composeAttributionString({ author, license }) {
+  const parts = [];
+  if (author) parts.push(`by ${author}`);
+  if (license) parts.push(license);
+  return parts.join(' · ');
 }
 
 /**
@@ -141,7 +150,7 @@ export function normalizeAttributionFromGltfJson(json) {
   const sourceName = inferSourceName(source, generator);
 
   const hasMetadata = !!(title || author || license || source);
-  const attribution = composeAttributionString({ title, author, license });
+  const attribution = composeAttributionString({ author, license });
 
   return {
     title,
@@ -195,20 +204,4 @@ export async function extractGlbAttribution(input) {
       hasMetadata: false
     };
   }
-}
-
-/**
- * Build a one-line abbreviated label for the side panel. Tries to surface the
- * most informative fragment without overflowing.
- */
-export function buildAbbreviatedAttribution(meta) {
-  if (!meta) return '';
-  const { title, author, license, attribution } = meta;
-  if (author && title) return `${title} by ${author}`;
-  if (author && license) return `${license} · ${author}`;
-  if (author) return `by ${author}`;
-  if (license && title) return `${title} (${license})`;
-  if (title) return title;
-  if (license) return license;
-  return attribution || '';
 }

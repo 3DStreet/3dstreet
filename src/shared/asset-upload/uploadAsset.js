@@ -33,6 +33,24 @@ export function isAcceptedAssetFile(file) {
   return getAssetKind(file) !== null;
 }
 
+// Strip `title` and `hasMetadata` from the extracted attribution before
+// persisting — title becomes the Display name, hasMetadata is a parse flag.
+function buildStoredAttribution(extracted) {
+  if (!extracted?.hasMetadata) return null;
+  const { author, license, source, sourceName, generator, attributionUrl } =
+    extracted;
+  if (!author && !license && !source && !sourceName) return null;
+  return {
+    author: author || '',
+    license: license || '',
+    source: source || '',
+    sourceName: sourceName || '',
+    generator: generator || '',
+    attribution: extracted.attribution || '',
+    attributionUrl: attributionUrl || source || ''
+  };
+}
+
 async function preflightQuota(proposedBytes) {
   if (!auth.currentUser) return { allowed: false, reason: 'not_signed_in' };
   try {
@@ -137,9 +155,13 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
     onStatus?.('uploading');
     uploadStore.update({ status: 'uploading', progress: 0 });
     const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
+    // Seed Display name from the extracted title when richer than the
+    // filename; `title` itself is never persisted on the attribution object.
+    const initialName = attribution?.title?.trim() || undefined;
+    const storedAttribution = buildStoredAttribution(attribution);
     const assetId = await assetsService.addAsset(
       file,
-      { originalFilename: file.name },
+      { originalFilename: file.name, name: initialName },
       assetType,
       ASSET_CATEGORIES.UPLOAD,
       userId,
@@ -147,7 +169,7 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
         signal,
         optimizedFile: optimizedBlob,
         optimizationMetadata,
-        attribution: attribution?.hasMetadata ? attribution : null
+        attribution: storedAttribution
       }
     );
     pendingAssetId = assetId;
