@@ -78,7 +78,11 @@ const AssetsModal = ({
 
   if (!item) return null;
 
-  const handleBackgroundClick = (e) => {
+  // Use mousedown, not click: a `click` fires on the common ancestor of
+  // mousedown+mouseup, so dragging from an input inside the modal to a
+  // mouseup on the backdrop would land `click` on the backdrop and close.
+  // Closing on mousedown only triggers when the press itself starts here.
+  const handleBackgroundMouseDown = (e) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
@@ -121,7 +125,7 @@ const AssetsModal = ({
   };
 
   return createPortal(
-    <div className={styles.modal} onClick={handleBackgroundClick}>
+    <div className={styles.modal} onMouseDown={handleBackgroundMouseDown}>
       {/* Navigation Buttons - Outside Modal */}
       {onNavigate && totalItems > 1 && (
         <>
