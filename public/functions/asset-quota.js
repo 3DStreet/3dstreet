@@ -12,7 +12,10 @@
  *                        before starting an upload.
  *
  * Plan limits:
- *   FREE: 100 MB · PRO: 5 GB · MAX/TEAM: 25 GB
+ *   FREE: 100 MB · PRO: 5 GB · MAX: 25 GB (reserved; no users today)
+ *
+ * Note: "team" is not its own quota tier — a team membership currently just
+ * grants PRO. Domain-matched team users resolve to PRO here.
  */
 
 const functions = require('firebase-functions/v1');
@@ -25,7 +28,6 @@ const GB = 1000 * MB;
 const PLAN_LIMITS = {
   FREE: 100 * MB,
   PRO: 5 * GB,
-  TEAM: 25 * GB,
   MAX: 25 * GB
 };
 
@@ -40,7 +42,8 @@ async function resolvePlanForUser(uid) {
     if (claims.plan === 'MAX') return 'MAX';
     if (claims.plan === 'PRO') return 'PRO';
 
-    // Domain-based TEAM access (mirrors token-management.js validateUserDomain)
+    // Domain-based team access grants PRO (team is not its own quota tier).
+    // Mirrors token-management.js validateUserDomain.
     const email = record.email;
     const allowedDomainsSecret = process.env.ALLOWED_PRO_TEAM_DOMAINS;
     if (email && allowedDomainsSecret) {
@@ -49,7 +52,7 @@ async function resolvePlanForUser(uid) {
         try {
           const domains = JSON.parse(allowedDomainsSecret);
           if (Array.isArray(domains) && domains.includes(userDomain)) {
-            return 'TEAM';
+            return 'PRO';
           }
         } catch (parseError) {
           console.error('[asset-quota] Error parsing ALLOWED_PRO_TEAM_DOMAINS secret:', parseError);

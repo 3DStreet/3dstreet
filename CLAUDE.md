@@ -112,7 +112,7 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 - `onAssetWritten` — Firestore trigger, maintains `users/{uid}/meta/usage.bytesUsed` via transaction. Only `size` (original) counts toward quota; `optimizedSourceSize` is excluded (platform cost).
 - `getUploadQuota` — callable, reads plan via `getAuth().getUser(uid)` (Admin SDK, always fresh custom claims). Returns `{ bytesUsed, planLimit, planName, allowed }`.
 
-**Plan limits (decimal MB):** (see code for latest plan limits). Per-file caps: GLB 50 MB · image 10 MB.
+**Plan limits (decimal):** FREE 100 MB · PRO 5 GB · MAX 25 GB (reserved; no users today). Per-file caps: GLB 50 MB · image 10 MB.
 
 **Security rules:**
 - `size`, `storagePath`, `optimizedSourcePath`, `userId` immutable after create — prevents quota spoofing
