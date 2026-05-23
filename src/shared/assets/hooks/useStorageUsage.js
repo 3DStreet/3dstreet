@@ -1,16 +1,19 @@
 /**
  * useStorageUsage — live cloud storage usage for the current user.
  *
- * One callable hit on mount for the plan limit + planName (single source of
- * truth from the server), plus a Firestore snapshot of users/{uid}/meta/usage
- * for bytesUsed. Optimistic shrink on `assetDeleted` events from the
- * assetsService so the meter feels responsive; the snapshot reconciles when
- * the onAssetWritten trigger lands.
+ * Callable hit for the plan limit + planName (single source of truth from the
+ * server) — re-fired on every ID-token change so a post-Stripe-checkout
+ * refresh (EditorUpgradeModal calls getIdToken(true)) bumps the panel from
+ * FREE to PRO without a page reload. Plus a Firestore snapshot of
+ * users/{uid}/meta/usage for bytesUsed. Optimistic shrink on `assetDeleted`
+ * events from the assetsService so the meter feels responsive; the snapshot
+ * reconciles when the onAssetWritten trigger lands.
  */
 
 import { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
+import { onIdTokenChanged } from 'firebase/auth';
 import { auth, db, functions } from '@shared/services/firebase.js';
 import assetsService from '../services/assetsService.js';
 
@@ -26,22 +29,32 @@ const useStorageUsage = (isLoggedIn) => {
     if (!user) return undefined;
     let cancelled = false;
 
-    httpsCallable(
-      functions,
-      'getUploadQuota'
-    )({ proposedBytes: 0 })
-      .then(({ data }) => {
-        if (cancelled || !data) return;
-        setUsage((prev) => ({
-          ...prev,
-          planLimit: data.planLimit,
-          planName: data.planName,
-          bytesUsed: data.bytesUsed ?? prev.bytesUsed
-        }));
-      })
-      .catch((err) => {
-        console.warn('[useStorageUsage] getUploadQuota unavailable', err);
-      });
+    const fetchQuota = () => {
+      httpsCallable(
+        functions,
+        'getUploadQuota'
+      )({ proposedBytes: 0 })
+        .then(({ data }) => {
+          if (cancelled || !data) return;
+          setUsage((prev) => ({
+            ...prev,
+            planLimit: data.planLimit,
+            planName: data.planName,
+            bytesUsed: data.bytesUsed ?? prev.bytesUsed
+          }));
+        })
+        .catch((err) => {
+          console.warn('[useStorageUsage] getUploadQuota unavailable', err);
+        });
+    };
+
+    // Refire on every ID-token change. Fires on sign-in, sign-out, and forced
+    // refresh (EditorUpgradeModal.verifyPurchase → getIdToken(true) after
+    // Stripe checkout). The initial call here also covers mount.
+    const unsubToken = onIdTokenChanged(auth, (u) => {
+      if (u) fetchQuota();
+    });
+    fetchQuota();
 
     const ref = doc(db, 'users', user.uid, 'meta', 'usage');
     const unsub = onSnapshot(
@@ -72,6 +85,7 @@ const useStorageUsage = (isLoggedIn) => {
     return () => {
       cancelled = true;
       unsub();
+      unsubToken();
       assetsService.events.removeEventListener('assetDeleted', onAssetDeleted);
     };
   }, [isLoggedIn]);

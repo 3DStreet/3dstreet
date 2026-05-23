@@ -411,7 +411,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
 
     const asset = await assetsService.getAsset(assetId, userId);
     // Prefer the optimized GLB when available; fall back to the original source.
-    const cloudUrl = asset?.optimizedSourceUrl ?? asset?.storageUrl;
+    const cloudUrl = getServedUrl(asset);
     if (!cloudUrl) {
       throw new Error('Upload succeeded but no cloud URL returned');
     }

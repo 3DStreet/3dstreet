@@ -20,7 +20,6 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
-const { getAuth } = require('firebase-admin/auth');
 
 const MB = 1000 * 1000;
 const GB = 1000 * MB;
@@ -35,32 +34,39 @@ function getPlanLimit(planName) {
   return PLAN_LIMITS[planName] || PLAN_LIMITS.FREE;
 }
 
-async function resolvePlanForUser(uid) {
-  try {
-    const record = await getAuth().getUser(uid);
-    const claims = record.customClaims || {};
-    if (claims.plan === 'MAX') return 'MAX';
-    if (claims.plan === 'PRO') return 'PRO';
+/**
+ * Resolve plan tier from the caller's decoded JWT (context.auth.token) rather
+ * than a fresh Admin SDK getUser() call. Custom claims set via
+ * setCustomUserClaims propagate into the ID token on the next refresh
+ * (auto ~1h, or forced via getIdToken(true) — EditorUpgradeModal already does
+ * this after Stripe checkout). Avoiding the round-trip drops getUploadQuota
+ * latency from ~hundreds of ms to single-digits.
+ *
+ * Acceptable staleness: this powers the capacity display, not hard
+ * enforcement. Hard enforcement happens in the onAssetWritten trigger /
+ * Firestore rules with server-truth data.
+ */
+function resolvePlanFromToken(token) {
+  if (!token) return 'FREE';
+  if (token.plan === 'MAX') return 'MAX';
+  if (token.plan === 'PRO') return 'PRO';
 
-    // Domain-based team access grants PRO (team is not its own quota tier).
-    // Mirrors token-management.js validateUserDomain.
-    const email = record.email;
-    const allowedDomainsSecret = process.env.ALLOWED_PRO_TEAM_DOMAINS;
-    if (email && allowedDomainsSecret) {
-      const userDomain = email.split('@')[1];
-      if (userDomain) {
-        try {
-          const domains = JSON.parse(allowedDomainsSecret);
-          if (Array.isArray(domains) && domains.includes(userDomain)) {
-            return 'PRO';
-          }
-        } catch (parseError) {
-          console.error('[asset-quota] Error parsing ALLOWED_PRO_TEAM_DOMAINS secret:', parseError);
+  // Domain-based team access grants PRO (team is not its own quota tier).
+  // Mirrors token-management.js validateUserDomain.
+  const email = token.email;
+  const allowedDomainsSecret = process.env.ALLOWED_PRO_TEAM_DOMAINS;
+  if (email && allowedDomainsSecret) {
+    const userDomain = email.split('@')[1];
+    if (userDomain) {
+      try {
+        const domains = JSON.parse(allowedDomainsSecret);
+        if (Array.isArray(domains) && domains.includes(userDomain)) {
+          return 'PRO';
         }
+      } catch (parseError) {
+        console.error('[asset-quota] Error parsing ALLOWED_PRO_TEAM_DOMAINS secret:', parseError);
       }
     }
-  } catch (err) {
-    console.warn('[asset-quota] failed to read user claims', err);
   }
   return 'FREE';
 }
@@ -127,7 +133,7 @@ const getUploadQuota = functions.runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS']
   const uid = context.auth.uid;
   const proposedBytes = Math.max(0, Number(data?.proposedBytes) || 0);
 
-  const planName = await resolvePlanForUser(uid);
+  const planName = resolvePlanFromToken(context.auth.token);
   const planLimit = getPlanLimit(planName);
 
   const usageSnap = await admin

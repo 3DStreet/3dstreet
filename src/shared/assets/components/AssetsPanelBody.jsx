@@ -96,7 +96,9 @@ const AssetsPanelBody = ({
       const handler =
         onUpload ||
         ((f) =>
-          sharedUploadAsset(f).then((res) => {
+          sharedUploadAsset(f, {
+            onTimeoutError: (msg) => onNotification?.(msg, 'error')
+          }).then((res) => {
             if (!res.ok && res.error) {
               onNotification?.(res.error, 'error');
             }

@@ -13,11 +13,6 @@ export function formatBytes(bytes) {
 }
 
 /**
- * Format a timestamp value as a locale string. Accepts Firestore Timestamp
- * objects (`.toDate()`), Date instances, and ISO / millisecond inputs that
- * `new Date()` understands. Returns '' on falsy or invalid input.
- */
-/**
  * Human label for an asset's origin. For meshes this is the user-editable
  * display name; for uploads it's "Upload"; for AI renders it's the model
  * (e.g. "flux"). Falls back to "Unknown" so callers never render `undefined`.
@@ -92,6 +87,11 @@ export function getOptimizationDisplay(data) {
   return { origSize };
 }
 
+/**
+ * Format a timestamp value as a locale string. Accepts Firestore Timestamp
+ * objects (`.toDate()`), Date instances, and ISO / millisecond inputs that
+ * `new Date()` understands. Returns '' on falsy or invalid input.
+ */
 export function formatDate(ts) {
   if (!ts) return '';
   try {

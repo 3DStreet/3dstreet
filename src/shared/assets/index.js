@@ -34,4 +34,4 @@ export { default as AssetsPanelBody } from './components/AssetsPanelBody';
 export { default as MeshDetailsModal } from './components/MeshDetailsModal';
 
 // Formatters
-export { formatBytes, formatDate } from './utils';
+export { formatBytes, formatDate, getServedUrl } from './utils';

@@ -10,7 +10,12 @@
 
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
-import { assetsService, ASSET_TYPES, ASSET_CATEGORIES } from '@shared/assets';
+import {
+  assetsService,
+  ASSET_TYPES,
+  ASSET_CATEGORIES,
+  getServedUrl
+} from '@shared/assets';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
   extractGlbAttribution,
@@ -57,9 +62,16 @@ async function preflightQuota(proposedBytes) {
  * @param {object} [opts]
  * @param {(stage: 'validating'|'optimizing'|'uploading'|'thumbnailing', info?: object) => void} [opts.onStatus]
  * @param {(progress: number) => void} [opts.onProgress] - 0..100
+ * @param {(message: string) => void} [opts.onTimeoutError] - called when the
+ *   safety-net arrival timeout fires (upload completed but the doc never
+ *   surfaced in the gallery). Hosts wire this to their toast system so the
+ *   spinner doesn't silently disappear and leave the user wondering.
  * @returns {Promise<{ ok: boolean, assetId?: string, kind?: string, error?: string }>}
  */
-export async function uploadAsset(file, { onStatus, onProgress } = {}) {
+export async function uploadAsset(
+  file,
+  { onStatus, onProgress, onTimeoutError } = {}
+) {
   const kind = getAssetKind(file);
   if (!kind) return { ok: false, error: `Unsupported file type: ${file.name}` };
 
@@ -164,7 +176,10 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
       // Fire-and-forget: thumbnail errors are non-fatal (the asset doc is
       // already written; missing thumbnail just leaves a placeholder card).
       const asset = await assetsService.getAsset(assetId, userId);
-      const cloudUrl = asset?.storageUrl;
+      // Prefer the optimized GLB when available; the iframe re-downloads the
+      // file in its own document, so saving 25 MB on a 30 → 5 MB optimization
+      // is real bandwidth, not just cache reuse.
+      const cloudUrl = getServedUrl(asset);
       if (cloudUrl) {
         import('./captureThumbnail.js').then(({ captureAndUploadThumbnail }) =>
           captureAndUploadThumbnail(assetId, userId, cloudUrl)
@@ -176,7 +191,7 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
     // list. AssetsContent clears it on arrival; the timeout below is the
     // safety net — if the round-trip never lands, that's an error.
     uploadStore.awaitArrival(assetId);
-    armArrivalTimeout(assetId, kind);
+    armArrivalTimeout(assetId, kind, onTimeoutError);
 
     return { ok: true, assetId, kind };
   } catch (err) {
@@ -196,13 +211,16 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
 // Safety net: if the asset doc never appears in the gallery after the upload
 // resolves, something is wrong (Firestore lag, missed event, foreign-user
 // mismatch). Clear the stuck card and surface an error.
-function armArrivalTimeout(assetId, kind) {
+function armArrivalTimeout(assetId, kind, onTimeoutError) {
   const ARRIVAL_TIMEOUT_MS = 15000;
   setTimeout(() => {
     const cur = useCurrentUploadStore.getState().upload;
     if (cur && cur.awaitingAssetId === assetId) {
       console.warn(
         `[asset-upload] ${kind} ${assetId} uploaded but never appeared in gallery within ${ARRIVAL_TIMEOUT_MS}ms`
+      );
+      onTimeoutError?.(
+        `Upload finished but the asset didn't appear in your gallery. Try refreshing.`
       );
       useCurrentUploadStore.getState().clear();
     }
