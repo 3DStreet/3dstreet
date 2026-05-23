@@ -21,6 +21,7 @@
     "test:modern:ui": "vitest --ui",
     "test:modern:coverage": "vitest run --coverage",
     "test:generator": "vitest run test/generator",
+    "test:rules": "cd public && firebase emulators:exec --only firestore --project demo-3dstreet-rules \"cd .. && vitest run --config vitest.rules.config.js\"",
     "prettier": "prettier --write 'src/**/*.js' 'src/**/*.jsx' 'src/**/*.scss'",
     "deploy": "npm run dist && npm run prefirebase && cd public && firebase use dstreet-305604 && firebase deploy --only hosting:app3dstreet",
     "deploy:staging": "npm run dist:staging && npm run prefirebase && cd public && firebase use dev-3dstreet && firebase deploy --only hosting:dev-3dstreet",
@@ -73,6 +74,7 @@
   },
   "devDependencies": {
     "@babel/preset-react": "^7.28.5",
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@storybook/addon-docs": "^9.1.19",
     "@storybook/addon-onboarding": "^9.1.19",
     "@storybook/addon-webpack5-compiler-swc": "^4.0.2",
