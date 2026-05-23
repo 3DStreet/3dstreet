@@ -97,6 +97,7 @@ const MeshDetailsModal = ({
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setEditingAttribution(false);
     assetsService
       .getAsset(assetId, ownerUid)
       .then((doc) => {
@@ -738,12 +739,15 @@ AttributionBlock.propTypes = {
 const safeHref = (url) => {
   if (typeof url !== 'string') return null;
   try {
-    const parsed = new URL(url, window.location.origin);
+    // No base URL: requires an absolute URL. A bare path like "/admin" or
+    // "foo/bar" would otherwise resolve against window.location.origin and
+    // render as a link back into our own app.
+    const parsed = new URL(url);
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
       return parsed.href;
     }
   } catch {
-    // not a parseable URL
+    // not a parseable absolute URL
   }
   return null;
 };
