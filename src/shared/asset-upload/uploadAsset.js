@@ -115,9 +115,13 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
 
     let optimizedBlob = null;
     let optimizationMetadata = null;
+    let attribution = null;
     if (kind === 'glb') {
       onStatus?.('optimizing');
       uploadStore.update({ status: 'optimizing', progress: 0 });
+      const { extractGlbAttribution } =
+        await import('./extractGlbAttribution.js');
+      attribution = await extractGlbAttribution(file);
       const { optimizeGlb } = await import('./optimizeGlb.js');
       ({ blob: optimizedBlob, metadata: optimizationMetadata } =
         await optimizeGlb(file));
@@ -139,7 +143,12 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
       assetType,
       ASSET_CATEGORIES.UPLOAD,
       userId,
-      { signal, optimizedFile: optimizedBlob, optimizationMetadata }
+      {
+        signal,
+        optimizedFile: optimizedBlob,
+        optimizationMetadata,
+        attribution: attribution?.hasMetadata ? attribution : null
+      }
     );
     pendingAssetId = assetId;
 

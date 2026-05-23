@@ -5,7 +5,7 @@
  * which aren't loaded in the generator or bollardbuddy bundles.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -21,6 +21,50 @@ import {
   getServedUrl
 } from '../utils.js';
 import styles from './MeshDetailsModal.module.scss';
+
+// Attribution fields exposed by extractGlbAttribution + editable by the owner.
+// Keep this list in lockstep with the form below so a missing field never
+// silently leaks back to Firestore as `undefined`.
+const ATTRIBUTION_FIELDS = ['title', 'author', 'license', 'source'];
+
+const EMPTY_ATTRIBUTION = {
+  title: '',
+  author: '',
+  license: '',
+  source: '',
+  sourceName: '',
+  generator: ''
+};
+
+function pickAttribution(doc) {
+  const a = doc?.attribution || {};
+  return {
+    title: a.title || '',
+    author: a.author || '',
+    license: a.license || '',
+    source: a.source || '',
+    sourceName: a.sourceName || '',
+    generator: a.generator || ''
+  };
+}
+
+function attributionEquals(a, b) {
+  for (const key of ATTRIBUTION_FIELDS) {
+    if ((a[key] || '') !== (b[key] || '')) return false;
+  }
+  return true;
+}
+
+function composeAttributionString({ title, author, license }) {
+  const titlePart = title ? `'${title}'` : '';
+  const authorPart = author ? `by ${author}` : '';
+  const licensePart = license ? `${license}:` : '';
+  const body = [titlePart, authorPart].filter(Boolean).join(' ');
+  if (!licensePart && !body) return '';
+  if (!licensePart) return body;
+  if (!body) return license;
+  return `${licensePart} ${body}`;
+}
 
 const IconTooltip = ({ children, label }) => (
   <Tooltip.Root delayDuration={150}>
@@ -56,6 +100,8 @@ const MeshDetailsModal = ({
 
   const [name, setName] = useState('');
   const [savedName, setSavedName] = useState('');
+  const [attribution, setAttribution] = useState(EMPTY_ATTRIBUTION);
+  const [savedAttribution, setSavedAttribution] = useState(EMPTY_ATTRIBUTION);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -70,6 +116,9 @@ const MeshDetailsModal = ({
         const initial = doc?.name || doc?.originalFilename || '';
         setName(initial);
         setSavedName(initial);
+        const attr = pickAttribution(doc);
+        setAttribution(attr);
+        setSavedAttribution(attr);
       })
       .catch(() => {
         if (cancelled) return;
@@ -97,17 +146,63 @@ const MeshDetailsModal = ({
   }, [onNavigate, onClose]);
 
   const isOwner = !!auth.currentUser && auth.currentUser.uid === ownerUid;
-  const dirty = isOwner && name.trim() !== savedName && name.trim() !== '';
+  const nameDirty = isOwner && name.trim() !== savedName && name.trim() !== '';
+  const attributionDirty =
+    isOwner && !attributionEquals(attribution, savedAttribution);
+  const dirty = nameDirty || attributionDirty;
 
-  const onSaveName = async () => {
+  const onSave = async () => {
     if (!dirty || !data) return;
     setSaving(true);
     setError(null);
     try {
-      const trimmed = name.trim();
-      await assetsService.updateAsset(assetId, ownerUid, { name: trimmed });
-      setData((prev) => (prev ? { ...prev, name: trimmed } : prev));
-      setSavedName(trimmed);
+      const updates = {};
+      let nextName = savedName;
+      if (nameDirty) {
+        nextName = name.trim();
+        updates.name = nextName;
+      }
+      let nextAttribution = savedAttribution;
+      if (attributionDirty) {
+        const trimmed = ATTRIBUTION_FIELDS.reduce(
+          (acc, key) => {
+            acc[key] = (attribution[key] || '').trim();
+            return acc;
+          },
+          {
+            sourceName: savedAttribution.sourceName || '',
+            generator: savedAttribution.generator || ''
+          }
+        );
+        const attributionStr = composeAttributionString(trimmed);
+        const attributionDoc = {
+          ...trimmed,
+          attribution: attributionStr,
+          attributionUrl: trimmed.source,
+          hasMetadata: !!(
+            trimmed.title ||
+            trimmed.author ||
+            trimmed.license ||
+            trimmed.source
+          )
+        };
+        updates.attribution = attributionDoc;
+        nextAttribution = {
+          title: trimmed.title,
+          author: trimmed.author,
+          license: trimmed.license,
+          source: trimmed.source,
+          sourceName: trimmed.sourceName || '',
+          generator: trimmed.generator || ''
+        };
+      }
+      await assetsService.updateAsset(assetId, ownerUid, updates);
+      setData((prev) => (prev ? { ...prev, ...updates } : prev));
+      if (nameDirty) setSavedName(nextName);
+      if (attributionDirty) {
+        setSavedAttribution(nextAttribution);
+        setAttribution(nextAttribution);
+      }
     } catch (err) {
       console.error('[MeshDetailsModal] save failed', err);
       setError(err.message || 'Save failed');
@@ -336,17 +431,24 @@ const MeshDetailsModal = ({
                 onChange={(e) => setName(e.target.value)}
                 disabled={!isOwner || saving || !data}
               />
-              {dirty && (
-                <button
-                  type="button"
-                  onClick={onSaveName}
-                  disabled={saving}
-                  className={styles.saveNameBtn}
-                >
-                  {saving ? 'Saving…' : 'Save name'}
-                </button>
-              )}
             </div>
+
+            <AttributionForm
+              attribution={attribution}
+              setAttribution={setAttribution}
+              disabled={!isOwner || saving || !data}
+            />
+
+            {dirty && (
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={saving}
+                className={styles.saveNameBtn}
+              >
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
+            )}
 
             <div className={styles.metaList}>
               <div>
@@ -499,6 +601,99 @@ const MeshDetailsModal = ({
     </div>,
     document.body
   );
+};
+
+// Editable attribution block — five inputs. Rendered inside the sidebar of
+// the mesh details modal. The composed display string is shown read-only
+// underneath so the user can see what catalog.json-style attribution will
+// look like after their edits.
+const AttributionForm = ({ attribution, setAttribution, disabled }) => {
+  const composed = useMemo(
+    () => composeAttributionString(attribution),
+    [attribution]
+  );
+  const setField = (key) => (e) =>
+    setAttribution((prev) => ({ ...prev, [key]: e.target.value }));
+
+  return (
+    <div className={styles.attributionGroup}>
+      <div className={styles.attributionHeader}>Attribution</div>
+      <div className={styles.attributionFields}>
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor="meshAttrTitle">
+            Title
+          </label>
+          <input
+            id="meshAttrTitle"
+            type="text"
+            className={styles.fieldInput}
+            value={attribution.title}
+            onChange={setField('title')}
+            disabled={disabled}
+          />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor="meshAttrAuthor">
+            Author
+          </label>
+          <input
+            id="meshAttrAuthor"
+            type="text"
+            className={styles.fieldInput}
+            value={attribution.author}
+            onChange={setField('author')}
+            disabled={disabled}
+          />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor="meshAttrLicense">
+            License
+          </label>
+          <input
+            id="meshAttrLicense"
+            type="text"
+            className={styles.fieldInput}
+            value={attribution.license}
+            onChange={setField('license')}
+            disabled={disabled}
+            placeholder="e.g. CC-BY-4.0"
+          />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor="meshAttrSource">
+            Source URL
+          </label>
+          <input
+            id="meshAttrSource"
+            type="url"
+            className={styles.fieldInput}
+            value={attribution.source}
+            onChange={setField('source')}
+            disabled={disabled}
+            placeholder="https://…"
+          />
+        </div>
+      </div>
+      {(composed || attribution.sourceName) && (
+        <div className={styles.attributionPreview}>
+          {attribution.sourceName && (
+            <span className={styles.attributionSourceName}>
+              {attribution.sourceName}
+            </span>
+          )}
+          {composed && (
+            <span className={styles.attributionComposed}>{composed}</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+AttributionForm.propTypes = {
+  attribution: PropTypes.object.isRequired,
+  setAttribution: PropTypes.func.isRequired,
+  disabled: PropTypes.bool
 };
 
 MeshDetailsModal.propTypes = {

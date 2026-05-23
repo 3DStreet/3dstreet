@@ -134,6 +134,10 @@ class AssetsServiceV2 {
    *   optimization ran and produced a file smaller than the original)
    * @param {object} [options.optimizationMetadata] - Details from the
    *   optimization attempt: { optimizationSkipped, reason?, inputBytes, outputBytes }
+   * @param {object} [options.attribution] - Normalized attribution metadata
+   *   extracted from the source file (see extractGlbAttribution.js). Empty
+   *   strings are persisted so a re-edit can clear a field; the whole object
+   *   is omitted when undefined.
    * @returns {Promise<string>} - Returns the asset ID
    */
   // Quota policy: addAsset intentionally does NOT call getUploadQuota.
@@ -149,7 +153,7 @@ class AssetsServiceV2 {
     type = ASSET_TYPES.IMAGE,
     category = ASSET_CATEGORIES.AI_RENDER,
     userId,
-    { signal, optimizedFile, optimizationMetadata } = {}
+    { signal, optimizedFile, optimizationMetadata, attribution } = {}
   ) {
     if (!userId) {
       throw new Error('User ID is required to add assets');
@@ -321,6 +325,13 @@ class AssetsServiceV2 {
 
         // Optimization attempt details (present for all GLB uploads)
         ...(optimizationMetadata ? { optimizationMetadata } : {}),
+
+        // Attribution metadata extracted from the source GLB. Persisted as a
+        // structured object so the mesh details modal can edit each field
+        // independently; the composite `attribution` / `attributionUrl` fields
+        // match the existing shape used by src/catalog.json so render code can
+        // be shared between bundled and user-uploaded assets.
+        ...(attribution ? { attribution } : {}),
 
         // File Metadata — size reflects the original source file
         name: metadata.name || defaultName,

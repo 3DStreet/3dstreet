@@ -356,11 +356,21 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   };
   assetsService.events.addEventListener('uploadProgress', onProgress);
 
+  let attribution = null;
   try {
     let optimizedBlob = null;
     if (kind === 'glb') {
       setUpload(entityId, { status: 'optimizing', progress: 0 });
       currentUploadStore.update({ status: 'optimizing', progress: 0 });
+
+      // Extract attribution from the GLB header before the optimization pass
+      // touches the document. Cheap (single arrayBuffer read of an already-on-
+      // disk File) and always best-effort — a failed parse just yields an
+      // object with hasMetadata=false and we proceed without it.
+      const { extractGlbAttribution } =
+        await import('@shared/asset-upload/extractGlbAttribution.js');
+      attribution = await extractGlbAttribution(file);
+
       const { optimizeGlb } =
         await import('@shared/asset-upload/optimizeGlb.js');
       ({ blob: optimizedBlob, metadata: optimizationMetadata } =
@@ -384,7 +394,12 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       assetType,
       ASSET_CATEGORIES.UPLOAD,
       userId,
-      { signal, optimizedFile: optimizedBlob, optimizationMetadata }
+      {
+        signal,
+        optimizedFile: optimizedBlob,
+        optimizationMetadata,
+        attribution: attribution?.hasMetadata ? attribution : null
+      }
     );
     pendingAssetId = assetId;
 

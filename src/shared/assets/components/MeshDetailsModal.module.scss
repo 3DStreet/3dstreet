@@ -394,3 +394,50 @@
 .tooltipArrow {
   fill: variables.$darkgray-500;
 }
+
+.attributionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid variables.$darkgray-600;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.attributionHeader {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: variables.$lightgray-100;
+}
+
+.attributionFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+
+  // The "Source URL" field is the widest field — let it span the full width.
+  & > .field:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+.attributionPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: variables.$lightgray-300;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+
+.attributionSourceName {
+  font-weight: 600;
+  color: variables.$lightgray-200;
+}
+
+.attributionComposed {
+  font-style: italic;
+}
