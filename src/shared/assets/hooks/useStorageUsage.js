@@ -21,7 +21,9 @@ const useStorageUsage = (isLoggedIn) => {
   const [usage, setUsage] = useState({
     bytesUsed: 0,
     planLimit: null,
-    planName: null
+    planName: null,
+    tier: null,
+    membership: null
   });
 
   useEffect(() => {
@@ -40,6 +42,8 @@ const useStorageUsage = (isLoggedIn) => {
             ...prev,
             planLimit: data.planLimit,
             planName: data.planName,
+            tier: data.tier ?? prev.tier,
+            membership: data.membership ?? prev.membership,
             bytesUsed: data.bytesUsed ?? prev.bytesUsed
           }));
         })

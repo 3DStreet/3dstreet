@@ -7,15 +7,18 @@
  *                        non-deleted asset docs. `optimizedSourceSize` is
  *                        excluded — it's a platform-derived artifact.
  *   - getUploadQuota   : Callable returning { bytesUsed, planLimit, allowed,
- *                        planName }. bytesUsed reflects original uploads only.
- *                        Client uses this for the inline pre-flight check
- *                        before starting an upload.
+ *                        tier, membership, planName }. bytesUsed reflects
+ *                        original uploads only. Client uses this for the
+ *                        inline pre-flight check before starting an upload.
  *
  * Plan limits:
  *   FREE: 100 MB · PRO: 5 GB · MAX: 25 GB (reserved; no users today)
  *
- * Note: "team" is not its own quota tier — a team membership currently just
- * grants PRO. Domain-matched team users resolve to PRO here.
+ * Plan shape is split into two orthogonal dimensions so the UI can render
+ * "PRO TEAM" vs "PRO" (and future "MAX TEAM") without another rename:
+ *   - tier:       FREE | PRO | MAX  (what storage you get)
+ *   - membership: individual | team  (how you got it)
+ * `planName` is the derived display label, kept for back-compat with callers.
  */
 
 const functions = require('firebase-functions/v1');
@@ -47,11 +50,11 @@ function getPlanLimit(planName) {
  * Firestore rules with server-truth data.
  */
 function resolvePlanFromToken(token) {
-  if (!token) return 'FREE';
-  if (token.plan === 'MAX') return 'MAX';
-  if (token.plan === 'PRO') return 'PRO';
+  if (!token) return { tier: 'FREE', membership: 'individual' };
+  if (token.plan === 'MAX') return { tier: 'MAX', membership: 'individual' };
+  if (token.plan === 'PRO') return { tier: 'PRO', membership: 'individual' };
 
-  // Domain-based team access grants PRO (team is not its own quota tier).
+  // Domain-based team access grants PRO at the team membership level.
   // Mirrors token-management.js validateUserDomain.
   const email = token.email;
   const allowedDomainsSecret = process.env.ALLOWED_PRO_TEAM_DOMAINS;
@@ -61,14 +64,19 @@ function resolvePlanFromToken(token) {
       try {
         const domains = JSON.parse(allowedDomainsSecret);
         if (Array.isArray(domains) && domains.includes(userDomain)) {
-          return 'PRO';
+          return { tier: 'PRO', membership: 'team' };
         }
       } catch (parseError) {
         console.error('[asset-quota] Error parsing ALLOWED_PRO_TEAM_DOMAINS secret:', parseError);
       }
     }
   }
-  return 'FREE';
+  return { tier: 'FREE', membership: 'individual' };
+}
+
+function derivePlanName(tier, membership) {
+  const tierLabel = PLAN_LIMITS[tier] ? tier : 'FREE';
+  return membership === 'team' ? `${tierLabel} TEAM` : tierLabel;
 }
 
 /**
@@ -121,7 +129,7 @@ const onAssetWritten = functions.firestore
 /**
  * Callable: pre-flight quota check.
  * Input:  { proposedBytes }
- * Output: { bytesUsed, planLimit, planName, allowed, reason? }
+ * Output: { bytesUsed, planLimit, tier, membership, planName, allowed, reason? }
  */
 const getUploadQuota = functions.runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS'] }).https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -133,8 +141,9 @@ const getUploadQuota = functions.runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS']
   const uid = context.auth.uid;
   const proposedBytes = Math.max(0, Number(data?.proposedBytes) || 0);
 
-  const planName = resolvePlanFromToken(context.auth.token);
-  const planLimit = getPlanLimit(planName);
+  const { tier, membership } = resolvePlanFromToken(context.auth.token);
+  const planLimit = getPlanLimit(tier);
+  const planName = derivePlanName(tier, membership);
 
   const usageSnap = await admin
     .firestore()
@@ -149,6 +158,8 @@ const getUploadQuota = functions.runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS']
   return {
     bytesUsed,
     planLimit,
+    tier,
+    membership,
     planName,
     allowed,
     reason: allowed ? null : 'over_limit'
