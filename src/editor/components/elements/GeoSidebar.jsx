@@ -8,6 +8,7 @@ import useStore from '@/store';
 import { useState, useEffect } from 'react';
 import Events from '../../lib/Events';
 import { Tooltip } from 'radix-ui';
+import GeoPaywallPitch from '../modals/GeoModal/GeoPaywallPitch';
 
 const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   return (
@@ -231,7 +232,6 @@ const EnvironmentSection = () => {
 const GeoSidebar = ({ entity }) => {
   const setModal = useStore((state) => state.setModal);
   const { currentUser, tokenProfile } = useAuthContext();
-  const startCheckout = useStore((state) => state.startCheckout);
 
   // Force re-render when entity updates
   const [, forceUpdate] = useState({});
@@ -513,40 +513,10 @@ const GeoSidebar = ({ entity }) => {
                 className="propertyRow"
                 style={{ marginTop: '8px', paddingRight: '12px' }}
               >
-                <Button
-                  variant="toolbtn"
-                  style={{
-                    width: '100%',
-                    background:
-                      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    border: 'none',
-                    color: 'white',
-                    fontWeight: '600',
-                    fontSize: '12px',
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 4px 12px rgba(118, 75, 162, 0.3)',
-                    ':hover': {
-                      transform: 'translateY(-1px)',
-                      boxShadow: '0 6px 20px rgba(118, 75, 162, 0.4)'
-                    }
-                  }}
-                  onClick={() => startCheckout('geo')}
-                  onMouseEnter={(e) => {
-                    e.target.style.transform = 'translateY(-1px)';
-                    e.target.style.boxShadow =
-                      '0 6px 20px rgba(118, 75, 162, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0px)';
-                    e.target.style.boxShadow =
-                      '0 4px 12px rgba(118, 75, 162, 0.3)';
-                  }}
-                >
-                  Upgrade to Pro for unlimited geo lookups
-                </Button>
+                <GeoPaywallPitch
+                  variant="sidebar"
+                  source="geo_sidebar_inline"
+                />
               </div>
             )}
 

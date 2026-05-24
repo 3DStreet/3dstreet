@@ -17,6 +17,7 @@ import { setSceneLocation } from '../../../lib/utils.js';
 import useStore from '@/store.js';
 import { useAuthContext } from '../../../contexts/index.js';
 import { canUseGeoFeature } from '@shared/utils/tokens';
+import GeoPaywallPitch from './GeoPaywallPitch';
 import posthog from 'posthog-js';
 import { Tooltip } from 'radix-ui';
 
@@ -266,6 +267,22 @@ const GeoModal = () => {
     }
   };
 
+  // Inline paywall replaces the search/centerpoint/Save controls when a free
+  // user has burned all their geo tokens. Geojson-import flow is free during
+  // beta, so it skips the paywall regardless of token balance.
+  const showPaywall =
+    !currentUser?.isPro &&
+    tokenProfile?.geoToken === 0 &&
+    !wasOpenedFromGeojson;
+
+  useEffect(() => {
+    if (isOpen && showPaywall) {
+      posthog.capture('geo_paywall_impression', {
+        source: 'geo_modal_inline'
+      });
+    }
+  }, [isOpen, showPaywall]);
+
   return (
     <Tooltip.Provider>
       <Modal
@@ -291,14 +308,24 @@ const GeoModal = () => {
               <GoogleMap
                 mapContainerStyle={{
                   width: '100%',
-                  minHeight: '200px',
+                  minHeight: showPaywall ? '140px' : '200px',
                   borderRadius: 4,
                   border: '1px solid #8965EF'
                 }}
                 center={{ lat: markerPosition.lat, lng: markerPosition.lng }}
                 zoom={20}
-                onClick={onMapClick}
-                options={{ streetViewControl: false, mapTypeId: 'satellite' }}
+                onClick={showPaywall ? undefined : onMapClick}
+                options={{
+                  streetViewControl: false,
+                  mapTypeId: 'satellite',
+                  // In paywall mode the map is a teaser, not a tool — disabling
+                  // gestures keeps it from swallowing wheel events meant to
+                  // scroll the modal.
+                  gestureHandling: showPaywall ? 'none' : 'auto',
+                  zoomControl: !showPaywall,
+                  fullscreenControl: !showPaywall,
+                  keyboardShortcuts: !showPaywall
+                }}
                 tilt={0}
               >
                 <Marker
@@ -310,181 +337,173 @@ const GeoModal = () => {
               </GoogleMap>
             </>
           )}
-          {!wasOpenedFromGeojson && (
-            <Autocomplete
-              onLoad={onAutocompleteLoad}
-              onPlaceChanged={onPlaceChanged}
-            >
-              <Input
-                leadingIcon={<Magnifier20Icon />}
-                placeholder={currentLocationString || 'Search for a location'}
-                onChange={(value) => {}}
-              />
-            </Autocomplete>
-          )}
-          <div className={styles.sceneGeo}>
-            <div>
-              <p>Centerpoint</p>
-              <Input
-                leadingIcon={<p className={styles.iconGeo}>Lat, Long</p>}
-                value={`${markerPosition.lat}, ${markerPosition.lng}`}
-                placeholder="None"
-                onChange={handleCoordinateChange}
-              ></Input>
-            </div>
-          </div>
-
-          <div className="propertyRow">
-            {!currentUser?.isPro && tokenProfile?.geoToken === 0 ? (
-              <div className="rounded bg-red-50 p-2 text-red-600">
-                <div className="mb-1 font-semibold uppercase">
-                  🚀 Out of Geo Tokens
-                </div>
-                <ul className="space-y-1">
-                  <li>• You&apos;ve used all your free geo tokens</li>
-                  <li>
-                    • Upgrade to 3DStreet Pro for unlimited geospatial features
-                  </li>
-                  <li>
-                    • Pro includes unlimited geo lookups, map access, and more
-                  </li>
-                  <li>• Set and change scene locations as often as you need</li>
-                </ul>
-              </div>
-            ) : (
-              <div className="rounded bg-blue-50 p-2 text-gray-600">
-                <div className="mb-1 font-semibold uppercase">
-                  {wasOpenedFromGeojson
-                    ? '🗂️ GeoJSON Import Detected'
-                    : '💡 Geospatial Tips'}
-                </div>
-                <ul className="space-y-1">
-                  {wasOpenedFromGeojson ? (
-                    <>
-                      <li>
-                        • We&apos;ve detected geographic coordinates from your
-                        imported GeoJSON data
-                      </li>
-                      <li>
-                        • The red marker shows the calculated center of your
-                        imported buildings
-                      </li>
-                      <li>
-                        • Click &apos;Set Location&apos; to position your scene
-                        at this location
-                      </li>
-                      <li>
-                        • This feature is in beta please join our{' '}
-                        <a
-                          href="https://discord.gg/zNFMhTwKSd"
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          Discord
-                        </a>{' '}
-                        to provide feedback
-                      </li>
-                    </>
-                  ) : (
-                    <>
-                      <li>
-                        • The red marker sets the geospatial location for the
-                        centerpoint origin of the scene
-                      </li>
-                      <li>
-                        • Click on the map to change the location of the red
-                        marker point
-                      </li>
-                      <li>
-                        • Choose a point that is easy to identify visually from
-                        aerial view such as utility pole, road marking,
-                        crosswalk ramp, or other landmark
-                      </li>
-                      <li>
-                        • Zoom in as much as possible when placing point to
-                        ensure accurate scene alignment
-                      </li>
-                    </>
-                  )}
-                </ul>
-              </div>
-            )}
-          </div>
-
-          <div className={styles.controlButtons}>
-            <Button
-              variant="ghost"
-              onClick={onClose}
-              style={{
-                background: 'transparent',
-                color: '#9ca3af',
-                border: '1px solid #404040',
-                borderRadius: '8px',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = '#404040';
-                e.target.style.color = 'white';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = 'transparent';
-                e.target.style.color = '#9ca3af';
-              }}
-            >
-              Cancel
-            </Button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {wasOpenedFromGeojson && (
-                <div className={styles.betaPill}>Free During Beta</div>
+          {showPaywall ? (
+            <GeoPaywallPitch
+              variant="modal"
+              onCancel={onClose}
+              source="geo_modal_inline"
+            />
+          ) : (
+            <>
+              {!wasOpenedFromGeojson && (
+                <Autocomplete
+                  onLoad={onAutocompleteLoad}
+                  onPlaceChanged={onPlaceChanged}
+                >
+                  <Input
+                    leadingIcon={<Magnifier20Icon />}
+                    placeholder={
+                      currentLocationString || 'Search for a location'
+                    }
+                    onChange={(value) => {}}
+                  />
+                </Autocomplete>
               )}
-              {!currentUser?.isPro && tokenProfile && !wasOpenedFromGeojson && (
-                <TooltipWrapper content="Use geo tokens to set or change a geolocation for your scene.">
-                  <span
+              <div className={styles.sceneGeo}>
+                <div>
+                  <p>Centerpoint</p>
+                  <Input
+                    leadingIcon={<p className={styles.iconGeo}>Lat, Long</p>}
+                    value={`${markerPosition.lat}, ${markerPosition.lng}`}
+                    placeholder="None"
+                    onChange={handleCoordinateChange}
+                  ></Input>
+                </div>
+              </div>
+
+              <div className="propertyRow">
+                <div className="rounded bg-blue-50 p-2 text-gray-600">
+                  <div className="mb-1 font-semibold uppercase">
+                    {wasOpenedFromGeojson
+                      ? '🗂️ GeoJSON Import Detected'
+                      : '💡 Geospatial Tips'}
+                  </div>
+                  <ul className="space-y-1">
+                    {wasOpenedFromGeojson ? (
+                      <>
+                        <li>
+                          • We&apos;ve detected geographic coordinates from your
+                          imported GeoJSON data
+                        </li>
+                        <li>
+                          • The red marker shows the calculated center of your
+                          imported buildings
+                        </li>
+                        <li>
+                          • Click &apos;Set Location&apos; to position your
+                          scene at this location
+                        </li>
+                        <li>
+                          • This feature is in beta please join our{' '}
+                          <a
+                            href="https://discord.gg/zNFMhTwKSd"
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            Discord
+                          </a>{' '}
+                          to provide feedback
+                        </li>
+                      </>
+                    ) : (
+                      <>
+                        <li>
+                          • The red marker sets the geospatial location for the
+                          centerpoint origin of the scene
+                        </li>
+                        <li>
+                          • Click on the map to change the location of the red
+                          marker point
+                        </li>
+                        <li>
+                          • Choose a point that is easy to identify visually
+                          from aerial view such as utility pole, road marking,
+                          crosswalk ramp, or other landmark
+                        </li>
+                        <li>
+                          • Zoom in as much as possible when placing point to
+                          ensure accurate scene alignment
+                        </li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+              </div>
+
+              <div className={styles.controlButtons}>
+                <Button
+                  variant="ghost"
+                  onClick={onClose}
+                  style={{
+                    background: 'transparent',
+                    color: '#9ca3af',
+                    border: '1px solid #404040',
+                    borderRadius: '8px',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#404040';
+                    e.target.style.color = 'white';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'transparent';
+                    e.target.style.color = '#9ca3af';
+                  }}
+                >
+                  Cancel
+                </Button>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px' }}
+                >
+                  {wasOpenedFromGeojson && (
+                    <div className={styles.betaPill}>Free During Beta</div>
+                  )}
+                  {!currentUser?.isPro &&
+                    tokenProfile &&
+                    !wasOpenedFromGeojson && (
+                      <TooltipWrapper content="Use geo tokens to set or change a geolocation for your scene.">
+                        <span
+                          style={{
+                            background: '#374151',
+                            color: '#9ca3af',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '14px',
+                            fontWeight: '500'
+                          }}
+                        >
+                          <img
+                            src="/ui_assets/token-geo.png"
+                            alt="Geo Token"
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              marginRight: '4px',
+                              display: 'inline-block',
+                              verticalAlign: 'middle'
+                            }}
+                          />
+                          {tokenProfile.geoToken} free tokens
+                        </span>
+                      </TooltipWrapper>
+                    )}
+                  <Button
+                    variant="filled"
+                    onClick={onSaveHandler}
                     style={{
-                      background: '#374151',
-                      color: '#9ca3af',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      fontWeight: '500'
+                      backgroundColor: '#22c55e',
+                      borderColor: '#22c55e',
+                      fontSize: '16px',
+                      padding: '12px 24px',
+                      height: 'auto'
                     }}
                   >
-                    <img
-                      src="/ui_assets/token-geo.png"
-                      alt="Geo Token"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        marginRight: '4px',
-                        display: 'inline-block',
-                        verticalAlign: 'middle'
-                      }}
-                    />
-                    {tokenProfile.geoToken} free tokens
-                  </span>
-                </TooltipWrapper>
-              )}
-              <Button
-                variant="filled"
-                onClick={onSaveHandler}
-                style={{
-                  backgroundColor: '#22c55e',
-                  borderColor: '#22c55e',
-                  fontSize: '16px',
-                  padding: '12px 24px',
-                  height: 'auto'
-                }}
-              >
-                {wasOpenedFromGeojson
-                  ? 'Set Location →'
-                  : currentUser?.isPro
-                    ? 'Set Location →'
-                    : tokenProfile?.geoToken > 0
-                      ? 'Set Location →'
-                      : 'Upgrade to Pro to Change Location'}
-              </Button>
-            </div>
-          </div>
+                    Set Location →
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
       {isWorking && <SavingModal action="Working" />}
