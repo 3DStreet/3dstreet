@@ -370,6 +370,10 @@ const AddLayerPanel = () => {
               `Only the first file was added. Drop one file at a time.`
             );
           }
+        } else {
+          STREET.notify.errorMessage(
+            `Unsupported file type: ${file.name || 'file'}. Supported formats: GLB, GLTF, JPG, PNG, WebP, AVIF.`
+          );
         }
 
         if (dropPlaneEl.current) fadeOutDropPlane();
