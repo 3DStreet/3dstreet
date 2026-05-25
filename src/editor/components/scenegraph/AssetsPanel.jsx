@@ -5,6 +5,7 @@
  * and the editor's drop-and-place upload (placeholder entity + scene cmd).
  */
 
+import * as Sentry from '@sentry/react';
 import { AssetsPanelBody } from '@shared/assets';
 import {
   uploadAndPlaceAsset,
@@ -43,16 +44,28 @@ const openInGenerator = async (item, tabName) => {
       reader.readAsDataURL(blob);
     });
 
-    localStorage.setItem(
-      'pendingAssetItem',
-      JSON.stringify({
-        imageDataUrl: dataUrl,
-        id: item.id,
-        metadata: item.metadata,
-        timestamp: Date.now(),
-        targetTab: tabName
-      })
-    );
+    try {
+      localStorage.setItem(
+        'pendingAssetItem',
+        JSON.stringify({
+          imageDataUrl: dataUrl,
+          id: item.id,
+          metadata: item.metadata,
+          timestamp: Date.now(),
+          targetTab: tabName
+        })
+      );
+    } catch (storageError) {
+      console.error('pendingAssetItem setItem failed:', storageError);
+      Sentry.captureException(storageError, {
+        tags: { feature: 'asset_generator_handoff' },
+        extra: { targetTab: tabName, payloadBytes: dataUrl?.length }
+      });
+      window.STREET?.notify?.errorMessage?.(
+        'This image is too large to send to the generator. Try a smaller version.'
+      );
+      return;
+    }
 
     window.open(`/generator/#${tabName}`, '_blank');
   } catch (error) {
