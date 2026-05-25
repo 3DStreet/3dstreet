@@ -92,6 +92,65 @@ window.adminTools = {
       }
     }
     return result.data;
+  },
+
+  /**
+   * Purge soft-deleted assets older than the grace window (admin only).
+   * Hard-deletes Firestore docs + Storage blobs. Dry run by default.
+   * @param {boolean} dryRun - If true (default), reports candidates without deleting
+   * @returns {Promise} Summary with candidates, purgedDocs, bytesReclaimed*
+   *
+   * Usage:
+   *   await adminTools.purgeAssets()         // dry run
+   *   await adminTools.purgeAssets(false)    // actually delete
+   */
+  purgeAssets: async (dryRun = true) => {
+    const trigger = httpsCallable(functions, 'triggerPurgeSoftDeletedAssets');
+    const result = await trigger({ dryRun });
+    console.log('=== Soft-Deleted Asset Purge ===');
+    console.log(`Dry Run: ${result.data.dryRun}`);
+    console.table({
+      candidates: result.data.candidates,
+      skippedNotDeleted: result.data.skippedNotDeleted,
+      purgedDocs: result.data.purgedDocs,
+      storageDeleted: result.data.storageDeleted,
+      storageSkipped: result.data.storageSkipped,
+      storageErrors: result.data.storageErrors,
+      docErrors: result.data.docErrors,
+      bytesReclaimedOriginal: result.data.bytesReclaimedOriginal,
+      bytesReclaimedOptimized: result.data.bytesReclaimedOptimized
+    });
+    return result.data;
+  },
+
+  /**
+   * Reconcile users/{uid}/meta/usage.bytesUsed against the sum of `size` on
+   * non-deleted asset docs (admin only). Dry run by default.
+   * @param {boolean} dryRun - If true (default), reports drift without writing
+   * @returns {Promise} Summary with drifted, bytesAdjustedTotal, samples[]
+   *
+   * Usage:
+   *   await adminTools.reconcileUsage()      // dry run
+   *   await adminTools.reconcileUsage(false) // actually correct drift
+   */
+  reconcileUsage: async (dryRun = true) => {
+    const trigger = httpsCallable(functions, 'triggerReconcileAssetUsage');
+    const result = await trigger({ dryRun });
+    console.log('=== Asset Usage Reconciliation ===');
+    console.log(`Dry Run: ${result.data.dryRun}`);
+    console.table({
+      usersScanned: result.data.usersScanned,
+      assetsScanned: result.data.assetsScanned,
+      drifted: result.data.drifted,
+      corrected: result.data.corrected,
+      bytesAdjustedTotal: result.data.bytesAdjustedTotal,
+      wouldExceedFreeLimit: result.data.wouldExceedFreeLimit
+    });
+    if (result.data.samples?.length) {
+      console.log('\n--- Sample drift (up to 20) ---');
+      console.table(result.data.samples);
+    }
+    return result.data;
   }
 };
 

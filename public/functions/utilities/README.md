@@ -34,10 +34,34 @@ await adminTools.auditUsers(true)
 
 ---
 
+### purgeAssets
+
+Hard-deletes soft-deleted assets older than the grace window (30 days). Removes the Firestore doc and both Storage blobs (`storagePath` + `optimizedSourcePath`). Scheduled daily; this is the manual trigger.
+
+**Usage from browser console:**
+```javascript
+await adminTools.purgeAssets()        // dry run — reports candidates + bytesReclaimed*
+await adminTools.purgeAssets(false)   // actually delete
+```
+
+---
+
+### reconcileUsage
+
+Recomputes `users/{uid}/meta/usage.bytesUsed` from the source of truth (sum of `size` on non-deleted asset docs) and corrects drift. Scheduled weekly; this is the manual trigger.
+
+**Usage from browser console:**
+```javascript
+await adminTools.reconcileUsage()        // dry run — reports drifted users + sample rows
+await adminTools.reconcileUsage(false)   // actually write corrections
+```
+
+---
+
 ## Other Admin Tools
 
 See also:
-- `triggerScheduledEmails` - Manual trigger for scheduled emails (see `../SCHEDULED_EMAILS_SYSTEM.md`)
+- `triggerScheduledEmails` - Manual trigger for scheduled emails (see `../SCHEDULED_EMAILS_SYSTEM.md`), exposed as `adminTools.triggerEmails()`
 
 ## Adding New Utilities
 

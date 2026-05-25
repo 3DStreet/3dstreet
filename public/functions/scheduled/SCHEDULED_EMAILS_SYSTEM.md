@@ -9,7 +9,7 @@ A daily scheduled Cloud Function queries Firestore for users who meet certain cr
 ## Architecture
 
 ```
-scheduledEmails.js
+scheduled/scheduledEmails.js
 ├── EMAIL_TEMPLATES     - Email content (subject, HTML, text)
 ├── EMAIL_TYPES         - Query logic + filters for each email type
 ├── sendScheduledEmails - Daily scheduled function (9am PT)

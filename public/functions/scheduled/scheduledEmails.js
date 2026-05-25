@@ -1,7 +1,7 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
-const { isUserProInternal } = require('./token-management.js');
+const { isUserProInternal } = require('../token-management.js');
 
 // Postmark API endpoint
 const POSTMARK_API_URL = 'https://api.postmarkapp.com/email';
