@@ -7,7 +7,13 @@ import useAssetUploadStatus, {
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
-import { MeshDetailsModal, formatBytes } from '@shared/assets';
+import {
+  MeshDetailsModal,
+  AssetsModal,
+  formatBytes,
+  assetToDisplayItem
+} from '@shared/assets';
+import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
 
 const AssetUploadStatus = ({ entity }) => {
   const state = useAssetUploadStatus(entity);
@@ -150,13 +156,29 @@ const AssetUploadStatus = ({ entity }) => {
           {state.originalFilename}
         </div>
       )}
-      {detailsOpen && state.assetId && state.ownerUid && (
-        <MeshDetailsModal
-          assetId={state.assetId}
-          ownerUid={state.ownerUid}
-          onClose={() => setDetailsOpen(false)}
-        />
-      )}
+      {detailsOpen &&
+        state.assetId &&
+        state.ownerUid &&
+        (state.type === 'mesh' || !state.remoteData ? (
+          <MeshDetailsModal
+            assetId={state.assetId}
+            ownerUid={state.ownerUid}
+            onClose={() => setDetailsOpen(false)}
+          />
+        ) : (
+          <AssetsModal
+            // Convert the raw Firestore doc to the same display shape the
+            // gallery uses (generationMetadata → metadata, width/height
+            // promoted, etc.) so the modal renders identically here.
+            item={assetToDisplayItem({
+              ...state.remoteData,
+              assetId: state.assetId
+            })}
+            onClose={() => setDetailsOpen(false)}
+            onUseForGenerator={(item) => openInGenerator(item, 'modify')}
+            onUseForVideo={(item) => openInGenerator(item, 'video')}
+          />
+        ))}
     </div>
   );
 };

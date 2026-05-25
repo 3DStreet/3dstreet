@@ -25,7 +25,6 @@ const AssetsContent = ({
   sentinelRef,
   loadingState,
   emptyState,
-  onCopyParams,
   onUseForGenerator,
   onUseForVideo,
   onNotification,
@@ -169,7 +168,6 @@ const AssetsContent = ({
             onNavigate={handleNavigate}
             onDownload={handleDownload}
             onDelete={handleDelete}
-            onCopyParams={onCopyParams}
             onUseForGenerator={onUseForGenerator}
             onUseForVideo={onUseForVideo}
           />

@@ -8,9 +8,17 @@ import { createPortal } from 'react-dom';
 import { TrashIcon } from '@shared/icons';
 import styles from './Assets.module.scss';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
-import { getAssetTitle } from '../utils.js';
+import { getAssetTitle, formatBytes, formatDate } from '../utils.js';
 
 const METADATA_VISIBILITY_KEY = 'galleryModalMetadataVisible';
+
+// Default so simple hosts (e.g. the editor's per-entity Details button) don't
+// have to re-wire identical behavior. Hosts that want richer UX (toasts,
+// optimistic gallery removal, etc.) override by passing onDownload.
+const defaultOnDownload = (item) => {
+  const url = item?.fullImageURL || item?.storageUrl || item?.objectURL;
+  if (url) window.open(url);
+};
 
 const AssetsModal = ({
   item,
@@ -18,9 +26,8 @@ const AssetsModal = ({
   totalItems,
   onClose,
   onNavigate,
-  onDownload,
+  onDownload = defaultOnDownload,
   onDelete,
-  onCopyParams,
   onUseForGenerator,
   onUseForVideo
 }) => {
@@ -97,11 +104,19 @@ const AssetsModal = ({
     item.metadata || {};
   const durationSeconds = item.metadata?.duration_seconds;
   const aspectRatio = item.metadata?.aspect_ratio;
-  const date = item.metadata?.timestamp
-    ? new Date(item.metadata.timestamp).toLocaleString()
-    : 'Unknown';
+  // Generator-created assets stamp timestamp in metadata; user-uploaded
+  // assets only have the Firestore `uploadedAt`/`createdAt` field. Fall
+  // through so the overlay always shows a date when one is available.
+  const dateSource =
+    item.metadata?.timestamp || item.uploadedAt || item.createdAt;
+  const date = dateSource ? formatDate(dateSource) : 'Unknown';
   const isVideo = item.type === 'video';
   const modalTitle = getAssetTitle(item);
+  // Surfaced for user-uploaded images (generator-created items don't set
+  // these top-level fields, but they have model/prompt/seed instead).
+  const filename = item.originalFilename;
+  const fileSize = typeof item.size === 'number' ? item.size : null;
+  const mimeType = item.mimeType;
 
   // Pre-size the media frame to the asset's known dimensions so the modal
   // doesn't pop from "small placeholder" to "full image" on every load.
@@ -345,7 +360,27 @@ const AssetsModal = ({
                     <span className={styles.metadataValue}>{seed}</span>
                   </div>
                 )}
-                {item.metadata?.timestamp && (
+                {filename && (
+                  <div className={styles.metadataItem}>
+                    <span className={styles.metadataLabel}>File</span>
+                    <span className={styles.metadataValue}>{filename}</span>
+                  </div>
+                )}
+                {fileSize != null && (
+                  <div className={styles.metadataItem}>
+                    <span className={styles.metadataLabel}>Size on disk</span>
+                    <span className={styles.metadataValue}>
+                      {formatBytes(fileSize)}
+                    </span>
+                  </div>
+                )}
+                {mimeType && (
+                  <div className={styles.metadataItem}>
+                    <span className={styles.metadataLabel}>Type</span>
+                    <span className={styles.metadataValue}>{mimeType}</span>
+                  </div>
+                )}
+                {dateSource && (
                   <div className={styles.metadataItem}>
                     <span className={styles.metadataLabel}>Date</span>
                     <span className={styles.metadataValue}>{date}</span>
@@ -405,14 +440,6 @@ const AssetsModal = ({
                 }}
               >
                 Create Video
-              </button>
-            )}
-            {isVideo && onCopyParams && (
-              <button
-                className={`${styles.actionButton} ${styles.secondaryButton}`}
-                onClick={() => onCopyParams(item)}
-              >
-                Copy Parameters
               </button>
             )}
             {/* Most important button on the right */}

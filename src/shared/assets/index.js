@@ -17,7 +17,7 @@ export {
 export { default as assetsService } from './services/assetsService';
 
 // Hooks
-export { default as useAssets } from './hooks/useAssets';
+export { default as useAssets, assetToDisplayItem } from './hooks/useAssets';
 export { default as useStorageUsage } from './hooks/useStorageUsage';
 
 // State

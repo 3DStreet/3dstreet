@@ -6,7 +6,6 @@ import AssetsSidebar from './AssetsSidebar.jsx';
 
 const Assets = ({
   mode = 'sidebar',
-  onCopyParams,
   onUseForGenerator,
   onUseForVideo,
   onNotification,
@@ -18,7 +17,6 @@ const Assets = ({
   if (mode === 'sidebar') {
     return (
       <AssetsSidebar
-        onCopyParams={onCopyParams}
         onUseForGenerator={onUseForGenerator}
         onUseForVideo={onUseForVideo}
         onNotification={onNotification}

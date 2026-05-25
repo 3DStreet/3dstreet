@@ -216,7 +216,6 @@ export const ModalWithFullMetadata = {
     }),
     onClose: () => console.log('Modal closed'),
     onDownload: (item) => console.log('Download:', item),
-    onCopyParams: (item) => console.log('Copy params:', item),
     onUseForGenerator: (item) => console.log('Use for generator:', item)
   },
   parameters: {
@@ -240,8 +239,7 @@ export const ModalMinimalMetadata = {
       model: 'flux-schnell'
     }),
     onClose: () => console.log('Modal closed'),
-    onDownload: (item) => console.log('Download:', item),
-    onCopyParams: (item) => console.log('Copy params:', item)
+    onDownload: (item) => console.log('Download:', item)
   },
   parameters: {
     docs: {
@@ -301,7 +299,6 @@ export const ModalJPEGFormat = {
     }),
     onClose: () => console.log('Modal closed'),
     onDownload: (item) => console.log('Download:', item),
-    onCopyParams: (item) => console.log('Copy params:', item),
     onUseForGenerator: (item) => console.log('Use for generator:', item)
   },
   parameters: {
@@ -332,11 +329,6 @@ const InteractiveDemoComponent = () => {
   const handleDownload = (item) => {
     console.log('Download:', item);
     alert(`Downloaded: ${item.metadata.model}`);
-  };
-
-  const handleCopyParams = (item) => {
-    console.log('Copy params:', item.metadata);
-    alert('Parameters copied to clipboard!');
   };
 
   return (
@@ -375,7 +367,6 @@ const InteractiveDemoComponent = () => {
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
           onDownload={handleDownload}
-          onCopyParams={handleCopyParams}
           onUseForGenerator={(item) => {
             console.log('Use for generator:', item);
             alert('Sent to Generator tab!');

@@ -27,7 +27,7 @@ const convertTimestamp = (ts) => {
   return new Date().toISOString(); // Fallback
 };
 
-const assetToDisplayItem = (asset) => {
+export const assetToDisplayItem = (asset) => {
   const timestamp = convertTimestamp(asset.createdAt);
   return {
     id: asset.assetId,

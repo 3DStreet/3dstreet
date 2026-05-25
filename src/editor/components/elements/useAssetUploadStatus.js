@@ -157,6 +157,7 @@ export default function useAssetUploadStatus(entity) {
     originalFilename,
     name,
     type,
-    isOwned
+    isOwned,
+    remoteData
   };
 }

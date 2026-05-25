@@ -10,7 +10,6 @@ import AssetsPanelBody from './AssetsPanelBody.jsx';
 import styles from './Assets.module.scss';
 
 const AssetsSidebar = ({
-  onCopyParams,
   onUseForGenerator,
   onUseForVideo,
   onNotification,
@@ -106,7 +105,6 @@ const AssetsSidebar = ({
           <div className={styles.title}>Assets</div>
         </div>
         <AssetsPanelBody
-          onCopyParams={onCopyParams}
           onUseForGenerator={onUseForGenerator}
           onUseForVideo={onUseForVideo}
           onNotification={onNotification}
