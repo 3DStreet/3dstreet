@@ -76,7 +76,7 @@ async function purgeBatch({ dryRun }) {
       continue;
     }
     summary.candidates++;
-    const { storagePath, optimizedSourcePath } = data;
+    const { storagePath, optimizedSourcePath, thumbnailPath } = data;
     const sizeOriginal = Number(data.size) || 0;
     const sizeOptimized = Number(data.optimizedSourceSize) || 0;
 
@@ -86,15 +86,17 @@ async function purgeBatch({ dryRun }) {
       console.log(
         `[asset-gc] would purge ${docSnap.ref.path} ` +
           `size=${sizeOriginal} optimizedSize=${sizeOptimized} ` +
-          `storage=${storagePath || '-'} optimized=${optimizedSourcePath || '-'}`
+          `storage=${storagePath || '-'} optimized=${optimizedSourcePath || '-'} ` +
+          `thumbnail=${thumbnailPath || '-'}`
       );
       continue;
     }
 
     // Storage first — if a doc is deleted but blobs remain, those become
     // orphans (no doc points at them). The reverse (blobs deleted, doc kept)
-    // is recoverable by re-running this job.
-    for (const path of [storagePath, optimizedSourcePath]) {
+    // is recoverable by re-running this job. Thumbnail is included so the
+    // monthly orphan-cleanup job doesn't have to mop up after us.
+    for (const path of [storagePath, optimizedSourcePath, thumbnailPath]) {
       const result = await deleteStorageObject(bucket, path);
       if (result.deleted) summary.storageDeleted++;
       else if (result.skipped) summary.storageSkipped++;

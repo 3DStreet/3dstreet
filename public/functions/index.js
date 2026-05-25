@@ -12,6 +12,7 @@ const { auditUserSubscriptions, auditUserSubscriptionsHttp } = require('./utilit
 const { onAssetWritten, getUploadQuota } = require('./asset-quota.js');
 const { purgeSoftDeletedAssets, triggerPurgeSoftDeletedAssets } = require('./scheduled/asset-gc.js');
 const { reconcileAssetUsage, triggerReconcileAssetUsage } = require('./scheduled/asset-usage-reconcile.js');
+const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./scheduled/asset-orphan-cleanup.js');
 
 // Re-export the WebXR variant function
 exports.serveWebXRVariant = serveWebXRVariant;
@@ -49,6 +50,10 @@ exports.triggerPurgeSoftDeletedAssets = triggerPurgeSoftDeletedAssets;
 // Asset storage usage reconciliation (weekly scheduled + admin-only manual trigger)
 exports.reconcileAssetUsage = reconcileAssetUsage;
 exports.triggerReconcileAssetUsage = triggerReconcileAssetUsage;
+
+// Orphaned Storage object cleanup (monthly scheduled + admin-only manual trigger)
+exports.cleanupOrphanedStorage = cleanupOrphanedStorage;
+exports.triggerCleanupOrphanedStorage = triggerCleanupOrphanedStorage;
 
 exports.getScene = functions
   .https

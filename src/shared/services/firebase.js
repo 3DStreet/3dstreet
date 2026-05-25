@@ -151,6 +151,40 @@ window.adminTools = {
       console.table(result.data.samples);
     }
     return result.data;
+  },
+
+  /**
+   * Find Storage objects under users/*\/assets/... that no Firestore asset
+   * doc references, and delete them (admin only). Skips objects newer than
+   * 24h to avoid racing with in-flight uploads. Dry run by default.
+   * @param {boolean} dryRun - If true (default), reports orphans without deleting
+   * @returns {Promise} Summary with orphans, deleted, bytesReclaimed, samples[]
+   *
+   * Usage:
+   *   await adminTools.cleanupOrphans()        // dry run
+   *   await adminTools.cleanupOrphans(false)   // actually delete
+   */
+  cleanupOrphans: async (dryRun = true) => {
+    const trigger = httpsCallable(functions, 'triggerCleanupOrphanedStorage');
+    const result = await trigger({ dryRun });
+    console.log('=== Orphaned Storage Cleanup ===');
+    console.log(`Dry Run: ${result.data.dryRun}`);
+    console.table({
+      assetsScanned: result.data.assetsScanned,
+      referencedPaths: result.data.referencedPaths,
+      objectsScanned: result.data.objectsScanned,
+      orphans: result.data.orphans,
+      skippedTooNew: result.data.skippedTooNew,
+      skippedOutsideAssets: result.data.skippedOutsideAssets,
+      deleted: result.data.deleted,
+      deleteErrors: result.data.deleteErrors,
+      bytesReclaimed: result.data.bytesReclaimed
+    });
+    if (result.data.samples?.length) {
+      console.log('\n--- Sample orphans (up to 20) ---');
+      console.table(result.data.samples);
+    }
+    return result.data;
   }
 };
 

@@ -58,6 +58,18 @@ await adminTools.reconcileUsage(false)   // actually write corrections
 
 ---
 
+### cleanupOrphans
+
+Deletes Storage objects under `users/*/assets/...` that no Firestore asset doc references via `storagePath`, `optimizedSourcePath`, or `thumbnailPath`. Skips objects newer than 24h to avoid racing with in-flight uploads. Scheduled monthly; this is the manual trigger.
+
+**Usage from browser console:**
+```javascript
+await adminTools.cleanupOrphans()        // dry run — lists orphans + bytesReclaimed
+await adminTools.cleanupOrphans(false)   // actually delete
+```
+
+---
+
 ## Other Admin Tools
 
 See also:
