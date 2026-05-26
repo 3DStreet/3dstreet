@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import useCurrentUploadStore from '../../../src/shared/assets/state/currentUploadStore.js';
-import assetsService from '../../../src/shared/assets/services/assetsService.js';
 
 // Reset between tests — the store is a module-level singleton.
 beforeEach(() => {
@@ -78,103 +77,32 @@ describe('currentUploadStore', () => {
     });
   });
 
-  describe('awaitArrival', () => {
-    it('transitions to finishing when the asset has not yet been seen', () => {
-      const { start, awaitArrival } = useCurrentUploadStore.getState();
+  describe('markAwaiting', () => {
+    it('transitions to finishing and stashes the asset id', () => {
+      const { start, markAwaiting } = useCurrentUploadStore.getState();
       start({ filename: 'a.glb', sizeBytes: 1, kind: 'glb' });
-      awaitArrival('unseen-asset-id');
+      markAwaiting('new-asset-id');
       const { upload } = useCurrentUploadStore.getState();
       expect(upload).toMatchObject({
         status: 'finishing',
         progress: 100,
-        awaitingAssetId: 'unseen-asset-id'
+        awaitingAssetId: 'new-asset-id'
       });
     });
 
-    it('resolves immediately when the target asset was just dispatched', () => {
-      const { start, awaitArrival } = useCurrentUploadStore.getState();
-      start({ filename: 'a.glb', sizeBytes: 1, kind: 'glb' });
-
-      // Simulate assetsService dispatching assetAdded *during* the addAsset
-      // call — the listener registered at module load sets the
-      // lastAddedAssetId / lastAddedAt globals.
-      assetsService.events.dispatchEvent(
-        new CustomEvent('assetAdded', {
-          detail: { assetId: 'just-added', userId: 'u1', asset: {} }
-        })
-      );
-
-      awaitArrival('just-added');
-      // Card is cleared instantly; we never enter 'finishing'.
-      expect(useCurrentUploadStore.getState().upload).toBeNull();
+    it('preserves unrelated upload fields', () => {
+      const { start, markAwaiting } = useCurrentUploadStore.getState();
+      start({ filename: 'a.glb', sizeBytes: 4242, kind: 'glb' });
+      markAwaiting('new-asset-id');
+      const { upload } = useCurrentUploadStore.getState();
+      expect(upload.filename).toBe('a.glb');
+      expect(upload.sizeBytes).toBe(4242);
+      expect(upload.kind).toBe('glb');
     });
 
     it('is a no-op when no upload is active', () => {
-      useCurrentUploadStore.getState().awaitArrival('whatever');
+      useCurrentUploadStore.getState().markAwaiting('whatever');
       expect(useCurrentUploadStore.getState().upload).toBeNull();
-    });
-  });
-
-  describe('clearIfNotAwaiting', () => {
-    it('clears in-flight (non-finishing) state', () => {
-      const { start, clearIfNotAwaiting } = useCurrentUploadStore.getState();
-      start({ filename: 'a.glb', sizeBytes: 1, kind: 'glb' });
-      clearIfNotAwaiting();
-      expect(useCurrentUploadStore.getState().upload).toBeNull();
-    });
-
-    it('preserves the card while in finishing state', () => {
-      const { start, awaitArrival, clearIfNotAwaiting } =
-        useCurrentUploadStore.getState();
-      start({ filename: 'a.glb', sizeBytes: 1, kind: 'glb' });
-      awaitArrival('pending-id');
-      expect(useCurrentUploadStore.getState().upload.status).toBe('finishing');
-      clearIfNotAwaiting();
-      // Still up — the round-trip arrival listener owns the dismissal.
-      expect(useCurrentUploadStore.getState().upload?.status).toBe('finishing');
-    });
-
-    it('is a no-op when no upload is active', () => {
-      useCurrentUploadStore.getState().clearIfNotAwaiting();
-      expect(useCurrentUploadStore.getState().upload).toBeNull();
-    });
-  });
-
-  describe('assetAdded listener auto-clears the awaiting card', () => {
-    it('clears upload when the awaited asset arrives', () => {
-      const { start, awaitArrival } = useCurrentUploadStore.getState();
-      start({ filename: 'a.glb', sizeBytes: 1, kind: 'glb' });
-      awaitArrival('ignored-test-target');
-      expect(useCurrentUploadStore.getState().upload?.status).toBe('finishing');
-
-      assetsService.events.dispatchEvent(
-        new CustomEvent('assetAdded', {
-          detail: { assetId: 'ignored-test-target', userId: 'u1', asset: {} }
-        })
-      );
-
-      expect(useCurrentUploadStore.getState().upload).toBeNull();
-    });
-
-    it('ignores arrivals for a different asset id', () => {
-      const { start, awaitArrival } = useCurrentUploadStore.getState();
-      start({ filename: 'a.glb', sizeBytes: 1, kind: 'glb' });
-      // Use a fresh id so the module-level lastAddedAssetId from prior tests
-      // can't accidentally satisfy the awaitArrival fast-path.
-      const targetId = `target-${Math.random()}`;
-      const otherId = `other-${Math.random()}`;
-      awaitArrival(targetId);
-
-      assetsService.events.dispatchEvent(
-        new CustomEvent('assetAdded', {
-          detail: { assetId: otherId, userId: 'u1', asset: {} }
-        })
-      );
-
-      expect(useCurrentUploadStore.getState().upload?.status).toBe('finishing');
-      expect(useCurrentUploadStore.getState().upload?.awaitingAssetId).toBe(
-        targetId
-      );
     });
   });
 });
