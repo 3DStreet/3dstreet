@@ -57,16 +57,9 @@ async function preflightQuota(proposedBytes) {
  * @param {object} [opts]
  * @param {(stage: 'validating'|'optimizing'|'uploading'|'thumbnailing', info?: object) => void} [opts.onStatus]
  * @param {(progress: number) => void} [opts.onProgress] - 0..100
- * @param {(message: string) => void} [opts.onTimeoutError] - called when the
- *   safety-net arrival timeout fires (upload completed but the doc never
- *   surfaced in the gallery). Hosts wire this to their toast system so the
- *   spinner doesn't silently disappear and leave the user wondering.
  * @returns {Promise<{ ok: boolean, assetId?: string, kind?: string, error?: string }>}
  */
-export async function uploadAsset(
-  file,
-  { onStatus, onProgress, onTimeoutError } = {}
-) {
+export async function uploadAsset(file, { onStatus, onProgress } = {}) {
   const kind = getAssetKind(file);
   if (!kind) return { ok: false, error: `Unsupported file type: ${file.name}` };
 
@@ -180,6 +173,9 @@ export async function uploadAsset(
       }
     );
     pendingAssetId = assetId;
+    // Hide the new asset from the gallery grid until we clear() below —
+    // pending card keeps showing progress, atomic swap on completion.
+    uploadStore.markAwaiting(assetId);
 
     if (kind === 'glb' && thumbnailCapture) {
       onStatus?.('thumbnailing');
@@ -194,12 +190,6 @@ export async function uploadAsset(
       });
     }
 
-    // Card stays up until the asset actually lands in the gallery items
-    // list. AssetsContent clears it on arrival; the timeout below is the
-    // safety net — if the round-trip never lands, that's an error.
-    uploadStore.awaitArrival(assetId);
-    armArrivalTimeout(assetId, kind, onTimeoutError);
-
     return { ok: true, assetId, kind };
   } catch (err) {
     if (err.name === 'AbortError') {
@@ -209,27 +199,8 @@ export async function uploadAsset(
     return { ok: false, kind, error: err.message || String(err) };
   } finally {
     assetsService.events.removeEventListener('uploadProgress', onProgressEvent);
-    // Leaves the card up if we transitioned to 'finishing' (round-trip
-    // pending); error/early-return paths get cleaned up here.
-    uploadStore.clearIfNotAwaiting();
+    // Clear the pending card on every exit. This is both the success-path
+    // dismiss (atomic swap to the real card) and the error/abort cleanup.
+    uploadStore.clear();
   }
-}
-
-// Safety net: if the asset doc never appears in the gallery after the upload
-// resolves, something is wrong (Firestore lag, missed event, foreign-user
-// mismatch). Clear the stuck card and surface an error.
-function armArrivalTimeout(assetId, kind, onTimeoutError) {
-  const ARRIVAL_TIMEOUT_MS = 15000;
-  setTimeout(() => {
-    const cur = useCurrentUploadStore.getState().upload;
-    if (cur && cur.awaitingAssetId === assetId) {
-      console.warn(
-        `[asset-upload] ${kind} ${assetId} uploaded but never appeared in gallery within ${ARRIVAL_TIMEOUT_MS}ms`
-      );
-      onTimeoutError?.(
-        `Upload finished but the asset didn't appear in your gallery. Try refreshing.`
-      );
-      useCurrentUploadStore.getState().clear();
-    }
-  }, ARRIVAL_TIMEOUT_MS);
 }

@@ -8,18 +8,16 @@
  *
  * Only one upload may be in flight at a time. Callers must check `isBusy()`
  * before starting, and clear() on terminal success/failure.
+ *
+ * Lifecycle: start() → update(...) through stages → once addAsset() returns
+ * the new doc id, the pipeline calls markAwaiting(assetId) so the gallery
+ * filters that id out of the grid while finalization (GLB preload, attribute
+ * swap, thumbnail upload) runs. The pipeline calls clear() when truly done,
+ * which both removes the pending card and unblocks the new asset card —
+ * atomic swap, no overlap or flicker.
  */
 
 import { create } from 'zustand';
-import assetsService from '../services/assetsService.js';
-
-// Tracks the most recent assetAdded event so awaitArrival can resolve
-// instantly when the event fired during the call to addAsset (i.e. before
-// awaitingAssetId was set). One-upload-at-a-time means we only need the
-// last id, not a queue.
-let lastAddedAssetId = null;
-let lastAddedAt = 0;
-const ARRIVAL_GRACE_MS = 5000;
 
 // AbortController for the active upload. Stored outside Zustand (not
 // serializable). Created in start(), aborted in cancel(), nulled in clear().
@@ -28,12 +26,7 @@ let _abortController = null;
 const useCurrentUploadStore = create((set, get) => ({
   // { status, progress, filename, sizeBytes, kind, awaitingAssetId } | null
   // status:
-  //   'validating' | 'optimizing' | 'uploading' | 'thumbnailing'
-  //     in-flight stages
-  //   'finishing'
-  //     upload returned ok and we set awaitingAssetId — the card stays
-  //     visible (spinner only) until the new asset doc actually appears
-  //     in the gallery items list. Treat absence as failure (timeout).
+  //   'validating' | 'optimizing' | 'uploading' | 'thumbnailing' | 'finishing'
   upload: null,
 
   start: ({ filename, sizeBytes, kind }) => {
@@ -69,23 +62,13 @@ const useCurrentUploadStore = create((set, get) => ({
   },
 
   /**
-   * Transition into the "wait for round-trip" state. The card stays visible
-   * (with the spinner, no progress bar movement) until the host clears it,
-   * typically when the new asset doc appears in the gallery items list.
+   * Mark the new asset id so the gallery hides it from the grid until clear()
+   * is called. Lets the pending card stay up showing "Finishing…" through
+   * post-upload work without the real card popping in alongside it.
    */
-  awaitArrival: (assetId) => {
+  markAwaiting: (assetId) => {
     const cur = get().upload;
     if (!cur) return;
-    // The assetAdded event fires synchronously inside addAsset → it may
-    // already have been dispatched and missed. If we just saw it, resolve
-    // immediately.
-    if (
-      assetId === lastAddedAssetId &&
-      Date.now() - lastAddedAt < ARRIVAL_GRACE_MS
-    ) {
-      set({ upload: null });
-      return;
-    }
     set({
       upload: {
         ...cur,
@@ -101,34 +84,7 @@ const useCurrentUploadStore = create((set, get) => ({
     set({ upload: null });
   },
 
-  /**
-   * Used by the upload pipeline's `finally` block — leaves the card up when
-   * the success path has handed off to round-trip arrival watching, but
-   * cleans up after early-return error paths.
-   */
-  clearIfNotAwaiting: () => {
-    const cur = get().upload;
-    if (cur && cur.status !== 'finishing') set({ upload: null });
-  },
-
   isBusy: () => !!get().upload
 }));
-
-// Round-trip: clear the pending card the moment Firestore confirms the new
-// asset doc. This is independent of any single gallery view's filter state,
-// so it works even if the user is filtered to a type that doesn't match the
-// upload (e.g. uploaded a GLB while on the "Images" filter).
-if (typeof window !== 'undefined') {
-  assetsService.events.addEventListener('assetAdded', (e) => {
-    const incomingId = e.detail?.assetId;
-    if (!incomingId) return;
-    lastAddedAssetId = incomingId;
-    lastAddedAt = Date.now();
-    const cur = useCurrentUploadStore.getState().upload;
-    if (cur?.awaitingAssetId === incomingId) {
-      useCurrentUploadStore.getState().clear();
-    }
-  });
-}
 
 export default useCurrentUploadStore;

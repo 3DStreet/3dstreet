@@ -9,7 +9,7 @@
  *   hook up their own IntersectionObserver against the enclosing scroll area.
  */
 
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import AssetsItem from './AssetsItem.jsx';
 import AssetsGrid from './AssetsGrid.jsx';
 import AssetsModal from './AssetsModal.jsx';
@@ -97,14 +97,13 @@ const AssetsContent = ({
     (s) => s.upload?.awaitingAssetId || null
   );
 
-  // Round-trip: clear the pending card once the new asset actually shows up
-  // in the items list. The upload pipeline arms a timeout that surfaces an
-  // error if it never lands. Either way, the card stops looking stuck.
-  useEffect(() => {
-    if (!awaitingAssetId) return;
-    if (items.some((i) => i.id === awaitingAssetId)) {
-      useCurrentUploadStore.getState().clear();
-    }
+  // Hide the new asset from the grid while the upload pipeline is still
+  // finalizing it (preload, entity swap, thumbnail). The pipeline calls
+  // clear() when truly done — pending card vanishes and the real card
+  // appears in the same render. Atomic swap, no overlap.
+  const visibleItems = useMemo(() => {
+    if (!awaitingAssetId) return items;
+    return items.filter((i) => i.id !== awaitingAssetId);
   }, [items, awaitingAssetId]);
 
   return (
@@ -127,13 +126,13 @@ const AssetsContent = ({
           onPageSizeChange={setPageSize}
           placeable={placeable}
         />
-      ) : items.length === 0 && !hasPendingUpload ? (
+      ) : visibleItems.length === 0 && !hasPendingUpload ? (
         (emptyState ?? defaultEmpty)
       ) : (
         <>
           <div className={gridClassName}>
             {hasPendingUpload && <PendingUploadCard />}
-            {items.map((item) => (
+            {visibleItems.map((item) => (
               <AssetsItem
                 key={item.id}
                 item={item}
