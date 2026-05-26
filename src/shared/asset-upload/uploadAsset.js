@@ -121,28 +121,24 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
     let optimizedBlob = null;
     let optimizationMetadata = null;
     let attribution = null;
+    let thumbnailCapture = null;
     if (kind === 'glb') {
       onStatus?.('optimizing');
       uploadStore.update({ status: 'optimizing', progress: 0 });
       attribution = await extractGlbAttribution(file);
       ({ blob: optimizedBlob, metadata: optimizationMetadata } =
-        await optimizeGlb(file));
+        await optimizeGlb(file, { signal }));
       if (signal?.aborted) {
         throw new DOMException('Upload cancelled', 'AbortError');
       }
-      // Don't pass optimizedBlob when optimization was skipped — in that case
+      // Don't pass optimizedBlob when optimization was skipped, in that case
       // the blob is identical to the original and we'd upload the same bytes twice.
       if (optimizationMetadata.optimizationSkipped) optimizedBlob = null;
       uploadStore.update({ sizeBytes: file.size, optimizationMetadata });
-    }
 
-    // Kick off thumbnail capture in parallel with the upload — the model
-    // renders from the in-memory Blob (no network), so the captured JPEG
-    // is usually ready by the time addAsset resolves and we have an
-    // assetId to attach it to. Prefer the optimized GLB when available
-    // (smaller = faster to parse in the iframe).
-    let thumbnailCapture = null;
-    if (kind === 'glb') {
+      // Serial: kick off thumbnail capture only after optimization is
+      // done (or timed out). Runs in parallel with the upload itself.
+      // See uploadAndPlaceAsset.js for the longer rationale.
       const blobToCapture = optimizedBlob || file;
       thumbnailCapture = import('./captureThumbnail.js')
         .then(({ captureGlbThumbnail }) => captureGlbThumbnail(blobToCapture))
@@ -150,6 +146,9 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
           console.warn('[asset-upload] thumbnail capture failed', err);
           return null;
         });
+      thumbnailCapture.then((jpegBlob) => {
+        if (jpegBlob) uploadStore.setThumbnailBlob(jpegBlob);
+      });
     }
 
     onStatus?.('uploading');

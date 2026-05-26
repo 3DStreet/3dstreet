@@ -32,7 +32,17 @@ const PendingUploadCard = () => {
 
   return (
     <div className={styles.pendingCard} title={upload.filename}>
-      <div className={styles.pendingSpinner} aria-hidden="true" />
+      {upload.thumbnailUrl && (
+        <img
+          src={upload.thumbnailUrl}
+          alt=""
+          className={styles.pendingThumbnail}
+          aria-hidden="true"
+        />
+      )}
+      {!upload.thumbnailUrl && (
+        <div className={styles.pendingSpinner} aria-hidden="true" />
+      )}
       <div className={styles.pendingBody}>
         <div className={styles.pendingStatus}>{label}</div>
         {upload.filename && (

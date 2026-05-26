@@ -362,34 +362,35 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   let attribution = null;
   try {
     let optimizedBlob = null;
+    let thumbnailCapture = null;
     if (kind === 'glb') {
       setUpload(entityId, { status: 'optimizing', progress: 0 });
       currentUploadStore.update({ status: 'optimizing', progress: 0 });
 
       // Extract attribution from the GLB header before the optimization pass
       // touches the document. Cheap (single arrayBuffer read of an already-on-
-      // disk File) and always best-effort — a failed parse just yields an
+      // disk File) and always best-effort, a failed parse just yields an
       // object with hasMetadata=false and we proceed without it.
       attribution = await extractGlbAttribution(file);
 
       ({ blob: optimizedBlob, metadata: optimizationMetadata } =
-        await optimizeGlb(file));
+        await optimizeGlb(file, { signal }));
       if (signal?.aborted) {
         throw new DOMException('Upload cancelled', 'AbortError');
       }
-      // Don't pass optimizedBlob when optimization was skipped — in that case
+      // Don't pass optimizedBlob when optimization was skipped, in that case
       // the blob is identical to the original and we'd upload the same bytes twice.
       if (optimizationMetadata.optimizationSkipped) optimizedBlob = null;
       setUpload(entityId, { sizeBytes: file.size, optimizationMetadata });
       currentUploadStore.update({ sizeBytes: file.size, optimizationMetadata });
-    }
 
-    // Kick off thumbnail capture in parallel with the upload — the model
-    // renders from the in-memory Blob (no network), so the captured JPEG
-    // is usually ready by the time addAsset resolves and we have an
-    // assetId to attach it to. Prefer the optimized GLB when available.
-    let thumbnailCapture = null;
-    if (kind === 'glb') {
+      // Serial: only kick off thumbnail capture after optimization is
+      // done (or timed out). During optimization the worker and the
+      // placeholder GLTF parse already saturate CPU; adding the
+      // model-viewer iframe to that fight made everything slower for
+      // heavy meshes. Post-optimize, capture runs in parallel with the
+      // upload itself (which is network-bound, not CPU-bound) and
+      // benefits from the smaller optimized blob when we have one.
       const blobToCapture = optimizedBlob || file;
       thumbnailCapture = import('@shared/asset-upload/captureThumbnail.js')
         .then(({ captureGlbThumbnail }) => captureGlbThumbnail(blobToCapture))
@@ -397,6 +398,9 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
           console.warn('[asset-upload] thumbnail capture failed', err);
           return null;
         });
+      thumbnailCapture.then((jpegBlob) => {
+        if (jpegBlob) currentUploadStore.setThumbnailBlob(jpegBlob);
+      });
     }
 
     setUpload(entityId, { status: 'uploading', progress: 0 });

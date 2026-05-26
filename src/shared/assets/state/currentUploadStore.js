@@ -23,6 +23,17 @@ import { create } from 'zustand';
 // serializable). Created in start(), aborted in cancel(), nulled in clear().
 let _abortController = null;
 
+// Object URL for the in-memory captured thumbnail JPEG. Kept outside the
+// Zustand state so revoke is straightforward and we never hand a stale URL
+// out to subscribers. The state mirrors it as `thumbnailUrl`.
+let _thumbnailObjectUrl = null;
+const revokeThumbnail = () => {
+  if (_thumbnailObjectUrl) {
+    URL.revokeObjectURL(_thumbnailObjectUrl);
+    _thumbnailObjectUrl = null;
+  }
+};
+
 const useCurrentUploadStore = create((set, get) => ({
   // { status, progress, filename, sizeBytes, kind, awaitingAssetId } | null
   // status:
@@ -31,6 +42,7 @@ const useCurrentUploadStore = create((set, get) => ({
 
   start: ({ filename, sizeBytes, kind }) => {
     _abortController = new AbortController();
+    revokeThumbnail();
     set({
       upload: {
         status: 'validating',
@@ -38,7 +50,8 @@ const useCurrentUploadStore = create((set, get) => ({
         filename: filename || '',
         sizeBytes: sizeBytes || 0,
         kind: kind || null,
-        awaitingAssetId: null
+        awaitingAssetId: null,
+        thumbnailUrl: null
       }
     });
   },
@@ -49,7 +62,23 @@ const useCurrentUploadStore = create((set, get) => ({
       _abortController.abort();
       _abortController = null;
     }
+    revokeThumbnail();
     set({ upload: null });
+  },
+
+  /**
+   * Stash a captured-thumbnail JPEG blob and expose it as an object URL on
+   * the upload state, so the pending card can show a preview the moment
+   * model-viewer hands back a frame, even while the upload itself is still
+   * in flight. Safe to call repeatedly; later calls win, earlier URL is
+   * revoked. No-op if no upload is active (capture resolved after clear).
+   */
+  setThumbnailBlob: (jpegBlob) => {
+    const cur = get().upload;
+    if (!cur || !jpegBlob) return;
+    revokeThumbnail();
+    _thumbnailObjectUrl = URL.createObjectURL(jpegBlob);
+    set({ upload: { ...cur, thumbnailUrl: _thumbnailObjectUrl } });
   },
 
   /** Returns the AbortSignal for the current upload, or null if not started. */
@@ -81,6 +110,7 @@ const useCurrentUploadStore = create((set, get) => ({
 
   clear: () => {
     _abortController = null;
+    revokeThumbnail();
     set({ upload: null });
   },
 

@@ -19,7 +19,7 @@
 import { assetsService, STORAGE_PATHS } from '@shared/assets';
 
 const SCREENSHOT_PAGE = '/model-viewer-screenshot.html';
-const DEFAULT_TIMEOUT_MS = 30000;
+const DEFAULT_TIMEOUT_MS = 15000;
 const DEFAULT_SIZE = 512;
 const READY_TIMEOUT_MS = 5000;
 
@@ -64,10 +64,19 @@ export function captureGlbThumbnail(
 
     let settled = false;
     let blobPosted = false;
+    // Object URL pointing at glbBlob, lazily created when the iframe asks
+    // for the bytes. Cheaper to pass to the iframe than postMessage(blob),
+    // which structuredClones the full bytes (a 50 MB GLB = 50 MB copy in
+    // parent + 50 MB copy in iframe). Revoked unconditionally in cleanup().
+    let glbObjectUrl = null;
     const cleanup = () => {
       window.removeEventListener('message', onMessage);
       clearTimeout(timer);
       clearTimeout(readyTimer);
+      if (glbObjectUrl) {
+        URL.revokeObjectURL(glbObjectUrl);
+        glbObjectUrl = null;
+      }
       if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
     };
     const onMessage = (e) => {
@@ -75,12 +84,13 @@ export function captureGlbThumbnail(
       const data = e.data;
       if (!data || typeof data !== 'object') return;
       if (data.type === '3dstreet:screenshot-ready') {
-        // Iframe is wired up and listening — hand it the bytes.
+        // Iframe is wired up and listening, hand it the URL.
         if (!blobPosted) {
           blobPosted = true;
           clearTimeout(readyTimer);
+          glbObjectUrl = URL.createObjectURL(glbBlob);
           iframe.contentWindow.postMessage(
-            { type: '3dstreet:load-blob', blob: glbBlob },
+            { type: '3dstreet:load-blob', url: glbObjectUrl },
             '*'
           );
         }
