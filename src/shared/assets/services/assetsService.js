@@ -350,6 +350,16 @@ class AssetsServiceV2 {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         uploadedAt: serverTimestamp(),
+        // Set whenever the asset first becomes public/unlisted. Today every
+        // new asset is created public, so this equals createdAt — they'll
+        // diverge once we add a privacy toggle (upload-private → later publish).
+        publishedAt: serverTimestamp(),
+
+        // Visibility — enum so we can layer in 'unlisted' and 'private' later
+        // without a schema migration. Firestore rules treat 'public' and
+        // 'unlisted' identically for reads; the difference shows up in list
+        // queries that filter for 'public' only.
+        visibility: 'public',
 
         // Organization
         tags: metadata.tags || [],
@@ -656,19 +666,12 @@ class AssetsServiceV2 {
    * @returns {Promise<object|null>}
    */
   async getAsset(assetId, userId) {
-    try {
-      const assetRef = doc(db, 'users', userId, 'assets', assetId);
-      const assetSnap = await getDoc(assetRef);
-
-      if (assetSnap.exists()) {
-        return { id: assetSnap.id, ...assetSnap.data() };
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Error getting asset:', error);
-      throw error;
+    const assetRef = doc(db, 'users', userId, 'assets', assetId);
+    const assetSnap = await getDoc(assetRef);
+    if (assetSnap.exists()) {
+      return { id: assetSnap.id, ...assetSnap.data() };
     }
+    return null;
   }
 
   /**
