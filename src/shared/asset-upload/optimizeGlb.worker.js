@@ -66,6 +66,9 @@ async function optimize(originalBytes) {
     resample,
     prune,
     sparse,
+    join,
+    flatten,
+    palette,
     textureCompress,
     draco
   } = functions;
@@ -98,10 +101,13 @@ async function optimize(originalBytes) {
   await document.transform(
     dedup(),
     instance(),
+    flatten(),
+    join(),
     weld(),
     resample(),
     prune(),
     sparse(),
+    palette({ min: 5 }),
     textureCompress({
       targetFormat: 'webp',
       quality: 0.85,

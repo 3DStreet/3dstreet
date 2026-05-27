@@ -1,8 +1,9 @@
 /**
  * Client-side GLB optimization, runs in a Web Worker.
  *
- * The heavy gltf-transform pipeline (dedup → instance → weld → resample →
- * prune → sparse → textureCompress(webp) → draco(edgebreaker)) lives in
+ * The heavy gltf-transform pipeline (dedup → instance → flatten → join →
+ * weld → resample → prune → sparse → palette → textureCompress(webp) →
+ * draco(edgebreaker)) lives in
  * optimizeGlb.worker.js. This file is the main-thread shim: it spawns the
  * worker, transfers the bytes in zero-copy, and races the result against
  * a wall-clock timeout. On timeout / abort / worker error we
