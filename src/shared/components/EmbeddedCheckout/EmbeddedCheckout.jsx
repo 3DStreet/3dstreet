@@ -53,6 +53,7 @@ const EmbeddedCheckout = ({
   verifyPurchase,
   onSuccess,
   onClose,
+  onPaymentSubmitted,
   successTitle = 'Payment Successful!',
   successMessage = 'Thanks for your purchase. Your account is ready to go.',
   successCta = 'Done'
@@ -174,10 +175,13 @@ const EmbeddedCheckout = ({
       },
       onComplete: () => {
         setState('loading');
+        // Lets the parent (UpgradeModal) hide the Back button once the
+        // payment is in-flight — no useful "back" past this point.
+        onPaymentSubmitted?.();
         startPolling();
       }
     }),
-    [priceId, mode, metadata, plan, source, startPolling]
+    [priceId, mode, metadata, plan, source, startPolling, onPaymentSubmitted]
   );
 
   // If a caller provides onSuccess they own the post-success transition
@@ -240,6 +244,7 @@ EmbeddedCheckout.propTypes = {
   verifyPurchase: PropTypes.func,
   onSuccess: PropTypes.func,
   onClose: PropTypes.func,
+  onPaymentSubmitted: PropTypes.func,
   successTitle: PropTypes.string,
   successMessage: PropTypes.string,
   successCta: PropTypes.string
