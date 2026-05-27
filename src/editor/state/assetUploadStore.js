@@ -87,15 +87,16 @@ const useAssetUploadStore = create((set, get) => ({
     try {
       data = await assetsService.getAsset(assetId, ownerUid);
     } catch (err) {
-      // Foreign-owned assets should be readable now that the visibility rule
-      // allows public/unlisted reads. A permission-denied here means either a
-      // private asset or a rules regression; either way, send to Sentry so we
-      // notice. Transient/network errors also surface — fine, they're rare and
-      // worth seeing.
-      Sentry.captureException(err, {
-        tags: { feature: 'asset_metadata_fetch' },
-        extra: { assetId, ownerUid, code: err?.code }
-      });
+      // Foreign-owned public/unlisted assets are readable under the new
+      // visibility rule. Permission-denied here is expected for private
+      // assets (post privacy-toggle), so swallow it. Surface anything else
+      // (transient, internal, rules regression) to Sentry.
+      if (err?.code !== 'permission-denied') {
+        Sentry.captureException(err, {
+          tags: { feature: 'asset_metadata_fetch' },
+          extra: { assetId, ownerUid, code: err?.code }
+        });
+      }
     }
     set((state) => ({
       assets: {

@@ -238,7 +238,11 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   if (!kind) {
     captureUploadBlockedEvent(null, 'unsupported_file_type', {
       file_size: file?.size ?? null,
-      filename: file?.name ?? null
+      filename: file?.name ?? null,
+      mime_type: file?.type ?? null,
+      extension: file?.name?.includes('.')
+        ? file.name.split('.').pop().toLowerCase()
+        : null
     });
     notifyError(`Unsupported file type: ${file.name}`);
     return { entity: null, assetId: null, kind: null };
