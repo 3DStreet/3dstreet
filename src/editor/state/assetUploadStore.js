@@ -16,6 +16,7 @@
  */
 
 import { create } from 'zustand';
+import * as Sentry from '@sentry/react';
 import { assetsService } from '@shared/assets';
 
 const useAssetUploadStore = create((set, get) => ({
@@ -85,8 +86,16 @@ const useAssetUploadStore = create((set, get) => ({
     let data = null;
     try {
       data = await assetsService.getAsset(assetId, ownerUid);
-    } catch {
-      // permission-denied (foreign asset) or transient — degrade silently.
+    } catch (err) {
+      // Foreign-owned assets should be readable now that the visibility rule
+      // allows public/unlisted reads. A permission-denied here means either a
+      // private asset or a rules regression; either way, send to Sentry so we
+      // notice. Transient/network errors also surface — fine, they're rare and
+      // worth seeing.
+      Sentry.captureException(err, {
+        tags: { feature: 'asset_metadata_fetch' },
+        extra: { assetId, ownerUid, code: err?.code }
+      });
     }
     set((state) => ({
       assets: {

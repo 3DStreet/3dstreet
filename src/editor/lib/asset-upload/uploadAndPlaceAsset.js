@@ -66,6 +66,17 @@ function captureUploadEvent(kind, status, durationMs, optimizationMetadata) {
   posthog.capture('asset_uploaded', props);
 }
 
+// Fires when the editor upload pipeline rejects a file before any bytes go
+// over the wire (size cap, missing auth, quota denial, busy system). Paired
+// with `asset_uploaded` so funnels can compare attempts vs. completions.
+function captureUploadBlockedEvent(kind, reason, extra = {}) {
+  posthog.capture('asset_upload_blocked', {
+    file_type: kind,
+    reason,
+    ...extra
+  });
+}
+
 function notifyError(msg) {
   if (window.STREET?.notify?.errorMessage) {
     window.STREET.notify.errorMessage(msg);
@@ -225,6 +236,10 @@ async function preflightQuota(proposedBytes) {
 export async function uploadAndPlaceAsset(file, position, existingEntity) {
   const kind = getAssetKind(file);
   if (!kind) {
+    captureUploadBlockedEvent(null, 'unsupported_file_type', {
+      file_size: file?.size ?? null,
+      filename: file?.name ?? null
+    });
     notifyError(`Unsupported file type: ${file.name}`);
     return { entity: null, assetId: null, kind: null };
   }
@@ -234,6 +249,9 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   // and Upload-button clicks are blocked until it clears.
   const currentUploadStore = useCurrentUploadStore.getState();
   if (currentUploadStore.isBusy()) {
+    captureUploadBlockedEvent(kind, 'concurrent_upload', {
+      file_size: file.size
+    });
     notifyError(
       'An upload is already in progress. Please wait for it to finish.'
     );
@@ -297,6 +315,10 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   const sizeCap = kind === 'glb' ? GLB_MAX_BYTES : IMAGE_MAX_BYTES;
   if (file.size > sizeCap) {
     const limitMb = Math.round(sizeCap / 1000 / 1000);
+    captureUploadBlockedEvent(kind, 'too_large', {
+      file_size: file.size,
+      size_cap: sizeCap
+    });
     notifyError(
       `${file.name} is over the ${limitMb} MB cloud upload limit — kept local for preview only.`
     );
@@ -310,6 +332,9 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   }
 
   if (!auth.currentUser) {
+    captureUploadBlockedEvent(kind, 'not_signed_in', {
+      file_size: file.size
+    });
     setUpload(entityId, {
       status: 'local',
       reason: 'not_signed_in',
@@ -327,6 +352,12 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     if (quota.reason === 'over_limit' || quota.bytesUsed != null) {
       const usedMb = ((quota.bytesUsed || 0) / 1000 / 1000).toFixed(1);
       const limitMb = Math.round((quota.planLimit || 0) / 1000 / 1000);
+      captureUploadBlockedEvent(kind, 'over_quota', {
+        file_size: file.size,
+        bytes_used: quota.bytesUsed ?? null,
+        plan_limit: quota.planLimit ?? null,
+        plan: quota.plan ?? null
+      });
       notifyError(
         `Storage full — using ${usedMb} / ${limitMb} MB. Delete assets or upgrade.`
       );
@@ -336,6 +367,10 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
         progress: 0
       });
     } else {
+      captureUploadBlockedEvent(kind, 'upload_blocked', {
+        file_size: file.size,
+        quota_reason: quota.reason ?? null
+      });
       notifyError('Upload blocked.');
       setUpload(entityId, {
         status: 'local_error',
