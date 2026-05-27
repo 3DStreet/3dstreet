@@ -138,35 +138,15 @@ async function optimize(originalBytes) {
   };
 }
 
-// Heartbeat so the parent log can prove the worker thread is actually
-// alive and chewing. Should stop firing the instant the parent calls
-// terminate(). If you see heartbeats after the parent logs
-// "terminate() returned", the worker wasn't actually killed.
-let heartbeatTick = 0;
-const heartbeat = setInterval(() => {
-  heartbeatTick += 1;
-  console.log(`[optimizeGlb worker] alive, tick ${heartbeatTick}`);
-}, 1000);
-
 self.addEventListener('message', async (e) => {
   const data = e.data;
   if (!data || data.type !== 'optimize') return;
-  console.log(
-    `[optimizeGlb worker] received ${data.bytes.byteLength} bytes, optimizing…`
-  );
-  const t0 = (self.performance || Date).now();
   try {
     const result = await optimize(new Uint8Array(data.bytes));
-    const dt = Math.round((self.performance || Date).now() - t0);
-    console.log(
-      `[optimizeGlb worker] done in ${dt}ms (skipped=${!!result.skipped})`
-    );
-    clearInterval(heartbeat);
     const transfer =
       result.bytes && result.bytes.buffer ? [result.bytes.buffer] : [];
     self.postMessage({ type: 'result', ...result }, transfer);
   } catch (err) {
-    clearInterval(heartbeat);
     self.postMessage({
       type: 'error',
       message: (err && err.message) || String(err)

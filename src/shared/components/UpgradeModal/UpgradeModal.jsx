@@ -106,6 +106,10 @@ const UpgradeModal = ({
   // Flips true on Stripe's onComplete. Used to hide the Back button once
   // payment is in-flight — nothing useful to go back to past that point.
   const [paymentSubmitted, setPaymentSubmitted] = useState(false);
+  const handlePaymentSubmitted = useCallback(
+    () => setPaymentSubmitted(true),
+    []
+  );
 
   const handleClose = useCallback(() => {
     onClose();
@@ -399,7 +403,7 @@ const UpgradeModal = ({
         verifyPurchase={verifyPurchase}
         onSuccess={onSuccess}
         onClose={handleClose}
-        onPaymentSubmitted={() => setPaymentSubmitted(true)}
+        onPaymentSubmitted={handlePaymentSubmitted}
         successTitle={successTitle}
         successMessage={successMessage}
         successCta={successCta}

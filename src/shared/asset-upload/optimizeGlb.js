@@ -27,7 +27,7 @@
  * shim for the worker bundle too.
  */
 
-const DEFAULT_TIMEOUT_MS = 10000;
+const DEFAULT_TIMEOUT_MS = 15000;
 
 /**
  * @param {File|Blob} file - Source GLB.
@@ -49,10 +49,6 @@ export async function optimizeGlb(
     { type: 'module' }
   );
   const startedAt = performance.now();
-  const mb = (inputBytes / 1_000_000).toFixed(1);
-  console.log(
-    `[optimizeGlb] worker spawned for ${mb} MB GLB (timeout ${timeoutMs}ms)`
-  );
 
   return new Promise((resolve) => {
     let settled = false;
@@ -61,27 +57,12 @@ export async function optimizeGlb(
 
     const elapsed = () => Math.round(performance.now() - startedAt);
 
-    const teardown = (reason) => {
+    const teardown = () => {
       if (timer) clearTimeout(timer);
       if (signal && abortHandler) {
         signal.removeEventListener('abort', abortHandler);
       }
-      // terminate() is synchronous from our side, but proves nothing on
-      // its own. The next two logs (before/after) bracket the call so a
-      // hang would be visible, and "still alive?" listener checks the
-      // worker actually stopped delivering messages.
-      console.log(
-        `[optimizeGlb] terminating worker (${reason}, ${elapsed()}ms elapsed)`
-      );
       worker.terminate();
-      console.log(`[optimizeGlb] terminate() returned (${reason})`);
-      // Late-message sentinel: if any message arrives after termination,
-      // the worker wasn't actually killed. Should never fire.
-      worker.addEventListener('message', (e) => {
-        console.warn(
-          `[optimizeGlb] post-terminate message received! reason=${reason} type=${e?.data?.type}`
-        );
-      });
     };
 
     const fallbackToOriginal = (reason) => {
@@ -128,9 +109,10 @@ export async function optimizeGlb(
         });
         return;
       }
+      const inMb = (inputBytes / 1_000_000).toFixed(1);
       const outMb = (d.outputBytes / 1_000_000).toFixed(1);
       console.log(
-        `[optimizeGlb] optimized in ${elapsed()}ms: ${mb} MB → ${outMb} MB`
+        `[optimizeGlb] optimized in ${elapsed()}ms: ${inMb} MB → ${outMb} MB`
       );
       resolve({
         blob: new Blob([d.bytes], { type: 'model/gltf-binary' }),
