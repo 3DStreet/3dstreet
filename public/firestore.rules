@@ -45,20 +45,36 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // Gallery Assets Subcollection Rules (PRIVATE data - user's gallery assets)
+    // Gallery Assets Subcollection Rules
     // Structure: users/{userId}/assets/{assetId}
+    //
+    // Visibility model (forward-compatible enum, not a boolean):
+    //   'public'   — readable by anyone; appears in listing/search queries
+    //   'unlisted' — readable by anyone with the assetId; hidden from listings
+    //   'private'  — readable by owner only
+    // Today every new asset is created 'public'. The privacy toggle UI will
+    // ship later; this rule shape is in place so flipping the field is the
+    // only change required at that point.
+    //
+    // Legacy docs without a visibility field default to 'public' via .get()
+    // so the rule remains backwards-compatible during rollout.
     match /users/{userId}/assets/{assetId} {
-      // Users can only read their own gallery assets
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Read: owner always, or anyone if the asset is public/unlisted.
+      allow read: if (request.auth != null && request.auth.uid == userId)
+        || resource.data.get('visibility', 'public') in ['public', 'unlisted'];
 
-      // Users can create assets with proper userId field and required fields validated
+      // Users can create assets with proper userId field and required fields validated.
+      // visibility must be one of the allowed enum values when present; absent
+      // is allowed for backwards compatibility (treated as 'public' on read).
       allow create: if request.auth != null
         && request.auth.uid == userId
         && request.resource.data.userId == userId
         && request.resource.data.type in ['image', 'video', 'splat', 'mesh']
         && request.resource.data.category is string
         && request.resource.data.storagePath is string
-        && request.resource.data.storagePath.matches('^users/' + userId + '/.*');
+        && request.resource.data.storagePath.matches('^users/' + userId + '/.*')
+        && (!('visibility' in request.resource.data.keys())
+            || request.resource.data.visibility in ['public', 'unlisted', 'private']);
 
       // Users can update their own assets, but cannot mutate quota-relevant
       // or identity fields after create. `size` in particular feeds the
@@ -74,7 +90,11 @@ service cloud.firestore {
         && request.auth.uid == userId
         && !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['size', 'optimizedSourceSize', 'storagePath',
-                     'optimizedSourcePath', 'userId']);
+                     'optimizedSourcePath', 'userId'])
+        // visibility is mutable (privacy toggle, future feature) but must
+        // remain a valid enum value when present.
+        && (!('visibility' in request.resource.data.keys())
+            || request.resource.data.visibility in ['public', 'unlisted', 'private']);
 
       // Hard delete is disallowed for clients. The UI calls `updateDoc` with
       // `deleted: true` (soft delete); the GC Cloud Function performs the

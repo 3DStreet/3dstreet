@@ -19,7 +19,13 @@ import {
   assertSucceeds,
   assertFails
 } from '@firebase/rules-unit-testing';
-import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  serverTimestamp
+} from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -99,5 +105,132 @@ describe('firestore.rules — users/{uid}/assets/{assetId} update', () => {
   it('blocks non-owner from updating', async () => {
     const otherDb = testEnv.authenticatedContext(OTHER_UID).firestore();
     await assertFails(updateDoc(assetRef(otherDb), { deleted: true }));
+  });
+});
+
+describe('firestore.rules — users/{uid}/assets/{assetId} read (visibility)', () => {
+  beforeAll(async () => {
+    testEnv = await initializeTestEnvironment({
+      projectId: 'demo-3dstreet-rules-read',
+      firestore: {
+        rules: readFileSync(
+          resolve(__dirname, '../../public/firestore.rules'),
+          'utf8'
+        ),
+        host: '127.0.0.1',
+        port: 8080
+      }
+    });
+  });
+
+  afterAll(async () => {
+    await testEnv?.cleanup();
+  });
+
+  async function seed(extra = {}) {
+    await testEnv.clearFirestore();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(assetRef(ctx.firestore()), {
+        ...LEGACY_IMAGE_DOC,
+        ...extra
+      });
+    });
+  }
+
+  function foreignDb() {
+    return testEnv.authenticatedContext(OTHER_UID).firestore();
+  }
+
+  it('owner can read their own asset regardless of visibility', async () => {
+    await seed({ visibility: 'private' });
+    await assertSucceeds(getDoc(assetRef(ownerDb())));
+  });
+
+  it('foreign user can read a public asset', async () => {
+    await seed({ visibility: 'public' });
+    await assertSucceeds(getDoc(assetRef(foreignDb())));
+  });
+
+  it('foreign user can read an unlisted asset (assetId known)', async () => {
+    await seed({ visibility: 'unlisted' });
+    await assertSucceeds(getDoc(assetRef(foreignDb())));
+  });
+
+  it('foreign user cannot read a private asset', async () => {
+    await seed({ visibility: 'private' });
+    await assertFails(getDoc(assetRef(foreignDb())));
+  });
+
+  it('foreign user can read a legacy doc missing the visibility field (defaults to public)', async () => {
+    await seed(); // LEGACY_IMAGE_DOC has no visibility field
+    await assertSucceeds(getDoc(assetRef(foreignDb())));
+  });
+});
+
+describe('firestore.rules — users/{uid}/assets/{assetId} create + update (visibility)', () => {
+  beforeAll(async () => {
+    testEnv = await initializeTestEnvironment({
+      projectId: 'demo-3dstreet-rules-write',
+      firestore: {
+        rules: readFileSync(
+          resolve(__dirname, '../../public/firestore.rules'),
+          'utf8'
+        ),
+        host: '127.0.0.1',
+        port: 8080
+      }
+    });
+  });
+
+  afterAll(async () => {
+    await testEnv?.cleanup();
+  });
+
+  beforeEach(async () => {
+    await testEnv.clearFirestore();
+  });
+
+  it('owner can create with visibility: public', async () => {
+    await assertSucceeds(
+      setDoc(assetRef(ownerDb()), {
+        ...LEGACY_IMAGE_DOC,
+        visibility: 'public'
+      })
+    );
+  });
+
+  it('owner can create without a visibility field (legacy shape)', async () => {
+    await assertSucceeds(setDoc(assetRef(ownerDb()), LEGACY_IMAGE_DOC));
+  });
+
+  it('rejects create with an invalid visibility value', async () => {
+    await assertFails(
+      setDoc(assetRef(ownerDb()), {
+        ...LEGACY_IMAGE_DOC,
+        visibility: 'bogus'
+      })
+    );
+  });
+
+  it('owner can toggle visibility public → private', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(assetRef(ctx.firestore()), {
+        ...LEGACY_IMAGE_DOC,
+        visibility: 'public'
+      });
+    });
+    await assertSucceeds(
+      updateDoc(assetRef(ownerDb()), { visibility: 'private' })
+    );
+  });
+
+  it('rejects update setting visibility to an invalid value', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(assetRef(ctx.firestore()), {
+        ...LEGACY_IMAGE_DOC,
+        visibility: 'public'
+      });
+    });
+    await assertFails(updateDoc(assetRef(ownerDb()), { visibility: 'bogus' }));
   });
 });
