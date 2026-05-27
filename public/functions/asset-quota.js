@@ -23,6 +23,7 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { getAuth } = require('firebase-admin/auth');
 
 const MB = 1000 * 1000;
 const GB = 1000 * MB;
@@ -38,38 +39,40 @@ function getPlanLimit(planName) {
 }
 
 /**
- * Resolve plan tier from the caller's decoded JWT (context.auth.token) rather
- * than a fresh Admin SDK getUser() call. Custom claims set via
- * setCustomUserClaims propagate into the ID token on the next refresh
- * (auto ~1h, or forced via getIdToken(true) — EditorUpgradeModal already does
- * this after Stripe checkout). Avoiding the round-trip drops getUploadQuota
- * latency from ~hundreds of ms to single-digits.
- *
- * Acceptable staleness: this powers the capacity display, not hard
- * enforcement. Hard enforcement happens in the onAssetWritten trigger /
- * Firestore rules with server-truth data.
+ * Resolve plan tier via Admin SDK getUser() — always reads fresh custom claims
+ * server-side. JWT-decoded claims (context.auth.token) are stale between
+ * setCustomUserClaims and the next ID-token refresh (~1h auto, or forced via
+ * getIdToken(true)), which leaves the assets panel showing the old plan for
+ * any plan change not initiated through EditorUpgradeModal (e.g. admin-side
+ * downgrade). Mirrors checkUserProStatus in token-management.js so both the
+ * upper-right badge and the assets panel see the same truth.
  */
-function resolvePlanFromToken(token) {
-  if (!token) return { tier: 'FREE', membership: 'individual' };
-  if (token.plan === 'MAX') return { tier: 'MAX', membership: 'individual' };
-  if (token.plan === 'PRO') return { tier: 'PRO', membership: 'individual' };
+async function resolvePlanForUser(uid) {
+  try {
+    const record = await getAuth().getUser(uid);
+    const claims = record.customClaims || {};
+    if (claims.plan === 'MAX') return { tier: 'MAX', membership: 'individual' };
+    if (claims.plan === 'PRO') return { tier: 'PRO', membership: 'individual' };
 
-  // Domain-based team access grants PRO at the team membership level.
-  // Mirrors token-management.js validateUserDomain.
-  const email = token.email;
-  const allowedDomainsSecret = process.env.ALLOWED_PRO_TEAM_DOMAINS;
-  if (email && allowedDomainsSecret) {
-    const userDomain = email.split('@')[1];
-    if (userDomain) {
-      try {
-        const domains = JSON.parse(allowedDomainsSecret);
-        if (Array.isArray(domains) && domains.includes(userDomain)) {
-          return { tier: 'PRO', membership: 'team' };
+    // Domain-based team access grants PRO at the team membership level.
+    // Mirrors token-management.js validateUserDomain.
+    const email = record.email;
+    const allowedDomainsSecret = process.env.ALLOWED_PRO_TEAM_DOMAINS;
+    if (email && allowedDomainsSecret) {
+      const userDomain = email.split('@')[1];
+      if (userDomain) {
+        try {
+          const domains = JSON.parse(allowedDomainsSecret);
+          if (Array.isArray(domains) && domains.includes(userDomain)) {
+            return { tier: 'PRO', membership: 'team' };
+          }
+        } catch (parseError) {
+          console.error('[asset-quota] Error parsing ALLOWED_PRO_TEAM_DOMAINS secret:', parseError);
         }
-      } catch (parseError) {
-        console.error('[asset-quota] Error parsing ALLOWED_PRO_TEAM_DOMAINS secret:', parseError);
       }
     }
+  } catch (err) {
+    console.warn('[asset-quota] failed to read user claims', err);
   }
   return { tier: 'FREE', membership: 'individual' };
 }
@@ -141,7 +144,7 @@ const getUploadQuota = functions.runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS']
   const uid = context.auth.uid;
   const proposedBytes = Math.max(0, Number(data?.proposedBytes) || 0);
 
-  const { tier, membership } = resolvePlanFromToken(context.auth.token);
+  const { tier, membership } = await resolvePlanForUser(uid);
   const planLimit = getPlanLimit(tier);
   const planName = derivePlanName(tier, membership);
 

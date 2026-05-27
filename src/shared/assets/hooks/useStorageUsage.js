@@ -2,18 +2,16 @@
  * useStorageUsage — live cloud storage usage for the current user.
  *
  * Callable hit for the plan limit + planName (single source of truth from the
- * server) — re-fired on every ID-token change so a post-Stripe-checkout
- * refresh (EditorUpgradeModal calls getIdToken(true)) bumps the panel from
- * FREE to PRO without a page reload. Plus a Firestore snapshot of
- * users/{uid}/meta/usage for bytesUsed. Optimistic shrink on `assetDeleted`
- * events from the assetsService so the meter feels responsive; the snapshot
- * reconciles when the onAssetWritten trigger lands.
+ * server, which reads custom claims via Admin SDK and is therefore always
+ * fresh). Plus a Firestore snapshot of users/{uid}/meta/usage for bytesUsed.
+ * Optimistic shrink on `assetDeleted` events from the assetsService so the
+ * meter feels responsive; the snapshot reconciles when the onAssetWritten
+ * trigger lands.
  */
 
 import { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { onIdTokenChanged } from 'firebase/auth';
 import { auth, db, functions } from '@shared/services/firebase.js';
 import assetsService from '../services/assetsService.js';
 
@@ -52,12 +50,6 @@ const useStorageUsage = (isLoggedIn) => {
         });
     };
 
-    // Refire on every ID-token change. Fires on sign-in, sign-out, and forced
-    // refresh (EditorUpgradeModal.verifyPurchase → getIdToken(true) after
-    // Stripe checkout). The initial call here also covers mount.
-    const unsubToken = onIdTokenChanged(auth, (u) => {
-      if (u) fetchQuota();
-    });
     fetchQuota();
 
     const ref = doc(db, 'users', user.uid, 'meta', 'usage');
@@ -89,7 +81,6 @@ const useStorageUsage = (isLoggedIn) => {
     return () => {
       cancelled = true;
       unsub();
-      unsubToken();
       assetsService.events.removeEventListener('assetDeleted', onAssetDeleted);
     };
   }, [isLoggedIn]);
