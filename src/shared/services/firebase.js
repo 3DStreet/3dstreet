@@ -92,6 +92,99 @@ window.adminTools = {
       }
     }
     return result.data;
+  },
+
+  /**
+   * Purge soft-deleted assets older than the grace window (admin only).
+   * Hard-deletes Firestore docs + Storage blobs. Dry run by default.
+   * @param {boolean} dryRun - If true (default), reports candidates without deleting
+   * @returns {Promise} Summary with candidates, purgedDocs, bytesReclaimed*
+   *
+   * Usage:
+   *   await adminTools.purgeAssets()         // dry run
+   *   await adminTools.purgeAssets(false)    // actually delete
+   */
+  purgeAssets: async (dryRun = true) => {
+    const trigger = httpsCallable(functions, 'triggerPurgeSoftDeletedAssets');
+    const result = await trigger({ dryRun });
+    console.log('=== Soft-Deleted Asset Purge ===');
+    console.log(`Dry Run: ${result.data.dryRun}`);
+    console.table({
+      candidates: result.data.candidates,
+      skippedNotDeleted: result.data.skippedNotDeleted,
+      purgedDocs: result.data.purgedDocs,
+      storageDeleted: result.data.storageDeleted,
+      storageSkipped: result.data.storageSkipped,
+      storageErrors: result.data.storageErrors,
+      docErrors: result.data.docErrors,
+      bytesReclaimedOriginal: result.data.bytesReclaimedOriginal,
+      bytesReclaimedOptimized: result.data.bytesReclaimedOptimized
+    });
+    return result.data;
+  },
+
+  /**
+   * Reconcile users/{uid}/meta/usage.bytesUsed against the sum of `size` on
+   * non-deleted asset docs (admin only). Dry run by default.
+   * @param {boolean} dryRun - If true (default), reports drift without writing
+   * @returns {Promise} Summary with drifted, bytesAdjustedTotal, samples[]
+   *
+   * Usage:
+   *   await adminTools.reconcileUsage()      // dry run
+   *   await adminTools.reconcileUsage(false) // actually correct drift
+   */
+  reconcileUsage: async (dryRun = true) => {
+    const trigger = httpsCallable(functions, 'triggerReconcileAssetUsage');
+    const result = await trigger({ dryRun });
+    console.log('=== Asset Usage Reconciliation ===');
+    console.log(`Dry Run: ${result.data.dryRun}`);
+    console.table({
+      usersScanned: result.data.usersScanned,
+      assetsScanned: result.data.assetsScanned,
+      drifted: result.data.drifted,
+      corrected: result.data.corrected,
+      bytesAdjustedTotal: result.data.bytesAdjustedTotal,
+      wouldExceedFreeLimit: result.data.wouldExceedFreeLimit
+    });
+    if (result.data.samples?.length) {
+      console.log('\n--- Sample drift (up to 20) ---');
+      console.table(result.data.samples);
+    }
+    return result.data;
+  },
+
+  /**
+   * Find Storage objects under users/*\/assets/... that no Firestore asset
+   * doc references, and delete them (admin only). Skips objects newer than
+   * 24h to avoid racing with in-flight uploads. Dry run by default.
+   * @param {boolean} dryRun - If true (default), reports orphans without deleting
+   * @returns {Promise} Summary with orphans, deleted, bytesReclaimed, samples[]
+   *
+   * Usage:
+   *   await adminTools.cleanupOrphans()        // dry run
+   *   await adminTools.cleanupOrphans(false)   // actually delete
+   */
+  cleanupOrphans: async (dryRun = true) => {
+    const trigger = httpsCallable(functions, 'triggerCleanupOrphanedStorage');
+    const result = await trigger({ dryRun });
+    console.log('=== Orphaned Storage Cleanup ===');
+    console.log(`Dry Run: ${result.data.dryRun}`);
+    console.table({
+      assetsScanned: result.data.assetsScanned,
+      referencedPaths: result.data.referencedPaths,
+      objectsScanned: result.data.objectsScanned,
+      orphans: result.data.orphans,
+      skippedTooNew: result.data.skippedTooNew,
+      skippedOutsideAssets: result.data.skippedOutsideAssets,
+      deleted: result.data.deleted,
+      deleteErrors: result.data.deleteErrors,
+      bytesReclaimed: result.data.bytesReclaimed
+    });
+    if (result.data.samples?.length) {
+      console.log('\n--- Sample orphans (up to 20) ---');
+      console.table(result.data.samples);
+    }
+    return result.data;
   }
 };
 

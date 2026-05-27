@@ -39,29 +39,6 @@ const getBlobDataUri = async (blobOrUrl) => {
 };
 
 /**
- * Copy gallery item parameters to clipboard
- * @param {object} item - Gallery item
- */
-const handleCopyParams = (item) => {
-  if (!item.metadata) {
-    FluxUI.showNotification('No parameters available for this image', 'error');
-    return;
-  }
-  const params = JSON.stringify(item.metadata, null, 2);
-  navigator.clipboard
-    .writeText(params)
-    .then(() =>
-      FluxUI.showNotification('Parameters copied to clipboard!', 'success')
-    )
-    .catch((err) =>
-      FluxUI.showNotification(
-        'Failed to copy parameters: ' + err.message,
-        'error'
-      )
-    );
-};
-
-/**
  * Use image for Modify tab
  * @param {object} item - Gallery item
  */
@@ -129,7 +106,6 @@ export const mountAssets = async () => {
   root.render(
     <Assets
       mode="sidebar"
-      onCopyParams={handleCopyParams}
       onUseForGenerator={handleUseForGenerator}
       onUseForVideo={handleUseForVideo}
       onNotification={(message, type) => FluxUI.showNotification(message, type)}

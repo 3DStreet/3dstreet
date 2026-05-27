@@ -495,6 +495,7 @@ const MeshDetailsModal = ({
             <Tooltip.Provider>
               <div className={styles.controlButtons}>
                 {isOwner &&
+                  !loading &&
                   (data?.deleted ? (
                     <IconTooltip label="Restore">
                       <button

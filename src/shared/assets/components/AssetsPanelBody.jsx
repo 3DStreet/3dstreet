@@ -37,7 +37,6 @@ const AssetsPanelBody = ({
   // Image/video card actions — only meaningful in the generator.
   onUseForGenerator,
   onUseForVideo,
-  onCopyParams,
   // Host notification (FluxUI.showNotification in generator, no-op default).
   onNotification,
   // Sign-in CTA action.
@@ -222,7 +221,6 @@ const AssetsPanelBody = ({
                 : `No ${filter} assets yet.`}
             </div>
           }
-          onCopyParams={onCopyParams}
           onUseForGenerator={onUseForGenerator}
           onUseForVideo={onUseForVideo}
           onNotification={onNotification}

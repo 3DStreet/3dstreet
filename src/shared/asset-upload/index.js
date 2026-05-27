@@ -7,8 +7,8 @@ export {
   IMAGE_MAX_BYTES
 } from './uploadAsset.js';
 export {
-  captureAndUploadThumbnail,
-  captureGlbThumbnail
+  captureGlbThumbnail,
+  uploadCapturedThumbnail
 } from './captureThumbnail.js';
 export { optimizeGlb } from './optimizeGlb.js';
 export {

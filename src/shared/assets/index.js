@@ -17,7 +17,7 @@ export {
 export { default as assetsService } from './services/assetsService';
 
 // Hooks
-export { default as useAssets } from './hooks/useAssets';
+export { default as useAssets, assetToDisplayItem } from './hooks/useAssets';
 export { default as useStorageUsage } from './hooks/useStorageUsage';
 
 // State
@@ -34,4 +34,4 @@ export { default as AssetsPanelBody } from './components/AssetsPanelBody';
 export { default as MeshDetailsModal } from './components/MeshDetailsModal';
 
 // Formatters
-export { formatBytes, formatDate } from './utils';
+export { formatBytes, formatDate, getServedUrl } from './utils';

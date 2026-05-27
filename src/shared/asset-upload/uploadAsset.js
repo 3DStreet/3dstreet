@@ -121,19 +121,34 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
     let optimizedBlob = null;
     let optimizationMetadata = null;
     let attribution = null;
+    let thumbnailCapture = null;
     if (kind === 'glb') {
       onStatus?.('optimizing');
       uploadStore.update({ status: 'optimizing', progress: 0 });
       attribution = await extractGlbAttribution(file);
       ({ blob: optimizedBlob, metadata: optimizationMetadata } =
-        await optimizeGlb(file));
+        await optimizeGlb(file, { signal }));
       if (signal?.aborted) {
         throw new DOMException('Upload cancelled', 'AbortError');
       }
-      // Don't pass optimizedBlob when optimization was skipped — in that case
+      // Don't pass optimizedBlob when optimization was skipped, in that case
       // the blob is identical to the original and we'd upload the same bytes twice.
       if (optimizationMetadata.optimizationSkipped) optimizedBlob = null;
       uploadStore.update({ sizeBytes: file.size, optimizationMetadata });
+
+      // Serial: kick off thumbnail capture only after optimization is
+      // done (or timed out). Runs in parallel with the upload itself.
+      // See uploadAndPlaceAsset.js for the longer rationale.
+      const blobToCapture = optimizedBlob || file;
+      thumbnailCapture = import('./captureThumbnail.js')
+        .then(({ captureGlbThumbnail }) => captureGlbThumbnail(blobToCapture))
+        .catch((err) => {
+          console.warn('[asset-upload] thumbnail capture failed', err);
+          return null;
+        });
+      thumbnailCapture.then((jpegBlob) => {
+        if (jpegBlob) uploadStore.setThumbnailBlob(jpegBlob);
+      });
     }
 
     onStatus?.('uploading');
@@ -157,26 +172,22 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
       }
     );
     pendingAssetId = assetId;
+    // Hide the new asset from the gallery grid until we clear() below —
+    // pending card keeps showing progress, atomic swap on completion.
+    uploadStore.markAwaiting(assetId);
 
-    if (kind === 'glb') {
+    if (kind === 'glb' && thumbnailCapture) {
       onStatus?.('thumbnailing');
       uploadStore.update({ status: 'thumbnailing', progress: 100 });
       // Fire-and-forget: thumbnail errors are non-fatal (the asset doc is
       // already written; missing thumbnail just leaves a placeholder card).
-      const asset = await assetsService.getAsset(assetId, userId);
-      const cloudUrl = asset?.storageUrl;
-      if (cloudUrl) {
-        import('./captureThumbnail.js').then(({ captureAndUploadThumbnail }) =>
-          captureAndUploadThumbnail(assetId, userId, cloudUrl)
+      thumbnailCapture.then((jpegBlob) => {
+        if (!jpegBlob) return;
+        import('./captureThumbnail.js').then(({ uploadCapturedThumbnail }) =>
+          uploadCapturedThumbnail(assetId, userId, jpegBlob)
         );
-      }
+      });
     }
-
-    // Card stays up until the asset actually lands in the gallery items
-    // list. AssetsContent clears it on arrival; the timeout below is the
-    // safety net — if the round-trip never lands, that's an error.
-    uploadStore.awaitArrival(assetId);
-    armArrivalTimeout(assetId, kind);
 
     return { ok: true, assetId, kind };
   } catch (err) {
@@ -187,24 +198,8 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
     return { ok: false, kind, error: err.message || String(err) };
   } finally {
     assetsService.events.removeEventListener('uploadProgress', onProgressEvent);
-    // Leaves the card up if we transitioned to 'finishing' (round-trip
-    // pending); error/early-return paths get cleaned up here.
-    uploadStore.clearIfNotAwaiting();
+    // Clear the pending card on every exit. This is both the success-path
+    // dismiss (atomic swap to the real card) and the error/abort cleanup.
+    uploadStore.clear();
   }
-}
-
-// Safety net: if the asset doc never appears in the gallery after the upload
-// resolves, something is wrong (Firestore lag, missed event, foreign-user
-// mismatch). Clear the stuck card and surface an error.
-function armArrivalTimeout(assetId, kind) {
-  const ARRIVAL_TIMEOUT_MS = 15000;
-  setTimeout(() => {
-    const cur = useCurrentUploadStore.getState().upload;
-    if (cur && cur.awaitingAssetId === assetId) {
-      console.warn(
-        `[asset-upload] ${kind} ${assetId} uploaded but never appeared in gallery within ${ARRIVAL_TIMEOUT_MS}ms`
-      );
-      useCurrentUploadStore.getState().clear();
-    }
-  }, ARRIVAL_TIMEOUT_MS);
 }

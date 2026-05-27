@@ -362,26 +362,45 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   let attribution = null;
   try {
     let optimizedBlob = null;
+    let thumbnailCapture = null;
     if (kind === 'glb') {
       setUpload(entityId, { status: 'optimizing', progress: 0 });
       currentUploadStore.update({ status: 'optimizing', progress: 0 });
 
       // Extract attribution from the GLB header before the optimization pass
       // touches the document. Cheap (single arrayBuffer read of an already-on-
-      // disk File) and always best-effort — a failed parse just yields an
+      // disk File) and always best-effort, a failed parse just yields an
       // object with hasMetadata=false and we proceed without it.
       attribution = await extractGlbAttribution(file);
 
       ({ blob: optimizedBlob, metadata: optimizationMetadata } =
-        await optimizeGlb(file));
+        await optimizeGlb(file, { signal }));
       if (signal?.aborted) {
         throw new DOMException('Upload cancelled', 'AbortError');
       }
-      // Don't pass optimizedBlob when optimization was skipped — in that case
+      // Don't pass optimizedBlob when optimization was skipped, in that case
       // the blob is identical to the original and we'd upload the same bytes twice.
       if (optimizationMetadata.optimizationSkipped) optimizedBlob = null;
       setUpload(entityId, { sizeBytes: file.size, optimizationMetadata });
       currentUploadStore.update({ sizeBytes: file.size, optimizationMetadata });
+
+      // Serial: only kick off thumbnail capture after optimization is
+      // done (or timed out). During optimization the worker and the
+      // placeholder GLTF parse already saturate CPU; adding the
+      // model-viewer iframe to that fight made everything slower for
+      // heavy meshes. Post-optimize, capture runs in parallel with the
+      // upload itself (which is network-bound, not CPU-bound) and
+      // benefits from the smaller optimized blob when we have one.
+      const blobToCapture = optimizedBlob || file;
+      thumbnailCapture = import('@shared/asset-upload/captureThumbnail.js')
+        .then(({ captureGlbThumbnail }) => captureGlbThumbnail(blobToCapture))
+        .catch((err) => {
+          console.warn('[asset-upload] thumbnail capture failed', err);
+          return null;
+        });
+      thumbnailCapture.then((jpegBlob) => {
+        if (jpegBlob) currentUploadStore.setThumbnailBlob(jpegBlob);
+      });
     }
 
     setUpload(entityId, { status: 'uploading', progress: 0 });
@@ -408,10 +427,14 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       }
     );
     pendingAssetId = assetId;
+    // Hide the new asset from the gallery grid while finalization runs
+    // (preload + entity swap). The pending card keeps showing progress
+    // until we call clear() below — atomic swap, no overlap.
+    currentUploadStore.markAwaiting(assetId);
 
     const asset = await assetsService.getAsset(assetId, userId);
     // Prefer the optimized GLB when available; fall back to the original source.
-    const cloudUrl = asset?.optimizedSourceUrl ?? asset?.storageUrl;
+    const cloudUrl = getServedUrl(asset);
     if (!cloudUrl) {
       throw new Error('Upload succeeded but no cloud URL returned');
     }
@@ -484,23 +507,24 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     // Drop the in-flight slot — the hook now reads from the Firestore cache.
     clearUpload(entityId);
 
-    // Keep the gallery's pending card up until the new asset doc actually
-    // appears in the items list. AssetsContent watches items and clears on
-    // arrival; the timeout below is the safety net — if it never lands,
-    // that's an error.
-    currentUploadStore.awaitArrival(assetId);
-    armArrivalTimeout(assetId, kind);
+    // Finalization done — dismiss the pending card. Because markAwaiting was
+    // set earlier, the new asset card was hidden from the grid until now, so
+    // this is the moment of the atomic swap: card vanishes, real item appears.
+    currentUploadStore.clear();
 
-    // Client-side thumbnail capture for GLBs. Fire-and-forget: errors are
-    // logged but never block the success toast. The 'assetUpdated' event
-    // from updateAsset will replace the gallery card placeholder with the
-    // generated JPEG when it lands.
-    if (kind === 'glb') {
-      import('@shared/asset-upload/captureThumbnail.js').then(
-        ({ captureAndUploadThumbnail }) => {
-          captureAndUploadThumbnail(assetId, userId, cloudUrl);
-        }
-      );
+    // Thumbnail capture ran in parallel with the upload. Fire-and-forget
+    // the upload step — errors are logged but never block the success
+    // toast. The 'assetUpdated' event from updateAsset will replace the
+    // gallery card placeholder with the generated JPEG when it lands.
+    if (thumbnailCapture) {
+      thumbnailCapture.then((jpegBlob) => {
+        if (!jpegBlob) return;
+        import('@shared/asset-upload/captureThumbnail.js').then(
+          ({ uploadCapturedThumbnail }) => {
+            uploadCapturedThumbnail(assetId, userId, jpegBlob);
+          }
+        );
+      });
     }
 
     notifySuccess(`Uploaded ${file.name}`);
@@ -540,10 +564,10 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     return { entity, assetId: null, kind };
   } finally {
     assetsService.events.removeEventListener('uploadProgress', onProgress);
-    // Leaves the card up if we transitioned to 'finishing' (round-trip
-    // pending); error/early-return paths get cleaned up here. Per-entity
-    // sidebar/dot indicators retain their failed/local_error status.
-    currentUploadStore.clearIfNotAwaiting();
+    // Idempotent — success path already cleared. Catches error/abort paths
+    // so the pending card never gets stuck. Per-entity sidebar/dot
+    // indicators retain their failed/local_error status.
+    currentUploadStore.clear();
   }
 }
 
@@ -593,22 +617,4 @@ function preloadGltfWithTimeout(url, timeoutMs) {
     AFRAME.scenes[0].appendChild(probe);
     probe.setAttribute('gltf-model', `url(${url})`);
   });
-}
-
-// Safety net: if the asset doc never appears in the gallery after the upload
-// resolves, that's an error. Clear the stuck pending card.
-function armArrivalTimeout(assetId, kind) {
-  const ARRIVAL_TIMEOUT_MS = 15000;
-  setTimeout(() => {
-    const cur = useCurrentUploadStore.getState().upload;
-    if (cur && cur.awaitingAssetId === assetId) {
-      console.warn(
-        `[asset-upload] ${kind} ${assetId} uploaded but never appeared in gallery within ${ARRIVAL_TIMEOUT_MS}ms`
-      );
-      notifyError(
-        `Upload finished but the asset didn't appear in your gallery. Try refreshing.`
-      );
-      useCurrentUploadStore.getState().clear();
-    }
-  }, ARRIVAL_TIMEOUT_MS);
 }

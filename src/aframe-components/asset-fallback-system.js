@@ -56,7 +56,7 @@ AFRAME.registerSystem('asset-fallback', {
       return;
     }
 
-    console.log(
+    console.warn(
       `[asset-fallback] retrying asset ${assetId} with refreshed URL`
     );
     entity.setAttribute('gltf-model', `url(${freshUrl})`);
