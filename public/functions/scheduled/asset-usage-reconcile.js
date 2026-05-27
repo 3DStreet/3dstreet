@@ -17,8 +17,10 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 
+const { PLAN_LIMITS } = require('../asset-quota');
+
 const PAGE_SIZE = 1000;
-const FREE_LIMIT_BYTES = 100 * 1000 * 1000; // mirrors PLAN_LIMITS.FREE in asset-quota.js
+const FREE_LIMIT_BYTES = PLAN_LIMITS.FREE;
 
 async function computeTotals() {
   const db = admin.firestore();

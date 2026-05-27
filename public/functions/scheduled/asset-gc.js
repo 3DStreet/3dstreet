@@ -125,7 +125,7 @@ const purgeSoftDeletedAssets = functions
   .pubsub.schedule('0 2 * * 0')
   .timeZone('America/Los_Angeles')
   .onRun(async () => {
-    console.log('[asset-gc] starting daily purge');
+    console.log('[asset-gc] starting weekly purge');
     const summary = await purgeBatch({ dryRun: false });
     console.log('[asset-gc] purge complete:', JSON.stringify(summary));
     return summary;

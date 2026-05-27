@@ -57,7 +57,7 @@ export async function optimizeGlb(
 
     const elapsed = () => Math.round(performance.now() - startedAt);
 
-    const teardown = () => {
+    const teardown = (_reason) => {
       if (timer) clearTimeout(timer);
       if (signal && abortHandler) {
         signal.removeEventListener('abort', abortHandler);

@@ -169,4 +169,4 @@ const getUploadQuota = functions.runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS']
   };
 });
 
-module.exports = { onAssetWritten, getUploadQuota };
+module.exports = { onAssetWritten, getUploadQuota, PLAN_LIMITS };
