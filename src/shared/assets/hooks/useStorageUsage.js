@@ -68,6 +68,11 @@ const useStorageUsage = (isLoggedIn) => {
       }
     );
 
+    // Refetch on post-Stripe Pro flip — EditorUpgradeModal.verifyPurchase
+    // dispatches this after getIdToken(true) + isUserPro confirm the webhook.
+    const onPlanChanged = () => fetchQuota();
+    window.addEventListener('planChanged', onPlanChanged);
+
     const onAssetDeleted = (e) => {
       const { userId: eventUserId, size } = e.detail || {};
       if (eventUserId !== user.uid || !size) return;
@@ -81,6 +86,7 @@ const useStorageUsage = (isLoggedIn) => {
     return () => {
       cancelled = true;
       unsub();
+      window.removeEventListener('planChanged', onPlanChanged);
       assetsService.events.removeEventListener('assetDeleted', onAssetDeleted);
     };
   }, [isLoggedIn]);
