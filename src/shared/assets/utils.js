@@ -33,6 +33,7 @@ export function getAssetTypeLabel(item) {
   if (!item) return 'Asset';
   if (item.type === 'video') return 'Video';
   if (item.type === 'mesh') return 'Model';
+  if (item.type === 'splat') return 'Splat';
   return 'Image';
 }
 

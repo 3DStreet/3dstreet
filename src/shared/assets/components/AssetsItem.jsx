@@ -31,6 +31,29 @@ const MeshPlaceholder = () => (
   </div>
 );
 
+// Splats have no cheap client-side preview, so they show a point-cloud icon
+// placeholder (reusing the mesh placeholder styling) until/unless a thumbnail
+// is ever attached.
+const SplatPlaceholder = () => (
+  <div className={styles.meshPlaceholder} aria-label="Gaussian splat">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      stroke="none"
+    >
+      <circle cx="7" cy="8" r="1.6" />
+      <circle cx="13" cy="6" r="1.2" />
+      <circle cx="17" cy="10" r="1.8" />
+      <circle cx="9" cy="13" r="1.3" />
+      <circle cx="15" cy="15" r="1.5" />
+      <circle cx="6" cy="17" r="1.2" />
+      <circle cx="12" cy="18" r="1.7" />
+      <circle cx="18" cy="17" r="1.1" />
+    </svg>
+  </div>
+);
+
 const AssetsItem = ({
   item,
   onItemClick,
@@ -41,9 +64,13 @@ const AssetsItem = ({
   placeable = false
 }) => {
   const isMesh = item.type === 'mesh';
-  // Mesh items get a placeholder until a thumbnail exists. For images and
-  // videos, fall back through thumbnailUrl → objectURL as before.
-  const imageUrl = item.thumbnailUrl || (isMesh ? null : item.objectURL);
+  const isSplat = item.type === 'splat';
+  // Mesh and splat items get a placeholder until a thumbnail exists (their
+  // storageUrl points at a binary model, not a renderable image). For images
+  // and videos, fall back through thumbnailUrl → objectURL as before.
+  const usesPlaceholder = isMesh || isSplat;
+  const imageUrl =
+    item.thumbnailUrl || (usesPlaceholder ? null : item.objectURL);
 
   const handleDelete = (e) => {
     e.stopPropagation();
@@ -66,7 +93,7 @@ const AssetsItem = ({
   // Only enabled when the host opts in via the `placeable` prop.
   const isPlaceable =
     placeable &&
-    (item.type === 'mesh' || item.type === 'image') &&
+    (item.type === 'mesh' || item.type === 'image' || item.type === 'splat') &&
     !!item.storageUrl;
 
   const handleDragStart = (e) => {
@@ -108,12 +135,18 @@ const AssetsItem = ({
     >
       {item.type === 'video' ? (
         <video src={imageUrl} muted playsInline />
-      ) : isMesh && !imageUrl ? (
-        <MeshPlaceholder />
+      ) : usesPlaceholder && !imageUrl ? (
+        isSplat ? (
+          <SplatPlaceholder />
+        ) : (
+          <MeshPlaceholder />
+        )
       ) : (
         <img
           src={imageUrl}
-          alt={isMesh ? '3D model' : 'Generated image'}
+          alt={
+            isMesh ? '3D model' : isSplat ? 'Gaussian splat' : 'Generated image'
+          }
           loading="lazy"
         />
       )}

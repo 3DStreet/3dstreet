@@ -20,10 +20,15 @@ import { optimizeGlb } from './optimizeGlb.js';
 
 export const GLB_MAX_BYTES = 50 * 1000 * 1000;
 export const IMAGE_MAX_BYTES = 10 * 1000 * 1000;
+// Splats (.ply/.splat/.spz) upload as application/octet-stream, which
+// storage.rules caps at 50 MB — keep this in lockstep with that rule.
+export const SPLAT_MAX_BYTES = 50 * 1000 * 1000;
 
 const GLB_EXTS = ['.glb', '.gltf'];
 const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.avif'];
-const ACCEPTED_EXTS = [...GLB_EXTS, ...IMAGE_EXTS];
+// Gaussian Splat formats supported by the `splat` A-Frame component (Spark).
+const SPLAT_EXTS = ['.ply', '.splat', '.spz'];
+const ACCEPTED_EXTS = [...GLB_EXTS, ...IMAGE_EXTS, ...SPLAT_EXTS];
 
 export const FILE_PICKER_ACCEPT = ACCEPTED_EXTS.join(',');
 
@@ -31,6 +36,7 @@ export function getAssetKind(file) {
   const name = (file.name || '').toLowerCase();
   if (GLB_EXTS.some((ext) => name.endsWith(ext))) return 'glb';
   if (IMAGE_EXTS.some((ext) => name.endsWith(ext))) return 'image';
+  if (SPLAT_EXTS.some((ext) => name.endsWith(ext))) return 'splat';
   return null;
 }
 
@@ -73,10 +79,20 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
     };
   }
 
-  const sizeCap = kind === 'glb' ? GLB_MAX_BYTES : IMAGE_MAX_BYTES;
+  const sizeCap =
+    kind === 'glb'
+      ? GLB_MAX_BYTES
+      : kind === 'splat'
+        ? SPLAT_MAX_BYTES
+        : IMAGE_MAX_BYTES;
   if (file.size > sizeCap) {
     const limitMb = Math.round(sizeCap / 1000 / 1000);
-    const kindLabel = kind === 'glb' ? 'GLB files' : 'Images';
+    const kindLabel =
+      kind === 'glb'
+        ? 'GLB files'
+        : kind === 'splat'
+          ? 'Splat files'
+          : 'Images';
     return {
       ok: false,
       kind,
@@ -153,7 +169,12 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
 
     onStatus?.('uploading');
     uploadStore.update({ status: 'uploading', progress: 0 });
-    const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
+    const assetType =
+      kind === 'glb'
+        ? ASSET_TYPES.MESH
+        : kind === 'splat'
+          ? ASSET_TYPES.SPLAT
+          : ASSET_TYPES.IMAGE;
     // Seed Display name from the extracted title when richer than the
     // filename; `title` itself is never persisted on the attribution object.
     const initialName = attribution?.title?.trim() || undefined;

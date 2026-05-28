@@ -777,4 +777,216 @@ const generateReplicateVideo = functions
     }
   });
 
-module.exports = { generateReplicateImage, generateReplicateVideo };
+// Replicate API function for image → Gaussian Splat generation (SHARP).
+// v1 is synchronous: SHARP completes in ~4 minutes on a T4, comfortably within
+// the function timeout, so we reuse the same wait-on-the-call pattern as image
+// generation. Larger photogrammetry jobs (zip-of-images / video → Teleport)
+// will need an async job queue and are intentionally out of scope here.
+const generateReplicateSplat = functions
+  .runWith({
+    secrets: ['REPLICATE_API_TOKEN', 'ALLOWED_PRO_TEAM_DOMAINS'],
+    timeoutSeconds: 540 // 9 minutes — SHARP usually ~4 min, leave headroom
+  })
+  .https
+  .onCall(async (data, context) => {
+    if (!process.env.REPLICATE_API_TOKEN) {
+      console.error('CRITICAL: REPLICATE_API_TOKEN secret not loaded');
+      throw new functions.https.HttpsError('failed-precondition', 'Splat generation service is not properly configured.');
+    }
+
+    if (!context.auth) {
+      console.error('Unauthenticated request to generateReplicateSplat');
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to generate splats.');
+    }
+
+    const userId = context.auth.uid;
+    const { input_image, model_id = 'sharp-ml', source = 'generator' } = data;
+
+    const modelConfig = REPLICATE_MODELS[model_id] || REPLICATE_MODELS['sharp-ml'];
+    const tokenCost = modelConfig?.tokenCost || 1;
+
+    let tokenData;
+    try {
+      tokenData = await checkAndRefillImageTokensInternal(userId);
+    } catch (tokenError) {
+      console.error(`Error retrieving token data for user ${userId}:`, tokenError);
+      throw new functions.https.HttpsError('internal', `Failed to retrieve token information: ${tokenError.message}`);
+    }
+
+    if (!tokenData) {
+      throw new functions.https.HttpsError('internal', 'Failed to retrieve token information. Please try again.');
+    }
+
+    if (!tokenData.genToken || tokenData.genToken < tokenCost) {
+      throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${tokenData.genToken || 0}.`);
+    }
+
+    if (!input_image) {
+      throw new functions.https.HttpsError('invalid-argument', 'Missing required input image.');
+    }
+
+    const db = admin.firestore();
+    let generationStartTime;
+    let tempFileUrl = null;
+
+    try {
+      const replicate = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
+        useFileOutput: false
+      });
+
+      // SHARP needs a publicly-fetchable image URL. Accept either an https URL
+      // (already hosted) or a base64 data URL that we stage in Storage.
+      let imageUrl = input_image;
+      if (input_image.startsWith('data:image/')) {
+        const matches = input_image.match(/^data:([^;]+);base64,(.+)$/);
+        if (!matches) {
+          throw new functions.https.HttpsError('invalid-argument', 'Invalid base64 image format.');
+        }
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+
+        const timestamp = Date.now();
+        const filename = `temp-splat-input-${userId}-${timestamp}.jpg`;
+        const bucket = admin.storage().bucket();
+        const file = bucket.file(`temp/${filename}`);
+        await file.save(imageBuffer, {
+          metadata: {
+            contentType: mimeType,
+            expires: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+          }
+        });
+        await file.makePublic();
+        imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
+        tempFileUrl = imageUrl;
+      }
+
+      // SHARP (kfarr/sharp-ml) takes a single `image` input and returns a
+      // .ply Gaussian Splat. Use modelName-based calling (no version hash).
+      generationStartTime = Date.now();
+      const output = await replicate.run(modelConfig.modelName, {
+        input: { image: imageUrl }
+      });
+      const generationElapsedMs = Date.now() - generationStartTime;
+
+      // Clean up the staged input image if we created one.
+      if (tempFileUrl) {
+        try {
+          const bucket = admin.storage().bucket();
+          const filename = tempFileUrl.split('/').pop();
+          await bucket.file(`temp/${filename}`).delete();
+        } catch (cleanupError) {
+          console.warn('Failed to cleanup temp splat input:', cleanupError);
+        }
+      }
+
+      // Resolve the output .ply URL across the shapes Replicate can return.
+      let splatUrl;
+      if (output && output.output) {
+        splatUrl = Array.isArray(output.output) ? output.output[0] : output.output;
+      } else if (Array.isArray(output)) {
+        splatUrl = output[0];
+      } else if (typeof output === 'string') {
+        splatUrl = output;
+      } else if (output && typeof output.url === 'string') {
+        splatUrl = output.url;
+      } else {
+        console.error('Unexpected output format from SHARP:', JSON.stringify(output, null, 2));
+        throw new Error('Invalid output format from Replicate API');
+      }
+
+      if (!splatUrl || typeof splatUrl !== 'string') {
+        console.error('Invalid splat URL received:', splatUrl);
+        throw new Error('No valid splat URL returned from Replicate');
+      }
+
+      // Deduct tokens atomically only after a successful generation.
+      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+      let remainingTokens = 0;
+      let tokensBefore = 0;
+      await db.runTransaction(async (transaction) => {
+        const tokenDoc = await transaction.get(tokenProfileRef);
+        if (!tokenDoc.exists) {
+          throw new functions.https.HttpsError('not-found', 'Token profile not found');
+        }
+        const currentTokens = tokenDoc.data().genToken || 0;
+        tokensBefore = currentTokens;
+        if (currentTokens < tokenCost) {
+          throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
+        }
+        const newTokenCount = Math.max(0, currentTokens - tokenCost);
+        remainingTokens = newTokenCount;
+        transaction.update(tokenProfileRef, {
+          genToken: newTokenCount,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      });
+
+      db.collection('generationLog').add({
+        userId,
+        provider: 'replicate',
+        model: modelConfig.modelName,
+        generationType: 'splat',
+        tokenCost,
+        processingTimeMs: generationElapsedMs,
+        status: 'succeeded',
+        source,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write generationLog:', err));
+
+      db.collection('tokenLog').add({
+        userId,
+        type: 'deduction',
+        tokensBefore,
+        tokensAfter: remainingTokens,
+        tokenCost,
+        source: 'splat-generation',
+        relatedModel: modelConfig.modelName,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write tokenLog:', err));
+
+      return {
+        success: true,
+        splat_url: splatUrl,
+        message: 'Splat generated successfully!',
+        remainingTokens
+      };
+    } catch (error) {
+      console.error('Error generating splat with Replicate:', error);
+
+      // Best-effort cleanup of the staged input on failure too.
+      if (tempFileUrl) {
+        try {
+          const bucket = admin.storage().bucket();
+          const filename = tempFileUrl.split('/').pop();
+          await bucket.file(`temp/${filename}`).delete();
+        } catch (cleanupError) {
+          console.warn('Failed to cleanup temp splat input:', cleanupError);
+        }
+      }
+
+      db.collection('generationLog').add({
+        userId,
+        provider: 'replicate',
+        model: modelConfig.modelName,
+        generationType: 'splat',
+        tokenCost,
+        processingTimeMs: generationStartTime ? Date.now() - generationStartTime : null,
+        status: 'failed',
+        error: error.message,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write generationLog:', err));
+
+      if (error.code && error.code.startsWith('resource-exhausted')) {
+        throw error;
+      }
+      if (error.response) {
+        const detail = error.response.data?.detail || error.response.data || error.response.status;
+        throw new functions.https.HttpsError('internal', `Replicate API error: ${detail}`);
+      }
+      throw new functions.https.HttpsError('internal', `Failed to generate splat: ${error.message}`);
+    }
+  });
+
+module.exports = { generateReplicateImage, generateReplicateVideo, generateReplicateSplat };

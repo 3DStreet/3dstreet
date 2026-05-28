@@ -4,7 +4,7 @@ admin.initializeApp();
 const { getAuth } = require('firebase-admin/auth');
 const { serveWebXRVariant } = require('./webxr-variant.js');
 const { getGeoidHeight } = require('./geoid-height.js');
-const { generateReplicateImage, generateReplicateVideo } = require('./replicate.js');
+const { generateReplicateImage, generateReplicateVideo, generateReplicateSplat } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { generateFalImage } = require('./fal-proxy.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduled/scheduledEmails.js');
@@ -23,6 +23,7 @@ exports.getGeoidHeight = getGeoidHeight;
 // Re-export the Replicate functions
 exports.generateReplicateImage = generateReplicateImage;
 exports.generateReplicateVideo = generateReplicateVideo;
+exports.generateReplicateSplat = generateReplicateSplat;
 
 // Re-export the token management functions
 exports.checkAndRefillImageTokens = checkAndRefillImageTokens;

@@ -25,6 +25,7 @@ import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
   GLB_MAX_BYTES,
   IMAGE_MAX_BYTES,
+  SPLAT_MAX_BYTES,
   FILE_PICKER_ACCEPT,
   getAssetKind,
   isAcceptedAssetFile,
@@ -124,9 +125,11 @@ function readImageDimensions(blob) {
 
 async function createPlaceholderEntity(file, position, kind) {
   const blobUrl = URL.createObjectURL(file);
+  const kindLabel =
+    kind === 'glb' ? 'glTF Model' : kind === 'splat' ? 'Splat' : 'Image';
   const baseComponents = {
     position: position ?? '0 0 0',
-    'data-layer-name': `${kind === 'glb' ? 'glTF Model' : 'Image'} • ${file.name}`,
+    'data-layer-name': `${kindLabel} • ${file.name}`,
     // Marks the entity as carrying a transient blob: URL so the scene
     // serializer skips it. Removed (via entityupdate) on upload success.
     'data-temporary-file': 'true'
@@ -139,6 +142,16 @@ async function createPlaceholderEntity(file, position, kind) {
         ...baseComponents,
         'gltf-model': `url(${blobUrl})`,
         shadow: 'receive: true; cast: true;'
+      }
+    };
+  } else if (kind === 'splat') {
+    // The splat component (Spark) loads .ply/.splat/.spz from a URL — blob:
+    // URLs work for the local preview, then swap to the cloud URL on success.
+    definition = {
+      class: 'splat-model',
+      components: {
+        ...baseComponents,
+        splat: `src: ${blobUrl}`
       }
     };
   } else {
@@ -173,12 +186,13 @@ async function createPlaceholderEntity(file, position, kind) {
  * @param {string} asset.ownerUid
  * @param {string} asset.storageUrl
  * @param {string} asset.name
- * @param {string} asset.type     - 'mesh' | 'image'
+ * @param {string} asset.type     - 'mesh' | 'image' | 'splat'
  * @param {THREE.Vector3 | string} position
  */
 export function placeCloudAsset(asset, position) {
   if (!asset?.assetId || !getServedUrl(asset)) return;
   const isMesh = asset.type === 'mesh';
+  const isSplat = asset.type === 'splat';
   const servedUrl = getServedUrl(asset);
   const baseComponents = {
     position: position ?? '0 0 0',
@@ -186,26 +200,36 @@ export function placeCloudAsset(asset, position) {
     'data-asset-id': asset.assetId,
     'data-asset-owner-uid': asset.ownerUid
   };
-  const definition = isMesh
-    ? {
-        components: {
-          ...baseComponents,
-          'gltf-model': `url(${servedUrl})`,
-          shadow: 'receive: true; cast: true;'
-        }
+  let definition;
+  if (isMesh) {
+    definition = {
+      components: {
+        ...baseComponents,
+        'gltf-model': `url(${servedUrl})`,
+        shadow: 'receive: true; cast: true;'
       }
-    : (() => {
-        const plane = imagePlaneSize(asset.width, asset.height);
-        return {
-          element: 'a-image',
-          components: {
-            ...baseComponents,
-            src: servedUrl,
-            width: plane.width,
-            height: plane.height
-          }
-        };
-      })();
+    };
+  } else if (isSplat) {
+    // Splats use the `splat` component with a bare `src:` (no url() wrapper).
+    definition = {
+      class: 'splat-model',
+      components: {
+        ...baseComponents,
+        splat: `src: ${servedUrl}`
+      }
+    };
+  } else {
+    const plane = imagePlaneSize(asset.width, asset.height);
+    definition = {
+      element: 'a-image',
+      components: {
+        ...baseComponents,
+        src: servedUrl,
+        width: plane.width,
+        height: plane.height
+      }
+    };
+  }
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
@@ -316,7 +340,12 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     );
   }
 
-  const sizeCap = kind === 'glb' ? GLB_MAX_BYTES : IMAGE_MAX_BYTES;
+  const sizeCap =
+    kind === 'glb'
+      ? GLB_MAX_BYTES
+      : kind === 'splat'
+        ? SPLAT_MAX_BYTES
+        : IMAGE_MAX_BYTES;
   if (file.size > sizeCap) {
     const limitMb = Math.round(sizeCap / 1000 / 1000);
     captureUploadBlockedEvent(kind, 'too_large', {
@@ -444,7 +473,12 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
 
     setUpload(entityId, { status: 'uploading', progress: 0 });
     currentUploadStore.update({ status: 'uploading', progress: 0 });
-    const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
+    const assetType =
+      kind === 'glb'
+        ? ASSET_TYPES.MESH
+        : kind === 'splat'
+          ? ASSET_TYPES.SPLAT
+          : ASSET_TYPES.IMAGE;
     // The extracted `title` (if any) seeds the asset doc's Display name —
     // it's typically richer than the filename basename (e.g. "Generic
     // passenger car pack" vs. "passenger-car-pack-v2"). `title` itself is
@@ -495,8 +529,18 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     //   - the change is one history entry, undoable as a unit,
     //   - serializer picks them up on next save (data-asset-* are special-
     //     cased to persist; see src/json-utils_1.1.js).
-    const modelComponent = kind === 'glb' ? 'gltf-model' : 'src';
-    const modelValue = kind === 'glb' ? `url(${cloudUrl})` : cloudUrl;
+    let modelComponent;
+    let modelValue;
+    if (kind === 'glb') {
+      modelComponent = 'gltf-model';
+      modelValue = `url(${cloudUrl})`;
+    } else if (kind === 'splat') {
+      modelComponent = 'splat';
+      modelValue = `src: ${cloudUrl}`;
+    } else {
+      modelComponent = 'src';
+      modelValue = cloudUrl;
+    }
     AFRAME.INSPECTOR.execute(
       'multi',
       [

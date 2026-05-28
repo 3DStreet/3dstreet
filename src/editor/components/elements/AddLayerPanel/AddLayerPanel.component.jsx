@@ -372,7 +372,7 @@ const AddLayerPanel = () => {
           }
         } else {
           STREET.notify.errorMessage(
-            `Unsupported file type: ${file.name || 'file'}. Supported formats: GLB, GLTF, JPG, PNG, WebP, AVIF.`
+            `Unsupported file type: ${file.name || 'file'}. Supported formats: GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ.`
           );
         }
 
