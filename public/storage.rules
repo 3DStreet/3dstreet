@@ -29,16 +29,21 @@ service firebase.storage {
 
       // Create/update: owner-only with per-type size caps (decimal MB, base 1000):
       //   image/* : 10 MB
-      //   model/* | application/octet-stream (GLB, PLY) : 50 MB
+      //   model/* (GLB)                    : 50 MB
+      //   application/octet-stream (PLY..) : 100 MB
       //   video/* : 50 MB
       // application/octet-stream is needed for PLY files (splats); GLB blobs
       // typically arrive as model/gltf-binary but some clients send octet-stream.
+      // The octet-stream cap is 100 MB because uncompressed Gaussian Splat .ply
+      // outputs (e.g. from SHARP) can exceed 50 MB. This is the server ceiling
+      // for *generated* splats; user drag-and-drop uploads are still held to
+      // 50 MB client-side (SPLAT_MAX_BYTES in src/shared/asset-upload).
       allow create, update: if request.auth != null
         && request.auth.uid == userId
         && (
           (request.resource.contentType.matches('image/.*') && request.resource.size < 10 * 1000 * 1000)
           || (request.resource.contentType.matches('model/.*') && request.resource.size < 50 * 1000 * 1000)
-          || (request.resource.contentType.matches('application/octet-stream') && request.resource.size < 50 * 1000 * 1000)
+          || (request.resource.contentType.matches('application/octet-stream') && request.resource.size < 100 * 1000 * 1000)
           || (request.resource.contentType.matches('video/.*') && request.resource.size < 50 * 1000 * 1000)
         );
     }

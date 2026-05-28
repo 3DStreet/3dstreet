@@ -20,8 +20,11 @@ import { optimizeGlb } from './optimizeGlb.js';
 
 export const GLB_MAX_BYTES = 50 * 1000 * 1000;
 export const IMAGE_MAX_BYTES = 10 * 1000 * 1000;
-// Splats (.ply/.splat/.spz) upload as application/octet-stream, which
-// storage.rules caps at 50 MB — keep this in lockstep with that rule.
+// Client-side cap for user-initiated splat *uploads* (drag-and-drop / picker).
+// Intentionally lower than the storage.rules octet-stream ceiling (100 MB):
+// generated splats (e.g. SHARP's uncompressed .ply, ~66 MB) save server-side
+// via assetsService.addAsset and are gated only by the 100 MB rule, but we
+// don't yet want users hand-uploading huge files, so this stays at 50 MB.
 export const SPLAT_MAX_BYTES = 50 * 1000 * 1000;
 
 const GLB_EXTS = ['.glb', '.gltf'];

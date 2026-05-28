@@ -50,8 +50,11 @@ It's embedded as an `<iframe>` in two places:
 
 ### Deploying v1
 
-- **Rules:** none. `type: 'splat'` and `application/octet-stream` (≤ 50 MB)
-  were already allowed by `firestore.rules` / `storage.rules`.
+- **Rules:** `firestore.rules` unchanged (`type: 'splat'` already allowed).
+  `storage.rules` **does** change — the `application/octet-stream` cap is
+  raised from 50 MB → 100 MB so generated `.ply` splats (which can be ~66 MB
+  uncompressed) can be saved. Deploy with
+  `firebase deploy --only storage` (or include it in a combined deploy).
 - **Cloud Functions:** required — the new `generateReplicateSplat` callable.
   Note the `npm run deploy` / `deploy:staging` scripts are **hosting-only**, so
   the function must be deployed separately:
@@ -66,10 +69,18 @@ It's embedded as an `<iframe>` in two places:
   uses `splat="src: <url>"` (a **bare** `src:`, no `url()` wrapper — unlike
   `gltf-model`). `placeCloudAsset` / the upload swap branch on asset type to
   emit the right component.
-- Splats upload as `application/octet-stream`. `storage.rules` caps that at
-  **50 MB**, so `SPLAT_MAX_BYTES` is kept in lockstep. Browsers rarely set a
-  `File.type` for `.ply`/`.splat`/`.spz`, so `assetsService.addAsset` re-wraps
-  the blob with an explicit octet-stream content type before upload.
+- Splats upload as `application/octet-stream`. Two different limits apply on
+  purpose: `storage.rules` allows up to **100 MB** (the server ceiling, so
+  large *generated* splats save), while **user drag-and-drop uploads** are
+  capped at **50 MB** client-side (`SPLAT_MAX_BYTES`). The generator save path
+  (`assetsService.addAsset`) isn't subject to the client cap, so generated
+  `.ply` files up to 100 MB are allowed. Browsers rarely set a `File.type` for
+  `.ply`/`.splat`/`.spz`, so `assetsService.addAsset` re-wraps the blob with an
+  explicit octet-stream content type before upload.
+- **Future:** SHARP emits uncompressed `.ply`. Converting to a compressed
+  format (`.spz`/`.ksplat`) — client- or server-side — would cut size by ~5–10×
+  and is the cleaner long-term fix for the size ceiling; tracked for a
+  follow-up rather than v1.
 - The stored file extension is taken from the source filename
   (`.ply`/`.splat`/`.spz`/`.rad`), defaulting to `.ply`, because the `splat`
   component selects its loader by extension.
