@@ -148,7 +148,7 @@ const AssetsContent = ({
       )}
 
       {selectedItem &&
-        (selectedItem.type === 'mesh' ? (
+        (selectedItem.type === 'mesh' || selectedItem.type === 'splat' ? (
           <MeshDetailsModal
             assetId={selectedItem.id}
             ownerUid={selectedItem.userId}

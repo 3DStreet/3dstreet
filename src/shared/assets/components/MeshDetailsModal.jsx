@@ -17,7 +17,6 @@ import assetsService from '../services/assetsService.js';
 import {
   formatBytes,
   formatDate,
-  getAssetTitle,
   getOptimizationDisplay,
   getServedUrl
 } from '../utils.js';
@@ -277,15 +276,18 @@ const MeshDetailsModal = ({
     if (e.target === e.currentTarget) onClose();
   };
 
+  // This modal serves both meshes (GLB) and splats (.ply/.splat/.spz). The
+  // only type-dependent bits are the live viewer page and the type label.
+  const isSplat = data?.type === 'splat';
+  const viewerPage = isSplat ? '/splat-viewer.html' : '/model-viewer.html';
+
   // Canonical "{Type} · {Source}" title — matches the gallery card overlay
-  // and the image/video modal. For meshes, the source label is the editable
-  // display name, so the live `savedName` takes precedence over `data.name`
-  // (which only refreshes after the doc reloads).
-  const title = getAssetTitle({
-    type: 'mesh',
-    name: savedName || data?.name,
-    originalFilename: data?.originalFilename
-  });
+  // and the image/video modal. The source label is the editable display name,
+  // so the live `savedName` takes precedence over `data.name` (which only
+  // refreshes after the doc reloads).
+  const title = `${isSplat ? 'Splat' : 'Model'} · ${
+    savedName || data?.name || data?.originalFilename || 'Untitled'
+  }`;
   const showNav = onNavigate && totalItems > 1;
   const hasPrev = showNav && currentIndex > 0;
   const hasNext = showNav && currentIndex < totalItems - 1;
@@ -388,9 +390,9 @@ const MeshDetailsModal = ({
                 title={savedName || data.originalFilename || '3D model'}
                 // Don't put the editable name in the iframe URL — the src
                 // string drives the iframe's load; baking savedName in
-                // would cause model-viewer to reload on every Save name
+                // would cause the viewer to reload on every Save name
                 // click. The iframe title above is enough for a11y.
-                src={`/model-viewer.html?src=${encodeURIComponent(getServedUrl(data))}`}
+                src={`${viewerPage}?src=${encodeURIComponent(getServedUrl(data))}`}
               />
             )}
           </div>

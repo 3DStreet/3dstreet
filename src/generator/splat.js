@@ -133,12 +133,15 @@ const SplatTab = {
             </div>
 
             <!-- Result -->
-            <div id="splat-result" class="hidden text-center p-8">
-              <svg class="mx-auto h-12 w-12 text-green-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              <p class="text-sm text-gray-700 mb-4">
-                Splat saved to your gallery. Open it in the editor and drag it into a scene.
+            <div id="splat-result" class="hidden w-full p-4">
+              <iframe id="splat-viewer-frame"
+                class="w-full rounded-lg border border-gray-200 bg-[#393939]"
+                style="height: 360px;"
+                title="Splat preview"
+                allow="fullscreen"></iframe>
+              <p class="text-xs text-gray-500 mt-2 mb-3 text-center">
+                Drag to orbit · scroll to zoom. Saved to your gallery — open it in
+                the editor and drag it into a scene.
               </p>
               <div class="flex items-center justify-center gap-3">
                 <a id="splat-open-btn" href="#" target="_blank" rel="noopener"
@@ -174,6 +177,7 @@ const SplatTab = {
       loadingIndicator: byId('splat-loading-indicator'),
       loadingText: byId('splat-loading-text'),
       result: byId('splat-result'),
+      viewerFrame: byId('splat-viewer-frame'),
       openBtn: byId('splat-open-btn'),
       downloadBtn: byId('splat-download-btn')
     };
@@ -392,6 +396,9 @@ const SplatTab = {
     this.elements.placeholder.classList.add('hidden');
     this.elements.result.classList.remove('hidden');
     this.elements.openBtn.href = splatUrl;
+    // Live Spark preview in a sandboxed iframe (same pattern as the mesh
+    // model-viewer). Points at the freshly generated splat URL.
+    this.elements.viewerFrame.src = `/splat-viewer.html?src=${encodeURIComponent(splatUrl)}`;
   },
 
   async downloadSplat() {

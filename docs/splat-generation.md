@@ -31,6 +31,22 @@ transaction only after a successful generation, mirroring image/video.
 | Editor drop / gallery placement | `src/editor/lib/asset-upload/uploadAndPlaceAsset.js` |
 | Gallery card rendering (placeholder, draggable) | `src/shared/assets/components/AssetsItem.jsx` |
 | Splat rendering (existing) | `src/aframe-components/splat.js` (Spark) |
+| Live splat viewer (iframe) | `public/splat-viewer.html` |
+
+### Live preview
+
+`public/splat-viewer.html` is a standalone, self-contained Spark viewer
+(mirrors `public/model-viewer.html` for GLB): it takes `?src=<splatUrl>`,
+loads three.js + Spark from a pinned CDN via an import map, renders the splat
+with `OrbitControls`, and auto-frames the camera to the splat's bounding box.
+It's hosted in its own document so its THREE copy doesn't collide with the
+editor's `window.THREE` (set by A-Frame).
+
+It's embedded as an `<iframe>` in two places:
+- the Generator's Splat tab result panel (live preview of the just-generated
+  splat), and
+- the gallery details modal (`MeshDetailsModal`, which now serves both meshes
+  and splats and picks the viewer page + type label by asset type).
 
 ### Notes / constraints
 
