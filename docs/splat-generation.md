@@ -48,8 +48,20 @@ It's embedded as an `<iframe>` in two places:
 - the gallery details modal (`MeshDetailsModal`, which now serves both meshes
   and splats and picks the viewer page + type label by asset type).
 
-### Notes / constraints
+### Deploying v1
 
+- **Rules:** none. `type: 'splat'` and `application/octet-stream` (≤ 50 MB)
+  were already allowed by `firestore.rules` / `storage.rules`.
+- **Cloud Functions:** required — the new `generateReplicateSplat` callable.
+  Note the `npm run deploy` / `deploy:staging` scripts are **hosting-only**, so
+  the function must be deployed separately:
+  `cd public && firebase use <project> && firebase deploy --only functions:generateReplicateSplat`.
+- **Hosting:** required — generator bundle, `public/generator/index.html`,
+  `public/splat-viewer.html` (covered by `npm run deploy[:staging]`).
+- **Secrets:** none new — reuses `REPLICATE_API_TOKEN` and
+  `ALLOWED_PRO_TEAM_DOMAINS`, already set for image generation.
+
+### Notes / constraints
 - Splats render via the existing `splat` A-Frame component (Spark). The entity
   uses `splat="src: <url>"` (a **bare** `src:`, no `url()` wrapper — unlike
   `gltf-model`). `placeCloudAsset` / the upload swap branch on asset type to
