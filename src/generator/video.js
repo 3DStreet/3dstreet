@@ -8,7 +8,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '@shared/services/firebase.js';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
-import galleryService from '@shared/gallery/services/galleryServiceV2.js';
+import galleryService from '@shared/assets/services/assetsService.js';
 import { VIDEO_MODELS } from '@shared/constants/replicateModels.js';
 import { mountVideoModelSelector } from './mount-video-model-selector.js';
 
@@ -77,7 +77,7 @@ const VideoTab = {
   // Check for pending gallery item from cross-app communication
   checkForPendingGalleryItem: function () {
     try {
-      const pendingItemJson = localStorage.getItem('pendingGalleryItem');
+      const pendingItemJson = localStorage.getItem('pendingAssetItem');
       if (!pendingItemJson) return;
 
       const pendingItem = JSON.parse(pendingItemJson);
@@ -101,12 +101,12 @@ const VideoTab = {
         }
 
         // Clear the pending item after loading
-        localStorage.removeItem('pendingGalleryItem');
+        localStorage.removeItem('pendingAssetItem');
       }
     } catch (error) {
       console.error('Failed to load pending gallery item:', error);
       // Clear invalid data
-      localStorage.removeItem('pendingGalleryItem');
+      localStorage.removeItem('pendingAssetItem');
     }
   },
 

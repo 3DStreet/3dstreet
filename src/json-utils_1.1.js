@@ -78,7 +78,16 @@ function convertDOMElToObject(entity) {
 STREET.utils.convertDOMElToObject = convertDOMElToObject;
 
 function getElementData(entity) {
-  if (!entity.isEntity || entity.classList.contains('autocreated')) {
+  if (
+    !entity.isEntity ||
+    entity.classList.contains('autocreated') ||
+    entity.hasAttribute('data-temporary-file')
+  ) {
+    // data-temporary-file marks an in-flight or local-only asset upload
+    // (a gltf-model/src pointing at a transient blob: URL). Skipping these
+    // honors the design brief's "Local only — will not persist" guarantee.
+    // The marker is removed by uploadAndPlaceAsset.js once the cloud URL
+    // is wired up.
     return;
   }
   // node id's that should save without child nodes
@@ -119,6 +128,17 @@ function getAttributes(entity) {
   }
   if (entity.getAttribute('data-layer-name')) {
     elemObj['data-layer-name'] = entity.getAttribute('data-layer-name');
+  }
+  // Persistent cloud-asset identity. Other asset metadata (size, original
+  // filename, etc.) lives in Firestore at users/{ownerUid}/assets/{assetId}
+  // and is fetched on demand — only the identity pair is persisted in the scene.
+  if (entity.getAttribute('data-asset-id')) {
+    elemObj['data-asset-id'] = entity.getAttribute('data-asset-id');
+  }
+  if (entity.getAttribute('data-asset-owner-uid')) {
+    elemObj['data-asset-owner-uid'] = entity.getAttribute(
+      'data-asset-owner-uid'
+    );
   }
   const entityComponents = entity.components;
 
@@ -553,6 +573,16 @@ function createEntityFromObj(entityData, parentEl, beforeEl) {
 
   if (entityData['data-layer-name']) {
     entity.setAttribute('data-layer-name', entityData['data-layer-name']);
+  }
+
+  if (entityData['data-asset-id']) {
+    entity.setAttribute('data-asset-id', entityData['data-asset-id']);
+  }
+  if (entityData['data-asset-owner-uid']) {
+    entity.setAttribute(
+      'data-asset-owner-uid',
+      entityData['data-asset-owner-uid']
+    );
   }
 
   for (const attr in entityData.components) {

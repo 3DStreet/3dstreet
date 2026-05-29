@@ -24,7 +24,7 @@ await adminTools.auditUsers(true)
 **Report includes:**
 - Total users with PRO claims
 - Total active Stripe subscribers
-- Domain-based pro users (e.g., `uoregon.edu`)
+- Domain-based pro users (configured via the `ALLOWED_PRO_TEAM_DOMAINS` secret)
 - Valid pro users (claim matches Stripe)
 - Detailed list of each discrepancy
 
@@ -34,10 +34,46 @@ await adminTools.auditUsers(true)
 
 ---
 
+### purgeAssets
+
+Hard-deletes soft-deleted assets older than the grace window (30 days). Removes the Firestore doc and both Storage blobs (`storagePath` + `optimizedSourcePath`). Scheduled daily; this is the manual trigger.
+
+**Usage from browser console:**
+```javascript
+await adminTools.purgeAssets()        // dry run — reports candidates + bytesReclaimed*
+await adminTools.purgeAssets(false)   // actually delete
+```
+
+---
+
+### reconcileUsage
+
+Recomputes `users/{uid}/meta/usage.bytesUsed` from the source of truth (sum of `size` on non-deleted asset docs) and corrects drift. Scheduled weekly; this is the manual trigger.
+
+**Usage from browser console:**
+```javascript
+await adminTools.reconcileUsage()        // dry run — reports drifted users + sample rows
+await adminTools.reconcileUsage(false)   // actually write corrections
+```
+
+---
+
+### cleanupOrphans
+
+Deletes Storage objects under `users/*/assets/...` that no Firestore asset doc references via `storagePath`, `optimizedSourcePath`, or `thumbnailPath`. Skips objects newer than 24h to avoid racing with in-flight uploads. Scheduled monthly; this is the manual trigger.
+
+**Usage from browser console:**
+```javascript
+await adminTools.cleanupOrphans()        // dry run — lists orphans + bytesReclaimed
+await adminTools.cleanupOrphans(false)   // actually delete
+```
+
+---
+
 ## Other Admin Tools
 
 See also:
-- `triggerScheduledEmails` - Manual trigger for scheduled emails (see `../SCHEDULED_EMAILS_SYSTEM.md`)
+- `triggerScheduledEmails` - Manual trigger for scheduled emails (see `../SCHEDULED_EMAILS_SYSTEM.md`), exposed as `adminTools.triggerEmails()`
 
 ## Adding New Utilities
 

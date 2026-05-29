@@ -609,7 +609,7 @@ AFRAME.registerComponent('managed-street', {
       // Drive lane and turn lane combination would go here if needed
     }
 
-    // Special case for parking lanes - use dashed line between parking and drive lanes
+    // Special case for parking lanes - use solid line between parking and drive lanes
     if (
       currentSegment.type === 'parking-lane' ||
       previousSegment.type === 'parking-lane'

@@ -1,6 +1,6 @@
 import React from 'react';
 import Events from '../../lib/Events';
-import { printEntity } from '../../lib/entity';
+import EntityLabel from '../scenegraph/EntityLabel';
 
 export default class ViewportHUD extends React.Component {
   constructor(props) {
@@ -31,7 +31,9 @@ export default class ViewportHUD extends React.Component {
   render() {
     return (
       <div id="viewportHud">
-        <p>{printEntity(this.state.hoveredEntity)}</p>
+        <p>
+          <EntityLabel entity={this.state.hoveredEntity} />
+        </p>
       </div>
     );
   }

@@ -6,8 +6,12 @@ const { getGeoidHeight } = require('./geoid-height.js');
 const { generateReplicateImage, generateReplicateVideo } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { generateFalImage } = require('./fal-proxy.js');
-const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduledEmails.js');
+const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduled/scheduledEmails.js');
 const { auditUserSubscriptions, auditUserSubscriptionsHttp } = require('./utilities/user-audit.js');
+const { onAssetWritten, getUploadQuota } = require('./asset-quota.js');
+const { purgeSoftDeletedAssets, triggerPurgeSoftDeletedAssets } = require('./scheduled/asset-gc.js');
+const { reconcileAssetUsage, triggerReconcileAssetUsage } = require('./scheduled/asset-usage-reconcile.js');
+const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./scheduled/asset-orphan-cleanup.js');
 
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;
@@ -30,6 +34,22 @@ exports.triggerScheduledEmails = triggerScheduledEmails;
 // Re-export the user audit functions
 exports.auditUserSubscriptions = auditUserSubscriptions;
 exports.auditUserSubscriptionsHttp = auditUserSubscriptionsHttp;
+
+// Asset upload quota tracking (Firestore trigger + callable pre-flight)
+exports.onAssetWritten = onAssetWritten;
+exports.getUploadQuota = getUploadQuota;
+
+// Asset garbage collection (daily scheduled + admin-only manual trigger)
+exports.purgeSoftDeletedAssets = purgeSoftDeletedAssets;
+exports.triggerPurgeSoftDeletedAssets = triggerPurgeSoftDeletedAssets;
+
+// Asset storage usage reconciliation (weekly scheduled + admin-only manual trigger)
+exports.reconcileAssetUsage = reconcileAssetUsage;
+exports.triggerReconcileAssetUsage = triggerReconcileAssetUsage;
+
+// Orphaned Storage object cleanup (monthly scheduled + admin-only manual trigger)
+exports.cleanupOrphanedStorage = cleanupOrphanedStorage;
+exports.triggerCleanupOrphanedStorage = triggerCleanupOrphanedStorage;
 
 exports.getScene = functions
   .https

@@ -44,6 +44,7 @@ require('./aframe-components/play/delivery-bot-mesh.js');
 require('./aframe-components/play/street-traffic.js');
 require('./aframe-components/scene-timer.js');
 require('./aframe-components/geojson.js');
+require('./aframe-components/asset-fallback-system.js');
 require('./editor/index.jsx');
 var firebase = require('./shared/services/firebase.js');
 

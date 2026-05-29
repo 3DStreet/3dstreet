@@ -7,8 +7,8 @@ const DEPLOY_ENV = process.env.DEPLOY_ENV ?? 'production';
 
 module.exports = {
   performance: {
-    maxAssetSize: 3355443, // 3.2 MiB
-    maxEntrypointSize: 3355443, // 3.2 MiB
+    maxAssetSize: 3460300, // 3.3 MiB
+    maxEntrypointSize: 3460300, // 3.3 MiB
     hints: 'error',
     assetFilter: function (assetFilename) {
       // Only check named entry point bundles, not async-loaded chunks.
@@ -57,7 +57,11 @@ module.exports = {
           }
         },
         { from: 'src/notyf.min.css' },
-        { from: 'src/viewer-styles.css' }
+        { from: 'src/viewer-styles.css' },
+        // Draco's Emscripten loader fetches its WASM relative to publicPath.
+        // Copy both decoder + encoder blobs alongside the bundle.
+        { from: 'node_modules/draco3dgltf/draco_decoder_gltf.wasm' },
+        { from: 'node_modules/draco3dgltf/draco_encoder.wasm' }
       ]
     })
   ],
@@ -125,6 +129,14 @@ module.exports = {
     alias: {
       '@': path.resolve(__dirname, 'src'),
       '@shared': path.resolve(__dirname, 'src/shared')
+    },
+    // draco3dgltf's Node entry points (draco_*_nodejs.js) require('fs') /
+    // require('path') only on the Node branch; the browser branch never hits
+    // them at runtime. Telling webpack to substitute empty modules silences
+    // the static-analysis errors without affecting the WASM browser path.
+    fallback: {
+      fs: false,
+      path: false
     }
   }
 };

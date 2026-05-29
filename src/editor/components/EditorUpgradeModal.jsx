@@ -43,6 +43,8 @@ const EditorUpgradeModal = () => {
           isProTeam: status.isProTeam,
           teamDomain: status.teamDomain
         });
+        // Tell plan-dependent panels (assets storage meter, etc.) to refetch.
+        window.dispatchEvent(new Event('planChanged'));
         return true;
       }
     } catch (error) {

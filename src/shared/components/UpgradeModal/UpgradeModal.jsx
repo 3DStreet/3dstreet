@@ -103,6 +103,13 @@ const UpgradeModal = ({
   const [billingCycle, setBillingCycle] = useState('yearly');
   // Annual highlighted by default — best value, matches mockup.
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
+  // Flips true on Stripe's onComplete. Used to hide the Back button once
+  // payment is in-flight — nothing useful to go back to past that point.
+  const [paymentSubmitted, setPaymentSubmitted] = useState(false);
+  const handlePaymentSubmitted = useCallback(
+    () => setPaymentSubmitted(true),
+    []
+  );
 
   const handleClose = useCallback(() => {
     onClose();
@@ -110,6 +117,7 @@ const UpgradeModal = ({
     setSelectedPlan(null);
     setBillingCycle('yearly');
     setSubscriptionInfo(null);
+    setPaymentSubmitted(false);
   }, [onClose]);
 
   const handleGoPro = () => {
@@ -368,9 +376,11 @@ const UpgradeModal = ({
   const renderCheckout = () => (
     <>
       <div className={styles.modalHeader}>
-        <button className={styles.backButton} onClick={handleBackToPricing}>
-          ← Back
-        </button>
+        {!paymentSubmitted && (
+          <button className={styles.backButton} onClick={handleBackToPricing}>
+            ← Back
+          </button>
+        )}
         <h2 className={styles.modalTitle}>Complete your upgrade</h2>
         <button
           className={styles.closeButton}
@@ -393,6 +403,7 @@ const UpgradeModal = ({
         verifyPurchase={verifyPurchase}
         onSuccess={onSuccess}
         onClose={handleClose}
+        onPaymentSubmitted={handlePaymentSubmitted}
         successTitle={successTitle}
         successMessage={successMessage}
         successCta={successCta}

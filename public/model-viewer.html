@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Model Viewer</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #393939;
+        color: #d1d5db;
+        font-family: system-ui, sans-serif;
+      }
+      model-viewer {
+        width: 100%;
+        height: 100%;
+        background: #393939;
+        --poster-color: transparent;
+        --progress-bar-color: #8965ef;
+        --progress-bar-height: 4px;
+        --progress-mask: transparent;
+      }
+      #loader {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        pointer-events: none;
+      }
+      #loader .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(255, 255, 255, 0.12);
+        border-top-color: #8965ef;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 12px;
+      }
+      #loader .label {
+        color: #d1d5db;
+        font-size: 13px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      #err {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 13px;
+        color: #e0473d;
+      }
+    </style>
+    <script
+      type="module"
+      src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.2.0/model-viewer.min.js"
+    ></script>
+  </head>
+  <body>
+    <!-- Hosted in its own document so model-viewer's bundled THREE doesn't
+         collide with the editor's window.THREE (set by A-Frame). The parent
+         frame passes the GLB URL via the `src` query param. -->
+    <model-viewer
+      id="mv"
+      camera-controls
+      touch-action="pan-y"
+      shadow-intensity="1"
+    >
+      <!-- Override the component's default shadow-DOM poster (which
+           briefly shows a left-aligned "Loading..." string) with an
+           empty slot, so only our centered spinner is visible. -->
+      <div slot="poster"></div>
+    </model-viewer>
+    <div id="loader">
+      <div class="spinner"></div>
+      <div class="label">Loading model…</div>
+    </div>
+    <div id="err" hidden>Unable to load model</div>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const src = params.get('src');
+      const mv = document.getElementById('mv');
+      const loader = document.getElementById('loader');
+      const err = document.getElementById('err');
+      if (src) {
+        mv.src = src;
+        mv.addEventListener('load', () => {
+          loader.hidden = true;
+        });
+        mv.addEventListener('error', () => {
+          loader.hidden = true;
+          mv.hidden = true;
+          err.hidden = false;
+        });
+      } else {
+        loader.hidden = true;
+        mv.hidden = true;
+        err.textContent = 'No model URL provided';
+        err.hidden = false;
+      }
+    </script>
+  </body>
+</html>
