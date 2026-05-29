@@ -35,7 +35,11 @@ const EXCLUDE_NAME_SUBSTRINGS = [
   'measureLine',
   'selectionBox',
   'hoverBox',
-  'gridHelper'
+  'gridHelper',
+  // TASK-010 (D3): the rotation-centre ring billboard. depthTest is off
+  // so it would otherwise be a tempting raycast hit; never let it become
+  // a pivot/anchor target.
+  'navRotationIndicator'
 ];
 
 // Class-attribute / component substrings on the entity element.

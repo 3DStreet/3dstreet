@@ -39,6 +39,12 @@ export const MIN_ORBIT_RADIUS_METRES = 2;
 // Clamp the pivot in along the view ray to this distance. Feel-tunable.
 export const MAX_ORBIT_RADIUS_METRES = 100;
 
+// TASK-010 (D3): rotation-centre ring indicator's apparent on-screen
+// size, as a fraction of the camera→pivot distance. The billboard mesh
+// is scaled by `distance × this` each frame so it holds a roughly
+// constant size on screen as the camera orbits. Feel-tunable.
+export const RING_SCREEN_FRACTION = 0.04;
+
 // Wheel zoom: each "wheel-tick of budget" moves the camera by this fraction
 // of the current camera-to-anchor distance. Sign is applied by the caller.
 export const ZOOM_PER_WHEEL_TICK = 0.1;

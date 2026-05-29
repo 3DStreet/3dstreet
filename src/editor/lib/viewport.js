@@ -398,6 +398,12 @@ export function Viewport(inspector) {
     ? new ExperimentalControls(camera, inspector.container)
     : new THREE.EditorControls(camera, inspector.container);
   inspector.controls = controls; // used by ActionBar zoom/reset buttons
+  // TASK-010 (D2): attach the tilt-threshold tuning component so T is
+  // live-tweakable during feel-testing. No-op for legacy controls (they
+  // have no setTiltThreshold); only attach when experimental nav is on.
+  if (isExperimentalNav()) {
+    sceneEl.setAttribute('nav-experimental-tuning', '');
+  }
   controls.center.set(0, 1.6, 0);
   controls.rotationSpeed = 0.0035;
   controls.zoomSpeed = 0.05;
