@@ -5,11 +5,7 @@
 // A-Frame scene. See claude/specs/001-phase-2-plan.md.
 
 import {
-  TRUCK_PEDESTAL_CUTOFF_DEGREES,
-  ROTATION_BLEND_LOW_DEGREES,
-  ROTATION_BLEND_HIGH_DEGREES,
-  ROTATION_CENTER_EYE_HEIGHT_METRES,
-  SCENE_FEATHER_METRES,
+  TILT_THRESHOLD_DEFAULT_DEGREES,
   FALLBACK_FORWARD_DIST,
   MIN_TILT_DEGREES,
   MAX_TILT_DEGREES,
@@ -24,16 +20,6 @@ const DEG2RAD = Math.PI / 180;
 //   MAX_TILT_DEGREES (+89°, looking down) -> phi =   1°  (MIN_SPHERICAL_PHI)
 const MAX_SPHERICAL_PHI = (90 - MIN_TILT_DEGREES) * DEG2RAD;
 const MIN_SPHERICAL_PHI = (90 - MAX_TILT_DEGREES) * DEG2RAD;
-
-// Signed-positive distance from a horizontal point (px, pz) to an
-// axis-aligned scene rectangle. Returns 0 when the point is inside the
-// rectangle, otherwise the Euclidean distance to the nearest edge.
-// Pure helper — exported for testing; not used outside this module.
-export function distanceToAabbXZ(px, pz, aabb) {
-  const dx = Math.max(aabb.minX - px, 0, px - aabb.maxX);
-  const dz = Math.max(aabb.minZ - pz, 0, pz - aabb.maxZ);
-  return Math.hypot(dx, dz);
-}
 
 const RAD2DEG = 180 / Math.PI;
 
@@ -51,112 +37,142 @@ export function cameraTiltDegrees(camera) {
 }
 
 // LB-mode dispatch. Cuts on absolute angle from horizontal: looking up
-// by any amount = pedestal. Only "looking down by more than the cutoff"
-// gets truck/dolly.
-export function decideLbMode(tiltDeg) {
-  return tiltDeg > TRUCK_PEDESTAL_CUTOFF_DEGREES ? 'pan-truck' : 'pan-pedestal';
-}
-
-// Cubic smoothstep on an unclamped t.
-function smoothstep(t) {
-  const x = THREE.MathUtils.clamp(t, 0, 1);
-  return x * x * (3 - 2 * x);
-}
-
-// Tilt-blend weight: 1 = fully Rule 2/3 (ruleAB); 0 = fully Rule 1
-// (screen-center hit). Latched once at gesture start.
-//
-//   tilt >= HIGH (e.g. >=30°)  -> 0  (all rule 1, inclusive at HIGH)
-//   tilt <= LOW  (e.g. <=20°)  -> 1  (all rule 2/3, inclusive at LOW;
-//                                     covers all looking-up tilts)
-//   in between                 -> smoothstep ramp
-//
-// Endpoint convention: both ends inclusive — tiltBlendWeight(LOW) === 1
-// and tiltBlendWeight(HIGH) === 0. Matches smoke item R5b ("Tilt = -25°
-// is *not* in the blend zone — pure ruleAB").
-export function tiltBlendWeight(
+// by any amount = pedestal. Only "looking down by more than the
+// threshold" gets truck/dolly. `threshold` defaults to T so the helper
+// stays usable bare; callers in the controls pass the live
+// `_tiltThreshold`. Boundary convention: exactly-T → pan-pedestal
+// (Street side), matching the rotation regime's `tilt > T → Map`.
+export function decideLbMode(
   tiltDeg,
-  lo = ROTATION_BLEND_LOW_DEGREES,
-  hi = ROTATION_BLEND_HIGH_DEGREES
+  threshold = TILT_THRESHOLD_DEFAULT_DEGREES
 ) {
-  if (tiltDeg >= hi) return 0;
-  if (tiltDeg <= lo) return 1;
-  const t = (tiltDeg - lo) / (hi - lo); // 0 at LOW, 1 at HIGH
-  return 1 - smoothstep(t);
+  return tiltDeg > threshold ? 'pan-truck' : 'pan-pedestal';
 }
 
-// Compute the Rule 2/3 rotation-center position with scene-edge
-// feathering. Pure: takes the raw camera position and the bounds
-// object returned by `SceneBounds.getBounds()`. Returns a new
+// TASK-010 (live-Shift, B6): pure decision for whether an in-progress LB
+// drag should switch sub-gesture given the live Shift state. Returns the
+// sub-mode to switch *to* ('pan' | 'rotate'), or null for no change.
+// Only LB gestures ('pan' | 'rotate') switch; any other latch mode (e.g.
+// a wheel gesture, which is never latched here anyway) returns null.
+// This is where the H1/H2/H3 symmetry/idempotency correctness lives, so
+// it is extracted for unit testing without a DOM or constructed controls.
+export function decideDragModeSwitch(currentMode, shiftHeld) {
+  if (currentMode !== 'pan' && currentMode !== 'rotate') return null;
+  const desired = shiftHeld ? 'rotate' : 'pan';
+  return desired === currentMode ? null : desired;
+}
+
+// TASK-010 (D5 + far-ground cap): clamp the orbit pivot to a sane radius
+// from the camera. **Moves the pivot, never the camera** — moving the
+// camera at gesture start would be a visible teleport, whereas moving the
+// pivot only changes what we orbit. Let `v = pivot − camPos`, `r = |v|`.
+//   r === 0 (degenerate, pivot coincident with camera):
+//       camPos + fallbackDir.normalized() × minR
+//   r < minR: push the pivot *out* along the camera→pivot ray to minR.
+//   r > maxR: pull the pivot *in* along the same ray to maxR.
+//   else: pivot unchanged.
+// In the clamped cases the returned pivot is a point along the same view
+// ray at a clamped depth — no longer exactly the world point the cursor
+// grabbed (intentional; see decision log D-R1-1/2). Returns a new
 // THREE.Vector3.
-//
-// Inside / outside is tested against the scene's *AABB* (the actual
-// horizontal footprint), not the cylinder. A camera 5m off the side of
-// a 5m-wide × 100m street is correctly "outside the scene" — it
-// orbits the diorama center — rather than being deemed "inside" by a
-// 50m-radius cylinder.
-//
-//   Inside the AABB     -> Rule 3: camera position (rotate in place)
-//   Outside, far away   -> Rule 2: diorama center @ eye height
-//   In the feather zone -> smoothstep lerp from Rule 3 to Rule 2 over
-//                          `SCENE_FEATHER_METRES` extending outward
-//                          from the AABB boundary.
-//
-// Unbounded scenes (`bounded === false`) always get Rule 3.
-export function computeRuleAB(camPos, bounds) {
-  if (!bounds || !bounds.bounded || !bounds.aabb) {
-    return new THREE.Vector3(camPos.x, camPos.y, camPos.z);
-  }
-  const dist = distanceToAabbXZ(camPos.x, camPos.z, bounds.aabb);
-  const featherWidth = Math.max(1e-6, SCENE_FEATHER_METRES);
-  // u = 0 at the AABB boundary, u = 1 at (boundary + featherWidth) and
-  // beyond. Inside the AABB: dist = 0, clamps to 0 → full Rule 3.
-  const u = THREE.MathUtils.clamp(dist / featherWidth, 0, 1);
-  const w = smoothstep(u); // 0 inside-or-at-edge (Rule 3), 1 outside (Rule 2)
-  const cam = new THREE.Vector3(camPos.x, camPos.y, camPos.z);
-  const dioramaCenter = new THREE.Vector3(
-    bounds.center.x,
-    ROTATION_CENTER_EYE_HEIGHT_METRES,
-    bounds.center.z
+export function clampOrbitRadius(camPos, pivot, minR, maxR, fallbackDir) {
+  const v = new THREE.Vector3(
+    pivot.x - camPos.x,
+    pivot.y - camPos.y,
+    pivot.z - camPos.z
   );
-  return new THREE.Vector3().lerpVectors(cam, dioramaCenter, w);
+  const r = v.length();
+  if (r === 0) {
+    const dir = new THREE.Vector3(
+      fallbackDir.x,
+      fallbackDir.y,
+      fallbackDir.z
+    ).normalize();
+    return new THREE.Vector3(
+      camPos.x + dir.x * minR,
+      camPos.y + dir.y * minR,
+      camPos.z + dir.z * minR
+    );
+  }
+  if (r < minR) {
+    const k = minR / r;
+    return new THREE.Vector3(
+      camPos.x + v.x * k,
+      camPos.y + v.y * k,
+      camPos.z + v.z * k
+    );
+  }
+  if (r > maxR) {
+    const k = maxR / r;
+    return new THREE.Vector3(
+      camPos.x + v.x * k,
+      camPos.y + v.y * k,
+      camPos.z + v.z * k
+    );
+  }
+  return new THREE.Vector3(pivot.x, pivot.y, pivot.z);
 }
 
-// Combined latch-time computation. Returns the fields that should be
-// stored on the GestureLatch:
-//   { center, screenHit, blend }
-// `screenHitOrNull` is the world-space screen-center raycast hit, or
-// null if there was no scene/ground hit (sky raycast miss). When null,
-// the rotation center collapses to `ruleAB` regardless of blend weight
-// (per A3).
-//
-// The center is fully latched once computed — no per-move recompute.
-// An earlier revision returned a `liveRuleAB` flag intended for
-// per-move re-evaluation of Rule 2 ↔ Rule 3, but during a Shift+LB
-// rotate the camera position only changes via the orbit math, and
-// feeding that back into the center produced visible judder near the
-// AABB edge. See ExperimentalControls._latchRotationCenter.
-export function latchedRotationCenter(camera, bounds, screenHitOrNull) {
-  const tiltDeg = cameraTiltDegrees(camera);
-  const blend = tiltBlendWeight(tiltDeg);
-  const ruleAB = computeRuleAB(camera.position, bounds);
-
-  // No-screenHit fallback: collapse to ruleAB.
-  const effectiveScreenHit = screenHitOrNull
-    ? new THREE.Vector3(screenHitOrNull.x, screenHitOrNull.y, screenHitOrNull.z)
-    : ruleAB.clone();
-
-  const center = new THREE.Vector3().lerpVectors(
-    effectiveScreenHit,
-    ruleAB,
-    blend
+// TASK-010 (D4): underground guard for the Map-mode orbit. Keeps an
+// orbiting camera at or above `floorY` **without changing the orbit
+// radius and without changing the view orientation**. Let
+// `R = |pos − centre|` (orbit radius), `dy = floorY − centre.y`.
+//   pos.y >= floorY: unchanged.
+//   else: re-project `pos` onto the orbit sphere (centre `centre`,
+//     radius `R`) at the floor height, keeping the same azimuth:
+//       a   = atan2(pos.z − centre.z, pos.x − centre.x)
+//       rho = sqrt(R² − dy²)              (the floor-circle radius)
+//       newPos = (centre.x + rho·cos a, floorY, centre.z + rho·sin a)
+//     and shift lookTarget by the same delta so the view direction
+//     (lookTarget − pos) is bit-identical → orientation unchanged.
+// Re-projecting (rather than flattening pos.y) preserves the radius, so
+// the per-frame `rotate → clamp` pipeline neither shrinks the orbit nor
+// spirals (shiftRotateStep re-derives the offset from camera.position
+// each move and preserves |offset|; this preserves it too). Idempotent:
+// applied twice with no rotation between, the second call sees
+// pos.y === floorY (not < floorY) and is a no-op.
+//   Camera exactly over the pivot (pos.x===centre.x, pos.z===centre.z):
+//     atan2(0,0) === 0 in JS, so the re-projection lands at azimuth 0 —
+//     arbitrary but valid; only reachable in the near-degenerate
+//     straight-down-tiny-radius case.
+//   Degenerate (R < |dy|, sphere never reaches floorY — only possible
+//     for a high pivot with a tiny radius, which D5's minR makes
+//     vanishingly rare): fall back to a plain pos.y = floorY clamp with
+//     the same lookTarget delta. Accept the small radius change.
+// Returns { pos, lookTarget }, both new THREE.Vector3.
+export function applyGroundFloor(pos, lookTarget, centre, floorY) {
+  if (pos.y >= floorY) {
+    return {
+      pos: new THREE.Vector3(pos.x, pos.y, pos.z),
+      lookTarget: new THREE.Vector3(lookTarget.x, lookTarget.y, lookTarget.z)
+    };
+  }
+  const R = Math.hypot(pos.x - centre.x, pos.y - centre.y, pos.z - centre.z);
+  const dy = floorY - centre.y;
+  let newPos;
+  if (R < Math.abs(dy)) {
+    // Degenerate: sphere never reaches the floor. Plain y-clamp.
+    newPos = new THREE.Vector3(pos.x, floorY, pos.z);
+  } else {
+    const a = Math.atan2(pos.z - centre.z, pos.x - centre.x);
+    const rho = Math.sqrt(R * R - dy * dy);
+    newPos = new THREE.Vector3(
+      centre.x + rho * Math.cos(a),
+      floorY,
+      centre.z + rho * Math.sin(a)
+    );
+  }
+  const delta = new THREE.Vector3(
+    newPos.x - pos.x,
+    newPos.y - pos.y,
+    newPos.z - pos.z
   );
-
-  return {
-    center,
-    screenHit: effectiveScreenHit,
-    blend
-  };
+  const newLookTarget = new THREE.Vector3(
+    lookTarget.x + delta.x,
+    lookTarget.y + delta.y,
+    lookTarget.z + delta.z
+  );
+  return { pos: newPos, lookTarget: newLookTarget };
 }
 
 // Synthetic wheel-zoom anchor for the low-tilt branch (per

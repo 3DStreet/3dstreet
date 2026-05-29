@@ -9,33 +9,35 @@
 export const MIN_TILT_DEGREES = -89;
 export const MAX_TILT_DEGREES = 89;
 
-// Phase 2: 30° hard-cut between truck/dolly (>30° down) and truck/pedestal
-// (everything else). Cut is on absolute angle from horizontal — looking
-// up by any amount is pedestal mode.
-export const TRUCK_PEDESTAL_CUTOFF_DEGREES = 30;
+// TASK-010: the single tilt threshold T (degrees below horizontal) that
+// governs ALL four tilt-conditional behaviours — the LB truck/dolly-vs-
+// pedestal sub-mode, the wheel cursor-anchored-vs-dolly cut, the rotation
+// regime (Map orbit above T vs rotate-in-place below T), and the
+// letterbox mode indicator. This is the *default* for T; the live value
+// is held on the controls instance (`_tiltThreshold`) and is overridable
+// at runtime via the `nav-experimental-tuning` A-Frame component (D2).
+// Cut is on absolute angle from horizontal — looking up by any amount is
+// below T. Lowered from the old 30° to 18° per the mid-project review.
+export const TILT_THRESHOLD_DEFAULT_DEGREES = 18;
 
-// Phase 2: angular blend zone (in degrees below horizontal) for the
-// rotation-center lerp between Rule 1 (screen-center hit) and Rule 2/3.
-export const ROTATION_BLEND_LOW_DEGREES = 20;
-export const ROTATION_BLEND_HIGH_DEGREES = 30;
+// TASK-010 (D4): underground guard floor for the Map-mode orbit. A
+// Map-orbit around a ground-level pivot can swing the camera below
+// ground (the decoupled rotation clamps the *view*, not the *position*);
+// `applyGroundFloor` keeps the camera at or above this absolute y.
+// Absolute-y for now — AGL is TASK-013's job.
+export const ROTATION_GROUND_FLOOR_METRES = 0.5;
 
-// Phase 2: Rule 2 (diorama-center) rotation-center y-coordinate. Eye
-// height rather than ground (y=0) so a Shift+LB tilt-up gesture at street
-// level orbits around a point above the ground and the camera doesn't
-// arc underground. Assumes flat ground at y=0; non-pedestrian scene
-// scales (drone/satellite) would need a scene-aware override.
-export const ROTATION_CENTER_EYE_HEIGHT_METRES = 1.5;
+// TASK-010 (D5): minimum orbit radius. A very-close cursor pivot (only
+// reachable while staying in Map mode via Ctrl+wheel swoop-bypass) makes
+// the orbit twitchy; clamp the pivot out to at least this distance.
+export const MIN_ORBIT_RADIUS_METRES = 2;
 
-// Phase 2: scene-edge feathering width in metres. Smoothstep from Rule
-// 3 (inside the scene AABB, rotate-in-place) to Rule 2 (outside,
-// diorama center) over a feather zone extending outward from the AABB
-// boundary by this many metres. Constant in absolute units (rather
-// than a fraction of scene size) because the user-perceived "I am
-// outside the scene" distance is human-scale, not scene-scale —
-// dropping it to ~0.5m on a 5m-wide street feels jumpy, scaling it up
-// to 10m on a city scene feels mushy. 5m is the initial pick; tune
-// from feel.
-export const SCENE_FEATHER_METRES = 5;
+// TASK-010: cap on the Map-mode orbit radius. `worldPointAt` returns a
+// `'ground'` hit up to MAX_GROUND_DIST (2000m) for a slightly-down
+// cursor ray, so a distant ground pivot would give a multi-kilometre
+// lever arm and the orbit would feel like the whole world swinging.
+// Clamp the pivot in along the view ray to this distance. Feel-tunable.
+export const MAX_ORBIT_RADIUS_METRES = 100;
 
 // Wheel zoom: each "wheel-tick of budget" moves the camera by this fraction
 // of the current camera-to-anchor distance. Sign is applied by the caller.
