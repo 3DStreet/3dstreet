@@ -85,6 +85,66 @@ function _isExcludedObject(obj) {
   return false;
 }
 
+// AGL ground filter (TASK-013). Classifies a raycast hit as a *visible
+// street-segment surface* — i.e. acceptable as the "ground" beneath the
+// camera for above-ground-level (AGL) height measurement. `hit` is a
+// THREE.Intersection-like object: { object, point, distance }.
+//
+// ALLOWLIST-ONLY: accepts only hits whose owning A-Frame entity is itself
+// a `street-segment`. It deliberately does NOT call `_isExcludedObject`:
+// `street-generated-clones` / `-pedestrians` are attached to the segment
+// entities themselves, so running hits through the denylist would reject
+// most real ground surfaces. The allowlist gives chrome protection for
+// free — gizmos / helpers / TransformControls carry no `.el`, so the
+// owning-entity resolution returns null and they are rejected; a real
+// street-segment surface is never editor chrome. (Editor chrome lives in
+// `inspector.sceneHelpers`, a separate object3D subtree the downward
+// probe never traverses, so the allowlist is doubly safe.)
+export function isGroundSegmentHit(hit) {
+  if (!hit || !hit.object) return false;
+
+  // (a) Resolve owning A-Frame entity: first ancestor (inclusive) with a
+  //     truthy `.el`. DO NOT walk past it — A-Frame sets `.el` on the
+  //     entity's root object3D, not on nested gltf submeshes, so a
+  //     clone's deep submesh resolves to the *clone* entity (no
+  //     street-segment) and the segment's below-box resolves to the
+  //     *segment* entity. Climbing past the first `.el` would reincarnate
+  //     the "building roof counts as ground" bug.
+  let node = hit.object;
+  let el = null;
+  while (node) {
+    if (node.el) {
+      el = node.el;
+      break;
+    }
+    node = node.parent;
+  }
+  if (!el || !el.hasAttribute) return false;
+
+  // (b) The owning entity must ITSELF be a street-segment. A clone/model
+  //     entity has a `mixin` but no `street-segment` component — rejected
+  //     here, so the probe continues to the next (deeper) hit, which is
+  //     the road below the model.
+  if (!el.hasAttribute('street-segment')) return false;
+
+  // (c) D3: skip invisible (surface: none) segments. The segment sets
+  //     material.visible=false; three.js still raycasts it. Reject so AGL
+  //     measures to a surface the user can actually see. Check the hit
+  //     mesh's own material visibility (handle material-array), falling
+  //     back to object.visible if no material.
+  const obj = hit.object;
+  if (obj.material) {
+    const mat = obj.material;
+    const visible = Array.isArray(mat)
+      ? mat.some((m) => m && m.visible !== false)
+      : mat.visible !== false;
+    if (!visible) return false;
+  }
+  if (obj.visible === false) return false;
+
+  return true;
+}
+
 export class CursorAnchor {
   constructor({ camera, sceneEl, domElement }) {
     this._camera = camera;
@@ -178,6 +238,7 @@ export class CursorAnchor {
 // Test seam.
 export const _internals = {
   _isExcludedObject,
+  isGroundSegmentHit,
   MAX_GROUND_DIST,
   FALLBACK_FORWARD_DIST,
   EXCLUDE_NAME_SUBSTRINGS,

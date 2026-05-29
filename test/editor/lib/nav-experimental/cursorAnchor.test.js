@@ -143,3 +143,104 @@ describe('CursorAnchor.worldPointAt', () => {
     expect(_internals._isExcludedObject(obj)).toBe(false);
   });
 });
+
+describe('isGroundSegmentHit (AGL ground filter, TASK-013)', () => {
+  const { isGroundSegmentHit } = _internals;
+
+  // Build a fake THREE.Intersection-like hit with a parent chain. `attrs`
+  // = the attribute names the owning entity answers true for via
+  // hasAttribute (e.g. ['street-segment']); null = no owning entity.
+  // `depth` nests `depth` submesh parents above the entity-root leaf so
+  // the `.el` resolution has to walk up (a model's gltf submesh).
+  function makeHit({
+    attrs,
+    material,
+    objVisible = true,
+    depth = 0,
+    pointY = 0
+  }) {
+    const ownerEl = attrs
+      ? { hasAttribute: (n) => attrs.includes(n) }
+      : null;
+    const node = { el: ownerEl, parent: null }; // entity root
+    let leaf = node;
+    for (let i = 0; i < depth; i++) {
+      leaf = { el: null, parent: leaf }; // submesh without .el
+    }
+    leaf.material = material;
+    leaf.visible = objVisible;
+    return { object: leaf, point: { x: 0, y: pointY, z: 0 }, distance: 1 };
+  }
+
+  it('accepts a visible segment surface (depth 0 — the realistic case)', () => {
+    const hit = makeHit({
+      attrs: ['street-segment'],
+      material: { visible: true },
+      depth: 0
+    });
+    expect(isGroundSegmentHit(hit)).toBe(true);
+  });
+
+  it('rejects a model/clone hit via deep .el walk (the WE-4 roof case)', () => {
+    // A deep gltf submesh resolves up to the clone entity, which carries
+    // a `mixin` but NOT `street-segment` → rejected; the probe continues
+    // to the road below.
+    const hit = makeHit({
+      attrs: ['mixin'],
+      material: { visible: true },
+      depth: 3
+    });
+    expect(isGroundSegmentHit(hit)).toBe(false);
+  });
+
+  it('rejects an invisible (surface:none) segment — D3, depth 0', () => {
+    const hit = makeHit({
+      attrs: ['street-segment'],
+      material: { visible: false },
+      depth: 0
+    });
+    expect(isGroundSegmentHit(hit)).toBe(false);
+  });
+
+  it('rejects a material-array segment when all materials invisible', () => {
+    const hit = makeHit({
+      attrs: ['street-segment'],
+      material: [{ visible: false }, { visible: false }],
+      depth: 0
+    });
+    expect(isGroundSegmentHit(hit)).toBe(false);
+  });
+
+  it('accepts a material-array segment when at least one is visible', () => {
+    const hit = makeHit({
+      attrs: ['street-segment'],
+      material: [{ visible: false }, { visible: true }],
+      depth: 0
+    });
+    expect(isGroundSegmentHit(hit)).toBe(true);
+  });
+
+  it('rejects a segment whose object.visible === false (no material)', () => {
+    const hit = makeHit({
+      attrs: ['street-segment'],
+      material: undefined,
+      objVisible: false,
+      depth: 0
+    });
+    expect(isGroundSegmentHit(hit)).toBe(false);
+  });
+
+  it('rejects a raw mesh with no .el ancestor (gizmo / helper — allowlist auto-reject)', () => {
+    const hit = makeHit({
+      attrs: null,
+      material: { visible: true },
+      depth: 0
+    });
+    expect(isGroundSegmentHit(hit)).toBe(false);
+  });
+
+  it('rejects null / missing object', () => {
+    expect(isGroundSegmentHit(null)).toBe(false);
+    expect(isGroundSegmentHit({})).toBe(false);
+  });
+});
