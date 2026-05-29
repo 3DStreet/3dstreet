@@ -496,6 +496,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._cursorAnchor) this._cursorAnchor.dispose();
     if (this._indicator) this._indicator.dispose();
     if (this._tick) this._tick.dispose();
+    // TASK-010 (D2): remove the tuning component this controls instance
+    // caused viewport.js to attach, mirroring how dispose() tears down
+    // everything else it owns. The app never re-instantiates the controls
+    // today, but if it ever does, a stale component left attached would
+    // call setTiltThreshold on whatever AFRAME.INSPECTOR.controls then is.
+    if (this._sceneEl && this._sceneEl.hasAttribute('nav-experimental-tuning')) {
+      this._sceneEl.removeAttribute('nav-experimental-tuning');
+    }
     this.zoomInStop();
     this.zoomOutStop();
   }
@@ -660,6 +668,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // anchor. `_latch.start` replaces the latch's value bag wholesale, so a
   // rotate→pan switch wipes the stale rotate keys (center/regime).
   _beginPanSubGesture(clientX, clientY) {
+    // TASK-010 (D3/D6): a pan sub-gesture never shows the ring. Hide it
+    // here at the single pan-start point so a mid-drag Map-rotate→pan
+    // switch (Shift released while the button is still held) clears the
+    // ring left visible by the rotate — otherwise it leaks on the stale
+    // pivot for the rest of the drag (it only marks a Map-rotate pivot).
+    this._indicator.hide();
     const subMode = decideLbMode(
       cameraTiltDegrees(this._camera),
       this._tiltThreshold
