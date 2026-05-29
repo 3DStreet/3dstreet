@@ -4,26 +4,24 @@
  * v1: single image → 3D Gaussian Splat (.ply) via the SHARP model on Replicate
  * (kfarr/sharp-ml), called through the generateReplicateSplat Cloud Function.
  *
- * SHARP runs in ~4 minutes, so this reuses the same synchronous
- * "await the callable" pattern as image generation — no async job queue.
+ * SHARP can sit in a cold-boot queue for several minutes, so the flow is
+ * asynchronous and browser-independent: generateReplicateSplat creates a
+ * generation job (with a Replicate webhook) and returns its jobId immediately.
+ * When the job finishes, the webhook saves the .ply to the user's gallery
+ * server-side, so it lands even if this tab was closed. This UI polls
+ * getGenerationJobStatus only to reflect progress and show the result while open.
  * Photogrammetry-style inputs (zip of images / video → Teleport) are a
  * planned v2 and intentionally not built here.
  *
- * The resulting .ply is saved to the user's gallery as an ASSET_TYPES.SPLAT /
- * SPLAT_OUTPUT asset, after which it can be dragged into a scene from the
- * editor's Assets panel just like a mesh.
+ * The saved asset is an ASSET_TYPES.SPLAT / SPLAT_OUTPUT, which can be dragged
+ * into a scene from the editor's Assets panel just like a mesh.
  */
 
 import FluxUI from './main.js';
 import ImageUploadUtils from './image-upload-utils.js';
 import useImageGenStore from './store.js';
-import {
-  assetsService as galleryService,
-  ASSET_TYPES,
-  ASSET_CATEGORIES
-} from '@shared/assets';
 import { httpsCallable } from 'firebase/functions';
-import { functions, auth } from '@shared/services/firebase.js';
+import { functions } from '@shared/services/firebase.js';
 import posthog from 'posthog-js';
 
 // Fixed cost for the v1 SHARP single-image model. The authoritative charge
@@ -37,6 +35,8 @@ const SplatTab = {
   currentSplatUrl: '',
   timerInterval: null,
   startTime: null,
+  pollTimeout: null, // setTimeout handle for the status poll loop
+  pollDeadline: 0, // wall-clock ms after which we stop polling
 
   init() {
     const container = document.getElementById('splat-tab');
@@ -101,6 +101,18 @@ const SplatTab = {
             </svg>
             <span id="splat-generate-text">Generate Splat (${SPLAT_TOKEN_COST} token)</span>
           </button>
+
+          <!-- Research preview / license notice -->
+          <p class="text-[11px] leading-relaxed text-gray-400 mt-3">
+            Research preview. Splats are generated with Apple's SHARP model. By
+            generating a splat you accept the terms of the
+            <a href="https://github.com/apple/ml-sharp/blob/main/LICENSE_MODEL"
+              target="_blank" rel="noopener"
+              class="underline hover:text-gray-600">Apple Machine Learning Research Model License</a>
+            and agree this output is provided for research purposes only. Token
+            charges cover our inference-provider costs; this is not a primary
+            commercial service.
+          </p>
         </div>
 
         <!-- Preview Column -->
@@ -108,11 +120,11 @@ const SplatTab = {
           <h2 class="text-lg font-medium mb-4">Result</h2>
 
           <div id="splat-preview-container"
-            class="relative flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200"
+            class="relative flex items-center justify-center bg-[#393939] rounded-lg border border-gray-700"
             style="min-height: 320px;">
 
             <!-- Placeholder -->
-            <div id="splat-placeholder" class="text-center text-gray-400 p-8">
+            <div id="splat-placeholder" class="text-center text-gray-300 p-8">
               <svg class="mx-auto h-12 w-12 mb-3" fill="currentColor" viewBox="0 0 24 24">
                 <circle cx="7" cy="8" r="1.6" /><circle cx="13" cy="6" r="1.2" />
                 <circle cx="17" cy="10" r="1.8" /><circle cx="9" cy="13" r="1.3" />
@@ -123,13 +135,13 @@ const SplatTab = {
             </div>
 
             <!-- Loading -->
-            <div id="splat-loading-indicator" class="hidden text-center text-gray-500 p-8">
-              <svg class="mx-auto animate-spin h-10 w-10 text-indigo-600 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <div id="splat-loading-indicator" class="hidden text-center text-gray-300 p-8">
+              <svg class="mx-auto animate-spin h-10 w-10 text-indigo-400 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
               </svg>
               <p id="splat-loading-text" class="text-sm">Generating splat…</p>
-              <p class="text-xs text-gray-400 mt-1">This can take a few minutes — keep this tab open.</p>
+              <p class="text-xs text-gray-400 mt-1">This can take a few minutes. You can close this tab; your splat saves to your gallery when it's done.</p>
             </div>
 
             <!-- Result -->
@@ -290,16 +302,21 @@ const SplatTab = {
     }
   },
 
+  // Poll cadence and overall ceiling for the status loop. SHARP cold boots can
+  // run several minutes; 15 min is generous headroom before we give up locally.
+  POLL_INTERVAL_MS: 3000,
+  POLL_MAX_MS: 15 * 60 * 1000,
+
   async generateSplat() {
     if (!this.validate()) return;
 
+    this.stopPolling();
     this.toggleLoading(true);
 
     try {
       const generateReplicateSplat = httpsCallable(
         functions,
-        'generateReplicateSplat',
-        { timeout: 540000 } // 9 minutes — matches the Cloud Function timeout
+        'generateReplicateSplat'
       );
 
       const result = await generateReplicateSplat({
@@ -308,88 +325,108 @@ const SplatTab = {
         source: 'generator'
       });
 
-      if (result.data && result.data.success && result.data.splat_url) {
-        this.currentSplatUrl = result.data.splat_url;
-        await this.saveToGallery(result.data.splat_url);
-        this.showResult(result.data.splat_url);
-        this.toggleLoading(false);
-
-        FluxUI.showNotification(
-          `Splat generated! ${result.data.remainingTokens} gen tokens remaining.`,
-          'success'
-        );
-
-        posthog.capture('splat_generated', {
-          model: 'sharp-ml',
-          remaining_tokens: result.data.remainingTokens
-        });
-        if (result.data.remainingTokens === 0) {
-          posthog.capture('token_limit_reached', { context: 'splat' });
-        }
-
-        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
-      } else {
-        throw new Error('No splat returned');
+      if (!result.data || !result.data.success || !result.data.jobId) {
+        throw new Error('Could not start splat generation');
       }
+
+      // The token was charged on submit; reflect that immediately.
+      window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+
+      this.pollDeadline = Date.now() + this.POLL_MAX_MS;
+      this.pollSplatStatus(result.data.jobId);
     } catch (error) {
-      console.error('Error generating splat:', error);
-      this.toggleLoading(false);
-      this.elements.placeholder.classList.remove('hidden');
-
-      let message = 'Failed to generate splat';
-      if (error.code === 'unauthenticated') {
-        message = 'Please sign in to generate splats';
-      } else if (error.code === 'resource-exhausted') {
-        message = 'No tokens available. Please purchase more tokens.';
-      } else if (error.message) {
-        message = `Failed to generate splat: ${error.message}`;
-      }
-      FluxUI.showNotification(message, 'error');
+      console.error('Error starting splat generation:', error);
+      this.failGeneration(this.errorMessage(error));
     }
   },
 
-  /**
-   * Fetch the generated .ply and persist it to the user's gallery as a
-   * SPLAT_OUTPUT asset. We re-wrap as application/octet-stream so the upload
-   * carries a content type the Storage rules accept for splats.
-   */
-  async saveToGallery(splatUrl) {
-    const currentUser = auth.currentUser;
-    if (!currentUser) return;
+  // Poll getGenerationJobStatus until the job is terminal. Re-schedules itself
+  // with setTimeout (not setInterval) so a slow request can't overlap the next
+  // tick. Any non-terminal status (queued|running|saving) just keeps polling.
+  async pollSplatStatus(jobId) {
+    const getGenerationJobStatus = httpsCallable(
+      functions,
+      'getGenerationJobStatus'
+    );
 
     try {
-      const response = await fetch(splatUrl);
-      const arrayBuffer = await response.arrayBuffer();
-      const blob = new Blob([arrayBuffer], {
-        type: 'application/octet-stream'
-      });
+      const { data } = await getGenerationJobStatus({ jobId });
 
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const metadata = {
-        model: 'sharp-ml',
-        model_name: 'SHARP (Image to Splat)',
-        sourceType: 'image',
-        timestamp: new Date().toISOString(),
-        // originalFilename drives the stored file extension (.ply for SHARP).
-        originalFilename: `sharp-splat-${stamp}.ply`,
-        name: `SHARP Splat ${stamp}`
-      };
+      if (data.status === 'succeeded' && data.splat_url) {
+        // The splat was saved to the gallery server-side (works even if this
+        // tab had been closed). Just reflect it in the UI and refresh the
+        // gallery island so the new asset shows up.
+        this.currentSplatUrl = data.splat_url;
+        this.showResult(data.splat_url);
+        this.toggleLoading(false);
+        window.dispatchEvent(new Event('assets:refresh'));
+        FluxUI.showNotification('Splat generated!', 'success');
+        posthog.capture('splat_generated', { model: 'sharp-ml' });
+        return;
+      }
 
-      await galleryService.init();
-      await galleryService.addAsset(
-        blob,
-        metadata,
-        ASSET_TYPES.SPLAT,
-        ASSET_CATEGORIES.SPLAT_OUTPUT,
-        currentUser.uid
+      if (data.status === 'failed' || data.status === 'canceled') {
+        // The server refunds on failure; refresh the displayed balance.
+        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+        this.failGeneration(
+          data.error
+            ? `Splat generation failed: ${data.error}`
+            : 'Splat generation failed. Your token was refunded.'
+        );
+        return;
+      }
+
+      // Still starting/processing — keep polling until the deadline.
+      if (Date.now() > this.pollDeadline) {
+        this.failGeneration(
+          'Splat generation is taking longer than expected. Check your gallery shortly.'
+        );
+        return;
+      }
+      this.pollTimeout = setTimeout(
+        () => this.pollSplatStatus(jobId),
+        this.POLL_INTERVAL_MS
       );
-    } catch (e) {
-      console.error('Failed to save splat to gallery:', e);
-      FluxUI.showNotification(
-        'Splat generated, but saving to your gallery failed.',
-        'warning'
+    } catch (error) {
+      console.error('Error polling splat status:', error);
+      // Transient poll error — retry until the deadline rather than failing hard.
+      if (Date.now() > this.pollDeadline) {
+        this.failGeneration(this.errorMessage(error));
+        return;
+      }
+      this.pollTimeout = setTimeout(
+        () => this.pollSplatStatus(jobId),
+        this.POLL_INTERVAL_MS
       );
     }
+  },
+
+  stopPolling() {
+    if (this.pollTimeout) {
+      clearTimeout(this.pollTimeout);
+      this.pollTimeout = null;
+    }
+  },
+
+  // Reset to the idle placeholder state and surface an error toast.
+  failGeneration(message) {
+    this.stopPolling();
+    this.toggleLoading(false);
+    this.elements.placeholder.classList.remove('hidden');
+    FluxUI.showNotification(message, 'error');
+  },
+
+  errorMessage(error) {
+    if (error.code === 'unauthenticated') {
+      return 'Please sign in to generate splats';
+    }
+    if (error.code === 'resource-exhausted') {
+      return 'No tokens available. Please purchase more tokens.';
+    }
+    if (error.message) {
+      return `Failed to generate splat: ${error.message}`;
+    }
+    return 'Failed to generate splat';
   },
 
   showResult(splatUrl) {

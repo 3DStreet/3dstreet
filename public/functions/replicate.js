@@ -1,6 +1,9 @@
 const functions = require('firebase-functions/v1');
 const Replicate = require('replicate');
 const admin = require('firebase-admin');
+const crypto = require('crypto');
+const { Readable } = require('stream');
+const { pipeline } = require('stream/promises');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
 const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS, REPLICATE_MODELS } = require('./replicate-models.js');
 
@@ -778,14 +781,16 @@ const generateReplicateVideo = functions
   });
 
 // Replicate API function for image → Gaussian Splat generation (SHARP).
-// v1 is synchronous: SHARP completes in ~4 minutes on a T4, comfortably within
-// the function timeout, so we reuse the same wait-on-the-call pattern as image
-// generation. Larger photogrammetry jobs (zip-of-images / video → Teleport)
-// will need an async job queue and are intentionally out of scope here.
+// Asynchronous: this creates the Replicate prediction and returns its id
+// immediately, then the client polls getGenerationJobStatus until terminal.
+// SHARP can sit in a cold-boot queue for minutes, so we never hold the callable
+// connection open for the whole run — an idle connection held that long gets
+// dropped, surfacing as a spurious client error even though the job ultimately
+// succeeds on Replicate.
 const generateReplicateSplat = functions
   .runWith({
     secrets: ['REPLICATE_API_TOKEN', 'ALLOWED_PRO_TEAM_DOMAINS'],
-    timeoutSeconds: 540 // 9 minutes — SHARP usually ~4 min, leave headroom
+    timeoutSeconds: 120 // creation only (stage image + create prediction)
   })
   .https
   .onCall(async (data, context) => {
@@ -826,8 +831,7 @@ const generateReplicateSplat = functions
     }
 
     const db = admin.firestore();
-    let generationStartTime;
-    let tempFileUrl = null;
+    let tempFilePath = null;
 
     try {
       const replicate = new Replicate({
@@ -859,81 +863,147 @@ const generateReplicateSplat = functions
         });
         await file.makePublic();
         imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
-        tempFileUrl = imageUrl;
+        tempFilePath = `temp/${filename}`;
       }
 
       // SHARP (kfarr/sharp-ml) takes a single `image` input and returns a
-      // .ply Gaussian Splat. Use modelName-based calling (no version hash).
-      generationStartTime = Date.now();
-      const output = await replicate.run(modelConfig.modelName, {
-        input: { image: imageUrl }
+      // .ply Gaussian Splat. It's a community model (not an official Replicate
+      // model), so the bare `owner/name` predictions endpoint 404s — we must
+      // pin an explicit version. Resolve the latest version at runtime so the
+      // model owner can re-push without a code change.
+      const [modelOwner, modelSlug] = modelConfig.modelName.split('/');
+      const splatModel = await replicate.models.get(modelOwner, modelSlug);
+      const splatVersion = splatModel?.latest_version?.id;
+      if (!splatVersion) {
+        throw new Error(`Could not resolve a version for ${modelConfig.modelName}`);
+      }
+
+      // Generate the durable job identity up front. The internal `jobId` (a
+      // uuid) is the Firestore doc id, NOT the Replicate prediction id — that's
+      // stored as `providerJobId`. This lets us write a `pending` row BEFORE
+      // submit (a crash mid-submit becomes a visible, reconcilable job), keeps
+      // job identity uniform across providers/kinds, and lets the webhook URL
+      // carry a stable jobId that's frozen at submit time.
+      const jobId = crypto.randomUUID();
+      const webhookSecret = crypto.randomUUID();
+      const jobRef = db
+        .collection('users').doc(userId)
+        .collection('generationJobs').doc(jobId);
+
+      // Stable names for the saved gallery asset, fixed at submit so both the
+      // webhook and poll paths produce identical metadata.
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const originalFilename = `sharp-splat-${stamp}.ply`;
+      const assetName = `SHARP Splat ${stamp}`;
+
+      // Write the pending job before submitting. Completion is handled two ways,
+      // both converging on the same idempotent processing:
+      //   1. A Replicate webhook (replicateJobWebhook) — fires when the job
+      //      finishes and saves the splat to the gallery server-side, so it
+      //      works even if the user has closed the browser.
+      //   2. Client polling (getGenerationJobStatus) — drives live UI when the
+      //      tab is open and acts as a fallback if webhook delivery fails.
+      // We store a normalized status vocabulary (queued|running|saving|
+      // succeeded|failed|canceled) and keep the raw provider value as
+      // `providerStatus`, so the reconciler's "find non-terminal jobs" query
+      // stays provider-agnostic.
+      await jobRef.set({
+        status: 'queued',
+        providerStatus: null,
+        kind: 'splat',
+        provider: 'replicate',
+        providerJobId: null,
+        model: modelConfig.modelName,
+        modelId: model_id,
+        source,
+        tokenCost,
+        tokenCharged: false,
+        refunded: false,
+        tempFilePath: tempFilePath || null,
+        webhookSecret,
+        originalFilename,
+        assetName,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
-      const generationElapsedMs = Date.now() - generationStartTime;
 
-      // Clean up the staged input image if we created one.
-      if (tempFileUrl) {
-        try {
-          const bucket = admin.storage().bucket();
-          const filename = tempFileUrl.split('/').pop();
-          await bucket.file(`temp/${filename}`).delete();
-        } catch (cleanupError) {
-          console.warn('Failed to cleanup temp splat input:', cleanupError);
-        }
+      // The webhook URL carries the owner uid (to locate the job doc), the
+      // internal jobId (the doc id), and a per-job secret (to gate the
+      // endpoint). We never trust the webhook body; both paths re-fetch the
+      // prediction from Replicate authoritatively. Region comes from the
+      // runtime env so a region change doesn't strand already-frozen URLs.
+      const projectId =
+        process.env.GCLOUD_PROJECT ||
+        process.env.GOOGLE_CLOUD_PROJECT ||
+        admin.app().options.projectId;
+      const region = process.env.FUNCTION_REGION || 'us-central1';
+      const webhookUrl =
+        `https://${region}-${projectId}.cloudfunctions.net/replicateJobWebhook` +
+        `?jobId=${jobId}&uid=${userId}&token=${webhookSecret}`;
+
+      let prediction;
+      try {
+        prediction = await replicate.predictions.create({
+          version: splatVersion,
+          input: { image: imageUrl },
+          webhook: webhookUrl,
+          webhook_events_filter: ['completed']
+        });
+      } catch (createError) {
+        await jobRef.update({
+          status: 'failed',
+          error: `Failed to create prediction: ${createError.message}`,
+          completedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        throw createError;
       }
 
-      // Resolve the output .ply URL across the shapes Replicate can return.
-      let splatUrl;
-      if (output && output.output) {
-        splatUrl = Array.isArray(output.output) ? output.output[0] : output.output;
-      } else if (Array.isArray(output)) {
-        splatUrl = output[0];
-      } else if (typeof output === 'string') {
-        splatUrl = output;
-      } else if (output && typeof output.url === 'string') {
-        splatUrl = output.url;
-      } else {
-        console.error('Unexpected output format from SHARP:', JSON.stringify(output, null, 2));
-        throw new Error('Invalid output format from Replicate API');
-      }
-
-      if (!splatUrl || typeof splatUrl !== 'string') {
-        console.error('Invalid splat URL received:', splatUrl);
-        throw new Error('No valid splat URL returned from Replicate');
-      }
-
-      // Deduct tokens atomically only after a successful generation.
+      // Charge on submit. Re-validate inside the transaction to avoid a race;
+      // getGenerationJobStatus refunds (once) if Replicate later reports failure.
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
       let remainingTokens = 0;
       let tokensBefore = 0;
-      await db.runTransaction(async (transaction) => {
-        const tokenDoc = await transaction.get(tokenProfileRef);
-        if (!tokenDoc.exists) {
-          throw new functions.https.HttpsError('not-found', 'Token profile not found');
-        }
-        const currentTokens = tokenDoc.data().genToken || 0;
-        tokensBefore = currentTokens;
-        if (currentTokens < tokenCost) {
-          throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
-        }
-        const newTokenCount = Math.max(0, currentTokens - tokenCost);
-        remainingTokens = newTokenCount;
-        transaction.update(tokenProfileRef, {
-          genToken: newTokenCount,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      try {
+        await db.runTransaction(async (transaction) => {
+          const tokenDoc = await transaction.get(tokenProfileRef);
+          if (!tokenDoc.exists) {
+            throw new functions.https.HttpsError('not-found', 'Token profile not found');
+          }
+          const currentTokens = tokenDoc.data().genToken || 0;
+          tokensBefore = currentTokens;
+          if (currentTokens < tokenCost) {
+            throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
+          }
+          const newTokenCount = Math.max(0, currentTokens - tokenCost);
+          remainingTokens = newTokenCount;
+          transaction.update(tokenProfileRef, {
+            genToken: newTokenCount,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
         });
-      });
+      } catch (chargeError) {
+        // Couldn't charge — cancel the prediction so we don't run unpaid work.
+        try {
+          await replicate.predictions.cancel(prediction.id);
+        } catch (cancelError) {
+          console.warn('Failed to cancel unpaid prediction:', cancelError);
+        }
+        await jobRef.update({
+          status: 'failed',
+          error: 'Token charge failed.',
+          completedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        await cleanupSplatTempFile(tempFilePath);
+        throw chargeError;
+      }
 
-      db.collection('generationLog').add({
-        userId,
-        provider: 'replicate',
-        model: modelConfig.modelName,
-        generationType: 'splat',
-        tokenCost,
-        processingTimeMs: generationElapsedMs,
-        status: 'succeeded',
-        source,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      }).catch(err => console.error('Failed to write generationLog:', err));
+      // Now that it's paid and submitted, promote to the provider's live status
+      // and record its identity so the webhook + poll paths can re-fetch it.
+      await jobRef.update({
+        status: normalizeReplicateStatus(prediction.status),
+        providerStatus: prediction.status || null,
+        providerJobId: prediction.id,
+        tokenCharged: true
+      });
 
       db.collection('tokenLog').add({
         userId,
@@ -948,23 +1018,15 @@ const generateReplicateSplat = functions
 
       return {
         success: true,
-        splat_url: splatUrl,
-        message: 'Splat generated successfully!',
+        jobId,
+        status: normalizeReplicateStatus(prediction.status),
         remainingTokens
       };
     } catch (error) {
-      console.error('Error generating splat with Replicate:', error);
+      console.error('Error creating splat prediction:', error);
 
-      // Best-effort cleanup of the staged input on failure too.
-      if (tempFileUrl) {
-        try {
-          const bucket = admin.storage().bucket();
-          const filename = tempFileUrl.split('/').pop();
-          await bucket.file(`temp/${filename}`).delete();
-        } catch (cleanupError) {
-          console.warn('Failed to cleanup temp splat input:', cleanupError);
-        }
-      }
+      // Best-effort cleanup of the staged input on failure.
+      await cleanupSplatTempFile(tempFilePath);
 
       db.collection('generationLog').add({
         userId,
@@ -972,21 +1034,496 @@ const generateReplicateSplat = functions
         model: modelConfig.modelName,
         generationType: 'splat',
         tokenCost,
-        processingTimeMs: generationStartTime ? Date.now() - generationStartTime : null,
         status: 'failed',
         error: error.message,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       }).catch(err => console.error('Failed to write generationLog:', err));
 
-      if (error.code && error.code.startsWith('resource-exhausted')) {
+      if (error instanceof functions.https.HttpsError) {
         throw error;
       }
       if (error.response) {
         const detail = error.response.data?.detail || error.response.data || error.response.status;
         throw new functions.https.HttpsError('internal', `Replicate API error: ${detail}`);
       }
-      throw new functions.https.HttpsError('internal', `Failed to generate splat: ${error.message}`);
+      throw new functions.https.HttpsError('internal', `Failed to create splat: ${error.message}`);
     }
   });
 
-module.exports = { generateReplicateImage, generateReplicateVideo, generateReplicateSplat };
+// Best-effort delete of a staged splat input image. Safe to call with null, or
+// twice — failures are swallowed.
+async function cleanupSplatTempFile(tempFilePath) {
+  if (!tempFilePath) return;
+  try {
+    await admin.storage().bucket().file(tempFilePath).delete();
+  } catch (cleanupError) {
+    console.warn('Failed to cleanup temp splat input:', cleanupError);
+  }
+}
+
+// How long a `status: 'saving'` claim is trusted before another caller may
+// re-take it. A save that's killed mid-flight (e.g. an OOM while downloading a
+// large .ply) never releases its claim, so without this the job would wedge in
+// 'saving' forever. Sized well above a normal download+upload.
+const SAVING_CLAIM_TTL_MS = 3 * 60 * 1000;
+
+// Map a raw Replicate prediction status onto our own normalized vocabulary
+// (queued|running|succeeded|failed|canceled). Keeping a provider-agnostic enum
+// in the job doc means the reconciler's "non-terminal" query never needs a
+// per-provider list of in-flight strings. `saving` is an internal claim state,
+// not a provider status, so it isn't produced here.
+function normalizeReplicateStatus(status) {
+  switch (status) {
+    case 'succeeded':
+      return 'succeeded';
+    case 'failed':
+      return 'failed';
+    case 'canceled':
+    case 'cancelled':
+      return 'canceled';
+    case 'starting':
+      return 'queued';
+    case 'processing':
+    default:
+      return 'running';
+  }
+}
+
+// SHARP's output can come back as a bare string, an array, or an object with a
+// url/output field depending on the client path. Normalize to a single URL.
+function extractSplatUrl(output) {
+  if (!output) return null;
+  if (typeof output === 'string') return output;
+  if (Array.isArray(output)) return typeof output[0] === 'string' ? output[0] : null;
+  if (typeof output.output !== 'undefined') return extractSplatUrl(output.output);
+  if (typeof output.url === 'string') return output.url;
+  return null;
+}
+
+// Refund a failed splat job's charge exactly once, guarded by the job's
+// `refunded` flag inside a transaction. Returns the resulting token count, or
+// undefined if there was nothing to refund / the refund failed.
+async function refundSplatToken(db, userId, jobRef, job) {
+  if (job.refunded || !job.tokenCharged) return undefined;
+  const tokenCost = job.tokenCost || 1;
+  const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+  let remainingTokens;
+  try {
+    await db.runTransaction(async (transaction) => {
+      const jobDoc = await transaction.get(jobRef);
+      if (jobDoc.exists && jobDoc.data().refunded) {
+        return; // another poll already refunded
+      }
+      const tokenDoc = await transaction.get(tokenProfileRef);
+      if (!tokenDoc.exists) {
+        transaction.update(jobRef, { refunded: true });
+        return;
+      }
+      const currentTokens = tokenDoc.data().genToken || 0;
+      remainingTokens = currentTokens + tokenCost;
+      transaction.update(tokenProfileRef, {
+        genToken: remainingTokens,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      transaction.update(jobRef, { refunded: true });
+    });
+  } catch (error) {
+    console.error('Failed to refund splat token:', error);
+    return undefined;
+  }
+  if (typeof remainingTokens !== 'undefined') {
+    db.collection('tokenLog').add({
+      userId,
+      type: 'refund',
+      tokenCost,
+      source: 'splat-generation-failed',
+      relatedModel: job.model,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    }).catch(err => console.error('Failed to write tokenLog:', err));
+  }
+  return remainingTokens;
+}
+
+// Copy the finished .ply from Replicate's (short-lived) CDN URL into the user's
+// gallery server-side — the same asset contract assetsService.addAsset writes
+// client-side (Storage file + users/{uid}/assets/{assetId} doc), so the editor
+// Assets panel and the onAssetWritten quota trigger pick it up unchanged. We
+// set a firebaseStorageDownloadTokens so anonymous viewers can load the file.
+//
+// The transfer is *streamed* (download piped straight into the Storage write
+// stream) rather than buffered via arrayBuffer/Buffer — so memory stays flat
+// (a few MB) regardless of splat size, instead of holding two full copies of
+// the file. This is what lets the function run in modest memory.
+async function saveSplatToGallery(userId, plyUrl, job) {
+  validateSplatUserId(userId);
+
+  const response = await fetch(plyUrl);
+  if (!response.ok || !response.body) {
+    throw new Error(`Failed to download splat from Replicate (${response.status})`);
+  }
+
+  const assetId = crypto.randomUUID();
+  const filename = `${assetId}.ply`;
+  const storagePath = `users/${userId}/assets/splats/${filename}`;
+  const downloadToken = crypto.randomUUID();
+
+  const bucket = admin.storage().bucket();
+  const file = bucket.file(storagePath);
+  const writeStream = file.createWriteStream({
+    // Leave resumable at its default (true): it uploads in chunks and keeps
+    // memory bounded. resumable:false would buffer the whole payload to compute
+    // a single request — the very thing we're avoiding.
+    metadata: {
+      contentType: 'application/octet-stream',
+      metadata: {
+        firebaseStorageDownloadTokens: downloadToken,
+        assetRole: 'original',
+        assetId
+      }
+    }
+  });
+  await pipeline(Readable.fromWeb(response.body), writeStream);
+
+  // We streamed, so the byte count isn't in hand — read it back authoritatively
+  // from the stored object for the asset doc / quota trigger.
+  const [meta] = await file.getMetadata();
+  const size = Number(meta.size) || 0;
+
+  const storageUrl =
+    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
+    `${encodeURIComponent(storagePath)}?alt=media&token=${downloadToken}`;
+
+  const originalFilename = job.originalFilename || filename;
+  const lastDot = originalFilename.lastIndexOf('.');
+  const defaultName =
+    lastDot > 0 ? originalFilename.slice(0, lastDot) : originalFilename;
+  const now = admin.firestore.FieldValue.serverTimestamp();
+
+  await admin
+    .firestore()
+    .collection('users').doc(userId)
+    .collection('assets').doc(assetId)
+    .set({
+      assetId,
+      userId,
+      type: 'splat',
+      category: 'splat-output',
+      storagePath,
+      storageUrl,
+      name: job.assetName || defaultName,
+      filename,
+      originalFilename,
+      size,
+      mimeType: 'application/octet-stream',
+      generationMetadata: {
+        model: job.model || 'kfarr/sharp-ml',
+        model_name: 'SHARP (Image to Splat)',
+        sourceType: 'image',
+        source: job.source || 'generator',
+        predictionId: job.predictionId || null,
+        timestamp: new Date().toISOString()
+      },
+      createdAt: now,
+      updatedAt: now,
+      uploadedAt: now,
+      publishedAt: now,
+      visibility: 'public',
+      tags: [],
+      collections: [],
+      deleted: false
+    });
+
+  return { assetId, storageUrl };
+}
+
+// Guard a uid before using it in a Storage/Firestore path. Mirrors the client's
+// validateUserIdForPath so a forged webhook uid can't escape the user subtree.
+function validateSplatUserId(userId) {
+  if (!userId || typeof userId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(userId)) {
+    throw new Error('Invalid user id for splat path');
+  }
+}
+
+// Idempotently handle a terminal Replicate prediction. Called by BOTH the
+// webhook and the poller, possibly concurrently, so the success path claims the
+// save by flipping status → 'saving' in a transaction; only the winner uploads.
+// Failure refunds once (guarded by refundSplatToken). Returns a client-facing
+// status object.
+async function processTerminalPrediction(db, userId, jobRef, prediction) {
+  const normalized = normalizeReplicateStatus(prediction.status);
+
+  if (normalized === 'succeeded') {
+    // Claim the save so a racing caller can't double-upload. The claim is
+    // time-bounded: a stale 'saving' (older than SAVING_CLAIM_TTL_MS, i.e. a
+    // prior save that was killed before releasing it) can be re-taken.
+    let claimed = false;
+    let job = {};
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(jobRef);
+      job = snap.data() || {};
+      if (job.status === 'succeeded') {
+        return; // already saved
+      }
+      if (job.status === 'saving') {
+        const startedAt =
+          job.savingStartedAt && job.savingStartedAt.toMillis
+            ? job.savingStartedAt.toMillis()
+            : 0;
+        if (Date.now() - startedAt < SAVING_CLAIM_TTL_MS) {
+          return; // a live save is in progress; don't double-upload
+        }
+        // stale claim — the prior save likely crashed; re-take it.
+      }
+      claimed = true;
+      tx.update(jobRef, {
+        status: 'saving',
+        savingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
+        providerStatus: prediction.status
+      });
+    });
+
+    if (!claimed) {
+      const snap = await jobRef.get();
+      const j = snap.data() || {};
+      // A live save is in progress — report it as still running so the client
+      // keeps polling; it'll flip to 'succeeded' shortly.
+      return {
+        status: j.status === 'succeeded' ? 'succeeded' : 'running',
+        splat_url: j.splatUrl,
+        assetId: j.assetId,
+        error: j.error
+      };
+    }
+
+    const splatUrl = extractSplatUrl(prediction.output);
+    if (!splatUrl) {
+      console.error('Unexpected SHARP output:', JSON.stringify(prediction.output, null, 2));
+      const remainingTokens = await refundSplatToken(db, userId, jobRef, job);
+      await cleanupSplatTempFile(job.tempFilePath);
+      await jobRef.update({
+        status: 'failed',
+        error: 'Invalid output from model.',
+        completedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      return { status: 'failed', error: 'Invalid output from model.', remainingTokens };
+    }
+
+    try {
+      const { assetId, storageUrl } = await saveSplatToGallery(userId, splatUrl, {
+        ...job,
+        predictionId: job.providerJobId || jobRef.id
+      });
+      await cleanupSplatTempFile(job.tempFilePath);
+      await jobRef.update({
+        status: 'succeeded',
+        assetId,
+        splatUrl: storageUrl,
+        completedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      db.collection('generationLog').add({
+        userId,
+        provider: 'replicate',
+        model: job.model,
+        generationType: 'splat',
+        tokenCost: job.tokenCost,
+        status: 'succeeded',
+        source: job.source,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write generationLog:', err));
+      return { status: 'succeeded', splat_url: storageUrl, assetId };
+    } catch (saveError) {
+      console.error('Failed to save splat to gallery:', saveError);
+      // Release the claim so a webhook retry / next poll can re-attempt.
+      await jobRef.update({ status: 'running' });
+      throw new functions.https.HttpsError('internal', `Failed to save splat: ${saveError.message}`);
+    }
+  }
+
+  if (normalized === 'failed' || normalized === 'canceled') {
+    const snap = await jobRef.get();
+    const job = snap.data() || {};
+    const remainingTokens = await refundSplatToken(db, userId, jobRef, job);
+    await cleanupSplatTempFile(job.tempFilePath);
+    await jobRef.update({
+      status: normalized,
+      providerStatus: prediction.status,
+      error: prediction.error || 'Splat generation failed.',
+      completedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    db.collection('generationLog').add({
+      userId,
+      provider: 'replicate',
+      model: job.model,
+      generationType: 'splat',
+      tokenCost: job.tokenCost,
+      status: 'failed',
+      error: prediction.error || null,
+      source: job.source,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    }).catch(err => console.error('Failed to write generationLog:', err));
+    return {
+      status: normalized,
+      error: prediction.error || 'Splat generation failed.',
+      remainingTokens
+    };
+  }
+
+  // queued | running — not terminal yet. Keep the raw status fresh for debugging.
+  await jobRef.update({ status: normalized, providerStatus: prediction.status || null });
+  return { status: normalized };
+}
+
+// Poller companion to the generation submit functions. Drives live UI while
+// the tab is open and acts as a fallback if webhook delivery fails. Reads the
+// job doc first (the webhook may have already finished the work), otherwise
+// asks the provider and runs the shared idempotent processor. Generic across
+// Replicate kinds today; provider dispatch becomes a registry when fal/Teleport
+// land.
+const getGenerationJobStatus = functions
+  .runWith({
+    secrets: ['REPLICATE_API_TOKEN'],
+    // saveSplatToGallery streams the .ply through (no full-file buffering), so
+    // memory no longer scales with splat size. 512 MB is fixed headroom over the
+    // firebase-admin cold-start baseline, not sized to the file.
+    memory: '512MB'
+  })
+  .https
+  .onCall(async (data, context) => {
+    if (!process.env.REPLICATE_API_TOKEN) {
+      throw new functions.https.HttpsError('failed-precondition', 'Generation service is not properly configured.');
+    }
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
+    }
+
+    const userId = context.auth.uid;
+    const { jobId } = data || {};
+    if (!jobId) {
+      throw new functions.https.HttpsError('invalid-argument', 'Missing jobId.');
+    }
+
+    const db = admin.firestore();
+    const jobRef = db.collection('users').doc(userId).collection('generationJobs').doc(jobId);
+    const jobSnap = await jobRef.get();
+    if (!jobSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'Unknown generation job.');
+    }
+    const job = jobSnap.data();
+
+    // Terminal in our records (likely the webhook already handled it).
+    if (job.status === 'succeeded' && job.splatUrl) {
+      return { status: 'succeeded', splat_url: job.splatUrl, assetId: job.assetId };
+    }
+    if (job.status === 'failed' || job.status === 'canceled') {
+      return { status: job.status, error: job.error || 'Generation failed.' };
+    }
+    // Submitted but the provider id hasn't been recorded yet (brief create
+    // window). Report queued; the next poll will have it.
+    if (!job.providerJobId) {
+      return { status: job.status || 'queued' };
+    }
+    // queued | running | saving → re-fetch from the provider and run the shared
+    // processor. It owns the (stale-aware) save claim, so calling it while
+    // another caller is mid-save is safe, and it recovers a crashed save.
+
+    const replicate = new Replicate({
+      auth: process.env.REPLICATE_API_TOKEN,
+      useFileOutput: false
+    });
+
+    let prediction;
+    try {
+      prediction = await replicate.predictions.get(job.providerJobId);
+    } catch (error) {
+      console.error('Failed to fetch prediction status:', error);
+      throw new functions.https.HttpsError('internal', `Failed to fetch generation status: ${error.message}`);
+    }
+
+    return processTerminalPrediction(db, userId, jobRef, prediction);
+  });
+
+// Replicate webhook target — makes completion browser-independent. One endpoint
+// for all Replicate kinds. Replicate POSTs here when a job finishes
+// (webhook_events_filter: ['completed']). We don't trust the payload: the uid +
+// internal jobId + per-job secret in the query string gate the request, then we
+// re-fetch the prediction from Replicate authoritatively and run the shared
+// idempotent processor (which saves the result to the gallery).
+const replicateJobWebhook = functions
+  .runWith({
+    secrets: ['REPLICATE_API_TOKEN'],
+    // Same streamed save as the poll path; 512 MB is fixed cold-start headroom,
+    // not sized to the splat.
+    memory: '512MB'
+  })
+  .https
+  .onRequest(async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).send('Method not allowed');
+      return;
+    }
+    const { token, uid, jobId } = req.query;
+    if (!uid || !jobId) {
+      res.status(400).send('Missing uid or jobId');
+      return;
+    }
+
+    try {
+      validateSplatUserId(uid);
+    } catch (e) {
+      res.status(400).send('Invalid uid');
+      return;
+    }
+
+    const db = admin.firestore();
+    const jobRef = db.collection('users').doc(uid).collection('generationJobs').doc(jobId);
+    const jobSnap = await jobRef.get();
+    if (!jobSnap.exists) {
+      // Nothing to do (unknown / already GC'd). Ack so Replicate stops retrying.
+      res.status(200).send('ok');
+      return;
+    }
+    const job = jobSnap.data();
+    if (!job.webhookSecret || job.webhookSecret !== token) {
+      res.status(403).send('Forbidden');
+      return;
+    }
+
+    // Prefer the recorded provider id; fall back to the body id only as a lookup
+    // key for the authoritative re-fetch (covers the brief create→update window
+    // before providerJobId is persisted). The result is always re-fetched.
+    const providerJobId = job.providerJobId || (req.body && req.body.id);
+    if (!providerJobId) {
+      res.status(200).send('ok'); // can't resolve yet; poll/reconciler will
+      return;
+    }
+
+    const replicate = new Replicate({
+      auth: process.env.REPLICATE_API_TOKEN,
+      useFileOutput: false
+    });
+
+    let prediction;
+    try {
+      prediction = await replicate.predictions.get(providerJobId);
+    } catch (error) {
+      console.error('Webhook: failed to fetch prediction:', error);
+      res.status(502).send('Upstream error'); // Replicate will retry
+      return;
+    }
+
+    try {
+      await processTerminalPrediction(db, uid, jobRef, prediction);
+      res.status(200).send('ok');
+    } catch (error) {
+      console.error('Webhook: processing failed:', error);
+      res.status(500).send('Processing error'); // Replicate will retry
+    }
+  });
+
+module.exports = {
+  generateReplicateImage,
+  generateReplicateVideo,
+  generateReplicateSplat,
+  getGenerationJobStatus,
+  replicateJobWebhook
+};

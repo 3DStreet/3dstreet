@@ -114,5 +114,16 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if false;
     }
+
+    // Generation job queue (PRIVATE - cloud functions only)
+    // Async AI generation jobs (image→splat today; image/video/photogrammetry
+    // later). Written and read exclusively by Admin SDK in the submit / poll /
+    // webhook / reconciler functions. Docs hold a per-job webhookSecret, so
+    // clients must never read them — they poll via the getGenerationJobStatus
+    // callable instead. (Rules don't cascade, so this is also belt-and-suspenders
+    // against any future broad users/{uid} rule.)
+    match /users/{userId}/generationJobs/{jobId} {
+      allow read, write: if false;
+    }
   }
 }
