@@ -949,7 +949,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
   }
 
-  // Low-tilt branch (tilt ≤ 30° while y > 10m) and the Ctrl+wheel
+  // Low-tilt branch (tilt ≤ 30° while AGL > 20m, i.e. Phase 1) and the Ctrl+wheel
   // escape hatch. Synthetic anchor 30m along camera-forward; runs the
   // same orbit-step math as Phase 1 so behaviour matches a plain
   // camera-Z dolly. No cursor anchoring (per

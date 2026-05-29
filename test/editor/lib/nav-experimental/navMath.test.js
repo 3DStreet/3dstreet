@@ -21,7 +21,8 @@ import {
   FALLBACK_FORWARD_DIST,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
-  SWOOP_PHASE2_STEP
+  SWOOP_PHASE2_STEP,
+  SWOOP_PHASE2_FLOOR_SNAP_METRES
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
 
 // Helper: build a square-ish bounds object centered on the origin.
@@ -661,7 +662,7 @@ describe('decideSwoopPhase (AGL worked examples, TASK-013)', () => {
 
 describe('Phase 2 AGL translation invariance + floor brackets (TASK-013)', () => {
   const yFloor = SWOOP_PHASE2_EXIT_ELEVATION_METRES; // 1.5
-  const snap = 1.0; // SWOOP_PHASE2_FLOOR_SNAP_METRES
+  const snap = SWOOP_PHASE2_FLOOR_SNAP_METRES; // 1.0
 
   it('phase2NextElevation step is groundY-independent (written-back y differs by exactly the ground offset)', () => {
     // Two scenes whose groundY differ by 6. Same AGL input (10). The AGL
