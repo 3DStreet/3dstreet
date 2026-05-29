@@ -12,3 +12,6 @@ dist/
 /public/index.html
 *storybook.log
 storybook-static
+
+# Claude planning docs live in the workspace, not the product repo
+claude/
