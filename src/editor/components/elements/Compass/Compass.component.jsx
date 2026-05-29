@@ -102,11 +102,19 @@ export const Compass = () => {
   const needleRef = useRef(null);
   const [hovered, setHovered] = useState(null); // 'body' | 'left' | 'right' | null
   const [tooltip, setTooltip] = useState('Plan view');
+  // Mirror `hovered` into a ref so the rAF loop (empty-deps effect) can read
+  // the live hover region without re-subscribing each frame.
+  const hoveredRef = useRef(null);
+  useEffect(() => {
+    hoveredRef.current = hovered;
+  }, [hovered]);
 
   // rAF needle loop. Reads the live inspector camera each frame and writes
   // the needle angle directly to the ref'd SVG transform. Holds the last
   // angle when the camera is unavailable or briefly orthographic (plan-view
-  // toggle window). Cancelled on unmount.
+  // toggle window). Cancelled on unmount. Also recomputes the pose-aware body
+  // tooltip each frame while the body is hovered, committing to state only on
+  // change to avoid needless re-renders.
   useEffect(() => {
     let raf;
     const loop = () => {
@@ -115,6 +123,10 @@ export const Compass = () => {
       if (camera && camera.type === 'PerspectiveCamera' && needleRef.current) {
         const angle = needleScreenAngle(camera);
         needleRef.current.style.transform = `rotate(${angle}deg)`;
+      }
+      if (hoveredRef.current === 'body') {
+        const next = bodyTooltip(camera);
+        setTooltip((prev) => (prev === next ? prev : next));
       }
       raf = requestAnimationFrame(loop);
     };
@@ -163,10 +175,16 @@ export const Compass = () => {
     onPointerLeave: () => onLeave(region)
   });
 
+  // Pose-aware label for the body hit region's aria-label, computed from the
+  // live camera the same way as the visible tooltip so screen-reader users
+  // hear the action the click will actually perform.
+  const inspector = typeof AFRAME !== 'undefined' ? AFRAME.INSPECTOR : null;
+  const bodyLabel = bodyTooltip(inspector ? inspector.camera : null);
+
   return (
     <div className={styles.compass}>
       {hovered && <div className={styles.tooltip}>{tooltip}</div>}
-      <svg viewBox="0 0 64 64" aria-hidden="false">
+      <svg viewBox="0 0 64 64">
         {/* Body hit region — full dial circle, drawn FIRST so the arrow
             sectors (drawn later) win the hit-test where they overlap. */}
         <circle
@@ -175,7 +193,7 @@ export const Compass = () => {
           cy={CY}
           r={DIAL_R}
           fill="#2b2b2b"
-          aria-label="Reset view"
+          aria-label={bodyLabel}
         />
         {/* Dial face decoration (non-interactive). */}
         <circle
