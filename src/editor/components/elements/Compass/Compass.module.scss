@@ -1,0 +1,57 @@
+// TASK-011 — Plan-view compass widget (Google Maps style). Always visible
+// in experimental-nav mode, sitting just right of the bottom-centre
+// ActionBar. The `.compassDock` placement lives in Main.module.scss (so it
+// shares the actionBar dock's stacking context + pedestal handling); this
+// module styles the widget itself.
+
+.compass {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  cursor: pointer;
+  user-select: none;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+}
+
+// Hit regions — filled shapes (transparent fill still receives pointer
+// events because pointer-events: all). Each gets a thin white outline on
+// hover, matching Google Maps.
+.hitRegion {
+  pointer-events: all;
+  outline: none;
+
+  &:focus-visible {
+    // Keyboard focus: same thin white highlight as hover.
+    stroke: #fff;
+    stroke-width: 1.5px;
+  }
+}
+
+.hovered {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+// Tooltip — real DOM (translatable). Opens upward (the widget sits at the
+// bottom edge). Shifts left if it would overflow the right viewport edge.
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 1;
+}

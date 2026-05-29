@@ -19,9 +19,11 @@ import { LoadingSceneModal } from './modals/LoadingSceneModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
 import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
+import { Compass } from './elements/Compass';
 import useStore from '@/store';
 import { AIChatProvider } from '../contexts/AIChatContext';
 import { useNavMode } from '../lib/nav-experimental/useNavMode';
+import { isExperimentalNav } from '../lib/nav-experimental/index.js';
 import styles from './Main.module.scss';
 
 // Define the libraries array as a constant outside of the component
@@ -88,6 +90,11 @@ export default function Main() {
             <div className={dockClass(`clickable ${styles.actionBarDock}`)}>
               <ActionBar selectedEntity={state.entity} />
             </div>
+            {isExperimentalNav() && (
+              <div className={dockClass(`clickable ${styles.compassDock}`)}>
+                <Compass />
+              </div>
+            )}
           </div>
         </AIChatProvider>
       )}
