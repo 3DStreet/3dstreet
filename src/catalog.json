@@ -1204,5 +1204,125 @@
         "category": "dividers",
         "attribution": "StreetPlan.net. Used with permission.",
         "attributionUrl": "https://www.urbaninnovators.com/streetplan"
+    },
+    {
+        "id": "bb-bollard",
+        "name": "Bollard (Bollard Buddy)",
+        "src": "sets/bollard-buddy/gltf-exports/draco/bb-bollard.glb",
+        "category": "dividers",
+        "attribution": "Creative Commons Attribution: 'Bollard #3b' by aecoviz (Vissy)",
+        "attributionUrl": "https://sketchfab.com/3d-models/bollard-3b-aec0c2bf563546518bf60237cc023bbd"
+    },
+    {
+        "id": "cone",
+        "name": "Traffic Cone",
+        "src": "sets/bollard-buddy/gltf-exports/draco/cone.glb",
+        "category": "dividers",
+        "attribution": "Creative Commons Attribution: 'Traffic Cone Low-poly PBR' by MaX3Dd",
+        "attributionUrl": "https://sketchfab.com/3d-models/traffic-cone-low-poly-pbr-05d3184730f942a3a94465b72dfc766d"
+    },
+    {
+        "id": "royal-bollard",
+        "name": "Royal Bollard",
+        "src": "sets/bollard-buddy/gltf-exports/draco/royal-bollard.glb",
+        "category": "dividers",
+        "attribution": "Creative Commons Attribution: 'Street Bollard' by Faheem Yusuf (FameProductions)",
+        "attributionUrl": "https://sketchfab.com/3d-models/street-bollard-9b9db79ae21c4e118423efae658e7fb7"
+    },
+    {
+        "id": "concrete-bollard",
+        "name": "Concrete Bollard",
+        "src": "sets/bollard-buddy/gltf-exports/draco/concrete-bollard.glb",
+        "category": "dividers",
+        "attribution": "Creative Commons Attribution: 'Concrete Bollard Scan 01 | Retopologized' by Kai Moisch",
+        "attributionUrl": "https://sketchfab.com/3d-models/concrete-bollard-scan-01-retopologized-f475b7954bae4acdb00183171744aece"
+    },
+    {
+        "id": "green-planter-tree",
+        "name": "Planter Tree",
+        "src": "sets/bollard-buddy/gltf-exports/draco/green-planter-tree.glb",
+        "category": "plants",
+        "attribution": "Creative Commons Attribution: 'Potted Tree' by dylanheyes",
+        "attributionUrl": "https://sketchfab.com/3d-models/potted-tree-dd6c9d90421b4a99acdfebbddd4ccf75"
+    },
+    {
+        "id": "green-planter-snake-plant",
+        "name": "Potted Plant",
+        "src": "sets/bollard-buddy/gltf-exports/draco/green-planter-snake-plant.glb",
+        "category": "plants",
+        "attribution": "Creative Commons Attribution: 'potted_plant-1' by attben",
+        "attributionUrl": "https://sketchfab.com/3d-models/potted-plant-1-9c6eccd1a8eb434981317bf3e66ec2bb"
+    },
+    {
+        "id": "green-planter-fan-palm",
+        "name": "Fan Palm",
+        "src": "sets/bollard-buddy/gltf-exports/draco/green-planter-fan-palm.glb",
+        "category": "plants",
+        "attribution": "Creative Commons Attribution: 'Livistona Chinensis - Fan Palm' by AllQuad",
+        "attributionUrl": "https://sketchfab.com/3d-models/free-livistona-chinensis-fan-palm-f59bab2a81244b869e1ca5aefd4ad94a"
+    },
+    {
+        "id": "green-planter-cactus",
+        "name": "Cactus",
+        "src": "sets/bollard-buddy/gltf-exports/draco/green-planter-cactus.glb",
+        "category": "plants",
+        "attribution": "Creative Commons Attribution: 'Cereus Peruvianus - Potted Cactus' by AllQuad",
+        "attributionUrl": "https://sketchfab.com/3d-models/free-cereus-peruvianus-potted-cactus-4dfdf2971fca42a292de7ac6bf97a26b"
+    },
+    {
+        "id": "green-garden-urn",
+        "name": "Garden Urn",
+        "src": "sets/bollard-buddy/gltf-exports/draco/green-garden-urn.glb",
+        "category": "plants",
+        "attribution": "Creative Commons Attribution: 'Garden Urn' by Lyskilde (longtail)",
+        "attributionUrl": "https://sketchfab.com/3d-models/garden-urn-c0c7f5fa24704a23b0f3cbdd689b8176"
+    },
+    {
+        "id": "green-flowers",
+        "name": "Flowers",
+        "src": "sets/bollard-buddy/gltf-exports/draco/green-flowers.glb",
+        "category": "plants",
+        "attribution": "Creative Commons Attribution: 'Stylized flower' by Zayfert1999",
+        "attributionUrl": "https://sketchfab.com/3d-models/stylized-flower-c076c78cc47f49cfb68e24c8731d60ed"
+    },
+    {
+        "id": "fixture-bus-stop",
+        "name": "Bus Stop",
+        "src": "sets/bollard-buddy/gltf-exports/draco/fixture-bus-stop.glb",
+        "category": "fixtures",
+        "attribution": "Creative Commons Attribution: 'Abribus, Bus stop, bus station' by Configcars (maxipub)",
+        "attributionUrl": "https://sketchfab.com/3d-models/abribus-bus-stop-bus-station-ab3c98bf93de498bb45c129afa4c3ab3"
+    },
+    {
+        "id": "fixture-bench-modern",
+        "name": "Modern Bench",
+        "src": "sets/bollard-buddy/gltf-exports/draco/fixture-bench-modern.glb",
+        "category": "fixtures",
+        "attribution": "Creative Commons Attribution: 'Bench - street furniture' by YouniqueĪdeaStudio (sinnervoncrawsz)",
+        "attributionUrl": "https://sketchfab.com/3d-models/bench-street-furniture-2eec0b2d47f94db38ea31e8c3d2aab07"
+    },
+    {
+        "id": "fixture-bike-rack",
+        "name": "Bike Rack",
+        "src": "sets/bollard-buddy/gltf-exports/draco/fixture-bike-rack.glb",
+        "category": "fixtures",
+        "attribution": "Creative Commons Attribution: 'Bike Rack #4' by aecoviz (Vissy)",
+        "attributionUrl": "https://sketchfab.com/3d-models/bike-rack-4-8c8fd4fa06eb4b1c8db5bd3584892f3c"
+    },
+    {
+        "id": "fixture-trash-can",
+        "name": "Trash Can",
+        "src": "sets/bollard-buddy/gltf-exports/draco/fixture-trash-can.glb",
+        "category": "fixtures",
+        "attribution": "Creative Commons Attribution: 'street trash can' by YouniqueĪdeaStudio (sinnervoncrawsz)",
+        "attributionUrl": "https://sketchfab.com/3d-models/street-trash-can-0debf0ba50304951b32b44c7578468dd"
+    },
+    {
+        "id": "fixture-picnic-table",
+        "name": "Picnic Table",
+        "src": "sets/bollard-buddy/gltf-exports/draco/fixture-picnic-table.glb",
+        "category": "fixtures",
+        "attribution": "Creative Commons Attribution: 'Wooden Picnic Table - 4096px²' by Mark Peters",
+        "attributionUrl": "https://sketchfab.com/3d-models/wooden-picnic-table-4096px2-c7d39c0bcee04553894d0de081d3aa9c"
     }
 ]
