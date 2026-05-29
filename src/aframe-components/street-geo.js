@@ -1,6 +1,7 @@
 /* global AFRAME */
 import { firebaseConfig } from '@shared/services/firebase.js';
 import { loadScript } from '../utils.js';
+import useStore from '../store.js';
 
 const MAPBOX_ACCESS_TOKEN_VALUE =
   'pk.eyJ1Ijoia2llcmFuZmFyciIsImEiOiJjazB0NWh2YncwOW9rM25sd2p0YTlxemk2In0.mLl4sNGDFbz_QXk0GIK02Q';
@@ -62,6 +63,34 @@ AFRAME.registerComponent('street-geo', {
     };
     return blendModes[blendModePreset];
   },
+  hasSuggestedLocation: function () {
+    // A real location to activate, as opposed to the schema default 0,0.
+    return this.data.latitude !== 0 || this.data.longitude !== 0;
+  },
+  isGeospatialActivated: function () {
+    // A finite ellipsoidalHeight is only ever written by the elevation
+    // service, which is the token-charged (Pro-free) call, so its presence is
+    // our proxy for an activated geospatial feature. Once activated the user
+    // can freely switch between map providers; until then no map renders.
+    // Note: scenes from the mobile app serialize these height keys with no
+    // usable value, which A-Frame parses to NaN (a number) rather than null,
+    // so we test for a finite number rather than just != null.
+    return Number.isFinite(this.data.ellipsoidalHeight);
+  },
+  offerGeospatialActivation: function () {
+    // Open the GeoModal so the user can consciously activate geospatial for
+    // the suggested location. The modal's existing fallback prefills the
+    // marker from this component's latitude/longitude and charges normally
+    // (no fromGeojsonImport flag). We intentionally do not mutate `maps` or
+    // the coordinates: declining just leaves the scene "located but not
+    // activated", preserving the location for a later activation, and
+    // switching a map type on re-runs update() and re-prompts. The modal
+    // check avoids reopening if it is already showing.
+    const { modal, setModal } = useStore.getState();
+    if (modal !== 'geo') {
+      setModal('geo');
+    }
+  },
   update: function (oldData) {
     this.el.setAttribute('data-no-transform', '');
 
@@ -72,6 +101,24 @@ AFRAME.registerComponent('street-geo', {
 
     for (const mapType of this.mapTypes) {
       if (data.maps === mapType && !this[mapType]) {
+        // Geospatial activation gate (editor only). A scene can carry a
+        // suggested location (latitude/longitude) without geospatial ever
+        // having been activated, e.g. scenes created by the mobile app from
+        // phone GPS, which never run the elevation lookup. We treat a present
+        // ellipsoidalHeight as the proxy for "activated", since it is only
+        // ever written by the elevation service (the same call that charges a
+        // geo token, free for Pro). Until activated, suppress every map type
+        // so nothing renders at the wrong elevation, and offer the GeoModal so
+        // the user can consciously activate.
+        if (
+          mapType !== 'none' &&
+          AFRAME.INSPECTOR?.opened &&
+          this.hasSuggestedLocation() &&
+          !this.isGeospatialActivated()
+        ) {
+          this.offerGeospatialActivation();
+          continue;
+        }
         // create Map element and save a link to it in this[mapType]
         if (!this.isAR) {
           document.getElementById('map-data-attribution').style.visibility =
