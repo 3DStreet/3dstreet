@@ -1385,7 +1385,12 @@ const getGenerationJobStatus = functions
     // saveSplatToGallery streams the .ply through (no full-file buffering), so
     // memory no longer scales with splat size. 512 MB is fixed headroom over the
     // firebase-admin cold-start baseline, not sized to the file.
-    memory: '512MB'
+    memory: '512MB',
+    // The save (download from Replicate's CDN → resumable upload to Storage) can
+    // take well over the 60s default for a large .ply. If the callable is killed
+    // mid-save the 'saving' claim never releases and the job wedges, so give the
+    // save real headroom; the stale-claim TTL + reconciler are only the backstop.
+    timeoutSeconds: 300
   })
   .https
   .onCall(async (data, context) => {
@@ -1453,7 +1458,11 @@ const replicateJobWebhook = functions
     secrets: ['REPLICATE_API_TOKEN'],
     // Same streamed save as the poll path; 512 MB is fixed cold-start headroom,
     // not sized to the splat.
-    memory: '512MB'
+    memory: '512MB',
+    // Same rationale as getGenerationJobStatus: the streamed save can exceed the
+    // 60s default for a large .ply, and a kill mid-save wedges the job in
+    // 'saving'. Replicate also retries the webhook, but don't rely on that.
+    timeoutSeconds: 300
   })
   .https
   .onRequest(async (req, res) => {
