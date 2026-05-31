@@ -140,8 +140,8 @@ const SplatTab = {
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
               </svg>
-              <p id="splat-loading-text" class="text-sm">Generating splat…</p>
-              <p class="text-xs text-gray-400 mt-1">This can take a few minutes. You can close this tab; your splat saves to your gallery when it's done.</p>
+              <p id="splat-loading-text" class="text-sm">Uploading image…</p>
+              <p id="splat-loading-subtext" class="text-xs text-gray-400 mt-1 hidden">This can take a few minutes. You can close this tab; your splat saves to your gallery when it's done.</p>
             </div>
 
             <!-- Result -->
@@ -188,6 +188,7 @@ const SplatTab = {
       placeholder: byId('splat-placeholder'),
       loadingIndicator: byId('splat-loading-indicator'),
       loadingText: byId('splat-loading-text'),
+      loadingSubtext: byId('splat-loading-subtext'),
       result: byId('splat-result'),
       viewerFrame: byId('splat-viewer-frame'),
       openBtn: byId('splat-open-btn'),
@@ -275,24 +276,48 @@ const SplatTab = {
       els.placeholder.classList.add('hidden');
       els.result.classList.add('hidden');
       els.loadingIndicator.classList.remove('hidden');
-      this.startTimer();
+      // Start in the "uploading" phase: the source image is still being sent to
+      // the server, so the tab can't be closed yet and a generation timer would
+      // be misleading. generateSplat() flips to 'processing' once the job is
+      // actually submitted.
+      this.setLoadingPhase('uploading');
     } else {
       els.loadingIndicator.classList.add('hidden');
       this.stopTimer();
     }
   },
 
+  // Switch the loading panel between the upload-in-flight phase and the
+  // server-processing phase. Only the latter shows the "you can close this tab"
+  // reassurance (true only once the upload is done and the job is queued) and
+  // the generation timer.
+  setLoadingPhase(phase) {
+    const els = this.elements;
+    if (phase === 'uploading') {
+      this.stopTimer();
+      if (els.loadingText) els.loadingText.textContent = 'Uploading image…';
+      if (els.loadingSubtext) els.loadingSubtext.classList.add('hidden');
+      if (els.generateText) els.generateText.textContent = 'Uploading…';
+    } else if (phase === 'processing') {
+      if (els.loadingSubtext) els.loadingSubtext.classList.remove('hidden');
+      if (els.generateText) els.generateText.textContent = 'Generating…';
+      this.startTimer();
+    }
+  },
+
   startTimer() {
     this.startTime = Date.now();
     this.stopTimer();
-    this.timerInterval = setInterval(() => {
+    const tick = () => {
       const seconds = Math.floor((Date.now() - this.startTime) / 1000);
       const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
       const ss = String(seconds % 60).padStart(2, '0');
       if (this.elements.loadingText) {
         this.elements.loadingText.textContent = `Generating splat… ${mm}:${ss}`;
       }
-    }, 1000);
+    };
+    tick(); // set the label immediately so it doesn't lag a second behind
+    this.timerInterval = setInterval(tick, 1000);
   },
 
   stopTimer() {
@@ -332,6 +357,13 @@ const SplatTab = {
       // The token was charged on submit; reflect that immediately.
       window.dispatchEvent(new CustomEvent('tokenCountChanged'));
 
+      // Upload is done and the job is queued server-side — now it's safe to tell
+      // the user they can close the tab, and to start the generation timer.
+      this.setLoadingPhase('processing');
+
+      // The job now shows as a pending card in the assets gallery, driven by a
+      // live Firestore listener on the job doc (written before this returns) —
+      // so it persists across reloads and tabs without any client state here.
       this.pollDeadline = Date.now() + this.POLL_MAX_MS;
       this.pollSplatStatus(result.data.jobId);
     } catch (error) {
@@ -355,7 +387,9 @@ const SplatTab = {
       if (data.status === 'succeeded' && data.splat_url) {
         // The splat was saved to the gallery server-side (works even if this
         // tab had been closed). Just reflect it in the UI and refresh the
-        // gallery island so the new asset shows up.
+        // gallery island so the new asset shows up. The pending-job card clears
+        // itself once the job doc leaves the non-terminal set (its listener also
+        // refreshes the grid), so the card hands its slot to the real asset.
         this.currentSplatUrl = data.splat_url;
         this.showResult(data.splat_url);
         this.toggleLoading(false);
@@ -376,7 +410,8 @@ const SplatTab = {
         return;
       }
 
-      // Still starting/processing — keep polling until the deadline.
+      // Still queued/running/saving — the gallery's pending card reflects the
+      // live status from Firestore; just keep polling until the deadline.
       if (Date.now() > this.pollDeadline) {
         this.failGeneration(
           'Splat generation is taking longer than expected. Check your gallery shortly.'
@@ -408,7 +443,10 @@ const SplatTab = {
     }
   },
 
-  // Reset to the idle placeholder state and surface an error toast.
+  // Reset to the idle placeholder state and surface an error toast. The
+  // gallery's pending-job card clears on its own when the job doc reaches a
+  // terminal state (server marks failed + refunds); a local poll timeout just
+  // stops our polling — the job may still finish server-side and surface later.
   failGeneration(message) {
     this.stopPolling();
     this.toggleLoading(false);
