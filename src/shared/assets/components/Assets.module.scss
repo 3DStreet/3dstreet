@@ -226,6 +226,26 @@
   transition: width 0.15s ease;
 }
 
+/* Indeterminate variant for generation jobs, which report a status rather than
+   a percentage. A sliding highlight conveys "working" without a real value. */
+.pendingProgressIndeterminate {
+  position: absolute;
+  height: 100%;
+  width: 35%;
+  background: #8965ef; /* $purple-300 */
+  border-radius: 2px;
+  animation: pendingProgressSlide 1.2s ease-in-out infinite;
+}
+
+@keyframes pendingProgressSlide {
+  0% {
+    left: -35%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
 .pendingCancelBtn {
   background: transparent;
   border: 1px solid rgba(137, 101, 239, 0.5);

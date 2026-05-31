@@ -11,7 +11,12 @@ import {
   ASSETS_FETCH_BATCH_SIZE
 } from '../constants.js';
 import { AuthContext } from '@shared/contexts';
-import { auth } from '@shared/services/firebase.js';
+import { auth, db } from '@shared/services/firebase.js';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+
+// Normalized non-terminal job statuses (see normalizeReplicateStatus on the
+// server). A job in any of these is still "pending" and shown as a card.
+const NON_TERMINAL_JOB_STATUSES = ['queued', 'running', 'saving'];
 
 /**
  * Convert Firestore timestamp to ISO string
@@ -70,6 +75,7 @@ const useAssets = () => {
     contextUser || window.authState?.currentUser
   );
   const [items, setItems] = useState([]);
+  const [pendingJobs, setPendingJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -82,6 +88,8 @@ const useAssets = () => {
   const lastDocRef = useRef(null);
   // Guard against overlapping loadMore calls
   const isFetchingMoreRef = useRef(false);
+  // Ids of jobs seen pending on the previous snapshot, to detect completions.
+  const prevJobIdsRef = useRef(new Set());
 
   // Use ref to always get current userId in event handlers
   const userIdRef = useRef(userId);
@@ -135,6 +143,50 @@ const useAssets = () => {
       console.error('Failed to reload gallery items:', error);
     }
   }, []);
+
+  // Live subscription to the current user's in-flight generation jobs, so the
+  // gallery shows them as pending cards that survive a reload and appear across
+  // tabs (the job doc is the source of truth, not transient client state). When
+  // a job leaves the non-terminal set it has finished; if it succeeded its asset
+  // now exists, so refresh the grid to surface it. Relies on the owner-read rule
+  // on users/{uid}/generationJobs.
+  useEffect(() => {
+    if (!userId) {
+      prevJobIdsRef.current = new Set();
+      setPendingJobs([]);
+      return;
+    }
+    const jobsQuery = query(
+      collection(db, 'users', userId, 'generationJobs'),
+      where('status', 'in', NON_TERMINAL_JOB_STATUSES)
+    );
+    const unsubscribe = onSnapshot(
+      jobsQuery,
+      (snapshot) => {
+        const jobs = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort(
+            (a, b) =>
+              (b.createdAt?.toMillis?.() || 0) -
+              (a.createdAt?.toMillis?.() || 0)
+          );
+        const nextIds = new Set(jobs.map((j) => j.id));
+        let completed = false;
+        prevJobIdsRef.current.forEach((id) => {
+          if (!nextIds.has(id)) completed = true;
+        });
+        prevJobIdsRef.current = nextIds;
+        setPendingJobs(jobs);
+        if (completed) reloadItems();
+      },
+      (error) => {
+        // Degrade gracefully (e.g. rules not yet deployed): no cards, no crash.
+        console.warn('Pending jobs listener error:', error);
+        setPendingJobs([]);
+      }
+    );
+    return unsubscribe;
+  }, [userId, reloadItems]);
 
   /**
    * Load the next batch of items from Firestore, appending to the list
@@ -508,6 +560,7 @@ const useAssets = () => {
 
   return {
     items,
+    pendingJobs,
     isLoading,
     isLoadingMore,
     isLoggedIn,

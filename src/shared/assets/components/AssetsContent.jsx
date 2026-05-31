@@ -15,6 +15,7 @@ import AssetsGrid from './AssetsGrid.jsx';
 import AssetsModal from './AssetsModal.jsx';
 import MeshDetailsModal from './MeshDetailsModal.jsx';
 import PendingUploadCard from './PendingUploadCard.jsx';
+import PendingJobCard from './PendingJobCard.jsx';
 import useCurrentUploadStore from '../state/currentUploadStore.js';
 import { ASSET_TYPES } from '../constants.js';
 import styles from './Assets.module.scss';
@@ -40,6 +41,7 @@ const AssetsContent = ({
 }) => {
   const {
     items,
+    pendingJobs = [],
     isLoading,
     isLoadingMore,
     hasMore,
@@ -102,6 +104,7 @@ const AssetsContent = ({
   const defaultEmpty = <div className={styles.emptyState}>No assets yet</div>;
 
   const hasPendingUpload = useCurrentUploadStore((s) => !!s.upload);
+  const hasPendingJob = pendingJobs.length > 0;
   const awaitingAssetId = useCurrentUploadStore(
     (s) => s.upload?.awaitingAssetId || null
   );
@@ -135,12 +138,18 @@ const AssetsContent = ({
           onPageSizeChange={setPageSize}
           placeable={placeable}
         />
-      ) : visibleItems.length === 0 && !hasPendingUpload ? (
+      ) : visibleItems.length === 0 && !hasPendingUpload && !hasPendingJob ? (
         (emptyState ?? defaultEmpty)
       ) : (
         <>
           <div className={gridClassName}>
+            {/* A fresh upload is the most-recent action, so it takes the
+                upper-left slot; in-flight generation jobs sit just after it,
+                ahead of finished assets. Both clear into a real asset card. */}
             {hasPendingUpload && <PendingUploadCard />}
+            {pendingJobs.map((job) => (
+              <PendingJobCard key={job.id} job={job} />
+            ))}
             {visibleItems.map((item) => (
               <AssetsItem
                 key={item.id}
