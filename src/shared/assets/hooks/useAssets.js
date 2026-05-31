@@ -397,6 +397,11 @@ const useAssets = () => {
    */
   const downloadItem = useCallback(async (item) => {
     const isVideo = item.type === ASSET_TYPES.VIDEO;
+    // Splats and meshes are binary 3D files (.ply/.splat/.spz/.glb), not images.
+    // They must keep their real extension or the downloaded file is unusable —
+    // forcing an image extension corrupts the asset.
+    const isModel =
+      item.type === ASSET_TYPES.SPLAT || item.type === ASSET_TYPES.MESH;
     const model = item.metadata?.model || '3dstreet';
     const timestamp = item.metadata?.timestamp
       ? new Date(item.metadata.timestamp)
@@ -405,22 +410,67 @@ const useAssets = () => {
           .slice(0, 19)
       : new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 
-    let extension;
-    if (isVideo) {
-      extension = 'mp4';
-    } else {
-      const format = item.metadata?.output_format || 'png';
-      extension = format === 'jpeg' ? 'jpg' : 'png';
-    }
+    // Heuristic extension from stored metadata, used as a fallback when the
+    // fetched blob doesn't carry a usable Content-Type. This is only a guess:
+    // `output_format` is inconsistent across paths (server writes 'jpg', the
+    // generator writes 'jpeg', some paths omit it, fal uses webp), so the blob's
+    // real MIME type below is the source of truth whenever we have it.
+    const guessImageExtension = () => {
+      const format = (item.metadata?.output_format || 'png').toLowerCase();
+      if (format === 'jpeg' || format === 'jpg') return 'jpg';
+      if (format === 'webp') return 'webp';
+      if (format === 'gif') return 'gif';
+      return 'png';
+    };
 
-    const filename = `${model}-${timestamp}.${extension}`;
+    // Map an actual blob Content-Type to an extension. Empty for unknown/generic
+    // types so the caller falls back to the metadata guess.
+    const extFromMime = (mime) => {
+      const map = {
+        'image/jpeg': 'jpg',
+        'image/jpg': 'jpg',
+        'image/png': 'png',
+        'image/webp': 'webp',
+        'image/gif': 'gif',
+        'image/avif': 'avif',
+        'video/mp4': 'mp4',
+        'video/webm': 'webm',
+        'video/quicktime': 'mov'
+      };
+      return map[(mime || '').toLowerCase().split(';')[0].trim()] || '';
+    };
+
     const imageUrl = item.fullImageURL || item.storageUrl || item.objectURL;
+
+    // Models: preserve the source filename (and thus its extension) verbatim
+    // when we have it; otherwise fall back to a typed default. Fully determined
+    // without inspecting the blob.
+    let modelFilename = null;
+    if (isModel) {
+      const src = item.originalFilename || '';
+      const hasExt = /\.[a-z0-9]+$/i.test(src);
+      const fallbackExt = item.type === ASSET_TYPES.SPLAT ? 'ply' : 'glb';
+      modelFilename = hasExt
+        ? src
+        : `${item.name || model}-${timestamp}.${fallbackExt}`;
+    }
 
     try {
       const response = await fetch(imageUrl);
       const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
 
+      let filename;
+      if (isModel) {
+        filename = modelFilename;
+      } else {
+        // Prefer the real Content-Type of the downloaded bytes; fall back to the
+        // metadata heuristic only when it's missing/generic.
+        const extension =
+          extFromMime(blob.type) || (isVideo ? 'mp4' : guessImageExtension());
+        filename = `${model}-${timestamp}.${extension}`;
+      }
+
+      const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
       link.download = filename;

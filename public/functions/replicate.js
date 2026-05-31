@@ -1525,5 +1525,11 @@ module.exports = {
   generateReplicateVideo,
   generateReplicateSplat,
   getGenerationJobStatus,
-  replicateJobWebhook
+  replicateJobWebhook,
+  // Internals reused by the scheduled reconciler (the dropped-webhook backstop).
+  // Kept here so the idempotent save/charge/refund logic has a single home.
+  processTerminalPrediction,
+  refundSplatToken,
+  cleanupSplatTempFile,
+  normalizeReplicateStatus
 };

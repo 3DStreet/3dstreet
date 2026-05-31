@@ -16,6 +16,7 @@ import AssetsModal from './AssetsModal.jsx';
 import MeshDetailsModal from './MeshDetailsModal.jsx';
 import PendingUploadCard from './PendingUploadCard.jsx';
 import useCurrentUploadStore from '../state/currentUploadStore.js';
+import { ASSET_TYPES } from '../constants.js';
 import styles from './Assets.module.scss';
 
 const AssetsContent = ({
@@ -66,7 +67,15 @@ const AssetsContent = ({
 
   const handleDownload = (item) => {
     downloadItem(item);
-    if (onNotification) onNotification('Image download started!', 'success');
+    const noun =
+      item?.type === ASSET_TYPES.SPLAT
+        ? 'Splat'
+        : item?.type === ASSET_TYPES.MESH
+          ? 'Model'
+          : item?.type === ASSET_TYPES.VIDEO
+            ? 'Video'
+            : 'Image';
+    if (onNotification) onNotification(`${noun} download started!`, 'success');
   };
 
   const handleNavigate = (direction) => {

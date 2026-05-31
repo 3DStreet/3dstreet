@@ -13,6 +13,7 @@ const { onAssetWritten, getUploadQuota } = require('./asset-quota.js');
 const { purgeSoftDeletedAssets, triggerPurgeSoftDeletedAssets } = require('./scheduled/asset-gc.js');
 const { reconcileAssetUsage, triggerReconcileAssetUsage } = require('./scheduled/asset-usage-reconcile.js');
 const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./scheduled/asset-orphan-cleanup.js');
+const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
 
 // Re-export the WebXR variant function
 exports.serveWebXRVariant = serveWebXRVariant;
@@ -57,6 +58,11 @@ exports.triggerReconcileAssetUsage = triggerReconcileAssetUsage;
 // Orphaned Storage object cleanup (monthly scheduled + admin-only manual trigger)
 exports.cleanupOrphanedStorage = cleanupOrphanedStorage;
 exports.triggerCleanupOrphanedStorage = triggerCleanupOrphanedStorage;
+
+// Async generation job reconciliation — dropped-webhook backstop for splat (and
+// future async kinds). Every 10 min scheduled + admin-only manual trigger.
+exports.reconcileGenerationJobs = reconcileGenerationJobs;
+exports.triggerReconcileGenerationJobs = triggerReconcileGenerationJobs;
 
 exports.getScene = functions
   .https

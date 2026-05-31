@@ -242,23 +242,31 @@ No new features; got the durable surface right.
   `assetsService.addAsset` byte-for-byte). No dated `.txt` artifact exists to
   clean up.
 
-### Phase 1 — Generic reconciler (the robustness gap) ← NEXT
+### Phase 1 — Generic reconciler (the robustness gap) ✅ DONE
 One scheduled function; closes "webhook dropped + tab closed → charged-but-lost"
 **and** re-triggers jobs stuck in `saving` (the stale-claim TTL makes them
 re-takeable, but something still has to call the processor). Also the recovery
-path for the two real jobs currently wedged in `saving` on staging.
-- New `public/functions/scheduled/generation-job-reconcile.js`, modeled on
-  `asset-usage-reconcile.js`: PubSub schedule (~10 min) + admin-only callable
-  trigger (dryRun default).
-- Collection-group sweep of `generationJobs` where `status` is non-terminal
-  (includes `saving`) and `createdAt < now − 3min` (don't race live webhooks).
-  For each: `fetchStatusFor(job)` (a `switch (job.provider)`, Replicate-only
-  today — the seam that becomes the registry) → `processTerminalPrediction(...)`.
-- Give-up rule: non-terminal **and** > 30 min **and** provider reports
-  failed/absent → mark `failed`, refund once.
-- Export schedule + trigger from `index.js`.
+path for jobs wedged in `saving` on staging.
+- ✅ New `public/functions/scheduled/generation-job-reconcile.js`, modeled on
+  `asset-usage-reconcile.js`: PubSub schedule (every 10 min) + admin-only
+  callable trigger (`triggerReconcileGenerationJobs`, dryRun default).
+- ✅ Collection-group sweep of `generationJobs` where `status` is non-terminal
+  (`in ['queued','running','saving']`); jobs younger than `RACE_GUARD_MS`
+  (3 min) are skipped so it never fights a live webhook/poll or an in-flight
+  save. For each: `fetchProviderPrediction(job)` (a `switch (job.provider)`,
+  Replicate-only today — the seam that becomes the registry) →
+  `processTerminalPrediction(...)` (the same idempotent processor the
+  webhook/poll use, so no double-save / double-charge).
+- ✅ Give-up rule: non-terminal **and** > `GIVE_UP_MS` (30 min) **and** the
+  provider also reports failed/absent (404) → mark `failed`, refund once via the
+  shared `refundSplatToken`. A job the provider still reports as *running* is
+  left alone (SHARP cold-boots are slow). Jobs that never recorded a
+  `providerJobId` (crashed mid-submit) are given up the same way once old.
+- ✅ `processTerminalPrediction` / `refundSplatToken` / `cleanupSplatTempFile` /
+  `normalizeReplicateStatus` exported from `replicate.js` so the reconciler runs
+  identical logic. Schedule + trigger exported from `index.js`.
 
-### Phase 2 — Extract the shared framework (pure refactor, splat stays sole consumer)
+### Phase 2 — Extract the shared framework (pure refactor, splat stays sole consumer) ← NEXT
 No data churn (Phase 0 already named everything generically); verify splat
 behaves identically end-to-end.
 - New `public/functions/jobs/` module: `processTerminalJob`,
@@ -302,11 +310,13 @@ provider integration.
 
 ---
 
-## Teleport / Varjo photogrammetry (reference, not built)
+## Teleport / Varjo photogrammetry (fast-follow, not yet built)
 
-Teleport processes a **zip of images** or a **video** into a splat via an
-asynchronous cloud pipeline (minutes-to-hours). It needs the full queue plus two
-things the Replicate kinds don't:
+The next consumer after splat-v1 ships: Teleport is the **fast-follow**, gated
+only on API keys. It processes a **zip of images** or a **video** into a splat
+via an asynchronous cloud pipeline (minutes-to-hours), and is the first kind
+that exercises the queue's large-source-file and cost-hold paths. It needs the
+full queue plus two things the Replicate kinds don't:
 
 1. **Large source files.** A zip/video is too big to base64 through a callable
    (~10–32 MB limit). The client uploads directly to **Firebase Storage**
@@ -350,9 +360,17 @@ things the Replicate kinds don't:
 - **Server save is streamed**, so generation is *not* memory-bound by splat size
   (see Completion model). The remaining ceiling is the **100 MB octet-stream cap
   in `storage.rules`**, which a generated `.ply` must stay under.
-- **Future size win:** SHARP emits uncompressed `.ply`. Converting to `.spz` /
-  `.ksplat` (client- or server-side) would cut size ~5–10× and is the cleaner
-  long-term fix for the size ceiling.
+- **Target output format — World Labs / sparkjsdev RAD with LOD.** SHARP emits
+  uncompressed `.ply` today, which is the source of the size ceiling. The chosen
+  long-term cloud-processing target is the **RAD** format (World Labs /
+  [sparkjsdev](https://github.com/sparkjsdev)) **with level-of-detail**, so the
+  viewer streams progressively and stays performant on large scenes. This is the
+  practical replacement for **Google 3D Tiles** as the real-world-context layer:
+  splats become the geometry source, RAD+LOD makes them cheap enough to ship to
+  end users. A server-side `.ply → RAD` conversion step slots into the job
+  queue's `persistResult` adapter (it's just a different output encoding for the
+  same `kind: 'splat'`). Interim `.spz` / `.ksplat` conversion (~5–10× smaller)
+  remains a cheaper stopgap if RAD tooling isn't ready.
 
 ## Deploying
 
