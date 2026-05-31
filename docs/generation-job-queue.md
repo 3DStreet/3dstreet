@@ -371,6 +371,26 @@ full queue plus two things the Replicate kinds don't:
   queue's `persistResult` adapter (it's just a different output encoding for the
   same `kind: 'splat'`). Interim `.spz` / `.ksplat` conversion (~5–10× smaller)
   remains a cheaper stopgap if RAD tooling isn't ready.
+- **RAD is the splat "optimized variant" — reuse the GLB original/optimized
+  schema as-is.** The RAD+LOD output is to a splat exactly what the Draco+WebP
+  optimized GLB is to a mesh original, so it maps onto the existing asset fields
+  with **no schema change**:
+  - `storageUrl` / `storagePath` (+ `assetRole: 'original'`) — the raw `.ply`
+    from SHARP, preserved as the source of truth.
+  - `optimizedSourceUrl` / `optimizedSourcePath` / `optimizedSourceSize`
+    (+ `assetRole: 'optimized'`) — the derived RAD+LOD variant.
+  - The renderer/scene loader prefers `optimizedSourceUrl ?? storageUrl` (the
+    same rule GLBs already use), so a splat with a RAD variant streams it and
+    silently falls back to the `.ply` when there isn't one yet.
+  - **Reprocessable by construction:** a future, better LOD pass just rewrites
+    the `optimizedSource*` variant; the original `.ply` is never touched, so we
+    can re-optimize the whole back catalogue as the tooling improves. And the
+    quota math is already correct — `optimizedSourceSize` is intentionally
+    excluded from the tally (it's a platform-derived cost, not user storage),
+    matching how GLB optimization is billed.
+  This means RAD can land as a pure server-side `persistResult` enhancement (or a
+  later reprocessing sweep over existing splat assets) without any client,
+  schema, or rules churn.
 
 ## Deploying
 
