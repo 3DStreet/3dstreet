@@ -23,9 +23,7 @@ import { assetsService, ASSET_TYPES, ASSET_CATEGORIES } from '@shared/assets';
 import { getServedUrl } from '@shared/assets/utils.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
-  GLB_MAX_BYTES,
-  IMAGE_MAX_BYTES,
-  SPLAT_MAX_BYTES,
+  MAX_FILE_BYTES,
   FILE_PICKER_ACCEPT,
   getAssetKind,
   isAcceptedAssetFile,
@@ -340,20 +338,16 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     );
   }
 
-  const sizeCap =
-    kind === 'glb'
-      ? GLB_MAX_BYTES
-      : kind === 'splat'
-        ? SPLAT_MAX_BYTES
-        : IMAGE_MAX_BYTES;
-  if (file.size > sizeCap) {
-    const limitMb = Math.round(sizeCap / 1000 / 1000);
+  // Fast, type-agnostic reject for files past the absolute ceiling (top plan).
+  // The per-plan cap (smaller for FREE/PRO) is enforced by preflightQuota below.
+  if (file.size > MAX_FILE_BYTES) {
+    const limitGb = MAX_FILE_BYTES / 1000 / 1000 / 1000;
     captureUploadBlockedEvent(kind, 'too_large', {
       file_size: file.size,
-      size_cap: sizeCap
+      size_cap: MAX_FILE_BYTES
     });
     notifyError(
-      `${file.name} is over the ${limitMb} MB cloud upload limit — kept local for preview only.`
+      `${file.name} is over the ${limitGb} GB cloud upload limit — kept local for preview only.`
     );
     setUpload(entityId, {
       status: 'local_error',
@@ -382,7 +376,22 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
 
   const quota = await preflightQuota(file.size);
   if (quota && quota.allowed === false && !quota.soft) {
-    if (quota.reason === 'over_limit' || quota.bytesUsed != null) {
+    if (quota.reason === 'file_too_large') {
+      const fileLimitMb = Math.round((quota.perFileLimit || 0) / 1000 / 1000);
+      captureUploadBlockedEvent(kind, 'file_too_large', {
+        file_size: file.size,
+        per_file_limit: quota.perFileLimit ?? null,
+        plan: quota.planName ?? quota.tier ?? null
+      });
+      notifyError(
+        `${file.name} is too large for your ${quota.planName || quota.tier || 'current'} plan (max ${fileLimitMb} MB per file). Upgrade to upload larger files — kept local for preview only.`
+      );
+      setUpload(entityId, {
+        status: 'local_error',
+        reason: 'file_too_large',
+        progress: 0
+      });
+    } else if (quota.reason === 'over_limit' || quota.bytesUsed != null) {
       const usedMb = ((quota.bytesUsed || 0) / 1000 / 1000).toFixed(1);
       const limitMb = Math.round((quota.planLimit || 0) / 1000 / 1000);
       captureUploadBlockedEvent(kind, 'over_quota', {

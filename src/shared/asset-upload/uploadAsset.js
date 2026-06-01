@@ -18,14 +18,13 @@ import {
 } from './extractGlbAttribution.js';
 import { optimizeGlb } from './optimizeGlb.js';
 
-export const GLB_MAX_BYTES = 50 * 1000 * 1000;
-export const IMAGE_MAX_BYTES = 10 * 1000 * 1000;
-// Client-side cap for user-initiated splat *uploads* (drag-and-drop / picker).
-// Intentionally lower than the storage.rules octet-stream ceiling (100 MB):
-// generated splats (e.g. SHARP's uncompressed .ply, ~66 MB) save server-side
-// via assetsService.addAsset and are gated only by the 100 MB rule, but we
-// don't yet want users hand-uploading huge files, so this stays at 50 MB.
-export const SPLAT_MAX_BYTES = 50 * 1000 * 1000;
+// Absolute client-side per-file ceiling = the top plan's per-file cap (MAX,
+// 5 GB). Type-agnostic; this is only the fast synchronous "obviously too big"
+// reject. The real per-plan gate (FREE 100 MB / PRO 1 GB / MAX 5 GB) is
+// SOFT-enforced by getUploadQuota, which knows the user's plan. Keep in sync
+// with MAX_FILE_BYTES_BY_PLAN in public/functions/asset-quota.js and the hard
+// ceiling in public/storage.rules.
+export const MAX_FILE_BYTES = 5 * 1000 * 1000 * 1000;
 
 const GLB_EXTS = ['.glb', '.gltf'];
 const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.avif'];
@@ -82,24 +81,15 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
     };
   }
 
-  const sizeCap =
-    kind === 'glb'
-      ? GLB_MAX_BYTES
-      : kind === 'splat'
-        ? SPLAT_MAX_BYTES
-        : IMAGE_MAX_BYTES;
-  if (file.size > sizeCap) {
-    const limitMb = Math.round(sizeCap / 1000 / 1000);
-    const kindLabel =
-      kind === 'glb'
-        ? 'GLB files'
-        : kind === 'splat'
-          ? 'Splat files'
-          : 'Images';
+  // Fast, type-agnostic reject for files past the absolute ceiling (top plan).
+  // The per-plan cap (smaller for FREE/PRO) is enforced by preflightQuota below,
+  // which knows the user's plan.
+  if (file.size > MAX_FILE_BYTES) {
+    const limitGb = MAX_FILE_BYTES / 1000 / 1000 / 1000;
     return {
       ok: false,
       kind,
-      error: `File too large. ${kindLabel} must be under ${limitMb} MB.`
+      error: `File too large. Maximum upload size is ${limitGb} GB.`
     };
   }
 
@@ -127,14 +117,14 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
     if (quota && quota.allowed === false && !quota.soft) {
       const usedMb = ((quota.bytesUsed || 0) / 1000 / 1000).toFixed(1);
       const limitMb = Math.round((quota.planLimit || 0) / 1000 / 1000);
-      return {
-        ok: false,
-        kind,
-        error:
-          quota.reason === 'over_limit'
-            ? `Storage full — using ${usedMb} / ${limitMb} MB.`
-            : 'Upload blocked.'
-      };
+      const fileLimitMb = Math.round((quota.perFileLimit || 0) / 1000 / 1000);
+      let error = 'Upload blocked.';
+      if (quota.reason === 'file_too_large') {
+        error = `File too large for your ${quota.planName || quota.tier || 'current'} plan (max ${fileLimitMb} MB per file). Upgrade to upload larger files.`;
+      } else if (quota.reason === 'over_limit') {
+        error = `Storage full — using ${usedMb} / ${limitMb} MB.`;
+      }
+      return { ok: false, kind, error };
     }
 
     let optimizedBlob = null;

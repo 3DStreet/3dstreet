@@ -1216,7 +1216,11 @@ async function saveSplatToGallery(userId, plyUrl, job) {
       size,
       mimeType: 'application/octet-stream',
       generationMetadata: {
-        model: job.model || 'kfarr/sharp-ml',
+        // User-facing attribution credits Apple (SHARP is Apple's model; the
+        // `kfarr/sharp-ml` Replicate path that actually ran is preserved on the
+        // job doc + as predictionId below). This is the value the gallery card /
+        // mesh-details modal display via getAssetSourceLabel.
+        model: 'apple/sharp-ml',
         model_name: 'SHARP (Image to Splat)',
         sourceType: 'image',
         source: job.source || 'generator',
