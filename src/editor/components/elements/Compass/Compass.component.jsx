@@ -206,14 +206,17 @@ export const Compass = () => {
           pointerEvents="none"
         />
         {/* Needle group — rotated via the ref'd transform each frame.
-            transform-box/origin keep rotation about the dial centre. */}
+            transform-box/origin keep rotation about the dial centre. The
+            rotation is applied imperatively by the rAF loop; we deliberately
+            omit `transform` from this style object so React does not reconcile
+            it back to 0deg on a hover/tooltip re-render (which would flick the
+            needle to north for one frame). */}
         <g
           ref={needleRef}
           pointerEvents="none"
           style={{
             transformBox: 'fill-box',
-            transformOrigin: 'center',
-            transform: 'rotate(0deg)'
+            transformOrigin: 'center'
           }}
         >
           {/* North half — red, points up at angle 0. */}
