@@ -133,19 +133,25 @@ export function captureGlbThumbnail(
 
 /**
  * Upload an already-captured thumbnail blob to Storage at
- * `users/{ownerUid}/assets/meshes/{assetId}-thumb.jpg`, and write the
- * paths to the Firestore asset doc. The 'assetUpdated' event emitted by
+ * `users/{ownerUid}/assets/{subfolder}/{assetId}-thumb.jpg`, and write the
+ * paths to the Firestore asset doc. `subfolder` is the asset's type folder
+ * ('meshes' for GLB, 'splats' for splats). The 'assetUpdated' event emitted by
  * updateAsset propagates the new thumbnailUrl to the gallery card and
  * the asset-upload cache automatically.
  *
  * Errors are swallowed (logged): the upload itself already succeeded,
  * missing thumbnail just means the gallery card keeps the placeholder.
  */
-export async function uploadCapturedThumbnail(assetId, ownerUid, jpegBlob) {
+export async function uploadCapturedThumbnail(
+  assetId,
+  ownerUid,
+  jpegBlob,
+  subfolder = 'meshes'
+) {
   try {
     const thumbnailPath = STORAGE_PATHS.assetFile(
       ownerUid,
-      'meshes',
+      subfolder,
       `${assetId}-thumb.jpg`
     );
     const thumbnailUrl = await assetsService.uploadToStorage(

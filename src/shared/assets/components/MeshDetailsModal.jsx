@@ -5,7 +5,7 @@
  * which aren't loaded in the generator or bollardbuddy bundles.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -133,6 +133,43 @@ const MeshDetailsModal = ({
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [onNavigate, onClose]);
+
+  // Lazy splat-thumbnail backfill: the splat-viewer iframe captures a frame of
+  // the loaded splat and postMessages it up. If this splat has no thumbnail yet
+  // and we're the owner (only the owner may write to their asset path), upload
+  // it so the gallery card stops showing a blank .ply placeholder. Best-effort,
+  // at most once per asset (the assetUpdated event then refreshes the card).
+  const thumbUploadedRef = useRef(null);
+  useEffect(() => {
+    const isOwnerNow = !!auth.currentUser && auth.currentUser.uid === ownerUid;
+    if (!data || data.type !== 'splat' || !isOwnerNow) return;
+    if (data.thumbnailUrl || thumbUploadedRef.current === assetId) return;
+    const expectedSrc = getServedUrl(data);
+    const onMessage = (e) => {
+      const msg = e.data;
+      if (
+        !msg ||
+        msg.type !== '3dstreet:splat-thumbnail' ||
+        !(msg.blob instanceof Blob)
+      ) {
+        return;
+      }
+      // The viewer echoes the src it captured; ignore a stale capture that
+      // arrived after the user navigated to a different asset.
+      if (msg.src && msg.src !== expectedSrc) return;
+      if (thumbUploadedRef.current === assetId) return;
+      thumbUploadedRef.current = assetId;
+      import('@shared/asset-upload')
+        .then(({ uploadCapturedThumbnail }) =>
+          uploadCapturedThumbnail(assetId, ownerUid, msg.blob, 'splats')
+        )
+        .catch((err) =>
+          console.warn('[MeshDetailsModal] splat thumbnail upload failed', err)
+        );
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [data, assetId, ownerUid]);
 
   const isOwner = !!auth.currentUser && auth.currentUser.uid === ownerUid;
   const nameDirty = isOwner && name.trim() !== savedName && name.trim() !== '';

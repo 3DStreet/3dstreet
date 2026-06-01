@@ -112,6 +112,10 @@ async function convert({ uid, assetId, plyPath }) {
       // resumable upload keeps memory bounded for large files.
       metadata: {
         contentType: 'application/octet-stream',
+        // Immutable content (keyed by assetId): cache for a year so the editor
+        // and the preview-modal iframe reuse the browser HTTP cache instead of
+        // re-downloading. Matches assetsService.uploadToStorage for uploads.
+        cacheControl: 'public, max-age=31536000',
         metadata: {
           firebaseStorageDownloadTokens: downloadToken,
           // Excludes this file from the user's quota (onAssetWritten reads only
@@ -210,12 +214,10 @@ app.post('/', async (req, res) => {
       error: String(err && err.message ? err.message : err)
     });
     // 500 so Cloud Tasks retries (the reconciler also re-enqueues stalls).
-    res
-      .status(500)
-      .json({
-        ok: false,
-        error: String(err && err.message ? err.message : err)
-      });
+    res.status(500).json({
+      ok: false,
+      error: String(err && err.message ? err.message : err)
+    });
   }
 });
 

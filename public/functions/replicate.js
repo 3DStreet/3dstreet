@@ -1175,6 +1175,10 @@ async function saveSplatToGallery(userId, plyUrl, job) {
     // a single request — the very thing we're avoiding.
     metadata: {
       contentType: 'application/octet-stream',
+      // Immutable content (keyed by assetId): cache for a year so the editor
+      // and the preview-modal iframe reuse the browser HTTP cache instead of
+      // re-downloading. Matches assetsService.uploadToStorage for uploads.
+      cacheControl: 'public, max-age=31536000',
       metadata: {
         firebaseStorageDownloadTokens: downloadToken,
         assetRole: 'original',

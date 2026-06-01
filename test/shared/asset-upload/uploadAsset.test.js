@@ -2,8 +2,7 @@ import { vi, describe, it, expect } from 'vitest';
 import {
   getAssetKind,
   isAcceptedAssetFile,
-  GLB_MAX_BYTES,
-  IMAGE_MAX_BYTES
+  MAX_FILE_BYTES
 } from '../../../src/shared/asset-upload/uploadAsset.js';
 
 vi.mock('@shared/assets', () => ({
@@ -60,9 +59,10 @@ describe('isAcceptedAssetFile', () => {
   });
 });
 
-describe('size caps', () => {
-  it('GLB cap is 50 MB (decimal)', () =>
-    expect(GLB_MAX_BYTES).toBe(50_000_000));
-  it('image cap is 10 MB (decimal)', () =>
-    expect(IMAGE_MAX_BYTES).toBe(10_000_000));
+describe('size cap', () => {
+  // Single type-agnostic client ceiling = the top plan's per-file cap (MAX,
+  // 5 GB, decimal). Per-plan caps (FREE/PRO) are soft-enforced server-side by
+  // getUploadQuota (MAX_FILE_BYTES_BY_PLAN), not here.
+  it('absolute per-file ceiling is 5 GB (decimal)', () =>
+    expect(MAX_FILE_BYTES).toBe(5_000_000_000));
 });

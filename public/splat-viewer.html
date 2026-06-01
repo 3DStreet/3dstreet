@@ -108,7 +108,11 @@
         const canvas = document.getElementById('canvas');
         const renderer = new THREE.WebGLRenderer({
           canvas,
-          antialias: true
+          antialias: true,
+          // Needed so we can read the canvas back into a thumbnail JPEG after
+          // the splat settles (see postThumbnail). Minor perf cost, fine for a
+          // preview viewer.
+          preserveDrawingBuffer: true
         });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -158,6 +162,45 @@
           controls.update();
           renderer.render(scene, camera);
         });
+
+        // Best-effort: once the splat has had a moment to refine via LOD, hand
+        // a downscaled JPEG of the current view up to the parent (e.g. the asset
+        // preview modal), which backfills it as the asset thumbnail if missing.
+        // Harmless when no parent is listening (e.g. the generator preview).
+        setTimeout(() => postThumbnail(canvas, url), 1500);
+      }
+
+      // Draw the WebGL canvas onto a small 2D canvas (≤512px, aspect-preserved)
+      // and postMessage the resulting JPEG blob to the parent. `src` is echoed
+      // so the parent can confirm the capture still matches what it's showing.
+      function postThumbnail(sourceCanvas, src) {
+        try {
+          const maxDim = 512;
+          const sw = sourceCanvas.width;
+          const sh = sourceCanvas.height;
+          if (!sw || !sh) return;
+          const scale = Math.min(1, maxDim / Math.max(sw, sh));
+          const tw = Math.max(1, Math.round(sw * scale));
+          const th = Math.max(1, Math.round(sh * scale));
+          const tmp = document.createElement('canvas');
+          tmp.width = tw;
+          tmp.height = th;
+          tmp.getContext('2d').drawImage(sourceCanvas, 0, 0, tw, th);
+          tmp.toBlob(
+            (blob) => {
+              if (blob && window.parent && window.parent !== window) {
+                window.parent.postMessage(
+                  { type: '3dstreet:splat-thumbnail', blob, src },
+                  '*'
+                );
+              }
+            },
+            'image/jpeg',
+            0.82
+          );
+        } catch (e) {
+          console.warn('[splat-viewer] thumbnail capture failed', e);
+        }
       }
 
       // Position the camera so the whole splat is in view and set the orbit
