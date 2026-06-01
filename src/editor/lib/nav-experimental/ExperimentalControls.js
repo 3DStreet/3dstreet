@@ -58,7 +58,6 @@ import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
   ROTATION_GROUND_FLOOR_METRES,
   MIN_ORBIT_RADIUS_METRES,
-  MAX_ORBIT_RADIUS_METRES,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
   SWOOP_PHASE2_MAX_TICKS_PER_FRAME,
@@ -1414,16 +1413,27 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
 
   // Map-mode pivot, per D7's fallback chain:
-  //   cursor surface/ground hit -> screen-centre surface -> 30m ahead,
-  // then clamped to a sane orbit radius (D5 min + far-ground cap).
+  //   cursor surface/ground hit -> screen-centre surface -> 30m ahead.
+  //
+  // We orbit the true point under the cursor at *any* distance — no
+  // far-radius cap. A previous MAX_ORBIT_RADIUS clamp pulled distant
+  // pivots inward to keep the camera's lever arm short, but with the
+  // corrected rigid orbit (navMath.shiftRotateStep) that clamp made the
+  // ring/pivot drift vertically on tilt when zoomed out
+  // (reports/010-testing.md #7) — because we were then orbiting a
+  // floating near-point, not the ground feature. The motivating concern
+  // (orbiting a far pivot at a shallow, ground-skimming angle) is
+  // already handled by the two-regime split: below the tilt threshold
+  // rotation is in-place about the camera, so we never orbit a far
+  // ground pivot at a shallow angle. Only a MIN radius remains, to keep
+  // a very-close pivot from making the orbit twitchy.
   //
   // Note on `source` (plan C2): `worldPointAt` returns 'ground' (not
   // 'fallback') whenever the cursor ray meets y=0 within MAX_GROUND_DIST
   // — the common Map-mode case even when the cursor "looks over the
   // scene," because a slightly-down ray still hits distant ground. So the
   // 'fallback' branch (screen-centre / 30m-ahead) only fires when the ray
-  // points *above* the horizon. Most Map-mode pivots are therefore
-  // 'ground' hits that can be far away — hence the MAX_ORBIT_RADIUS clamp.
+  // points *above* the horizon.
   _mapModePivot(clientX, clientY) {
     const hit = this._cursorAnchor.worldPointAt(clientX, clientY);
     let p;
@@ -1438,11 +1448,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
     const fwd = this._tmpV3c;
     this._camera.getWorldDirection(fwd);
+    // maxR = Infinity → no inward cap; MIN still guards a twitchy
+    // very-close pivot.
     return clampOrbitRadius(
       this._camera.position,
       p,
       MIN_ORBIT_RADIUS_METRES,
-      MAX_ORBIT_RADIUS_METRES,
+      Infinity,
       fwd
     );
   }

@@ -32,13 +32,6 @@ export const ROTATION_GROUND_FLOOR_METRES = 0.5;
 // the orbit twitchy; clamp the pivot out to at least this distance.
 export const MIN_ORBIT_RADIUS_METRES = 2;
 
-// TASK-010: cap on the Map-mode orbit radius. `worldPointAt` returns a
-// `'ground'` hit up to MAX_GROUND_DIST (2000m) for a slightly-down
-// cursor ray, so a distant ground pivot would give a multi-kilometre
-// lever arm and the orbit would feel like the whole world swinging.
-// Clamp the pivot in along the view ray to this distance. Feel-tunable.
-export const MAX_ORBIT_RADIUS_METRES = 100;
-
 // TASK-010 (D3): rotation-centre ring indicator's apparent on-screen
 // size, as a fraction of the camera→pivot distance. The billboard mesh
 // is scaled by `distance × this` each frame so it holds a roughly
