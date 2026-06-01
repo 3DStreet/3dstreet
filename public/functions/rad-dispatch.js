@@ -96,6 +96,16 @@ const onSplatAssetCreated = functions.firestore
       );
       return null;
     }
+    // A user-uploaded .rad is already the streaming-optimized form — the
+    // renderer serves storageUrl and streams it paged — so there's nothing to
+    // convert. (build-lod also accepts .ply/.splat/.spz/.ksplat/.sog and
+    // content-sniffs the input, so every other splat upload converts fine.)
+    if (plyPath.toLowerCase().endsWith('.rad')) {
+      console.log(
+        `[rad-dispatch] splat ${userId}/${assetId} uploaded as .rad; already optimized, skipping`
+      );
+      return null;
+    }
 
     const db = admin.firestore();
     const jobId = crypto.randomUUID();

@@ -85,8 +85,11 @@ async function convert({ uid, assetId, plyPath }) {
 
   const bucket = admin.storage().bucket();
 
-  // 1. Download the .ply to local scratch. We name it {assetId}.ply so
-  //    build-lod's auto-suffix yields {assetId}-lod.rad.
+  // 1. Download the source splat to local scratch. We name it {assetId}.ply
+  //    only so build-lod's auto-suffix yields {assetId}-lod.rad — build-lod
+  //    content-sniffs the bytes, so .splat/.spz/.ksplat/.sog inputs convert
+  //    fine despite the nominal .ply name. (.rad uploads never reach here;
+  //    onSplatAssetCreated skips them.)
   //    NOTE: /tmp on Cloud Run is tmpfs (counts against memory). For multi-GB
   //    splats, mount a GCS FUSE volume and point WORKDIR there instead.
   const workDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'rad-'));

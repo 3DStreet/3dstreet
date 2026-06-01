@@ -41,6 +41,11 @@ describe('getAssetKind', () => {
       expect(getAssetKind({ name: `photo.${ext}` })).toBe('image');
     }
   });
+  it('recognizes all splat extensions (incl. pre-optimized .rad)', () => {
+    for (const ext of ['ply', 'splat', 'spz', 'rad']) {
+      expect(getAssetKind({ name: `scene.${ext}` })).toBe('splat');
+    }
+  });
   it('returns null for unsupported types', () => {
     expect(getAssetKind({ name: 'model.fbx' })).toBeNull();
     expect(getAssetKind({ name: 'document.pdf' })).toBeNull();
