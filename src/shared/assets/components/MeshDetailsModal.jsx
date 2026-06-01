@@ -93,6 +93,9 @@ const MeshDetailsModal = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  // Latest close handler, read by the keydown effect (which is set up once).
+  const onCloseRef = useRef(null);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -126,13 +129,13 @@ const MeshDetailsModal = ({
     const handleKeyDown = (e) => {
       if (e.key === 'ArrowLeft' && onNavigate) onNavigate('prev');
       else if (e.key === 'ArrowRight' && onNavigate) onNavigate('next');
-      else if (e.key === 'Escape') onClose();
+      else if (e.key === 'Escape') onCloseRef.current?.();
     };
     // Capture phase — see AssetsModal for why (SceneGraph's onKeyDown
     // stopPropagation()s arrow keys in bubble phase before they reach window).
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [onNavigate, onClose]);
+  }, [onNavigate]);
 
   // Lazy splat-thumbnail backfill: the splat-viewer iframe captures a frame of
   // the loaded splat and postMessages it up. If this splat has no thumbnail yet
@@ -171,7 +174,56 @@ const MeshDetailsModal = ({
     return () => window.removeEventListener('message', onMessage);
   }, [data, assetId, ownerUid]);
 
+  const iframeRef = useRef(null);
   const isOwner = !!auth.currentUser && auth.currentUser.uid === ownerUid;
+
+  // Synchronous fallback for when the user closes before the viewer's better
+  // auto-framed capture fires: read whatever the iframe canvas currently shows
+  // (same-origin) and upload it. Lower quality (live view, maybe mid-LOD) but
+  // guarantees a thumbnail. Must run while the modal is still open — a ref read
+  // in an unmount effect would already be nulled — so it's wired through the
+  // explicit close affordances via handleClose, not a cleanup.
+  const captureCurrentFrame = () => {
+    if (!data || data.type !== 'splat' || !isOwner) return;
+    if (data.thumbnailUrl || thumbUploadedRef.current === assetId) return;
+    try {
+      const glCanvas =
+        iframeRef.current?.contentDocument?.querySelector('canvas');
+      if (!glCanvas || !glCanvas.width || !glCanvas.height) return;
+      const maxDim = 512;
+      const scale = Math.min(
+        1,
+        maxDim / Math.max(glCanvas.width, glCanvas.height)
+      );
+      const tw = Math.max(1, Math.round(glCanvas.width * scale));
+      const th = Math.max(1, Math.round(glCanvas.height * scale));
+      const tmp = document.createElement('canvas');
+      tmp.width = tw;
+      tmp.height = th;
+      tmp.getContext('2d').drawImage(glCanvas, 0, 0, tw, th);
+      thumbUploadedRef.current = assetId;
+      tmp.toBlob(
+        (blob) => {
+          if (!blob) return;
+          import('@shared/asset-upload')
+            .then(({ uploadCapturedThumbnail }) =>
+              uploadCapturedThumbnail(assetId, ownerUid, blob, 'splats')
+            )
+            .catch(() => {});
+        },
+        'image/jpeg',
+        0.82
+      );
+    } catch {
+      // iframe not ready / not same-origin — skip the fallback silently.
+    }
+  };
+
+  const handleClose = () => {
+    captureCurrentFrame();
+    onClose();
+  };
+  onCloseRef.current = handleClose;
   const nameDirty = isOwner && name.trim() !== savedName && name.trim() !== '';
   const attributionDirty =
     isOwner && !attributionEquals(attribution, savedAttribution);
@@ -302,7 +354,7 @@ const MeshDetailsModal = ({
       name: savedName || data.name || data.originalFilename || '',
       type: data.type
     });
-    onClose();
+    handleClose();
   };
 
   // Use mousedown, not click: a `click` fires on the common ancestor of
@@ -310,7 +362,7 @@ const MeshDetailsModal = ({
   // mouseup on the backdrop would land `click` on the backdrop and close.
   // Closing on mousedown only triggers when the press itself starts here.
   const handleBackgroundMouseDown = (e) => {
-    if (e.target === e.currentTarget) onClose();
+    if (e.target === e.currentTarget) handleClose();
   };
 
   // This modal serves both meshes (GLB) and splats (.ply/.splat/.spz). The
@@ -407,7 +459,7 @@ const MeshDetailsModal = ({
           <button
             type="button"
             className={styles.closeBtn}
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close"
           >
             <Cross24Icon />
@@ -423,6 +475,7 @@ const MeshDetailsModal = ({
             )}
             {data && (
               <iframe
+                ref={iframeRef}
                 className={styles.viewerFrame}
                 title={savedName || data.originalFilename || '3D model'}
                 // Don't put the editable name in the iframe URL — the src

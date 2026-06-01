@@ -151,10 +151,15 @@
         splat.quaternion.set(1, 0, 0, 0);
         scene.add(splat);
 
+        // The auto-framed camera pose, snapshotted right after framing (before
+        // any user interaction) so the thumbnail capture is always the clean
+        // framed view regardless of how the user later orbits.
+        let framedCamera = null;
         try {
           await splat.initialized;
           loader.hidden = true;
           frameObject(splat, camera, controls);
+          framedCamera = camera.clone();
         } catch (e) {
           console.error('[splat-viewer] splat init failed', e);
           showError('Unable to load splat');
@@ -172,43 +177,66 @@
           renderer.render(scene, camera);
         });
 
-        // Best-effort: once the splat has had a moment to refine via LOD, hand
-        // a downscaled JPEG of the current view up to the parent (e.g. the asset
-        // preview modal), which backfills it as the asset thumbnail if missing.
-        // Harmless when no parent is listening (e.g. the generator preview).
-        setTimeout(() => postThumbnail(canvas, url), 1500);
-      }
+        // Best-effort thumbnail. Once the splat has had a moment to refine via
+        // LOD, render the auto-framed pose into an OFFSCREEN target (so live
+        // orbiting can't affect it) and hand the JPEG up to the parent (the
+        // asset preview modal), which backfills it as the asset thumbnail if
+        // missing. Reuses the already-loaded splat — no reload, just a second
+        // camera + render target. Harmless when no parent is listening.
+        // 3s gives paged RAD time to stream higher-detail LOD; the delay costs
+        // nothing UX-wise now that capture is decoupled from the live view.
+        setTimeout(captureFramedThumbnail, 3000);
 
-      // Draw the WebGL canvas onto a small 2D canvas (≤512px, aspect-preserved)
-      // and postMessage the resulting JPEG blob to the parent. `src` is echoed
-      // so the parent can confirm the capture still matches what it's showing.
-      function postThumbnail(sourceCanvas, src) {
-        try {
-          const maxDim = 512;
-          const sw = sourceCanvas.width;
-          const sh = sourceCanvas.height;
-          if (!sw || !sh) return;
-          const scale = Math.min(1, maxDim / Math.max(sw, sh));
-          const tw = Math.max(1, Math.round(sw * scale));
-          const th = Math.max(1, Math.round(sh * scale));
-          const tmp = document.createElement('canvas');
-          tmp.width = tw;
-          tmp.height = th;
-          tmp.getContext('2d').drawImage(sourceCanvas, 0, 0, tw, th);
-          tmp.toBlob(
-            (blob) => {
-              if (blob && window.parent && window.parent !== window) {
-                window.parent.postMessage(
-                  { type: '3dstreet:splat-thumbnail', blob, src },
-                  '*'
-                );
-              }
-            },
-            'image/jpeg',
-            0.82
-          );
-        } catch (e) {
-          console.warn('[splat-viewer] thumbnail capture failed', e);
+        function captureFramedThumbnail() {
+          if (!framedCamera) return;
+          const size = 512;
+          let rt = null;
+          try {
+            const cam = framedCamera.clone();
+            cam.aspect = 1; // square thumbnail
+            cam.updateProjectionMatrix();
+
+            rt = new THREE.WebGLRenderTarget(size, size);
+            const prevTarget = renderer.getRenderTarget();
+            renderer.setRenderTarget(rt);
+            renderer.clear();
+            renderer.render(scene, cam);
+            const buf = new Uint8Array(size * size * 4);
+            renderer.readRenderTargetPixels(rt, 0, 0, size, size, buf);
+            renderer.setRenderTarget(prevTarget);
+
+            // readRenderTargetPixels returns bottom-up rows; flip into ImageData.
+            const out = document.createElement('canvas');
+            out.width = size;
+            out.height = size;
+            const ctx = out.getContext('2d');
+            const img = ctx.createImageData(size, size);
+            const rowBytes = size * 4;
+            for (let y = 0; y < size; y++) {
+              const srcOff = (size - 1 - y) * rowBytes;
+              img.data.set(
+                buf.subarray(srcOff, srcOff + rowBytes),
+                y * rowBytes
+              );
+            }
+            ctx.putImageData(img, 0, 0);
+            out.toBlob(
+              (blob) => {
+                if (blob && window.parent && window.parent !== window) {
+                  window.parent.postMessage(
+                    { type: '3dstreet:splat-thumbnail', blob, src: url },
+                    '*'
+                  );
+                }
+              },
+              'image/jpeg',
+              0.82
+            );
+          } catch (e) {
+            console.warn('[splat-viewer] thumbnail capture failed', e);
+          } finally {
+            if (rt) rt.dispose();
+          }
         }
       }
 
