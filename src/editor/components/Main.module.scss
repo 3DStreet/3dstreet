@@ -61,17 +61,14 @@
   z-index: 10;
 }
 
-// Pedestal mode: the ActionBar dock drops to z-index: -1 (becomes the
-// letterbox behind the canvas) and goes full-width, so anchoring to its
-// right edge is meaningless. Main.jsx clears the inline transform here and
-// we fall back to a fixed bottom-right position. The compass must NOT follow
-// the bar down to z-index: -1 — re-pin z-index: 10 (equal specificity to the
-// actionBar pedestal rule) so it stays visible above the bar. It still sits
-// below the open AddLayerPanel (z-index: 100), so the panel covers it like
-// the toolbar.
+// Pedestal mode: the ActionBar dock goes full-width and drops to z-index: -1
+// (it becomes the letterbox behind the canvas), but its buttons stay centred,
+// so the compass keeps the SAME centre-anchored position as in plan view —
+// Main.jsx measures the inner toolbar (not the full-width dock) so the
+// translateX is identical in both modes. We only need to re-assert z-index: 10
+// (equal specificity to the actionBar pedestal rule) so the compass does NOT
+// follow the bar down behind the canvas; position is inherited from
+// `.compassDock`. It still sits below the open AddLayerPanel (z-index: 100).
 .pedestalMode.compassDock {
-  left: auto;
-  right: 16px;
-  bottom: 16px;
   z-index: 10;
 }

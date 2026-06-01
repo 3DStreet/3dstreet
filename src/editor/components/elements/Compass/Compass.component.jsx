@@ -33,9 +33,10 @@ const DIAL_R = 22; // dial / body radius
 const ARROW_SECTOR_INNER_R = 7; // hit-region inner radius
 const ARROW_SECTOR_OUTER_R = 21; // hit-region outer radius (just inside the dial)
 const ARROW_HALF_SPAN = 30; // 60deg sector — ~2-4 o'clock / 8-10 o'clock
-const ARC_R = 14; // radius of the visible curved arrow
-const ARC_HALF_SPAN = 24; // visible arc a touch shorter than the sector
-const ARROWHEAD = 6; // arrowhead length measured along the arc
+const ARC_R = 18; // radius of the visible curved arrow (near the rim, so the
+// needle's tip (16px) doesn't reach the arrow stems)
+const ARC_HALF_SPAN = 22; // visible arc a touch shorter than the sector
+const ARROWHEAD_BASE = 8; // arrowhead base width (px); drawn as an equilateral triangle
 
 // Point on a circle at screen angle `deg` (0 = up, CW+) and radius `r`.
 function polar(deg, r) {
@@ -72,13 +73,24 @@ function arc(a1, a2, r, sweep) {
   return `M ${x1} ${y1} A ${r} ${r} 0 ${large} ${sweep} ${x2} ${y2}`;
 }
 
-// Filled triangle arrowhead at the leading end of an arc. `dir` = +1 for a
-// clockwise arc (head points to increasing angle), -1 for counter-clockwise.
+// Equilateral triangle arrowhead at the leading end of an arc. `dir` = +1 for
+// a clockwise arc (tip points to increasing angle), -1 for counter-clockwise.
+// Computed in pixel space (not degrees) so the height stays proportional to
+// the base regardless of ARC_R: base spans the radial direction, the tip
+// extends along the tangent by the equilateral height (base * √3/2).
 function arrowHead(endDeg, dir) {
-  const [tx, ty] = polar(endDeg + dir * ARROWHEAD, ARC_R); // tip, further along the arc
-  const [ox, oy] = polar(endDeg, ARC_R + 3.5); // outer base corner
-  const [ix, iy] = polar(endDeg, ARC_R - 3.5); // inner base corner
-  return `${tx},${ty} ${ox},${oy} ${ix},${iy}`;
+  const rad = (endDeg * Math.PI) / 180;
+  const [px, py] = polar(endDeg, ARC_R); // base midpoint, on the arc
+  const tx = Math.cos(rad) * dir; // unit tangent in the motion direction
+  const ty = Math.sin(rad) * dir;
+  const nx = Math.sin(rad); // unit outward radial
+  const ny = -Math.cos(rad);
+  const half = ARROWHEAD_BASE / 2;
+  const h = ARROWHEAD_BASE * 0.866; // equilateral height
+  const tip = `${px + tx * h},${py + ty * h}`;
+  const b1 = `${px + nx * half},${py + ny * half}`;
+  const b2 = `${px - nx * half},${py - ny * half}`;
+  return `${tip} ${b1} ${b2}`;
 }
 
 const RIGHT_CENTRE = 90; // 3 o'clock

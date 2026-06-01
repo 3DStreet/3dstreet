@@ -75,11 +75,13 @@ export default function Main() {
     isPedestalMode ? `${base} ${styles.pedestalMode}` : base;
 
   // TASK-011: anchor the compass dock just to the right of the bottom-centre
-  // ActionBar. The ActionBar's width is dynamic (conditional buttons), so we
-  // measure it rather than use a fixed offset: the compass dock is pinned to
-  // the page centre (left: 50%) and pushed right by half the bar's width + a
-  // gap, keeping the bar itself centred. In pedestal mode the bar goes
-  // full-width, so we clear the override and let the CSS fixed fallback apply.
+  // ActionBar, in BOTH plan view and pedestal/street view. The bar's width is
+  // dynamic (conditional buttons), and in pedestal mode the dock stretches to
+  // full width while its buttons stay centred — so we measure the inner
+  // ActionBar element (the dock's first child), not the dock, and pin the
+  // compass to the page centre (left: 50%) pushed right by half that width +
+  // a gap. Measuring the inner toolbar makes the offset identical in both
+  // modes, so the compass stays put when switching to street view.
   const actionBarDockRef = useRef(null);
   const compassDockRef = useRef(null);
   useEffect(() => {
@@ -89,16 +91,13 @@ export default function Main() {
     if (!barDock || !compassDock) return;
     const GAP = 12;
     const place = () => {
-      if (isPedestalMode) {
-        compassDock.style.transform = '';
-        return;
-      }
-      compassDock.style.transform = `translateX(${barDock.offsetWidth / 2 + GAP}px)`;
+      const bar = barDock.firstElementChild || barDock;
+      compassDock.style.transform = `translateX(${bar.offsetWidth / 2 + GAP}px)`;
     };
     place();
     const ro =
       typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null;
-    if (ro) ro.observe(barDock);
+    if (ro) ro.observe(barDock.firstElementChild || barDock);
     window.addEventListener('resize', place);
     return () => {
       if (ro) ro.disconnect();
