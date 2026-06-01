@@ -58,6 +58,7 @@ import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
   ROTATION_GROUND_FLOOR_METRES,
   MIN_ORBIT_RADIUS_METRES,
+  MAP_PIVOT_MAX_NADIR_DIST_METRES,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
   SWOOP_PHASE2_MAX_TICKS_PER_FRAME,
@@ -125,6 +126,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Live value (overridable via `setTiltThreshold` / the
     // `nav-experimental-tuning` component); defaults to the constant.
     this._tiltThreshold = TILT_THRESHOLD_DEFAULT_DEGREES;
+
+    // TASK-010 (D-LT-3): far-pivot fallback threshold (horizontal metres
+    // from nadir). Live value, overridable via the tuning component.
+    this._mapPivotMaxNadirDist = MAP_PIVOT_MAX_NADIR_DIST_METRES;
 
     // TASK-010 (live-Shift, B6): last-known cursor coords, tracked on
     // mousedown and every mousemove so a mid-drag Shift toggle can
@@ -387,6 +392,22 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (typeof deg !== 'number' || !isFinite(deg)) return;
     this._tiltThreshold = THREE.MathUtils.clamp(deg, 5, 45);
     this._maybeEmitLbModeChange();
+  }
+
+  // TASK-010 (D-LT-3 / #6): live-tunable far-pivot fallback threshold
+  // (horizontal metres from nadir). Relayed from the tuning component.
+  setMapPivotMaxNadirDist(metres) {
+    if (typeof metres !== 'number' || !isFinite(metres)) return;
+    this._mapPivotMaxNadirDist = THREE.MathUtils.clamp(metres, 1, 100000);
+  }
+
+  // TASK-010 (D-LT-3 / #6): live-tunable Shift+LB rotation speed
+  // (radians per pixel). Relayed from the tuning component.
+  setRotationSpeed(radPerPx) {
+    if (typeof radPerPx !== 'number' || !isFinite(radPerPx) || radPerPx <= 0) {
+      return;
+    }
+    this.rotationSpeed = radPerPx;
   }
 
   // Phase 1 entry point used by viewport.js when the user triggers Plan
@@ -1435,14 +1456,31 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // 'fallback' branch (screen-centre / 30m-ahead) only fires when the ray
   // points *above* the horizon.
   _mapModePivot(clientX, clientY) {
+    const camPos = this._camera.position;
     const hit = this._cursorAnchor.worldPointAt(clientX, clientY);
-    let p;
+    let p = null;
     if (hit.source !== 'fallback') {
-      // Cursor hit a mesh OR the ground plane.
-      p = new THREE.Vector3(hit.x, hit.y, hit.z);
-    } else {
-      // Cursor over sky. D7 secondary: screen-centre surface, else the
-      // 30m-ahead fallback already in `hit`.
+      // Cursor hit a mesh OR the ground plane. Accept it only if it is
+      // not too far across the map — see the far-pivot guard below.
+      const candidate = new THREE.Vector3(hit.x, hit.y, hit.z);
+      const nadirDist = Math.hypot(
+        candidate.x - camPos.x,
+        candidate.z - camPos.z
+      );
+      if (nadirDist <= this._mapPivotMaxNadirDist) {
+        p = candidate;
+      }
+      // else: too far → fall through to the screen-centre branch.
+    }
+    if (!p) {
+      // Either the cursor is over sky, or its ground pivot is beyond the
+      // far-pivot threshold (D-LT-3). Both take the same fallback as
+      // clicking above the horizon: rotate about the screen-centre point
+      // — the most-downward, hence closest, ground point in view — which
+      // the ring signals. If even that misses (extreme sky-shallow view),
+      // use the 30m-ahead point already in `hit`. We accept screen-centre
+      // unconditionally even if it too is past the threshold: it is the
+      // best available pivot and cascading further would only surprise.
       const sc = this._screenCenterHit(); // null on sky-miss
       p = sc || new THREE.Vector3(hit.x, hit.y, hit.z);
     }
@@ -1451,7 +1489,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // maxR = Infinity → no inward cap; MIN still guards a twitchy
     // very-close pivot.
     return clampOrbitRadius(
-      this._camera.position,
+      camPos,
       p,
       MIN_ORBIT_RADIUS_METRES,
       Infinity,

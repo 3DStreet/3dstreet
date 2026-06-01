@@ -1,13 +1,16 @@
 /* global AFRAME */
 
-// TASK-010 (D2): a thin A-Frame component that surfaces the experimental
-// navigation tilt threshold T on a schema property so Diarmid can tweak
-// it live during feel-testing — via the A-Frame inspector or the console
+// TASK-010 (D2, D-LT-3): a thin A-Frame component that surfaces
+// experimental-navigation tuning knobs on schema properties so Diarmid
+// can tweak them live during feel-testing — via the A-Frame inspector or
+// the console
 // (`sceneEl.setAttribute('nav-experimental-tuning','tiltThresholdDegrees',15)`)
-// — without a rebuild. The navigation controls themselves are not an
-// A-Frame component (`ExperimentalControls` is `new`-ed in viewport.js),
-// so this component just relays the schema value onto the live controls
-// instance via `setTiltThreshold`.
+// — without a rebuild. Exposed knobs: the tilt threshold T, the far-pivot
+// fallback distance (D-LT-3), and the Shift+LB rotation speed. The
+// navigation controls themselves are not an A-Frame component
+// (`ExperimentalControls` is `new`-ed in viewport.js), so this component
+// just relays each schema value onto the live controls instance via the
+// matching setter.
 //
 // Registration: this module is side-effect-only (it registers the
 // component on import). A bare `export {…}` barrel does NOT pull in a
@@ -15,27 +18,46 @@
 // explicitly (`import './navTuningComponent.js';`). Without that the
 // `setAttribute` below would silently no-op on an unregistered component.
 
-import { TILT_THRESHOLD_DEFAULT_DEGREES } from './constants.js';
+import {
+  TILT_THRESHOLD_DEFAULT_DEGREES,
+  MAP_PIVOT_MAX_NADIR_DIST_METRES,
+  ROTATION_SPEED_RAD_PER_PX
+} from './constants.js';
 
 if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning']) {
   AFRAME.registerComponent('nav-experimental-tuning', {
-    // Schema default imported from the constant so the component and the
-    // constant can't drift.
+    // Schema defaults imported from the constants so the component and the
+    // constants can't drift.
     schema: {
       tiltThresholdDegrees: {
         type: 'number',
         default: TILT_THRESHOLD_DEFAULT_DEGREES
+      },
+      mapPivotMaxNadirDistMetres: {
+        type: 'number',
+        default: MAP_PIVOT_MAX_NADIR_DIST_METRES
+      },
+      rotationSpeedRadPerPx: {
+        type: 'number',
+        default: ROTATION_SPEED_RAD_PER_PX
       }
     },
     update() {
       // `inspector.controls` is assigned in viewport.js before this
       // component is attached, so the guard finds it on the first
       // (synchronous) update() that fires on setAttribute. The first
-      // update re-applies the default the constructor already set —
-      // harmless.
+      // update re-applies the defaults the constructor already set —
+      // harmless. Each setter ignores non-finite/out-of-range input.
       const c = AFRAME.INSPECTOR && AFRAME.INSPECTOR.controls;
-      if (c && typeof c.setTiltThreshold === 'function') {
+      if (!c) return;
+      if (typeof c.setTiltThreshold === 'function') {
         c.setTiltThreshold(this.data.tiltThresholdDegrees);
+      }
+      if (typeof c.setMapPivotMaxNadirDist === 'function') {
+        c.setMapPivotMaxNadirDist(this.data.mapPivotMaxNadirDistMetres);
+      }
+      if (typeof c.setRotationSpeed === 'function') {
+        c.setRotationSpeed(this.data.rotationSpeedRadPerPx);
       }
     }
   });
