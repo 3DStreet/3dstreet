@@ -380,9 +380,10 @@ describe('shiftRotateStep', () => {
   });
 
   it('yaw delta with camera NOT aimed at centre: angular offset to centre is preserved', () => {
-    // Museum diorama test. Camera at (10, 0, 0) looking 30° off from
+    // Rigid orbit, pure yaw. Camera at (10, 0, 0) looking 30° off from
     // origin. Apply 90° yaw. After the rotation, the angle between
-    // view direction and direction-to-centre should still be 30°.
+    // view direction and direction-to-centre should still be 30°
+    // (position offset and view both rotate by the same yaw).
     const camPos = new THREE.Vector3(10, 0, 0);
     const viewDir = new THREE.Vector3(
       -Math.cos(Math.PI / 6),
@@ -458,6 +459,90 @@ describe('shiftRotateStep', () => {
     // exact sign).
     const angle = Math.acos(THREE.MathUtils.clamp(newDir.dot(viewDir), -1, 1));
     expect((angle * 180) / Math.PI).toBeCloseTo(45, 1);
+  });
+
+  // --- Rigid-orbit invariant (reports/010-testing.md #1) ---
+  // The defining property of "orbit about the cursor pivot": the pivot's
+  // position in the camera's own frame is invariant across the step, so
+  // it stays pinned on screen. This is what the old museum-diorama math
+  // violated under any tilt. The earlier tests only exercised pure yaw
+  // (where the broken and correct math agree); these exercise pitch and
+  // mixed deltas from a *tilted* camera, which is where the drift was.
+
+  // Express a world point in the camera's local frame, built exactly the
+  // way `camera.lookAt` does (forward = view, up = world +Y, no roll).
+  function cameraLocal(worldPoint, pos, viewDir) {
+    const fwd = viewDir.clone().normalize();
+    const worldUp = new THREE.Vector3(0, 1, 0);
+    const right = new THREE.Vector3().crossVectors(fwd, worldUp).normalize();
+    const up = new THREE.Vector3().crossVectors(right, fwd).normalize();
+    const rel = new THREE.Vector3().subVectors(worldPoint, pos);
+    // Camera looks down -Z, so local z = -(rel·fwd); x = rel·right;
+    // y = rel·up. Screen x/y track local x/y.
+    return new THREE.Vector3(rel.dot(right), rel.dot(up), -rel.dot(fwd));
+  }
+
+  it('pitch from a tilted camera: pivot stays fixed in the camera frame (no on-screen drift)', () => {
+    // Camera 50m up, 50m back, tilted ~45° down, orbiting a pivot at the
+    // origin that it is NOT aimed straight at. This is the exact regime
+    // (tilted + offset pivot) where the diorama math drifted the pivot.
+    const camPos = new THREE.Vector3(0, 50, 50);
+    const centre = new THREE.Vector3(0, 0, 0);
+    // View aimed below the pivot and yawed off-axis, so view dir and the
+    // camera→centre vector do not share a meridian.
+    const viewDir = new THREE.Vector3(0.2, -0.8, -0.6).normalize();
+
+    const before = cameraLocal(centre, camPos, viewDir);
+
+    // A pure pitch (vertical drag) of a few degrees.
+    const dyPx = 20;
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 0,
+      dyPx,
+      speed: SPEED
+    });
+    const after = cameraLocal(centre, step.pos, dirFrom(step));
+
+    // Orbit radius preserved (rigid rotation about the centre).
+    expect(step.pos.distanceTo(centre)).toBeCloseTo(
+      camPos.distanceTo(centre),
+      4
+    );
+    // The pivot's camera-local coordinates are unchanged → it sits at the
+    // same screen position. (The old math moved `after` by metres here.)
+    expect(after.x).toBeCloseTo(before.x, 3);
+    expect(after.y).toBeCloseTo(before.y, 3);
+    expect(after.z).toBeCloseTo(before.z, 3);
+    // Sanity: the step did something (camera actually moved).
+    expect(step.pos.distanceTo(camPos)).toBeGreaterThan(0.1);
+  });
+
+  it('mixed yaw+pitch from a tilted camera: pivot stays fixed in the camera frame', () => {
+    const camPos = new THREE.Vector3(-30, 40, 20);
+    const centre = new THREE.Vector3(0, 0, 0);
+    const viewDir = new THREE.Vector3(0.5, -0.7, -0.5).normalize();
+
+    const before = cameraLocal(centre, camPos, viewDir);
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 35,
+      dyPx: -15,
+      speed: SPEED
+    });
+    const after = cameraLocal(centre, step.pos, dirFrom(step));
+
+    expect(step.pos.distanceTo(centre)).toBeCloseTo(
+      camPos.distanceTo(centre),
+      4
+    );
+    expect(after.x).toBeCloseTo(before.x, 3);
+    expect(after.y).toBeCloseTo(before.y, 3);
+    expect(after.z).toBeCloseTo(before.z, 3);
   });
 });
 

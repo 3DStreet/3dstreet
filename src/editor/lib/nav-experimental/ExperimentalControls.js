@@ -1479,12 +1479,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
   // --- Shift+LB orbit/tilt around latched center ---
 
-  // Shift+LB rotation step. Implements the "museum diorama" rotation
-  // feel (per claude/specs/001-shiftrotate-decoupled-view.md): the
-  // scene's angular position in the user's view is preserved across
-  // the rotation. Camera position orbits the latched centre; camera
-  // view direction rotates by the same yaw/tilt deltas, independently.
-  // Math lives in navMath.shiftRotateStep.
+  // Shift+LB rotation step. Rigid orbit about the latched centre: a
+  // single yaw+pitch rotation is applied to both the camera's
+  // position-offset-from-centre and its view direction, so the latched
+  // pivot stays pinned on screen (under the cursor) at any tilt. In the
+  // Street regime the centre is the camera position, so the offset is
+  // zero and this degrades to rotate-in-place. Math lives in
+  // navMath.shiftRotateStep.
   _shiftRotate(dxPx, dyPx) {
     const camera = this._camera;
     const center = this._latch.get('center');

@@ -43,7 +43,8 @@ export const MAX_ORBIT_RADIUS_METRES = 100;
 // size, as a fraction of the camera→pivot distance. The billboard mesh
 // is scaled by `distance × this` each frame so it holds a roughly
 // constant size on screen as the camera orbits. Feel-tunable.
-export const RING_SCREEN_FRACTION = 0.04;
+// Halved from 0.04 → 0.02 per reports/010-testing.md #2 (ring too big).
+export const RING_SCREEN_FRACTION = 0.02;
 
 // Wheel zoom: each "wheel-tick of budget" moves the camera by this fraction
 // of the current camera-to-anchor distance. Sign is applied by the caller.

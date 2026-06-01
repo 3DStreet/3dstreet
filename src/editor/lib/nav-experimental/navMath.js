@@ -15,12 +15,6 @@ import {
 } from './constants.js';
 
 const DEG2RAD = Math.PI / 180;
-// Spherical phi is angle from +Y. Elevation = 90° - phi.
-//   MIN_TILT_DEGREES (-89°, looking up)  -> phi = 179°  (MAX_SPHERICAL_PHI)
-//   MAX_TILT_DEGREES (+89°, looking down) -> phi =   1°  (MIN_SPHERICAL_PHI)
-const MAX_SPHERICAL_PHI = (90 - MIN_TILT_DEGREES) * DEG2RAD;
-const MIN_SPHERICAL_PHI = (90 - MAX_TILT_DEGREES) * DEG2RAD;
-
 const RAD2DEG = 180 / Math.PI;
 
 // Camera tilt in degrees below horizontal. 0° = horizontal, +90° =
@@ -238,16 +232,28 @@ export function phase2NextElevation(y, sign, alpha = SWOOP_PHASE2_STEP) {
 // view direction + rotation centre + per-event deltas, returns new
 // camera position + lookAt target. Caller writes back to the camera.
 //
-// Implements the "museum diorama" rotation (per
-// `claude/specs/001-shiftrotate-decoupled-view.md`): yaw/tilt deltas
-// apply to *both* the position-offset-from-centre (camera orbits the
-// scene) and the camera's view direction (independently). Preserves
-// the user's angular relationship to the centre across the rotation
-// — if the scene was in periphery at gesture start, it stays in
-// periphery; if it was at view centre, it stays at view centre.
+// **Rigid orbit about the latched centre** (TASK-010). The yaw + pitch
+// deltas are composed into a *single* rotation `R`, which is applied to
+// **both** the camera's position-offset-from-centre **and** its view
+// direction. Because the camera basis and the camera→centre vector
+// rotate by the same `R`, the centre's position in the camera's frame
+// is invariant — so the latched point stays pinned on screen (under the
+// cursor) at *any* tilt.
 //
-// No `camera.lookAt(centre)` semantics: that's what produced the
-// first-move "focus grab" snap when the user wasn't aimed at centre.
+// This replaces the earlier "museum diorama" math, which applied the
+// same spherical (dTheta, dPhi) increments to the position-offset and
+// the view-direction *independently*. That is only a single rotation
+// when the two vectors share a meridian (camera looking straight down
+// the offset, i.e. top-down); at any other tilt the pitch component
+// rotated each vector about a different horizontal axis and the pivot
+// drifted across the screen (reports/010-testing.md #1).
+//
+//   • Yaw  — rotation about world up (0,1,0) by `dTheta = -dxPx*speed`
+//            (matches the prior azimuth sign).
+//   • Pitch— rotation about the camera's horizontal right axis
+//            `normalize(viewDir × up)` so it is a true shared rotation,
+//            not a per-vector spherical pitch. Drag-down (dyPx > 0)
+//            tilts further down, preserving the prior feel.
 //
 // Inputs:
 //   camPos   — current camera world position (THREE.Vector3-like).
@@ -257,14 +263,13 @@ export function phase2NextElevation(y, sign, alpha = SWOOP_PHASE2_STEP) {
 //   speed    — radians per pixel (typically `controls.rotationSpeed`).
 //
 // Output:
-//   { pos, lookTarget }, both THREE.Vector3. `pos` may equal `camPos`
-//   when offset is degenerate (rotate-in-place case).
+//   { pos, lookTarget }, both THREE.Vector3. `pos` equals `camPos` in
+//   the rotate-in-place case (centre coincident with camera → zero
+//   offset → unrotated).
 //
-// Tilt clamp: gated by the view-direction's phi (= camera view tilt).
-// `dPhi` is reduced to whatever doesn't push view tilt outside
-// [MIN_TILT_DEGREES, MAX_TILT_DEGREES]. The same gated dPhi is then
-// applied to the position-offset, so position and view stay
-// consistent.
+// Tilt clamp: the pitch is reduced so the resulting view tilt stays in
+// [MIN_TILT_DEGREES, MAX_TILT_DEGREES]. The same clamped pitch drives
+// both position and view, so they stay consistent.
 export function shiftRotateStep({
   camPos,
   viewDir,
@@ -273,65 +278,52 @@ export function shiftRotateStep({
   dyPx,
   speed
 }) {
-  // (1) Position offset from centre.
-  const offsetPos = new THREE.Vector3(
+  const WORLD_UP = new THREE.Vector3(0, 1, 0);
+  const view = new THREE.Vector3(viewDir.x, viewDir.y, viewDir.z).normalize();
+
+  // (1) Yaw about world up.
+  const dTheta = -dxPx * speed;
+
+  // (2) Pitch about the camera's horizontal right axis. `view × up` is
+  //     horizontal and perpendicular to the view azimuth, so a rotation
+  //     about it by β changes the view tilt by exactly −β regardless of
+  //     the current tilt. Near-vertical view (|right| → 0) only at the
+  //     ±89° clamp; guard against the degenerate normalize.
+  const right = new THREE.Vector3().crossVectors(view, WORLD_UP);
+  const rightLen = right.length();
+
+  const curTilt = Math.asin(THREE.MathUtils.clamp(-view.y, -1, 1));
+  const MIN_TILT = MIN_TILT_DEGREES * DEG2RAD;
+  const MAX_TILT = MAX_TILT_DEGREES * DEG2RAD;
+  const wantTilt = curTilt + dyPx * speed; // drag-down (+dyPx) → tilt down
+  const clampedTilt = THREE.MathUtils.clamp(wantTilt, MIN_TILT, MAX_TILT);
+  const dTilt = clampedTilt - curTilt;
+
+  // (3) Compose the single rotation R = yaw(worldUp) ∘ pitch(right).
+  const R = new THREE.Quaternion().setFromAxisAngle(WORLD_UP, dTheta);
+  if (rightLen > 1e-6 && dTilt !== 0) {
+    right.multiplyScalar(1 / rightLen);
+    // Rotation about `right` by β changes tilt by −β, so β = −dTilt.
+    const qPitch = new THREE.Quaternion().setFromAxisAngle(right, -dTilt);
+    R.multiply(qPitch);
+  }
+
+  // (4) Apply the *same* R to the position offset and the view dir.
+  const offset = new THREE.Vector3(
     camPos.x - centre.x,
     camPos.y - centre.y,
     camPos.z - centre.z
+  ).applyQuaternion(R);
+  const pos = new THREE.Vector3(
+    centre.x + offset.x,
+    centre.y + offset.y,
+    centre.z + offset.z
   );
-  const hasPositionOrbit = offsetPos.lengthSq() >= 1e-6;
-  // Rotate-in-place case: centre coincides with camera (Rule 3 /
-  // unbounded scene). Position doesn't move; only view direction
-  // rotates.
-
-  // (2) View-direction virtual offset = -viewDir (unit length).
-  //     Spherical phi of this vector reads as the camera's view tilt:
-  //       view tilt 0° (horizontal) → -viewDir.y = 0  → phi = π/2
-  //       view tilt +89° (looking down) → -viewDir.y ≈ +1 → phi ≈ 0
-  //       view tilt -89° (looking up)   → -viewDir.y ≈ -1 → phi ≈ π
-  const offsetView = new THREE.Vector3(-viewDir.x, -viewDir.y, -viewDir.z);
-  const sphView = new THREE.Spherical().setFromVector3(offsetView);
-
-  // (3) Tilt clamp via view-direction phi.
-  const wantDPhi = -dyPx * speed;
-  const newPhi = sphView.phi + wantDPhi;
-  let actualDPhi = wantDPhi;
-  if (newPhi < MIN_SPHERICAL_PHI) {
-    actualDPhi = MIN_SPHERICAL_PHI - sphView.phi;
-  } else if (newPhi > MAX_SPHERICAL_PHI) {
-    actualDPhi = MAX_SPHERICAL_PHI - sphView.phi;
-  }
-  const dTheta = -dxPx * speed;
-
-  // (4) Apply to view direction.
-  sphView.theta += dTheta;
-  sphView.phi += actualDPhi;
-  const newOffsetView = new THREE.Vector3().setFromSpherical(sphView);
-
-  // (5) Apply to position offset (only when not rotate-in-place).
-  let pos;
-  if (hasPositionOrbit) {
-    const sphPos = new THREE.Spherical().setFromVector3(offsetPos);
-    sphPos.theta += dTheta;
-    sphPos.phi += actualDPhi;
-    // No separate phi clamp on position — view-tilt clamp above gates
-    // dPhi for both.
-    const newOffsetPos = new THREE.Vector3().setFromSpherical(sphPos);
-    pos = new THREE.Vector3(
-      centre.x + newOffsetPos.x,
-      centre.y + newOffsetPos.y,
-      centre.z + newOffsetPos.z
-    );
-  } else {
-    pos = new THREE.Vector3(camPos.x, camPos.y, camPos.z);
-  }
-
-  // (6) Look target. newOffsetView is the virtual offset (= -newViewDir,
-  //     unit length), so lookTarget = pos + newViewDir = pos - newOffsetView.
+  const newView = view.clone().applyQuaternion(R);
   const lookTarget = new THREE.Vector3(
-    pos.x - newOffsetView.x,
-    pos.y - newOffsetView.y,
-    pos.z - newOffsetView.z
+    pos.x + newView.x,
+    pos.y + newView.y,
+    pos.z + newView.z
   );
 
   return { pos, lookTarget };
