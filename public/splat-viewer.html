@@ -136,7 +136,16 @@
         const spark = new SparkRenderer({ renderer, enableLod: true });
         scene.add(spark);
 
-        const splat = new SplatMesh({ url, lod: true });
+        // Mirror the in-editor splat component: RAD files have pre-built LOD
+        // and stream via byte-range requests (paged), so they draw progressively
+        // and fast. Other formats use on-the-fly LOD (full download first).
+        const isRad = new URL(url, location.href).pathname
+          .toLowerCase()
+          .endsWith('.rad');
+        const splat = new SplatMesh({
+          url,
+          ...(isRad ? { paged: true } : { lod: true })
+        });
         // Spark uses a different quaternion convention; rotate to match the
         // upright orientation used by the in-editor splat component.
         splat.quaternion.set(1, 0, 0, 0);
