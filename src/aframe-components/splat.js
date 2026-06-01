@@ -36,6 +36,11 @@ async function loadSparkLibrary() {
 function normalizeUrl(url) {
   if (!url) return url;
 
+  // blob:/data: URLs are already fully-qualified and opaque (the part after
+  // the scheme is not a host). Never rewrite them — prepending a protocol
+  // mangles the local-preview blob URL used for drag-and-drop uploads.
+  if (/^(blob|data):/i.test(url)) return url;
+
   // If URL starts with localhost or an IP without protocol, add http://
   if (
     /^localhost[:/]/.test(url) ||
@@ -69,6 +74,13 @@ AFRAME.registerComponent('splat', {
 
   init: function () {
     this.splatMesh = null;
+    // In-scene loading/processing indicator (THREE.Sprite, not a child
+    // entity — runtime-only, never serialized into the saved scene).
+    this.indicator = null;
+    this.indicatorTimer = null;
+    // Monotonic id so a stale load (src changed mid-load) can't hide or
+    // error the indicator belonging to a newer load.
+    this.loadId = 0;
   },
 
   update: function (oldData) {
@@ -82,11 +94,12 @@ AFRAME.registerComponent('splat', {
     // Normalize URL (add protocol if missing)
     src = normalizeUrl(src);
 
-    // Remove existing splat mesh if any
+    // Remove existing splat mesh and any leftover indicator if any
     if (this.splatMesh) {
       this.el.removeObject3D('mesh');
       this.splatMesh = null;
     }
+    this.hideIndicator();
 
     // Warn about common CORS issues
     if (
@@ -104,9 +117,21 @@ AFRAME.registerComponent('splat', {
   },
 
   loadSplat: async function (src) {
+    // Tag this load so a newer load (src changed before this one finishes)
+    // can detect it has been superseded and skip its own cleanup/error.
+    const loadId = ++this.loadId;
+
+    // Show the indicator immediately. Spark's onProgress only reports the
+    // network fetch (THREE.FileLoader); the multi-second decode/LOD pass that
+    // follows emits nothing, so the default state is an indeterminate
+    // "Processing splat…". The fetch % is layered on top when available.
+    this.showIndicator('Processing splat…');
+    this.el.emit('splat-loading', { src }, false);
+
     try {
       // Dynamically load the Spark library (only loads once, ~500KB)
       const { SplatMesh: LoadedSplatMesh } = await loadSparkLibrary();
+      if (loadId !== this.loadId) return;
 
       // Initialize the SparkRenderer if not already done
       this.system.initSparkRenderer();
@@ -115,10 +140,22 @@ AFRAME.registerComponent('splat', {
       // RAD files have pre-built LOD and support streaming via range requests
       // Other formats use on-the-fly LOD generation (downloads full file first)
       const isRad = new URL(src).pathname.toLowerCase().endsWith('.rad');
-      this.splatMesh = new LoadedSplatMesh({
+      const splatMesh = new LoadedSplatMesh({
         url: src,
-        ...(isRad ? { paged: true } : { lod: true })
+        ...(isRad ? { paged: true } : { lod: true }),
+        // Fetch progress only. Once bytes are in (loaded === total) the
+        // silent processing phase begins, so flip back to indeterminate.
+        onProgress: (event) => {
+          if (loadId !== this.loadId) return;
+          if (event && event.lengthComputable && event.total > 0) {
+            const pct = Math.round((event.loaded / event.total) * 100);
+            this.setIndicatorText(
+              pct >= 100 ? 'Processing splat…' : `Loading splat… ${pct}%`
+            );
+          }
+        }
       });
+      this.splatMesh = splatMesh;
       // Spark uses a different quaternion convention, rotate to match A-Frame
       this.splatMesh.quaternion.set(1, 0, 0, 0);
 
@@ -128,8 +165,22 @@ AFRAME.registerComponent('splat', {
 
       // Set the splat mesh directly on the entity (like gltf-model does)
       this.el.setObject3D('mesh', this.splatMesh);
+
+      // mesh only renders once Spark finishes decoding/building LOD. Wait for
+      // that promise so the indicator covers the processing gap, not just fetch.
+      await splatMesh.initialized;
+      if (loadId !== this.loadId) return;
+      this.hideIndicator();
+      this.el.emit('splat-loaded', { src }, false);
     } catch (error) {
-      console.error('[splat] Failed to create splat mesh:', error);
+      if (loadId !== this.loadId) return;
+      console.error('[splat] Failed to load splat:', error);
+      this.showIndicatorError('Failed to load splat');
+      this.el.emit('splat-error', { src, error }, false);
+      // Auto-clear, but only if no newer load has taken over in the meantime.
+      setTimeout(() => {
+        if (loadId === this.loadId) this.hideIndicator();
+      }, 5000);
     }
   },
 
@@ -138,6 +189,111 @@ AFRAME.registerComponent('splat', {
       this.el.removeObject3D('mesh');
       this.splatMesh = null;
     }
+    this.hideIndicator();
+  },
+
+  /**
+   * Draw the indicator label onto its canvas. Called on create and on every
+   * text/animation update. `dots` drives the animated ellipsis so the user
+   * sees activity during the progress-event-less processing phase.
+   */
+  drawIndicator: function (text, color, dots) {
+    const ctx = this.indicator.ctx;
+    const canvas = ctx.canvas;
+    const label = dots != null ? text.replace(/…$/, '.'.repeat(dots)) : text;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(20, 20, 24, 0.82)';
+    const r = 28;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.arcTo(w, 0, w, h, r);
+    ctx.arcTo(w, h, 0, h, r);
+    ctx.arcTo(0, h, 0, 0, r);
+    ctx.arcTo(0, 0, w, 0, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.font = '600 52px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, w / 2, h / 2 + 2);
+    this.indicator.texture.needsUpdate = true;
+  },
+
+  /**
+   * Create (or reuse) the in-scene sprite indicator. THREE.Sprite always
+   * faces the camera (no billboard tick) and lives on object3D only, so the
+   * scene serializer never persists it.
+   */
+  showIndicator: function (text) {
+    const THREE = AFRAME.THREE;
+    if (this.indicatorTimer) {
+      clearInterval(this.indicatorTimer);
+      this.indicatorTimer = null;
+    }
+    if (!this.indicator) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      const texture = new THREE.CanvasTexture(canvas);
+      const material = new THREE.SpriteMaterial({
+        map: texture,
+        // Draw on top even though the splat mesh isn't rendered yet.
+        depthTest: false,
+        depthWrite: false,
+        transparent: true,
+        // Constant screen-space size: three.js cancels the perspective divide
+        // so the badge doesn't grow/shrink with zoom or distance. Scale then
+        // reads ~ fraction of viewport height (0.1 ≈ 10% tall), 4:1 aspect.
+        sizeAttenuation: false
+      });
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.set(0.4, 0.1, 1);
+      sprite.renderOrder = 999;
+      this.indicator = { sprite, material, texture, ctx, text };
+      this.el.object3D.add(sprite);
+    }
+    this.indicator.text = text;
+    let dots = 0;
+    this.drawIndicator(text, '#ffffff', dots);
+    // Animate the ellipsis so the indeterminate processing phase reads as live.
+    this.indicatorTimer = setInterval(() => {
+      dots = (dots + 1) % 4;
+      this.drawIndicator(this.indicator.text, '#ffffff', dots);
+    }, 400);
+  },
+
+  setIndicatorText: function (text) {
+    if (this.indicator) this.indicator.text = text;
+  },
+
+  /**
+   * Swap the indicator to an error label (no animation). The caller is
+   * responsible for scheduling an auto-hide (guarded by loadId).
+   */
+  showIndicatorError: function (text) {
+    if (!this.indicator) this.showIndicator(text);
+    if (this.indicatorTimer) {
+      clearInterval(this.indicatorTimer);
+      this.indicatorTimer = null;
+    }
+    this.indicator.text = text;
+    this.drawIndicator(text, '#ff6b6b', null);
+  },
+
+  hideIndicator: function () {
+    if (this.indicatorTimer) {
+      clearInterval(this.indicatorTimer);
+      this.indicatorTimer = null;
+    }
+    if (!this.indicator) return;
+    this.el.object3D.remove(this.indicator.sprite);
+    this.indicator.material.dispose();
+    this.indicator.texture.dispose();
+    this.indicator = null;
   },
 
   /**
