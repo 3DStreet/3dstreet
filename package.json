@@ -42,7 +42,7 @@
     "@img-comparison-slider/react": "^8.0.2",
     "@react-google-maps/api": "^2.20.8",
     "@sentry/react": "^10.40.0",
-    "@sparkjsdev/spark": "^2.0.0",
+    "@sparkjsdev/spark": "^2.1.0",
     "@stripe/react-stripe-js": "^6.0.0",
     "@stripe/stripe-js": "^9.0.0",
     "3d-tiles-renderer": "^0.4.21",
