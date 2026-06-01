@@ -4,15 +4,24 @@ A provider-agnostic system for **long-running AI generations** (image → splat,
 image, video, photogrammetry) that:
 
 - survive a **closed browser** (completion happens server-side),
-- complete via **three convergent, idempotent paths** — provider webhook, client
-  poll, and a scheduled reconciler — so no single delivery failure loses a job,
-- charge tokens on submit and **refund exactly once** on failure,
+- complete via a **provider-appropriate completion model** — all idempotent and
+  all backstopped by the same scheduled reconciler, so no single delivery failure
+  loses a job,
+- charge tokens on submit and **refund exactly once** on failure (or never charge,
+  for silent backend jobs),
 - (planned) **notify by email** when a job finishes while the tab is closed.
 
-The first consumer is the **Splat** feature (image → 3D Gaussian Splat via the
-SHARP model on Replicate). The design generalizes so Replicate image/video,
-fal, and Teleport/Varjo photogrammetry can drop in as additional **kinds** and
-**providers** without re-architecting.
+**Two providers exist today**, and they prove the schema generalizes beyond a
+single completion shape:
+
+| Provider | Kind(s) | Completion model | Tokens |
+| --- | --- | --- | --- |
+| `replicate` | `splat` (image→splat, SHARP) | **convergent**: provider webhook + client poll + reconciler all funnel into one idempotent processor | charged on submit, refunded once on failure |
+| `cloudrun` | `splat-rad` (.ply→RAD/LOD) | **worker-writeback**: the Cloud Run worker writes its own terminal status; reconciler re-enqueues a stalled task (no external state to poll) | **`tokenCost: 0`** — silent backend optimization, never charges |
+
+The design generalizes further so Replicate image/video, fal, and Teleport/Varjo
+photogrammetry can drop in as additional **kinds** and **providers** without
+re-architecting.
 
 > **Naming note:** this document was previously `splat-generation.md`. Splat is
 > now one consumer of the queue, not the headline.
@@ -131,6 +140,82 @@ whose save OOM'd sat in `saving` with no retrigger; the TTL makes them
 
 ---
 
+## Second provider — Cloud Run RAD conversion (`provider: 'cloudrun'`) ✅ DONE (dev)
+
+The first **non-Replicate** provider, and the first **worker-writeback** one. It
+turns a splat `.ply` into a Spark **RAD (LOD)** file — the splat analog of the
+GLB optimized variant — landing it in `optimizedSource*` on the same asset doc.
+Full design + ops: [`rad-cloud-run-pipeline.md`](./rad-cloud-run-pipeline.md).
+
+**Flow (fully automatic, no UI):**
+
+```
+splat asset doc created  (uploaded OR generator-saved)
+  └─ onSplatAssetCreated (Firestore onCreate trigger, rad-dispatch.js)
+       ├─ writes a generationJobs doc {kind:'splat-rad', provider:'cloudrun', tokenCost:0}
+       └─ enqueues a Cloud Task (OIDC) → POSTs the rad-converter Cloud Run service
+            └─ worker: download .ply → build-lod --quality → upload {assetId}-lod.rad
+               → patch optimizedSource* on the asset → write job terminal status
+```
+
+**How it differs from the Replicate model (and why it still fits the schema):**
+
+- **No webhook, no client poll.** The conversion is a silent backend
+  optimization with no user waiting on it, so there's no live UI to drive. The
+  worker owns completion: it writes `status: 'running'` on start and
+  `succeeded`/`failed` at the end, directly to the job doc via the Admin SDK.
+- **No external prediction to fetch.** Replicate jobs are reconciled by
+  re-fetching `predictions.get(providerJobId)`; a cloudrun job has **no
+  `providerJobId`** — there's nothing external to poll. So the reconciler's
+  `case 'cloudrun'` instead **re-enqueues the Cloud Task** for a job stuck
+  non-terminal past `RACE_GUARD_MS` (the worker is idempotent — it just
+  overwrites the same `-lod.rad` and re-patches the doc), and gives up
+  (`failed`) past `GIVE_UP_MS`. `refundSplatToken` is a no-op at `tokenCost: 0`.
+- **One trigger covers both splat origins.** Drag-uploaded and generator-saved
+  splats both create the asset doc without an optimized variant, so the single
+  `onCreate` guard (`type==='splat' && !optimizedSourceUrl`) catches both.
+- **Reuses the asset schema unchanged.** RAD is to a splat what the Draco+WebP
+  optimized GLB is to a mesh: `storageUrl`/`storagePath` stay the original `.ply`
+  (`assetRole: 'original'`), the RAD lands in `optimizedSourceUrl` /
+  `optimizedSourcePath` / `optimizedSourceSize` (`assetRole: 'optimized'`), and
+  the renderer/placement already prefer `optimizedSourceUrl ?? storageUrl`.
+  `optimizedSourceSize` is excluded from the quota tally (platform cost).
+
+### As-built specifics (cloudrun)
+
+- **Job fields:** `kind: 'splat-rad'`, `provider: 'cloudrun'`, `providerJobId:
+  null` (none), `assetId`, `plyPath`, `tokenCost: 0`, `tokenCharged: false`,
+  `refunded: false`. Worker adds `startedAt` + terminal `status`.
+- **Trigger:** `onSplatAssetCreated` (1st-gen Firestore `onCreate` on
+  `users/{uid}/assets/{assetId}`, mirrors `onAssetWritten`). Writes the queued
+  job **before** enqueueing; on enqueue failure it leaves the job `queued` (+
+  records `enqueueError`) so the reconciler re-enqueues.
+- **Dispatch:** Cloud Tasks queue `rad-convert`; task carries an OIDC token for
+  the `rad-task-invoker` SA (`audience` = service URL) so the private Cloud Run
+  service accepts it. `enqueueRadTask` is shared by the trigger and the
+  reconciler.
+- **Worker:** `rad-converter/` Cloud Run service (multi-stage Docker: Rust stage
+  compiles `build-lod` from Spark v2.1.0; Node stage runs the handler). Streams
+  the `.ply` to `/tmp`, runs `build-lod --quality`, uploads with the
+  `saveSplatToGallery` URL/token scheme byte-for-byte (anonymous viewers load via
+  the download token).
+- **Serving:** GCS byte-range CORS (`cors.json` exposes `Accept-Ranges` +
+  `Content-Range`); the `splat` component streams `.rad` paged.
+- **Config caveat:** `rad-dispatch.js` constants (service URL, queue, invoker SA)
+  are **hardcoded to dev** pending prod rollout — see the RAD doc's Status.
+
+### Key files (cloudrun)
+
+| Concern | File |
+| --- | --- |
+| Trigger + Cloud Task enqueue helper | `public/functions/rad-dispatch.js` (`onSplatAssetCreated`, `enqueueRadTask`) |
+| Reconciler `case 'cloudrun'` | `public/functions/scheduled/generation-job-reconcile.js` |
+| Converter service (Dockerfile + handler) | `rad-converter/` |
+| Bucket byte-range CORS | `public/cors.json` |
+| Full design + deploy/IAM ops | `docs/rad-cloud-run-pipeline.md`, `rad-converter/README.md` |
+
+---
+
 ## Architecture: invariant framework vs per-adapter
 
 Reading all three providers (Replicate, fal, Teleport) shows they share one
@@ -158,8 +243,12 @@ shape. The split:
 | `persistResult(output)` → asset | download `.ply` → splat asset | download image → image asset | download image → image asset | download splat → splat asset |
 | `estimateCost(input)` | fixed | fixed (per model) | fixed | estimate + hold + reconcile |
 
-With only Replicate today, the provider dispatch is a `switch (job.provider)`;
-it's promoted to a real **registry** when fal/Teleport arrive.
+The provider dispatch is a `switch (job.provider)` — now with **two real cases**
+(`replicate` and `cloudrun`). cloudrun was the first non-Replicate provider to
+exercise the seam, and proved it generalizes past the convergent-webhook shape to
+a worker-writeback one (no `providerJobId`, no external fetch — the reconciler
+re-enqueues instead of polling). It's promoted to a real **registry** when
+fal/Teleport add a third/fourth.
 
 ### The unification that keeps fast flows fast
 
@@ -367,10 +456,14 @@ full queue plus two things the Replicate kinds don't:
   viewer streams progressively and stays performant on large scenes. This is the
   practical replacement for **Google 3D Tiles** as the real-world-context layer:
   splats become the geometry source, RAD+LOD makes them cheap enough to ship to
-  end users. A server-side `.ply → RAD` conversion step slots into the job
-  queue's `persistResult` adapter (it's just a different output encoding for the
-  same `kind: 'splat'`). Interim `.spz` / `.ksplat` conversion (~5–10× smaller)
-  remains a cheaper stopgap if RAD tooling isn't ready.
+  end users. **This is now built** (`provider: 'cloudrun'`, `kind: 'splat-rad'`
+  — see the "Second provider" section above). Note the as-built shape differs
+  from the original prediction: rather than a `persistResult` step *inside* the
+  splat-generation job, it's a **separate job triggered on splat asset
+  creation**, so it also covers drag-uploaded splats (not just generated ones)
+  and reprocesses independently of how the `.ply` was produced. Interim `.spz` /
+  `.ksplat` conversion (~5–10× smaller) remains a cheaper stopgap if RAD tooling
+  isn't ready.
 - **RAD is the splat "optimized variant" — reuse the GLB original/optimized
   schema as-is.** The RAD+LOD output is to a splat exactly what the Draco+WebP
   optimized GLB is to a mesh original, so it maps onto the existing asset fields
@@ -401,9 +494,15 @@ full queue plus two things the Replicate kinds don't:
   — functions deploy separately:
   `cd public && firebase use <project> && firebase deploy --only functions:<name>`.
   New/changed functions: `generateReplicateSplat`, `getGenerationJobStatus`,
-  `replicateJobWebhook`, the reconciler schedule + trigger.
+  `replicateJobWebhook`, `onSplatAssetCreated`, the reconciler schedule + trigger.
+- **Cloud Run (RAD / cloudrun provider):** deploys separately from Firebase via
+  `gcloud run deploy rad-converter --source rad-converter/`, plus a one-time
+  Cloud Tasks queue + invoker SA + IAM. Full steps in
+  [`rad-cloud-run-pipeline.md`](./rad-cloud-run-pipeline.md) and
+  `rad-converter/README.md`. Bucket byte-range CORS:
+  `gsutil cors set public/cors.json gs://<bucket>`.
 - **Hosting:** generator bundle, `public/generator/index.html`,
   `public/splat-viewer.html` (covered by `npm run deploy[:staging]`).
 - **Secrets:** none new for splat — reuses `REPLICATE_API_TOKEN` and
   `ALLOWED_PRO_TEAM_DOMAINS`. Email (Phase 4) reuses the existing Postmark
-  secret.
+  secret. cloudrun adds **no secrets** (OIDC via the invoker SA).
