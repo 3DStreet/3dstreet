@@ -32,6 +32,7 @@ const {
   refundSplatToken,
   cleanupSplatTempFile
 } = require('../replicate.js');
+const { enqueueRadTask } = require('../rad-dispatch.js');
 
 // Our normalized non-terminal vocabulary (see normalizeReplicateStatus). The
 // reconciler only ever touches jobs in these states; everything else is done.
@@ -141,6 +142,42 @@ async function reconcile({ dryRun }) {
     };
 
     try {
+      // cloudrun (splat-rad): the worker owns writeback, so there's no external
+      // prediction to poll — a job stuck non-terminal past RACE_GUARD means the
+      // Cloud Task was dropped or the worker died mid-flight. Re-enqueue (the
+      // worker is idempotent: it just overwrites the same -lod.rad / re-patches
+      // the doc), and give up only once it's truly old. tokenCost is 0, so
+      // failJob's refund is a no-op.
+      if (job.provider === 'cloudrun') {
+        if (age > GIVE_UP_MS) {
+          sample.action = 'gave-up-cloudrun';
+          summary.gaveUp++;
+          if (!dryRun) {
+            await failJob(db, uid, jobRef, job, 'RAD conversion did not complete in time.');
+          }
+        } else if (!job.plyPath) {
+          // Nothing to retry with — treat as dead immediately.
+          sample.action = 'gave-up-cloudrun-no-plyPath';
+          summary.gaveUp++;
+          if (!dryRun) {
+            await failJob(db, uid, jobRef, job, 'RAD job missing plyPath.');
+          }
+        } else {
+          sample.action = 're-enqueued-cloudrun';
+          summary.processed++;
+          if (!dryRun) {
+            await enqueueRadTask({
+              uid,
+              assetId: job.assetId,
+              plyPath: job.plyPath,
+              jobId: jobRef.id
+            });
+          }
+        }
+        if (summary.samples.length < 25) summary.samples.push(sample);
+        continue;
+      }
+
       // Never submitted a provider job (crashed mid-submit). If it's been stuck
       // this long it's not coming back. tokenCharged is almost certainly false
       // here, so the refund is a no-op, but we run it for safety.

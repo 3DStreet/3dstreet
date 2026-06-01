@@ -13,7 +13,9 @@
       "Content-Length",
       "Content-Disposition",
       "Cache-Control",
-      "Access-Control-Allow-Origin"
+      "Access-Control-Allow-Origin",
+      "Accept-Ranges",
+      "Content-Range"
     ],
     "maxAgeSeconds": 3600
   }

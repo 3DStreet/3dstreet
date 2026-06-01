@@ -5,7 +5,12 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "functions/**",
+      "*.rules",
+      "cors.json",
+      "firestore.indexes.json",
+      "*.log"
     ],
     "rewrites": [
       {

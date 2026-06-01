@@ -14,6 +14,7 @@ const { purgeSoftDeletedAssets, triggerPurgeSoftDeletedAssets } = require('./sch
 const { reconcileAssetUsage, triggerReconcileAssetUsage } = require('./scheduled/asset-usage-reconcile.js');
 const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./scheduled/asset-orphan-cleanup.js');
 const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
+const { onSplatAssetCreated } = require('./rad-dispatch.js');
 
 // Re-export the WebXR variant function
 exports.serveWebXRVariant = serveWebXRVariant;
@@ -63,6 +64,9 @@ exports.triggerCleanupOrphanedStorage = triggerCleanupOrphanedStorage;
 // future async kinds). Every 10 min scheduled + admin-only manual trigger.
 exports.reconcileGenerationJobs = reconcileGenerationJobs;
 exports.triggerReconcileGenerationJobs = triggerReconcileGenerationJobs;
+
+// --- RAD conversion (splat optimized variant) -----------------------------
+exports.onSplatAssetCreated = onSplatAssetCreated;
 
 exports.getScene = functions
   .https
