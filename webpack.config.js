@@ -1,13 +1,35 @@
 const webpack = require('webpack');
 const path = require('path');
+const net = require('net');
 const Dotenv = require('dotenv-webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
-module.exports = {
+const DEFAULT_PORT = 3333;
+
+// Find a free port, starting at `basePort` and incrementing on conflict.
+// Lets multiple dev servers (e.g. one per git worktree) run at once instead
+// of failing with EADDRINUSE on the hardcoded default.
+function findFreePort(basePort) {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        resolve(findFreePort(basePort + 1));
+      } else {
+        reject(err);
+      }
+    });
+    server.listen(basePort, () => {
+      server.close(() => resolve(basePort));
+    });
+  });
+}
+
+const config = {
   mode: 'development',
   devServer: {
     liveReload: false,
-    port: 3333,
     allowedHosts: 'all',
     static: [
       {
@@ -132,4 +154,9 @@ module.exports = {
       '@shared': path.resolve(__dirname, 'src/shared')
     }
   }
+};
+
+module.exports = async () => {
+  config.devServer.port = await findFreePort(DEFAULT_PORT);
+  return config;
 };
