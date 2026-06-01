@@ -32,19 +32,21 @@ export const ROTATION_GROUND_FLOOR_METRES = 0.5;
 // the orbit twitchy; clamp the pivot out to at least this distance.
 export const MIN_ORBIT_RADIUS_METRES = 2;
 
-// TASK-010 (D-LT-3): far-pivot fallback threshold. When the Map-mode
-// cursor pivot is farther than this — measured as horizontal distance
-// from the camera's nadir (the y=0 point directly below it) — orbiting
-// it sweeps a large arc and feels weird, so we rotate about the
-// screen-centre point instead (the closest ground point in view, same
-// behaviour as clicking above the horizon, signalled by the ring). This
-// replaces the earlier MAX_ORBIT_RADIUS inward cap, which secretly
-// orbited a floating near-point and drifted on tilt
-// (reports/010-testing.md #7). 500m is well beyond a real ~100–300m
-// street scene, so normal scene-scale work is unaffected. The live value
-// is held on the controls (`_mapPivotMaxNadirDist`) and is overridable
-// at runtime via the `nav-experimental-tuning` component (#6).
-export const MAP_PIVOT_MAX_NADIR_DIST_METRES = 500;
+// TASK-010 (D-LT-3): far-pivot bounds + fallback distance. Defines a
+// sphere of this radius around the camera. If the Map-mode cursor pivot
+// is farther than this from the camera, orbiting it sweeps a large arc
+// and feels weird (and varies with how far the ground happens to be), so
+// we instead rotate about a point exactly this distance straight ahead
+// along the view direction (screen-centre, at a fixed depth — the
+// rotation feel is then consistent). The ring signals it, same legibility
+// as clicking above the horizon. This replaces the earlier
+// MAX_ORBIT_RADIUS inward cap, which secretly orbited a floating
+// near-point and drifted on tilt (reports/010-testing.md #7). 500m is
+// well beyond a real ~100–300m street scene, so normal scene-scale work
+// is unaffected. The live value is held on the controls
+// (`_mapPivotMaxCamDist`) and is overridable at runtime via the
+// `nav-experimental-tuning` component (#6).
+export const MAP_PIVOT_MAX_CAMERA_DIST_METRES = 500;
 
 // TASK-010 (D3): rotation-centre ring indicator's apparent on-screen
 // size, as a fraction of the camera→pivot distance. The billboard mesh

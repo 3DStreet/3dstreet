@@ -58,7 +58,7 @@ import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
   ROTATION_GROUND_FLOOR_METRES,
   MIN_ORBIT_RADIUS_METRES,
-  MAP_PIVOT_MAX_NADIR_DIST_METRES,
+  MAP_PIVOT_MAX_CAMERA_DIST_METRES,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
   SWOOP_PHASE2_MAX_TICKS_PER_FRAME,
@@ -127,9 +127,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // `nav-experimental-tuning` component); defaults to the constant.
     this._tiltThreshold = TILT_THRESHOLD_DEFAULT_DEGREES;
 
-    // TASK-010 (D-LT-3): far-pivot fallback threshold (horizontal metres
-    // from nadir). Live value, overridable via the tuning component.
-    this._mapPivotMaxNadirDist = MAP_PIVOT_MAX_NADIR_DIST_METRES;
+    // TASK-010 (D-LT-3): far-pivot bounds + fallback distance (metres
+    // from the camera). Live value, overridable via the tuning component.
+    this._mapPivotMaxCamDist = MAP_PIVOT_MAX_CAMERA_DIST_METRES;
 
     // TASK-010 (live-Shift, B6): last-known cursor coords, tracked on
     // mousedown and every mousemove so a mid-drag Shift toggle can
@@ -394,11 +394,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._maybeEmitLbModeChange();
   }
 
-  // TASK-010 (D-LT-3 / #6): live-tunable far-pivot fallback threshold
-  // (horizontal metres from nadir). Relayed from the tuning component.
-  setMapPivotMaxNadirDist(metres) {
+  // TASK-010 (D-LT-3 / #6): live-tunable far-pivot bounds + fallback
+  // distance (metres from the camera). Relayed from the tuning component.
+  setMapPivotMaxCamDist(metres) {
     if (typeof metres !== 'number' || !isFinite(metres)) return;
-    this._mapPivotMaxNadirDist = THREE.MathUtils.clamp(metres, 1, 100000);
+    this._mapPivotMaxCamDist = THREE.MathUtils.clamp(metres, 1, 100000);
   }
 
   // TASK-010 (D-LT-3 / #6): live-tunable Shift+LB rotation speed
@@ -1419,7 +1419,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const tiltDeg = cameraTiltDegrees(camera);
     const isMap = tiltDeg > this._tiltThreshold;
     const center = isMap
-      ? this._mapModePivot(clientX, clientY) // D7 chain + D5/far clamp
+      ? this._mapModePivot(clientX, clientY) // bounds sphere + D-LT-3 fallback
       : camera.position.clone(); // street: rotate-in-place
     this._latch.start({
       mode: 'rotate',
@@ -1428,64 +1428,59 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     });
     if (isMap) {
       this._indicator.show(center); // D3
+      // Set the ring's apparent size for the latched pivot *now*, on the
+      // same frame as show(). `show()` only sets position + visibility;
+      // without this, the first rendered frame (before the first
+      // mousemove drives `_shiftRotate`→`update`) uses the previous
+      // gesture's scale, which flashes the ring at the wrong size
+      // (reports/010-testing.md — "circle briefly flashes up massive").
+      this._indicator.update(camera);
     } else {
       this._indicator.hide(); // D6
     }
   }
 
-  // Map-mode pivot, per D7's fallback chain:
-  //   cursor surface/ground hit -> screen-centre surface -> 30m ahead.
+  // Map-mode pivot. Defines a bounds sphere of radius
+  // `_mapPivotMaxCamDist` around the camera:
+  //   • cursor's surface/ground hit within the sphere → orbit that true
+  //     point (rigid orbit keeps it pinned under the cursor at any tilt).
+  //   • cursor over sky, OR its ground hit farther than the sphere
+  //     (D-LT-3) → orbit a point exactly `_mapPivotMaxCamDist` straight
+  //     ahead along the view direction (the screen-centre, at a fixed
+  //     depth). This keeps the fallback orbit feel consistent regardless
+  //     of how far the ground happens to be, and the ring signals it.
   //
-  // We orbit the true point under the cursor at *any* distance — no
-  // far-radius cap. A previous MAX_ORBIT_RADIUS clamp pulled distant
-  // pivots inward to keep the camera's lever arm short, but with the
-  // corrected rigid orbit (navMath.shiftRotateStep) that clamp made the
-  // ring/pivot drift vertically on tilt when zoomed out
-  // (reports/010-testing.md #7) — because we were then orbiting a
-  // floating near-point, not the ground feature. The motivating concern
-  // (orbiting a far pivot at a shallow, ground-skimming angle) is
-  // already handled by the two-regime split: below the tilt threshold
-  // rotation is in-place about the camera, so we never orbit a far
-  // ground pivot at a shallow angle. Only a MIN radius remains, to keep
-  // a very-close pivot from making the orbit twitchy.
-  //
-  // Note on `source` (plan C2): `worldPointAt` returns 'ground' (not
-  // 'fallback') whenever the cursor ray meets y=0 within MAX_GROUND_DIST
-  // — the common Map-mode case even when the cursor "looks over the
-  // scene," because a slightly-down ray still hits distant ground. So the
-  // 'fallback' branch (screen-centre / 30m-ahead) only fires when the ray
-  // points *above* the horizon.
+  // This replaced (a) the original MAX_ORBIT_RADIUS inward cap along the
+  // cursor ray, which drifted on tilt when zoomed out (#7), and (b) the
+  // first D-LT-3 attempt that orbited the screen-centre *ground* hit,
+  // whose variable distance still felt weird for far/shallow views.
+  // Orbiting a far pivot at a shallow ground-skimming angle is otherwise
+  // prevented by the two-regime split (below the tilt threshold,
+  // rotation is in-place about the camera).
   _mapModePivot(clientX, clientY) {
     const camPos = this._camera.position;
+    const fwd = this._tmpV3c;
+    this._camera.getWorldDirection(fwd); // unit view direction
     const hit = this._cursorAnchor.worldPointAt(clientX, clientY);
     let p = null;
     if (hit.source !== 'fallback') {
-      // Cursor hit a mesh OR the ground plane. Accept it only if it is
-      // not too far across the map — see the far-pivot guard below.
+      // Cursor hit a mesh OR the ground plane: use it only if it lies
+      // within the bounds sphere (distance from the camera).
       const candidate = new THREE.Vector3(hit.x, hit.y, hit.z);
-      const nadirDist = Math.hypot(
-        candidate.x - camPos.x,
-        candidate.z - camPos.z
-      );
-      if (nadirDist <= this._mapPivotMaxNadirDist) {
+      if (camPos.distanceTo(candidate) <= this._mapPivotMaxCamDist) {
         p = candidate;
       }
-      // else: too far → fall through to the screen-centre branch.
     }
     if (!p) {
-      // Either the cursor is over sky, or its ground pivot is beyond the
-      // far-pivot threshold (D-LT-3). Both take the same fallback as
-      // clicking above the horizon: rotate about the screen-centre point
-      // — the most-downward, hence closest, ground point in view — which
-      // the ring signals. If even that misses (extreme sky-shallow view),
-      // use the 30m-ahead point already in `hit`. We accept screen-centre
-      // unconditionally even if it too is past the threshold: it is the
-      // best available pivot and cascading further would only surprise.
-      const sc = this._screenCenterHit(); // null on sky-miss
-      p = sc || new THREE.Vector3(hit.x, hit.y, hit.z);
+      // Outside the bounds (cursor over sky, or ground hit too far):
+      // a point a fixed distance straight ahead along the view direction.
+      const d = this._mapPivotMaxCamDist;
+      p = new THREE.Vector3(
+        camPos.x + fwd.x * d,
+        camPos.y + fwd.y * d,
+        camPos.z + fwd.z * d
+      );
     }
-    const fwd = this._tmpV3c;
-    this._camera.getWorldDirection(fwd);
     // maxR = Infinity → no inward cap; MIN still guards a twitchy
     // very-close pivot.
     return clampOrbitRadius(
@@ -1495,36 +1490,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       Infinity,
       fwd
     );
-  }
-
-  // Screen-center scene/ground raycast. Returns a Vector3 or null on
-  // sky-miss (no scene mesh hit, no ground intersection in front of the
-  // camera). Note: `CursorAnchor.worldPointAt` always returns a point
-  // (with a fallback layer), so we can't rely on it for null. We do a
-  // direct raycast/plane test here that intentionally allows null.
-  // TASK-010: now only the D7 *secondary* fallback for the Map-mode
-  // pivot (cursor over sky); no longer the primary rotation pivot.
-  _screenCenterHit() {
-    const rect = this._domElement.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const ndcX = ((cx - rect.left) / rect.width) * 2 - 1;
-    const ndcY = -((cy - rect.top) / rect.height) * 2 + 1;
-    this._tmpNDC.set(ndcX, ndcY);
-    this._raycaster.setFromCamera(this._tmpNDC, this._camera);
-
-    // Step 1: scene mesh raycast (excludes gizmo / helper subtrees via
-    // CursorAnchor's logic — reuse it here for consistency).
-    const meshAnchor = this._cursorAnchor.worldPointAt(cx, cy);
-    if (meshAnchor && meshAnchor.source === 'mesh') {
-      return new THREE.Vector3(meshAnchor.x, meshAnchor.y, meshAnchor.z);
-    }
-    if (meshAnchor && meshAnchor.source === 'ground') {
-      return new THREE.Vector3(meshAnchor.x, meshAnchor.y, meshAnchor.z);
-    }
-    // 'fallback' = sky-miss for our purposes — return null so the
-    // D7 chain falls through to the 30m-ahead point.
-    return null;
   }
 
   // --- Shift+LB orbit/tilt around latched center ---

@@ -20,7 +20,7 @@
 
 import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
-  MAP_PIVOT_MAX_NADIR_DIST_METRES,
+  MAP_PIVOT_MAX_CAMERA_DIST_METRES,
   ROTATION_SPEED_RAD_PER_PX
 } from './constants.js';
 
@@ -33,9 +33,9 @@ if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning
         type: 'number',
         default: TILT_THRESHOLD_DEFAULT_DEGREES
       },
-      mapPivotMaxNadirDistMetres: {
+      mapPivotMaxCamDistMetres: {
         type: 'number',
-        default: MAP_PIVOT_MAX_NADIR_DIST_METRES
+        default: MAP_PIVOT_MAX_CAMERA_DIST_METRES
       },
       rotationSpeedRadPerPx: {
         type: 'number',
@@ -53,8 +53,8 @@ if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning
       if (typeof c.setTiltThreshold === 'function') {
         c.setTiltThreshold(this.data.tiltThresholdDegrees);
       }
-      if (typeof c.setMapPivotMaxNadirDist === 'function') {
-        c.setMapPivotMaxNadirDist(this.data.mapPivotMaxNadirDistMetres);
+      if (typeof c.setMapPivotMaxCamDist === 'function') {
+        c.setMapPivotMaxCamDist(this.data.mapPivotMaxCamDistMetres);
       }
       if (typeof c.setRotationSpeed === 'function') {
         c.setRotationSpeed(this.data.rotationSpeedRadPerPx);
