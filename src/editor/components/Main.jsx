@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import RightPanel from './scenegraph/RightPanel';
 import Events from '../lib/Events';
 import ModalTextures from './modals/ModalTextures';
@@ -74,6 +74,38 @@ export default function Main() {
   const dockClass = (base) =>
     isPedestalMode ? `${base} ${styles.pedestalMode}` : base;
 
+  // TASK-011: anchor the compass dock just to the right of the bottom-centre
+  // ActionBar. The ActionBar's width is dynamic (conditional buttons), so we
+  // measure it rather than use a fixed offset: the compass dock is pinned to
+  // the page centre (left: 50%) and pushed right by half the bar's width + a
+  // gap, keeping the bar itself centred. In pedestal mode the bar goes
+  // full-width, so we clear the override and let the CSS fixed fallback apply.
+  const actionBarDockRef = useRef(null);
+  const compassDockRef = useRef(null);
+  useEffect(() => {
+    if (!isInspectorEnabled || !isExperimentalNav()) return;
+    const barDock = actionBarDockRef.current;
+    const compassDock = compassDockRef.current;
+    if (!barDock || !compassDock) return;
+    const GAP = 12;
+    const place = () => {
+      if (isPedestalMode) {
+        compassDock.style.transform = '';
+        return;
+      }
+      compassDock.style.transform = `translateX(${barDock.offsetWidth / 2 + GAP}px)`;
+    };
+    place();
+    const ro =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null;
+    if (ro) ro.observe(barDock);
+    window.addEventListener('resize', place);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', place);
+    };
+  }, [isInspectorEnabled, isPedestalMode]);
+
   return (
     <div id="inspectorContainer">
       <ToolbarWrapper />
@@ -87,11 +119,17 @@ export default function Main() {
             >
               <PrimaryToolbar />
             </div>
-            <div className={dockClass(`clickable ${styles.actionBarDock}`)}>
+            <div
+              ref={actionBarDockRef}
+              className={dockClass(`clickable ${styles.actionBarDock}`)}
+            >
               <ActionBar selectedEntity={state.entity} />
             </div>
             {isExperimentalNav() && (
-              <div className={dockClass(`clickable ${styles.compassDock}`)}>
+              <div
+                ref={compassDockRef}
+                className={dockClass(`clickable ${styles.compassDock}`)}
+              >
                 <Compass />
               </div>
             )}

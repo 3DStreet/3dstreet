@@ -50,22 +50,28 @@
 // TASK-011 compass dock. Mounted as a sibling of `.actionBarDock` in the
 // same `#inspectorContainer` stacking context with the same z-index: 10,
 // so it inherits whatever stacking makes the ActionBar visible above the
-// canvas. Pinned bottom-right, with a right offset clamped so it never
-// runs off-screen on narrow viewports.
+// canvas. Pinned to the page centre (left: 50%); Main.jsx measures the
+// ActionBar width at runtime and applies a `translateX(halfBarWidth + gap)`
+// so the compass sits just to the right of the centred toolbar regardless
+// of how many buttons the bar shows.
 .compassDock {
   position: absolute;
   bottom: 16px;
-  right: 16px;
+  left: 50%;
   z-index: 10;
 }
 
 // Pedestal mode: the ActionBar dock drops to z-index: -1 (becomes the
-// letterbox behind the canvas). The compass must NOT follow it down —
-// re-pin z-index: 10 (equal specificity to the actionBar pedestal rule)
-// so it stays visible above the bar. It still sits below the open
-// AddLayerPanel (z-index: 100), so the panel covers it like the toolbar.
+// letterbox behind the canvas) and goes full-width, so anchoring to its
+// right edge is meaningless. Main.jsx clears the inline transform here and
+// we fall back to a fixed bottom-right position. The compass must NOT follow
+// the bar down to z-index: -1 — re-pin z-index: 10 (equal specificity to the
+// actionBar pedestal rule) so it stays visible above the bar. It still sits
+// below the open AddLayerPanel (z-index: 100), so the panel covers it like
+// the toolbar.
 .pedestalMode.compassDock {
-  bottom: 16px;
+  left: auto;
   right: 16px;
+  bottom: 16px;
   z-index: 10;
 }

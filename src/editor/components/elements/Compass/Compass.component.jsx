@@ -27,9 +27,15 @@ import styles from './Compass.module.scss';
 const CX = 32;
 const CY = 32;
 const DIAL_R = 22; // dial / body radius
-const ARROW_INNER_R = 23; // rim arc inner radius
-const ARROW_OUTER_R = 31; // rim arc outer radius
-const ARROW_HALF_SPAN = 18; // half of the ~36deg arc
+// Interior rotation arrows (curved, Google-Maps style). The hit regions are
+// annular sectors INSIDE the dial; the visible curved arc + arrowhead sit
+// within them. Right arrow rotates clockwise, left counter-clockwise.
+const ARROW_SECTOR_INNER_R = 7; // hit-region inner radius
+const ARROW_SECTOR_OUTER_R = 21; // hit-region outer radius (just inside the dial)
+const ARROW_HALF_SPAN = 30; // 60deg sector — ~2-4 o'clock / 8-10 o'clock
+const ARC_R = 14; // radius of the visible curved arrow
+const ARC_HALF_SPAN = 24; // visible arc a touch shorter than the sector
+const ARROWHEAD = 6; // arrowhead length measured along the arc
 
 // Point on a circle at screen angle `deg` (0 = up, CW+) and radius `r`.
 function polar(deg, r) {
@@ -57,29 +63,58 @@ function annularSector(a1, a2, ri, ro) {
   ].join(' ');
 }
 
-// Chevron glyph centred on a rim arc at `centreDeg`, pointing outward.
-function chevron(centreDeg) {
-  const [tipX, tipY] = polar(centreDeg, ARROW_OUTER_R - 1);
-  const [bx1, by1] = polar(centreDeg - 7, ARROW_INNER_R + 2);
-  const [bx2, by2] = polar(centreDeg + 7, ARROW_INNER_R + 2);
-  return `M ${bx1} ${by1} L ${tipX} ${tipY} L ${bx2} ${by2}`;
+// Open arc path between two screen angles at radius `r`.
+// sweep: 1 = clockwise (increasing angle), 0 = counter-clockwise.
+function arc(a1, a2, r, sweep) {
+  const [x1, y1] = polar(a1, r);
+  const [x2, y2] = polar(a2, r);
+  const large = Math.abs(a2 - a1) > 180 ? 1 : 0;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${large} ${sweep} ${x2} ${y2}`;
+}
+
+// Filled triangle arrowhead at the leading end of an arc. `dir` = +1 for a
+// clockwise arc (head points to increasing angle), -1 for counter-clockwise.
+function arrowHead(endDeg, dir) {
+  const [tx, ty] = polar(endDeg + dir * ARROWHEAD, ARC_R); // tip, further along the arc
+  const [ox, oy] = polar(endDeg, ARC_R + 3.5); // outer base corner
+  const [ix, iy] = polar(endDeg, ARC_R - 3.5); // inner base corner
+  return `${tx},${ty} ${ox},${oy} ${ix},${iy}`;
 }
 
 const RIGHT_CENTRE = 90; // 3 o'clock
 const LEFT_CENTRE = 270; // 9 o'clock
 
+// Hit regions — 60deg annular sectors inside the dial.
 const RIGHT_SECTOR = annularSector(
   RIGHT_CENTRE - ARROW_HALF_SPAN,
   RIGHT_CENTRE + ARROW_HALF_SPAN,
-  ARROW_INNER_R,
-  ARROW_OUTER_R
+  ARROW_SECTOR_INNER_R,
+  ARROW_SECTOR_OUTER_R
 );
 const LEFT_SECTOR = annularSector(
   LEFT_CENTRE - ARROW_HALF_SPAN,
   LEFT_CENTRE + ARROW_HALF_SPAN,
-  ARROW_INNER_R,
-  ARROW_OUTER_R
+  ARROW_SECTOR_INNER_R,
+  ARROW_SECTOR_OUTER_R
 );
+
+// Visible curved arrows. The right arc sweeps clockwise (2 -> 4 o'clock) and
+// the left arc counter-clockwise (10 -> 8 o'clock); each ends in an arrowhead
+// at its leading edge, so the pair reads as CW (right) / CCW (left).
+const RIGHT_ARC = arc(
+  RIGHT_CENTRE - ARC_HALF_SPAN,
+  RIGHT_CENTRE + ARC_HALF_SPAN,
+  ARC_R,
+  1
+);
+const RIGHT_HEAD = arrowHead(RIGHT_CENTRE + ARC_HALF_SPAN, +1);
+const LEFT_ARC = arc(
+  LEFT_CENTRE + ARC_HALF_SPAN,
+  LEFT_CENTRE - ARC_HALF_SPAN,
+  ARC_R,
+  0
+);
+const LEFT_HEAD = arrowHead(LEFT_CENTRE - ARC_HALF_SPAN, -1);
 
 const controls = () =>
   typeof AFRAME !== 'undefined' && AFRAME.INSPECTOR
@@ -165,8 +200,11 @@ export const Compass = () => {
     }
   };
 
-  const regionProps = (region) => ({
-    className: `${styles.hitRegion} ${hovered === region ? styles.hovered : ''}`,
+  // Event/role props shared by all three hit regions. className is set per
+  // element: the body shows a hover ring on its own circle, while the arrows
+  // signal hover by brightening their curved glyph (below) rather than
+  // stroking the transparent sector.
+  const handlers = (region) => ({
     role: 'button',
     tabIndex: 0,
     onClick: () => dispatch(region),
@@ -174,6 +212,9 @@ export const Compass = () => {
     onPointerEnter: () => onEnter(region),
     onPointerLeave: () => onLeave(region)
   });
+
+  // Curved-arrow glyph colour — brightens to white on hover/focus of its region.
+  const arrowStroke = (region) => (hovered === region ? '#fff' : '#c8ccd0');
 
   // Pose-aware label for the body hit region's aria-label, computed from the
   // live camera the same way as the visible tooltip so screen-reader users
@@ -185,10 +226,13 @@ export const Compass = () => {
     <div className={styles.compass}>
       {hovered && <div className={styles.tooltip}>{tooltip}</div>}
       <svg viewBox="0 0 64 64">
-        {/* Body hit region — full dial circle, drawn FIRST so the arrow
-            sectors (drawn later) win the hit-test where they overlap. */}
+        {/* Body hit region — full dial circle, drawn FIRST so the interior
+            arrow sectors (drawn later) win the hit-test where they overlap.
+            Covers the whole dial, so there are no dead zones inside the
+            widget. */}
         <circle
-          {...regionProps('body')}
+          {...handlers('body')}
+          className={`${styles.hitRegion} ${hovered === 'body' ? styles.hovered : ''}`}
           cx={CX}
           cy={CY}
           r={DIAL_R}
@@ -205,12 +249,49 @@ export const Compass = () => {
           strokeWidth="1"
           pointerEvents="none"
         />
-        {/* Needle group — rotated via the ref'd transform each frame.
-            transform-box/origin keep rotation about the dial centre. The
-            rotation is applied imperatively by the rAF loop; we deliberately
-            omit `transform` from this style object so React does not reconcile
-            it back to 0deg on a hover/tooltip re-render (which would flick the
-            needle to north for one frame). */}
+        {/* Interior rotation-arrow hit regions — 60deg sectors inside the
+            dial, drawn above the body so clicks there route to rotate, not
+            reset. Transparent; the visible glyph is the curved arrow below. */}
+        <path
+          {...handlers('left')}
+          className={styles.hitRegion}
+          d={LEFT_SECTOR}
+          fill="transparent"
+          aria-label="Rotate left 90 degrees"
+        />
+        <path
+          {...handlers('right')}
+          className={styles.hitRegion}
+          d={RIGHT_SECTOR}
+          fill="transparent"
+          aria-label="Rotate right 90 degrees"
+        />
+        {/* Visible curved arrows (non-interactive) — left = CCW, right = CW. */}
+        <path
+          d={LEFT_ARC}
+          fill="none"
+          stroke={arrowStroke('left')}
+          strokeWidth="2"
+          strokeLinecap="round"
+          pointerEvents="none"
+        />
+        <polygon points={LEFT_HEAD} fill={arrowStroke('left')} pointerEvents="none" />
+        <path
+          d={RIGHT_ARC}
+          fill="none"
+          stroke={arrowStroke('right')}
+          strokeWidth="2"
+          strokeLinecap="round"
+          pointerEvents="none"
+        />
+        <polygon points={RIGHT_HEAD} fill={arrowStroke('right')} pointerEvents="none" />
+        {/* Needle group — rotated via the ref'd transform each frame, drawn
+            LAST so it sits visually on top of the arrows. transform-box/origin
+            keep rotation about the dial centre. The rotation is applied
+            imperatively by the rAF loop; we deliberately omit `transform` from
+            this style object so React does not reconcile it back to 0deg on a
+            hover/tooltip re-render (which would flick the needle to north for
+            one frame). */}
         <g
           ref={needleRef}
           pointerEvents="none"
@@ -230,38 +311,6 @@ export const Compass = () => {
             fill="#9aa0a6"
           />
         </g>
-        {/* Left rotation arrow (CCW) — annular sector hit region + chevron. */}
-        <path
-          {...regionProps('left')}
-          d={LEFT_SECTOR}
-          fill="transparent"
-          aria-label="Rotate left 90 degrees"
-        />
-        <path
-          d={chevron(LEFT_CENTRE)}
-          fill="none"
-          stroke="#c8ccd0"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          pointerEvents="none"
-        />
-        {/* Right rotation arrow (CW). */}
-        <path
-          {...regionProps('right')}
-          d={RIGHT_SECTOR}
-          fill="transparent"
-          aria-label="Rotate right 90 degrees"
-        />
-        <path
-          d={chevron(RIGHT_CENTRE)}
-          fill="none"
-          stroke="#c8ccd0"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          pointerEvents="none"
-        />
       </svg>
     </div>
   );
