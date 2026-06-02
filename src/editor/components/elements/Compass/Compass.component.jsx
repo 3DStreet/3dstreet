@@ -256,8 +256,8 @@ export const Compass = () => {
           {/* Diffuse white glow shown behind the needle on body hover
               (Google-Maps style) — replaces the old full-dial outline ring. */}
           <radialGradient id="compassBodyGlow">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.41)" />
-            <stop offset="55%" stopColor="rgba(255,255,255,0.12)" />
+            <stop offset="0%" stopColor="rgba(255,255,255,0.55)" />
+            <stop offset="55%" stopColor="rgba(255,255,255,0.16)" />
             <stop offset="100%" stopColor="rgba(255,255,255,0)" />
           </radialGradient>
         </defs>
