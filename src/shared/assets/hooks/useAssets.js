@@ -176,7 +176,13 @@ const useAssets = () => {
           if (!nextIds.has(id)) completed = true;
         });
         prevJobIdsRef.current = nextIds;
-        setPendingJobs(jobs);
+        // splat-rad is a silent backend transcode (RAD/LOD) of an asset that
+        // already exists — not a user-initiated generation, so don't surface it
+        // as a "Generating…" card (that read as a confusing duplicate next to
+        // the just-uploaded splat). We still TRACK it above for completion, so
+        // the grid refreshes to the optimized URL when it finishes; we just
+        // don't render a card for it.
+        setPendingJobs(jobs.filter((j) => j.kind !== 'splat-rad'));
         if (completed) reloadItems();
       },
       (error) => {

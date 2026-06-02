@@ -91,6 +91,17 @@ AFRAME.registerComponent('splat', {
       return;
     }
 
+    // Post-upload identity swap: the entity's src flips from the local blob:
+    // URL to the just-uploaded cloud URL of the SAME file (see
+    // uploadAndPlaceAsset). The blob splat is already rendered, so re-fetching
+    // and re-decoding the (often huge) cloud copy is pure waste — it was
+    // re-running the whole processing pass. Keep the loaded mesh; only the
+    // saved src changed. A later swap to a different format (e.g. the streaming
+    // .rad) comes from a non-blob oldData.src, so it still reloads as intended.
+    if (this.splatMesh && /^blob:/i.test(oldData.src || '')) {
+      return;
+    }
+
     // Normalize URL (add protocol if missing)
     src = normalizeUrl(src);
 
@@ -136,13 +147,17 @@ AFRAME.registerComponent('splat', {
       // Initialize the SparkRenderer if not already done
       this.system.initSparkRenderer();
 
-      // Create new splat mesh
-      // RAD files have pre-built LOD and support streaming via range requests
-      // Other formats use on-the-fly LOD generation (downloads full file first)
+      // Create new splat mesh.
+      // RAD files have pre-built LOD and stream via HTTP range requests (paged).
+      // Every other format renders at full detail: we deliberately do NOT build
+      // LOD on the fly. For large splats that pass costs many seconds and the
+      // result is ephemeral (rebuilt every load) and non-serializable — the
+      // cloud RAD pipeline bakes a streamable LOD variant instead, which the
+      // scene prefers (optimizedSourceUrl) on the next load.
       const isRad = new URL(src).pathname.toLowerCase().endsWith('.rad');
       const splatMesh = new LoadedSplatMesh({
         url: src,
-        ...(isRad ? { paged: true } : { lod: true }),
+        ...(isRad ? { paged: true } : {}),
         // Fetch progress only. Once bytes are in (loaded === total) the
         // silent processing phase begins, so flip back to indeterminate.
         onProgress: (event) => {

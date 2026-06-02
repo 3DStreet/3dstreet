@@ -202,13 +202,15 @@
 
         // Mirror the in-editor splat component: RAD files have pre-built LOD
         // and stream via byte-range requests (paged), so they draw progressively
-        // and fast. Other formats use on-the-fly LOD (full download first).
+        // and fast. Other formats render at full detail — we deliberately don't
+        // build LOD on the fly (ephemeral + costly for large splats; the cloud
+        // RAD pipeline bakes a streamable variant instead).
         const isRad = new URL(url, location.href).pathname
           .toLowerCase()
           .endsWith('.rad');
         const splat = new SplatMesh({
           url,
-          ...(isRad ? { paged: true } : { lod: true })
+          ...(isRad ? { paged: true } : {})
         });
         // Spark uses a different quaternion convention; rotate to match the
         // upright orientation used by the in-editor splat component.
