@@ -115,12 +115,14 @@ export function needleScreenAngle(camera) {
   return normalizeDeg(NORTH_BEARING_FROM_MINUS_Z - headingForward);
 }
 
-// Arrow sign → yaw delta sign. Derived (plan §5 Ex7): a right-arrow
-// (sign=+1) must swing the needle to screen-left, which needs a -90° yaw
-// about world +Y; left-arrow (sign=-1) needs +90°. Trivial pure local map
-// — not re-derived at call sites.
+// Arrow sign → yaw delta sign. The right arrow (sign=+1, drawn as a
+// clockwise arc) must rotate the VIEW clockwise; the left arrow (sign=-1,
+// CCW arc) counter-clockwise. The plan's §5 Ex7 derivation had this
+// inverted relative to the actual three.js yaw handedness (confirmed on
+// live test), so the mapping is: right → +90° yaw about world +Y, left →
+// -90°. Single pure local map — not re-derived at call sites.
 function signToYaw(sign) {
-  return sign > 0 ? -1 : 1;
+  return sign > 0 ? 1 : -1;
 }
 // Note: spherical phi clamps for Shift+LB rotation now live in
 // navMath.shiftRotateStep (derived from MIN/MAX_TILT_DEGREES at module
