@@ -39,6 +39,10 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
   Clicking it opens the editor with the splat's detail modal (`MeshDetailsModal`)
   already open, showing the live splat viewer. Owner actions (rename/delete)
   appear once auth resolves.
+- ☐ **Place in scene**: the modal shows a "Place in scene" button; clicking it
+  drops the splat into the current scene at the ground-pick point and closes the
+  modal (same as the Assets panel). The placed splat uses the RAD optimized
+  variant if present.
 - ☐ Open the same `#asset:uid/id` link **logged out / incognito** → the splat
   still renders (assets are public-read), in read-only mode.
 - ☐ Closing the modal strips the `#asset:…` hash (reload doesn't reopen it).

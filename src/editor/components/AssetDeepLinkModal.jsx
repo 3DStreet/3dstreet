@@ -14,12 +14,18 @@
  * renders the splat/mesh viewer, degrades to read-only for non-owners). Assets
  * are public-read by default, so the asset renders even before auth resolves;
  * auth only upgrades the modal to owner mode. This is a standalone portal, so it
- * works regardless of whether the Assets panel is open. View-only here: no
- * "Place in scene" CTA (onPlace omitted) for v1.
+ * works regardless of whether the Assets panel is open.
+ *
+ * "Place in scene" is wired the same way as the editor's Assets panel
+ * (AssetsPanel.jsx): pick a point on the ground plane and placeCloudAsset. So a
+ * user arriving from a "your splat is ready" email can see it and drop it
+ * straight into the current scene — the natural next action.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import MeshDetailsModal from '@shared/assets/components/MeshDetailsModal.jsx';
+import { placeCloudAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
+import pickPointOnGroundPlane from '@/editor/lib/pick-point-on-ground-plane';
 
 // #asset:OWNER/ID — OWNER has no slash; ID is the remainder (also slash-free in
 // practice, but `.+` keeps us robust to any future id shape).
@@ -57,6 +63,19 @@ export default function AssetDeepLinkModal() {
     }
   }, []);
 
+  // Place the asset into the current scene at a ground-plane point, exactly as
+  // AssetsPanel.jsx does. MeshDetailsModal calls this with
+  // { assetId, ownerUid, storageUrl, optimizedSourceUrl, name, type } and closes
+  // itself afterward, so the user sees it land in the scene.
+  const handlePlace = useCallback((asset) => {
+    const position = pickPointOnGroundPlane({
+      normalizedX: 0,
+      normalizedY: -0.1,
+      camera: AFRAME.INSPECTOR.camera
+    });
+    placeCloudAsset(asset, position);
+  }, []);
+
   if (!target) return null;
 
   return (
@@ -64,6 +83,7 @@ export default function AssetDeepLinkModal() {
       assetId={target.assetId}
       ownerUid={target.ownerUid}
       onClose={handleClose}
+      onPlace={handlePlace}
     />
   );
 }
