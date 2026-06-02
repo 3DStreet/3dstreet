@@ -109,6 +109,9 @@ const MeshDetailsModal = ({
   // The asset's processing/transcode jobs (today: the RAD/LOD optimization).
   // One source asset, N jobs — owner-only by rules.
   const [assetJobs, setAssetJobs] = useState([]);
+  // Bumped by "Regenerate thumbnail" to reload the viewer iframe so it re-runs
+  // its capture (the escape hatch for any bad/blank auto-thumbnail).
+  const [captureNonce, setCaptureNonce] = useState(0);
 
   const [name, setName] = useState('');
   const [savedName, setSavedName] = useState('');
@@ -413,6 +416,26 @@ const MeshDetailsModal = ({
     handleClose();
   };
 
+  // Escape hatch for a bad/blank auto-thumbnail: clear it and reload the viewer
+  // so it re-captures. Clearing thumbUploadedRef + thumbnailUrl re-arms the
+  // capture path (it only uploads when the asset has no thumbnail), and bumping
+  // the nonce remounts the iframe so the viewer runs its capture again.
+  const onRegenerateThumbnail = async () => {
+    if (!isOwner || !data) return;
+    setError(null);
+    try {
+      await assetsService.updateAsset(assetId, ownerUid, {
+        thumbnailUrl: null
+      });
+      thumbUploadedRef.current = null;
+      setData((prev) => (prev ? { ...prev, thumbnailUrl: null } : prev));
+      setCaptureNonce((n) => n + 1);
+    } catch (err) {
+      console.error('[MeshDetailsModal] regenerate thumbnail failed', err);
+      setError(err.message || 'Could not regenerate thumbnail');
+    }
+  };
+
   // Use mousedown, not click: a `click` fires on the common ancestor of
   // mousedown+mouseup, so dragging from an input inside the modal to a
   // mouseup on the backdrop would land `click` on the backdrop and close.
@@ -553,7 +576,9 @@ const MeshDetailsModal = ({
                 // string drives the iframe's load; baking savedName in
                 // would cause the viewer to reload on every Save name
                 // click. The iframe title above is enough for a11y.
-                src={`${viewerPage}?src=${encodeURIComponent(getServedUrl(data))}`}
+                src={`${viewerPage}?src=${encodeURIComponent(getServedUrl(data))}${
+                  captureNonce ? `&_n=${captureNonce}` : ''
+                }`}
               />
             )}
           </div>
@@ -703,6 +728,31 @@ const MeshDetailsModal = ({
                       </button>
                     </IconTooltip>
                   ))}
+                {isOwner && !loading && isSplat && !data?.deleted && (
+                  <IconTooltip label="Regenerate thumbnail">
+                    <button
+                      type="button"
+                      onClick={onRegenerateThumbnail}
+                      disabled={!data}
+                      className={styles.iconButton}
+                      aria-label="Regenerate thumbnail"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M23 4v6h-6" />
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                      </svg>
+                    </button>
+                  </IconTooltip>
+                )}
                 {data?.optimizedSourceUrl ? (
                   <>
                     <IconTooltip label="Download original">
