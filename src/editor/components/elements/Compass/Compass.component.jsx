@@ -234,6 +234,13 @@ export const Compass = () => {
 
   // Curved-arrow glyph colour — brightens to white when its region is active.
   const arrowStroke = (region) => (active === region ? '#fff' : '#c8ccd0');
+  // ...and gains a soft white halo when active.
+  const arrowGlow = (region) => ({
+    filter:
+      active === region
+        ? 'drop-shadow(0 0 2px rgba(255,255,255,0.85))'
+        : 'none'
+  });
 
   // Pose-aware label for the body hit region's aria-label, computed from the
   // live camera the same way as the visible tooltip so screen-reader users
@@ -249,8 +256,8 @@ export const Compass = () => {
           {/* Diffuse white glow shown behind the needle on body hover
               (Google-Maps style) — replaces the old full-dial outline ring. */}
           <radialGradient id="compassBodyGlow">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.55)" />
-            <stop offset="55%" stopColor="rgba(255,255,255,0.16)" />
+            <stop offset="0%" stopColor="rgba(255,255,255,0.41)" />
+            <stop offset="55%" stopColor="rgba(255,255,255,0.12)" />
             <stop offset="100%" stopColor="rgba(255,255,255,0)" />
           </radialGradient>
         </defs>
@@ -294,25 +301,28 @@ export const Compass = () => {
           fill="transparent"
           aria-label="Rotate right 90 degrees"
         />
-        {/* Visible curved arrows (non-interactive) — left = CCW, right = CW. */}
-        <path
-          d={LEFT_ARC}
-          fill="none"
-          stroke={arrowStroke('left')}
-          strokeWidth="2"
-          strokeLinecap="round"
-          pointerEvents="none"
-        />
-        <polygon points={LEFT_HEAD} fill={arrowStroke('left')} pointerEvents="none" />
-        <path
-          d={RIGHT_ARC}
-          fill="none"
-          stroke={arrowStroke('right')}
-          strokeWidth="2"
-          strokeLinecap="round"
-          pointerEvents="none"
-        />
-        <polygon points={RIGHT_HEAD} fill={arrowStroke('right')} pointerEvents="none" />
+        {/* Visible curved arrows (non-interactive) — left = CCW, right = CW.
+            Each side is grouped so the active region gets a soft white halo. */}
+        <g pointerEvents="none" style={arrowGlow('left')}>
+          <path
+            d={LEFT_ARC}
+            fill="none"
+            stroke={arrowStroke('left')}
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <polygon points={LEFT_HEAD} fill={arrowStroke('left')} />
+        </g>
+        <g pointerEvents="none" style={arrowGlow('right')}>
+          <path
+            d={RIGHT_ARC}
+            fill="none"
+            stroke={arrowStroke('right')}
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <polygon points={RIGHT_HEAD} fill={arrowStroke('right')} />
+        </g>
         {/* Body-hover glow — a soft white radial bloom behind the needle,
             shown only while the body is active. */}
         {active === 'body' && (
