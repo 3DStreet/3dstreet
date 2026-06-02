@@ -22,6 +22,14 @@ RUN git clone --branch ${SPARK_VERSION} --depth 1 \
         https://github.com/sparkjsdev/spark.git /spark
 
 WORKDIR /spark/rust
+# build-lod is single-threaded, so the only "faster core" lever is the binary
+# itself. Default `cargo build` targets baseline x86-64 (SSE2 only); compile for
+# a modern ISA instead. x86-64-v3 = AVX2/FMA/BMI (Haswell+), universally present
+# on Cloud Run's fleet — safe. (v4/AVX-512 is NOT guaranteed across hosts, so
+# don't.) The Spark release profile already sets lto=fat / opt-level=3 /
+# codegen-units=1, so target-cpu is the remaining free win. Gain is modest on
+# this heap/hashmap-bound workload, but it costs nothing at runtime.
+ENV RUSTFLAGS="-C target-cpu=x86-64-v3"
 RUN cargo build --release -p build-lod
 # Binary lands at /spark/rust/target/release/build-lod
 

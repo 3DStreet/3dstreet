@@ -47,9 +47,13 @@ cd rad-converter
 
 `--source` builds the image with Cloud Build and deploys; the Rust build of
 `build-lod` takes a few minutes on the first build. Current sizing: **16Gi /
-4 vCPU / 900s / concurrency 1** (a ~368MB / 22M-splat file OOM'd at 8Gi). Queue
+4 vCPU / 3600s / concurrency 1** (a ~368MB / 22M-splat file OOM'd at 8Gi, so
+16Gi, which needs >=4 vCPU; 8 vCPU measured no faster so we stay at the floor —
+the old 900s timeout, not core count, was what killed the 22M build). Queue
 retry: **3 attempts, 10s–300s backoff** (the gcloud default of 100 attempts at
-0.1s thrashes on a deterministic OOM — re-downloading and rebuilding ~100×).
+0.1s thrashes on a deterministic OOM — re-downloading and rebuilding ~100×). The
+Cloud Task's `dispatchDeadline` is raised to the 1800s max in `rad-dispatch.js`
+so Cloud Tasks doesn't give up mid-build (the conversion runs inside the POST).
 
 ### IAM the runtime service account needs
 

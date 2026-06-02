@@ -68,7 +68,14 @@ async function enqueueRadTask({ uid, assetId, plyPath, jobId }) {
         serviceAccountEmail: RAD_CONFIG.invokerServiceAccount,
         audience: RAD_CONFIG.serviceUrl
       }
-    }
+    },
+    // The conversion runs synchronously inside this POST. A large (22M-splat)
+    // LOD build takes many minutes; the default 600s deadline makes Cloud Tasks
+    // give up mid-build and retry (thrashing from scratch each time). Raise to
+    // the Cloud Tasks maximum (1800s / 30 min). The Cloud Run service timeout
+    // (rad-converter/deploy.sh) is set above this so the request isn't cut off
+    // first.
+    dispatchDeadline: { seconds: 1800 }
   };
   const [created] = await client.createTask({ parent, task });
   return created.name;
