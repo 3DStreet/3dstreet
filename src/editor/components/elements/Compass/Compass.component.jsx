@@ -323,17 +323,6 @@ export const Compass = () => {
           />
           <polygon points={RIGHT_HEAD} fill={arrowStroke('right')} />
         </g>
-        {/* Body-hover glow — a soft white radial bloom behind the needle,
-            shown only while the body is active. */}
-        {active === 'body' && (
-          <circle
-            cx={CX}
-            cy={CY}
-            r={DIAL_R}
-            fill="url(#compassBodyGlow)"
-            pointerEvents="none"
-          />
-        )}
         {/* Needle group — rotated via the ref'd transform each frame, drawn
             LAST so it sits visually on top of the arrows. transform-box/origin
             keep rotation about the dial centre. The rotation is applied
@@ -349,6 +338,20 @@ export const Compass = () => {
             transformOrigin: 'center'
           }}
         >
+          {/* Body-hover glow — a soft white bloom behind the needle, shown
+              only while the body is active. It lives INSIDE the needle group
+              so it rotates with the needle: an ellipse with a 2:1 major:minor
+              ratio, major axis along the needle (rx across, ry along). Extent
+              is ~30% tighter than the old full-dial circle. */}
+          {active === 'body' && (
+            <ellipse
+              cx={CX}
+              cy={CY}
+              rx={7.5}
+              ry={15}
+              fill="url(#compassBodyGlow)"
+            />
+          )}
           {/* North half — red, points up at angle 0. */}
           <polygon
             points={`${CX},${CY - 16} ${CX - 5},${CY} ${CX + 5},${CY}`}
