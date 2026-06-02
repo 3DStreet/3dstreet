@@ -349,12 +349,13 @@ async function sendReadyNotifications({ dryRun }) {
         continue;
       }
 
-      const tpl = EMAIL_TEMPLATES.splatReady;
+      // Kind-aware copy (splat today; video/image reuse it for free).
+      const tpl = EMAIL_TEMPLATES.generationReady;
       await sendPostmarkEmail(
         userInfo.email,
-        tpl.subject,
-        tpl.getHtmlBody(userInfo.displayName),
-        tpl.getTextBody(userInfo.displayName)
+        tpl.getSubject(job.kind),
+        tpl.getHtmlBody(userInfo.displayName, job.kind),
+        tpl.getTextBody(userInfo.displayName, job.kind)
       );
       await jobRef.update({
         'notify.pending': false,

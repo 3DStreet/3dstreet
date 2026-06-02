@@ -398,8 +398,9 @@ intended. The reminder request rides on the job; the reconciler delivers it.
 - **The reconciler sends the email.** `sendReadyNotifications` (in
   `generation-job-reconcile.js`) sweeps `notify.pending == true && status ==
   'succeeded'`: if `clientAckedAt` → clear (tab was open, no email); else once
-  past `NOTIFY_GRACE_MS` (3 min) with no ack → Postmark `splatReady` email
-  (reuses `sendPostmarkEmail`/`getUserInfo` from `scheduledEmails.js`), set
+  past `NOTIFY_GRACE_MS` (3 min) with no ack → Postmark `generationReady` email
+  (kind-aware copy — splat today, video/image reuse it for free; reuses
+  `sendPostmarkEmail`/`getUserInfo` from `scheduledEmails.js`), set
   `notify.sentAt`, clear `pending`. Idempotent: `pending` clears the instant we
   act, so each job emails **at most once**. Needs a collection-group index on
   `(notify.pending, status)` (added to `firestore.indexes.json`).

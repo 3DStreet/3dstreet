@@ -148,14 +148,31 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
   // Sent once per opted-in generation job that finishes while the user is away
   // (no live tab acked the result). Triggered from the generation-job reconciler,
   // not the daily scheduler — it reuses sendPostmarkEmail below.
-  splatReady: {
-    subject: 'Your 3DStreet splat is ready',
-    getTextBody: (userName) => `Hi ${userName},
+  //
+  // Kind-aware so video and image (the next async generations) reuse it with no
+  // new template: the queue + sweep are already kind-agnostic, so a new kind just
+  // adds a copy entry here (and an opt-in checkbox on its tab). Unknown kinds
+  // fall back to neutral "generation" wording rather than failing.
+  generationReady: {
+    copyByKind: {
+      splat: { noun: 'splat', desc: '3D Gaussian Splat' },
+      video: { noun: 'video', desc: 'video' },
+      image: { noun: 'image', desc: 'image' }
+    },
+    getCopy(kind) {
+      return this.copyByKind[kind] || { noun: 'generation', desc: 'generation' };
+    },
+    getSubject(kind) {
+      return `Your 3DStreet ${this.getCopy(kind).noun} is ready`;
+    },
+    getTextBody(userName, kind) {
+      const { noun, desc } = this.getCopy(kind);
+      return `Hi ${userName},
 
-Your 3D Gaussian Splat finished generating and has been saved to your 3DStreet gallery.
+Your ${desc} finished generating and has been saved to your 3DStreet gallery.
 
 Open the editor, find it in the Assets panel, and drag it into your scene:
-https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=splat_ready
+https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready
 
 Thanks for using 3DStreet!
 
@@ -163,8 +180,11 @@ The 3DStreet Team
 https://3dstreet.com
 
 ---
-You received this email because you asked to be notified when your splat finished. You can opt out by unchecking that box next time.`,
-    getHtmlBody: (userName) => `<!DOCTYPE html>
+You received this email because you asked to be notified when your ${noun} finished. You can opt out by unchecking that box next time.`;
+    },
+    getHtmlBody(userName, kind) {
+      const { noun, desc } = this.getCopy(kind);
+      return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -177,12 +197,12 @@ You received this email because you asked to be notified when your splat finishe
 
   <h2 style="color: #1a1a1a; margin-bottom: 20px;">Hi ${userName},</h2>
 
-  <p>Your <strong>3D Gaussian Splat</strong> finished generating and has been saved to your 3DStreet gallery.</p>
+  <p>Your <strong>${desc}</strong> finished generating and has been saved to your 3DStreet gallery.</p>
 
   <p>Open the editor, find it in the <strong>Assets</strong> panel, and drag it into your scene.</p>
 
   <div style="text-align: center; margin: 30px 0;">
-    <a href="https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=splat_ready" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Open 3DStreet</a>
+    <a href="https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Open 3DStreet</a>
   </div>
 
   <p>Thanks for using 3DStreet!</p>
@@ -193,11 +213,12 @@ You received this email because you asked to be notified when your splat finishe
   <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
 
   <p style="font-size: 12px; color: #999;">
-    You received this email because you asked to be notified when your splat finished.<br>
+    You received this email because you asked to be notified when your ${noun} finished.<br>
     You can opt out by unchecking that box next time.
   </p>
 </body>
-</html>`
+</html>`;
+    }
   }
 
   // Add more email templates here as needed:
