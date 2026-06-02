@@ -161,8 +161,9 @@ const AssetsItem = ({
         <div
           style={{
             position: 'absolute',
-            top: 6,
-            left: 6,
+            bottom: 8,
+            left: '50%',
+            transform: 'translateX(-50%)',
             display: 'flex',
             alignItems: 'center',
             gap: 4,
@@ -172,6 +173,7 @@ const AssetsItem = ({
             color: '#e5e7eb',
             fontSize: 10,
             lineHeight: 1.2,
+            whiteSpace: 'nowrap',
             pointerEvents: 'none'
           }}
           title="Building a streaming-optimized (RAD/LOD) version of this asset"
