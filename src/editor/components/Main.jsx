@@ -90,9 +90,16 @@ export default function Main() {
     const compassDock = compassDockRef.current;
     if (!barDock || !compassDock) return;
     const GAP = 12;
+    const COMPASS_SIZE = 64; // .compass is 64x64 (Compass.module.scss)
+    const BAR_BOTTOM = 16; // both docks sit 16px off the viewport bottom
     const place = () => {
       const bar = barDock.firstElementChild || barDock;
+      // Horizontal: just to the right of the centred toolbar.
       compassDock.style.transform = `translateX(${bar.offsetWidth / 2 + GAP}px)`;
+      // Vertical: align the compass centre with the toolbar centre. The bar's
+      // centre is BAR_BOTTOM + barHeight/2 from the bottom; match the compass
+      // centre (half its own height) to it.
+      compassDock.style.bottom = `${BAR_BOTTOM + bar.offsetHeight / 2 - COMPASS_SIZE / 2}px`;
     };
     place();
     const ro =
