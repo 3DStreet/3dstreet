@@ -154,11 +154,12 @@ export const Compass = () => {
   const [active, setActive] = useState(null);
   const [tooltip, setTooltip] = useState(null);
   // Mirror `active` into a ref so the rAF loop (empty-deps effect) can read
-  // the live region without re-subscribing each frame.
+  // the live region without re-subscribing each frame. Updated SYNCHRONOUSLY
+  // in enter/leave (not via a post-render effect): otherwise the ref lags the
+  // state by a render, and the rAF loop — seeing a stale 'body' — overwrites
+  // the just-set arrow tooltip with bodyTooltip() ("Plan view"), so the arrow
+  // highlights but the caption stays wrong.
   const activeRef = useRef(null);
-  useEffect(() => {
-    activeRef.current = active;
-  }, [active]);
 
   const staticTooltip = (region) => {
     if (region === 'left') return 'Rotate left 90°';
@@ -206,10 +207,12 @@ export const Compass = () => {
   // pointerenter/leave on overlapping siblings, which left the body's stale
   // state showing through (the "Plan view over the arrows" bug).
   const enter = (region) => {
+    activeRef.current = region; // sync, before any rAF tick can read it
     setActive(region);
     setTooltip(staticTooltip(region));
   };
   const leave = () => {
+    activeRef.current = null;
     setActive(null);
     setTooltip(null);
   };
