@@ -12,8 +12,7 @@
 import { useMemo, useState } from 'react';
 import AssetsItem from './AssetsItem.jsx';
 import AssetsGrid from './AssetsGrid.jsx';
-import AssetsModal from './AssetsModal.jsx';
-import MeshDetailsModal from './MeshDetailsModal.jsx';
+import AssetDetailModal from './AssetDetailModal.jsx';
 import PendingUploadCard from './PendingUploadCard.jsx';
 import PendingJobCard from './PendingJobCard.jsx';
 import useCurrentUploadStore from '../state/currentUploadStore.js';
@@ -165,30 +164,20 @@ const AssetsContent = ({
         </>
       )}
 
-      {selectedItem &&
-        (selectedItem.type === 'mesh' || selectedItem.type === 'splat' ? (
-          <MeshDetailsModal
-            assetId={selectedItem.id}
-            ownerUid={selectedItem.userId}
-            onClose={() => setSelectedItem(null)}
-            onPlace={onPlaceAsset}
-            currentIndex={items.findIndex((i) => i.id === selectedItem.id)}
-            totalItems={items.length}
-            onNavigate={handleNavigate}
-          />
-        ) : (
-          <AssetsModal
-            item={selectedItem}
-            currentIndex={items.findIndex((i) => i.id === selectedItem.id)}
-            totalItems={items.length}
-            onClose={() => setSelectedItem(null)}
-            onNavigate={handleNavigate}
-            onDownload={handleDownload}
-            onDelete={handleDelete}
-            onUseForGenerator={onUseForGenerator}
-            onUseForVideo={onUseForVideo}
-          />
-        ))}
+      {selectedItem && (
+        <AssetDetailModal
+          item={selectedItem}
+          currentIndex={items.findIndex((i) => i.id === selectedItem.id)}
+          totalItems={items.length}
+          onClose={() => setSelectedItem(null)}
+          onNavigate={handleNavigate}
+          onPlace={onPlaceAsset}
+          onDownload={handleDownload}
+          onDelete={handleDelete}
+          onUseForGenerator={onUseForGenerator}
+          onUseForVideo={onUseForVideo}
+        />
+      )}
     </>
   );
 };

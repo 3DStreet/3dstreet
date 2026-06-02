@@ -23,7 +23,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import MeshDetailsModal from '@shared/assets/components/MeshDetailsModal.jsx';
+import { AssetDetailModal } from '@shared/assets';
 import { placeCloudAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import pickPointOnGroundPlane from '@/editor/lib/pick-point-on-ground-plane';
 
@@ -78,8 +78,11 @@ export default function AssetDeepLinkModal() {
 
   if (!target) return null;
 
+  // No type in the link — AssetDetailModal fetches the doc to learn it, then
+  // routes (splat/mesh → 3D viewer, image/video → AssetsModal). So the deep
+  // link works for any asset type, not just splats.
   return (
-    <MeshDetailsModal
+    <AssetDetailModal
       assetId={target.assetId}
       ownerUid={target.ownerUid}
       onClose={handleClose}
