@@ -355,8 +355,17 @@ async function sendReadyNotifications({ dryRun }) {
       // because assets are addressed as users/{uid}/assets/{assetId}; assets are
       // public-read so the link works before the recipient's auth resolves.
       const tpl = EMAIL_TEMPLATES.generationReady;
+      // Project-aware base so a dev/staging email deep-links to the dev app
+      // (where the asset actually lives), not prod. Mirrors replicate.js's
+      // project resolution for the webhook URL.
+      const project =
+        process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || '';
+      const appBase =
+        project === 'dev-3dstreet'
+          ? 'https://dev-3dstreet.web.app'
+          : 'https://3dstreet.app';
       const ctaUrl = job.assetId
-        ? `https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready#asset:${uid}/${job.assetId}`
+        ? `${appBase}/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready#asset:${uid}/${job.assetId}`
         : undefined; // fall back to the template's default app link
       await sendPostmarkEmail(
         userInfo.email,
