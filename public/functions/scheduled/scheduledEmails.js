@@ -143,6 +143,61 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
   </p>
 </body>
 </html>`
+  },
+
+  // Sent once per opted-in generation job that finishes while the user is away
+  // (no live tab acked the result). Triggered from the generation-job reconciler,
+  // not the daily scheduler — it reuses sendPostmarkEmail below.
+  splatReady: {
+    subject: 'Your 3DStreet splat is ready',
+    getTextBody: (userName) => `Hi ${userName},
+
+Your 3D Gaussian Splat finished generating and has been saved to your 3DStreet gallery.
+
+Open the editor, find it in the Assets panel, and drag it into your scene:
+https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=splat_ready
+
+Thanks for using 3DStreet!
+
+The 3DStreet Team
+https://3dstreet.com
+
+---
+You received this email because you asked to be notified when your splat finished. You can opt out by unchecking that box next time.`,
+    getHtmlBody: (userName) => `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="https://3dstreet.app/ui_assets/3dstreet-logo-rect-r-640.png" alt="3DStreet" style="height: 40px;">
+  </div>
+
+  <h2 style="color: #1a1a1a; margin-bottom: 20px;">Hi ${userName},</h2>
+
+  <p>Your <strong>3D Gaussian Splat</strong> finished generating and has been saved to your 3DStreet gallery.</p>
+
+  <p>Open the editor, find it in the <strong>Assets</strong> panel, and drag it into your scene.</p>
+
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=splat_ready" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Open 3DStreet</a>
+  </div>
+
+  <p>Thanks for using 3DStreet!</p>
+
+  <p style="color: #666;">The 3DStreet Team<br>
+  <a href="https://3dstreet.com" style="color: #6366f1;">https://3dstreet.com</a></p>
+
+  <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+
+  <p style="font-size: 12px; color: #999;">
+    You received this email because you asked to be notified when your splat finished.<br>
+    You can opt out by unchecking that box next time.
+  </p>
+</body>
+</html>`
   }
 
   // Add more email templates here as needed:
@@ -524,6 +579,9 @@ const triggerScheduledEmails = functions
 module.exports = {
   sendScheduledEmails,
   triggerScheduledEmails,
+  // Reused by the generation-job reconciler to send completion emails.
+  sendPostmarkEmail,
+  getUserInfo,
   // Export for testing
   EMAIL_TEMPLATES,
   EMAIL_TYPES

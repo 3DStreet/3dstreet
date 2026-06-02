@@ -102,6 +102,15 @@ const SplatTab = {
             <span id="splat-generate-text">Generate Splat (${SPLAT_TOKEN_COST} token)</span>
           </button>
 
+          <!-- Email when done. Default on: splat takes minutes, so most users
+               navigate away. The email is suppressed server-side if the tab is
+               still open when it finishes (see generation-job-reconcile.js). -->
+          <label class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
+            <input id="splat-notify-email" type="checkbox" checked
+              class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+            Email me when my splat is ready
+          </label>
+
           <!-- Research preview / license notice -->
           <p class="text-[11px] leading-relaxed text-gray-400 mt-3">
             Research preview. Splats are generated with Apple's SHARP model. By
@@ -184,6 +193,7 @@ const SplatTab = {
       generateBtn: byId('splat-generate-btn'),
       generateSpinner: byId('splat-generate-spinner'),
       generateText: byId('splat-generate-text'),
+      notifyEmail: byId('splat-notify-email'),
       previewContainer: byId('splat-preview-container'),
       placeholder: byId('splat-placeholder'),
       loadingIndicator: byId('splat-loading-indicator'),
@@ -347,7 +357,10 @@ const SplatTab = {
       const result = await generateReplicateSplat({
         input_image: this.sourceData,
         model_id: 'sharp-ml',
-        source: 'generator'
+        source: 'generator',
+        // Opt-in completion email, recorded on the job doc. The server only
+        // sends it if this tab isn't around to ack the result (i.e. closed).
+        notify: { email: !!this.elements.notifyEmail?.checked }
       });
 
       if (!result.data || !result.data.success || !result.data.jobId) {

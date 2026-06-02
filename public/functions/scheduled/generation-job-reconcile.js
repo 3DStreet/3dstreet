@@ -33,6 +33,11 @@ const {
   cleanupSplatTempFile
 } = require('../replicate.js');
 const { enqueueRadTask } = require('../rad-dispatch.js');
+const {
+  sendPostmarkEmail,
+  getUserInfo,
+  EMAIL_TEMPLATES
+} = require('./scheduledEmails.js');
 
 // Our normalized non-terminal vocabulary (see normalizeReplicateStatus). The
 // reconciler only ever touches jobs in these states; everything else is done.
@@ -53,6 +58,12 @@ const GIVE_UP_MS = 30 * 60 * 1000;
 // Safety cap so a pathological backlog can't blow the function's time budget in
 // one run; the next scheduled tick picks up the remainder.
 const MAX_JOBS_PER_RUN = 200;
+
+// Grace after completion before we email. If the tab was open, a live poll acks
+// the result within a few seconds (clientAckedAt) and we suppress; this window
+// just keeps us from racing that ack. So the email effectively means "finished
+// AND the user wasn't watching."
+const NOTIFY_GRACE_MS = 3 * 60 * 1000;
 
 function ageMs(createdAt) {
   const ms = createdAt && createdAt.toMillis ? createdAt.toMillis() : 0;
@@ -270,9 +281,121 @@ async function reconcile({ dryRun }) {
   return summary;
 }
 
+// Completion-email sweep — the "notify by email when a job finishes while the
+// tab is closed" path, implemented entirely on the job doc (no separate
+// notification system). It queries opted-in, succeeded jobs whose notify is
+// still `pending` and either suppresses (the client acked → tab was open) or
+// emails (past the grace window with no ack → user is away). Success-only by
+// design; failed jobs refund silently. Idempotent: `notify.pending` is cleared
+// the instant we act, so a job is emailed at most once.
+async function sendReadyNotifications({ dryRun }) {
+  const db = admin.firestore();
+  const snap = await db
+    .collectionGroup('generationJobs')
+    .where('notify.pending', '==', true)
+    .where('status', '==', 'succeeded')
+    .limit(MAX_JOBS_PER_RUN)
+    .get();
+
+  const summary = {
+    scanned: snap.size,
+    sent: 0,
+    suppressed: 0,
+    waiting: 0,
+    errored: 0,
+    dryRun,
+    samples: []
+  };
+
+  for (const docSnap of snap.docs) {
+    const job = docSnap.data();
+    const jobRef = docSnap.ref;
+    const uid = jobRef.parent.parent?.id; // users/{uid}/generationJobs/{jobId}
+    if (!uid) continue;
+
+    // The client acked while polling → the tab was open and the user saw it.
+    // No email; just clear the flag so it drops out of this query.
+    if (job.notify?.clientAckedAt) {
+      summary.suppressed++;
+      if (!dryRun) await jobRef.update({ 'notify.pending': false });
+      continue;
+    }
+
+    // Give an open tab a moment to ack before we conclude the user is away.
+    const doneMs =
+      job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || 0;
+    if (doneMs && Date.now() - doneMs < NOTIFY_GRACE_MS) {
+      summary.waiting++;
+      continue;
+    }
+
+    try {
+      if (dryRun) {
+        summary.sent++;
+        if (summary.samples.length < 25) {
+          summary.samples.push({ uid, jobId: jobRef.id, action: 'would-email' });
+        }
+        continue;
+      }
+
+      const userInfo = await getUserInfo(uid);
+      if (!userInfo?.email) {
+        // No address on file — don't retry forever; close the notify out.
+        await jobRef.update({
+          'notify.pending': false,
+          'notify.error': 'no-email'
+        });
+        summary.errored++;
+        continue;
+      }
+
+      const tpl = EMAIL_TEMPLATES.splatReady;
+      await sendPostmarkEmail(
+        userInfo.email,
+        tpl.subject,
+        tpl.getHtmlBody(userInfo.displayName),
+        tpl.getTextBody(userInfo.displayName)
+      );
+      await jobRef.update({
+        'notify.pending': false,
+        'notify.sentAt': admin.firestore.FieldValue.serverTimestamp()
+      });
+      summary.sent++;
+      if (summary.samples.length < 25) {
+        summary.samples.push({ uid, jobId: jobRef.id, action: 'emailed' });
+      }
+    } catch (err) {
+      console.error(
+        `[generation-job-reconcile] notify email failed uid=${uid} job=${jobRef.id}:`,
+        err.message || err
+      );
+      summary.errored++;
+    }
+  }
+
+  return summary;
+}
+
+// Escalate a sweep's bad outcomes to ERROR level so Cloud Error Reporting picks
+// them up — that's the whole monitoring hook (no new infra): point an Error
+// Reporting / log-based alert notification channel at this and you get paged
+// when jobs systematically give up, error, or fail to email.
+function escalateIfNeeded(summary, notify) {
+  if (summary.gaveUp > 0 || summary.errored > 0 || notify.errored > 0) {
+    console.error(
+      '[generation-job-reconcile] ALERT: generation jobs need attention:',
+      JSON.stringify({
+        gaveUp: summary.gaveUp,
+        errored: summary.errored,
+        notifyErrored: notify.errored
+      })
+    );
+  }
+}
+
 const reconcileGenerationJobs = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN'],
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY'],
     // processTerminalPrediction may stream a .ply save (no full-file buffering);
     // 512 MB is fixed headroom, not sized to the file. 540s covers a backlog.
     timeoutSeconds: 540,
@@ -283,16 +406,18 @@ const reconcileGenerationJobs = functions
   .onRun(async () => {
     console.log('[generation-job-reconcile] starting sweep');
     const summary = await reconcile({ dryRun: false });
+    const notify = await sendReadyNotifications({ dryRun: false });
     console.log(
       '[generation-job-reconcile] complete:',
-      JSON.stringify(summary)
+      JSON.stringify({ ...summary, notify })
     );
-    return summary;
+    escalateIfNeeded(summary, notify);
+    return { ...summary, notify };
   });
 
 const triggerReconcileGenerationJobs = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN'],
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY'],
     timeoutSeconds: 540,
     memory: '512MB'
   })
@@ -312,11 +437,12 @@ const triggerReconcileGenerationJobs = functions
     const dryRun = data?.dryRun ?? true;
     console.log(`[generation-job-reconcile] manual trigger (dryRun=${dryRun})`);
     const summary = await reconcile({ dryRun });
+    const notify = await sendReadyNotifications({ dryRun });
     console.log(
       '[generation-job-reconcile] manual run complete:',
-      JSON.stringify(summary)
+      JSON.stringify({ ...summary, notify })
     );
-    return summary;
+    return { ...summary, notify };
   });
 
 module.exports = { reconcileGenerationJobs, triggerReconcileGenerationJobs };

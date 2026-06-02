@@ -9,7 +9,8 @@ image, video, photogrammetry) that:
   loses a job,
 - charge tokens on submit and **refund exactly once** on failure (or never charge,
   for silent backend jobs),
-- (planned) **notify by email** when a job finishes while the tab is closed.
+- **notify by email** when a job finishes while the tab is closed (opt-in,
+  default on; suppressed if a live tab acked the result — see Phase 4 below).
 
 **Two providers exist today**, and they prove the schema generalizes beyond a
 single completion shape:
@@ -382,12 +383,40 @@ provider integration.
   sets `notify.email`. Retire the client-side `saveToGallery(imageUrl)` for the
   async route.
 
-### Phase 4 — Notifications
-- Wire the `notify` hook to Postmark (reuse `scheduledEmails.js`): on terminal,
-  if `notify.email` is set **and** no client has acked the result (guarded by a
-  `notifiedAt`/`clientSeenAt` field), email a link to the gallery/asset. Add an
-  "AI generation ready" template.
-- Deferred options: in-app **Jobs panel** reading `generationJobs`; web push.
+### Phase 4 — Notifications ✅ DONE (splat, success-only)
+Built entirely on the job doc — **no separate notification system**, exactly as
+intended. The reminder request rides on the job; the reconciler delivers it.
+- **Opt-in at submit.** The Splat tab has an "Email me when my splat is ready"
+  checkbox, **default on** (`src/generator/splat.js`). It passes
+  `notify: { email }` to `generateReplicateSplat`, which writes
+  `notify: { email, pending }` onto the job doc (`pending` mirrors the opt-in and
+  is the only field the sweep queries on).
+- **The open tab acks itself.** A live poll (`getGenerationJobStatus`) that
+  carries/sees the job as succeeded stamps `notify.clientAckedAt` and clears
+  `pending` (`ackClientSeen`). If the tab is open, this lands within ~3s of
+  completion → the email is suppressed. No heartbeat, no tab-state guessing.
+- **The reconciler sends the email.** `sendReadyNotifications` (in
+  `generation-job-reconcile.js`) sweeps `notify.pending == true && status ==
+  'succeeded'`: if `clientAckedAt` → clear (tab was open, no email); else once
+  past `NOTIFY_GRACE_MS` (3 min) with no ack → Postmark `splatReady` email
+  (reuses `sendPostmarkEmail`/`getUserInfo` from `scheduledEmails.js`), set
+  `notify.sentAt`, clear `pending`. Idempotent: `pending` clears the instant we
+  act, so each job emails **at most once**. Needs a collection-group index on
+  `(notify.pending, status)` (added to `firestore.indexes.json`).
+- **Success-only** by design; failures refund silently (a closed-tab user just
+  finds the token back). Thresholds ("only if cost > x / time > y") are moot for
+  splat (fixed 1 token, always minutes) — revisit when fast image kinds fold in.
+- Deferred: failure emails, in-app **Jobs panel** reading `generationJobs`, web
+  push.
+
+### Monitoring — reconciler self-escalation ✅ DONE
+No new infra. When a sweep finishes with `gaveUp > 0`, `errored > 0`, or
+`notify.errored > 0`, the reconciler logs at **ERROR** (`escalateIfNeeded`), so
+Cloud Error Reporting groups it and a log-based / Error Reporting notification
+channel can page on it. Cloud Functions already ship uncaught exceptions to Error
+Reporting and all `console.*` to Cloud Logging; this just makes the *expected-but-bad*
+outcomes (jobs the reconciler gave up on, emails that failed to send) loud enough
+to alert on. A real admin Jobs dashboard remains deferred.
 
 ### Later — additional providers (justifies a real registry)
 - **fal** adapter: `submit`/`fetchStatus` over its queue API (`request_id`,

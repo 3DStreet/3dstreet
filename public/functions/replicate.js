@@ -805,7 +805,12 @@ const generateReplicateSplat = functions
     }
 
     const userId = context.auth.uid;
-    const { input_image, model_id = 'sharp-ml', source = 'generator' } = data;
+    const { input_image, model_id = 'sharp-ml', source = 'generator', notify } = data;
+
+    // Opt-in completion email. `pending: true` is the flag the notify sweep
+    // (generation-job-reconcile.js) queries on; it clears when the email is
+    // sent OR when a live poll acks the result (tab was open → no email needed).
+    const wantsEmail = notify?.email === true;
 
     const modelConfig = REPLICATE_MODELS[model_id] || REPLICATE_MODELS['sharp-ml'];
     const tokenCost = modelConfig?.tokenCost || 1;
@@ -923,6 +928,7 @@ const generateReplicateSplat = functions
         webhookSecret,
         originalFilename,
         assetName,
+        notify: { email: wantsEmail, pending: wantsEmail },
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
@@ -1387,6 +1393,23 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
 // asks the provider and runs the shared idempotent processor. Generic across
 // Replicate kinds today; provider dispatch becomes a registry when fal/Teleport
 // land.
+// A live poll from an open tab is itself proof the user is present to see the
+// result, so we stamp the job's notify ack and clear its `pending` flag. That
+// suppresses the completion email: the notify sweep only emails opted-in jobs
+// the client never acked (i.e. the tab was closed). Best-effort — a failed write
+// just risks an email the user didn't strictly need.
+async function ackClientSeen(jobRef, job) {
+  if (!job?.notify?.pending) return; // not opted-in, or already acked/sent
+  try {
+    await jobRef.update({
+      'notify.pending': false,
+      'notify.clientAckedAt': admin.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (err) {
+    console.warn('Failed to ack client-seen for notify suppression:', err.message);
+  }
+}
+
 const getGenerationJobStatus = functions
   .runWith({
     secrets: ['REPLICATE_API_TOKEN'],
@@ -1425,6 +1448,7 @@ const getGenerationJobStatus = functions
 
     // Terminal in our records (likely the webhook already handled it).
     if (job.status === 'succeeded' && job.splatUrl) {
+      await ackClientSeen(jobRef, job);
       return { status: 'succeeded', splat_url: job.splatUrl, assetId: job.assetId };
     }
     if (job.status === 'failed' || job.status === 'canceled') {
@@ -1452,7 +1476,11 @@ const getGenerationJobStatus = functions
       throw new functions.https.HttpsError('internal', `Failed to fetch generation status: ${error.message}`);
     }
 
-    return processTerminalPrediction(db, userId, jobRef, prediction);
+    const result = await processTerminalPrediction(db, userId, jobRef, prediction);
+    // If this poll is what carried the job to success, the tab is open — ack it
+    // so the completion email is suppressed.
+    if (result.status === 'succeeded') await ackClientSeen(jobRef, job);
+    return result;
   });
 
 // Replicate webhook target — makes completion browser-independent. One endpoint
