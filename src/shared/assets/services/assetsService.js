@@ -697,6 +697,24 @@ class AssetsServiceV2 {
   }
 
   /**
+   * Processing/transcode jobs that ran against this asset (today: the RAD/LOD
+   * optimization, kind 'splat-rad'). These are the asset's "transcode entries" —
+   * one source asset, N processing jobs. Owner-only per security rules. Newest
+   * first. Used by the detail modal to show optimization status / job history.
+   * @returns {Promise<Array>}
+   */
+  async getAssetJobs(assetId, userId) {
+    const jobsRef = collection(db, 'users', userId, 'generationJobs');
+    const snap = await getDocs(query(jobsRef, where('assetId', '==', assetId)));
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort(
+        (a, b) =>
+          (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)
+      );
+  }
+
+  /**
    * Get all assets for a user with filters
    * @param {string} userId - User ID
    * @param {object} filters - Query filters

@@ -104,6 +104,9 @@ const MeshDetailsModal = ({
 }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  // The asset's processing/transcode jobs (today: the RAD/LOD optimization).
+  // One source asset, N jobs — owner-only by rules.
+  const [assetJobs, setAssetJobs] = useState([]);
 
   const [name, setName] = useState('');
   const [savedName, setSavedName] = useState('');
@@ -138,6 +141,28 @@ const MeshDetailsModal = ({
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [assetId, ownerUid]);
+
+  // Load the asset's transcode/optimization jobs (owner-only by rules) so the
+  // modal can show optimization status. Best-effort: failure just hides the row.
+  useEffect(() => {
+    const owner = !!auth.currentUser && auth.currentUser.uid === ownerUid;
+    if (!owner) {
+      setAssetJobs([]);
+      return;
+    }
+    let cancelled = false;
+    assetsService
+      .getAssetJobs(assetId, ownerUid)
+      .then((js) => {
+        if (!cancelled) setAssetJobs(js || []);
+      })
+      .catch(() => {
+        if (!cancelled) setAssetJobs([]);
       });
     return () => {
       cancelled = true;
@@ -399,6 +424,21 @@ const MeshDetailsModal = ({
   const isSplat = data?.type === 'splat';
   const viewerPage = isSplat ? '/splat-viewer.html' : '/model-viewer.html';
 
+  // Optimization (transcode) status. A present optimizedSourceUrl means the
+  // streaming variant is ready; otherwise an in-flight job means it's building.
+  // One source asset, N jobs — today just the single RAD/LOD pass.
+  const hasOptimizedVariant = !!data?.optimizedSourceUrl;
+  const activeOptimizeJob = assetJobs.find((j) =>
+    ['queued', 'running', 'saving'].includes(j.status)
+  );
+  const optimizationLabel = hasOptimizedVariant
+    ? isSplat
+      ? 'Streaming variant ready (RAD/LOD)'
+      : 'Optimized variant ready'
+    : activeOptimizeJob
+      ? `Optimizing… (${activeOptimizeJob.status})`
+      : null;
+
   // Canonical "{Type} · {Source}" title — matches the gallery card overlay
   // and the image/video modal. The source label is the editable display name,
   // so the live `savedName` takes precedence over `data.name` (which only
@@ -593,6 +633,12 @@ const MeshDetailsModal = ({
                   return formatBytes(opt.origSize);
                 })()}
               </div>
+              {optimizationLabel && (
+                <div>
+                  <span className={styles.metaLabel}>Optimization:</span>
+                  {optimizationLabel}
+                </div>
+              )}
               <div>
                 <span className={styles.metaLabel}>Type:</span>
                 {data?.mimeType || '—'}

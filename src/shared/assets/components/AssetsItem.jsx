@@ -61,7 +61,10 @@ const AssetsItem = ({
   onDownload,
   // When true (editor's Assets panel), mesh/image cards become draggable
   // into the viewport. Off in the generator app where there's no viewport.
-  placeable = false
+  placeable = false,
+  // True while this asset has an in-flight RAD/LOD optimization (a status of
+  // the asset, not a separate generation) — shows a subtle "Optimizing…" badge.
+  isOptimizing = false
 }) => {
   const isMesh = item.type === 'mesh';
   const isSplat = item.type === 'splat';
@@ -149,6 +152,41 @@ const AssetsItem = ({
           }
           loading="lazy"
         />
+      )}
+
+      {/* Subtle "Optimizing…" badge while a RAD/LOD transcode runs for this
+          asset. It's a status of the asset (the file already works); the badge
+          clears when the streaming variant is ready. */}
+      {isOptimizing && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 6,
+            left: 6,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '2px 6px',
+            borderRadius: 4,
+            background: 'rgba(0,0,0,0.62)',
+            color: '#e5e7eb',
+            fontSize: 10,
+            lineHeight: 1.2,
+            pointerEvents: 'none'
+          }}
+          title="Building a streaming-optimized (RAD/LOD) version of this asset"
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: '#fbbf24',
+              display: 'inline-block'
+            }}
+          />
+          Optimizing…
+        </div>
       )}
 
       {/* Type / source label on top */}

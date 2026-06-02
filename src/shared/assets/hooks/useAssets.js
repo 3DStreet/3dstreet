@@ -76,6 +76,10 @@ const useAssets = () => {
   );
   const [items, setItems] = useState([]);
   const [pendingJobs, setPendingJobs] = useState([]);
+  // Asset ids with an in-flight RAD/LOD optimization (splat-rad job). Drives the
+  // subtle "Optimizing…" badge on the asset card — the optimization is a status
+  // of the asset, not a separate generation.
+  const [optimizingAssetIds, setOptimizingAssetIds] = useState(() => new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -154,6 +158,7 @@ const useAssets = () => {
     if (!userId) {
       prevJobIdsRef.current = new Set();
       setPendingJobs([]);
+      setOptimizingAssetIds(new Set());
       return;
     }
     const jobsQuery = query(
@@ -183,6 +188,14 @@ const useAssets = () => {
         // the grid refreshes to the optimized URL when it finishes; we just
         // don't render a card for it.
         setPendingJobs(jobs.filter((j) => j.kind !== 'splat-rad'));
+        // The hidden splat-rad jobs drive the per-asset "Optimizing…" badge.
+        setOptimizingAssetIds(
+          new Set(
+            jobs
+              .filter((j) => j.kind === 'splat-rad' && j.assetId)
+              .map((j) => j.assetId)
+          )
+        );
         if (completed) reloadItems();
       },
       (error) => {
@@ -567,6 +580,7 @@ const useAssets = () => {
   return {
     items,
     pendingJobs,
+    optimizingAssetIds,
     isLoading,
     isLoadingMore,
     isLoggedIn,

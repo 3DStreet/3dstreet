@@ -36,15 +36,15 @@ const PendingJobCard = ({ job }) => {
   const noun = KIND_NOUNS[job.kind] || 'Asset';
   const name = job.assetName || job.name || `${noun} generation`;
 
+  // Spinner + status only. The indeterminate top progress stripe was removed —
+  // it reads as "loading", and with the spinner + status text it was redundant
+  // noise for a job that's processing, not downloading.
   return (
     <div className={styles.pendingCard} title={name}>
       <div className={styles.pendingSpinner} aria-hidden="true" />
       <div className={styles.pendingBody}>
         <div className={styles.pendingStatus}>{label}</div>
         <div className={styles.pendingFilename}>{name}</div>
-      </div>
-      <div className={styles.pendingProgressTrack}>
-        <div className={styles.pendingProgressIndeterminate} />
       </div>
     </div>
   );

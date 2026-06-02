@@ -18,7 +18,8 @@ const AssetsGrid = ({
   hasMore = false,
   isLoadingMore = false,
   onLoadMore,
-  placeable = false
+  placeable = false,
+  optimizingAssetIds
 }) => {
   const start = (page - 1) * pageSize;
   const end = start + pageSize;
@@ -67,6 +68,7 @@ const AssetsGrid = ({
             onDelete={onDelete}
             onDownload={onDownload}
             placeable={placeable}
+            isOptimizing={!!optimizingAssetIds?.has(item.id)}
           />
         ))}
       </div>

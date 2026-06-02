@@ -19,6 +19,10 @@ import useCurrentUploadStore from '../state/currentUploadStore.js';
 import { ASSET_TYPES } from '../constants.js';
 import styles from './Assets.module.scss';
 
+// Stable empty fallback so a gallery without optimizingAssetIds doesn't allocate
+// a new Set each render.
+const EMPTY_OPTIMIZING = new Set();
+
 const AssetsContent = ({
   gallery,
   variant = 'paginated',
@@ -41,6 +45,7 @@ const AssetsContent = ({
   const {
     items,
     pendingJobs = [],
+    optimizingAssetIds = EMPTY_OPTIMIZING,
     isLoading,
     isLoadingMore,
     hasMore,
@@ -136,6 +141,7 @@ const AssetsContent = ({
           onPageChange={setPage}
           onPageSizeChange={setPageSize}
           placeable={placeable}
+          optimizingAssetIds={optimizingAssetIds}
         />
       ) : visibleItems.length === 0 && !hasPendingUpload && !hasPendingJob ? (
         (emptyState ?? defaultEmpty)
@@ -157,6 +163,7 @@ const AssetsContent = ({
                 onDelete={handleDelete}
                 onDownload={handleDownload}
                 placeable={placeable}
+                isOptimizing={optimizingAssetIds.has(item.id)}
               />
             ))}
           </div>
