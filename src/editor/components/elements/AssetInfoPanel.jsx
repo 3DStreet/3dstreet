@@ -10,7 +10,7 @@ import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAss
 import { AssetDetailModal, formatBytes } from '@shared/assets';
 import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
 
-const AssetUploadStatus = ({ entity }) => {
+const AssetInfoPanel = ({ entity }) => {
   const state = useAssetUploadStatus(entity);
   const [detailsOpen, setDetailsOpen] = useState(false);
   if (!state) return null;
@@ -168,8 +168,8 @@ const AssetUploadStatus = ({ entity }) => {
   );
 };
 
-AssetUploadStatus.propTypes = {
+AssetInfoPanel.propTypes = {
   entity: PropTypes.object
 };
 
-export default AssetUploadStatus;
+export default AssetInfoPanel;
