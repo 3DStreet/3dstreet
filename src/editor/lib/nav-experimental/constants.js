@@ -135,3 +135,26 @@ export const SWOOP_PHASE2_FLOOR_SNAP_METRES = 1.0;
 // Phase 3 FOV floor (degrees). Further zoom-in ticks at the floor are
 // no-ops.
 export const SWOOP_PHASE3_FOV_FLOOR_DEGREES = 15;
+
+// TASK-011 compass.
+
+// World-north axis. 3DStreet currently treats +X as north (per Kieran;
+// likely inherited from Google 3D Tiles). The needle render AND the
+// align-to-north / rotate targets all read this, so re-pointing north
+// later (e.g. standardising to a true North-up convention) is a one-line
+// change here — not a hunt-and-replace.
+export const NORTH_AXIS = Object.freeze({ x: 1, y: 0, z: 0 }); // +X
+
+// Bearing of NORTH_AXIS measured clockwise from world -Z, in degrees.
+// Derived from NORTH_AXIS so the needle formula and the align target stay
+// in sync. For +X this is 90 (= atan2(NORTH_AXIS.x, -NORTH_AXIS.z) in deg).
+export const NORTH_BEARING_FROM_MINUS_Z = 90;
+
+// Pose-test tolerances for the compass body click.
+// "Top-down" = within this many degrees of straight-down (tilt = +90).
+export const COMPASS_TOPDOWN_TOLERANCE_DEGREES = 2;
+// "North-up" = needle within this many degrees of screen-top.
+export const COMPASS_NORTH_TOLERANCE_DEGREES = 2;
+
+// Rotation-arrow step.
+export const COMPASS_ROTATE_STEP_DEGREES = 90;

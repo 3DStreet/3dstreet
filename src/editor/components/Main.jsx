@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import RightPanel from './scenegraph/RightPanel';
 import Events from '../lib/Events';
 import ModalTextures from './modals/ModalTextures';
@@ -19,9 +19,11 @@ import { LoadingSceneModal } from './modals/LoadingSceneModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
 import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
+import { Compass } from './elements/Compass';
 import useStore from '@/store';
 import { AIChatProvider } from '../contexts/AIChatContext';
 import { useNavMode } from '../lib/nav-experimental/useNavMode';
+import { isExperimentalNav } from '../lib/nav-experimental/index.js';
 import styles from './Main.module.scss';
 
 // Define the libraries array as a constant outside of the component
@@ -72,6 +74,44 @@ export default function Main() {
   const dockClass = (base) =>
     isPedestalMode ? `${base} ${styles.pedestalMode}` : base;
 
+  // TASK-011: anchor the compass dock just to the right of the bottom-centre
+  // ActionBar, in BOTH plan view and pedestal/street view. The bar's width is
+  // dynamic (conditional buttons), and in pedestal mode the dock stretches to
+  // full width while its buttons stay centred — so we measure the inner
+  // ActionBar element (the dock's first child), not the dock, and pin the
+  // compass to the page centre (left: 50%) pushed right by half that width +
+  // a gap. Measuring the inner toolbar makes the offset identical in both
+  // modes, so the compass stays put when switching to street view.
+  const actionBarDockRef = useRef(null);
+  const compassDockRef = useRef(null);
+  useEffect(() => {
+    if (!isInspectorEnabled || !isExperimentalNav()) return;
+    const barDock = actionBarDockRef.current;
+    const compassDock = compassDockRef.current;
+    if (!barDock || !compassDock) return;
+    const GAP = 12;
+    const COMPASS_SIZE = 64; // .compass is 64x64 (Compass.module.scss)
+    const BAR_BOTTOM = 16; // both docks sit 16px off the viewport bottom
+    const place = () => {
+      const bar = barDock.firstElementChild || barDock;
+      // Horizontal: just to the right of the centred toolbar.
+      compassDock.style.transform = `translateX(${bar.offsetWidth / 2 + GAP}px)`;
+      // Vertical: align the compass centre with the toolbar centre. The bar's
+      // centre is BAR_BOTTOM + barHeight/2 from the bottom; match the compass
+      // centre (half its own height) to it.
+      compassDock.style.bottom = `${BAR_BOTTOM + bar.offsetHeight / 2 - COMPASS_SIZE / 2}px`;
+    };
+    place();
+    const ro =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null;
+    if (ro) ro.observe(barDock.firstElementChild || barDock);
+    window.addEventListener('resize', place);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', place);
+    };
+  }, [isInspectorEnabled, isPedestalMode]);
+
   return (
     <div id="inspectorContainer">
       <ToolbarWrapper />
@@ -85,9 +125,20 @@ export default function Main() {
             >
               <PrimaryToolbar />
             </div>
-            <div className={dockClass(`clickable ${styles.actionBarDock}`)}>
+            <div
+              ref={actionBarDockRef}
+              className={dockClass(`clickable ${styles.actionBarDock}`)}
+            >
               <ActionBar selectedEntity={state.entity} />
             </div>
+            {isExperimentalNav() && (
+              <div
+                ref={compassDockRef}
+                className={dockClass(`clickable ${styles.compassDock}`)}
+              >
+                <Compass />
+              </div>
+            )}
           </div>
         </AIChatProvider>
       )}
