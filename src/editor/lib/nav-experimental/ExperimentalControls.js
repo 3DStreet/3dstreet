@@ -58,7 +58,7 @@ import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
   ROTATION_GROUND_FLOOR_METRES,
   MIN_ORBIT_RADIUS_METRES,
-  MAP_PIVOT_MAX_CAMERA_DIST_METRES,
+  MAP_PIVOT_BOUNDS_RADIUS_METRES,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
   SWOOP_PHASE2_MAX_TICKS_PER_FRAME,
@@ -127,9 +127,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // `nav-experimental-tuning` component); defaults to the constant.
     this._tiltThreshold = TILT_THRESHOLD_DEFAULT_DEGREES;
 
-    // TASK-010 (D-LT-3): far-pivot bounds + fallback distance (metres
-    // from the camera). Live value, overridable via the tuning component.
-    this._mapPivotMaxCamDist = MAP_PIVOT_MAX_CAMERA_DIST_METRES;
+    // TASK-010 (D-LT-3): Map-pivot bounds radius (metres on the ground,
+    // measured from the screen-centre point). Live value, overridable via
+    // the tuning component.
+    this._mapPivotBoundsRadius = MAP_PIVOT_BOUNDS_RADIUS_METRES;
 
     // TASK-010 (live-Shift, B6): last-known cursor coords, tracked on
     // mousedown and every mousemove so a mid-drag Shift toggle can
@@ -394,11 +395,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._maybeEmitLbModeChange();
   }
 
-  // TASK-010 (D-LT-3 / #6): live-tunable far-pivot bounds + fallback
-  // distance (metres from the camera). Relayed from the tuning component.
-  setMapPivotMaxCamDist(metres) {
+  // TASK-010 (D-LT-3 / #6): live-tunable Map-pivot bounds radius (metres
+  // on the ground from the screen-centre point). Relayed from the tuning
+  // component.
+  setMapPivotBoundsRadius(metres) {
     if (typeof metres !== 'number' || !isFinite(metres)) return;
-    this._mapPivotMaxCamDist = THREE.MathUtils.clamp(metres, 1, 100000);
+    this._mapPivotBoundsRadius = THREE.MathUtils.clamp(metres, 1, 100000);
   }
 
   // TASK-010 (D-LT-3 / #6): live-tunable Shift+LB rotation speed
@@ -1440,46 +1442,50 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
   }
 
-  // Map-mode pivot. Defines a bounds sphere of radius
-  // `_mapPivotMaxCamDist` around the camera:
-  //   • cursor's surface/ground hit within the sphere → orbit that true
-  //     point (rigid orbit keeps it pinned under the cursor at any tilt).
-  //   • cursor over sky, OR its ground hit farther than the sphere
-  //     (D-LT-3) → orbit a point exactly `_mapPivotMaxCamDist` straight
-  //     ahead along the view direction (the screen-centre, at a fixed
-  //     depth). This keeps the fallback orbit feel consistent regardless
-  //     of how far the ground happens to be, and the ring signals it.
+  // Map-mode pivot. The fallback rotation centre is the screen-centre
+  // ground point `sc` (where the view ray meets y=0). The "bounds" is a
+  // circle on the ground CENTRED ON `sc`, radius `_mapPivotBoundsRadius`:
+  //   • cursor's ground/mesh hit within that radius of `sc` → orbit the
+  //     cursor's point (rigid orbit keeps it pinned under the cursor).
+  //   • cursor over sky, OR its hit beyond the radius from `sc` → orbit
+  //     `sc` itself (the ring sits there).
+  // Both pivots are on the ground (y=0), so rotation visibly pivots a
+  // ground feature. (Ideally the pivot's height would be true ground
+  // level rather than y=0 — that is TASK-018, gated on the AGL work in
+  // TASK-013/019, not yet landed.)
   //
-  // This replaced (a) the original MAX_ORBIT_RADIUS inward cap along the
-  // cursor ray, which drifted on tilt when zoomed out (#7), and (b) the
-  // first D-LT-3 attempt that orbited the screen-centre *ground* hit,
-  // whose variable distance still felt weird for far/shallow views.
-  // Orbiting a far pivot at a shallow ground-skimming angle is otherwise
-  // prevented by the two-regime split (below the tilt threshold,
-  // rotation is in-place about the camera).
+  // History: replaced (a) the MAX_ORBIT_RADIUS inward cap along the
+  // cursor ray, which drifted on tilt when zoomed out (#7); and (b) a
+  // fixed-distance point straight ahead, which sat off the ground and
+  // read as rotating about the cursor. The bounds centre is `sc`, not the
+  // camera nadir/position. Orbiting a far pivot at a shallow
+  // ground-skimming angle is otherwise prevented by the two-regime split
+  // (below the tilt threshold, rotation is in-place about the camera), so
+  // in Map mode (tilt > T, looking down) the view ray always meets y=0.
   _mapModePivot(clientX, clientY) {
     const camPos = this._camera.position;
     const fwd = this._tmpV3c;
     this._camera.getWorldDirection(fwd); // unit view direction
+    // Screen-centre ground point: bounds centre AND fallback pivot.
+    const sc = this._viewRayGroundPoint(camPos, fwd);
     const hit = this._cursorAnchor.worldPointAt(clientX, clientY);
-    let p = null;
-    if (hit.source !== 'fallback') {
-      // Cursor hit a mesh OR the ground plane: use it only if it lies
-      // within the bounds sphere (distance from the camera).
+    let p = sc;
+    if (sc && hit.source !== 'fallback') {
+      // Cursor hit a mesh OR the ground plane: orbit it if it lies within
+      // the bounds radius of the screen-centre point (horizontal ground
+      // distance).
       const candidate = new THREE.Vector3(hit.x, hit.y, hit.z);
-      if (camPos.distanceTo(candidate) <= this._mapPivotMaxCamDist) {
+      const groundDist = Math.hypot(candidate.x - sc.x, candidate.z - sc.z);
+      if (groundDist <= this._mapPivotBoundsRadius) {
         p = candidate;
       }
     }
     if (!p) {
-      // Outside the bounds (cursor over sky, or ground hit too far):
-      // a point a fixed distance straight ahead along the view direction.
-      const d = this._mapPivotMaxCamDist;
-      p = new THREE.Vector3(
-        camPos.x + fwd.x * d,
-        camPos.y + fwd.y * d,
-        camPos.z + fwd.z * d
-      );
+      // Defensive: no ground intersection ahead (view at/above the
+      // horizon — not normally reachable in Map mode) and no cursor
+      // ground hit. Drop a fixed-distance-ahead point to the ground.
+      const d = this._mapPivotBoundsRadius;
+      p = new THREE.Vector3(camPos.x + fwd.x * d, 0, camPos.z + fwd.z * d);
     }
     // maxR = Infinity → no inward cap; MIN still guards a twitchy
     // very-close pivot.
@@ -1490,6 +1496,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       Infinity,
       fwd
     );
+  }
+
+  // The point where the camera's view-direction ray meets the ground
+  // plane y=0, or null if it points at/above the horizon. Pure given the
+  // camera position + unit view direction.
+  _viewRayGroundPoint(camPos, fwd) {
+    if (fwd.y >= -1e-4) return null;
+    const t = camPos.y / -fwd.y; // along-ray distance to y=0
+    return new THREE.Vector3(camPos.x + fwd.x * t, 0, camPos.z + fwd.z * t);
   }
 
   // --- Shift+LB orbit/tilt around latched center ---
