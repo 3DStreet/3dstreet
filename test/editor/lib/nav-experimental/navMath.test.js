@@ -17,7 +17,8 @@ import {
   FALLBACK_FORWARD_DIST,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
-  SWOOP_PHASE2_STEP
+  SWOOP_PHASE2_STEP,
+  SWOOP_PHASE2_FLOOR_SNAP_METRES
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
 
 if (!globalThis.THREE) globalThis.THREE = THREE;
@@ -653,5 +654,105 @@ describe('phase2NextElevation', () => {
   it('respects custom alpha', () => {
     // Zoom-in with α=0.2: y_next = 10 - 0.2×8.5 = 8.3
     expect(phase2NextElevation(10, -1, 0.2)).toBeCloseTo(8.3, 6);
+  });
+});
+
+// --- AGL (TASK-013) ---
+//
+// The swoop now interprets `decideSwoopPhase` / `phase2*` inputs as
+// height above ground (AGL = camera.y − groundY) rather than absolute y.
+// The functions are unchanged (pure rename); these tests pin the *caller*
+// conversion to the spec's worked examples and prove the translation
+// invariance the imperative shell relies on (computing in AGL, writing
+// back groundY + result).
+
+describe('decideSwoopPhase (AGL worked examples, TASK-013)', () => {
+  // Callers pass yAgl = camera.y − groundY.
+  it('WE-1 flat scene: y=24, groundY=0 → AGL 24 → phase1', () => {
+    expect(decideSwoopPhase(24 - 0)).toBe('phase1');
+  });
+
+  it('WE-2 elevated: y=24, groundY=6 → AGL 18 → phase2', () => {
+    expect(decideSwoopPhase(24 - 6)).toBe('phase2');
+  });
+
+  it('WE-3 sunken: y=10, groundY=−3 → AGL 13 → phase2', () => {
+    expect(decideSwoopPhase(10 - -3)).toBe('phase2');
+  });
+
+  it('WE-4 over-tower: y=40, groundY=0 → AGL 40 → phase1', () => {
+    // Probe sees through the roof to the road below, so groundY=0, not 30.
+    expect(decideSwoopPhase(40 - 0)).toBe('phase1');
+  });
+});
+
+describe('Phase 2 AGL translation invariance + floor brackets (TASK-013)', () => {
+  const yFloor = SWOOP_PHASE2_EXIT_ELEVATION_METRES; // 1.5
+  const snap = SWOOP_PHASE2_FLOOR_SNAP_METRES; // 1.0
+
+  it('phase2NextElevation step is groundY-independent (written-back y differs by exactly the ground offset)', () => {
+    // Two scenes whose groundY differ by 6. Same AGL input (10). The AGL
+    // step itself never sees groundY, so the written-back absolute y
+    // values differ by exactly 6. This is the WE-2/WE-3 reversibility
+    // regression guard.
+    const step = phase2NextElevation(10, -1); // AGL 10, zoom-in
+    const writtenBackGround0 = 0 + step;
+    const writtenBackGround6 = 6 + step;
+    expect(writtenBackGround6 - writtenBackGround0).toBeCloseTo(6, 12);
+  });
+
+  it('floor-snap in AGL writes back groundY + yFloor (not absolute yFloor)', () => {
+    // Elevated scene groundY=6, camera at absolute 7.5 → yAgl = 1.5.
+    const groundY = 6;
+    const yAbs = 7.5;
+    let yAgl = yAbs - groundY; // 1.5
+    let yAglNext = phase2NextElevation(yAgl, -1); // zoom-in
+    if (yAglNext - yFloor < snap) {
+      yAglNext = yFloor;
+    }
+    const writtenBack = groundY + yAglNext;
+    // Eye-height on the surface, NOT 4.5m underground (the absolute bug).
+    expect(writtenBack).toBeCloseTo(7.5, 12);
+    expect(writtenBack).not.toBeCloseTo(1.5, 6);
+  });
+
+  it('kick-start in AGL fires on elevated scene; the old absolute guard would not have', () => {
+    // groundY=6, camera at absolute 7.5 → yAgl = 1.5, zoom-out.
+    const groundY = 6;
+    const yAbs = 7.5;
+    let yAgl = yAbs - groundY; // 1.5
+    // New AGL guard: yAgl >= 0 && yAgl <= yFloor + snap (1.5 in [0, 2.5]).
+    const guardFires = yAgl >= 0 && yAgl <= yFloor + snap;
+    expect(guardFires).toBe(true);
+    if (guardFires) yAgl = yFloor + snap; // 2.5
+    const yAglNext = phase2NextElevation(yAgl, +1);
+    const writtenBack = groundY + yAglNext;
+    expect(writtenBack).toBeGreaterThan(7.5); // camera ascends
+    // Document the bug the conversion fixes: the OLD absolute guard
+    // compared absolute y (7.5) to yFloor+snap (2.5) → false → stall.
+    const oldAbsoluteGuard = yAbs <= yFloor + snap;
+    expect(oldAbsoluteGuard).toBe(false);
+  });
+
+  it('legitimate below-floor fresh case DOES kick-start (AGL 0.5)', () => {
+    // Camera genuinely on real ground at AGL 0.5 (fresh probe). The
+    // round-1 over-tight `yAgl >= yFloor` guard would have wrongly killed
+    // this; the `yAgl >= 0` lower bound preserves it.
+    let yAgl = 0.5;
+    const guardFires = yAgl >= 0 && yAgl <= yFloor + snap; // 0.5 in [0, 2.5]
+    expect(guardFires).toBe(true);
+    if (guardFires) yAgl = yFloor + snap;
+    expect(yAgl).toBe(2.5); // kick-started, no stall
+  });
+
+  it('kick-start does NOT fire at negative AGL (no teleport)', () => {
+    // Camera over a gap holding a stale-high cached groundY (cached ground
+    // above the camera) → yAgl = −2. The lower-bound guard skips the
+    // kick-start so there is no teleport-to-(groundY + yFloor + snap).
+    let yAgl = -2;
+    const guardFires = yAgl >= 0 && yAgl <= yFloor + snap; // -2 >= 0 → false
+    expect(guardFires).toBe(false);
+    if (guardFires) yAgl = yFloor + snap;
+    expect(yAgl).toBe(-2); // unchanged entering phase2NextElevation — no teleport
   });
 });

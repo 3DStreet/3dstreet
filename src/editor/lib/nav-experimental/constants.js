@@ -101,15 +101,17 @@ export const FALLBACK_FORWARD_DIST = 30;
 // EditorControls feel.
 export const ROTATION_SPEED_RAD_PER_PX = 0.0035;
 
-// WASD horizontal motion: speed = clamp(camera height * factor, MIN, MAX).
-// At y ≥ MIN_SPEED metres: speed = altitude (linear scaling).
-// At y < MIN_SPEED metres: speed = MIN_SPEED (constant floor).
+// WASD horizontal motion: speed = clamp(AGL * factor, MIN, MAX), where
+// AGL = height above the ground directly below the camera (TASK-013;
+// formerly absolute camera.y).
+// At AGL ≥ MIN_SPEED metres: speed = AGL (linear scaling).
+// At AGL < MIN_SPEED metres: speed = MIN_SPEED (constant floor).
 // MIN raised from 5 to 10 on 2026-05-11 per user feel-test request:
-// at street level (~1.6m) the previous 5m/s was too slow; 10m/s ≈ urban
-// driving pace gets you across a block in a reasonable time. High
-// altitudes unchanged (the linear scaling above y=10 still gives the
+// at street level (~1.6m AGL) the previous 5m/s was too slow; 10m/s ≈
+// urban driving pace gets you across a block in a reasonable time. High
+// altitudes unchanged (the linear scaling above AGL=10 still gives the
 // same speeds).
-export const WASD_SPEED_HEIGHT_FACTOR = 1.0; // m/s per metre of altitude
+export const WASD_SPEED_HEIGHT_FACTOR = 1.0; // m/s per metre of AGL height
 export const WASD_MIN_SPEED = 10; // m/s
 export const WASD_MAX_SPEED = 500; // m/s
 // Acceleration ramp-up: time (ms) to reach the target speed from rest
@@ -120,9 +122,10 @@ export const WASD_RAMP_UP_MS = 200;
 // Plan View transition.
 export const PLAN_VIEW_DURATION_MS = 1000;
 
-// Phase 3 "swoop" wheel-zoom boundaries (camera.position.y in metres).
-// See claude/specs/001-phase-3-plan.md. Absolute-y for now; production
-// needs to be ground-relative (AGL) — backlog item 2026-05-11.
+// Phase 3 "swoop" wheel-zoom boundaries, in metres **above ground (AGL)**
+// = camera.y − groundY, where groundY is the height of the street-segment
+// surface directly below the camera (TASK-013; formerly absolute
+// camera.position.y). See claude/specs/001-phase-3-plan.md.
 // Entry raised from 10 → 20 on 2026-05-11 feel-test: triggering only
 // below 10m felt too sudden — the user wants the descent to begin
 // well before street level.
@@ -154,3 +157,26 @@ export const SWOOP_PHASE2_FLOOR_SNAP_METRES = 1.0;
 // Phase 3 FOV floor (degrees). Further zoom-in ticks at the floor are
 // no-ops.
 export const SWOOP_PHASE3_FOV_FLOOR_DEGREES = 15;
+
+// TASK-011 compass.
+
+// World-north axis. 3DStreet currently treats +X as north (per Kieran;
+// likely inherited from Google 3D Tiles). The needle render AND the
+// align-to-north / rotate targets all read this, so re-pointing north
+// later (e.g. standardising to a true North-up convention) is a one-line
+// change here — not a hunt-and-replace.
+export const NORTH_AXIS = Object.freeze({ x: 1, y: 0, z: 0 }); // +X
+
+// Bearing of NORTH_AXIS measured clockwise from world -Z, in degrees.
+// Derived from NORTH_AXIS so the needle formula and the align target stay
+// in sync. For +X this is 90 (= atan2(NORTH_AXIS.x, -NORTH_AXIS.z) in deg).
+export const NORTH_BEARING_FROM_MINUS_Z = 90;
+
+// Pose-test tolerances for the compass body click.
+// "Top-down" = within this many degrees of straight-down (tilt = +90).
+export const COMPASS_TOPDOWN_TOLERANCE_DEGREES = 2;
+// "North-up" = needle within this many degrees of screen-top.
+export const COMPASS_NORTH_TOLERANCE_DEGREES = 2;
+
+// Rotation-arrow step.
+export const COMPASS_ROTATE_STEP_DEGREES = 90;
