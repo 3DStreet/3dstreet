@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import {
   cameraTiltDegrees,
   decideLbMode,
-  computeRuleAB,
-  tiltBlendWeight,
-  latchedRotationCenter,
+  decideDragModeSwitch,
+  clampOrbitRadius,
+  applyGroundFloor,
   computeLowTiltWheelHit,
   shiftRotateStep,
   decideSwoopPhase,
@@ -13,27 +13,13 @@ import {
   phase2NextElevation
 } from '../../../../src/editor/lib/nav-experimental/navMath.js';
 import {
-  TRUCK_PEDESTAL_CUTOFF_DEGREES,
-  ROTATION_BLEND_LOW_DEGREES,
-  ROTATION_BLEND_HIGH_DEGREES,
-  ROTATION_CENTER_EYE_HEIGHT_METRES,
-  SCENE_FEATHER_METRES,
+  TILT_THRESHOLD_DEFAULT_DEGREES,
   FALLBACK_FORWARD_DIST,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
   SWOOP_PHASE2_STEP,
   SWOOP_PHASE2_FLOOR_SNAP_METRES
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
-
-// Helper: build a square-ish bounds object centered on the origin.
-function squareBounds(half) {
-  return {
-    bounded: true,
-    center: { x: 0, y: 0, z: 0 },
-    radius: half * Math.SQRT2,
-    aabb: { minX: -half, maxX: half, minZ: -half, maxZ: half }
-  };
-}
 
 if (!globalThis.THREE) globalThis.THREE = THREE;
 
@@ -78,243 +64,198 @@ describe('cameraTiltDegrees', () => {
 });
 
 describe('decideLbMode', () => {
-  const cutoff = TRUCK_PEDESTAL_CUTOFF_DEGREES;
-
-  it('returns pan-truck strictly above the cutoff', () => {
-    expect(decideLbMode(cutoff + 0.001)).toBe('pan-truck');
-    expect(decideLbMode(cutoff + 30)).toBe('pan-truck');
-    expect(decideLbMode(89)).toBe('pan-truck');
+  it('defaults to the T constant when no threshold is passed', () => {
+    const T = TILT_THRESHOLD_DEFAULT_DEGREES;
+    expect(decideLbMode(T + 0.001)).toBe('pan-truck');
+    expect(decideLbMode(T)).toBe('pan-pedestal');
+    expect(decideLbMode(T - 0.001)).toBe('pan-pedestal');
   });
 
-  it('returns pan-pedestal at or below the cutoff (inclusive)', () => {
-    expect(decideLbMode(cutoff)).toBe('pan-pedestal');
-    expect(decideLbMode(cutoff - 0.001)).toBe('pan-pedestal');
-    expect(decideLbMode(0)).toBe('pan-pedestal');
+  it('honours a custom threshold (e.g. T = 18°)', () => {
+    const T = 18;
+    // Just above T → pan-truck.
+    expect(decideLbMode(T + 0.001, T)).toBe('pan-truck');
+    expect(decideLbMode(89, T)).toBe('pan-truck');
+    // Exactly at T → pan-pedestal (Street side), matching the rotation
+    // regime's `tilt > T → Map` convention.
+    expect(decideLbMode(T, T)).toBe('pan-pedestal');
+    // Just below T → pan-pedestal.
+    expect(decideLbMode(T - 0.001, T)).toBe('pan-pedestal');
   });
 
   it('returns pan-pedestal for any negative tilt (looking up)', () => {
-    expect(decideLbMode(-1)).toBe('pan-pedestal');
-    expect(decideLbMode(-45)).toBe('pan-pedestal');
-    expect(decideLbMode(-89)).toBe('pan-pedestal');
+    expect(decideLbMode(-1, 18)).toBe('pan-pedestal');
+    expect(decideLbMode(-45, 18)).toBe('pan-pedestal');
+    expect(decideLbMode(-89, 18)).toBe('pan-pedestal');
   });
 });
 
-describe('tiltBlendWeight', () => {
-  it('is 0 at the high end of the blend', () => {
-    expect(tiltBlendWeight(ROTATION_BLEND_HIGH_DEGREES)).toBe(0);
-    expect(tiltBlendWeight(50)).toBe(0);
+describe('decideDragModeSwitch', () => {
+  // The full 4-row truth table for LB gestures: a held Shift wants
+  // 'rotate', released wants 'pan'; null when already in the desired mode.
+  it('switches pan → rotate when Shift goes held', () => {
+    expect(decideDragModeSwitch('pan', true)).toBe('rotate');
   });
 
-  it('is 1 at the low end of the blend (and below)', () => {
-    expect(tiltBlendWeight(ROTATION_BLEND_LOW_DEGREES)).toBe(1);
-    expect(tiltBlendWeight(0)).toBe(1);
-    expect(tiltBlendWeight(-25)).toBe(1);
+  it('switches rotate → pan when Shift is released', () => {
+    expect(decideDragModeSwitch('rotate', false)).toBe('pan');
   });
 
-  it('is monotone non-increasing across the blend zone', () => {
-    let prev = tiltBlendWeight(ROTATION_BLEND_LOW_DEGREES);
-    for (
-      let t = ROTATION_BLEND_LOW_DEGREES;
-      t <= ROTATION_BLEND_HIGH_DEGREES;
-      t += 0.5
-    ) {
-      const w = tiltBlendWeight(t);
-      expect(w).toBeLessThanOrEqual(prev + 1e-9);
-      prev = w;
-    }
+  it('is a no-op when already in the desired mode (idempotent)', () => {
+    expect(decideDragModeSwitch('pan', false)).toBe(null);
+    expect(decideDragModeSwitch('rotate', true)).toBe(null);
   });
 
-  it('is symmetric (smoothstep) at the midpoint = 0.5', () => {
-    const mid = (ROTATION_BLEND_LOW_DEGREES + ROTATION_BLEND_HIGH_DEGREES) / 2;
-    expect(tiltBlendWeight(mid)).toBeCloseTo(0.5, 6);
+  it('ignores non-LB latch modes', () => {
+    expect(decideDragModeSwitch('wheel', true)).toBe(null);
+    expect(decideDragModeSwitch('wheel', false)).toBe(null);
+    expect(decideDragModeSwitch(null, true)).toBe(null);
+    expect(decideDragModeSwitch(undefined, false)).toBe(null);
   });
 });
 
-describe('computeRuleAB', () => {
-  it('returns camera position for unbounded scenes', () => {
-    const camPos = { x: 7, y: 3, z: -2 };
-    const v = computeRuleAB(camPos, {
-      bounded: false,
-      center: { x: 0, y: 0, z: 0 },
-      radius: 0
-    });
-    expect(v.x).toBe(7);
-    expect(v.y).toBe(3);
-    expect(v.z).toBe(-2);
+describe('clampOrbitRadius', () => {
+  const MIN = 2;
+  const MAX = 100;
+  const fwd = new THREE.Vector3(0, 0, -1);
+
+  it('leaves an in-range pivot unchanged', () => {
+    const cam = new THREE.Vector3(0, 0, 0);
+    const pivot = new THREE.Vector3(0, 0, -50); // 50m away, in range
+    const out = clampOrbitRadius(cam, pivot, MIN, MAX, fwd);
+    expect(out.x).toBeCloseTo(0, 6);
+    expect(out.y).toBeCloseTo(0, 6);
+    expect(out.z).toBeCloseTo(-50, 6);
   });
 
-  it('returns diorama center @ eye height far outside the AABB', () => {
-    const bounds = squareBounds(10);
-    // Camera 50m east — well outside, well past the feather zone.
-    const v = computeRuleAB({ x: 50, y: 5, z: 0 }, bounds);
-    expect(v.x).toBeCloseTo(0, 5);
-    expect(v.y).toBeCloseTo(ROTATION_CENTER_EYE_HEIGHT_METRES, 5);
-    expect(v.z).toBeCloseTo(0, 5);
+  it('pushes a too-close pivot OUT to minR along the camera→pivot ray', () => {
+    const cam = new THREE.Vector3(0, 0, 0);
+    const pivot = new THREE.Vector3(0, 0, -1); // 1m away (< minR)
+    const out = clampOrbitRadius(cam, pivot, MIN, MAX, fwd);
+    // Same direction (−Z), distance now minR.
+    expect(out.distanceTo(cam)).toBeCloseTo(MIN, 6);
+    expect(out.z).toBeCloseTo(-MIN, 6);
   });
 
-  it('returns camera position when fully inside the AABB', () => {
-    const bounds = squareBounds(100);
-    const camPos = { x: 5, y: 2, z: 5 };
-    const v = computeRuleAB(camPos, bounds);
-    expect(v.x).toBeCloseTo(5, 5);
-    expect(v.y).toBeCloseTo(2, 5);
-    expect(v.z).toBeCloseTo(5, 5);
+  it('pulls a too-far pivot IN to maxR along the same ray', () => {
+    const cam = new THREE.Vector3(0, 0, 0);
+    const pivot = new THREE.Vector3(0, 0, -2000); // 2000m away (> maxR)
+    const out = clampOrbitRadius(cam, pivot, MIN, MAX, fwd);
+    expect(out.distanceTo(cam)).toBeCloseTo(MAX, 6);
+    expect(out.z).toBeCloseTo(-MAX, 6);
   });
 
-  it('feathers smoothly outward from the AABB edge', () => {
-    const bounds = squareBounds(10); // 20×20 box centered on origin
-    const fw = SCENE_FEATHER_METRES;
-    // Inside the AABB (strictly < edge): fully Rule 3 (camera pos).
-    const innerCam = { x: 10 - 1, y: 5, z: 0 };
-    const inner = computeRuleAB(innerCam, bounds);
-    expect(inner.x).toBeCloseTo(innerCam.x, 5);
-    expect(inner.y).toBeCloseTo(5, 5);
-    // Exactly at the AABB edge: still fully Rule 3.
-    const edge = computeRuleAB({ x: 10, y: 5, z: 0 }, bounds);
-    expect(edge.x).toBeCloseTo(10, 5);
-    expect(edge.y).toBeCloseTo(5, 5);
-    // Halfway through the feather (just outside): strictly between cam
-    // pos and diorama center.
-    const midCam = { x: 10 + fw * 0.5, y: 5, z: 0 };
-    const mid = computeRuleAB(midCam, bounds);
-    expect(mid.x).toBeGreaterThan(0);
-    expect(mid.x).toBeLessThan(midCam.x);
-    expect(mid.y).toBeLessThan(5);
-    expect(mid.y).toBeGreaterThan(ROTATION_CENTER_EYE_HEIGHT_METRES);
-    // Past the feather (well outside): fully Rule 2 (diorama center).
-    const outerCam = { x: 10 + fw * 1.5, y: 5, z: 0 };
-    const outer = computeRuleAB(outerCam, bounds);
-    expect(outer.x).toBeCloseTo(0, 5);
-    expect(outer.y).toBeCloseTo(ROTATION_CENTER_EYE_HEIGHT_METRES, 5);
+  it('uses the fallback direction × minR for a degenerate (coincident) pivot', () => {
+    const cam = new THREE.Vector3(3, 4, 5);
+    const pivot = new THREE.Vector3(3, 4, 5); // r === 0
+    const dir = new THREE.Vector3(0, 0, -1);
+    const out = clampOrbitRadius(cam, pivot, MIN, MAX, dir);
+    expect(out.distanceTo(cam)).toBeCloseTo(MIN, 6);
+    expect(out.x).toBeCloseTo(3, 6);
+    expect(out.y).toBeCloseTo(4, 6);
+    expect(out.z).toBeCloseTo(5 - MIN, 6);
   });
 
-  it('treats long-thin scenes by their AABB, not their cylinder', () => {
-    // 100m × 5m street centered on origin: half-extents (50, 2.5).
-    // The legacy cylinder radius would be 50m, so a camera 10m off the
-    // side (x=0, z=12.5) would be deemed "inside" — wrong.
-    const bounds = {
-      bounded: true,
-      center: { x: 0, y: 0, z: 0 },
-      radius: 50,
-      aabb: { minX: -50, maxX: 50, minZ: -2.5, maxZ: 2.5 }
-    };
-    // 10m off the side = well past the feather (5m). Should be full
-    // Rule 2 (diorama center @ eye height), not Rule 3.
-    const v = computeRuleAB({ x: 0, y: 5, z: 12.5 }, bounds);
-    expect(v.x).toBeCloseTo(0, 5);
-    expect(v.y).toBeCloseTo(ROTATION_CENTER_EYE_HEIGHT_METRES, 5);
-    expect(v.z).toBeCloseTo(0, 5);
-    // On the long-axis at z = 0, x = 25 (25m from center, on the
-    // street): inside the AABB → Rule 3.
-    const onStreet = computeRuleAB({ x: 25, y: 1.6, z: 0 }, bounds);
-    expect(onStreet.x).toBeCloseTo(25, 5);
-    expect(onStreet.y).toBeCloseTo(1.6, 5);
-    expect(onStreet.z).toBeCloseTo(0, 5);
-  });
-
-  // Live-feather behavioural check: as a Shift+LB camera trucks across
-  // the cylinder edge mid-gesture, `_updateLiveRuleAB` calls
-  // `computeRuleAB` each frame and should smoothly slide the rotation
-  // center from camera-pos toward diorama-center. Walk a sample path
-  // across the edge and verify the centre's x-coordinate is monotone
-  // non-increasing (Rule 3 inside → Rule 2 outside) and continuous
-  // (no jump > 1m between adjacent samples).
-  it('produces a continuous slide as the camera crosses the edge', () => {
-    const bounds = squareBounds(10); // AABB edge at x = 10
-    const fw = SCENE_FEATHER_METRES;
-    // Walk x from the AABB edge outward through the feather and well
-    // beyond. Endpoints: at the edge result == camera pos (10); past
-    // the feather result == diorama center (0). Across the walk the
-    // per-step jump must stay bounded by a smoothstep-derived constant
-    // — the main thing this catches is a discontinuous (broken)
-    // transition function. Note: result.x is NOT monotone across the
-    // whole walk — just inside the feather the camera-position drift
-    // (linear in x) dominates the smoothstep pull-toward-center, so
-    // result.x can briefly rise above the start before turning down.
-    //   lerp(cam, diorama, smoothstep(dist/fw))
-    //   |d/dx| max ≈ |cam-diorama| * 1.5 / fw + 1
-    const stepSize = 0.05;
-    const maxJump = ((10 * 1.5) / fw) * stepSize + stepSize + 1e-6;
-    const start = computeRuleAB({ x: 10, y: 5, z: 0 }, bounds);
-    expect(start.x).toBeCloseTo(10, 5);
-    let prev = start;
-    for (let x = 10 + stepSize; x <= 10 + fw + 5 + 1e-4; x += stepSize) {
-      const v = computeRuleAB({ x, y: 5, z: 0 }, bounds);
-      expect(Math.abs(v.x - prev.x)).toBeLessThan(maxJump);
-      prev = v;
-    }
-    // End-state: well past the feather, fully diorama center.
-    expect(prev.x).toBeCloseTo(0, 5);
-    expect(prev.y).toBeCloseTo(ROTATION_CENTER_EYE_HEIGHT_METRES, 5);
+  it('moves the pivot, never the camera position argument', () => {
+    const cam = new THREE.Vector3(0, 0, 0);
+    const pivot = new THREE.Vector3(0, 0, -1);
+    clampOrbitRadius(cam, pivot, MIN, MAX, fwd);
+    // cam unchanged.
+    expect(cam.x).toBe(0);
+    expect(cam.y).toBe(0);
+    expect(cam.z).toBe(0);
   });
 });
 
-describe('latchedRotationCenter', () => {
-  const bounded = squareBounds(10);
-  const unbounded = { bounded: false, center: { x: 0, y: 0, z: 0 }, radius: 0 };
-
-  it('above the blend zone, picks Rule 1 (screen hit)', () => {
-    // Tilt +60° down.
-    const cam = camAt({ x: 0, y: 10, z: 5.77 }, { x: 0, y: 0, z: 0 });
-    const screenHit = { x: 1, y: 2, z: 3 };
-    const r = latchedRotationCenter(cam, bounded, screenHit);
-    expect(r.center.x).toBeCloseTo(1, 5);
-    expect(r.center.y).toBeCloseTo(2, 5);
-    expect(r.center.z).toBeCloseTo(3, 5);
-    expect(r.blend).toBe(0);
+describe('applyGroundFloor', () => {
+  it('leaves a camera above the floor unchanged', () => {
+    const pos = new THREE.Vector3(10, 5, 0);
+    const lookTarget = new THREE.Vector3(0, 5, 0);
+    const centre = new THREE.Vector3(0, 0, 0);
+    const out = applyGroundFloor(pos, lookTarget, centre, 0.5);
+    expect(out.pos.x).toBeCloseTo(10, 6);
+    expect(out.pos.y).toBeCloseTo(5, 6);
+    expect(out.pos.z).toBeCloseTo(0, 6);
+    expect(out.lookTarget.x).toBeCloseTo(0, 6);
   });
 
-  it('below the blend zone, picks Rule 2/3 (ignores screen hit)', () => {
-    // Tilt 0° (horizontal). Camera well outside AABB -> diorama center.
-    const cam = camAt({ x: 50, y: 5, z: 0 }, { x: 0, y: 5, z: 0 });
-    const r = latchedRotationCenter(cam, bounded, { x: 999, y: 999, z: 999 });
-    expect(r.center.x).toBeCloseTo(0, 5);
-    expect(r.center.y).toBeCloseTo(ROTATION_CENTER_EYE_HEIGHT_METRES, 5);
-    expect(r.center.z).toBeCloseTo(0, 5);
-    expect(r.blend).toBe(1);
+  it('re-projects below-floor pos onto the orbit sphere preserving radius', () => {
+    // Camera dipped below the floor while orbiting a ground-level pivot.
+    const centre = new THREE.Vector3(0, 0, 0);
+    const R = 10;
+    // Pos on the sphere, below floor: pick a point at y = -3, on the
+    // sphere of radius 10 about origin. rho_old = sqrt(100 - 9) ≈ 9.539.
+    const yPos = -3;
+    const rhoOld = Math.sqrt(R * R - yPos * yPos);
+    const pos = new THREE.Vector3(rhoOld, yPos, 0);
+    const lookTarget = new THREE.Vector3(0, yPos, 0); // view dir = -X
+    const floorY = 0.5;
+    const out = applyGroundFloor(pos, lookTarget, centre, floorY);
+    // Radius preserved.
+    expect(out.pos.distanceTo(centre)).toBeCloseTo(R, 5);
+    // Pinned to the floor.
+    expect(out.pos.y).toBeCloseTo(floorY, 5);
+    // View direction preserved (lookTarget - pos identical).
+    const dOld = new THREE.Vector3().subVectors(lookTarget, pos);
+    const dNew = new THREE.Vector3().subVectors(out.lookTarget, out.pos);
+    expect(dNew.x).toBeCloseTo(dOld.x, 6);
+    expect(dNew.y).toBeCloseTo(dOld.y, 6);
+    expect(dNew.z).toBeCloseTo(dOld.z, 6);
   });
 
-  it('looking up never enters the blend (always Rule 2/3)', () => {
-    // Tilt -25° (looking up by 25°).
-    const cam = camAt({ x: 0, y: 0, z: 10 }, { x: 0, y: 4.66, z: 0 });
-    const r = latchedRotationCenter(cam, unbounded, { x: 99, y: 99, z: 99 });
-    expect(r.blend).toBe(1);
-    // unbounded -> rule 3 = camera position
-    expect(r.center.x).toBeCloseTo(0, 5);
-    expect(r.center.z).toBeCloseTo(10, 5);
+  it('is idempotent (feeding the output back in is a no-op)', () => {
+    const centre = new THREE.Vector3(0, 0, 0);
+    const R = 10;
+    const yPos = -3;
+    const rhoOld = Math.sqrt(R * R - yPos * yPos);
+    const pos = new THREE.Vector3(rhoOld, yPos, 0);
+    const lookTarget = new THREE.Vector3(0, yPos, 0);
+    const floorY = 0.5;
+    const once = applyGroundFloor(pos, lookTarget, centre, floorY);
+    const twice = applyGroundFloor(once.pos, once.lookTarget, centre, floorY);
+    expect(twice.pos.x).toBeCloseTo(once.pos.x, 6);
+    expect(twice.pos.y).toBeCloseTo(once.pos.y, 6);
+    expect(twice.pos.z).toBeCloseTo(once.pos.z, 6);
+    expect(twice.lookTarget.x).toBeCloseTo(once.lookTarget.x, 6);
   });
 
-  it('null screen hit collapses to ruleAB regardless of blend', () => {
-    // Tilt +25° (mid blend, would normally split between screen-hit and
-    // ruleAB), but screen hit is null (sky raycast miss).
-    const cam = camAt({ x: 50, y: 23.3, z: 0 }, { x: 0, y: 0, z: 0 });
-    const r = latchedRotationCenter(cam, bounded, null);
-    // Should equal ruleAB = diorama center @ eye height.
-    expect(r.center.x).toBeCloseTo(0, 5);
-    expect(r.center.y).toBeCloseTo(ROTATION_CENTER_EYE_HEIGHT_METRES, 5);
-    expect(r.center.z).toBeCloseTo(0, 5);
+  it('falls back to a plain y-clamp when the sphere never reaches the floor', () => {
+    // Degenerate guard: pos.y < floorY (so the clamp engages) AND
+    // R < |floorY − centre.y| (the orbit sphere never reaches the floor
+    // height). Reachable only with a high floor / low pivot and a tiny
+    // radius. Construct it directly: centre at ground, floorY well above
+    // pos, pos a short distance from centre.
+    //   centre.y = 0, floorY = 5, pos = (0.2, 3, 0):
+    //   pos.y (3) < floorY (5) ✓;  dy = 5;  R = hypot(0.2, 3) ≈ 3.007 < 5 ✓
+    const centre = new THREE.Vector3(0, 0, 0);
+    const floorY = 5;
+    const pos = new THREE.Vector3(0.2, 3, 0);
+    const lookTarget = new THREE.Vector3(0.2 - 1, 3, 0); // view dir = -X
+    const out = applyGroundFloor(pos, lookTarget, centre, floorY);
+    // Degenerate branch: plain y-clamp, x/z preserved.
+    expect(out.pos.x).toBeCloseTo(0.2, 6);
+    expect(out.pos.y).toBeCloseTo(floorY, 6);
+    expect(out.pos.z).toBeCloseTo(0, 6);
+    // View direction still preserved via the equal lookTarget delta.
+    const dOld = new THREE.Vector3().subVectors(lookTarget, pos);
+    const dNew = new THREE.Vector3().subVectors(out.lookTarget, out.pos);
+    expect(dNew.y).toBeCloseTo(dOld.y, 6);
   });
 
-  it('returns the latched fields the gesture handler stores', () => {
-    const cam = camAt({ x: 0, y: 5, z: 5 }, { x: 0, y: 5, z: 0 });
-    const r = latchedRotationCenter(cam, bounded, { x: 1, y: 2, z: 3 });
-    expect(r.center).toBeDefined();
-    expect(r.screenHit).toBeDefined();
-    expect(typeof r.blend).toBe('number');
-    // No `liveRuleAB`: center is fully latched at gesture start.
-    expect(r.liveRuleAB).toBeUndefined();
-  });
-
-  it('mid-blend at +25° produces an intermediate center', () => {
-    // Camera high enough that 25° down is achievable.
-    const cam = camAt({ x: 50, y: 23.3, z: 0 }, { x: 0, y: 0, z: 0 });
-    const screenHit = { x: 50, y: 0, z: 0 }; // somewhere distinct from diorama
-    const r = latchedRotationCenter(cam, bounded, screenHit);
-    expect(r.blend).toBeGreaterThan(0);
-    expect(r.blend).toBeLessThan(1);
-    // x should be strictly between screenHit.x (50) and diorama.x (0).
-    expect(r.center.x).toBeGreaterThan(0);
-    expect(r.center.x).toBeLessThan(50);
+  it('composes with a max-clamped pivot (radius 100, centre at ground)', () => {
+    // B5: a far-cap pivot (R = 100, centre at ground) swung below floor
+    // still re-projects on the sphere (non-degenerate), ending at floorY
+    // with radius ≈ 100.
+    const centre = new THREE.Vector3(0, 0, 0);
+    const R = 100;
+    const yPos = -20;
+    const rhoOld = Math.sqrt(R * R - yPos * yPos);
+    const pos = new THREE.Vector3(rhoOld, yPos, 0);
+    const lookTarget = new THREE.Vector3(rhoOld - 1, yPos, 0);
+    const floorY = 0.5;
+    const out = applyGroundFloor(pos, lookTarget, centre, floorY);
+    expect(out.pos.y).toBeCloseTo(floorY, 5);
+    expect(out.pos.distanceTo(centre)).toBeCloseTo(R, 4);
   });
 });
 
@@ -440,9 +381,10 @@ describe('shiftRotateStep', () => {
   });
 
   it('yaw delta with camera NOT aimed at centre: angular offset to centre is preserved', () => {
-    // Museum diorama test. Camera at (10, 0, 0) looking 30° off from
+    // Rigid orbit, pure yaw. Camera at (10, 0, 0) looking 30° off from
     // origin. Apply 90° yaw. After the rotation, the angle between
-    // view direction and direction-to-centre should still be 30°.
+    // view direction and direction-to-centre should still be 30°
+    // (position offset and view both rotate by the same yaw).
     const camPos = new THREE.Vector3(10, 0, 0);
     const viewDir = new THREE.Vector3(
       -Math.cos(Math.PI / 6),
@@ -518,6 +460,90 @@ describe('shiftRotateStep', () => {
     // exact sign).
     const angle = Math.acos(THREE.MathUtils.clamp(newDir.dot(viewDir), -1, 1));
     expect((angle * 180) / Math.PI).toBeCloseTo(45, 1);
+  });
+
+  // --- Rigid-orbit invariant (reports/010-testing.md #1) ---
+  // The defining property of "orbit about the cursor pivot": the pivot's
+  // position in the camera's own frame is invariant across the step, so
+  // it stays pinned on screen. This is what the old museum-diorama math
+  // violated under any tilt. The earlier tests only exercised pure yaw
+  // (where the broken and correct math agree); these exercise pitch and
+  // mixed deltas from a *tilted* camera, which is where the drift was.
+
+  // Express a world point in the camera's local frame, built exactly the
+  // way `camera.lookAt` does (forward = view, up = world +Y, no roll).
+  function cameraLocal(worldPoint, pos, viewDir) {
+    const fwd = viewDir.clone().normalize();
+    const worldUp = new THREE.Vector3(0, 1, 0);
+    const right = new THREE.Vector3().crossVectors(fwd, worldUp).normalize();
+    const up = new THREE.Vector3().crossVectors(right, fwd).normalize();
+    const rel = new THREE.Vector3().subVectors(worldPoint, pos);
+    // Camera looks down -Z, so local z = -(rel·fwd); x = rel·right;
+    // y = rel·up. Screen x/y track local x/y.
+    return new THREE.Vector3(rel.dot(right), rel.dot(up), -rel.dot(fwd));
+  }
+
+  it('pitch from a tilted camera: pivot stays fixed in the camera frame (no on-screen drift)', () => {
+    // Camera 50m up, 50m back, tilted ~45° down, orbiting a pivot at the
+    // origin that it is NOT aimed straight at. This is the exact regime
+    // (tilted + offset pivot) where the diorama math drifted the pivot.
+    const camPos = new THREE.Vector3(0, 50, 50);
+    const centre = new THREE.Vector3(0, 0, 0);
+    // View aimed below the pivot and yawed off-axis, so view dir and the
+    // camera→centre vector do not share a meridian.
+    const viewDir = new THREE.Vector3(0.2, -0.8, -0.6).normalize();
+
+    const before = cameraLocal(centre, camPos, viewDir);
+
+    // A pure pitch (vertical drag) of a few degrees.
+    const dyPx = 20;
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 0,
+      dyPx,
+      speed: SPEED
+    });
+    const after = cameraLocal(centre, step.pos, dirFrom(step));
+
+    // Orbit radius preserved (rigid rotation about the centre).
+    expect(step.pos.distanceTo(centre)).toBeCloseTo(
+      camPos.distanceTo(centre),
+      4
+    );
+    // The pivot's camera-local coordinates are unchanged → it sits at the
+    // same screen position. (The old math moved `after` by metres here.)
+    expect(after.x).toBeCloseTo(before.x, 3);
+    expect(after.y).toBeCloseTo(before.y, 3);
+    expect(after.z).toBeCloseTo(before.z, 3);
+    // Sanity: the step did something (camera actually moved).
+    expect(step.pos.distanceTo(camPos)).toBeGreaterThan(0.1);
+  });
+
+  it('mixed yaw+pitch from a tilted camera: pivot stays fixed in the camera frame', () => {
+    const camPos = new THREE.Vector3(-30, 40, 20);
+    const centre = new THREE.Vector3(0, 0, 0);
+    const viewDir = new THREE.Vector3(0.5, -0.7, -0.5).normalize();
+
+    const before = cameraLocal(centre, camPos, viewDir);
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 35,
+      dyPx: -15,
+      speed: SPEED
+    });
+    const after = cameraLocal(centre, step.pos, dirFrom(step));
+
+    expect(step.pos.distanceTo(centre)).toBeCloseTo(
+      camPos.distanceTo(centre),
+      4
+    );
+    expect(after.x).toBeCloseTo(before.x, 3);
+    expect(after.y).toBeCloseTo(before.y, 3);
+    expect(after.z).toBeCloseTo(before.z, 3);
   });
 });
 
