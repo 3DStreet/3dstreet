@@ -10,6 +10,34 @@ splat in streams the `.rad`.
 
 Full design: [`../docs/rad-cloud-run-pipeline.md`](../docs/rad-cloud-run-pipeline.md).
 
+### Patched build-lod
+
+Upstream `build-lod` is single-threaded, so on Cloud Run additional vCPUs
+historically did nothing for wall time. We carry a small **rayon
+parallelism patch** that the Dockerfile applies on top of Spark v2.1.0
+during the image build (see [`./patches/`](./patches/)). The two stages
+that became parallel:
+
+1. **Per-level grid population in `bhatt_lod.rs`** — `splat → grid cell`
+   is independent per splat. Switched to a `par_iter().fold().reduce()`
+   over per-thread hashmaps. Gated by a 4096-splat threshold so small
+   inputs keep the simpler sequential path.
+2. **`recurse_to_output` tree walk** — refactored to take `&TA` only and
+   collect deferred `set_children` / `mark_to_output` ops during a
+   `par_iter`-driven recursion, then apply them sequentially after.
+   Order-preserving collect keeps the resulting `.rad` byte-identical to
+   the sequential walk.
+
+Rayon picks up worker count automatically from the CPU allocation, so a
+bigger `--cpu` setting on the Cloud Run service now actually pays off
+(it didn't before). The hot inner merge loop is still sequential — that
+one needs sharded grids + lock-striped active-set updates and is
+deferred to a follow-up.
+
+Re-base on a future Spark tag: clone Spark at the new tag, `git am`
+`patches/*.patch`, resolve any conflicts, regenerate the patch with
+`git format-patch -1 --stdout > patches/0001-bhatt-lod-rayon.patch`.
+
 This is **sequencing step 2 — the manual one-shot**. The automatic trigger
 (`onSplatAssetCreated`) + Cloud Tasks dispatch + reconciler `case 'cloudrun'` are
 **not built yet**; prove the one-shot first.

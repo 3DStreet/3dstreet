@@ -1,0 +1,330 @@
+From 0eb0e1dd8ba57ca3b8a32c394d7d853dc3ed275d Mon Sep 17 00:00:00 2001
+From: 3DStreet <3dstreet@local>
+Date: Tue, 2 Jun 2026 21:33:05 +0000
+Subject: [PATCH] Parallelize bhatt_lod grid population and tree output walk
+ with rayon
+
+* Initial grid population (per-level cells map) parallelizes via fold+reduce
+  over per-thread hashmaps, gated by PAR_GRID_THRESHOLD=4096 to keep small
+  inputs on the sequential path.
+
+* recurse_to_output refactored to collect mutations (set_to_output,
+  set_children, clear_children) during a &TA-only parallel walk, then
+  apply them sequentially after. Order-preserving par_iter keeps new_children
+  byte-identical to the sequential walk.
+
+* compute_lod_tree gains TA: Sync; the only build-lod call site
+  (process_file_lod_tsplat) gains the matching bound.
+---
+ rust/Cargo.lock                 |  46 ++++++++++
+ rust/Cargo.toml                 |   1 +
+ rust/build-lod/src/main.rs      |   2 +-
+ rust/spark-lib/Cargo.toml       |   1 +
+ rust/spark-lib/src/bhatt_lod.rs | 154 +++++++++++++++++++++++++-------
+ 5 files changed, 171 insertions(+), 33 deletions(-)
+
+diff --git a/rust/Cargo.lock b/rust/Cargo.lock
+index 7b83257..7913d09 100644
+--- a/rust/Cargo.lock
++++ b/rust/Cargo.lock
+@@ -211,6 +211,31 @@ dependencies = [
+  "cfg-if",
+ ]
+ 
++[[package]]
++name = "crossbeam-deque"
++version = "0.8.6"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "9dd111b7b7f7d55b72c0a6ae361660ee5853c9af73f70c3c2ef6858b950e2e51"
++dependencies = [
++ "crossbeam-epoch",
++ "crossbeam-utils",
++]
++
++[[package]]
++name = "crossbeam-epoch"
++version = "0.9.18"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "5b82ac4a3c2ca9c3460964f020e1402edd5753411d7737aa39c3714ad1b5420e"
++dependencies = [
++ "crossbeam-utils",
++]
++
++[[package]]
++name = "crossbeam-utils"
++version = "0.8.21"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
++
+ [[package]]
+ name = "crunchy"
+ version = "0.2.3"
+@@ -910,6 +935,26 @@ dependencies = [
+  "objc2-quartz-core",
+ ]
+ 
++[[package]]
++name = "rayon"
++version = "1.12.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "fb39b166781f92d482534ef4b4b1b2568f42613b53e5b6c160e24cfbfa30926d"
++dependencies = [
++ "either",
++ "rayon-core",
++]
++
++[[package]]
++name = "rayon-core"
++version = "1.13.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
++dependencies = [
++ "crossbeam-deque",
++ "crossbeam-utils",
++]
++
+ [[package]]
+ name = "redox_syscall"
+ version = "0.5.18"
+@@ -1054,6 +1099,7 @@ dependencies = [
+  "miniz_oxide",
+  "ordered-float",
+  "rand_pcg",
++ "rayon",
+  "serde",
+  "serde_json",
+  "smallvec",
+diff --git a/rust/Cargo.toml b/rust/Cargo.toml
+index 5b394c7..5a791f9 100644
+--- a/rust/Cargo.toml
++++ b/rust/Cargo.toml
+@@ -38,6 +38,7 @@ space = { version = "0.17.0", default-features = false, features = ["alloc"] }
+ wgpu = "29"
+ pollster = "0.4.0"
+ bytemuck = { version = "1.25.0", features = ["derive"] }
++rayon = "1.10"
+ 
+ [profile.release]
+ opt-level = 3
+diff --git a/rust/build-lod/src/main.rs b/rust/build-lod/src/main.rs
+index e752e44..9db8013 100644
+--- a/rust/build-lod/src/main.rs
++++ b/rust/build-lod/src/main.rs
+@@ -96,7 +96,7 @@ fn process_file_lod(filename: &str, options: &BuildLodOptions) {
+     }
+ }
+ 
+-fn process_file_lod_tsplat<TS: SplatReceiver + TsplatArray + SplatGetter>(filename: &str, options: &BuildLodOptions, splats: TS) {
++fn process_file_lod_tsplat<TS: SplatReceiver + TsplatArray + SplatGetter + Sync>(filename: &str, options: &BuildLodOptions, splats: TS) {
+     let mut decoder = MultiDecoder::new(splats, None, Some(&filename));
+     let mut splats = match read_file_chunks(&filename, &mut decoder) {
+         Ok(_) => {
+diff --git a/rust/spark-lib/Cargo.toml b/rust/spark-lib/Cargo.toml
+index be19442..0db7d6e 100644
+--- a/rust/spark-lib/Cargo.toml
++++ b/rust/spark-lib/Cargo.toml
+@@ -23,3 +23,4 @@ image.workspace = true
+ hnsw.workspace = true
+ rand_pcg.workspace = true
+ space.workspace = true
++rayon.workspace = true
+diff --git a/rust/spark-lib/src/bhatt_lod.rs b/rust/spark-lib/src/bhatt_lod.rs
+index 74f70bb..5a4e6ec 100644
+--- a/rust/spark-lib/src/bhatt_lod.rs
++++ b/rust/spark-lib/src/bhatt_lod.rs
+@@ -3,13 +3,19 @@ use std::collections::BinaryHeap;
+ use ahash::AHashMap;
+ use glam::I64Vec3;
+ use ordered_float::OrderedFloat;
++use rayon::prelude::*;
+ use smallvec::{SmallVec, smallvec};
+ 
+ use crate::tsplat::{Tsplat, TsplatArray};
+ 
+ const MERGE_BASE: f32 = 2.0;
+ 
+-pub fn compute_lod_tree<TA: TsplatArray>(splats: &mut TA, lod_base: f32, logger: impl Fn(&str)) {
++// Parallelism thresholds. Tuned conservatively: small inputs run sequentially
++// to avoid rayon's task-setup overhead dominating; large inputs (the cases
++// users actually wait on) get the parallel path.
++const PAR_GRID_THRESHOLD: usize = 4096;
++
++pub fn compute_lod_tree<TA: TsplatArray + Sync>(splats: &mut TA, lod_base: f32, logger: impl Fn(&str)) {
+     let initial_len = splats.len();
+     logger(&format!("bhatt_lod::compute_lod_tree: initial_len={}", initial_len));
+ 
+@@ -54,13 +60,49 @@ pub fn compute_lod_tree<TA: TsplatArray>(splats: &mut TA, lod_base: f32, logger:
+         }
+         logger(&format!("Level: {}, step: {}, frontier: {} / {}, # active: {}, # splats: {}", level, step, frontier, initial_len, active.len(), splats.len()));
+ 
+-        cells.clear();
+         let mut grid_min_max = [I64Vec3::splat(i64::MAX), I64Vec3::splat(i64::MIN)];
+ 
+-        for &(OrderedFloat(_neg_size), index) in active.iter() {
+-            let splat = splats.get(index);
+-            let grid = splat.grid(step);
+-            cells.entry(grid).or_default().push(index);
++        // Embarrassingly parallel: each splat independently maps to a grid
++        // cell. Build per-thread hashmaps then merge — the merge is the only
++        // O(active.len()) sequential cost, and it's purely hashmap inserts.
++        // Below the threshold the parallel overhead loses, so we keep the
++        // simple sequential path.
++        if active.len() >= PAR_GRID_THRESHOLD {
++            // BinaryHeap doesn't expose a slice, so snapshot once into a Vec.
++            // Cheap relative to the float-heavy work inside the parallel loop.
++            let snapshot: Vec<(OrderedFloat<f32>, usize)> = active.iter().copied().collect();
++            let splats_ref: &TA = &*splats;
++            cells = snapshot
++                .par_iter()
++                .fold(
++                    || AHashMap::<I64Vec3, SmallVec<[usize; 8]>>::with_capacity(256),
++                    |mut local, &(_, index)| {
++                        let grid = splats_ref.get(index).grid(step);
++                        local.entry(grid).or_default().push(index);
++                        local
++                    },
++                )
++                .reduce(
++                    AHashMap::<I64Vec3, SmallVec<[usize; 8]>>::new,
++                    |mut a, mut b| {
++                        // Merge the smaller hashmap into the larger one to
++                        // minimize entry lookups.
++                        if a.len() < b.len() {
++                            std::mem::swap(&mut a, &mut b);
++                        }
++                        for (k, v) in b {
++                            a.entry(k).or_default().extend(v);
++                        }
++                        a
++                    },
++                );
++        } else {
++            cells.clear();
++            for &(OrderedFloat(_neg_size), index) in active.iter() {
++                let splat = splats.get(index);
++                let grid = splat.grid(step);
++                cells.entry(grid).or_default().push(index);
++            }
+         }
+ 
+         let mut next_active = Vec::new();
+@@ -148,11 +190,30 @@ pub fn compute_lod_tree<TA: TsplatArray>(splats: &mut TA, lod_base: f32, logger:
+     to_output.resize(splats.len(), false);
+     to_output[root_index] = true;
+ 
+-    fn recurse_to_output<TA: TsplatArray>(
+-        splats: &mut TA, index: usize, to_output: &mut Vec<bool>, lod_base: f32,
+-    ) -> (f32, SmallVec<[usize; 8]>) {
+-        // let feature_size = splats.get(index).feature_size();
+-        // let feature_size = splats.get(index).area();
++    // Deferred mutation log so the tree walk can be parallel under &TA
++    // without fighting the borrow checker. Each splat index is touched at
++    // most once across the whole walk, so application order is irrelevant.
++    #[derive(Default)]
++    struct RecurseOps {
++        mark_to_output: Vec<usize>,
++        set_children: Vec<(usize, SmallVec<[usize; 8]>)>,
++        clear_children: Vec<usize>,
++    }
++
++    impl RecurseOps {
++        fn merge(&mut self, mut other: RecurseOps) {
++            self.mark_to_output.append(&mut other.mark_to_output);
++            self.set_children.append(&mut other.set_children);
++            self.clear_children.append(&mut other.clear_children);
++        }
++    }
++
++    fn recurse_to_output_par<TA: TsplatArray + Sync>(
++        splats: &TA,
++        index: usize,
++        initially_true: &(impl Fn(usize) -> bool + Sync),
++        lod_base: f32,
++    ) -> (f32, SmallVec<[usize; 8]>, RecurseOps) {
+         let feature_size = {
+             let splat = splats.get(index);
+             splat.area() * splat.opacity()
+@@ -160,33 +221,62 @@ pub fn compute_lod_tree<TA: TsplatArray>(splats: &mut TA, lod_base: f32, logger:
+ 
+         let children = splats.get_children(index);
+         if children.is_empty() {
+-            (feature_size, smallvec![index])
+-        } else {
+-            let mut new_children: SmallVec<[usize; 8]> = SmallVec::new();
+-            let mut max_child_feature_size = -f32::INFINITY;
++            return (feature_size, smallvec![index], RecurseOps::default());
++        }
+ 
+-            for &child in children.iter() {
+-                let (child_feature_size, child_children) = recurse_to_output(splats, child, to_output, lod_base);
+-                max_child_feature_size = max_child_feature_size.max(child_feature_size);
+-                new_children.extend(child_children);
+-            }
++        // Order-preserving parallel recursion: the Vec collect from par_iter
++        // matches the original sequential child order, so new_children below
++        // is byte-identical to the sequential walk's output.
++        let child_results: Vec<_> = children
++            .as_slice()
++            .par_iter()
++            .map(|&child| recurse_to_output_par(splats, child, initially_true, lod_base))
++            .collect();
++
++        let mut new_children: SmallVec<[usize; 8]> = SmallVec::new();
++        let mut max_child_feature_size = -f32::INFINITY;
++        let mut ops = RecurseOps::default();
++        for (cfs, cc, child_ops) in child_results {
++            max_child_feature_size = max_child_feature_size.max(cfs);
++            new_children.extend(cc);
++            ops.merge(child_ops);
++        }
+ 
+-            if feature_size >= (max_child_feature_size * lod_base) {
+-                to_output[index] = true;
+-            }
++        let became_output = feature_size >= (max_child_feature_size * lod_base);
++        let initially = initially_true(index);
++        if became_output && !initially {
++            // Original code wrote to_output[index]=true here; defer it.
++            ops.mark_to_output.push(index);
++        }
++        let final_to_output = initially || became_output;
+ 
+-            if to_output[index] {
+-                assert!(new_children.len() <= 65535);
+-                splats.set_children(index, &new_children);
+-                (feature_size, smallvec![index])
+-            } else {
+-                splats.set_children(index, &[]);
+-                (max_child_feature_size, new_children)
+-            }
++        if final_to_output {
++            assert!(new_children.len() <= 65535);
++            ops.set_children.push((index, new_children));
++            (feature_size, smallvec![index], ops)
++        } else {
++            ops.clear_children.push(index);
++            (max_child_feature_size, new_children, ops)
+         }
+     }
+ 
+-    let (_root_feature_size, _root_children) = recurse_to_output(splats, root_index, &mut to_output, lod_base);
++    // Captures: both immutable usize, so the closure is auto-Send+Sync.
++    let initially_true = |i: usize| i < initial_len || i == root_index;
++    let (_root_feature_size, _root_children, ops) =
++        recurse_to_output_par(&*splats, root_index, &initially_true, lod_base);
++
++    // Apply the parallel walk's mutations sequentially. Each splat index
++    // appears at most once across these vectors, so iteration order is
++    // immaterial.
++    for i in ops.mark_to_output {
++        to_output[i] = true;
++    }
++    for (parent, children) in ops.set_children {
++        splats.set_children(parent, &children);
++    }
++    for parent in ops.clear_children {
++        splats.set_children(parent, &[]);
++    }
+ 
+     let output_count = to_output.iter().filter(|&&b| b).count();
+     logger(&format!("Output set: {} / {}", output_count, splats.len()));

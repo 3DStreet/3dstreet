@@ -26,12 +26,19 @@ BUCKET="${PROJECT}.appspot.com"
 # --- Cloud Run service config (the canonical sizing) -------------------------
 # build-lod loads the whole splat + grows the LOD tree in RAM. A 22M-splat
 # (~368MB) file OOM'd at 8Gi, so 16Gi (which requires >=4 vCPU on Cloud Run).
-# We stay at the 4 vCPU floor: build-lod's per-level LOD passes are effectively
-# sequential / memory-bandwidth bound, so 8 vCPU measured NO faster on a 22M
-# build (~same wall time, the Level 2->3 pass was if anything slower). The real
-# fix for the old 900s-timeout kill was the raised TIMEOUT below, not more
-# cores. /tmp is tmpfs (counts against memory) — for multi-GB splats, raise
-# memory or move the scratch download to a GCS FUSE volume (see server.js).
+#
+# CPU rationale: upstream build-lod is single-threaded, so historically 8 vCPU
+# measured NO faster than 4 vCPU on the 22M-splat build (the per-level LOD
+# pass was the wall-clock floor). We now patch build-lod to parallelize the
+# per-level grid population and the recurse_to_output tree walk via rayon
+# (see ./patches/), so additional cores SHOULD now translate into measurable
+# wall-clock wins — rayon picks up the CPU count automatically. The 4 vCPU
+# floor is preserved here because 16Gi requires >=4 vCPU on Cloud Run; bump
+# this to 8 once you've benchmarked the patched binary on a representative
+# splat and confirmed the speedup is worth the price-per-second.
+#
+# /tmp is tmpfs (counts against memory) — for multi-GB splats, raise memory
+# or move the scratch download to a GCS FUSE volume (see server.js).
 MEMORY="16Gi"
 CPU="4"
 # seconds — Cloud Run request timeout. Headroom to the Cloud Run max (3600); the
