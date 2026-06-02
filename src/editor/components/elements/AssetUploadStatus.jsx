@@ -159,7 +159,13 @@ const AssetUploadStatus = ({ entity }) => {
       {detailsOpen &&
         state.assetId &&
         state.ownerUid &&
-        (state.type === 'mesh' || !state.remoteData ? (
+        // Splats and meshes both use the 3D viewer modal (MeshDetailsModal);
+        // only image/video go to AssetsModal. Mirrors AssetsContent's routing —
+        // this path previously checked 'mesh' only, so splats wrongly opened the
+        // image/video modal (spinner, tiny frame, Modify/Create Video buttons).
+        (state.type === 'mesh' ||
+        state.type === 'splat' ||
+        !state.remoteData ? (
           <MeshDetailsModal
             assetId={state.assetId}
             ownerUid={state.ownerUid}
