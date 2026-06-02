@@ -13,11 +13,15 @@
 //                       handlePlanViewRequest, called by viewport.js)
 //
 // Phase 3 mechanics — see claude/specs/001-phase-3-plan.md:
-//   - Wheel zoom is a 3-phase "swoop" gated by camera elevation:
-//       y > 10m         -> phase1: cursor-anchored dolly (tilt-conditional)
-//       1.5m < y ≤ 10m  -> phase2: pedestal + tilt-toward-horizontal
-//       y ≤ 1.5m        -> phase3: FOV-only zoom
-//   - Stored tilt latched at downward 10m crossings; lerped during Phase 2.
+//   - Wheel zoom is a 3-phase "swoop" gated by camera elevation **above
+//     ground (AGL)** = camera.y − groundY, measured by a downward probe
+//     (`_groundYBelowCamera`, TASK-013); on a flat scene at y=0 this
+//     equals absolute camera.y:
+//       AGL > 20m         -> phase1: cursor-anchored dolly (tilt-conditional)
+//       1.5m < AGL ≤ 20m  -> phase2: pedestal + tilt-toward-horizontal
+//       AGL ≤ 1.5m        -> phase3: FOV-only zoom
+//   - Stored tilt latched at downward AGL-20m crossings; lerped during
+//     Phase 2.
 //   - Ctrl+wheel (incl. Mac trackpad pinch) bypasses the swoop entirely
 //     -> plain camera-Z dolly at current tilt and elevation.
 //   - Per-phase drain cap: Phase 2 = 3 ticks/frame; Phase 1/3 = 10.
@@ -37,7 +41,7 @@
 import { ModifierState } from './modifierState.js';
 import { GestureLatch } from './gestureLatch.js';
 import { SceneBounds } from './sceneBounds.js';
-import { CursorAnchor } from './cursorAnchor.js';
+import { CursorAnchor, isGroundSegmentHit } from './cursorAnchor.js';
 import { TickAnimator } from './tickAnimator.js';
 import {
   ZOOM_PER_WHEEL_TICK,
@@ -124,6 +128,13 @@ export function needleScreenAngle(camera) {
 function signToYaw(sign) {
   return sign > 0 ? 1 : -1;
 }
+
+// Downward direction for the AGL ground probe (TASK-013). Module-level
+// frozen constant so `_groundYBelowCamera` (called every frame) does not
+// allocate per call. `Raycaster.set` copies it into `ray.direction`, so a
+// shared read-only vector is safe.
+const GROUND_PROBE_DIR = Object.freeze(new THREE.Vector3(0, -1, 0));
+
 // Note: spherical phi clamps for Shift+LB rotation now live in
 // navMath.shiftRotateStep (derived from MIN/MAX_TILT_DEGREES at module
 // load time there). They were removed from this file when the rotation
@@ -187,18 +198,33 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Phase 3 swoop state.
     //
     //   _storedTilt — latched on a Phase 1 zoom-in tick that clamps to
-    //     y = SWOOP_PHASE2_ENTRY_ELEVATION_METRES; read by Phase 2's
-    //     tilt lerp. Init from current tilt so Phase 2's lerp is defined
-    //     even if the session opens already inside the elevation band.
-    //     Manual camera moves (Shift+LB, LB+drag, Plan View, etc.) do
-    //     not update this — only wheel-driven downward 10m crossings.
+    //     AGL = SWOOP_PHASE2_ENTRY_ELEVATION_METRES (i.e. camera.y =
+    //     groundY + 20); read by Phase 2's tilt lerp. Init from current
+    //     tilt so Phase 2's lerp is defined even if the session opens
+    //     already inside the elevation band. Manual camera moves
+    //     (Shift+LB, LB+drag, Plan View, etc.) do not update this — only
+    //     wheel-driven downward AGL-20m crossings.
     //   _phase3FovBaseline — latched on a Phase 2 zoom-in tick that
-    //     clamps to y = SWOOP_PHASE2_EXIT_ELEVATION_METRES; cleared on
+    //     clamps to AGL = SWOOP_PHASE2_EXIT_ELEVATION_METRES; cleared on
     //     Phase 3 zoom-out crossing back to baseline. Null when not in
     //     Phase 3.
     // See claude/specs/001-phase-3-plan.md.
     this._storedTilt = cameraTiltDegrees(camera);
     this._phase3FovBaseline = null;
+
+    // Last ground height found directly below the camera by the AGL probe
+    // (TASK-013). Held through probe misses so the inferred ground stays
+    // continuous as the camera crosses a scene edge (spec D2 / WE-8). Init
+    // 0 so the never-probed-yet case == today's absolute-y behaviour on
+    // the flat default scene.
+    this._lastGroundY = 0;
+    // Per-pass snapshot of the ground height directly below the camera,
+    // set at the top of each _drainWheel pass from _groundYBelowCamera().
+    // Read (not re-probed) by _wheelFrameCap / _applyWheelTick / the phase
+    // helpers so every tick in a pass — including the recursive Phase 3 →
+    // Phase 2 → Phase 1 hand-offs — sees the same ground. Distinct from
+    // _lastGroundY (the persisted miss-fallback cache). (TASK-013)
+    this._frameGroundY = 0;
 
     // WASD held-key set; drained per tick.
     this._heldKeys = new Set();
@@ -1066,15 +1092,52 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._drainWASD(deltaMs);
   }
 
+  // AGL ground probe (TASK-013). Casts straight down from the camera and
+  // returns the absolute world-Y of the nearest *visible street-segment*
+  // surface below it (`isGroundSegmentHit`). On a miss (no scene, or no
+  // accepted hit — over a gap / off the scene edge / over geo terrain)
+  // holds the last-known ground (D2). Refreshes `_lastGroundY` on a hit.
+  _groundYBelowCamera() {
+    const camera = this._camera;
+    const sceneEl = this._sceneEl;
+    if (!sceneEl || !sceneEl.object3D) {
+      return this._lastGroundY; // D2: hold last-known (init 0)
+    }
+    // D5: straight down from the camera.
+    this._raycaster.set(camera.position, GROUND_PROBE_DIR);
+    // Defense-in-depth: near/far default to 0/Infinity and nothing in the
+    // current codebase mutates them (setFromCamera sets only
+    // origin/direction/camera in three r181). Set them explicitly so a
+    // future consumer that does perturb them can't silently clamp the
+    // probe.
+    this._raycaster.near = 0;
+    this._raycaster.far = Infinity;
+    const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
+    for (const hit of hits) {
+      // near → far
+      if (isGroundSegmentHit(hit)) {
+        this._lastGroundY = hit.point.y; // refresh cache (D2)
+        return this._lastGroundY;
+      }
+    }
+    return this._lastGroundY; // miss → hold last-known (D2)
+  }
+
   _drainWheel() {
     if (this._wheelBudget === 0) return;
     const unit = WHEEL_BUDGET_PER_TICK_UNITS;
+    // Snapshot the ground height once per pass (TASK-013). All ticks —
+    // including the recursive Phase 3 → Phase 2 → Phase 1 hand-offs — read
+    // this._frameGroundY so they see a single consistent ground for the
+    // frame (avoids up to 10 raycasts/frame and the cap/threshold
+    // asymmetry a mid-frame re-probe would introduce).
+    this._frameGroundY = this._groundYBelowCamera();
     // Per H4 of `claude/reports/007-phase-3-plan-review.md`: latch the
     // per-frame cap once at the start of the drain pass, hold for the
     // whole frame. Re-evaluating per iteration produces an asymmetric
     // speed-up at boundary crossings (Phase 2 → Phase 1 zoom-out would
-    // unlock 7 extra Phase 1 ticks in the same frame the moment y
-    // crosses 10m).
+    // unlock 7 extra Phase 1 ticks in the same frame the moment AGL
+    // crosses 20m).
     const frameCap = this._wheelFrameCap();
     let ticksThisFrame = 0;
     let changed = false;
@@ -1095,7 +1158,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // a lower cap so trackpad bursts can't blast through the swoop
   // (~350ms guaranteed minimum, vs ~100ms with the default cap).
   _wheelFrameCap() {
-    if (decideSwoopPhase(this._camera.position.y) === 'phase2') {
+    const yAgl = this._camera.position.y - this._frameGroundY;
+    if (decideSwoopPhase(yAgl) === 'phase2') {
       return SWOOP_PHASE2_MAX_TICKS_PER_FRAME;
     }
     return WHEEL_MAX_TICKS_PER_FRAME;
@@ -1121,7 +1185,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._lastWheelCtrlKey) {
       return this._applyLowTiltWheelTick(sign);
     }
-    const phase = decideSwoopPhase(camera.position.y);
+    const yAgl = camera.position.y - this._frameGroundY;
+    const phase = decideSwoopPhase(yAgl);
     if (phase === 'phase2') return this._applyPhase2WheelTick(sign);
     if (phase === 'phase3') return this._applyPhase3WheelTick(sign);
     // phase1: tilt-conditional split applies here only.
@@ -1135,9 +1200,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // altitude. Translates the camera along the camera→anchor ray by 10%
   // of the current distance per tick. Tilt-preserving by construction.
   //
-  // Boundary handling: if zoom-in pushes y below 10m, clamp to 10m and
-  // latch _storedTilt = current tilt (round-down model — see §"Tick
-  // energy" in the plan). The next tick is Phase 2.
+  // Boundary handling: if zoom-in pushes AGL below 20m, clamp the camera
+  // to (groundY + 20) so it enters Phase 2 at 20m above the actual ground
+  // (TASK-013; formerly an absolute clamp to y=10m), and latch
+  // _storedTilt = current tilt (round-down model — see §"Tick energy" in
+  // the plan). The next tick is Phase 2. Reads the per-pass ground
+  // snapshot `this._frameGroundY`.
   _applyPhase1WheelTick(sign) {
     const camera = this._camera;
     const x = this._lastWheelClientX;
@@ -1146,9 +1214,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const hit = this._cursorAnchor.worldPointAt(x, y);
     this._applyAnchoredDollyStep(sign, hit);
 
-    // Boundary: Phase 1 → Phase 2 on zoom-in.
-    if (sign < 0 && camera.position.y < SWOOP_PHASE2_ENTRY_ELEVATION_METRES) {
-      camera.position.y = SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
+    // Boundary: Phase 1 → Phase 2 on zoom-in. Compare AGL, clamp the
+    // camera to (groundY + yCeil).
+    const groundY = this._frameGroundY;
+    if (
+      sign < 0 &&
+      camera.position.y - groundY < SWOOP_PHASE2_ENTRY_ELEVATION_METRES
+    ) {
+      camera.position.y = groundY + SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
       // Phase 1 ticks are tilt-preserving, so this matches the tilt at
       // the moment of crossing.
       this._storedTilt = cameraTiltDegrees(camera);
@@ -1156,7 +1229,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
   }
 
-  // Low-tilt branch (tilt ≤ 30° while y > 10m) and the Ctrl+wheel
+  // Low-tilt branch (tilt ≤ 30° while AGL > 20m, i.e. Phase 1) and the Ctrl+wheel
   // escape hatch. Synthetic anchor 30m along camera-forward; runs the
   // same orbit-step math as Phase 1 so behaviour matches a plain
   // camera-Z dolly. No cursor anchoring (per
@@ -1200,44 +1273,56 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // this tick's energy in the destination phase. Found at feel-test
   // 2026-05-11.
   //
-  // Boundary handling:
-  //   zoom-in: yNext ≤ yFloor → snap to floor, tilt to 0°, latch
+  // Runs entirely in AGL space (yAgl = camera.y − groundY), reading the
+  // per-pass ground snapshot `this._frameGroundY`, and writes the result
+  // back as absolute camera.y = groundY + yAglNext (TASK-013). On a flat
+  // scene at y=0 this is behaviour-identical to the old absolute math
+  // (modulo one cheap extra probe per pass).
+  //
+  // Boundary handling (all in AGL):
+  //   zoom-in: yAglNext ≤ yFloor → snap to floor, tilt to 0°, latch
   //     _phase3FovBaseline. Next tick dispatches naturally to Phase 3.
-  //   zoom-in: yNext within SWOOP_PHASE2_FLOOR_SNAP_METRES of yFloor →
+  //   zoom-in: yAglNext within SWOOP_PHASE2_FLOOR_SNAP_METRES of yFloor →
   //     snap (H6).
-  //   zoom-out: y ≤ yFloor + snap → kick-start to yFloor + snap. The
-  //     multiplicative reciprocal `1.5 + (y-1.5)/(1-α)` is zero at
-  //     y=yFloor exactly, so without the kick-start zoom-out from
-  //     street level produces no motion.
-  //   zoom-out: yNext ≥ yCeil → clamp to yCeil, set tilt to _storedTilt,
-  //     hand the tick's energy to Phase 1 (recursive call).
+  //   zoom-out: yAgl in [0, yFloor + snap] → kick-start to yFloor + snap.
+  //     The multiplicative reciprocal `1.5 + (yAgl-1.5)/(1-α)` is zero at
+  //     yAgl=yFloor exactly, so without the kick-start zoom-out from
+  //     street level produces no motion. The `yAgl >= 0` lower bound
+  //     suppresses a stale-cache teleport (negative AGL — see below)
+  //     while preserving every legitimate fresh-probe kick-start.
+  //   zoom-out: yAglNext ≥ yCeil → clamp to groundY + yCeil, set tilt to
+  //     _storedTilt, hand the tick's energy to Phase 1 (recursive call).
   _applyPhase2WheelTick(sign) {
     const camera = this._camera;
-    const yFloor = SWOOP_PHASE2_EXIT_ELEVATION_METRES;
-    const yCeil = SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
-    const snap = SWOOP_PHASE2_FLOOR_SNAP_METRES;
+    const groundY = this._frameGroundY; // pass snapshot
+    const yFloor = SWOOP_PHASE2_EXIT_ELEVATION_METRES; // AGL floor 1.5
+    const yCeil = SWOOP_PHASE2_ENTRY_ELEVATION_METRES; // AGL ceil 20
+    const snap = SWOOP_PHASE2_FLOOR_SNAP_METRES; // 1.0
 
-    let y = camera.position.y;
+    let yAgl = camera.position.y - groundY; // ← convert in
 
-    // Zoom-out kick-start: at or near the floor (including the
-    // saved-scene-below-floor case), the reciprocal formula stays put.
-    // Snap up to (yFloor + snap) so subsequent ticks have nonzero
-    // (y - yFloor) to grow. The discontinuity is bounded by snap and
-    // mirrors the zoom-in floor-snap for boundary symmetry.
-    if (sign > 0 && y <= yFloor + snap) {
-      y = yFloor + snap;
+    // Zoom-out kick-start (AGL-relative — WE-7). A FRESH downward probe
+    // always yields yAgl >= 0 (the hit ground is below the camera), so
+    // the `yAgl >= 0` lower bound preserves EVERY legitimate case —
+    // including the saved-scene-below-floor kick-start (a camera at
+    // AGL 0.5 on real ground must still kick-start). A NEGATIVE yAgl can
+    // only arise from the D2 stale cache (cached ground ABOVE the camera —
+    // camera over a gap, reachable via WASD-during-Phase-3 then
+    // zoom-out); that is exactly the teleport case to suppress.
+    if (sign > 0 && yAgl >= 0 && yAgl <= yFloor + snap) {
+      yAgl = yFloor + snap;
     }
 
-    let yNext = phase2NextElevation(y, sign);
+    let yAglNext = phase2NextElevation(yAgl, sign);
 
-    // Floor snap on zoom-in (H6).
-    if (sign < 0 && yNext - yFloor < snap) {
-      yNext = yFloor;
+    // Floor snap on zoom-in (H6) — AGL-relative.
+    if (sign < 0 && yAglNext - yFloor < snap) {
+      yAglNext = yFloor;
     }
 
     // Boundary: Phase 2 → Phase 3 on zoom-in.
-    if (sign < 0 && yNext <= yFloor) {
-      camera.position.y = yFloor;
+    if (sign < 0 && yAglNext <= yFloor) {
+      camera.position.y = groundY + yFloor; // ← write back
       this._setCameraTiltPreservingYaw(0);
       this._phase3FovBaseline = camera.fov;
       camera.updateMatrixWorld();
@@ -1246,23 +1331,26 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
 
     // Boundary: Phase 2 → Phase 1 on zoom-out. Hand the tick off
-    // actively so the wheel click visibly continues past y=yCeil
+    // actively so the wheel click visibly continues past AGL=yCeil
     // rather than deadlocking at the boundary.
-    if (sign > 0 && yNext >= yCeil) {
-      camera.position.y = yCeil;
+    if (sign > 0 && yAglNext >= yCeil) {
+      camera.position.y = groundY + yCeil; // ← write back
       this._setCameraTiltPreservingYaw(this._storedTilt);
       camera.updateMatrixWorld();
       this._maybeEmitLbModeChange();
       // Now dispatch a Phase 1 tick. Phase 1 may itself route to the
-      // low-tilt branch depending on _storedTilt; that's fine.
+      // low-tilt branch depending on _storedTilt; that's fine. Phase 1
+      // reads the same `this._frameGroundY` snapshot.
       if (cameraTiltDegrees(camera) <= TRUCK_PEDESTAL_CUTOFF_DEGREES) {
         return this._applyLowTiltWheelTick(sign);
       }
       return this._applyPhase1WheelTick(sign);
     }
 
-    camera.position.y = yNext;
-    this._setCameraTiltPreservingYaw(phase2TargetTilt(yNext, this._storedTilt));
+    camera.position.y = groundY + yAglNext; // ← write back
+    this._setCameraTiltPreservingYaw(
+      phase2TargetTilt(yAglNext, this._storedTilt)
+    );
     camera.updateMatrixWorld();
     // Toolbar visual indicator: Phase 2's tilt lerp crosses the 30°
     // boundary silently from the LB-mode comparator's perspective. Emit
@@ -1402,7 +1490,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     targetDir.addScaledVector(right, strafe);
     targetDir.normalize();
 
-    const height = Math.max(0.1, Math.abs(camera.position.y));
+    // AGL height (TASK-013): scale speed by height above the ground
+    // directly below the camera, from the same downward probe the swoop
+    // uses. A local groundY (not this._frameGroundY) — the WASD path has
+    // no recursive hand-offs, so no snapshot field is needed; the field
+    // exists solely to carry the snapshot across the wheel-drain's phase
+    // hand-offs. Use Math.max (NOT Math.abs): a camera above the ground
+    // always has positive AGL; the only way aglRaw goes negative is the
+    // camera being below the surface (the TASK-010-owned underground
+    // case), where clamping to the 0.1 floor is a safe degenerate.
+    const groundY = this._groundYBelowCamera();
+    const aglRaw = camera.position.y - groundY;
+    const height = Math.max(0.1, aglRaw);
     const targetSpeed = THREE.MathUtils.clamp(
       height * WASD_SPEED_HEIGHT_FACTOR,
       WASD_MIN_SPEED,
