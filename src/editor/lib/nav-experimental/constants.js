@@ -49,11 +49,15 @@ export const MIN_ORBIT_RADIUS_METRES = 2;
 export const MAP_PIVOT_BOUNDS_RADIUS_METRES = 500;
 
 // TASK-010 (D3): rotation-centre ring indicator's apparent on-screen
-// size, as a fraction of the camera→pivot distance. The billboard mesh
-// is scaled by `distance × this` each frame so it holds a roughly
-// constant size on screen as the camera orbits. Feel-tunable.
-// Halved from 0.04 → 0.02 per reports/010-testing.md #2 (ring too big).
-export const RING_SCREEN_FRACTION = 0.02;
+// size — the ring's radius as a fraction of the viewport's half-height.
+// The billboard mesh world radius is set to
+// `fraction × distance × tan(fov/2)` each frame, so the on-screen size
+// is constant regardless of camera distance AND field of view. (An
+// earlier `distance × fraction` form ignored fov, so the ring grew on
+// screen whenever the fov was reduced — e.g. after a street-level FOV
+// zoom — reports/010-testing.md #2 second pass.) Feel-tunable. ~0.035
+// reproduces the previously-tuned size near a 60° fov.
+export const RING_SCREEN_FRACTION = 0.035;
 
 // Wheel zoom: each "wheel-tick of budget" moves the camera by this fraction
 // of the current camera-to-anchor distance. Sign is applied by the caller.

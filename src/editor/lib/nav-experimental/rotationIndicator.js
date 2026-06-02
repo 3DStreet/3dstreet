@@ -14,6 +14,8 @@
 
 import { RING_SCREEN_FRACTION } from './constants.js';
 
+const DEG2RAD = Math.PI / 180;
+
 export class RotationIndicator {
   constructor(sceneEl) {
     this._sceneEl = sceneEl || null;
@@ -64,9 +66,10 @@ export class RotationIndicator {
     if (this._mesh) this._mesh.visible = false;
   }
 
-  // Billboard the ring to face the camera and hold a roughly constant
-  // on-screen size. Cheap (a quaternion copy + one distance); called from
-  // `_shiftRotate` while a Map-mode rotate is active.
+  // Billboard the ring to face the camera and hold a constant on-screen
+  // size — independent of both distance and field of view. Cheap (a
+  // quaternion copy + one distance); called from `_shiftRotate` while a
+  // Map-mode rotate is active.
   update(camera) {
     const mesh = this._mesh;
     if (!mesh || !mesh.visible || !camera) return;
@@ -76,7 +79,14 @@ export class RotationIndicator {
     // A-Frame's scene object3D.
     mesh.quaternion.copy(camera.quaternion);
     const d = camera.position.distanceTo(mesh.position);
-    mesh.scale.setScalar(Math.max(d * RING_SCREEN_FRACTION, 1e-3));
+    // World radius = fraction × (viewport half-height in world at the
+    // pivot) = fraction × d × tan(fov/2). Including fov keeps the ring a
+    // fixed fraction of screen height even when the fov is reduced (e.g.
+    // after a street-level FOV zoom). Fall back to 60° for a non-
+    // perspective camera (no `fov`).
+    const halfFov = ((camera.fov || 60) * DEG2RAD) / 2;
+    const halfHeightWorld = d * Math.tan(halfFov);
+    mesh.scale.setScalar(Math.max(halfHeightWorld * RING_SCREEN_FRACTION, 1e-3));
   }
 
   dispose() {
