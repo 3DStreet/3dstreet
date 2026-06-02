@@ -79,15 +79,17 @@ export const FALLBACK_FORWARD_DIST = 30;
 // EditorControls feel.
 export const ROTATION_SPEED_RAD_PER_PX = 0.0035;
 
-// WASD horizontal motion: speed = clamp(camera height * factor, MIN, MAX).
-// At y ≥ MIN_SPEED metres: speed = altitude (linear scaling).
-// At y < MIN_SPEED metres: speed = MIN_SPEED (constant floor).
+// WASD horizontal motion: speed = clamp(AGL * factor, MIN, MAX), where
+// AGL = height above the ground directly below the camera (TASK-013;
+// formerly absolute camera.y).
+// At AGL ≥ MIN_SPEED metres: speed = AGL (linear scaling).
+// At AGL < MIN_SPEED metres: speed = MIN_SPEED (constant floor).
 // MIN raised from 5 to 10 on 2026-05-11 per user feel-test request:
-// at street level (~1.6m) the previous 5m/s was too slow; 10m/s ≈ urban
-// driving pace gets you across a block in a reasonable time. High
-// altitudes unchanged (the linear scaling above y=10 still gives the
+// at street level (~1.6m AGL) the previous 5m/s was too slow; 10m/s ≈
+// urban driving pace gets you across a block in a reasonable time. High
+// altitudes unchanged (the linear scaling above AGL=10 still gives the
 // same speeds).
-export const WASD_SPEED_HEIGHT_FACTOR = 1.0; // m/s per metre of altitude
+export const WASD_SPEED_HEIGHT_FACTOR = 1.0; // m/s per metre of AGL height
 export const WASD_MIN_SPEED = 10; // m/s
 export const WASD_MAX_SPEED = 500; // m/s
 // Acceleration ramp-up: time (ms) to reach the target speed from rest
@@ -98,9 +100,10 @@ export const WASD_RAMP_UP_MS = 200;
 // Plan View transition.
 export const PLAN_VIEW_DURATION_MS = 1000;
 
-// Phase 3 "swoop" wheel-zoom boundaries (camera.position.y in metres).
-// See claude/specs/001-phase-3-plan.md. Absolute-y for now; production
-// needs to be ground-relative (AGL) — backlog item 2026-05-11.
+// Phase 3 "swoop" wheel-zoom boundaries, in metres **above ground (AGL)**
+// = camera.y − groundY, where groundY is the height of the street-segment
+// surface directly below the camera (TASK-013; formerly absolute
+// camera.position.y). See claude/specs/001-phase-3-plan.md.
 // Entry raised from 10 → 20 on 2026-05-11 feel-test: triggering only
 // below 10m felt too sudden — the user wants the descent to begin
 // well before street level.
