@@ -53,21 +53,23 @@ function attributionEquals(a, b) {
   return true;
 }
 
-// True if the drawn frame is essentially pure black — i.e. the WebGL canvas was
-// captured before the viewer rendered its first frame. Samples a sparse stride
-// of pixels and checks peak luminance; the viewer's #393939 background alone
-// (~lum 57) clears this bar, so only a genuinely unrendered (black) buffer is
-// rejected. Best-effort: if the pixels can't be read, don't block the capture.
+// True if the drawn frame is essentially uniform — i.e. nothing rendered: the
+// WebGL canvas was captured before the splat drew (pure black), or it shows only
+// the flat #393939 background. A real splat spans a wide luminance range, so we
+// reject a near-zero min→max spread. Samples a sparse stride for speed.
+// Best-effort: if the pixels can't be read, don't block the capture.
 function isFrameBlank(ctx, w, h) {
   try {
     const { data: px } = ctx.getImageData(0, 0, w, h);
-    let maxLum = 0;
+    let min = 255;
+    let max = 0;
     const stride = 4 * 101; // sparse, prime-ish sample for speed
     for (let i = 0; i + 2 < px.length; i += stride) {
       const lum = px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114;
-      if (lum > maxLum) maxLum = lum;
+      if (lum < min) min = lum;
+      if (lum > max) max = lum;
     }
-    return maxLum < 8;
+    return max - min < 6;
   } catch {
     return false;
   }

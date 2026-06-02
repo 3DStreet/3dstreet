@@ -31,27 +31,25 @@ On success the handler patches `users/{uid}/assets/{assetId}` with
 `optimizedSourceUrl`, `optimizedSourcePath`, `optimizedSourceSize`, and
 `optimizationMetadata: { format: 'rad', tool: 'build-lod', sparkVersion, lod }`.
 
-## Deploy to dev (`dev-3dstreet`)
+## Deploy
 
-`--source` builds the image with Cloud Build and deploys. The Rust build of
-`build-lod` takes a few minutes on the first build.
+**Use [`deploy.sh`](./deploy.sh) — it is the single source of truth** for the
+Cloud Run sizing (memory/CPU/timeout/concurrency) and the Cloud Tasks queue
+retry policy. Don't set these with ad-hoc `gcloud ... update` calls; change them
+in `deploy.sh` and re-run, so the committed config and the live infra never
+drift.
 
 ```bash
-REGION=us-central1   # pick your region
-
-gcloud run deploy rad-converter \
-  --project dev-3dstreet \
-  --region "$REGION" \
-  --source . \
-  --no-allow-unauthenticated \
-  --memory 8Gi \
-  --cpu 2 \
-  --timeout 900 \
-  --concurrency 1 \
-  --set-env-vars STORAGE_BUCKET=dev-3dstreet.appspot.com
+cd rad-converter
+./deploy.sh                      # defaults: dev-3dstreet, us-central1
+./deploy.sh <project> <region>   # other targets
 ```
 
-(Run from inside `rad-converter/`.)
+`--source` builds the image with Cloud Build and deploys; the Rust build of
+`build-lod` takes a few minutes on the first build. Current sizing: **16Gi /
+4 vCPU / 900s / concurrency 1** (a ~368MB / 22M-splat file OOM'd at 8Gi). Queue
+retry: **3 attempts, 10s–300s backoff** (the gcloud default of 100 attempts at
+0.1s thrashes on a deterministic OOM — re-downloading and rebuilding ~100×).
 
 ### IAM the runtime service account needs
 
