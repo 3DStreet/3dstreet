@@ -21,7 +21,7 @@ import FluxUI from './main.js';
 import ImageUploadUtils from './image-upload-utils.js';
 import useImageGenStore from './store.js';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '@shared/services/firebase.js';
+import { functions, auth } from '@shared/services/firebase.js';
 import posthog from 'posthog-js';
 
 // Fixed cost for the v1 SHARP single-image model. The authoritative charge
@@ -166,8 +166,8 @@ const SplatTab = {
               </p>
               <div class="flex items-center justify-center gap-3">
                 <a id="splat-open-btn" href="#" target="_blank" rel="noopener"
-                  class="inline-flex items-center px-3 py-2 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">
-                  Open .ply
+                  class="inline-flex items-center px-3 py-2 text-sm rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
+                  Open in 3DStreet
                 </a>
                 <button id="splat-download-btn"
                   class="inline-flex items-center px-3 py-2 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">
@@ -404,7 +404,7 @@ const SplatTab = {
         // itself once the job doc leaves the non-terminal set (its listener also
         // refreshes the grid), so the card hands its slot to the real asset.
         this.currentSplatUrl = data.splat_url;
-        this.showResult(data.splat_url);
+        this.showResult(data.splat_url, data.assetId);
         this.toggleLoading(false);
         window.dispatchEvent(new Event('assets:refresh'));
         FluxUI.showNotification('Splat generated!', 'success');
@@ -480,10 +480,18 @@ const SplatTab = {
     return 'Failed to generate splat';
   },
 
-  showResult(splatUrl) {
+  showResult(splatUrl, assetId) {
     this.elements.placeholder.classList.add('hidden');
     this.elements.result.classList.remove('hidden');
-    this.elements.openBtn.href = splatUrl;
+    // "Open in 3DStreet" deep-links to the editor with the asset's detail modal
+    // already open (#asset:OWNER/ID — same shape as the completion email CTA),
+    // where the user gets the live viewer + a "Place in scene" button. Falls
+    // back to the raw .ply if we somehow lack an assetId/uid.
+    const uid = auth.currentUser?.uid;
+    this.elements.openBtn.href =
+      assetId && uid
+        ? `${window.location.origin}/?utm_source=generator&utm_medium=splat_result&utm_campaign=open_in_editor#asset:${uid}/${assetId}`
+        : splatUrl;
     // Live Spark preview in a sandboxed iframe (same pattern as the mesh
     // model-viewer). Points at the freshly generated splat URL.
     this.elements.viewerFrame.src = `/splat-viewer.html?src=${encodeURIComponent(splatUrl)}`;
