@@ -341,14 +341,16 @@ export const Compass = () => {
           {/* Body-hover glow — a soft white bloom behind the needle, shown
               only while the body is active. It lives INSIDE the needle group
               so it rotates with the needle: an ellipse with a 2:1 major:minor
-              ratio, major axis along the needle (rx across, ry along). Extent
-              is ~30% tighter than the old full-dial circle. */}
+              ratio, major axis along the needle (rx across, ry along). Sized
+              larger than the needle (half-width 5, half-height 16) so it
+              blooms out around the silhouette rather than hiding behind it,
+              but more contained than the old full-dial (r=22) circle. */}
           {active === 'body' && (
             <ellipse
               cx={CX}
               cy={CY}
-              rx={7.5}
-              ry={15}
+              rx={10}
+              ry={20}
               fill="url(#compassBodyGlow)"
             />
           )}
