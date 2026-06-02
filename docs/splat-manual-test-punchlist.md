@@ -32,10 +32,17 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
   default**.
 - ☐ Generate, then **close the tab** immediately after it reaches "Generating…".
 - ☐ Wait for completion + grace (≤ ~13 min: 10-min reconciler + 3-min grace).
-- ☐ Receive the **"Your 3DStreet splat is ready"** email (Postmark). Link opens
-  the app.
+- ☐ Receive the **"Your 3DStreet splat is ready"** email (Postmark).
 - ☐ Job doc shows `notify.sentAt` set, `notify.pending: false`. **Exactly one**
   email (re-running the reconciler does not re-send).
+- ☐ **Deep link**: the email CTA points at `…/#asset:{ownerUid}/{assetId}`.
+  Clicking it opens the editor with the splat's detail modal (`MeshDetailsModal`)
+  already open, showing the live splat viewer. Owner actions (rename/delete)
+  appear once auth resolves.
+- ☐ Open the same `#asset:uid/id` link **logged out / incognito** → the splat
+  still renders (assets are public-read), in read-only mode.
+- ☐ Closing the modal strips the `#asset:…` hash (reload doesn't reopen it).
+- ☐ A bogus `#asset:uid/nonexistent` shows "Asset not available", no crash.
 
 > Faster than waiting for the schedule: as an admin, call
 > `triggerReconcileGenerationJobs({ dryRun: false })` to force the sweep. Use

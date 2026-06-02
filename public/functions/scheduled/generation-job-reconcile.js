@@ -349,13 +349,20 @@ async function sendReadyNotifications({ dryRun }) {
         continue;
       }
 
-      // Kind-aware copy (splat today; video/image reuse it for free).
+      // Kind-aware copy (splat today; video/image reuse it for free). The CTA
+      // deep-links straight to the asset's detail modal in the editor:
+      // #asset:OWNER/ID (the issue #1641 asset-token shape). Needs the owner uid
+      // because assets are addressed as users/{uid}/assets/{assetId}; assets are
+      // public-read so the link works before the recipient's auth resolves.
       const tpl = EMAIL_TEMPLATES.generationReady;
+      const ctaUrl = job.assetId
+        ? `https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready#asset:${uid}/${job.assetId}`
+        : undefined; // fall back to the template's default app link
       await sendPostmarkEmail(
         userInfo.email,
         tpl.getSubject(job.kind),
-        tpl.getHtmlBody(userInfo.displayName, job.kind),
-        tpl.getTextBody(userInfo.displayName, job.kind)
+        tpl.getHtmlBody(userInfo.displayName, job.kind, ctaUrl),
+        tpl.getTextBody(userInfo.displayName, job.kind, ctaUrl)
       );
       await jobRef.update({
         'notify.pending': false,

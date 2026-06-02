@@ -162,17 +162,21 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
     getCopy(kind) {
       return this.copyByKind[kind] || { noun: 'generation', desc: 'generation' };
     },
+    // Fallback CTA when a caller doesn't pass a deep link to the specific asset.
+    defaultCtaUrl:
+      'https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready',
     getSubject(kind) {
       return `Your 3DStreet ${this.getCopy(kind).noun} is ready`;
     },
-    getTextBody(userName, kind) {
+    getTextBody(userName, kind, ctaUrl) {
       const { noun, desc } = this.getCopy(kind);
+      const link = ctaUrl || this.defaultCtaUrl;
       return `Hi ${userName},
 
 Your ${desc} finished generating and has been saved to your 3DStreet gallery.
 
-Open the editor, find it in the Assets panel, and drag it into your scene:
-https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready
+Open it in the editor:
+${link}
 
 Thanks for using 3DStreet!
 
@@ -182,8 +186,9 @@ https://3dstreet.com
 ---
 You received this email because you asked to be notified when your ${noun} finished. You can opt out by unchecking that box next time.`;
     },
-    getHtmlBody(userName, kind) {
+    getHtmlBody(userName, kind, ctaUrl) {
       const { noun, desc } = this.getCopy(kind);
+      const link = ctaUrl || this.defaultCtaUrl;
       return `<!DOCTYPE html>
 <html>
 <head>
@@ -199,10 +204,10 @@ You received this email because you asked to be notified when your ${noun} finis
 
   <p>Your <strong>${desc}</strong> finished generating and has been saved to your 3DStreet gallery.</p>
 
-  <p>Open the editor, find it in the <strong>Assets</strong> panel, and drag it into your scene.</p>
+  <p>Open it in the editor to preview it and drag it into your scene.</p>
 
   <div style="text-align: center; margin: 30px 0;">
-    <a href="https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Open 3DStreet</a>
+    <a href="${link}" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Open my ${noun}</a>
   </div>
 
   <p>Thanks for using 3DStreet!</p>
