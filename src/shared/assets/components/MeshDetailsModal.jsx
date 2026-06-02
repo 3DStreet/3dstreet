@@ -53,6 +53,26 @@ function attributionEquals(a, b) {
   return true;
 }
 
+// True if the drawn frame is essentially pure black — i.e. the WebGL canvas was
+// captured before the viewer rendered its first frame. Samples a sparse stride
+// of pixels and checks peak luminance; the viewer's #393939 background alone
+// (~lum 57) clears this bar, so only a genuinely unrendered (black) buffer is
+// rejected. Best-effort: if the pixels can't be read, don't block the capture.
+function isFrameBlank(ctx, w, h) {
+  try {
+    const { data: px } = ctx.getImageData(0, 0, w, h);
+    let maxLum = 0;
+    const stride = 4 * 101; // sparse, prime-ish sample for speed
+    for (let i = 0; i + 2 < px.length; i += stride) {
+      const lum = px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114;
+      if (lum > maxLum) maxLum = lum;
+    }
+    return maxLum < 8;
+  } catch {
+    return false;
+  }
+}
+
 const IconTooltip = ({ children, label }) => (
   <Tooltip.Root delayDuration={150}>
     <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
@@ -200,7 +220,16 @@ const MeshDetailsModal = ({
       const tmp = document.createElement('canvas');
       tmp.width = tw;
       tmp.height = th;
-      tmp.getContext('2d').drawImage(glCanvas, 0, 0, tw, th);
+      const tctx = tmp.getContext('2d');
+      tctx.drawImage(glCanvas, 0, 0, tw, th);
+      // The viewer only begins rendering on its first animation frame; if the
+      // user closes before that, the GL canvas is still an uncleared (black)
+      // buffer. Persisting that gives a black thumbnail that then sticks (the
+      // doc has a thumbnailUrl, so the proper offscreen capture never replaces
+      // it). Skip a blank frame and leave the asset thumbnail-less so a later
+      // open — or the viewer's own 3s offscreen capture — can backfill a real
+      // one. Don't set thumbUploadedRef, so this isn't treated as "done".
+      if (isFrameBlank(tctx, tw, th)) return;
       thumbUploadedRef.current = assetId;
       tmp.toBlob(
         (blob) => {

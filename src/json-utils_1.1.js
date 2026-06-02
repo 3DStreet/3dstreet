@@ -646,6 +646,14 @@ AFRAME.registerComponent('set-loader-from-hash', {
       if (/^mcp(=\d+)?$/.test(streetURL)) {
         return;
       }
+      // `#asset:OWNER/ID` is an asset deep-link (e.g. from a "your splat is
+      // ready" email), opened by AssetDeepLinkModal in React — NOT a scene to
+      // load. Without this bail it falls through to the generic
+      // fetchJSON('asset:….json') below and errors with "Could not fetch scene"
+      // / "Could not connect to server."
+      if (streetURL.startsWith('asset:')) {
+        return;
+      }
       if (streetURL.startsWith('crushed-3dstreet-json:')) {
         const fragment = window.location.hash;
         const prefix = '#crushed-3dstreet-json:';
