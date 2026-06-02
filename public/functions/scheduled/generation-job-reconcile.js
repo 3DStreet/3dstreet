@@ -367,11 +367,19 @@ async function sendReadyNotifications({ dryRun }) {
       const ctaUrl = job.assetId
         ? `${appBase}/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready#asset:${uid}/${job.assetId}`
         : undefined; // fall back to the template's default app link
+      // Per-asset context so each notification is distinct (mail clients
+      // otherwise thread/collapse identical subject+body). assetName already
+      // embeds a unique timestamp; `when` is a readable fallback.
+      const emailCtx = {
+        assetName: job.assetName || null,
+        when:
+          job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || null
+      };
       await sendPostmarkEmail(
         userInfo.email,
-        tpl.getSubject(job.kind),
-        tpl.getHtmlBody(userInfo.displayName, job.kind, ctaUrl),
-        tpl.getTextBody(userInfo.displayName, job.kind, ctaUrl)
+        tpl.getSubject(job.kind, emailCtx),
+        tpl.getHtmlBody(userInfo.displayName, job.kind, ctaUrl, emailCtx),
+        tpl.getTextBody(userInfo.displayName, job.kind, ctaUrl, emailCtx)
       );
       await jobRef.update({
         'notify.pending': false,

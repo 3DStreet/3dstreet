@@ -165,15 +165,44 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
     // Fallback CTA when a caller doesn't pass a deep link to the specific asset.
     defaultCtaUrl:
       'https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready',
-    getSubject(kind) {
-      return `Your 3DStreet ${this.getCopy(kind).noun} is ready`;
+    // Compact, human-readable UTC stamp (e.g. "Jun 2, 3:41 PM UTC"). Used to keep
+    // each notification distinct so mail clients don't thread/collapse them.
+    formatWhen(when) {
+      if (!when) return '';
+      const d = when instanceof Date ? when : new Date(when);
+      if (isNaN(d.getTime())) return '';
+      return (
+        d.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: 'UTC'
+        }) + ' UTC'
+      );
     },
-    getTextBody(userName, kind, ctaUrl) {
+    // Each finished asset already carries a unique, timestamped name (e.g.
+    // "SHARP Splat 2026-06-02T15-41-03"), so threading the name into the subject
+    // makes every notification distinct. Fall back to a formatted time when no
+    // name is on the job. ctx: { assetName, when }.
+    getSubject(kind, ctx = {}) {
+      const { noun } = this.getCopy(kind);
+      if (ctx.assetName) return `Your 3DStreet ${noun} "${ctx.assetName}" is ready`;
+      const when = this.formatWhen(ctx.when);
+      return when
+        ? `Your 3DStreet ${noun} is ready (${when})`
+        : `Your 3DStreet ${noun} is ready`;
+    },
+    getTextBody(userName, kind, ctaUrl, ctx = {}) {
       const { noun, desc } = this.getCopy(kind);
       const link = ctaUrl || this.defaultCtaUrl;
+      const name = ctx.assetName ? ` "${ctx.assetName}"` : '';
+      const when = this.formatWhen(ctx.when);
+      const generatedLine = when ? `\nGenerated ${when}.\n` : '';
       return `Hi ${userName},
 
-Your ${desc} finished generating and has been saved to your 3DStreet gallery.
+Your ${desc}${name} finished generating and has been saved to your 3DStreet gallery.
+${generatedLine}
 
 Open it in the editor:
 ${link}
@@ -186,9 +215,16 @@ https://3dstreet.com
 ---
 You received this email because you asked to be notified when your ${noun} finished. You can opt out by unchecking that box next time.`;
     },
-    getHtmlBody(userName, kind, ctaUrl) {
+    getHtmlBody(userName, kind, ctaUrl, ctx = {}) {
       const { noun, desc } = this.getCopy(kind);
       const link = ctaUrl || this.defaultCtaUrl;
+      const name = ctx.assetName
+        ? ` <strong>&ldquo;${ctx.assetName}&rdquo;</strong>`
+        : '';
+      const when = this.formatWhen(ctx.when);
+      const generatedLine = when
+        ? `\n  <p style="color: #666; font-size: 13px;">Generated ${when}.</p>`
+        : '';
       return `<!DOCTYPE html>
 <html>
 <head>
@@ -202,8 +238,8 @@ You received this email because you asked to be notified when your ${noun} finis
 
   <h2 style="color: #1a1a1a; margin-bottom: 20px;">Hi ${userName},</h2>
 
-  <p>Your <strong>${desc}</strong> finished generating and has been saved to your 3DStreet gallery.</p>
-
+  <p>Your <strong>${desc}</strong>${name} finished generating and has been saved to your 3DStreet gallery.</p>
+${generatedLine}
   <p>Open it in the editor to preview it and drag it into your scene.</p>
 
   <div style="text-align: center; margin: 30px 0;">
