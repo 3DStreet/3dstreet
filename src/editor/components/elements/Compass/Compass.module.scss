@@ -21,22 +21,13 @@
 }
 
 // Hit regions — filled shapes (transparent fill still receives pointer
-// events because pointer-events: all). Each gets a thin white outline on
-// hover, matching Google Maps.
+// events because pointer-events: all). They carry NO stroke of their own:
+// hover/focus feedback is drawn by the component as the body glow (behind the
+// needle) and the brightened arrow glyphs, driven by the `active` state — so
+// the annular arrow sectors never paint a "wedge" outline.
 .hitRegion {
   pointer-events: all;
   outline: none;
-
-  &:focus-visible {
-    // Keyboard focus: same thin white highlight as hover.
-    stroke: #fff;
-    stroke-width: 1.5px;
-  }
-}
-
-.hovered {
-  stroke: #fff;
-  stroke-width: 1.5px;
 }
 
 // Tooltip — real DOM (translatable). Opens upward (the widget sits at the

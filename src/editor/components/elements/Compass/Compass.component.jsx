@@ -134,6 +134,8 @@ const controls = () =>
     : null;
 
 // Pose-aware body tooltip, computed from the same tests as the dispatcher.
+// Returns null when a body click would be a no-op (already top-down AND
+// north-up) — in that state there is nothing to do, so we show no caption.
 function bodyTooltip(camera) {
   if (!camera || camera.type !== 'PerspectiveCamera') return 'Plan view';
   const isTopDown =
@@ -142,25 +144,34 @@ function bodyTooltip(camera) {
   const isNorthUp =
     Math.abs(needleScreenAngle(camera)) <= COMPASS_NORTH_TOLERANCE_DEGREES;
   if (!isNorthUp) return 'Face north';
-  return 'Reset view';
+  return null; // already reset — clicking does nothing, so no caption
 }
 
 export const Compass = () => {
   const needleRef = useRef(null);
-  const [hovered, setHovered] = useState(null); // 'body' | 'left' | 'right' | null
-  const [tooltip, setTooltip] = useState('Plan view');
-  // Mirror `hovered` into a ref so the rAF loop (empty-deps effect) can read
-  // the live hover region without re-subscribing each frame.
-  const hoveredRef = useRef(null);
+  // The region currently hovered or keyboard-focused: 'body' | 'left' |
+  // 'right' | null. Drives the tooltip + the hover visuals.
+  const [active, setActive] = useState(null);
+  const [tooltip, setTooltip] = useState(null);
+  // Mirror `active` into a ref so the rAF loop (empty-deps effect) can read
+  // the live region without re-subscribing each frame.
+  const activeRef = useRef(null);
   useEffect(() => {
-    hoveredRef.current = hovered;
-  }, [hovered]);
+    activeRef.current = active;
+  }, [active]);
+
+  const staticTooltip = (region) => {
+    if (region === 'left') return 'Rotate left 90°';
+    if (region === 'right') return 'Rotate right 90°';
+    const inspector = typeof AFRAME !== 'undefined' ? AFRAME.INSPECTOR : null;
+    return bodyTooltip(inspector ? inspector.camera : null);
+  };
 
   // rAF needle loop. Reads the live inspector camera each frame and writes
   // the needle angle directly to the ref'd SVG transform. Holds the last
   // angle when the camera is unavailable or briefly orthographic (plan-view
   // toggle window). Cancelled on unmount. Also recomputes the pose-aware body
-  // tooltip each frame while the body is hovered, committing to state only on
+  // tooltip each frame while the body is active, committing to state only on
   // change to avoid needless re-renders.
   useEffect(() => {
     let raf;
@@ -171,7 +182,7 @@ export const Compass = () => {
         const angle = needleScreenAngle(camera);
         needleRef.current.style.transform = `rotate(${angle}deg)`;
       }
-      if (hoveredRef.current === 'body') {
+      if (activeRef.current === 'body') {
         const next = bodyTooltip(camera);
         setTooltip((prev) => (prev === next ? prev : next));
       }
@@ -189,20 +200,18 @@ export const Compass = () => {
     else if (region === 'right') c.handleCompassRotate(+1);
   };
 
-  const onEnter = (region) => {
-    setHovered(region);
-    if (region === 'body') {
-      const inspector = typeof AFRAME !== 'undefined' ? AFRAME.INSPECTOR : null;
-      setTooltip(bodyTooltip(inspector ? inspector.camera : null));
-    } else if (region === 'left') {
-      setTooltip('Rotate left 90°');
-    } else if (region === 'right') {
-      setTooltip('Rotate right 90°');
-    }
+  // Mark a region active (hover or focus). `pointerover` / `focus` fire on
+  // every change of the topmost target, so moving between the body and the
+  // arrow sectors (which overlap the body) updates `active` reliably — unlike
+  // pointerenter/leave on overlapping siblings, which left the body's stale
+  // state showing through (the "Plan view over the arrows" bug).
+  const enter = (region) => {
+    setActive(region);
+    setTooltip(staticTooltip(region));
   };
-
-  const onLeave = (region) => {
-    setHovered((h) => (h === region ? null : h));
+  const leave = () => {
+    setActive(null);
+    setTooltip(null);
   };
 
   const keyActivate = (region) => (e) => {
@@ -212,39 +221,46 @@ export const Compass = () => {
     }
   };
 
-  // Event/role props shared by all three hit regions. className is set per
-  // element: the body shows a hover ring on its own circle, while the arrows
-  // signal hover by brightening their curved glyph (below) rather than
-  // stroking the transparent sector.
+  // Event/role props shared by all three hit regions.
   const handlers = (region) => ({
     role: 'button',
     tabIndex: 0,
     onClick: () => dispatch(region),
     onKeyDown: keyActivate(region),
-    onPointerEnter: () => onEnter(region),
-    onPointerLeave: () => onLeave(region)
+    onPointerOver: () => enter(region),
+    onFocus: () => enter(region),
+    onBlur: leave
   });
 
-  // Curved-arrow glyph colour — brightens to white on hover/focus of its region.
-  const arrowStroke = (region) => (hovered === region ? '#fff' : '#c8ccd0');
+  // Curved-arrow glyph colour — brightens to white when its region is active.
+  const arrowStroke = (region) => (active === region ? '#fff' : '#c8ccd0');
 
   // Pose-aware label for the body hit region's aria-label, computed from the
   // live camera the same way as the visible tooltip so screen-reader users
   // hear the action the click will actually perform.
   const inspector = typeof AFRAME !== 'undefined' ? AFRAME.INSPECTOR : null;
-  const bodyLabel = bodyTooltip(inspector ? inspector.camera : null);
+  const bodyLabel = bodyTooltip(inspector ? inspector.camera : null) || 'Compass';
 
   return (
-    <div className={styles.compass}>
-      {hovered && <div className={styles.tooltip}>{tooltip}</div>}
+    <div className={styles.compass} onPointerLeave={leave}>
+      {active && tooltip && <div className={styles.tooltip}>{tooltip}</div>}
       <svg viewBox="0 0 64 64">
+        <defs>
+          {/* Diffuse white glow shown behind the needle on body hover
+              (Google-Maps style) — replaces the old full-dial outline ring. */}
+          <radialGradient id="compassBodyGlow">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.55)" />
+            <stop offset="55%" stopColor="rgba(255,255,255,0.16)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </radialGradient>
+        </defs>
         {/* Body hit region — full dial circle, drawn FIRST so the interior
             arrow sectors (drawn later) win the hit-test where they overlap.
             Covers the whole dial, so there are no dead zones inside the
             widget. */}
         <circle
           {...handlers('body')}
-          className={`${styles.hitRegion} ${hovered === 'body' ? styles.hovered : ''}`}
+          className={styles.hitRegion}
           cx={CX}
           cy={CY}
           r={DIAL_R}
@@ -297,6 +313,17 @@ export const Compass = () => {
           pointerEvents="none"
         />
         <polygon points={RIGHT_HEAD} fill={arrowStroke('right')} pointerEvents="none" />
+        {/* Body-hover glow — a soft white radial bloom behind the needle,
+            shown only while the body is active. */}
+        {active === 'body' && (
+          <circle
+            cx={CX}
+            cy={CY}
+            r={DIAL_R}
+            fill="url(#compassBodyGlow)"
+            pointerEvents="none"
+          />
+        )}
         {/* Needle group — rotated via the ref'd transform each frame, drawn
             LAST so it sits visually on top of the arrows. transform-box/origin
             keep rotation about the dial centre. The rotation is applied
