@@ -69,11 +69,20 @@ function normalizeUrl(url) {
  */
 AFRAME.registerComponent('splat', {
   schema: {
-    src: { type: 'string', default: '' }
+    src: { type: 'string', default: '' },
+    // Optional format hint (e.g. 'splat', 'ply') used only when `src` is a
+    // blob: URL with no extension to identify — see loadSplat. Ignored when the
+    // src already carries a recognizable extension (cloud URLs).
+    format: { type: 'string', default: '' }
   },
 
   init: function () {
     this.splatMesh = null;
+    // True only after a load has fully rendered (its `initialized` resolved).
+    // The blob→cloud no-reload guard keys off this — not the mere existence of
+    // a SplatMesh object — so a FAILED local preview still reloads the cloud
+    // copy in place instead of staying stuck blank.
+    this.rendered = false;
     // In-scene loading/processing indicator (THREE.Sprite, not a child
     // entity — runtime-only, never serialized into the saved scene).
     this.indicator = null;
@@ -93,12 +102,14 @@ AFRAME.registerComponent('splat', {
 
     // Post-upload identity swap: the entity's src flips from the local blob:
     // URL to the just-uploaded cloud URL of the SAME file (see
-    // uploadAndPlaceAsset). The blob splat is already rendered, so re-fetching
-    // and re-decoding the (often huge) cloud copy is pure waste — it was
-    // re-running the whole processing pass. Keep the loaded mesh; only the
-    // saved src changed. A later swap to a different format (e.g. the streaming
-    // .rad) comes from a non-blob oldData.src, so it still reloads as intended.
-    if (this.splatMesh && /^blob:/i.test(oldData.src || '')) {
+    // uploadAndPlaceAsset). If the blob splat already RENDERED, re-fetching and
+    // re-decoding the (often huge) cloud copy is pure waste, so keep the loaded
+    // mesh; only the saved src changed. Gate on `rendered` rather than "a
+    // SplatMesh object exists": a blob preview that failed to render (e.g. a
+    // headerless .splat whose blob: URL has no extension) must fall through and
+    // load the cloud copy. A later swap to a different format (e.g. the
+    // streaming .rad) comes from a non-blob oldData.src, so it still reloads.
+    if (this.rendered && /^blob:/i.test(oldData.src || '')) {
       return;
     }
 
@@ -131,6 +142,8 @@ AFRAME.registerComponent('splat', {
     // Tag this load so a newer load (src changed before this one finishes)
     // can detect it has been superseded and skip its own cleanup/error.
     const loadId = ++this.loadId;
+    // A new load supersedes any prior rendered state.
+    this.rendered = false;
 
     // Show the indicator immediately. Spark's onProgress only reports the
     // network fetch (THREE.FileLoader); the multi-second decode/LOD pass that
@@ -154,9 +167,23 @@ AFRAME.registerComponent('splat', {
       // result is ephemeral (rebuilt every load) and non-serializable — the
       // cloud RAD pipeline bakes a streamable LOD variant instead, which the
       // scene prefers (optimizedSourceUrl) on the next load.
-      const isRad = new URL(src).pathname.toLowerCase().endsWith('.rad');
+      // Resolve the splat format. Spark identifies it from the URL extension or
+      // magic bytes, but a local blob: URL has no extension AND .splat is
+      // headerless, so the preview can't be identified — fall back to the
+      // `format` hint (the original upload's extension). Spark's SplatFileType
+      // is a plain lowercase string enum, so the extension doubles as fileType.
+      const noQuery = src.split(/[?#]/)[0];
+      const lastSeg = noQuery.slice(noQuery.lastIndexOf('/') + 1);
+      const urlExt = lastSeg.includes('.')
+        ? lastSeg.split('.').pop().toLowerCase()
+        : '';
+      const fileType = /^(ply|splat|spz|rad|ksplat|sog)$/.test(urlExt)
+        ? urlExt
+        : this.data.format || undefined;
+      const isRad = fileType === 'rad';
       const splatMesh = new LoadedSplatMesh({
         url: src,
+        ...(fileType ? { fileType } : {}),
         ...(isRad ? { paged: true } : {}),
         // Fetch progress only. Once bytes are in (loaded === total) the
         // silent processing phase begins, so flip back to indeterminate.
@@ -185,6 +212,7 @@ AFRAME.registerComponent('splat', {
       // that promise so the indicator covers the processing gap, not just fetch.
       await splatMesh.initialized;
       if (loadId !== this.loadId) return;
+      this.rendered = true;
       this.hideIndicator();
       this.el.emit('splat-loaded', { src }, false);
     } catch (error) {

@@ -143,13 +143,16 @@ async function createPlaceholderEntity(file, position, kind) {
       }
     };
   } else if (kind === 'splat') {
-    // The splat component (Spark) loads .ply/.splat/.spz from a URL — blob:
-    // URLs work for the local preview, then swap to the cloud URL on success.
+    // The splat component (Spark) loads .ply/.splat/.spz/.rad from a URL. A
+    // blob: URL has no extension and .splat is headerless, so Spark can't
+    // identify the local preview — pass the original extension as a `format`
+    // hint. Cloud URLs keep their extension on the swap and don't need it.
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
     definition = {
       class: 'splat-model',
       components: {
         ...baseComponents,
-        splat: `src: ${blobUrl}`
+        splat: `src: ${blobUrl}; format: ${ext}`
       }
     };
   } else {

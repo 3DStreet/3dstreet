@@ -109,9 +109,9 @@ const MeshDetailsModal = ({
   // The asset's processing/transcode jobs (today: the RAD/LOD optimization).
   // One source asset, N jobs — owner-only by rules.
   const [assetJobs, setAssetJobs] = useState([]);
-  // Bumped by "Regenerate thumbnail" to reload the viewer iframe so it re-runs
-  // its capture (the escape hatch for any bad/blank auto-thumbnail).
-  const [captureNonce, setCaptureNonce] = useState(0);
+  // Briefly true after a successful "Recapture thumbnail" click, to flash a
+  // checkmark on the button as feedback (the live capture is otherwise silent).
+  const [thumbCaptured, setThumbCaptured] = useState(false);
 
   const [name, setName] = useState('');
   const [savedName, setSavedName] = useState('');
@@ -233,13 +233,20 @@ const MeshDetailsModal = ({
   // guarantees a thumbnail. Must run while the modal is still open — a ref read
   // in an unmount effect would already be nulled — so it's wired through the
   // explicit close affordances via handleClose, not a cleanup.
-  const captureCurrentFrame = () => {
-    if (!data || data.type !== 'splat' || !isOwner) return;
-    if (data.thumbnailUrl || thumbUploadedRef.current === assetId) return;
+  // Read the live preview iframe's canvas (same-origin), downscale to <=512px,
+  // and upload it as the asset thumbnail. Captures exactly what's on screen —
+  // no iframe reload / file re-download. Shared by the on-close fallback and
+  // the explicit "Recapture thumbnail" button. uploadCapturedThumbnail writes a
+  // fresh thumbnailUrl + emits assetUpdated, so the gallery card refreshes.
+  // Returns: 'ok' (upload kicked off), 'blank' (nothing rendered yet), or
+  // 'unavailable' (canvas not readable).
+  const uploadLiveCanvasThumbnail = () => {
     try {
       const glCanvas =
         iframeRef.current?.contentDocument?.querySelector('canvas');
-      if (!glCanvas || !glCanvas.width || !glCanvas.height) return;
+      if (!glCanvas || !glCanvas.width || !glCanvas.height) {
+        return 'unavailable';
+      }
       const maxDim = 512;
       const scale = Math.min(
         1,
@@ -252,14 +259,10 @@ const MeshDetailsModal = ({
       tmp.height = th;
       const tctx = tmp.getContext('2d');
       tctx.drawImage(glCanvas, 0, 0, tw, th);
-      // The viewer only begins rendering on its first animation frame; if the
-      // user closes before that, the GL canvas is still an uncleared (black)
-      // buffer. Persisting that gives a black thumbnail that then sticks (the
-      // doc has a thumbnailUrl, so the proper offscreen capture never replaces
-      // it). Skip a blank frame and leave the asset thumbnail-less so a later
-      // open — or the viewer's own 3s offscreen capture — can backfill a real
-      // one. Don't set thumbUploadedRef, so this isn't treated as "done".
-      if (isFrameBlank(tctx, tw, th)) return;
+      // The viewer only begins rendering on its first animation frame; before
+      // that the GL canvas is an uncleared (black) buffer. Skip a blank/uniform
+      // frame rather than persist a black thumbnail that then sticks.
+      if (isFrameBlank(tctx, tw, th)) return 'blank';
       thumbUploadedRef.current = assetId;
       tmp.toBlob(
         (blob) => {
@@ -273,9 +276,20 @@ const MeshDetailsModal = ({
         'image/jpeg',
         0.82
       );
+      return 'ok';
     } catch {
-      // iframe not ready / not same-origin — skip the fallback silently.
+      return 'unavailable';
     }
+  };
+
+  // On-close fallback: if the viewer's better auto-framed capture never fired
+  // (user closed before it ran) and the asset still has no thumbnail, persist
+  // whatever the live canvas currently shows. Must run while the modal is still
+  // open — a ref read in an unmount effect would already be nulled.
+  const captureCurrentFrame = () => {
+    if (!data || data.type !== 'splat' || !isOwner) return;
+    if (data.thumbnailUrl || thumbUploadedRef.current === assetId) return;
+    uploadLiveCanvasThumbnail();
   };
 
   const handleClose = () => {
@@ -416,24 +430,25 @@ const MeshDetailsModal = ({
     handleClose();
   };
 
-  // Escape hatch for a bad/blank auto-thumbnail: clear it and reload the viewer
-  // so it re-captures. Clearing thumbUploadedRef + thumbnailUrl re-arms the
-  // capture path (it only uploads when the asset has no thumbnail), and bumping
-  // the nonce remounts the iframe so the viewer runs its capture again.
-  const onRegenerateThumbnail = async () => {
+  // Recapture the thumbnail from the CURRENT live view — no iframe reload / file
+  // re-download. The splat is already rendered in the preview, so we grab that
+  // exact frame (orbit to frame the shot first, then click). uploadCapturedThumbnail
+  // overwrites the thumbnail with a fresh URL + emits assetUpdated, refreshing
+  // the gallery card. thumbUploadedRef is reset first so the forced recapture
+  // isn't skipped as "already done".
+  const onRegenerateThumbnail = () => {
     if (!isOwner || !data) return;
     setError(null);
-    try {
-      await assetsService.updateAsset(assetId, ownerUid, {
-        thumbnailUrl: null
-      });
-      thumbUploadedRef.current = null;
-      setData((prev) => (prev ? { ...prev, thumbnailUrl: null } : prev));
-      setCaptureNonce((n) => n + 1);
-    } catch (err) {
-      console.error('[MeshDetailsModal] regenerate thumbnail failed', err);
-      setError(err.message || 'Could not regenerate thumbnail');
+    thumbUploadedRef.current = null;
+    const result = uploadLiveCanvasThumbnail();
+    if (result !== 'ok') {
+      setError(
+        'Could not capture the current view — wait for the splat to finish rendering, then try again.'
+      );
+      return;
     }
+    setThumbCaptured(true);
+    setTimeout(() => setThumbCaptured(false), 1500);
   };
 
   // Use mousedown, not click: a `click` fires on the common ancestor of
@@ -576,9 +591,7 @@ const MeshDetailsModal = ({
                 // string drives the iframe's load; baking savedName in
                 // would cause the viewer to reload on every Save name
                 // click. The iframe title above is enough for a11y.
-                src={`${viewerPage}?src=${encodeURIComponent(getServedUrl(data))}${
-                  captureNonce ? `&_n=${captureNonce}` : ''
-                }`}
+                src={`${viewerPage}?src=${encodeURIComponent(getServedUrl(data))}`}
               />
             )}
           </div>
@@ -729,27 +742,50 @@ const MeshDetailsModal = ({
                     </IconTooltip>
                   ))}
                 {isOwner && !loading && isSplat && !data?.deleted && (
-                  <IconTooltip label="Regenerate thumbnail">
+                  <IconTooltip
+                    label={
+                      thumbCaptured
+                        ? 'Thumbnail updated'
+                        : 'Set thumbnail from current view'
+                    }
+                  >
                     <button
                       type="button"
                       onClick={onRegenerateThumbnail}
                       disabled={!data}
                       className={styles.iconButton}
-                      aria-label="Regenerate thumbnail"
+                      aria-label="Set thumbnail from current view"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                      >
-                        <path d="M23 4v6h-6" />
-                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                      </svg>
+                      {thumbCaptured ? (
+                        // Brief confirmation: checkmark
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                      ) : (
+                        // Camera: "capture a thumbnail from the live view"
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                          <circle cx="12" cy="13" r="4" />
+                        </svg>
+                      )}
                     </button>
                   </IconTooltip>
                 )}

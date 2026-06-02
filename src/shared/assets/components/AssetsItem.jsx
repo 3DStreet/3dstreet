@@ -194,7 +194,7 @@ const AssetsItem = ({
       {/* Type / source label on top */}
       <div className={styles.itemDetails}>
         <p>
-          {typeLabel} · {sourceLabel}
+          {typeLabel} · {isSplat && item.name ? item.name : sourceLabel}
         </p>
       </div>
 
