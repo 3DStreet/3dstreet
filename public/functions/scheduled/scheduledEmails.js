@@ -1,6 +1,9 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
+const { withJobHealth } = require('./job-health.js');
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 const { isUserProInternal } = require('../token-management.js');
 
 // Postmark API endpoint
@@ -564,22 +567,41 @@ const sendScheduledEmails = functions
   .pubsub
   .schedule('0 9 * * *')  // 9:00 AM PT
   .timeZone('America/Los_Angeles')
-  .onRun(async (context) => {
-    console.log('Starting scheduled email job');
-    const db = admin.firestore();
-    const allResults = [];
+  .onRun(
+    withJobHealth(
+      'sendScheduledEmails',
+      {
+        schedule: '0 9 * * *',
+        timeZone: 'America/Los_Angeles',
+        expectedIntervalMs: DAY_MS,
+        degradedKeys: ['errors']
+      },
+      async () => {
+        console.log('Starting scheduled email job');
+        const db = admin.firestore();
+        const allResults = [];
 
-    // Process each email type
-    for (const [emailTypeKey, emailType] of Object.entries(EMAIL_TYPES)) {
-      console.log(`Processing email type: ${emailTypeKey}`);
-      const results = await processEmailType(db, emailTypeKey, emailType);
-      allResults.push(results);
-      console.log(`Completed ${emailTypeKey}:`, JSON.stringify(results));
-    }
+        // Process each email type
+        for (const [emailTypeKey, emailType] of Object.entries(EMAIL_TYPES)) {
+          console.log(`Processing email type: ${emailTypeKey}`);
+          const results = await processEmailType(db, emailTypeKey, emailType);
+          allResults.push(results);
+          console.log(`Completed ${emailTypeKey}:`, JSON.stringify(results));
+        }
 
-    console.log('Scheduled email job complete:', JSON.stringify(allResults));
-    return { success: true, results: allResults };
-  });
+        console.log('Scheduled email job complete:', JSON.stringify(allResults));
+        // Flatten to top-level counts so the health page shows totals at a
+        // glance and `errors` can drive the degraded (yellow) status.
+        const sent = allResults.reduce((n, r) => n + (r.sent || 0), 0);
+        const processed = allResults.reduce((n, r) => n + (r.processed || 0), 0);
+        const errors = allResults.reduce(
+          (n, r) => n + ((r.skipped && r.skipped.error) || 0),
+          0
+        );
+        return { success: true, sent, processed, errors, results: allResults };
+      }
+    )
+  );
 
 /**
  * HTTP callable function for manual triggering (useful for testing)

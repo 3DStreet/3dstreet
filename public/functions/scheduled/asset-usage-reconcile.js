@@ -18,6 +18,9 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 
 const { PLAN_LIMITS } = require('../asset-quota');
+const { withJobHealth } = require('./job-health.js');
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 const PAGE_SIZE = 1000;
 const FREE_LIMIT_BYTES = PLAN_LIMITS.FREE;
@@ -149,15 +152,29 @@ const reconcileAssetUsage = functions
   .runWith({ timeoutSeconds: 540, memory: '512MB' })
   .pubsub.schedule('0 3 * * 0') // Sunday 03:00 PT
   .timeZone('America/Los_Angeles')
-  .onRun(async () => {
-    console.log('[asset-usage-reconcile] starting weekly reconciliation');
-    const summary = await reconcile({ dryRun: false });
-    console.log(
-      '[asset-usage-reconcile] complete:',
-      JSON.stringify(summary)
-    );
-    return summary;
-  });
+  .onRun(
+    withJobHealth(
+      'reconcileAssetUsage',
+      {
+        schedule: '0 3 * * 0',
+        timeZone: 'America/Los_Angeles',
+        expectedIntervalMs: WEEK_MS,
+        // `drifted`/`corrected` are this job's normal output (it's the safety
+        // net that fixes drift), so they don't degrade status — only a thrown
+        // error (red) matters here.
+        degradedKeys: []
+      },
+      async () => {
+        console.log('[asset-usage-reconcile] starting weekly reconciliation');
+        const summary = await reconcile({ dryRun: false });
+        console.log(
+          '[asset-usage-reconcile] complete:',
+          JSON.stringify(summary)
+        );
+        return summary;
+      }
+    )
+  );
 
 const triggerReconcileAssetUsage = functions
   .runWith({ timeoutSeconds: 540, memory: '512MB' })

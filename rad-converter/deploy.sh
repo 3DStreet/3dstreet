@@ -50,7 +50,7 @@ gcloud run deploy "$SERVICE" \
   --cpu "$CPU" \
   --timeout "$TIMEOUT" \
   --concurrency "$CONCURRENCY" \
-  --set-env-vars "STORAGE_BUCKET=${BUCKET}"
+  --set-env-vars "STORAGE_BUCKET=${BUCKET},SERVICE_REGION=${REGION}"
 
 # --- Cloud Tasks queue retry policy ------------------------------------------
 # build-lod is DETERMINISTIC: a failure (e.g. OOM) repeats identically, so an

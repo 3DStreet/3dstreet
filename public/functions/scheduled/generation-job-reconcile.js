@@ -33,6 +33,9 @@ const {
   cleanupSplatTempFile
 } = require('../replicate.js');
 const { enqueueRadTask } = require('../rad-dispatch.js');
+const { withJobHealth } = require('./job-health.js');
+
+const TEN_MIN_MS = 10 * 60 * 1000;
 const {
   sendPostmarkEmail,
   getUserInfo,
@@ -98,6 +101,10 @@ async function failJob(db, uid, jobRef, job, reason) {
   await jobRef.update({
     status: 'failed',
     error: reason,
+    // The reconciler killed this job (gave-up / stall ceiling), as opposed to the
+    // worker reporting its own failure. Keep them distinguishable for later
+    // analysis: worker-failed jobs have no terminatedBy.
+    terminatedBy: 'reconciler',
     reconciledAt: admin.firestore.FieldValue.serverTimestamp(),
     completedAt: admin.firestore.FieldValue.serverTimestamp()
   });
@@ -428,17 +435,30 @@ const reconcileGenerationJobs = functions
   })
   .pubsub.schedule('*/10 * * * *') // every 10 minutes
   .timeZone('America/Los_Angeles')
-  .onRun(async () => {
-    console.log('[generation-job-reconcile] starting sweep');
-    const summary = await reconcile({ dryRun: false });
-    const notify = await sendReadyNotifications({ dryRun: false });
-    console.log(
-      '[generation-job-reconcile] complete:',
-      JSON.stringify({ ...summary, notify })
-    );
-    escalateIfNeeded(summary, notify);
-    return { ...summary, notify };
-  });
+  .onRun(
+    withJobHealth(
+      'reconcileGenerationJobs',
+      {
+        schedule: '*/10 * * * *',
+        timeZone: 'America/Los_Angeles',
+        expectedIntervalMs: TEN_MIN_MS,
+        degradedKeys: ['gaveUp', 'errored', 'notify.errored']
+      },
+      async () => {
+        console.log('[generation-job-reconcile] starting sweep');
+        const summary = await reconcile({ dryRun: false });
+        const notify = await sendReadyNotifications({ dryRun: false });
+        console.log(
+          '[generation-job-reconcile] complete:',
+          JSON.stringify({ ...summary, notify })
+        );
+        // Still log the ERROR-level ALERT line for Cloud Error Reporting; the
+        // health doc is the at-a-glance view, this is the paging hook.
+        escalateIfNeeded(summary, notify);
+        return { ...summary, notify };
+      }
+    )
+  );
 
 const triggerReconcileGenerationJobs = functions
   .runWith({

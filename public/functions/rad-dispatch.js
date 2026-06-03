@@ -114,6 +114,21 @@ const onSplatAssetCreated = functions.firestore
       return null;
     }
 
+    // Source size up front (cheap Storage metadata read) so the queued job doc
+    // carries inputBytes — lets later analysis correlate convert time/cost with
+    // splat size without re-reading the object. Best-effort: a metadata miss
+    // must not block the conversion.
+    let inputBytes = null;
+    try {
+      const [meta] = await admin.storage().bucket().file(plyPath).getMetadata();
+      inputBytes = Number(meta.size) || null;
+    } catch (err) {
+      console.warn(
+        `[rad-dispatch] could not read size for ${plyPath}:`,
+        (err && err.message) || err
+      );
+    }
+
     const db = admin.firestore();
     const jobId = crypto.randomUUID();
     const jobRef = db
@@ -132,6 +147,7 @@ const onSplatAssetCreated = functions.firestore
       providerJobId: null, // cloudrun has none — the worker owns writeback
       assetId,
       plyPath,
+      inputBytes, // source splat size (null if the metadata read failed)
       tokenCost: 0, // silent backend optimization — never charges the user
       tokenCharged: false,
       refunded: false,
