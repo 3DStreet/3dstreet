@@ -3,6 +3,10 @@
 // Spark library is loaded dynamically to reduce initial bundle size (~500KB)
 let SplatMesh = null;
 let SparkRenderer = null;
+// PagedSplats is needed for local .rad previews: we construct it ourselves from
+// in-memory bytes (see loadSplat) because SplatMesh's paged===true path can't be
+// told a fileType.
+let PagedSplats = null;
 let sparkLoadPromise = null;
 
 /**
@@ -11,7 +15,7 @@ let sparkLoadPromise = null;
  */
 async function loadSparkLibrary() {
   if (SplatMesh && SparkRenderer) {
-    return { SplatMesh, SparkRenderer };
+    return { SplatMesh, SparkRenderer, PagedSplats };
   }
 
   if (!sparkLoadPromise) {
@@ -20,8 +24,9 @@ async function loadSparkLibrary() {
     ).then((module) => {
       SplatMesh = module.SplatMesh;
       SparkRenderer = module.SparkRenderer;
+      PagedSplats = module.PagedSplats;
       console.log('[splat] Spark library loaded');
-      return { SplatMesh, SparkRenderer };
+      return { SplatMesh, SparkRenderer, PagedSplats };
     });
   }
 
@@ -154,7 +159,8 @@ AFRAME.registerComponent('splat', {
 
     try {
       // Dynamically load the Spark library (only loads once, ~500KB)
-      const { SplatMesh: LoadedSplatMesh } = await loadSparkLibrary();
+      const { SplatMesh: LoadedSplatMesh, PagedSplats: LoadedPagedSplats } =
+        await loadSparkLibrary();
       if (loadId !== this.loadId) return;
 
       // Initialize the SparkRenderer if not already done
@@ -181,10 +187,35 @@ AFRAME.registerComponent('splat', {
         ? urlExt
         : this.data.format || undefined;
       const isRad = fileType === 'rad';
+
+      // Local .rad preview (blob: URL): SplatMesh's `paged: true` path builds
+      // PagedSplats with only `{ rootUrl }`, dropping our fileType, and a blob:
+      // URL has no extension to sniff, so PagedSplats throws "Unable to determine
+      // file type" before any fetch. (Cloud .rad URLs are fine: the .rad
+      // extension is detectable and range requests work.) Build PagedSplats
+      // ourselves from the blob's bytes: type comes from the magic bytes and the
+      // single-file RAD is read in-memory (no range requests on a blob), so the
+      // local preview renders immediately. Multi-chunk RAD isn't produced by our
+      // pipeline, so the in-memory path always applies here.
+      let pagedInstance = null;
+      if (isRad && /^blob:/i.test(src) && LoadedPagedSplats) {
+        const fileBytes = new Uint8Array(
+          await (await fetch(src)).arrayBuffer()
+        );
+        if (loadId !== this.loadId) return;
+        pagedInstance = new LoadedPagedSplats({ fileBytes, fileType: 'rad' });
+      }
+
       const splatMesh = new LoadedSplatMesh({
         url: src,
-        ...(fileType ? { fileType } : {}),
-        ...(isRad ? { paged: true } : {}),
+        // fileType is honored by the non-paged loader; for paged it lives on the
+        // PagedSplats instance instead (SplatMesh ignores it there).
+        ...(fileType && !pagedInstance ? { fileType } : {}),
+        ...(pagedInstance
+          ? { paged: pagedInstance }
+          : isRad
+            ? { paged: true }
+            : {}),
         // Fetch progress only. Once bytes are in (loaded === total) the
         // silent processing phase begins, so flip back to indeterminate.
         onProgress: (event) => {

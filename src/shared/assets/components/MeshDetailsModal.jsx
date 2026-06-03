@@ -464,16 +464,40 @@ const MeshDetailsModal = ({
   const isSplat = data?.type === 'splat';
   const viewerPage = isSplat ? '/splat-viewer.html' : '/model-viewer.html';
 
-  // Optimization (transcode) status. A present optimizedSourceUrl means the
-  // streaming variant is ready; otherwise an in-flight job means it's building.
-  // One source asset, N jobs — today just the single RAD/LOD pass.
+  // Source format from the original filename / storage path extension. The
+  // stored MIME is `application/octet-stream` for every splat (.ply/.splat/.spz/
+  // .rad share no registered type), which is meaningless to a user, so show the
+  // real format instead, falling back to the raw MIME only if unrecognized.
+  // KNOWN_FORMATS.rad doubles as the canonical label for the Optimization row.
+  const KNOWN_FORMATS = {
+    ply: 'PLY',
+    splat: 'SPLAT',
+    spz: 'SPZ',
+    rad: 'RAD Streaming Level-of-Detail',
+    ksplat: 'KSPLAT',
+    sog: 'SOG',
+    glb: 'GLB',
+    gltf: 'glTF'
+  };
+  const sourceExt = (data?.originalFilename || data?.storagePath || '')
+    .split(/[?#]/)[0]
+    .split('.')
+    .pop()
+    ?.toLowerCase();
+  const formatLabel =
+    (sourceExt && KNOWN_FORMATS[sourceExt]) || data?.mimeType || '—';
+
+  // Optimization (transcode) status. Only shown when there's actually an
+  // optimized variant or an in-flight job. An uploaded .rad has neither (it's
+  // already the streaming form, which the Format row already says), so no row
+  // appears for it.
   const hasOptimizedVariant = !!data?.optimizedSourceUrl;
   const activeOptimizeJob = assetJobs.find((j) =>
     ['queued', 'running', 'saving'].includes(j.status)
   );
   const optimizationLabel = hasOptimizedVariant
     ? isSplat
-      ? 'Streaming variant ready (RAD/LOD)'
+      ? KNOWN_FORMATS.rad
       : 'Optimized variant ready'
     : activeOptimizeJob
       ? `Optimizing… (${activeOptimizeJob.status})`
@@ -680,8 +704,8 @@ const MeshDetailsModal = ({
                 </div>
               )}
               <div>
-                <span className={styles.metaLabel}>Type:</span>
-                {data?.mimeType || '—'}
+                <span className={styles.metaLabel}>Format:</span>
+                {formatLabel}
               </div>
               <div>
                 <span className={styles.metaLabel}>Uploaded:</span>
