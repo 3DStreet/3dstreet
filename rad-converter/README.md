@@ -27,17 +27,19 @@ The patch (`rad.rs`) makes the per-property encoders return **raw**
 chunk assembly. The output is **byte-identical** to upstream — same bytes,
 same `GZ_LEVEL=6` — so there's no quality question; only wall time changes.
 
-**Measured (4 vCPU, 2.8 GHz Xeon):** 1.27× on a 22.3M-splat file
-(1022s → 805s), 1.16× on a 1.18M-splat file. The full benchmark and the
-profile that motivated it are in
+**Measured (4 vCPU, 2.8 GHz Xeon):** a reliable **1.16× on a 1.18M-splat
+file** (best-of-3, cache-bound). On the 22.3M-splat file the effect is
+**within measurement noise** — that workload has ~25% run-to-run variance
+on a shared VM, so its big-file benefit is unproven here and must be
+measured in prod. Full benchmark, the variance data, and the profile are in
 [`../docs/rad-conversion-perf.md`](../docs/rad-conversion-perf.md).
 
-> **Note:** LOD *construction* (the merge loop) is still single-threaded
-> and is the larger remaining cost. Compression is the part that scales
-> with cores today; parallelizing the merge loop is scoped as follow-up
-> work in the perf doc. A trivial one-line alternative to this patch —
-> `GZ_LEVEL=6 → 3` in `rad.rs` — gets ~1.25× on the big file for +0.4%
-> output size, if you'd prefer a smaller patch to maintain.
+> **Note:** the big workload looks memory-bandwidth-bound (parallelizing
+> across cores didn't reliably help), so the likely real lever is a
+> faster-memory machine, not more cores — measure in prod. This patch is
+> kept because it's byte-identical (zero risk) and helps cache-bound inputs;
+> a one-line `GZ_LEVEL=6 → 3` is a comparable substitute if you'd prefer a
+> smaller patch to maintain.
 
 Re-base on a future Spark tag: clone Spark at the new tag, `git am`
 `patches/*.patch`, resolve any conflicts, regenerate the patch with
