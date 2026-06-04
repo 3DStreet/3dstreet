@@ -229,34 +229,50 @@ export function wasdFollowY(camY, floorNowY, floorDestY, eyeMargin) {
   return Math.max(tracked, floorDestY + eyeMargin); // but keep min clearance
 }
 
-// TASK-024a (D3/D4): pure not-grounded vertical rule for a WASD
-// follow/step-up step. Returns the new camera y.
-//   grounded     -> collision-follow (option-1 math); the flag is a no-op (D2)
-//   option 1     -> collision-follow (terrain/rooftop hug)
-//   option 2     -> max(travelHeightDest + H, collisionFloorDest + eye)
-//   option 3     -> max(H,                    collisionFloorDest + eye)
-// The single `max(target(H), collisionFloor + eye)` IS the obstacle-lift +
-// automatic drop-back (D4); no path history. `floorNowY` is unused by the
-// held-height branches (collision-follow needs it) — kept so the grounded /
-// option-1 branch is exact. `H == null` falls back to collision-follow so the
-// helper never returns NaN (defensive; the caller lazily captures H first).
-// Pure — never touches `grounded` (terrain rising must not ground, D1/H3).
+// TASK-024a (DEC-A/DEC-B): pure vertical rule for a WASD follow/step-up step.
+// Returns the new camera y.
+//   grounded (or H == null) -> collision-follow (`wasdFollowY`): walking hugs
+//     the surface directly, NOT rate-limited (terrain follow is immediate).
+//   not-grounded            -> "option 3": ease toward the absolute cruise
+//     target `max(H, collisionFloorDest + eye)`, rate-limited per tick.
+//
+// The 3-way toggle and options 1 & 2 are RETIRED (live A/B: they jumped the
+// camera by the full building height when crossing onto a footprint). Option 3
+// is the sole flying behaviour: the forward ray blocks approach to any building
+// taller than flight height, so the clamp only ever lifts ≤ eye-margin.
+//
+// DEC-B — the vertical move is ANIMATED in BOTH directions. Rather than snap
+// `newY = target`, we step toward it by at most `maxStep = rate * dtSeconds`
+// this frame, so the lift onto a roof (up) and the settle back to cruise H
+// (down) both ease over ~0.3-0.4 s and compose with continuous per-frame WASD
+// (NOT a discrete tween that would fight the held-key motion). A hard safety
+// floor (`>= collisionFloorDest`) after the rate clamp guarantees a fast
+// cross-on can never clip the roof mid-ease.
+//
+// `floorNowY` is consumed by the grounded collision-follow branch (preserve
+// AGL). `H == null` falls back to collision-follow so the helper never returns
+// NaN (defensive; the caller lazily captures H first). Pure — never touches
+// `grounded` (terrain rising must not ground, D1/H3).
 export function wasdVerticalY({
-  option,
   grounded,
   camY,
   floorNowY,
   collisionFloorDestY,
-  travelHeightDestY,
   H,
-  eyeMargin
+  eyeMargin,
+  dtSeconds,
+  rateMps
 }) {
-  if (grounded || option === 1 || H == null) {
+  if (grounded || H == null) {
     return wasdFollowY(camY, floorNowY, collisionFloorDestY, eyeMargin);
   }
-  const floorClamp = collisionFloorDestY + eyeMargin;
-  const target = option === 2 ? travelHeightDestY + H : H;
-  return Math.max(target, floorClamp); // SPEC D4 single clamp
+  // Not grounded: ease toward the option-3 absolute target, rate-limited.
+  const target = Math.max(H, collisionFloorDestY + eyeMargin);
+  const maxStep = rateMps * dtSeconds;
+  const delta = THREE.MathUtils.clamp(target - camY, -maxStep, maxStep);
+  const eased = camY + delta;
+  // Hard safety floor: never clip the roof mid-ease.
+  return Math.max(eased, collisionFloorDestY);
 }
 
 // TASK-024a (D1): pure initial-grounded predicate from a load/teleport pose.

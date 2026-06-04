@@ -57,6 +57,7 @@ import {
   WASD_MIN_SPEED,
   WASD_MAX_SPEED,
   WASD_RAMP_UP_MS,
+  WASD_VERTICAL_LIFT_RATE_MPS,
   PLAN_VIEW_DURATION_MS,
   LB_PAN_MAX_STEP_METRES,
   TILT_THRESHOLD_DEFAULT_DEGREES,
@@ -323,14 +324,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     //     reaching the surface; never because terrain rose under us (D1/H3).
     //   _H — SPEC D4 cruise-height scalar; null = not yet captured.
     //     Captured at every un-ground edge; lazily seeded on the first
-    //     not-grounded WASD step. Option 2 holds it ABOVE travel height;
-    //     option 3 holds it as an absolute y.
-    //   _followOption — SPEC D3 not-grounded vertical rule selector
-    //     (1 = collision-follow / shipped behaviour-1 default; 2 = travel-
-    //     follow; 3 = absolute). Drivable via nav-experimental-tuning.
+    //     not-grounded WASD step. Held as an absolute y (DEC-A: option 3 is
+    //     the sole flying behaviour — the 3-way toggle and options 1/2 are
+    //     retired).
     this._grounded = false;
     this._H = null;
-    this._followOption = 1;
 
     // CR-D1: idle-gate cache for the per-frame enclosure probe. A stationary
     // camera's enclosure/legit/cue state cannot change, so the whole-scene
@@ -577,18 +575,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (typeof deg !== 'number' || !isFinite(deg)) return;
     this._tiltThreshold = THREE.MathUtils.clamp(deg, 5, 45);
     this._maybeEmitLbModeChange();
-  }
-
-  // TASK-024a (D3/D7): set the not-grounded follow option (1|2|3). Rejects
-  // out-of-range / non-finite input (a no-op, leaving the prior option). When
-  // flying, null `_H` so the next deliberate vertical key re-seats it — an
-  // option-2 'height above travel' must not be reused as an option-3 'absolute'
-  // (a mid-flight switch may jump the camera; acceptable per D7).
-  setFollowOption(opt) {
-    const n = Math.round(opt);
-    if (n !== 1 && n !== 2 && n !== 3) return;
-    this._followOption = n;
-    if (!this._grounded) this._H = null;
   }
 
   // TASK-010 (D-LT-3 / #6): live-tunable Map-pivot bounds radius (metres
@@ -1426,20 +1412,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._H = null; // re-capture on next un-ground (D4)
   }
 
-  // TASK-024a (D4): capture the cruise height `H` from the current pose.
-  // Option 2 holds height ABOVE the travel height (ground beneath buildings);
-  // every other option holds the absolute y. Called AFTER `_grounded` is set
-  // false, at every un-ground edge, and again on deliberate vertical nav while
-  // already not-grounded (that re-capture IS the D4 update). Option 1 never
-  // reads `H` — capturing the absolute value there is a harmless no-op.
+  // TASK-024a (D4 / DEC-A): capture the cruise height `H` from the current
+  // pose. Held as the absolute camera y (option 3 is the sole flying
+  // behaviour). Called AFTER `_grounded` is set false, at every un-ground
+  // edge, and again on deliberate vertical nav while already not-grounded
+  // (that re-capture IS the D4 update).
   _captureH() {
-    const cam = this._camera;
-    if (this._followOption === 2) {
-      const travel = this._travelHeightFloorYBelow();
-      this._H = cam.position.y - travel; // height above travel height
-    } else {
-      this._H = cam.position.y; // absolute (option 3)
-    }
+    this._H = this._camera.position.y; // absolute cruise height (option 3)
   }
 
   // TASK-024a (1.3.2 / PA-2): shared net-upward-rise un-ground check. Given
@@ -1977,10 +1956,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     );
   }
 
-  // TASK-024a (3.2): travel-height floor at an arbitrary XZ column. Extracted
-  // from _travelHeightFloorYBelow (which now delegates with the camera column)
-  // so option 2 can sample the WASD DESTINATION column. Same math: segment-
-  // only first, else the ±2 m 3×3 grid minimum over tiles.
+  // TASK-024 / TASK-024a: travel-height floor at an arbitrary XZ column.
+  // `_travelHeightFloorYBelow` delegates here with the camera column for WASD
+  // *speed* scaling (height above the land beneath buildings). Same math:
+  // segment-only first, else the ±2 m 3×3 grid minimum over tiles.
+  // (The retired option-2 destination-column sampler used this too; DEC-A.)
   _travelHeightFloorAt(cx, cz) {
     // Segment-only first (3DStreet land-floor).
     const seg = this._floorYBelowAt(cx, cz, {
@@ -2528,21 +2508,23 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this.center.z += move.z;
 
     if (outcome.kind === 'step-up' || outcome.kind === 'follow') {
-      // TASK-024a (3.3 / 2.3): not-grounded vertical rule. Grounded and
-      // option 1 collision-follow (preserve AGL, push-up clamp — shipped
-      // behaviour-1); options 2/3 hold a cruise height while not-grounded.
+      // TASK-024a (DEC-A/DEC-B): grounded collision-follow (preserve AGL,
+      // push-up clamp — walking hugs the surface); not-grounded eases toward
+      // the option-3 absolute target `max(H, collisionFloorDest + eye)`,
+      // rate-limited per tick so the lift/settle composes with continuous WASD.
       // Lazily seed H if we are flying but never captured it (scene loaded
-      // not-grounded, or option switched mid-flight). The helper only READS H.
+      // not-grounded). The helper only READS H. `distMetres` (== deltaMs/1000)
+      // is the per-tick dt in seconds; reuse it for the rate limit.
       if (!this._grounded && this._H == null) this._captureH();
       const newY = wasdVerticalY({
-        option: this._followOption,
         grounded: this._grounded,
         camY: camera.position.y,
         floorNowY: outcome.floorNowY,
         collisionFloorDestY: outcome.floorDestY,
-        travelHeightDestY: outcome.travelDestY,
         H: this._H,
-        eyeMargin: EYE_MARGIN_METRES
+        eyeMargin: EYE_MARGIN_METRES,
+        dtSeconds: distMetres,
+        rateMps: WASD_VERTICAL_LIFT_RATE_MPS
       });
       const dy = newY - camera.position.y;
       camera.position.y = newY;
@@ -2582,15 +2564,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const destZ = camera.position.z + dirZ * reach;
     const floorDest = this._collisionFloorAt(destX, destZ);
 
-    // TASK-024a (3.2): destination-column TRAVEL height, for option-2's
-    // `travelHeight + H` hold. Gated to `option===2 && !grounded` to avoid the
-    // extra ~9-ray 3×3 grid (D6 perf) on every step in every other mode; null
-    // otherwise (the helper's option-2 branch is the only reader).
-    const travelDestY =
-      this._followOption === 2 && !this._grounded
-        ? this._travelHeightFloorAt(destX, destZ)
-        : null;
-
     // Forward ray: from the camera along the horizontal travel direction,
     // length `reach`, first accepted solid-floor hit (the wall/façade/cliff
     // ahead).
@@ -2616,16 +2589,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         return {
           kind: 'follow',
           floorDestY: floorDest.y,
-          floorNowY: floorNow.y,
-          travelDestY
+          floorNowY: floorNow.y
         };
       }
     }
     return {
       kind: outcome,
       floorDestY: floorDest.y,
-      floorNowY: floorNow.y,
-      travelDestY
+      floorNowY: floorNow.y
     };
   }
 
