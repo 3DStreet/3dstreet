@@ -1278,6 +1278,17 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
       if (job.status === 'succeeded') {
         return; // already saved
       }
+      // A job the reconciler (or a prior failure path) already finalized as
+      // failed/canceled — and refunded the token for — must NOT be resurrected
+      // into success by a late provider report. Doing so would hand the user a
+      // free asset after returning their token. Stay terminal.
+      if (
+        job.status === 'failed' ||
+        job.status === 'canceled' ||
+        job.refunded
+      ) {
+        return;
+      }
       if (job.status === 'saving') {
         const startedAt =
           job.savingStartedAt && job.savingStartedAt.toMillis
@@ -1299,10 +1310,20 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
     if (!claimed) {
       const snap = await jobRef.get();
       const j = snap.data() || {};
+      // Already saved by a racing caller.
+      if (j.status === 'succeeded') {
+        return { status: 'succeeded', splat_url: j.splatUrl, assetId: j.assetId };
+      }
+      // Already finalized as failed/canceled (e.g. the reconciler gave up and
+      // refunded) — surface the terminal status so the client stops polling
+      // instead of waiting on a save that will never come.
+      if (j.status === 'failed' || j.status === 'canceled') {
+        return { status: j.status, assetId: j.assetId, error: j.error };
+      }
       // A live save is in progress — report it as still running so the client
       // keeps polling; it'll flip to 'succeeded' shortly.
       return {
-        status: j.status === 'succeeded' ? 'succeeded' : 'running',
+        status: 'running',
         splat_url: j.splatUrl,
         assetId: j.assetId,
         error: j.error
