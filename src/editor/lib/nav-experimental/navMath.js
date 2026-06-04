@@ -11,7 +11,14 @@ import {
   MAX_TILT_DEGREES,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
-  SWOOP_PHASE2_STEP
+  SWOOP_PHASE2_STEP,
+  EYE_MARGIN_METRES,
+  BLOCK_SLOPE_MIN_DEGREES,
+  BLOCK_HEIGHT_MIN_METRES,
+  WASD_STEP_HYSTERESIS_METRES,
+  WASD_FACING_MIN,
+  DISCOVERABILITY_CUE_SHOW_METRES,
+  DISCOVERABILITY_CUE_HIDE_METRES
 } from './constants.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -107,66 +114,136 @@ export function clampOrbitRadius(camPos, pivot, minR, maxR, fallbackDir) {
   return new THREE.Vector3(pivot.x, pivot.y, pivot.z);
 }
 
-// TASK-010 (D4): underground guard for the Map-mode orbit. Keeps an
-// orbiting camera at or above `floorY` **without changing the orbit
-// radius and without changing the view orientation**. Let
-// `R = |pos − centre|` (orbit radius), `dy = floorY − centre.y`.
-//   pos.y >= floorY: unchanged.
-//   else: re-project `pos` onto the orbit sphere (centre `centre`,
-//     radius `R`) at the floor height, keeping the same azimuth:
-//       a   = atan2(pos.z − centre.z, pos.x − centre.x)
-//       rho = sqrt(R² − dy²)              (the floor-circle radius)
-//       newPos = (centre.x + rho·cos a, floorY, centre.z + rho·sin a)
-//     and shift lookTarget by the same delta so the view direction
-//     (lookTarget − pos) is bit-identical → orientation unchanged.
-// Re-projecting (rather than flattening pos.y) preserves the radius, so
-// the per-frame `rotate → clamp` pipeline neither shrinks the orbit nor
-// spirals (shiftRotateStep re-derives the offset from camera.position
-// each move and preserves |offset|; this preserves it too). Idempotent:
-// applied twice with no rotation between, the second call sees
-// pos.y === floorY (not < floorY) and is a no-op.
-//   Camera exactly over the pivot (pos.x===centre.x, pos.z===centre.z):
-//     atan2(0,0) === 0 in JS, so the re-projection lands at azimuth 0 —
-//     arbitrary but valid; only reachable in the near-degenerate
-//     straight-down-tiny-radius case.
-//   Degenerate (R < |dy|, sphere never reaches floorY — only possible
-//     for a high pivot with a tiny radius, which D5's minR makes
-//     vanishingly rare): fall back to a plain pos.y = floorY clamp with
-//     the same lookTarget delta. Accept the small radius change.
-// Returns { pos, lookTarget }, both new THREE.Vector3.
-export function applyGroundFloor(pos, lookTarget, centre, floorY) {
-  if (pos.y >= floorY) {
-    return {
-      pos: new THREE.Vector3(pos.x, pos.y, pos.z),
-      lookTarget: new THREE.Vector3(lookTarget.x, lookTarget.y, lookTarget.z)
-    };
-  }
-  const R = Math.hypot(pos.x - centre.x, pos.y - centre.y, pos.z - centre.z);
-  const dy = floorY - centre.y;
-  let newPos;
-  if (R < Math.abs(dy)) {
-    // Degenerate: sphere never reaches the floor. Plain y-clamp.
-    newPos = new THREE.Vector3(pos.x, floorY, pos.z);
-  } else {
-    const a = Math.atan2(pos.z - centre.z, pos.x - centre.x);
-    const rho = Math.sqrt(R * R - dy * dy);
-    newPos = new THREE.Vector3(
-      centre.x + rho * Math.cos(a),
-      floorY,
-      centre.z + rho * Math.sin(a)
+// TASK-024 (D1/N2/N3): WASD forward-ray step classifier. Pure decision —
+// given the collision floor under the camera now and at the destination
+// column, plus the first solid-floor forward-ray hit, decide whether the
+// horizontal step is blocked, steps up onto a ledge, follows the surface,
+// or hovers off a drop. Steepness is read from the FORWARD-ray hit normal
+// (the wall the ray actually struck), never a lone destination-column
+// normal.
+//
+// Inputs:
+//   floorNow  — { y, normal? } collision floor under the camera now.
+//   floorDest — { y, normal? } collision floor at the destination column.
+//   forwardHit — { hit, dist?, normalY?, normalH? }: the first solid-floor
+//     hit along the horizontal travel ray. `normalY` is the world normal's
+//     y-component, `normalH` a THREE.Vector3-like horizontal component (for
+//     the facing test). `{ hit: false }` when the forward ray is clear.
+//   reach     — forward-ray length this frame (stepThisFrame + radius),
+//     used to make the down-step decision reach-invariant (N2-b).
+//   targetDir — { x, z } normalized horizontal travel direction (for the
+//     facing dot, N3).
+//   currentEnclosed — true if the camera's own column is enclosed (D5 /
+//     WE-13): never block, always follow (drive out).
+//   lastBlocked — previous frame's block state, for a small height
+//     hysteresis dead-band (WE-3b). Never holds a block when the forward
+//     ray is clear or non-facing.
+// Returns 'block' | 'step-up' | 'follow' | 'hover'.
+export function classifyWasdStep({
+  floorNow,
+  floorDest,
+  forwardHit,
+  reach,
+  targetDir,
+  currentEnclosed,
+  lastBlocked
+}) {
+  // WE-13 / H2: a camera inside a building must be able to drive out.
+  if (currentEnclosed) return 'follow';
+
+  const delta = floorDest.y - floorNow.y;
+  const slopeMinRad = BLOCK_SLOPE_MIN_DEGREES * DEG2RAD;
+
+  // Forward-ray facing test (N3): only a wall that FACES travel can block.
+  // A grazing/tangential skim has its normal ~perpendicular to travel.
+  let facing = false;
+  let forwardSteep = false;
+  if (forwardHit && forwardHit.hit) {
+    const nh = forwardHit.normalH;
+    if (nh && targetDir) {
+      // dot(travelDir, -wallNormalH). Normalize the horizontal normal.
+      const nhLen = Math.hypot(nh.x, nh.z);
+      if (nhLen > 1e-6) {
+        const dot =
+          targetDir.x * (-nh.x / nhLen) + targetDir.z * (-nh.z / nhLen);
+        facing = dot >= WASD_FACING_MIN;
+      }
+    }
+    const ny = THREE.MathUtils.clamp(
+      forwardHit.normalY != null ? forwardHit.normalY : 1,
+      -1,
+      1
     );
+    forwardSteep = Math.acos(ny) >= slopeMinRad;
   }
-  const delta = new THREE.Vector3(
-    newPos.x - pos.x,
-    newPos.y - pos.y,
-    newPos.z - pos.z
-  );
-  const newLookTarget = new THREE.Vector3(
-    lookTarget.x + delta.x,
-    lookTarget.y + delta.y,
-    lookTarget.z + delta.z
-  );
-  return { pos: newPos, lookTarget: newLookTarget };
+
+  // Up-step block (N3 hysteresis on the height threshold only): forward ray
+  // hit a near-vertical FACING surface AND the destination floor rises by
+  // at least the block height. The dead-band only nudges the height test;
+  // a clear/non-facing forward ray forces a pass regardless of lastBlocked.
+  const heightThreshold = lastBlocked
+    ? BLOCK_HEIGHT_MIN_METRES - WASD_STEP_HYSTERESIS_METRES
+    : BLOCK_HEIGHT_MIN_METRES;
+  if (forwardSteep && facing && delta >= heightThreshold) {
+    return 'block';
+  }
+
+  // No block — a TOTAL split over the remaining cases (N2-a / N2-b).
+  if (delta > 0) {
+    // Every non-blocked up-step mounts the step/ledge (step-up == follow in
+    // y outcome). Catch-all; cannot fall through (N2-a).
+    return 'step-up';
+  }
+  if (delta < 0) {
+    // Down-step: hover iff the descent is BOTH steep (angle, reach-invariant
+    // — N2-b) AND a real drop. Else follow (gentle ramps follow at any
+    // fly-speed; WE-4 vs WE-5).
+    const descentAngle = Math.atan2(-delta, Math.max(reach, 1e-6));
+    if (descentAngle >= slopeMinRad && -delta >= BLOCK_HEIGHT_MIN_METRES) {
+      return 'hover';
+    }
+    return 'follow';
+  }
+  // Flat.
+  return 'follow';
+}
+
+// TASK-024 (3d): pure precedence decision for the Space fall/pop key.
+// States overlap (enclosed + looking down), so order is load-bearing:
+//   1. enclosed             -> 'pop'   (wins regardless of tilt)
+//   2. elevated + down      -> 'swoop'
+//   3. elevated + ~horiz    -> 'fall'
+//   no surface below        -> 'noop'
+// `floorY` is the collision floor below (null/undefined = probe miss).
+// `aboveFloor` lets the caller decide "elevated" (camY - floorY > margin).
+export function classifyFallAction({ enclosed, camY, floorY, tiltDeg }) {
+  if (enclosed) return 'pop';
+  if (floorY == null || !isFinite(floorY)) return 'noop';
+  const agl = camY - floorY;
+  if (agl <= EYE_MARGIN_METRES) return 'noop'; // already at the surface
+  if (tiltDeg > TILT_THRESHOLD_DEFAULT_DEGREES) return 'swoop';
+  return 'fall';
+}
+
+// TASK-024 (3a / H-B / WE-8a): legit-pose predicate. A pose is legit iff
+// BOTH (not enclosed) AND (camera.y >= collision floor under it + eye
+// margin). Neither alone (enclosure-only accepts grazing under an overhang;
+// floor-only accepts tucked under an arch). Pure.
+export function isLegitPose({ enclosed, camY, floorY }) {
+  if (enclosed) return false;
+  if (floorY == null || !isFinite(floorY)) return true; // no floor = open sky
+  return camY >= floorY + EYE_MARGIN_METRES;
+}
+
+// TASK-024 (D7): discoverability-cue show/hide hysteresis. `prevShown` is
+// the previous shown state; returns the next shown state. Enclosure forces
+// show; otherwise show above SHOW metres, hide below HIDE metres, and hold
+// between (no strobe). Pure.
+export function cueState(prevShown, aglAboveCollisionFloor, enclosed) {
+  if (enclosed) return true;
+  if (aglAboveCollisionFloor > DISCOVERABILITY_CUE_SHOW_METRES) return true;
+  if (aglAboveCollisionFloor < DISCOVERABILITY_CUE_HIDE_METRES) return false;
+  return prevShown;
 }
 
 // Synthetic wheel-zoom anchor for the low-tilt branch (per
@@ -274,13 +351,25 @@ export function phase2NextElevation(yAgl, sign, alpha = SWOOP_PHASE2_STEP) {
 // Tilt clamp: the pitch is reduced so the resulting view tilt stays in
 // [MIN_TILT_DEGREES, MAX_TILT_DEGREES]. The same clamped pitch drives
 // both position and view, so they stay consistent.
+//
+// TASK-024 (D8/C3): optional `floorY` adds a reversible underground guard
+// for the Map-orbit regime. The constraint is on the RESULTING camera
+// height (`pos.y >= floorY + EYE_MARGIN_METRES`), not on view-tilt —
+// `shiftRotateStep`'s pivot sits under the cursor (not screen-centre), so
+// view-tilt and the position-elevation angle are decoupled and the clean
+// asin→tilt substitution is only exact when the camera looks along the
+// offset. We therefore clamp on `pos.y` by numerically tightening the
+// down-tilt input bound (capping the *input* tilt, so over-drag past the
+// floor never accumulates → reversing the drag retraces exactly). The
+// street regime (rotate-in-place) passes no `floorY`.
 export function shiftRotateStep({
   camPos,
   viewDir,
   centre,
   dxPx,
   dyPx,
-  speed
+  speed,
+  floorY
 }) {
   const WORLD_UP = new THREE.Vector3(0, 1, 0);
   const view = new THREE.Vector3(viewDir.x, viewDir.y, viewDir.z).normalize();
@@ -300,35 +389,59 @@ export function shiftRotateStep({
   const MIN_TILT = MIN_TILT_DEGREES * DEG2RAD;
   const MAX_TILT = MAX_TILT_DEGREES * DEG2RAD;
   const wantTilt = curTilt + dyPx * speed; // drag-down (+dyPx) → tilt down
-  const clampedTilt = THREE.MathUtils.clamp(wantTilt, MIN_TILT, MAX_TILT);
-  const dTilt = clampedTilt - curTilt;
+  let clampedTilt = THREE.MathUtils.clamp(wantTilt, MIN_TILT, MAX_TILT);
 
-  // (3) Compose the single rotation R = yaw(worldUp) ∘ pitch(right).
-  const R = new THREE.Quaternion().setFromAxisAngle(WORLD_UP, dTheta);
-  if (rightLen > 1e-6 && dTilt !== 0) {
-    right.multiplyScalar(1 / rightLen);
-    // Rotation about `right` by β changes tilt by −β, so β = −dTilt.
-    const qPitch = new THREE.Quaternion().setFromAxisAngle(right, -dTilt);
-    R.multiply(qPitch);
+  // Build the rotated pose for a candidate absolute tilt value. Returns
+  // { pos, lookTarget } applying the SAME single rotation R to the offset
+  // and the view dir.
+  const evalAtTilt = (tiltValue) => {
+    const dTilt = tiltValue - curTilt;
+    const R = new THREE.Quaternion().setFromAxisAngle(WORLD_UP, dTheta);
+    if (rightLen > 1e-6 && dTilt !== 0) {
+      const r = right.clone().multiplyScalar(1 / rightLen);
+      const qPitch = new THREE.Quaternion().setFromAxisAngle(r, -dTilt);
+      R.multiply(qPitch);
+    }
+    const offset = new THREE.Vector3(
+      camPos.x - centre.x,
+      camPos.y - centre.y,
+      camPos.z - centre.z
+    ).applyQuaternion(R);
+    const pos = new THREE.Vector3(
+      centre.x + offset.x,
+      centre.y + offset.y,
+      centre.z + offset.z
+    );
+    const newView = view.clone().applyQuaternion(R);
+    const lookTarget = new THREE.Vector3(
+      pos.x + newView.x,
+      pos.y + newView.y,
+      pos.z + newView.z
+    );
+    return { pos, lookTarget };
+  };
+
+  // TASK-024 (D8): numeric down-tilt floor bound. Tilting further down
+  // (larger tilt) on an above-pivot orbit lowers the camera. If the wanted
+  // tilt would dip `pos.y` below `floorY + EYE_MARGIN`, bisect between the
+  // current tilt (known clear — the camera is there now, presumed legit)
+  // and the wanted tilt to find the lowest input tilt that keeps the
+  // resulting height at or above the bound.
+  if (floorY != null && isFinite(floorY) && clampedTilt > curTilt) {
+    const bound = floorY + EYE_MARGIN_METRES;
+    const candidate = evalAtTilt(clampedTilt);
+    if (candidate.pos.y < bound) {
+      // Tilting down breaches the floor. Bisect [curTilt, clampedTilt].
+      let lo = curTilt; // assumed to clear the bound (current pose)
+      let hi = clampedTilt; // breaches the bound
+      for (let i = 0; i < 24; i++) {
+        const mid = (lo + hi) / 2;
+        if (evalAtTilt(mid).pos.y >= bound) lo = mid;
+        else hi = mid;
+      }
+      clampedTilt = lo;
+    }
   }
 
-  // (4) Apply the *same* R to the position offset and the view dir.
-  const offset = new THREE.Vector3(
-    camPos.x - centre.x,
-    camPos.y - centre.y,
-    camPos.z - centre.z
-  ).applyQuaternion(R);
-  const pos = new THREE.Vector3(
-    centre.x + offset.x,
-    centre.y + offset.y,
-    centre.z + offset.z
-  );
-  const newView = view.clone().applyQuaternion(R);
-  const lookTarget = new THREE.Vector3(
-    pos.x + newView.x,
-    pos.y + newView.y,
-    pos.z + newView.z
-  );
-
-  return { pos, lookTarget };
+  return evalAtTilt(clampedTilt);
 }

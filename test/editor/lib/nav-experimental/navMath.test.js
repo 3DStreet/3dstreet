@@ -5,12 +5,15 @@ import {
   decideLbMode,
   decideDragModeSwitch,
   clampOrbitRadius,
-  applyGroundFloor,
   computeLowTiltWheelHit,
   shiftRotateStep,
   decideSwoopPhase,
   phase2TargetTilt,
-  phase2NextElevation
+  phase2NextElevation,
+  classifyWasdStep,
+  classifyFallAction,
+  isLegitPose,
+  cueState
 } from '../../../../src/editor/lib/nav-experimental/navMath.js';
 import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
@@ -18,7 +21,10 @@ import {
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
   SWOOP_PHASE2_STEP,
-  SWOOP_PHASE2_FLOOR_SNAP_METRES
+  SWOOP_PHASE2_FLOOR_SNAP_METRES,
+  EYE_MARGIN_METRES,
+  BLOCK_HEIGHT_MIN_METRES,
+  WASD_STEP_HYSTERESIS_METRES
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
 
 if (!globalThis.THREE) globalThis.THREE = THREE;
@@ -167,95 +173,262 @@ describe('clampOrbitRadius', () => {
   });
 });
 
-describe('applyGroundFloor', () => {
-  it('leaves a camera above the floor unchanged', () => {
-    const pos = new THREE.Vector3(10, 5, 0);
-    const lookTarget = new THREE.Vector3(0, 5, 0);
-    const centre = new THREE.Vector3(0, 0, 0);
-    const out = applyGroundFloor(pos, lookTarget, centre, 0.5);
-    expect(out.pos.x).toBeCloseTo(10, 6);
-    expect(out.pos.y).toBeCloseTo(5, 6);
-    expect(out.pos.z).toBeCloseTo(0, 6);
-    expect(out.lookTarget.x).toBeCloseTo(0, 6);
+// --- TASK-024 classifyWasdStep (forward-ray 4-way classifier) ---
+//
+// `forwardHit` = { hit, normalY, normalH } — the first solid-floor hit on
+// the forward ray. `normalH` is the horizontal component of the world
+// normal. The facing test uses dot(targetDir, -normalH_normalized).
+describe('classifyWasdStep', () => {
+  // A wall facing -X (camera travelling +X into it): outward normal +X, so
+  // normalH = (1, 0, 0); travelDir +X → dot(targetDir, -normalH) = -1?  No:
+  // the wall the camera walks INTO faces back toward the camera, normal
+  // points toward the camera = -X. So a +X-travelling camera meets a wall
+  // whose outward normal is -X → normalH = (-1, 0, 0); dot(+X, -(-X)) = +1.
+  const FACING_WALL = { hit: true, normalY: 0, normalH: { x: -1, z: 0 } };
+  const travelPlusX = { x: 1, z: 0 };
+
+  it('blocks a facing near-vertical wall with a tall up-step', () => {
+    expect(
+      classifyWasdStep({
+        floorNow: { y: 0 },
+        floorDest: { y: 2 }, // +2 m ≥ 1.5
+        forwardHit: FACING_WALL,
+        reach: 0.8,
+        targetDir: travelPlusX,
+        currentEnclosed: false,
+        lastBlocked: false
+      })
+    ).toBe('block');
   });
 
-  it('re-projects below-floor pos onto the orbit sphere preserving radius', () => {
-    // Camera dipped below the floor while orbiting a ground-level pivot.
-    const centre = new THREE.Vector3(0, 0, 0);
-    const R = 10;
-    // Pos on the sphere, below floor: pick a point at y = -3, on the
-    // sphere of radius 10 about origin. rho_old = sqrt(100 - 9) ≈ 9.539.
-    const yPos = -3;
-    const rhoOld = Math.sqrt(R * R - yPos * yPos);
-    const pos = new THREE.Vector3(rhoOld, yPos, 0);
-    const lookTarget = new THREE.Vector3(0, yPos, 0); // view dir = -X
-    const floorY = 0.5;
-    const out = applyGroundFloor(pos, lookTarget, centre, floorY);
-    // Radius preserved.
-    expect(out.pos.distanceTo(centre)).toBeCloseTo(R, 5);
-    // Pinned to the floor.
-    expect(out.pos.y).toBeCloseTo(floorY, 5);
-    // View direction preserved (lookTarget - pos identical).
-    const dOld = new THREE.Vector3().subVectors(lookTarget, pos);
-    const dNew = new THREE.Vector3().subVectors(out.lookTarget, out.pos);
-    expect(dNew.x).toBeCloseTo(dOld.x, 6);
-    expect(dNew.y).toBeCloseTo(dOld.y, 6);
-    expect(dNew.z).toBeCloseTo(dOld.z, 6);
+  it('steps up a steep but short kerb (forward hit steep, delta < 1.5)', () => {
+    expect(
+      classifyWasdStep({
+        floorNow: { y: 0 },
+        floorDest: { y: 0.2 }, // kerb, well under 1.5
+        forwardHit: FACING_WALL,
+        reach: 0.8,
+        targetDir: travelPlusX,
+        currentEnclosed: false,
+        lastBlocked: false
+      })
+    ).toBe('step-up');
   });
 
-  it('is idempotent (feeding the output back in is a no-op)', () => {
-    const centre = new THREE.Vector3(0, 0, 0);
-    const R = 10;
-    const yPos = -3;
-    const rhoOld = Math.sqrt(R * R - yPos * yPos);
-    const pos = new THREE.Vector3(rhoOld, yPos, 0);
-    const lookTarget = new THREE.Vector3(0, yPos, 0);
-    const floorY = 0.5;
-    const once = applyGroundFloor(pos, lookTarget, centre, floorY);
-    const twice = applyGroundFloor(once.pos, once.lookTarget, centre, floorY);
-    expect(twice.pos.x).toBeCloseTo(once.pos.x, 6);
-    expect(twice.pos.y).toBeCloseTo(once.pos.y, 6);
-    expect(twice.pos.z).toBeCloseTo(once.pos.z, 6);
-    expect(twice.lookTarget.x).toBeCloseTo(once.lookTarget.x, 6);
+  it('steps up a small walkable rise with a clear forward ray', () => {
+    expect(
+      classifyWasdStep({
+        floorNow: { y: 0 },
+        floorDest: { y: 0.3 },
+        forwardHit: { hit: false },
+        reach: 0.8,
+        targetDir: travelPlusX,
+        currentEnclosed: false,
+        lastBlocked: false
+      })
+    ).toBe('step-up');
   });
 
-  it('falls back to a plain y-clamp when the sphere never reaches the floor', () => {
-    // Degenerate guard: pos.y < floorY (so the clamp engages) AND
-    // R < |floorY − centre.y| (the orbit sphere never reaches the floor
-    // height). Reachable only with a high floor / low pivot and a tiny
-    // radius. Construct it directly: centre at ground, floorY well above
-    // pos, pos a short distance from centre.
-    //   centre.y = 0, floorY = 5, pos = (0.2, 3, 0):
-    //   pos.y (3) < floorY (5) ✓;  dy = 5;  R = hypot(0.2, 3) ≈ 3.007 < 5 ✓
-    const centre = new THREE.Vector3(0, 0, 0);
-    const floorY = 5;
-    const pos = new THREE.Vector3(0.2, 3, 0);
-    const lookTarget = new THREE.Vector3(0.2 - 1, 3, 0); // view dir = -X
-    const out = applyGroundFloor(pos, lookTarget, centre, floorY);
-    // Degenerate branch: plain y-clamp, x/z preserved.
-    expect(out.pos.x).toBeCloseTo(0.2, 6);
-    expect(out.pos.y).toBeCloseTo(floorY, 6);
-    expect(out.pos.z).toBeCloseTo(0, 6);
-    // View direction still preserved via the equal lookTarget delta.
-    const dOld = new THREE.Vector3().subVectors(lookTarget, pos);
-    const dNew = new THREE.Vector3().subVectors(out.lookTarget, out.pos);
-    expect(dNew.y).toBeCloseTo(dOld.y, 6);
+  it('N2-a totality: tall up-step (≥1.5) with no facing-steep hit → step-up (not undefined)', () => {
+    // The eye-ray grazed a lip; forward ray clear, but destination column
+    // rose ≥ 1.5 m. Must be a defined outcome (step-up), never undefined.
+    const out = classifyWasdStep({
+      floorNow: { y: 0 },
+      floorDest: { y: 1.8 },
+      forwardHit: { hit: false },
+      reach: 0.8,
+      targetDir: travelPlusX,
+      currentEnclosed: false,
+      lastBlocked: false
+    });
+    expect(out).toBe('step-up');
+    expect(out).toBeDefined();
   });
 
-  it('composes with a max-clamped pivot (radius 100, centre at ground)', () => {
-    // B5: a far-cap pivot (R = 100, centre at ground) swung below floor
-    // still re-projects on the sphere (non-degenerate), ending at floorY
-    // with radius ≈ 100.
-    const centre = new THREE.Vector3(0, 0, 0);
-    const R = 100;
-    const yPos = -20;
-    const rhoOld = Math.sqrt(R * R - yPos * yPos);
-    const pos = new THREE.Vector3(rhoOld, yPos, 0);
-    const lookTarget = new THREE.Vector3(rhoOld - 1, yPos, 0);
-    const floorY = 0.5;
-    const out = applyGroundFloor(pos, lookTarget, centre, floorY);
-    expect(out.pos.y).toBeCloseTo(floorY, 5);
-    expect(out.pos.distanceTo(centre)).toBeCloseTo(R, 4);
+  it('N2-b reach-invariance: a <45° continuous descent follows at any fly-speed', () => {
+    // A ramp dropping ~30° (delta = -reach*tan30). At two different reach
+    // values the same GRADE must stay follow (angle < 45°), even though the
+    // raw delta is large at the larger reach.
+    const grade = Math.tan((30 * Math.PI) / 180);
+    for (const reach of [0.7, 8]) {
+      const delta = -grade * reach; // ~30° descent
+      expect(
+        classifyWasdStep({
+          floorNow: { y: 0 },
+          floorDest: { y: delta },
+          forwardHit: { hit: false },
+          reach,
+          targetDir: travelPlusX,
+          currentEnclosed: false,
+          lastBlocked: false
+        })
+      ).toBe('follow');
+    }
+  });
+
+  it('hovers off a near-vertical roof edge / cliff (angle ≥ 45°, drop ≥ 1.5)', () => {
+    expect(
+      classifyWasdStep({
+        floorNow: { y: 0 },
+        floorDest: { y: -5 }, // sharp drop
+        forwardHit: { hit: false },
+        reach: 0.8, // atan2(5, 0.8) ≈ 80° ≥ 45°
+        targetDir: travelPlusX,
+        currentEnclosed: false,
+        lastBlocked: false
+      })
+    ).toBe('hover');
+  });
+
+  it('N3 tangent guard: a non-facing near-vertical wall does NOT block', () => {
+    // Skimming a façade: the wall normal is ~perpendicular to travel
+    // (dot ≈ 0 < WASD_FACING_MIN). normalH = (0,0,1) while travelling +X.
+    const out = classifyWasdStep({
+      floorNow: { y: 0 },
+      floorDest: { y: 2 }, // tall, but the wall is tangential
+      forwardHit: { hit: true, normalY: 0, normalH: { x: 0, z: 1 } },
+      reach: 0.8,
+      targetDir: travelPlusX,
+      currentEnclosed: false,
+      lastBlocked: false
+    });
+    expect(out).not.toBe('block');
+    expect(out).toBe('step-up'); // up-step delta > 0 → mount it
+  });
+
+  it('flat ground follows', () => {
+    expect(
+      classifyWasdStep({
+        floorNow: { y: 3 },
+        floorDest: { y: 3 },
+        forwardHit: { hit: false },
+        reach: 0.8,
+        targetDir: travelPlusX,
+        currentEnclosed: false,
+        lastBlocked: false
+      })
+    ).toBe('follow');
+  });
+
+  it('currentEnclosed never blocks (D5 / WE-13): a would-be block follows', () => {
+    expect(
+      classifyWasdStep({
+        floorNow: { y: 0 },
+        floorDest: { y: 5 },
+        forwardHit: FACING_WALL,
+        reach: 0.8,
+        targetDir: travelPlusX,
+        currentEnclosed: true,
+        lastBlocked: false
+      })
+    ).toBe('follow');
+  });
+
+  it('hysteresis never holds a block when the forward ray is clear (no doorway deadlock)', () => {
+    expect(
+      classifyWasdStep({
+        floorNow: { y: 0 },
+        floorDest: { y: 5 },
+        forwardHit: { hit: false }, // clear — threaded the opening
+        reach: 0.8,
+        targetDir: travelPlusX,
+        currentEnclosed: false,
+        lastBlocked: true
+      })
+    ).not.toBe('block');
+  });
+
+  it('hysteresis dead-band nudges the height threshold (pair straddling 1.5 ± 0.3)', () => {
+    // With lastBlocked, the threshold drops to 1.5 - 0.3 = 1.2. A delta of
+    // 1.3 (between 1.2 and 1.5) blocks when lastBlocked, steps up otherwise.
+    const base = {
+      floorNow: { y: 0 },
+      floorDest: { y: BLOCK_HEIGHT_MIN_METRES - WASD_STEP_HYSTERESIS_METRES + 0.1 }, // 1.3
+      forwardHit: FACING_WALL,
+      reach: 0.8,
+      targetDir: travelPlusX,
+      currentEnclosed: false
+    };
+    expect(classifyWasdStep({ ...base, lastBlocked: true })).toBe('block');
+    expect(classifyWasdStep({ ...base, lastBlocked: false })).toBe('step-up');
+  });
+});
+
+describe('classifyFallAction', () => {
+  it('enclosed → pop (wins regardless of tilt)', () => {
+    expect(
+      classifyFallAction({ enclosed: true, camY: 5, floorY: 0, tiltDeg: 80 })
+    ).toBe('pop');
+  });
+
+  it('elevated + looking down → swoop', () => {
+    expect(
+      classifyFallAction({ enclosed: false, camY: 50, floorY: 0, tiltDeg: 60 })
+    ).toBe('swoop');
+  });
+
+  it('elevated + ~horizontal → fall', () => {
+    expect(
+      classifyFallAction({ enclosed: false, camY: 50, floorY: 0, tiltDeg: 5 })
+    ).toBe('fall');
+  });
+
+  it('at street level (within eye margin) → noop', () => {
+    expect(
+      classifyFallAction({
+        enclosed: false,
+        camY: EYE_MARGIN_METRES,
+        floorY: 0,
+        tiltDeg: 5
+      })
+    ).toBe('noop');
+  });
+
+  it('no surface below (probe miss) → noop', () => {
+    expect(
+      classifyFallAction({ enclosed: false, camY: 50, floorY: null, tiltDeg: 5 })
+    ).toBe('noop');
+  });
+});
+
+describe('isLegitPose (conjunction — WE-8a)', () => {
+  it('rejects an enclosed pose even if above floor (grazing overhang)', () => {
+    expect(isLegitPose({ enclosed: true, camY: 10, floorY: 0 })).toBe(false);
+  });
+
+  it('rejects a below-floor pose even if not enclosed (tucked under arch)', () => {
+    expect(
+      isLegitPose({ enclosed: false, camY: EYE_MARGIN_METRES - 0.1, floorY: 0 })
+    ).toBe(false);
+  });
+
+  it('accepts not-enclosed AND above floor + eye margin', () => {
+    expect(
+      isLegitPose({ enclosed: false, camY: EYE_MARGIN_METRES + 0.1, floorY: 0 })
+    ).toBe(true);
+  });
+
+  it('treats no-floor (open sky) as legit when not enclosed', () => {
+    expect(isLegitPose({ enclosed: false, camY: 100, floorY: null })).toBe(true);
+  });
+});
+
+describe('cueState (show/hide hysteresis — D7)', () => {
+  it('shows above 8 m', () => {
+    expect(cueState(false, 9, false)).toBe(true);
+  });
+
+  it('hides below 6 m', () => {
+    expect(cueState(true, 5, false)).toBe(false);
+  });
+
+  it('holds the previous state inside the 6–8 m dead-band (no strobe)', () => {
+    expect(cueState(true, 7, false)).toBe(true);
+    expect(cueState(false, 7, false)).toBe(false);
+  });
+
+  it('enclosure forces show regardless of height', () => {
+    expect(cueState(false, 0, true)).toBe(true);
   });
 });
 
@@ -544,6 +717,98 @@ describe('shiftRotateStep', () => {
     expect(after.x).toBeCloseTo(before.x, 3);
     expect(after.y).toBeCloseTo(before.y, 3);
     expect(after.z).toBeCloseTo(before.z, 3);
+  });
+
+  // --- TASK-024 (D8/N7) orbit floor bound ---
+  // The `floorY` param caps the resulting camera height: `pos.y >= floorY +
+  // EYE_MARGIN_METRES`. Asserted with an inequality (>=) — the numeric
+  // tighten lands at/above the bound, never below.
+
+  it('floor bound bites at a small radius: a hard down-drag can not dip below floor', () => {
+    // Camera orbiting a ground pivot at a small radius, looking down,
+    // dragged hard downward (would otherwise swing under the floor).
+    const centre = new THREE.Vector3(0, 0, 0);
+    const camPos = new THREE.Vector3(0, 5, 4); // R ≈ 6.4, above pivot
+    const viewDir = new THREE.Vector3(0, -0.7, -0.7).normalize();
+    const floorY = 0;
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 0,
+      dyPx: 5000, // huge drag-down
+      speed: SPEED,
+      floorY
+    });
+    expect(step.pos.y).toBeGreaterThanOrEqual(floorY + EYE_MARGIN_METRES - 1e-6);
+  });
+
+  it('floor bound relaxes at a large radius (down-tilt allowed)', () => {
+    // Same drag, much larger radius — the floor clearance needs only a
+    // small elevation angle, so the camera can tilt freely without the
+    // bound biting at this step.
+    const centre = new THREE.Vector3(0, 0, 0);
+    const camPos = new THREE.Vector3(0, 50, 200); // large R
+    const viewDir = new THREE.Vector3(0, -0.3, -0.95).normalize();
+    const floorY = 0;
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 0,
+      dyPx: 30,
+      speed: SPEED,
+      floorY
+    });
+    expect(step.pos.y).toBeGreaterThanOrEqual(floorY + EYE_MARGIN_METRES);
+  });
+
+  it('reversibility: +dy then -dy returns to the start pose within epsilon', () => {
+    // Capping the INPUT tilt (not the output position) means over-drag past
+    // the floor does not accumulate, so reversing retraces.
+    const centre = new THREE.Vector3(0, 0, 0);
+    const camPos = new THREE.Vector3(0, 8, 6);
+    const viewDir = new THREE.Vector3(0, -0.6, -0.8).normalize();
+    const floorY = 0;
+    const down = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 0,
+      dyPx: 40,
+      speed: SPEED,
+      floorY
+    });
+    const downDir = new THREE.Vector3()
+      .subVectors(down.lookTarget, down.pos)
+      .normalize();
+    const back = shiftRotateStep({
+      camPos: down.pos,
+      viewDir: downDir,
+      centre,
+      dxPx: 0,
+      dyPx: -40,
+      speed: SPEED,
+      floorY
+    });
+    expect(back.pos.distanceTo(camPos)).toBeLessThan(0.05);
+  });
+
+  it('no floorY param: street regime is unaffected (rotate-in-place)', () => {
+    const camPos = new THREE.Vector3(5, 1.6, 5);
+    const viewDir = new THREE.Vector3(0, 0, -1);
+    const centre = new THREE.Vector3(5, 1.6, 5);
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 100,
+      dyPx: 100,
+      speed: SPEED
+    });
+    expect(step.pos.x).toBe(camPos.x);
+    expect(step.pos.y).toBe(camPos.y);
+    expect(step.pos.z).toBe(camPos.z);
   });
 });
 
