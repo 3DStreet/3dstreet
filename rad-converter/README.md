@@ -12,31 +12,36 @@ Full design: [`../docs/rad-cloud-run-pipeline.md`](../docs/rad-cloud-run-pipelin
 
 ### Patched build-lod
 
-Upstream `build-lod` is single-threaded, so on Cloud Run additional vCPUs
-historically did nothing for wall time. We carry a small **rayon
-parallelism patch** that the Dockerfile applies on top of Spark v2.1.0
-during the image build (see [`./patches/`](./patches/)). The two stages
-that became parallel:
+We carry a small **parallelism patch** that the Dockerfile applies on top
+of Spark v2.1.0 during the image build (see [`./patches/`](./patches/)).
 
-1. **Per-level grid population in `bhatt_lod.rs`** — `splat → grid cell`
-   is independent per splat. Switched to a `par_iter().fold().reduce()`
-   over per-thread hashmaps. Gated by a 4096-splat threshold so small
-   inputs keep the simpler sequential path.
-2. **`recurse_to_output` tree walk** — refactored to take `&TA` only and
-   collect deferred `set_children` / `mark_to_output` ops during a
-   `par_iter`-driven recursion, then apply them sequentially after.
-   Order-preserving collect keeps the resulting `.rad` byte-identical to
-   the sequential walk.
+Profiling (callgrind) of a real conversion showed the single largest cost
+in `build-lod` is **deflate compression of the `.rad` output** — ~28% of
+total instructions, more than all the similarity FP math combined, and it
+grows with output size. It's also embarrassingly parallel: within each
+chunk the ~10 properties (center, alpha, rgb, scales, orientation, SH…)
+are compressed independently.
 
-Rayon picks up worker count automatically from the CPU allocation, so a
-bigger `--cpu` setting on the Cloud Run service now actually pays off
-(it didn't before). The hot inner merge loop is still sequential — that
-one needs sharded grids + lock-striped active-set updates and is
-deferred to a follow-up.
+The patch (`rad.rs`) makes the per-property encoders return **raw**
+(uncompressed) bytes and compresses them via `par_iter_mut` just before
+chunk assembly. The output is **byte-identical** to upstream — same bytes,
+same `GZ_LEVEL=6` — so there's no quality question; only wall time changes.
+
+**Measured (4 vCPU, 2.8 GHz Xeon):** 1.27× on a 22.3M-splat file
+(1022s → 805s), 1.16× on a 1.18M-splat file. The full benchmark and the
+profile that motivated it are in
+[`../docs/rad-conversion-perf.md`](../docs/rad-conversion-perf.md).
+
+> **Note:** LOD *construction* (the merge loop) is still single-threaded
+> and is the larger remaining cost. Compression is the part that scales
+> with cores today; parallelizing the merge loop is scoped as follow-up
+> work in the perf doc. A trivial one-line alternative to this patch —
+> `GZ_LEVEL=6 → 3` in `rad.rs` — gets ~1.25× on the big file for +0.4%
+> output size, if you'd prefer a smaller patch to maintain.
 
 Re-base on a future Spark tag: clone Spark at the new tag, `git am`
 `patches/*.patch`, resolve any conflicts, regenerate the patch with
-`git format-patch -1 --stdout > patches/0001-bhatt-lod-rayon.patch`.
+`git format-patch -1 --stdout > patches/0001-rad-parallel-compress.patch`.
 
 This is **sequencing step 2 — the manual one-shot**. The automatic trigger
 (`onSplatAssetCreated`) + Cloud Tasks dispatch + reconciler `case 'cloudrun'` are

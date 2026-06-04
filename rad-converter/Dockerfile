@@ -1,7 +1,7 @@
 # RAD converter — Cloud Run service that turns a splat .ply into a Spark RAD
 # (LOD) file (the splat "optimized" variant). Multi-stage:
-#   1. builder — applies our rayon parallelism patch to Spark v2.1.0 and
-#                compiles the `build-lod` Rust binary
+#   1. builder — applies our RAD-compression parallelism patch to Spark v2.1.0
+#                and compiles the `build-lod` Rust binary
 #   2. runtime — Node 22 + the binary, runs the HTTP handler
 #
 # Both stages are Debian bookworm so the dynamically-linked binary's glibc
@@ -23,11 +23,12 @@ ARG SPARK_VERSION=v2.1.0
 RUN git clone --branch ${SPARK_VERSION} --depth 1 \
         https://github.com/sparkjsdev/spark.git /spark
 
-# Apply our private rayon-parallelism patch to bhatt_lod. The patch is kept
-# in version control (see ./patches/) rather than carried as a vendored
-# fork, so re-bases onto a newer Spark tag are tractable. If the patch
-# fails to apply we want the image build to fail loudly — DON'T silently
-# fall back to upstream's single-threaded code.
+# Apply our private patch that parallelizes RAD output compression (the
+# single largest cost — ~28% of build-lod by callgrind — and embarrassingly
+# parallel). The patch is kept in version control (see ./patches/) rather
+# than carried as a vendored fork, so re-bases onto a newer Spark tag are
+# tractable. If the patch fails to apply we want the image build to fail
+# loudly — DON'T silently fall back to upstream's sequential compression.
 COPY patches/ /tmp/patches/
 WORKDIR /spark
 RUN git -c user.email=build@local -c user.name=build \

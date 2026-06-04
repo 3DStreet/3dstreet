@@ -27,15 +27,16 @@ BUCKET="${PROJECT}.appspot.com"
 # build-lod loads the whole splat + grows the LOD tree in RAM. A 22M-splat
 # (~368MB) file OOM'd at 8Gi, so 16Gi (which requires >=4 vCPU on Cloud Run).
 #
-# CPU rationale: upstream build-lod is single-threaded, so historically 8 vCPU
-# measured NO faster than 4 vCPU on the 22M-splat build (the per-level LOD
-# pass was the wall-clock floor). We now patch build-lod to parallelize the
-# per-level grid population and the recurse_to_output tree walk via rayon
-# (see ./patches/), so additional cores SHOULD now translate into measurable
-# wall-clock wins — rayon picks up the CPU count automatically. The 4 vCPU
-# floor is preserved here because 16Gi requires >=4 vCPU on Cloud Run; bump
-# this to 8 once you've benchmarked the patched binary on a representative
-# splat and confirmed the speedup is worth the price-per-second.
+# CPU rationale: build-lod's LOD *construction* (the merge loop) is single-
+# threaded, so cores beyond the first don't speed it up. But profiling
+# (callgrind) showed RAD output *compression* is ~28% of total work and is
+# embarrassingly parallel — our patch (see ./patches/) spreads it across cores
+# via rayon, giving a measured ~1.27x on a 22.3M-splat build at 4 vCPU. That
+# compression phase is the only part that scales with cores today, so 4 vCPU
+# already captures most of it; benchmark 8 vCPU before paying for it (the merge
+# loop, the larger remaining cost, won't benefit until it's parallelized too —
+# see docs/rad-conversion-perf.md). The 4 vCPU floor is also required because
+# 16Gi needs >=4 vCPU on Cloud Run.
 #
 # /tmp is tmpfs (counts against memory) — for multi-GB splats, raise memory
 # or move the scratch download to a GCS FUSE volume (see server.js).

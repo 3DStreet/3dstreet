@@ -1,0 +1,237 @@
+From e4fc4d488438288bdae99086827286f15ea5c54b Mon Sep 17 00:00:00 2001
+From: build <build@local>
+Date: Thu, 4 Jun 2026 07:43:06 +0000
+Subject: [PATCH] Parallelize RAD per-property deflate compression with rayon
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+callgrind on a 1.18M-splat build shows miniz deflate (compress_to_vec +
+flush_block) is ~28.6% of total instructions — the single largest cost,
+larger than all the similarity FP math combined, and it grows with output
+size. The per-property compressions within a chunk are independent.
+
+This makes the 10 per-property encoders return RAW (uncompressed) bytes and
+compresses them via par_iter_mut just before chunk assembly. Output is
+byte-identical to upstream (same bytes, same GZ_LEVEL=6) — only wall time
+changes. Measured: 1.27x on a 22.3M-splat file, 1.16x on 1.18M, 4 cores.
+---
+ rust/Cargo.lock           | 46 +++++++++++++++++++++++++++++++++++++++
+ rust/Cargo.toml           |  1 +
+ rust/spark-lib/Cargo.toml |  1 +
+ rust/spark-lib/src/rad.rs | 33 +++++++++++++++++++---------
+ 4 files changed, 71 insertions(+), 10 deletions(-)
+
+diff --git a/rust/Cargo.lock b/rust/Cargo.lock
+index 7b83257..7913d09 100644
+--- a/rust/Cargo.lock
++++ b/rust/Cargo.lock
+@@ -211,6 +211,31 @@ dependencies = [
+  "cfg-if",
+ ]
+ 
++[[package]]
++name = "crossbeam-deque"
++version = "0.8.6"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "9dd111b7b7f7d55b72c0a6ae361660ee5853c9af73f70c3c2ef6858b950e2e51"
++dependencies = [
++ "crossbeam-epoch",
++ "crossbeam-utils",
++]
++
++[[package]]
++name = "crossbeam-epoch"
++version = "0.9.18"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "5b82ac4a3c2ca9c3460964f020e1402edd5753411d7737aa39c3714ad1b5420e"
++dependencies = [
++ "crossbeam-utils",
++]
++
++[[package]]
++name = "crossbeam-utils"
++version = "0.8.21"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
++
+ [[package]]
+ name = "crunchy"
+ version = "0.2.3"
+@@ -910,6 +935,26 @@ dependencies = [
+  "objc2-quartz-core",
+ ]
+ 
++[[package]]
++name = "rayon"
++version = "1.12.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "fb39b166781f92d482534ef4b4b1b2568f42613b53e5b6c160e24cfbfa30926d"
++dependencies = [
++ "either",
++ "rayon-core",
++]
++
++[[package]]
++name = "rayon-core"
++version = "1.13.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
++dependencies = [
++ "crossbeam-deque",
++ "crossbeam-utils",
++]
++
+ [[package]]
+ name = "redox_syscall"
+ version = "0.5.18"
+@@ -1054,6 +1099,7 @@ dependencies = [
+  "miniz_oxide",
+  "ordered-float",
+  "rand_pcg",
++ "rayon",
+  "serde",
+  "serde_json",
+  "smallvec",
+diff --git a/rust/Cargo.toml b/rust/Cargo.toml
+index 5b394c7..5a791f9 100644
+--- a/rust/Cargo.toml
++++ b/rust/Cargo.toml
+@@ -38,6 +38,7 @@ space = { version = "0.17.0", default-features = false, features = ["alloc"] }
+ wgpu = "29"
+ pollster = "0.4.0"
+ bytemuck = { version = "1.25.0", features = ["derive"] }
++rayon = "1.10"
+ 
+ [profile.release]
+ opt-level = 3
+diff --git a/rust/spark-lib/Cargo.toml b/rust/spark-lib/Cargo.toml
+index be19442..0db7d6e 100644
+--- a/rust/spark-lib/Cargo.toml
++++ b/rust/spark-lib/Cargo.toml
+@@ -23,3 +23,4 @@ image.workspace = true
+ hnsw.workspace = true
+ rand_pcg.workspace = true
+ space.workspace = true
++rayon.workspace = true
+diff --git a/rust/spark-lib/src/rad.rs b/rust/spark-lib/src/rad.rs
+index 813495e..b3216e4 100644
+--- a/rust/spark-lib/src/rad.rs
++++ b/rust/spark-lib/src/rad.rs
+@@ -7,6 +7,7 @@ use ordered_float::OrderedFloat;
+ use serde::{Deserialize, Serialize};
+ use miniz_oxide::deflate::compress_to_vec;
+ use miniz_oxide::inflate::decompress_to_vec;
++use rayon::prelude::*;
+ 
+ // fn compress_to_vec(data: &[u8], _level: u8) -> Vec<u8> {
+ //     data.to_vec()
+@@ -621,7 +622,7 @@ impl<T: SplatGetter> RadEncoder<T> {
+             compression: Some(RadChunkPropertyCompression::Gz),
+             ..Default::default()
+         };
+-        (meta, compress_to_vec(&bytes, GZ_LEVEL))
++        (meta, bytes) // raw; compressed in parallel by encode_chunk
+     }
+ 
+     fn encode_chunk_alpha(&mut self, base: usize, count: usize, buffer: &mut Vec<f32>) -> (RadChunkProperty, Vec<u8>) {
+@@ -645,7 +646,7 @@ impl<T: SplatGetter> RadEncoder<T> {
+             max,
+             ..Default::default()
+         };
+-        (meta, compress_to_vec(&bytes, GZ_LEVEL))
++        (meta, bytes) // raw; compressed in parallel by encode_chunk
+     }
+ 
+     fn encode_chunk_rgb(&mut self, base: usize, count: usize, buffer: &mut Vec<f32>, encoding: &SplatEncoding) -> (RadChunkProperty, Vec<u8>) {
+@@ -669,7 +670,7 @@ impl<T: SplatGetter> RadEncoder<T> {
+             max,
+             ..Default::default()
+         };
+-        (meta, compress_to_vec(&bytes, GZ_LEVEL))
++        (meta, bytes) // raw; compressed in parallel by encode_chunk
+     }
+ 
+     fn encode_chunk_scales(&mut self, base: usize, count: usize, buffer: &mut Vec<f32>, encoding: &SplatEncoding) -> (RadChunkProperty, Vec<u8>) {
+@@ -692,7 +693,7 @@ impl<T: SplatGetter> RadEncoder<T> {
+             max,
+             ..Default::default()
+         };
+-        (meta, compress_to_vec(&bytes, GZ_LEVEL))
++        (meta, bytes) // raw; compressed in parallel by encode_chunk
+     }
+ 
+     fn encode_chunk_orientation(&mut self, base: usize, count: usize, buffer: &mut Vec<f32>) -> (RadChunkProperty, Vec<u8>) {
+@@ -709,7 +710,7 @@ impl<T: SplatGetter> RadEncoder<T> {
+                 compression: Some(RadChunkPropertyCompression::Gz),
+                 ..Default::default()
+             };
+-            (meta, compress_to_vec(&bytes, GZ_LEVEL))
++            (meta, bytes) // raw; compressed in parallel by encode_chunk
+         } else {
+             for i in 0..count {
+                 for d in 0..3 {
+@@ -727,7 +728,7 @@ impl<T: SplatGetter> RadEncoder<T> {
+                 compression: Some(RadChunkPropertyCompression::Gz),
+                 ..Default::default()
+             };
+-            (meta, compress_to_vec(&bytes, GZ_LEVEL))
++            (meta, bytes) // raw; compressed in parallel by encode_chunk
+         }
+     }
+ 
+@@ -785,7 +786,7 @@ impl<T: SplatGetter> RadEncoder<T> {
+             max,
+             ..Default::default()
+         };
+-        (meta, compress_to_vec(&bytes, GZ_LEVEL))
++        (meta, bytes) // raw; compressed in parallel by encode_chunk
+     }
+ 
+     fn encode_chunk_sh_label(&mut self, base: usize, count: usize, buffer: &mut Vec<usize>) -> (RadChunkProperty, Vec<u8>) {
+@@ -811,7 +812,7 @@ impl<T: SplatGetter> RadEncoder<T> {
+             compression: Some(RadChunkPropertyCompression::Gz),
+             ..Default::default()
+         };
+-        (meta, compress_to_vec(&bytes, GZ_LEVEL))
++        (meta, bytes) // raw; compressed in parallel by encode_chunk
+     }
+ 
+     fn encode_chunk_child_count(&mut self, base: usize, count: usize, buffer: &mut Vec<u16>) -> (RadChunkProperty, Vec<u8>) {
+@@ -827,7 +828,7 @@ impl<T: SplatGetter> RadEncoder<T> {
+             compression: Some(RadChunkPropertyCompression::Gz),
+             ..Default::default()
+         };
+-        (meta, compress_to_vec(&bytes, GZ_LEVEL))
++        (meta, bytes) // raw; compressed in parallel by encode_chunk
+     }
+ 
+     fn encode_chunk_child_start(&mut self, base: usize, count: usize, buffer: &mut Vec<usize>) -> (RadChunkProperty, Vec<u8>) {
+@@ -843,7 +844,7 @@ impl<T: SplatGetter> RadEncoder<T> {
+             compression: Some(RadChunkPropertyCompression::Gz),
+             ..Default::default()
+         };
+-        (meta, compress_to_vec(&bytes, GZ_LEVEL))
++        (meta, bytes) // raw; compressed in parallel by encode_chunk
+     }
+ 
+     fn encode_chunk(
+@@ -893,6 +894,18 @@ impl<T: SplatGetter> RadEncoder<T> {
+             props.push(self.encode_chunk_child_start(base, count, buffer_usize));
+         }
+ 
++        // The per-property encoders above now return RAW bytes; compress them
++        // here in parallel. Properties within a chunk are independent and the
++        // deflate compression is the single dominant cost of RAD encoding
++        // (callgrind on a 1.18M-splat file: compress_to_vec + flush_block ≈
++        // 28.6% of total instructions — larger than all the similarity FP math).
++        // Output is byte-identical to the old inline sequential compression —
++        // same input bytes, same GZ_LEVEL — so the offsets/blob below are
++        // unchanged; only the wall time differs.
++        props.par_iter_mut().for_each(|(_prop, data)| {
++            *data = compress_to_vec(data, GZ_LEVEL);
++        });
++
+         let mut offset = 0u64;
+         for (prop, data) in props.iter_mut() {
+             prop.offset = offset;
