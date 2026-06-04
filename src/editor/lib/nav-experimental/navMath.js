@@ -133,8 +133,6 @@ export function clampOrbitRadius(camPos, pivot, minR, maxR, fallbackDir) {
 //     used to make the down-step decision reach-invariant (N2-b).
 //   targetDir — { x, z } normalized horizontal travel direction (for the
 //     facing dot, N3).
-//   currentEnclosed — true if the camera's own column is enclosed (D5 /
-//     WE-13): never block, always follow (drive out).
 //   lastBlocked — previous frame's block state, for a small height
 //     hysteresis dead-band (WE-3b). Never holds a block when the forward
 //     ray is clear or non-facing.
@@ -145,12 +143,8 @@ export function classifyWasdStep({
   forwardHit,
   reach,
   targetDir,
-  currentEnclosed,
   lastBlocked
 }) {
-  // WE-13 / H2: a camera inside a building must be able to drive out.
-  if (currentEnclosed) return 'follow';
-
   const delta = floorDest.y - floorNow.y;
   const slopeMinRad = BLOCK_SLOPE_MIN_DEGREES * DEG2RAD;
 

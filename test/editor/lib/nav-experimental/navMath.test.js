@@ -197,7 +197,6 @@ describe('classifyWasdStep', () => {
         forwardHit: FACING_WALL,
         reach: 0.8,
         targetDir: travelPlusX,
-        currentEnclosed: false,
         lastBlocked: false
       })
     ).toBe('block');
@@ -215,7 +214,6 @@ describe('classifyWasdStep', () => {
         forwardHit: FACING_WALL,
         reach: 0.8,
         targetDir: travelPlusX,
-        currentEnclosed: false,
         lastBlocked: false
       })
     ).toBe('block');
@@ -229,7 +227,6 @@ describe('classifyWasdStep', () => {
         forwardHit: { hit: false },
         reach: 0.8,
         targetDir: travelPlusX,
-        currentEnclosed: false,
         lastBlocked: false
       })
     ).toBe('step-up');
@@ -244,7 +241,6 @@ describe('classifyWasdStep', () => {
       forwardHit: { hit: false },
       reach: 0.8,
       targetDir: travelPlusX,
-      currentEnclosed: false,
       lastBlocked: false
     });
     expect(out).toBe('step-up');
@@ -265,7 +261,6 @@ describe('classifyWasdStep', () => {
           forwardHit: { hit: false },
           reach,
           targetDir: travelPlusX,
-          currentEnclosed: false,
           lastBlocked: false
         })
       ).toBe('follow');
@@ -280,7 +275,6 @@ describe('classifyWasdStep', () => {
         forwardHit: { hit: false },
         reach: 0.8, // atan2(5, 0.8) ≈ 80° ≥ 45°
         targetDir: travelPlusX,
-        currentEnclosed: false,
         lastBlocked: false
       })
     ).toBe('hover');
@@ -295,7 +289,6 @@ describe('classifyWasdStep', () => {
       forwardHit: { hit: true, normalY: 0, normalH: { x: 0, z: 1 } },
       reach: 0.8,
       targetDir: travelPlusX,
-      currentEnclosed: false,
       lastBlocked: false
     });
     expect(out).not.toBe('block');
@@ -310,21 +303,6 @@ describe('classifyWasdStep', () => {
         forwardHit: { hit: false },
         reach: 0.8,
         targetDir: travelPlusX,
-        currentEnclosed: false,
-        lastBlocked: false
-      })
-    ).toBe('follow');
-  });
-
-  it('currentEnclosed never blocks (D5 / WE-13): a would-be block follows', () => {
-    expect(
-      classifyWasdStep({
-        floorNow: { y: 0 },
-        floorDest: { y: 5 },
-        forwardHit: FACING_WALL,
-        reach: 0.8,
-        targetDir: travelPlusX,
-        currentEnclosed: true,
         lastBlocked: false
       })
     ).toBe('follow');
@@ -338,7 +316,6 @@ describe('classifyWasdStep', () => {
         forwardHit: { hit: false }, // clear — threaded the opening
         reach: 0.8,
         targetDir: travelPlusX,
-        currentEnclosed: false,
         lastBlocked: true
       })
     ).not.toBe('block');
@@ -357,8 +334,7 @@ describe('classifyWasdStep', () => {
       // normalized -normalH must dot travel(+X) to `dot`: -normalH = (dot,-z)
       forwardHit: { hit: true, normalY: 0, normalH: { x: -dot, z } },
       reach: 0.8,
-      targetDir: travelPlusX,
-      currentEnclosed: false
+      targetDir: travelPlusX
     };
     expect(classifyWasdStep({ ...base, lastBlocked: true })).toBe('block');
     expect(classifyWasdStep({ ...base, lastBlocked: false })).toBe('step-up');

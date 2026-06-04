@@ -2608,27 +2608,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       forwardHit,
       reach,
       targetDir: { x: dirX, z: dirZ },
-      currentEnclosed: false,
       lastBlocked: !!this._lastWasdBlocked
     });
 
-    if (outcome === 'block') {
-      // D5: before refusing, fire the on-demand enclosure up-ray. If the
-      // camera's own column is enclosed (loaded inside a building — the
-      // WE-13 freeze trap), downgrade block → follow so the user can drive
-      // out in any direction.
-      const probe = this._enclosureProbe();
-      if (probe.enclosed) {
-        return {
-          kind: 'follow',
-          floorDestY: floorDest.y,
-          floorNowY: floorNow.y,
-          // TASK-024a (solid-geometry guard): destination-column probe hit a
-          // real surface (vs. stale cache on a miss outside finite bounds)?
-          destFloorHit: floorDest.source !== 'cache'
-        };
-      }
-    }
     return {
       kind: outcome,
       floorDestY: floorDest.y,
