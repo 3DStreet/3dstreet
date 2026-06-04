@@ -28,6 +28,11 @@ export const TILT_THRESHOLD_DEFAULT_DEGREES = 18;
 //     used by the descent clamp, WASD follow / step-up, the orbit clamp,
 //     and the fall/pop targets. == the TASK-013 AGL street floor (1.5 m).
 export const EYE_MARGIN_METRES = 1.5;
+// TASK-024a (D3): default not-grounded follow option. 1 = collision-follow
+// (shipped behaviour-1); 2 = travel-follow; 3 = absolute. The live value is
+// held on the controls (`_followOption`) and overridable at runtime via the
+// `nav-experimental-tuning` component (`followOption`).
+export const FOLLOW_OPTION_DEFAULT = 1;
 // WASD forward-ray classifier (D1).
 //   BLOCK_SLOPE_MIN_DEGREES — a forward-ray hit at/above this slope reads
 //     as a near-vertical wall / façade / cliff (up-step block; down-step

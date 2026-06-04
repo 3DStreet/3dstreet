@@ -229,6 +229,46 @@ export function wasdFollowY(camY, floorNowY, floorDestY, eyeMargin) {
   return Math.max(tracked, floorDestY + eyeMargin); // but keep min clearance
 }
 
+// TASK-024a (D3/D4): pure not-grounded vertical rule for a WASD
+// follow/step-up step. Returns the new camera y.
+//   grounded     -> collision-follow (option-1 math); the flag is a no-op (D2)
+//   option 1     -> collision-follow (terrain/rooftop hug)
+//   option 2     -> max(travelHeightDest + H, collisionFloorDest + eye)
+//   option 3     -> max(H,                    collisionFloorDest + eye)
+// The single `max(target(H), collisionFloor + eye)` IS the obstacle-lift +
+// automatic drop-back (D4); no path history. `floorNowY` is unused by the
+// held-height branches (collision-follow needs it) — kept so the grounded /
+// option-1 branch is exact. `H == null` falls back to collision-follow so the
+// helper never returns NaN (defensive; the caller lazily captures H first).
+// Pure — never touches `grounded` (terrain rising must not ground, D1/H3).
+export function wasdVerticalY({
+  option,
+  grounded,
+  camY,
+  floorNowY,
+  collisionFloorDestY,
+  travelHeightDestY,
+  H,
+  eyeMargin
+}) {
+  if (grounded || option === 1 || H == null) {
+    return wasdFollowY(camY, floorNowY, collisionFloorDestY, eyeMargin);
+  }
+  const floorClamp = collisionFloorDestY + eyeMargin;
+  const target = option === 2 ? travelHeightDestY + H : H;
+  return Math.max(target, floorClamp); // SPEC D4 single clamp
+}
+
+// TASK-024a (D1): pure initial-grounded predicate from a load/teleport pose.
+// Grounded iff the collision-floor probe HIT (not a cache miss) AND the
+// camera sits within eye-margin (inclusive, M3) of that floor. A cache-miss
+// (scene graph not yet populated) reads not-grounded — a safe high/option-3
+// reading that self-heals on the first deliberate descent.
+export function groundedAtLoad({ camY, floorY, source, eyeMargin }) {
+  if (source === 'cache') return false;
+  return camY - floorY <= eyeMargin + 1e-6;
+}
+
 // TASK-024 (3d): pure precedence decision for the Space fall/pop key.
 // States overlap (enclosed + looking down), so order is load-bearing:
 //   1. enclosed             -> 'pop'   (wins regardless of tilt)
