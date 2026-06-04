@@ -216,18 +216,17 @@ export function classifyWasdStep({
   return 'follow';
 }
 
-// TASK-024 (live-test fix): should a 'follow'/'step-up' outcome snap the
-// camera to the surface (floor + eye-margin) this frame? The classifier
-// decides surface geometry; this decides whether the camera is close enough
-// to the ground to be *walking* it. Yes when at/below the surface (push up /
-// step up — prevention, never let the camera sink through the floor) OR while
-// AT STREET LEVEL (current AGL within the walking band). When flying high
-// above the floor, WASD is a horizontal pan and must PRESERVE altitude — the
-// camera must not be yanked down to the ground just because you pressed W.
-// Pure.
-export function shouldTrackSurface(camY, floorNowY, surfaceY, maxFollowAgl) {
-  if (surfaceY >= camY) return true; // at/below the surface: snap up
-  return camY - floorNowY <= maxFollowAgl; // follow down only while walking
+// TASK-024 (live-test fix): the camera y for a 'follow'/'step-up' WASD step.
+// W must NEVER pin the camera to eye-height — that discarded a deliberate
+// elevation (LB+up to 2 m, then W snapped back to 1.5 m) and made a hard
+// "walking band" cliff. Instead PRESERVE the camera's current height above
+// the ground by tracking the floor's change (so flat ground at any altitude
+// keeps y; a slope carries you up/down at the same clearance), while never
+// letting the camera sit closer than `eyeMargin` to the floor ahead (a
+// push-up-only clamp — prevention / step-up onto a ledge). Pure.
+export function wasdFollowY(camY, floorNowY, floorDestY, eyeMargin) {
+  const tracked = camY + (floorDestY - floorNowY); // preserve current AGL
+  return Math.max(tracked, floorDestY + eyeMargin); // but keep min clearance
 }
 
 // TASK-024 (3d): pure precedence decision for the Space fall/pop key.

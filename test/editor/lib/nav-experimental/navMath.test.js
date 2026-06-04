@@ -11,7 +11,7 @@ import {
   phase2TargetTilt,
   phase2NextElevation,
   classifyWasdStep,
-  shouldTrackSurface,
+  wasdFollowY,
   classifyFallAction,
   isLegitPose,
   cueState
@@ -23,8 +23,7 @@ import {
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
   SWOOP_PHASE2_STEP,
   SWOOP_PHASE2_FLOOR_SNAP_METRES,
-  EYE_MARGIN_METRES,
-  WASD_GROUND_FOLLOW_MAX_AGL_METRES
+  EYE_MARGIN_METRES
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
 
 if (!globalThis.THREE) globalThis.THREE = THREE;
@@ -363,27 +362,33 @@ describe('classifyWasdStep', () => {
   });
 });
 
-// --- TASK-024 shouldTrackSurface (live-test fix: WASD altitude gate) ---
-describe('shouldTrackSurface', () => {
-  const BAND = WASD_GROUND_FOLLOW_MAX_AGL_METRES;
-  it('tracks the surface while walking near it (low AGL)', () => {
-    // camY 1.5 over floor 0, surface (floor+eye) below/at camera → track.
-    expect(shouldTrackSurface(1.5, 0, 1.5, BAND)).toBe(true);
+// --- TASK-024 wasdFollowY (live-test fix: preserve AGL, don't pin to eye) ---
+describe('wasdFollowY', () => {
+  const EYE = EYE_MARGIN_METRES; // 1.5
+  it('flat ground at any altitude leaves y unchanged (no snap-to-eye)', () => {
+    // Deliberately raised to 2 m over flat ground (floor 0): W keeps 2 m.
+    expect(wasdFollowY(2, 0, 0, EYE)).toBe(2);
+    // Flying at 50 m over flat ground stays 50 m (horizontal pan).
+    expect(wasdFollowY(50, 0, 0, EYE)).toBe(50);
+    // At eye height stays at eye height.
+    expect(wasdFollowY(1.5, 0, 0, EYE)).toBe(1.5);
   });
-  it('does NOT snap a high-flying camera down (Bug-2 regression)', () => {
-    // Flying at 50 m over flat ground (floor 0); surface 1.5 is far below and
-    // AGL 50 ≫ band → preserve altitude, horizontal pan.
-    expect(shouldTrackSurface(50, 0, 1.5, BAND)).toBe(false);
+  it('preserves the chosen clearance down a slope', () => {
+    // At 2 m AGL, the floor drops 0.3 → camera follows down, still 2 m AGL.
+    expect(wasdFollowY(2, 0, -0.3, EYE)).toBeCloseTo(1.7);
+    // At eye height down the same slope → still eye height above it.
+    expect(wasdFollowY(1.5, 0, -0.3, EYE)).toBeCloseTo(1.2);
   });
-  it('always snaps UP when at/below the surface (prevention / step-up)', () => {
-    // Camera below the surface (sank, or a ledge ahead): surface ≥ camY → snap.
-    expect(shouldTrackSurface(0.5, 0, 1.5, BAND)).toBe(true);
-    expect(shouldTrackSurface(2.0, 0, 3.5, BAND)).toBe(true); // step up onto ledge
+  it('steps up onto a rise, preserving clearance', () => {
+    // At 1.5 AGL, floor rises 0.5 (kerb) → rises to keep clearance.
+    expect(wasdFollowY(1.5, 0, 0.5, EYE)).toBeCloseTo(2.0);
   });
-  it('follows down only within the walking band', () => {
-    // Just inside the band (AGL = band) → follow; just outside → preserve.
-    expect(shouldTrackSurface(0 + BAND, 0, 1.5, BAND)).toBe(true);
-    expect(shouldTrackSurface(0 + BAND + 0.1, 0, 1.5, BAND)).toBe(false);
+  it('push-up clamp: never closer than eye-margin to the floor', () => {
+    // Camera sank to 0.5 over floor 0 (AGL < eye) → pushed up to eye margin.
+    expect(wasdFollowY(0.5, 0, 0, EYE)).toBe(1.5);
+    // Below-eye AGL (0.5) walking onto a +1.0 rise: tracked 1.5 would be only
+    // 0.5 above the new floor → clamp up to floor+eye = 2.5.
+    expect(wasdFollowY(0.5, 0, 1.0, EYE)).toBeCloseTo(2.5);
   });
 });
 
