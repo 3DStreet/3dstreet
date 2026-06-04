@@ -58,6 +58,17 @@ const RACE_GUARD_MS = 3 * 60 * 1000;
 // a job the provider still reports as running — SHARP cold-boots can be slow.
 const GIVE_UP_MS = 30 * 60 * 1000;
 
+// Absolute backstop, independent of what the provider reports. A charged job
+// that has stayed non-terminal this long is declared dead and refunded
+// regardless of provider status. This is the safety net for wedges the provider
+// can't surface — most importantly a prediction that SUCCEEDED but whose save
+// deterministically fails (expired output URL, rejected Storage write), which
+// otherwise loops in 'running' forever with the token charged and never
+// refunded. Sized far past any real SHARP generation (cold-boots are minutes,
+// not an hour), so it never kills a legitimately-running job; it only bounds how
+// long a genuine wedge can hold a user's token.
+const ABSOLUTE_GIVE_UP_MS = 60 * 60 * 1000;
+
 // cloudrun (RAD) jobs have no provider to poll, so age alone can't tell
 // "mid-conversion" from "wedged". The worker flips status→'running' with a
 // startedAt heartbeat the moment it begins (rad-converter writeJobStatus); an
@@ -285,6 +296,28 @@ async function reconcile({ dryRun }) {
           }
         } else {
           sample.action = 'skip-no-provider-id';
+        }
+        if (summary.samples.length < 25) summary.samples.push(sample);
+        continue;
+      }
+
+      // Absolute backstop (provider-agnostic): a charged job stuck non-terminal
+      // past the ceiling is refunded and failed without consulting the provider.
+      // Catches the wedge the per-status give-up rules miss — a provider-
+      // 'succeeded' job whose save keeps throwing resets itself to 'running'
+      // every sweep and would otherwise never refund.
+      if (age > ABSOLUTE_GIVE_UP_MS) {
+        sample.action = 'gave-up-absolute';
+        summary.gaveUp++;
+        if (!dryRun) {
+          const rt = await failJob(
+            db,
+            uid,
+            jobRef,
+            job,
+            'Job did not reach a terminal state in time.'
+          );
+          if (typeof rt !== 'undefined') summary.refunded++;
         }
         if (summary.samples.length < 25) summary.samples.push(sample);
         continue;

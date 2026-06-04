@@ -932,6 +932,56 @@ const generateReplicateSplat = functions
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
+      // Charge BEFORE creating the prediction, and set `tokenCharged` in the
+      // same transaction as the deduction. The flag is therefore committed
+      // before any prediction exists for a webhook to fire against, so every
+      // later refund path (webhook, poll, reconciler) is guaranteed to observe
+      // tokenCharged:true and refund exactly once. The old "create then charge"
+      // order left a window where a near-instant webhook read tokenCharged:false,
+      // no-op'd its refund, and the charge then stuck with no asset and no refund.
+      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+      let remainingTokens = 0;
+      let tokensBefore = 0;
+      try {
+        await db.runTransaction(async (transaction) => {
+          const tokenDoc = await transaction.get(tokenProfileRef);
+          if (!tokenDoc.exists) {
+            throw new functions.https.HttpsError('not-found', 'Token profile not found');
+          }
+          const currentTokens = tokenDoc.data().genToken || 0;
+          tokensBefore = currentTokens;
+          if (currentTokens < tokenCost) {
+            throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
+          }
+          const newTokenCount = Math.max(0, currentTokens - tokenCost);
+          remainingTokens = newTokenCount;
+          transaction.update(tokenProfileRef, {
+            genToken: newTokenCount,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          transaction.update(jobRef, { tokenCharged: true });
+        });
+      } catch (chargeError) {
+        await jobRef.update({
+          status: 'failed',
+          error: 'Token charge failed.',
+          completedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        await cleanupSplatTempFile(tempFilePath);
+        throw chargeError;
+      }
+
+      db.collection('tokenLog').add({
+        userId,
+        type: 'deduction',
+        tokensBefore,
+        tokensAfter: remainingTokens,
+        tokenCost,
+        source: 'splat-generation',
+        relatedModel: modelConfig.modelName,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write tokenLog:', err));
+
       // The webhook URL carries the owner uid (to locate the job doc), the
       // internal jobId (the doc id), and a per-job secret (to gate the
       // endpoint). We never trust the webhook body; both paths re-fetch the
@@ -955,72 +1005,39 @@ const generateReplicateSplat = functions
           webhook_events_filter: ['completed']
         });
       } catch (createError) {
+        // Already paid above — refund (once) before failing the job so a submit
+        // failure never costs the user a token.
+        const refunded = await refundSplatToken(db, userId, jobRef, {
+          tokenCharged: true,
+          refunded: false,
+          tokenCost,
+          model: modelConfig.modelName
+        });
+        if (typeof refunded !== 'undefined') remainingTokens = refunded;
         await jobRef.update({
           status: 'failed',
           error: `Failed to create prediction: ${createError.message}`,
           completedAt: admin.firestore.FieldValue.serverTimestamp()
         });
+        await cleanupSplatTempFile(tempFilePath);
         throw createError;
       }
 
-      // Charge on submit. Re-validate inside the transaction to avoid a race;
-      // getGenerationJobStatus refunds (once) if Replicate later reports failure.
-      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
-      let remainingTokens = 0;
-      let tokensBefore = 0;
-      try {
-        await db.runTransaction(async (transaction) => {
-          const tokenDoc = await transaction.get(tokenProfileRef);
-          if (!tokenDoc.exists) {
-            throw new functions.https.HttpsError('not-found', 'Token profile not found');
-          }
-          const currentTokens = tokenDoc.data().genToken || 0;
-          tokensBefore = currentTokens;
-          if (currentTokens < tokenCost) {
-            throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
-          }
-          const newTokenCount = Math.max(0, currentTokens - tokenCost);
-          remainingTokens = newTokenCount;
-          transaction.update(tokenProfileRef, {
-            genToken: newTokenCount,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-        });
-      } catch (chargeError) {
-        // Couldn't charge — cancel the prediction so we don't run unpaid work.
-        try {
-          await replicate.predictions.cancel(prediction.id);
-        } catch (cancelError) {
-          console.warn('Failed to cancel unpaid prediction:', cancelError);
+      // Record the provider identity so the webhook + poll + reconciler can
+      // re-fetch authoritatively. A webhook for a near-instant prediction can
+      // fire before this runs (it falls back to req.body.id), so we only advance
+      // the status while it's still the pre-submit 'queued' — never regress a
+      // status a racing completion path already moved past.
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(jobRef);
+        const j = snap.data() || {};
+        const update = { providerJobId: prediction.id };
+        if (j.status === 'queued') {
+          update.status = normalizeReplicateStatus(prediction.status);
+          update.providerStatus = prediction.status || null;
         }
-        await jobRef.update({
-          status: 'failed',
-          error: 'Token charge failed.',
-          completedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        await cleanupSplatTempFile(tempFilePath);
-        throw chargeError;
-      }
-
-      // Now that it's paid and submitted, promote to the provider's live status
-      // and record its identity so the webhook + poll paths can re-fetch it.
-      await jobRef.update({
-        status: normalizeReplicateStatus(prediction.status),
-        providerStatus: prediction.status || null,
-        providerJobId: prediction.id,
-        tokenCharged: true
+        tx.update(jobRef, update);
       });
-
-      db.collection('tokenLog').add({
-        userId,
-        type: 'deduction',
-        tokensBefore,
-        tokensAfter: remainingTokens,
-        tokenCost,
-        source: 'splat-generation',
-        relatedModel: modelConfig.modelName,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      }).catch(err => console.error('Failed to write tokenLog:', err));
 
       return {
         success: true,
