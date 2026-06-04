@@ -47,6 +47,17 @@ export const WASD_STEP_HYSTERESIS_METRES = 0.3;
 //     to count as a *facing* block (N3 tangent guard). A grazing skim has
 //     its normal ~perpendicular to travel (dot ≈ 0) and must not block.
 export const WASD_FACING_MIN = 0.35;
+//   WASD_FACING_HYSTERESIS — once blocked, the facing-dot threshold drops by
+//     this much so minor wobble while skimming a façade doesn't stutter
+//     block↔pass (replaces the old height-delta hysteresis).
+export const WASD_FACING_HYSTERESIS = 0.1;
+//   WASD_GROUND_FOLLOW_MAX_AGL_METRES — WASD tracks the surface (snaps the
+//     camera to floor + eye-margin) only while AT STREET LEVEL, i.e. current
+//     AGL is within this walking band. Above it the camera is flying and
+//     WASD is a horizontal pan that PRESERVES altitude (it must not yank a
+//     high camera down to the ground). Walking AGL sits at ~eye-margin
+//     (1.5 m), so this band only needs clearance for steps/slopes.
+export const WASD_GROUND_FOLLOW_MAX_AGL_METRES = 4;
 // Enclosure probe (3a). Cast-down origin = camera.y + this margin.
 //   Altitude assumption (D10e): no relevant solid overhead sits more than
 //   this far above the camera.

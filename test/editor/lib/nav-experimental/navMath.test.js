@@ -11,6 +11,7 @@ import {
   phase2TargetTilt,
   phase2NextElevation,
   classifyWasdStep,
+  shouldTrackSurface,
   classifyFallAction,
   isLegitPose,
   cueState
@@ -23,8 +24,7 @@ import {
   SWOOP_PHASE2_STEP,
   SWOOP_PHASE2_FLOOR_SNAP_METRES,
   EYE_MARGIN_METRES,
-  BLOCK_HEIGHT_MIN_METRES,
-  WASD_STEP_HYSTERESIS_METRES
+  WASD_GROUND_FOLLOW_MAX_AGL_METRES
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
 
 if (!globalThis.THREE) globalThis.THREE = THREE;
@@ -201,18 +201,22 @@ describe('classifyWasdStep', () => {
     ).toBe('block');
   });
 
-  it('steps up a steep but short kerb (forward hit steep, delta < 1.5)', () => {
+  it('blocks a wall on FLAT ground — facing steep forward hit, delta≈0 (Bug-1 regression)', () => {
+    // A building standing on flat ground: the destination-column floor is the
+    // same level as the camera's floor (delta = 0), but the forward ray hits
+    // the façade. Must block — the earlier `delta >= 1.5` gate let the camera
+    // walk straight through buildings on flat ground.
     expect(
       classifyWasdStep({
         floorNow: { y: 0 },
-        floorDest: { y: 0.2 }, // kerb, well under 1.5
+        floorDest: { y: 0 }, // flat ground in front of the wall
         forwardHit: FACING_WALL,
         reach: 0.8,
         targetDir: travelPlusX,
         currentEnclosed: false,
         lastBlocked: false
       })
-    ).toBe('step-up');
+    ).toBe('block');
   });
 
   it('steps up a small walkable rise with a clear forward ray', () => {
@@ -338,19 +342,48 @@ describe('classifyWasdStep', () => {
     ).not.toBe('block');
   });
 
-  it('hysteresis dead-band nudges the height threshold (pair straddling 1.5 ± 0.3)', () => {
-    // With lastBlocked, the threshold drops to 1.5 - 0.3 = 1.2. A delta of
-    // 1.3 (between 1.2 and 1.5) blocks when lastBlocked, steps up otherwise.
+  it('facing hysteresis: a marginally-facing wall holds the block once blocked', () => {
+    // A near-vertical wall whose facing dot ≈ 0.30 sits between
+    // WASD_FACING_MIN (0.35) and WASD_FACING_MIN - WASD_FACING_HYSTERESIS
+    // (0.25). It blocks while already blocked (hold through skim wobble) but
+    // passes (step-up, delta>0) when not — damping block↔pass stutter.
+    const dot = 0.3;
+    const z = Math.sqrt(1 - dot * dot);
     const base = {
       floorNow: { y: 0 },
-      floorDest: { y: BLOCK_HEIGHT_MIN_METRES - WASD_STEP_HYSTERESIS_METRES + 0.1 }, // 1.3
-      forwardHit: FACING_WALL,
+      floorDest: { y: 2 },
+      // normalized -normalH must dot travel(+X) to `dot`: -normalH = (dot,-z)
+      forwardHit: { hit: true, normalY: 0, normalH: { x: -dot, z } },
       reach: 0.8,
       targetDir: travelPlusX,
       currentEnclosed: false
     };
     expect(classifyWasdStep({ ...base, lastBlocked: true })).toBe('block');
     expect(classifyWasdStep({ ...base, lastBlocked: false })).toBe('step-up');
+  });
+});
+
+// --- TASK-024 shouldTrackSurface (live-test fix: WASD altitude gate) ---
+describe('shouldTrackSurface', () => {
+  const BAND = WASD_GROUND_FOLLOW_MAX_AGL_METRES;
+  it('tracks the surface while walking near it (low AGL)', () => {
+    // camY 1.5 over floor 0, surface (floor+eye) below/at camera → track.
+    expect(shouldTrackSurface(1.5, 0, 1.5, BAND)).toBe(true);
+  });
+  it('does NOT snap a high-flying camera down (Bug-2 regression)', () => {
+    // Flying at 50 m over flat ground (floor 0); surface 1.5 is far below and
+    // AGL 50 ≫ band → preserve altitude, horizontal pan.
+    expect(shouldTrackSurface(50, 0, 1.5, BAND)).toBe(false);
+  });
+  it('always snaps UP when at/below the surface (prevention / step-up)', () => {
+    // Camera below the surface (sank, or a ledge ahead): surface ≥ camY → snap.
+    expect(shouldTrackSurface(0.5, 0, 1.5, BAND)).toBe(true);
+    expect(shouldTrackSurface(2.0, 0, 3.5, BAND)).toBe(true); // step up onto ledge
+  });
+  it('follows down only within the walking band', () => {
+    // Just inside the band (AGL = band) → follow; just outside → preserve.
+    expect(shouldTrackSurface(0 + BAND, 0, 1.5, BAND)).toBe(true);
+    expect(shouldTrackSurface(0 + BAND + 0.1, 0, 1.5, BAND)).toBe(false);
   });
 });
 

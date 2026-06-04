@@ -15,8 +15,8 @@ import {
   EYE_MARGIN_METRES,
   BLOCK_SLOPE_MIN_DEGREES,
   BLOCK_HEIGHT_MIN_METRES,
-  WASD_STEP_HYSTERESIS_METRES,
   WASD_FACING_MIN,
+  WASD_FACING_HYSTERESIS,
   DISCOVERABILITY_CUE_SHOW_METRES,
   DISCOVERABILITY_CUE_HIDE_METRES
 } from './constants.js';
@@ -166,7 +166,13 @@ export function classifyWasdStep({
       if (nhLen > 1e-6) {
         const dot =
           targetDir.x * (-nh.x / nhLen) + targetDir.z * (-nh.z / nhLen);
-        facing = dot >= WASD_FACING_MIN;
+        // Facing hysteresis (WE-3b): once blocked, hold the block through
+        // minor dot wobble while skimming a façade, to damp block/pass
+        // stutter. A clearly non-facing (tangent) hit still passes.
+        const facingMin = lastBlocked
+          ? WASD_FACING_MIN - WASD_FACING_HYSTERESIS
+          : WASD_FACING_MIN;
+        facing = dot >= facingMin;
       }
     }
     const ny = THREE.MathUtils.clamp(
@@ -177,14 +183,16 @@ export function classifyWasdStep({
     forwardSteep = Math.acos(ny) >= slopeMinRad;
   }
 
-  // Up-step block (N3 hysteresis on the height threshold only): forward ray
-  // hit a near-vertical FACING surface AND the destination floor rises by
-  // at least the block height. The dead-band only nudges the height test;
-  // a clear/non-facing forward ray forces a pass regardless of lastBlocked.
-  const heightThreshold = lastBlocked
-    ? BLOCK_HEIGHT_MIN_METRES - WASD_STEP_HYSTERESIS_METRES
-    : BLOCK_HEIGHT_MIN_METRES;
-  if (forwardSteep && facing && delta >= heightThreshold) {
+  // Block: a facing, near-vertical solid at eye height ahead (wall / façade
+  // / cliff). The forward ray is cast at the camera's eye height, so it only
+  // strikes obstructions reaching ~eye level — that geometry IS the height
+  // filter (a kerb below eye height is missed → handled as step-up below).
+  // There is deliberately NO floor-delta gate: a wall standing on FLAT
+  // ground has delta≈0 (the ground ahead is level with the ground under the
+  // camera) yet must still block. The earlier `delta >= BLOCK_HEIGHT_MIN`
+  // gate measured the wrong thing (the ground under the destination, not the
+  // obstruction's height) and let the camera walk straight through buildings.
+  if (forwardSteep && facing) {
     return 'block';
   }
 
@@ -206,6 +214,20 @@ export function classifyWasdStep({
   }
   // Flat.
   return 'follow';
+}
+
+// TASK-024 (live-test fix): should a 'follow'/'step-up' outcome snap the
+// camera to the surface (floor + eye-margin) this frame? The classifier
+// decides surface geometry; this decides whether the camera is close enough
+// to the ground to be *walking* it. Yes when at/below the surface (push up /
+// step up — prevention, never let the camera sink through the floor) OR while
+// AT STREET LEVEL (current AGL within the walking band). When flying high
+// above the floor, WASD is a horizontal pan and must PRESERVE altitude — the
+// camera must not be yanked down to the ground just because you pressed W.
+// Pure.
+export function shouldTrackSurface(camY, floorNowY, surfaceY, maxFollowAgl) {
+  if (surfaceY >= camY) return true; // at/below the surface: snap up
+  return camY - floorNowY <= maxFollowAgl; // follow down only while walking
 }
 
 // TASK-024 (3d): pure precedence decision for the Space fall/pop key.

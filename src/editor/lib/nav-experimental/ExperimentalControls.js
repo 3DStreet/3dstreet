@@ -74,6 +74,7 @@ import {
   COMPASS_ROTATE_STEP_DEGREES,
   EYE_MARGIN_METRES,
   WASD_CAMERA_RADIUS_METRES,
+  WASD_GROUND_FOLLOW_MAX_AGL_METRES,
   ENCLOSURE_PROBE_UP_MARGIN_METRES,
   FALL_DURATION_MS,
   POP_TO_ROOF_DURATION_MS
@@ -89,6 +90,7 @@ import {
   phase2TargetTilt,
   phase2NextElevation,
   classifyWasdStep,
+  shouldTrackSurface,
   classifyFallAction,
   isLegitPose,
   cueState
@@ -2395,11 +2397,27 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this.center.z += move.z;
 
     if (outcome.kind === 'step-up' || outcome.kind === 'follow') {
-      // Mount / track the surface at eye height (up AND down — WE-4).
-      const newY = outcome.floorDestY + EYE_MARGIN_METRES;
-      const dy = newY - camera.position.y;
-      camera.position.y = newY;
-      this.center.y += dy;
+      // Mount / track the surface at eye height (up AND down — WE-4), but
+      // ONLY while at street level. When the camera is flying high above the
+      // floor, WASD is a horizontal pan and must preserve altitude — without
+      // this gate, pressing W at altitude over flat ground (delta=0 → follow)
+      // snapped the camera straight down to ground level. shouldTrackSurface
+      // still always snaps UP if the camera is at/below the surface
+      // (prevention: never sink through the floor / step up onto a ledge).
+      const surfaceY = outcome.floorDestY + EYE_MARGIN_METRES;
+      if (
+        shouldTrackSurface(
+          camera.position.y,
+          outcome.floorNowY,
+          surfaceY,
+          WASD_GROUND_FOLLOW_MAX_AGL_METRES
+        )
+      ) {
+        const dy = surfaceY - camera.position.y;
+        camera.position.y = surfaceY;
+        this.center.y += dy;
+      }
+      // else flying high: leave y unchanged (horizontal pan).
     }
     // 'hover' holds y (no plunge — WE-5); centre y unchanged.
 
@@ -2448,10 +2466,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // out in any direction.
       const probe = this._enclosureProbe();
       if (probe.enclosed) {
-        return { kind: 'follow', floorDestY: floorDest.y };
+        return { kind: 'follow', floorDestY: floorDest.y, floorNowY: floorNow.y };
       }
     }
-    return { kind: outcome, floorDestY: floorDest.y };
+    return { kind: outcome, floorDestY: floorDest.y, floorNowY: floorNow.y };
   }
 
   // TASK-024 (2b): cast a forward (horizontal) ray of length `reach` along
