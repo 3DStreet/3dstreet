@@ -2,16 +2,13 @@
  * AssetsContent - Grid + Modal wiring shared by the generator sidebar and
  * the editor Assets tab. Wrappers own useAssets() and their own chrome.
  *
- * variant="paginated": renders AssetsGrid with Prev/Next + "Load more" that
- *   triggers cursor-based fetching once client-side pages are exhausted.
- * variant="unbounded": renders a flat grid of every loaded item plus a
- *   sentinel div (infinite scroll). Callers pass a ref in `sentinelRef` and
- *   hook up their own IntersectionObserver against the enclosing scroll area.
+ * Renders a flat grid of every loaded item plus a sentinel div (infinite
+ * scroll). Callers pass a ref in `sentinelRef` and hook up their own
+ * IntersectionObserver against the enclosing scroll area.
  */
 
 import { useMemo, useState } from 'react';
 import AssetsItem from './AssetsItem.jsx';
-import AssetsGrid from './AssetsGrid.jsx';
 import AssetDetailModal from './AssetDetailModal.jsx';
 import PendingUploadCard from './PendingUploadCard.jsx';
 import PendingJobCard from './PendingJobCard.jsx';
@@ -25,7 +22,6 @@ const EMPTY_OPTIMIZING = new Set();
 
 const AssetsContent = ({
   gallery,
-  variant = 'paginated',
   gridClassName,
   sentinelRef,
   loadingState,
@@ -47,16 +43,8 @@ const AssetsContent = ({
     pendingJobs = [],
     optimizingAssetIds = EMPTY_OPTIMIZING,
     isLoading,
-    isLoadingMore,
-    hasMore,
-    page,
-    pageSize,
-    totalPages,
-    setPage,
-    setPageSize,
     removeItem,
-    downloadItem,
-    loadMore
+    downloadItem
   } = gallery;
 
   const [selectedItem, setSelectedItem] = useState(null);
@@ -126,23 +114,6 @@ const AssetsContent = ({
     <>
       {isLoading ? (
         (loadingState ?? defaultLoading)
-      ) : variant === 'paginated' ? (
-        <AssetsGrid
-          items={items}
-          page={page}
-          pageSize={pageSize}
-          totalPages={totalPages}
-          hasMore={hasMore}
-          isLoadingMore={isLoadingMore}
-          onLoadMore={loadMore}
-          onItemClick={setSelectedItem}
-          onDelete={handleDelete}
-          onDownload={handleDownload}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-          placeable={placeable}
-          optimizingAssetIds={optimizingAssetIds}
-        />
       ) : visibleItems.length === 0 && !hasPendingUpload && !hasPendingJob ? (
         (emptyState ?? defaultEmpty)
       ) : (
