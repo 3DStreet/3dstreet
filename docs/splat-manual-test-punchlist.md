@@ -13,6 +13,8 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
 
 ## 0. This branch's in-flight changes — deploy + smoke test
 
+> 🎵 Elton John, ["Rocket Man"](https://open.spotify.com/search/Elton%20John%20Rocket%20Man): liftoff to dev, `firebase deploy` is your countdown.
+
 > Scope: the System Health monitoring surface (heartbeats + `#admin/health` page)
 > and the RAD perf instrumentation. Once these land, fold the smoke tests below
 > into the relevant sections (8b, 9) and delete this section.
@@ -63,6 +65,9 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
 ---
 
 ## 1. Splat generation — happy path (tab open)
+
+> 🎵 ELO, ["Mr. Blue Sky"](https://open.spotify.com/search/ELO%20Mr%20Blue%20Sky): everything works, the splat renders, life is good.
+
 - ☐ Generator → **Splat** tab. Upload a source image; the preview shows it.
 - ☐ "Generate Splat (1 token)" → button shows "Uploading…", then "Generating…",
   and the loading panel flips to the "you can close this tab" copy + a running
@@ -78,11 +83,17 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
 - ☐ Gallery asset is draggable into a scene from the editor Assets panel.
 
 ## 2. Browser-independent completion (tab closed mid-job)
+
+> 🎵 Semisonic, ["Closing Time"](https://open.spotify.com/search/Semisonic%20Closing%20Time): close the tab, the webhook finishes without you.
+
 - ☐ Start a generation, then **close the tab** while it's still "Generating…".
 - ☐ Reopen the app a few minutes later → the splat is in the Assets gallery
   (saved server-side by the webhook, no client involvement).
 
 ## 3. Completion email — default ON, tab closed → email sent
+
+> 🎵 The Box Tops, ["The Letter"](https://open.spotify.com/search/Box%20Tops%20The%20Letter): "my baby just wrote me a letter" (Postmark delivered).
+
 - ☐ Confirm the **"Email me when my splat is ready"** checkbox is **checked by
   default**.
 - ☐ Generate, then **close the tab** immediately after it reaches "Generating…".
@@ -111,6 +122,9 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
 > `{ dryRun: true }` first to preview `notify.sent`/`suppressed`/`waiting`.
 
 ## 4. Completion email — tab open → suppressed
+
+> 🎵 The Police, ["Every Breath You Take"](https://open.spotify.com/search/The%20Police%20Every%20Breath%20You%20Take): client ack = "I'll be watching you," so no email.
+
 - ☐ Generate with the box checked but **keep the tab open** until you see the
   result.
 - ☐ Job doc shows `notify.clientAckedAt` set, `notify.pending: false`.
@@ -118,11 +132,17 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
   email** arrives.
 
 ## 5. Completion email — opted out
+
+> 🎵 Simon & Garfunkel, ["The Sound of Silence"](https://open.spotify.com/search/Simon%20Garfunkel%20The%20Sound%20of%20Silence): box unchecked, blissful inbox quiet.
+
 - ☐ Generate with the checkbox **unchecked**, close the tab.
 - ☐ Job doc has `notify: { email: false, pending: false }`; reconciler never
   queries it; **no email** regardless of tab state.
 
 ## 6. Failure path
+
+> 🎵 Chumbawamba, ["Tubthumping"](https://open.spotify.com/search/Chumbawamba%20Tubthumping): I get knocked down (refunded), but I get up again.
+
 - ☐ Force a failure (e.g. invalid/garbage source the model rejects, or cancel the
   Replicate prediction).
 - ☐ Token is **refunded** (balance returns); job doc `status: 'failed'`.
@@ -130,6 +150,9 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
 - ☐ If tab open: error toast shown.
 
 ## 7. Reconciler backstop (dropped webhook / wedged save)
+
+> 🎵 Fontella Bass, ["Rescue Me"](https://open.spotify.com/search/Fontella%20Bass%20Rescue%20Me): nothing stays stuck, the sweep saves wedged jobs.
+
 - ☐ Simulate a dropped webhook: complete a prediction but block/ignore the
   webhook (or just rely on a naturally missed one), tab closed.
 - ☐ After the next sweep, the job reaches `succeeded` (or `failed` + refund past
@@ -137,6 +160,9 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
 - ☐ A job manually left in `saving` past the TTL gets re-taken and finishes.
 
 ## 8. Monitoring escalation
+
+> 🎵 Rockwell, ["Somebody's Watching Me"](https://open.spotify.com/search/Rockwell%20Somebody%27s%20Watching%20Me): the `ALERT:` line fires at ERROR severity.
+
 - ☐ Force a give-up (a job with no `providerJobId` older than 30 min, or a
   provider-absent prediction) and run the sweep.
 - ☐ Cloud Logging shows the **`ALERT: generation jobs need attention`** line at
@@ -145,6 +171,9 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
   channel fires.
 
 ## 8b. System Health page (background-job heartbeats)
+
+> 🎵 Bee Gees, ["Stayin' Alive"](https://open.spotify.com/search/Bee%20Gees%20Stayin%20Alive): literal heartbeats, green/yellow/red, the CPR-rhythm classic.
+
 - ☐ As an **admin**, open `…/#admin/health` → the "System Health" modal lists all
   five scheduled jobs (gen reconciler, scheduled emails, asset GC, usage
   reconcile, orphan cleanup) with a green/yellow/red dot, last-run time, and
@@ -161,6 +190,9 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
   "No heartbeat reported yet".
 
 ## 9. RAD optimization (cloudrun, automatic)
+
+> 🎵 Queen & David Bowie, ["Under Pressure"](https://open.spotify.com/search/Queen%20Bowie%20Under%20Pressure): compression to `.rad`, right on the nose.
+
 - ☐ After a splat asset is created (generated OR drag-uploaded), a
   `kind: 'splat-rad'`, `provider: 'cloudrun'`, `tokenCost: 0` job runs
   `queued → running → succeeded`.
@@ -180,6 +212,9 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
 - ☐ cloudrun reconciler: a wedged RAD job re-enqueues; a truly old one gives up.
 
 ## 10. Upload formats & size limits
+
+> 🎵 Lou Bega, ["Mambo No. 5"](https://open.spotify.com/search/Lou%20Bega%20Mambo%20No%205): a little bit of .ply, a little bit of .spz, a little bit of .splat.
+
 - ☐ Drag-upload each splat format: `.ply`, `.spz`, `.splat`, `.rad` — each loads
   and renders.
 - ☐ Per-plan size caps enforced client-side and in `getUploadQuota`
@@ -188,6 +223,9 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
   is higher).
 
 ## 11. Thumbnails & preview cache
+
+> 🎵 Paul Simon, ["Kodachrome"](https://open.spotify.com/search/Paul%20Simon%20Kodachrome): "give us those nice bright colors" (please not a black thumb).
+
 - ☐ Opening the splat viewer lazily captures a thumbnail; `thumbnailUrl` backfills
   on the asset and shows in the gallery.
 - ☐ Thumbnail is captured from the **live canvas** — a RAD/`.rad` splat produces a
@@ -198,6 +236,9 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
   download).
 
 ## 12. End-to-end persistence
+
+> 🎵 Simple Minds, ["Don't You (Forget About Me)"](https://open.spotify.com/search/Simple%20Minds%20Don%27t%20You%20Forget%20About%20Me): save, reload, the splat persists.
+
 - ☐ Drag a generated splat into a scene, **save** the scene, reload → splat loads
   from the saved `storageUrl`/`optimizedSourceUrl`.
 - ☐ Open the saved scene in an **anonymous/incognito** session → the splat loads
@@ -206,6 +247,9 @@ Legend: ☐ todo · ✅ pass · ❌ fail (note what happened)
 ---
 
 ## Pre-prod deployment checklist (from the PR punch list)
+
+> 🎵 Europe, ["The Final Countdown"](https://open.spotify.com/search/Europe%20The%20Final%20Countdown): obviously.
+
 - ☐ `firebase deploy --only firestore:rules,firestore:indexes,storage` (new
   `(notify.pending, status)` collection-group index must finish **building**
   before the reconciler's notify sweep can query). Rules deploy also ships the
