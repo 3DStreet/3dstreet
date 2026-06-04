@@ -20,12 +20,45 @@ export const MAX_TILT_DEGREES = 89;
 // below T. Lowered from the old 30° to 18° per the mid-project review.
 export const TILT_THRESHOLD_DEFAULT_DEGREES = 18;
 
-// TASK-010 (D4): underground guard floor for the Map-mode orbit. A
-// Map-orbit around a ground-level pivot can swing the camera below
-// ground (the decoupled rotation clamps the *view*, not the *position*);
-// `applyGroundFloor` keeps the camera at or above this absolute y.
-// Absolute-y for now — AGL is TASK-013's job.
-export const ROTATION_GROUND_FLOOR_METRES = 0.5;
+// TASK-024 — solid-geometry prevention & recovery. All metres / degrees.
+// Starting values from the SPEC; tunable.
+//
+// Collision / clamps.
+//   EYE_MARGIN_METRES — shared eye-height clearance above any solid floor,
+//     used by the descent clamp, WASD follow / step-up, the orbit clamp,
+//     and the fall/pop targets. == the TASK-013 AGL street floor (1.5 m).
+export const EYE_MARGIN_METRES = 1.5;
+// WASD forward-ray classifier (D1).
+//   BLOCK_SLOPE_MIN_DEGREES — a forward-ray hit at/above this slope reads
+//     as a near-vertical wall / façade / cliff (up-step block; down-step
+//     hover when also tall).
+export const BLOCK_SLOPE_MIN_DEGREES = 45;
+//   BLOCK_HEIGHT_MIN_METRES — floor delta at/above which an up-step blocks
+//     (vs steps up) and a down-step can hover. INDEPENDENT of
+//     EYE_MARGIN_METRES (they merely share a 1.5 m starting value).
+export const BLOCK_HEIGHT_MIN_METRES = 1.5;
+//   WASD_CAMERA_RADIUS_METRES — forward-ray look-ahead pad so the wall is
+//     seen one camera-radius before contact. NOT a corner-damping radius.
+export const WASD_CAMERA_RADIUS_METRES = 0.5;
+//   WASD_STEP_HYSTERESIS_METRES — block↔pass dead-band on the height
+//     threshold only, so a façade tangent doesn't stutter.
+export const WASD_STEP_HYSTERESIS_METRES = 0.3;
+//   WASD_FACING_MIN — min dot(travelDir, -wallNormalH) for a forward hit
+//     to count as a *facing* block (N3 tangent guard). A grazing skim has
+//     its normal ~perpendicular to travel (dot ≈ 0) and must not block.
+export const WASD_FACING_MIN = 0.35;
+// Enclosure probe (3a). Cast-down origin = camera.y + this margin.
+//   Altitude assumption (D10e): no relevant solid overhead sits more than
+//   this far above the camera.
+export const ENCLOSURE_PROBE_UP_MARGIN_METRES = 500;
+// Recovery tweens.
+export const FALL_DURATION_MS = 600; // fall / swoop / gesture-end tween
+export const POP_TO_ROOF_DURATION_MS = 400;
+// Discoverability cue (D7) — show/hide hysteresis (a 2 m dead-band) so the
+// cue doesn't strobe at the boundary. Keyed off height above the collision
+// floor below.
+export const DISCOVERABILITY_CUE_SHOW_METRES = 8;
+export const DISCOVERABILITY_CUE_HIDE_METRES = 6;
 
 // TASK-010 (D5): minimum orbit radius. A very-close cursor pivot (only
 // reachable while staying in Map mode via Ctrl+wheel swoop-bypass) makes
