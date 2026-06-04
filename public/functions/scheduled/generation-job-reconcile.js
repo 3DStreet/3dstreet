@@ -58,6 +58,22 @@ const RACE_GUARD_MS = 3 * 60 * 1000;
 // a job the provider still reports as running — SHARP cold-boots can be slow.
 const GIVE_UP_MS = 30 * 60 * 1000;
 
+// cloudrun (RAD) jobs have no provider to poll AND keep status 'queued' for the
+// whole conversion, so age alone can't tell "mid-conversion" from "wedged". A
+// single dispatch can run up to the Cloud Tasks dispatchDeadline (1800s) and
+// Cloud Tasks retries it internally, so we only re-enqueue once the CURRENT
+// dispatch (job.dispatchedAt) has been silent longer than one full deadline —
+// otherwise every sweep would spawn a duplicate concurrent conversion.
+const CLOUDRUN_REENQUEUE_MS = 35 * 60 * 1000;
+// Total-age ceiling before a RAD job is declared dead — roomy enough for Cloud
+// Tasks' own retries (maxAttempts=3) plus a reconciler re-enqueue.
+const CLOUDRUN_GIVE_UP_MS = 2 * 60 * 60 * 1000;
+
+// Non-terminal backlog size that flips the health page to yellow. A flood of
+// uploads spawning hundreds of concurrent conversions is the failure mode we
+// want to see BEFORE it shows up on the bill.
+const QUEUE_DEPTH_WARN = 100;
+
 // Safety cap so a pathological backlog can't blow the function's time budget in
 // one run; the next scheduled tick picks up the remainder.
 const MAX_JOBS_PER_RUN = 200;
@@ -124,14 +140,36 @@ async function reconcile({ dryRun }) {
     .limit(MAX_JOBS_PER_RUN)
     .get();
 
+  // Total non-terminal backlog (not just this run's capped slice) so the health
+  // page can see a runaway queue. queueBacklog is 0 when healthy and positive
+  // past the warn line, so it drops straight into degradedKeys (deriveStatus
+  // flags any value > 0). Best-effort: a failed count must not abort the sweep.
+  let queueDepth = snap.size;
+  try {
+    const countSnap = await db
+      .collectionGroup('generationJobs')
+      .where('status', 'in', NON_TERMINAL)
+      .count()
+      .get();
+    queueDepth = countSnap.data().count;
+  } catch (err) {
+    console.warn(
+      '[generation-job-reconcile] queue-depth count failed:',
+      (err && err.message) || err
+    );
+  }
+
   const summary = {
     scanned: snap.size,
+    queueDepth,
+    queueBacklog: Math.max(0, queueDepth - QUEUE_DEPTH_WARN),
     tooFresh: 0,
     processed: 0,
     succeeded: 0,
     failed: 0,
     refunded: 0,
     gaveUp: 0,
+    reEnqueued: 0,
     stillRunning: 0,
     errored: 0,
     samples: [],
@@ -161,13 +199,18 @@ async function reconcile({ dryRun }) {
 
     try {
       // cloudrun (splat-rad): the worker owns writeback, so there's no external
-      // prediction to poll — a job stuck non-terminal past RACE_GUARD means the
-      // Cloud Task was dropped or the worker died mid-flight. Re-enqueue (the
-      // worker is idempotent: it just overwrites the same -lod.rad / re-patches
-      // the doc), and give up only once it's truly old. tokenCost is 0, so
+      // prediction to poll, and the job stays 'queued' for the whole conversion.
+      // Only re-enqueue once the CURRENT dispatch has been silent past a full
+      // Cloud Tasks deadline (dispatchedAt + CLOUDRUN_REENQUEUE_MS) — that's the
+      // signal the task was dropped or the worker died. Re-enqueuing on every
+      // sweep (the old behavior) spawned duplicate concurrent conversions of a
+      // job that was simply still running. The worker is idempotent, so a real
+      // re-enqueue just overwrites the same -lod.rad. tokenCost is 0, so
       // failJob's refund is a no-op.
       if (job.provider === 'cloudrun') {
-        if (age > GIVE_UP_MS) {
+        const sinceDispatch = ageMs(job.dispatchedAt || job.createdAt);
+        sample.sinceDispatchMin = Math.round(sinceDispatch / 60000);
+        if (age > CLOUDRUN_GIVE_UP_MS) {
           sample.action = 'gave-up-cloudrun';
           summary.gaveUp++;
           if (!dryRun) {
@@ -180,9 +223,9 @@ async function reconcile({ dryRun }) {
           if (!dryRun) {
             await failJob(db, uid, jobRef, job, 'RAD job missing plyPath.');
           }
-        } else {
+        } else if (sinceDispatch > CLOUDRUN_REENQUEUE_MS) {
           sample.action = 're-enqueued-cloudrun';
-          summary.processed++;
+          summary.reEnqueued++;
           if (!dryRun) {
             await enqueueRadTask({
               uid,
@@ -190,7 +233,16 @@ async function reconcile({ dryRun }) {
               plyPath: job.plyPath,
               jobId: jobRef.id
             });
+            // Reset the dispatch clock so the next sweep measures from THIS
+            // re-enqueue, not the original — no duplicate-per-sweep spiral.
+            await jobRef.update({
+              dispatchedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
           }
+        } else {
+          // Within the current dispatch's window — presumed mid-conversion.
+          sample.action = 'cloudrun-in-flight';
+          summary.stillRunning++;
         }
         if (summary.samples.length < 25) summary.samples.push(sample);
         continue;
@@ -413,13 +465,20 @@ async function sendReadyNotifications({ dryRun }) {
 // Reporting / log-based alert notification channel at this and you get paged
 // when jobs systematically give up, error, or fail to email.
 function escalateIfNeeded(summary, notify) {
-  if (summary.gaveUp > 0 || summary.errored > 0 || notify.errored > 0) {
+  if (
+    summary.gaveUp > 0 ||
+    summary.errored > 0 ||
+    notify.errored > 0 ||
+    summary.queueBacklog > 0
+  ) {
     console.error(
       '[generation-job-reconcile] ALERT: generation jobs need attention:',
       JSON.stringify({
         gaveUp: summary.gaveUp,
         errored: summary.errored,
-        notifyErrored: notify.errored
+        notifyErrored: notify.errored,
+        queueDepth: summary.queueDepth,
+        queueBacklog: summary.queueBacklog
       })
     );
   }
@@ -442,7 +501,7 @@ const reconcileGenerationJobs = functions
         schedule: '*/10 * * * *',
         timeZone: 'America/Los_Angeles',
         expectedIntervalMs: TEN_MIN_MS,
-        degradedKeys: ['gaveUp', 'errored', 'notify.errored']
+        degradedKeys: ['gaveUp', 'errored', 'notify.errored', 'queueBacklog']
       },
       async () => {
         console.log('[generation-job-reconcile] starting sweep');
