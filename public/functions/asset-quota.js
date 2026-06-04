@@ -196,6 +196,8 @@ const getUploadQuota = functions.runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS']
 module.exports = {
   onAssetWritten,
   getUploadQuota,
+  resolvePlanForUser,
+  getPlanLimit,
   PLAN_LIMITS,
   MAX_FILE_BYTES_BY_PLAN
 };

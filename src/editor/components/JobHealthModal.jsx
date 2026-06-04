@@ -48,6 +48,11 @@ const EXPECTED_JOBS = [
     cadence: 'weekly'
   },
   {
+    id: 'checkAssetUsageHealth',
+    label: 'Storage usage health',
+    cadence: 'daily'
+  },
+  {
     id: 'cleanupOrphanedStorage',
     label: 'Orphaned storage cleanup',
     cadence: 'monthly'

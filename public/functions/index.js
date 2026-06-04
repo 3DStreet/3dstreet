@@ -12,6 +12,7 @@ const { auditUserSubscriptions, auditUserSubscriptionsHttp } = require('./utilit
 const { onAssetWritten, getUploadQuota } = require('./asset-quota.js');
 const { purgeSoftDeletedAssets, triggerPurgeSoftDeletedAssets } = require('./scheduled/asset-gc.js');
 const { reconcileAssetUsage, triggerReconcileAssetUsage } = require('./scheduled/asset-usage-reconcile.js');
+const { checkAssetUsageHealth, triggerCheckAssetUsageHealth } = require('./scheduled/asset-usage-health.js');
 const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./scheduled/asset-orphan-cleanup.js');
 const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
 const { onSplatAssetCreated } = require('./rad-dispatch.js');
@@ -55,6 +56,10 @@ exports.triggerPurgeSoftDeletedAssets = triggerPurgeSoftDeletedAssets;
 // Asset storage usage reconciliation (weekly scheduled + admin-only manual trigger)
 exports.reconcileAssetUsage = reconcileAssetUsage;
 exports.triggerReconcileAssetUsage = triggerReconcileAssetUsage;
+
+// Storage usage health probe — daily growth + over-cap awareness on System Health
+exports.checkAssetUsageHealth = checkAssetUsageHealth;
+exports.triggerCheckAssetUsageHealth = triggerCheckAssetUsageHealth;
 
 // Orphaned Storage object cleanup (monthly scheduled + admin-only manual trigger)
 exports.cleanupOrphanedStorage = cleanupOrphanedStorage;
