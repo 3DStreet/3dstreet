@@ -23,6 +23,7 @@ import { Compass } from './elements/Compass';
 import useStore from '@/store';
 import { AIChatProvider } from '../contexts/AIChatContext';
 import { useNavMode } from '../lib/nav-experimental/useNavMode';
+import { RecoveryCue } from '../lib/nav-experimental/RecoveryCue.jsx';
 import { isExperimentalNav } from '../lib/nav-experimental/index.js';
 import styles from './Main.module.scss';
 
@@ -139,6 +140,7 @@ export default function Main() {
                 <Compass />
               </div>
             )}
+            {isExperimentalNav() && <RecoveryCue />}
           </div>
         </AIChatProvider>
       )}

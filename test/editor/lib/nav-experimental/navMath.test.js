@@ -5,12 +5,18 @@ import {
   decideLbMode,
   decideDragModeSwitch,
   clampOrbitRadius,
-  applyGroundFloor,
   computeLowTiltWheelHit,
   shiftRotateStep,
   decideSwoopPhase,
   phase2TargetTilt,
-  phase2NextElevation
+  phase2NextElevation,
+  classifyWasdStep,
+  wasdFollowY,
+  wasdVerticalY,
+  groundedAtLoad,
+  classifyFallAction,
+  isLegitPose,
+  cueState
 } from '../../../../src/editor/lib/nav-experimental/navMath.js';
 import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
@@ -18,7 +24,9 @@ import {
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
   SWOOP_PHASE2_STEP,
-  SWOOP_PHASE2_FLOOR_SNAP_METRES
+  SWOOP_PHASE2_FLOOR_SNAP_METRES,
+  EYE_MARGIN_METRES,
+  WASD_VERTICAL_LIFT_RATE_MPS
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
 
 if (!globalThis.THREE) globalThis.THREE = THREE;
@@ -167,95 +175,515 @@ describe('clampOrbitRadius', () => {
   });
 });
 
-describe('applyGroundFloor', () => {
-  it('leaves a camera above the floor unchanged', () => {
-    const pos = new THREE.Vector3(10, 5, 0);
-    const lookTarget = new THREE.Vector3(0, 5, 0);
-    const centre = new THREE.Vector3(0, 0, 0);
-    const out = applyGroundFloor(pos, lookTarget, centre, 0.5);
-    expect(out.pos.x).toBeCloseTo(10, 6);
-    expect(out.pos.y).toBeCloseTo(5, 6);
-    expect(out.pos.z).toBeCloseTo(0, 6);
-    expect(out.lookTarget.x).toBeCloseTo(0, 6);
+// --- TASK-024 classifyWasdStep (forward-ray 4-way classifier) ---
+//
+// `forwardHit` = { hit, normalY, normalH } — the first solid-floor hit on
+// the forward ray. `normalH` is the horizontal component of the world
+// normal. The facing test uses dot(targetDir, -normalH_normalized).
+describe('classifyWasdStep', () => {
+  // A wall facing -X (camera travelling +X into it): outward normal +X, so
+  // normalH = (1, 0, 0); travelDir +X → dot(targetDir, -normalH) = -1?  No:
+  // the wall the camera walks INTO faces back toward the camera, normal
+  // points toward the camera = -X. So a +X-travelling camera meets a wall
+  // whose outward normal is -X → normalH = (-1, 0, 0); dot(+X, -(-X)) = +1.
+  const FACING_WALL = { hit: true, normalY: 0, normalH: { x: -1, z: 0 } };
+  const travelPlusX = { x: 1, z: 0 };
+
+  it('blocks a facing near-vertical wall with a tall up-step', () => {
+    expect(
+      classifyWasdStep({
+        floorNow: { y: 0 },
+        floorDest: { y: 2 }, // +2 m ≥ 1.5
+        forwardHit: FACING_WALL,
+        reach: 0.8,
+        targetDir: travelPlusX,
+        lastBlocked: false
+      })
+    ).toBe('block');
   });
 
-  it('re-projects below-floor pos onto the orbit sphere preserving radius', () => {
-    // Camera dipped below the floor while orbiting a ground-level pivot.
-    const centre = new THREE.Vector3(0, 0, 0);
-    const R = 10;
-    // Pos on the sphere, below floor: pick a point at y = -3, on the
-    // sphere of radius 10 about origin. rho_old = sqrt(100 - 9) ≈ 9.539.
-    const yPos = -3;
-    const rhoOld = Math.sqrt(R * R - yPos * yPos);
-    const pos = new THREE.Vector3(rhoOld, yPos, 0);
-    const lookTarget = new THREE.Vector3(0, yPos, 0); // view dir = -X
-    const floorY = 0.5;
-    const out = applyGroundFloor(pos, lookTarget, centre, floorY);
-    // Radius preserved.
-    expect(out.pos.distanceTo(centre)).toBeCloseTo(R, 5);
-    // Pinned to the floor.
-    expect(out.pos.y).toBeCloseTo(floorY, 5);
-    // View direction preserved (lookTarget - pos identical).
-    const dOld = new THREE.Vector3().subVectors(lookTarget, pos);
-    const dNew = new THREE.Vector3().subVectors(out.lookTarget, out.pos);
-    expect(dNew.x).toBeCloseTo(dOld.x, 6);
-    expect(dNew.y).toBeCloseTo(dOld.y, 6);
-    expect(dNew.z).toBeCloseTo(dOld.z, 6);
+  it('blocks a wall on FLAT ground — facing steep forward hit, delta≈0 (Bug-1 regression)', () => {
+    // A building standing on flat ground: the destination-column floor is the
+    // same level as the camera's floor (delta = 0), but the forward ray hits
+    // the façade. Must block — the earlier `delta >= 1.5` gate let the camera
+    // walk straight through buildings on flat ground.
+    expect(
+      classifyWasdStep({
+        floorNow: { y: 0 },
+        floorDest: { y: 0 }, // flat ground in front of the wall
+        forwardHit: FACING_WALL,
+        reach: 0.8,
+        targetDir: travelPlusX,
+        lastBlocked: false
+      })
+    ).toBe('block');
   });
 
-  it('is idempotent (feeding the output back in is a no-op)', () => {
-    const centre = new THREE.Vector3(0, 0, 0);
-    const R = 10;
-    const yPos = -3;
-    const rhoOld = Math.sqrt(R * R - yPos * yPos);
-    const pos = new THREE.Vector3(rhoOld, yPos, 0);
-    const lookTarget = new THREE.Vector3(0, yPos, 0);
-    const floorY = 0.5;
-    const once = applyGroundFloor(pos, lookTarget, centre, floorY);
-    const twice = applyGroundFloor(once.pos, once.lookTarget, centre, floorY);
-    expect(twice.pos.x).toBeCloseTo(once.pos.x, 6);
-    expect(twice.pos.y).toBeCloseTo(once.pos.y, 6);
-    expect(twice.pos.z).toBeCloseTo(once.pos.z, 6);
-    expect(twice.lookTarget.x).toBeCloseTo(once.lookTarget.x, 6);
+  it('steps up a small walkable rise with a clear forward ray', () => {
+    expect(
+      classifyWasdStep({
+        floorNow: { y: 0 },
+        floorDest: { y: 0.3 },
+        forwardHit: { hit: false },
+        reach: 0.8,
+        targetDir: travelPlusX,
+        lastBlocked: false
+      })
+    ).toBe('step-up');
   });
 
-  it('falls back to a plain y-clamp when the sphere never reaches the floor', () => {
-    // Degenerate guard: pos.y < floorY (so the clamp engages) AND
-    // R < |floorY − centre.y| (the orbit sphere never reaches the floor
-    // height). Reachable only with a high floor / low pivot and a tiny
-    // radius. Construct it directly: centre at ground, floorY well above
-    // pos, pos a short distance from centre.
-    //   centre.y = 0, floorY = 5, pos = (0.2, 3, 0):
-    //   pos.y (3) < floorY (5) ✓;  dy = 5;  R = hypot(0.2, 3) ≈ 3.007 < 5 ✓
-    const centre = new THREE.Vector3(0, 0, 0);
-    const floorY = 5;
-    const pos = new THREE.Vector3(0.2, 3, 0);
-    const lookTarget = new THREE.Vector3(0.2 - 1, 3, 0); // view dir = -X
-    const out = applyGroundFloor(pos, lookTarget, centre, floorY);
-    // Degenerate branch: plain y-clamp, x/z preserved.
-    expect(out.pos.x).toBeCloseTo(0.2, 6);
-    expect(out.pos.y).toBeCloseTo(floorY, 6);
-    expect(out.pos.z).toBeCloseTo(0, 6);
-    // View direction still preserved via the equal lookTarget delta.
-    const dOld = new THREE.Vector3().subVectors(lookTarget, pos);
-    const dNew = new THREE.Vector3().subVectors(out.lookTarget, out.pos);
-    expect(dNew.y).toBeCloseTo(dOld.y, 6);
+  it('N2-a totality: tall up-step (≥1.5) with no facing-steep hit → step-up (not undefined)', () => {
+    // The eye-ray grazed a lip; forward ray clear, but destination column
+    // rose ≥ 1.5 m. Must be a defined outcome (step-up), never undefined.
+    const out = classifyWasdStep({
+      floorNow: { y: 0 },
+      floorDest: { y: 1.8 },
+      forwardHit: { hit: false },
+      reach: 0.8,
+      targetDir: travelPlusX,
+      lastBlocked: false
+    });
+    expect(out).toBe('step-up');
+    expect(out).toBeDefined();
   });
 
-  it('composes with a max-clamped pivot (radius 100, centre at ground)', () => {
-    // B5: a far-cap pivot (R = 100, centre at ground) swung below floor
-    // still re-projects on the sphere (non-degenerate), ending at floorY
-    // with radius ≈ 100.
-    const centre = new THREE.Vector3(0, 0, 0);
-    const R = 100;
-    const yPos = -20;
-    const rhoOld = Math.sqrt(R * R - yPos * yPos);
-    const pos = new THREE.Vector3(rhoOld, yPos, 0);
-    const lookTarget = new THREE.Vector3(rhoOld - 1, yPos, 0);
-    const floorY = 0.5;
-    const out = applyGroundFloor(pos, lookTarget, centre, floorY);
-    expect(out.pos.y).toBeCloseTo(floorY, 5);
-    expect(out.pos.distanceTo(centre)).toBeCloseTo(R, 4);
+  it('N2-b reach-invariance: a <45° continuous descent follows at any fly-speed', () => {
+    // A ramp dropping ~30° (delta = -reach*tan30). At two different reach
+    // values the same GRADE must stay follow (angle < 45°), even though the
+    // raw delta is large at the larger reach.
+    const grade = Math.tan((30 * Math.PI) / 180);
+    for (const reach of [0.7, 8]) {
+      const delta = -grade * reach; // ~30° descent
+      expect(
+        classifyWasdStep({
+          floorNow: { y: 0 },
+          floorDest: { y: delta },
+          forwardHit: { hit: false },
+          reach,
+          targetDir: travelPlusX,
+          lastBlocked: false
+        })
+      ).toBe('follow');
+    }
+  });
+
+  it('hovers off a near-vertical roof edge / cliff (angle ≥ 45°, drop ≥ 1.5)', () => {
+    expect(
+      classifyWasdStep({
+        floorNow: { y: 0 },
+        floorDest: { y: -5 }, // sharp drop
+        forwardHit: { hit: false },
+        reach: 0.8, // atan2(5, 0.8) ≈ 80° ≥ 45°
+        targetDir: travelPlusX,
+        lastBlocked: false
+      })
+    ).toBe('hover');
+  });
+
+  it('N3 tangent guard: a non-facing near-vertical wall does NOT block', () => {
+    // Skimming a façade: the wall normal is ~perpendicular to travel
+    // (dot ≈ 0 < WASD_FACING_MIN). normalH = (0,0,1) while travelling +X.
+    const out = classifyWasdStep({
+      floorNow: { y: 0 },
+      floorDest: { y: 2 }, // tall, but the wall is tangential
+      forwardHit: { hit: true, normalY: 0, normalH: { x: 0, z: 1 } },
+      reach: 0.8,
+      targetDir: travelPlusX,
+      lastBlocked: false
+    });
+    expect(out).not.toBe('block');
+    expect(out).toBe('step-up'); // up-step delta > 0 → mount it
+  });
+
+  it('flat ground follows', () => {
+    expect(
+      classifyWasdStep({
+        floorNow: { y: 3 },
+        floorDest: { y: 3 },
+        forwardHit: { hit: false },
+        reach: 0.8,
+        targetDir: travelPlusX,
+        lastBlocked: false
+      })
+    ).toBe('follow');
+  });
+
+  it('hysteresis never holds a block when the forward ray is clear (no doorway deadlock)', () => {
+    expect(
+      classifyWasdStep({
+        floorNow: { y: 0 },
+        floorDest: { y: 5 },
+        forwardHit: { hit: false }, // clear — threaded the opening
+        reach: 0.8,
+        targetDir: travelPlusX,
+        lastBlocked: true
+      })
+    ).not.toBe('block');
+  });
+
+  it('facing hysteresis: a marginally-facing wall holds the block once blocked', () => {
+    // A near-vertical wall whose facing dot ≈ 0.30 sits between
+    // WASD_FACING_MIN (0.35) and WASD_FACING_MIN - WASD_FACING_HYSTERESIS
+    // (0.25). It blocks while already blocked (hold through skim wobble) but
+    // passes (step-up, delta>0) when not — damping block↔pass stutter.
+    const dot = 0.3;
+    const z = Math.sqrt(1 - dot * dot);
+    const base = {
+      floorNow: { y: 0 },
+      floorDest: { y: 2 },
+      // normalized -normalH must dot travel(+X) to `dot`: -normalH = (dot,-z)
+      forwardHit: { hit: true, normalY: 0, normalH: { x: -dot, z } },
+      reach: 0.8,
+      targetDir: travelPlusX
+    };
+    expect(classifyWasdStep({ ...base, lastBlocked: true })).toBe('block');
+    expect(classifyWasdStep({ ...base, lastBlocked: false })).toBe('step-up');
+  });
+});
+
+// --- TASK-024 wasdFollowY (live-test fix: preserve AGL, don't pin to eye) ---
+describe('wasdFollowY', () => {
+  const EYE = EYE_MARGIN_METRES; // 1.5
+  it('flat ground at any altitude leaves y unchanged (no snap-to-eye)', () => {
+    // Deliberately raised to 2 m over flat ground (floor 0): W keeps 2 m.
+    expect(wasdFollowY(2, 0, 0, EYE)).toBe(2);
+    // Flying at 50 m over flat ground stays 50 m (horizontal pan).
+    expect(wasdFollowY(50, 0, 0, EYE)).toBe(50);
+    // At eye height stays at eye height.
+    expect(wasdFollowY(1.5, 0, 0, EYE)).toBe(1.5);
+  });
+  it('preserves the chosen clearance down a slope', () => {
+    // At 2 m AGL, the floor drops 0.3 → camera follows down, still 2 m AGL.
+    expect(wasdFollowY(2, 0, -0.3, EYE)).toBeCloseTo(1.7);
+    // At eye height down the same slope → still eye height above it.
+    expect(wasdFollowY(1.5, 0, -0.3, EYE)).toBeCloseTo(1.2);
+  });
+  it('steps up onto a rise, preserving clearance', () => {
+    // At 1.5 AGL, floor rises 0.5 (kerb) → rises to keep clearance.
+    expect(wasdFollowY(1.5, 0, 0.5, EYE)).toBeCloseTo(2.0);
+  });
+  it('push-up clamp: never closer than eye-margin to the floor', () => {
+    // Camera sank to 0.5 over floor 0 (AGL < eye) → pushed up to eye margin.
+    expect(wasdFollowY(0.5, 0, 0, EYE)).toBe(1.5);
+    // Below-eye AGL (0.5) walking onto a +1.0 rise: tracked 1.5 would be only
+    // 0.5 above the new floor → clamp up to floor+eye = 2.5.
+    expect(wasdFollowY(0.5, 0, 1.0, EYE)).toBeCloseTo(2.5);
+  });
+});
+
+describe('wasdVerticalY', () => {
+  const EYE = EYE_MARGIN_METRES; // 1.5
+  const RATE = WASD_VERTICAL_LIFT_RATE_MPS; // 4
+
+  // DEC-A: the 3-way toggle and options 1 & 2 are RETIRED. The model is now
+  // just: grounded (or H==null) → collision-follow (`wasdFollowY`);
+  // not-grounded → option 3 (ease toward `max(H, collisionFloorDest + eye)`).
+  //
+  // --- Grounded / H==null rows: collision-follow (NOT rate-limited) ---
+  // dtSeconds/rateMps are irrelevant on this path; a tiny dt must NOT cap the
+  // walking follow. Each asserts: correct y (5 dp), inputs not mutated, no NaN.
+  const followRows = [
+    // # grounded label                                  inputs                                         expect
+    ['G1', true, 'grounded flat (AGL-preserve)', { camY: 1.5, floorNowY: 0, collisionFloorDestY: 0, H: 99 }, 1.5],
+    ['G2', true, 'grounded slope +5 (follow up)', { camY: 1.5, floorNowY: 0, collisionFloorDestY: 5, H: 99 }, 6.5],
+    ['G3', true, 'grounded push-up clamp', { camY: 1.0, floorNowY: 0, collisionFloorDestY: 2, H: 99 }, 3.5],
+    ['G4', true, 'grounded follows down a slope', { camY: 6.5, floorNowY: 5, collisionFloorDestY: 0, H: 99 }, 1.5],
+    ['N1', false, 'H==null defensive (collision-follow, no NaN)', { camY: 1.5, floorNowY: 0, collisionFloorDestY: 5, H: null }, 6.5]
+  ];
+
+  for (const [n, grounded, label, inputs, expected] of followRows) {
+    it(`follow ${n}: ${label}`, () => {
+      // Tiny dt — proves the grounded/H==null path ignores the rate limit.
+      const args = {
+        grounded,
+        camY: inputs.camY,
+        floorNowY: inputs.floorNowY,
+        collisionFloorDestY: inputs.collisionFloorDestY,
+        H: inputs.H,
+        eyeMargin: EYE,
+        dtSeconds: 1 / 600,
+        rateMps: RATE
+      };
+      const snapshot = { ...args };
+      const y = wasdVerticalY(args);
+      expect(y).toBeCloseTo(expected, 5);
+      expect(Number.isNaN(y)).toBe(false);
+      expect(args).toEqual(snapshot); // inputs not mutated
+    });
+  }
+
+  // --- Option-3 target rows: not-grounded, large dt so target reached in
+  // one frame (rate limit non-binding). Verifies the target math
+  // `max(H, collisionFloorDest + eye)` unchanged from option 3. ---
+  const targetRows = [
+    // # label                                      inputs                                   expect
+    [1, 'opt3 flat H=50 (hold absolute)', { camY: 50, collisionFloorDestY: 0, H: 50 }, 50],
+    [2, 'opt3 over 49m roof (≤eye lift)', { camY: 50, collisionFloorDestY: 49, H: 50 }, 50.5],
+    [3, 'opt3 drop-back to cruise', { camY: 50, collisionFloorDestY: 0, H: 50 }, 50],
+    [4, 'opt3 rising terrain 60 (clamp lift)', { camY: 50, collisionFloorDestY: 60, H: 50 }, 61.5]
+  ];
+
+  for (const [n, label, inputs, expected] of targetRows) {
+    it(`opt3 target row ${n}: ${label}`, () => {
+      const args = {
+        grounded: false,
+        camY: inputs.camY,
+        floorNowY: 0,
+        collisionFloorDestY: inputs.collisionFloorDestY,
+        H: inputs.H,
+        eyeMargin: EYE,
+        dtSeconds: 1000, // huge → maxStep ≫ |target − camY|, reaches target
+        rateMps: RATE
+      };
+      const snapshot = { ...args };
+      const y = wasdVerticalY(args);
+      expect(y).toBeCloseTo(expected, 5);
+      expect(Number.isNaN(y)).toBe(false);
+      expect(args).toEqual(snapshot);
+    });
+  }
+
+  // --- DEC-B rate-limit (not-grounded path only) ---
+  describe('rate-limit (DEC-B)', () => {
+    const dt = 1 / 60; // s
+    const maxStep = RATE * dt; // ≈ 0.0667 m this frame
+
+    it('lift larger than maxStep advances only maxStep (up)', () => {
+      // target = max(H=50, floorDest+eye = 49+1.5 = 50.5) = 50.5; camY=50 →
+      // wants +0.5, but capped to +maxStep this frame.
+      const y = wasdVerticalY({
+        grounded: false, camY: 50, floorNowY: 0,
+        collisionFloorDestY: 49, H: 50, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(50 + maxStep, 5);
+    });
+
+    it('settle larger than maxStep advances only maxStep (down)', () => {
+      // camY high above cruise; target = max(H=50, 0+1.5)=50; wants −5 but
+      // capped to −maxStep this frame.
+      const y = wasdVerticalY({
+        grounded: false, camY: 55, floorNowY: 0,
+        collisionFloorDestY: 0, H: 50, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(55 - maxStep, 5);
+    });
+
+    it('within maxStep reaches target exactly (up)', () => {
+      // wants +0.02 (< maxStep) → arrives at target 50.02.
+      const y = wasdVerticalY({
+        grounded: false, camY: 50, floorNowY: 0,
+        collisionFloorDestY: 48.52, H: 50, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(50.02, 5); // target = 48.52 + 1.5
+    });
+
+    it('within maxStep reaches target exactly (down)', () => {
+      // wants −0.02 (< maxStep) → arrives at target 50.
+      const y = wasdVerticalY({
+        grounded: false, camY: 50.02, floorNowY: 0,
+        collisionFloorDestY: 0, H: 50, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(50, 5);
+    });
+
+    it('hard safety floor: never below collisionFloorDest mid-ease', () => {
+      // Fast cross-on: roof jumps to 49 while camY is 48 (below the roof).
+      // target = max(H=48, 49+1.5)=50.5; one capped step gives 48+maxStep ≈
+      // 48.067, which is still below the roof 49 → safety floor lifts to 49.
+      const y = wasdVerticalY({
+        grounded: false, camY: 48, floorNowY: 0,
+        collisionFloorDestY: 49, H: 48, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(49, 5); // clamped up to the roof, not 48+maxStep
+      expect(y).toBeGreaterThanOrEqual(49);
+    });
+  });
+
+  // --- TASK-024a (solid-geometry guard): destFloorHit:false (probe miss,
+  // outside a finite scene's bounds) on the not-grounded path. There is no
+  // real surface ahead, so `collisionFloorDestY` is a STALE cached value: it
+  // must be ignored — no `max(H, floorDest+eye)` lift, no `max(eased,
+  // floorDest)` safety floor. The camera eases toward H only, rate-limited,
+  // and is NEVER forced up to the stale floor (which would block descent /
+  // spuriously lift the camera outside bounds). ---
+  describe('destFloorHit:false (no floor ahead, outside bounds)', () => {
+    const dt = 1000; // huge → maxStep ≫ any delta → reaches H in one frame
+
+    it('stale-high floor does NOT lift the camera (eases to H only)', () => {
+      // camY=5, H=5, stale collisionFloorDestY=30 (would lift to 31.5 if used).
+      // With destFloorHit:false the floor is ignored → stays at H=5.
+      const y = wasdVerticalY({
+        grounded: false, camY: 5, floorNowY: 0,
+        collisionFloorDestY: 30, destFloorHit: false, H: 5, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(5, 5); // NOT lifted to 31.5
+    });
+
+    it('descends toward a lower H, never blocked by a stale floor', () => {
+      // camY=20, H=2; stale floor 30 would have clamped the floor at 31.5 and
+      // (via the safety floor) blocked descent. destFloorHit:false → free to
+      // ease down toward H=2.
+      const y = wasdVerticalY({
+        grounded: false, camY: 20, floorNowY: 0,
+        collisionFloorDestY: 30, destFloorHit: false, H: 2, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(2, 5);
+    });
+
+    it('rate-limits the ease toward H (down)', () => {
+      const frameDt = 1 / 60;
+      const maxStep = RATE * frameDt;
+      // camY=10, H=2, stale floor 30; wants −8 but capped to −maxStep.
+      const y = wasdVerticalY({
+        grounded: false, camY: 10, floorNowY: 0,
+        collisionFloorDestY: 30, destFloorHit: false, H: 2, eyeMargin: EYE,
+        dtSeconds: frameDt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(10 - maxStep, 5);
+    });
+
+    it('no safety floor: result may sit below the stale collisionFloorDest', () => {
+      // camY=5, H=5, stale floor 30. The grounded-floor safety `max(eased,
+      // floorDest)` would have forced 30; the miss path must NOT.
+      const y = wasdVerticalY({
+        grounded: false, camY: 5, floorNowY: 0,
+        collisionFloorDestY: 30, destFloorHit: false, H: 5, eyeMargin: EYE,
+        dtSeconds: 1000, rateMps: RATE
+      });
+      expect(y).toBeLessThan(30);
+    });
+  });
+
+  // TASK-024a: with destFloorHit:true (the normal in-bounds case) the
+  // option-3 behaviour is unchanged — same target math + safety floor.
+  describe('destFloorHit:true (in-bounds) is unchanged option-3', () => {
+    it('lifts to max(H, floorDest+eye) as before', () => {
+      const y = wasdVerticalY({
+        grounded: false, camY: 50, floorNowY: 0,
+        collisionFloorDestY: 60, destFloorHit: true, H: 50, eyeMargin: EYE,
+        dtSeconds: 1000, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(61.5, 5); // identical to opt3 target row 4
+    });
+
+    it('safety floor still clips mid-ease as before', () => {
+      const dt = 1 / 60;
+      const y = wasdVerticalY({
+        grounded: false, camY: 48, floorNowY: 0,
+        collisionFloorDestY: 49, destFloorHit: true, H: 48, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(49, 5);
+    });
+  });
+});
+
+describe('groundedAtLoad', () => {
+  const EYE = EYE_MARGIN_METRES; // 1.5
+  it('within eye-margin of a real floor → grounded', () => {
+    expect(
+      groundedAtLoad({ camY: 1.5, floorY: 0, source: 'segment-or-building', eyeMargin: EYE })
+    ).toBe(true);
+    // Exactly at the eye-margin boundary is inclusive (M3).
+    expect(
+      groundedAtLoad({ camY: 1.5, floorY: 0, source: 'tiles', eyeMargin: EYE })
+    ).toBe(true);
+  });
+  it('above eye-margin → not grounded', () => {
+    expect(
+      groundedAtLoad({ camY: 50, floorY: 0, source: 'segment-or-building', eyeMargin: EYE })
+    ).toBe(false);
+  });
+  it('cache miss → not grounded regardless of height', () => {
+    // Even if camY is within eye-margin, a cache-miss probe reads not-grounded.
+    expect(
+      groundedAtLoad({ camY: 0.5, floorY: 0, source: 'cache', eyeMargin: EYE })
+    ).toBe(false);
+  });
+});
+
+describe('classifyFallAction', () => {
+  it('enclosed → pop (wins regardless of tilt)', () => {
+    expect(
+      classifyFallAction({ enclosed: true, camY: 5, floorY: 0, tiltDeg: 80 })
+    ).toBe('pop');
+  });
+
+  it('elevated + looking down → swoop', () => {
+    expect(
+      classifyFallAction({ enclosed: false, camY: 50, floorY: 0, tiltDeg: 60 })
+    ).toBe('swoop');
+  });
+
+  it('elevated + ~horizontal → fall', () => {
+    expect(
+      classifyFallAction({ enclosed: false, camY: 50, floorY: 0, tiltDeg: 5 })
+    ).toBe('fall');
+  });
+
+  it('at street level (within eye margin) → noop', () => {
+    expect(
+      classifyFallAction({
+        enclosed: false,
+        camY: EYE_MARGIN_METRES,
+        floorY: 0,
+        tiltDeg: 5
+      })
+    ).toBe('noop');
+  });
+
+  it('no surface below (probe miss) → noop', () => {
+    expect(
+      classifyFallAction({ enclosed: false, camY: 50, floorY: null, tiltDeg: 5 })
+    ).toBe('noop');
+  });
+});
+
+describe('isLegitPose (conjunction — WE-8a)', () => {
+  it('rejects an enclosed pose even if above floor (grazing overhang)', () => {
+    expect(isLegitPose({ enclosed: true, camY: 10, floorY: 0 })).toBe(false);
+  });
+
+  it('rejects a below-floor pose even if not enclosed (tucked under arch)', () => {
+    expect(
+      isLegitPose({ enclosed: false, camY: EYE_MARGIN_METRES - 0.1, floorY: 0 })
+    ).toBe(false);
+  });
+
+  it('accepts not-enclosed AND above floor + eye margin', () => {
+    expect(
+      isLegitPose({ enclosed: false, camY: EYE_MARGIN_METRES + 0.1, floorY: 0 })
+    ).toBe(true);
+  });
+
+  it('treats no-floor (open sky) as legit when not enclosed', () => {
+    expect(isLegitPose({ enclosed: false, camY: 100, floorY: null })).toBe(true);
+  });
+});
+
+describe('cueState (show/hide hysteresis — D7)', () => {
+  it('shows above 8 m', () => {
+    expect(cueState(false, 9, false)).toBe(true);
+  });
+
+  it('hides below 6 m', () => {
+    expect(cueState(true, 5, false)).toBe(false);
+  });
+
+  it('holds the previous state inside the 6–8 m dead-band (no strobe)', () => {
+    expect(cueState(true, 7, false)).toBe(true);
+    expect(cueState(false, 7, false)).toBe(false);
+  });
+
+  it('enclosure forces show regardless of height', () => {
+    expect(cueState(false, 0, true)).toBe(true);
   });
 });
 
@@ -634,6 +1062,98 @@ describe('shiftRotateStep', () => {
     expect(after.x).toBeCloseTo(before.x, 3);
     expect(after.y).toBeCloseTo(before.y, 3);
     expect(after.z).toBeCloseTo(before.z, 3);
+  });
+
+  // --- TASK-024 (D8/N7) orbit floor bound ---
+  // The `floorY` param caps the resulting camera height: `pos.y >= floorY +
+  // EYE_MARGIN_METRES`. Asserted with an inequality (>=) — the numeric
+  // tighten lands at/above the bound, never below.
+
+  it('floor bound bites at a small radius: a hard down-drag can not dip below floor', () => {
+    // Camera orbiting a ground pivot at a small radius, looking down,
+    // dragged hard downward (would otherwise swing under the floor).
+    const centre = new THREE.Vector3(0, 0, 0);
+    const camPos = new THREE.Vector3(0, 5, 4); // R ≈ 6.4, above pivot
+    const viewDir = new THREE.Vector3(0, -0.7, -0.7).normalize();
+    const floorY = 0;
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 0,
+      dyPx: 5000, // huge drag-down
+      speed: SPEED,
+      floorY
+    });
+    expect(step.pos.y).toBeGreaterThanOrEqual(floorY + EYE_MARGIN_METRES - 1e-6);
+  });
+
+  it('floor bound relaxes at a large radius (down-tilt allowed)', () => {
+    // Same drag, much larger radius — the floor clearance needs only a
+    // small elevation angle, so the camera can tilt freely without the
+    // bound biting at this step.
+    const centre = new THREE.Vector3(0, 0, 0);
+    const camPos = new THREE.Vector3(0, 50, 200); // large R
+    const viewDir = new THREE.Vector3(0, -0.3, -0.95).normalize();
+    const floorY = 0;
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 0,
+      dyPx: 30,
+      speed: SPEED,
+      floorY
+    });
+    expect(step.pos.y).toBeGreaterThanOrEqual(floorY + EYE_MARGIN_METRES);
+  });
+
+  it('reversibility: +dy then -dy returns to the start pose within epsilon', () => {
+    // Capping the INPUT tilt (not the output position) means over-drag past
+    // the floor does not accumulate, so reversing retraces.
+    const centre = new THREE.Vector3(0, 0, 0);
+    const camPos = new THREE.Vector3(0, 8, 6);
+    const viewDir = new THREE.Vector3(0, -0.6, -0.8).normalize();
+    const floorY = 0;
+    const down = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 0,
+      dyPx: 40,
+      speed: SPEED,
+      floorY
+    });
+    const downDir = new THREE.Vector3()
+      .subVectors(down.lookTarget, down.pos)
+      .normalize();
+    const back = shiftRotateStep({
+      camPos: down.pos,
+      viewDir: downDir,
+      centre,
+      dxPx: 0,
+      dyPx: -40,
+      speed: SPEED,
+      floorY
+    });
+    expect(back.pos.distanceTo(camPos)).toBeLessThan(0.05);
+  });
+
+  it('no floorY param: street regime is unaffected (rotate-in-place)', () => {
+    const camPos = new THREE.Vector3(5, 1.6, 5);
+    const viewDir = new THREE.Vector3(0, 0, -1);
+    const centre = new THREE.Vector3(5, 1.6, 5);
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 100,
+      dyPx: 100,
+      speed: SPEED
+    });
+    expect(step.pos.x).toBe(camPos.x);
+    expect(step.pos.y).toBe(camPos.y);
+    expect(step.pos.z).toBe(camPos.z);
   });
 });
 

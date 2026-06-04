@@ -1,4 +1,4 @@
-/* global THREE */
+/* global THREE, STREET */
 
 // Resolves a cursor position (clientX/clientY) to a world-space anchor
 // point used by Phase 1 wheel zoom and LB-pan gestures. See
@@ -89,31 +89,38 @@ function _isExcludedObject(obj) {
   return false;
 }
 
-// AGL ground filter (TASK-013). Classifies a raycast hit as a *visible
-// street-segment surface* — i.e. acceptable as the "ground" beneath the
-// camera for above-ground-level (AGL) height measurement. `hit` is a
-// THREE.Intersection-like object: { object, point, distance }.
+// Solid-floor filter (TASK-013 → TASK-024). Classifies a raycast hit as a
+// *solid floor surface* the camera lands on / stops against / is enclosed
+// by — i.e. a street-segment ground surface, a (catalog-known) building
+// mass, or the Google 3D Tiles surface. Thin scatter (signs, plants,
+// people, vehicles, fences) is excluded. `hit` is a THREE.Intersection-
+// like object: { object, point, distance, face? }.
 //
-// ALLOWLIST-ONLY: accepts only hits whose owning A-Frame entity is itself
-// a `street-segment`. It deliberately does NOT call `_isExcludedObject`:
-// `street-generated-clones` / `-pedestrians` are attached to the segment
-// entities themselves, so running hits through the denylist would reject
-// most real ground surfaces. The allowlist gives chrome protection for
-// free — gizmos / helpers / TransformControls carry no `.el`, so the
-// owning-entity resolution returns null and they are rejected; a real
-// street-segment surface is never editor chrome. (Editor chrome lives in
-// `inspector.sceneHelpers`, a separate object3D subtree the downward
-// probe never traverses, so the allowlist is doubly safe.)
-export function isGroundSegmentHit(hit) {
+// Renamed from `isGroundSegmentHit` (TASK-024): once buildings count as
+// floor the old name is a misnomer. The collision floor uses the wide
+// predicate; the travel-height floor passes `{ acceptBuildings: false }`
+// to fall back to the TASK-013 segment-only behaviour.
+//
+// Coverage boundary (D9): the building branch matches only catalog-known
+// building mixins (`category === 'buildings'`). A user-imported glTF or
+// any non-catalog building model carries no catalog category, so it reads
+// as scatter and the camera can sink through it. Accepted boundary for the
+// managed-street prototype.
+//
+// It deliberately does NOT call `_isExcludedObject`: editor chrome carries
+// no `.el`, so the owning-entity resolution returns null and rejects them
+// for free, and `inspector.sceneHelpers` is a separate object3D subtree
+// the downward probe never traverses.
+export function isSolidFloorHit(hit, opts) {
   if (!hit || !hit.object) return false;
+  const acceptBuildings = !opts || opts.acceptBuildings !== false;
+  const acceptTiles = !opts || opts.acceptTiles !== false;
 
   // (a) Resolve owning A-Frame entity: first ancestor (inclusive) with a
-  //     truthy `.el`. DO NOT walk past it — A-Frame sets `.el` on the
-  //     entity's root object3D, not on nested gltf submeshes, so a
-  //     clone's deep submesh resolves to the *clone* entity (no
-  //     street-segment) and the segment's below-box resolves to the
-  //     *segment* entity. Climbing past the first `.el` would reincarnate
-  //     the "building roof counts as ground" bug.
+  //     truthy `.el`. A-Frame sets `.el` on the entity's root object3D,
+  //     not on nested gltf submeshes, so a clone's deep submesh resolves
+  //     to the *clone* entity and the segment's below-box resolves to the
+  //     *segment* entity.
   let node = hit.object;
   let el = null;
   while (node) {
@@ -125,18 +132,45 @@ export function isGroundSegmentHit(hit) {
   }
   if (!el || !el.hasAttribute) return false;
 
-  // (b) The owning entity must ITSELF be a street-segment. A clone/model
-  //     entity has a `mixin` but no `street-segment` component — rejected
-  //     here, so the probe continues to the next (deeper) hit, which is
-  //     the road below the model.
-  if (!el.hasAttribute('street-segment')) return false;
+  // (b) Segment branch (TASK-013): the owning entity is itself a
+  //     street-segment with a visible surface.
+  if (el.hasAttribute('street-segment')) {
+    return _hitSurfaceVisible(hit.object);
+  }
 
-  // (c) D3: skip invisible (surface: none) segments. The segment sets
-  //     material.visible=false; three.js still raycasts it. Reject so AGL
-  //     measures to a surface the user can actually see. Check the hit
-  //     mesh's own material visibility (handle material-array), falling
-  //     back to object.visible if no material.
-  const obj = hit.object;
+  // (c) Building branch (TASK-024): a clone/standalone building entity
+  //     carries a `mixin` whose catalog category is 'buildings'. Both
+  //     generated clones and detached standalone building entities carry
+  //     `mixin`. Guard STREET undefined (headless / tests).
+  if (acceptBuildings && el.hasAttribute('mixin')) {
+    const mixinId = el.getAttribute('mixin');
+    const entry =
+      typeof STREET !== 'undefined' && STREET.catalog
+        ? STREET.catalog.find((e) => e.id === mixinId)
+        : undefined;
+    if (entry && entry.category === 'buildings') {
+      return _hitSurfaceVisible(hit.object);
+    }
+  }
+
+  // (d) Tiles branch (TASK-024 / TASK-019): climb ancestors PAST the first
+  //     `.el` (which resolves to the tiles `offsetEl`, carrying neither id
+  //     nor layer-name) for an `.el` whose id === 'google3d' OR whose
+  //     `data-layer-name` === 'Google 3D Tiles'.
+  if (acceptTiles && _isGoogleTilesDescendant(node)) {
+    return _hitSurfaceVisible(hit.object);
+  }
+
+  // (e) Else reject — scatter (signs, plants, vehicles, people), plus
+  //     fence / seawall (verified NOT category 'buildings').
+  return false;
+}
+
+// Shared visibility gate (TASK-013 D3): skip invisible (surface: none)
+// surfaces. The mesh sets material.visible=false; three.js still raycasts
+// it. Check the hit mesh's own material visibility (handle material-array),
+// falling back to object.visible if no material.
+function _hitSurfaceVisible(obj) {
   if (obj.material) {
     const mat = obj.material;
     const visible = Array.isArray(mat)
@@ -145,8 +179,49 @@ export function isGroundSegmentHit(hit) {
     if (!visible) return false;
   }
   if (obj.visible === false) return false;
-
   return true;
+}
+
+// Walk the object3D ancestor chain (starting from `node`, which is the
+// first `.el`-bearing node found above the hit) looking for the Google 3D
+// Tiles root entity. TASK-019 verified the trap: the hit's first `.el` is
+// the tiles `offsetEl`, which carries no id / layer-name; the marked
+// entity is `#google3d` (id + data-layer-name='Google 3D Tiles'), an
+// ancestor of offsetEl. So we must climb past the first `.el`.
+function _isGoogleTilesDescendant(node) {
+  let n = node;
+  while (n) {
+    const el = n.el;
+    if (el && el.getAttribute) {
+      if (el.id === 'google3d') return true;
+      if (el.getAttribute('data-layer-name') === 'Google 3D Tiles') {
+        return true;
+      }
+    }
+    n = n.parent;
+  }
+  return false;
+}
+
+// Transform a raycast hit's face normal into world space, accounting for
+// non-uniform scale (D4). Returns a normalized THREE.Vector3, or a +Y
+// fallback when no face / normal is available (e.g. tiles hits without a
+// `face`). Shared by the WASD classifier and future tilt-to-slope landing.
+export function worldHitNormal(hit) {
+  if (!hit || !hit.face || !hit.face.normal || !hit.object) {
+    return new THREE.Vector3(0, 1, 0);
+  }
+  const obj = hit.object;
+  obj.updateWorldMatrix(true, false);
+  const normalMatrix = new THREE.Matrix3().getNormalMatrix(obj.matrixWorld);
+  const n = hit.face.normal
+    .clone()
+    .applyMatrix3(normalMatrix)
+    .normalize();
+  if (!isFinite(n.x) || !isFinite(n.y) || !isFinite(n.z) || n.lengthSq() === 0) {
+    return new THREE.Vector3(0, 1, 0);
+  }
+  return n;
 }
 
 export class CursorAnchor {
@@ -242,7 +317,8 @@ export class CursorAnchor {
 // Test seam.
 export const _internals = {
   _isExcludedObject,
-  isGroundSegmentHit,
+  isSolidFloorHit,
+  worldHitNormal,
   MAX_GROUND_DIST,
   FALLBACK_FORWARD_DIST,
   EXCLUDE_NAME_SUBSTRINGS,

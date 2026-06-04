@@ -144,26 +144,45 @@ describe('CursorAnchor.worldPointAt', () => {
   });
 });
 
-describe('isGroundSegmentHit (AGL ground filter, TASK-013)', () => {
-  const { isGroundSegmentHit } = _internals;
+describe('isSolidFloorHit (solid-floor filter, TASK-013 → TASK-024)', () => {
+  const { isSolidFloorHit } = _internals;
 
   // Build a fake THREE.Intersection-like hit with a parent chain. `attrs`
-  // = the attribute names the owning entity answers true for via
-  // hasAttribute (e.g. ['street-segment']); null = no owning entity.
-  // `depth` nests `depth` submesh parents above the entity-root leaf so
-  // the `.el` resolution has to walk up (a model's gltf submesh).
+  // = a map of attribute-name → value the owning entity answers via
+  // hasAttribute / getAttribute / id (e.g. { 'street-segment': '' }), or
+  // null = no owning entity. `depth` nests submesh parents above the
+  // entity-root leaf so the `.el` resolution has to walk up. `ancestors`
+  // = extra `.el`-bearing entities stacked ABOVE the entity root (for the
+  // tiles-descendant case: the marked #google3d sits above offsetEl).
+  function makeEl(attrs) {
+    return {
+      _attrs: attrs,
+      id: attrs && attrs.id != null ? attrs.id : undefined,
+      hasAttribute: (n) => attrs != null && Object.prototype.hasOwnProperty.call(attrs, n),
+      getAttribute: (n) => (attrs != null ? attrs[n] : undefined)
+    };
+  }
+
   function makeHit({
     attrs,
     material,
     objVisible = true,
     depth = 0,
+    ancestors = [],
     pointY = 0
   }) {
-    const ownerEl = attrs
-      ? { hasAttribute: (n) => attrs.includes(n) }
-      : null;
-    const node = { el: ownerEl, parent: null }; // entity root
-    let leaf = node;
+    const ownerEl = attrs ? makeEl(attrs) : null;
+    // Build the UPWARD chain (via `.parent`): topmost ancestor first, then
+    // the entity root (owning the first `.el` the predicate resolves to).
+    let parentNode = null;
+    for (const a of ancestors) {
+      // ancestors are listed outermost-first; chain them so the LAST one
+      // listed is the entity root's parent. We want #google3d to be an
+      // ancestor of offsetEl, so build top-down.
+      parentNode = { el: makeEl(a), parent: parentNode };
+    }
+    const entityRoot = { el: ownerEl, parent: parentNode };
+    let leaf = entityRoot;
     for (let i = 0; i < depth; i++) {
       leaf = { el: null, parent: leaf }; // submesh without .el
     }
@@ -174,73 +193,144 @@ describe('isGroundSegmentHit (AGL ground filter, TASK-013)', () => {
 
   it('accepts a visible segment surface (depth 0 — the realistic case)', () => {
     const hit = makeHit({
-      attrs: ['street-segment'],
+      attrs: { 'street-segment': '' },
       material: { visible: true },
       depth: 0
     });
-    expect(isGroundSegmentHit(hit)).toBe(true);
+    expect(isSolidFloorHit(hit)).toBe(true);
   });
 
-  it('rejects a model/clone hit via deep .el walk (the WE-4 roof case)', () => {
-    // A deep gltf submesh resolves up to the clone entity, which carries
-    // a `mixin` but NOT `street-segment` → rejected; the probe continues
-    // to the road below.
+  it('accepts a building clone (mixin category buildings, stubbed catalog)', () => {
+    globalThis.STREET = {
+      catalog: [{ id: 'SM3D_Bld_Mixed_4fl', category: 'buildings' }]
+    };
     const hit = makeHit({
-      attrs: ['mixin'],
+      attrs: { mixin: 'SM3D_Bld_Mixed_4fl' },
+      material: { visible: true },
+      depth: 3 // deep gltf submesh resolves up to the clone entity
+    });
+    expect(isSolidFloorHit(hit)).toBe(true);
+    delete globalThis.STREET;
+  });
+
+  it('rejects a building clone when acceptBuildings:false (travel height)', () => {
+    globalThis.STREET = {
+      catalog: [{ id: 'SM3D_Bld_Mixed_4fl', category: 'buildings' }]
+    };
+    const hit = makeHit({
+      attrs: { mixin: 'SM3D_Bld_Mixed_4fl' },
       material: { visible: true },
       depth: 3
     });
-    expect(isGroundSegmentHit(hit)).toBe(false);
+    expect(isSolidFloorHit(hit, { acceptBuildings: false })).toBe(false);
+    delete globalThis.STREET;
+  });
+
+  it('accepts a #google3d-descendant (tiles) — must climb past the first .el', () => {
+    // The hit's first .el is the tiles offsetEl (no id / layer-name); the
+    // marked #google3d entity is an ANCESTOR. The predicate must walk past
+    // offsetEl to find it.
+    const hit = makeHit({
+      attrs: {}, // offsetEl: no id, no layer-name
+      material: { visible: true },
+      depth: 2,
+      ancestors: [{ id: 'google3d', 'data-layer-name': 'Google 3D Tiles' }]
+    });
+    expect(isSolidFloorHit(hit)).toBe(true);
+  });
+
+  it('accepts a tiles-descendant matched by data-layer-name alone', () => {
+    const hit = makeHit({
+      attrs: {},
+      material: { visible: true },
+      depth: 1,
+      ancestors: [{ 'data-layer-name': 'Google 3D Tiles' }]
+    });
+    expect(isSolidFloorHit(hit)).toBe(true);
+  });
+
+  it('rejects a scatter clone (mixin category plants)', () => {
+    globalThis.STREET = {
+      catalog: [{ id: 'tree3', category: 'plants' }]
+    };
+    const hit = makeHit({
+      attrs: { mixin: 'tree3' },
+      material: { visible: true },
+      depth: 2
+    });
+    expect(isSolidFloorHit(hit)).toBe(false);
+    delete globalThis.STREET;
+  });
+
+  it('rejects a fence (mixin not in catalog → not buildings)', () => {
+    globalThis.STREET = { catalog: [] };
+    const hit = makeHit({
+      attrs: { mixin: 'fence' },
+      material: { visible: true },
+      depth: 1
+    });
+    expect(isSolidFloorHit(hit)).toBe(false);
+    delete globalThis.STREET;
+  });
+
+  it('rejects a model/clone hit when STREET is undefined (headless/tests)', () => {
+    // No STREET → no catalog lookup → mixin entity reads as scatter.
+    const hit = makeHit({
+      attrs: { mixin: 'SM3D_Bld_Mixed_4fl' },
+      material: { visible: true },
+      depth: 3
+    });
+    expect(isSolidFloorHit(hit)).toBe(false);
   });
 
   it('rejects an invisible (surface:none) segment — D3, depth 0', () => {
     const hit = makeHit({
-      attrs: ['street-segment'],
+      attrs: { 'street-segment': '' },
       material: { visible: false },
       depth: 0
     });
-    expect(isGroundSegmentHit(hit)).toBe(false);
+    expect(isSolidFloorHit(hit)).toBe(false);
   });
 
   it('rejects a material-array segment when all materials invisible', () => {
     const hit = makeHit({
-      attrs: ['street-segment'],
+      attrs: { 'street-segment': '' },
       material: [{ visible: false }, { visible: false }],
       depth: 0
     });
-    expect(isGroundSegmentHit(hit)).toBe(false);
+    expect(isSolidFloorHit(hit)).toBe(false);
   });
 
   it('accepts a material-array segment when at least one is visible', () => {
     const hit = makeHit({
-      attrs: ['street-segment'],
+      attrs: { 'street-segment': '' },
       material: [{ visible: false }, { visible: true }],
       depth: 0
     });
-    expect(isGroundSegmentHit(hit)).toBe(true);
+    expect(isSolidFloorHit(hit)).toBe(true);
   });
 
   it('rejects a segment whose object.visible === false (no material)', () => {
     const hit = makeHit({
-      attrs: ['street-segment'],
+      attrs: { 'street-segment': '' },
       material: undefined,
       objVisible: false,
       depth: 0
     });
-    expect(isGroundSegmentHit(hit)).toBe(false);
+    expect(isSolidFloorHit(hit)).toBe(false);
   });
 
-  it('rejects a raw mesh with no .el ancestor (gizmo / helper — allowlist auto-reject)', () => {
+  it('rejects a raw mesh with no .el ancestor (gizmo / helper — auto-reject)', () => {
     const hit = makeHit({
       attrs: null,
       material: { visible: true },
       depth: 0
     });
-    expect(isGroundSegmentHit(hit)).toBe(false);
+    expect(isSolidFloorHit(hit)).toBe(false);
   });
 
   it('rejects null / missing object', () => {
-    expect(isGroundSegmentHit(null)).toBe(false);
-    expect(isGroundSegmentHit({})).toBe(false);
+    expect(isSolidFloorHit(null)).toBe(false);
+    expect(isSolidFloorHit({})).toBe(false);
   });
 });
