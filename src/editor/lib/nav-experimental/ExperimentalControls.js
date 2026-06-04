@@ -97,6 +97,13 @@ import {
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
 
+// CR-D5: bounded-fallback cadence (ms) for the idle-gated enclosure probe.
+// While the camera is stationary and no scene-geometry-dirty signal fired,
+// the enclosure re-evaluation runs at most once per this interval so a
+// streaming geometry source we didn't wire (e.g. Google 3D Tiles) is still
+// picked up promptly. ~250 ms ⇒ ≤4 raycasts/sec worst-case idle cost.
+const ENCLOSURE_FALLBACK_INTERVAL_MS = 250;
+
 // Normalize an angle in degrees to (-180, 180].
 function normalizeDeg(deg) {
   let d = deg % 360;
@@ -312,6 +319,27 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Null until the first tick evaluates (so tick 1 always runs).
     this._lastEvalPos = null;
     this._lastEvalQuat = null;
+
+    // CR-D5: scene-geometry-dirty trigger. The CR-D1 idle gate skips the
+    // per-frame enclosure raycast when the camera is stationary and idle —
+    // but solid geometry can change AROUND a motionless camera (scene load,
+    // teleport inside a building, tiles streaming in). When that happens the
+    // cached not-enclosed result would otherwise stand until the camera
+    // moves, so the recovery cue never appears (WE-9 / M-3c). This flag,
+    // set by the scene geometry listeners below (and started true so the
+    // first settled state always evaluates), forces one re-evaluation; it is
+    // cleared each time _updateLegitSnapshotAndCue actually evaluates.
+    this._sceneGeometryDirty = true;
+    // CR-D5 bounded fallback: timestamp of the last enclosure evaluation.
+    // While stationary AND no dirty signal fired, re-evaluate at most once
+    // per FALLBACK_INTERVAL so a streaming source we didn't wire (e.g.
+    // Google 3D Tiles, whose load event lives on the internal TilesRenderer,
+    // not a scene DOM event) is still picked up within a quarter-second.
+    // Bounds worst-case idle cost to ~4 raycasts/sec, not per-frame.
+    this._lastEvalTime = 0;
+    this._onSceneGeometryDirty = () => {
+      this._sceneGeometryDirty = true;
+    };
 
     this.setCamera(camera);
     this._initFocusAnimation();
@@ -927,6 +955,27 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     window.addEventListener('keydown', this._onKeyDown, false);
     window.addEventListener('keyup', this._onKeyUp, false);
     window.addEventListener('blur', this._onWindowBlur, false);
+    // CR-D5: subscribe to the signals that mean "solid geometry under/around
+    // the camera may have changed", each marking the enclosure cache dirty so
+    // the idle gate re-evaluates once. `object3dset` fires when entities
+    // add/replace their object3D (street-segment/building clones appearing,
+    // scene loads); `child-attached`/`newScene` cover entity-tree changes
+    // (mirrors SceneBounds' invalidation lifecycle). Google 3D Tiles
+    // streaming has no scene-level DOM event (its load event lives on the
+    // internal TilesRenderer), so tiles-only streaming leans on the 250 ms
+    // bounded fallback in _updateLegitSnapshotAndCue rather than a guessed
+    // API. Removed in _detach (called from dispose) — no leak.
+    if (this._sceneEl && typeof this._sceneEl.addEventListener === 'function') {
+      this._sceneEl.addEventListener(
+        'object3dset',
+        this._onSceneGeometryDirty
+      );
+      this._sceneEl.addEventListener(
+        'child-attached',
+        this._onSceneGeometryDirty
+      );
+      this._sceneEl.addEventListener('newScene', this._onSceneGeometryDirty);
+    }
   }
 
   _detach() {
@@ -939,6 +988,21 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     window.removeEventListener('keydown', this._onKeyDown, false);
     window.removeEventListener('keyup', this._onKeyUp, false);
     window.removeEventListener('blur', this._onWindowBlur, false);
+    // CR-D5: tear down the scene-geometry-dirty listeners added in _attach.
+    if (
+      this._sceneEl &&
+      typeof this._sceneEl.removeEventListener === 'function'
+    ) {
+      this._sceneEl.removeEventListener(
+        'object3dset',
+        this._onSceneGeometryDirty
+      );
+      this._sceneEl.removeEventListener(
+        'child-attached',
+        this._onSceneGeometryDirty
+      );
+      this._sceneEl.removeEventListener('newScene', this._onSceneGeometryDirty);
+    }
   }
 
   _isInactive() {
@@ -1234,7 +1298,17 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // CR-D2: single mid-tween hand-off latch. If a tile streams in during
     // the ease-back so the stored target is no longer legit, cancel and
     // pop to the roof — once, not a per-frame retarget loop.
+    //
+    // D2 hand-off hardening: when the hand-off fires on the SAME frame the
+    // tween reaches tRaw>=1 (its final frame), TickAnimator's `sub` still
+    // runs its trailing terminal block AFTER onTick returns — it would (a)
+    // null `_currentTween`, clobbering the just-started _popToRoof tween's
+    // handle, and (b) run this stale `onDone`, re-clearing _recoveryActive
+    // and reseeding to the superseded ease-back target. `handedOff`
+    // short-circuits onDone, and `_handoffTween` (the captured _popToRoof
+    // handle) is restored as `_currentTween` so the pop tween isn't orphaned.
     let handedOff = false;
+    let handoffTween = null;
     this._tick.animate({
       durationMs,
       onTick: (eased) => {
@@ -1247,6 +1321,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
           this._tick.cancel();
           this._recoveryActive = false;
           this._popToRoof();
+          // Capture the pop tween's handle (if _popToRoof started one) so a
+          // trailing terminal block on this same final frame can't orphan it.
+          handoffTween = this._tick._currentTween;
           return;
         }
         camera.position.lerpVectors(startPos, endPos, eased);
@@ -1256,6 +1333,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         this.dispatchEvent(this._changeEvent);
       },
       onDone: () => {
+        // D2: superseded by a same-frame hand-off — do not run the stale
+        // terminal commit (it would re-clear _recoveryActive and reseed to
+        // the abandoned ease-back target). Restore the pop tween's handle in
+        // case the trailing block nulled it.
+        if (handedOff) {
+          if (handoffTween) this._tick._currentTween = handoffTween;
+          return;
+        }
         camera.position.copy(endPos);
         camera.quaternion.copy(endQuat);
         this.center.copy(endCenter);
@@ -1627,7 +1712,23 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       this._wheelBudget !== 0 ||
       this._latch.isActive() ||
       this._tick.isAnimating();
-    if (!moved && !busy) return;
+    // CR-D5: geometry around a stationary camera may have changed. Force one
+    // re-evaluation when a scene-geometry-dirty signal fired since the last
+    // eval, OR (bounded fallback) when ~250 ms have elapsed while idle so a
+    // streaming source we didn't wire still gets picked up within a quarter-
+    // second. The fallback caps idle cost at ~4 raycasts/sec, not per-frame.
+    const now =
+      typeof performance !== 'undefined' && performance.now
+        ? performance.now()
+        : Date.now();
+    const fallbackDue =
+      now - this._lastEvalTime >= ENCLOSURE_FALLBACK_INTERVAL_MS;
+    if (!moved && !busy && !this._sceneGeometryDirty && !fallbackDue) return;
+
+    // We are evaluating this tick: clear the dirty flag and stamp the
+    // eval-time so the next idle frame measures the fallback window from here.
+    this._sceneGeometryDirty = false;
+    this._lastEvalTime = now;
 
     // Update the eval-pose cache (this evaluation establishes the new
     // baseline a subsequent stationary frame compares against).
