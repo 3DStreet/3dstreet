@@ -21,7 +21,8 @@
 import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
   MAP_PIVOT_BOUNDS_RADIUS_METRES,
-  ROTATION_SPEED_RAD_PER_PX
+  ROTATION_SPEED_RAD_PER_PX,
+  FOLLOW_OPTION_DEFAULT
 } from './constants.js';
 
 if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning']) {
@@ -40,6 +41,13 @@ if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning
       rotationSpeedRadPerPx: {
         type: 'number',
         default: ROTATION_SPEED_RAD_PER_PX
+      },
+      // TASK-024a (D3): not-grounded follow option (1|2|3). A plain int
+      // inspector field; `setFollowOption` rejects out-of-range values.
+      // e.g. sceneEl.setAttribute('nav-experimental-tuning','followOption',3)
+      followOption: {
+        type: 'int',
+        default: FOLLOW_OPTION_DEFAULT
       }
     },
     update() {
@@ -58,6 +66,9 @@ if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning
       }
       if (typeof c.setRotationSpeed === 'function') {
         c.setRotationSpeed(this.data.rotationSpeedRadPerPx);
+      }
+      if (typeof c.setFollowOption === 'function') {
+        c.setFollowOption(this.data.followOption);
       }
     }
   });
