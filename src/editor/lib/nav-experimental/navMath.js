@@ -265,6 +265,16 @@ export function phase2NextElevation(yAgl, sign, alpha = SWOOP_PHASE2_STEP) {
 //   centre   — latched rotation centre (THREE.Vector3-like).
 //   dxPx, dyPx — per-event mouse pixel deltas.
 //   speed    — radians per pixel (typically `controls.rotationSpeed`).
+//   camRight — (optional) the camera's current screen-right axis in world
+//              space (local +X rotated by camera.quaternion). Used as the
+//              pitch axis ONLY when `view × up` degenerates at exact nadir
+//              (where the horizontal heading — and hence `view × up` — is
+//              undefined). camRight stays well-defined and horizontal at
+//              nadir and equals `view × up` off-nadir (no roll), so it is a
+//              continuous fallback that also resolves the nadir tilt-
+//              direction ambiguity toward screen-up. Omit it and the
+//              degenerate case falls back to skipping pitch (legacy
+//              behaviour) — which leaves tilt dead at exact nadir.
 //
 // Output:
 //   { pos, lookTarget, R }. `pos`/`lookTarget` are both THREE.Vector3;
@@ -286,7 +296,8 @@ export function shiftRotateStep({
   centre,
   dxPx,
   dyPx,
-  speed
+  speed,
+  camRight
 }) {
   const WORLD_UP = new THREE.Vector3(0, 1, 0);
   const view = new THREE.Vector3(viewDir.x, viewDir.y, viewDir.z).normalize();
@@ -297,10 +308,19 @@ export function shiftRotateStep({
   // (2) Pitch about the camera's horizontal right axis. `view × up` is
   //     horizontal and perpendicular to the view azimuth, so a rotation
   //     about it by β changes the view tilt by exactly −β regardless of
-  //     the current tilt. Near-vertical view (|right| → 0) only at the
-  //     ±89° clamp; guard against the degenerate normalize.
+  //     the current tilt. At *exact* nadir `view ∥ up` so `view × up` → 0
+  //     and the horizontal heading is undefined; fall back to the camera's
+  //     own screen-right axis (camRight), which is well-defined and
+  //     horizontal there. This is what lets you tilt *out* of exact nadir
+  //     (TASK-023) — without it the pitch term is skipped and tilt is dead
+  //     at top-down. Off-nadir, `view × up` is well-defined and used as
+  //     before (no behaviour change).
   const right = new THREE.Vector3().crossVectors(view, WORLD_UP);
-  const rightLen = right.length();
+  let rightLen = right.length();
+  if (rightLen <= 1e-6 && camRight) {
+    right.set(camRight.x, camRight.y, camRight.z);
+    rightLen = right.length();
+  }
 
   const curTilt = Math.asin(THREE.MathUtils.clamp(-view.y, -1, 1));
   const MIN_TILT = MIN_TILT_DEGREES * DEG2RAD;

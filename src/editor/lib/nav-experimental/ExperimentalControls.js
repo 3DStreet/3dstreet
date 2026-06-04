@@ -1912,13 +1912,20 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
     const fwd = this._tmpV3c;
     camera.getWorldDirection(fwd); // unit, camera -Z in world space
+    // Camera's screen-right axis (local +X in world space). Used by
+    // shiftRotateStep as the pitch axis only at exact nadir, where
+    // `view × up` degenerates — lets tilt work out of top-down (TASK-023).
+    const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(
+      camera.quaternion
+    );
     let { pos, lookTarget, R } = shiftRotateStep({
       camPos: camera.position,
       viewDir: fwd,
       centre: center,
       dxPx,
       dyPx,
-      speed: this.rotationSpeed
+      speed: this.rotationSpeed,
+      camRight
     });
 
     // TASK-010 (D4): underground guard, only in the Map-orbit regime.
