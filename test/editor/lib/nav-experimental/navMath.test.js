@@ -341,6 +341,37 @@ describe('shiftRotateStep', () => {
     expect(rotatedView.distanceTo(dirFrom(step))).toBeLessThan(1e-6);
   });
 
+  it('returns R as a unit quaternion encoding the same rotation as lookTarget on the tilt-clamp / pure-yaw path (TASK-023)', () => {
+    // Companion to the test above: that one exercises the composed
+    // yaw∘pitch path (qPitch applied). This one locks the same R/lookTarget
+    // invariant on the degenerate-right / tilt-clamp branch, where `qPitch`
+    // is SKIPPED and `R` is pure yaw — the near-nadir regime this whole bug
+    // is about. A straight-down view direction (0,-1,0) makes
+    // `view × worldUp` the zero vector, so `rightLen === 0` (≤ 1e-6) and the
+    // pitch quaternion is never multiplied in, regardless of `dyPx`.
+    const camPos = new THREE.Vector3(5, 40, 5);
+    const viewDir = new THREE.Vector3(0, -1, 0); // straight down → rightLen 0
+    const centre = new THREE.Vector3(5, 0, 5);
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 60,
+      dyPx: 30, // non-zero, but the right-degenerate guard skips qPitch
+      speed: SPEED
+    });
+    // R is a unit quaternion.
+    expect(step.R.length()).toBeCloseTo(1, 6);
+    // R is pure yaw about world up: applying it to a straight-down view
+    // leaves it straight down (a pitch component would tilt it off −Y).
+    const rotatedView = viewDir.clone().applyQuaternion(step.R).normalize();
+    expect(rotatedView.y).toBeCloseTo(-1, 6);
+    // Same invariant as the composed-path test: applying R to the input
+    // view direction yields the same direction as (lookTarget - pos)
+    // normalised → R and lookTarget agree on the pure-yaw branch too.
+    expect(rotatedView.distanceTo(dirFrom(step))).toBeLessThan(1e-6);
+  });
+
   it('zero deltas with camera aimed at centre: pos and view unchanged (no snap)', () => {
     const camPos = new THREE.Vector3(10, 0, 0);
     const viewDir = new THREE.Vector3(-1, 0, 0); // looking toward origin
