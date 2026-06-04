@@ -25,7 +25,8 @@ import {
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
   SWOOP_PHASE2_STEP,
   SWOOP_PHASE2_FLOOR_SNAP_METRES,
-  EYE_MARGIN_METRES
+  EYE_MARGIN_METRES,
+  WASD_VERTICAL_LIFT_RATE_MPS
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
 
 if (!globalThis.THREE) globalThis.THREE = THREE;
@@ -396,49 +397,136 @@ describe('wasdFollowY', () => {
 
 describe('wasdVerticalY', () => {
   const EYE = EYE_MARGIN_METRES; // 1.5
+  const RATE = WASD_VERTICAL_LIFT_RATE_MPS; // 4
 
-  // PLAN §5 table — all 3 options × {flat / slope / over-obstacle
-  // lift-and-drop-back / push-up clamp}, plus grounded and H==null rows.
-  // Each row asserts: correct y (5 dp), inputs not mutated, never NaN.
-  const rows = [
-    // # opt grounded label  inputs                                   expect
-    [1, 1, false, 'opt1 flat (AGL-preserve)', { camY: 51.5, floorNowY: 0, collisionFloorDestY: 0, travelHeightDestY: null, H: null }, 51.5],
-    [2, 1, false, 'opt1 slope +5', { camY: 51.5, floorNowY: 0, collisionFloorDestY: 5, travelHeightDestY: null, H: null }, 56.5],
-    [3, 1, false, 'opt1 sharp 49m roof edge (PA-1 lurch)', { camY: 51.5, floorNowY: 0, collisionFloorDestY: 49, travelHeightDestY: null, H: null }, 100.5],
-    ['3b', 1, false, 'opt1 already over roof, flat', { camY: 51.5, floorNowY: 49, collisionFloorDestY: 49, travelHeightDestY: null, H: null }, 51.5],
-    [4, 1, false, 'opt1 push-up clamp', { camY: 1.0, floorNowY: 0, collisionFloorDestY: 2, travelHeightDestY: null, H: null }, 3.5],
-    [5, 2, false, 'opt2 flat H=2 travel=0', { camY: 5, floorNowY: 0, collisionFloorDestY: 0, travelHeightDestY: 0, H: 2 }, 2],
-    [6, 2, false, 'opt2 over-roof collDest=49', { camY: 5, floorNowY: 0, collisionFloorDestY: 49, travelHeightDestY: 0, H: 2 }, 50.5],
-    [7, 2, false, 'opt2 drop-back travel=0', { camY: 5, floorNowY: 0, collisionFloorDestY: 0, travelHeightDestY: 0, H: 2 }, 2],
-    [8, 2, false, 'opt2 approach transient travel=10', { camY: 12, floorNowY: 0, collisionFloorDestY: 0, travelHeightDestY: 10, H: 2 }, 12],
-    [9, 3, false, 'opt3 flat H=50', { camY: 50, floorNowY: 0, collisionFloorDestY: 0, travelHeightDestY: null, H: 50 }, 50],
-    [10, 3, false, 'opt3 over 49', { camY: 50, floorNowY: 0, collisionFloorDestY: 49, travelHeightDestY: null, H: 50 }, 50.5],
-    [11, 3, false, 'opt3 drop-back', { camY: 50, floorNowY: 0, collisionFloorDestY: 0, travelHeightDestY: null, H: 50 }, 50],
-    [12, 3, false, 'opt3 rising terrain 60 (WE-5; not grounded)', { camY: 50, floorNowY: 0, collisionFloorDestY: 60, travelHeightDestY: null, H: 50 }, 61.5],
-    [13, 3, true, 'grounded ignores option (collision-follow)', { camY: 1.5, floorNowY: 0, collisionFloorDestY: 5, travelHeightDestY: null, H: 99 }, 6.5],
-    [14, 3, false, 'H==null defensive (collision-follow, no NaN)', { camY: 1.5, floorNowY: 0, collisionFloorDestY: 5, travelHeightDestY: null, H: null }, 6.5]
+  // DEC-A: the 3-way toggle and options 1 & 2 are RETIRED. The model is now
+  // just: grounded (or H==null) → collision-follow (`wasdFollowY`);
+  // not-grounded → option 3 (ease toward `max(H, collisionFloorDest + eye)`).
+  //
+  // --- Grounded / H==null rows: collision-follow (NOT rate-limited) ---
+  // dtSeconds/rateMps are irrelevant on this path; a tiny dt must NOT cap the
+  // walking follow. Each asserts: correct y (5 dp), inputs not mutated, no NaN.
+  const followRows = [
+    // # grounded label                                  inputs                                         expect
+    ['G1', true, 'grounded flat (AGL-preserve)', { camY: 1.5, floorNowY: 0, collisionFloorDestY: 0, H: 99 }, 1.5],
+    ['G2', true, 'grounded slope +5 (follow up)', { camY: 1.5, floorNowY: 0, collisionFloorDestY: 5, H: 99 }, 6.5],
+    ['G3', true, 'grounded push-up clamp', { camY: 1.0, floorNowY: 0, collisionFloorDestY: 2, H: 99 }, 3.5],
+    ['G4', true, 'grounded follows down a slope', { camY: 6.5, floorNowY: 5, collisionFloorDestY: 0, H: 99 }, 1.5],
+    ['N1', false, 'H==null defensive (collision-follow, no NaN)', { camY: 1.5, floorNowY: 0, collisionFloorDestY: 5, H: null }, 6.5]
   ];
 
-  for (const [n, option, grounded, label, inputs, expected] of rows) {
-    it(`row ${n}: ${label}`, () => {
+  for (const [n, grounded, label, inputs, expected] of followRows) {
+    it(`follow ${n}: ${label}`, () => {
+      // Tiny dt — proves the grounded/H==null path ignores the rate limit.
       const args = {
-        option,
         grounded,
         camY: inputs.camY,
         floorNowY: inputs.floorNowY,
         collisionFloorDestY: inputs.collisionFloorDestY,
-        travelHeightDestY: inputs.travelHeightDestY,
         H: inputs.H,
-        eyeMargin: EYE
+        eyeMargin: EYE,
+        dtSeconds: 1 / 600,
+        rateMps: RATE
       };
       const snapshot = { ...args };
       const y = wasdVerticalY(args);
       expect(y).toBeCloseTo(expected, 5);
       expect(Number.isNaN(y)).toBe(false);
-      // Inputs not mutated.
+      expect(args).toEqual(snapshot); // inputs not mutated
+    });
+  }
+
+  // --- Option-3 target rows: not-grounded, large dt so target reached in
+  // one frame (rate limit non-binding). Verifies the target math
+  // `max(H, collisionFloorDest + eye)` unchanged from option 3. ---
+  const targetRows = [
+    // # label                                      inputs                                   expect
+    [1, 'opt3 flat H=50 (hold absolute)', { camY: 50, collisionFloorDestY: 0, H: 50 }, 50],
+    [2, 'opt3 over 49m roof (≤eye lift)', { camY: 50, collisionFloorDestY: 49, H: 50 }, 50.5],
+    [3, 'opt3 drop-back to cruise', { camY: 50, collisionFloorDestY: 0, H: 50 }, 50],
+    [4, 'opt3 rising terrain 60 (clamp lift)', { camY: 50, collisionFloorDestY: 60, H: 50 }, 61.5]
+  ];
+
+  for (const [n, label, inputs, expected] of targetRows) {
+    it(`opt3 target row ${n}: ${label}`, () => {
+      const args = {
+        grounded: false,
+        camY: inputs.camY,
+        floorNowY: 0,
+        collisionFloorDestY: inputs.collisionFloorDestY,
+        H: inputs.H,
+        eyeMargin: EYE,
+        dtSeconds: 1000, // huge → maxStep ≫ |target − camY|, reaches target
+        rateMps: RATE
+      };
+      const snapshot = { ...args };
+      const y = wasdVerticalY(args);
+      expect(y).toBeCloseTo(expected, 5);
+      expect(Number.isNaN(y)).toBe(false);
       expect(args).toEqual(snapshot);
     });
   }
+
+  // --- DEC-B rate-limit (not-grounded path only) ---
+  describe('rate-limit (DEC-B)', () => {
+    const dt = 1 / 60; // s
+    const maxStep = RATE * dt; // ≈ 0.0667 m this frame
+
+    it('lift larger than maxStep advances only maxStep (up)', () => {
+      // target = max(H=50, floorDest+eye = 49+1.5 = 50.5) = 50.5; camY=50 →
+      // wants +0.5, but capped to +maxStep this frame.
+      const y = wasdVerticalY({
+        grounded: false, camY: 50, floorNowY: 0,
+        collisionFloorDestY: 49, H: 50, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(50 + maxStep, 5);
+    });
+
+    it('settle larger than maxStep advances only maxStep (down)', () => {
+      // camY high above cruise; target = max(H=50, 0+1.5)=50; wants −5 but
+      // capped to −maxStep this frame.
+      const y = wasdVerticalY({
+        grounded: false, camY: 55, floorNowY: 0,
+        collisionFloorDestY: 0, H: 50, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(55 - maxStep, 5);
+    });
+
+    it('within maxStep reaches target exactly (up)', () => {
+      // wants +0.02 (< maxStep) → arrives at target 50.02.
+      const y = wasdVerticalY({
+        grounded: false, camY: 50, floorNowY: 0,
+        collisionFloorDestY: 48.52, H: 50, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(50.02, 5); // target = 48.52 + 1.5
+    });
+
+    it('within maxStep reaches target exactly (down)', () => {
+      // wants −0.02 (< maxStep) → arrives at target 50.
+      const y = wasdVerticalY({
+        grounded: false, camY: 50.02, floorNowY: 0,
+        collisionFloorDestY: 0, H: 50, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(50, 5);
+    });
+
+    it('hard safety floor: never below collisionFloorDest mid-ease', () => {
+      // Fast cross-on: roof jumps to 49 while camY is 48 (below the roof).
+      // target = max(H=48, 49+1.5)=50.5; one capped step gives 48+maxStep ≈
+      // 48.067, which is still below the roof 49 → safety floor lifts to 49.
+      const y = wasdVerticalY({
+        grounded: false, camY: 48, floorNowY: 0,
+        collisionFloorDestY: 49, H: 48, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(49, 5); // clamped up to the roof, not 48+maxStep
+      expect(y).toBeGreaterThanOrEqual(49);
+    });
+  });
 });
 
 describe('groundedAtLoad', () => {
