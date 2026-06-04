@@ -155,8 +155,11 @@ const useAssets = () => {
   // now exists, so refresh the grid to surface it. Relies on the owner-read rule
   // on users/{uid}/generationJobs.
   useEffect(() => {
+    // Reset on every userId change (not just sign-out): a stale set from the
+    // previous account would make the first snapshot for the new user look like
+    // a job "completed" (its old ids are absent) and fire a spurious reload.
+    prevJobIdsRef.current = new Set();
     if (!userId) {
-      prevJobIdsRef.current = new Set();
       setPendingJobs([]);
       setOptimizingAssetIds(new Set());
       return;
