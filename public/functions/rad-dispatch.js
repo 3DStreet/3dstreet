@@ -17,9 +17,10 @@
  *
  * The enqueue helper is exported so the reconciler can re-enqueue a wedged job.
  *
- * NOTE: config below is hardcoded to the dev project (dev-3dstreet). When this
- * goes to prod, lift these into env/functions-params (per-project service URL,
- * queue, invoker SA).
+ * Config is resolved per-project at runtime (resolveRadConfig) from the
+ * function's own GCLOUD_PROJECT, so deploying to staging vs prod automatically
+ * targets that project's Cloud Run service / queue / invoker SA with no code
+ * change — mirroring how replicate.js derives the webhook URL.
  */
 
 const functions = require('firebase-functions/v1');
@@ -27,16 +28,42 @@ const admin = require('firebase-admin');
 const crypto = require('crypto');
 const { CloudTasksClient } = require('@google-cloud/tasks');
 
-// --- dev-3dstreet constants (hardcoded for now) ----------------------------
-const RAD_CONFIG = {
-  project: 'dev-3dstreet',
-  location: 'us-central1',
-  queue: 'rad-convert',
-  // The rad-converter Cloud Run service (private; the invoker SA has run.invoker).
-  serviceUrl: 'https://rad-converter-zz2pqvu65a-uc.a.run.app',
-  // SA whose OIDC token the Cloud Task carries so Cloud Run accepts it.
-  invokerServiceAccount: 'rad-task-invoker@dev-3dstreet.iam.gserviceaccount.com'
+// The rad-converter Cloud Run URL embeds a project-specific hash, so it can't be
+// derived from the project id — keep an explicit per-project map. New
+// environments can override via the RAD_CONVERTER_URL env var without a code
+// change (and add their entry here once stable).
+const RAD_SERVICE_URLS = {
+  'dev-3dstreet': 'https://rad-converter-zz2pqvu65a-uc.a.run.app',
+  'dstreet-305604': 'https://rad-converter-ybpa26dqcq-uc.a.run.app'
 };
+
+/**
+ * Resolve the dispatch config for the project this function is running in.
+ * Everything except the Cloud Run URL is either constant across projects or
+ * convention-derived (the invoker SA always follows
+ * `rad-task-invoker@<project>.iam.gserviceaccount.com`), so the only per-env
+ * value that must be supplied is the service URL (map entry or env override).
+ */
+function resolveRadConfig() {
+  const project =
+    process.env.GCLOUD_PROJECT ||
+    process.env.GOOGLE_CLOUD_PROJECT ||
+    (admin.apps.length && admin.app().options.projectId) ||
+    'dev-3dstreet';
+  const serviceUrl =
+    process.env.RAD_CONVERTER_URL || RAD_SERVICE_URLS[project] || null;
+  return {
+    project,
+    location: process.env.RAD_TASKS_LOCATION || 'us-central1',
+    queue: process.env.RAD_TASKS_QUEUE || 'rad-convert',
+    // The rad-converter Cloud Run service (private; the invoker SA has run.invoker).
+    serviceUrl,
+    // SA whose OIDC token the Cloud Task carries so Cloud Run accepts it.
+    invokerServiceAccount:
+      process.env.RAD_INVOKER_SA ||
+      `rad-task-invoker@${project}.iam.gserviceaccount.com`
+  };
+}
 
 let tasksClient = null;
 function getTasksClient() {
@@ -51,22 +78,31 @@ function getTasksClient() {
  * re-converts and overwrites the same -lod.rad / re-patches the same doc.
  */
 async function enqueueRadTask({ uid, assetId, plyPath, jobId }) {
+  const config = resolveRadConfig();
+  if (!config.serviceUrl) {
+    // No converter URL known for this project — refuse to dispatch rather than
+    // silently route the task at another environment's service.
+    throw new Error(
+      `[rad-dispatch] no rad-converter URL for project '${config.project}'; ` +
+        'set RAD_CONVERTER_URL or add it to RAD_SERVICE_URLS'
+    );
+  }
   const client = getTasksClient();
   const parent = client.queuePath(
-    RAD_CONFIG.project,
-    RAD_CONFIG.location,
-    RAD_CONFIG.queue
+    config.project,
+    config.location,
+    config.queue
   );
   const payload = JSON.stringify({ uid, assetId, plyPath, jobId });
   const task = {
     httpRequest: {
       httpMethod: 'POST',
-      url: RAD_CONFIG.serviceUrl,
+      url: config.serviceUrl,
       headers: { 'Content-Type': 'application/json' },
       body: Buffer.from(payload).toString('base64'),
       oidcToken: {
-        serviceAccountEmail: RAD_CONFIG.invokerServiceAccount,
-        audience: RAD_CONFIG.serviceUrl
+        serviceAccountEmail: config.invokerServiceAccount,
+        audience: config.serviceUrl
       }
     },
     // The conversion runs synchronously inside this POST. A large (22M-splat)
@@ -151,7 +187,12 @@ const onSplatAssetCreated = functions.firestore
       tokenCost: 0, // silent backend optimization — never charges the user
       tokenCharged: false,
       refunded: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      // When the Cloud Task was (last) dispatched. The reconciler measures
+      // staleness from this — not createdAt — so it only re-enqueues a job whose
+      // current dispatch has genuinely exceeded its deadline, never one that's
+      // simply mid-conversion (which keeps status 'queued' the whole time).
+      dispatchedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
     try {
@@ -168,4 +209,4 @@ const onSplatAssetCreated = functions.firestore
     return null;
   });
 
-module.exports = { onSplatAssetCreated, enqueueRadTask, RAD_CONFIG };
+module.exports = { onSplatAssetCreated, enqueueRadTask, resolveRadConfig };
