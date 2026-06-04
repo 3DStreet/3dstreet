@@ -17,8 +17,8 @@
 // Phase 3 mechanics — see claude/specs/001-phase-3-plan.md:
 //   - Wheel zoom is a 3-phase "swoop" gated by camera elevation **above
 //     ground (AGL)** = camera.y − groundY, measured by a downward probe
-//     (`_groundYBelowCamera`, TASK-013); on a flat scene at y=0 this
-//     equals absolute camera.y:
+//     (`_collisionFloorAt`, TASK-013/024 — collision floor incl. building
+//     roofs + tiles); on a flat scene at y=0 this equals absolute camera.y:
 //       AGL > 20m         -> phase1: cursor-anchored dolly (tilt-conditional)
 //       1.5m < AGL ≤ 20m  -> phase2: pedestal + tilt-toward-horizontal
 //       AGL ≤ 1.5m        -> phase3: FOV-only zoom
@@ -44,7 +44,7 @@ import './navTuningComponent.js';
 import { ModifierState } from './modifierState.js';
 import { GestureLatch } from './gestureLatch.js';
 import { SceneBounds } from './sceneBounds.js';
-import { CursorAnchor, isGroundSegmentHit } from './cursorAnchor.js';
+import { CursorAnchor, isSolidFloorHit, worldHitNormal } from './cursorAnchor.js';
 import { RotationIndicator } from './rotationIndicator.js';
 import { TickAnimator } from './tickAnimator.js';
 import {
@@ -60,7 +60,6 @@ import {
   PLAN_VIEW_DURATION_MS,
   LB_PAN_MAX_STEP_METRES,
   TILT_THRESHOLD_DEFAULT_DEGREES,
-  ROTATION_GROUND_FLOOR_METRES,
   MIN_ORBIT_RADIUS_METRES,
   MAP_PIVOT_BOUNDS_RADIUS_METRES,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
@@ -72,19 +71,27 @@ import {
   NORTH_BEARING_FROM_MINUS_Z,
   COMPASS_TOPDOWN_TOLERANCE_DEGREES,
   COMPASS_NORTH_TOLERANCE_DEGREES,
-  COMPASS_ROTATE_STEP_DEGREES
+  COMPASS_ROTATE_STEP_DEGREES,
+  EYE_MARGIN_METRES,
+  WASD_CAMERA_RADIUS_METRES,
+  ENCLOSURE_PROBE_UP_MARGIN_METRES,
+  FALL_DURATION_MS,
+  POP_TO_ROOF_DURATION_MS
 } from './constants.js';
 import {
   cameraTiltDegrees,
   decideLbMode,
   decideDragModeSwitch,
   clampOrbitRadius,
-  applyGroundFloor,
   computeLowTiltWheelHit,
   shiftRotateStep,
   decideSwoopPhase,
   phase2TargetTilt,
-  phase2NextElevation
+  phase2NextElevation,
+  classifyWasdStep,
+  classifyFallAction,
+  isLegitPose,
+  cueState
 } from './navMath.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -138,7 +145,7 @@ function signToYaw(sign) {
 }
 
 // Downward direction for the AGL ground probe (TASK-013). Module-level
-// frozen constant so `_groundYBelowCamera` (called every frame) does not
+// frozen constant so the per-frame floor / enclosure probes do not
 // allocate per call. `Raycaster.set` copies it into `ray.direction`, so a
 // shared read-only vector is safe.
 const GROUND_PROBE_DIR = Object.freeze(new THREE.Vector3(0, -1, 0));
@@ -245,7 +252,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // the flat default scene.
     this._lastGroundY = 0;
     // Per-pass snapshot of the ground height directly below the camera,
-    // set at the top of each _drainWheel pass from _groundYBelowCamera().
+    // set at the top of each _drainWheel pass from _collisionFloorAt()
+    // (TASK-024 — the collision floor, so the swoop lands on roofs).
     // Read (not re-probed) by _wheelFrameCap / _applyWheelTick / the phase
     // helpers so every tick in a pass — including the recursive Phase 3 →
     // Phase 2 → Phase 1 hand-offs — sees the same ground. Distinct from
@@ -281,6 +289,21 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // value emitted via `nav-experimental:modechange` for the LB sub-
     // mode comparator. Initialised lazily on the first gesture / tween.
     this._currentLbMode = null;
+
+    // TASK-024 recovery state.
+    //   _recoveryActive — "a recovery tween owns the camera" flag (D2).
+    //     While set, _drainWASD/_drainWheel suspend, the legit snapshot is
+    //     suppressed, _handleFallKey early-returns, and a fresh mousedown
+    //     aborts the tween (N4).
+    //   _lastLegitPose — { position, quaternion, center } running snapshot
+    //     of the most-recent legit camera pose (D3 includes center).
+    //   _lastWasdBlocked — WASD block hysteresis carry (WE-3b).
+    //   _cueShown — discoverability-cue shown state for the show/hide
+    //     hysteresis comparator (D7).
+    this._recoveryActive = false;
+    this._lastLegitPose = null;
+    this._lastWasdBlocked = false;
+    this._cueShown = false;
 
     this.setCamera(camera);
     this._initFocusAnimation();
@@ -420,6 +443,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     camera.position.set(0, 15, 30);
     camera.lookAt(this.center);
     camera.updateMatrixWorld();
+    // TASK-024 (D4): invalidate the legit-pose snapshot so a subsequent
+    // recovery never tweens back to the pre-reset pose. It re-seeds on the
+    // next legit tick.
+    this._lastLegitPose = null;
     this.dispatchEvent(this._changeEvent);
   }
 
@@ -605,6 +632,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         camera.updateMatrixWorld();
         this._planViewActive = false;
         this._planViewHandle = null;
+        // TASK-024 (D4): reseed the legit-pose snapshot from the committed
+        // plan-view pose so recovery can never ease back to a pre-teleport
+        // pose.
+        this._reseedLegitPose();
         this._emitModeChange(null);
         // Plan View ends at near-90° tilt — guaranteed truck-mode. Per
         // A6, refresh the indicator on tween end so users who never
@@ -851,6 +882,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // the tween rather than at its end.
       const callback = () => {
         this._maybeEmitLbModeChange();
+        // TASK-024 (D4): reseed the legit-pose snapshot once the focus
+        // (double-click teleport) animation has settled, so recovery can't
+        // ease back to the pre-teleport pose. The component sets
+        // `transitioning = false` on its final frame.
+        if (this._focusAnimation && !this._focusAnimation.transitioning) {
+          this._reseedLegitPose();
+        }
         this.dispatchEvent(this._changeEvent);
       };
       this._focusAnimation.setCamera(this._camera, callback);
@@ -958,6 +996,16 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._isInactive()) return;
     const mode = this._decideMouseMode(event);
     if (!mode) return;
+
+    // TASK-024 (N4): a fresh press mid-recovery-tween would otherwise start
+    // a drag that fights the still-running tween. Policy: abort the
+    // recovery (cancel the tween, clear the flag) and let the new drag take
+    // over. The aborted tween's onDone doesn't run, so its reseed is
+    // skipped — the next legit tick reseeds normally.
+    if (this._recoveryActive) {
+      this._tick.cancel();
+      this._recoveryActive = false;
+    }
 
     this._pointerOld.set(event.clientX, event.clientY);
     // TASK-010 (B6): track the cursor coords so a mid-drag Shift toggle
@@ -1084,7 +1132,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
 
   _onMouseUp() {
+    let endedMode = null;
     if (this._latch.isActive()) {
+      // TASK-024 (N1): capture the gesture `mode` BEFORE `_latch.end()`,
+      // which nulls the latch's value bag (so `_latch.get('mode')` returns
+      // undefined afterward). Used for the gesture-end recovery decision.
+      endedMode = this._latch.get('mode');
       this._latch.end();
       this._emitModeChange(null);
       // TASK-010 (S-3): hide the ring on any latch-end via mouseup (e.g.
@@ -1097,6 +1150,152 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
     window.removeEventListener('mousemove', this._onMouseMove, false);
     window.removeEventListener('mouseup', this._onMouseUp, false);
+
+    // TASK-024 (3b): gesture-end correction — the one bounded automatic
+    // motion the principle allows. If a camera-drag (pan/rotate) ended with
+    // the camera inside a building (not legit), ease it back to the most
+    // recent legit pose (or pop to the roof if none / no longer valid).
+    if (
+      (endedMode === 'pan' || endedMode === 'rotate') &&
+      !this._recoveryActive
+    ) {
+      this._maybeRecoverAtGestureEnd();
+    }
+  }
+
+  // TASK-024 (3b): if the current pose isn't legit, tween back to the
+  // stored legit pose (re-validated against current geometry — H-C), else
+  // pop to the roof.
+  _maybeRecoverAtGestureEnd() {
+    const camera = this._camera;
+    const probe = this._enclosureProbe();
+    const legitNow = isLegitPose({
+      enclosed: probe.enclosed,
+      camY: camera.position.y,
+      floorY: probe.floorY
+    });
+    if (legitNow) return; // gesture ended clear — nothing to do.
+
+    const stored = this._lastLegitPose;
+    if (stored && this._poseStillLegit(stored)) {
+      this._tweenToPose(stored, FALL_DURATION_MS);
+    } else {
+      this._popToRoof();
+    }
+  }
+
+  // TASK-024 (3b): re-validate a stored pose against CURRENT geometry (a
+  // tile may have streamed in around it). Probes enclosure + the collision
+  // floor at the stored position.
+  _poseStillLegit(pose) {
+    // Probe at the stored position: a one-off downward cast from above it.
+    const sceneEl = this._sceneEl;
+    if (!sceneEl || !sceneEl.object3D) return true;
+    const p = pose.position;
+    this._tmpV3a.set(p.x, p.y + ENCLOSURE_PROBE_UP_MARGIN_METRES, p.z);
+    this._raycaster.set(this._tmpV3a, GROUND_PROBE_DIR);
+    this._raycaster.near = 0;
+    this._raycaster.far = Infinity;
+    const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
+    let enclosed = false;
+    let floorY = null;
+    for (const hit of hits) {
+      if (!isSolidFloorHit(hit)) continue;
+      if (hit.point.y > p.y + 1e-3) {
+        enclosed = true;
+        break;
+      } else if (floorY == null) {
+        floorY = hit.point.y;
+      }
+    }
+    return isLegitPose({ enclosed, camY: p.y, floorY });
+  }
+
+  // TASK-024 (3b): tween the camera back to a stored pose (position +
+  // quaternion + center). Sets `_recoveryActive` for the tween's life. On
+  // done, reseeds `_lastLegitPose` from the committed pose (D4).
+  _tweenToPose(pose, durationMs) {
+    const camera = this._camera;
+    const startPos = camera.position.clone();
+    const startQuat = camera.quaternion.clone();
+    const startCenter = this.center.clone();
+    const endPos = pose.position.clone();
+    const endQuat = pose.quaternion.clone();
+    const endCenter = pose.center.clone();
+    this._recoveryActive = true;
+    this._tick.animate({
+      durationMs,
+      onTick: (eased) => {
+        camera.position.lerpVectors(startPos, endPos, eased);
+        camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
+        this.center.lerpVectors(startCenter, endCenter, eased);
+        camera.updateMatrixWorld();
+        this.dispatchEvent(this._changeEvent);
+      },
+      onDone: () => {
+        camera.position.copy(endPos);
+        camera.quaternion.copy(endQuat);
+        this.center.copy(endCenter);
+        camera.updateMatrixWorld();
+        this._recoveryActive = false;
+        this._reseedLegitPose();
+        this.dispatchEvent(this._changeEvent);
+      }
+    });
+  }
+
+  // TASK-024 (D4): reseed `_lastLegitPose` from the current committed pose.
+  // Called at the onDone of every pose-setting tween so recovery can never
+  // ease back to a pre-teleport pose.
+  _reseedLegitPose() {
+    const camera = this._camera;
+    this._lastLegitPose = {
+      position: camera.position.clone(),
+      quaternion: camera.quaternion.clone(),
+      center: this.center.clone()
+    };
+  }
+
+  // TASK-024 (3c): pop-to-daylight. One up-ray collects accepted overhead
+  // solids in the camera column; target just above the HIGHEST one
+  // (+ EYE_MARGIN) so a single press clears a multi-slab / nested stack
+  // (D6). Vertical only (preserve yaw/pitch). Probe-miss → no-op (don't
+  // bury at a stale height).
+  _popToRoof() {
+    const camera = this._camera;
+    const probe = this._enclosureProbe();
+    if (!probe.overheadHits.length) {
+      // Nothing overhead — nothing to pop out of. No-op.
+      this._recoveryActive = false;
+      return;
+    }
+    const topY = probe.overheadHits[probe.overheadHits.length - 1];
+    const targetY = topY + EYE_MARGIN_METRES;
+    if (targetY <= camera.position.y) {
+      this._recoveryActive = false;
+      return;
+    }
+    const startY = camera.position.y;
+    const startCenterY = this.center.y;
+    this._recoveryActive = true;
+    this._tick.animate({
+      durationMs: POP_TO_ROOF_DURATION_MS,
+      onTick: (eased) => {
+        const y = startY + (targetY - startY) * eased;
+        camera.position.y = y;
+        this.center.y = startCenterY + (y - startY);
+        camera.updateMatrixWorld();
+        this.dispatchEvent(this._changeEvent);
+      },
+      onDone: () => {
+        camera.position.y = targetY;
+        this.center.y = startCenterY + (targetY - startY);
+        camera.updateMatrixWorld();
+        this._recoveryActive = false;
+        this._reseedLegitPose();
+        this.dispatchEvent(this._changeEvent);
+      }
+    });
   }
 
   _onWheel(event) {
@@ -1203,7 +1402,103 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // Prevent the browser from scrolling the page (arrow keys) or
       // shifting focus in scrollable panels while driving the camera.
       event.preventDefault();
+      return;
     }
+
+    // TASK-024 (3d): Space — discrete fall/pop action (not a held key).
+    if (k === 'Space') {
+      event.preventDefault(); // stop page scroll
+      // Don't pre-empt a plan-view/compass tween (would strand
+      // _planViewActive / _compassAnimating with its onDone unrun) or
+      // interrupt a recovery tween in flight (D2).
+      if (this._isInactive() || this._tick.isAnimating()) return;
+      this._handleFallKey();
+    }
+  }
+
+  // TASK-024 (3d): Space fall/pop. Context-sensitive, evaluated in
+  // precedence order (states overlap, so order is load-bearing — WE-8b):
+  //   1. enclosed         -> pop up to daylight (wins regardless of tilt)
+  //   2. elevated + down  -> swoop down to the surface
+  //   3. elevated + ~horiz-> fall straight down to the surface
+  //   no surface below    -> no-op
+  // Each tween below owns `_recoveryActive` (set on start, cleared in
+  // onDone).
+  _handleFallKey() {
+    // First line (D2): a recovery tween owns the camera.
+    if (this._recoveryActive) return;
+    const camera = this._camera;
+    const probe = this._enclosureProbe();
+    const tiltDeg = cameraTiltDegrees(camera);
+    const action = classifyFallAction({
+      enclosed: probe.enclosed,
+      camY: camera.position.y,
+      floorY: probe.floorY,
+      tiltDeg
+    });
+    if (action === 'pop') {
+      this._popToRoof();
+      return;
+    }
+    if (action === 'noop') return;
+    // 'swoop' and 'fall' both descend vertically to collisionFloor +
+    // EYE_MARGIN. Faithful low-risk reuse of the _tick.animate tween (avoids
+    // wheel-drain re-entrancy). For 'swoop' the tilt is lerped toward
+    // horizontal during the descent; 'fall' preserves orientation.
+    const floorY = probe.floorY;
+    if (floorY == null) return; // streaming miss — hold
+    const targetY = floorY + EYE_MARGIN_METRES;
+    if (targetY >= camera.position.y) return; // already at/below — no-op
+    this._fallTo(targetY, action === 'swoop');
+  }
+
+  // TASK-024 (3d): vertical descent tween to `targetY`. When `levelOut`,
+  // lerp the camera tilt toward horizontal during the descent (swoop feel);
+  // otherwise preserve orientation (straight fall). Owns `_recoveryActive`.
+  _fallTo(targetY, levelOut) {
+    const camera = this._camera;
+    const startY = camera.position.y;
+    const startCenterY = this.center.y;
+    const startQuat = camera.quaternion.clone();
+    let endQuat = null;
+    if (levelOut) {
+      // Build a level (tilt=0) target orientation preserving yaw.
+      const scratch = new THREE.PerspectiveCamera();
+      scratch.position.set(camera.position.x, targetY, camera.position.z);
+      const fwd = new THREE.Vector3();
+      camera.getWorldDirection(fwd);
+      fwd.y = 0;
+      if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
+      fwd.normalize();
+      scratch.lookAt(
+        camera.position.x + fwd.x,
+        targetY,
+        camera.position.z + fwd.z
+      );
+      endQuat = scratch.quaternion.clone();
+    }
+    this._recoveryActive = true;
+    this._tick.animate({
+      durationMs: FALL_DURATION_MS,
+      onTick: (eased) => {
+        const y = startY + (targetY - startY) * eased;
+        camera.position.y = y;
+        this.center.y = startCenterY + (y - startY);
+        if (endQuat) camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
+        camera.updateMatrixWorld();
+        this.dispatchEvent(this._changeEvent);
+      },
+      onDone: () => {
+        camera.position.y = targetY;
+        this.center.y = startCenterY + (targetY - startY);
+        if (endQuat) camera.quaternion.copy(endQuat);
+        camera.updateMatrixWorld();
+        this._recoveryActive = false;
+        this._reseedLegitPose();
+        this._maybeEmitLbModeChange();
+        this.dispatchEvent(this._changeEvent);
+      }
+    });
   }
 
   _onKeyUp(event) {
@@ -1231,48 +1526,228 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
     this._drainWheel();
     this._drainWASD(deltaMs);
+    // TASK-024 (3b/3e): legit-pose snapshot + discoverability cue. Runs
+    // after the drains so it captures the post-move pose. Suppressed while
+    // a recovery tween owns the camera (D2).
+    if (!this._recoveryActive) {
+      this._updateLegitSnapshotAndCue();
+    }
   }
 
-  // AGL ground probe (TASK-013). Casts straight down from the camera and
-  // returns the absolute world-Y of the nearest *visible street-segment*
-  // surface below it (`isGroundSegmentHit`). On a miss (no scene, or no
-  // accepted hit — over a gap / off the scene edge / over geo terrain)
-  // holds the last-known ground (D2). Refreshes `_lastGroundY` on a hit.
-  _groundYBelowCamera() {
+  // TASK-024 (3b/3e): refresh `_lastLegitPose` if the current pose is
+  // legit, and emit the discoverability cue on a show/hide transition. One
+  // enclosure up-ray (double duty: enclosure + collision floor under the
+  // camera) per call.
+  _updateLegitSnapshotAndCue() {
+    const camera = this._camera;
+    const probe = this._enclosureProbe();
+    const camY = camera.position.y;
+    const legit = isLegitPose({
+      enclosed: probe.enclosed,
+      camY,
+      floorY: probe.floorY
+    });
+    if (legit) {
+      if (!this._lastLegitPose) {
+        this._lastLegitPose = {
+          position: camera.position.clone(),
+          quaternion: camera.quaternion.clone(),
+          center: this.center.clone()
+        };
+      } else {
+        this._lastLegitPose.position.copy(camera.position);
+        this._lastLegitPose.quaternion.copy(camera.quaternion);
+        this._lastLegitPose.center.copy(this.center);
+      }
+    }
+    // Discoverability cue (D7): keyed off height above the collision floor
+    // below, with show/hide hysteresis; enclosure forces show.
+    const agl = probe.floorY != null ? camY - probe.floorY : 0;
+    const nextShown = cueState(this._cueShown, agl, probe.enclosed);
+    if (nextShown !== this._cueShown) {
+      this._cueShown = nextShown;
+      if (nextShown) {
+        this._emitRecoveryCue(probe.enclosed ? 'enclosed' : 'drop');
+      } else {
+        this._emitRecoveryCue(null);
+      }
+    }
+  }
+
+  // TASK-024 (3e): emit a transient recovery cue on the sceneEl bus,
+  // mirroring `_emitModeChange`. `kind` is 'enclosed' | 'drop' to show, or
+  // null to hide.
+  _emitRecoveryCue(kind) {
+    const event = { type: 'nav-experimental:recovery-cue', kind };
+    this.dispatchEvent(event);
+    if (this._sceneEl && this._sceneEl.emit) {
+      this._sceneEl.emit('nav-experimental:recovery-cue', { kind }, false);
+    }
+  }
+
+  // TASK-024 (1b): downward floor probe at an arbitrary XZ column. Casts
+  // (0,-1,0) from (x, camera.y, z), classifies each hit, and picks the
+  // nearest segment-or-building hit (priority) else the nearest tiles hit
+  // (TASK-019 D3 — a tiles rooftop must never beat a lower segment). Honours
+  // `acceptBuildings` / `acceptTiles` flags so the travel-height query can
+  // exclude buildings. Returns { y, normal, source, hit } (hit = the raw
+  // intersection for normal extraction). On a miss returns the last-known
+  // ground cache with source 'cache'. When `refreshCache` is set, a hit
+  // updates `_lastGroundY` (D2 continuity).
+  _floorYBelowAt(x, z, opts = {}) {
     const camera = this._camera;
     const sceneEl = this._sceneEl;
+    const acceptBuildings = opts.acceptBuildings !== false;
+    const acceptTiles = opts.acceptTiles !== false;
     if (!sceneEl || !sceneEl.object3D) {
-      return this._lastGroundY; // D2: hold last-known (init 0)
+      return { y: this._lastGroundY, normal: null, source: 'cache', hit: null };
     }
-    // D5: straight down from the camera.
-    this._raycaster.set(camera.position, GROUND_PROBE_DIR);
-    // Defense-in-depth: near/far default to 0/Infinity and nothing in the
-    // current codebase mutates them (setFromCamera sets only
-    // origin/direction/camera in three r181). Set them explicitly so a
-    // future consumer that does perturb them can't silently clamp the
-    // probe.
+    this._tmpV3a.set(x, camera.position.y, z);
+    this._raycaster.set(this._tmpV3a, GROUND_PROBE_DIR);
     this._raycaster.near = 0;
     this._raycaster.far = Infinity;
     const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
+    // Priority pick: nearest segment-or-building beats nearest tiles. `hits`
+    // is near→far, so the first accepted segment/building is the nearest;
+    // remember the first accepted tiles hit as a fallback.
+    let tilesHit = null;
     for (const hit of hits) {
-      // near → far
-      if (isGroundSegmentHit(hit)) {
-        this._lastGroundY = hit.point.y; // refresh cache (D2)
-        return this._lastGroundY;
+      if (
+        isSolidFloorHit(hit, { acceptBuildings, acceptTiles: false })
+      ) {
+        if (opts.refreshCache) this._lastGroundY = hit.point.y;
+        return {
+          y: hit.point.y,
+          normal: worldHitNormal(hit),
+          source: 'segment-or-building',
+          hit
+        };
+      }
+      if (
+        acceptTiles &&
+        !tilesHit &&
+        isSolidFloorHit(hit, { acceptBuildings: false, acceptTiles: true })
+      ) {
+        tilesHit = hit;
       }
     }
-    return this._lastGroundY; // miss → hold last-known (D2)
+    if (tilesHit) {
+      if (opts.refreshCache) this._lastGroundY = tilesHit.point.y;
+      return {
+        y: tilesHit.point.y,
+        normal: worldHitNormal(tilesHit),
+        source: 'tiles',
+        hit: tilesHit
+      };
+    }
+    return { y: this._lastGroundY, normal: null, source: 'cache', hit: null };
+  }
+
+  // TASK-024: collision floor at an XZ column — nearest solid surface
+  // (ground OR building roof OR tiles), scatter excluded. Used by the
+  // descent clamp, swoop, orbit clamp, WASD destination, enclosure floor.
+  _collisionFloorAt(x, z) {
+    return this._floorYBelowAt(x, z, {
+      acceptBuildings: true,
+      acceptTiles: true,
+      refreshCache: true
+    });
+  }
+
+  // TASK-024: travel-height floor below the camera (WASD fly-speed only).
+  //   3DStreet: nearest segment-only hit (buildings see-through — B4 speed
+  //     rationale preserved).
+  //   Tiles (no separable ground): the MINIMUM collision-floor y over a
+  //     small fixed grid below the camera, approximating the street/ground
+  //     between roofs so speed doesn't crawl over a single roof.
+  _travelHeightFloorYBelow() {
+    const cx = this._camera.position.x;
+    const cz = this._camera.position.z;
+    // Segment-only first (3DStreet land-floor).
+    const seg = this._floorYBelowAt(cx, cz, {
+      acceptBuildings: false,
+      acceptTiles: false,
+      refreshCache: false
+    });
+    if (seg.source === 'segment-or-building') return seg.y;
+    // No segment ground — tiles regime. Sample a small 3×3 grid (±2 m) and
+    // take the lowest collision floor (the low point ≈ street/ground).
+    const SPAN = 2;
+    let minY = Infinity;
+    let any = false;
+    for (let ix = -1; ix <= 1; ix++) {
+      for (let iz = -1; iz <= 1; iz++) {
+        const f = this._floorYBelowAt(cx + ix * SPAN, cz + iz * SPAN, {
+          acceptBuildings: true,
+          acceptTiles: true,
+          refreshCache: false
+        });
+        if (f.source !== 'cache') {
+          any = true;
+          if (f.y < minY) minY = f.y;
+        }
+      }
+    }
+    return any ? minY : this._lastGroundY;
+  }
+
+  // TASK-024 (3a): enclosure / overhead probe. Casts (0,-1,0) from
+  // (camera.x, camera.y + UP_MARGIN, camera.z), filtered by isSolidFloorHit.
+  // Any accepted hit with point.y > camera.y means solid overhead →
+  // enclosed; the nearest accepted hit with point.y <= camera.y is the
+  // collision floor (one ray, double duty). Returns
+  // { enclosed, floorY, overheadHits } — overheadHits is the raw array of
+  // accepted hits above the camera, sorted ascending by y, so _popToRoof can
+  // pick the highest exit face (D6/N7).
+  _enclosureProbe() {
+    const camera = this._camera;
+    const sceneEl = this._sceneEl;
+    if (!sceneEl || !sceneEl.object3D) {
+      return { enclosed: false, floorY: null, overheadHits: [] };
+    }
+    const camY = camera.position.y;
+    this._tmpV3a.set(
+      camera.position.x,
+      camY + ENCLOSURE_PROBE_UP_MARGIN_METRES,
+      camera.position.z
+    );
+    this._raycaster.set(this._tmpV3a, GROUND_PROBE_DIR);
+    this._raycaster.near = 0;
+    this._raycaster.far = Infinity;
+    const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
+    const overhead = [];
+    let floorY = null;
+    for (const hit of hits) {
+      if (!isSolidFloorHit(hit)) continue;
+      if (hit.point.y > camY + 1e-3) {
+        overhead.push(hit.point.y);
+      } else if (floorY == null) {
+        // nearest accepted hit at/below the camera = collision floor.
+        floorY = hit.point.y;
+      }
+    }
+    overhead.sort((a, b) => a - b);
+    return { enclosed: overhead.length > 0, floorY, overheadHits: overhead };
   }
 
   _drainWheel() {
+    // TASK-024 (D2): a recovery tween owns the camera — drop queued wheel.
+    if (this._recoveryActive) {
+      this._wheelBudget = 0;
+      return;
+    }
     if (this._wheelBudget === 0) return;
     const unit = WHEEL_BUDGET_PER_TICK_UNITS;
-    // Snapshot the ground height once per pass (TASK-013). All ticks —
-    // including the recursive Phase 3 → Phase 2 → Phase 1 hand-offs — read
-    // this._frameGroundY so they see a single consistent ground for the
-    // frame (avoids up to 10 raycasts/frame and the cap/threshold
-    // asymmetry a mid-frame re-probe would introduce).
-    this._frameGroundY = this._groundYBelowCamera();
+    // Snapshot the ground height once per pass (TASK-013 → TASK-024). All
+    // ticks — including the recursive Phase 3 → Phase 2 → Phase 1 hand-offs
+    // — read this._frameGroundY so they see a single consistent ground for
+    // the frame. TASK-024: the swoop now reads the COLLISION floor (ground
+    // OR building roof OR tiles), so a swoop over a building lands on the
+    // roof (WE-2 / C5 — the B4 reversal falls out of the wider floor).
+    this._frameGroundY = this._collisionFloorAt(
+      this._camera.position.x,
+      this._camera.position.z
+    ).y;
     // Per H4 of `claude/reports/007-phase-3-plan-review.md`: latch the
     // per-frame cap once at the start of the drain pass, hold for the
     // whole frame. Re-evaluating per iteration produces an asymmetric
@@ -1589,6 +2064,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
   _drainWASD(deltaMs) {
     const camera = this._camera;
+    // TASK-024 (D2): a recovery tween owns the camera — held keys must not
+    // fight it. Snap velocity to zero and suspend.
+    if (this._recoveryActive) {
+      this._wasdVelocity.set(0, 0, 0);
+      return;
+    }
     const dirX =
       this._heldKeys.has('KeyD') || this._heldKeys.has('ArrowRight') ? 1 : 0;
     const dirXNeg =
@@ -1628,22 +2109,19 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     right.y = 0;
     right.normalize();
 
-    // Target velocity: unit direction × height-scaled speed.
-    const targetDir = this._tmpV3c.set(0, 0, 0);
-    targetDir.addScaledVector(forward, fwd);
-    targetDir.addScaledVector(right, strafe);
-    targetDir.normalize();
+    // Target velocity: unit direction × height-scaled speed. Copy out of
+    // the scratch vector — the classifier raycasts below reuse _tmpV3a/b/c.
+    this._tmpV3c.set(0, 0, 0);
+    this._tmpV3c.addScaledVector(forward, fwd);
+    this._tmpV3c.addScaledVector(right, strafe);
+    this._tmpV3c.normalize();
+    const targetDirX = this._tmpV3c.x;
+    const targetDirZ = this._tmpV3c.z;
 
-    // AGL height (TASK-013): scale speed by height above the ground
-    // directly below the camera, from the same downward probe the swoop
-    // uses. A local groundY (not this._frameGroundY) — the WASD path has
-    // no recursive hand-offs, so no snapshot field is needed; the field
-    // exists solely to carry the snapshot across the wheel-drain's phase
-    // hand-offs. Use Math.max (NOT Math.abs): a camera above the ground
-    // always has positive AGL; the only way aglRaw goes negative is the
-    // camera being below the surface (the TASK-010-owned underground
-    // case), where clamping to the 0.1 floor is a safe degenerate.
-    const groundY = this._groundYBelowCamera();
+    // TASK-024: WASD fly-speed scales by TRAVEL HEIGHT (height above the
+    // land/ground beneath buildings), NOT the collision floor — so speed
+    // doesn't crawl over a building roof (B4 speed rationale; TASK-013 WE-4).
+    const groundY = this._travelHeightFloorYBelow();
     const aglRaw = camera.position.y - groundY;
     const height = Math.max(0.1, aglRaw);
     const targetSpeed = THREE.MathUtils.clamp(
@@ -1651,7 +2129,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       WASD_MIN_SPEED,
       WASD_MAX_SPEED
     );
-    const targetVel = targetDir.multiplyScalar(targetSpeed);
+    const targetVel = new THREE.Vector3(targetDirX, 0, targetDirZ).multiplyScalar(
+      targetSpeed
+    );
 
     // Acceleration ramp toward target. accel = max-speed / ramp-time so a
     // standing-start key-press reaches WASD_MAX_SPEED in WASD_RAMP_UP_MS;
@@ -1671,10 +2151,112 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const move = new THREE.Vector3()
       .copy(this._wasdVelocity)
       .multiplyScalar(distMetres);
-    camera.position.add(move);
-    this.center.add(move);
+
+    // TASK-024 (2b): forward-ray step classifier. Decide block / step-up /
+    // follow / hover from the surface geometry ahead before committing the
+    // horizontal move + any y change.
+    const stepThisFrame = Math.hypot(move.x, move.z);
+    const outcome = this._classifyWasdMove(targetDirX, targetDirZ, stepThisFrame);
+
+    if (outcome.kind === 'block') {
+      // Stop at the wall: cancel the horizontal step, snap velocity to 0,
+      // don't advance the centre.
+      this._wasdVelocity.set(0, 0, 0);
+      this._lastWasdBlocked = true;
+      return;
+    }
+    this._lastWasdBlocked = false;
+
+    // Apply the horizontal move.
+    camera.position.x += move.x;
+    camera.position.z += move.z;
+    this.center.x += move.x;
+    this.center.z += move.z;
+
+    if (outcome.kind === 'step-up' || outcome.kind === 'follow') {
+      // Mount / track the surface at eye height (up AND down — WE-4).
+      const newY = outcome.floorDestY + EYE_MARGIN_METRES;
+      const dy = newY - camera.position.y;
+      camera.position.y = newY;
+      this.center.y += dy;
+    }
+    // 'hover' holds y (no plunge — WE-5); centre y unchanged.
+
     camera.updateMatrixWorld();
     this.dispatchEvent(this._changeEvent);
+  }
+
+  // TASK-024 (2b): run the WASD forward-ray + destination-floor probes and
+  // classify the step. Returns { kind, floorDestY }. `kind` is
+  // 'block' | 'step-up' | 'follow' | 'hover'. Gated to held-WASD-with-input
+  // (the caller only invokes it inside the hasInput branch), so idle frames
+  // cost nothing.
+  _classifyWasdMove(dirX, dirZ, stepThisFrame) {
+    const camera = this._camera;
+    const reach = stepThisFrame + WASD_CAMERA_RADIUS_METRES;
+
+    // Floor under the camera now (collision floor).
+    const floorNow = this._collisionFloorAt(
+      camera.position.x,
+      camera.position.z
+    );
+    // Destination column floor.
+    const destX = camera.position.x + dirX * reach;
+    const destZ = camera.position.z + dirZ * reach;
+    const floorDest = this._collisionFloorAt(destX, destZ);
+
+    // Forward ray: from the camera along the horizontal travel direction,
+    // length `reach`, first accepted solid-floor hit (the wall/façade/cliff
+    // ahead).
+    const forwardHit = this._forwardRayHit(dirX, dirZ, reach);
+
+    const outcome = classifyWasdStep({
+      floorNow: { y: floorNow.y, normal: floorNow.normal },
+      floorDest: { y: floorDest.y, normal: floorDest.normal },
+      forwardHit,
+      reach,
+      targetDir: { x: dirX, z: dirZ },
+      currentEnclosed: false,
+      lastBlocked: !!this._lastWasdBlocked
+    });
+
+    if (outcome === 'block') {
+      // D5: before refusing, fire the on-demand enclosure up-ray. If the
+      // camera's own column is enclosed (loaded inside a building — the
+      // WE-13 freeze trap), downgrade block → follow so the user can drive
+      // out in any direction.
+      const probe = this._enclosureProbe();
+      if (probe.enclosed) {
+        return { kind: 'follow', floorDestY: floorDest.y };
+      }
+    }
+    return { kind: outcome, floorDestY: floorDest.y };
+  }
+
+  // TASK-024 (2b): cast a forward (horizontal) ray of length `reach` along
+  // (dirX, 0, dirZ) and return the first accepted solid-floor hit as
+  // { hit, dist, normalY, normalH } — or { hit: false } when clear.
+  _forwardRayHit(dirX, dirZ, reach) {
+    const sceneEl = this._sceneEl;
+    if (!sceneEl || !sceneEl.object3D) return { hit: false };
+    this._tmpV3a.set(dirX, 0, dirZ);
+    if (this._tmpV3a.lengthSq() < 1e-9) return { hit: false };
+    this._tmpV3a.normalize();
+    this._raycaster.set(this._camera.position, this._tmpV3a);
+    this._raycaster.near = 0;
+    this._raycaster.far = reach;
+    const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
+    for (const hit of hits) {
+      if (!isSolidFloorHit(hit)) continue;
+      const n = worldHitNormal(hit);
+      return {
+        hit: true,
+        dist: hit.distance,
+        normalY: n.y,
+        normalH: { x: n.x, z: n.z }
+      };
+    }
+    return { hit: false };
   }
 
   // --- LB hit-anchored truck ---
@@ -1775,10 +2357,22 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
     camera.position.x += right.x * sR;
     camera.position.z += right.z * sR;
-    camera.position.y += sU;
+    let newY = camera.position.y + sU;
+    // TASK-024 (2a / WE-6): descent clamp — pedestal-down can't sink
+    // through a solid surface. Clamp to collisionFloor + eye-margin at the
+    // (post-truck) XZ column. y-write only; the truck-right component is
+    // unaffected.
+    const floor = this._collisionFloorAt(
+      camera.position.x,
+      camera.position.z
+    );
+    const minY = floor.y + EYE_MARGIN_METRES;
+    if (newY < minY) newY = minY;
+    const dY = newY - camera.position.y;
+    camera.position.y = newY;
     this.center.x += right.x * sR;
     this.center.z += right.z * sR;
-    this.center.y += sU;
+    this.center.y += dY;
     camera.updateMatrixWorld();
     this.dispatchEvent(this._changeEvent);
   }
@@ -1903,30 +2497,26 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
     const fwd = this._tmpV3c;
     camera.getWorldDirection(fwd); // unit, camera -Z in world space
-    let { pos, lookTarget } = shiftRotateStep({
+    // TASK-024 (2c/D8/C3): in the Map-orbit regime, pass the COLLISION
+    // floor under the latched pivot as a reversible floor bound.
+    // `shiftRotateStep` caps the *input* down-tilt so the resulting
+    // `pos.y >= pivotFloor + EYE_MARGIN` (fixing C2's flat-plane y=0+0.5
+    // guard), without accumulating over-drag — reversing the drag retraces
+    // exactly. Street-mode rotate is rotate-in-place (no vertical motion),
+    // so no floor bound there.
+    let floorY = null;
+    if (this._latch.get('regime') === 'map') {
+      floorY = this._collisionFloorAt(center.x, center.z).y;
+    }
+    const { pos, lookTarget } = shiftRotateStep({
       camPos: camera.position,
       viewDir: fwd,
       centre: center,
       dxPx,
       dyPx,
-      speed: this.rotationSpeed
+      speed: this.rotationSpeed,
+      floorY
     });
-
-    // TASK-010 (D4): underground guard, only in the Map-orbit regime.
-    // Street-mode rotate is rotate-in-place (pos === camPos, no vertical
-    // motion), so the floor is only meaningful there. `applyGroundFloor`
-    // re-projects onto the orbit sphere (centre = latched pivot) rather
-    // than flattening pos.y, so the radius is preserved and the next
-    // move's `shiftRotateStep` (which re-derives the offset from
-    // camera.position) doesn't see a shrunken orbit (no inward spiral).
-    if (this._latch.get('regime') === 'map') {
-      ({ pos, lookTarget } = applyGroundFloor(
-        pos,
-        lookTarget,
-        center,
-        ROTATION_GROUND_FLOOR_METRES
-      ));
-    }
 
     camera.position.copy(pos);
     camera.lookAt(lookTarget);
