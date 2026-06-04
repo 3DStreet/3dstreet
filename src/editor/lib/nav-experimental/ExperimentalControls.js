@@ -683,8 +683,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // to a spin in place on its own — no dedicated top-down case needed.
     // (TASK-026: this replaces a call to a never-implemented
     // _screenCenterHit() that threw on every non-top-down click.)
+    const isMap = cameraTiltDegrees(camera) > this._tiltThreshold;
     let pivot = null;
-    if (cameraTiltDegrees(camera) > this._tiltThreshold) {
+    if (isMap) {
       // Screen-centre ground point = where the camera's view ray meets
       // y=0. getWorldDirection writes the unit view direction into the
       // shared scratch _tmpV3c; _viewRayGroundPoint copies what it needs
