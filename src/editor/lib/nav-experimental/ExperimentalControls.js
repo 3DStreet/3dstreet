@@ -269,6 +269,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Phase 2 → Phase 1 hand-offs — sees the same ground. Distinct from
     // _lastGroundY (the persisted miss-fallback cache). (TASK-013)
     this._frameGroundY = 0;
+    // TASK-024a (solid-geometry guard): did this pass's ground probe HIT a
+    // real surface, or did it miss (source 'cache' = stale last-known ground,
+    // no surface below — outside a finite scene's bounds)? On a miss every
+    // swoop ground-relative clamp / phase-snap is suppressed so the wheel acts
+    // as a plain anchored dolly (free descent), letting the camera reach
+    // street level from outside the bounds.
+    this._frameGroundHit = false;
 
     // WASD held-key set; drained per tick.
     this._heldKeys = new Set();
@@ -2053,10 +2060,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // the frame. TASK-024: the swoop now reads the COLLISION floor (ground
     // OR building roof OR tiles), so a swoop over a building lands on the
     // roof (WE-2 / C5 — the B4 reversal falls out of the wider floor).
-    this._frameGroundY = this._collisionFloorAt(
+    const frameFloor = this._collisionFloorAt(
       this._camera.position.x,
       this._camera.position.z
-    ).y;
+    );
+    this._frameGroundY = frameFloor.y;
+    // TASK-024a (solid-geometry guard): track whether the probe hit a real
+    // surface. On a miss (outside finite bounds) the swoop phase handlers skip
+    // every ground-relative clamp so the wheel is a plain anchored dolly.
+    this._frameGroundHit = frameFloor.source !== 'cache';
     // Per H4 of `claude/reports/007-phase-3-plan-review.md`: latch the
     // per-frame cap once at the start of the drain pass, hold for the
     // whole frame. Re-evaluating per iteration produces an asymmetric
@@ -2100,6 +2112,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // a lower cap so trackpad bursts can't blast through the swoop
   // (~350ms guaranteed minimum, vs ~100ms with the default cap).
   _wheelFrameCap() {
+    // TASK-024a (solid-geometry guard): no ground below (outside finite
+    // bounds) → the wheel is a plain anchored dolly, never the slow Phase-2
+    // swoop, so use the default (faster) cap. `_frameGroundY` is stale here.
+    if (!this._frameGroundHit) return WHEEL_MAX_TICKS_PER_FRAME;
     const yAgl = this._camera.position.y - this._frameGroundY;
     if (decideSwoopPhase(yAgl) === 'phase2') {
       return SWOOP_PHASE2_MAX_TICKS_PER_FRAME;
@@ -2126,6 +2142,17 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const camera = this._camera;
     if (this._lastWheelCtrlKey) {
       return this._applyLowTiltWheelTick(sign);
+    }
+    // TASK-024a (solid-geometry guard): no ground below (outside finite
+    // bounds) → there is no swoop floor to land on. Act as a plain anchored
+    // dolly at the current tilt (Phase 1 / low-tilt), never Phase 2/3, so the
+    // camera descends freely toward street level. `_frameGroundY` is stale, so
+    // the AGL-based phase dispatch below would mis-route to a swoop landing.
+    if (!this._frameGroundHit) {
+      if (cameraTiltDegrees(camera) <= this._tiltThreshold) {
+        return this._applyLowTiltWheelTick(sign);
+      }
+      return this._applyPhase1WheelTick(sign);
     }
     const yAgl = camera.position.y - this._frameGroundY;
     const phase = decideSwoopPhase(yAgl);
@@ -2157,6 +2184,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (x == null || y == null) return;
     const hit = this._cursorAnchor.worldPointAt(x, y);
     this._applyAnchoredDollyStep(sign, hit);
+
+    // TASK-024a (solid-geometry guard): no ground below (outside finite
+    // bounds) → no Phase-2 boundary to snap to. Leave the anchored dolly step
+    // as-is (free descent); `_frameGroundY` is stale and would snap us up.
+    if (!this._frameGroundHit) return;
 
     // Boundary: Phase 1 → Phase 2 on zoom-in. Compare AGL, clamp the
     // camera to (groundY + yCeil).
@@ -2521,6 +2553,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         camY: camera.position.y,
         floorNowY: outcome.floorNowY,
         collisionFloorDestY: outcome.floorDestY,
+        destFloorHit: outcome.destFloorHit,
         H: this._H,
         eyeMargin: EYE_MARGIN_METRES,
         dtSeconds: distMetres,
@@ -2589,14 +2622,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         return {
           kind: 'follow',
           floorDestY: floorDest.y,
-          floorNowY: floorNow.y
+          floorNowY: floorNow.y,
+          // TASK-024a (solid-geometry guard): destination-column probe hit a
+          // real surface (vs. stale cache on a miss outside finite bounds)?
+          destFloorHit: floorDest.source !== 'cache'
         };
       }
     }
     return {
       kind: outcome,
       floorDestY: floorDest.y,
-      floorNowY: floorNow.y
+      floorNowY: floorNow.y,
+      destFloorHit: floorDest.source !== 'cache'
     };
   }
 
@@ -2734,13 +2771,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       camera.position.z
     );
     const minY = floor.y + EYE_MARGIN_METRES;
+    // TASK-024a (solid-geometry guard): a probe miss (source 'cache' = stale
+    // last-known ground, no real surface below) means "no floor below" —
+    // outside a finite scene's bounds. No floor clamp, no grounding, so
+    // pedestal-down stays available to reach street level (spec D1).
+    const hasFloor = floor.source !== 'cache';
     // TASK-024a (1.2.4 / 1.3.1 / 2.2): grounded / H edges for pedestal nav.
     // `clampedToFloor` is read BEFORE the assignment — a descent that would
     // have sunk below collisionFloor + eye is "a deliberate down-nav reaching
     // the surface" (D1). `dY` (clamped) is the up/down signal; safe to read
     // because the descent clamp is one-directional (only ever raises newY),
     // so for an up-move dY == sU (MED-3).
-    const clampedToFloor = newY < minY;
+    const clampedToFloor = hasFloor && newY < minY;
     if (clampedToFloor) newY = minY;
     const dY = newY - camera.position.y;
     camera.position.y = newY; // commit before any _captureH (reads camera.y)

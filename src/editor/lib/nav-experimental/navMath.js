@@ -253,11 +253,21 @@ export function wasdFollowY(camY, floorNowY, floorDestY, eyeMargin) {
 // AGL). `H == null` falls back to collision-follow so the helper never returns
 // NaN (defensive; the caller lazily captures H first). Pure — never touches
 // `grounded` (terrain rising must not ground, D1/H3).
+//
+// TASK-024a (solid-geometry guard): `destFloorHit` is false when the
+// destination-column probe MISSED (source 'cache' = stale last-known ground,
+// no real surface ahead — outside a finite scene's bounds). In that case
+// `collisionFloorDestY` is meaningless: the not-grounded path eases toward H
+// only (NO `max(H, floorDest+eye)` lift, NO `max(eased, floorDest)` safety
+// floor), so the camera is never spuriously lifted to a stale-high floor nor
+// blocked from descending outside bounds. Defaults to true so existing callers
+// (and the grounded branch, unaffected) behave exactly as before.
 export function wasdVerticalY({
   grounded,
   camY,
   floorNowY,
   collisionFloorDestY,
+  destFloorHit = true,
   H,
   eyeMargin,
   dtSeconds,
@@ -265,6 +275,13 @@ export function wasdVerticalY({
 }) {
   if (grounded || H == null) {
     return wasdFollowY(camY, floorNowY, collisionFloorDestY, eyeMargin);
+  }
+  // Not grounded, no floor ahead (outside bounds): ease toward H only — no
+  // floor clamp, no safety floor (there is no geometry to clip).
+  if (!destFloorHit) {
+    const maxStep = rateMps * dtSeconds;
+    const delta = THREE.MathUtils.clamp(H - camY, -maxStep, maxStep);
+    return camY + delta;
   }
   // Not grounded: ease toward the option-3 absolute target, rate-limited.
   const target = Math.max(H, collisionFloorDestY + eyeMargin);

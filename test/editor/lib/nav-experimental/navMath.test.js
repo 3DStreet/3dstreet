@@ -527,6 +527,86 @@ describe('wasdVerticalY', () => {
       expect(y).toBeGreaterThanOrEqual(49);
     });
   });
+
+  // --- TASK-024a (solid-geometry guard): destFloorHit:false (probe miss,
+  // outside a finite scene's bounds) on the not-grounded path. There is no
+  // real surface ahead, so `collisionFloorDestY` is a STALE cached value: it
+  // must be ignored — no `max(H, floorDest+eye)` lift, no `max(eased,
+  // floorDest)` safety floor. The camera eases toward H only, rate-limited,
+  // and is NEVER forced up to the stale floor (which would block descent /
+  // spuriously lift the camera outside bounds). ---
+  describe('destFloorHit:false (no floor ahead, outside bounds)', () => {
+    const dt = 1000; // huge → maxStep ≫ any delta → reaches H in one frame
+
+    it('stale-high floor does NOT lift the camera (eases to H only)', () => {
+      // camY=5, H=5, stale collisionFloorDestY=30 (would lift to 31.5 if used).
+      // With destFloorHit:false the floor is ignored → stays at H=5.
+      const y = wasdVerticalY({
+        grounded: false, camY: 5, floorNowY: 0,
+        collisionFloorDestY: 30, destFloorHit: false, H: 5, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(5, 5); // NOT lifted to 31.5
+    });
+
+    it('descends toward a lower H, never blocked by a stale floor', () => {
+      // camY=20, H=2; stale floor 30 would have clamped the floor at 31.5 and
+      // (via the safety floor) blocked descent. destFloorHit:false → free to
+      // ease down toward H=2.
+      const y = wasdVerticalY({
+        grounded: false, camY: 20, floorNowY: 0,
+        collisionFloorDestY: 30, destFloorHit: false, H: 2, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(2, 5);
+    });
+
+    it('rate-limits the ease toward H (down)', () => {
+      const frameDt = 1 / 60;
+      const maxStep = RATE * frameDt;
+      // camY=10, H=2, stale floor 30; wants −8 but capped to −maxStep.
+      const y = wasdVerticalY({
+        grounded: false, camY: 10, floorNowY: 0,
+        collisionFloorDestY: 30, destFloorHit: false, H: 2, eyeMargin: EYE,
+        dtSeconds: frameDt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(10 - maxStep, 5);
+    });
+
+    it('no safety floor: result may sit below the stale collisionFloorDest', () => {
+      // camY=5, H=5, stale floor 30. The grounded-floor safety `max(eased,
+      // floorDest)` would have forced 30; the miss path must NOT.
+      const y = wasdVerticalY({
+        grounded: false, camY: 5, floorNowY: 0,
+        collisionFloorDestY: 30, destFloorHit: false, H: 5, eyeMargin: EYE,
+        dtSeconds: 1000, rateMps: RATE
+      });
+      expect(y).toBeLessThan(30);
+    });
+  });
+
+  // TASK-024a: with destFloorHit:true (the normal in-bounds case) the
+  // option-3 behaviour is unchanged — same target math + safety floor.
+  describe('destFloorHit:true (in-bounds) is unchanged option-3', () => {
+    it('lifts to max(H, floorDest+eye) as before', () => {
+      const y = wasdVerticalY({
+        grounded: false, camY: 50, floorNowY: 0,
+        collisionFloorDestY: 60, destFloorHit: true, H: 50, eyeMargin: EYE,
+        dtSeconds: 1000, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(61.5, 5); // identical to opt3 target row 4
+    });
+
+    it('safety floor still clips mid-ease as before', () => {
+      const dt = 1 / 60;
+      const y = wasdVerticalY({
+        grounded: false, camY: 48, floorNowY: 0,
+        collisionFloorDestY: 49, destFloorHit: true, H: 48, eyeMargin: EYE,
+        dtSeconds: dt, rateMps: RATE
+      });
+      expect(y).toBeCloseTo(49, 5);
+    });
+  });
 });
 
 describe('groundedAtLoad', () => {
