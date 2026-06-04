@@ -12,6 +12,8 @@ import {
   phase2NextElevation,
   classifyWasdStep,
   wasdFollowY,
+  wasdVerticalY,
+  groundedAtLoad,
   classifyFallAction,
   isLegitPose,
   cueState
@@ -389,6 +391,77 @@ describe('wasdFollowY', () => {
     // Below-eye AGL (0.5) walking onto a +1.0 rise: tracked 1.5 would be only
     // 0.5 above the new floor → clamp up to floor+eye = 2.5.
     expect(wasdFollowY(0.5, 0, 1.0, EYE)).toBeCloseTo(2.5);
+  });
+});
+
+describe('wasdVerticalY', () => {
+  const EYE = EYE_MARGIN_METRES; // 1.5
+
+  // PLAN §5 table — all 3 options × {flat / slope / over-obstacle
+  // lift-and-drop-back / push-up clamp}, plus grounded and H==null rows.
+  // Each row asserts: correct y (5 dp), inputs not mutated, never NaN.
+  const rows = [
+    // # opt grounded label  inputs                                   expect
+    [1, 1, false, 'opt1 flat (AGL-preserve)', { camY: 51.5, floorNowY: 0, collisionFloorDestY: 0, travelHeightDestY: null, H: null }, 51.5],
+    [2, 1, false, 'opt1 slope +5', { camY: 51.5, floorNowY: 0, collisionFloorDestY: 5, travelHeightDestY: null, H: null }, 56.5],
+    [3, 1, false, 'opt1 sharp 49m roof edge (PA-1 lurch)', { camY: 51.5, floorNowY: 0, collisionFloorDestY: 49, travelHeightDestY: null, H: null }, 100.5],
+    ['3b', 1, false, 'opt1 already over roof, flat', { camY: 51.5, floorNowY: 49, collisionFloorDestY: 49, travelHeightDestY: null, H: null }, 51.5],
+    [4, 1, false, 'opt1 push-up clamp', { camY: 1.0, floorNowY: 0, collisionFloorDestY: 2, travelHeightDestY: null, H: null }, 3.5],
+    [5, 2, false, 'opt2 flat H=2 travel=0', { camY: 5, floorNowY: 0, collisionFloorDestY: 0, travelHeightDestY: 0, H: 2 }, 2],
+    [6, 2, false, 'opt2 over-roof collDest=49', { camY: 5, floorNowY: 0, collisionFloorDestY: 49, travelHeightDestY: 0, H: 2 }, 50.5],
+    [7, 2, false, 'opt2 drop-back travel=0', { camY: 5, floorNowY: 0, collisionFloorDestY: 0, travelHeightDestY: 0, H: 2 }, 2],
+    [8, 2, false, 'opt2 approach transient travel=10', { camY: 12, floorNowY: 0, collisionFloorDestY: 0, travelHeightDestY: 10, H: 2 }, 12],
+    [9, 3, false, 'opt3 flat H=50', { camY: 50, floorNowY: 0, collisionFloorDestY: 0, travelHeightDestY: null, H: 50 }, 50],
+    [10, 3, false, 'opt3 over 49', { camY: 50, floorNowY: 0, collisionFloorDestY: 49, travelHeightDestY: null, H: 50 }, 50.5],
+    [11, 3, false, 'opt3 drop-back', { camY: 50, floorNowY: 0, collisionFloorDestY: 0, travelHeightDestY: null, H: 50 }, 50],
+    [12, 3, false, 'opt3 rising terrain 60 (WE-5; not grounded)', { camY: 50, floorNowY: 0, collisionFloorDestY: 60, travelHeightDestY: null, H: 50 }, 61.5],
+    [13, 3, true, 'grounded ignores option (collision-follow)', { camY: 1.5, floorNowY: 0, collisionFloorDestY: 5, travelHeightDestY: null, H: 99 }, 6.5],
+    [14, 3, false, 'H==null defensive (collision-follow, no NaN)', { camY: 1.5, floorNowY: 0, collisionFloorDestY: 5, travelHeightDestY: null, H: null }, 6.5]
+  ];
+
+  for (const [n, option, grounded, label, inputs, expected] of rows) {
+    it(`row ${n}: ${label}`, () => {
+      const args = {
+        option,
+        grounded,
+        camY: inputs.camY,
+        floorNowY: inputs.floorNowY,
+        collisionFloorDestY: inputs.collisionFloorDestY,
+        travelHeightDestY: inputs.travelHeightDestY,
+        H: inputs.H,
+        eyeMargin: EYE
+      };
+      const snapshot = { ...args };
+      const y = wasdVerticalY(args);
+      expect(y).toBeCloseTo(expected, 5);
+      expect(Number.isNaN(y)).toBe(false);
+      // Inputs not mutated.
+      expect(args).toEqual(snapshot);
+    });
+  }
+});
+
+describe('groundedAtLoad', () => {
+  const EYE = EYE_MARGIN_METRES; // 1.5
+  it('within eye-margin of a real floor → grounded', () => {
+    expect(
+      groundedAtLoad({ camY: 1.5, floorY: 0, source: 'segment-or-building', eyeMargin: EYE })
+    ).toBe(true);
+    // Exactly at the eye-margin boundary is inclusive (M3).
+    expect(
+      groundedAtLoad({ camY: 1.5, floorY: 0, source: 'tiles', eyeMargin: EYE })
+    ).toBe(true);
+  });
+  it('above eye-margin → not grounded', () => {
+    expect(
+      groundedAtLoad({ camY: 50, floorY: 0, source: 'segment-or-building', eyeMargin: EYE })
+    ).toBe(false);
+  });
+  it('cache miss → not grounded regardless of height', () => {
+    // Even if camY is within eye-margin, a cache-miss probe reads not-grounded.
+    expect(
+      groundedAtLoad({ camY: 0.5, floorY: 0, source: 'cache', eyeMargin: EYE })
+    ).toBe(false);
   });
 });
 
