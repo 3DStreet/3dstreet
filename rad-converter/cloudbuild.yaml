@@ -1,0 +1,33 @@
+# Benchmark-only image build for the staging RAD perf A/B.
+# See ../docs/rad-perf-staging-benchmark.md.
+#
+# This is NOT how prod deploys — prod uses deploy.sh, which builds the patched
+# binary only (BUILD_BASELINE defaults to 0). This config exists solely because
+# `gcloud run deploy --source` cannot pass a Docker --build-arg, and the A/B
+# needs BUILD_BASELINE=1 so the image carries BOTH the patched `build-lod` and
+# the unpatched `build-lod-baseline`. One Cloud Run instance then runs both,
+# making the A/B immune to cross-machine variance.
+#
+# Usage (from inside rad-converter/):
+#   gcloud builds submit --config cloudbuild.yaml \
+#     --substitutions=_IMAGE=us-central1-docker.pkg.dev/dev-3dstreet/cloud-run-source-deploy/rad-converter-bench:latest
+#
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --build-arg
+      - BUILD_BASELINE=${_BUILD_BASELINE}
+      - --tag
+      - ${_IMAGE}
+      - .
+images:
+  - ${_IMAGE}
+substitutions:
+  _BUILD_BASELINE: '1'
+  # Default targets the Artifact Registry repo that `gcloud run deploy --source`
+  # auto-creates in dev-3dstreet/us-central1. Override _IMAGE for other targets.
+  _IMAGE: 'us-central1-docker.pkg.dev/dev-3dstreet/cloud-run-source-deploy/rad-converter-bench:latest'
+options:
+  # The baseline build compiles build-lod twice; a bigger builder keeps it quick.
+  machineType: 'E2_HIGHCPU_8'

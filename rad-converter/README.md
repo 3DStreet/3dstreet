@@ -166,6 +166,18 @@ Watch logs: `gcloud run services logs read rad-converter --project dev-3dstreet 
 > yet — that's plan §3. Add them there and apply:
 > `gsutil cors set ../public/cors.json gs://dev-3dstreet.appspot.com`.
 
+## Benchmarking the patch on real hardware
+
+The patch's big-file effect is unmeasurable on a shared sandbox (±25% variance —
+see the perf doc). To settle it on real Cloud Run hardware, the service supports
+a **benchmark mode**: `POST` with `{"benchmark":true,"variant":"baseline"|"patched",...}`
+runs the chosen binary, times it, and returns `buildLodMs` with **no** upload or
+Firestore writes. The Dockerfile's `BUILD_BASELINE=1` build-arg compiles the
+unpatched upstream binary as `build-lod-baseline` alongside the patched one, so a
+single pinned instance can A/B both back-to-back (immune to cross-machine
+variance). Prod is unaffected (`BUILD_BASELINE` defaults to 0; `variant` defaults
+to patched). Full runbook: [`../docs/rad-perf-staging-benchmark.md`](../docs/rad-perf-staging-benchmark.md).
+
 ## Notes
 
 - `build-lod` is CPU-only — no GPU.

@@ -57,24 +57,34 @@ function validateUserId(userId) {
 
 // Run build-lod, streaming its logs through to the container stdout/stderr so
 // they show up in Cloud Run logs. Resolves on exit 0, rejects otherwise.
-function runBuildLod(plyFile) {
+// `binary` selects which compiled binary to run — defaults to the patched
+// `build-lod`; the staging perf A/B passes `build-lod-baseline` (the unpatched
+// upstream binary) to measure the patch's effect on the same instance.
+function runBuildLod(plyFile, binary = 'build-lod') {
   return new Promise((resolve, reject) => {
     const args = [plyFile, `--${LOD_QUALITY}`];
-    console.log(`[rad-converter] build-lod ${args.join(' ')}`);
-    const proc = spawn('build-lod', args, {
+    console.log(`[rad-converter] ${binary} ${args.join(' ')}`);
+    const proc = spawn(binary, args, {
       stdio: ['ignore', 'inherit', 'inherit']
     });
     proc.on('error', reject);
     proc.on('close', (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`build-lod exited with code ${code}`));
+      else reject(new Error(`${binary} exited with code ${code}`));
     });
   });
 }
 
 // Core conversion. Returns { optimizedSourceUrl, optimizedSourcePath,
-// optimizedSourceSize } after the .rad is uploaded and the asset doc patched.
-async function convert({ uid, assetId, plyPath }) {
+// optimizedSourceSize, buildLodMs } after the .rad is uploaded and the asset
+// doc patched.
+//
+// Benchmark mode (`benchmark: true`, staging perf A/B only — see
+// ../docs/rad-perf-staging-benchmark.md): run the selected `variant` binary,
+// time it, and return { benchmark, variant, buildLodMs, optimizedSourceSize }
+// WITHOUT uploading the .rad or touching Firestore. The source .ply is cached
+// per-instance so repeated trials of a big file don't re-download it.
+async function convert({ uid, assetId, plyPath, benchmark = false, variant = 'patched' }) {
   validateUserId(uid);
   if (!assetId || !/^[a-zA-Z0-9_-]+$/.test(assetId)) {
     throw new Error('Invalid assetId');
@@ -83,27 +93,56 @@ async function convert({ uid, assetId, plyPath }) {
     throw new Error('Missing plyPath');
   }
 
+  const binary = variant === 'baseline' ? 'build-lod-baseline' : 'build-lod';
   const bucket = admin.storage().bucket();
 
-  // 1. Download the source splat to local scratch. We name it {assetId}.ply
-  //    only so build-lod's auto-suffix yields {assetId}-lod.rad — build-lod
-  //    content-sniffs the bytes, so .splat/.spz/.ksplat/.sog inputs convert
-  //    fine despite the nominal .ply name. (.rad uploads never reach here;
-  //    onSplatAssetCreated skips them.)
+  // 1. Stage the source splat in local scratch. It's named {assetId}.ply only
+  //    so build-lod's auto-suffix yields {assetId}-lod.rad next to it —
+  //    build-lod content-sniffs the bytes, so .splat/.spz/.ksplat/.sog inputs
+  //    convert fine despite the nominal .ply name. (.rad uploads never reach
+  //    here; onSplatAssetCreated skips them.)
   //    NOTE: /tmp on Cloud Run is tmpfs (counts against memory). For multi-GB
-  //    splats, mount a GCS FUSE volume and point WORKDIR there instead.
-  const workDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'rad-'));
-  const localPly = path.join(workDir, `${assetId}.ply`);
-  const localRad = path.join(workDir, `${assetId}-lod.rad`);
+  //    splats, mount a GCS FUSE volume and point this dir there instead.
+  let inputDir;
+  let cleanupDir = null;
+  if (benchmark) {
+    // Reuse a per-instance cache so repeated A/B trials of the same big file
+    // don't re-download it each run (with max-instances=1 the cache persists
+    // across trials; only the build-lod CPU time — what we measure — varies).
+    inputDir = path.join(os.tmpdir(), 'rad-bench-cache');
+    await fsp.mkdir(inputDir, { recursive: true });
+  } else {
+    inputDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'rad-'));
+    cleanupDir = inputDir;
+  }
+  const localPly = path.join(inputDir, `${assetId}.ply`);
+  const localRad = path.join(inputDir, `${assetId}-lod.rad`);
 
   try {
-    console.log(`[rad-converter] downloading gs://${bucket.name}/${plyPath}`);
-    await bucket.file(plyPath).download({ destination: localPly });
+    if (benchmark && fs.existsSync(localPly)) {
+      console.log(`[rad-converter] (bench) reusing cached ${localPly}`);
+    } else {
+      console.log(`[rad-converter] downloading gs://${bucket.name}/${plyPath}`);
+      await bucket.file(plyPath).download({ destination: localPly });
+    }
 
-    // 2. Convert.
-    await runBuildLod(localPly);
+    // 2. Convert (timed — buildLodMs isolates the CPU cost the patch targets).
+    const t0 = Date.now();
+    await runBuildLod(localPly, binary);
+    const buildLodMs = Date.now() - t0;
     if (!fs.existsSync(localRad)) {
-      throw new Error(`build-lod produced no output at ${localRad}`);
+      throw new Error(`${binary} produced no output at ${localRad}`);
+    }
+
+    // Benchmark mode stops here: report timing + output size, skip upload +
+    // Firestore so trials have zero side effects and stay fast.
+    if (benchmark) {
+      const radBytes = (await fsp.stat(localRad)).size;
+      await fsp.rm(localRad, { force: true }).catch(() => {});
+      console.log(
+        `[rad-converter] benchmark variant=${variant} buildLodMs=${buildLodMs} radBytes=${radBytes}`
+      );
+      return { benchmark: true, variant, buildLodMs, optimizedSourceSize: radBytes };
     }
 
     // 3. Upload the .rad as the optimized artifact. Same path convention as the
@@ -162,12 +201,20 @@ async function convert({ uid, assetId, plyPath }) {
       );
 
     console.log(
-      `[rad-converter] done: ${optimizedSourcePath} (${optimizedSourceSize} bytes)`
+      `[rad-converter] done: ${optimizedSourcePath} (${optimizedSourceSize} bytes, buildLodMs=${buildLodMs})`
     );
-    return { optimizedSourceUrl, optimizedSourcePath, optimizedSourceSize };
+    return {
+      optimizedSourceUrl,
+      optimizedSourcePath,
+      optimizedSourceSize,
+      buildLodMs
+    };
   } finally {
-    // Free scratch immediately — tmpfs is memory.
-    await fsp.rm(workDir, { recursive: true, force: true }).catch(() => {});
+    // Free scratch immediately — tmpfs is memory. (Benchmark mode keeps its
+    // per-instance .ply cache, so cleanupDir is null there.)
+    if (cleanupDir) {
+      await fsp.rm(cleanupDir, { recursive: true, force: true }).catch(() => {});
+    }
   }
 }
 
@@ -196,26 +243,41 @@ app.use(express.json({ limit: '1mb' }));
 app.get('/', (_req, res) => res.status(200).send('rad-converter ok'));
 
 app.post('/', async (req, res) => {
-  const { uid, assetId, plyPath, jobId } = req.body || {};
+  const { uid, assetId, plyPath, jobId, benchmark, variant } = req.body || {};
+  const isBenchmark = !!benchmark;
   console.log(
-    `[rad-converter] request uid=${uid} assetId=${assetId} jobId=${jobId || '(none)'}`
+    `[rad-converter] request uid=${uid} assetId=${assetId} jobId=${jobId || '(none)'}` +
+      (isBenchmark ? ` benchmark variant=${variant || 'patched'}` : '')
   );
   try {
     // Mark in-flight so the reconciler can distinguish an active conversion
-    // from a dropped task. Includes startedAt for stall detection.
-    await writeJobStatus(uid, jobId, {
-      status: 'running',
-      startedAt: admin.firestore.FieldValue.serverTimestamp()
+    // from a dropped task. Includes startedAt for stall detection. Benchmark
+    // runs have no job doc and no side effects, so skip the writeback.
+    if (!isBenchmark) {
+      await writeJobStatus(uid, jobId, {
+        status: 'running',
+        startedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    const result = await convert({
+      uid,
+      assetId,
+      plyPath,
+      benchmark: isBenchmark,
+      variant
     });
-    const result = await convert({ uid, assetId, plyPath });
-    await writeJobStatus(uid, jobId, { status: 'succeeded', ...result });
+    if (!isBenchmark) {
+      await writeJobStatus(uid, jobId, { status: 'succeeded', ...result });
+    }
     res.status(200).json({ ok: true, ...result });
   } catch (err) {
     console.error('[rad-converter] conversion failed:', err);
-    await writeJobStatus(uid, jobId, {
-      status: 'failed',
-      error: String(err && err.message ? err.message : err)
-    });
+    if (!isBenchmark) {
+      await writeJobStatus(uid, jobId, {
+        status: 'failed',
+        error: String(err && err.message ? err.message : err)
+      });
+    }
     // 500 so Cloud Tasks retries (the reconciler also re-enqueues stalls).
     res.status(500).json({
       ok: false,

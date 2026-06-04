@@ -126,11 +126,14 @@ touching the merge order, the bar is *equivalent quality* (output count
 
 ## Roadmap (highest leverage first)
 
-**First, fix measurement.** Every item below must be judged on **prod
-instrumentation** (real hardware, sample size), because this sandbox can't
-resolve big-file deltas under ~25%. Wire conversion duration + machine type
-into `generationJobs` (the gifted-cray instrumentation work) before
-spending effort on any of the below.
+**First, fix measurement.** Every item below must be judged on **real
+hardware with a sample size**, because this sandbox can't resolve big-file
+deltas under ~25%. Two ways to get there: (a) a deliberate **staging Cloud Run
+A/B** that runs both binaries on one pinned instance — runbook in
+[`rad-perf-staging-benchmark.md`](./rad-perf-staging-benchmark.md), the fastest
+way to settle the patch's big-file effect; and (b) wiring conversion duration +
+machine type into `generationJobs` for continuous prod sampling. Do one of these
+before spending effort on the items below.
 
 1. **Faster-memory / higher-clock machine (no code).** The big workload
    looks memory-bandwidth-bound, so a higher-bandwidth DDR5 part (C4D / EPYC
