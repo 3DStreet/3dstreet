@@ -1302,16 +1302,22 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._raycaster.far = Infinity;
     const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
     let enclosed = false;
-    let floorY = null;
     for (const hit of hits) {
-      if (!isSolidFloorHit(hit)) continue;
-      if (hit.point.y > p.y + 1e-3) {
+      if (isSolidFloorHit(hit) && hit.point.y > p.y + 1e-3) {
         enclosed = true;
         break;
-      } else if (floorY == null) {
-        floorY = hit.point.y;
       }
     }
+    // FR-LOW-1: select the floor via the SHARED priority picker (segment/
+    // building beats a higher tiles rooftop, TASK-019 D3) — same as
+    // `_collisionFloorAt`/`_enclosureProbe` — rather than a manual
+    // nearest-hit loop, so legit-pose re-validation reads the same floor
+    // the WASD/swoop path does.
+    const pick = this._pickFloorFromHits(hits, p.y, {
+      acceptBuildings: true,
+      acceptTiles: true
+    });
+    const floorY = pick ? pick.hit.point.y : null;
     return isLegitPose({ enclosed, camY: p.y, floorY });
   }
 
@@ -2917,7 +2923,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // so no floor bound there.
     let floorY = null;
     if (this._latch.get('regime') === 'map') {
-      floorY = this._collisionFloorAt(center.x, center.z).y;
+      // OOB-1 (extended to orbit): only apply the floor bound when the
+      // probe actually HIT real geometry. Outside the finite scene the
+      // probe misses and returns a stale cached floor (`source==='cache'`)
+      // — using it would over-restrict downward orbit tilt. A miss ⇒ no
+      // floor bound.
+      const pivotFloor = this._collisionFloorAt(center.x, center.z);
+      if (pivotFloor.source !== 'cache') floorY = pivotFloor.y;
     }
     const { pos, lookTarget } = shiftRotateStep({
       camPos: camera.position,
