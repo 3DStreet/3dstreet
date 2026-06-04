@@ -1126,6 +1126,10 @@ async function resolveSplatAssetUrls(containerEl) {
     const ownerUid = el.getAttribute('data-asset-owner-uid');
     try {
       const asset = await assetsService.getAsset(assetId, ownerUid);
+      // getAsset returns soft-deleted docs (deleted:true) whose Storage object
+      // may already be GC-purged. Re-resolving to that now-404 URL would clobber
+      // a src the splat could otherwise still render from cache, so skip it.
+      if (asset?.deleted) continue;
       const servedUrl = getServedUrl(asset);
       if (!servedUrl) continue;
       const currentSrc = el.getAttribute('splat')?.src;

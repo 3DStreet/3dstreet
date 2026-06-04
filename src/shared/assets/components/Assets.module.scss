@@ -679,6 +679,26 @@
   }
 }
 
+/* Interim chrome for AssetDetailModal while it fetches the asset doc to learn
+   the type (e.g. an email deep link), or when that fetch fails. */
+.statusOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.statusError {
+  padding: 1.25rem 1.5rem;
+  border-radius: 8px;
+  background: #1f2937;
+  color: #d1d5db;
+  font-size: 0.95rem;
+}
+
 .modalBody video {
   display: block;
   max-width: 100%;

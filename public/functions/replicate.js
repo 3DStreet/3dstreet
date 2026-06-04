@@ -1160,6 +1160,20 @@ async function refundSplatToken(db, userId, jobRef, job) {
 // stream) rather than buffered via arrayBuffer/Buffer — so memory stays flat
 // (a few MB) regardless of splat size, instead of holding two full copies of
 // the file. This is what lets the function run in modest memory.
+// Stable, UUID-shaped asset id derived from the Replicate predictionId. Retries
+// of the same generation (a save that crashed mid-flight, the reconciler
+// re-taking a stale claim, a racing webhook+poll) MUST converge on one asset id
+// so they overwrite the same Storage object + asset doc instead of creating a
+// duplicate — a fresh random id per attempt would write a second file and fire
+// onAssetWritten again, double-counting the splat's bytes against the quota.
+function deterministicAssetId(seed) {
+  const h = crypto.createHash('sha256').update(String(seed)).digest('hex');
+  return (
+    h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) +
+    '-' + h.slice(16, 20) + '-' + h.slice(20, 32)
+  );
+}
+
 async function saveSplatToGallery(userId, plyUrl, job) {
   validateSplatUserId(userId);
 
@@ -1168,7 +1182,9 @@ async function saveSplatToGallery(userId, plyUrl, job) {
     throw new Error(`Failed to download splat from Replicate (${response.status})`);
   }
 
-  const assetId = crypto.randomUUID();
+  // Keyed on predictionId so a retry reuses the same object/doc (see above).
+  // Falls back to a random id only if a caller somehow omits predictionId.
+  const assetId = deterministicAssetId(job.predictionId || crypto.randomUUID());
   const filename = `${assetId}.ply`;
   const storagePath = `users/${userId}/assets/splats/${filename}`;
   const downloadToken = crypto.randomUUID();

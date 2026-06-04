@@ -22,12 +22,19 @@
  */
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import AssetsModal from './AssetsModal.jsx';
 import MeshDetailsModal from './MeshDetailsModal.jsx';
 import assetsService from '../services/assetsService.js';
 import { assetToDisplayItem } from '../hooks/useAssets.js';
 import { is3dViewerType } from '../utils.js';
+import styles from './Assets.module.scss';
+
+// The doc fetch is a single Firestore metadata read that usually resolves in
+// well under a second, so we hold off on the spinner this long to avoid flashing
+// one on nearly every open. If the fetch is still pending past this, show it.
+const SPINNER_DELAY_MS = 600;
 
 const AssetDetailModal = ({
   item,
@@ -57,28 +64,62 @@ const AssetDetailModal = ({
     !!resolvedOwnerUid &&
     !is3dViewerType(knownType);
   const [fetchedDoc, setFetchedDoc] = useState(null);
+  const [fetchError, setFetchError] = useState(false);
+  const [showSpinner, setShowSpinner] = useState(false);
   useEffect(() => {
     if (!needDocFetch) return;
     let cancelled = false;
+    setFetchError(false);
+    setShowSpinner(false);
+    const spinnerTimer = setTimeout(() => {
+      if (!cancelled) setShowSpinner(true);
+    }, SPINNER_DELAY_MS);
     assetsService
       .getAsset(resolvedAssetId, resolvedOwnerUid)
       .then((doc) => {
-        if (!cancelled && doc) {
-          setFetchedDoc({ ...doc, assetId: resolvedAssetId });
-        }
+        if (cancelled) return;
+        if (doc) setFetchedDoc({ ...doc, assetId: resolvedAssetId });
+        // A missing doc (deleted, or a stale deep link) is a terminal "not
+        // available" — surface it instead of spinning forever.
+        else setFetchError(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setFetchError(true);
+      });
     return () => {
       cancelled = true;
+      clearTimeout(spinnerTimer);
     };
   }, [needDocFetch, resolvedAssetId, resolvedOwnerUid]);
 
   const effectiveType = knownType ?? fetchedDoc?.type ?? null;
 
-  // Still fetching (to learn the type and/or hydrate the item) — render nothing
-  // briefly; the chrome behind us is already there and the chosen modal shows
-  // its own loading state once it mounts.
-  if (needDocFetch && !fetchedDoc) return null;
+  // Still fetching (to learn the type and/or hydrate the item). Once the doc
+  // lands we route to the real modal below; until then show terminal-error or
+  // (delayed) loading chrome so a slow/offline/deleted asset isn't a dead click.
+  if (needDocFetch && !fetchedDoc) {
+    if (fetchError) {
+      return createPortal(
+        <div className={styles.statusOverlay} onClick={onClose}>
+          <div className={styles.statusError}>Asset not available</div>
+        </div>,
+        document.body
+      );
+    }
+    if (showSpinner) {
+      return createPortal(
+        <div className={styles.statusOverlay} onClick={onClose}>
+          <div
+            className={styles.spinner}
+            role="status"
+            aria-label="Loading asset"
+          />
+        </div>,
+        document.body
+      );
+    }
+    return null;
+  }
 
   if (is3dViewerType(effectiveType)) {
     // MeshDetailsModal self-fetches; identity is all it needs.

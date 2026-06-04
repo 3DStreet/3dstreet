@@ -5,7 +5,11 @@
 
 import { DownloadIcon, TrashIcon } from '@shared/icons';
 import styles from './Assets.module.scss';
-import { getAssetSourceLabel, getAssetTypeLabel } from '../utils.js';
+import {
+  getAssetSourceLabel,
+  getAssetTypeLabel,
+  is3dViewerType
+} from '../utils.js';
 
 // 1×1 transparent gif used to suppress the default browser drag ghost so the
 // 3D preview at the cursor isn't fighting with a card thumbnail floating along.
@@ -71,7 +75,7 @@ const AssetsItem = ({
   // Mesh and splat items get a placeholder until a thumbnail exists (their
   // storageUrl points at a binary model, not a renderable image). For images
   // and videos, fall back through thumbnailUrl → objectURL as before.
-  const usesPlaceholder = isMesh || isSplat;
+  const usesPlaceholder = is3dViewerType(item.type);
   const imageUrl =
     item.thumbnailUrl || (usesPlaceholder ? null : item.objectURL);
 

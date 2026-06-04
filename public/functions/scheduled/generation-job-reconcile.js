@@ -58,13 +58,21 @@ const RACE_GUARD_MS = 3 * 60 * 1000;
 // a job the provider still reports as running — SHARP cold-boots can be slow.
 const GIVE_UP_MS = 30 * 60 * 1000;
 
-// cloudrun (RAD) jobs have no provider to poll AND keep status 'queued' for the
-// whole conversion, so age alone can't tell "mid-conversion" from "wedged". A
-// single dispatch can run up to the Cloud Tasks dispatchDeadline (1800s) and
-// Cloud Tasks retries it internally, so we only re-enqueue once the CURRENT
-// dispatch (job.dispatchedAt) has been silent longer than one full deadline —
-// otherwise every sweep would spawn a duplicate concurrent conversion.
+// cloudrun (RAD) jobs have no provider to poll, so age alone can't tell
+// "mid-conversion" from "wedged". The worker flips status→'running' with a
+// startedAt heartbeat the moment it begins (rad-converter writeJobStatus); an
+// actively-running job is left alone (see CLOUDRUN_RUNNING_STALL_MS). For jobs
+// that never reported 'running' (the task was dropped before the worker booted),
+// we re-enqueue once the CURRENT dispatch (job.dispatchedAt) has been silent
+// longer than one full Cloud Tasks deadline (1800s) — otherwise a still-pending
+// dispatch would get a duplicate concurrent conversion every sweep.
 const CLOUDRUN_REENQUEUE_MS = 35 * 60 * 1000;
+// A job the worker reported 'running' is genuinely converting — a large splat
+// can legitimately run for many minutes, and dispatchedAt is NOT refreshed
+// during the run. Only treat 'running' as wedged once startedAt is older than
+// the worker's own max request lifetime (Cloud Run --timeout=3600s), past which
+// the request would have been killed and the job is truly dead.
+const CLOUDRUN_RUNNING_STALL_MS = 65 * 60 * 1000;
 // Total-age ceiling before a RAD job is declared dead — roomy enough for Cloud
 // Tasks' own retries (maxAttempts=3) plus a reconciler re-enqueue.
 const CLOUDRUN_GIVE_UP_MS = 2 * 60 * 60 * 1000;
@@ -199,17 +207,23 @@ async function reconcile({ dryRun }) {
 
     try {
       // cloudrun (splat-rad): the worker owns writeback, so there's no external
-      // prediction to poll, and the job stays 'queued' for the whole conversion.
-      // Only re-enqueue once the CURRENT dispatch has been silent past a full
-      // Cloud Tasks deadline (dispatchedAt + CLOUDRUN_REENQUEUE_MS) — that's the
-      // signal the task was dropped or the worker died. Re-enqueuing on every
-      // sweep (the old behavior) spawned duplicate concurrent conversions of a
-      // job that was simply still running. The worker is idempotent, so a real
-      // re-enqueue just overwrites the same -lod.rad. tokenCost is 0, so
+      // prediction to poll. The worker flips status→'running' with a startedAt
+      // heartbeat when it begins, so we can distinguish "actively converting"
+      // (leave alone) from "task dropped / worker died" (re-enqueue). Re-enqueuing
+      // a job that's simply still running spawns a duplicate concurrent conversion
+      // — wasteful on exactly the heaviest jobs. The worker is idempotent, so a
+      // real re-enqueue just overwrites the same -lod.rad. tokenCost is 0, so
       // failJob's refund is a no-op.
       if (job.provider === 'cloudrun') {
         const sinceDispatch = ageMs(job.dispatchedAt || job.createdAt);
         sample.sinceDispatchMin = Math.round(sinceDispatch / 60000);
+        // Honor the worker's heartbeat: a job it reported 'running' recently is
+        // mid-conversion, not wedged. dispatchedAt isn't refreshed during the
+        // run, so this is the ONLY signal that separates a slow-but-healthy
+        // conversion from a dropped task once dispatchedAt ages out.
+        const activelyRunning =
+          job.status === 'running' &&
+          ageMs(job.startedAt) < CLOUDRUN_RUNNING_STALL_MS;
         if (age > CLOUDRUN_GIVE_UP_MS) {
           sample.action = 'gave-up-cloudrun';
           summary.gaveUp++;
@@ -223,6 +237,10 @@ async function reconcile({ dryRun }) {
           if (!dryRun) {
             await failJob(db, uid, jobRef, job, 'RAD job missing plyPath.');
           }
+        } else if (activelyRunning) {
+          // Worker is converting right now — don't spawn a duplicate.
+          sample.action = 'cloudrun-running';
+          summary.stillRunning++;
         } else if (sinceDispatch > CLOUDRUN_REENQUEUE_MS) {
           sample.action = 're-enqueued-cloudrun';
           summary.reEnqueued++;
