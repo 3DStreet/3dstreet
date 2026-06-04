@@ -305,6 +305,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._lastWasdBlocked = false;
     this._cueShown = false;
 
+    // CR-D1: idle-gate cache for the per-frame enclosure probe. A stationary
+    // camera's enclosure/legit/cue state cannot change, so the whole-scene
+    // recursive raycast in _updateLegitSnapshotAndCue is skipped when the
+    // pose hasn't moved since last evaluation AND no input/tween is active.
+    // Null until the first tick evaluates (so tick 1 always runs).
+    this._lastEvalPos = null;
+    this._lastEvalQuat = null;
+
     this.setCamera(camera);
     this._initFocusAnimation();
     this._bindHandlers();
@@ -1223,9 +1231,24 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const endQuat = pose.quaternion.clone();
     const endCenter = pose.center.clone();
     this._recoveryActive = true;
+    // CR-D2: single mid-tween hand-off latch. If a tile streams in during
+    // the ease-back so the stored target is no longer legit, cancel and
+    // pop to the roof — once, not a per-frame retarget loop.
+    let handedOff = false;
     this._tick.animate({
       durationMs,
       onTick: (eased) => {
+        // CR-D2: re-validate the stored TARGET against current geometry
+        // each tick (cheap — the same short probe used at tween start). A
+        // newly-streamed tile can render the target no longer legit; hand
+        // off to _popToRoof exactly once.
+        if (!handedOff && !this._poseStillLegit(pose)) {
+          handedOff = true;
+          this._tick.cancel();
+          this._recoveryActive = false;
+          this._popToRoof();
+          return;
+        }
         camera.position.lerpVectors(startPos, endPos, eased);
         camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
         this.center.lerpVectors(startCenter, endCenter, eased);
@@ -1270,7 +1293,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       return;
     }
     const topY = probe.overheadHits[probe.overheadHits.length - 1];
-    const targetY = topY + EYE_MARGIN_METRES;
+    let targetY = topY + EYE_MARGIN_METRES;
     if (targetY <= camera.position.y) {
       this._recoveryActive = false;
       return;
@@ -1278,9 +1301,27 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const startY = camera.position.y;
     const startCenterY = this.center.y;
     this._recoveryActive = true;
+    // CR-D2: single mid-tween retarget. If a higher overhead slab streams
+    // in during the pop, the original target would surface still enclosed;
+    // raise the target once (a single hand-off — guarded by a small
+    // threshold so it can't oscillate).
+    const RETARGET_EPS = 0.1; // metres
+    let retargeted = false;
     this._tick.animate({
       durationMs: POP_TO_ROOF_DURATION_MS,
       onTick: (eased) => {
+        if (!retargeted) {
+          const reprobe = this._enclosureProbe();
+          if (reprobe.overheadHits.length) {
+            const newTop =
+              reprobe.overheadHits[reprobe.overheadHits.length - 1] +
+              EYE_MARGIN_METRES;
+            if (newTop > targetY + RETARGET_EPS) {
+              targetY = newTop;
+              retargeted = true;
+            }
+          }
+        }
         const y = startY + (targetY - startY) * eased;
         camera.position.y = y;
         this.center.y = startCenterY + (y - startY);
@@ -1462,7 +1503,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const startQuat = camera.quaternion.clone();
     let endQuat = null;
     if (levelOut) {
-      // Build a level (tilt=0) target orientation preserving yaw.
+      // Build a level (tilt=0) target orientation preserving yaw. The level
+      // look is independent of the target height, so a mid-fall retarget of
+      // `targetY` (CR-D2) leaves this orientation valid.
       const scratch = new THREE.PerspectiveCamera();
       scratch.position.set(camera.position.x, targetY, camera.position.z);
       const fwd = new THREE.Vector3();
@@ -1478,9 +1521,33 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       endQuat = scratch.quaternion.clone();
     }
     this._recoveryActive = true;
+    // CR-D2: single mid-fall retarget. If a closer solid surface streams in
+    // ABOVE the original floor target during the descent, halt higher so the
+    // camera doesn't sink through it. One hand-off — guarded by a threshold
+    // so it can't oscillate. The level-out orientation above stays valid.
+    const RETARGET_EPS = 0.1; // metres
+    let retargeted = false;
     this._tick.animate({
       durationMs: FALL_DURATION_MS,
       onTick: (eased) => {
+        if (!retargeted) {
+          const floor = this._collisionFloorAt(
+            camera.position.x,
+            camera.position.z
+          );
+          if (floor.source !== 'cache') {
+            const newTarget = floor.y + EYE_MARGIN_METRES;
+            // A higher floor than the original target, still below the
+            // camera's current y: clamp the descent to it (single hand-off).
+            if (
+              newTarget > targetY + RETARGET_EPS &&
+              newTarget < camera.position.y
+            ) {
+              targetY = newTarget;
+              retargeted = true;
+            }
+          }
+        }
         const y = startY + (targetY - startY) * eased;
         camera.position.y = y;
         this.center.y = startCenterY + (y - startY);
@@ -1540,6 +1607,38 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // camera) per call.
   _updateLegitSnapshotAndCue() {
     const camera = this._camera;
+
+    // CR-D1: idle gate. A motionless camera with no active input/gesture/
+    // tween cannot change its enclosure/legit/cue state, so skip the
+    // whole-scene recursive enclosure raycast and let the cached cue/legit
+    // result stand. Evaluate when ANY of: the pose moved since last eval
+    // (within EPS), WASD velocity is non-zero, wheel budget is pending, a
+    // drag is latched, a tween is animating, or there is no cache yet (the
+    // first tick). Cache is refreshed below whenever we do evaluate.
+    const POS_EPS_SQ = 1e-8; // ~1e-4 m
+    const QUAT_EPS = 1e-6; // 1 - |dot| threshold
+    const moved =
+      this._lastEvalPos == null ||
+      this._lastEvalQuat == null ||
+      camera.position.distanceToSquared(this._lastEvalPos) > POS_EPS_SQ ||
+      1 - Math.abs(camera.quaternion.dot(this._lastEvalQuat)) > QUAT_EPS;
+    const busy =
+      this._wasdVelocity.lengthSq() > 0 ||
+      this._wheelBudget !== 0 ||
+      this._latch.isActive() ||
+      this._tick.isAnimating();
+    if (!moved && !busy) return;
+
+    // Update the eval-pose cache (this evaluation establishes the new
+    // baseline a subsequent stationary frame compares against).
+    if (this._lastEvalPos == null) {
+      this._lastEvalPos = camera.position.clone();
+      this._lastEvalQuat = camera.quaternion.clone();
+    } else {
+      this._lastEvalPos.copy(camera.position);
+      this._lastEvalQuat.copy(camera.quaternion);
+    }
+
     const probe = this._enclosureProbe();
     const camY = camera.position.y;
     const legit = isLegitPose({
@@ -1607,21 +1706,40 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._raycaster.near = 0;
     this._raycaster.far = Infinity;
     const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
-    // Priority pick: nearest segment-or-building beats nearest tiles. `hits`
-    // is near→far, so the first accepted segment/building is the nearest;
-    // remember the first accepted tiles hit as a fallback.
+    const pick = this._pickFloorFromHits(hits, Infinity, {
+      acceptBuildings,
+      acceptTiles
+    });
+    if (pick) {
+      if (opts.refreshCache) this._lastGroundY = pick.hit.point.y;
+      return {
+        y: pick.hit.point.y,
+        normal: worldHitNormal(pick.hit),
+        source: pick.source,
+        hit: pick.hit
+      };
+    }
+    return { y: this._lastGroundY, normal: null, source: 'cache', hit: null };
+  }
+
+  // TASK-024 (TASK-019 D3): the SHARED floor-priority picker. Given a
+  // near→far hit list and a reference height `refY` (only hits at/below
+  // refY + epsilon are floor candidates), return the priority floor:
+  //   { hit, source: 'segment-or-building' } — nearest accepted
+  //     segment/building below refY, if any; else
+  //   { hit, source: 'tiles' } — nearest accepted tiles hit below refY;
+  //   else null.
+  // A tiles rooftop must never beat a lower segment/building, even when the
+  // tiles hit is nearer. Reused by `_floorYBelowAt` (the WASD/swoop floor)
+  // and `_enclosureProbe` (the enclosure floor) so consumers — isLegitPose,
+  // the cue, _handleFallKey — read the SAME floor the swoop/WASD path does.
+  _pickFloorFromHits(hits, refY, { acceptBuildings, acceptTiles }) {
+    const ceil = refY === Infinity ? Infinity : refY + 1e-3;
     let tilesHit = null;
     for (const hit of hits) {
-      if (
-        isSolidFloorHit(hit, { acceptBuildings, acceptTiles: false })
-      ) {
-        if (opts.refreshCache) this._lastGroundY = hit.point.y;
-        return {
-          y: hit.point.y,
-          normal: worldHitNormal(hit),
-          source: 'segment-or-building',
-          hit
-        };
+      if (hit.point.y > ceil) continue; // overhead — not a floor candidate
+      if (isSolidFloorHit(hit, { acceptBuildings, acceptTiles: false })) {
+        return { hit, source: 'segment-or-building' };
       }
       if (
         acceptTiles &&
@@ -1631,16 +1749,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         tilesHit = hit;
       }
     }
-    if (tilesHit) {
-      if (opts.refreshCache) this._lastGroundY = tilesHit.point.y;
-      return {
-        y: tilesHit.point.y,
-        normal: worldHitNormal(tilesHit),
-        source: 'tiles',
-        hit: tilesHit
-      };
-    }
-    return { y: this._lastGroundY, normal: null, source: 'cache', hit: null };
+    if (tilesHit) return { hit: tilesHit, source: 'tiles' };
+    return null;
   }
 
   // TASK-024: collision floor at an XZ column — nearest solid surface
@@ -1672,6 +1782,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (seg.source === 'segment-or-building') return seg.y;
     // No segment ground — tiles regime. Sample a small 3×3 grid (±2 m) and
     // take the lowest collision floor (the low point ≈ street/ground).
+    // Perf worst-case: this 3×3 grid is the ~9-ray path, reached only while
+    // WASD is held over tiles (no street segment below); the common
+    // segment-below case early-returns above after a single ray.
     const SPAN = 2;
     let minY = Infinity;
     let any = false;
@@ -1716,17 +1829,24 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._raycaster.far = Infinity;
     const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
     const overhead = [];
-    let floorY = null;
     for (const hit of hits) {
       if (!isSolidFloorHit(hit)) continue;
       if (hit.point.y > camY + 1e-3) {
         overhead.push(hit.point.y);
-      } else if (floorY == null) {
-        // nearest accepted hit at/below the camera = collision floor.
-        floorY = hit.point.y;
       }
     }
     overhead.sort((a, b) => a - b);
+    // CR-D3: route the floor selection through the SAME priority picker as
+    // the WASD/swoop path (_collisionFloorAt → _floorYBelowAt). The old
+    // "nearest accepted hit at/below the camera" could return a tiles
+    // rooftop where a lower segment/building sits below it (TASK-019 D3),
+    // making isLegitPose / the cue / _handleFallKey read a different floor
+    // than the swoop. refY = camY so only hits at/below the camera count.
+    const pick = this._pickFloorFromHits(hits, camY, {
+      acceptBuildings: true,
+      acceptTiles: true
+    });
+    const floorY = pick ? pick.hit.point.y : null;
     return { enclosed: overhead.length > 0, floorY, overheadHits: overhead };
   }
 

@@ -143,17 +143,11 @@ export function isSolidFloorHit(hit, opts) {
   //     generated clones and detached standalone building entities carry
   //     `mixin`. Guard STREET undefined (headless / tests).
   if (acceptBuildings && el.hasAttribute('mixin')) {
-    const STREET_REF =
-      typeof STREET !== 'undefined'
-        ? STREET
-        : typeof globalThis !== 'undefined'
-          ? globalThis.STREET
-          : undefined;
     const mixinId = el.getAttribute('mixin');
     const entry =
-      STREET_REF && STREET_REF.catalog
-        ? STREET_REF.catalog.find((e) => e.id === mixinId)
-        : null;
+      typeof STREET !== 'undefined' && STREET.catalog
+        ? STREET.catalog.find((e) => e.id === mixinId)
+        : undefined;
     if (entry && entry.category === 'buildings') {
       return _hitSurfaceVisible(hit.object);
     }
