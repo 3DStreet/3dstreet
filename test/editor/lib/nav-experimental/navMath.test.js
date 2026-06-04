@@ -745,6 +745,96 @@ describe('shiftRotateStep', () => {
       .normalize();
   }
 
+  it('returns R as a unit quaternion encoding the same rotation as lookTarget (TASK-023)', () => {
+    // The whole TASK-023 fix rests on `R` and `lookTarget` encoding the
+    // same rotation: _shiftRotate applies R to orientation but pos comes
+    // from lookTarget's geometry, so they must agree. Use a general
+    // off-axis pose with both a yaw and a tilt delta.
+    const camPos = new THREE.Vector3(8, 6, 4);
+    const viewDir = new THREE.Vector3(-1, -0.5, -0.3).normalize();
+    const centre = new THREE.Vector3(0, 0, 0);
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 40,
+      dyPx: 25,
+      speed: SPEED
+    });
+    // R is a unit quaternion.
+    expect(step.R.length()).toBeCloseTo(1, 6);
+    // Applying R to the input view direction yields the same direction as
+    // (lookTarget - pos) normalised → R and lookTarget agree.
+    const rotatedView = viewDir.clone().applyQuaternion(step.R).normalize();
+    expect(rotatedView.distanceTo(dirFrom(step))).toBeLessThan(1e-6);
+  });
+
+  it('returns R as a unit quaternion encoding the same rotation as lookTarget on the tilt-clamp / pure-yaw path (TASK-023)', () => {
+    // Companion to the test above: that one exercises the composed
+    // yaw∘pitch path (qPitch applied). This one locks the same R/lookTarget
+    // invariant on the degenerate-right / tilt-clamp branch, where `qPitch`
+    // is SKIPPED and `R` is pure yaw — the near-nadir regime this whole bug
+    // is about. A straight-down view direction (0,-1,0) makes
+    // `view × worldUp` the zero vector, so `rightLen === 0` (≤ 1e-6); with
+    // NO camRight supplied (legacy fallback) the pitch quaternion is never
+    // multiplied in. (See the next test for the camRight path that restores
+    // tilt at exact nadir.)
+    const camPos = new THREE.Vector3(5, 40, 5);
+    const viewDir = new THREE.Vector3(0, -1, 0); // straight down → rightLen 0
+    const centre = new THREE.Vector3(5, 0, 5);
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 60,
+      dyPx: 30, // non-zero, but the right-degenerate guard skips qPitch
+      speed: SPEED
+    });
+    // R is a unit quaternion.
+    expect(step.R.length()).toBeCloseTo(1, 6);
+    // R is pure yaw about world up: applying it to a straight-down view
+    // leaves it straight down (a pitch component would tilt it off −Y).
+    const rotatedView = viewDir.clone().applyQuaternion(step.R).normalize();
+    expect(rotatedView.y).toBeCloseTo(-1, 6);
+    // Same invariant as the composed-path test: applying R to the input
+    // view direction yields the same direction as (lookTarget - pos)
+    // normalised → R and lookTarget agree on the pure-yaw branch too.
+    expect(rotatedView.distanceTo(dirFrom(step))).toBeLessThan(1e-6);
+  });
+
+  it('tilts out of EXACT nadir when camRight is supplied (TASK-023 stuck-tilt fix)', () => {
+    // Live-test regression: entering plan view via the compass parks the
+    // camera at *exact* nadir (view = (0,-1,0)), where `view × worldUp`
+    // degenerates. Before the camRight fallback, the pitch term was skipped
+    // and tilt was dead — the camera was stuck pointing straight down.
+    // Supplying camRight (the camera's screen-right axis) restores a valid,
+    // continuous pitch axis so a tilt-up drag actually tilts.
+    const camPos = new THREE.Vector3(5, 40, 5);
+    const viewDir = new THREE.Vector3(0, -1, 0); // exact nadir
+    const centre = new THREE.Vector3(5, 0, 5);
+    // North-up plan view: screen-up = world +X ⇒ camera screen-right = +Z.
+    const camRight = new THREE.Vector3(0, 0, 1);
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 0,
+      dyPx: -30, // drag UP ⇒ tilt up out of nadir
+      speed: SPEED,
+      camRight
+    });
+    expect(step.R.length()).toBeCloseTo(1, 6);
+    const rotatedView = viewDir.clone().applyQuaternion(step.R).normalize();
+    // The view is no longer straight down — it tilted up off −Y.
+    expect(rotatedView.y).toBeGreaterThan(-0.9999);
+    // It tilted toward screen-up (+X / north), pitching about camRight (+Z),
+    // so the horizontal component is along +X and z stays ~0.
+    expect(rotatedView.x).toBeGreaterThan(0);
+    expect(rotatedView.z).toBeCloseTo(0, 6);
+    // R and lookTarget still encode the same rotation (the core invariant).
+    expect(rotatedView.distanceTo(dirFrom(step))).toBeLessThan(1e-6);
+  });
+
   it('zero deltas with camera aimed at centre: pos and view unchanged (no snap)', () => {
     const camPos = new THREE.Vector3(10, 0, 0);
     const viewDir = new THREE.Vector3(-1, 0, 0); // looking toward origin

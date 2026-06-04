@@ -771,15 +771,30 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       this._compassPending = { kind: 'arrow', sign };
       return;
     }
-    // Pivot selection. The top-down test has a 2° tolerance, so a
-    // screen-centre raycast hit can sit off the nadir; a 90° orbit about
-    // that off-nadir point would translate the camera (lurch). So when
-    // top-down, force spin-in-place (null pivot) regardless of the
-    // raycast. Only below top-down do we orbit about the screen-centre
-    // hit; a null hit (sky / empty scene) also spins in place.
-    const isTopDown =
-      90 - cameraTiltDegrees(camera) <= COMPASS_TOPDOWN_TOLERANCE_DEGREES;
-    const pivot = isTopDown ? null : this._screenCenterHit();
+    // Pivot selection — keyed on the canonical Map/Street tilt regime
+    // (the same `tilt > _tiltThreshold` test every other control uses,
+    // e.g. _latchRotationCenter). In the Map regime (looking down) we
+    // orbit the screen-centre ground point so the centred feature stays
+    // centred while the heading turns — a map-style turn, matching the
+    // Shift+LB Map rotation. In the Street regime (near-horizontal) we
+    // spin in place (null pivot). Top-down is just the steep end of Map:
+    // the screen-centre point sits ~directly below, so the orbit degrades
+    // to a spin in place on its own — no dedicated top-down case needed.
+    // (TASK-026: this replaces a call to a never-implemented
+    // _screenCenterHit() that threw on every non-top-down click.)
+    const isMap = cameraTiltDegrees(camera) > this._tiltThreshold;
+    let pivot = null;
+    if (isMap) {
+      // Screen-centre ground point = where the camera's view ray meets
+      // y=0. getWorldDirection writes the unit view direction into the
+      // shared scratch _tmpV3c; _viewRayGroundPoint copies what it needs
+      // into a fresh Vector3, so the returned pivot does not alias the
+      // scratch. A null return (ray at/above horizon, or the plane behind
+      // a below-ground camera) falls through to spin-in-place.
+      const fwd = this._tmpV3c;
+      camera.getWorldDirection(fwd);
+      pivot = this._viewRayGroundPoint(camera.position, fwd);
+    }
 
     const deltaYaw = COMPASS_ROTATE_STEP_DEGREES * signToYaw(sign);
     this._compassHandle = this._animateYawAboutPivot({ deltaYaw, pivot });
@@ -923,7 +938,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // everything else it owns. The app never re-instantiates the controls
     // today, but if it ever does, a stale component left attached would
     // call setTiltThreshold on whatever AFRAME.INSPECTOR.controls then is.
-    if (this._sceneEl && this._sceneEl.hasAttribute('nav-experimental-tuning')) {
+    if (
+      this._sceneEl &&
+      this._sceneEl.hasAttribute('nav-experimental-tuning')
+    ) {
       this._sceneEl.removeAttribute('nav-experimental-tuning');
     }
     this.zoomInStop();
@@ -2431,6 +2449,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const target = this._tmpV3a // reuse — fwd not needed past here
       .copy(camera.position)
       .add(newFwd);
+    // TASK-023 (deferred, latent hazard): this lookAt reads the live
+    // camera.up = (0,1,0), so it (a) is singular at nadir (tiltDeg = 90 →
+    // newFwd = (0,-1,0) ∥ up) and (b) rebuilds orientation with the
+    // world-up roll convention, discarding any roll the camera arrived
+    // with. This path is reachable from the wheel-zoom swoop
+    // (_applyPhase2WheelTick), so after a rolled top-down rotate the first
+    // Phase-2 wheel tick resets the preserved roll. NOT fixed here: the
+    // correct screen-up for a swoop-to-street landing is a TASK-022/025
+    // design question, intentionally deferred (see plan §5).
     camera.lookAt(target);
   }
 
@@ -2880,13 +2907,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
     // maxR = Infinity → no inward cap; MIN still guards a twitchy
     // very-close pivot.
-    return clampOrbitRadius(
-      camPos,
-      p,
-      MIN_ORBIT_RADIUS_METRES,
-      Infinity,
-      fwd
-    );
+    return clampOrbitRadius(camPos, p, MIN_ORBIT_RADIUS_METRES, Infinity, fwd);
   }
 
   // The point where the camera's view-direction ray meets the ground
@@ -2895,6 +2916,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   _viewRayGroundPoint(camPos, fwd) {
     if (fwd.y >= -1e-4) return null;
     const t = camPos.y / -fwd.y; // along-ray distance to y=0
+    // Reject a non-forward intersection: if the camera sits below the
+    // y=0 plane (camPos.y < 0), t is negative and the plane meets the
+    // ray *behind* the camera. Returning that point would make callers
+    // orbit/anchor on a behind-camera pivot (a fling). t <= 0 → null;
+    // callers fall back to their no-pivot path (TASK-026). Also hardens
+    // _mapModePivot, which already null-checks this return.
+    if (t <= 0) return null;
     return new THREE.Vector3(camPos.x + fwd.x * t, 0, camPos.z + fwd.z * t);
   }
 
@@ -2931,18 +2959,36 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       const pivotFloor = this._collisionFloorAt(center.x, center.z);
       if (pivotFloor.source !== 'cache') floorY = pivotFloor.y;
     }
-    const { pos, lookTarget } = shiftRotateStep({
+    // TASK-023: camera's screen-right axis (local +X in world space). Used
+    // by shiftRotateStep as the pitch axis only at exact nadir, where
+    // `view × up` degenerates — lets tilt work out of top-down.
+    const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(
+      camera.quaternion
+    );
+    const { pos, R } = shiftRotateStep({
       camPos: camera.position,
       viewDir: fwd,
       centre: center,
       dxPx,
       dyPx,
       speed: this.rotationSpeed,
-      floorY
+      floorY,
+      camRight
     });
 
     camera.position.copy(pos);
-    camera.lookAt(lookTarget);
+    // TASK-023: apply the step's rotation as an orientation delta instead
+    // of re-deriving it via lookAt(lookTarget). lookAt rebuilds the basis
+    // from camera.up = (0,1,0), which is singular at nadir (forward ∥ up)
+    // → roll snaps to an arbitrary value (the ~90°/135° jump). premultiply
+    // is continuous everywhere and preserves the inherited roll. R is the
+    // same rotation shiftRotateStep applied to pos/lookTarget (for the
+    // floor-bounded clampedTilt — TASK-024 D8), so position and orientation
+    // stay locked. The map-regime floor guard is now the input-tilt bound
+    // inside shiftRotateStep (the old applyGroundFloor y-shove was removed),
+    // which keeps pos and R consistent — so premultiply is unconditional.
+    camera.quaternion.premultiply(R);
+    camera.quaternion.normalize(); // guard against drift over a long drag (A1)
     // `this.center` (EditorControls API field) reflects the orbit
     // anchor — distance-from-camera reference used by ActionBar / wheel
     // zoom. Use the latched rotation centre in the orbit case; for the
