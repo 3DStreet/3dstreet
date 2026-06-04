@@ -317,6 +317,30 @@ describe('shiftRotateStep', () => {
       .normalize();
   }
 
+  it('returns R as a unit quaternion encoding the same rotation as lookTarget (TASK-023)', () => {
+    // The whole TASK-023 fix rests on `R` and `lookTarget` encoding the
+    // same rotation: _shiftRotate applies R to orientation but pos comes
+    // from lookTarget's geometry, so they must agree. Use a general
+    // off-axis pose with both a yaw and a tilt delta.
+    const camPos = new THREE.Vector3(8, 6, 4);
+    const viewDir = new THREE.Vector3(-1, -0.5, -0.3).normalize();
+    const centre = new THREE.Vector3(0, 0, 0);
+    const step = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 40,
+      dyPx: 25,
+      speed: SPEED
+    });
+    // R is a unit quaternion.
+    expect(step.R.length()).toBeCloseTo(1, 6);
+    // Applying R to the input view direction yields the same direction as
+    // (lookTarget - pos) normalised → R and lookTarget agree.
+    const rotatedView = viewDir.clone().applyQuaternion(step.R).normalize();
+    expect(rotatedView.distanceTo(dirFrom(step))).toBeLessThan(1e-6);
+  });
+
   it('zero deltas with camera aimed at centre: pos and view unchanged (no snap)', () => {
     const camPos = new THREE.Vector3(10, 0, 0);
     const viewDir = new THREE.Vector3(-1, 0, 0); // looking toward origin

@@ -267,9 +267,15 @@ export function phase2NextElevation(yAgl, sign, alpha = SWOOP_PHASE2_STEP) {
 //   speed    — radians per pixel (typically `controls.rotationSpeed`).
 //
 // Output:
-//   { pos, lookTarget }, both THREE.Vector3. `pos` equals `camPos` in
-//   the rotate-in-place case (centre coincident with camera → zero
-//   offset → unrotated).
+//   { pos, lookTarget, R }. `pos`/`lookTarget` are both THREE.Vector3;
+//   `pos` equals `camPos` in the rotate-in-place case (centre coincident
+//   with camera → zero offset → unrotated).
+//   R        — the world-frame rotation quaternion applied this step
+//              (THREE.Quaternion). Apply to camera orientation with
+//              camera.quaternion.premultiply(R) for a singularity-free,
+//              roll-preserving update. pos/lookTarget are the same
+//              rotation expressed positionally and are kept for callers
+//              that still need an explicit look target.
 //
 // Tilt clamp: the pitch is reduced so the resulting view tilt stays in
 // [MIN_TILT_DEGREES, MAX_TILT_DEGREES]. The same clamped pitch drives
@@ -330,5 +336,5 @@ export function shiftRotateStep({
     pos.z + newView.z
   );
 
-  return { pos, lookTarget };
+  return { pos, lookTarget, R };
 }

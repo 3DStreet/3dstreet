@@ -1584,6 +1584,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const target = this._tmpV3a // reuse — fwd not needed past here
       .copy(camera.position)
       .add(newFwd);
+    // TASK-023 (deferred, latent hazard): this lookAt reads the live
+    // camera.up = (0,1,0), so it (a) is singular at nadir (tiltDeg = 90 →
+    // newFwd = (0,-1,0) ∥ up) and (b) rebuilds orientation with the
+    // world-up roll convention, discarding any roll the camera arrived
+    // with. This path is reachable from the wheel-zoom swoop
+    // (_applyPhase2WheelTick), so after a rolled top-down rotate the first
+    // Phase-2 wheel tick resets the preserved roll. NOT fixed here: the
+    // correct screen-up for a swoop-to-street landing is a TASK-022/025
+    // design question, intentionally deferred (see plan §5).
     camera.lookAt(target);
   }
 
@@ -1903,7 +1912,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
     const fwd = this._tmpV3c;
     camera.getWorldDirection(fwd); // unit, camera -Z in world space
-    let { pos, lookTarget } = shiftRotateStep({
+    let { pos, lookTarget, R } = shiftRotateStep({
       camPos: camera.position,
       viewDir: fwd,
       centre: center,
@@ -1929,7 +1938,17 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
 
     camera.position.copy(pos);
-    camera.lookAt(lookTarget);
+    // TASK-023: apply the step's rotation as an orientation delta instead
+    // of re-deriving it via lookAt(lookTarget). lookAt rebuilds the basis
+    // from camera.up = (0,1,0), which is singular at nadir (forward ∥ up)
+    // → roll snaps to an arbitrary value (the ~90°/135° jump). premultiply
+    // is continuous everywhere and preserves the inherited roll. R is the
+    // same rotation shiftRotateStep applied to pos/lookTarget, so position
+    // and orientation stay locked. applyGroundFloor (map regime) is a pure
+    // translation that leaves the view direction bit-identical, so this is
+    // unconditional — no floored/non-floored branch needed.
+    camera.quaternion.premultiply(R);
+    camera.quaternion.normalize(); // guard against drift over a long drag (A1)
     // `this.center` (EditorControls API field) reflects the orbit
     // anchor — distance-from-camera reference used by ActionBar / wheel
     // zoom. Use the latched rotation centre in the orbit case; for the
