@@ -1,5 +1,9 @@
 /* global AFRAME */
 
+// Import direct from the constants module (not the @shared/assets barrel, which
+// would pull React/Firebase into this early-loaded A-Frame bundle).
+import { SPLAT_EXTENSIONS } from '@shared/assets/constants.js';
+
 // Spark library is loaded dynamically to reduce initial bundle size (~500KB)
 let SplatMesh = null;
 let SparkRenderer = null;
@@ -183,7 +187,7 @@ AFRAME.registerComponent('splat', {
       const urlExt = lastSeg.includes('.')
         ? lastSeg.split('.').pop().toLowerCase()
         : '';
-      const fileType = /^(ply|splat|spz|rad|ksplat|sog)$/.test(urlExt)
+      const fileType = SPLAT_EXTENSIONS.includes(urlExt)
         ? urlExt
         : this.data.format || undefined;
       const isRad = fileType === 'rad';

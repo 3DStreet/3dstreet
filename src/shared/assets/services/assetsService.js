@@ -31,6 +31,7 @@ import { db, storage } from '@shared/services/firebase.js';
 import {
   ASSET_TYPES,
   ASSET_CATEGORIES,
+  SPLAT_EXTENSIONS,
   STORAGE_PATHS,
   getTypeFolderName,
   validateUserIdForPath
@@ -198,9 +199,7 @@ class AssetsServiceV2 {
           .split('.')
           .pop()
           .toLowerCase();
-        extension = ['ply', 'splat', 'spz', 'rad'].includes(fromName)
-          ? fromName
-          : 'ply';
+        extension = SPLAT_EXTENSIONS.includes(fromName) ? fromName : 'ply';
         // Re-wrap so the Storage upload carries the octet-stream content type
         // (empty File.type would be rejected by storage.rules).
         if (blob.type !== mimeType) {

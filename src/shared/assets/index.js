@@ -8,6 +8,7 @@ export {
   ASSET_TYPES,
   ASSET_CATEGORIES,
   ASSET_TYPE_FOLDERS,
+  SPLAT_EXTENSIONS,
   STORAGE_PATHS,
   getTypeFolderName,
   validateUserIdForPath

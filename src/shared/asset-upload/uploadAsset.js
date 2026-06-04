@@ -10,7 +10,12 @@
 
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
-import { assetsService, ASSET_TYPES, ASSET_CATEGORIES } from '@shared/assets';
+import {
+  assetsService,
+  ASSET_TYPES,
+  ASSET_CATEGORIES,
+  SPLAT_EXTENSIONS
+} from '@shared/assets';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
   extractGlbAttribution,
@@ -31,9 +36,8 @@ const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.avif'];
 // Gaussian Splat formats supported by the `splat` A-Frame component (Spark)
 // and the RAD converter (build-lod content-sniffs all of these). `.rad` is the
 // pre-optimized, byte-range-streamable form: uploading one skips conversion
-// (see onSplatAssetCreated). Keep in sync with the extension whitelist in
-// assetsService.addAsset.
-const SPLAT_EXTS = ['.ply', '.splat', '.spz', '.rad'];
+// (see onSplatAssetCreated). Sourced from the shared SPLAT_EXTENSIONS constant.
+const SPLAT_EXTS = SPLAT_EXTENSIONS.map((ext) => `.${ext}`);
 const ACCEPTED_EXTS = [...GLB_EXTS, ...IMAGE_EXTS, ...SPLAT_EXTS];
 
 export const FILE_PICKER_ACCEPT = ACCEPTED_EXTS.join(',');

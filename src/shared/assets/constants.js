@@ -28,6 +28,16 @@ export const ASSET_TYPES = {
 };
 
 /**
+ * Splat container formats — the single source of truth shared by upload
+ * validation, stored-extension preservation, and the renderer's format sniff.
+ * These are exactly the formats the Spark renderer can load AND the RAD
+ * converter (build-lod) can ingest. Lowercase, no leading dot.
+ * @readonly
+ * @type {string[]}
+ */
+export const SPLAT_EXTENSIONS = ['ply', 'splat', 'spz', 'rad', 'ksplat', 'sog'];
+
+/**
  * Valid asset categories for gallery items
  * @readonly
  * @enum {string}

@@ -12,7 +12,8 @@ vi.mock('@shared/assets', () => ({
     getAsset: vi.fn()
   },
   ASSET_TYPES: { MESH: 'mesh', IMAGE: 'image' },
-  ASSET_CATEGORIES: { UPLOAD: 'upload' }
+  ASSET_CATEGORIES: { UPLOAD: 'upload' },
+  SPLAT_EXTENSIONS: ['ply', 'splat', 'spz', 'rad', 'ksplat', 'sog']
 }));
 
 vi.mock('@shared/assets/state/currentUploadStore.js', () => ({
@@ -42,7 +43,7 @@ describe('getAssetKind', () => {
     }
   });
   it('recognizes all splat extensions (incl. pre-optimized .rad)', () => {
-    for (const ext of ['ply', 'splat', 'spz', 'rad']) {
+    for (const ext of ['ply', 'splat', 'spz', 'rad', 'ksplat', 'sog']) {
       expect(getAssetKind({ name: `scene.${ext}` })).toBe('splat');
     }
   });
