@@ -1627,7 +1627,7 @@ describe('Phase 2 AGL translation invariance + floor brackets (TASK-013)', () =>
     // Elevated scene groundY=6, camera at absolute 7.5 → yAgl = 1.5.
     const groundY = 6;
     const yAbs = 7.5;
-    let yAgl = yAbs - groundY; // 1.5
+    const yAgl = yAbs - groundY; // 1.5
     let yAglNext = phase2NextElevation(yAgl, -1); // zoom-in
     if (yAglNext - yFloor < snap) {
       yAglNext = yFloor;
@@ -1747,12 +1747,18 @@ describe('classifySwoopTickTarget (Part C)', () => {
     // normalY ≈ 1 → slope 0 < 45
     expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.99, isSolidFloor: true })).toBe('swoop');
   });
-  it('mesh wall (near-vertical) → dolly', () => {
-    // normalY ≈ 0 → slope ≈ 90 ≥ 45
+  it('SOLID wall (near-vertical building façade) → dolly', () => {
+    // normalY ≈ 0 → slope ≈ 90 ≥ 45, and a solid floor (building) → break out
     expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.05, isSolidFloor: true })).toBe('dolly');
   });
-  it('mesh near-horizontal but NOT solid floor (scatter) → dolly', () => {
-    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.99, isSolidFloor: false })).toBe('dolly');
+  it('horizontal scatter (car/tree top, NOT solid floor) → swoop', () => {
+    // regression fix: scatter must NOT break the swoop
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.99, isSolidFloor: false })).toBe('swoop');
+  });
+  it('VERTICAL scatter (tree trunk / sign post, NOT solid floor) → swoop', () => {
+    // a near-vertical hit only breaks out if it is a SOLID building wall;
+    // scatter never does, so grazing a thin vertical object keeps swooping
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.05, isSolidFloor: false })).toBe('swoop');
   });
   it('missing normal → swoop (never strand mid-swoop)', () => {
     expect(classifySwoopTickTarget({ source: 'mesh', normalY: null, isSolidFloor: true })).toBe('swoop');

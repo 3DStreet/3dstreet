@@ -731,25 +731,33 @@ export function phase2AscentFov(yAgl, startFrac, startFov, targetFov) {
 }
 
 // Part C — decide the Phase-2-band zoom-IN regime from the resolved cursor
-// anchor. Returns 'swoop' (landing surface: ground / rooftop — near-horizontal
-// hit) or 'dolly' (wall / façade — near-vertical — or no real hit / open sky).
+// anchor. Returns 'dolly' ONLY when the user is pointing at something you can't
+// land on and clearly want to approach instead — a solid building WALL/façade
+// (near-vertical solid surface) or open sky. EVERYTHING else continues the
+// 'swoop': ground, building rooftops, AND scatter (cars, trees, signs, people).
+//   source 'fallback' → 'dolly' (no real target — open sky; level-forward)
 //   source 'ground'   → 'swoop' (horizontal by construction)
-//   source 'fallback' → 'dolly' (no real target — break out, level-forward)
-//   source 'mesh'     → 'swoop' iff isSolidFloor AND the surface is below the
-//                       wall slope cut (near-horizontal: ground-top / rooftop);
-//                       else 'dolly' (wall, or non-floor scatter).
-//   missing normal    → 'swoop' (never strand the user mid-swoop on a missing
-//                       normal — default to the landing surface).
-// `Math.abs(normalY)` so an up- or down-facing horizontal surface both read as
-// a landing surface; a wall's normalY ≈ 0 → slope ≈ 90° → 'dolly'. Pure.
+//   source 'mesh'     → 'dolly' iff a SOLID floor (segment / building / tiles)
+//                       AND near-vertical (slope ≥ wall cut) — i.e. a façade you
+//                       are craning up at; else 'swoop'.
+//   missing normal    → 'swoop' (never strand the user mid-swoop).
+//
+// The `isSolidFloor` gate on the break-out (not on the swoop) is what fixes the
+// live-test regression where a cursor grazing a car/tree mid-descent
+// mis-classified as 'dolly' and both aborted the swoop AND churned the regime
+// (clearing the reverse memory). Scatter is never a landing surface to descend
+// *onto* — but the swoop already descends to the real collision floor
+// regardless of what the cursor grazes, so scatter must NOT break the swoop.
+// `Math.abs(normalY)`: an up- or down-facing horizontal surface both read as
+// non-wall; a wall's normalY ≈ 0 → slope ≈ 90°. Pure.
 export function classifySwoopTickTarget({ source, normalY, isSolidFloor }) {
+  if (source === 'fallback') return 'dolly'; // open sky — nothing to land on
   if (source === 'ground') return 'swoop';
-  if (source === 'fallback') return 'dolly';
   if (normalY == null) return 'swoop';
   const slopeDeg =
     Math.acos(THREE.MathUtils.clamp(Math.abs(normalY), 0, 1)) * RAD2DEG;
-  if (isSolidFloor && slopeDeg < BLOCK_SLOPE_MIN_DEGREES) return 'swoop';
-  return 'dolly';
+  if (isSolidFloor && slopeDeg >= BLOCK_SLOPE_MIN_DEGREES) return 'dolly';
+  return 'swoop';
 }
 
 // Part B (M4) — re-aim continuity weight. 1 for near cursor targets, ramps
