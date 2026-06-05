@@ -64,6 +64,9 @@ import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
   MIN_ORBIT_RADIUS_METRES,
   MAP_PIVOT_BOUNDS_RADIUS_METRES,
+  WHEEL_ZOOM_LATERAL_CAP_METRES,
+  WHEEL_GROUND_REACH_CEILING_METRES,
+  FALLBACK_FORWARD_DIST,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
   SWOOP_PHASE2_MAX_TICKS_PER_FRAME,
@@ -86,10 +89,11 @@ import {
   decideLbMode,
   decideDragModeSwitch,
   clampOrbitRadius,
-  computeLowTiltWheelHit,
   wheelDeltaToTicks,
   dollyFactorForTicks,
   fovFactorForTicks,
+  cappedDollyStep,
+  levelForwardAnchor,
   shiftRotateStep,
   decideSwoopPhase,
   phase2TargetTilt,
@@ -226,6 +230,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // measured from the screen-centre point). Live value, overridable via
     // the tuning component.
     this._mapPivotBoundsRadius = MAP_PIVOT_BOUNDS_RADIUS_METRES;
+
+    // TASK-014d: cap on the HORIZONTAL component of one wheel-zoom dolly
+    // tick (metres). Bounds the LT-1 shallow-tilt lurch without throttling
+    // straight-down descent. Live value, overridable via the tuning
+    // component (wheelZoomLateralCapMetres → setWheelZoomLateralCap).
+    this._wheelZoomLateralCap = WHEEL_ZOOM_LATERAL_CAP_METRES;
 
     // TASK-010 (live-Shift, B6): last-known cursor coords, tracked on
     // mousedown and every mousemove so a mid-drag Shift toggle can
@@ -640,6 +650,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   setMapPivotBoundsRadius(metres) {
     if (typeof metres !== 'number' || !isFinite(metres)) return;
     this._mapPivotBoundsRadius = THREE.MathUtils.clamp(metres, 1, 100000);
+  }
+
+  // TASK-014d: live-tunable cap on the horizontal component of one
+  // wheel-zoom dolly tick (metres). Relayed from the tuning component.
+  setWheelZoomLateralCap(metres) {
+    if (typeof metres !== 'number' || !isFinite(metres) || metres <= 0) {
+      return;
+    }
+    this._wheelZoomLateralCap = metres;
   }
 
   // TASK-010 (D-LT-3 / #6): live-tunable Shift+LB rotation speed
@@ -2234,8 +2253,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // Decide which regime the wheel is in RIGHT NOW (read each loop iteration
   // off the current, post-step camera pose). Extracted from the old
   // `_applyWheelTick` dispatch. Elevation-first (per H1 of
-  // `claude/reports/007-phase-3-plan-review.md`): the tilt-conditional split
-  // applies inside the high regime only; the swoop runs regardless of tilt.
+  // `claude/reports/007-phase-3-plan-review.md`): the swoop runs regardless of
+  // tilt. TASK-014d collapsed the tilt-conditional anchor split — 'high' and
+  // 'lowtilt' both dolly toward the cursor now (the lurch is bounded by the
+  // lateral cap in the dolly step, not by switching anchor source), so the
+  // two are treated identically by the drain; the labels are retained only to
+  // mark the Ctrl / no-ground / low-tilt cases.
   //   'swoop'   — Phase 2 pedestal+tilt band (whole-tick, rate-capped)
   //   'fov'     — Phase 3 street-level FOV-only
   //   'lowtilt' — Ctrl+wheel, no-ground, or live tilt ≤ threshold dolly
@@ -2311,16 +2334,21 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       return t;
     }
 
-    // Dolly (high / lowtilt). Anchor: cursor for 'high', synthetic forward
-    // point for 'lowtilt' / Ctrl+wheel (same anchors as before).
-    let hit;
-    if (regime === 'high') {
-      const x = this._lastWheelClientX;
-      const y = this._lastWheelClientY;
-      if (x == null || y == null) return t; // no cursor latch → consume, no-op
-      hit = this._cursorAnchor.worldPointAt(x, y);
-    } else {
-      hit = computeLowTiltWheelHit(camera);
+    // Dolly. TASK-014d collapsed the tilt-conditional anchor split: cursor-
+    // anchor at EVERY tilt (the lurch is bounded by the lateral cap in
+    // `_dollyAlongRay`, not by switching anchor source). Anchor dispatch on the
+    // hit *source*: mesh/ground → a real target; fallback (open sky) → a
+    // LEVEL-forward anchor so zoom-in advances forward at constant height
+    // rather than drifting up into empty sky; near-vertical-at-sky → no move.
+    const x = this._lastWheelClientX;
+    const y = this._lastWheelClientY;
+    if (x == null || y == null) return t; // no cursor latch → consume, no-op
+    let hit = this._cursorAnchor.worldPointAt(x, y, {
+      maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES
+    });
+    if (hit.source !== 'mesh' && hit.source !== 'ground') {
+      hit = levelForwardAnchor(camera, FALLBACK_FORWARD_DIST);
+      if (hit == null) return t; // near-vertical at sky → consume, no move
     }
 
     const groundY = this._frameGroundY;
@@ -2328,8 +2356,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
     // Boundary-aware zoom-in: if the full step would drop AGL below the
     // Phase-2 entry (and there IS a ground), stop exactly at the boundary and
-    // hand the remainder to the swoop.
-    if (sign < 0 && this._frameGroundHit) {
+    // hand the remainder to the swoop. TASK-014d: Ctrl+wheel is the swoop
+    // BYPASS escape hatch — a plain cursor dolly at the current tilt that may
+    // descend past AGL 20 without entering the swoop, so skip the boundary when
+    // Ctrl is held.
+    if (sign < 0 && this._frameGroundHit && !this._lastWheelCtrlKey) {
       const denom = camera.position.y - hit.y;
       const targetY = groundY + yEntry;
       // Would the full step land below the entry boundary?
@@ -2393,17 +2424,25 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     return t;
   }
 
-  // Translate the camera along the camera→hit ray by `factor` of the current
-  // camera-to-hit distance (factor < 1 = closer; > 1 = farther). Continuous
-  // generalisation of the old per-tick `_applyAnchoredDollyStep`; reversible
-  // because dollyFactorForTicks(t)·dollyFactorForTicks(−t) === 1.
+  // Translate the camera along the camera→hit ray by the continuous `factor`
+  // (factor < 1 = closer; > 1 = farther), with the HORIZONTAL component of the
+  // translation capped to `this._wheelZoomLateralCap` metres (TASK-014d, via
+  // cappedDollyStep). The cap scales the whole step vector uniformly, so the
+  // move stays on the camera→hit ray (target stays under the cursor) and
+  // reversibility about a fixed target is exact. `factor` is the continuous
+  // generalisation of the old per-tick step (dollyFactorForTicks(t)·
+  // dollyFactorForTicks(−t) === 1). A non-finite step (degenerate grazing ray)
+  // is dropped — the tick is a no-op rather than NaN-ing the camera.
   _dollyAlongRay(factor, hit) {
     const camera = this._camera;
-    const offset = this._tmpV3a
-      .copy(camera.position)
-      .sub(this._tmpV3b.set(hit.x, hit.y, hit.z));
-    offset.multiplyScalar(factor);
-    camera.position.copy(this._tmpV3b).add(offset);
+    const newPos = cappedDollyStep({
+      camPos: camera.position,
+      hit,
+      factor,
+      lateralCapMetres: this._wheelZoomLateralCap
+    });
+    if (newPos == null) return; // non-finite step: skip this tick
+    camera.position.copy(newPos);
 
     // Track far plane based on distance.
     const distance = camera.position.distanceTo(this.center);
@@ -2423,7 +2462,16 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const x = this._lastWheelClientX;
     const y = this._lastWheelClientY;
     if (x == null || y == null) return;
-    const hit = this._cursorAnchor.worldPointAt(x, y);
+    // TASK-014d collapsed anchor dispatch (same as the continuous step):
+    // cursor at every tilt, level-forward on a no-real-hit (sky), no move when
+    // the heading is vertical-undefined.
+    let hit = this._cursorAnchor.worldPointAt(x, y, {
+      maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES
+    });
+    if (hit.source !== 'mesh' && hit.source !== 'ground') {
+      hit = levelForwardAnchor(camera, FALLBACK_FORWARD_DIST);
+      if (hit == null) return; // near-vertical at sky → no move
+    }
     this._dollyAlongRay(dollyFactorForTicks(sign, ZOOM_PER_WHEEL_TICK), hit);
 
     // TASK-024a (solid-geometry guard): no ground below → no Phase-2 boundary.
@@ -2444,14 +2492,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       });
       camera.updateMatrixWorld();
     }
-  }
-
-  // Whole-tick low-tilt dolly (Ctrl+wheel hand-offs and any whole-tick
-  // low-tilt path). Synthetic anchor 30m along camera-forward. Same math as
-  // Phase 1 so it matches a plain camera-Z dolly. No cursor anchoring.
-  _applyLowTiltWheelTick(sign) {
-    const hit = computeLowTiltWheelHit(this._camera);
-    this._dollyAlongRay(dollyFactorForTicks(sign, ZOOM_PER_WHEEL_TICK), hit);
   }
 
   // Phase 2 — pedestal + tilt-toward-horizontal. No cursor anchoring
@@ -2585,13 +2625,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       this._ascentStartTilt = null;
       camera.updateMatrixWorld();
       this._maybeEmitLbModeChange();
-      // Now dispatch a Phase 1 tick. Phase 1 may itself route to the
-      // low-tilt branch depending on the resulting tilt; that's fine. Phase 1
-      // reads the same `this._frameGroundY` snapshot. Uses the runtime
-      // tilt threshold (TASK-010) — was TRUCK_PEDESTAL_CUTOFF_DEGREES.
-      if (cameraTiltDegrees(camera) <= this._tiltThreshold) {
-        return this._applyLowTiltWheelTick(sign);
-      }
+      // Now dispatch a Phase 1 tick. TASK-014d collapsed the tilt split, so
+      // this is always the cursor-anchored Phase-1 tick (reads the same
+      // `this._frameGroundY` snapshot). This is a sign > 0 (zoom-out) tick
+      // and the Phase-1 boundary clamp body is sign < 0-gated, so routing
+      // through the full Phase-1 tick does NOT re-fire the clamp or re-latch
+      // the ascent/undo tilt state (TASK-022) — exactly one anchored dolly
+      // step happens here.
       return this._applyPhase1WheelTick(sign);
     }
 

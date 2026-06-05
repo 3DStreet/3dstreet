@@ -5,10 +5,11 @@ import {
   decideLbMode,
   decideDragModeSwitch,
   clampOrbitRadius,
-  computeLowTiltWheelHit,
   wheelDeltaToTicks,
   dollyFactorForTicks,
   fovFactorForTicks,
+  cappedDollyStep,
+  levelForwardAnchor,
   shiftRotateStep,
   decideSwoopPhase,
   phase2TargetTilt,
@@ -697,51 +698,216 @@ describe('cueState (show/hide hysteresis — D7)', () => {
   });
 });
 
-describe('computeLowTiltWheelHit', () => {
-  it('returns camera position + cameraForward * FALLBACK_FORWARD_DIST for a horizontal camera', () => {
-    // Camera at (0, 1.6, 10) looking toward origin. Forward direction
-    // is (0, 0, -1) (camera-Z), so the synthetic hit is at
-    // (0, 1.6, 10) + (0, 0, -1) * 30 = (0, 1.6, -20).
-    const cam = camAt({ x: 0, y: 1.6, z: 10 }, { x: 0, y: 1.6, z: 0 });
-    const hit = computeLowTiltWheelHit(cam);
-    expect(hit.x).toBeCloseTo(0, 5);
-    expect(hit.y).toBeCloseTo(1.6, 5);
-    expect(hit.z).toBeCloseTo(10 - FALLBACK_FORWARD_DIST, 4);
+describe('cappedDollyStep (TASK-014d)', () => {
+  const ALPHA = 0.1; // ZOOM_PER_WHEEL_TICK
+
+  it('straight-down descent is never capped (h ≈ 0)', () => {
+    // camPos (0,200,0), hit (0,0,0): the step is pure vertical. h ≈ 0 so
+    // the cap can never fire — full 10% descent survives.
+    const camPos = new THREE.Vector3(0, 200, 0);
+    const hit = { x: 0, y: 0, z: 0 };
+    const out = cappedDollyStep({
+      camPos,
+      hit,
+      sign: -1,
+      alpha: ALPHA,
+      lateralCapMetres: 15
+    });
+    // step = (1 - 0.9)*(hit - camPos) = 0.1*(0,-200,0) = (0,-20,0)
+    expect(out.x).toBeCloseTo(0, 9);
+    expect(out.z).toBeCloseTo(0, 9);
+    expect(out.y).toBeCloseTo(180, 6); // 200 - 20
   });
 
-  it('returned point lies at FALLBACK_FORWARD_DIST from the camera', () => {
-    const cam = camAt({ x: 5, y: 8, z: -2 }, { x: 0, y: 1, z: 0 });
-    const hit = computeLowTiltWheelHit(cam);
-    const dist = Math.hypot(hit.x - 5, hit.y - 8, hit.z - -2);
-    expect(dist).toBeCloseTo(FALLBACK_FORWARD_DIST, 4);
+  it('shallow lurch caps the horizontal displacement and preserves direction', () => {
+    // camPos (0,200,0), hit (500,0,0): natural horizontal step
+    // 0.1*500 = 50 m; cap 15 → applied horizontal = 15, on the same ray.
+    const camPos = new THREE.Vector3(0, 200, 0);
+    const hit = { x: 500, y: 0, z: 0 };
+    const out = cappedDollyStep({
+      camPos,
+      hit,
+      sign: -1,
+      alpha: ALPHA,
+      lateralCapMetres: 15
+    });
+    const dx = out.x - camPos.x;
+    const dy = out.y - camPos.y;
+    const dz = out.z - camPos.z;
+    // Horizontal magnitude exactly the cap.
+    expect(Math.hypot(dx, dz)).toBeCloseTo(15, 6);
+    // Direction unchanged: Δ is parallel to (hit - camPos), so
+    // Δx/Δy === (hit.x - camPos.x)/(hit.y - camPos.y) = 500 / -200.
+    expect(dx / dy).toBeCloseTo(500 / -200, 6);
   });
 
-  it('drifts upward when the camera is pitched up (looking-up case)', () => {
-    // Camera at (0, 1.6, 5) pitched up 45° → looking at (0, 6.6, 0).
-    // forward.y > 0; synthetic hit's y > camera.y.
-    const cam = camAt({ x: 0, y: 1.6, z: 5 }, { x: 0, y: 6.6, z: 0 });
-    const hit = computeLowTiltWheelHit(cam);
-    expect(hit.y).toBeGreaterThan(1.6);
+  it('exact reversibility, uncapped (near hit)', () => {
+    const start = new THREE.Vector3(0, 100, 0);
+    const hit = { x: 5, y: 95, z: 0 }; // near → step horizontal well under cap
+    const afterIn = cappedDollyStep({
+      camPos: start,
+      hit,
+      sign: -1,
+      alpha: ALPHA,
+      lateralCapMetres: 15
+    });
+    const afterOut = cappedDollyStep({
+      camPos: afterIn,
+      hit,
+      sign: 1,
+      alpha: ALPHA,
+      lateralCapMetres: 15
+    });
+    expect(afterOut.x).toBeCloseTo(start.x, 9);
+    expect(afterOut.y).toBeCloseTo(start.y, 9);
+    expect(afterOut.z).toBeCloseTo(start.z, 9);
   });
 
-  it('drifts downward when the camera is pitched down', () => {
-    // Camera at (0, 10, 5) pitched down → looking at (0, 5, 0).
-    // forward.y < 0; synthetic hit's y < camera.y.
-    const cam = camAt({ x: 0, y: 10, z: 5 }, { x: 0, y: 5, z: 0 });
-    const hit = computeLowTiltWheelHit(cam);
-    expect(hit.y).toBeLessThan(10);
+  it('exact reversibility, both-capped (far hit, in then out)', () => {
+    // Far hit so both the in-tick and its out-tick cap (H ≫ 10*cap).
+    const start = new THREE.Vector3(0, 200, 0);
+    const hit = { x: 5000, y: 0, z: 0 };
+    const afterIn = cappedDollyStep({
+      camPos: start,
+      hit,
+      sign: -1,
+      alpha: ALPHA,
+      lateralCapMetres: 15
+    });
+    const afterOut = cappedDollyStep({
+      camPos: afterIn,
+      hit,
+      sign: 1,
+      alpha: ALPHA,
+      lateralCapMetres: 15
+    });
+    expect(afterOut.x).toBeCloseTo(start.x, 9);
+    expect(afterOut.y).toBeCloseTo(start.y, 9);
+    expect(afterOut.z).toBeCloseTo(start.z, 9);
   });
 
-  it('vertical drift at near-extreme looking-up matches the risk-table quantification', () => {
-    // Camera at street level (y=1.6), pitched up close to the
-    // MIN_TILT_DEGREES = -89° clamp. forward.y ≈ sin(89°) ≈ 0.9998.
-    // Synthetic hit y ≈ camera.y + 30 * 0.9998 ≈ 31.6.
-    // (Tilt = -89° means camera looks at (0, camY + Δy, 0) where
-    // Δy/distance ≈ tan(89°). We aim from y=1.6 at a target nearly
-    // straight up: y=101.6 puts a ~89.05° angle, close enough.)
-    const cam = camAt({ x: 0, y: 1.6, z: 5 }, { x: 0, y: 101.6, z: 5 - 0.01 });
-    const hit = computeLowTiltWheelHit(cam);
-    expect(hit.y - 1.6).toBeGreaterThan(29); // ≥29m of the ~30m expected
+  it('per-step invertibility over a 3-in-then-3-out sequence (all capped)', () => {
+    // Each elementary capped step is invertible about the fixed hit, so a
+    // multi-step in/out sequence returns to start — not just a single pair.
+    const start = new THREE.Vector3(0, 200, 0);
+    const hit = { x: 5000, y: 0, z: 0 };
+    let p = start.clone();
+    for (let i = 0; i < 3; i++) {
+      p = cappedDollyStep({
+        camPos: p,
+        hit,
+        sign: -1,
+        alpha: ALPHA,
+        lateralCapMetres: 15
+      });
+    }
+    for (let i = 0; i < 3; i++) {
+      p = cappedDollyStep({
+        camPos: p,
+        hit,
+        sign: 1,
+        alpha: ALPHA,
+        lateralCapMetres: 15
+      });
+    }
+    expect(p.x).toBeCloseTo(start.x, 7);
+    expect(p.y).toBeCloseTo(start.y, 7);
+    expect(p.z).toBeCloseTo(start.z, 7);
+  });
+
+  it('boundary sliver: in caps, inverse out does not → residual < 0.01% of H', () => {
+    // in-tick caps when 0.1*H > cap ⇒ H > 10*cap. Post-in horizontal reach
+    // is H - cap; the out-tick caps when 0.111*(H - cap) > cap ⇒ H > 10*cap
+    // (same threshold). The only non-cancelling sliver is the float-width
+    // band right at H = 10*cap. Pick H just above 10*cap so the in caps but
+    // its inverse's reach (H - cap = 9*cap, 0.111*9*cap = 0.999*cap < cap)
+    // does NOT — the documented sub-pixel residual.
+    const cap = 15;
+    const H = 10 * cap + 0.001; // just above threshold
+    const start = new THREE.Vector3(0, 0, 0);
+    const hit = { x: H, y: 0, z: 0 };
+    const afterIn = cappedDollyStep({
+      camPos: start,
+      hit,
+      sign: -1,
+      alpha: ALPHA,
+      lateralCapMetres: cap
+    });
+    const afterOut = cappedDollyStep({
+      camPos: afterIn,
+      hit,
+      sign: 1,
+      alpha: ALPHA,
+      lateralCapMetres: cap
+    });
+    const residual = Math.hypot(
+      afterOut.x - start.x,
+      afterOut.y - start.y,
+      afterOut.z - start.z
+    );
+    expect(residual / H).toBeLessThan(0.0001); // < 0.01% of H
+  });
+
+  it('non-finite hit → returns null (caller falls to level-forward)', () => {
+    const camPos = new THREE.Vector3(0, 200, 0);
+    expect(
+      cappedDollyStep({
+        camPos,
+        hit: { x: Infinity, y: 0, z: 0 },
+        sign: -1,
+        alpha: ALPHA,
+        lateralCapMetres: 15
+      })
+    ).toBeNull();
+    expect(
+      cappedDollyStep({
+        camPos,
+        hit: { x: 0, y: NaN, z: 0 },
+        sign: -1,
+        alpha: ALPHA,
+        lateralCapMetres: 15
+      })
+    ).toBeNull();
+  });
+});
+
+describe('levelForwardAnchor (TASK-014d)', () => {
+  it('tilted-down camera → point at camera y (level) along the yaw heading', () => {
+    // Camera at (0, 50, 10) looking down toward (0, 0, 0): yaw heading is
+    // -Z (toward origin in x/z), y held at the camera's own 50.
+    const cam = camAt({ x: 0, y: 50, z: 10 }, { x: 0, y: 0, z: 0 });
+    const anchor = levelForwardAnchor(cam, FALLBACK_FORWARD_DIST);
+    expect(anchor).not.toBeNull();
+    expect(anchor.y).toBeCloseTo(50, 6); // level — camera's own y
+    // Heading is along -Z (x ≈ 0); the anchor sits FALLBACK ahead in -Z.
+    expect(anchor.x).toBeCloseTo(0, 4);
+    expect(anchor.z).toBeCloseTo(10 - FALLBACK_FORWARD_DIST, 4);
+    // And it lies at `dist` horizontally from the camera.
+    expect(Math.hypot(anchor.x - 0, anchor.z - 10)).toBeCloseTo(
+      FALLBACK_FORWARD_DIST,
+      4
+    );
+  });
+
+  it('exactly-vertical synthetic camera (forward.xz < 1e-6) → null', () => {
+    // Synthetic straight-down camera: getWorldDirection = (0,-1,0), so the
+    // horizontal heading is undefined. Set the orientation directly via the
+    // quaternion (a -90° pitch about X points camera-forward, -Z, straight
+    // down) — `lookAt(0,0,0)` from directly above is degenerate against the
+    // default up=+Y and would NOT yield a vertical forward. Live tilt clamps
+    // at ±89° so true vertical is only reachable synthetically (AR #9).
+    const cam = new THREE.PerspectiveCamera(60, 1, 0.1, 10000);
+    cam.position.set(0, 100, 0);
+    cam.quaternion.setFromAxisAngle(
+      new THREE.Vector3(1, 0, 0),
+      -Math.PI / 2
+    );
+    cam.updateMatrixWorld();
+    // Sanity: forward really is straight down.
+    const fwd = new THREE.Vector3();
+    cam.getWorldDirection(fwd);
+    expect(Math.hypot(fwd.x, fwd.z)).toBeLessThan(1e-6);
+    expect(levelForwardAnchor(cam, FALLBACK_FORWARD_DIST)).toBeNull();
   });
 });
 

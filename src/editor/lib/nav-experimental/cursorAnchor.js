@@ -8,19 +8,22 @@
 //   1. Raycast against scene meshes (excluding gizmos / helpers / animated
 //      entities). If a mesh is hit, return that point.
 //   2. Else intersect the ray with the y=0 ground plane. If the
-//      intersection is in front of the camera and within MAX_GROUND_DIST,
-//      return that.
+//      intersection is in front of the camera and within the reach ceiling
+//      (`opts.maxGroundDist`, default MAX_GROUND_DIST = 2000 m), return that.
 //   3. Else fall back to a fixed 30 m forward along the camera's view
 //      direction.
 //
 // `source` on the returned object is one of 'mesh', 'ground', 'fallback'
 // for debugging.
 //
-// **Wheel-zoom consumer note (2026-05-11):** `_applyWheelTick` in
-// `ExperimentalControls` now branches on the 30° tilt cut *before*
-// calling `worldPointAt`, so Step 3 only fires for wheel zoom at high
-// tilt (per `claude/specs/001-tilt-conditional-zoom.md`). LB-pan still
-// calls `worldPointAt` unconditionally and gets the full chain.
+// **Wheel-zoom consumer note (TASK-014d):** the Phase-1 wheel-zoom path
+// passes `{ maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES }` (1000 km)
+// so legitimate high-altitude ground (e.g. a straight-down hit thousands of
+// m below) is kept rather than thrown to Step 3 — the cap on the *movement*
+// (cappedDollyStep) tames the shallow-tilt lurch, not a reach reject. All
+// other callers (LB-pan, the orbit-pivot at ExperimentalControls.js:2889)
+// pass nothing → the 2000 m default reject is unchanged, and the
+// orbit-pivot still relies on far ground returning Step 3 'fallback'.
 
 import { MAX_GROUND_DIST, FALLBACK_FORWARD_DIST } from './constants.js';
 
@@ -239,7 +242,16 @@ export class CursorAnchor {
   }
 
   // Returns { x, y, z, source }. Always non-null.
-  worldPointAt(clientX, clientY) {
+  //
+  // opts.maxGroundDist (TASK-014d): per-caller reach ceiling for the Step-2
+  // ground hit, in metres. Defaults to MAX_GROUND_DIST (2000) — LB-pan and
+  // the orbit-pivot caller are unchanged. The wheel-zoom path raises it (to
+  // WHEEL_GROUND_REACH_CEILING_METRES) so a legitimate far/straight-down
+  // ground hit is kept; a degenerate Float.MAX grazing-ray hit still
+  // exceeds even the raised ceiling and falls to Step 3 'fallback'.
+  worldPointAt(clientX, clientY, opts = {}) {
+    const maxGroundDist =
+      opts.maxGroundDist != null ? opts.maxGroundDist : MAX_GROUND_DIST;
     const camera = this._camera;
     const rect = this._domElement.getBoundingClientRect();
     const x = ((clientX - rect.left) / rect.width) * 2 - 1;
@@ -269,7 +281,7 @@ export class CursorAnchor {
       const forward = new THREE.Vector3()
         .subVectors(groundHit, camera.position)
         .dot(this._raycaster.ray.direction);
-      if (forward > 0 && dist <= MAX_GROUND_DIST) {
+      if (forward > 0 && dist <= maxGroundDist) {
         return {
           x: groundHit.x,
           y: groundHit.y,
