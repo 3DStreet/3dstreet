@@ -295,12 +295,15 @@ export const COMPASS_ROTATE_STEP_DEGREES = 90;
 // view); above EXIT → "elevated" (offers street view); between → hold the
 // last state (anti-flicker). Two failure modes are weighed (spec D-B): icon
 // flicker at the boundary (wants a WIDE band) vs lag on a deliberate slow
-// ascent (wants a NARROW/low band). Starting values — TUNE AT FEEL-TEST on a
-// geo/3D-tiles scene. The 024 discoverability cue already uses an 8/6 m band
-// without strobing, so 8 m entry is a safe floor that clears eye-height bob;
-// exit 14 m sits a clear ~6 m above entry.
-export const DRONE_ELEVATED_ENTRY_METRES = 8; // tunable
-export const DRONE_ELEVATED_EXIT_METRES = 14; // tunable
+// ascent (wants a NARROW/low band). v2 (R2-C, live-test finding 2): the
+// original 8/14 m band was far too high — standing on a 3 m kerb still read as
+// "street level". "At street level" now means within ~human-height of a
+// surface; anything more is elevated. Resting AGL is ~eye-height
+// (EYE_MARGIN_METRES = 1.5 m), so ENTRY 1.8 sits just above resting eye-height
+// (standing normally = street level) and EXIT 2.5 means >2.5 m of air under
+// you = elevated. The tight 1.8↔2.5 dead band still clears eye-height bob.
+export const DRONE_ELEVATED_ENTRY_METRES = 1.8; // tunable
+export const DRONE_ELEVATED_EXIT_METRES = 2.5; // tunable
 
 // Drone-view canonical rise.
 //   DEFAULT_DRONE_HEIGHT — target altitude above GROUND LEVEL (the TASK-024
