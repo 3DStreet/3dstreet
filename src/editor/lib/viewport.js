@@ -542,6 +542,14 @@ export function Viewport(inspector) {
     controls.focus(object);
   });
 
+  // TASK-012 Phase 4: cursor-aware double-click navigation (experimental nav
+  // only). Guarded by method presence so legacy EditorControls is unaffected.
+  Events.on('nav-experimental:doubleclick', (payload) => {
+    if (controls.navigateDoubleClick) {
+      controls.navigateDoubleClick(payload);
+    }
+  });
+
   Events.on('geometrychanged', (object) => {
     if (object !== null) {
       selectionBox.setFromObject(object);
