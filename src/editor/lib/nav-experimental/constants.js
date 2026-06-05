@@ -195,6 +195,14 @@ export const PLAN_VIEW_DURATION_MS = 1000;
 export const SWOOP_PHASE2_ENTRY_ELEVATION_METRES = 20;
 export const SWOOP_PHASE2_EXIT_ELEVATION_METRES = 1.5;
 
+// TASK-022: default swoop-out overview attitude (degrees below
+// horizontal). The target the swoop-out tilts toward when there is no
+// valid transient zoom-undo memory (any non-wheel descent, or after the
+// memory was cleared). 60° is a strong looking-down overview that is not
+// fully top-down; fully top-down is delegated to the compass / Plan View
+// (TASK-011), not the wheel. Tunable from feel (OQ1).
+export const DEFAULT_OVERVIEW_TILT_DEGREES = 60;
+
 // Phase 2 per-tick pedestal step: fraction of (current y - exit elevation)
 // consumed per unit zoom-in tick. Matches ZOOM_PER_WHEEL_TICK in shape;
 // kept as a separate constant so Phase 2 feel can be tuned independently
