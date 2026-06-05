@@ -91,6 +91,7 @@ import {
   DRONE_ELEVATED_EXIT_METRES,
   DEFAULT_DRONE_HEIGHT,
   ROOF_CLEARANCE,
+  STREET_LOOKAT_MAX_DIST_METRES,
   DEFAULT_FOV_DEGREES
 } from './constants.js';
 import {
@@ -1881,13 +1882,25 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // (P sits over a void seam), fall back to P.y itself (the ray hit).
       const groundYAtP = floorAtP.source !== 'cache' ? floorAtP.y : P.y;
       const targetY = groundYAtP + EYE_MARGIN_METRES;
-      if (targetY >= cam.position.y) return; // already at/below
-      this._swoopTo(P.x, targetY, P.z);
-      return;
+      const horizDist = Math.hypot(P.x - cam.position.x, P.z - cam.position.z);
+      // Use the look-at swoop only when P is a SENSIBLE target: strictly below
+      // the camera (else the click would be a silent no-op though the action
+      // slot reads enabled — code-review v2 MEDIUM-1) AND within a bounded
+      // horizontal reach (else a near-horizontal gaze flings the camera
+      // hundreds of metres laterally in one ~600 ms tween — MEDIUM-3). When P
+      // is unsuitable, fall through to the vertical drop below.
+      if (
+        targetY < cam.position.y &&
+        horizDist <= STREET_LOOKAT_MAX_DIST_METRES
+      ) {
+        this._swoopTo(P.x, targetY, P.z);
+        return;
+      }
     }
-    // P null (looking horizontal / at sky / off-scene): fall back to the v1
-    // VERTICAL drop to the surface directly below, leveling out — preserves
-    // WE-3 (elevated-horizontal → swoop down, not grey).
+    // P null (looking horizontal / at sky / off-scene) OR an unsuitable look-at
+    // (above the camera / too far): fall back to the v1 VERTICAL drop to the
+    // surface directly below, leveling out — preserves WE-3 (elevated-horizontal
+    // → swoop down, not grey).
     const floor = this._collisionFloorAt(cam.position.x, cam.position.z);
     if (floor.source === 'cache') return; // no surface below either → no-op (WE-8)
     const targetY = floor.y + EYE_MARGIN_METRES;
@@ -2008,11 +2021,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // gate prevents interleave with an in-flight `_fallTo` retarget (M6).
     const groundLevel = this._travelHeightFloorYBelow();
     const floor = this._collisionFloorAt(cam.position.x, cam.position.z);
+    // surfaceBelow = the collision floor directly below (the roof you stand on,
+    // for the ROOF_CLEARANCE term) AND the feet point the drone looks AT / offsets
+    // back from. On a feet-miss (cache, over a void) substitute groundLevel so the
+    // back-offset and lookAt target stay sane. Same value for both uses.
     const surfaceBelow = floor.source !== 'cache' ? floor.y : groundLevel;
-    // F = the feet point the drone looks AT (and offsets back from). Use
-    // groundLevel for F.y on a feet-miss (cache) so the back-offset and lookAt
-    // target stay sane over a void.
-    const feetY = floor.source !== 'cache' ? floor.y : groundLevel;
+    const feetY = surfaceBelow;
     const camX = cam.position.x;
     const camZ = cam.position.z;
     // Canonical target height (v1 max(...)): default drone height above GROUND

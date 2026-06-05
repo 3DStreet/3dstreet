@@ -318,6 +318,12 @@ export const DEFAULT_DRONE_HEIGHT = 40; // metres above ground level; tunable
 //     a tall roof lands unambiguously "elevated" and the button flips to
 //     street view. With EXIT=14 and a ~6 m margin → 20.
 export const ROOF_CLEARANCE = 20; // metres above roof; >= EXIT + margin; tunable
+//   STREET_LOOKAT_MAX_DIST_METRES — max horizontal distance to the look-at
+//     ground point for the street-view swoop. Beyond this (a near-horizontal
+//     gaze hitting the ground far away), the swoop would fling the camera
+//     hundreds of metres laterally in one ~600 ms tween — so we fall back to a
+//     vertical drop instead. (Code-review v2 MEDIUM-3.) Tunable.
+export const STREET_LOOKAT_MAX_DIST_METRES = 60; // metres; tunable
 
 // Default/normal field of view (degrees) the drone rise resets to. A LITERAL,
 // not an attach-time `camera.fov` capture (which is unreliable on a re-attach
