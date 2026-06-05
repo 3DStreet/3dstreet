@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TASK-025 "enclosed" state glyph. Derived from the SVG Repo teenyicons
+     "google-streetview" pegman (MIT): same head + body, but the ground
+     ellipse is replaced by a wide 3-sided box (left wall, ceiling, right
+     wall; open floor) around the head — i.e. the pegman enclosed in a room
+     under solid geometry. Derived work, MIT. -->
+<svg width="800px" height="800px" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- pegman (head + body), scaled down and dropped so the box clears the head -->
+  <g transform="translate(1.5 3.2) scale(0.8)">
+    <path d="M5 2.5C5 1.11929 6.11929 0 7.5 0C8.88071 0 10 1.11929 10 2.5C10 3.88071 8.88071 5 7.5 5C6.11929 5 5 3.88071 5 2.5Z" fill="#000000"/>
+    <path d="M7.5 6C5.567 6 4 7.567 4 9.5V11.5C4 11.7761 4.22386 12 4.5 12H10.5C10.7761 12 11 11.7761 11 11.5V9.5C11 7.567 9.433 6 7.5 6Z" fill="#000000"/>
+  </g>
+  <!-- wide 3-sided box (L wall, ceiling, R wall; open floor) — reads as enclosing walls + ceiling -->
+  <path d="M1.2 7.5 L1.2 1.3 L13.8 1.3 L13.8 7.5 L12.8 7.5 L12.8 2.3 L2.2 2.3 L2.2 7.5 Z" fill="#000000"/>
+</svg>

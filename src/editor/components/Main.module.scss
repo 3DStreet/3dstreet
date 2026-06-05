@@ -73,12 +73,12 @@
   z-index: 10;
 }
 
-// TASK-025 context view button dock. The mirror of `.compassDock`: mounted as
-// a sibling of `.actionBarDock` in the same stacking context (z-index: 10),
-// pinned to the page centre (left: 50%); Main.jsx measures the ActionBar width
-// and applies a `translateX(-(halfBarWidth + gap + size))` so the button sits
-// just to the LEFT of the centred toolbar (symmetric with the compass on the
-// right), regardless of how many buttons the bar shows.
+// TASK-025 v2 context view control dock (R2-E). Mounted as a sibling of
+// `.actionBarDock` in the same stacking context (z-index: 10), pinned to the
+// page centre (left: 50%); Main.jsx measures the ActionBar width and applies a
+// `translateX(halfBarWidth + gap + compassSize + gap)` so the control sits just
+// to the RIGHT of the compass (which is itself right of the centred toolbar),
+// bottom-aligned with the compass, regardless of how many buttons the bar shows.
 .contextButtonDock {
   position: absolute;
   bottom: 16px;

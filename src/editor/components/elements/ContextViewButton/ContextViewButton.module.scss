@@ -1,29 +1,59 @@
-// TASK-025 — Context view button (street / daylight / drone). Always visible
-// in experimental-nav mode, sitting just LEFT of the bottom-centre ActionBar
-// (symmetric with the compass on the right). The `.contextButtonDock`
-// placement lives in Main.module.scss (so it shares the actionBar dock's
-// stacking context + pedestal handling); this module styles the widget itself.
+// TASK-025 v2 — Context view control (two-slot: state + action). Always visible
+// in experimental-nav mode, sitting just RIGHT of the compass and bottom-
+// aligned with it. The `.contextButtonDock` placement lives in Main.module.scss
+// (so it shares the actionBar dock's stacking context + pedestal handling);
+// this module styles the widget itself.
+//
+// Two small square slots (~18 px = 60% of the 30 px ActionBar button), side by
+// side — subservient to the 64 px compass. The STATE slot (left) is a
+// highlighted, non-clickable face showing the framing you are IN; the ACTION
+// slot (right) is the clickable face showing the move available.
 
-.contextButton {
+$slot-size: 18px;
+$slot-gap: 4px;
+
+.contextControl {
   position: relative;
-  width: 64px;
-  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: $slot-gap;
+  width: calc(#{$slot-size} * 2 + #{$slot-gap});
+  height: $slot-size;
   user-select: none;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
 }
 
-.btn {
-  width: 100%;
-  height: 100%;
+.slot {
+  width: $slot-size;
+  height: $slot-size;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: none;
-  border-radius: 50%;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
   background: #2b2b2b;
+  box-sizing: border-box;
+}
+
+// STATE slot — presentational; a highlighted border marks "this is where you
+// are", and it does not respond to hover/click.
+.stateSlot {
+  border-color: rgba(255, 255, 255, 0.7);
+  cursor: default;
+}
+
+// ACTION slot — a real <button>; clickable with a hover highlight.
+.actionSlot {
+  border-color: transparent;
   cursor: pointer;
   outline: none;
+
+  &:hover {
+    background: #3a3a3a;
+    border-color: rgba(255, 255, 255, 0.4);
+  }
 
   &:focus-visible {
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6);
@@ -32,19 +62,25 @@
 
 // Mono glyphs rendered white to match the dark dock + the compass glyphs.
 .icon {
-  width: 56%;
-  height: 56%;
-  // The source SVGs vary in colour (sunshine fill, mono drone/streetview);
-  // normalise to white so all three read consistently in the dark dock.
+  width: 80%;
+  height: 80%;
+  // The source SVGs vary in colour (sunshine fill, mono drone/streetview/
+  // enclosed); normalise to white so all read consistently in the dark dock.
   filter: brightness(0) invert(1);
   pointer-events: none;
 }
 
-// Disabled — the no-op grey-out (no valid target here) AND the busy
+// Disabled action slot — the no-op grey-out (no valid target here) AND the busy
 // (mid-animation) hold render identically for the prototype (spec D-C). Keep
 // showing the greyed icon of the would-be action rather than blanking it.
 .disabled {
   cursor: default;
+  border-color: transparent;
+
+  &:hover {
+    background: #2b2b2b;
+    border-color: transparent;
+  }
 
   .icon {
     opacity: 0.4;
@@ -52,7 +88,7 @@
 }
 
 // Tooltip — real DOM (translatable). Opens upward (the widget sits at the
-// bottom edge). Anchored to the left edge (the button sits left of centre).
+// bottom edge). Anchored to the left edge.
 .tooltip {
   position: absolute;
   bottom: calc(100% + 8px);

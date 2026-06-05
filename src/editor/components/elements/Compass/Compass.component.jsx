@@ -224,11 +224,18 @@ export const Compass = () => {
     }
   };
 
-  // Event/role props shared by all three hit regions.
+  // Event/role props shared by all three hit regions. The three compass
+  // regions (plan view, rotate ±90°) are MOMENTARY actions — TASK-025 v2
+  // (R2-REV-F): blur AFTER dispatch (in onClick, not pointerdown) so a mouse
+  // click does not leave the region focused and hijack the next Space (which
+  // would otherwise re-activate the compass instead of driving nav).
   const handlers = (region) => ({
     role: 'button',
     tabIndex: 0,
-    onClick: () => dispatch(region),
+    onClick: (e) => {
+      dispatch(region);
+      if (e && e.currentTarget && e.currentTarget.blur) e.currentTarget.blur();
+    },
     onKeyDown: keyActivate(region),
     onPointerOver: () => enter(region),
     onFocus: () => enter(region),
@@ -240,16 +247,15 @@ export const Compass = () => {
   // ...and gains a soft white halo when active.
   const arrowGlow = (region) => ({
     filter:
-      active === region
-        ? 'drop-shadow(0 0 2px rgba(255,255,255,0.85))'
-        : 'none'
+      active === region ? 'drop-shadow(0 0 2px rgba(255,255,255,0.85))' : 'none'
   });
 
   // Pose-aware label for the body hit region's aria-label, computed from the
   // live camera the same way as the visible tooltip so screen-reader users
   // hear the action the click will actually perform.
   const inspector = typeof AFRAME !== 'undefined' ? AFRAME.INSPECTOR : null;
-  const bodyLabel = bodyTooltip(inspector ? inspector.camera : null) || 'Compass';
+  const bodyLabel =
+    bodyTooltip(inspector ? inspector.camera : null) || 'Compass';
 
   return (
     <div className={styles.compass} onPointerLeave={leave}>

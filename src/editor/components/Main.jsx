@@ -86,11 +86,12 @@ export default function Main() {
   // modes, so the compass stays put when switching to street view.
   const actionBarDockRef = useRef(null);
   const compassDockRef = useRef(null);
-  // TASK-025: the context view button docks symmetrically on the LEFT of the
-  // centred ActionBar (mirror of the compass on the right). The bottom-left
-  // region is clear — the PrimaryToolbar lives at the TOP (top: 12px), so
-  // there is no collision (M4 verified). Positioned by the SAME place() effect
-  // and ResizeObserver — no second observer (round-1 M4).
+  // TASK-025 v2 (R2-E): the context view control docks just to the RIGHT of the
+  // compass (which is itself right of the centred ActionBar) and is BOTTOM-
+  // ALIGNED with the compass (its bottom edge level with the compass bottom
+  // edge — NOT vertically centred). Nothing sits right of the compass today, so
+  // there is no collision. Positioned by the SAME place() effect and
+  // ResizeObserver as the compass — no second observer (round-1 M4).
   const contextButtonDockRef = useRef(null);
   useEffect(() => {
     if (!isInspectorEnabled || !isExperimentalNav()) return;
@@ -100,18 +101,25 @@ export default function Main() {
     if (!barDock || !compassDock || !contextDock) return;
     const GAP = 12;
     const COMPASS_SIZE = 64; // .compass is 64x64 (Compass.module.scss)
-    const CONTEXT_SIZE = 64; // .contextButton is 64x64 (ContextViewButton.scss)
     const BAR_BOTTOM = 16; // all docks sit 16px off the viewport bottom
     const place = () => {
       const bar = barDock.firstElementChild || barDock;
+      // The compass's computed bottom edge — reused for true bottom-alignment of
+      // the context control (R2-REV-E: control.bottom = compass.bottom, NOT
+      // compass.bottom − controlSize/2 which would centre it).
+      const compassBottom =
+        BAR_BOTTOM + bar.offsetHeight / 2 - COMPASS_SIZE / 2;
       // Compass — just to the right of the centred toolbar.
       compassDock.style.transform = `translateX(${bar.offsetWidth / 2 + GAP}px)`;
-      compassDock.style.bottom = `${BAR_BOTTOM + bar.offsetHeight / 2 - COMPASS_SIZE / 2}px`;
-      // Context button — symmetric on the left: its RIGHT edge sits a GAP left
-      // of the toolbar's left edge, so its left edge (the translateX target,
-      // both docks pinned at left: 50%) is at -(barWidth/2 + GAP + SIZE).
-      contextDock.style.transform = `translateX(${-(bar.offsetWidth / 2 + GAP + CONTEXT_SIZE)}px)`;
-      contextDock.style.bottom = `${BAR_BOTTOM + bar.offsetHeight / 2 - CONTEXT_SIZE / 2}px`;
+      compassDock.style.bottom = `${compassBottom}px`;
+      // Context control — further right: a GAP past the compass's right edge.
+      // Compass left edge (its translateX target, both docks pinned at
+      // left: 50%) = barWidth/2 + GAP; its right edge adds COMPASS_SIZE; then a
+      // GAP to the control's left edge.
+      const contextLeft = bar.offsetWidth / 2 + GAP + COMPASS_SIZE + GAP;
+      contextDock.style.transform = `translateX(${contextLeft}px)`;
+      // Bottom-aligned with the compass: same bottom edge (R2-REV-E).
+      contextDock.style.bottom = `${compassBottom}px`;
     };
     place();
     const ro =
