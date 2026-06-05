@@ -12,6 +12,9 @@ import {
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
   SWOOP_PHASE2_STEP,
+  WHEEL_UNITS_PER_NOMINAL_TICK,
+  LINE_HEIGHT_PX,
+  WHEEL_MAX_TICKS_PER_EVENT,
   EYE_MARGIN_METRES,
   BLOCK_SLOPE_MIN_DEGREES,
   BLOCK_HEIGHT_MIN_METRES,
@@ -347,6 +350,55 @@ export function computeLowTiltWheelHit(camera) {
   return new THREE.Vector3()
     .copy(camera.position)
     .addScaledVector(fwd, FALLBACK_FORWARD_DIST);
+}
+
+// ── TASK-014a (#6 Option B): wheel input-plumbing pure helpers ──────────
+
+// Normalise a raw wheel event to a signed, magnitude-clamped "nominal
+// tick" count.
+//   deltaMode: 0 = pixel, 1 = line (~LINE_HEIGHT_PX px), 2 = page
+//     (viewport height).
+//   One mouse detent (deltaY ≈ 100 px) ≈ 1.0 tick.
+//   Sign: deltaY > 0 → +t → zoom OUT (preserves the existing convention).
+// Clamps a single pathological event to ±WHEEL_MAX_TICKS_PER_EVENT so the
+// continuous per-frame step can never apply an unbounded factor in one
+// frame (page-mode multiplies by ~viewport height; some trackpads emit
+// deltaY in the thousands). `viewportH` guards a NaN when page-mode events
+// arrive without a known viewport. Pure.
+export function wheelDeltaToTicks(deltaY, deltaMode, viewportH = 800) {
+  let dy = deltaY;
+  if (deltaMode === 1) {
+    dy *= LINE_HEIGHT_PX;
+  } else if (deltaMode === 2) {
+    dy *= viewportH || 800;
+  }
+  const t = dy / WHEEL_UNITS_PER_NOMINAL_TICK;
+  const max = WHEEL_MAX_TICKS_PER_EVENT;
+  return Math.max(-max, Math.min(max, t));
+}
+
+// Anchored-dolly distance-to-anchor multiplier for `t` nominal ticks.
+// Generalises the per-whole-tick factor (1 − α in / 1/(1 − α) out) to a
+// real, signed tick count, exactly reversible for all t:
+//   t < 0 zoom-in  → factor = (1 − α)^(−t) < 1  (closer to anchor)
+//   t > 0 zoom-out → factor = (1 − α)^(−t) > 1  (farther)
+//   t = −1 → (1 − α)  (identical to the old per-tick zoom-in)
+//   factor(t) · factor(−t) = 1  (reversibility, exact to ~1 ULP)
+// The exponential is the unique continuous extension of the existing
+// multiplicative step that stays exactly reversible (a linear 1 − α·t
+// breaks reversibility for |t| ≠ 1 and can go non-positive). Pure.
+export function dollyFactorForTicks(t, alpha) {
+  return Math.pow(1 - alpha, -t);
+}
+
+// FOV multiplier for `t` nominal ticks. Generalises the per-whole-tick
+// factor (1/(1 + β) in / (1 + β) out):
+//   t < 0 zoom-in  → (1 + β)^t < 1  (narrower FOV)
+//   t > 0 zoom-out → (1 + β)^t > 1  (wider FOV)
+//   t = −1 → 1/(1 + β)  (identical to the old per-tick zoom-in)
+//   factor(t) · factor(−t) = 1  (reversibility). Pure.
+export function fovFactorForTicks(t, beta) {
+  return Math.pow(1 + beta, t);
 }
 
 // Phase 3 swoop helpers. See claude/specs/001-phase-3-plan.md.
