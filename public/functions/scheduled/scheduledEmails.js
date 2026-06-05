@@ -406,6 +406,109 @@ const getUserInfo = async (userId) => {
 };
 
 /**
+ * Send the "your generation is ready" email for a single succeeded, opted-in
+ * job, exactly once. Shared by BOTH the real-time path (the Replicate webhook,
+ * which calls this the instant a job finishes) and the reconciler sweep (the
+ * dropped-webhook backstop). Idempotency lives here, not at the call sites:
+ *
+ *   - A transaction CAS-claims the send by flipping `notify.pending` → false.
+ *     Only the winner proceeds, so the webhook and the sweep can't double-send.
+ *   - If the client already acked (an open tab saw the result), we clear the
+ *     flag and skip — no email for a user who's watching.
+ *   - On a send failure we restore `notify.pending` so the sweep retries later
+ *     (fail-safe: a transient Postmark/Auth error never silently drops the
+ *     notification).
+ *
+ * Assumes the caller has already confirmed status === 'succeeded' is plausible;
+ * the transaction re-checks against the live doc regardless. dryRun reports what
+ * would send without claiming or sending.
+ *
+ * @returns {Promise<{action: 'sent'|'suppressed'|'skip'|'no-email'|'would-send'|'error', error?: string}>}
+ */
+const sendGenerationReadyEmail = async (db, uid, jobRef, options = {}) => {
+  const { dryRun = false } = options;
+
+  // Atomically decide whether THIS call owns the send.
+  let job = null;
+  let outcome = 'skip';
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(jobRef);
+    if (!snap.exists) return;
+    job = snap.data();
+    // Re-check against the live doc: only succeeded, opted-in, still-pending
+    // jobs are eligible. Anything else (already sent, not opted in, not yet
+    // terminal) drops out.
+    if (job.status !== 'succeeded') return;
+    if (!job.notify?.email || !job.notify?.pending) return;
+    // An open tab acked → the user saw it. Clear the flag, send nothing.
+    if (job.notify?.clientAckedAt) {
+      outcome = 'suppressed';
+      if (!dryRun) tx.update(jobRef, { 'notify.pending': false });
+      return;
+    }
+    if (dryRun) {
+      outcome = 'would-send';
+      return;
+    }
+    // Claim the send. From here, no other caller can also send this job.
+    outcome = 'claimed';
+    tx.update(jobRef, { 'notify.pending': false });
+  });
+
+  if (outcome !== 'claimed') {
+    return { action: outcome === 'would-send' ? 'would-send' : outcome };
+  }
+
+  try {
+    const userInfo = await getUserInfo(uid);
+    if (!userInfo?.email) {
+      // No address on file — pending is already cleared; record why and stop.
+      await jobRef.update({ 'notify.error': 'no-email' });
+      return { action: 'no-email' };
+    }
+
+    // Kind-aware copy (splat today; video/image reuse it for free). The CTA
+    // deep-links to the asset's detail modal (#asset:OWNER/ID). Project-aware
+    // base so a dev/staging email deep-links to the dev app where the asset
+    // actually lives, mirroring replicate.js's webhook-URL project resolution.
+    const tpl = EMAIL_TEMPLATES.generationReady;
+    const project =
+      process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || '';
+    const appBase =
+      project === 'dev-3dstreet'
+        ? 'https://dev-3dstreet.web.app'
+        : 'https://3dstreet.app';
+    const ctaUrl = job.assetId
+      ? `${appBase}/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready#asset:${uid}/${job.assetId}`
+      : undefined; // fall back to the template's default app link
+    const emailCtx = {
+      assetName: job.assetName || null,
+      when: job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || null
+    };
+
+    await sendPostmarkEmail(
+      userInfo.email,
+      tpl.getSubject(job.kind, emailCtx),
+      tpl.getHtmlBody(userInfo.displayName, job.kind, ctaUrl, emailCtx),
+      tpl.getTextBody(userInfo.displayName, job.kind, ctaUrl, emailCtx)
+    );
+    await jobRef.update({
+      'notify.sentAt': admin.firestore.FieldValue.serverTimestamp()
+    });
+    return { action: 'sent' };
+  } catch (err) {
+    // Restore the flag so the backstop sweep retries — never drop it silently.
+    await jobRef
+      .update({
+        'notify.pending': true,
+        'notify.error': String(err?.message || err)
+      })
+      .catch(() => {});
+    return { action: 'error', error: err?.message || String(err) };
+  }
+};
+
+/**
  * Process a single email type - find eligible users and send emails
  * @param {Object} db - Firestore database instance
  * @param {string} emailTypeKey - The email type identifier
@@ -666,6 +769,9 @@ module.exports = {
   // Reused by the generation-job reconciler to send completion emails.
   sendPostmarkEmail,
   getUserInfo,
+  // Shared, idempotent completion-email send: the webhook calls it in real time;
+  // the reconciler sweep calls it as the backstop.
+  sendGenerationReadyEmail,
   // Export for testing
   EMAIL_TEMPLATES,
   EMAIL_TYPES

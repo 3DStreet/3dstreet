@@ -36,11 +36,7 @@ const { enqueueRadTask } = require('../rad-dispatch.js');
 const { withJobHealth } = require('./job-health.js');
 
 const TEN_MIN_MS = 10 * 60 * 1000;
-const {
-  sendPostmarkEmail,
-  getUserInfo,
-  EMAIL_TEMPLATES
-} = require('./scheduledEmails.js');
+const { sendGenerationReadyEmail } = require('./scheduledEmails.js');
 
 // Our normalized non-terminal vocabulary (see normalizeReplicateStatus). The
 // reconciler only ever touches jobs in these states; everything else is done.
@@ -391,13 +387,15 @@ async function reconcile({ dryRun }) {
   return summary;
 }
 
-// Completion-email sweep — the "notify by email when a job finishes while the
-// tab is closed" path, implemented entirely on the job doc (no separate
-// notification system). It queries opted-in, succeeded jobs whose notify is
-// still `pending` and either suppresses (the client acked → tab was open) or
-// emails (past the grace window with no ack → user is away). Success-only by
-// design; failed jobs refund silently. Idempotent: `notify.pending` is cleared
-// the instant we act, so a job is emailed at most once.
+// Completion-email sweep — the BACKSTOP for the real-time completion email.
+// The Replicate webhook now sends the email the instant a job finishes (see
+// sendGenerationReadyEmail, called from the webhook), so the happy path no
+// longer waits on this 10-min sweep. This sweep only catches jobs the webhook
+// missed: a dropped webhook where the user also closed the tab (no client ack),
+// or a transient send failure that restored `notify.pending`. It queries
+// opted-in, succeeded, still-pending jobs and delegates each to the shared,
+// idempotent send helper — so it can't double-send against a racing webhook.
+// Success-only by design; failed jobs refund silently.
 async function sendReadyNotifications({ dryRun }) {
   const db = admin.firestore();
   const snap = await db
@@ -423,88 +421,46 @@ async function sendReadyNotifications({ dryRun }) {
     const uid = jobRef.parent.parent?.id; // users/{uid}/generationJobs/{jobId}
     if (!uid) continue;
 
-    // The client acked while polling → the tab was open and the user saw it.
-    // No email; just clear the flag so it drops out of this query.
-    if (job.notify?.clientAckedAt) {
-      summary.suppressed++;
-      if (!dryRun) await jobRef.update({ 'notify.pending': false });
-      continue;
-    }
-
-    // Give an open tab a moment to ack before we conclude the user is away.
+    // Give an open tab a moment to ack before this backstop concludes the user
+    // is away. The webhook sends in real time, so anything still pending here
+    // either had its webhook dropped or just completed; the grace avoids racing
+    // an in-flight client ack. (clientAckedAt already set → no need to wait.)
     const doneMs =
       job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || 0;
-    if (doneMs && Date.now() - doneMs < NOTIFY_GRACE_MS) {
+    if (
+      !job.notify?.clientAckedAt &&
+      doneMs &&
+      Date.now() - doneMs < NOTIFY_GRACE_MS
+    ) {
       summary.waiting++;
       continue;
     }
 
-    try {
-      if (dryRun) {
+    const result = await sendGenerationReadyEmail(db, uid, jobRef, { dryRun });
+    switch (result.action) {
+      case 'sent':
+      case 'would-send':
         summary.sent++;
         if (summary.samples.length < 25) {
-          summary.samples.push({ uid, jobId: jobRef.id, action: 'would-email' });
+          summary.samples.push({ uid, jobId: jobRef.id, action: result.action });
         }
-        continue;
-      }
-
-      const userInfo = await getUserInfo(uid);
-      if (!userInfo?.email) {
-        // No address on file — don't retry forever; close the notify out.
-        await jobRef.update({
-          'notify.pending': false,
-          'notify.error': 'no-email'
-        });
+        break;
+      case 'suppressed':
+        summary.suppressed++;
+        break;
+      case 'no-email':
+      case 'error':
+        if (result.action === 'error') {
+          console.error(
+            `[generation-job-reconcile] notify email failed uid=${uid} job=${jobRef.id}: ${result.error}`
+          );
+        }
         summary.errored++;
-        continue;
-      }
-
-      // Kind-aware copy (splat today; video/image reuse it for free). The CTA
-      // deep-links straight to the asset's detail modal in the editor:
-      // #asset:OWNER/ID (the issue #1641 asset-token shape). Needs the owner uid
-      // because assets are addressed as users/{uid}/assets/{assetId}; assets are
-      // public-read so the link works before the recipient's auth resolves.
-      const tpl = EMAIL_TEMPLATES.generationReady;
-      // Project-aware base so a dev/staging email deep-links to the dev app
-      // (where the asset actually lives), not prod. Mirrors replicate.js's
-      // project resolution for the webhook URL.
-      const project =
-        process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || '';
-      const appBase =
-        project === 'dev-3dstreet'
-          ? 'https://dev-3dstreet.web.app'
-          : 'https://3dstreet.app';
-      const ctaUrl = job.assetId
-        ? `${appBase}/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready#asset:${uid}/${job.assetId}`
-        : undefined; // fall back to the template's default app link
-      // Per-asset context so each notification is distinct (mail clients
-      // otherwise thread/collapse identical subject+body). assetName already
-      // embeds a unique timestamp; `when` is a readable fallback.
-      const emailCtx = {
-        assetName: job.assetName || null,
-        when:
-          job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || null
-      };
-      await sendPostmarkEmail(
-        userInfo.email,
-        tpl.getSubject(job.kind, emailCtx),
-        tpl.getHtmlBody(userInfo.displayName, job.kind, ctaUrl, emailCtx),
-        tpl.getTextBody(userInfo.displayName, job.kind, ctaUrl, emailCtx)
-      );
-      await jobRef.update({
-        'notify.pending': false,
-        'notify.sentAt': admin.firestore.FieldValue.serverTimestamp()
-      });
-      summary.sent++;
-      if (summary.samples.length < 25) {
-        summary.samples.push({ uid, jobId: jobRef.id, action: 'emailed' });
-      }
-    } catch (err) {
-      console.error(
-        `[generation-job-reconcile] notify email failed uid=${uid} job=${jobRef.id}:`,
-        err.message || err
-      );
-      summary.errored++;
+        break;
+      default:
+        // 'skip' — another path (the webhook) already claimed/sent it between
+        // our query and this call. Nothing to do.
+        break;
     }
   }
 

@@ -6,6 +6,11 @@ const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
 const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS, REPLICATE_MODELS } = require('./replicate-models.js');
+// Real-time completion email: the webhook calls this the instant a job finishes
+// so the user isn't waiting on the 10-min reconciler sweep. Shared, idempotent
+// send (the sweep is the backstop). No circular dep: scheduledEmails doesn't
+// require this module.
+const { sendGenerationReadyEmail } = require('./scheduled/scheduledEmails.js');
 
 // Helper function to post AI-generated images to Discord
 async function postAIImageToDiscord(userId, imageUrl, prompt, modelVersion, sceneId, source = 'editor') {
@@ -1545,7 +1550,9 @@ const getGenerationJobStatus = functions
 // idempotent processor (which saves the result to the gallery).
 const replicateJobWebhook = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN'],
+    // POSTMARK_API_KEY: the webhook now sends the completion email in real time
+    // (sendGenerationReadyEmail), so it needs the Postmark secret in its env.
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY'],
     // Same streamed save as the poll path; 512 MB is fixed cold-start headroom,
     // not sized to the splat.
     memory: '512MB',
@@ -1611,7 +1618,21 @@ const replicateJobWebhook = functions
     }
 
     try {
-      await processTerminalPrediction(db, uid, jobRef, prediction);
+      const result = await processTerminalPrediction(db, uid, jobRef, prediction);
+      // Real-time completion email. The webhook is the provider's "it's done"
+      // signal, so this is the moment to notify an away user — no 10-min sweep
+      // wait. Best-effort and fully isolated: the helper is idempotent (it
+      // claims the send so the sweep can't double-send) and restores the
+      // pending flag on failure (the sweep retries). A send error must never
+      // fail the webhook — the save already succeeded, and a 500 would make
+      // Replicate redeliver and re-run the (idempotent) save for nothing.
+      if (result && result.status === 'succeeded') {
+        try {
+          await sendGenerationReadyEmail(db, uid, jobRef);
+        } catch (mailErr) {
+          console.error('Webhook: completion email failed:', mailErr);
+        }
+      }
       res.status(200).send('ok');
     } catch (error) {
       console.error('Webhook: processing failed:', error);
