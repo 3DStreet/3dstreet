@@ -88,7 +88,8 @@ import {
   FALL_DURATION_MS,
   POP_TO_ROOF_DURATION_MS,
   DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES,
-  DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES
+  DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES,
+  DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES
 } from './constants.js';
 import {
   cameraTiltDegrees,
@@ -112,6 +113,7 @@ import {
   cueState,
   classifyDoubleClick,
   desiredDoubleClickPose,
+  clampFramingPitch,
   neverRaiseY,
   pullBackTowardTarget
 } from './navMath.js';
@@ -1477,7 +1479,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // downward `hits` already pass through any enclosing building's roof +
     // floor). Opt-in (`checkBuried`) so existing recovery callers, which pass
     // no opts, are byte-identical.
-    if (opts.checkBuried && this._pointInsideBuildingHit(p, hits)) {
+    if (opts.checkBuried && this._pointInsideBuildingHit(p, hits, opts.extraBox)) {
       return false;
     }
     return true;
@@ -1489,7 +1491,29 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // its roof above and its floor below, so the owning building entity is in
   // the list). Sidedness-independent (AABB, not normal parity). De-dupes by
   // owning entity so each building's Box3 is computed at most once.
-  _pointInsideBuildingHit(point, hits) {
+  // `extraBox` (TASK-012 code-review M1): the Category-B/C TARGET building's
+  // Box3, tested unconditionally. The probe-hit scan below only catches
+  // buildings the candidate's downward ray actually strikes — a shell building
+  // with no interior floor slab (the ray exits through the segment ground
+  // below) would be missed. Testing the known target box closes the most
+  // common WE-13 case (the standoff landing inside the very building you
+  // clicked) independent of asset geometry. Neighbour buildings remain
+  // best-effort via the probe hits.
+  // Known tradeoff (code-review M2): AABB containment treats the full bounding
+  // box as solid, so a concave footprint (L-shape / courtyard / overhang) can
+  // false-positive a clear standoff in a notch and pull it inward. Accepted as
+  // low-cost per the spec (B/C standoff is a tuning concern; pull-back-further
+  // or a no-op are both safe) — the camera never ends up buried, only framed
+  // from slightly further back.
+  _pointInsideBuildingHit(point, hits, extraBox) {
+    const inBox = (box) =>
+      point.x >= box.min.x &&
+      point.x <= box.max.x &&
+      point.y >= box.min.y &&
+      point.y <= box.max.y &&
+      point.z >= box.min.z &&
+      point.z <= box.max.z;
+    if (extraBox && !extraBox.isEmpty() && inBox(extraBox)) return true;
     const seen = new Set();
     for (const hit of hits) {
       if (classifyHitEntity(hit) !== 'building') continue;
@@ -1504,17 +1528,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       }
       if (!el || !el.object3D || seen.has(el)) continue;
       seen.add(el);
-      const box = new THREE.Box3().setFromObject(el.object3D);
-      if (
-        point.x >= box.min.x &&
-        point.x <= box.max.x &&
-        point.y >= box.min.y &&
-        point.y <= box.max.y &&
-        point.z >= box.min.z &&
-        point.z <= box.max.z
-      ) {
-        return true;
-      }
+      if (inBox(new THREE.Box3().setFromObject(el.object3D))) return true;
     }
     return false;
   }
@@ -1700,7 +1714,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       }
     } else {
       // B/C: full legit + buried guard, with standoff pull-back.
-      const resolved = this._resolveStandoff(position, lookTarget, currentCamY);
+      const resolved = this._resolveStandoff(
+        position,
+        lookTarget,
+        currentCamY,
+        objectBox
+      );
       if (!resolved) return; // no clear pose at/below pre-click height → no-op (OI-1)
       position.copy(resolved);
     }
@@ -1708,10 +1727,22 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // (7) End orientation from the (possibly lowered/capped) position toward
     // the look target. No Phase-4 path approaches nadir, so a plain
     // up=+Y lookAt is roll-safe (R2-5 guard, not a dependency).
+    // Category B: re-apply the framing-pitch cap against the FINAL position
+    // (round-3 H1) — never-raise/standoff lowered the camera since the pure
+    // helper's first-pass cap, and WE-8 (street-level look-up at a tall tower)
+    // is exactly the case where the final height is well below the desired one.
+    let finalLook = lookTarget;
+    if (category === 'B') {
+      finalLook = clampFramingPitch(
+        position,
+        lookTarget,
+        DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES
+      );
+    }
     const scratch = new THREE.PerspectiveCamera();
     scratch.position.copy(position);
     scratch.up.set(0, 1, 0);
-    scratch.lookAt(lookTarget);
+    scratch.lookAt(finalLook);
     const endQuat = scratch.quaternion.clone();
 
     // (8) Commit the motion. A mid-tween re-click cancels the in-flight tween
@@ -1750,7 +1781,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // standoff inward (toward the look target) one step at a time, re-testing,
   // until clear or the pull-back cap is hit. Returns a THREE.Vector3 or null
   // (no clear pose → caller no-ops).
-  _resolveStandoff(position, lookTarget, maxY) {
+  _resolveStandoff(position, lookTarget, maxY, targetBox) {
     const cand = position.clone();
     const step = DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES;
     let pulled = 0;
@@ -1778,7 +1809,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       }
       if (
         clearColumn &&
-        this._poseStillLegit({ position: cand }, { checkBuried: true })
+        this._poseStillLegit(
+          { position: cand },
+          { checkBuried: true, extraBox: targetBox }
+        )
       ) {
         return cand;
       }
@@ -2068,7 +2102,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       event.preventDefault(); // stop page scroll
       // Don't pre-empt a plan-view/compass tween (would strand
       // _planViewActive / _compassAnimating with its onDone unrun) or
-      // interrupt a recovery tween in flight (D2).
+      // interrupt a recovery / teleport tween in flight (D2). The
+      // `_tick.isAnimating()` guard already covers a Phase-4 teleport, so the
+      // fall-key start is deliberately NOT routed through `_cancelCameraTween`
+      // (TASK-012 code-review L1): doing so would clear `_recoveryActive` and
+      // let Space interrupt a recovery, which the `if (_recoveryActive) return`
+      // in `_handleFallKey` exists to prevent.
       if (this._isInactive() || this._tick.isAnimating()) return;
       this._handleFallKey();
     }

@@ -26,7 +26,8 @@ import {
   classifyDoubleClick,
   neverRaiseY,
   pullBackTowardTarget,
-  desiredDoubleClickPose
+  desiredDoubleClickPose,
+  clampFramingPitch
 } from '../../../../src/editor/lib/nav-experimental/navMath.js';
 import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
@@ -1879,5 +1880,38 @@ describe('desiredDoubleClickPose', () => {
       eyeHeight: EYE_MARGIN_METRES
     });
     expect(r.lookTarget.y).toBeCloseTo(4, 6); // unchanged
+  });
+
+  // Round-3 H1 (code review): the AUTHORITATIVE cap is re-applied post-
+  // clearance against the FINAL camera height, which never-raise lowers for a
+  // street-level look-up. Capping against the desired height (inside the pure
+  // helper) and then lowering the camera leaves the final pitch ABOVE the cap.
+  // clampFramingPitch must hold the cap at whatever height the camera lands.
+  it('clampFramingPitch holds the cap at a LOWERED final position (WE-8 integration)', () => {
+    // Tower top clicked from street level: helper would frame against camY≈33,
+    // but never-raise drops the camera to ~1.6 m. Re-clamp at the final height.
+    const position = { x: -17, y: 1.6, z: 0 }; // street-level, ~17 m standoff
+    const rawLook = { x: 0, y: 98, z: 0 }; // near the tower top
+    const out = clampFramingPitch(
+      position,
+      rawLook,
+      DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES
+    );
+    const hdist = Math.hypot(out.x - position.x, out.z - position.z);
+    const angle = (Math.atan2(out.y - position.y, hdist) * 180) / Math.PI;
+    expect(angle).toBeCloseTo(DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES, 4);
+    expect(out.x).toBe(rawLook.x); // x/z preserved
+    expect(out.z).toBe(rawLook.z);
+  });
+
+  it('clampFramingPitch is inert when the angle is already within the cap', () => {
+    const position = { x: -20, y: 5, z: 0 };
+    const rawLook = { x: 0, y: 9, z: 0 }; // shallow ~11° look-up
+    const out = clampFramingPitch(
+      position,
+      rawLook,
+      DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES
+    );
+    expect(out.y).toBeCloseTo(9, 6);
   });
 });

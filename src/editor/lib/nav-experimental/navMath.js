@@ -551,16 +551,35 @@ export function desiredDoubleClickPose({
     cz - dir.z * s
   );
   const lookTarget = new THREE.Vector3(hitPoint.x, hitPoint.y, hitPoint.z);
-  // Framing-pitch cap: clamp the look target's vertical angle to
-  // ±MAX_FRAMING_PITCH by moving its Y toward the camera's own height
-  // (reducing |dy| — down for a look-up, up for a look-down).
-  const hdist = Math.hypot(lookTarget.x - position.x, lookTarget.z - position.z);
-  const dy = lookTarget.y - position.y;
-  const maxDy = hdist * Math.tan(DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES * DEG2RAD);
+  // Framing-pitch cap (first pass, against the DESIRED height). This is a
+  // convenience pass only — the camera height is lowered again by never-raise
+  // and standoff resolution in the controls, so the AUTHORITATIVE cap is
+  // re-applied post-clearance via `clampFramingPitch` against the FINAL
+  // position (round-3 H1: the cap must hold at the height the camera actually
+  // lands, which for a street-level look-up at a tall tower is well below
+  // `camY`). Keeping it here too is harmless (idempotent) and gives a sane
+  // first-pass look target.
+  return {
+    position,
+    lookTarget: clampFramingPitch(position, lookTarget, DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES)
+  };
+}
+
+// Framing-pitch cap (pure): clamp the look target's vertical angle from
+// `position` to ±maxDeg by moving the look target's Y TOWARD the camera's own
+// height — reducing |dy| (down for a steep look-up, up for a steep look-down).
+// Returns a new THREE.Vector3 look target (x/z unchanged). The controls call
+// this AFTER never-raise + standoff resolution so the cap holds at the final
+// landing height, not the desired one (WE-8 / round-3 H1).
+export function clampFramingPitch(position, lookTarget, maxDeg) {
+  const out = new THREE.Vector3(lookTarget.x, lookTarget.y, lookTarget.z);
+  const hdist = Math.hypot(out.x - position.x, out.z - position.z);
+  const dy = out.y - position.y;
+  const maxDy = hdist * Math.tan(maxDeg * DEG2RAD);
   if (Math.abs(dy) > maxDy) {
-    lookTarget.y = position.y + THREE.MathUtils.clamp(dy, -maxDy, maxDy);
+    out.y = position.y + THREE.MathUtils.clamp(dy, -maxDy, maxDy);
   }
-  return { position, lookTarget };
+  return out;
 }
 
 // Phase 3 swoop helpers. See claude/specs/001-phase-3-plan.md.
