@@ -119,11 +119,35 @@ export function isSolidFloorHit(hit, opts) {
   const acceptBuildings = !opts || opts.acceptBuildings !== false;
   const acceptTiles = !opts || opts.acceptTiles !== false;
 
-  // (a) Resolve owning A-Frame entity: first ancestor (inclusive) with a
-  //     truthy `.el`. A-Frame sets `.el` on the entity's root object3D,
-  //     not on nested gltf submeshes, so a clone's deep submesh resolves
-  //     to the *clone* entity and the segment's below-box resolves to the
-  //     *segment* entity.
+  // Classify by owning-entity identity (shared with the Phase-4 teleport
+  // classifier — TASK-012), then apply the accept flags + visibility gate.
+  const kind = classifyHitEntity(hit);
+  if (kind === 'segment') return _hitSurfaceVisible(hit.object);
+  if (kind === 'building') {
+    return acceptBuildings && _hitSurfaceVisible(hit.object);
+  }
+  if (kind === 'tiles') return acceptTiles && _hitSurfaceVisible(hit.object);
+  // null (no owning entity) / 'scatter' → reject (signs, plants, vehicles,
+  // people, fence / seawall — verified NOT category 'buildings').
+  return false;
+}
+
+// TASK-012: classify a raycast hit by owning-entity identity into one of the
+// double-click navigation source types: 'segment' | 'tiles' | 'building' |
+// 'scatter' | null. Extracted from `isSolidFloorHit` (the segment / catalog-
+// category / tiles resolution it already did inline) so both the floor /
+// collision probes AND the Phase-4 teleport classifier read the SAME
+// owning-entity walk (no duplicated logic, no divergence). Returns null when
+// the hit has no owning A-Frame entity (editor chrome).
+//
+// `hit` is a THREE.Intersection-like object: { object, point, ... }.
+export function classifyHitEntity(hit) {
+  if (!hit || !hit.object) return null;
+
+  // Resolve owning A-Frame entity: first ancestor (inclusive) with a truthy
+  // `.el`. A-Frame sets `.el` on the entity's root object3D, not on nested
+  // gltf submeshes, so a clone's deep submesh resolves to the *clone* entity
+  // and the segment's below-box resolves to the *segment* entity.
   let node = hit.object;
   let el = null;
   while (node) {
@@ -133,40 +157,29 @@ export function isSolidFloorHit(hit, opts) {
     }
     node = node.parent;
   }
-  if (!el || !el.hasAttribute) return false;
+  if (!el || !el.hasAttribute) return null;
 
-  // (b) Segment branch (TASK-013): the owning entity is itself a
-  //     street-segment with a visible surface.
-  if (el.hasAttribute('street-segment')) {
-    return _hitSurfaceVisible(hit.object);
-  }
+  // (b) Segment: the owning entity is itself a street-segment.
+  if (el.hasAttribute('street-segment')) return 'segment';
 
-  // (c) Building branch (TASK-024): a clone/standalone building entity
-  //     carries a `mixin` whose catalog category is 'buildings'. Both
-  //     generated clones and detached standalone building entities carry
-  //     `mixin`. Guard STREET undefined (headless / tests).
-  if (acceptBuildings && el.hasAttribute('mixin')) {
+  // (c) Building: a clone/standalone building entity carries a `mixin` whose
+  //     catalog category is 'buildings'. Guard STREET undefined (tests).
+  if (el.hasAttribute('mixin')) {
     const mixinId = el.getAttribute('mixin');
     const entry =
       typeof STREET !== 'undefined' && STREET.catalog
         ? STREET.catalog.find((e) => e.id === mixinId)
         : undefined;
-    if (entry && entry.category === 'buildings') {
-      return _hitSurfaceVisible(hit.object);
-    }
+    if (entry && entry.category === 'buildings') return 'building';
   }
 
-  // (d) Tiles branch (TASK-024 / TASK-019): climb ancestors PAST the first
-  //     `.el` (which resolves to the tiles `offsetEl`, carrying neither id
-  //     nor layer-name) for an `.el` whose id === 'google3d' OR whose
-  //     `data-layer-name` === 'Google 3D Tiles'.
-  if (acceptTiles && _isGoogleTilesDescendant(node)) {
-    return _hitSurfaceVisible(hit.object);
-  }
+  // (d) Tiles (TASK-019): climb ancestors PAST the first `.el` (the tiles
+  //     `offsetEl`, carrying neither id nor layer-name) for `#google3d` /
+  //     data-layer-name 'Google 3D Tiles'.
+  if (_isGoogleTilesDescendant(node)) return 'tiles';
 
-  // (e) Else reject — scatter (signs, plants, vehicles, people), plus
-  //     fence / seawall (verified NOT category 'buildings').
-  return false;
+  // (e) Else scatter.
+  return 'scatter';
 }
 
 // Shared visibility gate (TASK-013 D3): skip invisible (surface: none)
@@ -330,6 +343,7 @@ export class CursorAnchor {
 export const _internals = {
   _isExcludedObject,
   isSolidFloorHit,
+  classifyHitEntity,
   worldHitNormal,
   MAX_GROUND_DIST,
   FALLBACK_FORWARD_DIST,

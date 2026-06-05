@@ -364,3 +364,81 @@ describe('isSolidFloorHit (solid-floor filter, TASK-013 → TASK-024)', () => {
     expect(isSolidFloorHit({})).toBe(false);
   });
 });
+
+describe('classifyHitEntity (TASK-012 Phase-4 source classifier)', () => {
+  const { classifyHitEntity } = _internals;
+
+  function makeEl(attrs) {
+    return {
+      id: attrs && attrs.id != null ? attrs.id : undefined,
+      hasAttribute: (n) =>
+        attrs != null && Object.prototype.hasOwnProperty.call(attrs, n),
+      getAttribute: (n) => (attrs != null ? attrs[n] : undefined)
+    };
+  }
+
+  function makeHit({ attrs, depth = 0, ancestors = [] }) {
+    const ownerEl = attrs ? makeEl(attrs) : null;
+    let parentNode = null;
+    for (const a of ancestors) {
+      parentNode = { el: makeEl(a), parent: parentNode };
+    }
+    const entityRoot = { el: ownerEl, parent: parentNode };
+    let leaf = entityRoot;
+    for (let i = 0; i < depth; i++) {
+      leaf = { el: null, parent: leaf };
+    }
+    return { object: leaf, point: { x: 0, y: 0, z: 0 } };
+  }
+
+  it('classifies a street-segment as segment', () => {
+    expect(
+      classifyHitEntity(makeHit({ attrs: { 'street-segment': '' } }))
+    ).toBe('segment');
+  });
+
+  it('classifies a Google 3D Tiles descendant as tiles', () => {
+    const hit = makeHit({
+      attrs: {},
+      depth: 2,
+      ancestors: [{ id: 'google3d', 'data-layer-name': 'Google 3D Tiles' }]
+    });
+    expect(classifyHitEntity(hit)).toBe('tiles');
+  });
+
+  it('classifies a catalog building mixin as building', () => {
+    globalThis.STREET = {
+      catalog: [{ id: 'SM3D_Bld_Mixed_4fl', category: 'buildings' }]
+    };
+    const hit = makeHit({ attrs: { mixin: 'SM3D_Bld_Mixed_4fl' }, depth: 3 });
+    expect(classifyHitEntity(hit)).toBe('building');
+    delete globalThis.STREET;
+  });
+
+  it('classifies a non-building catalog mixin as scatter', () => {
+    globalThis.STREET = { catalog: [{ id: 'tree3', category: 'plants' }] };
+    const hit = makeHit({ attrs: { mixin: 'tree3' }, depth: 2 });
+    expect(classifyHitEntity(hit)).toBe('scatter');
+    delete globalThis.STREET;
+  });
+
+  it('classifies a mixin entity as scatter when STREET is undefined', () => {
+    const hit = makeHit({ attrs: { mixin: 'SM3D_Bld_Mixed_4fl' }, depth: 1 });
+    expect(classifyHitEntity(hit)).toBe('scatter');
+  });
+
+  it('classifies a plain entity (no segment/mixin/tiles) as scatter', () => {
+    expect(classifyHitEntity(makeHit({ attrs: { 'some-component': '' } }))).toBe(
+      'scatter'
+    );
+  });
+
+  it('returns null for a hit with no owning entity (editor chrome)', () => {
+    expect(classifyHitEntity(makeHit({ attrs: null }))).toBe(null);
+  });
+
+  it('returns null for null / missing object', () => {
+    expect(classifyHitEntity(null)).toBe(null);
+    expect(classifyHitEntity({})).toBe(null);
+  });
+});
