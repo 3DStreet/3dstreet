@@ -1591,6 +1591,48 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     });
   }
 
+  // TASK-012 (M-1/M-2): minimal committed-motion tween for a Phase-4
+  // double-click teleport. Lerps position + quaternion (+ FOV) only, with a
+  // simple onDone — DISTINCT from `_tweenToPose` (the recovery ease-back),
+  // which embeds CR-D2 per-tick re-validation + the `_popToRoof` hand-off,
+  // none of it teleport-relevant (the teleport endpoint is pre-validated, so
+  // it needs no mid-tween hand-off). The teleport is a committed motion: only
+  // its endpoint is validated; the path is not per-frame collision-clamped.
+  // Returns the TickAnimator handle. `_tweenToPose` is left untouched.
+  _easeToPose({ position, quaternion, fromFov, toFov, durationMs, onTick, onDone }) {
+    const camera = this._camera;
+    const startPos = camera.position.clone();
+    const startQuat = camera.quaternion.clone();
+    const endPos = position.clone();
+    const endQuat = quaternion.clone();
+    const animateFov = fromFov != null && toFov != null;
+    return this._tick.animate({
+      durationMs,
+      onTick: (eased) => {
+        camera.position.lerpVectors(startPos, endPos, eased);
+        camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
+        if (animateFov) {
+          camera.fov = fromFov + (toFov - fromFov) * eased;
+          camera.updateProjectionMatrix();
+        }
+        camera.updateMatrixWorld();
+        if (onTick) onTick(eased);
+        this.dispatchEvent(this._changeEvent);
+      },
+      onDone: () => {
+        camera.position.copy(endPos);
+        camera.quaternion.copy(endQuat);
+        if (animateFov) {
+          camera.fov = toFov;
+          camera.updateProjectionMatrix();
+        }
+        camera.updateMatrixWorld();
+        if (onDone) onDone();
+        this.dispatchEvent(this._changeEvent);
+      }
+    });
+  }
+
   // TASK-024 (D4): reseed `_lastLegitPose` from the current committed pose.
   // Called at the onDone of every pose-setting tween so recovery can never
   // ease back to a pre-teleport pose.
