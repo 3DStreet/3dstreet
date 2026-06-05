@@ -86,7 +86,9 @@ import {
   WASD_CAMERA_RADIUS_METRES,
   ENCLOSURE_PROBE_UP_MARGIN_METRES,
   FALL_DURATION_MS,
-  POP_TO_ROOF_DURATION_MS
+  POP_TO_ROOF_DURATION_MS,
+  DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES,
+  DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES
 } from './constants.js';
 import {
   cameraTiltDegrees,
@@ -107,7 +109,11 @@ import {
   groundedAtLoad,
   classifyFallAction,
   isLegitPose,
-  cueState
+  cueState,
+  classifyDoubleClick,
+  desiredDoubleClickPose,
+  neverRaiseY,
+  pullBackTowardTarget
 } from './navMath.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -1589,6 +1595,188 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         this.dispatchEvent(this._changeEvent);
       }
     });
+  }
+
+  // TASK-012 Phase-4: double-click navigation. Wired from viewport.js
+  // (`nav-experimental:doubleclick` → here) when the experimental flag is on.
+  // Classifies what is under the cursor, computes a predictable "good view"
+  // desired pose (navMath, pure), resolves it onto a clear non-buried camera
+  // pose (never-raise + the shared TASK-024 clearance machinery), and eases
+  // the camera there. The endpoint is the ONLY thing validated — the tween is
+  // a committed motion (it may descend through an intervening roof).
+  navigateDoubleClick(_payload) {
+    if (this._isInactive()) return; // ortho / plan-view / compass — no-op
+    const camera = this._camera;
+    if (!camera || camera.type !== 'PerspectiveCamera') return;
+
+    // (1) Single source of truth for "what's under the cursor" (M-4/H-B): the
+    // raw A-Frame cursor intersection — NOT getIntersectedEl() (which remaps a
+    // lane-child car up to the parent segment) and NOT cursorAnchor's own
+    // differently-excluded raycast. The cursor raycasts continuously
+    // (interval 100 ms) and the mouse is stationary at a double-click, so its
+    // cached intersection is fresh; the payload coords are a redundant
+    // fallback we don't need.
+    const cursorEntity =
+      typeof document !== 'undefined'
+        ? document.getElementById('aframeInspectorMouseCursor')
+        : null;
+    const comps = cursorEntity ? cursorEntity.components : null;
+    const cursorComp = comps ? comps.cursor : null;
+    const raycasterComp = comps ? comps.raycaster : null;
+    const rawEl = cursorComp ? cursorComp.intersectedEl : null;
+    let hit = null;
+    if (
+      rawEl &&
+      raycasterComp &&
+      typeof raycasterComp.getIntersection === 'function'
+    ) {
+      hit = raycasterComp.getIntersection(rawEl);
+    }
+
+    // (2) Classify by owning-entity identity → category. D (no hit) → no-op.
+    const category = classifyDoubleClick(classifyHitEntity(hit));
+    if (category === 'D') return;
+
+    const hitPoint = new THREE.Vector3(hit.point.x, hit.point.y, hit.point.z);
+    let objectBox = null;
+    if (category === 'B' || category === 'C') {
+      let node = hit.object;
+      let el = null;
+      while (node) {
+        if (node.el) {
+          el = node.el;
+          break;
+        }
+        node = node.parent;
+      }
+      const obj3D = el && el.object3D ? el.object3D : hit.object;
+      objectBox = new THREE.Box3().setFromObject(obj3D);
+      if (objectBox.isEmpty()) return; // degenerate — nothing to frame
+    }
+
+    // (3) Pre-click heading bearing (0 = +X/North, increasing toward +Z).
+    const fwd = new THREE.Vector3();
+    camera.getWorldDirection(fwd);
+    const currentYaw = Math.atan2(fwd.z, fwd.x) * RAD2DEG;
+
+    // (4) Desired pose (pure math).
+    const desired = desiredDoubleClickPose({
+      category,
+      hitPoint,
+      objectBox,
+      currentYaw,
+      eyeHeight: EYE_MARGIN_METRES
+    });
+    if (!desired) return;
+    const position = desired.position;
+    const lookTarget = desired.lookTarget;
+
+    // (5) Never-raise (absolute world height, DC6).
+    const currentCamY = camera.position.y;
+    position.y = neverRaiseY(position.y, currentCamY);
+
+    // (6) Clearance resolution against the live scene (probe from the
+    // CANDIDATE, not the live camera — H-1).
+    if (category === 'A') {
+      // Floor-clearance half only; ACCEPT enclosed (landing under an overpass
+      // deck is a legal A state — WE-12). A's clicked point guaranteed a hit,
+      // so a 'cache' miss here is degenerate; proceed with the desired Y.
+      const floor = this._collisionFloorAt(position.x, position.z, {
+        fromY: position.y,
+        refreshCache: false
+      });
+      if (floor.source !== 'cache') {
+        const clearY = floor.y + EYE_MARGIN_METRES;
+        if (position.y < clearY) {
+          if (clearY > currentCamY) return; // can't clear ≤ current height → no-op (OI-1)
+          position.y = clearY;
+        }
+      }
+    } else {
+      // B/C: full legit + buried guard, with standoff pull-back.
+      const resolved = this._resolveStandoff(position, lookTarget, currentCamY);
+      if (!resolved) return; // no clear pose at/below pre-click height → no-op (OI-1)
+      position.copy(resolved);
+    }
+
+    // (7) End orientation from the (possibly lowered/capped) position toward
+    // the look target. No Phase-4 path approaches nadir, so a plain
+    // up=+Y lookAt is roll-safe (R2-5 guard, not a dependency).
+    const scratch = new THREE.PerspectiveCamera();
+    scratch.position.copy(position);
+    scratch.up.set(0, 1, 0);
+    scratch.lookAt(lookTarget);
+    const endQuat = scratch.quaternion.clone();
+
+    // (8) Commit the motion. A mid-tween re-click cancels the in-flight tween
+    // and restarts from the current (in-flight) pose — the live reads above
+    // already used the mid-flight camera, so no jump.
+    this._cancelCameraTween();
+    this._teleportActive = true;
+    this._easeToPose({
+      position,
+      quaternion: endQuat,
+      durationMs: FALL_DURATION_MS,
+      onDone: () => {
+        // DC7: a teleport is a non-wheel move → clear 022's transient memory.
+        this._clearZoomUndo();
+        // D4: recovery must not ease back to the pre-teleport pose.
+        this._reseedLegitPose();
+        // Landed pose is programmatic → re-eval mode/letterbox from the
+        // resulting tilt now (not on the next mouse nudge).
+        this._maybeEmitLbModeChange();
+        // TASK-024a: a teleport is a load/teleport edge.
+        this._deriveGroundedFromPose();
+        this._teleportActive = false;
+      }
+    });
+  }
+
+  // TASK-012 (H-2/M-A/M-5): resolve a B/C standoff onto a clear, non-buried
+  // camera point at or below `maxY` (never-raise). Probes from the candidate,
+  // raising to floor + eye-margin when below it (capped by maxY); on a void
+  // (probe miss) or an enclosed / inside-building candidate, pulls the
+  // standoff inward (toward the look target) one step at a time, re-testing,
+  // until clear or the pull-back cap is hit. Returns a THREE.Vector3 or null
+  // (no clear pose → caller no-ops).
+  _resolveStandoff(position, lookTarget, maxY) {
+    const cand = position.clone();
+    const step = DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES;
+    let pulled = 0;
+    while (pulled <= DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES) {
+      if (cand.y > maxY) cand.y = maxY; // never lift above pre-click height
+      const floor = this._collisionFloorAt(cand.x, cand.z, {
+        fromY: cand.y,
+        refreshCache: false
+      });
+      let clearColumn = true;
+      if (floor.source === 'cache') {
+        // Probe miss — void at a finite scene's edge. Treat as no-floor
+        // (never last-known); pull inward to find a column with a real floor.
+        clearColumn = false;
+      } else {
+        const clearY = floor.y + EYE_MARGIN_METRES;
+        if (cand.y < clearY) {
+          if (clearY > maxY) {
+            // Can't clear the floor at/below the pre-click height here.
+            clearColumn = false;
+          } else {
+            cand.y = clearY;
+          }
+        }
+      }
+      if (
+        clearColumn &&
+        this._poseStillLegit({ position: cand }, { checkBuried: true })
+      ) {
+        return cand;
+      }
+      // Pull the standoff inward (toward the look target) and re-test.
+      const next = pullBackTowardTarget(cand, lookTarget, step);
+      cand.set(next.x, next.y, next.z);
+      pulled += step;
+    }
+    return null;
   }
 
   // TASK-012 (M-1/M-2): minimal committed-motion tween for a Phase-4
