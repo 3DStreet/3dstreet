@@ -20,7 +20,13 @@ import {
   groundedAtLoad,
   classifyFallAction,
   isLegitPose,
-  cueState
+  cueState,
+  cardinalSnapYaw,
+  cardinalDir,
+  classifyDoubleClick,
+  neverRaiseY,
+  pullBackTowardTarget,
+  desiredDoubleClickPose
 } from '../../../../src/editor/lib/nav-experimental/navMath.js';
 import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
@@ -30,7 +36,11 @@ import {
   SWOOP_PHASE2_STEP,
   SWOOP_PHASE2_FLOOR_SNAP_METRES,
   EYE_MARGIN_METRES,
-  WASD_VERTICAL_LIFT_RATE_MPS
+  WASD_VERTICAL_LIFT_RATE_MPS,
+  DOUBLECLICK_LANE_STANDOFF_METRES,
+  DOUBLECLICK_OBJECT_STANDOFF_RADII,
+  DOUBLECLICK_BUILDING_VIEW_HEIGHT_FRAC,
+  DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
 
 if (!globalThis.THREE) globalThis.THREE = THREE;
@@ -1670,5 +1680,204 @@ describe('Phase 2 AGL translation invariance + floor brackets (TASK-013)', () =>
     expect(guardFires).toBe(false);
     if (guardFires) yAgl = yFloor + snap;
     expect(yAgl).toBe(-2); // unchanged entering phase2NextElevation — no teleport
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TASK-012 Phase-4 double-click navigation — pure pose math.
+// ---------------------------------------------------------------------------
+
+describe('cardinalSnapYaw', () => {
+  it('snaps to the nearest cardinal of {0,90,180,270}', () => {
+    expect(cardinalSnapYaw(0)).toBe(0);
+    expect(cardinalSnapYaw(10)).toBe(0);
+    expect(cardinalSnapYaw(80)).toBe(90);
+    expect(cardinalSnapYaw(200)).toBe(180); // WE-6: heading 200 -> S (180)
+    expect(cardinalSnapYaw(350)).toBe(0); // wraps
+  });
+
+  it('flips at the 45 boundary (WE-9: 44 -> 0/N, 46 -> 90/E)', () => {
+    expect(cardinalSnapYaw(44)).toBe(0);
+    expect(cardinalSnapYaw(46)).toBe(90);
+  });
+
+  it('normalises negatives into [0,360)', () => {
+    expect(cardinalSnapYaw(-10)).toBe(0);
+    expect(cardinalSnapYaw(-80)).toBe(270);
+  });
+});
+
+describe('cardinalDir', () => {
+  it('maps cardinals to world axes (0->+X, 90->+Z, 180->-X, 270->-Z)', () => {
+    expect(cardinalDir(0).x).toBeCloseTo(1, 6);
+    expect(cardinalDir(0).z).toBeCloseTo(0, 6);
+    expect(cardinalDir(90).x).toBeCloseTo(0, 6);
+    expect(cardinalDir(90).z).toBeCloseTo(1, 6);
+    expect(cardinalDir(180).x).toBeCloseTo(-1, 6);
+    expect(cardinalDir(270).z).toBeCloseTo(-1, 6);
+  });
+});
+
+describe('classifyDoubleClick', () => {
+  it('segment and tiles -> A', () => {
+    expect(classifyDoubleClick('segment')).toBe('A');
+    expect(classifyDoubleClick('tiles')).toBe('A');
+  });
+  it('building -> B, scatter -> C, null -> D', () => {
+    expect(classifyDoubleClick('building')).toBe('B');
+    expect(classifyDoubleClick('scatter')).toBe('C');
+    expect(classifyDoubleClick(null)).toBe('D');
+    expect(classifyDoubleClick(undefined)).toBe('D');
+  });
+});
+
+describe('neverRaiseY', () => {
+  it('clamps the target to no higher than the current camera height', () => {
+    expect(neverRaiseY(10, 50)).toBe(10); // descend allowed
+    expect(neverRaiseY(80, 50)).toBe(50); // never rise above current
+    expect(neverRaiseY(50, 50)).toBe(50); // equal stays
+  });
+});
+
+describe('pullBackTowardTarget', () => {
+  it('moves horizontally toward the target by the step, holding Y', () => {
+    const p = pullBackTowardTarget(
+      { x: 0, y: 5, z: 0 },
+      { x: 10, y: 0, z: 0 },
+      2
+    );
+    expect(p.x).toBeCloseTo(2, 6);
+    expect(p.z).toBeCloseTo(0, 6);
+    expect(p.y).toBe(5); // Y held (never lifts above pre-click height)
+  });
+
+  it('stops at the target when the step exceeds the remaining distance', () => {
+    const p = pullBackTowardTarget(
+      { x: 0, y: 5, z: 0 },
+      { x: 1, y: 0, z: 0 },
+      10
+    );
+    expect(p.x).toBeCloseTo(1, 6);
+  });
+
+  it('returns the point unchanged when already coincident in XZ', () => {
+    const p = pullBackTowardTarget(
+      { x: 3, y: 5, z: 4 },
+      { x: 3, y: 0, z: 4 },
+      2
+    );
+    expect(p).toEqual({ x: 3, y: 5, z: 4 });
+  });
+});
+
+describe('desiredDoubleClickPose', () => {
+  it('Category D returns null', () => {
+    expect(
+      desiredDoubleClickPose({ category: 'D', currentYaw: 0, eyeHeight: 1.5 })
+    ).toBe(null);
+  });
+
+  it('Category A: looks at the lane point, stands off back along the snap', () => {
+    // Heading 5 -> snaps to 0 (N/+X). Camera stands off -X from the hit-point.
+    const r = desiredDoubleClickPose({
+      category: 'A',
+      hitPoint: { x: 10, y: 0, z: 20 },
+      currentYaw: 5,
+      eyeHeight: EYE_MARGIN_METRES
+    });
+    expect(r.lookTarget.x).toBeCloseTo(10, 6);
+    expect(r.lookTarget.y).toBeCloseTo(0, 6);
+    expect(r.lookTarget.z).toBeCloseTo(20, 6);
+    expect(r.position.x).toBeCloseTo(10 - DOUBLECLICK_LANE_STANDOFF_METRES, 6);
+    expect(r.position.y).toBeCloseTo(EYE_MARGIN_METRES, 6);
+    expect(r.position.z).toBeCloseTo(20, 6);
+    // Down-look pitch below T by construction (standoff >> eye height).
+    const pitch =
+      (Math.atan2(EYE_MARGIN_METRES, DOUBLECLICK_LANE_STANDOFF_METRES) * 180) /
+      Math.PI;
+    expect(pitch).toBeLessThan(TILT_THRESHOLD_DEFAULT_DEGREES);
+  });
+
+  it('Category C: looks at the object centre, stands off by bounding radius', () => {
+    const box = {
+      min: { x: -1, y: 0, z: -1 },
+      max: { x: 1, y: 2, z: 1 }
+    };
+    const r = desiredDoubleClickPose({
+      category: 'C',
+      hitPoint: { x: 0.5, y: 1.8, z: 0.9 },
+      objectBox: box,
+      currentYaw: 90, // +Z
+      eyeHeight: EYE_MARGIN_METRES
+    });
+    // centre = (0,1,0); target height = centre height.
+    expect(r.lookTarget.x).toBeCloseTo(0, 6);
+    expect(r.lookTarget.y).toBeCloseTo(1, 6);
+    expect(r.lookTarget.z).toBeCloseTo(0, 6);
+    expect(r.position.y).toBeCloseTo(1, 6); // centre height
+    const radius = 0.5 * Math.hypot(2, 2, 2);
+    expect(r.position.z).toBeCloseTo(
+      -radius * DOUBLECLICK_OBJECT_STANDOFF_RADII,
+      4
+    );
+  });
+
+  it('Category B: target height is a fraction of building height', () => {
+    const box = {
+      min: { x: -5, y: 0, z: -5 },
+      max: { x: 5, y: 30, z: 5 }
+    };
+    const r = desiredDoubleClickPose({
+      category: 'B',
+      hitPoint: { x: 0, y: 15, z: 5 },
+      objectBox: box,
+      currentYaw: 90,
+      eyeHeight: EYE_MARGIN_METRES
+    });
+    expect(r.position.y).toBeCloseTo(30 * DOUBLECLICK_BUILDING_VIEW_HEIGHT_FRAC, 6);
+  });
+
+  it('framing-pitch cap: a steep look-UP lowers the aim point toward camera height', () => {
+    // Low camera, hit-point high on a tower -> framing the exact point would
+    // crane near-vertical. The cap must move the look target DOWN (toward the
+    // camera height), not up (round-3 L3-1 sign).
+    const box = {
+      min: { x: -2, y: 0, z: -2 },
+      max: { x: 2, y: 100, z: 2 }
+    };
+    const r = desiredDoubleClickPose({
+      category: 'B',
+      hitPoint: { x: 0, y: 95, z: 2 }, // near the top
+      objectBox: box,
+      currentYaw: 90,
+      eyeHeight: EYE_MARGIN_METRES
+    });
+    // Uncapped aim Y = 95. Capped aim Y must be lower than the raw hit Y
+    // (moved toward camera height) but still above the camera (a look-up).
+    expect(r.lookTarget.y).toBeLessThan(95);
+    expect(r.lookTarget.y).toBeGreaterThan(r.position.y);
+    // The capped vertical angle equals MAX_FRAMING_PITCH.
+    const hdist = Math.hypot(
+      r.lookTarget.x - r.position.x,
+      r.lookTarget.z - r.position.z
+    );
+    const angle =
+      (Math.atan2(r.lookTarget.y - r.position.y, hdist) * 180) / Math.PI;
+    expect(angle).toBeCloseTo(DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES, 4);
+  });
+
+  it('framing-pitch cap is inert for a gentle look (angle below the cap)', () => {
+    const box = {
+      min: { x: -5, y: 0, z: -5 },
+      max: { x: 5, y: 12, z: 5 }
+    };
+    const r = desiredDoubleClickPose({
+      category: 'B',
+      hitPoint: { x: 0, y: 4, z: 5 },
+      objectBox: box,
+      currentYaw: 90,
+      eyeHeight: EYE_MARGIN_METRES
+    });
+    expect(r.lookTarget.y).toBeCloseTo(4, 6); // unchanged
   });
 });

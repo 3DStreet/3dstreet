@@ -251,3 +251,32 @@ export const COMPASS_NORTH_TOLERANCE_DEGREES = 2;
 
 // Rotation-arrow step.
 export const COMPASS_ROTATE_STEP_DEGREES = 90;
+
+// TASK-012 Phase-4 double-click navigation. All first-pass tuning values
+// (settled at feel-test). Standoff / view-height geometry feeds the desired
+// pose in navMath.desiredDoubleClickPose; the pull-back knobs bound the B/C
+// standoff-clearance search.
+//   Lane (Category A): stand off ~5 m back along the cardinal heading at
+//     EYE_MARGIN_METRES (1.5 m) eye height. ~5 m ≫ 1.5 m keeps the down-look
+//     below the mode threshold T by construction (Street mode on a lane
+//     click).
+export const DOUBLECLICK_LANE_STANDOFF_METRES = 5;
+//   Generic object (Category C): stand off this many bounding-sphere radii
+//     from the object centre, aimed at the centre.
+export const DOUBLECLICK_OBJECT_STANDOFF_RADII = 3;
+//   Building (Category B): stand off this multiple of the footprint diagonal
+//     back along the heading…
+export const DOUBLECLICK_BUILDING_STANDOFF_DIAG = 1.5;
+//   …at this fraction of the building's height (so from high above you come
+//     DOWN to see the building rather than stay on its roof).
+export const DOUBLECLICK_BUILDING_VIEW_HEIGHT_FRAC = 0.33;
+//   Framing-pitch cap (Category B): if framing the exact hit-point would
+//     tilt the look more than this, move the aim point TOWARD camera height
+//     (down for a look-up, up for a look-down) so the camera never cranes
+//     near-vertically at a tower top (WE-8).
+export const DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES = 70;
+//   B/C standoff clearance search: pull the standoff inward (toward the look
+//     target) in STEP-metre increments, up to MAX metres, re-testing each
+//     candidate; give up (no-op) past MAX.
+export const DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES = 1;
+export const DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES = 40;
