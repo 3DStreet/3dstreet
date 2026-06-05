@@ -694,3 +694,107 @@ export function shiftRotateStep({
   // The caller applies R via `premultiply` (continuous at nadir).
   return evalAtTilt(clampedTilt);
 }
+
+// ---------------------------------------------------------------------------
+// TASK-027 — final zoom polish helpers (pure).
+// ---------------------------------------------------------------------------
+
+// Part F — per-tick horizontal lurch cap. Scales with height above ground so
+// the lurch is bounded proportionally rather than by a fixed metre value; a
+// lower bound keeps it usable near the ground and on the no-AGL Ctrl+wheel /
+// out-of-bounds path (where `yAgl` is non-finite). Pure.
+export function lateralCap(yAgl, lowerBound, coeff) {
+  if (!Number.isFinite(yAgl)) return lowerBound;
+  return Math.max(lowerBound, coeff * yAgl);
+}
+
+// Part A — Phase-2 DESCENT (swoop-in) FOV ramp. Eases the entry FOV open to
+// the landing FOV as AGL falls (frac 1 → 0). The landing target is
+// `max(entryFov, landingFov)` so an already-wide camera never NARROWS on
+// arrival (the Part-A guard) — the ramp is monotonic widen-or-hold. Routed
+// through phase2HeightFrac so it reads the same frac as the tilt ramp. Pure.
+export function phase2DescentFov(yAgl, entryFov, landingFov) {
+  const target = Math.max(entryFov, landingFov);
+  return entryFov + (target - entryFov) * (1 - phase2HeightFrac(yAgl));
+}
+
+// Part A — Phase-2 ASCENT (swoop-out) FOV. Anchored through (startFrac,
+// startFov) captured when this ascent began and (1, targetFov) at the ceiling
+// — the exact shape of phase2AscentTilt, so the immediate-undo case
+// (startFrac=0, startFov=landing, target=entryFov) retraces the descent FOV
+// curve (C1). Pure.
+export function phase2AscentFov(yAgl, startFrac, startFov, targetFov) {
+  const frac = phase2HeightFrac(yAgl);
+  if (startFrac >= 1) return targetFov;
+  const t = THREE.MathUtils.clamp((frac - startFrac) / (1 - startFrac), 0, 1);
+  return startFov + (targetFov - startFov) * t;
+}
+
+// Part C — decide the Phase-2-band zoom-IN regime from the resolved cursor
+// anchor. Returns 'swoop' (landing surface: ground / rooftop — near-horizontal
+// hit) or 'dolly' (wall / façade — near-vertical — or no real hit / open sky).
+//   source 'ground'   → 'swoop' (horizontal by construction)
+//   source 'fallback' → 'dolly' (no real target — break out, level-forward)
+//   source 'mesh'     → 'swoop' iff isSolidFloor AND the surface is below the
+//                       wall slope cut (near-horizontal: ground-top / rooftop);
+//                       else 'dolly' (wall, or non-floor scatter).
+//   missing normal    → 'swoop' (never strand the user mid-swoop on a missing
+//                       normal — default to the landing surface).
+// `Math.abs(normalY)` so an up- or down-facing horizontal surface both read as
+// a landing surface; a wall's normalY ≈ 0 → slope ≈ 90° → 'dolly'. Pure.
+export function classifySwoopTickTarget({ source, normalY, isSolidFloor }) {
+  if (source === 'ground') return 'swoop';
+  if (source === 'fallback') return 'dolly';
+  if (normalY == null) return 'swoop';
+  const slopeDeg =
+    Math.acos(THREE.MathUtils.clamp(Math.abs(normalY), 0, 1)) * RAD2DEG;
+  if (isSolidFloor && slopeDeg < BLOCK_SLOPE_MIN_DEGREES) return 'swoop';
+  return 'dolly';
+}
+
+// Part B (M4) — re-aim continuity weight. 1 for near cursor targets, ramps
+// linearly to 0 by `far`, so the cursor-lock re-aim magnitude falls to zero
+// continuously as the target recedes toward the horizon — no jump crossing
+// into the no-real-hit fallback at the rooftop/sky edge. Pure.
+export function reaimWeight(distance, near, far) {
+  if (!Number.isFinite(distance)) return 0;
+  return THREE.MathUtils.clamp((far - distance) / (far - near), 0, 1);
+}
+
+// Part B — cursor-lock re-aim quaternion (pure; extracted for unit testing).
+// Given the captured baseline orientation/fov and the cursor world point P,
+// returns the camera quaternion that, at `fovAfter`, holds P pinned under the
+// cursor pixel `ndc`. Computed ABSOLUTELY from the baseline (not composed
+// per-tick) so it is a pure function of fov → exactly reversible, and reduces
+// to `baselineQuat` at fovAfter === baselineFov (the B.3 unwind contract).
+//
+// `weight` scales the minimal-arc rotation via slerp from identity (NOT a
+// direction lerp — that would change the rotation axis with the weight and
+// break reversibility). Builds a throwaway PerspectiveCamera internally so it
+// needs no live scene. Returns a new THREE.Quaternion.
+export function reaimQuatForFov({
+  baselineQuat,
+  ndc,
+  P,
+  camPos,
+  fovAfter,
+  aspect,
+  weight = 1
+}) {
+  const cam = new THREE.PerspectiveCamera(fovAfter, aspect, 0.1, 1000);
+  cam.position.set(camPos.x, camPos.y, camPos.z);
+  cam.quaternion.copy(baselineQuat);
+  cam.updateMatrixWorld();
+  cam.updateProjectionMatrix();
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), cam);
+  const rayDir = ray.ray.direction.clone().normalize();
+  const toP = new THREE.Vector3(
+    P.x - camPos.x,
+    P.y - camPos.y,
+    P.z - camPos.z
+  ).normalize();
+  const fullArc = new THREE.Quaternion().setFromUnitVectors(rayDir, toP);
+  const delta = new THREE.Quaternion().identity().slerp(fullArc, weight);
+  return delta.multiply(baselineQuat).normalize();
+}
