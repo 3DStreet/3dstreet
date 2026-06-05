@@ -142,6 +142,36 @@ describe('CursorAnchor.worldPointAt', () => {
     obj.name = 'street-segment-mesh';
     expect(_internals._isExcludedObject(obj)).toBe(false);
   });
+
+  // TASK-014d: per-caller maxGroundDist reach ceiling.
+  it('default reject (no opts) drops a >2000m ground hit to fallback', () => {
+    const root = new THREE.Group(); // empty → ground-plane path
+    const cam = makeCameraLookingDown(5000); // straight down, 5000 m up
+    const ca = new CursorAnchor({
+      camera: cam,
+      sceneEl: makeSceneEl(root),
+      domElement: makeDom()
+    });
+    // Straight-down ground hit is 5000 m away → exceeds MAX_GROUND_DIST
+    // (2000) → Step 2 rejected → Step 3 forward fallback.
+    const p = ca.worldPointAt(50, 50);
+    expect(p.source).toBe('fallback');
+  });
+
+  it('raised maxGroundDist keeps a high-altitude ground hit (source ground)', () => {
+    const root = new THREE.Group();
+    const cam = makeCameraLookingDown(5000);
+    const ca = new CursorAnchor({
+      camera: cam,
+      sceneEl: makeSceneEl(root),
+      domElement: makeDom()
+    });
+    // Same 5000 m straight-down hit, but the wheel-zoom reach ceiling keeps
+    // it as a real ground anchor.
+    const p = ca.worldPointAt(50, 50, { maxGroundDist: 1e6 });
+    expect(p.source).toBe('ground');
+    expect(p.y).toBeCloseTo(0, 3);
+  });
 });
 
 describe('isSolidFloorHit (solid-floor filter, TASK-013 → TASK-024)', () => {

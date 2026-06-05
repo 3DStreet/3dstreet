@@ -6,7 +6,6 @@
 
 import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
-  FALLBACK_FORWARD_DIST,
   MIN_TILT_DEGREES,
   MAX_TILT_DEGREES,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
@@ -334,19 +333,98 @@ export function cueState(prevShown, aglAboveCollisionFloor, enclosed) {
   return prevShown;
 }
 
-// Synthetic wheel-zoom anchor for the low-tilt branch (per
-// `claude/specs/001-tilt-conditional-zoom.md`): a point
-// `FALLBACK_FORWARD_DIST` metres along the camera's view direction.
-// Reused as the "hit point" in the existing orbit-step math in
-// `_applyWheelTick`, giving a 3m-per-tick forward dolly
-// (ZOOM_PER_WHEEL_TICK × FALLBACK_FORWARD_DIST) — no cursor anchoring.
+// TASK-014d (D-P1/D-P2): one wheel-zoom dolly step toward a fixed `hit`,
+// with the HORIZONTAL component of the translation capped to
+// `lateralCapMetres`. Returns the NEW camera position (THREE.Vector3), or
+// `null` if the step is non-finite (the caller then falls through to the
+// level-forward fallback).
+//
+// Step shape (matches _applyAnchoredDollyStep's algebra, re-expressed as a
+// translation): newPos = hit + factor·(camPos − hit), i.e.
+//   step = newPos − camPos = (1 − factor)·(hit − camPos).
+// factor = (1 − alpha) for zoom-in (sign<0, step toward hit) and
+// 1/(1 − alpha) for zoom-out (sign>0, step away from hit).
+//
+// The cap acts on the HORIZONTAL part h = hypot(step.x, step.z) (spec
+// Decision 5 — NOT |step|), and when it fires it scales the WHOLE vector
+// (x, y, z together) by lateralCapMetres / h. This preserves the H:V ratio
+// so the move stays on the camera→hit ray — just shorter — keeping the
+// target locked under the cursor and reversibility exact. A straight-down
+// step has h ≈ 0 so the cap never fires (full exponential descent survives).
+//
+// Reversibility: the applied cap is `±(cap/H)·(hit − camPos)` where
+// H = hypot((hit−camPos).xz) is a pure function of camera position about a
+// FIXED hit, so each elementary step is position-invertible about hit; an
+// in/out pair on the same side of the cap threshold composes to identity.
 // Pure.
-export function computeLowTiltWheelHit(camera) {
+export function cappedDollyStep({
+  camPos,
+  hit,
+  sign,
+  alpha,
+  lateralCapMetres
+}) {
+  const factor = sign < 0 ? 1 - alpha : 1 / (1 - alpha);
+  const oneMinusFactor = 1 - factor;
+  let stepX = oneMinusFactor * (hit.x - camPos.x);
+  let stepY = oneMinusFactor * (hit.y - camPos.y);
+  let stepZ = oneMinusFactor * (hit.z - camPos.z);
+
+  const h = Math.hypot(stepX, stepZ);
+
+  // Non-finite guard (AR #2): a near-parallel grazing ray (now reachable
+  // with the raised wheel-path reach ceiling) can return a `hit` near
+  // Float.MAX whose step overflows. Bail so the caller falls to
+  // level-forward rather than NaN the camera.
+  if (
+    !Number.isFinite(stepX) ||
+    !Number.isFinite(stepY) ||
+    !Number.isFinite(stepZ) ||
+    !Number.isFinite(h)
+  ) {
+    return null;
+  }
+
+  if (lateralCapMetres > 0 && h > lateralCapMetres) {
+    const k = lateralCapMetres / h;
+    stepX *= k;
+    stepY *= k;
+    stepZ *= k;
+  }
+
+  return new THREE.Vector3(
+    camPos.x + stepX,
+    camPos.y + stepY,
+    camPos.z + stepZ
+  );
+}
+
+// TASK-014d (D-P5): level-forward synthetic anchor for the no-real-hit
+// wheel-zoom case (cursor ray hit nothing — open sky). Returns a point
+// `dist` metres ahead of the camera along its YAW HEADING (forward
+// projected to horizontal), held at the camera's OWN y so the resulting
+// dolly is level — zoom-in advances forward at constant height instead of
+// drifting up into empty sky (which would read as zoom-out).
+//
+// Uses the yaw heading (not raw camera-forward) so it stays well-defined at
+// any pitch: looking near-vertically, forward.xz → 0 and a forward-based
+// "ahead" would be degenerate/jittery. Returns `null` only when the
+// horizontal heading is genuinely undefined (|forward.xz| < 1e-6 — true
+// vertical), which the ±89° tilt clamp prevents in live use; the caller
+// no-ops that tick. Pure.
+export function levelForwardAnchor(camera, dist) {
   const fwd = new THREE.Vector3();
   camera.getWorldDirection(fwd);
-  return new THREE.Vector3()
-    .copy(camera.position)
-    .addScaledVector(fwd, FALLBACK_FORWARD_DIST);
+  const h = Math.hypot(fwd.x, fwd.z);
+  if (h < 1e-6) return null; // near-straight-up/down: yaw undefined
+  const dirX = fwd.x / h;
+  const dirZ = fwd.z / h;
+  const camPos = camera.position;
+  return new THREE.Vector3(
+    camPos.x + dirX * dist,
+    camPos.y, // level: hold the camera's own height
+    camPos.z + dirZ * dist
+  );
 }
 
 // Phase 3 swoop helpers. See claude/specs/001-phase-3-plan.md.

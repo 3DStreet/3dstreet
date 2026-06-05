@@ -6,7 +6,8 @@
 // the console
 // (`sceneEl.setAttribute('nav-experimental-tuning','tiltThresholdDegrees',15)`)
 // — without a rebuild. Exposed knobs: the tilt threshold T, the far-pivot
-// fallback distance (D-LT-3), and the Shift+LB rotation speed. The
+// fallback distance (D-LT-3), the Shift+LB rotation speed, and the
+// wheel-zoom lateral movement cap (TASK-014d). The
 // navigation controls themselves are not an A-Frame component
 // (`ExperimentalControls` is `new`-ed in viewport.js), so this component
 // just relays each schema value onto the live controls instance via the
@@ -21,7 +22,8 @@
 import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
   MAP_PIVOT_BOUNDS_RADIUS_METRES,
-  ROTATION_SPEED_RAD_PER_PX
+  ROTATION_SPEED_RAD_PER_PX,
+  WHEEL_ZOOM_LATERAL_CAP_METRES
 } from './constants.js';
 
 if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning']) {
@@ -40,6 +42,10 @@ if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning
       rotationSpeedRadPerPx: {
         type: 'number',
         default: ROTATION_SPEED_RAD_PER_PX
+      },
+      wheelZoomLateralCapMetres: {
+        type: 'number',
+        default: WHEEL_ZOOM_LATERAL_CAP_METRES
       }
     },
     update() {
@@ -58,6 +64,9 @@ if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning
       }
       if (typeof c.setRotationSpeed === 'function') {
         c.setRotationSpeed(this.data.rotationSpeedRadPerPx);
+      }
+      if (typeof c.setWheelZoomLateralCap === 'function') {
+        c.setWheelZoomLateralCap(this.data.wheelZoomLateralCapMetres);
       }
     }
   });

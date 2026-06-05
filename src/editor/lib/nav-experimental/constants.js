@@ -141,6 +141,25 @@ export const LB_PAN_MAX_STEP_METRES = 5000;
 export const MAX_GROUND_DIST = 2000;
 export const FALLBACK_FORWARD_DIST = 30;
 
+// TASK-014d: cap on the HORIZONTAL component of one wheel-zoom dolly tick,
+// in metres. Bounds the LT-1 shallow-tilt lurch (~50 m/tick at 200 m / 22°)
+// without throttling straight-down descent (horizontal ≈ 0 there, so the
+// cap never fires). Absolute metres/tick (NOT a % of the step) so it does
+// not silently track ZOOM_PER_WHEEL_TICK — re-feel-test after TASK-014a
+// changes the base step size. Separate knob from the orbit-pivot bounds
+// (different origin: camera nadir vs screen-centre ground point).
+// Live-tunable via nav-experimental-tuning (wheelZoomLateralCapMetres).
+export const WHEEL_ZOOM_LATERAL_CAP_METRES = 15; // 10–25 expected; feel
+
+// TASK-014d: per-caller far-ground reach ceiling for the wheel-zoom path.
+// Far above any real scene (1000 km) but well short of float overflow, so
+// legitimate high-altitude ground (a straight-down hit thousands of m
+// below) is kept while a degenerate grazing-ray Float.MAX-class hit still
+// falls to the level-forward fallback. LB-pan and the orbit-pivot caller
+// keep the default MAX_GROUND_DIST (2000 m) — see worldPointAt's
+// maxGroundDist opt.
+export const WHEEL_GROUND_REACH_CEILING_METRES = 1e6;
+
 // Shift+LB rotation speed (radians per pixel). Matches the Phase-0
 // EditorControls feel.
 export const ROTATION_SPEED_RAD_PER_PX = 0.0035;
