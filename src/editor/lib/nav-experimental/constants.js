@@ -258,6 +258,14 @@ export const PHASE3_FOV_WIDE_CAP_DEGREES = Math.min(
   SWOOP_LANDING_FOV_DEGREES,
   FOV_DISTORTION_LIMIT_DEGREES
 );
+// SWOOP_FOV_RAMP_EXPONENT — concentrates the FOV "opening up" near the FLOOR
+// (the sense of arrival) instead of spreading it linearly across the band. The
+// pedestal descent is exponential (fast at the top, asymptotically slow near
+// the floor), so a height-LINEAR FOV ramp does ~all its widening at the top and
+// almost none at the bottom (live-test #2: "odd at the start, nothing at the
+// end"). FOV = narrow + (wide−narrow)·(1−heightFrac)^exponent: with exponent 3
+// the widening is back-loaded into the final stretch of the descent. Feel-tune.
+export const SWOOP_FOV_RAMP_EXPONENT = 3;
 
 // TASK-027 Part B — cursor-locked street-level FOV zoom (camera re-aim).
 //   REAIM_FADE_{NEAR,FAR}_METRES — the cursor-target distance band over which

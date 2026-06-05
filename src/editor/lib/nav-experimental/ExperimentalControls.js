@@ -72,6 +72,7 @@ import {
   SWOOP_PHASE2_FLOOR_SNAP_METRES,
   SWOOP_PHASE3_FOV_FLOOR_DEGREES,
   SWOOP_LANDING_FOV_DEGREES,
+  SWOOP_FOV_RAMP_EXPONENT,
   DEFAULT_MAP_FOV_DEGREES,
   PHASE3_FOV_WIDE_CAP_DEGREES,
   REAIM_FADE_NEAR_METRES,
@@ -103,8 +104,7 @@ import {
   decideSwoopPhase,
   phase2TargetTilt,
   phase2AscentTilt,
-  phase2DescentFov,
-  phase2AscentFov,
+  swoopLandingFov,
   phase2HeightFrac,
   nextZoomUndo,
   phase2NextElevation,
@@ -261,12 +261,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // `_tmpQuat` is the minimal-arc rotation applied via premultiply.
     this._tmpV3d = new THREE.Vector3();
     this._tmpQuat = new THREE.Quaternion();
-    // TASK-027 Part B: scratch for the cursor-lock re-aim. `_tmpV3e/f` hold the
-    // cursor world point P and the camera→P direction; `_tmpQuatB/C` build the
-    // minimal-arc rotation and its slerp-from-identity; `_reaimRaycaster` is a
-    // dedicated raycaster so the re-aim's baseline-orientation probe never
-    // disturbs the CursorAnchor's.
-    this._tmpV3e = new THREE.Vector3();
+    // TASK-027 Part B: scratch for the cursor-lock re-aim. `_tmpV3f` holds the
+    // camera→P direction; `_tmpQuatB/C` build the minimal-arc rotation and its
+    // slerp-from-identity; `_reaimRaycaster` is a dedicated raycaster so the
+    // re-aim's baseline-orientation probe never disturbs the CursorAnchor's.
+    // (The target point P is held in the `_phase3Reaim` session, not scratch.)
     this._tmpV3f = new THREE.Vector3();
     this._tmpQuatB = new THREE.Quaternion();
     this._tmpQuatC = new THREE.Quaternion();
@@ -2344,7 +2343,21 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       return this._applyPhase1WheelTick(sign);
     }
     const yAgl = camera.position.y - this._frameGroundY;
-    const phase = decideSwoopPhase(yAgl);
+    let phase = decideSwoopPhase(yAgl);
+    // TASK-027 (live-test #3): float-robust / sticky street level. The landing
+    // snaps the camera to `groundY + 1.5`, exactly the Phase-2/3 boundary, and
+    // `(groundY + 1.5) − groundY` can round to `1.5 + ulp > 1.5` → Phase 2. That
+    // routed a street-level FOV-zoom-OUT into an immediate reverse swoop instead
+    // of widening the FOV back. Treat AGL within a sub-centimetre tolerance of
+    // the floor as Phase 3 so the FOV zoom is reversible at street level; the
+    // swoop only resumes once the FOV has widened back to the cap (Phase 3's own
+    // hand-off). The shift is 1 cm — imperceptible for the swoop entry.
+    if (
+      phase === 'phase2' &&
+      yAgl <= SWOOP_PHASE2_EXIT_ELEVATION_METRES + 0.01
+    ) {
+      phase = 'phase3';
+    }
     if (phase === 'phase2') {
       // TASK-027 Part C: per-tick break-out on zoom-IN. Resolve the cursor
       // target's surface — a landing surface (ground / rooftop, near-horizontal)
@@ -2382,10 +2395,16 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     );
     const isSolidFloor =
       hit.source === 'mesh' ? isSolidFloorHit(hit.raw) : true;
+    // TASK-027 Part C (live-test #2): break out of the swoop only when craning
+    // UP at a wall/sky — looking down or level always swoops. Tilt < 0 ⇒ looking
+    // above horizontal. (During a normal swoop the tilt is positive/descending,
+    // so this only fires on a deliberate up-crane.)
+    const lookingUp = cameraTiltDegrees(this._camera) < 0;
     return classifySwoopTickTarget({
       source: hit.source,
       normalY: hit.normal ? hit.normal.y : null,
-      isSolidFloor
+      isSolidFloor,
+      lookingUp
     });
   }
 
@@ -2593,14 +2612,16 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (sign > 0) {
       // ASCENT (zoom-out): atomically capture the ascent anchor on the FIRST
       // out-tick of this ascent (the sole writer, under the == null guard).
-      // All three fields (frac, tilt, fov) set together in one struct — they
-      // cannot desync (L4). `yAgl` here is the PRE-step height (matches the
-      // camera's live tilt/fov read below).
+      // Only the TILT needs an anchor (the user can crane the camera mid-swoop,
+      // so the ascent tilt must start from the live pose without a jump). FOV
+      // can't be perturbed mid-band (only the wheel changes it), so the ascent
+      // FOV is a pure function of height (swoopLandingFov) — no anchor needed.
+      // `yAgl` here is the PRE-step height (matches the camera's live tilt read
+      // below).
       if (this._ascentAnchor == null) {
         this._ascentAnchor = {
           frac: phase2HeightFrac(yAgl),
-          tilt: cameraTiltDegrees(camera),
-          fov: camera.fov
+          tilt: cameraTiltDegrees(camera)
         };
       }
     } else {
@@ -2632,14 +2653,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (sign < 0 && yAglNext <= yFloor) {
       camera.position.y = groundY + yFloor; // ← write back
       this._setCameraTiltPreservingYaw(0);
-      // TASK-027 Part A: leave FOV as the descent ramp set it (≈ the landing
-      // FOV at the floor) — no latched baseline any more (the wide cap is the
-      // PHASE3_FOV_WIDE_CAP_DEGREES constant). Apply the final descent FOV step
-      // so the landing FOV is reached exactly at the floor.
-      camera.fov = phase2DescentFov(
+      // TASK-027 Part A: reach the landing FOV exactly at the floor (no latched
+      // baseline; the wide cap is the PHASE3_FOV_WIDE_CAP_DEGREES constant).
+      camera.fov = swoopLandingFov(
         yFloor,
         this._zoomUndo.fov,
-        SWOOP_LANDING_FOV_DEGREES
+        SWOOP_LANDING_FOV_DEGREES,
+        SWOOP_FOV_RAMP_EXPONENT
       );
       camera.updateProjectionMatrix();
       // TASK-022: Phase-3 entry ends any ascent geometry; reset the anchor so
@@ -2701,11 +2721,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         phase2TargetTilt(yAglNext, this._zoomUndo.tilt)
       );
       // TASK-027 Part A: descent FOV ramp — ease the entry FOV open toward the
-      // landing FOV as AGL falls (no-op if already wider).
-      camera.fov = phase2DescentFov(
+      // landing FOV as AGL falls, back-loaded into the final stretch.
+      camera.fov = swoopLandingFov(
         yAglNext,
         this._zoomUndo.fov,
-        SWOOP_LANDING_FOV_DEGREES
+        SWOOP_LANDING_FOV_DEGREES,
+        SWOOP_FOV_RAMP_EXPONENT
       );
     } else {
       this._setCameraTiltPreservingYaw(
@@ -2716,13 +2737,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
           ascentTarget
         )
       );
-      // TASK-027 Part A: ascent FOV ramp — anchored (startFrac, startFov) →
-      // ascent target, mirroring the tilt ramp (immediate-undo retraces).
-      camera.fov = phase2AscentFov(
+      // TASK-027 Part A: ascent FOV — a pure function of height (narrow =
+      // ascent target), the SAME curve the descent drew, so an immediate undo
+      // retraces it exactly; no anchor needed (FOV can't be perturbed mid-band).
+      camera.fov = swoopLandingFov(
         yAglNext,
-        this._ascentAnchor.frac,
-        this._ascentAnchor.fov,
-        ascentTargetFov
+        ascentTargetFov,
+        SWOOP_LANDING_FOV_DEGREES,
+        SWOOP_FOV_RAMP_EXPONENT
       );
     }
     camera.updateProjectionMatrix();
@@ -2794,32 +2816,46 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       this._lastWheelClientY
     );
 
-    // Baseline session: capture on first Phase-3 tick; re-capture at the
-    // current pose when the cursor pixel moves (a new aim — Δ starts at 0, no
-    // jump). baselineFov is the PRE-step FOV (H1).
+    // Baseline session: capture on the first Phase-3 tick; re-capture at the
+    // current pose when the cursor PIXEL moves (a new aim — Δ starts at 0, no
+    // jump). The target world point `P` is resolved ONCE at capture and held
+    // for the whole session (live-test #3 fix): re-resolving the cursor target
+    // every tick breaks the unwind — once the re-aim cranes the camera, the
+    // cursor pixel points somewhere else (e.g. sky above the building), so on
+    // zoom-out it can't find the original target to un-crane back to. A stable
+    // P makes the re-aim a pure function of fov for the session → it unwinds
+    // exactly back to the baseline (street) pose as the FOV widens. (This is
+    // the notes' "first-frame-per-gesture capture"; the spec's WE-B caveat —
+    // tile streaming voids retrace — is the accepted cost.) baselineFov is the
+    // PRE-step FOV (H1).
     if (
       !this._phase3Reaim ||
       ndc.distanceTo(this._phase3Reaim.ndc) > PHASE3_REAIM_NDC_EPS
     ) {
+      const hit = this._cursorAnchor.worldPointAt(
+        this._lastWheelClientX,
+        this._lastWheelClientY,
+        { maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES }
+      );
       this._phase3Reaim = {
         baselineQuat: camera.quaternion.clone(),
         baselineFov: fovBefore,
-        ndc: ndc.clone()
+        ndc: ndc.clone(),
+        // No real hit (open sky) at capture → no target to pin this session.
+        targetP:
+          hit.source === 'fallback'
+            ? null
+            : new THREE.Vector3(hit.x, hit.y, hit.z),
+        targetDist: hit.distance
       };
     }
     const reaim = this._phase3Reaim;
+    if (!reaim.targetP) return; // sky aim → centre-anchored FOV change (B.4)
 
-    // Resolve the cursor target under the NEW fov. No real hit (open sky) →
-    // no re-aim (centre-anchored FOV change only, B.4).
-    const hit = this._cursorAnchor.worldPointAt(
-      this._lastWheelClientX,
-      this._lastWheelClientY,
-      { maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES }
-    );
-    if (hit.source === 'fallback') return;
-
-    const P = this._tmpV3e.set(hit.x, hit.y, hit.z);
-    const toP = this._tmpV3f.subVectors(P, camera.position).normalize();
+    // camPos is fixed through Phase 3, so the captured P gives a stable aim.
+    const toP = this._tmpV3f
+      .subVectors(reaim.targetP, camera.position)
+      .normalize();
     if (toP.lengthSq() < 1e-12) return; // P ≈ camera position: nothing to aim at
 
     // (H2) Re-orient to the BASELINE quat and refresh matrixWorld BEFORE the
@@ -2827,15 +2863,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // NEW fov) — not the previous tick's premultiplied orientation.
     camera.quaternion.copy(reaim.baselineQuat);
     camera.updateMatrixWorld();
-    this._reaimRaycaster.setFromCamera(ndc, camera);
+    this._reaimRaycaster.setFromCamera(reaim.ndc, camera);
     const rayDir = this._reaimRaycaster.ray.direction; // unit, world space
 
     // (M4) Continuity weight: fade re-aim to 0 as the target recedes toward the
-    // horizon, so the façade → sky crossing is continuous (no jump into the
-    // no-hit fallback). (H3) Scale the QUATERNION via slerp from identity —
-    // never lerp the directions (that would change the axis with the weight and
-    // break reversibility).
-    const w = reaimWeight(hit.distance, REAIM_FADE_NEAR_METRES, REAIM_FADE_FAR_METRES);
+    // horizon, so the façade → sky crossing is continuous. (H3) Scale the
+    // QUATERNION via slerp from identity — never lerp the directions (that would
+    // change the axis with the weight and break reversibility).
+    const w = reaimWeight(
+      reaim.targetDist,
+      REAIM_FADE_NEAR_METRES,
+      REAIM_FADE_FAR_METRES
+    );
     const fullArc = this._tmpQuatB.setFromUnitVectors(rayDir, toP);
     const delta = this._tmpQuatC.identity().slerp(fullArc, w);
     camera.quaternion.premultiply(delta);

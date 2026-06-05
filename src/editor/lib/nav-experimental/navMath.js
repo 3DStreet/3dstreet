@@ -708,50 +708,46 @@ export function lateralCap(yAgl, lowerBound, coeff) {
   return Math.max(lowerBound, coeff * yAgl);
 }
 
-// Part A — Phase-2 DESCENT (swoop-in) FOV ramp. Eases the entry FOV open to
-// the landing FOV as AGL falls (frac 1 → 0). The landing target is
-// `max(entryFov, landingFov)` so an already-wide camera never NARROWS on
-// arrival (the Part-A guard) — the ramp is monotonic widen-or-hold. Routed
-// through phase2HeightFrac so it reads the same frac as the tilt ramp. Pure.
-export function phase2DescentFov(yAgl, entryFov, landingFov) {
-  const target = Math.max(entryFov, landingFov);
-  return entryFov + (target - entryFov) * (1 - phase2HeightFrac(yAgl));
-}
-
-// Part A — Phase-2 ASCENT (swoop-out) FOV. Anchored through (startFrac,
-// startFov) captured when this ascent began and (1, targetFov) at the ceiling
-// — the exact shape of phase2AscentTilt, so the immediate-undo case
-// (startFrac=0, startFov=landing, target=entryFov) retraces the descent FOV
-// curve (C1). Pure.
-export function phase2AscentFov(yAgl, startFrac, startFov, targetFov) {
-  const frac = phase2HeightFrac(yAgl);
-  if (startFrac >= 1) return targetFov;
-  const t = THREE.MathUtils.clamp((frac - startFrac) / (1 - startFrac), 0, 1);
-  return startFov + (targetFov - startFov) * t;
+// Part A — swoop FOV as a PURE FUNCTION OF HEIGHT (both legs). FOV eases from
+// `narrowFov` (at/above the ceiling) to the landing FOV (at the floor),
+// back-loaded into the final stretch by the exponent so the "opening up" reads
+// as an arrival rather than rushing at the top of the descent (live-test #2).
+//   wide = max(narrowFov, landingFov) — an already-wide camera never NARROWS.
+//   open = (1 − heightFrac)^exponent  — 0 at the ceiling, 1 at the floor.
+//   FOV  = narrowFov + (wide − narrowFov)·open.
+// Because it is a pure function of height, the descent (narrow = entry FOV) and
+// an immediate-undo ascent (narrow = captured entry FOV) evaluate the SAME
+// curve at the same height → exact retrace, with no anchor and no jump if the
+// ascent starts mid-band. A cleared-memory ascent passes the default map FOV as
+// `narrowFov` (C2 — eases to the default by the ceiling). Pure.
+export function swoopLandingFov(yAgl, narrowFov, landingFov, exponent) {
+  const wide = Math.max(narrowFov, landingFov);
+  const open = Math.pow(1 - phase2HeightFrac(yAgl), exponent);
+  return narrowFov + (wide - narrowFov) * open;
 }
 
 // Part C — decide the Phase-2-band zoom-IN regime from the resolved cursor
-// anchor. Returns 'dolly' ONLY when the user is pointing at something you can't
-// land on and clearly want to approach instead — a solid building WALL/façade
-// (near-vertical solid surface) or open sky. EVERYTHING else continues the
-// 'swoop': ground, building rooftops, AND scatter (cars, trees, signs, people).
-//   source 'fallback' → 'dolly' (no real target — open sky; level-forward)
-//   source 'ground'   → 'swoop' (horizontal by construction)
-//   source 'mesh'     → 'dolly' iff a SOLID floor (segment / building / tiles)
-//                       AND near-vertical (slope ≥ wall cut) — i.e. a façade you
-//                       are craning up at; else 'swoop'.
-//   missing normal    → 'swoop' (never strand the user mid-swoop).
-//
-// The `isSolidFloor` gate on the break-out (not on the swoop) is what fixes the
-// live-test regression where a cursor grazing a car/tree mid-descent
-// mis-classified as 'dolly' and both aborted the swoop AND churned the regime
-// (clearing the reverse memory). Scatter is never a landing surface to descend
-// *onto* — but the swoop already descends to the real collision floor
-// regardless of what the cursor grazes, so scatter must NOT break the swoop.
-// `Math.abs(normalY)`: an up- or down-facing horizontal surface both read as
+// anchor. Break out of the swoop ('dolly') ONLY when the user is craning UP at
+// something they can't land on and clearly want to approach — a solid building
+// WALL/façade, or open sky/horizon. In EVERY other case continue the 'swoop':
+//   - looking DOWN or level → always 'swoop' (you are descending; a façade or
+//     sky the cursor grazes on the way down must not abort the descent — this
+//     is the live-test #2 refinement: only an *upward* look at a façade breaks
+//     out, a downward look keeps swooping);
+//   - looking up at scatter (car/tree/sign — not a solid floor) → 'swoop'
+//     (live-test #1: scatter must never break the swoop);
+//   - looking up at ground/rooftop (near-horizontal) → 'swoop'.
+// Only `lookingUp AND (open sky OR a solid near-vertical wall)` breaks out.
+// `Math.abs(normalY)`: an up/down-facing horizontal surface both read as
 // non-wall; a wall's normalY ≈ 0 → slope ≈ 90°. Pure.
-export function classifySwoopTickTarget({ source, normalY, isSolidFloor }) {
-  if (source === 'fallback') return 'dolly'; // open sky — nothing to land on
+export function classifySwoopTickTarget({
+  source,
+  normalY,
+  isSolidFloor,
+  lookingUp
+}) {
+  if (!lookingUp) return 'swoop'; // descending / level → always swoop
+  if (source === 'fallback') return 'dolly'; // up at open sky/horizon
   if (source === 'ground') return 'swoop';
   if (normalY == null) return 'swoop';
   const slopeDeg =

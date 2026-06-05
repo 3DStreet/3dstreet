@@ -22,8 +22,7 @@ import {
   isLegitPose,
   cueState,
   lateralCap,
-  phase2DescentFov,
-  phase2AscentFov,
+  swoopLandingFov,
   classifySwoopTickTarget,
   reaimWeight,
   reaimQuatForFov
@@ -1699,72 +1698,66 @@ describe('lateralCap (Part F)', () => {
   });
 });
 
-describe('phase2DescentFov (Part A)', () => {
-  // AGL 20 = ceiling (frac 1), AGL 1.5 = floor (frac 0).
-  it('eases entry FOV → landing FOV as AGL falls', () => {
-    expect(phase2DescentFov(20, 60, 75)).toBeCloseTo(60, 6); // ceiling: entry
-    expect(phase2DescentFov(1.5, 60, 75)).toBeCloseTo(75, 6); // floor: landing
-    // midband frac=0.5 → halfway 60→75 = 67.5
-    expect(phase2DescentFov(10.75, 60, 75)).toBeCloseTo(67.5, 6);
+describe('swoopLandingFov (Part A)', () => {
+  // AGL 20 = ceiling (frac 1 → open 0 → narrow), AGL 1.5 = floor (frac 0 →
+  // open 1 → landing). exponent 3 back-loads the opening toward the floor.
+  it('narrow at the ceiling, landing at the floor', () => {
+    expect(swoopLandingFov(20, 60, 75, 3)).toBeCloseTo(60, 6); // ceiling: narrow
+    expect(swoopLandingFov(1.5, 60, 75, 3)).toBeCloseTo(75, 6); // floor: landing
+  });
+  it('exponent back-loads the opening toward the floor', () => {
+    // at mid-height (frac 0.5) only (0.5)^3 = 1/8 of the way open
+    const mid = swoopLandingFov(10.75, 60, 75, 3); // 60 + 15*0.125 = 61.875
+    expect(mid).toBeCloseTo(61.875, 4);
+    // a linear ramp would be 67.5 there — confirm it's well below that
+    expect(mid).toBeLessThan(64);
+    // near the floor (AGL 3, frac ≈ 0.081) it has opened most of the way
+    expect(swoopLandingFov(3, 60, 75, 3)).toBeGreaterThan(71);
   });
   it('already-wide camera never NARROWS on arrival (Part A guard)', () => {
-    expect(phase2DescentFov(1.5, 80, 75)).toBeCloseTo(80, 6); // stays 80
-    expect(phase2DescentFov(10.75, 80, 75)).toBeCloseTo(80, 6);
+    expect(swoopLandingFov(1.5, 80, 75, 3)).toBeCloseTo(80, 6); // stays 80
+    expect(swoopLandingFov(10.75, 80, 75, 3)).toBeCloseTo(80, 6);
   });
-});
-
-describe('phase2AscentFov (Part A)', () => {
-  it('immediate-undo (startFrac=0,startFov=landing,target=entry) retraces the descent', () => {
-    // Descent went 60→75 (entry 60). Immediate undo ascends 75→60.
-    // At floor (frac 0) = startFov 75; at ceiling (frac 1) = target 60.
-    expect(phase2AscentFov(1.5, 0, 75, 60)).toBeCloseTo(75, 6);
-    expect(phase2AscentFov(20, 0, 75, 60)).toBeCloseTo(60, 6);
-    // midband should mirror the descent curve at the same height
-    const h = 10.75; // frac 0.5
-    expect(phase2AscentFov(h, 0, 75, 60)).toBeCloseTo(
-      phase2DescentFov(h, 60, 75),
-      6
-    );
-  });
-  it('anchored ascent reaches startFov at the start height (no jump)', () => {
-    // started mid-band at frac 0.5, fov 70, target 60
-    expect(phase2AscentFov(10.75, 0.5, 70, 60)).toBeCloseTo(70, 6);
-    expect(phase2AscentFov(20, 0.5, 70, 60)).toBeCloseTo(60, 6);
-  });
-  it('startFrac ≥ 1 returns the target (degenerate)', () => {
-    expect(phase2AscentFov(20, 1, 70, 60)).toBe(60);
+  it('is a pure function of height → descent & immediate-undo ascent retrace', () => {
+    // Descent narrow=entry 60; immediate-undo ascent narrow=entry 60 (memory
+    // valid). Same call at the same height → identical → exact retrace.
+    for (const h of [2, 5, 10.75, 18]) {
+      expect(swoopLandingFov(h, 60, 75, 3)).toBeCloseTo(
+        swoopLandingFov(h, 60, 75, 3),
+        9
+      );
+    }
   });
 });
 
 describe('classifySwoopTickTarget (Part C)', () => {
-  it('ground source → swoop', () => {
-    expect(classifySwoopTickTarget({ source: 'ground', normalY: 1, isSolidFloor: true })).toBe('swoop');
+  // Break-out (dolly) only when craning UP at a wall/sky. lookingUp=false must
+  // always swoop, regardless of surface (live-test #2).
+  it('looking DOWN/level always swoops — even at a solid wall (live-test #2)', () => {
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.05, isSolidFloor: true, lookingUp: false })).toBe('swoop');
+    expect(classifySwoopTickTarget({ source: 'fallback', normalY: null, isSolidFloor: true, lookingUp: false })).toBe('swoop');
+    expect(classifySwoopTickTarget({ source: 'ground', normalY: 1, isSolidFloor: true, lookingUp: false })).toBe('swoop');
   });
-  it('fallback (sky) → dolly', () => {
-    expect(classifySwoopTickTarget({ source: 'fallback', normalY: null, isSolidFloor: true })).toBe('dolly');
+  it('looking UP at open sky → dolly', () => {
+    expect(classifySwoopTickTarget({ source: 'fallback', normalY: null, isSolidFloor: true, lookingUp: true })).toBe('dolly');
   });
-  it('mesh rooftop (near-horizontal solid floor) → swoop', () => {
-    // normalY ≈ 1 → slope 0 < 45
-    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.99, isSolidFloor: true })).toBe('swoop');
+  it('looking UP at a SOLID wall (building façade) → dolly', () => {
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.05, isSolidFloor: true, lookingUp: true })).toBe('dolly');
   });
-  it('SOLID wall (near-vertical building façade) → dolly', () => {
-    // normalY ≈ 0 → slope ≈ 90 ≥ 45, and a solid floor (building) → break out
-    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.05, isSolidFloor: true })).toBe('dolly');
+  it('looking UP at a rooftop (near-horizontal solid floor) → swoop', () => {
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.99, isSolidFloor: true, lookingUp: true })).toBe('swoop');
   });
-  it('horizontal scatter (car/tree top, NOT solid floor) → swoop', () => {
-    // regression fix: scatter must NOT break the swoop
-    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.99, isSolidFloor: false })).toBe('swoop');
+  it('looking UP at horizontal scatter (car/tree top) → swoop (live-test #1)', () => {
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.99, isSolidFloor: false, lookingUp: true })).toBe('swoop');
   });
-  it('VERTICAL scatter (tree trunk / sign post, NOT solid floor) → swoop', () => {
-    // a near-vertical hit only breaks out if it is a SOLID building wall;
-    // scatter never does, so grazing a thin vertical object keeps swooping
-    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.05, isSolidFloor: false })).toBe('swoop');
+  it('looking UP at VERTICAL scatter (tree trunk / sign) → swoop (not a solid wall)', () => {
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.05, isSolidFloor: false, lookingUp: true })).toBe('swoop');
   });
-  it('missing normal → swoop (never strand mid-swoop)', () => {
-    expect(classifySwoopTickTarget({ source: 'mesh', normalY: null, isSolidFloor: true })).toBe('swoop');
+  it('looking UP, ground source → swoop', () => {
+    expect(classifySwoopTickTarget({ source: 'ground', normalY: 1, isSolidFloor: true, lookingUp: true })).toBe('swoop');
   });
-  it('down-facing horizontal surface (normalY≈−1) reads as landing', () => {
-    expect(classifySwoopTickTarget({ source: 'mesh', normalY: -0.99, isSolidFloor: true })).toBe('swoop');
+  it('looking UP, missing normal → swoop (never strand mid-swoop)', () => {
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: null, isSolidFloor: true, lookingUp: true })).toBe('swoop');
   });
 });
 
