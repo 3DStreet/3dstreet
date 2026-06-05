@@ -869,7 +869,8 @@ AFRAME.registerComponent('set-loader-from-hash', {
       } else if (
         !streetURL.includes('payment') &&
         !streetURL.includes('profile') &&
-        !streetURL.includes('modal')
+        !streetURL.includes('modal') &&
+        !streetURL.startsWith('admin/')
       ) {
         useStore.getState().startLoadingScene('Loading scene...');
         // try to load JSON file from remote resource
