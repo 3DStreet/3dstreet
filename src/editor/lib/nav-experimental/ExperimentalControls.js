@@ -365,6 +365,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._lastWasdBlocked = false;
     this._cueShown = false;
 
+    // TASK-012 (H-4): "a Phase-4 double-click teleport tween owns the camera"
+    // flag. Mirrors `_recoveryActive` exactly — set for the tween's life,
+    // cleared in its onDone. Deliberately NOT in `_isInactive()` (H-A) so an
+    // active grab still reaches the `_onMouseDown` abort (L-3). The passive
+    // input gates read `_tweenOwnsCamera()` = `_recoveryActive ||
+    // _teleportActive`.
+    this._teleportActive = false;
+
     // TASK-024a grounded/fly state.
     //   _grounded — SPEC D1: "I'm walking on the surface" vs "I'm flying
     //     above it". Cannot be computed truthfully in the constructor (pose /
@@ -737,6 +745,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Recenter "this.center" to be on the ground beneath the end pose.
     this.center.set(endPos.x, 0, endPos.z);
 
+    // TASK-012 (H-4): a recovery/teleport tween may own the camera (e.g. Plan
+    // View pre-empting a gesture-end recovery). Cancel it and clear its flags
+    // first so `_tick.animate` below doesn't drop the prior tween's onDone and
+    // strand `_recoveryActive`/`_teleportActive` true.
+    this._cancelCameraTween();
+
     this._planViewActive = true;
     // 'plan-view' is a forward-hook payload — no Phase 2 consumer reads
     // it (`useNavMode` filters to pan-truck/pan-pedestal only). Phase 3
@@ -904,6 +918,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // Returns the TickAnimator handle (caller stores as _compassHandle).
   _animateYawAboutPivot({ deltaYaw = null, endQuat = null, pivot = null }) {
     const camera = this._camera;
+    // TASK-012 (H-4): a compass action can pre-empt a recovery/teleport tween
+    // (those are not in `_compassAnimating`). Cancel + clear flags first so
+    // `_tick.animate` doesn't strand `_recoveryActive`/`_teleportActive`.
+    this._cancelCameraTween();
     const startPos = camera.position.clone();
     const startQuat = camera.quaternion.clone();
 
@@ -1186,19 +1204,46 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     event.preventDefault();
   }
 
+  // TASK-012 (H-4): "a camera-owning tween is in flight" — the recovery
+  // ease-back OR the Phase-4 teleport. The PASSIVE input gates (wheel, WASD,
+  // toolbar zoom, the legit-snapshot) read this so neither races the tween.
+  // NOT used by `_onMouseDown` (an active grab must still reach the abort).
+  _tweenOwnsCamera() {
+    return this._recoveryActive || this._teleportActive;
+  }
+
+  // TASK-012 (H-4): cancel whatever camera-owning tween is in flight and clear
+  // its ownership flags. `_tick.cancel()` does NOT run the tween's onDone, so
+  // the flag clear must happen here — a naive per-flag clear would strand on
+  // any cross-tween pre-emption (e.g. Plan View starting mid-recovery would
+  // drop recovery's onDone and leave `_recoveryActive` true → input dead).
+  // Every tween-START path routes through this first, generalising the old
+  // ad-hoc `_recoveryActive` clearing and fixing the symmetric pre-existing
+  // strands (teleport-mid-recovery, recovery-mid-plan-view).
+  //
+  // Clears recovery + teleport flags only — NOT `_planViewActive` /
+  // `_compassAnimating`: a teleport can never START mid-plan-view/compass
+  // (navigateDoubleClick's `_isInactive()` guard blocks it — those two ARE in
+  // `_isInactive()`), so they own their own lifecycles.
+  _cancelCameraTween() {
+    this._tick.cancel();
+    this._recoveryActive = false;
+    this._teleportActive = false;
+  }
+
   _onMouseDown(event) {
     if (this._isInactive()) return;
     const mode = this._decideMouseMode(event);
     if (!mode) return;
 
-    // TASK-024 (N4): a fresh press mid-recovery-tween would otherwise start
-    // a drag that fights the still-running tween. Policy: abort the
-    // recovery (cancel the tween, clear the flag) and let the new drag take
-    // over. The aborted tween's onDone doesn't run, so its reseed is
-    // skipped — the next legit tick reseeds normally.
-    if (this._recoveryActive) {
-      this._tick.cancel();
-      this._recoveryActive = false;
+    // TASK-024 (N4) / TASK-012 (L-3): a fresh press mid-tween would otherwise
+    // start a drag that fights the still-running tween. Policy: abort the
+    // recovery OR teleport (cancel the tween, clear the flags) and let the new
+    // drag take over. The aborted tween's onDone doesn't run, so its reseed /
+    // teleport-clear is skipped — the next legit tick reseeds normally, and
+    // `_cancelCameraTween` already cleared `_teleportActive`.
+    if (this._tweenOwnsCamera()) {
+      this._cancelCameraTween();
     }
 
     this._pointerOld.set(event.clientX, event.clientY);
@@ -1473,6 +1518,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const endPos = pose.position.clone();
     const endQuat = pose.quaternion.clone();
     const endCenter = pose.center.clone();
+    // TASK-012 (H-4): route the recovery tween start through the shared
+    // cancel so a prior camera-owning tween (e.g. an interrupted teleport)
+    // can't strand its flag. No prior tween in the normal recovery flow, so
+    // this is a no-op there (behaviour-preserving).
+    this._cancelCameraTween();
     this._recoveryActive = true;
     // CR-D2: single mid-tween hand-off latch. If a tile streams in during
     // the ease-back so the stored target is no longer legit, cancel and
@@ -1664,7 +1714,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
 
   _onWheel(event) {
-    if (this._isInactive()) return;
+    // TASK-012 (M-3): a camera-owning tween (recovery or teleport) owns the
+    // camera — passive wheel input is ignored, not raced (L-3).
+    if (this._isInactive() || this._tweenOwnsCamera()) return;
     event.preventDefault();
     const phase = this._decideZoomPhase(event);
     if (phase !== 'phase1') return;
@@ -1926,9 +1978,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._drainWheel();
     this._drainWASD(deltaMs);
     // TASK-024 (3b/3e): legit-pose snapshot + discoverability cue. Runs
-    // after the drains so it captures the post-move pose. Suppressed while
-    // a recovery tween owns the camera (D2).
-    if (!this._recoveryActive) {
+    // after the drains so it captures the post-move pose. Suppressed while a
+    // recovery OR teleport tween owns the camera (D2 / TASK-012 M-C) — the
+    // legit snapshot must not capture a mid-flight teleport pose.
+    if (!this._tweenOwnsCamera()) {
       this._updateLegitSnapshotAndCue();
     }
   }
@@ -2224,8 +2277,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
 
   _drainWheel() {
-    // TASK-024 (D2): a recovery tween owns the camera — drop queued wheel.
-    if (this._recoveryActive) {
+    // TASK-024 (D2) / TASK-012 (M-3): a recovery OR teleport tween owns the
+    // camera — drop queued wheel.
+    if (this._tweenOwnsCamera()) {
       this._wheelBudget = 0;
       return;
     }
@@ -2742,9 +2796,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
   _drainWASD(deltaMs) {
     const camera = this._camera;
-    // TASK-024 (D2): a recovery tween owns the camera — held keys must not
-    // fight it. Snap velocity to zero and suspend.
-    if (this._recoveryActive) {
+    // TASK-024 (D2) / TASK-012 (M-3): a recovery OR teleport tween owns the
+    // camera — held keys must not fight it. Snap velocity to zero and suspend.
+    if (this._tweenOwnsCamera()) {
       this._wasdVelocity.set(0, 0, 0);
       return;
     }
@@ -3301,7 +3355,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // Phase 0 used a center-anchored dolly; Phase 1 keeps the same behavior
   // for the toolbar path so the zoom buttons feel unchanged.
   _zoomActionBar(sign) {
-    if (this._isInactive()) return;
+    // TASK-012 (M-3): suspend the toolbar zoom while a camera-owning tween
+    // (recovery or teleport) is in flight.
+    if (this._isInactive() || this._tweenOwnsCamera()) return;
     const camera = this._camera;
     const distance = camera.position.distanceTo(this.center);
     camera.far = Math.min(100000000, Math.max(20000, distance * 10));
