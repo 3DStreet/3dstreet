@@ -374,8 +374,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // TASK-024 recovery state.
     //   _recoveryActive — "a recovery tween owns the camera" flag (D2).
     //     While set, _drainWASD/_drainWheel suspend, the legit snapshot is
-    //     suppressed, _handleFallKey early-returns, and a fresh mousedown
-    //     aborts the tween (N4).
+    //     suppressed, triggerContextAction is inert (busy), and a fresh
+    //     mousedown aborts the tween (N4).
     //   _lastLegitPose — { position, quaternion, center } running snapshot
     //     of the most-recent legit camera pose (D3 includes center).
     //   _lastWasdBlocked — WASD block hysteresis carry (WE-3b).
@@ -2021,8 +2021,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         }
         camera.updateMatrixWorld();
         // TASK-022 (C3 / HIGH-2): Space fall / level-out swoop is a non-wheel
-        // descent. Callers (_handleFallKey) early-return on noop/pop/already-
-        // below, so a no-op Space never reaches this tween. Idempotent.
+        // descent. Callers (_swoopToStreet / triggerContextAction) early-return
+        // on noop/pop/already-below, so a no-op Space never reaches this tween.
+        // Idempotent.
         this._clearZoomUndo();
         this.dispatchEvent(this._changeEvent);
       },
@@ -2265,7 +2266,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // A tiles rooftop must never beat a lower segment/building, even when the
   // tiles hit is nearer. Reused by `_floorYBelowAt` (the WASD/swoop floor)
   // and `_enclosureProbe` (the enclosure floor) so consumers — isLegitPose,
-  // the cue, _handleFallKey — read the SAME floor the swoop/WASD path does.
+  // the cue, the context resolver — read the SAME floor the swoop/WASD path does.
   _pickFloorFromHits(hits, refY, { acceptBuildings, acceptTiles }) {
     const ceil = refY === Infinity ? Infinity : refY + 1e-3;
     let tilesHit = null;
@@ -2395,8 +2396,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // the WASD/swoop path (_collisionFloorAt → _floorYBelowAt). The old
     // "nearest accepted hit at/below the camera" could return a tiles
     // rooftop where a lower segment/building sits below it (TASK-019 D3),
-    // making isLegitPose / the cue / _handleFallKey read a different floor
-    // than the swoop. refY = y so only hits at/below the probe column count.
+    // making isLegitPose / the cue / the context resolver read a different
+    // floor than the swoop. refY = y so only hits at/below the probe column count.
     const pick = this._pickFloorFromHits(hits, y, {
       acceptBuildings: true,
       acceptTiles: true
