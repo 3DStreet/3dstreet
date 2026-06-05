@@ -28,13 +28,13 @@ BUCKET="${PROJECT}.appspot.com"
 # (~368MB) file OOM'd at 8Gi, so 16Gi (which requires >=4 vCPU on Cloud Run).
 #
 # CPU rationale: DON'T raise vCPUs expecting a speedup. Big (22M-splat)
-# conversions look memory-bandwidth-bound — parallelizing compression and/or
-# the merge loop across 4 cores gave NO reliable big-file win (the test box
-# has ~25% run-to-run variance that swamps it; see docs/rad-conversion-perf.md).
-# The likely real lever is a faster-memory / higher-clock machine, not more
-# cores — measure in prod via the generationJobs duration instrumentation
-# before changing this. The 4 vCPU floor is required because 16Gi needs >=4
-# vCPU on Cloud Run.
+# conversions are memory-bandwidth-bound — a staging Cloud Run A/B (2026-06-05,
+# same-instance interleaving) measured the compress patch at just 1.014x on the
+# 363MB file (vs 1.096x on small), i.e. NO big-file win from parallelizing
+# across 4 cores. The real lever is a faster-memory / higher-clock machine, not
+# more cores (Cloud Run can't pin machine type; test via jobs/worker pools — see
+# docs/rad-conversion-perf.md "Part B"). The 4 vCPU floor is required because
+# 16Gi needs >=4 vCPU on Cloud Run.
 #
 # /tmp is tmpfs (counts against memory) — for multi-GB splats, raise memory
 # or move the scratch download to a GCS FUSE volume (see server.js).

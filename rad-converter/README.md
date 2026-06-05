@@ -27,19 +27,21 @@ The patch (`rad.rs`) makes the per-property encoders return **raw**
 chunk assembly. The output is **byte-identical** to upstream — same bytes,
 same `GZ_LEVEL=6` — so there's no quality question; only wall time changes.
 
-**Measured (4 vCPU, 2.8 GHz Xeon):** a reliable **1.16× on a 1.18M-splat
-file** (best-of-3, cache-bound). On the 22.3M-splat file the effect is
-**within measurement noise** — that workload has ~25% run-to-run variance
-on a shared VM, so its big-file benefit is unproven here and must be
-measured in prod. Full benchmark, the variance data, and the profile are in
+**Measured:** a reliable **~1.10× on small/cache-bound inputs** and
+**neutral (1.014×) on the 22.3M-splat / 363 MB file** — the latter settled by
+a staging Cloud Run A/B (2026-06-05, same-instance interleaving on a pinned
+4-vCPU instance: small median 1.096×, big median 1.014×, big output
+byte-identical). The earlier 1.16× small / "big within noise" figures were the
+sandbox (4 vCPU, 2.8 GHz Xeon, ~25% big-file variance). Full benchmark, the
+variance data, and the profile are in
 [`../docs/rad-conversion-perf.md`](../docs/rad-conversion-perf.md).
 
-> **Note:** the big workload looks memory-bandwidth-bound (parallelizing
-> across cores didn't reliably help), so the likely real lever is a
-> faster-memory machine, not more cores — measure in prod. This patch is
-> kept because it's byte-identical (zero risk) and helps cache-bound inputs;
-> a one-line `GZ_LEVEL=6 → 3` is a comparable substitute if you'd prefer a
-> smaller patch to maintain.
+> **Note:** the big workload is memory-bandwidth-bound (the A/B confirmed
+> parallelizing compression across cores doesn't help big files), so the real
+> lever is a faster-memory machine, not more cores — see "Part B" in the perf
+> doc. This patch is **kept** because it's byte-identical (zero risk) and gives
+> a real win on cache-bound inputs; a one-line `GZ_LEVEL=6 → 3` is a comparable
+> substitute if you'd prefer a smaller patch to maintain.
 
 Re-base on a future Spark tag: clone Spark at the new tag, `git am`
 `patches/*.patch`, resolve any conflicts, regenerate the patch with
@@ -169,8 +171,10 @@ Watch logs: `gcloud run services logs read rad-converter --project dev-3dstreet 
 ## Benchmarking the patch on real hardware
 
 The patch's big-file effect is unmeasurable on a shared sandbox (±25% variance —
-see the perf doc). To settle it on real Cloud Run hardware, the service supports
-a **benchmark mode**: `POST` with `{"benchmark":true,"variant":"baseline"|"patched",...}`
+see the perf doc), so it was settled on real Cloud Run hardware: a staging A/B on
+2026-06-05 found it **neutral on big (1.014×), ~1.10× on small** (see the perf
+doc). The service supports a **benchmark mode** for re-running this (e.g. for a
+machine-type A/B): `POST` with `{"benchmark":true,"variant":"baseline"|"patched",...}`
 runs the chosen binary, times it, and returns `buildLodMs` with **no** upload or
 Firestore writes. The Dockerfile's `BUILD_BASELINE=1` build-arg compiles the
 unpatched upstream binary as `build-lod-baseline` alongside the patched one, so a
