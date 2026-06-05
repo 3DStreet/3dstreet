@@ -72,3 +72,23 @@
 .pedestalMode.compassDock {
   z-index: 10;
 }
+
+// TASK-025 context view button dock. The mirror of `.compassDock`: mounted as
+// a sibling of `.actionBarDock` in the same stacking context (z-index: 10),
+// pinned to the page centre (left: 50%); Main.jsx measures the ActionBar width
+// and applies a `translateX(-(halfBarWidth + gap + size))` so the button sits
+// just to the LEFT of the centred toolbar (symmetric with the compass on the
+// right), regardless of how many buttons the bar shows.
+.contextButtonDock {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  z-index: 10;
+}
+
+// Pedestal mode: same as the compass — re-assert z-index: 10 so the button
+// does NOT follow the full-width ActionBar dock down behind the canvas
+// (z-index: -1). Position is inherited from `.contextButtonDock`.
+.pedestalMode.contextButtonDock {
+  z-index: 10;
+}

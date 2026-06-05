@@ -287,3 +287,40 @@ export const COMPASS_NORTH_TOLERANCE_DEGREES = 2;
 
 // Rotation-arrow step.
 export const COMPASS_ROTATE_STEP_DEGREES = 90;
+
+// TASK-025 — context view button (street / daylight / drone).
+//
+// Elevated↔street-level hysteresis band (metres above the collision floor
+// directly below the camera). Below ENTRY → "at street level" (offers drone
+// view); above EXIT → "elevated" (offers street view); between → hold the
+// last state (anti-flicker). Two failure modes are weighed (spec D-B): icon
+// flicker at the boundary (wants a WIDE band) vs lag on a deliberate slow
+// ascent (wants a NARROW/low band). Starting values — TUNE AT FEEL-TEST on a
+// geo/3D-tiles scene. The 024 discoverability cue already uses an 8/6 m band
+// without strobing, so 8 m entry is a safe floor that clears eye-height bob;
+// exit 14 m sits a clear ~6 m above entry.
+export const DRONE_ELEVATED_ENTRY_METRES = 8; // tunable
+export const DRONE_ELEVATED_EXIT_METRES = 14; // tunable
+
+// Drone-view canonical rise.
+//   DEFAULT_DRONE_HEIGHT — target altitude above GROUND LEVEL (the TASK-024
+//     travel height, which looks past tall buildings to the ground between
+//     them) for a street-level drone press. An elevated "survey from above"
+//     vantage. TUNE AT FEEL-TEST.
+export const DEFAULT_DRONE_HEIGHT = 40; // metres above ground level; tunable
+//   ROOF_CLEARANCE — when atop a building taller than DEFAULT_DRONE_HEIGHT,
+//     end this far above the ROOF you stand on (the collision floor directly
+//     below). COUPLED to the hysteresis (spec D-B / M-2): must be
+//     >= DRONE_ELEVATED_EXIT_METRES + dead-band margin so a drone arrival atop
+//     a tall roof lands unambiguously "elevated" and the button flips to
+//     street view. With EXIT=14 and a ~6 m margin → 20.
+export const ROOF_CLEARANCE = 20; // metres above roof; >= EXIT + margin; tunable
+
+// Default/normal field of view (degrees) the drone rise resets to. A LITERAL,
+// not an attach-time `camera.fov` capture (which is unreliable on a re-attach
+// mid-zoom). 50 is THREE's PerspectiveCamera default = the inspector camera's
+// resting fov (it is constructed `new THREE.PerspectiveCamera()` with no fov
+// arg — see cameras.js). NOT 60 (the `|| 60` frustum-fit fallback elsewhere is
+// a defensive default, not the resting fov; using it would ship drone view
+// ~20% wider than every other view, violating spec D-A "normal FOV").
+export const DEFAULT_FOV_DEGREES = 50;

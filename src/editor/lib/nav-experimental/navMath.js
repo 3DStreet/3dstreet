@@ -336,6 +336,20 @@ export function cueState(prevShown, aglAboveCollisionFloor, enclosed) {
   return prevShown;
 }
 
+// TASK-025 (D-B): elevated↔street-level hysteresis tracker for the context
+// view button. `prev` is the previous state ('street' | 'elevated'); `agl` is
+// the height above the collision floor directly below the camera, or NULL on a
+// probe miss. Above `exitM` → 'elevated'; at/below `entryM` → 'street'; in the
+// dead band between → hold `prev` (anti-flicker, spec D-B). A null agl (probe
+// miss — e.g. over the void at a scene edge) HOLDS the previous state rather
+// than collapsing it, mirroring the collision-floor cache's hold-on-miss. Pure.
+export function elevationState(prev, agl, entryM, exitM) {
+  if (agl == null) return prev; // probe miss — hold
+  if (agl >= exitM) return 'elevated';
+  if (agl <= entryM) return 'street';
+  return prev; // dead band — hold
+}
+
 // TASK-014d (D-P1/D-P2): one wheel-zoom dolly step toward a fixed `hit`,
 // with the HORIZONTAL component of the translation capped to
 // `lateralCapMetres`. Returns the NEW camera position (THREE.Vector3), or
