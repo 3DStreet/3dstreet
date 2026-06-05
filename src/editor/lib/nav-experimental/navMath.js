@@ -365,16 +365,66 @@ export function decideSwoopPhase(yAgl) {
   return 'phase3';
 }
 
-// Phase 2 tilt lerp: θ(yAgl) = θ_stored × (yAgl - 1.5) / 18.5.
-// Linear in AGL from θ_stored at AGL=20 to 0° at AGL=1.5. Both ends
-// inclusive. Outside the Phase 2 band the helper clamps: AGL ≥ 20 →
-// θ_stored; AGL ≤ 1.5 → 0°. Input is AGL (TASK-013). Pure.
+// TASK-022: Phase-2 height fraction. 1 at the ceiling (AGL 20), 0 at the
+// floor (AGL 1.5), clamped outside the band. Single source of truth for
+// the descent tilt, the ascent tilt, and (future) the 014b FOV ramp. Pure.
+export function phase2HeightFrac(yAgl) {
+  const yHi = SWOOP_PHASE2_ENTRY_ELEVATION_METRES; // 20
+  const yLo = SWOOP_PHASE2_EXIT_ELEVATION_METRES; // 1.5
+  return THREE.MathUtils.clamp((yAgl - yLo) / (yHi - yLo), 0, 1);
+}
+
+// Phase 2 (descent / swoop-IN) tilt lerp: θ(yAgl) = θ_stored × frac, where
+// frac = phase2HeightFrac(yAgl). Linear in AGL from θ_stored at AGL=20 to
+// 0° at AGL=1.5. Both ends inclusive. Outside the Phase 2 band the helper
+// clamps: AGL ≥ 20 → θ_stored; AGL ≤ 1.5 → 0°. Input is AGL (TASK-013).
+// Pure. TASK-022: routed through phase2HeightFrac so the descent and the
+// swoop-OUT ascent (phase2AscentTilt) read the SAME frac at the SAME
+// height — the C1 reverse can't drift by a ULP at the band boundaries.
+// Numerically identical to the old inline `(yAgl - yLo)/(yHi - yLo)` form.
 export function phase2TargetTilt(yAgl, storedTiltDeg) {
-  const yHi = SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
-  const yLo = SWOOP_PHASE2_EXIT_ELEVATION_METRES;
-  if (yAgl >= yHi) return storedTiltDeg;
-  if (yAgl <= yLo) return 0;
-  return (storedTiltDeg * (yAgl - yLo)) / (yHi - yLo);
+  return storedTiltDeg * phase2HeightFrac(yAgl);
+}
+
+// TASK-022: swoop-OUT Phase-2 tilt. Linear in height fraction, anchored
+// through (startFrac, startTilt) captured when this ascent began and
+// (1, targetTilt) at the ceiling. frac = phase2HeightFrac(yAgl): 1 at the
+// ceiling (AGL 20), 0 at the floor (AGL 1.5). Reaches startTilt at the
+// start height (no jump — WE-5) and target at the ceiling. Pure.
+//
+// For the immediate-undo case (startFrac=0, startTilt=0, target=entryTilt)
+// this reduces to `entryTilt × frac` — the SAME curve phase2TargetTilt
+// drew on the way down, so the ascent retraces the descent exactly (C1).
+// The general anchored form handles the interrupted / default case (started
+// mid-band at an arbitrary startTilt/startFrac, target = default 60°).
+// There is exactly ONE formula; immediate-undo is its startFrac=startTilt=0
+// special case (no separate "ease onto rail" branch).
+export function phase2AscentTilt(yAgl, startFrac, startTilt, targetTilt) {
+  const frac = phase2HeightFrac(yAgl);
+  if (startFrac >= 1) return targetTilt;
+  const t = THREE.MathUtils.clamp((frac - startFrac) / (1 - startFrac), 0, 1);
+  return startTilt + (targetTilt - startTilt) * t;
+}
+
+// TASK-022: zoom-undo state reducer. Pure. `state` is {valid, tilt, fov};
+// `event` is one of:
+//   'wheel-in-crossing' — wheel zoom-in crossed AGL 20 downward; capture.
+//       payload {tilt, fov} = the camera attitude at the crossing.
+//   'wheel-tick'        — any other wheel activity (in/out/FOV); preserve.
+//   'non-wheel-move'    — an ACTUAL non-wheel camera move committed; clear.
+//   'noop-input'        — an input event that committed no move; preserve.
+// Returns the next {valid, tilt, fov}. Never mutates `state`.
+export function nextZoomUndo(state, event) {
+  switch (event.type) {
+    case 'wheel-in-crossing':
+      return { valid: true, tilt: event.tilt, fov: event.fov };
+    case 'non-wheel-move':
+      return { valid: false, tilt: state.tilt, fov: state.fov };
+    case 'wheel-tick':
+    case 'noop-input':
+    default:
+      return state;
+  }
 }
 
 // Phase 2 elevation step. Input/output are AGL (TASK-013).
