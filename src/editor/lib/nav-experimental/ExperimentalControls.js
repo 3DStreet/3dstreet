@@ -69,6 +69,7 @@ import {
   SWOOP_PHASE2_MAX_TICKS_PER_FRAME,
   SWOOP_PHASE2_FLOOR_SNAP_METRES,
   SWOOP_PHASE3_FOV_FLOOR_DEGREES,
+  DEFAULT_OVERVIEW_TILT_DEGREES,
   NORTH_AXIS,
   NORTH_BEARING_FROM_MINUS_Z,
   COMPASS_TOPDOWN_TOLERANCE_DEGREES,
@@ -92,6 +93,9 @@ import {
   shiftRotateStep,
   decideSwoopPhase,
   phase2TargetTilt,
+  phase2AscentTilt,
+  phase2HeightFrac,
+  nextZoomUndo,
   phase2NextElevation,
   classifyWasdStep,
   wasdVerticalY,
@@ -239,6 +243,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._tmpV3a = new THREE.Vector3();
     this._tmpV3b = new THREE.Vector3();
     this._tmpV3c = new THREE.Vector3();
+    // TASK-022: dedicated scratch for the roll-safe re-tilt. `_tmpV3d` holds
+    // the TRUE (un-flattened) camera forward through the rotation build, and
+    // `_tmpQuat` is the minimal-arc rotation applied via premultiply.
+    this._tmpV3d = new THREE.Vector3();
+    this._tmpQuat = new THREE.Quaternion();
     this._groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     this._anchorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     this._tmpRay = new THREE.Ray();
@@ -256,20 +265,39 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
     // Phase 3 swoop state.
     //
-    //   _storedTilt — latched on a Phase 1 zoom-in tick that clamps to
-    //     AGL = SWOOP_PHASE2_ENTRY_ELEVATION_METRES (i.e. camera.y =
-    //     groundY + 20); read by Phase 2's tilt lerp. Init from current
-    //     tilt so Phase 2's lerp is defined even if the session opens
-    //     already inside the elevation band. Manual camera moves
-    //     (Shift+LB, LB+drag, Plan View, etc.) do not update this — only
-    //     wheel-driven downward AGL-20m crossings.
+    //   _zoomUndo — TASK-022 transient zoom-undo memory {valid, tilt, fov}.
+    //     `tilt` is the entry tilt captured at the wheel Phase-1→2 downward
+    //     crossing; `valid` gates whether the swoop-OUT reverses to it (true)
+    //     or eases to the default overview (false). Cleared by any ACTUAL
+    //     non-wheel camera move (not by a bare input event). Wheel activity
+    //     (in or out) preserves it. `fov` is reserved for TASK-014b (the
+    //     landing-FOV ascent — captured/cleared on the SAME flag; this task
+    //     writes it on capture and reads nothing from it: the C4 seam is live
+    //     but inert until 014b). Init `valid:false` so a session that opens
+    //     inside the band eases to the default overview on the first
+    //     swoop-out, not to a meaningless live tilt read as if it were a real
+    //     entry. Mutated only via the nextZoomUndo reducer (never poke fields).
     //   _phase3FovBaseline — latched on a Phase 2 zoom-in tick that
     //     clamps to AGL = SWOOP_PHASE2_EXIT_ELEVATION_METRES; cleared on
     //     Phase 3 zoom-out crossing back to baseline. Null when not in
     //     Phase 3.
     // See claude/specs/001-phase-3-plan.md.
-    this._storedTilt = cameraTiltDegrees(camera);
+    this._zoomUndo = {
+      valid: false,
+      tilt: cameraTiltDegrees(camera),
+      fov: camera.fov
+    };
     this._phase3FovBaseline = null;
+
+    // TASK-022: swoop-OUT ascent anchor (atomic pair, the sole stored ascent
+    // state). Captured TOGETHER on the first zoom-out tick of an ascent under
+    // the single `_ascentStartFrac == null` guard, reset to null on any
+    // descent tick / Phase-3 entry / ceiling hand-off so the next ascent
+    // re-captures from the live pose. The ascent TARGET is NOT stored — it is
+    // recomputed per-tick from `_zoomUndo.valid` (safe: the wheel path never
+    // flips `valid` mid-ascent). 014b reads the same anchor for its FOV ramp.
+    this._ascentStartFrac = null;
+    this._ascentStartTilt = null;
 
     // Last ground height found directly below the camera by the AGL probe
     // (TASK-013). Held through probe misses so the inferred ground stays
@@ -528,6 +556,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // TASK-024a (D1): re-derive grounded from the post-reset pose (the reset
     // camera at (0,15,30) is high → not-grounded unless a floor sits near it).
     this._deriveGroundedFromPose();
+    // TASK-022: belt-and-braces — a reset/new-scene wipes all nav state.
+    // Init is already valid:false, but an explicit clear is self-documenting.
+    this._clearZoomUndo();
     this.dispatchEvent(this._changeEvent);
   }
 
@@ -554,6 +585,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // teleport. (The resetZoom() fallback branches above already route through
     // resetZoom's own derive call, so only this explicit-pose path needs it.)
     this._deriveGroundedFromPose();
+    // TASK-022: explicit-pose teleport is a non-wheel camera move → clear.
+    this._clearZoomUndo();
     this.dispatchEvent(this._changeEvent);
   }
 
@@ -709,12 +742,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         camera.position.lerpVectors(startPos, endPos, eased);
         camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
         camera.updateMatrixWorld();
+        // TASK-022: Plan View moves the camera by a non-wheel mechanism →
+        // clear the zoom-undo memory. In onTick (idempotent) so it's gone the
+        // instant the tween starts moving — a tween pre-empted at frame 0
+        // never ticks, correctly leaving the memory intact.
+        this._clearZoomUndo();
         this.dispatchEvent(this._changeEvent);
       },
       onDone: () => {
         camera.position.copy(endPos);
         camera.quaternion.copy(endQuat);
         camera.updateMatrixWorld();
+        this._clearZoomUndo(); // TASK-022 (idempotent; closes the onTick window)
         this._planViewActive = false;
         this._planViewHandle = null;
         // TASK-024 (D4): reseed the legit-pose snapshot from the committed
@@ -887,6 +926,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         );
       }
       camera.updateMatrixWorld();
+      // TASK-022: compass rotate / align / body-click top-down all route here
+      // — a non-wheel camera move. Clear the zoom-undo memory.
+      this._clearZoomUndo();
       this.dispatchEvent(this._changeEvent);
       // this.center: the orbit pivot, or the ground point under the camera
       // for a spin/align in place. Downstream wheel-zoom references it, so
@@ -914,6 +956,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
           );
         }
         camera.updateMatrixWorld();
+        // TASK-022: clear the instant the tween starts moving (idempotent).
+        this._clearZoomUndo();
         this.dispatchEvent(this._changeEvent);
       },
       onDone: finalize
@@ -985,6 +1029,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // the tween rather than at its end.
       const callback = () => {
         this._maybeEmitLbModeChange();
+        // TASK-022: focus-to-object moves the camera via the A-Frame
+        // focus-animation component — a non-wheel move. Clear on its change
+        // hook (fires each frame of the transition; idempotent).
+        this._clearZoomUndo();
         // TASK-024 (D4): reseed the legit-pose snapshot once the focus
         // (double-click teleport) animation has settled, so recovery can't
         // ease back to the pre-teleport pose. The component sets
@@ -1398,6 +1446,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
         this.center.lerpVectors(startCenter, endCenter, eased);
         camera.updateMatrixWorld();
+        // TASK-022 (C3 / HIGH-2): the recovery ease-back moves the camera by a
+        // non-wheel mechanism. Without this clear, wheel-in (memory valid) →
+        // recovery → wheel-out would reverse to a stale entry tilt. Idempotent.
+        this._clearZoomUndo();
         this.dispatchEvent(this._changeEvent);
       },
       onDone: () => {
@@ -1413,6 +1465,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         camera.quaternion.copy(endQuat);
         this.center.copy(endCenter);
         camera.updateMatrixWorld();
+        this._clearZoomUndo(); // TASK-022 (C3 / HIGH-2)
         this._recoveryActive = false;
         // TASK-024a (D1, 1.2.5): a recovery tween returns to _lastLegitPose,
         // but "legit" is camY >= floor + eye-margin (at-or-ABOVE) — it can
@@ -1524,12 +1577,17 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         camera.position.y = y;
         this.center.y = startCenterY + (y - startY);
         camera.updateMatrixWorld();
+        // TASK-022 (C3 / HIGH-2): pop-to-roof is a non-wheel vertical move.
+        // The two early-return no-op branches above never tick, so they
+        // correctly leave the memory intact. Idempotent.
+        this._clearZoomUndo();
         this.dispatchEvent(this._changeEvent);
       },
       onDone: () => {
         camera.position.y = targetY;
         this.center.y = startCenterY + (targetY - startY);
         camera.updateMatrixWorld();
+        this._clearZoomUndo(); // TASK-022 (C3 / HIGH-2)
         this._recoveryActive = false;
         // TASK-024a (D1, 1.2.3): a pop-to-roof / pop-to-daylight lands you
         // standing on that roof → grounded. (The two early-return no-op
@@ -1759,6 +1817,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         this.center.y = startCenterY + (y - startY);
         if (endQuat) camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
         camera.updateMatrixWorld();
+        // TASK-022 (C3 / HIGH-2): Space fall / level-out swoop is a non-wheel
+        // descent. Callers (_handleFallKey) early-return on noop/pop/already-
+        // below, so a no-op Space never reaches this tween. Idempotent.
+        this._clearZoomUndo();
         this.dispatchEvent(this._changeEvent);
       },
       onDone: () => {
@@ -1766,6 +1828,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         this.center.y = startCenterY + (targetY - startY);
         if (endQuat) camera.quaternion.copy(endQuat);
         camera.updateMatrixWorld();
+        this._clearZoomUndo(); // TASK-022 (C3 / HIGH-2)
         this._recoveryActive = false;
         // TASK-024a (D1, 1.2.1 / WE-6): a Space fall / level-out swoop lands
         // the camera at collisionFloor + eye-margin → grounded by construction.
@@ -2202,6 +2265,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // the interior case; a partial value when a boundary or clamp is hit so the
   // loop re-dispatches the remainder). `regime` is one of 'high' | 'lowtilt'
   // | 'fov' from `_decideWheelRegime`.
+  //
+  // Boundary handling (zoom-in crossing AGL 20 downward): clamp to the
+  // Phase-2 entry and capture TASK-022's transient zoom-undo memory (entry
+  // tilt + fov) via `nextZoomUndo`, exactly as the pre-Option-B
+  // `_applyPhase1WheelTick` did — Phase 2's descent lerp reads `_zoomUndo.tilt`.
   _applyContinuousHighStep(t, regime) {
     const camera = this._camera;
     const sign = t > 0 ? 1 : -1;
@@ -2276,7 +2344,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
           this._dollyAlongRay(fullFactor, hit);
           if (camera.position.y - groundY < yEntry) {
             camera.position.y = targetY;
-            this._storedTilt = cameraTiltDegrees(camera);
+            this._zoomUndo = nextZoomUndo(this._zoomUndo, {
+              type: 'wheel-in-crossing',
+              tilt: cameraTiltDegrees(camera),
+              fov: camera.fov
+            });
             camera.updateMatrixWorld();
           }
           return t;
@@ -2292,7 +2364,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
           const tStar = -Math.log(factorStar) / Math.log(1 - alpha);
           this._dollyAlongRay(factorStar, hit);
           camera.position.y = targetY; // exact y-clamp (matches old behaviour)
-          this._storedTilt = cameraTiltDegrees(camera);
+          this._zoomUndo = nextZoomUndo(this._zoomUndo, {
+            type: 'wheel-in-crossing',
+            tilt: cameraTiltDegrees(camera),
+            fov: camera.fov
+          });
           camera.updateMatrixWorld();
           return tStar; // remainder (t − tStar) re-dispatches to the swoop
         }
@@ -2300,7 +2376,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         this._dollyAlongRay(fullFactor, hit);
         if (camera.position.y - groundY < yEntry) {
           camera.position.y = targetY;
-          this._storedTilt = cameraTiltDegrees(camera);
+          this._zoomUndo = nextZoomUndo(this._zoomUndo, {
+            type: 'wheel-in-crossing',
+            tilt: cameraTiltDegrees(camera),
+            fov: camera.fov
+          });
           camera.updateMatrixWorld();
         }
         return t;
@@ -2349,14 +2429,19 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // TASK-024a (solid-geometry guard): no ground below → no Phase-2 boundary.
     if (!this._frameGroundHit) return;
 
-    // Boundary: Phase 1 → Phase 2 on zoom-in (post-step y-clamp).
+    // Boundary: Phase 1 → Phase 2 on zoom-in (post-step y-clamp). TASK-022:
+    // capture the zoom-undo memory at the crossing, same as the continuous step.
     const groundY = this._frameGroundY;
     if (
       sign < 0 &&
       camera.position.y - groundY < SWOOP_PHASE2_ENTRY_ELEVATION_METRES
     ) {
       camera.position.y = groundY + SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
-      this._storedTilt = cameraTiltDegrees(camera);
+      this._zoomUndo = nextZoomUndo(this._zoomUndo, {
+        type: 'wheel-in-crossing',
+        tilt: cameraTiltDegrees(camera),
+        fov: camera.fov
+      });
       camera.updateMatrixWorld();
     }
   }
@@ -2399,7 +2484,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   //     suppresses a stale-cache teleport (negative AGL — see below)
   //     while preserving every legitimate fresh-probe kick-start.
   //   zoom-out: yAglNext ≥ yCeil → clamp to groundY + yCeil, set tilt to
-  //     _storedTilt, hand the tick's energy to Phase 1 (recursive call).
+  //     the recomputed ascentTarget, hand the tick's energy to Phase 1.
+  //
+  // TASK-022 (model 1D): the DESCENT (zoom-in) tilt is unchanged — it lerps
+  // the captured entry tilt (`_zoomUndo.tilt`) toward 0° via phase2TargetTilt.
+  // The ASCENT (zoom-out) interpolates from the camera's LIVE current tilt
+  // toward a target — the captured entry tilt if `_zoomUndo.valid`, else the
+  // DEFAULT_OVERVIEW_TILT_DEGREES default — anchored at (startFrac, startTilt)
+  // captured on the ascent's first tick (no jump, WE-5; exact reverse for an
+  // immediate undo, C1). Both legs go through the roll-safe re-tilt below.
   _applyPhase2WheelTick(sign) {
     const camera = this._camera;
     const groundY = this._frameGroundY; // pass snapshot
@@ -2408,6 +2501,31 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const snap = SWOOP_PHASE2_FLOOR_SNAP_METRES; // 1.0
 
     let yAgl = camera.position.y - groundY; // ← convert in
+
+    // TASK-022: the swoop-OUT target, recomputed per-tick (NOT stored — the
+    // wheel path never flips `_zoomUndo.valid` mid-ascent, so it is constant
+    // across an ascent whether read once or per-tick). Memory valid → reverse
+    // to the captured entry tilt; else ease to the default overview.
+    const ascentTarget = this._zoomUndo.valid
+      ? this._zoomUndo.tilt
+      : DEFAULT_OVERVIEW_TILT_DEGREES;
+
+    if (sign > 0) {
+      // ASCENT (zoom-out): atomically capture the ascent anchor on the FIRST
+      // out-tick of this ascent (the sole writer, under the == null guard).
+      // Both fields set together — no interleaving where one is fresh, one
+      // stale. `yAgl` here is the PRE-step height (matches the camera's live
+      // tilt read below).
+      if (this._ascentStartFrac == null) {
+        this._ascentStartFrac = phase2HeightFrac(yAgl);
+        this._ascentStartTilt = cameraTiltDegrees(camera);
+      }
+    } else {
+      // DESCENT (zoom-in): reset the ascent anchor so the next ascent
+      // re-captures from the live pose. Descent tilt semantics are unchanged.
+      this._ascentStartFrac = null;
+      this._ascentStartTilt = null;
+    }
 
     // Zoom-out kick-start (AGL-relative — WE-7). A FRESH downward probe
     // always yields yAgl >= 0 (the hit ground is below the camera), so
@@ -2433,6 +2551,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       camera.position.y = groundY + yFloor; // ← write back
       this._setCameraTiltPreservingYaw(0);
       this._phase3FovBaseline = camera.fov;
+      // TASK-022: Phase-3 entry ends any ascent geometry; reset the anchor so
+      // a fresh ascent re-captures from the live pose (already null on a
+      // descent run, but explicit at the band exit).
+      this._ascentStartFrac = null;
+      this._ascentStartTilt = null;
       camera.updateMatrixWorld();
       // TASK-024a (D1, 1.2.2 / PA-3): the wheel swoop has no onDone — landing
       // IS this Phase-2→3 boundary crossing. DERIVE (don't force-true): the
@@ -2451,11 +2574,19 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // rather than deadlocking at the boundary.
     if (sign > 0 && yAglNext >= yCeil) {
       camera.position.y = groundY + yCeil; // ← write back
-      this._setCameraTiltPreservingYaw(this._storedTilt);
+      // TASK-022: the ceiling tilt is the recomputed ascentTarget (the
+      // captured entry tilt if memory valid, else the default overview) — the
+      // same target the per-tick ascent ramps toward. A ≤90° single-step arc,
+      // applied via the roll-safe re-tilt (antiparallel guard not triggered).
+      this._setCameraTiltPreservingYaw(ascentTarget);
+      // Ascent complete at the ceiling: reset the anchor. Above the ceiling
+      // the tilt is the user's to set freely (Phase 1 is tilt-preserving).
+      this._ascentStartFrac = null;
+      this._ascentStartTilt = null;
       camera.updateMatrixWorld();
       this._maybeEmitLbModeChange();
       // Now dispatch a Phase 1 tick. Phase 1 may itself route to the
-      // low-tilt branch depending on _storedTilt; that's fine. Phase 1
+      // low-tilt branch depending on the resulting tilt; that's fine. Phase 1
       // reads the same `this._frameGroundY` snapshot. Uses the runtime
       // tilt threshold (TASK-010) — was TRUCK_PEDESTAL_CUTOFF_DEGREES.
       if (cameraTiltDegrees(camera) <= this._tiltThreshold) {
@@ -2465,9 +2596,25 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
 
     camera.position.y = groundY + yAglNext; // ← write back
-    this._setCameraTiltPreservingYaw(
-      phase2TargetTilt(yAglNext, this._storedTilt)
-    );
+    // TASK-022: per-tick re-tilt, branched on direction.
+    //   sign < 0 (descent): unchanged — lerp the captured entry tilt → 0°.
+    //   sign > 0 (ascent):  interpolate the ascent anchor (startFrac,
+    //     startTilt) → ascentTarget, anchored so there is no jump (WE-5) and
+    //     an immediate undo retraces the descent exactly (C1).
+    if (sign < 0) {
+      this._setCameraTiltPreservingYaw(
+        phase2TargetTilt(yAglNext, this._zoomUndo.tilt)
+      );
+    } else {
+      this._setCameraTiltPreservingYaw(
+        phase2AscentTilt(
+          yAglNext,
+          this._ascentStartFrac,
+          this._ascentStartTilt,
+          ascentTarget
+        )
+      );
+    }
     camera.updateMatrixWorld();
     // Toolbar visual indicator: Phase 2's tilt lerp crosses the 30°
     // boundary silently from the LB-mode comparator's perspective. Emit
@@ -2483,16 +2630,39 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // zoom-out→Phase-2 baseline hand-off and the lazy baseline latch live
   // there now.)
 
+  // TASK-022: invalidate the transient zoom-undo memory. Call ONLY from a
+  // site that has just committed an actual non-wheel camera move (past its
+  // own no-op early-returns AND any zero-delta gate). Never from the wheel
+  // path. Idempotent (reducer returns valid:false again).
+  _clearZoomUndo() {
+    this._zoomUndo = nextZoomUndo(this._zoomUndo, { type: 'non-wheel-move' });
+  }
+
   // Apply a tilt (in degrees from horizontal, positive = looking down)
-  // while preserving the camera's current yaw. Used by Phase 2.
-  // Re-derives the view direction from yaw + tilt and re-points the
-  // camera. (camera.lookAt() can't be used directly because it needs a
-  // target point, not an orientation.)
+  // while preserving the camera's current yaw. Used by Phase 2 (both swoop
+  // legs).
+  //
+  // TASK-022: re-tilt is now ROLL-SAFE and NADIR-CONTINUOUS. We build the
+  // absolute target forward from the live yaw + commanded tiltDeg (the same
+  // direction the old lookAt aimed at — so descent and ascent passing through
+  // the same height command identically-pointed forwards, C1), then rotate
+  // the camera's TRUE current forward onto it with the minimal-arc rotation
+  // and apply it via premultiply (modelled on TASK-023's _shiftRotate). The
+  // shortest-arc axis `curFwd × newFwd` lies in the yaw-tilt plane (≈ the
+  // camera's right axis), never the forward axis, so it adds NO roll — any
+  // roll the camera carries in is preserved exactly, and there is no world-up
+  // lookAt singularity at nadir (the old path's catastrophe).
   _setCameraTiltPreservingYaw(tiltDeg) {
     const camera = this._camera;
-    // Current yaw from camera-forward horizontal projection.
+    // (1) Capture the TRUE current forward BEFORE any yaw-flattening — keep it
+    //     un-flattened through the rotation build. Flattening it first would
+    //     make the "current" forward read as tilt=0 every tick, so the arc to
+    //     newFwd would pitch by the FULL tiltDeg every tick (a runaway).
+    const curFwd = this._tmpV3d;
+    camera.getWorldDirection(curFwd); // TRUE current forward — keep
+    // Current yaw from a FLATTENED COPY of the forward.
     const fwd = this._tmpV3a;
-    camera.getWorldDirection(fwd);
+    fwd.copy(curFwd);
     fwd.y = 0;
     if (fwd.lengthSq() < 1e-6) {
       // Camera looking straight up/down — yaw is undefined. Use camera's
@@ -2508,26 +2678,30 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     } else {
       fwd.normalize();
     }
-    // Tilt: rotate fwd downward by tiltDeg around the horizontal axis
-    // perpendicular to fwd.
+    // (2) Build the absolute target forward newFwd from yaw + tiltDeg.
     const tiltRad = tiltDeg * DEG2RAD;
     const cos = Math.cos(tiltRad);
     const sin = Math.sin(tiltRad);
     const newFwd = this._tmpV3c.set(fwd.x * cos, -sin, fwd.z * cos);
-    // Target = position + newFwd.
-    const target = this._tmpV3a // reuse — fwd not needed past here
-      .copy(camera.position)
-      .add(newFwd);
-    // TASK-023 (deferred, latent hazard): this lookAt reads the live
-    // camera.up = (0,1,0), so it (a) is singular at nadir (tiltDeg = 90 →
-    // newFwd = (0,-1,0) ∥ up) and (b) rebuilds orientation with the
-    // world-up roll convention, discarding any roll the camera arrived
-    // with. This path is reachable from the wheel-zoom swoop
-    // (_applyPhase2WheelTick), so after a rolled top-down rotate the first
-    // Phase-2 wheel tick resets the preserved roll. NOT fixed here: the
-    // correct screen-up for a swoop-to-street landing is a TASK-022/025
-    // design question, intentionally deferred (see plan §5).
-    camera.lookAt(target);
+    // (3) Minimal-arc rotation from the TRUE current forward onto newFwd,
+    //     applied via premultiply (drops lookAt).
+    const R = this._tmpQuat;
+    if (curFwd.dot(newFwd) < -0.9999) {
+      // Antiparallel (180° flip): setFromUnitVectors' cross product underflows
+      // and picks an arbitrary axis → unpredictable roll/flip. Choose a fixed,
+      // roll-free axis — the camera's right — explicitly. (No Phase-2 path
+      // reaches this: the per-tick step is ≤ a few °, and the largest
+      // single-step hand-off is a ≤90° arc. Guard is mandatory per the
+      // spec-review-checklist degenerate-axis requirement.)
+      const axis = this._tmpV3b
+        .set(1, 0, 0)
+        .applyQuaternion(camera.quaternion); // camera-right in world
+      R.setFromAxisAngle(axis, Math.PI);
+    } else {
+      R.setFromUnitVectors(curFwd, newFwd);
+    }
+    camera.quaternion.premultiply(R);
+    camera.quaternion.normalize(); // drift guard, mirrors _shiftRotate (A1)
   }
 
   _drainWASD(deltaMs) {
@@ -2640,6 +2814,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     camera.position.z += move.z;
     this.center.x += move.x;
     this.center.z += move.z;
+    // TASK-022: an advancing WASD step is a non-wheel camera move → clear the
+    // zoom-undo memory. The `block` outcome early-returns above (zero-delta —
+    // no clear); a hover/step-up that changes only y still moved → clear.
+    this._clearZoomUndo();
 
     if (outcome.kind === 'step-up' || outcome.kind === 'follow') {
       // TASK-024a (DEC-A/DEC-B): grounded collision-follow (preserve AGL,
@@ -2784,6 +2962,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     camera.position.z += sz;
     this.center.x += sx;
     this.center.z += sz;
+    // TASK-022: clear on ACTUAL movement only — a jitter drag that nets ~0 on
+    // the latched plane must NOT clear (WE-6). (no-hit / non-finite cases
+    // already early-returned above.)
+    if (sx || sz) this._clearZoomUndo();
     camera.updateMatrixWorld();
     this.dispatchEvent(this._changeEvent);
   }
@@ -2886,6 +3068,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // deliberate vertical nav → lower H (D4, 2.2).
       this._captureH();
     }
+    // TASK-022: clear on ACTUAL movement only — a near-zero-delta drag (no
+    // truck, no clamped y-change) must NOT clear (WE-6). (no-hit / degenerate
+    // cases already early-returned above.)
+    if (sR || dY) this._clearZoomUndo();
     camera.updateMatrixWorld();
     this.dispatchEvent(this._changeEvent);
   }
@@ -3064,6 +3250,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // rotate-in-place case (centre coincides with camera) `pos === camPos`
     // and the latched centre equals camera position anyway.
     this.center.copy(center);
+    // TASK-022: clear on ACTUAL rotation only — a zero-delta drag
+    // (dxPx==dyPx==0) reaches here with R≈identity and would otherwise clear
+    // (WE-6 violation). Gate on a non-zero applied pixel delta.
+    if (dxPx || dyPx) this._clearZoomUndo();
     camera.updateMatrixWorld();
     // TASK-010 (D3): billboard the ring as the camera orbits. No-op when
     // the ring is hidden (Street regime / not rotating).
@@ -3092,6 +3282,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const zoomStartY = camera.position.y;
     camera.position.add(delta);
     this._checkUngroundOnRise(zoomStartY);
+    // TASK-022: the toolbar zoom buttons move the camera by a non-wheel
+    // mechanism → clear. `delta` is non-zero while a button is held
+    // (interval-driven), so no gate needed.
+    this._clearZoomUndo();
     camera.updateMatrixWorld();
     this.dispatchEvent(this._changeEvent);
   }

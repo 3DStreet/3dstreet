@@ -12,6 +12,9 @@ import {
   shiftRotateStep,
   decideSwoopPhase,
   phase2TargetTilt,
+  phase2AscentTilt,
+  phase2HeightFrac,
+  nextZoomUndo,
   phase2NextElevation,
   classifyWasdStep,
   wasdFollowY,
@@ -1226,6 +1229,143 @@ describe('phase2TargetTilt', () => {
   it('handles θ_stored = 0 (low-tilt Phase 2 entry path)', () => {
     expect(phase2TargetTilt(5, 0)).toBe(0);
     expect(phase2TargetTilt(10, 0)).toBe(0);
+  });
+
+  // TASK-022: regression guard for the phase2HeightFrac refactor — numeric
+  // outputs of the descent leg must be UNCHANGED.
+  it('numeric outputs unchanged by the phase2HeightFrac refactor', () => {
+    const yLo = SWOOP_PHASE2_EXIT_ELEVATION_METRES;
+    const yHi = SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
+    for (const yAgl of [1.5, 3, 6, 10, 12.75, 18, 20]) {
+      const inline =
+        yAgl >= yHi ? 60 : yAgl <= yLo ? 0 : (60 * (yAgl - yLo)) / (yHi - yLo);
+      expect(phase2TargetTilt(yAgl, 60)).toBeCloseTo(inline, 9);
+    }
+  });
+});
+
+describe('phase2HeightFrac (TASK-022 — C4 seam)', () => {
+  const yLo = SWOOP_PHASE2_EXIT_ELEVATION_METRES; // 1.5
+  const yHi = SWOOP_PHASE2_ENTRY_ELEVATION_METRES; // 20
+
+  it('is 0 at the floor and 1 at the ceiling', () => {
+    expect(phase2HeightFrac(yLo)).toBe(0);
+    expect(phase2HeightFrac(yHi)).toBe(1);
+  });
+
+  it('clamps to [0,1] outside the band', () => {
+    expect(phase2HeightFrac(yLo - 5)).toBe(0);
+    expect(phase2HeightFrac(yHi + 5)).toBe(1);
+  });
+
+  it('is monotonic increasing across the band', () => {
+    let prev = -1;
+    for (let yAgl = yLo; yAgl <= yHi; yAgl += 1) {
+      const f = phase2HeightFrac(yAgl);
+      expect(f).toBeGreaterThan(prev);
+      prev = f;
+    }
+  });
+});
+
+describe('phase2AscentTilt (TASK-022)', () => {
+  const yLo = SWOOP_PHASE2_EXIT_ELEVATION_METRES;
+  const yHi = SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
+
+  it('immediate-undo is the exact reverse of the descent curve (WE-1)', () => {
+    // startFrac=0, startTilt=0, target=entryTilt ⇒ phase2AscentTilt equals
+    // phase2TargetTilt(yAgl, entry) at every height.
+    const entry = 70;
+    for (const yAgl of [yLo, 5, 10, yHi]) {
+      expect(phase2AscentTilt(yAgl, 0, 0, entry)).toBeCloseTo(
+        phase2TargetTilt(yAgl, entry),
+        9
+      );
+    }
+  });
+
+  it('no jump from a mid-band current tilt (WE-5)', () => {
+    // startFrac=0.35, startTilt=20, target=60. At the start height the value
+    // equals startTilt (no jump); at the ceiling it equals target.
+    const startFrac = 0.35;
+    // yAgl such that phase2HeightFrac(yAgl) == startFrac.
+    const yStart = yLo + startFrac * (yHi - yLo);
+    expect(phase2AscentTilt(yStart, startFrac, 20, 60)).toBeCloseTo(20, 9);
+    expect(phase2AscentTilt(yHi, startFrac, 20, 60)).toBeCloseTo(60, 9);
+  });
+
+  it('reaches the default target at the ceiling for any start', () => {
+    expect(phase2AscentTilt(yHi, 0, 0, 60)).toBeCloseTo(60, 9);
+    expect(phase2AscentTilt(yHi + 5, 0.5, 30, 60)).toBeCloseTo(60, 9);
+  });
+
+  it('shallow entry undo is the exact reverse (WE-2 first half)', () => {
+    const target = 10; // shallow
+    for (const yAgl of [yLo, 6, 12, yHi]) {
+      expect(phase2AscentTilt(yAgl, 0, 0, target)).toBeCloseTo(
+        phase2TargetTilt(yAgl, target),
+        9
+      );
+    }
+  });
+
+  it('clamps frac below floor / above ceiling; startFrac>=1 returns target', () => {
+    // Below floor: frac clamps to 0 → value = startTilt.
+    expect(phase2AscentTilt(yLo - 3, 0, 5, 60)).toBeCloseTo(5, 9);
+    // Above ceiling: frac clamps to 1 → value = target.
+    expect(phase2AscentTilt(yHi + 3, 0, 5, 60)).toBeCloseTo(60, 9);
+    // startFrac >= 1 returns target directly.
+    expect(phase2AscentTilt(10, 1, 42, 60)).toBe(60);
+  });
+});
+
+describe('nextZoomUndo (TASK-022 reducer)', () => {
+  it('WE-1 — valid preserved through continued wheel ticks', () => {
+    let s = { valid: true, tilt: 70, fov: 60 };
+    for (let i = 0; i < 5; i++) s = nextZoomUndo(s, { type: 'wheel-tick' });
+    expect(s).toEqual({ valid: true, tilt: 70, fov: 60 });
+  });
+
+  it('WE-3 — a non-wheel descent then wheel-out never reverses', () => {
+    let s = { valid: false, tilt: 10, fov: 60 };
+    s = nextZoomUndo(s, { type: 'non-wheel-move' });
+    s = nextZoomUndo(s, { type: 'wheel-tick' });
+    expect(s.valid).toBe(false);
+  });
+
+  it('WE-6 — a noop input preserves valid + attitude', () => {
+    const s0 = { valid: true, tilt: 70, fov: 60 };
+    const s1 = nextZoomUndo(s0, { type: 'noop-input' });
+    expect(s1).toEqual({ valid: true, tilt: 70, fov: 60 });
+  });
+
+  it('capture sets valid and records the attitude (tilt + fov)', () => {
+    const s0 = { valid: false, tilt: 10, fov: 60 };
+    const s1 = nextZoomUndo(s0, {
+      type: 'wheel-in-crossing',
+      tilt: 55,
+      fov: 42
+    });
+    expect(s1).toEqual({ valid: true, tilt: 55, fov: 42 });
+  });
+
+  it('clear after capture invalidates but retains tilt', () => {
+    let s = nextZoomUndo(
+      { valid: false, tilt: 0, fov: 60 },
+      { type: 'wheel-in-crossing', tilt: 55, fov: 42 }
+    );
+    s = nextZoomUndo(s, { type: 'non-wheel-move' });
+    expect(s.valid).toBe(false);
+    expect(s.tilt).toBe(55);
+    expect(s.fov).toBe(42);
+  });
+
+  it('is pure — never mutates the input state', () => {
+    const s0 = { valid: true, tilt: 70, fov: 60 };
+    const before = { ...s0 };
+    const s1 = nextZoomUndo(s0, { type: 'non-wheel-move' });
+    expect(s1).not.toBe(s0); // reference-distinct
+    expect(s0).toEqual(before); // input deep-unchanged
   });
 });
 
