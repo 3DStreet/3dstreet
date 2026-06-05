@@ -44,7 +44,12 @@ import './navTuningComponent.js';
 import { ModifierState } from './modifierState.js';
 import { GestureLatch } from './gestureLatch.js';
 import { SceneBounds } from './sceneBounds.js';
-import { CursorAnchor, isSolidFloorHit, worldHitNormal } from './cursorAnchor.js';
+import {
+  CursorAnchor,
+  isSolidFloorHit,
+  classifyHitEntity,
+  worldHitNormal
+} from './cursorAnchor.js';
 import { RotationIndicator } from './rotationIndicator.js';
 import { TickAnimator } from './tickAnimator.js';
 import {
@@ -1376,11 +1381,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // TASK-024 (3b): re-validate a stored pose against CURRENT geometry (a
   // tile may have streamed in around it). Probes enclosure + the collision
   // floor at the stored position.
-  _poseStillLegit(pose) {
-    // Probe at the stored position: a one-off downward cast from above it.
+  _poseStillLegit(pose, opts = {}) {
+    // Probe at the stored / candidate position: a one-off downward cast from
+    // above it. TASK-012: `pose` may be a `{ position }` bag (recovery) OR a
+    // bare THREE.Vector3-like point (teleport B/C standoff clearance).
     const sceneEl = this._sceneEl;
     if (!sceneEl || !sceneEl.object3D) return true;
-    const p = pose.position;
+    const p = pose.position || pose;
     this._tmpV3a.set(p.x, p.y + ENCLOSURE_PROBE_UP_MARGIN_METRES, p.z);
     this._raycaster.set(this._tmpV3a, GROUND_PROBE_DIR);
     this._raycaster.near = 0;
@@ -1403,7 +1410,56 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       acceptTiles: true
     });
     const floorY = pick ? pick.hit.point.y : null;
-    return isLegitPose({ enclosed, camY: p.y, floorY });
+    if (!isLegitPose({ enclosed, camY: p.y, floorY })) return false;
+    // TASK-012 (M-A buried guard): the enclosure half rejects a candidate with
+    // solid directly overhead, but a downward-only probe can miss a candidate
+    // at mid-interior height inside a closed building with no solid straight
+    // up. 3DStreet building glTF is single-sided (FrontSide), so a normal-
+    // parity test gives a false negative — instead test AABB containment
+    // against the building(s) whose column this candidate sits in (the same
+    // downward `hits` already pass through any enclosing building's roof +
+    // floor). Opt-in (`checkBuried`) so existing recovery callers, which pass
+    // no opts, are byte-identical.
+    if (opts.checkBuried && this._pointInsideBuildingHit(p, hits)) {
+      return false;
+    }
+    return true;
+  }
+
+  // TASK-012 (M-A): is `point` inside the AABB of any building entity struck
+  // by the candidate column's downward probe? Reuses the existing `hits`
+  // (a downward ray through a building the candidate is inside passes through
+  // its roof above and its floor below, so the owning building entity is in
+  // the list). Sidedness-independent (AABB, not normal parity). De-dupes by
+  // owning entity so each building's Box3 is computed at most once.
+  _pointInsideBuildingHit(point, hits) {
+    const seen = new Set();
+    for (const hit of hits) {
+      if (classifyHitEntity(hit) !== 'building') continue;
+      let node = hit.object;
+      let el = null;
+      while (node) {
+        if (node.el) {
+          el = node.el;
+          break;
+        }
+        node = node.parent;
+      }
+      if (!el || !el.object3D || seen.has(el)) continue;
+      seen.add(el);
+      const box = new THREE.Box3().setFromObject(el.object3D);
+      if (
+        point.x >= box.min.x &&
+        point.x <= box.max.x &&
+        point.y >= box.min.y &&
+        point.y <= box.max.y &&
+        point.z >= box.min.z &&
+        point.z <= box.max.z
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // TASK-024 (3b): tween the camera back to a stored pose (position +
@@ -1990,15 +2046,23 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const sceneEl = this._sceneEl;
     const acceptBuildings = opts.acceptBuildings !== false;
     const acceptTiles = opts.acceptTiles !== false;
+    // TASK-012 (H-1): cast from an arbitrary candidate Y (default = the live
+    // camera, so EXISTING callers are unchanged), and reference the same Y as
+    // the floor ceiling so a teleport endpoint validated under an overpass
+    // finds the LANE below it, not the deck the high camera would otherwise
+    // probe through. A downward ray from `fromY` only produces hits at/below
+    // `fromY`, so passing it as refY (vs the old Infinity) excludes nothing
+    // for the default camera-Y callers — byte-identical.
+    const fromY = opts.fromY != null ? opts.fromY : camera.position.y;
     if (!sceneEl || !sceneEl.object3D) {
       return { y: this._lastGroundY, normal: null, source: 'cache', hit: null };
     }
-    this._tmpV3a.set(x, camera.position.y, z);
+    this._tmpV3a.set(x, fromY, z);
     this._raycaster.set(this._tmpV3a, GROUND_PROBE_DIR);
     this._raycaster.near = 0;
     this._raycaster.far = Infinity;
     const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
-    const pick = this._pickFloorFromHits(hits, Infinity, {
+    const pick = this._pickFloorFromHits(hits, fromY, {
       acceptBuildings,
       acceptTiles
     });
@@ -2048,11 +2112,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // TASK-024: collision floor at an XZ column — nearest solid surface
   // (ground OR building roof OR tiles), scatter excluded. Used by the
   // descent clamp, swoop, orbit clamp, WASD destination, enclosure floor.
-  _collisionFloorAt(x, z) {
+  _collisionFloorAt(x, z, opts = {}) {
+    // TASK-012 (H-1 / L-A): pass `fromY` through (default camera-Y) so a
+    // teleport clearance probe can cast from the candidate position; and let
+    // a clearance/standoff probe opt out of the `_lastGroundY` cache refresh
+    // (`refreshCache: false`) so a candidate column the camera never visits
+    // doesn't poison the next recovery/WASD miss fallback. Defaults keep all
+    // existing callers unchanged.
     return this._floorYBelowAt(x, z, {
       acceptBuildings: true,
       acceptTiles: true,
-      refreshCache: true
+      refreshCache: opts.refreshCache !== false,
+      fromY: opts.fromY
     });
   }
 
