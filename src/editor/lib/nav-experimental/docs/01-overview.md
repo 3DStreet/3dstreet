@@ -38,9 +38,8 @@ drives it without knowing which control scheme is active.
 
 Everything keys off **tilt** — how far the camera looks down below
 horizontal (0° = horizontal, +90° = straight down, negative = looking
-up). A single threshold **T** (`TH-03`, live-tunable; see
-`03-configurable-thresholds.md` for its value) splits all behaviour into
-two regimes:
+up). A single threshold **T** — currently ~25°, live-tunable (`TH-03`) —
+splits all behaviour into two regimes:
 
 | | **Map mode** (tilt > T) | **Street mode** (tilt ≤ T) |
 |---|---|---|
@@ -73,17 +72,14 @@ it. A circle marker shows the pivot.
 street level, in three phases selected by **height above ground (AGL)**:
 
 ```
-   high    │ Phase 1 — cursor-anchored dolly (Map) / plain dolly (Street)
-           │           the world point under the cursor stays put
-  ── TH-22 ┼───────────────────────────────────────────────────────────
-   AGL     │ Phase 2 — "swoop transition": pedestal down + tilt toward
-           │           horizontal. The world opens up (FOV eases wide).
-  ── TH-23 ┼───────────────────────────────────────────────────────────
-  street   │ Phase 3 — FOV-only zoom; the camera holds still
+   high   │ Phase 1 — cursor-anchored dolly (Map) / plain dolly (Street)
+          │           the world point under the cursor stays put
+  ~20 m   ├───────────────────────────────────────────────────────────  (TH-22)
+   AGL    │ Phase 2 — "swoop transition": pedestal down + tilt toward
+          │           horizontal. The world opens up (FOV eases wide).
+  ~1.5 m  ├───────────────────────────────────────────────────────────  (TH-23)
+  street  │ Phase 3 — FOV-only zoom; the camera holds still
 ```
-
-(The two AGL band boundaries are `TH-22` and `TH-23` — see
-`03-configurable-thresholds.md` for values.)
 
 Zoom-out reverses it, returning to the tilt you dove from (a transient
 memory) — or, if you've moved manually since, to a default ~60° overview.

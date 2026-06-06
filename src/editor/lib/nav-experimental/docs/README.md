@@ -58,10 +58,15 @@ other mention is a reference by ID):
   `02-key-decisions.md`. Other docs reference decisions by ID, never
   restate the rationale.
 - **`TH-NN`** — a **TH**reshold. Defined once, in
-  `03-configurable-thresholds.md`, which is the *only* place a canonical
-  number lives. Other docs reference thresholds by ID and **range**
-  ("T", "the lateral cap `TH-16`"), never the number — so the docs can't
-  drift against each other.
+  `03-configurable-thresholds.md`, which is the *only* place a **canonical**
+  number lives. Other docs reference thresholds by ID and **range** ("T",
+  "the lateral cap `TH-16`") rather than the number, so the docs can't
+  drift against each other. **Two deliberate exceptions** quote
+  *approximate, ID-linked* values for readability: the **Overview**
+  (`01-overview.md`) gives a few orienting figures (e.g. "T ≈ 25°"), and
+  the **worked examples** in `02-key-decisions.md` are concrete by nature.
+  In both, the "~" marks the value as illustrative and `03` remains
+  authoritative.
 - **`OI-NN`** — an **O**pen **I**ssue, in `05-open-issues.md`.
 
 The letters encode the kind (decision / threshold / open issue). This is a
