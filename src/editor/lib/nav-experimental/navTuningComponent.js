@@ -23,7 +23,7 @@ import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
   MAP_PIVOT_BOUNDS_RADIUS_METRES,
   ROTATION_SPEED_RAD_PER_PX,
-  WHEEL_ZOOM_LATERAL_CAP_METRES
+  WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES
 } from './constants.js';
 
 if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning']) {
@@ -43,9 +43,12 @@ if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning
         type: 'number',
         default: ROTATION_SPEED_RAD_PER_PX
       },
-      wheelZoomLateralCapMetres: {
+      // TASK-027 Part F: the wheel lateral cap is now `max(lowerBound,
+      // 0.1×AGL)`; this knob is the lower bound (the value that governs near
+      // the ground and on the no-AGL Ctrl+wheel path).
+      wheelZoomLateralCapLowerBoundMetres: {
         type: 'number',
-        default: WHEEL_ZOOM_LATERAL_CAP_METRES
+        default: WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES
       }
     },
     update() {
@@ -66,7 +69,7 @@ if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning
         c.setRotationSpeed(this.data.rotationSpeedRadPerPx);
       }
       if (typeof c.setWheelZoomLateralCap === 'function') {
-        c.setWheelZoomLateralCap(this.data.wheelZoomLateralCapMetres);
+        c.setWheelZoomLateralCap(this.data.wheelZoomLateralCapLowerBoundMetres);
       }
     }
   });

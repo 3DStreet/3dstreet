@@ -23,7 +23,12 @@ import {
   groundedAtLoad,
   classifyFallAction,
   isLegitPose,
-  cueState
+  cueState,
+  lateralCap,
+  swoopLandingFov,
+  classifySwoopTickTarget,
+  reaimWeight,
+  reaimQuatForFov
 } from '../../../../src/editor/lib/nav-experimental/navMath.js';
 import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
@@ -1628,7 +1633,7 @@ describe('Phase 2 AGL translation invariance + floor brackets (TASK-013)', () =>
     // Elevated scene groundY=6, camera at absolute 7.5 → yAgl = 1.5.
     const groundY = 6;
     const yAbs = 7.5;
-    let yAgl = yAbs - groundY; // 1.5
+    const yAgl = yAbs - groundY; // 1.5
     let yAglNext = phase2NextElevation(yAgl, -1); // zoom-in
     if (yAglNext - yFloor < snap) {
       yAglNext = yFloor;
@@ -1677,6 +1682,209 @@ describe('Phase 2 AGL translation invariance + floor brackets (TASK-013)', () =>
     expect(guardFires).toBe(false);
     if (guardFires) yAgl = yFloor + snap;
     expect(yAgl).toBe(-2); // unchanged entering phase2NextElevation — no teleport
+  });
+});
+
+// ===========================================================================
+// TASK-027 — final zoom polish
+// ===========================================================================
+
+describe('lateralCap (Part F)', () => {
+  it('scales with AGL above the lower bound', () => {
+    expect(lateralCap(200, 2, 0.1)).toBe(20);
+    expect(lateralCap(100, 2, 0.1)).toBe(10);
+  });
+  it('clamps to the lower bound near the ground', () => {
+    expect(lateralCap(5, 2, 0.1)).toBe(2); // 0.1×5 = 0.5 < 2
+    expect(lateralCap(0, 2, 0.1)).toBe(2);
+  });
+  it('non-finite AGL (Ctrl+wheel / out of bounds) → lower bound', () => {
+    expect(lateralCap(NaN, 2, 0.1)).toBe(2);
+    expect(lateralCap(Infinity, 2, 0.1)).toBe(2); // non-finite guard → bound
+    expect(Number.isFinite(lateralCap(NaN, 2, 0.1))).toBe(true);
+  });
+});
+
+describe('swoopLandingFov (Part A)', () => {
+  // AGL 20 = ceiling (frac 1 → open 0 → narrow), AGL 1.5 = floor (frac 0 →
+  // open 1 → landing). exponent 3 back-loads the opening toward the floor.
+  it('narrow at the ceiling, landing at the floor', () => {
+    expect(swoopLandingFov(20, 60, 75, 3)).toBeCloseTo(60, 6); // ceiling: narrow
+    expect(swoopLandingFov(1.5, 60, 75, 3)).toBeCloseTo(75, 6); // floor: landing
+  });
+  it('exponent back-loads the opening toward the floor', () => {
+    // at mid-height (frac 0.5) only (0.5)^3 = 1/8 of the way open
+    const mid = swoopLandingFov(10.75, 60, 75, 3); // 60 + 15*0.125 = 61.875
+    expect(mid).toBeCloseTo(61.875, 4);
+    // a linear ramp would be 67.5 there — confirm it's well below that
+    expect(mid).toBeLessThan(64);
+    // near the floor (AGL 3, frac ≈ 0.081) it has opened most of the way
+    expect(swoopLandingFov(3, 60, 75, 3)).toBeGreaterThan(71);
+  });
+  it('already-wide camera never NARROWS on arrival (Part A guard)', () => {
+    expect(swoopLandingFov(1.5, 80, 75, 3)).toBeCloseTo(80, 6); // stays 80
+    expect(swoopLandingFov(10.75, 80, 75, 3)).toBeCloseTo(80, 6);
+  });
+  it('is a pure function of height → descent & immediate-undo ascent retrace', () => {
+    // Descent narrow=entry 60; immediate-undo ascent narrow=entry 60 (memory
+    // valid). Same call at the same height → identical → exact retrace.
+    for (const h of [2, 5, 10.75, 18]) {
+      expect(swoopLandingFov(h, 60, 75, 3)).toBeCloseTo(
+        swoopLandingFov(h, 60, 75, 3),
+        9
+      );
+    }
+  });
+});
+
+describe('classifySwoopTickTarget (Part C)', () => {
+  // Break-out (dolly) only when craning UP at a wall/sky. lookingUp=false must
+  // always swoop, regardless of surface (live-test #2).
+  it('looking DOWN/level always swoops — even at a solid wall (live-test #2)', () => {
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.05, isSolidFloor: true, lookingUp: false })).toBe('swoop');
+    expect(classifySwoopTickTarget({ source: 'fallback', normalY: null, isSolidFloor: true, lookingUp: false })).toBe('swoop');
+    expect(classifySwoopTickTarget({ source: 'ground', normalY: 1, isSolidFloor: true, lookingUp: false })).toBe('swoop');
+  });
+  it('looking UP at open sky → dolly', () => {
+    expect(classifySwoopTickTarget({ source: 'fallback', normalY: null, isSolidFloor: true, lookingUp: true })).toBe('dolly');
+  });
+  it('looking UP at a SOLID wall (building façade) → dolly', () => {
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.05, isSolidFloor: true, lookingUp: true })).toBe('dolly');
+  });
+  it('looking UP at a rooftop (near-horizontal solid floor) → swoop', () => {
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.99, isSolidFloor: true, lookingUp: true })).toBe('swoop');
+  });
+  it('looking UP at horizontal scatter (car/tree top) → swoop (live-test #1)', () => {
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.99, isSolidFloor: false, lookingUp: true })).toBe('swoop');
+  });
+  it('looking UP at VERTICAL scatter (tree trunk / sign) → swoop (not a solid wall)', () => {
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.05, isSolidFloor: false, lookingUp: true })).toBe('swoop');
+  });
+  it('looking UP, ground source → swoop', () => {
+    expect(classifySwoopTickTarget({ source: 'ground', normalY: 1, isSolidFloor: true, lookingUp: true })).toBe('swoop');
+  });
+  it('looking UP, missing normal → swoop (never strand mid-swoop)', () => {
+    expect(classifySwoopTickTarget({ source: 'mesh', normalY: null, isSolidFloor: true, lookingUp: true })).toBe('swoop');
+  });
+});
+
+describe('reaimWeight (Part B, M4 continuity)', () => {
+  it('is 1 for near targets, 0 for far targets', () => {
+    expect(reaimWeight(100, 300, 800)).toBe(1); // below near
+    expect(reaimWeight(300, 300, 800)).toBe(1);
+    expect(reaimWeight(800, 300, 800)).toBe(0); // at far
+    expect(reaimWeight(1200, 300, 800)).toBe(0); // beyond far
+  });
+  it('ramps monotonically down across the band', () => {
+    const a = reaimWeight(400, 300, 800);
+    const b = reaimWeight(550, 300, 800);
+    const c = reaimWeight(700, 300, 800);
+    expect(a).toBeGreaterThan(b);
+    expect(b).toBeGreaterThan(c);
+    expect(b).toBeCloseTo(0.5, 6); // midpoint
+  });
+  it('non-finite distance → 0 (no re-aim)', () => {
+    expect(reaimWeight(Infinity, 300, 800)).toBe(0);
+    expect(reaimWeight(NaN, 300, 800)).toBe(0);
+  });
+});
+
+describe('reaimQuatForFov (Part B re-aim round-trip)', () => {
+  const aspect = 16 / 9;
+  // A street-level camera at the origin looking along -Z, slightly down.
+  function baseline() {
+    const cam = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+    cam.position.set(0, 1.6, 0);
+    cam.lookAt(0, 1.0, -30);
+    cam.updateMatrixWorld();
+    return cam;
+  }
+  // A façade point left-of-centre and ahead.
+  const P = new THREE.Vector3(-8, 4, -40);
+  const camPos = new THREE.Vector3(0, 1.6, 0);
+
+  // NDC where P currently projects, under the baseline pose+fov — this is the
+  // "cursor pixel" the user is pointing at.
+  function ndcOf(cam, point) {
+    const v = point.clone().project(cam);
+    return new THREE.Vector2(v.x, v.y);
+  }
+
+  it('identity at baseline FOV (B.3 unwind: Δ ≈ identity)', () => {
+    const cam = baseline();
+    const ndc = ndcOf(cam, P);
+    const q = reaimQuatForFov({
+      baselineQuat: cam.quaternion.clone(),
+      ndc,
+      P,
+      camPos,
+      fovAfter: 75, // == baseline
+      aspect
+    });
+    expect(q.angleTo(cam.quaternion)).toBeLessThan(1e-3);
+  });
+
+  it('pins P under the cursor pixel after a FOV narrow', () => {
+    const cam = baseline();
+    const ndc = ndcOf(cam, P);
+    const q = reaimQuatForFov({
+      baselineQuat: cam.quaternion.clone(),
+      ndc,
+      P,
+      camPos,
+      fovAfter: 45, // narrowed
+      aspect
+    });
+    // Re-project P under the new fov + re-aimed orientation; it must land back
+    // on the original cursor pixel.
+    const cam2 = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+    cam2.position.copy(camPos);
+    cam2.quaternion.copy(q);
+    cam2.updateMatrixWorld();
+    cam2.updateProjectionMatrix();
+    const ndc2 = ndcOf(cam2, P);
+    expect(ndc2.distanceTo(ndc)).toBeLessThan(1e-4);
+  });
+
+  it('narrow-then-widen with cursor fixed composes to ≈ baseline (WE-B2)', () => {
+    const cam = baseline();
+    const ndc = ndcOf(cam, P);
+    // Narrow to 45 (absolute from baseline) then widen back to 75 (absolute
+    // from baseline) — because the formula is absolute, the 75 result is the
+    // baseline pose regardless of the intermediate.
+    const qNarrow = reaimQuatForFov({
+      baselineQuat: cam.quaternion.clone(),
+      ndc,
+      P,
+      camPos,
+      fovAfter: 45,
+      aspect
+    });
+    expect(qNarrow.angleTo(cam.quaternion)).toBeGreaterThan(1e-3); // it moved
+    const qBack = reaimQuatForFov({
+      baselineQuat: cam.quaternion.clone(),
+      ndc,
+      P,
+      camPos,
+      fovAfter: 75,
+      aspect
+    });
+    expect(qBack.angleTo(cam.quaternion)).toBeLessThan(1e-3); // returned
+  });
+
+  it('weight 0 → no re-aim (returns baseline)', () => {
+    const cam = baseline();
+    const ndc = ndcOf(cam, P);
+    const q = reaimQuatForFov({
+      baselineQuat: cam.quaternion.clone(),
+      ndc,
+      P,
+      camPos,
+      fovAfter: 45,
+      aspect,
+      weight: 0
+    });
+    expect(q.angleTo(cam.quaternion)).toBeLessThan(1e-6);
   });
 });
 

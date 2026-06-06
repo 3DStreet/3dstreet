@@ -765,3 +765,116 @@ export function shiftRotateStep({
   // The caller applies R via `premultiply` (continuous at nadir).
   return evalAtTilt(clampedTilt);
 }
+
+// ---------------------------------------------------------------------------
+// TASK-027 — final zoom polish helpers (pure).
+// ---------------------------------------------------------------------------
+
+// Part F — per-tick horizontal lurch cap. Scales with height above ground so
+// the lurch is bounded proportionally rather than by a fixed metre value; a
+// lower bound keeps it usable near the ground and on the no-AGL Ctrl+wheel /
+// out-of-bounds path (where `yAgl` is non-finite). Pure.
+export function lateralCap(yAgl, lowerBound, coeff) {
+  if (!Number.isFinite(yAgl)) return lowerBound;
+  return Math.max(lowerBound, coeff * yAgl);
+}
+
+// Part A — swoop FOV as a PURE FUNCTION OF HEIGHT (both legs). FOV eases from
+// `narrowFov` (at/above the ceiling) to the landing FOV (at the floor),
+// back-loaded into the final stretch by the exponent so the "opening up" reads
+// as an arrival rather than rushing at the top of the descent (live-test #2).
+//   wide = max(narrowFov, landingFov) — an already-wide camera never NARROWS.
+//   open = (1 − heightFrac)^exponent  — 0 at the ceiling, 1 at the floor.
+//   FOV  = narrowFov + (wide − narrowFov)·open.
+// Because it is a pure function of height, the descent (narrow = entry FOV) and
+// an immediate-undo ascent (narrow = captured entry FOV) evaluate the SAME
+// curve at the same height → exact retrace, with no anchor and no jump if the
+// ascent starts mid-band. A cleared-memory ascent passes the default map FOV as
+// `narrowFov` (C2 — eases to the default by the ceiling). Pure.
+export function swoopLandingFov(yAgl, narrowFov, landingFov, exponent) {
+  const wide = Math.max(narrowFov, landingFov);
+  const open = Math.pow(1 - phase2HeightFrac(yAgl), exponent);
+  return narrowFov + (wide - narrowFov) * open;
+}
+
+// Part C — decide the Phase-2-band zoom-IN regime from the resolved cursor
+// anchor. Break out of the swoop ('dolly') ONLY when the user is craning UP at
+// something they can't land on and clearly want to approach — a solid building
+// WALL/façade, or open sky/horizon. In EVERY other case continue the 'swoop':
+//   - looking DOWN or level → always 'swoop' (you are descending; a façade or
+//     sky the cursor grazes on the way down must not abort the descent — this
+//     is the live-test #2 refinement: only an *upward* look at a façade breaks
+//     out, a downward look keeps swooping);
+//   - looking up at scatter (car/tree/sign — not a solid floor) → 'swoop'
+//     (live-test #1: scatter must never break the swoop);
+//   - looking up at ground/rooftop (near-horizontal) → 'swoop'.
+// Only `lookingUp AND (open sky OR a solid near-vertical wall)` breaks out.
+// `Math.abs(normalY)`: an up/down-facing horizontal surface both read as
+// non-wall; a wall's normalY ≈ 0 → slope ≈ 90°. Pure.
+export function classifySwoopTickTarget({
+  source,
+  normalY,
+  isSolidFloor,
+  lookingUp
+}) {
+  if (!lookingUp) return 'swoop'; // descending / level → always swoop
+  if (source === 'fallback') return 'dolly'; // up at open sky/horizon
+  if (source === 'ground') return 'swoop';
+  if (normalY == null) return 'swoop';
+  const slopeDeg =
+    Math.acos(THREE.MathUtils.clamp(Math.abs(normalY), 0, 1)) * RAD2DEG;
+  if (isSolidFloor && slopeDeg >= BLOCK_SLOPE_MIN_DEGREES) return 'dolly';
+  return 'swoop';
+}
+
+// Part C-add-2 ("B": a broke-out dolly is a BOUNDED EXCURSION) is implemented
+// directly in ExperimentalControls' continuous drain loop (TASK-014a) as a
+// float dolly-depth that zoom-out unwinds before resuming the swoop — there is
+// no separate pure decision helper under the continuous model.
+
+// Part B (M4) — re-aim continuity weight. 1 for near cursor targets, ramps
+// linearly to 0 by `far`, so the cursor-lock re-aim magnitude falls to zero
+// continuously as the target recedes toward the horizon — no jump crossing
+// into the no-real-hit fallback at the rooftop/sky edge. Pure.
+export function reaimWeight(distance, near, far) {
+  if (!Number.isFinite(distance)) return 0;
+  return THREE.MathUtils.clamp((far - distance) / (far - near), 0, 1);
+}
+
+// Part B — cursor-lock re-aim quaternion (pure; extracted for unit testing).
+// Given the captured baseline orientation/fov and the cursor world point P,
+// returns the camera quaternion that, at `fovAfter`, holds P pinned under the
+// cursor pixel `ndc`. Computed ABSOLUTELY from the baseline (not composed
+// per-tick) so it is a pure function of fov → exactly reversible, and reduces
+// to `baselineQuat` at fovAfter === baselineFov (the B.3 unwind contract).
+//
+// `weight` scales the minimal-arc rotation via slerp from identity (NOT a
+// direction lerp — that would change the rotation axis with the weight and
+// break reversibility). Builds a throwaway PerspectiveCamera internally so it
+// needs no live scene. Returns a new THREE.Quaternion.
+export function reaimQuatForFov({
+  baselineQuat,
+  ndc,
+  P,
+  camPos,
+  fovAfter,
+  aspect,
+  weight = 1
+}) {
+  const cam = new THREE.PerspectiveCamera(fovAfter, aspect, 0.1, 1000);
+  cam.position.set(camPos.x, camPos.y, camPos.z);
+  cam.quaternion.copy(baselineQuat);
+  cam.updateMatrixWorld();
+  cam.updateProjectionMatrix();
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), cam);
+  const rayDir = ray.ray.direction.clone().normalize();
+  const toP = new THREE.Vector3(
+    P.x - camPos.x,
+    P.y - camPos.y,
+    P.z - camPos.z
+  ).normalize();
+  const fullArc = new THREE.Quaternion().setFromUnitVectors(rayDir, toP);
+  const delta = new THREE.Quaternion().identity().slerp(fullArc, weight);
+  return delta.multiply(baselineQuat).normalize();
+}
