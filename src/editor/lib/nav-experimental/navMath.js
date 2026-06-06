@@ -492,11 +492,12 @@ export function pullBackTowardTarget(pos, target, stepMetres) {
 //   A (lane/ground): look at the hit-point; stand off ~LANE_STANDOFF back
 //     along the snapped heading at eye height. The standoff ≫ eye height so
 //     the down-look stays below the mode threshold T (Street mode).
-//   B (building): look at the hit-point; stand off ~DIAG×footprint-diagonal
-//     back along the heading at a fraction of the building height. The
-//     framing-pitch cap moves the aim point TOWARD camera height if framing
-//     the exact hit-point would crane past MAX_FRAMING_PITCH (WE-8): down for
-//     a steep look-up, up for a steep look-down.
+//   B (building): look at the building CENTRE (not the hit-point); stand off
+//     ~DIAG×footprint-diagonal back along the heading at a fraction of the
+//     building height. The look angle falls out of the camera height (gentle
+//     from above, steep from the street); the framing-pitch cap is the
+//     backstop, moving the aim point TOWARD camera height if it would otherwise
+//     crane past MAX_FRAMING_PITCH (WE-8).
 //   C (generic): look at the object centre; stand off ~RADII×bounding-radius
 //     back along the heading at centre height.
 export function desiredDoubleClickPose({
@@ -541,7 +542,17 @@ export function desiredDoubleClickPose({
     return { position, lookTarget };
   }
 
-  // Category B (building).
+  // Category B (building). Look at the building's CENTRE — NOT the clicked
+  // hit-point. The camera height is set elsewhere (⅓ building height from
+  // above, front-door height from the street via AGL never-raise), so aiming at
+  // a FIXED point lets the look angle fall out of that height automatically:
+  // gentle from above, steep-but-pitch-capped from the street (WE-8). There is
+  // no need to distinguish "from the air" from "street → tall tower" — the
+  // distinction is already encoded in the resulting camera height. Aiming at
+  // the moving hit-point instead coupled the look to where you clicked, so an
+  // aerial click (which lands on the roof) craned up at the roof. (Spec delta —
+  // supersedes H3's hit-point aim for Category B; the pitch cap is the
+  // backstop, not the primary mechanism.)
   const camY = objectBox.min.y + sy * DOUBLECLICK_BUILDING_VIEW_HEIGHT_FRAC;
   const diag = Math.hypot(sx, sz);
   const s = diag * DOUBLECLICK_BUILDING_STANDOFF_DIAG;
@@ -550,7 +561,7 @@ export function desiredDoubleClickPose({
     camY,
     cz - dir.z * s
   );
-  const lookTarget = new THREE.Vector3(hitPoint.x, hitPoint.y, hitPoint.z);
+  const lookTarget = new THREE.Vector3(cx, objectBox.min.y + sy / 2, cz);
   // Framing-pitch cap (first pass, against the DESIRED height). This is a
   // convenience pass only — the camera height is lowered again by never-raise
   // and standoff resolution in the controls, so the AUTHORITATIVE cap is

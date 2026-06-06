@@ -1838,26 +1838,44 @@ describe('desiredDoubleClickPose', () => {
     expect(r.position.y).toBeCloseTo(30 * DOUBLECLICK_BUILDING_VIEW_HEIGHT_FRAC, 6);
   });
 
-  it('framing-pitch cap: a steep look-UP lowers the aim point toward camera height', () => {
-    // Low camera, hit-point high on a tower -> framing the exact point would
-    // crane near-vertical. The cap must move the look target DOWN (toward the
-    // camera height), not up (round-3 L3-1 sign).
+  it('Category B aims at the building CENTRE, not the clicked hit-point', () => {
+    // A short, wide building: the centre look is gentle (below the cap), so the
+    // look target should be exactly the box centre regardless of where the
+    // hit-point is. (Spec delta — B aims at centre, not the hit-point.)
     const box = {
-      min: { x: -2, y: 0, z: -2 },
-      max: { x: 2, y: 100, z: 2 }
+      min: { x: -5, y: 0, z: -5 },
+      max: { x: 5, y: 12, z: 5 }
     };
     const r = desiredDoubleClickPose({
       category: 'B',
-      hitPoint: { x: 0, y: 95, z: 2 }, // near the top
+      hitPoint: { x: 4, y: 11.9, z: 5 }, // near a roof corner — must be IGNORED
       objectBox: box,
       currentYaw: 90,
       eyeHeight: EYE_MARGIN_METRES
     });
-    // Uncapped aim Y = 95. Capped aim Y must be lower than the raw hit Y
-    // (moved toward camera height) but still above the camera (a look-up).
-    expect(r.lookTarget.y).toBeLessThan(95);
+    expect(r.lookTarget.x).toBeCloseTo(0, 6); // box centre x, not hitPoint.x=4
+    expect(r.lookTarget.z).toBeCloseTo(0, 6); // box centre z
+    expect(r.lookTarget.y).toBeCloseTo(6, 6); // box centre y (12/2), not 11.9
+  });
+
+  it('framing-pitch cap (backstop): a steep centre look-up is bounded to the cap', () => {
+    // A tall, thin tower: the centre (y=100) is far above the ⅓-height camera,
+    // so framing it would crane steeply — the cap must move the aim DOWN toward
+    // camera height (round-3 L3-1 sign), bounded to MAX_FRAMING_PITCH.
+    const box = {
+      min: { x: -2, y: 0, z: -2 },
+      max: { x: 2, y: 200, z: 2 }
+    };
+    const r = desiredDoubleClickPose({
+      category: 'B',
+      hitPoint: { x: 0, y: 0, z: 0 }, // ignored for B
+      objectBox: box,
+      currentYaw: 90,
+      eyeHeight: EYE_MARGIN_METRES
+    });
+    // Capped aim is below the centre (100) but still above the camera (look-up).
+    expect(r.lookTarget.y).toBeLessThan(100);
     expect(r.lookTarget.y).toBeGreaterThan(r.position.y);
-    // The capped vertical angle equals MAX_FRAMING_PITCH.
     const hdist = Math.hypot(
       r.lookTarget.x - r.position.x,
       r.lookTarget.z - r.position.z
@@ -1865,21 +1883,6 @@ describe('desiredDoubleClickPose', () => {
     const angle =
       (Math.atan2(r.lookTarget.y - r.position.y, hdist) * 180) / Math.PI;
     expect(angle).toBeCloseTo(DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES, 4);
-  });
-
-  it('framing-pitch cap is inert for a gentle look (angle below the cap)', () => {
-    const box = {
-      min: { x: -5, y: 0, z: -5 },
-      max: { x: 5, y: 12, z: 5 }
-    };
-    const r = desiredDoubleClickPose({
-      category: 'B',
-      hitPoint: { x: 0, y: 4, z: 5 },
-      objectBox: box,
-      currentYaw: 90,
-      eyeHeight: EYE_MARGIN_METRES
-    });
-    expect(r.lookTarget.y).toBeCloseTo(4, 6); // unchanged
   });
 
   // Round-3 H1 (code review): the AUTHORITATIVE cap is re-applied post-
