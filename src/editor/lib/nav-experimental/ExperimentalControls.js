@@ -230,12 +230,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this.rotationSpeed = ROTATION_SPEED_RAD_PER_PX;
 
     this._camera = camera;
-    // TASK-012 (L-1): the static default FOV, captured ONCE at construction
-    // before any Phase-3 focal zoom can mutate `camera.fov`. A double-click
-    // teleport resets FOV to this (pre-014b there is no height→FOV function to
-    // reuse — _zoomUndo.fov / _phase3FovBaseline are live/entry values, not a
-    // fixed default). Falls back to 60 if the camera has no fov yet.
-    this._defaultFov = camera && camera.fov ? camera.fov : 60;
     this._domElement = domElement;
     this._isOrthographic = false;
     this._disabledByOrtho = false;
@@ -1864,10 +1858,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       position,
       quaternion: endQuat,
       // TASK-012 (R2-3/DC7): a fresh arrival discards any Phase-3 focal-zoom
-      // FOV — tween FOV from its current (in-flight on a re-click) value to
-      // the static default so a telephoto arrival reframes smoothly (WE-11).
+      // FOV — tween FOV from its current (in-flight on a re-click) value to the
+      // default so a telephoto arrival reframes smoothly (WE-11). Uses the
+      // DEFAULT_FOV_DEGREES literal (TASK-025), NOT a construction-time
+      // `camera.fov` capture — TASK-025 found that capture unreliable on a
+      // re-attach mid-zoom, and 50 is the shared resting FOV across nav views.
       fromFov: camera.fov,
-      toFov: this._defaultFov,
+      toFov: DEFAULT_FOV_DEGREES,
       durationMs: FALL_DURATION_MS,
       onDone: () => {
         // DC7: a teleport is a non-wheel move → clear 022's transient memory.
