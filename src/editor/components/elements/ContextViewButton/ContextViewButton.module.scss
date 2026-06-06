@@ -1,10 +1,12 @@
 // TASK-025 — Context view button (single, actions-only). Always visible in
-// experimental-nav mode, sitting just RIGHT of the compass and the same size as
-// it (64×64, circular). The `.contextButtonDock` placement lives in
-// Main.module.scss (so it shares the actionBar dock's stacking context +
-// pedestal handling); this module styles the widget itself.
+// experimental-nav mode, sitting just RIGHT of the compass. Sized to match the
+// compass's visible DIAL BODY (44 px = the compass's DIAL_R 22 ×2), NOT its
+// 64 px container — the compass body is inset ~10 px inside its box, so a full
+// 64 px circle read significantly larger than the compass. The
+// `.contextButtonDock` placement lives in Main.module.scss; this module styles
+// the widget itself.
 
-$button-size: 64px;
+$button-size: 44px; // match the compass dial body (Compass DIAL_R = 22)
 
 .contextControl {
   position: relative;

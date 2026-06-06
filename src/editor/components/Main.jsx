@@ -101,25 +101,34 @@ export default function Main() {
     if (!barDock || !compassDock || !contextDock) return;
     const GAP = 12;
     const COMPASS_SIZE = 64; // .compass is 64x64 (Compass.module.scss)
+    // The compass's visible dial BODY is smaller than its 64px container: a
+    // circle of radius DIAL_R=22 centred in the box, so ~10px inset each side
+    // (Compass.component.jsx). The context button is sized to that body (44px),
+    // so we position it relative to the body edges — not the container — else it
+    // both looks bigger and sits with an over-wide gap.
+    const COMPASS_BODY_R = 22; // Compass DIAL_R
+    const COMPASS_BODY_INSET = COMPASS_SIZE / 2 - COMPASS_BODY_R; // 10px
     const BAR_BOTTOM = 16; // all docks sit 16px off the viewport bottom
     const place = () => {
       const bar = barDock.firstElementChild || barDock;
-      // The compass's computed bottom edge — reused for true bottom-alignment of
-      // the context control (R2-REV-E: control.bottom = compass.bottom, NOT
-      // compass.bottom − controlSize/2 which would centre it).
+      // The compass container's computed bottom edge.
       const compassBottom =
         BAR_BOTTOM + bar.offsetHeight / 2 - COMPASS_SIZE / 2;
       // Compass — just to the right of the centred toolbar.
       compassDock.style.transform = `translateX(${bar.offsetWidth / 2 + GAP}px)`;
       compassDock.style.bottom = `${compassBottom}px`;
-      // Context control — further right: a GAP past the compass's right edge.
-      // Compass left edge (its translateX target, both docks pinned at
-      // left: 50%) = barWidth/2 + GAP; its right edge adds COMPASS_SIZE; then a
-      // GAP to the control's left edge.
-      const contextLeft = bar.offsetWidth / 2 + GAP + COMPASS_SIZE + GAP;
+      // Context button (44px = compass body) — a GAP to the right of the
+      // compass's visible BODY right edge, bottom-aligned with the body.
+      // Compass container left edge (translateX, both docks pinned left:50%) =
+      // barWidth/2 + GAP; its body right edge adds (COMPASS_SIZE/2 + BODY_R);
+      // then a GAP to the button's left edge.
+      const contextLeft =
+        bar.offsetWidth / 2 + GAP + (COMPASS_SIZE / 2 + COMPASS_BODY_R) + GAP;
       contextDock.style.transform = `translateX(${contextLeft}px)`;
-      // Bottom-aligned with the compass: same bottom edge (R2-REV-E).
-      contextDock.style.bottom = `${compassBottom}px`;
+      // Bottom-aligned with the compass body (compass body bottom edge sits
+      // COMPASS_BODY_INSET above the container bottom). Same-size button + same
+      // bottom ⇒ the button occupies the compass body's exact vertical band.
+      contextDock.style.bottom = `${compassBottom + COMPASS_BODY_INSET}px`;
     };
     place();
     const ro =
