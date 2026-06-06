@@ -2,7 +2,7 @@
 
 Open items as of the snapshot SHA (`5f43d38d`). Four groups:
 **standing items** (documentation/code-hygiene), **review &
-confirmation gates** (decisions awaiting the maintainer or feel-test),
+confirmation gates** (work/decisions required before merging upstream),
 **known rough edges** (shipped behaviour that doesn't feel right yet), and
 **deferred work** (intentionally not built — may be wanted later), plus a
 few **known constraints**. IDs are `OI-NN`.
@@ -59,13 +59,25 @@ arrival" is a swoop affordance and was not extended to the teleport), not
 a bug — but a reader expecting a street-level double-click to match a
 swoop landing's framing will see a narrower FOV. Flagged in case the
 inconsistency is later judged worth closing. (Related: the landing-FOV
-behaviour itself is under question — see OI-8.)
+behaviour itself is under question — see OI-9.)
 
 ---
 
-## Review / confirmation gates (prototype → upstream)
+## Review / confirmation gates (work required before upstream merge)
 
-### OI-4 — "Buildings are solid" / rooftop landing needs the maintainer's final nod
+### OI-4 — Code-review, consolidation, quality & possible decomposition pass before merge
+
+The subsystem is prototype-grade and has not had a dedicated
+engineering-quality pass. Before merging upstream it needs **code review,
+consolidation, and a quality sweep** — and **possibly decomposition**:
+`ExperimentalControls.js` is a single very large file (~4,500 lines)
+carrying the controller, the wheel/swoop state machine, the compass and
+plan-view tweens, the recovery machinery, and the context-resolver, so
+splitting it into focused modules is a candidate. This is a known,
+expected piece of work, not a discovered defect — but it is a hard gate on
+upstream readiness and should not be skipped.
+
+### OI-5 — "Buildings are solid" / rooftop landing needs the maintainer's final nod
 
 KD-16 reverses an earlier rule so that a swoop lands *on* a building roof
 rather than at street level inside its footprint. The maintainer has been
@@ -74,20 +86,20 @@ and it is **structurally load-bearing**: "buildings are solid" also drives
 WASD wall-blocking and enclosure, so a rejection unpicks more than rooftop
 landings. Confirm before upstream.
 
-### OI-5 — Letterbox mode indicator is a placeholder pending review
+### OI-6 — Letterbox mode indicator is a placeholder pending review
 
 The full-width-black-bars Street-mode indicator (KD-30) is an explicit
 placeholder. Lower-effort fallbacks are on hand (cursor-shape change,
 accent-colour canvas border, a small mode badge) if it doesn't survive
 review.
 
-### OI-6 — Transient recovery cue is a new UI element with no precedent
+### OI-7 — Transient recovery cue is a new UI element with no precedent
 
 The flash-on-transition recovery cue is a new kind of UI element in this
 editor. The intent is to **ship it for review/testing** and settle then,
 rather than pre-cut it. Provisional.
 
-### OI-7 — Accessibility debt across the toolbar widgets
+### OI-8 — Accessibility debt across the toolbar widgets
 
 Both the compass and the context view button defer aria roles, focus
 handling, and keyboard operability; reduced-motion for the swoop/tweens
@@ -99,7 +111,7 @@ dedicated pass is warranted if a11y becomes a requirement.
 
 ## Known rough edges (shipped, but the feel isn't right yet)
 
-### OI-8 — The swoop Phase 2 → Phase 3 transition / landing FOV doesn't deliver the intended feel
+### OI-9 — The swoop Phase 2 → Phase 3 transition / landing FOV doesn't deliver the intended feel
 
 The "sense of arrival" — easing the FOV open toward the wide landing value
 as the swoop reaches street level (KD-12, `TH-29`/`TH-32`) — **doesn't
@@ -115,91 +127,91 @@ the camera settles at the wide landing FOV and you have to deliberately
 push past the dead-band to start zooming in. Open question whether that
 needs a **visual indicator** at the boundary. This may revise or replace
 KD-12's height-driven FOV ramp; needs design + feel-test. (Distinct from
-OI-13, which is the *zoom-out* hand-off at the same boundary.)
+OI-14, which is the *zoom-out* hand-off at the same boundary.)
 
-### OI-9 — The context view button (drone / street view / daylight) doesn't feel right yet
+### OI-10 — The context view button (drone / street view / daylight) doesn't feel right yet
 
 The single state-tracking button (KD-21) works mechanically but the **UX
 doesn't feel right yet**, and it isn't clear how to improve it — icon
 legibility, the icon-as-destination convention, the three-way state
 changes, and discoverability are all candidates. This probably needs input
 from **Kieran or his 2D-UI expert** rather than another internal
-iteration. Carry it into the upstream review conversation alongside OI-5 /
-OI-6 (the other UI affordances awaiting his eye).
+iteration. Carry it into the upstream review conversation alongside OI-6 /
+OI-7 (the other UI affordances awaiting his eye).
 
 ---
 
 ## Deferred features (intentionally not built)
 
-### OI-10 — FPS / pointer-lock mode
+### OI-11 — FPS / pointer-lock mode
 Pointer-lock entry/exit on Ctrl-hold, WASD nav, subtle FOV/overlay cues —
 **not built**. Not a key navigation mechanic (close work is Street view +
 double-click).
 
-### OI-11 — Touch / mobile gestures
+### OI-12 — Touch / mobile gestures
 Out of scope for the prototype. The editor is desktop today; mobile uses
 viewer-mode. If **mobile/touch camera-editing** becomes a goal it would
 also re-open the orbit-library decision (KD-07), since `camera-controls`
 ships multi-touch.
 
-### OI-12 — Re-introduce cursor anchoring inside the swoop's Phase 2
+### OI-13 — Re-introduce cursor anchoring inside the swoop's Phase 2
 Deliberately removed (KD-08). If feel-test shows the "land next to the
 cursor target" loss is significant, the cleanest re-introduction is "latch
 the anchor + cursor NDC at Phase-2 entry, trajectory determined at entry,
 no per-tick re-raycast." Recorded for the backlog, not a v1 option.
 
-### OI-13 — Phase 3 ↔ Phase 2 FOV/pedestal blending (zoom-out hand-off)
+### OI-14 — Phase 3 ↔ Phase 2 FOV/pedestal blending (zoom-out hand-off)
 The current design hands off hard at FOV = baseline (zoom-out widens FOV,
 *then* the camera starts to pedestal up). If that discontinuity reads as a
 jolt, blend the last stretch of FOV restoration with a little pedestal.
-Deferred. (Distinct from OI-8, which is the *zoom-in* arrival feel.)
+Deferred. (Distinct from OI-9, which is the *zoom-in* arrival feel.)
 
-### OI-14 — Velocity-decomposed wall-sliding (diagonal-into-wall)
+### OI-15 — Velocity-decomposed wall-sliding (diagonal-into-wall)
 Moving *parallel* to a wall is already free. Pushing *diagonally into* a
 wall currently hard-stops the whole step; decomposing it to keep the
 tangential component (true slide-along) is a later refinement.
 
-### OI-15 — Orientation-to-slope swoop landing
+### OI-16 — Orientation-to-slope swoop landing
 Dropped per testing (landing stays horizontal). The landing math keeps the
 hit normal available so orient-to-slope can be added later without a
 rewrite (KD-20), but it is not implemented.
 
-### OI-16 — Bare-earth terrain via an elevation API
+### OI-17 — Bare-earth terrain via an elevation API
 The visible surface suffices; an external elevation service / geoid-height
 fallback is a possible future addition, not built.
 
-### OI-17 — High-quality street-view on photogrammetry tiles
+### OI-18 — High-quality street-view on photogrammetry tiles
 Low-value per testing (tile resolution is poor); the system only ensures
 it's not *broken* at street level on tiles, not that it's *nice*.
 
-### OI-18 — Single-click teleport in Street mode
+### OI-19 — Single-click teleport in Street mode
 An open question (how it would coexist with object selection). Deferred.
 
-### OI-19 — Discoverability caption / hover text ("double-click to navigate here")
+### OI-20 — Discoverability caption / hover text ("double-click to navigate here")
 Not built. The hover-highlight raycast fix (KD-27) is the only
 discoverability change shipped for double-click.
 
-### OI-20 — Smoothing / inertia layer
+### OI-21 — Smoothing / inertia layer
 Damped/eased rotate & dolly is not implemented. If feel-test asks for it,
 add a small velocity/lerp layer on the existing tick animator rather than
 adopting a library (KD-07). Prospective.
 
-### OI-21 — Escape-to-cancel an in-flight context-button / teleport transition
+### OI-22 — Escape-to-cancel an in-flight context-button / teleport transition
 The context button and Space go inert during their own animation (no
 queue). An "emergency brake" (Escape to cancel mid-flight) is a possible
 later add, not built.
 
-### OI-22 — Cardinal-snap hysteresis on the double-click heading
+### OI-23 — Cardinal-snap hysteresis on the double-click heading
 A pre-click heading near a 45° boundary can flip the snapped result by 90°
 (`02-key-decisions.md` worked examples). Whether to add sticky snap near
 the boundary is a feel-test call; pure snap shipped.
 
-### OI-23 — Distance-scaled tween duration for very large elevation drops
-A double-click from 200 m to street level uses the same ~1 s tween as a
-short hop. Scaling the duration with distance is a feel-test refinement,
-not built.
+### OI-24 — Distance-scaled tween duration for very large elevation drops
+A double-click from 200 m to street level uses the same fixed tween
+duration as a short hop. Scaling the duration with distance is a feel-test
+refinement, not built.
 
-### OI-24 — Footprint-size filtering of tall-thin tile scatter
+### OI-25 — Footprint-size filtering of tall-thin tile scatter
 On fused photogrammetry tiles, a tall-thin baked object (lamppost, tree
 trunk) exceeds the WASD block-height and will **block**, because footprint
 filtering ("ignore < 2 m × 2 m") is hard on a mesh with no object
@@ -210,18 +222,18 @@ future refinement, not a guarantee.
 
 ## Known constraints (not bugs, worth stating)
 
-### OI-25 — Orthographic camera unsupported
+### OI-26 — Orthographic camera unsupported
 `ExperimentalControls` disables itself under an orthographic camera and
 logs once, re-enabling when a perspective camera is restored. (The
 controls' whole model is perspective-based.)
 
-### OI-26 — Production webpack performance budget over on the base bundle
+### OI-27 — Production webpack performance budget over on the base bundle
 `npm run dist` reports a webpack performance-budget overage that
 **pre-exists** on the base navigation bundle — it is not a build break
 introduced by this work, and the dev build is clean. Worth knowing before
 reading a `dist` "errors" line as a regression.
 
-### OI-27 — Drone-view target height is discontinuous over a building edge
+### OI-28 — Drone-view target height is discontinuous over a building edge
 Because the drone height combines a neighbourhood "ground level" with the
 roof directly below, two drone presses at adjacent spots near a tower base
 can reach different altitudes (street vs roof). Accepted as a tuning

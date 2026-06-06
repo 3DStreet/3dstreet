@@ -149,7 +149,7 @@ recovery (daylight / street / drone) is **user-invoked** under the
 principle that automatic behaviour only ever *blocks* motion, never adds it
 (KD-16, KD-17, KD-18, KD-19). Landing *on* a building roof rather than at
 street level *inside* it overturns an earlier design rule and is the change
-most needing the maintainer's sign-off (`05-open-issues.md` OI-4).
+most needing the maintainer's sign-off (`05-open-issues.md` OI-5).
 
 Several affordances came with it that the proposal didn't anticipate:
 - the **context view button** — a brand-new always-visible toolbar control
@@ -182,14 +182,14 @@ they are new, top-level pieces of the UX, not just internal mechanics.
 
 | Proposal feature | Status |
 |---|---|
-| **FPS / pointer-lock mode** (Ctrl-hold pointer lock, WASD, FOV cue) | **Deferred** — not built (`05-open-issues.md` OI-10). |
-| **Touch controls** | **Out of scope** for the prototype; desktop only (OI-11). |
-| **Cursor anchoring through Phase 2 of the swoop** | **Dropped** from v1; re-introducible if missed (KD-08 / OI-12). |
+| **FPS / pointer-lock mode** (Ctrl-hold pointer lock, WASD, FOV cue) | **Deferred** — not built (`05-open-issues.md` OI-11). |
+| **Touch controls** | **Out of scope** for the prototype; desktop only (OI-12). |
+| **Cursor anchoring through Phase 2 of the swoop** | **Dropped** from v1; re-introducible if missed (KD-08 / OI-13). |
 | **Weighted blend of rotation centres (20–30° band)** | **Dropped** with the diorama model (KD-02, KD-04). |
 | **Diorama mode / finite-scene-boundary orbit** | **Removed entirely** (KD-02). |
 | **"Inside/outside the scene" indicator** | **Removed** — the concept it signalled is gone. |
 | **Phase 2 "land next to the cursor target"** | **Dropped** — you land below your entry xz (KD-08). |
-| **Discoverability hover-caption** ("double-click to navigate here") | **Not built**; hover-highlight fix is the only discoverability change (OI-19). |
+| **Discoverability hover-caption** ("double-click to navigate here") | **Not built**; hover-highlight fix is the only discoverability change (OI-20). |
 | **Streetview-mode elevation restriction** | **Dropped** — the lowered threshold makes it unnecessary. |
 | Screenshots in the proposal | **Not reproduced** — they illustrated the *old* double-click problems and the lost fixed-tilt close-zoom, both superseded; described in prose where relevant. |
 
