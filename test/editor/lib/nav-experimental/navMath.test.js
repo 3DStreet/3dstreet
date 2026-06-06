@@ -24,6 +24,7 @@ import {
   classifyFallAction,
   isLegitPose,
   cueState,
+  elevationState,
   lateralCap,
   swoopLandingFov,
   classifySwoopTickTarget,
@@ -400,11 +401,41 @@ describe('wasdVerticalY', () => {
   // walking follow. Each asserts: correct y (5 dp), inputs not mutated, no NaN.
   const followRows = [
     // # grounded label                                  inputs                                         expect
-    ['G1', true, 'grounded flat (AGL-preserve)', { camY: 1.5, floorNowY: 0, collisionFloorDestY: 0, H: 99 }, 1.5],
-    ['G2', true, 'grounded slope +5 (follow up)', { camY: 1.5, floorNowY: 0, collisionFloorDestY: 5, H: 99 }, 6.5],
-    ['G3', true, 'grounded push-up clamp', { camY: 1.0, floorNowY: 0, collisionFloorDestY: 2, H: 99 }, 3.5],
-    ['G4', true, 'grounded follows down a slope', { camY: 6.5, floorNowY: 5, collisionFloorDestY: 0, H: 99 }, 1.5],
-    ['N1', false, 'H==null defensive (collision-follow, no NaN)', { camY: 1.5, floorNowY: 0, collisionFloorDestY: 5, H: null }, 6.5]
+    [
+      'G1',
+      true,
+      'grounded flat (AGL-preserve)',
+      { camY: 1.5, floorNowY: 0, collisionFloorDestY: 0, H: 99 },
+      1.5
+    ],
+    [
+      'G2',
+      true,
+      'grounded slope +5 (follow up)',
+      { camY: 1.5, floorNowY: 0, collisionFloorDestY: 5, H: 99 },
+      6.5
+    ],
+    [
+      'G3',
+      true,
+      'grounded push-up clamp',
+      { camY: 1.0, floorNowY: 0, collisionFloorDestY: 2, H: 99 },
+      3.5
+    ],
+    [
+      'G4',
+      true,
+      'grounded follows down a slope',
+      { camY: 6.5, floorNowY: 5, collisionFloorDestY: 0, H: 99 },
+      1.5
+    ],
+    [
+      'N1',
+      false,
+      'H==null defensive (collision-follow, no NaN)',
+      { camY: 1.5, floorNowY: 0, collisionFloorDestY: 5, H: null },
+      6.5
+    ]
   ];
 
   for (const [n, grounded, label, inputs, expected] of followRows) {
@@ -433,10 +464,30 @@ describe('wasdVerticalY', () => {
   // `max(H, collisionFloorDest + eye)` unchanged from option 3. ---
   const targetRows = [
     // # label                                      inputs                                   expect
-    [1, 'opt3 flat H=50 (hold absolute)', { camY: 50, collisionFloorDestY: 0, H: 50 }, 50],
-    [2, 'opt3 over 49m roof (≤eye lift)', { camY: 50, collisionFloorDestY: 49, H: 50 }, 50.5],
-    [3, 'opt3 drop-back to cruise', { camY: 50, collisionFloorDestY: 0, H: 50 }, 50],
-    [4, 'opt3 rising terrain 60 (clamp lift)', { camY: 50, collisionFloorDestY: 60, H: 50 }, 61.5]
+    [
+      1,
+      'opt3 flat H=50 (hold absolute)',
+      { camY: 50, collisionFloorDestY: 0, H: 50 },
+      50
+    ],
+    [
+      2,
+      'opt3 over 49m roof (≤eye lift)',
+      { camY: 50, collisionFloorDestY: 49, H: 50 },
+      50.5
+    ],
+    [
+      3,
+      'opt3 drop-back to cruise',
+      { camY: 50, collisionFloorDestY: 0, H: 50 },
+      50
+    ],
+    [
+      4,
+      'opt3 rising terrain 60 (clamp lift)',
+      { camY: 50, collisionFloorDestY: 60, H: 50 },
+      61.5
+    ]
   ];
 
   for (const [n, label, inputs, expected] of targetRows) {
@@ -468,9 +519,14 @@ describe('wasdVerticalY', () => {
       // target = max(H=50, floorDest+eye = 49+1.5 = 50.5) = 50.5; camY=50 →
       // wants +0.5, but capped to +maxStep this frame.
       const y = wasdVerticalY({
-        grounded: false, camY: 50, floorNowY: 0,
-        collisionFloorDestY: 49, H: 50, eyeMargin: EYE,
-        dtSeconds: dt, rateMps: RATE
+        grounded: false,
+        camY: 50,
+        floorNowY: 0,
+        collisionFloorDestY: 49,
+        H: 50,
+        eyeMargin: EYE,
+        dtSeconds: dt,
+        rateMps: RATE
       });
       expect(y).toBeCloseTo(50 + maxStep, 5);
     });
@@ -479,9 +535,14 @@ describe('wasdVerticalY', () => {
       // camY high above cruise; target = max(H=50, 0+1.5)=50; wants −5 but
       // capped to −maxStep this frame.
       const y = wasdVerticalY({
-        grounded: false, camY: 55, floorNowY: 0,
-        collisionFloorDestY: 0, H: 50, eyeMargin: EYE,
-        dtSeconds: dt, rateMps: RATE
+        grounded: false,
+        camY: 55,
+        floorNowY: 0,
+        collisionFloorDestY: 0,
+        H: 50,
+        eyeMargin: EYE,
+        dtSeconds: dt,
+        rateMps: RATE
       });
       expect(y).toBeCloseTo(55 - maxStep, 5);
     });
@@ -489,9 +550,14 @@ describe('wasdVerticalY', () => {
     it('within maxStep reaches target exactly (up)', () => {
       // wants +0.02 (< maxStep) → arrives at target 50.02.
       const y = wasdVerticalY({
-        grounded: false, camY: 50, floorNowY: 0,
-        collisionFloorDestY: 48.52, H: 50, eyeMargin: EYE,
-        dtSeconds: dt, rateMps: RATE
+        grounded: false,
+        camY: 50,
+        floorNowY: 0,
+        collisionFloorDestY: 48.52,
+        H: 50,
+        eyeMargin: EYE,
+        dtSeconds: dt,
+        rateMps: RATE
       });
       expect(y).toBeCloseTo(50.02, 5); // target = 48.52 + 1.5
     });
@@ -499,9 +565,14 @@ describe('wasdVerticalY', () => {
     it('within maxStep reaches target exactly (down)', () => {
       // wants −0.02 (< maxStep) → arrives at target 50.
       const y = wasdVerticalY({
-        grounded: false, camY: 50.02, floorNowY: 0,
-        collisionFloorDestY: 0, H: 50, eyeMargin: EYE,
-        dtSeconds: dt, rateMps: RATE
+        grounded: false,
+        camY: 50.02,
+        floorNowY: 0,
+        collisionFloorDestY: 0,
+        H: 50,
+        eyeMargin: EYE,
+        dtSeconds: dt,
+        rateMps: RATE
       });
       expect(y).toBeCloseTo(50, 5);
     });
@@ -511,9 +582,14 @@ describe('wasdVerticalY', () => {
       // target = max(H=48, 49+1.5)=50.5; one capped step gives 48+maxStep ≈
       // 48.067, which is still below the roof 49 → safety floor lifts to 49.
       const y = wasdVerticalY({
-        grounded: false, camY: 48, floorNowY: 0,
-        collisionFloorDestY: 49, H: 48, eyeMargin: EYE,
-        dtSeconds: dt, rateMps: RATE
+        grounded: false,
+        camY: 48,
+        floorNowY: 0,
+        collisionFloorDestY: 49,
+        H: 48,
+        eyeMargin: EYE,
+        dtSeconds: dt,
+        rateMps: RATE
       });
       expect(y).toBeCloseTo(49, 5); // clamped up to the roof, not 48+maxStep
       expect(y).toBeGreaterThanOrEqual(49);
@@ -534,9 +610,15 @@ describe('wasdVerticalY', () => {
       // camY=5, H=5, stale collisionFloorDestY=30 (would lift to 31.5 if used).
       // With destFloorHit:false the floor is ignored → stays at H=5.
       const y = wasdVerticalY({
-        grounded: false, camY: 5, floorNowY: 0,
-        collisionFloorDestY: 30, destFloorHit: false, H: 5, eyeMargin: EYE,
-        dtSeconds: dt, rateMps: RATE
+        grounded: false,
+        camY: 5,
+        floorNowY: 0,
+        collisionFloorDestY: 30,
+        destFloorHit: false,
+        H: 5,
+        eyeMargin: EYE,
+        dtSeconds: dt,
+        rateMps: RATE
       });
       expect(y).toBeCloseTo(5, 5); // NOT lifted to 31.5
     });
@@ -546,9 +628,15 @@ describe('wasdVerticalY', () => {
       // (via the safety floor) blocked descent. destFloorHit:false → free to
       // ease down toward H=2.
       const y = wasdVerticalY({
-        grounded: false, camY: 20, floorNowY: 0,
-        collisionFloorDestY: 30, destFloorHit: false, H: 2, eyeMargin: EYE,
-        dtSeconds: dt, rateMps: RATE
+        grounded: false,
+        camY: 20,
+        floorNowY: 0,
+        collisionFloorDestY: 30,
+        destFloorHit: false,
+        H: 2,
+        eyeMargin: EYE,
+        dtSeconds: dt,
+        rateMps: RATE
       });
       expect(y).toBeCloseTo(2, 5);
     });
@@ -558,9 +646,15 @@ describe('wasdVerticalY', () => {
       const maxStep = RATE * frameDt;
       // camY=10, H=2, stale floor 30; wants −8 but capped to −maxStep.
       const y = wasdVerticalY({
-        grounded: false, camY: 10, floorNowY: 0,
-        collisionFloorDestY: 30, destFloorHit: false, H: 2, eyeMargin: EYE,
-        dtSeconds: frameDt, rateMps: RATE
+        grounded: false,
+        camY: 10,
+        floorNowY: 0,
+        collisionFloorDestY: 30,
+        destFloorHit: false,
+        H: 2,
+        eyeMargin: EYE,
+        dtSeconds: frameDt,
+        rateMps: RATE
       });
       expect(y).toBeCloseTo(10 - maxStep, 5);
     });
@@ -569,9 +663,15 @@ describe('wasdVerticalY', () => {
       // camY=5, H=5, stale floor 30. The grounded-floor safety `max(eased,
       // floorDest)` would have forced 30; the miss path must NOT.
       const y = wasdVerticalY({
-        grounded: false, camY: 5, floorNowY: 0,
-        collisionFloorDestY: 30, destFloorHit: false, H: 5, eyeMargin: EYE,
-        dtSeconds: 1000, rateMps: RATE
+        grounded: false,
+        camY: 5,
+        floorNowY: 0,
+        collisionFloorDestY: 30,
+        destFloorHit: false,
+        H: 5,
+        eyeMargin: EYE,
+        dtSeconds: 1000,
+        rateMps: RATE
       });
       expect(y).toBeLessThan(30);
     });
@@ -582,9 +682,15 @@ describe('wasdVerticalY', () => {
   describe('destFloorHit:true (in-bounds) is unchanged option-3', () => {
     it('lifts to max(H, floorDest+eye) as before', () => {
       const y = wasdVerticalY({
-        grounded: false, camY: 50, floorNowY: 0,
-        collisionFloorDestY: 60, destFloorHit: true, H: 50, eyeMargin: EYE,
-        dtSeconds: 1000, rateMps: RATE
+        grounded: false,
+        camY: 50,
+        floorNowY: 0,
+        collisionFloorDestY: 60,
+        destFloorHit: true,
+        H: 50,
+        eyeMargin: EYE,
+        dtSeconds: 1000,
+        rateMps: RATE
       });
       expect(y).toBeCloseTo(61.5, 5); // identical to opt3 target row 4
     });
@@ -592,9 +698,15 @@ describe('wasdVerticalY', () => {
     it('safety floor still clips mid-ease as before', () => {
       const dt = 1 / 60;
       const y = wasdVerticalY({
-        grounded: false, camY: 48, floorNowY: 0,
-        collisionFloorDestY: 49, destFloorHit: true, H: 48, eyeMargin: EYE,
-        dtSeconds: dt, rateMps: RATE
+        grounded: false,
+        camY: 48,
+        floorNowY: 0,
+        collisionFloorDestY: 49,
+        destFloorHit: true,
+        H: 48,
+        eyeMargin: EYE,
+        dtSeconds: dt,
+        rateMps: RATE
       });
       expect(y).toBeCloseTo(49, 5);
     });
@@ -605,7 +717,12 @@ describe('groundedAtLoad', () => {
   const EYE = EYE_MARGIN_METRES; // 1.5
   it('within eye-margin of a real floor → grounded', () => {
     expect(
-      groundedAtLoad({ camY: 1.5, floorY: 0, source: 'segment-or-building', eyeMargin: EYE })
+      groundedAtLoad({
+        camY: 1.5,
+        floorY: 0,
+        source: 'segment-or-building',
+        eyeMargin: EYE
+      })
     ).toBe(true);
     // Exactly at the eye-margin boundary is inclusive (M3).
     expect(
@@ -614,7 +731,12 @@ describe('groundedAtLoad', () => {
   });
   it('above eye-margin → not grounded', () => {
     expect(
-      groundedAtLoad({ camY: 50, floorY: 0, source: 'segment-or-building', eyeMargin: EYE })
+      groundedAtLoad({
+        camY: 50,
+        floorY: 0,
+        source: 'segment-or-building',
+        eyeMargin: EYE
+      })
     ).toBe(false);
   });
   it('cache miss → not grounded regardless of height', () => {
@@ -657,7 +779,12 @@ describe('classifyFallAction', () => {
 
   it('no surface below (probe miss) → noop', () => {
     expect(
-      classifyFallAction({ enclosed: false, camY: 50, floorY: null, tiltDeg: 5 })
+      classifyFallAction({
+        enclosed: false,
+        camY: 50,
+        floorY: null,
+        tiltDeg: 5
+      })
     ).toBe('noop');
   });
 });
@@ -680,7 +807,9 @@ describe('isLegitPose (conjunction — WE-8a)', () => {
   });
 
   it('treats no-floor (open sky) as legit when not enclosed', () => {
-    expect(isLegitPose({ enclosed: false, camY: 100, floorY: null })).toBe(true);
+    expect(isLegitPose({ enclosed: false, camY: 100, floorY: null })).toBe(
+      true
+    );
   });
 });
 
@@ -700,6 +829,33 @@ describe('cueState (show/hide hysteresis — D7)', () => {
 
   it('enclosure forces show regardless of height', () => {
     expect(cueState(false, 0, true)).toBe(true);
+  });
+});
+
+describe('elevationState (TASK-025 — elevated↔street hysteresis + null-hold)', () => {
+  const ENTRY = 1.8;
+  const EXIT = 2.5;
+
+  it('above the exit height → elevated', () => {
+    expect(elevationState('street', 3, ENTRY, EXIT)).toBe('elevated');
+  });
+
+  it('at/below the entry height → street level', () => {
+    expect(elevationState('elevated', 1.5, ENTRY, EXIT)).toBe('street');
+    expect(elevationState('elevated', ENTRY, ENTRY, EXIT)).toBe('street');
+  });
+
+  it('holds the previous state inside the dead band (no flicker)', () => {
+    expect(elevationState('street', 2.2, ENTRY, EXIT)).toBe('street');
+    expect(elevationState('elevated', 2.2, ENTRY, EXIT)).toBe('elevated');
+  });
+
+  it('holds the previous state on a probe miss (agl == null)', () => {
+    // The v4 fresh-load bug lived here: a null agl must HOLD, not collapse to
+    // 'street'. (The resolver supplies a look-at fallback so a genuine miss is
+    // rare, but the hold is the safety net.)
+    expect(elevationState('elevated', null, ENTRY, EXIT)).toBe('elevated');
+    expect(elevationState('street', null, ENTRY, EXIT)).toBe('street');
   });
 });
 
@@ -903,10 +1059,7 @@ describe('levelForwardAnchor (TASK-014d)', () => {
     // at ±89° so true vertical is only reachable synthetically (AR #9).
     const cam = new THREE.PerspectiveCamera(60, 1, 0.1, 10000);
     cam.position.set(0, 100, 0);
-    cam.quaternion.setFromAxisAngle(
-      new THREE.Vector3(1, 0, 0),
-      -Math.PI / 2
-    );
+    cam.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
     cam.updateMatrixWorld();
     // Sanity: forward really is straight down.
     const fwd = new THREE.Vector3();
@@ -1266,7 +1419,9 @@ describe('shiftRotateStep', () => {
       speed: SPEED,
       floorY
     });
-    expect(step.pos.y).toBeGreaterThanOrEqual(floorY + EYE_MARGIN_METRES - 1e-6);
+    expect(step.pos.y).toBeGreaterThanOrEqual(
+      floorY + EYE_MARGIN_METRES - 1e-6
+    );
   });
 
   it('floor bound relaxes at a large radius (down-tilt allowed)', () => {
@@ -1741,30 +1896,100 @@ describe('classifySwoopTickTarget (Part C)', () => {
   // Break-out (dolly) only when craning UP at a wall/sky. lookingUp=false must
   // always swoop, regardless of surface (live-test #2).
   it('looking DOWN/level always swoops — even at a solid wall (live-test #2)', () => {
-    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.05, isSolidFloor: true, lookingUp: false })).toBe('swoop');
-    expect(classifySwoopTickTarget({ source: 'fallback', normalY: null, isSolidFloor: true, lookingUp: false })).toBe('swoop');
-    expect(classifySwoopTickTarget({ source: 'ground', normalY: 1, isSolidFloor: true, lookingUp: false })).toBe('swoop');
+    expect(
+      classifySwoopTickTarget({
+        source: 'mesh',
+        normalY: 0.05,
+        isSolidFloor: true,
+        lookingUp: false
+      })
+    ).toBe('swoop');
+    expect(
+      classifySwoopTickTarget({
+        source: 'fallback',
+        normalY: null,
+        isSolidFloor: true,
+        lookingUp: false
+      })
+    ).toBe('swoop');
+    expect(
+      classifySwoopTickTarget({
+        source: 'ground',
+        normalY: 1,
+        isSolidFloor: true,
+        lookingUp: false
+      })
+    ).toBe('swoop');
   });
   it('looking UP at open sky → dolly', () => {
-    expect(classifySwoopTickTarget({ source: 'fallback', normalY: null, isSolidFloor: true, lookingUp: true })).toBe('dolly');
+    expect(
+      classifySwoopTickTarget({
+        source: 'fallback',
+        normalY: null,
+        isSolidFloor: true,
+        lookingUp: true
+      })
+    ).toBe('dolly');
   });
   it('looking UP at a SOLID wall (building façade) → dolly', () => {
-    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.05, isSolidFloor: true, lookingUp: true })).toBe('dolly');
+    expect(
+      classifySwoopTickTarget({
+        source: 'mesh',
+        normalY: 0.05,
+        isSolidFloor: true,
+        lookingUp: true
+      })
+    ).toBe('dolly');
   });
   it('looking UP at a rooftop (near-horizontal solid floor) → swoop', () => {
-    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.99, isSolidFloor: true, lookingUp: true })).toBe('swoop');
+    expect(
+      classifySwoopTickTarget({
+        source: 'mesh',
+        normalY: 0.99,
+        isSolidFloor: true,
+        lookingUp: true
+      })
+    ).toBe('swoop');
   });
   it('looking UP at horizontal scatter (car/tree top) → swoop (live-test #1)', () => {
-    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.99, isSolidFloor: false, lookingUp: true })).toBe('swoop');
+    expect(
+      classifySwoopTickTarget({
+        source: 'mesh',
+        normalY: 0.99,
+        isSolidFloor: false,
+        lookingUp: true
+      })
+    ).toBe('swoop');
   });
   it('looking UP at VERTICAL scatter (tree trunk / sign) → swoop (not a solid wall)', () => {
-    expect(classifySwoopTickTarget({ source: 'mesh', normalY: 0.05, isSolidFloor: false, lookingUp: true })).toBe('swoop');
+    expect(
+      classifySwoopTickTarget({
+        source: 'mesh',
+        normalY: 0.05,
+        isSolidFloor: false,
+        lookingUp: true
+      })
+    ).toBe('swoop');
   });
   it('looking UP, ground source → swoop', () => {
-    expect(classifySwoopTickTarget({ source: 'ground', normalY: 1, isSolidFloor: true, lookingUp: true })).toBe('swoop');
+    expect(
+      classifySwoopTickTarget({
+        source: 'ground',
+        normalY: 1,
+        isSolidFloor: true,
+        lookingUp: true
+      })
+    ).toBe('swoop');
   });
   it('looking UP, missing normal → swoop (never strand mid-swoop)', () => {
-    expect(classifySwoopTickTarget({ source: 'mesh', normalY: null, isSolidFloor: true, lookingUp: true })).toBe('swoop');
+    expect(
+      classifySwoopTickTarget({
+        source: 'mesh',
+        normalY: null,
+        isSolidFloor: true,
+        lookingUp: true
+      })
+    ).toBe('swoop');
   });
 });
 
@@ -1944,10 +2169,9 @@ describe('dollyFactorForTicks (TASK-014a)', () => {
 
   it('is exactly reversible: f(t)·f(-t) === 1 for fractional and whole t', () => {
     for (const t of [0.3, 1, 2.5, -0.7, 4]) {
-      expect(dollyFactorForTicks(t, alpha) * dollyFactorForTicks(-t, alpha)).toBeCloseTo(
-        1,
-        12
-      );
+      expect(
+        dollyFactorForTicks(t, alpha) * dollyFactorForTicks(-t, alpha)
+      ).toBeCloseTo(1, 12);
     }
   });
 
@@ -1976,7 +2200,9 @@ describe('fovFactorForTicks (TASK-014a)', () => {
 
   it('is exactly reversible: f(t)·f(-t) === 1', () => {
     for (const t of [0.3, 1, 2.5]) {
-      expect(fovFactorForTicks(t, beta) * fovFactorForTicks(-t, beta)).toBeCloseTo(1, 12);
+      expect(
+        fovFactorForTicks(t, beta) * fovFactorForTicks(-t, beta)
+      ).toBeCloseTo(1, 12);
     }
   });
 });
