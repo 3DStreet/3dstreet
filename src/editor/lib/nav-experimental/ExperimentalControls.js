@@ -402,6 +402,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._contextSnapshot = {
       enclosed: false,
       floorY: null,
+      lookAtFloorY: null,
       topOverhead: null,
       elevationState: 'street'
     };
@@ -1818,14 +1819,24 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       enabled =
         s.topOverhead != null && s.topOverhead + EYE_MARGIN_METRES > camY;
     } else if (s.elevationState === 'elevated') {
-      // Street view: tilt down and swoop to the surface below. Grey out on a
-      // probe miss (no surface below — over the void at a scene edge, WE-8) or
-      // when already at/below eye-height.
+      // Street view. Enabled mirrors `_swoopToStreet` EXACTLY (R4): it swoops to
+      // the camera-centre look-at when tilted past T, else drops vertically to
+      // the floor below. So it has a target — and the button is enabled — when
+      // EITHER the look-at swoop (tilt > T, a per-column floor at the look-at
+      // below us) OR the vertical drop (a floor below us) would move. Grey out
+      // only when neither does (over the void with nothing in view, WE-8). This
+      // is why a fresh load looking down at the street from over the scene edge
+      // is correctly ENABLED even though nothing is directly below.
       kind = 'street';
-      enabled =
+      const tiltedToGround =
+        cameraTiltDegrees(this._camera) > this._tiltThreshold;
+      const lookAtOk =
+        s.lookAtFloorY != null && s.lookAtFloorY + EYE_MARGIN_METRES < camY;
+      const belowOk =
         s.floorY != null &&
         isFinite(s.floorY) &&
         s.floorY + EYE_MARGIN_METRES < camY;
+      enabled = (tiltedToGround && lookAtOk) || belowOk;
     } else {
       // Drone view: rise. Never greys — it always targets a height above the
       // surface below, rising past an overhang if need be (spec D-A).
@@ -2368,26 +2379,49 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // is the highest overhead solid (overheadHits is ascending-sorted), or null.
   _computeContextSnapshot(probe) {
     const camY = this._camera.position.y;
-    const aglForState = probe.floorY != null ? camY - probe.floorY : null;
-    const topOverhead = probe.overheadHits.length
-      ? probe.overheadHits[probe.overheadHits.length - 1]
-      : null;
-    // TASK-025 v2 (R2-REV-C / finding 4): the `enclosed` flag strobes as the
-    // view ray crosses a wall mid-orbit/drag (the sunshine icon flickers while
-    // orbiting THROUGH a building). Gate it on the GESTURE LATCH: while a
-    // pointer drag/orbit is latched, CARRY FORWARD the previous `enclosed`
-    // ONLY — recompute on settle (pointer-up triggers a non-idle tick; tween
-    // onDones call `_refreshContextSnapshot`). Do NOT freeze `elevationState`:
-    // the 1.8/2.5 hysteresis already anti-flickers height, and freezing it
-    // would lag the state-slot icon on a deliberate orbit/pedestal-up. So
-    // elevation keeps updating while latched; only `enclosed` is held. WASD-
-    // walking into a building (no latch) still classifies enclosed promptly.
+    // TASK-025 v2 (R2-REV-C / finding 4): the `enclosed` flag strobes as the view
+    // ray crosses a wall mid-orbit/drag (sunshine icon flickers while orbiting
+    // THROUGH a building). Gate it on the GESTURE LATCH: while a pointer
+    // drag/orbit is latched, CARRY FORWARD the previous `enclosed` ONLY —
+    // recompute on settle (pointer-up triggers a non-idle tick; tween onDones
+    // call `_refreshContextSnapshot`). Do NOT freeze `elevationState` (the
+    // 1.8/2.5 hysteresis already anti-flickers height). WASD-walking into a
+    // building (no latch) still classifies enclosed promptly.
     const enclosed = this._latch.isActive()
       ? this._contextSnapshot.enclosed
       : probe.enclosed;
+    // R4: look-at-aware elevation + street-enabled. When the straight-down probe
+    // MISSES (camera above/outside the scene footprint), the floor below is null
+    // even though the camera-centre ray may be staring at the street — so derive
+    // a fallback ground from the look-at hit, the SAME point `_swoopToStreet`
+    // swoops to. Only needed when `floorY == null`: when the floor below hits, it
+    // governs elevation (priority below) AND street-enabled (`belowOk` in the
+    // resolver), so the look-at would be unused — skip the extra raycast (the
+    // common tilted-map case keeps its single probe). Use the per-column floor at
+    // P (`_floorYBelowAt`, the SAME pick the action uses — NOT the raw ray-hit y,
+    // which would sit partway up a wall facade), read-only (refreshCache:false)
+    // so it does not perturb the wheel floor cache.
+    let lookAtFloorY = null;
+    if (!enclosed && probe.floorY == null) {
+      const P = this._centerRayGroundHit();
+      if (P) {
+        const floorAtP = this._floorYBelowAt(P.x, P.z, { refreshCache: false });
+        lookAtFloorY = floorAtP.source !== 'cache' ? floorAtP.y : P.y;
+      }
+    }
+    const aglForState =
+      probe.floorY != null
+        ? camY - probe.floorY
+        : lookAtFloorY != null
+          ? camY - lookAtFloorY
+          : null;
+    const topOverhead = probe.overheadHits.length
+      ? probe.overheadHits[probe.overheadHits.length - 1]
+      : null;
     this._contextSnapshot = {
       enclosed,
       floorY: probe.floorY,
+      lookAtFloorY,
       topOverhead,
       elevationState: elevationState(
         this._contextSnapshot.elevationState,
