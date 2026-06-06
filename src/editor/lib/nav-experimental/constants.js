@@ -365,8 +365,9 @@ export const DEFAULT_DRONE_HEIGHT = 40; // metres above ground level; tunable
 //     end this far above the ROOF you stand on (the collision floor directly
 //     below). COUPLED to the hysteresis (spec D-B / M-2): must be
 //     >= DRONE_ELEVATED_EXIT_METRES + dead-band margin so a drone arrival atop
-//     a tall roof lands unambiguously "elevated" and the button flips to
-//     street view. With EXIT=14 and a ~6 m margin → 20.
+//     a tall roof lands unambiguously "elevated" and the button flips to street
+//     view. With EXIT now 2.5 m (v2/R2-C, lowered from the original 14), any
+//     canonical drone height ≫ EXIT, so this trivially clears the bar.
 export const ROOF_CLEARANCE = 20; // metres above roof; >= EXIT + margin; tunable
 
 // Default/normal field of view (degrees) the drone rise resets to. A LITERAL,
