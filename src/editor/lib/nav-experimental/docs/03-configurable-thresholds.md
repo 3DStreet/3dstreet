@@ -79,7 +79,7 @@ schema defaults are imported from the constants, so the component and
 | `TH-06` | `RING_SCREEN_FRACTION` | 0.035 | Rotation-centre ring indicator radius, as a fraction of viewport half-height. Sized `fraction × distance × tan(fov/2)` per frame so on-screen size is constant across distance **and** FOV. | no | `D3` (TASK-010) | 0.02–0.06 (feel). |
 | `TH-07` | `ROTATION_SPEED_RAD_PER_PX` | 0.0035 rad/px | Shift+LB rotation gain. Matches the legacy `EditorControls` feel. | **yes** | — (TASK-010 `#6`) | 0.002–0.006 (feel). |
 
-## Wheel input plumbing (continuous step model — TASK-014a)
+## Wheel input plumbing (continuous step model)
 
 | ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
@@ -92,7 +92,7 @@ schema defaults are imported from the constants, so the component and
 | `TH-14` | `WHEEL_MAX_ACCUM_TICKS` | 12 | Hard bound on the wheel accumulator (~4 frames of swoop glide). Rides the tail of a normal gesture; kills a sustained-fast-scroll runaway pile-up. | no | `A4` (TASK-014a) | 8–16. |
 | `TH-15` | `WHEEL_ANCHOR_DENOM_EPS_METRES` | 0.5 m | Degenerate-anchor guard: when the dolly anchor is within this height of the camera, the analytic phase1→2 boundary solve would divide by ~0; falls back to a per-tick post-step clamp. ~one camera radius. | no | `A3` (TASK-014a) | ~0.5. |
 
-## Wheel lateral cap & ground reach (TASK-014d / TASK-027 Part F)
+## Wheel lateral cap & ground reach
 
 | ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
@@ -118,18 +118,18 @@ These are measured **above ground (AGL)** = `camera.y − groundY`, where
 | `TH-26` | `SWOOP_PHASE2_FLOOR_SNAP_METRES` | 1.0 m | Phase-2 floor snap (zoom-in) and zoom-out kick-start distance. Eliminates the asymptotic stall near the floor. | no | `H6` | 0.5–1.5. |
 | `TH-27` | `SWOOP_PHASE3_FOV_FLOOR_DEGREES` | 15° | Phase-3 FOV floor: further zoom-in ticks at the floor are no-ops. | no | — | 10–20 (telephoto limit). |
 
-## Swoop — FOV "sense of arrival" & overview (TASK-022 / TASK-027 Part A)
+## Swoop — FOV "sense of arrival" & overview
 
 | ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
-| `TH-28` | `DEFAULT_OVERVIEW_TILT_DEGREES` | 60° | Swoop-OUT overview attitude (degrees below horizontal) when there is no valid zoom-undo memory. Also the **drone-view** rise gradient (TASK-025). A strong look-down that is not fully top-down (top-down is the compass's job). | no | `OQ1` (TASK-022) | 45–75 (feel). |
+| `TH-28` | `DEFAULT_OVERVIEW_TILT_DEGREES` | 60° | Swoop-OUT overview attitude (degrees below horizontal) when there is no valid zoom-undo memory. Also the **drone-view** rise gradient. A strong look-down that is not fully top-down (top-down is the compass's job). | no | `OQ1` (TASK-022) | 45–75 (feel). |
 | `TH-29` | `SWOOP_LANDING_FOV_DEGREES` | 75° | Landing FOV the descent eases open to as the swoop reaches street level ("the world opens up"). Height-driven, not latched. | no | TASK-027 Part A (delivers 014b) | 65–85 (capped below `TH-31`). |
 | `TH-30` | `DEFAULT_MAP_FOV_DEGREES` | 60° | Swoop-OUT FOV target when the zoom-undo memory is cleared (the FOV analogue of `TH-28`). | no | TASK-027 Part A | 50–70. |
 | `TH-31` | `FOV_DISTORTION_LIMIT_DEGREES` | 85° | Beyond here perspective reads as fisheye; the wheel's wide end is capped below it. | no | TASK-027 Part A | 80–90. |
 | `TH-32` | `PHASE3_FOV_WIDE_CAP_DEGREES` | 75° | Street-level zoom's wide end = `min(TH-29, TH-31)`. **Derived constant** — re-tuning either input stays coherent. | no | TASK-027 Part A | derived. |
 | `TH-33` | `SWOOP_FOV_RAMP_EXPONENT` | 3 | Concentrates the FOV "opening up" near the floor: `FOV = narrow + (wide−narrow)·(1−heightFrac)^exponent`. Exponent 1 = linear (does its widening at the top); 3 back-loads it into the final stretch. | no | TASK-027 Part A; live-test #2 | 2–4 (feel). |
 
-## Cursor-locked street-level FOV re-aim (TASK-027 Part B)
+## Cursor-locked street-level FOV re-aim
 
 | ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
@@ -159,19 +159,19 @@ These are measured **above ground (AGL)** = `camera.y − groundY`, where
 | `TH-47` | `BLOCK_SLOPE_MIN_DEGREES` | 45° | A forward-ray hit at/above this slope reads as a near-vertical wall/façade/cliff (WASD up-step block; down-step hover when also tall). | no | `D1` (TASK-024) | 35–55. Too low ⇒ ramps block; too high ⇒ you walk into steep faces. |
 | `TH-48` | `BLOCK_HEIGHT_MIN_METRES` | 1.5 m | Floor delta at/above which an up-step blocks (vs steps up) and a down-step can hover. **Independent** of `TH-46` (they merely share a 1.5 m start). | no | TASK-024 | 1.0–2.0. |
 | `TH-49` | `ENCLOSURE_PROBE_UP_MARGIN_METRES` | 500 m | Enclosure cast-down origin offset above the camera; assumes no relevant solid overhead sits higher than this. | no | `D10e` (TASK-024) | scene-scale. |
-| `TH-50` | `FALL_DURATION_MS` | 600 ms | Fall / swoop / gesture-end recovery tween duration. | no | TASK-024 | 400–800 (feel). |
+| `TH-50` | `FALL_DURATION_MS` | 600 ms | Tween duration shared by the recovery fall/swoop, the gesture-end recovery, the **double-click teleport**, and the **drone-view rise**. | no | TASK-024 | 400–800 (feel; one knob currently spans all of these — see OI-24). |
 | `TH-51` | `POP_TO_ROOF_DURATION_MS` | 400 ms | Pop-to-roof / pop-to-daylight tween duration. | no | TASK-024 | 300–600 (feel). |
 | `TH-52` | `DISCOVERABILITY_CUE_SHOW_METRES` | 8 m | Show the recovery/discoverability cue above this height over the collision floor. (This is the *flash* trigger, the button being the persistent affordance.) | no | `D7` (TASK-024) | 5–12; must exceed `TH-53`. |
 | `TH-53` | `DISCOVERABILITY_CUE_HIDE_METRES` | 6 m | Hide the cue below this height (2 m dead-band vs `TH-52` to stop strobing). | no | TASK-024 | < `TH-52`. |
 | `TH-72` | `ENCLOSURE_FALLBACK_INTERVAL_MS` | 250 ms | **Lives in `ExperimentalControls.js`, not `constants.js`.** Idle-gated enclosure re-probe cadence: while stationary with no scene-dirty signal, re-evaluate at most this often so a streaming source we didn't wire (e.g. Google 3D Tiles) is still picked up. ~4 raycasts/sec idle worst-case. | no | `CR-D5` | 200–500. |
 
-## Plan View (TASK-011)
+## Plan View
 
 | ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
 | `TH-54` | `PLAN_VIEW_DURATION_MS` | 1000 ms | Plan-view (and shared compass) tween duration. | no | — | 600–1500 (feel). |
 
-## Compass (TASK-011 / TASK-026)
+## Compass
 
 | ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
@@ -181,7 +181,7 @@ These are measured **above ground (AGL)** = `camera.y − groundY`, where
 | `TH-58` | `COMPASS_NORTH_TOLERANCE_DEGREES` | 2° | "North-up" = needle within this many degrees of screen-top. | no | — | 1–5. |
 | `TH-59` | `COMPASS_ROTATE_STEP_DEGREES` | 90° | Rotation-arrow step (one cardinal turn per arrow click). | no | — | 90 (cardinal). |
 
-## Double-click navigation (TASK-012, Phase 4)
+## Double-click navigation (Phase 4)
 
 | ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
@@ -193,7 +193,7 @@ These are measured **above ground (AGL)** = `camera.y − groundY`, where
 | `TH-65` | `DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES` | 1 m | B/C clearance search step: pull the standoff inward (toward the look target) in increments of this. | no | TASK-012 | 0.5–2. |
 | `TH-66` | `DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES` | 40 m | B/C clearance search ceiling: give up (no-op) past this much inward pull. | no | TASK-012 | 20–60. |
 
-## Context view button / drone view (TASK-025)
+## Context view button / drone view
 
 | ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
@@ -213,7 +213,7 @@ These are measured **above ground (AGL)** = `camera.y − groundY`, where
 - `TH-32` is computed from `TH-29` and `TH-31` (`min`), so the
   street-level wide-FOV cap stays coherent if either input is retuned.
 - `TH-56` is derived from `TH-55`.
-- `TH-70` ≥ `TH-68` + margin is a **load-bearing coupling** (TASK-025
-  D-B): break it and the drone⇄street toggle stops flipping the button.
+- `TH-70` ≥ `TH-68` + margin is a **load-bearing coupling**: break it and
+  the drone⇄street toggle stops flipping the button.
 - `TH-17`/`TH-16` together define the live lateral cap
   `max(TH-16, TH-17 × AGL)`.

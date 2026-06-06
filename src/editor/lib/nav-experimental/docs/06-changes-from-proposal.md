@@ -47,12 +47,13 @@ proposal's "Key Novel Mechanics" section no longer maps onto the code.
 
 ---
 
-## The tilt threshold: 30° → T (25°), unified and runtime-tunable
+## The tilt threshold: 30° → T, unified and runtime-tunable
 
 **Proposal:** a "30° threshold" governs the truck/dolly→truck/pedestal
 cut, with the rotation blend around it.
 
-**Implemented:** a single threshold **T** (`TH-03` = 25°) governs **four**
+**Implemented:** a single threshold **T** (`TH-03`, lower than the
+proposal's 30°) governs **four**
 behaviours at once — the LB sub-mode, the wheel cursor-anchor cut, the
 rotation regime, and the letterbox indicator — with **no blend** (KD-04,
 KD-05). T is **live-tunable at runtime** via an A-Frame component, one of
@@ -200,7 +201,7 @@ they are new, top-level pieces of the UX, not just internal mechanics.
 | Area | Proposal | Implemented |
 |---|---|---|
 | Rotation pivot | 3 rules + blend + scene bounds | 2 regimes on tilt T, no blend |
-| Tilt cut | 30°, governs LB mode | T = 25°, governs 4 behaviours, runtime-tunable |
+| Tilt cut | 30°, governs LB mode | T (`TH-03`), governs 4 behaviours, runtime-tunable |
 | Map rotation | (implied lock-on) | decoupled free-look orbit (framing preserved) |
 | Swoop Phase 2 | cursor-anchored | pure pedestal+tilt, no anchoring |
 | Swoop gating | absolute height | AGL (per-column floor) |

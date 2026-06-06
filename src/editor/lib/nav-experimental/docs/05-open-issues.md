@@ -208,8 +208,12 @@ the boundary is a feel-test call; pure snap shipped.
 
 ### OI-24 — Distance-scaled tween duration for very large elevation drops
 A double-click from 200 m to street level uses the same fixed tween
-duration as a short hop. Scaling the duration with distance is a feel-test
-refinement, not built.
+duration (`TH-50`) as a short hop. That one duration is currently *shared*
+by the recovery fall/swoop, the gesture-end recovery, the double-click
+teleport, and the drone rise — so it cannot be tuned per-behaviour, and
+scaling the teleport's duration with travel distance isn't possible
+without splitting the constant first. Both (distance-scaling, and
+separating the shared `TH-50`) are feel-test refinements, not built.
 
 ### OI-25 — Footprint-size filtering of tall-thin tile scatter
 On fused photogrammetry tiles, a tall-thin baked object (lamppost, tree

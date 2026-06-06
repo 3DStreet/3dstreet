@@ -416,8 +416,9 @@ rather than re-deriving from `lookAt`.
 
 ### KD-23 — Four categories, cardinal-heading snap, never-raise; clearance delegated to the shared collision machinery
 
-A double-click animates (~`TH-54`-scale eased tween) the camera to a
-predictable "good view" of what was clicked, classified into four
+A double-click animates (an eased tween of duration `TH-50`, ~0.6 s) the
+camera to a predictable "good view" of what was clicked, classified into
+four
 categories: **A** lane/street surface, **B** building, **C** generic
 object, **D** empty/no-hit (no-op). Two load-bearing simplifications:
 
@@ -437,7 +438,7 @@ non-buried camera position — rest an eye margin above the surface, pull a
 blocked standoff back along the heading, hand off to recovery if no clear
 pose exists at/below the never-raise height — is the **shared collision
 machinery** (KD-16/KD-17), invoked identically for every category, not
-re-implemented per category. The ~1 s tween is a **committed motion**:
+re-implemented per category. The ~0.6 s tween is a **committed motion**:
 only its endpoint is collision-validated; the path is not per-frame
 clamped, so a teleport can descend through an intervening roof to a clear
 lane below.

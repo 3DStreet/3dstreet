@@ -36,7 +36,7 @@ meant 30° *below horizontal* (a gentle downward gaze), and the shipped
 threshold T is the same convention. Do not read "tilt" as "degrees from
 straight-down."
 
-**T — the tilt threshold.** The single angle (currently 25°, `TH-03`)
+**T — the tilt threshold.** The single angle (`TH-03`, a modest look-down)
 that splits Map mode (tilt > T) from Street mode (tilt ≤ T). Governs the
 LB sub-mode, the wheel cut, the rotation regime, and the letterbox.
 Exactly-T is Street mode. Looking up (negative tilt) is always Street
@@ -68,7 +68,7 @@ tiles (no ground/building separation) it's approximated by the lowest
 solid hit over a small patch below the camera. Distinct from the
 collision floor: collision wants roofs, speed wants the land beneath.
 
-**Eye margin.** The standard eye-height clearance (`TH-46`, 1.5 m) the
+**Eye margin.** The standard eye-height clearance (`TH-46`) the
 camera keeps above any solid floor — used by the descent clamp, WASD
 follow/step-up, the orbit underground guard, and the fall/pop targets.
 Numerically equals the street swoop floor and the WASD block-height today,
@@ -139,7 +139,9 @@ camera itself.
 
 **Screen-centre ground point.** Where the camera's centre view ray meets
 the ground (y=0) — the fallback rotation pivot and the compass-arrow orbit
-pivot in Map mode.
+pivot in Map mode. Note this *pivot* uses the flat y=0 plane; *collision*
+floors, by contrast, are always a per-column raycast of the real surface
+(KD-20) — different subsystems, not a contradiction.
 
 **Nadir.** Looking exactly straight down (tilt +90°). A singularity for
 heading/pitch math; handled specially so you can tilt *out* of it without
@@ -183,11 +185,11 @@ re-aim (KD-13) use it; Phase 2 deliberately does **not**.
 **Zoom-undo memory.** The transient `{valid, tilt, fov}` state (KD-11)
 that lets a swoop-out retrace to the tilt you dove from. Cleared by any
 non-wheel camera move; when cleared, the swoop-out eases to the **default
-overview** (`TH-28`, ~60°) instead.
+overview** attitude (`TH-28`) instead.
 
-**Sense of arrival / landing FOV.** The FOV easing open toward `TH-29`
-(~75°) as the swoop reaches street level, back-loaded toward the floor so
-it reads as "the world opening up" on arrival (KD-12).
+**Sense of arrival / landing FOV.** The FOV easing open toward the wide
+landing value (`TH-29`) as the swoop reaches street level, back-loaded
+toward the floor so it reads as "the world opening up" on arrival (KD-12).
 
 **Breakout dolly.** A bounded excursion where a Phase-2 zoom-in tick
 "breaks out" of the swoop into a plain dolly because you're craning up at
@@ -200,11 +202,11 @@ the shipped system — it is folded into the **compass** button (KD-26).
 Animated, heading-preserving, zoom-out-only.
 
 **Drone view.** A canonical elevated, partially-tilted "survey from above"
-preset (≈60° down), reached by an **ascending reverse-swoop** — the camera
-pulls up-and-back along its heading, ending tilted down at the feet point
-it rose from. The third framing alongside plan view and street view. Not a
-literal swoop-inverse; a closed-form reverse-swoop to a fixed gradient
-(KD-22).
+preset (the swoop's default overview gradient, `TH-28`), reached by an
+**ascending reverse-swoop** — the camera pulls up-and-back along its
+heading, ending tilted down at the feet point it rose from. The third
+framing alongside plan view and street view. Not a literal swoop-inverse;
+a closed-form reverse-swoop to a fixed gradient (KD-22).
 
 **Street view (the preset).** ⚠ *The context-button action, distinct from
 "Street mode" the tilt regime.* The "come down to the surface" action —
