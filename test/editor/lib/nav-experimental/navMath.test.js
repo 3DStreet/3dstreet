@@ -5,6 +5,9 @@ import {
   decideLbMode,
   decideDragModeSwitch,
   clampOrbitRadius,
+  wheelDeltaToTicks,
+  dollyFactorForTicks,
+  fovFactorForTicks,
   cappedDollyStep,
   levelForwardAnchor,
   shiftRotateStep,
@@ -24,7 +27,6 @@ import {
   lateralCap,
   swoopLandingFov,
   classifySwoopTickTarget,
-  decidePhase2WheelAction,
   reaimWeight,
   reaimQuatForFov
 } from '../../../../src/editor/lib/nav-experimental/navMath.js';
@@ -36,7 +38,11 @@ import {
   SWOOP_PHASE2_STEP,
   SWOOP_PHASE2_FLOOR_SNAP_METRES,
   EYE_MARGIN_METRES,
-  WASD_VERTICAL_LIFT_RATE_MPS
+  WASD_VERTICAL_LIFT_RATE_MPS,
+  ZOOM_PER_WHEEL_TICK,
+  FOV_PER_WHEEL_TICK,
+  WHEEL_MAX_TICKS_PER_EVENT,
+  LINE_HEIGHT_PX
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
 
 if (!globalThis.THREE) globalThis.THREE = THREE;
@@ -1762,48 +1768,6 @@ describe('classifySwoopTickTarget (Part C)', () => {
   });
 });
 
-describe('decidePhase2WheelAction (Part C-add-2: bounded break-out excursion)', () => {
-  it('zoom-in dolly deepens the excursion', () => {
-    expect(decidePhase2WheelAction({ sign: -1, regime: 'dolly', dollyTicks: 0 }))
-      .toEqual({ action: 'dolly', dollyTicks: 1 });
-    expect(decidePhase2WheelAction({ sign: -1, regime: 'dolly', dollyTicks: 3 }))
-      .toEqual({ action: 'dolly', dollyTicks: 4 });
-  });
-  it('zoom-in swoop commits any run (depth → 0) and pedestals', () => {
-    expect(decidePhase2WheelAction({ sign: -1, regime: 'swoop', dollyTicks: 3 }))
-      .toEqual({ action: 'swoop', dollyTicks: 0 });
-  });
-  it('zoom-out unwinds the excursion before resuming the swoop', () => {
-    expect(decidePhase2WheelAction({ sign: 1, regime: null, dollyTicks: 3 }))
-      .toEqual({ action: 'dolly', dollyTicks: 2 });
-    expect(decidePhase2WheelAction({ sign: 1, regime: null, dollyTicks: 1 }))
-      .toEqual({ action: 'dolly', dollyTicks: 0 });
-    expect(decidePhase2WheelAction({ sign: 1, regime: null, dollyTicks: 0 }))
-      .toEqual({ action: 'swoop', dollyTicks: 0 });
-  });
-  it('full round-trip: dolly in N, then zoom out → N dolly-backs then swoop (WE-K)', () => {
-    let depth = 0;
-    // dolly in 4 ticks (looking up at a wall)
-    for (let i = 0; i < 4; i++) {
-      const r = decidePhase2WheelAction({ sign: -1, regime: 'dolly', dollyTicks: depth });
-      expect(r.action).toBe('dolly');
-      depth = r.dollyTicks;
-    }
-    expect(depth).toBe(4);
-    // zoom out: 4 dolly-backs unwinding the excursion
-    for (let i = 0; i < 4; i++) {
-      const r = decidePhase2WheelAction({ sign: 1, regime: null, dollyTicks: depth });
-      expect(r.action).toBe('dolly');
-      depth = r.dollyTicks;
-    }
-    expect(depth).toBe(0);
-    // next zoom-out resumes the swoop ascent (back on the rail)
-    const r = decidePhase2WheelAction({ sign: 1, regime: null, dollyTicks: depth });
-    expect(r.action).toBe('swoop');
-    expect(r.dollyTicks).toBe(0);
-  });
-});
-
 describe('reaimWeight (Part B, M4 continuity)', () => {
   it('is 1 for near targets, 0 for far targets', () => {
     expect(reaimWeight(100, 300, 800)).toBe(1); // below near
@@ -1921,5 +1885,111 @@ describe('reaimQuatForFov (Part B re-aim round-trip)', () => {
       weight: 0
     });
     expect(q.angleTo(cam.quaternion)).toBeLessThan(1e-6);
+  });
+});
+
+// ── TASK-014a (#6 Option B): wheel input-plumbing pure helpers ──────────
+
+describe('wheelDeltaToTicks (TASK-014a)', () => {
+  it('pixel mode: one mouse detent (deltaY≈100) ≈ 1.0 nominal tick', () => {
+    expect(wheelDeltaToTicks(100, 0)).toBeCloseTo(1.0, 10);
+  });
+
+  it('pixel mode: a trackpad event (deltaY≈3) ≈ 0.03 ticks', () => {
+    expect(wheelDeltaToTicks(3, 0)).toBeCloseTo(0.03, 10);
+  });
+
+  it('sign is preserved (deltaY>0 → +t → zoom out)', () => {
+    expect(wheelDeltaToTicks(100, 0)).toBeGreaterThan(0);
+    expect(wheelDeltaToTicks(-100, 0)).toBeLessThan(0);
+  });
+
+  it('line mode (deltaMode 1) scales by LINE_HEIGHT_PX', () => {
+    // 6 lines × 16px = 96px → 0.96 ticks
+    expect(wheelDeltaToTicks(6, 1)).toBeCloseTo((6 * LINE_HEIGHT_PX) / 100, 10);
+  });
+
+  it('page mode (deltaMode 2) uses the passed viewport height', () => {
+    // 0.5 pages × 800px viewport = 400px → 4 ticks
+    expect(wheelDeltaToTicks(0.5, 2, 800)).toBeCloseTo(4.0, 10);
+  });
+
+  it('page mode falls back to 800 when viewportH is undefined (L9: no NaN)', () => {
+    const t = wheelDeltaToTicks(0.5, 2, undefined);
+    expect(Number.isNaN(t)).toBe(false);
+    expect(t).toBeCloseTo(4.0, 10);
+  });
+
+  it('H4: a pathological huge deltaY is clamped to ±WHEEL_MAX_TICKS_PER_EVENT', () => {
+    expect(wheelDeltaToTicks(100000, 0)).toBe(WHEEL_MAX_TICKS_PER_EVENT);
+    expect(wheelDeltaToTicks(-100000, 0)).toBe(-WHEEL_MAX_TICKS_PER_EVENT);
+  });
+
+  it('H4: page mode multiplying past the clamp is still bounded', () => {
+    // 50 × 800 = 40000px → 400 ticks, clamped to the per-event ceiling.
+    expect(wheelDeltaToTicks(50, 2, 800)).toBe(WHEEL_MAX_TICKS_PER_EVENT);
+  });
+});
+
+describe('dollyFactorForTicks (TASK-014a)', () => {
+  const alpha = ZOOM_PER_WHEEL_TICK;
+
+  it('t=-1 matches the old per-tick zoom-in factor (1-α)', () => {
+    expect(dollyFactorForTicks(-1, alpha)).toBeCloseTo(1 - alpha, 12);
+  });
+
+  it('t=+1 matches the old per-tick zoom-out factor 1/(1-α)', () => {
+    expect(dollyFactorForTicks(1, alpha)).toBeCloseTo(1 / (1 - alpha), 12);
+  });
+
+  it('is exactly reversible: f(t)·f(-t) === 1 for fractional and whole t', () => {
+    for (const t of [0.3, 1, 2.5, -0.7, 4]) {
+      expect(dollyFactorForTicks(t, alpha) * dollyFactorForTicks(-t, alpha)).toBeCloseTo(
+        1,
+        12
+      );
+    }
+  });
+
+  it('is always strictly positive (never ≤ 0)', () => {
+    for (const t of [-10, -1, 0, 1, 10]) {
+      expect(dollyFactorForTicks(t, alpha)).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('fovFactorForTicks (TASK-014a)', () => {
+  const beta = FOV_PER_WHEEL_TICK;
+
+  it('t=-1 matches the old per-tick zoom-in factor 1/(1+β)', () => {
+    expect(fovFactorForTicks(-1, beta)).toBeCloseTo(1 / (1 + beta), 12);
+  });
+
+  it('t=+1 matches the old per-tick zoom-out factor (1+β)', () => {
+    expect(fovFactorForTicks(1, beta)).toBeCloseTo(1 + beta, 12);
+  });
+
+  it('zoom-in (t<0) shrinks the FOV; zoom-out (t>0) grows it', () => {
+    expect(fovFactorForTicks(-1, beta)).toBeLessThan(1);
+    expect(fovFactorForTicks(1, beta)).toBeGreaterThan(1);
+  });
+
+  it('is exactly reversible: f(t)·f(-t) === 1', () => {
+    for (const t of [0.3, 1, 2.5]) {
+      expect(fovFactorForTicks(t, beta) * fovFactorForTicks(-t, beta)).toBeCloseTo(1, 12);
+    }
+  });
+});
+
+describe('phase2NextElevation with B7-trimmed SWOOP_PHASE2_STEP=0.15', () => {
+  it('in/out remain exact reciprocals at the new alpha', () => {
+    const yFloor = SWOOP_PHASE2_EXIT_ELEVATION_METRES;
+    const yAgl = 10;
+    const inOnce = phase2NextElevation(yAgl, -1, SWOOP_PHASE2_STEP);
+    const backOut = phase2NextElevation(inOnce, 1, SWOOP_PHASE2_STEP);
+    expect(backOut).toBeCloseTo(yAgl, 10);
+    // and the in-step approaches the floor
+    expect(inOnce).toBeGreaterThan(yFloor);
+    expect(inOnce).toBeLessThan(yAgl);
   });
 });
