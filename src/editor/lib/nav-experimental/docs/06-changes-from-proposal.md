@@ -151,12 +151,19 @@ principle that automatic behaviour only ever *blocks* motion, never adds it
 street level *inside* it overturns an earlier design rule and is the change
 most needing the maintainer's sign-off (`05-open-issues.md` OI-4).
 
-Two affordances came with it that the proposal didn't anticipate:
-- the **context view button** (one state-tracking button: daylight /
-  street view / drone view), sharing a resolver with the Space key
+Several affordances came with it that the proposal didn't anticipate:
+- the **context view button** — a brand-new always-visible toolbar control
+  (one button, three faces: daylight / street view / drone view) that
+  offers the one sensible "change my framing" move for where the camera is
   (KD-21);
+- the **Space-bar key** — a brand-new keyboard shortcut that drives the
+  *same* resolver as the button, so it does all three actions from the
+  keyboard (KD-21);
 - **drone view**, a new canonical preset (elevated, ~60°-tilted "survey
   from above") alongside plan view and street view (KD-22).
+
+Neither the toolbar button nor the Space key existed in the proposal —
+they are new, top-level pieces of the UX, not just internal mechanics.
 
 ---
 
@@ -175,14 +182,14 @@ Two affordances came with it that the proposal didn't anticipate:
 
 | Proposal feature | Status |
 |---|---|
-| **FPS / pointer-lock mode** (Ctrl-hold pointer lock, WASD, FOV cue) | **Deferred** — not built (`05-open-issues.md` OI-8). |
-| **Touch controls** | **Out of scope** for the prototype; desktop only (OI-9). |
-| **Cursor anchoring through Phase 2 of the swoop** | **Dropped** from v1; re-introducible if missed (KD-08 / OI-10). |
+| **FPS / pointer-lock mode** (Ctrl-hold pointer lock, WASD, FOV cue) | **Deferred** — not built (`05-open-issues.md` OI-10). |
+| **Touch controls** | **Out of scope** for the prototype; desktop only (OI-11). |
+| **Cursor anchoring through Phase 2 of the swoop** | **Dropped** from v1; re-introducible if missed (KD-08 / OI-12). |
 | **Weighted blend of rotation centres (20–30° band)** | **Dropped** with the diorama model (KD-02, KD-04). |
 | **Diorama mode / finite-scene-boundary orbit** | **Removed entirely** (KD-02). |
 | **"Inside/outside the scene" indicator** | **Removed** — the concept it signalled is gone. |
 | **Phase 2 "land next to the cursor target"** | **Dropped** — you land below your entry xz (KD-08). |
-| **Discoverability hover-caption** ("double-click to navigate here") | **Not built**; hover-highlight fix is the only discoverability change (OI-17). |
+| **Discoverability hover-caption** ("double-click to navigate here") | **Not built**; hover-highlight fix is the only discoverability change (OI-19). |
 | **Streetview-mode elevation restriction** | **Dropped** — the lowered threshold makes it unnecessary. |
 | Screenshots in the proposal | **Not reproduced** — they illustrated the *old* double-click problems and the lost fixed-tilt close-zoom, both superseded; described in prose where relevant. |
 
@@ -202,5 +209,7 @@ Two affordances came with it that the proposal didn't anticipate:
 | Double-click building | view its "front" / hit-point | aim building centre; height encodes air vs street |
 | Never-raise | "don't increase elevation" | absolute-height clamp + collision clearance |
 | Solid geometry | (not addressed) | buildings solid; stay-out + user-invoked recovery |
+| Context view button | (not in proposal) | **new** — one button, 3 faces (daylight/street/drone) |
+| Space-bar key | (not in proposal) | **new** — keyboard shortcut for the same 3 actions |
 | Orbit math | (n/a) | hand-rolled (library evaluated, declined) |
 | FPS / touch | proposed / asked | deferred / out of scope |

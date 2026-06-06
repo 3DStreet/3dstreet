@@ -89,11 +89,15 @@ zoom.
   while keeping your heading; click again to align north. Arrows turn the
   heading ±90°. *There is no separate "Plan View" — it is folded into
   this button.*
-- **Context view button** — a single button whose icon tracks the camera
-  state and offers the one sensible move: **daylight** (pop out of solid
-  geometry), **street view** (swoop down to the surface), or **drone
-  view** (rise to an elevated angled survey). The Space key does the same
-  three.
+- **Context view button** — a new always-visible toolbar button whose icon
+  tracks the camera state and offers the one sensible move: **daylight**
+  (pop out of solid geometry), **street view** (swoop down to the surface),
+  or **drone view** (an ascending reverse-swoop up to an elevated angled
+  survey). One button, three faces.
+- **The Space-bar key** — a new keyboard shortcut that drives the *same*
+  resolver as the context button, so it performs all three of those moves
+  from the keyboard. (Both the button and Space are new in this system —
+  neither existed in the original proposal.)
 
 **4. Double-click navigation.** Double-click anything to animate to a
 predictable good view of it. The heading **snaps to the nearest cardinal
