@@ -47,6 +47,7 @@ import { SceneBounds } from './sceneBounds.js';
 import {
   CursorAnchor,
   isSolidFloorHit,
+  classifyHitEntity,
   worldHitNormal
 } from './cursorAnchor.js';
 import { RotationIndicator } from './rotationIndicator.js';
@@ -95,6 +96,9 @@ import {
   ENCLOSURE_PROBE_UP_MARGIN_METRES,
   FALL_DURATION_MS,
   POP_TO_ROOF_DURATION_MS,
+  DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES,
+  DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES,
+  DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES,
   DRONE_ELEVATED_ENTRY_METRES,
   DRONE_ELEVATED_EXIT_METRES,
   DEFAULT_DRONE_HEIGHT,
@@ -127,6 +131,10 @@ import {
   groundedAtLoad,
   isLegitPose,
   cueState,
+  classifyDoubleClick,
+  desiredDoubleClickPose,
+  clampFramingPitch,
+  pullBackTowardTarget,
   elevationState
 } from './navMath.js';
 
@@ -430,6 +438,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._lastLegitPose = null;
     this._lastWasdBlocked = false;
     this._cueShown = false;
+
+    // TASK-012 (H-4): "a Phase-4 double-click teleport tween owns the camera"
+    // flag. Mirrors `_recoveryActive` exactly — set for the tween's life,
+    // cleared in its onDone. Deliberately NOT in `_isInactive()` (H-A) so an
+    // active grab still reaches the `_onMouseDown` abort (L-3). The passive
+    // input gates read `_tweenOwnsCamera()` = `_recoveryActive ||
+    // _teleportActive`.
+    this._teleportActive = false;
 
     // TASK-025: the per-tick context snapshot the view-button resolver reads.
     //   Produced once per controls tick in `_updateLegitSnapshotAndCue`
@@ -826,6 +842,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Recenter "this.center" to be on the ground beneath the end pose.
     this.center.set(endPos.x, 0, endPos.z);
 
+    // TASK-012 (H-4): a recovery/teleport tween may own the camera (e.g. Plan
+    // View pre-empting a gesture-end recovery). Cancel it and clear its flags
+    // first so `_tick.animate` below doesn't drop the prior tween's onDone and
+    // strand `_recoveryActive`/`_teleportActive` true.
+    this._cancelCameraTween();
+
     this._planViewActive = true;
     // 'plan-view' is a forward-hook payload — no Phase 2 consumer reads
     // it (`useNavMode` filters to pan-truck/pan-pedestal only). Phase 3
@@ -993,6 +1015,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // Returns the TickAnimator handle (caller stores as _compassHandle).
   _animateYawAboutPivot({ deltaYaw = null, endQuat = null, pivot = null }) {
     const camera = this._camera;
+    // TASK-012 (H-4): a compass action can pre-empt a recovery/teleport tween
+    // (those are not in `_compassAnimating`). Cancel + clear flags first so
+    // `_tick.animate` doesn't strand `_recoveryActive`/`_teleportActive`.
+    this._cancelCameraTween();
     const startPos = camera.position.clone();
     const startQuat = camera.quaternion.clone();
 
@@ -1267,19 +1293,46 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     event.preventDefault();
   }
 
+  // TASK-012 (H-4): "a camera-owning tween is in flight" — the recovery
+  // ease-back OR the Phase-4 teleport. The PASSIVE input gates (wheel, WASD,
+  // toolbar zoom, the legit-snapshot) read this so neither races the tween.
+  // NOT used by `_onMouseDown` (an active grab must still reach the abort).
+  _tweenOwnsCamera() {
+    return this._recoveryActive || this._teleportActive;
+  }
+
+  // TASK-012 (H-4): cancel whatever camera-owning tween is in flight and clear
+  // its ownership flags. `_tick.cancel()` does NOT run the tween's onDone, so
+  // the flag clear must happen here — a naive per-flag clear would strand on
+  // any cross-tween pre-emption (e.g. Plan View starting mid-recovery would
+  // drop recovery's onDone and leave `_recoveryActive` true → input dead).
+  // Every tween-START path routes through this first, generalising the old
+  // ad-hoc `_recoveryActive` clearing and fixing the symmetric pre-existing
+  // strands (teleport-mid-recovery, recovery-mid-plan-view).
+  //
+  // Clears recovery + teleport flags only — NOT `_planViewActive` /
+  // `_compassAnimating`: a teleport can never START mid-plan-view/compass
+  // (navigateDoubleClick's `_isInactive()` guard blocks it — those two ARE in
+  // `_isInactive()`), so they own their own lifecycles.
+  _cancelCameraTween() {
+    this._tick.cancel();
+    this._recoveryActive = false;
+    this._teleportActive = false;
+  }
+
   _onMouseDown(event) {
     if (this._isInactive()) return;
     const mode = this._decideMouseMode(event);
     if (!mode) return;
 
-    // TASK-024 (N4): a fresh press mid-recovery-tween would otherwise start
-    // a drag that fights the still-running tween. Policy: abort the
-    // recovery (cancel the tween, clear the flag) and let the new drag take
-    // over. The aborted tween's onDone doesn't run, so its reseed is
-    // skipped — the next legit tick reseeds normally.
-    if (this._recoveryActive) {
-      this._tick.cancel();
-      this._recoveryActive = false;
+    // TASK-024 (N4) / TASK-012 (L-3): a fresh press mid-tween would otherwise
+    // start a drag that fights the still-running tween. Policy: abort the
+    // recovery OR teleport (cancel the tween, clear the flags) and let the new
+    // drag take over. The aborted tween's onDone doesn't run, so its reseed /
+    // teleport-clear is skipped — the next legit tick reseeds normally, and
+    // `_cancelCameraTween` already cleared `_teleportActive`.
+    if (this._tweenOwnsCamera()) {
+      this._cancelCameraTween();
     }
 
     this._pointerOld.set(event.clientX, event.clientY);
@@ -1462,11 +1515,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // TASK-024 (3b): re-validate a stored pose against CURRENT geometry (a
   // tile may have streamed in around it). Probes enclosure + the collision
   // floor at the stored position.
-  _poseStillLegit(pose) {
-    // Probe at the stored position: a one-off downward cast from above it.
+  _poseStillLegit(pose, opts = {}) {
+    // Probe at the stored / candidate position: a one-off downward cast from
+    // above it. TASK-012: `pose` may be a `{ position }` bag (recovery) OR a
+    // bare THREE.Vector3-like point (teleport B/C standoff clearance).
     const sceneEl = this._sceneEl;
     if (!sceneEl || !sceneEl.object3D) return true;
-    const p = pose.position;
+    const p = pose.position || pose;
     this._tmpV3a.set(p.x, p.y + ENCLOSURE_PROBE_UP_MARGIN_METRES, p.z);
     this._raycaster.set(this._tmpV3a, GROUND_PROBE_DIR);
     this._raycaster.near = 0;
@@ -1489,7 +1544,85 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       acceptTiles: true
     });
     const floorY = pick ? pick.hit.point.y : null;
-    return isLegitPose({ enclosed, camY: p.y, floorY });
+    // Overhead solid always disqualifies (enclosure half of the predicate).
+    if (enclosed) return false;
+    // Floor-clearance (eye-margin above the surface beneath the candidate).
+    // The B/C standoff caller (`_resolveStandoff`) has ALREADY raised the
+    // candidate to floor+eye-margin using its OWN probe and gated on it
+    // (`clearColumn`), so re-checking here against an INDEPENDENT re-probe is
+    // redundant — and worse, the two probes can disagree at the exact boundary
+    // by a sub-millimetre difference, flipping `camY >= floor+eye-margin` to
+    // false and wrongly rejecting a low candidate pinned at the boundary (a
+    // car / pedestrian, whose centre height is below eye-margin so it always
+    // lands exactly at it). Trust the caller via `skipFloorClearance`. Recovery
+    // callers pass no opts → full check, byte-identical to before.
+    if (
+      !opts.skipFloorClearance &&
+      !isLegitPose({ enclosed, camY: p.y, floorY })
+    ) {
+      return false;
+    }
+    // TASK-012 (M-A buried guard): the enclosure half rejects a candidate with
+    // solid directly overhead, but a downward-only probe can miss a candidate
+    // at mid-interior height inside a closed building with no solid straight
+    // up. 3DStreet building glTF is single-sided (FrontSide), so a normal-
+    // parity test gives a false negative — instead test AABB containment
+    // against the building(s) whose column this candidate sits in (the same
+    // downward `hits` already pass through any enclosing building's roof +
+    // floor). Opt-in (`checkBuried`) so existing recovery callers, which pass
+    // no opts, are byte-identical.
+    if (opts.checkBuried && this._pointInsideBuildingHit(p, hits, opts.extraBox)) {
+      return false;
+    }
+    return true;
+  }
+
+  // TASK-012 (M-A): is `point` inside the AABB of any building entity struck
+  // by the candidate column's downward probe? Reuses the existing `hits`
+  // (a downward ray through a building the candidate is inside passes through
+  // its roof above and its floor below, so the owning building entity is in
+  // the list). Sidedness-independent (AABB, not normal parity). De-dupes by
+  // owning entity so each building's Box3 is computed at most once.
+  // `extraBox` (TASK-012 code-review M1): the Category-B/C TARGET building's
+  // Box3, tested unconditionally. The probe-hit scan below only catches
+  // buildings the candidate's downward ray actually strikes — a shell building
+  // with no interior floor slab (the ray exits through the segment ground
+  // below) would be missed. Testing the known target box closes the most
+  // common WE-13 case (the standoff landing inside the very building you
+  // clicked) independent of asset geometry. Neighbour buildings remain
+  // best-effort via the probe hits.
+  // Known tradeoff (code-review M2): AABB containment treats the full bounding
+  // box as solid, so a concave footprint (L-shape / courtyard / overhang) can
+  // false-positive a clear standoff in a notch and pull it inward. Accepted as
+  // low-cost per the spec (B/C standoff is a tuning concern; pull-back-further
+  // or a no-op are both safe) — the camera never ends up buried, only framed
+  // from slightly further back.
+  _pointInsideBuildingHit(point, hits, extraBox) {
+    const inBox = (box) =>
+      point.x >= box.min.x &&
+      point.x <= box.max.x &&
+      point.y >= box.min.y &&
+      point.y <= box.max.y &&
+      point.z >= box.min.z &&
+      point.z <= box.max.z;
+    if (extraBox && !extraBox.isEmpty() && inBox(extraBox)) return true;
+    const seen = new Set();
+    for (const hit of hits) {
+      if (classifyHitEntity(hit) !== 'building') continue;
+      let node = hit.object;
+      let el = null;
+      while (node) {
+        if (node.el) {
+          el = node.el;
+          break;
+        }
+        node = node.parent;
+      }
+      if (!el || !el.object3D || seen.has(el)) continue;
+      seen.add(el);
+      if (inBox(new THREE.Box3().setFromObject(el.object3D))) return true;
+    }
+    return false;
   }
 
   // TASK-024 (3b): tween the camera back to a stored pose (position +
@@ -1503,6 +1636,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const endPos = pose.position.clone();
     const endQuat = pose.quaternion.clone();
     const endCenter = pose.center.clone();
+    // TASK-012 (H-4): route the recovery tween start through the shared
+    // cancel so a prior camera-owning tween (e.g. an interrupted teleport)
+    // can't strand its flag. No prior tween in the normal recovery flow, so
+    // this is a no-op there (behaviour-preserving).
+    this._cancelCameraTween();
     this._recoveryActive = true;
     // CR-D2: single mid-tween hand-off latch. If a tile streams in during
     // the ease-back so the stored target is no longer legit, cancel and
@@ -1566,6 +1704,272 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // force-true, so a hover recovery does not falsely ground.
         this._deriveGroundedFromPose();
         this._reseedLegitPose();
+        this.dispatchEvent(this._changeEvent);
+      }
+    });
+  }
+
+  // TASK-012 Phase-4: double-click navigation. Wired from viewport.js
+  // (`nav-experimental:doubleclick` → here) when the experimental flag is on.
+  // Classifies what is under the cursor, computes a predictable "good view"
+  // desired pose (navMath, pure), resolves it onto a clear non-buried camera
+  // pose (never-raise + the shared TASK-024 clearance machinery), and eases
+  // the camera there. The endpoint is the ONLY thing validated — the tween is
+  // a committed motion (it may descend through an intervening roof).
+  navigateDoubleClick(_payload) {
+    if (this._isInactive()) return; // ortho / plan-view / compass — no-op
+    const camera = this._camera;
+    if (!camera || camera.type !== 'PerspectiveCamera') return;
+
+    // (1) Single source of truth for "what's under the cursor" (M-4/H-B): the
+    // raw A-Frame cursor intersection — NOT getIntersectedEl() (which remaps a
+    // lane-child car up to the parent segment) and NOT cursorAnchor's own
+    // differently-excluded raycast. The cursor raycasts continuously
+    // (interval 100 ms) and the mouse is stationary at a double-click, so its
+    // cached intersection is fresh; the payload coords are a redundant
+    // fallback we don't need.
+    const cursorEntity =
+      typeof document !== 'undefined'
+        ? document.getElementById('aframeInspectorMouseCursor')
+        : null;
+    const comps = cursorEntity ? cursorEntity.components : null;
+    const cursorComp = comps ? comps.cursor : null;
+    const raycasterComp = comps ? comps.raycaster : null;
+    const rawEl = cursorComp ? cursorComp.intersectedEl : null;
+    let hit = null;
+    if (rawEl && raycasterComp) {
+      if (typeof raycasterComp.getIntersection === 'function') {
+        hit = raycasterComp.getIntersection(rawEl);
+      }
+      // Defensive: `getIntersection(el)` can return null in some A-Frame
+      // states even when the cursor has an `intersectedEl`. The cursor derived
+      // `rawEl` from the raycaster's closest intersection, so fall back to it —
+      // `intersections[0]` carries `.point` and a `.object` we can walk up to
+      // the owning entity.
+      if (!hit && Array.isArray(raycasterComp.intersections)) {
+        hit = raycasterComp.intersections[0] || null;
+      }
+    }
+
+    // (2) Classify by owning-entity identity → category. D (no hit) → no-op.
+    const category = classifyDoubleClick(classifyHitEntity(hit));
+    if (category === 'D') return;
+
+    const hitPoint = new THREE.Vector3(hit.point.x, hit.point.y, hit.point.z);
+    let objectBox = null;
+    if (category === 'B' || category === 'C') {
+      let node = hit.object;
+      let el = null;
+      while (node) {
+        if (node.el) {
+          el = node.el;
+          break;
+        }
+        node = node.parent;
+      }
+      const obj3D = el && el.object3D ? el.object3D : hit.object;
+      objectBox = new THREE.Box3().setFromObject(obj3D);
+      if (objectBox.isEmpty()) return; // degenerate — nothing to frame
+    }
+
+    // (3) Pre-click heading bearing (0 = +X/North, increasing toward +Z).
+    const fwd = new THREE.Vector3();
+    camera.getWorldDirection(fwd);
+    const currentYaw = Math.atan2(fwd.z, fwd.x) * RAD2DEG;
+
+    // (4) Desired pose (pure math).
+    const desired = desiredDoubleClickPose({
+      category,
+      hitPoint,
+      objectBox,
+      currentYaw,
+      eyeHeight: EYE_MARGIN_METRES
+    });
+    if (!desired) return;
+    const position = desired.position;
+    const lookTarget = desired.lookTarget;
+
+    // (5) Never-raise — DC6′, AGL-relative (spec delta
+    // TASK-012-phase4-navheight-delta, supersedes the absolute-Y DC6/H4): the
+    // camera may never sit higher above the LOCAL collision floor than it
+    // currently does. Measure the current height above the floor beneath the
+    // camera; the per-column cap is applied in the clearance step below. A void
+    // below the camera (no floor) → no downward reference → no cap.
+    const currentCamY = camera.position.y;
+    const curFloor = this._collisionFloorAt(camera.position.x, camera.position.z, {
+      refreshCache: false
+    });
+    const currentAGL =
+      curFloor.source === 'cache'
+        ? Infinity
+        : Math.max(0, currentCamY - curFloor.y);
+
+    // (6) Resolve onto a sensible pose against the live scene (probe from the
+    // CANDIDATE, not the live camera — H-1). A double-click ALWAYS moves; the
+    // AGL cap constrains WHERE it lands, never WHETHER (spec delta).
+    if (category === 'A') {
+      // Lane landing: eye height above the clicked point, AGL-capped, not
+      // buried. (A's clicked point guaranteed a hit; a 'cache' miss is
+      // degenerate — keep the desired eye-height Y.)
+      const floor = this._collisionFloorAt(position.x, position.z, {
+        fromY: position.y,
+        refreshCache: false
+      });
+      if (floor.source !== 'cache') {
+        const cap = floor.y + currentAGL; // DC6′ AGL never-raise
+        if (position.y > cap) position.y = cap; // clamp down — never raise above AGL
+        if (position.y < floor.y) position.y = floor.y; // not buried
+      }
+    } else {
+      // B/C: frame at the desired (centre / ⅓-height) Y, AGL-capped, with
+      // standoff pull-back out of solid. Always returns a pose (never no-op).
+      position.copy(
+        this._resolveStandoff(position, lookTarget, currentAGL, objectBox)
+      );
+    }
+
+    // (7) End orientation from the (possibly lowered/capped) position toward
+    // the look target. No Phase-4 path approaches nadir, so a plain
+    // up=+Y lookAt is roll-safe (R2-5 guard, not a dependency).
+    // Category B: re-apply the framing-pitch cap against the FINAL position
+    // (round-3 H1) — never-raise/standoff lowered the camera since the pure
+    // helper's first-pass cap, and WE-8 (street-level look-up at a tall tower)
+    // is exactly the case where the final height is well below the desired one.
+    let finalLook = lookTarget;
+    if (category === 'B') {
+      finalLook = clampFramingPitch(
+        position,
+        lookTarget,
+        DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES
+      );
+    }
+    const scratch = new THREE.PerspectiveCamera();
+    scratch.position.copy(position);
+    scratch.up.set(0, 1, 0);
+    scratch.lookAt(finalLook);
+    const endQuat = scratch.quaternion.clone();
+
+    // (8) Commit the motion. A mid-tween re-click cancels the in-flight tween
+    // and restarts from the current (in-flight) pose — the live reads above
+    // already used the mid-flight camera, so no jump.
+    this._cancelCameraTween();
+    this._teleportActive = true;
+    this._easeToPose({
+      position,
+      quaternion: endQuat,
+      // TASK-012 (R2-3/DC7): a fresh arrival discards any Phase-3 focal-zoom
+      // FOV — tween FOV from its current (in-flight on a re-click) value to the
+      // default so a telephoto arrival reframes smoothly (WE-11). Uses the
+      // DEFAULT_FOV_DEGREES literal (TASK-025), NOT a construction-time
+      // `camera.fov` capture — TASK-025 found that capture unreliable on a
+      // re-attach mid-zoom, and 50 is the shared resting FOV across nav views.
+      fromFov: camera.fov,
+      toFov: DEFAULT_FOV_DEGREES,
+      durationMs: FALL_DURATION_MS,
+      onDone: () => {
+        // DC7: a teleport is a non-wheel move → clear 022's transient memory.
+        this._clearZoomUndo();
+        // D4: recovery must not ease back to the pre-teleport pose.
+        this._reseedLegitPose();
+        // Landed pose is programmatic → re-eval mode/letterbox from the
+        // resulting tilt now (not on the next mouse nudge).
+        this._maybeEmitLbModeChange();
+        // TASK-024a: a teleport is a load/teleport edge.
+        this._deriveGroundedFromPose();
+        this._teleportActive = false;
+        // TASK-025 (merge): refresh the context-button snapshot on settle, like
+        // every other tween — so the button icon reflects the landed pose
+        // immediately rather than one tick later.
+        this._refreshContextSnapshot();
+      }
+    });
+  }
+
+  // TASK-012 (spec delta — AGL never-raise + always-move): resolve a B/C
+  // standoff onto a sensible, non-buried camera point. Per candidate column:
+  // clamp the height to `floor + currentAGL` (DC6′ — never higher above the
+  // local floor than the camera currently is), keep it above the floor (not
+  // buried), and accept it if it isn't inside a building (`_poseStillLegit`,
+  // skipping the floor-clearance half — the AGL clamp + not-buried already own
+  // height). If the candidate is inside solid, pull the standoff inward (toward
+  // the look target) and re-test. ALWAYS returns a THREE.Vector3 — never null:
+  // the double-click must always move (the cap constrains *where*, not
+  // *whether*). If no fully-clear standoff is found, fall back to the nominal
+  // (outermost floored) candidate — the intended framing distance — rather than
+  // refusing.
+  _resolveStandoff(position, lookTarget, currentAGL, targetBox) {
+    const cand = position.clone();
+    const step = DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES;
+    let pulled = 0;
+    let fallback = null; // first column with a real floor (nominal framing)
+    while (pulled <= DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES) {
+      const floor = this._collisionFloorAt(cand.x, cand.z, {
+        fromY: cand.y,
+        refreshCache: false
+      });
+      // Probe miss (void at a scene edge) → no floor here; pull inward toward
+      // the target to find a column with a real floor.
+      if (floor.source !== 'cache') {
+        const cap = floor.y + currentAGL; // DC6′ AGL never-raise
+        if (cand.y > cap) cand.y = cap; // clamp down — never raise above AGL
+        if (cand.y < floor.y) cand.y = floor.y; // not buried (below the floor)
+        if (!fallback) fallback = cand.clone(); // nominal framing distance
+        if (
+          this._poseStillLegit(
+            { position: cand },
+            { checkBuried: true, extraBox: targetBox, skipFloorClearance: true }
+          )
+        ) {
+          return cand;
+        }
+      }
+      // Pull the standoff inward (toward the look target) and re-test.
+      const next = pullBackTowardTarget(cand, lookTarget, step);
+      cand.set(next.x, next.y, next.z);
+      pulled += step;
+    }
+    // Always move: no fully-clear standoff found → the nominal floored
+    // candidate, or (if no column had a floor at all) the desired position.
+    return fallback || position.clone();
+  }
+
+  // TASK-012 (M-1/M-2): minimal committed-motion tween for a Phase-4
+  // double-click teleport. Lerps position + quaternion (+ FOV) only, with a
+  // simple onDone — DISTINCT from `_tweenToPose` (the recovery ease-back),
+  // which embeds CR-D2 per-tick re-validation + the `_popToRoof` hand-off,
+  // none of it teleport-relevant (the teleport endpoint is pre-validated, so
+  // it needs no mid-tween hand-off). The teleport is a committed motion: only
+  // its endpoint is validated; the path is not per-frame collision-clamped.
+  // Returns the TickAnimator handle. `_tweenToPose` is left untouched.
+  _easeToPose({ position, quaternion, fromFov, toFov, durationMs, onTick, onDone }) {
+    const camera = this._camera;
+    const startPos = camera.position.clone();
+    const startQuat = camera.quaternion.clone();
+    const endPos = position.clone();
+    const endQuat = quaternion.clone();
+    const animateFov = fromFov != null && toFov != null;
+    return this._tick.animate({
+      durationMs,
+      onTick: (eased) => {
+        camera.position.lerpVectors(startPos, endPos, eased);
+        camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
+        if (animateFov) {
+          camera.fov = fromFov + (toFov - fromFov) * eased;
+          camera.updateProjectionMatrix();
+        }
+        camera.updateMatrixWorld();
+        if (onTick) onTick(eased);
+        this.dispatchEvent(this._changeEvent);
+      },
+      onDone: () => {
+        camera.position.copy(endPos);
+        camera.quaternion.copy(endQuat);
+        if (animateFov) {
+          camera.fov = toFov;
+          camera.updateProjectionMatrix();
+        }
+        camera.updateMatrixWorld();
+        if (onDone) onDone();
         this.dispatchEvent(this._changeEvent);
       }
     });
@@ -1695,7 +2099,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
 
   _onWheel(event) {
-    if (this._isInactive()) return;
+    // TASK-012 (M-3): a camera-owning tween (recovery or teleport) owns the
+    // camera — passive wheel input is ignored, not raced (L-3).
+    if (this._isInactive() || this._tweenOwnsCamera()) return;
     event.preventDefault();
 
     // TASK-014a (#6 Option B): accumulate only — apply no motion here (the
@@ -1828,6 +2234,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // level Space now rises to drone view (was a no-op).
     if (k === 'Space') {
       event.preventDefault(); // stop page scroll
+      // TASK-025 supersedes TASK-024's Space→fall: Space now routes through the
+      // shared context resolver (the view-button action). Its `busy` gate
+      // includes `_tick.isAnimating()`, so Space is inert during a Phase-4
+      // teleport tween (TASK-012) — no separate guard needed here.
       this.triggerContextAction();
     }
   }
@@ -2316,9 +2726,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._drainWheel();
     this._drainWASD(deltaMs);
     // TASK-024 (3b/3e): legit-pose snapshot + discoverability cue. Runs
-    // after the drains so it captures the post-move pose. Suppressed while
-    // a recovery tween owns the camera (D2).
-    if (!this._recoveryActive) {
+    // after the drains so it captures the post-move pose. Suppressed while a
+    // recovery OR teleport tween owns the camera (D2 / TASK-012 M-C) — the
+    // legit snapshot must not capture a mid-flight teleport pose.
+    if (!this._tweenOwnsCamera()) {
       this._updateLegitSnapshotAndCue();
     }
   }
@@ -2513,15 +2924,23 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const sceneEl = this._sceneEl;
     const acceptBuildings = opts.acceptBuildings !== false;
     const acceptTiles = opts.acceptTiles !== false;
+    // TASK-012 (H-1): cast from an arbitrary candidate Y (default = the live
+    // camera, so EXISTING callers are unchanged), and reference the same Y as
+    // the floor ceiling so a teleport endpoint validated under an overpass
+    // finds the LANE below it, not the deck the high camera would otherwise
+    // probe through. A downward ray from `fromY` only produces hits at/below
+    // `fromY`, so passing it as refY (vs the old Infinity) excludes nothing
+    // for the default camera-Y callers — byte-identical.
+    const fromY = opts.fromY != null ? opts.fromY : camera.position.y;
     if (!sceneEl || !sceneEl.object3D) {
       return { y: this._lastGroundY, normal: null, source: 'cache', hit: null };
     }
-    this._tmpV3a.set(x, camera.position.y, z);
+    this._tmpV3a.set(x, fromY, z);
     this._raycaster.set(this._tmpV3a, GROUND_PROBE_DIR);
     this._raycaster.near = 0;
     this._raycaster.far = Infinity;
     const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
-    const pick = this._pickFloorFromHits(hits, Infinity, {
+    const pick = this._pickFloorFromHits(hits, fromY, {
       acceptBuildings,
       acceptTiles
     });
@@ -2571,11 +2990,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // TASK-024: collision floor at an XZ column — nearest solid surface
   // (ground OR building roof OR tiles), scatter excluded. Used by the
   // descent clamp, swoop, orbit clamp, WASD destination, enclosure floor.
-  _collisionFloorAt(x, z) {
+  _collisionFloorAt(x, z, opts = {}) {
+    // TASK-012 (H-1 / L-A): pass `fromY` through (default camera-Y) so a
+    // teleport clearance probe can cast from the candidate position; and let
+    // a clearance/standoff probe opt out of the `_lastGroundY` cache refresh
+    // (`refreshCache: false`) so a candidate column the camera never visits
+    // doesn't poison the next recovery/WASD miss fallback. Defaults keep all
+    // existing callers unchanged.
     return this._floorYBelowAt(x, z, {
       acceptBuildings: true,
       acceptTiles: true,
-      refreshCache: true
+      refreshCache: opts.refreshCache !== false,
+      fromY: opts.fromY
     });
   }
 
@@ -2698,8 +3124,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // net-vertical un-ground/captureH bracket, active phase-boundary hand-offs)
   // all stay in this one method.
   _drainWheel() {
-    // TASK-024 (D2): a recovery tween owns the camera — drop queued wheel.
-    if (this._recoveryActive) {
+    // TASK-024 (D2) / TASK-012 (M-3): a recovery OR teleport tween owns the
+    // camera — drop queued wheel.
+    if (this._tweenOwnsCamera()) {
       this._wheelAccum = 0;
       return;
     }
@@ -3521,9 +3948,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
   _drainWASD(deltaMs) {
     const camera = this._camera;
-    // TASK-024 (D2): a recovery tween owns the camera — held keys must not
-    // fight it. Snap velocity to zero and suspend.
-    if (this._recoveryActive) {
+    // TASK-024 (D2) / TASK-012 (M-3): a recovery OR teleport tween owns the
+    // camera — held keys must not fight it. Snap velocity to zero and suspend.
+    if (this._tweenOwnsCamera()) {
       this._wasdVelocity.set(0, 0, 0);
       return;
     }
@@ -4083,7 +4510,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // Phase 0 used a center-anchored dolly; Phase 1 keeps the same behavior
   // for the toolbar path so the zoom buttons feel unchanged.
   _zoomActionBar(sign) {
-    if (this._isInactive()) return;
+    // TASK-012 (M-3): suspend the toolbar zoom while a camera-owning tween
+    // (recovery or teleport) is in flight.
+    if (this._isInactive() || this._tweenOwnsCamera()) return;
     const camera = this._camera;
     const distance = camera.position.distanceTo(this.center);
     camera.far = Math.min(100000000, Math.max(20000, distance * 10));

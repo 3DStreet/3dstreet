@@ -20,7 +20,12 @@ import {
   WASD_FACING_MIN,
   WASD_FACING_HYSTERESIS,
   DISCOVERABILITY_CUE_SHOW_METRES,
-  DISCOVERABILITY_CUE_HIDE_METRES
+  DISCOVERABILITY_CUE_HIDE_METRES,
+  DOUBLECLICK_LANE_STANDOFF_METRES,
+  DOUBLECLICK_OBJECT_STANDOFF_RADII,
+  DOUBLECLICK_BUILDING_STANDOFF_DIAG,
+  DOUBLECLICK_BUILDING_VIEW_HEIGHT_FRAC,
+  DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES
 } from './constants.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -447,6 +452,167 @@ export function levelForwardAnchor(camera, dist) {
     camPos.y, // level: hold the camera's own height
     camPos.z + dirZ * dist
   );
+}
+
+// ---------------------------------------------------------------------------
+// TASK-012 Phase-4 double-click navigation — pure pose math.
+// THREE in, THREE out; no scene access (the controls do the raycasts and feed
+// the results in). See claude/plans/.../TASK-012-phase4-double-click-plan.md.
+// ---------------------------------------------------------------------------
+
+// Snap a heading bearing (degrees, 0 = North = +X, increasing toward +Z)
+// to the nearest cardinal of {0, 90, 180, 270}. Returns the snapped bearing
+// in [0, 360). Bounds rotation at ≤ 45° per click and removes any dependence
+// on objects defining a "front" (spec WE-9). No hysteresis (feel-test first).
+export function cardinalSnapYaw(bearingDeg) {
+  const snapped = Math.round(bearingDeg / 90) * 90;
+  return ((snapped % 360) + 360) % 360;
+}
+
+// Horizontal unit direction for a cardinal bearing (the convention above):
+// 0 → +X, 90 → +Z, 180 → −X, 270 → −Z. Returns { x, z }.
+export function cardinalDir(bearingDeg) {
+  const r = bearingDeg * DEG2RAD;
+  return { x: Math.cos(r), z: Math.sin(r) };
+}
+
+// Map an owning-entity kind (from cursorAnchor.classifyHitEntity) to a
+// Phase-4 category: segment/tiles → A (lane/ground surface point),
+// building → B, scatter → C, null → D (empty space / no hit → no-op).
+export function classifyDoubleClick(kind) {
+  if (kind === 'segment' || kind === 'tiles') return 'A';
+  if (kind === 'building') return 'B';
+  if (kind === 'scatter') return 'C';
+  return 'D';
+}
+
+// Never-raise (spec DC6): a double-click may lower or keep the camera height
+// but never raise it. Absolute world height, full stop.
+export function neverRaiseY(targetY, currentCamY) {
+  return Math.min(targetY, currentCamY);
+}
+
+// One standoff-clearance pull-back step: move `pos` horizontally toward
+// `target` by up to `stepMetres` (the B/C clearance search pulls the camera
+// inward — toward the look target — when its column is blocked or void). Y is
+// held (never lifts above the pre-click height). Returns { x, y, z }.
+export function pullBackTowardTarget(pos, target, stepMetres) {
+  const dx = target.x - pos.x;
+  const dz = target.z - pos.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 1e-6) return { x: pos.x, y: pos.y, z: pos.z };
+  const k = Math.min(stepMetres, d) / d;
+  return { x: pos.x + dx * k, y: pos.y, z: pos.z + dz * k };
+}
+
+// Compute the DESIRED double-click pose (before never-raise + clearance
+// resolution, which the controls apply against the live scene). Pure: takes
+// the hit-point, the owning object's box (B/C), the pre-click heading bearing
+// and the eye height; returns { position, lookTarget } (both THREE.Vector3).
+// Returns null for Category D (caller no-ops before calling).
+//
+//   A (lane/ground): look at the hit-point; stand off ~LANE_STANDOFF back
+//     along the snapped heading at eye height. The standoff ≫ eye height so
+//     the down-look stays below the mode threshold T (Street mode).
+//   B (building): look at the building CENTRE (not the hit-point); stand off
+//     ~DIAG×footprint-diagonal back along the heading at a fraction of the
+//     building height. The look angle falls out of the camera height (gentle
+//     from above, steep from the street); the framing-pitch cap is the
+//     backstop, moving the aim point TOWARD camera height if it would otherwise
+//     crane past MAX_FRAMING_PITCH (WE-8).
+//   C (generic): look at the object centre; stand off ~RADII×bounding-radius
+//     back along the heading at centre height.
+export function desiredDoubleClickPose({
+  category,
+  hitPoint,
+  objectBox,
+  currentYaw,
+  eyeHeight
+}) {
+  if (category === 'D') return null;
+  const dir = cardinalDir(cardinalSnapYaw(currentYaw));
+
+  if (category === 'A') {
+    const lookTarget = new THREE.Vector3(hitPoint.x, hitPoint.y, hitPoint.z);
+    const s = DOUBLECLICK_LANE_STANDOFF_METRES;
+    const position = new THREE.Vector3(
+      hitPoint.x - dir.x * s,
+      hitPoint.y + eyeHeight,
+      hitPoint.z - dir.z * s
+    );
+    return { position, lookTarget };
+  }
+
+  // B/C need the object box. Derive centre + size from min/max (works for a
+  // real THREE.Box3 or a plain { min, max } — keeps the helper pure/testable).
+  const cx = (objectBox.min.x + objectBox.max.x) / 2;
+  const cz = (objectBox.min.z + objectBox.max.z) / 2;
+  const sx = objectBox.max.x - objectBox.min.x;
+  const sy = objectBox.max.y - objectBox.min.y;
+  const sz = objectBox.max.z - objectBox.min.z;
+
+  if (category === 'C') {
+    const cy = (objectBox.min.y + objectBox.max.y) / 2;
+    const radius = 0.5 * Math.hypot(sx, sy, sz);
+    const s = radius * DOUBLECLICK_OBJECT_STANDOFF_RADII;
+    const lookTarget = new THREE.Vector3(cx, cy, cz);
+    const position = new THREE.Vector3(
+      cx - dir.x * s,
+      cy,
+      cz - dir.z * s
+    );
+    return { position, lookTarget };
+  }
+
+  // Category B (building). Look at the building's CENTRE — NOT the clicked
+  // hit-point. The camera height is set elsewhere (⅓ building height from
+  // above, front-door height from the street via AGL never-raise), so aiming at
+  // a FIXED point lets the look angle fall out of that height automatically:
+  // gentle from above, steep-but-pitch-capped from the street (WE-8). There is
+  // no need to distinguish "from the air" from "street → tall tower" — the
+  // distinction is already encoded in the resulting camera height. Aiming at
+  // the moving hit-point instead coupled the look to where you clicked, so an
+  // aerial click (which lands on the roof) craned up at the roof. (Spec delta —
+  // supersedes H3's hit-point aim for Category B; the pitch cap is the
+  // backstop, not the primary mechanism.)
+  const camY = objectBox.min.y + sy * DOUBLECLICK_BUILDING_VIEW_HEIGHT_FRAC;
+  const diag = Math.hypot(sx, sz);
+  const s = diag * DOUBLECLICK_BUILDING_STANDOFF_DIAG;
+  const position = new THREE.Vector3(
+    cx - dir.x * s,
+    camY,
+    cz - dir.z * s
+  );
+  const lookTarget = new THREE.Vector3(cx, objectBox.min.y + sy / 2, cz);
+  // Framing-pitch cap (first pass, against the DESIRED height). This is a
+  // convenience pass only — the camera height is lowered again by never-raise
+  // and standoff resolution in the controls, so the AUTHORITATIVE cap is
+  // re-applied post-clearance via `clampFramingPitch` against the FINAL
+  // position (round-3 H1: the cap must hold at the height the camera actually
+  // lands, which for a street-level look-up at a tall tower is well below
+  // `camY`). Keeping it here too is harmless (idempotent) and gives a sane
+  // first-pass look target.
+  return {
+    position,
+    lookTarget: clampFramingPitch(position, lookTarget, DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES)
+  };
+}
+
+// Framing-pitch cap (pure): clamp the look target's vertical angle from
+// `position` to ±maxDeg by moving the look target's Y TOWARD the camera's own
+// height — reducing |dy| (down for a steep look-up, up for a steep look-down).
+// Returns a new THREE.Vector3 look target (x/z unchanged). The controls call
+// this AFTER never-raise + standoff resolution so the cap holds at the final
+// landing height, not the desired one (WE-8 / round-3 H1).
+export function clampFramingPitch(position, lookTarget, maxDeg) {
+  const out = new THREE.Vector3(lookTarget.x, lookTarget.y, lookTarget.z);
+  const hdist = Math.hypot(out.x - position.x, out.z - position.z);
+  const dy = out.y - position.y;
+  const maxDy = hdist * Math.tan(maxDeg * DEG2RAD);
+  if (Math.abs(dy) > maxDy) {
+    out.y = position.y + THREE.MathUtils.clamp(dy, -maxDy, maxDy);
+  }
+  return out;
 }
 
 // ── TASK-014a (#6 Option B): wheel input-plumbing pure helpers ──────────

@@ -246,9 +246,29 @@ export function Viewport(inspector) {
 
   Events.on('raycastermouseenter', (el) => {
     // update hoverBox to match el.object3D bounding box
-    if (el === inspector.selectedEntity) return;
+    //
+    // TASK-012 Stage 7 (audited). Flag-OFF: the legacy hover box is driven
+    // from the same getIntersectedEl() result a single-click selects (the
+    // `el` payload), so hover already matches selection — there is NO
+    // divergence to fix, and we leave the audited legacy behaviour untouched.
+    // Flag-ON: "what a click does" IS navigate (teleport), so the hover box
+    // must preview the Phase-4 TELEPORT category — driven from the SAME raw
+    // cursor intersection navigateDoubleClick classifies off (NOT the
+    // segment-remapped getIntersectedEl). So hovering a car-in-lane shows the
+    // car (Category C) and a pixel aside shows the lane (Category A), matching
+    // WE-7 by construction.
+    let target = el;
+    if (isExperimentalNav()) {
+      const cursorComp =
+        inspector.cursor && inspector.cursor.components
+          ? inspector.cursor.components.cursor
+          : null;
+      const raw = cursorComp ? cursorComp.intersectedEl : null;
+      if (raw) target = raw;
+    }
+    if (!target || target === inspector.selectedEntity) return;
     hoverBox.visible = true;
-    hoverBox.setFromObject(el.object3D);
+    hoverBox.setFromObject(target.object3D);
   });
 
   Events.on('raycastermouseleave', (el) => {
@@ -540,6 +560,14 @@ export function Viewport(inspector) {
 
   Events.on('objectfocus', (object) => {
     controls.focus(object);
+  });
+
+  // TASK-012 Phase 4: cursor-aware double-click navigation (experimental nav
+  // only). Guarded by method presence so legacy EditorControls is unaffected.
+  Events.on('nav-experimental:doubleclick', (payload) => {
+    if (controls.navigateDoubleClick) {
+      controls.navigateDoubleClick(payload);
+    }
   });
 
   Events.on('geometrychanged', (object) => {
