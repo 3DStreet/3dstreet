@@ -1469,7 +1469,24 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       acceptTiles: true
     });
     const floorY = pick ? pick.hit.point.y : null;
-    if (!isLegitPose({ enclosed, camY: p.y, floorY })) return false;
+    // Overhead solid always disqualifies (enclosure half of the predicate).
+    if (enclosed) return false;
+    // Floor-clearance (eye-margin above the surface beneath the candidate).
+    // The B/C standoff caller (`_resolveStandoff`) has ALREADY raised the
+    // candidate to floor+eye-margin using its OWN probe and gated on it
+    // (`clearColumn`), so re-checking here against an INDEPENDENT re-probe is
+    // redundant — and worse, the two probes can disagree at the exact boundary
+    // by a sub-millimetre difference, flipping `camY >= floor+eye-margin` to
+    // false and wrongly rejecting a low candidate pinned at the boundary (a
+    // car / pedestrian, whose centre height is below eye-margin so it always
+    // lands exactly at it). Trust the caller via `skipFloorClearance`. Recovery
+    // callers pass no opts → full check, byte-identical to before.
+    if (
+      !opts.skipFloorClearance &&
+      !isLegitPose({ enclosed, camY: p.y, floorY })
+    ) {
+      return false;
+    }
     // TASK-012 (M-A buried guard): the enclosure half rejects a candidate with
     // solid directly overhead, but a downward-only probe can miss a candidate
     // at mid-interior height inside a closed building with no solid straight
@@ -1645,12 +1662,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const raycasterComp = comps ? comps.raycaster : null;
     const rawEl = cursorComp ? cursorComp.intersectedEl : null;
     let hit = null;
-    if (
-      rawEl &&
-      raycasterComp &&
-      typeof raycasterComp.getIntersection === 'function'
-    ) {
-      hit = raycasterComp.getIntersection(rawEl);
+    if (rawEl && raycasterComp) {
+      if (typeof raycasterComp.getIntersection === 'function') {
+        hit = raycasterComp.getIntersection(rawEl);
+      }
+      // Defensive: `getIntersection(el)` can return null in some A-Frame
+      // states even when the cursor has an `intersectedEl`. The cursor derived
+      // `rawEl` from the raycaster's closest intersection, so fall back to it —
+      // `intersections[0]` carries `.point` and a `.object` we can walk up to
+      // the owning entity.
+      if (!hit && Array.isArray(raycasterComp.intersections)) {
+        hit = raycasterComp.intersections[0] || null;
+      }
     }
 
     // (2) Classify by owning-entity identity → category. D (no hit) → no-op.
@@ -1811,7 +1834,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         clearColumn &&
         this._poseStillLegit(
           { position: cand },
-          { checkBuried: true, extraBox: targetBox }
+          { checkBuried: true, extraBox: targetBox, skipFloorClearance: true }
         )
       ) {
         return cand;
