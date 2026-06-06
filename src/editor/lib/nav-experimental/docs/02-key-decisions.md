@@ -426,22 +426,33 @@ object, **D** empty/no-hit (no-op). Two load-bearing simplifications:
   of N/E/S/W to the pre-click heading (≤45° rotation). This removes any
   dependence on objects defining a "front" (works for trees and lanes
   too) and bounds the rotation.
-- **Never-raise.** A double-click may lower the camera or keep its height
-  but **never raises it** — compared on **absolute world height** (what
-  the user perceives as "how high am I"), not AGL (comparing AGL across
-  columns with different ground heights could let a valley→hilltop move
-  rise while passing an "AGL" check).
+- **Never-raise (AGL-relative, per-column).** A double-click may lower the
+  camera or keep its height but **never raises it above the local ground** —
+  capped on **height above the collision floor beneath it** (AGL,
+  per-column), not absolute world height. Per-column AGL is what lets a
+  valley→hilltop double-click move *up the hill* to view the target (rising
+  in absolute terms relative to the valley floor it left, but never higher
+  above the *hilltop* ground than it was above the *valley* ground) — an
+  absolute-height cap would wrongly forbid that legitimate hill navigation.
+  The cap is a **clamp-down** (`min(desired, current)`), so it constrains
+  height without ever *rejecting* a target.
 
 This logic computes only the **desired pose** (look target, heading,
 attitude, nominal standoff, target height). Resolving that onto a clear,
-non-buried camera position — rest an eye margin above the surface, pull a
-blocked standoff back along the heading, hand off to recovery if no clear
-pose exists at/below the never-raise height — is the **shared collision
-machinery** (KD-16/KD-17), invoked identically for every category, not
-re-implemented per category. The ~0.6 s tween is a **committed motion**:
-only its endpoint is collision-validated; the path is not per-frame
-clamped, so a teleport can descend through an intervening roof to a clear
-lane below.
+non-buried camera position — AGL-clamp the height (above), keep it above the
+surface (not buried), and pull a standoff that lands **inside solid**
+**inward toward the look target** until clear — reuses the **shared
+collision machinery** (KD-16/KD-17), invoked identically for every category.
+A double-click **always moves**: the cap constrains *where* it lands, never
+*whether* (no silent no-op, no recovery hand-off). And the resolved pose is
+**never bounded to the finite scene** — a standoff that lands over **void**
+beyond the scene edge is accepted at framing distance (no floor to cap
+against, no burial risk), exactly as WASD/fly is free to move out over the
+void rather than snapping back inside (KD-02/KD-19); it is *not* dragged in
+to the nearest ground. Only an *inside-solid* standoff pulls inward. The
+~0.6 s tween is a **committed motion**: only its endpoint is
+collision-validated; the path is not per-frame clamped, so a teleport can
+descend through an intervening roof to a clear lane below.
 
 ### KD-24 — Category B aims at the building centre; height encodes air-vs-street
 

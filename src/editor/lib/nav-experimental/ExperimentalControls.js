@@ -1885,18 +1885,29 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     });
   }
 
-  // TASK-012 (spec delta — AGL never-raise + always-move): resolve a B/C
-  // standoff onto a sensible, non-buried camera point. Per candidate column:
-  // clamp the height to `floor + currentAGL` (DC6′ — never higher above the
-  // local floor than the camera currently is), keep it above the floor (not
-  // buried), and accept it if it isn't inside a building (`_poseStillLegit`,
-  // skipping the floor-clearance half — the AGL clamp + not-buried already own
-  // height). If the candidate is inside solid, pull the standoff inward (toward
-  // the look target) and re-test. ALWAYS returns a THREE.Vector3 — never null:
-  // the double-click must always move (the cap constrains *where*, not
-  // *whether*). If no fully-clear standoff is found, fall back to the nominal
-  // (outermost floored) candidate — the intended framing distance — rather than
-  // refusing.
+  // TASK-012 (spec delta — AGL never-raise + always-move) + TASK-028 (spec
+  // delta — never bounded to the finite scene): resolve a B/C standoff onto a
+  // sensible, non-buried camera point. Per candidate column:
+  //   - Floor present below the candidate → clamp the height to
+  //     `floor + currentAGL` (DC6′ — never higher above the local floor than
+  //     the camera currently is) and keep it above the floor (not buried).
+  //   - Void below the candidate (probe miss — beyond a bounded scene's edge)
+  //     → no floor to measure against, so keep the desired framing height
+  //     unclamped. A double-click is NEVER bounded to the finite scene
+  //     (TASK-028): a camera hanging over the void at framing distance, looking
+  //     back at the edge item, is a valid pose — consistent with KD-02 (the
+  //     finite-scene-boundary concept was removed system-wide) and WASD/fly,
+  //     which holds height over the void rather than snapping back inside.
+  // The accept-gate (`_poseStillLegit`, skipping the floor-clearance half —
+  // the AGL clamp + not-buried already own height) runs for BOTH floored and
+  // void columns: the floor's only jobs are the AGL cap and not-buried, and a
+  // void column triggers neither. Pull the standoff inward (toward the look
+  // target) ONLY when the candidate is inside SOLID (a building, WE-13) —
+  // never merely because there is no ground beneath it. ALWAYS returns a
+  // THREE.Vector3 — never null: the double-click must always move (the cap
+  // constrains *where*, not *whether*). If no clear standoff is found within
+  // the pull-back budget, fall back to the nominal (outermost floored)
+  // candidate — the intended framing distance — rather than refusing.
   _resolveStandoff(position, lookTarget, currentAGL, targetBox) {
     const cand = position.clone();
     const step = DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES;
@@ -1907,28 +1918,32 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         fromY: cand.y,
         refreshCache: false
       });
-      // Probe miss (void at a scene edge) → no floor here; pull inward toward
-      // the target to find a column with a real floor.
+      // Floor present → DC6′ AGL never-raise + not-buried clamp. Void (probe
+      // miss, beyond bounds) → leave the desired framing height untouched.
       if (floor.source !== 'cache') {
         const cap = floor.y + currentAGL; // DC6′ AGL never-raise
         if (cand.y > cap) cand.y = cap; // clamp down — never raise above AGL
         if (cand.y < floor.y) cand.y = floor.y; // not buried (below the floor)
         if (!fallback) fallback = cand.clone(); // nominal framing distance
-        if (
-          this._poseStillLegit(
-            { position: cand },
-            { checkBuried: true, extraBox: targetBox, skipFloorClearance: true }
-          )
-        ) {
-          return cand;
-        }
       }
-      // Pull the standoff inward (toward the look target) and re-test.
+      // Accept unless inside SOLID. Same gate for floored and void columns; a
+      // void standoff (not inside the target box, no overhead solid) passes
+      // here and is taken at framing distance — never dragged inside (TASK-028).
+      if (
+        this._poseStillLegit(
+          { position: cand },
+          { checkBuried: true, extraBox: targetBox, skipFloorClearance: true }
+        )
+      ) {
+        return cand;
+      }
+      // Inside solid → pull the standoff inward (toward the look target) and
+      // re-test (WE-13).
       const next = pullBackTowardTarget(cand, lookTarget, step);
       cand.set(next.x, next.y, next.z);
       pulled += step;
     }
-    // Always move: no fully-clear standoff found → the nominal floored
+    // Always move: no clear standoff found within budget → the nominal floored
     // candidate, or (if no column had a floor at all) the desired position.
     return fallback || position.clone();
   }
