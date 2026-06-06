@@ -8,9 +8,7 @@ reviewers evaluating the contribution, and (b) future maintainers of this
 code.
 
 **Snapshot:** everything here describes the system as delivered onto the
-`navigation` branch as of the merge of **PR #12**, at branch SHA
-**`5f43d38d`** (`5f43d38dd40393c823c5e2198d8f54c8a2572b35`, merged
-2026-06-06). It is a snapshot of how things work *now*, not a development
+`navigation` branch. It is a snapshot of how things work *now*, not a development
 history — history appears only where it justifies a decision ("we tried X,
 found problem Y"). Anything landing on the branch after this SHA is out of
 scope and noted under Open Issues as forthcoming.
