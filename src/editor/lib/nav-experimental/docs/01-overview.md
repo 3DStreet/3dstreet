@@ -7,29 +7,32 @@ sibling docs.*
 
 ## What this is
 
-An opt-in replacement for the 3DStreet editor camera controls, built to
-make moving around a scene feel like **Google Maps + Street View as a
-single integrated system**: free tilt all the way from top-down to street
-level, a smooth continuous transition between birds-eye and street views,
-and double-click-to-navigate — improvements over the stock controls and
-over Google Maps itself (which won't tilt below ~30°).
+A replacement for the 3DStreet editor camera controls, built to make
+moving around a scene feel like **Google Maps + Street View as a single
+integrated system**: free tilt all the way from top-down to street level,
+a smooth continuous transition between birds-eye and street views, and
+double-click-to-navigate — improvements over the stock controls and over
+Google Maps itself (which won't tilt below ~30°).
 
-It is a **prototype**, gated behind a URL flag. It does not ship on by
-default and does not deploy anything.
+It is still a **prototype**, but on this branch it is the editor's
+**default** camera-control system. The legacy controls remain available as
+an opt-out.
 
-## How to turn it on
+## Turning it on and off
 
-Append `?nav=experimental` to the editor URL (e.g.
-`http://localhost:3333/?nav=experimental`). With the flag **off**, the
-stock `THREE.EditorControls` are completely unchanged — the two systems
-coexist, which lets you A/B the feel in one session. (`&navDebug=true`
-adds console diagnostics.)
+On this branch the experimental controls are **active by default** — no
+flag needed. To fall back to the stock `THREE.EditorControls`, append
+**`?nav=classic`** to the editor URL (e.g.
+`http://localhost:3333/?nav=classic`). The two systems coexist and are
+mutually exclusive at construction time, which lets you A/B the feel in
+one session by toggling that parameter. (`&navDebug=true` adds console
+diagnostics.)
 
 The code lives entirely in `src/editor/lib/nav-experimental/`;
-`ExperimentalControls` is `new`-ed in `viewport.js` when the flag is set
-and mirrors the `EditorControls` public API, so the rest of the editor
-(the ActionBar zoom buttons, focus-on-object, scene load) drives it
-without knowing which control scheme is active.
+`ExperimentalControls` is `new`-ed in `viewport.js` unless `?nav=classic`
+is present, and mirrors the `EditorControls` public API, so the rest of
+the editor (the ActionBar zoom buttons, focus-on-object, scene load)
+drives it without knowing which control scheme is active.
 
 ## The mental model: two regimes on one threshold
 

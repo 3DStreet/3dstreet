@@ -20,17 +20,20 @@ only in `03-configurable-thresholds.md` (referenced as `TH-NN`).
 
 ## A. Foundations
 
-### KD-01 — Coexist behind a URL flag, don't replace the old controls
+### KD-01 — Coexist behind a URL flag (now defaulting to the new system)
 
-The new control system activates only under `?nav=experimental`; with the
-flag off, the stock `THREE.EditorControls` are untouched. The alternative
-— replacing the old controls outright — was rejected because the flag is
-cheap insurance and, more importantly, enables **side-by-side feel
-comparisons** of old vs new in one session. Consequence: the new controls
-must mirror the `EditorControls` public API (`focus`, `resetZoom`,
-`newSceneCameraZoom`, `setCamera`, `setAspectRatio`, `change` events,
-ortho fallback) so `viewport.js` and the ActionBar can drive either
-interchangeably.
+The new control system and the legacy `THREE.EditorControls` coexist,
+selected by a URL flag and mutually exclusive at construction. The
+alternative — deleting the old controls outright — was rejected because
+keeping both is cheap insurance and enables **side-by-side feel
+comparisons** of old vs new in one session. The **default has since
+flipped**: on this branch the experimental controls are active by default,
+and **`?nav=classic`** is the opt-out that restores the legacy controls
+(the flag was originally opt-*in* via `?nav=experimental`). Consequence:
+the new controls must mirror the `EditorControls` public API (`focus`,
+`resetZoom`, `newSceneCameraZoom`, `setCamera`, `setAspectRatio`, `change`
+events, ortho fallback) so `viewport.js` and the ActionBar can drive
+either interchangeably.
 
 ### KD-02 — Two tilt regimes split on a single threshold T
 
@@ -339,7 +342,8 @@ normal available so orient-to-slope can be added later without a rewrite.
 
 ### KD-21 — Context view button: one state-tracking button + Space share a single resolver; icon = destination
 
-A single always-visible button (in `?nav=experimental`) offers the one
+A single always-visible button (present whenever the experimental controls
+are active — i.e. by default unless `?nav=classic`) offers the one
 sensible "change my framing" move for where the camera is, resolved by a
 **fixed precedence ladder**: **enclosed → daylight** (pop to clear air) ›
 **elevated → street view** (swoop down) › **at street level → drone
@@ -473,9 +477,9 @@ car in a lane → the *lane* highlights, but clicking selects the car). The
 fix computes the hover target from the same raycast the click uses, so
 hovering previews the click result — making the A/C classification
 boundary (cursor over the car vs the asphalt beside it) visible and
-anticipatable. Applied in both flag-on and legacy flag-off flows **only
-if** an audit confirms the two paths haven't diverged for a legitimate
-reason; otherwise experimental-only.
+anticipatable. Applied in both the experimental and the legacy
+(`?nav=classic`) flows **only if** an audit confirms the two paths haven't
+diverged for a legitimate reason; otherwise experimental-only.
 
 ---
 

@@ -1,9 +1,11 @@
 # Experimental Navigation — Specification Docs
 
-Specification of the experimental navigation controls
-(`?nav=experimental`) as they currently stand. **These docs are not
-user-facing** — they are for (a) Kieran and other upstream reviewers
-evaluating the contribution, and (b) future maintainers of this code.
+Specification of the experimental navigation controls as they currently
+stand. On this branch they are the editor's **default** camera controls
+(pass `?nav=classic` to fall back to the legacy controls). **These docs
+are not user-facing** — they are for (a) Kieran and other upstream
+reviewers evaluating the contribution, and (b) future maintainers of this
+code.
 
 **Snapshot:** everything here describes the system as delivered onto the
 `navigation` branch as of the merge of **PR #12**, at branch SHA
