@@ -13,8 +13,6 @@ exports.serveWebXRVariant = functions.https.onRequest((req, res) => {
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
   <!-- 3dstreet -->
   <script src="/dist/aframe-street-component.js"></script>
-  <!-- mapbox -->
-  <script src="/dist/aframe-mapbox-component.min.js"></script>
 
   <!-- viewer controls - vr teleport -->
   <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>

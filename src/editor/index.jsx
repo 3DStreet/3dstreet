@@ -1,7 +1,6 @@
 import './instrument';
 import '../styles/tailwind.css';
 import { createRoot } from 'react-dom/client';
-import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import MainWrapper from './components/MainWrapper';
 import { ARControls, VisibilityToggle } from './components/viewport/ARControls';
 import { AuthProvider, GeoProvider } from './contexts';
@@ -26,7 +25,16 @@ function isViewerModeRequested() {
 
 function Inspector(configOverrides) {
   this.assetsLoader = new AssetsLoader();
-  this.exporters = { gltf: new GLTFExporter() };
+  let gltfExporterPromise = null;
+  this.getGLTFExporter = () => {
+    if (!gltfExporterPromise) {
+      gltfExporterPromise = import(
+        /* webpackChunkName: "gltf-exporter" */
+        'three/examples/jsm/exporters/GLTFExporter'
+      ).then(({ GLTFExporter }) => new GLTFExporter());
+    }
+    return gltfExporterPromise;
+  };
   this.config = new Config(configOverrides);
   this.history = new History();
   this.isFirstOpen = true;
