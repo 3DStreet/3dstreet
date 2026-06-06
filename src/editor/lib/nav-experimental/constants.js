@@ -17,8 +17,11 @@ export const MAX_TILT_DEGREES = 89;
 // is held on the controls instance (`_tiltThreshold`) and is overridable
 // at runtime via the `nav-experimental-tuning` A-Frame component (D2).
 // Cut is on absolute angle from horizontal — looking up by any amount is
-// below T. Lowered from the old 30° to 18° per the mid-project review.
-export const TILT_THRESHOLD_DEFAULT_DEGREES = 18;
+// below T. Lowered from the old 30° to 18° per the mid-project review, then
+// raised 18° → 25° (TASK-027 Part E, Diarmid's call): 18° was too low a
+// boundary for the low-tilt regime. Stays runtime-tunable via
+// `nav-experimental-tuning` so end-user testing can re-tune it.
+export const TILT_THRESHOLD_DEFAULT_DEGREES = 25;
 
 // TASK-024 — solid-geometry prevention & recovery. All metres / degrees.
 // Starting values from the SPEC; tunable.
@@ -103,24 +106,57 @@ export const MAP_PIVOT_BOUNDS_RADIUS_METRES = 500;
 // reproduces the previously-tuned size near a 60° fov.
 export const RING_SCREEN_FRACTION = 0.035;
 
-// Wheel zoom: each "wheel-tick of budget" moves the camera by this fraction
-// of the current camera-to-anchor distance. Sign is applied by the caller.
-export const ZOOM_PER_WHEEL_TICK = 0.1;
+// Wheel zoom — high-regime DOLLY step (TASK-014a / B7). Each nominal
+// tick moves the camera by this fraction of the current camera-to-anchor
+// distance. Sign is applied by the caller. DOLLY KNOB ONLY — it no longer
+// feeds the street-level FOV factor (that is FOV_PER_WHEEL_TICK below), so
+// the two regimes tune independently. Halved 0.1 → 0.05 for B7 ("finer in
+// every regime"); reduced default, re-tuned together at feel-test.
+export const ZOOM_PER_WHEEL_TICK = 0.05;
 
-// deltaY-to-tick conversion. Mice send ~100 per detent; trackpads send
-// ~1-4 per event. We accumulate raw deltaY (deltaMode-aware) into a budget
-// drained at WHEEL_BUDGET_PER_TICK_UNITS per wheel tick.
-export const WHEEL_BUDGET_PER_TICK_UNITS = 100;
-// Cap how much budget a single A-Frame tick can consume. Higher = more
-// wheel responsiveness; lower = smoother but less reactive.
-export const WHEEL_MAX_TICKS_PER_FRAME = 10;
-// Hard cap on accumulated wheel budget. Without this, a trackpad burst
-// or inertial scroll piles up budget that keeps draining for hundreds of
-// ms after the user stops, feeling like queued/blocking inputs. Cap to
-// one frame's drain capacity so the camera always reaches its target
-// within the next frame.
-export const WHEEL_MAX_BUDGET =
-  WHEEL_MAX_TICKS_PER_FRAME * WHEEL_BUDGET_PER_TICK_UNITS;
+// Wheel zoom — street-level FOV step (TASK-014a / B7). Fraction by which
+// the field of view shrinks (zoom-in) / grows (zoom-out) per nominal tick.
+// Previously implicit in ZOOM_PER_WHEEL_TICK (0.1); split out so FOV tunes
+// independently of the dolly. Reduced default for B7.
+export const FOV_PER_WHEEL_TICK = 0.05;
+
+// TASK-014a (#6 Option B): continuous step model. Incoming wheel events are
+// normalised to a signed, fractional "nominal tick" count and accumulated
+// into a single float accumulator (_wheelAccum). The high & FOV regimes
+// apply the WHOLE pending accumulator per frame as one continuous step
+// (no quantisation, no multi-frame lag); the swoop consumes whole ticks
+// under its per-frame rate-cap, carrying any sub-tick remainder.
+//
+// One mouse detent (deltaY ≈ 100) ≈ 1.0 nominal tick; a trackpad
+// deltaY ≈ 3 event ≈ 0.03 of a tick — same deltaY→motion ratio as before,
+// so cross-device parity is preserved by construction.
+export const WHEEL_UNITS_PER_NOMINAL_TICK = 100;
+// Line-mode (deltaMode === 1) approximate pixels per line. Known
+// approximation (browsers vary); matches the previous inline value.
+export const LINE_HEIGHT_PX = 16;
+// Per-EVENT magnitude clamp, in nominal ticks. Some OS/trackpads emit a
+// single deltaY in the thousands; page-mode (deltaMode === 2) multiplies by
+// ~viewport height. Without this the continuous step would apply an
+// unbounded factor in one frame. Matches the old per-frame ceiling.
+export const WHEEL_MAX_TICKS_PER_EVENT = 10;
+// Accumulator residual / loop-termination epsilon, in nominal ticks. Below
+// this magnitude the accumulator is dropped so it doesn't accumulate
+// forever (mirrors the old `unit * 0.05` residual drop).
+export const WHEEL_ACCUM_EPS_TICKS = 0.05;
+// Hard bound on the accumulator (TASK-014a A4). Replaces the role of the
+// deleted WHEEL_MAX_BUDGET. High/FOV drain the whole accumulator each
+// frame so they can't pile up, but the swoop drains only
+// SWOOP_PHASE2_MAX_TICKS_PER_FRAME ticks/frame — a sustained fast scroll
+// could otherwise build a runaway tail. 12 ticks ≈ four frames of swoop
+// glide: rides the tail for normal gestures, kills the pathological pile-up.
+export const WHEEL_MAX_ACCUM_TICKS = 12;
+// Degenerate-anchor-denominator guard (TASK-014a A3), in metres. When the
+// dolly anchor is within this height of the camera (|cam.y − hit.y| ≤ this,
+// reachable in the low-tilt branch as tilt→0 since the forward anchor
+// approaches the camera's own height), the analytic phase1→phase2 boundary
+// solve would divide by ~0; fall back to the per-tick post-step y-clamp.
+// ~one camera radius.
+export const WHEEL_ANCHOR_DENOM_EPS_METRES = 0.5;
 
 // LB pan gesture: cap on how far the camera can translate per mousemove
 // event, in metres. Guards against absurd anchor solutions (numerically
@@ -148,8 +184,16 @@ export const FALLBACK_FORWARD_DIST = 30;
 // not silently track ZOOM_PER_WHEEL_TICK — re-feel-test after TASK-014a
 // changes the base step size. Separate knob from the orbit-pivot bounds
 // (different origin: camera nadir vs screen-centre ground point).
-// Live-tunable via nav-experimental-tuning (wheelZoomLateralCapMetres).
-export const WHEEL_ZOOM_LATERAL_CAP_METRES = 15; // 10–25 expected; feel
+// Live-tunable via nav-experimental-tuning.
+//
+// TASK-027 Part F: the cap is no longer a fixed 15 m — it scales with height,
+// `lateralCap(yAgl) = max(LOWER_BOUND, COEFF × yAgl)` (see navMath.lateralCap).
+// The lower bound keeps it usable near the ground (and on the Ctrl+wheel /
+// out-of-bounds path that has no AGL — it falls back to the lower bound). The
+// lower bound is the live-tunable knob (`wheelZoomLateralCapLowerBoundMetres`);
+// the coefficient is a constant re-tuned here.
+export const WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES = 2; // 1–2; feel
+export const WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF = 0.1;
 
 // TASK-014d: per-caller far-ground reach ceiling for the wheel-zoom path.
 // Far above any real scene (1000 km) but well short of float overflow, so
@@ -204,11 +248,14 @@ export const SWOOP_PHASE2_EXIT_ELEVATION_METRES = 1.5;
 export const DEFAULT_OVERVIEW_TILT_DEGREES = 60;
 
 // Phase 2 per-tick pedestal step: fraction of (current y - exit elevation)
-// consumed per unit zoom-in tick. Matches ZOOM_PER_WHEEL_TICK in shape;
-// kept as a separate constant so Phase 2 feel can be tuned independently
-// of Phase 1's anchored dolly step.
-// Bumped 0.10 → 0.20 on 2026-05-11 feel-test — descent felt too slow.
-export const SWOOP_PHASE2_STEP = 0.2;
+// consumed per whole zoom-in tick. Kept as a separate constant so Phase 2
+// feel can be tuned independently of Phase 1's anchored dolly step.
+// History: bumped 0.10 → 0.20 on 2026-05-11 feel-test — descent felt too
+// slow. TASK-014a (B7): trimmed 0.20 → 0.15 — a MODEST reduction, NOT a
+// halving: B7 wants "finer in every regime", but the swoop was deliberately
+// doubled up from 0.10 for being too slow, so it must not be driven back
+// toward that. Re-tune with the other two step knobs at feel-test.
+export const SWOOP_PHASE2_STEP = 0.15;
 
 // Phase 2 per-frame drain cap (overrides WHEEL_MAX_TICKS_PER_FRAME inside
 // the swoop transition only). Slows trackpad bursts so the transition
@@ -228,6 +275,45 @@ export const SWOOP_PHASE2_FLOOR_SNAP_METRES = 1.0;
 // Phase 3 FOV floor (degrees). Further zoom-in ticks at the floor are
 // no-ops.
 export const SWOOP_PHASE3_FOV_FLOOR_DEGREES = 15;
+
+// TASK-027 Part A (delivers 014b) — landing FOV / sense of arrival.
+//   SWOOP_LANDING_FOV_DEGREES — the FOV the descent eases open to as the swoop
+//     lands at street level (height-driven, not latched). The world "opens up".
+//   DEFAULT_MAP_FOV_DEGREES — the swoop-OUT FOV target when the transient
+//     zoom-undo memory is cleared (mirrors DEFAULT_OVERVIEW_TILT_DEGREES for
+//     FOV: memory valid → exact FOV undo, memory cleared → this default).
+//   FOV_DISTORTION_LIMIT_DEGREES — beyond here the perspective reads as
+//     fisheye; the wheel's wide end is capped below it.
+//   PHASE3_FOV_WIDE_CAP_DEGREES — the street-level zoom's wide end. Expressed
+//     as min(landing, distortion) so retuning either constant stays coherent.
+//     Replaces the old per-entry latched `_phase3FovBaseline` (a constant now).
+export const SWOOP_LANDING_FOV_DEGREES = 75;
+export const DEFAULT_MAP_FOV_DEGREES = 60;
+export const FOV_DISTORTION_LIMIT_DEGREES = 85;
+export const PHASE3_FOV_WIDE_CAP_DEGREES = Math.min(
+  SWOOP_LANDING_FOV_DEGREES,
+  FOV_DISTORTION_LIMIT_DEGREES
+);
+// SWOOP_FOV_RAMP_EXPONENT — concentrates the FOV "opening up" near the FLOOR
+// (the sense of arrival) instead of spreading it linearly across the band. The
+// pedestal descent is exponential (fast at the top, asymptotically slow near
+// the floor), so a height-LINEAR FOV ramp does ~all its widening at the top and
+// almost none at the bottom (live-test #2: "odd at the start, nothing at the
+// end"). FOV = narrow + (wide−narrow)·(1−heightFrac)^exponent: with exponent 3
+// the widening is back-loaded into the final stretch of the descent. Feel-tune.
+export const SWOOP_FOV_RAMP_EXPONENT = 3;
+
+// TASK-027 Part B — cursor-locked street-level FOV zoom (camera re-aim).
+//   REAIM_FADE_{NEAR,FAR}_METRES — the cursor-target distance band over which
+//     the re-aim magnitude fades to zero (1 below NEAR, 0 above FAR), so a far
+//     façade → sky crossing is continuous rather than a hard switch to the
+//     no-re-aim fallback (M4 / WE-D2). Fade completes well before
+//     WHEEL_GROUND_REACH_CEILING_METRES.
+//   PHASE3_REAIM_NDC_EPS — cursor-moved threshold (in NDC units) above which
+//     the re-aim baseline pose is re-captured at the current pose (a new aim).
+export const REAIM_FADE_NEAR_METRES = 300;
+export const REAIM_FADE_FAR_METRES = 800;
+export const PHASE3_REAIM_NDC_EPS = 1e-4;
 
 // TASK-011 compass.
 
@@ -280,3 +366,44 @@ export const DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES = 70;
 //     candidate; give up (no-op) past MAX.
 export const DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES = 1;
 export const DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES = 40;
+
+// TASK-025 — context view button (street / daylight / drone).
+//
+// Elevated↔street-level hysteresis band (metres above the collision floor
+// directly below the camera). Below ENTRY → "at street level" (offers drone
+// view); above EXIT → "elevated" (offers street view); between → hold the
+// last state (anti-flicker). Two failure modes are weighed (spec D-B): icon
+// flicker at the boundary (wants a WIDE band) vs lag on a deliberate slow
+// ascent (wants a NARROW/low band). v2 (R2-C, live-test finding 2): the
+// original 8/14 m band was far too high — standing on a 3 m kerb still read as
+// "street level". "At street level" now means within ~human-height of a
+// surface; anything more is elevated. Resting AGL is ~eye-height
+// (EYE_MARGIN_METRES = 1.5 m), so ENTRY 1.8 sits just above resting eye-height
+// (standing normally = street level) and EXIT 2.5 means >2.5 m of air under
+// you = elevated. The tight 1.8↔2.5 dead band still clears eye-height bob.
+export const DRONE_ELEVATED_ENTRY_METRES = 1.8; // tunable
+export const DRONE_ELEVATED_EXIT_METRES = 2.5; // tunable
+
+// Drone-view canonical rise.
+//   DEFAULT_DRONE_HEIGHT — target altitude above GROUND LEVEL (the TASK-024
+//     travel height, which looks past tall buildings to the ground between
+//     them) for a street-level drone press. An elevated "survey from above"
+//     vantage. TUNE AT FEEL-TEST.
+export const DEFAULT_DRONE_HEIGHT = 40; // metres above ground level; tunable
+//   ROOF_CLEARANCE — when atop a building taller than DEFAULT_DRONE_HEIGHT,
+//     end this far above the ROOF you stand on (the collision floor directly
+//     below). COUPLED to the hysteresis (spec D-B / M-2): must be
+//     >= DRONE_ELEVATED_EXIT_METRES + dead-band margin so a drone arrival atop
+//     a tall roof lands unambiguously "elevated" and the button flips to street
+//     view. With EXIT now 2.5 m (v2/R2-C, lowered from the original 14), any
+//     canonical drone height ≫ EXIT, so this trivially clears the bar.
+export const ROOF_CLEARANCE = 20; // metres above roof; >= EXIT + margin; tunable
+
+// Default/normal field of view (degrees) the drone rise resets to. A LITERAL,
+// not an attach-time `camera.fov` capture (which is unreliable on a re-attach
+// mid-zoom). 50 is THREE's PerspectiveCamera default = the inspector camera's
+// resting fov (it is constructed `new THREE.PerspectiveCamera()` with no fov
+// arg — see cameras.js). NOT 60 (the `|| 60` frustum-fit fallback elsewhere is
+// a defensive default, not the resting fov; using it would ship drone view
+// ~20% wider than every other view, violating spec D-A "normal FOV").
+export const DEFAULT_FOV_DEGREES = 50;

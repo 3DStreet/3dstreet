@@ -54,9 +54,10 @@ import { RotationIndicator } from './rotationIndicator.js';
 import { TickAnimator } from './tickAnimator.js';
 import {
   ZOOM_PER_WHEEL_TICK,
-  WHEEL_BUDGET_PER_TICK_UNITS,
-  WHEEL_MAX_TICKS_PER_FRAME,
-  WHEEL_MAX_BUDGET,
+  FOV_PER_WHEEL_TICK,
+  WHEEL_MAX_ACCUM_TICKS,
+  WHEEL_ACCUM_EPS_TICKS,
+  WHEEL_ANCHOR_DENOM_EPS_METRES,
   ROTATION_SPEED_RAD_PER_PX,
   WASD_SPEED_HEIGHT_FACTOR,
   WASD_MIN_SPEED,
@@ -68,7 +69,8 @@ import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
   MIN_ORBIT_RADIUS_METRES,
   MAP_PIVOT_BOUNDS_RADIUS_METRES,
-  WHEEL_ZOOM_LATERAL_CAP_METRES,
+  WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES,
+  WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF,
   WHEEL_GROUND_REACH_CEILING_METRES,
   FALLBACK_FORWARD_DIST,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
@@ -76,6 +78,13 @@ import {
   SWOOP_PHASE2_MAX_TICKS_PER_FRAME,
   SWOOP_PHASE2_FLOOR_SNAP_METRES,
   SWOOP_PHASE3_FOV_FLOOR_DEGREES,
+  SWOOP_LANDING_FOV_DEGREES,
+  SWOOP_FOV_RAMP_EXPONENT,
+  DEFAULT_MAP_FOV_DEGREES,
+  PHASE3_FOV_WIDE_CAP_DEGREES,
+  REAIM_FADE_NEAR_METRES,
+  REAIM_FADE_FAR_METRES,
+  PHASE3_REAIM_NDC_EPS,
   DEFAULT_OVERVIEW_TILT_DEGREES,
   NORTH_AXIS,
   NORTH_BEARING_FROM_MINUS_Z,
@@ -89,32 +98,44 @@ import {
   POP_TO_ROOF_DURATION_MS,
   DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES,
   DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES,
-  DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES
+  DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES,
+  DRONE_ELEVATED_ENTRY_METRES,
+  DRONE_ELEVATED_EXIT_METRES,
+  DEFAULT_DRONE_HEIGHT,
+  ROOF_CLEARANCE,
+  DEFAULT_FOV_DEGREES
 } from './constants.js';
 import {
   cameraTiltDegrees,
   decideLbMode,
   decideDragModeSwitch,
   clampOrbitRadius,
+  wheelDeltaToTicks,
+  dollyFactorForTicks,
+  fovFactorForTicks,
   cappedDollyStep,
   levelForwardAnchor,
+  lateralCap,
+  classifySwoopTickTarget,
+  reaimWeight,
   shiftRotateStep,
   decideSwoopPhase,
   phase2TargetTilt,
   phase2AscentTilt,
+  swoopLandingFov,
   phase2HeightFrac,
   nextZoomUndo,
   phase2NextElevation,
   classifyWasdStep,
   wasdVerticalY,
   groundedAtLoad,
-  classifyFallAction,
   isLegitPose,
   cueState,
   classifyDoubleClick,
   desiredDoubleClickPose,
   clampFramingPitch,
-  pullBackTowardTarget
+  pullBackTowardTarget,
+  elevationState
 } from './navMath.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -198,7 +219,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this.enabled = true;
     this.center = new THREE.Vector3();
     this.panSpeed = 0.002;
-    this.zoomSpeed = ZOOM_PER_WHEEL_TICK;
+    // Legacy field used only by the ActionBar +/- buttons (_zoomActionBar),
+    // which is OUT OF SCOPE for TASK-014a and must keep its current feel.
+    // It previously aliased ZOOM_PER_WHEEL_TICK (0.1); B7 halved that
+    // constant to 0.05 for the WHEEL dolly only, so pin zoomSpeed to the
+    // prior literal here rather than re-deriving — otherwise halving the
+    // wheel dolly would silently halve the ActionBar button step too.
+    this.zoomSpeed = 0.1;
     this.minSpeedFactor = 8;
     this.rotationSpeed = ROTATION_SPEED_RAD_PER_PX;
 
@@ -239,11 +266,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // the tuning component.
     this._mapPivotBoundsRadius = MAP_PIVOT_BOUNDS_RADIUS_METRES;
 
-    // TASK-014d: cap on the HORIZONTAL component of one wheel-zoom dolly
-    // tick (metres). Bounds the LT-1 shallow-tilt lurch without throttling
-    // straight-down descent. Live value, overridable via the tuning
-    // component (wheelZoomLateralCapMetres → setWheelZoomLateralCap).
-    this._wheelZoomLateralCap = WHEEL_ZOOM_LATERAL_CAP_METRES;
+    // TASK-014d / TASK-027 Part F: lower bound on the per-tick wheel-zoom
+    // lateral cap. The live cap is `max(lowerBound, 0.1×AGL)` (navMath.
+    // lateralCap), so it scales with height; this lower bound governs near the
+    // ground and on the no-AGL Ctrl+wheel path. Live value, overridable via
+    // the tuning component (wheelZoomLateralCapLowerBoundMetres →
+    // setWheelZoomLateralCap).
+    this._wheelZoomLateralCapLowerBound =
+      WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES;
 
     // TASK-010 (live-Shift, B6): last-known cursor coords, tracked on
     // mousedown and every mousemove so a mid-drag Shift toggle can
@@ -266,14 +296,29 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // `_tmpQuat` is the minimal-arc rotation applied via premultiply.
     this._tmpV3d = new THREE.Vector3();
     this._tmpQuat = new THREE.Quaternion();
+    // TASK-027 Part B: scratch for the cursor-lock re-aim. `_tmpV3f` holds the
+    // camera→P direction; `_tmpQuatB/C` build the minimal-arc rotation and its
+    // slerp-from-identity; `_reaimRaycaster` is a dedicated raycaster so the
+    // re-aim's baseline-orientation probe never disturbs the CursorAnchor's.
+    // (The target point P is held in the `_phase3Reaim` session, not scratch.)
+    this._tmpV3f = new THREE.Vector3();
+    this._tmpQuatB = new THREE.Quaternion();
+    this._tmpQuatC = new THREE.Quaternion();
+    this._reaimRaycaster = new THREE.Raycaster();
     this._groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     this._anchorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     this._tmpRay = new THREE.Ray();
     this._raycaster = new THREE.Raycaster();
     this._tmpNDC = new THREE.Vector2();
 
-    // Wheel-budget accumulator (deltaY units; drained per tick).
-    this._wheelBudget = 0;
+    // TASK-014a (#6 Option B): continuous wheel accumulator, in signed
+    // fractional "nominal ticks" (replaces the old integer deltaY-unit
+    // _wheelBudget). _onWheel normalises each event via wheelDeltaToTicks
+    // and adds it here (clamped to ±WHEEL_MAX_ACCUM_TICKS); _drainWheel
+    // applies the high/FOV regimes as one continuous step per frame and the
+    // swoop as whole ticks under its rate-cap, carrying any sub-tick
+    // remainder frame-to-frame.
+    this._wheelAccum = 0;
 
     // Phase 3 swoop state.
     //
@@ -289,27 +334,48 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     //     inside the band eases to the default overview on the first
     //     swoop-out, not to a meaningless live tilt read as if it were a real
     //     entry. Mutated only via the nextZoomUndo reducer (never poke fields).
-    //   _phase3FovBaseline — latched on a Phase 2 zoom-in tick that
-    //     clamps to AGL = SWOOP_PHASE2_EXIT_ELEVATION_METRES; cleared on
-    //     Phase 3 zoom-out crossing back to baseline. Null when not in
-    //     Phase 3.
+    //   TASK-027 Part A: the old latched `_phase3FovBaseline` is GONE. The
+    //     street-level wide-FOV cap is now the constant PHASE3_FOV_WIDE_CAP_
+    //     DEGREES (= min(landing, distortion)); the landing FOV is reached by a
+    //     height-driven ramp in Phase 2, not a latch on the floor crossing.
     // See claude/specs/001-phase-3-plan.md.
     this._zoomUndo = {
       valid: false,
       tilt: cameraTiltDegrees(camera),
       fov: camera.fov
     };
-    this._phase3FovBaseline = null;
 
-    // TASK-022: swoop-OUT ascent anchor (atomic pair, the sole stored ascent
-    // state). Captured TOGETHER on the first zoom-out tick of an ascent under
-    // the single `_ascentStartFrac == null` guard, reset to null on any
-    // descent tick / Phase-3 entry / ceiling hand-off so the next ascent
-    // re-captures from the live pose. The ascent TARGET is NOT stored — it is
-    // recomputed per-tick from `_zoomUndo.valid` (safe: the wheel path never
-    // flips `valid` mid-ascent). 014b reads the same anchor for its FOV ramp.
-    this._ascentStartFrac = null;
-    this._ascentStartTilt = null;
+    // TASK-027 Part B: cursor-lock re-aim baseline session, captured lazily on
+    // the first Phase-3 wheel tick and re-captured when the cursor pixel moves.
+    // { baselineQuat, baselineFov, ndc } | null. Cleared on leaving Phase 3 and
+    // on any non-wheel camera move (_clearZoomUndo).
+    this._phase3Reaim = null;
+
+    // TASK-027 Part C: the regime the last Phase-2 zoom-in tick resolved to
+    // ('swoop' | 'dolly' | null). A swoop↔dolly switch clears the zoom-undo
+    // memory (C2 for mixed descents). Reset to null whenever the dispatch
+    // leaves the Phase-2 band, so a stale value can't spuriously clear a fresh
+    // descent's memory.
+    this._lastSwoopRegime = null;
+
+    // TASK-027 Part C-add-2 (live-test "B"): depth (in nominal ticks, a float
+    // under TASK-014a's continuous model) of the current break-out dolly
+    // excursion — how far the camera has dollied toward a wall since the last
+    // swoop tick. Zoom-out unwinds this back to 0 (dolly back to the rail)
+    // before resuming the swoop ascent. Reset on a swoop tick / leaving the
+    // band / non-wheel move.
+    this._breakoutDollyDepth = 0;
+
+    // TASK-022 / TASK-027 Part A (L4): swoop-OUT ascent anchor, the sole stored
+    // ascent state — the three fields bundled into ONE struct `{ frac, tilt,
+    // fov } | null` so they cannot desync. null = no ascent in progress.
+    // Captured TOGETHER on the first zoom-out tick of an ascent (under the
+    // `== null` guard), nulled together on any descent tick / Phase-3 entry /
+    // ceiling hand-off / swoop↔dolly regime switch, so the next ascent
+    // re-captures from the live pose. The ascent TARGET (tilt + fov) is NOT
+    // stored — recomputed per-tick from `_zoomUndo.valid` (safe: the wheel path
+    // never flips `valid` mid-ascent).
+    this._ascentAnchor = null;
 
     // Last ground height found directly below the camera by the AGL probe
     // (TASK-013). Held through probe misses so the inferred ground stays
@@ -320,9 +386,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Per-pass snapshot of the ground height directly below the camera,
     // set at the top of each _drainWheel pass from _collisionFloorAt()
     // (TASK-024 — the collision floor, so the swoop lands on roofs).
-    // Read (not re-probed) by _wheelFrameCap / _applyWheelTick / the phase
-    // helpers so every tick in a pass — including the recursive Phase 3 →
-    // Phase 2 → Phase 1 hand-offs — sees the same ground. Distinct from
+    // Read (not re-probed) by _decideWheelRegime / _applyContinuousHighStep /
+    // _applyPhase2WheelTick / the phase helpers so every step in a pass —
+    // including the recursive swoop ↔ high hand-offs — sees the same ground.
+    // Distinct from
     // _lastGroundY (the persisted miss-fallback cache). (TASK-013)
     this._frameGroundY = 0;
     // TASK-024a (solid-geometry guard): did this pass's ground probe HIT a
@@ -366,8 +433,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // TASK-024 recovery state.
     //   _recoveryActive — "a recovery tween owns the camera" flag (D2).
     //     While set, _drainWASD/_drainWheel suspend, the legit snapshot is
-    //     suppressed, _handleFallKey early-returns, and a fresh mousedown
-    //     aborts the tween (N4).
+    //     suppressed, triggerContextAction is inert (busy), and a fresh
+    //     mousedown aborts the tween (N4).
     //   _lastLegitPose — { position, quaternion, center } running snapshot
     //     of the most-recent legit camera pose (D3 includes center).
     //   _lastWasdBlocked — WASD block hysteresis carry (WE-3b).
@@ -385,6 +452,28 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // input gates read `_tweenOwnsCamera()` = `_recoveryActive ||
     // _teleportActive`.
     this._teleportActive = false;
+
+    // TASK-025: the per-tick context snapshot the view-button resolver reads.
+    //   Produced once per controls tick in `_updateLegitSnapshotAndCue`
+    //   (reusing that pass's enclosure probe — no extra raycast) and again on
+    //   every tween settle via `_refreshContextSnapshot`. The resolver
+    //   (`resolveContextAction`) is a PURE READ of this — it never probes — so
+    //   the React button can poll it every frame at zero raycast cost.
+    //   Fields:
+    //     enclosed       — bool, from the enclosure probe.
+    //     floorY         — collision floor directly below, or null on a miss.
+    //     topOverhead    — highest overhead solid Y, or null (daylight grey-out).
+    //     elevationState — 'street' | 'elevated', hysteresis output.
+    //   Initialised here so the first poll (before any tick) is valid.
+    //   `_lastResolvedKind` lets a `busy` frame hold the last icon.
+    this._contextSnapshot = {
+      enclosed: false,
+      floorY: null,
+      lookAtFloorY: null,
+      topOverhead: null,
+      elevationState: 'street'
+    };
+    this._lastResolvedKind = 'drone';
 
     // TASK-024a grounded/fly state.
     //   _grounded — SPEC D1: "I'm walking on the surface" vs "I'm flying
@@ -661,13 +750,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._mapPivotBoundsRadius = THREE.MathUtils.clamp(metres, 1, 100000);
   }
 
-  // TASK-014d: live-tunable cap on the horizontal component of one
-  // wheel-zoom dolly tick (metres). Relayed from the tuning component.
+  // TASK-014d / TASK-027 Part F: live-tunable LOWER BOUND of the wheel-zoom
+  // lateral cap (metres). The live cap is `max(lowerBound, 0.1×AGL)`. Relayed
+  // from the tuning component (wheelZoomLateralCapLowerBoundMetres).
   setWheelZoomLateralCap(metres) {
     if (typeof metres !== 'number' || !isFinite(metres) || metres <= 0) {
       return;
     }
-    this._wheelZoomLateralCap = metres;
+    this._wheelZoomLateralCapLowerBound = metres;
   }
 
   // TASK-010 (D-LT-3 / #6): live-tunable Shift+LB rotation speed
@@ -1119,10 +1209,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // bounded fallback in _updateLegitSnapshotAndCue rather than a guessed
     // API. Removed in _detach (called from dispose) — no leak.
     if (this._sceneEl && typeof this._sceneEl.addEventListener === 'function') {
-      this._sceneEl.addEventListener(
-        'object3dset',
-        this._onSceneGeometryDirty
-      );
+      this._sceneEl.addEventListener('object3dset', this._onSceneGeometryDirty);
       this._sceneEl.addEventListener(
         'child-attached',
         this._onSceneGeometryDirty
@@ -1206,11 +1293,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (event.button !== 0) return null;
     if (event.shiftKey) return 'rotate';
     return 'pan';
-  }
-
-  // Wheel-phase dispatch. Phase 1 has one phase; Phase 3 will extend.
-  _decideZoomPhase(_event) {
-    return 'phase1';
   }
 
   _onContextMenu(event) {
@@ -1798,6 +1880,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // TASK-024a: a teleport is a load/teleport edge.
         this._deriveGroundedFromPose();
         this._teleportActive = false;
+        // TASK-025 (merge): refresh the context-button snapshot on settle, like
+        // every other tween — so the button icon reflects the landed pose
+        // immediately rather than one tick later.
+        this._refreshContextSnapshot();
       }
     });
   }
@@ -2009,6 +2095,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // surface there.)
         this._grounded = true;
         this._reseedLegitPose();
+        this._refreshContextSnapshot(); // TASK-025 (H4)
         this.dispatchEvent(this._changeEvent);
       }
     });
@@ -2019,26 +2106,29 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // camera — passive wheel input is ignored, not raced (L-3).
     if (this._isInactive() || this._tweenOwnsCamera()) return;
     event.preventDefault();
-    const phase = this._decideZoomPhase(event);
-    if (phase !== 'phase1') return;
 
-    // Normalize deltaY across deltaMode (pixel/line/page).
-    let dy = event.deltaY;
-    if (event.deltaMode === 1) {
-      // line mode: ~16px per line
-      dy *= 16;
-    } else if (event.deltaMode === 2) {
-      // page mode
-      dy *= window.innerHeight || 800;
-    }
-    this._wheelBudget += dy;
-    // Hard-cap so a trackpad burst can't queue zoom that keeps draining
-    // for hundreds of ms after the user stops (felt like input lag /
-    // queued inputs). At MAX_BUDGET the next frame consumes everything.
-    if (this._wheelBudget > WHEEL_MAX_BUDGET) {
-      this._wheelBudget = WHEEL_MAX_BUDGET;
-    } else if (this._wheelBudget < -WHEEL_MAX_BUDGET) {
-      this._wheelBudget = -WHEEL_MAX_BUDGET;
+    // TASK-014a (#6 Option B): accumulate only — apply no motion here (the
+    // drain owns motion + recovery suppression, exactly as before). Normalise
+    // the event to a signed fractional "nominal tick" count (deltaMode-aware,
+    // per-event clamped) and add it to the continuous accumulator.
+    const viewportH =
+      typeof window !== 'undefined' && window.innerHeight
+        ? window.innerHeight
+        : 800;
+    this._wheelAccum += wheelDeltaToTicks(
+      event.deltaY,
+      event.deltaMode,
+      viewportH
+    );
+    // A4: bound the accumulator (replaces the old WHEEL_MAX_BUDGET clamp, in
+    // the same place). High/FOV drain the whole accumulator each frame so they
+    // can't pile up, but the swoop drains only a few ticks/frame — without this
+    // a sustained fast scroll would build a runaway tail that keeps descending
+    // long after the input stops.
+    if (this._wheelAccum > WHEEL_MAX_ACCUM_TICKS) {
+      this._wheelAccum = WHEEL_MAX_ACCUM_TICKS;
+    } else if (this._wheelAccum < -WHEEL_MAX_ACCUM_TICKS) {
+      this._wheelAccum = -WHEEL_MAX_ACCUM_TICKS;
     }
 
     // Latest cursor position is needed at drain time; remember it.
@@ -2098,6 +2188,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // and keyup are symmetric and the Shift sync isn't swallowed by the
     // typing/modifier/WASD early returns below.
     this._syncDragModeToShift(event.shiftKey);
+    // TASK-025 v2 (R2-REV-F / finding 6): Space focus-yield. `_onKeyDown` is a
+    // WINDOW keydown listener, so `event.target` is the focused element. When an
+    // interactive control (button, link, the compass `role=button` div, the
+    // context action slot, etc.) is focused, Space belongs to THAT control —
+    // return WITHOUT preventDefault and WITHOUT triggering nav, so the focused
+    // control owns the key (its own keydown handler activates it; a real
+    // <button> activates natively). Placed BEFORE the `_isInactive` early-return
+    // so the guard applies consistently in both active and inactive states — a
+    // focused button must never trigger nav, and Space must never double-fire.
+    if (event.code === 'Space' && this._isInteractiveTarget(event.target)) {
+      return;
+    }
     if (this._isInactive()) return;
     if (this._isTypingTarget(event.target)) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -2123,56 +2225,374 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       return;
     }
 
-    // TASK-024 (3d): Space — discrete fall/pop action (not a held key).
+    // TASK-024 (3d) / TASK-025: Space — discrete context-action key (not a
+    // held key). Only reached when focus is NOT on an interactive control (the
+    // focus-yield guard above handles that case) — i.e. the canvas/body has
+    // focus, so Space is the nav key here: preventDefault (suppress scroll) +
+    // dispatch. Routes through the SAME resolver + dispatch as the view button,
+    // so the two never disagree (spec "one resolver, two triggers").
+    // `triggerContextAction` owns the full gate (busy = inactive / animating /
+    // recovery), so an un-gated Space mid-tween can no longer cancel/restart a
+    // motion (H-5). This adds the third rung Space lacked in 024: at street
+    // level Space now rises to drone view (was a no-op).
     if (k === 'Space') {
       event.preventDefault(); // stop page scroll
-      // Don't pre-empt a plan-view/compass tween (would strand
-      // _planViewActive / _compassAnimating with its onDone unrun) or
-      // interrupt a recovery / teleport tween in flight (D2). The
-      // `_tick.isAnimating()` guard already covers a Phase-4 teleport, so the
-      // fall-key start is deliberately NOT routed through `_cancelCameraTween`
-      // (TASK-012 code-review L1): doing so would clear `_recoveryActive` and
-      // let Space interrupt a recovery, which the `if (_recoveryActive) return`
-      // in `_handleFallKey` exists to prevent.
-      if (this._isInactive() || this._tick.isAnimating()) return;
-      this._handleFallKey();
+      // TASK-025 supersedes TASK-024's Space→fall: Space now routes through the
+      // shared context resolver (the view-button action). Its `busy` gate
+      // includes `_tick.isAnimating()`, so Space is inert during a Phase-4
+      // teleport tween (TASK-012) — no separate guard needed here.
+      this.triggerContextAction();
     }
   }
 
-  // TASK-024 (3d): Space fall/pop. Context-sensitive, evaluated in
-  // precedence order (states overlap, so order is load-bearing — WE-8b):
-  //   1. enclosed         -> pop up to daylight (wins regardless of tilt)
-  //   2. elevated + down  -> swoop down to the surface
-  //   3. elevated + ~horiz-> fall straight down to the surface
-  //   no surface below    -> no-op
-  // Each tween below owns `_recoveryActive` (set on start, cleared in
-  // onDone).
-  _handleFallKey() {
-    // First line (D2): a recovery tween owns the camera.
-    if (this._recoveryActive) return;
-    const camera = this._camera;
-    const probe = this._enclosureProbe();
-    const tiltDeg = cameraTiltDegrees(camera);
-    const action = classifyFallAction({
-      enclosed: probe.enclosed,
-      camY: camera.position.y,
-      floorY: probe.floorY,
-      tiltDeg
-    });
-    if (action === 'pop') {
-      this._popToRoof();
-      return;
+  // TASK-025: the shared context resolver — a PURE READ of the per-tick
+  // `_contextSnapshot` (it does NOT probe). Returns { kind, enabled, busy }:
+  //   kind    — 'daylight' | 'street' | 'drone' (the destination state; the
+  //             icon shows where the button will take you, spec D-C).
+  //   enabled — false = the no-op grey-out (no valid target for `kind`).
+  //   busy    — a tween is in flight or the controls are inactive; both
+  //             triggers are inert and the button holds its last icon greyed.
+  // The resolver is the SINGLE authority on busy/enabled — the button never
+  // independently inspects `_tick` (round-1 M5). Precedence ladder (fixed
+  // order — load-bearing, spec): enclosed → daylight; elevated → street;
+  // else (at street level) → drone.
+  resolveContextAction() {
+    const s = this._contextSnapshot;
+    const camY = this._camera.position.y;
+    const busy =
+      this._isInactive() || this._tick.isAnimating() || this._recoveryActive;
+    if (busy) {
+      // Hold the last resolved icon, greyed, for the whole tween/inactive
+      // window. (`_isInactive` already covers plan-view / compass tweens,
+      // which run on the shared `_tick` slot — one authoritative busy.)
+      return { kind: this._lastResolvedKind, enabled: false, busy: true };
     }
-    if (action === 'noop') return;
-    // 'swoop' and 'fall' both descend vertically to collisionFloor +
-    // EYE_MARGIN. Faithful low-risk reuse of the _tick.animate tween (avoids
-    // wheel-drain re-entrancy). For 'swoop' the tilt is lerped toward
-    // horizontal during the descent; 'fall' preserves orientation.
-    const floorY = probe.floorY;
-    if (floorY == null) return; // streaming miss — hold
-    const targetY = floorY + EYE_MARGIN_METRES;
-    if (targetY >= camera.position.y) return; // already at/below — no-op
-    this._fallTo(targetY, action === 'swoop');
+
+    let kind;
+    let enabled;
+    if (s.enclosed) {
+      // Daylight: pop up to the nearest clear surface above. Grey out when
+      // there is nothing above to pop to / we are already above it — mirrors
+      // `_popToRoof`'s two no-op early-returns.
+      kind = 'daylight';
+      enabled =
+        s.topOverhead != null && s.topOverhead + EYE_MARGIN_METRES > camY;
+    } else if (s.elevationState === 'elevated') {
+      // Street view. Enabled mirrors `_swoopToStreet` EXACTLY (R4): it swoops to
+      // the camera-centre look-at when tilted past T, else drops vertically to
+      // the floor below. So it has a target — and the button is enabled — when
+      // EITHER the look-at swoop (tilt > T, a per-column floor at the look-at
+      // below us) OR the vertical drop (a floor below us) would move. Grey out
+      // only when neither does (over the void with nothing in view, WE-8). This
+      // is why a fresh load looking down at the street from over the scene edge
+      // is correctly ENABLED even though nothing is directly below.
+      kind = 'street';
+      const tiltedToGround =
+        cameraTiltDegrees(this._camera) > this._tiltThreshold;
+      const lookAtOk =
+        s.lookAtFloorY != null && s.lookAtFloorY + EYE_MARGIN_METRES < camY;
+      const belowOk =
+        s.floorY != null &&
+        isFinite(s.floorY) &&
+        s.floorY + EYE_MARGIN_METRES < camY;
+      enabled = (tiltedToGround && lookAtOk) || belowOk;
+    } else {
+      // Drone view: rise. Never greys — it always targets a height above the
+      // surface below, rising past an overhang if need be (spec D-A).
+      kind = 'drone';
+      enabled = true;
+    }
+    this._lastResolvedKind = kind; // hold across the next busy frame
+    return { kind, enabled, busy: false };
+  }
+
+  // TASK-025: the single dispatch both the button click and Space funnel into.
+  // One gate (busy || !enabled), shared by both triggers (H-5), so neither can
+  // interrupt an in-flight camera tween or click into a no-op.
+  triggerContextAction() {
+    const { kind, enabled, busy } = this.resolveContextAction();
+    if (busy || !enabled) return;
+    if (kind === 'daylight') return this._popToRoof();
+    if (kind === 'street') return this._swoopToStreet();
+    if (kind === 'drone') return this._riseToDrone();
+    return undefined;
+  }
+
+  // TASK-025 v2 (R2-REV-B): street view is a DESCENDING SWOOP to the point you
+  // are LOOKING AT, not the point directly below. Anchor = the camera-center
+  // ground hit (`_centerRayGroundHit`, a forward raycast to the collision
+  // floor). The motion is still the v1 `_fallTo` TWEEN MECHANISM (pre-computed
+  // start→end pose + linear position lerp + quaternion slerp) — NOT
+  // `_dollyAlongRay` (its 15 m lateral cap can't reach a distant look-at point)
+  // and NOT the wheel tilt-coupling (welded to wheel accumulator state). The
+  // only change from v1 is the END POSE: when the look-at hit `P` is non-null,
+  // we land at street eye-height AT `P` (not straight down). The combined
+  // down+forward translation + the tilt slerp gives the forward-and-down swoop
+  // arc to the spot you were looking at — "drop the pegman where I am looking".
+  _swoopToStreet() {
+    const cam = this._camera;
+    const P = this._centerRayGroundHit();
+    // Discriminate the two street-view cases by HOW STEEPLY you are looking down
+    // (live-test v2 #2). The look-at point sits on the view ray, so the swoop's
+    // descent-path angle IS the camera pitch: a shallow gaze means "big
+    // horizontal / tiny drop" = a lurch. So swoop to the look-at ONLY when
+    // pitched down past the low-tilt threshold (`_tiltThreshold`, the SAME T the
+    // wheel-zoom / Map-mode boundary uses — "are you looking down enough to be
+    // targeting the ground"); otherwise drop straight down to settle back where
+    // you were. This makes the drone→street toggle (steep, ~60°) swoop to your
+    // start, while a small pedestal-up-looking-forward just drops vertically.
+    // (Supersedes the crude absolute distance cap — the lurch happens within it
+    // at low elevation, and it wrongly blocked legit far swoops when high+steep.)
+    const lookingDownEnough = cameraTiltDegrees(cam) > this._tiltThreshold;
+    if (P && lookingDownEnough) {
+      // Look-at swoop: end at street eye-height above the look-at point P.
+      const floorAtP = this._collisionFloorAt(P.x, P.z);
+      // Prefer the per-column collision floor at P (slope-safe); if that misses
+      // (P sits over a void seam), fall back to P.y itself (the ray hit).
+      const groundYAtP = floorAtP.source !== 'cache' ? floorAtP.y : P.y;
+      const targetY = groundYAtP + EYE_MARGIN_METRES;
+      // Only swoop if the target is strictly below the camera (else the click
+      // would be a silent no-op though the button reads enabled — v2 MEDIUM-1);
+      // otherwise fall through to the vertical drop.
+      if (targetY < cam.position.y) {
+        this._swoopTo(P.x, targetY, P.z);
+        return;
+      }
+    }
+    // P null (looking at sky / off-scene), a shallow gaze (looking out, not down
+    // at a spot), or an unsuitable look-at (above the camera): fall back to the
+    // v1 VERTICAL drop to the surface directly below, leveling out — preserves
+    // WE-3 and gives the "settle back down where I was" feel for a small pedestal.
+    const floor = this._collisionFloorAt(cam.position.x, cam.position.z);
+    if (floor.source === 'cache') return; // no surface below either → no-op (WE-8)
+    const targetY = floor.y + EYE_MARGIN_METRES;
+    if (targetY >= cam.position.y) return; // already at/below
+    this._fallTo(targetY, /* levelOut = */ true); // v1 vertical level-out swoop
+  }
+
+  // TASK-025 v2 (R2-REV-B): the look-at descending swoop tween. End pose =
+  // (endX, endY, endZ) at street eye-height over the look-at point, yaw kept,
+  // pitch leveled to ~0° (the v1 street landing). Position is interpolated
+  // LINEARLY start→end (x and z change too, unlike `_fallTo`'s y-only lerp) and
+  // the quaternion is slerped to a level orientation. Carries the v1 `_fallTo`
+  // onDone lifecycle discipline verbatim (grounded=true, _clearZoomUndo,
+  // _reseedLegitPose, _refreshContextSnapshot). No mid-tween floor retarget here
+  // (the target column is the look-at point, fixed at commit; the destination is
+  // street level and clear by construction — 024 permits passing through solid
+  // mid-swoop, forbidding only ending inside).
+  _swoopTo(endX, endY, endZ) {
+    const cam = this._camera;
+    const startPos = cam.position.clone();
+    const startCenter = this.center.clone();
+    const startQuat = cam.quaternion.clone();
+    // Level (tilt=0) end orientation preserving yaw, the v1 `_fallTo` levelOut
+    // way: scratch camera at the end position, looking 1 m ahead along the live
+    // horizontal forward.
+    const scratch = new THREE.PerspectiveCamera();
+    scratch.position.set(endX, endY, endZ);
+    const fwd = new THREE.Vector3();
+    cam.getWorldDirection(fwd);
+    fwd.y = 0;
+    if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
+    fwd.normalize();
+    scratch.lookAt(endX + fwd.x, endY, endZ + fwd.z);
+    const endQuat = scratch.quaternion.clone();
+    // Center tracks the camera's translation in lockstep (orbit pivot rides
+    // along, as `_fallTo`/`_popToRoof` do for y; here all three axes move).
+    const endPos = new THREE.Vector3(endX, endY, endZ);
+    const endCenter = new THREE.Vector3(
+      startCenter.x + (endX - startPos.x),
+      startCenter.y + (endY - startPos.y),
+      startCenter.z + (endZ - startPos.z)
+    );
+    this._recoveryActive = true;
+    this._tick.animate({
+      durationMs: FALL_DURATION_MS,
+      onTick: (eased) => {
+        cam.position.lerpVectors(startPos, endPos, eased);
+        this.center.lerpVectors(startCenter, endCenter, eased);
+        cam.quaternion.slerpQuaternions(startQuat, endQuat, eased);
+        cam.updateMatrixWorld();
+        this._clearZoomUndo();
+        this.dispatchEvent(this._changeEvent);
+      },
+      onDone: () => {
+        cam.position.set(endX, endY, endZ);
+        this.center.copy(endCenter);
+        cam.quaternion.copy(endQuat);
+        cam.updateMatrixWorld();
+        this._clearZoomUndo();
+        this._recoveryActive = false;
+        // Lands at collisionFloor + eye-margin → grounded by construction,
+        // mirroring `_fallTo`'s street landing.
+        this._grounded = true;
+        this._reseedLegitPose();
+        this._maybeEmitLbModeChange();
+        this._refreshContextSnapshot(); // TASK-025 (H4)
+        this.dispatchEvent(this._changeEvent);
+      }
+    });
+  }
+
+  // TASK-025 v2 (R2-REV-B): forward raycast from the camera along its view
+  // direction to the collision floor — "what am I looking at?". Returns the
+  // first hit passing `isSolidFloorHit` as a THREE.Vector3, else NULL. NULL is
+  // expected and common when looking horizontal / above the horizon (the reason
+  // TASK-026 removed `_screenCenterHit()` — `_viewRayGroundPoint`'s y=0 plane
+  // returns null at/above the horizon). Callers MUST handle null. This is NEW
+  // code, not a reuse: `_collisionFloorAt`/`_enclosureProbeAt` hard-code a
+  // VERTICAL ray and `_pickFloorFromHits`'s "below refY" filter assumes that;
+  // `_viewRayGroundPoint` uses the analytic y=0 plane (not slope-safe). Only the
+  // per-hit `isSolidFloorHit` predicate is shared — slope-safe (real geometry).
+  _centerRayGroundHit() {
+    const sceneEl = this._sceneEl;
+    if (!sceneEl || !sceneEl.object3D) return null;
+    const cam = this._camera;
+    const dir = this._tmpV3c;
+    cam.getWorldDirection(dir); // unit view direction (camera -Z in world)
+    this._raycaster.set(cam.position, dir);
+    this._raycaster.near = 0;
+    this._raycaster.far = Infinity;
+    const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
+    for (const hit of hits) {
+      if (isSolidFloorHit(hit)) {
+        return hit.point.clone();
+      }
+    }
+    return null;
+  }
+
+  // TASK-025 v2 (R2-REV-B): drone view — an ASCENDING / REVERSE SWOOP. The
+  // camera pulls UP-AND-BACK along its horizontal heading to a canonical height
+  // H, ending at the 60° overview attitude LOOKING AT the feet point F (so the
+  // round-trip closes: from drone, the center-ray hit ≈ F, and street swoops
+  // back down to F). Anchor = the FEET (`_collisionFloorAt` below the camera),
+  // which is ALWAYS defined → drone has no null case (spec D-A: drone never
+  // greys). This is the v1 TWEEN MECHANISM (pre-computed start→end pose + linear
+  // position lerp + quaternion slerp + FOV lerp) with a CLOSED-FORM end pose —
+  // NOT `_dollyAlongRay`, NOT the wheel tilt-coupling. A separate method from
+  // `_fallTo` (opposite grounded semantics: drone leaves the surface upward →
+  // `_grounded = false` + `_captureH`).
+  _riseToDrone() {
+    const cam = this._camera;
+    // Anchor = the feet (surface directly below). Feet-miss fallback (R2-REV-B /
+    // round-2 §3d): `_collisionFloorAt` returns source 'cache' on a miss (over a
+    // void); substitute the travel-height ground for F.y so the void case
+    // degrades to a sane pose. `_collisionFloorAt` refreshes the floor cache
+    // (refreshCache: true) — NOT a pure read; call it exactly once. The `busy`
+    // gate prevents interleave with an in-flight `_fallTo` retarget (M6).
+    const groundLevel = this._travelHeightFloorYBelow();
+    const floor = this._collisionFloorAt(cam.position.x, cam.position.z);
+    // surfaceBelow = the collision floor directly below (the roof you stand on,
+    // for the ROOF_CLEARANCE term) AND the feet point the drone looks AT / offsets
+    // back from. On a feet-miss (cache, over a void) substitute groundLevel so the
+    // back-offset and lookAt target stay sane. Same value for both uses.
+    const surfaceBelow = floor.source !== 'cache' ? floor.y : groundLevel;
+    const feetY = surfaceBelow;
+    const camX = cam.position.x;
+    const camZ = cam.position.z;
+    // Canonical target height (v1 max(...)): default drone height above GROUND
+    // LEVEL (travel height — looks past tall buildings to the ground between
+    // them), OR a fixed clearance above the ROOF directly below when atop a
+    // building taller than that. Both per-column raycasts (slope-safe). Keeps
+    // the drone reliably "elevated" for the toggle (b1).
+    let targetY = Math.max(
+      groundLevel + DEFAULT_DRONE_HEIGHT,
+      surfaceBelow + ROOF_CLEARANCE
+    );
+
+    // Horizontal forward (heading); the back-offset is OPPOSITE this.
+    const fwdH = new THREE.Vector3();
+    cam.getWorldDirection(fwdH);
+    fwdH.y = 0;
+    if (fwdH.lengthSq() < 1e-6) fwdH.set(0, 0, -1);
+    fwdH.normalize();
+
+    // Closed-form end (x,z): pull BACK along the heading by d so the camera at
+    // height H looking at F sits at DEFAULT_OVERVIEW_TILT_DEGREES (60°) below
+    // horizontal. d = (H − F.y) / tan(tilt). At 60° → d ≈ 0.577·(H−F.y).
+    const tiltRad = DEFAULT_OVERVIEW_TILT_DEGREES * DEG2RAD;
+    const computeEndXZ = (H) => {
+      const d = (H - feetY) / Math.tan(tiltRad);
+      return { x: camX - fwdH.x * d, z: camZ - fwdH.z * d };
+    };
+
+    // WE-7 overhang end-pose check: the rise may pass THROUGH solid mid-motion
+    // (024 permits that), but the END pose must be clear. If the end column is
+    // itself enclosed (overhead solid above targetY — multiple floors), raise
+    // the target to just above the highest overhead solid there (a daylight-
+    // style pop). One extra raycast at commit time only. Keeps drone's "never
+    // greys" property — it always ends in open air. (Probe the END (x,z), which
+    // is offset back from the camera column.) Streaming-in-overhead mid-rise
+    // retarget is deferred polish — the rise is short (600 ms).
+    let endXZ = computeEndXZ(targetY);
+    const endProbe = this._enclosureProbeAt(endXZ.x, targetY, endXZ.z);
+    if (endProbe.overheadHits.length) {
+      const popTargetY =
+        endProbe.overheadHits[endProbe.overheadHits.length - 1] +
+        EYE_MARGIN_METRES;
+      targetY = Math.max(targetY, popTargetY);
+      endXZ = computeEndXZ(targetY); // recompute back-offset for the raised H
+    }
+
+    if (targetY <= cam.position.y) return; // already at/above canonical height
+
+    const startPos = cam.position.clone();
+    const startCenter = this.center.clone();
+    const startFov = cam.fov;
+    const startQuat = cam.quaternion.clone();
+
+    // End quaternion: a scratch camera at the end position looking AT the feet
+    // point F = (camX, feetY, camZ), up=+Y. At 60° there is no nadir/roll
+    // singularity (TASK-023 is about the straight-down case only). Yaw is
+    // preserved by construction (the back-offset is along the heading; lookAt(F)
+    // keeps the same azimuth).
+    const endX = endXZ.x;
+    const endZ = endXZ.z;
+    const scratch = new THREE.PerspectiveCamera();
+    scratch.position.set(endX, targetY, endZ);
+    scratch.up.set(0, 1, 0);
+    scratch.lookAt(camX, feetY, camZ);
+    const endQuat = scratch.quaternion.clone();
+
+    const endPos = new THREE.Vector3(endX, targetY, endZ);
+    const endCenter = new THREE.Vector3(
+      startCenter.x + (endX - startPos.x),
+      startCenter.y + (targetY - startPos.y),
+      startCenter.z + (endZ - startPos.z)
+    );
+
+    this._recoveryActive = true; // suspend WASD; hold the busy gate
+    this._tick.animate({
+      durationMs: FALL_DURATION_MS,
+      onTick: (eased) => {
+        cam.position.lerpVectors(startPos, endPos, eased);
+        this.center.lerpVectors(startCenter, endCenter, eased);
+        cam.quaternion.slerpQuaternions(startQuat, endQuat, eased);
+        cam.fov = startFov + (DEFAULT_FOV_DEGREES - startFov) * eased;
+        cam.updateProjectionMatrix();
+        cam.updateMatrixWorld();
+        this._clearZoomUndo();
+        this.dispatchEvent(this._changeEvent);
+      },
+      onDone: () => {
+        cam.position.copy(endPos);
+        this.center.copy(endCenter);
+        cam.quaternion.copy(endQuat);
+        cam.fov = DEFAULT_FOV_DEGREES;
+        cam.updateProjectionMatrix();
+        cam.updateMatrixWorld();
+        this._clearZoomUndo();
+        this._recoveryActive = false;
+        // Drone view deliberately leaves the surface upward → flying, and
+        // re-capture the cruise height (mirrors `_checkUngroundOnRise`).
+        this._grounded = false;
+        this._captureH();
+        this._reseedLegitPose();
+        this._refreshContextSnapshot(); // TASK-025 (H4): flip icon drone→street
+        this.dispatchEvent(this._changeEvent);
+      }
+    });
   }
 
   // TASK-024 (3d): vertical descent tween to `targetY`. When `levelOut`,
@@ -2233,11 +2653,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         const y = startY + (targetY - startY) * eased;
         camera.position.y = y;
         this.center.y = startCenterY + (y - startY);
-        if (endQuat) camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
+        if (endQuat) {
+          camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
+        }
         camera.updateMatrixWorld();
         // TASK-022 (C3 / HIGH-2): Space fall / level-out swoop is a non-wheel
-        // descent. Callers (_handleFallKey) early-return on noop/pop/already-
-        // below, so a no-op Space never reaches this tween. Idempotent.
+        // descent. Callers (_swoopToStreet / triggerContextAction) early-return
+        // on noop/pop/already-below, so a no-op Space never reaches this tween.
+        // Idempotent.
         this._clearZoomUndo();
         this.dispatchEvent(this._changeEvent);
       },
@@ -2253,6 +2676,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         this._grounded = true;
         this._reseedLegitPose();
         this._maybeEmitLbModeChange();
+        this._refreshContextSnapshot(); // TASK-025 (H4)
         this.dispatchEvent(this._changeEvent);
       }
     });
@@ -2270,6 +2694,27 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const tag = target.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
     if (target.isContentEditable) return true;
+    return false;
+  }
+
+  // TASK-025 v2 (R2-REV-F): a SUPERSET of `_isTypingTarget` — any focusable
+  // interactive control that should own Space when focused. Covers native
+  // buttons/links/form fields, contenteditable, ARIA `role="button"` divs (the
+  // compass needle / rotate arrows are such divs), and anything with a tabindex
+  // (focusable widgets). Used by `_onKeyDown` to yield Space to the focused
+  // control rather than firing nav (and to avoid double-firing).
+  _isInteractiveTarget(target) {
+    if (!target) return false;
+    if (this._isTypingTarget(target)) return true;
+    const tag = target.tagName;
+    if (tag === 'BUTTON') return true;
+    if (tag === 'A' && target.hasAttribute && target.hasAttribute('href')) {
+      return true;
+    }
+    if (target.getAttribute && target.getAttribute('role') === 'button') {
+      return true;
+    }
+    if (target.hasAttribute && target.hasAttribute('tabindex')) return true;
     return false;
   }
 
@@ -2315,7 +2760,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       1 - Math.abs(camera.quaternion.dot(this._lastEvalQuat)) > QUAT_EPS;
     const busy =
       this._wasdVelocity.lengthSq() > 0 ||
-      this._wheelBudget !== 0 ||
+      this._wheelAccum !== 0 ||
       this._latch.isActive() ||
       this._tick.isAnimating();
     // CR-D5: geometry around a stationary camera may have changed. Force one
@@ -2378,6 +2823,83 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         this._emitRecoveryCue(null);
       }
     }
+
+    // TASK-025: refresh the context snapshot from this same probe (no extra
+    // raycast). MUST live here in the post-gate body — never before the idle
+    // early-return above, or an idle frame would write a snapshot with no
+    // fresh probe.
+    this._computeContextSnapshot(probe);
+  }
+
+  // TASK-025: build `_contextSnapshot` from an enclosure `probe`
+  // (`_enclosureProbe()` shape: { enclosed, floorY, overheadHits }). The agl
+  // used for the elevation hysteresis preserves NULL on a probe miss (separate
+  // from the cue's `:0`-coerced agl above — H2): `elevationState` HOLDS the
+  // previous state on null rather than collapsing it to 'street'. `topOverhead`
+  // is the highest overhead solid (overheadHits is ascending-sorted), or null.
+  _computeContextSnapshot(probe) {
+    const camY = this._camera.position.y;
+    // TASK-025 v2 (R2-REV-C / finding 4): the `enclosed` flag strobes as the view
+    // ray crosses a wall mid-orbit/drag (sunshine icon flickers while orbiting
+    // THROUGH a building). Gate it on the GESTURE LATCH: while a pointer
+    // drag/orbit is latched, CARRY FORWARD the previous `enclosed` ONLY —
+    // recompute on settle (pointer-up triggers a non-idle tick; tween onDones
+    // call `_refreshContextSnapshot`). Do NOT freeze `elevationState` (the
+    // 1.8/2.5 hysteresis already anti-flickers height). WASD-walking into a
+    // building (no latch) still classifies enclosed promptly.
+    const enclosed = this._latch.isActive()
+      ? this._contextSnapshot.enclosed
+      : probe.enclosed;
+    // R4: look-at-aware elevation + street-enabled. When the straight-down probe
+    // MISSES (camera above/outside the scene footprint), the floor below is null
+    // even though the camera-centre ray may be staring at the street — so derive
+    // a fallback ground from the look-at hit, the SAME point `_swoopToStreet`
+    // swoops to. Only needed when `floorY == null`: when the floor below hits, it
+    // governs elevation (priority below) AND street-enabled (`belowOk` in the
+    // resolver), so the look-at would be unused — skip the extra raycast (the
+    // common tilted-map case keeps its single probe). Use the per-column floor at
+    // P (`_floorYBelowAt`, the SAME pick the action uses — NOT the raw ray-hit y,
+    // which would sit partway up a wall facade), read-only (refreshCache:false)
+    // so it does not perturb the wheel floor cache.
+    let lookAtFloorY = null;
+    if (!enclosed && probe.floorY == null) {
+      const P = this._centerRayGroundHit();
+      if (P) {
+        const floorAtP = this._floorYBelowAt(P.x, P.z, { refreshCache: false });
+        lookAtFloorY = floorAtP.source !== 'cache' ? floorAtP.y : P.y;
+      }
+    }
+    const aglForState =
+      probe.floorY != null
+        ? camY - probe.floorY
+        : lookAtFloorY != null
+          ? camY - lookAtFloorY
+          : null;
+    const topOverhead = probe.overheadHits.length
+      ? probe.overheadHits[probe.overheadHits.length - 1]
+      : null;
+    this._contextSnapshot = {
+      enclosed,
+      floorY: probe.floorY,
+      lookAtFloorY,
+      topOverhead,
+      elevationState: elevationState(
+        this._contextSnapshot.elevationState,
+        aglForState,
+        DRONE_ELEVATED_ENTRY_METRES,
+        DRONE_ELEVATED_EXIT_METRES
+      )
+    };
+  }
+
+  // TASK-025 (H4): recompute the context snapshot from a fresh probe. Called
+  // from every tween onDone (after `_reseedLegitPose`) so the post-settle
+  // resolver answer is correct on the FIRST frame the button polls — without
+  // this, the idle-gated tick wouldn't refresh the snapshot until the next
+  // non-idle frame, leaving the icon stale for the settle frame (e.g. the
+  // drone→street flip would lag a frame after a rise completes).
+  _refreshContextSnapshot() {
+    this._computeContextSnapshot(this._enclosureProbe());
   }
 
   // TASK-024 (3e): emit a transient recovery cue on the sceneEl bus,
@@ -2447,7 +2969,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // A tiles rooftop must never beat a lower segment/building, even when the
   // tiles hit is nearer. Reused by `_floorYBelowAt` (the WASD/swoop floor)
   // and `_enclosureProbe` (the enclosure floor) so consumers — isLegitPose,
-  // the cue, _handleFallKey — read the SAME floor the swoop/WASD path does.
+  // the cue, the context resolver — read the SAME floor the swoop/WASD path does.
   _pickFloorFromHits(hits, refY, { acceptBuildings, acceptTiles }) {
     const ceil = refY === Infinity ? Infinity : refY + 1e-3;
     let tilesHit = null;
@@ -2546,16 +3068,28 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // pick the highest exit face (D6/N7).
   _enclosureProbe() {
     const camera = this._camera;
+    return this._enclosureProbeAt(
+      camera.position.x,
+      camera.position.y,
+      camera.position.z
+    );
+  }
+
+  // TASK-025 (H1): the parameterised enclosure probe — classifies an
+  // ARBITRARY (x, y, z) column rather than only the live camera position.
+  // `_enclosureProbe()` delegates here with the camera column; the drone-rise
+  // end-pose overhang check (`_riseToDrone`, WE-7) calls it with the target
+  // pose to decide whether the rise would surface still enclosed. Same math as
+  // the original live probe: ray origin = (x, y + UP_MARGIN, z), overhead =
+  // accepted hits with point.y > y, floor via the shared priority picker with
+  // refY = y. `enclosed`/`floorY`/`overheadHits` are relative to the GIVEN y,
+  // not the live camera y.
+  _enclosureProbeAt(x, y, z) {
     const sceneEl = this._sceneEl;
     if (!sceneEl || !sceneEl.object3D) {
       return { enclosed: false, floorY: null, overheadHits: [] };
     }
-    const camY = camera.position.y;
-    this._tmpV3a.set(
-      camera.position.x,
-      camY + ENCLOSURE_PROBE_UP_MARGIN_METRES,
-      camera.position.z
-    );
+    this._tmpV3a.set(x, y + ENCLOSURE_PROBE_UP_MARGIN_METRES, z);
     this._raycaster.set(this._tmpV3a, GROUND_PROBE_DIR);
     this._raycaster.near = 0;
     this._raycaster.far = Infinity;
@@ -2563,7 +3097,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const overhead = [];
     for (const hit of hits) {
       if (!isSolidFloorHit(hit)) continue;
-      if (hit.point.y > camY + 1e-3) {
+      if (hit.point.y > y + 1e-3) {
         overhead.push(hit.point.y);
       }
     }
@@ -2572,9 +3106,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // the WASD/swoop path (_collisionFloorAt → _floorYBelowAt). The old
     // "nearest accepted hit at/below the camera" could return a tiles
     // rooftop where a lower segment/building sits below it (TASK-019 D3),
-    // making isLegitPose / the cue / _handleFallKey read a different floor
-    // than the swoop. refY = camY so only hits at/below the camera count.
-    const pick = this._pickFloorFromHits(hits, camY, {
+    // making isLegitPose / the cue / the context resolver read a different
+    // floor than the swoop. refY = y so only hits at/below the probe column count.
+    const pick = this._pickFloorFromHits(hits, y, {
       acceptBuildings: true,
       acceptTiles: true
     });
@@ -2582,21 +3116,29 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     return { enclosed: overhead.length > 0, floorY, overheadHits: overhead };
   }
 
+  // TASK-014a (#6 Option B): continuous single-drain. ONE frame, ONE ground
+  // snapshot, ONE net-vertical bracket, ONE recovery guard — all exactly as
+  // before. The change vs the old budget drain: the high & FOV regimes apply
+  // the WHOLE pending accumulator as a single continuous step (no
+  // quantisation, no multi-frame lag), while the swoop still consumes whole
+  // ticks under its per-frame rate-cap, carrying any sub-tick remainder to a
+  // later frame. The five responsibilities the TASK-024/024a safety guard
+  // depends on (floor snapshot, recovery suppression, swoop rate-cap,
+  // net-vertical un-ground/captureH bracket, active phase-boundary hand-offs)
+  // all stay in this one method.
   _drainWheel() {
     // TASK-024 (D2) / TASK-012 (M-3): a recovery OR teleport tween owns the
     // camera — drop queued wheel.
     if (this._tweenOwnsCamera()) {
-      this._wheelBudget = 0;
+      this._wheelAccum = 0;
       return;
     }
-    if (this._wheelBudget === 0) return;
-    const unit = WHEEL_BUDGET_PER_TICK_UNITS;
-    // Snapshot the ground height once per pass (TASK-013 → TASK-024). All
-    // ticks — including the recursive Phase 3 → Phase 2 → Phase 1 hand-offs
-    // — read this._frameGroundY so they see a single consistent ground for
-    // the frame. TASK-024: the swoop now reads the COLLISION floor (ground
-    // OR building roof OR tiles), so a swoop over a building lands on the
-    // roof (WE-2 / C5 — the B4 reversal falls out of the wider floor).
+    if (this._wheelAccum === 0) return;
+    // Snapshot the collision floor once per pass (TASK-013 → TASK-024). Every
+    // step in the loop — including the recursive swoop ↔ high hand-offs —
+    // reads this._frameGroundY so they see a single consistent ground for the
+    // frame. The swoop reads the COLLISION floor (ground OR building roof OR
+    // tiles), so a swoop over a building lands on the roof (WE-2 / C5).
     const frameFloor = this._collisionFloorAt(
       this._camera.position.x,
       this._camera.position.z
@@ -2606,200 +3148,375 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // surface. On a miss (outside finite bounds) the swoop phase handlers skip
     // every ground-relative clamp so the wheel is a plain anchored dolly.
     this._frameGroundHit = frameFloor.source !== 'cache';
-    // Per H4 of `claude/reports/007-phase-3-plan-review.md`: latch the
-    // per-frame cap once at the start of the drain pass, hold for the
-    // whole frame. Re-evaluating per iteration produces an asymmetric
-    // speed-up at boundary crossings (Phase 2 → Phase 1 zoom-out would
-    // unlock 7 extra Phase 1 ticks in the same frame the moment AGL
-    // crosses 20m).
-    const frameCap = this._wheelFrameCap();
-    let ticksThisFrame = 0;
     let changed = false;
     // TASK-024a (1.3.2 / 2.2): capture y before the drain so the net vertical
     // move over the whole pass drives the grounded / H edges once — covering
     // reverse-swoop, low-tilt dolly-up, Phase-2 zoom-out and Ctrl+wheel
     // uniformly, without scattering flags across every wheel branch.
     const wheelStartY = this._camera.position.y;
-    while (ticksThisFrame < frameCap && Math.abs(this._wheelBudget) >= unit) {
-      const sign = this._wheelBudget > 0 ? 1 : -1;
-      this._wheelBudget -= sign * unit;
-      this._applyWheelTick(sign);
-      ticksThisFrame++;
-      changed = true;
+    // The swoop rate-cap survives Option B unchanged: a whole-tick budget,
+    // latched once at the start of the frame and held for it (re-reading per
+    // iteration would unlock extra ticks at a boundary crossing — H4 of
+    // `claude/reports/007-phase-3-plan-review.md`).
+    let swoopTicksLeft = SWOOP_PHASE2_MAX_TICKS_PER_FRAME;
+    const EPS_TICK = WHEEL_ACCUM_EPS_TICKS;
+    while (Math.abs(this._wheelAccum) >= EPS_TICK) {
+      const sign = this._wheelAccum > 0 ? 1 : -1;
+      const regime = this._decideWheelRegime();
+      if (regime === 'swoop') {
+        // TASK-027 Part C: within the swoop band, a zoom-IN craning UP at a
+        // solid wall / open sky breaks out to a cursor dolly; a zoom-OUT
+        // unwinds any such break-out excursion back to the rail (Part C-add-2
+        // "B") before resuming the swoop ascent.
+        let breakout;
+        if (sign < 0) {
+          const r = this._classifyPhase2Target();
+          this._notePhase2Regime(r);
+          breakout = r === 'dolly';
+        } else {
+          breakout = this._breakoutDollyDepth > EPS_TICK;
+        }
+        if (breakout) {
+          // Continuous break-out dolly. On the way out, cap the step at the
+          // remaining excursion depth so it lands back on the rail and the
+          // remainder re-dispatches to the swoop ascent next iteration.
+          const t =
+            sign < 0
+              ? this._wheelAccum
+              : Math.min(this._wheelAccum, this._breakoutDollyDepth);
+          const tApplied = this._applyBreakoutDolly(t);
+          if (tApplied === 0) break;
+          this._wheelAccum -= tApplied;
+          if (sign < 0) this._breakoutDollyDepth += Math.abs(tApplied);
+          else {
+            this._breakoutDollyDepth = Math.max(
+              0,
+              this._breakoutDollyDepth - Math.abs(tApplied)
+            );
+          }
+          changed = true;
+        } else {
+          // A1: only fire the swoop on a WHOLE available tick AND with rate-cap
+          // headroom. A sub-tick remainder (e.g. 0.3) must NOT drive a full
+          // whole-tick descent — carry it to a later frame instead.
+          if (swoopTicksLeft < 1 || Math.abs(this._wheelAccum) < 1) break;
+          // TASK-027 Part D: restore the entry zoom-undo memory when the swoop
+          // is reached without a Phase-1 boundary capture (the no-ground
+          // free-descent bypass). Guarded by `!valid` ⇒ a no-op once captured.
+          if (sign < 0 && !this._zoomUndo.valid) {
+            this._zoomUndo = nextZoomUndo(this._zoomUndo, {
+              type: 'wheel-in-crossing',
+              tilt: cameraTiltDegrees(this._camera),
+              fov: this._camera.fov
+            });
+          }
+          this._applyPhase2WheelTick(sign); // whole-tick internals unchanged
+          this._wheelAccum -= sign; // consume one whole tick
+          swoopTicksLeft -= 1;
+          this._breakoutDollyDepth = 0; // a swoop tick commits the excursion
+          changed = true;
+        }
+      } else {
+        // high / lowtilt / fov: leaving the swoop band — reset the Part-C
+        // excursion + regime tracker so a stale value can't spuriously clear a
+        // fresh descent's memory. Apply the ENTIRE remaining accumulator as one
+        // continuous step (a zoom-in crossing phase1→phase2 stops at the
+        // boundary; the remainder re-dispatches to the swoop). Returns the
+        // ticks actually consumed.
+        this._lastSwoopRegime = null;
+        this._breakoutDollyDepth = 0;
+        const tApplied = this._applyContinuousHighStep(
+          this._wheelAccum,
+          regime
+        );
+        if (tApplied === 0) break; // safety: no progress → stop (no spin)
+        this._wheelAccum -= tApplied;
+        changed = true;
+      }
     }
+    if (Math.abs(this._wheelAccum) < EPS_TICK) this._wheelAccum = 0;
     if (changed) {
       const EPS = 1e-3;
       if (this._camera.position.y > wheelStartY + EPS) {
         // Net-upward pass — deliberate up-move leaves the surface (1.3.2).
         this._checkUngroundOnRise(wheelStartY);
-      } else if (this._camera.position.y < wheelStartY - EPS && !this._grounded) {
+      } else if (
+        this._camera.position.y < wheelStartY - EPS &&
+        !this._grounded
+      ) {
         // Net-downward pass while still flying (a swoop landing this pass would
         // have grounded us, so the `!_grounded` test excludes that case) →
         // deliberate vertical nav: lower H (D4, 2.2).
         this._captureH();
       }
+      this.dispatchEvent(this._changeEvent);
     }
-    // If the residual is small, drop it so it doesn't accumulate forever.
-    if (Math.abs(this._wheelBudget) < unit * 0.05) this._wheelBudget = 0;
-    if (changed) this.dispatchEvent(this._changeEvent);
   }
 
-  // Per-frame drain cap based on the current swoop phase. Latched once
-  // at the start of `_drainWheel` and held for the frame. Phase 2 uses
-  // a lower cap so trackpad bursts can't blast through the swoop
-  // (~350ms guaranteed minimum, vs ~100ms with the default cap).
-  _wheelFrameCap() {
-    // TASK-024a (solid-geometry guard): no ground below (outside finite
-    // bounds) → the wheel is a plain anchored dolly, never the slow Phase-2
-    // swoop, so use the default (faster) cap. `_frameGroundY` is stale here.
-    if (!this._frameGroundHit) return WHEEL_MAX_TICKS_PER_FRAME;
-    const yAgl = this._camera.position.y - this._frameGroundY;
-    if (decideSwoopPhase(yAgl) === 'phase2') {
-      return SWOOP_PHASE2_MAX_TICKS_PER_FRAME;
-    }
-    return WHEEL_MAX_TICKS_PER_FRAME;
-  }
-
-  _applyWheelTick(sign) {
-    // sign > 0 -> deltaY positive -> wheel "down" -> zoom out
-    // sign < 0 -> zoom in
-    //
-    // Elevation-first dispatch (per H1 of the adversarial review at
-    // `claude/reports/007-phase-3-plan-review.md`). The tilt-conditional
-    // split from `001-tilt-conditional-zoom.md` lives inside the Phase 1
-    // branch only; Phase 2/3 must run regardless of tilt — that *is* the
-    // swoop. The reverse dispatch order silently routes Phase 2 ticks
-    // into the low-tilt camera-Z dolly the moment the swoop's lerp drops
-    // tilt below 30° (≈ y=5.75m for θ_stored=60°), aborting mid-flight.
-    //
-    // Ctrl+wheel (incl. Mac trackpad pinch) bypasses the swoop and gives
-    // a plain cursor-anchored dolly at the current tilt and elevation (Open
-    // Decision #2). TASK-014d: routes to the shared cursor-anchored dolly
-    // (`_applyCursorDolly`) regardless of tilt or phase — it does no AGL /
-    // boundary math, so it is safe at every elevation Ctrl+wheel reaches
-    // (stale-ground / Phase-2 / Phase-3 altitudes), preserving the
-    // swoop-bypass. No Phase1→Phase2 boundary clamp on this path.
+  // Decide which regime the wheel is in RIGHT NOW (read each loop iteration
+  // off the current, post-step camera pose). Extracted from the old
+  // `_applyWheelTick` dispatch. Elevation-first (per H1 of
+  // `claude/reports/007-phase-3-plan-review.md`): the swoop runs regardless of
+  // tilt. TASK-014d collapsed the tilt-conditional anchor split — 'high' and
+  // 'lowtilt' both dolly toward the cursor now (the lurch is bounded by the
+  // lateral cap in the dolly step, not by switching anchor source), so the
+  // two are treated identically by the drain; the labels are retained only to
+  // mark the Ctrl / no-ground / low-tilt cases.
+  //   'swoop'   — Phase 2 pedestal+tilt band (whole-tick, rate-capped)
+  //   'fov'     — Phase 3 street-level FOV-only
+  //   'lowtilt' — Ctrl+wheel, no-ground, or live tilt ≤ threshold dolly
+  //   'high'    — cursor-anchored Phase 1 dolly
+  _decideWheelRegime() {
     const camera = this._camera;
-    if (this._lastWheelCtrlKey) {
-      return this._applyCursorDolly(sign);
-    }
-    // TASK-024a (solid-geometry guard): no ground below (outside finite
-    // bounds) → there is no swoop floor to land on. Act as a plain anchored
-    // dolly at the current tilt (Phase 1), never Phase 2/3, so the camera
-    // descends freely toward street level. `_frameGroundY` is stale, so the
-    // AGL-based phase dispatch below would mis-route to a swoop landing.
-    // TASK-014d: the old tilt-conditional split (low-tilt → screen-centre)
-    // is collapsed — Phase 1 is now always the cursor-anchored path.
+    // Ctrl+wheel (incl. Mac trackpad pinch) bypasses the swoop — plain
+    // camera-Z dolly at the current tilt/elevation (Open Decision #2).
+    if (this._lastWheelCtrlKey) return 'lowtilt';
+    // TASK-024a (solid-geometry guard): no ground below → no swoop floor to
+    // land on. Plain anchored dolly at the current tilt, never Phase 2/3.
     if (!this._frameGroundHit) {
-      return this._applyPhase1WheelTick(sign);
+      return cameraTiltDegrees(camera) <= this._tiltThreshold
+        ? 'lowtilt'
+        : 'high';
     }
     const yAgl = camera.position.y - this._frameGroundY;
-    const phase = decideSwoopPhase(yAgl);
-    if (phase === 'phase2') return this._applyPhase2WheelTick(sign);
-    if (phase === 'phase3') return this._applyPhase3WheelTick(sign);
-    // phase1: TASK-014d collapsed the tilt-conditional split — every Phase-1
-    // tick is the cursor-anchored dolly (the lurch is bounded by the
-    // movement cap inside the dolly step, not by switching anchor source).
-    return this._applyPhase1WheelTick(sign);
-  }
-
-  // Phase 1 — cursor-anchored exponential dolly at high tilt + high
-  // altitude. Translates the camera along the camera→anchor ray by 10%
-  // of the current distance per tick. Tilt-preserving by construction.
-  //
-  // Boundary handling: if zoom-in pushes AGL below 20m, clamp the camera
-  // to (groundY + 20) so it enters Phase 2 at 20m above the actual ground
-  // (TASK-013; formerly an absolute clamp to y=10m), and capture the
-  // transient zoom-undo memory's entry tilt (TASK-022; round-down model —
-  // see §"Tick energy" in the plan). The next tick is Phase 2. Reads the
-  // per-pass ground snapshot `this._frameGroundY`.
-  _applyPhase1WheelTick(sign) {
-    const camera = this._camera;
-    // TASK-014d: the cursor-anchored capped dolly (no AGL / boundary math).
-    this._applyCursorDolly(sign);
-
-    // TASK-024a (solid-geometry guard): no ground below (outside finite
-    // bounds) → no Phase-2 boundary to snap to. Leave the anchored dolly step
-    // as-is (free descent); `_frameGroundY` is stale and would snap us up.
-    if (!this._frameGroundHit) return;
-
-    // Boundary: Phase 1 → Phase 2 on zoom-in. Compare AGL, clamp the
-    // camera to (groundY + yCeil).
-    const groundY = this._frameGroundY;
+    let phase = decideSwoopPhase(yAgl);
+    // TASK-027 (live-test #3): float-robust / sticky street level — AGL within
+    // a sub-centimetre tolerance of the floor counts as Phase 3 ('fov'), so a
+    // rounding ulp at the just-landed boundary (`(groundY+1.5)−groundY` can
+    // round to `1.5+ulp`) can't route a street FOV-zoom-out into an immediate
+    // reverse swoop. 1 cm shift, imperceptible for swoop entry.
     if (
-      sign < 0 &&
-      camera.position.y - groundY < SWOOP_PHASE2_ENTRY_ELEVATION_METRES
+      phase === 'phase2' &&
+      yAgl <= SWOOP_PHASE2_EXIT_ELEVATION_METRES + 0.01
     ) {
-      camera.position.y = groundY + SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
-      // Phase 1 ticks are tilt-preserving, so this matches the tilt at
-      // the moment of crossing. TASK-022: capture the transient zoom-undo
-      // memory (the entry tilt + fov). Fires ONLY on a wheel zoom-in crossing
-      // AGL 20 downward, behind the `!_frameGroundHit` guard — so FOV-zoom
-      // below the band, out-of-bounds descents, and every non-wheel descent
-      // set no memory (spec point 3 / WE-3). `fov` is the TASK-014b twin
-      // (harmless for 022; the C4 seam).
-      this._zoomUndo = nextZoomUndo(this._zoomUndo, {
-        type: 'wheel-in-crossing',
-        tilt: cameraTiltDegrees(camera),
-        fov: camera.fov
-      });
-      camera.updateMatrixWorld();
+      phase = 'phase3';
     }
+    if (phase === 'phase2') return 'swoop';
+    if (phase === 'phase3') return 'fov';
+    // phase1: tilt-conditional split (LIVE — read instantaneous tilt).
+    return cameraTiltDegrees(camera) <= this._tiltThreshold
+      ? 'lowtilt'
+      : 'high';
   }
 
-  // TASK-014d: the shared cursor-anchored capped dolly. Resolves the world
-  // point under the cursor and dollies the camera toward/away from it by one
-  // capped step. No AGL / Phase-boundary logic — pure cursor-anchored dolly,
-  // so it is safe to call in any state (Phase 1, Ctrl+wheel at any
-  // elevation). Both the Phase-1 tick and the Ctrl+wheel path use it (the
-  // source-dispatch exists exactly once).
-  //
-  // Anchor dispatch branches on the hit *source* (spec item 3 / Decision 3 —
-  // condition on no-real-hit, NOT on "anchor above camera"):
-  //   mesh | ground → a real target; dolly toward it (rises toward a tower's
-  //     upper floors if that is what the cursor is on).
-  //   fallback      → the ray hit nothing real (open sky); substitute a
-  //     LEVEL-forward anchor so zoom-in advances forward at constant height
-  //     rather than drifting up into empty sky. If even the level heading is
-  //     undefined (true vertical) the tick is a no-op (the drain loop has
-  //     already consumed this tick's budget, so it never stalls).
-  _applyCursorDolly(sign) {
+  // TASK-027 Part C: classify the current cursor target as a swoop landing
+  // surface or a break-out dolly target. Resolves the cursor anchor (with the
+  // additive hit normal) + camera look-direction and defers the cut to
+  // navMath.classifySwoopTickTarget.
+  _classifyPhase2Target() {
+    const hit = this._cursorAnchor.worldPointAt(
+      this._lastWheelClientX,
+      this._lastWheelClientY,
+      { maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES }
+    );
+    const isSolidFloor =
+      hit.source === 'mesh' ? isSolidFloorHit(hit.raw) : true;
+    // Break out only when craning UP at a wall/sky — looking down/level always
+    // swoops (Part C-add-1). Tilt < 0 ⇒ looking above horizontal.
+    const lookingUp = cameraTiltDegrees(this._camera) < 0;
+    return classifySwoopTickTarget({
+      source: hit.source,
+      normalY: hit.normal ? hit.normal.y : null,
+      isSolidFloor,
+      lookingUp
+    });
+  }
+
+  // TASK-027 Part C.3: a swoop↔dolly regime switch mid-descent is an intent
+  // change — invalidate the transient zoom-undo memory (C2) and drop any
+  // ascent anchor. Per-tick; no latched mode.
+  _notePhase2Regime(regime) {
+    if (this._lastSwoopRegime != null && regime !== this._lastSwoopRegime) {
+      this._clearZoomUndo();
+      this._ascentAnchor = null;
+    }
+    this._lastSwoopRegime = regime;
+  }
+
+  // TASK-027 Part C-add-2: one continuous break-out dolly step of `t` nominal
+  // ticks (the same cursor-anchored dolly as Phase 1, but WITHOUT the
+  // phase1→phase2 entry-boundary clamp — we are already inside the band). The
+  // caller tracks the excursion depth and caps the unwind. Returns the ticks
+  // applied (== t, or 0 if no cursor latch / no real anchor and vertical sky).
+  _applyBreakoutDolly(t) {
     const camera = this._camera;
     const x = this._lastWheelClientX;
     const y = this._lastWheelClientY;
-    // Defence: `_onWheel` populates these on every wheel event, so this
-    // never strands zoom as a silent no-op in practice.
-    if (x == null || y == null) return;
-
-    const hit = this._cursorAnchor.worldPointAt(x, y, {
+    if (x == null || y == null) return t; // no cursor latch → consume, no-op
+    let hit = this._cursorAnchor.worldPointAt(x, y, {
       maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES
     });
-    if (hit.source === 'mesh' || hit.source === 'ground') {
-      this._applyAnchoredDollyStep(sign, hit);
-      return;
+    if (hit.source !== 'mesh' && hit.source !== 'ground') {
+      hit = levelForwardAnchor(camera, FALLBACK_FORWARD_DIST);
+      if (hit == null) return t; // near-vertical at sky → consume, no move
     }
-    // hit.source === 'fallback' → no real target under the cursor.
-    const levelHit = levelForwardAnchor(camera, FALLBACK_FORWARD_DIST);
-    if (levelHit == null) return; // near-vertical at sky → no camera motion
-    this._applyAnchoredDollyStep(sign, levelHit);
+    this._dollyAlongRay(dollyFactorForTicks(t, ZOOM_PER_WHEEL_TICK), hit);
+    return t;
   }
 
-  // Shared step: translate the camera along the camera→hit ray toward (in)
-  // or away from (out) the fixed `hit`, by 10% of the current distance —
-  // with the HORIZONTAL component of the translation capped to
-  // `this._wheelZoomLateralCap` metres (TASK-014d, via cappedDollyStep).
-  // The cap scales the whole step vector uniformly, so the move stays on the
-  // camera→hit ray (target stays under the cursor) and reversibility about a
-  // fixed target is exact. A non-finite step (degenerate grazing ray) is
-  // dropped — the tick is a no-op rather than NaN-ing the camera.
-  _applyAnchoredDollyStep(sign, hit) {
+  // TASK-014a (#6 Option B): apply `t` nominal ticks of high/lowtilt/FOV zoom
+  // as ONE continuous step. Returns the ticks actually consumed (== `t` for
+  // the interior case; a partial value when a boundary or clamp is hit so the
+  // loop re-dispatches the remainder). `regime` is one of 'high' | 'lowtilt'
+  // | 'fov' from `_decideWheelRegime`.
+  //
+  // Boundary handling (zoom-in crossing AGL 20 downward): clamp to the
+  // Phase-2 entry and capture TASK-022's transient zoom-undo memory (entry
+  // tilt + fov) via `nextZoomUndo`, exactly as the pre-Option-B
+  // `_applyPhase1WheelTick` did — Phase 2's descent lerp reads `_zoomUndo.tilt`.
+  _applyContinuousHighStep(t, regime) {
     const camera = this._camera;
+    const sign = t > 0 ? 1 : -1;
+
+    if (regime === 'fov') {
+      // Phase 3 — FOV zoom at street level (TASK-027 Parts A + B; continuous
+      // per TASK-014a). Part A: the wide end is the constant
+      // PHASE3_FOV_WIDE_CAP_DEGREES (no per-entry latched baseline). Part B:
+      // the world point under the cursor is PINNED as FOV changes by re-aiming
+      // the camera (_applyPhase3Reaim). A2: the return rule is split by sign so
+      // a remainder is never left stuck in the FOV regime (which would spin).
+      const fovBefore = camera.fov; // H1: snapshot BEFORE any mutation
+      const cap = PHASE3_FOV_WIDE_CAP_DEGREES;
+      const floor = SWOOP_PHASE3_FOV_FLOOR_DEGREES;
+      // Zoom-out at/above the wide cap → ACTIVE hand-off to the swoop (consume
+      // ONE whole tick via the swoop kick-start; just returning the remainder
+      // would re-dispatch to 'fov' forever since camera.y hasn't changed). Ends
+      // the re-aim session (leaving Phase 3 upward).
+      if (sign > 0 && camera.fov >= cap - 1e-6) {
+        this._phase3Reaim = null;
+        this._applyPhase2WheelTick(sign); // whole-tick swoop kick-start
+        return sign;
+      }
+      let fov = camera.fov * fovFactorForTicks(t, FOV_PER_WHEEL_TICK);
+      if (fov < floor) fov = floor;
+      if (sign > 0 && fov > cap) fov = cap;
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+      // Part B re-aim (skip on Ctrl, or a floored/capped no-op step).
+      if (!this._lastWheelCtrlKey && fov !== fovBefore) {
+        this._applyPhase3Reaim(fovBefore);
+      }
+      // Interior FOV step, or zoom-in pinned at the 15° floor. Consume the
+      // ENTIRE remaining `t` so the loop terminates rather than spinning.
+      return t;
+    }
+
+    // Dolly. TASK-014d collapsed the tilt-conditional anchor split: cursor-
+    // anchor at EVERY tilt (the lurch is bounded by the lateral cap in
+    // `_dollyAlongRay`, not by switching anchor source). Anchor dispatch on the
+    // hit *source*: mesh/ground → a real target; fallback (open sky) → a
+    // LEVEL-forward anchor so zoom-in advances forward at constant height
+    // rather than drifting up into empty sky; near-vertical-at-sky → no move.
+    const x = this._lastWheelClientX;
+    const y = this._lastWheelClientY;
+    if (x == null || y == null) return t; // no cursor latch → consume, no-op
+    let hit = this._cursorAnchor.worldPointAt(x, y, {
+      maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES
+    });
+    if (hit.source !== 'mesh' && hit.source !== 'ground') {
+      hit = levelForwardAnchor(camera, FALLBACK_FORWARD_DIST);
+      if (hit == null) return t; // near-vertical at sky → consume, no move
+    }
+
+    const groundY = this._frameGroundY;
+    const yEntry = SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
+
+    // Boundary-aware zoom-in: if the full step would drop AGL below the
+    // Phase-2 entry (and there IS a ground), stop exactly at the boundary and
+    // hand the remainder to the swoop. TASK-014d: Ctrl+wheel is the swoop
+    // BYPASS escape hatch — a plain cursor dolly at the current tilt that may
+    // descend past AGL 20 without entering the swoop, so skip the boundary when
+    // Ctrl is held.
+    if (sign < 0 && this._frameGroundHit && !this._lastWheelCtrlKey) {
+      const denom = camera.position.y - hit.y;
+      const targetY = groundY + yEntry;
+      // Would the full step land below the entry boundary?
+      const fullFactor = dollyFactorForTicks(t, ZOOM_PER_WHEEL_TICK);
+      const fullY = hit.y + fullFactor * denom;
+      if (fullY < targetY) {
+        // A3: degenerate denominator (near-horizontal anchor ≈ camera height)
+        // — the analytic solve divides by ~0. Fall back to the proven
+        // per-tick path: apply the full step, then post-step y-clamp exactly
+        // as the old _applyPhase1WheelTick did, and consume the whole `t`.
+        if (Math.abs(denom) <= WHEEL_ANCHOR_DENOM_EPS_METRES) {
+          this._dollyAlongRay(fullFactor, hit);
+          if (camera.position.y - groundY < yEntry) {
+            camera.position.y = targetY;
+            this._zoomUndo = nextZoomUndo(this._zoomUndo, {
+              type: 'wheel-in-crossing',
+              tilt: cameraTiltDegrees(camera),
+              fov: camera.fov
+            });
+            camera.updateMatrixWorld();
+          }
+          return t;
+        }
+        // Solve for the tick fraction t* that lands AGL exactly at the entry:
+        //   factor* = (groundY + yEntry − hit.y) / (cam.y − hit.y)
+        //   t*      = −ln(factor*) / ln(1 − α)
+        const factorStar = (targetY - hit.y) / denom;
+        // factorStar should be in (0,1) for a normal descent toward a lower
+        // anchor; guard against a non-positive (numerically degenerate) value.
+        if (factorStar > 0 && factorStar < 1) {
+          const alpha = ZOOM_PER_WHEEL_TICK;
+          const tStar = -Math.log(factorStar) / Math.log(1 - alpha);
+          this._dollyAlongRay(factorStar, hit);
+          camera.position.y = targetY; // exact y-clamp (matches old behaviour)
+          this._zoomUndo = nextZoomUndo(this._zoomUndo, {
+            type: 'wheel-in-crossing',
+            tilt: cameraTiltDegrees(camera),
+            fov: camera.fov
+          });
+          camera.updateMatrixWorld();
+          return tStar; // remainder (t − tStar) re-dispatches to the swoop
+        }
+        // Degenerate factor* — fall back to the full step + post-step clamp.
+        this._dollyAlongRay(fullFactor, hit);
+        if (camera.position.y - groundY < yEntry) {
+          camera.position.y = targetY;
+          this._zoomUndo = nextZoomUndo(this._zoomUndo, {
+            type: 'wheel-in-crossing',
+            tilt: cameraTiltDegrees(camera),
+            fov: camera.fov
+          });
+          camera.updateMatrixWorld();
+        }
+        return t;
+      }
+    }
+
+    // Interior step (no boundary crossing, or free descent with no ground):
+    // apply the full continuous dolly and consume the whole `t`.
+    this._dollyAlongRay(dollyFactorForTicks(t, ZOOM_PER_WHEEL_TICK), hit);
+    return t;
+  }
+
+  // Translate the camera along the camera→hit ray by the continuous `factor`
+  // (factor < 1 = closer; > 1 = farther), with the HORIZONTAL component of the
+  // translation capped (TASK-014d, via cappedDollyStep). The cap scales the
+  // whole step vector uniformly, so the move stays on the camera→hit ray
+  // (target stays under the cursor) and reversibility about a fixed target is
+  // exact. `factor` is the continuous generalisation of the old per-tick step
+  // (dollyFactorForTicks(t)·dollyFactorForTicks(−t) === 1). A non-finite step
+  // (degenerate grazing ray) is dropped — a no-op rather than NaN-ing the
+  // camera. TASK-027 Part F: the cap scales with height — max(lowerBound,
+  // 0.1×AGL) — bounding the lurch proportionally; falls to the lower bound on
+  // the no-AGL path (Ctrl+wheel / out of bounds, where AGL is non-finite).
+  _dollyAlongRay(factor, hit) {
+    const camera = this._camera;
+    const yAgl = this._frameGroundHit
+      ? camera.position.y - this._frameGroundY
+      : NaN;
+    const cap = lateralCap(
+      yAgl,
+      this._wheelZoomLateralCapLowerBound,
+      WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF
+    );
     const newPos = cappedDollyStep({
       camPos: camera.position,
       hit,
-      sign,
-      alpha: ZOOM_PER_WHEEL_TICK,
-      lateralCapMetres: this._wheelZoomLateralCap
+      factor,
+      lateralCapMetres: cap
     });
     if (newPos == null) return; // non-finite step: skip this tick
     camera.position.copy(newPos);
@@ -2809,6 +3526,49 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     camera.far = Math.min(100000000, Math.max(20000, distance * 10));
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
+  }
+
+  // Whole-tick Phase 1 / low-tilt dolly used by the swoop's active hand-offs
+  // (Phase 2 → Phase 1 zoom-out). These only ever hand off one whole tick's
+  // worth, in the same drain pass that latched the cursor — so they keep the
+  // pre-Option-B whole-tick form (sidesteps M7: a fractional swoop-exit anchor
+  // never arises). Routes to the same `_dollyAlongRay` math the continuous
+  // step uses, at the per-whole-tick factor.
+  _applyPhase1WheelTick(sign) {
+    const camera = this._camera;
+    const x = this._lastWheelClientX;
+    const y = this._lastWheelClientY;
+    if (x == null || y == null) return;
+    // TASK-014d collapsed anchor dispatch (same as the continuous step):
+    // cursor at every tilt, level-forward on a no-real-hit (sky), no move when
+    // the heading is vertical-undefined.
+    let hit = this._cursorAnchor.worldPointAt(x, y, {
+      maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES
+    });
+    if (hit.source !== 'mesh' && hit.source !== 'ground') {
+      hit = levelForwardAnchor(camera, FALLBACK_FORWARD_DIST);
+      if (hit == null) return; // near-vertical at sky → no move
+    }
+    this._dollyAlongRay(dollyFactorForTicks(sign, ZOOM_PER_WHEEL_TICK), hit);
+
+    // TASK-024a (solid-geometry guard): no ground below → no Phase-2 boundary.
+    if (!this._frameGroundHit) return;
+
+    // Boundary: Phase 1 → Phase 2 on zoom-in (post-step y-clamp). TASK-022:
+    // capture the zoom-undo memory at the crossing, same as the continuous step.
+    const groundY = this._frameGroundY;
+    if (
+      sign < 0 &&
+      camera.position.y - groundY < SWOOP_PHASE2_ENTRY_ELEVATION_METRES
+    ) {
+      camera.position.y = groundY + SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
+      this._zoomUndo = nextZoomUndo(this._zoomUndo, {
+        type: 'wheel-in-crossing',
+        tilt: cameraTiltDegrees(camera),
+        fov: camera.fov
+      });
+      camera.updateMatrixWorld();
+    }
   }
 
   // Phase 2 — pedestal + tilt-toward-horizontal. No cursor anchoring
@@ -2830,8 +3590,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // (modulo one cheap extra probe per pass).
   //
   // Boundary handling (all in AGL):
-  //   zoom-in: yAglNext ≤ yFloor → snap to floor, tilt to 0°, latch
-  //     _phase3FovBaseline. Next tick dispatches naturally to Phase 3.
+  //   zoom-in: yAglNext ≤ yFloor → snap to floor, tilt to 0°, FOV eased to the
+  //     landing FOV (Part A). Next tick dispatches naturally to Phase 3.
   //   zoom-in: yAglNext within SWOOP_PHASE2_FLOOR_SNAP_METRES of yFloor →
   //     snap (H6).
   //   zoom-out: yAgl in [0, yFloor + snap] → kick-start to yFloor + snap.
@@ -2866,22 +3626,31 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const ascentTarget = this._zoomUndo.valid
       ? this._zoomUndo.tilt
       : DEFAULT_OVERVIEW_TILT_DEGREES;
+    // TASK-027 Part A: the swoop-OUT FOV target mirrors the tilt — memory valid
+    // → exact FOV undo (the captured entry FOV); else the default map FOV.
+    const ascentTargetFov = this._zoomUndo.valid
+      ? this._zoomUndo.fov
+      : DEFAULT_MAP_FOV_DEGREES;
 
     if (sign > 0) {
       // ASCENT (zoom-out): atomically capture the ascent anchor on the FIRST
       // out-tick of this ascent (the sole writer, under the == null guard).
-      // Both fields set together — no interleaving where one is fresh, one
-      // stale. `yAgl` here is the PRE-step height (matches the camera's live
-      // tilt read below).
-      if (this._ascentStartFrac == null) {
-        this._ascentStartFrac = phase2HeightFrac(yAgl);
-        this._ascentStartTilt = cameraTiltDegrees(camera);
+      // Only the TILT needs an anchor (the user can crane the camera mid-swoop,
+      // so the ascent tilt must start from the live pose without a jump). FOV
+      // can't be perturbed mid-band (only the wheel changes it), so the ascent
+      // FOV is a pure function of height (swoopLandingFov) — no anchor needed.
+      // `yAgl` here is the PRE-step height (matches the camera's live tilt read
+      // below).
+      if (this._ascentAnchor == null) {
+        this._ascentAnchor = {
+          frac: phase2HeightFrac(yAgl),
+          tilt: cameraTiltDegrees(camera)
+        };
       }
     } else {
       // DESCENT (zoom-in): reset the ascent anchor so the next ascent
       // re-captures from the live pose. Descent tilt semantics are unchanged.
-      this._ascentStartFrac = null;
-      this._ascentStartTilt = null;
+      this._ascentAnchor = null;
     }
 
     // Zoom-out kick-start (AGL-relative — WE-7). A FRESH downward probe
@@ -2907,12 +3676,19 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (sign < 0 && yAglNext <= yFloor) {
       camera.position.y = groundY + yFloor; // ← write back
       this._setCameraTiltPreservingYaw(0);
-      this._phase3FovBaseline = camera.fov;
+      // TASK-027 Part A: reach the landing FOV exactly at the floor (no latched
+      // baseline; the wide cap is the PHASE3_FOV_WIDE_CAP_DEGREES constant).
+      camera.fov = swoopLandingFov(
+        yFloor,
+        this._zoomUndo.fov,
+        SWOOP_LANDING_FOV_DEGREES,
+        SWOOP_FOV_RAMP_EXPONENT
+      );
+      camera.updateProjectionMatrix();
       // TASK-022: Phase-3 entry ends any ascent geometry; reset the anchor so
       // a fresh ascent re-captures from the live pose (already null on a
       // descent run, but explicit at the band exit).
-      this._ascentStartFrac = null;
-      this._ascentStartTilt = null;
+      this._ascentAnchor = null;
       camera.updateMatrixWorld();
       // TASK-024a (D1, 1.2.2 / PA-3): the wheel swoop has no onDone — landing
       // IS this Phase-2→3 boundary crossing. DERIVE (don't force-true): the
@@ -2936,10 +3712,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // same target the per-tick ascent ramps toward. A ≤90° single-step arc,
       // applied via the roll-safe re-tilt (antiparallel guard not triggered).
       this._setCameraTiltPreservingYaw(ascentTarget);
-      // Ascent complete at the ceiling: reset the anchor. Above the ceiling
-      // the tilt is the user's to set freely (Phase 1 is tilt-preserving).
-      this._ascentStartFrac = null;
-      this._ascentStartTilt = null;
+      // TASK-027 Part A: set FOV to the ascent target in one step (mirrors the
+      // tilt), so leaving the band upward always restores a sane FOV (entry FOV
+      // if memory valid, else the 60° map default) — closing the stale-FOV
+      // window where a re-descent would read a leftover-narrow `_zoomUndo.fov`.
+      camera.fov = ascentTargetFov;
+      camera.updateProjectionMatrix();
+      // TASK-022: ascent complete at the ceiling: reset the anchor. Above the
+      // ceiling the tilt is the user's to set freely (Phase 1 tilt-preserving).
+      this._ascentAnchor = null;
       camera.updateMatrixWorld();
       this._maybeEmitLbModeChange();
       // Now dispatch a Phase 1 tick. TASK-014d collapsed the tilt split, so
@@ -2962,16 +3743,34 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       this._setCameraTiltPreservingYaw(
         phase2TargetTilt(yAglNext, this._zoomUndo.tilt)
       );
+      // TASK-027 Part A: descent FOV ramp — ease the entry FOV open toward the
+      // landing FOV as AGL falls, back-loaded into the final stretch.
+      camera.fov = swoopLandingFov(
+        yAglNext,
+        this._zoomUndo.fov,
+        SWOOP_LANDING_FOV_DEGREES,
+        SWOOP_FOV_RAMP_EXPONENT
+      );
     } else {
       this._setCameraTiltPreservingYaw(
         phase2AscentTilt(
           yAglNext,
-          this._ascentStartFrac,
-          this._ascentStartTilt,
+          this._ascentAnchor.frac,
+          this._ascentAnchor.tilt,
           ascentTarget
         )
       );
+      // TASK-027 Part A: ascent FOV — a pure function of height (narrow =
+      // ascent target), the SAME curve the descent drew, so an immediate undo
+      // retraces it exactly; no anchor needed (FOV can't be perturbed mid-band).
+      camera.fov = swoopLandingFov(
+        yAglNext,
+        ascentTargetFov,
+        SWOOP_LANDING_FOV_DEGREES,
+        SWOOP_FOV_RAMP_EXPONENT
+      );
     }
+    camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
     // Toolbar visual indicator: Phase 2's tilt lerp crosses the 30°
     // boundary silently from the LB-mode comparator's perspective. Emit
@@ -2981,57 +3780,109 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._maybeEmitLbModeChange();
   }
 
-  // Phase 3 — FOV-only zoom at street level. Camera position and tilt
-  // locked; only fov changes. Multiplicative reciprocal for exact
-  // reversibility. Clamped to [SWOOP_PHASE3_FOV_FLOOR_DEGREES,
-  // _phase3FovBaseline].
-  //
-  // Boundary handling:
-  //   zoom-out at fov ≥ baseline → clear _phase3FovBaseline, hand the
-  //     tick off to Phase 2 (active hand-off; same dispatch-deadlock
-  //     reason as Phase 2 → Phase 1 — `decideSwoopPhase(1.5)` returns
-  //     'phase3' inclusively, so without active hand-off the next
-  //     zoom-out tick re-latches baseline and loops). Found at
-  //     feel-test 2026-05-11.
-  //   _phase3FovBaseline null at entry: lazy-latch from current FOV
-  //     (Phase 3 was entered without Phase 2 doing the latch — e.g.
-  //     saved scene at y < yFloor).
-  _applyPhase3WheelTick(sign) {
+  // (Phase 3 FOV-only zoom is now handled continuously inside
+  // `_applyContinuousHighStep` (regime 'fov') — the old per-tick
+  // `_applyPhase3WheelTick` was folded in for TASK-014a Option B. The
+  // zoom-out→Phase-2 baseline hand-off and the lazy baseline latch live
+  // there now.)
+
+  // TASK-027 Part B — cursor-lock re-aim. Re-aims the camera so the world point
+  // under the cursor stays pinned to the same screen pixel as FOV changes. The
+  // orientation is rebuilt ABSOLUTELY from a captured baseline pose every tick
+  // (not composed incrementally), so it is a pure function of FOV → exactly
+  // reversible (WE-B2) and unwinds to the entry pose at baseline FOV (B.3). The
+  // exact ordering is load-bearing (H1/H2/H3) — do not reorder:
+  //   FOV already applied + updateProjectionMatrix (caller) →
+  //   copy baselineQuat + updateMatrixWorld → raycast cursor pixel →
+  //   slerp the minimal-arc QUATERNION by the continuity weight → premultiply.
+  _applyPhase3Reaim(fovBefore) {
     const camera = this._camera;
+    const ndc = this._cursorAnchor.ndcFor(
+      this._lastWheelClientX,
+      this._lastWheelClientY
+    );
 
-    // Hand-off on zoom-out from baseline FOV. Check first so we don't
-    // re-latch and loop when zoom-out continues past Phase 3.
+    // Baseline session: capture on the first Phase-3 tick; re-capture at the
+    // current pose when the cursor PIXEL moves (a new aim — Δ starts at 0, no
+    // jump). The target world point `P` is resolved ONCE at capture and held
+    // for the whole session (live-test #3 fix): re-resolving the cursor target
+    // every tick breaks the unwind — once the re-aim cranes the camera, the
+    // cursor pixel points somewhere else (e.g. sky above the building), so on
+    // zoom-out it can't find the original target to un-crane back to. A stable
+    // P makes the re-aim a pure function of fov for the session → it unwinds
+    // exactly back to the baseline (street) pose as the FOV widens. (This is
+    // the notes' "first-frame-per-gesture capture"; the spec's WE-B caveat —
+    // tile streaming voids retrace — is the accepted cost.) baselineFov is the
+    // PRE-step FOV (H1).
     if (
-      sign > 0 &&
-      this._phase3FovBaseline != null &&
-      camera.fov >= this._phase3FovBaseline
+      !this._phase3Reaim ||
+      ndc.distanceTo(this._phase3Reaim.ndc) > PHASE3_REAIM_NDC_EPS
     ) {
-      this._phase3FovBaseline = null;
-      return this._applyPhase2WheelTick(sign);
+      const hit = this._cursorAnchor.worldPointAt(
+        this._lastWheelClientX,
+        this._lastWheelClientY,
+        { maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES }
+      );
+      this._phase3Reaim = {
+        baselineQuat: camera.quaternion.clone(),
+        baselineFov: fovBefore,
+        ndc: ndc.clone(),
+        // No real hit (open sky) at capture → no target to pin this session.
+        targetP:
+          hit.source === 'fallback'
+            ? null
+            : new THREE.Vector3(hit.x, hit.y, hit.z),
+        targetDist: hit.distance
+      };
     }
+    const reaim = this._phase3Reaim;
+    if (!reaim.targetP) return; // sky aim → centre-anchored FOV change (B.4)
 
-    if (this._phase3FovBaseline == null) {
-      this._phase3FovBaseline = camera.fov;
-    }
-    const baseline = this._phase3FovBaseline;
-    const floor = SWOOP_PHASE3_FOV_FLOOR_DEGREES;
+    // camPos is fixed through Phase 3, so the captured P gives a stable aim.
+    const toP = this._tmpV3f
+      .subVectors(reaim.targetP, camera.position)
+      .normalize();
+    if (toP.lengthSq() < 1e-12) return; // P ≈ camera position: nothing to aim at
 
-    let fov;
-    if (sign < 0) fov = camera.fov / (1 + ZOOM_PER_WHEEL_TICK);
-    else fov = camera.fov * (1 + ZOOM_PER_WHEEL_TICK);
+    // (H2) Re-orient to the BASELINE quat and refresh matrixWorld BEFORE the
+    // raycast, so the cursor-pixel world ray is sampled under (baselineQuat,
+    // NEW fov) — not the previous tick's premultiplied orientation.
+    camera.quaternion.copy(reaim.baselineQuat);
+    camera.updateMatrixWorld();
+    this._reaimRaycaster.setFromCamera(reaim.ndc, camera);
+    const rayDir = this._reaimRaycaster.ray.direction; // unit, world space
 
-    if (fov < floor) fov = floor;
-    if (fov > baseline) fov = baseline;
-    camera.fov = fov;
-    camera.updateProjectionMatrix();
+    // (M4) Continuity weight: fade re-aim to 0 as the target recedes toward the
+    // horizon, so the façade → sky crossing is continuous. (H3) Scale the
+    // QUATERNION via slerp from identity — never lerp the directions (that would
+    // change the axis with the weight and break reversibility).
+    const w = reaimWeight(
+      reaim.targetDist,
+      REAIM_FADE_NEAR_METRES,
+      REAIM_FADE_FAR_METRES
+    );
+    const fullArc = this._tmpQuatB.setFromUnitVectors(rayDir, toP);
+    const delta = this._tmpQuatC.identity().slerp(fullArc, w);
+    camera.quaternion.premultiply(delta);
+    camera.quaternion.normalize();
+    camera.updateMatrixWorld();
   }
 
-  // TASK-022: invalidate the transient zoom-undo memory. Call ONLY from a
-  // site that has just committed an actual non-wheel camera move (past its
-  // own no-op early-returns AND any zero-delta gate). Never from the wheel
-  // path. Idempotent (reducer returns valid:false again).
+  // TASK-022: invalidate the transient zoom-undo memory. Call from a site that
+  // has just committed an actual non-wheel camera move (past its own no-op
+  // early-returns AND any zero-delta gate). Idempotent (reducer returns
+  // valid:false again). TASK-027 Part C.3 adds ONE wheel-path caller: a
+  // swoop↔dolly regime switch mid-descent (`_notePhase2Regime`) is a
+  // deliberate intent change that clears the memory — the only sanctioned
+  // wheel-path call.
   _clearZoomUndo() {
     this._zoomUndo = nextZoomUndo(this._zoomUndo, { type: 'non-wheel-move' });
+    // TASK-027: a real non-wheel move also ends any in-flight cursor-lock
+    // re-aim session (Part B) and any Phase-2 descent regime run (Part C) —
+    // the camera is no longer where the captured baseline/regime assumed.
+    this._phase3Reaim = null;
+    this._lastSwoopRegime = null;
+    this._breakoutDollyDepth = 0;
   }
 
   // Apply a tilt (in degrees from horizontal, positive = looking down)
@@ -3089,9 +3940,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // reaches this: the per-tick step is ≤ a few °, and the largest
       // single-step hand-off is a ≤90° arc. Guard is mandatory per the
       // spec-review-checklist degenerate-axis requirement.)
-      const axis = this._tmpV3b
-        .set(1, 0, 0)
-        .applyQuaternion(camera.quaternion); // camera-right in world
+      const axis = this._tmpV3b.set(1, 0, 0).applyQuaternion(camera.quaternion); // camera-right in world
       R.setFromAxisAngle(axis, Math.PI);
     } else {
       R.setFromUnitVectors(curFwd, newFwd);
@@ -3167,9 +4016,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       WASD_MIN_SPEED,
       WASD_MAX_SPEED
     );
-    const targetVel = new THREE.Vector3(targetDirX, 0, targetDirZ).multiplyScalar(
-      targetSpeed
-    );
+    const targetVel = new THREE.Vector3(
+      targetDirX,
+      0,
+      targetDirZ
+    ).multiplyScalar(targetSpeed);
 
     // Acceleration ramp toward target. accel = max-speed / ramp-time so a
     // standing-start key-press reaches WASD_MAX_SPEED in WASD_RAMP_UP_MS;
@@ -3194,7 +4045,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // follow / hover from the surface geometry ahead before committing the
     // horizontal move + any y change.
     const stepThisFrame = Math.hypot(move.x, move.z);
-    const outcome = this._classifyWasdMove(targetDirX, targetDirZ, stepThisFrame);
+    const outcome = this._classifyWasdMove(
+      targetDirX,
+      targetDirZ,
+      stepThisFrame
+    );
 
     if (outcome.kind === 'block') {
       // Stop at the wall: cancel the horizontal step, snap velocity to 0,
@@ -3428,10 +4283,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // through a solid surface. Clamp to collisionFloor + eye-margin at the
     // (post-truck) XZ column. y-write only; the truck-right component is
     // unaffected.
-    const floor = this._collisionFloorAt(
-      camera.position.x,
-      camera.position.z
-    );
+    const floor = this._collisionFloorAt(camera.position.x, camera.position.z);
     const minY = floor.y + EYE_MARGIN_METRES;
     // TASK-024a (solid-geometry guard): a probe miss (source 'cache' = stale
     // last-known ground, no real surface below) means "no floor below" —

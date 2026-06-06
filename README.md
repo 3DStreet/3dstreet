@@ -167,4 +167,16 @@ See [this link for more information](src/README.md) about the custom components 
 ### Skybox credits
 * Most skybox images (c) Polyhaven CC0 license polyhaven.com [individual credits](https://github.com/3DStreet/3dstreet/issues/360#issue-1910580549)
 
+### Icon Credits
+Navigation context-button icons, from [SVG Repo](https://www.svgrepo.com/):
+* "Sunshine" by Konstantin Filatov (Gentlecons Interface Icons),
+  License [CC BY](https://creativecommons.org/licenses/by/4.0/) —
+  https://www.svgrepo.com/svg/521870/sunshine
+* "Google Streetview" by teenyicons (Teenyicons Filled Icons),
+  License [MIT](https://opensource.org/licenses/MIT) —
+  https://www.svgrepo.com/svg/369339/google-streetview
+* "Drone 15" by Icooon Mono (Icooon Mono Vectors),
+  License Public Domain —
+  https://www.svgrepo.com/svg/477382/drone-15
+
 <img src="https://raw.githubusercontent.com/kfarr/3dstreet/master/ui_assets/streetmix3d-banner.jpg" />

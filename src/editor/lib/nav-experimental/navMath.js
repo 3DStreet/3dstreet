@@ -11,6 +11,9 @@ import {
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
   SWOOP_PHASE2_EXIT_ELEVATION_METRES,
   SWOOP_PHASE2_STEP,
+  WHEEL_UNITS_PER_NOMINAL_TICK,
+  LINE_HEIGHT_PX,
+  WHEEL_MAX_TICKS_PER_EVENT,
   EYE_MARGIN_METRES,
   BLOCK_SLOPE_MIN_DEGREES,
   BLOCK_HEIGHT_MIN_METRES,
@@ -338,6 +341,20 @@ export function cueState(prevShown, aglAboveCollisionFloor, enclosed) {
   return prevShown;
 }
 
+// TASK-025 (D-B): elevated↔street-level hysteresis tracker for the context
+// view button. `prev` is the previous state ('street' | 'elevated'); `agl` is
+// the height above the collision floor directly below the camera, or NULL on a
+// probe miss. Above `exitM` → 'elevated'; at/below `entryM` → 'street'; in the
+// dead band between → hold `prev` (anti-flicker, spec D-B). A null agl (probe
+// miss — e.g. over the void at a scene edge) HOLDS the previous state rather
+// than collapsing it, mirroring the collision-floor cache's hold-on-miss. Pure.
+export function elevationState(prev, agl, entryM, exitM) {
+  if (agl == null) return prev; // probe miss — hold
+  if (agl >= exitM) return 'elevated';
+  if (agl <= entryM) return 'street';
+  return prev; // dead band — hold
+}
+
 // TASK-014d (D-P1/D-P2): one wheel-zoom dolly step toward a fixed `hit`,
 // with the HORIZONTAL component of the translation capped to
 // `lateralCapMetres`. Returns the NEW camera position (THREE.Vector3), or
@@ -367,10 +384,15 @@ export function cappedDollyStep({
   hit,
   sign,
   alpha,
+  factor,
   lateralCapMetres
 }) {
-  const factor = sign < 0 ? 1 - alpha : 1 / (1 - alpha);
-  const oneMinusFactor = 1 - factor;
+  // TASK-014a (#6 Option B merge): accept a precomputed CONTINUOUS `factor`
+  // (from dollyFactorForTicks) for the fractional single-drain path; fall back
+  // to the per-whole-tick factor from sign+alpha for the swoop hand-off
+  // callers. Either way the lateral-cap algebra below is identical.
+  const f = factor != null ? factor : sign < 0 ? 1 - alpha : 1 / (1 - alpha);
+  const oneMinusFactor = 1 - f;
   let stepX = oneMinusFactor * (hit.x - camPos.x);
   let stepY = oneMinusFactor * (hit.y - camPos.y);
   let stepZ = oneMinusFactor * (hit.z - camPos.z);
@@ -591,6 +613,55 @@ export function clampFramingPitch(position, lookTarget, maxDeg) {
     out.y = position.y + THREE.MathUtils.clamp(dy, -maxDy, maxDy);
   }
   return out;
+}
+
+// ── TASK-014a (#6 Option B): wheel input-plumbing pure helpers ──────────
+
+// Normalise a raw wheel event to a signed, magnitude-clamped "nominal
+// tick" count.
+//   deltaMode: 0 = pixel, 1 = line (~LINE_HEIGHT_PX px), 2 = page
+//     (viewport height).
+//   One mouse detent (deltaY ≈ 100 px) ≈ 1.0 tick.
+//   Sign: deltaY > 0 → +t → zoom OUT (preserves the existing convention).
+// Clamps a single pathological event to ±WHEEL_MAX_TICKS_PER_EVENT so the
+// continuous per-frame step can never apply an unbounded factor in one
+// frame (page-mode multiplies by ~viewport height; some trackpads emit
+// deltaY in the thousands). `viewportH` guards a NaN when page-mode events
+// arrive without a known viewport. Pure.
+export function wheelDeltaToTicks(deltaY, deltaMode, viewportH = 800) {
+  let dy = deltaY;
+  if (deltaMode === 1) {
+    dy *= LINE_HEIGHT_PX;
+  } else if (deltaMode === 2) {
+    dy *= viewportH || 800;
+  }
+  const t = dy / WHEEL_UNITS_PER_NOMINAL_TICK;
+  const max = WHEEL_MAX_TICKS_PER_EVENT;
+  return Math.max(-max, Math.min(max, t));
+}
+
+// Anchored-dolly distance-to-anchor multiplier for `t` nominal ticks.
+// Generalises the per-whole-tick factor (1 − α in / 1/(1 − α) out) to a
+// real, signed tick count, exactly reversible for all t:
+//   t < 0 zoom-in  → factor = (1 − α)^(−t) < 1  (closer to anchor)
+//   t > 0 zoom-out → factor = (1 − α)^(−t) > 1  (farther)
+//   t = −1 → (1 − α)  (identical to the old per-tick zoom-in)
+//   factor(t) · factor(−t) = 1  (reversibility, exact to ~1 ULP)
+// The exponential is the unique continuous extension of the existing
+// multiplicative step that stays exactly reversible (a linear 1 − α·t
+// breaks reversibility for |t| ≠ 1 and can go non-positive). Pure.
+export function dollyFactorForTicks(t, alpha) {
+  return Math.pow(1 - alpha, -t);
+}
+
+// FOV multiplier for `t` nominal ticks. Generalises the per-whole-tick
+// factor (1/(1 + β) in / (1 + β) out):
+//   t < 0 zoom-in  → (1 + β)^t < 1  (narrower FOV)
+//   t > 0 zoom-out → (1 + β)^t > 1  (wider FOV)
+//   t = −1 → 1/(1 + β)  (identical to the old per-tick zoom-in)
+//   factor(t) · factor(−t) = 1  (reversibility). Pure.
+export function fovFactorForTicks(t, beta) {
+  return Math.pow(1 + beta, t);
 }
 
 // Phase 3 swoop helpers. See claude/specs/001-phase-3-plan.md.
@@ -859,4 +930,117 @@ export function shiftRotateStep({
   // floor-bounded `clampedTilt` yields a consistent { pos, lookTarget, R }.
   // The caller applies R via `premultiply` (continuous at nadir).
   return evalAtTilt(clampedTilt);
+}
+
+// ---------------------------------------------------------------------------
+// TASK-027 — final zoom polish helpers (pure).
+// ---------------------------------------------------------------------------
+
+// Part F — per-tick horizontal lurch cap. Scales with height above ground so
+// the lurch is bounded proportionally rather than by a fixed metre value; a
+// lower bound keeps it usable near the ground and on the no-AGL Ctrl+wheel /
+// out-of-bounds path (where `yAgl` is non-finite). Pure.
+export function lateralCap(yAgl, lowerBound, coeff) {
+  if (!Number.isFinite(yAgl)) return lowerBound;
+  return Math.max(lowerBound, coeff * yAgl);
+}
+
+// Part A — swoop FOV as a PURE FUNCTION OF HEIGHT (both legs). FOV eases from
+// `narrowFov` (at/above the ceiling) to the landing FOV (at the floor),
+// back-loaded into the final stretch by the exponent so the "opening up" reads
+// as an arrival rather than rushing at the top of the descent (live-test #2).
+//   wide = max(narrowFov, landingFov) — an already-wide camera never NARROWS.
+//   open = (1 − heightFrac)^exponent  — 0 at the ceiling, 1 at the floor.
+//   FOV  = narrowFov + (wide − narrowFov)·open.
+// Because it is a pure function of height, the descent (narrow = entry FOV) and
+// an immediate-undo ascent (narrow = captured entry FOV) evaluate the SAME
+// curve at the same height → exact retrace, with no anchor and no jump if the
+// ascent starts mid-band. A cleared-memory ascent passes the default map FOV as
+// `narrowFov` (C2 — eases to the default by the ceiling). Pure.
+export function swoopLandingFov(yAgl, narrowFov, landingFov, exponent) {
+  const wide = Math.max(narrowFov, landingFov);
+  const open = Math.pow(1 - phase2HeightFrac(yAgl), exponent);
+  return narrowFov + (wide - narrowFov) * open;
+}
+
+// Part C — decide the Phase-2-band zoom-IN regime from the resolved cursor
+// anchor. Break out of the swoop ('dolly') ONLY when the user is craning UP at
+// something they can't land on and clearly want to approach — a solid building
+// WALL/façade, or open sky/horizon. In EVERY other case continue the 'swoop':
+//   - looking DOWN or level → always 'swoop' (you are descending; a façade or
+//     sky the cursor grazes on the way down must not abort the descent — this
+//     is the live-test #2 refinement: only an *upward* look at a façade breaks
+//     out, a downward look keeps swooping);
+//   - looking up at scatter (car/tree/sign — not a solid floor) → 'swoop'
+//     (live-test #1: scatter must never break the swoop);
+//   - looking up at ground/rooftop (near-horizontal) → 'swoop'.
+// Only `lookingUp AND (open sky OR a solid near-vertical wall)` breaks out.
+// `Math.abs(normalY)`: an up/down-facing horizontal surface both read as
+// non-wall; a wall's normalY ≈ 0 → slope ≈ 90°. Pure.
+export function classifySwoopTickTarget({
+  source,
+  normalY,
+  isSolidFloor,
+  lookingUp
+}) {
+  if (!lookingUp) return 'swoop'; // descending / level → always swoop
+  if (source === 'fallback') return 'dolly'; // up at open sky/horizon
+  if (source === 'ground') return 'swoop';
+  if (normalY == null) return 'swoop';
+  const slopeDeg =
+    Math.acos(THREE.MathUtils.clamp(Math.abs(normalY), 0, 1)) * RAD2DEG;
+  if (isSolidFloor && slopeDeg >= BLOCK_SLOPE_MIN_DEGREES) return 'dolly';
+  return 'swoop';
+}
+
+// Part C-add-2 ("B": a broke-out dolly is a BOUNDED EXCURSION) is implemented
+// directly in ExperimentalControls' continuous drain loop (TASK-014a) as a
+// float dolly-depth that zoom-out unwinds before resuming the swoop — there is
+// no separate pure decision helper under the continuous model.
+
+// Part B (M4) — re-aim continuity weight. 1 for near cursor targets, ramps
+// linearly to 0 by `far`, so the cursor-lock re-aim magnitude falls to zero
+// continuously as the target recedes toward the horizon — no jump crossing
+// into the no-real-hit fallback at the rooftop/sky edge. Pure.
+export function reaimWeight(distance, near, far) {
+  if (!Number.isFinite(distance)) return 0;
+  return THREE.MathUtils.clamp((far - distance) / (far - near), 0, 1);
+}
+
+// Part B — cursor-lock re-aim quaternion (pure; extracted for unit testing).
+// Given the captured baseline orientation/fov and the cursor world point P,
+// returns the camera quaternion that, at `fovAfter`, holds P pinned under the
+// cursor pixel `ndc`. Computed ABSOLUTELY from the baseline (not composed
+// per-tick) so it is a pure function of fov → exactly reversible, and reduces
+// to `baselineQuat` at fovAfter === baselineFov (the B.3 unwind contract).
+//
+// `weight` scales the minimal-arc rotation via slerp from identity (NOT a
+// direction lerp — that would change the rotation axis with the weight and
+// break reversibility). Builds a throwaway PerspectiveCamera internally so it
+// needs no live scene. Returns a new THREE.Quaternion.
+export function reaimQuatForFov({
+  baselineQuat,
+  ndc,
+  P,
+  camPos,
+  fovAfter,
+  aspect,
+  weight = 1
+}) {
+  const cam = new THREE.PerspectiveCamera(fovAfter, aspect, 0.1, 1000);
+  cam.position.set(camPos.x, camPos.y, camPos.z);
+  cam.quaternion.copy(baselineQuat);
+  cam.updateMatrixWorld();
+  cam.updateProjectionMatrix();
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), cam);
+  const rayDir = ray.ray.direction.clone().normalize();
+  const toP = new THREE.Vector3(
+    P.x - camPos.x,
+    P.y - camPos.y,
+    P.z - camPos.z
+  ).normalize();
+  const fullArc = new THREE.Quaternion().setFromUnitVectors(rayDir, toP);
+  const delta = new THREE.Quaternion().identity().slerp(fullArc, weight);
+  return delta.multiply(baselineQuat).normalize();
 }
