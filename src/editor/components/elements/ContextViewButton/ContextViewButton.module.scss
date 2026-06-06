@@ -1,52 +1,33 @@
-// TASK-025 v2 — Context view control (two-slot: state + action). Always visible
-// in experimental-nav mode, sitting just RIGHT of the compass and bottom-
-// aligned with it. The `.contextButtonDock` placement lives in Main.module.scss
-// (so it shares the actionBar dock's stacking context + pedestal handling);
-// this module styles the widget itself.
-//
-// Two small square slots (~18 px = 60% of the 30 px ActionBar button), side by
-// side — subservient to the 64 px compass. The STATE slot (left) is a
-// highlighted, non-clickable face showing the framing you are IN; the ACTION
-// slot (right) is the clickable face showing the move available.
+// TASK-025 — Context view button (single, actions-only). Always visible in
+// experimental-nav mode, sitting just RIGHT of the compass and the same size as
+// it (64×64, circular). The `.contextButtonDock` placement lives in
+// Main.module.scss (so it shares the actionBar dock's stacking context +
+// pedestal handling); this module styles the widget itself.
 
-$slot-size: 18px;
-$slot-gap: 4px;
+$button-size: 64px;
 
 .contextControl {
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: $slot-gap;
-  width: calc(#{$slot-size} * 2 + #{$slot-gap});
-  height: $slot-size;
+  width: $button-size;
+  height: $button-size;
   user-select: none;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
 }
 
-.slot {
-  width: $slot-size;
-  height: $slot-size;
+// The button — a round, dark face matching the compass, with the action glyph
+// centred. Clickable with a hover highlight.
+.button {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   margin: 0;
   border: 1px solid transparent;
-  border-radius: 3px;
+  border-radius: 50%;
   background: #2b2b2b;
   box-sizing: border-box;
-}
-
-// STATE slot — presentational; a highlighted border marks "this is where you
-// are", and it does not respond to hover/click.
-.stateSlot {
-  border-color: rgba(255, 255, 255, 0.7);
-  cursor: default;
-}
-
-// ACTION slot — a real <button>; clickable with a hover highlight.
-.actionSlot {
-  border-color: transparent;
   cursor: pointer;
   outline: none;
 
@@ -62,15 +43,15 @@ $slot-gap: 4px;
 
 // Mono glyphs rendered white to match the dark dock + the compass glyphs.
 .icon {
-  width: 80%;
-  height: 80%;
-  // The source SVGs vary in colour (sunshine fill, mono drone/streetview/
-  // enclosed); normalise to white so all read consistently in the dark dock.
+  width: 56%;
+  height: 56%;
+  // The source SVGs vary in colour (sunshine fill, mono drone/streetview);
+  // normalise to white so all read consistently in the dark dock.
   filter: brightness(0) invert(1);
   pointer-events: none;
 }
 
-// Disabled action slot — the no-op grey-out (no valid target here) AND the busy
+// Disabled — the no-op grey-out (no valid target here) AND the busy
 // (mid-animation) hold render identically for the prototype (spec D-C). Keep
 // showing the greyed icon of the would-be action rather than blanking it.
 .disabled {

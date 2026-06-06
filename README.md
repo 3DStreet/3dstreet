@@ -178,8 +178,5 @@ Navigation context-button icons, from [SVG Repo](https://www.svgrepo.com/):
 * "Drone 15" by Icooon Mono (Icooon Mono Vectors),
   License Public Domain —
   https://www.svgrepo.com/svg/477382/drone-15
-* "Enclosed pegman" — a derived work of the "Google Streetview" pegman above
-  (head + body retained, ground replaced with an enclosing box),
-  License [MIT](https://opensource.org/licenses/MIT)
 
 <img src="https://raw.githubusercontent.com/kfarr/3dstreet/master/ui_assets/streetmix3d-banner.jpg" />

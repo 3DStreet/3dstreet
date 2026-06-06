@@ -91,7 +91,6 @@ import {
   DRONE_ELEVATED_EXIT_METRES,
   DEFAULT_DRONE_HEIGHT,
   ROOF_CLEARANCE,
-  STREET_LOOKAT_MAX_DIST_METRES,
   DEFAULT_FOV_DEGREES
 } from './constants.js';
 import {
@@ -1837,18 +1836,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     return { kind, enabled, busy: false };
   }
 
-  // TASK-025 v2 (R2-D): the current STATE (the framing you are IN), for the
-  // two-slot control's STATE slot. A pure read of `_contextSnapshot` (no probe),
-  // independent of `busy`/`enabled` (the state slot is presentational — it
-  // always shows where you are, even mid-tween). state ∈
-  // {'street','aerial','enclosed'}.
-  resolveContextState() {
-    const s = this._contextSnapshot;
-    if (s.enclosed) return 'enclosed';
-    if (s.elevationState === 'elevated') return 'aerial';
-    return 'street';
-  }
-
   // TASK-025: the single dispatch both the button click and Space funnel into.
   // One gate (busy || !enabled), shared by both triggers (H-5), so neither can
   // interrupt an in-flight camera tween or click into a no-op.
@@ -1875,32 +1862,37 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   _swoopToStreet() {
     const cam = this._camera;
     const P = this._centerRayGroundHit();
-    if (P) {
+    // Discriminate the two street-view cases by HOW STEEPLY you are looking down
+    // (live-test v2 #2). The look-at point sits on the view ray, so the swoop's
+    // descent-path angle IS the camera pitch: a shallow gaze means "big
+    // horizontal / tiny drop" = a lurch. So swoop to the look-at ONLY when
+    // pitched down past the low-tilt threshold (`_tiltThreshold`, the SAME T the
+    // wheel-zoom / Map-mode boundary uses — "are you looking down enough to be
+    // targeting the ground"); otherwise drop straight down to settle back where
+    // you were. This makes the drone→street toggle (steep, ~60°) swoop to your
+    // start, while a small pedestal-up-looking-forward just drops vertically.
+    // (Supersedes the crude absolute distance cap — the lurch happens within it
+    // at low elevation, and it wrongly blocked legit far swoops when high+steep.)
+    const lookingDownEnough = cameraTiltDegrees(cam) > this._tiltThreshold;
+    if (P && lookingDownEnough) {
       // Look-at swoop: end at street eye-height above the look-at point P.
       const floorAtP = this._collisionFloorAt(P.x, P.z);
       // Prefer the per-column collision floor at P (slope-safe); if that misses
       // (P sits over a void seam), fall back to P.y itself (the ray hit).
       const groundYAtP = floorAtP.source !== 'cache' ? floorAtP.y : P.y;
       const targetY = groundYAtP + EYE_MARGIN_METRES;
-      const horizDist = Math.hypot(P.x - cam.position.x, P.z - cam.position.z);
-      // Use the look-at swoop only when P is a SENSIBLE target: strictly below
-      // the camera (else the click would be a silent no-op though the action
-      // slot reads enabled — code-review v2 MEDIUM-1) AND within a bounded
-      // horizontal reach (else a near-horizontal gaze flings the camera
-      // hundreds of metres laterally in one ~600 ms tween — MEDIUM-3). When P
-      // is unsuitable, fall through to the vertical drop below.
-      if (
-        targetY < cam.position.y &&
-        horizDist <= STREET_LOOKAT_MAX_DIST_METRES
-      ) {
+      // Only swoop if the target is strictly below the camera (else the click
+      // would be a silent no-op though the button reads enabled — v2 MEDIUM-1);
+      // otherwise fall through to the vertical drop.
+      if (targetY < cam.position.y) {
         this._swoopTo(P.x, targetY, P.z);
         return;
       }
     }
-    // P null (looking horizontal / at sky / off-scene) OR an unsuitable look-at
-    // (above the camera / too far): fall back to the v1 VERTICAL drop to the
-    // surface directly below, leveling out — preserves WE-3 (elevated-horizontal
-    // → swoop down, not grey).
+    // P null (looking at sky / off-scene), a shallow gaze (looking out, not down
+    // at a spot), or an unsuitable look-at (above the camera): fall back to the
+    // v1 VERTICAL drop to the surface directly below, leveling out — preserves
+    // WE-3 and gives the "settle back down where I was" feel for a small pedestal.
     const floor = this._collisionFloorAt(cam.position.x, cam.position.z);
     if (floor.source === 'cache') return; // no surface below either → no-op (WE-8)
     const targetY = floor.y + EYE_MARGIN_METRES;
