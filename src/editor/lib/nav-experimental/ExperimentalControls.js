@@ -114,7 +114,6 @@ import {
   classifyDoubleClick,
   desiredDoubleClickPose,
   clampFramingPitch,
-  neverRaiseY,
   pullBackTowardTarget
 } from './navMath.js';
 
@@ -1714,37 +1713,43 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const position = desired.position;
     const lookTarget = desired.lookTarget;
 
-    // (5) Never-raise (absolute world height, DC6).
+    // (5) Never-raise — DC6′, AGL-relative (spec delta
+    // TASK-012-phase4-navheight-delta, supersedes the absolute-Y DC6/H4): the
+    // camera may never sit higher above the LOCAL collision floor than it
+    // currently does. Measure the current height above the floor beneath the
+    // camera; the per-column cap is applied in the clearance step below. A void
+    // below the camera (no floor) → no downward reference → no cap.
     const currentCamY = camera.position.y;
-    position.y = neverRaiseY(position.y, currentCamY);
+    const curFloor = this._collisionFloorAt(camera.position.x, camera.position.z, {
+      refreshCache: false
+    });
+    const currentAGL =
+      curFloor.source === 'cache'
+        ? Infinity
+        : Math.max(0, currentCamY - curFloor.y);
 
-    // (6) Clearance resolution against the live scene (probe from the
-    // CANDIDATE, not the live camera — H-1).
+    // (6) Resolve onto a sensible pose against the live scene (probe from the
+    // CANDIDATE, not the live camera — H-1). A double-click ALWAYS moves; the
+    // AGL cap constrains WHERE it lands, never WHETHER (spec delta).
     if (category === 'A') {
-      // Floor-clearance half only; ACCEPT enclosed (landing under an overpass
-      // deck is a legal A state — WE-12). A's clicked point guaranteed a hit,
-      // so a 'cache' miss here is degenerate; proceed with the desired Y.
+      // Lane landing: eye height above the clicked point, AGL-capped, not
+      // buried. (A's clicked point guaranteed a hit; a 'cache' miss is
+      // degenerate — keep the desired eye-height Y.)
       const floor = this._collisionFloorAt(position.x, position.z, {
         fromY: position.y,
         refreshCache: false
       });
       if (floor.source !== 'cache') {
-        const clearY = floor.y + EYE_MARGIN_METRES;
-        if (position.y < clearY) {
-          if (clearY > currentCamY) return; // can't clear ≤ current height → no-op (OI-1)
-          position.y = clearY;
-        }
+        const cap = floor.y + currentAGL; // DC6′ AGL never-raise
+        if (position.y > cap) position.y = cap; // clamp down — never raise above AGL
+        if (position.y < floor.y) position.y = floor.y; // not buried
       }
     } else {
-      // B/C: full legit + buried guard, with standoff pull-back.
-      const resolved = this._resolveStandoff(
-        position,
-        lookTarget,
-        currentCamY,
-        objectBox
+      // B/C: frame at the desired (centre / ⅓-height) Y, AGL-capped, with
+      // standoff pull-back out of solid. Always returns a pose (never no-op).
+      position.copy(
+        this._resolveStandoff(position, lookTarget, currentAGL, objectBox)
       );
-      if (!resolved) return; // no clear pose at/below pre-click height → no-op (OI-1)
-      position.copy(resolved);
     }
 
     // (7) End orientation from the (possibly lowered/capped) position toward
@@ -1797,54 +1802,52 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     });
   }
 
-  // TASK-012 (H-2/M-A/M-5): resolve a B/C standoff onto a clear, non-buried
-  // camera point at or below `maxY` (never-raise). Probes from the candidate,
-  // raising to floor + eye-margin when below it (capped by maxY); on a void
-  // (probe miss) or an enclosed / inside-building candidate, pulls the
-  // standoff inward (toward the look target) one step at a time, re-testing,
-  // until clear or the pull-back cap is hit. Returns a THREE.Vector3 or null
-  // (no clear pose → caller no-ops).
-  _resolveStandoff(position, lookTarget, maxY, targetBox) {
+  // TASK-012 (spec delta — AGL never-raise + always-move): resolve a B/C
+  // standoff onto a sensible, non-buried camera point. Per candidate column:
+  // clamp the height to `floor + currentAGL` (DC6′ — never higher above the
+  // local floor than the camera currently is), keep it above the floor (not
+  // buried), and accept it if it isn't inside a building (`_poseStillLegit`,
+  // skipping the floor-clearance half — the AGL clamp + not-buried already own
+  // height). If the candidate is inside solid, pull the standoff inward (toward
+  // the look target) and re-test. ALWAYS returns a THREE.Vector3 — never null:
+  // the double-click must always move (the cap constrains *where*, not
+  // *whether*). If no fully-clear standoff is found, fall back to the nominal
+  // (outermost floored) candidate — the intended framing distance — rather than
+  // refusing.
+  _resolveStandoff(position, lookTarget, currentAGL, targetBox) {
     const cand = position.clone();
     const step = DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES;
     let pulled = 0;
+    let fallback = null; // first column with a real floor (nominal framing)
     while (pulled <= DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES) {
-      if (cand.y > maxY) cand.y = maxY; // never lift above pre-click height
       const floor = this._collisionFloorAt(cand.x, cand.z, {
         fromY: cand.y,
         refreshCache: false
       });
-      let clearColumn = true;
-      if (floor.source === 'cache') {
-        // Probe miss — void at a finite scene's edge. Treat as no-floor
-        // (never last-known); pull inward to find a column with a real floor.
-        clearColumn = false;
-      } else {
-        const clearY = floor.y + EYE_MARGIN_METRES;
-        if (cand.y < clearY) {
-          if (clearY > maxY) {
-            // Can't clear the floor at/below the pre-click height here.
-            clearColumn = false;
-          } else {
-            cand.y = clearY;
-          }
+      // Probe miss (void at a scene edge) → no floor here; pull inward toward
+      // the target to find a column with a real floor.
+      if (floor.source !== 'cache') {
+        const cap = floor.y + currentAGL; // DC6′ AGL never-raise
+        if (cand.y > cap) cand.y = cap; // clamp down — never raise above AGL
+        if (cand.y < floor.y) cand.y = floor.y; // not buried (below the floor)
+        if (!fallback) fallback = cand.clone(); // nominal framing distance
+        if (
+          this._poseStillLegit(
+            { position: cand },
+            { checkBuried: true, extraBox: targetBox, skipFloorClearance: true }
+          )
+        ) {
+          return cand;
         }
-      }
-      if (
-        clearColumn &&
-        this._poseStillLegit(
-          { position: cand },
-          { checkBuried: true, extraBox: targetBox, skipFloorClearance: true }
-        )
-      ) {
-        return cand;
       }
       // Pull the standoff inward (toward the look target) and re-test.
       const next = pullBackTowardTarget(cand, lookTarget, step);
       cand.set(next.x, next.y, next.z);
       pulled += step;
     }
-    return null;
+    // Always move: no fully-clear standoff found → the nominal floored
+    // candidate, or (if no column had a floor at all) the desired position.
+    return fallback || position.clone();
   }
 
   // TASK-012 (M-1/M-2): minimal committed-motion tween for a Phase-4
