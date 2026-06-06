@@ -64,7 +64,8 @@ import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
   MIN_ORBIT_RADIUS_METRES,
   MAP_PIVOT_BOUNDS_RADIUS_METRES,
-  WHEEL_ZOOM_LATERAL_CAP_METRES,
+  WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES,
+  WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF,
   WHEEL_GROUND_REACH_CEILING_METRES,
   FALLBACK_FORWARD_DIST,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
@@ -72,6 +73,13 @@ import {
   SWOOP_PHASE2_MAX_TICKS_PER_FRAME,
   SWOOP_PHASE2_FLOOR_SNAP_METRES,
   SWOOP_PHASE3_FOV_FLOOR_DEGREES,
+  SWOOP_LANDING_FOV_DEGREES,
+  SWOOP_FOV_RAMP_EXPONENT,
+  DEFAULT_MAP_FOV_DEGREES,
+  PHASE3_FOV_WIDE_CAP_DEGREES,
+  REAIM_FADE_NEAR_METRES,
+  REAIM_FADE_FAR_METRES,
+  PHASE3_REAIM_NDC_EPS,
   DEFAULT_OVERVIEW_TILT_DEGREES,
   NORTH_AXIS,
   NORTH_BEARING_FROM_MINUS_Z,
@@ -94,10 +102,14 @@ import {
   fovFactorForTicks,
   cappedDollyStep,
   levelForwardAnchor,
+  lateralCap,
+  classifySwoopTickTarget,
+  reaimWeight,
   shiftRotateStep,
   decideSwoopPhase,
   phase2TargetTilt,
   phase2AscentTilt,
+  swoopLandingFov,
   phase2HeightFrac,
   nextZoomUndo,
   phase2NextElevation,
@@ -231,11 +243,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // the tuning component.
     this._mapPivotBoundsRadius = MAP_PIVOT_BOUNDS_RADIUS_METRES;
 
-    // TASK-014d: cap on the HORIZONTAL component of one wheel-zoom dolly
-    // tick (metres). Bounds the LT-1 shallow-tilt lurch without throttling
-    // straight-down descent. Live value, overridable via the tuning
-    // component (wheelZoomLateralCapMetres → setWheelZoomLateralCap).
-    this._wheelZoomLateralCap = WHEEL_ZOOM_LATERAL_CAP_METRES;
+    // TASK-014d / TASK-027 Part F: lower bound on the per-tick wheel-zoom
+    // lateral cap. The live cap is `max(lowerBound, 0.1×AGL)` (navMath.
+    // lateralCap), so it scales with height; this lower bound governs near the
+    // ground and on the no-AGL Ctrl+wheel path. Live value, overridable via
+    // the tuning component (wheelZoomLateralCapLowerBoundMetres →
+    // setWheelZoomLateralCap).
+    this._wheelZoomLateralCapLowerBound = WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES;
 
     // TASK-010 (live-Shift, B6): last-known cursor coords, tracked on
     // mousedown and every mousemove so a mid-drag Shift toggle can
@@ -258,6 +272,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // `_tmpQuat` is the minimal-arc rotation applied via premultiply.
     this._tmpV3d = new THREE.Vector3();
     this._tmpQuat = new THREE.Quaternion();
+    // TASK-027 Part B: scratch for the cursor-lock re-aim. `_tmpV3f` holds the
+    // camera→P direction; `_tmpQuatB/C` build the minimal-arc rotation and its
+    // slerp-from-identity; `_reaimRaycaster` is a dedicated raycaster so the
+    // re-aim's baseline-orientation probe never disturbs the CursorAnchor's.
+    // (The target point P is held in the `_phase3Reaim` session, not scratch.)
+    this._tmpV3f = new THREE.Vector3();
+    this._tmpQuatB = new THREE.Quaternion();
+    this._tmpQuatC = new THREE.Quaternion();
+    this._reaimRaycaster = new THREE.Raycaster();
     this._groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     this._anchorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     this._tmpRay = new THREE.Ray();
@@ -287,27 +310,48 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     //     inside the band eases to the default overview on the first
     //     swoop-out, not to a meaningless live tilt read as if it were a real
     //     entry. Mutated only via the nextZoomUndo reducer (never poke fields).
-    //   _phase3FovBaseline — latched on a Phase 2 zoom-in tick that
-    //     clamps to AGL = SWOOP_PHASE2_EXIT_ELEVATION_METRES; cleared on
-    //     Phase 3 zoom-out crossing back to baseline. Null when not in
-    //     Phase 3.
+    //   TASK-027 Part A: the old latched `_phase3FovBaseline` is GONE. The
+    //     street-level wide-FOV cap is now the constant PHASE3_FOV_WIDE_CAP_
+    //     DEGREES (= min(landing, distortion)); the landing FOV is reached by a
+    //     height-driven ramp in Phase 2, not a latch on the floor crossing.
     // See claude/specs/001-phase-3-plan.md.
     this._zoomUndo = {
       valid: false,
       tilt: cameraTiltDegrees(camera),
       fov: camera.fov
     };
-    this._phase3FovBaseline = null;
 
-    // TASK-022: swoop-OUT ascent anchor (atomic pair, the sole stored ascent
-    // state). Captured TOGETHER on the first zoom-out tick of an ascent under
-    // the single `_ascentStartFrac == null` guard, reset to null on any
-    // descent tick / Phase-3 entry / ceiling hand-off so the next ascent
-    // re-captures from the live pose. The ascent TARGET is NOT stored — it is
-    // recomputed per-tick from `_zoomUndo.valid` (safe: the wheel path never
-    // flips `valid` mid-ascent). 014b reads the same anchor for its FOV ramp.
-    this._ascentStartFrac = null;
-    this._ascentStartTilt = null;
+    // TASK-027 Part B: cursor-lock re-aim baseline session, captured lazily on
+    // the first Phase-3 wheel tick and re-captured when the cursor pixel moves.
+    // { baselineQuat, baselineFov, ndc } | null. Cleared on leaving Phase 3 and
+    // on any non-wheel camera move (_clearZoomUndo).
+    this._phase3Reaim = null;
+
+    // TASK-027 Part C: the regime the last Phase-2 zoom-in tick resolved to
+    // ('swoop' | 'dolly' | null). A swoop↔dolly switch clears the zoom-undo
+    // memory (C2 for mixed descents). Reset to null whenever the dispatch
+    // leaves the Phase-2 band, so a stale value can't spuriously clear a fresh
+    // descent's memory.
+    this._lastSwoopRegime = null;
+
+    // TASK-027 Part C-add-2 (live-test "B"): depth (in nominal ticks, a float
+    // under TASK-014a's continuous model) of the current break-out dolly
+    // excursion — how far the camera has dollied toward a wall since the last
+    // swoop tick. Zoom-out unwinds this back to 0 (dolly back to the rail)
+    // before resuming the swoop ascent. Reset on a swoop tick / leaving the
+    // band / non-wheel move.
+    this._breakoutDollyDepth = 0;
+
+    // TASK-022 / TASK-027 Part A (L4): swoop-OUT ascent anchor, the sole stored
+    // ascent state — the three fields bundled into ONE struct `{ frac, tilt,
+    // fov } | null` so they cannot desync. null = no ascent in progress.
+    // Captured TOGETHER on the first zoom-out tick of an ascent (under the
+    // `== null` guard), nulled together on any descent tick / Phase-3 entry /
+    // ceiling hand-off / swoop↔dolly regime switch, so the next ascent
+    // re-captures from the live pose. The ascent TARGET (tilt + fov) is NOT
+    // stored — recomputed per-tick from `_zoomUndo.valid` (safe: the wheel path
+    // never flips `valid` mid-ascent).
+    this._ascentAnchor = null;
 
     // Last ground height found directly below the camera by the AGL probe
     // (TASK-013). Held through probe misses so the inferred ground stays
@@ -652,13 +696,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._mapPivotBoundsRadius = THREE.MathUtils.clamp(metres, 1, 100000);
   }
 
-  // TASK-014d: live-tunable cap on the horizontal component of one
-  // wheel-zoom dolly tick (metres). Relayed from the tuning component.
+  // TASK-014d / TASK-027 Part F: live-tunable LOWER BOUND of the wheel-zoom
+  // lateral cap (metres). The live cap is `max(lowerBound, 0.1×AGL)`. Relayed
+  // from the tuning component (wheelZoomLateralCapLowerBoundMetres).
   setWheelZoomLateralCap(metres) {
     if (typeof metres !== 'number' || !isFinite(metres) || metres <= 0) {
       return;
     }
-    this._wheelZoomLateralCap = metres;
+    this._wheelZoomLateralCapLowerBound = metres;
   }
 
   // TASK-010 (D-LT-3 / #6): live-tunable Shift+LB rotation speed
@@ -2214,20 +2259,67 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       const sign = this._wheelAccum > 0 ? 1 : -1;
       const regime = this._decideWheelRegime();
       if (regime === 'swoop') {
-        // A1: only fire the swoop on a WHOLE available tick AND with rate-cap
-        // headroom. A sub-tick remainder (e.g. 0.3) must NOT drive a full
-        // whole-tick descent — that would over-descend and flip the
-        // accumulator sign, oscillating. Carry it to a later frame instead.
-        if (swoopTicksLeft < 1 || Math.abs(this._wheelAccum) < 1) break;
-        this._applyPhase2WheelTick(sign); // whole-tick internals unchanged
-        this._wheelAccum -= sign; // consume one whole tick
-        swoopTicksLeft -= 1;
-        changed = true;
+        // TASK-027 Part C: within the swoop band, a zoom-IN craning UP at a
+        // solid wall / open sky breaks out to a cursor dolly; a zoom-OUT
+        // unwinds any such break-out excursion back to the rail (Part C-add-2
+        // "B") before resuming the swoop ascent.
+        let breakout;
+        if (sign < 0) {
+          const r = this._classifyPhase2Target();
+          this._notePhase2Regime(r);
+          breakout = r === 'dolly';
+        } else {
+          breakout = this._breakoutDollyDepth > EPS_TICK;
+        }
+        if (breakout) {
+          // Continuous break-out dolly. On the way out, cap the step at the
+          // remaining excursion depth so it lands back on the rail and the
+          // remainder re-dispatches to the swoop ascent next iteration.
+          const t =
+            sign < 0
+              ? this._wheelAccum
+              : Math.min(this._wheelAccum, this._breakoutDollyDepth);
+          const tApplied = this._applyBreakoutDolly(t);
+          if (tApplied === 0) break;
+          this._wheelAccum -= tApplied;
+          if (sign < 0) this._breakoutDollyDepth += Math.abs(tApplied);
+          else {
+            this._breakoutDollyDepth = Math.max(
+              0,
+              this._breakoutDollyDepth - Math.abs(tApplied)
+            );
+          }
+          changed = true;
+        } else {
+          // A1: only fire the swoop on a WHOLE available tick AND with rate-cap
+          // headroom. A sub-tick remainder (e.g. 0.3) must NOT drive a full
+          // whole-tick descent — carry it to a later frame instead.
+          if (swoopTicksLeft < 1 || Math.abs(this._wheelAccum) < 1) break;
+          // TASK-027 Part D: restore the entry zoom-undo memory when the swoop
+          // is reached without a Phase-1 boundary capture (the no-ground
+          // free-descent bypass). Guarded by `!valid` ⇒ a no-op once captured.
+          if (sign < 0 && !this._zoomUndo.valid) {
+            this._zoomUndo = nextZoomUndo(this._zoomUndo, {
+              type: 'wheel-in-crossing',
+              tilt: cameraTiltDegrees(this._camera),
+              fov: this._camera.fov
+            });
+          }
+          this._applyPhase2WheelTick(sign); // whole-tick internals unchanged
+          this._wheelAccum -= sign; // consume one whole tick
+          swoopTicksLeft -= 1;
+          this._breakoutDollyDepth = 0; // a swoop tick commits the excursion
+          changed = true;
+        }
       } else {
-        // high / lowtilt / fov: apply the ENTIRE remaining accumulator as one
-        // continuous step, unless a zoom-in crosses the phase1→phase2 boundary
-        // (then only up to the boundary; the remainder re-dispatches to the
-        // swoop next iteration). Returns the ticks actually consumed.
+        // high / lowtilt / fov: leaving the swoop band — reset the Part-C
+        // excursion + regime tracker so a stale value can't spuriously clear a
+        // fresh descent's memory. Apply the ENTIRE remaining accumulator as one
+        // continuous step (a zoom-in crossing phase1→phase2 stops at the
+        // boundary; the remainder re-dispatches to the swoop). Returns the
+        // ticks actually consumed.
+        this._lastSwoopRegime = null;
+        this._breakoutDollyDepth = 0;
         const tApplied = this._applyContinuousHighStep(this._wheelAccum, regime);
         if (tApplied === 0) break; // safety: no progress → stop (no spin)
         this._wheelAccum -= tApplied;
@@ -2276,11 +2368,74 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         : 'high';
     }
     const yAgl = camera.position.y - this._frameGroundY;
-    const phase = decideSwoopPhase(yAgl);
+    let phase = decideSwoopPhase(yAgl);
+    // TASK-027 (live-test #3): float-robust / sticky street level — AGL within
+    // a sub-centimetre tolerance of the floor counts as Phase 3 ('fov'), so a
+    // rounding ulp at the just-landed boundary (`(groundY+1.5)−groundY` can
+    // round to `1.5+ulp`) can't route a street FOV-zoom-out into an immediate
+    // reverse swoop. 1 cm shift, imperceptible for swoop entry.
+    if (phase === 'phase2' && yAgl <= SWOOP_PHASE2_EXIT_ELEVATION_METRES + 0.01) {
+      phase = 'phase3';
+    }
     if (phase === 'phase2') return 'swoop';
     if (phase === 'phase3') return 'fov';
     // phase1: tilt-conditional split (LIVE — read instantaneous tilt).
     return cameraTiltDegrees(camera) <= this._tiltThreshold ? 'lowtilt' : 'high';
+  }
+
+  // TASK-027 Part C: classify the current cursor target as a swoop landing
+  // surface or a break-out dolly target. Resolves the cursor anchor (with the
+  // additive hit normal) + camera look-direction and defers the cut to
+  // navMath.classifySwoopTickTarget.
+  _classifyPhase2Target() {
+    const hit = this._cursorAnchor.worldPointAt(
+      this._lastWheelClientX,
+      this._lastWheelClientY,
+      { maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES }
+    );
+    const isSolidFloor =
+      hit.source === 'mesh' ? isSolidFloorHit(hit.raw) : true;
+    // Break out only when craning UP at a wall/sky — looking down/level always
+    // swoops (Part C-add-1). Tilt < 0 ⇒ looking above horizontal.
+    const lookingUp = cameraTiltDegrees(this._camera) < 0;
+    return classifySwoopTickTarget({
+      source: hit.source,
+      normalY: hit.normal ? hit.normal.y : null,
+      isSolidFloor,
+      lookingUp
+    });
+  }
+
+  // TASK-027 Part C.3: a swoop↔dolly regime switch mid-descent is an intent
+  // change — invalidate the transient zoom-undo memory (C2) and drop any
+  // ascent anchor. Per-tick; no latched mode.
+  _notePhase2Regime(regime) {
+    if (this._lastSwoopRegime != null && regime !== this._lastSwoopRegime) {
+      this._clearZoomUndo();
+      this._ascentAnchor = null;
+    }
+    this._lastSwoopRegime = regime;
+  }
+
+  // TASK-027 Part C-add-2: one continuous break-out dolly step of `t` nominal
+  // ticks (the same cursor-anchored dolly as Phase 1, but WITHOUT the
+  // phase1→phase2 entry-boundary clamp — we are already inside the band). The
+  // caller tracks the excursion depth and caps the unwind. Returns the ticks
+  // applied (== t, or 0 if no cursor latch / no real anchor and vertical sky).
+  _applyBreakoutDolly(t) {
+    const camera = this._camera;
+    const x = this._lastWheelClientX;
+    const y = this._lastWheelClientY;
+    if (x == null || y == null) return t; // no cursor latch → consume, no-op
+    let hit = this._cursorAnchor.worldPointAt(x, y, {
+      maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES
+    });
+    if (hit.source !== 'mesh' && hit.source !== 'ground') {
+      hit = levelForwardAnchor(camera, FALLBACK_FORWARD_DIST);
+      if (hit == null) return t; // near-vertical at sky → consume, no move
+    }
+    this._dollyAlongRay(dollyFactorForTicks(t, ZOOM_PER_WHEEL_TICK), hit);
+    return t;
   }
 
   // TASK-014a (#6 Option B): apply `t` nominal ticks of high/lowtilt/FOV zoom
@@ -2298,38 +2453,34 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const sign = t > 0 ? 1 : -1;
 
     if (regime === 'fov') {
-      // Phase 3 — FOV-only. Continuous reciprocal factor, clamped to
-      // [floor, baseline]. A2: the return rule is split by sign so a remainder
-      // is never left stuck in the FOV regime (which would spin _drainWheel).
-      //
-      // Zoom-out at/above baseline FOV → ACTIVE hand-off to the swoop, exactly
-      // as the old _applyPhase3WheelTick did. Just returning the remainder
-      // would re-dispatch to 'fov' forever (the camera y hasn't changed, so
-      // _decideWheelRegime still says 'fov'); the swoop's zoom-out kick-start
-      // is what raises AGL out of phase3. Consume ONE whole tick via the swoop.
-      if (
-        sign > 0 &&
-        this._phase3FovBaseline != null &&
-        camera.fov >= this._phase3FovBaseline
-      ) {
-        this._phase3FovBaseline = null;
-        this._applyPhase2WheelTick(sign); // whole-tick swoop kick-start
-        return sign; // one whole tick consumed
-      }
-      // Lazy baseline latch (Phase 3 entered without Phase 2 latching it —
-      // e.g. a saved scene at y < floor).
-      if (this._phase3FovBaseline == null) {
-        this._phase3FovBaseline = camera.fov;
-      }
-      const baseline = this._phase3FovBaseline;
+      // Phase 3 — FOV zoom at street level (TASK-027 Parts A + B; continuous
+      // per TASK-014a). Part A: the wide end is the constant
+      // PHASE3_FOV_WIDE_CAP_DEGREES (no per-entry latched baseline). Part B:
+      // the world point under the cursor is PINNED as FOV changes by re-aiming
+      // the camera (_applyPhase3Reaim). A2: the return rule is split by sign so
+      // a remainder is never left stuck in the FOV regime (which would spin).
+      const fovBefore = camera.fov; // H1: snapshot BEFORE any mutation
+      const cap = PHASE3_FOV_WIDE_CAP_DEGREES;
       const floor = SWOOP_PHASE3_FOV_FLOOR_DEGREES;
+      // Zoom-out at/above the wide cap → ACTIVE hand-off to the swoop (consume
+      // ONE whole tick via the swoop kick-start; just returning the remainder
+      // would re-dispatch to 'fov' forever since camera.y hasn't changed). Ends
+      // the re-aim session (leaving Phase 3 upward).
+      if (sign > 0 && camera.fov >= cap - 1e-6) {
+        this._phase3Reaim = null;
+        this._applyPhase2WheelTick(sign); // whole-tick swoop kick-start
+        return sign;
+      }
       let fov = camera.fov * fovFactorForTicks(t, FOV_PER_WHEEL_TICK);
       if (fov < floor) fov = floor;
-      if (fov > baseline) fov = baseline;
+      if (sign > 0 && fov > cap) fov = cap;
       camera.fov = fov;
       camera.updateProjectionMatrix();
-      // Interior FOV step, or zoom-in pinned at the 15° floor (a genuine dead
-      // end — today's per-tick no-op discards the same way). Consume the
+      // Part B re-aim (skip on Ctrl, or a floored/capped no-op step).
+      if (!this._lastWheelCtrlKey && fov !== fovBefore) {
+        this._applyPhase3Reaim(fovBefore);
+      }
+      // Interior FOV step, or zoom-in pinned at the 15° floor. Consume the
       // ENTIRE remaining `t` so the loop terminates rather than spinning.
       return t;
     }
@@ -2426,20 +2577,30 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
   // Translate the camera along the camera→hit ray by the continuous `factor`
   // (factor < 1 = closer; > 1 = farther), with the HORIZONTAL component of the
-  // translation capped to `this._wheelZoomLateralCap` metres (TASK-014d, via
-  // cappedDollyStep). The cap scales the whole step vector uniformly, so the
-  // move stays on the camera→hit ray (target stays under the cursor) and
-  // reversibility about a fixed target is exact. `factor` is the continuous
-  // generalisation of the old per-tick step (dollyFactorForTicks(t)·
-  // dollyFactorForTicks(−t) === 1). A non-finite step (degenerate grazing ray)
-  // is dropped — the tick is a no-op rather than NaN-ing the camera.
+  // translation capped (TASK-014d, via cappedDollyStep). The cap scales the
+  // whole step vector uniformly, so the move stays on the camera→hit ray
+  // (target stays under the cursor) and reversibility about a fixed target is
+  // exact. `factor` is the continuous generalisation of the old per-tick step
+  // (dollyFactorForTicks(t)·dollyFactorForTicks(−t) === 1). A non-finite step
+  // (degenerate grazing ray) is dropped — a no-op rather than NaN-ing the
+  // camera. TASK-027 Part F: the cap scales with height — max(lowerBound,
+  // 0.1×AGL) — bounding the lurch proportionally; falls to the lower bound on
+  // the no-AGL path (Ctrl+wheel / out of bounds, where AGL is non-finite).
   _dollyAlongRay(factor, hit) {
     const camera = this._camera;
+    const yAgl = this._frameGroundHit
+      ? camera.position.y - this._frameGroundY
+      : NaN;
+    const cap = lateralCap(
+      yAgl,
+      this._wheelZoomLateralCapLowerBound,
+      WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF
+    );
     const newPos = cappedDollyStep({
       camPos: camera.position,
       hit,
       factor,
-      lateralCapMetres: this._wheelZoomLateralCap
+      lateralCapMetres: cap
     });
     if (newPos == null) return; // non-finite step: skip this tick
     camera.position.copy(newPos);
@@ -2513,8 +2674,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // (modulo one cheap extra probe per pass).
   //
   // Boundary handling (all in AGL):
-  //   zoom-in: yAglNext ≤ yFloor → snap to floor, tilt to 0°, latch
-  //     _phase3FovBaseline. Next tick dispatches naturally to Phase 3.
+  //   zoom-in: yAglNext ≤ yFloor → snap to floor, tilt to 0°, FOV eased to the
+  //     landing FOV (Part A). Next tick dispatches naturally to Phase 3.
   //   zoom-in: yAglNext within SWOOP_PHASE2_FLOOR_SNAP_METRES of yFloor →
   //     snap (H6).
   //   zoom-out: yAgl in [0, yFloor + snap] → kick-start to yFloor + snap.
@@ -2549,22 +2710,31 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const ascentTarget = this._zoomUndo.valid
       ? this._zoomUndo.tilt
       : DEFAULT_OVERVIEW_TILT_DEGREES;
+    // TASK-027 Part A: the swoop-OUT FOV target mirrors the tilt — memory valid
+    // → exact FOV undo (the captured entry FOV); else the default map FOV.
+    const ascentTargetFov = this._zoomUndo.valid
+      ? this._zoomUndo.fov
+      : DEFAULT_MAP_FOV_DEGREES;
 
     if (sign > 0) {
       // ASCENT (zoom-out): atomically capture the ascent anchor on the FIRST
       // out-tick of this ascent (the sole writer, under the == null guard).
-      // Both fields set together — no interleaving where one is fresh, one
-      // stale. `yAgl` here is the PRE-step height (matches the camera's live
-      // tilt read below).
-      if (this._ascentStartFrac == null) {
-        this._ascentStartFrac = phase2HeightFrac(yAgl);
-        this._ascentStartTilt = cameraTiltDegrees(camera);
+      // Only the TILT needs an anchor (the user can crane the camera mid-swoop,
+      // so the ascent tilt must start from the live pose without a jump). FOV
+      // can't be perturbed mid-band (only the wheel changes it), so the ascent
+      // FOV is a pure function of height (swoopLandingFov) — no anchor needed.
+      // `yAgl` here is the PRE-step height (matches the camera's live tilt read
+      // below).
+      if (this._ascentAnchor == null) {
+        this._ascentAnchor = {
+          frac: phase2HeightFrac(yAgl),
+          tilt: cameraTiltDegrees(camera)
+        };
       }
     } else {
       // DESCENT (zoom-in): reset the ascent anchor so the next ascent
       // re-captures from the live pose. Descent tilt semantics are unchanged.
-      this._ascentStartFrac = null;
-      this._ascentStartTilt = null;
+      this._ascentAnchor = null;
     }
 
     // Zoom-out kick-start (AGL-relative — WE-7). A FRESH downward probe
@@ -2590,12 +2760,19 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (sign < 0 && yAglNext <= yFloor) {
       camera.position.y = groundY + yFloor; // ← write back
       this._setCameraTiltPreservingYaw(0);
-      this._phase3FovBaseline = camera.fov;
+      // TASK-027 Part A: reach the landing FOV exactly at the floor (no latched
+      // baseline; the wide cap is the PHASE3_FOV_WIDE_CAP_DEGREES constant).
+      camera.fov = swoopLandingFov(
+        yFloor,
+        this._zoomUndo.fov,
+        SWOOP_LANDING_FOV_DEGREES,
+        SWOOP_FOV_RAMP_EXPONENT
+      );
+      camera.updateProjectionMatrix();
       // TASK-022: Phase-3 entry ends any ascent geometry; reset the anchor so
       // a fresh ascent re-captures from the live pose (already null on a
       // descent run, but explicit at the band exit).
-      this._ascentStartFrac = null;
-      this._ascentStartTilt = null;
+      this._ascentAnchor = null;
       camera.updateMatrixWorld();
       // TASK-024a (D1, 1.2.2 / PA-3): the wheel swoop has no onDone — landing
       // IS this Phase-2→3 boundary crossing. DERIVE (don't force-true): the
@@ -2619,10 +2796,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // same target the per-tick ascent ramps toward. A ≤90° single-step arc,
       // applied via the roll-safe re-tilt (antiparallel guard not triggered).
       this._setCameraTiltPreservingYaw(ascentTarget);
-      // Ascent complete at the ceiling: reset the anchor. Above the ceiling
-      // the tilt is the user's to set freely (Phase 1 is tilt-preserving).
-      this._ascentStartFrac = null;
-      this._ascentStartTilt = null;
+      // TASK-027 Part A: set FOV to the ascent target in one step (mirrors the
+      // tilt), so leaving the band upward always restores a sane FOV (entry FOV
+      // if memory valid, else the 60° map default) — closing the stale-FOV
+      // window where a re-descent would read a leftover-narrow `_zoomUndo.fov`.
+      camera.fov = ascentTargetFov;
+      camera.updateProjectionMatrix();
+      // TASK-022: ascent complete at the ceiling: reset the anchor. Above the
+      // ceiling the tilt is the user's to set freely (Phase 1 tilt-preserving).
+      this._ascentAnchor = null;
       camera.updateMatrixWorld();
       this._maybeEmitLbModeChange();
       // Now dispatch a Phase 1 tick. TASK-014d collapsed the tilt split, so
@@ -2645,16 +2827,34 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       this._setCameraTiltPreservingYaw(
         phase2TargetTilt(yAglNext, this._zoomUndo.tilt)
       );
+      // TASK-027 Part A: descent FOV ramp — ease the entry FOV open toward the
+      // landing FOV as AGL falls, back-loaded into the final stretch.
+      camera.fov = swoopLandingFov(
+        yAglNext,
+        this._zoomUndo.fov,
+        SWOOP_LANDING_FOV_DEGREES,
+        SWOOP_FOV_RAMP_EXPONENT
+      );
     } else {
       this._setCameraTiltPreservingYaw(
         phase2AscentTilt(
           yAglNext,
-          this._ascentStartFrac,
-          this._ascentStartTilt,
+          this._ascentAnchor.frac,
+          this._ascentAnchor.tilt,
           ascentTarget
         )
       );
+      // TASK-027 Part A: ascent FOV — a pure function of height (narrow =
+      // ascent target), the SAME curve the descent drew, so an immediate undo
+      // retraces it exactly; no anchor needed (FOV can't be perturbed mid-band).
+      camera.fov = swoopLandingFov(
+        yAglNext,
+        ascentTargetFov,
+        SWOOP_LANDING_FOV_DEGREES,
+        SWOOP_FOV_RAMP_EXPONENT
+      );
     }
+    camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
     // Toolbar visual indicator: Phase 2's tilt lerp crosses the 30°
     // boundary silently from the LB-mode comparator's perspective. Emit
@@ -2670,12 +2870,103 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // zoom-out→Phase-2 baseline hand-off and the lazy baseline latch live
   // there now.)
 
-  // TASK-022: invalidate the transient zoom-undo memory. Call ONLY from a
-  // site that has just committed an actual non-wheel camera move (past its
-  // own no-op early-returns AND any zero-delta gate). Never from the wheel
-  // path. Idempotent (reducer returns valid:false again).
+  // TASK-027 Part B — cursor-lock re-aim. Re-aims the camera so the world point
+  // under the cursor stays pinned to the same screen pixel as FOV changes. The
+  // orientation is rebuilt ABSOLUTELY from a captured baseline pose every tick
+  // (not composed incrementally), so it is a pure function of FOV → exactly
+  // reversible (WE-B2) and unwinds to the entry pose at baseline FOV (B.3). The
+  // exact ordering is load-bearing (H1/H2/H3) — do not reorder:
+  //   FOV already applied + updateProjectionMatrix (caller) →
+  //   copy baselineQuat + updateMatrixWorld → raycast cursor pixel →
+  //   slerp the minimal-arc QUATERNION by the continuity weight → premultiply.
+  _applyPhase3Reaim(fovBefore) {
+    const camera = this._camera;
+    const ndc = this._cursorAnchor.ndcFor(
+      this._lastWheelClientX,
+      this._lastWheelClientY
+    );
+
+    // Baseline session: capture on the first Phase-3 tick; re-capture at the
+    // current pose when the cursor PIXEL moves (a new aim — Δ starts at 0, no
+    // jump). The target world point `P` is resolved ONCE at capture and held
+    // for the whole session (live-test #3 fix): re-resolving the cursor target
+    // every tick breaks the unwind — once the re-aim cranes the camera, the
+    // cursor pixel points somewhere else (e.g. sky above the building), so on
+    // zoom-out it can't find the original target to un-crane back to. A stable
+    // P makes the re-aim a pure function of fov for the session → it unwinds
+    // exactly back to the baseline (street) pose as the FOV widens. (This is
+    // the notes' "first-frame-per-gesture capture"; the spec's WE-B caveat —
+    // tile streaming voids retrace — is the accepted cost.) baselineFov is the
+    // PRE-step FOV (H1).
+    if (
+      !this._phase3Reaim ||
+      ndc.distanceTo(this._phase3Reaim.ndc) > PHASE3_REAIM_NDC_EPS
+    ) {
+      const hit = this._cursorAnchor.worldPointAt(
+        this._lastWheelClientX,
+        this._lastWheelClientY,
+        { maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES }
+      );
+      this._phase3Reaim = {
+        baselineQuat: camera.quaternion.clone(),
+        baselineFov: fovBefore,
+        ndc: ndc.clone(),
+        // No real hit (open sky) at capture → no target to pin this session.
+        targetP:
+          hit.source === 'fallback'
+            ? null
+            : new THREE.Vector3(hit.x, hit.y, hit.z),
+        targetDist: hit.distance
+      };
+    }
+    const reaim = this._phase3Reaim;
+    if (!reaim.targetP) return; // sky aim → centre-anchored FOV change (B.4)
+
+    // camPos is fixed through Phase 3, so the captured P gives a stable aim.
+    const toP = this._tmpV3f
+      .subVectors(reaim.targetP, camera.position)
+      .normalize();
+    if (toP.lengthSq() < 1e-12) return; // P ≈ camera position: nothing to aim at
+
+    // (H2) Re-orient to the BASELINE quat and refresh matrixWorld BEFORE the
+    // raycast, so the cursor-pixel world ray is sampled under (baselineQuat,
+    // NEW fov) — not the previous tick's premultiplied orientation.
+    camera.quaternion.copy(reaim.baselineQuat);
+    camera.updateMatrixWorld();
+    this._reaimRaycaster.setFromCamera(reaim.ndc, camera);
+    const rayDir = this._reaimRaycaster.ray.direction; // unit, world space
+
+    // (M4) Continuity weight: fade re-aim to 0 as the target recedes toward the
+    // horizon, so the façade → sky crossing is continuous. (H3) Scale the
+    // QUATERNION via slerp from identity — never lerp the directions (that would
+    // change the axis with the weight and break reversibility).
+    const w = reaimWeight(
+      reaim.targetDist,
+      REAIM_FADE_NEAR_METRES,
+      REAIM_FADE_FAR_METRES
+    );
+    const fullArc = this._tmpQuatB.setFromUnitVectors(rayDir, toP);
+    const delta = this._tmpQuatC.identity().slerp(fullArc, w);
+    camera.quaternion.premultiply(delta);
+    camera.quaternion.normalize();
+    camera.updateMatrixWorld();
+  }
+
+  // TASK-022: invalidate the transient zoom-undo memory. Call from a site that
+  // has just committed an actual non-wheel camera move (past its own no-op
+  // early-returns AND any zero-delta gate). Idempotent (reducer returns
+  // valid:false again). TASK-027 Part C.3 adds ONE wheel-path caller: a
+  // swoop↔dolly regime switch mid-descent (`_notePhase2Regime`) is a
+  // deliberate intent change that clears the memory — the only sanctioned
+  // wheel-path call.
   _clearZoomUndo() {
     this._zoomUndo = nextZoomUndo(this._zoomUndo, { type: 'non-wheel-move' });
+    // TASK-027: a real non-wheel move also ends any in-flight cursor-lock
+    // re-aim session (Part B) and any Phase-2 descent regime run (Part C) —
+    // the camera is no longer where the captured baseline/regime assumed.
+    this._phase3Reaim = null;
+    this._lastSwoopRegime = null;
+    this._breakoutDollyDepth = 0;
   }
 
   // Apply a tilt (in degrees from horizontal, positive = looking down)

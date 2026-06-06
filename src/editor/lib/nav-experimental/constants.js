@@ -17,8 +17,11 @@ export const MAX_TILT_DEGREES = 89;
 // is held on the controls instance (`_tiltThreshold`) and is overridable
 // at runtime via the `nav-experimental-tuning` A-Frame component (D2).
 // Cut is on absolute angle from horizontal — looking up by any amount is
-// below T. Lowered from the old 30° to 18° per the mid-project review.
-export const TILT_THRESHOLD_DEFAULT_DEGREES = 18;
+// below T. Lowered from the old 30° to 18° per the mid-project review, then
+// raised 18° → 25° (TASK-027 Part E, Diarmid's call): 18° was too low a
+// boundary for the low-tilt regime. Stays runtime-tunable via
+// `nav-experimental-tuning` so end-user testing can re-tune it.
+export const TILT_THRESHOLD_DEFAULT_DEGREES = 25;
 
 // TASK-024 — solid-geometry prevention & recovery. All metres / degrees.
 // Starting values from the SPEC; tunable.
@@ -181,8 +184,16 @@ export const FALLBACK_FORWARD_DIST = 30;
 // not silently track ZOOM_PER_WHEEL_TICK — re-feel-test after TASK-014a
 // changes the base step size. Separate knob from the orbit-pivot bounds
 // (different origin: camera nadir vs screen-centre ground point).
-// Live-tunable via nav-experimental-tuning (wheelZoomLateralCapMetres).
-export const WHEEL_ZOOM_LATERAL_CAP_METRES = 15; // 10–25 expected; feel
+// Live-tunable via nav-experimental-tuning.
+//
+// TASK-027 Part F: the cap is no longer a fixed 15 m — it scales with height,
+// `lateralCap(yAgl) = max(LOWER_BOUND, COEFF × yAgl)` (see navMath.lateralCap).
+// The lower bound keeps it usable near the ground (and on the Ctrl+wheel /
+// out-of-bounds path that has no AGL — it falls back to the lower bound). The
+// lower bound is the live-tunable knob (`wheelZoomLateralCapLowerBoundMetres`);
+// the coefficient is a constant re-tuned here.
+export const WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES = 2; // 1–2; feel
+export const WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF = 0.1;
 
 // TASK-014d: per-caller far-ground reach ceiling for the wheel-zoom path.
 // Far above any real scene (1000 km) but well short of float overflow, so
@@ -264,6 +275,45 @@ export const SWOOP_PHASE2_FLOOR_SNAP_METRES = 1.0;
 // Phase 3 FOV floor (degrees). Further zoom-in ticks at the floor are
 // no-ops.
 export const SWOOP_PHASE3_FOV_FLOOR_DEGREES = 15;
+
+// TASK-027 Part A (delivers 014b) — landing FOV / sense of arrival.
+//   SWOOP_LANDING_FOV_DEGREES — the FOV the descent eases open to as the swoop
+//     lands at street level (height-driven, not latched). The world "opens up".
+//   DEFAULT_MAP_FOV_DEGREES — the swoop-OUT FOV target when the transient
+//     zoom-undo memory is cleared (mirrors DEFAULT_OVERVIEW_TILT_DEGREES for
+//     FOV: memory valid → exact FOV undo, memory cleared → this default).
+//   FOV_DISTORTION_LIMIT_DEGREES — beyond here the perspective reads as
+//     fisheye; the wheel's wide end is capped below it.
+//   PHASE3_FOV_WIDE_CAP_DEGREES — the street-level zoom's wide end. Expressed
+//     as min(landing, distortion) so retuning either constant stays coherent.
+//     Replaces the old per-entry latched `_phase3FovBaseline` (a constant now).
+export const SWOOP_LANDING_FOV_DEGREES = 75;
+export const DEFAULT_MAP_FOV_DEGREES = 60;
+export const FOV_DISTORTION_LIMIT_DEGREES = 85;
+export const PHASE3_FOV_WIDE_CAP_DEGREES = Math.min(
+  SWOOP_LANDING_FOV_DEGREES,
+  FOV_DISTORTION_LIMIT_DEGREES
+);
+// SWOOP_FOV_RAMP_EXPONENT — concentrates the FOV "opening up" near the FLOOR
+// (the sense of arrival) instead of spreading it linearly across the band. The
+// pedestal descent is exponential (fast at the top, asymptotically slow near
+// the floor), so a height-LINEAR FOV ramp does ~all its widening at the top and
+// almost none at the bottom (live-test #2: "odd at the start, nothing at the
+// end"). FOV = narrow + (wide−narrow)·(1−heightFrac)^exponent: with exponent 3
+// the widening is back-loaded into the final stretch of the descent. Feel-tune.
+export const SWOOP_FOV_RAMP_EXPONENT = 3;
+
+// TASK-027 Part B — cursor-locked street-level FOV zoom (camera re-aim).
+//   REAIM_FADE_{NEAR,FAR}_METRES — the cursor-target distance band over which
+//     the re-aim magnitude fades to zero (1 below NEAR, 0 above FAR), so a far
+//     façade → sky crossing is continuous rather than a hard switch to the
+//     no-re-aim fallback (M4 / WE-D2). Fade completes well before
+//     WHEEL_GROUND_REACH_CEILING_METRES.
+//   PHASE3_REAIM_NDC_EPS — cursor-moved threshold (in NDC units) above which
+//     the re-aim baseline pose is re-captured at the current pose (a new aim).
+export const REAIM_FADE_NEAR_METRES = 300;
+export const REAIM_FADE_FAR_METRES = 800;
+export const PHASE3_REAIM_NDC_EPS = 1e-4;
 
 // TASK-011 compass.
 

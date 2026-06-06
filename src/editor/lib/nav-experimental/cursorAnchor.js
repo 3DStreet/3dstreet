@@ -249,6 +249,16 @@ export class CursorAnchor {
   // WHEEL_GROUND_REACH_CEILING_METRES) so a legitimate far/straight-down
   // ground hit is kept; a degenerate Float.MAX grazing-ray hit still
   // exceeds even the raised ceiling and falls to Step 3 'fallback'.
+  // TASK-027: NDC for a client pixel. Factored out of worldPointAt so the
+  // Part-B re-aim path can resolve the cursor pixel without a full raycast
+  // (one source of truth for the rect math). Returns a fresh THREE.Vector2.
+  ndcFor(clientX, clientY) {
+    const rect = this._domElement.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    return new THREE.Vector2(x, y);
+  }
+
   worldPointAt(clientX, clientY, opts = {}) {
     const maxGroundDist =
       opts.maxGroundDist != null ? opts.maxGroundDist : MAX_GROUND_DIST;
@@ -259,14 +269,22 @@ export class CursorAnchor {
     this._ndc.set(x, y);
     this._raycaster.setFromCamera(this._ndc, camera);
 
-    // Step 1: scene mesh raycast.
+    // Step 1: scene mesh raycast. TASK-027: `_raycastScene` now returns the
+    // full THREE.Intersection (was `hit.point`), so Part C can read the face
+    // normal and Part B can classify the surface. The returned object stays
+    // FLAT { x, y, z, source, ... } — `normal`/`distance`/`raw` are additive
+    // siblings; existing callers (LB-pan, orbit-pivot, the dolly) read only
+    // x/y/z/source and are unaffected.
     const meshHit = this._raycastScene();
     if (meshHit) {
       return {
-        x: meshHit.x,
-        y: meshHit.y,
-        z: meshHit.z,
-        source: 'mesh'
+        x: meshHit.point.x,
+        y: meshHit.point.y,
+        z: meshHit.point.z,
+        source: 'mesh',
+        normal: worldHitNormal(meshHit), // world-space face normal, +Y fallback
+        distance: meshHit.distance,
+        raw: meshHit // THREE.Intersection — for isSolidFloorHit (Part C)
       };
     }
 
@@ -286,7 +304,9 @@ export class CursorAnchor {
           x: groundHit.x,
           y: groundHit.y,
           z: groundHit.z,
-          source: 'ground'
+          source: 'ground',
+          normal: new THREE.Vector3(0, 1, 0), // horizontal by construction
+          distance: dist
         };
       }
     }
@@ -301,10 +321,15 @@ export class CursorAnchor {
       x: fp.x,
       y: fp.y,
       z: fp.z,
-      source: 'fallback'
+      source: 'fallback',
+      distance: FALLBACK_FORWARD_DIST
     };
   }
 
+  // TASK-027: returns the full THREE.Intersection of the nearest non-excluded
+  // scene mesh hit (was `hit.point`), or null. The extra fields (face, object,
+  // distance) feed worldHitNormal + isSolidFloorHit for the Part-C swoop
+  // break-out classifier.
   _raycastScene() {
     if (!this._sceneEl || !this._sceneEl.object3D) return null;
     const intersects = this._raycaster.intersectObject(
@@ -313,7 +338,7 @@ export class CursorAnchor {
     );
     for (const hit of intersects) {
       if (!_isExcludedObject(hit.object)) {
-        return hit.point;
+        return hit;
       }
     }
     return null;
