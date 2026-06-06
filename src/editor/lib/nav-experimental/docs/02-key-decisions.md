@@ -12,119 +12,106 @@ negative = looking up. *AGL* = height above the solid surface directly
 below the camera (a per-column downward raycast), as distinct from
 absolute `camera.y`. See `04-glossary.md` for the full vocabulary.
 
-Decision IDs are `KD-NN`. They talk in terms of the *range within which a
-threshold delivers* its goal; the canonical numbers live only in
-`03-configurable-thresholds.md` (referenced as `TH-NN`). Each decision
-notes the pre-existing code/spec identifier(s) it was tracked under.
+Decisions are identified `KD-NN`. They talk in terms of the *range
+within which a threshold delivers* its goal; the canonical numbers live
+only in `03-configurable-thresholds.md` (referenced as `TH-NN`).
 
 ---
 
 ## A. Foundations
 
 ### KD-01 — Coexist behind a URL flag, don't replace the old controls
-*(overall-plan decision 1)*
 
 The new control system activates only under `?nav=experimental`; with the
 flag off, the stock `THREE.EditorControls` are untouched. The alternative
-— replacing the old controls outright on the `navigation` branch — was
-rejected because the flag is cheap insurance and, more importantly,
-enables **side-by-side feel comparisons** of old vs new in one session.
-Consequence: the new controls must mirror the `EditorControls` public API
-(`focus`, `resetZoom`, `newSceneCameraZoom`, `setCamera`,
-`setAspectRatio`, `change` events, ortho fallback) so `viewport.js` and
-the ActionBar can drive either interchangeably.
+— replacing the old controls outright — was rejected because the flag is
+cheap insurance and, more importantly, enables **side-by-side feel
+comparisons** of old vs new in one session. Consequence: the new controls
+must mirror the `EditorControls` public API (`focus`, `resetZoom`,
+`newSceneCameraZoom`, `setCamera`, `setAspectRatio`, `change` events,
+ortho fallback) so `viewport.js` and the ActionBar can drive either
+interchangeably.
 
-### KD-02 — Two tilt regimes split on a single threshold T; the scene-aware "diorama" model was retired
-*(TASK-010; supersedes the original proposal's three-rule model)*
+### KD-02 — Two tilt regimes split on a single threshold T
 
-The original proposal chose the rotation pivot from a **three-way rule**
-(orbit the screen-centre point / orbit the scene as a diorama / orbit the
-camera) selected from tilt **and** whether the camera was inside or
-outside the scene's footprint, with a blend band and distance feathering.
-Feel-testing and the mid-project review with Kieran converged on: *too
-clever*. Users don't model their scene as a bounded diorama they orbit;
-they model it as "rotate around the thing I'm pointing at" (looking down)
-or "look around from where I'm standing" (near eye level).
-
-The shipped model has **two regimes** selected on **tilt alone**, split
-at threshold **T** (`TH-03`, working range 15–35°):
+Rotation, the LB sub-mode, and the wheel cut are selected on **tilt
+alone**, split at threshold **T** (`TH-03`):
 
 - **Map mode** (tilt > T): looking down at the scene as on a map.
 - **Street mode** (tilt ≤ T): at/near eye level, looking along the scene.
   Looking up is always Street mode.
 
-The entire "finite scene boundary" concept — the inside/outside test, the
-scene-centre pivot, the blend band, the distance feather, and the
-"you're inside/outside the scene" indicator — was **removed**. This is
-the single largest simplification in the project and the reason the
+The rejected alternative was a multi-rule, scene-aware pivot scheme that
+also asked whether the camera was inside or outside the scene's footprint
+and treated a bounded scene as a "diorama" you orbit about its centre,
+with a blend band between rules. Feel-testing found it too clever: users
+model rotation as "spin around the thing I'm pointing at" (looking down)
+or "look around from where I stand" (eye level), not "orbit my scene as a
+museum diorama." The entire finite-scene-boundary concept — the
+inside/outside test, the scene-centre pivot, the blend band, and the
+"you're inside/outside the scene" indicator it would have driven — was
+**removed**. This is the largest simplification in the system; the
 `SceneBounds` cylinder now survives only to frame Plan View.
 
 ### KD-05 — One threshold T governs all four tilt-conditional behaviours, and is runtime-tunable
-*(TASK-010 D2)*
 
 T is not four separate cutoffs. The **same** value gates: the LB
 truck/dolly-vs-pedestal sub-mode, the wheel cursor-anchored-vs-dolly cut,
 the rotation regime (Map/Street), and the letterbox indicator. Unifying
 them means there is one number to reason about and tune. T is surfaced on
 an A-Frame component schema (`TH-03` is one of only four runtime-live
-knobs) because Diarmid needed to retune it during feel-testing without a
-rebuild. Accepted consequence of unification: lowering T also lowers the
-wheel-zoom cursor-anchor cut, widening the "cursor over empty sky anchors
-oddly" band — accepted as a tuning tradeoff.
+knobs) so it can be retuned during feel-testing without a rebuild.
+Accepted consequence of unification: lowering T also lowers the
+wheel-zoom cursor-anchor cut, slightly widening the band in which "cursor
+over empty sky anchors oddly."
 
 ### KD-07 — Keep the hand-rolled orbit math; do not adopt a camera-control library
-*(TASK-016)*
 
 Evaluated `THREE.OrbitControls`, `MapControls`, and `camera-controls`
-against the revised model. Decision: **keep hand-rolled**, but *not*
-because a library can't do it. OrbitControls/MapControls genuinely can't
-express KD-03's decoupled orbit (their `lookAt(target)` invariant *is*
-the rejected snap-to-centre). `camera-controls` **can** (its
-`setFocalOffset` holds an off-centre pivot through the orbit). The
-decision rests on **scope and integration cost**: only ~150 of the
-~3,800-line subsystem is "orbit math" a library competes with; the swoop,
-AGL probing, hit-anchored truck/pedestal, WASD, tweens, indicators, and
-the `EditorControls` adapter all stay hand-rolled regardless — and they
-write the camera directly every tick, which would fight a library's
-internal `update()` (a two-master problem). Re-open this only if
-**mobile/touch camera-editing** becomes a goal (`camera-controls` ships
-multi-touch) or if the model ever drops KD-03 for a locked-on turntable.
+against this model. Decision: **keep hand-rolled**, but *not* because a
+library can't do it. OrbitControls/MapControls genuinely can't express
+KD-03's decoupled orbit (their `lookAt(target)` invariant *is* the
+rejected snap-to-centre). `camera-controls` **can** (its `setFocalOffset`
+holds an off-centre pivot through the orbit). The decision rests on
+**scope and integration cost**: only a small slice (~150 lines) of the
+subsystem is "orbit math" a library competes with; the swoop, AGL
+probing, hit-anchored truck/pedestal, WASD, tweens, indicators, and the
+`EditorControls` adapter all stay hand-rolled regardless — and they write
+the camera directly every tick, which would fight a library's internal
+`update()` (a two-master problem). Re-open only if **mobile/touch
+camera-editing** becomes a goal (`camera-controls` ships multi-touch) or
+if the model ever drops KD-03 for a locked-on turntable.
 
 ---
 
 ## B. Rotation
 
 ### KD-03 — Map-mode rotation is a decoupled free-look orbit, not a locked-on turntable
-*(TASK-010 D1)*
 
 When you Shift+LB in Map mode, the camera orbits the latched cursor world
 point, but your **framing of that point is preserved** — it keeps its
 place in your view; the camera does **not** snap to stare straight at it.
 The rejected alternative (a turntable that snaps the pivot to screen
-centre on first move) was tried, reported, and removed. Mechanically this
-is realised by composing yaw+pitch into a **single** rotation `R` applied
-to *both* the camera's position-offset-from-pivot and its view direction,
-so the pivot's position in the camera frame is invariant at any tilt. An
-earlier version applied spherical pitch to the two vectors independently,
-which drifted the pivot across the screen (reports/010-testing #1) and
-was the bug that forced the single-`R` formulation.
+centre on first move) felt wrong. Mechanically this is realised by
+composing yaw+pitch into a **single** rotation `R` applied to *both* the
+camera's position-offset-from-pivot and its view direction, so the
+pivot's position in the camera frame is invariant at any tilt. The
+obvious-but-wrong approach — applying spherical pitch to the two vectors
+independently — drifts the pivot across the screen, which is why the
+single-`R` formulation is used.
 
 ### KD-04 — Hard switch at T, no blend band
-*(TASK-010 D3)*
 
 The regime (and the LB sub-mode) switches cleanly at T with no
-interpolation. The proposal's 20–30° weighted blend was dropped with the
-diorama model. The regime is read at the instant each gesture (or
+interpolation. The regime is read at the instant each gesture (or
 sub-gesture) begins and **latched for its duration** — so a drag that
 starts in Map mode keeps orbiting the cursor pivot even if you tilt below
 T mid-drag. Accepted consequence (worth watching in feel-test): a Street
-drag that tilts down past T keeps rotating in place until you release. A
-concrete re-add-the-blend trigger is recorded rather than an open
-"revisit later": if releasing a Map rotate and re-engaging just below T
-produces a pivot-location jump that feels wrong.
+drag that tilts down past T keeps rotating in place until you release. The
+concrete trigger to reconsider a blend: if releasing a Map rotate and
+re-engaging just below T produces a pivot-location jump that feels wrong.
 
 ### KD-06 — Shift is live mid-drag
-*(TASK-010 B6)*
 
 Whether an LB drag is a truck or a rotate is **not** latched at
 mouse-down. Pressing/releasing Shift mid-drag switches the gesture
@@ -137,27 +124,25 @@ recovery in KD-17 handles that), and why collision prevention can't rely
 on the gesture type being fixed.
 
 ### KD-29 — Map-orbit underground guard caps the input tilt, reversibly
-*(TASK-010 D4; subsumes TASK-020)*
 
 Because the orbit is decoupled (KD-03), the tilt clamp limits where you
 *look*, not where the camera *sits* — so a Map orbit around a low pivot
 can swing the camera below ground. The guard constrains the **resulting
 camera height** (≥ floor + eye margin) by numerically tightening the
 *input* tilt bound, so over-dragging past the floor never accumulates and
-reversing the drag retraces exactly. This replaced an earlier "y-shove"
-that pushed the camera up — a non-reversible correction that taught the
-project the "don't add unrequested motion" lesson (KD-17).
+reversing the drag retraces exactly. The rejected alternative — shoving
+the camera up when it breached the floor — was non-reversible and added
+motion the user didn't ask for, which is the lesson behind KD-17.
 
 ---
 
 ## C. The swoop (wheel zoom)
 
-### KD-08 — Wheel zoom is a 3-phase swoop gated on AGL; Phase-2 cursor anchoring was dropped
-*(001-phase-3-plan; AGL from TASK-013)*
+### KD-08 — Wheel zoom is a 3-phase swoop gated on AGL; the transition phase has no cursor anchoring
 
 A single continuous wheel gesture carries the camera from birds-eye to
 street level through three phases selected by **height above ground**
-(AGL, not absolute `camera.y` — TASK-013):
+(AGL, not absolute `camera.y`):
 
 - **Phase 1** (AGL above `TH-22`): cursor-anchored dolly (tilt-conditional
   per KD-05); the world point under the cursor stays under the cursor.
@@ -165,19 +150,17 @@ street level through three phases selected by **height above ground**
   horizontal. **No cursor anchoring.**
 - **Phase 3** (AGL ≤ `TH-23`): FOV-only zoom; the camera doesn't move.
 
-The proposal called for cursor anchoring to continue *through* Phase 2.
-It was **deliberately removed**: as tilt flattens through the descent the
-cursor ray flattens too, the anchored solver fails near the horizon, and
-it flickers between anchored and pure-pedestal per tick. Since Phase 1
-already did the horizontal positioning, in-swoop anchoring buys little.
-Tradeoff accepted: you land directly below your Phase-2 entry position
-and LB-truck/WASD to fine-tune. Phase dispatch is on **elevation first,
-then tilt** — the reverse order silently routes Phase-2 ticks into the
-low-tilt dolly the moment the tilt lerp drops below T, aborting the
-swoop.
+Cursor anchoring is deliberately *not* carried through Phase 2: as tilt
+flattens through the descent the cursor ray flattens too, the anchored
+solver fails near the horizon, and it flickers between anchored and
+pure-pedestal per tick. Since Phase 1 already does the horizontal
+positioning, in-swoop anchoring buys little. Tradeoff accepted: you land
+directly below your Phase-2 entry position and LB-truck/WASD to fine-tune.
+Phase dispatch is on **elevation first, then tilt** — the reverse order
+silently routes Phase-2 ticks into the low-tilt dolly the moment the tilt
+lerp drops below T, aborting the swoop.
 
 ### KD-09 — Continuous wheel accumulator, not an integer budget
-*(TASK-014a)*
 
 Wheel events normalise to a signed fractional "nominal tick" count
 (`TH-10`) accumulated into one float. The high/FOV regimes apply the
@@ -185,22 +168,19 @@ whole pending accumulator per frame as one continuous step (no
 quantisation, no multi-frame lag); the swoop drains whole ticks under its
 per-frame cap (`TH-25`), carrying the remainder. This gives cross-device
 parity (one mouse detent ≈ one tick; a trackpad delta ≈ a fraction) by
-construction, and makes the dolly and FOV steps tunable independently
-(`TH-08` vs `TH-09`) where they were previously one constant.
+construction, and lets the dolly and FOV steps be tuned independently
+(`TH-08` vs `TH-09`).
 
 ### KD-10 — Ctrl+wheel bypasses the swoop (fixed-tilt dolly); Mac pinch maps onto it
-*(001-phase-3-plan §Ctrl+wheel)*
 
 Holding Ctrl while wheeling gives a plain camera-Z dolly at the current
-tilt and elevation, bypassing the swoop entirely — the proposal's
-mitigation for "you can no longer do a close zoom at fixed tilt." A Mac
-trackpad pinch arrives as Ctrl+wheel, so pinch = fixed-tilt zoom and
-two-finger scroll = full swoop, with no Mac-specific code. Tradeoff: on
-Windows the Ctrl key now has meaning in the canvas (browser-zoom muscle
-memory differs), accepted.
+tilt and elevation, bypassing the swoop — so you can still do a close zoom
+at a fixed tilt. A Mac trackpad pinch arrives as Ctrl+wheel, so pinch =
+fixed-tilt zoom and two-finger scroll = full swoop, with no Mac-specific
+code. Tradeoff: on Windows the Ctrl key now has meaning in the canvas
+(browser-zoom muscle memory differs), accepted.
 
 ### KD-11 — Swoop reversibility via a transient zoom-undo memory
-*(TASK-022)*
 
 So that "zoom in then out returns to the same camera angle," the controls
 keep a small transient memory `{valid, tilt, fov}`. The entry attitude is
@@ -216,20 +196,18 @@ also why drone view could **not** be defined as a literal swoop-inverse
 (see KD-22).
 
 ### KD-12 — Landing FOV "sense of arrival" is a pure function of height
-*(TASK-027 Part A)*
 
 As the swoop lands, the FOV eases open toward the landing FOV (`TH-29`,
 capped below the fisheye-distortion limit `TH-31`) so the world "opens
 up." It is computed as a **pure function of height**, not latched on the
 floor crossing — so the descent and an immediate-undo ascent retrace
 exactly with no anchor and no jump if the ascent starts mid-band. The
-widening is **back-loaded** toward the floor via an exponent (`TH-33`):
-a height-linear ramp did almost all its widening at the top of the
-descent and none at the bottom (live-test #2: "odd at the start, nothing
-at the end"), reading as anything but an arrival.
+widening is **back-loaded** toward the floor via an exponent (`TH-33`): a
+height-linear ramp does almost all its widening at the top of the descent
+and none at the bottom, reading as anything but an arrival; the exponent
+concentrates it into the final stretch.
 
 ### KD-13 — Street-level FOV zoom re-aims toward the cursor, faded by distance
-*(TASK-027 Part B)*
 
 In Phase 3, narrowing the FOV toward the cursor target also gently
 re-aims the camera so the target stays put, computed **absolutely** from
@@ -239,19 +217,17 @@ reversible). The re-aim magnitude **fades to zero** between `TH-34` and
 rather than a hard switch to the no-re-aim fallback.
 
 ### KD-14 — Swoop-vs-dolly breakout only fires when looking up at a wall or sky
-*(TASK-027 Part C)*
 
 Inside the Phase-2 band, a zoom-in tick normally continues the swoop. It
 "breaks out" into a plain dolly **only** when you are craning *up* at
 something you can't land on and clearly want to approach — a solid
 near-vertical wall/façade, or open sky/horizon. Looking down or level
 always swoops (a façade or sky the cursor merely grazes on the way down
-must not abort the descent — live-test #2); looking up at scatter
-(car/tree/sign) always swoops (live-test #1). The broke-out dolly is a
+must not abort the descent); looking up at scatter (car/tree/sign) always
+swoops (scatter must never break the swoop). The broke-out dolly is a
 **bounded excursion** that zoom-out unwinds before resuming the ascent.
 
 ### KD-15 — The per-tick lateral lurch cap scales with height
-*(TASK-014d / TASK-027 Part F)*
 
 A shallow-tilt wheel-zoom tick can translate the camera tens of metres
 sideways (the "lurch"). The horizontal component of one tick is capped to
@@ -267,7 +243,6 @@ descent.
 ## D. Solid geometry, collision & recovery
 
 ### KD-16 — Buildings are solid; you land on roofs; collision floor vs travel height
-*(TASK-024 D1 — the "B4 reversal", pending Kieran's final nod)*
 
 The visible solid surface (ground/road/terrain + buildings, with thin
 scatter — signs, people, vehicles, plants — ignored) is found by a
@@ -281,17 +256,18 @@ the same probe:
   for WASD fly-speed scaling only, so you don't crawl when a roof passes
   under you.
 
-This **reverses** TASK-013's earlier rule (Kieran review item B4) that
-made the probe see *through* 3DStreet buildings so a swoop landed at
-street level inside the footprint. Live testing found rooftop landing
-feels more natural than landing inside a building. The reversal is scoped
-to the *collision floor only* (B4's speed-scaling rationale survives as
-travel height). It is **structurally load-bearing** — "buildings are
-solid" also drives WASD wall-blocking and enclosure — so it needs
-Kieran's confirmation before upstream; he is tentatively onboard.
+A swoop therefore lands **on a building roof**, not at street level inside
+the footprint — rooftop landing tested as more natural than landing
+inside a building (clipping, confusion). This is a deliberate reversal of
+an earlier rule (the probe used to see *through* 3DStreet buildings so a
+landing measured "height to the land, not the building"); the reversal is
+scoped to the *collision floor only*, so fly-speed scaling still uses the
+travel height and doesn't crawl over roofs. "Buildings are solid" is
+**structurally load-bearing** — it also drives WASD wall-blocking and
+enclosure — so it needs the maintainer's confirmation before upstream
+(see `05-open-issues.md`).
 
 ### KD-17 — Automatic motion may only block/prevent; all recovery is user-invoked
-*(TASK-024 governing principle)*
 
 The hard rule: **automatic behaviour never adds unrequested camera
 motion.** Prevention *blocks* during a gesture (you can't drive through a
@@ -303,10 +279,9 @@ other "fix" (scene loaded inside a building, a teleport, a streamed-in
 tile) is **user-invoked** — nothing moves until you press the recovery
 control. A "legit" pose requires **both** not-enclosed **and** above the
 collision floor by the eye margin (neither alone). This principle is the
-direct lesson of the retired y-shove (KD-29).
+direct lesson behind KD-29 (the rejected camera-shove).
 
 ### KD-18 — WASD prevention is a 4-way classifier keyed on surface geometry, not entity category
-*(TASK-024 D2)*
 
 A horizontal WASD step compares the collision floor under the camera now
 vs at the destination column and classifies the surface ahead into one
@@ -316,16 +291,15 @@ its top), **follow** (walkable <`TH-47`, up *and* down: road/ramp), or
 **hover** (steep+tall down-step: roof edge → hold height, don't plunge).
 Keying on **geometry, not entity category** is essential: photogrammetry
 tiles fuse ground and buildings into one mesh with no category label, so
-a category rule would have no input on exactly the geo scenes it targets.
-Blocking keys off the **destination column** being solid (not the swept
-footprint touching something), so an opening wider than the camera — a
-doorway, arch, tunnel mouth — is threadable. (Live-test OH-1 correction:
-walls *always* block — an earlier "don't block while enclosed" carve-out
-let you walk through walls under an overhang; escape-from-inside is
-user-invoked recovery, not driving through the wall.)
+a category rule would have no input on exactly the geo scenes that need
+it. Blocking keys off the **destination column** being solid (not the
+swept footprint touching something), so an opening wider than the camera
+— a doorway, arch, tunnel mouth — is threadable. Walls *always* block
+(an earlier "don't block while enclosed" carve-out let you walk through
+walls under an overhang); escape-from-inside is user-invoked recovery, not
+driving through the wall.
 
 ### KD-19 — Grounded vs flying: walking hugs the surface, flying holds an absolute cruise height
-*(TASK-024a)*
 
 WASD vertical behaviour depends on a **grounded** flag. *Grounded*
 (walking): the camera hugs the surface directly, preserving AGL, not
@@ -334,32 +308,28 @@ camera eases toward an absolute cruise height `H` (clamped up to clear any
 roof by the eye margin), rate-limited (`TH-41`) so the move composes with
 continuous WASD. Crucially, **terrain rising under you never grounds
 you** — grounded becomes true only on a deliberate descent reaching the
-surface. The earlier 3-way toggle and its options 1/2 were retired at
-live A/B test (they jumped the camera by the full building height when
-crossing onto a footprint); option 3 (absolute-height-hold) is the sole
-flying behaviour because the forward ray blocks approach to anything
-taller than flight height, so the clamp only ever lifts by ≤ the eye
-margin.
+surface. The rejected alternatives (preserve-AGL while flying, or a
+manual ground/fly toggle) jumped the camera by the full building height
+when crossing onto a footprint; absolute-height-hold is the sole flying
+behaviour because the forward ray blocks approach to anything taller than
+flight height, so the clamp only ever lifts by ≤ the eye margin.
 
 ### KD-20 — Floors are a per-column raycast, never a flat plane (slope-safe)
-*(TASK-024 D4)*
 
 Every floor query raycasts the actual surface per column — never a flat
 scene-wide `y = groundY` plane, never an assumed +Y normal. 3DStreet
-streets are flat slabs today, but sloped streets are a likely future
-(the maintainer is in hilly San Francisco), so the design must not
-*preclude* them even though it need not *accommodate* them now. The
-steepness-based WASD rule (KD-18) and the AGL probes are inherently
-slope-agnostic as a result; the swoop landing stays horizontal for now
-but keeps the hit normal available so orient-to-slope can be added later
-without a rewrite.
+streets are flat slabs today, but sloped streets are a likely future (the
+maintainer is in hilly San Francisco), so the design must not *preclude*
+them even though it need not *accommodate* them now. The steepness-based
+WASD rule (KD-18) and the AGL probes are inherently slope-agnostic as a
+result; the swoop landing stays horizontal for now but keeps the hit
+normal available so orient-to-slope can be added later without a rewrite.
 
 ---
 
 ## E. Presets & affordances
 
 ### KD-21 — Context view button: one state-tracking button + Space share a single resolver; icon = destination
-*(TASK-025)*
 
 A single always-visible button (in `?nav=experimental`) offers the one
 sensible "change my framing" move for where the camera is, resolved by a
@@ -368,14 +338,14 @@ sensible "change my framing" move for where the camera is, resolved by a
 view** (rise). The button and the Space key read the **same resolver**,
 so they can never disagree. The icon shows the **destination** state
 (where the button takes you), matching the compass tooltip convention.
-During the button's own animation both triggers are inert (no queue — the
-compass's one-deep queue existed only for its double-click rhythm, which
-this button lacks). "Elevated vs at street level" uses a hysteresis band
-(`TH-67`/`TH-68`) so the icon doesn't flicker at the boundary; branch 2
-is **always a swoop** (never a bare vertical fall).
+During the button's own animation both triggers are inert (rejected the
+alternative of a one-deep queue — that complexity is only worth it for a
+control with an advertised double-click rhythm, which this button lacks).
+"Elevated vs at street level" uses a hysteresis band (`TH-67`/`TH-68`) so
+the icon doesn't flicker at the boundary; "street view" is **always a
+swoop** (never a bare vertical fall).
 
 ### KD-22 — Drone view is a vertical rise at a fixed gradient, not a swoop-inverse
-*(TASK-025 D-A/D-E)*
 
 Drone view rises **straight up** from your spot to an elevated tilted
 "survey from above," tilting along the swoop's default overview gradient
@@ -390,45 +360,41 @@ column**: because the rise is *vertical*, the swoop-back lands at the same
 arbitrary prior gaze — gaze is the canonical preset each way). Height is
 absolute above ground level (`TH-69`), with a roof-clearance rule
 (`TH-70`) coupled to the hysteresis so a rooftop arrival reliably reads
-"elevated." It rises *through* an overhang to clear air above (TASK-024
-permits passing through solid mid-motion; it forbids only *ending*
+"elevated." It rises *through* an overhang to clear air above (a committed
+motion may pass through solid mid-flight; it forbids only *ending*
 inside), so drone view has no grey-out case.
 
 ### KD-26 — Plan View is folded into a compass button, not a separate view; body-click is two-stage
-*(TASK-011 / TASK-026; supersedes the proposal's separate Plan View)*
 
 There is no separate "Plan View." It is a particular camera angle of the
 birds-eye view, surfaced as a **compass button** (à la Google Maps).
 Clicking the compass body is a two-stage dispatcher decided from the live
 pose: if not top-down → animate to top-down **preserving heading** (yaw
-kept, so only tilt and altitude change — hardcoding screen-up to world +Z
-forced a disorienting 180° spin); if already top-down but not north-up →
-align to north; if both → no-op. Rotation **arrows** turn the heading
-±90° (`TH-59`). In the Map regime the arrows orbit the **screen-centre
-ground point** (a map-style turn keeping the centred feature centred);
-near-horizontal they spin in place (TASK-026 — this replaced a call to a
-never-implemented helper that threw on every non-top-down click). Plan
+kept, so only tilt and altitude change — hardcoding screen-up to north
+forced a disorienting 180° spin when you were orbited facing south); if
+already top-down but not north-up → align to north; if both → no-op.
+Rotation **arrows** turn the heading ±90° (`TH-59`). In the Map regime the
+arrows orbit the **screen-centre ground point** (a map-style turn keeping
+the centred feature centred); near-horizontal they spin in place. Plan
 View is **zoom-out-only** (never drops below the current altitude — it
 should never zoom *in*). The existing App-menu / toolbar / keyboard Plan
 View entries fire the same intercept.
 
 ### KD-28 — Nadir is handled with a roll-safe pitch axis
-*(TASK-023)*
 
 At exact straight-down (nadir) the horizontal heading — and hence the
-`view × up` pitch axis — is undefined, which previously left tilt dead at
-top-down and risked a roll-snap. The rotation step falls back to the
-camera's own screen-right axis (`camRight`), which stays well-defined and
-horizontal at nadir and equals `view × up` off-nadir, so tilting *out* of
-exact nadir is continuous and roll-free. Rotations are applied via
-quaternion premultiply rather than re-deriving from `lookAt`.
+`view × up` pitch axis — is undefined, which would otherwise leave tilt
+dead at top-down and risk a roll-snap. The rotation step falls back to the
+camera's own screen-right axis, which stays well-defined and horizontal at
+nadir and equals `view × up` off-nadir, so tilting *out* of exact nadir is
+continuous and roll-free. Rotations are applied via quaternion premultiply
+rather than re-deriving from `lookAt`.
 
 ---
 
-## F. Double-click navigation (Phase 4)
+## F. Double-click navigation
 
-### KD-23 — Four categories, cardinal-heading snap, never-raise; clearance delegated to TASK-024
-*(TASK-012)*
+### KD-23 — Four categories, cardinal-heading snap, never-raise; clearance delegated to the shared collision machinery
 
 A double-click animates (~`TH-54`-scale eased tween) the camera to a
 predictable "good view" of what was clicked, classified into four
@@ -441,20 +407,22 @@ object, **D** empty/no-hit (no-op). Two load-bearing simplifications:
   too) and bounds the rotation.
 - **Never-raise.** A double-click may lower the camera or keep its height
   but **never raises it** — compared on **absolute world height** (what
-  the user perceives as "how high am I"), not AGL.
+  the user perceives as "how high am I"), not AGL (comparing AGL across
+  columns with different ground heights could let a valley→hilltop move
+  rise while passing an "AGL" check).
 
-This spec computes only the **desired pose** (look target, heading,
+This logic computes only the **desired pose** (look target, heading,
 attitude, nominal standoff, target height). Resolving that onto a clear,
 non-buried camera position — rest an eye margin above the surface, pull a
 blocked standoff back along the heading, hand off to recovery if no clear
-pose exists at/below the never-raise height — is the **shared TASK-024
-machinery**, invoked identically for every category (not re-implemented
-per category). The ~1 s tween is a **committed motion**: only its
-endpoint is collision-validated; the path is not per-frame clamped, so a
-teleport can descend through an intervening roof to a clear lane below.
+pose exists at/below the never-raise height — is the **shared collision
+machinery** (KD-16/KD-17), invoked identically for every category, not
+re-implemented per category. The ~1 s tween is a **committed motion**:
+only its endpoint is collision-validated; the path is not per-frame
+clamped, so a teleport can descend through an intervening roof to a clear
+lane below.
 
 ### KD-24 — Category B aims at the building centre; height encodes air-vs-street
-*(TASK-012, spec delta — supersedes the earlier hit-point aim)*
 
 A building double-click looks at the building's **centre**, not the
 clicked hit-point. The camera height (a fraction of building height from
@@ -468,7 +436,6 @@ the roof) craned up at the roof. The framing-pitch cap (`TH-64`) is the
 camera height — not the primary mechanism.
 
 ### KD-25 — A double-click sets pose only; mode follows from the resulting tilt; FOV resets
-*(TASK-012 DC2/DC4/DC7)*
 
 A double-click never engages Map or Street mode explicitly — it sets the
 camera pose, and whether you end up in Street mode (letterbox on) falls
@@ -476,14 +443,14 @@ out of the resulting tilt vs T. The mode indicator re-evaluates on **tween
 completion** (the landed pose is programmatic, so it won't update on its
 own) and does **not** toggle mid-flight (a tween sweeping through T would
 otherwise flicker the letterbox — unlike a manual drag, which toggles
-live). The teleport **resets FOV** to the height-appropriate default
-(discarding any focal-zoom FOV) and **clears TASK-022's transient
+live). The teleport **resets FOV** to the normal default (`TH-71`,
+discarding any focal-zoom FOV) and **clears the swoop's transient
 zoom-undo memory** (a double-click is a non-wheel move), so a subsequent
 wheel-out uses the default overview, not a ghost of a pre-teleport
-descent.
+descent. (Note the teleport arrives at the *normal* FOV, not the swoop's
+wider landing FOV — see `05-open-issues.md`.)
 
 ### KD-27 — Hover highlight is computed from the same raycast a click consumes
-*(TASK-012)*
 
 The hover highlight previously diverged from what a click selects (hover a
 car in a lane → the *lane* highlights, but clicking selects the car). The
@@ -499,26 +466,25 @@ reason; otherwise experimental-only.
 ## G. Mode indicator
 
 ### KD-30 — Street mode is signalled by a letterbox (full-width black toolbar strips)
-*(overall-plan decision 6; retained through TASK-010 D6)*
 
-The 30°→T mode cut needs a hard-to-miss signal that stays out of the
-mouse path. The chosen indicator restyles the floating top/bottom
-toolbars into full-width black strips when Street mode is active; the
-resulting aspect-ratio change is the cue. It fires whenever tilt crosses T
-— including silently during a Phase-2 swoop tilt lerp (not just on LB
-events). It is a deliberate placeholder to evaluate with Kieran; lighter
-fallbacks (cursor-shape change, accent-colour canvas border, a mode badge)
-are on hand if it doesn't survive review. Map mode shows no world-anchored
-rotation ring in Street mode because the pivot is the camera itself
-(KD-03 only puts a ring on a world pivot).
+The mode cut at T needs a hard-to-miss signal that stays out of the mouse
+path. The chosen indicator restyles the floating top/bottom toolbars into
+full-width black strips when Street mode is active; the resulting
+aspect-ratio change is the cue. It fires whenever tilt crosses T —
+including silently during a Phase-2 swoop tilt lerp (not just on LB
+events). It is a deliberate placeholder to evaluate with the maintainer;
+lighter fallbacks (cursor-shape change, accent-colour canvas border, a
+mode badge) are on hand if it doesn't survive review. Street mode shows no
+world-anchored rotation ring because the pivot is the camera itself (KD-03
+only puts a ring on a world pivot).
 
 ---
 
 ## Worked examples
 
 Concrete scenarios annotated with the phase / pivot / control outcome.
-Threshold T at its shipped value (`TH-03` = 25°). "AGL" = height above
-the collision floor below.
+T at its current value (`TH-03` = 25°). "AGL" = height above the collision
+floor below.
 
 ### WE-1 — Camera at 200 m AGL, tilt 22°, cursor over a building
 

@@ -46,9 +46,7 @@ mode.
 height **above the solid surface directly below it**, found by a
 per-column downward raycast: `AGL = camera.y − groundY`. Used by the
 swoop phase boundaries, WASD speed, the elevation hysteresis, and the
-recovery cue. On a flat scene with ground at y=0, AGL equals `camera.y` —
-which is why early prototypes used absolute `camera.y` and it "worked"
-until scenes with ground ≠ 0 were considered.
+recovery cue. On a flat scene with ground at y=0, AGL equals `camera.y`.
 
 **Absolute height / `camera.y`.** The camera's world Y coordinate,
 independent of any surface below. The double-click **never-raise** promise
@@ -63,8 +61,8 @@ people, vehicles, plants) ignored. This is what landing, the descent
 clamp, and enclosure use — *you stop on top of whatever solid thing is
 under you.* Contrast **travel height**.
 
-**Travel height.** The height above the **ground beneath buildings** (the
-TASK-013 land-floor), used **only** for WASD fly-speed scaling, so you
+**Travel height.** The height above the **ground beneath buildings**,
+used **only** for WASD fly-speed scaling, so you
 don't crawl when a roof passes 2 m under you. On fused photogrammetry
 tiles (no ground/building separation) it's approximated by the lowest
 solid hit over a small patch below the camera. Distinct from the
@@ -158,7 +156,7 @@ frame **Plan View**.
 original proposal's idea of treating a bounded scene as an object you
 orbit around its centre ("museum diorama"), used when the camera was
 outside the scene's bounds at low tilt. The whole finite-scene-boundary /
-diorama model was **retired** in TASK-010 (KD-02); the term survives only
+diorama model was **retired** (KD-02); the term survives only
 in historical specs and code comments. If you see "diorama" in a current
 context, it's stale.
 
@@ -167,8 +165,9 @@ context, it's stale.
 **Swoop.** The 3-phase continuous wheel-zoom transition from birds-eye to
 street level (and back), gated on AGL. Named for the gliding descent.
 
-**Swoop phases 1 / 2 / 3.** ⚠ *Not the project "phases" (Phase 0–5),
-which are development milestones.* The swoop's three regimes:
+**Swoop phases 1 / 2 / 3.** ⚠ *"Phase" in some code comments also refers
+to development milestones — unrelated to these.* The swoop's three
+regimes:
 - **Phase 1** (AGL > `TH-22`): cursor-anchored dolly (Map) / plain dolly
   (Street). The world point under the cursor stays put.
 - **Phase 2** (`TH-23` < AGL ≤ `TH-22`): the "swoop transition" —

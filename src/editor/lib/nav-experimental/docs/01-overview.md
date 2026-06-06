@@ -107,7 +107,7 @@ preview exactly what a click will select.
 
 ## The cross-cutting invariant: stay out of solid geometry
 
-A late but foundational addition (TASK-024) makes **buildings solid** and
+A late but foundational addition makes **buildings solid** and
 keeps the camera out of solid geometry across *every* mode. The surface
 under the camera is found by a **per-column downward raycast** (never a
 flat ground plane — so terrain and future sloped streets work unchanged),
@@ -119,11 +119,10 @@ you), nothing moves on its own; you press the context button / Space to
 recover. The one exception is a *drag that finishes* inside a building,
 which eases back out as the tail of that gesture.
 
-This invariant is the most likely thing to want your review: it reverses
-an earlier decision of yours (review item **B4**) so that a swoop lands
-*on a building roof* rather than at street level inside its footprint —
-because rooftop landings tested as more natural. See
-`02-key-decisions.md` KD-16.
+This invariant is the most likely thing to want the maintainer's review:
+it reverses an earlier design rule so that a swoop lands *on a building
+roof* rather than at street level inside its footprint — because rooftop
+landings tested as more natural. See `02-key-decisions.md` KD-16.
 
 ## What's *not* here
 

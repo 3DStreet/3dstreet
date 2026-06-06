@@ -64,19 +64,18 @@ other mention is a reference by ID):
 
 The letters encode the kind (decision / threshold / open issue). This is a
 *new* namespace deliberately distinct from the **older, inconsistent,
-per-task identifiers** already scattered through the code comments and the
-feature specs (`D2`, `D-LT-3`, `DEC-B`, `H4`, `LT-1`, `B4`, `N3`, …).
-`03-configurable-thresholds.md` records those pre-existing codes alongside
-each `TH-NN` so the new IDs cross-reference the old ones. **Reconciling the
-source comments to this namespace is out of scope here** and is tracked as
-a standing open issue (`OI-1`).
+per-task identifiers** still scattered through the code comments —
+`TASK-NNN` references and per-task letter tags (`D2`, `D-LT-3`, `DEC-B`,
+`H4`, `LT-1`, `N3`, …). `03-configurable-thresholds.md` records those code
+tags alongside each `TH-NN` so the new IDs cross-reference the old ones.
+**Migrating the code comments to this namespace is out of scope here** and
+is tracked as a standing open issue (`OI-1`).
 
 ## Sourcing
 
-Drawn principally from the feature specs (kept current relative to code),
-with the **code as the source of truth for threshold values and the
-runtime-config surface** (`constants.js` and `navTuningComponent.js`).
-Where a spec and the code disagree, these docs describe the code's
-behaviour and log the discrepancy under Open Issues. "We tried X, found
-problem Y" rationales draw on the planning workspace's reports and the
-orbit-library evaluation (TASK-016).
+The **code is the source of truth** — for threshold values and the
+runtime-config surface especially (`constants.js` and
+`navTuningComponent.js`, both in this folder's parent). Every numeric value
+in `03-configurable-thresholds.md` was verified against `constants.js` at
+the snapshot SHA. These docs are the deliverable; they do not reference
+external planning material.

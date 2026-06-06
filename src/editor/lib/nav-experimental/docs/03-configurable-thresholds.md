@@ -21,12 +21,13 @@ location is named.
   the `nav-experimental-tuning` A-Frame component (see "Runtime-config
   surface" below). Everything else is a build-time constant: change it in
   `constants.js` and rebuild.
-- **Code/spec IDs** — the *pre-existing* identifiers already used for
-  this value in code comments and feature specs (`D2`, `D-LT-3`, `H4`,
-  `LT-1`, `DEC-B`, …). These are inconsistent and per-task; reconciling
-  them to the `TH-NN` namespace is an explicit Open Issue
-  (`05-open-issues.md`, `OI-1`). Recorded here so the new IDs
-  cross-reference the scattered old ones.
+- **In-code tag(s)** — the identifiers currently used for this value in
+  the **code comments** (`TASK-NNN` references and per-task letter codes
+  like `D2`, `D-LT-3`, `H4`, `LT-1`, `DEC-B`, …). These are inconsistent
+  and per-task; migrating the comments to the `TH-NN` / `KD-NN` namespace
+  is an explicit Open Issue (`05-open-issues.md`, `OI-1`). Recorded here
+  as the migration bridge — so a grep that turns up `D2` or `TASK-010`
+  maps to its `TH-NN`. A "—" means no distinct tag.
 - **Working range** — the band within which the value delivers its
   intended behaviour, with the failure mode at each end. "Feel" means the
   bound is a subjective comfort limit settled by feel-testing, not a hard
@@ -63,26 +64,26 @@ schema defaults are imported from the constants, so the component and
 
 ## Tilt & mode
 
-| ID | Constant | Value | Controls | Runtime? | Code/spec IDs | Working range |
+| ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
 | `TH-01` | `MIN_TILT_DEGREES` | −89° | Lower clamp on look pitch (looking up). −89 (not −90) keeps `lookAt` numerically stable just shy of the up-singularity. | no | — | −85…−89.9. Past −90 = gimbal/`lookAt` blow-up. |
 | `TH-02` | `MAX_TILT_DEGREES` | +89° | Upper clamp on look pitch (looking down). Mirrors `TH-01`. | no | — | +85…+89.9. |
-| `TH-03` | `TILT_THRESHOLD_DEFAULT_DEGREES` | 25° | **T — the single tilt threshold governing all four tilt-conditional behaviours**: the LB truck/dolly-vs-pedestal sub-mode, the wheel cursor-anchored-vs-dolly cut, the rotation regime (Map vs Street), and the letterbox indicator. Cut is on absolute angle below horizontal. | **yes** | `T`, `D2` (TASK-010); history 30°→18°→25° (TASK-027 Part E) | 15–35°. Too low ⇒ Street mode unreachable / cursor-anchor-over-sky band widens; too high ⇒ you can't look down without dropping to Map. |
+| `TH-03` | `TILT_THRESHOLD_DEFAULT_DEGREES` | 25° | **T — the single tilt threshold governing all four tilt-conditional behaviours**: the LB truck/dolly-vs-pedestal sub-mode, the wheel cursor-anchored-vs-dolly cut, the rotation regime (Map vs Street), and the letterbox indicator. Cut is on absolute angle below horizontal. | **yes** | `T`, `D2` (TASK-010) | 15–35°. Too low ⇒ Street mode unreachable / cursor-anchor-over-sky band widens; too high ⇒ you can't look down without dropping to Map. |
 
 ## Rotation (Shift+LB)
 
-| ID | Constant | Value | Controls | Runtime? | Code/spec IDs | Working range |
+| ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
 | `TH-04` | `MIN_ORBIT_RADIUS_METRES` | 2 m | Minimum Map-orbit pivot distance. A very-close pivot (reachable only via Ctrl+wheel swoop-bypass) makes the orbit twitchy; the pivot is pushed out to this radius. | no | `D5` (TASK-010) | 1–5 m. |
 | `TH-05` | `MAP_PIVOT_BOUNDS_RADIUS_METRES` | 500 m | Map-mode rotation-pivot bounds radius, measured on the ground from the screen-centre ground point. Cursor hit inside → orbit the cursor point; outside (or sky) → orbit the screen-centre point. | **yes** | `D-LT-3`, `#6` (TASK-010) | 100–2000 m. Too small ⇒ most off-centre clicks fall back to the screen-centre pivot; too large ⇒ a far hit gives a huge lever arm (orbit degrades toward rotate-in-place). |
-| `TH-06` | `RING_SCREEN_FRACTION` | 0.035 | Rotation-centre ring indicator radius, as a fraction of viewport half-height. Sized `fraction × distance × tan(fov/2)` per frame so on-screen size is constant across distance **and** FOV. | no | `D3` (TASK-010); fixed in reports/010-testing #2 (2nd pass) | 0.02–0.06 (feel). |
+| `TH-06` | `RING_SCREEN_FRACTION` | 0.035 | Rotation-centre ring indicator radius, as a fraction of viewport half-height. Sized `fraction × distance × tan(fov/2)` per frame so on-screen size is constant across distance **and** FOV. | no | `D3` (TASK-010) | 0.02–0.06 (feel). |
 | `TH-07` | `ROTATION_SPEED_RAD_PER_PX` | 0.0035 rad/px | Shift+LB rotation gain. Matches the legacy `EditorControls` feel. | **yes** | — (TASK-010 `#6`) | 0.002–0.006 (feel). |
 
 ## Wheel input plumbing (continuous step model — TASK-014a)
 
-| ID | Constant | Value | Controls | Runtime? | Code/spec IDs | Working range |
+| ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
-| `TH-08` | `ZOOM_PER_WHEEL_TICK` | 0.05 | High-regime **dolly** step: fraction of camera→anchor distance per nominal tick. (Decoupled from FOV per `TH-09`.) | no | `B7` (TASK-014a); halved 0.1→0.05 | 0.03–0.1 (feel). |
+| `TH-08` | `ZOOM_PER_WHEEL_TICK` | 0.05 | High-regime **dolly** step: fraction of camera→anchor distance per nominal tick. (Decoupled from FOV per `TH-09`.) | no | `B7` (TASK-014a) | 0.03–0.1 (feel). |
 | `TH-09` | `FOV_PER_WHEEL_TICK` | 0.05 | Street-level **FOV** step: fraction the FOV shrinks/grows per nominal tick. | no | `B7` (TASK-014a) | 0.03–0.1 (feel). |
 | `TH-10` | `WHEEL_UNITS_PER_NOMINAL_TICK` | 100 | `deltaY` px per one nominal tick. One mouse detent ≈ 100 ≈ 1.0 tick; preserves cross-device (mouse/trackpad) parity by construction. | no | — | device-calibration; ~100 for standard mice. |
 | `TH-11` | `LINE_HEIGHT_PX` | 16 | Assumed px per line for line-mode (`deltaMode === 1`) wheel events. Known approximation; browsers vary. | no | — | 12–20. |
@@ -93,7 +94,7 @@ schema defaults are imported from the constants, so the component and
 
 ## Wheel lateral cap & ground reach (TASK-014d / TASK-027 Part F)
 
-| ID | Constant | Value | Controls | Runtime? | Code/spec IDs | Working range |
+| ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
 | `TH-16` | `WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES` | 2 m | Lower bound of the per-tick horizontal-lurch cap. The live cap is `max(lowerBound, TH-17 × AGL)`; this bound governs near the ground and on the no-AGL Ctrl+wheel / out-of-bounds path. | **yes** | `LT-1` (TASK-014d) | 1–2 (feel). |
 | `TH-17` | `WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF` | 0.1 | Height coefficient of the lateral cap: cap scales at 0.1 × AGL above the lower bound, so the lurch is bounded proportionally to height. | no | TASK-027 Part F | 0.05–0.2. |
@@ -102,24 +103,24 @@ schema defaults are imported from the constants, so the component and
 | `TH-20` | `MAX_GROUND_DIST` | 2000 m | Default cap on `worldPointAt`'s ground-plane intersection distance (LB-pan and orbit-pivot callers). Rejects grazing rays that would anchor far out of scope. | no | — | scene-scale dependent. |
 | `TH-21` | `FALLBACK_FORWARD_DIST` | 30 m | Fixed forward distance for the level-forward synthetic anchor when both mesh raycast and ground-plane intersection miss (open sky). Also the low-tilt synthetic-anchor depth. | no | — | 10–50 (feel). |
 
-## Swoop — phase boundaries & step (Phase 2/3; AGL per TASK-013)
+## Swoop — phase boundaries & step (Phase 2/3; AGL)
 
 These are measured **above ground (AGL)** = `camera.y − groundY`, where
-`groundY` is the collision floor directly below the camera (TASK-013 /
-TASK-024), not absolute `camera.y`. On a flat scene at y=0 they coincide.
+`groundY` is the collision floor directly below the camera, not absolute
+`camera.y`. On a flat scene at y=0 they coincide.
 
-| ID | Constant | Value | Controls | Runtime? | Code/spec IDs | Working range |
+| ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
-| `TH-22` | `SWOOP_PHASE2_ENTRY_ELEVATION_METRES` | 20 m AGL | Phase-1→2 boundary ("yCeil"): below this the wheel drives the swoop transition. | no | history 10→20 (feel-test 2026-05-11) | 10–30. Too low ⇒ descent begins too suddenly near the ground; too high ⇒ swoop engages while still birds-eye. |
+| `TH-22` | `SWOOP_PHASE2_ENTRY_ELEVATION_METRES` | 20 m AGL | Phase-1→2 boundary ("yCeil"): below this the wheel drives the swoop transition. | no | — | 10–30. Too low ⇒ descent begins too suddenly near the ground; too high ⇒ swoop engages while still birds-eye. |
 | `TH-23` | `SWOOP_PHASE2_EXIT_ELEVATION_METRES` | 1.5 m AGL | Phase-2→3 boundary ("yFloor") = street eye level. Equals `TH-46`. | no | — | ≈ human eye height (1.4–1.8). |
-| `TH-24` | `SWOOP_PHASE2_STEP` | 0.15 | Phase-2 per-tick pedestal step: fraction of `(y − yFloor)` consumed per zoom-in tick. Exponential approach to the floor. | no | `B7`; history 0.10→0.20→0.15 | 0.1–0.25 (feel). |
-| `TH-25` | `SWOOP_PHASE2_MAX_TICKS_PER_FRAME` | 3 | Phase-2 per-frame drain cap (vs 10 elsewhere). Latched at frame start so a boundary-crossing frame can't unlock the higher cap. Makes a trackpad burst read as a deliberate ~350 ms transition. | no | `H4` (reports/007) | 2–5. |
-| `TH-26` | `SWOOP_PHASE2_FLOOR_SNAP_METRES` | 1.0 m | Phase-2 floor snap (zoom-in) and zoom-out kick-start distance. Eliminates the asymptotic stall near the floor. | no | `H6` (reports/007); history 0.1→1.0 | 0.5–1.5. |
+| `TH-24` | `SWOOP_PHASE2_STEP` | 0.15 | Phase-2 per-tick pedestal step: fraction of `(y − yFloor)` consumed per zoom-in tick. Exponential approach to the floor. | no | `B7` | 0.1–0.25 (feel). |
+| `TH-25` | `SWOOP_PHASE2_MAX_TICKS_PER_FRAME` | 3 | Phase-2 per-frame drain cap (vs 10 elsewhere). Latched at frame start so a boundary-crossing frame can't unlock the higher cap. Makes a trackpad burst read as a deliberate ~350 ms transition. | no | `H4` | 2–5. |
+| `TH-26` | `SWOOP_PHASE2_FLOOR_SNAP_METRES` | 1.0 m | Phase-2 floor snap (zoom-in) and zoom-out kick-start distance. Eliminates the asymptotic stall near the floor. | no | `H6` | 0.5–1.5. |
 | `TH-27` | `SWOOP_PHASE3_FOV_FLOOR_DEGREES` | 15° | Phase-3 FOV floor: further zoom-in ticks at the floor are no-ops. | no | — | 10–20 (telephoto limit). |
 
 ## Swoop — FOV "sense of arrival" & overview (TASK-022 / TASK-027 Part A)
 
-| ID | Constant | Value | Controls | Runtime? | Code/spec IDs | Working range |
+| ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
 | `TH-28` | `DEFAULT_OVERVIEW_TILT_DEGREES` | 60° | Swoop-OUT overview attitude (degrees below horizontal) when there is no valid zoom-undo memory. Also the **drone-view** rise gradient (TASK-025). A strong look-down that is not fully top-down (top-down is the compass's job). | no | `OQ1` (TASK-022) | 45–75 (feel). |
 | `TH-29` | `SWOOP_LANDING_FOV_DEGREES` | 75° | Landing FOV the descent eases open to as the swoop reaches street level ("the world opens up"). Height-driven, not latched. | no | TASK-027 Part A (delivers 014b) | 65–85 (capped below `TH-31`). |
@@ -130,18 +131,18 @@ TASK-024), not absolute `camera.y`. On a flat scene at y=0 they coincide.
 
 ## Cursor-locked street-level FOV re-aim (TASK-027 Part B)
 
-| ID | Constant | Value | Controls | Runtime? | Code/spec IDs | Working range |
+| ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
 | `TH-34` | `REAIM_FADE_NEAR_METRES` | 300 m | Cursor-target distance below which the FOV-zoom camera re-aim is full strength (weight 1). | no | `M4` / `WE-D2` (TASK-027 B) | < `TH-35`. |
 | `TH-35` | `REAIM_FADE_FAR_METRES` | 800 m | Distance above which the re-aim fades to zero, so a far façade→sky crossing is continuous rather than a hard switch. | no | TASK-027 Part B | > `TH-34`, well below `TH-18`. |
 | `TH-36` | `PHASE3_REAIM_NDC_EPS` | 1e-4 | Cursor-moved threshold (NDC units) above which the re-aim baseline pose is re-captured (a new aim). | no | TASK-027 Part B | tiny. |
 
-## WASD motion (TASK-013 speed; TASK-024 collision)
+## WASD motion (speed & collision)
 
-| ID | Constant | Value | Controls | Runtime? | Code/spec IDs | Working range |
+| ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
 | `TH-37` | `WASD_SPEED_HEIGHT_FACTOR` | 1.0 m/s per m AGL | Horizontal speed scales linearly with AGL: `speed = clamp(AGL × factor, MIN, MAX)`. | no | TASK-013 | 0.5–2. |
-| `TH-38` | `WASD_MIN_SPEED` | 10 m/s | Speed floor at/below 10 m AGL. ≈ urban driving pace at street level. | no | history 5→10 (feel-test 2026-05-11) | 5–15 (feel). |
+| `TH-38` | `WASD_MIN_SPEED` | 10 m/s | Speed floor at/below 10 m AGL. ≈ urban driving pace at street level. | no | — | 5–15 (feel). |
 | `TH-39` | `WASD_MAX_SPEED` | 500 m/s | Speed ceiling at high altitude. | no | — | scene-scale. |
 | `TH-40` | `WASD_RAMP_UP_MS` | 200 ms | Time to ramp from rest to target speed while a key is held. Release snaps velocity to zero (no decel ramp). | no | — | 100–400 (feel). |
 | `TH-41` | `WASD_VERTICAL_LIFT_RATE_MPS` | 4 m/s | Rate-limit for the not-grounded (flying) vertical ease toward `max(H, floorDest+eye)` (~1.5 m in ~0.4 s). Eases the lift onto a roof and the settle back to cruise. | no | `DEC-B` (TASK-024a) | 3–6 (feel). |
@@ -150,29 +151,29 @@ TASK-024), not absolute `camera.y`. On a flat scene at y=0 they coincide.
 | `TH-44` | `WASD_FACING_MIN` | 0.35 | Min `dot(travelDir, −wallNormalH)` for a forward hit to count as a *facing* block. A grazing skim (dot ≈ 0) must not block. | no | `N3` (TASK-024) | 0.2–0.5. |
 | `TH-45` | `WASD_FACING_HYSTERESIS` | 0.1 | Once blocked, the facing-dot threshold drops by this much so wobble while skimming a façade doesn't stutter block↔pass. | no | TASK-024 | 0.05–0.2. |
 
-## Solid-geometry collision & recovery (TASK-024)
+## Solid-geometry collision & recovery
 
-| ID | Constant | Value | Controls | Runtime? | Code/spec IDs | Working range |
+| ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
-| `TH-46` | `EYE_MARGIN_METRES` | 1.5 m | Shared eye-height clearance above any solid floor — used by the descent clamp, WASD follow/step-up, the orbit clamp, and the fall/pop targets. Equals the TASK-013 street AGL floor and `TH-23`. | no | — | ≈ eye height. |
+| `TH-46` | `EYE_MARGIN_METRES` | 1.5 m | Shared eye-height clearance above any solid floor — used by the descent clamp, WASD follow/step-up, the orbit clamp, and the fall/pop targets. Equals the street AGL floor and `TH-23`. | no | — | ≈ eye height. |
 | `TH-47` | `BLOCK_SLOPE_MIN_DEGREES` | 45° | A forward-ray hit at/above this slope reads as a near-vertical wall/façade/cliff (WASD up-step block; down-step hover when also tall). | no | `D1` (TASK-024) | 35–55. Too low ⇒ ramps block; too high ⇒ you walk into steep faces. |
 | `TH-48` | `BLOCK_HEIGHT_MIN_METRES` | 1.5 m | Floor delta at/above which an up-step blocks (vs steps up) and a down-step can hover. **Independent** of `TH-46` (they merely share a 1.5 m start). | no | TASK-024 | 1.0–2.0. |
 | `TH-49` | `ENCLOSURE_PROBE_UP_MARGIN_METRES` | 500 m | Enclosure cast-down origin offset above the camera; assumes no relevant solid overhead sits higher than this. | no | `D10e` (TASK-024) | scene-scale. |
 | `TH-50` | `FALL_DURATION_MS` | 600 ms | Fall / swoop / gesture-end recovery tween duration. | no | TASK-024 | 400–800 (feel). |
 | `TH-51` | `POP_TO_ROOF_DURATION_MS` | 400 ms | Pop-to-roof / pop-to-daylight tween duration. | no | TASK-024 | 300–600 (feel). |
-| `TH-52` | `DISCOVERABILITY_CUE_SHOW_METRES` | 8 m | Show the recovery/discoverability cue above this height over the collision floor. (Post-TASK-025 this is the *flash* trigger, the button being the persistent affordance.) | no | `D7` (TASK-024) | 5–12; must exceed `TH-53`. |
+| `TH-52` | `DISCOVERABILITY_CUE_SHOW_METRES` | 8 m | Show the recovery/discoverability cue above this height over the collision floor. (This is the *flash* trigger, the button being the persistent affordance.) | no | `D7` (TASK-024) | 5–12; must exceed `TH-53`. |
 | `TH-53` | `DISCOVERABILITY_CUE_HIDE_METRES` | 6 m | Hide the cue below this height (2 m dead-band vs `TH-52` to stop strobing). | no | TASK-024 | < `TH-52`. |
 | `TH-72` | `ENCLOSURE_FALLBACK_INTERVAL_MS` | 250 ms | **Lives in `ExperimentalControls.js`, not `constants.js`.** Idle-gated enclosure re-probe cadence: while stationary with no scene-dirty signal, re-evaluate at most this often so a streaming source we didn't wire (e.g. Google 3D Tiles) is still picked up. ~4 raycasts/sec idle worst-case. | no | `CR-D5` | 200–500. |
 
 ## Plan View (TASK-011)
 
-| ID | Constant | Value | Controls | Runtime? | Code/spec IDs | Working range |
+| ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
 | `TH-54` | `PLAN_VIEW_DURATION_MS` | 1000 ms | Plan-view (and shared compass) tween duration. | no | — | 600–1500 (feel). |
 
 ## Compass (TASK-011 / TASK-026)
 
-| ID | Constant | Value | Controls | Runtime? | Code/spec IDs | Working range |
+| ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
 | `TH-55` | `NORTH_AXIS` | `{1,0,0}` (+X) | World-north axis. 3DStreet currently treats +X as north (per Kieran; likely inherited from Google 3D Tiles). The needle render and the align/rotate targets all read this, so re-pointing north later is a one-line change. | no | — | a unit axis. |
 | `TH-56` | `NORTH_BEARING_FROM_MINUS_Z` | 90° | Bearing of `NORTH_AXIS` clockwise from world −Z. Derived from `TH-55` so the needle formula and the align target stay in sync. | no | — | derived from `TH-55`. |
@@ -182,7 +183,7 @@ TASK-024), not absolute `camera.y`. On a flat scene at y=0 they coincide.
 
 ## Double-click navigation (TASK-012, Phase 4)
 
-| ID | Constant | Value | Controls | Runtime? | Code/spec IDs | Working range |
+| ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
 | `TH-60` | `DOUBLECLICK_LANE_STANDOFF_METRES` | 5 m | Category A (lane): stand off this far back along the cardinal heading at eye height. ≫ eye height keeps the down-look below T (Street mode) by construction. | no | TASK-012 | 3–10 (feel). |
 | `TH-61` | `DOUBLECLICK_OBJECT_STANDOFF_RADII` | 3 | Category C (generic object): stand off this many bounding-sphere radii from the object centre. | no | TASK-012 | 2–5 (feel). |
@@ -194,10 +195,10 @@ TASK-024), not absolute `camera.y`. On a flat scene at y=0 they coincide.
 
 ## Context view button / drone view (TASK-025)
 
-| ID | Constant | Value | Controls | Runtime? | Code/spec IDs | Working range |
+| ID | Constant | Value | Controls | Runtime? | In-code tag(s) | Working range |
 |---|---|---|---|---|---|---|
-| `TH-67` | `DRONE_ELEVATED_ENTRY_METRES` | 1.8 m | Elevated↔street-level hysteresis **entry**: at/below this AGL → "at street level". Sits just above resting eye-height so standing normally reads as street level. | no | `D-B`, `R2-C` (TASK-025); history 8→1.8 | 1.6–2.2; must stay below `TH-68`. |
-| `TH-68` | `DRONE_ELEVATED_EXIT_METRES` | 2.5 m | Elevated↔street-level hysteresis **exit**: above this AGL → "elevated". The tight 1.8↔2.5 dead-band still clears eye-height bob. | no | `D-B` (TASK-025); history 14→2.5 | 2.2–3.5; must exceed `TH-67`. |
+| `TH-67` | `DRONE_ELEVATED_ENTRY_METRES` | 1.8 m | Elevated↔street-level hysteresis **entry**: at/below this AGL → "at street level". Sits just above resting eye-height so standing normally reads as street level. | no | `D-B` (TASK-025) | 1.6–2.2; must stay below `TH-68`. |
+| `TH-68` | `DRONE_ELEVATED_EXIT_METRES` | 2.5 m | Elevated↔street-level hysteresis **exit**: above this AGL → "elevated". The tight 1.8↔2.5 dead-band still clears eye-height bob. | no | `D-B` (TASK-025) | 2.2–3.5; must exceed `TH-67`. |
 | `TH-69` | `DEFAULT_DRONE_HEIGHT` | 40 m | Drone-view target altitude above ground level for a street-level press (an elevated "survey from above"). | no | TASK-025 | 25–60 (feel). |
 | `TH-70` | `ROOF_CLEARANCE` | 20 m | When atop a building taller than `TH-69`, end this far above the roof. **Coupled** to the hysteresis: must be ≥ `TH-68` + margin so a rooftop drone arrival lands unambiguously "elevated" and the button flips to street view. | no | `D-B`, `M-2` (TASK-025) | ≥ `TH-68` + margin. |
 | `TH-71` | `DEFAULT_FOV_DEGREES` | 50° | Default/normal FOV the drone rise (and the double-click teleport) reset to. A literal — THREE's `PerspectiveCamera` default = the inspector camera's resting FOV. **Not** 60 (the `|| 60` frustum-fit fallback is a defensive default, not the resting FOV). | no | `D-A` (TASK-025) | 45–55. |
