@@ -2359,17 +2359,20 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       phase = 'phase3';
     }
     if (phase === 'phase2') {
-      // TASK-027 Part C: per-tick break-out on zoom-IN. Resolve the cursor
-      // target's surface — a landing surface (ground / rooftop, near-horizontal)
-      // continues the swoop; a wall / open sky breaks out to a tilt-preserving
-      // cursor dolly toward what you are pointing at. Zoom-OUT always runs the
-      // swoop ascent (memory valid → exact reverse C1; cleared by a mixed
-      // descent → 60° default overview C2).
-      if (sign < 0) {
-        const regime = this._classifyPhase2Target();
-        this._notePhase2Regime(regime);
-        if (regime === 'dolly') return this._applyCursorDolly(sign);
-      }
+      // TASK-027 Part C: per-tick break-out, applied to BOTH directions
+      // (live-test #4). Classify the cursor target — a landing surface (ground/
+      // rooftop, near-horizontal) or a normal swoop look runs the swoop; craning
+      // UP at a solid wall / open sky breaks out to a tilt-preserving cursor
+      // dolly. Running this on zoom-OUT too means a broke-out dolly REVERSES
+      // cleanly (dolly back away from the wall) rather than jumping straight to
+      // the swoop ascent. When the look returns to a swoop target, the regime
+      // switch clears the reverse memory (_notePhase2Regime) so the swoop-out
+      // then runs the default trajectory (C2), not an exact reverse — exactly
+      // the hand-off Diarmid asked for. A normal swoop (looking down/level)
+      // never breaks out, so its C1 reverse is unaffected.
+      const regime = this._classifyPhase2Target();
+      this._notePhase2Regime(regime);
+      if (regime === 'dolly') return this._applyCursorDolly(sign);
       return this._applyPhase2WheelTick(sign);
     }
     // phase1 / phase3: leaving the phase-2 band — reset the Part-C regime
