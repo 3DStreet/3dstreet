@@ -200,9 +200,11 @@ the shipped system — it is folded into the **compass** button (KD-26).
 Animated, heading-preserving, zoom-out-only.
 
 **Drone view.** A canonical elevated, partially-tilted "survey from above"
-preset (≈60° down), reached by rising straight up from your spot. The
-third framing alongside plan view and street view. Defined as a
-**vertical rise at a fixed gradient**, not a swoop-inverse (KD-22).
+preset (≈60° down), reached by an **ascending reverse-swoop** — the camera
+pulls up-and-back along its heading, ending tilted down at the feet point
+it rose from. The third framing alongside plan view and street view. Not a
+literal swoop-inverse; a closed-form reverse-swoop to a fixed gradient
+(KD-22).
 
 **Street view (the preset).** ⚠ *The context-button action, distinct from
 "Street mode" the tilt regime.* The "come down to the surface" action —

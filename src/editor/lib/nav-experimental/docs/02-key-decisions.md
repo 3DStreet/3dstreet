@@ -195,17 +195,18 @@ and self-clearing, no persistent history" property is deliberate — it is
 also why drone view could **not** be defined as a literal swoop-inverse
 (see KD-22).
 
-### KD-12 — Landing FOV "sense of arrival" is a pure function of height
+### KD-12 — Landing FOV "sense of arrival" is a pure function of AGL
 
 As the swoop lands, the FOV eases open toward the landing FOV (`TH-29`,
 capped below the fisheye-distortion limit `TH-31`) so the world "opens
-up." It is computed as a **pure function of height**, not latched on the
-floor crossing — so the descent and an immediate-undo ascent retrace
-exactly with no anchor and no jump if the ascent starts mid-band. The
-widening is **back-loaded** toward the floor via an exponent (`TH-33`): a
-height-linear ramp does almost all its widening at the top of the descent
-and none at the bottom, reading as anything but an arrival; the exponent
-concentrates it into the final stretch.
+up." It is computed as a **pure function of AGL** (the same height-above-
+ground that drives the swoop phases), not latched on the floor crossing —
+so the descent and an immediate-undo ascent retrace exactly with no anchor
+and no jump if the ascent starts mid-band. The widening is **back-loaded**
+toward the floor via an exponent (`TH-33`): an AGL-linear ramp does almost
+all its widening at the top of the descent and none at the bottom, reading
+as anything but an arrival; the exponent concentrates it into the final
+stretch.
 
 ### KD-13 — Street-level FOV zoom re-aims toward the cursor, faded by distance
 
@@ -254,7 +255,10 @@ the same probe:
   stop on top of whatever solid thing is under you.
 - **Travel height** — height above the *ground beneath* buildings, used
   for WASD fly-speed scaling only, so you don't crawl when a roof passes
-  under you.
+  under you. The ground beneath is approximated by **multiple downward
+  raycasts across a 2 m × 2 m square** below the camera, taking the lowest
+  hit — so a single roof under the camera centre doesn't fool the speed
+  scaling.
 
 A swoop therefore lands **on a building roof**, not at street level inside
 the footprint — rooftop landing tested as more natural than landing
@@ -270,14 +274,18 @@ enclosure — so it needs the maintainer's confirmation before upstream
 ### KD-17 — Automatic motion may only block/prevent; all recovery is user-invoked
 
 The hard rule: **automatic behaviour never adds unrequested camera
-motion.** Prevention *blocks* during a gesture (you can't drive through a
-floor; the orbit clamp caps the swing). The single bounded exception is
-**gesture-end correction**: a drag that *finishes* inside a building eases
-back to the most-recent legit pose it passed through — acceptable because
-it's the tail of the gesture you just made, not a disconnected spring. Any
-other "fix" (scene loaded inside a building, a teleport, a streamed-in
-tile) is **user-invoked** — nothing moves until you press the recovery
-control. A "legit" pose requires **both** not-enclosed **and** above the
+motion.** Prevention *blocks* during a gesture: you can't pedestal or
+descend through a floor, and a Map-orbit's downward swing is
+**pitch-clamped** to keep the camera above the floor beneath its pivot
+(KD-29 — a reversible cap on the gesture's input range, not a correction
+of the output pose). But because that clamp references only the *pivot's*
+floor, an arc can still swing the camera into a *different* mass; that
+residual is handled by the single bounded exception — **gesture-end
+correction**: a drag that *finishes* inside a building eases back to the
+most-recent legit pose it passed through, acceptable because it's the tail
+of the gesture you just made, not a disconnected spring. Any other "fix"
+(scene loaded inside a building, a teleport, a streamed-in tile) is
+**user-invoked** — nothing moves until you press the recovery control. A "legit" pose requires **both** not-enclosed **and** above the
 collision floor by the eye margin (neither alone). This principle is the
 direct lesson behind KD-29 (the rejected camera-shove).
 
@@ -345,24 +353,32 @@ control with an advertised double-click rhythm, which this button lacks).
 the icon doesn't flicker at the boundary; "street view" is **always a
 swoop** (never a bare vertical fall).
 
-### KD-22 — Drone view is a vertical rise at a fixed gradient, not a swoop-inverse
+### KD-22 — Drone view is an ascending reverse-swoop at a fixed ~60° gradient
 
-Drone view rises **straight up** from your spot to an elevated tilted
-"survey from above," tilting along the swoop's default overview gradient
-(`TH-28`) so it *reads* like a swoop without needing a cursor. A tempting
-reframing — "drone = exact reverse swoop" — was tried and **rejected**:
-the swoop is not an invertible motion (its retrace is transient and
-self-clearing per KD-11, and its free-overhead segment is cursor-dollying
-— neither reproducible by a button press). The honest invariant is that
-drone and street-view are two canonical moves **about the same ground
-column**: because the rise is *vertical*, the swoop-back lands at the same
-(x, z). So the drone⇄street toggle round-trips in **position** (not in
-arbitrary prior gaze — gaze is the canonical preset each way). Height is
-absolute above ground level (`TH-69`), with a roof-clearance rule
-(`TH-70`) coupled to the hysteresis so a rooftop arrival reliably reads
-"elevated." It rises *through* an overhang to clear air above (a committed
-motion may pass through solid mid-flight; it forbids only *ending*
-inside), so drone view has no grey-out case.
+Drone view is an **ascending reverse-swoop**: the camera pulls
+**up-and-back** along its current horizontal heading to a canonical
+height, ending at the swoop's default overview tilt (`TH-28`, ~60° below
+horizontal) **looking at the "feet" point** — the surface directly below
+where you started. The back-offset distance is closed-form from the
+gradient (`d = (H − feetY) / tan(60°)`), so it *reads* like a swoop run
+in reverse, without needing a cursor to steer it.
+
+It is **not** defined as an exact swoop-inverse — that was considered and
+**rejected**, because the swoop is not a literally invertible motion (its
+retrace is transient and self-clearing per KD-11, and its free-overhead
+segment is cursor-dollying — neither reproducible by a button press).
+Instead drone view is a self-contained closed-form reverse-swoop to a
+*fixed* gradient. What makes the **drone⇄street toggle** round-trip is the
+shared **feet point F**: drone's centre-ray looks at F, and pressing again
+swoops street-view back down to F, returning you to where you rose from.
+The toggle round-trips in **position** (not in arbitrary prior gaze — gaze
+is the canonical preset each way; yaw is preserved throughout).
+
+Target height is absolute above ground level (`TH-69`), with a
+roof-clearance rule (`TH-70`) coupled to the hysteresis so a rooftop
+arrival reliably reads "elevated." The rise passes *through* an overhang
+to clear air above (a committed motion may pass through solid mid-flight;
+it forbids only *ending* inside), so drone view has no grey-out case.
 
 ### KD-26 — Plan View is folded into a compass button, not a separate view; body-click is two-stage
 
@@ -563,10 +579,11 @@ ramp (< `TH-47`) → **follow** up or down.
 ### WE-7 — At street level, press the context button (Space)
 
 Resolver ladder: not enclosed, not elevated (AGL ≤ `TH-67`) → branch 3 →
-**drone view**. The camera rises straight up (KD-22) to ~`TH-69` above
-ground at the ~`TH-28` (~60°) gradient, heading preserved, normal FOV.
-Now elevated → the button flips to **street view**; pressing it swoops
-back down to the **same (x, z)** at street eye height (position
-round-trips; the rise was vertical). If instead you were *enclosed*
-(solid overhead), the ladder's first rung wins → **daylight** (pop up),
-regardless of how low you are.
+**drone view**. The camera reverse-swoops up-and-back (KD-22) to ~`TH-69`
+above ground, ending at the ~`TH-28` (~60°) overview tilt looking at the
+feet point F it rose from, heading preserved, normal FOV. Now elevated →
+the button flips to **street view**; pressing it swoops back down to **F**
+at street eye height (position round-trips about the feet point, not via a
+vertical column). If instead you were *enclosed* (solid overhead), the
+ladder's first rung wins → **daylight** (pop up), regardless of how low you
+are.
