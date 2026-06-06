@@ -756,6 +756,28 @@ export function classifySwoopTickTarget({
   return 'swoop';
 }
 
+// Part C-add-2 — Phase-2 wheel action + next break-out dolly-depth counter
+// (live-test "B": a broke-out dolly is a BOUNDED EXCURSION).
+//   zoom-IN (sign < 0): per the classified regime — 'dolly' breaks out and
+//     deepens the excursion (count + 1); 'swoop' commits any run (count → 0)
+//     and pedestals.
+//   zoom-OUT (sign > 0): UNWIND the excursion first — while depth > 0, dolly
+//     back (count − 1); once back on the rail (depth 0), resume the swoop
+//     ascent. Counter-driven, so `regime` is ignored on the way out.
+// Returns { action: 'dolly' | 'swoop', dollyTicks }. Pure.
+export function decidePhase2WheelAction({ sign, regime, dollyTicks }) {
+  if (sign < 0) {
+    if (regime === 'dolly') {
+      return { action: 'dolly', dollyTicks: dollyTicks + 1 };
+    }
+    return { action: 'swoop', dollyTicks: 0 };
+  }
+  if (dollyTicks > 0) {
+    return { action: 'dolly', dollyTicks: dollyTicks - 1 };
+  }
+  return { action: 'swoop', dollyTicks: 0 };
+}
+
 // Part B (M4) — re-aim continuity weight. 1 for near cursor targets, ramps
 // linearly to 0 by `far`, so the cursor-lock re-aim magnitude falls to zero
 // continuously as the target recedes toward the horizon — no jump crossing

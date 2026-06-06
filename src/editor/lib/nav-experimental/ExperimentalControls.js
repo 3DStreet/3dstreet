@@ -99,6 +99,7 @@ import {
   levelForwardAnchor,
   lateralCap,
   classifySwoopTickTarget,
+  decidePhase2WheelAction,
   reaimWeight,
   shiftRotateStep,
   decideSwoopPhase,
@@ -316,6 +317,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // leaves the Phase-2 band, so a stale value can't spuriously clear a fresh
     // descent's memory.
     this._lastSwoopRegime = null;
+
+    // TASK-027 Part C-add-2 (live-test "B"): depth of the current break-out
+    // dolly excursion — how many zoom-in ticks have dollied toward a wall since
+    // the last swoop tick. Zoom-out unwinds this back to 0 (dolly back to the
+    // rail) before resuming the swoop ascent. Reset on a swoop tick / leaving
+    // the band / non-wheel move.
+    this._breakoutDollyTicks = 0;
 
     // TASK-022 / TASK-027 Part A (L4): swoop-OUT ascent anchor, the sole stored
     // ascent state — the three fields bundled into ONE struct `{ frac, tilt,
@@ -2287,8 +2295,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const camera = this._camera;
     if (this._lastWheelCtrlKey) {
       // Ctrl+wheel bypasses the swoop band entirely — it never participates in
-      // the Part-C break-out, so reset the regime tracker (M1).
+      // the Part-C break-out, so reset the regime tracker (M1) + excursion.
       this._lastSwoopRegime = null;
+      this._breakoutDollyTicks = 0;
       return this._applyCursorDolly(sign);
     }
 
@@ -2340,6 +2349,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // is collapsed — Phase 1 is now always the cursor-anchored path.
     if (!this._frameGroundHit) {
       this._lastSwoopRegime = null; // not in the phase-2 band (M1)
+      this._breakoutDollyTicks = 0;
       return this._applyPhase1WheelTick(sign);
     }
     const yAgl = camera.position.y - this._frameGroundY;
@@ -2359,20 +2369,24 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       phase = 'phase3';
     }
     if (phase === 'phase2') {
-      // TASK-027 Part C: per-tick break-out, applied to BOTH directions
-      // (live-test #4). Classify the cursor target — a landing surface (ground/
-      // rooftop, near-horizontal) or a normal swoop look runs the swoop; craning
-      // UP at a solid wall / open sky breaks out to a tilt-preserving cursor
-      // dolly. Running this on zoom-OUT too means a broke-out dolly REVERSES
-      // cleanly (dolly back away from the wall) rather than jumping straight to
-      // the swoop ascent. When the look returns to a swoop target, the regime
-      // switch clears the reverse memory (_notePhase2Regime) so the swoop-out
-      // then runs the default trajectory (C2), not an exact reverse — exactly
-      // the hand-off Diarmid asked for. A normal swoop (looking down/level)
-      // never breaks out, so its C1 reverse is unaffected.
-      const regime = this._classifyPhase2Target();
-      this._notePhase2Regime(regime);
-      if (regime === 'dolly') return this._applyCursorDolly(sign);
+      // TASK-027 Part C / C-add-2 (live-test "B"): a broke-out dolly is a
+      // BOUNDED EXCURSION off the swoop rail.
+      //   zoom-IN: classify the cursor target — craning UP at a solid wall / sky
+      //     breaks out to the cursor dolly (deepening the excursion); anything
+      //     else (ground, rooftop, scatter, or looking down/level) swoops. A
+      //     swoop↔dolly switch clears the exact-reverse memory (C2).
+      //   zoom-OUT: UNWIND the excursion first (dolly back to the rail), then
+      //     resume the swoop ascent — counter-driven, so the cursor isn't
+      //     re-classified on the way out (decidePhase2WheelAction).
+      const regime = sign < 0 ? this._classifyPhase2Target() : null;
+      if (sign < 0) this._notePhase2Regime(regime);
+      const next = decidePhase2WheelAction({
+        sign,
+        regime,
+        dollyTicks: this._breakoutDollyTicks
+      });
+      this._breakoutDollyTicks = next.dollyTicks;
+      if (next.action === 'dolly') return this._applyCursorDolly(sign);
       return this._applyPhase2WheelTick(sign);
     }
     // phase1 / phase3: leaving the phase-2 band — reset the Part-C regime
@@ -2380,6 +2394,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // (M1; covers the descent that broke out to the dolly on its last in-ticks
     // and bypassed _applyPhase2WheelTick's boundary code).
     this._lastSwoopRegime = null;
+    this._breakoutDollyTicks = 0;
     if (phase === 'phase3') return this._applyPhase3WheelTick(sign);
     // phase1: TASK-014d collapsed the tilt-conditional split — every Phase-1
     // tick is the cursor-anchored dolly (the lurch is bounded by the
@@ -2899,6 +2914,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // the camera is no longer where the captured baseline/regime assumed.
     this._phase3Reaim = null;
     this._lastSwoopRegime = null;
+    this._breakoutDollyTicks = 0;
   }
 
   // Apply a tilt (in degrees from horizontal, positive = looking down)

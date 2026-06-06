@@ -24,6 +24,7 @@ import {
   lateralCap,
   swoopLandingFov,
   classifySwoopTickTarget,
+  decidePhase2WheelAction,
   reaimWeight,
   reaimQuatForFov
 } from '../../../../src/editor/lib/nav-experimental/navMath.js';
@@ -1758,6 +1759,48 @@ describe('classifySwoopTickTarget (Part C)', () => {
   });
   it('looking UP, missing normal → swoop (never strand mid-swoop)', () => {
     expect(classifySwoopTickTarget({ source: 'mesh', normalY: null, isSolidFloor: true, lookingUp: true })).toBe('swoop');
+  });
+});
+
+describe('decidePhase2WheelAction (Part C-add-2: bounded break-out excursion)', () => {
+  it('zoom-in dolly deepens the excursion', () => {
+    expect(decidePhase2WheelAction({ sign: -1, regime: 'dolly', dollyTicks: 0 }))
+      .toEqual({ action: 'dolly', dollyTicks: 1 });
+    expect(decidePhase2WheelAction({ sign: -1, regime: 'dolly', dollyTicks: 3 }))
+      .toEqual({ action: 'dolly', dollyTicks: 4 });
+  });
+  it('zoom-in swoop commits any run (depth → 0) and pedestals', () => {
+    expect(decidePhase2WheelAction({ sign: -1, regime: 'swoop', dollyTicks: 3 }))
+      .toEqual({ action: 'swoop', dollyTicks: 0 });
+  });
+  it('zoom-out unwinds the excursion before resuming the swoop', () => {
+    expect(decidePhase2WheelAction({ sign: 1, regime: null, dollyTicks: 3 }))
+      .toEqual({ action: 'dolly', dollyTicks: 2 });
+    expect(decidePhase2WheelAction({ sign: 1, regime: null, dollyTicks: 1 }))
+      .toEqual({ action: 'dolly', dollyTicks: 0 });
+    expect(decidePhase2WheelAction({ sign: 1, regime: null, dollyTicks: 0 }))
+      .toEqual({ action: 'swoop', dollyTicks: 0 });
+  });
+  it('full round-trip: dolly in N, then zoom out → N dolly-backs then swoop (WE-K)', () => {
+    let depth = 0;
+    // dolly in 4 ticks (looking up at a wall)
+    for (let i = 0; i < 4; i++) {
+      const r = decidePhase2WheelAction({ sign: -1, regime: 'dolly', dollyTicks: depth });
+      expect(r.action).toBe('dolly');
+      depth = r.dollyTicks;
+    }
+    expect(depth).toBe(4);
+    // zoom out: 4 dolly-backs unwinding the excursion
+    for (let i = 0; i < 4; i++) {
+      const r = decidePhase2WheelAction({ sign: 1, regime: null, dollyTicks: depth });
+      expect(r.action).toBe('dolly');
+      depth = r.dollyTicks;
+    }
+    expect(depth).toBe(0);
+    // next zoom-out resumes the swoop ascent (back on the rail)
+    const r = decidePhase2WheelAction({ sign: 1, regime: null, dollyTicks: depth });
+    expect(r.action).toBe('swoop');
+    expect(r.dollyTicks).toBe(0);
   });
 });
 
