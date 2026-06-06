@@ -152,14 +152,6 @@ async function takeSnapshotHandler(args) {
   const focusEntityId = args.focusEntityId;
   const snapshotType = args.type || 'focus';
 
-  const screenshotEl = document.getElementById('screenshot');
-  if (!screenshotEl) {
-    throw new Error('Screenshot element not found');
-  }
-  if (!screenshotEl.isPlaying) {
-    screenshotEl.play();
-  }
-
   let screenshotCanvas = document.querySelector('#screenshotCanvas');
   if (!screenshotCanvas) {
     screenshotCanvas = document.createElement('canvas');

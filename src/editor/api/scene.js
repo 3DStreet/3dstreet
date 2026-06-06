@@ -19,6 +19,7 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { httpsCallable, getFunctions } from 'firebase/functions';
 import posthog from 'posthog-js';
 import { isUserPro } from '@shared/auth/api/user';
+import { takeScreenshot } from '@/editor/lib/screenshot.js';
 
 const sceneRef = collection(db, 'scenes');
 
@@ -210,27 +211,6 @@ const takeScreenshotWithOptions = async (options = {}) => {
     imgElementSelector = null
   } = options;
 
-  const screenshotEl = document.getElementById('screenshot');
-  screenshotEl.play();
-
-  // Set all screentock attributes explicitly
-  screenshotEl.setAttribute('screentock', 'showLogo', showLogo);
-  screenshotEl.setAttribute(
-    'screentock',
-    'showCommunityWatermark',
-    showWatermark
-  );
-  screenshotEl.setAttribute('screentock', 'filename', filename);
-  screenshotEl.setAttribute('screentock', 'type', type);
-
-  if (imgElementSelector) {
-    screenshotEl.setAttribute(
-      'screentock',
-      'imgElementSelector',
-      imgElementSelector
-    );
-  }
-
   posthog.capture('export_initiated', {
     export_type: type,
     scene_id: STREET.utils.getCurrentSceneId()
@@ -241,7 +221,15 @@ const takeScreenshotWithOptions = async (options = {}) => {
     scene_id: STREET.utils.getCurrentSceneId()
   });
 
-  screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+  await takeScreenshot({
+    type,
+    filename,
+    showLogo,
+    showCommunityWatermark: showWatermark,
+    imgElement: imgElementSelector
+      ? document.querySelector(imgElementSelector)
+      : null
+  });
 };
 
 // Legacy function for backward compatibility - auto-detects user plan
