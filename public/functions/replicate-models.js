@@ -77,7 +77,46 @@ const REPLICATE_MODELS = {
     name: 'SHARP (Image to Splat)',
     modelName: 'kfarr/sharp-ml',
     type: 'splat',
+    // How generateReplicateSplat shapes the source + Replicate input:
+    //  'image' → base64 staged to Storage, sent as input.image
+    //  'video' → client uploads to Storage, sent as input.video
+    inputKind: 'image',
+    // Naming for the saved gallery asset (kept model-aware so the gallery
+    // distinguishes SHARP vs vid2scene outputs).
+    assetSlug: 'sharp-splat',
+    assetLabel: 'SHARP Splat',
+    // User-facing attribution written to the asset's generationMetadata.
+    attribution: {
+      model: 'apple/sharp-ml',
+      modelName: 'SHARP (Image to Splat)',
+      sourceType: 'image'
+    },
     tokenCost: 1
+  },
+  // Video → 3D Gaussian Splat (samuelm2/vid2scene, packaged as a Replicate Cog
+  // from its standalone `vid2scene_core` pipeline: frame extraction → GLOMAP SfM
+  // → gsplat training → .ply). A short phone video in, a .ply splat out (GPU,
+  // several minutes). Same async/webhook flow as SHARP — the only difference is
+  // a video source (uploaded straight to Storage, not base64'd). Output is a
+  // .ply, so the downstream save + RAD/LOD pipeline are reused unchanged.
+  //
+  // NOTE: `modelName` must point at the Replicate model you push the Cog to
+  // (see vid2scene-cog/). Update the owner/slug once published.
+  vid2scene: {
+    name: 'vid2scene (Video to Splat)',
+    modelName: '3dstreet/vid2scene',
+    type: 'splat',
+    inputKind: 'video',
+    assetSlug: 'vid2scene-splat',
+    assetLabel: 'vid2scene Splat',
+    attribution: {
+      model: 'samuelm2/vid2scene',
+      modelName: 'vid2scene (Video to Splat)',
+      sourceType: 'video'
+    },
+    // GPU-minutes heavy (SfM + 30k-step gsplat training). Placeholder — tune
+    // against measured Replicate cost before public launch.
+    tokenCost: 5
   }
 };
 

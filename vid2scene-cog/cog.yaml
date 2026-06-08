@@ -1,0 +1,60 @@
+# Cog definition for the vid2scene video → Gaussian-splat pipeline, packaged as
+# a Replicate model. This wraps ONLY the standalone reconstruction pipeline
+# (upstream `vid2scene_core/`) — none of the vid2scene SaaS (Django web, Postgres,
+# Redis/django-rq, Azurite blob, Stripe billing). 3DStreet supplies all of that
+# already via its generationJobs queue + Firebase/GCS + token system.
+#
+# This file mirrors the build steps from the upstream `Worker_Dockerfile`
+# (pytorch 2.5.1 / CUDA 12.4; compile glomap, ply-to-sog, 3dgs-autolod, spz;
+# pip install gsplat). It is authored to be correct but MUST be built/validated
+# on a CUDA + NVIDIA-GPU machine — it cannot be built in a CPU sandbox. See
+# README.md for the build/push steps and for the alternative "wrap the upstream
+# Dockerfile" strategy.
+#
+# Pin VID2SCENE_REF to a specific upstream commit before publishing so rebuilds
+# are reproducible.
+build:
+  gpu: true
+  cuda: "12.4"
+  python_version: "3.11"
+  system_packages:
+    - "git"
+    - "wget"
+    - "ffmpeg"
+    - "build-essential"
+    - "ninja-build"
+    - "pkg-config"
+    - "libboost-program-options-dev"
+    - "libboost-graph-dev"
+    - "libboost-system-dev"
+    - "libeigen3-dev"
+    - "libceres-dev"
+    - "libcgal-dev"
+    - "libflann-dev"
+    - "libsqlite3-dev"
+    - "libfreeimage-dev"
+    - "libmetis-dev"
+    - "libgoogle-glog-dev"
+    - "libgflags-dev"
+    - "libwebp-dev"
+    - "clang"
+  run:
+    # Newer CMake than the distro ships (COLMAP/glomap need >= 3.28).
+    - "wget -q https://github.com/Kitware/CMake/releases/download/v3.31.0/cmake-3.31.0-linux-x86_64.sh -O /tmp/cmake.sh && sh /tmp/cmake.sh --skip-license --prefix=/usr/local && rm /tmp/cmake.sh"
+    # Clone the upstream pipeline + vendored submodules (glomap, gsplat, spz,
+    # ply-to-sog, 3dgs-autolod, hloc). Pin to a known-good ref for reproducibility.
+    - "git clone https://github.com/samuelm2/vid2scene.git /src/vid2scene && cd /src/vid2scene && git checkout ${VID2SCENE_REF:-main} && git submodule update --init --recursive"
+    # Build glomap (default SfM — pure C++, no model weights).
+    - "cd /src/vid2scene && mkdir -p third_party/glomap/build && cd third_party/glomap/build && cmake .. -GNinja && ninja && ninja install"
+    # Build the .ply → SOG exporter.
+    - "cd /src/vid2scene/vid2scene_core/ply-to-sog 2>/dev/null && mkdir -p build && cd build && cmake .. && make -j$(nproc) || echo 'ADJUST: ply-to-sog path/build — verify against upstream Worker_Dockerfile'"
+    # Build the autolod (LOD) tool.
+    - "cd /src/vid2scene/vid2scene_core/autolod_cpp 2>/dev/null && mkdir -p build && cd build && cmake .. && make -j$(nproc) || echo 'ADJUST: 3dgs-autolod path/build — verify against upstream Worker_Dockerfile'"
+    # Build spz (compressed splat format).
+    - "cd /src/vid2scene && find . -maxdepth 4 -name build_native.sh -execdir bash build_native.sh \\; || echo 'ADJUST: spz build_native.sh — verify path against upstream Worker_Dockerfile'"
+    # gsplat (training) + the pipeline's Python deps. pycolmap must match CUDA 12.
+    - "pip install 'pycolmap-cuda12==3.13.0'"
+    - "pip install -e /src/vid2scene/vid2scene_core/gsplat || pip install gsplat"
+    - "pip install -r /src/vid2scene/vid2scene_server/requirements.txt || true"
+    - "pip install -r /src/vid2scene/vid2scene_core/requirements.txt || true"
+predict: "predict.py:Predictor"

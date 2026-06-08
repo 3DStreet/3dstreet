@@ -810,7 +810,7 @@ const generateReplicateSplat = functions
     }
 
     const userId = context.auth.uid;
-    const { input_image, model_id = 'sharp-ml', source = 'generator', notify } = data;
+    const { input_image, input_video, model_id = 'sharp-ml', source = 'generator', notify } = data;
 
     // Opt-in completion email. `pending: true` is the flag the notify sweep
     // (generation-job-reconcile.js) queries on; it clears when the email is
@@ -819,6 +819,8 @@ const generateReplicateSplat = functions
 
     const modelConfig = REPLICATE_MODELS[model_id] || REPLICATE_MODELS['sharp-ml'];
     const tokenCost = modelConfig?.tokenCost || 1;
+    // 'image' (base64 staged here) vs 'video' (client-uploaded to Storage).
+    const inputKind = modelConfig?.inputKind || 'image';
 
     let tokenData;
     try {
@@ -836,7 +838,11 @@ const generateReplicateSplat = functions
       throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${tokenData.genToken || 0}.`);
     }
 
-    if (!input_image) {
+    if (inputKind === 'video') {
+      if (!input_video) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing required input video.');
+      }
+    } else if (!input_image) {
       throw new functions.https.HttpsError('invalid-argument', 'Missing required input image.');
     }
 
@@ -849,31 +855,51 @@ const generateReplicateSplat = functions
         useFileOutput: false
       });
 
-      // SHARP needs a publicly-fetchable image URL. Accept either an https URL
-      // (already hosted) or a base64 data URL that we stage in Storage.
-      let imageUrl = input_image;
-      if (input_image.startsWith('data:image/')) {
-        const matches = input_image.match(/^data:([^;]+);base64,(.+)$/);
-        if (!matches) {
-          throw new functions.https.HttpsError('invalid-argument', 'Invalid base64 image format.');
+      // The Replicate model needs a publicly-fetchable source URL. How we get
+      // one depends on the input kind:
+      //   image → accept an https URL or a base64 data URL we stage in Storage
+      //   video → the client already uploaded the file to Storage (videos are
+      //           too large to base64 through a callable); we just make the
+      //           uploaded path briefly fetchable for Replicate.
+      // Either way the staged source is recorded in `tempFilePath` and deleted
+      // once the job finishes (cleanupSplatTempFile, via job.tempFilePath).
+      let sourceUrl;
+      if (inputKind === 'video') {
+        if (input_video.startsWith('http://') || input_video.startsWith('https://')) {
+          sourceUrl = input_video; // already a fetchable URL
+        } else {
+          const bucket = admin.storage().bucket();
+          const file = bucket.file(input_video);
+          await file.makePublic();
+          sourceUrl = `https://storage.googleapis.com/${bucket.name}/${input_video}`;
+          tempFilePath = input_video;
         }
-        const mimeType = matches[1];
-        const base64Data = matches[2];
-        const imageBuffer = Buffer.from(base64Data, 'base64');
-
-        const timestamp = Date.now();
-        const filename = `temp-splat-input-${userId}-${timestamp}.jpg`;
-        const bucket = admin.storage().bucket();
-        const file = bucket.file(`temp/${filename}`);
-        await file.save(imageBuffer, {
-          metadata: {
-            contentType: mimeType,
-            expires: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      } else {
+        let imageUrl = input_image;
+        if (input_image.startsWith('data:image/')) {
+          const matches = input_image.match(/^data:([^;]+);base64,(.+)$/);
+          if (!matches) {
+            throw new functions.https.HttpsError('invalid-argument', 'Invalid base64 image format.');
           }
-        });
-        await file.makePublic();
-        imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
-        tempFilePath = `temp/${filename}`;
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          const imageBuffer = Buffer.from(base64Data, 'base64');
+
+          const timestamp = Date.now();
+          const filename = `temp-splat-input-${userId}-${timestamp}.jpg`;
+          const bucket = admin.storage().bucket();
+          const file = bucket.file(`temp/${filename}`);
+          await file.save(imageBuffer, {
+            metadata: {
+              contentType: mimeType,
+              expires: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+            }
+          });
+          await file.makePublic();
+          imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
+          tempFilePath = `temp/${filename}`;
+        }
+        sourceUrl = imageUrl;
       }
 
       // SHARP (kfarr/sharp-ml) takes a single `image` input and returns a
@@ -901,10 +927,13 @@ const generateReplicateSplat = functions
         .collection('generationJobs').doc(jobId);
 
       // Stable names for the saved gallery asset, fixed at submit so both the
-      // webhook and poll paths produce identical metadata.
+      // webhook and poll paths produce identical metadata. Model-aware so the
+      // gallery distinguishes SHARP vs vid2scene outputs (falls back to SHARP).
       const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const originalFilename = `sharp-splat-${stamp}.ply`;
-      const assetName = `SHARP Splat ${stamp}`;
+      const assetSlug = modelConfig.assetSlug || 'sharp-splat';
+      const assetLabel = modelConfig.assetLabel || 'SHARP Splat';
+      const originalFilename = `${assetSlug}-${stamp}.ply`;
+      const assetName = `${assetLabel} ${stamp}`;
 
       // Write the pending job before submitting. Completion is handled two ways,
       // both converging on the same idempotent processing:
@@ -933,6 +962,14 @@ const generateReplicateSplat = functions
         webhookSecret,
         originalFilename,
         assetName,
+        // Attribution surfaced on the saved asset's generationMetadata. Stored on
+        // the job so the server-side persist (saveSplatToGallery) is model-aware
+        // without re-deriving it. Falls back to SHARP for older jobs.
+        attribution: modelConfig.attribution || {
+          model: 'apple/sharp-ml',
+          modelName: 'SHARP (Image to Splat)',
+          sourceType: 'image'
+        },
         notify: { email: wantsEmail, pending: wantsEmail },
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
@@ -1005,7 +1042,7 @@ const generateReplicateSplat = functions
       try {
         prediction = await replicate.predictions.create({
           version: splatVersion,
-          input: { image: imageUrl },
+          input: inputKind === 'video' ? { video: sourceUrl } : { image: sourceUrl },
           webhook: webhookUrl,
           webhook_events_filter: ['completed']
         });
@@ -1264,13 +1301,15 @@ async function saveSplatToGallery(userId, plyUrl, job) {
       size,
       mimeType: 'application/octet-stream',
       generationMetadata: {
-        // User-facing attribution credits Apple (SHARP is Apple's model; the
-        // `kfarr/sharp-ml` Replicate path that actually ran is preserved on the
-        // job doc + as predictionId below). This is the value the gallery card /
-        // mesh-details modal display via getAssetSourceLabel.
-        model: 'apple/sharp-ml',
-        model_name: 'SHARP (Image to Splat)',
-        sourceType: 'image',
+        // User-facing attribution, taken from the job's `attribution` (set at
+        // submit from the model config) so this is model-aware — SHARP credits
+        // Apple, vid2scene credits samuelm2/vid2scene. The actual Replicate path
+        // that ran is preserved on the job doc + as predictionId below. This is
+        // the value the gallery card / mesh-details modal display via
+        // getAssetSourceLabel. Falls back to SHARP for older jobs.
+        model: job.attribution?.model || 'apple/sharp-ml',
+        model_name: job.attribution?.modelName || 'SHARP (Image to Splat)',
+        sourceType: job.attribution?.sourceType || 'image',
         source: job.source || 'generator',
         predictionId: job.predictionId || null,
         timestamp: new Date().toISOString()
