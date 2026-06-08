@@ -92,7 +92,7 @@ public/
 
 **Auth:** Google, Email/Password, user claims for plan levels
 
-**Functions:** getScene, createStripeSession, stripeWebhook, serveWebXRVariant, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota
+**Functions:** getScene, createStripeSession, stripeWebhook, serveWebXRVariant, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated
 
 ## User Asset Upload
 
@@ -128,6 +128,8 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 **Workflow:** User prompt → token check → Firebase Cloud Function (fal.ai or Replicate) → display + save to gallery
 
 **Token system:** TokenSync syncs Firestore → Zustand, PurchaseModal for Stripe checkout
+
+**Async job queue:** Long-running AI jobs use `users/{uid}/generationJobs/{jobId}` (provider-agnostic, survives a closed browser). Two providers today: `replicate` (image→splat via SHARP; webhook + poll + reconciler converge on one idempotent processor) and `cloudrun` (`.ply`→RAD/LOD conversion via the `rad-converter` Cloud Run service; worker-writeback, `tokenCost: 0`, triggered by `onSplatAssetCreated`). A scheduled reconciler backstops both. Design: `docs/generation-job-queue.md`; RAD pipeline: `docs/rad-cloud-run-pipeline.md`.
 
 ## Shared Library (@shared/*)
 

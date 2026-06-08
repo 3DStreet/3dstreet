@@ -23,6 +23,9 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { withJobHealth } = require('./job-health.js');
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 const GRACE_PERIOD_DAYS = 30;
 const BATCH_LIMIT = 500;
@@ -124,12 +127,23 @@ const purgeSoftDeletedAssets = functions
   .runWith({ timeoutSeconds: 540, memory: '512MB' })
   .pubsub.schedule('0 2 * * 0')
   .timeZone('America/Los_Angeles')
-  .onRun(async () => {
-    console.log('[asset-gc] starting weekly purge');
-    const summary = await purgeBatch({ dryRun: false });
-    console.log('[asset-gc] purge complete:', JSON.stringify(summary));
-    return summary;
-  });
+  .onRun(
+    withJobHealth(
+      'purgeSoftDeletedAssets',
+      {
+        schedule: '0 2 * * 0',
+        timeZone: 'America/Los_Angeles',
+        expectedIntervalMs: WEEK_MS,
+        degradedKeys: ['storageErrors', 'docErrors']
+      },
+      async () => {
+        console.log('[asset-gc] starting weekly purge');
+        const summary = await purgeBatch({ dryRun: false });
+        console.log('[asset-gc] purge complete:', JSON.stringify(summary));
+        return summary;
+      }
+    )
+  );
 
 const triggerPurgeSoftDeletedAssets = functions
   .runWith({ timeoutSeconds: 540, memory: '512MB' })

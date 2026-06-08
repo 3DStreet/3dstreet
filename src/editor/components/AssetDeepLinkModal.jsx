@@ -1,0 +1,92 @@
+/**
+ * AssetDeepLinkModal — opens a single asset's detail view from a URL hash, e.g.
+ * a "your splat is ready" email linking to:
+ *
+ *   https://3dstreet.app/#asset:OWNER_UID/ASSET_ID
+ *
+ * The `asset:OWNER/ID` shape matches the asset-reference token from issue #1641,
+ * so the deep link and the in-JSON reference use one syntax. The owner uid is
+ * required (not just the asset id) because assets live at
+ * users/{ownerUid}/assets/{assetId} and there's no way to locate one from the id
+ * alone — same reason saved scenes embed data-asset-owner-uid.
+ *
+ * MeshDetailsModal does all the real work (self-fetches by assetId+ownerUid,
+ * renders the splat/mesh viewer, degrades to read-only for non-owners). Assets
+ * are public-read by default, so the asset renders even before auth resolves;
+ * auth only upgrades the modal to owner mode. This is a standalone portal, so it
+ * works regardless of whether the Assets panel is open.
+ *
+ * "Place in scene" is wired the same way as the editor's Assets panel
+ * (AssetsPanel.jsx): pick a point on the ground plane and placeCloudAsset. So a
+ * user arriving from a "your splat is ready" email can see it and drop it
+ * straight into the current scene — the natural next action.
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import { AssetDetailModal } from '@shared/assets';
+import { placeCloudAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
+import pickPointOnGroundPlane from '@/editor/lib/pick-point-on-ground-plane';
+
+// #asset:OWNER/ID — OWNER has no slash; ID is the remainder (also slash-free in
+// practice, but `.+` keeps us robust to any future id shape).
+const ASSET_HASH_RE = /^#asset:([^/]+)\/(.+)$/;
+
+function parseAssetHash() {
+  const match = (window.location.hash || '').match(ASSET_HASH_RE);
+  if (!match) return null;
+  const ownerUid = decodeURIComponent(match[1]);
+  const assetId = decodeURIComponent(match[2]);
+  if (!ownerUid || !assetId) return null;
+  return { ownerUid, assetId };
+}
+
+export default function AssetDeepLinkModal() {
+  const [target, setTarget] = useState(parseAssetHash);
+
+  useEffect(() => {
+    const onHashChange = () => setTarget(parseAssetHash());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setTarget(null);
+    // Strip the asset hash so a reload / back-button doesn't reopen the modal,
+    // without leaving a bare '#'. replaceState doesn't fire hashchange, so this
+    // won't loop back through our listener.
+    if (ASSET_HASH_RE.test(window.location.hash || '')) {
+      history.replaceState(
+        null,
+        '',
+        window.location.pathname + window.location.search
+      );
+    }
+  }, []);
+
+  // Place the asset into the current scene at a ground-plane point, exactly as
+  // AssetsPanel.jsx does. MeshDetailsModal calls this with
+  // { assetId, ownerUid, storageUrl, optimizedSourceUrl, name, type } and closes
+  // itself afterward, so the user sees it land in the scene.
+  const handlePlace = useCallback((asset) => {
+    const position = pickPointOnGroundPlane({
+      normalizedX: 0,
+      normalizedY: -0.1,
+      camera: AFRAME.INSPECTOR.camera
+    });
+    placeCloudAsset(asset, position);
+  }, []);
+
+  if (!target) return null;
+
+  // No type in the link — AssetDetailModal fetches the doc to learn it, then
+  // routes (splat/mesh → 3D viewer, image/video → AssetsModal). So the deep
+  // link works for any asset type, not just splats.
+  return (
+    <AssetDetailModal
+      assetId={target.assetId}
+      ownerUid={target.ownerUid}
+      onClose={handleClose}
+      onPlace={handlePlace}
+    />
+  );
+}

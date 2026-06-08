@@ -7,15 +7,10 @@ import useAssetUploadStatus, {
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
-import {
-  MeshDetailsModal,
-  AssetsModal,
-  formatBytes,
-  assetToDisplayItem
-} from '@shared/assets';
+import { AssetDetailModal, formatBytes } from '@shared/assets';
 import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
 
-const AssetUploadStatus = ({ entity }) => {
+const AssetInfoPanel = ({ entity }) => {
   const state = useAssetUploadStatus(entity);
   const [detailsOpen, setDetailsOpen] = useState(false);
   if (!state) return null;
@@ -156,35 +151,25 @@ const AssetUploadStatus = ({ entity }) => {
           {state.originalFilename}
         </div>
       )}
-      {detailsOpen &&
-        state.assetId &&
-        state.ownerUid &&
-        (state.type === 'mesh' || !state.remoteData ? (
-          <MeshDetailsModal
-            assetId={state.assetId}
-            ownerUid={state.ownerUid}
-            onClose={() => setDetailsOpen(false)}
-          />
-        ) : (
-          <AssetsModal
-            // Convert the raw Firestore doc to the same display shape the
-            // gallery uses (generationMetadata → metadata, width/height
-            // promoted, etc.) so the modal renders identically here.
-            item={assetToDisplayItem({
-              ...state.remoteData,
-              assetId: state.assetId
-            })}
-            onClose={() => setDetailsOpen(false)}
-            onUseForGenerator={(item) => openInGenerator(item, 'modify')}
-            onUseForVideo={(item) => openInGenerator(item, 'video')}
-          />
-        ))}
+      {detailsOpen && state.assetId && state.ownerUid && (
+        // AssetDetailModal owns the type→modal routing (mesh/splat → 3D viewer,
+        // image/video → AssetsModal) and fetches the doc itself when needed, so
+        // this site no longer re-decides it.
+        <AssetDetailModal
+          assetId={state.assetId}
+          ownerUid={state.ownerUid}
+          type={state.type}
+          onClose={() => setDetailsOpen(false)}
+          onUseForGenerator={(item) => openInGenerator(item, 'modify')}
+          onUseForVideo={(item) => openInGenerator(item, 'video')}
+        />
+      )}
     </div>
   );
 };
 
-AssetUploadStatus.propTypes = {
+AssetInfoPanel.propTypes = {
   entity: PropTypes.object
 };
 
-export default AssetUploadStatus;
+export default AssetInfoPanel;

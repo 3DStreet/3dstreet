@@ -33,6 +33,7 @@ export function getAssetTypeLabel(item) {
   if (!item) return 'Asset';
   if (item.type === 'video') return 'Video';
   if (item.type === 'mesh') return 'Model';
+  if (item.type === 'splat') return 'Splat';
   return 'Image';
 }
 
@@ -43,6 +44,17 @@ export function getAssetTypeLabel(item) {
  */
 export function getAssetTitle(item) {
   return `${getAssetTypeLabel(item)} · ${getAssetSourceLabel(item)}`;
+}
+
+/**
+ * Single source of truth for the detail-modal split: mesh and splat open the
+ * interactive 3D viewer (MeshDetailsModal); image and video open AssetsModal.
+ * Use via AssetDetailModal so no call site re-decides this (forgetting 'splat'
+ * here is exactly what shipped a wrong-modal bug twice).
+ */
+export const VIEWER_3D_ASSET_TYPES = ['mesh', 'splat'];
+export function is3dViewerType(type) {
+  return VIEWER_3D_ASSET_TYPES.includes(type);
 }
 
 /**

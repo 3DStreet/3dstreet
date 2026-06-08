@@ -2,25 +2,26 @@
  * AssetsContent - Grid + Modal wiring shared by the generator sidebar and
  * the editor Assets tab. Wrappers own useAssets() and their own chrome.
  *
- * variant="paginated": renders AssetsGrid with Prev/Next + "Load more" that
- *   triggers cursor-based fetching once client-side pages are exhausted.
- * variant="unbounded": renders a flat grid of every loaded item plus a
- *   sentinel div (infinite scroll). Callers pass a ref in `sentinelRef` and
- *   hook up their own IntersectionObserver against the enclosing scroll area.
+ * Renders a flat grid of every loaded item plus a sentinel div (infinite
+ * scroll). Callers pass a ref in `sentinelRef` and hook up their own
+ * IntersectionObserver against the enclosing scroll area.
  */
 
 import { useMemo, useState } from 'react';
 import AssetsItem from './AssetsItem.jsx';
-import AssetsGrid from './AssetsGrid.jsx';
-import AssetsModal from './AssetsModal.jsx';
-import MeshDetailsModal from './MeshDetailsModal.jsx';
+import AssetDetailModal from './AssetDetailModal.jsx';
 import PendingUploadCard from './PendingUploadCard.jsx';
+import PendingJobCard from './PendingJobCard.jsx';
 import useCurrentUploadStore from '../state/currentUploadStore.js';
+import { ASSET_TYPES } from '../constants.js';
 import styles from './Assets.module.scss';
+
+// Stable empty fallback so a gallery without optimizingAssetIds doesn't allocate
+// a new Set each render.
+const EMPTY_OPTIMIZING = new Set();
 
 const AssetsContent = ({
   gallery,
-  variant = 'paginated',
   gridClassName,
   sentinelRef,
   loadingState,
@@ -39,17 +40,11 @@ const AssetsContent = ({
 }) => {
   const {
     items,
+    pendingJobs = [],
+    optimizingAssetIds = EMPTY_OPTIMIZING,
     isLoading,
-    isLoadingMore,
-    hasMore,
-    page,
-    pageSize,
-    totalPages,
-    setPage,
-    setPageSize,
     removeItem,
-    downloadItem,
-    loadMore
+    downloadItem
   } = gallery;
 
   const [selectedItem, setSelectedItem] = useState(null);
@@ -66,7 +61,15 @@ const AssetsContent = ({
 
   const handleDownload = (item) => {
     downloadItem(item);
-    if (onNotification) onNotification('Image download started!', 'success');
+    const noun =
+      item?.type === ASSET_TYPES.SPLAT
+        ? 'Splat'
+        : item?.type === ASSET_TYPES.MESH
+          ? 'Model'
+          : item?.type === ASSET_TYPES.VIDEO
+            ? 'Video'
+            : 'Image';
+    if (onNotification) onNotification(`${noun} download started!`, 'success');
   };
 
   const handleNavigate = (direction) => {
@@ -93,6 +96,7 @@ const AssetsContent = ({
   const defaultEmpty = <div className={styles.emptyState}>No assets yet</div>;
 
   const hasPendingUpload = useCurrentUploadStore((s) => !!s.upload);
+  const hasPendingJob = pendingJobs.length > 0;
   const awaitingAssetId = useCurrentUploadStore(
     (s) => s.upload?.awaitingAssetId || null
   );
@@ -110,28 +114,18 @@ const AssetsContent = ({
     <>
       {isLoading ? (
         (loadingState ?? defaultLoading)
-      ) : variant === 'paginated' ? (
-        <AssetsGrid
-          items={items}
-          page={page}
-          pageSize={pageSize}
-          totalPages={totalPages}
-          hasMore={hasMore}
-          isLoadingMore={isLoadingMore}
-          onLoadMore={loadMore}
-          onItemClick={setSelectedItem}
-          onDelete={handleDelete}
-          onDownload={handleDownload}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-          placeable={placeable}
-        />
-      ) : visibleItems.length === 0 && !hasPendingUpload ? (
+      ) : visibleItems.length === 0 && !hasPendingUpload && !hasPendingJob ? (
         (emptyState ?? defaultEmpty)
       ) : (
         <>
           <div className={gridClassName}>
+            {/* A fresh upload is the most-recent action, so it takes the
+                upper-left slot; in-flight generation jobs sit just after it,
+                ahead of finished assets. Both clear into a real asset card. */}
             {hasPendingUpload && <PendingUploadCard />}
+            {pendingJobs.map((job) => (
+              <PendingJobCard key={job.id} job={job} />
+            ))}
             {visibleItems.map((item) => (
               <AssetsItem
                 key={item.id}
@@ -140,6 +134,7 @@ const AssetsContent = ({
                 onDelete={handleDelete}
                 onDownload={handleDownload}
                 placeable={placeable}
+                isOptimizing={optimizingAssetIds.has(item.id)}
               />
             ))}
           </div>
@@ -147,30 +142,20 @@ const AssetsContent = ({
         </>
       )}
 
-      {selectedItem &&
-        (selectedItem.type === 'mesh' ? (
-          <MeshDetailsModal
-            assetId={selectedItem.id}
-            ownerUid={selectedItem.userId}
-            onClose={() => setSelectedItem(null)}
-            onPlace={onPlaceAsset}
-            currentIndex={items.findIndex((i) => i.id === selectedItem.id)}
-            totalItems={items.length}
-            onNavigate={handleNavigate}
-          />
-        ) : (
-          <AssetsModal
-            item={selectedItem}
-            currentIndex={items.findIndex((i) => i.id === selectedItem.id)}
-            totalItems={items.length}
-            onClose={() => setSelectedItem(null)}
-            onNavigate={handleNavigate}
-            onDownload={handleDownload}
-            onDelete={handleDelete}
-            onUseForGenerator={onUseForGenerator}
-            onUseForVideo={onUseForVideo}
-          />
-        ))}
+      {selectedItem && (
+        <AssetDetailModal
+          item={selectedItem}
+          currentIndex={items.findIndex((i) => i.id === selectedItem.id)}
+          totalItems={items.length}
+          onClose={() => setSelectedItem(null)}
+          onNavigate={handleNavigate}
+          onPlace={onPlaceAsset}
+          onDownload={handleDownload}
+          onDelete={handleDelete}
+          onUseForGenerator={onUseForGenerator}
+          onUseForVideo={onUseForVideo}
+        />
+      )}
     </>
   );
 };

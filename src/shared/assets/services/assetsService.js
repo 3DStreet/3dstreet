@@ -31,6 +31,7 @@ import { db, storage } from '@shared/services/firebase.js';
 import {
   ASSET_TYPES,
   ASSET_CATEGORIES,
+  SPLAT_EXTENSIONS,
   STORAGE_PATHS,
   getTypeFolderName,
   validateUserIdForPath
@@ -181,10 +182,30 @@ class AssetsServiceV2 {
         mimeType = 'video/mp4';
       } else if (type === ASSET_TYPES.MESH) {
         mimeType = 'model/gltf-binary';
+      } else if (type === ASSET_TYPES.SPLAT) {
+        // Splat files (.ply/.splat/.spz) upload as application/octet-stream —
+        // the content type storage.rules accepts for them. The browser rarely
+        // assigns a File.type for these extensions, so we force it below.
+        mimeType = 'application/octet-stream';
       } else {
         mimeType = blob.type && blob.type !== '' ? blob.type : 'image/jpeg';
       }
-      const extension = this.getExtensionFromMimeType(mimeType);
+      let extension = this.getExtensionFromMimeType(mimeType);
+      // Splats can be any of .ply/.splat/.spz — all share the octet-stream MIME,
+      // so preserve the real extension from the source filename (the `splat`
+      // component picks its loader by extension). Defaults to .ply.
+      if (type === ASSET_TYPES.SPLAT) {
+        const fromName = (metadata.originalFilename || '')
+          .split('.')
+          .pop()
+          .toLowerCase();
+        extension = SPLAT_EXTENSIONS.includes(fromName) ? fromName : 'ply';
+        // Re-wrap so the Storage upload carries the octet-stream content type
+        // (empty File.type would be rejected by storage.rules).
+        if (blob.type !== mimeType) {
+          blob = new Blob([await blob.arrayBuffer()], { type: mimeType });
+        }
+      }
       const filename = `${assetId}.${extension}`;
 
       // Get storage path (original source)
@@ -672,6 +693,24 @@ class AssetsServiceV2 {
       return { id: assetSnap.id, ...assetSnap.data() };
     }
     return null;
+  }
+
+  /**
+   * Processing/transcode jobs that ran against this asset (today: the RAD/LOD
+   * optimization, kind 'splat-rad'). These are the asset's "transcode entries" —
+   * one source asset, N processing jobs. Owner-only per security rules. Newest
+   * first. Used by the detail modal to show optimization status / job history.
+   * @returns {Promise<Array>}
+   */
+  async getAssetJobs(assetId, userId) {
+    const jobsRef = collection(db, 'users', userId, 'generationJobs');
+    const snap = await getDocs(query(jobsRef, where('assetId', '==', assetId)));
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort(
+        (a, b) =>
+          (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)
+      );
   }
 
   /**

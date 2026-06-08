@@ -114,5 +114,34 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if false;
     }
+
+    // Generation job queue
+    // Async AI generation jobs (image→splat today; image/video/photogrammetry
+    // later). WRITES are Admin-SDK only (the submit / poll / webhook / reconciler
+    // functions): clients must never write status, token, or provider fields —
+    // that would let them spoof a charge/refund or a result.
+    //
+    // READS are allowed to the owner of the job so the gallery can show
+    // in-flight jobs as pending cards (surviving reload / across tabs) via a live
+    // listener. The doc holds a per-job webhookSecret, but exposing it to the
+    // *owner* is safe: it gates the public webhook against forged POSTs for
+    // someone else's job, and a third party still can't read this doc (read is
+    // uid-scoped), so the secret stays confidential from attackers. The worst an
+    // owner can do with their own secret is re-trigger idempotent processing of
+    // their own job — already possible via getGenerationJobStatus.
+    // (Rules don't cascade, so this is also belt-and-suspenders against any
+    // future broad users/{uid} rule.)
+    match /users/{userId}/generationJobs/{jobId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // Background-job health heartbeats (System Health admin page).
+    // Each scheduled function records its last run + status here via the Admin
+    // SDK (writes bypass rules). Admin-only read; never client-writable.
+    match /jobHealth/{jobName} {
+      allow read: if request.auth != null && request.auth.token.admin == true;
+      allow write: if false;
+    }
   }
 }

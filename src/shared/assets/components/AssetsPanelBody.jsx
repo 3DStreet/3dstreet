@@ -26,6 +26,7 @@ import styles from './AssetsPanelBody.module.scss';
 const FILTERS = [
   { key: 'all', label: 'All', match: () => true },
   { key: 'mesh', label: 'Meshes', match: (item) => item.type === 'mesh' },
+  { key: 'splat', label: 'Splats', match: (item) => item.type === 'splat' },
   { key: 'image', label: 'Images', match: (item) => item.type === 'image' },
   { key: 'video', label: 'Video', match: (item) => item.type === 'video' }
 ];

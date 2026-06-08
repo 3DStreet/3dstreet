@@ -29,6 +29,7 @@ import FluxUI from './main.js';
 import ModifyTab from './modify.js';
 import CreateTab from './create.js';
 import VideoTab from './video.js';
+import SplatTab from './splat.js';
 
 // Initialize PostHog so capture() calls in handlers/effects below are not no-ops
 initPostHog();
@@ -60,6 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   ModifyTab.init();
   CreateTab.init();
   VideoTab.init();
+  SplatTab.init();
 
   // Hide loading screen once everything is initialized
   // Use requestAnimationFrame to ensure styles are applied

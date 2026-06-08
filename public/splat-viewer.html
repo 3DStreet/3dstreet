@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Splat Viewer</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #393939;
+        color: #d1d5db;
+        font-family: system-ui, sans-serif;
+      }
+      #canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      #loader {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        pointer-events: none;
+      }
+      #loader .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(255, 255, 255, 0.12);
+        border-top-color: #8965ef;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 12px;
+      }
+      #loader .label {
+        color: #d1d5db;
+        font-size: 13px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      #err {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 13px;
+        color: #e0473d;
+        text-align: center;
+        padding: 0 16px;
+      }
+      /* "Drag to orbit" hint — mirrors model-viewer's interaction prompt: a
+         subtle hand that swipes side to side, fading in after load and out on
+         first interaction so the user knows this is an interactive 3D view. */
+      #dragHint {
+        position: absolute;
+        left: 50%;
+        bottom: 22px;
+        transform: translateX(-50%);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+      }
+      #dragHint.visible {
+        opacity: 0.65;
+      }
+      #dragHint svg {
+        display: block;
+        width: 40px;
+        height: 40px;
+        color: #fff;
+        filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55));
+        animation: dragSwipe 1.8s ease-in-out infinite;
+      }
+      @keyframes dragSwipe {
+        0%,
+        100% {
+          transform: translateX(-9px) rotate(-8deg);
+        }
+        50% {
+          transform: translateX(9px) rotate(8deg);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #dragHint svg {
+          animation: none;
+        }
+      }
+    </style>
+    <!-- Pinned to the versions bundled in the app (three 0.180.0, spark 2.1.0)
+         so the standalone viewer behaves like the in-editor splat component.
+         Hosted as its own document (like model-viewer.html) so its THREE copy
+         doesn't collide with the editor's window.THREE set by A-Frame. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+          "@sparkjsdev/spark": "https://cdn.jsdelivr.net/npm/@sparkjsdev/spark@2.1.0/dist/spark.module.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <div id="loader">
+      <div class="spinner"></div>
+      <div class="label">Loading splat…</div>
+    </div>
+    <div id="err" hidden>Unable to load splat</div>
+    <!-- Drag-to-orbit hint (hand icon, Material "pan_tool"), shown once the
+         splat is framed and hidden on first interaction. -->
+    <div id="dragHint" hidden aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path
+          d="M23 5.5V20c0 2.2-1.8 4-4 4h-7.3c-1.08 0-2.1-.43-2.85-1.19L1 14.83s1.26-1.23 1.3-1.25c.22-.19.49-.29.79-.29.22 0 .42.06.6.16.04.01 4.31 2.46 4.31 2.46V4c0-.83.67-1.5 1.5-1.5S12 3.17 12 4v7h1V1.5c0-.83.67-1.5 1.5-1.5S16 .67 16 1.5V11h1V2.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5V11h1V5.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5z"
+        />
+      </svg>
+    </div>
+
+    <script type="module">
+      import * as THREE from 'three';
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+      import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
+
+      const params = new URLSearchParams(location.search);
+      const src = params.get('src');
+      const loader = document.getElementById('loader');
+      const err = document.getElementById('err');
+      const dragHint = document.getElementById('dragHint');
+
+      function showDragHint() {
+        if (!dragHint) return;
+        dragHint.hidden = false;
+        // Next frame so the opacity transition actually runs from 0.
+        requestAnimationFrame(() => dragHint.classList.add('visible'));
+        // Auto-retire after a while even if the user never interacts, so it
+        // doesn't loop forever in an idle preview.
+        setTimeout(hideDragHint, 6000);
+      }
+      function hideDragHint() {
+        if (!dragHint || dragHint.hidden) return;
+        dragHint.classList.remove('visible');
+        setTimeout(() => {
+          dragHint.hidden = true;
+        }, 500);
+      }
+
+      function showError(message) {
+        loader.hidden = true;
+        err.textContent = message;
+        err.hidden = false;
+      }
+
+      if (!src) {
+        showError('No splat URL provided');
+      } else {
+        init(src).catch((e) => {
+          console.error('[splat-viewer] failed', e);
+          showError('Unable to load splat');
+        });
+      }
+
+      async function init(url) {
+        const canvas = document.getElementById('canvas');
+        const renderer = new THREE.WebGLRenderer({
+          canvas,
+          antialias: true,
+          // Needed so we can read the canvas back into a thumbnail JPEG after
+          // the splat settles (see postThumbnail). Minor perf cost, fine for a
+          // preview viewer.
+          preserveDrawingBuffer: true
+        });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x393939);
+
+        const camera = new THREE.PerspectiveCamera(
+          55,
+          window.innerWidth / window.innerHeight,
+          0.01,
+          1000
+        );
+        camera.position.set(0, 0, 3);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+
+        // Spark needs a SparkRenderer in the scene to draw splats.
+        const spark = new SparkRenderer({ renderer, enableLod: true });
+        scene.add(spark);
+
+        // Mirror the in-editor splat component: RAD files have pre-built LOD
+        // and stream via byte-range requests (paged), so they draw progressively
+        // and fast. Other formats render at full detail — we deliberately don't
+        // build LOD on the fly (ephemeral + costly for large splats; the cloud
+        // RAD pipeline bakes a streamable variant instead).
+        const isRad = new URL(url, location.href).pathname
+          .toLowerCase()
+          .endsWith('.rad');
+        const splat = new SplatMesh({
+          url,
+          ...(isRad ? { paged: true } : {})
+        });
+        // Spark uses a different quaternion convention; rotate to match the
+        // upright orientation used by the in-editor splat component.
+        splat.quaternion.set(1, 0, 0, 0);
+        scene.add(splat);
+
+        try {
+          await splat.initialized;
+          loader.hidden = true;
+          frameObject(splat, camera, controls);
+          // Splat is visible and interactive now — prompt the drag gesture,
+          // and dismiss it the moment the user grabs the view.
+          showDragHint();
+          canvas.addEventListener('pointerdown', hideDragHint, { once: true });
+        } catch (e) {
+          console.error('[splat-viewer] splat init failed', e);
+          showError('Unable to load splat');
+          return;
+        }
+
+        window.addEventListener('resize', () => {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        renderer.setAnimationLoop(() => {
+          controls.update();
+          renderer.render(scene, camera);
+        });
+
+        // Best-effort thumbnail handed up to the parent (asset modal), which
+        // backfills it if the asset has none. We capture the LIVE canvas (what's
+        // actually on screen) rather than a one-shot offscreen render: Spark
+        // streams + sorts paged .rad splats against the live animation-loop
+        // camera, so an offscreen render with a different camera came back BLACK
+        // for RAD files. preserveDrawingBuffer keeps the live canvas readable.
+        // Retry a few times so paged RAD has time to stream something visible,
+        // and never post a blank (uniform) frame.
+        let thumbAttempts = 0;
+        const tryCaptureThumbnail = () => {
+          thumbAttempts++;
+          if (captureLiveThumbnail()) return; // posted a good frame
+          if (thumbAttempts < 5) setTimeout(tryCaptureThumbnail, 2000);
+        };
+        setTimeout(tryCaptureThumbnail, 2500);
+
+        // Returns true once it has posted a non-blank thumbnail.
+        function captureLiveThumbnail() {
+          try {
+            const glCanvas = renderer.domElement;
+            if (!glCanvas.width || !glCanvas.height) return false;
+            // Force a current frame so the buffer is fresh at read time.
+            renderer.render(scene, camera);
+            const size = 512;
+            const out = document.createElement('canvas');
+            out.width = size;
+            out.height = size;
+            const ctx = out.getContext('2d');
+            // Center-crop the (usually landscape) live canvas to a square.
+            const s = Math.min(glCanvas.width, glCanvas.height);
+            const sx = (glCanvas.width - s) / 2;
+            const sy = (glCanvas.height - s) / 2;
+            ctx.drawImage(glCanvas, sx, sy, s, s, 0, 0, size, size);
+            // Don't persist a blank frame — pure black, or just the flat grey
+            // background before any splat has drawn. A uniform image means
+            // nothing rendered yet; let the retry try again.
+            if (isThumbnailBlank(ctx, size)) return false;
+            out.toBlob(
+              (blob) => {
+                if (blob && window.parent && window.parent !== window) {
+                  window.parent.postMessage(
+                    { type: '3dstreet:splat-thumbnail', blob, src: url },
+                    '*'
+                  );
+                }
+              },
+              'image/jpeg',
+              0.82
+            );
+            return true;
+          } catch (e) {
+            console.warn('[splat-viewer] thumbnail capture failed', e);
+            return false;
+          }
+        }
+
+        // A rendered splat spans a wide luminance range; an empty frame (black
+        // OR the flat background) is ~uniform. Reject the uniform case so we
+        // never persist a blank thumbnail.
+        function isThumbnailBlank(ctx, size) {
+          try {
+            const { data: px } = ctx.getImageData(0, 0, size, size);
+            let min = 255;
+            let max = 0;
+            const stride = 4 * 137; // sparse sample for speed
+            for (let i = 0; i + 2 < px.length; i += stride) {
+              const lum = px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114;
+              if (lum < min) min = lum;
+              if (lum > max) max = lum;
+            }
+            return max - min < 6;
+          } catch {
+            return false;
+          }
+        }
+      }
+
+      // Position the camera so the whole splat is in view and set the orbit
+      // pivot to its center. Best-effort: falls back to the default camera if
+      // the bounds can't be read.
+      function frameObject(splat, camera, controls) {
+        let box;
+        try {
+          box = splat.getBoundingBox(true);
+        } catch (e) {
+          return;
+        }
+        if (!box || box.isEmpty()) return;
+
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        // Bounds are in local space; the mesh is rotated, so rotate the center.
+        center.applyQuaternion(splat.quaternion);
+
+        const radius = Math.max(size.x, size.y, size.z, 0.001) * 0.5;
+        const fov = (camera.fov * Math.PI) / 180;
+        const dist = (radius / Math.tan(fov / 2)) * 1.8;
+
+        camera.position.copy(center).add(
+          new THREE.Vector3(0, radius * 0.25, dist)
+        );
+        camera.near = Math.max(dist / 1000, 0.001);
+        camera.far = dist * 1000;
+        camera.updateProjectionMatrix();
+
+        controls.target.copy(center);
+        controls.update();
+      }
+    </script>
+  </body>
+</html>

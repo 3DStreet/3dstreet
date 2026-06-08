@@ -1,6 +1,6 @@
 /**
  * Editor-specific cross-app handoff to the generator. Used by AssetsPanel
- * (grid) and AssetUploadStatus (per-entity Details button) so both surfaces
+ * (grid) and AssetInfoPanel (per-entity Details button) so both surfaces
  * behave identically when the user clicks Modify / Create Video on an image.
  *
  * Stays here (not in @shared/assets) because the generator app routes these

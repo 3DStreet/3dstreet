@@ -69,6 +69,15 @@ const REPLICATE_MODELS = {
     name: 'Seedream v4.5',
     modelName: 'bytedance/seedream-4.5',
     tokenCost: 2
+  },
+  // Image → 3D Gaussian Splat (Apple SHARP, packaged by kfarr).
+  // Single image in, .ply splat out (~4 min on a T4). Used by the Splat tab
+  // via generateReplicateSplat, not the image generator.
+  'sharp-ml': {
+    name: 'SHARP (Image to Splat)',
+    modelName: 'kfarr/sharp-ml',
+    type: 'splat',
+    tokenCost: 1
   }
 };
 

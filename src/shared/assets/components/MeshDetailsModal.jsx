@@ -5,7 +5,7 @@
  * which aren't loaded in the generator or bollardbuddy bundles.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -17,7 +17,6 @@ import assetsService from '../services/assetsService.js';
 import {
   formatBytes,
   formatDate,
-  getAssetTitle,
   getOptimizationDisplay,
   getServedUrl
 } from '../utils.js';
@@ -54,6 +53,28 @@ function attributionEquals(a, b) {
   return true;
 }
 
+// True if the drawn frame is essentially uniform — i.e. nothing rendered: the
+// WebGL canvas was captured before the splat drew (pure black), or it shows only
+// the flat #393939 background. A real splat spans a wide luminance range, so we
+// reject a near-zero min→max spread. Samples a sparse stride for speed.
+// Best-effort: if the pixels can't be read, don't block the capture.
+function isFrameBlank(ctx, w, h) {
+  try {
+    const { data: px } = ctx.getImageData(0, 0, w, h);
+    let min = 255;
+    let max = 0;
+    const stride = 4 * 101; // sparse, prime-ish sample for speed
+    for (let i = 0; i + 2 < px.length; i += stride) {
+      const lum = px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114;
+      if (lum < min) min = lum;
+      if (lum > max) max = lum;
+    }
+    return max - min < 6;
+  } catch {
+    return false;
+  }
+}
+
 const IconTooltip = ({ children, label }) => (
   <Tooltip.Root delayDuration={150}>
     <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
@@ -85,6 +106,12 @@ const MeshDetailsModal = ({
 }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  // The asset's processing/transcode jobs (today: the RAD/LOD optimization).
+  // One source asset, N jobs — owner-only by rules.
+  const [assetJobs, setAssetJobs] = useState([]);
+  // Briefly true after a successful "Recapture thumbnail" click, to flash a
+  // checkmark on the button as feedback (the live capture is otherwise silent).
+  const [thumbCaptured, setThumbCaptured] = useState(false);
 
   const [name, setName] = useState('');
   const [savedName, setSavedName] = useState('');
@@ -93,6 +120,9 @@ const MeshDetailsModal = ({
   const [editingAttribution, setEditingAttribution] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // Latest close handler, read by the keydown effect (which is set up once).
+  const onCloseRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,20 +152,151 @@ const MeshDetailsModal = ({
     };
   }, [assetId, ownerUid]);
 
+  // Load the asset's transcode/optimization jobs (owner-only by rules) so the
+  // modal can show optimization status. Best-effort: failure just hides the row.
+  useEffect(() => {
+    const owner = !!auth.currentUser && auth.currentUser.uid === ownerUid;
+    if (!owner) {
+      setAssetJobs([]);
+      return;
+    }
+    let cancelled = false;
+    assetsService
+      .getAssetJobs(assetId, ownerUid)
+      .then((js) => {
+        if (!cancelled) setAssetJobs(js || []);
+      })
+      .catch(() => {
+        if (!cancelled) setAssetJobs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [assetId, ownerUid]);
+
   // Keyboard nav — mirrors AssetsModal.
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'ArrowLeft' && onNavigate) onNavigate('prev');
       else if (e.key === 'ArrowRight' && onNavigate) onNavigate('next');
-      else if (e.key === 'Escape') onClose();
+      else if (e.key === 'Escape') onCloseRef.current?.();
     };
     // Capture phase — see AssetsModal for why (SceneGraph's onKeyDown
     // stopPropagation()s arrow keys in bubble phase before they reach window).
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [onNavigate, onClose]);
+  }, [onNavigate]);
 
+  // Lazy splat-thumbnail backfill: the splat-viewer iframe captures a frame of
+  // the loaded splat and postMessages it up. If this splat has no thumbnail yet
+  // and we're the owner (only the owner may write to their asset path), upload
+  // it so the gallery card stops showing a blank .ply placeholder. Best-effort,
+  // at most once per asset (the assetUpdated event then refreshes the card).
+  const thumbUploadedRef = useRef(null);
+  useEffect(() => {
+    const isOwnerNow = !!auth.currentUser && auth.currentUser.uid === ownerUid;
+    if (!data || data.type !== 'splat' || !isOwnerNow) return;
+    if (data.thumbnailUrl || thumbUploadedRef.current === assetId) return;
+    const expectedSrc = getServedUrl(data);
+    const onMessage = (e) => {
+      const msg = e.data;
+      if (
+        !msg ||
+        msg.type !== '3dstreet:splat-thumbnail' ||
+        !(msg.blob instanceof Blob)
+      ) {
+        return;
+      }
+      // The viewer echoes the src it captured; ignore a stale capture that
+      // arrived after the user navigated to a different asset.
+      if (msg.src && msg.src !== expectedSrc) return;
+      if (thumbUploadedRef.current === assetId) return;
+      thumbUploadedRef.current = assetId;
+      import('@shared/asset-upload')
+        .then(({ uploadCapturedThumbnail }) =>
+          uploadCapturedThumbnail(assetId, ownerUid, msg.blob, 'splats')
+        )
+        .catch((err) =>
+          console.warn('[MeshDetailsModal] splat thumbnail upload failed', err)
+        );
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [data, assetId, ownerUid]);
+
+  const iframeRef = useRef(null);
   const isOwner = !!auth.currentUser && auth.currentUser.uid === ownerUid;
+
+  // Synchronous fallback for when the user closes before the viewer's better
+  // auto-framed capture fires: read whatever the iframe canvas currently shows
+  // (same-origin) and upload it. Lower quality (live view, maybe mid-LOD) but
+  // guarantees a thumbnail. Must run while the modal is still open — a ref read
+  // in an unmount effect would already be nulled — so it's wired through the
+  // explicit close affordances via handleClose, not a cleanup.
+  // Read the live preview iframe's canvas (same-origin), downscale to <=512px,
+  // and upload it as the asset thumbnail. Captures exactly what's on screen —
+  // no iframe reload / file re-download. Shared by the on-close fallback and
+  // the explicit "Recapture thumbnail" button. uploadCapturedThumbnail writes a
+  // fresh thumbnailUrl + emits assetUpdated, so the gallery card refreshes.
+  // Returns: 'ok' (upload kicked off), 'blank' (nothing rendered yet), or
+  // 'unavailable' (canvas not readable).
+  const uploadLiveCanvasThumbnail = () => {
+    try {
+      const glCanvas =
+        iframeRef.current?.contentDocument?.querySelector('canvas');
+      if (!glCanvas || !glCanvas.width || !glCanvas.height) {
+        return 'unavailable';
+      }
+      const maxDim = 512;
+      const scale = Math.min(
+        1,
+        maxDim / Math.max(glCanvas.width, glCanvas.height)
+      );
+      const tw = Math.max(1, Math.round(glCanvas.width * scale));
+      const th = Math.max(1, Math.round(glCanvas.height * scale));
+      const tmp = document.createElement('canvas');
+      tmp.width = tw;
+      tmp.height = th;
+      const tctx = tmp.getContext('2d');
+      tctx.drawImage(glCanvas, 0, 0, tw, th);
+      // The viewer only begins rendering on its first animation frame; before
+      // that the GL canvas is an uncleared (black) buffer. Skip a blank/uniform
+      // frame rather than persist a black thumbnail that then sticks.
+      if (isFrameBlank(tctx, tw, th)) return 'blank';
+      thumbUploadedRef.current = assetId;
+      tmp.toBlob(
+        (blob) => {
+          if (!blob) return;
+          import('@shared/asset-upload')
+            .then(({ uploadCapturedThumbnail }) =>
+              uploadCapturedThumbnail(assetId, ownerUid, blob, 'splats')
+            )
+            .catch(() => {});
+        },
+        'image/jpeg',
+        0.82
+      );
+      return 'ok';
+    } catch {
+      return 'unavailable';
+    }
+  };
+
+  // On-close fallback: if the viewer's better auto-framed capture never fired
+  // (user closed before it ran) and the asset still has no thumbnail, persist
+  // whatever the live canvas currently shows. Must run while the modal is still
+  // open — a ref read in an unmount effect would already be nulled.
+  const captureCurrentFrame = () => {
+    if (!data || data.type !== 'splat' || !isOwner) return;
+    if (data.thumbnailUrl || thumbUploadedRef.current === assetId) return;
+    uploadLiveCanvasThumbnail();
+  };
+
+  const handleClose = () => {
+    captureCurrentFrame();
+    onClose();
+  };
+  onCloseRef.current = handleClose;
   const nameDirty = isOwner && name.trim() !== savedName && name.trim() !== '';
   const attributionDirty =
     isOwner && !attributionEquals(attribution, savedAttribution);
@@ -266,7 +427,28 @@ const MeshDetailsModal = ({
       name: savedName || data.name || data.originalFilename || '',
       type: data.type
     });
-    onClose();
+    handleClose();
+  };
+
+  // Recapture the thumbnail from the CURRENT live view — no iframe reload / file
+  // re-download. The splat is already rendered in the preview, so we grab that
+  // exact frame (orbit to frame the shot first, then click). uploadCapturedThumbnail
+  // overwrites the thumbnail with a fresh URL + emits assetUpdated, refreshing
+  // the gallery card. thumbUploadedRef is reset first so the forced recapture
+  // isn't skipped as "already done".
+  const onRegenerateThumbnail = () => {
+    if (!isOwner || !data) return;
+    setError(null);
+    thumbUploadedRef.current = null;
+    const result = uploadLiveCanvasThumbnail();
+    if (result !== 'ok') {
+      setError(
+        'Could not capture the current view — wait for the splat to finish rendering, then try again.'
+      );
+      return;
+    }
+    setThumbCaptured(true);
+    setTimeout(() => setThumbCaptured(false), 1500);
   };
 
   // Use mousedown, not click: a `click` fires on the common ancestor of
@@ -274,18 +456,60 @@ const MeshDetailsModal = ({
   // mouseup on the backdrop would land `click` on the backdrop and close.
   // Closing on mousedown only triggers when the press itself starts here.
   const handleBackgroundMouseDown = (e) => {
-    if (e.target === e.currentTarget) onClose();
+    if (e.target === e.currentTarget) handleClose();
   };
 
+  // This modal serves both meshes (GLB) and splats (.ply/.splat/.spz). The
+  // only type-dependent bits are the live viewer page and the type label.
+  const isSplat = data?.type === 'splat';
+  const viewerPage = isSplat ? '/splat-viewer.html' : '/model-viewer.html';
+
+  // Source format from the original filename / storage path extension. The
+  // stored MIME is `application/octet-stream` for every splat (.ply/.splat/.spz/
+  // .rad share no registered type), which is meaningless to a user, so show the
+  // real format instead, falling back to the raw MIME only if unrecognized.
+  // KNOWN_FORMATS.rad doubles as the canonical label for the Optimization row.
+  const KNOWN_FORMATS = {
+    ply: 'PLY',
+    splat: 'SPLAT',
+    spz: 'SPZ',
+    rad: 'RAD Streaming Level-of-Detail',
+    ksplat: 'KSPLAT',
+    sog: 'SOG',
+    glb: 'GLB',
+    gltf: 'glTF'
+  };
+  const sourceExt = (data?.originalFilename || data?.storagePath || '')
+    .split(/[?#]/)[0]
+    .split('.')
+    .pop()
+    ?.toLowerCase();
+  const formatLabel =
+    (sourceExt && KNOWN_FORMATS[sourceExt]) || data?.mimeType || '—';
+
+  // Optimization (transcode) status. Only shown when there's actually an
+  // optimized variant or an in-flight job. An uploaded .rad has neither (it's
+  // already the streaming form, which the Format row already says), so no row
+  // appears for it.
+  const hasOptimizedVariant = !!data?.optimizedSourceUrl;
+  const activeOptimizeJob = assetJobs.find((j) =>
+    ['queued', 'running', 'saving'].includes(j.status)
+  );
+  const optimizationLabel = hasOptimizedVariant
+    ? isSplat
+      ? KNOWN_FORMATS.rad
+      : 'Optimized variant ready'
+    : activeOptimizeJob
+      ? `Optimizing… (${activeOptimizeJob.status})`
+      : null;
+
   // Canonical "{Type} · {Source}" title — matches the gallery card overlay
-  // and the image/video modal. For meshes, the source label is the editable
-  // display name, so the live `savedName` takes precedence over `data.name`
-  // (which only refreshes after the doc reloads).
-  const title = getAssetTitle({
-    type: 'mesh',
-    name: savedName || data?.name,
-    originalFilename: data?.originalFilename
-  });
+  // and the image/video modal. The source label is the editable display name,
+  // so the live `savedName` takes precedence over `data.name` (which only
+  // refreshes after the doc reloads).
+  const title = `${isSplat ? 'Splat' : 'Model'} · ${
+    savedName || data?.name || data?.originalFilename || 'Untitled'
+  }`;
   const showNav = onNavigate && totalItems > 1;
   const hasPrev = showNav && currentIndex > 0;
   const hasNext = showNav && currentIndex < totalItems - 1;
@@ -368,7 +592,7 @@ const MeshDetailsModal = ({
           <button
             type="button"
             className={styles.closeBtn}
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close"
           >
             <Cross24Icon />
@@ -384,13 +608,14 @@ const MeshDetailsModal = ({
             )}
             {data && (
               <iframe
+                ref={iframeRef}
                 className={styles.viewerFrame}
                 title={savedName || data.originalFilename || '3D model'}
                 // Don't put the editable name in the iframe URL — the src
                 // string drives the iframe's load; baking savedName in
-                // would cause model-viewer to reload on every Save name
+                // would cause the viewer to reload on every Save name
                 // click. The iframe title above is enough for a11y.
-                src={`/model-viewer.html?src=${encodeURIComponent(getServedUrl(data))}`}
+                src={`${viewerPage}?src=${encodeURIComponent(getServedUrl(data))}`}
               />
             )}
           </div>
@@ -472,9 +697,15 @@ const MeshDetailsModal = ({
                   return formatBytes(opt.origSize);
                 })()}
               </div>
+              {optimizationLabel && (
+                <div>
+                  <span className={styles.metaLabel}>Optimization:</span>
+                  {optimizationLabel}
+                </div>
+              )}
               <div>
-                <span className={styles.metaLabel}>Type:</span>
-                {data?.mimeType || '—'}
+                <span className={styles.metaLabel}>Format:</span>
+                {formatLabel}
               </div>
               <div>
                 <span className={styles.metaLabel}>Uploaded:</span>
@@ -534,6 +765,54 @@ const MeshDetailsModal = ({
                       </button>
                     </IconTooltip>
                   ))}
+                {isOwner && !loading && isSplat && !data?.deleted && (
+                  <IconTooltip
+                    label={
+                      thumbCaptured
+                        ? 'Thumbnail updated'
+                        : 'Set thumbnail from current view'
+                    }
+                  >
+                    <button
+                      type="button"
+                      onClick={onRegenerateThumbnail}
+                      disabled={!data}
+                      className={styles.iconButton}
+                      aria-label="Set thumbnail from current view"
+                    >
+                      {thumbCaptured ? (
+                        // Brief confirmation: checkmark
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                      ) : (
+                        // Camera: "capture a thumbnail from the live view"
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                          <circle cx="12" cy="13" r="4" />
+                        </svg>
+                      )}
+                    </button>
+                  </IconTooltip>
+                )}
                 {data?.optimizedSourceUrl ? (
                   <>
                     <IconTooltip label="Download original">

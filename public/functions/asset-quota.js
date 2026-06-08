@@ -34,8 +34,24 @@ const PLAN_LIMITS = {
   MAX: 25 * GB
 };
 
+// Per-FILE upload cap, by plan. Single dimension (plan only) — deliberately
+// NOT per-file-type: a big upload costs the same to host whether it's a model,
+// image, or splat, so "upload bigger → pay more" scales by plan alone. This is
+// the authority; the client mirrors only the top value as a fast reject, and
+// storage.rules holds the same MAX value as a flat hard ceiling. (Total storage
+// quota above is a separate, additive limit on aggregate stored bytes.)
+const MAX_FILE_BYTES_BY_PLAN = {
+  FREE: 100 * MB,
+  PRO: 1 * GB,
+  MAX: 5 * GB
+};
+
 function getPlanLimit(planName) {
   return PLAN_LIMITS[planName] || PLAN_LIMITS.FREE;
+}
+
+function getMaxFileBytes(tier) {
+  return MAX_FILE_BYTES_BY_PLAN[tier] || MAX_FILE_BYTES_BY_PLAN.FREE;
 }
 
 /**
@@ -157,16 +173,31 @@ const getUploadQuota = functions.runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS']
     .get();
   const bytesUsed = usageSnap.exists ? Number(usageSnap.data().bytesUsed) || 0 : 0;
 
-  const allowed = bytesUsed + proposedBytes <= planLimit;
+  // Two independent gates: per-file cap (plan-scaled, type-agnostic) and total
+  // quota. file_too_large takes precedence so the client can show the right
+  // "this file exceeds your plan's per-file limit, upgrade for bigger" message.
+  const perFileLimit = getMaxFileBytes(tier);
+  const fileTooLarge = proposedBytes > perFileLimit;
+  const overQuota = bytesUsed + proposedBytes > planLimit;
+  const allowed = !fileTooLarge && !overQuota;
+
   return {
     bytesUsed,
     planLimit,
+    perFileLimit,
     tier,
     membership,
     planName,
     allowed,
-    reason: allowed ? null : 'over_limit'
+    reason: fileTooLarge ? 'file_too_large' : overQuota ? 'over_limit' : null
   };
 });
 
-module.exports = { onAssetWritten, getUploadQuota, PLAN_LIMITS };
+module.exports = {
+  onAssetWritten,
+  getUploadQuota,
+  resolvePlanForUser,
+  getPlanLimit,
+  PLAN_LIMITS,
+  MAX_FILE_BYTES_BY_PLAN
+};

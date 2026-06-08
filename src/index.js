@@ -13,6 +13,7 @@ require('./aframe-components/ocean');
 require('./aframe-components/svg-extruder.js');
 require('./lib/animation-mixer.js');
 require('./aframe-components/splat.js');
+require('./aframe-components/splat-debug.js'); // STREET.splatDebug console diagnostic
 require('./assets.js');
 require('./aframe-components/notify.js');
 require('./aframe-components/create-from-json');

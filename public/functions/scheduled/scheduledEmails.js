@@ -1,6 +1,9 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
+const { withJobHealth } = require('./job-health.js');
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 const { isUserProInternal } = require('../token-management.js');
 
 // Postmark API endpoint
@@ -143,6 +146,123 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
   </p>
 </body>
 </html>`
+  },
+
+  // Sent once per opted-in generation job that finishes while the user is away
+  // (no live tab acked the result). Triggered from the generation-job reconciler,
+  // not the daily scheduler — it reuses sendPostmarkEmail below.
+  //
+  // Kind-aware so video and image (the next async generations) reuse it with no
+  // new template: the queue + sweep are already kind-agnostic, so a new kind just
+  // adds a copy entry here (and an opt-in checkbox on its tab). Unknown kinds
+  // fall back to neutral "generation" wording rather than failing.
+  generationReady: {
+    copyByKind: {
+      splat: { noun: 'splat', desc: '3D Gaussian Splat' },
+      video: { noun: 'video', desc: 'video' },
+      image: { noun: 'image', desc: 'image' }
+    },
+    getCopy(kind) {
+      return this.copyByKind[kind] || { noun: 'generation', desc: 'generation' };
+    },
+    // Fallback CTA when a caller doesn't pass a deep link to the specific asset.
+    defaultCtaUrl:
+      'https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready',
+    // Compact, human-readable UTC stamp (e.g. "Jun 2, 3:41 PM UTC"). Used to keep
+    // each notification distinct so mail clients don't thread/collapse them.
+    formatWhen(when) {
+      if (!when) return '';
+      const d = when instanceof Date ? when : new Date(when);
+      if (isNaN(d.getTime())) return '';
+      return (
+        d.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: 'UTC'
+        }) + ' UTC'
+      );
+    },
+    // Each finished asset already carries a unique, timestamped name (e.g.
+    // "SHARP Splat 2026-06-02T15-41-03"), so threading the name into the subject
+    // makes every notification distinct. Fall back to a formatted time when no
+    // name is on the job. ctx: { assetName, when }.
+    getSubject(kind, ctx = {}) {
+      const { noun } = this.getCopy(kind);
+      if (ctx.assetName) return `Your 3DStreet ${noun} "${ctx.assetName}" is ready`;
+      const when = this.formatWhen(ctx.when);
+      return when
+        ? `Your 3DStreet ${noun} is ready (${when})`
+        : `Your 3DStreet ${noun} is ready`;
+    },
+    getTextBody(userName, kind, ctaUrl, ctx = {}) {
+      const { noun, desc } = this.getCopy(kind);
+      const link = ctaUrl || this.defaultCtaUrl;
+      const name = ctx.assetName ? ` "${ctx.assetName}"` : '';
+      const when = this.formatWhen(ctx.when);
+      const generatedLine = when ? `\nGenerated ${when}.\n` : '';
+      return `Hi ${userName},
+
+Your ${desc}${name} finished generating and has been saved to your 3DStreet gallery.
+${generatedLine}
+
+Open it in the editor:
+${link}
+
+Thanks for using 3DStreet!
+
+The 3DStreet Team
+https://3dstreet.com
+
+---
+You received this email because you asked to be notified when your ${noun} finished. You can opt out by unchecking that box next time.`;
+    },
+    getHtmlBody(userName, kind, ctaUrl, ctx = {}) {
+      const { noun, desc } = this.getCopy(kind);
+      const link = ctaUrl || this.defaultCtaUrl;
+      const name = ctx.assetName
+        ? ` <strong>&ldquo;${ctx.assetName}&rdquo;</strong>`
+        : '';
+      const when = this.formatWhen(ctx.when);
+      const generatedLine = when
+        ? `\n  <p style="color: #666; font-size: 13px;">Generated ${when}.</p>`
+        : '';
+      return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="https://3dstreet.app/ui_assets/3dstreet-logo-rect-r-640.png" alt="3DStreet" style="height: 40px;">
+  </div>
+
+  <h2 style="color: #1a1a1a; margin-bottom: 20px;">Hi ${userName},</h2>
+
+  <p>Your <strong>${desc}</strong>${name} finished generating and has been saved to your 3DStreet gallery.</p>
+${generatedLine}
+  <p>Open it in the editor to preview it and drag it into your scene.</p>
+
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="${link}" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Open my ${noun}</a>
+  </div>
+
+  <p>Thanks for using 3DStreet!</p>
+
+  <p style="color: #666;">The 3DStreet Team<br>
+  <a href="https://3dstreet.com" style="color: #6366f1;">https://3dstreet.com</a></p>
+
+  <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+
+  <p style="font-size: 12px; color: #999;">
+    You received this email because you asked to be notified when your ${noun} finished.<br>
+    You can opt out by unchecking that box next time.
+  </p>
+</body>
+</html>`;
+    }
   }
 
   // Add more email templates here as needed:
@@ -282,6 +402,109 @@ const getUserInfo = async (userId) => {
   } catch (error) {
     console.error(`Failed to get user info for ${userId}:`, error);
     return null;
+  }
+};
+
+/**
+ * Send the "your generation is ready" email for a single succeeded, opted-in
+ * job, exactly once. Shared by BOTH the real-time path (the Replicate webhook,
+ * which calls this the instant a job finishes) and the reconciler sweep (the
+ * dropped-webhook backstop). Idempotency lives here, not at the call sites:
+ *
+ *   - A transaction CAS-claims the send by flipping `notify.pending` → false.
+ *     Only the winner proceeds, so the webhook and the sweep can't double-send.
+ *   - If the client already acked (an open tab saw the result), we clear the
+ *     flag and skip — no email for a user who's watching.
+ *   - On a send failure we restore `notify.pending` so the sweep retries later
+ *     (fail-safe: a transient Postmark/Auth error never silently drops the
+ *     notification).
+ *
+ * Assumes the caller has already confirmed status === 'succeeded' is plausible;
+ * the transaction re-checks against the live doc regardless. dryRun reports what
+ * would send without claiming or sending.
+ *
+ * @returns {Promise<{action: 'sent'|'suppressed'|'skip'|'no-email'|'would-send'|'error', error?: string}>}
+ */
+const sendGenerationReadyEmail = async (db, uid, jobRef, options = {}) => {
+  const { dryRun = false } = options;
+
+  // Atomically decide whether THIS call owns the send.
+  let job = null;
+  let outcome = 'skip';
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(jobRef);
+    if (!snap.exists) return;
+    job = snap.data();
+    // Re-check against the live doc: only succeeded, opted-in, still-pending
+    // jobs are eligible. Anything else (already sent, not opted in, not yet
+    // terminal) drops out.
+    if (job.status !== 'succeeded') return;
+    if (!job.notify?.email || !job.notify?.pending) return;
+    // An open tab acked → the user saw it. Clear the flag, send nothing.
+    if (job.notify?.clientAckedAt) {
+      outcome = 'suppressed';
+      if (!dryRun) tx.update(jobRef, { 'notify.pending': false });
+      return;
+    }
+    if (dryRun) {
+      outcome = 'would-send';
+      return;
+    }
+    // Claim the send. From here, no other caller can also send this job.
+    outcome = 'claimed';
+    tx.update(jobRef, { 'notify.pending': false });
+  });
+
+  if (outcome !== 'claimed') {
+    return { action: outcome === 'would-send' ? 'would-send' : outcome };
+  }
+
+  try {
+    const userInfo = await getUserInfo(uid);
+    if (!userInfo?.email) {
+      // No address on file — pending is already cleared; record why and stop.
+      await jobRef.update({ 'notify.error': 'no-email' });
+      return { action: 'no-email' };
+    }
+
+    // Kind-aware copy (splat today; video/image reuse it for free). The CTA
+    // deep-links to the asset's detail modal (#asset:OWNER/ID). Project-aware
+    // base so a dev/staging email deep-links to the dev app where the asset
+    // actually lives, mirroring replicate.js's webhook-URL project resolution.
+    const tpl = EMAIL_TEMPLATES.generationReady;
+    const project =
+      process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || '';
+    const appBase =
+      project === 'dev-3dstreet'
+        ? 'https://dev-3dstreet.web.app'
+        : 'https://3dstreet.app';
+    const ctaUrl = job.assetId
+      ? `${appBase}/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready#asset:${uid}/${job.assetId}`
+      : undefined; // fall back to the template's default app link
+    const emailCtx = {
+      assetName: job.assetName || null,
+      when: job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || null
+    };
+
+    await sendPostmarkEmail(
+      userInfo.email,
+      tpl.getSubject(job.kind, emailCtx),
+      tpl.getHtmlBody(userInfo.displayName, job.kind, ctaUrl, emailCtx),
+      tpl.getTextBody(userInfo.displayName, job.kind, ctaUrl, emailCtx)
+    );
+    await jobRef.update({
+      'notify.sentAt': admin.firestore.FieldValue.serverTimestamp()
+    });
+    return { action: 'sent' };
+  } catch (err) {
+    // Restore the flag so the backstop sweep retries — never drop it silently.
+    await jobRef
+      .update({
+        'notify.pending': true,
+        'notify.error': String(err?.message || err)
+      })
+      .catch(() => {});
+    return { action: 'error', error: err?.message || String(err) };
   }
 };
 
@@ -447,22 +670,41 @@ const sendScheduledEmails = functions
   .pubsub
   .schedule('0 9 * * *')  // 9:00 AM PT
   .timeZone('America/Los_Angeles')
-  .onRun(async (context) => {
-    console.log('Starting scheduled email job');
-    const db = admin.firestore();
-    const allResults = [];
+  .onRun(
+    withJobHealth(
+      'sendScheduledEmails',
+      {
+        schedule: '0 9 * * *',
+        timeZone: 'America/Los_Angeles',
+        expectedIntervalMs: DAY_MS,
+        degradedKeys: ['errors']
+      },
+      async () => {
+        console.log('Starting scheduled email job');
+        const db = admin.firestore();
+        const allResults = [];
 
-    // Process each email type
-    for (const [emailTypeKey, emailType] of Object.entries(EMAIL_TYPES)) {
-      console.log(`Processing email type: ${emailTypeKey}`);
-      const results = await processEmailType(db, emailTypeKey, emailType);
-      allResults.push(results);
-      console.log(`Completed ${emailTypeKey}:`, JSON.stringify(results));
-    }
+        // Process each email type
+        for (const [emailTypeKey, emailType] of Object.entries(EMAIL_TYPES)) {
+          console.log(`Processing email type: ${emailTypeKey}`);
+          const results = await processEmailType(db, emailTypeKey, emailType);
+          allResults.push(results);
+          console.log(`Completed ${emailTypeKey}:`, JSON.stringify(results));
+        }
 
-    console.log('Scheduled email job complete:', JSON.stringify(allResults));
-    return { success: true, results: allResults };
-  });
+        console.log('Scheduled email job complete:', JSON.stringify(allResults));
+        // Flatten to top-level counts so the health page shows totals at a
+        // glance and `errors` can drive the degraded (yellow) status.
+        const sent = allResults.reduce((n, r) => n + (r.sent || 0), 0);
+        const processed = allResults.reduce((n, r) => n + (r.processed || 0), 0);
+        const errors = allResults.reduce(
+          (n, r) => n + ((r.skipped && r.skipped.error) || 0),
+          0
+        );
+        return { success: true, sent, processed, errors, results: allResults };
+      }
+    )
+  );
 
 /**
  * HTTP callable function for manual triggering (useful for testing)
@@ -524,6 +766,12 @@ const triggerScheduledEmails = functions
 module.exports = {
   sendScheduledEmails,
   triggerScheduledEmails,
+  // Reused by the generation-job reconciler to send completion emails.
+  sendPostmarkEmail,
+  getUserInfo,
+  // Shared, idempotent completion-email send: the webhook calls it in real time;
+  // the reconciler sweep calls it as the backstop.
+  sendGenerationReadyEmail,
   // Export for testing
   EMAIL_TEMPLATES,
   EMAIL_TYPES

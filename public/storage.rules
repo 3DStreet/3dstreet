@@ -27,19 +27,25 @@ service firebase.storage {
       // the Firestore doc; actual byte purge is done by a garbage-collector
       // Cloud Function via Admin SDK (which bypasses these rules).
 
-      // Create/update: owner-only with per-type size caps (decimal MB, base 1000):
-      //   image/* : 10 MB
-      //   model/* | application/octet-stream (GLB, PLY) : 50 MB
-      //   video/* : 50 MB
-      // application/octet-stream is needed for PLY files (splats); GLB blobs
-      // typically arrive as model/gltf-binary but some clients send octet-stream.
+      // Create/update: owner-only, allowed content types, and a SINGLE flat
+      // per-file hard ceiling (5 GB = the top plan's per-file cap). The per-file
+      // limit is plan-scaled (FREE 100 MB / PRO 1 GB / MAX 5 GB) but that is
+      // SOFT-enforced in getUploadQuota + the client (MAX_FILE_BYTES_BY_PLAN);
+      // these rules only need the generous MAX backstop so the soft per-plan cap
+      // is always the binding limit. Type-agnostic on size by design: a big
+      // upload costs the same to host regardless of type. (Total storage quota
+      // is a separate, additive limit handled by onAssetWritten.)
+      // image/model/octet-stream(.ply)/video are the accepted gallery types;
+      // GLB blobs usually arrive as model/gltf-binary but some clients send
+      // octet-stream.
       allow create, update: if request.auth != null
         && request.auth.uid == userId
+        && request.resource.size < 5 * 1000 * 1000 * 1000
         && (
-          (request.resource.contentType.matches('image/.*') && request.resource.size < 10 * 1000 * 1000)
-          || (request.resource.contentType.matches('model/.*') && request.resource.size < 50 * 1000 * 1000)
-          || (request.resource.contentType.matches('application/octet-stream') && request.resource.size < 50 * 1000 * 1000)
-          || (request.resource.contentType.matches('video/.*') && request.resource.size < 50 * 1000 * 1000)
+          request.resource.contentType.matches('image/.*')
+          || request.resource.contentType.matches('model/.*')
+          || request.resource.contentType.matches('application/octet-stream')
+          || request.resource.contentType.matches('video/.*')
         );
     }
   }

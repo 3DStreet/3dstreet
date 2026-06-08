@@ -10,7 +10,12 @@
 
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
-import { assetsService, ASSET_TYPES, ASSET_CATEGORIES } from '@shared/assets';
+import {
+  assetsService,
+  ASSET_TYPES,
+  ASSET_CATEGORIES,
+  SPLAT_EXTENSIONS
+} from '@shared/assets';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
   extractGlbAttribution,
@@ -18,12 +23,22 @@ import {
 } from './extractGlbAttribution.js';
 import { optimizeGlb } from './optimizeGlb.js';
 
-export const GLB_MAX_BYTES = 50 * 1000 * 1000;
-export const IMAGE_MAX_BYTES = 10 * 1000 * 1000;
+// Absolute client-side per-file ceiling = the top plan's per-file cap (MAX,
+// 5 GB). Type-agnostic; this is only the fast synchronous "obviously too big"
+// reject. The real per-plan gate (FREE 100 MB / PRO 1 GB / MAX 5 GB) is
+// SOFT-enforced by getUploadQuota, which knows the user's plan. Keep in sync
+// with MAX_FILE_BYTES_BY_PLAN in public/functions/asset-quota.js and the hard
+// ceiling in public/storage.rules.
+export const MAX_FILE_BYTES = 5 * 1000 * 1000 * 1000;
 
 const GLB_EXTS = ['.glb', '.gltf'];
 const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.avif'];
-const ACCEPTED_EXTS = [...GLB_EXTS, ...IMAGE_EXTS];
+// Gaussian Splat formats supported by the `splat` A-Frame component (Spark)
+// and the RAD converter (build-lod content-sniffs all of these). `.rad` is the
+// pre-optimized, byte-range-streamable form: uploading one skips conversion
+// (see onSplatAssetCreated). Sourced from the shared SPLAT_EXTENSIONS constant.
+const SPLAT_EXTS = SPLAT_EXTENSIONS.map((ext) => `.${ext}`);
+const ACCEPTED_EXTS = [...GLB_EXTS, ...IMAGE_EXTS, ...SPLAT_EXTS];
 
 export const FILE_PICKER_ACCEPT = ACCEPTED_EXTS.join(',');
 
@@ -31,6 +46,7 @@ export function getAssetKind(file) {
   const name = (file.name || '').toLowerCase();
   if (GLB_EXTS.some((ext) => name.endsWith(ext))) return 'glb';
   if (IMAGE_EXTS.some((ext) => name.endsWith(ext))) return 'image';
+  if (SPLAT_EXTS.some((ext) => name.endsWith(ext))) return 'splat';
   return null;
 }
 
@@ -73,14 +89,15 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
     };
   }
 
-  const sizeCap = kind === 'glb' ? GLB_MAX_BYTES : IMAGE_MAX_BYTES;
-  if (file.size > sizeCap) {
-    const limitMb = Math.round(sizeCap / 1000 / 1000);
-    const kindLabel = kind === 'glb' ? 'GLB files' : 'Images';
+  // Fast, type-agnostic reject for files past the absolute ceiling (top plan).
+  // The per-plan cap (smaller for FREE/PRO) is enforced by preflightQuota below,
+  // which knows the user's plan.
+  if (file.size > MAX_FILE_BYTES) {
+    const limitGb = MAX_FILE_BYTES / 1000 / 1000 / 1000;
     return {
       ok: false,
       kind,
-      error: `File too large. ${kindLabel} must be under ${limitMb} MB.`
+      error: `File too large. Maximum upload size is ${limitGb} GB.`
     };
   }
 
@@ -108,14 +125,14 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
     if (quota && quota.allowed === false && !quota.soft) {
       const usedMb = ((quota.bytesUsed || 0) / 1000 / 1000).toFixed(1);
       const limitMb = Math.round((quota.planLimit || 0) / 1000 / 1000);
-      return {
-        ok: false,
-        kind,
-        error:
-          quota.reason === 'over_limit'
-            ? `Storage full — using ${usedMb} / ${limitMb} MB.`
-            : 'Upload blocked.'
-      };
+      const fileLimitMb = Math.round((quota.perFileLimit || 0) / 1000 / 1000);
+      let error = 'Upload blocked.';
+      if (quota.reason === 'file_too_large') {
+        error = `File too large for your ${quota.planName || quota.tier || 'current'} plan (max ${fileLimitMb} MB per file). Upgrade to upload larger files.`;
+      } else if (quota.reason === 'over_limit') {
+        error = `Storage full — using ${usedMb} / ${limitMb} MB.`;
+      }
+      return { ok: false, kind, error };
     }
 
     let optimizedBlob = null;
@@ -153,7 +170,12 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
 
     onStatus?.('uploading');
     uploadStore.update({ status: 'uploading', progress: 0 });
-    const assetType = kind === 'glb' ? ASSET_TYPES.MESH : ASSET_TYPES.IMAGE;
+    const assetType =
+      kind === 'glb'
+        ? ASSET_TYPES.MESH
+        : kind === 'splat'
+          ? ASSET_TYPES.SPLAT
+          : ASSET_TYPES.IMAGE;
     // Seed Display name from the extracted title when richer than the
     // filename; `title` itself is never persisted on the attribution object.
     const initialName = attribution?.title?.trim() || undefined;

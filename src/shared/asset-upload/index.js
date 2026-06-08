@@ -3,8 +3,7 @@ export {
   isAcceptedAssetFile,
   getAssetKind,
   FILE_PICKER_ACCEPT,
-  GLB_MAX_BYTES,
-  IMAGE_MAX_BYTES
+  MAX_FILE_BYTES
 } from './uploadAsset.js';
 export {
   captureGlbThumbnail,

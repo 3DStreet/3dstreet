@@ -646,6 +646,14 @@ AFRAME.registerComponent('set-loader-from-hash', {
       if (/^mcp(=\d+)?$/.test(streetURL)) {
         return;
       }
+      // `#asset:OWNER/ID` is an asset deep-link (e.g. from a "your splat is
+      // ready" email), opened by AssetDeepLinkModal in React — NOT a scene to
+      // load. Without this bail it falls through to the generic
+      // fetchJSON('asset:….json') below and errors with "Could not fetch scene"
+      // / "Could not connect to server."
+      if (streetURL.startsWith('asset:')) {
+        return;
+      }
       if (streetURL.startsWith('crushed-3dstreet-json:')) {
         const fragment = window.location.hash;
         const prefix = '#crushed-3dstreet-json:';
@@ -861,7 +869,8 @@ AFRAME.registerComponent('set-loader-from-hash', {
       } else if (
         !streetURL.includes('payment') &&
         !streetURL.includes('profile') &&
-        !streetURL.includes('modal')
+        !streetURL.includes('modal') &&
+        !streetURL.startsWith('admin/')
       ) {
         useStore.getState().startLoadingScene('Loading scene...');
         // try to load JSON file from remote resource
@@ -894,72 +903,96 @@ AFRAME.registerComponent('set-loader-from-hash', {
     request.onload = function () {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
-        // Parse the JSON response
-        const responseData = JSON.parse(this.response);
-        console.log('[set-loader-from-hash] Full response data:', responseData);
-
-        // Extract memory data if it exists
-        const memoryData = responseData.memory;
-
-        // Log the memory data for debugging
-        if (memoryData) {
-          console.log('[set-loader-from-hash] Memory data found:', memoryData);
-        } else {
+        // Parse the JSON response. Wrapped so a malformed body (or any failure
+        // building the scene) surfaces the error modal explicitly — otherwise
+        // it falls through to the optimistic loading-timeout dismiss, which
+        // would silently treat a real parse/build failure as success.
+        try {
+          const responseData = JSON.parse(this.response);
           console.log(
-            '[set-loader-from-hash] No memory data found in the JSON'
+            '[set-loader-from-hash] Full response data:',
+            responseData
           );
-        }
 
-        // Create a clean JSON object without the set-loader-from-hash component
-        const jsonData = JSON.parse(
-          JSON.stringify(responseData),
-          (key, value) => (key === 'set-loader-from-hash' ? undefined : value)
-        );
+          // Extract memory data if it exists
+          const memoryData = responseData.memory;
 
-        console.log(
-          '[set-loader-from-hash]',
-          '200 response received and JSON parsed, now createElementsFromJSON'
-        );
-
-        // Ensure memory data is preserved
-        if (memoryData && !jsonData.memory) {
-          jsonData.memory = memoryData;
-          console.log(
-            '[set-loader-from-hash] Restored memory data to jsonData'
-          );
-        }
-
-        // Resolve camera state: explicit snapshot > auto-saved > null (default)
-        let defaultSnapshotCameraState = jsonData.memory?.cameraState || null;
-        if (
-          jsonData.memory?.snapshots &&
-          jsonData.memory.snapshots.length > 0
-        ) {
-          const defaultSnapshot = jsonData.memory.snapshots.find(
-            (s) => s.isDefault
-          );
-          if (defaultSnapshot && defaultSnapshot.cameraState) {
-            defaultSnapshotCameraState = defaultSnapshot.cameraState;
+          // Log the memory data for debugging
+          if (memoryData) {
+            console.log(
+              '[set-loader-from-hash] Memory data found:',
+              memoryData
+            );
+          } else {
+            console.log(
+              '[set-loader-from-hash] No memory data found in the JSON'
+            );
           }
-        }
-        if (defaultSnapshotCameraState) {
-          console.log(
-            '[set-loader-from-hash] Resolved camera state:',
-            defaultSnapshotCameraState
-          );
-          // Store it temporarily on the scene element for the newScene event
-          AFRAME.scenes[0].defaultSnapshotCameraState =
-            defaultSnapshotCameraState;
-        }
 
-        useStore.getState().updateLoadingProgress(50, 'Creating scene...');
-        STREET.utils.createElementsFromJSON(jsonData, false);
-        const sceneId = getUUIDFromPath(requestURL);
-        if (sceneId) {
-          console.log('sceneId from fetchJSON from url hash loader', sceneId);
-          AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
+          // Create a clean JSON object without the set-loader-from-hash component
+          const jsonData = JSON.parse(
+            JSON.stringify(responseData),
+            (key, value) => (key === 'set-loader-from-hash' ? undefined : value)
+          );
+
+          console.log(
+            '[set-loader-from-hash]',
+            '200 response received and JSON parsed, now createElementsFromJSON'
+          );
+
+          // Ensure memory data is preserved
+          if (memoryData && !jsonData.memory) {
+            jsonData.memory = memoryData;
+            console.log(
+              '[set-loader-from-hash] Restored memory data to jsonData'
+            );
+          }
+
+          // Resolve camera state: explicit snapshot > auto-saved > null (default)
+          let defaultSnapshotCameraState = jsonData.memory?.cameraState || null;
+          if (
+            jsonData.memory?.snapshots &&
+            jsonData.memory.snapshots.length > 0
+          ) {
+            const defaultSnapshot = jsonData.memory.snapshots.find(
+              (s) => s.isDefault
+            );
+            if (defaultSnapshot && defaultSnapshot.cameraState) {
+              defaultSnapshotCameraState = defaultSnapshot.cameraState;
+            }
+          }
+          if (defaultSnapshotCameraState) {
+            console.log(
+              '[set-loader-from-hash] Resolved camera state:',
+              defaultSnapshotCameraState
+            );
+            // Store it temporarily on the scene element for the newScene event
+            AFRAME.scenes[0].defaultSnapshotCameraState =
+              defaultSnapshotCameraState;
+          }
+
+          useStore.getState().updateLoadingProgress(50, 'Creating scene...');
+          STREET.utils.createElementsFromJSON(jsonData, false);
+          const sceneId = getUUIDFromPath(requestURL);
+          if (sceneId) {
+            console.log('sceneId from fetchJSON from url hash loader', sceneId);
+            AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
+          }
+          AFRAME.scenes[0].setAttribute(
+            'metadata',
+            'authorId',
+            jsonData.author
+          );
+        } catch (err) {
+          console.error(
+            '[set-loader-from-hash] Error parsing/building scene:',
+            err
+          );
+          useStore.getState().errorLoadingScene('Could not read scene data.');
+          STREET.notify.errorMessage(
+            'Error trying to load scene: invalid scene data.'
+          );
         }
-        AFRAME.scenes[0].setAttribute('metadata', 'authorId', jsonData.author);
       } else if (this.status === 404) {
         console.error(
           '[set-loader-from-hash] Error trying to load scene: Resource not found.'
@@ -1052,6 +1085,7 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
   const streetContainerEl = document.getElementById('street-container');
 
   createEntities(streetObject.data, streetContainerEl);
+  resolveSplatAssetUrls(streetContainerEl);
   useStore.getState().updateLoadingProgress(90, 'Finalizing...');
   STREET.notify.successMessage('Scene loaded');
 
@@ -1065,3 +1099,51 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
 }
 
 STREET.utils.createElementsFromJSON = createElementsFromJSON;
+
+/**
+ * Re-resolve splat src from the Firestore asset doc after a scene load.
+ *
+ * A splat's `src` is baked into the saved scene at placement time. The
+ * streaming-optimized .rad variant (optimizedSourceUrl) is produced async in
+ * the cloud AFTER upload, so saved scenes usually carry the raw .ply storageUrl
+ * and reload without LOD streaming. Here we re-resolve every splat that has an
+ * asset identity (data-asset-id + data-asset-owner-uid) to the served URL
+ * (optimizedSourceUrl ?? storageUrl). Assets are public-read so anonymous
+ * viewers can fetch too. A real .ply→.rad swap reloads the splat (desired) —
+ * the splat component's no-reload guard only skips a blob: oldSrc.
+ *
+ * Fire-and-forget: deliberately not awaited so it never blocks entity creation.
+ */
+async function resolveSplatAssetUrls(containerEl) {
+  const root = containerEl || document;
+  const splatEls = root.querySelectorAll(
+    '[splat][data-asset-id][data-asset-owner-uid]'
+  );
+  if (!splatEls.length) return;
+
+  const { assetsService, getServedUrl } = await import('@shared/assets');
+  for (const el of splatEls) {
+    const assetId = el.getAttribute('data-asset-id');
+    const ownerUid = el.getAttribute('data-asset-owner-uid');
+    try {
+      const asset = await assetsService.getAsset(assetId, ownerUid);
+      // getAsset returns soft-deleted docs (deleted:true) whose Storage object
+      // may already be GC-purged. Re-resolving to that now-404 URL would clobber
+      // a src the splat could otherwise still render from cache, so skip it.
+      if (asset?.deleted) continue;
+      const servedUrl = getServedUrl(asset);
+      if (!servedUrl) continue;
+      const currentSrc = el.getAttribute('splat')?.src;
+      if (servedUrl !== currentSrc) {
+        console.log(
+          `[splat] re-resolved asset ${assetId} to served URL:`,
+          servedUrl
+        );
+        el.setAttribute('splat', 'src', servedUrl);
+      }
+    } catch (err) {
+      console.warn(`[splat] could not re-resolve asset ${assetId}:`, err);
+    }
+  }
+}
+STREET.utils.resolveSplatAssetUrls = resolveSplatAssetUrls;

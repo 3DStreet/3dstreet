@@ -8,6 +8,7 @@ export {
   ASSET_TYPES,
   ASSET_CATEGORIES,
   ASSET_TYPE_FOLDERS,
+  SPLAT_EXTENSIONS,
   STORAGE_PATHS,
   getTypeFolderName,
   validateUserIdForPath
@@ -32,6 +33,7 @@ export { default as AssetsModal } from './components/AssetsModal';
 export { default as AssetsContent } from './components/AssetsContent';
 export { default as AssetsPanelBody } from './components/AssetsPanelBody';
 export { default as MeshDetailsModal } from './components/MeshDetailsModal';
+export { default as AssetDetailModal } from './components/AssetDetailModal';
 
 // Formatters
-export { formatBytes, formatDate, getServedUrl } from './utils';
+export { formatBytes, formatDate, getServedUrl, is3dViewerType } from './utils';

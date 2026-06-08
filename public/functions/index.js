@@ -4,7 +4,7 @@ admin.initializeApp();
 const { getAuth } = require('firebase-admin/auth');
 const { serveWebXRVariant } = require('./webxr-variant.js');
 const { getGeoidHeight } = require('./geoid-height.js');
-const { generateReplicateImage, generateReplicateVideo } = require('./replicate.js');
+const { generateReplicateImage, generateReplicateVideo, generateReplicateSplat, getGenerationJobStatus, replicateJobWebhook } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { generateFalImage } = require('./fal-proxy.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduled/scheduledEmails.js');
@@ -12,7 +12,10 @@ const { auditUserSubscriptions, auditUserSubscriptionsHttp } = require('./utilit
 const { onAssetWritten, getUploadQuota } = require('./asset-quota.js');
 const { purgeSoftDeletedAssets, triggerPurgeSoftDeletedAssets } = require('./scheduled/asset-gc.js');
 const { reconcileAssetUsage, triggerReconcileAssetUsage } = require('./scheduled/asset-usage-reconcile.js');
+const { checkAssetUsageHealth, triggerCheckAssetUsageHealth } = require('./scheduled/asset-usage-health.js');
 const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./scheduled/asset-orphan-cleanup.js');
+const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
+const { onSplatAssetCreated } = require('./rad-dispatch.js');
 
 // Re-export the WebXR variant function
 exports.serveWebXRVariant = serveWebXRVariant;
@@ -23,6 +26,9 @@ exports.getGeoidHeight = getGeoidHeight;
 // Re-export the Replicate functions
 exports.generateReplicateImage = generateReplicateImage;
 exports.generateReplicateVideo = generateReplicateVideo;
+exports.generateReplicateSplat = generateReplicateSplat;
+exports.getGenerationJobStatus = getGenerationJobStatus;
+exports.replicateJobWebhook = replicateJobWebhook;
 
 // Re-export the token management functions
 exports.checkAndRefillImageTokens = checkAndRefillImageTokens;
@@ -51,9 +57,21 @@ exports.triggerPurgeSoftDeletedAssets = triggerPurgeSoftDeletedAssets;
 exports.reconcileAssetUsage = reconcileAssetUsage;
 exports.triggerReconcileAssetUsage = triggerReconcileAssetUsage;
 
+// Storage usage health probe — daily growth + over-cap awareness on System Health
+exports.checkAssetUsageHealth = checkAssetUsageHealth;
+exports.triggerCheckAssetUsageHealth = triggerCheckAssetUsageHealth;
+
 // Orphaned Storage object cleanup (monthly scheduled + admin-only manual trigger)
 exports.cleanupOrphanedStorage = cleanupOrphanedStorage;
 exports.triggerCleanupOrphanedStorage = triggerCleanupOrphanedStorage;
+
+// Async generation job reconciliation — dropped-webhook backstop for splat (and
+// future async kinds). Every 10 min scheduled + admin-only manual trigger.
+exports.reconcileGenerationJobs = reconcileGenerationJobs;
+exports.triggerReconcileGenerationJobs = triggerReconcileGenerationJobs;
+
+// --- RAD conversion (splat optimized variant) -----------------------------
+exports.onSplatAssetCreated = onSplatAssetCreated;
 
 exports.getScene = functions
   .https

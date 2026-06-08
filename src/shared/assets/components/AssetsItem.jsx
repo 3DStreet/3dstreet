@@ -5,7 +5,11 @@
 
 import { DownloadIcon, TrashIcon } from '@shared/icons';
 import styles from './Assets.module.scss';
-import { getAssetSourceLabel, getAssetTypeLabel } from '../utils.js';
+import {
+  getAssetSourceLabel,
+  getAssetTypeLabel,
+  is3dViewerType
+} from '../utils.js';
 
 // 1×1 transparent gif used to suppress the default browser drag ghost so the
 // 3D preview at the cursor isn't fighting with a card thumbnail floating along.
@@ -31,6 +35,29 @@ const MeshPlaceholder = () => (
   </div>
 );
 
+// Splats have no cheap client-side preview, so they show a point-cloud icon
+// placeholder (reusing the mesh placeholder styling) until/unless a thumbnail
+// is ever attached.
+const SplatPlaceholder = () => (
+  <div className={styles.meshPlaceholder} aria-label="Gaussian splat">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      stroke="none"
+    >
+      <circle cx="7" cy="8" r="1.6" />
+      <circle cx="13" cy="6" r="1.2" />
+      <circle cx="17" cy="10" r="1.8" />
+      <circle cx="9" cy="13" r="1.3" />
+      <circle cx="15" cy="15" r="1.5" />
+      <circle cx="6" cy="17" r="1.2" />
+      <circle cx="12" cy="18" r="1.7" />
+      <circle cx="18" cy="17" r="1.1" />
+    </svg>
+  </div>
+);
+
 const AssetsItem = ({
   item,
   onItemClick,
@@ -38,12 +65,19 @@ const AssetsItem = ({
   onDownload,
   // When true (editor's Assets panel), mesh/image cards become draggable
   // into the viewport. Off in the generator app where there's no viewport.
-  placeable = false
+  placeable = false,
+  // True while this asset has an in-flight RAD/LOD optimization (a status of
+  // the asset, not a separate generation) — shows a subtle "Optimizing…" badge.
+  isOptimizing = false
 }) => {
   const isMesh = item.type === 'mesh';
-  // Mesh items get a placeholder until a thumbnail exists. For images and
-  // videos, fall back through thumbnailUrl → objectURL as before.
-  const imageUrl = item.thumbnailUrl || (isMesh ? null : item.objectURL);
+  const isSplat = item.type === 'splat';
+  // Mesh and splat items get a placeholder until a thumbnail exists (their
+  // storageUrl points at a binary model, not a renderable image). For images
+  // and videos, fall back through thumbnailUrl → objectURL as before.
+  const usesPlaceholder = is3dViewerType(item.type);
+  const imageUrl =
+    item.thumbnailUrl || (usesPlaceholder ? null : item.objectURL);
 
   const handleDelete = (e) => {
     e.stopPropagation();
@@ -66,7 +100,7 @@ const AssetsItem = ({
   // Only enabled when the host opts in via the `placeable` prop.
   const isPlaceable =
     placeable &&
-    (item.type === 'mesh' || item.type === 'image') &&
+    (item.type === 'mesh' || item.type === 'image' || item.type === 'splat') &&
     !!item.storageUrl;
 
   const handleDragStart = (e) => {
@@ -108,20 +142,63 @@ const AssetsItem = ({
     >
       {item.type === 'video' ? (
         <video src={imageUrl} muted playsInline />
-      ) : isMesh && !imageUrl ? (
-        <MeshPlaceholder />
+      ) : usesPlaceholder && !imageUrl ? (
+        isSplat ? (
+          <SplatPlaceholder />
+        ) : (
+          <MeshPlaceholder />
+        )
       ) : (
         <img
           src={imageUrl}
-          alt={isMesh ? '3D model' : 'Generated image'}
+          alt={
+            isMesh ? '3D model' : isSplat ? 'Gaussian splat' : 'Generated image'
+          }
           loading="lazy"
         />
+      )}
+
+      {/* Subtle "Optimizing…" badge while a RAD/LOD transcode runs for this
+          asset. It's a status of the asset (the file already works); the badge
+          clears when the streaming variant is ready. */}
+      {isOptimizing && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '2px 6px',
+            borderRadius: 4,
+            background: 'rgba(0,0,0,0.62)',
+            color: '#e5e7eb',
+            fontSize: 10,
+            lineHeight: 1.2,
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none'
+          }}
+          title="Building a streaming-optimized (RAD/LOD) version of this asset"
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: '#fbbf24',
+              display: 'inline-block'
+            }}
+          />
+          Optimizing…
+        </div>
       )}
 
       {/* Type / source label on top */}
       <div className={styles.itemDetails}>
         <p>
-          {typeLabel} · {sourceLabel}
+          {typeLabel} · {isSplat && item.name ? item.name : sourceLabel}
         </p>
       </div>
 

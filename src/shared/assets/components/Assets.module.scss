@@ -226,6 +226,26 @@
   transition: width 0.15s ease;
 }
 
+/* Indeterminate variant for generation jobs, which report a status rather than
+   a percentage. A sliding highlight conveys "working" without a real value. */
+.pendingProgressIndeterminate {
+  position: absolute;
+  height: 100%;
+  width: 35%;
+  background: #8965ef; /* $purple-300 */
+  border-radius: 2px;
+  animation: pendingProgressSlide 1.2s ease-in-out infinite;
+}
+
+@keyframes pendingProgressSlide {
+  0% {
+    left: -35%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
 .pendingCancelBtn {
   background: transparent;
   border: 1px solid rgba(137, 101, 239, 0.5);
@@ -657,6 +677,26 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Interim chrome for AssetDetailModal while it fetches the asset doc to learn
+   the type (e.g. an email deep link), or when that fetch fails. */
+.statusOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.statusError {
+  padding: 1.25rem 1.5rem;
+  border-radius: 8px;
+  background: #1f2937;
+  color: #d1d5db;
+  font-size: 0.95rem;
 }
 
 .modalBody video {
