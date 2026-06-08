@@ -73,21 +73,50 @@ function validateUserId(userId) {
   }
 }
 
+// A conversion that build-lod itself rejected (unsupported/corrupt input, or an
+// OOM on an oversized splat). build-lod is DETERMINISTIC — the same bytes fail
+// the same way every time — so this is NOT worth retrying. The handler turns it
+// into a terminal 'skipped' job + HTTP 200 (no Cloud Tasks retry); the asset
+// keeps rendering from its original, un-optimized source. Distinct from a
+// transient error (download/upload/spawn failure), which still 500s and retries.
+class ConversionError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ConversionError';
+    this.deterministic = true;
+  }
+}
+
 // Run build-lod, streaming its logs through to the container stdout/stderr so
-// they show up in Cloud Run logs. Resolves on exit 0, rejects otherwise.
-function runBuildLod(plyFile) {
+// they show up in Cloud Run logs. Resolves on exit 0. A non-zero exit means
+// build-lod rejected the input (deterministic) → ConversionError. A spawn
+// failure (binary missing / OS error) is infrastructural → plain Error (retry).
+function runBuildLod(srcFile) {
   return new Promise((resolve, reject) => {
-    const args = [plyFile, `--${LOD_QUALITY}`];
+    const args = [srcFile, `--${LOD_QUALITY}`];
     console.log(`[rad-converter] build-lod ${args.join(' ')}`);
     const proc = spawn('build-lod', args, {
       stdio: ['ignore', 'inherit', 'inherit']
     });
-    proc.on('error', reject);
+    proc.on('error', reject); // spawn failure — retryable
     proc.on('close', (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`build-lod exited with code ${code}`));
+      else reject(new ConversionError(`build-lod exited with code ${code}`));
     });
   });
+}
+
+// Locate build-lod's output. It auto-suffixes the input stem with `-lod.rad`, so
+// the expected name is `{assetId}-lod.rad` — but the suffix convention can vary
+// with the input extension, so fall back to any `.rad` in the scratch dir rather
+// than assume the exact name.
+function findRadOutput(workDir, assetId) {
+  const preferred = path.join(workDir, `${assetId}-lod.rad`);
+  if (fs.existsSync(preferred)) return preferred;
+  const found = fs
+    .readdirSync(workDir)
+    .find((f) => f.toLowerCase().endsWith('.rad'));
+  return found ? path.join(workDir, found) : null;
 }
 
 // Core conversion. Returns { optimizedSourceUrl, optimizedSourcePath,
@@ -107,16 +136,19 @@ async function convert({ uid, assetId, plyPath }, perf = {}) {
 
   const bucket = admin.storage().bucket();
 
-  // 1. Download the source splat to local scratch. We name it {assetId}.ply
-  //    only so build-lod's auto-suffix yields {assetId}-lod.rad — build-lod
-  //    content-sniffs the bytes, so .splat/.spz/.ksplat/.sog inputs convert
-  //    fine despite the nominal .ply name. (.rad uploads never reach here;
-  //    onSplatAssetCreated skips them.)
+  // 1. Download the source splat to local scratch, PRESERVING ITS REAL
+  //    EXTENSION. build-lod dispatches on the file extension (it does NOT
+  //    content-sniff), so naming a .splat/.sog/.spz file `.ply` made build-lod
+  //    decode it as PLY and fail ("Invalid PLY file"). Keep the source ext so
+  //    build-lod sees the format it actually is. (.rad uploads never reach here;
+  //    onSplatAssetCreated skips them.) Which non-PLY formats build-lod actually
+  //    supports is verified empirically — unsupported ones surface as a
+  //    deterministic ConversionError and are skipped, not retried.
   //    NOTE: /tmp on Cloud Run is tmpfs (counts against memory). For multi-GB
   //    splats, mount a GCS FUSE volume and point WORKDIR there instead.
   const workDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'rad-'));
-  const localPly = path.join(workDir, `${assetId}.ply`);
-  const localRad = path.join(workDir, `${assetId}-lod.rad`);
+  const srcExt = (path.extname(plyPath) || '.ply').toLowerCase();
+  const localSrc = path.join(workDir, `${assetId}${srcExt}`);
 
   perf.phaseMs = perf.phaseMs || {};
   const convertStart = performance.now();
@@ -124,16 +156,18 @@ async function convert({ uid, assetId, plyPath }, perf = {}) {
   try {
     console.log(`[rad-converter] downloading gs://${bucket.name}/${plyPath}`);
     let mark = performance.now();
-    await bucket.file(plyPath).download({ destination: localPly });
+    await bucket.file(plyPath).download({ destination: localSrc });
     perf.phaseMs.download = Math.round(performance.now() - mark);
     // Source size from local scratch (== the GCS object size we just pulled).
-    perf.inputBytes = fs.statSync(localPly).size;
+    perf.inputBytes = fs.statSync(localSrc).size;
 
-    // 2. Convert.
+    // 2. Convert. A non-zero build-lod exit / no output is a deterministic
+    //    ConversionError (see runBuildLod) — the handler skips it without retry.
     mark = performance.now();
-    await runBuildLod(localPly);
-    if (!fs.existsSync(localRad)) {
-      throw new Error(`build-lod produced no output at ${localRad}`);
+    await runBuildLod(localSrc);
+    const localRad = findRadOutput(workDir, assetId);
+    if (!localRad) {
+      throw new ConversionError('build-lod produced no .rad output');
     }
     perf.phaseMs.convert = Math.round(performance.now() - mark);
 
@@ -273,17 +307,30 @@ app.post('/', async (req, res) => {
     });
     res.status(200).json({ ok: true, ...result });
   } catch (err) {
+    const msg = String(err && err.message ? err.message : err);
+    // Deterministic conversion failure (unsupported/corrupt format, OOM): build-lod
+    // fails the same way every retry, so don't retry. Mark the job terminally
+    // 'skipped' and 200 the task — Cloud Tasks stops, the reconciler ignores it
+    // (terminal), and the asset keeps rendering from its original source. No
+    // optimizedSource* is patched, so the renderer falls back to storageUrl.
+    if (err instanceof ConversionError) {
+      console.warn('[rad-converter] conversion skipped (non-retryable):', msg);
+      await writeJobStatus(uid, jobId, {
+        status: 'skipped',
+        skipReason: msg,
+        ...perfFields()
+      });
+      res.status(200).json({ ok: false, skipped: true, reason: msg });
+      return;
+    }
     console.error('[rad-converter] conversion failed:', err);
     await writeJobStatus(uid, jobId, {
       status: 'failed',
-      error: String(err && err.message ? err.message : err),
+      error: msg,
       ...perfFields()
     });
     // 500 so Cloud Tasks retries (the reconciler also re-enqueues stalls).
-    res.status(500).json({
-      ok: false,
-      error: String(err && err.message ? err.message : err)
-    });
+    res.status(500).json({ ok: false, error: msg });
   }
 });
 

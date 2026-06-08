@@ -141,8 +141,10 @@ const onSplatAssetCreated = functions.firestore
     }
     // A user-uploaded .rad is already the streaming-optimized form — the
     // renderer serves storageUrl and streams it paged — so there's nothing to
-    // convert. (build-lod also accepts .ply/.splat/.spz/.ksplat/.sog and
-    // content-sniffs the input, so every other splat upload converts fine.)
+    // convert. Every other splat extension is dispatched to build-lod, which
+    // decodes by extension (the converter preserves it). Formats build-lod can't
+    // handle surface as a deterministic ConversionError and are marked 'skipped'
+    // (terminal, no retry) — the asset still renders from its original source.
     if (plyPath.toLowerCase().endsWith('.rad')) {
       console.log(
         `[rad-dispatch] splat ${userId}/${assetId} uploaded as .rad; already optimized, skipping`

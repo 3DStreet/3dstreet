@@ -11,6 +11,11 @@ let SparkRenderer = null;
 // in-memory bytes (see loadSplat) because SplatMesh's paged===true path can't be
 // told a fileType.
 let PagedSplats = null;
+// Spark's own extension→SplatFileType mapper. We use it for blob: previews
+// (which have no extension to sniff) so the hint we pass is a real SplatFileType
+// enum value, not the bare extension — these differ for some formats (notably
+// ".sog" → "pcsogszip"), which is why passing the raw extension broke .sog.
+let getSplatFileTypeFromPath = null;
 let sparkLoadPromise = null;
 
 /**
@@ -19,7 +24,7 @@ let sparkLoadPromise = null;
  */
 async function loadSparkLibrary() {
   if (SplatMesh && SparkRenderer) {
-    return { SplatMesh, SparkRenderer, PagedSplats };
+    return { SplatMesh, SparkRenderer, PagedSplats, getSplatFileTypeFromPath };
   }
 
   if (!sparkLoadPromise) {
@@ -29,8 +34,14 @@ async function loadSparkLibrary() {
       SplatMesh = module.SplatMesh;
       SparkRenderer = module.SparkRenderer;
       PagedSplats = module.PagedSplats;
+      getSplatFileTypeFromPath = module.getSplatFileTypeFromPath;
       console.log('[splat] Spark library loaded');
-      return { SplatMesh, SparkRenderer, PagedSplats };
+      return {
+        SplatMesh,
+        SparkRenderer,
+        PagedSplats,
+        getSplatFileTypeFromPath
+      };
     });
   }
 
@@ -163,8 +174,11 @@ AFRAME.registerComponent('splat', {
 
     try {
       // Dynamically load the Spark library (only loads once, ~500KB)
-      const { SplatMesh: LoadedSplatMesh, PagedSplats: LoadedPagedSplats } =
-        await loadSparkLibrary();
+      const {
+        SplatMesh: LoadedSplatMesh,
+        PagedSplats: LoadedPagedSplats,
+        getSplatFileTypeFromPath: sparkGetFileType
+      } = await loadSparkLibrary();
       if (loadId !== this.loadId) return;
 
       // Initialize the SparkRenderer if not already done
@@ -178,19 +192,34 @@ AFRAME.registerComponent('splat', {
       // cloud RAD pipeline bakes a streamable LOD variant instead, which the
       // scene prefers (optimizedSourceUrl) on the next load.
       // Resolve the splat format. Spark identifies it from the URL extension or
-      // magic bytes, but a local blob: URL has no extension AND .splat is
-      // headerless, so the preview can't be identified — fall back to the
-      // `format` hint (the original upload's extension). Spark's SplatFileType
-      // is a plain lowercase string enum, so the extension doubles as fileType.
+      // magic bytes on its own, so for a URL that carries a recognizable
+      // extension (cloud URLs) we pass NO fileType and let Spark map it —
+      // critically, its SplatFileType enum does NOT always equal the extension
+      // (".sog" → "pcsogszip"), so passing the bare extension as fileType breaks
+      // those formats. This mirrors the standalone splat-viewer.html, which
+      // never passes fileType for cloud URLs.
+      //
+      // A blob: preview is the only case Spark can't sniff: the URL has no
+      // extension AND .splat is headerless. There we map the upload's `format`
+      // hint to a real SplatFileType via Spark's own getSplatFileTypeFromPath
+      // (so ".sog" → "pcsogszip" etc.), falling back to the raw hint.
       const noQuery = src.split(/[?#]/)[0];
       const lastSeg = noQuery.slice(noQuery.lastIndexOf('/') + 1);
       const urlExt = lastSeg.includes('.')
         ? lastSeg.split('.').pop().toLowerCase()
         : '';
-      const fileType = SPLAT_EXTENSIONS.includes(urlExt)
+      const hasSniffableExt = SPLAT_EXTENSIONS.includes(urlExt);
+      // The effective extension (for paged/RAD detection): the URL's when
+      // present, else the upload format hint for blob: previews.
+      const ext = hasSniffableExt
         ? urlExt
-        : this.data.format || undefined;
-      const isRad = fileType === 'rad';
+        : (this.data.format || '').toLowerCase();
+      const isRad = ext === 'rad';
+      // Only hint fileType when Spark can't sniff it (blob: preview).
+      let fileType;
+      if (!hasSniffableExt && ext) {
+        fileType = sparkGetFileType ? sparkGetFileType(`x.${ext}`) || ext : ext;
+      }
 
       // Local .rad preview (blob: URL): SplatMesh's `paged: true` path builds
       // PagedSplats with only `{ rootUrl }`, dropping our fileType, and a blob:
@@ -253,6 +282,17 @@ AFRAME.registerComponent('splat', {
     } catch (error) {
       if (loadId !== this.loadId) return;
       console.error('[splat] Failed to load splat:', error);
+      // A blob: src is ALWAYS a transient local preview that uploadAndPlaceAsset
+      // swaps for the uploaded cloud URL on success. Some formats can't be
+      // previewed from a blob: URL (e.g. .sog → Spark's pcsogszip loader), but
+      // the very same file loads fine from its cloud URL (which carries a real
+      // extension). So for a blob failure, don't flash a scary error — keep the
+      // "Processing…" indicator up; the cloud reload that follows renders it.
+      // (On upload failure the blob stays, but that surfaces via the upload UI.)
+      if (/^blob:/i.test(src)) {
+        this.el.emit('splat-error', { src, error, preview: true }, false);
+        return;
+      }
       this.showIndicatorError('Failed to load splat');
       this.el.emit('splat-error', { src, error }, false);
       // Auto-clear, but only if no newer load has taken over in the meantime.
