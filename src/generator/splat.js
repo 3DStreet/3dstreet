@@ -89,7 +89,7 @@ const SplatTab = {
 
           <p class="text-xs text-gray-400 mb-4">
             Model: SHARP (Apple) · single image · outputs a .ply splat.
-            Generation usually takes a few minutes.
+            Generation usually takes about 5 minutes.
           </p>
 
           <!-- Generate Button -->
