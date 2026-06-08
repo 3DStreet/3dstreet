@@ -67,14 +67,17 @@ in the codebase, so the later move is cheap.
 
 ## As-built (this change)
 
-### Cog — `vid2scene-cog/`
+### Cog — [`3DStreet/vid2scene-cog`](https://github.com/3DStreet/vid2scene-cog)
+The Cog lives in its own repo (kept out of the app repo so its CUDA toolchain
+and release cadence stay self-contained):
 - `cog.yaml` mirrors the upstream `Worker_Dockerfile` build (deps + compile
   glomap/ply-to-sog/3dgs-autolod/spz + gsplat); clones the upstream repo at a
   pinned ref.
 - `predict.py` wraps `process_video_to_scene`: `video` in → one `.ply` out.
-- **Must be built/pushed from a CUDA + GPU machine** (it cannot build in a CPU
-  sandbox). Then create the Replicate model and `cog push`. See
-  [`../vid2scene-cog/README.md`](../vid2scene-cog/README.md).
+- **Built/pushed from a CUDA build box** (a GPU is needed only to *run*/serve,
+  not to build — the toolchain cross-compiles). Then create the Replicate model
+  and `cog push`. See the
+  [vid2scene-cog README](https://github.com/3DStreet/vid2scene-cog).
 
 ### Backend — `public/functions/`
 - **`replicate-models.js`**: new `vid2scene` model entry (`type: 'splat'`,

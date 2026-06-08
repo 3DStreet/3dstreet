@@ -101,7 +101,8 @@ const REPLICATE_MODELS = {
   // .ply, so the downstream save + RAD/LOD pipeline are reused unchanged.
   //
   // NOTE: `modelName` must point at the Replicate model you push the Cog to
-  // (see vid2scene-cog/). Update the owner/slug once published.
+  // (Cog repo: github.com/3DStreet/vid2scene-cog). Update the owner/slug once
+  // published.
   vid2scene: {
     name: 'vid2scene (Video to Splat)',
     modelName: '3dstreet/vid2scene',
