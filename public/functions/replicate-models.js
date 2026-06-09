@@ -117,9 +117,12 @@ const REPLICATE_MODELS = {
       modelName: 'vid2scene (Video to Splat)',
       sourceType: 'video'
     },
-    // GPU-minutes heavy (SfM + 30k-step gsplat training). Placeholder — tune
-    // against measured Replicate cost before public launch.
-    tokenCost: 5
+    // GPU-minutes heavy (SfM + 30k-step gsplat training); measured Replicate
+    // cost ≈ $0.51 (reduced) to ~$1.3 (full 30k steps) on L40S. Flat upper-limit
+    // for now — 20 tokens (≈4x the cone scene) safely covers worst-case cost.
+    // TODO: make variable based on input (duration/steps) once a pre-flight
+    // client check on the source video is in place.
+    tokenCost: 20
   }
 };
 
