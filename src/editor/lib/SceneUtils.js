@@ -104,6 +104,7 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
   const correctedStreetData = processStreetDataForDuplicateIds(streetData);
 
   STREET.utils.createEntities(correctedStreetData, streetContainerEl);
+  STREET.utils.resolveSplatAssetUrls(streetContainerEl);
   useStore.getState().updateLoadingProgress(80, 'Finalizing scene...');
 
   // Emit newScene with snapshot camera state if available

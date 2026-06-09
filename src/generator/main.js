@@ -172,7 +172,8 @@ const FluxUI = {
     const buttonIds = [
       'modify-generate-btn',
       'create-generate-btn',
-      'video-generate-btn'
+      'video-generate-btn',
+      'splat-generate-btn'
     ];
 
     buttonIds.forEach((buttonId) => {

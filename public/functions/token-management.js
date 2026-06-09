@@ -21,14 +21,8 @@ const validateUserDomain = async (userEmail) => {
     // Get allowed domains from Firebase secret
     const allowedDomainsSecret = process.env.ALLOWED_PRO_TEAM_DOMAINS;
     if (!allowedDomainsSecret) {
-      console.warn('ALLOWED_PRO_TEAM_DOMAINS secret not configured, falling back to hardcoded domain');
-      // Temporary fallback during migration
-      const fallbackDomains = ['uoregon.edu'];
-      const teamDomain = fallbackDomains.find(domain => domain === userDomain);
-      return { 
-        isProDomain: !!teamDomain, 
-        teamDomain: teamDomain || undefined 
-      };
+      console.warn('ALLOWED_PRO_TEAM_DOMAINS secret not configured; denying domain-based pro access');
+      return { isProDomain: false };
     }
 
     // Parse the JSON array of allowed domains with proper error handling

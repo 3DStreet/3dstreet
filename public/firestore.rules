@@ -45,32 +45,103 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // Gallery Assets Subcollection Rules (PRIVATE data - user's gallery assets)
+    // Gallery Assets Subcollection Rules
     // Structure: users/{userId}/assets/{assetId}
+    //
+    // Visibility model (forward-compatible enum, not a boolean):
+    //   'public'   — readable by anyone; appears in listing/search queries
+    //   'unlisted' — readable by anyone with the assetId; hidden from listings
+    //   'private'  — readable by owner only
+    // Today every new asset is created 'public'. The privacy toggle UI will
+    // ship later; this rule shape is in place so flipping the field is the
+    // only change required at that point.
+    //
+    // Legacy docs without a visibility field default to 'public' via .get()
+    // so the rule remains backwards-compatible during rollout.
     match /users/{userId}/assets/{assetId} {
-      // Users can only read their own gallery assets
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Read: owner always, or anyone if the asset is public/unlisted.
+      allow read: if (request.auth != null && request.auth.uid == userId)
+        || resource.data.get('visibility', 'public') in ['public', 'unlisted'];
 
-      // Users can create assets with proper userId field and required fields validated
+      // Users can create assets with proper userId field and required fields validated.
+      // visibility must be one of the allowed enum values when present; absent
+      // is allowed for backwards compatibility (treated as 'public' on read).
       allow create: if request.auth != null
         && request.auth.uid == userId
         && request.resource.data.userId == userId
         && request.resource.data.type in ['image', 'video', 'splat', 'mesh']
         && request.resource.data.category is string
         && request.resource.data.storagePath is string
-        && request.resource.data.storagePath.matches('^users/' + userId + '/.*');
+        && request.resource.data.storagePath.matches('^users/' + userId + '/.*')
+        && (!('visibility' in request.resource.data.keys())
+            || request.resource.data.visibility in ['public', 'unlisted', 'private']);
 
-      // Users can update their own assets
-      allow update: if request.auth != null && request.auth.uid == userId;
+      // Users can update their own assets, but cannot mutate quota-relevant
+      // or identity fields after create. `size` in particular feeds the
+      // onAssetWritten trigger that maintains users/{uid}/meta/usage.bytesUsed
+      // — letting clients rewrite it would let them spoof their storage usage.
+      // Long-term, `size` should be set server-side from the actual Storage
+      // object; this rule is the short-term guard.
+      //
+      // Uses diff().affectedKeys() so legacy docs missing optional fields
+      // (e.g. AI-generated images without optimizedSourceSize) update cleanly:
+      // a field absent from both before and after never appears in affectedKeys.
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['size', 'optimizedSourceSize', 'storagePath',
+                     'optimizedSourcePath', 'userId'])
+        // visibility is mutable (privacy toggle, future feature) but must
+        // remain a valid enum value when present.
+        && (!('visibility' in request.resource.data.keys())
+            || request.resource.data.visibility in ['public', 'unlisted', 'private']);
 
-      // Users can delete their own assets
-      allow delete: if request.auth != null && request.auth.uid == userId;
+      // Hard delete is disallowed for clients. The UI calls `updateDoc` with
+      // `deleted: true` (soft delete); the GC Cloud Function performs the
+      // eventual hard delete via Admin SDK (bypasses these rules).
     }
 
     // Notify Log Collection Rules (PRIVATE - cloud functions only)
     // Tracks notification sends to prevent duplicates; no client access allowed
     match /notifyLog/{userId} {
       allow read, write: if false;
+    }
+
+    // Asset usage doc (PRIVATE - cloud functions write, owner reads)
+    // Maintained by onAssetWritten trigger; read by getUploadQuota and the
+    // Assets panel storage meter.
+    match /users/{userId}/meta/usage {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // Generation job queue
+    // Async AI generation jobs (image→splat today; image/video/photogrammetry
+    // later). WRITES are Admin-SDK only (the submit / poll / webhook / reconciler
+    // functions): clients must never write status, token, or provider fields —
+    // that would let them spoof a charge/refund or a result.
+    //
+    // READS are allowed to the owner of the job so the gallery can show
+    // in-flight jobs as pending cards (surviving reload / across tabs) via a live
+    // listener. The doc holds a per-job webhookSecret, but exposing it to the
+    // *owner* is safe: it gates the public webhook against forged POSTs for
+    // someone else's job, and a third party still can't read this doc (read is
+    // uid-scoped), so the secret stays confidential from attackers. The worst an
+    // owner can do with their own secret is re-trigger idempotent processing of
+    // their own job — already possible via getGenerationJobStatus.
+    // (Rules don't cascade, so this is also belt-and-suspenders against any
+    // future broad users/{uid} rule.)
+    match /users/{userId}/generationJobs/{jobId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // Background-job health heartbeats (System Health admin page).
+    // Each scheduled function records its last run + status here via the Admin
+    // SDK (writes bypass rules). Admin-only read; never client-writable.
+    match /jobHealth/{jobName} {
+      allow read: if request.auth != null && request.auth.token.admin == true;
+      allow write: if false;
     }
   }
 }

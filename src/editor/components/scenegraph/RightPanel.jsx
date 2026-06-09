@@ -44,7 +44,7 @@ export default function RightPanel({ entity }) {
 
   const planLabel = authUser?.isPro
     ? authUser?.isProTeam
-      ? 'TEAM'
+      ? 'PRO TEAM'
       : 'PRO'
     : 'FREE';
   const planTooltip = authUser?.isPro

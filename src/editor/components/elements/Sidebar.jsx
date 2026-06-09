@@ -2,7 +2,6 @@ import {
   cloneEntity,
   removeSelectedEntity,
   renameEntity,
-  getEntityIcon,
   setFocusCameraPose
 } from '../../lib/entity';
 import { Button } from '../elements';
@@ -11,7 +10,6 @@ import Events from '../../lib/Events';
 import Mixins from '../widgets/Mixins';
 import PropTypes from 'prop-types';
 import React from 'react';
-import capitalize from 'lodash-es/capitalize';
 import AddGeneratorComponent from './AddGeneratorComponent';
 import {
   Object24IconCyan,
@@ -27,6 +25,8 @@ import ManagedStreetSidebar from './ManagedStreetSidebar';
 import MeasureLineSidebar from './MeasureLineSidebar';
 import UserLayersSidebar from './UserLayersSidebar';
 import AdvancedComponents from './AdvancedComponents';
+import AssetInfoPanel from './AssetInfoPanel';
+import EntityLabel from '../scenegraph/EntityLabel';
 export default class Sidebar extends React.Component {
   static propTypes = {
     entity: PropTypes.object
@@ -102,17 +102,11 @@ export default class Sidebar extends React.Component {
       );
     }
 
-    const entityName = entity.getDOMAttribute('data-layer-name');
-    const entityMixin = entity.getDOMAttribute('mixin');
-    const formattedMixin = entityMixin
-      ? capitalize(entityMixin.replaceAll('-', ' ').replaceAll('_', ' '))
-      : null;
     return (
       <div className="properties-panel" tabIndex="0">
         <div id="layers-title">
           <div className="layersBlock">
-            <div className="icon-container">{getEntityIcon(entity)}</div>
-            <span>{entityName || formattedMixin}</span>
+            <EntityLabel entity={entity} />
           </div>
         </div>
         <div className="scroll">
@@ -159,6 +153,7 @@ export default class Sidebar extends React.Component {
                 </div>
               )}
               <div className="sidepanelContent">
+                <AssetInfoPanel entity={entity} />
                 {entity.hasAttribute('data-no-transform') ? (
                   <></>
                 ) : (

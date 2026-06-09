@@ -9,10 +9,17 @@ import CardPlaceholder from '../../../../../ui_assets/card-placeholder.svg';
 import LockedCard from '../../../../../ui_assets/locked-card.svg';
 import posthog from 'posthog-js';
 import pickPointOnGroundPlane from '../../../lib/pick-point-on-ground-plane';
+import {
+  uploadAndPlaceAsset,
+  isAcceptedAssetFile,
+  placeCloudAsset
+} from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { customLayersData, streetLayersData } from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
 import useStore from '@/store.js';
 import { getGroupedMixinOptions } from '../../../lib/mixinUtils';
+
+const ASSET_CARD_MIME = 'application/x-3dstreet-asset';
 
 // Create an empty image
 const emptyImg = new Image();
@@ -153,12 +160,18 @@ const createEntity = (mixinId, mixinName) => {
   AFRAME.INSPECTOR.execute('entitycreate', newEntityObject);
 };
 
-const cardMouseEnter = (mixinId) => {
+// Creates the yellow arrow + pulsating ring placement cursor as a child of
+// the shared `#previewEntity`. Idempotent — the cursor is only appended once
+// per previewEntity. Used by the AddLayer card hover *and* the file/asset
+// drag-and-drop flows so they share the same visual language.
+const ensureDropCursor = () => {
   let previewEntity = document.getElementById('previewEntity');
   if (!previewEntity) {
     previewEntity = document.createElement('a-entity');
     previewEntity.setAttribute('id', 'previewEntity');
     AFRAME.scenes[0].appendChild(previewEntity);
+  }
+  if (!previewEntity.querySelector('#drop-cursor')) {
     const dropCursorEntity = document.createElement('a-entity');
     dropCursorEntity.classList.add('hideFromSceneGraph');
     dropCursorEntity.innerHTML = `
@@ -173,6 +186,16 @@ const cardMouseEnter = (mixinId) => {
       </a-ring>`;
     previewEntity.appendChild(dropCursorEntity);
   }
+  return previewEntity;
+};
+
+const removeDropCursor = () => {
+  const previewEntity = document.getElementById('previewEntity');
+  if (previewEntity) previewEntity.remove();
+};
+
+const cardMouseEnter = (mixinId) => {
+  const previewEntity = ensureDropCursor();
 
   if (mixinId) {
     previewEntity.setAttribute('mixin', mixinId);
@@ -300,24 +323,31 @@ const AddLayerPanel = () => {
   // Add global file drop handlers for the entire scene
   useEffect(() => {
     const handleGlobalDragOver = (e) => {
-      // Check if files are being dragged
-      if (
-        e.dataTransfer &&
-        e.dataTransfer.types &&
-        e.dataTransfer.types.includes('Files')
-      ) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
+      const types = e.dataTransfer?.types || [];
+      const isFile = types.includes('Files');
+      const isAssetCard = types.includes(ASSET_CARD_MIME);
+      if (!isFile && !isAssetCard) return;
 
-        // Show drop plane for file drops
-        if (dropPlaneEl.current) {
-          fadeInDropPlane();
-        }
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      if (dropPlaneEl.current) {
+        fadeInDropPlane();
       }
+
+      // Track the placement point with the same yellow-arrow + pulsating-ring
+      // cursor the AddLayer panel uses on card hover.
+      const previewEntity = ensureDropCursor();
+      const position = pickPointOnGroundPlane({
+        x: e.clientX,
+        y: e.clientY,
+        canvas: AFRAME.scenes[0].canvas,
+        camera: AFRAME.INSPECTOR.camera
+      });
+      if (position) previewEntity.object3D.position.copy(position);
     };
 
     const handleGlobalDrop = (e) => {
-      // Check if files are being dropped
+      // File drop: upload + place.
       if (
         e.dataTransfer &&
         e.dataTransfer.files &&
@@ -327,29 +357,50 @@ const AddLayerPanel = () => {
         e.stopPropagation();
 
         const file = e.dataTransfer.files[0];
-        // Check if it's a GLB or GLTF file
-        if (
-          file.name.toLowerCase().endsWith('.glb') ||
-          file.name.toLowerCase().endsWith('.gltf')
-        ) {
-          // Get the position where the file was dropped
+        if (isAcceptedAssetFile(file)) {
           const position = pickPointOnGroundPlane({
             x: e.clientX,
             y: e.clientY,
             canvas: AFRAME.scenes[0].canvas,
             camera: AFRAME.INSPECTOR.camera
           });
+          uploadAndPlaceAsset(file, position);
+          if (e.dataTransfer.files.length > 1) {
+            STREET.notify.warningMessage(
+              `Only the first file was added. Drop one file at a time.`
+            );
+          }
+        } else {
+          STREET.notify.errorMessage(
+            `Unsupported file type: ${file.name || 'file'}. Supported formats: GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ.`
+          );
+        }
 
-          // Import and call the function
-          import('./createLayerFunctions.js').then((module) => {
-            module.createModelFromFile(file, position);
+        if (dropPlaneEl.current) fadeOutDropPlane();
+        removeDropCursor();
+        return;
+      }
+
+      // Asset-card drop from the gallery panel: place the existing cloud
+      // asset at the picked point (no upload).
+      const assetPayload = e.dataTransfer?.getData?.(ASSET_CARD_MIME);
+      if (assetPayload) {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          const asset = JSON.parse(assetPayload);
+          const position = pickPointOnGroundPlane({
+            x: e.clientX,
+            y: e.clientY,
+            canvas: AFRAME.scenes[0].canvas,
+            camera: AFRAME.INSPECTOR.camera
           });
+          placeCloudAsset(asset, position);
+        } catch (err) {
+          console.warn('[AddLayerPanel] bad asset drag payload', err);
         }
-
-        // Hide drop plane
-        if (dropPlaneEl.current) {
-          fadeOutDropPlane();
-        }
+        if (dropPlaneEl.current) fadeOutDropPlane();
+        removeDropCursor();
       }
     };
 
@@ -359,6 +410,7 @@ const AddLayerPanel = () => {
         if (dropPlaneEl.current) {
           fadeOutDropPlane();
         }
+        removeDropCursor();
       }
     };
 

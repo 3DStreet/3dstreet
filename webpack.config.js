@@ -1,13 +1,35 @@
 const webpack = require('webpack');
 const path = require('path');
+const net = require('net');
 const Dotenv = require('dotenv-webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
-module.exports = {
+const DEFAULT_PORT = 3333;
+
+// Find a free port, starting at `basePort` and incrementing on conflict.
+// Lets multiple dev servers (e.g. one per git worktree) run at once instead
+// of failing with EADDRINUSE on the hardcoded default.
+function findFreePort(basePort) {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        resolve(findFreePort(basePort + 1));
+      } else {
+        reject(err);
+      }
+    });
+    server.listen(basePort, () => {
+      server.close(() => resolve(basePort));
+    });
+  });
+}
+
+const config = {
   mode: 'development',
   devServer: {
     liveReload: false,
-    port: 3333,
     allowedHosts: 'all',
     static: [
       {
@@ -57,7 +79,11 @@ module.exports = {
       patterns: [
         { from: 'src/lib/aframe-mapbox-component.min.js' },
         { from: 'src/notyf.min.css' },
-        { from: 'src/viewer-styles.css' }
+        { from: 'src/viewer-styles.css' },
+        // Draco's Emscripten loader fetches its WASM relative to publicPath
+        // (/dist/). Copy both decoder + encoder blobs alongside the bundle.
+        { from: 'node_modules/draco3dgltf/draco_decoder_gltf.wasm' },
+        { from: 'node_modules/draco3dgltf/draco_encoder.wasm' }
       ]
     })
   ],
@@ -133,6 +159,19 @@ module.exports = {
     alias: {
       '@': path.resolve(__dirname, 'src'),
       '@shared': path.resolve(__dirname, 'src/shared')
+    },
+    // draco3dgltf's Node entry points (draco_*_nodejs.js) require('fs') /
+    // require('path') only on the Node branch; the browser branch never hits
+    // them at runtime. Telling webpack to substitute empty modules silences
+    // the static-analysis errors without affecting the WASM browser path.
+    fallback: {
+      fs: false,
+      path: false
     }
   }
+};
+
+module.exports = async () => {
+  config.devServer.port = await findFreePort(DEFAULT_PORT);
+  return config;
 };

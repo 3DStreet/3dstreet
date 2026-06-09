@@ -16,6 +16,8 @@ import EditorUpgradeModal from './EditorUpgradeModal.jsx';
 import { AddLayerPanel } from './elements/AddLayerPanel';
 import { NewModal } from './modals/NewModal';
 import { LoadingSceneModal } from './modals/LoadingSceneModal';
+import AssetDeepLinkModal from './AssetDeepLinkModal.jsx';
+import JobHealthModal from './JobHealthModal.jsx';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
 import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
@@ -188,6 +190,8 @@ export default function Main() {
       <ProfileModal />
       <NewModal />
       <LoadingSceneModal />
+      <AssetDeepLinkModal />
+      <JobHealthModal />
       <LoadScript
         googleMapsApiKey={firebaseConfig.apiKey}
         libraries={GOOGLE_MAPS_LIBRARIES}

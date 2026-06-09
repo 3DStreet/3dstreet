@@ -22,13 +22,14 @@ import { auth } from '@shared/services/firebase.js';
 import { mountAuthUI, mountTokenDisplay } from './mount-auth.jsx';
 import { mountAppSwitcher } from './mount-app-switcher.jsx';
 import { mountPurchaseModal } from './mount-purchase-modal.jsx';
-import { mountGallery } from './mount-gallery.js';
+import { mountAssets } from './mount-assets.js';
 
 // Import all modules
 import FluxUI from './main.js';
 import ModifyTab from './modify.js';
 import CreateTab from './create.js';
 import VideoTab from './video.js';
+import SplatTab from './splat.js';
 
 // Initialize PostHog so capture() calls in handlers/effects below are not no-ops
 initPostHog();
@@ -53,13 +54,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialize main UI
   FluxUI.init();
 
-  // Mount Gallery (React component)
-  await mountGallery();
+  // Mount Assets sidebar (React component)
+  await mountAssets();
 
   // Initialize tabs
   ModifyTab.init();
   CreateTab.init();
   VideoTab.init();
+  SplatTab.init();
 
   // Hide loading screen once everything is initialized
   // Use requestAnimationFrame to ensure styles are applied

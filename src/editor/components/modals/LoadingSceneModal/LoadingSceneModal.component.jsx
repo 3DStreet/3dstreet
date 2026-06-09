@@ -14,10 +14,14 @@ const LoadingSceneModal = () => {
 
   useEffect(() => {
     if (isLoadingScene && !error) {
+      // Optimistic loading: if we never receive a completion signal (e.g. a
+      // heavy splat still streaming, or a missing newScene finalize), quietly
+      // dismiss the spinner and assume the scene loaded. Genuine fetch/parse
+      // failures call errorLoadingScene() explicitly (see fetchJSON in
+      // json-utils) and still surface the error modal — only the silent
+      // timeout path is treated as success.
       timeoutRef.current = setTimeout(() => {
-        useStore
-          .getState()
-          .errorLoadingScene('Loading timed out. The scene may be too large.');
+        useStore.getState().finishLoadingScene();
       }, TIMEOUT_MS);
     }
 

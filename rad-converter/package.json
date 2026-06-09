@@ -1,0 +1,18 @@
+{
+  "name": "rad-converter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloud Run service: converts splat .ply to Spark RAD (LOD) — the splat optimized variant.",
+  "main": "server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "firebase-admin": "^13.0.0"
+  }
+}

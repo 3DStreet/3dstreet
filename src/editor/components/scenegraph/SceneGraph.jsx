@@ -9,7 +9,7 @@ import { ToolbarWrapper } from './ToolbarWrapper';
 import { Plus20Circle } from '@shared/icons';
 import { createUniqueId, getEntityDisplayName } from '../../lib/entity';
 import posthog from 'posthog-js';
-import GalleryPanel from './GalleryPanel';
+import AssetsPanel from './AssetsPanel';
 import GeoSidebar from '../elements/GeoSidebar';
 import AppMenu from './AppMenu';
 import { AppSwitcher } from '@shared/navigation/components';
@@ -517,10 +517,10 @@ export default class SceneGraph extends React.Component {
                       onClick: this.selectGeoTab
                     },
                     {
-                      label: 'Gallery',
-                      value: 'gallery',
-                      isSelected: this.state.activeTab === 'gallery',
-                      onClick: () => this.setActiveTab('gallery')
+                      label: 'Assets',
+                      value: 'assets',
+                      isSelected: this.state.activeTab === 'assets',
+                      onClick: () => this.setActiveTab('assets')
                     }
                   ]}
                 />
@@ -555,7 +555,7 @@ export default class SceneGraph extends React.Component {
                   )}
                 </div>
               )}
-              {this.state.activeTab === 'gallery' && <GalleryPanel />}
+              {this.state.activeTab === 'assets' && <AssetsPanel />}
               {this.state.activeTab === 'geo' && (
                 <div className="left-panel-geo-content">
                   <GeoSidebar entity={this.getEntityById('reference-layers')} />
