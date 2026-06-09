@@ -100,12 +100,14 @@ const REPLICATE_MODELS = {
   // a video source (uploaded straight to Storage, not base64'd). Output is a
   // .ply, so the downstream save + RAD/LOD pipeline are reused unchanged.
   //
-  // NOTE: `modelName` must point at the Replicate model you push the Cog to
-  // (Cog repo: github.com/3DStreet/vid2scene-cog). Update the owner/slug once
-  // published.
+  // `modelName` points at the Replicate model the Cog (repo:
+  // github.com/3DStreet/vid2scene-cog) is pushed to: kfarr/vid2scene, hardware
+  // L40S (sm_89 — the build's CUDA arches are 7.5;8.6;8.9, so A100/H100 would
+  // not load the kernels). Private model, accessed via the kfarr API token
+  // (same as kfarr/sharp-ml).
   vid2scene: {
     name: 'vid2scene (Video to Splat)',
-    modelName: '3dstreet/vid2scene',
+    modelName: 'kfarr/vid2scene',
     type: 'splat',
     inputKind: 'video',
     assetSlug: 'vid2scene-splat',
