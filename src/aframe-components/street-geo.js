@@ -86,8 +86,10 @@ AFRAME.registerComponent('street-geo', {
     // activated", preserving the location for a later activation, and
     // switching a map type on re-runs update() and re-prompts. The modal
     // check avoids reopening if it is already showing.
-    const { modal, setModal } = useStore.getState();
+    const { modal, setModal, setGeoModalFromActivationGate } =
+      useStore.getState();
     if (modal !== 'geo') {
+      setGeoModalFromActivationGate(true);
       setModal('geo');
     }
   },

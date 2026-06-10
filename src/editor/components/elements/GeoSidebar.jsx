@@ -278,6 +278,22 @@ const GeoSidebar = ({ entity }) => {
   // Check if entity and its components exist
   const component = entity?.components?.['street-geo'];
 
+  // Located but never activated (#1654): the scene carries a suggested
+  // lat/lon (e.g. from the mobile app) but the elevation service has never
+  // run, so the activation gate in street-geo suppresses all map tiles. If
+  // the user dismissed the auto-opened GeoModal there is otherwise no signal
+  // pointing back at the recovery path. Mirrors
+  // street-geo's hasSuggestedLocation() / isGeospatialActivated().
+  const isLocatedNotActivated =
+    component?.data &&
+    (component.data.latitude !== 0 || component.data.longitude !== 0) &&
+    !Number.isFinite(component.data.ellipsoidalHeight);
+
+  const activateFromCallout = () => {
+    posthog.capture('geo_activation_callout_clicked');
+    openGeoModal();
+  };
+
   return (
     <Tooltip.Provider>
       <div className="geo-sidebar">
@@ -506,6 +522,42 @@ const GeoSidebar = ({ entity }) => {
                 </Button>
               </div>
             </div>
+
+            {/* Located-but-not-activated callout (#1654) */}
+            {isLocatedNotActivated && (
+              <div
+                className="propertyRow"
+                style={{ marginBottom: '12px', paddingRight: '12px' }}
+              >
+                <div
+                  style={{
+                    width: '100%',
+                    background: 'rgba(244, 160, 26, 0.08)',
+                    border: '1px solid rgba(244, 160, 26, 0.45)',
+                    borderRadius: '6px',
+                    padding: '10px 12px',
+                    fontSize: '12px',
+                    lineHeight: 1.45,
+                    color: '#f4a01a'
+                  }}
+                >
+                  <div style={{ fontWeight: 600, marginBottom: '4px' }}>
+                    📍 Location detected — map not activated
+                  </div>
+                  <div style={{ color: '#d1d5db', marginBottom: '8px' }}>
+                    This scene has a saved location, but the 3D map isn&apos;t
+                    loaded yet. Activate to fetch elevation and map tiles.
+                  </div>
+                  <Button
+                    variant="toolbtn"
+                    style={{ width: '100%' }}
+                    onClick={activateFromCallout}
+                  >
+                    Activate Map
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Upgrade prompt for users with 0 tokens */}
             {!currentUser?.isPro && tokenProfile?.geoToken === 0 && (

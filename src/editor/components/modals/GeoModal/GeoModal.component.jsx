@@ -47,6 +47,11 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   );
 };
 
+// One-time-per-session throttle for the activation-recovery toast (#1654).
+// The gate re-prompts on every map-type change, so without this a user who
+// keeps declining would get the same hint on every cancel.
+let activationHintToastShown = false;
+
 const GeoModal = () => {
   const { currentUser, tokenProfile, refreshTokenProfile } = useAuthContext();
   const { isLoaded } = useJsApiLoader({
@@ -70,8 +75,35 @@ const GeoModal = () => {
   const startCheckout = useStore((state) => state.startCheckout);
   const geojsonImportData = useStore((state) => state.geojsonImportData);
   const setGeojsonImportData = useStore((state) => state.setGeojsonImportData);
+  const geoModalFromActivationGate = useStore(
+    (state) => state.geoModalFromActivationGate
+  );
+  const setGeoModalFromActivationGate = useStore(
+    (state) => state.setGeoModalFromActivationGate
+  );
 
   const onClose = () => {
+    // Dead-end recovery (#1654): the activation gate auto-opened this modal
+    // and the user is dismissing without activating. The location is
+    // preserved, but nothing on screen says how to resume — point at the
+    // sidebar entry point. Successful activation clears the flag before
+    // closing, so this only fires on a real decline.
+    if (geoModalFromActivationGate) {
+      setGeoModalFromActivationGate(false);
+      posthog.capture('geo_activation_prompt_dismissed', {
+        latitude: markerPosition.lat,
+        longitude: markerPosition.lng,
+        is_pro_user: currentUser?.isPro || false,
+        tokens_available: tokenProfile?.geoToken || 0,
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
+      if (!activationHintToastShown) {
+        activationHintToastShown = true;
+        STREET.notify.warningMessage(
+          'Location saved for later — use "Set Location" in the Geospatial panel to activate the 3D map.'
+        );
+      }
+    }
     returnToPreviousModal();
   };
 
@@ -191,6 +223,10 @@ const GeoModal = () => {
 
     if (result.success && result.data) {
       const data = result.data;
+
+      // Activation succeeded — the gate's offer was taken, so the dismissal
+      // handling in onClose must not fire when the success overlay closes.
+      setGeoModalFromActivationGate(false);
 
       // Refresh token profile to get updated count after successful save
       const previousTokenCount = tokenProfile?.geoToken || 0;
