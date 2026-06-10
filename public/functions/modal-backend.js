@@ -122,7 +122,10 @@ async function fetchModalPrediction(admin, job, jobId) {
     return { prediction: { id: job.providerJobId, status: 'succeeded', output: gcsUri } };
   }
   if (status === 'failed') {
-    return { prediction: { id: job.providerJobId, status: 'failed', error: error || 'Modal job failed.' } };
+    // Drop noisy infra wrappers (e.g. Modal exception-serialization artifacts)
+    // down to the underlying message where recognizable.
+    const cleaned = (error || '').replace(/^Failed to serialize exception /, '');
+    return { prediction: { id: job.providerJobId, status: 'failed', error: cleaned || 'Modal job failed.' } };
   }
   if (status === 'expired') {
     // Result retention (~7 days) lapsed — the reconciler's give-up windows
