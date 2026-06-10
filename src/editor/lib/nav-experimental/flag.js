@@ -19,3 +19,16 @@ export function isStreetLevelNav() {
   const params = new URLSearchParams(window.location.search);
   return params.get('streetview') === 'on';
 }
+
+// Sub-flag: the first-person movement kit — WASD / arrow-key flight and
+// the WASD ↔ rotation interplay (which exists to pair with it). Default
+// OFF — pass ?wasd=on to enable. While off, shortcuts.js keeps the legacy w/s/d
+// editor shortcuts (translate/scale/clone) active ALONGSIDE their new
+// t/l/c homes, so launch ships the exact legacy keymap and the later flag
+// flip breaks nothing. Read at load time (the shortcut map does not react
+// to the runtime `wasdEnabled` tuning toggle).
+export function isWasdNav() {
+  if (typeof window === 'undefined' || !window.location) return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('wasd') === 'on';
+}

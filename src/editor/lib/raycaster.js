@@ -1,5 +1,8 @@
 import Events from './Events';
-import { isExperimentalNav } from './nav-experimental/flag.js';
+import {
+  isExperimentalNav,
+  isStreetLevelNav
+} from './nav-experimental/flag.js';
 
 export function initRaycaster(inspector) {
   // Use cursor="rayOrigin: mouse".
@@ -125,9 +128,13 @@ export function initRaycaster(inspector) {
    * intersect when the flag is on. Flag-off keeps the legacy objectfocus path.
    * Only this canvas dblclick reroutes — F-key / scene-tree / sidebar
    * objectfocus callers still run the legacy frame-this-entity animation.
+   *
+   * The teleport ships with the street-level featureset (?streetview=on);
+   * gated off, double-click keeps the legacy frame-the-entity behaviour
+   * (deploy-at-parity).
    */
   function onDoubleClick(event) {
-    if (isExperimentalNav()) {
+    if (isExperimentalNav() && isStreetLevelNav()) {
       Events.emit('nav-experimental:doubleclick', {
         clientX: event.clientX,
         clientY: event.clientY

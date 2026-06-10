@@ -41,7 +41,7 @@
 //   - dispose()
 
 import './navTuningComponent.js';
-import { isStreetLevelNav } from './flag.js';
+import { isStreetLevelNav, isWasdNav } from './flag.js';
 import { ModifierState } from './modifierState.js';
 import { GestureLatch } from './gestureLatch.js';
 import { SceneBounds } from './sceneBounds.js';
@@ -141,6 +141,20 @@ import {
 
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
+
+// The held-key movement set (WASD + arrows). Shared by the keydown
+// movement branch, the keyup release path, and the WASD ↔ rotation
+// interplay edge detection.
+const MOVEMENT_KEY_CODES = new Set([
+  'KeyW',
+  'KeyA',
+  'KeyS',
+  'KeyD',
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight'
+]);
 
 // CR-D5: bounded-fallback cadence (ms) for the idle-gated enclosure probe.
 // While the camera is stationary and no scene-geometry-dirty signal fired,
@@ -280,11 +294,21 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // tuning component (streetLevelEnabled → setStreetLevelEnabled).
     this._streetLevelEnabled = isStreetLevelNav();
 
+    // First-person kit gate (?wasd=on, default off): WASD / arrow-key
+    // flight and the WASD ↔ rotation interplay (which rides on the
+    // held-key set, so it gates for free). Live value, flippable via the
+    // tuning component (wasdEnabled → setWasdEnabled).
+    this._wasdEnabled = isWasdNav();
+
     // TASK-010 (live-Shift, B6): last-known cursor coords, tracked on
     // mousedown and every mousemove so a mid-drag Shift toggle can
     // re-latch the sub-gesture at the current cursor position.
     this._lastClientX = null;
     this._lastClientY = null;
+
+    // Which mouse button latched the current gesture (0 = LB, 2 = RMB).
+    // The mid-drag Shift mode-switch applies to LB drags only.
+    this._gestureButton = null;
 
     this._pointer = new THREE.Vector2();
     this._pointerOld = new THREE.Vector2();
@@ -782,6 +806,19 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // tilt (pedestal ↔ truck) — re-emit so the letterbox updates without
     // waiting for the next interaction (same reasoning as setTiltThreshold).
     this._maybeEmitLbModeChange();
+  }
+
+  // First-person kit gate (see the constructor field). Relayed from the
+  // tuning component (wasdEnabled); the ?wasd=on URL flag sets the default.
+  // Note the shortcuts.js w/s/d keymap restore reads the URL flag at load
+  // time only — this runtime toggle moves the camera bindings, not the
+  // editor shortcut map.
+  setWasdEnabled(enabled) {
+    if (typeof enabled !== 'boolean') return;
+    this._wasdEnabled = enabled;
+    // Flipped off mid-flight: drop any held movement keys so the camera
+    // doesn't keep flying on keys whose keyups will now be ignored.
+    if (!enabled) this._heldKeys.clear();
   }
 
   // TASK-010 (D-LT-3 / #6): live-tunable Shift+LB rotation speed
@@ -1317,6 +1354,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // Phase 2 splits the 'pan' branch further at gesture-start time via
   // `decideLbMode(cameraTiltDegrees(camera))`.
   _decideMouseMode(event) {
+    // RMB = rotate, identical to Shift+LB — legacy-EditorControls parity
+    // (its mapping was LB pan / MMB zoom / RMB rotate; the canvas context
+    // menu is suppressed). Unlike LB, an RMB drag never mode-switches on
+    // Shift (see the `_gestureButton` guard in `_syncDragModeToShift`),
+    // matching the legacy controls' LB-only Shift toggle.
+    if (event.button === 2) return 'rotate';
     if (event.button !== 0) return null;
     if (event.shiftKey) return 'rotate';
     return 'pan';
@@ -1379,6 +1422,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // going through `_shiftRotate`). Emits a fresh LB-mode if changed,
     // before the gesture latches.
     this._maybeEmitLbModeChange();
+
+    // Remember which button latched the gesture: the mid-drag Shift
+    // mode-switch applies to LB drags only (legacy parity — an RMB rotate
+    // must not flip to pan when Shift is up; see `_syncDragModeToShift`).
+    this._gestureButton = event.button;
 
     if (mode === 'pan') {
       this._beginPanSubGesture(event.clientX, event.clientY);
@@ -1490,6 +1538,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
 
   _onMouseUp() {
+    this._gestureButton = null;
     let endedMode = null;
     if (this._latch.isActive()) {
       // TASK-024 (N1): capture the gesture `mode` BEFORE `_latch.end()`,
@@ -1785,12 +1834,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
 
     // (2) Classify by owning-entity identity → category. D (no hit) → no-op.
+    // (Street-level mode off: raycaster.js routes canvas double-clicks to the
+    // legacy objectfocus instead, so this path only runs with the mode on.)
     const category = classifyDoubleClick(classifyHitEntity(hit));
     if (category === 'D') return;
-    // Street-level mode off: a lane double-click (Category A) lands at street
-    // eye-height — that is a street-view entry, so it no-ops. B/C framing
-    // teleports stay (they target objects/buildings, not the street surface).
-    if (category === 'A' && !this._streetLevelEnabled) return;
 
     const hitPoint = new THREE.Vector3(hit.point.x, hit.point.y, hit.point.z);
     let objectBox = null;
@@ -2225,6 +2272,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // deliberate switch regardless of focus (decision D-R1-5).
   _syncDragModeToShift(shiftHeld) {
     if (this._isInactive() || !this._latch.isActive()) return; // only mid-drag
+    // LB drags only: an RMB rotate is Shift-independent (legacy parity —
+    // EditorControls' Shift toggle applied to `event.buttons === 1` only).
+    if (this._gestureButton !== 0) return;
     const desired = decideDragModeSwitch(this._latch.get('mode'), shiftHeld);
     if (desired === null) return; // already in the desired mode
     if (desired === 'rotate') {
@@ -2269,16 +2319,16 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // editor shortcuts (translate-mode, scale-mode, clone-entity) were
     // remapped to T/L/C in shortcuts.js on 2026-05-09 so WASD is free
     // for camera movement.
-    if (
-      k === 'KeyW' ||
-      k === 'KeyA' ||
-      k === 'KeyS' ||
-      k === 'KeyD' ||
-      k === 'ArrowUp' ||
-      k === 'ArrowDown' ||
-      k === 'ArrowLeft' ||
-      k === 'ArrowRight'
-    ) {
+    // First-person kit off: movement keys are NOT claimed — no
+    // preventDefault, no held-key tracking — so w/s/d fall through to the
+    // legacy editor shortcuts that shortcuts.js keeps live in that mode.
+    if (this._wasdEnabled && MOVEMENT_KEY_CODES.has(k)) {
+      // Interplay: ENTERING WASD mode (first movement key down from idle)
+      // ends an in-progress rotation gesture. Edge-detected on the empty
+      // set so auto-repeat keydowns and additional movement keys do NOT
+      // end a rotation started while already moving — only the WASD-mode
+      // boundary does (the matching exit edge lives in `_onKeyUp`).
+      if (this._heldKeys.size === 0) this._endRotationGestureForWasd();
       this._heldKeys.add(k);
       // Prevent the browser from scrolling the page (arrow keys) or
       // shifting focus in scrollable panels while driving the camera.
@@ -2755,7 +2805,31 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // TASK-010 (B6): symmetric with `_onKeyDown` — same first-line sync.
     this._syncDragModeToShift(event.shiftKey);
     const k = event.code;
-    if (this._heldKeys.has(k)) this._heldKeys.delete(k);
+    const wasHeld = this._heldKeys.has(k);
+    if (wasHeld) this._heldKeys.delete(k);
+    // Interplay: releasing a held movement key ends an in-progress
+    // rotation gesture — functionally equivalent to Shift-up / button-up,
+    // even though the user may keep dragging. `_heldKeys` only ever holds
+    // movement codes, so `wasHeld` doubles as the movement-key test (and
+    // excludes keyups whose keydown was swallowed by a typing target).
+    if (wasHeld) this._endRotationGestureForWasd();
+  }
+
+  // WASD ↔ rotation interplay: entering WASD mode (first movement key
+  // down) or releasing any held movement key ends an in-progress rotation
+  // gesture (Shift+LB or RMB — both latch mode 'rotate'). The latch ends
+  // NOW — the still-held button keeps the window listeners until mouseup,
+  // but every subsequent move no-ops and the Shift sync can't re-latch
+  // (both gate on an active latch) — so rotating again requires a fresh
+  // click / Shift press. Pan gestures are left alone (only rotation is
+  // specced to yield to WASD).
+  _endRotationGestureForWasd() {
+    if (!this._latch.isActive()) return;
+    if (this._latch.get('mode') !== 'rotate') return;
+    this._latch.end();
+    this._emitModeChange(null);
+    this._indicator.hide();
+    this._maybeEmitLbModeChange();
   }
 
   _isTypingTarget(target) {

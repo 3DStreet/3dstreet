@@ -25,7 +25,7 @@ import {
   ROTATION_SPEED_RAD_PER_PX,
   WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES
 } from './constants.js';
-import { isStreetLevelNav } from './flag.js';
+import { isStreetLevelNav, isWasdNav } from './flag.js';
 
 if (
   typeof AFRAME !== 'undefined' &&
@@ -61,6 +61,14 @@ if (
       streetLevelEnabled: {
         type: 'boolean',
         default: isStreetLevelNav()
+      },
+      // First-person kit gate (WASD/arrow flight + rotation interplay).
+      // Default comes from the ?wasd=on URL flag. NOTE: the runtime toggle
+      // moves only the camera bindings — the shortcuts.js w/s/d keymap
+      // restore is decided once at load from the URL flag.
+      wasdEnabled: {
+        type: 'boolean',
+        default: isWasdNav()
       }
     },
     update() {
@@ -85,6 +93,9 @@ if (
       }
       if (typeof c.setStreetLevelEnabled === 'function') {
         c.setStreetLevelEnabled(this.data.streetLevelEnabled);
+      }
+      if (typeof c.setWasdEnabled === 'function') {
+        c.setWasdEnabled(this.data.wasdEnabled);
       }
     }
   });
