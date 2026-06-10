@@ -25,8 +25,12 @@ import {
   ROTATION_SPEED_RAD_PER_PX,
   WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES
 } from './constants.js';
+import { isStreetLevelNav } from './flag.js';
 
-if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning']) {
+if (
+  typeof AFRAME !== 'undefined' &&
+  !AFRAME.components['nav-experimental-tuning']
+) {
   AFRAME.registerComponent('nav-experimental-tuning', {
     // Schema defaults imported from the constants so the component and the
     // constants can't drift.
@@ -49,6 +53,14 @@ if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning
       wheelZoomLateralCapLowerBoundMetres: {
         type: 'number',
         default: WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES
+      },
+      // Street-level mode gate (swoop / street FOV / street button action /
+      // lane double-click). Default comes from the ?streetview=on URL flag
+      // (off without it); flip live via
+      // `sceneEl.setAttribute('nav-experimental-tuning','streetLevelEnabled',true)`.
+      streetLevelEnabled: {
+        type: 'boolean',
+        default: isStreetLevelNav()
       }
     },
     update() {
@@ -70,6 +82,9 @@ if (typeof AFRAME !== 'undefined' && !AFRAME.components['nav-experimental-tuning
       }
       if (typeof c.setWheelZoomLateralCap === 'function') {
         c.setWheelZoomLateralCap(this.data.wheelZoomLateralCapLowerBoundMetres);
+      }
+      if (typeof c.setStreetLevelEnabled === 'function') {
+        c.setStreetLevelEnabled(this.data.streetLevelEnabled);
       }
     }
   });

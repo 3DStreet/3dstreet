@@ -41,6 +41,7 @@
 //   - dispose()
 
 import './navTuningComponent.js';
+import { isStreetLevelNav } from './flag.js';
 import { ModifierState } from './modifierState.js';
 import { GestureLatch } from './gestureLatch.js';
 import { SceneBounds } from './sceneBounds.js';
@@ -268,6 +269,16 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // setWheelZoomLateralCap).
     this._wheelZoomLateralCapLowerBound =
       WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES;
+
+    // Street-level mode gate. OFF (the ?streetview=on default) disables the
+    // street-level regime as a whole: the wheel never dispatches to the
+    // swoop / street-FOV phases (it stays a plain anchored dolly at every
+    // height, like Ctrl+wheel), the context button offers no street action,
+    // the 'drop' discoverability cue is suppressed, and a lane double-click
+    // no-ops. Elevated nav, drone rise, and the enclosure (daylight)
+    // recovery are unaffected. Live value, flippable at runtime via the
+    // tuning component (streetLevelEnabled → setStreetLevelEnabled).
+    this._streetLevelEnabled = isStreetLevelNav();
 
     // TASK-010 (live-Shift, B6): last-known cursor coords, tracked on
     // mousedown and every mousemove so a mid-drag Shift toggle can
@@ -709,16 +720,23 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._zoomOutInterval = null;
   }
 
+  // LB sub-mode from the live tilt. Street-level mode off: the tilt-
+  // conditional pedestal regime — and the letterbox indicator driven off
+  // it — never engages; LB pan is always the Map truck-pan regardless of
+  // tilt. The single decision point for all three callers (the mode cache,
+  // the mode-change emitter, and the pan gesture latch).
+  _decideLbModeLive() {
+    if (!this._streetLevelEnabled) return 'pan-truck';
+    return decideLbMode(cameraTiltDegrees(this._camera), this._tiltThreshold);
+  }
+
   // Phase 2: read the cached LB sub-mode for the visual indicator. The
   // hook (`useNavMode`) calls this on mount to seed initial state, then
   // listens for `nav-experimental:modechange` for updates. Forces a
   // recompute if the cache is empty so the first read is always honest.
   getCurrentLbMode() {
     if (this._currentLbMode == null && this._camera) {
-      this._currentLbMode = decideLbMode(
-        cameraTiltDegrees(this._camera),
-        this._tiltThreshold
-      );
+      this._currentLbMode = this._decideLbModeLive();
     }
     return this._currentLbMode;
   }
@@ -752,6 +770,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       return;
     }
     this._wheelZoomLateralCapLowerBound = metres;
+  }
+
+  // Street-level mode gate (see the constructor field for what it covers).
+  // Relayed from the tuning component (streetLevelEnabled); the URL flag
+  // (?streetview=on) sets the default.
+  setStreetLevelEnabled(enabled) {
+    if (typeof enabled !== 'boolean') return;
+    this._streetLevelEnabled = enabled;
+    // Flipping the gate can change the LB sub-mode comparator at a fixed
+    // tilt (pedestal ↔ truck) — re-emit so the letterbox updates without
+    // waiting for the next interaction (same reasoning as setTiltThreshold).
+    this._maybeEmitLbModeChange();
   }
 
   // TASK-010 (D-LT-3 / #6): live-tunable Shift+LB rotation speed
@@ -956,7 +986,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // to a spin in place on its own — no dedicated top-down case needed.
     // (TASK-026: this replaces a call to a never-implemented
     // _screenCenterHit() that threw on every non-top-down click.)
-    const isMap = cameraTiltDegrees(camera) > this._tiltThreshold;
+    // Street-level mode off: always the Map turn (orbit the screen-centre
+    // ground point). At/above the horizon that point is null and the code
+    // below already falls through to spin-in-place — the one pose where
+    // there is no ground feature to pivot.
+    const isMap =
+      !this._streetLevelEnabled ||
+      cameraTiltDegrees(camera) > this._tiltThreshold;
     let pivot = null;
     if (isMap) {
       // Screen-centre ground point = where the camera's view ray meets
@@ -1270,10 +1306,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // Plan-View / focus-animation onDone callbacks.
   _maybeEmitLbModeChange() {
     if (!this._camera) return;
-    const next = decideLbMode(
-      cameraTiltDegrees(this._camera),
-      this._tiltThreshold
-    );
+    const next = this._decideLbModeLive();
     if (next !== this._currentLbMode) {
       this._currentLbMode = next;
       this._emitModeChange(next);
@@ -1378,10 +1411,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // ring left visible by the rotate — otherwise it leaks on the stale
     // pivot for the rest of the drag (it only marks a Map-rotate pivot).
     this._indicator.hide();
-    const subMode = decideLbMode(
-      cameraTiltDegrees(this._camera),
-      this._tiltThreshold
-    );
+    const subMode = this._decideLbModeLive();
     const anchor = this._cursorAnchor.worldPointAt(clientX, clientY);
 
     if (subMode === 'pan-truck') {
@@ -1571,7 +1601,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // downward `hits` already pass through any enclosing building's roof +
     // floor). Opt-in (`checkBuried`) so existing recovery callers, which pass
     // no opts, are byte-identical.
-    if (opts.checkBuried && this._pointInsideBuildingHit(p, hits, opts.extraBox)) {
+    if (
+      opts.checkBuried &&
+      this._pointInsideBuildingHit(p, hits, opts.extraBox)
+    ) {
       return false;
     }
     return true;
@@ -1754,6 +1787,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // (2) Classify by owning-entity identity → category. D (no hit) → no-op.
     const category = classifyDoubleClick(classifyHitEntity(hit));
     if (category === 'D') return;
+    // Street-level mode off: a lane double-click (Category A) lands at street
+    // eye-height — that is a street-view entry, so it no-ops. B/C framing
+    // teleports stay (they target objects/buildings, not the street surface).
+    if (category === 'A' && !this._streetLevelEnabled) return;
 
     const hitPoint = new THREE.Vector3(hit.point.x, hit.point.y, hit.point.z);
     let objectBox = null;
@@ -1796,9 +1833,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // camera; the per-column cap is applied in the clearance step below. A void
     // below the camera (no floor) → no downward reference → no cap.
     const currentCamY = camera.position.y;
-    const curFloor = this._collisionFloorAt(camera.position.x, camera.position.z, {
-      refreshCache: false
-    });
+    const curFloor = this._collisionFloorAt(
+      camera.position.x,
+      camera.position.z,
+      {
+        refreshCache: false
+      }
+    );
     const currentAGL =
       curFloor.source === 'cache'
         ? Infinity
@@ -1956,7 +1997,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // it needs no mid-tween hand-off). The teleport is a committed motion: only
   // its endpoint is validated; the path is not per-frame collision-clamped.
   // Returns the TickAnimator handle. `_tweenToPose` is left untouched.
-  _easeToPose({ position, quaternion, fromFov, toFov, durationMs, onTick, onDone }) {
+  _easeToPose({
+    position,
+    quaternion,
+    fromFov,
+    toFov,
+    durationMs,
+    onTick,
+    onDone
+  }) {
     const camera = this._camera;
     const startPos = camera.position.clone();
     const startQuat = camera.quaternion.clone();
@@ -2290,6 +2339,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       enabled =
         s.topOverhead != null && s.topOverhead + EYE_MARGIN_METRES > camY;
     } else if (s.elevationState === 'elevated') {
+      // Street-level mode off: there is no street action to offer from an
+      // elevated pose. 'none' hides the button entirely (ContextViewButton
+      // renders nothing for it) and `triggerContextAction` / Space no-op.
+      if (!this._streetLevelEnabled) {
+        this._lastResolvedKind = 'none';
+        return { kind: 'none', enabled: false, busy: false };
+      }
       // Street view. Enabled mirrors `_swoopToStreet` EXACTLY (R4): it swoops to
       // the camera-centre look-at when tilted past T, else drops vertically to
       // the floor below. So it has a target — and the button is enabled — when
@@ -2342,6 +2398,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // down+forward translation + the tilt slerp gives the forward-and-down swoop
   // arc to the spot you were looking at — "drop the pegman where I am looking".
   _swoopToStreet() {
+    if (!this._streetLevelEnabled) return; // gated upstream; belt-and-braces
     const cam = this._camera;
     const P = this._centerRayGroundHit();
     // Discriminate the two street-view cases by HOW STEEPLY you are looking down
@@ -2824,9 +2881,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       }
     }
     // Discoverability cue (D7): keyed off height above the collision floor
-    // below, with show/hide hysteresis; enclosure forces show.
+    // below, with show/hide hysteresis; enclosure forces show. Street-level
+    // mode off: the 'drop' cue advertises the gated street action (Space),
+    // so only the enclosure cue may show — the gate feeds the shown state
+    // (not just the emit) so `_cueShown` keeps tracking what is displayed.
     const agl = probe.floorY != null ? camY - probe.floorY : 0;
-    const nextShown = cueState(this._cueShown, agl, probe.enclosed);
+    const nextShown =
+      cueState(this._cueShown, agl, probe.enclosed) &&
+      (probe.enclosed || this._streetLevelEnabled);
     if (nextShown !== this._cueShown) {
       this._cueShown = nextShown;
       if (nextShown) {
@@ -3283,6 +3345,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Ctrl+wheel (incl. Mac trackpad pinch) bypasses the swoop — plain
     // camera-Z dolly at the current tilt/elevation (Open Decision #2).
     if (this._lastWheelCtrlKey) return 'lowtilt';
+    // Street-level mode off: never dispatch to the swoop (phase 2) or the
+    // street FOV zoom (phase 3) — the wheel is a plain anchored dolly at
+    // every height, the same behaviour Ctrl+wheel gives with the mode on.
+    if (!this._streetLevelEnabled) {
+      return cameraTiltDegrees(camera) <= this._tiltThreshold
+        ? 'lowtilt'
+        : 'high';
+    }
     // TASK-024a (solid-geometry guard): no ground below → no swoop floor to
     // land on. Plain anchored dolly at the current tilt, never Phase 2/3.
     if (!this._frameGroundHit) {
@@ -3438,8 +3508,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // hand the remainder to the swoop. TASK-014d: Ctrl+wheel is the swoop
     // BYPASS escape hatch — a plain cursor dolly at the current tilt that may
     // descend past AGL 20 without entering the swoop, so skip the boundary when
-    // Ctrl is held.
-    if (sign < 0 && this._frameGroundHit && !this._lastWheelCtrlKey) {
+    // Ctrl is held. Street-level mode off: same bypass — there is no swoop to
+    // hand off to, so the dolly descends freely.
+    if (
+      sign < 0 &&
+      this._frameGroundHit &&
+      !this._lastWheelCtrlKey &&
+      this._streetLevelEnabled
+    ) {
       const denom = camera.position.y - hit.y;
       const targetY = groundY + yEntry;
       // Would the full step land below the entry boundary?
@@ -3571,6 +3647,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const groundY = this._frameGroundY;
     if (
       sign < 0 &&
+      this._streetLevelEnabled && // mode off: no Phase-2 boundary to clamp at
       camera.position.y - groundY < SWOOP_PHASE2_ENTRY_ELEVATION_METRES
     ) {
       camera.position.y = groundY + SWOOP_PHASE2_ENTRY_ELEVATION_METRES;
@@ -4351,8 +4428,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // so mid-drag the two can disagree by design (see plan §4b / worked
   // examples 3 & 4). Do NOT wire the ring off live tilt.
   _latchRotationCenter(camera, clientX, clientY) {
+    // Street-level mode off: the Street rotate-in-place regime never
+    // engages — rotation is always the Map orbit. At/above the horizon
+    // `_mapModePivot`'s defensive fallback (a bounds-radius-ahead ground
+    // point) takes over, since the screen-centre ground point is null there.
     const tiltDeg = cameraTiltDegrees(camera);
-    const isMap = tiltDeg > this._tiltThreshold;
+    const isMap = !this._streetLevelEnabled || tiltDeg > this._tiltThreshold;
     const center = isMap
       ? this._mapModePivot(clientX, clientY) // bounds sphere + D-LT-3 fallback
       : camera.position.clone(); // street: rotate-in-place
@@ -4403,13 +4484,25 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const sc = this._viewRayGroundPoint(camPos, fwd);
     const hit = this._cursorAnchor.worldPointAt(clientX, clientY);
     let p = sc;
-    if (sc && hit.source !== 'fallback') {
+    if (hit.source !== 'fallback') {
       // Cursor hit a mesh OR the ground plane: orbit it if it lies within
       // the bounds radius of the screen-centre point (horizontal ground
-      // distance).
+      // distance). Street-level mode off: ALSO accept a hit within the
+      // radius of the CAMERA (horizontal). Map rotation now runs at every
+      // tilt, and at shallow tilt sc races to the horizon — the sc-centred
+      // test then rejects every nearby ground click (the cursor pivot
+      // stops registering and rotation pins to the horizon point). The
+      // camera-centred test is gated so the tuned Map-mode bounds are
+      // unchanged with the street regime on (where tilt > T keeps sc near
+      // the view centre by construction).
       const candidate = new THREE.Vector3(hit.x, hit.y, hit.z);
-      const groundDist = Math.hypot(candidate.x - sc.x, candidate.z - sc.z);
-      if (groundDist <= this._mapPivotBoundsRadius) {
+      const fromSc = sc
+        ? Math.hypot(candidate.x - sc.x, candidate.z - sc.z)
+        : Infinity;
+      const fromCam = this._streetLevelEnabled
+        ? Infinity
+        : Math.hypot(candidate.x - camPos.x, candidate.z - camPos.z);
+      if (Math.min(fromSc, fromCam) <= this._mapPivotBoundsRadius) {
         p = candidate;
       }
     }

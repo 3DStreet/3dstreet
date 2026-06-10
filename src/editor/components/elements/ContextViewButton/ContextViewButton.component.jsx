@@ -82,6 +82,10 @@ export const ContextViewButton = () => {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  // Street-level mode off: the resolver returns kind 'none' from an elevated
+  // pose (no street action to offer) — hide the button entirely.
+  if (!ICONS[kind]) return null;
+
   const label = TOOLTIP[kind];
 
   const onClick = (event) => {
