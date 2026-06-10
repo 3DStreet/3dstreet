@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import posthog from 'posthog-js';
 import {
   useAssets,
   AssetsContent,
@@ -51,7 +52,11 @@ const AssetsPanelBody = ({
   // doesn't inspect it. Only the default shared uploader returns
   // { ok, error } and is the only branch where the body forwards errors to
   // onNotification.
-  onUpload
+  onUpload,
+  // Storage upsell entry point (#1644). Editor passes a startCheckout
+  // wrapper; when omitted (generator today) the usage meter still warns but
+  // no upgrade CTAs render — keeps this shared body free of checkout wiring.
+  onUpgrade
 }) => {
   const assetsState = useAssets();
   const { items, isLoggedIn, isLoadingMore, hasMore, reloadItems, loadMore } =
@@ -61,6 +66,45 @@ const AssetsPanelBody = ({
   const [filter, setFilter] = useState('all');
   const usage = useStorageUsage(isLoggedIn);
   const isUploading = useCurrentUploadStore((s) => !!s.upload);
+
+  // Storage upsell state (#1644). The full-storage card's soft decline
+  // ("free up space instead") hides it for this mount only — it returns next
+  // session while the account is still full. The low-usage hint dismisses
+  // permanently via localStorage.
+  const [fullCardDismissed, setFullCardDismissed] = useState(false);
+  const [hintDismissed, setHintDismissed] = useState(
+    () => localStorage.getItem('assetsLowUsageHintDismissed') === '1'
+  );
+  const dismissHint = () => {
+    localStorage.setItem('assetsLowUsageHintDismissed', '1');
+    setHintDismissed(true);
+  };
+
+  // Funnel: log each time the meter crosses into a new upsell severity so
+  // PostHog can compare prompt impressions against storage_upsell_clicked /
+  // checkout_started. Ref-guarded to once per severity per mount. Lives
+  // above the early returns to keep hook order stable.
+  const shownSeverityRef = useRef(null);
+  const ratioForEffect =
+    usage.planLimit > 0 ? usage.bytesUsed / usage.planLimit : 0;
+  const severityForEffect =
+    usage.tier === 'FREE' && usage.planLimit != null
+      ? ratioForEffect >= 1
+        ? 'full'
+        : ratioForEffect >= 0.8
+          ? 'near_full'
+          : null
+      : null;
+  useEffect(() => {
+    if (!severityForEffect) return;
+    if (shownSeverityRef.current === severityForEffect) return;
+    shownSeverityRef.current = severityForEffect;
+    posthog.capture('storage_upsell_shown', {
+      severity: severityForEffect,
+      bytes_used: usage.bytesUsed,
+      plan_limit: usage.planLimit
+    });
+  }, [severityForEffect, usage.bytesUsed, usage.planLimit]);
 
   useEffect(() => {
     const node = sentinelRef.current;
@@ -127,6 +171,26 @@ const AssetsPanelBody = ({
       ? Math.min(1, usage.bytesUsed / usage.planLimit)
       : 0;
   const isFull = planKnown && usageRatio >= 1;
+  const isNearFull = planKnown && !isFull && usageRatio >= 0.8;
+  // Upsells only make sense on the FREE tier with a host-provided checkout
+  // entry point. tier is null until getUploadQuota responds — no flicker.
+  const showStorageUpsell = usage.tier === 'FREE' && !!onUpgrade;
+  const showLowUsageHint =
+    usage.tier === 'FREE' &&
+    planKnown &&
+    !hintDismissed &&
+    items.length > 0 &&
+    usageRatio > 0 &&
+    usageRatio < 0.5;
+
+  const handleUpgradeClick = (severity) => {
+    posthog.capture('storage_upsell_clicked', {
+      severity,
+      bytes_used: usage.bytesUsed,
+      plan_limit: usage.planLimit
+    });
+    onUpgrade();
+  };
 
   const filteredAssetsState = { ...assetsState, items: filteredItems };
 
@@ -188,7 +252,9 @@ const AssetsPanelBody = ({
           </button>
         ))}
       </div>
-      <div className={styles.usageRow}>
+      <div
+        className={`${styles.usageRow} ${isNearFull || isFull ? styles.usageRowWarn : ''}`}
+      >
         {planKnown ? (
           <>
             Uploads: {formatBytes(usage.bytesUsed)} /{' '}
@@ -199,11 +265,71 @@ const AssetsPanelBody = ({
         )}
         <div className={styles.usageBar}>
           <div
-            className={`${styles.usageFill} ${isFull ? styles.full : ''}`}
+            className={`${styles.usageFill} ${isFull ? styles.full : ''} ${isNearFull ? styles.warn : ''}`}
             style={{ width: `${Math.round(usageRatio * 100)}%` }}
           />
         </div>
       </div>
+      {showStorageUpsell && isNearFull && (
+        <div className={styles.storageWarnRow}>
+          <span>Almost out of space for custom models.</span>
+          <button
+            type="button"
+            className={styles.upgradePill}
+            onClick={() => handleUpgradeClick('near_full')}
+          >
+            Upgrade →
+          </button>
+        </div>
+      )}
+      {showStorageUpsell && isFull && !fullCardDismissed && (
+        <div className={styles.storageFullCard}>
+          <div className={styles.storageFullTitle}>
+            You&apos;ve filled your free storage
+          </div>
+          <div className={styles.storageFullCopy}>
+            Your work is safe. Pro gives you 5 GB to grow into — 50× more space
+            for custom models and textures.
+          </div>
+          <button
+            type="button"
+            className={styles.goProButton}
+            onClick={() => handleUpgradeClick('full')}
+          >
+            Go Pro — unlock 5 GB <span className={styles.pricePill}>$7/mo</span>
+          </button>
+          <button
+            type="button"
+            className={styles.linkButton}
+            onClick={() => setFullCardDismissed(true)}
+          >
+            or free up space instead
+          </button>
+        </div>
+      )}
+      {showLowUsageHint && (
+        <div className={styles.hintCard}>
+          <div className={styles.hintHeader}>
+            <span className={styles.hintTitle}>Make your scenes feel real</span>
+            <button
+              type="button"
+              className={styles.hintDismiss}
+              onClick={dismissHint}
+              aria-label="Dismiss hint"
+            >
+              ✕
+            </button>
+          </div>
+          <div className={styles.hintCopy}>
+            You&apos;ve got{' '}
+            <strong>
+              {formatBytes(usage.planLimit - usage.bytesUsed)} to play with
+            </strong>{' '}
+            — that&apos;s room for HDRIs, ground textures, and a few hero
+            models.
+          </div>
+        </div>
+      )}
       <div className={styles.scrollArea}>
         <AssetsContent
           gallery={filteredAssetsState}

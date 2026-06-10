@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
+import posthog from 'posthog-js';
 import useAssetUploadStatus, {
   STATUS_LABELS,
   REASON_TEXT
@@ -9,6 +10,7 @@ import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { AssetDetailModal, formatBytes } from '@shared/assets';
 import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
+import useStore from '@/store.js';
 
 const AssetInfoPanel = ({ entity }) => {
   const state = useAssetUploadStatus(entity);
@@ -18,6 +20,26 @@ const AssetInfoPanel = ({ entity }) => {
   const meta = STATUS_LABELS[state.status] || STATUS_LABELS.uploaded;
   const sizeStr = state.sizeBytes ? formatBytes(state.sizeBytes) : '';
   const { isOwned } = state;
+
+  // Upload blocked by the plan's storage quota (#1644). The upload slot
+  // keeps the original File, so after a Pro upgrade the same Retry button
+  // re-runs the upload without the user having to re-drop the file.
+  const isQuotaBlocked =
+    state.reason === 'over_quota' || state.reason === 'file_too_large';
+  const slotFile = useAssetUploadStore.getState().uploads[entity?.id]?.file;
+  const canRetry =
+    !!slotFile &&
+    !!entity &&
+    (state.status === 'failed' ||
+      (state.status === 'local_error' && isQuotaBlocked));
+  const retryUpload = () => uploadAndPlaceAsset(slotFile, null, entity);
+  const upgradeForStorage = () => {
+    posthog.capture('storage_upsell_clicked', {
+      severity: 'upload_blocked',
+      reason: state.reason
+    });
+    useStore.getState().startCheckout('storage');
+  };
 
   let detail = '';
   if (state.status === 'uploading' && state.progress > 0) {
@@ -77,14 +99,10 @@ const AssetInfoPanel = ({ entity }) => {
             Cancel
           </button>
         )}
-        {state.status === 'failed' && (
+        {canRetry && (
           <button
             type="button"
-            onClick={() => {
-              const slot = useAssetUploadStore.getState().uploads[entity?.id];
-              if (!slot?.file || !entity) return;
-              uploadAndPlaceAsset(slot.file, null, entity);
-            }}
+            onClick={retryUpload}
             style={{
               marginLeft: 'auto',
               background: 'transparent',
@@ -111,6 +129,27 @@ const AssetInfoPanel = ({ entity }) => {
         >
           {reasonText}
         </div>
+      )}
+      {isQuotaBlocked && (
+        <button
+          type="button"
+          onClick={upgradeForStorage}
+          style={{
+            display: 'block',
+            width: '100%',
+            marginTop: 6,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: 'none',
+            color: 'white',
+            borderRadius: 4,
+            padding: '6px 8px',
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}
+        >
+          Upgrade for 5 GB storage
+        </button>
       )}
       {state.assetId && (
         <div

@@ -125,6 +125,155 @@
   background: #e0473d;
 }
 
+.usageFill.warn {
+  background: #f4a01a;
+}
+
+.usageRowWarn {
+  color: #f4a01a;
+}
+
+/* Storage upsell (#1644) */
+
+.storageWarnRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px 8px;
+  font-size: 11px;
+  color: #f4a01a;
+  flex-shrink: 0;
+}
+
+.upgradePill {
+  all: unset;
+  padding: 4px 10px;
+  background: #f4a01a;
+  color: #1a1a1a;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &:hover {
+    background: #ffb53d;
+  }
+}
+
+.storageFullCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 12px 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(137, 101, 239, 0.08);
+  border: 1px solid rgba(137, 101, 239, 0.4);
+  color: #dbdbdb;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.storageFullTitle {
+  font-weight: 600;
+  color: #fff;
+  font-size: 13px;
+}
+
+.storageFullCopy {
+  line-height: 1.45;
+  color: #bbb;
+}
+
+.goProButton {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #8965ef;
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+
+  &:hover {
+    background: #6a4ac3;
+  }
+}
+
+.pricePill {
+  background: rgba(255, 255, 255, 0.85);
+  color: #4c1d95;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.linkButton {
+  all: unset;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 11px;
+  text-align: center;
+
+  &:hover {
+    color: #fff;
+    text-decoration: underline;
+  }
+}
+
+/* Low-usage hint (#1644 pt 3) */
+
+.hintCard {
+  margin: 0 12px 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(43, 182, 115, 0.07);
+  border: 1px solid rgba(43, 182, 115, 0.35);
+  font-size: 12px;
+  color: #dbdbdb;
+  flex-shrink: 0;
+}
+
+.hintHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.hintTitle {
+  font-weight: 600;
+  color: #2bb673;
+}
+
+.hintDismiss {
+  all: unset;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 12px;
+  padding: 0 2px;
+
+  &:hover {
+    color: #fff;
+  }
+}
+
+.hintCopy {
+  line-height: 1.45;
+  color: #bbb;
+
+  strong {
+    color: #2bb673;
+  }
+}
+
 .scrollArea {
   flex: 1 1 auto;
   min-height: 0;
