@@ -22,6 +22,7 @@
 import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
   MAP_PIVOT_BOUNDS_RADIUS_METRES,
+  MAP_PIVOT_FAR_ACCEPT_GAIN,
   ROTATION_SPEED_RAD_PER_PX,
   WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES
 } from './constants.js';
@@ -42,6 +43,14 @@ if (
       mapPivotBoundsRadiusMetres: {
         type: 'number',
         default: MAP_PIVOT_BOUNDS_RADIUS_METRES
+      },
+      // Street-level-mode-OFF only: far-acceptance budget for a clicked Map
+      // rotation pivot — accept within gain × height/sin(max(tilt, T)) of
+      // the camera, farther clicks orbit the centre point instead. Larger =
+      // accept farther pivots at a given tilt.
+      mapPivotFarAcceptGain: {
+        type: 'number',
+        default: MAP_PIVOT_FAR_ACCEPT_GAIN
       },
       rotationSpeedRadPerPx: {
         type: 'number',
@@ -84,6 +93,9 @@ if (
       }
       if (typeof c.setMapPivotBoundsRadius === 'function') {
         c.setMapPivotBoundsRadius(this.data.mapPivotBoundsRadiusMetres);
+      }
+      if (typeof c.setMapPivotFarAcceptGain === 'function') {
+        c.setMapPivotFarAcceptGain(this.data.mapPivotFarAcceptGain);
       }
       if (typeof c.setRotationSpeed === 'function') {
         c.setRotationSpeed(this.data.rotationSpeedRadPerPx);

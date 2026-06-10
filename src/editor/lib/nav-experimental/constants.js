@@ -95,6 +95,25 @@ export const MIN_ORBIT_RADIUS_METRES = 2;
 // overridable at runtime via the `nav-experimental-tuning` component (#6).
 export const MAP_PIVOT_BOUNDS_RADIUS_METRES = 500;
 
+// Street-level-mode-OFF parity tuning: far-acceptance budget for a CLICKED
+// Map-mode rotation pivot. With the street regime off, Map rotation runs at
+// EVERY tilt, and orbiting a far pivot from a low camera swings it violently
+// (and can throw it under the ground mesh). A cursor hit becomes the pivot
+// only if its distance from the camera is within
+//   GAIN × (camera → screen-centre-ground-point distance, with the tilt
+//           FLOORED at the threshold T)
+// i.e. GAIN × cameraHeight / sin(max(tilt, T)). A farther click REJECTS to
+// the centre pivot (same as a sky click) — it is never pulled in along the
+// cursor ray; that inward pull-in is the drift the old MAX_ORBIT_RADIUS cap
+// was removed for (reports/010-testing.md #7), and it re-tested as "whack"
+// here. Near top-down the budget is GAIN × camera height, so any visible
+// click passes; at shallow tilt it converges to GAIN × height / sin(T) —
+// close to the camera — instead of following the centre point to the
+// horizon. Applied ONLY with street-level mode off — with it on, tilt > T
+// bounds the geometry by construction (parity rule). Overridable via the
+// tuning component (mapPivotFarAcceptGain).
+export const MAP_PIVOT_FAR_ACCEPT_GAIN = 2; // dimensionless; tunable
+
 // TASK-010 (D3): rotation-centre ring indicator's apparent on-screen
 // size — the ring's radius as a fraction of the viewport's half-height.
 // The billboard mesh world radius is set to

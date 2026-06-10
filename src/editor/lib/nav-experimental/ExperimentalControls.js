@@ -70,6 +70,7 @@ import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
   MIN_ORBIT_RADIUS_METRES,
   MAP_PIVOT_BOUNDS_RADIUS_METRES,
+  MAP_PIVOT_FAR_ACCEPT_GAIN,
   WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES,
   WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF,
   WHEEL_GROUND_REACH_CEILING_METRES,
@@ -274,6 +275,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // measured from the screen-centre point). Live value, overridable via
     // the tuning component.
     this._mapPivotBoundsRadius = MAP_PIVOT_BOUNDS_RADIUS_METRES;
+
+    // Street-level-mode-OFF far-acceptance budget for a clicked Map rotation
+    // pivot (see the constant). Live value, overridable via the tuning
+    // component (mapPivotFarAcceptGain → setMapPivotFarAcceptGain).
+    this._mapPivotFarAcceptGain = MAP_PIVOT_FAR_ACCEPT_GAIN;
 
     // TASK-014d / TASK-027 Part F: lower bound on the per-tick wheel-zoom
     // lateral cap. The live cap is `max(lowerBound, 0.1×AGL)` (navMath.
@@ -784,6 +790,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   setMapPivotBoundsRadius(metres) {
     if (typeof metres !== 'number' || !isFinite(metres)) return;
     this._mapPivotBoundsRadius = THREE.MathUtils.clamp(metres, 1, 100000);
+  }
+
+  // Street-level-mode-OFF far-acceptance budget for a clicked Map rotation
+  // pivot: gain on the height/sin(max(tilt,T)) budget (see the constant).
+  // Relayed from the tuning component (mapPivotFarAcceptGain).
+  setMapPivotFarAcceptGain(gain) {
+    if (typeof gain !== 'number' || !isFinite(gain) || gain <= 0) return;
+    this._mapPivotFarAcceptGain = THREE.MathUtils.clamp(gain, 0.05, 100);
   }
 
   // TASK-014d / TASK-027 Part F: live-tunable LOWER BOUND of the wheel-zoom
@@ -4556,8 +4570,48 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._camera.getWorldDirection(fwd); // unit view direction
     // Screen-centre ground point: bounds centre AND fallback pivot.
     const sc = this._viewRayGroundPoint(camPos, fwd);
+    // Street-level mode off: Map rotation runs at EVERY tilt, and at shallow
+    // tilt sc races toward the horizon — orbiting that far point (or a far
+    // accepted hit) from a low camera is a violent swing, which then trips
+    // gesture-end recovery (read as a position jump on mouseup). Two guards,
+    // both computed with the tilt FLOORED at the threshold T ("as if looking
+    // down at least T-steep"), so with tilt ≥ T and a near click this path
+    // is identical to the unguarded one:
+    //   • fallbackCentre — sc recomputed at the floored tilt: identical to
+    //     sc while tilt ≥ T; at shallower tilt it stays a NEAR ground point
+    //     ahead (height/tan(T) ≈ 2.1×height at the default T) instead of
+    //     the horizon point.
+    //   • maxHitDist — a cursor hit becomes the pivot only if it is within
+    //     gain × height/sin(max(tilt, T)) of the camera; a farther click
+    //     REJECTS to the centre pivot, exactly like a sky click. It is NOT
+    //     pulled in along the cursor ray — that inward pull-in is the drift
+    //     the old MAX_ORBIT_RADIUS cap was removed for (history note (a)
+    //     above) and it re-tested as bad here. Near top-down the budget is
+    //     gain × height, so any visible click passes.
+    // Every pivot stays ON THE GROUND (this module's design value, see the
+    // doc comment). Skipped at/below the ground plane (camY <= 0 is
+    // degenerate recovery territory) and with street-level mode on, where
+    // tilt > T bounds the geometry by construction (parity rule).
+    let fallbackCentre = sc;
+    let maxHitDist = Infinity;
+    if (!this._streetLevelEnabled && camPos.y > 0) {
+      const tEffRad = THREE.MathUtils.degToRad(
+        Math.max(cameraTiltDegrees(this._camera), this._tiltThreshold)
+      );
+      maxHitDist = (camPos.y / Math.sin(tEffRad)) * this._mapPivotFarAcceptGain;
+      const fwdH = Math.hypot(fwd.x, fwd.z);
+      // fwdH ~ 0 = looking straight down; sc is already the nadir point.
+      if (fwdH > 1e-6) {
+        const ahead = camPos.y / Math.tan(tEffRad);
+        fallbackCentre = new THREE.Vector3(
+          camPos.x + (fwd.x / fwdH) * ahead,
+          0,
+          camPos.z + (fwd.z / fwdH) * ahead
+        );
+      }
+    }
     const hit = this._cursorAnchor.worldPointAt(clientX, clientY);
-    let p = sc;
+    let p = fallbackCentre;
     if (hit.source !== 'fallback') {
       // Cursor hit a mesh OR the ground plane: orbit it if it lies within
       // the bounds radius of the screen-centre point (horizontal ground
@@ -4576,7 +4630,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       const fromCam = this._streetLevelEnabled
         ? Infinity
         : Math.hypot(candidate.x - camPos.x, candidate.z - camPos.z);
-      if (Math.min(fromSc, fromCam) <= this._mapPivotBoundsRadius) {
+      if (
+        Math.min(fromSc, fromCam) <= this._mapPivotBoundsRadius &&
+        candidate.distanceTo(camPos) <= maxHitDist
+      ) {
         p = candidate;
       }
     }
