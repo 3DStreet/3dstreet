@@ -303,6 +303,12 @@ export function Viewport(inspector) {
     }
   };
 
+  // Pose snapshot taken on the gizmo's mouseDown, BEFORE TransformControls
+  // mutates the object. The undo command can't capture this itself:
+  // getAttribute('position') returns the live object3D values, which are
+  // already post-mutation by the time objectChange fires (#1663).
+  let transformPreDragValues = null;
+
   transformControls.addEventListener('objectChange', (evt) => {
     const object = transformControls.object;
     if (object === undefined) {
@@ -333,11 +339,23 @@ export function Viewport(inspector) {
     inspector.execute('entityupdate', {
       component: component,
       entity: transformControls.object.el,
-      value: value
+      value: value,
+      oldValue: transformPreDragValues?.[component]
     });
   });
 
   transformControls.addEventListener('mouseDown', () => {
+    const object = transformControls.object;
+    if (object) {
+      const d = THREE.MathUtils.radToDeg;
+      transformPreDragValues = {
+        position: `${object.position.x} ${object.position.y} ${object.position.z}`,
+        rotation: `${d(object.rotation.x)} ${d(object.rotation.y)} ${d(
+          object.rotation.z
+        )}`,
+        scale: `${object.scale.x} ${object.scale.y} ${object.scale.z}`
+      };
+    }
     controls.enabled = false;
     hoverBox.visible = false; // if we start to move a group with a child hovered at the same time
   });
