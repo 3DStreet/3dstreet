@@ -6,6 +6,7 @@ import InfiniteGridHelper from './InfiniteGridHelper.js';
 
 import { copyCameraPosition } from './cameras';
 import { initRaycaster } from './raycaster';
+import { attachTransformWatchdog } from './transformWatchdog.js';
 import Events from './Events';
 import useStore from '@/store';
 // variables used by OrientedBoxHelper
@@ -377,6 +378,11 @@ export function Viewport(inspector) {
 
   sceneHelpers.add(transformControls);
   sceneHelpers.add(measureLineControls);
+
+  // Phantom-translation diagnostics (read-only; see transformWatchdog.js for
+  // the root-cause analysis it reports on). Attached AFTER the objectChange
+  // handler above so its undo-stack probe sees this gesture's command.
+  attachTransformWatchdog(transformControls, inspector);
 
   Events.on('entityupdate', (detail) => {
     const object = detail.entity.object3D;
