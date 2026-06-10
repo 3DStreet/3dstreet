@@ -110,6 +110,12 @@ const REPLICATE_MODELS = {
     modelName: 'kfarr/vid2scene',
     type: 'splat',
     inputKind: 'video',
+    // Runs on Modal, not Replicate: Replicate's on-demand tier preempts long
+    // private jobs (~1/3 of vid2scene runs observed live), and the Modal
+    // split-shape deployment of the SAME cog image is reliable and cheaper
+    // (≈$0.94 vs ~$1.03/default job). The Replicate model above remains the
+    // documented fallback — delete this `provider` line to switch back.
+    provider: 'modal',
     assetSlug: 'vid2scene-splat',
     assetLabel: 'vid2scene Splat',
     attribution: {

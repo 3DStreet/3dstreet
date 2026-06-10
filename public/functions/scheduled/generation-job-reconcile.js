@@ -32,6 +32,7 @@ const {
   refundSplatToken,
   cleanupSplatTempFile
 } = require('../replicate.js');
+const { MODAL_SECRETS, fetchModalPrediction } = require('../modal-backend.js');
 const { enqueueRadTask } = require('../rad-dispatch.js');
 const { withJobHealth } = require('./job-health.js');
 
@@ -105,9 +106,9 @@ function ageMs(createdAt) {
 }
 
 // Fetch a provider's authoritative prediction state. Returns { prediction } on
-// success, or { absent: true } if the provider no longer knows the job (404).
-// Replicate-only today — this switch is the future provider registry seam.
-async function fetchProviderPrediction(job, replicate) {
+// success, or { absent: true } if the provider no longer knows the job (404 /
+// expired). This switch is the provider registry seam.
+async function fetchProviderPrediction(job, replicate, jobId) {
   switch (job.provider) {
     case 'replicate': {
       try {
@@ -118,6 +119,10 @@ async function fetchProviderPrediction(job, replicate) {
         throw error;
       }
     }
+    case 'modal':
+      // Returns a Replicate-shaped prediction synthesized from the Modal
+      // status endpoint + a staged-.ply existence check in our own bucket.
+      return fetchModalPrediction(admin, job, jobId);
     default:
       throw new Error(`Unknown provider: ${job.provider}`);
   }
@@ -321,7 +326,8 @@ async function reconcile({ dryRun }) {
 
       const { prediction, absent } = await fetchProviderPrediction(
         job,
-        replicate
+        replicate,
+        jobRef.id
       );
 
       // Provider has no record of it anymore — only give up once it's old.
@@ -493,7 +499,7 @@ function escalateIfNeeded(summary, notify) {
 
 const reconcileGenerationJobs = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY'],
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', ...MODAL_SECRETS],
     // processTerminalPrediction may stream a .ply save (no full-file buffering);
     // 512 MB is fixed headroom, not sized to the file. 540s covers a backlog.
     timeoutSeconds: 540,
@@ -528,7 +534,7 @@ const reconcileGenerationJobs = functions
 
 const triggerReconcileGenerationJobs = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY'],
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', ...MODAL_SECRETS],
     timeoutSeconds: 540,
     memory: '512MB'
   })
