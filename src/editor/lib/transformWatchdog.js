@@ -210,8 +210,9 @@ export function attachTransformWatchdog(transformControls, inspector) {
       STREET.notify.errorMessage
     ) {
       STREET.notify.errorMessage(
-        `Phantom translation caught: ${report.entityId} jumped ` +
-          `${report.jumpMetres} m. Diagnostics + restore command in console.`
+        `Caught an accidental move: an entity jumped ` +
+          `${report.jumpMetres} m from a tiny drag. Press ` +
+          `${navigator.platform?.startsWith('Mac') ? 'Cmd' : 'Ctrl'}+Z to undo.`
       );
     }
 
