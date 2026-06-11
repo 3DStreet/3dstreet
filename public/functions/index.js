@@ -313,16 +313,13 @@ exports.handleSubscriptionWebhook = functions
 
     const collectionRef = admin.firestore().collection("userProfile");
     const querySnapshot = await collectionRef.where("stripeCustomerId", "==", subscription.customer).get();
-    let userId = null;
-    querySnapshot.forEach((doc) => {
-      userId = doc.data().userId;
-      return; // only need the first one
-    });
 
-    if (!userId) {
-      // add stripeCustomerId to userProfile
-      return res.sendStatus(500);
+    if (querySnapshot.empty) {
+      console.error(`Subscription deleted for customer ${subscription.customer}, but no user found in userProfile.`);
+      return res.sendStatus(200);
     }
+
+    const userId = querySnapshot.docs[0].data().userId;
 
     // Set custom user claims on this update.
     const customClaims = {
@@ -331,8 +328,6 @@ exports.handleSubscriptionWebhook = functions
     await getAuth().setCustomUserClaims(userId, customClaims);
 
     return res.sendStatus(200);
-
-
   });
 
 // function for Stripe webhook checkout.session.completed
@@ -402,20 +397,17 @@ exports.stripeWebhook = functions
 
     const collectionRef = admin.firestore().collection("userProfile");
     const querySnapshot = await collectionRef.where("userId", "==", checkoutSession.metadata.userId).get();
-    let stripeCustomerId = null;
 
-    querySnapshot.forEach((doc) => {
-      stripeCustomerId = doc.data().stripeCustomerId;
-      return; // only need the first one
-    });
-
-    // Update or create user profile with stripeCustomerId
-    if (!stripeCustomerId) {
-      // add stripeCustomerId to userProfile
-      await admin.firestore().collection('userProfile').doc().set({
-        userId: checkoutSession.metadata.userId,
-        stripeCustomerId: checkoutSession.customer
-      });
+    if (querySnapshot.empty) {
+        // Create new profile
+        await admin.firestore().collection('userProfile').add({
+          userId: checkoutSession.metadata.userId,
+          stripeCustomerId: checkoutSession.customer
+        });
+    } else {
+        // Update existing
+        const doc = querySnapshot.docs[0];
+        await doc.ref.update({ stripeCustomerId: checkoutSession.customer });
     }
 
     // Set custom user claims on this update.
