@@ -295,7 +295,7 @@ const SplatTab = {
             <div id="splat-result" class="hidden w-full p-4">
               <iframe id="splat-viewer-frame"
                 class="w-full rounded-lg border border-gray-200 bg-gray-800"
-                style="height: 360px;"
+                style="height: max(360px, 55vh);"
                 title="Splat preview"
                 allow="fullscreen"></iframe>
               <p class="text-xs text-gray-500 mt-2 mb-3 text-center">
