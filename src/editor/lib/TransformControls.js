@@ -1,4 +1,5 @@
 // copy of https://github.com/mrdoob/three.js/commit/ff84afbb9084f134863fd864abd8810cc9f07103
+// with XYZ translate Octahedron removed
 import {
 	BoxGeometry,
 	BufferGeometry,
@@ -1323,9 +1324,6 @@ class TransformControlsGizmo extends Object3D {
 				[ new Mesh( arrowGeometry, matBlue ), [ 0, 0, - 0.5 ], [ - Math.PI / 2, 0, 0 ]],
 				[ new Mesh( lineGeometry2, matBlue ), null, [ Math.PI / 2, 0, 0 ]]
 			],
-			XYZ: [
-				[ new Mesh( new OctahedronGeometry( 0.1, 0 ), matWhiteTransparent ), [ 0, 0, 0 ]]
-			],
 			XY: [
 				[ new Mesh( new BoxGeometry( 0.15, 0.15, 0.01 ), matBlueTransparent ), [ 0.15, 0.15, 0 ]]
 			],
@@ -1349,9 +1347,6 @@ class TransformControlsGizmo extends Object3D {
 			Z: [
 				[ new Mesh( new CylinderGeometry( 0.2, 0, 0.6, 4 ), matInvisible ), [ 0, 0, 0.3 ], [ Math.PI / 2, 0, 0 ]],
 				[ new Mesh( new CylinderGeometry( 0.2, 0, 0.6, 4 ), matInvisible ), [ 0, 0, - 0.3 ], [ - Math.PI / 2, 0, 0 ]]
-			],
-			XYZ: [
-				[ new Mesh( new OctahedronGeometry( 0.2, 0 ), matInvisible ) ]
 			],
 			XY: [
 				[ new Mesh( new BoxGeometry( 0.2, 0.2, 0.01 ), matInvisible ), [ 0.15, 0.15, 0 ]]
