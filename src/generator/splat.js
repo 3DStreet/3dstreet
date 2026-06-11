@@ -33,6 +33,10 @@ import { functions, auth, storage } from '@shared/services/firebase.js';
 import { ref as storageRef, uploadBytesResumable } from 'firebase/storage';
 import posthog from 'posthog-js';
 
+// Shared notice for all vid2scene tiers.
+const VID2SCENE_NOTICE =
+  'Research preview. Splats are generated with the open-source <a href="https://github.com/samuelm2/vid2scene" target="_blank" rel="noopener" class="underline hover:text-gray-600">vid2scene</a> pipeline (Apache-2.0). For best results, capture a slow, steady orbit around a static subject in good lighting. Token charges cover our inference-provider costs.';
+
 // Client-side model catalog for the Splat tab. The authoritative token charge
 // and model config live server-side (public/functions/replicate-models.js);
 // these values drive only the dropdown, button label, and the client pre-check.
@@ -46,14 +50,31 @@ const SPLAT_MODELS = {
     notice:
       'Research preview. Splats are generated with Apple\'s SHARP model. By generating a splat you accept the terms of the <a href="https://github.com/apple/ml-sharp/blob/main/LICENSE_MODEL" target="_blank" rel="noopener" class="underline hover:text-gray-600">Apple Machine Learning Research Model License</a> and agree this output is provided for research purposes only. Token charges cover our inference-provider costs; this is not a primary commercial service.'
   },
-  vid2scene: {
-    label: 'Video → Splat (vid2scene)',
+  // vid2scene quality tiers — same pipeline, different frames/steps/gaussians
+  // budgets (the knobs live on the server-side model config).
+  'vid2scene-basic': {
+    label: 'Video → Splat (vid2scene Basic)',
     inputKind: 'video',
-    tokenCost: 5,
+    tokenCost: 10,
     blurb:
-      'Model: vid2scene · short phone video (orbit the subject) · outputs a .ply splat. GPU reconstruction usually takes several minutes.',
-    notice:
-      'Research preview. Splats are generated with the open-source <a href="https://github.com/samuelm2/vid2scene" target="_blank" rel="noopener" class="underline hover:text-gray-600">vid2scene</a> pipeline (Apache-2.0). For best results, capture a slow, steady orbit around a static subject in good lighting. Token charges cover our inference-provider costs.'
+      'Model: vid2scene Basic · short phone video (orbit the subject) · outputs a .ply splat. Fastest video tier — preview-grade reconstruction, usually ~20–25 minutes.',
+    notice: VID2SCENE_NOTICE
+  },
+  vid2scene: {
+    label: 'Video → Splat (vid2scene High)',
+    inputKind: 'video',
+    tokenCost: 20,
+    blurb:
+      'Model: vid2scene High · short phone video (orbit the subject) · outputs a .ply splat. The recommended balance of detail and time — GPU reconstruction usually ~45 minutes.',
+    notice: VID2SCENE_NOTICE
+  },
+  'vid2scene-max': {
+    label: 'Video → Splat (vid2scene Max)',
+    inputKind: 'video',
+    tokenCost: 40,
+    blurb:
+      'Model: vid2scene Max · short phone video (orbit the subject) · outputs a .ply splat. Maximum detail (4x the gaussians, large file) — reconstruction can take an hour or more.',
+    notice: VID2SCENE_NOTICE
   }
 };
 
@@ -337,7 +358,9 @@ const SplatTab = {
   },
 
   currentModel() {
-    return SPLAT_MODELS[this.currentModelId] || SPLAT_MODELS[DEFAULT_SPLAT_MODEL];
+    return (
+      SPLAT_MODELS[this.currentModelId] || SPLAT_MODELS[DEFAULT_SPLAT_MODEL]
+    );
   },
 
   // Switch the active model: toggles which source input is shown and updates the
@@ -363,7 +386,9 @@ const SplatTab = {
   updateGenerateLabel() {
     const cost = this.currentModel().tokenCost;
     const label = `Generate Splat (${cost} token${cost === 1 ? '' : 's'})`;
-    if (this.elements.generateText) this.elements.generateText.textContent = label;
+    if (this.elements.generateText) {
+      this.elements.generateText.textContent = label;
+    }
   },
 
   setSourceImage(dataUrl, fileName = 'image') {
@@ -702,7 +727,8 @@ const SplatTab = {
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const slug = this.currentModel().inputKind === 'video' ? 'vid2scene' : 'sharp';
+      const slug =
+        this.currentModel().inputKind === 'video' ? 'vid2scene' : 'sharp';
       const link = document.createElement('a');
       link.href = blobUrl;
       link.download = `${slug}-splat-${stamp}.ply`;

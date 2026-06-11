@@ -1058,12 +1058,22 @@ const generateReplicateSplat = functions
           // Fire-and-forget enqueue; the returned call_id is the provider job
           // id. Synthesize a Replicate-shaped prediction ('starting' normalizes
           // to 'queued') so the post-submit bookkeeping below is shared.
-          const callId = await enqueueModalJob({ videoUrl: sourceUrl, jobId, webhookUrl });
+          const callId = await enqueueModalJob({
+            videoUrl: sourceUrl,
+            jobId,
+            webhookUrl,
+            pipeline: modelConfig.pipeline
+          });
           prediction = { id: callId, status: 'starting' };
         } else {
           prediction = await replicate.predictions.create({
             version: splatVersion,
-            input: inputKind === 'video' ? { video: sourceUrl } : { image: sourceUrl },
+            // The cog accepts the same per-tier quality knobs as inputs, so
+            // the Replicate fallback honors the tier too.
+            input:
+              inputKind === 'video'
+                ? { video: sourceUrl, ...(modelConfig.pipeline || {}) }
+                : { image: sourceUrl },
             webhook: webhookUrl,
             webhook_events_filter: ['completed']
           });

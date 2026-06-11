@@ -96,25 +96,31 @@ const REPLICATE_MODELS = {
   // Video → 3D Gaussian Splat (samuelm2/vid2scene, packaged as a Replicate Cog
   // from its standalone `vid2scene_core` pipeline: frame extraction → GLOMAP SfM
   // → gsplat training → .ply). A short phone video in, a .ply splat out (GPU,
-  // several minutes). Same async/webhook flow as SHARP — the only difference is
+  // tens of minutes). Same async/webhook flow as SHARP — the only difference is
   // a video source (uploaded straight to Storage, not base64'd). Output is a
   // .ply, so the downstream save + RAD/LOD pipeline are reused unchanged.
+  //
+  // THREE QUALITY TIERS (Basic/High/Max = 10/20/40 tokens), one pipeline. The
+  // `pipeline` knobs ride the submit to the provider; pricing targets COGS ≤
+  // ~50% of retail ($0.10/token). The cost lever is target_framecount (SfM is
+  // CPU-bound and dominates); gaussians set detail/file size; steps cap at
+  // 30k. Measured: High ≈ $0.94–1.08 on the Modal split shape; Basic/Max are
+  // estimates until the longer-video calibration rows land.
   //
   // `modelName` points at the Replicate model the Cog (repo:
   // github.com/3DStreet/vid2scene-cog) is pushed to: kfarr/vid2scene, hardware
   // L40S (sm_89 — the build's CUDA arches are 7.5;8.6;8.9, so A100/H100 would
   // not load the kernels). Private model, accessed via the kfarr API token
-  // (same as kfarr/sharp-ml).
-  vid2scene: {
-    name: 'vid2scene (Video to Splat)',
+  // (same as kfarr/sharp-ml). All tiers run on Modal, not Replicate:
+  // Replicate's on-demand tier preempts long private jobs (~1/3 observed
+  // live), and the Modal split-shape deployment of the SAME cog image is
+  // reliable and cheaper. The Replicate model remains the documented fallback
+  // — delete a tier's `provider` line to switch it back.
+  'vid2scene-basic': {
+    name: 'vid2scene Basic (Video to Splat)',
     modelName: 'kfarr/vid2scene',
     type: 'splat',
     inputKind: 'video',
-    // Runs on Modal, not Replicate: Replicate's on-demand tier preempts long
-    // private jobs (~1/3 of vid2scene runs observed live), and the Modal
-    // split-shape deployment of the SAME cog image is reliable and cheaper
-    // (≈$0.94 vs ~$1.03/default job). The Replicate model above remains the
-    // documented fallback — delete this `provider` line to switch back.
     provider: 'modal',
     assetSlug: 'vid2scene-splat',
     assetLabel: 'vid2scene Splat',
@@ -123,12 +129,62 @@ const REPLICATE_MODELS = {
       modelName: 'vid2scene (Video to Splat)',
       sourceType: 'video'
     },
-    // GPU-minutes heavy (SfM + 30k-step gsplat training); measured Replicate
-    // cost ≈ $0.51 (reduced) to ~$1.3 (full 30k steps) on L40S. Flat upper-limit
-    // for now — 20 tokens (≈4x the cone scene) safely covers worst-case cost.
-    // TODO: make variable based on input (duration/steps) once a pre-flight
-    // client check on the source video is in place.
+    // ~half the frames + half the steps of High → roughly half the wall/COGS
+    // (est ≈$0.50 split-shape). Good-enough preview quality.
+    pipeline: {
+      target_framecount: 300,
+      training_num_steps: 15000,
+      training_max_num_gaussians: 500000,
+      resolution: 1920
+    },
+    tokenCost: 10
+  },
+  // The DEFAULT vid2scene tier (keeps the original `vid2scene` id so existing
+  // job docs and any stored model_id references stay valid).
+  vid2scene: {
+    name: 'vid2scene High (Video to Splat)',
+    modelName: 'kfarr/vid2scene',
+    type: 'splat',
+    inputKind: 'video',
+    provider: 'modal',
+    assetSlug: 'vid2scene-splat',
+    assetLabel: 'vid2scene Splat',
+    attribution: {
+      model: 'samuelm2/vid2scene',
+      modelName: 'vid2scene (Video to Splat)',
+      sourceType: 'video'
+    },
+    // The calibrated default preset: measured ≈$0.94–1.08 on Modal split.
+    pipeline: {
+      target_framecount: 600,
+      training_num_steps: 30000,
+      training_max_num_gaussians: 500000,
+      resolution: 1920
+    },
     tokenCost: 20
+  },
+  'vid2scene-max': {
+    name: 'vid2scene Max (Video to Splat)',
+    modelName: 'kfarr/vid2scene',
+    type: 'splat',
+    inputKind: 'video',
+    provider: 'modal',
+    assetSlug: 'vid2scene-splat',
+    assetLabel: 'vid2scene Splat',
+    attribution: {
+      model: 'samuelm2/vid2scene',
+      modelName: 'vid2scene (Video to Splat)',
+      sourceType: 'video'
+    },
+    // Max detail: 4x the gaussians (≈330 MB .ply) + more source frames; steps
+    // already cap at 30k so cost grows sub-linearly (est ≈$1.3–1.5).
+    pipeline: {
+      target_framecount: 900,
+      training_num_steps: 30000,
+      training_max_num_gaussians: 2000000,
+      resolution: 1920
+    },
+    tokenCost: 40
   }
 };
 

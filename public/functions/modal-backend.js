@@ -57,7 +57,7 @@ function stagingPathForJob(jobId) {
 // via our webhook + the pollable status endpoint. The Modal endpoints scale to
 // zero, so a cold start can take a while — callers need timeoutSeconds
 // headroom beyond the default 60s.
-async function enqueueModalJob({ videoUrl, jobId, webhookUrl }) {
+async function enqueueModalJob({ videoUrl, jobId, webhookUrl, pipeline }) {
   if (!modalConfigured()) {
     throw new Error('Modal backend is not configured (MODAL_ENQUEUE_URL / MODAL_ENQUEUE_SECRET).');
   }
@@ -68,10 +68,12 @@ async function enqueueModalJob({ videoUrl, jobId, webhookUrl }) {
       video_url: videoUrl,
       job_id: jobId,
       secret: process.env.MODAL_ENQUEUE_SECRET,
-      webhook_url: webhookUrl
-      // Quality knobs (target_framecount / training_num_steps /
-      // training_max_num_gaussians / resolution) ride here once pricing tiers
-      // land; defaults = the calibrated "default preset".
+      webhook_url: webhookUrl,
+      // Per-tier quality knobs (target_framecount / training_num_steps /
+      // training_max_num_gaussians / resolution) from the model config's
+      // `pipeline`; omitted keys fall back to the Modal app's defaults
+      // (= the calibrated High preset).
+      ...(pipeline || {})
     }),
     signal: AbortSignal.timeout(240000) // cold start can exceed 2 min
   });
