@@ -45,6 +45,7 @@ const SPLAT_MODELS = {
     label: 'Image → Splat (SHARP)',
     inputKind: 'image',
     tokenCost: 1,
+    etaText: 'about 5 minutes',
     blurb:
       'Model: SHARP (Apple) · single image · outputs a .ply splat. Generation usually takes about 5 minutes.',
     notice:
@@ -65,6 +66,7 @@ const SPLAT_MODELS = {
     videoHint: '~10–25s video',
     inputKind: 'video',
     tokenCost: 10,
+    etaText: '20–25 minutes',
     blurb:
       'Model: vid2scene Basic · best for a ~10–25 second orbit of a single object · preview-grade detail, usually ready in ~20–25 minutes.',
     notice: VID2SCENE_NOTICE
@@ -77,6 +79,7 @@ const SPLAT_MODELS = {
     videoHint: '~25–50s video',
     inputKind: 'video',
     tokenCost: 20,
+    etaText: 'about 45 minutes',
     blurb:
       'Model: vid2scene High · best for a ~25–50 second orbit of a larger subject or small scene · the recommended balance of detail and time, usually ~45 minutes.',
     notice: VID2SCENE_NOTICE
@@ -88,6 +91,7 @@ const SPLAT_MODELS = {
     videoHint: '~50–90s video',
     inputKind: 'video',
     tokenCost: 40,
+    etaText: 'an hour or more',
     blurb:
       'Model: vid2scene Max · best for a ~50–90 second sweep of a large scene · maximum detail (4x the gaussians, large file), can take an hour or more.',
     notice: VID2SCENE_NOTICE
@@ -151,7 +155,6 @@ const SplatTab = {
             class="splat-tier-btn border rounded-lg px-1 py-2 text-sm text-center transition-colors">
             <span class="block font-medium">${m.tier}</span>
             <span class="block text-xs mt-0.5">${m.tokenCost} tokens</span>
-            <span class="block text-xs opacity-80">${m.videoHint}</span>
           </button>`
       )
       .join('');
@@ -556,7 +559,13 @@ const SplatTab = {
       if (els.loadingSubtext) els.loadingSubtext.classList.add('hidden');
       if (els.generateText) els.generateText.textContent = 'Uploading…';
     } else if (phase === 'processing') {
-      if (els.loadingSubtext) els.loadingSubtext.classList.remove('hidden');
+      if (els.loadingSubtext) {
+        // Honest, model-aware expectation — "a few minutes" undersells a
+        // ~45-minute vid2scene High run.
+        const eta = this.currentModel().etaText || 'a few minutes';
+        els.loadingSubtext.textContent = `This usually takes ${eta}. You can close this tab; your splat saves to your gallery when it's done.`;
+        els.loadingSubtext.classList.remove('hidden');
+      }
       if (els.generateText) els.generateText.textContent = 'Generating…';
       this.startTimer();
     }

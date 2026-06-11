@@ -1487,8 +1487,17 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
         userId,
         provider: job.provider || 'replicate',
         model: job.model,
+        // The tier (vid2scene-basic/vid2scene/vid2scene-max) — `model` is the
+        // same provider slug for every tier, so per-tier duration stats (the
+        // generator's "how long does this usually take" data) need this.
+        modelId: job.modelId || null,
         generationType: 'splat',
         tokenCost: job.tokenCost,
+        // Submit → saved-to-gallery, i.e. the user-perceived duration. Image/
+        // video generations record their equivalent; splats were missing it.
+        processingTimeMs: job.createdAt?.toMillis
+          ? Date.now() - job.createdAt.toMillis()
+          : null,
         status: 'succeeded',
         source: job.source,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -1517,8 +1526,12 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
       userId,
       provider: job.provider || 'replicate',
       model: job.model,
+      modelId: job.modelId || null,
       generationType: 'splat',
       tokenCost: job.tokenCost,
+      processingTimeMs: job.createdAt?.toMillis
+        ? Date.now() - job.createdAt.toMillis()
+        : null,
       status: 'failed',
       error: prediction.error || null,
       source: job.source,
