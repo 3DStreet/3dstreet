@@ -55,14 +55,18 @@ const SPLAT_MODELS = {
   // share ONE dropdown entry (`tierGroup`); the active tier is picked with the
   // Basic/High/Max buttons below the source video and is what's submitted as
   // model_id. `vid2scene` (High) is the tier the dropdown entry lands on.
+  // `videoHint` is the recommended source length, derived from each tier's
+  // frame budget (300/600/900 frames ≈ 10/20/30 s of unique frames at 30 fps;
+  // beyond ~2.5x that, subsampling gets sparse and quality drops).
   'vid2scene-basic': {
     label: 'Video → Splat (vid2scene Basic)',
     tierGroup: 'vid2scene',
     tier: 'Basic',
+    videoHint: '~10–25s video',
     inputKind: 'video',
     tokenCost: 10,
     blurb:
-      'Model: vid2scene Basic · short phone video (orbit the subject) · outputs a .ply splat. Fastest video tier — preview-grade reconstruction, usually ~20–25 minutes.',
+      'Model: vid2scene Basic · best for a ~10–25 second orbit of a single object · preview-grade detail, usually ready in ~20–25 minutes.',
     notice: VID2SCENE_NOTICE
   },
   vid2scene: {
@@ -70,20 +74,22 @@ const SPLAT_MODELS = {
     groupLabel: 'Video → Splat (vid2scene)',
     tierGroup: 'vid2scene',
     tier: 'High',
+    videoHint: '~25–50s video',
     inputKind: 'video',
     tokenCost: 20,
     blurb:
-      'Model: vid2scene High · short phone video (orbit the subject) · outputs a .ply splat. The recommended balance of detail and time — GPU reconstruction usually ~45 minutes.',
+      'Model: vid2scene High · best for a ~25–50 second orbit of a larger subject or small scene · the recommended balance of detail and time, usually ~45 minutes.',
     notice: VID2SCENE_NOTICE
   },
   'vid2scene-max': {
     label: 'Video → Splat (vid2scene Max)',
     tierGroup: 'vid2scene',
     tier: 'Max',
+    videoHint: '~50–90s video',
     inputKind: 'video',
     tokenCost: 40,
     blurb:
-      'Model: vid2scene Max · short phone video (orbit the subject) · outputs a .ply splat. Maximum detail (4x the gaussians, large file) — reconstruction can take an hour or more.',
+      'Model: vid2scene Max · best for a ~50–90 second sweep of a large scene · maximum detail (4x the gaussians, large file), can take an hour or more.',
     notice: VID2SCENE_NOTICE
   }
 };
@@ -135,14 +141,17 @@ const SplatTab = {
   },
 
   qualityButtonsHtml() {
+    // Colors live on .splat-tier-btn[.selected] in styles/styles.css (with
+    // .dark variants) — Tailwind-utility colors here would miss the dark theme.
     return Object.entries(SPLAT_MODELS)
       .filter(([, m]) => m.tierGroup)
       .map(
         ([id, m]) => `
           <button type="button" data-tier-id="${id}"
-            class="border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg px-2 py-2 text-sm text-center transition-colors">
-            <span class="block">${m.tier}</span>
-            <span class="block text-xs opacity-70">${m.tokenCost} tokens</span>
+            class="splat-tier-btn border rounded-lg px-1 py-2 text-sm text-center transition-colors">
+            <span class="block font-medium">${m.tier}</span>
+            <span class="block text-xs mt-0.5">${m.tokenCost} tokens</span>
+            <span class="block text-xs opacity-80">${m.videoHint}</span>
           </button>`
       )
       .join('');
@@ -423,14 +432,7 @@ const SplatTab = {
     // Tiered model → show the quality row and highlight the active tier.
     els.qualityBlock.classList.toggle('hidden', !model.tierGroup);
     els.qualityButtons.querySelectorAll('[data-tier-id]').forEach((btn) => {
-      const active = btn.dataset.tierId === modelId;
-      btn.classList.toggle('border-indigo-600', active);
-      btn.classList.toggle('bg-indigo-50', active);
-      btn.classList.toggle('text-indigo-700', active);
-      btn.classList.toggle('font-medium', active);
-      btn.classList.toggle('border-gray-300', !active);
-      btn.classList.toggle('text-gray-700', !active);
-      btn.classList.toggle('hover:bg-gray-50', !active);
+      btn.classList.toggle('selected', btn.dataset.tierId === modelId);
     });
 
     els.modelBlurb.textContent = model.blurb;
