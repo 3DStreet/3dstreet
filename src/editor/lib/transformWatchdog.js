@@ -207,9 +207,9 @@ export function attachTransformWatchdog(transformControls, inspector) {
     if (
       typeof STREET !== 'undefined' &&
       STREET.notify &&
-      STREET.notify.errorMessage
+      STREET.notify.warningMessage
     ) {
-      STREET.notify.errorMessage(
+      STREET.notify.warningMessage(
         `Caught an accidental move: an entity jumped ` +
           `${report.jumpMetres} m from a tiny drag. Press ` +
           `${navigator.platform?.startsWith('Mac') ? 'Cmd' : 'Ctrl'}+Z to undo.`
