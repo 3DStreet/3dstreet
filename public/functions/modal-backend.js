@@ -141,11 +141,30 @@ async function fetchModalPrediction(admin, job, jobId) {
   return { prediction: { id: job.providerJobId || jobId, status: 'processing' } };
 }
 
+// Liveness probe for the Modal control plane, run by the reconciler sweep so
+// an outage shows on the admin System Health page directly (degraded key)
+// instead of only indirectly via backlog/give-up counts ~an hour later. A
+// bogus call_id is fine: a healthy endpoint answers 200 with status:failed.
+async function modalEndpointHealthy() {
+  if (!modalConfigured()) return true; // nothing to probe, nothing to report
+  try {
+    const url =
+      `${modalStatusUrl()}?call_id=health-probe` +
+      `&secret=${encodeURIComponent(process.env.MODAL_ENQUEUE_SECRET)}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+    return response.ok;
+  } catch (e) {
+    console.warn('Modal endpoint probe failed:', e.message);
+    return false;
+  }
+}
+
 module.exports = {
   MODAL_SECRETS,
   MODAL_STAGING_PREFIX,
   modalConfigured,
   enqueueModalJob,
   fetchModalPrediction,
+  modalEndpointHealthy,
   stagingPathForJob
 };

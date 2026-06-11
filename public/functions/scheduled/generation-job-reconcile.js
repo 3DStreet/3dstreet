@@ -32,7 +32,12 @@ const {
   refundSplatToken,
   cleanupSplatTempFile
 } = require('../replicate.js');
-const { MODAL_SECRETS, fetchModalPrediction } = require('../modal-backend.js');
+const {
+  MODAL_SECRETS,
+  fetchModalPrediction,
+  modalEndpointHealthy,
+  stagingPathForJob
+} = require('../modal-backend.js');
 const { enqueueRadTask } = require('../rad-dispatch.js');
 const { withJobHealth } = require('./job-health.js');
 
@@ -65,6 +70,21 @@ const GIVE_UP_MS = 30 * 60 * 1000;
 // not an hour), so it never kills a legitimately-running job; it only bounds how
 // long a genuine wedge can hold a user's token.
 const ABSOLUTE_GIVE_UP_MS = 60 * 60 * 1000;
+
+// Modal (vid2scene) jobs legitimately run ~45 min at the DEFAULT preset, and
+// longer with bigger presets, Modal capacity waits, or a worker-preemption
+// restart — a live dev run hit all three and crossed 60 min while training
+// was still (correctly) burning GPU. Killing+refunding such a job hands the
+// user a refund AND a wasted compute bill, and the late success is then
+// refused resurrection by design. Modal's own coordinator timeout (2× the 2 h
+// stage cap) terminates a genuinely wedged job, so the absolute ceiling here
+// only needs to bound the save-wedge case: 3 h clears every preset with room
+// for one full restart.
+const MODAL_ABSOLUTE_GIVE_UP_MS = 3 * 60 * 60 * 1000;
+
+function absoluteGiveUpMs(job) {
+  return job.provider === 'modal' ? MODAL_ABSOLUTE_GIVE_UP_MS : ABSOLUTE_GIVE_UP_MS;
+}
 
 // cloudrun (RAD) jobs have no provider to poll, so age alone can't tell
 // "mid-conversion" from "wedged". The worker flips status→'running' with a
@@ -134,6 +154,17 @@ async function fetchProviderPrediction(job, replicate, jobId) {
 async function failJob(db, uid, jobRef, job, reason) {
   const remainingTokens = await refundSplatToken(db, uid, jobRef, job);
   await cleanupSplatTempFile(job.tempFilePath);
+  // A killed modal job may still produce a late result into the staging
+  // prefix (or already have one nobody will consume) — without this it sits
+  // there forever, since the success path's cleanup only runs on a save.
+  if (job.provider === 'modal') {
+    await admin
+      .storage()
+      .bucket()
+      .file(stagingPathForJob(jobRef.id))
+      .delete()
+      .catch(() => {});
+  }
   await jobRef.update({
     status: 'failed',
     error: reason,
@@ -179,10 +210,16 @@ async function reconcile({ dryRun }) {
     );
   }
 
+  // Direct Modal control-plane liveness: without this, an outage only shows
+  // indirectly (backlog/give-up counts) once the give-up windows elapse.
+  // 1 = down → degraded key flips the health entry yellow immediately.
+  const modalEndpointDown = (await modalEndpointHealthy()) ? 0 : 1;
+
   const summary = {
     scanned: snap.size,
     queueDepth,
     queueBacklog: Math.max(0, queueDepth - QUEUE_DEPTH_WARN),
+    modalEndpointDown,
     tooFresh: 0,
     processed: 0,
     succeeded: 0,
@@ -302,12 +339,13 @@ async function reconcile({ dryRun }) {
         continue;
       }
 
-      // Absolute backstop (provider-agnostic): a charged job stuck non-terminal
-      // past the ceiling is refunded and failed without consulting the provider.
-      // Catches the wedge the per-status give-up rules miss — a provider-
-      // 'succeeded' job whose save keeps throwing resets itself to 'running'
-      // every sweep and would otherwise never refund.
-      if (age > ABSOLUTE_GIVE_UP_MS) {
+      // Absolute backstop: a charged job stuck non-terminal past the ceiling
+      // (provider-aware — see MODAL_ABSOLUTE_GIVE_UP_MS) is refunded and failed
+      // without consulting the provider. Catches the wedge the per-status
+      // give-up rules miss — a provider-'succeeded' job whose save keeps
+      // throwing resets itself to 'running' every sweep and would otherwise
+      // never refund.
+      if (age > absoluteGiveUpMs(job)) {
         sample.action = 'gave-up-absolute';
         summary.gaveUp++;
         if (!dryRun) {
@@ -482,7 +520,8 @@ function escalateIfNeeded(summary, notify) {
     summary.gaveUp > 0 ||
     summary.errored > 0 ||
     notify.errored > 0 ||
-    summary.queueBacklog > 0
+    summary.queueBacklog > 0 ||
+    summary.modalEndpointDown > 0
   ) {
     console.error(
       '[generation-job-reconcile] ALERT: generation jobs need attention:',
@@ -491,7 +530,8 @@ function escalateIfNeeded(summary, notify) {
         errored: summary.errored,
         notifyErrored: notify.errored,
         queueDepth: summary.queueDepth,
-        queueBacklog: summary.queueBacklog
+        queueBacklog: summary.queueBacklog,
+        modalEndpointDown: summary.modalEndpointDown
       })
     );
   }
@@ -514,7 +554,13 @@ const reconcileGenerationJobs = functions
         schedule: '*/10 * * * *',
         timeZone: 'America/Los_Angeles',
         expectedIntervalMs: TEN_MIN_MS,
-        degradedKeys: ['gaveUp', 'errored', 'notify.errored', 'queueBacklog']
+        degradedKeys: [
+          'gaveUp',
+          'errored',
+          'notify.errored',
+          'queueBacklog',
+          'modalEndpointDown'
+        ]
       },
       async () => {
         console.log('[generation-job-reconcile] starting sweep');
