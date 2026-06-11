@@ -267,7 +267,7 @@ const SplatTab = {
           <h2 class="text-lg font-medium mb-4">Result</h2>
 
           <div id="splat-preview-container"
-            class="relative flex items-center justify-center bg-[#393939] rounded-lg border border-gray-700"
+            class="relative flex items-center justify-center bg-gray-800 rounded-lg border border-gray-700"
             style="min-height: 320px;">
 
             <!-- Placeholder -->
@@ -294,7 +294,7 @@ const SplatTab = {
             <!-- Result -->
             <div id="splat-result" class="hidden w-full p-4">
               <iframe id="splat-viewer-frame"
-                class="w-full rounded-lg border border-gray-200 bg-[#393939]"
+                class="w-full rounded-lg border border-gray-200 bg-gray-800"
                 style="height: 360px;"
                 title="Splat preview"
                 allow="fullscreen"></iframe>
