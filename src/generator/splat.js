@@ -51,9 +51,14 @@ const SPLAT_MODELS = {
       'Research preview. Splats are generated with Apple\'s SHARP model. By generating a splat you accept the terms of the <a href="https://github.com/apple/ml-sharp/blob/main/LICENSE_MODEL" target="_blank" rel="noopener" class="underline hover:text-gray-600">Apple Machine Learning Research Model License</a> and agree this output is provided for research purposes only. Token charges cover our inference-provider costs; this is not a primary commercial service.'
   },
   // vid2scene quality tiers — same pipeline, different frames/steps/gaussians
-  // budgets (the knobs live on the server-side model config).
+  // budgets (the knobs live on the server-side model config). The three tiers
+  // share ONE dropdown entry (`tierGroup`); the active tier is picked with the
+  // Basic/High/Max buttons below the source video and is what's submitted as
+  // model_id. `vid2scene` (High) is the tier the dropdown entry lands on.
   'vid2scene-basic': {
     label: 'Video → Splat (vid2scene Basic)',
+    tierGroup: 'vid2scene',
+    tier: 'Basic',
     inputKind: 'video',
     tokenCost: 10,
     blurb:
@@ -62,6 +67,9 @@ const SPLAT_MODELS = {
   },
   vid2scene: {
     label: 'Video → Splat (vid2scene High)',
+    groupLabel: 'Video → Splat (vid2scene)',
+    tierGroup: 'vid2scene',
+    tier: 'High',
     inputKind: 'video',
     tokenCost: 20,
     blurb:
@@ -70,6 +78,8 @@ const SPLAT_MODELS = {
   },
   'vid2scene-max': {
     label: 'Video → Splat (vid2scene Max)',
+    tierGroup: 'vid2scene',
+    tier: 'Max',
     inputKind: 'video',
     tokenCost: 40,
     blurb:
@@ -112,10 +122,28 @@ const SplatTab = {
   },
 
   modelOptionsHtml() {
+    // One option per model "group": tiered models collapse into a single
+    // dropdown entry (the entry whose id === its tierGroup); the tier itself
+    // is picked with the quality buttons.
     return Object.entries(SPLAT_MODELS)
+      .filter(([id, m]) => !m.tierGroup || id === m.tierGroup)
       .map(
         ([id, m]) =>
-          `<option value="${id}"${id === DEFAULT_SPLAT_MODEL ? ' selected' : ''}>${m.label}</option>`
+          `<option value="${id}"${id === DEFAULT_SPLAT_MODEL ? ' selected' : ''}>${m.groupLabel || m.label}</option>`
+      )
+      .join('');
+  },
+
+  qualityButtonsHtml() {
+    return Object.entries(SPLAT_MODELS)
+      .filter(([, m]) => m.tierGroup)
+      .map(
+        ([id, m]) => `
+          <button type="button" data-tier-id="${id}"
+            class="border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg px-2 py-2 text-sm text-center transition-colors">
+            <span class="block">${m.tier}</span>
+            <span class="block text-xs opacity-70">${m.tokenCost} tokens</span>
+          </button>`
       )
       .join('');
   },
@@ -185,6 +213,15 @@ const SplatTab = {
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
+            </div>
+          </div>
+
+          <!-- Quality tier (tiered models, e.g. vid2scene) — three budgets of
+               the same pipeline; the active button decides the model_id. -->
+          <div id="splat-quality-block" class="mb-4 hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Quality</label>
+            <div id="splat-quality-buttons" class="grid grid-cols-3 gap-2">
+              ${this.qualityButtonsHtml()}
             </div>
           </div>
 
@@ -278,6 +315,8 @@ const SplatTab = {
       modelNotice: byId('splat-model-notice'),
       imageBlock: byId('splat-image-block'),
       videoBlock: byId('splat-video-block'),
+      qualityBlock: byId('splat-quality-block'),
+      qualityButtons: byId('splat-quality-buttons'),
       // image inputs
       sourceUploadLabel: byId('splat-source-upload-label'),
       sourceInput: byId('splat-source-input'),
@@ -316,6 +355,11 @@ const SplatTab = {
     els.modelSelect.addEventListener('change', (e) =>
       this.selectModel(e.target.value)
     );
+
+    els.qualityButtons.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-tier-id]');
+      if (btn) this.selectModel(btn.dataset.tierId);
+    });
 
     // Image input
     els.sourceInput.addEventListener('change', (e) => {
@@ -376,9 +420,27 @@ const SplatTab = {
     els.imageBlock.classList.toggle('hidden', isVideo);
     els.videoBlock.classList.toggle('hidden', !isVideo);
 
+    // Tiered model → show the quality row and highlight the active tier.
+    els.qualityBlock.classList.toggle('hidden', !model.tierGroup);
+    els.qualityButtons.querySelectorAll('[data-tier-id]').forEach((btn) => {
+      const active = btn.dataset.tierId === modelId;
+      btn.classList.toggle('border-indigo-600', active);
+      btn.classList.toggle('bg-indigo-50', active);
+      btn.classList.toggle('text-indigo-700', active);
+      btn.classList.toggle('font-medium', active);
+      btn.classList.toggle('border-gray-300', !active);
+      btn.classList.toggle('text-gray-700', !active);
+      btn.classList.toggle('hover:bg-gray-50', !active);
+    });
+
     els.modelBlurb.textContent = model.blurb;
     els.modelNotice.innerHTML = model.notice;
-    if (els.modelSelect.value !== modelId) els.modelSelect.value = modelId;
+    // The dropdown carries one entry per group, valued at the group's default
+    // tier id — keep it on that entry while tier buttons change the model.
+    const selectValue = model.tierGroup || modelId;
+    if (els.modelSelect.value !== selectValue) {
+      els.modelSelect.value = selectValue;
+    }
 
     this.updateGenerateLabel();
   },
