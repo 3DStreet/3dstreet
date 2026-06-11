@@ -151,6 +151,14 @@ export class EntityUpdateCommand extends Command {
         );
       }
     }
+
+    // For position/rotation/scale, getAttribute returns the live object3D
+    // values, so the oldValue captured above is wrong for callers that
+    // mutate the object before executing the command (the transform gizmo).
+    // Such callers pass the true pre-change value explicitly.
+    if (payload.oldValue !== undefined) {
+      this.oldValue = payload.oldValue;
+    }
   }
 
   execute(nextCommandCallback) {

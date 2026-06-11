@@ -938,6 +938,45 @@
           _gizmo[_mode].update(new THREE.Euler(), eye);
         }
 
+        // Hide handles AND pickers of axes nearly parallel to the eye ray and
+        // of planes nearly edge-on to it (ported from upstream r91+
+        // TransformControls): their drag planes are so glancing that one
+        // pixel of pointer movement is metres of world movement (#1663).
+        if (_mode === 'translate' || _mode === 'scale') {
+          var AXIS_HIDE_THRESHOLD = 0.99;
+          var PLANE_HIDE_THRESHOLD = 0.2;
+
+          if (scope.space === 'local') {
+            tempQuaternion.setFromEuler(worldRotation);
+          } else {
+            tempQuaternion.set(0, 0, 0, 1);
+          }
+          var dotX = Math.abs(
+            tempVector.copy(unitX).applyQuaternion(tempQuaternion).dot(eye)
+          );
+          var dotY = Math.abs(
+            tempVector.copy(unitY).applyQuaternion(tempQuaternion).dot(eye)
+          );
+          var dotZ = Math.abs(
+            tempVector.copy(unitZ).applyQuaternion(tempQuaternion).dot(eye)
+          );
+          var hiddenAxes = {
+            X: dotX > AXIS_HIDE_THRESHOLD,
+            Y: dotY > AXIS_HIDE_THRESHOLD,
+            Z: dotZ > AXIS_HIDE_THRESHOLD,
+            XY: dotZ < PLANE_HIDE_THRESHOLD,
+            YZ: dotX < PLANE_HIDE_THRESHOLD,
+            XZ: dotY < PLANE_HIDE_THRESHOLD
+          };
+          var applyAxisVisibility = function(child) {
+            if (child.name in hiddenAxes) {
+              child.visible = !hiddenAxes[child.name];
+            }
+          };
+          _gizmo[_mode].handles.children.forEach(applyAxisVisibility);
+          _gizmo[_mode].pickers.children.forEach(applyAxisVisibility);
+        }
+
         _gizmo[_mode].highlight(scope.axis);
       };
 
@@ -985,12 +1024,7 @@
           );
 
           if (intersect) {
-            event.preventDefault();
-            event.stopPropagation();
-
             scope.axis = intersect.object.name;
-
-            scope.dispatchEvent(mouseDownEvent);
 
             scope.update();
 
@@ -1005,7 +1039,15 @@
               _gizmo[_mode].activePlane
             ]);
 
+            // Claim the gesture only when the drag plane was actually hit;
+            // otherwise oldPosition/offset keep values from a previous
+            // gesture and the first move teleports the object (#1663).
             if (planeIntersect) {
+              event.preventDefault();
+              event.stopPropagation();
+
+              scope.dispatchEvent(mouseDownEvent);
+
               oldPosition.copy(scope.object.position);
               oldScale.copy(scope.object.scale);
 
@@ -1020,11 +1062,11 @@
               );
 
               offset.copy(planeIntersect.point);
+
+              _dragging = true;
             }
           }
         }
-
-        _dragging = true;
       }
 
       function onPointerMove(event) {
@@ -1340,8 +1382,14 @@
         pointerVector.set(x * 2 - 1, -(y * 2) + 1);
         ray.setFromCamera(pointerVector, camera);
 
+        // The raycaster also hits invisible objects (the pickers rely on
+        // that — their MATERIAL is invisible but the mesh is visible), so
+        // filter on mesh visibility to skip axes hidden by update() above.
         var intersections = ray.intersectObjects(objects, true);
-        return intersections[0] ? intersections[0] : false;
+        for (var i = 0; i < intersections.length; i++) {
+          if (intersections[i].object.visible) return intersections[i];
+        }
+        return false;
       }
     }
   };
