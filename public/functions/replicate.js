@@ -6,6 +6,10 @@ const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
 const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS, REPLICATE_MODELS } = require('./replicate-models.js');
+// Modal compute backend — vid2scene runs there (Replicate's on-demand tier
+// preempts long jobs). Provider adapter only; the job/billing machinery in
+// this file is shared across providers.
+const { MODAL_SECRETS, enqueueModalJob, fetchModalPrediction } = require('./modal-backend.js');
 // Real-time completion email: the webhook calls this the instant a job finishes
 // so the user isn't waiting on the 10-min reconciler sweep. Shared, idempotent
 // send (the sweep is the backstop). No circular dep: scheduledEmails doesn't
@@ -794,8 +798,10 @@ const generateReplicateVideo = functions
 // succeeds on Replicate.
 const generateReplicateSplat = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', 'ALLOWED_PRO_TEAM_DOMAINS'],
-    timeoutSeconds: 120 // creation only (stage image + create prediction)
+    secrets: ['REPLICATE_API_TOKEN', 'ALLOWED_PRO_TEAM_DOMAINS', ...MODAL_SECRETS],
+    // Creation only (stage source + submit) — but a scaled-to-zero Modal
+    // enqueue endpoint can cold-start for minutes, so give submit headroom.
+    timeoutSeconds: 300
   })
   .https
   .onCall(async (data, context) => {
@@ -810,7 +816,7 @@ const generateReplicateSplat = functions
     }
 
     const userId = context.auth.uid;
-    const { input_image, model_id = 'sharp-ml', source = 'generator', notify } = data;
+    const { input_image, input_video, model_id = 'sharp-ml', source = 'generator', notify } = data;
 
     // Opt-in completion email. `pending: true` is the flag the notify sweep
     // (generation-job-reconcile.js) queries on; it clears when the email is
@@ -819,6 +825,11 @@ const generateReplicateSplat = functions
 
     const modelConfig = REPLICATE_MODELS[model_id] || REPLICATE_MODELS['sharp-ml'];
     const tokenCost = modelConfig?.tokenCost || 1;
+    // 'image' (base64 staged here) vs 'video' (client-uploaded to Storage).
+    const inputKind = modelConfig?.inputKind || 'image';
+    // Which compute backend runs this model. Everything except the submit /
+    // status-fetch / result-save mechanics is provider-agnostic.
+    const provider = modelConfig?.provider || 'replicate';
 
     let tokenData;
     try {
@@ -836,7 +847,11 @@ const generateReplicateSplat = functions
       throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${tokenData.genToken || 0}.`);
     }
 
-    if (!input_image) {
+    if (inputKind === 'video') {
+      if (!input_video) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing required input video.');
+      }
+    } else if (!input_image) {
       throw new functions.https.HttpsError('invalid-argument', 'Missing required input image.');
     }
 
@@ -849,43 +864,67 @@ const generateReplicateSplat = functions
         useFileOutput: false
       });
 
-      // SHARP needs a publicly-fetchable image URL. Accept either an https URL
-      // (already hosted) or a base64 data URL that we stage in Storage.
-      let imageUrl = input_image;
-      if (input_image.startsWith('data:image/')) {
-        const matches = input_image.match(/^data:([^;]+);base64,(.+)$/);
-        if (!matches) {
-          throw new functions.https.HttpsError('invalid-argument', 'Invalid base64 image format.');
+      // The Replicate model needs a publicly-fetchable source URL. How we get
+      // one depends on the input kind:
+      //   image → accept an https URL or a base64 data URL we stage in Storage
+      //   video → the client already uploaded the file to Storage (videos are
+      //           too large to base64 through a callable); we just make the
+      //           uploaded path briefly fetchable for Replicate.
+      // Either way the staged source is recorded in `tempFilePath` and deleted
+      // once the job finishes (cleanupSplatTempFile, via job.tempFilePath).
+      let sourceUrl;
+      if (inputKind === 'video') {
+        if (input_video.startsWith('http://') || input_video.startsWith('https://')) {
+          sourceUrl = input_video; // already a fetchable URL
+        } else {
+          const bucket = admin.storage().bucket();
+          const file = bucket.file(input_video);
+          await file.makePublic();
+          sourceUrl = `https://storage.googleapis.com/${bucket.name}/${input_video}`;
+          tempFilePath = input_video;
         }
-        const mimeType = matches[1];
-        const base64Data = matches[2];
-        const imageBuffer = Buffer.from(base64Data, 'base64');
-
-        const timestamp = Date.now();
-        const filename = `temp-splat-input-${userId}-${timestamp}.jpg`;
-        const bucket = admin.storage().bucket();
-        const file = bucket.file(`temp/${filename}`);
-        await file.save(imageBuffer, {
-          metadata: {
-            contentType: mimeType,
-            expires: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      } else {
+        let imageUrl = input_image;
+        if (input_image.startsWith('data:image/')) {
+          const matches = input_image.match(/^data:([^;]+);base64,(.+)$/);
+          if (!matches) {
+            throw new functions.https.HttpsError('invalid-argument', 'Invalid base64 image format.');
           }
-        });
-        await file.makePublic();
-        imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
-        tempFilePath = `temp/${filename}`;
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          const imageBuffer = Buffer.from(base64Data, 'base64');
+
+          const timestamp = Date.now();
+          const filename = `temp-splat-input-${userId}-${timestamp}.jpg`;
+          const bucket = admin.storage().bucket();
+          const file = bucket.file(`temp/${filename}`);
+          await file.save(imageBuffer, {
+            metadata: {
+              contentType: mimeType,
+              expires: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+            }
+          });
+          await file.makePublic();
+          imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
+          tempFilePath = `temp/${filename}`;
+        }
+        sourceUrl = imageUrl;
       }
 
       // SHARP (kfarr/sharp-ml) takes a single `image` input and returns a
       // .ply Gaussian Splat. It's a community model (not an official Replicate
       // model), so the bare `owner/name` predictions endpoint 404s — we must
       // pin an explicit version. Resolve the latest version at runtime so the
-      // model owner can re-push without a code change.
-      const [modelOwner, modelSlug] = modelConfig.modelName.split('/');
-      const splatModel = await replicate.models.get(modelOwner, modelSlug);
-      const splatVersion = splatModel?.latest_version?.id;
-      if (!splatVersion) {
-        throw new Error(`Could not resolve a version for ${modelConfig.modelName}`);
+      // model owner can re-push without a code change. (Replicate only — a
+      // Modal deployment is itself the pinned version.)
+      let splatVersion = null;
+      if (provider === 'replicate') {
+        const [modelOwner, modelSlug] = modelConfig.modelName.split('/');
+        const splatModel = await replicate.models.get(modelOwner, modelSlug);
+        splatVersion = splatModel?.latest_version?.id;
+        if (!splatVersion) {
+          throw new Error(`Could not resolve a version for ${modelConfig.modelName}`);
+        }
       }
 
       // Generate the durable job identity up front. The internal `jobId` (a
@@ -901,10 +940,13 @@ const generateReplicateSplat = functions
         .collection('generationJobs').doc(jobId);
 
       // Stable names for the saved gallery asset, fixed at submit so both the
-      // webhook and poll paths produce identical metadata.
+      // webhook and poll paths produce identical metadata. Model-aware so the
+      // gallery distinguishes SHARP vs vid2scene outputs (falls back to SHARP).
       const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const originalFilename = `sharp-splat-${stamp}.ply`;
-      const assetName = `SHARP Splat ${stamp}`;
+      const assetSlug = modelConfig.assetSlug || 'sharp-splat';
+      const assetLabel = modelConfig.assetLabel || 'SHARP Splat';
+      const originalFilename = `${assetSlug}-${stamp}.ply`;
+      const assetName = `${assetLabel} ${stamp}`;
 
       // Write the pending job before submitting. Completion is handled two ways,
       // both converging on the same idempotent processing:
@@ -921,7 +963,7 @@ const generateReplicateSplat = functions
         status: 'queued',
         providerStatus: null,
         kind: 'splat',
-        provider: 'replicate',
+        provider,
         providerJobId: null,
         model: modelConfig.modelName,
         modelId: model_id,
@@ -933,6 +975,14 @@ const generateReplicateSplat = functions
         webhookSecret,
         originalFilename,
         assetName,
+        // Attribution surfaced on the saved asset's generationMetadata. Stored on
+        // the job so the server-side persist (saveSplatToGallery) is model-aware
+        // without re-deriving it. Falls back to SHARP for older jobs.
+        attribution: modelConfig.attribution || {
+          model: 'apple/sharp-ml',
+          modelName: 'SHARP (Image to Splat)',
+          sourceType: 'image'
+        },
         notify: { email: wantsEmail, pending: wantsEmail },
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
@@ -997,18 +1047,37 @@ const generateReplicateSplat = functions
         process.env.GOOGLE_CLOUD_PROJECT ||
         admin.app().options.projectId;
       const region = process.env.FUNCTION_REGION || 'us-central1';
+      const webhookFn = provider === 'modal' ? 'modalJobWebhook' : 'replicateJobWebhook';
       const webhookUrl =
-        `https://${region}-${projectId}.cloudfunctions.net/replicateJobWebhook` +
+        `https://${region}-${projectId}.cloudfunctions.net/${webhookFn}` +
         `?jobId=${jobId}&uid=${userId}&token=${webhookSecret}`;
 
       let prediction;
       try {
-        prediction = await replicate.predictions.create({
-          version: splatVersion,
-          input: { image: imageUrl },
-          webhook: webhookUrl,
-          webhook_events_filter: ['completed']
-        });
+        if (provider === 'modal') {
+          // Fire-and-forget enqueue; the returned call_id is the provider job
+          // id. Synthesize a Replicate-shaped prediction ('starting' normalizes
+          // to 'queued') so the post-submit bookkeeping below is shared.
+          const callId = await enqueueModalJob({
+            videoUrl: sourceUrl,
+            jobId,
+            webhookUrl,
+            pipeline: modelConfig.pipeline
+          });
+          prediction = { id: callId, status: 'starting' };
+        } else {
+          prediction = await replicate.predictions.create({
+            version: splatVersion,
+            // The cog accepts the same per-tier quality knobs as inputs, so
+            // the Replicate fallback honors the tier too.
+            input:
+              inputKind === 'video'
+                ? { video: sourceUrl, ...(modelConfig.pipeline || {}) }
+                : { image: sourceUrl },
+            webhook: webhookUrl,
+            webhook_events_filter: ['completed']
+          });
+        }
       } catch (createError) {
         // Already paid above — refund (once) before failing the job so a submit
         // failure never costs the user a token.
@@ -1058,7 +1127,7 @@ const generateReplicateSplat = functions
 
       db.collection('generationLog').add({
         userId,
-        provider: 'replicate',
+        provider,
         model: modelConfig.modelName,
         generationType: 'splat',
         tokenCost,
@@ -1199,11 +1268,6 @@ function deterministicAssetId(seed) {
 async function saveSplatToGallery(userId, plyUrl, job) {
   validateSplatUserId(userId);
 
-  const response = await fetch(plyUrl);
-  if (!response.ok || !response.body) {
-    throw new Error(`Failed to download splat from Replicate (${response.status})`);
-  }
-
   // Keyed on predictionId so a retry reuses the same object/doc (see above).
   // Falls back to a random id only if a caller somehow omits predictionId.
   const assetId = deterministicAssetId(job.predictionId || crypto.randomUUID());
@@ -1213,27 +1277,51 @@ async function saveSplatToGallery(userId, plyUrl, job) {
 
   const bucket = admin.storage().bucket();
   const file = bucket.file(storagePath);
-  const writeStream = file.createWriteStream({
-    // Leave resumable at its default (true): it uploads in chunks and keeps
-    // memory bounded. resumable:false would buffer the whole payload to compute
-    // a single request — the very thing we're avoiding.
+  const objectMetadata = {
+    contentType: 'application/octet-stream',
+    // Immutable content (keyed by assetId): cache for a year so the editor
+    // and the preview-modal iframe reuse the browser HTTP cache instead of
+    // re-downloading. Matches assetsService.uploadToStorage for uploads.
+    cacheControl: 'public, max-age=31536000',
     metadata: {
-      contentType: 'application/octet-stream',
-      // Immutable content (keyed by assetId): cache for a year so the editor
-      // and the preview-modal iframe reuse the browser HTTP cache instead of
-      // re-downloading. Matches assetsService.uploadToStorage for uploads.
-      cacheControl: 'public, max-age=31536000',
-      metadata: {
-        firebaseStorageDownloadTokens: downloadToken,
-        assetRole: 'original',
-        assetId
-      }
+      firebaseStorageDownloadTokens: downloadToken,
+      assetRole: 'original',
+      assetId
     }
-  });
-  await pipeline(Readable.fromWeb(response.body), writeStream);
+  };
 
-  // We streamed, so the byte count isn't in hand — read it back authoritatively
-  // from the stored object for the asset doc / quota trigger.
+  if (plyUrl.startsWith('gs://')) {
+    // Modal staged the finished .ply in OUR OWN bucket (vid2scene-staging/),
+    // so the "save" is a same-bucket server-side copy — metadata-only, no
+    // bytes move through this function.
+    const match = plyUrl.match(/^gs:\/\/([^/]+)\/(.+)$/);
+    if (!match || match[1] !== bucket.name) {
+      throw new Error(`Unexpected splat staging location: ${plyUrl}`);
+    }
+    const stagingFile = bucket.file(match[2]);
+    await stagingFile.copy(file);
+    await file.setMetadata(objectMetadata);
+    // Staging object served its purpose. Best-effort: a retry that finds it
+    // gone will also find the job already 'succeeded' and never reach here.
+    stagingFile.delete().catch(err =>
+      console.warn('Failed to delete staged splat:', err.message)
+    );
+  } else {
+    const response = await fetch(plyUrl);
+    if (!response.ok || !response.body) {
+      throw new Error(`Failed to download splat from provider (${response.status})`);
+    }
+    const writeStream = file.createWriteStream({
+      // Leave resumable at its default (true): it uploads in chunks and keeps
+      // memory bounded. resumable:false would buffer the whole payload to
+      // compute a single request — the very thing we're avoiding.
+      metadata: objectMetadata
+    });
+    await pipeline(Readable.fromWeb(response.body), writeStream);
+  }
+
+  // Copied/streamed, so the byte count isn't in hand — read it back
+  // authoritatively from the stored object for the asset doc / quota trigger.
   const [meta] = await file.getMetadata();
   const size = Number(meta.size) || 0;
 
@@ -1264,13 +1352,15 @@ async function saveSplatToGallery(userId, plyUrl, job) {
       size,
       mimeType: 'application/octet-stream',
       generationMetadata: {
-        // User-facing attribution credits Apple (SHARP is Apple's model; the
-        // `kfarr/sharp-ml` Replicate path that actually ran is preserved on the
-        // job doc + as predictionId below). This is the value the gallery card /
-        // mesh-details modal display via getAssetSourceLabel.
-        model: 'apple/sharp-ml',
-        model_name: 'SHARP (Image to Splat)',
-        sourceType: 'image',
+        // User-facing attribution, taken from the job's `attribution` (set at
+        // submit from the model config) so this is model-aware — SHARP credits
+        // Apple, vid2scene credits samuelm2/vid2scene. The actual Replicate path
+        // that ran is preserved on the job doc + as predictionId below. This is
+        // the value the gallery card / mesh-details modal display via
+        // getAssetSourceLabel. Falls back to SHARP for older jobs.
+        model: job.attribution?.model || 'apple/sharp-ml',
+        model_name: job.attribution?.modelName || 'SHARP (Image to Splat)',
+        sourceType: job.attribution?.sourceType || 'image',
         source: job.source || 'generator',
         predictionId: job.predictionId || null,
         timestamp: new Date().toISOString()
@@ -1294,6 +1384,38 @@ function validateSplatUserId(userId) {
   if (!userId || typeof userId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(userId)) {
     throw new Error('Invalid user id for splat path');
   }
+}
+
+// Modal split-shape rate card ($/h, 2026-06 list prices): GPU + the stage's
+// CPU/RAM reservations (SfM: 16 cpu + 24 GiB; train: 4 cpu + 16 GiB). Drives
+// the advisory estCostUsd on generationLog rows so margin (tokenCost vs cost)
+// is trackable over time. Real billing truth stays the Modal dashboard —
+// update these alongside any rate or deploy-shape change.
+const MODAL_STAGE_RATES_PER_HOUR = {
+  sfm: { T4: 0.59 + 16 * 0.047 + 24 * 0.008, L4: 0.8 + 16 * 0.047 + 24 * 0.008 },
+  train: { T4: 0.59 + 4 * 0.047 + 16 * 0.008, L4: 0.8 + 4 * 0.047 + 16 * 0.008 }
+};
+
+// Rate-card cost estimate from the Modal app's per-stage timings (seconds of
+// compute + the GPU each stage actually landed on). Null when there's nothing
+// to price (Replicate-fallback jobs, failed-before-SfM, unknown GPU).
+function estimateModalCostUsd(metrics) {
+  if (!metrics) return null;
+  const gpuKey = (name) =>
+    /L4/i.test(name || '') ? 'L4' : /T4/i.test(name || '') ? 'T4' : null;
+  let usd = 0;
+  let priced = false;
+  const sfmGpu = gpuKey(metrics.sfm_gpu);
+  if (metrics.sfm_seconds > 0 && sfmGpu) {
+    usd += (metrics.sfm_seconds / 3600) * MODAL_STAGE_RATES_PER_HOUR.sfm[sfmGpu];
+    priced = true;
+  }
+  const trainGpu = gpuKey(metrics.train_gpu);
+  if (metrics.train_seconds > 0 && trainGpu) {
+    usd += (metrics.train_seconds / 3600) * MODAL_STAGE_RATES_PER_HOUR.train[trainGpu];
+    priced = true;
+  }
+  return priced ? Math.round(usd * 100) / 100 : null;
 }
 
 // Idempotently handle a terminal Replicate prediction. Called by BOTH the
@@ -1395,10 +1517,27 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
       });
       db.collection('generationLog').add({
         userId,
-        provider: 'replicate',
+        provider: job.provider || 'replicate',
         model: job.model,
+        // The tier (vid2scene-basic/vid2scene/vid2scene-max) — `model` is the
+        // same provider slug for every tier, so per-tier duration stats (the
+        // generator's "how long does this usually take" data) need this.
+        modelId: job.modelId || null,
         generationType: 'splat',
         tokenCost: job.tokenCost,
+        // Submit → saved-to-gallery, i.e. the user-perceived duration. Image/
+        // video generations record their equivalent; splats were missing it.
+        // NOTE this includes provider queue wait (a capacity-starved job can
+        // sit hours before compute starts) — metrics below is the compute-only
+        // view, so use that for cost analysis and this for user-facing ETAs.
+        processingTimeMs: job.createdAt?.toMillis
+          ? Date.now() - job.createdAt.toMillis()
+          : null,
+        // Per-stage compute reported by the Modal app ({sfm,train}_{seconds,gpu})
+        // and its rate-card $ estimate — the cost half of the margin tracking
+        // that tokenCost is the revenue half of. Null on the Replicate fallback.
+        metrics: prediction.metrics || null,
+        estCostUsd: estimateModalCostUsd(prediction.metrics),
         status: 'succeeded',
         source: job.source,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -1425,10 +1564,14 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
     });
     db.collection('generationLog').add({
       userId,
-      provider: 'replicate',
+      provider: job.provider || 'replicate',
       model: job.model,
+      modelId: job.modelId || null,
       generationType: 'splat',
       tokenCost: job.tokenCost,
+      processingTimeMs: job.createdAt?.toMillis
+        ? Date.now() - job.createdAt.toMillis()
+        : null,
       status: 'failed',
       error: prediction.error || null,
       source: job.source,
@@ -1471,7 +1614,7 @@ async function ackClientSeen(jobRef, job) {
 
 const getGenerationJobStatus = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN'],
+    secrets: ['REPLICATE_API_TOKEN', ...MODAL_SECRETS],
     // saveSplatToGallery streams the .ply through (no full-file buffering), so
     // memory no longer scales with splat size. 512 MB is fixed headroom over the
     // firebase-admin cold-start baseline, not sized to the file.
@@ -1522,14 +1665,23 @@ const getGenerationJobStatus = functions
     // processor. It owns the (stale-aware) save claim, so calling it while
     // another caller is mid-save is safe, and it recovers a crashed save.
 
-    const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN,
-      useFileOutput: false
-    });
-
     let prediction;
     try {
-      prediction = await replicate.predictions.get(job.providerJobId);
+      if (job.provider === 'modal') {
+        const fetched = await fetchModalPrediction(admin, job, jobId);
+        if (fetched.absent) {
+          // Provider lost the job (expired result) — keep reporting the stored
+          // status; the reconciler's give-up window owns declaring it dead.
+          return { status: job.status || 'running' };
+        }
+        prediction = fetched.prediction;
+      } else {
+        const replicate = new Replicate({
+          auth: process.env.REPLICATE_API_TOKEN,
+          useFileOutput: false
+        });
+        prediction = await replicate.predictions.get(job.providerJobId);
+      }
     } catch (error) {
       console.error('Failed to fetch prediction status:', error);
       throw new functions.https.HttpsError('internal', `Failed to fetch generation status: ${error.message}`);
@@ -1542,27 +1694,15 @@ const getGenerationJobStatus = functions
     return result;
   });
 
-// Replicate webhook target — makes completion browser-independent. One endpoint
-// for all Replicate kinds. Replicate POSTs here when a job finishes
-// (webhook_events_filter: ['completed']). We don't trust the payload: the uid +
+// Provider webhook target — makes completion browser-independent. The provider
+// POSTs here when a job finishes. We don't trust the payload: the uid +
 // internal jobId + per-job secret in the query string gate the request, then we
-// re-fetch the prediction from Replicate authoritatively and run the shared
-// idempotent processor (which saves the result to the gallery).
-const replicateJobWebhook = functions
-  .runWith({
-    // POSTMARK_API_KEY: the webhook now sends the completion email in real time
-    // (sendGenerationReadyEmail), so it needs the Postmark secret in its env.
-    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY'],
-    // Same streamed save as the poll path; 512 MB is fixed cold-start headroom,
-    // not sized to the splat.
-    memory: '512MB',
-    // Same rationale as getGenerationJobStatus: the streamed save can exceed the
-    // 60s default for a large .ply, and a kill mid-save wedges the job in
-    // 'saving'. Replicate also retries the webhook, but don't rely on that.
-    timeoutSeconds: 300
-  })
-  .https
-  .onRequest(async (req, res) => {
+// re-derive the result authoritatively (Replicate: re-fetch the prediction;
+// Modal: status endpoint + staged-.ply existence in our own bucket) and run the
+// shared idempotent processor (which saves the result to the gallery).
+// Shared by replicateJobWebhook and modalJobWebhook — the job doc's `provider`
+// drives the dispatch, and each provider's webhook URL is frozen at submit.
+async function handleJobWebhook(req, res) {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed');
       return;
@@ -1584,7 +1724,7 @@ const replicateJobWebhook = functions
     const jobRef = db.collection('users').doc(uid).collection('generationJobs').doc(jobId);
     const jobSnap = await jobRef.get();
     if (!jobSnap.exists) {
-      // Nothing to do (unknown / already GC'd). Ack so Replicate stops retrying.
+      // Nothing to do (unknown / already GC'd). Ack so the provider stops retrying.
       res.status(200).send('ok');
       return;
     }
@@ -1594,27 +1734,56 @@ const replicateJobWebhook = functions
       return;
     }
 
-    // Prefer the recorded provider id; fall back to the body id only as a lookup
-    // key for the authoritative re-fetch (covers the brief create→update window
-    // before providerJobId is persisted). The result is always re-fetched.
-    const providerJobId = job.providerJobId || (req.body && req.body.id);
-    if (!providerJobId) {
-      res.status(200).send('ok'); // can't resolve yet; poll/reconciler will
-      return;
-    }
-
-    const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN,
-      useFileOutput: false
-    });
-
     let prediction;
-    try {
-      prediction = await replicate.predictions.get(providerJobId);
-    } catch (error) {
-      console.error('Webhook: failed to fetch prediction:', error);
-      res.status(502).send('Upstream error'); // Replicate will retry
-      return;
+    if (job.provider === 'modal') {
+      // Modal posts its webhook from inside the training container, moments
+      // before the result is observable on the status endpoint — but the staged
+      // .ply is already in our bucket by then, so fetchModalPrediction's
+      // existence check resolves it. Modal sends the webhook exactly once (no
+      // retry), so a transient error here just defers to the poll/reconciler.
+      try {
+        const fetched = await fetchModalPrediction(admin, job, jobId);
+        if (fetched.absent) {
+          res.status(200).send('ok');
+          return;
+        }
+        prediction = fetched.prediction;
+        // The webhook usually lands before the coordinator returns, so the
+        // status endpoint hasn't got the result (and its timings) yet — the
+        // existence check proves success without them. The webhook body is
+        // authenticated by the per-job webhookSecret above, and timings are
+        // advisory stats (never part of the success proof), so trusting the
+        // body's copy here is fine.
+        if (!prediction.metrics && req.body && req.body.timings) {
+          prediction.metrics = req.body.timings;
+        }
+      } catch (error) {
+        console.error('Webhook: failed to fetch Modal job state:', error);
+        res.status(502).send('Upstream error');
+        return;
+      }
+    } else {
+      // Prefer the recorded provider id; fall back to the body id only as a
+      // lookup key for the authoritative re-fetch (covers the brief
+      // create→update window before providerJobId is persisted).
+      const providerJobId = job.providerJobId || (req.body && req.body.id);
+      if (!providerJobId) {
+        res.status(200).send('ok'); // can't resolve yet; poll/reconciler will
+        return;
+      }
+
+      const replicate = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
+        useFileOutput: false
+      });
+
+      try {
+        prediction = await replicate.predictions.get(providerJobId);
+      } catch (error) {
+        console.error('Webhook: failed to fetch prediction:', error);
+        res.status(502).send('Upstream error'); // Replicate will retry
+        return;
+      }
     }
 
     try {
@@ -1636,9 +1805,36 @@ const replicateJobWebhook = functions
       res.status(200).send('ok');
     } catch (error) {
       console.error('Webhook: processing failed:', error);
-      res.status(500).send('Processing error'); // Replicate will retry
+      res.status(500).send('Processing error'); // provider may retry
     }
-  });
+}
+
+const replicateJobWebhook = functions
+  .runWith({
+    // POSTMARK_API_KEY: the webhook sends the completion email in real time
+    // (sendGenerationReadyEmail), so it needs the Postmark secret in its env.
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY'],
+    // Same streamed save as the poll path; 512 MB is fixed cold-start headroom,
+    // not sized to the splat.
+    memory: '512MB',
+    // Same rationale as getGenerationJobStatus: the streamed save can exceed the
+    // 60s default for a large .ply, and a kill mid-save wedges the job in
+    // 'saving'. Replicate also retries the webhook, but don't rely on that.
+    timeoutSeconds: 300
+  })
+  .https
+  .onRequest(handleJobWebhook);
+
+// Modal's webhook target. Same handler; the Modal save is a same-bucket copy
+// (no streaming), but the memory/timeout stay matched to the shared path.
+const modalJobWebhook = functions
+  .runWith({
+    secrets: [...MODAL_SECRETS, 'POSTMARK_API_KEY'],
+    memory: '512MB',
+    timeoutSeconds: 300
+  })
+  .https
+  .onRequest(handleJobWebhook);
 
 module.exports = {
   generateReplicateImage,
@@ -1646,6 +1842,7 @@ module.exports = {
   generateReplicateSplat,
   getGenerationJobStatus,
   replicateJobWebhook,
+  modalJobWebhook,
   // Internals reused by the scheduled reconciler (the dropped-webhook backstop).
   // Kept here so the idempotent save/charge/refund logic has a single home.
   processTerminalPrediction,

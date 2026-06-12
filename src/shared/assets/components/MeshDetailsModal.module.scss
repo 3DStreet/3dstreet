@@ -138,14 +138,19 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
   gap: 16px;
-  width: 820px;
-  max-width: calc(95vw - 32px);
+  /* Grow with the window like the image/video modal (which sizes to content
+     up to 90vw/90vh) instead of pinning to a small fixed width. */
+  width: calc(95vw - 32px);
+  max-width: 1600px;
   padding: 16px 24px 24px;
   overflow-y: auto;
 }
 
 .viewerArea {
   min-height: 360px;
+  /* Fill the available vertical space (modal caps at 90vh; ~170px covers the
+     header + paddings) so a large window gets a large 3D viewport. */
+  height: max(360px, calc(90vh - 170px));
   background: variables.$darkgray-500;
   border-radius: 8px;
   overflow: hidden;

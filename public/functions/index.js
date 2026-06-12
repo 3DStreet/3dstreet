@@ -4,7 +4,7 @@ admin.initializeApp();
 const { getAuth } = require('firebase-admin/auth');
 const { serveWebXRVariant } = require('./webxr-variant.js');
 const { getGeoidHeight } = require('./geoid-height.js');
-const { generateReplicateImage, generateReplicateVideo, generateReplicateSplat, getGenerationJobStatus, replicateJobWebhook } = require('./replicate.js');
+const { generateReplicateImage, generateReplicateVideo, generateReplicateSplat, getGenerationJobStatus, replicateJobWebhook, modalJobWebhook } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { generateFalImage } = require('./fal-proxy.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduled/scheduledEmails.js');
@@ -29,6 +29,7 @@ exports.generateReplicateVideo = generateReplicateVideo;
 exports.generateReplicateSplat = generateReplicateSplat;
 exports.getGenerationJobStatus = getGenerationJobStatus;
 exports.replicateJobWebhook = replicateJobWebhook;
+exports.modalJobWebhook = modalJobWebhook;
 
 // Re-export the token management functions
 exports.checkAndRefillImageTokens = checkAndRefillImageTokens;
