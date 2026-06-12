@@ -1,4 +1,5 @@
 import Events from './Events';
+import { isExperimentalNav } from './nav-experimental/flag.js';
 
 export function initRaycaster(inspector) {
   // Use cursor="rayOrigin: mouse".
@@ -115,8 +116,24 @@ export function initRaycaster(inspector) {
 
   /**
    * Focus on double click.
+   *
+   * TASK-012 Phase 4: with the experimental nav flag on, the canvas
+   * double-click NAVIGATES (a cursor-aware camera teleport) instead of
+   * framing the entity. Emit a new event carrying the cursor coords; the
+   * controls classify what's under the cursor from the live cursor raycast
+   * (incl. empty-space → Category D), so we must NOT early-return on a missing
+   * intersect when the flag is on. Flag-off keeps the legacy objectfocus path.
+   * Only this canvas dblclick reroutes — F-key / scene-tree / sidebar
+   * objectfocus callers still run the legacy frame-this-entity animation.
    */
   function onDoubleClick(event) {
+    if (isExperimentalNav()) {
+      Events.emit('nav-experimental:doubleclick', {
+        clientX: event.clientX,
+        clientY: event.clientY
+      });
+      return;
+    }
     const intersectedEl = getIntersectedEl();
     if (!intersectedEl) {
       return;

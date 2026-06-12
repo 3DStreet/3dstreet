@@ -4,10 +4,10 @@ import { DocumentationButton } from '../DocumentationButton';
 
 const shortcuts = [
   [
-    { key: ['w'], description: 'Translate' },
+    { key: ['t'], description: 'Translate' },
     { key: ['e'], description: 'Rotate' },
-    { key: ['r'], description: 'Scale' },
-    { key: ['d'], description: 'Duplicate selected entity' },
+    { key: ['l'], description: 'Scale' },
+    { key: ['c'], description: 'Duplicate selected entity' },
     { key: ['f'], description: 'Focus on selected entity' },
     { key: ['g'], description: 'Toggle grid visibility' },
     { key: ['n'], description: 'Add new entity' },
