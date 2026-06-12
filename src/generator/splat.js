@@ -96,6 +96,27 @@ const SPLAT_MODELS = {
     blurb:
       'Model: vid2scene Max · best for a ~50–90 second sweep of a large scene · maximum detail (4x the gaussians, large file), can take 1–2 hours.',
     notice: VID2SCENE_NOTICE
+  },
+  // 360 → Splat: a raw Insta360 .insv recording in, reconstructed directly
+  // from its two fisheye sensor streams — no Insta360 Studio export needed,
+  // and far better ground/sky coverage than a pre-stitched equirectangular.
+  // Research-preview single tier while the path is validated on real footage.
+  // `.insv` has no registered MIME type, so the file input needs an explicit
+  // extension `accept` (otherwise pickers grey the files out), and raw .insv
+  // bitrates (~120 Mbps on an X4) need a bigger upload ceiling than phone
+  // clips — both per-model overrides below.
+  'vid2scene-360': {
+    label: '360 → Splat (vid2scene, .insv)',
+    inputKind: 'video',
+    accept: '.insv',
+    requiredExt: '.insv',
+    maxBytes: 1024 * 1024 * 1024, // 1 GB ≈ a ~60s X4/X5 recording
+    videoHint: '~10–60s .insv recording',
+    tokenCost: 60,
+    etaText: '1–2 hours',
+    blurb:
+      'Model: vid2scene 360 · a raw Insta360 .insv recording straight off the camera (no Studio export) · reconstructs directly from the dual fisheye streams for full ground and sky coverage · research preview, usually 1–2 hours.',
+    notice: VID2SCENE_NOTICE
   }
 };
 
@@ -105,6 +126,11 @@ const DEFAULT_SPLAT_MODEL = 'sharp-ml';
 // Storage rules backstop is far higher). Keep videos short — a 10–30s orbit is
 // plenty and keeps reconstruction time and cost reasonable.
 const VIDEO_MAX_BYTES = 200 * 1024 * 1024; // 200 MB
+
+// File-picker filter for regular video models; models can override via their
+// `accept` (e.g. vid2scene-360 takes only `.insv`, which has no MIME type).
+// Must match the accept attribute baked into the video input markup.
+const DEFAULT_VIDEO_ACCEPT = 'video/mp4, video/quicktime, video/webm, video/*';
 
 const SplatTab = {
   elements: {},
@@ -439,6 +465,19 @@ const SplatTab = {
       btn.classList.toggle('selected', btn.dataset.tierId === modelId);
     });
 
+    // Per-model file filter (e.g. `.insv` — extension-only, since it has no
+    // MIME type). A previously chosen file that no longer fits the filter is
+    // cleared so the submit pre-check matches what the picker would allow.
+    if (isVideo && els.videoInput) {
+      els.videoInput.accept = model.accept || DEFAULT_VIDEO_ACCEPT;
+      if (
+        this.sourceVideoFile &&
+        !this.videoFileFitsModel(this.sourceVideoFile)
+      ) {
+        this.clearSourceVideo();
+      }
+    }
+
     els.modelBlurb.textContent = model.blurb;
     els.modelNotice.innerHTML = model.notice;
     // The dropdown carries one entry per group, valued at the group's default
@@ -476,10 +515,28 @@ const SplatTab = {
     this.elements.sourceUploadLabel.classList.remove('hidden');
   },
 
+  // Does this file suit the active model? Only models with a `requiredExt`
+  // restrict the type (e.g. vid2scene-360 needs a raw .insv — a regular video
+  // submitted with the insv flag would fail server-side after a long upload).
+  videoFileFitsModel(file) {
+    const requiredExt = this.currentModel().requiredExt;
+    return !requiredExt || file.name.toLowerCase().endsWith(requiredExt);
+  },
+
   setSourceVideo(file) {
-    if (file.size > VIDEO_MAX_BYTES) {
+    const model = this.currentModel();
+    const maxBytes = model.maxBytes || VIDEO_MAX_BYTES;
+    if (file.size > maxBytes) {
       FluxUI.showNotification(
-        `Video is too large (max ${Math.round(VIDEO_MAX_BYTES / (1024 * 1024))} MB). Trim it to a short orbit and try again.`,
+        `Video is too large (max ${Math.round(maxBytes / (1024 * 1024))} MB). Trim it to a short orbit and try again.`,
+        'error'
+      );
+      this.clearSourceVideo();
+      return;
+    }
+    if (!this.videoFileFitsModel(file)) {
+      FluxUI.showNotification(
+        `This model needs a ${model.requiredExt} file (a raw Insta360 recording, not an exported video).`,
         'error'
       );
       this.clearSourceVideo();
@@ -518,6 +575,13 @@ const SplatTab = {
     if (this.currentModel().inputKind === 'video') {
       if (!this.sourceVideoFile) {
         FluxUI.showNotification('Please choose a source video first.', 'error');
+        return false;
+      }
+      if (!this.videoFileFitsModel(this.sourceVideoFile)) {
+        FluxUI.showNotification(
+          `This model needs a ${this.currentModel().requiredExt} file. Please choose a raw Insta360 recording.`,
+          'error'
+        );
         return false;
       }
     } else if (!this.sourceImageData) {
@@ -610,7 +674,11 @@ const SplatTab = {
     const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
     const path = `users/${uid}/assets/splat-sources/${crypto.randomUUID()}.${ext}`;
     const task = uploadBytesResumable(storageRef(storage, path), file, {
-      contentType: file.type || 'video/mp4'
+      // .insv (and other raw camera formats) have no browser MIME type; an
+      // honest octet-stream beats mislabeling them video/mp4. The pipeline
+      // sniffs the container with ffprobe, so the type is informational only.
+      contentType:
+        file.type || (ext === 'insv' ? 'application/octet-stream' : 'video/mp4')
     });
     await new Promise((resolve, reject) => {
       task.on(
