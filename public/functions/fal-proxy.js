@@ -143,6 +143,11 @@ const generateFalImage = functions
       throw new functions.https.HttpsError('invalid-argument', 'This model requires a source image. Please use the Modify tab or upload an image.');
     }
 
+    // Outside the try so the catch can log them (block-scoped declarations
+    // inside the try aren't visible there).
+    const generationStartTime = Date.now();
+    let falRequestId = null;
+
     try {
       let imageUrl = null;
 
@@ -225,6 +230,7 @@ const generateFalImage = functions
       console.log('fal.ai submit response:', JSON.stringify(submitResult, null, 2));
 
       const requestId = submitResult.request_id;
+      falRequestId = requestId || null;
       const statusUrl = submitResult.status_url;
       const responseUrl = submitResult.response_url;
 
@@ -349,6 +355,21 @@ const generateFalImage = functions
 
       console.log(`fal.ai generation successful for user ${userId}: ${finalImageUrl}`);
 
+      // Fire-and-forget: write generation audit log (same collection/shape as
+      // the Replicate image path — fal traffic was missing from generationLog).
+      db.collection('generationLog').add({
+        userId,
+        provider: 'fal',
+        model: modelConfig.endpoint,
+        modelId: model_id,
+        generationType: 'image',
+        tokenCost,
+        processingTimeMs: Date.now() - generationStartTime,
+        providerPredictionId: falRequestId,
+        status: 'succeeded',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write generationLog:', err));
+
       // Post AI-generated image to Discord (non-blocking)
       postAIImageToDiscord(userId, finalImageUrl, prompt, model_id, scene_id, source)
         .catch(err => console.error('Discord posting failed:', err));
@@ -362,6 +383,22 @@ const generateFalImage = functions
     } catch (error) {
       console.error('Error generating image with fal.ai:', error);
       console.error('Error details:', error.message);
+
+      // Fire-and-forget: write failed generation audit log. No token was
+      // charged (deduction only happens after success above).
+      admin.firestore().collection('generationLog').add({
+        userId,
+        provider: 'fal',
+        model: modelConfig.endpoint,
+        modelId: model_id,
+        generationType: 'image',
+        tokenCost,
+        processingTimeMs: Date.now() - generationStartTime,
+        providerPredictionId: falRequestId,
+        status: 'failed',
+        error: error.message,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write generationLog:', err));
 
       // Check if it's a Firebase HttpsError and rethrow
       if (error.code && (error.code.startsWith('resource-exhausted') || error.code.startsWith('unauthenticated'))) {
