@@ -1386,6 +1386,38 @@ function validateSplatUserId(userId) {
   }
 }
 
+// Modal split-shape rate card ($/h, 2026-06 list prices): GPU + the stage's
+// CPU/RAM reservations (SfM: 16 cpu + 24 GiB; train: 4 cpu + 16 GiB). Drives
+// the advisory estCostUsd on generationLog rows so margin (tokenCost vs cost)
+// is trackable over time. Real billing truth stays the Modal dashboard —
+// update these alongside any rate or deploy-shape change.
+const MODAL_STAGE_RATES_PER_HOUR = {
+  sfm: { T4: 0.59 + 16 * 0.047 + 24 * 0.008, L4: 0.8 + 16 * 0.047 + 24 * 0.008 },
+  train: { T4: 0.59 + 4 * 0.047 + 16 * 0.008, L4: 0.8 + 4 * 0.047 + 16 * 0.008 }
+};
+
+// Rate-card cost estimate from the Modal app's per-stage timings (seconds of
+// compute + the GPU each stage actually landed on). Null when there's nothing
+// to price (Replicate-fallback jobs, failed-before-SfM, unknown GPU).
+function estimateModalCostUsd(metrics) {
+  if (!metrics) return null;
+  const gpuKey = (name) =>
+    /L4/i.test(name || '') ? 'L4' : /T4/i.test(name || '') ? 'T4' : null;
+  let usd = 0;
+  let priced = false;
+  const sfmGpu = gpuKey(metrics.sfm_gpu);
+  if (metrics.sfm_seconds > 0 && sfmGpu) {
+    usd += (metrics.sfm_seconds / 3600) * MODAL_STAGE_RATES_PER_HOUR.sfm[sfmGpu];
+    priced = true;
+  }
+  const trainGpu = gpuKey(metrics.train_gpu);
+  if (metrics.train_seconds > 0 && trainGpu) {
+    usd += (metrics.train_seconds / 3600) * MODAL_STAGE_RATES_PER_HOUR.train[trainGpu];
+    priced = true;
+  }
+  return priced ? Math.round(usd * 100) / 100 : null;
+}
+
 // Idempotently handle a terminal Replicate prediction. Called by BOTH the
 // webhook and the poller, possibly concurrently, so the success path claims the
 // save by flipping status → 'saving' in a transaction; only the winner uploads.
@@ -1495,9 +1527,17 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
         tokenCost: job.tokenCost,
         // Submit → saved-to-gallery, i.e. the user-perceived duration. Image/
         // video generations record their equivalent; splats were missing it.
+        // NOTE this includes provider queue wait (a capacity-starved job can
+        // sit hours before compute starts) — metrics below is the compute-only
+        // view, so use that for cost analysis and this for user-facing ETAs.
         processingTimeMs: job.createdAt?.toMillis
           ? Date.now() - job.createdAt.toMillis()
           : null,
+        // Per-stage compute reported by the Modal app ({sfm,train}_{seconds,gpu})
+        // and its rate-card $ estimate — the cost half of the margin tracking
+        // that tokenCost is the revenue half of. Null on the Replicate fallback.
+        metrics: prediction.metrics || null,
+        estCostUsd: estimateModalCostUsd(prediction.metrics),
         status: 'succeeded',
         source: job.source,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -1708,6 +1748,15 @@ async function handleJobWebhook(req, res) {
           return;
         }
         prediction = fetched.prediction;
+        // The webhook usually lands before the coordinator returns, so the
+        // status endpoint hasn't got the result (and its timings) yet — the
+        // existence check proves success without them. The webhook body is
+        // authenticated by the per-job webhookSecret above, and timings are
+        // advisory stats (never part of the success proof), so trusting the
+        // body's copy here is fine.
+        if (!prediction.metrics && req.body && req.body.timings) {
+          prediction.metrics = req.body.timings;
+        }
       } catch (error) {
         console.error('Webhook: failed to fetch Modal job state:', error);
         res.status(502).send('Upstream error');

@@ -103,6 +103,7 @@ async function fetchModalPrediction(admin, job, jobId) {
 
   let status = null;
   let error = null;
+  let metrics = null;
   if (job.providerJobId && modalConfigured()) {
     try {
       const url = `${modalStatusUrl()}?call_id=${encodeURIComponent(job.providerJobId)}` +
@@ -112,6 +113,10 @@ async function fetchModalPrediction(admin, job, jobId) {
         const body = await response.json();
         status = body.status || null;
         error = body.error || null;
+        // Per-stage compute timings (sfm/train seconds + GPU) the Modal app
+        // reports in its result — advisory stats for the generationLog, not
+        // part of the success proof.
+        metrics = (body.result && body.result.timings) || null;
       }
     } catch (e) {
       // Transient (cold start timeout, network) — fall through to the
@@ -121,7 +126,7 @@ async function fetchModalPrediction(admin, job, jobId) {
   }
 
   if (status === 'succeeded') {
-    return { prediction: { id: job.providerJobId, status: 'succeeded', output: gcsUri } };
+    return { prediction: { id: job.providerJobId, status: 'succeeded', output: gcsUri, metrics } };
   }
   if (status === 'failed') {
     // Drop noisy infra wrappers (e.g. Modal exception-serialization artifacts)
