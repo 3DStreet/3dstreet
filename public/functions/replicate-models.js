@@ -100,12 +100,14 @@ const REPLICATE_MODELS = {
   // a video source (uploaded straight to Storage, not base64'd). Output is a
   // .ply, so the downstream save + RAD/LOD pipeline are reused unchanged.
   //
-  // THREE QUALITY TIERS (Basic/High/Max = 10/20/40 tokens), one pipeline. The
+  // THREE QUALITY TIERS (Basic/High/Max = 15/30/60 tokens), one pipeline. The
   // `pipeline` knobs ride the submit to the provider; pricing targets COGS ≤
   // ~50% of retail ($0.10/token). The cost lever is target_framecount (SfM is
-  // CPU-bound and dominates); gaussians set detail/file size; steps cap at
-  // 30k. Measured: High ≈ $0.94–1.08 on the Modal split shape; Basic/Max are
-  // estimates until the longer-video calibration rows land.
+  // CPU-bound, dominates, and is superlinear in frames); gaussians set
+  // detail/file size but are nearly free (steps cap at 30k). Measured on the
+  // Modal split shape, 2026-06-11 calibration (exact frame extraction):
+  // Basic 300f $0.73 (easy scene), 600f $2.39, Max 893f $2.69 — the flat
+  // 600f→900f curve is why High runs 450 frames, not 600.
   //
   // `modelName` points at the Replicate model the Cog (repo:
   // github.com/3DStreet/vid2scene-cog) is pushed to: kfarr/vid2scene, hardware
@@ -129,15 +131,15 @@ const REPLICATE_MODELS = {
       modelName: 'vid2scene (Video to Splat)',
       sourceType: 'video'
     },
-    // ~half the frames + half the steps of High → roughly half the wall/COGS
-    // (est ≈$0.50 split-shape). Good-enough preview quality.
+    // Fewer frames + half the steps of High. Measured $0.73 on the cone;
+    // real-video scenes est ≈$0.9–1.0. Good-enough preview quality.
     pipeline: {
       target_framecount: 300,
       training_num_steps: 15000,
       training_max_num_gaussians: 500000,
       resolution: 1920
     },
-    tokenCost: 10
+    tokenCost: 15
   },
   // The DEFAULT vid2scene tier (keeps the original `vid2scene` id so existing
   // job docs and any stored model_id references stay valid).
@@ -154,14 +156,17 @@ const REPLICATE_MODELS = {
       modelName: 'vid2scene (Video to Splat)',
       sourceType: 'video'
     },
-    // The calibrated default preset: measured ≈$0.94–1.08 on Modal split.
+    // The default tier. 450 frames, not 600: SfM cost is superlinear in
+    // frames and nearly flat 600→900 (measured $2.39 @600f vs $2.69 @893f),
+    // so 600-frame High cost ~90% of a Max while charging half. 450f keeps
+    // 1.5x Basic's coverage at est ≈$1.6–1.8 COGS (~55–60% of retail).
     pipeline: {
-      target_framecount: 600,
+      target_framecount: 450,
       training_num_steps: 30000,
       training_max_num_gaussians: 500000,
       resolution: 1920
     },
-    tokenCost: 20
+    tokenCost: 30
   },
   'vid2scene-max': {
     name: 'vid2scene Max (Video to Splat)',
@@ -176,15 +181,16 @@ const REPLICATE_MODELS = {
       modelName: 'vid2scene (Video to Splat)',
       sourceType: 'video'
     },
-    // Max detail: 4x the gaussians (≈330 MB .ply) + more source frames; steps
-    // already cap at 30k so cost grows sub-linearly (est ≈$1.3–1.5).
+    // Max detail: 4x the gaussians (≈330 MB .ply) + double Basic's frames;
+    // steps cap at 30k so cost grows sub-linearly (measured $2.69 @893f,
+    // 45% of retail — the healthiest tier).
     pipeline: {
       target_framecount: 900,
       training_num_steps: 30000,
       training_max_num_gaussians: 2000000,
       resolution: 1920
     },
-    tokenCost: 40
+    tokenCost: 60
   }
 };
 

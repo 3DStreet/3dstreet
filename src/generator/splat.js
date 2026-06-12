@@ -57,18 +57,19 @@ const SPLAT_MODELS = {
   // Basic/High/Max buttons below the source video and is what's submitted as
   // model_id. `vid2scene` (High) is the tier the dropdown entry lands on.
   // `videoHint` is the recommended source length, derived from each tier's
-  // frame budget (300/600/900 frames ≈ 10/20/30 s of unique frames at 30 fps;
-  // beyond ~2.5x that, subsampling gets sparse and quality drops).
+  // frame budget (300/450/900 frames ≈ 10/15/30 s of unique frames at 30 fps;
+  // beyond ~2.5x that, subsampling gets sparse and quality drops). etaText
+  // reflects the 2026-06-11 calibration wall times.
   'vid2scene-basic': {
     label: 'Video → Splat (vid2scene Basic)',
     tierGroup: 'vid2scene',
     tier: 'Basic',
     videoHint: '~10–25s video',
     inputKind: 'video',
-    tokenCost: 10,
-    etaText: '20–25 minutes',
+    tokenCost: 15,
+    etaText: 'about 30 minutes',
     blurb:
-      'Model: vid2scene Basic · best for a ~10–25 second orbit of a single object · preview-grade detail, usually ready in ~20–25 minutes.',
+      'Model: vid2scene Basic · best for a ~10–25 second orbit of a single object · preview-grade detail, usually ready in ~30 minutes.',
     notice: VID2SCENE_NOTICE
   },
   vid2scene: {
@@ -76,12 +77,12 @@ const SPLAT_MODELS = {
     groupLabel: 'Video → Splat (vid2scene)',
     tierGroup: 'vid2scene',
     tier: 'High',
-    videoHint: '~25–50s video',
+    videoHint: '~15–40s video',
     inputKind: 'video',
-    tokenCost: 20,
-    etaText: 'about 45 minutes',
+    tokenCost: 30,
+    etaText: 'about an hour',
     blurb:
-      'Model: vid2scene High · best for a ~25–50 second orbit of a larger subject or small scene · the recommended balance of detail and time, usually ~45 minutes.',
+      'Model: vid2scene High · best for a ~15–40 second orbit of a larger subject or small scene · the recommended balance of detail and time, usually about an hour.',
     notice: VID2SCENE_NOTICE
   },
   'vid2scene-max': {
@@ -90,10 +91,10 @@ const SPLAT_MODELS = {
     tier: 'Max',
     videoHint: '~50–90s video',
     inputKind: 'video',
-    tokenCost: 40,
-    etaText: 'an hour or more',
+    tokenCost: 60,
+    etaText: '1–2 hours',
     blurb:
-      'Model: vid2scene Max · best for a ~50–90 second sweep of a large scene · maximum detail (4x the gaussians, large file), can take an hour or more.',
+      'Model: vid2scene Max · best for a ~50–90 second sweep of a large scene · maximum detail (4x the gaussians, large file), can take 1–2 hours.',
     notice: VID2SCENE_NOTICE
   }
 };
