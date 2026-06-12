@@ -103,19 +103,22 @@ const SPLAT_MODELS = {
   // Research-preview single tier while the path is validated on real footage.
   // `.insv` has no registered MIME type, so the file input needs an explicit
   // extension `accept` (otherwise pickers grey the files out), and raw .insv
-  // bitrates (~120 Mbps on an X4) need a bigger upload ceiling than phone
-  // clips — both per-model overrides below.
+  // bitrates (~120 Mbps on an X4, ≈900 MB/min) need a far bigger upload
+  // ceiling than phone clips — hence the Max-plan requirement: the 5 GB cap
+  // below is exactly the MAX tier's per-file limit (and the Storage-rules
+  // backstop), and these jobs carry Max-tier COGS anyway.
   'vid2scene-360': {
     label: '360 → Splat (vid2scene, .insv)',
     inputKind: 'video',
     accept: '.insv',
     requiredExt: '.insv',
-    maxBytes: 1024 * 1024 * 1024, // 1 GB ≈ a ~60s X4/X5 recording
-    videoHint: '~10–60s .insv recording',
+    requiresPlan: 'MAX',
+    maxBytes: 5 * 1000 * 1000 * 1000, // decimal 5 GB — matches storage.rules and MAX_FILE_BYTES_BY_PLAN
+    videoHint: '~10s–5min .insv recording',
     tokenCost: 60,
     etaText: '1–2 hours',
     blurb:
-      'Model: vid2scene 360 · a raw Insta360 .insv recording straight off the camera (no Studio export) · reconstructs directly from the dual fisheye streams for full ground and sky coverage · research preview, usually 1–2 hours.',
+      'Model: vid2scene 360 · a raw Insta360 .insv recording straight off the camera (no Studio export) · reconstructs directly from the dual fisheye streams for full ground and sky coverage · research preview, usually 1–2 hours · requires the Max plan.',
     notice: VID2SCENE_NOTICE
   }
 };
@@ -523,12 +526,33 @@ const SplatTab = {
     return !requiredExt || file.name.toLowerCase().endsWith(requiredExt);
   },
 
+  // Does the signed-in user's plan tier meet a model's `requiresPlan`?
+  // Tier comes from getUploadQuota (fresh server-side claims — same source the
+  // assets panel uses). Fails open: if the check is unavailable, the server-side
+  // gate in generateReplicateSplat still has the final word.
+  async planMeets(requiredTier) {
+    const ranks = { FREE: 0, PRO: 1, MAX: 2 };
+    try {
+      const getUploadQuota = httpsCallable(functions, 'getUploadQuota');
+      const { data } = await getUploadQuota({ proposedBytes: 0 });
+      return (ranks[data.tier] ?? 0) >= (ranks[requiredTier] ?? 0);
+    } catch (err) {
+      console.warn('[splat] plan check unavailable, deferring to server', err);
+      return true;
+    }
+  },
+
   setSourceVideo(file) {
     const model = this.currentModel();
     const maxBytes = model.maxBytes || VIDEO_MAX_BYTES;
     if (file.size > maxBytes) {
+      const GB = 1000 * 1000 * 1000;
+      const maxLabel =
+        maxBytes >= GB
+          ? `${maxBytes / GB} GB`
+          : `${Math.round(maxBytes / (1024 * 1024))} MB`;
       FluxUI.showNotification(
-        `Video is too large (max ${Math.round(maxBytes / (1024 * 1024))} MB). Trim it to a short orbit and try again.`,
+        `Video is too large (max ${maxLabel}). Trim it to a shorter clip and try again.`,
         'error'
       );
       this.clearSourceVideo();
@@ -706,6 +730,17 @@ const SplatTab = {
 
     try {
       const model = this.currentModel();
+
+      // Plan gate, pre-flight. The server enforces this too (generateReplicateSplat
+      // rejects with permission-denied), but a multi-GB .insv upload precedes the
+      // callable — check first so a non-Max user fails in seconds, not after the
+      // whole upload.
+      if (model.requiresPlan && !(await this.planMeets(model.requiresPlan))) {
+        throw new Error(
+          `This model requires the ${model.requiresPlan === 'MAX' ? 'Max' : model.requiresPlan} plan. Upgrade your plan to process raw .insv recordings.`
+        );
+      }
+
       const generateReplicateSplat = httpsCallable(
         functions,
         'generateReplicateSplat'

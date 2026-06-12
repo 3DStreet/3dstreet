@@ -201,13 +201,17 @@ const REPLICATE_MODELS = {
   // images reject the unknown kwarg and the job fails at the SfM stage.
   // RESEARCH-PREVIEW TIER: priced at Max (the insv path renders ~800 frame
   // pairs x 18 virtual views ≈ 1,600 SfM images — Max-like COGS until a
-  // calibration run says otherwise).
+  // calibration run says otherwise). MAX-PLAN ONLY: raw .insv files run
+  // ~900 MB/min, so the upload rides the MAX tier's 5 GB per-file cap, and
+  // the processing cost matches the top plan anyway. Enforced server-side in
+  // generateReplicateSplat via resolvePlanForUser (fresh custom claims).
   'vid2scene-360': {
     name: 'vid2scene 360 (.insv to Splat)',
     modelName: 'kfarr/vid2scene',
     type: 'splat',
     inputKind: 'video',
     provider: 'modal',
+    requiresPlan: 'MAX',
     assetSlug: 'vid2scene-splat',
     assetLabel: 'vid2scene Splat',
     attribution: {

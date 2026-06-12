@@ -5,6 +5,8 @@ const crypto = require('crypto');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
+// Plan-tier resolution for plan-gated models (e.g. vid2scene-360 is MAX-only).
+const { resolvePlanForUser } = require('./asset-quota.js');
 const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS, REPLICATE_MODELS } = require('./replicate-models.js');
 // Modal compute backend — vid2scene runs there (Replicate's on-demand tier
 // preempts long jobs). Provider adapter only; the job/billing machinery in
@@ -830,6 +832,22 @@ const generateReplicateSplat = functions
     // Which compute backend runs this model. Everything except the submit /
     // status-fetch / result-save mechanics is provider-agnostic.
     const provider = modelConfig?.provider || 'replicate';
+
+    // Plan gate: some models (vid2scene-360's multi-GB .insv uploads at
+    // Max-tier COGS) are restricted to a minimum plan tier. resolvePlanForUser
+    // reads fresh custom claims server-side; ALLOWED_PRO_TEAM_DOMAINS (its
+    // team-domain fallback) is already in this function's secrets. The client
+    // pre-checks the same gate before uploading, so this is the backstop.
+    if (modelConfig?.requiresPlan) {
+      const planRanks = { FREE: 0, PRO: 1, MAX: 2 };
+      const { tier } = await resolvePlanForUser(userId);
+      if ((planRanks[tier] ?? 0) < (planRanks[modelConfig.requiresPlan] ?? 0)) {
+        throw new functions.https.HttpsError(
+          'permission-denied',
+          `${modelConfig.name} requires the ${modelConfig.requiresPlan} plan.`
+        );
+      }
+    }
 
     let tokenData;
     try {
