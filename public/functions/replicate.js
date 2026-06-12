@@ -1176,6 +1176,78 @@ async function cleanupSplatTempFile(tempFilePath) {
   }
 }
 
+// FAILED jobs retain their staged source instead of deleting it, so a
+// research-preview failure (e.g. an .insv whose factory calibration didn't
+// parse) can be debugged and re-run against the exact input — re-uploading a
+// multi-GB raw recording to reproduce a failure is not acceptable. The file is
+// flipped back to private (enqueue makePublic()'d it for the provider fetch),
+// and a pointer doc drives the reconciler's GC sweep, which deletes retained
+// sources after RETAINED_SOURCE_TTL_DAYS. Success and user-cancel still clean
+// up immediately. Best-effort: never lets retention break job finalization.
+async function retainSplatTempFile(db, userId, jobId, job, reason) {
+  const tempFilePath = job.tempFilePath;
+  if (!tempFilePath) return null;
+  try {
+    await admin
+      .storage()
+      .bucket()
+      .file(tempFilePath)
+      .makePrivate()
+      .catch((err) =>
+        console.warn('Failed to make retained splat source private:', err.message)
+      );
+    await db.collection('retainedSplatSources').doc(jobId).set({
+      path: tempFilePath,
+      userId,
+      jobId,
+      modelId: job.modelId || null,
+      provider: job.provider || 'replicate',
+      error: (reason || 'unknown').slice(0, 1000),
+      failedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    console.warn(
+      `Retained failed splat source for job ${jobId}: ${tempFilePath}`
+    );
+    return tempFilePath;
+  } catch (err) {
+    console.warn('Failed to retain splat source:', err);
+    return null;
+  }
+}
+
+// Operator notification for failed splat jobs — same Discord webhook the image
+// generator posts to. Fire-and-forget; a research-preview failure the team
+// never hears about is a failure that never gets fixed.
+async function postSplatFailureToDiscord(userId, jobId, job, reason, retainedPath) {
+  if (!process.env.DISCORD_WEBHOOK_URL) return;
+  try {
+    const embed = {
+      title: `Splat job failed: ${job.modelId || job.model || 'unknown model'}`,
+      description: (reason || 'unknown error').slice(0, 2000),
+      color: 0xef4444,
+      fields: [
+        { name: 'Job', value: jobId, inline: true },
+        { name: 'User', value: userId, inline: true },
+        { name: 'Provider', value: job.provider || 'replicate', inline: true },
+        ...(retainedPath
+          ? [{ name: 'Source retained for re-run', value: retainedPath }]
+          : [])
+      ],
+      timestamp: new Date().toISOString()
+    };
+    const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds: [embed] })
+    });
+    if (!response.ok) {
+      console.warn(`Discord splat-failure post failed: HTTP ${response.status}`);
+    }
+  } catch (err) {
+    console.warn('Discord splat-failure post failed:', err.message);
+  }
+}
+
 // How long a `status: 'saving'` claim is trusted before another caller may
 // re-take it. A save that's killed mid-flight (e.g. an OOM while downloading a
 // large .ply) never releases its claim, so without this the job would wedge in
@@ -1512,7 +1584,12 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
     if (!splatUrl) {
       console.error('Unexpected SHARP output:', JSON.stringify(prediction.output, null, 2));
       const remainingTokens = await refundSplatToken(db, userId, jobRef, job);
-      await cleanupSplatTempFile(job.tempFilePath);
+      const retained = await retainSplatTempFile(
+        db, userId, jobRef.id, job, 'Invalid output from model.'
+      );
+      postSplatFailureToDiscord(
+        userId, jobRef.id, job, 'Invalid output from model.', retained
+      ).catch(() => {});
       await jobRef.update({
         status: 'failed',
         error: 'Invalid output from model.',
@@ -1573,7 +1650,16 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
     const snap = await jobRef.get();
     const job = snap.data() || {};
     const remainingTokens = await refundSplatToken(db, userId, jobRef, job);
-    await cleanupSplatTempFile(job.tempFilePath);
+    // Failure → retain the staged source (debuggable, re-runnable) and tell
+    // the team. User-cancel is not a defect: clean up immediately as before.
+    if (normalized === 'failed') {
+      const reason = prediction.error || 'Splat generation failed.';
+      const retained = await retainSplatTempFile(db, userId, jobRef.id, job, reason);
+      postSplatFailureToDiscord(userId, jobRef.id, job, reason, retained)
+        .catch(() => {});
+    } else {
+      await cleanupSplatTempFile(job.tempFilePath);
+    }
     await jobRef.update({
       status: normalized,
       providerStatus: prediction.status,
@@ -1632,7 +1718,8 @@ async function ackClientSeen(jobRef, job) {
 
 const getGenerationJobStatus = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', ...MODAL_SECRETS],
+    // DISCORD_WEBHOOK_URL: failure finalization posts an operator notification.
+    secrets: ['REPLICATE_API_TOKEN', 'DISCORD_WEBHOOK_URL', ...MODAL_SECRETS],
     // saveSplatToGallery streams the .ply through (no full-file buffering), so
     // memory no longer scales with splat size. 512 MB is fixed headroom over the
     // firebase-admin cold-start baseline, not sized to the file.
@@ -1831,7 +1918,8 @@ const replicateJobWebhook = functions
   .runWith({
     // POSTMARK_API_KEY: the webhook sends the completion email in real time
     // (sendGenerationReadyEmail), so it needs the Postmark secret in its env.
-    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY'],
+    // DISCORD_WEBHOOK_URL: failure finalization posts an operator notification.
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL'],
     // Same streamed save as the poll path; 512 MB is fixed cold-start headroom,
     // not sized to the splat.
     memory: '512MB',
@@ -1847,7 +1935,7 @@ const replicateJobWebhook = functions
 // (no streaming), but the memory/timeout stay matched to the shared path.
 const modalJobWebhook = functions
   .runWith({
-    secrets: [...MODAL_SECRETS, 'POSTMARK_API_KEY'],
+    secrets: [...MODAL_SECRETS, 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL'],
     memory: '512MB',
     timeoutSeconds: 300
   })
@@ -1866,5 +1954,7 @@ module.exports = {
   processTerminalPrediction,
   refundSplatToken,
   cleanupSplatTempFile,
+  retainSplatTempFile,
+  postSplatFailureToDiscord,
   normalizeReplicateStatus
 };
