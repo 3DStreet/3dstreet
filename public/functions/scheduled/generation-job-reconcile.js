@@ -30,7 +30,8 @@ const Replicate = require('replicate');
 const {
   processTerminalPrediction,
   refundSplatToken,
-  cleanupSplatTempFile
+  retainSplatTempFile,
+  postSplatFailureToDiscord
 } = require('../replicate.js');
 const {
   MODAL_SECRETS,
@@ -153,7 +154,14 @@ async function fetchProviderPrediction(job, replicate, jobId) {
 // processTerminalPrediction so behavior is identical regardless of who notices.
 async function failJob(db, uid, jobRef, job, reason) {
   const remainingTokens = await refundSplatToken(db, uid, jobRef, job);
-  await cleanupSplatTempFile(job.tempFilePath);
+  // Retain (not delete) the staged input so the failure can be debugged and
+  // re-run against the exact bytes; gcRetainedSplatSources deletes it after
+  // the retention window. Also tell the team — a reconciler-killed job had
+  // no worker around to report anything.
+  const retained = await retainSplatTempFile(db, uid, jobRef.id, job, reason);
+  postSplatFailureToDiscord(uid, jobRef.id, job, reason, retained).catch(
+    () => {}
+  );
   // A killed modal job may still produce a late result into the staging
   // prefix (or already have one nobody will consume) — without this it sits
   // there forever, since the success path's cleanup only runs on a save.
@@ -176,6 +184,48 @@ async function failJob(db, uid, jobRef, job, reason) {
     completedAt: admin.firestore.FieldValue.serverTimestamp()
   });
   return remainingTokens;
+}
+
+// GC sweep for retained failed-job sources (retainSplatTempFile): delete the
+// staged file and its pointer doc once the retention window passes. The window
+// is the debugging budget — long enough to notice a failure notification and
+// re-run the job against the exact input, short enough that multi-GB .insv
+// uploads don't accumulate storage cost indefinitely.
+const RETAINED_SOURCE_TTL_DAYS = 7;
+const MAX_RETAINED_GC_PER_RUN = 25;
+
+async function gcRetainedSplatSources(db, { dryRun }) {
+  const cutoff = admin.firestore.Timestamp.fromMillis(
+    Date.now() - RETAINED_SOURCE_TTL_DAYS * 24 * 60 * 60 * 1000
+  );
+  let snap;
+  try {
+    snap = await db
+      .collection('retainedSplatSources')
+      .where('failedAt', '<', cutoff)
+      .limit(MAX_RETAINED_GC_PER_RUN)
+      .get();
+  } catch (err) {
+    console.warn('[generation-job-reconcile] retained-source GC query failed:', err.message);
+    return 0;
+  }
+  let deleted = 0;
+  for (const doc of snap.docs) {
+    const { path } = doc.data();
+    if (dryRun) {
+      console.log(`[generation-job-reconcile] dry-run: would GC retained source ${path}`);
+      continue;
+    }
+    if (path) {
+      await admin.storage().bucket().file(path).delete().catch(() => {});
+    }
+    await doc.ref.delete().catch(() => {});
+    deleted++;
+  }
+  if (deleted) {
+    console.log(`[generation-job-reconcile] GC'd ${deleted} retained splat sources past ${RETAINED_SOURCE_TTL_DAYS}d`);
+  }
+  return deleted;
 }
 
 async function reconcile({ dryRun }) {
@@ -428,6 +478,10 @@ async function reconcile({ dryRun }) {
     if (summary.samples.length < 25) summary.samples.push(sample);
   }
 
+  // Piggyback the retained-source GC on every sweep (scheduled + manual
+  // trigger) — it shares the cadence and needs no schedule of its own.
+  summary.gcRetainedSources = await gcRetainedSplatSources(db, { dryRun });
+
   return summary;
 }
 
@@ -539,7 +593,7 @@ function escalateIfNeeded(summary, notify) {
 
 const reconcileGenerationJobs = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', ...MODAL_SECRETS],
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL', ...MODAL_SECRETS],
     // processTerminalPrediction may stream a .ply save (no full-file buffering);
     // 512 MB is fixed headroom, not sized to the file. 540s covers a backlog.
     timeoutSeconds: 540,
@@ -580,7 +634,7 @@ const reconcileGenerationJobs = functions
 
 const triggerReconcileGenerationJobs = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', ...MODAL_SECRETS],
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL', ...MODAL_SECRETS],
     timeoutSeconds: 540,
     memory: '512MB'
   })
