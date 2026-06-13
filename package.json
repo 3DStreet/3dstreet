@@ -22,6 +22,7 @@
     "test:modern:coverage": "vitest run --coverage",
     "test:generator": "vitest run test/generator",
     "test:parity": "node test/parity/compare-imports.mjs",
+    "test:parity:fixtures": "node test/parity/generate-fixtures.mjs",
     "test:rules": "cd public && firebase emulators:exec --only firestore --project demo-3dstreet-rules \"cd .. && vitest run --config vitest.rules.config.js\"",
     "prettier": "prettier --write 'src/**/*.js' 'src/**/*.jsx' 'src/**/*.scss'",
     "deploy": "npm run dist && npm run prefirebase && cd public && firebase use dstreet-305604 && firebase deploy --only hosting:app3dstreet",

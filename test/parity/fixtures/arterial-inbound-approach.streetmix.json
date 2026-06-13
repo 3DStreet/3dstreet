@@ -1,0 +1,74 @@
+{
+  "name": "Arterial inbound approach",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 28.8,
+      "leftBuildingVariant": "parking-lot",
+      "rightBuildingVariant": "parking-lot",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "sparse",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "inbound|truck",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "turn-lane",
+          "variantString": "inbound|left",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "turn-lane",
+          "variantString": "inbound|left-straight",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "turn-lane",
+          "variantString": "inbound|straight",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "turn-lane",
+          "variantString": "inbound|right-straight",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "turn-lane",
+          "variantString": "inbound|right",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "turn-lane",
+          "variantString": "inbound|left-right-straight",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "turn-lane",
+          "variantString": "inbound|both",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "sparse",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}

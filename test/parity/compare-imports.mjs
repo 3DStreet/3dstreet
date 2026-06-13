@@ -2,17 +2,24 @@
  * Streetmix import parity check: legacy (`street` + `streetmix-loader`) vs
  * managed (`managed-street` with sourceType: streetmix-url).
  *
- * For each street URL below, the script loads the 3DStreet app in headless
- * Chrome twice (once per import path), screenshots the WebGL canvas from an
+ * Test streets come from test/parity/fixtures/*.streetmix.json — local
+ * snapshots in the Streetmix API response shape that together cover every
+ * supported segment type/variant (regenerate with generate-fixtures.mjs).
+ * Requests to the streetmix.net API are intercepted in the browser and
+ * answered from these fixtures, so runs are hermetic: no Streetmix server,
+ * no drift when someone edits a street online.
+ *
+ * For each fixture, the script loads the 3DStreet app in headless Chrome
+ * twice (once per import path), screenshots the WebGL canvas from an
  * identical camera pose, then compares the two renders pixel-by-pixel after
  * reducing both to 256x256 (mirroring three.js test/e2e/image.js).
  *
  * Usage:
  *   npm start                  # dev server must be running on :3333
- *   npm run test:parity        # all streets
+ *   npm run test:parity        # all fixture streets
  *
  * Options:
- *   --filter=<substr>       Only run streets whose URL contains <substr>.
+ *   --filter=<substr>       Only run fixtures whose slug contains <substr>.
  *   --threshold=<f>         Exit 1 if any street's mismatch ratio exceeds <f>
  *                           (0..1). Default: report only, always exit 0.
  *   --base=<url>            App base URL (default http://localhost:3333).
@@ -25,28 +32,22 @@
  *     support yet)
  *   - managed entity gets street-align "width: center; length: middle" to
  *     match the legacy parser, which centers the street on both axes
- *   - managed-only street-label and street-ground components are removed
- *     before capture (legacy without buildings renders neither)
+ *   - managed-only street-label component is removed before capture (legacy
+ *     without buildings renders no label); street-ground is kept so both
+ *     paths render a ground plane
  *   - viewer-mode camera-path / look-controls are stripped and the camera is
  *     pinned to a fixed pose; Math.random is seeded before each import
  */
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import sharp from 'sharp';
 
-const STREETS = [
-  'https://streetmix.net/kfarr/3/3dstreet-demo-street',
-  'https://streetmix.net/kfarr/96/16th-st-harrison-st-sf-ca',
-  'https://streetmix.net/kfarr/166/telephone-67-nice',
-  'https://streetmix.net/kfarr/158/bus-lane-testing',
-  'https://streetmix.net/kfarr/159/angled-parking-cheat-to-away-from-camera',
-  'https://streetmix.net/kfarr/157/parking-perpendicular',
-  'https://streetmix.net/kfarr/151/example-interstate',
-  'https://streetmix.net/kfarr/24/streetmix-3d-example-street-remix',
-  'https://streetmix.net/kfarr/92/3dstreet-starter-street'
-];
+const PARITY_DIR = dirname(fileURLToPath(import.meta.url));
+const FIXTURES_DIR = join(PARITY_DIR, 'fixtures');
+// creatorId in the fake streetmix.net URLs; marks requests to intercept
+const FIXTURE_CREATOR_ID = 'parity-fixtures';
 
 // Fixed camera pose (meters / degrees). Streets are centered at the origin,
 // up to ~40m wide (x) and 60m long (z), so this is a 3/4 overhead view that
@@ -71,16 +72,61 @@ const FAIL_THRESHOLD = opt('threshold', null);
 const BASE_URL = opt('base', 'http://localhost:3333');
 const HEADFUL = argv.includes('--headful');
 
-const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), 'output');
-const slugOf = (url) => new URL(url).pathname.split('/').slice(-2).join('-');
+const OUT_DIR = join(PARITY_DIR, 'output');
+
+// ---------------------------------------------------------------------------
+// Fixtures: each gets a fake streetmix.net user URL. Both importers convert
+// it to https://streetmix.net/api/v1/streets?namespacedId=N&creatorId=...,
+// which the request interceptor answers from the local file.
+// ---------------------------------------------------------------------------
+async function loadFixtures() {
+  const files = (await readdir(FIXTURES_DIR))
+    .filter((f) => f.endsWith('.streetmix.json'))
+    .sort();
+  return Promise.all(
+    files.map(async (file, i) => {
+      const slug = basename(file, '.streetmix.json');
+      return {
+        slug,
+        url: `https://streetmix.net/${FIXTURE_CREATOR_ID}/${i + 1}/${slug}`,
+        namespacedId: String(i + 1),
+        body: await readFile(join(FIXTURES_DIR, file), 'utf8')
+      };
+    })
+  );
+}
+
+async function interceptStreetmixAPI(page, fixturesById) {
+  await page.setRequestInterception(true);
+  page.on('request', (req) => {
+    const reqUrl = req.url();
+    if (reqUrl.startsWith('https://streetmix.net/api/v1/streets')) {
+      const params = new URL(reqUrl).searchParams;
+      const fixture =
+        params.get('creatorId') === FIXTURE_CREATOR_ID &&
+        fixturesById.get(params.get('namespacedId'));
+      if (fixture) {
+        req.respond({
+          status: 200,
+          contentType: 'application/json',
+          headers: { 'access-control-allow-origin': '*' },
+          body: fixture.body
+        });
+        return;
+      }
+    }
+    req.continue();
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Page helpers (run in browser context)
 // ---------------------------------------------------------------------------
-async function openScene(browser) {
+async function openScene(browser, fixturesById) {
   const page = await browser.newPage();
   await page.setViewport({ ...VIEWPORT, deviceScaleFactor: 1 });
   page.on('pageerror', (err) => console.log('    [pageerror]', err.message));
+  await interceptStreetmixAPI(page, fixturesById);
   // ?viewer=true closes the inspector after init so the scene camera renders
   await page.goto(`${BASE_URL}/?viewer=true`, {
     waitUntil: 'domcontentloaded',
@@ -153,7 +199,6 @@ async function triggerManaged(page, url) {
   await page.evaluate(() => {
     const el = document.getElementById('parity-managed-street');
     el.removeAttribute('street-label');
-    el.removeAttribute('street-ground');
     AFRAME.INSPECTOR?.selectEntity(null);
   });
 }
@@ -254,9 +299,11 @@ try {
 }
 
 await mkdir(OUT_DIR, { recursive: true });
-const streets = STREETS.filter((u) => u.includes(FILTER));
+const fixtures = await loadFixtures();
+const fixturesById = new Map(fixtures.map((f) => [f.namespacedId, f]));
+const streets = fixtures.filter((f) => f.slug.includes(FILTER));
 if (streets.length === 0) {
-  console.error(`No streets match --filter=${FILTER}`);
+  console.error(`No fixtures match --filter=${FILTER}`);
   process.exit(1);
 }
 
@@ -266,8 +313,7 @@ const browser = await puppeteer.launch({
 });
 
 const results = [];
-for (const url of streets) {
-  const slug = slugOf(url);
+for (const { slug, url } of streets) {
   console.log(`\n${slug}`);
   const paths = {
     legacy: join(OUT_DIR, `${slug}-legacy.png`),
@@ -277,7 +323,7 @@ for (const url of streets) {
   try {
     for (const mode of ['legacy', 'managed']) {
       console.log(`  ${mode}: importing...`);
-      const page = await openScene(browser);
+      const page = await openScene(browser, fixturesById);
       if (mode === 'legacy') await triggerLegacy(page, url);
       else await triggerManaged(page, url);
       await settleAndCapture(page, paths[mode]);

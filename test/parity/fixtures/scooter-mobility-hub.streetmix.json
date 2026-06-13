@@ -1,0 +1,92 @@
+{
+  "name": "Scooter mobility hub",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 26.1,
+      "leftBuildingVariant": "wide",
+      "rightBuildingVariant": "narrow",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "bikeshare",
+          "variantString": "left|sidewalk",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "bikeshare",
+          "variantString": "left|road",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "scooter",
+          "variantString": "inbound|regular",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "scooter",
+          "variantString": "inbound|green",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "scooter",
+          "variantString": "inbound|red",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "divider",
+          "variantString": "flowers",
+          "width": 0.9,
+          "elevation": 0.15
+        },
+        {
+          "type": "scooter",
+          "variantString": "outbound|red",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "scooter",
+          "variantString": "outbound|green",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "scooter",
+          "variantString": "outbound|regular",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "bikeshare",
+          "variantString": "right|road",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "bikeshare",
+          "variantString": "right|sidewalk",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}
