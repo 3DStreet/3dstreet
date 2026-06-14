@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>StreetsDataSF (mock)</title>
+    <style>
+      body {
+        font-family: -apple-system, system-ui, sans-serif;
+        margin: 0;
+        padding: 16px;
+        color: #1c1c1e;
+      }
+      h4 {
+        margin: 0 0 4px;
+      }
+      .muted {
+        color: #6b6b70;
+        font-size: 13px;
+      }
+      .control {
+        margin: 16px 0;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      select,
+      button {
+        font-size: 14px;
+        padding: 6px 8px;
+      }
+      #readout {
+        margin-top: 16px;
+        padding: 10px 12px;
+        background: #f2f2f7;
+        border-radius: 8px;
+        font-size: 13px;
+        min-height: 20px;
+      }
+      /* The Leaflet map output -- hidden because the 3D scene is now the map. */
+      #map {
+        display: none;
+      }
+      a {
+        color: #0a84ff;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      This is a static stand-in for the R Shiny app `StreetsDataSF`
+      (https://github.com/mrnickbear/StreetsDataSF). It mimics the canonical
+      Shiny client contract so the 3DStreet bridge can be tested end-to-end
+      without an R / shinylive runtime:
+
+        fluidPage(
+          h4("Arterial Streets from DataSF"),
+          uiOutput("tab"),
+          leafletOutput("map")          <- hijacked into the 3D scene
+        )
+
+      A real deployment would be a `shinylive::export()` bundle that simply adds
+      <script src="bridge.js"> to the page head; the server/UI R code is
+      unchanged.
+    -->
+
+    <h4>Arterial Streets from DataSF</h4>
+    <div id="tab" class="muted">
+      Source:
+      <a href="https://data.sfgov.org/d/3wks-ifmi" target="_blank" rel="noopener"
+        >DataSF — Arterial Streets</a
+      >
+    </div>
+
+    <!-- The "rest of the UI" that renders here in the side panel. -->
+    <div class="control">
+      <label for="basemap">Basemap (demo input)</label>
+      <select id="basemap">
+        <option>Streets</option>
+        <option>Satellite</option>
+        <option>Dark</option>
+      </select>
+    </div>
+
+    <button id="reload">Reload streets</button>
+
+    <div id="readout">Waiting for map interaction…</div>
+
+    <!-- leafletOutput("map") target -->
+    <div id="map"></div>
+
+    <!--
+      Minimal Shiny stub: in a real app this is the Shiny client runtime. We
+      only implement setInputValue so the bridge's host->app channel is visibly
+      exercised (clicking a street in the 3D scene updates #readout here).
+    -->
+    <script>
+      window.Shiny = {
+        setInputValue: function (name, value) {
+          var r = document.getElementById('readout');
+          r.textContent =
+            'input$' + name + ' = ' + JSON.stringify(value);
+          console.log('[mock] Shiny.setInputValue', name, value);
+        }
+      };
+    </script>
+
+    <script src="bridge.js"></script>
+
+    <script>
+      // Load the sample arterial streets and push them to the 3D scene via the
+      // bridge's explicit API (the reliable app->host path).
+      function loadStreets() {
+        fetch('sample-streets.geojson')
+          .then(function (res) {
+            return res.json();
+          })
+          .then(function (geojson) {
+            window.Shiny3DStreet.sendFeatures(geojson, { mapId: 'map' });
+            document.getElementById('readout').textContent =
+              'Sent ' + geojson.features.length + ' streets to the 3D scene.';
+          })
+          .catch(function (e) {
+            document.getElementById('readout').textContent =
+              'Failed to load streets: ' + e;
+          });
+      }
+
+      document.getElementById('reload').addEventListener('click', loadStreets);
+      loadStreets();
+    </script>
+  </body>
+</html>

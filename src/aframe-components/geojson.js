@@ -71,6 +71,7 @@ AFRAME.registerComponent('geojson', {
     }
 
     this.addBuildings(json);
+    this.addLines(json);
   },
 
   // Compute center of the given geojson features
@@ -347,6 +348,71 @@ AFRAME.registerComponent('geojson', {
 
     console.log(
       `[GeoJSON Component] Rendering complete: ${count} buildings loaded, ${skipped} features skipped`
+    );
+  },
+
+  // Render LineString / MultiLineString features (e.g. street centerlines,
+  // routes, paths) as 3D lines. Polygons are handled by addBuildings; this
+  // pass intentionally ignores them so both can run over the same Feature
+  // collection. Color comes from feature2color (honors any color property).
+  addLines: function (geojson) {
+    const LINE_ELEVATION_M = 0.2; // lift slightly off the ground plane
+    let positions = [];
+    let colors = [];
+    let lineCount = 0;
+
+    // Append one polyline (array of [lon, lat]) as a run of segments, mapping
+    // the planar (east, north) projection into scene space (x, y, -z) so it
+    // lines up with the extruded buildings from addBuildings.
+    const addPolyline = (coords, color) => {
+      let pts = this.geojsonCoords2plane(coords, this.data.lat, this.data.lon);
+      for (let i = 0; i < pts.length - 1; i++) {
+        positions.push(
+          pts[i].x,
+          LINE_ELEVATION_M,
+          -pts[i].y,
+          pts[i + 1].x,
+          LINE_ELEVATION_M,
+          -pts[i + 1].y
+        );
+        colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
+      }
+    };
+
+    for (let feature of geojson.features) {
+      let type = feature.geometry && feature.geometry.type;
+      if (type !== 'LineString' && type !== 'MultiLineString') {
+        continue;
+      }
+      let color = new THREE.Color(this.feature2color(feature));
+      if (type === 'LineString') {
+        addPolyline(feature.geometry.coordinates, color);
+      } else {
+        for (let line of feature.geometry.coordinates) {
+          addPolyline(line, color);
+        }
+      }
+      lineCount += 1;
+    }
+
+    if (positions.length === 0) {
+      return;
+    }
+
+    let geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(positions, 3)
+    );
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    let material = new THREE.LineBasicMaterial({ vertexColors: true });
+    let mesh = new THREE.LineSegments(geometry, material);
+    let entity = document.createElement('a-entity');
+    entity.setObject3D('mesh', mesh);
+    this.el.appendChild(entity);
+
+    console.log(
+      `[GeoJSON Component] Rendering complete: ${lineCount} line features loaded`
     );
   }
 });

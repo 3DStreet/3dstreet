@@ -9,6 +9,7 @@ import ComponentsSidebar from '../elements/Sidebar';
 import { Button, Tabs } from '../elements';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import AIChatPanel from './AIChatPanel';
+import ShinyPanel from './ShinyPanel';
 import styles from './RightPanel.module.scss';
 
 const TooltipWrapper = ({ children, content, side = 'bottom' }) => (
@@ -62,6 +63,7 @@ export default function RightPanel({ entity }) {
 
   const openPropertiesTab = () => setActiveTab('properties');
   const openConsoleTab = () => setActiveTab('console');
+  const openShinyTab = () => setActiveTab('shiny');
 
   return (
     <Tooltip.Provider>
@@ -118,6 +120,12 @@ export default function RightPanel({ entity }) {
                 value: 'console',
                 isSelected: activeTab === 'console',
                 onClick: openConsoleTab
+              },
+              {
+                label: 'Shiny',
+                value: 'shiny',
+                isSelected: activeTab === 'shiny',
+                onClick: openShinyTab
               }
             ]}
           />
@@ -134,6 +142,12 @@ export default function RightPanel({ entity }) {
             style={{ display: activeTab === 'console' ? 'flex' : 'none' }}
           >
             <AIChatPanel />
+          </div>
+          <div
+            className={`${styles.tabPane} ${styles.tabPaneFlex}`}
+            style={{ display: activeTab === 'shiny' ? 'flex' : 'none' }}
+          >
+            <ShinyPanel />
           </div>
         </div>
       </div>

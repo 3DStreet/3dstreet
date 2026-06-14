@@ -1,0 +1,72 @@
+{
+  "type": "FeatureCollection",
+  "name": "SF Arterial Streets (sample)",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "id": "market", "name": "Market St", "color": "#ff3b30" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-122.3937, 37.7946],
+          [-122.3992, 37.7913],
+          [-122.4058, 37.7873],
+          [-122.4145, 37.7818],
+          [-122.4262, 37.7694]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "vanness", "name": "Van Ness Ave", "color": "#34c759" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-122.4216, 37.8023],
+          [-122.4213, 37.7912],
+          [-122.4209, 37.7799],
+          [-122.4205, 37.7686]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "mission", "name": "Mission St", "color": "#0a84ff" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-122.3937, 37.7901],
+          [-122.4034, 37.7841],
+          [-122.4131, 37.7741],
+          [-122.4196, 37.7642]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "embarcadero", "name": "The Embarcadero", "color": "#ffd60a" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-122.3937, 37.7946],
+          [-122.3905, 37.7901],
+          [-122.3888, 37.7853],
+          [-122.3893, 37.7805]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "geary", "name": "Geary Blvd", "color": "#bf5af2" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-122.4216, 37.7866],
+          [-122.4326, 37.7841],
+          [-122.4448, 37.7818],
+          [-122.4571, 37.7806]
+        ]
+      }
+    }
+  ]
+}

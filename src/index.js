@@ -42,6 +42,7 @@ require('./aframe-components/google-maps-aerial.js');
 require('./aframe-components/viewer-mode.js');
 require('./aframe-components/scene-timer.js');
 require('./aframe-components/geojson.js');
+require('./aframe-components/shiny-app.js');
 require('./aframe-components/asset-fallback-system.js');
 require('./editor/index.jsx');
 var firebase = require('./shared/services/firebase.js');
