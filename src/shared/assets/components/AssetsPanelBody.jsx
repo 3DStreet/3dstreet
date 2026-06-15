@@ -316,7 +316,7 @@ const AssetsPanelBody = ({
             <strong>
               {formatBytes(usage.planLimit - usage.bytesUsed)} to play with
             </strong>
-            , room for HDRIs, ground textures, and a few hero models.
+            , room for 3D models, splats, images, videos and more.
           </div>
         </div>
       )}
