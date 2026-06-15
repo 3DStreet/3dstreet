@@ -34,7 +34,11 @@ const isUserPro = async (user) => {
     // refresh) to avoid latency on the unhappy path.
     try {
       const idTokenResult = await user.getIdTokenResult();
-      if (idTokenResult.claims.plan === 'PRO') {
+      // MAX is a superset of Pro — both unlock all Pro features.
+      if (
+        idTokenResult.claims.plan === 'PRO' ||
+        idTokenResult.claims.plan === 'MAX'
+      ) {
         console.log('PRO PLAN USER (fallback - cached claims)');
         // Claims fallback can only confirm subscription Pro, not team Pro.
         return { isPro: true, isProTeam: false, teamDomain: null };
