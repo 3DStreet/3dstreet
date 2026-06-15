@@ -5,6 +5,7 @@ import {
   STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING
 } from './street-mapping-streetplan.js';
 import useStore from '../store.js';
+import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 const { segmentVariants } = require('../segments-variants.js');
 const streetmixUtils = require('../tested/streetmix-utils');
 const streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested');
@@ -662,7 +663,7 @@ AFRAME.registerComponent('managed-street', {
             longitude: streetmixLatLng.lng,
             locationString: streetData.location.label || '',
             maps: 'none',
-            source: 'streetmix'
+            source: GEO_SOURCES.STREETMIX
           });
         }
       }

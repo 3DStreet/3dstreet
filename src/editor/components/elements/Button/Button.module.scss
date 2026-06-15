@@ -205,6 +205,28 @@
   }
 }
 
+/* Shared upgrade / "Go Pro" CTA treatment (#1644 / #1654). Single home for the
+   purple gradient + hover lift used by every paywall entry point. */
+.upgradeButton {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: variables.$white;
+  border: none;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(118, 75, 162, 0.4);
+    transition: all 0.3s;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+  }
+}
+
 .icon {
   display: flex;
   justify-content: center;

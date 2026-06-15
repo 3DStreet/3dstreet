@@ -80,31 +80,42 @@ const AssetsPanelBody = ({
     setHintDismissed(true);
   };
 
+  // Storage usage thresholds (#1644), computed once and shared by the
+  // impression effect below and the render. tier is null until getUploadQuota
+  // responds (no flicker); upsells only apply to the FREE tier with a
+  // host-provided checkout entry (the generator passes none).
+  const planKnown = usage.planLimit != null;
+  const usageRatio =
+    planKnown && usage.planLimit > 0
+      ? Math.min(1, usage.bytesUsed / usage.planLimit)
+      : 0;
+  const isFull = planKnown && usageRatio >= 1;
+  const isNearFull = planKnown && !isFull && usageRatio >= 0.8;
+  const showStorageUpsell = usage.tier === 'FREE' && !!onUpgrade;
+  // Severity of the upgrade card that actually renders — null when no card can
+  // show, so we never log an impression for a prompt the user can't see.
+  const upsellSeverity =
+    showStorageUpsell && isFull
+      ? 'full'
+      : showStorageUpsell && isNearFull
+        ? 'near_full'
+        : null;
+
   // Funnel: log each time the meter crosses into a new upsell severity so
   // PostHog can compare prompt impressions against storage_upsell_clicked /
   // checkout_started. Ref-guarded to once per severity per mount. Lives
   // above the early returns to keep hook order stable.
   const shownSeverityRef = useRef(null);
-  const ratioForEffect =
-    usage.planLimit > 0 ? usage.bytesUsed / usage.planLimit : 0;
-  const severityForEffect =
-    usage.tier === 'FREE' && usage.planLimit != null
-      ? ratioForEffect >= 1
-        ? 'full'
-        : ratioForEffect >= 0.8
-          ? 'near_full'
-          : null
-      : null;
   useEffect(() => {
-    if (!severityForEffect) return;
-    if (shownSeverityRef.current === severityForEffect) return;
-    shownSeverityRef.current = severityForEffect;
+    if (!upsellSeverity) return;
+    if (shownSeverityRef.current === upsellSeverity) return;
+    shownSeverityRef.current = upsellSeverity;
     posthog.capture('storage_upsell_shown', {
-      severity: severityForEffect,
+      severity: upsellSeverity,
       bytes_used: usage.bytesUsed,
       plan_limit: usage.planLimit
     });
-  }, [severityForEffect, usage.bytesUsed, usage.planLimit]);
+  }, [upsellSeverity, usage.bytesUsed, usage.planLimit]);
 
   useEffect(() => {
     const node = sentinelRef.current;
@@ -165,16 +176,6 @@ const AssetsPanelBody = ({
     );
   }
 
-  const planKnown = usage.planLimit != null;
-  const usageRatio =
-    planKnown && usage.planLimit > 0
-      ? Math.min(1, usage.bytesUsed / usage.planLimit)
-      : 0;
-  const isFull = planKnown && usageRatio >= 1;
-  const isNearFull = planKnown && !isFull && usageRatio >= 0.8;
-  // Upsells only make sense on the FREE tier with a host-provided checkout
-  // entry point. tier is null until getUploadQuota responds — no flicker.
-  const showStorageUpsell = usage.tier === 'FREE' && !!onUpgrade;
   const showLowUsageHint =
     usage.tier === 'FREE' &&
     planKnown &&

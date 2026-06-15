@@ -11,6 +11,7 @@ import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAss
 import { AssetDetailModal, formatBytes } from '@shared/assets';
 import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
 import useStore from '@/store.js';
+import { Button } from './Button';
 
 const AssetInfoPanel = ({ entity }) => {
   const state = useAssetUploadStatus(entity);
@@ -135,25 +136,19 @@ const AssetInfoPanel = ({ entity }) => {
         </div>
       )}
       {isQuotaBlocked && (
-        <button
-          type="button"
+        <Button
+          variant="upgrade"
           onClick={upgradeForStorage}
           style={{
-            display: 'block',
             width: '100%',
             marginTop: 6,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            border: 'none',
-            color: 'white',
             borderRadius: 4,
             padding: '6px 8px',
-            fontSize: 11,
-            fontWeight: 600,
-            cursor: 'pointer'
+            fontSize: 11
           }}
         >
           Upgrade for 5 GB storage
-        </button>
+        </Button>
       )}
       {state.assetId && (
         <div

@@ -1,3 +1,5 @@
+import { GEO_SOURCES } from '@shared/constants/geoSources.js';
+
 export function equal(var1, var2) {
   var keys1;
   var keys2;
@@ -114,16 +116,19 @@ export async function setSceneLocation(latitude, longitude, options = {}) {
       const geoLayer = document.getElementById('reference-layers');
 
       // Resolve provenance: an explicit caller source wins (e.g. the AI
-      // assistant), then geojson import, then the existing source if this is
-      // re-setting an already-tagged location (keeps the original origin),
-      // falling back to 'manual' for a fresh web "Set Location".
+      // assistant, or the GeoModal stamping 'manual' when the user actually
+      // changes the location), then geojson import, then the existing source if
+      // this is re-activating an already-tagged location (keeps the original
+      // origin), falling back to 'manual' for a fresh web "Set Location".
       const existingGeo = geoLayer.hasAttribute('street-geo')
         ? geoLayer.getAttribute('street-geo')
         : null;
       const existingSource = existingGeo?.source || '';
       const source =
         options.source ||
-        (options.fromGeojsonImport ? 'geojson' : existingSource || 'manual');
+        (options.fromGeojsonImport
+          ? GEO_SOURCES.GEOJSON
+          : existingSource || GEO_SOURCES.MANUAL);
 
       const value = {
         latitude: lat,

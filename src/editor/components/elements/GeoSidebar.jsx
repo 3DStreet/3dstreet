@@ -3,6 +3,7 @@ import { Button } from '../elements';
 import { useAuthContext } from '@/editor/contexts/index.js';
 import PropertyRow from './PropertyRow';
 import { Magnifier20Icon, SunIcon } from '@shared/icons';
+import { geoSourcePhrase } from '@shared/constants/geoSources.js';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { useState, useEffect } from 'react';
@@ -233,29 +234,8 @@ const EnvironmentSection = () => {
 // so we hide them (see GeoSidebar) and foreground a single honest CTA. The
 // copy names the action ("Add Geo Layer"), the payoff (real-world maps), and
 // the cost (one geo token) so the token economy is legible at the point of
-// spend. Plan/token state only changes the CTA, not the layout.
-// Human phrase for where a saved-but-not-activated location came from. Empty
-// string means "don't attribute a source" (e.g. a manual set that somehow
-// never activated). Legacy scenes with no stamped source are, in practice,
-// from the mobile app (the only path that leaves a location unactivated), so
-// an empty source defaults to the app.
-const geoSourcePhrase = (source) => {
-  switch (source) {
-    case 'streetmix':
-      return 'imported from Streetmix';
-    case 'geojson':
-      return 'imported from GeoJSON';
-    case 'ai-assistant':
-      return 'set by the AI assistant';
-    case 'bollard-buddy':
-    case '':
-    case undefined:
-      return 'from the 3DStreet app';
-    default:
-      return '';
-  }
-};
-
+// spend. Plan/token state only changes the CTA, not the layout. The saved
+// location's provenance copy comes from geoSourcePhrase (@shared/constants).
 const GeoHero = ({
   hasLocation,
   isPro,
@@ -294,19 +274,21 @@ const GeoHero = ({
           : 'Drop your scene onto real-world maps with 3D buildings, terrain, and satellite imagery.'}
       </div>
       <Button
-        variant="toolbtn"
+        variant={outOfTokens ? 'upgrade' : 'toolbtn'}
         style={{
           width: '100%',
           justifyContent: 'center',
           marginTop: '4px',
-          background: outOfTokens
-            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            : '#774dee',
-          border: 'none',
-          color: 'white',
-          fontWeight: 600,
           fontSize: '13px',
-          padding: '10px 16px'
+          padding: '10px 16px',
+          ...(outOfTokens
+            ? {}
+            : {
+                background: '#774dee',
+                border: 'none',
+                color: 'white',
+                fontWeight: 600
+              })
         }}
         onClick={outOfTokens ? onUpgrade : onAdd}
       >
@@ -401,16 +383,15 @@ const GeoSidebar = ({ entity }) => {
   // Geo activation state (#1654). The scene can carry a suggested lat/lon
   // (e.g. from the mobile app) without the elevation service ever having run,
   // in which case the activation gate in street-geo suppresses all map tiles.
-  // A finite ellipsoidalHeight is the proxy for "activated" — only the
-  // elevation service writes it. Mirrors street-geo's hasSuggestedLocation()
-  // / isGeospatialActivated(). Until activated, the geo-specific controls
-  // (map type, location details, blending) are inert, so we hide them and
-  // show GeoHero instead — one honest CTA per state. Environment is general
-  // scene config (separate #environment entity) and stays visible throughout.
+  // Use the component's own predicates as the single source of truth so this
+  // panel can't drift from the gate's definition of "located" / "activated".
+  // Until activated, the geo-specific controls (map type, location details,
+  // blending) are inert, so we hide them and show GeoHero instead — one honest
+  // CTA per state. Environment is general scene config (separate #environment
+  // entity) and stays visible throughout.
   const geoData = component?.data;
-  const hasLocation =
-    !!geoData && (geoData.latitude !== 0 || geoData.longitude !== 0);
-  const isActivated = !!geoData && Number.isFinite(geoData.ellipsoidalHeight);
+  const hasLocation = !!component && component.hasSuggestedLocation();
+  const isActivated = !!component && component.isGeospatialActivated();
 
   const activateFromCallout = () => {
     posthog.capture('geo_activation_callout_clicked');
@@ -663,83 +644,66 @@ const GeoSidebar = ({ entity }) => {
                   style={{ marginTop: '8px', paddingRight: '12px' }}
                 >
                   <Button
-                    variant="toolbtn"
+                    variant="upgrade"
                     style={{
                       width: '100%',
-                      background:
-                        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      border: 'none',
-                      color: 'white',
-                      fontWeight: '600',
                       fontSize: '12px',
                       padding: '12px 16px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                      boxShadow: '0 4px 12px rgba(118, 75, 162, 0.3)',
-                      ':hover': {
-                        transform: 'translateY(-1px)',
-                        boxShadow: '0 6px 20px rgba(118, 75, 162, 0.4)'
-                      }
+                      borderRadius: '8px'
                     }}
                     onClick={() => startCheckout('geo')}
-                    onMouseEnter={(e) => {
-                      e.target.style.transform = 'translateY(-1px)';
-                      e.target.style.boxShadow =
-                        '0 6px 20px rgba(118, 75, 162, 0.4)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.transform = 'translateY(0px)';
-                      e.target.style.boxShadow =
-                        '0 4px 12px rgba(118, 75, 162, 0.3)';
-                    }}
                   >
                     Upgrade to Pro for unlimited geo lookups
                   </Button>
                 </div>
               )}
 
-            {/* Location details using standard label/value format */}
-            {component && component.data && component.data.locationString && (
-              <>
-                <div className="propertyRow">
-                  <div className="fakePropertyRowLabel">Location</div>
-                  <div
-                    className="fakePropertyRowValue"
-                    style={{ fontSize: '12px', color: '#ccc' }}
-                  >
-                    {component.data.locationString}
-                  </div>
-                </div>
-
-                {component.data.intersectionString && (
+            {/* Location details using standard label/value format. Gated on
+                isActivated so a located-but-not-activated scene shows only the
+                GeoHero, not an orphaned details block with no status badge. */}
+            {isActivated &&
+              component &&
+              component.data &&
+              component.data.locationString && (
+                <>
                   <div className="propertyRow">
-                    <div className="fakePropertyRowLabel">
-                      Nearest
-                      <br /> Intersection
-                    </div>
+                    <div className="fakePropertyRowLabel">Location</div>
                     <div
                       className="fakePropertyRowValue"
                       style={{ fontSize: '12px', color: '#ccc' }}
                     >
-                      {component.data.intersectionString}
+                      {component.data.locationString}
                     </div>
                   </div>
-                )}
 
-                {component.data.orthometricHeight && (
-                  <div className="propertyRow">
-                    <div className="fakePropertyRowLabel">Elevation</div>
-                    <div
-                      className="fakePropertyRowValue"
-                      style={{ fontSize: '12px', color: '#ccc' }}
-                    >
-                      {Math.round(component.data.orthometricHeight)}m
+                  {component.data.intersectionString && (
+                    <div className="propertyRow">
+                      <div className="fakePropertyRowLabel">
+                        Nearest
+                        <br /> Intersection
+                      </div>
+                      <div
+                        className="fakePropertyRowValue"
+                        style={{ fontSize: '12px', color: '#ccc' }}
+                      >
+                        {component.data.intersectionString}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </>
-            )}
+                  )}
+
+                  {component.data.orthometricHeight && (
+                    <div className="propertyRow">
+                      <div className="fakePropertyRowLabel">Elevation</div>
+                      <div
+                        className="fakePropertyRowValue"
+                        style={{ fontSize: '12px', color: '#ccc' }}
+                      >
+                        {Math.round(component.data.orthometricHeight)}m
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
 
             <EnvironmentSection />
 

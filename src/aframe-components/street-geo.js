@@ -30,11 +30,12 @@ AFRAME.registerComponent('street-geo', {
     blendingEnabled: { type: 'boolean', default: false },
     locationString: { type: 'string', default: '' },
     intersectionString: { type: 'string', default: '' },
-    // Provenance of the geo location: where the coordinates came from. One
-    // of: 'streetmix' | 'geojson' | 'manual' | 'bollard-buddy' (the 3DStreet
-    // mobile app) | 'ai-assistant'. Empty when unknown (e.g. legacy scenes).
-    // Stamped wherever a location is first established; preserved across a
-    // later activation so the original origin is retained.
+    // Provenance of the geo location: where the coordinates came from. Values
+    // are the GEO_SOURCES enum in @shared/constants/geoSources.js (streetmix,
+    // geojson, manual, bollard-buddy = the 3DStreet mobile app, ai-assistant).
+    // Empty when unknown (e.g. legacy scenes). Stamped wherever a location is
+    // first established; preserved across a later activation so the original
+    // origin is retained.
     source: { type: 'string', default: '' }
   },
   init: function () {
