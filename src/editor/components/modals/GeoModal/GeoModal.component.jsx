@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { SavingModal } from '../SavingModal';
 import styles from './GeoModal.module.scss';
 import { Magnifier20Icon } from '@shared/icons';
@@ -17,6 +17,7 @@ import { setSceneLocation } from '../../../lib/utils.js';
 import useStore from '@/store.js';
 import { useAuthContext } from '../../../contexts/index.js';
 import { canUseGeoFeature } from '@shared/utils/tokens';
+import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 import posthog from 'posthog-js';
 import { Tooltip } from 'radix-ui';
 
@@ -63,6 +64,11 @@ const GeoModal = () => {
   const [successData, setSuccessData] = useState(null);
   const [wasOpenedFromGeojson, setWasOpenedFromGeojson] = useState(false);
   const [currentLocationString, setCurrentLocationString] = useState('');
+  // True once the user actively picks a new spot (map click, search, manual
+  // coordinates) this session, as opposed to the prefill from the scene's
+  // existing location. Drives provenance: a deliberate change stamps source
+  // 'manual', while just activating the prefilled location keeps its origin.
+  const userChangedLocationRef = useRef(false);
   const returnToPreviousModal = useStore(
     (state) => state.returnToPreviousModal
   );
@@ -70,13 +76,38 @@ const GeoModal = () => {
   const startCheckout = useStore((state) => state.startCheckout);
   const geojsonImportData = useStore((state) => state.geojsonImportData);
   const setGeojsonImportData = useStore((state) => state.setGeojsonImportData);
+  const geoModalFromActivationGate = useStore(
+    (state) => state.geoModalFromActivationGate
+  );
+  const setGeoModalFromActivationGate = useStore(
+    (state) => state.setGeoModalFromActivationGate
+  );
 
   const onClose = () => {
+    // Dead-end recovery (#1654): the activation gate auto-opened this modal
+    // and the user is dismissing without activating. The location is
+    // preserved and the Geospatial panel's status badge surfaces the
+    // "Location not activated" state with an Activate Map action, so no toast
+    // is needed here — we just record the decline. Successful activation
+    // clears the flag before closing, so this only fires on a real decline.
+    if (geoModalFromActivationGate) {
+      setGeoModalFromActivationGate(false);
+      posthog.capture('geo_activation_prompt_dismissed', {
+        latitude: markerPosition.lat,
+        longitude: markerPosition.lng,
+        is_pro_user: currentUser?.isPro || false,
+        tokens_available: tokenProfile?.geoToken || 0,
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
+    }
     returnToPreviousModal();
   };
 
   useEffect(() => {
     if (isOpen) {
+      // Fresh open: nothing the user touched yet, so the prefill below isn't a
+      // "change". Marker interactions flip this back to true.
+      userChangedLocationRef.current = false;
       // Check if we have GeoJSON import data first (takes priority)
       if (geojsonImportData && geojsonImportData.lat && geojsonImportData.lon) {
         const lat = roundCoord(geojsonImportData.lat);
@@ -97,7 +128,14 @@ const GeoModal = () => {
           .getElementById('reference-layers')
           ?.getAttribute('street-geo');
 
-        if (streetGeo && streetGeo['latitude'] && streetGeo['longitude']) {
+        // Use a real lat/lng prefill even at the equator / prime meridian — a
+        // 0 coordinate is valid, so test for presence, not truthiness.
+        const hasCoords =
+          streetGeo &&
+          streetGeo['latitude'] != null &&
+          streetGeo['longitude'] != null &&
+          (streetGeo['latitude'] !== 0 || streetGeo['longitude'] !== 0);
+        if (hasCoords) {
           const lat = roundCoord(parseFloat(streetGeo['latitude']));
           const lng = roundCoord(parseFloat(streetGeo['longitude']));
 
@@ -114,8 +152,22 @@ const GeoModal = () => {
     }
   }, [isOpen, geojsonImportData, setGeojsonImportData]);
 
+  // Safety net for the activation-gate flag (#1654). onClose consumes it for
+  // the dismissal event and clears it, and a successful save clears it too —
+  // but other exits bypass onClose entirely (e.g. the 0-token Save that
+  // switches to the checkout modal). Clear it on any close so the flag can't
+  // leak into a later, unrelated open and mis-fire geo_activation_prompt_dismissed.
+  useEffect(() => {
+    if (!isOpen) {
+      setGeoModalFromActivationGate(false);
+    }
+  }, [isOpen, setGeoModalFromActivationGate]);
+
   const setMarkerPositionAndElevation = useCallback((lat, lng) => {
     if (!isNaN(lat) && !isNaN(lng)) {
+      // A user-driven pick (map click, search, manual coords) — provenance
+      // becomes 'manual' on save.
+      userChangedLocationRef.current = true;
       setMarkerPosition({
         lat: roundCoord(lat),
         lng: roundCoord(lng)
@@ -154,9 +206,12 @@ const GeoModal = () => {
   }, [autocomplete]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onCloseCheck = (evt) => {
-    // do not close geoModal when clicking on a list with suggestions for addresses
-    const autocompleteContatiner = document.querySelector('.pac-container');
-    if (autocompleteContatiner.children.length === 0) {
+    // do not close geoModal when clicking on a list with suggestions for
+    // addresses. The .pac-container is injected by Google Places only once
+    // Autocomplete mounts, so it can be absent (geojson mode, API not loaded)
+    // — treat "no container" as "no open suggestions" and allow the close.
+    const autocompleteContainer = document.querySelector('.pac-container');
+    if (!autocompleteContainer || autocompleteContainer.children.length === 0) {
       onClose();
     }
   };
@@ -184,13 +239,23 @@ const GeoModal = () => {
       tokens_available: tokenProfile?.geoToken || 0
     });
 
-    // Use the shared utility function to set the scene location
+    // Use the shared utility function to set the scene location. A deliberate
+    // change of location stamps 'manual' provenance; just activating the
+    // prefilled location (or a geojson import) leaves the source resolution to
+    // setSceneLocation so the original origin is preserved.
     const result = await setSceneLocation(latitude, longitude, {
-      fromGeojsonImport: wasOpenedFromGeojson
+      fromGeojsonImport: wasOpenedFromGeojson,
+      ...(userChangedLocationRef.current && !wasOpenedFromGeojson
+        ? { source: GEO_SOURCES.MANUAL }
+        : {})
     });
 
     if (result.success && result.data) {
       const data = result.data;
+
+      // Activation succeeded — the gate's offer was taken, so the dismissal
+      // handling in onClose must not fire when the success overlay closes.
+      setGeoModalFromActivationGate(false);
 
       // Refresh token profile to get updated count after successful save
       const previousTokenCount = tokenProfile?.geoToken || 0;

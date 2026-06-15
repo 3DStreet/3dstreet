@@ -21,6 +21,8 @@ export const REASON_TEXT = {
   optimized_too_large:
     'Even after optimization the file is over the upload limit. Preview only.',
   over_quota: 'Storage full — delete assets or upgrade to sync this model.',
+  file_too_large:
+    "Larger than your plan's per-file limit — upgrade to sync this model.",
   not_signed_in: 'Sign in to save this model to your cloud.',
   upload_blocked: 'Cloud upload was blocked.',
   asset_deleted:

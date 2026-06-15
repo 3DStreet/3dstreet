@@ -13,6 +13,7 @@
 
 import * as THREE from 'three';
 import Events from '../Events.js';
+import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 
 /**
  * Compose a managed-street entity from a flat segments array and create it
@@ -347,7 +348,9 @@ async function setLatLonHandler(args, currentUser) {
   }
 
   const { setSceneLocation } = await import('../utils.js');
-  const result = await setSceneLocation(latitude, longitude);
+  const result = await setSceneLocation(latitude, longitude, {
+    source: GEO_SOURCES.AI_ASSISTANT
+  });
 
   if (result.success) {
     const data = result.data;

@@ -29,7 +29,14 @@ AFRAME.registerComponent('street-geo', {
     },
     blendingEnabled: { type: 'boolean', default: false },
     locationString: { type: 'string', default: '' },
-    intersectionString: { type: 'string', default: '' }
+    intersectionString: { type: 'string', default: '' },
+    // Provenance of the geo location: where the coordinates came from. Values
+    // are the GEO_SOURCES enum in @shared/constants/geoSources.js (streetmix,
+    // geojson, manual, bollard-buddy = the 3DStreet mobile app, ai-assistant).
+    // Empty when unknown (e.g. legacy scenes). Stamped wherever a location is
+    // first established; preserved across a later activation so the original
+    // origin is retained.
+    source: { type: 'string', default: '' }
   },
   init: function () {
     /*
@@ -86,8 +93,10 @@ AFRAME.registerComponent('street-geo', {
     // activated", preserving the location for a later activation, and
     // switching a map type on re-runs update() and re-prompts. The modal
     // check avoids reopening if it is already showing.
-    const { modal, setModal } = useStore.getState();
+    const { modal, setModal, setGeoModalFromActivationGate } =
+      useStore.getState();
     if (modal !== 'geo') {
+      setGeoModalFromActivationGate(true);
       setModal('geo');
     }
   },

@@ -13,6 +13,7 @@ import {
 import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
 import pickPointOnGroundPlane from '@/editor/lib/pick-point-on-ground-plane';
 import { signIn } from '../../api';
+import useStore from '@/store';
 
 const handlePlaceAsset = (asset) => {
   const position = pickPointOnGroundPlane({
@@ -31,6 +32,7 @@ const AssetsPanel = () => (
     onUseForGenerator={(item) => openInGenerator(item, 'modify')}
     onUseForVideo={(item) => openInGenerator(item, 'video')}
     onSignIn={() => signIn()}
+    onUpgrade={() => useStore.getState().startCheckout('storage')}
   />
 );
 

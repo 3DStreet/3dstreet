@@ -172,6 +172,14 @@ const useStore = create(
         // GeoJSON import data for pre-filling the Geo Modal
         geojsonImportData: null,
         setGeojsonImportData: (data) => set({ geojsonImportData: data }),
+        // True while the geo modal was auto-opened by the street-geo
+        // activation gate (scene located but never activated). Lets the
+        // modal distinguish "user dismissed the activation offer" from a
+        // normal close so it can surface the recovery path. Cleared on
+        // activation success and on dismiss.
+        geoModalFromActivationGate: false,
+        setGeoModalFromActivationGate: (value) =>
+          set({ geoModalFromActivationGate: value }),
         isGridVisible: true,
         setIsGridVisible: (newIsGridVisible) => {
           Events.emit('gridvisibilitychanged', newIsGridVisible);

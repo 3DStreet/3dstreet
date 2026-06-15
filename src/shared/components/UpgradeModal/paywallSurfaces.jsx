@@ -62,6 +62,23 @@ const SparklesIcon = () => (
   </svg>
 );
 
+const DatabaseIcon = () => (
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <ellipse cx="12" cy="5" rx="9" ry="3" />
+    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+  </svg>
+);
+
 const MapPinIcon = () => (
   <svg
     width="22"
@@ -138,6 +155,26 @@ export const PAYWALL_SURFACES = {
       'Download JPEG snapshots without watermark',
       'GLB glTF & AR Ready GLB export',
       'Import custom 3D models & SVG / glTF files',
+      TOKEN_FEATURE_LINE
+    ]
+  },
+
+  // Cloud storage for custom assets — fired by the assets panel's 80%/100%
+  // usage prompts and by the sidebar Upgrade button on an upload blocked by
+  // quota (#1644). Copy works for both "almost full" and "full" triggers;
+  // FREE 100 MB → PRO 5 GB is the 50× claim.
+  storage: {
+    icon: <DatabaseIcon />,
+    title: 'Cloud Storage',
+    subtitle: 'Custom models & textures',
+    headline: '50× more space for custom models',
+    description:
+      'Your work is safe. The Free plan includes 100 MB of asset storage; Pro gives you 5 GB to grow into for custom models, textures, and splats.',
+    features: [
+      '5 GB custom model & asset storage',
+      'Import custom 3D models & SVG / glTF files',
+      'Download JPEG snapshots without watermark',
+      'Unlimited geospatial maps & location changes',
       TOKEN_FEATURE_LINE
     ]
   },
