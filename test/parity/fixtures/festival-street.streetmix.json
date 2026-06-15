@@ -1,0 +1,86 @@
+{
+  "name": "Festival street (closed to traffic)",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 26.4,
+      "leftBuildingVariant": "narrow",
+      "rightBuildingVariant": "narrow",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "dense",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "food-truck",
+          "variantString": "left",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "outdoor-dining",
+          "variantString": "empty|road",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "temporary",
+          "variantString": "jersey-barrier-concrete",
+          "width": 1.2,
+          "elevation": 0
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "inbound|pedestrian",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "magic-carpet",
+          "variantString": "aladdin",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "outbound|pedestrian",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "temporary",
+          "variantString": "jersey-barrier-plastic",
+          "width": 1.2,
+          "elevation": 0
+        },
+        {
+          "type": "temporary",
+          "variantString": "traffic-cone",
+          "width": 1.2,
+          "elevation": 0
+        },
+        {
+          "type": "temporary",
+          "variantString": "barricade",
+          "width": 1.2,
+          "elevation": 0
+        },
+        {
+          "type": "food-truck",
+          "variantString": "right",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "dense",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}

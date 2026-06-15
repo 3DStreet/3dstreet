@@ -1,0 +1,98 @@
+{
+  "name": "Pedestrian promenade",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 21.3,
+      "leftBuildingVariant": "wide",
+      "rightBuildingVariant": "waterfront",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-lamp",
+          "variantString": "left|modern",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-bike-rack",
+          "variantString": "left|sidewalk",
+          "width": 1.5,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-tree",
+          "variantString": "palm-tree",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-lamp",
+          "variantString": "both|traditional",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "dense",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-lamp",
+          "variantString": "both|pride",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-tree",
+          "variantString": "big",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-lamp",
+          "variantString": "left|pride",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-bike-rack",
+          "variantString": "right|sidewalk",
+          "width": 1.5,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-lamp",
+          "variantString": "right|pride",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-bike-rack",
+          "variantString": "right|sidewalk-parallel",
+          "width": 1.5,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-lamp",
+          "variantString": "right|modern",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}

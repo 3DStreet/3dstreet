@@ -1,0 +1,74 @@
+{
+  "name": "Curbside flex zone street",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 28.2,
+      "leftBuildingVariant": "narrow",
+      "rightBuildingVariant": "wide",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "dense",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "parklet",
+          "variantString": "left",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "flex-zone",
+          "variantString": "taxi|inbound|left",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "flex-zone",
+          "variantString": "rideshare|inbound|right",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "flex-zone",
+          "variantString": "rideshare|inbound|left",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "inbound|car",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "outbound|car",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "flex-zone",
+          "variantString": "taxi|outbound|right",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "flex-zone",
+          "variantString": "taxi|outbound|left",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "dense",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}

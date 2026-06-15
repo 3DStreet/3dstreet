@@ -1,0 +1,92 @@
+{
+  "name": "Bikeway demonstration street",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 21.9,
+      "leftBuildingVariant": "grass",
+      "rightBuildingVariant": "grass",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "inbound|green|sidewalk",
+          "width": 1.8,
+          "elevation": 0.15
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "outbound|green|sidewalk",
+          "width": 1.8,
+          "elevation": 0.15
+        },
+        {
+          "type": "divider",
+          "variantString": "planter-box",
+          "width": 0.9,
+          "elevation": 0.15
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "inbound|regular|road",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "outbound|regular|road",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "divider",
+          "variantString": "striped-buffer",
+          "width": 0.9,
+          "elevation": 0
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "inbound|green|road",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "outbound|green|road",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "divider",
+          "variantString": "planting-strip",
+          "width": 0.9,
+          "elevation": 0.15
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "inbound|regular|sidewalk",
+          "width": 1.8,
+          "elevation": 0.15
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "outbound|regular|sidewalk",
+          "width": 1.8,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}
