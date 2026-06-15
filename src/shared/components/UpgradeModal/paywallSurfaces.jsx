@@ -169,7 +169,7 @@ export const PAYWALL_SURFACES = {
     subtitle: 'Custom models & textures',
     headline: '50× more space for custom models',
     description:
-      'Your work is safe. The Free plan includes 100 MB of asset storage — Pro gives you 5 GB to grow into for custom models, textures, and splats.',
+      'Your work is safe. The Free plan includes 100 MB of asset storage; Pro gives you 5 GB to grow into for custom models, textures, and splats.',
     features: [
       '5 GB custom model & asset storage',
       'Import custom 3D models & SVG / glTF files',

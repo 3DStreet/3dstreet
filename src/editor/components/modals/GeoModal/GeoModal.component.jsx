@@ -47,11 +47,6 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   );
 };
 
-// One-time-per-session throttle for the activation-recovery toast (#1654).
-// The gate re-prompts on every map-type change, so without this a user who
-// keeps declining would get the same hint on every cancel.
-let activationHintToastShown = false;
-
 const GeoModal = () => {
   const { currentUser, tokenProfile, refreshTokenProfile } = useAuthContext();
   const { isLoaded } = useJsApiLoader({
@@ -85,9 +80,10 @@ const GeoModal = () => {
   const onClose = () => {
     // Dead-end recovery (#1654): the activation gate auto-opened this modal
     // and the user is dismissing without activating. The location is
-    // preserved, but nothing on screen says how to resume — point at the
-    // sidebar entry point. Successful activation clears the flag before
-    // closing, so this only fires on a real decline.
+    // preserved and the Geospatial panel's status badge surfaces the
+    // "Location not activated" state with an Activate Map action, so no toast
+    // is needed here — we just record the decline. Successful activation
+    // clears the flag before closing, so this only fires on a real decline.
     if (geoModalFromActivationGate) {
       setGeoModalFromActivationGate(false);
       posthog.capture('geo_activation_prompt_dismissed', {
@@ -97,12 +93,6 @@ const GeoModal = () => {
         tokens_available: tokenProfile?.geoToken || 0,
         scene_id: STREET.utils.getCurrentSceneId()
       });
-      if (!activationHintToastShown) {
-        activationHintToastShown = true;
-        STREET.notify.warningMessage(
-          'Location saved for later — use "Set Location" in the Geospatial panel to activate the 3D map.'
-        );
-      }
     }
     returnToPreviousModal();
   };

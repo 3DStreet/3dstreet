@@ -270,33 +270,23 @@ const AssetsPanelBody = ({
           />
         </div>
       </div>
-      {showStorageUpsell && isNearFull && (
-        <div className={styles.storageWarnRow}>
-          <span>Almost out of space for custom models.</span>
-          <button
-            type="button"
-            className={styles.upgradePill}
-            onClick={() => handleUpgradeClick('near_full')}
-          >
-            Upgrade →
-          </button>
-        </div>
-      )}
-      {showStorageUpsell && isFull && !fullCardDismissed && (
+      {showStorageUpsell && (isNearFull || isFull) && !fullCardDismissed && (
         <div className={styles.storageFullCard}>
           <div className={styles.storageFullTitle}>
-            You&apos;ve filled your free storage
+            {isFull
+              ? "You've filled your free storage"
+              : "You've almost filled your free storage"}
           </div>
           <div className={styles.storageFullCopy}>
-            Your work is safe. Pro gives you 5 GB to grow into — 50× more space
-            for custom models and textures.
+            {isFull ? 'Your work is safe. ' : ''}Pro gives you 5 GB to grow
+            into, 50× more space for custom models and textures.
           </div>
           <button
             type="button"
             className={styles.goProButton}
-            onClick={() => handleUpgradeClick('full')}
+            onClick={() => handleUpgradeClick(isFull ? 'full' : 'near_full')}
           >
-            Go Pro — unlock 5 GB <span className={styles.pricePill}>$7/mo</span>
+            Go Pro: unlock 5 GB <span className={styles.pricePill}>$7/mo</span>
           </button>
           <button
             type="button"
@@ -324,9 +314,8 @@ const AssetsPanelBody = ({
             You&apos;ve got{' '}
             <strong>
               {formatBytes(usage.planLimit - usage.bytesUsed)} to play with
-            </strong>{' '}
-            — that&apos;s room for HDRIs, ground textures, and a few hero
-            models.
+            </strong>
+            , room for HDRIs, ground textures, and a few hero models.
           </div>
         </div>
       )}

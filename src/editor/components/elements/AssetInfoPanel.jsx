@@ -27,11 +27,15 @@ const AssetInfoPanel = ({ entity }) => {
   const isQuotaBlocked =
     state.reason === 'over_quota' || state.reason === 'file_too_large';
   const slotFile = useAssetUploadStore.getState().uploads[entity?.id]?.file;
+  // Retry only helps when the same File can succeed on a re-run: a generic
+  // failure, or over_quota (the user may free up space, or upgrade, then
+  // retry). file_too_large would fail identically without an upgrade, so we
+  // show only the Upgrade CTA for it — no dead Retry button.
   const canRetry =
     !!slotFile &&
     !!entity &&
     (state.status === 'failed' ||
-      (state.status === 'local_error' && isQuotaBlocked));
+      (state.status === 'local_error' && state.reason === 'over_quota'));
   const retryUpload = () => uploadAndPlaceAsset(slotFile, null, entity);
   const upgradeForStorage = () => {
     posthog.capture('storage_upsell_clicked', {
