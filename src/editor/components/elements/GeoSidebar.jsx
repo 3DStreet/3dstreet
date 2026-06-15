@@ -234,8 +234,41 @@ const EnvironmentSection = () => {
 // copy names the action ("Add Geo Layer"), the payoff (real-world maps), and
 // the cost (one geo token) so the token economy is legible at the point of
 // spend. Plan/token state only changes the CTA, not the layout.
-const GeoHero = ({ hasLocation, isPro, geoToken, onAdd, onUpgrade }) => {
+// Human phrase for where a saved-but-not-activated location came from. Empty
+// string means "don't attribute a source" (e.g. a manual set that somehow
+// never activated). Legacy scenes with no stamped source are, in practice,
+// from the mobile app (the only path that leaves a location unactivated), so
+// an empty source defaults to the app.
+const geoSourcePhrase = (source) => {
+  switch (source) {
+    case 'streetmix':
+      return 'imported from Streetmix';
+    case 'geojson':
+      return 'imported from GeoJSON';
+    case 'ai-assistant':
+      return 'set by the AI assistant';
+    case 'bollard-buddy':
+    case '':
+    case undefined:
+      return 'from the 3DStreet app';
+    default:
+      return '';
+  }
+};
+
+const GeoHero = ({
+  hasLocation,
+  isPro,
+  geoToken,
+  source,
+  onAdd,
+  onUpgrade
+}) => {
   const outOfTokens = !isPro && geoToken === 0;
+  const sourcePhrase = geoSourcePhrase(source);
+  const savedLocationCopy = sourcePhrase
+    ? `This scene has a saved location ${sourcePhrase}. Add the geo layer to load 3D buildings, terrain, and satellite imagery.`
+    : 'This scene has a saved location. Add the geo layer to load 3D buildings, terrain, and satellite imagery.';
   return (
     <div
       style={{
@@ -257,7 +290,7 @@ const GeoHero = ({ hasLocation, isPro, geoToken, onAdd, onUpgrade }) => {
       </div>
       <div style={{ fontSize: '12px', lineHeight: 1.45, color: '#b8b8b8' }}>
         {hasLocation
-          ? 'This scene has a saved location. Add the geo layer to load 3D buildings, terrain, and satellite imagery.'
+          ? savedLocationCopy
           : 'Drop your scene onto real-world maps with 3D buildings, terrain, and satellite imagery.'}
       </div>
       <Button
@@ -310,6 +343,7 @@ GeoHero.propTypes = {
   hasLocation: PropTypes.bool,
   isPro: PropTypes.bool,
   geoToken: PropTypes.number,
+  source: PropTypes.string,
   onAdd: PropTypes.func.isRequired,
   onUpgrade: PropTypes.func.isRequired
 };
@@ -394,6 +428,7 @@ const GeoSidebar = ({ entity }) => {
                 hasLocation={hasLocation}
                 isPro={!!currentUser?.isPro}
                 geoToken={tokenProfile?.geoToken ?? 0}
+                source={geoData?.source}
                 onAdd={hasLocation ? activateFromCallout : openGeoModal}
                 onUpgrade={() => startCheckout('geo')}
               />

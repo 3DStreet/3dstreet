@@ -113,22 +113,42 @@ export async function setSceneLocation(latitude, longitude, options = {}) {
       // Get the reference layers element
       const geoLayer = document.getElementById('reference-layers');
 
+      // Resolve provenance: an explicit caller source wins (e.g. the AI
+      // assistant), then geojson import, then the existing source if this is
+      // re-setting an already-tagged location (keeps the original origin),
+      // falling back to 'manual' for a fresh web "Set Location".
+      const existingGeo = geoLayer.hasAttribute('street-geo')
+        ? geoLayer.getAttribute('street-geo')
+        : null;
+      const existingSource = existingGeo?.source || '';
+      const source =
+        options.source ||
+        (options.fromGeojsonImport ? 'geojson' : existingSource || 'manual');
+
+      const value = {
+        latitude: lat,
+        longitude: lng,
+        ellipsoidalHeight: data.ellipsoidalHeight,
+        orthometricHeight: data.orthometricHeight,
+        geoidHeight: data.geoidHeight,
+        locationString: data.location?.locationString || '',
+        intersectionString: data.nearestIntersection?.intersectionString || '',
+        source
+      };
+
+      // Streetmix imports park the location with maps: 'none' so they don't
+      // auto-activate. Activating now means turning a map back on.
+      if (existingGeo?.maps === 'none') {
+        value.maps = 'google3d';
+      }
+
       // Update or add the street-geo component
       AFRAME.INSPECTOR.execute(
         geoLayer.hasAttribute('street-geo') ? 'entityupdate' : 'componentadd',
         {
           entity: geoLayer,
           component: 'street-geo',
-          value: {
-            latitude: lat,
-            longitude: lng,
-            ellipsoidalHeight: data.ellipsoidalHeight,
-            orthometricHeight: data.orthometricHeight,
-            geoidHeight: data.geoidHeight,
-            locationString: data.location?.locationString || '',
-            intersectionString:
-              data.nearestIntersection?.intersectionString || ''
-          }
+          value
         }
       );
 

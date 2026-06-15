@@ -347,7 +347,9 @@ async function setLatLonHandler(args, currentUser) {
   }
 
   const { setSceneLocation } = await import('../utils.js');
-  const result = await setSceneLocation(latitude, longitude);
+  const result = await setSceneLocation(latitude, longitude, {
+    source: 'ai-assistant'
+  });
 
   if (result.success) {
     const data = result.data;

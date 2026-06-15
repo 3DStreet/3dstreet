@@ -641,6 +641,31 @@ AFRAME.registerComponent('managed-street', {
       const streetmixName = streetmixResponseObject.name;
 
       this.el.setAttribute('data-layer-name', 'Street • ' + streetmixName);
+
+      // Import the Streetmix location (if the street has one) so the scene
+      // carries a geospatial origin we can attribute. We set coordinates with
+      // maps: 'none' so nothing auto-activates; running the elevation service
+      // stays a deliberate, token-charged action via "Add Geo Layer" in the
+      // Geospatial panel (which flips maps back on). Guarded so a saved scene
+      // re-fetching its Streetmix source never clobbers a location it already
+      // has.
+      const streetmixLatLng = streetData.location?.latlng;
+      const geoLayer = document.getElementById('reference-layers');
+      if (streetmixLatLng && geoLayer) {
+        const existingGeo = geoLayer.getAttribute('street-geo');
+        const alreadyLocated =
+          existingGeo &&
+          (existingGeo.latitude !== 0 || existingGeo.longitude !== 0);
+        if (!alreadyLocated) {
+          geoLayer.setAttribute('street-geo', {
+            latitude: streetmixLatLng.lat,
+            longitude: streetmixLatLng.lng,
+            locationString: streetData.location.label || '',
+            maps: 'none',
+            source: 'streetmix'
+          });
+        }
+      }
       // const streetWidth = streetmixSegments.reduce(
       //   (streetWidth, segmentData) => streetWidth + segmentData.width,
       //   0
