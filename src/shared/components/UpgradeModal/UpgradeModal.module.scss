@@ -279,10 +279,9 @@ $green: #10b981;
   line-height: 1.2;
 }
 
-// Up-front token grant note — sits under the price display and tracks the
-// active billing cycle (100 monthly / 840 yearly). Soft purple to tie into
-// the brand and signal "you get this immediately" without overpowering the
-// price.
+// Monthly token floor note — sits under the price display and tracks the
+// selected tier (Pro 100/mo, Max 500/mo; same on both billing cycles). Soft
+// purple to tie into the brand without overpowering the price.
 .priceTokenGrant {
   flex-basis: 100%;
   font-size: 13px;

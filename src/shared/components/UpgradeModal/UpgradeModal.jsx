@@ -28,6 +28,27 @@ import { getPaywallSurface } from './paywallSurfaces';
 import { PRICING, TOKEN_FEATURE_LINE } from './pricing';
 import styles from './UpgradeModal.module.scss';
 
+// Stripe price IDs by tier + billing cycle. Injected at build time by
+// dotenv-webpack from config/.env.{development,production}. The webhook
+// (public/functions/index.js) maps these same IDs back to a plan tier +
+// token grant, so the two sets must stay aligned.
+const PRICE_IDS = {
+  pro: {
+    monthly: process.env.STRIPE_MONTHLY_PRICE_ID,
+    yearly: process.env.STRIPE_YEARLY_PRICE_ID
+  },
+  max: {
+    monthly: process.env.STRIPE_MAX_MONTHLY_PRICE_ID,
+    yearly: process.env.STRIPE_MAX_YEARLY_PRICE_ID
+  }
+};
+
+// Extra capabilities MAX adds on top of the shared Pro feature list.
+const MAX_EXTRA_FEATURES = [
+  '25 GB asset storage (5 GB per file)',
+  '500 AI generation tokens / month'
+];
+
 // Single source of truth for the Pro feature list — shown once, no duplication.
 const PLAN_FEATURES = [
   'Download JPEG snapshots without watermark',
@@ -101,6 +122,8 @@ const UpgradeModal = ({
   // 'pricing' | 'checkout' | 'has-subscription'
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [billingCycle, setBillingCycle] = useState('yearly');
+  const [selectedTier, setSelectedTier] = useState('pro');
+  // 'pro' | 'max'. MAX is a superset of Pro (more storage + tokens).
   // Annual highlighted by default — best value, matches mockup.
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
   // Flips true on Stripe's onComplete. Used to hide the Back button once
@@ -116,6 +139,7 @@ const UpgradeModal = ({
     setModalState('pricing');
     setSelectedPlan(null);
     setBillingCycle('yearly');
+    setSelectedTier('pro');
     setSubscriptionInfo(null);
     setPaymentSubmitted(false);
   }, [onClose]);
@@ -125,7 +149,7 @@ const UpgradeModal = ({
     setSelectedPlan(plan);
     setModalState('checkout');
     onCheckoutStart?.(plan);
-    posthog.capture('checkout_started', { plan, source });
+    posthog.capture('checkout_started', { plan, tier: selectedTier, source });
   };
 
   const handleBackToPricing = () => {
@@ -238,6 +262,18 @@ const UpgradeModal = ({
 
   if (!isOpen) return null;
 
+  // MAX includes everything in the Pro list; swap the Pro token line for the
+  // MAX storage + token extras so the two paid tiers read as a superset.
+  const displayFeatures =
+    selectedTier === 'max'
+      ? [
+          ...features.filter((f) => f !== TOKEN_FEATURE_LINE),
+          ...MAX_EXTRA_FEATURES
+        ]
+      : features;
+  const plan = PRICING[selectedTier][billingCycle];
+  const tierLabel = selectedTier === 'max' ? 'Max' : 'Pro';
+
   const renderPricing = () => (
     <>
       {surface ? (
@@ -291,7 +327,7 @@ const UpgradeModal = ({
       <div className={styles.divider} />
 
       <ul className={styles.featureList}>
-        {features.map((f) => (
+        {displayFeatures.map((f) => (
           <li key={f}>
             <CheckIcon />
             <span>{f}</span>
@@ -301,6 +337,27 @@ const UpgradeModal = ({
 
       {currentUser ? (
         <>
+          <div className={styles.billingToggle} role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedTier === 'pro'}
+              className={`${styles.toggleButton} ${selectedTier === 'pro' ? styles.toggleActive : ''}`}
+              onClick={() => setSelectedTier('pro')}
+            >
+              Pro
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedTier === 'max'}
+              className={`${styles.toggleButton} ${selectedTier === 'max' ? styles.toggleActive : ''}`}
+              onClick={() => setSelectedTier('max')}
+            >
+              Max
+            </button>
+          </div>
+
           <div className={styles.billingToggle} role="tablist">
             <button
               type="button"
@@ -323,22 +380,17 @@ const UpgradeModal = ({
           </div>
 
           <div className={styles.priceDisplay}>
-            <span className={styles.priceLarge}>
-              ${PRICING[billingCycle].pricePerMonth}
-            </span>
+            <span className={styles.priceLarge}>${plan.pricePerMonth}</span>
             {/* /month sits superscript-style next to the price; the cycle
                 detail ("billed monthly" / "billed yearly, $84/year") stacks
                 directly under it. Always present so toggling cycles doesn't
                 shift the layout. */}
             <div className={styles.priceUnit}>
               <span className={styles.pricePer}>/month</span>
-              <span className={styles.priceSubtext}>
-                {PRICING[billingCycle].cycleDetail}
-              </span>
+              <span className={styles.priceSubtext}>{plan.cycleDetail}</span>
             </div>
             <div className={styles.priceTokenGrant}>
-              Includes {PRICING[billingCycle].tokens} AI generation tokens,
-              delivered up front
+              Includes {plan.tokens} AI generation tokens / month
             </div>
           </div>
 
@@ -347,7 +399,7 @@ const UpgradeModal = ({
             className={styles.ctaButton}
             onClick={handleGoPro}
           >
-            Go Pro
+            Go {tierLabel}
           </button>
 
           {surface?.secondaryCtaLabel && onSecondaryCta && (
@@ -392,11 +444,7 @@ const UpgradeModal = ({
       </div>
 
       <EmbeddedCheckout
-        priceId={
-          selectedPlan === 'monthly'
-            ? process.env.STRIPE_MONTHLY_PRICE_ID
-            : process.env.STRIPE_YEARLY_PRICE_ID
-        }
+        priceId={PRICE_IDS[selectedTier][selectedPlan]}
         mode="subscription"
         source={source}
         plan={selectedPlan}
