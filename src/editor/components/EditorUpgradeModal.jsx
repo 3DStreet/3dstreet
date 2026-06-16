@@ -69,7 +69,10 @@ const EditorUpgradeModal = () => {
           ...currentUser,
           isPro: true,
           isProTeam: status.isProTeam,
-          teamDomain: status.teamDomain
+          teamDomain: status.teamDomain,
+          // Carry the tier so the badge/profile flip to Max (not Pro) right
+          // after a Max purchase, without waiting for a full re-auth.
+          plan: status.plan ?? null
         });
         // Tell plan-dependent panels (assets storage meter, etc.) to refetch.
         window.dispatchEvent(new Event('planChanged'));

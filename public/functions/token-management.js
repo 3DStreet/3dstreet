@@ -316,18 +316,23 @@ const checkUserProStatus = functions
     try {
       // Check if user is Pro via subscription (MAX is a superset of Pro)
       const userRecord = await getAuth().getUser(userId);
-      const isPro = isPaidPlanClaim(userRecord.customClaims && userRecord.customClaims.plan);
+      const plan = (userRecord.customClaims && userRecord.customClaims.plan) || null;
+      const isPro = isPaidPlanClaim(plan);
 
       // Check domain validation
       const { isProDomain, teamDomain } = await validateUserDomain(userRecord.email);
-      
+
       const isProUser = isPro || isProDomain;
-      
+
       return {
         isPro: isProUser,
         isProSubscription: isPro,
         isProDomain: isProDomain,
         teamDomain: teamDomain || null,
+        // Actual paid tier ('PRO' | 'MAX' | null). Lets the client distinguish
+        // Max from Pro for badge/profile labels; domain-team users have no plan
+        // claim so this is null for them (they render as the team label).
+        plan,
         email: userRecord.email
       };
       
