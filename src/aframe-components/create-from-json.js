@@ -9,15 +9,23 @@ AFRAME.registerComponent('create-from-json', {
   update: function (oldData) {
     var data = this.data;
     var el = this.el;
-    if (oldData.string && data.string !== oldData.string) {
-      // erase existing children -- not tested
-      while (el.firstChild) {
-        el.removeChild(el.lastChild);
-      }
+    var parsed;
+    if (!data.jsonString || data.jsonString === oldData.jsonString) {
+      return;
     }
-    createFromJSONUtilsTested.appendChildElementsFromArray(
-      JSON.parse(data.jsonString),
-      el
-    );
+    try {
+      parsed = JSON.parse(data.jsonString);
+    } catch (e) {
+      console.error('create-from-json: Invalid JSON string', e);
+      return;
+    }
+    if (!Array.isArray(parsed)) {
+      console.error('create-from-json: Parsed JSON must be an array');
+      return;
+    }
+    while (el.firstChild) {
+      el.removeChild(el.lastChild);
+    }
+    createFromJSONUtilsTested.appendChildElementsFromArray(parsed, el);
   }
 });
