@@ -119,7 +119,7 @@ export const PAYWALL_SURFACES = {
   // the full 4x batch. Same surface for both modes; the headline frames the
   // gap as "more tokens" rather than "out of tokens" since users may have
   // some balance but not enough for the chosen model.
-  // The plan-specific up-front grant (100 monthly / 840 yearly) lives on the
+  // The plan-specific monthly token floor (Pro 100, Max 500) lives on the
   // billing toggle row in UpgradeModal — it tracks the user's plan choice.
   image: {
     icon: <SparklesIcon />,
@@ -127,7 +127,7 @@ export const PAYWALL_SURFACES = {
     subtitle: 'Generation tokens · AI image rendering',
     headline: 'More AI generation tokens',
     description:
-      'AI renders use generation tokens. Pro upgrade delivers tokens up front so you can keep generating immediately across every available AI model.',
+      'AI renders use generation tokens. A paid plan refreshes your token balance every month so you can keep generating across every available AI model.',
     features: [
       TOKEN_FEATURE_LINE,
       'Download JPEG snapshots without watermark',

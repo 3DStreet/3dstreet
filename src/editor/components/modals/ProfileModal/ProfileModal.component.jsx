@@ -228,9 +228,11 @@ const ProfileModal = () => {
                       }}
                     >
                       <span>
-                        {currentUser?.isProTeam
-                          ? `Plan: Pro Team (${currentUser?.teamDomain})`
-                          : 'Plan: Geospatial Pro'}
+                        {currentUser?.plan === 'MAX'
+                          ? 'Plan: Max'
+                          : currentUser?.isProTeam
+                            ? `Plan: Pro Team (${currentUser?.teamDomain})`
+                            : 'Plan: Pro'}
                       </span>
                       {!currentUser?.isProTeam && (
                         <Button

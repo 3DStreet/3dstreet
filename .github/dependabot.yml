@@ -1,0 +1,58 @@
+version: 2
+updates:
+  # Root app
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    groups:
+      # Roll all security fixes into one PR
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      # Roll routine version bumps into grouped PRs by update type
+      production-minor-patch:
+        applies-to: version-updates
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      dev-dependencies:
+        applies-to: version-updates
+        dependency-type: "development"
+
+  # Firebase Cloud Functions
+  - package-ecosystem: "npm"
+    directory: "/public/functions"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    groups:
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+
+  # rad-converter Cloud Run service
+  - package-ecosystem: "npm"
+    directory: "/rad-converter"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    groups:
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"

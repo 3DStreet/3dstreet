@@ -3,8 +3,8 @@
  *
  * Tests the shared upgrade modal used by both editor and generator:
  * - Visibility (controlled via isOpen prop)
- * - Pricing UI: title, feature list, billing toggle, price display
- * - Plan selection transitions to checkout state
+ * - Pricing UI: title, shared feature list, billing toggle, Pro/Max tier cards
+ * - Plan selection (Go Pro / Go Max) transitions to checkout state
  * - Has-subscription routing via checkActiveSubscriptions
  * - Close (button, overlay, escape)
  * - Body scroll lock
@@ -79,54 +79,53 @@ describe('UpgradeModal', () => {
       ).toBeInTheDocument();
     });
 
-    it('shows the single feature list once (no duplication)', () => {
+    it('shows the shared feature list once, with per-tier tokens on the cards', () => {
       renderModal();
-      // Each feature should appear exactly once.
+      // Shared Pro features render once above the cards.
       expect(
         screen.getAllByText('Download JPEG snapshots without watermark')
       ).toHaveLength(1);
-      expect(
-        screen.getAllByText('100 AI generation tokens / month')
-      ).toHaveLength(1);
+      // The token allotment lives on each tier card, not the shared list.
+      expect(screen.getByText('100 AI tokens / month')).toBeInTheDocument();
+      expect(screen.getByText('500 AI tokens / month')).toBeInTheDocument();
     });
 
-    it('defaults to yearly billing with $7/month and yearly subtext', () => {
+    it('defaults to monthly billing, showing both tier prices', () => {
       renderModal();
-      expect(screen.getByText('$7')).toBeInTheDocument();
-      expect(screen.getByText(/billed yearly, \$84\/year/)).toBeInTheDocument();
-    });
-
-    it('switches to monthly when Monthly toggle is clicked', async () => {
-      const user = userEvent.setup();
-      renderModal();
-
-      await user.click(screen.getByRole('tab', { name: 'Monthly' }));
-
-      expect(screen.getByText('$10')).toBeInTheDocument();
-      // Cycle detail is always rendered (no row reflow on toggle); only the
-      // text swaps between billed-monthly and billed-yearly variants.
+      expect(screen.getByText('$10')).toBeInTheDocument(); // Pro monthly
+      expect(screen.getByText('$50')).toBeInTheDocument(); // Max monthly
+      // "billed monthly" appears once per card (Pro + Max).
+      expect(screen.getAllByText('billed monthly')).toHaveLength(2);
       expect(screen.queryByText(/billed yearly/)).not.toBeInTheDocument();
-      expect(screen.getByText('billed monthly')).toBeInTheDocument();
     });
 
-    it('shows up-front token grant matching the billing cycle', async () => {
+    it('switches to yearly pricing when the Yearly toggle is clicked', async () => {
       const user = userEvent.setup();
       renderModal();
 
-      // Yearly default → 840 tokens up front.
-      expect(
-        screen.getByText(
-          /Includes 840 AI[\s\S]+generation tokens, delivered up front/
-        )
-      ).toBeInTheDocument();
+      await user.click(screen.getByRole('tab', { name: /Yearly/ }));
 
-      // Switching to monthly swaps to 100 without reflowing the layout.
-      await user.click(screen.getByRole('tab', { name: 'Monthly' }));
+      expect(screen.getByText('$7')).toBeInTheDocument(); // Pro yearly
+      expect(screen.getByText('$35')).toBeInTheDocument(); // Max yearly
+      expect(screen.getByText(/billed yearly, \$84\/year/)).toBeInTheDocument();
       expect(
-        screen.getByText(
-          /Includes 100 AI[\s\S]+generation tokens, delivered up front/
-        )
+        screen.getByText(/billed yearly, \$420\/year/)
       ).toBeInTheDocument();
+      expect(screen.queryByText('billed monthly')).not.toBeInTheDocument();
+    });
+
+    it('keeps each tier monthly token floor on both billing cycles', async () => {
+      const user = userEvent.setup();
+      renderModal();
+
+      // Tokens are a monthly floor (Pro 100, Max 500), identical on monthly and
+      // yearly — annual carries no up-front bonus.
+      expect(screen.getByText('100 AI tokens / month')).toBeInTheDocument();
+      expect(screen.getByText('500 AI tokens / month')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('tab', { name: /Yearly/ }));
+      expect(screen.getByText('100 AI tokens / month')).toBeInTheDocument();
+      expect(screen.getByText('500 AI tokens / month')).toBeInTheDocument();
     });
 
     it('shows Save 30% pill on the yearly toggle', () => {
@@ -157,7 +156,7 @@ describe('UpgradeModal', () => {
       expect(
         screen.queryByRole('tab', { name: 'Monthly' })
       ).not.toBeInTheDocument();
-      expect(screen.queryByText('$7')).not.toBeInTheDocument();
+      expect(screen.queryByText('$10')).not.toBeInTheDocument();
     });
 
     it('calls onSignIn when the sign-in button is clicked', async () => {
@@ -190,25 +189,95 @@ describe('UpgradeModal', () => {
       });
     });
 
-    it('calls onCheckoutStart with the selected billing cycle', async () => {
+    it('transitions to checkout state when Go Max is clicked', async () => {
+      const user = userEvent.setup();
+      renderModal();
+
+      await user.click(screen.getByRole('button', { name: 'Go Max' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Complete your upgrade')).toBeInTheDocument();
+      });
+    });
+
+    it('calls onCheckoutStart with the default (monthly) billing cycle', async () => {
       const user = userEvent.setup();
       const onCheckoutStart = vi.fn();
       renderModal({ onCheckoutStart });
 
+      await user.click(screen.getByRole('button', { name: 'Go Pro' }));
+
+      expect(onCheckoutStart).toHaveBeenCalledWith('monthly');
+    });
+
+    it('passes "yearly" to onCheckoutStart when Yearly is toggled', async () => {
+      const user = userEvent.setup();
+      const onCheckoutStart = vi.fn();
+      renderModal({ onCheckoutStart });
+
+      await user.click(screen.getByRole('tab', { name: /Yearly/ }));
       await user.click(screen.getByRole('button', { name: 'Go Pro' }));
 
       expect(onCheckoutStart).toHaveBeenCalledWith('yearly');
     });
+  });
 
-    it('passes "monthly" to onCheckoutStart when Monthly is toggled', async () => {
-      const user = userEvent.setup();
+  describe('Deep-link activation', () => {
+    // Opened via a tier-specific hash (e.g. docs "Go Max" → #payment-max-annual),
+    // the modal should skip card selection and go straight to that tier + cycle's
+    // checkout — but never bypass the existing-subscriber / already-Pro guards.
+    it('auto-advances to checkout for the deep-linked tier + cycle', async () => {
       const onCheckoutStart = vi.fn();
-      renderModal({ onCheckoutStart });
+      renderModal({
+        initialTier: 'max',
+        initialCycle: 'yearly',
+        onCheckoutStart
+      });
 
-      await user.click(screen.getByRole('tab', { name: 'Monthly' }));
-      await user.click(screen.getByRole('button', { name: 'Go Pro' }));
+      await waitFor(() => {
+        expect(screen.getByText('Complete your upgrade')).toBeInTheDocument();
+      });
+      expect(onCheckoutStart).toHaveBeenCalledWith('yearly');
+    });
 
-      expect(onCheckoutStart).toHaveBeenCalledWith('monthly');
+    it('routes an existing subscriber to billing portal instead of checkout', async () => {
+      httpsCallable.mockReturnValue(() =>
+        Promise.resolve({
+          data: { hasActiveSubscription: true, subscriptionCount: 1 }
+        })
+      );
+      renderModal({ initialTier: 'max', initialCycle: 'yearly' });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('You Already Have an Active Subscription')
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByText('Complete your upgrade')
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not auto-advance an already-Pro user', async () => {
+      const onAlreadyPro = vi.fn();
+      renderModal(
+        { initialTier: 'max', initialCycle: 'yearly', onAlreadyPro },
+        {
+          currentUser: {
+            uid: 'pro-user',
+            email: 'pro@example.com',
+            isPro: true,
+            getIdToken: () => Promise.resolve('mock-token')
+          }
+        }
+      );
+
+      await waitFor(() => {
+        expect(onAlreadyPro).toHaveBeenCalled();
+      });
+      expect(
+        screen.queryByText('Complete your upgrade')
+      ).not.toBeInTheDocument();
     });
   });
 
