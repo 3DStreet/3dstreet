@@ -302,6 +302,16 @@ const UpgradeModal = ({
   const proPlan = PRICING.pro[billingCycle];
   const maxPlan = PRICING.max[billingCycle];
 
+  // Success copy is tier-aware so a Max purchase doesn't read "Welcome to Pro!".
+  // Pro keeps the caller-supplied copy (e.g. the generator's custom strings);
+  // Max — which no caller passes copy for — gets its own title + message.
+  const checkoutSuccessTitle =
+    selectedTier === 'max' ? 'Welcome to Max!' : successTitle;
+  const checkoutSuccessMessage =
+    selectedTier === 'max'
+      ? 'Max features are unlocked on your account.'
+      : successMessage;
+
   // One tier card: price, billing-cycle detail, perks, and a tier-specific CTA.
   // Billing cycle is the single toggle above; the card just reprices off it.
   // Both tiers render identically (no featured/preselected tier) so neither is
@@ -469,8 +479,8 @@ const UpgradeModal = ({
         onSuccess={onSuccess}
         onClose={handleClose}
         onPaymentSubmitted={handlePaymentSubmitted}
-        successTitle={successTitle}
-        successMessage={successMessage}
+        successTitle={checkoutSuccessTitle}
+        successMessage={checkoutSuccessMessage}
         successCta={successCta}
       />
     </>
