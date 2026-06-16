@@ -1046,7 +1046,7 @@ function parseStreetmixSegments(segments, length) {
       segmentPreset = 'drive-lane';
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `modelsArray: jersey-barrier-plastic; spacing: 2.25`
+        `modelsArray: temporary-jersey-barrier-plastic; spacing: 2.25`
       );
     } else if (
       segments[i].type === 'temporary' &&
