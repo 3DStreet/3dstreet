@@ -18,10 +18,6 @@
         "function": "getScene"
       },
       {
-        "source": "webxr-variant/**",
-        "function": "serveWebXRVariant"
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       },

@@ -1,0 +1,81 @@
+@use '../../style/variables.scss';
+
+// Centered floating container — replaces the previous full-width
+// glass strip styling on #toolbar. The inner panel reuses
+// PrimaryToolbar.module.scss for visual parity with editor mode.
+.toolbarRoot {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+}
+
+// Overrides PrimaryToolbar.module.scss .wrapper's flex layout with a
+// three-slot grid so SIM is true-centered between Stop and Snapshot
+// regardless of their (slightly different) widths.
+.toolbarRow {
+  // Inherits flex from PrimaryToolbar.module.scss .wrapper. We only
+  // bump the inter-item gap so Stop / SIM / Snapshot feel like peers
+  // rather than the cramped 2px gap of the editor's primary toolbar.
+  column-gap: 10px;
+}
+
+.simTimer {
+  // Rendered as a <button> so it's clickable to toggle pause. We
+  // explicitly reset the native button chrome — the surrounding
+  // PrimaryToolbar.module.scss `button { ... }` rule provides height,
+  // radius, and the purple hover state.
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: variables.$lightgray-300;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.simTimerValue {
+  font-variant-numeric: tabular-nums;
+}
+
+.simTimerWarn {
+  color: #ffd54a;
+}
+
+.simTimerPaused {
+  color: #ffd54a;
+  animation: simTimerBlink 1s steps(2, start) infinite;
+}
+
+.simTimerFinish {
+  color: #2196f3;
+  animation: simTimerBlink 1s steps(2, start) infinite;
+}
+
+.simTimerCrash {
+  color: #ff3a3a;
+  animation: simTimerCrashFlash 0.4s ease-out infinite;
+}
+
+@keyframes simTimerCrashFlash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes simTimerBlink {
+  to {
+    opacity: 0.25;
+  }
+}

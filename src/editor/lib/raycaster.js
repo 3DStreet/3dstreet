@@ -79,8 +79,27 @@ export function initRaycaster(inspector) {
   }
 
   function handleClick(evt) {
-    // Check to make sure not dragging.
-    if (onDownPosition.distanceTo(onUpPosition) === 0) {
+    // Compute up position from the click event's source mouseup rather
+    // than the side-state onUpPosition. The cursor component emits
+    // click synchronously from inside its canvas mouseup handler, which
+    // runs before our container bubble mouseup — so onUpPosition would
+    // be stale (the previous click's value). evt.detail.mouseEvent is
+    // the originating mouseup; reading from it is order-independent.
+    const upEvt = evt && evt.detail && evt.detail.mouseEvent;
+    let dragDist;
+    if (upEvt) {
+      const upArr = getMousePosition(
+        inspector.container,
+        upEvt.clientX,
+        upEvt.clientY
+      );
+      dragDist = onDownPosition.distanceTo(
+        new THREE.Vector2().fromArray(upArr)
+      );
+    } else {
+      dragDist = onDownPosition.distanceTo(onUpPosition);
+    }
+    if (dragDist < 0.01) {
       inspector.selectEntity(getIntersectedEl());
       // Force the cursor component to trigger again an intersection to show hover box on the original intersected el inside the street-segment.
       mouseCursor.components.cursor.clearCurrentIntersection(false);

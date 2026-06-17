@@ -34,6 +34,7 @@
   "homepage": "https://github.com/3dstreet/3dstreet/",
   "license": "AGPLv3",
   "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.14.0",
     "@fortawesome/free-regular-svg-icons": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@gltf-transform/core": "^4.3.0",
@@ -47,8 +48,6 @@
     "@stripe/stripe-js": "^9.0.0",
     "3d-tiles-renderer": "^0.4.21",
     "aframe-atlas-uvs-component": "^3.0.0",
-    "aframe-cursor-teleport-component": "^1.6.0",
-    "aframe-extras": "^7.6.1",
     "classnames": "^2.5.1",
     "date-fns": "^2.30.0",
     "draco3dgltf": "^1.5.7",

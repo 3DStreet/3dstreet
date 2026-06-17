@@ -1,6 +1,4 @@
 /* global AFRAME, XMLHttpRequest, VERSION */
-import 'aframe-cursor-teleport-component';
-import 'aframe-extras/controls/index.js';
 import useStore from './store.js';
 import * as streetUtils from './street-utils.js';
 require('./json-utils_1.1.js'); // this defines STREET.utils
@@ -17,7 +15,6 @@ require('./aframe-components/splat-debug.js'); // STREET.splatDebug console diag
 require('./assets.js');
 require('./aframe-components/notify.js');
 require('./aframe-components/create-from-json');
-require('./aframe-components/screentock.js');
 require('./aframe-components/focus-animation');
 require('aframe-atlas-uvs-component');
 require('./aframe-components/street-geo.js');
@@ -39,7 +36,13 @@ require('./aframe-components/blending-opacity.js');
 require('./aframe-components/measure-line.js');
 require('./aframe-components/css2d-renderer.js');
 require('./aframe-components/google-maps-aerial.js');
-require('./aframe-components/viewer-mode.js');
+require('./aframe-components/mode-manager.js');
+require('./aframe-components/play/play-mode.js');
+require('./aframe-components/play/play-mode-vehicle.js');
+require('./aframe-components/play/race-target.js');
+require('./aframe-components/play/collision-marker.js');
+require('./aframe-components/play/delivery-bot-mesh.js');
+require('./aframe-components/play/street-traffic.js');
 require('./aframe-components/scene-timer.js');
 require('./aframe-components/geojson.js');
 require('./aframe-components/asset-fallback-system.js');

@@ -192,11 +192,33 @@ const useStore = create(
           set((state) => ({ panelsVisible: !state.panelsVisible })),
         rightPanelTab: 'properties',
         setRightPanelTab: (newTab) => set({ rightPanelTab: newTab }),
+        isPlaying: false,
+        isPlayPaused: false,
+        // Transient outcome shown by the toolbar SIM pill.
+        //   null   – normal running state
+        //   'finish'  – race-target was crossed (blue, pinned at finish time)
+        //   'crash'   – a recent chassis collision (red, auto-clears)
+        playOutcome: null,
+        playOutcomeTimeMs: 0,
+        // Race-finish detail consumed by the end-of-race banner.
+        // playFinish: null | {
+        //   finalMs,            // sim time + collision penalty
+        //   simMs,              // raw simulationTime at finish
+        //   collisions,         // count for this run
+        //   previousBestMs,     // best before this run (null if first)
+        //   isNewBest,          // true if finalMs < previousBestMs
+        //   deltaMs,            // signed diff vs previous best (0 if first)
+        //   courseKey,          // sceneId::sceneTitle
+        //   finishedAt          // performance.now() snapshot
+        // }
+        playFinish: null,
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
-          const viewerModeUI = document.getElementById('viewer-mode-ui');
-
           if (newIsInspectorEnabled) {
+            // Opening the inspector exits play mode (regardless of how
+            // the open was triggered — Stop button, programmatic, etc.).
+            // Subscribers tear down their own state via play-mode-stop.
+            document.querySelector('a-scene')?.systems?.['play-mode']?.stop();
             posthog.capture('inspector_opened');
             AFRAME.INSPECTOR.open();
 
@@ -205,19 +227,9 @@ const useStore = create(
               console.log('Stopping recording due to returning to editor mode');
               canvasRecorder.stopRecording();
             }
-
-            // Hide viewer mode UI when inspector is visible
-            if (viewerModeUI) {
-              viewerModeUI.style.display = 'none';
-            }
           } else {
             posthog.capture('inspector_closed');
             AFRAME.INSPECTOR.close();
-
-            // Show viewer mode UI when inspector is not visible
-            if (viewerModeUI) {
-              viewerModeUI.style.display = 'block';
-            }
           }
           set({ isInspectorEnabled: newIsInspectorEnabled });
         }

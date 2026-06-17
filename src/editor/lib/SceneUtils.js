@@ -7,6 +7,7 @@ import {
 } from '@/editor/api/scene';
 import { createUniqueId } from '@/editor/lib/entity.js';
 import { getCurrentCameraState } from '@/editor/lib/cameraUtils.js';
+import { takeScreenshot } from '@/editor/lib/screenshot.js';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@shared/services/firebase';
 
@@ -195,38 +196,11 @@ export async function convertToObject() {
 }
 
 export async function makeScreenshot(hideOverlays = false) {
-  await new Promise((resolve, reject) => {
-    const screenshotEl = document.getElementById('screenshot');
-    screenshotEl.play();
-
-    const screentockImgElement = document.getElementById(
-      'screentock-destination'
-    );
-    screentockImgElement.addEventListener(
-      'load',
-      () => {
-        resolve();
-      },
-      { once: true }
-    );
-    const oldVals = {
-      showLogo: screenshotEl.getAttribute('screentock').showLogo,
-      showTitle: screenshotEl.getAttribute('screentock').showTitle
-    };
-    screenshotEl.setAttribute('screentock', 'type', 'img');
-    screenshotEl.setAttribute(
-      'screentock',
-      'imgElementSelector',
-      '#screentock-destination'
-    );
-    if (hideOverlays) {
-      screenshotEl.setAttribute('screentock', 'showLogo', false);
-      screenshotEl.setAttribute('screentock', 'showTitle', false);
-    }
-    // take the screenshot
-    screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
-    screenshotEl.setAttribute('screentock', 'showLogo', oldVals.showLogo);
-    screenshotEl.setAttribute('screentock', 'showTitle', oldVals.showTitle);
+  await takeScreenshot({
+    type: 'img',
+    imgElement: document.getElementById('screentock-destination'),
+    showLogo: !hideOverlays,
+    showCommunityWatermark: !hideOverlays
   });
 }
 
