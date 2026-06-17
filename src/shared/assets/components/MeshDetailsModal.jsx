@@ -296,7 +296,12 @@ const MeshDetailsModal = ({
     captureCurrentFrame();
     onClose();
   };
-  onCloseRef.current = handleClose;
+  // Keep the ref pointing at the latest handleClose. Writing it during render
+  // trips react-hooks/refs; an effect runs after commit, which is the supported
+  // pattern for a "latest value" ref read by the set-up-once keydown effect.
+  useEffect(() => {
+    onCloseRef.current = handleClose;
+  });
   const nameDirty = isOwner && name.trim() !== savedName && name.trim() !== '';
   const attributionDirty =
     isOwner && !attributionEquals(attribution, savedAttribution);

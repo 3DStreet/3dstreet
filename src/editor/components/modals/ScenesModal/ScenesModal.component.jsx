@@ -76,6 +76,9 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       // Pass data and memory (which now contains snapshots) to createElementsForScenesFromJSON
       useStore.getState().startLoadingScene('Loading scene from cloud...');
       createElementsForScenesFromJSON(sceneData.data, sceneData.memory);
+      // This runs in a click handler, not during render — the immutability rule
+      // can't see that and flags the global write as a false positive.
+      // eslint-disable-next-line react-hooks/immutability
       window.location.hash = `#/scenes/${scene.id}`;
 
       const sceneId = scene.id;
