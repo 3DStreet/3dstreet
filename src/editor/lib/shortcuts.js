@@ -36,8 +36,9 @@ export const Shortcuts = {
       }
     }
 
-    // w: translate
-    if (keyCode === 87) {
+    // t: translate (was 'w' until 2026-05-09; remapped because the
+    // experimental nav controls bind w/a/s/d for camera movement).
+    if (keyCode === 84) {
       Events.emit('transformmodechange', 'translate');
     }
 
@@ -56,8 +57,8 @@ export const Shortcuts = {
       Events.emit('toolchange', 'hand');
     }
 
-    // s: scale
-    if (keyCode === 83) {
+    // l: scale (was 's' until 2026-05-09; remapped for nav controls).
+    if (keyCode === 76) {
       Events.emit('transformmodechange', 'scale');
     }
 
@@ -77,8 +78,10 @@ export const Shortcuts = {
       removeSelectedEntity();
     }
 
-    // d: clone selected entity
-    if (keyCode === 68) {
+    // c: clone selected entity (was 'd' until 2026-05-09; remapped for
+    // nav controls). Skip when Ctrl/Cmd is held — that's the
+    // copy-entity shortcut handled in onKeyDown.
+    if (keyCode === 67 && !event.ctrlKey && !event.metaKey) {
       cloneSelectedEntity();
     }
 
