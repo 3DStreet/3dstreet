@@ -63,9 +63,10 @@ export default class CommonComponents extends React.Component {
     });
   }
 
-  exportToGLTF() {
+  async exportToGLTF() {
     const entity = this.props.entity;
-    AFRAME.INSPECTOR.exporters.gltf.parse(
+    const exporter = await AFRAME.INSPECTOR.getGLTFExporter();
+    exporter.parse(
       entity.object3D,
       function (buffer) {
         const blob = new Blob([buffer], { type: 'application/octet-stream' });

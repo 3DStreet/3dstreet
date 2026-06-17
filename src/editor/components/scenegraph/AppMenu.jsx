@@ -171,7 +171,7 @@ const AppMenu = ({ currentUser }) => {
     setRightPanelTab('console');
   };
 
-  const exportSceneToGLTF = (arReady) => {
+  const exportSceneToGLTF = async (arReady) => {
     if (authUser?.isPro) {
       try {
         posthog.capture('export_initiated', {
@@ -194,8 +194,9 @@ const AppMenu = ({ currentUser }) => {
           filterRiggedEntities(scene, false);
         }
         filterHelpers(scene, false);
+        const gltfExporter = await AFRAME.INSPECTOR.getGLTFExporter();
         // Modified to handle post-processing
-        AFRAME.INSPECTOR.exporters.gltf.parse(
+        gltfExporter.parse(
           scene,
           async function (buffer) {
             filterHelpers(scene, true);
