@@ -23,7 +23,7 @@
     "stripe": "^22.2.1"
   },
   "devDependencies": {
-    "eslint": "^8.9.0",
+    "eslint": "^10.5.0",
     "eslint-config-google": "^0.14.0",
     "firebase-functions-test": "^3.5.0"
   },
