@@ -11,10 +11,6 @@ import {
   FILE_PICKER_ACCEPT
 } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import {
-  transformUVs,
-  addGLBMetadata
-} from '../modals/ScreenshotModal/gltfTransforms';
-import {
   faCheck,
   faCircle,
   faChevronRight
@@ -200,6 +196,13 @@ const AppMenu = ({ currentUser }) => {
           async function (buffer) {
             filterHelpers(scene, true);
             filterRiggedEntities(scene, true);
+
+            // Lazy-load the GLB post-processing helpers. They pull in the heavy
+            // @gltf-transform/* libraries, which we keep out of the core bundle
+            // (loaded only when a user actually exports a GLB) to stay under the
+            // webpack entrypoint size budget.
+            const { transformUVs, addGLBMetadata } =
+              await import('../modals/ScreenshotModal/gltfTransforms');
 
             let finalBuffer = buffer;
 
