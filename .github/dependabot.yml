@@ -12,16 +12,17 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
-      # Roll routine version bumps into grouped PRs by update type
-      production-minor-patch:
+      # Routine, low-risk bumps batched together
+      minor-patch:
         applies-to: version-updates
-        dependency-type: "production"
         update-types:
           - "minor"
           - "patch"
-      dev-dependencies:
+      # Breaking bumps batched together, kept out of the minor-patch PR
+      major:
         applies-to: version-updates
-        dependency-type: "development"
+        update-types:
+          - "major"
 
   # Firebase Cloud Functions
   - package-ecosystem: "npm"
@@ -39,6 +40,10 @@ updates:
         update-types:
           - "minor"
           - "patch"
+      major:
+        applies-to: version-updates
+        update-types:
+          - "major"
 
   # rad-converter Cloud Run service
   - package-ecosystem: "npm"
@@ -56,3 +61,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
+      major:
+        applies-to: version-updates
+        update-types:
+          - "major"
