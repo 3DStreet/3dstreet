@@ -704,6 +704,29 @@ AFRAME.registerComponent('set-loader-from-hash', {
         }, 1000);
         return;
       }
+      if (streetURL.startsWith('fixture:')) {
+        // Dev/test convenience: load a local parity fixture by slug through the
+        // managed-street importer, e.g. #fixture:protected-bikeway-parking-couplet
+        // The dev server serves test/parity/fixtures/*.streetmix.json from root.
+        const slug = streetURL.substring('fixture:'.length);
+        const fixtureURL = `${window.location.origin}/test/parity/fixtures/${slug}.streetmix.json`;
+        const definition = {
+          id: createUniqueId(),
+          components: {
+            'managed-street': {
+              sourceType: 'streetmix-url',
+              sourceValue: fixtureURL,
+              synchronize: true
+            },
+            'street-align': 'width: center; length: middle'
+          }
+        };
+        setTimeout(() => {
+          AFRAME.INSPECTOR.execute('entitycreate', definition);
+          STREET.notify.successMessage('Loading parity fixture: ' + slug);
+        }, 1000);
+        return;
+      }
       if (streetURL.startsWith('geojson:')) {
         // url.com/page#geojson:{"type":"FeatureCollection","features":[...]}
         const fragment = window.location.hash;

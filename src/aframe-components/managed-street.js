@@ -613,7 +613,13 @@ AFRAME.registerComponent('managed-street', {
   loadAndParseStreetmixURL: async function (streetmixURL) {
     const currentState = useStore.getState();
     const data = this.data;
-    const streetmixAPIURL = streetmixUtils.streetmixUserToAPI(streetmixURL);
+    // Normally rewrite a streetmix.net user URL to its API endpoint. If the
+    // sourceValue is some other URL (e.g. a locally served Streetmix-shaped
+    // fixture under /test/parity/fixtures), fetch it directly — it is already
+    // in the API response shape this loader expects.
+    const streetmixAPIURL = streetmixURL.includes('streetmix.net')
+      ? streetmixUtils.streetmixUserToAPI(streetmixURL)
+      : streetmixURL;
     console.log(
       '[managed-street] loader',
       'sourceType: `streetmix-url`, setting `streetmixAPIURL` to',
@@ -1279,6 +1285,25 @@ function parseStreetmixSegments(segments, length) {
         markingPosX = markingPosX - 0.75;
       }
 
+      // Stencil rotation/direction. By default the stencil follows travel
+      // direction (street-generated-stencil rotates inbound vs outbound by
+      // 180deg). That is wrong for the parallel parking-T: its orientation
+      // depends only on which side the lane is on, not on travel direction. The
+      // asymmetric glyph is a long bar (parallel to travel) with one stem; the
+      // stem must point toward the curb (the bar then sits at the traffic-side
+      // edge). So for parallel parking we set an absolute, side-only facing and
+      // opt out of the direction-based rotation; otherwise both sides land at
+      // the same rotationY and the stem points the wrong way on one side.
+      let stencilFacing = markingsRotZ + 90;
+      let stencilDirection = direction;
+      const isParallel =
+        variantList[0] === 'inbound' || variantList[0] === 'outbound';
+      if (isParallel) {
+        // left lane: curb is -X, stem -X -> facing 180; right lane: curb +X -> 0
+        stencilFacing = variantList[1] === 'right' ? 0 : 180;
+        stencilDirection = 'none';
+      }
+
       if (variantList[0] === 'sideways' || variantList[0].includes('angled')) {
         carStep = 3;
         markingLength = segmentWidthInMeters;
@@ -1289,6 +1314,7 @@ function parseStreetmixSegments(segments, length) {
           // handled separately via carFacing)
           markingsRotZ = markingsRotZ + 180;
         }
+        stencilFacing = markingsRotZ + 90;
       }
       segmentParentEl.setAttribute(
         'street-generated-clones',
@@ -1305,7 +1331,7 @@ function parseStreetmixSegments(segments, length) {
         markingLength !== undefined ? ` stencilHeight: ${markingLength};` : '';
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `modelsArray: ${parkingMixin}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90}; direction: ${direction};${stencilHeightStr}`
+        `modelsArray: ${parkingMixin}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${stencilFacing}; direction: ${stencilDirection};${stencilHeightStr}`
       );
     }
 

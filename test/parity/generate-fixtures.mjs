@@ -300,6 +300,32 @@ const STREETS = [
     ]
   },
   {
+    slug: 'protected-bikeway-parking-couplet',
+    name: 'Protected bikeway parking couplet',
+    buildings: ['residential', 'residential'],
+    // Parking-protected curbside bike lanes with parallel parking framing both
+    // travel directions around a central median. Packs all four parallel
+    // parking permutations (inbound/outbound x left/right) into one street so
+    // the parking-T stencil mirroring is checkable side by side: the T sits at
+    // each lane's traffic-side edge with the stem toward the curb, mirrored
+    // across the centerline and independent of travel direction.
+    segments: [
+      ['sidewalk', 'normal'],
+      ['bike-lane', 'inbound|regular|road'],
+      ['divider', 'striped-buffer'],
+      ['parking-lane', 'inbound|left'],
+      ['turn-lane', 'inbound|straight'],
+      ['parking-lane', 'inbound|right'],
+      ['divider', 'planting-strip'],
+      ['parking-lane', 'outbound|left'],
+      ['turn-lane', 'outbound|straight'],
+      ['parking-lane', 'outbound|right'],
+      ['divider', 'striped-buffer'],
+      ['bike-lane', 'outbound|regular|road'],
+      ['sidewalk', 'normal']
+    ]
+  },
+  {
     slug: 'festival-street',
     name: 'Festival street (closed to traffic)',
     buildings: ['narrow', 'narrow'],
@@ -386,7 +412,9 @@ for (const street of STREETS) {
       continue;
     }
     if (!supported.includes(variantString)) {
-      errors.push(`${street.slug}: unsupported variant '${type}' / '${variantString}'`);
+      errors.push(
+        `${street.slug}: unsupported variant '${type}' / '${variantString}'`
+      );
     }
     if (!covered.has(type)) covered.set(type, new Set());
     covered.get(type).add(variantString);
