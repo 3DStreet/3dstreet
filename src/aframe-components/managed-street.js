@@ -1114,20 +1114,20 @@ function parseStreetmixSegments(segments, length) {
       if (variantList[0] === 'center') {
         segmentParentEl.setAttribute(
           'street-generated-clones',
-          `modelsArray: bench_orientation_center; facing: ${rotationCloneY}; cycleOffset: 0.1`
+          `modelsArray: bench_orientation_center; facing: ${rotationCloneY}; cycleOffset: 0.1;`
         );
       } else {
         // `right` or `left` bench
         segmentParentEl.setAttribute(
           'street-generated-clones',
-          `modelsArray: bench; facing: ${rotationCloneY}; cycleOffset: 0.1`
+          `modelsArray: bench; facing: ${rotationCloneY}; cycleOffset: 0.1;`
         );
       }
     } else if (segments[i].type === 'sidewalk-bike-rack') {
       const rotationCloneY = variantList[1] === 'sidewalk-parallel' ? 90 : 0;
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `modelsArray: bikerack; facing: ${rotationCloneY}; cycleOffset: 0.2`
+        `modelsArray: bikerack; facing: ${rotationCloneY}; cycleOffset: 0.2;`
       );
     } else if (segments[i].type === 'magic-carpet') {
       segmentPreset = 'drive-lane';
@@ -1245,6 +1245,31 @@ function parseStreetmixSegments(segments, length) {
       let markingsRotZ = rotationVars[variantList[0]];
       let markingLength;
 
+      // Parked-car Y rotation, mirroring the legacy importer
+      // (createDriveLaneElement). Parallel parking faces the segment's travel
+      // direction (like a drive lane) so it stays correct if the user flips the
+      // segment direction. Sideways/angled parking has a fixed orientation that
+      // does not follow travel direction, so it sets an absolute facing with
+      // direction: none.
+      const angledCarFacing = {
+        'angled-front-left': -60,
+        'angled-front-right': 60,
+        'angled-rear-left': -120,
+        'angled-rear-right': 120
+      };
+      let carFacing;
+      let carDirection;
+      if (variantList[0] === 'inbound' || variantList[0] === 'outbound') {
+        carFacing = 0;
+        carDirection = direction; // parallel: follow travel direction
+      } else if (variantList[0] === 'sideways') {
+        carFacing = variantList[1] === 'right' ? 90 : -90;
+        carDirection = 'none';
+      } else {
+        carFacing = angledCarFacing[variantList[0]];
+        carDirection = 'none';
+      }
+
       // calculate position X and rotation Z for T-markings
       let markingPosX = segmentWidthInMeters / 2;
       if (markingsRotZ === 90 && variantList[1] === 'right') {
@@ -1260,17 +1285,19 @@ function parseStreetmixSegments(segments, length) {
         markingPosX = 0;
         parkingMixin = 'solid-stripe';
         if (variantList[1] === 'right') {
-          // make sure cars face the right way on right side
+          // mirror the stencil markings on the right side (car facing is
+          // handled separately via carFacing)
           markingsRotZ = markingsRotZ + 180;
         }
       }
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `mode: random; 
+        `mode: random;
          modelsArray: sedan-rig, self-driving-waymo-car, suv-rig;
           spacing: ${carStep};
           count: ${getRandomIntInclusive(6, 8)};
-          facing: ${markingsRotZ - 90};`
+          facing: ${carFacing};
+          direction: ${carDirection};`
       );
       // markingLength is only defined for sideways/angled parking; parallel
       // parking leaves stencilHeight unset (component defaults to 0 = no override)
@@ -1278,7 +1305,7 @@ function parseStreetmixSegments(segments, length) {
         markingLength !== undefined ? ` stencilHeight: ${markingLength};` : '';
       segmentParentEl.setAttribute(
         'street-generated-stencil',
-        `modelsArray: ${parkingMixin}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90};${stencilHeightStr}`
+        `modelsArray: ${parkingMixin}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90}; direction: ${direction};${stencilHeightStr}`
       );
     }
 

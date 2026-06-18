@@ -70,6 +70,7 @@ AFRAME.registerComponent('street-generated-stencil', {
     direction: {
       // specifying inbound/outbound directions will overwrite facing/randomFacing
       type: 'string',
+      default: 'none',
       oneOf: ['none', 'inbound', 'outbound']
     }
   },
