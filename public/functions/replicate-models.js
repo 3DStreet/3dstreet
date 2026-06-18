@@ -191,6 +191,43 @@ const REPLICATE_MODELS = {
       resolution: 1920
     },
     tokenCost: 60
+  },
+  // 360 → Splat: a raw Insta360 .insv recording in, reconstructed DIRECTLY
+  // from its two fisheye sensor streams (no Insta360 Studio stitch). The
+  // `insv_fisheye` knob rides the enqueue body like every other pipeline knob;
+  // it must be explicit because the staged Modal input file has no extension,
+  // so the pipeline's .insv auto-detection never fires. Requires the cog image
+  // built from vid2scene-cog#insv-fisheye (upstream pin cog-phase2) — older
+  // images reject the unknown kwarg and the job fails at the SfM stage.
+  // RESEARCH-PREVIEW TIER: priced at Max (the insv path renders ~800 frame
+  // pairs x 18 virtual views ≈ 1,600 SfM images — Max-like COGS until a
+  // calibration run says otherwise). MAX-PLAN ONLY: raw .insv files run
+  // ~900 MB/min, so the upload rides the MAX tier's 5 GB per-file cap, and
+  // the processing cost matches the top plan anyway. Enforced server-side in
+  // generateReplicateSplat via resolvePlanForUser (fresh custom claims).
+  'vid2scene-360': {
+    name: 'vid2scene 360 (.insv to Splat)',
+    modelName: 'kfarr/vid2scene',
+    type: 'splat',
+    inputKind: 'video',
+    provider: 'modal',
+    requiresPlan: 'MAX',
+    assetSlug: 'vid2scene-splat',
+    assetLabel: 'vid2scene Splat',
+    attribution: {
+      model: 'samuelm2/vid2scene',
+      modelName: 'vid2scene 360 (.insv to Splat)',
+      sourceType: 'video'
+    },
+    pipeline: {
+      // The pipeline floors the .insv image budget at 800 anyway; state it.
+      target_framecount: 800,
+      training_num_steps: 30000,
+      training_max_num_gaussians: 2000000,
+      resolution: 1920,
+      insv_fisheye: true
+    },
+    tokenCost: 60
   }
 };
 
