@@ -1125,20 +1125,20 @@ function parseStreetmixSegments(segments, length) {
       if (variantList[0] === 'center') {
         segmentParentEl.setAttribute(
           'street-generated-clones',
-          `modelsArray: bench_orientation_center; facing: ${rotationCloneY}; cycleOffset: 0.1;`
+          `modelsArray: bench_orientation_center; facing: ${rotationCloneY}; spacing: 30; cycleOffset: 0.1;`
         );
       } else {
         // `right` or `left` bench
         segmentParentEl.setAttribute(
           'street-generated-clones',
-          `modelsArray: bench; facing: ${rotationCloneY}; cycleOffset: 0.1;`
+          `modelsArray: bench; facing: ${rotationCloneY}; spacing: 30; cycleOffset: 0.1;`
         );
       }
     } else if (segments[i].type === 'sidewalk-bike-rack') {
       const rotationCloneY = variantList[1] === 'sidewalk-parallel' ? 90 : 0;
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `modelsArray: bikerack; facing: ${rotationCloneY}; cycleOffset: 0.2;`
+        `modelsArray: bikerack; facing: ${rotationCloneY}; spacing: 25; cycleOffset: 0.2;`
       );
     } else if (segments[i].type === 'magic-carpet') {
       segmentPreset = 'drive-lane';
@@ -1175,14 +1175,14 @@ function parseStreetmixSegments(segments, length) {
       const rotationCloneY = variantList[0] === 'right' ? 180 : 0;
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `modelsArray: utility_pole; cycleOffset: 0.25; facing: ${rotationCloneY}`
+        `modelsArray: utility_pole; spacing: 22; cycleOffset: 0.25; facing: ${rotationCloneY}`
       );
     } else if (segments[i].type === 'sidewalk-tree') {
       const objectMixinId =
         variantList[0] === 'palm-tree' ? 'palm-tree' : 'tree3';
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `modelsArray: ${objectMixinId}; randomFacing: true;`
+        `modelsArray: ${objectMixinId}; spacing: 12; randomFacing: true;`
       );
     } else if (
       segments[i].type === 'sidewalk-lamp' &&
@@ -1191,13 +1191,13 @@ function parseStreetmixSegments(segments, length) {
       if (variantList[0] === 'both') {
         segmentParentEl.setAttribute(
           'street-generated-clones',
-          `modelsArray: lamp-modern-double; cycleOffset: 0.4;`
+          `modelsArray: lamp-modern-double; spacing: 20; cycleOffset: 0.4;`
         );
       } else {
         const rotationCloneY = variantList[0] === 'right' ? 0 : 180;
         segmentParentEl.setAttribute(
           'street-generated-clones',
-          `modelsArray: lamp-modern; facing: ${rotationCloneY}; cycleOffset: 0.4;`
+          `modelsArray: lamp-modern; facing: ${rotationCloneY}; spacing: 20; cycleOffset: 0.4;`
         );
       }
       // Add the pride flags to the lamp posts
@@ -1225,7 +1225,7 @@ function parseStreetmixSegments(segments, length) {
     ) {
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `modelsArray: lamp-traditional;`
+        `modelsArray: lamp-traditional; spacing: 15;`
       );
     } else if (segments[i].type === 'transit-shelter') {
       const rotationBusStopY = variantList[0] === 'left' ? 90 : 270;
