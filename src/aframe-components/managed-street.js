@@ -741,7 +741,12 @@ function getSeparatorMixinId(previousSegment, currentSegment) {
   // Default to solid line
   let variantString = 'solid-stripe';
 
-  // Handle divider cases
+  // Handle divider cases: a divider gets an edge stripe against a lane, but two
+  // adjacent dividers (e.g. a multi-segment grass median) get no stripe between
+  // them.
+  if (previousSegment.type === 'divider' && currentSegment.type === 'divider') {
+    return null;
+  }
   if (previousSegment.type === 'divider' || currentSegment.type === 'divider') {
     return variantString;
   }
