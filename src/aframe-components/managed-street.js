@@ -1152,7 +1152,7 @@ function parseStreetmixSegments(segments, length) {
       const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `mode: random; modelsArray: parklet; spacing: 5.5; count: 3; facing: ${rotationCloneY};`
+        `mode: random; modelsArray: parklet; spacing: 5.5; count: 3; facing: ${rotationCloneY}; positionY: 0.02;`
       );
     } else if (segments[i].type === 'bikeshare') {
       const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
