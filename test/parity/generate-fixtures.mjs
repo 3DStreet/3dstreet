@@ -277,22 +277,25 @@ const STREETS = [
     slug: 'marina-parking-street',
     name: 'Marina parking street',
     buildings: ['waterfront', 'parking-lot'],
+    // Perpendicular ('sideways') and angled stalls park the car broadside, so
+    // the segment must be wide enough to fit a ~4.8m car rig (the 2.4m parallel
+    // default overlaps neighbors). Parallel stalls (inbound/outbound) stay 2.4m.
     segments: [
       ['sidewalk', 'normal'],
-      ['parking-lane', 'sideways|left'],
-      ['parking-lane', 'angled-front-left|left'],
-      ['parking-lane', 'angled-front-right|left'],
-      ['parking-lane', 'angled-rear-left|left'],
-      ['parking-lane', 'angled-rear-right|left'],
+      ['parking-lane', 'sideways|left', 5.0],
+      ['parking-lane', 'angled-front-left|left', 5.0],
+      ['parking-lane', 'angled-front-right|left', 5.0],
+      ['parking-lane', 'angled-rear-left|left', 5.0],
+      ['parking-lane', 'angled-rear-right|left', 5.0],
       ['parking-lane', 'outbound|left'],
       ['drive-lane', 'inbound|car'],
       ['drive-lane', 'outbound|car'],
       ['parking-lane', 'inbound|right'],
-      ['parking-lane', 'angled-front-left|right'],
-      ['parking-lane', 'angled-front-right|right'],
-      ['parking-lane', 'angled-rear-left|right'],
-      ['parking-lane', 'angled-rear-right|right'],
-      ['parking-lane', 'sideways|right'],
+      ['parking-lane', 'angled-front-left|right', 5.0],
+      ['parking-lane', 'angled-front-right|right', 5.0],
+      ['parking-lane', 'angled-rear-left|right', 5.0],
+      ['parking-lane', 'angled-rear-right|right', 5.0],
+      ['parking-lane', 'sideways|right', 5.0],
       ['sidewalk', 'normal']
     ]
   },

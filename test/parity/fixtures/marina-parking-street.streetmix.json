@@ -4,7 +4,7 @@
     "street": {
       "schemaVersion": 33,
       "units": 2,
-      "width": 39.6,
+      "width": 65.6,
       "leftBuildingVariant": "waterfront",
       "rightBuildingVariant": "parking-lot",
       "segments": [
@@ -17,31 +17,31 @@
         {
           "type": "parking-lane",
           "variantString": "sideways|left",
-          "width": 2.4,
+          "width": 5,
           "elevation": 0
         },
         {
           "type": "parking-lane",
           "variantString": "angled-front-left|left",
-          "width": 2.4,
+          "width": 5,
           "elevation": 0
         },
         {
           "type": "parking-lane",
           "variantString": "angled-front-right|left",
-          "width": 2.4,
+          "width": 5,
           "elevation": 0
         },
         {
           "type": "parking-lane",
           "variantString": "angled-rear-left|left",
-          "width": 2.4,
+          "width": 5,
           "elevation": 0
         },
         {
           "type": "parking-lane",
           "variantString": "angled-rear-right|left",
-          "width": 2.4,
+          "width": 5,
           "elevation": 0
         },
         {
@@ -71,31 +71,31 @@
         {
           "type": "parking-lane",
           "variantString": "angled-front-left|right",
-          "width": 2.4,
+          "width": 5,
           "elevation": 0
         },
         {
           "type": "parking-lane",
           "variantString": "angled-front-right|right",
-          "width": 2.4,
+          "width": 5,
           "elevation": 0
         },
         {
           "type": "parking-lane",
           "variantString": "angled-rear-left|right",
-          "width": 2.4,
+          "width": 5,
           "elevation": 0
         },
         {
           "type": "parking-lane",
           "variantString": "angled-rear-right|right",
-          "width": 2.4,
+          "width": 5,
           "elevation": 0
         },
         {
           "type": "parking-lane",
           "variantString": "sideways|right",
-          "width": 2.4,
+          "width": 5,
           "elevation": 0
         },
         {
