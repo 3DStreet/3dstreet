@@ -2,6 +2,7 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
 const { REPLICATE_MODELS, AI_MODEL_NAMES } = require('./replicate-models.js');
+const { assertAppCheck } = require('./app-check.js');
 
 // Helper function to post AI-generated images to Discord
 async function postAIImageToDiscord(userId, imageUrl, prompt, modelId, sceneId, source = 'generator') {
@@ -90,6 +91,7 @@ const generateFalImage = functions
       console.error('Unauthenticated request to generateFalImage');
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to generate images.');
     }
+    assertAppCheck(context);
 
     const userId = context.auth.uid;
     const {

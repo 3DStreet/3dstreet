@@ -6,6 +6,7 @@ const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
 const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS, REPLICATE_MODELS } = require('./replicate-models.js');
+const { assertAppCheck } = require('./app-check.js');
 // Modal compute backend — vid2scene runs there (Replicate's on-demand tier
 // preempts long jobs). Provider adapter only; the job/billing machinery in
 // this file is shared across providers.
@@ -163,6 +164,7 @@ const generateReplicateImage = functions
       console.error('Unauthenticated request to generateReplicateImage');
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to generate images.');
     }
+    assertAppCheck(context);
 
     const userId = context.auth.uid;
     const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version, model_id, scene_id, source = 'editor' } = data;
@@ -504,6 +506,7 @@ const generateReplicateVideo = functions
       console.error('Unauthenticated request to generateReplicateVideo');
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to generate videos.');
     }
+    assertAppCheck(context);
 
     const userId = context.auth.uid;
     const { prompt, input_image, model_name = 'lightricks/ltx-2-fast', aspect_ratio = '16:9', duration_seconds = 5 } = data;
@@ -814,6 +817,7 @@ const generateReplicateSplat = functions
       console.error('Unauthenticated request to generateReplicateSplat');
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to generate splats.');
     }
+    assertAppCheck(context);
 
     const userId = context.auth.uid;
     const { input_image, input_video, model_id = 'sharp-ml', source = 'generator', notify } = data;
@@ -1633,6 +1637,7 @@ const getGenerationJobStatus = functions
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
     }
+    assertAppCheck(context);
 
     const userId = context.auth.uid;
     const { jobId } = data || {};

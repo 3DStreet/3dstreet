@@ -6,6 +6,7 @@ const { getGeoidHeight } = require('./geoid-height.js');
 const { generateReplicateImage, generateReplicateVideo, generateReplicateSplat, getGenerationJobStatus, replicateJobWebhook, modalJobWebhook } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { generateFalImage } = require('./fal-proxy.js');
+const { assertAppCheck } = require('./app-check.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduled/scheduledEmails.js');
 const { auditUserSubscriptions, auditUserSubscriptionsHttp } = require('./utilities/user-audit.js');
 const { onAssetWritten, getUploadQuota } = require('./asset-quota.js');
@@ -113,6 +114,7 @@ exports.createStripeSession = functions
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to create checkout session.');
     }
+    assertAppCheck(context);
 
     // SECURITY: Always use the authenticated user's ID from context, never trust client-provided IDs
     const userId = context.auth.uid;
@@ -202,6 +204,7 @@ exports.checkActiveSubscriptions = functions
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to check subscriptions.');
     }
+    assertAppCheck(context);
 
     const userId = context.auth.uid;
 
@@ -259,6 +262,7 @@ exports.createStripeBillingPortal = functions
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to access billing portal.');
     }
+    assertAppCheck(context);
 
     // SECURITY: Always use the authenticated user's ID from context, never trust client-provided IDs
     const userId = context.auth.uid;
@@ -485,6 +489,7 @@ exports.shareToDiscord = functions
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to share scenes.');
     }
+    assertAppCheck(context);
 
     const { title, location, username, sceneUrl, imageUrl } = data;
 

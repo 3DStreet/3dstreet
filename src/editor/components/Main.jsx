@@ -19,6 +19,7 @@ import { LoadingSceneModal } from './modals/LoadingSceneModal';
 import AssetDeepLinkModal from './AssetDeepLinkModal.jsx';
 import JobHealthModal from './JobHealthModal.jsx';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
+import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
 import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
 import useStore from '@/store';
@@ -72,6 +73,7 @@ export default function Main() {
 
   return (
     <div id="inspectorContainer">
+      <UnofficialDeploymentBanner />
       <ToolbarWrapper />
       {isInspectorEnabled && (
         <AIChatProvider firebaseApp={app}>

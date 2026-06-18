@@ -1,6 +1,7 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
+const { assertAppCheck } = require('./app-check.js');
 
 const PRO_MONTHLY_ALLOWANCE = 100;
 const MAX_MONTHLY_ALLOWANCE = 500;
@@ -73,6 +74,7 @@ const checkAndRefillImageTokens = functions
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
     }
+    assertAppCheck(context);
 
     const userId = context.auth.uid;
     const db = admin.firestore();
@@ -310,6 +312,7 @@ const checkUserProStatus = functions
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
     }
+    assertAppCheck(context);
 
     const userId = context.auth.uid;
     

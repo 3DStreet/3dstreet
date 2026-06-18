@@ -24,6 +24,7 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
+const { assertAppCheck } = require('./app-check.js');
 
 const MB = 1000 * 1000;
 const GB = 1000 * MB;
@@ -157,6 +158,7 @@ const getUploadQuota = functions.runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS']
       'User must be authenticated.'
     );
   }
+  assertAppCheck(context);
   const uid = context.auth.uid;
   const proposedBytes = Math.max(0, Number(data?.proposedBytes) || 0);
 
