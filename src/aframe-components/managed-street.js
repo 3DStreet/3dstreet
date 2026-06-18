@@ -1272,17 +1272,14 @@ function parseStreetmixSegments(segments, length) {
           count: ${getRandomIntInclusive(6, 8)};
           facing: ${markingsRotZ - 90};`
       );
-      if (variantList[1] === 'left') {
-        segmentParentEl.setAttribute(
-          'street-generated-stencil',
-          `modelsArray: ${parkingMixin}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90}; stencilHeight: ${markingLength};`
-        );
-      } else {
-        segmentParentEl.setAttribute(
-          'street-generated-stencil',
-          `modelsArray: ${parkingMixin}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90}; stencilHeight: ${markingLength};`
-        );
-      }
+      // markingLength is only defined for sideways/angled parking; parallel
+      // parking leaves stencilHeight unset (component defaults to 0 = no override)
+      const stencilHeightStr =
+        markingLength !== undefined ? ` stencilHeight: ${markingLength};` : '';
+      segmentParentEl.setAttribute(
+        'street-generated-stencil',
+        `modelsArray: ${parkingMixin}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90};${stencilHeightStr}`
+      );
     }
 
     // if this thing is a sidewalk, make segmentPreset sidewalk
