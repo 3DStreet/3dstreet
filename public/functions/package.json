@@ -15,6 +15,7 @@
   "main": "index.js",
   "dependencies": {
     "@google-cloud/tasks": "^5.5.2",
+    "@google-cloud/vertexai": "^1.12.0",
     "@googlemaps/google-maps-services-js": "^3.4.0",
     "core-js": "^3.6.5",
     "firebase-admin": "^13.0.0",

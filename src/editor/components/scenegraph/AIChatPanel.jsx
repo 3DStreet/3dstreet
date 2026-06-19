@@ -1,7 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Tooltip } from 'radix-ui';
-import { ai } from '@shared/services/firebase';
-import { getGenerativeModel } from 'firebase/ai';
+import { createProxyChat } from '../../services/aiChatProxy.js';
 import {
   Copy32Icon,
   DownloadIcon,
@@ -933,27 +932,12 @@ function AIChatPanel() {
   useEffect(() => {
     const initializeAI = async () => {
       try {
-        // Get the enhanced system prompt with mixin information
-        const enhancedSystemPrompt = getEnhancedSystemPrompt();
-
-        const model = getGenerativeModel(ai, {
-          model: AI_MODEL_ID,
-          tools: [entityTools],
-          systemInstruction: enhancedSystemPrompt
-        });
-
-        // Initialize the model with an empty chat history
-        // The history will be sent with each message instead
-        modelRef.current = model.startChat({
-          history: [],
-          generationConfig: {
-            maxOutputTokens: 2000
-          },
-          labels: {
-            AI_CONVERSATION_ID: AI_CONVERSATION_ID
-          }
-        });
-        console.log('Vertex AI chat initialized successfully');
+        // The model + generation config now live server-side in the
+        // generateEditorChat Cloud Function; the client only supplies the tool
+        // declarations. The system prompt is rebuilt and sent per-message in
+        // processMessage, so there's nothing to pass at init time.
+        modelRef.current = createProxyChat({ tools: [entityTools] });
+        console.log('AI chat initialized (proxy)');
       } catch (error) {
         console.error('Error initializing Vertex AI:', error);
       }
@@ -1359,28 +1343,12 @@ function AIChatPanel() {
     // Re-initialize the AI model with empty history
     const initializeAI = async () => {
       try {
-        // Get the enhanced system prompt with mixin information
-        const enhancedSystemPrompt = getEnhancedSystemPrompt();
-
-        const model = getGenerativeModel(ai, {
-          model: AI_MODEL_ID,
-          tools: [entityTools],
-          systemInstruction: enhancedSystemPrompt
-        });
         // generate new uuid
         AI_CONVERSATION_ID = uuidv4();
 
-        // Start a fresh chat with only the initial welcome message
-        modelRef.current = model.startChat({
-          history: [],
-          generationConfig: {
-            maxOutputTokens: 2000
-          },
-          labels: {
-            AI_CONVERSATION_ID: AI_CONVERSATION_ID
-          }
-        });
-        console.log('Vertex AI chat reinitialized with empty history');
+        // Fresh proxy-backed chat; history is sent per-message from state.
+        modelRef.current = createProxyChat({ tools: [entityTools] });
+        console.log('AI chat reinitialized (proxy)');
       } catch (error) {
         console.error('Error reinitializing Vertex AI:', error);
       }
