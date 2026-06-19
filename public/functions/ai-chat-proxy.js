@@ -21,16 +21,21 @@
  * locked and calls are authenticated + rate-limited. Tool *execution* stays in
  * the browser (it mutates the live A-Frame scene); this only proxies the model
  * round-trip.
+ *
+ * SDK: @google/genai with the Vertex backend. gemini-3 preview models are only
+ * served on the `global` location (regional endpoints 404); the Gen AI SDK
+ * targets it natively. (The older @google-cloud/vertexai SDK is deprecated and
+ * scheduled for removal 2026-06-24.)
  */
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
-const { VertexAI } = require('@google-cloud/vertexai');
+const { GoogleGenAI } = require('@google/genai');
 
 // Locked server-side. The Editor only ever needs text generation; the image
 // model is deliberately unreachable from here.
 const MODEL_ID = 'gemini-3-flash-preview';
-// Matches the client's previous Firebase AI Logic backend ('global').
+// gemini-3 preview is served on the global endpoint only.
 const LOCATION = 'global';
 
 const MAX_OUTPUT_TOKENS = 4096;
@@ -44,23 +49,16 @@ const MAX_INPUT_CHARS = 300000;
 const RATE_PER_MIN = 20;
 const RATE_PER_DAY = 300;
 
-let vertexClient = null;
-function getGenerativeModel(systemInstruction, tools) {
-  if (!vertexClient) {
-    vertexClient = new VertexAI({
+let genaiClient = null;
+function getClient() {
+  if (!genaiClient) {
+    genaiClient = new GoogleGenAI({
+      vertexai: true,
       project: process.env.GCLOUD_PROJECT,
       location: LOCATION
     });
   }
-  return vertexClient.getGenerativeModel({
-    model: MODEL_ID,
-    systemInstruction: systemInstruction
-      ? { role: 'system', parts: [{ text: String(systemInstruction) }] }
-      : undefined,
-    // Pass through the client's tool declarations unchanged. Shape:
-    // [{ functionDeclarations: [...] }]. Execution happens in the browser.
-    tools: Array.isArray(tools) && tools.length ? tools : undefined
-  });
+  return genaiClient;
 }
 
 /**
@@ -120,8 +118,8 @@ async function enforceRateLimit(uid) {
 }
 
 // Convert the client's lightweight history ({ role: 'user'|'assistant',
-// content: string }) into Vertex `contents`. 'assistant' maps to Vertex's
-// 'model' role; everything becomes a single text part.
+// content: string }) into Gen AI `contents`. 'assistant' maps to the 'model'
+// role; everything becomes a single text part.
 function historyToContents(history) {
   if (!Array.isArray(history)) return [];
   return history
@@ -153,7 +151,9 @@ const generateEditorChat = functions
 
     const systemInstruction =
       typeof data?.systemInstruction === 'string' ? data.systemInstruction : '';
-    const tools = data?.tools;
+    // Tool declarations, passed through unchanged. Shape:
+    // [{ functionDeclarations: [...] }]. Execution happens in the browser.
+    const tools = Array.isArray(data?.tools) ? data.tools : undefined;
     const history = data?.history;
 
     // Cheap input ceiling before we spend a model call.
@@ -170,39 +170,41 @@ const generateEditorChat = functions
 
     await enforceRateLimit(uid);
 
-    const model = getGenerativeModel(systemInstruction, tools);
     const contents = [
       ...historyToContents(history),
       { role: 'user', parts: [{ text: message }] }
     ];
 
+    const config = { maxOutputTokens: MAX_OUTPUT_TOKENS };
+    if (systemInstruction) config.systemInstruction = systemInstruction;
+    if (tools && tools.length) config.tools = tools;
+
     let response;
     try {
-      const result = await model.generateContent({
+      response = await getClient().models.generateContent({
+        model: MODEL_ID,
         contents,
-        generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS }
+        config
       });
-      response = result.response;
     } catch (err) {
-      console.error(`[ai-chat-proxy] Vertex error uid=${uid}:`, err);
+      console.error(`[ai-chat-proxy] Gen AI error uid=${uid}:`, err);
+      // Surface a short, safe reason to the client so the chat can show what
+      // went wrong instead of a generic failure. Provider error messages carry
+      // model/quota/permission info (no secrets); cap the length to be safe.
+      const reason = (err && err.message ? String(err.message) : 'unknown error')
+        .replace(/\s+/g, ' ')
+        .slice(0, 200);
       throw new functions.https.HttpsError(
         'internal',
-        'The AI assistant is temporarily unavailable.'
+        `The AI assistant failed: ${reason}`
       );
     }
 
-    const parts = response?.candidates?.[0]?.content?.parts || [];
-    const text = parts
-      .filter((p) => typeof p.text === 'string')
-      .map((p) => p.text)
-      .join('');
-    const functionCalls = parts
-      .filter((p) => p.functionCall)
-      .map((p) => p.functionCall);
-
+    // `.text` and `.functionCalls` are getters on the Gen AI response; both can
+    // be undefined (text-only or call-only turns).
     return {
-      text,
-      functionCalls,
+      text: response?.text || '',
+      functionCalls: response?.functionCalls || [],
       usageMetadata: response?.usageMetadata || null
     };
   });

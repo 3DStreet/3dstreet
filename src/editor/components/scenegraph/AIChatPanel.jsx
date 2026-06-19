@@ -1244,18 +1244,25 @@ function AIChatPanel() {
       // We'll add the rating message after all function calls are processed
       // This will happen in the processFunctionCalls().then() callback
     } catch (error) {
-      // Log full error to console for debugging — never to chat UI, since
-      // SDK errors routinely embed endpoint URLs, auth details, and quota
-      // metadata that we don't want to surface to users.
       console.error('Error generating response:', error);
+      // Errors now come from our own generateEditorChat callable, which only
+      // emits curated, user-safe messages (auth, rate limit, size, or a capped
+      // upstream reason). Raw Vertex/SDK internals are caught server-side, so
+      // it's safe to show error.message here. Skip the bare 'INTERNAL' that a
+      // truly-uncaught throw produces and fall back to the generic line.
+      const reason =
+        error?.message && error.message.toLowerCase() !== 'internal'
+          ? error.message
+          : '';
       const errorResponseId = Date.now() + Math.random().toString(16).slice(2);
       setLatestResponseId(errorResponseId);
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content:
-            'Sorry, I encountered an error. Please try again, or reset the chat.',
+          content: reason
+            ? `Sorry, I hit an error: ${reason}`
+            : 'Sorry, I encountered an error. Please try again, or reset the chat.',
           isRecoverable: true,
           responseId: errorResponseId,
           timestamp: new Date()
