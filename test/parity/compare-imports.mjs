@@ -152,8 +152,12 @@ async function openScene(browser, fixturesById) {
 }
 
 async function triggerLegacy(page, url) {
+  // #default-street was removed in #1699; the legacy import now creates a
+  // fresh street entity (see inputStreetmix). Mirror that here by appending
+  // our own entity to #street-container instead of mutating a fixed element.
   await page.evaluate((streetURL) => {
-    const el = document.getElementById('default-street');
+    const el = document.createElement('a-entity');
+    el.id = 'parity-legacy-street';
     window.__parityLoaded = false;
     el.addEventListener(
       'streetmix-loader-street-loaded',
@@ -166,6 +170,7 @@ async function triggerLegacy(page, url) {
       streetmixStreetURL: streetURL,
       showBuildings: false
     });
+    document.getElementById('street-container').appendChild(el);
   }, url);
   await page.waitForFunction(() => window.__parityLoaded, {
     timeout: LOAD_TIMEOUT
