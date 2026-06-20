@@ -26,7 +26,14 @@ const config = {
         {
           loader: 'css-loader',
           options: {
-            modules: true,
+            // css-loader v7 defaults modules.namedExport to true, dropping the
+            // default export and breaking `import styles from './x.module.scss'`
+            // (white-screens any story importing one). Keep v6 behavior, matching
+            // webpack.config.js / webpack.prod.config.js.
+            modules: {
+              namedExport: false,
+              exportLocalsConvention: 'as-is'
+            },
             sourceMap: true
           }
         },
