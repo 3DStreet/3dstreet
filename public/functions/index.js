@@ -15,6 +15,7 @@ const { checkAssetUsageHealth, triggerCheckAssetUsageHealth } = require('./sched
 const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./scheduled/asset-orphan-cleanup.js');
 const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
 const { onSplatAssetCreated } = require('./rad-dispatch.js');
+const { generateEditorChat } = require('./ai-chat-proxy.js');
 
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;
@@ -69,6 +70,12 @@ exports.triggerReconcileGenerationJobs = triggerReconcileGenerationJobs;
 
 // --- RAD conversion (splat optimized variant) -----------------------------
 exports.onSplatAssetCreated = onSplatAssetCreated;
+
+// Editor AI Assistant — server-side gate for the Vertex/Gemini chat. The client
+// no longer calls Firebase AI Logic directly (model selection was abusable); all
+// model access now goes through this authenticated, rate-limited, model-locked
+// callable. See ai-chat-proxy.js.
+exports.generateEditorChat = generateEditorChat;
 
 exports.getScene = functions
   .https

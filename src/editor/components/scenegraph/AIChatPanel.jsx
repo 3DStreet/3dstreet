@@ -1,7 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Tooltip } from 'radix-ui';
-import { ai } from '@shared/services/firebase';
-import { getGenerativeModel } from 'firebase/ai';
+import { createProxyChat } from '../../services/aiChatProxy.js';
 import {
   Copy32Icon,
   DownloadIcon,
@@ -933,27 +932,12 @@ function AIChatPanel() {
   useEffect(() => {
     const initializeAI = async () => {
       try {
-        // Get the enhanced system prompt with mixin information
-        const enhancedSystemPrompt = getEnhancedSystemPrompt();
-
-        const model = getGenerativeModel(ai, {
-          model: AI_MODEL_ID,
-          tools: [entityTools],
-          systemInstruction: enhancedSystemPrompt
-        });
-
-        // Initialize the model with an empty chat history
-        // The history will be sent with each message instead
-        modelRef.current = model.startChat({
-          history: [],
-          generationConfig: {
-            maxOutputTokens: 2000
-          },
-          labels: {
-            AI_CONVERSATION_ID: AI_CONVERSATION_ID
-          }
-        });
-        console.log('Vertex AI chat initialized successfully');
+        // The model + generation config now live server-side in the
+        // generateEditorChat Cloud Function; the client only supplies the tool
+        // declarations. The system prompt is rebuilt and sent per-message in
+        // processMessage, so there's nothing to pass at init time.
+        modelRef.current = createProxyChat({ tools: [entityTools] });
+        console.log('AI chat initialized (proxy)');
       } catch (error) {
         console.error('Error initializing Vertex AI:', error);
       }
@@ -1260,18 +1244,25 @@ function AIChatPanel() {
       // We'll add the rating message after all function calls are processed
       // This will happen in the processFunctionCalls().then() callback
     } catch (error) {
-      // Log full error to console for debugging — never to chat UI, since
-      // SDK errors routinely embed endpoint URLs, auth details, and quota
-      // metadata that we don't want to surface to users.
       console.error('Error generating response:', error);
+      // Errors now come from our own generateEditorChat callable, which only
+      // emits curated, user-safe messages (auth, rate limit, size, or a capped
+      // upstream reason). Raw Vertex/SDK internals are caught server-side, so
+      // it's safe to show error.message here. Skip the bare 'INTERNAL' that a
+      // truly-uncaught throw produces and fall back to the generic line.
+      const reason =
+        error?.message && error.message.toLowerCase() !== 'internal'
+          ? error.message
+          : '';
       const errorResponseId = Date.now() + Math.random().toString(16).slice(2);
       setLatestResponseId(errorResponseId);
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content:
-            'Sorry, I encountered an error. Please try again, or reset the chat.',
+          content: reason
+            ? `Sorry, I hit an error: ${reason}`
+            : 'Sorry, I encountered an error. Please try again, or reset the chat.',
           isRecoverable: true,
           responseId: errorResponseId,
           timestamp: new Date()
@@ -1359,28 +1350,12 @@ function AIChatPanel() {
     // Re-initialize the AI model with empty history
     const initializeAI = async () => {
       try {
-        // Get the enhanced system prompt with mixin information
-        const enhancedSystemPrompt = getEnhancedSystemPrompt();
-
-        const model = getGenerativeModel(ai, {
-          model: AI_MODEL_ID,
-          tools: [entityTools],
-          systemInstruction: enhancedSystemPrompt
-        });
         // generate new uuid
         AI_CONVERSATION_ID = uuidv4();
 
-        // Start a fresh chat with only the initial welcome message
-        modelRef.current = model.startChat({
-          history: [],
-          generationConfig: {
-            maxOutputTokens: 2000
-          },
-          labels: {
-            AI_CONVERSATION_ID: AI_CONVERSATION_ID
-          }
-        });
-        console.log('Vertex AI chat reinitialized with empty history');
+        // Fresh proxy-backed chat; history is sent per-message from state.
+        modelRef.current = createProxyChat({ tools: [entityTools] });
+        console.log('AI chat reinitialized (proxy)');
       } catch (error) {
         console.error('Error reinitializing Vertex AI:', error);
       }
