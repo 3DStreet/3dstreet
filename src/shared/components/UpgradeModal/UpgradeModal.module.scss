@@ -192,25 +192,26 @@ $green: #10b981;
   flex-shrink: 0;
 }
 
-// Billing toggle (segmented control)
+// Billing toggle (segmented control) — deliberately compact and centered, and
+// pill-shaped to read as a secondary modifier. The tier cards below are the
+// primary choice, so this must not span their full width or match their shape.
 .billingToggle {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
+  display: flex;
+  width: fit-content;
+  margin: 0 auto 20px;
   background: #0a0a0a;
   border: 1px solid #2a2a2a;
-  border-radius: 10px;
-  padding: 4px;
-  margin-bottom: 20px;
+  border-radius: 999px;
+  padding: 3px;
 }
 
 .toggleButton {
   background: transparent;
   border: 1px solid transparent;
   color: #888;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -240,55 +241,105 @@ $green: #10b981;
   letter-spacing: 0.2px;
 }
 
-// Price display
-.priceDisplay {
-  margin-bottom: 20px;
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  flex-wrap: wrap;
+// Tier cards — Pro and Max side by side, repriced by the single billing
+// toggle above. Mirrors the public /pricing page so the in-app modal reads the
+// same way: tier is the choice, billing cycle is just the modifier.
+.planCards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-.priceLarge {
-  font-size: 44px;
+.planCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #0f0f0f;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 16px 14px;
+}
+
+.planName {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.planPriceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.planPriceLarge {
+  font-size: 30px;
   font-weight: 800;
   color: #fff;
   line-height: 1;
 }
 
-// Stacks /month (superscript-style) above the billing-cycle detail line.
-// padding-top nudges the unit column so /month aligns near the cap height
-// of the large price digits rather than sitting at the very top edge.
-.priceUnit {
+.planPricePer {
+  font-size: 13px;
+  color: #aaa;
+}
+
+.planCycleDetail {
+  font-size: 12px;
+  color: #777;
+  margin-bottom: 4px;
+}
+
+.planPerks {
+  list-style: none;
+  margin: 8px 0 14px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding-top: 4px;
+  gap: 6px;
+  // Grow so the CTA (margin-top:auto) bottom-aligns across both cards even when
+  // Max lists one more perk than Pro.
+  flex-grow: 1;
+
+  li {
+    position: relative;
+    padding-left: 14px;
+    font-size: 13px;
+    color: #ccc;
+    line-height: 1.35;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 1px;
+      top: 6px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: $purple;
+    }
+  }
 }
 
-.pricePer {
+// Per-card CTA — identical solid purple on both cards so neither tier is
+// visually favored. margin-top:auto bottom-aligns them across the two cards.
+.planCta {
+  width: 100%;
+  margin-top: auto;
+  background: $purple;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
   font-size: 15px;
-  color: #aaa;
-  line-height: 1;
-}
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
 
-.priceSubtext {
-  font-size: 13px;
-  color: #777;
-  line-height: 1.2;
-}
-
-// Up-front token grant note — sits under the price display and tracks the
-// active billing cycle (100 monthly / 840 yearly). Soft purple to tie into
-// the brand and signal "you get this immediately" without overpowering the
-// price.
-.priceTokenGrant {
-  flex-basis: 100%;
-  font-size: 13px;
-  color: #c4b5fd;
-  font-weight: 500;
-  margin-top: 4px;
+  &:hover {
+    background: $purple-hover;
+  }
 }
 
 // Primary CTA — used by Go Pro and Manage Subscription
@@ -468,7 +519,7 @@ $green: #10b981;
   .pricingTitle {
     font-size: 22px;
   }
-  .priceLarge {
-    font-size: 36px;
+  .planPriceLarge {
+    font-size: 26px;
   }
 }

@@ -3,6 +3,7 @@ import { Button } from '../elements';
 import { useAuthContext } from '@/editor/contexts/index.js';
 import PropertyRow from './PropertyRow';
 import { Magnifier20Icon, SunIcon } from '@shared/icons';
+import { geoSourcePhrase } from '@shared/constants/geoSources.js';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { useState, useEffect } from 'react';
@@ -228,6 +229,107 @@ const EnvironmentSection = () => {
   );
 };
 
+// Empty / not-activated hero (#1654 redesign). Until a scene has an activated
+// geospatial location, the map-type / location / blending controls are inert,
+// so we hide them (see GeoSidebar) and foreground a single honest CTA. The
+// copy names the action ("Add Geo Layer"), the payoff (real-world maps), and
+// the cost (one geo token) so the token economy is legible at the point of
+// spend. Plan/token state only changes the CTA, not the layout. The saved
+// location's provenance copy comes from geoSourcePhrase (@shared/constants).
+const GeoHero = ({
+  hasLocation,
+  isPro,
+  geoToken,
+  source,
+  onAdd,
+  onUpgrade
+}) => {
+  const outOfTokens = !isPro && geoToken === 0;
+  const sourcePhrase = geoSourcePhrase(source);
+  const savedLocationCopy = sourcePhrase
+    ? `This scene has a saved location ${sourcePhrase}. Add the geo layer to load 3D buildings, terrain, and satellite imagery.`
+    : 'This scene has a saved location. Add the geo layer to load 3D buildings, terrain, and satellite imagery.';
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        gap: '8px',
+        margin: '4px 12px 16px',
+        padding: '18px 16px',
+        borderRadius: '10px',
+        background: 'rgba(119, 77, 238, 0.08)',
+        border: '1px solid rgba(119, 77, 238, 0.35)'
+      }}
+    >
+      <div style={{ fontSize: '30px', lineHeight: 1 }}>🌍</div>
+      <div style={{ fontWeight: 600, color: '#fff', fontSize: '14px' }}>
+        {hasLocation ? 'Map not loaded yet' : 'Add a real-world location'}
+      </div>
+      <div style={{ fontSize: '12px', lineHeight: 1.45, color: '#b8b8b8' }}>
+        {hasLocation
+          ? savedLocationCopy
+          : 'Drop your scene onto real-world maps with 3D buildings, terrain, and satellite imagery.'}
+      </div>
+      <Button
+        variant={outOfTokens ? 'upgrade' : 'toolbtn'}
+        style={{
+          width: '100%',
+          justifyContent: 'center',
+          marginTop: '4px',
+          fontSize: '13px',
+          padding: '10px 16px',
+          ...(outOfTokens
+            ? {}
+            : {
+                background: '#774dee',
+                border: 'none',
+                color: 'white',
+                fontWeight: 600
+              })
+        }}
+        onClick={outOfTokens ? onUpgrade : onAdd}
+      >
+        {outOfTokens ? 'Upgrade to Pro' : 'Add Geo Layer'}
+      </Button>
+      {!isPro && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px',
+            fontSize: '11px',
+            color: '#9ca3af'
+          }}
+        >
+          <img
+            src="/ui_assets/token-geo.png"
+            alt="Geo Token"
+            style={{ width: '16px', height: '16px', verticalAlign: 'middle' }}
+          />
+          <span>
+            {outOfTokens
+              ? "You're out of free geo tokens."
+              : `Uses 1 of ${geoToken} free geo tokens to add real-world map data.`}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+GeoHero.propTypes = {
+  hasLocation: PropTypes.bool,
+  isPro: PropTypes.bool,
+  geoToken: PropTypes.number,
+  source: PropTypes.string,
+  onAdd: PropTypes.func.isRequired,
+  onUpgrade: PropTypes.func.isRequired
+};
+
 const GeoSidebar = ({ entity }) => {
   const setModal = useStore((state) => state.setModal);
   const { currentUser, tokenProfile } = useAuthContext();
@@ -278,13 +380,42 @@ const GeoSidebar = ({ entity }) => {
   // Check if entity and its components exist
   const component = entity?.components?.['street-geo'];
 
+  // Geo activation state (#1654). The scene can carry a suggested lat/lon
+  // (e.g. from the mobile app) without the elevation service ever having run,
+  // in which case the activation gate in street-geo suppresses all map tiles.
+  // Use the component's own predicates as the single source of truth so this
+  // panel can't drift from the gate's definition of "located" / "activated".
+  // Until activated, the geo-specific controls (map type, location details,
+  // blending) are inert, so we hide them and show GeoHero instead — one honest
+  // CTA per state. Environment is general scene config (separate #environment
+  // entity) and stays visible throughout.
+  const geoData = component?.data;
+  const hasLocation = !!component && component.hasSuggestedLocation();
+  const isActivated = !!component && component.isGeospatialActivated();
+
+  const activateFromCallout = () => {
+    posthog.capture('geo_activation_callout_clicked');
+    openGeoModal();
+  };
+
   return (
     <Tooltip.Provider>
       <div className="geo-sidebar">
         <div className="geo-controls">
           <div className="details">
+            {/* Empty / not-activated: single honest CTA, geo controls hidden */}
+            {!isActivated && (
+              <GeoHero
+                hasLocation={hasLocation}
+                isPro={!!currentUser?.isPro}
+                geoToken={tokenProfile?.geoToken ?? 0}
+                source={geoData?.source}
+                onAdd={hasLocation ? activateFromCallout : openGeoModal}
+                onUpgrade={() => startCheckout('geo')}
+              />
+            )}
             {/* Map Source Selection */}
-            {component && component.schema && component.data && (
+            {isActivated && component && component.schema && component.data && (
               <div className="propertyRow" style={{ marginBottom: '16px' }}>
                 <div className="fakePropertyRowLabel">Map Type</div>
                 <div
@@ -429,172 +560,154 @@ const GeoSidebar = ({ entity }) => {
               </div>
             )}
 
-            {/* Combined location header with button */}
-            <div className="propertyRow" style={{ marginBottom: '12px' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                  paddingRight: '12px'
-                }}
-              >
+            {/* Activated: location status + change-location entry point */}
+            {isActivated && (
+              <div className="propertyRow" style={{ marginBottom: '12px' }}>
                 <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    paddingRight: '12px'
+                  }}
                 >
-                  <TooltipWrapper
-                    content={
-                      component && component.data && component.data.latitude
-                        ? `This scene's centerpoint is ${component.data.latitude}, ${component.data.longitude}`
-                        : 'This scene has a geolocation centerpoint defined.'
-                    }
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
                   >
-                    <span
-                      className="success-badge"
-                      style={{
-                        background: '#2d2d2d',
-                        border:
-                          component && component.data && component.data.latitude
-                            ? '1px solid #10b981'
-                            : '1px solid #6b7280',
-                        color: 'white',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: '500'
-                      }}
+                    <TooltipWrapper
+                      content={`This scene's centerpoint is ${geoData.latitude}, ${geoData.longitude}`}
                     >
-                      {component && component.data && component.data.latitude
-                        ? '✅ Location Set'
-                        : '📍 No Location'}
-                    </span>
-                  </TooltipWrapper>
-                  {!currentUser?.isPro && tokenProfile && (
-                    <TooltipWrapper content="Use geo tokens to set or change a geolocation for your scene.">
                       <span
-                        className="token-badge"
+                        className="success-badge"
                         style={{
                           background: '#2d2d2d',
-                          color: '#9ca3af',
+                          border: '1px solid #10b981',
+                          color: 'white',
                           padding: '4px 8px',
                           borderRadius: '4px',
-                          fontSize: '10px'
+                          fontSize: '11px',
+                          fontWeight: '500'
                         }}
                       >
-                        <img
-                          src="/ui_assets/token-geo.png"
-                          alt="Geo Token"
-                          style={{
-                            width: '20px',
-                            height: '20px',
-                            marginRight: '3px',
-                            display: 'inline-block',
-                            verticalAlign: 'middle'
-                          }}
-                        />
-                        {tokenProfile.geoToken} free
+                        ✅ Location Set
                       </span>
                     </TooltipWrapper>
-                  )}
+                    {!currentUser?.isPro && tokenProfile && (
+                      <TooltipWrapper content="Use geo tokens to set or change a geolocation for your scene.">
+                        <span
+                          className="token-badge"
+                          style={{
+                            background: '#2d2d2d',
+                            color: '#9ca3af',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '10px'
+                          }}
+                        >
+                          <img
+                            src="/ui_assets/token-geo.png"
+                            alt="Geo Token"
+                            style={{
+                              width: '20px',
+                              height: '20px',
+                              marginRight: '3px',
+                              display: 'inline-block',
+                              verticalAlign: 'middle'
+                            }}
+                          />
+                          {tokenProfile.geoToken} free
+                        </span>
+                      </TooltipWrapper>
+                    )}
+                  </div>
+                  <Button variant="toolbtn" onClick={openGeoModal}>
+                    <Magnifier20Icon />
+                    Change Location
+                  </Button>
                 </div>
-                <Button variant="toolbtn" onClick={openGeoModal}>
-                  <Magnifier20Icon />
-                  {entity && entity.components
-                    ? 'Change Location'
-                    : 'Set Location'}
-                </Button>
               </div>
-            </div>
+            )}
 
-            {/* Upgrade prompt for users with 0 tokens */}
-            {!currentUser?.isPro && tokenProfile?.geoToken === 0 && (
-              <div
-                className="propertyRow"
-                style={{ marginTop: '8px', paddingRight: '12px' }}
-              >
-                <Button
-                  variant="toolbtn"
-                  style={{
-                    width: '100%',
-                    background:
-                      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    border: 'none',
-                    color: 'white',
-                    fontWeight: '600',
-                    fontSize: '12px',
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 4px 12px rgba(118, 75, 162, 0.3)',
-                    ':hover': {
-                      transform: 'translateY(-1px)',
-                      boxShadow: '0 6px 20px rgba(118, 75, 162, 0.4)'
-                    }
-                  }}
-                  onClick={() => startCheckout('geo')}
-                  onMouseEnter={(e) => {
-                    e.target.style.transform = 'translateY(-1px)';
-                    e.target.style.boxShadow =
-                      '0 6px 20px rgba(118, 75, 162, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0px)';
-                    e.target.style.boxShadow =
-                      '0 4px 12px rgba(118, 75, 162, 0.3)';
-                  }}
+            {/* Upgrade prompt for activated scenes whose free user is out of
+                tokens (so they can still change location). Not-activated
+                scenes get the upsell inside GeoHero instead. */}
+            {isActivated &&
+              !currentUser?.isPro &&
+              tokenProfile?.geoToken === 0 && (
+                <div
+                  className="propertyRow"
+                  style={{ marginTop: '8px', paddingRight: '12px' }}
                 >
-                  Upgrade to Pro for unlimited geo lookups
-                </Button>
-              </div>
-            )}
-
-            {/* Location details using standard label/value format */}
-            {component && component.data && component.data.locationString && (
-              <>
-                <div className="propertyRow">
-                  <div className="fakePropertyRowLabel">Location</div>
-                  <div
-                    className="fakePropertyRowValue"
-                    style={{ fontSize: '12px', color: '#ccc' }}
+                  <Button
+                    variant="upgrade"
+                    style={{
+                      width: '100%',
+                      fontSize: '12px',
+                      padding: '12px 16px',
+                      borderRadius: '8px'
+                    }}
+                    onClick={() => startCheckout('geo')}
                   >
-                    {component.data.locationString}
-                  </div>
+                    Upgrade to Pro for unlimited geo lookups
+                  </Button>
                 </div>
+              )}
 
-                {component.data.intersectionString && (
+            {/* Location details using standard label/value format. Gated on
+                isActivated so a located-but-not-activated scene shows only the
+                GeoHero, not an orphaned details block with no status badge. */}
+            {isActivated &&
+              component &&
+              component.data &&
+              component.data.locationString && (
+                <>
                   <div className="propertyRow">
-                    <div className="fakePropertyRowLabel">
-                      Nearest
-                      <br /> Intersection
-                    </div>
+                    <div className="fakePropertyRowLabel">Location</div>
                     <div
                       className="fakePropertyRowValue"
                       style={{ fontSize: '12px', color: '#ccc' }}
                     >
-                      {component.data.intersectionString}
+                      {component.data.locationString}
                     </div>
                   </div>
-                )}
 
-                {component.data.orthometricHeight && (
-                  <div className="propertyRow">
-                    <div className="fakePropertyRowLabel">Elevation</div>
-                    <div
-                      className="fakePropertyRowValue"
-                      style={{ fontSize: '12px', color: '#ccc' }}
-                    >
-                      {Math.round(component.data.orthometricHeight)}m
+                  {component.data.intersectionString && (
+                    <div className="propertyRow">
+                      <div className="fakePropertyRowLabel">
+                        Nearest
+                        <br /> Intersection
+                      </div>
+                      <div
+                        className="fakePropertyRowValue"
+                        style={{ fontSize: '12px', color: '#ccc' }}
+                      >
+                        {component.data.intersectionString}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </>
-            )}
+                  )}
+
+                  {component.data.orthometricHeight && (
+                    <div className="propertyRow">
+                      <div className="fakePropertyRowLabel">Elevation</div>
+                      <div
+                        className="fakePropertyRowValue"
+                        style={{ fontSize: '12px', color: '#ccc' }}
+                      >
+                        {Math.round(component.data.orthometricHeight)}m
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
 
             <EnvironmentSection />
 
-            {component && component.schema && component.data && (
+            {isActivated && component && component.schema && component.data && (
               <>
                 {/* only show this if google3d is selected */}
                 {component.data['maps'] === 'google3d' && (

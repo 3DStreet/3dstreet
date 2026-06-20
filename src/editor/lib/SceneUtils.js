@@ -40,18 +40,21 @@ export function inputStreetmix() {
     });
   });
 
-  const defaultStreetEl = document.getElementById('default-street');
-  defaultStreetEl.setAttribute(
-    'streetmix-loader',
-    'streetmixStreetURL',
-    streetmixURL
-  );
+  AFRAME.INSPECTOR.execute('entitycreate', {
+    id: createUniqueId(),
+    components: {
+      'streetmix-loader': {
+        streetmixStreetURL: streetmixURL,
+        synchronize: true
+      }
+    }
+  });
 }
 
 export function createElementsForScenesFromJSON(streetData, memoryData) {
   // clear scene data, create new blank scene.
-  // clearMetadata = true, clearUrlHash = false, addDefaultStreet = false
-  STREET.utils.newScene(true, false, false);
+  // clearMetadata = true, clearUrlHash = false
+  STREET.utils.newScene(true, false);
   useStore.getState().updateLoadingProgress(20, 'Preparing scene...');
 
   const streetContainerEl = document.getElementById('street-container');

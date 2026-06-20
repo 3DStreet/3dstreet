@@ -11,7 +11,8 @@ const variants = {
   toolbtn: styles.toolButton,
   white: styles.whiteButton,
   custom: styles.customButton,
-  save: styles.saveButton
+  save: styles.saveButton,
+  upgrade: styles.upgradeButton
 };
 
 /**

@@ -101,7 +101,10 @@ const AuthProvider = ({ children }) => {
         // naturally when the cache refreshes.
         isProTeam:
           cachedProStatus?.isProTeam ?? cachedProStatus?.isProDomain ?? false,
-        teamDomain: cachedProStatus?.teamDomain ?? null
+        teamDomain: cachedProStatus?.teamDomain ?? null,
+        // Paid tier ('PRO' | 'MAX' | null). Caches written before this field
+        // existed simply lack it; Phase 2 backfills on the next enrich.
+        plan: cachedProStatus?.plan ?? null
       });
       setIsLoading(false);
 
@@ -122,7 +125,7 @@ const AuthProvider = ({ children }) => {
       const proStatus =
         proStatusResult.status === 'fulfilled'
           ? proStatusResult.value
-          : { isPro: false, isProTeam: false, teamDomain: null };
+          : { isPro: false, isProTeam: false, teamDomain: null, plan: null };
 
       // Only cache when the cloud function actually succeeded —
       // avoid overwriting a valid cache with a failure fallback
@@ -134,7 +137,8 @@ const AuthProvider = ({ children }) => {
         ...user,
         isPro: proStatus.isPro,
         isProTeam: proStatus.isProTeam,
-        teamDomain: proStatus.teamDomain
+        teamDomain: proStatus.teamDomain,
+        plan: proStatus.plan ?? null
       };
       setCurrentUser(enrichedUser);
 

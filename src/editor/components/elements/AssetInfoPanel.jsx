@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
+import posthog from 'posthog-js';
 import useAssetUploadStatus, {
   STATUS_LABELS,
   REASON_TEXT
@@ -9,6 +10,8 @@ import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { AssetDetailModal, formatBytes } from '@shared/assets';
 import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
+import useStore from '@/store.js';
+import { Button } from './Button';
 
 const AssetInfoPanel = ({ entity }) => {
   const state = useAssetUploadStatus(entity);
@@ -18,6 +21,30 @@ const AssetInfoPanel = ({ entity }) => {
   const meta = STATUS_LABELS[state.status] || STATUS_LABELS.uploaded;
   const sizeStr = state.sizeBytes ? formatBytes(state.sizeBytes) : '';
   const { isOwned } = state;
+
+  // Upload blocked by the plan's storage quota (#1644). The upload slot
+  // keeps the original File, so after a Pro upgrade the same Retry button
+  // re-runs the upload without the user having to re-drop the file.
+  const isQuotaBlocked =
+    state.reason === 'over_quota' || state.reason === 'file_too_large';
+  const slotFile = useAssetUploadStore.getState().uploads[entity?.id]?.file;
+  // Retry only helps when the same File can succeed on a re-run: a generic
+  // failure, or over_quota (the user may free up space, or upgrade, then
+  // retry). file_too_large would fail identically without an upgrade, so we
+  // show only the Upgrade CTA for it — no dead Retry button.
+  const canRetry =
+    !!slotFile &&
+    !!entity &&
+    (state.status === 'failed' ||
+      (state.status === 'local_error' && state.reason === 'over_quota'));
+  const retryUpload = () => uploadAndPlaceAsset(slotFile, null, entity);
+  const upgradeForStorage = () => {
+    posthog.capture('storage_upsell_clicked', {
+      severity: 'upload_blocked',
+      reason: state.reason
+    });
+    useStore.getState().startCheckout('storage');
+  };
 
   let detail = '';
   if (state.status === 'uploading' && state.progress > 0) {
@@ -77,14 +104,10 @@ const AssetInfoPanel = ({ entity }) => {
             Cancel
           </button>
         )}
-        {state.status === 'failed' && (
+        {canRetry && (
           <button
             type="button"
-            onClick={() => {
-              const slot = useAssetUploadStore.getState().uploads[entity?.id];
-              if (!slot?.file || !entity) return;
-              uploadAndPlaceAsset(slot.file, null, entity);
-            }}
+            onClick={retryUpload}
             style={{
               marginLeft: 'auto',
               background: 'transparent',
@@ -111,6 +134,21 @@ const AssetInfoPanel = ({ entity }) => {
         >
           {reasonText}
         </div>
+      )}
+      {isQuotaBlocked && (
+        <Button
+          variant="upgrade"
+          onClick={upgradeForStorage}
+          style={{
+            width: '100%',
+            marginTop: 6,
+            borderRadius: 4,
+            padding: '6px 8px',
+            fontSize: 11
+          }}
+        >
+          Upgrade for 5 GB storage
+        </Button>
       )}
       {state.assetId && (
         <div
