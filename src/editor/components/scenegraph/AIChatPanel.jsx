@@ -1246,10 +1246,11 @@ function AIChatPanel() {
     } catch (error) {
       console.error('Error generating response:', error);
       // Errors now come from our own generateEditorChat callable, which only
-      // emits curated, user-safe messages (auth, rate limit, size, or a capped
-      // upstream reason). Raw Vertex/SDK internals are caught server-side, so
-      // it's safe to show error.message here. Skip the bare 'INTERNAL' that a
-      // truly-uncaught throw produces and fall back to the generic line.
+      // emits curated, user-safe messages (auth, rate limit, size, or a generic
+      // "temporarily unavailable" line). Raw Vertex/SDK error text is logged
+      // server-side and never forwarded, so it's safe to show error.message
+      // here. Skip the bare 'INTERNAL' that a truly-uncaught throw produces and
+      // fall back to the generic line.
       const reason =
         error?.message && error.message.toLowerCase() !== 'internal'
           ? error.message

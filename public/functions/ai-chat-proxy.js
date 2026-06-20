@@ -117,17 +117,61 @@ async function enforceRateLimit(uid) {
   });
 }
 
+/**
+ * Compensating decrement for enforceRateLimit. We increment a slot BEFORE the
+ * model call (so concurrent requests can't race past the cap), then refund it
+ * if the call never produced an answer — a run of upstream 5xx/timeouts
+ * shouldn't burn the user's daily budget. Best-effort: a failed refund just
+ * leaves the slot consumed, never blocks the response path. Clamped at 0 and
+ * only applied while the same window is still current, so a window that rolled
+ * over during a slow call isn't wrongly decremented.
+ */
+async function refundRateLimit(uid) {
+  try {
+    const ref = admin
+      .firestore()
+      .collection('users')
+      .doc(uid)
+      .collection('meta')
+      .doc('aiChatRate');
+
+    await admin.firestore().runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+      const d = snap.data();
+      const now = Date.now();
+      const update = {};
+      if (now - (d.minStart || 0) < 60 * 1000 && (d.minCount || 0) > 0) {
+        update.minCount = d.minCount - 1;
+      }
+      if (now - (d.dayStart || 0) < 24 * 60 * 60 * 1000 && (d.dayCount || 0) > 0) {
+        update.dayCount = d.dayCount - 1;
+      }
+      if (Object.keys(update).length) tx.set(ref, update, { merge: true });
+    });
+  } catch (err) {
+    console.error(`[ai-chat-proxy] rate-limit refund failed uid=${uid}:`, err);
+  }
+}
+
 // Convert the client's lightweight history ({ role: 'user'|'assistant',
 // content: string }) into Gen AI `contents`. 'assistant' maps to the 'model'
 // role; everything becomes a single text part.
 function historyToContents(history) {
   if (!Array.isArray(history)) return [];
-  return history
+  const mapped = history
     .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && m.content)
     .map((m) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: String(m.content) }]
     }));
+  // Vertex/Gen AI requires `contents` to begin with a `user` turn. UI-only
+  // assistant messages (e.g. the MCP pair-success banner, error fallbacks) can
+  // leave a leading `model` turn, which the API rejects — drop any until the
+  // first user turn.
+  let start = 0;
+  while (start < mapped.length && mapped[start].role !== 'user') start++;
+  return mapped.slice(start);
 }
 
 // The client historically built tool schemas with Firebase AI Logic's Schema
@@ -242,16 +286,16 @@ const generateEditorChat = functions
         config
       });
     } catch (err) {
+      // The slot was reserved before the call; the call produced no answer, so
+      // give it back (transient upstream failures shouldn't burn the budget).
+      await refundRateLimit(uid);
+      // Full provider error to the server log only — Vertex/Gen AI messages can
+      // embed project ids, endpoint urls and quota metadata we don't want to
+      // hand to the browser. The client gets a generic, safe line.
       console.error(`[ai-chat-proxy] Gen AI error uid=${uid}:`, err);
-      // Surface a short, safe reason to the client so the chat can show what
-      // went wrong instead of a generic failure. Provider error messages carry
-      // model/quota/permission info (no secrets); cap the length to be safe.
-      const reason = (err && err.message ? String(err.message) : 'unknown error')
-        .replace(/\s+/g, ' ')
-        .slice(0, 200);
       throw new functions.https.HttpsError(
         'internal',
-        `The AI assistant failed: ${reason}`
+        'The AI assistant is temporarily unavailable. Please try again in a moment.'
       );
     }
 
