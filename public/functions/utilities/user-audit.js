@@ -119,6 +119,7 @@ async function getUserProfilesWithStripeIds() {
 /**
  * Check if a Stripe customer has active subscriptions
  */
+// eslint-disable-next-line no-unused-vars -- retained audit helper for manual subscription reconciliation; not currently wired in
 async function checkStripeSubscriptions(stripe, customerId) {
   try {
     const subscriptions = await stripe.subscriptions.list({
@@ -543,7 +544,7 @@ async function runAudit(stripe, fixDiscrepancies = false) {
     usersByUid[user.uid] = user;
   }
 
-  for (const [customerId, stripeData] of activeStripeCustomers) {
+  for (const [customerId] of activeStripeCustomers) {
     const userId = stripeToUser[customerId];
 
     if (!userId) {

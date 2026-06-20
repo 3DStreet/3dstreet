@@ -251,8 +251,8 @@ function loadGeoidModel(filepath) {
                         model.rawval(ix, iy + 2),
                         model.rawval(ix + 1, iy + 2)
                     ];
-                    t = Array.apply(null, Array(10)).map(function (_, i, arr) {
-                        return v.reduce(function (acc, vj, j, arr) {
+                    t = Array.apply(null, Array(10)).map(function (_, i) {
+                        return v.reduce(function (acc, vj, j) {
                             return acc + vj * c3x[j][i];
                         }, 0) / c0x;
                     });

@@ -1715,7 +1715,7 @@ async function handleJobWebhook(req, res) {
 
     try {
       validateSplatUserId(uid);
-    } catch (e) {
+    } catch {
       res.status(400).send('Invalid uid');
       return;
     }

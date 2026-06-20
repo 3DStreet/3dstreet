@@ -59,7 +59,7 @@ exports.getGeoidHeight = functions
     // Helper function to add timeout to a promise
     const promiseWithTimeout = (promise, timeoutMs) => {
       let timeoutId;
-      const timeoutPromise = new Promise((resolve, _) => {
+      const timeoutPromise = new Promise((resolve) => {
         timeoutId = setTimeout(() => {
           console.log(`Promise timed out after ${timeoutMs}ms`);
           // Resolving with null instead of rejecting to handle timeout gracefully

@@ -104,7 +104,7 @@ exports.getScene = functions
       } else {
         res.send(doc.data());
       }
-    } catch (err) {
+    } catch {
       res.status(500).send({ error: 'Error retrieving scene' });
     }
   });
