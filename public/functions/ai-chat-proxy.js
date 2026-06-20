@@ -130,6 +130,61 @@ function historyToContents(history) {
     }));
 }
 
+// The client historically built tool schemas with Firebase AI Logic's Schema
+// builder, which emits `optionalProperties` — a field the Vertex/Gen AI API
+// rejects (it expresses optionality via `required`). Normalize defensively so
+// even a cached old client works: keep only the OpenAPI-subset keys the API
+// accepts, and convert optionalProperties → required.
+const ALLOWED_SCHEMA_KEYS = new Set([
+  'type',
+  'description',
+  'properties',
+  'required',
+  'items',
+  'enum',
+  'format',
+  'nullable'
+]);
+
+function sanitizeSchema(schema) {
+  if (!schema || typeof schema !== 'object') return schema;
+
+  const out = {};
+  for (const [k, v] of Object.entries(schema)) {
+    if (ALLOWED_SCHEMA_KEYS.has(k)) out[k] = v;
+  }
+
+  if (out.properties && typeof out.properties === 'object') {
+    const props = {};
+    for (const [k, v] of Object.entries(out.properties)) {
+      props[k] = sanitizeSchema(v);
+    }
+    out.properties = props;
+
+    // If the source used `optionalProperties` instead of `required`, derive
+    // `required` from it (unless the schema already specified required).
+    if (!out.required && Array.isArray(schema.optionalProperties)) {
+      const optional = new Set(schema.optionalProperties);
+      const required = Object.keys(props).filter((k) => !optional.has(k));
+      if (required.length) out.required = required;
+    }
+  }
+
+  if (out.items) out.items = sanitizeSchema(out.items);
+  return out;
+}
+
+function sanitizeTools(tools) {
+  if (!Array.isArray(tools)) return undefined;
+  return tools.map((tool) => ({
+    ...tool,
+    functionDeclarations: (tool.functionDeclarations || []).map((fd) => ({
+      ...fd,
+      parameters: fd.parameters ? sanitizeSchema(fd.parameters) : fd.parameters
+    }))
+  }));
+}
+
 const generateEditorChat = functions
   .runWith({ timeoutSeconds: 120, memory: '256MB' })
   .https.onCall(async (data, context) => {
@@ -151,9 +206,9 @@ const generateEditorChat = functions
 
     const systemInstruction =
       typeof data?.systemInstruction === 'string' ? data.systemInstruction : '';
-    // Tool declarations, passed through unchanged. Shape:
-    // [{ functionDeclarations: [...] }]. Execution happens in the browser.
-    const tools = Array.isArray(data?.tools) ? data.tools : undefined;
+    // Tool declarations. Shape: [{ functionDeclarations: [...] }]. Sanitized to
+    // the OpenAPI subset the Vertex API accepts. Execution happens in the browser.
+    const tools = sanitizeTools(data?.tools);
     const history = data?.history;
 
     // Cheap input ceiling before we spend a model call.
