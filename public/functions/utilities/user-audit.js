@@ -199,7 +199,7 @@ async function getActiveStripeSubscribers(stripe) {
  */
 exports.auditUserSubscriptions = functions
   .runWith({
-    secrets: ["STRIPE_SECRET_KEY", "ALLOWED_PRO_TEAM_DOMAINS"],
+    secrets: ['STRIPE_SECRET_KEY', 'ALLOWED_PRO_TEAM_DOMAINS'],
     timeoutSeconds: 540 // 9 minutes for large user bases
   })
   .https
@@ -404,7 +404,7 @@ exports.auditUserSubscriptions = functions
  */
 exports.auditUserSubscriptionsHttp = functions
   .runWith({
-    secrets: ["STRIPE_SECRET_KEY", "ALLOWED_PRO_TEAM_DOMAINS"],
+    secrets: ['STRIPE_SECRET_KEY', 'ALLOWED_PRO_TEAM_DOMAINS'],
     timeoutSeconds: 540
   })
   .https

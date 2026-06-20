@@ -17,11 +17,9 @@ module.exports = [
       globals: { ...globals.node }
     },
     rules: {
-      // Keep ESLint's recommended set as hard errors (real bugs). quotes stays
-      // a warning: the code (and main repo via prettier) is single-quoted, but
-      // the legacy .eslintrc declared 'double' and was never actually enforced,
-      // so this is cosmetic debt we don't want blocking deploys.
-      quotes: ['warn', 'single', { avoidEscape: true, allowTemplateLiterals: true }]
+      // Single quotes to match the code (and the app's prettier). avoidEscape
+      // keeps strings that contain an apostrophe as double-quoted.
+      quotes: ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }]
     }
   }
 ];

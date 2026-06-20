@@ -111,7 +111,7 @@ function loadGeoidModel(filepath) {
             ((rawfile[2] === 13) && (rawfile[3] === 10)) ||
             (rawfile[2] === 10)
         ))) {
-            throw new Error("Geoid model file: no PGM header");
+            throw new Error('Geoid model file: no PGM header');
         }
         var i = (rawfile[2] === 13) ? 4 : 3;
         var offset = null;
@@ -120,7 +120,7 @@ function loadGeoidModel(filepath) {
             var start = i;
             for (var j = i; ; j++) {
                 if (j >= rawfile.length) {
-                    throw new Error("Geoid model file: missing newline in header");
+                    throw new Error('Geoid model file: missing newline in header');
                 }
                 if (rawfile[j] === 10) {
                     i = j + 1;
@@ -138,14 +138,14 @@ function loadGeoidModel(filepath) {
             if (m) {
                 offset = parseInt(m[1], 10);
                 if (!isFinite(offset)) {
-                    throw new Error("Geoid model file: bad offset " + m[1]);
+                    throw new Error('Geoid model file: bad offset ' + m[1]);
                 }
             } else {
                 m = s.match(/^# Scale (.*)$/);
                 if (m) {
                     scale = parseFloat(m[1]);
                     if (!isFinite(scale)) {
-                        throw new Error("Geoid model file: bad scale " + m[1]);
+                        throw new Error('Geoid model file: bad scale ' + m[1]);
                     }
                 }
             }
@@ -158,25 +158,25 @@ function loadGeoidModel(filepath) {
             height = parseInt(m[2], 10);
         }
         if (!(m && (width >= 0) && (height >= 0))) {
-            throw new Error("Geoid model file: bad PGM width&height line");
+            throw new Error('Geoid model file: bad PGM width&height line');
         }
         var levels = parseInt(getline());
         if (levels != 65535) {
-            throw new Error("Geoid model file: PGM file must have 65535 gray levels");
+            throw new Error('Geoid model file: PGM file must have 65535 gray levels');
         }
         if (offset === null) {
-            throw new Error("Geoid model file: PGM file does not contain offset");
+            throw new Error('Geoid model file: PGM file does not contain offset');
         }
         if (scale === null) {
-            throw new Error("Geoid model file: PGM file does not contain scale");
+            throw new Error('Geoid model file: PGM file does not contain scale');
         }
         if ((width < 2) || (height < 2)) {
-            throw new Error("Geoid model file: Raster size too small");
+            throw new Error('Geoid model file: Raster size too small');
         }
 
         var payload_len = rawfile.length - i;
         if (payload_len !== (width * height * 2)) {
-            throw new Error("Geoid model file: File has the wrong length");
+            throw new Error('Geoid model file: File has the wrong length');
         }
 
         return {

@@ -110,7 +110,7 @@ exports.getScene = functions
   });
 
 exports.createStripeSession = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY'] })
   .https
   .onCall(async (data, context) => {
     const Stripe = require('stripe');
@@ -129,8 +129,8 @@ exports.createStripeSession = functions
     const userEmail = userRecord.email;
 
     // Check if customer already exists in our records
-    const collectionRef = admin.firestore().collection("userProfile");
-    const querySnapshot = await collectionRef.where("userId", "==", userId).get();
+    const collectionRef = admin.firestore().collection('userProfile');
+    const querySnapshot = await collectionRef.where('userId', '==', userId).get();
     let stripeCustomerId = null;
     querySnapshot.forEach((doc) => {
       stripeCustomerId = doc.data().stripeCustomerId;
@@ -199,7 +199,7 @@ exports.createStripeSession = functions
   });
 
 exports.checkActiveSubscriptions = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY'] })
   .https
   .onCall(async (data, context) => {
     const Stripe = require('stripe');
@@ -214,8 +214,8 @@ exports.checkActiveSubscriptions = functions
 
     try {
       // Get Stripe customer ID from Firestore
-      const collectionRef = admin.firestore().collection("userProfile");
-      const querySnapshot = await collectionRef.where("userId", "==", userId).get();
+      const collectionRef = admin.firestore().collection('userProfile');
+      const querySnapshot = await collectionRef.where('userId', '==', userId).get();
       let stripeCustomerId = null;
       querySnapshot.forEach((doc) => {
         stripeCustomerId = doc.data().stripeCustomerId;
@@ -256,7 +256,7 @@ exports.checkActiveSubscriptions = functions
   });
 
 exports.createStripeBillingPortal = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY'] })
   .https
   .onCall(async (data, context) => {
     const Stripe = require('stripe');
@@ -270,8 +270,8 @@ exports.createStripeBillingPortal = functions
     // SECURITY: Always use the authenticated user's ID from context, never trust client-provided IDs
     const userId = context.auth.uid;
 
-    const collectionRef = admin.firestore().collection("userProfile");
-    const querySnapshot = await collectionRef.where("userId", "==", userId).get();
+    const collectionRef = admin.firestore().collection('userProfile');
+    const querySnapshot = await collectionRef.where('userId', '==', userId).get();
     let stripeCustomerId = null;
     querySnapshot.forEach((doc) => {
       stripeCustomerId = doc.data().stripeCustomerId;
@@ -295,7 +295,7 @@ exports.createStripeBillingPortal = functions
 
 // function for Stripe webhook customer.subscription.deleted
 exports.handleSubscriptionWebhook = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET_SUBSCRIPTION"] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_SUBSCRIPTION'] })
   .https
   .onRequest(async (req, res) => {
     const Stripe = require('stripe');
@@ -315,8 +315,8 @@ exports.handleSubscriptionWebhook = functions
 
     const subscription = event.data.object;
 
-    const collectionRef = admin.firestore().collection("userProfile");
-    const querySnapshot = await collectionRef.where("stripeCustomerId", "==", subscription.customer).get();
+    const collectionRef = admin.firestore().collection('userProfile');
+    const querySnapshot = await collectionRef.where('stripeCustomerId', '==', subscription.customer).get();
     let userId = null;
     querySnapshot.forEach((doc) => {
       userId = doc.data().userId;
@@ -341,7 +341,7 @@ exports.handleSubscriptionWebhook = functions
 
 // function for Stripe webhook checkout.session.completed
 exports.stripeWebhook = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET_CHECKOUT", "STRIPE_YEARLY_PRICE_ID", "STRIPE_MONTHLY_PRICE_ID", "STRIPE_MAX_YEARLY_PRICE_ID", "STRIPE_MAX_MONTHLY_PRICE_ID"] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_CHECKOUT', 'STRIPE_YEARLY_PRICE_ID', 'STRIPE_MONTHLY_PRICE_ID', 'STRIPE_MAX_YEARLY_PRICE_ID', 'STRIPE_MAX_MONTHLY_PRICE_ID'] })
   .https
   .onRequest(async (req, res) => {
     const Stripe = require('stripe');
@@ -412,8 +412,8 @@ exports.stripeWebhook = functions
 
     const planTier = matchedPlan ? matchedPlan.tier : 'PRO';
 
-    const collectionRef = admin.firestore().collection("userProfile");
-    const querySnapshot = await collectionRef.where("userId", "==", checkoutSession.metadata.userId).get();
+    const collectionRef = admin.firestore().collection('userProfile');
+    const querySnapshot = await collectionRef.where('userId', '==', checkoutSession.metadata.userId).get();
     let stripeCustomerId = null;
 
     querySnapshot.forEach((doc) => {
@@ -485,7 +485,7 @@ exports.stripeWebhook = functions
 
 // Discord webhook function for sharing scenes
 exports.shareToDiscord = functions
-  .runWith({ secrets: ["DISCORD_WEBHOOK_URL"] })
+  .runWith({ secrets: ['DISCORD_WEBHOOK_URL'] })
   .https
   .onCall(async (data, context) => {
     // Verify user is authenticated

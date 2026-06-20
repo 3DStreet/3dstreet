@@ -146,7 +146,7 @@ async function postAIVideoToDiscord(userId, videoUrl, prompt, modelName, duratio
 // Replicate API function for image generation
 const generateReplicateImage = functions
   .runWith({
-    secrets: ["REPLICATE_API_TOKEN", "ALLOWED_PRO_TEAM_DOMAINS", "DISCORD_WEBHOOK_URL"],
+    secrets: ['REPLICATE_API_TOKEN', 'ALLOWED_PRO_TEAM_DOMAINS', 'DISCORD_WEBHOOK_URL'],
     timeoutSeconds: 300 // 5 minutes - image generation can take several minutes
   })
   .https
@@ -487,7 +487,7 @@ const generateReplicateImage = functions
 // Replicate API function for video generation
 const generateReplicateVideo = functions
   .runWith({
-    secrets: ["REPLICATE_API_TOKEN", "DISCORD_WEBHOOK_URL"],
+    secrets: ['REPLICATE_API_TOKEN', 'DISCORD_WEBHOOK_URL'],
     timeoutSeconds: 540 // 9 minutes - video generation can take several minutes
   })
   .https
