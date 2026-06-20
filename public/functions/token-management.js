@@ -66,7 +66,7 @@ const validateUserDomain = async (userEmail) => {
 
 // Cloud Function to check and refill image tokens for Pro users
 const checkAndRefillImageTokens = functions
-  .runWith({ secrets: ["ALLOWED_PRO_TEAM_DOMAINS"] })
+  .runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS'] })
   .https
   .onCall(async (data, context) => {
     // Verify user is authenticated
@@ -303,7 +303,7 @@ const checkAndRefillImageTokensInternal = async (userId) => {
 
 // Cloud Function to check if user is Pro (subscription + domain validation)
 const checkUserProStatus = functions
-  .runWith({ secrets: ["ALLOWED_PRO_TEAM_DOMAINS"] })
+  .runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS'] })
   .https
   .onCall(async (data, context) => {
     // Verify user is authenticated
