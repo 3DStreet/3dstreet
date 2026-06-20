@@ -1,0 +1,92 @@
+{
+  "name": "Bus transit corridor",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 34.5,
+      "leftBuildingVariant": "wide",
+      "rightBuildingVariant": "wide",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "dense",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "utilities",
+          "variantString": "left",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "transit-shelter",
+          "variantString": "left|street-level",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "bus-lane",
+          "variantString": "inbound|colored|typical",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "bus-lane",
+          "variantString": "inbound|regular|typical",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "bus-lane",
+          "variantString": "inbound|red|typical",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "divider",
+          "variantString": "buffer",
+          "width": 0.9,
+          "elevation": 0
+        },
+        {
+          "type": "bus-lane",
+          "variantString": "outbound|red|typical",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "bus-lane",
+          "variantString": "outbound|regular|typical",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "bus-lane",
+          "variantString": "outbound|colored|typical",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "transit-shelter",
+          "variantString": "right|street-level",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "utilities",
+          "variantString": "right",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "dense",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}

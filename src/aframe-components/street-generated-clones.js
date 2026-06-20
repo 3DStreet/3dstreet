@@ -19,7 +19,13 @@ AFRAME.registerComponent('street-generated-clones', {
     facing: { default: 0, type: 'number' }, // Y Rotation in degrees
     seed: { default: 0, type: 'int' }, // random seed for random and randomFacing mode
     randomFacing: { default: false, type: 'boolean' },
-    direction: { type: 'string', oneOf: ['none', 'inbound', 'outbound'] }, // not used if facing defined?
+    // 'none' = absolute orientation via `facing`; 'inbound'/'outbound' make the
+    // clone follow the segment's travel direction (see createClone)
+    direction: {
+      type: 'string',
+      default: 'none',
+      oneOf: ['none', 'inbound', 'outbound']
+    },
 
     // Mode-specific properties
     mode: { default: 'fixed', oneOf: ['fixed', 'random', 'single', 'fit'] },

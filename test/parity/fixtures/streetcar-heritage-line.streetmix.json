@@ -1,0 +1,68 @@
+{
+  "name": "Streetcar heritage line",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 27.3,
+      "leftBuildingVariant": "narrow",
+      "rightBuildingVariant": "narrow",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "streetcar",
+          "variantString": "inbound|regular",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "streetcar",
+          "variantString": "inbound|colored",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "streetcar",
+          "variantString": "inbound|grass",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "divider",
+          "variantString": "dome",
+          "width": 0.9,
+          "elevation": 0.15
+        },
+        {
+          "type": "streetcar",
+          "variantString": "outbound|grass",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "streetcar",
+          "variantString": "outbound|colored",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "streetcar",
+          "variantString": "outbound|regular",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}

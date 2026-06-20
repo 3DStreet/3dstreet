@@ -1,0 +1,110 @@
+{
+  "name": "Marina parking street",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 65.6,
+      "leftBuildingVariant": "waterfront",
+      "rightBuildingVariant": "parking-lot",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "sideways|left",
+          "width": 5,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "angled-front-left|left",
+          "width": 5,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "angled-front-right|left",
+          "width": 5,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "angled-rear-left|left",
+          "width": 5,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "angled-rear-right|left",
+          "width": 5,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "outbound|left",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "inbound|car",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "outbound|car",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "inbound|right",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "angled-front-left|right",
+          "width": 5,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "angled-front-right|right",
+          "width": 5,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "angled-rear-left|right",
+          "width": 5,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "angled-rear-right|right",
+          "width": 5,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "sideways|right",
+          "width": 5,
+          "elevation": 0
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}

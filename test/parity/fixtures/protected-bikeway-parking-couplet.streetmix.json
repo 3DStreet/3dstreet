@@ -1,0 +1,92 @@
+{
+  "name": "Protected bikeway parking couplet",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 26.7,
+      "leftBuildingVariant": "residential",
+      "rightBuildingVariant": "residential",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "inbound|regular|road",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "divider",
+          "variantString": "striped-buffer",
+          "width": 0.9,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "inbound|left",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "turn-lane",
+          "variantString": "inbound|straight",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "inbound|right",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "divider",
+          "variantString": "planting-strip",
+          "width": 0.9,
+          "elevation": 0.15
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "outbound|left",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "turn-lane",
+          "variantString": "outbound|straight",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "outbound|right",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "divider",
+          "variantString": "striped-buffer",
+          "width": 0.9,
+          "elevation": 0
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "outbound|regular|road",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}

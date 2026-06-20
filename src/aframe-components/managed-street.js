@@ -614,7 +614,13 @@ AFRAME.registerComponent('managed-street', {
   loadAndParseStreetmixURL: async function (streetmixURL) {
     const currentState = useStore.getState();
     const data = this.data;
-    const streetmixAPIURL = streetmixUtils.streetmixUserToAPI(streetmixURL);
+    // Normally rewrite a streetmix.net user URL to its API endpoint. If the
+    // sourceValue is some other URL (e.g. a locally served Streetmix-shaped
+    // fixture under /test/parity/fixtures), fetch it directly — it is already
+    // in the API response shape this loader expects.
+    const streetmixAPIURL = streetmixURL.includes('streetmix.net')
+      ? streetmixUtils.streetmixUserToAPI(streetmixURL)
+      : streetmixURL;
     console.log(
       '[managed-street] loader',
       'sourceType: `streetmix-url`, setting `streetmixAPIURL` to',
@@ -761,7 +767,12 @@ function getSeparatorMixinId(previousSegment, currentSegment) {
   // Default to solid line
   let variantString = 'solid-stripe';
 
-  // Handle divider cases
+  // Handle divider cases: a divider gets an edge stripe against a lane, but two
+  // adjacent dividers (e.g. a multi-segment grass median) get no stripe between
+  // them.
+  if (previousSegment.type === 'divider' && currentSegment.type === 'divider') {
+    return null;
+  }
   if (previousSegment.type === 'divider' || currentSegment.type === 'divider') {
     return variantString;
   }
@@ -1072,7 +1083,7 @@ function parseStreetmixSegments(segments, length) {
       segmentPreset = 'drive-lane';
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `modelsArray: jersey-barrier-plastic; spacing: 2.25`
+        `modelsArray: temporary-jersey-barrier-plastic; spacing: 2.25`
       );
     } else if (
       segments[i].type === 'temporary' &&
@@ -1140,20 +1151,20 @@ function parseStreetmixSegments(segments, length) {
       if (variantList[0] === 'center') {
         segmentParentEl.setAttribute(
           'street-generated-clones',
-          `modelsArray: bench_orientation_center; facing: ${rotationCloneY}; cycleOffset: 0.1`
+          `modelsArray: bench_orientation_center; facing: ${rotationCloneY}; spacing: 30; cycleOffset: 0.1;`
         );
       } else {
         // `right` or `left` bench
         segmentParentEl.setAttribute(
           'street-generated-clones',
-          `modelsArray: bench; facing: ${rotationCloneY}; cycleOffset: 0.1`
+          `modelsArray: bench; facing: ${rotationCloneY}; spacing: 30; cycleOffset: 0.1;`
         );
       }
     } else if (segments[i].type === 'sidewalk-bike-rack') {
       const rotationCloneY = variantList[1] === 'sidewalk-parallel' ? 90 : 0;
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `modelsArray: bikerack; facing: ${rotationCloneY}; cycleOffset: 0.2`
+        `modelsArray: bikerack; facing: ${rotationCloneY}; spacing: 25; cycleOffset: 0.2;`
       );
     } else if (segments[i].type === 'magic-carpet') {
       segmentPreset = 'drive-lane';
@@ -1178,7 +1189,7 @@ function parseStreetmixSegments(segments, length) {
       const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `mode: random; modelsArray: parklet; spacing: 5.5; count: 3; facing: ${rotationCloneY};`
+        `mode: random; modelsArray: parklet; spacing: 5.5; count: 3; facing: ${rotationCloneY}; positionY: 0.02;`
       );
     } else if (segments[i].type === 'bikeshare') {
       const rotationCloneY = variantList[0] === 'left' ? 90 : 270;
@@ -1190,14 +1201,14 @@ function parseStreetmixSegments(segments, length) {
       const rotationCloneY = variantList[0] === 'right' ? 180 : 0;
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `modelsArray: utility_pole; cycleOffset: 0.25; facing: ${rotationCloneY}`
+        `modelsArray: utility_pole; spacing: 22; cycleOffset: 0.25; facing: ${rotationCloneY}`
       );
     } else if (segments[i].type === 'sidewalk-tree') {
       const objectMixinId =
         variantList[0] === 'palm-tree' ? 'palm-tree' : 'tree3';
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `modelsArray: ${objectMixinId}; randomFacing: true;`
+        `modelsArray: ${objectMixinId}; spacing: 12; randomFacing: true;`
       );
     } else if (
       segments[i].type === 'sidewalk-lamp' &&
@@ -1206,13 +1217,13 @@ function parseStreetmixSegments(segments, length) {
       if (variantList[0] === 'both') {
         segmentParentEl.setAttribute(
           'street-generated-clones',
-          `modelsArray: lamp-modern-double; cycleOffset: 0.4;`
+          `modelsArray: lamp-modern-double; spacing: 20; cycleOffset: 0.4;`
         );
       } else {
         const rotationCloneY = variantList[0] === 'right' ? 0 : 180;
         segmentParentEl.setAttribute(
           'street-generated-clones',
-          `modelsArray: lamp-modern; facing: ${rotationCloneY}; cycleOffset: 0.4;`
+          `modelsArray: lamp-modern; facing: ${rotationCloneY}; spacing: 20; cycleOffset: 0.4;`
         );
       }
       // Add the pride flags to the lamp posts
@@ -1240,7 +1251,7 @@ function parseStreetmixSegments(segments, length) {
     ) {
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `modelsArray: lamp-traditional;`
+        `modelsArray: lamp-traditional; spacing: 15;`
       );
     } else if (segments[i].type === 'transit-shelter') {
       const rotationBusStopY = variantList[0] === 'left' ? 90 : 270;
@@ -1268,47 +1279,101 @@ function parseStreetmixSegments(segments, length) {
         'angled-rear-left': -30,
         'angled-rear-right': 30
       };
-      let markingsRotZ = rotationVars[variantList[0]];
+      // Defensive defaults: malformed parking-lane data can have an empty
+      // variantString. Without these, the lookups below yield undefined/NaN and
+      // `parkingDirection.includes('angled')` throws, aborting the whole street
+      // load. 'outbound'/'left' mirror the legacy importer's parallel fallback.
+      const parkingDirection = variantList[0] || 'outbound';
+      const parkingSide = variantList[1] || 'left';
+      const isParallel =
+        parkingDirection === 'inbound' || parkingDirection === 'outbound';
+      const isSidewaysOrAngled =
+        parkingDirection === 'sideways' || parkingDirection.includes('angled');
+
+      let markingsRotZ = rotationVars[parkingDirection];
       let markingLength;
+
+      // Parked-car Y rotation, mirroring the legacy importer
+      // (createDriveLaneElement). Parallel parking faces the segment's travel
+      // direction (like a drive lane) so it stays correct if the user flips the
+      // segment direction. Sideways/angled parking has a fixed orientation that
+      // does not follow travel direction, so it sets an absolute facing with
+      // direction: none.
+      const angledCarFacing = {
+        'angled-front-left': -60,
+        'angled-front-right': 60,
+        'angled-rear-left': -120,
+        'angled-rear-right': 120
+      };
+      let carFacing;
+      let carDirection;
+      if (isParallel) {
+        carFacing = 0;
+        carDirection = direction; // parallel: follow travel direction
+      } else if (parkingDirection === 'sideways') {
+        carFacing = parkingSide === 'right' ? 90 : -90;
+        carDirection = 'none';
+      } else {
+        carFacing = angledCarFacing[parkingDirection];
+        carDirection = 'none';
+      }
 
       // calculate position X and rotation Z for T-markings
       let markingPosX = segmentWidthInMeters / 2;
-      if (markingsRotZ === 90 && variantList[1] === 'right') {
+      if (markingsRotZ === 90 && parkingSide === 'right') {
         markingsRotZ = -90;
         markingPosX = -markingPosX + 0.75;
       } else {
         markingPosX = markingPosX - 0.75;
       }
 
-      if (variantList[0] === 'sideways' || variantList[0].includes('angled')) {
+      if (isSidewaysOrAngled) {
         carStep = 3;
         markingLength = segmentWidthInMeters;
         markingPosX = 0;
         parkingMixin = 'solid-stripe';
-        if (variantList[1] === 'right') {
-          // make sure cars face the right way on right side
+        if (parkingSide === 'right') {
+          // mirror the stencil markings on the right side (car facing is
+          // handled separately via carFacing)
           markingsRotZ = markingsRotZ + 180;
         }
       }
+
+      // Stencil rotation/direction, set exactly once per parking style.
+      // Parallel parking-T orientation depends only on which side the lane is on,
+      // not on travel direction: the asymmetric glyph is a long bar (parallel to
+      // travel) with one stem that must point toward the curb. So parallel uses
+      // an absolute, side-only facing and opts out of direction-based rotation;
+      // otherwise both sides land at the same rotationY and the stem points the
+      // wrong way on one side. Sideways/angled derive facing from the (possibly
+      // mirrored) markings rotation and still follow travel direction.
+      let stencilFacing;
+      let stencilDirection;
+      if (isParallel) {
+        // left lane: curb is -X, stem -X -> facing 180; right lane: curb +X -> 0
+        stencilFacing = parkingSide === 'right' ? 0 : 180;
+        stencilDirection = 'none';
+      } else {
+        stencilFacing = markingsRotZ + 90;
+        stencilDirection = direction;
+      }
       segmentParentEl.setAttribute(
         'street-generated-clones',
-        `mode: random; 
+        `mode: random;
          modelsArray: sedan-rig, self-driving-waymo-car, suv-rig;
           spacing: ${carStep};
           count: ${getRandomIntInclusive(6, 8)};
-          facing: ${markingsRotZ - 90};`
+          facing: ${carFacing};
+          direction: ${carDirection};`
       );
-      if (variantList[1] === 'left') {
-        segmentParentEl.setAttribute(
-          'street-generated-stencil',
-          `modelsArray: ${parkingMixin}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90}; stencilHeight: ${markingLength};`
-        );
-      } else {
-        segmentParentEl.setAttribute(
-          'street-generated-stencil',
-          `modelsArray: ${parkingMixin}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${markingsRotZ + 90}; stencilHeight: ${markingLength};`
-        );
-      }
+      // markingLength is only defined for sideways/angled parking; parallel
+      // parking leaves stencilHeight unset (component defaults to 0 = no override)
+      const stencilHeightStr =
+        markingLength !== undefined ? ` stencilHeight: ${markingLength};` : '';
+      segmentParentEl.setAttribute(
+        'street-generated-stencil',
+        `modelsArray: ${parkingMixin}; cycleOffset: 1; spacing: ${carStep}; positionX: ${markingPosX}; facing: ${stencilFacing}; direction: ${stencilDirection};${stencilHeightStr}`
+      );
     }
 
     // if this thing is a sidewalk, make segmentPreset sidewalk
