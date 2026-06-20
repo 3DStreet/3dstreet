@@ -21,7 +21,6 @@
  * no further wiring — the acceptance criterion from #1594.
  */
 
-import { Schema } from 'firebase/ai';
 import { commandsByType } from './index.js';
 import { nonCommandTools } from './nonCommandTools.js';
 
@@ -120,60 +119,15 @@ export async function dispatchToolCall(toolName, args, currentUser) {
 }
 
 /**
- * Adapter: plain JSON Schema → Firebase `Schema` builder calls for the
- * Vertex AI SDK. Kept here so commands stay provider-neutral.
- */
-function jsonSchemaToFirebase(schema) {
-  if (schema === null || schema === undefined) return undefined;
-
-  switch (schema.type) {
-    case 'object': {
-      const properties = {};
-      for (const [key, propSchema] of Object.entries(schema.properties || {})) {
-        properties[key] = jsonSchemaToFirebase(propSchema);
-      }
-      const requiredSet = new Set(schema.required || []);
-      const allKeys = Object.keys(schema.properties || {});
-      const optionalProperties = allKeys.filter((k) => !requiredSet.has(k));
-      const opts = {
-        properties,
-        ...(schema.description ? { description: schema.description } : {}),
-        ...(optionalProperties.length ? { optionalProperties } : {})
-      };
-      return Schema.object(opts);
-    }
-    case 'array':
-      return Schema.array({
-        ...(schema.description ? { description: schema.description } : {}),
-        items: jsonSchemaToFirebase(schema.items)
-      });
-    case 'string':
-      return Schema.string({
-        ...(schema.description ? { description: schema.description } : {}),
-        ...(schema.enum ? { enum: schema.enum } : {})
-      });
-    case 'number':
-      return Schema.number({
-        ...(schema.description ? { description: schema.description } : {})
-      });
-    case 'boolean':
-      return Schema.boolean({
-        ...(schema.description ? { description: schema.description } : {})
-      });
-    default:
-      throw new Error(`Unsupported JSON Schema type: ${schema.type}`);
-  }
-}
-
-/**
- * Returns the tool list shaped for Vertex AI's `tools: [entityTools]` slot.
- * Same data as `getToolDefinitions()`, walked through the Firebase Schema
- * builders.
+ * Returns the tool list for the model's `tools: [{ functionDeclarations }]`
+ * slot. `inputSchema` is already plain JSON Schema (the OpenAPI subset the
+ * Vertex/Gen AI API accepts), so it passes straight through. The server proxy
+ * (generateEditorChat) sanitizes defensively as a backstop.
  */
 export function getGeminiFunctionDeclarations() {
   return getToolDefinitions().map((tool) => ({
     name: tool.name,
     description: tool.description,
-    parameters: jsonSchemaToFirebase(tool.inputSchema)
+    parameters: tool.inputSchema
   }));
 }
