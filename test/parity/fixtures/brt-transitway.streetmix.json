@@ -1,0 +1,80 @@
+{
+  "name": "BRT transitway",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 33.6,
+      "leftBuildingVariant": "wide",
+      "rightBuildingVariant": "wide",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "brt-station",
+          "variantString": "left",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "brt-lane",
+          "variantString": "inbound|colored",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "brt-lane",
+          "variantString": "inbound|regular",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "brt-lane",
+          "variantString": "inbound|red",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "brt-station",
+          "variantString": "center",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "brt-lane",
+          "variantString": "outbound|red",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "brt-lane",
+          "variantString": "outbound|regular",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "brt-lane",
+          "variantString": "outbound|colored",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "brt-station",
+          "variantString": "right",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}

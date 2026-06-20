@@ -7,7 +7,6 @@ import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getAI, VertexAIBackend } from 'firebase/ai';
 
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY,
@@ -53,7 +52,6 @@ const storage = getStorage(app);
 storage.maxUploadRetryTime = 30_000;
 const db = getFirestore(app);
 const functions = getFunctions(app);
-const ai = getAI(app, { backend: new VertexAIBackend('global') });
 
 // Admin utilities exposed on window for console access
 // Server-side functions still enforce admin claim check
@@ -214,4 +212,4 @@ window.adminTools = {
   }
 };
 
-export { firebaseConfig, app, auth, storage, db, functions, ai };
+export { firebaseConfig, app, auth, storage, db, functions };

@@ -1,0 +1,80 @@
+{
+  "name": "Light rail avenue",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 32.1,
+      "leftBuildingVariant": "wide",
+      "rightBuildingVariant": "narrow",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "dense",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "transit-shelter",
+          "variantString": "left|light-rail",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "light-rail",
+          "variantString": "inbound|regular",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "light-rail",
+          "variantString": "inbound|colored",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "light-rail",
+          "variantString": "inbound|grass",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "divider",
+          "variantString": "bush",
+          "width": 0.9,
+          "elevation": 0.15
+        },
+        {
+          "type": "light-rail",
+          "variantString": "outbound|grass",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "light-rail",
+          "variantString": "outbound|colored",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "light-rail",
+          "variantString": "outbound|regular",
+          "width": 3.6,
+          "elevation": 0
+        },
+        {
+          "type": "transit-shelter",
+          "variantString": "right|light-rail",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "dense",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}

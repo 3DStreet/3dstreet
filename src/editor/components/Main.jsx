@@ -8,7 +8,7 @@ import { ShareModal } from './modals/ShareModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
-import { firebaseConfig, app } from '@shared/services/firebase.js';
+import { firebaseConfig } from '@shared/services/firebase.js';
 import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
@@ -23,7 +23,6 @@ import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
 import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
 import useStore from '@/store';
-import { AIChatProvider } from '../contexts/AIChatContext';
 import styles from './Main.module.scss';
 
 // Define the libraries array as a constant outside of the component
@@ -76,18 +75,16 @@ export default function Main() {
       <UnofficialDeploymentBanner />
       <ToolbarWrapper />
       {isInspectorEnabled && (
-        <AIChatProvider firebaseApp={app}>
-          <div>
-            <SceneGraph scene={scene} selectedEntity={state.entity} />
-            <RightPanel entity={state.entity} />
-            <div className={`clickable ${styles.primaryToolbarDock}`}>
-              <PrimaryToolbar />
-            </div>
-            <div className={`clickable ${styles.actionBarDock}`}>
-              <ActionBar selectedEntity={state.entity} />
-            </div>
+        <div>
+          <SceneGraph scene={scene} selectedEntity={state.entity} />
+          <RightPanel entity={state.entity} />
+          <div className={`clickable ${styles.primaryToolbarDock}`}>
+            <PrimaryToolbar />
           </div>
-        </AIChatProvider>
+          <div className={`clickable ${styles.actionBarDock}`}>
+            <ActionBar selectedEntity={state.entity} />
+          </div>
+        </div>
       )}
       <ScreenshotModal />
       <ShareModal />

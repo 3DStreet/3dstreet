@@ -1,0 +1,62 @@
+{
+  "name": "Red bike lane couplet",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 18,
+      "leftBuildingVariant": "residential",
+      "rightBuildingVariant": "narrow",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "sparse",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "inbound|red|sidewalk",
+          "width": 1.8,
+          "elevation": 0.15
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "inbound|red|road",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "inbound|av",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "outbound|av",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "outbound|red|road",
+          "width": 1.8,
+          "elevation": 0
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "outbound|red|sidewalk",
+          "width": 1.8,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "sparse",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}

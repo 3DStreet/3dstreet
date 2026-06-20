@@ -74,7 +74,7 @@ async function postAIImageToDiscord(userId, imageUrl, prompt, modelId, sceneId, 
 // fal.ai API function for image generation
 const generateFalImage = functions
   .runWith({
-    secrets: ["FAL_KEY", "DISCORD_WEBHOOK_URL"],
+    secrets: ['FAL_KEY', 'DISCORD_WEBHOOK_URL'],
     timeoutSeconds: 300 // 5 minutes - image generation can take several minutes
   })
   .https

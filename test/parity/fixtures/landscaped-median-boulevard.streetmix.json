@@ -1,0 +1,56 @@
+{
+  "name": "Landscaped median boulevard",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 13.5,
+      "leftBuildingVariant": "residential",
+      "rightBuildingVariant": "grass",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "sparse",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "inbound|sharrow",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "divider",
+          "variantString": "palm-tree",
+          "width": 0.9,
+          "elevation": 0.15
+        },
+        {
+          "type": "divider",
+          "variantString": "big-tree",
+          "width": 0.9,
+          "elevation": 0.15
+        },
+        {
+          "type": "divider",
+          "variantString": "bollard",
+          "width": 0.9,
+          "elevation": 0.15
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "outbound|sharrow",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "sparse",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}
