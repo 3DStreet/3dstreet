@@ -44,6 +44,12 @@ updates:
         applies-to: version-updates
         update-types:
           - "major"
+    # firebase-functions 7.x (latest) only peers to firebase-admin <=13, so a
+    # major firebase-admin bump breaks the Cloud Build install (#1692 -> #1713).
+    # Drop this ignore once firebase-functions ships admin-14 support.
+    ignore:
+      - dependency-name: "firebase-admin"
+        update-types: ["version-update:semver-major"]
 
   # rad-converter Cloud Run service
   - package-ecosystem: "npm"
