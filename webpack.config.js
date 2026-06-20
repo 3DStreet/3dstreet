@@ -119,7 +119,14 @@ const config = {
           {
             loader: 'css-loader',
             options: {
-              modules: true,
+              // css-loader v7 flipped modules.namedExport to true, which drops
+              // the default export — breaking `import styles from './x.module.scss'`
+              // app-wide (undefined styles). Restore v6 behavior: default export
+              // with class names kept as-is (our SCSS classes are already camelCase).
+              modules: {
+                namedExport: false,
+                exportLocalsConvention: 'as-is'
+              },
               sourceMap: true
             }
           },
