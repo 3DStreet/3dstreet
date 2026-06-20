@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { isOfficialDeployment } from '@shared/utils/deployment.js';
 import styles from './UnofficialDeploymentBanner.module.scss';
 
@@ -37,13 +38,12 @@ const UnofficialDeploymentBanner = () => {
     setDismissed(true);
   };
 
-  return (
+  return createPortal(
     <div className={styles.banner} role="status">
       <span className={styles.message}>
-        You’re using a community or self-hosted build of 3DStreet (open source,
-        AGPL-3.0). Local editing works fully, but cloud features — sign-in,
-        saving, AI generation, and payments — connect to the official 3DStreet
-        servers and are unavailable here. For the full experience, visit{' '}
+        You&apos;re using a forked or self-hosted build of 3DStreet (open
+        source, AGPL-3.0). Local editing works, but cloud features are
+        unavailable. To use cloud services, visit{' '}
         <a
           className={styles.link}
           href="https://3dstreet.app"
@@ -62,7 +62,8 @@ const UnofficialDeploymentBanner = () => {
       >
         ×
       </button>
-    </div>
+    </div>,
+    document.body
   );
 };
 

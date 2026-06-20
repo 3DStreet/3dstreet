@@ -14,14 +14,17 @@ import {
 } from 'firebase/auth';
 
 // Firebase only completes OAuth sign-in on domains in the project's authorized
-// list. On a community / self-hosted build (a non-official domain) every
-// provider throws auth/unauthorized-domain — surface that clearly instead of a
-// generic "unexpected error" so users understand why sign-in (and the cloud
-// features behind it) won't work here.
+// list. On a community / self-hosted build Firebase throws either
+// auth/unauthorized-domain or auth/requests-from-referer-...-are-blocked
+// depending on the browser/flow — catch both.
+const isUnauthorizedDomainError = (error) =>
+  error.code === 'auth/unauthorized-domain' ||
+  (typeof error.code === 'string' &&
+    error.code.startsWith('auth/requests-from-referer-'));
+
 const UNAUTHORIZED_DOMAIN_MESSAGE =
-  'Sign-in isn’t available on this deployment. This looks like a community or ' +
-  'self-hosted build of 3DStreet — accounts, saving, and other cloud features ' +
-  'only work on the official site (3dstreet.app).';
+  'Sign-in isn’t available on this deployment. This is a community or self-hosted build of 3DStreet. ' +
+  'For cloud services use the official site (3dstreet.app)';
 
 /**
  * Sign in with Google
@@ -67,7 +70,7 @@ export const signInWithGoogle = async (
         'error',
         'Cannot use Google login with your email, try using Microsoft login instead.'
       );
-    } else if (error.code === 'auth/unauthorized-domain') {
+    } else if (isUnauthorizedDomainError(error)) {
       onNotification?.('error', UNAUTHORIZED_DOMAIN_MESSAGE);
     } else {
       onNotification?.(
@@ -125,7 +128,7 @@ export const signInWithMicrosoft = async (
         'error',
         'Cannot use Microsoft login with your email, try using Google login instead.'
       );
-    } else if (error.code === 'auth/unauthorized-domain') {
+    } else if (isUnauthorizedDomainError(error)) {
       onNotification?.('error', UNAUTHORIZED_DOMAIN_MESSAGE);
     } else {
       onNotification?.(
@@ -182,7 +185,7 @@ export const signInWithApple = async (
         'error',
         'Cannot use Apple login with your email, try using Google or Microsoft login instead.'
       );
-    } else if (error.code === 'auth/unauthorized-domain') {
+    } else if (isUnauthorizedDomainError(error)) {
       onNotification?.('error', UNAUTHORIZED_DOMAIN_MESSAGE);
     } else {
       onNotification?.(
