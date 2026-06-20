@@ -1279,7 +1279,18 @@ function parseStreetmixSegments(segments, length) {
         'angled-rear-left': -30,
         'angled-rear-right': 30
       };
-      let markingsRotZ = rotationVars[variantList[0]];
+      // Defensive defaults: malformed parking-lane data can have an empty
+      // variantString. Without these, the lookups below yield undefined/NaN and
+      // `parkingDirection.includes('angled')` throws, aborting the whole street
+      // load. 'outbound'/'left' mirror the legacy importer's parallel fallback.
+      const parkingDirection = variantList[0] || 'outbound';
+      const parkingSide = variantList[1] || 'left';
+      const isParallel =
+        parkingDirection === 'inbound' || parkingDirection === 'outbound';
+      const isSidewaysOrAngled =
+        parkingDirection === 'sideways' || parkingDirection.includes('angled');
+
+      let markingsRotZ = rotationVars[parkingDirection];
       let markingLength;
 
       // Parked-car Y rotation, mirroring the legacy importer
@@ -1296,56 +1307,55 @@ function parseStreetmixSegments(segments, length) {
       };
       let carFacing;
       let carDirection;
-      if (variantList[0] === 'inbound' || variantList[0] === 'outbound') {
+      if (isParallel) {
         carFacing = 0;
         carDirection = direction; // parallel: follow travel direction
-      } else if (variantList[0] === 'sideways') {
-        carFacing = variantList[1] === 'right' ? 90 : -90;
+      } else if (parkingDirection === 'sideways') {
+        carFacing = parkingSide === 'right' ? 90 : -90;
         carDirection = 'none';
       } else {
-        carFacing = angledCarFacing[variantList[0]];
+        carFacing = angledCarFacing[parkingDirection];
         carDirection = 'none';
       }
 
       // calculate position X and rotation Z for T-markings
       let markingPosX = segmentWidthInMeters / 2;
-      if (markingsRotZ === 90 && variantList[1] === 'right') {
+      if (markingsRotZ === 90 && parkingSide === 'right') {
         markingsRotZ = -90;
         markingPosX = -markingPosX + 0.75;
       } else {
         markingPosX = markingPosX - 0.75;
       }
 
-      // Stencil rotation/direction. By default the stencil follows travel
-      // direction (street-generated-stencil rotates inbound vs outbound by
-      // 180deg). That is wrong for the parallel parking-T: its orientation
-      // depends only on which side the lane is on, not on travel direction. The
-      // asymmetric glyph is a long bar (parallel to travel) with one stem; the
-      // stem must point toward the curb (the bar then sits at the traffic-side
-      // edge). So for parallel parking we set an absolute, side-only facing and
-      // opt out of the direction-based rotation; otherwise both sides land at
-      // the same rotationY and the stem points the wrong way on one side.
-      let stencilFacing = markingsRotZ + 90;
-      let stencilDirection = direction;
-      const isParallel =
-        variantList[0] === 'inbound' || variantList[0] === 'outbound';
-      if (isParallel) {
-        // left lane: curb is -X, stem -X -> facing 180; right lane: curb +X -> 0
-        stencilFacing = variantList[1] === 'right' ? 0 : 180;
-        stencilDirection = 'none';
-      }
-
-      if (variantList[0] === 'sideways' || variantList[0].includes('angled')) {
+      if (isSidewaysOrAngled) {
         carStep = 3;
         markingLength = segmentWidthInMeters;
         markingPosX = 0;
         parkingMixin = 'solid-stripe';
-        if (variantList[1] === 'right') {
+        if (parkingSide === 'right') {
           // mirror the stencil markings on the right side (car facing is
           // handled separately via carFacing)
           markingsRotZ = markingsRotZ + 180;
         }
+      }
+
+      // Stencil rotation/direction, set exactly once per parking style.
+      // Parallel parking-T orientation depends only on which side the lane is on,
+      // not on travel direction: the asymmetric glyph is a long bar (parallel to
+      // travel) with one stem that must point toward the curb. So parallel uses
+      // an absolute, side-only facing and opts out of direction-based rotation;
+      // otherwise both sides land at the same rotationY and the stem points the
+      // wrong way on one side. Sideways/angled derive facing from the (possibly
+      // mirrored) markings rotation and still follow travel direction.
+      let stencilFacing;
+      let stencilDirection;
+      if (isParallel) {
+        // left lane: curb is -X, stem -X -> facing 180; right lane: curb +X -> 0
+        stencilFacing = parkingSide === 'right' ? 0 : 180;
+        stencilDirection = 'none';
+      } else {
         stencilFacing = markingsRotZ + 90;
+        stencilDirection = direction;
       }
       segmentParentEl.setAttribute(
         'street-generated-clones',

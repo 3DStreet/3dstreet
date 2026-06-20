@@ -41,8 +41,25 @@
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import puppeteer from 'puppeteer';
-import sharp from 'sharp';
+
+// puppeteer (Chromium) and sharp are heavy, parity-only dependencies kept out of
+// package.json so default installs and CI stay light. Import them on demand and
+// point the user at the one-time setup if they are missing.
+let puppeteer, sharp;
+try {
+  puppeteer = (await import('puppeteer')).default;
+  sharp = (await import('sharp')).default;
+} catch (err) {
+  if (err.code === 'ERR_MODULE_NOT_FOUND') {
+    console.error(
+      '\nThe parity harness needs puppeteer (downloads Chromium) and sharp,\n' +
+        'which are not installed by default. Install them once with:\n\n' +
+        '    npm run test:parity:setup\n'
+    );
+    process.exit(1);
+  }
+  throw err;
+}
 
 const PARITY_DIR = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = join(PARITY_DIR, 'fixtures');

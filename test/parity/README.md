@@ -7,9 +7,16 @@ headless Chrome and diffing the screenshots.
 ## Run
 
 ```bash
-npm start              # dev server must be running on :3333
-npm run test:parity    # all fixture streets
+npm run test:parity:setup   # one-time: installs puppeteer (Chromium) + sharp
+npm start                   # dev server must be running on :3333
+npm run test:parity         # all fixture streets
 ```
+
+`puppeteer` and `sharp` are intentionally **not** in `package.json` — puppeteer
+pulls a ~150 MB Chromium download that we keep out of CI and normal installs.
+`test:parity:setup` installs them with `--no-save`, so they never touch
+`package.json` or the lockfile. If you run `test:parity` without them, the script
+prints this setup command and exits.
 
 Results land in `output/` (gitignored): `<slug>-legacy.png`, `<slug>-managed.png`,
 a red-highlight `<slug>-diff.png`, and `report.json` with mismatch ratios.

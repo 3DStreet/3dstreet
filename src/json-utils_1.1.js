@@ -695,10 +695,14 @@ AFRAME.registerComponent('set-loader-from-hash', {
         }, 1000);
         return;
       }
-      if (streetURL.startsWith('fixture:')) {
+      if (
+        process.env.NODE_ENV === 'development' &&
+        streetURL.startsWith('fixture:')
+      ) {
         // Dev/test convenience: load a local parity fixture by slug through the
         // managed-street importer, e.g. #fixture:protected-bikeway-parking-couplet
         // The dev server serves test/parity/fixtures/*.streetmix.json from root.
+        // Gated to development builds — these fixtures are not deployed to prod.
         const slug = streetURL.substring('fixture:'.length);
         const fixtureURL = `${window.location.origin}/test/parity/fixtures/${slug}.streetmix.json`;
         const definition = {
