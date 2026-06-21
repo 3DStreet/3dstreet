@@ -33,12 +33,26 @@ if (process.env.FIREBASE_APP_CHECK_SITE_KEY) {
     self.FIREBASE_APPCHECK_DEBUG_TOKEN =
       debugToken === 'true' ? true : debugToken;
   }
-  initializeAppCheck(app, {
-    provider: new ReCaptchaEnterpriseProvider(
-      process.env.FIREBASE_APP_CHECK_SITE_KEY
-    ),
-    isTokenAutoRefreshEnabled: true
-  });
+  // The reCAPTCHA Enterprise provider injects a badge element into
+  // document.body on init. This bundle loads in <head> (before <body> exists),
+  // so activating immediately throws "appendChild of null". Defer until the DOM
+  // body is available — App Check registers on the app and is consulted at
+  // request time, so this still attaches tokens to later auth/functions calls.
+  const activateAppCheck = () => {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(
+        process.env.FIREBASE_APP_CHECK_SITE_KEY
+      ),
+      isTokenAutoRefreshEnabled: true
+    });
+  };
+  if (document.body) {
+    activateAppCheck();
+  } else {
+    document.addEventListener('DOMContentLoaded', activateAppCheck, {
+      once: true
+    });
+  }
 }
 
 const auth = getAuth(app);
