@@ -30,6 +30,7 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { assertAppCheck } = require('./app-check.js');
 const { GoogleGenAI } = require('@google/genai');
 
 // Locked server-side. The Editor only ever needs text generation; the image
@@ -232,6 +233,9 @@ function sanitizeTools(tools) {
 const generateEditorChat = functions
   .runWith({ timeoutSeconds: 120, memory: '256MB' })
   .https.onCall(async (data, context) => {
+    // App Check first: a valid client token is required before spending a
+    // (paid) model call. No-op until APP_CHECK_ENFORCE (see app-check.js).
+    assertAppCheck(context);
     if (!context.auth) {
       throw new functions.https.HttpsError(
         'unauthenticated',

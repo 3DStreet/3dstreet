@@ -1,4 +1,8 @@
 import { initializeApp } from 'firebase/app';
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider
+} from 'firebase/app-check';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import { getFirestore } from 'firebase/firestore';
@@ -15,6 +19,42 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+// App Check (opt-in). When a reCAPTCHA Enterprise site key is configured we
+// attest this client to Firebase, so backends enforcing App Check accept it.
+// Forked / self-hosted builds won't have a key registered for their domain, so
+// enforced functions reject them — without affecting environments that haven't
+// set this up. In dev, set FIREBASE_APP_CHECK_DEBUG_TOKEN to register a debug
+// token (use `true` to have the SDK print one to register in the console).
+// Initialize before getAuth/getFunctions so early calls carry an App Check token.
+if (process.env.FIREBASE_APP_CHECK_SITE_KEY) {
+  const debugToken = process.env.FIREBASE_APP_CHECK_DEBUG_TOKEN;
+  if (debugToken) {
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN =
+      debugToken === 'true' ? true : debugToken;
+  }
+  // The reCAPTCHA Enterprise provider injects a badge element into
+  // document.body on init. This bundle loads in <head> (before <body> exists),
+  // so activating immediately throws "appendChild of null". Defer until the DOM
+  // body is available — App Check registers on the app and is consulted at
+  // request time, so this still attaches tokens to later auth/functions calls.
+  const activateAppCheck = () => {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(
+        process.env.FIREBASE_APP_CHECK_SITE_KEY
+      ),
+      isTokenAutoRefreshEnabled: true
+    });
+  };
+  if (document.body) {
+    activateAppCheck();
+  } else {
+    document.addEventListener('DOMContentLoaded', activateAppCheck, {
+      once: true
+    });
+  }
+}
+
 const auth = getAuth(app);
 const storage = getStorage(app);
 // Default is 10 minutes — way too long to leave a UI silently "uploading"

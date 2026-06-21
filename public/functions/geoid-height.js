@@ -3,6 +3,7 @@ const admin = require('firebase-admin');
 const { getGeoidHeightFromPGM } = require('./geoid.js');
 const { Client: GoogleMapsClient } = require('@googlemaps/google-maps-services-js');
 const { isUserProInternal } = require('./token-management.js');
+const { assertAppCheck } = require('./app-check.js');
 
 // Function to get geoid height and location information
 exports.getGeoidHeight = functions
@@ -10,6 +11,13 @@ exports.getGeoidHeight = functions
   .https
   .onCall(async (data, context) => {
     const fromGeojsonImport = data.fromGeojsonImport || false;
+
+    // App Check runs first so it also gates the anonymous GeoJSON-import path
+    // below. That path intentionally skips auth (free during beta), which left
+    // the paid Google Elevation API callable from any origin / direct request;
+    // App Check restores the requirement that the call come from our client.
+    // No-op until APP_CHECK_ENFORCE is enabled (see app-check.js).
+    assertAppCheck(context);
 
     // Check if user is authenticated (skip for GeoJSON imports during beta)
     if (!context.auth && !fromGeojsonImport) {

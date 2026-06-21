@@ -1,6 +1,7 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
+const { assertAppCheck } = require('../app-check.js');
 const { withJobHealth } = require('./job-health.js');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -729,6 +730,9 @@ const triggerScheduledEmails = functions
   })
   .https
   .onCall(async (data, context) => {
+    // Defense-in-depth: also gate on App Check (admin claim required below).
+    // No-op until APP_CHECK_ENFORCE is enabled (see app-check.js).
+    assertAppCheck(context);
     // Verify user is authenticated
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
