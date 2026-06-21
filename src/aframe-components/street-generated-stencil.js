@@ -83,7 +83,10 @@ AFRAME.registerComponent('street-generated-stencil', {
     this.el.addEventListener('segment-changed', this.onSegmentChanged);
   },
   clearEntities: function () {
-    this.createdEntities.forEach((entity) => entity.remove());
+    // Only detach entities still connected to the DOM (see #1493).
+    this.createdEntities.forEach((entity) => {
+      if (entity.parentNode) entity.remove();
+    });
     this.createdEntities.length = 0;
   },
   remove: function () {
