@@ -60,20 +60,18 @@ control:
    `OFFICIAL_DEPLOYMENT_HOSTNAMES=yourdomain.com` in your env (comma-separated
    for multiple).
 
-### App Check (recommended)
+### App Check
 
-We use [Firebase App Check](https://firebase.google.com/docs/app-check) to
-ensure that requests to our backend come from our official client. This is what
-stops a fork that copied our public web config from spending our project's paid
-resources.
+For a public deployment, consider guarding your backend against resource abuse
+(a fork copying your web config to spend your project's paid resources). This
+build supports [Firebase App Check](https://firebase.google.com/docs/app-check)
+for that, but any equivalent measure works.
 
-- **Client:** set `FIREBASE_APP_CHECK_SITE_KEY` to a reCAPTCHA Enterprise site
-  key registered for your domain. In development, set
-  `FIREBASE_APP_CHECK_DEBUG_TOKEN` (see `config/.env.template`).
-- **Functions:** set the `APP_CHECK_ENFORCE=true` environment value once your
-  site key is provisioned and your clients are sending App Check tokens.
-  Enforcement is **off by default** — turning it on before the key/clients are
-  ready would reject every real request. See `public/functions/app-check.js`.
+The relevant settings: `FIREBASE_APP_CHECK_SITE_KEY` (a reCAPTCHA Enterprise
+site key for your domain) and `FIREBASE_APP_CHECK_DEBUG_TOKEN` for local dev on
+the client, plus `APP_CHECK_ENFORCE=true` on the functions once your clients are
+sending tokens. Both default to off; see `config/.env.template` and
+`public/functions/app-check.js`.
 
 ## A note on the 3DStreet name and logo (trademark)
 
