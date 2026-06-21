@@ -27,6 +27,7 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { assertAppCheck } = require('../app-check.js');
 const { withJobHealth } = require('./job-health.js');
 
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
@@ -176,6 +177,9 @@ const cleanupOrphanedStorage = functions
 const triggerCleanupOrphanedStorage = functions
   .runWith({ timeoutSeconds: 540, memory: '512MB' })
   .https.onCall(async (data, context) => {
+    // Defense-in-depth: also gate on App Check (admin claim required below).
+    // No-op until APP_CHECK_ENFORCE is enabled (see app-check.js).
+    assertAppCheck(context);
     if (!context.auth) {
       throw new functions.https.HttpsError(
         'unauthenticated',

@@ -17,6 +17,7 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
+const { assertAppCheck } = require('../app-check.js');
 
 /**
  * Check if a user has domain-based pro status.
@@ -204,6 +205,9 @@ exports.auditUserSubscriptions = functions
   })
   .https
   .onCall(async (data, context) => {
+    // Defense-in-depth: also gate on App Check (admin claim required below).
+    // No-op until APP_CHECK_ENFORCE is enabled (see app-check.js).
+    assertAppCheck(context);
     // Require authentication
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
