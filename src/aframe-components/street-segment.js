@@ -268,6 +268,7 @@ AFRAME.registerComponent('street-segment', {
         'cracked-asphalt',
         'parking-lot',
         'water',
+        'hatched',
         'none',
         'solid'
       ]

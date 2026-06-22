@@ -18,7 +18,7 @@ AFRAME.registerComponent('street-label', {
     this.units = useStore.getState().unitsPreference || 'metric';
 
     // Subscribe to units preference changes
-    useStore.subscribe((state) => {
+    this.unsubscribeUnits = useStore.subscribe((state) => {
       if (this.units !== state.unitsPreference) {
         this.units = state.unitsPreference;
         this.updateLabels();
@@ -65,6 +65,9 @@ AFRAME.registerComponent('street-label', {
   },
 
   updateLabels: function () {
+    // Guard against a torn-down or not-yet-initialized instance: the units
+    // store listener can fire updateLabels() on an instance whose data is gone.
+    if (!this.data) return;
     const segments = Array.from(this.el.querySelectorAll('[street-segment]'));
     if (segments.length === 0) return;
 
@@ -286,6 +289,13 @@ AFRAME.registerComponent('street-label', {
       }
     });
     this.createdEntities = [];
+
+    // Unsubscribe from the units-preference store listener so it can't fire
+    // updateLabels() on this removed instance after teardown.
+    if (this.unsubscribeUnits) {
+      this.unsubscribeUnits();
+      this.unsubscribeUnits = null;
+    }
 
     // Remove event listener
     this.el.removeEventListener('segments-changed', this.updateLabels);

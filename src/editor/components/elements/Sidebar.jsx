@@ -60,7 +60,8 @@ export default class Sidebar extends React.Component {
     }
     if (
       detail.component === 'mixin' ||
-      detail.component === 'data-layer-name'
+      detail.component === 'data-layer-name' ||
+      detail.component === 'street-segment'
     ) {
       this.forceUpdate();
     }

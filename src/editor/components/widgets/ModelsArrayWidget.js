@@ -8,7 +8,8 @@ import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 export default class ModelsArrayWidget extends React.Component {
   static propTypes = {
     entity: PropTypes.object.isRequired,
-    componentname: PropTypes.string.isRequired
+    componentname: PropTypes.string.isRequired,
+    modelsArray: PropTypes.array
   };
 
   constructor(props) {
@@ -34,17 +35,22 @@ export default class ModelsArrayWidget extends React.Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    if (this.props.entity === prevProps.entity) {
-      return;
+    // Refresh when the entity changes, or when the underlying modelsArray
+    // changes out from under us (e.g. a segment type change regenerates the
+    // clones component with new models without firing an entityupdate event).
+    const entityChanged = this.props.entity !== prevProps.entity;
+    const modelsChanged =
+      (prevProps.modelsArray || []).join(',') !==
+      (this.props.modelsArray || []).join(',');
+    if (entityChanged || modelsChanged) {
+      this.setState({ modelsArrayWidget: this.getModelsArrayValueForWidget() });
     }
-    this.setState({ modelsArrayWidget: this.getModelsArrayValueForWidget() });
   }
 
   getModelsArrayValueForWidget() {
-    console.log(this.props.entity.getAttribute(this.props.componentname));
-    const modelsArrayRaw = this.props.entity.getAttribute(
-      this.props.componentname
-    )?.modelsArray;
+    const modelsArrayRaw =
+      this.props.entity.getAttribute(this.props.componentname)?.modelsArray ??
+      [];
     const modelsArrayTransformed = modelsArrayRaw.map((v) => ({
       label: v,
       value: v

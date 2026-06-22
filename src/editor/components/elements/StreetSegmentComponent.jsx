@@ -114,6 +114,7 @@ export default class Component extends React.Component {
           <ModelsArrayWidget
             entity={this.props.entity}
             componentname={componentName}
+            modelsArray={componentData.data['modelsArray']}
           />
           <PropertyRow
             key="mode"
