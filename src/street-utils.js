@@ -83,6 +83,7 @@ function getEntitiesByCategories(categoriesArray) {
   const queryForCategoriesMixins = categoriesArray
     .map((categoryName) => `a-mixin[category="${categoryName}"]`)
     .join(',');
+  if (!queryForCategoriesMixins) return [];
   const allCategoriesMixins = document.querySelectorAll(
     queryForCategoriesMixins
   );
@@ -90,5 +91,6 @@ function getEntitiesByCategories(categoriesArray) {
   const queryForAllElements = categoriesMixinIds
     .map((mixinId) => `a-entity[mixin~="${mixinId}"]`)
     .join(',');
+  if (!queryForAllElements) return [];
   return document.querySelectorAll(queryForAllElements);
 }
