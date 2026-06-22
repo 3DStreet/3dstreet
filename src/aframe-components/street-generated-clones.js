@@ -66,7 +66,13 @@ AFRAME.registerComponent('street-generated-clones', {
   },
 
   clearEntities: function () {
-    this.createdEntities.forEach((entity) => entity.remove());
+    // Only detach entities still connected to the DOM. An entity may already
+    // be detached (parentNode === null) during event-driven re-renders; calling
+    // remove() on it throws in AEntity.remove and aborts this loop, which both
+    // crashes and leaves later entities ghost-retained until reload. See #1493.
+    this.createdEntities.forEach((entity) => {
+      if (entity.parentNode) entity.remove();
+    });
     this.createdEntities.length = 0;
   },
 

@@ -37,7 +37,10 @@ AFRAME.registerComponent('street-generated-pedestrians', {
   },
 
   clearEntities: function () {
-    this.createdEntities.forEach((entity) => entity.remove());
+    // Only detach entities still connected to the DOM (see #1493).
+    this.createdEntities.forEach((entity) => {
+      if (entity.parentNode) entity.remove();
+    });
     this.createdEntities.length = 0;
   },
   remove: function () {
