@@ -28,8 +28,8 @@
  * Output: test/parity/output/<slug>-{legacy,managed,diff}.png + report.json
  *
  * Normalizations applied so the diff measures street content, not chrome:
- *   - legacy import runs with showBuildings: false (managed has no building
- *     support yet)
+ *   - both imports run with the same SHOW_BUILDINGS toggle (false by default)
+ *     so the diff measures the travelled way, not buildings
  *   - managed entity gets street-align "width: center; length: middle" to
  *     match the legacy parser, which centers the street on both axes
  *   - managed-only street-label component is removed before capture (legacy
@@ -75,6 +75,11 @@ const VIEWPORT = { width: 1024, height: 768 };
 const COMPARE_SIZE = 256; // reduction size for pixel comparison
 const PIXEL_THRESHOLD = 0.1; // normalized color distance for a pixel to "differ"
 const LOAD_TIMEOUT = 120000;
+// Unified building toggle: applied to BOTH the legacy (streetmix-loader) and
+// managed (managed-street) paths so the diff measures the travelled way under
+// identical conditions. Flip to true to test building parity once both paths
+// render buildings the same way.
+const SHOW_BUILDINGS = false;
 
 // ---------------------------------------------------------------------------
 // Args
@@ -172,23 +177,27 @@ async function triggerLegacy(page, url) {
   // #default-street was removed in #1699; the legacy import now creates a
   // fresh street entity (see inputStreetmix). Mirror that here by appending
   // our own entity to #street-container instead of mutating a fixed element.
-  await page.evaluate((streetURL) => {
-    const el = document.createElement('a-entity');
-    el.id = 'parity-legacy-street';
-    window.__parityLoaded = false;
-    el.addEventListener(
-      'streetmix-loader-street-loaded',
-      () => {
-        window.__parityLoaded = true;
-      },
-      { once: true }
-    );
-    el.setAttribute('streetmix-loader', {
-      streetmixStreetURL: streetURL,
-      showBuildings: false
-    });
-    document.getElementById('street-container').appendChild(el);
-  }, url);
+  await page.evaluate(
+    (streetURL, showBuildings) => {
+      const el = document.createElement('a-entity');
+      el.id = 'parity-legacy-street';
+      window.__parityLoaded = false;
+      el.addEventListener(
+        'streetmix-loader-street-loaded',
+        () => {
+          window.__parityLoaded = true;
+        },
+        { once: true }
+      );
+      el.setAttribute('streetmix-loader', {
+        streetmixStreetURL: streetURL,
+        showBuildings
+      });
+      document.getElementById('street-container').appendChild(el);
+    },
+    url,
+    SHOW_BUILDINGS
+  );
   await page.waitForFunction(() => window.__parityLoaded, {
     timeout: LOAD_TIMEOUT
   });
@@ -199,13 +208,36 @@ async function triggerManaged(page, url) {
     const el = document.createElement('a-entity');
     el.id = 'parity-managed-street';
     el.setAttribute('street-align', 'width: center; length: middle');
+    // No synchronize: we run the conversion explicitly below so we can pass the
+    // import-time showBuildings option (a conversion argument, not component
+    // state). The component otherwise only auto-imports when synchronize: true.
     el.setAttribute('managed-street', {
       sourceType: 'streetmix-url',
-      sourceValue: streetURL,
-      synchronize: true // required: update() only calls refreshFromSource when true
+      sourceValue: streetURL
     });
     document.getElementById('street-container').appendChild(el);
   }, url);
+  // Wait for the component to initialize, then drive the Streetmix->managed
+  // conversion directly with the unified building toggle.
+  await page.waitForFunction(
+    () => {
+      const el = document.getElementById('parity-managed-street');
+      return !!(el && el.components && el.components['managed-street']);
+    },
+    { timeout: LOAD_TIMEOUT }
+  );
+  await page.evaluate(
+    (streetURL, showBuildings) => {
+      document
+        .getElementById('parity-managed-street')
+        .components['managed-street'].loadAndParseStreetmixURL(
+          streetURL,
+          showBuildings
+        );
+    },
+    url,
+    SHOW_BUILDINGS
+  );
   await page.waitForFunction(
     () => {
       const el = document.getElementById('parity-managed-street');
