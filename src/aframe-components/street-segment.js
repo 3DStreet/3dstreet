@@ -155,6 +155,7 @@ const TYPES = {
   building: {
     type: 'building',
     surface: 'cracked-asphalt',
+    color: COLORS.white,
     level: 1,
     variants: {
       brownstone: {

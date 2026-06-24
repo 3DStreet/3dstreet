@@ -679,9 +679,28 @@ AFRAME.registerComponent('managed-street', {
       // );
 
       const segmentEls = parseStreetmixSegments(streetmixSegments, data.length);
-      this.el.append(...segmentEls);
 
-      this.pendingEntities = segmentEls;
+      // Buildings (Streetmix "boundary" variants). street-align positions
+      // segments by DOM order, so the left building goes before the travelled
+      // way and the right building after it.
+      const leftBuildingEl = createStreetmixBuildingElement(
+        streetData.leftBuildingVariant,
+        'left',
+        data.length
+      );
+      const rightBuildingEl = createStreetmixBuildingElement(
+        streetData.rightBuildingVariant,
+        'right',
+        data.length
+      );
+      const allEls = [
+        ...(leftBuildingEl ? [leftBuildingEl] : []),
+        ...segmentEls,
+        ...(rightBuildingEl ? [rightBuildingEl] : [])
+      ];
+      this.el.append(...allEls);
+
+      this.pendingEntities = allEls;
       // for each pending entity Listen for loaded event
       for (const entity of this.pendingEntities) {
         entity.addEventListener(
@@ -877,6 +896,84 @@ function supportCheck(segmentType, segmentVariantString) {
       `The '${segmentVariantString}' variant of segment '${segmentType}' is not yet supported in 3DStreet`
     );
   }
+}
+
+// Maps a Streetmix building/boundary variant (leftBuildingVariant /
+// rightBuildingVariant) to a managed `building` street-segment. `variant` is the
+// street-segment building variant (see TYPES.building.variants in
+// street-segment.js); `width` is the cross-street footprint depth in meters
+// (Streetmix does not provide a building width). Variants render via the
+// building type's generated clones (mode: fit, facing derived from side).
+const STREETMIX_BUILDING_VARIANT_MAP = {
+  narrow: { variant: 'brownstone', width: 12 },
+  wide: { variant: 'brownstone', width: 12 },
+  residential: { variant: 'suburban', width: 18 },
+  arcade: { variant: 'arcade', width: 12 },
+  waterfront: { variant: 'water', width: 10 },
+  grass: { variant: 'grass', width: 4 },
+  fence: { variant: 'grass', width: 4 },
+  'parking-lot': { variant: 'parking', width: 8 },
+  // No dedicated managed variant yet; seawall is the closest existing model.
+  'compound-wall': { variant: 'water', width: 6 }
+};
+
+// Build a `building` street-segment element for a Streetmix boundary variant.
+// Returns null for unsupported variants (caller skips it). The element relies on
+// street-align to position it by DOM order, so the caller controls left/right
+// placement by appending it before/after the travelled-way segments.
+function createStreetmixBuildingElement(streetmixVariant, side, length) {
+  const mapping = STREETMIX_BUILDING_VARIANT_MAP[streetmixVariant];
+  if (!mapping) {
+    if (streetmixVariant && streetmixVariant !== 'none') {
+      console.warn(
+        '[managed-street] loader',
+        `Streetmix building variant '${streetmixVariant}' is not yet supported`
+      );
+    }
+    return null;
+  }
+
+  const buildingType = window.STREET.types.building;
+  const variantConfig = buildingType.variants[mapping.variant] || {};
+  const segmentObject = {
+    type: 'building',
+    width: mapping.width,
+    length: length,
+    level: buildingType.level,
+    direction: 'outbound',
+    surface: variantConfig.surface || buildingType.surface,
+    variant: mapping.variant,
+    side: side,
+    // generateComponentsFromSegmentObject resolves the model list by looking up
+    // `variants[variant].modelsArray`, so both must be passed through.
+    generated: buildingType.generated,
+    variants: buildingType.variants
+  };
+
+  const segmentEl = document.createElement('a-entity');
+  segmentEl.setAttribute('street-segment', {
+    type: segmentObject.type,
+    width: segmentObject.width,
+    length: segmentObject.length,
+    level: segmentObject.level,
+    direction: segmentObject.direction,
+    color: buildingType.color || window.STREET.colors.white,
+    surface: segmentObject.surface,
+    variant: segmentObject.variant,
+    side: segmentObject.side
+  });
+  segmentEl.setAttribute(
+    'data-layer-name',
+    `Building • ${streetmixVariant} (${side})`
+  );
+  // Generate the building clones once the street-segment component is ready
+  // (mirrors parseStreetObject's streetplan path).
+  segmentEl.addEventListener('loaded', () => {
+    segmentEl.components['street-segment']?.generateComponentsFromSegmentObject(
+      segmentObject
+    );
+  });
+  return segmentEl;
 }
 
 // OLD: takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
