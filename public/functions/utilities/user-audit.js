@@ -2,8 +2,16 @@
  * User Audit Utilities
  *
  * Identifies discrepancies between Firebase Auth claims and Stripe subscriptions:
- * - Users with PRO claim but no active Stripe subscription
- * - Users with active Stripe subscription but no PRO claim
+ * - Users with a paid claim (PRO or MAX) but no active Stripe subscription
+ * - Users with active Stripe subscription but no paid claim (tier resolved from price)
+ *
+ * MAX-aware: PRO and MAX are both valid paid claims; fix-mode resolves the correct
+ * tier from the subscription's price ID and never downgrades a MAX subscriber to PRO.
+ *
+ * ⚠️ FIX-MODE CAVEAT: this only knows about active *subscriptions*. It does NOT
+ * account for invoice-based customers or
+ * intentional manual comps. Running with fixDiscrepancies=true WILL strip their
+ * claims.
  *
  * Usage:
  *   From browser console (with admin claim):
@@ -42,8 +50,23 @@ function isDomainBasedPro(email) {
   }
 }
 
+// Mirror of isPaidPlanClaim in token-management.js — MAX is a superset of PRO,
+// so both are valid paid claims and neither should be treated as a discrepancy.
+const isPaidPlanClaim = (plan) => plan === 'PRO' || plan === 'MAX';
+
+// Resolve the tier (PRO/MAX) a set of Stripe price IDs corresponds to, by matching
+// the configured MAX price-ID secrets. Defaults to PRO when no MAX price matches.
+// Keep in sync with PRICE_CONFIG in index.js.
+function resolveTierFromPriceIds(priceIds = []) {
+  const maxPriceIds = [
+    process.env.STRIPE_MAX_YEARLY_PRICE_ID,
+    process.env.STRIPE_MAX_MONTHLY_PRICE_ID
+  ].filter(Boolean);
+  return priceIds.some((id) => maxPriceIds.includes(id)) ? 'MAX' : 'PRO';
+}
+
 /**
- * Get all users with PRO claims from Firebase Auth
+ * Get all users with a paid plan claim (PRO or MAX) from Firebase Auth
  * Uses pagination to handle large user bases
  */
 async function getUsersWithProClaims() {
@@ -54,7 +77,7 @@ async function getUsersWithProClaims() {
     const listResult = await getAuth().listUsers(1000, nextPageToken);
 
     for (const user of listResult.users) {
-      if (user.customClaims?.plan === 'PRO') {
+      if (isPaidPlanClaim(user.customClaims?.plan)) {
         proUsers.push({
           uid: user.uid,
           email: user.email,
@@ -200,7 +223,7 @@ async function getActiveStripeSubscribers(stripe) {
  */
 exports.auditUserSubscriptions = functions
   .runWith({
-    secrets: ['STRIPE_SECRET_KEY', 'ALLOWED_PRO_TEAM_DOMAINS'],
+    secrets: ['STRIPE_SECRET_KEY', 'ALLOWED_PRO_TEAM_DOMAINS', 'STRIPE_YEARLY_PRICE_ID', 'STRIPE_MONTHLY_PRICE_ID', 'STRIPE_MAX_YEARLY_PRICE_ID', 'STRIPE_MAX_MONTHLY_PRICE_ID'],
     timeoutSeconds: 540 // 9 minutes for large user bases
   })
   .https
@@ -365,24 +388,27 @@ exports.auditUserSubscriptions = functions
           continue;
         }
 
-        if (user.claims?.plan !== 'PRO') {
-          // Has active subscription but no PRO claim
+        if (!isPaidPlanClaim(user.claims?.plan)) {
+          // Has active subscription but no paid (PRO/MAX) claim
+          const tier = resolveTierFromPriceIds(stripeData.subscriptions.map((s) => s.priceId));
           report.discrepancies.stripeNoPROClaim.push({
             uid: userId,
             email: user.email,
             displayName: user.displayName,
             stripeCustomerId: customerId,
             currentClaim: user.claims?.plan || '(none)',
+            resolvedTier: tier,
             subscriptions: stripeData.subscriptions,
-            reason: 'Active Stripe subscription but missing PRO claim'
+            reason: `Active Stripe subscription but missing ${tier} claim`
           });
           report.summary.stripeNoPROClaim++;
 
           if (fixDiscrepancies) {
-            await getAuth().setCustomUserClaims(userId, { plan: 'PRO' });
+            await getAuth().setCustomUserClaims(userId, { plan: tier });
             report.fixes.claimsAdded.push({
               uid: userId,
-              email: user.email
+              email: user.email,
+              plan: tier
             });
           }
         }
@@ -408,7 +434,7 @@ exports.auditUserSubscriptions = functions
  */
 exports.auditUserSubscriptionsHttp = functions
   .runWith({
-    secrets: ['STRIPE_SECRET_KEY', 'ALLOWED_PRO_TEAM_DOMAINS'],
+    secrets: ['STRIPE_SECRET_KEY', 'ALLOWED_PRO_TEAM_DOMAINS', 'STRIPE_YEARLY_PRICE_ID', 'STRIPE_MONTHLY_PRICE_ID', 'STRIPE_MAX_YEARLY_PRICE_ID', 'STRIPE_MAX_MONTHLY_PRICE_ID'],
     timeoutSeconds: 540
   })
   .https
@@ -548,7 +574,7 @@ async function runAudit(stripe, fixDiscrepancies = false) {
     usersByUid[user.uid] = user;
   }
 
-  for (const [customerId] of activeStripeCustomers) {
+  for (const [customerId, stripeData] of activeStripeCustomers) {
     const userId = stripeToUser[customerId];
 
     if (!userId) {
@@ -571,18 +597,20 @@ async function runAudit(stripe, fixDiscrepancies = false) {
       continue;
     }
 
-    if (user.claims?.plan !== 'PRO') {
+    if (!isPaidPlanClaim(user.claims?.plan)) {
+      const tier = resolveTierFromPriceIds(stripeData.subscriptions.map((s) => s.priceId));
       report.discrepancies.stripeNoPROClaim.push({
         uid: userId,
         email: user.email,
         stripeCustomerId: customerId,
-        reason: 'Missing PRO claim'
+        resolvedTier: tier,
+        reason: `Missing ${tier} claim`
       });
       report.summary.stripeNoPROClaim++;
 
       if (fixDiscrepancies) {
-        await getAuth().setCustomUserClaims(userId, { plan: 'PRO' });
-        report.fixes.claimsAdded.push({ uid: userId, email: user.email });
+        await getAuth().setCustomUserClaims(userId, { plan: tier });
+        report.fixes.claimsAdded.push({ uid: userId, email: user.email, plan: tier });
       }
     }
   }
