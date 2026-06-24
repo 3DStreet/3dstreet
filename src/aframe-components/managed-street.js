@@ -611,7 +611,16 @@ AFRAME.registerComponent('managed-street', {
 
     return variantString;
   },
-  loadAndParseStreetmixURL: async function (streetmixURL) {
+  // showBuildings decides, at conversion time, whether the Streetmix import
+  // emits the boundary building segments. It is a property of this one-time
+  // Streetmix->managed conversion, not component state: once imported, buildings
+  // are ordinary street-segment children (saved/loaded via json-blob, editable
+  // and deletable like any segment). Defaults true; callers that want the
+  // travelled way alone (e.g. the import-parity harness) pass false.
+  loadAndParseStreetmixURL: async function (
+    streetmixURL,
+    showBuildings = true
+  ) {
     const currentState = useStore.getState();
     const data = this.data;
     // Normally rewrite a streetmix.net user URL to its API endpoint. If the
@@ -682,17 +691,22 @@ AFRAME.registerComponent('managed-street', {
 
       // Buildings (Streetmix "boundary" variants). street-align positions
       // segments by DOM order, so the left building goes before the travelled
-      // way and the right building after it.
-      const leftBuildingEl = createStreetmixBuildingElement(
-        streetData.leftBuildingVariant,
-        'left',
-        data.length
-      );
-      const rightBuildingEl = createStreetmixBuildingElement(
-        streetData.rightBuildingVariant,
-        'right',
-        data.length
-      );
+      // way and the right building after it. Gated by the showBuildings
+      // conversion argument so callers can render the travelled way alone.
+      const leftBuildingEl = showBuildings
+        ? createStreetmixBuildingElement(
+            streetData.leftBuildingVariant,
+            'left',
+            data.length
+          )
+        : null;
+      const rightBuildingEl = showBuildings
+        ? createStreetmixBuildingElement(
+            streetData.rightBuildingVariant,
+            'right',
+            data.length
+          )
+        : null;
       const allEls = [
         ...(leftBuildingEl ? [leftBuildingEl] : []),
         ...segmentEls,
@@ -1443,7 +1457,7 @@ function parseStreetmixSegments(segments, length) {
       // an absolute, side-only facing and opts out of direction-based rotation;
       // otherwise both sides land at the same rotationY and the stem points the
       // wrong way on one side. Sideways/angled derive facing from the (possibly
-      // mirrored) markings rotation and still follow travel direction.
+      // mirrored) markings rotation with an absolute facing (direction: none).
       let stencilFacing;
       let stencilDirection;
       if (isParallel) {
@@ -1451,8 +1465,13 @@ function parseStreetmixSegments(segments, length) {
         stencilFacing = parkingSide === 'right' ? 0 : 180;
         stencilDirection = 'none';
       } else {
+        // Sideways/angled stripes use an absolute facing, exactly like the
+        // parked cars (carDirection: 'none'). Routing them through
+        // direction-based rotation instead makes street-generated-stencil
+        // negate the angle for outbound segments (rotationY = 0 - facing),
+        // which flips the stripe to the opposite angle from the car it borders.
         stencilFacing = markingsRotZ + 90;
-        stencilDirection = direction;
+        stencilDirection = 'none';
       }
       segmentParentEl.setAttribute(
         'street-generated-clones',
