@@ -42,6 +42,7 @@ require('./aframe-components/play/race-target.js');
 require('./aframe-components/play/collision-marker.js');
 require('./aframe-components/play/delivery-bot-mesh.js');
 require('./aframe-components/play/street-traffic.js');
+require('./aframe-components/play/street-traffic-replay.js');
 require('./aframe-components/scene-timer.js');
 require('./aframe-components/geojson.js');
 require('./aframe-components/asset-fallback-system.js');
