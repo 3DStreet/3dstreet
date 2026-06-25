@@ -248,7 +248,13 @@ AFRAME.registerComponent('street-traffic-replay', {
     for (const type of rule.lanes) {
       const lanes = this.lanesByType[type];
       if (!lanes || !lanes.length) continue;
-      return lanes.find((l) => l.direction === dir) || lanes[0];
+      // Prefer a lane whose own direction matches the agent.
+      const byDir = lanes.find((l) => l.direction === dir);
+      if (byDir) return byDir;
+      // No directional lane (e.g. sidewalks are 'none'): split opposing flows
+      // so they don't pile onto one segment — inbound takes the first lane of
+      // this type, outbound the last (e.g. pedestrians use both sidewalks).
+      return dir === 'outbound' ? lanes[lanes.length - 1] : lanes[0];
     }
     // Last resort: any segment at all, so the agent still appears.
     for (const type in this.lanesByType) {

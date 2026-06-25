@@ -70,18 +70,23 @@ node scripts/tmd-replay/tmd-to-replay.mjs path/to/tmdb-*.sqlite \
 
 Options:
 
-| flag                | default        | meaning                                                   |
-| ------------------- | -------------- | --------------------------------------------------------- |
-| `--out <path>`      | stdout         | where to write the JSON                                   |
-| `--window <spec>`   | `busiest-hour` | `busiest-hour` \| `busiest-day` \| `all`                  |
-| `--duration <sec>`  | `3600`         | window length searched for `busiest-*`                    |
-| `--start` / `--end` | —              | explicit window (`unix` sec or ISO); overrides `--window` |
-| `--round <sec>`     | `0.1`          | rounding precision for the relative `t`                   |
-| `--pretty`          | off            | pretty-print                                              |
+| flag                | default        | meaning                                                      |
+| ------------------- | -------------- | ------------------------------------------------------------ |
+| `--out <path>`      | stdout         | where to write the JSON                                      |
+| `--window <spec>`   | `busiest-hour` | `busiest-minute` \| `busiest-hour` \| `busiest-day` \| `all` |
+| `--duration <sec>`  | `3600`         | window length searched for `busiest-hour`/custom             |
+| `--start` / `--end` | —              | explicit window (`unix` sec or ISO); overrides `--window`    |
+| `--round <sec>`     | `0.1`          | rounding precision for the relative `t`                      |
+| `--pretty`          | off            | pretty-print                                                 |
 
-`sample-waterleaf-busiest-hour.json` (committed) is the default output for the
-sample dump: **261 agents** over one hour (person 179 · bicycle 58 · car 21 ·
-motorcycle 3), peak ~25 on screen at once.
+Two committed samples for the sample dump:
+
+- `sample-waterleaf-busiest-minute.json` — the busiest **minute**: **50 agents**
+  (person 48 · bicycle 2), a pedestrian rush. Dense at real time (peak ~44 on
+  screen on a 100 m street) — the best quick demo.
+- `sample-waterleaf-busiest-hour.json` — the busiest **hour**: **261 agents**
+  (person 179 · bicycle 58 · car 21 · motorcycle 3). Full mode mix, but sparse
+  at real time (users trickle in at the true pace).
 
 ### Manifest format
 
@@ -164,16 +169,25 @@ external hosting required.
 
 ### Quick demo (no clicks)
 
-Run the app with `?replay=sample` to auto-build a street carrying the committed
-sample manifest, then press Play:
+Run the app with `?replay=sample` to auto-build a street carrying a committed
+manifest, then press Play:
 
 ```
 npm start            # then open
-http://localhost:3333/?replay=sample
+http://localhost:3333/?replay=sample   # busiest minute, dense at real time
+http://localhost:3333/?replay=hour     # busiest hour, full mode mix (sparse)
 ```
 
-`?replay=<url-to-manifest.json>` works too. (This is dev-only scaffolding in
-`replay-demo.js`; the product path is the Add Layer card above.)
+`?replay=<url-to-manifest.json>` and `&scale=N` (playback speed, default 1×)
+also work. This is dev-only scaffolding in `replay-demo.js`; the product path is
+the Add Layer card above.
+
+> **Street length is the model's, not the data's.** The dump has no street
+> geometry — no length, no lane widths, not even the detection-zone distance.
+> Agents traverse whatever `length` your managed-street segments have (the demo
+> uses the built-in 100 m `stroad60ftROW` preset). Set your street's length to
+> match the real block and the replay follows it. "On screen at once" counts
+> (e.g. ~25–44) are _concurrency_ from the event timings, not a distance.
 
 ### The component
 

@@ -33,7 +33,7 @@
  * Usage:
  *   node scripts/tmd-replay/tmd-to-replay.mjs <db.sqlite> [options]
  *     --out <path>        write JSON here (default: stdout)
- *     --window <spec>     busiest-hour | busiest-day | all   (default busiest-hour)
+ *     --window <spec>     busiest-minute | busiest-hour | busiest-day | all   (default busiest-hour)
  *     --duration <sec>    window length to search for --window busiest-* (default 3600)
  *     --start <iso|unix>  explicit window start  (overrides --window)
  *     --end   <iso|unix>  explicit window end
@@ -115,9 +115,14 @@ if (opts.start || opts.end) {
     winEnd = rows[rows.length - 1].end_time;
     windowLabel = 'all';
   } else {
-    // busiest-hour / busiest-day: slide a fixed-width window over the sorted
-    // start times and keep the start that maximizes the contained count.
-    const width = window === 'busiest-day' ? 86400 : duration;
+    // busiest-minute / busiest-hour / busiest-day: slide a fixed-width window
+    // over the sorted start times and keep the start that maximizes the count.
+    const width =
+      window === 'busiest-minute'
+        ? 60
+        : window === 'busiest-day'
+          ? 86400
+          : duration;
     let bestStart = rows[0].start_time;
     let bestCount = 0;
     let lo = 0;
@@ -147,9 +152,9 @@ for (const r of rows) {
   // (inbound = +, outbound = -), else default inbound.
   let dir = r.direction_calc;
   if (dir !== 'inbound' && dir !== 'outbound') {
-    if (typeof r.speed_calc === 'number')
+    if (typeof r.speed_calc === 'number') {
       dir = r.speed_calc >= 0 ? 'inbound' : 'outbound';
-    else dir = 'inbound';
+    } else dir = 'inbound';
   }
 
   const speed =

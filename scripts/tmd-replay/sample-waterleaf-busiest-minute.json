@@ -1,0 +1,376 @@
+{
+  "meta": {
+    "schemaVersion": 1,
+    "source": "tmdb-rvc-waterleaf-2025-10-11.sqlite",
+    "description": "Anonymized street-user replay manifest. Each agent carries only mode, direction, speed and duration; timestamps are relative to the window start. No identifiers, images, scores, or absolute per-user times.",
+    "deployment": {
+      "lat": 45.464152,
+      "lon": -122.66961,
+      "bearing": "w"
+    },
+    "speedUnit": "mph",
+    "window": {
+      "label": "busiest-minute",
+      "startUtc": "2025-10-06T23:48:05.291Z",
+      "endUtc": "2025-10-06T23:49:05.291Z",
+      "durationSec": 60
+    },
+    "agentCount": 50,
+    "countsByMode": {
+      "person": 48,
+      "bicycle": 2
+    }
+  },
+  "agents": [
+    {
+      "t": 0,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 8,
+      "dur": 10.86
+    },
+    {
+      "t": 10,
+      "mode": "bicycle",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 9.6
+    },
+    {
+      "t": 10.1,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 14.47
+    },
+    {
+      "t": 12,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 22.32
+    },
+    {
+      "t": 13.1,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 8.4
+    },
+    {
+      "t": 13.6,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 12.26
+    },
+    {
+      "t": 13.8,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 3.99
+    },
+    {
+      "t": 13.8,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 8
+    },
+    {
+      "t": 14.6,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 8.95
+    },
+    {
+      "t": 15.6,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 11.39
+    },
+    {
+      "t": 15.6,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 12.4
+    },
+    {
+      "t": 15.9,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6.5,
+      "dur": 29.14
+    },
+    {
+      "t": 16.7,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 9,
+      "dur": 13.28
+    },
+    {
+      "t": 18.6,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 5,
+      "dur": 4.73
+    },
+    {
+      "t": 19.2,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6.5,
+      "dur": 25.53
+    },
+    {
+      "t": 19.6,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 12.6
+    },
+    {
+      "t": 22.5,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 12.33
+    },
+    {
+      "t": 23.3,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6.5,
+      "dur": 40.67
+    },
+    {
+      "t": 24.8,
+      "mode": "person",
+      "dir": "inbound",
+      "speed": null,
+      "dur": 21.4
+    },
+    {
+      "t": 25.4,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6.5,
+      "dur": 15.39
+    },
+    {
+      "t": 26.3,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 7,
+      "dur": 7.01
+    },
+    {
+      "t": 27.4,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 7,
+      "dur": 4.79
+    },
+    {
+      "t": 27.4,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6.5,
+      "dur": 7.86
+    },
+    {
+      "t": 28,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 7,
+      "dur": 5.35
+    },
+    {
+      "t": 28,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 7,
+      "dur": 12.99
+    },
+    {
+      "t": 28.3,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 7,
+      "dur": 11.99
+    },
+    {
+      "t": 28.7,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 7,
+      "dur": 10.64
+    },
+    {
+      "t": 29.2,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 7,
+      "dur": 8.05
+    },
+    {
+      "t": 29.2,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 7,
+      "dur": 10.18
+    },
+    {
+      "t": 29.9,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 9.45
+    },
+    {
+      "t": 30.9,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 3.73
+    },
+    {
+      "t": 30.9,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6.5,
+      "dur": 7.73
+    },
+    {
+      "t": 31.4,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 23.44
+    },
+    {
+      "t": 32,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 10.73
+    },
+    {
+      "t": 32.2,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 13.8
+    },
+    {
+      "t": 33.4,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 22.24
+    },
+    {
+      "t": 34,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 8.45
+    },
+    {
+      "t": 34.9,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 9.47
+    },
+    {
+      "t": 35.3,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 13.08
+    },
+    {
+      "t": 35.3,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 32.93
+    },
+    {
+      "t": 35.9,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 10.12
+    },
+    {
+      "t": 36.7,
+      "mode": "person",
+      "dir": "inbound",
+      "speed": 12,
+      "dur": 21.47
+    },
+    {
+      "t": 37.5,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 30.27
+    },
+    {
+      "t": 38.6,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 28.74
+    },
+    {
+      "t": 40,
+      "mode": "person",
+      "dir": "inbound",
+      "speed": null,
+      "dur": 17.33
+    },
+    {
+      "t": 47,
+      "mode": "person",
+      "dir": "inbound",
+      "speed": null,
+      "dur": 18.52
+    },
+    {
+      "t": 48.3,
+      "mode": "person",
+      "dir": "inbound",
+      "speed": null,
+      "dur": 22.19
+    },
+    {
+      "t": 48.6,
+      "mode": "bicycle",
+      "dir": "inbound",
+      "speed": 12,
+      "dur": 2.13
+    },
+    {
+      "t": 50.4,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6,
+      "dur": 21.93
+    },
+    {
+      "t": 51.3,
+      "mode": "person",
+      "dir": "outbound",
+      "speed": 6.5,
+      "dur": 22.07
+    }
+  ]
+}

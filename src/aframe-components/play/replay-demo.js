@@ -6,9 +6,12 @@
  * manual wiring. It does nothing unless the page URL carries a `?replay=...`
  * query param:
  *
- *   ?replay=sample     -> loads the committed Waterleaf busiest-hour manifest
- *                         (scripts/tmd-replay/sample-waterleaf-busiest-hour.json)
+ *   ?replay=sample     -> the busiest MINUTE of the Waterleaf capture (dense at
+ *                         real time: ~50 users, a pedestrian rush)
+ *   ?replay=hour       -> the busiest HOUR (full mode mix, but sparse at real
+ *                         time — users trickle in at the true pace)
  *   ?replay=<url.json> -> fetches that manifest URL
+ *   &scale=N           -> playback speed (default 1× = real time; e.g. &scale=4)
  *
  * When present, it replaces the default scene's street with a managed-street
  * (a 60ft cross-section: sidewalks, bike lanes, drive lanes) that carries the
@@ -20,23 +23,34 @@
  */
 (function () {
   if (typeof window === 'undefined') return;
-  const replay = new URLSearchParams(window.location.search).get('replay');
+  const params = new URLSearchParams(window.location.search);
+  const replay = params.get('replay');
   if (!replay) return;
+
+  // Real time by default. The busiest-minute sample is dense enough at 1× that
+  // no time compression is needed; &scale=N is available for faster playback.
+  const scaleParam = parseFloat(params.get('scale'));
+  const timeScale =
+    Number.isFinite(scaleParam) && scaleParam > 0 ? scaleParam : 1;
 
   const boot = async () => {
     const scene = document.querySelector('a-scene');
     if (!scene) return;
 
-    // Pull the demo cross-section, and (for ?replay=sample) the bundled
-    // manifest. Both are dynamic imports so they cost nothing on normal loads.
+    // Pull the demo cross-section, and a bundled manifest for the known keys.
+    // All dynamic imports, so they cost nothing on normal loads.
+    const bundled = {
+      sample: () =>
+        import('../../../scripts/tmd-replay/sample-waterleaf-busiest-minute.json'),
+      minute: () =>
+        import('../../../scripts/tmd-replay/sample-waterleaf-busiest-minute.json'),
+      hour: () =>
+        import('../../../scripts/tmd-replay/sample-waterleaf-busiest-hour.json')
+    };
     const tasks = [
       import('../../editor/components/elements/AddLayerPanel/defaultStreets.js')
     ];
-    if (replay === 'sample') {
-      tasks.push(
-        import('../../../scripts/tmd-replay/sample-waterleaf-busiest-hour.json')
-      );
-    }
+    if (bundled[replay]) tasks.push(bundled[replay]());
     let streetsMod, sampleMod;
     try {
       [streetsMod, sampleMod] = await Promise.all(tasks);
@@ -61,7 +75,7 @@
       playable: true
     });
 
-    const replayProps = { timeScale: 1, loop: true };
+    const replayProps = { timeScale, loop: true };
     if (sampleMod) {
       const manifest = sampleMod.default || sampleMod;
       replayProps.manifestData = JSON.stringify(manifest);
@@ -74,8 +88,9 @@
     container.appendChild(street);
 
     console.log(
-      '[replay-demo] added managed-street with replay (%s). Press Play to watch.',
-      replay === 'sample' ? 'bundled sample' : replay
+      '[replay-demo] added managed-street with replay (%s) at %d× speed. Press Play to watch.',
+      bundled[replay] ? `bundled:${replay}` : replay,
+      timeScale
     );
   };
 
