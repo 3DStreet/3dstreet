@@ -4,8 +4,10 @@
  * street-traffic-replay
  * =====================
  *
- * Play-mode subscriber that REPLAYS real roadside-sensor data as animated
- * street users, instead of the synthetic flow that `street-traffic` spawns.
+ * Per-managed-street component that REPLAYS real roadside-sensor data as
+ * animated street users, instead of the synthetic flow that `street-traffic`
+ * spawns. It lives ON a `[managed-street]` entity and animates onto that
+ * street's own lanes during play mode.
  *
  * It consumes an anonymized "replay manifest" (see
  * scripts/tmd-replay/README.md and tmd-to-replay.mjs) of the shape:
@@ -45,10 +47,12 @@
  *     not to drive into it. Kinematic coupling could be added later the same
  *     way street-traffic does it.
  *
- * Usage: put it on the scene next to street-traffic and give it a manifest:
- *   <a-scene ... street-traffic-replay="src: url(/path/to/replay.json)">
- * When a manifest is loaded and produces agents, it suppresses the synthetic
- * `street-traffic` for the duration of play so the two don't double up.
+ * Usage: attach to a managed-street with an inline (persistable) manifest:
+ *   street-traffic-replay="manifestData: <stringified manifest JSON>"
+ * or point it at a URL: street-traffic-replay="manifestUrl: /path/replay.json".
+ * `manifestData` survives scene save/load the same way managed-street's
+ * `json-blob` does. While a replay owns a street, `street-traffic` skips that
+ * street's synthetic flow (see its onPlayStart guard) so the two don't double.
  */
 
 // Per-mode rendering rules. Speeds are mph (matching the manifest's speedUnit).
@@ -101,21 +105,26 @@ const EXIT_MARGIN = 1.5; // metres past the lane end before we despawn
 
 AFRAME.registerComponent('street-traffic-replay', {
   schema: {
-    // Manifest URL. A-Frame's `src` type resolves url(...) and asset selectors.
-    src: { type: 'asset', default: '' },
+    // Inline anonymized manifest JSON (stringified). This is the persistable
+    // source: it survives scene save/load just like managed-street's json-blob.
+    // (Deliberately NOT named `src` — json-utils strips `src` on save.)
+    manifestData: { type: 'string', default: '' },
+    // Alternative: fetch the manifest from a URL instead of inlining it.
+    manifestUrl: { type: 'string', default: '' },
     // sim-seconds -> manifest-seconds. 1 = real time.
     timeScale: { type: 'number', default: 1 },
     // Restart from t=0 when the manifest is exhausted.
     loop: { type: 'boolean', default: true },
-    // Suppress synthetic street-traffic while a replay is active.
+    // Suppress synthetic street-traffic on this street while a replay is active.
     suppressSyntheticTraffic: { type: 'boolean', default: true }
   },
 
   init: function () {
     this.onPlayStart = this.onPlayStart.bind(this);
     this.onPlayStop = this.onPlayStop.bind(this);
-    this.el.addEventListener('play-mode-start', this.onPlayStart);
-    this.el.addEventListener('play-mode-stop', this.onPlayStop);
+    // play-mode events fire on the scene (bubbles off), so subscribe there.
+    this.el.sceneEl.addEventListener('play-mode-start', this.onPlayStart);
+    this.el.sceneEl.addEventListener('play-mode-stop', this.onPlayStop);
 
     this.manifest = null; // parsed manifest
     this.duration = 0; // manifest length in seconds
@@ -125,79 +134,89 @@ AFRAME.registerComponent('street-traffic-replay', {
     this.cycleBase = 0; // manifest-time at the start of the current loop
     this.cumulative = {}; // mode -> count spawned this cycle
     this._lastStatsEmit = 0;
-    this._trafficSuppressed = false;
 
-    if (this.data.src) this.loadManifest(this.data.src);
+    this.loadFromData();
   },
 
   update: function (oldData) {
-    if (this.data.src && this.data.src !== oldData.src) {
-      this.loadManifest(this.data.src);
+    if (
+      this.data.manifestData !== oldData.manifestData ||
+      this.data.manifestUrl !== oldData.manifestUrl
+    ) {
+      this.loadFromData();
     }
   },
 
   remove: function () {
-    this.el.removeEventListener('play-mode-start', this.onPlayStart);
-    this.el.removeEventListener('play-mode-stop', this.onPlayStop);
+    this.el.sceneEl.removeEventListener('play-mode-start', this.onPlayStart);
+    this.el.sceneEl.removeEventListener('play-mode-stop', this.onPlayStop);
     this.teardown();
   },
 
-  loadManifest: function (src) {
-    fetch(src)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then((m) => {
-        const agents = Array.isArray(m.agents) ? m.agents.slice() : [];
-        agents.sort((a, b) => a.t - b.t);
-        this.manifest = { meta: m.meta || {}, agents };
-        const lastT = agents.length ? agents[agents.length - 1].t : 0;
-        this.duration = (m.meta?.window?.durationSec || lastT) + 5;
-        console.log(
-          '[street-traffic-replay] loaded',
-          agents.length,
-          'agents,',
-          Math.round(this.duration),
-          's window,',
-          JSON.stringify(m.meta?.countsByMode || {})
+  // True once a usable manifest is parsed. street-traffic checks this to know a
+  // replay owns this street's traffic and skips its synthetic flow.
+  hasAgents: function () {
+    return !!(this.manifest && this.manifest.agents.length);
+  },
+
+  loadFromData: function () {
+    if (this.data.manifestData) {
+      try {
+        this.setManifest(JSON.parse(this.data.manifestData));
+      } catch (err) {
+        console.error('[street-traffic-replay] bad manifestData JSON', err);
+      }
+    } else if (this.data.manifestUrl) {
+      fetch(this.data.manifestUrl)
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then((m) => this.setManifest(m))
+        .catch((err) =>
+          console.error(
+            '[street-traffic-replay] failed to fetch manifest',
+            this.data.manifestUrl,
+            err
+          )
         );
-      })
-      .catch((err) => {
-        console.error(
-          '[street-traffic-replay] failed to load manifest',
-          src,
-          err
-        );
-      });
+    }
+  },
+
+  setManifest: function (m) {
+    const agents = Array.isArray(m.agents) ? m.agents.slice() : [];
+    agents.sort((a, b) => a.t - b.t);
+    this.manifest = { meta: m.meta || {}, agents };
+    const lastT = agents.length ? agents[agents.length - 1].t : 0;
+    this.duration = (m.meta?.window?.durationSec || lastT) + 5;
+    console.log(
+      '[street-traffic-replay] loaded',
+      agents.length,
+      'agents,',
+      Math.round(this.duration),
+      's window,',
+      JSON.stringify(m.meta?.countsByMode || {})
+    );
   },
 
   onPlayStart: function () {
-    if (!this.manifest || !this.manifest.agents.length) {
-      console.log(
-        '[street-traffic-replay] no manifest; deferring to synthetic traffic'
-      );
+    if (!this.hasAgents()) {
+      console.log('[street-traffic-replay] no manifest; nothing to replay');
       return;
     }
-    // Pick the street to replay onto: first playable managed-street, else the
-    // first managed-street present.
-    const streets = Array.from(this.el.querySelectorAll('[managed-street]'));
-    this.streetEl =
-      streets.find((s) => s.components?.['managed-street']?.data?.playable) ||
-      streets[0];
-    if (!this.streetEl) {
+    if (!this.el.components['managed-street']) {
       console.warn(
-        '[street-traffic-replay] no managed-street found to replay onto'
+        '[street-traffic-replay] must be on a managed-street entity; skipping'
       );
       return;
     }
-    this.indexLanes(this.streetEl);
+    // This component lives ON the managed-street, so replay onto our own lanes.
+    this.indexLanes(this.el);
 
     this.nextIdx = 0;
     this.cycleBase = 0;
     this.cumulative = {};
     this.active = true;
-    this._trafficSuppressed = false;
     console.log(
       '[street-traffic-replay] start: replaying',
       this.manifest.agents.length,
@@ -276,19 +295,8 @@ AFRAME.registerComponent('street-traffic-replay', {
 
   tick: function () {
     if (!this.active) return;
-    const timer = this.el.components['scene-timer'];
+    const timer = this.el.sceneEl.components['scene-timer'];
     if (!timer) return;
-
-    // Suppress synthetic traffic on the first active tick (after
-    // street-traffic's own play-start handler has had a chance to spawn).
-    if (this.data.suppressSyntheticTraffic && !this._trafficSuppressed) {
-      const st = this.el.components['street-traffic'];
-      if (st && st.active) {
-        st.teardown();
-        st.active = false;
-      }
-      this._trafficSuppressed = true;
-    }
 
     const manifestTime =
       ((timer.simulationTime || 0) / 1000) * this.data.timeScale;
@@ -335,7 +343,9 @@ AFRAME.registerComponent('street-traffic-replay', {
     this._lastStatsEmit = simTime;
     let total = 0;
     for (const k in this.cumulative) total += this.cumulative[k];
-    this.el.emit('street-traffic-replay-stats', {
+    // Emit on the scene so a single overlay can aggregate every street's replay.
+    this.el.sceneEl.emit('street-traffic-replay-stats', {
+      street: this.el.id || null,
       manifestTime: tRel,
       cumulative: { ...this.cumulative },
       active: this.records.length,
@@ -353,6 +363,5 @@ AFRAME.registerComponent('street-traffic-replay', {
     }
     this.records.length = 0;
     this.active = false;
-    this._trafficSuppressed = false;
   }
 });

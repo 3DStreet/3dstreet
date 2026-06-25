@@ -75,6 +75,14 @@ export const streetLayersData = [
     description:
       'Create a new street from Streetplan URL using the Managed Street component.',
     handlerFunction: createFunctions.createManagedStreetFromStreetplanURLPrompt
+  },
+  {
+    name: '(Beta) Traffic Replay from Sensor Data',
+    img: '',
+    icon: 'ui_assets/cards/icons/3dst24.png',
+    description:
+      'Replay anonymized real-world street users from a traffic-sensor manifest (JSON). Attaches to your Managed Street; press Play to watch real traffic by mode.',
+    handlerFunction: createFunctions.createTrafficReplay
   }
 ].map((layer, index) => ({ ...layer, id: index + 1 }));
 

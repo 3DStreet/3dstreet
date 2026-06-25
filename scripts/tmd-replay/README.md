@@ -149,23 +149,47 @@ fully time-stripped artifact.
 
 ## 5. Replay it in 3DStreet
 
-The `street-traffic-replay` scene component (registered in `src/index.js`,
-attached on `<a-scene>` in `index.html`) consumes a manifest and animates it in
-**play mode**. Point it at a manifest and press Play:
+### As a user (Add Layer card)
 
-```html
-<a-scene
-  ...
-  street-traffic-replay="src: url(/path/to/replay.json); timeScale: 1"
-></a-scene>
+In the editor: **Add Layer → "(Beta) Traffic Replay from Sensor Data"** → pick a
+manifest `.json` (e.g. `sample-waterleaf-busiest-hour.json`). It attaches a
+`street-traffic-replay` component to your Managed Street (or, if you don't have
+one, creates a default cross-section that carries it) and marks the street
+`playable`. A toast confirms the agent/mode counts. Press **Play** and the real,
+anonymized street users animate by mode.
+
+The manifest is stored inline (`manifestData`) on the street, so it **persists
+with the saved scene** — exactly like a Managed Street's `json-blob` source. No
+external hosting required.
+
+### Quick demo (no clicks)
+
+Run the app with `?replay=sample` to auto-build a street carrying the committed
+sample manifest, then press Play:
+
 ```
+npm start            # then open
+http://localhost:3333/?replay=sample
+```
+
+`?replay=<url-to-manifest.json>` works too. (This is dev-only scaffolding in
+`replay-demo.js`; the product path is the Add Layer card above.)
+
+### The component
+
+`street-traffic-replay` lives **on a `[managed-street]` entity** and animates
+onto that street's own lanes during play mode (registered in `src/index.js`).
 
 | property                   | default | meaning                                                                     |
 | -------------------------- | ------- | --------------------------------------------------------------------------- |
-| `src`                      | `''`    | manifest URL (empty = inert; synthetic `street-traffic` runs instead)       |
+| `manifestData`             | `''`    | inline manifest JSON (stringified) — the persistable source                 |
+| `manifestUrl`              | `''`    | alternative: fetch the manifest from a URL (also persists; not `src`)       |
 | `timeScale`                | `1`     | sim-seconds → manifest-seconds. `1` = real time, `60` = a minute per second |
 | `loop`                     | `true`  | rewind to `t=0` when the window ends                                        |
-| `suppressSyntheticTraffic` | `true`  | hide synthetic `street-traffic` while a replay is active                    |
+| `suppressSyntheticTraffic` | `true`  | the synthetic `street-traffic` skips a street that has an active replay     |
+
+> Why not `src`? The scene serializer strips any `src` property on save, so the
+> manifest is kept in `manifestData`/`manifestUrl` to survive save/load.
 
 **How it animates** (mirrors `street-traffic.js`):
 
@@ -192,9 +216,14 @@ document
 
 ### Status / verification
 
-The data layer (`introspect.mjs`, `tmd-to-replay.mjs`, the manifest) is verified
-end-to-end against the sample dump. The replay component's spawn/move/despawn/
-loop math is validated by a standalone simulation (peak concurrency and exit
-behavior match the raw data; deterministic across frame rates), but it still
-needs an **in-app smoke test** in play mode against a real managed-street to
-confirm lane selection and model placement on a live scene.
+- **Data layer** (`introspect.mjs`, `tmd-to-replay.mjs`, the manifest): verified
+  end-to-end against the sample dump.
+- **Replay math** (spawn/move/despawn/loop): validated by a standalone
+  simulation — peak concurrency (25) and exit behavior match the raw data, and
+  results are identical across frame rates (deterministic).
+- **Build**: the full app (`webpack`) compiles with all of the above plus the
+  Add Layer card and the `?replay=sample` demo.
+- **Not yet done**: a live in-browser smoke test in play mode (confirming lane
+  selection and model placement on a rendered scene). It could not be run in the
+  build sandbox because the network policy blocks the A-Frame CDN the app loads
+  from; run `?replay=sample` locally to confirm visually.

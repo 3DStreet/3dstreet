@@ -93,6 +93,16 @@ AFRAME.registerComponent('street-traffic', {
     streets.forEach((streetEl) => {
       const ms = streetEl.components?.['managed-street']?.data;
       if (!ms || !ms.playable) return;
+      // A street-traffic-replay on this street owns its traffic (real-data
+      // replay); don't also spawn synthetic flow on top of it.
+      const replay = streetEl.components?.['street-traffic-replay'];
+      if (replay?.data?.suppressSyntheticTraffic && replay.hasAgents?.()) {
+        console.log(
+          '[street-traffic] skipping street with active replay',
+          streetEl.id || ''
+        );
+        return;
+      }
       playableCount++;
       this.spawnForStreet(streetEl);
     });
