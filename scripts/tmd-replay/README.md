@@ -182,6 +182,28 @@ http://localhost:3333/?replay=hour     # busiest hour, full mode mix (sparse)
 also work. This is dev-only scaffolding in `replay-demo.js`; the product path is
 the Add Layer card above.
 
+The demo also **places the scene at the sensor's real coordinates** (from the
+manifest's `meta.deployment`: lat `45.464152`, lon `-122.66961`, SW Portland)
+so you have map context to align the street against. The basemap uses the same
+API key as the app's normal Geo feature; override with `&maps=mapbox2d`
+(top-down aerial — easiest for alignment), `osm3d`, or `none`.
+
+### Saving & reloading
+
+Yes — a configured scene round-trips. The scene save serializes three things
+that together restore the setup:
+
+- the **geolocation** (`street-geo` on `#reference-layers`) → the scene reopens
+  at the same lat/lon with the same basemap;
+- the **managed-street entity's transform** (`position`/`rotation`) → if you
+  move/rotate the street to align with the real road, it comes back aligned;
+- the **replay itself** (`street-traffic-replay`'s inline `manifestData`).
+
+So: place the scene, drop/align your managed street, attach the replay via the
+Add Layer card, **Save**, and reopening the scene reloads it in the same
+configuration. (Use the Add Layer card rather than the `?replay=` demo for a
+scene you intend to save — the demo street is dev scaffolding.)
+
 > **Street length is the model's, not the data's.** The dump has no street
 > geometry — no length, no lane widths, not even the detection-zone distance.
 > Agents traverse whatever `length` your managed-street segments have (the demo

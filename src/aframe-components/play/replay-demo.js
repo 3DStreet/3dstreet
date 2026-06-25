@@ -12,10 +12,13 @@
  *                         time — users trickle in at the true pace)
  *   ?replay=<url.json> -> fetches that manifest URL
  *   &scale=N           -> playback speed (default 1× = real time; e.g. &scale=4)
+ *   &maps=<type>       -> geo basemap (default google3d; mapbox2d|osm3d|none)
  *
  * When present, it replaces the default scene's street with a managed-street
  * (a 60ft cross-section: sidewalks, bike lanes, drive lanes) that carries the
- * `street-traffic-replay` component. Press Play and the real, anonymized
+ * `street-traffic-replay` component, and places the scene at the sensor's
+ * real-world lat/lon (from the manifest's deployment metadata) so you have map
+ * context to align the street against. Press Play and the real, anonymized
  * Waterleaf street users animate across it.
  *
  * This is intentionally NOT the product UX — that's the "Traffic Replay" Add
@@ -75,9 +78,10 @@
       playable: true
     });
 
+    let manifest = null;
     const replayProps = { timeScale, loop: true };
     if (sampleMod) {
-      const manifest = sampleMod.default || sampleMod;
+      manifest = sampleMod.default || sampleMod;
       replayProps.manifestData = JSON.stringify(manifest);
     } else {
       replayProps.manifestUrl = replay; // treat the param as a manifest URL
@@ -86,6 +90,34 @@
 
     const container = document.querySelector('#street-container') || scene;
     container.appendChild(street);
+
+    // Place the scene at the sensor's real-world location (from the manifest's
+    // deployment metadata) so there's map context to align the street against.
+    // Map imagery needs the same API key the app's normal Geo feature uses;
+    // override the layer with &maps=mapbox2d|osm3d|none (default google3d).
+    const dep = manifest?.meta?.deployment;
+    if (dep && Number.isFinite(dep.lat) && Number.isFinite(dep.lon)) {
+      const maps = params.get('maps') || 'google3d';
+      const geoLayer = document.getElementById('reference-layers');
+      if (geoLayer) {
+        try {
+          geoLayer.setAttribute('street-geo', {
+            latitude: dep.lat,
+            longitude: dep.lon,
+            maps
+          });
+          console.log(
+            '[replay-demo] placed scene at %s, %s (maps: %s; sensor bearing %s)',
+            dep.lat,
+            dep.lon,
+            maps,
+            dep.bearing || '?'
+          );
+        } catch (e) {
+          console.warn('[replay-demo] could not set scene geo', e);
+        }
+      }
+    }
 
     console.log(
       '[replay-demo] added managed-street with replay (%s) at %d× speed. Press Play to watch.',
