@@ -78,8 +78,12 @@ legacy behaviour.
 - **Compass**: rotate, click → top-down, click again → north. *(already in
   branch — TASK-011/023/025/026.)*
 - **Cursor-anchored dolly zoom**. *(in.)*
-- **Rotate around the clicked point**, with the shallow-tilt pivot fix so a
-  distant/sky click can't fling the view. *(done — commit `0b67de49`.)*
+- **Rotate around the screen-centre point**, found with the new collision
+  raycast (mesh → ground) fired through the screen centre, with the ring
+  indicator and the shallow-tilt pivot fix so a shallow view can't fling.
+  Rotate-*about-cursor* is deferred to Stage 2 (it's the same gesture aimed
+  at the pointer instead of the centre); Stage 1 keeps the legacy
+  rotate-around-centre feel. *(pivot/anti-fling done — commit `0b67de49`.)*
 - **Under-tiles recovery**: if a rotation dips the camera beneath the
   Google 3D tiles, it auto-lifts back above the surface — no getting
   trapped under the world.
@@ -106,7 +110,8 @@ A real street-level navigation mode — this is the deliberate behaviour
 change, which is exactly why it ships on its own once the feel is locked,
 rather than blocking Stage 1.
 
-**In:** lane double-click → teleport to eye height; letterbox mode
+**In:** **rotate about the cursor** (vs Stage 1's rotate-about-centre);
+lane double-click → teleport to eye height; letterbox mode
 indicator; rotate-in-place at low tilt; smooth **swoop + focal-zoom**
 transitions between birds-eye and street; **WASD / arrow flight**;
 **Space-to-ground**; **drone/streetview toggle**; the enclosure escape

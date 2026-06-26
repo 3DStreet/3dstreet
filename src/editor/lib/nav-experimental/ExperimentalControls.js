@@ -4592,8 +4592,21 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // point) takes over, since the screen-centre ground point is null there.
     const tiltDeg = cameraTiltDegrees(camera);
     const isMap = !this._streetLevelEnabled || tiltDeg > this._tiltThreshold;
+    // Stage 1 (street-level off): rotate about the SCREEN-CENTRE collision
+    // point, not the cursor. Cursor-anchored orbit is deferred to Stage 2
+    // (07-phased-rollout-plan.md). We still use the new collision raycast
+    // (mesh → ground via `worldPointAt`) and still show the ring — it is
+    // just fired through the screen centre instead of the pointer. With
+    // street-level on, the cursor pivot (Stage 2) is used as before.
+    let pivotX = clientX;
+    let pivotY = clientY;
+    if (!this._streetLevelEnabled) {
+      const rect = this._domElement.getBoundingClientRect();
+      pivotX = rect.left + rect.width / 2;
+      pivotY = rect.top + rect.height / 2;
+    }
     const center = isMap
-      ? this._mapModePivot(clientX, clientY) // bounds sphere + D-LT-3 fallback
+      ? this._mapModePivot(pivotX, pivotY) // bounds sphere + D-LT-3 fallback
       : camera.position.clone(); // street: rotate-in-place
     this._latch.start({
       mode: 'rotate',
@@ -4625,6 +4638,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // ground feature. (Ideally the pivot's height would be true ground
   // level rather than y=0 — that is TASK-018, gated on the AGL work in
   // TASK-013/019, not yet landed.)
+  //
+  // NOTE: `_latchRotationCenter` passes the SCREEN-CENTRE coords here when
+  // street-level mode is off (Stage 1 rotate-about-centre), so "the cursor"
+  // in the comments below is the screen centre in that path; the cursor-
+  // anchored pivot only applies with street-level on (Stage 2).
   //
   // History: replaced (a) the MAX_ORBIT_RADIUS inward cap along the
   // cursor ray, which drifted on tilt when zoomed out (#7); and (b) a
