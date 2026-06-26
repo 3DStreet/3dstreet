@@ -750,13 +750,16 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._zoomOutInterval = null;
   }
 
-  // LB sub-mode from the live tilt. Street-level mode off: the tilt-
-  // conditional pedestal regime — and the letterbox indicator driven off
-  // it — never engages; LB pan is always the Map truck-pan regardless of
-  // tilt. The single decision point for all three callers (the mode cache,
-  // the mode-change emitter, and the pan gesture latch).
+  // LB sub-mode from the live tilt. Street-level mode off (Stage 1): a
+  // single screen-space pan ('pan-screen') at every tilt — the legacy
+  // THREE.EditorControls LB behaviour. The tilt-gated truck/pedestal split
+  // (and the letterbox indicator driven off it) is the Stage 2 street mode
+  // and only engages when street-level is enabled. See
+  // docs/07-phased-rollout-plan.md §"the seam". The single decision point
+  // for all three callers (the mode cache, the mode-change emitter, and the
+  // pan gesture latch).
   _decideLbModeLive() {
-    if (!this._streetLevelEnabled) return 'pan-truck';
+    if (!this._streetLevelEnabled) return 'pan-screen';
     return decideLbMode(cameraTiltDegrees(this._camera), this._tiltThreshold);
   }
 
@@ -1476,7 +1479,25 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const subMode = this._decideLbModeLive();
     const anchor = this._cursorAnchor.worldPointAt(clientX, clientY);
 
-    if (subMode === 'pan-truck') {
+    if (subMode === 'pan-screen') {
+      // Stage 1 screen-space pan: plane through the anchor whose normal is
+      // the camera-facing direction (i.e. parallel to the image plane).
+      // Translating the camera within this plane keeps the anchor under the
+      // cursor and moves purely in the camera's right/up basis — the legacy
+      // ⊥-to-camera pan. The plane is latched at gesture start (the pan
+      // never rotates the camera, so it stays parallel to the image plane).
+      const fwd = new THREE.Vector3();
+      this._camera.getWorldDirection(fwd);
+      if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
+      fwd.normalize();
+      const planeAnchor = new THREE.Vector3(anchor.x, anchor.y, anchor.z);
+      this._anchorPlane.setFromNormalAndCoplanarPoint(fwd, planeAnchor);
+      this._latch.start({
+        mode: 'pan',
+        subMode,
+        anchor: planeAnchor
+      });
+    } else if (subMode === 'pan-truck') {
       this._anchorPlane.set(
         new THREE.Vector3(0, 1, 0),
         -anchor.y // signed dist; plane equation y = anchor.y
@@ -1538,7 +1559,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const mode = this._latch.get('mode');
     if (mode === 'pan') {
       const subMode = this._latch.get('subMode');
-      if (subMode === 'pan-pedestal') {
+      if (subMode === 'pan-screen') {
+        this._lbScreenPan(event.clientX, event.clientY);
+      } else if (subMode === 'pan-pedestal') {
         this._lbPedestalMove(event.clientX, event.clientY);
       } else {
         this._lbTruckMove(event.clientX, event.clientY);
@@ -4351,6 +4374,53 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       };
     }
     return { hit: false };
+  }
+
+  // --- LB screen-space pan (Stage 1 parity-plus) ---
+  //
+  // The legacy THREE.EditorControls LB behaviour, restored: one continuous
+  // pan in the camera's own right/up basis with no tilt-gated mode switch.
+  // The drag is anchored on a plane through the cursor's world point whose
+  // normal is the camera-facing direction (parallel to the image plane), so
+  // the world point under the cursor stays under the cursor. Because that
+  // plane tilts with the camera, the same gesture slides across the ground
+  // when looking down and pedestals straight up when looking at the horizon
+  // — one behaviour that degrades gracefully across tilt (see
+  // docs/07-phased-rollout-plan.md). No floor clamp / grounding (Stage 2
+  // machinery): matching legacy, dragging up always lifts back out.
+  _lbScreenPan(clientX, clientY) {
+    const camera = this._camera;
+    const anchor = this._latch.get('anchor');
+    if (!anchor) return;
+
+    const rect = this._domElement.getBoundingClientRect();
+    const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const ndcY = -((clientY - rect.top) / rect.height) * 2 + 1;
+    this._tmpNDC.set(ndcX, ndcY);
+    this._raycaster.setFromCamera(this._tmpNDC, camera);
+
+    const hNow = new THREE.Vector3();
+    const ok = this._raycaster.ray.intersectPlane(this._anchorPlane, hNow);
+    if (!ok) return; // ray parallel to plane — no-op
+
+    // Both points are coplanar with the image plane, so `delta` has no
+    // camera-forward component: the camera translates purely in its
+    // right/up basis and the anchor's screen projection is preserved.
+    const delta = new THREE.Vector3().subVectors(anchor, hNow);
+    if (!isFinite(delta.x) || !isFinite(delta.y) || !isFinite(delta.z)) return;
+
+    // Sanity cap to avoid teleports from a degenerate plane solution.
+    const stepMag = delta.length();
+    const cap = LB_PAN_MAX_STEP_METRES;
+    if (stepMag > cap) delta.multiplyScalar(cap / stepMag);
+
+    camera.position.add(delta);
+    this.center.add(delta);
+    // TASK-022: clear on ACTUAL movement only — a jitter drag that nets ~0
+    // on the latched plane must NOT clear (WE-6).
+    if (delta.x || delta.y || delta.z) this._clearZoomUndo();
+    camera.updateMatrixWorld();
+    this.dispatchEvent(this._changeEvent);
   }
 
   // --- LB hit-anchored truck ---
