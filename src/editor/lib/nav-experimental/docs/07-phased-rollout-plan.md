@@ -55,15 +55,11 @@ Beats (record this journey to compare builds):
 4. Click / double-click to frame it.
 5. Circle the car to see all sides.
 6. Settle near street level.
-7. **Lift back up to a higher viewpoint.** ← the make-or-break beat.
+7. Lift back up to a higher viewpoint.
 8. (failure mode) end up under the ground — is there a way out?
 
-Three takes filmed on Desktop (`*-norman-waymo.mov`): legacy and Diarmid's
-full build both pass beat 7; the first map-only attempt failed it (no
-pedestal). v1 below restores the pass.
-
 Cross-cutting finding: **beat 5 (orbit the car) confused Norman in every
-build** — see the Stage 1 optional cherry.
+build**
 
 ## Stage 1 — Improve the existing camera. **SHIP FIRST.**
 
@@ -98,11 +94,6 @@ drone/streetview icon.
 
 **Why it's safe to ship alone:** LB⊥ restores the legacy feel; everything
 else is purely additive UI/behaviour layered on top.
-
-**Optional cherry:** when an object is selected, drag orbits *that object's
-centre*. Directly fixes beat 5 ("how do I circle the car?") — discoverable,
-aimed at what Norman selected, and on-screen at any tilt. Can ship as its
-own small PR.
 
 ## Stage 2 — Full Street View. (defer until ready)
 
