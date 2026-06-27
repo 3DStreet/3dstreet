@@ -4,10 +4,12 @@
  * street-traffic-replay
  * =====================
  *
- * Per-managed-street component that REPLAYS real roadside-sensor data as
+ * Standalone "Traffic Replay" layer that REPLAYS real roadside-sensor data as
  * animated street users, instead of the synthetic flow that `street-traffic`
- * spawns. It lives ON a `[managed-street]` entity and animates onto that
- * street's own lanes during play mode.
+ * spawns. It lives on its OWN entity (its own scene-graph layer with a custom
+ * sidebar) and animates onto a linked `[managed-street]`'s lanes during play
+ * mode. The link is the `target` property (a managed-street entity id; empty =
+ * the first managed-street in the scene).
  *
  * It consumes an anonymized "replay manifest" (see
  * scripts/tmd-replay/README.md and tmd-to-replay.mjs) of the shape:
@@ -47,12 +49,13 @@
  *     not to drive into it. Kinematic coupling could be added later the same
  *     way street-traffic does it.
  *
- * Usage: attach to a managed-street with an inline (persistable) manifest:
- *   street-traffic-replay="manifestData: <stringified manifest JSON>"
- * or point it at a URL: street-traffic-replay="manifestUrl: /path/replay.json".
+ * Usage: created by the "Traffic Replay" Add Layer card, configured in its
+ * sidebar. Carries an inline (persistable) manifest:
+ *   street-traffic-replay="manifestData: <stringified manifest JSON>; target: <street-id>"
+ * or a URL: street-traffic-replay="manifestUrl: /path/replay.json".
  * `manifestData` survives scene save/load the same way managed-street's
- * `json-blob` does. While a replay owns a street, `street-traffic` skips that
- * street's synthetic flow (see its onPlayStart guard) so the two don't double.
+ * `json-blob` does. While a replay owns its target street, `street-traffic`
+ * skips that street's synthetic flow (see its onPlayStart guard).
  */
 
 // Per-mode rendering rules. Speeds are mph (matching the manifest's speedUnit).
@@ -111,6 +114,9 @@ AFRAME.registerComponent('street-traffic-replay', {
     manifestData: { type: 'string', default: '' },
     // Alternative: fetch the manifest from a URL instead of inlining it.
     manifestUrl: { type: 'string', default: '' },
+    // Id of the managed-street entity to animate onto. Empty = auto (the first
+    // managed-street in the scene). Set from the Traffic Replay sidebar.
+    target: { type: 'string', default: '' },
     // sim-seconds -> manifest-seconds. 1 = real time.
     timeScale: { type: 'number', default: 1 },
     // Restart from t=0 when the manifest is exhausted.
@@ -154,9 +160,20 @@ AFRAME.registerComponent('street-traffic-replay', {
   },
 
   // True once a usable manifest is parsed. street-traffic checks this to know a
-  // replay owns this street's traffic and skips its synthetic flow.
+  // replay owns its target street's traffic and skips that synthetic flow.
   hasAgents: function () {
     return !!(this.manifest && this.manifest.agents.length);
+  },
+
+  // The managed-street this replay animates onto: the `target` entity when set
+  // and valid, otherwise the first managed-street in the scene.
+  resolveStreet: function () {
+    const id = this.data.target;
+    if (id) {
+      const el = document.getElementById(id);
+      if (el && el.components && el.components['managed-street']) return el;
+    }
+    return this.el.sceneEl.querySelector('[managed-street]');
   },
 
   loadFromData: function () {
@@ -204,14 +221,14 @@ AFRAME.registerComponent('street-traffic-replay', {
       console.log('[street-traffic-replay] no manifest; nothing to replay');
       return;
     }
-    if (!this.el.components['managed-street']) {
+    const streetEl = this.resolveStreet();
+    if (!streetEl) {
       console.warn(
-        '[street-traffic-replay] must be on a managed-street entity; skipping'
+        '[street-traffic-replay] no managed-street to replay onto (link one in the Traffic Replay panel)'
       );
       return;
     }
-    // This component lives ON the managed-street, so replay onto our own lanes.
-    this.indexLanes(this.el);
+    this.indexLanes(streetEl);
 
     this.nextIdx = 0;
     this.cycleBase = 0;

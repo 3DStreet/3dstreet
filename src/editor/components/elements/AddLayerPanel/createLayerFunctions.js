@@ -419,8 +419,9 @@ export function createSplatObject(position) {
 }
 
 // --- Traffic Replay ---------------------------------------------------------
-// Ingest an anonymized replay manifest (see scripts/tmd-replay/) and attach it
-// to a managed-street as a `street-traffic-replay` component. v1 takes a
+// Ingest an anonymized replay manifest (see scripts/tmd-replay/) and add it as
+// a standalone "Traffic Replay" layer (a street-traffic-replay entity). The
+// layer is linked to a managed-street and tuned in its own sidebar. v1 takes a
 // pre-converted JSON manifest; .sqlite-in-browser conversion is a fast-follow.
 
 function notifyError(msg) {
@@ -434,18 +435,9 @@ function notifySuccess(msg) {
   } else console.log('[traffic-replay]', msg);
 }
 
-// Walk up from the current selection to the managed-street it belongs to; fall
-// back to the first managed-street in the scene.
-function findTargetManagedStreet() {
-  let el = window.AFRAME?.INSPECTOR?.selectedEntity;
-  while (el && el.components) {
-    if (el.components['managed-street']) return el;
-    el = el.parentElement;
-  }
-  return document.querySelector('[managed-street]');
-}
-
-function summarizeManifest(manifest) {
+// Human-readable one-liner of a manifest's mode mix. Exported so the sidebar
+// can reuse it.
+export function summarizeManifest(manifest) {
   const counts =
     manifest.meta?.countsByMode ||
     manifest.agents.reduce((acc, a) => {
@@ -459,55 +451,25 @@ function summarizeManifest(manifest) {
   return `${manifest.agents.length} agents (${parts})`;
 }
 
-function attachReplayManifest(manifest) {
-  const summary = summarizeManifest(manifest);
-  const manifestData = JSON.stringify(manifest);
-  const target = findTargetManagedStreet();
-
-  if (target) {
-    // Attach to the existing managed-street and make it playable.
-    AFRAME.INSPECTOR.execute('entityupdate', {
-      entity: target,
-      component: 'street-traffic-replay',
-      property: 'manifestData',
-      value: manifestData,
-      noSelectEntity: true
-    });
-    AFRAME.INSPECTOR.execute('entityupdate', {
-      entity: target,
-      component: 'managed-street',
-      property: 'playable',
-      value: true,
-      noSelectEntity: true
-    });
-    notifySuccess(
-      `Traffic Replay added to your street — ${summary}. Press Play.`
-    );
-  } else {
-    // No street yet: create a default cross-section that carries the replay.
-    const definition = {
-      id: createUniqueId(),
-      'data-layer-name': 'Traffic Replay Street',
-      components: {
-        position: '0 0 0',
-        'managed-street': {
-          sourceType: 'json-blob',
-          sourceValue: JSON.stringify(defaultStreetObjects.stroad60ftROW),
-          showStriping: true,
-          showVehicles: false,
-          synchronize: true,
-          playable: true
-        },
-        'street-traffic-replay': {
-          manifestData,
-          timeScale: 1,
-          loop: true
-        }
+// Create a standalone Traffic Replay layer carrying the manifest. The
+// entitycreate command selects it, so its sidebar opens for linking a street.
+export function createReplayEntityFromManifest(manifest) {
+  const definition = {
+    id: createUniqueId(),
+    'data-layer-name': 'Traffic Replay',
+    components: {
+      'street-traffic-replay': {
+        manifestData: JSON.stringify(manifest),
+        timeScale: 1,
+        loop: true
       }
-    };
-    AFRAME.INSPECTOR.execute('entitycreate', definition);
-    notifySuccess(`Traffic Replay street created — ${summary}. Press Play.`);
-  }
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  notifySuccess(
+    `Traffic Replay layer added — ${summarizeManifest(manifest)}. ` +
+      'Link a street in its panel, then press Play.'
+  );
 }
 
 export function createTrafficReplay() {
@@ -521,7 +483,7 @@ export function createTrafficReplay() {
     let manifest;
     try {
       manifest = JSON.parse(await file.text());
-    } catch (err) {
+    } catch {
       notifyError('Could not parse that file as JSON.');
       return;
     }
@@ -533,7 +495,7 @@ export function createTrafficReplay() {
       notifyError('That JSON is not a replay manifest (no "agents" array).');
       return;
     }
-    attachReplayManifest(manifest);
+    createReplayEntityFromManifest(manifest);
   });
   input.click();
 }

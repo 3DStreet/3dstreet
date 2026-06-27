@@ -154,18 +154,27 @@ fully time-stripped artifact.
 
 ## 5. Replay it in 3DStreet
 
-### As a user (Add Layer card)
+### As a user (Add Layer card + Traffic Replay panel)
 
 In the editor: **Add Layer → "(Beta) Traffic Replay from Sensor Data"** → pick a
-manifest `.json` (e.g. `sample-waterleaf-busiest-hour.json`). It attaches a
-`street-traffic-replay` component to your Managed Street (or, if you don't have
-one, creates a default cross-section that carries it) and marks the street
-`playable`. A toast confirms the agent/mode counts. Press **Play** and the real,
-anonymized street users animate by mode.
+manifest `.json`. This adds a standalone **"Traffic Replay" layer** (its own
+scene-graph entry) and opens its **sidebar**, where you:
 
-The manifest is stored inline (`manifestData`) on the street, so it **persists
-with the saved scene** — exactly like a Managed Street's `json-blob` source. No
-external hosting required.
+- see the manifest summary (street-user count + mode mix);
+- **Replace manifest…** to swap in a different one;
+- **Link a street** — a dropdown of the managed streets in your scene, or
+  **Create a street to replay onto** if you have none;
+- tune **Playback speed**, **Loop**, and **Hide synthetic traffic**;
+- **Place scene at sensor location** (from the manifest's `meta.deployment`).
+
+Press **Play** and the real, anonymized street users animate onto the linked
+street by mode. The whole layer — manifest, target link, and settings — is its
+own self-contained component, so it doesn't bleed into the street or other
+tools.
+
+It **persists with the saved scene** (the manifest is inlined as `manifestData`,
+like a Managed Street's `json-blob`), so a saved scene is **shareable via the
+normal cloud-scene link** — no external hosting, no URL params.
 
 ### Quick demo (no clicks)
 
@@ -199,10 +208,13 @@ that together restore the setup:
   move/rotate the street to align with the real road, it comes back aligned;
 - the **replay itself** (`street-traffic-replay`'s inline `manifestData`).
 
-So: place the scene, drop/align your managed street, attach the replay via the
-Add Layer card, **Save**, and reopening the scene reloads it in the same
-configuration. (Use the Add Layer card rather than the `?replay=` demo for a
-scene you intend to save — the demo street is dev scaffolding.)
+- the **Traffic Replay layer** itself (its `manifestData` + `target` link).
+
+So: place the scene, drop/align your managed street, add the Traffic Replay
+layer (Add Layer card) and link it, **Save** — reopening the scene reloads it in
+the same configuration, and the cloud-scene link shares it as-is. (Use the Add
+Layer card rather than the `?replay=` demo for a scene you intend to save — the
+demo entities are dev scaffolding.)
 
 > **Street length is the model's, not the data's.** The dump has no street
 > geometry — no length, no lane widths, not even the detection-zone distance.
@@ -213,16 +225,18 @@ scene you intend to save — the demo street is dev scaffolding.)
 
 ### The component
 
-`street-traffic-replay` lives **on a `[managed-street]` entity** and animates
-onto that street's own lanes during play mode (registered in `src/index.js`).
+`street-traffic-replay` is a **standalone layer** (its own entity + sidebar,
+registered in `src/index.js`). It animates onto the linked managed-street's
+lanes during play mode.
 
 | property                   | default | meaning                                                                     |
 | -------------------------- | ------- | --------------------------------------------------------------------------- |
 | `manifestData`             | `''`    | inline manifest JSON (stringified) — the persistable source                 |
 | `manifestUrl`              | `''`    | alternative: fetch the manifest from a URL (also persists; not `src`)       |
+| `target`                   | `''`    | id of the managed-street to animate onto; empty = first street in the scene |
 | `timeScale`                | `1`     | sim-seconds → manifest-seconds. `1` = real time, `60` = a minute per second |
 | `loop`                     | `true`  | rewind to `t=0` when the window ends                                        |
-| `suppressSyntheticTraffic` | `true`  | the synthetic `street-traffic` skips a street that has an active replay     |
+| `suppressSyntheticTraffic` | `true`  | the synthetic `street-traffic` skips the targeted street while replaying    |
 
 > Why not `src`? The scene serializer strips any `src` property on save, so the
 > manifest is kept in `manifestData`/`manifestUrl` to survive save/load.

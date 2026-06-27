@@ -66,6 +66,9 @@
     const legacy = document.querySelector('#default-street');
     if (legacy && legacy.parentNode) legacy.parentNode.removeChild(legacy);
 
+    const container = document.querySelector('#street-container') || scene;
+
+    // The managed-street to replay onto.
     const street = document.createElement('a-entity');
     street.id = 'replay-demo-street';
     street.setAttribute('data-layer-name', 'Replay Street');
@@ -77,19 +80,23 @@
       synchronize: true,
       playable: true
     });
+    container.appendChild(street);
 
+    // A separate Traffic Replay layer that targets the street — the same shape
+    // the "Traffic Replay" Add Layer card produces.
     let manifest = null;
-    const replayProps = { timeScale, loop: true };
+    const replayProps = { timeScale, loop: true, target: 'replay-demo-street' };
     if (sampleMod) {
       manifest = sampleMod.default || sampleMod;
       replayProps.manifestData = JSON.stringify(manifest);
     } else {
       replayProps.manifestUrl = replay; // treat the param as a manifest URL
     }
-    street.setAttribute('street-traffic-replay', replayProps);
-
-    const container = document.querySelector('#street-container') || scene;
-    container.appendChild(street);
+    const replayLayer = document.createElement('a-entity');
+    replayLayer.id = 'replay-demo-layer';
+    replayLayer.setAttribute('data-layer-name', 'Traffic Replay');
+    replayLayer.setAttribute('street-traffic-replay', replayProps);
+    container.appendChild(replayLayer);
 
     // Place the scene at the sensor's real-world location (from the manifest's
     // deployment metadata) so there's map context to align the street against.
