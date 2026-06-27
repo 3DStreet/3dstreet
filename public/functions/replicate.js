@@ -7,6 +7,9 @@ const { pipeline } = require('stream/promises');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
 const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS, REPLICATE_MODELS } = require('./replicate-models.js');
 const { assertAppCheck } = require('./app-check.js');
+// Pure .ply sanity check — gates degenerate (failed-SfM) reconstructions out of
+// the success/charge/save path. See issue #1745.
+const { inspectPlyGeometry } = require('./ply-sanity.js');
 // Modal compute backend — vid2scene runs there (Replicate's on-demand tier
 // preempts long jobs). Provider adapter only; the job/billing machinery in
 // this file is shared across providers.
@@ -1269,6 +1272,70 @@ function deterministicAssetId(seed) {
   );
 }
 
+// Read the first `byteCount` bytes of the generated .ply for the geometry
+// sanity check. The header is tiny and we only sample the first SAMPLE_VERTS
+// vertices, so a few hundred KB is plenty — we never pull the full ~82 MB file.
+// Handles both staging locations: gs:// (vid2scene, our own bucket) via a
+// ranged Storage read, and an https CDN URL (SHARP fallback) via a Range fetch.
+// Returns a Buffer, or null if the prefix can't be fetched.
+async function fetchPlyHead(plyUrl, byteCount) {
+  try {
+    if (plyUrl.startsWith('gs://')) {
+      const match = plyUrl.match(/^gs:\/\/([^/]+)\/(.+)$/);
+      if (!match) return null;
+      const bucket = admin.storage().bucket();
+      if (match[1] !== bucket.name) return null;
+      const chunks = [];
+      await pipeline(
+        bucket.file(match[2]).createReadStream({ start: 0, end: byteCount - 1 }),
+        async function* (source) {
+          for await (const chunk of source) chunks.push(chunk);
+        }
+      );
+      return Buffer.concat(chunks);
+    }
+    const response = await fetch(plyUrl, {
+      headers: { Range: `bytes=0-${byteCount - 1}` }
+    });
+    // 206 = honored the range; 200 = server ignored it and sent the whole file
+    // (we only read what we need via the buffer slice below).
+    if (!response.ok) return null;
+    const ab = await response.arrayBuffer();
+    return Buffer.from(ab);
+  } catch (err) {
+    console.warn('Failed to fetch .ply head for sanity check:', err.message);
+    return null;
+  }
+}
+
+// Geometry gate: download a prefix of the generated .ply and judge whether the
+// reconstruction is real or degenerate (failed SfM). Fails OPEN — if we can't
+// fetch or parse the file, we return ok:true rather than block a legitimate
+// save (the prior behavior saved everything regardless).
+async function evaluateSplatGeometry(plyUrl) {
+  // Header (~1 KB) + SAMPLE_VERTS vertices. A 3DGS vertex is ~164 bytes (41
+  // float32); 512 KB comfortably covers the sample window plus header slack.
+  const head = await fetchPlyHead(plyUrl, 512 * 1024);
+  if (!head) return { ok: true, reason: 'fetch-failed', stats: null };
+  return inspectPlyGeometry(head);
+}
+
+// Best-effort delete of the staged (degenerate) .ply we rejected, so it doesn't
+// linger in the vid2scene staging area. Only applies to gs:// staging; the
+// SHARP CDN URL is provider-owned and expires on its own.
+async function deleteStagedSplat(plyUrl) {
+  try {
+    if (!plyUrl || !plyUrl.startsWith('gs://')) return;
+    const match = plyUrl.match(/^gs:\/\/([^/]+)\/(.+)$/);
+    if (!match) return;
+    const bucket = admin.storage().bucket();
+    if (match[1] !== bucket.name) return;
+    await bucket.file(match[2]).delete();
+  } catch (err) {
+    console.warn('Failed to delete rejected staged splat:', err.message);
+  }
+}
+
 async function saveSplatToGallery(userId, plyUrl, job) {
   validateSplatUserId(userId);
 
@@ -1505,6 +1572,53 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
         completedAt: admin.firestore.FieldValue.serverTimestamp()
       });
       return { status: 'failed', error: 'Invalid output from model.', remainingTokens };
+    }
+
+    // Sanity-gate the generated .ply BEFORE we keep the charge and save a
+    // public asset. A failed SfM reconstruction still emits a full-size file,
+    // but the geometry is degenerate (NaN positions / exploded bounds) and
+    // won't render — it used to be billed as a success anyway (issue #1745).
+    // Reject those: refund the token and finalize the job as failed instead.
+    const geometry = await evaluateSplatGeometry(splatUrl);
+    if (!geometry.ok) {
+      console.warn(
+        `Rejecting degenerate splat for user ${userId}: ${geometry.reason}`,
+        JSON.stringify(geometry.stats)
+      );
+      const remainingTokens = await refundSplatToken(db, userId, jobRef, job);
+      await cleanupSplatTempFile(job.tempFilePath);
+      await deleteStagedSplat(splatUrl);
+      const userError =
+        'Reconstruction failed: the generated scene was degenerate ' +
+        '(usually too few usable frames or too little camera motion). ' +
+        'Your tokens were refunded — try a slower, steadier video with more overlap.';
+      await jobRef.update({
+        status: 'failed',
+        error: userError,
+        failureReason: geometry.reason,
+        geometryStats: geometry.stats || null,
+        completedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      db.collection('generationLog').add({
+        userId,
+        provider: job.provider || 'replicate',
+        model: job.model,
+        modelId: job.modelId || null,
+        generationType: 'splat',
+        tokenCost: job.tokenCost,
+        processingTimeMs: job.createdAt?.toMillis
+          ? Date.now() - job.createdAt.toMillis()
+          : null,
+        // Compute still ran (and cost us) even though the output was unusable —
+        // keep the cost half of margin tracking so rejected runs are visible.
+        metrics: prediction.metrics || null,
+        estCostUsd: estimateModalCostUsd(prediction.metrics),
+        status: 'failed',
+        error: geometry.reason,
+        source: job.source,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error('Failed to write generationLog:', err));
+      return { status: 'failed', error: userError, remainingTokens };
     }
 
     try {
