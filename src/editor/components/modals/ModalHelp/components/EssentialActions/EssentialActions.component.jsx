@@ -11,30 +11,81 @@ import {
   ZoomOut
 } from './icons.jsx';
 import { Component } from 'react';
+import { FormattedMessage } from 'react-intl';
 import { DocumentationButton } from '../DocumentationButton';
 
 const actions = [
   {
-    title: 'Move the map by dragging',
-    description: 'Click and drag to pan the map view.',
+    id: 'moveMap',
+    title: (
+      <FormattedMessage
+        id="help.action.moveMap.title"
+        defaultMessage="Move the map by dragging"
+      />
+    ),
+    description: (
+      <FormattedMessage
+        id="help.action.moveMap.description"
+        defaultMessage="Click and drag to pan the map view."
+      />
+    ),
     items: [[Angle, Drag]]
   },
   {
-    title: 'Zoom the map by scrolling',
-    description:
-      'Use the mouse scrollwheel (or touchpad scrolling motion) to zoom in and out.',
-    items: [[Scroll, 'or', ZoomOut, ZoomIn]]
+    id: 'zoomMap',
+    title: (
+      <FormattedMessage
+        id="help.action.zoomMap.title"
+        defaultMessage="Zoom the map by scrolling"
+      />
+    ),
+    description: (
+      <FormattedMessage
+        id="help.action.zoomMap.description"
+        defaultMessage="Use the mouse scrollwheel (or touchpad scrolling motion) to zoom in and out."
+      />
+    ),
+    items: [
+      [
+        Scroll,
+        <FormattedMessage key="or" id="help.action.or" defaultMessage="or" />,
+        ZoomOut,
+        ZoomIn
+      ]
+    ]
   },
   {
-    title: 'Rotate the map by right-clicking and dragging',
-    description:
-      'Right-click and drag to rotate the map while staying in place.',
+    id: 'rotateMap',
+    title: (
+      <FormattedMessage
+        id="help.action.rotateMap.title"
+        defaultMessage="Rotate the map by right-clicking and dragging"
+      />
+    ),
+    description: (
+      <FormattedMessage
+        id="help.action.rotateMap.description"
+        defaultMessage="Right-click and drag to rotate the map while staying in place."
+      />
+    ),
     items: [[RButton, Drag]]
   },
   {
-    title: 'Mode switch',
-    description:
-      'To switch between the "View" and "Edit" modes, click the button in the upper right corner.',
+    id: 'modeSwitch',
+    title: (
+      <FormattedMessage
+        id="help.action.modeSwitch.title"
+        defaultMessage="Mode switch"
+      />
+    ),
+    description: (
+      <FormattedMessage
+        id="help.action.modeSwitch.description"
+        defaultMessage={
+          'To switch between the "View" and "Edit" modes, click the button in the upper right corner.'
+        }
+      />
+    ),
     items: [[View, Edit]]
   }
 ];
@@ -50,18 +101,15 @@ class EssentialActions extends Component {
   render() {
     return (
       <div className={styles.essentialActionsWrapper}>
-        {actions.map(({ title, description, items }) => (
-          <div className={styles.action} key={title}>
+        {actions.map(({ id, title, description, items }) => (
+          <div className={styles.action} key={id}>
             <div className={styles.text}>
               <h3 className={styles.actionTitle}>{title}</h3>
               <p className={styles.actionDescription}>{description}</p>
             </div>
             <div className={styles.icons}>
               {items.map((row, index) => (
-                <div
-                  className={styles.itemsRow}
-                  key={title.concat(index.toString())}
-                >
+                <div className={styles.itemsRow} key={id.concat(index.toString())}>
                   {row.map((item, index) => (
                     <span className={styles.item} key={index.toString()}>
                       {item}

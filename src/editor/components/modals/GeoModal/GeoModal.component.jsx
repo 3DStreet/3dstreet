@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { SavingModal } from '../SavingModal';
 import styles from './GeoModal.module.scss';
 import { Magnifier20Icon } from '@shared/icons';
@@ -49,6 +50,7 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
 };
 
 const GeoModal = () => {
+  const intl = useIntl();
   const { currentUser, tokenProfile, refreshTokenProfile } = useAuthContext();
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: firebaseConfig.apiKey
@@ -324,7 +326,11 @@ const GeoModal = () => {
 
       // Show error notification
       STREET.notify.errorMessage(
-        result.message || 'Failed to set scene location. Please try again.'
+        result.message ||
+          intl.formatMessage({
+            id: 'geoModal.setLocationFailed',
+            defaultMessage: 'Failed to set scene location. Please try again.'
+          })
       );
       setIsWorking(false);
       onClose();
@@ -345,7 +351,10 @@ const GeoModal = () => {
               style={{ width: '27px', height: '32px', marginRight: '8px' }}
             />
             <div className="font-large text-center text-2xl">
-              Set Scene Location
+              <FormattedMessage
+                id="geoModal.setSceneLocation"
+                defaultMessage="Set Scene Location"
+              />
             </div>
           </div>
         }
@@ -382,18 +391,39 @@ const GeoModal = () => {
             >
               <Input
                 leadingIcon={<Magnifier20Icon />}
-                placeholder={currentLocationString || 'Search for a location'}
+                placeholder={
+                  currentLocationString ||
+                  intl.formatMessage({
+                    id: 'geoModal.searchForLocation',
+                    defaultMessage: 'Search for a location'
+                  })
+                }
                 onChange={(value) => {}}
               />
             </Autocomplete>
           )}
           <div className={styles.sceneGeo}>
             <div>
-              <p>Centerpoint</p>
+              <p>
+                <FormattedMessage
+                  id="geoModal.centerpoint"
+                  defaultMessage="Centerpoint"
+                />
+              </p>
               <Input
-                leadingIcon={<p className={styles.iconGeo}>Lat, Long</p>}
+                leadingIcon={
+                  <p className={styles.iconGeo}>
+                    <FormattedMessage
+                      id="geoModal.latLong"
+                      defaultMessage="Lat, Long"
+                    />
+                  </p>
+                }
                 value={`${markerPosition.lat}, ${markerPosition.lng}`}
-                placeholder="None"
+                placeholder={intl.formatMessage({
+                  id: 'geoModal.none',
+                  defaultMessage: 'None'
+                })}
                 onChange={handleCoordinateChange}
               ></Input>
             </div>
@@ -403,71 +433,132 @@ const GeoModal = () => {
             {!currentUser?.isPro && tokenProfile?.geoToken === 0 ? (
               <div className="rounded bg-red-50 p-2 text-red-600">
                 <div className="mb-1 font-semibold uppercase">
-                  🚀 Out of Geo Tokens
+                  <FormattedMessage
+                    id="geoModal.outOfGeoTokensTitle"
+                    defaultMessage="🚀 Out of Geo Tokens"
+                  />
                 </div>
                 <ul className="space-y-1">
-                  <li>• You&apos;ve used all your free geo tokens</li>
                   <li>
-                    • Upgrade to 3DStreet Pro for unlimited geospatial features
+                    •{' '}
+                    <FormattedMessage
+                      id="geoModal.outOfTokensUsedAll"
+                      defaultMessage="You've used all your free geo tokens"
+                    />
                   </li>
                   <li>
-                    • Pro includes unlimited geo lookups, map access, and more
+                    •{' '}
+                    <FormattedMessage
+                      id="geoModal.outOfTokensUpgrade"
+                      defaultMessage="Upgrade to 3DStreet Pro for unlimited geospatial features"
+                    />
                   </li>
-                  <li>• Set and change scene locations as often as you need</li>
+                  <li>
+                    •{' '}
+                    <FormattedMessage
+                      id="geoModal.outOfTokensProIncludes"
+                      defaultMessage="Pro includes unlimited geo lookups, map access, and more"
+                    />
+                  </li>
+                  <li>
+                    •{' '}
+                    <FormattedMessage
+                      id="geoModal.outOfTokensSetChange"
+                      defaultMessage="Set and change scene locations as often as you need"
+                    />
+                  </li>
                 </ul>
               </div>
             ) : (
               <div className="rounded bg-blue-50 p-2 text-gray-600">
                 <div className="mb-1 font-semibold uppercase">
-                  {wasOpenedFromGeojson
-                    ? '🗂️ GeoJSON Import Detected'
-                    : '💡 Geospatial Tips'}
+                  {wasOpenedFromGeojson ? (
+                    <FormattedMessage
+                      id="geoModal.geojsonImportDetected"
+                      defaultMessage="🗂️ GeoJSON Import Detected"
+                    />
+                  ) : (
+                    <FormattedMessage
+                      id="geoModal.geospatialTips"
+                      defaultMessage="💡 Geospatial Tips"
+                    />
+                  )}
                 </div>
                 <ul className="space-y-1">
                   {wasOpenedFromGeojson ? (
                     <>
                       <li>
-                        • We&apos;ve detected geographic coordinates from your
-                        imported GeoJSON data
+                        •{' '}
+                        <FormattedMessage
+                          id="geoModal.geojsonTipDetected"
+                          defaultMessage="We've detected geographic coordinates from your imported GeoJSON data"
+                        />
                       </li>
                       <li>
-                        • The red marker shows the calculated center of your
-                        imported buildings
+                        •{' '}
+                        <FormattedMessage
+                          id="geoModal.geojsonTipMarker"
+                          defaultMessage="The red marker shows the calculated center of your imported buildings"
+                        />
                       </li>
                       <li>
-                        • Click &apos;Set Location&apos; to position your scene
-                        at this location
+                        •{' '}
+                        <FormattedMessage
+                          id="geoModal.geojsonTipSetLocation"
+                          defaultMessage="Click 'Set Location' to position your scene at this location"
+                        />
                       </li>
                       <li>
-                        • This feature is in beta please join our{' '}
-                        <a
-                          href="https://discord.gg/zNFMhTwKSd"
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          Discord
-                        </a>{' '}
-                        to provide feedback
+                        •{' '}
+                        <FormattedMessage
+                          id="geoModal.geojsonTipBeta"
+                          defaultMessage="This feature is in beta please join our {discordLink} to provide feedback"
+                          values={{
+                            discordLink: (
+                              <a
+                                href="https://discord.gg/zNFMhTwKSd"
+                                rel="noreferrer"
+                                target="_blank"
+                              >
+                                <FormattedMessage
+                                  id="geoModal.discord"
+                                  defaultMessage="Discord"
+                                />
+                              </a>
+                            )
+                          }}
+                        />
                       </li>
                     </>
                   ) : (
                     <>
                       <li>
-                        • The red marker sets the geospatial location for the
-                        centerpoint origin of the scene
+                        •{' '}
+                        <FormattedMessage
+                          id="geoModal.tipMarkerOrigin"
+                          defaultMessage="The red marker sets the geospatial location for the centerpoint origin of the scene"
+                        />
                       </li>
                       <li>
-                        • Click on the map to change the location of the red
-                        marker point
+                        •{' '}
+                        <FormattedMessage
+                          id="geoModal.tipClickMap"
+                          defaultMessage="Click on the map to change the location of the red marker point"
+                        />
                       </li>
                       <li>
-                        • Choose a point that is easy to identify visually from
-                        aerial view such as utility pole, road marking,
-                        crosswalk ramp, or other landmark
+                        •{' '}
+                        <FormattedMessage
+                          id="geoModal.tipChoosePoint"
+                          defaultMessage="Choose a point that is easy to identify visually from aerial view such as utility pole, road marking, crosswalk ramp, or other landmark"
+                        />
                       </li>
                       <li>
-                        • Zoom in as much as possible when placing point to
-                        ensure accurate scene alignment
+                        •{' '}
+                        <FormattedMessage
+                          id="geoModal.tipZoomIn"
+                          defaultMessage="Zoom in as much as possible when placing point to ensure accurate scene alignment"
+                        />
                       </li>
                     </>
                   )}
@@ -496,14 +587,25 @@ const GeoModal = () => {
                 e.target.style.color = '#9ca3af';
               }}
             >
-              Cancel
+              <FormattedMessage id="geoModal.cancel" defaultMessage="Cancel" />
             </Button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {wasOpenedFromGeojson && (
-                <div className={styles.betaPill}>Free During Beta</div>
+                <div className={styles.betaPill}>
+                  <FormattedMessage
+                    id="geoModal.freeDuringBeta"
+                    defaultMessage="Free During Beta"
+                  />
+                </div>
               )}
               {!currentUser?.isPro && tokenProfile && !wasOpenedFromGeojson && (
-                <TooltipWrapper content="Use geo tokens to set or change a geolocation for your scene.">
+                <TooltipWrapper
+                  content={intl.formatMessage({
+                    id: 'geoModal.geoTokenTooltip',
+                    defaultMessage:
+                      'Use geo tokens to set or change a geolocation for your scene.'
+                  })}
+                >
                   <span
                     style={{
                       background: '#374151',
@@ -525,7 +627,11 @@ const GeoModal = () => {
                         verticalAlign: 'middle'
                       }}
                     />
-                    {tokenProfile.geoToken} free tokens
+                    <FormattedMessage
+                      id="geoModal.freeTokens"
+                      defaultMessage="{count} free tokens"
+                      values={{ count: tokenProfile.geoToken }}
+                    />
                   </span>
                 </TooltipWrapper>
               )}
@@ -540,19 +646,32 @@ const GeoModal = () => {
                   height: 'auto'
                 }}
               >
-                {wasOpenedFromGeojson
-                  ? 'Set Location →'
-                  : currentUser?.isPro
-                    ? 'Set Location →'
-                    : tokenProfile?.geoToken > 0
-                      ? 'Set Location →'
-                      : 'Upgrade to Pro to Change Location'}
+                {wasOpenedFromGeojson ||
+                currentUser?.isPro ||
+                tokenProfile?.geoToken > 0 ? (
+                  <FormattedMessage
+                    id="geoModal.setLocation"
+                    defaultMessage="Set Location →"
+                  />
+                ) : (
+                  <FormattedMessage
+                    id="geoModal.upgradeToChangeLocation"
+                    defaultMessage="Upgrade to Pro to Change Location"
+                  />
+                )}
               </Button>
             </div>
           </div>
         </div>
       </Modal>
-      {isWorking && <SavingModal action="Working" />}
+      {isWorking && (
+        <SavingModal
+          action={intl.formatMessage({
+            id: 'geoModal.working',
+            defaultMessage: 'Working'
+          })}
+        />
+      )}
 
       {/* Success Overlay */}
       {showSuccessOverlay && successData && (
@@ -560,7 +679,12 @@ const GeoModal = () => {
           <div className={styles.successContent}>
             <div className={styles.successHeader}>
               <span className={styles.successIcon}>✨</span>
-              <h3>Location Set Successfully!</h3>
+              <h3>
+                <FormattedMessage
+                  id="geoModal.locationSetSuccess"
+                  defaultMessage="Location Set Successfully!"
+                />
+              </h3>
             </div>
 
             <div className={styles.valueDemo}>
@@ -568,7 +692,12 @@ const GeoModal = () => {
                 <div className={styles.dataItem}>
                   <span className={styles.icon}>📍</span>
                   <div className={styles.dataContent}>
-                    <span className={styles.label}>Location:</span>
+                    <span className={styles.label}>
+                      <FormattedMessage
+                        id="geoModal.locationLabel"
+                        defaultMessage="Location:"
+                      />
+                    </span>
                     <span className={styles.value}>
                       {successData.location.locationString}
                     </span>
@@ -580,7 +709,12 @@ const GeoModal = () => {
                 <div className={styles.dataItem}>
                   <span className={styles.icon}>🛣️</span>
                   <div className={styles.dataContent}>
-                    <span className={styles.label}>Nearest Intersection:</span>
+                    <span className={styles.label}>
+                      <FormattedMessage
+                        id="geoModal.nearestIntersectionLabel"
+                        defaultMessage="Nearest Intersection:"
+                      />
+                    </span>
                     <span className={styles.value}>
                       {successData.nearestIntersection.intersectionString}
                     </span>
@@ -592,7 +726,12 @@ const GeoModal = () => {
                 <div className={styles.dataItem}>
                   <span className={styles.icon}>📐</span>
                   <div className={styles.dataContent}>
-                    <span className={styles.label}>Elevation:</span>
+                    <span className={styles.label}>
+                      <FormattedMessage
+                        id="geoModal.elevationLabel"
+                        defaultMessage="Elevation:"
+                      />
+                    </span>
                     <span className={styles.value}>
                       {Math.round(successData.orthometricHeight)}m
                     </span>
@@ -617,11 +756,20 @@ const GeoModal = () => {
                     }}
                   />
                   <span className={styles.tokenText}>
-                    {successData.tokenInfo.remainingTokens} geo tokens remaining
+                    <FormattedMessage
+                      id="geoModal.geoTokensRemaining"
+                      defaultMessage="{count} geo tokens remaining"
+                      values={{
+                        count: successData.tokenInfo.remainingTokens
+                      }}
+                    />
                   </span>
                   {successData.tokenInfo.remainingTokens === 0 && (
                     <span className={styles.upgradeHint}>
-                      Upgrade to Pro for unlimited access
+                      <FormattedMessage
+                        id="geoModal.upgradeUnlimitedAccess"
+                        defaultMessage="Upgrade to Pro for unlimited access"
+                      />
                     </span>
                   )}
                 </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useIntl } from 'react-intl';
 import { Cross24Icon } from '@shared/icons';
 import { createPortal } from 'react-dom';
 import { useAuthContext } from '../../../contexts/index.js';
@@ -240,6 +241,7 @@ const cardMouseLeave = (mixinId) => {
 };
 
 const AddLayerPanel = () => {
+  const intl = useIntl();
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'addlayer');
   const startCheckout = useStore((state) => state.startCheckout);
@@ -367,12 +369,23 @@ const AddLayerPanel = () => {
           uploadAndPlaceAsset(file, position);
           if (e.dataTransfer.files.length > 1) {
             STREET.notify.warningMessage(
-              `Only the first file was added. Drop one file at a time.`
+              intl.formatMessage({
+                id: 'addLayer.onlyFirstFileAdded',
+                defaultMessage:
+                  'Only the first file was added. Drop one file at a time.'
+              })
             );
           }
         } else {
           STREET.notify.errorMessage(
-            `Unsupported file type: ${file.name || 'file'}. Supported formats: GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ.`
+            intl.formatMessage(
+              {
+                id: 'addLayer.unsupportedFileType',
+                defaultMessage:
+                  'Unsupported file type: {fileName}. Supported formats: GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ.'
+              },
+              { fileName: file.name || 'file' }
+            )
           );
         }
 
@@ -425,6 +438,7 @@ const AddLayerPanel = () => {
       document.body.removeEventListener('drop', handleGlobalDrop);
       document.body.removeEventListener('dragleave', handleGlobalDragLeave);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectedCards = useMemo(() => {

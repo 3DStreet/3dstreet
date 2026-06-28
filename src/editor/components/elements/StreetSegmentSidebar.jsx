@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { FormattedMessage, useIntl } from 'react-intl';
 // import Component from './Component';
 import Component from './StreetSegmentComponent';
 import PropertyRow from './PropertyRow';
@@ -22,6 +23,7 @@ import Events from '../../lib/Events';
 const FEATURED_COMPONENT_PREFIXES = ['street-generated-'];
 
 const StreetSegmentSidebar = ({ entity }) => {
+  const intl = useIntl();
   const componentName = 'street-segment';
   const component = entity?.components?.[componentName];
   const components = entity ? entity.components : {};
@@ -40,7 +42,10 @@ const StreetSegmentSidebar = ({ entity }) => {
               <PropertyRow
                 key="type"
                 name="type"
-                label="Segment Type"
+                label={intl.formatMessage({
+                  id: 'segmentSidebar.segmentType',
+                  defaultMessage: 'Segment Type'
+                })}
                 schema={component.schema['type']}
                 data={component.data['type']}
                 componentname={componentName}
@@ -52,7 +57,10 @@ const StreetSegmentSidebar = ({ entity }) => {
                   <PropertyRow
                     key="variant"
                     name="variant"
-                    label="Building Variant"
+                    label={intl.formatMessage({
+                      id: 'segmentSidebar.buildingVariant',
+                      defaultMessage: 'Building Variant'
+                    })}
                     schema={component.schema['variant']}
                     data={component.data['variant']}
                     componentname={componentName}
@@ -62,7 +70,10 @@ const StreetSegmentSidebar = ({ entity }) => {
                   <PropertyRow
                     key="side"
                     name="side"
-                    label="Side"
+                    label={intl.formatMessage({
+                      id: 'segmentSidebar.side',
+                      defaultMessage: 'Side'
+                    })}
                     schema={component.schema['side']}
                     data={component.data['side']}
                     componentname={componentName}
@@ -80,35 +91,50 @@ const StreetSegmentSidebar = ({ entity }) => {
                     longPressDelay={1500} // Optional, defaults to 2000ms
                     leadingIcon={<ArrowsPointingInwardIcon />}
                   >
-                    Focus
+                    <FormattedMessage
+                      id="segmentSidebar.focus"
+                      defaultMessage="Focus"
+                    />
                   </Button>
                   <Button
                     variant={'toolbtn'}
                     onClick={() => renameEntity(entity)}
                     leadingIcon={<Edit24Icon />}
                   >
-                    Rename
+                    <FormattedMessage
+                      id="segmentSidebar.rename"
+                      defaultMessage="Rename"
+                    />
                   </Button>
                   <Button
                     variant={'toolbtn'}
                     onClick={() => cloneEntity(entity)}
                     leadingIcon={<Copy32Icon />}
                   >
-                    Duplicate
+                    <FormattedMessage
+                      id="segmentSidebar.duplicate"
+                      defaultMessage="Duplicate"
+                    />
                   </Button>
                   <Button
                     variant={'toolbtn'}
                     onClick={() => removeSelectedEntity()}
                     leadingIcon={<TrashIcon />}
                   >
-                    Delete
+                    <FormattedMessage
+                      id="segmentSidebar.delete"
+                      defaultMessage="Delete"
+                    />
                   </Button>
                 </div>
               </div>
               <PropertyRow
                 key="width"
                 name="width"
-                label="Width"
+                label={intl.formatMessage({
+                  id: 'segmentSidebar.width',
+                  defaultMessage: 'Width'
+                })}
                 schema={component.schema['width']}
                 data={component.data['width']}
                 componentname={componentName}
@@ -119,7 +145,10 @@ const StreetSegmentSidebar = ({ entity }) => {
                 <PropertyRow
                   key="direction"
                   name="direction"
-                  label="Direction"
+                  label={intl.formatMessage({
+                    id: 'segmentSidebar.direction',
+                    defaultMessage: 'Direction'
+                  })}
                   schema={component.schema['direction']}
                   data={component.data['direction']}
                   componentname={componentName}
@@ -131,9 +160,20 @@ const StreetSegmentSidebar = ({ entity }) => {
               <div className="collapsible component">
                 <div className="static">
                   <div className="componentHeader collapsible-header">
-                    <span className="componentTitle" title="Surface">
+                    <span
+                      className="componentTitle"
+                      title={intl.formatMessage({
+                        id: 'segmentSidebar.surface',
+                        defaultMessage: 'Surface'
+                      })}
+                    >
                       <StreetSurfaceIcon />
-                      <span>Surface</span>
+                      <span>
+                        <FormattedMessage
+                          id="segmentSidebar.surface"
+                          defaultMessage="Surface"
+                        />
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -142,7 +182,10 @@ const StreetSegmentSidebar = ({ entity }) => {
                     <PropertyRow
                       key="surface"
                       name="surface"
-                      label="Surface"
+                      label={intl.formatMessage({
+                        id: 'segmentSidebar.surfaceLabel',
+                        defaultMessage: 'Surface'
+                      })}
                       schema={component.schema['surface']}
                       data={component.data['surface']}
                       componentname={componentName}
@@ -152,7 +195,10 @@ const StreetSegmentSidebar = ({ entity }) => {
                     <PropertyRow
                       key="color"
                       name="color"
-                      label="Color"
+                      label={intl.formatMessage({
+                        id: 'segmentSidebar.color',
+                        defaultMessage: 'Color'
+                      })}
                       schema={component.schema['color']}
                       data={component.data['color']}
                       componentname={componentName}
@@ -162,7 +208,10 @@ const StreetSegmentSidebar = ({ entity }) => {
                     <PropertyRow
                       key="level"
                       name="level"
-                      label="Curb Level"
+                      label={intl.formatMessage({
+                        id: 'segmentSidebar.curbLevel',
+                        defaultMessage: 'Curb Level'
+                      })}
                       schema={component.schema['level']}
                       data={component.data['level']}
                       componentname={componentName}

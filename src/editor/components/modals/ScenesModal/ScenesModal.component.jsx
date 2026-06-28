@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { FormattedMessage, useIntl, defineMessages } from 'react-intl';
 import { useAuthContext } from '../../../contexts';
 import { Button, SceneCard, Tabs } from '../../elements';
 import Modal from '@shared/components/Modal/Modal.jsx';
@@ -12,18 +13,22 @@ import useStore from '../../../../store.js';
 import { fileJSON } from '@/editor/lib/SceneUtils';
 
 const SCENES_PER_PAGE = 20;
-const tabs = [
-  {
-    label: 'My Scenes',
-    value: 'owner'
-  },
-  {
-    label: 'Community Scenes',
-    value: 'community'
+// Static descriptors so formatjs can extract the tab labels (a dynamic
+// `id={tab.labelId}` is invisible to the extractor).
+const tabMessages = defineMessages({
+  owner: { id: 'scenesModal.tabs.myScenes', defaultMessage: 'My Scenes' },
+  community: {
+    id: 'scenesModal.tabs.communityScenes',
+    defaultMessage: 'Community Scenes'
   }
+});
+const tabs = [
+  { messageKey: 'owner', value: 'owner' },
+  { messageKey: 'community', value: 'community' }
 ];
 
 const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
+  const intl = useIntl();
   const { currentUser } = useAuthContext();
   const [renderComponent, setRenderComponent] = useState(!delay);
   const [scenesData, setScenesData] = useState([]);
@@ -47,7 +52,11 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
     let sceneData = scene.data();
     if (!sceneData || !sceneData.data) {
       STREET.notify.errorMessage(
-        'Error trying to load 3DStreet scene from cloud. Error: Scene data is undefined or invalid.'
+        intl.formatMessage({
+          id: 'scenesModal.loadError',
+          defaultMessage:
+            'Error trying to load 3DStreet scene from cloud. Error: Scene data is undefined or invalid.'
+        })
       );
       console.error('Scene data is undefined or invalid.');
       return;
@@ -74,7 +83,12 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       }
 
       // Pass data and memory (which now contains snapshots) to createElementsForScenesFromJSON
-      useStore.getState().startLoadingScene('Loading scene from cloud...');
+      useStore.getState().startLoadingScene(
+        intl.formatMessage({
+          id: 'scenesModal.loadingFromCloud',
+          defaultMessage: 'Loading scene from cloud...'
+        })
+      );
       createElementsForScenesFromJSON(sceneData.data, sceneData.memory);
       // This runs in a click handler, not during render — the immutability rule
       // can't see that and flags the global write as a false positive.
@@ -87,7 +101,12 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       useStore.getState().setSceneTitle(sceneTitle);
       AFRAME.scenes[0].setAttribute('metadata', 'authorId', sceneData.author);
 
-      STREET.notify.successMessage('Scene loaded from 3DStreet Cloud.');
+      STREET.notify.successMessage(
+        intl.formatMessage({
+          id: 'scenesModal.loadSuccess',
+          defaultMessage: 'Scene loaded from 3DStreet Cloud.'
+        })
+      );
       onClose();
     }
   };
@@ -152,7 +171,13 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
           }
         } catch (error) {
           AFRAME.scenes[0].components['notify'].message(
-            `Error fetching scenes: ${error}`,
+            intl.formatMessage(
+              {
+                id: 'scenesModal.fetchError',
+                defaultMessage: 'Error fetching scenes: {error}'
+              },
+              { error: `${error}` }
+            ),
             'error'
           );
         } finally {
@@ -218,7 +243,10 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       onClose={onClose}
       currentUser={currentUser}
       selectedTab={selectedTab}
-      title="Open scene"
+      title={intl.formatMessage({
+        id: 'scenesModal.title',
+        defaultMessage: 'Open scene'
+      })}
       titleElement={
         <>
           <div
@@ -236,7 +264,10 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
                 position: 'relative'
               }}
             >
-              Open scene
+              <FormattedMessage
+                id="scenesModal.title"
+                defaultMessage="Open scene"
+              />
             </h3>
             <div className={styles.titleButtons}>
               <Button
@@ -246,7 +277,10 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
                 variant="toolbtn"
                 size="small"
               >
-                Upload 3DStreet JSON File
+                <FormattedMessage
+                  id="scenesModal.uploadJsonFile"
+                  defaultMessage="Upload 3DStreet JSON File"
+                />
                 <input
                   type="file"
                   onChange={(e) => {
@@ -270,6 +304,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
               tabs={tabs.map((tab) => {
                 return {
                   ...tab,
+                  label: intl.formatMessage(tabMessages[tab.messageKey]),
                   isSelected: selectedTab === tab.value,
                   onClick: () => setSelectedTab(tab.value)
                 };
@@ -297,17 +332,26 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
         ) : (
           <div className={styles.signInFirst}>
             <div className={styles.title}>
-              To view your scenes you have to sign in:
+              <FormattedMessage
+                id="scenesModal.signInPrompt"
+                defaultMessage="To view your scenes you have to sign in:"
+              />
             </div>
             <div className={styles.buttons}>
               <Button onClick={() => signIn()}>
-                Sign in to 3DStreet Cloud
+                <FormattedMessage
+                  id="scenesModal.signInButton"
+                  defaultMessage="Sign in to 3DStreet Cloud"
+                />
               </Button>
               <Button
                 variant="outlined"
                 onClick={() => setSelectedTab('community')}
               >
-                View Community Scenes
+                <FormattedMessage
+                  id="scenesModal.viewCommunityScenes"
+                  defaultMessage="View Community Scenes"
+                />
               </Button>
             </div>
           </div>
@@ -321,13 +365,19 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
             {selectedTab === 'owner' &&
               totalDisplayedUserScenes <= scenesData?.length && (
                 <Button className={styles.button} onClick={loadMoreScenes}>
-                  Load More
+                  <FormattedMessage
+                    id="scenesModal.loadMore"
+                    defaultMessage="Load More"
+                  />
                 </Button>
               )}
             {selectedTab === 'community' &&
               totalDisplayedCommunityScenes <= scenesDataCommunity?.length && (
                 <Button className={styles.button} onClick={loadMoreScenes}>
-                  Load More
+                  <FormattedMessage
+                    id="scenesModal.loadMore"
+                    defaultMessage="Load More"
+                  />
                 </Button>
               )}
           </div>

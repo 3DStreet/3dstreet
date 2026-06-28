@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { FormattedMessage } from 'react-intl';
 import AdvancedComponents from './AdvancedComponents';
 
 const UserLayersSidebar = ({ entity }) => {
@@ -9,16 +10,34 @@ const UserLayersSidebar = ({ entity }) => {
           {/* User Layers Tips */}
           <div className="propertyRow">
             <div className="rounded bg-blue-50 p-2 text-gray-600">
-              <div className="mb-1 font-semibold uppercase">💡 Tips</div>
+              <div className="mb-1 font-semibold uppercase">
+                💡{' '}
+                <FormattedMessage
+                  id="userLayers.tipsHeading"
+                  defaultMessage="Tips"
+                />
+              </div>
               <ul className="space-y-1">
-                <li>• User Layers contain all objects you add to your scene</li>
                 <li>
-                  • Toggle layer visibility by using the switch on the left on
-                  each row of the layers panel
+                  •{' '}
+                  <FormattedMessage
+                    id="userLayers.tipContain"
+                    defaultMessage="User Layers contain all objects you add to your scene"
+                  />
                 </li>
                 <li>
-                  • Rename layers by clicking on the layer, then the Rename
-                  button in the right-hand properties panel
+                  •{' '}
+                  <FormattedMessage
+                    id="userLayers.tipVisibility"
+                    defaultMessage="Toggle layer visibility by using the switch on the left on each row of the layers panel"
+                  />
+                </li>
+                <li>
+                  •{' '}
+                  <FormattedMessage
+                    id="userLayers.tipRename"
+                    defaultMessage="Rename layers by clicking on the layer, then the Rename button in the right-hand properties panel"
+                  />
                 </li>
               </ul>
             </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FormattedMessage } from 'react-intl';
 import PropTypes from 'prop-types';
 import SelectWidget from '../widgets/SelectWidget';
 import NumberWidget from '../widgets/NumberWidget';
@@ -101,7 +102,12 @@ const IntersectionSidebar = ({ entity }) => {
       <div className="components">
         <div className="details">
           <div className="propertyRow">
-            <div className="text">Width:</div>
+            <div className="text">
+              <FormattedMessage
+                id="intersectionSidebar.width"
+                defaultMessage="Width:"
+              />
+            </div>
             <NumberWidget
               name="dimensions"
               value={dimensionsArray[0]}
@@ -118,7 +124,12 @@ const IntersectionSidebar = ({ entity }) => {
             />
           </div>
           <div className="propertyRow">
-            <div className="text">Height:</div>
+            <div className="text">
+              <FormattedMessage
+                id="intersectionSidebar.height"
+                defaultMessage="Height:"
+              />
+            </div>
             <NumberWidget
               name="dimensions"
               value={dimensionsArray[1]}
@@ -135,10 +146,20 @@ const IntersectionSidebar = ({ entity }) => {
             />
           </div>
           <div className="propertyRow">
-            <div className="text">Approaches</div>
+            <div className="text">
+              <FormattedMessage
+                id="intersectionSidebar.approaches"
+                defaultMessage="Approaches"
+              />
+            </div>
           </div>
           <div className="propertyRow">
-            <label className="text">Side:</label>
+            <label className="text">
+              <FormattedMessage
+                id="intersectionSidebar.side"
+                defaultMessage="Side:"
+              />
+            </label>
             <SelectWidget
               name="side"
               value={options[index]}
@@ -149,7 +170,12 @@ const IntersectionSidebar = ({ entity }) => {
             />
           </div>
           <div className="propertyRow">
-            <label className="text">Crosswalk:</label>
+            <label className="text">
+              <FormattedMessage
+                id="intersectionSidebar.crosswalk"
+                defaultMessage="Crosswalk:"
+              />
+            </label>
 
             <SelectWidget
               name="crosswalk"
@@ -168,7 +194,12 @@ const IntersectionSidebar = ({ entity }) => {
             ></SelectWidget>
           </div>
           <div className="propertyRow">
-            <label className="text">Sidewalk:</label>
+            <label className="text">
+              <FormattedMessage
+                id="intersectionSidebar.sidewalk"
+                defaultMessage="Sidewalk:"
+              />
+            </label>
             <NumberWidget
               name="sidewalk"
               value={sidewalkArray[index]}
@@ -186,7 +217,12 @@ const IntersectionSidebar = ({ entity }) => {
             />
           </div>
           <div className="propertyRow">
-            <label className="text">Traffic Control:</label>
+            <label className="text">
+              <FormattedMessage
+                id="intersectionSidebar.trafficControl"
+                defaultMessage="Traffic Control:"
+              />
+            </label>
             <SelectWidget
               name="trafficcontrol"
               options={['signal', 'stop', 'none']}
@@ -228,10 +264,20 @@ const IntersectionSidebar = ({ entity }) => {
             ></SelectWidget>
           </div>
           <div className="propertyRow">
-            <div className="text">Curbs</div>
+            <div className="text">
+              <FormattedMessage
+                id="intersectionSidebar.curbs"
+                defaultMessage="Curbs"
+              />
+            </div>
           </div>
           <div className="propertyRow">
-            <label className="text">Curb:</label>
+            <label className="text">
+              <FormattedMessage
+                id="intersectionSidebar.curb"
+                defaultMessage="Curb:"
+              />
+            </label>
             <SelectWidget
               name="curb"
               value={curb}
@@ -242,7 +288,12 @@ const IntersectionSidebar = ({ entity }) => {
             />
           </div>
           <div className="propertyRow">
-            <label className="text">Width:</label>
+            <label className="text">
+              <FormattedMessage
+                id="intersectionSidebar.curbWidth"
+                defaultMessage="Width:"
+              />
+            </label>
             <NumberWidget
               name="curbWidth"
               value={curbArrays[curb][0]}
@@ -250,7 +301,12 @@ const IntersectionSidebar = ({ entity }) => {
             />
           </div>
           <div className="propertyRow">
-            <label className="text">Height:</label>
+            <label className="text">
+              <FormattedMessage
+                id="intersectionSidebar.curbHeight"
+                defaultMessage="Height:"
+              />
+            </label>
             <NumberWidget
               name="curbHeight"
               value={curbArrays[curb][1]}
@@ -258,7 +314,12 @@ const IntersectionSidebar = ({ entity }) => {
             />
           </div>
           <div className="propertyRow">
-            <label className="text">Radius:</label>
+            <label className="text">
+              <FormattedMessage
+                id="intersectionSidebar.curbRadius"
+                defaultMessage="Radius:"
+              />
+            </label>
             <NumberWidget
               name="curbRadius"
               value={curbArrays[curb][2]}

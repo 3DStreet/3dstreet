@@ -5,15 +5,26 @@ import { Component } from 'react';
 
 import Modal from '../Modal.jsx';
 import PropTypes from 'prop-types';
+import { FormattedMessage } from 'react-intl';
 import { Tabs } from '../../elements';
 
 const tabs = [
   {
-    label: 'Essential Actions',
+    label: (
+      <FormattedMessage
+        id="help.tab.essentialActions"
+        defaultMessage="Essential Actions"
+      />
+    ),
     value: 'essentialActions'
   },
   {
-    label: 'Keyboard Shortcuts',
+    label: (
+      <FormattedMessage
+        id="help.tab.shortcuts"
+        defaultMessage="Keyboard Shortcuts"
+      />
+    ),
     value: 'shortcuts'
   }
 ];

@@ -21,6 +21,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '@shared/services/firebase';
 import Modal from '@shared/components/Modal/Modal.jsx';
@@ -186,7 +187,10 @@ function JobRow({ job, data }) {
           )}
 
           <div style={{ color: '#9ca3af', marginBottom: 4 }}>
-            Last run summary
+            <FormattedMessage
+              id="jobHealthModal.lastRunSummary"
+              defaultMessage="Last run summary"
+            />
           </div>
           <pre
             style={{
@@ -205,7 +209,10 @@ function JobRow({ job, data }) {
           {recent.length > 0 && (
             <>
               <div style={{ color: '#9ca3af', margin: '10px 0 4px' }}>
-                Recent runs
+                <FormattedMessage
+                  id="jobHealthModal.recentRuns"
+                  defaultMessage="Recent runs"
+                />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {recent.map((r, i) => (
@@ -237,6 +244,7 @@ function JobRow({ job, data }) {
 }
 
 export default function JobHealthModal() {
+  const intl = useIntl();
   const [open, setOpen] = useState(parseHash);
   const [isAdmin, setIsAdmin] = useState(null); // null = checking
   const [docs, setDocs] = useState({}); // jobName -> data
@@ -315,13 +323,29 @@ export default function JobHealthModal() {
   if (!open) return null;
 
   return (
-    <Modal isOpen={open} onClose={handleClose} title="System Health">
+    <Modal
+      isOpen={open}
+      onClose={handleClose}
+      title={intl.formatMessage({
+        id: 'jobHealthModal.title',
+        defaultMessage: 'System Health'
+      })}
+    >
       <div style={{ width: 560, maxWidth: '100%', color: '#e5e7eb' }}>
-        {isAdmin === null && <p>Checking access…</p>}
+        {isAdmin === null && (
+          <p>
+            <FormattedMessage
+              id="jobHealthModal.checkingAccess"
+              defaultMessage="Checking access…"
+            />
+          </p>
+        )}
         {isAdmin === false && (
           <p style={{ color: '#9ca3af' }}>
-            Admins only. Sign in with an admin account to view background-job
-            health.
+            <FormattedMessage
+              id="jobHealthModal.adminsOnly"
+              defaultMessage="Admins only. Sign in with an admin account to view background-job health."
+            />
           </p>
         )}
         {isAdmin === true && (
@@ -336,15 +360,41 @@ export default function JobHealthModal() {
             >
               <StatusDot status={overall} />
               <strong>
-                {overall === 'green' && 'All background jobs healthy'}
-                {overall === 'yellow' && 'Some jobs ran with issues'}
-                {overall === 'red' && 'Attention needed'}
-                {overall === 'gray' && 'Awaiting first heartbeats'}
+                {overall === 'green' && (
+                  <FormattedMessage
+                    id="jobHealthModal.overallGreen"
+                    defaultMessage="All background jobs healthy"
+                  />
+                )}
+                {overall === 'yellow' && (
+                  <FormattedMessage
+                    id="jobHealthModal.overallYellow"
+                    defaultMessage="Some jobs ran with issues"
+                  />
+                )}
+                {overall === 'red' && (
+                  <FormattedMessage
+                    id="jobHealthModal.overallRed"
+                    defaultMessage="Attention needed"
+                  />
+                )}
+                {overall === 'gray' && (
+                  <FormattedMessage
+                    id="jobHealthModal.overallGray"
+                    defaultMessage="Awaiting first heartbeats"
+                  />
+                )}
               </strong>
             </div>
 
             {error && (
-              <p style={{ color: '#fca5a5' }}>Failed to load: {error}</p>
+              <p style={{ color: '#fca5a5' }}>
+                <FormattedMessage
+                  id="jobHealthModal.failedToLoad"
+                  defaultMessage="Failed to load: {error}"
+                  values={{ error }}
+                />
+              </p>
             )}
 
             {EXPECTED_JOBS.map((job) => (
@@ -352,9 +402,10 @@ export default function JobHealthModal() {
             ))}
 
             <p style={{ fontSize: 11, color: '#6b7280', marginTop: 12 }}>
-              Heartbeats are written on each scheduled run. A red row that says
-              “stale” means the schedule isn’t firing. Expand a row to copy its
-              summary/error for diagnosis.
+              <FormattedMessage
+                id="jobHealthModal.footerNote"
+                defaultMessage="Heartbeats are written on each scheduled run. A red row that says “stale” means the schedule isn’t firing. Expand a row to copy its summary/error for diagnosis."
+              />
             </p>
           </>
         )}

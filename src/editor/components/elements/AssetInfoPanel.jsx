@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import PropTypes from 'prop-types';
 import posthog from 'posthog-js';
 import useAssetUploadStatus, {
@@ -14,6 +15,7 @@ import useStore from '@/store.js';
 import { Button } from './Button';
 
 const AssetInfoPanel = ({ entity }) => {
+  const intl = useIntl();
   const state = useAssetUploadStatus(entity);
   const [detailsOpen, setDetailsOpen] = useState(false);
   if (!state) return null;
@@ -101,7 +103,7 @@ const AssetInfoPanel = ({ entity }) => {
               cursor: 'pointer'
             }}
           >
-            Cancel
+            <FormattedMessage id="assetInfo.cancel" defaultMessage="Cancel" />
           </button>
         )}
         {canRetry && (
@@ -119,7 +121,7 @@ const AssetInfoPanel = ({ entity }) => {
               cursor: 'pointer'
             }}
           >
-            Retry
+            <FormattedMessage id="assetInfo.retry" defaultMessage="Retry" />
           </button>
         )}
       </div>
@@ -147,7 +149,10 @@ const AssetInfoPanel = ({ entity }) => {
             fontSize: 11
           }}
         >
-          Upgrade for 5 GB storage
+          <FormattedMessage
+            id="assetInfo.upgradeStorage"
+            defaultMessage="Upgrade for 5 GB storage"
+          />
         </Button>
       )}
       {state.assetId && (
@@ -162,8 +167,22 @@ const AssetInfoPanel = ({ entity }) => {
           }}
         >
           <span>
-            Asset source: {isOwned ? 'your cloud' : 'not owned by you'} ·{' '}
-            {state.assetId.slice(0, 8)}…
+            <FormattedMessage
+              id="assetInfo.assetSource"
+              defaultMessage="Asset source: {ownership} · {assetIdShort}…"
+              values={{
+                ownership: isOwned
+                  ? intl.formatMessage({
+                      id: 'assetInfo.ownershipYours',
+                      defaultMessage: 'your cloud'
+                    })
+                  : intl.formatMessage({
+                      id: 'assetInfo.ownershipNotOwned',
+                      defaultMessage: 'not owned by you'
+                    }),
+                assetIdShort: state.assetId.slice(0, 8)
+              }}
+            />
           </span>
           <button
             type="button"
@@ -180,7 +199,7 @@ const AssetInfoPanel = ({ entity }) => {
               opacity: 1
             }}
           >
-            Details
+            <FormattedMessage id="assetInfo.details" defaultMessage="Details" />
           </button>
         </div>
       )}

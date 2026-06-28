@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { FormattedMessage, injectIntl } from 'react-intl';
 import Events from '../../lib/Events';
 import Modal from '@shared/components/Modal/Modal.jsx';
 import {
@@ -9,11 +10,12 @@ import {
   isValidId
 } from '../../lib/assetsUtils';
 
-export default class ModalTextures extends React.Component {
+class ModalTextures extends React.Component {
   static propTypes = {
     isOpen: PropTypes.bool,
     onClose: PropTypes.func,
-    selectedTexture: PropTypes.string
+    selectedTexture: PropTypes.string,
+    intl: PropTypes.object
   };
 
   constructor(props) {
@@ -281,14 +283,21 @@ export default class ModalTextures extends React.Component {
       !assetIdTaken &&
       this.state.preview.type !== 'asset';
 
+    const { intl } = this.props;
     let addNewAssetButton = this.state.addNewDialogOpened
-      ? 'BACK'
-      : 'LOAD TEXTURE';
+      ? intl.formatMessage({ id: 'modalTextures.back', defaultMessage: 'BACK' })
+      : intl.formatMessage({
+          id: 'modalTextures.loadTexture',
+          defaultMessage: 'LOAD TEXTURE'
+        });
 
     return (
       <Modal
         id="textureModal"
-        title="Textures"
+        title={intl.formatMessage({
+          id: 'modalTextures.title',
+          defaultMessage: 'Textures'
+        })}
         isOpen={isOpen}
         onClose={this.onClose}
         closeOnClickOutside={false}
@@ -297,10 +306,20 @@ export default class ModalTextures extends React.Component {
         <div className={this.state.addNewDialogOpened ? '' : 'hide'}>
           <div className="newimage">
             <div className="new_asset_options">
-              <span>Load a new texture from one of these sources:</span>
+              <span>
+                <FormattedMessage
+                  id="modalTextures.loadFromSources"
+                  defaultMessage="Load a new texture from one of these sources:"
+                />
+              </span>
               <ul>
                 <li>
-                  <span>From URL (and press Enter):</span>{' '}
+                  <span>
+                    <FormattedMessage
+                      id="modalTextures.fromUrl"
+                      defaultMessage="From URL (and press Enter):"
+                    />
+                  </span>{' '}
                   <input
                     type="text"
                     className="imageUrl"
@@ -311,10 +330,18 @@ export default class ModalTextures extends React.Component {
                   />
                 </li>
                 <li>
-                  <span>From assets registry: </span>
+                  <span>
+                    <FormattedMessage
+                      id="modalTextures.fromAssetsRegistry"
+                      defaultMessage="From assets registry:"
+                    />{' '}
+                  </span>
                   <div className="assets search">
                     <input
-                      placeholder="Filter..."
+                      placeholder={intl.formatMessage({
+                        id: 'modalTextures.filterPlaceholder',
+                        defaultMessage: 'Filter...'
+                      })}
                       value={this.state.filterText}
                       onChange={this.onChangeFilter}
                     />
@@ -327,7 +354,10 @@ export default class ModalTextures extends React.Component {
               </ul>
             </div>
             <div className="preview">
-              Name:{' '}
+              <FormattedMessage
+                id="modalTextures.nameLabel"
+                defaultMessage="Name:"
+              />{' '}
               <input
                 ref={this.imageName}
                 className={
@@ -349,14 +379,27 @@ export default class ModalTextures extends React.Component {
               />
               {preview.type !== 'asset' && assetIdTaken && (
                 <div className="iderror">
-                  Name already taken by another asset or entity
+                  <FormattedMessage
+                    id="modalTextures.nameTaken"
+                    defaultMessage="Name already taken by another asset or entity"
+                  />
                 </div>
               )}
               {this.state.preview.name.length > 0 && !validId && (
-                <div className="iderror">Name is not valid</div>
+                <div className="iderror">
+                  <FormattedMessage
+                    id="modalTextures.nameNotValid"
+                    defaultMessage="Name is not valid"
+                  />
+                </div>
               )}
               {preview.type === 'asset' && (
-                <div className="iderror">Texture already loaded</div>
+                <div className="iderror">
+                  <FormattedMessage
+                    id="modalTextures.textureAlreadyLoaded"
+                    defaultMessage="Texture already loaded"
+                  />
+                </div>
               )}
               <img
                 ref={this.preview}
@@ -379,7 +422,10 @@ export default class ModalTextures extends React.Component {
               )}
               <br />
               <button disabled={!validAsset} onClick={this.addNewAsset}>
-                LOAD THIS TEXTURE
+                <FormattedMessage
+                  id="modalTextures.loadThisTexture"
+                  defaultMessage="LOAD THIS TEXTURE"
+                />
               </button>
             </div>
           </div>
@@ -422,9 +468,19 @@ export default class ModalTextures extends React.Component {
                 <li key={texture.uuid} onClick={textureClick}>
                   <img width="155px" height="155px" src={image.src} />
                   <div className="detail">
-                    <span className="title">Name:</span>{' '}
+                    <span className="title">
+                      <FormattedMessage
+                        id="modalTextures.nameLabel"
+                        defaultMessage="Name:"
+                      />
+                    </span>{' '}
                     <span>{image.name}</span>
-                    <span className="title">Filename:</span>{' '}
+                    <span className="title">
+                      <FormattedMessage
+                        id="modalTextures.filenameLabel"
+                        defaultMessage="Filename:"
+                      />
+                    </span>{' '}
                     <span>{getFilename(image.src)}</span>
                     <span>
                       {image.width} x {image.height}
@@ -439,3 +495,5 @@ export default class ModalTextures extends React.Component {
     );
   }
 }
+
+export default injectIntl(ModalTextures);

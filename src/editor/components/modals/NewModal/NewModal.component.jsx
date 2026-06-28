@@ -1,4 +1,5 @@
 import React from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import Modal from '@shared/components/Modal/Modal.jsx';
 import useStore from '@/store.js';
 import styles from './NewModal.module.scss';
@@ -18,6 +19,7 @@ import { stroad60ftROW } from '@/editor/components/elements/AddLayerPanel/defaul
 import posthog from 'posthog-js';
 
 export const NewModal = () => {
+  const intl = useIntl();
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'new');
   const saveScene = useStore((state) => state.saveScene);
@@ -153,15 +155,27 @@ export const NewModal = () => {
 
   const scenesData = [
     {
-      title: 'Create a basic street',
-      description: 'Start with a pre-configured street template',
+      title: intl.formatMessage({
+        id: 'newModal.basicStreet.title',
+        defaultMessage: 'Create a basic street'
+      }),
+      description: intl.formatMessage({
+        id: 'newModal.basicStreet.description',
+        defaultMessage: 'Start with a pre-configured street template'
+      }),
       imagePath: '/ui_assets/cards/new-blank.jpg',
       actionType: 'basic_street',
       icon: <ManagedStreetIcon />
     },
     {
-      title: 'Import from Streetmix',
-      description: 'Import an existing Streetmix design',
+      title: intl.formatMessage({
+        id: 'newModal.streetmix.title',
+        defaultMessage: 'Import from Streetmix'
+      }),
+      description: intl.formatMessage({
+        id: 'newModal.streetmix.description',
+        defaultMessage: 'Import an existing Streetmix design'
+      }),
       imagePath: '/ui_assets/cards/new-streetmix-import.jpg',
       actionType: 'streetmix',
       icon: (
@@ -173,8 +187,14 @@ export const NewModal = () => {
       )
     },
     {
-      title: 'Create from geolocation',
-      description: 'Start with maps and real-world context',
+      title: intl.formatMessage({
+        id: 'newModal.geolocation.title',
+        defaultMessage: 'Create from geolocation'
+      }),
+      description: intl.formatMessage({
+        id: 'newModal.geolocation.description',
+        defaultMessage: 'Start with maps and real-world context'
+      }),
       imagePath: '/ui_assets/cards/new-blank.jpg',
       actionType: 'geolocation',
       icon: (
@@ -184,22 +204,40 @@ export const NewModal = () => {
       )
     },
     {
-      title: 'Create intersection',
-      description: 'Begin with a 90° street intersection',
+      title: intl.formatMessage({
+        id: 'newModal.intersection.title',
+        defaultMessage: 'Create intersection'
+      }),
+      description: intl.formatMessage({
+        id: 'newModal.intersection.description',
+        defaultMessage: 'Begin with a 90° street intersection'
+      }),
       imagePath: '/ui_assets/cards/new-blank.jpg',
       actionType: 'intersection',
       icon: '➕'
     },
     {
-      title: 'Create with AI assistant',
-      description: 'Get help building your scene with AI',
+      title: intl.formatMessage({
+        id: 'newModal.aiAssistant.title',
+        defaultMessage: 'Create with AI assistant'
+      }),
+      description: intl.formatMessage({
+        id: 'newModal.aiAssistant.description',
+        defaultMessage: 'Get help building your scene with AI'
+      }),
       imagePath: '/ui_assets/cards/new-blank.jpg',
       actionType: 'ai_assistant',
       icon: <ChatbotIcon />
     },
     {
-      title: 'AI Image Generator',
-      description: 'Create street images with AI',
+      title: intl.formatMessage({
+        id: 'newModal.aiGenerator.title',
+        defaultMessage: 'AI Image Generator'
+      }),
+      description: intl.formatMessage({
+        id: 'newModal.aiGenerator.description',
+        defaultMessage: 'Create street images with AI'
+      }),
       imagePath: '/ui_assets/cards/new-blank.jpg',
       actionType: 'ai_generator',
       badge: 'new',
@@ -217,11 +255,17 @@ export const NewModal = () => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Create a New Scene"
+      title={intl.formatMessage({
+        id: 'newModal.title',
+        defaultMessage: 'Create a New Scene'
+      })}
       titleElement={
         <div className="flex items-center justify-between pr-4 pt-4">
           <div className="font-large text-center text-2xl">
-            Create a New Scene
+            <FormattedMessage
+              id="newModal.title"
+              defaultMessage="Create a New Scene"
+            />
           </div>
           <div className="flex gap-2">
             <Button
@@ -231,7 +275,10 @@ export const NewModal = () => {
               }}
               leadingIcon={<Upload24Icon />}
             >
-              Open Scene
+              <FormattedMessage
+                id="newModal.openScene"
+                defaultMessage="Open Scene"
+              />
             </Button>
             <Button
               onClick={() => {
@@ -253,7 +300,10 @@ export const NewModal = () => {
                 createBlankScene();
               }}
             >
-              New Blank Scene
+              <FormattedMessage
+                id="newModal.newBlankScene"
+                defaultMessage="New Blank Scene"
+              />
             </Button>
           </div>
         </div>
@@ -261,7 +311,12 @@ export const NewModal = () => {
     >
       <div className={styles.wrapper}>
         <div className={styles.templatesSection}>
-          <h3 className={styles.sectionTitle}>Start with a template</h3>
+          <h3 className={styles.sectionTitle}>
+            <FormattedMessage
+              id="newModal.startWithTemplate"
+              defaultMessage="Start with a template"
+            />
+          </h3>
           <div className={styles.cardsGrid}>
             {scenesData?.map((scene, index) => (
               <div

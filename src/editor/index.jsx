@@ -1,5 +1,6 @@
 import './instrument';
 import '../styles/tailwind.css';
+import posthog from 'posthog-js';
 import { createRoot } from 'react-dom/client';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import MainWrapper from './components/MainWrapper';
@@ -15,6 +16,7 @@ import { Viewport } from './lib/viewport';
 import './style/index.scss';
 import { initPostHog } from '@shared/analytics/posthog';
 import { commandsByType } from './lib/commands/index.js';
+import { LocaleProvider } from './i18n/LocaleProvider';
 import useStore from '@/store';
 import { initializeLocationSync } from './lib/location-sync';
 
@@ -89,18 +91,24 @@ Inspector.prototype = {
     document.body.appendChild(div);
     const root = createRoot(div);
     root.render(
-      <AuthProvider>
-        <GeoProvider>
-          <MainWrapper />
-        </GeoProvider>
-      </AuthProvider>
+      <LocaleProvider>
+        <AuthProvider>
+          <GeoProvider>
+            <MainWrapper />
+          </GeoProvider>
+        </AuthProvider>
+      </LocaleProvider>
     );
 
     // Mount AR Controls to the AR overlay div
     const arControlsContainer = document.getElementById('react-ar-controls');
     if (arControlsContainer) {
       const arRoot = createRoot(arControlsContainer);
-      arRoot.render(<ARControls />);
+      arRoot.render(
+        <LocaleProvider>
+          <ARControls />
+        </LocaleProvider>
+      );
     }
 
     // Mount Visibility Toggle to the AR overlay div
@@ -109,7 +117,11 @@ Inspector.prototype = {
     );
     if (visibilityToggleContainer) {
       const visibilityRoot = createRoot(visibilityToggleContainer);
-      visibilityRoot.render(<VisibilityToggle />);
+      visibilityRoot.render(
+        <LocaleProvider>
+          <VisibilityToggle />
+        </LocaleProvider>
+      );
     }
 
     this.scene = this.sceneEl.object3D;
@@ -374,6 +386,9 @@ const inspector = (AFRAME.INSPECTOR = new Inspector(
   window.AFRAME_INSPECTOR_CONFIG
 ));
 initPostHog();
+// Tag every event with the active UI locale so the #656 experiment can compare
+// activation/retention/conversion across en / es / pt-BR cohorts in PostHog.
+posthog.register({ locale: useStore.getState().locale });
 
 // A-Frame canvas needs to be outside of a-scene for posthog recording to work
 const sceneLoaded = () => {

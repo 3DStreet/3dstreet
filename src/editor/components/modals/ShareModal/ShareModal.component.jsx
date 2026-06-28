@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import styles from './ShareModal.module.scss';
 import { useAuthContext } from '../../../contexts';
 import { Copy32Icon } from '@shared/icons';
@@ -42,6 +43,7 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
 };
 
 function ShareModal() {
+  const intl = useIntl();
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const { currentUser } = useAuthContext();
@@ -115,7 +117,12 @@ function ShareModal() {
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
-      STREET.notify.successMessage('Scene URL copied to clipboard');
+      STREET.notify.successMessage(
+        intl.formatMessage({
+          id: 'shareModal.urlCopied',
+          defaultMessage: 'Scene URL copied to clipboard'
+        })
+      );
     } catch (err) {
       console.error('Failed to copy text: ', err);
     }
@@ -130,17 +137,43 @@ function ShareModal() {
   };
 
   const handleEmailShare = () => {
-    const sceneTitle = sceneData?.title || 'Untitled Scene';
-    const authorName = authorUsername || 'anonymous';
-    const location = locationString || 'Location not set';
+    const sceneTitle =
+      sceneData?.title ||
+      intl.formatMessage({
+        id: 'shareModal.untitledScene',
+        defaultMessage: 'Untitled Scene'
+      });
+    const authorName =
+      authorUsername ||
+      intl.formatMessage({
+        id: 'shareModal.anonymous',
+        defaultMessage: 'anonymous'
+      });
+    const location =
+      locationString ||
+      intl.formatMessage({
+        id: 'shareModal.locationNotSet',
+        defaultMessage: 'Location not set'
+      });
 
-    const subject = encodeURIComponent(`Check out "${sceneTitle}" on 3DStreet`);
+    const subject = encodeURIComponent(
+      intl.formatMessage(
+        {
+          id: 'shareModal.emailSubject',
+          defaultMessage: 'Check out "{sceneTitle}" on 3DStreet'
+        },
+        { sceneTitle }
+      )
+    );
     const body = encodeURIComponent(
-      `I wanted to share this 3DStreet scene with you:\n\n` +
-        `Title: ${sceneTitle}\n` +
-        `Created by: @${authorName}\n` +
-        `Location: ${location}\n\n` +
-        `View scene: ${shareUrl}`
+      intl.formatMessage(
+        {
+          id: 'shareModal.emailBody',
+          defaultMessage:
+            'I wanted to share this 3DStreet scene with you:\n\nTitle: {sceneTitle}\nCreated by: @{authorName}\nLocation: {location}\n\nView scene: {shareUrl}'
+        },
+        { sceneTitle, authorName, location, shareUrl }
+      )
     );
     window.open(`mailto:?subject=${subject}&body=${body}`);
     posthog.capture('share_via_email', {
@@ -151,12 +184,35 @@ function ShareModal() {
   const handleOSShare = async () => {
     if (navigator.share) {
       try {
-        const sceneTitle = sceneData?.title || 'Untitled Scene';
-        const authorName = authorUsername || 'anonymous';
+        const sceneTitle =
+          sceneData?.title ||
+          intl.formatMessage({
+            id: 'shareModal.untitledScene',
+            defaultMessage: 'Untitled Scene'
+          });
+        const authorName =
+          authorUsername ||
+          intl.formatMessage({
+            id: 'shareModal.anonymous',
+            defaultMessage: 'anonymous'
+          });
 
         await navigator.share({
-          title: `${sceneTitle} - 3DStreet Scene`,
-          text: `Check out "${sceneTitle}" by @${authorName} on 3DStreet`,
+          title: intl.formatMessage(
+            {
+              id: 'shareModal.osShareTitle',
+              defaultMessage: '{sceneTitle} - 3DStreet Scene'
+            },
+            { sceneTitle }
+          ),
+          text: intl.formatMessage(
+            {
+              id: 'shareModal.osShareText',
+              defaultMessage:
+                'Check out "{sceneTitle}" by @{authorName} on 3DStreet'
+            },
+            { sceneTitle, authorName }
+          ),
           url: shareUrl
         });
         posthog.capture('share_via_os', {
@@ -169,14 +225,27 @@ function ShareModal() {
       }
     } else {
       STREET.notify.errorMessage(
-        'Web Share API is not supported in this browser'
+        intl.formatMessage({
+          id: 'shareModal.webShareUnsupported',
+          defaultMessage: 'Web Share API is not supported in this browser'
+        })
       );
     }
   };
 
   const handleDiscordShare = async () => {
-    const sceneTitle = sceneData?.title || 'Untitled Scene';
-    const authorName = authorUsername || 'anonymous';
+    const sceneTitle =
+      sceneData?.title ||
+      intl.formatMessage({
+        id: 'shareModal.untitledScene',
+        defaultMessage: 'Untitled Scene'
+      });
+    const authorName =
+      authorUsername ||
+      intl.formatMessage({
+        id: 'shareModal.anonymous',
+        defaultMessage: 'anonymous'
+      });
     const location = locationString || '';
     const sceneId = STREET.utils.getCurrentSceneId();
     const imageUrl = sceneData?.imagePath || null;
@@ -191,7 +260,11 @@ function ShareModal() {
       });
 
       STREET.notify.successMessage(
-        result.message || 'Scene shared to Discord successfully!'
+        result.message ||
+          intl.formatMessage({
+            id: 'shareModal.discordSuccess',
+            defaultMessage: 'Scene shared to Discord successfully!'
+          })
       );
 
       posthog.capture('share_via_discord_server', {
@@ -201,7 +274,10 @@ function ShareModal() {
     } catch (error) {
       console.error('Discord share error:', error);
       STREET.notify.errorMessage(
-        'Failed to share scene to Discord. Please try again.'
+        intl.formatMessage({
+          id: 'shareModal.discordError',
+          defaultMessage: 'Failed to share scene to Discord. Please try again.'
+        })
       );
 
       posthog.capture('share_via_discord_server', {
@@ -224,7 +300,12 @@ function ShareModal() {
         onClose={() => setModal(null)}
         titleElement={
           <div className="flex pr-4 pt-5">
-            <div className="font-large text-center text-2xl">Share Scene</div>
+            <div className="font-large text-center text-2xl">
+              <FormattedMessage
+                id="shareModal.title"
+                defaultMessage="Share Scene"
+              />
+            </div>
           </div>
         }
       >
@@ -232,13 +313,24 @@ function ShareModal() {
           {!canShare ? (
             <div className={styles.notShareable}>
               <h3>
-                {!currentUser
-                  ? 'Please sign in to share your scene'
-                  : 'Please save your scene to share it'}
+                {!currentUser ? (
+                  <FormattedMessage
+                    id="shareModal.signInToShare"
+                    defaultMessage="Please sign in to share your scene"
+                  />
+                ) : (
+                  <FormattedMessage
+                    id="shareModal.saveToShare"
+                    defaultMessage="Please save your scene to share it"
+                  />
+                )}
               </h3>
               {!currentUser && (
                 <Button onClick={() => setModal('signin')}>
-                  Sign in to 3DStreet Cloud
+                  <FormattedMessage
+                    id="shareModal.signInButton"
+                    defaultMessage="Sign in to 3DStreet Cloud"
+                  />
                 </Button>
               )}
             </div>
@@ -261,7 +353,10 @@ function ShareModal() {
                       onClick={() => setModal('screenshot')}
                       variant="toolbtn"
                     >
-                      Change Thumbnail
+                      <FormattedMessage
+                        id="shareModal.changeThumbnail"
+                        defaultMessage="Change Thumbnail"
+                      />
                     </Button>
                   </div>
                 </div>
@@ -270,13 +365,23 @@ function ShareModal() {
                 <div className={styles.rightColumn}>
                   <div className={styles.sceneDetails}>
                     <h2 className={styles.sceneTitle}>
-                      {sceneData?.title || 'Untitled Scene'}
+                      {sceneData?.title || (
+                        <FormattedMessage
+                          id="shareModal.untitledScene"
+                          defaultMessage="Untitled Scene"
+                        />
+                      )}
                     </h2>
 
                     <div
                       className={`${styles.locationInfo} ${!locationString ? styles.placeholder : ''}`}
                     >
-                      {locationString || 'Location not set'}
+                      {locationString || (
+                        <FormattedMessage
+                          id="shareModal.locationNotSet"
+                          defaultMessage="Location not set"
+                        />
+                      )}
                     </div>
 
                     <div
@@ -286,7 +391,12 @@ function ShareModal() {
                       }
                       style={{ cursor: authorUsername ? 'pointer' : 'default' }}
                     >
-                      @{authorUsername || 'anonymous'}
+                      @
+                      {authorUsername ||
+                        intl.formatMessage({
+                          id: 'shareModal.anonymous',
+                          defaultMessage: 'anonymous'
+                        })}
                     </div>
                   </div>
                 </div>
@@ -295,7 +405,10 @@ function ShareModal() {
               {/* Share buttons section */}
               <div className={styles.shareButtonsSection}>
                 <TooltipWrapper
-                  content="Share scene as a new email draft"
+                  content={intl.formatMessage({
+                    id: 'shareModal.emailTooltip',
+                    defaultMessage: 'Share scene as a new email draft'
+                  })}
                   side="top"
                 >
                   <Button
@@ -303,11 +416,18 @@ function ShareModal() {
                     variant="toolbtn"
                     className={styles.shareButton}
                   >
-                    ✉️ Email
+                    <FormattedMessage
+                      id="shareModal.emailButton"
+                      defaultMessage="✉️ Email"
+                    />
                   </Button>
                 </TooltipWrapper>
                 <TooltipWrapper
-                  content="Use your browser's share feature to send your scene to others"
+                  content={intl.formatMessage({
+                    id: 'shareModal.osShareTooltip',
+                    defaultMessage:
+                      "Use your browser's share feature to send your scene to others"
+                  })}
                   side="top"
                 >
                   <Button
@@ -315,11 +435,18 @@ function ShareModal() {
                     variant="toolbtn"
                     className={styles.shareButton}
                   >
-                    📤 Share
+                    <FormattedMessage
+                      id="shareModal.osShareButton"
+                      defaultMessage="📤 Share"
+                    />
                   </Button>
                 </TooltipWrapper>
                 <TooltipWrapper
-                  content="Post this scene to the 3DStreet Discord server to share with other creators"
+                  content={intl.formatMessage({
+                    id: 'shareModal.discordTooltip',
+                    defaultMessage:
+                      'Post this scene to the 3DStreet Discord server to share with other creators'
+                  })}
                   side="top"
                 >
                   <Button
@@ -327,7 +454,10 @@ function ShareModal() {
                     variant="toolbtn"
                     className={styles.shareButton}
                   >
-                    💬 Discord
+                    <FormattedMessage
+                      id="shareModal.discordButton"
+                      defaultMessage="💬 Discord"
+                    />
                   </Button>
                 </TooltipWrapper>
               </div>
@@ -347,7 +477,10 @@ function ShareModal() {
                     variant="toolbtn"
                     className={styles.copyButton}
                   >
-                    Copy URL
+                    <FormattedMessage
+                      id="shareModal.copyUrl"
+                      defaultMessage="Copy URL"
+                    />
                   </Button>
                 </div>
               </div>

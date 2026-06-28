@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { FormattedMessage } from 'react-intl';
 import useStore from '@/store';
 import { Loader } from '@shared/icons';
 import styles from './LoadingSceneModal.module.scss';
@@ -51,10 +52,16 @@ const LoadingSceneModal = () => {
           <span className={styles.errorMessage}>{error}</span>
           <div className={styles.errorButtons}>
             <button className={styles.retryButton} onClick={handleRetry}>
-              Retry
+              <FormattedMessage
+                id="loadingSceneModal.retry"
+                defaultMessage="Retry"
+              />
             </button>
             <button className={styles.dismissButton} onClick={handleDismiss}>
-              Dismiss
+              <FormattedMessage
+                id="loadingSceneModal.dismiss"
+                defaultMessage="Dismiss"
+              />
             </button>
           </div>
         </div>

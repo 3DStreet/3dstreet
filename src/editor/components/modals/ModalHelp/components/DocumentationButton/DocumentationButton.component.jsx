@@ -1,6 +1,7 @@
 import styles from './DocumentationButton.module.scss';
 import { Button } from '../../../../components';
 import { Component } from 'react';
+import { FormattedMessage } from 'react-intl';
 import { Open } from './icons.jsx';
 /**
  * DocumentationButton component.
@@ -17,7 +18,11 @@ class DocumentationButton extends Component {
           className={styles.docsButtonWrapper}
           onClick={() => window.open('https://3dstreet.org/docs/')}
         >
-          Documentation <Open />
+          <FormattedMessage
+            id="help.documentation"
+            defaultMessage="Documentation"
+          />{' '}
+          <Open />
         </div>
       </Button>
     );

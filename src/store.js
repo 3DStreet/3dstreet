@@ -4,6 +4,7 @@ import posthog from 'posthog-js';
 import Events from './editor/lib/Events';
 import canvasRecorder from './editor/lib/CanvasRecorder';
 import { auth } from '@shared/services/firebase';
+import { resolveInitialLocale, persistLocale } from './editor/i18n/config';
 
 const firstModal = () => {
   const hash = window.location.hash;
@@ -118,6 +119,15 @@ const useStore = create(
         setUnitsPreference: (newUnitsPreference) => {
           localStorage.setItem('unitsPreference', newUnitsPreference);
           set({ unitsPreference: newUnitsPreference });
+        },
+        // UI language for the localization experiment (#656). Resolves to 'en'
+        // unless the i18n feature flag is on; persisted to localStorage.
+        locale: resolveInitialLocale(),
+        setLocale: (newLocale) => {
+          persistLocale(newLocale);
+          posthog.capture('locale_changed', { locale: newLocale });
+          posthog.register({ locale: newLocale });
+          set({ locale: newLocale });
         },
         modal: firstModal(),
         previousModal: null,

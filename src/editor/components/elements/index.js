@@ -8,6 +8,7 @@ export { ProfileButton, renderProfileIcon } from '@shared/auth/components';
 export { SceneCard } from './SceneCard';
 export { SceneEditTitle } from './SceneEditTitle';
 export { UnitsPreference } from './UnitsPreference';
+export { LanguagePreference } from './LanguagePreference';
 export { PanelToggleButton } from './PanelToggleButton';
 export { UndoRedo } from './UndoRedo';
 export { TextArea } from './TextArea';

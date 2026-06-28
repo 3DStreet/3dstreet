@@ -1,4 +1,5 @@
 import { Menubar } from 'radix-ui';
+import { FormattedMessage, useIntl, defineMessages } from 'react-intl';
 import '../../style/AppMenu.scss';
 import useStore from '@/store';
 import { makeScreenshot, convertToObject } from '@/editor/lib/SceneUtils';
@@ -35,6 +36,19 @@ const cameraOptions = [
     shortcut: '4'
   }
 ];
+
+// Static catalog for the camera labels so formatjs can extract them (a dynamic
+// `id={`appMenu.view.camera.${value}`}` would be invisible to the extractor).
+const cameraMessages = defineMessages({
+  perspective: {
+    id: 'appMenu.view.camera.perspective',
+    defaultMessage: '3D View'
+  },
+  orthotop: {
+    id: 'appMenu.view.camera.orthotop',
+    defaultMessage: 'Plan View'
+  }
+});
 
 // Export utility functions
 const filterHelpers = (scene, visible) => {
@@ -102,6 +116,7 @@ const filterRiggedEntities = (scene, visible) => {
 };
 
 const AppMenu = ({ currentUser }) => {
+  const intl = useIntl();
   const {
     setModal,
     isGridVisible,
@@ -215,7 +230,11 @@ const AppMenu = ({ currentUser }) => {
                 console.warn('Error in GLB post-processing:', error);
                 // Fall back to original buffer if post-processing fails
                 STREET.notify.warningMessage(
-                  'UV transformation skipped - using original export'
+                  intl.formatMessage({
+                    id: 'appMenu.export.uvTransformSkipped',
+                    defaultMessage:
+                      'UV transformation skipped - using original export'
+                  })
                 );
               }
             }
@@ -244,15 +263,34 @@ const AppMenu = ({ currentUser }) => {
           function (error) {
             console.error(error);
             STREET.notify.errorMessage(
-              `Error while trying to save glTF file. Error: ${error}`
+              intl.formatMessage(
+                {
+                  id: 'appMenu.export.gltfError',
+                  defaultMessage:
+                    'Error while trying to save glTF file. Error: {error}'
+                },
+                { error }
+              )
             );
           },
           { binary: true }
         );
-        STREET.notify.successMessage('3DStreet scene exported as glTF file.');
+        STREET.notify.successMessage(
+          intl.formatMessage({
+            id: 'appMenu.export.gltfSuccess',
+            defaultMessage: '3DStreet scene exported as glTF file.'
+          })
+        );
       } catch (error) {
         STREET.notify.errorMessage(
-          `Error while trying to save glTF file. Error: ${error}`
+          intl.formatMessage(
+            {
+              id: 'appMenu.export.gltfError',
+              defaultMessage:
+                'Error while trying to save glTF file. Error: {error}'
+            },
+            { error }
+          )
         );
         console.error(error);
       }
@@ -443,7 +481,14 @@ const AppMenu = ({ currentUser }) => {
 
                 if (sizeKB > 100) {
                   STREET.notify.warningMessage(
-                    `GeoJSON file is ${Math.round(sizeKB)}KB. Large files may affect performance.`
+                    intl.formatMessage(
+                      {
+                        id: 'appMenu.geojson.largeFileWarning',
+                        defaultMessage:
+                          'GeoJSON file is {sizeKB}KB. Large files may affect performance.'
+                      },
+                      { sizeKB: Math.round(sizeKB) }
+                    )
                   );
                 }
 
@@ -505,7 +550,14 @@ const AppMenu = ({ currentUser }) => {
                 }, 100); // Small delay to ensure GeoJSON component has initialized
 
                 STREET.notify.successMessage(
-                  `GeoJSON file imported successfully. Found ${buildingFeatures.length} polygon features.`
+                  intl.formatMessage(
+                    {
+                      id: 'appMenu.geojson.importSuccess',
+                      defaultMessage:
+                        'GeoJSON file imported successfully. Found {count} polygon features.'
+                    },
+                    { count: buildingFeatures.length }
+                  )
                 );
                 posthog.capture('geojson_imported', {
                   scene_id: STREET.utils.getCurrentSceneId(),
@@ -516,7 +568,13 @@ const AppMenu = ({ currentUser }) => {
               } catch (componentError) {
                 console.error('Error creating GeoJSON entity:', componentError);
                 STREET.notify.errorMessage(
-                  `Error loading GeoJSON: ${componentError.message}`
+                  intl.formatMessage(
+                    {
+                      id: 'appMenu.geojson.loadError',
+                      defaultMessage: 'Error loading GeoJSON: {message}'
+                    },
+                    { message: componentError.message }
+                  )
                 );
               }
             };
@@ -525,7 +583,11 @@ const AppMenu = ({ currentUser }) => {
           } catch (error) {
             console.error('Error parsing GeoJSON file:', error);
             STREET.notify.errorMessage(
-              'Error parsing GeoJSON file. Please ensure it is valid JSON.'
+              intl.formatMessage({
+                id: 'appMenu.geojson.parseError',
+                defaultMessage:
+                  'Error parsing GeoJSON file. Please ensure it is valid JSON.'
+              })
             );
           }
         };
@@ -539,7 +601,9 @@ const AppMenu = ({ currentUser }) => {
   return (
     <Menubar.Root className="MenubarRoot">
       <Menubar.Menu>
-        <Menubar.Trigger className="MenubarTrigger">File</Menubar.Trigger>
+        <Menubar.Trigger className="MenubarTrigger">
+          <FormattedMessage id="appMenu.file" defaultMessage="File" />
+        </Menubar.Trigger>
         <Menubar.Portal>
           <Menubar.Content
             className="MenubarContent"
@@ -548,13 +612,16 @@ const AppMenu = ({ currentUser }) => {
             alignOffset={-3}
           >
             <Menubar.Item className="MenubarItem" onClick={newHandler}>
-              New...
+              <FormattedMessage id="appMenu.file.new" defaultMessage="New..." />
             </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"
               onClick={() => setModal('scenes')}
             >
-              Open...
+              <FormattedMessage
+                id="appMenu.file.open"
+                defaultMessage="Open..."
+              />
             </Menubar.Item>
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
@@ -571,7 +638,7 @@ const AppMenu = ({ currentUser }) => {
                 saveScene(false);
               }}
             >
-              Save
+              <FormattedMessage id="appMenu.file.save" defaultMessage="Save" />
             </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"
@@ -583,25 +650,37 @@ const AppMenu = ({ currentUser }) => {
                 saveScene(true, true);
               }}
             >
-              Save As...
+              <FormattedMessage
+                id="appMenu.file.saveAs"
+                defaultMessage="Save As..."
+              />
             </Menubar.Item>
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"
               onClick={() => setModal('share')}
             >
-              Share...
+              <FormattedMessage
+                id="appMenu.file.share"
+                defaultMessage="Share..."
+              />
             </Menubar.Item>
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"
               onClick={() => importAssetFromPicker()}
             >
-              Import...
+              <FormattedMessage
+                id="appMenu.file.import"
+                defaultMessage="Import..."
+              />
             </Menubar.Item>
             <Menubar.Sub>
               <Menubar.SubTrigger className="MenubarItem">
-                Export
+                <FormattedMessage
+                  id="appMenu.file.export"
+                  defaultMessage="Export"
+                />
                 <div className="RightSlot">
                   <AwesomeIcon icon={faChevronRight} size={12} />
                 </div>
@@ -612,18 +691,34 @@ const AppMenu = ({ currentUser }) => {
                     className="MenubarItem"
                     onClick={() => exportSceneToGLTF(false)}
                   >
-                    GLB glTF
+                    <FormattedMessage
+                      id="appMenu.export.glb"
+                      defaultMessage="GLB glTF"
+                    />
                     <div className="RightSlot">
-                      <span className="pro-badge">Pro</span>
+                      <span className="pro-badge">
+                        <FormattedMessage
+                          id="appMenu.proBadge"
+                          defaultMessage="Pro"
+                        />
+                      </span>
                     </div>
                   </Menubar.Item>
                   <Menubar.Item
                     className="MenubarItem"
                     onClick={() => exportSceneToGLTF(true)}
                   >
-                    AR Ready GLB
+                    <FormattedMessage
+                      id="appMenu.export.arReadyGlb"
+                      defaultMessage="AR Ready GLB"
+                    />
                     <div className="RightSlot">
-                      <span className="pro-badge">Pro</span>
+                      <span className="pro-badge">
+                        <FormattedMessage
+                          id="appMenu.proBadge"
+                          defaultMessage="Pro"
+                        />
+                      </span>
                     </div>
                   </Menubar.Item>
                   <Menubar.Item
@@ -640,7 +735,9 @@ const AppMenu = ({ currentUser }) => {
       </Menubar.Menu>
 
       <Menubar.Menu>
-        <Menubar.Trigger className="MenubarTrigger">View</Menubar.Trigger>
+        <Menubar.Trigger className="MenubarTrigger">
+          <FormattedMessage id="appMenu.view" defaultMessage="View" />
+        </Menubar.Trigger>
         <Menubar.Portal>
           <Menubar.Content
             className="MenubarContent"
@@ -656,7 +753,10 @@ const AppMenu = ({ currentUser }) => {
               <Menubar.ItemIndicator className="MenubarItemIndicator">
                 <AwesomeIcon icon={faCheck} size={14} />
               </Menubar.ItemIndicator>
-              Show Grid
+              <FormattedMessage
+                id="appMenu.view.showGrid"
+                defaultMessage="Show Grid"
+              />
               <div className="RightSlot">G</div>
             </Menubar.CheckboxItem>
             <Menubar.Separator className="MenubarSeparator" />
@@ -670,7 +770,7 @@ const AppMenu = ({ currentUser }) => {
                 <Menubar.ItemIndicator className="MenubarItemIndicator">
                   <AwesomeIcon icon={faCircle} size={8} />
                 </Menubar.ItemIndicator>
-                {option.label}
+                <FormattedMessage {...cameraMessages[option.value]} />
                 <div className="RightSlot">{option.shortcut}</div>
               </Menubar.CheckboxItem>
             ))}
@@ -679,7 +779,10 @@ const AppMenu = ({ currentUser }) => {
               className="MenubarItem"
               onClick={() => AFRAME.INSPECTOR.controls.resetZoom()}
             >
-              Reset Camera View
+              <FormattedMessage
+                id="appMenu.view.resetCamera"
+                defaultMessage="Reset Camera View"
+              />
             </Menubar.Item>
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
@@ -689,14 +792,19 @@ const AppMenu = ({ currentUser }) => {
                 setModal('screenshot');
               }}
             >
-              Snapshot & Render...
+              <FormattedMessage
+                id="appMenu.view.snapshotRender"
+                defaultMessage="Snapshot & Render..."
+              />
             </Menubar.Item>
           </Menubar.Content>
         </Menubar.Portal>
       </Menubar.Menu>
 
       <Menubar.Menu>
-        <Menubar.Trigger className="MenubarTrigger">Help</Menubar.Trigger>
+        <Menubar.Trigger className="MenubarTrigger">
+          <FormattedMessage id="appMenu.help" defaultMessage="Help" />
+        </Menubar.Trigger>
         <Menubar.Portal>
           <Menubar.Content
             className="MenubarContent"
@@ -710,7 +818,10 @@ const AppMenu = ({ currentUser }) => {
                 window.open('https://www.3dstreet.org/docs/', '_blank')
               }
             >
-              Documentation
+              <FormattedMessage
+                id="appMenu.help.documentation"
+                defaultMessage="Documentation"
+              />
             </Menubar.Item>
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
@@ -722,7 +833,10 @@ const AppMenu = ({ currentUser }) => {
                 )
               }
             >
-              Keyboard Shortcuts
+              <FormattedMessage
+                id="appMenu.help.keyboardShortcuts"
+                defaultMessage="Keyboard Shortcuts"
+              />
             </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"
@@ -733,11 +847,17 @@ const AppMenu = ({ currentUser }) => {
                 )
               }
             >
-              Mouse and Touch Controls
+              <FormattedMessage
+                id="appMenu.help.mouseTouchControls"
+                defaultMessage="Mouse and Touch Controls"
+              />
             </Menubar.Item>
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item className="MenubarItem" onClick={showAIChatPanel}>
-              AI Scene Assistant
+              <FormattedMessage
+                id="appMenu.help.aiSceneAssistant"
+                defaultMessage="AI Scene Assistant"
+              />
             </Menubar.Item>
           </Menubar.Content>
         </Menubar.Portal>

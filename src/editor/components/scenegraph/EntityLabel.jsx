@@ -1,12 +1,13 @@
 import PropTypes from 'prop-types';
+import { useIntl } from 'react-intl';
 import { getEntityIcon, getEntityDisplayName } from '../../lib/entity';
 import useAssetUploadStatus from '../elements/useAssetUploadStatus';
 
-const ASSET_TYPE_PREFIX = {
-  mesh: 'glTF Model',
-  image: 'Image',
-  video: 'Video',
-  splat: 'Splat'
+const ASSET_TYPE_PREFIX_MESSAGES = {
+  mesh: { id: 'entity.assetTypeMesh', defaultMessage: 'glTF Model' },
+  image: { id: 'entity.assetTypeImage', defaultMessage: 'Image' },
+  video: { id: 'entity.assetTypeVideo', defaultMessage: 'Video' },
+  splat: { id: 'entity.assetTypeSplat', defaultMessage: 'Splat' }
 };
 
 /**
@@ -17,13 +18,17 @@ const ASSET_TYPE_PREFIX = {
  * via getEntityDisplayName.
  */
 const EntityLabel = ({ entity }) => {
+  const intl = useIntl();
   const state = useAssetUploadStatus(entity);
   if (!entity) return null;
 
   const icon = getEntityIcon(entity);
   let override = null;
   if (state?.assetId && state.name) {
-    const prefix = ASSET_TYPE_PREFIX[state.type];
+    const prefixMessage = ASSET_TYPE_PREFIX_MESSAGES[state.type];
+    const prefix = prefixMessage
+      ? intl.formatMessage(prefixMessage)
+      : undefined;
     override = prefix ? `${prefix} • ${state.name}` : state.name;
   }
   const displayName = override || getEntityDisplayName(entity);

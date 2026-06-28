@@ -3,6 +3,7 @@ import classNames from 'classnames';
 import debounce from 'lodash-es/debounce';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { FormattedMessage, injectIntl } from 'react-intl';
 import Events from '../../lib/Events';
 import Entity, { isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
@@ -21,9 +22,10 @@ import { AuthContext } from '@/editor/contexts';
 const HIDDEN_CLASSES = ['teleportRay', 'hitEntity', 'hideFromSceneGraph'];
 const HIDDEN_IDS = ['dropPlane', 'previewEntity'];
 
-export default class SceneGraph extends React.Component {
+class SceneGraph extends React.Component {
   static contextType = AuthContext;
   static propTypes = {
+    intl: PropTypes.object,
     scene: PropTypes.object,
     selectedEntity: PropTypes.object
   };
@@ -461,6 +463,7 @@ export default class SceneGraph extends React.Component {
   };
 
   render() {
+    const { intl } = this.props;
     const isCollapsed = !this.state.panelsVisible;
     const className = classNames({
       'scenegraph-panel': true,
@@ -505,19 +508,28 @@ export default class SceneGraph extends React.Component {
                 <Tabs
                   tabs={[
                     {
-                      label: 'Layers',
+                      label: intl.formatMessage({
+                        id: 'sceneGraph.tabLayers',
+                        defaultMessage: 'Layers'
+                      }),
                       value: 'layers',
                       isSelected: this.state.activeTab === 'layers',
                       onClick: () => this.setActiveTab('layers')
                     },
                     {
-                      label: 'Geospatial',
+                      label: intl.formatMessage({
+                        id: 'sceneGraph.tabGeospatial',
+                        defaultMessage: 'Geospatial'
+                      }),
                       value: 'geo',
                       isSelected: this.state.activeTab === 'geo',
                       onClick: this.selectGeoTab
                     },
                     {
-                      label: 'Assets',
+                      label: intl.formatMessage({
+                        id: 'sceneGraph.tabAssets',
+                        defaultMessage: 'Assets'
+                      }),
                       value: 'assets',
                       isSelected: this.state.activeTab === 'assets',
                       onClick: () => this.setActiveTab('assets')
@@ -529,8 +541,14 @@ export default class SceneGraph extends React.Component {
                     type="button"
                     className="left-panel-add-layer"
                     onClick={this.openAddLayer}
-                    aria-label="Add layer"
-                    title="Add layer"
+                    aria-label={intl.formatMessage({
+                      id: 'sceneGraph.addLayerAria',
+                      defaultMessage: 'Add layer'
+                    })}
+                    title={intl.formatMessage({
+                      id: 'sceneGraph.addLayerTitle',
+                      defaultMessage: 'Add layer'
+                    })}
                   >
                     <Plus20Circle />
                   </button>
@@ -540,14 +558,24 @@ export default class SceneGraph extends React.Component {
                 <div className="layers">
                   {this.state.entities.length === 0 ? (
                     <div className="layers-empty-state">
-                      <p>Add a new layer to get started.</p>
+                      <p>
+                        <FormattedMessage
+                          id="sceneGraph.emptyStateMessage"
+                          defaultMessage="Add a new layer to get started."
+                        />
+                      </p>
                       <button
                         type="button"
                         className="layers-empty-state-button"
                         onClick={this.openAddLayer}
                       >
                         <Plus20Circle />
-                        <span>Add Layer</span>
+                        <span>
+                          <FormattedMessage
+                            id="sceneGraph.addLayerButton"
+                            defaultMessage="Add Layer"
+                          />
+                        </span>
                       </button>
                     </div>
                   ) : (
@@ -568,3 +596,5 @@ export default class SceneGraph extends React.Component {
     );
   }
 }
+
+export default injectIntl(SceneGraph);
