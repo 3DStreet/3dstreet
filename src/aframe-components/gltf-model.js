@@ -3,16 +3,6 @@ import { disposeNode } from '../disposeUtils';
 import { acquireSharedSource } from '../sharedTextureSources';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 
-export function mapMaterials(object3D, fn) {
-  if (!object3D.material) return [];
-
-  if (Array.isArray(object3D.material)) {
-    return object3D.material.map(fn);
-  } else {
-    return [fn(object3D.material)];
-  }
-}
-
 // Share one decoded THREE.Source across textures (within and across GLBs) that embed the
 // byte-identical image. The server bakes images[].extras.imageHash; GLTFLoader.loadImageSource
 // surfaces image extras on texture.userData, and at that point the Texture has only just been
@@ -205,9 +195,7 @@ export const gltfModelPlus = {
       this.el.sceneEl.systems['gltf-model'].getMeshoptDecoder();
     const ktxLoader = this.el.sceneEl.systems['gltf-model'].getKTX2Loader();
     this.model = null;
-    this.removers = [];
     this.loader = new THREE.GLTFLoader();
-    this.mixer = null;
     // Set true by batchModels when this entity is a duplicate it owns as a batch slot:
     // loadModel() never runs for it (no download/parse), and batchModels releases it via
     // `el.components['gltf-model'].deferLoad = false; .update()` if the group turns out

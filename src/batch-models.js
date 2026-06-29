@@ -2,45 +2,42 @@
 
 import { releaseSharedSource } from './sharedTextureSources';
 
-// Automatic runtime batching of repeated gltf-model entities.
+// Automatic runtime batching of repeated gltf-model and gltf-part entities.
 //
-// - Deferral: when a scene will be batched, createEntities sets `sceneEl._batchingEnabled =
-//   true` and gltf-model.update() holds each GLB load for two ticks (see its comment).
-//   batchModels waits that same settle, then markDeferredLoads() walks the live DOM —
-//   catching entities a component mints during its own init, not just the ones in the scene
-//   JSON — groups by `gltf-model` src, and flips `deferLoad = true` on the N-1 non-reference
-//   members of every all-safe group so they never download/parse. It then
+// - Deferral (gltf-model only): when a scene will be batched, createEntities sets
+//   `sceneEl._batchingEnabled = true` and gltf-model.update() parks its GLB load until
+//   batchModels signals grouping is done. gltf-part is never deferred — it already parses
+//   each GLB once via its own module-level cache.
+// - `batchModels(sceneEl)` waits a few ticks for the DOM to settle (entities are minted by a
+//   chain of components, each initializing a tick after its parent), then markDeferredLoads()
+//   walks the live DOM, groups gltf-model duplicates by src, and flips `deferLoad = true` on
+//   the N-1 non-reference members of every all-safe group so they never download/parse. It
 //   sets `sceneEl._batchGroupingDone = true` and emits "batch-grouping-done" to release the
-//   held components: refs load, deferred ones skip. The gate makes the order of the two
-//   independent two-tick windows irrelevant (a held load only proceeds after grouping).
-// - `batchModels(sceneEl)` then waits for every non-deferred model to load, filters to
-//   entities whose components are only in BATCH_SAFE_COMPONENTS, groups by `gltf-model` src,
-//   and for each group >= 2 builds one THREE.BatchedMesh per material from the reference
-//   model (members[0]).
+//   parked gltf-model components: refs load, deferred ones skip.
+// - It then waits for every non-deferred model to load, filters to entities whose components
+//   are all in BATCH_SAFE_COMPONENTS, groups by batch key (gltf-model src, or gltf-part
+//   src+part), and for each group >= 2 builds one THREE.BatchedMesh per material from the
+//   reference member (members[0]).
 // - Per-member: addInstance(geometryId) x sub-mesh-count, setMatrixAt(instanceId,
 //   memberWorld . subMeshLocal). Slot visibility seeded from effective visibility
 //   (local AND ancestor chain) since the slot lives under batchRootEl, outside the
 //   member's parent chain.
-// - Members are stripped at batch time via `el.components['gltf-model'].removeMesh()`
-//   (lighter than .remove(): no removers fired, no mixer cleanup). The mesh is detached
-//   and the tree is walked with disposeNode. Resources the BatchedMesh actually renders
-//   (members[0]'s materials, textures, ImageBitmaps, and geometries) are flagged with
-//   _batchKeepAlive so disposeUtils.disposeNode skips them. Every other duplicate
-//   (members[1+]'s materials/textures/geometries, plus the non-rendered nodes from
-//   members[0]'s tree) is freed immediately. Inflator-spawned entities reparented under
-//   sceneEl (waypoints, spawn-points, media-*, etc.) stay alive across batching.
+// - Members are stripped at batch time via a per-provider strip (see getBatchProvider):
+//   gltf-model.removeMesh() detaches the mesh and walks the tree with disposeNode, sparing
+//   members[0]'s rendered resources (tagged _batchKeepAlive) and freeing the duplicates;
+//   gltf-part detaches the mesh and disposes only its per-instance geometry, keeping the
+//   material (shared with the gltf-part module cache and other instances of the part).
 // - Exception: `.clickable` members in runtime keep their mesh tree (hidden) so the
 //   A-Frame runtime cursor can raycast them. The cursor doesn't yet resolve BatchedMesh
 //   hits to entities via batchId.
-// - processKeyGroup classifies an entity as unsafe when its gltf-model has
-//   `usedFakeEl=true` (an in-place inflator like audio/uv-scroll/reflection-probe/
-//   particle-emitter wrapped a mesh node in a FakeEntity) or `mixer` (loop-animation):
-//   either case binds runtime behaviour to nodes the strip would dispose.
+// - processKeyGroup classifies an entity as unsafe only when it carries a component outside
+//   BATCH_SAFE_COMPONENTS (getBlockingComponents); those load/render unbatched.
 // - Each member stores `_batchSlots` + `_batchGroup` (back-reference to the group object)
 //   on object3D.userData; the group tracks `activeMemberCount`. When removeMember drops
-//   the count to 0, teardownBuiltGroup disposes the BatchedMesh, disposes the kept-alive
-//   resources (no mesh tree holds them anymore), and splices the group out of
-//   sceneEl._batchModelsBuilt.
+//   the count to 0, teardownBuiltGroup disposes the BatchedMesh and, for gltf-model groups
+//   (which own their resources), the kept-alive resources, then splices the group out of
+//   sceneEl._batchModelsBuilt. gltf-part groups own nothing extra — materials are
+//   cache-shared and per-instance geometries were freed at strip.
 // - `_batchLocalBbox` (one Box3 per group, computed from the geometries) is stashed on
 //   every member so the editor's OrientedBoxHelper can size selection/hover boxes without
 //   reading the (gone) mesh tree.
@@ -49,21 +46,15 @@ import { releaseSharedSource } from './sharedTextureSources';
 //   so capture phase is required). It re-bakes matrices and applies effective visibility
 //   onto the slots, since three.js's transform/visibility cascade doesn't reach slots
 //   parented under batchRootEl.
-// - When a non-safe component initializes on a batched entity, popMember calls
-//   removeMember (drops the slot and, if it was the last one, tears down the group)
-//   then triggers `el.components['gltf-model'].update()` to reload the GLB. Once
-//   model-loaded fires, the entity is a normal unbatched gltf-model with the new
-//   component applied to the fresh mesh.
+// - When a non-safe component initializes on a batched entity, popMember calls removeMember
+//   (drops the slot and, if it was the last one, tears down the group) then calls the
+//   provider's reload() to rebuild the original mesh, so the new component runs unbatched.
 // - Every skip reason is logged with [batch-models] prefix.
 //
-// BVH ownership:
-// - gltf-model-plus does NOT build BVHs anymore.
-// - Batched groups: computeBoundsTree is called on the BatchedMesh (covers every instance).
-// - Unbatched entities (blocking components, lone instance, skin/morph skip reasons):
-//   batchModels walks them and builds BVHs on their original mesh.
-// - In runtime (no AFRAME.INSPECTOR), also build BVHs on `.clickable` entities — both
-//   unbatched ones and batched ones whose hidden mesh is kept around for the cursor.
-// - Reloaded entities (popMember → update()) get a fresh BVH from `onLateModelLoaded`.
+// BVH: BatchedMesh.computeBoundsTree() and ensureOriginalBvh() are no-ops unless three-mesh-
+// bvh is integrated (BufferGeometry.prototype.computeBoundsTree). When it is, batched groups
+// get a BVH on the BatchedMesh and unbatched / runtime-`.clickable` entities get one on their
+// original mesh.
 
 const BATCH_SAFE_COMPONENTS = new Set([
   'position',
@@ -81,6 +72,10 @@ const MIN_TRIANGLES_FOR_BVH = 500;
 
 const BATCH_GROUP_NAME_PREFIX = 'batch:';
 const BATCH_ROOT_ID = 'batch-models-root';
+
+// Per-entity cap on how long batchModels waits for a model to settle before proceeding
+// without it, so one hung load can't block the whole batching flow indefinitely.
+const LOAD_TIMEOUT_MS = 30000;
 
 function setStatus(el, batched, reason) {
   el.object3D.userData._batchStatus = reason
@@ -225,7 +220,16 @@ function waitForModelLoaded(el) {
   const comp = el.components?.['gltf-model'] || el.components?.['gltf-part'];
   if (el.getObject3D('mesh') || comp?._loadSettled) return Promise.resolve();
   return new Promise((resolve) => {
+    // Safety net: a load that never settles (hung fetch, stuck Draco worker) would otherwise
+    // block Promise.all in batchModels forever and never release the batch-grouping-done gate.
+    const timer = setTimeout(() => {
+      console.warn(
+        `[batch-models] ${describeEl(el)} model load did not settle in ${LOAD_TIMEOUT_MS}ms; proceeding without it`
+      );
+      done();
+    }, LOAD_TIMEOUT_MS);
     const done = () => {
+      clearTimeout(timer);
       el.removeEventListener('model-loaded', onEvent);
       el.removeEventListener('model-error', onEvent);
       resolve();
@@ -299,7 +303,6 @@ function collectRefSubMeshes(refMesh) {
   const refInv = new THREE.Matrix4().copy(refMesh.matrixWorld).invert();
   const materialGroups = new Map(); // material -> [{ geometry, localMatrix }]
   const skipReasons = [];
-  const localMatrix = new THREE.Matrix4();
 
   refMesh.traverse((node) => {
     if (!node.isMesh) return;
@@ -346,7 +349,7 @@ function collectRefSubMeshes(refMesh) {
     }
   });
 
-  return { materialGroups, skipReasons, localMatrix };
+  return { materialGroups, skipReasons };
 }
 
 // Mark every resource the BatchedMesh references (members[0]'s materials, their textures
