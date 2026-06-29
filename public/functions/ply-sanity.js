@@ -2,11 +2,17 @@
 //
 // vid2scene (and other splat models) always emit a fixed-size .ply even when
 // structure-from-motion fails: a failed reconstruction still produces a full
-// 500k-gaussian file, but the geometry is garbage — NaN/Inf positions and a
-// bounding box that explodes to thousands of units instead of the ~tens of
-// units a real scene occupies. That file won't render, yet the pipeline used
-// to treat it as a success: charge the user, mark the job succeeded, and save
-// a public (unrenderable) asset. See issue #1745.
+// 500k-gaussian file, but the geometry is garbage — its vertex positions are
+// peppered with NaN/Inf. That file won't render, yet the pipeline used to
+// treat it as a success: charge the user, mark the job succeeded, and save a
+// public (unrenderable) asset. See issue #1745.
+//
+// The reject signal is the NaN/Inf ratio, which is scale-invariant: a real
+// reconstruction has ~0, a failed one has percent-level. Bounding-box extent
+// is computed for observability but is NOT a gate — a legitimately large scene
+// (e.g. a 22M-gaussian drone scan measured at ~3400 units, all-finite) is
+// indistinguishable by absolute extent from a garbage explosion, so gating on
+// it false-rejects real scenes.
 //
 // This module is a pure, dependency-free parser so it can be unit-tested in
 // isolation. It inspects only the header plus the first N vertices of the
@@ -19,10 +25,11 @@
 // without letting a degenerate file through.
 const NAN_RATIO_LIMIT = 0.01;
 
-// Reject if any axis of the bounding box (of finite vertices) spans more than
-// this many units. Real scenes are ~tens of units; a failed SfM run spanned
-// thousands (e.g. x[-2306, +2327]). 1000 is a generous "this is clearly
-// exploded" cap, not a tight fit.
+// Advisory only — flag (do NOT reject) when any axis of the bounding box spans
+// more than this. A failed SfM run explodes to thousands of units, but so do
+// legitimately large scenes (a real 22M-gaussian drone scan measured ~3400
+// units, all-finite). Absolute extent can't separate the two, so we surface
+// `extentExceedsAdvisory` in stats for monitoring and let the NaN check decide.
 const MAX_EXTENT = 1000;
 
 // How many vertices to sample from the start of the payload. Matches the
@@ -156,6 +163,10 @@ function inspectPlyGeometry(buf) {
     nonFinite,
     nanRatio: Number(nanRatio.toFixed(4)),
     extent: Number.isFinite(extent) ? Number(extent.toFixed(2)) : null,
+    // Advisory flag only — a large extent does NOT reject (see MAX_EXTENT). It
+    // rides along in the warning/log so we can spot a drift toward exploded
+    // outputs without false-rejecting legitimately large scenes.
+    extentExceedsAdvisory: extent > MAX_EXTENT,
     bounds: finite > 0 ? { min, max } : null
   };
 
@@ -163,13 +174,6 @@ function inspectPlyGeometry(buf) {
     return {
       ok: false,
       reason: `nan-positions (${nonFinite}/${sampleCount} = ${(nanRatio * 100).toFixed(1)}% non-finite)`,
-      stats
-    };
-  }
-  if (!(extent <= MAX_EXTENT)) {
-    return {
-      ok: false,
-      reason: `exploded-bounds (extent ${stats.extent} > ${MAX_EXTENT})`,
       stats
     };
   }

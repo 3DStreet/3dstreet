@@ -18,7 +18,8 @@ function buildPly(vertices, floatsPerVertex = 41) {
     'ply\n' +
     'format binary_little_endian 1.0\n' +
     `element vertex ${vertices.length}\n` +
-    propNames.map((n) => `property float ${n}`).join('\n') + '\n' +
+    propNames.map((n) => `property float ${n}`).join('\n') +
+    '\n' +
     'end_header\n';
 
   const stride = floatsPerVertex * 4;
@@ -58,10 +59,13 @@ describe('ply-sanity inspectPlyGeometry', function () {
     assert.match(result.reason, /nan-positions/);
   });
 
-  it('rejects a reconstruction with exploded bounds', function () {
+  it('accepts large-but-finite scenes, flagging extent as advisory only', function () {
+    // A legitimately large scene (e.g. a drone scan spanning thousands of
+    // units) has clean positions. Absolute extent can't distinguish it from a
+    // garbage explosion, so extent must NOT reject — it only sets an advisory
+    // flag for monitoring. The NaN check is the real gate. See issue #1745.
     const verts = [];
     for (let i = 0; i < 1000; i++) {
-      // Spread positions across thousands of units on each axis.
       verts.push([
         (i % 2 ? 1 : -1) * 2300,
         (i % 2 ? -1 : 1) * 1800,
@@ -69,8 +73,9 @@ describe('ply-sanity inspectPlyGeometry', function () {
       ]);
     }
     const result = inspectPlyGeometry(buildPly(verts));
-    assert.strictEqual(result.ok, false);
-    assert.match(result.reason, /exploded-bounds/);
+    assert.strictEqual(result.ok, true, result.reason);
+    assert.ok(result.stats.extent > MAX_EXTENT);
+    assert.strictEqual(result.stats.extentExceedsAdvisory, true);
   });
 
   it('fails open (ok:true) on an unparseable buffer', function () {

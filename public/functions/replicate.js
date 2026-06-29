@@ -1576,10 +1576,20 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
 
     // Sanity-gate the generated .ply BEFORE we keep the charge and save a
     // public asset. A failed SfM reconstruction still emits a full-size file,
-    // but the geometry is degenerate (NaN positions / exploded bounds) and
-    // won't render — it used to be billed as a success anyway (issue #1745).
-    // Reject those: refund the token and finalize the job as failed instead.
+    // but its positions are peppered with NaN/Inf and it won't render — it used
+    // to be billed as a success anyway (issue #1745). Reject on the NaN ratio:
+    // refund the token and finalize the job as failed instead. (Extent is only
+    // advisory — large-but-finite real scans must not be rejected.)
     const geometry = await evaluateSplatGeometry(splatUrl);
+    if (geometry.ok && geometry.stats?.extentExceedsAdvisory) {
+      // Passed the gate but spans an unusually large extent. Not a failure
+      // (could be a legitimately large scan), just worth surfacing so we can
+      // watch for a drift toward exploded outputs. See issue #1745.
+      console.warn(
+        `Splat for user ${userId} passed sanity but has large extent (advisory):`,
+        JSON.stringify(geometry.stats)
+      );
+    }
     if (!geometry.ok) {
       console.warn(
         `Rejecting degenerate splat for user ${userId}: ${geometry.reason}`,
