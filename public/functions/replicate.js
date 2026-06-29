@@ -1288,7 +1288,7 @@ async function fetchPlyHead(plyUrl, byteCount) {
       const chunks = [];
       await pipeline(
         bucket.file(match[2]).createReadStream({ start: 0, end: byteCount - 1 }),
-        async function* (source) {
+        async function (source) {
           for await (const chunk of source) chunks.push(chunk);
         }
       );
