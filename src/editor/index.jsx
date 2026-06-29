@@ -19,6 +19,7 @@ import { commandsByType } from './lib/commands/index.js';
 import { LocaleProvider } from './i18n/LocaleProvider';
 import useStore from '@/store';
 import { initializeLocationSync } from './lib/location-sync';
+import { batchModels } from '../batch-models.js';
 
 // Helper function to check if viewer mode is requested via URL parameter
 function isViewerModeRequested() {
@@ -221,13 +222,16 @@ Inspector.prototype = {
     }
   },
 
-  onNewScene: function () {
+  onNewScene: function (sceneEl) {
     this.history.clear();
     if (useStore.getState().isLoadingScene) {
       useStore.getState().updateLoadingProgress(95, 'Loading scene...');
       setTimeout(() => {
         useStore.getState().finishLoadingScene();
       }, 500);
+    }
+    if (sceneEl._batchingEnabled) {
+      batchModels(sceneEl);
     }
   },
 
@@ -405,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // in Inspector init (initEvents) was too late and lost the race
   // intermittently, leaving the loading modal stuck at "Finalizing..." until its
   // 30s optimistic timeout. See issue #1760.
-  scene.addEventListener('newScene', () => inspector.onNewScene());
+  scene.addEventListener('newScene', () => inspector.onNewScene(scene));
   if (scene.hasLoaded) {
     sceneLoaded();
   } else {

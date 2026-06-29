@@ -418,6 +418,13 @@ function getModifiedProperty(entity, componentName) {
 function createEntities(entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
   const removeEntities = ['environment', 'reference-layers'];
+  // Tell gltf-model to hold its GLB load for two ticks so batchModels can group every
+  // [gltf-model] in the live DOM — including entities other components create during their
+  // own init — before deciding which duplicates to skip-load. _batchGroupingDone is the
+  // per-load gate batchModels flips (and emits "batch-grouping-done") once that decision is
+  // made; batchModels runs on the "newScene" event emitted after this createEntities pass.
+  sceneElement._batchingEnabled = true;
+  sceneElement._batchGroupingDone = false;
   for (const entityData of entitiesData) {
     // Legacy migration: the geospatial layer's visibility used to be toggled
     // via the entity's `visible` attribute. The new sidepanel exposes this
