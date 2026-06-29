@@ -1,5 +1,6 @@
 import useStore from './store';
 import { createUniqueId } from './editor/lib/entity';
+import { resetSrcLoadCounts } from './batch-models';
 import JSONCrush from 'jsoncrush';
 
 /* global AFRAME, Node */
@@ -425,6 +426,9 @@ function createEntities(entitiesData, parentEl) {
   // made; batchModels runs on the "newScene" event emitted after this createEntities pass.
   sceneElement._batchingEnabled = true;
   sceneElement._batchGroupingDone = false;
+  // Reset the per-src load tally for the new scene (gltf-model.update bumps it as entities
+  // are created below; batchModels reads it to decide cloning).
+  resetSrcLoadCounts();
   for (const entityData of entitiesData) {
     // Legacy migration: the geospatial layer's visibility used to be toggled
     // via the entity's `visible` attribute. The new sidepanel exposes this

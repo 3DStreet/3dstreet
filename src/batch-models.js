@@ -160,6 +160,35 @@ function getBatchKey(el) {
   return getBatchProvider(el)?.key ?? null;
 }
 
+// Per-src tally of how many gltf-model entities will parse each src this scene, so the 2nd+
+// loader of a src clones a parsed template instead of re-parsing. gltf-model.update() bumps it
+// via noteSrcLoad — before the gated loads — so a whole duplicate group is counted before any
+// of it loads, letting even the first loader of a non-batchable group clone one parsed
+// template. markDeferredLoads/the release paths keep the count to entities that actually parse
+// (decrement on defer → batch slot, increment on release). createEntities resets it when a new
+// scene starts. Module-scoped so the component and batchModels share it without threading it
+// through every call.
+const srcLoadCounts = new Map();
+
+export function noteSrcLoad(src) {
+  if (src) srcLoadCounts.set(src, (srcLoadCounts.get(src) || 0) + 1);
+}
+
+export function srcLoadCount(src) {
+  return srcLoadCounts.get(src) || 0;
+}
+
+export function resetSrcLoadCounts() {
+  srcLoadCounts.clear();
+}
+
+function adjustSrcLoadCount(src, delta) {
+  if (!src) return;
+  const n = (srcLoadCounts.get(src) || 0) + delta;
+  if (n > 0) srcLoadCounts.set(src, n);
+  else srcLoadCounts.delete(src);
+}
+
 // Walk the live DOM after gltf-model's two-tick hold has let it settle, group by
 // gltf-model src, and flip `deferLoad = true` on the N-1 non-reference members of every
 // all-safe duplicate group so they never download/parse — batchModels owns them as batch
@@ -194,6 +223,9 @@ function markDeferredLoads(gltfEntities) {
       const comp = members[i].components['gltf-model'];
       if (comp) {
         comp.deferLoad = true;
+        // This member won't parse (it'll be a batch slot), so drop it from the per-src load
+        // tally — leaving the count to entities that actually parse.
+        adjustSrcLoadCount(comp.data, -1);
         deferredCount++;
       }
     }
@@ -747,6 +779,8 @@ export async function batchModels(sceneEl) {
         !inEditor && el.classList.contains('clickable');
       if (groupNeedsLoad || isRuntimeClickable) {
         comp.deferLoad = false;
+        // It will parse after all — put it back in the per-src tally.
+        adjustSrcLoadCount(comp.data, +1);
         comp.update();
       }
     }
@@ -788,6 +822,8 @@ export async function batchModels(sceneEl) {
     const comp = el.components?.['gltf-model'];
     if (comp?.deferLoad && !isBatched(el)) {
       comp.deferLoad = false;
+      // It will parse after all — put it back in the per-src tally.
+      adjustSrcLoadCount(comp.data, +1);
       comp.update();
     }
   }

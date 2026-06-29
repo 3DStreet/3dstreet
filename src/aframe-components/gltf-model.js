@@ -2,6 +2,7 @@
 import { disposeNode } from '../disposeUtils';
 import { acquireSharedSource } from '../sharedTextureSources';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
+import { noteSrcLoad, srcLoadCount } from '../batch-models';
 
 // Share one decoded THREE.Source across textures (within and across GLBs) that embed the
 // byte-identical image. The server bakes images[].extras.imageHash; GLTFLoader.loadImageSource
@@ -127,20 +128,6 @@ function cloneGltfScene(scene, sceneEl) {
   return root;
 }
 
-// How many entities will actually parse this src (same gltf-model data, not deferred by
-// batch-models). Single-use GLBs are parsed directly; only srcs loaded by >=2 entities are
-// worth caching + cloning, since cloning copies all the geometry buffers for a template.
-function countSrcLoaders(sceneEl, src) {
-  let n = 0;
-  for (const el of sceneEl.querySelectorAll('[gltf-model]')) {
-    // el.components can be undefined for an entity that has the attribute but isn't
-    // upgraded/initialized yet (e.g. one another component just created this tick).
-    const comp = el.components?.['gltf-model'];
-    if (comp && comp.data === src && !comp.deferLoad) n++;
-  }
-  return n;
-}
-
 // Parse a GLB once per src and keep the pristine parsed scene as a clone template (cache +
 // in-flight promise, both scene-scoped on sceneEl). Every instance — including the first —
 // clones from this pristine template, so the template is never mutated: the per-instance
@@ -190,10 +177,10 @@ export const gltfModelPlus = {
 
   init: function () {
     const self = this;
-    const dracoLoader = this.el.sceneEl.systems['gltf-model'].getDRACOLoader();
-    const meshoptDecoder =
-      this.el.sceneEl.systems['gltf-model'].getMeshoptDecoder();
-    const ktxLoader = this.el.sceneEl.systems['gltf-model'].getKTX2Loader();
+    const gltfSystem = this.el.sceneEl.systems['gltf-model'];
+    const dracoLoader = gltfSystem.getDRACOLoader();
+    const meshoptDecoder = gltfSystem.getMeshoptDecoder();
+    const ktxLoader = gltfSystem.getKTX2Loader();
     this.model = null;
     this.loader = new THREE.GLTFLoader();
     // Set true by batchModels when this entity is a duplicate it owns as a batch slot:
@@ -231,6 +218,14 @@ export const gltfModelPlus = {
       return;
     }
 
+    // Tally this entity against its src once, here at its first (non-deferred) update — before
+    // the gated GLB loads — so a whole duplicate group is counted before any of it loads (see
+    // noteSrcLoad / loadModel's clone decision).
+    if (!this._srcCounted) {
+      this._srcCounted = true;
+      noteSrcLoad(this.data);
+    }
+
     // When the scene will be batched, don't load yet: park until batchModels has grouped the
     // live DOM and decided which duplicates to defer. It waits for the DOM to settle, then
     // flips sceneEl._batchGroupingDone and emits "batch-grouping-done" — so the deferLoad we
@@ -263,7 +258,8 @@ export const gltfModelPlus = {
     const el = this.el;
     const src = this.data;
 
-    this.remove();
+    // Drop the current mesh before (re)loading.
+    this.removeMesh();
 
     if (!src) {
       return;
@@ -382,11 +378,11 @@ export const gltfModelPlus = {
         self._loadSettled = true;
         el.emit('model-error', { format: 'gltf', src: src });
       }
-      // When >=2 entities load the same src, parse a pristine template once and clone it
-      // per instance — skipping re-download, draco/image decode and accessor→geometry
-      // build. Single-use GLBs are parsed directly (cloning copies all their geometry).
+      // The 2nd+ loader of a src clones a pristine template parsed once by loadParsedGltf
+      // instead of re-parsing (skips re-download, draco/image decode and accessor→geometry
+      // build). The first loader parses the GLB directly.
       const cacheOn = !globalThis.__gltfCacheDisabled;
-      if (cacheOn && countSrcLoaders(el.sceneEl, src) >= 2) {
+      if (cacheOn && srcLoadCount(src) >= 2) {
         loadParsedGltf(self.loader, el.sceneEl, src, onProgress)
           .then((entry) => {
             if (src !== self.data) return;
