@@ -80,40 +80,67 @@ export const streetLayersData = [
 
 export const customLayersData = [
   {
-    name: 'Entity from extruded SVG',
+    name: 'Building Box',
     img: '',
     icon: '',
-    requiresPro: true,
+    requiresPro: false,
     description:
-      'Create entity with svg-extruder component, that accepts a svgString and creates a new entity with geometry extruded from the svg and applies the default mixin material grass.',
-    handlerFunction: createFunctions.createSvgExtrudedEntity
+      'Add a simple box roughly the size of a 3-story building, sitting on the ground in a bright blue. A quick placeholder for blocking out buildings.',
+    handlerFunction: createFunctions.createBuildingBox
   },
   {
-    name: 'glTF model from URL',
+    name: 'Highlight Ring',
     img: '',
-    requiresPro: true,
     icon: '',
+    requiresPro: false,
     description:
-      'Create entity with model from path for a glTF (or Glb) file hosted on any publicly accessible HTTP server.',
-    handlerFunction: createFunctions.createCustomModel
+      'Add a bright red ring on the ground, big enough to circle and highlight a real-world element like a vehicle, tree, or part of a lane.',
+    handlerFunction: createFunctions.createHighlightRing
   },
   {
-    name: 'Create primitive geometry',
+    name: 'Asphalt Circle',
     img: '',
-    requiresPro: true,
     icon: '',
+    requiresPro: false,
     description:
-      'Create entity with A-Frame primitive geometry. Geometry type could be changed in properties panel.',
+      'Add a large flat asphalt circle on the ground. Geometry and material can be changed in the properties panel.',
     handlerFunction: createFunctions.createPrimitiveGeometry
   },
   {
-    name: 'Place New Image Entity',
+    name: 'Grass Box',
     img: '',
-    requiresPro: true,
+    icon: '',
+    requiresPro: false,
+    description:
+      'Add a large, thin green ground slab to act as a lawn for scenes that do not already have terrain.',
+    handlerFunction: createFunctions.createGrassBox
+  },
+  {
+    name: 'Upload Image',
+    img: '',
+    requiresPro: false,
     icon: 'ui_assets/cards/icons/gallery24.png',
     description:
-      'Place an image such as a sign, reference photo, custom map, etc.',
+      'Upload an image (sign, reference photo, custom map, etc.) from your device and place it in the scene.',
     handlerFunction: createFunctions.createImageEntity
+  },
+  {
+    name: 'Upload 3D Model',
+    img: '',
+    requiresPro: false,
+    icon: '',
+    description:
+      'Upload a glTF or GLB model from your device. It is rendered immediately and saved to your asset library.',
+    handlerFunction: createFunctions.createCustomModel
+  },
+  {
+    name: 'Upload Gaussian Splat',
+    img: '',
+    requiresPro: false,
+    icon: '',
+    description:
+      'Upload a Gaussian Splat (.splat, .ply, .spz, .rad) from your device and place it in the scene.',
+    handlerFunction: createFunctions.createSplatObject
   },
   {
     name: '360° Panorama Sphere',
@@ -125,12 +152,12 @@ export const customLayersData = [
     handlerFunction: createFunctions.createPanoramaSphere
   },
   {
-    name: 'Gaussian Splat from URL',
+    name: 'Entity from extruded SVG',
     img: '',
-    requiresPro: true,
     icon: '',
+    requiresPro: false,
     description:
-      'Create entity with Gaussian Splat model from a URL. Supports .splat, .ply, and .spz file formats.',
-    handlerFunction: createFunctions.createSplatObject
+      'Create entity with svg-extruder component, that accepts a svgString and creates a new entity with geometry extruded from the svg and applies the default mixin material grass.',
+    handlerFunction: createFunctions.createSvgExtrudedEntity
   }
 ].map((layer, index) => ({ ...layer, id: index + 1 }));

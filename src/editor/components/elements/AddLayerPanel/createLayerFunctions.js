@@ -1,5 +1,46 @@
 import { createUniqueId } from '../../../lib/entity.js';
 import * as defaultStreetObjects from './defaultStreets.js';
+import { uploadAndPlaceAsset } from '../../../lib/asset-upload/uploadAndPlaceAsset.js';
+import Events from '../../../lib/Events.js';
+
+// Per-kind file picker filters for the upload-backed custom layers. These mirror
+// the extension lists in src/shared/asset-upload/uploadAsset.js, scoped to a
+// single asset kind so each card only accepts the file type it represents.
+const ASSET_PICKER_ACCEPT = {
+  glb: '.glb,.gltf',
+  image: '.jpg,.jpeg,.png,.webp,.avif',
+  splat: '.splat,.ply,.spz,.rad'
+};
+
+// Opens the native file-select dialog (same flow as the File ▸ Import menu and
+// drag-and-drop), then hands the chosen file to the asset upload pipeline. The
+// pipeline renders a local placeholder immediately and uploads to the user's
+// asset library in the background (auth + quota are enforced there).
+function openAssetUploadPicker(position, kind) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = ASSET_PICKER_ACCEPT[kind];
+  input.onchange = async (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Reveal the Assets panel so the user sees the upload begin and its
+      // progress, even if the left panel was showing Layers or Geospatial.
+      Events.emit('openassetspanel');
+      await uploadAndPlaceAsset(file, position);
+    }
+  };
+  input.click();
+}
+
+// Builds a position string that keeps an entity's base on the ground. `position`
+// is a THREE.Vector3 when dropped onto the scene, or undefined when the card is
+// clicked (entity is centered at the origin).
+function groundedPositionString(position, yOffset) {
+  if (position && typeof position.x === 'number') {
+    return `${position.x} ${position.y + yOffset} ${position.z}`;
+  }
+  return `0 ${yOffset} 0`;
+}
 
 export function createSvgExtrudedEntity(position) {
   // This component accepts a svgString and creates a new entity with geometry extruded
@@ -231,24 +272,60 @@ export function create150ftRightOfWay(position) {
 }
 
 export function createCustomModel(position) {
-  // accepts a path for a glTF (or glb) file hosted on any publicly accessible HTTP server.
-  // Then create entity with model from that path by using gltf-model component
-  const modelUrl = prompt(
-    'Please enter a URL to custom glTF/GLB model',
-    'https://cdn.glitch.global/690c7ea3-3f1c-434b-8b8d-3907b16de83c/Mission_Bay_school_low_poly_model_v03_draco.glb'
-  );
-  if (modelUrl && modelUrl !== '') {
-    const definition = {
-      class: 'custom-model',
-      components: {
-        position: position ?? '0 0 0',
-        'gltf-model': `url(${modelUrl})`,
-        'data-layer-name': 'glTF Model • My Custom Object',
-        shadow: 'receive: true; cast: true;'
-      }
-    };
-    AFRAME.INSPECTOR.execute('entitycreate', definition);
-  }
+  // Upload a glTF/GLB model from the user's device. The chosen file is rendered
+  // locally and stored in the user's asset library via the upload pipeline.
+  openAssetUploadPicker(position, 'glb');
+}
+
+export function createBuildingBox(position) {
+  // A simple massing block roughly the size of a 3-story building (~10m tall),
+  // sitting on the ground in a bright primary blue. Meant as an easy placeholder
+  // for non-technical users to block out buildings.
+  const height = 10; // ~3 stories
+  const definition = {
+    components: {
+      position: groundedPositionString(position, height / 2),
+      geometry: `primitive: box; width: 10; height: ${height}; depth: 10;`,
+      material: 'color: #2962ff; roughness: 0.8;',
+      'data-layer-name': 'Building Box • 3 Stories',
+      shadow: 'receive: true; cast: true;'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
+export function createGrassBox(position) {
+  // A large, thin green slab (4x the building box footprint, 0.5m thick) to act
+  // as a ground/lawn for non-street scenes that don't already have terrain.
+  // Offset down by half its thickness so its top surface sits exactly at y=0 and
+  // objects placed on the ground rest flush on top of it.
+  const thickness = 0.5;
+  const definition = {
+    components: {
+      position: groundedPositionString(position, -thickness / 2),
+      geometry: `primitive: box; width: 40; height: ${thickness}; depth: 40;`,
+      material: 'color: #4c9a2a; roughness: 1;',
+      'data-layer-name': 'Grass Box • Ground',
+      shadow: 'receive: true;'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
+export function createHighlightRing(position) {
+  // A bright red ring laid flat on the ground, large enough to circle and
+  // highlight a real-world street element (vehicle, tree, lane area, etc.).
+  // Uses the flat shader so it stays vivid regardless of scene lighting.
+  const definition = {
+    components: {
+      position: groundedPositionString(position, 0.1),
+      rotation: '-90 0 0',
+      geometry: 'primitive: torus; radius: 3; radiusTubular: 0.15;',
+      material: 'shader: flat; color: #ff0000; side: double;',
+      'data-layer-name': 'Highlight Ring • Red'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
 export function createPrimitiveGeometry(position) {
@@ -266,24 +343,10 @@ export function createPrimitiveGeometry(position) {
 }
 
 export function createImageEntity(position) {
-  // This component accepts a svgString and creates a new entity with geometry extruded
-  // from the svg and applies the default mixin material grass.
-  const imagePath = prompt(
-    'Please enter an image path that is publicly accessible on the web and starts with https://',
-    `https://assets.3dstreet.app/images/signs/Sign-Speed-30kph-Kiritimati.png`
-  );
-  if (imagePath && imagePath !== '') {
-    const definition = {
-      element: 'a-entity',
-      components: {
-        position: position ?? '0 0 0', // TODO: How to override only the height (y) value? We don't want the sign in the ground
-        geometry: 'primitive: plane; height: 1.5; width: 1;',
-        material: `src: url(${imagePath})`,
-        'data-layer-name': 'Image • User Specified Path'
-      }
-    };
-    AFRAME.INSPECTOR.execute('entitycreate', definition);
-  }
+  // Upload an image (sign, reference photo, custom map, etc.) from the user's
+  // device. The upload pipeline sizes the image plane and stores it in the
+  // user's asset library.
+  openAssetUploadPicker(position, 'image');
 }
 
 export function createIntersection(position) {
@@ -299,25 +362,10 @@ export function createIntersection(position) {
 }
 
 export function createSplatObject(position) {
-  // accepts a path for a .splat, .ply, or .spz file hosted on a CORS-enabled HTTP server.
-  // Then create entity with model from that path by using splat component (Spark library)
-  // Note: GitHub raw URLs don't work due to CORS. Use a CDN or CORS-enabled server.
-  const modelUrl = prompt(
-    "Enter URL to a Gaussian Splat (.splat, .ply, .spz)\n\nNote: Host must allow CORS. GitHub raw URLs won't work.",
-    'https://sparkjs.dev/assets/splats/butterfly.spz'
-  );
-
-  if (modelUrl && modelUrl !== '') {
-    const definition = {
-      class: 'splat-model',
-      'data-layer-name': 'Splat Model • My Custom Object',
-      components: {
-        position: position ?? '0 0 0',
-        splat: `src: ${modelUrl}`
-      }
-    };
-    AFRAME.INSPECTOR.execute('entitycreate', definition);
-  }
+  // Upload a Gaussian Splat (.splat, .ply, .spz, .rad) from the user's device.
+  // The upload pipeline renders it locally and stores it in the user's asset
+  // library (and queues RAD/LOD conversion where applicable).
+  openAssetUploadPicker(position, 'splat');
 }
 
 export function createPanoramaSphere() {

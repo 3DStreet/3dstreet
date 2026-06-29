@@ -73,6 +73,7 @@ export default class SceneGraph extends React.Component {
   componentDidMount() {
     this.rebuildEntityOptions();
     Events.on('entityupdate', this.onEntityUpdate);
+    Events.on('openassetspanel', this.showAssetsPanel);
     document.addEventListener('child-attached', this.onChildAttachedDetached);
     document.addEventListener('child-detached', this.onChildAttachedDetached);
     this.unsubscribePanels = useStore.subscribe(
@@ -83,6 +84,7 @@ export default class SceneGraph extends React.Component {
 
   componentWillUnmount() {
     Events.off('entityupdate', this.onEntityUpdate);
+    Events.off('openassetspanel', this.showAssetsPanel);
     document.removeEventListener(
       'child-attached',
       this.onChildAttachedDetached
@@ -390,6 +392,12 @@ export default class SceneGraph extends React.Component {
 
   setActiveTab = (tab) => {
     this.setState({ activeTab: tab });
+  };
+
+  // Reveal the Assets tab when an asset upload starts elsewhere (e.g. the Add
+  // Layer Panel's upload cards) so the user sees their upload progress.
+  showAssetsPanel = () => {
+    this.setActiveTab('assets');
   };
 
   openAddLayer = () => {
