@@ -71,7 +71,8 @@ const BATCH_SAFE_COMPONENTS = new Set([
   'scale',
   'visible',
   'shadow',
-  'gltf-model'
+  'gltf-model',
+  'gltf-part'
 ]);
 
 // Below this triangle count, BVH build + traversal + memory cost outweighs the gain over
@@ -109,8 +110,59 @@ function getOrCreateBatchRoot() {
   return el;
 }
 
+// Entities batch-models can fold into a BatchedMesh: gltf-model (its own component) and
+// gltf-part (a named sub-mesh of a shared GLB, usually applied via a mixin). querySelectorAll
+// matches both attributes, including the mixin-applied ones.
+const BATCHABLE_SELECTOR = '[gltf-model], [gltf-part]';
+
+// Per-entity batching adapter abstracting the two providers' differences:
+// - key: identical key ⇒ identical geometry + material ⇒ batchable together. Kept distinct
+//   between providers (gltf-part is prefixed) so a group is always homogeneous.
+// - ownsResources: gltf-model clones own their geometry AND materials, so teardown disposes
+//   them. gltf-part shares its material with the module-level MODELS cache (and every
+//   non-batched instance of the part), so we must NOT dispose materials — only the
+//   per-instance geometry, which strip() handles.
+// - strip: detach the original mesh once it's folded into the BatchedMesh.
+// - reload: rebuild the original mesh (popMember, when an unsafe component forces unbatching).
+function getBatchProvider(el) {
+  const gltfModel = el.components?.['gltf-model'];
+  if (gltfModel) {
+    return {
+      kind: 'gltf-model',
+      key: el.getAttribute('gltf-model'),
+      ownsResources: true,
+      strip: () => gltfModel.removeMesh(),
+      reload: () => gltfModel.update()
+    };
+  }
+  const gltfPart = el.components?.['gltf-part'];
+  if (gltfPart) {
+    const { src, part } = gltfPart.data;
+    return {
+      kind: 'gltf-part',
+      key: src && part ? `part|${src}|${part}` : null,
+      ownsResources: false,
+      strip: () => stripGltfPartMesh(el),
+      reload: () => gltfPart.update()
+    };
+  }
+  return null;
+}
+
+// Strip a gltf-part member's mesh once it's in the BatchedMesh: dispose its per-instance
+// geometry (gltf-part clones the geometry per entity), but NOT its material — that's shared
+// with the gltf-part MODELS cache and other instances of the part.
+function stripGltfPartMesh(el) {
+  const mesh = el.getObject3D('mesh');
+  if (!mesh) return;
+  el.removeObject3D('mesh');
+  mesh.traverse((node) => {
+    if (node.isMesh && node.geometry) node.geometry.dispose();
+  });
+}
+
 function getBatchKey(el) {
-  return el.getAttribute('gltf-model');
+  return getBatchProvider(el)?.key ?? null;
 }
 
 // Walk the live DOM after gltf-model's two-tick hold has let it settle, group by
@@ -129,6 +181,9 @@ function getBatchKey(el) {
 function markDeferredLoads(gltfEntities) {
   const groups = new Map();
   for (const el of gltfEntities) {
+    // Only gltf-model has a deferrable load; gltf-part already parses each GLB once via its
+    // own module cache, so it's never deferred (batchModels just groups it once loaded).
+    if (!el.components?.['gltf-model']) continue;
     const key = getBatchKey(el);
     if (typeof key !== 'string' || !key) continue;
     if (getBlockingComponents(el).length > 0) continue; // not batch-safe → must load
@@ -167,7 +222,7 @@ function waitForModelLoaded(el) {
   // Resolve immediately if the load already settled — a model-loaded (mesh present) or a
   // model-error (no mesh) may have fired before we got here, e.g. a fast 403. Relying only
   // on the events would miss those and hang Promise.all forever.
-  const comp = el.components?.['gltf-model'];
+  const comp = el.components?.['gltf-model'] || el.components?.['gltf-part'];
   if (el.getObject3D('mesh') || comp?._loadSettled) return Promise.resolve();
   return new Promise((resolve) => {
     const done = () => {
@@ -225,7 +280,7 @@ function ensureOriginalBvh(el) {
 }
 
 function getSrc(el) {
-  const src = el.getAttribute('gltf-model');
+  const src = getBatchKey(el) || '';
   return src.startsWith('data:') ? 'data:...' : src;
 }
 
@@ -365,7 +420,14 @@ function batchGroup(batchRootEl, key, members) {
     return null;
   }
 
-  const keepAlive = markRefMeshResources(materialGroups);
+  // gltf-model clones own their resources, so we tag the ref's materials/textures/geometries
+  // _batchKeepAlive (disposeNode spares them at strip) and dispose them at teardown. gltf-part
+  // shares its material with the module cache, so there's nothing to keep alive or dispose —
+  // strip() frees only the per-instance geometry.
+  const ownsResources = getBatchProvider(members[0])?.ownsResources ?? true;
+  const keepAlive = ownsResources
+    ? markRefMeshResources(materialGroups)
+    : { withUserData: new Set(), imageBitmaps: new Set() };
   const localBbox = computeBatchLocalBbox(materialGroups);
 
   for (const el of members) {
@@ -443,6 +505,7 @@ function batchGroup(batchRootEl, key, members) {
     members,
     key,
     keepAlive,
+    ownsResources,
     activeMemberCount: members.length
   };
 
@@ -460,7 +523,7 @@ function batchGroup(batchRootEl, key, members) {
   for (const el of members) {
     // Clear the deferLoad flag on every batched member: those still flagged would
     // otherwise be permanently batched-with-no-mesh, and a future popMember →
-    // gltf-model.update() must be free to actually load.
+    // reload() must be free to actually load. (gltf-part has no deferLoad — no-op.)
     const gltfComp = el.components['gltf-model'];
     if (gltfComp) gltfComp.deferLoad = false;
     el.object3D.userData._batchGroup = group;
@@ -469,7 +532,7 @@ function batchGroup(batchRootEl, key, members) {
       const mesh = el.getObject3D('mesh');
       if (mesh) mesh.visible = false;
     } else {
-      gltfComp?.removeMesh();
+      getBatchProvider(el)?.strip();
     }
     // Deferred members never got their own model-loaded; emit one now so
     // listeners that need to wait for batch completion (e.g. subtract-mesh
@@ -528,7 +591,7 @@ function onSceneComponentChanged(evt) {
   }
   if (name === 'visible') {
     applyEffectiveVisibility(root);
-    for (const el of root.querySelectorAll('[gltf-model]')) {
+    for (const el of root.querySelectorAll(BATCHABLE_SELECTOR)) {
       applyEffectiveVisibility(el);
     }
     return;
@@ -545,7 +608,7 @@ export function syncBatchedSubtree(el) {
   // before we read it.
   el.object3D.updateWorldMatrix(true, true);
   syncBatchedSlots(el);
-  for (const descendant of el.querySelectorAll('[gltf-model]')) {
+  for (const descendant of el.querySelectorAll(BATCHABLE_SELECTOR)) {
     syncBatchedSlots(descendant);
   }
 }
@@ -634,7 +697,7 @@ export async function batchModels(sceneEl) {
     await new Promise((resolve) => setTimeout(resolve));
   }
 
-  const gltfEntities = Array.from(rootEl.querySelectorAll('[gltf-model]'));
+  const gltfEntities = Array.from(rootEl.querySelectorAll(BATCHABLE_SELECTOR));
   markDeferredLoads(gltfEntities);
 
   // Grouping decided: release every held gltf-model. Non-deferred ones load now;
@@ -787,7 +850,7 @@ function onLateChildDetached(evt) {
   if (!el) return;
   if (isBatched(el)) removeMember(el);
   // A removed subtree may contain multiple batched descendants.
-  for (const descendant of el.querySelectorAll('[gltf-model]')) {
+  for (const descendant of el.querySelectorAll(BATCHABLE_SELECTOR)) {
     if (isBatched(descendant)) removeMember(descendant);
   }
 }
@@ -797,12 +860,16 @@ function onLateChildDetached(evt) {
 // for the model's GLB-loaded materials/textures/geometries exists — they'd otherwise leak
 // GPU memory since the entities' mesh trees were stripped at batch time.
 function teardownBuiltGroup(group) {
-  const { batchRootEl, object3DKeys, keepAlive } = group;
+  const { batchRootEl, object3DKeys, keepAlive, ownsResources } = group;
   for (const key of object3DKeys) {
     const batched = batchRootEl.getObject3D(key);
     batchRootEl.removeObject3D(key);
     if (batched?.isBatchedMesh) batched.dispose();
   }
+  // gltf-part groups don't own their resources: materials are shared with the module-level
+  // MODELS cache (and may be reused by the next scene), and per-instance geometries were
+  // already disposed by strip(). Nothing else to free.
+  if (!ownsResources) return;
   for (const obj of keepAlive.withUserData) {
     delete obj.userData._batchKeepAlive;
     // Account for this group's use of any shared Source so its bitmap is closed on the last
@@ -833,11 +900,12 @@ export function isBatched(el) {
 // the entity is a normal unbatched gltf-model with the new (unsafe) component applied.
 export function popMember(el) {
   if (!isBatched(el)) return false;
+  const provider = getBatchProvider(el);
   console.log(
     `[batch-models] popping ${describeEl(el)}: dropping slot + reloading`
   );
   removeMember(el);
-  el.components['gltf-model']?.update();
+  provider?.reload();
   return true;
 }
 
