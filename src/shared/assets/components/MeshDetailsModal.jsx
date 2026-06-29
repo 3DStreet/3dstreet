@@ -479,8 +479,6 @@ const MeshDetailsModal = ({
     splat: 'SPLAT',
     spz: 'SPZ',
     rad: 'RAD Streaming Level-of-Detail',
-    ksplat: 'KSPLAT',
-    sog: 'SOG',
     glb: 'GLB',
     gltf: 'glTF'
   };
