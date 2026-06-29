@@ -1,5 +1,6 @@
 import { useEffect, useReducer } from 'react';
 import PropTypes from 'prop-types';
+import Collapsible from '../Collapsible';
 import PropertyRow from './PropertyRow';
 import Events from '../../lib/Events';
 import { Button } from '../elements';
@@ -88,83 +89,87 @@ const MaterialControls = ({ entity }) => {
 
   return (
     <div className="details material-controls">
-      <div className="componentHeader collapsible-header">
-        <span className="componentTitle" title="Material">
-          <span>Material</span>
-        </span>
-      </div>
-      <div className="collapsible-content">
-        {/* The material schema is dynamic per shader (e.g. shader:flat has no
-            roughness), so each optional row is guarded by schema presence. */}
-        {schema.color && (
-          <PropertyRow
-            name="color"
-            label="Color"
-            schema={schema.color}
-            data={data.color}
-            componentname="material"
-            entity={entity}
-          />
-        )}
-        {schema.src && (
-          <PropertyRow
-            name="src"
-            label="Texture"
-            schema={schema.src}
-            data={data.src ?? ''}
-            componentname="material"
-            entity={entity}
-            rightElement={
-              hasTexture ? (
-                <Button variant="ghost" onClick={makeSolidColor}>
-                  Make Solid
-                </Button>
-              ) : null
-            }
-          />
-        )}
-        {hasTexture && schema.repeat && (
-          <PropertyRow
-            name="repeat"
-            label="Texture Repeat"
-            schema={schema.repeat}
-            data={data.repeat}
-            componentname="material"
-            entity={entity}
-          />
-        )}
-        <div className="propertyRow opacity-row">
-          <label
-            className="text"
-            htmlFor="material-opacity"
-            style={{ textTransform: 'none' }}
-          >
-            Opacity
-          </label>
-          <div className="opacity-slider">
-            <input
-              id="material-opacity"
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={opacity}
-              onChange={(e) => setOpacity(parseFloat(e.target.value))}
-            />
-            <span className="opacity-value">{Math.round(opacity * 100)}%</span>
-          </div>
+      <Collapsible>
+        <div className="componentHeader collapsible-header">
+          <span className="componentTitle" title="material">
+            <span>material</span>
+          </span>
         </div>
-        {schema.roughness && (
-          <PropertyRow
-            name="roughness"
-            label="Roughness"
-            schema={schema.roughness}
-            data={data.roughness}
-            componentname="material"
-            entity={entity}
-          />
-        )}
-      </div>
+        <div className="collapsible-content">
+          {/* The material schema is dynamic per shader (e.g. shader:flat has no
+            roughness), so each optional row is guarded by schema presence. */}
+          {schema.color && (
+            <PropertyRow
+              name="color"
+              label="Color"
+              schema={schema.color}
+              data={data.color}
+              componentname="material"
+              entity={entity}
+            />
+          )}
+          {schema.src && (
+            <PropertyRow
+              name="src"
+              label="Texture"
+              schema={schema.src}
+              data={data.src ?? ''}
+              componentname="material"
+              entity={entity}
+              rightElement={
+                hasTexture ? (
+                  <Button variant="ghost" onClick={makeSolidColor}>
+                    Make Solid
+                  </Button>
+                ) : null
+              }
+            />
+          )}
+          {hasTexture && schema.repeat && (
+            <PropertyRow
+              name="repeat"
+              label="Texture Repeat"
+              schema={schema.repeat}
+              data={data.repeat}
+              componentname="material"
+              entity={entity}
+            />
+          )}
+          <div className="propertyRow opacity-row">
+            <label
+              className="text"
+              htmlFor="material-opacity"
+              style={{ textTransform: 'none' }}
+            >
+              Opacity
+            </label>
+            <div className="opacity-slider">
+              <input
+                id="material-opacity"
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={opacity}
+                onChange={(e) => setOpacity(parseFloat(e.target.value))}
+              />
+              <span className="opacity-value">
+                {Math.round(opacity * 100)}%
+              </span>
+            </div>
+          </div>
+          {schema.roughness && (
+            <PropertyRow
+              name="roughness"
+              label="Roughness"
+              schema={schema.roughness}
+              data={data.roughness}
+              componentname="material"
+              entity={entity}
+            />
+          )}
+        </div>
+      </Collapsible>
     </div>
   );
 };

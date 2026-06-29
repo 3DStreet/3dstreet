@@ -16,7 +16,11 @@ export default class Component extends React.Component {
     component: PropTypes.any,
     entity: PropTypes.object,
     isCollapsed: PropTypes.bool,
-    name: PropTypes.string
+    name: PropTypes.string,
+    // Property names to omit from the rendered rows (e.g. advanced geometry
+    // props promoted into the featured section but too low-level to surface
+    // there — they remain available under Advanced Components).
+    hideProperties: PropTypes.array
   };
 
   constructor(props) {
@@ -93,10 +97,14 @@ export default class Component extends React.Component {
       );
     }
 
+    const hideProperties = this.props.hideProperties || [];
     return Object.keys(componentData.schema)
       .sort()
       .filter((propertyName) => {
-        return shouldShowProperty(propertyName, componentData);
+        return (
+          !hideProperties.includes(propertyName) &&
+          shouldShowProperty(propertyName, componentData)
+        );
       })
       .map((propertyName) => (
         <div className="detailed" key={propertyName}>

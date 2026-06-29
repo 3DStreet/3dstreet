@@ -48,14 +48,14 @@ const SIMPLE_NOISE = `
 AFRAME.registerComponent('street-generated-grass', {
   schema: {
     // Blades per square meter of host area; the actual count is area-scaled and
-    // capped at MAX_BLADES.
-    density: { default: 10, type: 'number' },
-    grassHeight: { default: 1.0, type: 'number' },
-    grassWidth: { default: 0.1, type: 'number' },
+    // capped at MAX_BLADES. min: 0 keeps all numeric inputs non-negative.
+    density: { default: 10, type: 'number', min: 0 },
+    grassHeight: { default: 1.0, type: 'number', min: 0 },
+    grassWidth: { default: 0.1, type: 'number', min: 0 },
     color: { default: '#6aa84f', type: 'color' },
     // Random seed for blade layout. 0 means "pick one and persist it" so the
     // layout is stable across reloads even though blades regenerate from config.
-    seed: { default: 0, type: 'int' }
+    seed: { default: 0, type: 'int', min: 0 }
   },
 
   init: function () {
