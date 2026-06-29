@@ -116,6 +116,15 @@ export const customLayersData = [
     handlerFunction: createFunctions.createGrassBox
   },
   {
+    name: 'Concrete Cylinder',
+    img: '',
+    icon: '',
+    requiresPro: false,
+    description:
+      'Add a gray concrete cylinder roughly the size of an interstate highway support pillar. A quick placeholder for elevated-roadway columns.',
+    handlerFunction: createFunctions.createConcreteCylinder
+  },
+  {
     name: 'Upload Image',
     img: '',
     requiresPro: false,

@@ -312,6 +312,23 @@ export function createGrassBox(position) {
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
+export function createConcreteCylinder(position) {
+  // A gray concrete cylinder roughly the size of an interstate highway support
+  // pillar (~1.2m diameter, ~8m tall), sitting on the ground. A quick placeholder
+  // for elevated-roadway columns.
+  const height = 8;
+  const definition = {
+    components: {
+      position: groundedPositionString(position, height / 2),
+      geometry: `primitive: cylinder; radius: 0.6; height: ${height};`,
+      material: 'color: #9e9e9e; roughness: 0.9;',
+      'data-layer-name': 'Concrete Cylinder • Highway Pillar',
+      shadow: 'receive: true; cast: true;'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
 export function createHighlightRing(position) {
   // A bright red ring laid flat on the ground, large enough to circle and
   // highlight a real-world street element (vehicle, tree, lane area, etc.).
