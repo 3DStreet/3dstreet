@@ -1,15 +1,20 @@
 import { createUniqueId } from '../../../lib/entity.js';
 import * as defaultStreetObjects from './defaultStreets.js';
 import { uploadAndPlaceAsset } from '../../../lib/asset-upload/uploadAndPlaceAsset.js';
+import {
+  GLB_EXTS,
+  IMAGE_EXTS,
+  SPLAT_EXTS
+} from '@shared/asset-upload/uploadAsset.js';
 import Events from '../../../lib/Events.js';
 
-// Per-kind file picker filters for the upload-backed custom layers. These mirror
-// the extension lists in src/shared/asset-upload/uploadAsset.js, scoped to a
-// single asset kind so each card only accepts the file type it represents.
+// Per-kind file picker filters for the upload-backed custom layers, derived from
+// the shared extension allowlists in src/shared/asset-upload/uploadAsset.js so
+// each card accepts exactly what the upload pipeline accepts for that kind.
 const ASSET_PICKER_ACCEPT = {
-  glb: '.glb,.gltf',
-  image: '.jpg,.jpeg,.png,.webp,.avif',
-  splat: '.splat,.ply,.spz,.rad'
+  glb: GLB_EXTS.join(','),
+  image: IMAGE_EXTS.join(','),
+  splat: SPLAT_EXTS.join(',')
 };
 
 // Opens the native file-select dialog (same flow as the File ▸ Import menu and

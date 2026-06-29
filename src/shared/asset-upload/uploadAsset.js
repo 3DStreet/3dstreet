@@ -31,13 +31,13 @@ import { optimizeGlb } from './optimizeGlb.js';
 // ceiling in public/storage.rules.
 export const MAX_FILE_BYTES = 5 * 1000 * 1000 * 1000;
 
-const GLB_EXTS = ['.glb', '.gltf'];
-const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.avif'];
+export const GLB_EXTS = ['.glb', '.gltf'];
+export const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.avif'];
 // Gaussian Splat formats supported by the `splat` A-Frame component (Spark)
 // and the RAD converter (build-lod content-sniffs all of these). `.rad` is the
 // pre-optimized, byte-range-streamable form: uploading one skips conversion
 // (see onSplatAssetCreated). Sourced from the shared SPLAT_EXTENSIONS constant.
-const SPLAT_EXTS = SPLAT_EXTENSIONS.map((ext) => `.${ext}`);
+export const SPLAT_EXTS = SPLAT_EXTENSIONS.map((ext) => `.${ext}`);
 const ACCEPTED_EXTS = [...GLB_EXTS, ...IMAGE_EXTS, ...SPLAT_EXTS];
 
 export const FILE_PICKER_ACCEPT = ACCEPTED_EXTS.join(',');
