@@ -434,9 +434,10 @@ const GeoModal = () => {
             {!currentUser?.isPro && tokenProfile?.geoToken === 0 ? (
               <div className="rounded bg-red-50 p-2 text-red-600">
                 <div className="mb-1 font-semibold uppercase">
+                  🚀{' '}
                   <FormattedMessage
                     id="geoModal.outOfGeoTokensTitle"
-                    defaultMessage="🚀 Out of Geo Tokens"
+                    defaultMessage="Out of Geo Tokens"
                   />
                 </div>
                 <ul className="space-y-1">
@@ -474,15 +475,21 @@ const GeoModal = () => {
               <div className="rounded bg-blue-50 p-2 text-gray-600">
                 <div className="mb-1 font-semibold uppercase">
                   {wasOpenedFromGeojson ? (
-                    <FormattedMessage
-                      id="geoModal.geojsonImportDetected"
-                      defaultMessage="🗂️ GeoJSON Import Detected"
-                    />
+                    <>
+                      🗂️{' '}
+                      <FormattedMessage
+                        id="geoModal.geojsonImportDetected"
+                        defaultMessage="GeoJSON Import Detected"
+                      />
+                    </>
                   ) : (
-                    <FormattedMessage
-                      id="geoModal.geospatialTips"
-                      defaultMessage="💡 Geospatial Tips"
-                    />
+                    <>
+                      💡{' '}
+                      <FormattedMessage
+                        id="geoModal.geospatialTips"
+                        defaultMessage="Geospatial Tips"
+                      />
+                    </>
                   )}
                 </div>
                 <ul className="space-y-1">
@@ -645,10 +652,13 @@ const GeoModal = () => {
                 {wasOpenedFromGeojson ||
                 currentUser?.isPro ||
                 tokenProfile?.geoToken > 0 ? (
-                  <FormattedMessage
-                    id="geoModal.setLocation"
-                    defaultMessage="Set Location →"
-                  />
+                  <>
+                    <FormattedMessage
+                      id="geoModal.setLocation"
+                      defaultMessage="Set Location"
+                    />{' '}
+                    →
+                  </>
                 ) : (
                   <FormattedMessage
                     id="geoModal.upgradeToChangeLocation"

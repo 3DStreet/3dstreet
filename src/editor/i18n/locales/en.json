@@ -210,7 +210,7 @@
     "defaultMessage": "{count} geo tokens remaining"
   },
   "geoModal.geojsonImportDetected": {
-    "defaultMessage": "🗂️ GeoJSON Import Detected"
+    "defaultMessage": "GeoJSON Import Detected"
   },
   "geoModal.geojsonTipBeta": {
     "defaultMessage": "This feature is in beta please join our {discordLink} to provide feedback"
@@ -225,7 +225,7 @@
     "defaultMessage": "Click 'Set Location' to position your scene at this location"
   },
   "geoModal.geospatialTips": {
-    "defaultMessage": "💡 Geospatial Tips"
+    "defaultMessage": "Geospatial Tips"
   },
   "geoModal.latLong": {
     "defaultMessage": "Lat, Long"
@@ -243,7 +243,7 @@
     "defaultMessage": "None"
   },
   "geoModal.outOfGeoTokensTitle": {
-    "defaultMessage": "🚀 Out of Geo Tokens"
+    "defaultMessage": "Out of Geo Tokens"
   },
   "geoModal.outOfTokensProIncludes": {
     "defaultMessage": "Pro includes unlimited geo lookups, map access, and more"
@@ -261,7 +261,7 @@
     "defaultMessage": "Search for a location"
   },
   "geoModal.setLocation": {
-    "defaultMessage": "Set Location →"
+    "defaultMessage": "Set Location"
   },
   "geoModal.setLocationFailed": {
     "defaultMessage": "Failed to set scene location. Please try again."
