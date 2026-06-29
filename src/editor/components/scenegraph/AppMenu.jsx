@@ -19,6 +19,7 @@ import {
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { useState, useEffect } from 'react';
 import { currentOrthoDir } from '../../lib/cameras.js';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const cameraOptions = [
   {
@@ -779,10 +780,7 @@ const AppMenu = ({ currentUser }) => {
               className="MenubarItem"
               onClick={() => AFRAME.INSPECTOR.controls.resetZoom()}
             >
-              <FormattedMessage
-                id="appMenu.view.resetCamera"
-                defaultMessage="Reset Camera View"
-              />
+              <FormattedMessage {...commonMessages.resetCameraView} />
             </Menubar.Item>
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
@@ -818,10 +816,7 @@ const AppMenu = ({ currentUser }) => {
                 window.open('https://www.3dstreet.org/docs/', '_blank')
               }
             >
-              <FormattedMessage
-                id="appMenu.help.documentation"
-                defaultMessage="Documentation"
-              />
+              <FormattedMessage {...commonMessages.documentation} />
             </Menubar.Item>
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
@@ -833,10 +828,7 @@ const AppMenu = ({ currentUser }) => {
                 )
               }
             >
-              <FormattedMessage
-                id="appMenu.help.keyboardShortcuts"
-                defaultMessage="Keyboard Shortcuts"
-              />
+              <FormattedMessage {...commonMessages.keyboardShortcuts} />
             </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"

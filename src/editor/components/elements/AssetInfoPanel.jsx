@@ -13,6 +13,7 @@ import { AssetDetailModal, formatBytes } from '@shared/assets';
 import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
 import useStore from '@/store.js';
 import { Button } from './Button';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const AssetInfoPanel = ({ entity }) => {
   const intl = useIntl();
@@ -103,7 +104,7 @@ const AssetInfoPanel = ({ entity }) => {
               cursor: 'pointer'
             }}
           >
-            <FormattedMessage id="assetInfo.cancel" defaultMessage="Cancel" />
+            <FormattedMessage {...commonMessages.cancel} />
           </button>
         )}
         {canRetry && (
@@ -121,7 +122,7 @@ const AssetInfoPanel = ({ entity }) => {
               cursor: 'pointer'
             }}
           >
-            <FormattedMessage id="assetInfo.retry" defaultMessage="Retry" />
+            <FormattedMessage {...commonMessages.retry} />
           </button>
         )}
       </div>

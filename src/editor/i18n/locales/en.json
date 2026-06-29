@@ -5,9 +5,6 @@
   "actionBar.languageSwitcher": {
     "defaultMessage": "Change language"
   },
-  "actionBar.resetCameraView": {
-    "defaultMessage": "Reset Camera View"
-  },
   "actionBar.rotateTool": {
     "defaultMessage": "Rotate Tool (e) - Select and rotate objects"
   },
@@ -86,12 +83,6 @@
   "appMenu.help.aiSceneAssistant": {
     "defaultMessage": "AI Scene Assistant"
   },
-  "appMenu.help.documentation": {
-    "defaultMessage": "Documentation"
-  },
-  "appMenu.help.keyboardShortcuts": {
-    "defaultMessage": "Keyboard Shortcuts"
-  },
   "appMenu.help.mouseTouchControls": {
     "defaultMessage": "Mouse and Touch Controls"
   },
@@ -107,9 +98,6 @@
   "appMenu.view.camera.perspective": {
     "defaultMessage": "3D View"
   },
-  "appMenu.view.resetCamera": {
-    "defaultMessage": "Reset Camera View"
-  },
   "appMenu.view.showGrid": {
     "defaultMessage": "Show Grid"
   },
@@ -118,9 +106,6 @@
   },
   "assetInfo.assetSource": {
     "defaultMessage": "Asset source: {ownership} · {assetIdShort}…"
-  },
-  "assetInfo.cancel": {
-    "defaultMessage": "Cancel"
   },
   "assetInfo.details": {
     "defaultMessage": "Details"
@@ -131,11 +116,62 @@
   "assetInfo.ownershipYours": {
     "defaultMessage": "your cloud"
   },
-  "assetInfo.retry": {
-    "defaultMessage": "Retry"
-  },
   "assetInfo.upgradeStorage": {
     "defaultMessage": "Upgrade for 5 GB storage"
+  },
+  "common.addLayer": {
+    "defaultMessage": "Add layer"
+  },
+  "common.cancel": {
+    "defaultMessage": "Cancel"
+  },
+  "common.delete": {
+    "defaultMessage": "Delete"
+  },
+  "common.discord": {
+    "defaultMessage": "Discord"
+  },
+  "common.documentation": {
+    "defaultMessage": "Documentation"
+  },
+  "common.duplicate": {
+    "defaultMessage": "Duplicate"
+  },
+  "common.focus": {
+    "defaultMessage": "Focus"
+  },
+  "common.heightLabel": {
+    "defaultMessage": "Height:"
+  },
+  "common.keyboardShortcuts": {
+    "defaultMessage": "Keyboard Shortcuts"
+  },
+  "common.rename": {
+    "defaultMessage": "Rename"
+  },
+  "common.resetCameraView": {
+    "defaultMessage": "Reset Camera View"
+  },
+  "common.retry": {
+    "defaultMessage": "Retry"
+  },
+  "common.share": {
+    "defaultMessage": "Share"
+  },
+  "common.signInToCloud": {
+    "defaultMessage": "Sign in to 3DStreet Cloud"
+  },
+  "common.surface": {
+    "defaultMessage": "Surface"
+  },
+  "common.upgradeToPro": {
+    "defaultMessage": "Upgrade to Pro"
+  },
+  "common.useGeoTokensTooltip": {
+    "defaultMessage": "Use geo tokens to set or change a geolocation for your scene."
+  },
+  "common.widthLabel": {
+    "defaultMessage": "Width:"
   },
   "deploymentBanner.dismiss": {
     "defaultMessage": "Dismiss notice"
@@ -158,14 +194,8 @@
   "entity.toggleVisibility": {
     "defaultMessage": "Toggle entity visibility"
   },
-  "geoModal.cancel": {
-    "defaultMessage": "Cancel"
-  },
   "geoModal.centerpoint": {
     "defaultMessage": "Centerpoint"
-  },
-  "geoModal.discord": {
-    "defaultMessage": "Discord"
   },
   "geoModal.elevationLabel": {
     "defaultMessage": "Elevation:"
@@ -175,9 +205,6 @@
   },
   "geoModal.freeTokens": {
     "defaultMessage": "{count} free tokens"
-  },
-  "geoModal.geoTokenTooltip": {
-    "defaultMessage": "Use geo tokens to set or change a geolocation for your scene."
   },
   "geoModal.geoTokensRemaining": {
     "defaultMessage": "{count} geo tokens remaining"
@@ -359,9 +386,6 @@
   "geoSidebar.selectShape": {
     "defaultMessage": "Select a shape..."
   },
-  "geoSidebar.surface": {
-    "defaultMessage": "Surface"
-  },
   "geoSidebar.terrainFlattening": {
     "defaultMessage": "Terrain Flattening"
   },
@@ -370,12 +394,6 @@
   },
   "geoSidebar.upgradeForLookups": {
     "defaultMessage": "Upgrade to Pro for unlimited geo lookups"
-  },
-  "geoSidebar.upgradeToPro": {
-    "defaultMessage": "Upgrade to Pro"
-  },
-  "geoSidebar.useGeoTokensTooltip": {
-    "defaultMessage": "Use geo tokens to set or change a geolocation for your scene."
   },
   "geoSidebar.usesFreeTokens": {
     "defaultMessage": "Uses 1 of {geoToken} free geo tokens to add real-world map data."
@@ -406,9 +424,6 @@
   },
   "help.action.zoomMap.title": {
     "defaultMessage": "Zoom the map by scrolling"
-  },
-  "help.documentation": {
-    "defaultMessage": "Documentation"
   },
   "help.shortcut.addEntity": {
     "defaultMessage": "Add new entity"
@@ -485,9 +500,6 @@
   "help.tab.essentialActions": {
     "defaultMessage": "Essential Actions"
   },
-  "help.tab.shortcuts": {
-    "defaultMessage": "Keyboard Shortcuts"
-  },
   "intersectionSidebar.approaches": {
     "defaultMessage": "Approaches"
   },
@@ -497,20 +509,11 @@
   "intersectionSidebar.curb": {
     "defaultMessage": "Curb:"
   },
-  "intersectionSidebar.curbHeight": {
-    "defaultMessage": "Height:"
-  },
   "intersectionSidebar.curbRadius": {
     "defaultMessage": "Radius:"
   },
-  "intersectionSidebar.curbWidth": {
-    "defaultMessage": "Width:"
-  },
   "intersectionSidebar.curbs": {
     "defaultMessage": "Curbs"
-  },
-  "intersectionSidebar.height": {
-    "defaultMessage": "Height:"
   },
   "intersectionSidebar.side": {
     "defaultMessage": "Side:"
@@ -520,9 +523,6 @@
   },
   "intersectionSidebar.trafficControl": {
     "defaultMessage": "Traffic Control:"
-  },
-  "intersectionSidebar.width": {
-    "defaultMessage": "Width:"
   },
   "jobHealthModal.adminsOnly": {
     "defaultMessage": "Admins only. Sign in with an admin account to view background-job health."
@@ -559,9 +559,6 @@
   },
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
-  },
-  "loadingSceneModal.retry": {
-    "defaultMessage": "Retry"
   },
   "modalTextures.back": {
     "defaultMessage": "BACK"
@@ -710,9 +707,6 @@
   "profileModal.unlimitedGeoTokens": {
     "defaultMessage": "Unlimited Geo Tokens"
   },
-  "profileModal.upgradeToPro": {
-    "defaultMessage": "Upgrade to Pro"
-  },
   "rightPanel.planTooltipFree": {
     "defaultMessage": "3DStreet Free Community Edition"
   },
@@ -724,9 +718,6 @@
   },
   "rightPanel.planTooltipTeam": {
     "defaultMessage": "3DStreet Team Plan ({teamDomain})"
-  },
-  "rightPanel.share": {
-    "defaultMessage": "Share"
   },
   "rightPanel.shareScene": {
     "defaultMessage": "Share scene"
@@ -740,14 +731,8 @@
   "savingModal.saving": {
     "defaultMessage": "Saving"
   },
-  "sceneGraph.addLayerAria": {
-    "defaultMessage": "Add layer"
-  },
   "sceneGraph.addLayerButton": {
     "defaultMessage": "Add Layer"
-  },
-  "sceneGraph.addLayerTitle": {
-    "defaultMessage": "Add layer"
   },
   "sceneGraph.emptyStateMessage": {
     "defaultMessage": "Add a new layer to get started."
@@ -775,9 +760,6 @@
   },
   "scenesModal.loadingFromCloud": {
     "defaultMessage": "Loading scene from cloud..."
-  },
-  "scenesModal.signInButton": {
-    "defaultMessage": "Sign in to 3DStreet Cloud"
   },
   "scenesModal.signInPrompt": {
     "defaultMessage": "To view your scenes you have to sign in:"
@@ -929,32 +911,14 @@
   "segmentSidebar.curbLevel": {
     "defaultMessage": "Curb Level"
   },
-  "segmentSidebar.delete": {
-    "defaultMessage": "Delete"
-  },
   "segmentSidebar.direction": {
     "defaultMessage": "Direction"
-  },
-  "segmentSidebar.duplicate": {
-    "defaultMessage": "Duplicate"
-  },
-  "segmentSidebar.focus": {
-    "defaultMessage": "Focus"
-  },
-  "segmentSidebar.rename": {
-    "defaultMessage": "Rename"
   },
   "segmentSidebar.segmentType": {
     "defaultMessage": "Segment Type"
   },
   "segmentSidebar.side": {
     "defaultMessage": "Side"
-  },
-  "segmentSidebar.surface": {
-    "defaultMessage": "Surface"
-  },
-  "segmentSidebar.surfaceLabel": {
-    "defaultMessage": "Surface"
   },
   "segmentSidebar.width": {
     "defaultMessage": "Width"
@@ -967,9 +931,6 @@
   },
   "shareModal.copyUrl": {
     "defaultMessage": "Copy URL"
-  },
-  "shareModal.discordButton": {
-    "defaultMessage": "💬 Discord"
   },
   "shareModal.discordError": {
     "defaultMessage": "Failed to share scene to Discord. Please try again."
@@ -984,7 +945,7 @@
     "defaultMessage": "I wanted to share this 3DStreet scene with you: Title: {sceneTitle} Created by: @{authorName} Location: {location} View scene: {shareUrl}"
   },
   "shareModal.emailButton": {
-    "defaultMessage": "✉️ Email"
+    "defaultMessage": "Email"
   },
   "shareModal.emailSubject": {
     "defaultMessage": "Check out \"{sceneTitle}\" on 3DStreet"
@@ -994,9 +955,6 @@
   },
   "shareModal.locationNotSet": {
     "defaultMessage": "Location not set"
-  },
-  "shareModal.osShareButton": {
-    "defaultMessage": "📤 Share"
   },
   "shareModal.osShareText": {
     "defaultMessage": "Check out \"{sceneTitle}\" by @{authorName} on 3DStreet"
@@ -1009,9 +967,6 @@
   },
   "shareModal.saveToShare": {
     "defaultMessage": "Please save your scene to share it"
-  },
-  "shareModal.signInButton": {
-    "defaultMessage": "Sign in to 3DStreet Cloud"
   },
   "shareModal.signInToShare": {
     "defaultMessage": "Please sign in to share your scene"
@@ -1031,26 +986,14 @@
   "sidebar.autocreatedEntity": {
     "defaultMessage": "Autocreated Entity"
   },
-  "sidebar.delete": {
-    "defaultMessage": "Delete"
-  },
   "sidebar.detach": {
     "defaultMessage": "Detach"
-  },
-  "sidebar.duplicate": {
-    "defaultMessage": "Duplicate"
   },
   "sidebar.editCloneSettings": {
     "defaultMessage": "Edit Clone Settings"
   },
-  "sidebar.focus": {
-    "defaultMessage": "Focus"
-  },
   "sidebar.managedBy": {
     "defaultMessage": "Managed by"
-  },
-  "sidebar.rename": {
-    "defaultMessage": "Rename"
   },
   "sidebar.selectObject": {
     "defaultMessage": "Select an object to edit properties."

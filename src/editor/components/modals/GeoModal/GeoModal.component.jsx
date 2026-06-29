@@ -21,6 +21,7 @@ import { canUseGeoFeature } from '@shared/utils/tokens';
 import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 import posthog from 'posthog-js';
 import { Tooltip } from 'radix-ui';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   return (
@@ -520,10 +521,7 @@ const GeoModal = () => {
                                 rel="noreferrer"
                                 target="_blank"
                               >
-                                <FormattedMessage
-                                  id="geoModal.discord"
-                                  defaultMessage="Discord"
-                                />
+                                <FormattedMessage {...commonMessages.discord} />
                               </a>
                             )
                           }}
@@ -587,7 +585,7 @@ const GeoModal = () => {
                 e.target.style.color = '#9ca3af';
               }}
             >
-              <FormattedMessage id="geoModal.cancel" defaultMessage="Cancel" />
+              <FormattedMessage {...commonMessages.cancel} />
             </Button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {wasOpenedFromGeojson && (
@@ -600,11 +598,9 @@ const GeoModal = () => {
               )}
               {!currentUser?.isPro && tokenProfile && !wasOpenedFromGeojson && (
                 <TooltipWrapper
-                  content={intl.formatMessage({
-                    id: 'geoModal.geoTokenTooltip',
-                    defaultMessage:
-                      'Use geo tokens to set or change a geolocation for your scene.'
-                  })}
+                  content={intl.formatMessage(
+                    commonMessages.useGeoTokensTooltip
+                  )}
                 >
                   <span
                     style={{

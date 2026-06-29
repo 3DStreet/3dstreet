@@ -3,6 +3,7 @@ import { Button } from '../../../../components';
 import { Component } from 'react';
 import { FormattedMessage } from 'react-intl';
 import { Open } from './icons.jsx';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 /**
  * DocumentationButton component.
  * Exclusively for the EssentialsActions and Shortcuts components.
@@ -18,10 +19,7 @@ class DocumentationButton extends Component {
           className={styles.docsButtonWrapper}
           onClick={() => window.open('https://3dstreet.org/docs/')}
         >
-          <FormattedMessage
-            id="help.documentation"
-            defaultMessage="Documentation"
-          />{' '}
+          <FormattedMessage {...commonMessages.documentation} />{' '}
           <Open />
         </div>
       </Button>

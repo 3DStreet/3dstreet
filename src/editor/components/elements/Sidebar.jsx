@@ -28,6 +28,7 @@ import UserLayersSidebar from './UserLayersSidebar';
 import AdvancedComponents from './AdvancedComponents';
 import AssetInfoPanel from './AssetInfoPanel';
 import EntityLabel from '../scenegraph/EntityLabel';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 export default class Sidebar extends React.Component {
   static propTypes = {
     entity: PropTypes.object
@@ -187,40 +188,28 @@ export default class Sidebar extends React.Component {
                       longPressDelay={1500} // Optional, defaults to 2000ms
                       leadingIcon={<ArrowsPointingInwardIcon />}
                     >
-                      <FormattedMessage
-                        id="sidebar.focus"
-                        defaultMessage="Focus"
-                      />
+                      <FormattedMessage {...commonMessages.focus} />
                     </Button>
                     <Button
                       variant={'toolbtn'}
                       onClick={() => renameEntity(entity)}
                       leadingIcon={<Edit24Icon />}
                     >
-                      <FormattedMessage
-                        id="sidebar.rename"
-                        defaultMessage="Rename"
-                      />
+                      <FormattedMessage {...commonMessages.rename} />
                     </Button>
                     <Button
                       variant={'toolbtn'}
                       onClick={() => cloneEntity(entity)}
                       leadingIcon={<Copy32Icon />}
                     >
-                      <FormattedMessage
-                        id="sidebar.duplicate"
-                        defaultMessage="Duplicate"
-                      />
+                      <FormattedMessage {...commonMessages.duplicate} />
                     </Button>
                     <Button
                       variant={'toolbtn'}
                       onClick={() => removeSelectedEntity()}
                       leadingIcon={<TrashIcon />}
                     >
-                      <FormattedMessage
-                        id="sidebar.delete"
-                        defaultMessage="Delete"
-                      />
+                      <FormattedMessage {...commonMessages.delete} />
                     </Button>
                   </div>
                 )}

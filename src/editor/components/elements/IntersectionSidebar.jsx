@@ -7,6 +7,7 @@ import {
   CROSSWALKS,
   CROSSWALKS_REV
 } from '../../../aframe-components/intersection';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const IntersectionSidebar = ({ entity }) => {
   const intersectionData = entity.getAttribute('intersection');
@@ -103,10 +104,7 @@ const IntersectionSidebar = ({ entity }) => {
         <div className="details">
           <div className="propertyRow">
             <div className="text">
-              <FormattedMessage
-                id="intersectionSidebar.width"
-                defaultMessage="Width:"
-              />
+              <FormattedMessage {...commonMessages.widthLabel} />
             </div>
             <NumberWidget
               name="dimensions"
@@ -125,10 +123,7 @@ const IntersectionSidebar = ({ entity }) => {
           </div>
           <div className="propertyRow">
             <div className="text">
-              <FormattedMessage
-                id="intersectionSidebar.height"
-                defaultMessage="Height:"
-              />
+              <FormattedMessage {...commonMessages.heightLabel} />
             </div>
             <NumberWidget
               name="dimensions"
@@ -289,10 +284,7 @@ const IntersectionSidebar = ({ entity }) => {
           </div>
           <div className="propertyRow">
             <label className="text">
-              <FormattedMessage
-                id="intersectionSidebar.curbWidth"
-                defaultMessage="Width:"
-              />
+              <FormattedMessage {...commonMessages.widthLabel} />
             </label>
             <NumberWidget
               name="curbWidth"
@@ -302,10 +294,7 @@ const IntersectionSidebar = ({ entity }) => {
           </div>
           <div className="propertyRow">
             <label className="text">
-              <FormattedMessage
-                id="intersectionSidebar.curbHeight"
-                defaultMessage="Height:"
-              />
+              <FormattedMessage {...commonMessages.heightLabel} />
             </label>
             <NumberWidget
               name="curbHeight"

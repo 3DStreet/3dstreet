@@ -10,6 +10,7 @@ import useStore from '@/store';
 import { useState, useEffect } from 'react';
 import Events from '../../lib/Events';
 import { Tooltip } from 'radix-ui';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   return (
@@ -352,10 +353,7 @@ const GeoHero = ({
         onClick={outOfTokens ? onUpgrade : onAdd}
       >
         {outOfTokens
-          ? intl.formatMessage({
-              id: 'geoSidebar.upgradeToPro',
-              defaultMessage: 'Upgrade to Pro'
-            })
+          ? intl.formatMessage(commonMessages.upgradeToPro)
           : intl.formatMessage({
               id: 'geoSidebar.addGeoLayer',
               defaultMessage: 'Add Geo Layer'
@@ -721,11 +719,9 @@ const GeoSidebar = ({ entity }) => {
                     </TooltipWrapper>
                     {!currentUser?.isPro && tokenProfile && (
                       <TooltipWrapper
-                        content={intl.formatMessage({
-                          id: 'geoSidebar.useGeoTokensTooltip',
-                          defaultMessage:
-                            'Use geo tokens to set or change a geolocation for your scene.'
-                        })}
+                        content={intl.formatMessage(
+                          commonMessages.useGeoTokensTooltip
+                        )}
                       >
                         <span
                           className="token-badge"
@@ -870,10 +866,7 @@ const GeoSidebar = ({ entity }) => {
                       <div className="componentHeader collapsible-header">
                         <span
                           className="componentTitle"
-                          title={intl.formatMessage({
-                            id: 'geoSidebar.surface',
-                            defaultMessage: 'Surface'
-                          })}
+                          title={intl.formatMessage(commonMessages.surface)}
                         >
                           <span>
                             <FormattedMessage

@@ -19,6 +19,7 @@ import { Save } from '../elements/Save';
 import { Tabs } from '../elements';
 import useStore from '@/store';
 import { AuthContext } from '@/editor/contexts';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 const HIDDEN_CLASSES = ['teleportRay', 'hitEntity', 'hideFromSceneGraph'];
 const HIDDEN_IDS = ['dropPlane', 'previewEntity'];
 
@@ -541,14 +542,8 @@ class SceneGraph extends React.Component {
                     type="button"
                     className="left-panel-add-layer"
                     onClick={this.openAddLayer}
-                    aria-label={intl.formatMessage({
-                      id: 'sceneGraph.addLayerAria',
-                      defaultMessage: 'Add layer'
-                    })}
-                    title={intl.formatMessage({
-                      id: 'sceneGraph.addLayerTitle',
-                      defaultMessage: 'Add layer'
-                    })}
+                    aria-label={intl.formatMessage(commonMessages.addLayer)}
+                    title={intl.formatMessage(commonMessages.addLayer)}
                   >
                     <Plus20Circle />
                   </button>

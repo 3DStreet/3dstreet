@@ -18,6 +18,7 @@ import {
 } from '@shared/icons';
 import { Button } from '../elements';
 import Events from '../../lib/Events';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 // Define featured component prefixes that should be shown in their own section
 const FEATURED_COMPONENT_PREFIXES = ['street-generated-'];
@@ -91,40 +92,28 @@ const StreetSegmentSidebar = ({ entity }) => {
                     longPressDelay={1500} // Optional, defaults to 2000ms
                     leadingIcon={<ArrowsPointingInwardIcon />}
                   >
-                    <FormattedMessage
-                      id="segmentSidebar.focus"
-                      defaultMessage="Focus"
-                    />
+                    <FormattedMessage {...commonMessages.focus} />
                   </Button>
                   <Button
                     variant={'toolbtn'}
                     onClick={() => renameEntity(entity)}
                     leadingIcon={<Edit24Icon />}
                   >
-                    <FormattedMessage
-                      id="segmentSidebar.rename"
-                      defaultMessage="Rename"
-                    />
+                    <FormattedMessage {...commonMessages.rename} />
                   </Button>
                   <Button
                     variant={'toolbtn'}
                     onClick={() => cloneEntity(entity)}
                     leadingIcon={<Copy32Icon />}
                   >
-                    <FormattedMessage
-                      id="segmentSidebar.duplicate"
-                      defaultMessage="Duplicate"
-                    />
+                    <FormattedMessage {...commonMessages.duplicate} />
                   </Button>
                   <Button
                     variant={'toolbtn'}
                     onClick={() => removeSelectedEntity()}
                     leadingIcon={<TrashIcon />}
                   >
-                    <FormattedMessage
-                      id="segmentSidebar.delete"
-                      defaultMessage="Delete"
-                    />
+                    <FormattedMessage {...commonMessages.delete} />
                   </Button>
                 </div>
               </div>
@@ -162,17 +151,11 @@ const StreetSegmentSidebar = ({ entity }) => {
                   <div className="componentHeader collapsible-header">
                     <span
                       className="componentTitle"
-                      title={intl.formatMessage({
-                        id: 'segmentSidebar.surface',
-                        defaultMessage: 'Surface'
-                      })}
+                      title={intl.formatMessage(commonMessages.surface)}
                     >
                       <StreetSurfaceIcon />
                       <span>
-                        <FormattedMessage
-                          id="segmentSidebar.surface"
-                          defaultMessage="Surface"
-                        />
+                        <FormattedMessage {...commonMessages.surface} />
                       </span>
                     </span>
                   </div>
@@ -182,10 +165,7 @@ const StreetSegmentSidebar = ({ entity }) => {
                     <PropertyRow
                       key="surface"
                       name="surface"
-                      label={intl.formatMessage({
-                        id: 'segmentSidebar.surfaceLabel',
-                        defaultMessage: 'Surface'
-                      })}
+                      label={intl.formatMessage(commonMessages.surface)}
                       schema={component.schema['surface']}
                       data={component.data['surface']}
                       componentname={componentName}

@@ -7,6 +7,7 @@ import Modal from '../Modal.jsx';
 import PropTypes from 'prop-types';
 import { FormattedMessage } from 'react-intl';
 import { Tabs } from '../../elements';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const tabs = [
   {
@@ -19,12 +20,7 @@ const tabs = [
     value: 'essentialActions'
   },
   {
-    label: (
-      <FormattedMessage
-        id="help.tab.shortcuts"
-        defaultMessage="Keyboard Shortcuts"
-      />
-    ),
+    label: <FormattedMessage {...commonMessages.keyboardShortcuts} />,
     value: 'shortcuts'
   }
 ];

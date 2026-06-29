@@ -25,6 +25,7 @@ import {
   fadeOutRulerCursorEntity,
   useRulerTool
 } from './RulerAction.jsx';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const ActionBar = ({ selectedEntity }) => {
   const intl = useIntl();
@@ -190,10 +191,7 @@ const ActionBar = ({ selectedEntity }) => {
       <Button
         variant="toolbtn"
         onPointerDown={() => AFRAME.INSPECTOR.controls.resetZoom()}
-        title={intl.formatMessage({
-          id: 'actionBar.resetCameraView',
-          defaultMessage: 'Reset Camera View'
-        })}
+        title={intl.formatMessage(commonMessages.resetCameraView)}
       >
         <CameraReset24Icon />
       </Button>

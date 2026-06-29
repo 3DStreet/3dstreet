@@ -13,6 +13,7 @@ import { shareSceneToDiscord } from '../../../api/scene';
 import ScenePlaceholder from '../../../../../ui_assets/ScenePlaceholder.svg';
 import { getUserProfile } from '@shared/utils/username';
 import { Tooltip } from 'radix-ui';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   return (
@@ -327,10 +328,7 @@ function ShareModal() {
               </h3>
               {!currentUser && (
                 <Button onClick={() => setModal('signin')}>
-                  <FormattedMessage
-                    id="shareModal.signInButton"
-                    defaultMessage="Sign in to 3DStreet Cloud"
-                  />
+                  <FormattedMessage {...commonMessages.signInToCloud} />
                 </Button>
               )}
             </div>
@@ -416,9 +414,10 @@ function ShareModal() {
                     variant="toolbtn"
                     className={styles.shareButton}
                   >
+                    ✉️{' '}
                     <FormattedMessage
                       id="shareModal.emailButton"
-                      defaultMessage="✉️ Email"
+                      defaultMessage="Email"
                     />
                   </Button>
                 </TooltipWrapper>
@@ -435,10 +434,7 @@ function ShareModal() {
                     variant="toolbtn"
                     className={styles.shareButton}
                   >
-                    <FormattedMessage
-                      id="shareModal.osShareButton"
-                      defaultMessage="📤 Share"
-                    />
+                    📤 <FormattedMessage {...commonMessages.share} />
                   </Button>
                 </TooltipWrapper>
                 <TooltipWrapper
@@ -454,10 +450,7 @@ function ShareModal() {
                     variant="toolbtn"
                     className={styles.shareButton}
                   >
-                    <FormattedMessage
-                      id="shareModal.discordButton"
-                      defaultMessage="💬 Discord"
-                    />
+                    💬 <FormattedMessage {...commonMessages.discord} />
                   </Button>
                 </TooltipWrapper>
               </div>

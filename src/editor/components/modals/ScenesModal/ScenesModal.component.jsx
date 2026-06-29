@@ -11,6 +11,7 @@ import { signIn } from '../../../api';
 import posthog from 'posthog-js';
 import useStore from '../../../../store.js';
 import { fileJSON } from '@/editor/lib/SceneUtils';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const SCENES_PER_PAGE = 20;
 // Static descriptors so formatjs can extract the tab labels (a dynamic
@@ -339,10 +340,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
             </div>
             <div className={styles.buttons}>
               <Button onClick={() => signIn()}>
-                <FormattedMessage
-                  id="scenesModal.signInButton"
-                  defaultMessage="Sign in to 3DStreet Cloud"
-                />
+                <FormattedMessage {...commonMessages.signInToCloud} />
               </Button>
               <Button
                 variant="outlined"

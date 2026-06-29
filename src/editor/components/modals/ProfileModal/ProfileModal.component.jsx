@@ -21,6 +21,7 @@ import {
   getUserProfile,
   generateAndSaveUsername
 } from '@shared/utils/username';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const ProfileModal = () => {
   const intl = useIntl();
@@ -240,10 +241,7 @@ const ProfileModal = () => {
                           '0 2px 8px rgba(102, 126, 234, 0.4)';
                       }}
                     >
-                      <FormattedMessage
-                        id="profileModal.upgradeToPro"
-                        defaultMessage="Upgrade to Pro"
-                      />
+                      <FormattedMessage {...commonMessages.upgradeToPro} />
                     </Button>
                   </div>
                   <TokenDisplayInner showLabel={true} useContainer={true} />
@@ -338,14 +336,17 @@ const ProfileModal = () => {
                             id="profileModal.monthlyProRefill"
                             defaultMessage="Monthly Pro refill: {date}"
                             values={{
-                              date: new Date(
-                                new Date().getFullYear(),
-                                new Date().getMonth() + 1,
-                                1
-                              ).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric'
-                              })
+                              // Format in the active locale (react-intl reads
+                              // the IntlProvider locale) so non-US users don't
+                              // get mm/dd ordering.
+                              date: intl.formatDate(
+                                new Date(
+                                  new Date().getFullYear(),
+                                  new Date().getMonth() + 1,
+                                  1
+                                ),
+                                { month: 'short', day: 'numeric' }
+                              )
                             }}
                           />
                         </span>

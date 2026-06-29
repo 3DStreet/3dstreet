@@ -6,6 +6,7 @@ import { faLockOpen } from '@fortawesome/free-solid-svg-icons';
 import { ProfileButton } from '@shared/auth/components';
 import useStore from '@/store';
 import { AuthContext } from '@/editor/contexts';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 import ComponentsSidebar from '../elements/Sidebar';
 import { Button, Tabs } from '../elements';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
@@ -110,10 +111,7 @@ export default function RightPanel({ entity }) {
                 variant="toolbtn"
               >
                 <div>
-                  <FormattedMessage
-                    id="rightPanel.share"
-                    defaultMessage="Share"
-                  />
+                  <FormattedMessage {...commonMessages.share} />
                 </div>
               </Button>
             </TooltipWrapper>
