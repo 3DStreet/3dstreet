@@ -37,6 +37,7 @@ require('./aframe-components/street-ground.js');
 require('./aframe-components/street-label.js');
 require('./aframe-components/blending-opacity.js');
 require('./aframe-components/measure-line.js');
+require('./aframe-components/low-power-mode.js');
 require('./aframe-components/css2d-renderer.js');
 require('./aframe-components/google-maps-aerial.js');
 require('./aframe-components/viewer-mode.js');

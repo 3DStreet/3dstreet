@@ -106,6 +106,8 @@ const AppMenu = ({ currentUser }) => {
     setModal,
     isGridVisible,
     setIsGridVisible,
+    lowPowerMode,
+    setLowPowerMode,
     saveScene,
     setGeojsonImportData,
     setRightPanelTab,
@@ -658,6 +660,16 @@ const AppMenu = ({ currentUser }) => {
               </Menubar.ItemIndicator>
               Show Grid
               <div className="RightSlot">G</div>
+            </Menubar.CheckboxItem>
+            <Menubar.CheckboxItem
+              className="MenubarCheckboxItem"
+              checked={lowPowerMode}
+              onCheckedChange={setLowPowerMode}
+            >
+              <Menubar.ItemIndicator className="MenubarItemIndicator">
+                <AwesomeIcon icon={faCheck} size={14} />
+              </Menubar.ItemIndicator>
+              Low Power Mode
             </Menubar.CheckboxItem>
             <Menubar.Separator className="MenubarSeparator" />
             {cameraOptions.map((option) => (

@@ -119,6 +119,15 @@ const useStore = create(
           localStorage.setItem('unitsPreference', newUnitsPreference);
           set({ unitsPreference: newUnitsPreference });
         },
+        // Low Power / Demo mode: trades visual fidelity for FPS so a heavy
+        // scene (3D Tiles + splats + geometry) stays smooth while also
+        // screensharing / recording / driving an external display. Consumed by
+        // the `low-power-mode` A-Frame component on the scene.
+        lowPowerMode: localStorage.getItem('lowPowerMode') === 'true',
+        setLowPowerMode: (newLowPowerMode) => {
+          localStorage.setItem('lowPowerMode', newLowPowerMode.toString());
+          set({ lowPowerMode: newLowPowerMode });
+        },
         modal: firstModal(),
         previousModal: null,
         setModal: (newModal, rememberPrevious = false) => {
