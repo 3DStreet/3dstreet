@@ -304,12 +304,20 @@ export function createGrassBox(position) {
   // as a ground/lawn for non-street scenes that don't already have terrain.
   // Offset down by half its thickness so its top surface sits exactly at y=0 and
   // objects placed on the ground rest flush on top of it.
+  //
+  // The box ships with the street-generated-grass generator attached as a live
+  // demo of the host-primitive + generator pattern: the box's geometry/material
+  // and the grass options (density, blade height, …) all surface as first-class
+  // controls in the properties sidebar. The animated blades are autocreated
+  // children regenerated from config, so saving the scene stores only the box +
+  // the grass config, not the blades. See docs/host-generator-pattern.md.
   const thickness = 0.5;
   const definition = {
     components: {
       position: groundedPositionString(position, -thickness / 2),
       geometry: `primitive: box; width: 40; height: ${thickness}; depth: 40;`,
       material: 'color: #4c9a2a; roughness: 1;',
+      'street-generated-grass': '',
       'data-layer-name': 'Grass Box • Ground',
       shadow: 'receive: true;'
     }

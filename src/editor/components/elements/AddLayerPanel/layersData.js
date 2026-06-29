@@ -112,7 +112,7 @@ export const customLayersData = [
     icon: '',
     requiresPro: false,
     description:
-      'Add a large, thin green ground slab to act as a lawn for scenes that do not already have terrain.',
+      'Add a large green ground slab with animated instanced grass. The box dimensions, color, and grass options (density, blade height) are all editable in the properties panel.',
     handlerFunction: createFunctions.createGrassBox
   },
   {

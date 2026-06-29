@@ -2,6 +2,7 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import Component from './Component';
 import DEFAULT_COMPONENTS from './DefaultComponents';
+import { isFeaturedComponent } from '../../lib/featuredComponents';
 import { Button } from '../elements';
 import posthog from 'posthog-js';
 const AdvancedComponents = ({ entity }) => {
@@ -9,7 +10,10 @@ const AdvancedComponents = ({ entity }) => {
 
   const components = entity ? entity.components : {};
   const definedComponents = Object.keys(components).filter((key) => {
-    return DEFAULT_COMPONENTS.indexOf(key) === -1;
+    // Skip default transform components and anything already promoted to the
+    // first-class "featured" section above, so geometry/material/generators
+    // aren't shown twice.
+    return DEFAULT_COMPONENTS.indexOf(key) === -1 && !isFeaturedComponent(key);
   });
 
   const toggleAdvanced = () => {
