@@ -1,7 +1,6 @@
 {
   "es": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
-    "actionBar.languageSwitcher": "Change language",
     "actionBar.rotateTool": "Rotate Tool (e) - Select and rotate objects",
     "actionBar.rulerTool": "Ruler Tool (r) - Measure distances between points",
     "actionBar.translateTool": "Translate Tool (w) - Select and move objects",
@@ -33,6 +32,7 @@
     "appMenu.view": "View",
     "appMenu.view.camera.orthotop": "Plan View",
     "appMenu.view.camera.perspective": "3D View",
+    "appMenu.view.language": "Language",
     "appMenu.view.showGrid": "Show Grid",
     "appMenu.view.snapshotRender": "Snapshot & Render...",
     "assetInfo.assetSource": "Asset source: {ownership} · {assetIdShort}…",
@@ -349,7 +349,6 @@
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
-    "actionBar.languageSwitcher": "Change language",
     "actionBar.rotateTool": "Rotate Tool (e) - Select and rotate objects",
     "actionBar.rulerTool": "Ruler Tool (r) - Measure distances between points",
     "actionBar.translateTool": "Translate Tool (w) - Select and move objects",
@@ -381,6 +380,7 @@
     "appMenu.view": "View",
     "appMenu.view.camera.orthotop": "Plan View",
     "appMenu.view.camera.perspective": "3D View",
+    "appMenu.view.language": "Language",
     "appMenu.view.showGrid": "Show Grid",
     "appMenu.view.snapshotRender": "Snapshot & Render...",
     "assetInfo.assetSource": "Asset source: {ownership} · {assetIdShort}…",

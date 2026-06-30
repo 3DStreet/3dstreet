@@ -120,8 +120,9 @@ const useStore = create(
           localStorage.setItem('unitsPreference', newUnitsPreference);
           set({ unitsPreference: newUnitsPreference });
         },
-        // UI language for the localization experiment (#656). Resolves to 'en'
-        // unless the i18n feature flag is on; persisted to localStorage.
+        // UI language for the localization experiment (#656). Auto-detected
+        // from the browser on first load, then overridden by the user's stored
+        // choice (persisted to localStorage via the View > Language menu).
         locale: resolveInitialLocale(),
         setLocale: (newLocale) => {
           persistLocale(newLocale);

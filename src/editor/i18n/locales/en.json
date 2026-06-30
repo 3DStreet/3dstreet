@@ -2,9 +2,6 @@
   "actionBar.handTool": {
     "defaultMessage": "Hand Tool (h) - pan and rotate the view without selecting objects"
   },
-  "actionBar.languageSwitcher": {
-    "defaultMessage": "Change language"
-  },
   "actionBar.rotateTool": {
     "defaultMessage": "Rotate Tool (e) - Select and rotate objects"
   },
@@ -97,6 +94,9 @@
   },
   "appMenu.view.camera.perspective": {
     "defaultMessage": "3D View"
+  },
+  "appMenu.view.language": {
+    "defaultMessage": "Language"
   },
   "appMenu.view.showGrid": {
     "defaultMessage": "Show Grid"

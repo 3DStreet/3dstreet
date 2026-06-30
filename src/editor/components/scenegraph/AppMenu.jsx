@@ -20,6 +20,7 @@ import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { useState, useEffect } from 'react';
 import { currentOrthoDir } from '../../lib/cameras.js';
 import { commonMessages } from '@/editor/i18n/commonMessages';
+import { SUPPORTED_LOCALES } from '@/editor/i18n/config';
 
 const cameraOptions = [
   {
@@ -125,7 +126,9 @@ const AppMenu = ({ currentUser }) => {
     saveScene,
     setGeojsonImportData,
     setRightPanelTab,
-    startCheckout
+    startCheckout,
+    locale,
+    setLocale
   } = useStore();
   const { currentUser: authUser } = useAuthContext();
   const [currentCamera, setCurrentCamera] = useState('perspective');
@@ -782,6 +785,37 @@ const AppMenu = ({ currentUser }) => {
             >
               <FormattedMessage {...commonMessages.resetCameraView} />
             </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Sub>
+              <Menubar.SubTrigger className="MenubarItem">
+                <FormattedMessage
+                  id="appMenu.view.language"
+                  defaultMessage="Language"
+                />
+                <div className="RightSlot">
+                  <AwesomeIcon icon={faChevronRight} size={12} />
+                </div>
+              </Menubar.SubTrigger>
+              <Menubar.Portal>
+                <Menubar.SubContent className="MenubarContent">
+                  {SUPPORTED_LOCALES.map(({ code, label }) => (
+                    <Menubar.CheckboxItem
+                      key={code}
+                      className="MenubarCheckboxItem"
+                      checked={locale === code}
+                      onCheckedChange={() => setLocale(code)}
+                    >
+                      <Menubar.ItemIndicator className="MenubarItemIndicator">
+                        <AwesomeIcon icon={faCheck} size={14} />
+                      </Menubar.ItemIndicator>
+                      {/* Language names are shown as endonyms (in their own
+                          language), so they are intentionally not translated. */}
+                      {label}
+                    </Menubar.CheckboxItem>
+                  ))}
+                </Menubar.SubContent>
+              </Menubar.Portal>
+            </Menubar.Sub>
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"

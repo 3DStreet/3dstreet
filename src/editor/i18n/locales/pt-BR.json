@@ -1,6 +1,5 @@
 {
   "actionBar.handTool": "Ferramenta Mão (h) - mova e gire a visualização sem selecionar objetos",
-  "actionBar.languageSwitcher": "Mudar idioma",
   "actionBar.rotateTool": "Ferramenta Girar (e) - Selecione e gire objetos",
   "actionBar.rulerTool": "Ferramenta Régua (r) - Meça distâncias entre pontos",
   "actionBar.translateTool": "Ferramenta Mover (w) - Selecione e mova objetos",
@@ -32,6 +31,7 @@
   "appMenu.view": "Visualizar",
   "appMenu.view.camera.orthotop": "Vista de Planta",
   "appMenu.view.camera.perspective": "Vista 3D",
+  "appMenu.view.language": "Idioma",
   "appMenu.view.showGrid": "Mostrar Grade",
   "appMenu.view.snapshotRender": "Captura e Renderização...",
   "assetInfo.assetSource": "Origem do recurso: {ownership} · {assetIdShort}…",

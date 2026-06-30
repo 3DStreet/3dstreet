@@ -3,12 +3,7 @@ import { AwesomeIcon } from '../AwesomeIcon';
 import classNames from 'classnames';
 import Events from '../../../lib/Events';
 import styles from './ActionBar.module.scss';
-import {
-  Button,
-  UnitsPreference,
-  LanguagePreference,
-  UndoRedo
-} from '../../elements';
+import { Button, UnitsPreference, UndoRedo } from '../../elements';
 import { useState, useEffect } from 'react';
 import { useIntl } from 'react-intl';
 import posthog from 'posthog-js';
@@ -161,7 +156,6 @@ const ActionBar = ({ selectedEntity }) => {
         <Ruler24Icon />
       </Button>
       <UnitsPreference />
-      <LanguagePreference />
       <div className={styles.divider} />
       <UndoRedo />
       <Button

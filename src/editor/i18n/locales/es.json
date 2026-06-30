@@ -1,6 +1,5 @@
 {
   "actionBar.handTool": "Herramienta mano (h): desplaza y rota la vista sin seleccionar objetos",
-  "actionBar.languageSwitcher": "Cambiar idioma",
   "actionBar.rotateTool": "Herramienta rotar (e): selecciona y rota objetos",
   "actionBar.rulerTool": "Herramienta regla (r): mide distancias entre puntos",
   "actionBar.translateTool": "Herramienta mover (w): selecciona y mueve objetos",
@@ -32,6 +31,7 @@
   "appMenu.view": "Ver",
   "appMenu.view.camera.orthotop": "Vista de planta",
   "appMenu.view.camera.perspective": "Vista 3D",
+  "appMenu.view.language": "Idioma",
   "appMenu.view.showGrid": "Mostrar cuadrícula",
   "appMenu.view.snapshotRender": "Captura y renderizado...",
   "assetInfo.assetSource": "Origen del recurso: {ownership} · {assetIdShort}…",
