@@ -13,16 +13,17 @@
 // Generator components follow the managed-children pattern (street-generated-*).
 export const GENERATOR_COMPONENT_PREFIXES = ['street-generated-'];
 
-// Everything promoted to the featured section on a generic entity: the geometry
-// and material of the host primitive, plus any attached generators.
-export const FEATURED_COMPONENT_PREFIXES = [
-  'geometry',
-  'material',
-  ...GENERATOR_COMPONENT_PREFIXES
-];
+// The host primitive's geometry and material are featured by exact name only.
+// Prefix matching here would over-promote unrelated future components whose
+// names merely start with these strings (e.g. the A-Frame community
+// `geometry-merger`, or a hypothetical `materialLibrary`).
+export const FEATURED_COMPONENT_NAMES = ['geometry', 'material'];
 
 export function isFeaturedComponent(name) {
-  return FEATURED_COMPONENT_PREFIXES.some((prefix) => name.startsWith(prefix));
+  return (
+    FEATURED_COMPONENT_NAMES.includes(name) ||
+    GENERATOR_COMPONENT_PREFIXES.some((prefix) => name.startsWith(prefix))
+  );
 }
 
 export function isGeneratorComponent(name) {

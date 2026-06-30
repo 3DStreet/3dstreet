@@ -55,7 +55,8 @@ const FeaturedComponents = ({ entity }) => {
 };
 
 FeaturedComponents.propTypes = {
-  entity: PropTypes.object.isRequired
+  // entity can be null (e.g. no selection) — the component renders nothing.
+  entity: PropTypes.object
 };
 
 export default FeaturedComponents;
