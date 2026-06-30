@@ -440,15 +440,6 @@ function createEntities(entitiesData, parentEl) {
       delete components.visible;
     }
 
-    if (
-      entityData.id === 'street-container' &&
-      entityData.children &&
-      entityData.children[0].id === 'default-street' &&
-      entityData.children[0].components['set-loader-from-hash']
-    ) {
-      delete entityData.children[0].components['set-loader-from-hash'];
-    }
-
     const sceneChildElement = document.getElementById(entityData.id);
     if (sceneChildElement) {
       if (removeEntities.includes(entityData.id)) {
@@ -704,6 +695,33 @@ AFRAME.registerComponent('set-loader-from-hash', {
         }, 1000);
         return;
       }
+      if (
+        process.env.NODE_ENV === 'development' &&
+        streetURL.startsWith('fixture:')
+      ) {
+        // Dev/test convenience: load a local parity fixture by slug through the
+        // managed-street importer, e.g. #fixture:protected-bikeway-parking-couplet
+        // The dev server serves test/parity/fixtures/*.streetmix.json from root.
+        // Gated to development builds — these fixtures are not deployed to prod.
+        const slug = streetURL.substring('fixture:'.length);
+        const fixtureURL = `${window.location.origin}/test/parity/fixtures/${slug}.streetmix.json`;
+        const definition = {
+          id: createUniqueId(),
+          components: {
+            'managed-street': {
+              sourceType: 'streetmix-url',
+              sourceValue: fixtureURL,
+              synchronize: true
+            },
+            'street-align': 'width: center; length: middle'
+          }
+        };
+        setTimeout(() => {
+          AFRAME.INSPECTOR.execute('entitycreate', definition);
+          STREET.notify.successMessage('Loading parity fixture: ' + slug);
+        }, 1000);
+        return;
+      }
       if (streetURL.startsWith('geojson:')) {
         // url.com/page#geojson:{"type":"FeatureCollection","features":[...]}
         const fragment = window.location.hash;
@@ -823,20 +841,27 @@ AFRAME.registerComponent('set-loader-from-hash', {
       if (streetURL.includes('//streetmix.net')) {
         console.log(
           '[set-loader-from-hash]',
-          'Set streetmix-loader streetmixStreetURL to',
+          'Create new street with Streetmix URL',
           streetURL
         );
 
-        this.el.setAttribute(
-          'streetmix-loader',
-          'streetmixStreetURL',
-          streetURL
-        );
+        const definition = {
+          id: createUniqueId(),
+          components: {
+            'streetmix-loader': {
+              streetmixStreetURL: streetURL,
+              synchronize: true
+            }
+          }
+        };
 
         setTimeout(() => {
-          console.log('trigger saveScene from street component');
-          useStore.getState().saveScene(true);
-        }, 3000);
+          AFRAME.INSPECTOR.execute('entitycreate', definition);
+          setTimeout(() => {
+            console.log('trigger saveScene from street component');
+            useStore.getState().saveScene(true);
+          }, 3000);
+        }, 1000);
       } else if (streetURL.includes('streetplan.net/')) {
         // instead, load streetplan via managed street the new addlayerpanel
         console.log(
@@ -1042,12 +1067,15 @@ function inputStreetmix() {
     window.location.hash = streetmixURL;
   });
 
-  const defaultStreetEl = document.getElementById('default-street');
-  defaultStreetEl.setAttribute(
-    'streetmix-loader',
-    'streetmixStreetURL',
-    streetmixURL
-  );
+  AFRAME.INSPECTOR.execute('entitycreate', {
+    id: createUniqueId(),
+    components: {
+      'streetmix-loader': {
+        streetmixStreetURL: streetmixURL,
+        synchronize: true
+      }
+    }
+  });
   AFRAME.scenes[0].emit('newScene');
 }
 
@@ -1073,8 +1101,8 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
   }
 
   // clear scene data, create new blank scene.
-  // clearMetadata = true, clearUrlHash = true, addDefaultStreet = false
-  STREET.utils.newScene(true, clearUrlHash, false);
+  // clearMetadata = true, clearUrlHash = true
+  STREET.utils.newScene(true, clearUrlHash);
 
   const sceneTitle = streetObject.title;
   if (sceneTitle) {

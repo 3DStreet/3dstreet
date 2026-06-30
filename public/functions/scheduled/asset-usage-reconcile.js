@@ -16,6 +16,7 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { assertAppCheck } = require('../app-check.js');
 
 const { PLAN_LIMITS } = require('../asset-quota');
 const { withJobHealth } = require('./job-health.js');
@@ -179,6 +180,9 @@ const reconcileAssetUsage = functions
 const triggerReconcileAssetUsage = functions
   .runWith({ timeoutSeconds: 540, memory: '512MB' })
   .https.onCall(async (data, context) => {
+    // Defense-in-depth: also gate on App Check (admin claim required below).
+    // No-op until APP_CHECK_ENFORCE is enabled (see app-check.js).
+    assertAppCheck(context);
     if (!context.auth) {
       throw new functions.https.HttpsError(
         'unauthenticated',

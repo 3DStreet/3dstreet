@@ -252,6 +252,7 @@ AFRAME.registerComponent('street-segment', {
     },
     direction: {
       type: 'string',
+      default: 'none',
       oneOf: ['none', 'inbound', 'outbound']
     },
     surface: {
@@ -267,6 +268,7 @@ AFRAME.registerComponent('street-segment', {
         'cracked-asphalt',
         'parking-lot',
         'water',
+        'hatched',
         'none',
         'solid'
       ]
@@ -482,6 +484,14 @@ AFRAME.registerComponent('street-segment', {
     if (changedProps.includes('direction')) {
       this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
       for (const componentName of this.generatedComponents) {
+        // Only travel-direction-following components (those set to 'inbound' or
+        // 'outbound') track the segment direction. Components with 'none' (the
+        // default) are absolutely oriented via `facing` — e.g. side-oriented
+        // lamps/benches and sideways/angled parked cars — and must not flip.
+        const current = this.el.getAttribute(componentName);
+        if (!current || current.direction === 'none') {
+          continue;
+        }
         this.el.setAttribute(componentName, 'direction', this.data.direction);
       }
     }

@@ -27,11 +27,7 @@ function checkOrCreateEntity(elementId, parentEl, layerName = null) {
 /*
  * clear old scene elements and data. Create blank scene
  */
-export function newScene(
-  clearMetaData = true,
-  clearUrlHash = true,
-  addDefaultStreet = true
-) {
+export function newScene(clearMetaData = true, clearUrlHash = true) {
   AFRAME.INSPECTOR?.selectEntity(null);
   let environmentEl = document.getElementById('environment');
   if (environmentEl) environmentEl.removeAttribute('street-environment');
@@ -52,23 +48,7 @@ export function newScene(
   );
   geoLayer.setAttribute('data-no-transform', '');
 
-  const streetContainerEl = checkOrCreateEntity(
-    'street-container',
-    AFRAME.scenes[0],
-    'User Layers'
-  );
-
-  if (addDefaultStreet) {
-    // create default-street element
-    const defaultStreetEl = checkOrCreateEntity(
-      'default-street',
-      streetContainerEl
-    );
-    // clear data from previous scene
-    defaultStreetEl.removeAttribute('data-layer-name');
-    defaultStreetEl.removeAttribute('street');
-    defaultStreetEl.removeAttribute('streetmix-loader');
-  }
+  checkOrCreateEntity('street-container', AFRAME.scenes[0], 'User Layers');
 
   // clear metadata
   if (clearMetaData) {
@@ -103,6 +83,7 @@ function getEntitiesByCategories(categoriesArray) {
   const queryForCategoriesMixins = categoriesArray
     .map((categoryName) => `a-mixin[category="${categoryName}"]`)
     .join(',');
+  if (!queryForCategoriesMixins) return [];
   const allCategoriesMixins = document.querySelectorAll(
     queryForCategoriesMixins
   );
@@ -110,5 +91,6 @@ function getEntitiesByCategories(categoriesArray) {
   const queryForAllElements = categoriesMixinIds
     .map((mixinId) => `a-entity[mixin~="${mixinId}"]`)
     .join(',');
+  if (!queryForAllElements) return [];
   return document.querySelectorAll(queryForAllElements);
 }

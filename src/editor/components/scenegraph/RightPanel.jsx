@@ -42,16 +42,23 @@ export default function RightPanel({ entity }) {
   const setActiveTab = useStore((s) => s.setRightPanelTab);
   const panelsVisible = useStore((s) => s.panelsVisible);
 
-  const planLabel = authUser?.isPro
-    ? authUser?.isProTeam
-      ? 'PRO TEAM'
-      : 'PRO'
-    : 'FREE';
-  const planTooltip = authUser?.isPro
-    ? authUser?.isProTeam
-      ? `3DStreet Team Plan (${authUser?.teamDomain})`
-      : '3DStreet Pro Plan'
-    : '3DStreet Free Community Edition';
+  // Tier ('MAX' | 'PRO' | null) takes precedence over the team label since
+  // there is no Max Team product yet — domain teams are always Pro-level.
+  const isMax = authUser?.plan === 'MAX';
+  const planLabel = !authUser?.isPro
+    ? 'FREE'
+    : isMax
+      ? 'MAX'
+      : authUser?.isProTeam
+        ? 'PRO TEAM'
+        : 'PRO';
+  const planTooltip = !authUser?.isPro
+    ? '3DStreet Free Community Edition'
+    : isMax
+      ? '3DStreet Max Plan'
+      : authUser?.isProTeam
+        ? `3DStreet Team Plan (${authUser?.teamDomain})`
+        : '3DStreet Pro Plan';
 
   const handleShare = () => {
     if (authUser && window.STREET?.utils?.getAuthorId?.() === authUser.uid) {

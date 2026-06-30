@@ -69,6 +69,14 @@ const config = {
     three: 'THREE'
   },
   plugins: [
+    // @gltf-transform/core 4.4+ dynamically imports `node:fs` / `node:path`
+    // in its PlatformIO detection. Those branches never run in the browser,
+    // but webpack still resolves them statically and throws UnhandledSchemeError
+    // on the `node:` URI scheme. Strip the prefix so the fs/path fallbacks
+    // below substitute empty modules instead.
+    new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+      resource.request = resource.request.replace(/^node:/, '');
+    }),
     new Dotenv({
       path: './config/.env.development'
     }),
@@ -111,7 +119,14 @@ const config = {
           {
             loader: 'css-loader',
             options: {
-              modules: true,
+              // css-loader v7 flipped modules.namedExport to true, which drops
+              // the default export — breaking `import styles from './x.module.scss'`
+              // app-wide (undefined styles). Restore v6 behavior: default export
+              // with class names kept as-is (our SCSS classes are already camelCase).
+              modules: {
+                namedExport: false,
+                exportLocalsConvention: 'as-is'
+              },
               sourceMap: true
             }
           },

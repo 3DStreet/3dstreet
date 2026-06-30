@@ -9,6 +9,7 @@ import { AuthProvider, useAuthContext } from '../editor/contexts';
 import UpgradeModal from '@shared/components/UpgradeModal';
 import { getTokenProfile } from '@shared/utils/tokens';
 import useImageGenStore from './store.js';
+import FluxUI from './main.js';
 
 const GeneratorUpgradeModal = () => {
   const { modal, setModal } = useImageGenStore();
@@ -33,12 +34,25 @@ const GeneratorUpgradeModal = () => {
     return false;
   }, [currentUser]);
 
+  // The modal is only opened on a token shortfall (gen_token_limit). For an
+  // already-Pro/Max user that means they're out of tokens, not that they need
+  // to upgrade — UpgradeModal would otherwise silently self-close, leaving no
+  // feedback that the job couldn't start. Toast the real reason instead.
+  const onAlreadyPro = useCallback(() => {
+    setModal(null);
+    FluxUI.showNotification(
+      "You're out of generation tokens, so this couldn't start. Your monthly tokens refill with your plan.",
+      'error'
+    );
+  }, [setModal]);
+
   return (
     <UpgradeModal
       isOpen={modal === 'purchase'}
       onClose={() => setModal(null)}
       source="generator"
       trigger="gen_token_limit"
+      onAlreadyPro={onAlreadyPro}
       onCheckoutStart={handleCheckoutStart}
       // rememberPrevious=true so closing/completing sign-in lands the user
       // back in the upgrade modal where they started.

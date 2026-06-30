@@ -1,8 +1,21 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
+const { assertAppCheck } = require('./app-check.js');
 
 const PRO_MONTHLY_ALLOWANCE = 100;
+const MAX_MONTHLY_ALLOWANCE = 500;
+
+// MAX is a superset of PRO: it unlocks every Pro feature, plus higher storage
+// and a larger monthly token allowance. Anywhere we used to check
+// `plan === 'PRO'`, accept either paid tier. Keep this in sync with the plan
+// claims written by the Stripe webhook in index.js.
+const isPaidPlanClaim = (plan) => plan === 'PRO' || plan === 'MAX';
+
+// Monthly token top-up by plan. Only MAX bumps above the Pro baseline, so
+// domain-based team Pro (no plan claim) correctly resolves to PRO_MONTHLY_ALLOWANCE.
+const monthlyAllowanceForPlan = (plan) =>
+  plan === 'MAX' ? MAX_MONTHLY_ALLOWANCE : PRO_MONTHLY_ALLOWANCE;
 
 // Centralized domain validation function using stored secrets
 const validateUserDomain = async (userEmail) => {
@@ -54,35 +67,38 @@ const validateUserDomain = async (userEmail) => {
 
 // Cloud Function to check and refill image tokens for Pro users
 const checkAndRefillImageTokens = functions
-  .runWith({ secrets: ["ALLOWED_PRO_TEAM_DOMAINS"] })
+  .runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS'] })
   .https
   .onCall(async (data, context) => {
     // Verify user is authenticated
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
     }
+    assertAppCheck(context);
 
     const userId = context.auth.uid;
     const db = admin.firestore();
     
     try {
-      // Check if user is Pro
+      // Check if user is Pro (or MAX, a superset of Pro)
       const userRecord = await getAuth().getUser(userId);
-      const isPro = userRecord.customClaims && userRecord.customClaims.plan === 'PRO';
-      
+      const plan = userRecord.customClaims && userRecord.customClaims.plan;
+      const isPro = isPaidPlanClaim(plan);
+
       // Use centralized domain validation
       const { isProDomain } = await validateUserDomain(userRecord.email);
-      
+
       const isProUser = isPro || isProDomain;
-      
+      const monthlyAllowance = monthlyAllowanceForPlan(plan);
+
       // Get current token profile
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
       const tokenDoc = await tokenProfileRef.get();
-      
+
       if (!tokenDoc.exists) {
         // Create initial token profile
         // Free users get 5 tokens to allow at least one 4x render attempt
-        const initialTokens = isProUser ? PRO_MONTHLY_ALLOWANCE : 5;
+        const initialTokens = isProUser ? monthlyAllowance : 5;
         const newProfile = {
           userId: userId,
           geoToken: 3,
@@ -109,7 +125,7 @@ const checkAndRefillImageTokens = functions
       if (tokenData.geoToken !== undefined && tokenData.genToken === undefined) {
         // Give existing users their initial genToken allocation
         // Free users get 5 tokens to allow at least one 4x render attempt
-        const initialGenTokens = isProUser ? PRO_MONTHLY_ALLOWANCE : 5;
+        const initialGenTokens = isProUser ? monthlyAllowance : 5;
         
         await tokenProfileRef.update({
           genToken: initialGenTokens,
@@ -139,7 +155,7 @@ const checkAndRefillImageTokens = functions
       if (needsRefill) {
         // Top up to monthly allowance (don't reset if they have more from purchases)
         const tokensBefore = tokenData.genToken || 0;
-        const newImageTokens = Math.max(tokensBefore, PRO_MONTHLY_ALLOWANCE);
+        const newImageTokens = Math.max(tokensBefore, monthlyAllowance);
 
         await tokenProfileRef.update({
           genToken: newImageTokens,
@@ -191,25 +207,27 @@ const checkAndRefillImageTokensInternal = async (userId) => {
   const db = admin.firestore();
   
   try {
-    // Check if user is Pro
+    // Check if user is Pro (or MAX, a superset of Pro)
     const userRecord = await getAuth().getUser(userId);
-    const isPro = userRecord.customClaims && userRecord.customClaims.plan === 'PRO';
-    
+    const plan = userRecord.customClaims && userRecord.customClaims.plan;
+    const isPro = isPaidPlanClaim(plan);
+
     // Use centralized domain validation
     const { isProDomain } = await validateUserDomain(userRecord.email);
-    
+
     const isProUser = isPro || isProDomain;
-    
+    const monthlyAllowance = monthlyAllowanceForPlan(plan);
+
     // Get current token profile
     const tokenProfileRef = db.collection('tokenProfile').doc(userId);
     const tokenDoc = await tokenProfileRef.get();
-    
+
     if (!tokenDoc.exists) {
       // Create initial token profile based on user type
       const newProfile = {
         userId: userId,
         geoToken: 3,
-        genToken: isProUser ? PRO_MONTHLY_ALLOWANCE : 3, // Pro users get 100, free users get 3
+        genToken: isProUser ? monthlyAllowance : 3, // Paid users get their monthly allowance, free users get 3
         lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -224,7 +242,7 @@ const checkAndRefillImageTokensInternal = async (userId) => {
     // Migration: Add genToken for existing users who only have geoToken
     if (tokenData.geoToken !== undefined && tokenData.genToken === undefined) {
       // Give existing users their initial genToken allocation
-      const initialGenTokens = isProUser ? PRO_MONTHLY_ALLOWANCE : 3;
+      const initialGenTokens = isProUser ? monthlyAllowance : 3;
       
       await tokenProfileRef.update({
         genToken: initialGenTokens,
@@ -248,7 +266,7 @@ const checkAndRefillImageTokensInternal = async (userId) => {
     
     if (needsRefill) {
       const internalTokensBefore = tokenData.genToken || 0;
-      const newImageTokens = Math.max(internalTokensBefore, PRO_MONTHLY_ALLOWANCE);
+      const newImageTokens = Math.max(internalTokensBefore, monthlyAllowance);
 
       await tokenProfileRef.update({
         genToken: newImageTokens,
@@ -287,31 +305,37 @@ const checkAndRefillImageTokensInternal = async (userId) => {
 
 // Cloud Function to check if user is Pro (subscription + domain validation)
 const checkUserProStatus = functions
-  .runWith({ secrets: ["ALLOWED_PRO_TEAM_DOMAINS"] })
+  .runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS'] })
   .https
   .onCall(async (data, context) => {
     // Verify user is authenticated
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
     }
+    assertAppCheck(context);
 
     const userId = context.auth.uid;
     
     try {
-      // Check if user is Pro via subscription
+      // Check if user is Pro via subscription (MAX is a superset of Pro)
       const userRecord = await getAuth().getUser(userId);
-      const isPro = userRecord.customClaims && userRecord.customClaims.plan === 'PRO';
-      
+      const plan = (userRecord.customClaims && userRecord.customClaims.plan) || null;
+      const isPro = isPaidPlanClaim(plan);
+
       // Check domain validation
       const { isProDomain, teamDomain } = await validateUserDomain(userRecord.email);
-      
+
       const isProUser = isPro || isProDomain;
-      
+
       return {
         isPro: isProUser,
         isProSubscription: isPro,
         isProDomain: isProDomain,
         teamDomain: teamDomain || null,
+        // Actual paid tier ('PRO' | 'MAX' | null). Lets the client distinguish
+        // Max from Pro for badge/profile labels; domain-team users have no plan
+        // claim so this is null for them (they render as the team label).
+        plan,
         email: userRecord.email
       };
       
@@ -325,7 +349,7 @@ const checkUserProStatus = functions
 const isUserProInternal = async (userId) => {
   try {
     const userRecord = await getAuth().getUser(userId);
-    const isPro = userRecord.customClaims && userRecord.customClaims.plan === 'PRO';
+    const isPro = isPaidPlanClaim(userRecord.customClaims && userRecord.customClaims.plan);
     const { isProDomain } = await validateUserDomain(userRecord.email);
     return isPro || isProDomain;
   } catch (error) {

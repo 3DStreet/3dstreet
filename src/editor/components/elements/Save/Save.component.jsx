@@ -71,12 +71,6 @@ export const Save = ({ currentUser }) => {
     };
   }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (isSavingScene) {
-      handleSave(doSaveAs, doPromptTitle);
-    }
-  }, [isSavingScene]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const isAuthor = () => {
     return currentUser?.uid === STREET.utils.getAuthorId();
   };
@@ -94,6 +88,12 @@ export const Save = ({ currentUser }) => {
       setSavedScene(true);
     }
   };
+
+  useEffect(() => {
+    if (isSavingScene) {
+      handleSave(doSaveAs, doPromptTitle);
+    }
+  }, [isSavingScene]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUnsignedSave = () => {
     setModal('signin');

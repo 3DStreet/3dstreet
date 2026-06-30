@@ -1,0 +1,80 @@
+{
+  "name": "Residential calm street",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 22.8,
+      "leftBuildingVariant": "residential",
+      "rightBuildingVariant": "residential",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "empty",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-tree",
+          "variantString": "big",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-lamp",
+          "variantString": "left|traditional",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "sparse",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "inbound|left",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "inbound|car",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "outbound|car",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "parking-lane",
+          "variantString": "outbound|right",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "sidewalk-lamp",
+          "variantString": "right|traditional",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-bench",
+          "variantString": "right",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}

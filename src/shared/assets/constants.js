@@ -35,7 +35,7 @@ export const ASSET_TYPES = {
  * @readonly
  * @type {string[]}
  */
-export const SPLAT_EXTENSIONS = ['ply', 'splat', 'spz', 'rad', 'ksplat', 'sog'];
+export const SPLAT_EXTENSIONS = ['ply', 'splat', 'spz', 'rad'];
 
 /**
  * Valid asset categories for gallery items

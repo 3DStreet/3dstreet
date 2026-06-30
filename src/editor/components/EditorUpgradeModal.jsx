@@ -3,12 +3,31 @@
  * Wires up the editor's payment-modal store state, postCheckout chaining,
  * and the Pro-claim refresh that confirms a successful upgrade.
  */
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import UpgradeModal from '@shared/components/UpgradeModal';
 import { useAuthContext } from '../contexts/index.js';
 import { isUserPro } from '@shared/auth/api/user';
 import { auth } from '@shared/services/firebase';
 import useStore from '@/store';
+
+// Maps a payment deep-link hash to a tier + billing cycle. e.g.
+// #payment-max-annual → { initialTier: 'max', initialCycle: 'yearly' }.
+// Only payment hashes are parsed; any other hash (scene ids, etc.) yields the
+// neutral default, so in-app paywall triggers open the normal selection flow.
+const parsePaymentHash = (hash = '') => {
+  const h = hash.toLowerCase();
+  if (!h.includes('payment')) {
+    return { initialTier: null, initialCycle: 'monthly' };
+  }
+  const initialTier = h.includes('max')
+    ? 'max'
+    : h.includes('pro')
+      ? 'pro'
+      : null;
+  const initialCycle =
+    h.includes('annual') || h.includes('yearly') ? 'yearly' : 'monthly';
+  return { initialTier, initialCycle };
+};
 
 const EditorUpgradeModal = () => {
   const { currentUser, setCurrentUser } = useAuthContext();
@@ -24,6 +43,15 @@ const EditorUpgradeModal = () => {
   const setPendingPostCheckoutAction = useStore(
     (state) => state.setPendingPostCheckoutAction
   );
+
+  // Capture the activation deep link once at mount (app load). Consumed on
+  // close/success so it can't reapply to a later in-app paywall (geo, watermark)
+  // opened in the same session without a reload.
+  const [deepLink, setDeepLink] = useState(() =>
+    parsePaymentHash(window.location.hash)
+  );
+  const consumeDeepLink = () =>
+    setDeepLink({ initialTier: null, initialCycle: 'monthly' });
 
   // Force a token refresh and re-check Pro status. Returns true once the
   // webhook flips the plan claim — keeps polling open until then so a
@@ -41,7 +69,10 @@ const EditorUpgradeModal = () => {
           ...currentUser,
           isPro: true,
           isProTeam: status.isProTeam,
-          teamDomain: status.teamDomain
+          teamDomain: status.teamDomain,
+          // Carry the tier so the badge/profile flip to Max (not Pro) right
+          // after a Max purchase, without waiting for a full re-auth.
+          plan: status.plan ?? null
         });
         // Tell plan-dependent panels (assets storage meter, etc.) to refetch.
         window.dispatchEvent(new Event('planChanged'));
@@ -64,10 +95,12 @@ const EditorUpgradeModal = () => {
   // they'll click Download again, and the session flag lets it through).
   const onClose = () => {
     setPendingPostCheckoutAction(null);
+    consumeDeepLink();
     returnToPreviousModal();
   };
   const onSuccess = () => {
     setPendingPostCheckoutAction(null);
+    consumeDeepLink();
     returnToPreviousModal();
   };
   // Soft-decline path. Runs the trigger site's original action (e.g. the
@@ -111,6 +144,8 @@ const EditorUpgradeModal = () => {
       onSecondaryCta={onSecondaryCta}
       onAlreadyPro={onAlreadyPro}
       onSuccess={onSuccess}
+      initialTier={deepLink.initialTier}
+      initialCycle={deepLink.initialCycle}
     />
   );
 };

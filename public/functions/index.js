@@ -2,11 +2,11 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 admin.initializeApp();
 const { getAuth } = require('firebase-admin/auth');
-const { serveWebXRVariant } = require('./webxr-variant.js');
 const { getGeoidHeight } = require('./geoid-height.js');
-const { generateReplicateImage, generateReplicateVideo, generateReplicateSplat, getGenerationJobStatus, replicateJobWebhook } = require('./replicate.js');
+const { generateReplicateImage, generateReplicateVideo, generateReplicateSplat, getGenerationJobStatus, replicateJobWebhook, modalJobWebhook } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { generateFalImage } = require('./fal-proxy.js');
+const { assertAppCheck } = require('./app-check.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduled/scheduledEmails.js');
 const { auditUserSubscriptions, auditUserSubscriptionsHttp } = require('./utilities/user-audit.js');
 const { onAssetWritten, getUploadQuota } = require('./asset-quota.js');
@@ -16,9 +16,7 @@ const { checkAssetUsageHealth, triggerCheckAssetUsageHealth } = require('./sched
 const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./scheduled/asset-orphan-cleanup.js');
 const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
 const { onSplatAssetCreated } = require('./rad-dispatch.js');
-
-// Re-export the WebXR variant function
-exports.serveWebXRVariant = serveWebXRVariant;
+const { generateEditorChat } = require('./ai-chat-proxy.js');
 
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;
@@ -29,6 +27,7 @@ exports.generateReplicateVideo = generateReplicateVideo;
 exports.generateReplicateSplat = generateReplicateSplat;
 exports.getGenerationJobStatus = getGenerationJobStatus;
 exports.replicateJobWebhook = replicateJobWebhook;
+exports.modalJobWebhook = modalJobWebhook;
 
 // Re-export the token management functions
 exports.checkAndRefillImageTokens = checkAndRefillImageTokens;
@@ -73,6 +72,12 @@ exports.triggerReconcileGenerationJobs = triggerReconcileGenerationJobs;
 // --- RAD conversion (splat optimized variant) -----------------------------
 exports.onSplatAssetCreated = onSplatAssetCreated;
 
+// Editor AI Assistant — server-side gate for the Vertex/Gemini chat. The client
+// no longer calls Firebase AI Logic directly (model selection was abusable); all
+// model access now goes through this authenticated, rate-limited, model-locked
+// callable. See ai-chat-proxy.js.
+exports.generateEditorChat = generateEditorChat;
+
 exports.getScene = functions
   .https
   .onRequest(async (req, res) => {
@@ -100,13 +105,13 @@ exports.getScene = functions
       } else {
         res.send(doc.data());
       }
-    } catch (err) {
+    } catch {
       res.status(500).send({ error: 'Error retrieving scene' });
     }
   });
 
 exports.createStripeSession = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY'] })
   .https
   .onCall(async (data, context) => {
     const Stripe = require('stripe');
@@ -116,6 +121,7 @@ exports.createStripeSession = functions
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to create checkout session.');
     }
+    assertAppCheck(context);
 
     // SECURITY: Always use the authenticated user's ID from context, never trust client-provided IDs
     const userId = context.auth.uid;
@@ -125,8 +131,8 @@ exports.createStripeSession = functions
     const userEmail = userRecord.email;
 
     // Check if customer already exists in our records
-    const collectionRef = admin.firestore().collection("userProfile");
-    const querySnapshot = await collectionRef.where("userId", "==", userId).get();
+    const collectionRef = admin.firestore().collection('userProfile');
+    const querySnapshot = await collectionRef.where('userId', '==', userId).get();
     let stripeCustomerId = null;
     querySnapshot.forEach((doc) => {
       stripeCustomerId = doc.data().stripeCustomerId;
@@ -195,7 +201,7 @@ exports.createStripeSession = functions
   });
 
 exports.checkActiveSubscriptions = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY'] })
   .https
   .onCall(async (data, context) => {
     const Stripe = require('stripe');
@@ -205,13 +211,14 @@ exports.checkActiveSubscriptions = functions
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to check subscriptions.');
     }
+    assertAppCheck(context);
 
     const userId = context.auth.uid;
 
     try {
       // Get Stripe customer ID from Firestore
-      const collectionRef = admin.firestore().collection("userProfile");
-      const querySnapshot = await collectionRef.where("userId", "==", userId).get();
+      const collectionRef = admin.firestore().collection('userProfile');
+      const querySnapshot = await collectionRef.where('userId', '==', userId).get();
       let stripeCustomerId = null;
       querySnapshot.forEach((doc) => {
         stripeCustomerId = doc.data().stripeCustomerId;
@@ -252,7 +259,7 @@ exports.checkActiveSubscriptions = functions
   });
 
 exports.createStripeBillingPortal = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY'] })
   .https
   .onCall(async (data, context) => {
     const Stripe = require('stripe');
@@ -262,12 +269,13 @@ exports.createStripeBillingPortal = functions
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to access billing portal.');
     }
+    assertAppCheck(context);
 
     // SECURITY: Always use the authenticated user's ID from context, never trust client-provided IDs
     const userId = context.auth.uid;
 
-    const collectionRef = admin.firestore().collection("userProfile");
-    const querySnapshot = await collectionRef.where("userId", "==", userId).get();
+    const collectionRef = admin.firestore().collection('userProfile');
+    const querySnapshot = await collectionRef.where('userId', '==', userId).get();
     let stripeCustomerId = null;
     querySnapshot.forEach((doc) => {
       stripeCustomerId = doc.data().stripeCustomerId;
@@ -291,7 +299,7 @@ exports.createStripeBillingPortal = functions
 
 // function for Stripe webhook customer.subscription.deleted
 exports.handleSubscriptionWebhook = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET_SUBSCRIPTION"] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_SUBSCRIPTION'] })
   .https
   .onRequest(async (req, res) => {
     const Stripe = require('stripe');
@@ -311,8 +319,8 @@ exports.handleSubscriptionWebhook = functions
 
     const subscription = event.data.object;
 
-    const collectionRef = admin.firestore().collection("userProfile");
-    const querySnapshot = await collectionRef.where("stripeCustomerId", "==", subscription.customer).get();
+    const collectionRef = admin.firestore().collection('userProfile');
+    const querySnapshot = await collectionRef.where('stripeCustomerId', '==', subscription.customer).get();
     let userId = null;
     querySnapshot.forEach((doc) => {
       userId = doc.data().userId;
@@ -337,7 +345,7 @@ exports.handleSubscriptionWebhook = functions
 
 // function for Stripe webhook checkout.session.completed
 exports.stripeWebhook = functions
-  .runWith({ secrets: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET_CHECKOUT", "STRIPE_YEARLY_PRICE_ID", "STRIPE_MONTHLY_PRICE_ID"] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_CHECKOUT', 'STRIPE_YEARLY_PRICE_ID', 'STRIPE_MONTHLY_PRICE_ID', 'STRIPE_MAX_YEARLY_PRICE_ID', 'STRIPE_MAX_MONTHLY_PRICE_ID'] })
   .https
   .onRequest(async (req, res) => {
     const Stripe = require('stripe');
@@ -365,43 +373,51 @@ exports.stripeWebhook = functions
       }
     );
 
-    // Check if this is an annual or monthly plan purchase
-    const annualPriceId = process.env.STRIPE_YEARLY_PRICE_ID;
-    const monthlyPriceId = process.env.STRIPE_MONTHLY_PRICE_ID;
+    // Resolve which tier (PRO / MAX) and billing cycle (annual / monthly) was
+    // purchased by matching the checkout's line-item price IDs against the four
+    // configured price-ID secrets. MAX is a superset of PRO; both unlock all
+    // Pro features (see isPaidPlanClaim in token-management.js).
+    //
+    // Token grant = the tier's monthly floor, regardless of cycle. Subscriptions
+    // are "pure" recurring access + a metered monthly drip (PRO 100, MAX 500); the
+    // ~30% annual discount is the only annual sweetener — there is no up-front
+    // lump-sum bonus on annual. This seed just covers the first month; the monthly
+    // top-up-to-floor in token-management.js handles every cycle thereafter. (Bulk
+    // token purchasing is reserved for the upcoming one-time token packs.)
+    const PRICE_CONFIG = [
+      { tier: 'MAX', cycle: 'annual', priceId: process.env.STRIPE_MAX_YEARLY_PRICE_ID, tokens: 500 },
+      { tier: 'MAX', cycle: 'monthly', priceId: process.env.STRIPE_MAX_MONTHLY_PRICE_ID, tokens: 500 },
+      { tier: 'PRO', cycle: 'annual', priceId: process.env.STRIPE_YEARLY_PRICE_ID, tokens: 100 },
+      { tier: 'PRO', cycle: 'monthly', priceId: process.env.STRIPE_MONTHLY_PRICE_ID, tokens: 100 }
+    ];
 
-    let isAnnualPlan = false;
-    let isMonthlyPlan = false;
-    if (sessionWithLineItems.line_items && sessionWithLineItems.line_items.data) {
-      if (annualPriceId) {
-        isAnnualPlan = sessionWithLineItems.line_items.data.some(item =>
-          item.price.id === annualPriceId
-        );
-      }
-      if (monthlyPriceId) {
-        isMonthlyPlan = sessionWithLineItems.line_items.data.some(item =>
-          item.price.id === monthlyPriceId
-        );
-      }
+    const purchasedPriceIds =
+      (sessionWithLineItems.line_items && sessionWithLineItems.line_items.data
+        ? sessionWithLineItems.line_items.data.map(item => item.price?.id).filter(Boolean)
+        : []);
 
-      // Loud warning if a checkout completed but no plan matched — usually means
-      // STRIPE_MONTHLY_PRICE_ID / STRIPE_YEARLY_PRICE_ID secrets drifted from
-      // the price IDs the frontend is actually selling.
-      if (!isAnnualPlan && !isMonthlyPlan) {
-        const seenPriceIds = sessionWithLineItems.line_items.data
-          .map(item => item.price?.id)
-          .filter(Boolean);
-        console.warn(
-          `checkout completed but no plan matched: session=${checkoutSession.id} ` +
-          `userId=${checkoutSession.metadata?.userId} ` +
-          `seen=[${seenPriceIds.join(',')}] ` +
-          `expected_monthly=${monthlyPriceId || 'unset'} ` +
-          `expected_yearly=${annualPriceId || 'unset'}`
-        );
-      }
+    const matchedPlan = PRICE_CONFIG.find(
+      entry => entry.priceId && purchasedPriceIds.includes(entry.priceId)
+    );
+
+    // Loud warning if a checkout completed but no plan matched — usually means
+    // the STRIPE_*_PRICE_ID secrets drifted from the price IDs the frontend is
+    // actually selling. We still fall back to granting PRO below (preserves the
+    // original behavior) so a transient secret misconfig doesn't strand a paying
+    // user without access.
+    if (!matchedPlan) {
+      console.warn(
+        `checkout completed but no plan matched: session=${checkoutSession.id} ` +
+        `userId=${checkoutSession.metadata?.userId} ` +
+        `seen=[${purchasedPriceIds.join(',')}] ` +
+        `expected=[${PRICE_CONFIG.map(e => `${e.tier}/${e.cycle}=${e.priceId || 'unset'}`).join(', ')}]`
+      );
     }
 
-    const collectionRef = admin.firestore().collection("userProfile");
-    const querySnapshot = await collectionRef.where("userId", "==", checkoutSession.metadata.userId).get();
+    const planTier = matchedPlan ? matchedPlan.tier : 'PRO';
+
+    const collectionRef = admin.firestore().collection('userProfile');
+    const querySnapshot = await collectionRef.where('userId', '==', checkoutSession.metadata.userId).get();
     let stripeCustomerId = null;
 
     querySnapshot.forEach((doc) => {
@@ -420,18 +436,21 @@ exports.stripeWebhook = functions
 
     // Set custom user claims on this update.
     const customClaims = {
-      plan: 'PRO'
+      plan: planTier
     };
     await getAuth().setCustomUserClaims(checkoutSession.metadata.userId, customClaims);
 
-    // Grant tokens for subscription purchases
-    if (isAnnualPlan || isMonthlyPlan) {
+    // Grant tokens for subscription purchases. Only when we matched a known
+    // price (the PRO fallback above sets the claim but, with no token mapping,
+    // we don't guess an allotment).
+    if (matchedPlan) {
       const db = admin.firestore();
       const tokenProfileRef = db.collection('tokenProfile').doc(checkoutSession.metadata.userId);
 
-      // Determine token amount based on plan type
-      const tokensToGrant = isAnnualPlan ? 840 : 100;
-      const planType = isAnnualPlan ? 'annual' : 'monthly';
+      // Token amount is the tier's monthly floor (PRO 100, MAX 500), same for
+      // both cycles — annual carries no up-front bonus.
+      const tokensToGrant = matchedPlan.tokens;
+      const planType = `${matchedPlan.tier} ${matchedPlan.cycle}`;
 
       try {
         const tokenDoc = await tokenProfileRef.get();
@@ -450,7 +469,7 @@ exports.stripeWebhook = functions
           const newProfile = {
             userId: checkoutSession.metadata.userId,
             geoToken: 3,
-            genToken: tokensToGrant, // Annual: 840; Monthly: 100
+            genToken: tokensToGrant, // tier monthly floor: PRO 100 · MAX 500 (both cycles)
             lastMonthlyRefill: `${new Date().getFullYear()}-${new Date().getMonth()}`,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -470,13 +489,14 @@ exports.stripeWebhook = functions
 
 // Discord webhook function for sharing scenes
 exports.shareToDiscord = functions
-  .runWith({ secrets: ["DISCORD_WEBHOOK_URL"] })
+  .runWith({ secrets: ['DISCORD_WEBHOOK_URL'] })
   .https
   .onCall(async (data, context) => {
     // Verify user is authenticated
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to share scenes.');
     }
+    assertAppCheck(context);
 
     const { title, location, username, sceneUrl, imageUrl } = data;
 

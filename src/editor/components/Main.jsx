@@ -8,7 +8,7 @@ import { ShareModal } from './modals/ShareModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
-import { firebaseConfig, app } from '@shared/services/firebase.js';
+import { firebaseConfig } from '@shared/services/firebase.js';
 import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
@@ -24,7 +24,7 @@ import { PrimaryToolbar } from './elements/PrimaryToolbar';
 import { Compass } from './elements/Compass';
 import { ContextViewButton } from './elements/ContextViewButton';
 import useStore from '@/store';
-import { AIChatProvider } from '../contexts/AIChatContext';
+import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
 import { useNavMode } from '../lib/nav-experimental/useNavMode';
 import { RecoveryCue } from '../lib/nav-experimental/RecoveryCue.jsx';
 import { isExperimentalNav } from '../lib/nav-experimental/index.js';
@@ -145,42 +145,39 @@ export default function Main() {
 
   return (
     <div id="inspectorContainer">
+      <UnofficialDeploymentBanner />
       <ToolbarWrapper />
       {isInspectorEnabled && (
-        <AIChatProvider firebaseApp={app}>
-          <div>
-            <SceneGraph scene={scene} selectedEntity={state.entity} />
-            <RightPanel entity={state.entity} />
-            <div
-              className={dockClass(`clickable ${styles.primaryToolbarDock}`)}
-            >
-              <PrimaryToolbar />
-            </div>
-            <div
-              ref={actionBarDockRef}
-              className={dockClass(`clickable ${styles.actionBarDock}`)}
-            >
-              <ActionBar selectedEntity={state.entity} />
-            </div>
-            {isExperimentalNav() && (
-              <div
-                ref={compassDockRef}
-                className={dockClass(`clickable ${styles.compassDock}`)}
-              >
-                <Compass />
-              </div>
-            )}
-            {isExperimentalNav() && (
-              <div
-                ref={contextButtonDockRef}
-                className={dockClass(`clickable ${styles.contextButtonDock}`)}
-              >
-                <ContextViewButton />
-              </div>
-            )}
-            {isExperimentalNav() && <RecoveryCue />}
+        <div>
+          <SceneGraph scene={scene} selectedEntity={state.entity} />
+          <RightPanel entity={state.entity} />
+          <div className={dockClass(`clickable ${styles.primaryToolbarDock}`)}>
+            <PrimaryToolbar />
           </div>
-        </AIChatProvider>
+          <div
+            ref={actionBarDockRef}
+            className={dockClass(`clickable ${styles.actionBarDock}`)}
+          >
+            <ActionBar selectedEntity={state.entity} />
+          </div>
+          {isExperimentalNav() && (
+            <div
+              ref={compassDockRef}
+              className={dockClass(`clickable ${styles.compassDock}`)}
+            >
+              <Compass />
+            </div>
+          )}
+          {isExperimentalNav() && (
+            <div
+              ref={contextButtonDockRef}
+              className={dockClass(`clickable ${styles.contextButtonDock}`)}
+            >
+              <ContextViewButton />
+            </div>
+          )}
+          {isExperimentalNav() && <RecoveryCue />}
+        </div>
       )}
       <ScreenshotModal />
       <ShareModal />

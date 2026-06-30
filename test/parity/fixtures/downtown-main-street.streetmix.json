@@ -1,0 +1,98 @@
+{
+  "name": "Downtown main street",
+  "data": {
+    "street": {
+      "schemaVersion": 33,
+      "units": 2,
+      "width": 30.9,
+      "leftBuildingVariant": "narrow",
+      "rightBuildingVariant": "wide",
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "dense",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-wayfinding",
+          "variantString": "large",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-bench",
+          "variantString": "left",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-bike-rack",
+          "variantString": "left|sidewalk-parallel",
+          "width": 1.5,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk-lamp",
+          "variantString": "both|modern",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "outdoor-dining",
+          "variantString": "empty|sidewalk",
+          "width": 2.4,
+          "elevation": 0.15
+        },
+        {
+          "type": "flex-zone",
+          "variantString": "taxi|inbound|right",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "inbound|car",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "turn-lane",
+          "variantString": "inbound|shared",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "outbound|car",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "flex-zone",
+          "variantString": "rideshare|outbound|right",
+          "width": 3,
+          "elevation": 0
+        },
+        {
+          "type": "parklet",
+          "variantString": "right",
+          "width": 2.4,
+          "elevation": 0
+        },
+        {
+          "type": "sidewalk-bench",
+          "variantString": "center",
+          "width": 1.2,
+          "elevation": 0.15
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "dense",
+          "width": 2.4,
+          "elevation": 0.15
+        }
+      ]
+    }
+  }
+}

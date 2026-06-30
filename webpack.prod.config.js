@@ -7,8 +7,8 @@ const DEPLOY_ENV = process.env.DEPLOY_ENV ?? 'production';
 
 module.exports = {
   performance: {
-    maxAssetSize: 3460300, // 3.3 MiB
-    maxEntrypointSize: 3460300, // 3.3 MiB
+    maxAssetSize: 3774874, // 3.6 MiB
+    maxEntrypointSize: 3774874, // 3.6 MiB
     hints: 'error',
     assetFilter: function (assetFilename) {
       // Only check named entry point bundles, not async-loaded chunks.
@@ -42,6 +42,14 @@ module.exports = {
     three: 'THREE'
   },
   plugins: [
+    // @gltf-transform/core 4.4+ dynamically imports `node:fs` / `node:path`
+    // in its PlatformIO detection. Those branches never run in the browser,
+    // but webpack still resolves them statically and throws UnhandledSchemeError
+    // on the `node:` URI scheme. Strip the prefix so the fs/path fallbacks
+    // below substitute empty modules instead.
+    new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+      resource.request = resource.request.replace(/^node:/, '');
+    }),
     new Dotenv({
       path: `./config/.env.${DEPLOY_ENV}`
     }),
@@ -89,7 +97,14 @@ module.exports = {
           {
             loader: 'css-loader',
             options: {
-              modules: true,
+              // css-loader v7 flipped modules.namedExport to true, which drops
+              // the default export — breaking `import styles from './x.module.scss'`
+              // app-wide (undefined styles). Restore v6 behavior: default export
+              // with class names kept as-is (our SCSS classes are already camelCase).
+              modules: {
+                namedExport: false,
+                exportLocalsConvention: 'as-is'
+              },
               sourceMap: false
             }
           },

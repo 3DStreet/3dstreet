@@ -19,7 +19,13 @@ AFRAME.registerComponent('street-generated-clones', {
     facing: { default: 0, type: 'number' }, // Y Rotation in degrees
     seed: { default: 0, type: 'int' }, // random seed for random and randomFacing mode
     randomFacing: { default: false, type: 'boolean' },
-    direction: { type: 'string', oneOf: ['none', 'inbound', 'outbound'] }, // not used if facing defined?
+    // 'none' = absolute orientation via `facing`; 'inbound'/'outbound' make the
+    // clone follow the segment's travel direction (see createClone)
+    direction: {
+      type: 'string',
+      default: 'none',
+      oneOf: ['none', 'inbound', 'outbound']
+    },
 
     // Mode-specific properties
     mode: { default: 'fixed', oneOf: ['fixed', 'random', 'single', 'fit'] },
@@ -60,7 +66,13 @@ AFRAME.registerComponent('street-generated-clones', {
   },
 
   clearEntities: function () {
-    this.createdEntities.forEach((entity) => entity.remove());
+    // Only detach entities still connected to the DOM. An entity may already
+    // be detached (parentNode === null) during event-driven re-renders; calling
+    // remove() on it throws in AEntity.remove and aborts this loop, which both
+    // crashes and leaves later entities ghost-retained until reload. See #1493.
+    this.createdEntities.forEach((entity) => {
+      if (entity.parentNode) entity.remove();
+    });
     this.createdEntities.length = 0;
   },
 

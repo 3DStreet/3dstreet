@@ -1,0 +1,73 @@
+version: 2
+updates:
+  # Root app
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    groups:
+      # Roll all security fixes into one PR
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      # Routine, low-risk bumps batched together
+      minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+      # Breaking bumps batched together, kept out of the minor-patch PR
+      major:
+        applies-to: version-updates
+        update-types:
+          - "major"
+
+  # Firebase Cloud Functions
+  - package-ecosystem: "npm"
+    directory: "/public/functions"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    groups:
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+      major:
+        applies-to: version-updates
+        update-types:
+          - "major"
+    # firebase-functions 7.x (latest) only peers to firebase-admin <=13, so a
+    # major firebase-admin bump breaks the Cloud Build install (#1692 -> #1713).
+    # Drop this ignore once firebase-functions ships admin-14 support.
+    ignore:
+      - dependency-name: "firebase-admin"
+        update-types: ["version-update:semver-major"]
+
+  # rad-converter Cloud Run service
+  - package-ecosystem: "npm"
+    directory: "/rad-converter"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    groups:
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+      major:
+        applies-to: version-updates
+        update-types:
+          - "major"

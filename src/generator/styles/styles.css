@@ -518,3 +518,34 @@ button:active {
     color: #4b5563;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
+/* Splat tab — quality tier buttons (Basic/High/Max). Colors live here rather
+   than as Tailwind utilities so the .dark theme actually covers them. */
+.splat-tier-btn {
+    border-color: #d1d5db; /* gray-300 */
+    color: #374151; /* gray-700 */
+}
+
+.splat-tier-btn:hover {
+    background-color: #f9fafb; /* gray-50 */
+}
+
+.splat-tier-btn.selected {
+    border-color: #4f46e5; /* indigo-600 */
+    background-color: #eef2ff; /* indigo-50 */
+    color: #4338ca; /* indigo-700 */
+}
+
+.dark .splat-tier-btn {
+    border-color: #4b5563; /* gray-600 */
+    color: #e5e7eb; /* gray-200 — readable on the dark panel */
+}
+
+.dark .splat-tier-btn:hover {
+    background-color: #374151; /* gray-700 */
+}
+
+.dark .splat-tier-btn.selected {
+    border-color: #818cf8; /* indigo-400 */
+    background-color: rgba(99, 102, 241, 0.25); /* indigo-500 @ 25% */
+    color: #c7d2fe; /* indigo-200 */
+}

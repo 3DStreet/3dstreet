@@ -16,7 +16,7 @@
  *  - onSuccess: fires when the user clicks the success CTA — editor uses this
  *    to chain into a postCheckout modal (geo / image / etc.).
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { httpsCallable } from 'firebase/functions';
 import posthog from 'posthog-js';
@@ -27,6 +27,21 @@ import { openBillingPortal } from '@shared/utils/billing';
 import { getPaywallSurface } from './paywallSurfaces';
 import { PRICING, TOKEN_FEATURE_LINE } from './pricing';
 import styles from './UpgradeModal.module.scss';
+
+// Stripe price IDs by tier + billing cycle. Injected at build time by
+// dotenv-webpack from config/.env.{development,production}. The webhook
+// (public/functions/index.js) maps these same IDs back to a plan tier +
+// token grant, so the two sets must stay aligned.
+const PRICE_IDS = {
+  pro: {
+    monthly: process.env.STRIPE_MONTHLY_PRICE_ID,
+    yearly: process.env.STRIPE_YEARLY_PRICE_ID
+  },
+  max: {
+    monthly: process.env.STRIPE_MAX_MONTHLY_PRICE_ID,
+    yearly: process.env.STRIPE_MAX_YEARLY_PRICE_ID
+  }
+};
 
 // Single source of truth for the Pro feature list — shown once, no duplication.
 const PLAN_FEATURES = [
@@ -92,7 +107,14 @@ const UpgradeModal = ({
   onSuccess,
   successTitle = 'Welcome to Pro!',
   successMessage = 'Pro features are unlocked on your account.',
-  successCta = 'Continue'
+  successCta = 'Continue',
+  // Deep-link activation (e.g. docs pricing "Go Max" → #payment-max-annual):
+  // preselect the billing cycle and auto-advance straight to that tier's
+  // checkout, honoring the choice the user already made on the pricing page.
+  // Parsed from the URL hash by the editor adapter. Defaults keep every in-app
+  // trigger (geo paywall, watermark, …) on the normal card-selection flow.
+  initialTier = null,
+  initialCycle = 'monthly'
 }) => {
   const surface = getPaywallSurface(surfaceKey);
   const features = surface?.features || PLAN_FEATURES;
@@ -100,8 +122,12 @@ const UpgradeModal = ({
   const [modalState, setModalState] = useState('pricing');
   // 'pricing' | 'checkout' | 'has-subscription'
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const [billingCycle, setBillingCycle] = useState('yearly');
-  // Annual highlighted by default — best value, matches mockup.
+  const [billingCycle, setBillingCycle] = useState(initialCycle);
+  const [selectedTier, setSelectedTier] = useState('pro');
+  // 'pro' | 'max'. MAX is a superset of Pro (more storage + tokens). Tiers show
+  // as neutral side-by-side cards; selectedTier is only set when the user picks
+  // a card's CTA (or a deep link auto-advances). Cycle defaults to the deep
+  // link's choice, else monthly — the lowest-commitment entry point.
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
   // Flips true on Stripe's onComplete. Used to hide the Back button once
   // payment is in-flight — nothing useful to go back to past that point.
@@ -110,22 +136,29 @@ const UpgradeModal = ({
     () => setPaymentSubmitted(true),
     []
   );
+  // Gates the deep-link auto-advance: only fire once the subscription precheck
+  // has run, so an existing subscriber is routed to the billing portal rather
+  // than into a duplicate checkout. The ref makes it fire at most once per mount.
+  const [subscriptionPrechecked, setSubscriptionPrechecked] = useState(false);
+  const hasAutoStarted = useRef(false);
 
   const handleClose = useCallback(() => {
     onClose();
     setModalState('pricing');
     setSelectedPlan(null);
-    setBillingCycle('yearly');
+    setBillingCycle(initialCycle);
+    setSelectedTier('pro');
     setSubscriptionInfo(null);
     setPaymentSubmitted(false);
-  }, [onClose]);
+  }, [onClose, initialCycle]);
 
-  const handleGoPro = () => {
+  const handleGoPro = (tier) => {
     const plan = billingCycle; // 'monthly' | 'yearly'
+    setSelectedTier(tier);
     setSelectedPlan(plan);
     setModalState('checkout');
     onCheckoutStart?.(plan);
-    posthog.capture('checkout_started', { plan, source });
+    posthog.capture('checkout_started', { plan, tier, source });
   };
 
   const handleBackToPricing = () => {
@@ -195,11 +228,35 @@ const UpgradeModal = ({
         }
       } catch (error) {
         console.error('Error checking active subscriptions:', error);
+      } finally {
+        // Unblocks the deep-link auto-advance below. By the time this runs we've
+        // either routed an existing subscriber to has-subscription (modalState
+        // changes, so the auto-advance's pricing guard fails) or confirmed there
+        // is no active sub — safe to proceed straight to checkout.
+        setSubscriptionPrechecked(true);
       }
     };
 
     checkSubscriptions();
   }, [isOpen, currentUser, source, trigger, modalState]);
+
+  // Deep-link activation: when the modal was opened via a tier-specific hash
+  // (#payment-max-annual etc.), skip the card-selection step and go straight to
+  // that tier's checkout — honoring the choice already made on the pricing page.
+  // Guards keep it from bypassing the already-Pro short-circuit or the
+  // duplicate-subscription precheck, and the ref fires it at most once per mount
+  // (so Back → pricing lets the user pick a different tier without re-advancing).
+  useEffect(() => {
+    if (!isOpen || modalState !== 'pricing') return;
+    if (!initialTier || hasAutoStarted.current) return;
+    if (!currentUser || currentUser.isPro) return;
+    if (!subscriptionPrechecked) return;
+    hasAutoStarted.current = true;
+    // handleGoPro reads billingCycle (initialized from initialCycle), so this
+    // opens checkout on the right tier + cycle.
+    handleGoPro(initialTier);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, modalState, initialTier, currentUser, subscriptionPrechecked]);
 
   // Defensive: clear any stray session_id left in the URL.
   useEffect(() => {
@@ -237,6 +294,51 @@ const UpgradeModal = ({
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  // Shared Pro feature list shown once above the tier cards. Each card carries
+  // its own token count + storage (Pro vs Max), so drop the generic token line
+  // here to avoid repeating it.
+  const sharedFeatures = features.filter((f) => f !== TOKEN_FEATURE_LINE);
+  const proPlan = PRICING.pro[billingCycle];
+  const maxPlan = PRICING.max[billingCycle];
+
+  // Success copy is tier-aware so a Max purchase doesn't read "Welcome to Pro!".
+  // Pro keeps the caller-supplied copy (e.g. the generator's custom strings);
+  // Max — which no caller passes copy for — gets its own title + message.
+  const checkoutSuccessTitle =
+    selectedTier === 'max' ? 'Welcome to Max!' : successTitle;
+  const checkoutSuccessMessage =
+    selectedTier === 'max'
+      ? 'Max features are unlocked on your account.'
+      : successMessage;
+
+  // One tier card: price, billing-cycle detail, perks, and a tier-specific CTA.
+  // Billing cycle is the single toggle above; the card just reprices off it.
+  // Both tiers render identically (no featured/preselected tier) so neither is
+  // nudged — the user picks Pro or Max with no thumb on the scale.
+  const renderPlanCard = (tier, planData, perks) => (
+    <div className={styles.planCard}>
+      <div className={styles.planName}>{tier === 'max' ? 'Max' : 'Pro'}</div>
+      <div className={styles.planPriceRow}>
+        <span className={styles.planPriceLarge}>${planData.pricePerMonth}</span>
+        <span className={styles.planPricePer}>/mo</span>
+      </div>
+      <div className={styles.planCycleDetail}>{planData.cycleDetail}</div>
+      <ul className={styles.planPerks}>
+        <li>{planData.tokens} AI tokens / month</li>
+        {perks.map((p) => (
+          <li key={p}>{p}</li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        className={styles.planCta}
+        onClick={() => handleGoPro(tier)}
+      >
+        Go {tier === 'max' ? 'Max' : 'Pro'}
+      </button>
+    </div>
+  );
 
   const renderPricing = () => (
     <>
@@ -291,7 +393,7 @@ const UpgradeModal = ({
       <div className={styles.divider} />
 
       <ul className={styles.featureList}>
-        {features.map((f) => (
+        {sharedFeatures.map((f) => (
           <li key={f}>
             <CheckIcon />
             <span>{f}</span>
@@ -322,33 +424,10 @@ const UpgradeModal = ({
             </button>
           </div>
 
-          <div className={styles.priceDisplay}>
-            <span className={styles.priceLarge}>
-              ${PRICING[billingCycle].pricePerMonth}
-            </span>
-            {/* /month sits superscript-style next to the price; the cycle
-                detail ("billed monthly" / "billed yearly, $84/year") stacks
-                directly under it. Always present so toggling cycles doesn't
-                shift the layout. */}
-            <div className={styles.priceUnit}>
-              <span className={styles.pricePer}>/month</span>
-              <span className={styles.priceSubtext}>
-                {PRICING[billingCycle].cycleDetail}
-              </span>
-            </div>
-            <div className={styles.priceTokenGrant}>
-              Includes {PRICING[billingCycle].tokens} AI generation tokens,
-              delivered up front
-            </div>
+          <div className={styles.planCards}>
+            {renderPlanCard('pro', proPlan, ['5 GB asset storage'])}
+            {renderPlanCard('max', maxPlan, ['25 GB asset storage'])}
           </div>
-
-          <button
-            type="button"
-            className={styles.ctaButton}
-            onClick={handleGoPro}
-          >
-            Go Pro
-          </button>
 
           {surface?.secondaryCtaLabel && onSecondaryCta && (
             <button
@@ -392,11 +471,7 @@ const UpgradeModal = ({
       </div>
 
       <EmbeddedCheckout
-        priceId={
-          selectedPlan === 'monthly'
-            ? process.env.STRIPE_MONTHLY_PRICE_ID
-            : process.env.STRIPE_YEARLY_PRICE_ID
-        }
+        priceId={PRICE_IDS[selectedTier][selectedPlan]}
         mode="subscription"
         source={source}
         plan={selectedPlan}
@@ -404,8 +479,8 @@ const UpgradeModal = ({
         onSuccess={onSuccess}
         onClose={handleClose}
         onPaymentSubmitted={handlePaymentSubmitted}
-        successTitle={successTitle}
-        successMessage={successMessage}
+        successTitle={checkoutSuccessTitle}
+        successMessage={checkoutSuccessMessage}
         successCta={successCta}
       />
     </>
@@ -496,7 +571,9 @@ UpgradeModal.propTypes = {
   onSuccess: PropTypes.func,
   successTitle: PropTypes.string,
   successMessage: PropTypes.string,
-  successCta: PropTypes.string
+  successCta: PropTypes.string,
+  initialTier: PropTypes.oneOf(['pro', 'max']),
+  initialCycle: PropTypes.oneOf(['monthly', 'yearly'])
 };
 
 export default UpgradeModal;

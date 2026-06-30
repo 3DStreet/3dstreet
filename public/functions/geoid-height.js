@@ -1,15 +1,23 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getGeoidHeightFromPGM } = require('./geoid.js');
-const { Client: GoogleMapsClient } = require("@googlemaps/google-maps-services-js");
+const { Client: GoogleMapsClient } = require('@googlemaps/google-maps-services-js');
 const { isUserProInternal } = require('./token-management.js');
+const { assertAppCheck } = require('./app-check.js');
 
 // Function to get geoid height and location information
 exports.getGeoidHeight = functions
-  .runWith({ secrets: ["GOOGLE_MAPS_ELEVATION_API_KEY", "ALLOWED_PRO_TEAM_DOMAINS"] })
+  .runWith({ secrets: ['GOOGLE_MAPS_ELEVATION_API_KEY', 'ALLOWED_PRO_TEAM_DOMAINS'] })
   .https
   .onCall(async (data, context) => {
     const fromGeojsonImport = data.fromGeojsonImport || false;
+
+    // App Check runs first so it also gates the anonymous GeoJSON-import path
+    // below. That path intentionally skips auth (free during beta), which left
+    // the paid Google Elevation API callable from any origin / direct request;
+    // App Check restores the requirement that the call come from our client.
+    // No-op until APP_CHECK_ENFORCE is enabled (see app-check.js).
+    assertAppCheck(context);
 
     // Check if user is authenticated (skip for GeoJSON imports during beta)
     if (!context.auth && !fromGeojsonImport) {
@@ -59,7 +67,7 @@ exports.getGeoidHeight = functions
     // Helper function to add timeout to a promise
     const promiseWithTimeout = (promise, timeoutMs) => {
       let timeoutId;
-      const timeoutPromise = new Promise((resolve, _) => {
+      const timeoutPromise = new Promise((resolve) => {
         timeoutId = setTimeout(() => {
           console.log(`Promise timed out after ${timeoutMs}ms`);
           // Resolving with null instead of rejecting to handle timeout gracefully
@@ -100,17 +108,17 @@ exports.getGeoidHeight = functions
         .reverseGeocode({
           params: {
             latlng: `${lat},${lon}`,
-            result_type: ["street_address", "route", "locality", "administrative_area_level_1"],
+            result_type: ['street_address', 'route', 'locality', 'administrative_area_level_1'],
             key: process.env.GOOGLE_MAPS_ELEVATION_API_KEY,
           }
         })
         .then((r) => {
           const addressComponents = r.data.results[0]?.address_components || [];
           // Extract everything except the street number
-          const streetName = addressComponents.find(c => c.types.includes("route"))?.long_name || '';
-          const locality = addressComponents.find(c => c.types.includes("locality"))?.long_name || '';
-          const state = addressComponents.find(c => c.types.includes("administrative_area_level_1"))?.long_name || '';
-          const country = addressComponents.find(c => c.types.includes("country"))?.long_name || '';
+          const streetName = addressComponents.find(c => c.types.includes('route'))?.long_name || '';
+          const locality = addressComponents.find(c => c.types.includes('locality'))?.long_name || '';
+          const state = addressComponents.find(c => c.types.includes('administrative_area_level_1'))?.long_name || '';
+          const country = addressComponents.find(c => c.types.includes('country'))?.long_name || '';
           const locationString = `${streetName}, ${locality}, ${state}, ${country}`;
 
           return {
