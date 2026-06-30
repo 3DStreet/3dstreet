@@ -1,13 +1,19 @@
 import { Component } from 'react';
 import styles from './Shortcuts.module.scss';
 import { DocumentationButton } from '../DocumentationButton';
+import { isWasdNav } from '../../../../../lib/nav-experimental/flag.js';
+
+// With the WASD kit gated off, the legacy w/s/d shortcuts remain live
+// (shortcuts.js keeps both keymaps) — advertise the familiar legacy keys.
+// With it on, w/s/d drive the camera and t/l/c are the only bindings.
+const wasdNav = isWasdNav();
 
 const shortcuts = [
   [
-    { key: ['w'], description: 'Translate' },
+    { key: [wasdNav ? 't' : 'w'], description: 'Translate' },
     { key: ['e'], description: 'Rotate' },
-    { key: ['r'], description: 'Scale' },
-    { key: ['d'], description: 'Duplicate selected entity' },
+    { key: [wasdNav ? 'l' : 's'], description: 'Scale' },
+    { key: [wasdNav ? 'c' : 'd'], description: 'Duplicate selected entity' },
     { key: ['f'], description: 'Focus on selected entity' },
     { key: ['g'], description: 'Toggle grid visibility' },
     { key: ['n'], description: 'Add new entity' },

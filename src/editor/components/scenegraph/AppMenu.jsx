@@ -18,6 +18,7 @@ import {
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { useState, useEffect } from 'react';
 import { currentOrthoDir } from '../../lib/cameras.js';
+import { isExperimentalNav } from '../../lib/nav-experimental/index.js';
 
 const cameraOptions = [
   {
@@ -659,21 +660,31 @@ const AppMenu = ({ currentUser }) => {
               Show Grid
               <div className="RightSlot">G</div>
             </Menubar.CheckboxItem>
-            <Menubar.Separator className="MenubarSeparator" />
-            {cameraOptions.map((option) => (
-              <Menubar.CheckboxItem
-                key={option.value}
-                className="MenubarCheckboxItem"
-                checked={currentCamera === option.value}
-                onCheckedChange={() => handleCameraChange(option)}
-              >
-                <Menubar.ItemIndicator className="MenubarItemIndicator">
-                  <AwesomeIcon icon={faCircle} size={8} />
-                </Menubar.ItemIndicator>
-                {option.label}
-                <div className="RightSlot">{option.shortcut}</div>
-              </Menubar.CheckboxItem>
-            ))}
+            {/* TASK-011: in experimental-nav mode the compass owns the
+                plan-view role, so the whole camera-view radio group (3D View
+                + Plan View) is hidden — hiding only "Plan View" would leave a
+                lone always-checked "3D View" radio. The trailing separator
+                below stays so exactly one divider remains between "Show Grid"
+                and "Reset Camera View". Flag-off keeps the full menu. */}
+            {!isExperimentalNav() && (
+              <>
+                <Menubar.Separator className="MenubarSeparator" />
+                {cameraOptions.map((option) => (
+                  <Menubar.CheckboxItem
+                    key={option.value}
+                    className="MenubarCheckboxItem"
+                    checked={currentCamera === option.value}
+                    onCheckedChange={() => handleCameraChange(option)}
+                  >
+                    <Menubar.ItemIndicator className="MenubarItemIndicator">
+                      <AwesomeIcon icon={faCircle} size={8} />
+                    </Menubar.ItemIndicator>
+                    {option.label}
+                    <div className="RightSlot">{option.shortcut}</div>
+                  </Menubar.CheckboxItem>
+                ))}
+              </>
+            )}
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"

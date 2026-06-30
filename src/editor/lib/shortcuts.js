@@ -6,8 +6,15 @@ import {
 } from './entity';
 import { getOS } from './utils';
 import useStore from '@/store';
+import { isWasdNav } from './nav-experimental/flag.js';
 
 const os = getOS();
+
+// While the first-person kit (?wasd=on) is off, the nav controls do not
+// claim w/a/s/d, so the legacy w/s/d shortcuts (translate/scale/clone)
+// stay live ALONGSIDE their t/l/c replacements — launch keeps the exact
+// legacy keymap, and the eventual flag flip removes only the legacy keys.
+const wasdNav = isWasdNav();
 
 function shouldCaptureKeyEvent(event) {
   return (
@@ -36,8 +43,10 @@ export const Shortcuts = {
       }
     }
 
-    // w: translate
-    if (keyCode === 87) {
+    // t: translate (was 'w' until 2026-05-09; remapped because the
+    // experimental nav controls bind w/a/s/d for camera movement).
+    // 'w' still translates while the WASD kit is gated off.
+    if (keyCode === 84 || (!wasdNav && keyCode === 87)) {
       Events.emit('transformmodechange', 'translate');
     }
 
@@ -56,8 +65,9 @@ export const Shortcuts = {
       Events.emit('toolchange', 'hand');
     }
 
-    // s: scale
-    if (keyCode === 83) {
+    // l: scale (was 's' until 2026-05-09; remapped for nav controls).
+    // 's' still scales while the WASD kit is gated off.
+    if (keyCode === 76 || (!wasdNav && keyCode === 83)) {
       Events.emit('transformmodechange', 'scale');
     }
 
@@ -77,8 +87,14 @@ export const Shortcuts = {
       removeSelectedEntity();
     }
 
-    // d: clone selected entity
-    if (keyCode === 68) {
+    // c: clone selected entity (was 'd' until 2026-05-09; remapped for
+    // nav controls). Skip when Ctrl/Cmd is held — that's the
+    // copy-entity shortcut handled in onKeyDown.
+    // 'd' still clones while the WASD kit is gated off.
+    if (
+      (keyCode === 67 && !event.ctrlKey && !event.metaKey) ||
+      (!wasdNav && keyCode === 68)
+    ) {
       cloneSelectedEntity();
     }
 
