@@ -14,6 +14,7 @@ import { IntlProvider, FormattedMessage } from 'react-intl';
 import enRaw from '../../../../src/editor/i18n/locales/en.json';
 import es from '../../../../src/editor/i18n/locales/es.json';
 import ptBR from '../../../../src/editor/i18n/locales/pt-BR.json';
+import fr from '../../../../src/editor/i18n/locales/fr.json';
 
 // Flatten the formatjs en.json ({ id: { defaultMessage } }) to { id: string }.
 const en = Object.fromEntries(
@@ -23,8 +24,8 @@ const en = Object.fromEntries(
   ])
 );
 
-const CATALOGS = { en, es, 'pt-BR': ptBR };
-const LOCALES = ['en', 'es', 'pt-BR'];
+const CATALOGS = { en, es, 'pt-BR': ptBR, fr };
+const LOCALES = ['en', 'es', 'pt-BR', 'fr'];
 const ids = Object.keys(en);
 
 function Harness() {

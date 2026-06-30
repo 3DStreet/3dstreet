@@ -34,7 +34,8 @@ const MANIFEST_PATH = join(LOCALES_DIR, '.translation-manifest.json');
 
 const TARGET_LOCALES = {
   es: 'Spanish (Latin American / neutral, suitable for Mexico, Spain, and South America)',
-  'pt-BR': 'Brazilian Portuguese'
+  'pt-BR': 'Brazilian Portuguese',
+  fr: 'French (France)'
 };
 
 // Domain glossary so the LLM keeps urban-planning / street-design terminology

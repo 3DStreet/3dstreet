@@ -31,8 +31,13 @@ describe('i18n config', () => {
       expect(detectBrowserLocale()).toBe('pt-BR');
     });
 
+    it('maps French to fr', () => {
+      setLanguages(['fr-CA', 'en']);
+      expect(detectBrowserLocale()).toBe('fr');
+    });
+
     it('falls back to English when nothing matches', () => {
-      setLanguages(['fr-FR', 'de']);
+      setLanguages(['de-DE', 'it']);
       expect(detectBrowserLocale()).toBe(DEFAULT_LOCALE);
     });
 
@@ -61,7 +66,7 @@ describe('i18n config', () => {
     });
   });
 
-  it('supports exactly en, es, pt-BR', () => {
-    expect(SUPPORTED_LOCALE_CODES).toEqual(['en', 'es', 'pt-BR']);
+  it('supports exactly en, es, pt-BR, fr', () => {
+    expect(SUPPORTED_LOCALE_CODES).toEqual(['en', 'es', 'pt-BR', 'fr']);
   });
 });

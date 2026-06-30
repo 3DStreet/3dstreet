@@ -1,6 +1,7 @@
 import en from './locales/en.json';
 import es from './locales/es.json';
 import ptBR from './locales/pt-BR.json';
+import fr from './locales/fr.json';
 
 /**
  * Flat id → string message catalogs, keyed by locale code. Catalogs are
@@ -14,5 +15,6 @@ import ptBR from './locales/pt-BR.json';
 export const MESSAGES = {
   en,
   es,
-  'pt-BR': ptBR
+  'pt-BR': ptBR,
+  fr
 };

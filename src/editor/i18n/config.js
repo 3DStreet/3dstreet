@@ -19,7 +19,8 @@ export const DEFAULT_LOCALE = 'en';
 export const SUPPORTED_LOCALES = [
   { code: 'en', label: 'English' },
   { code: 'es', label: 'Español' },
-  { code: 'pt-BR', label: 'Português (Brasil)' }
+  { code: 'pt-BR', label: 'Português (Brasil)' },
+  { code: 'fr', label: 'Français' }
 ];
 
 export const SUPPORTED_LOCALE_CODES = SUPPORTED_LOCALES.map((l) => l.code);
@@ -38,6 +39,7 @@ function matchSupportedLocale(tag) {
   if (SUPPORTED_LOCALE_CODES.includes(tag)) return tag;
   if (lower.startsWith('es')) return 'es';
   if (lower.startsWith('pt')) return 'pt-BR';
+  if (lower.startsWith('fr')) return 'fr';
   if (lower.startsWith('en')) return 'en';
   return null;
 }

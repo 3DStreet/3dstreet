@@ -30,6 +30,7 @@ const LOCALES_DIR = join(ROOT, 'src/editor/i18n/locales');
 const enRaw = JSON.parse(readFileSync(join(LOCALES_DIR, 'en.json'), 'utf8'));
 const es = JSON.parse(readFileSync(join(LOCALES_DIR, 'es.json'), 'utf8'));
 const ptBR = JSON.parse(readFileSync(join(LOCALES_DIR, 'pt-BR.json'), 'utf8'));
+const fr = JSON.parse(readFileSync(join(LOCALES_DIR, 'fr.json'), 'utf8'));
 const en = Object.fromEntries(
   Object.entries(enRaw).map(([id, d]) => [
     id,
@@ -71,7 +72,8 @@ async function main() {
   const checks = [
     ['en', en],
     ['es', es],
-    ['pt-BR', ptBR]
+    ['pt-BR', ptBR],
+    ['fr', fr]
   ];
 
   for (const [locale, catalog] of checks) {
@@ -106,14 +108,20 @@ async function main() {
   }
   // Sanity: each translated catalog must contain at least a few real (differing)
   // translations, otherwise we proved nothing.
-  for (const [locale, catalog] of [['es', es], ['pt-BR', ptBR]]) {
+  for (const [locale, catalog] of [
+    ['es', es],
+    ['pt-BR', ptBR],
+    ['fr', fr]
+  ]) {
     const diffs = pickProbes(catalog).length;
     if (diffs < 3) {
       console.error(`[${locale}] only ${diffs} differing translations found — catalog looks empty/untranslated.`);
       process.exit(1);
     }
   }
-  console.log('\n✅ i18n browser validation passed for en, es, pt-BR.');
+  console.log(
+    `\n✅ i18n browser validation passed for ${checks.map(([l]) => l).join(', ')}.`
+  );
 }
 
 main().catch((err) => {
