@@ -749,7 +749,7 @@ const GeoSidebar = ({ entity }) => {
                           />
                           <FormattedMessage
                             id="geoSidebar.tokensFree"
-                            defaultMessage="{geoToken} free"
+                            defaultMessage="{geoToken, plural, one {# free} other {# free}}"
                             values={{ geoToken: tokenProfile.geoToken }}
                           />
                         </span>

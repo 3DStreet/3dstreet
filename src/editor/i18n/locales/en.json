@@ -117,7 +117,7 @@
     "defaultMessage": "your cloud"
   },
   "assetInfo.upgradeStorage": {
-    "defaultMessage": "Upgrade for 5 GB storage"
+    "defaultMessage": "Upgrade for {storage} storage"
   },
   "common.addLayer": {
     "defaultMessage": "Add layer"
@@ -390,7 +390,7 @@
     "defaultMessage": "Terrain Flattening"
   },
   "geoSidebar.tokensFree": {
-    "defaultMessage": "{geoToken} free"
+    "defaultMessage": "{geoToken,plural,one{# free} other{# free}}"
   },
   "geoSidebar.upgradeForLookups": {
     "defaultMessage": "Upgrade to Pro for unlimited geo lookups"

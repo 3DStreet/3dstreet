@@ -14,6 +14,18 @@ import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
 import useStore from '@/store.js';
 import { Button } from './Button';
 import { commonMessages } from '@/editor/i18n/commonMessages';
+import { formatNumber } from '@shared/utils/format';
+
+// Pro asset-storage allowance. Kept as a number + locale-aware unit format so
+// changing it never requires touching the translation catalogs (the size is
+// interpolated into the message, not baked into each translation).
+const PRO_STORAGE_GB = 5;
+const formatStorage = () =>
+  formatNumber(PRO_STORAGE_GB, {
+    style: 'unit',
+    unit: 'gigabyte',
+    unitDisplay: 'short'
+  });
 
 const AssetInfoPanel = ({ entity }) => {
   const intl = useIntl();
@@ -152,7 +164,8 @@ const AssetInfoPanel = ({ entity }) => {
         >
           <FormattedMessage
             id="assetInfo.upgradeStorage"
-            defaultMessage="Upgrade for 5 GB storage"
+            defaultMessage="Upgrade for {storage} storage"
+            values={{ storage: formatStorage() }}
           />
         </Button>
       )}
