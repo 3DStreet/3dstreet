@@ -7,6 +7,7 @@
 * make your contribution and commit changes on your own branch
 * make sure to do check for linting and unit test:
 * `npm run lint` should have no errors. You can try `npm run lint:fix` to automatically fix errors. sometimes you need to manually fix the errors
+* run `npm run test:setup` once before your first test run — it downloads the Chromium headless shell (via Playwright) used by the browser-based component tests
 * `npm run test` should return all passing or pending, no failures
 * If linting and tests all pass, then create a new Pull Request to merge the changes committed in your branch to the 3DStreet repo main branch 
 * Include a brief description of the changes, why you are making them, how to test them, and a link to an associated issue if any.

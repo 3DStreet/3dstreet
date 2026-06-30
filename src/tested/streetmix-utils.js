@@ -1,6 +1,6 @@
-const { CURB_HEIGHT } = require('./street-segment-utils');
+import { CURB_HEIGHT } from './street-segment-utils.js';
 
-function streetmixUserToAPI(userURL) {
+export function streetmixUserToAPI(userURL) {
   // this takes in a user facing Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
   // and turns it into the API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
   var pathArray = new URL(userURL).pathname.split('/');
@@ -20,9 +20,8 @@ function streetmixUserToAPI(userURL) {
     );
   }
 }
-module.exports.streetmixUserToAPI = streetmixUserToAPI;
 
-function pathStartsWithAPI(urlString) {
+export function pathStartsWithAPI(urlString) {
   // First, check the URL path to see if it starts with /api/
   const url = document.createElement('a');
   url.href = urlString;
@@ -30,9 +29,8 @@ function pathStartsWithAPI(urlString) {
   const topDir = pathname.split('/')[1];
   return topDir === 'api';
 }
-module.exports.pathStartsWithAPI = pathStartsWithAPI;
 
-function streetmixAPIToUser(APIURL) {
+export function streetmixAPIToUser(APIURL) {
   // this takes in a Streetmix.net API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
   // and turns it into the user facing friendly Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
 
@@ -56,22 +54,20 @@ function streetmixAPIToUser(APIURL) {
 
   return 'https://streetmix.net/' + creatorId + '/' + namespacedId;
 }
-module.exports.streetmixAPIToUser = streetmixAPIToUser;
 
 // Convert metric elevation (from schemaVersion 33+) to integer level
 // Curb height is 0.15m, so we divide by that to get integer levels
 // e.g., 0m → 0, 0.15m → 1, 0.30m → 2, 0.75m → 5
-function metricElevationToLevel(elevation) {
+export function metricElevationToLevel(elevation) {
   if (elevation === undefined || elevation === null) {
     return 0;
   }
   return Math.round(elevation / CURB_HEIGHT);
 }
-module.exports.metricElevationToLevel = metricElevationToLevel;
 
 // convert all feet values to meters for schemaVersion < 30
 // convert metric elevation to integer levels for schemaVersion >= 33
-function convertStreetValues(streetData) {
+export function convertStreetValues(streetData) {
   if (streetData.schemaVersion < 30) {
     // convert width from feet to meters
     streetData.segments.forEach((segmentData) => {
@@ -91,4 +87,3 @@ function convertStreetValues(streetData) {
 
   return streetData;
 }
-module.exports.convertStreetValues = convertStreetValues;
