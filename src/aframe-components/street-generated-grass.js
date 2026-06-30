@@ -193,6 +193,10 @@ AFRAME.registerComponent('street-generated-grass', {
     const grassEntity = document.createElement('a-entity');
     grassEntity.classList.add('autocreated');
     grassEntity.setAttribute('data-no-transform', '');
+    // The grass is not independently selectable: clicks fall through to the host
+    // primitive (the box), whose sidebar carries the grass settings. Mirrors
+    // street-generated-rail / street-ground.
+    grassEntity.setAttribute('data-ignore-raycaster', '');
     grassEntity.setAttribute('data-layer-name', 'Animated Grass');
     grassEntity.setAttribute('data-parent-component', this.attrName);
     grassEntity.setObject3D('grass', instancedMesh);
