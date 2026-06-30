@@ -4,6 +4,7 @@ import posthog from 'posthog-js';
 import Events from './editor/lib/Events';
 import canvasRecorder from './editor/lib/CanvasRecorder';
 import { auth } from '@shared/services/firebase';
+import { saveUserProfile } from '@shared/utils/username';
 import { resolveInitialLocale, persistLocale } from './editor/i18n/config';
 
 const firstModal = () => {
@@ -124,9 +125,27 @@ const useStore = create(
         // from the browser on first load, then overridden by the user's stored
         // choice (persisted to localStorage via the View > Language menu).
         locale: resolveInitialLocale(),
+        // User explicitly picked a language (View > Language). Persist locally,
+        // track it, and — when signed in — save it to the user's Firestore
+        // profile so the choice follows them across devices and the backend
+        // can localize emails.
         setLocale: (newLocale) => {
           persistLocale(newLocale);
           posthog.capture('locale_changed', { locale: newLocale });
+          posthog.register({ locale: newLocale });
+          set({ locale: newLocale });
+          const uid = auth.currentUser?.uid;
+          if (uid) {
+            saveUserProfile(uid, { locale: newLocale }).catch((error) =>
+              console.error('Error saving locale to profile:', error)
+            );
+          }
+        },
+        // Apply a locale that came from elsewhere (e.g. the signed-in user's
+        // stored profile preference) without writing it back to Firestore.
+        hydrateLocale: (newLocale) => {
+          if (newLocale === useStore.getState().locale) return;
+          persistLocale(newLocale);
           posthog.register({ locale: newLocale });
           set({ locale: newLocale });
         },

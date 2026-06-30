@@ -17,6 +17,8 @@
  * across cycles within a tier.
  */
 
+import { formatCurrency } from '@shared/utils/format';
+
 // Local so cycleDetail and the exposed yearlyTotal fields can't drift.
 const PRO_YEARLY_TOTAL = 84;
 const MAX_YEARLY_TOTAL = 420;
@@ -32,7 +34,7 @@ export const PRICING = {
       pricePerMonth: 7,
       yearlyTotal: PRO_YEARLY_TOTAL,
       tokens: 100,
-      cycleDetail: `billed yearly, $${PRO_YEARLY_TOTAL}/year`
+      cycleDetail: `billed yearly, ${formatCurrency(PRO_YEARLY_TOTAL)}/year`
     }
   },
   max: {
@@ -45,7 +47,7 @@ export const PRICING = {
       pricePerMonth: 35,
       yearlyTotal: MAX_YEARLY_TOTAL,
       tokens: 500,
-      cycleDetail: `billed yearly, $${MAX_YEARLY_TOTAL}/year`
+      cycleDetail: `billed yearly, ${formatCurrency(MAX_YEARLY_TOTAL)}/year`
     }
   }
 };
