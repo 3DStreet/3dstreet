@@ -1,6 +1,6 @@
 import useStore from './store';
 import { createUniqueId } from './editor/lib/entity';
-import { resetSrcLoadCounts } from './batch-models';
+import { beginBatching } from './batch-models';
 import JSONCrush from 'jsoncrush';
 
 /* global AFRAME, Node */
@@ -8,6 +8,8 @@ window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
 STREET.store = useStore;
+// Group duplicate gltf-model meshes into batches when loading a scene. Set false to disable.
+STREET.batchingEnabled = true;
 function getSceneUuidFromURLHash() {
   const currentHash = window.location.hash;
   const match = currentHash.match(/#\/scenes\/([a-zA-Z0-9-]+)/);
@@ -419,16 +421,9 @@ function getModifiedProperty(entity, componentName) {
 function createEntities(entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
   const removeEntities = ['environment', 'reference-layers'];
-  // Tell gltf-model to hold its GLB load for two ticks so batchModels can group every
-  // [gltf-model] in the live DOM — including entities other components create during their
-  // own init — before deciding which duplicates to skip-load. _batchGroupingDone is the
-  // per-load gate batchModels flips (and emits "batch-grouping-done") once that decision is
-  // made; batchModels runs on the "newScene" event emitted after this createEntities pass.
-  sceneElement._batchingEnabled = true;
-  sceneElement._batchGroupingDone = false;
-  // Reset the per-src load tally for the new scene (gltf-model.update bumps it as entities
-  // are created below; batchModels reads it to decide cloning).
-  resetSrcLoadCounts();
+  // Arm batching before any entity is minted below; batchModels runs on the "newScene"
+  // event emitted after this createEntities pass. See beginBatching for the state model.
+  beginBatching(sceneElement, STREET.batchingEnabled);
   for (const entityData of entitiesData) {
     // Legacy migration: the geospatial layer's visibility used to be toggled
     // via the entity's `visible` attribute. The new sidepanel exposes this

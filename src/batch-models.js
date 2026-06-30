@@ -727,6 +727,19 @@ function processKeyGroup(key, entities) {
   return built;
 }
 
+// Arm batching for the scene about to be created, before any entity is minted. When batching is
+// enabled, tells gltf-model to hold its GLB load so batchModels can group every [gltf-model] in
+// the live DOM — including entities other components create during their own init — before
+// deciding which duplicates to skip-load. _batchGroupingDone is the per-load gate batchModels
+// flips (and emits "batch-grouping-done") once that decision is made. The per-src tally is reset
+// for every new scene (batched or not): gltf-model.update bumps it as entities are created and
+// batchModels reads it to decide cloning. batchModels then runs on the "newScene" event.
+export function beginBatching(sceneEl, batchingEnabled) {
+  sceneEl._batchingEnabled = batchingEnabled;
+  sceneEl._batchGroupingDone = false;
+  resetSrcLoadCounts();
+}
+
 export async function batchModels(sceneEl) {
   if (!sceneEl) return [];
   const rootEl = document.getElementById('street-container') || sceneEl;
