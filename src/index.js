@@ -31,6 +31,7 @@ require('./aframe-components/street-generated-striping.js');
 require('./aframe-components/street-generated-pedestrians.js');
 require('./aframe-components/street-generated-rail.js');
 require('./aframe-components/street-generated-clones.js');
+require('./aframe-components/street-generated-grass.js');
 require('./aframe-components/polygon-offset.js');
 require('./aframe-components/street-align.js');
 require('./aframe-components/street-ground.js');

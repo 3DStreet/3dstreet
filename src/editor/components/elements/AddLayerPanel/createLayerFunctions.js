@@ -304,12 +304,20 @@ export function createGrassBox(position) {
   // as a ground/lawn for non-street scenes that don't already have terrain.
   // Offset down by half its thickness so its top surface sits exactly at y=0 and
   // objects placed on the ground rest flush on top of it.
+  //
+  // The box ships with the street-generated-grass generator attached as a live
+  // demo of the host-primitive + generator pattern: the box's geometry/material
+  // and the grass options (density, blade height, …) all surface as first-class
+  // controls in the properties sidebar. The animated blades are autocreated
+  // children regenerated from config, so saving the scene stores only the box +
+  // the grass config, not the blades. See docs/host-generator-pattern.md.
   const thickness = 0.5;
   const definition = {
     components: {
       position: groundedPositionString(position, -thickness / 2),
       geometry: `primitive: box; width: 40; height: ${thickness}; depth: 40;`,
       material: 'color: #4c9a2a; roughness: 1;',
+      'street-generated-grass': '',
       'data-layer-name': 'Grass Box • Ground',
       shadow: 'receive: true;'
     }
@@ -334,6 +342,23 @@ export function createConcreteCylinder(position) {
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
+export function createTorusKnot(position) {
+  // A polished metallic torus knot — a decorative primitive that shows off the
+  // geometry + material featured controls (metalness/roughness). Lifted off the
+  // ground so the full knot is visible. Geometry and material are editable in
+  // the properties panel.
+  const definition = {
+    components: {
+      position: groundedPositionString(position, 3),
+      geometry: 'primitive: torusKnot; radius: 2.33; radiusTubular: 0.43;',
+      material: 'color: #a6a6a6; metalness: 0.75; roughness: 0.23;',
+      'data-layer-name': 'Torus Knot',
+      shadow: 'receive: true; cast: true;'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
 export function createHighlightRing(position) {
   // A bright red ring laid flat on the ground, large enough to circle and
   // highlight a real-world street element (vehicle, tree, lane area, etc.).
@@ -341,7 +366,7 @@ export function createHighlightRing(position) {
   const definition = {
     components: {
       position: groundedPositionString(position, 0.1),
-      rotation: '-90 0 0',
+      rotation: '0 0 0',
       geometry: 'primitive: torus; radius: 3; radiusTubular: 0.15;',
       material: 'shader: flat; color: #ff0000; side: double;',
       'data-layer-name': 'Highlight Ring • Red'
