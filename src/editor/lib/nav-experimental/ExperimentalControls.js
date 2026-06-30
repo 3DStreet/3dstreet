@@ -139,6 +139,7 @@ import {
   pullBackTowardTarget,
   elevationState
 } from './navMath.js';
+import { captureNavDiscovery } from '../navAnalytics.js';
 
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
@@ -735,6 +736,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
   zoomInStart() {
     if (this._disabledByOrtho) return;
+    captureNavDiscovery('zoom');
     this._zoomInInterval = setInterval(() => this._zoomActionBar(-1), 50);
   }
   zoomInStop() {
@@ -743,6 +745,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
   zoomOutStart() {
     if (this._disabledByOrtho) return;
+    captureNavDiscovery('zoom');
     this._zoomOutInterval = setInterval(() => this._zoomActionBar(1), 50);
   }
   zoomOutStop() {
@@ -1558,6 +1561,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
     const mode = this._latch.get('mode');
     if (mode === 'pan') {
+      // Feature-discovery: count the first real pan drag (here, not at
+      // mousedown, so a click that never moves doesn't register as a pan).
+      captureNavDiscovery('pan');
       const subMode = this._latch.get('subMode');
       if (subMode === 'pan-screen') {
         this._lbScreenPan(event.clientX, event.clientY);
@@ -1567,6 +1573,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         this._lbTruckMove(event.clientX, event.clientY);
       }
     } else if (mode === 'rotate') {
+      captureNavDiscovery('rotate');
       this._shiftRotate(dx, dy);
       // Emit LB-mode change the moment the tilt crosses T mid-gesture,
       // not at gesture end (letterbox is live; see plan §4b).
@@ -2251,6 +2258,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // camera — passive wheel input is ignored, not raced (L-3).
     if (this._isInactive() || this._tweenOwnsCamera()) return;
     event.preventDefault();
+
+    // Feature-discovery: first wheel zoom this session.
+    captureNavDiscovery('zoom');
 
     // TASK-014a (#6 Option B): accumulate only — apply no motion here (the
     // drain owns motion + recovery suppression, exactly as before). Normalise

@@ -2,6 +2,7 @@ import { faHand } from '@fortawesome/free-regular-svg-icons';
 import { AwesomeIcon } from '../AwesomeIcon';
 import classNames from 'classnames';
 import Events from '../../../lib/Events';
+import { captureNavDiscovery } from '../../../lib/navAnalytics.js';
 import styles from './ActionBar.module.scss';
 import { Button, UnitsPreference, UndoRedo } from '../../elements';
 import { useState, useEffect } from 'react';
@@ -162,7 +163,10 @@ const ActionBar = ({ selectedEntity }) => {
       </Button>
       <Button
         variant="toolbtn"
-        onPointerDown={() => AFRAME.INSPECTOR.controls.resetZoom()}
+        onPointerDown={() => {
+          captureNavDiscovery('reset_view');
+          AFRAME.INSPECTOR.controls.resetZoom();
+        }}
         title="Reset Camera View"
       >
         <CameraReset24Icon />

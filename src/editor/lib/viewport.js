@@ -11,6 +11,7 @@ import {
 
 import { copyCameraPosition } from './cameras';
 import { initRaycaster } from './raycaster';
+import { captureNavDiscovery } from './navAnalytics.js';
 import Events from './Events';
 import useStore from '@/store';
 // variables used by OrientedBoxHelper
@@ -591,6 +592,9 @@ export function Viewport(inspector) {
   });
 
   Events.on('objectfocus', (object) => {
+    // Feature-discovery: count the first focus-on-entity (double-click,
+    // F-key, or sidebar focus button all route through this event).
+    captureNavDiscovery('focus');
     controls.focus(object);
   });
 

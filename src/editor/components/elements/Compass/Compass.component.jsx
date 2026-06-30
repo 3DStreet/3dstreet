@@ -20,6 +20,7 @@ import {
   COMPASS_TOPDOWN_TOLERANCE_DEGREES,
   COMPASS_NORTH_TOLERANCE_DEGREES
 } from '../../../lib/nav-experimental/index.js';
+import { captureNavDiscovery } from '../../../lib/navAnalytics.js';
 import styles from './Compass.module.scss';
 
 // SVG geometry. 64x64 viewBox, centre (32,32). Screen-angle convention
@@ -196,9 +197,17 @@ export const Compass = () => {
   const dispatch = (region) => {
     const c = controls();
     if (!c) return;
-    if (region === 'body') c.handleCompassBodyClick();
-    else if (region === 'left') c.handleCompassRotate(-1);
-    else if (region === 'right') c.handleCompassRotate(+1);
+    if (region === 'body') {
+      // Feature-discovery: compass body = orient view (plan-view + face north).
+      captureNavDiscovery('orient_north');
+      c.handleCompassBodyClick();
+    } else if (region === 'left') {
+      captureNavDiscovery('compass_rotate');
+      c.handleCompassRotate(-1);
+    } else if (region === 'right') {
+      captureNavDiscovery('compass_rotate');
+      c.handleCompassRotate(+1);
+    }
   };
 
   // Mark a region active (hover or focus). `pointerover` / `focus` fire on

@@ -3,6 +3,7 @@ import {
   isExperimentalNav,
   isStreetLevelNav
 } from './nav-experimental/flag.js';
+import { captureNavDiscovery } from './navAnalytics.js';
 
 export function initRaycaster(inspector) {
   // Use cursor="rayOrigin: mouse".
@@ -85,7 +86,11 @@ export function initRaycaster(inspector) {
   function handleClick(evt) {
     // Check to make sure not dragging.
     if (onDownPosition.distanceTo(onUpPosition) === 0) {
-      inspector.selectEntity(getIntersectedEl());
+      const intersectedEl = getIntersectedEl();
+      // Feature-discovery: count a viewport click that actually selects an
+      // entity (a click on empty space deselects — not a "select").
+      if (intersectedEl) captureNavDiscovery('select');
+      inspector.selectEntity(intersectedEl);
       // Force the cursor component to trigger again an intersection to show hover box on the original intersected el inside the street-segment.
       mouseCursor.components.cursor.clearCurrentIntersection(false);
     }
