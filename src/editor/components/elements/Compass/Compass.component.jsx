@@ -238,6 +238,14 @@ export const Compass = () => {
   // (R2-REV-F): blur AFTER dispatch (in onClick, not pointerdown) so a mouse
   // click does not leave the region focused and hijack the next Space (which
   // would otherwise re-activate the compass instead of driving nav).
+  // enter/leave write activeRef.current and are ONLY ever invoked from the
+  // event handlers below (never during render), but react-hooks/refs can't see
+  // that through this factory and flags the calls. The synchronous ref write is
+  // required — routing it through an effect (the rule's suggestion) reintroduces
+  // the stale-tooltip "Plan view over the arrows" bug the rAF-loop note above
+  // documents. Disabled for the whole factory since the rule reports at varying
+  // internal lines.
+  /* eslint-disable react-hooks/refs */
   const handlers = (region) => ({
     role: 'button',
     tabIndex: 0,
@@ -250,6 +258,7 @@ export const Compass = () => {
     onFocus: () => enter(region),
     onBlur: leave
   });
+  /* eslint-enable react-hooks/refs */
 
   // Curved-arrow glyph colour — brightens to white when its region is active.
   const arrowStroke = (region) => (active === region ? '#fff' : '#c8ccd0');
