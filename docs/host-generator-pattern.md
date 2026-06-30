@@ -18,9 +18,12 @@ The properties sidebar promotes selected components to an expanded **featured**
 section above the collapsed "Advanced Components" toggle. This is driven by a
 generalized allow-list, not a per-shape sidebar:
 
-- `src/editor/lib/featuredComponents.js` — `FEATURED_COMPONENT_PREFIXES`
-  (`geometry`, `material`, `street-generated-`) and helpers. This generalizes a
-  mechanism that previously lived only in `StreetSegmentSidebar`.
+- `src/editor/lib/featuredComponents.js` — `FEATURED_COMPONENT_NAMES`
+  (exact-matched `geometry`, `material`) plus `GENERATOR_COMPONENT_PREFIXES`
+  (prefix-matched `street-generated-`) and helpers. This generalizes a mechanism
+  that previously lived only in `StreetSegmentSidebar`. Builtins are exact-matched
+  so future components like the A-Frame community `geometry-merger` aren't
+  over-promoted.
 - `FeaturedComponents.jsx` — renders the featured components for any entity.
   `geometry` and generators reuse the generic schema-driven `Component` widget;
   `material` gets a curated panel.
