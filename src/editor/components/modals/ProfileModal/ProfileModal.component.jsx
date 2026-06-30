@@ -1,3 +1,4 @@
+/* global VERSION */
 import styles from './ProfileModal.module.scss';
 import { useState, useEffect } from 'react';
 
@@ -301,6 +302,20 @@ const ProfileModal = () => {
               ) : null}
             </div>
           </div>
+          {typeof VERSION !== 'undefined' && (
+            <div
+              className={styles.versionLine}
+              style={{
+                marginTop: '16px',
+                fontSize: '11px',
+                opacity: 0.5,
+                textAlign: 'center',
+                userSelect: 'text'
+              }}
+            >
+              3DStreet {VERSION}
+            </div>
+          )}
         </div>
       </Modal>
       {isManagingSubscription && <SavingModal action="Managing subscription" />}
