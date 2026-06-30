@@ -284,7 +284,6 @@ export const gltfModelPlus = {
         // Downgrade MeshPhysicalMaterial to MeshStandardMaterial for better performance.
         // Extensions like KHR_materials_specular cause the GLTFLoader to create
         // MeshPhysicalMaterial which is more expensive to render.
-        const usePhong = false; // set to true to convert all materials to MeshPhongMaterial
         const convertedMaterials = new Map();
         self.model.traverse((node) => {
           if (node.isMesh) {
@@ -294,61 +293,11 @@ export const gltfModelPlus = {
             for (let i = 0; i < materials.length; i++) {
               const mat = materials[i];
               if (mat.isMeshBasicMaterial) continue;
-              if (usePhong) {
-                if (!mat.isMeshStandardMaterial) continue; // catches both Standard and Physical
-              } else {
-                if (!mat.isMeshPhysicalMaterial) continue;
-              }
+              if (!mat.isMeshPhysicalMaterial) continue;
               let newMat = convertedMaterials.get(mat);
               if (!newMat) {
-                if (usePhong) {
-                  newMat = new THREE.MeshPhongMaterial();
-                  // Base material properties (name, opacity, side, etc.) via manual copy
-                  // since MeshPhongMaterial.copy() expects a Phong source
-                  newMat.name = mat.name;
-                  newMat.color.copy(mat.color);
-                  newMat.map = mat.map;
-                  newMat.lightMap = mat.lightMap;
-                  newMat.lightMapIntensity = mat.lightMapIntensity;
-                  newMat.aoMap = mat.aoMap;
-                  newMat.aoMapIntensity = mat.aoMapIntensity;
-                  newMat.emissive.copy(mat.emissive);
-                  newMat.emissiveIntensity = mat.emissiveIntensity;
-                  newMat.emissiveMap = mat.emissiveMap;
-                  newMat.bumpMap = mat.bumpMap;
-                  newMat.bumpScale = mat.bumpScale;
-                  newMat.normalMap = mat.normalMap;
-                  newMat.normalMapType = mat.normalMapType;
-                  newMat.normalScale.copy(mat.normalScale);
-                  newMat.displacementMap = mat.displacementMap;
-                  newMat.displacementScale = mat.displacementScale;
-                  newMat.displacementBias = mat.displacementBias;
-                  newMat.alphaMap = mat.alphaMap;
-                  newMat.envMap = mat.envMap;
-                  if (mat.envMapRotation) {
-                    newMat.envMapRotation.copy(mat.envMapRotation);
-                  }
-                  newMat.envMapIntensity = mat.envMapIntensity ?? 1;
-                  newMat.wireframe = mat.wireframe ?? false;
-                  newMat.flatShading = mat.flatShading ?? false;
-                  newMat.fog = mat.fog ?? true;
-                  // Inherited from Material base
-                  newMat.opacity = mat.opacity;
-                  newMat.transparent = mat.transparent;
-                  newMat.side = mat.side;
-                  newMat.shadowSide = mat.shadowSide;
-                  newMat.alphaTest = mat.alphaTest;
-                  newMat.visible = mat.visible;
-                  newMat.depthTest = mat.depthTest;
-                  newMat.depthWrite = mat.depthWrite;
-                  // Convert roughness to shininess (rough=0 → shiny=100, rough=1 → shiny=0)
-                  if (mat.roughness !== undefined) {
-                    newMat.shininess = (1 - mat.roughness) * 100;
-                  }
-                } else {
-                  newMat = new THREE.MeshStandardMaterial();
-                  newMat.copy(mat);
-                }
+                newMat = new THREE.MeshStandardMaterial();
+                newMat.copy(mat);
                 mat.dispose();
                 convertedMaterials.set(mat, newMat);
               }
