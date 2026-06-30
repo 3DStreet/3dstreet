@@ -184,6 +184,9 @@ AFRAME.registerComponent('street-generated-grass', {
       instancedMesh.setMatrixAt(i, dummy.matrix);
     }
     instancedMesh.instanceMatrix.needsUpdate = true;
+    // InstancedMesh defaults to a unit bounding sphere; recompute it so frustum
+    // culling uses the real grass-field extent and doesn't cull the whole field.
+    instancedMesh.computeBoundingSphere();
 
     // Wrap the mesh in an autocreated child entity so the SceneGraph shows it as
     // managed and the serializer skips it (regenerated rather than saved).
