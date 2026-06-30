@@ -78,7 +78,9 @@ export const streetLayersData = [
   }
 ].map((layer, index) => ({ ...layer, id: index + 1 }));
 
-export const customLayersData = [
+// A-Frame geometry primitives — host shapes that surface first-class geometry +
+// material controls in the properties sidebar (the host-primitive pattern).
+export const shapeLayersData = [
   {
     name: 'Building Box',
     img: '',
@@ -87,15 +89,6 @@ export const customLayersData = [
     description:
       'Add a simple box roughly the size of a 3-story building, sitting on the ground in a bright blue. A quick placeholder for blocking out buildings.',
     handlerFunction: createFunctions.createBuildingBox
-  },
-  {
-    name: 'Highlight Ring',
-    img: '',
-    icon: '',
-    requiresPro: false,
-    description:
-      'Add a bright red ring on the ground, big enough to circle and highlight a real-world element like a vehicle, tree, or part of a lane.',
-    handlerFunction: createFunctions.createHighlightRing
   },
   {
     name: 'Asphalt Circle',
@@ -124,6 +117,27 @@ export const customLayersData = [
       'Add a gray concrete cylinder roughly the size of an interstate highway support pillar. A quick placeholder for elevated-roadway columns.',
     handlerFunction: createFunctions.createConcreteCylinder
   },
+  {
+    name: 'Torus Knot',
+    img: '',
+    icon: '',
+    requiresPro: false,
+    description:
+      'Add a polished metallic torus knot. A decorative primitive that shows off the geometry and material (metalness/roughness) controls in the properties panel.',
+    handlerFunction: createFunctions.createTorusKnot
+  },
+  {
+    name: 'Highlight Ring',
+    img: '',
+    icon: '',
+    requiresPro: false,
+    description:
+      'Add a bright red ring, big enough to circle and highlight a real-world element like a vehicle, tree, or part of a lane.',
+    handlerFunction: createFunctions.createHighlightRing
+  }
+].map((layer, index) => ({ ...layer, id: index + 1 }));
+
+export const customLayersData = [
   {
     name: 'Upload Image',
     img: '',

@@ -168,6 +168,16 @@ const MaterialControls = ({ entity }) => {
               entity={entity}
             />
           )}
+          {schema.metalness && (
+            <PropertyRow
+              name="metalness"
+              label="Metalness"
+              schema={schema.metalness}
+              data={data.metalness}
+              componentname="material"
+              entity={entity}
+            />
+          )}
         </div>
       </Collapsible>
     </div>
