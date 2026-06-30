@@ -98,26 +98,34 @@ export default class Component extends React.Component {
     }
 
     const hideProperties = this.props.hideProperties || [];
-    return Object.keys(componentData.schema)
-      .sort()
-      .filter((propertyName) => {
-        return (
-          !hideProperties.includes(propertyName) &&
-          shouldShowProperty(propertyName, componentData)
-        );
-      })
-      .map((propertyName) => (
-        <div className="detailed" key={propertyName}>
-          <PropertyRow
-            name={propertyName}
-            schema={componentData.schema[propertyName]}
-            data={componentData.data[propertyName]}
-            componentname={this.props.name}
-            isSingle={false}
-            entity={this.props.entity}
-          />
-        </div>
-      ));
+    return (
+      Object.keys(componentData.schema)
+        // `primitive` is the discriminator that decides which other fields apply
+        // (e.g. box -> width/depth/height), so surface it first; rest alphabetical.
+        .sort((a, b) => {
+          if (a === 'primitive') return -1;
+          if (b === 'primitive') return 1;
+          return a < b ? -1 : a > b ? 1 : 0;
+        })
+        .filter((propertyName) => {
+          return (
+            !hideProperties.includes(propertyName) &&
+            shouldShowProperty(propertyName, componentData)
+          );
+        })
+        .map((propertyName) => (
+          <div className="detailed" key={propertyName}>
+            <PropertyRow
+              name={propertyName}
+              schema={componentData.schema[propertyName]}
+              data={componentData.data[propertyName]}
+              componentname={this.props.name}
+              isSingle={false}
+              entity={this.props.entity}
+            />
+          </div>
+        ))
+    );
   };
 
   render() {
