@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   formatCurrency,
   formatNumber,
-  getActiveLocale
+  getActiveLocale,
+  getPeriodSuffix
 } from '../../../src/shared/utils/format.js';
 
 // Intl uses non-breaking / narrow-no-break spaces (U+00A0, U+202F) for
@@ -35,6 +36,24 @@ describe('format utils', () => {
     it('groups large numbers per locale', () => {
       expect(norm(formatNumber(1200.5, { locale: 'en' }))).toBe('1,200.5');
       expect(norm(formatNumber(1200.5, { locale: 'fr' }))).toBe('1 200,5');
+    });
+  });
+
+  describe('getPeriodSuffix', () => {
+    it('localizes the month suffix', () => {
+      expect(getPeriodSuffix('month', { locale: 'en' })).toBe('/mo');
+      expect(getPeriodSuffix('month', { locale: 'fr' })).toBe('/mois');
+      expect(getPeriodSuffix('month', { locale: 'pt-BR' })).toBe('/mês');
+      expect(getPeriodSuffix('month', { locale: 'es-MX' })).toBe('/mes');
+    });
+
+    it('localizes the year suffix', () => {
+      expect(getPeriodSuffix('year', { locale: 'en' })).toBe('/year');
+      expect(getPeriodSuffix('year', { locale: 'fr' })).toBe('/an');
+    });
+
+    it('falls back to English for unknown locales', () => {
+      expect(getPeriodSuffix('month', { locale: 'de' })).toBe('/mo');
     });
   });
 

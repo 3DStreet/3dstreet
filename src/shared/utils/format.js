@@ -69,3 +69,22 @@ export function formatNumber(
     return String(value);
   }
 }
+
+// Short billing-period suffixes ("/mo", "/year"). Intl can format a number
+// WITH a duration unit ("10 months") but has no currency-per-period compound,
+// and the compact "/mo" convention is UI copy — so we keep a small curated
+// table keyed by base language (es/pt/fr/en). Falls back to English.
+const PERIOD_SUFFIX = {
+  month: { en: '/mo', es: '/mes', pt: '/mês', fr: '/mois' },
+  year: { en: '/year', es: '/año', pt: '/ano', fr: '/an' }
+};
+
+/**
+ * Localized short billing-period suffix, e.g. 'month' → "/mo" (en), "/mois"
+ * (fr), "/mês" (pt-BR). Pair with formatCurrency for "10 $/mois"-style prices.
+ */
+export function getPeriodSuffix(period, { locale = getActiveLocale() } = {}) {
+  const base = String(locale).toLowerCase().split('-')[0];
+  const map = PERIOD_SUFFIX[period] || {};
+  return map[base] || map.en || '';
+}
