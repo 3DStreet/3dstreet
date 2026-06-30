@@ -330,9 +330,15 @@ function getSrc(el) {
 // renders every instance with the reference material. Any per-instance material divergence
 // (tint, texture swap, material-values) would therefore be lost — which is why the
 // BATCH_SAFE_COMPONENTS allowlist must keep excluding components that mutate materials.
-function collectRefSubMeshes(refMesh) {
-  // Callers already refresh the full scene graph; trust refMesh.matrixWorld.
-  const refInv = new THREE.Matrix4().copy(refMesh.matrixWorld).invert();
+function collectRefSubMeshes(refMesh, refWorldMatrix) {
+  // Build each sub-mesh's localMatrix relative to the ENTITY's world matrix (refWorldMatrix),
+  // not the mesh's — batchGroup composes every slot as `el.object3D.matrixWorld · localMatrix`,
+  // so the reference frame must be the entity. For a gltf-model the mesh is the scene root
+  // (identity local), so mesh.matrixWorld === entity.matrixWorld and it makes no difference;
+  // but a gltf-part mesh carries its own local transform (e.g. a 90° X-rotation that stands a
+  // Character upright), and using mesh.matrixWorld here would cancel it out — laying the
+  // Character back down. Callers already refreshed the full scene graph, so these are current.
+  const refInv = new THREE.Matrix4().copy(refWorldMatrix).invert();
   const materialGroups = new Map(); // material -> [{ geometry, localMatrix }]
   const skipReasons = [];
 
@@ -441,7 +447,10 @@ function batchGroup(batchRootEl, key, members) {
     return null;
   }
 
-  const { materialGroups, skipReasons } = collectRefSubMeshes(refMesh);
+  const { materialGroups, skipReasons } = collectRefSubMeshes(
+    refMesh,
+    members[0].object3D.matrixWorld
+  );
   if (skipReasons.length > 0) {
     console.log(
       `[batch-models] not batched "${key}" (${members.length} members): ${skipReasons.join(', ')} (src: ${src})`
