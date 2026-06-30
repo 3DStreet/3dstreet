@@ -9,12 +9,22 @@
  * not by a runtime flag.
  */
 
-export const DEFAULT_LOCALE = 'en';
+// The canonical locale codes + browser-language matching live in @shared so the
+// shared number/price formatter resolves the exact same locale (see #656).
+export {
+  DEFAULT_LOCALE,
+  SUPPORTED_LOCALE_CODES,
+  detectBrowserLocale
+} from '@shared/i18n/locales';
+
+import {
+  SUPPORTED_LOCALE_CODES as SUPPORTED_LOCALE_CODES_INTERNAL,
+  detectBrowserLocale as detectBrowserLocaleInternal
+} from '@shared/i18n/locales';
 
 /**
- * Locales we ship message catalogs for. The first entry must be DEFAULT_LOCALE.
- * `label` is shown in the language switcher (in the language's own name so it
- * is recognizable regardless of the current UI language).
+ * Locales we ship message catalogs for, with their endonym labels for the
+ * language switcher. Codes must match SUPPORTED_LOCALE_CODES.
  */
 export const SUPPORTED_LOCALES = [
   { code: 'en', label: 'English' },
@@ -23,45 +33,7 @@ export const SUPPORTED_LOCALES = [
   { code: 'fr', label: 'Français' }
 ];
 
-export const SUPPORTED_LOCALE_CODES = SUPPORTED_LOCALES.map((l) => l.code);
-
 const LOCALE_STORAGE_KEY = 'locale';
-
-/**
- * Maps a raw BCP-47 tag (e.g. from navigator.language) to one of our supported
- * locale codes, or null if there is no reasonable match. Region-insensitive for
- * Spanish (any es-* → es); Brazilian Portuguese is preferred for any pt-* tag
- * since that is the cohort we are targeting (#656).
- */
-function matchSupportedLocale(tag) {
-  if (!tag) return null;
-  const lower = tag.toLowerCase();
-  if (SUPPORTED_LOCALE_CODES.includes(tag)) return tag;
-  if (lower.startsWith('es')) return 'es';
-  if (lower.startsWith('pt')) return 'pt-BR';
-  if (lower.startsWith('fr')) return 'fr';
-  if (lower.startsWith('en')) return 'en';
-  return null;
-}
-
-/**
- * Detects the best supported locale from the browser's language preferences.
- * Falls back to DEFAULT_LOCALE when nothing matches.
- */
-export function detectBrowserLocale() {
-  try {
-    const candidates = navigator.languages?.length
-      ? navigator.languages
-      : [navigator.language];
-    for (const tag of candidates) {
-      const match = matchSupportedLocale(tag);
-      if (match) return match;
-    }
-  } catch {
-    // navigator unavailable (SSR / tests) — fall through to default
-  }
-  return DEFAULT_LOCALE;
-}
 
 /**
  * Resolves the locale to use at startup: an explicit stored preference (set via
@@ -70,11 +42,11 @@ export function detectBrowserLocale() {
 export function resolveInitialLocale() {
   try {
     const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
-    if (stored && SUPPORTED_LOCALE_CODES.includes(stored)) return stored;
+    if (stored && SUPPORTED_LOCALE_CODES_INTERNAL.includes(stored)) return stored;
   } catch {
     // ignore storage errors
   }
-  return detectBrowserLocale();
+  return detectBrowserLocaleInternal();
 }
 
 export function persistLocale(code) {

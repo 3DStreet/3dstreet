@@ -58,9 +58,31 @@ describe('format utils', () => {
   });
 
   describe('getActiveLocale', () => {
-    it('prefers the stored locale', () => {
+    const setLanguages = (languages) =>
+      Object.defineProperty(window.navigator, 'languages', {
+        value: languages,
+        configurable: true
+      });
+
+    it('prefers a supported stored locale', () => {
       localStorage.setItem('locale', 'pt-BR');
       expect(getActiveLocale()).toBe('pt-BR');
+    });
+
+    it('detects a supported locale from the browser when none stored', () => {
+      setLanguages(['fr-FR']);
+      expect(getActiveLocale()).toBe('fr');
+    });
+
+    it('never returns an unmatched browser locale (would mismatch the UI)', () => {
+      setLanguages(['de-DE', 'ar-SA']);
+      expect(getActiveLocale()).toBe('en');
+    });
+
+    it('ignores an unsupported stored value', () => {
+      localStorage.setItem('locale', 'zz');
+      setLanguages(['en-US']);
+      expect(getActiveLocale()).toBe('en');
     });
   });
 });

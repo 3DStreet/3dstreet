@@ -12,20 +12,24 @@
  * "1 200,50").
  */
 
-const FALLBACK_LOCALE = 'en';
+import { matchSupportedLocale, detectBrowserLocale } from '../i18n/locales';
 
+/**
+ * The locale to format numbers/prices in. Resolves to one of our SUPPORTED
+ * locales — the same one the UI text renders in — so formatting never diverges
+ * from the displayed language. An explicit stored choice wins; otherwise we
+ * detect from the browser (vetted, falling back to English). We deliberately do
+ * NOT return a raw, unmatched browser locale: that could format prices in a
+ * different numbering system than the surrounding English copy.
+ */
 export function getActiveLocale() {
   try {
-    const stored = localStorage.getItem('locale');
-    if (stored) return stored;
+    const matched = matchSupportedLocale(localStorage.getItem('locale'));
+    if (matched) return matched;
   } catch {
     // localStorage unavailable (private mode / SSR)
   }
-  try {
-    return navigator.language || FALLBACK_LOCALE;
-  } catch {
-    return FALLBACK_LOCALE;
-  }
+  return detectBrowserLocale();
 }
 
 /**

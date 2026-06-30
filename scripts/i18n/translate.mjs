@@ -210,12 +210,16 @@ async function main() {
       );
       for (const id of batchIds) {
         if (translations[id] == null) {
-          console.warn(`  [${locale}] missing translation for "${id}", keeping English.`);
+          // The LLM dropped this key. Keep an English placeholder for now but
+          // do NOT record it in the manifest — leaving the source unrecorded
+          // means computeDelta() treats it as stale and retries it on the next
+          // run instead of silently freezing the English fallback in place.
+          console.warn(`  [${locale}] missing translation for "${id}", keeping English (will retry next run).`);
           existing[id] = enFlat[id];
         } else {
           existing[id] = translations[id];
+          manifestForLocale[id] = enFlat[id];
         }
-        manifestForLocale[id] = enFlat[id];
       }
       console.log(`  [${locale}] ${Math.min(i + BATCH_SIZE, toTranslate.length)}/${toTranslate.length}`);
     }

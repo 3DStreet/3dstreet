@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
 import { getUserProfile, saveUserProfile } from '@shared/utils/username';
-import { SUPPORTED_LOCALE_CODES, DEFAULT_LOCALE } from './config';
+import { SUPPORTED_LOCALE_CODES } from './config';
 
 /**
  * Keeps the UI locale in sync with the signed-in user's stored preference
@@ -34,12 +34,19 @@ export function useProfileLocaleSync() {
           return;
         }
 
-        const current = useStore.getState().locale;
-        if (
-          current !== DEFAULT_LOCALE &&
-          SUPPORTED_LOCALE_CODES.includes(current)
-        ) {
-          await saveUserProfile(uid, { locale: current });
+        // No profile preference yet — persist the user's explicit choice so it
+        // follows the account. localStorage 'locale' is only written on an
+        // explicit pick (or a prior sync), never by auto-detection, so its
+        // presence is the "explicit choice" signal — including an explicit pick
+        // of English (which `current !== 'en'` would have missed).
+        let explicit = null;
+        try {
+          explicit = localStorage.getItem('locale');
+        } catch {
+          // localStorage unavailable
+        }
+        if (explicit && SUPPORTED_LOCALE_CODES.includes(explicit)) {
+          await saveUserProfile(uid, { locale: explicit });
         }
       } catch (error) {
         console.error('Error syncing locale from profile:', error);

@@ -34,7 +34,12 @@ export const PRICING = {
       pricePerMonth: 7,
       yearlyTotal: PRO_YEARLY_TOTAL,
       tokens: 100,
-      cycleDetail: `billed yearly, ${formatCurrency(PRO_YEARLY_TOTAL)}${getPeriodSuffix('year')}`
+      // Getter so the price/period reflect the CURRENT locale each render,
+      // not whatever locale happened to be active when this module first
+      // loaded (which is before the user could switch languages).
+      get cycleDetail() {
+        return `billed yearly, ${formatCurrency(PRO_YEARLY_TOTAL)}${getPeriodSuffix('year')}`;
+      }
     }
   },
   max: {
@@ -47,7 +52,9 @@ export const PRICING = {
       pricePerMonth: 35,
       yearlyTotal: MAX_YEARLY_TOTAL,
       tokens: 500,
-      cycleDetail: `billed yearly, ${formatCurrency(MAX_YEARLY_TOTAL)}${getPeriodSuffix('year')}`
+      get cycleDetail() {
+        return `billed yearly, ${formatCurrency(MAX_YEARLY_TOTAL)}${getPeriodSuffix('year')}`;
+      }
     }
   }
 };
