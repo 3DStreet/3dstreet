@@ -22,7 +22,6 @@
     "test:modern:coverage": "vitest run --coverage",
     "test:generator": "vitest run test/generator",
     "test:parity": "node test/parity/compare-imports.mjs",
-    "test:parity:setup": "npm install --no-save puppeteer@^25.1.0 sharp@^0.35.1",
     "test:parity:fixtures": "node test/parity/generate-fixtures.mjs",
     "test:components": "vitest run --config vitest.components.config.js",
     "test:components:watch": "vitest --config vitest.components.config.js",
