@@ -12,13 +12,3 @@ dist/
 /public/index.html
 *storybook.log
 storybook-static
-.design-sync/sb-reference/
-.design-sync/learnings/
-.design-sync/.cache/
-.design-sync/node_modules
-.design-sync/dist-ds/
-.design-sync/sb-build.log
-.ds-sync/
-ds-bundle/
-.design-sync/pkg/index.mjs
-.design-sync/pkg/index.css
