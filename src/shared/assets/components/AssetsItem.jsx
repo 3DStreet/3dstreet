@@ -10,12 +10,7 @@ import {
   getAssetTypeLabel,
   is3dViewerType
 } from '../utils.js';
-
-// 1×1 transparent gif used to suppress the default browser drag ghost so the
-// 3D preview at the cursor isn't fighting with a card thumbnail floating along.
-const emptyDragImage = new Image();
-emptyDragImage.src =
-  'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+import { getEmptyDragImage } from '@shared/utils/dragImage.js';
 
 const MeshPlaceholder = () => (
   <div className={styles.meshPlaceholder} aria-label="3D model">
@@ -121,7 +116,9 @@ const AssetsItem = ({
       })
     );
     e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setDragImage(emptyDragImage, 0, 0);
+    // DOM-attached transparent image so Safari suppresses the default
+    // card ghost too (a detached Image is ignored by WebKit) — see #1527.
+    e.dataTransfer.setDragImage(getEmptyDragImage(), 0, 0);
   };
 
   const typeLabel = getAssetTypeLabel(item);
