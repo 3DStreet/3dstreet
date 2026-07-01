@@ -9,6 +9,20 @@
  */
 
 import * as Sentry from '@sentry/react';
+import Events from './Events';
+
+/**
+ * Restore the editor camera to the pose a snapshot was captured from (#1605).
+ * Mirrors the focus-on-entity pattern: emits an event the viewport turns into a
+ * smooth camera transition (EditorControls.focusCameraState). Snapshots taken
+ * before pose capture shipped have no cameraState — callers should hide the
+ * focus affordance in that case, but we guard here too.
+ */
+export const focusCameraOnSnapshot = (item) => {
+  const cameraState = item?.metadata?.cameraState;
+  if (!cameraState) return;
+  Events.emit('cameraposefocus', cameraState);
+};
 
 export const openInGenerator = async (item, tabName) => {
   try {
