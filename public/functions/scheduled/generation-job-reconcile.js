@@ -540,7 +540,7 @@ function escalateIfNeeded(summary, notify) {
 
 const reconcileGenerationJobs = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', ...MODAL_SECRETS],
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL', ...MODAL_SECRETS],
     // processTerminalPrediction may stream a .ply save (no full-file buffering);
     // 512 MB is fixed headroom, not sized to the file. 540s covers a backlog.
     timeoutSeconds: 540,
@@ -581,7 +581,7 @@ const reconcileGenerationJobs = functions
 
 const triggerReconcileGenerationJobs = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', ...MODAL_SECRETS],
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL', ...MODAL_SECRETS],
     timeoutSeconds: 540,
     memory: '512MB'
   })

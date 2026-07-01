@@ -26,7 +26,8 @@ const STATUS_LABELS = {
 // Map job kind → the noun shown on the card.
 const KIND_NOUNS = {
   splat: 'Splat',
-  image: 'Image'
+  image: 'Image',
+  video: 'Video'
 };
 
 const PendingJobCard = ({ job }) => {
