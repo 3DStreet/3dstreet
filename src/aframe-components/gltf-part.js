@@ -5,7 +5,6 @@ var MODELS = {};
 
 AFRAME.registerComponent('gltf-part', {
   schema: {
-    buffer: { default: true },
     part: { type: 'string' },
     src: { type: 'asset' }
   },
@@ -17,15 +16,24 @@ AFRAME.registerComponent('gltf-part', {
   },
 
   update: function () {
+    var self = this;
     var el = this.el;
     if (!this.data.part && this.data.src) {
       return;
     }
+    // Cleared now, set true once the part resolves (model-loaded) or fails (model-error).
+    // batch-models' waitForModelLoaded reads it so a part that resolved before it started
+    // listening doesn't hang Promise.all.
+    this._loadSettled = false;
     this.getModel(function (modelPart) {
       if (!modelPart) {
+        self._loadSettled = true;
+        el.emit('model-error', { format: 'gltf-part', src: self.data.src });
         return;
       }
       el.setObject3D('mesh', modelPart);
+      self._loadSettled = true;
+      el.emit('model-loaded', { format: 'gltf-part', model: modelPart });
     });
   },
 
@@ -86,11 +94,9 @@ AFRAME.registerComponent('gltf-part', {
 
     mesh = part.getObjectByProperty('type', 'Mesh').clone(true);
 
-    if (this.data.buffer) {
-      mesh.geometry = mesh.geometry.toNonIndexed();
-      return mesh;
-    }
-    mesh.geometry = new THREE.Geometry().fromBufferGeometry(mesh.geometry);
+    // Own geometry per instance (the cached model's geometry is shared by reference via
+    // clone(true)); the material stays shared with the cache and other instances.
+    mesh.geometry = mesh.geometry.clone();
     return mesh;
   }
 });

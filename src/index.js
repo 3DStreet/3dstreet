@@ -8,6 +8,8 @@ STREET.utils.newScene = streetUtils.newScene;
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 
+require('./batch-models.js');
+require('./aframe-components/gltf-model.js');
 require('./aframe-components/gltf-part');
 require('./aframe-components/ocean');
 require('./aframe-components/svg-extruder.js');

@@ -7,6 +7,7 @@ import InfiniteGridHelper from './InfiniteGridHelper.js';
 import { copyCameraPosition } from './cameras';
 import { initRaycaster } from './raycaster';
 import Events from './Events';
+import { isBatched, syncBatchedSubtree } from '../../batch-models';
 import useStore from '@/store';
 // variables used by OrientedBoxHelper
 const auxEuler = new THREE.Euler();
@@ -18,9 +19,9 @@ const auxQuaternion = new THREE.Quaternion();
 const identityQuaternion = new THREE.Quaternion();
 const auxMatrix = new THREE.Matrix4();
 const tempBox3 = new THREE.Box3();
+const auxLocalBbox = new THREE.Box3();
 const tempVector3Size = new THREE.Vector3();
 const tempVector3Center = new THREE.Vector3();
-const _box = new THREE.Box3();
 
 class OrientedBoxHelper extends THREE.BoxHelper {
   constructor(object, color = 0xffff00, fill = false) {
@@ -64,75 +65,77 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       );
       auxMatrix.compose(origin, identityQuaternion, auxScale);
       this.object.parent.matrixWorld.copy(auxMatrix);
+      tempBox3.setFromObject(this.object);
+
+      // Batched entities have their original mesh tree stripped at batch time, so
+      // setFromObject finds no geometry under them. batch-models stashes a per-entity-local
+      // AABB — apply the entity's now-zeroed-rotation matrixWorld and union it in.
+      const cachedBbox = this.object.userData?._batchLocalBbox;
+      if (cachedBbox) {
+        this.object.updateWorldMatrix(false, false);
+        auxLocalBbox.copy(cachedBbox).applyMatrix4(this.object.matrixWorld);
+        tempBox3.union(auxLocalBbox);
+      }
+
+      if (!this.object.el?.getObject3D('mesh') && !cachedBbox) {
+        // For a group of several models to include the group origin.
+        tempBox3.expandByPoint(this.object.position);
+      }
+
       if (this.boxFill) {
-        tempBox3.setFromObject(this.object);
         tempBox3.getSize(tempVector3Size);
         tempBox3.getCenter(tempVector3Center);
         this.boxFill.position.copy(tempVector3Center);
         this.boxFill.scale.copy(tempVector3Size);
       }
-    }
-
-    // super.update();
-    // This is the super.update code with an additional _box.expandByPoint(this.object.position)
-    // for a group of several models to include the group origin.
-    if (this.object !== undefined) {
-      // For splat entities, use the splat component's getBoundingBox method
-      if (isSplatEntity) {
-        const splatComponent = this.object.el.components['splat'];
-        const splatBox = splatComponent?.getBoundingBox?.();
-        if (splatBox) {
-          _box.copy(splatBox);
-          // Transform the box to world space
-          _box.applyMatrix4(this.object.matrixWorld);
-        } else {
-          _box.setFromObject(this.object);
-        }
+    } else if (this.object !== undefined && isSplatEntity) {
+      const splatComponent = this.object.el.components['splat'];
+      const splatBox = splatComponent?.getBoundingBox?.();
+      if (splatBox) {
+        tempBox3.copy(splatBox);
+        // Transform the box to world space
+        tempBox3.applyMatrix4(this.object.matrixWorld);
       } else {
-        _box.setFromObject(this.object);
-        if (!this.object.el?.getObject3D('mesh')) {
-          _box.expandByPoint(this.object.position);
-        }
+        tempBox3.setFromObject(this.object);
       }
     }
 
-    if (_box.isEmpty()) return;
+    if (!tempBox3.isEmpty()) {
+      const min = tempBox3.min;
+      const max = tempBox3.max;
 
-    const min = _box.min;
-    const max = _box.max;
+      const position = this.geometry.attributes.position;
+      const array = position.array;
 
-    const position = this.geometry.attributes.position;
-    const array = position.array;
+      array[0] = max.x;
+      array[1] = max.y;
+      array[2] = max.z;
+      array[3] = min.x;
+      array[4] = max.y;
+      array[5] = max.z;
+      array[6] = min.x;
+      array[7] = min.y;
+      array[8] = max.z;
+      array[9] = max.x;
+      array[10] = min.y;
+      array[11] = max.z;
+      array[12] = max.x;
+      array[13] = max.y;
+      array[14] = min.z;
+      array[15] = min.x;
+      array[16] = max.y;
+      array[17] = min.z;
+      array[18] = min.x;
+      array[19] = min.y;
+      array[20] = min.z;
+      array[21] = max.x;
+      array[22] = min.y;
+      array[23] = min.z;
 
-    array[0] = max.x;
-    array[1] = max.y;
-    array[2] = max.z;
-    array[3] = min.x;
-    array[4] = max.y;
-    array[5] = max.z;
-    array[6] = min.x;
-    array[7] = min.y;
-    array[8] = max.z;
-    array[9] = max.x;
-    array[10] = min.y;
-    array[11] = max.z;
-    array[12] = max.x;
-    array[13] = max.y;
-    array[14] = min.z;
-    array[15] = min.x;
-    array[16] = max.y;
-    array[17] = min.z;
-    array[18] = min.x;
-    array[19] = min.y;
-    array[20] = min.z;
-    array[21] = max.x;
-    array[22] = min.y;
-    array[23] = min.z;
+      position.needsUpdate = true;
 
-    position.needsUpdate = true;
-
-    this.geometry.computeBoundingSphere();
-    // end of super.update();
+      this.geometry.computeBoundingSphere();
+    }
 
     // Restore rotations (skip for splat entities since we didn't modify them).
     if (this.object !== undefined && !isSplatEntity) {
@@ -316,6 +319,12 @@ export function Viewport(inspector) {
       );
     }
 
+    // The entityupdate command below fires componentchanged, which the scene-level
+    // batch-models listener catches — but A-Frame throttles componentchanged to 200ms,
+    // so during a continuous drag a batched-descendant slot would only catch up at
+    // ~5Hz. Push the slot directly here for smooth per-frame updates.
+    syncBatchedSubtree(object.el);
+
     selectionBox.setFromObject(object);
 
     updateHelpers(object);
@@ -495,7 +504,9 @@ export function Viewport(inspector) {
     measureLineControls.detach();
 
     if (object && object.el) {
-      if (object.el.getObject3D('mesh')) {
+      if (object.el.getObject3D('mesh') || isBatched(object.el)) {
+        // Batched entities have no mesh tree but OrientedBoxHelper falls back to the
+        // cached _batchLocalBbox, so we can size the selection immediately.
         selectionBox.setFromObject(object);
         selectionBox.visible = true;
       } else if (object.el.hasAttribute('gltf-model')) {

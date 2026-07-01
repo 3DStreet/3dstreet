@@ -1,5 +1,6 @@
 import useStore from './store';
 import { createUniqueId } from './editor/lib/entity';
+import { beginBatching } from './batch-models';
 import JSONCrush from 'jsoncrush';
 
 /* global AFRAME, Node */
@@ -7,6 +8,8 @@ window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
 STREET.store = useStore;
+// Group duplicate gltf-model meshes into batches when loading a scene. Set false to disable.
+STREET.batchingEnabled = true;
 function getSceneUuidFromURLHash() {
   const currentHash = window.location.hash;
   const match = currentHash.match(/#\/scenes\/([a-zA-Z0-9-]+)/);
@@ -418,6 +421,9 @@ function getModifiedProperty(entity, componentName) {
 function createEntities(entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
   const removeEntities = ['environment', 'reference-layers'];
+  // Arm batching before any entity is minted below; batchModels runs on the "newScene"
+  // event emitted after this createEntities pass. See beginBatching for the state model.
+  beginBatching(sceneElement, STREET.batchingEnabled);
   for (const entityData of entitiesData) {
     // Legacy migration: the geospatial layer's visibility used to be toggled
     // via the entity's `visible` attribute. The new sidepanel exposes this
