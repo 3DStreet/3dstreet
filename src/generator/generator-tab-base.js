@@ -38,6 +38,10 @@ class GeneratorTabBase {
       requiresSourceImage: config.requiresSourceImage || false,
       requiresPrompt: config.requiresPrompt || false,
       showImagePromptUI: config.showImagePromptUI || false,
+      // Optional source image: show the upload with an amber (recommended, not
+      // required) indicator and nudge the user toward providing one, but allow
+      // text-only generation.
+      optionalSourceImage: config.optionalSourceImage || false,
       defaultPrompt: config.defaultPrompt || null,
       title: config.title || 'Image Generator',
       description: config.description || 'Generate images with AI'
@@ -207,28 +211,28 @@ class GeneratorTabBase {
     // Image prompt (if applicable)
     if (this.config.showImagePromptUI) {
       this.elements.imagePromptInput =
-        document.getElementById('image-prompt-input');
+        document.getElementById('source-image-input');
       this.elements.imagePromptName =
-        document.getElementById('image-prompt-name');
+        document.getElementById('source-image-name');
       this.elements.imagePromptUploadLabel = document.getElementById(
-        'image-prompt-upload-label'
+        'source-image-upload-label'
       );
       this.elements.imagePromptPreviewContainer = document.getElementById(
-        'image-prompt-preview-container'
+        'source-image-preview-container'
       );
       this.elements.imagePromptPreview = document.getElementById(
-        'image-prompt-preview'
+        'source-image-preview'
       );
       this.elements.imagePromptClear =
-        document.getElementById('image-prompt-clear');
+        document.getElementById('source-image-clear');
       this.elements.imagePromptStrength = document.getElementById(
-        'image-prompt-strength'
+        'source-image-strength'
       );
       this.elements.imagePromptStrengthValue = document.getElementById(
-        'image-prompt-strength-value'
+        'source-image-strength-value'
       );
       this.elements.imagePromptStrengthContainer = document.getElementById(
-        'image-prompt-strength-container'
+        'source-image-strength-container'
       );
     }
 
@@ -245,7 +249,7 @@ class GeneratorTabBase {
     );
     if (this.config.showImagePromptUI) {
       this.elements.imagePromptGroup =
-        document.getElementById('image-prompt-group');
+        document.getElementById('source-image-group');
     }
     this.elements.rawModeGroup = document.getElementById(
       getId('raw-mode-group')
@@ -337,34 +341,46 @@ class GeneratorTabBase {
   }
 
   /**
-   * Generate HTML for image prompt section (for modify tab)
+   * Generate HTML for the source-image section.
+   * When optionalSourceImage is set, the image is a recommendation (amber `*`)
+   * rather than a hard requirement (red `*`).
    */
   getImagePromptHTML() {
     if (!this.config.showImagePromptUI) return '';
 
+    const optional = this.config.optionalSourceImage;
+    const labelText = optional ? 'Reference Image' : 'Source Image';
+    const indicator = optional
+      ? `<span style="color: #F5A623;" title="Recommended for better results">*</span>`
+      : `<span class="text-red-500">*</span>`;
+    const helper = optional
+      ? `<p class="text-xs text-gray-500">Optional — a reference image guides the result. Text-only works too.</p>`
+      : '';
+
     return `
-                    <!-- Image Prompt (for remix) -->
-                    <div id="image-prompt-group" class="mb-4 param-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Source Image <span class="text-red-500">*</span></label>
+                    <!-- Source Image -->
+                    <div id="source-image-group" class="mb-4 param-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">${labelText} ${indicator}</label>
                         <div class="flex flex-col space-y-2">
-                            <label id="image-prompt-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+                            <label id="source-image-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
                                 <div class="flex flex-col items-center">
                                     <p class="text-sm text-gray-500">Click to upload an image</p>
-                                    <p id="image-prompt-name" class="text-xs text-gray-400 mt-1">No file selected</p>
+                                    <p id="source-image-name" class="text-xs text-gray-400 mt-1">No file selected</p>
                                 </div>
-                                <input id="image-prompt-input" type="file" class="hidden" accept="image/png, image/jpeg, image/jpg" />
+                                <input id="source-image-input" type="file" class="hidden" accept="image/png, image/jpeg, image/jpg" />
                             </label>
-                            <div id="image-prompt-preview-container" class="hidden relative">
-                                <img id="image-prompt-preview" class="w-full rounded-lg border border-gray-300" alt="Selected image">
-                                <button id="image-prompt-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="Clear image">
+                            <div id="source-image-preview-container" class="hidden relative">
+                                <img id="source-image-preview" class="w-full rounded-lg border border-gray-300" alt="Selected image">
+                                <button id="source-image-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="Clear image">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 hover:text-red-600 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
                             </div>
-                            <div class="hidden" id="image-prompt-strength-container">
-                                <label class="block text-xs font-medium text-gray-700 mb-1">Image Strength: <span id="image-prompt-strength-value">0.3</span></label>
-                                <input type="range" id="image-prompt-strength" min="0" max="1" step="0.05" value="0.3" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            ${helper}
+                            <div class="hidden" id="source-image-strength-container">
+                                <label class="block text-xs font-medium text-gray-700 mb-1">Image Strength: <span id="source-image-strength-value">0.3</span></label>
+                                <input type="range" id="source-image-strength" min="0" max="1" step="0.05" value="0.3" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                             </div>
                         </div>
                     </div>
@@ -403,7 +419,12 @@ class GeneratorTabBase {
 
     this.modelSelectorInstance = mountModelSelector(container, {
       value: this.selectedModel,
-      hasSourceImage: this.config.showImagePromptUI, // Hide fal models on create tab (no source image)
+      // With an optional source image the model list adapts to whether one is
+      // present (edit-only models are hidden until an image is added). Legacy
+      // tabs key off showImagePromptUI as before.
+      hasSourceImage: this.config.optionalSourceImage
+        ? !!this.imagePromptData
+        : this.config.showImagePromptUI,
       onChange: (modelId) => {
         this.selectedModel = modelId;
         this.updateModelParams();
@@ -1072,6 +1093,33 @@ class GeneratorTabBase {
     this.elements.imagePromptPreview.src = imageDataUrl;
     this.elements.imagePromptUploadLabel.classList.add('hidden');
     this.elements.imagePromptPreviewContainer.classList.remove('hidden');
+
+    // A source image is now present — unhide edit-only models.
+    this.updateModelSelectorSourceImage(true);
+  }
+
+  /**
+   * Keep the model list in sync with whether a source image is present. Only
+   * meaningful for the optional-source-image tab; other tabs fix hasSourceImage
+   * at mount time.
+   */
+  updateModelSelectorSourceImage(hasImage) {
+    if (!this.config.optionalSourceImage || !this.modelSelectorInstance) return;
+
+    // Dropping the image can hide the current (edit-only) model; fall back to
+    // the default so the selector doesn't show a hidden selection.
+    if (
+      !hasImage &&
+      REPLICATE_MODELS[this.selectedModel]?.requiresSourceImage
+    ) {
+      this.selectedModel = 'nano-banana-pro';
+      this.updateModelParams();
+    }
+
+    this.modelSelectorInstance.update({
+      value: this.selectedModel,
+      hasSourceImage: hasImage
+    });
   }
 
   /**
@@ -1100,6 +1148,9 @@ class GeneratorTabBase {
     if (this.elements.imagePromptStrengthContainer) {
       this.elements.imagePromptStrengthContainer.classList.add('hidden');
     }
+
+    // No source image — re-hide edit-only models.
+    this.updateModelSelectorSourceImage(false);
   }
 
   /**
@@ -1159,6 +1210,18 @@ class GeneratorTabBase {
       return;
     }
 
+    // Optional-source-image tab: coax the user toward a reference image, but
+    // let them proceed text-only via the nudge's "Generate anyway".
+    if (
+      this.config.optionalSourceImage &&
+      !this.imagePromptData &&
+      !this._proceedWithoutImage
+    ) {
+      this.showImageNudge();
+      return;
+    }
+    this._proceedWithoutImage = false;
+
     const model = this.selectedModel;
     const modelConfig = REPLICATE_MODELS[model];
 
@@ -1175,6 +1238,60 @@ class GeneratorTabBase {
     }
 
     FluxUI.showNotification('Invalid model selected', 'error');
+  }
+
+  /**
+   * Empty-image nudge dialog (#1767): recommend a reference image without
+   * disparaging text-only generation, with a proceed-anyway escape hatch.
+   */
+  showImageNudge() {
+    const existing = document.getElementById('image-nudge-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'image-nudge-modal';
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content p-6">
+        <h3 class="text-lg font-semibold mb-2">Add a reference image for better results</h3>
+        <p class="text-sm text-gray-500 mb-6">
+          A photo or reference image gives the AI real-world structure to match —
+          producing far more accurate, usable results. Text-only generation
+          works, but results are rougher and best for quick concepts.
+        </p>
+        <div class="flex justify-end gap-3">
+          <button id="image-nudge-generate" class="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            Generate anyway
+          </button>
+          <button id="image-nudge-add" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            Add image
+          </button>
+        </div>
+      </div>
+    `;
+
+    const close = () => modal.remove();
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) close();
+    });
+
+    modal.querySelector('#image-nudge-add').addEventListener('click', () => {
+      close();
+      if (this.elements.imagePromptInput) {
+        this.elements.imagePromptInput.click();
+      }
+    });
+
+    modal
+      .querySelector('#image-nudge-generate')
+      .addEventListener('click', () => {
+        close();
+        this._proceedWithoutImage = true;
+        this.generateImage();
+      });
+
+    document.body.appendChild(modal);
   }
 
   /**
