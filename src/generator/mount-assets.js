@@ -9,6 +9,7 @@ import { auth } from '@shared/services/firebase';
 import posthog from 'posthog-js';
 import FluxUI from './main.js';
 import ModifyTab from './modify.js';
+import ImageTab from './image-tab.js';
 import VideoTab from './video.js';
 
 /**
@@ -47,12 +48,15 @@ const handleUseForGenerator = async (item) => {
     try {
       const imageUrl = item.storageUrl || item.objectURL;
       const dataUri = await getBlobDataUri(imageUrl);
-      const modifyTabButton = document.querySelector(
-        '.tab-button[data-tab="modify-tab"]'
+      // Modify now lives inside the Image tab as a mode: activate the Image
+      // tab, then switch it to Modify before setting the source image.
+      const imageTabButton = document.querySelector(
+        '.tab-button[data-tab="image-tab"]'
       );
-      if (modifyTabButton) modifyTabButton.click();
+      if (imageTabButton) imageTabButton.click();
+      ImageTab.setMode('modify');
       ModifyTab.setImagePrompt(dataUri, `Gallery Image ${item.id}`);
-      FluxUI.showNotification('Image sent to Modify tab!', 'success');
+      FluxUI.showNotification('Image sent to Modify!', 'success');
     } catch (error) {
       console.error('Error sending to Modify:', error);
       FluxUI.showNotification('Failed to prepare image for Modify.', 'error');

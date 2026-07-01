@@ -26,10 +26,12 @@ import { mountAssets } from './mount-assets.js';
 
 // Import all modules
 import FluxUI from './main.js';
+import ImageTab from './image-tab.js';
 import ModifyTab from './modify.js';
 import CreateTab from './create.js';
 import VideoTab from './video.js';
 import SplatTab from './splat.js';
+import Model3DTab from './model3d.js';
 
 // Initialize PostHog so capture() calls in handlers/effects below are not no-ops
 initPostHog();
@@ -58,10 +60,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   await mountAssets();
 
   // Initialize tabs
-  ModifyTab.init();
+  // Create + Modify mount into the Image tab's mode panels; ImageTab wires the
+  // Create/Modify mode toggle around them.
   CreateTab.init();
+  ModifyTab.init();
+  ImageTab.init();
   VideoTab.init();
   SplatTab.init();
+  Model3DTab.init();
 
   // Hide loading screen once everything is initialized
   // Use requestAnimationFrame to ensure styles are applied
