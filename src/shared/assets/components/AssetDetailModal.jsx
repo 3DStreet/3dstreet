@@ -49,7 +49,8 @@ const AssetDetailModal = ({
   onDownload,
   onDelete,
   onUseForGenerator,
-  onUseForVideo
+  onUseForVideo,
+  onFocusCamera
 }) => {
   const resolvedAssetId = assetId ?? item?.id ?? null;
   const resolvedOwnerUid = ownerUid ?? item?.userId ?? null;
@@ -154,6 +155,7 @@ const AssetDetailModal = ({
       onDelete={onDelete}
       onUseForGenerator={onUseForGenerator}
       onUseForVideo={onUseForVideo}
+      onFocusCamera={onFocusCamera}
     />
   );
 };
@@ -175,7 +177,8 @@ AssetDetailModal.propTypes = {
   onDownload: PropTypes.func,
   onDelete: PropTypes.func,
   onUseForGenerator: PropTypes.func,
-  onUseForVideo: PropTypes.func
+  onUseForVideo: PropTypes.func,
+  onFocusCamera: PropTypes.func
 };
 
 export default AssetDetailModal;

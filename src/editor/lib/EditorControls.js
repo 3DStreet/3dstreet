@@ -590,6 +590,78 @@ THREE.EditorControls = function (_object, domElement) {
     // Start the animation
     requestAnimationFrame(animate);
   };
+
+  // Smoothly return the camera to a stored snapshot pose (#1605). Unlike
+  // newSceneCameraZoom (which flies in from a fixed intro position on scene
+  // load) this starts from wherever the camera currently is, so a "focus"
+  // click from the snapshot gallery feels like a short glide back to the
+  // capture vantage. Reuses the same rotation→look-at reconstruction so the
+  // final orientation matches the pose that was saved.
+  this.focusCameraState = (cameraState) => {
+    if (!cameraState || this.isOrthographic) return;
+
+    const startPos = object.position.clone();
+    const startLookAt = center.clone();
+    const startFov = object.fov;
+
+    const endPos = new THREE.Vector3(
+      cameraState.position?.x ?? 0,
+      cameraState.position?.y ?? 15,
+      cameraState.position?.z ?? 30
+    );
+
+    // Reconstruct the look-at target from the stored rotation by casting the
+    // camera's forward ray and, where it dips below the horizon, intersecting
+    // the ground plane — same heuristic newSceneCameraZoom uses on load.
+    const tempCamera = new THREE.PerspectiveCamera();
+    tempCamera.position.copy(endPos);
+    tempCamera.rotation.set(
+      cameraState.rotation?.x ?? 0,
+      cameraState.rotation?.y ?? 0,
+      cameraState.rotation?.z ?? 0
+    );
+    tempCamera.updateMatrixWorld();
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(
+      tempCamera.quaternion
+    );
+    let t = 30;
+    if (Math.abs(forward.y) > 0.001) {
+      const ground = -endPos.y / forward.y;
+      if (ground > 0 && ground <= 1000) t = ground;
+    }
+    const endLookAt = new THREE.Vector3(
+      endPos.x + forward.x * t,
+      endPos.y + forward.y * t,
+      endPos.z + forward.z * t
+    );
+    if (endLookAt.y < 0) endLookAt.y = 0;
+
+    const endFov = cameraState.zoom || startFov;
+
+    const duration = 1000;
+    const startTime = Date.now();
+
+    const animate = () => {
+      const progress = Math.min((Date.now() - startTime) / duration, 1);
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+
+      object.position.lerpVectors(startPos, endPos, easeProgress);
+      center.lerpVectors(startLookAt, endLookAt, easeProgress);
+      object.lookAt(center);
+
+      if (endFov !== startFov) {
+        object.fov = startFov + (endFov - startFov) * easeProgress;
+        object.updateProjectionMatrix();
+      }
+      object.updateMatrixWorld();
+
+      scope.dispatchEvent(changeEvent);
+
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+
+    requestAnimationFrame(animate);
+  };
 };
 
 THREE.EditorControls.prototype = Object.create(THREE.EventDispatcher.prototype);

@@ -20,6 +20,7 @@ import {
   getOptimizationDisplay,
   getServedUrl
 } from '../utils.js';
+import { isEditableTarget } from '@shared/utils/dom.js';
 import styles from './MeshDetailsModal.module.scss';
 
 // User-editable attribution fields. `title` deliberately is NOT here — the
@@ -177,6 +178,9 @@ const MeshDetailsModal = ({
   // Keyboard nav — mirrors AssetsModal.
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Don't hijack arrow keys while the user is typing in a field (e.g.
+      // editing the title / attribution) — let the caret move instead.
+      if (e.key !== 'Escape' && isEditableTarget(e.target)) return;
       if (e.key === 'ArrowLeft' && onNavigate) onNavigate('prev');
       else if (e.key === 'ArrowRight' && onNavigate) onNavigate('next');
       else if (e.key === 'Escape') onCloseRef.current?.();

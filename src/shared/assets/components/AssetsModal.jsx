@@ -9,6 +9,7 @@ import { TrashIcon } from '@shared/icons';
 import styles from './Assets.module.scss';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import { getAssetTitle, formatBytes, formatDate } from '../utils.js';
+import { isEditableTarget } from '@shared/utils/dom.js';
 
 const METADATA_VISIBILITY_KEY = 'galleryModalMetadataVisible';
 
@@ -29,7 +30,10 @@ const AssetsModal = ({
   onDownload = defaultOnDownload,
   onDelete,
   onUseForGenerator,
-  onUseForVideo
+  onUseForVideo,
+  // Editor-only: restore the camera to this snapshot's captured pose (#1605).
+  // Omitted by hosts without a viewport (generator), which hides the button.
+  onFocusCamera
 }) => {
   // Initialize metadata visibility from sessionStorage
   const [isMetadataVisible, setIsMetadataVisible] = useState(() => {
@@ -66,6 +70,9 @@ const AssetsModal = ({
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Don't hijack arrow keys while the user is typing in a field (e.g.
+      // editing the title) — let the caret move within the input instead.
+      if (e.key !== 'Escape' && isEditableTarget(e.target)) return;
       if (e.key === 'ArrowLeft' && onNavigate) {
         onNavigate('prev');
       } else if (e.key === 'ArrowRight' && onNavigate) {
@@ -112,6 +119,9 @@ const AssetsModal = ({
   const date = dateSource ? formatDate(dateSource) : 'Unknown';
   const isVideo = item.type === 'video';
   const modalTitle = getAssetTitle(item);
+  // Snapshots captured after #1605 carry the camera pose; older ones don't, so
+  // only offer the focus button when both the host supports it and a pose exists.
+  const canFocusCamera = !!(onFocusCamera && item.metadata?.cameraState);
   // Surfaced for user-uploaded images (generator-created items don't set
   // these top-level fields, but they have model/prompt/seed instead).
   const filename = item.originalFilename;
@@ -202,7 +212,37 @@ const AssetsModal = ({
       <div className={styles.modalContent}>
         {/* Header with Title */}
         <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>{modalTitle}</h2>
+          <div className={styles.modalTitleGroup}>
+            <h2 className={styles.modalTitle}>{modalTitle}</h2>
+            {canFocusCamera && (
+              <button
+                className={styles.focusCameraBtn}
+                onClick={() => {
+                  onFocusCamera(item);
+                  onClose();
+                }}
+                title="Return camera to the position this snapshot was captured from"
+                aria-label="Focus camera on capture position"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="7" />
+                  <line x1="12" y1="1" x2="12" y2="4" />
+                  <line x1="12" y1="20" x2="12" y2="23" />
+                  <line x1="1" y1="12" x2="4" y2="12" />
+                  <line x1="20" y1="12" x2="23" y2="12" />
+                  <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                </svg>
+              </button>
+            )}
+          </div>
           <div className={styles.modalHeaderActions}>
             <button
               className={styles.infoToggleBtn}
