@@ -219,6 +219,7 @@ const VideoTab = {
     this.elements.generateText = document.getElementById('video-generate-text');
     this.elements.tokenCostDisplay =
       document.getElementById('video-token-cost');
+    this.elements.notifyEmail = document.getElementById('video-notify-email');
 
     // Verify critical elements
     let missingElements = [];
@@ -364,6 +365,16 @@ const VideoTab = {
                             <span id="video-token-cost" class="text-sm font-medium">10</span>
                         </span>
                     </button>
+
+                    <!-- Email when done. Renders are usually ~2 minutes, but
+                         provider queue waits can stretch a job much longer;
+                         the email is suppressed server-side if this tab is
+                         still open when it finishes (same as the splat tab). -->
+                    <label class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
+                        <input id="video-notify-email" type="checkbox" checked
+                            class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                        Email me when my video is ready
+                    </label>
                 </div>
 
                 <!-- Preview Column -->
@@ -763,6 +774,10 @@ const VideoTab = {
 
     // Add duration (5 or 10 seconds)
     params.duration_seconds = this.getSelectedDuration();
+
+    // Opt-in completion email, recorded on the job doc. The server only sends
+    // it if this tab isn't around to ack the result (i.e. closed).
+    params.notify = { email: !!this.elements.notifyEmail?.checked };
 
     // Seed functionality removed - doesn't work for video models
     // Check if seed should be randomized before generation

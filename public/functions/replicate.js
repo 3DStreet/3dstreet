@@ -539,7 +539,14 @@ const generateReplicateVideo = functions
     assertAppCheck(context);
 
     const userId = context.auth.uid;
-    const { prompt, input_image, model_name = 'lightricks/ltx-2-fast', aspect_ratio = '16:9', duration_seconds = 5, scene_id, source = 'generator' } = data;
+    const { prompt, input_image, model_name = 'lightricks/ltx-2-fast', aspect_ratio = '16:9', duration_seconds = 5, scene_id, source = 'generator', notify } = data;
+
+    // Opt-in completion email, same contract as the splat submit: `pending:
+    // true` is the flag the notify sweep queries on; it clears when the email
+    // is sent OR when a live poll acks the result (tab was open → no email).
+    // Renders are usually ~2 min, but provider queue waits can stretch a job
+    // far past what anyone keeps a tab open for.
+    const wantsEmail = notify?.email === true;
 
     // Validate the model before staging anything or charging tokens.
     if (!SUPPORTED_VIDEO_MODELS[model_name]) {
@@ -733,9 +740,7 @@ const generateReplicateVideo = functions
           duration_seconds,
           scene_id: scene_id || null
         },
-        // Videos render in ~2 minutes; the video tab has no completion-email
-        // opt-in, so notify stays off (the notify sweep queries pending:true).
-        notify: { email: false, pending: false },
+        notify: { email: wantsEmail, pending: wantsEmail },
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 

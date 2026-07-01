@@ -246,9 +246,11 @@ stream), so the fix is the same create-and-return pattern as splat.
   claimed success branch — fires on real completion, exactly once (the
   `saving` claim serializes webhook/poll/reconciler), with the durable Storage
   URL instead of the ephemeral provider URL.
-- **No geometry gate** (that's a splat-specific SfM sanity check) and **no
-  completion email opt-in** (renders are ~2 min; `notify` is written off, and
-  the email machinery ignores non-opted-in jobs).
+- **No geometry gate** (that's a splat-specific SfM sanity check). The
+  completion-email opt-in works exactly like splat's (checkbox on the tab →
+  `notify: { email, pending }` on the job doc; the `generationReady` template
+  already had video copy) — renders are usually ~2 min, but provider queue
+  waits can stretch far past what anyone keeps a tab open for.
 - **Job doc extras:** `generationParams` ({model_name, prompt, aspect_ratio,
   duration_seconds, scene_id}) — everything the terminal processor needs to
   build the gallery metadata + Discord post without a browser. Terminal result
