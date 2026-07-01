@@ -27,13 +27,19 @@ jobs:
           cache-dependency-path: 'package-lock.json'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Check Lint
         run: npm run lint
 
       - name: Check Build
         run: npm run dist
+
+      # Component tests (part of `npm run test`) need the Chromium headless
+      # shell. The JS deps are already installed via npm ci above; the headless
+      # shell shares Chromium's system libraries.
+      - name: Install Playwright headless shell
+        run: npm run test:setup && npx playwright install-deps chromium
 
       - name: Tests
         run: npm run test

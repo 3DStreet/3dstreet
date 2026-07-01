@@ -15,8 +15,13 @@ import {
   isAcceptedAssetFile,
   placeCloudAsset
 } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
-import { customLayersData, streetLayersData } from './layersData.js';
+import {
+  customLayersData,
+  shapeLayersData,
+  streetLayersData
+} from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
+import Events from '../../../lib/Events.js';
 import useStore from '@/store.js';
 import { getGroupedMixinOptions } from '../../../lib/mixinUtils';
 
@@ -366,6 +371,9 @@ const AddLayerPanel = () => {
             canvas: AFRAME.scenes[0].canvas,
             camera: AFRAME.INSPECTOR.camera
           });
+          // Reveal the Assets panel so the user sees the upload begin and its
+          // progress, matching the Add Layer Panel upload cards.
+          Events.emit('openassetspanel');
           uploadAndPlaceAsset(file, position);
           if (e.dataTransfer.files.length > 1) {
             STREET.notify.warningMessage(
@@ -445,6 +453,8 @@ const AddLayerPanel = () => {
     switch (selectedOption) {
       case 'Custom Layers':
         return customLayersData;
+      case 'Shapes':
+        return shapeLayersData;
       case 'Streets and Intersections':
         return streetLayersData;
       default:

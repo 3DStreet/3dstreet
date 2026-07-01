@@ -7,16 +7,17 @@ headless Chrome and diffing the screenshots.
 ## Run
 
 ```bash
-npm run test:parity:setup   # one-time: installs puppeteer (Chromium) + sharp
+npm run test:setup          # one-time: installs the Playwright Chromium shell
 npm start                   # dev server must be running on :3333
 npm run test:parity         # all fixture streets
 ```
 
-`puppeteer` and `sharp` are intentionally **not** in `package.json` — puppeteer
-pulls a ~150 MB Chromium download that we keep out of CI and normal installs.
-`test:parity:setup` installs them with `--no-save`, so they never touch
-`package.json` or the lockfile. If you run `test:parity` without them, the script
-prints this setup command and exits.
+The harness drives Chromium through `playwright` (already a devDependency, shared
+with the component-test harness). Its browser binary is installed once via
+`npm run test:setup` — the same lightweight `chromium-headless-shell` the
+component tests use, so there is no extra download. Image downscaling and PNG
+encoding for the pixel diff are done with a 2D canvas in a blank browser page,
+so there is no native image dependency either.
 
 Results land in `output/` (gitignored): `<slug>-legacy.png`, `<slug>-managed.png`,
 a red-highlight `<slug>-diff.png`, and `report.json` with mismatch ratios.

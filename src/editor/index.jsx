@@ -221,6 +221,16 @@ Inspector.prototype = {
     }
   },
 
+  onNewScene: function () {
+    this.history.clear();
+    if (useStore.getState().isLoadingScene) {
+      useStore.getState().updateLoadingProgress(95, 'Loading scene...');
+      setTimeout(() => {
+        useStore.getState().finishLoadingScene();
+      }, 500);
+    }
+  },
+
   initEvents: function () {
     // Remove inspector component to properly unregister keydown listener when the inspector is loaded via a script tag,
     // otherwise the listener will be registered twice and we can't toggle the inspector from viewer mode with the shortcut.
@@ -240,16 +250,6 @@ Inspector.prototype = {
     Events.on('showcursor', () => {
       this.cursor.play();
       this.cursor.setAttribute('raycaster', 'enabled', true);
-    });
-
-    this.sceneEl.addEventListener('newScene', () => {
-      this.history.clear();
-      if (useStore.getState().isLoadingScene) {
-        useStore.getState().updateLoadingProgress(95, 'Loading scene...');
-        setTimeout(() => {
-          useStore.getState().finishLoadingScene();
-        }, 500);
-      }
     });
 
     document.addEventListener('child-detached', (event) => {
@@ -399,6 +399,13 @@ const sceneLoaded = () => {
 };
 document.addEventListener('DOMContentLoaded', () => {
   const scene = document.querySelector('a-scene');
+  // Register the newScene handler here — as early as the <a-scene> element
+  // exists in the DOM, before A-Frame initializes/plays it and set-loader-from-
+  // hash kicks off the scene-JSON fetch that ends in emit('newScene'). Doing it
+  // in Inspector init (initEvents) was too late and lost the race
+  // intermittently, leaving the loading modal stuck at "Finalizing..." until its
+  // 30s optimistic timeout. See issue #1760.
+  scene.addEventListener('newScene', () => inspector.onNewScene());
   if (scene.hasLoaded) {
     sceneLoaded();
   } else {

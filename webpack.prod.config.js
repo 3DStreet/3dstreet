@@ -1,9 +1,23 @@
 const webpack = require('webpack');
 const path = require('path');
+const { execSync } = require('child_process');
 const Dotenv = require('dotenv-webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 const DEPLOY_ENV = process.env.DEPLOY_ENV ?? 'production';
+
+// Full build identity: CalVer base from package.json + short git SHA.
+// e.g. "2026.6.0+a1b2c3d". The base is bumped by hand at release time;
+// the SHA advances automatically on every build so each deploy is unique.
+function buildVersion() {
+  const base = process.env.npm_package_version;
+  try {
+    const sha = execSync('git rev-parse --short HEAD').toString().trim();
+    return `${base}+${sha}`;
+  } catch {
+    return base;
+  }
+}
 
 module.exports = {
   performance: {
@@ -54,7 +68,7 @@ module.exports = {
       path: `./config/.env.${DEPLOY_ENV}`
     }),
     new webpack.DefinePlugin({
-      VERSION: JSON.stringify(process.env.npm_package_version)
+      VERSION: JSON.stringify(buildVersion())
     }),
     new CopyWebpackPlugin({
       patterns: [

@@ -13,8 +13,7 @@ let SparkRenderer = null;
 let PagedSplats = null;
 // Spark's own extension→SplatFileType mapper. We use it for blob: previews
 // (which have no extension to sniff) so the hint we pass is a real SplatFileType
-// enum value, not the bare extension — these differ for some formats (notably
-// ".sog" → "pcsogszip"), which is why passing the raw extension broke .sog.
+// enum value rather than the bare extension, since the two can differ.
 let getSplatFileTypeFromPath = null;
 let sparkLoadPromise = null;
 
@@ -194,15 +193,15 @@ AFRAME.registerComponent('splat', {
       // Resolve the splat format. Spark identifies it from the URL extension or
       // magic bytes on its own, so for a URL that carries a recognizable
       // extension (cloud URLs) we pass NO fileType and let Spark map it —
-      // critically, its SplatFileType enum does NOT always equal the extension
-      // (".sog" → "pcsogszip"), so passing the bare extension as fileType breaks
-      // those formats. This mirrors the standalone splat-viewer.html, which
-      // never passes fileType for cloud URLs.
+      // critically, its SplatFileType enum does NOT always equal the extension,
+      // so passing the bare extension as fileType can break those formats. This
+      // mirrors the standalone splat-viewer.html, which never passes fileType
+      // for cloud URLs.
       //
       // A blob: preview is the only case Spark can't sniff: the URL has no
       // extension AND .splat is headerless. There we map the upload's `format`
-      // hint to a real SplatFileType via Spark's own getSplatFileTypeFromPath
-      // (so ".sog" → "pcsogszip" etc.), falling back to the raw hint.
+      // hint to a real SplatFileType via Spark's own getSplatFileTypeFromPath,
+      // falling back to the raw hint.
       const noQuery = src.split(/[?#]/)[0];
       const lastSeg = noQuery.slice(noQuery.lastIndexOf('/') + 1);
       const urlExt = lastSeg.includes('.')
@@ -282,13 +281,15 @@ AFRAME.registerComponent('splat', {
     } catch (error) {
       if (loadId !== this.loadId) return;
       console.error('[splat] Failed to load splat:', error);
-      // A blob: src is ALWAYS a transient local preview that uploadAndPlaceAsset
-      // swaps for the uploaded cloud URL on success. Some formats can't be
-      // previewed from a blob: URL (e.g. .sog → Spark's pcsogszip loader), but
-      // the very same file loads fine from its cloud URL (which carries a real
-      // extension). So for a blob failure, don't flash a scary error — keep the
-      // "Processing…" indicator up; the cloud reload that follows renders it.
-      // (On upload failure the blob stays, but that surfaces via the upload UI.)
+      // A blob: src is a transient local preview that uploadAndPlaceAsset swaps
+      // for the uploaded cloud URL on success. A blob preview can fail for a
+      // file that still loads fine from its cloud URL (which carries a real
+      // extension Spark can sniff), and that cloud reload may not start for many
+      // seconds on a large upload. So for a blob failure, don't flash a scary
+      // error — keep the "Processing…" indicator up; the cloud reload that
+      // follows renders it (or surfaces its own error via the non-blob path if
+      // the file is truly bad). On upload failure the blob stays, but that
+      // surfaces via the upload UI.
       if (/^blob:/i.test(src)) {
         this.el.emit('splat-error', { src, error, preview: true }, false);
         return;

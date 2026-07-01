@@ -16,7 +16,11 @@ export default class Component extends React.Component {
     component: PropTypes.any,
     entity: PropTypes.object,
     isCollapsed: PropTypes.bool,
-    name: PropTypes.string
+    name: PropTypes.string,
+    // Property names to omit from the rendered rows (e.g. advanced geometry
+    // props promoted into the featured section but too low-level to surface
+    // there — they remain available under Advanced Components).
+    hideProperties: PropTypes.array
   };
 
   constructor(props) {
@@ -93,23 +97,35 @@ export default class Component extends React.Component {
       );
     }
 
-    return Object.keys(componentData.schema)
-      .sort()
-      .filter((propertyName) => {
-        return shouldShowProperty(propertyName, componentData);
-      })
-      .map((propertyName) => (
-        <div className="detailed" key={propertyName}>
-          <PropertyRow
-            name={propertyName}
-            schema={componentData.schema[propertyName]}
-            data={componentData.data[propertyName]}
-            componentname={this.props.name}
-            isSingle={false}
-            entity={this.props.entity}
-          />
-        </div>
-      ));
+    const hideProperties = this.props.hideProperties || [];
+    return (
+      Object.keys(componentData.schema)
+        // `primitive` is the discriminator that decides which other fields apply
+        // (e.g. box -> width/depth/height), so surface it first; rest alphabetical.
+        .sort((a, b) => {
+          if (a === 'primitive') return -1;
+          if (b === 'primitive') return 1;
+          return a < b ? -1 : a > b ? 1 : 0;
+        })
+        .filter((propertyName) => {
+          return (
+            !hideProperties.includes(propertyName) &&
+            shouldShowProperty(propertyName, componentData)
+          );
+        })
+        .map((propertyName) => (
+          <div className="detailed" key={propertyName}>
+            <PropertyRow
+              name={propertyName}
+              schema={componentData.schema[propertyName]}
+              data={componentData.data[propertyName]}
+              componentname={this.props.name}
+              isSingle={false}
+              entity={this.props.entity}
+            />
+          </div>
+        ))
+    );
   };
 
   render() {

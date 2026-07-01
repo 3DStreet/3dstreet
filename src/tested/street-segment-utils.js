@@ -16,6 +16,4 @@ function calculateHeight(elevationLevel) {
   );
 }
 
-module.exports.calculateHeight = calculateHeight;
-module.exports.CURB_HEIGHT = CURB_HEIGHT;
-module.exports.BASE_SURFACE_DEPTH = BASE_SURFACE_DEPTH;
+export { calculateHeight, CURB_HEIGHT, BASE_SURFACE_DEPTH };

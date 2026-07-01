@@ -7,8 +7,8 @@ export const STATUS_LABELS = {
   uploading: { color: '#f4a01a', text: 'Uploading' },
   uploaded: { color: '#2bb673', text: 'Cloud asset' },
   failed: { color: '#e0473d', text: 'Upload failed' },
-  local: { color: '#7f7f7f', text: 'Saved locally only' },
-  local_error: { color: '#e0473d', text: "Local only — won't sync" },
+  local: { color: '#7f7f7f', text: 'Temporary local preview' },
+  local_error: { color: '#e0473d', text: "Local only: won't sync" },
   cloud_missing: { color: '#e0473d', text: 'Cloud asset unavailable' },
   waiting: { color: '#f4a01a', text: 'Waiting for connection…' }
 };
@@ -20,15 +20,15 @@ export const REASON_TEXT = {
   too_large: 'Exceeds the cloud upload size limit. Preview only.',
   optimized_too_large:
     'Even after optimization the file is over the upload limit. Preview only.',
-  over_quota: 'Storage full — delete assets or upgrade to sync this model.',
+  over_quota: 'Storage full: delete assets or upgrade to sync this model.',
   file_too_large:
-    "Larger than your plan's per-file limit — upgrade to sync this model.",
+    "Larger than your plan's per-file limit: upgrade to sync this model.",
   not_signed_in: 'Sign in to save this model to your cloud.',
   upload_blocked: 'Cloud upload was blocked.',
   asset_deleted:
-    'Marked for deletion — will be permanently purged on the next cleanup pass.',
+    'Marked for deletion: will be permanently purged on the next cleanup pass.',
   asset_not_found:
-    'Not found on the server — it may never have existed, or it was already purged.'
+    'Not found on the server: it may never have existed, or it was already purged.'
 };
 
 const PERSISTENT_ATTRS = ['data-asset-id', 'data-asset-owner-uid'];

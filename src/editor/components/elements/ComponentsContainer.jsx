@@ -1,5 +1,6 @@
 import CommonComponents from './CommonComponents';
 import AdvancedComponents from './AdvancedComponents';
+import FeaturedComponents from './FeaturedComponents';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Events from '../../lib/Events';
@@ -70,6 +71,7 @@ export default class ComponentsContainer extends React.Component {
             </div>
           </div>
         )}
+        <FeaturedComponents entity={entity} />
         <div className="advancedComponentsContainer">
           <AdvancedComponents entity={entity} />
         </div>

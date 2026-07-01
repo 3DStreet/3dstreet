@@ -17,13 +17,13 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { CURB_HEIGHT } from '../../src/tested/street-segment-utils.js';
 
 const require = createRequire(import.meta.url);
 const { segmentVariants } = require('../../src/segments-variants.js');
 
 const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const SCHEMA_VERSION = 33;
-const CURB_HEIGHT = 0.15; // meters per elevation level (street-segment-utils)
 
 // Typical widths in meters per segment type (overridable per segment)
 const DEFAULT_WIDTHS = {

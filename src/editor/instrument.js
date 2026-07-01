@@ -1,8 +1,10 @@
+/* global VERSION */
 import * as Sentry from '@sentry/react';
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
+    release: typeof VERSION !== 'undefined' ? VERSION : undefined,
     integrations: [
       Sentry.browserTracingIntegration(),
       Sentry.replayIntegration()

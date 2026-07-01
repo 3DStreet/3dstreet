@@ -61,7 +61,18 @@ AFRAME.registerComponent('street-generated-clones', {
 
   init: function () {
     this.createdEntities = [];
-    this.onSegmentChanged = () => this.update();
+    this.onSegmentChanged = () => {
+      const segment = this.el.components['street-segment']?.data;
+      if (!segment) return;
+      // Clones depend on length and width. Skip when both are unchanged since
+      // our last run: the segment's first-init emit during scene load carries
+      // the same dimensions we already generated with, so regenerating would
+      // tear the clones down and recreate them identically (#1759).
+      if (segment.length === this.length && segment.width === this.width) {
+        return;
+      }
+      this.update();
+    };
     this.el.addEventListener('segment-changed', this.onSegmentChanged);
   },
 

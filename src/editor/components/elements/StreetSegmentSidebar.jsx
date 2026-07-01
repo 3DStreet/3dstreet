@@ -19,9 +19,7 @@ import {
 import { Button } from '../elements';
 import Events from '../../lib/Events';
 import { commonMessages } from '@/editor/i18n/commonMessages';
-
-// Define featured component prefixes that should be shown in their own section
-const FEATURED_COMPONENT_PREFIXES = ['street-generated-'];
+import { isGeneratorComponent } from '../../lib/featuredComponents';
 
 const StreetSegmentSidebar = ({ entity }) => {
   const intl = useIntl();
@@ -29,10 +27,11 @@ const StreetSegmentSidebar = ({ entity }) => {
   const component = entity?.components?.[componentName];
   const components = entity ? entity.components : {};
 
-  // Filter for featured components that exist on this entity
-  const featuredComponents = Object.keys(components).filter((key) =>
-    FEATURED_COMPONENT_PREFIXES.some((prefix) => key.startsWith(prefix))
-  );
+  // Filter for featured generator components that exist on this entity. Shares
+  // the generalized prefix list (see lib/featuredComponents.js) so segments and
+  // generic primitives surface street-generated-* the same way.
+  const featuredComponents =
+    Object.keys(components).filter(isGeneratorComponent);
 
   return (
     <div className="segment-sidebar">

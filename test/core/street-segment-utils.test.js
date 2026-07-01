@@ -1,11 +1,11 @@
 /* global describe, it */
 
-const assert = require('assert');
-const {
+import assert from 'assert';
+import {
   calculateHeight,
   CURB_HEIGHT,
   BASE_SURFACE_DEPTH
-} = require('../../src/tested/street-segment-utils');
+} from '../../src/tested/street-segment-utils.js';
 
 describe('StreetSegmentUtils', function () {
   describe('#calculateHeight()', function () {
