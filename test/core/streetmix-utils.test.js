@@ -1,8 +1,9 @@
 /* global describe, it */
 
-const assert = require('assert');
-const streetmixUtils = require('../../src/tested/streetmix-utils');
-require('jsdom-global')();
+import assert from 'assert';
+import * as streetmixUtils from '../../src/tested/streetmix-utils.js';
+import jsdomGlobal from 'jsdom-global';
+jsdomGlobal();
 
 describe('StreetmixUtils', function () {
   describe('#streetmixUserToAPI()', function () {

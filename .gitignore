@@ -12,3 +12,5 @@ dist/
 /public/index.html
 *storybook.log
 storybook-static
+.vitest-attachments
+__screenshots__

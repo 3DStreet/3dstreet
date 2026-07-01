@@ -1,5 +1,5 @@
 /* global AFRAME */
-const { calculateHeight } = require('../tested/street-segment-utils');
+import { calculateHeight } from '../tested/street-segment-utils';
 
 /*
 <a-entity street-way="source: xyz">

@@ -12,8 +12,14 @@ AFRAME.registerComponent('street-generated-rail', {
   },
   init: function () {
     this.createdEntities = [];
-    this.onSegmentChanged = (event) => {
-      if (!event.detail.lengthChanged) return;
+    this.onSegmentChanged = () => {
+      const segment = this.el.components['street-segment']?.data;
+      if (!segment) return;
+      // Rails depend only on length. Skip when it is unchanged since our last
+      // run: the segment's first-init emit during scene load carries the same
+      // length we already generated with, so regenerating would tear the rails
+      // down and recreate them identically (#1759).
+      if (segment.length === this.length) return;
       this.update();
     };
     this.el.addEventListener('segment-changed', this.onSegmentChanged);

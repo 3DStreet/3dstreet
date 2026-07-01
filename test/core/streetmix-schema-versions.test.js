@@ -12,8 +12,8 @@
  * Test fixtures represent real-world Streetmix data structures.
  */
 
-const assert = require('assert');
-const streetmixUtils = require('../../src/tested/streetmix-utils');
+import assert from 'assert';
+import * as streetmixUtils from '../../src/tested/streetmix-utils.js';
 
 // Fixture: Schema v22 (legacy - feet, integer elevation)
 const SCHEMA_V22_STREET = {
