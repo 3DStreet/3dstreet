@@ -1,14 +1,14 @@
 /**
  * 3D Model Tab
  *
- * The "3D Model" medium alongside Image, Video and Splat: text/image → 3D mesh
+ * The "3D Model" medium alongside Image, Video and Splat: image → 3D mesh
  * (GLB) via fal. Two selectable models, both image-to-3D:
  *   - Hunyuan3D (fal-ai/hunyuan3d/v2)
  *   - TRELLIS   (fal-ai/trellis-2)
  *
  * Both endpoints are image-to-3D only (no text prompt input), so a reference
- * image is required to generate; the optional prompt is used only to name the
- * saved asset. Generation is a single synchronous callable (generateFalMesh):
+ * image is required to generate. Generation is a single synchronous callable
+ * (generateFalMesh):
  * the Cloud Function submits to fal, polls to completion, downloads the GLB and
  * saves it as a first-class `mesh` asset, then charges tokens.
  *
@@ -20,7 +20,7 @@ import FluxUI from './main.js';
 import ImageUploadUtils from './image-upload-utils.js';
 import useImageGenStore from './store.js';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '@shared/services/firebase.js';
+import { functions, auth } from '@shared/services/firebase.js';
 import posthog from 'posthog-js';
 
 // Recommended-not-required amber for the reference image indicator (#1767).
@@ -42,6 +42,7 @@ const MODEL3D_MODELS = [
 const Model3DTab = {
   imageData: null,
   selectedModel: 'hunyuan-3d',
+  currentModelUrl: '',
   timerInterval: null,
   startTime: null,
 
@@ -115,13 +116,6 @@ const Model3DTab = {
             </div>
           </div>
 
-          <!-- Prompt (optional; used to name the saved asset) -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="model3d-prompt-input">Name (Optional)</label>
-            <textarea id="model3d-prompt-input" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="Name this model (e.g. bus shelter)..."></textarea>
-          </div>
-
           <!-- Generate Button -->
           <button id="model3d-generate-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-center gap-2">
             <svg id="model3d-generate-spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -159,15 +153,26 @@ const Model3DTab = {
                 <span class="generator-progress-text" id="model3d-loading-text">Generating your 3D model...</span>
               </div>
             </div>
-            <div id="model3d-result" class="hidden text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p id="model3d-result-name" class="font-medium mb-1"></p>
-              <p class="text-sm text-gray-500 mb-4">Saved to your gallery.</p>
-              <a id="model3d-result-open" href="#" target="_blank" rel="noopener" class="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">
-                Open model (GLB)
-              </a>
+            <div id="model3d-result" class="hidden w-full">
+              <iframe id="model3d-viewer-frame"
+                class="w-full rounded-lg border border-gray-200 bg-gray-800"
+                style="height: max(360px, 55vh);"
+                title="3D model preview"
+                allow="fullscreen"></iframe>
+              <p class="text-xs text-gray-500 mt-2 mb-3 text-center">
+                Drag to orbit · scroll to zoom. Saved to your gallery — open it in
+                the editor and drag it into a scene.
+              </p>
+              <div class="flex items-center justify-center gap-3">
+                <a id="model3d-open-btn" href="#" target="_blank" rel="noopener"
+                  class="inline-flex items-center px-3 py-2 text-sm rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
+                  Open in 3DStreet
+                </a>
+                <button id="model3d-download-btn"
+                  class="inline-flex items-center px-3 py-2 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">
+                  Download
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -186,7 +191,6 @@ const Model3DTab = {
       ),
       imagePreview: document.getElementById('model3d-image-preview'),
       imageClear: document.getElementById('model3d-image-clear'),
-      promptInput: document.getElementById('model3d-prompt-input'),
       generateBtn: document.getElementById('model3d-generate-btn'),
       generateSpinner: document.getElementById('model3d-generate-spinner'),
       generateText: document.getElementById('model3d-generate-text'),
@@ -196,8 +200,9 @@ const Model3DTab = {
       loadingText: document.getElementById('model3d-loading-text'),
       progressBar: document.getElementById('model3d-progress-bar'),
       result: document.getElementById('model3d-result'),
-      resultName: document.getElementById('model3d-result-name'),
-      resultOpen: document.getElementById('model3d-result-open')
+      viewerFrame: document.getElementById('model3d-viewer-frame'),
+      openBtn: document.getElementById('model3d-open-btn'),
+      downloadBtn: document.getElementById('model3d-download-btn')
     };
   },
 
@@ -228,6 +233,11 @@ const Model3DTab = {
     this.elements.generateBtn.addEventListener(
       'click',
       this.handleGenerate.bind(this)
+    );
+
+    this.elements.downloadBtn.addEventListener(
+      'click',
+      this.downloadModel.bind(this)
     );
   },
 
@@ -322,7 +332,6 @@ const Model3DTab = {
       const result = await generateFalMesh({
         model_id: model,
         input_image: this.imageData,
-        prompt: this.elements.promptInput.value.trim(),
         scene_id: null,
         source: 'generator'
       });
@@ -373,16 +382,45 @@ const Model3DTab = {
   },
 
   showResult(data) {
+    this.currentModelUrl = data.model_url || '';
     this.elements.placeholder.classList.add('hidden');
     this.elements.loading.classList.add('hidden');
-    this.elements.resultName.textContent = data.name || 'Generated 3D Model';
-    if (data.model_url) {
-      this.elements.resultOpen.href = data.model_url;
-      this.elements.resultOpen.classList.remove('hidden');
-    } else {
-      this.elements.resultOpen.classList.add('hidden');
-    }
     this.elements.result.classList.remove('hidden');
+
+    // Live GLB preview in the shared mesh viewer (same page the gallery's
+    // MeshDetailsModal embeds), pointed at the freshly generated model.
+    this.elements.viewerFrame.src = `/model-viewer.html?src=${encodeURIComponent(
+      this.currentModelUrl
+    )}`;
+
+    // "Open in 3DStreet" deep-links to the editor with the asset's detail modal
+    // already open (#asset:OWNER/ID — same shape as the splat result). Falls
+    // back to the raw GLB if we somehow lack an assetId/uid.
+    const uid = auth.currentUser?.uid;
+    this.elements.openBtn.href =
+      data.assetId && uid
+        ? `${window.location.origin}/?utm_source=generator&utm_medium=mesh_result&utm_campaign=open_in_editor#asset:${uid}/${data.assetId}`
+        : this.currentModelUrl;
+  },
+
+  async downloadModel() {
+    if (!this.currentModelUrl) return;
+    try {
+      const response = await fetch(this.currentModelUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${this.selectedModel}-${stamp}.glb`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      console.error('Model download failed, opening in new tab:', e);
+      window.open(this.currentModelUrl, '_blank');
+    }
   },
 
   toggleLoading(isLoading) {

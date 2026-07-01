@@ -91,7 +91,6 @@ async function saveMeshToGallery(userId, glbUrl, job) {
         sourceType: job.attribution?.sourceType || 'image',
         source: job.source || 'generator',
         predictionId: job.predictionId || null,
-        prompt: job.prompt || null,
         timestamp: new Date().toISOString()
       },
       createdAt: now,
@@ -110,7 +109,7 @@ async function saveMeshToGallery(userId, glbUrl, job) {
 // fal.ai image → 3D mesh (GLB) generation. Synchronous callable: submit to the
 // fal queue, poll to completion, download+save the GLB, then charge tokens.
 // These endpoints (Hunyuan3D v2, TRELLIS 2) are image-to-3D only — a reference
-// image is required and any prompt is used for the asset name only.
+// image is required (no text prompt input).
 const generateFalMesh = functions
   .runWith({
     secrets: ['FAL_KEY'],
@@ -134,8 +133,7 @@ const generateFalMesh = functions
     assertAppCheck(context);
 
     const userId = context.auth.uid;
-    const { input_image, model_id, prompt, scene_id, source = 'generator' } =
-      data;
+    const { input_image, model_id, scene_id, source = 'generator' } = data;
 
     const modelConfig = REPLICATE_MODELS[model_id];
     if (!modelConfig || modelConfig.type !== 'fal-3d') {
@@ -308,14 +306,11 @@ const generateFalMesh = functions
       }
 
       // Persist the GLB as a mesh asset (server-side download + save).
-      const assetName =
-        (prompt && prompt.trim()) || `${modelConfig.name} Model`;
       const saved = await saveMeshToGallery(userId, meshUrl, {
         predictionId: requestId,
-        assetName,
+        assetName: `${modelConfig.name} Model`,
         originalFilename: `${modelConfig.assetSlug || 'model'}.glb`,
         attribution: modelConfig.attribution,
-        prompt: prompt || null,
         source
       });
 
