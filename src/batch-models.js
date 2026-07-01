@@ -49,6 +49,14 @@ import { releaseSharedSource } from './sharedTextureSources';
 // - When a non-safe component initializes on a batched entity, popMember calls removeMember
 //   (drops the slot and, if it was the last one, tears down the group) then calls the
 //   provider's reload() to rebuild the original mesh, so the new component runs unbatched.
+// - removeMember hides each slot (setVisibleAt false) and parks its id on the group's
+//   freeInstanceIds pool for reuse — NOT deleteInstance, whose deleted ids make getVisibleAt /
+//   setMatrixAt and the three-mesh-bvh accelerated raycast throw "Invalid instanceId". Duplicates
+//   added AFTER the batch pass (editor clone / layer reorder recreate entities) come through
+//   onLateModelLoaded unbatched; trackLateUnbatched tallies them per key and, past
+//   LATE_BATCH_THRESHOLD, repackLateUnbatched folds them into the matching group — or builds a
+//   fresh one — reusing parked slots and growing capacity with setInstanceCount only when the
+//   pool is empty, so a long editor session doesn't accrete unbatched draw calls or holes.
 // - Every skip reason is logged with [batch-models] prefix.
 //
 // BVH: BatchedMesh.computeBoundsTree() and ensureOriginalBvh() are no-ops unless three-mesh-
@@ -437,6 +445,54 @@ function computeBatchLocalBbox(materialGroups) {
   return bbox;
 }
 
+// Grow a BatchedMesh's instance capacity if `additional` new instances wouldn't fit. Every
+// slot id in [0, maxInstanceCount) is either active, a reusable freed hole, or unallocated,
+// so (maxInstanceCount - instanceCount) is exactly how many addInstance calls fit without
+// growing. At build time capacity is sized exactly, so this never grows there — it only kicks
+// in when repackLateUnbatched folds more members in than the group was originally built for.
+function ensureInstanceCapacity(batchedMesh, additional) {
+  const needed = batchedMesh.instanceCount + additional;
+  if (needed > batchedMesh.maxInstanceCount) {
+    batchedMesh.setInstanceCount(needed);
+  }
+}
+
+// Slot one member into every BatchedMesh of the group from the persisted templates:
+// addInstance (reusing a freed hole id or a fresh slot), bake the member's world matrix,
+// seed effective visibility, wire the raycast back-reference, and record the slot on the
+// entity. Shared by build (batchGroup) and late-add (addLateMember) so both mint identical
+// slots. Assumes el.object3D.userData._batchSlots exists.
+function addMemberToBatchedMeshes(group, el) {
+  const worldMatrix = new THREE.Matrix4();
+  const slots = el.object3D.userData._batchSlots;
+  const visible = computeEffectiveVisible(el.object3D);
+  for (const { batchedMesh, entries } of group.batchedMeshes) {
+    // Reuse hidden slots freed by removeMember before allocating new ones. Reused slots stay
+    // "active" (just invisible), which is why removeMember hides rather than deletes: a
+    // deleted instanceId makes BatchedMesh.getVisibleAt / setMatrixAt (and the three-mesh-bvh
+    // accelerated raycast) throw "Invalid instanceId" mid-raycast. A freed slot may have held
+    // a different sub-mesh's geometry, so setGeometryIdAt re-points it.
+    const freeIds = batchedMesh.userData.freeInstanceIds;
+    const reuseCount = Math.min(freeIds.length, entries.length);
+    ensureInstanceCapacity(batchedMesh, entries.length - reuseCount);
+    for (const { geometryId, localMatrix, geometry } of entries) {
+      let instanceId;
+      if (freeIds.length > 0) {
+        instanceId = freeIds.pop();
+        batchedMesh.setGeometryIdAt(instanceId, geometryId);
+        batchedMesh.setVisibleAt(instanceId, visible);
+      } else {
+        instanceId = batchedMesh.addInstance(geometryId);
+        if (!visible) batchedMesh.setVisibleAt(instanceId, false);
+      }
+      worldMatrix.multiplyMatrices(el.object3D.matrixWorld, localMatrix);
+      batchedMesh.setMatrixAt(instanceId, worldMatrix);
+      batchedMesh.userData.batchIdToEl[instanceId] = el;
+      slots.push({ batchedMesh, instanceId, localMatrix, geometry });
+    }
+  }
+}
+
 function batchGroup(batchRootEl, key, members) {
   const src = getSrc(members[0]);
   const refMesh = members[0].getObject3D('mesh');
@@ -474,14 +530,13 @@ function batchGroup(batchRootEl, key, members) {
     : { withUserData: new Set(), imageBitmaps: new Set() };
   const localBbox = computeBatchLocalBbox(materialGroups);
 
-  for (const el of members) {
-    if (!el.object3D.userData._batchSlots) {
-      el.object3D.userData._batchSlots = [];
-    }
-    el.object3D.userData._batchLocalBbox = localBbox;
-  }
-
   const object3DKeys = [];
+  // Per BatchedMesh, the templates needed to slot in a member: the geometryId already
+  // registered in that BatchedMesh, the sub-mesh's entity-local matrix, and a back-reference
+  // to the original geometry (for consumers like subtract-mesh). Persisted on the group so
+  // late-added members (addMemberToBatchedMeshes) fold in with the exact geometry / material /
+  // local frame the reference member established here at build.
+  const batchedMeshes = [];
 
   for (const [material, entries] of materialGroups) {
     // Dedupe geometries: EXT_mesh_gpu_instancing expands to many entries sharing a
@@ -507,51 +562,45 @@ function batchGroup(batchRootEl, key, members) {
     const object3DKey = `${BATCH_GROUP_NAME_PREFIX}${key}:${material.uuid}`;
     batched.name = object3DKey;
     batched.userData.batchIdToEl = [];
+    // Instance ids freed by removeMember (hidden, not deleted), available for reuse by a later
+    // addMemberToBatchedMeshes before growing the buffer. See removeMember for why we hide
+    // rather than deleteInstance.
+    batched.userData.freeInstanceIds = [];
     const geometryIdByGeometry = new Map();
-    const geometryIds = entries.map(({ geometry }) => {
-      let id = geometryIdByGeometry.get(geometry);
-      if (id === undefined) {
-        id = batched.addGeometry(geometry);
-        geometryIdByGeometry.set(geometry, id);
+    const templateEntries = entries.map(({ geometry, localMatrix }) => {
+      let geometryId = geometryIdByGeometry.get(geometry);
+      if (geometryId === undefined) {
+        geometryId = batched.addGeometry(geometry);
+        geometryIdByGeometry.set(geometry, geometryId);
       }
-      return id;
+      return { geometryId, localMatrix, geometry };
     });
-
-    const worldMatrix = new THREE.Matrix4();
-    for (const el of members) {
-      entries.forEach(({ localMatrix, geometry }, idx) => {
-        const instanceId = batched.addInstance(geometryIds[idx]);
-        worldMatrix.multiplyMatrices(el.object3D.matrixWorld, localMatrix);
-        batched.setMatrixAt(instanceId, worldMatrix);
-        if (!computeEffectiveVisible(el.object3D)) {
-          batched.setVisibleAt(instanceId, false);
-        }
-        batched.userData.batchIdToEl[instanceId] = el;
-        // `geometry` lets consumers (e.g. subtract-mesh) read the original
-        // sub-mesh vertices without having to dig into the BatchedMesh.
-        el.object3D.userData._batchSlots.push({
-          batchedMesh: batched,
-          instanceId,
-          localMatrix,
-          geometry
-        });
-      });
-    }
-
-    batched.computeBoundsTree?.();
     batchRootEl.setObject3D(object3DKey, batched);
     object3DKeys.push(object3DKey);
+    batchedMeshes.push({ batchedMesh: batched, entries: templateEntries });
   }
 
   const group = {
     batchRootEl,
     object3DKeys,
+    batchedMeshes,
+    localBbox,
     members,
     key,
     keepAlive,
     ownsResources,
     activeMemberCount: members.length
   };
+
+  // Seed every member's slots from the templates — the same path late-added members take.
+  for (const el of members) {
+    el.object3D.userData._batchSlots = el.object3D.userData._batchSlots || [];
+    el.object3D.userData._batchLocalBbox = localBbox;
+    addMemberToBatchedMeshes(group, el);
+  }
+  for (const { batchedMesh } of batchedMeshes) {
+    batchedMesh.computeBoundsTree?.();
+  }
 
   // For each member, either strip the mesh tree or hide it in place:
   // - .clickable in runtime: keep the mesh hidden. A-Frame's runtime cursor (raycaster
@@ -904,16 +953,146 @@ function onLateModelLoaded(evt) {
   if (inEditor || el.classList.contains('clickable')) {
     ensureOriginalBvh(el);
   }
+  trackLateUnbatched(el);
 }
 
 function onLateChildDetached(evt) {
+  const sceneEl = evt.currentTarget;
   const el = evt.detail?.el;
   if (!el) return;
   if (isBatched(el)) removeMember(el);
-  // A removed subtree may contain multiple batched descendants.
+  else untrackLateUnbatched(sceneEl, el);
+  // A removed subtree may contain multiple batched / still-pending descendants.
   for (const descendant of el.querySelectorAll(BATCHABLE_SELECTOR)) {
     if (isBatched(descendant)) removeMember(descendant);
+    else untrackLateUnbatched(sceneEl, descendant);
   }
+}
+
+// Entities added AFTER the initial batch pass (editor clone / layer-reorder recreate them,
+// or a component mints them post-load) come through onLateModelLoaded unbatched — each its
+// own draw call and GPU upload. We tally these per batch key and, once enough of one key
+// accumulate, fold them into the matching group (or build a fresh group). This keeps a
+// long-running editor session from steadily accumulating unbatched duplicates. The threshold
+// amortizes the repack (a setInstanceCount grow + N addInstance) and avoids churning the
+// group on every single add.
+const LATE_BATCH_THRESHOLD = 4;
+
+// The batch key is stashed on object3D.userData so untrackLateUnbatched can find an entity's
+// pending set at detach time — by then A-Frame's disconnectedCallback has already removed the
+// entity's components (so getBatchKey/getBatchProvider would read nothing), but userData
+// survives.
+function trackLateUnbatched(el) {
+  const key = getBatchKey(el);
+  if (!key) return;
+  // Only entities that could actually batch: a component outside BATCH_SAFE_COMPONENTS means
+  // it must stay unbatched (same rule markDeferredLoads / processKeyGroup apply). This also
+  // keeps a just-popped member (popMember added an unsafe component) from being re-folded.
+  if (getBlockingComponents(el).length > 0) return;
+  const sceneEl = el.sceneEl;
+  if (!sceneEl) return;
+  const map = sceneEl._lateUnbatched || (sceneEl._lateUnbatched = new Map());
+  let set = map.get(key);
+  if (!set) map.set(key, (set = new Set()));
+  set.add(el);
+  el.object3D.userData._lateUnbatchedKey = key;
+  if (set.size >= LATE_BATCH_THRESHOLD) repackLateUnbatched(sceneEl, key);
+}
+
+function untrackLateUnbatched(sceneEl, el) {
+  const key = el?.object3D?.userData?._lateUnbatchedKey;
+  if (!key) return;
+  delete el.object3D.userData._lateUnbatchedKey;
+  const set = sceneEl?._lateUnbatched?.get(key);
+  if (!set) return;
+  set.delete(el);
+  if (set.size === 0) sceneEl._lateUnbatched.delete(key);
+}
+
+function findBuiltGroup(sceneEl, key) {
+  return sceneEl._batchModelsBuilt?.find((group) => group.key === key) || null;
+}
+
+// Fold the pending unbatched entities for `key` into a batch. If a group already exists it
+// gains each candidate as a new member (reusing freed slots / growing capacity as needed);
+// otherwise, with >= 2 candidates, a fresh group is built. Candidates that raced away
+// (detached, already batched, lost their mesh, or grew an unsafe component) are dropped. The
+// whole key's pending set is cleared afterward — folded members are now batched, and any
+// dropped ones are gone or unbatchable; fresh duplicates start a new set.
+function repackLateUnbatched(sceneEl, key) {
+  const set = sceneEl._lateUnbatched?.get(key);
+  if (!set) return;
+
+  const candidates = [];
+  for (const el of set) {
+    if (
+      !el.parentNode ||
+      isBatched(el) ||
+      !el.getObject3D('mesh') ||
+      getBlockingComponents(el).length > 0
+    ) {
+      continue;
+    }
+    candidates.push(el);
+  }
+
+  const group = findBuiltGroup(sceneEl, key);
+  // Need >= 2 to form a NEW group; if one already exists, even a single candidate folds in.
+  const canBatch = candidates.length > 0 && (group || candidates.length >= 2);
+  if (!canBatch) {
+    // Nothing to do yet. Keep the set only if there are still-live candidates that might reach
+    // the threshold later (e.g. 1 candidate, no existing group); otherwise drop the stale set.
+    if (candidates.length === 0) sceneEl._lateUnbatched.delete(key);
+    return;
+  }
+
+  // Matrices must be current before we read each member's world matrix (a backgrounded tab
+  // throttles the render loop, staling matrixWorld).
+  sceneEl.object3D.updateWorldMatrix(true, true);
+
+  if (group) {
+    for (const el of candidates) addLateMember(group, el);
+    console.log(
+      `[batch-models] late-batched ${candidates.length} into "${key}" (${group.activeMemberCount} members)`
+    );
+  } else {
+    const built = batchGroup(getOrCreateBatchRoot(), key, candidates);
+    if (built) {
+      sceneEl._batchModelsBuilt = (sceneEl._batchModelsBuilt || []).concat(
+        built
+      );
+      console.log(
+        `[batch-models] late-built group "${key}" (${candidates.length} members)`
+      );
+    }
+    // If batchGroup bailed (skinned/morph/multi-material), the candidates are unbatchable —
+    // dropped below so we don't retry on every future add.
+  }
+
+  for (const el of candidates) delete el.object3D.userData._lateUnbatchedKey;
+  sceneEl._lateUnbatched.delete(key);
+}
+
+// Add one already-loaded entity to an existing group: slot it into every BatchedMesh from the
+// group's templates, mark it batched, and strip (or, for a runtime .clickable, hide) its now-
+// redundant mesh — the same end state batchGroup leaves its members in, minus the model-loaded
+// re-emit (this entity already fired model-loaded on its own load).
+function addLateMember(group, el) {
+  el.object3D.userData._batchSlots = el.object3D.userData._batchSlots || [];
+  el.object3D.userData._batchLocalBbox = group.localBbox;
+  el.object3D.userData._batchGroup = group;
+  addMemberToBatchedMeshes(group, el);
+  setStatus(el, true);
+  const gltfComp = el.components['gltf-model'];
+  if (gltfComp) gltfComp.deferLoad = false;
+  if (!AFRAME.INSPECTOR && el.classList.contains('clickable')) {
+    const mesh = el.getObject3D('mesh');
+    if (mesh) mesh.visible = false;
+  } else {
+    getBatchProvider(el)?.strip();
+  }
+  group.members.push(el);
+  group.activeMemberCount++;
 }
 
 // Disposes the BatchedMesh and the resources we kept alive for it. Called from
@@ -971,9 +1150,14 @@ export function popMember(el) {
 }
 
 // Release an entity's batch slots and, if it was the last member of the group, tear down
-// the BatchedMesh. Hides the slots and clears the raycast mapping so a removed/reparented
-// entity no longer raycasts to a detached object3D. The slot is left as a hole —
-// reclaiming it would require hole-aware repacking, which we don't do here.
+// the BatchedMesh. Each slot is hidden (setVisibleAt false) and its id pushed onto the
+// group's freeInstanceIds pool, so a later addMemberToBatchedMeshes — e.g. a late-added
+// duplicate folded in by repackLateUnbatched — reuses that id instead of growing the buffer.
+// So repeated remove/add cycles reclaim slots rather than leaking holes. We deliberately hide
+// rather than deleteInstance: a deleted instanceId makes BatchedMesh.getVisibleAt / setMatrixAt
+// and the three-mesh-bvh accelerated raycast throw "Invalid instanceId" mid-raycast. Also
+// clears the raycast mapping so a removed/reparented entity no longer raycasts to a detached
+// object3D.
 export function removeMember(el) {
   if (!isBatched(el)) return false;
   const slots = el.object3D.userData._batchSlots;
@@ -982,6 +1166,7 @@ export function removeMember(el) {
     if (batchedMesh.userData.batchIdToEl) {
       delete batchedMesh.userData.batchIdToEl[instanceId];
     }
+    batchedMesh.userData.freeInstanceIds.push(instanceId);
   }
   const group = el.object3D.userData._batchGroup;
   delete el.object3D.userData._batchSlots;
@@ -991,6 +1176,12 @@ export function removeMember(el) {
   console.log(
     `[batch-models] removed ${describeEl(el)} (${slots.length} slot(s))`
   );
+  if (group) {
+    // Drop the detached entity from the members list so a group kept alive across many
+    // late-add / remove cycles doesn't accumulate stale entity references.
+    const idx = group.members.indexOf(el);
+    if (idx >= 0) group.members.splice(idx, 1);
+  }
   if (group && --group.activeMemberCount === 0) {
     teardownBuiltGroup(group);
     const sceneEl = group.batchRootEl.sceneEl;
@@ -1002,3 +1193,14 @@ export function removeMember(el) {
   }
   return true;
 }
+
+// Internals exposed only for unit tests (test/components/batch-models.test.js); not part of
+// the module's public API. Kept in one object so the named-export surface stays intentional.
+export const _test = {
+  addMemberToBatchedMeshes,
+  ensureInstanceCapacity,
+  trackLateUnbatched,
+  untrackLateUnbatched,
+  repackLateUnbatched,
+  LATE_BATCH_THRESHOLD
+};
