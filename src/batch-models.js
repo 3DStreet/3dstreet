@@ -1171,3 +1171,14 @@ export function removeMember(el) {
   }
   return true;
 }
+
+// Internals exposed only for unit tests (test/components/batch-models.test.js); not part of
+// the module's public API. Kept in one object so the named-export surface stays intentional.
+export const _test = {
+  addMemberToBatchedMeshes,
+  ensureInstanceCapacity,
+  trackLateUnbatched,
+  untrackLateUnbatched,
+  repackLateUnbatched,
+  LATE_BATCH_THRESHOLD
+};
