@@ -41,11 +41,14 @@ const SIMPLE_NOISE = `
  * (`{ density, grassHeight, ... }`) is saved and the field is regenerated
  * deterministically on load — never 25k entities.
  *
- * Placement uses Three's MeshSurfaceSampler over the host's real mesh, so blades
- * cover any primitive uniformly and each blade aligns its local +Y to the sampled
- * surface normal (straight up on flat tops, radial on a cylinder, fur on a sphere).
- * It rebuilds when the host geometry changes, so editing the primitive or its
- * dimensions in the first-class geometry controls keeps the lawn matched.
+ * A box is the common case — a lawn slab / median — so it is special-cased to
+ * grow grass on its top face only (straight up), otherwise the box reads as a
+ * fur-covered block (see #1768). Every other primitive uses Three's
+ * MeshSurfaceSampler over the host's real mesh, so blades cover it uniformly and
+ * each blade aligns its local +Y to the sampled surface normal (radial on a
+ * cylinder, fur on a sphere). It rebuilds when the host geometry changes, so
+ * editing the primitive or its dimensions in the first-class geometry controls
+ * keeps the lawn matched.
  *
  * See docs/host-generator-pattern.md for the host + generator pattern.
  */
@@ -109,26 +112,47 @@ AFRAME.registerComponent('street-generated-grass', {
   generateGrass: function () {
     const data = this.data;
 
-    // Scatter over the host primitive's real mesh. getObject3D('mesh') is the
-    // THREE.Mesh the A-Frame geometry component builds; it may not exist yet on
-    // an early call, in which case the componentchanged listener rebuilds once
-    // the geometry is ready, so no-op cleanly here.
-    const hostMesh = this.el.getObject3D('mesh');
-    if (!hostMesh || !hostMesh.geometry) return;
-
     // Seeded layout so reloads regenerate identical placement from config. The
-    // sampler consumes this rng too (setRandomGenerator), so the whole scatter —
-    // face choice, barycentric point, scale, spin — is deterministic per seed.
+    // sampler (non-box path) consumes this rng too (setRandomGenerator), so the
+    // whole scatter is deterministic per seed.
     const rng = createRNG(data.seed);
 
-    const sampler = new MeshSurfaceSampler(hostMesh)
-      .setRandomGenerator(rng)
-      .build();
+    // A box is grown on its top face only (a lawn slab, not a fur-covered block,
+    // see #1768); every other primitive scatters over its whole surface via
+    // MeshSurfaceSampler. below-box is a box whose top face is translated to the
+    // local origin, so it gets the same top-only treatment with topY = 0.
+    const geometry = this.el.getAttribute('geometry') || {};
+    const isBox =
+      geometry.primitive === 'box' || geometry.primitive === 'below-box';
 
-    // The sampler's cumulative-area distribution ends at the mesh's total surface
-    // area, so density (blades per m²) stays meaningful across every primitive.
-    const distribution = sampler.distribution;
-    const area = distribution[distribution.length - 1] || 0;
+    let sampler = null;
+    let area;
+    let width;
+    let depth;
+    let topY;
+    if (isBox) {
+      width = geometry.width || 40;
+      depth = geometry.depth || 40;
+      // Regular box is centered (top at +height/2); below-box has its top at the
+      // local origin.
+      topY =
+        geometry.primitive === 'below-box' ? 0 : (geometry.height || 0) / 2;
+      area = width * depth;
+    } else {
+      // getObject3D('mesh') is the THREE.Mesh the A-Frame geometry component
+      // builds; it may not exist yet on an early call, in which case the
+      // componentchanged listener rebuilds once the geometry is ready.
+      const hostMesh = this.el.getObject3D('mesh');
+      if (!hostMesh || !hostMesh.geometry) return;
+      sampler = new MeshSurfaceSampler(hostMesh)
+        .setRandomGenerator(rng)
+        .build();
+      // The sampler's cumulative-area distribution ends at the mesh's total
+      // surface area, so density (blades per m²) stays meaningful per primitive.
+      const distribution = sampler.distribution;
+      area = distribution[distribution.length - 1] || 0;
+    }
+
     const count = Math.max(
       1,
       Math.min(MAX_BLADES, Math.round(data.density * area))
@@ -191,20 +215,31 @@ AFRAME.registerComponent('street-generated-grass', {
     );
 
     const dummy = new THREE.Object3D();
-    const samplePos = new THREE.Vector3();
-    const sampleNormal = new THREE.Vector3();
-    const up = new THREE.Vector3(0, 1, 0);
-    for (let i = 0; i < count; i++) {
-      sampler.sample(samplePos, sampleNormal);
-      dummy.position.copy(samplePos);
-      // Align blade local +Y to the surface normal so blades stand off the
-      // surface (straight up on flat faces, radial on curved ones), then add a
-      // random spin about that normal so they don't all face the same way.
-      dummy.quaternion.setFromUnitVectors(up, sampleNormal);
-      dummy.rotateY(rng() * Math.PI * 2);
-      dummy.scale.setScalar(0.5 + rng() * 0.5);
-      dummy.updateMatrix();
-      instancedMesh.setMatrixAt(i, dummy.matrix);
+    if (isBox) {
+      // Blades stand straight up, scattered across the top face only.
+      for (let i = 0; i < count; i++) {
+        dummy.position.set((rng() - 0.5) * width, topY, (rng() - 0.5) * depth);
+        dummy.scale.setScalar(0.5 + rng() * 0.5);
+        dummy.rotation.y = rng() * Math.PI;
+        dummy.updateMatrix();
+        instancedMesh.setMatrixAt(i, dummy.matrix);
+      }
+    } else {
+      const samplePos = new THREE.Vector3();
+      const sampleNormal = new THREE.Vector3();
+      const up = new THREE.Vector3(0, 1, 0);
+      for (let i = 0; i < count; i++) {
+        sampler.sample(samplePos, sampleNormal);
+        dummy.position.copy(samplePos);
+        // Align blade local +Y to the surface normal so blades stand off the
+        // surface (radial on a cylinder, fur on a sphere), then add a random
+        // spin about that normal so they don't all face the same way.
+        dummy.quaternion.setFromUnitVectors(up, sampleNormal);
+        dummy.rotateY(rng() * Math.PI * 2);
+        dummy.scale.setScalar(0.5 + rng() * 0.5);
+        dummy.updateMatrix();
+        instancedMesh.setMatrixAt(i, dummy.matrix);
+      }
     }
     instancedMesh.instanceMatrix.needsUpdate = true;
     // InstancedMesh defaults to a unit bounding sphere; recompute it so frustum
