@@ -14,7 +14,11 @@ import {
   isAcceptedAssetFile,
   placeCloudAsset
 } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
-import { customLayersData, streetLayersData } from './layersData.js';
+import {
+  customLayersData,
+  shapeLayersData,
+  streetLayersData
+} from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
 import Events from '../../../lib/Events.js';
 import useStore from '@/store.js';
@@ -435,6 +439,8 @@ const AddLayerPanel = () => {
     switch (selectedOption) {
       case 'Custom Layers':
         return customLayersData;
+      case 'Shapes':
+        return shapeLayersData;
       case 'Streets and Intersections':
         return streetLayersData;
       default:

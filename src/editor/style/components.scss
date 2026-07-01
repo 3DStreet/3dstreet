@@ -447,6 +447,37 @@ div.vec4 {
     min-width: 70px; // Added to maintain consistent label width
   }
 }
+// First-class featured controls (geometry / material / generators) shown
+// expanded above Advanced Components.
+.featured-components {
+  .details {
+    border-bottom: 1px solid variables.$darkgray-700;
+  }
+}
+// Curated material panel (#1741): real opacity slider with live preview.
+.material-controls {
+  .opacity-row .opacity-slider {
+    display: flex;
+    align-items: center;
+    column-gap: 10px;
+    width: 100%;
+    margin-right: 12px;
+
+    input[type='range'] {
+      flex: 1;
+      width: auto !important;
+      accent-color: variables.$purple-400;
+      cursor: pointer;
+    }
+
+    .opacity-value {
+      min-width: 40px;
+      text-align: right;
+      font-size: 14px;
+      color: variables.$lightgray-200;
+    }
+  }
+}
 .components * {
   vertical-align: middle;
 }
