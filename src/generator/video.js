@@ -1,6 +1,15 @@
 /**
  * Video Generator - Video Tab
- * Video generation functionality using Replicate API
+ * Video generation functionality using Replicate API.
+ *
+ * Async, browser-independent flow (mirrors splat.js — see issue #1780):
+ * generateReplicateVideo creates a generation job (with a Replicate webhook)
+ * and returns its jobId immediately, instead of holding the callable
+ * connection open for the whole multi-minute render (which Safari drops,
+ * losing the result while tokens were still charged). When the job finishes,
+ * the webhook saves the video to the user's gallery server-side, so it lands
+ * even if this tab was closed. This UI polls getGenerationJobStatus only to
+ * reflect progress and show the result while open.
  */
 
 import FluxUI from './main.js';
@@ -8,7 +17,6 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '@shared/services/firebase.js';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
-import galleryService from '@shared/assets/services/assetsService.js';
 import { VIDEO_MODELS } from '@shared/constants/replicateModels.js';
 import { mountVideoModelSelector } from './mount-video-model-selector.js';
 
@@ -27,6 +35,16 @@ const VideoTab = {
   elapsedTime: 0,
   renderProgress: 0,
   timerInterval: null,
+
+  // Job-status poll state (see pollVideoStatus)
+  pollTimeout: null, // setTimeout handle for the status poll loop
+  pollDeadline: 0, // wall-clock ms after which we stop polling
+
+  // Poll cadence and overall ceiling. Renders run ~1.5–2.5 minutes; 15 min is
+  // generous headroom before we give up locally (the job still finishes
+  // server-side regardless — the video lands in the gallery either way).
+  POLL_INTERVAL_MS: 3000,
+  POLL_MAX_MS: 15 * 60 * 1000,
 
   // Estimated generation times (in seconds) - built from VIDEO_MODELS
   estimatedTimes: Object.entries(VIDEO_MODELS).reduce((acc, [key, model]) => {
@@ -201,6 +219,7 @@ const VideoTab = {
     this.elements.generateText = document.getElementById('video-generate-text');
     this.elements.tokenCostDisplay =
       document.getElementById('video-token-cost');
+    this.elements.notifyEmail = document.getElementById('video-notify-email');
 
     // Verify critical elements
     let missingElements = [];
@@ -346,6 +365,16 @@ const VideoTab = {
                             <span id="video-token-cost" class="text-sm font-medium">10</span>
                         </span>
                     </button>
+
+                    <!-- Email when done. Renders are usually ~2 minutes, but
+                         provider queue waits can stretch a job much longer;
+                         the email is suppressed server-side if this tab is
+                         still open when it finishes (same as the splat tab). -->
+                    <label class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
+                        <input id="video-notify-email" type="checkbox" checked
+                            class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                        Email me when my video is ready
+                    </label>
                 </div>
 
                 <!-- Preview Column -->
@@ -586,35 +615,34 @@ const VideoTab = {
     this.currentParams = params;
 
     // Show loading state
+    this.stopPolling();
     this.toggleLoading(true);
 
-    // Make the API request using Firebase callable function
-    // Set timeout to 9 minutes (540000ms) to match server-side timeout
+    // Submit the job. The callable returns { success, jobId } immediately —
+    // no multi-minute open connection for Safari to drop (#1780). Completion
+    // is handled server-side (webhook saves to the gallery); we poll only to
+    // drive this tab's live UI.
     const generateReplicateVideo = httpsCallable(
       functions,
-      'generateReplicateVideo',
-      {
-        timeout: 540000 // 9 minutes in milliseconds
-      }
+      'generateReplicateVideo'
     );
 
     generateReplicateVideo(params)
       .then((result) => {
-        if (result.data.success && result.data.video_url) {
-          // Display the video
-          this.displayVideo(result.data.video_url);
-
-          // Save to gallery
-          this.saveToGallery(result.data.video_url);
-
-          // Dispatch custom event to refresh token count in UI
-          window.dispatchEvent(new CustomEvent('tokenCountChanged'));
-
-          this.toggleLoading(false);
-          FluxUI.showNotification('Video generated successfully!', 'success');
-        } else {
-          throw new Error(result.data.message || 'Failed to generate video');
+        if (!result.data || !result.data.success || !result.data.jobId) {
+          throw new Error(
+            result.data?.message || 'Could not start video generation'
+          );
         }
+
+        // Tokens are charged at submit (refunded on failure); reflect that.
+        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+
+        // The job now shows as a pending card in the assets gallery, driven by
+        // the live Firestore listener on the job doc — it persists across
+        // reloads and tabs without any client state here.
+        this.pollDeadline = Date.now() + this.POLL_MAX_MS;
+        this.pollVideoStatus(result.data.jobId);
       })
       .catch((error) => {
         console.error('Video generation error:', error);
@@ -636,6 +664,85 @@ const VideoTab = {
         FluxUI.showNotification(message, 'error');
         this.toggleLoading(false);
       });
+  },
+
+  // Poll getGenerationJobStatus until the job is terminal. Re-schedules itself
+  // with setTimeout (not setInterval) so a slow request can't overlap the next
+  // tick. Any non-terminal status (queued|running|saving) just keeps polling.
+  pollVideoStatus: async function (jobId) {
+    const getGenerationJobStatus = httpsCallable(
+      functions,
+      'getGenerationJobStatus'
+    );
+
+    try {
+      const { data } = await getGenerationJobStatus({ jobId });
+
+      if (data.status === 'succeeded' && data.video_url) {
+        // The video was saved to the gallery server-side (works even if this
+        // tab had been closed). Just show it and refresh the gallery island so
+        // the pending-job card hands its slot to the real asset.
+        this.displayVideo(data.video_url);
+        this.toggleLoading(false);
+        window.dispatchEvent(new Event('assets:refresh'));
+        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+        FluxUI.showNotification(
+          'Video generated and saved to your gallery!',
+          'success'
+        );
+        return;
+      }
+
+      if (data.status === 'failed' || data.status === 'canceled') {
+        // The server refunds on failure; refresh the displayed balance.
+        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+        this.toggleLoading(false);
+        FluxUI.showNotification(
+          data.error
+            ? `Video generation failed: ${data.error}`
+            : 'Video generation failed. Your tokens were refunded.',
+          'error'
+        );
+        return;
+      }
+
+      // Still queued/running/saving — keep polling until the deadline.
+      if (Date.now() > this.pollDeadline) {
+        this.toggleLoading(false);
+        FluxUI.showNotification(
+          'Video generation is taking longer than expected. Check your gallery shortly — it will appear there when finished.',
+          'error'
+        );
+        return;
+      }
+      this.pollTimeout = setTimeout(
+        () => this.pollVideoStatus(jobId),
+        this.POLL_INTERVAL_MS
+      );
+    } catch (error) {
+      console.error('Error polling video status:', error);
+      // Transient poll error — retry until the deadline rather than failing
+      // hard; the job is unaffected server-side.
+      if (Date.now() > this.pollDeadline) {
+        this.toggleLoading(false);
+        FluxUI.showNotification(
+          'Lost track of the video job. Check your gallery shortly — it will appear there when finished.',
+          'error'
+        );
+        return;
+      }
+      this.pollTimeout = setTimeout(
+        () => this.pollVideoStatus(jobId),
+        this.POLL_INTERVAL_MS
+      );
+    }
+  },
+
+  stopPolling: function () {
+    if (this.pollTimeout) {
+      clearTimeout(this.pollTimeout);
+      this.pollTimeout = null;
+    }
   },
 
   // Build request parameters
@@ -667,6 +774,10 @@ const VideoTab = {
 
     // Add duration (5 or 10 seconds)
     params.duration_seconds = this.getSelectedDuration();
+
+    // Opt-in completion email, recorded on the job doc. The server only sends
+    // it if this tab isn't around to ack the result (i.e. closed).
+    params.notify = { email: !!this.elements.notifyEmail?.checked };
 
     // Seed functionality removed - doesn't work for video models
     // Check if seed should be randomized before generation
@@ -949,79 +1060,12 @@ const VideoTab = {
     this.elements.imagePreviewContainer.classList.add('hidden');
     this.elements.imageUploadLabel.classList.remove('hidden');
     this.elements.imageInput.value = '';
-  },
-
-  // Save video to gallery
-  saveToGallery: async function (videoUrl) {
-    // Check if gallery service is available
-    if (!galleryService) {
-      return;
-    }
-
-    // Initialize gallery service with current user
-    const currentUser = window.authState?.currentUser;
-    if (currentUser && !galleryService.userId) {
-      try {
-        await galleryService.init(currentUser.uid);
-      } catch (err) {
-        console.warn('Failed to initialize gallery V2, using V1:', err);
-      }
-    }
-
-    // Convert the video URL to a Data URL so gallery can store as Blob
-    fetch(videoUrl)
-      .then((response) => response.blob())
-      .then(
-        (blob) =>
-          new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          })
-      )
-      .then(async (dataUrl) => {
-        // Build comprehensive metadata for the video
-        const metadata = {
-          model: this.currentParams.model_name || this.selectedModel,
-          prompt: this.currentParams.prompt || this.elements.promptInput.value,
-          aspect_ratio: this.currentParams.aspect_ratio,
-          duration_seconds: this.currentParams.duration_seconds,
-          ...(this.currentParams.seed && { seed: this.currentParams.seed })
-        };
-
-        try {
-          const currentUser = window.authState?.currentUser;
-          if (!currentUser) {
-            console.warn('User not authenticated, skipping gallery save');
-            return;
-          }
-
-          // Initialize gallery service if needed
-          await galleryService.init();
-
-          // Use V2 API: addAsset(file, metadata, type, category, userId)
-          await galleryService.addAsset(
-            dataUrl,
-            metadata,
-            'video', // type
-            'ai-render', // category
-            currentUser.uid // userId
-          );
-          FluxUI.showNotification('Video saved to gallery!', 'success');
-        } catch (e) {
-          console.error('Gallery addAsset error:', e);
-          FluxUI.showNotification('Failed to save video to gallery.', 'error');
-        }
-      })
-      .catch((error) => {
-        console.error('Error saving video to gallery:', error);
-        FluxUI.showNotification(
-          'Failed to save video to gallery: ' + error.message,
-          'error'
-        );
-      });
   }
+
+  // NOTE: the old client-side saveToGallery was removed — the video is now
+  // persisted to the gallery server-side by the generation job's terminal
+  // processor (public/functions/replicate.js:saveVideoToGallery), so it saves
+  // even if this tab is closed mid-render (#1780).
 };
 
 export default VideoTab;
