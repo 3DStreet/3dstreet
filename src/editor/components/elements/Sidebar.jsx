@@ -10,6 +10,7 @@ import Events from '../../lib/Events';
 import Mixins from '../widgets/Mixins';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { FormattedMessage } from 'react-intl';
 import AddGeneratorComponent from './AddGeneratorComponent';
 import {
   Object24IconCyan,
@@ -27,6 +28,7 @@ import UserLayersSidebar from './UserLayersSidebar';
 import AdvancedComponents from './AdvancedComponents';
 import AssetInfoPanel from './AssetInfoPanel';
 import EntityLabel from '../scenegraph/EntityLabel';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 export default class Sidebar extends React.Component {
   static propTypes = {
     entity: PropTypes.object
@@ -98,7 +100,10 @@ export default class Sidebar extends React.Component {
     if (!entity) {
       return (
         <div className="properties-empty-state">
-          Select an object to edit properties.
+          <FormattedMessage
+            id="sidebar.selectObject"
+            defaultMessage="Select an object to edit properties."
+          />
         </div>
       );
     }
@@ -119,13 +124,21 @@ export default class Sidebar extends React.Component {
               {entity.classList.contains('autocreated') && (
                 <div className="sidepanelContent">
                   <div className="flex items-center gap-2">
-                    Autocreated Entity
+                    <FormattedMessage
+                      id="sidebar.autocreatedEntity"
+                      defaultMessage="Autocreated Entity"
+                    />
                   </div>
                   {this.hasParentComponent(entity) && (
                     <>
                       <div className="collapsible-content">
                         <div className="propertyRow">
-                          <label className="text">Managed by</label>
+                          <label className="text">
+                            <FormattedMessage
+                              id="sidebar.managedBy"
+                              defaultMessage="Managed by"
+                            />
+                          </label>
                           <input
                             className="string"
                             type="text"
@@ -139,14 +152,21 @@ export default class Sidebar extends React.Component {
                           variant={'toolbtn'}
                           onClick={() => this.selectParentEntity(entity)}
                         >
-                          <ArrowLeftHookIcon /> Edit Clone Settings
+                          <ArrowLeftHookIcon />{' '}
+                          <FormattedMessage
+                            id="sidebar.editCloneSettings"
+                            defaultMessage="Edit Clone Settings"
+                          />
                         </Button>
                         <Button
                           variant={'toolbtn'}
                           onClick={() => this.fireParentComponentDetach(entity)}
                         >
                           <Object24IconCyan />
-                          Detach
+                          <FormattedMessage
+                            id="sidebar.detach"
+                            defaultMessage="Detach"
+                          />
                         </Button>
                       </div>
                     </>
@@ -168,28 +188,28 @@ export default class Sidebar extends React.Component {
                       longPressDelay={1500} // Optional, defaults to 2000ms
                       leadingIcon={<ArrowsPointingInwardIcon />}
                     >
-                      Focus
+                      <FormattedMessage {...commonMessages.focus} />
                     </Button>
                     <Button
                       variant={'toolbtn'}
                       onClick={() => renameEntity(entity)}
                       leadingIcon={<Edit24Icon />}
                     >
-                      Rename
+                      <FormattedMessage {...commonMessages.rename} />
                     </Button>
                     <Button
                       variant={'toolbtn'}
                       onClick={() => cloneEntity(entity)}
                       leadingIcon={<Copy32Icon />}
                     >
-                      Duplicate
+                      <FormattedMessage {...commonMessages.duplicate} />
                     </Button>
                     <Button
                       variant={'toolbtn'}
                       onClick={() => removeSelectedEntity()}
                       leadingIcon={<TrashIcon />}
                     >
-                      Delete
+                      <FormattedMessage {...commonMessages.delete} />
                     </Button>
                   </div>
                 )}

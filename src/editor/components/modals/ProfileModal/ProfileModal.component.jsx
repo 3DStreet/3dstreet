@@ -1,6 +1,7 @@
 /* global VERSION */
 import styles from './ProfileModal.module.scss';
 import { useState, useEffect } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 
 import Modal from '@shared/components/Modal/Modal.jsx';
 import { Button, UsernameEditor } from '../../elements';
@@ -21,8 +22,10 @@ import {
   getUserProfile,
   generateAndSaveUsername
 } from '@shared/utils/username';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const ProfileModal = () => {
+  const intl = useIntl();
   const { currentUser, setCurrentUser, tokenProfile } = useAuthContext();
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
@@ -99,11 +102,21 @@ const ProfileModal = () => {
         onClose={onClose}
       >
         <div className={styles.contentWrapper}>
-          <h2 className={styles.title}>3DStreet Account</h2>
+          <h2 className={styles.title}>
+            <FormattedMessage
+              id="profileModal.title"
+              defaultMessage="3DStreet Account"
+            />
+          </h2>
           <div className={styles.content}>
             {/* Private Auth Info Section */}
             <div className={styles.authSection}>
-              <h3 className={styles.sectionTitle}>Account Information</h3>
+              <h3 className={styles.sectionTitle}>
+                <FormattedMessage
+                  id="profileModal.accountInformation"
+                  defaultMessage="Account Information"
+                />
+              </h3>
               <div className={styles.authInfo}>
                 <div className={styles.profile}>
                   {renderProfileIcon(currentUser)}
@@ -116,7 +129,11 @@ const ProfileModal = () => {
                       className={styles.email}
                       style={{ fontSize: '11px', opacity: 0.7 }}
                     >
-                      Signed in with {getAuthProviderName(currentUser)}
+                      <FormattedMessage
+                        id="profileModal.signedInWith"
+                        defaultMessage="Signed in with {provider}"
+                        values={{ provider: getAuthProviderName(currentUser) }}
+                      />
                     </span>
                   </div>
                 </div>
@@ -125,7 +142,10 @@ const ProfileModal = () => {
                   className={styles.logOut}
                   onClick={logOutHandler}
                 >
-                  Log Out
+                  <FormattedMessage
+                    id="profileModal.logOut"
+                    defaultMessage="Log Out"
+                  />
                 </Button>
               </div>
             </div>
@@ -134,12 +154,22 @@ const ProfileModal = () => {
 
             {/* Public Profile Section */}
             <div className={styles.publicProfileSection}>
-              <h3 className={styles.sectionTitle}>Public Profile</h3>
+              <h3 className={styles.sectionTitle}>
+                <FormattedMessage
+                  id="profileModal.publicProfile"
+                  defaultMessage="Public Profile"
+                />
+              </h3>
               <div className={styles.usernameSection}>
                 {isLoadingUsername ? (
                   <div className={styles.loadingUsername}>
                     <Loader className={styles.spinner} />
-                    <span>Loading username...</span>
+                    <span>
+                      <FormattedMessage
+                        id="profileModal.loadingUsername"
+                        defaultMessage="Loading username..."
+                      />
+                    </span>
                   </div>
                 ) : username ? (
                   <UsernameEditor
@@ -155,7 +185,12 @@ const ProfileModal = () => {
 
             {/* Subscription Section */}
             <div className={styles.subscriptionSection}>
-              <h3 className={styles.sectionTitle}>Subscription</h3>
+              <h3 className={styles.sectionTitle}>
+                <FormattedMessage
+                  id="profileModal.subscription"
+                  defaultMessage="Subscription"
+                />
+              </h3>
 
               {/* Token Usage Display */}
               {!currentUser?.isPro && tokenProfile && (
@@ -171,7 +206,12 @@ const ProfileModal = () => {
                       alignItems: 'center'
                     }}
                   >
-                    <span>Plan: Free</span>
+                    <span>
+                      <FormattedMessage
+                        id="profileModal.planFree"
+                        defaultMessage="Plan: Free"
+                      />
+                    </span>
                     <Button
                       onClick={() => startCheckout('profile')}
                       style={{
@@ -202,7 +242,7 @@ const ProfileModal = () => {
                           '0 2px 8px rgba(102, 126, 234, 0.4)';
                       }}
                     >
-                      Upgrade to Pro
+                      <FormattedMessage {...commonMessages.upgradeToPro} />
                     </Button>
                   </div>
                   <TokenDisplayInner showLabel={true} useContainer={true} />
@@ -230,10 +270,22 @@ const ProfileModal = () => {
                     >
                       <span>
                         {currentUser?.plan === 'MAX'
-                          ? 'Plan: Max'
+                          ? intl.formatMessage({
+                              id: 'profileModal.planMax',
+                              defaultMessage: 'Plan: Max'
+                            })
                           : currentUser?.isProTeam
-                            ? `Plan: Pro Team (${currentUser?.teamDomain})`
-                            : 'Plan: Pro'}
+                            ? intl.formatMessage(
+                                {
+                                  id: 'profileModal.planProTeam',
+                                  defaultMessage: 'Plan: Pro Team ({domain})'
+                                },
+                                { domain: currentUser?.teamDomain }
+                              )
+                            : intl.formatMessage({
+                                id: 'profileModal.planPro',
+                                defaultMessage: 'Plan: Pro'
+                              })}
                       </span>
                       {!currentUser?.isProTeam && (
                         <Button
@@ -259,7 +311,10 @@ const ProfileModal = () => {
                             e.target.style.color = '#9ca3af';
                           }}
                         >
-                          Manage subscription
+                          <FormattedMessage
+                            id="profileModal.manageSubscription"
+                            defaultMessage="Manage subscription"
+                          />
                         </Button>
                       )}
                     </div>
@@ -278,15 +333,23 @@ const ProfileModal = () => {
                       >
                         <TokenDisplayInner showLabel={true} />
                         <span style={{ fontSize: '13px', color: '#9ca3af' }}>
-                          Monthly Pro refill:{' '}
-                          {new Date(
-                            new Date().getFullYear(),
-                            new Date().getMonth() + 1,
-                            1
-                          ).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric'
-                          })}
+                          <FormattedMessage
+                            id="profileModal.monthlyProRefill"
+                            defaultMessage="Monthly Pro refill: {date}"
+                            values={{
+                              // Format in the active locale (react-intl reads
+                              // the IntlProvider locale) so non-US users don't
+                              // get mm/dd ordering.
+                              date: intl.formatDate(
+                                new Date(
+                                  new Date().getFullYear(),
+                                  new Date().getMonth() + 1,
+                                  1
+                                ),
+                                { month: 'short', day: 'numeric' }
+                              )
+                            }}
+                          />
                         </span>
                       </div>
                     )}
@@ -295,7 +358,10 @@ const ProfileModal = () => {
                       useContainer={true}
                       tokenType="geoToken"
                       count="∞"
-                      label="Unlimited Geo Tokens"
+                      label={intl.formatMessage({
+                        id: 'profileModal.unlimitedGeoTokens',
+                        defaultMessage: 'Unlimited Geo Tokens'
+                      })}
                     />
                   </div>
                 </div>
@@ -318,7 +384,14 @@ const ProfileModal = () => {
           )}
         </div>
       </Modal>
-      {isManagingSubscription && <SavingModal action="Managing subscription" />}
+      {isManagingSubscription && (
+        <SavingModal
+          action={intl.formatMessage({
+            id: 'profileModal.managingSubscription',
+            defaultMessage: 'Managing subscription'
+          })}
+        />
+      )}
     </>
   );
 };

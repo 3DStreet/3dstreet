@@ -1,4 +1,5 @@
 import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+import { FormattedMessage, useIntl } from 'react-intl';
 import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
 import { Button } from '../Button';
@@ -8,6 +9,7 @@ import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import styles from './PrimaryToolbar.module.scss';
 
 export const PrimaryToolbar = () => {
+  const intl = useIntl();
   const panelsVisible = useStore((s) => s.panelsVisible);
   const togglePanelsVisible = useStore((s) => s.togglePanelsVisible);
   const { currentUser } = useAuthContext() || {};
@@ -25,21 +27,38 @@ export const PrimaryToolbar = () => {
       <Button
         variant="toolbtn"
         onClick={togglePanelsVisible}
-        title="Toggle panels visibility (`)"
+        title={intl.formatMessage({
+          id: 'primaryToolbar.togglePanels',
+          defaultMessage: 'Toggle panels visibility (`)'
+        })}
         leadingIcon={
           <AwesomeIcon icon={panelsVisible ? faEyeSlash : faEye} size={16} />
         }
       >
-        {panelsVisible ? 'Hide panels' : 'Show panels'}
+        {panelsVisible
+          ? intl.formatMessage({
+              id: 'primaryToolbar.hidePanels',
+              defaultMessage: 'Hide panels'
+            })
+          : intl.formatMessage({
+              id: 'primaryToolbar.showPanels',
+              defaultMessage: 'Show panels'
+            })}
       </Button>
       <div className={styles.divider} />
       <Button
         variant="toolbtn"
         onClick={handleSnapshot}
         leadingIcon={<CameraSparkleIcon />}
-        title="Capture screenshot and generate rendered images"
+        title={intl.formatMessage({
+          id: 'primaryToolbar.snapshotTitle',
+          defaultMessage: 'Capture screenshot and generate rendered images'
+        })}
       >
-        Snapshot
+        <FormattedMessage
+          id="primaryToolbar.snapshot"
+          defaultMessage="Snapshot"
+        />
       </Button>
     </div>
   );

@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { injectIntl } from 'react-intl';
 import classNames from 'classnames';
 import Events from '../../lib/Events';
 import { removeEntity, cloneEntity } from '../../lib/entity';
@@ -22,8 +23,9 @@ export const isContainer = (entity) => {
   );
 };
 
-export default class Entity extends React.Component {
+class Entity extends React.Component {
   static propTypes = {
+    intl: PropTypes.object,
     id: PropTypes.string,
     depth: PropTypes.number,
     entity: PropTypes.object,
@@ -157,6 +159,7 @@ export default class Entity extends React.Component {
   };
 
   render() {
+    const { intl } = this.props;
     const isFiltering = this.props.isFiltering;
     const isExpanded = this.props.isExpanded;
     const entity = this.props.entity;
@@ -180,7 +183,10 @@ export default class Entity extends React.Component {
       tagName === 'a-scene' ? null : (
         <a
           onClick={() => cloneEntity(entity)}
-          title="Clone entity"
+          title={intl.formatMessage({
+            id: 'entity.cloneEntity',
+            defaultMessage: 'Clone entity'
+          })}
           className="button fa fa-clone"
         />
       );
@@ -191,7 +197,10 @@ export default class Entity extends React.Component {
             event.stopPropagation();
             removeEntity(entity);
           }}
-          title="Remove entity"
+          title={intl.formatMessage({
+            id: 'entity.removeEntity',
+            defaultMessage: 'Remove entity'
+          })}
           className="button fa fa-trash"
         />
       );
@@ -218,7 +227,10 @@ export default class Entity extends React.Component {
     const visible = entity.object3D.visible;
     const visibilityButton = (
       <i
-        title="Toggle entity visibility"
+        title={intl.formatMessage({
+          id: 'entity.toggleVisibility',
+          defaultMessage: 'Toggle entity visibility'
+        })}
         className={'fa ' + (visible ? 'fa-eye' : 'fa-eye-slash')}
         onClick={this.toggleVisibility}
       />
@@ -228,7 +240,14 @@ export default class Entity extends React.Component {
     const dragHandle = (
       <span
         className={`drag-handle ${canBeDragged ? 'draggable' : 'non-draggable'}`}
-        title={canBeDragged ? 'Drag to reorder' : ''}
+        title={
+          canBeDragged
+            ? intl.formatMessage({
+                id: 'entity.dragToReorder',
+                defaultMessage: 'Drag to reorder'
+              })
+            : ''
+        }
       >
         {canBeDragged && <AwesomeIcon icon={faGripVertical} size={12} />}
       </span>
@@ -279,3 +298,5 @@ export default class Entity extends React.Component {
     );
   }
 }
+
+export default injectIntl(Entity);

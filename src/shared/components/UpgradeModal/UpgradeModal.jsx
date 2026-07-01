@@ -26,6 +26,7 @@ import EmbeddedCheckout from '@shared/components/EmbeddedCheckout';
 import { openBillingPortal } from '@shared/utils/billing';
 import { getPaywallSurface } from './paywallSurfaces';
 import { PRICING, TOKEN_FEATURE_LINE } from './pricing';
+import { formatCurrency, getPeriodSuffix } from '@shared/utils/format';
 import styles from './UpgradeModal.module.scss';
 
 // Stripe price IDs by tier + billing cycle. Injected at build time by
@@ -320,8 +321,10 @@ const UpgradeModal = ({
     <div className={styles.planCard}>
       <div className={styles.planName}>{tier === 'max' ? 'Max' : 'Pro'}</div>
       <div className={styles.planPriceRow}>
-        <span className={styles.planPriceLarge}>${planData.pricePerMonth}</span>
-        <span className={styles.planPricePer}>/mo</span>
+        <span className={styles.planPriceLarge}>
+          {formatCurrency(planData.pricePerMonth)}
+        </span>
+        <span className={styles.planPricePer}>{getPeriodSuffix('month')}</span>
       </div>
       <div className={styles.planCycleDetail}>{planData.cycleDetail}</div>
       <ul className={styles.planPerks}>

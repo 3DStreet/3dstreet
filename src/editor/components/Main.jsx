@@ -23,6 +23,7 @@ import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
 import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
 import useStore from '@/store';
+import { useProfileLocaleSync } from '../i18n/useProfileLocaleSync';
 import styles from './Main.module.scss';
 
 // Define the libraries array as a constant outside of the component
@@ -69,6 +70,8 @@ export default function Main() {
 
   const scene = state.sceneEl;
   const isInspectorEnabled = useStore((state) => state.isInspectorEnabled);
+  // Sync the UI locale with the signed-in user's stored profile preference.
+  useProfileLocaleSync();
 
   return (
     <div id="inspectorContainer">

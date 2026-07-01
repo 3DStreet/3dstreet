@@ -3,6 +3,7 @@
  * Integrates with editor's Zustand store, scene saving, and notification system
  */
 
+import { useIntl } from 'react-intl';
 import { SignInModal as SharedSignInModal } from '@/shared/auth/components';
 import useStore from '@/store';
 import { saveSceneWithScreenshot } from '@/editor/lib/SceneUtils';
@@ -11,6 +12,7 @@ import { SavingModal } from '../SavingModal';
 import posthog from 'posthog-js';
 
 const SignInModal = () => {
+  const intl = useIntl();
   const modal = useStore((state) => state.modal);
   const returnToPreviousModal = useStore(
     (state) => state.returnToPreviousModal
@@ -47,12 +49,22 @@ const SignInModal = () => {
     <SharedSignInModal
       isOpen={modal === 'signin'}
       onClose={onClose}
-      message="Sign in to save and share scenes."
+      message={intl.formatMessage({
+        id: 'signInModal.message',
+        defaultMessage: 'Sign in to save and share scenes.'
+      })}
       firebaseAuth={auth}
       onAnalytics={handleAnalytics}
       onNotification={handleNotification}
       onSuccess={handleSuccess}
-      LoadingComponent={() => <SavingModal action="Signing in" />}
+      LoadingComponent={() => (
+        <SavingModal
+          action={intl.formatMessage({
+            id: 'signInModal.signingIn',
+            defaultMessage: 'Signing in'
+          })}
+        />
+      )}
     />
   );
 };
