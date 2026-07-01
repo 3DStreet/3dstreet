@@ -113,22 +113,8 @@
 
     <main class="flex-grow container mx-auto px-4 py-6">
         <!-- Tab contents - each will be populated by its respective JS file -->
-        <!-- Image tab hosts Create + Modify as an in-tab mode toggle -->
-        <div id="image-tab" class="tab-content active">
-            <div class="flex justify-center mb-6">
-                <div id="image-mode-toggle" class="inline-flex rounded-lg border border-gray-300 bg-gray-100 p-1" role="tablist" aria-label="Image generation mode">
-                    <button type="button" data-mode="create" class="image-mode-button px-4 py-1.5 rounded-md text-sm font-medium transition-colors">
-                        Create
-                    </button>
-                    <button type="button" data-mode="modify" class="image-mode-button px-4 py-1.5 rounded-md text-sm font-medium transition-colors">
-                        Modify
-                    </button>
-                </div>
-            </div>
-            <!-- Create + Modify panels are populated by their respective JS files -->
-            <div id="create-tab" class="image-mode-panel"></div>
-            <div id="modify-tab" class="image-mode-panel hidden"></div>
-        </div>
+        <!-- Image tab: single unified image generator (source image optional) -->
+        <div id="image-tab" class="tab-content active"></div>
         <div id="video-tab" class="tab-content"></div>
         <div id="splat-tab" class="tab-content"></div>
         <div id="model3d-tab" class="tab-content"></div>

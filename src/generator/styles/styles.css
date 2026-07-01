@@ -153,42 +153,6 @@ button:active {
     display: block;
 }
 
-/* Image tab mode toggle (Create / Modify) */
-.image-mode-button {
-    color: #6b7280; /* gray-500 */
-    background: transparent;
-    border: none;
-    cursor: pointer;
-}
-
-.image-mode-button:hover {
-    color: var(--primary);
-}
-
-.image-mode-button.active {
-    color: var(--primary);
-    background-color: #ffffff;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.dark #image-mode-toggle {
-    background-color: #111827; /* gray-900 */
-    border-color: #374151; /* gray-700 */
-}
-
-.dark .image-mode-button {
-    color: #9ca3af; /* gray-400 */
-}
-
-.dark .image-mode-button:hover {
-    color: #a5b4fc; /* indigo-300 */
-}
-
-.dark .image-mode-button.active {
-    color: #c7d2fe; /* indigo-200 */
-    background-color: #374151; /* gray-700 */
-}
-
 /* Dark Mode Styles */
 .dark body {
     background-color: #111827; /* gray-900 */

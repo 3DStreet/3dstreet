@@ -23,9 +23,6 @@ import { httpsCallable } from 'firebase/functions';
 import { functions, auth } from '@shared/services/firebase.js';
 import posthog from 'posthog-js';
 
-// Recommended-not-required amber for the reference image indicator (#1767).
-const AMBER = '#F5A623';
-
 // Selectable image -> mesh models (both GLB output via fal). tokenCost mirrors
 // the backend source of truth (public/functions/replicate-models.js); the
 // backend enforces the real charge. estimatedTime drives the progress bar only.
@@ -89,10 +86,10 @@ const Model3DTab = {
             </select>
           </div>
 
-          <!-- Reference Image (required in practice; amber signals recommended) -->
+          <!-- Reference Image (required — these endpoints are image-to-3D) -->
           <div class="mb-4 param-group">
             <label class="block text-sm font-medium text-gray-700 mb-1">
-              Reference Image <span style="color: ${AMBER};" title="Recommended for better results">*</span>
+              Reference Image <span class="text-red-500" title="Required">*</span>
             </label>
             <div class="flex flex-col space-y-2">
               <label id="model3d-image-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
@@ -111,7 +108,7 @@ const Model3DTab = {
                 </button>
               </div>
               <p class="text-xs text-gray-500">
-                A reference image gives the AI real-world structure to match. These models generate from an image.
+                Required — these models generate a 3D mesh from a reference image.
               </p>
             </div>
           </div>
@@ -274,12 +271,8 @@ const Model3DTab = {
   },
 
   handleGenerate() {
-    // Empty-image nudge (#1767): encourage a reference image before generating.
-    if (!this.imageData) {
-      this.showImageNudge();
-      return;
-    }
-
+    // A reference image is required; validate() surfaces a clear notice if
+    // it's missing.
     this.startGeneration();
   },
 
@@ -468,58 +461,6 @@ const Model3DTab = {
     if (this.elements.progressBar) {
       this.elements.progressBar.style.width = '0%';
     }
-  },
-
-  /**
-   * Empty-image nudge dialog (#1767): recommend a reference image, with a
-   * proceed-anyway escape hatch. These models are image-to-3D, so proceeding
-   * without an image surfaces a clear "add an image" notice.
-   */
-  showImageNudge() {
-    const existing = document.getElementById('model3d-nudge-modal');
-    if (existing) existing.remove();
-
-    const modal = document.createElement('div');
-    modal.id = 'model3d-nudge-modal';
-    modal.className = 'modal';
-    modal.innerHTML = `
-      <div class="modal-content p-6">
-        <h3 class="text-lg font-semibold mb-2">Add a reference image for better results</h3>
-        <p class="text-sm text-gray-500 mb-6">
-          A photo or reference image gives the AI real-world structure to match —
-          producing far more accurate, usable models. These 3D models generate
-          from an image.
-        </p>
-        <div class="flex justify-end gap-3">
-          <button id="model3d-nudge-generate" class="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            Generate anyway
-          </button>
-          <button id="model3d-nudge-add" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            Add image
-          </button>
-        </div>
-      </div>
-    `;
-
-    const close = () => modal.remove();
-
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) close();
-    });
-
-    modal.querySelector('#model3d-nudge-add').addEventListener('click', () => {
-      close();
-      this.elements.imageInput.click();
-    });
-
-    modal
-      .querySelector('#model3d-nudge-generate')
-      .addEventListener('click', () => {
-        close();
-        this.startGeneration();
-      });
-
-    document.body.appendChild(modal);
   }
 };
 
