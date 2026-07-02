@@ -138,23 +138,26 @@ function cloneGltfScene(scene, sceneEl) {
   return root;
 }
 
+// Dispose the pristine clone templates (their geometry, and the Source refcounts they hold).
+// Called from the batching-lifecycle listeners wired in the gltf-model init, not from any
+// scene-load event — see there for when it fires in editor vs runtime.
+function disposeGltfTemplates(sceneEl) {
+  const cache = sceneEl._gltfSceneCache;
+  if (!cache) return;
+  for (const entry of cache.values()) entry.scene.traverse(disposeNode);
+  cache.clear();
+}
+
 // Parse a GLB once per src and keep the pristine parsed scene as a clone template (cache +
 // in-flight promise, both scene-scoped on sceneEl). Every instance — including the first —
 // clones from this pristine template, so the template is never mutated: the per-instance
-// material conversion in gltfLoaded runs on an independent copy. Templates are disposed on
-// the next "newScene" (clones own their own copies / hold their own Source refcounts).
+// material conversion in gltfLoaded runs on an independent copy. Templates are freed by
+// disposeGltfTemplates (see the gltf-model init): dropped when the next scene starts batching,
+// and in runtime also when the current batch pass finishes; the editor keeps them for the
+// session so pastes / library drags clone without re-parsing.
 function loadParsedGltf(loader, sceneEl, src, onProgress) {
-  let cache = sceneEl._gltfSceneCache;
-  if (!cache) {
-    cache = sceneEl._gltfSceneCache = new Map();
-    // Registered after the current scene's newScene already fired (this runs from a model
-    // load, after batchModels' gate), so it disposes this scene's templates when the NEXT
-    // scene loads, then the cache repopulates for that scene.
-    sceneEl.addEventListener('newScene', () => {
-      for (const entry of cache.values()) entry.scene.traverse(disposeNode);
-      cache.clear();
-    });
-  }
+  const cache =
+    sceneEl._gltfSceneCache || (sceneEl._gltfSceneCache = new Map());
   if (cache.has(src)) return Promise.resolve(cache.get(src));
   const loading =
     sceneEl._gltfLoadingPromises || (sceneEl._gltfLoadingPromises = new Map());
@@ -201,6 +204,24 @@ export const gltfModelPlus = {
     // While a batching scene is loading, update() parks the load until batchModels emits
     // "batch-grouping-done"; this guards against registering that listener twice.
     this._batchPending = false;
+    // Wire the clone-template cache disposal to the batching lifecycle (once per scene). Driven
+    // by batch-models events rather than scene-load events so the behavior is consistent.
+    // - begin-batching: fires when the NEXT scene starts (this listener is added during the
+    //   current scene's createEntities, after its begin-batching already fired), so it drops the
+    //   PREVIOUS scene's templates — editor and runtime alike.
+    // - initial-batching-done: fires at the end of the current batch pass. In runtime the scene
+    //   is final, so drop the templates now to free the parsed geometry; the editor keeps them so
+    //   later clones (paste, library drag) skip the re-parse.
+    const sceneEl = this.el.sceneEl;
+    if (!sceneEl._gltfTemplateDisposalWired) {
+      sceneEl._gltfTemplateDisposalWired = true;
+      sceneEl.addEventListener('begin-batching', () =>
+        disposeGltfTemplates(sceneEl)
+      );
+      sceneEl.addEventListener('initial-batching-done', () => {
+        if (!AFRAME.INSPECTOR) disposeGltfTemplates(sceneEl);
+      });
+    }
     this.loader.register(
       (parser) =>
         new GLTFSharedTextureSourceExtension(parser, self.el.sceneEl, self)

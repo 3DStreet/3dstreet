@@ -787,6 +787,10 @@ export function beginBatching(sceneEl, batchingEnabled) {
   sceneEl._batchingEnabled = batchingEnabled;
   sceneEl._batchGroupingDone = false;
   resetSrcLoadCounts();
+  // Signal a new scene is loading. gltf-model listens to drop the PREVIOUS scene's clone
+  // templates (its listener, added mid-scene, catches the next begin-batching). Emitted for
+  // every scene load, batched or not, so cross-scene cleanup always happens.
+  sceneEl.emit('begin-batching');
 }
 
 export async function batchModels(sceneEl) {
@@ -940,6 +944,10 @@ export async function batchModels(sceneEl) {
     });
     sceneEl._batchLateListenerAdded = true;
   }
+
+  // The initial batch pass is complete. gltf-model listens to drop this scene's clone templates
+  // in runtime (the scene is final); the editor keeps them for the session.
+  sceneEl.emit('initial-batching-done');
 
   return built;
 }
