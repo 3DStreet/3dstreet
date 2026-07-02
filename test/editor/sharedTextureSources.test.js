@@ -32,9 +32,10 @@ describe('sharedTextureSources', () => {
   it('registers the first source as canonical and tags its bitmap', () => {
     const registry = new Map();
     const a = makeSource();
-    const canonical = acquireSharedSource(registry, 'h1', a);
+    const entry = acquireSharedSource(registry, 'h1', a);
 
-    expect(canonical).toBe(a);
+    expect(entry).toBe(registry.get('h1'));
+    expect(entry.source).toBe(a); // canonical; === passed source means this call created it
     expect(registry.get('h1').refCount).toBe(1);
     expect(a.data._sharedSource).toBe(true);
     expect(a.data._sharedEntry).toBe(registry.get('h1'));
@@ -44,11 +45,11 @@ describe('sharedTextureSources', () => {
     const registry = new Map();
     const a = makeSource();
     const b = makeSource();
-    acquireSharedSource(registry, 'h1', a);
-    const canonical = acquireSharedSource(registry, 'h1', b);
+    expect(acquireSharedSource(registry, 'h1', a).source).toBe(a); // created
+    const entry = acquireSharedSource(registry, 'h1', b);
 
-    expect(canonical).toBe(a); // first one wins
-    expect(canonical).not.toBe(b);
+    expect(entry.source).toBe(a); // first one wins
+    expect(entry.source).not.toBe(b); // reuse: entry.source !== the passed source
     expect(registry.get('h1').refCount).toBe(2);
   });
 
@@ -79,8 +80,8 @@ describe('sharedTextureSources', () => {
     releaseSharedSource(a.data); // fully released, entry removed
 
     const c = makeSource();
-    const canonical = acquireSharedSource(registry, 'h1', c);
-    expect(canonical).toBe(c); // a is gone from the registry, c becomes the new canonical
+    const entry = acquireSharedSource(registry, 'h1', c);
+    expect(entry.source).toBe(c); // a is gone from the registry, c becomes the new canonical
     expect(registry.get('h1').refCount).toBe(1);
   });
 

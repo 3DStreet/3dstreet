@@ -34,9 +34,11 @@ export function sharedSourceKey(source, imageHash) {
 
 /**
  * Register `source` as the canonical Source for `hash` (first caller wins) and increment its
- * reference count. Returns the canonical Source the caller should assign to its texture.
- * Tags the canonical's ImageBitmap with `_sharedSource` (a fast boolean for close sites) and
- * `_sharedEntry` (the registry entry, for releaseSharedSource).
+ * reference count. Returns the registry entry: `entry.source` is the canonical Source the caller
+ * should assign to its texture, and `entry.source === source` iff this call created the entry — so
+ * the caller can tell first-load from reuse (and seed per-entry metadata / redirect) without a
+ * second registry lookup. On creation, tags the canonical's ImageBitmap with `_sharedSource` (a
+ * fast boolean for close sites) and `_sharedEntry` (the registry entry, for releaseSharedSource).
  */
 export function acquireSharedSource(registry, hash, source) {
   let entry = registry.get(hash);
@@ -50,7 +52,7 @@ export function acquireSharedSource(registry, hash, source) {
     }
   }
   entry.refCount++;
-  return entry.source;
+  return entry;
 }
 
 /**

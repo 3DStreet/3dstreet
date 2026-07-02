@@ -41,11 +41,12 @@ class GLTFSharedTextureSourceExtension {
           sceneEl._sharedTextureSources ||
           (sceneEl._sharedTextureSources = new Map());
         const entityId = component?.el?.id;
-        const canonical = acquireSharedSource(registry, hash, texture.source);
-        const entry = registry.get(hash);
+        const entry = acquireSharedSource(registry, hash, texture.source);
+        const canonical = entry.source;
         // Remember the hash on the canonical Source so the GLB clone cache can re-acquire it
         // (keeping the Source refcount balanced) when it clones this texture for a new instance.
         canonical._sharedSourceHash = hash;
+        // entry.source === texture.source only when this call just created the entry.
         if (canonical === texture.source) {
           // First model to load this image: remember which entity/glb decoded the canonical Source
           // so a later reuse can report where it came from.
