@@ -18,6 +18,21 @@
 // self-contained from the bitmap alone — disposal sites in other modules don't need the sceneEl.
 
 /**
+ * Registry key for a texture's Source. The server-baked `imageHash` when present, which lets
+ * textures across different GLBs share one decoded Source. Otherwise a per-Source synthetic key
+ * so a non-hashed ImageBitmap is refcounted all the same: cloneGltfScene shares the decoded
+ * Source with every instance, and its bitmap must be closed only at the last reference — not by
+ * whichever clone (or the pristine template) is disposed first, which would wash the still-live
+ * clones white. Returns null for sources that need no refcounting (compressed KTX2/Basis have no
+ * ImageBitmap to close).
+ */
+export function sharedSourceKey(source, imageHash) {
+  if (imageHash) return imageHash;
+  if (source?.data instanceof ImageBitmap) return `uuid:${source.uuid}`;
+  return null;
+}
+
+/**
  * Register `source` as the canonical Source for `hash` (first caller wins) and increment its
  * reference count. Returns the canonical Source the caller should assign to its texture.
  * Tags the canonical's ImageBitmap with `_sharedSource` (a fast boolean for close sites) and

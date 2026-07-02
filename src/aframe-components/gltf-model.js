@@ -1,6 +1,6 @@
 /* global AFRAME, THREE, ImageBitmap */
 import { disposeNode } from '../disposeUtils';
-import { acquireSharedSource } from '../sharedTextureSources';
+import { acquireSharedSource, sharedSourceKey } from '../sharedTextureSources';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 import { noteSrcLoad, srcLoadCount } from '../batch-models';
 
@@ -26,8 +26,17 @@ class GLTFSharedTextureSourceExtension {
     const json = parser.json;
     parser.loadImageSource = (sourceIndex, loader) =>
       original(sourceIndex, loader).then((texture) => {
-        const hash = json.images?.[sourceIndex]?.extras?.imageHash;
-        if (!hash || !sceneEl) return texture;
+        if (!sceneEl) return texture;
+        // The registry key is the server imageHash when present (cross-GLB dedup), else a
+        // per-Source synthetic key so a non-hashed ImageBitmap is still refcounted — otherwise a
+        // clone sharing it (see cloneGltfScene) gets its bitmap closed out from under it by the
+        // first disposal (sibling clone or the pristine template), washing it white. A synthetic
+        // key is unique per Source, so it never takes the cross-GLB redirect branch below.
+        const hash = sharedSourceKey(
+          texture.source,
+          json.images?.[sourceIndex]?.extras?.imageHash
+        );
+        if (!hash) return texture;
         const registry =
           sceneEl._sharedTextureSources ||
           (sceneEl._sharedTextureSources = new Map());

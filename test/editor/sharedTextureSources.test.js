@@ -6,8 +6,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   acquireSharedSource,
-  releaseSharedSource
+  releaseSharedSource,
+  sharedSourceKey
 } from '../../src/sharedTextureSources.js';
+import { disposeNode } from '../../src/disposeUtils.js';
 
 class FakeImageBitmap {
   closed = false;
@@ -100,5 +102,66 @@ describe('sharedTextureSources', () => {
     expect(b.data.closed).toBe(false);
     expect(registry.has('h1')).toBe(false);
     expect(registry.has('h2')).toBe(true);
+  });
+});
+
+describe('sharedSourceKey', () => {
+  it('uses the server imageHash when present (cross-GLB dedup)', () => {
+    const source = { uuid: 's1', data: new FakeImageBitmap() };
+    expect(sharedSourceKey(source, 'webp:abcdef')).toBe('webp:abcdef');
+  });
+
+  it('synthesizes a per-Source key for a non-hashed ImageBitmap', () => {
+    const source = { uuid: 's1', data: new FakeImageBitmap() };
+    expect(sharedSourceKey(source, undefined)).toBe('uuid:s1');
+  });
+
+  it('returns null for a non-hashed source with no ImageBitmap (e.g. compressed)', () => {
+    expect(sharedSourceKey({ uuid: 's1', data: {} }, undefined)).toBeNull();
+    expect(sharedSourceKey({ uuid: 's1', data: null }, undefined)).toBeNull();
+  });
+});
+
+// Regression for the "washed clone" bug: a non-hashed texture Source shared by a clone must
+// survive the pristine template's disposal (newScene) and be closed only when its LAST reference
+// is disposed. Before non-hashed sources were refcounted (sharedSourceKey), the template's
+// disposeNode closed the ImageBitmap out from under the live clone → white material.
+describe('non-hashed shared Source survives clone/template disposal', () => {
+  // A minimal mesh whose single material holds one texture pointing at `source`.
+  const meshWithTextureSource = (source) => ({
+    isMesh: true,
+    geometry: { dispose() {}, userData: {} },
+    material: {
+      map: { isTexture: true, source, dispose() {} },
+      dispose() {},
+      userData: {}
+    },
+    userData: {}
+  });
+
+  it('closes the decoded bitmap only at the last reference', () => {
+    const registry = new Map();
+    const bitmap = new FakeImageBitmap();
+    const source = { uuid: 's1', data: bitmap };
+
+    // loadImageSource: register the non-hashed Source (the fix).
+    const key = sharedSourceKey(source, undefined);
+    expect(key).toBe('uuid:s1');
+    acquireSharedSource(registry, key, source); // template holds ref 1
+    source._sharedSourceHash = key;
+
+    // cloneGltfScene: an instance clones the texture, sharing the SAME Source, and re-acquires.
+    acquireSharedSource(registry, source._sharedSourceHash, source); // clone -> ref 2
+    expect(registry.get(key).refCount).toBe(2);
+
+    // Pristine template disposed on newScene: must NOT close the shared bitmap.
+    disposeNode(meshWithTextureSource(source));
+    expect(bitmap.closed).toBe(false);
+    expect(registry.get(key).refCount).toBe(1);
+
+    // The clone is finally removed: last reference gone -> bitmap closed, entry dropped.
+    disposeNode(meshWithTextureSource(source));
+    expect(bitmap.closed).toBe(true);
+    expect(registry.has(key)).toBe(false);
   });
 });
