@@ -971,12 +971,13 @@ function onLateChildDetached(evt) {
 
 // Entities added AFTER the initial batch pass (editor clone / layer-reorder recreate them,
 // or a component mints them post-load) come through onLateModelLoaded unbatched — each its
-// own draw call and GPU upload. We tally these per batch key and, once enough of one key
-// accumulate, fold them into the matching group (or build a fresh group). This keeps a
-// long-running editor session from steadily accumulating unbatched duplicates. The threshold
-// amortizes the repack (a setInstanceCount grow + N addInstance) and avoids churning the
-// group on every single add.
-const LATE_BATCH_THRESHOLD = 4;
+// own draw call and GPU upload. We tally these per batch key and, at the threshold, fold them
+// into the matching group (or, for a not-yet-batched key, build a fresh group once a 2nd
+// duplicate appears), so an editor session doesn't accumulate unbatched duplicates. The repack
+// (a matrix refresh + setInstanceCount grow + N addInstance) measures only a few ms, so we fold
+// eagerly at 1 — a pasted copy batches immediately. Raise it only to coalesce bursts if a scene
+// ever spawns many post-load clones in a single tick.
+const LATE_BATCH_THRESHOLD = 1;
 
 // The batch key is stashed on object3D.userData so untrackLateUnbatched can find an entity's
 // pending set at detach time — by then A-Frame's disconnectedCallback has already removed the

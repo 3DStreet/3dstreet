@@ -213,44 +213,37 @@ describe('batch-models late-batch tally (tier 3)', () => {
     expect(sceneEl._lateUnbatched?.get('x.glb')).toBeUndefined();
   });
 
-  it('accumulates duplicates but does not fold below the threshold', () => {
+  it('folds each post-load duplicate into an existing group immediately (threshold 1)', () => {
     const sceneEl = fakeSceneEl();
-    const { bm, geometryId, geometry } = makeBatchedMesh(8);
-    const group = makeGroup(bm, geometryId, geometry, sceneEl);
-    sceneEl._batchModelsBuilt.push(group);
-
-    for (let i = 0; i < batch._test.LATE_BATCH_THRESHOLD - 1; i++) {
-      batch._test.trackLateUnbatched(fakeGltfEl(sceneEl));
-    }
-    expect(sceneEl._lateUnbatched.get('x.glb').size).toBe(
-      batch._test.LATE_BATCH_THRESHOLD - 1
-    );
-    expect(group.activeMemberCount).toBe(0); // nothing folded yet
-  });
-
-  it('folds pending duplicates into an existing group at the threshold', () => {
-    const sceneEl = fakeSceneEl();
-    const { bm, geometryId, geometry } = makeBatchedMesh(2); // undersized on purpose
+    const { bm, geometryId, geometry } = makeBatchedMesh(2); // undersized: forces a grow
     const group = makeGroup(bm, geometryId, geometry, sceneEl);
     sceneEl._batchModelsBuilt.push(group);
 
     const els = [];
-    for (let i = 0; i < batch._test.LATE_BATCH_THRESHOLD; i++) {
+    for (let i = 0; i < 4; i++) {
       const el = fakeGltfEl(sceneEl);
       els.push(el);
-      batch._test.trackLateUnbatched(el);
+      batch._test.trackLateUnbatched(el); // each add folds right away — nothing accumulates
+      expect(batch.isBatched(el)).toBe(true);
+      expect(sceneEl._lateUnbatched.has('x.glb')).toBe(false); // pending cleared after each fold
     }
 
-    const n = batch._test.LATE_BATCH_THRESHOLD;
-    expect(group.activeMemberCount).toBe(n);
-    expect(bm.instanceCount).toBe(n);
-    expect(bm.maxInstanceCount).toBe(n); // grew from 2 via setInstanceCount
+    expect(group.activeMemberCount).toBe(4);
+    expect(bm.instanceCount).toBe(4);
+    expect(bm.maxInstanceCount).toBe(4); // grew from 2 via setInstanceCount
     expect(
       els.every((e) => e.object3D.userData._batchSlots?.length === 1)
     ).toBe(true);
-    expect(els.every((e) => batch.isBatched(e))).toBe(true);
     expect(els.every((e) => e._removeMesh.mock.calls.length === 1)).toBe(true);
-    expect(sceneEl._lateUnbatched.has('x.glb')).toBe(false); // pending cleared
+  });
+
+  it('keeps a lone duplicate of a not-yet-batched key pending until a second appears', () => {
+    const sceneEl = fakeSceneEl(); // no existing group for x.glb
+    const el = fakeGltfEl(sceneEl);
+    batch._test.trackLateUnbatched(el); // 1 candidate, no group -> needs >= 2 to form one
+
+    expect(batch.isBatched(el)).toBe(false);
+    expect(sceneEl._lateUnbatched.get('x.glb').size).toBe(1); // held pending, not dropped
   });
 
   it('untrackLateUnbatched drops a pending entity and clears its key', () => {
