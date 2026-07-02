@@ -10,18 +10,31 @@
 
 import * as Sentry from '@sentry/react';
 import Events from './Events';
+import { encodeCameraStateToParam } from './cameraUtils.js';
 
 /**
- * Restore the editor camera to the pose a snapshot was captured from (#1605).
- * Mirrors the focus-on-entity pattern: emits an event the viewport turns into a
- * smooth camera transition (EditorControls.focusCameraState). Snapshots taken
- * before pose capture shipped have no cameraState — callers should hide the
- * focus affordance in that case, but we guard here too.
+ * Take the user back to where a snapshot was captured (#1605). If the
+ * snapshot belongs to the currently open scene, glide the camera to the
+ * captured pose (event → EditorControls.focusCameraState, mirroring the
+ * focus-on-entity pattern). Otherwise open the scene in a new tab — same as
+ * the plain scene link — with the pose as a `?camera=` hash param that
+ * set-loader-from-hash applies as the load fly-in target.
  */
-export const focusCameraOnSnapshot = (item) => {
+export const focusSnapshotScene = (item) => {
+  const sceneId = item?.metadata?.sceneId;
   const cameraState = item?.metadata?.cameraState;
   if (!cameraState) return;
-  Events.emit('cameraposefocus', cameraState);
+
+  if (!sceneId || sceneId === STREET.utils.getCurrentSceneId()) {
+    Events.emit('cameraposefocus', cameraState);
+    return;
+  }
+
+  const cameraParam = encodeCameraStateToParam(cameraState);
+  const cameraSuffix = cameraParam
+    ? `?camera=${encodeURIComponent(cameraParam)}`
+    : '';
+  window.open(`/#/scenes/${sceneId}${cameraSuffix}`, '_blank');
 };
 
 export const openInGenerator = async (item, tabName) => {

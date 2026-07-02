@@ -358,6 +358,14 @@ const MeshDetailsModal = ({
     }
   };
 
+  // Enter commits pending edits — same as clicking "Save changes" (onSave
+  // no-ops when nothing is dirty).
+  const onFieldKeyDown = (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    onSave();
+  };
+
   const cancelAttributionEdit = () => {
     setAttribution(savedAttribution);
     setEditingAttribution(false);
@@ -647,6 +655,7 @@ const MeshDetailsModal = ({
                 className={styles.fieldInput}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onKeyDown={onFieldKeyDown}
                 disabled={!isOwner || saving || !data}
               />
             </div>
@@ -657,6 +666,7 @@ const MeshDetailsModal = ({
               editing={editingAttribution}
               onEnterEdit={() => setEditingAttribution(true)}
               onCancel={cancelAttributionEdit}
+              onFieldKeyDown={onFieldKeyDown}
               isOwner={isOwner && !!data}
               disabled={saving || !data}
             />
@@ -890,6 +900,7 @@ const AttributionBlock = ({
   editing,
   onEnterEdit,
   onCancel,
+  onFieldKeyDown,
   isOwner,
   disabled
 }) => {
@@ -955,6 +966,7 @@ const AttributionBlock = ({
             className={styles.fieldInput}
             value={attribution.author}
             onChange={setField('author')}
+            onKeyDown={onFieldKeyDown}
             disabled={disabled}
           />
         </div>
@@ -968,6 +980,7 @@ const AttributionBlock = ({
             className={styles.fieldInput}
             value={attribution.license}
             onChange={setField('license')}
+            onKeyDown={onFieldKeyDown}
             disabled={disabled}
             placeholder="e.g. CC-BY-4.0"
           />
@@ -982,6 +995,7 @@ const AttributionBlock = ({
             className={styles.fieldInput}
             value={attribution.source}
             onChange={setField('source')}
+            onKeyDown={onFieldKeyDown}
             disabled={disabled}
             placeholder="https://…"
           />
@@ -1016,6 +1030,7 @@ AttributionBlock.propTypes = {
   editing: PropTypes.bool.isRequired,
   onEnterEdit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
+  onFieldKeyDown: PropTypes.func,
   isOwner: PropTypes.bool,
   disabled: PropTypes.bool
 };

@@ -31,9 +31,10 @@ const AssetsModal = ({
   onDelete,
   onUseForGenerator,
   onUseForVideo,
-  // Editor-only: restore the camera to this snapshot's captured pose (#1605).
-  // Omitted by hosts without a viewport (generator), which hides the button.
-  onFocusCamera
+  // Editor-only: open the snapshot's scene (if not active) and return the
+  // camera to the captured pose (#1605). Omitted by hosts without a viewport
+  // (generator), which fall back to a plain scene link.
+  onFocusScene
 }) => {
   // Initialize metadata visibility from sessionStorage
   const [isMetadataVisible, setIsMetadataVisible] = useState(() => {
@@ -120,8 +121,13 @@ const AssetsModal = ({
   const isVideo = item.type === 'video';
   const modalTitle = getAssetTitle(item);
   // Snapshots captured after #1605 carry the camera pose; older ones don't, so
-  // only offer the focus button when both the host supports it and a pose exists.
-  const canFocusCamera = !!(onFocusCamera && item.metadata?.cameraState);
+  // only offer the combined open-scene-and-focus action when the host supports
+  // it and a pose exists. Older snapshots keep the plain scene link.
+  const canFocusScene = !!(
+    onFocusScene &&
+    sceneId &&
+    item.metadata?.cameraState
+  );
   // Surfaced for user-uploaded images (generator-created items don't set
   // these top-level fields, but they have model/prompt/seed instead).
   const filename = item.originalFilename;
@@ -212,37 +218,7 @@ const AssetsModal = ({
       <div className={styles.modalContent}>
         {/* Header with Title */}
         <div className={styles.modalHeader}>
-          <div className={styles.modalTitleGroup}>
-            <h2 className={styles.modalTitle}>{modalTitle}</h2>
-            {canFocusCamera && (
-              <button
-                className={styles.focusCameraBtn}
-                onClick={() => {
-                  onFocusCamera(item);
-                  onClose();
-                }}
-                title="Return camera to the position this snapshot was captured from"
-                aria-label="Focus camera on capture position"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="7" />
-                  <line x1="12" y1="1" x2="12" y2="4" />
-                  <line x1="12" y1="20" x2="12" y2="23" />
-                  <line x1="1" y1="12" x2="4" y2="12" />
-                  <line x1="20" y1="12" x2="23" y2="12" />
-                  <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-                </svg>
-              </button>
-            )}
-          </div>
+          <h2 className={styles.modalTitle}>{modalTitle}</h2>
           <div className={styles.modalHeaderActions}>
             <button
               className={styles.infoToggleBtn}
@@ -429,15 +405,45 @@ const AssetsModal = ({
                 {sceneUrl && (
                   <div className={styles.metadataItem}>
                     <span className={styles.metadataLabel}>Scene</span>
-                    <a
-                      href={sceneUrl}
-                      className={styles.metadataLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Open scene in editor"
-                    >
-                      {sceneTitle || 'Untitled'}
-                    </a>
+                    {canFocusScene ? (
+                      <button
+                        className={styles.sceneFocusBtn}
+                        onClick={() => {
+                          onFocusScene(item);
+                          onClose();
+                        }}
+                        title="Open this scene and return the camera to where this snapshot was captured"
+                        aria-label="Open scene at capture position"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="12" cy="12" r="7" />
+                          <line x1="12" y1="1" x2="12" y2="4" />
+                          <line x1="12" y1="20" x2="12" y2="23" />
+                          <line x1="1" y1="12" x2="4" y2="12" />
+                          <line x1="20" y1="12" x2="23" y2="12" />
+                          <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                        </svg>
+                        <span>{sceneTitle || 'Untitled'}</span>
+                      </button>
+                    ) : (
+                      <a
+                        href={sceneUrl}
+                        className={styles.metadataLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Open scene in editor"
+                      >
+                        {sceneTitle || 'Untitled'}
+                      </a>
+                    )}
                   </div>
                 )}
               </div>

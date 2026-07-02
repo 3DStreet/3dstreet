@@ -29,9 +29,10 @@ const AssetsContent = ({
   onUseForGenerator,
   onUseForVideo,
   onNotification,
-  // Editor's Assets panel opts in to a "focus camera" button on snapshots that
-  // carry a captured pose (#1605). Generator omits it (no viewport).
-  onFocusCamera,
+  // Editor's Assets panel opts in to an open-scene-and-focus-camera action on
+  // snapshots that carry a captured pose (#1605). Generator omits it (no
+  // viewport) and keeps the plain scene link.
+  onFocusScene,
   // Editor's Assets panel opts in to drag-mesh/image-into-viewport.
   // Generator (standalone page) doesn't have a viewport so it stays off.
   placeable = false,
@@ -157,7 +158,7 @@ const AssetsContent = ({
           onDelete={handleDelete}
           onUseForGenerator={onUseForGenerator}
           onUseForVideo={onUseForVideo}
-          onFocusCamera={onFocusCamera}
+          onFocusScene={onFocusScene}
         />
       )}
     </>

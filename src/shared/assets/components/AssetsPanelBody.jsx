@@ -41,8 +41,8 @@ const AssetsPanelBody = ({
   // Image/video card actions — only meaningful in the generator.
   onUseForGenerator,
   onUseForVideo,
-  // Editor-only: focus the camera on a snapshot's captured pose (#1605).
-  onFocusCamera,
+  // Editor-only: open a snapshot's scene and focus its captured pose (#1605).
+  onFocusScene,
   // Host notification (FluxUI.showNotification in generator, no-op default).
   onNotification,
   // Sign-in CTA action.
@@ -348,7 +348,7 @@ const AssetsPanelBody = ({
           }
           onUseForGenerator={onUseForGenerator}
           onUseForVideo={onUseForVideo}
-          onFocusCamera={onFocusCamera}
+          onFocusScene={onFocusScene}
           onNotification={onNotification}
           placeable={placeable}
           onPlaceAsset={onPlaceAsset}
