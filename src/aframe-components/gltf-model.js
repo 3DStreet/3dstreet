@@ -289,8 +289,7 @@ export const gltfModelPlus = {
     const el = this.el;
     const src = this.data;
 
-    // Drop the current mesh before (re)loading.
-    this.removeMesh();
+    this.remove();
 
     if (!src) {
       return;
