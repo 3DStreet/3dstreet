@@ -2,7 +2,7 @@
 import { disposeNode } from '../disposeUtils';
 import { acquireSharedSource, sharedSourceKey } from '../sharedTextureSources';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
-import { noteSrcLoad, srcLoadCount } from '../batch-models';
+import { noteSrcLoad, srcLoadCount, removeMember } from '../batch-models';
 
 // Share one decoded THREE.Source across textures (within and across GLBs) that embed the
 // byte-identical image. The server bakes images[].extras.imageHash; GLTFLoader.loadImageSource
@@ -383,6 +383,16 @@ export const gltfModelPlus = {
   remove: function () {
     // A pending batch park (if any) is harmless: its "batch-grouping-done" handler is
     // {once} and bails on the isConnected check, so nothing to clean up here.
+    //
+    // batch-models' removal cleanup runs HERE, not from a child-detached listener. A-Frame
+    // calls component.remove() during the entity's disconnectedCallback for ANY document-
+    // disconnection — including every descendant of a removed subtree — whereas child-detached
+    // doesn't reliably reach the scene (a managed-street teardown detaches the whole subtree,
+    // then street-generated clearEntities removes the already-disconnected members, so their
+    // child-detached never bubbles). removeMember frees a built member's slot or drops a pending
+    // late-batch candidate from the tally. Without this a batched instance stays visible and its
+    // now-parentless object3D crashes the editor's hover box.
+    removeMember(this.el);
     this.removeMesh();
   },
 

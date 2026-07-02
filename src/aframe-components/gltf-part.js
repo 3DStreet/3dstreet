@@ -1,4 +1,5 @@
 /* global AFRAME, THREE */
+import { removeMember } from '../batch-models';
 
 var LOADING_MODELS = {};
 var MODELS = {};
@@ -35,6 +36,18 @@ AFRAME.registerComponent('gltf-part', {
       self._loadSettled = true;
       el.emit('model-loaded', { format: 'gltf-part', model: modelPart });
     });
+  },
+
+  remove: function () {
+    // batch-models' removal cleanup runs HERE, not from a child-detached listener. A-Frame calls
+    // component.remove() during the entity's disconnectedCallback for ANY document-disconnection
+    // — including every descendant of a removed subtree — whereas child-detached doesn't reliably
+    // reach the scene (a managed-street teardown detaches the whole subtree, then street-generated
+    // clearEntities removes the already-disconnected members, so their child-detached never
+    // bubbles). removeMember frees a built member's slot or drops a pending late-batch candidate
+    // from the tally. Without this its instance stays visible and its now-parentless object3D
+    // crashes the editor hover box.
+    removeMember(this.el);
   },
 
   /**

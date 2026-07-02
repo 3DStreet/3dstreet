@@ -923,11 +923,12 @@ export async function batchModels(sceneEl) {
   // editor raycaster / runtime .clickable cursor still hits accelerated geometry.
   if (!sceneEl._batchLateListenerAdded) {
     sceneEl.addEventListener('model-loaded', onLateModelLoaded);
-    // child-detached bubbles up to the scene; release any batch slots owned by
-    // a detached entity (or its descendants) so the raycaster mapping
-    // (`batchedMesh.userData.batchIdToEl[instanceId]`) doesn't keep pointing at
-    // a now-detached object3D and crash hover/select handlers.
-    sceneEl.addEventListener('child-detached', onLateChildDetached);
+    // Batch-slot release on removal is NOT done from a child-detached listener: it doesn't
+    // reliably reach the scene (a managed-street teardown detaches the whole subtree, then
+    // street-generated clearEntities removes the already-disconnected members, so their
+    // child-detached never bubbles). Instead gltf-model / gltf-part call removeMember /
+    // untrackLateUnbatched from their component remove(), which A-Frame fires during the
+    // entity's own disconnectedCallback for any document-disconnection.
     // componentchanged is emitted with bubbles=false, but the capture phase still
     // visits ancestors. Listening with { capture: true } lets one hook on sceneEl
     // see every entity's transform / visible change; we then walk evt.target's
@@ -962,19 +963,6 @@ function onLateModelLoaded(evt) {
     ensureOriginalBvh(el);
   }
   trackLateUnbatched(el);
-}
-
-function onLateChildDetached(evt) {
-  const sceneEl = evt.currentTarget;
-  const el = evt.detail?.el;
-  if (!el) return;
-  if (isBatched(el)) removeMember(el);
-  else untrackLateUnbatched(sceneEl, el);
-  // A removed subtree may contain multiple batched / still-pending descendants.
-  for (const descendant of el.querySelectorAll(BATCHABLE_SELECTOR)) {
-    if (isBatched(descendant)) removeMember(descendant);
-    else untrackLateUnbatched(sceneEl, descendant);
-  }
 }
 
 // Entities added AFTER the initial batch pass (editor clone / layer-reorder recreate them,
@@ -1158,17 +1146,22 @@ export function popMember(el) {
   return true;
 }
 
-// Release an entity's batch slots and, if it was the last member of the group, tear down
-// the BatchedMesh. Each slot is hidden (setVisibleAt false) and its id pushed onto the
-// group's freeInstanceIds pool, so a later addMemberToBatchedMeshes — e.g. a late-added
-// duplicate folded in by repackLateUnbatched — reuses that id instead of growing the buffer.
-// So repeated remove/add cycles reclaim slots rather than leaking holes. We deliberately hide
-// rather than deleteInstance: a deleted instanceId makes BatchedMesh.getVisibleAt / setMatrixAt
-// and the three-mesh-bvh accelerated raycast throw "Invalid instanceId" mid-raycast. Also
-// clears the raycast mapping so a removed/reparented entity no longer raycasts to a detached
-// object3D.
+// Release an entity from batching when it's removed. This is the single cleanup entry point
+// (called from gltf-model / gltf-part remove()): if the entity is a built batch member, free its
+// slots and, if it was the group's last member, tear down the BatchedMesh; otherwise it may be a
+// not-yet-batched late candidate, so drop it from the tally. Each freed slot is hidden
+// (setVisibleAt false) and its id pushed onto the group's freeInstanceIds pool, so a later
+// addMemberToBatchedMeshes — e.g. a duplicate folded in by repackLateUnbatched — reuses that id
+// instead of growing the buffer; repeated remove/add cycles reclaim slots rather than leak holes.
+// We deliberately hide rather than deleteInstance: a deleted instanceId makes
+// BatchedMesh.getVisibleAt / setMatrixAt and the three-mesh-bvh accelerated raycast throw
+// "Invalid instanceId" mid-raycast. Also clears the raycast mapping so a removed/reparented
+// entity no longer raycasts to a detached object3D.
 export function removeMember(el) {
-  if (!isBatched(el)) return false;
+  if (!isBatched(el)) {
+    untrackLateUnbatched(el?.sceneEl, el);
+    return false;
+  }
   const slots = el.object3D.userData._batchSlots;
   for (const { batchedMesh, instanceId } of slots) {
     batchedMesh.setVisibleAt(instanceId, false);
