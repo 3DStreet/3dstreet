@@ -283,6 +283,21 @@ function waitForModelLoaded(el) {
   });
 }
 
+export async function waitForAllModelsLoaded() {
+  for (let i = 0; i < 5; i++) {
+    await new Promise((resolve) => setTimeout(resolve));
+  }
+  const rootEl = document.getElementById('street-container');
+  const gltfEntities = Array.from(rootEl.querySelectorAll(BATCHABLE_SELECTOR));
+  if (gltfEntities.length > 0) {
+    const isDeferred = (el) => !!el.components?.['gltf-model']?.deferLoad;
+    await Promise.all(
+      gltfEntities.filter((el) => !isDeferred(el)).map(waitForModelLoaded)
+    );
+  }
+}
+globalThis.waitForAllModelsLoaded = waitForAllModelsLoaded;
+
 function describeEl(el) {
   return el.id ? `#${el.id}` : el.tagName.toLowerCase();
 }
@@ -795,7 +810,7 @@ export function beginBatching(sceneEl, batchingEnabled) {
 
 export async function batchModels(sceneEl) {
   if (!sceneEl) return [];
-  const rootEl = document.getElementById('street-container') || sceneEl;
+  const rootEl = document.getElementById('street-container');
 
   // Wait for the DOM to fully populate before grouping. Entities are minted by a chain of
   // components — managed-street → street-segment → street-generated-* → cloned gltf-model —

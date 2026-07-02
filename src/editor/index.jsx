@@ -230,7 +230,7 @@ Inspector.prototype = {
         useStore.getState().finishLoadingScene();
       }, 500);
     }
-    if (sceneEl._batchingEnabled) {
+    if (STREET.batchingEnabled) {
       batchModels(sceneEl);
     }
   },

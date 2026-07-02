@@ -403,5 +403,7 @@ export const gltfModelPlus = {
   }
 };
 
-delete AFRAME.components['gltf-model'];
-AFRAME.registerComponent('gltf-model', gltfModelPlus);
+if (STREET.batchingEnabled) {
+  delete AFRAME.components['gltf-model'];
+  AFRAME.registerComponent('gltf-model', gltfModelPlus);
+}

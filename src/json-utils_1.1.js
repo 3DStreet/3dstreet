@@ -423,7 +423,9 @@ function createEntities(entitiesData, parentEl) {
   const removeEntities = ['environment', 'reference-layers'];
   // Arm batching before any entity is minted below; batchModels runs on the "newScene"
   // event emitted after this createEntities pass. See beginBatching for the state model.
-  beginBatching(sceneElement, STREET.batchingEnabled);
+  if (STREET.batchingEnabled) {
+    beginBatching(sceneElement, STREET.batchingEnabled);
+  }
   for (const entityData of entitiesData) {
     // Legacy migration: the geospatial layer's visibility used to be toggled
     // via the entity's `visible` attribute. The new sidepanel exposes this
