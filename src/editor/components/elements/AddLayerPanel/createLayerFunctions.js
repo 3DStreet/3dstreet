@@ -7,6 +7,7 @@ import {
   SPLAT_EXTS
 } from '@shared/asset-upload/uploadAsset.js';
 import Events from '../../../lib/Events.js';
+import useStore from '@/store.js';
 
 // Per-kind file picker filters for the upload-backed custom layers, derived from
 // the shared extension allowlists in src/shared/asset-upload/uploadAsset.js so
@@ -387,6 +388,31 @@ export function createPrimitiveGeometry(position) {
     }
   };
   AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
+export function createParcelDataLayer(position) {
+  // Hackathon POC: interactive tax-parcel data layer served by a local
+  // ZoningViz server (see zoningviz repo, `uvicorn server:app --port 8081`).
+  // Requires the scene to already have a street-geo location; the component
+  // fetches parcels around that anchor and handles hover/click itself.
+  // Rotation matches the imported-geojson "X+ north" convention.
+  const definition = {
+    components: {
+      position: '0 0 0',
+      rotation: '0 -90 0',
+      'data-layer-name': 'Tax Parcels • ZoningViz Data Layer',
+      'data-no-transform': '',
+      'data-ignore-raycaster': '',
+      'parcel-data-layer': {}
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
+export function openZoningWizard(position) {
+  // Opens the Zoning Simulation wizard modal (ZoningModal). The wizard itself
+  // creates the resulting geojson buildings entity when the user finishes.
+  useStore.getState().setModal('zoning');
 }
 
 export function createImageEntity(position) {

@@ -280,4 +280,10 @@ window.addEventListener('beforeunload', (event) => {
   }
 });
 
+// Dev-only debug aid: lets the console (and browser-driven tests) drive UI
+// state, e.g. window.useStore.getState().setModal('zoning').
+if (process.env.NODE_ENV !== 'production') {
+  window.useStore = useStore;
+}
+
 export default useStore;

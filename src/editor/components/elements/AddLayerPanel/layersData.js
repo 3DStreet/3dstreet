@@ -139,6 +139,24 @@ export const shapeLayersData = [
 
 export const customLayersData = [
   {
+    name: 'Tax Parcels Data Layer',
+    img: '',
+    requiresPro: false,
+    icon: '',
+    description:
+      'ZoningViz POC: interactive tax parcel layer. Hover the map to inspect any parcel (zoning, height limit, redevelopment probability); click to pin details. Requires a scene location and a local ZoningViz server on port 8081.',
+    handlerFunction: createFunctions.createParcelDataLayer
+  },
+  {
+    name: 'Zoning Simulation Wizard',
+    img: '',
+    requiresPro: true,
+    icon: '',
+    description:
+      'ZoningViz POC (Pro): simulate 10–20 years of redevelopment under a zoning scenario for this location and add the resulting buildings to the scene. Requires a local ZoningViz server on port 8081.',
+    handlerFunction: createFunctions.openZoningWizard
+  },
+  {
     name: 'Upload Image',
     img: '',
     requiresPro: false,

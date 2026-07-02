@@ -18,6 +18,7 @@ import { NewModal } from './modals/NewModal';
 import { LoadingSceneModal } from './modals/LoadingSceneModal';
 import AssetDeepLinkModal from './AssetDeepLinkModal.jsx';
 import JobHealthModal from './JobHealthModal.jsx';
+import { ZoningModal } from './modals/ZoningModal';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
 import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
 import { ActionBar } from './elements/ActionBar';
@@ -99,6 +100,7 @@ export default function Main() {
       <LoadingSceneModal />
       <AssetDeepLinkModal />
       <JobHealthModal />
+      <ZoningModal />
       <LoadScript
         googleMapsApiKey={firebaseConfig.apiKey}
         libraries={GOOGLE_MAPS_LIBRARIES}
