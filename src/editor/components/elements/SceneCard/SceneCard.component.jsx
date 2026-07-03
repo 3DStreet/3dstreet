@@ -2,19 +2,29 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import ScenePlaceholder from '../../../../../ui_assets/ScenePlaceholder.svg';
 import styles from './SceneCard.module.scss';
 import { formatDistanceToNow } from 'date-fns';
+import { es, fr, ptBR } from 'date-fns/locale';
+import useStore from '@/store';
 import { DropdownIcon } from '@shared/icons';
 import { deleteScene, updateSceneIdAndTitle } from '../../../api/scene';
 import { Button } from '../Button';
 import { getUserProfile } from '@shared/utils/username';
 
-function TimeAgo({ timestamp, includeAgo = false }) {
+// Maps our i18n locale codes to date-fns locale objects so the "time ago"
+// string ("about 2 months ago") is localized. English is date-fns' default,
+// so it needs no entry (undefined -> default en-US).
+const DATE_FNS_LOCALES = { es, 'pt-BR': ptBR, fr };
+
+function TimeAgo({ timestamp, includeAgo = false, locale }) {
   // Convert Firestore Timestamp to JavaScript Date object if it exists
   if (!timestamp) return null;
 
   const date = timestamp.toDate();
 
   // Use date-fns to get "time ago" format
-  const timeAgo = formatDistanceToNow(date, { addSuffix: includeAgo });
+  const timeAgo = formatDistanceToNow(date, {
+    addSuffix: includeAgo,
+    locale: DATE_FNS_LOCALES[locale]
+  });
 
   return timeAgo;
 }
@@ -25,6 +35,7 @@ const SceneCard = ({
   setScenesData,
   isCommunityTabSelected
 }) => {
+  const locale = useStore((state) => state.locale);
   const [showMenu, setShowMenu] = useState(null);
   const [editIndex, setEditIndex] = useState(null);
   const [editInputValue, setEditInputValue] = useState('');
@@ -231,7 +242,8 @@ const SceneCard = ({
                       <p className={styles.timestamp}>
                         {TimeAgo({
                           timestamp: scene.data().updateTimestamp,
-                          includeAgo: true
+                          includeAgo: true,
+                          locale
                         })}
                       </p>
                     </div>
@@ -241,7 +253,8 @@ const SceneCard = ({
                       <p className={styles.timestamp}>
                         {TimeAgo({
                           timestamp: scene.data().updateTimestamp,
-                          includeAgo: true
+                          includeAgo: true,
+                          locale
                         })}
                       </p>
                     </div>
