@@ -298,8 +298,14 @@ describe('batch-models shadow flag capture', () => {
 });
 
 describe('batch-models skinned mesh batching', () => {
-  // A skinned box: BoxGeometry plus the skinIndex/skinWeight attributes a rigged GLB carries.
-  function skinnedRoot() {
+  // A skinned box with a real one-bone skeleton (BoxGeometry + the skinIndex/skinWeight a rigged
+  // GLB carries). Bound while everything sits at the origin — so the bone's inverse-bind is
+  // identity — then optionally posed and/or placed, mirroring a GLB authored+bound at the origin
+  // and later positioned in the scene. `posePos` moves the bone AFTER bind (a resting pose that
+  // differs from the bind pose); `worldPos` moves the whole root (scene placement). The final
+  // refresh uses updateWorldMatrix (like batchModels) NOT updateMatrixWorld — the latter would
+  // refresh SkinnedMesh.bindMatrixInverse and mask the stale-inverse path the bake recomputes.
+  function skinnedRoot({ posePos, worldPos } = {}) {
     const geometry = new THREE.BoxGeometry();
     const n = geometry.attributes.position.count;
     const skinIndex = new Uint16Array(n * 4);
@@ -313,13 +319,20 @@ describe('batch-models skinned mesh batching', () => {
       'skinWeight',
       new THREE.Float32BufferAttribute(skinWeight, 4)
     );
+    const bone = new THREE.Bone();
+    const mesh = new THREE.SkinnedMesh(geometry, new THREE.MeshBasicMaterial());
     const root = new THREE.Group();
-    root.add(new THREE.SkinnedMesh(geometry, new THREE.MeshBasicMaterial()));
-    root.updateMatrixWorld(true);
+    root.add(bone);
+    root.add(mesh);
+    root.updateMatrixWorld(true); // bone at origin
+    mesh.bind(new THREE.Skeleton([bone])); // boneInverses = identity, bindMatrix = identity
+    if (posePos) bone.position.copy(posePos);
+    if (worldPos) root.position.copy(worldPos);
+    root.updateWorldMatrix(true, true);
     return root;
   }
 
-  it('batches a static skinned mesh at bind pose by default', () => {
+  it('batches a static skinned mesh by default', () => {
     // Static-rigged model (e.g. a car with wheel bones we never animate): the SkinnedMesh
     // used to be skipped outright; with BATCH_SKINNED_MESHES on it's collected like any mesh.
     expect(batch.BATCH_SKINNED_MESHES).toBe(true);
@@ -331,7 +344,7 @@ describe('batch-models skinned mesh batching', () => {
     expect(materialGroups.size).toBe(1);
   });
 
-  it('strips skinIndex/skinWeight from the batched geometry, keeping position', () => {
+  it('drops skinIndex/skinWeight from the baked geometry, keeping position', () => {
     const { materialGroups } = batch._test.collectRefSubMeshes(
       skinnedRoot(),
       new THREE.Matrix4()
@@ -342,21 +355,52 @@ describe('batch-models skinned mesh batching', () => {
     expect(geometry.getAttribute('skinWeight')).toBeUndefined();
   });
 
-  it('reuses one stripped clone per source geometry (dedup stays intact)', () => {
-    // Two sub-meshes sharing one skinned geometry + material must collapse to a single
-    // stripped clone, or batchGroup's identity-based dedup would addGeometry it twice.
+  it('bakes the resting bone pose into the vertices (not the bind pose)', () => {
+    // Bind at the origin, then translate the sole bone +5 in y: every vertex (fully weighted to
+    // it) must move +5. This is the whole point — a posed rig renders its pose, not the T-pose.
+    const { materialGroups } = batch._test.collectRefSubMeshes(
+      skinnedRoot({ posePos: new THREE.Vector3(0, 5, 0) }),
+      new THREE.Matrix4()
+    );
+    const [{ geometry }] = [...materialGroups.values()][0];
+    geometry.computeBoundingBox();
+    // BoxGeometry spans y ∈ [-0.5, 0.5]; after the +5 bone it must be ~[4.5, 5.5].
+    expect(geometry.boundingBox.min.y).toBeCloseTo(4.5, 3);
+    expect(geometry.boundingBox.max.y).toBeCloseTo(5.5, 3);
+  });
+
+  it('bakes to mesh-local space when the entity is placed far from the origin', () => {
+    // Regression: with a stale bindMatrixInverse the bake produced WORLD coords, and the slot
+    // matrix then double-applied the placement (a model 100 units out rendered at 200 and
+    // vanished). The baked box must stay near its own local origin, not the +100 world offset.
+    const root = skinnedRoot({ worldPos: new THREE.Vector3(100, 0, 0) });
+    const { materialGroups } = batch._test.collectRefSubMeshes(
+      root,
+      root.matrixWorld
+    );
+    const [{ geometry }] = [...materialGroups.values()][0];
+    geometry.computeBoundingBox();
+    expect(geometry.boundingBox.max.x).toBeLessThan(2);
+    expect(geometry.boundingBox.min.x).toBeGreaterThan(-2);
+  });
+
+  it('bakes each skinned sub-mesh on its own (no shared-geometry memo)', () => {
+    // Baking depends on each node's skeleton pose, so two sub-meshes sharing a source geometry
+    // yield distinct baked geometries — batchGroup's addGeometry dedup keys on identity, so this
+    // just means two registered geometries, which is correct (they could be posed differently).
     const root = skinnedRoot();
-    const shared = root.children[0];
+    const shared = root.children.find((c) => c.isSkinnedMesh);
     const twin = new THREE.SkinnedMesh(shared.geometry, shared.material);
+    twin.bind(shared.skeleton);
     root.add(twin);
-    root.updateMatrixWorld(true);
+    root.updateWorldMatrix(true, true);
     const { materialGroups } = batch._test.collectRefSubMeshes(
       root,
       new THREE.Matrix4()
     );
     const entries = [...materialGroups.values()][0];
     expect(entries.length).toBe(2);
-    expect(entries[0].geometry).toBe(entries[1].geometry);
+    expect(entries[0].geometry).not.toBe(entries[1].geometry);
   });
 });
 

@@ -8,14 +8,17 @@ import { releaseSharedSource } from './sharedTextureSources';
 // set globaThis.BATCHING_ENABLED to false before loading the js bundle.
 export const BATCHING_ENABLED = window.BATCHING_ENABLED ?? true;
 
-// Batch skinned meshes too (BatchedMesh does no skinning, so they render at bind pose).
-// This is only correct while the skeleton never moves — but any entity that could animate its
-// bones carries a component outside its provider's safe-components set (animation-mixer, etc.) and is already
-// excluded from batching by getBlockingComponents, so the skinned meshes that reach batching are
-// all static-rigged (e.g. car assets with wheel bones we don't animate). At bind pose three.js's
-// skinning resolves to worldVertex = mesh.matrixWorld · position, exactly what the static batch
-// path computes, so the result is pixel-identical. Set window.BATCH_SKINNED_MESHES = false before
-// the bundle loads to keep them unbatched (A/B benchmarking).
+// Batch skinned meshes too. A BatchedMesh does no skinning, so we can't just copy a skinned
+// mesh's bind-pose vertices — the authored pose (a cyclist's arms bent onto the handlebars, a
+// figure seated) lives in the resting BONE transforms, not the vertices, so the raw geometry is
+// the T-pose. Instead we BAKE: evaluate the full skinning transform per vertex at the resting
+// skeleton and write the deformed positions/normals into a static geometry (bakeSkinnedGeometry).
+// Any entity that could animate its bones carries a component outside its provider's safe-components
+// set (animation-mixer, etc.) and is already excluded from batching by getBlockingComponents, so the
+// skinned meshes that reach batching are all static-rigged — their skeleton stays at the pose we
+// bake. All duplicate members of a src load to the identical authored rest pose, so baking the
+// reference member is representative. Set window.BATCH_SKINNED_MESHES = false before the bundle
+// loads to keep skinned meshes unbatched (A/B benchmarking).
 export const BATCH_SKINNED_MESHES = window.BATCH_SKINNED_MESHES ?? true;
 
 // Automatic runtime batching of repeated gltf-model, gltf-part, and geometry+material (stencil)
@@ -501,32 +504,136 @@ function getSrc(el) {
   return src.startsWith('data:') ? 'data:...' : src;
 }
 
-// BatchedMesh does no skinning, so a skinned mesh's skinIndex/skinWeight attributes are dead
-// weight in the combined buffer — and worse, addGeometry requires a consistent attribute set,
-// so it throws if some sub-meshes sharing a material carry them and others don't. Return a
-// shallow geometry that shares the vertex buffers but drops the skinning attributes; addGeometry
-// copies the data out immediately and the result is never rendered, so sharing BufferAttributes
-// with the (about-to-be-stripped) original is safe. Non-skinned geometry is returned unchanged
-// (same identity), so the EXT_mesh_gpu_instancing / shared-geometry dedup still collapses it.
-function withoutSkinningAttributes(geometry) {
-  if (
-    !geometry.getAttribute('skinIndex') &&
-    !geometry.getAttribute('skinWeight')
-  ) {
-    return geometry;
+// Bake a skinned mesh's current (resting) pose into a static geometry: evaluate the full
+// per-vertex skinning transform against the live skeleton and write the deformed positions and
+// normals (and tangents, if present) into a fresh BufferGeometry, dropping skinIndex/skinWeight.
+// A BatchedMesh does no skinning, so without this a posed rig renders at its bind pose (T-pose) —
+// the authored pose lives in the bones, not the bind-pose vertices. The math mirrors three.js's
+// skinning_vertex / skinnormal_vertex shader chunks exactly:
+//   skinMatrix = bindMatrixInverse · (Σ_k w_k · boneₖ.matrixWorld · boneInverseₖ) · bindMatrix
+//   position' = skinMatrix · position,   normal' = normalize(mat3(skinMatrix) · normal)
+// Assumes the caller refreshed the scene graph so bone matrixWorld are current. Baked per node
+// (skeleton pose is node-specific), so it is NOT shared via the geometry-keyed memo — each skinned
+// sub-mesh yields its own geometry, which is fine: they were posed independently.
+function bakeSkinnedGeometry(node) {
+  const geometry = node.geometry;
+  const position = geometry.attributes.position;
+  const normal = geometry.attributes.normal;
+  const tangent = geometry.attributes.tangent;
+  const skinIndexAttr = geometry.attributes.skinIndex;
+  const skinWeightAttr = geometry.attributes.skinWeight;
+  const { skeleton, bindMatrix } = node;
+
+  // The inverse-bind we need is NOT node.bindMatrixInverse. In AttachedBindMode (three's default,
+  // which glTF uses) that value is inverse(mesh.matrixWorld), kept current only by
+  // SkinnedMesh.updateMatrixWorld — but batchModels refreshes the graph with updateWorldMatrix(),
+  // which does not run that override, so node.bindMatrixInverse is stale (identity from bind time).
+  // Using it bakes WORLD-space vertices; the slot's node.matrixWorld then applies the placement a
+  // second time (a truck 400m down the road renders at 800m and vanishes). Recompute it from the
+  // live world matrix so the bake lands in mesh-local space. DetachedBindMode keeps a fixed
+  // bindMatrix, so invert that instead.
+  const bindMatrixInverse = new THREE.Matrix4();
+  if (node.bindMode === THREE.DetachedBindMode) {
+    bindMatrixInverse.copy(bindMatrix).invert();
+  } else {
+    bindMatrixInverse.copy(node.matrixWorld).invert();
   }
-  const stripped = new THREE.BufferGeometry();
+
+  const baked = new THREE.BufferGeometry();
+  // Carry over every attribute except skinning (dropped) and position/normal/tangent (rebaked).
   for (const name in geometry.attributes) {
-    if (name === 'skinIndex' || name === 'skinWeight') continue;
-    stripped.setAttribute(name, geometry.attributes[name]);
+    if (
+      name === 'skinIndex' ||
+      name === 'skinWeight' ||
+      name === 'position' ||
+      name === 'normal' ||
+      name === 'tangent'
+    ) {
+      continue;
+    }
+    baked.setAttribute(name, geometry.attributes[name]);
   }
-  if (geometry.index) stripped.setIndex(geometry.index);
-  stripped.groups = geometry.groups;
-  if (geometry.boundingBox) stripped.boundingBox = geometry.boundingBox.clone();
-  if (geometry.boundingSphere) {
-    stripped.boundingSphere = geometry.boundingSphere.clone();
+  if (geometry.index) baked.setIndex(geometry.index);
+  baked.groups = geometry.groups;
+
+  const count = position.count;
+  const bakedPositions = new Float32Array(count * 3);
+  const bakedNormals = normal ? new Float32Array(count * 3) : null;
+  const bakedTangents = tangent ? new Float32Array(count * 4) : null;
+
+  const skinIndex = new THREE.Vector4();
+  const skinWeight = new THREE.Vector4();
+  const vec = new THREE.Vector3();
+  const skinMatrix = new THREE.Matrix4();
+  const boneMatrix = new THREE.Matrix4();
+  const normalMat = new THREE.Matrix3();
+
+  for (let i = 0; i < count; i++) {
+    skinIndex.fromBufferAttribute(skinIndexAttr, i);
+    skinWeight.fromBufferAttribute(skinWeightAttr, i);
+
+    // Blended bone matrix: Σ_k w_k · (boneₖ.matrixWorld · boneInverseₖ). A SkinnedMesh with no
+    // bound skeleton can't be posed (shouldn't happen for a GLTFLoader model, but stay robust) —
+    // leave anyWeight false so the vertex passes through at bind pose.
+    const e = skinMatrix.elements;
+    for (let j = 0; j < 16; j++) e[j] = 0;
+    let anyWeight = false;
+    if (skeleton) {
+      for (let k = 0; k < 4; k++) {
+        const weight = skinWeight.getComponent(k);
+        if (weight === 0) continue;
+        anyWeight = true;
+        const boneIndex = skinIndex.getComponent(k);
+        boneMatrix.multiplyMatrices(
+          skeleton.bones[boneIndex].matrixWorld,
+          skeleton.boneInverses[boneIndex]
+        );
+        const b = boneMatrix.elements;
+        for (let j = 0; j < 16; j++) e[j] += b[j] * weight;
+      }
+    }
+
+    if (anyWeight) {
+      // Full transform back into mesh-local space: bindMatrixInverse · blended · bindMatrix.
+      skinMatrix.premultiply(bindMatrixInverse).multiply(bindMatrix);
+    } else {
+      // Unweighted vertex (shouldn't happen for a valid skin) — leave it at bind pose.
+      skinMatrix.identity();
+    }
+
+    vec.fromBufferAttribute(position, i).applyMatrix4(skinMatrix);
+    bakedPositions[i * 3] = vec.x;
+    bakedPositions[i * 3 + 1] = vec.y;
+    bakedPositions[i * 3 + 2] = vec.z;
+
+    // three.js skins normals/tangents with the linear part of skinMatrix directly (not the
+    // inverse-transpose); mirror that so lighting matches the unbatched render.
+    if (bakedNormals || bakedTangents) normalMat.setFromMatrix4(skinMatrix);
+
+    if (bakedNormals) {
+      vec.fromBufferAttribute(normal, i).applyMatrix3(normalMat).normalize();
+      bakedNormals[i * 3] = vec.x;
+      bakedNormals[i * 3 + 1] = vec.y;
+      bakedNormals[i * 3 + 2] = vec.z;
+    }
+
+    if (bakedTangents) {
+      vec.fromBufferAttribute(tangent, i).applyMatrix3(normalMat).normalize();
+      bakedTangents[i * 4] = vec.x;
+      bakedTangents[i * 4 + 1] = vec.y;
+      bakedTangents[i * 4 + 2] = vec.z;
+      bakedTangents[i * 4 + 3] = tangent.getW(i); // handedness is preserved
+    }
   }
-  return stripped;
+
+  baked.setAttribute('position', new THREE.BufferAttribute(bakedPositions, 3));
+  if (bakedNormals) {
+    baked.setAttribute('normal', new THREE.BufferAttribute(bakedNormals, 3));
+  }
+  if (bakedTangents) {
+    baked.setAttribute('tangent', new THREE.BufferAttribute(bakedTangents, 4));
+  }
+  return baked;
 }
 
 // Group this model's sub-meshes by material, keyed by material reference.
@@ -557,18 +664,14 @@ function collectRefSubMeshes(refMesh, refWorldMatrix) {
   let castShadow = false;
   let receiveShadow = false;
   let shadowCaptured = false;
-  // Memoize per original geometry so a skinned geometry reused across entries (gpu-instancing
-  // expansion, shared sub-meshes) yields ONE stripped clone — keeping the identity-based dedup
-  // in batchGroup intact.
-  const strippedGeometries = new Map();
-  const batchGeometryFor = (geometry) => {
-    let stripped = strippedGeometries.get(geometry);
-    if (stripped === undefined) {
-      stripped = withoutSkinningAttributes(geometry);
-      strippedGeometries.set(geometry, stripped);
-    }
-    return stripped;
-  };
+  // A skinned mesh is baked to its resting pose (bakeSkinnedGeometry) — its skinIndex/skinWeight
+  // are dropped there, so the combined buffer never mixes skinned and unskinned attribute sets
+  // (BatchedMesh.addGeometry would throw). A non-skinned mesh carries no skin attributes, so its
+  // geometry batches as-is (same identity, so EXT_mesh_gpu_instancing / shared-geometry dedup in
+  // batchGroup still collapses it). node.isSkinnedMesh is the authoritative signal, not the
+  // presence of the attributes.
+  const batchGeometryFor = (node) =>
+    node.isSkinnedMesh ? bakeSkinnedGeometry(node) : node.geometry;
 
   refMesh.traverse((node) => {
     if (!node.isMesh) return;
@@ -596,9 +699,9 @@ function collectRefSubMeshes(refMesh, refWorldMatrix) {
     const material = node.material;
     if (!materialGroups.has(material)) materialGroups.set(material, []);
     const group = materialGroups.get(material);
-    // Skinned meshes render at bind pose (no bones move — see BATCH_SKINNED_MESHES), so we
-    // batch their static geometry minus the skinning attributes.
-    const geometry = batchGeometryFor(node.geometry);
+    // Skinned meshes are baked to their resting pose (bakeSkinnedGeometry); non-skinned pass
+    // through unchanged. Either way the result carries no skinning attributes.
+    const geometry = batchGeometryFor(node);
     if (node.isInstancedMesh) {
       // EXT_mesh_gpu_instancing: expand each GPU instance into its own entry so the
       // BatchedMesh renders them individually (BatchedMesh can't nest InstancedMesh).
