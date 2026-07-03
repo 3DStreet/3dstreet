@@ -359,3 +359,214 @@ describe('batch-models skinned mesh batching', () => {
     expect(entries[0].geometry).toBe(entries[1].geometry);
   });
 });
+
+describe('batch-models geometry-material (stencil) provider', () => {
+  // A stencil-like entity: geometry (plane) + material (shared atlas texture) + atlas-uvs (the
+  // per-stencil UV cell) + a single plane mesh. `atlasSrc` is the resolved material src (a DOM
+  // <img> asset in production); `cell` is the atlas-uvs data that distinguishes stencils.
+  function fakeStencilEl({
+    atlasSrc = { id: 'stencils-atlas', nodeType: 1 },
+    cell = { totalRows: 4, totalColumns: 4, column: 3, row: 2 },
+    geometryData = { primitive: 'plane', width: 1, height: 1 },
+    material,
+    position = [0, 0, 0],
+    extraComponents = {}
+  } = {}) {
+    const object3D = new THREE.Object3D();
+    object3D.position.set(...position);
+    const mat = material || new THREE.MeshBasicMaterial({ transparent: true });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(), mat);
+    object3D.add(mesh);
+    object3D.updateMatrixWorld(true);
+    const components = {
+      geometry: { data: geometryData },
+      material: { data: { src: atlasSrc, transparent: true } },
+      'atlas-uvs': { data: cell },
+      ...extraComponents
+    };
+    return {
+      object3D,
+      components,
+      tagName: 'A-ENTITY',
+      classList: { contains: () => false },
+      getObject3D: (type) => (type === 'mesh' ? mesh : undefined),
+      emit: () => {},
+      _mesh: mesh
+    };
+  }
+
+  // A batch root that just stores object3Ds, enough for batchMergedByMaterial.
+  function fakeBatchRoot() {
+    const objs = {};
+    return {
+      setObject3D: (k, o) => {
+        objs[k] = o;
+      },
+      getObject3D: (k) => objs[k],
+      removeObject3D: (k) => delete objs[k],
+      _objs: objs
+    };
+  }
+
+  it('recognizes a geometry+material stencil, sharing (not owning) resources', () => {
+    const provider = batch._test.getBatchProvider(fakeStencilEl());
+    expect(provider.kind).toBe('geometry-material');
+    expect(provider.mergeByMaterial).toBe(true);
+    expect(provider.ownsResources).toBe(false);
+    expect(provider.clonesMaterial).toBe(true);
+  });
+
+  it('groups by material alone — same atlas keys together across different cells', () => {
+    const a = batch._test.stencilGroupKey(fakeStencilEl());
+    const differentCell = batch._test.stencilGroupKey(
+      fakeStencilEl({
+        cell: { totalRows: 4, totalColumns: 4, column: 3, row: 3 }
+      })
+    );
+    expect(differentCell).toBe(a); // one atlas → one group
+    const otherAtlas = batch._test.stencilGroupKey(
+      fakeStencilEl({ atlasSrc: { id: 'markings-atlas', nodeType: 1 } })
+    );
+    expect(otherAtlas).not.toBe(a); // a second atlas → its own group
+  });
+
+  it('separates geometry signatures by atlas cell within a group', () => {
+    const cellA = batch._test.stencilGeometrySignature(fakeStencilEl());
+    const cellAAgain = batch._test.stencilGeometrySignature(fakeStencilEl());
+    expect(cellAAgain).toBe(cellA);
+    const cellB = batch._test.stencilGeometrySignature(
+      fakeStencilEl({
+        cell: { totalRows: 4, totalColumns: 4, column: 3, row: 3 }
+      })
+    );
+    expect(cellB).not.toBe(cellA);
+  });
+
+  it('treats geometry/material/atlas-uvs/polygon-offset as non-blocking for a stencil', () => {
+    const el = fakeStencilEl({
+      extraComponents: { 'polygon-offset': { data: {} }, shadow: { data: {} } }
+    });
+    expect(batch._test.getBlockingComponents(el)).toEqual([]);
+  });
+
+  it('clones the material AND its textures, but shares the underlying Source', () => {
+    const texture = new THREE.Texture();
+    const source = texture.source;
+    const material = new THREE.MeshBasicMaterial({ map: texture });
+    const clone = batch._test.cloneMaterialWithTextures(material);
+    expect(clone).not.toBe(material);
+    expect(clone.map).not.toBe(texture); // own Texture object...
+    expect(clone.map.source).toBe(source); // ...but the shared refcounted Source
+  });
+
+  it('hides the original mesh on strip and restores it on reload', () => {
+    const el = fakeStencilEl();
+    const provider = batch._test.getBatchProvider(el);
+    provider.strip();
+    expect(el._mesh.visible).toBe(false);
+    provider.reload();
+    expect(el._mesh.visible).toBe(true);
+  });
+
+  it('singleBatchableSubMesh returns the lone quad, rejects multi-mesh', () => {
+    const single = fakeStencilEl();
+    expect(batch._test.singleBatchableSubMesh(single.object3D)).toBe(
+      single._mesh
+    );
+    single.object3D.add(
+      new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshBasicMaterial())
+    );
+    expect(batch._test.singleBatchableSubMesh(single.object3D)).toBeNull();
+  });
+
+  it('merges a whole atlas into ONE BatchedMesh — one geometry per distinct cell, one instance per member', () => {
+    const cellA = { totalRows: 4, totalColumns: 4, column: 3, row: 2 };
+    const cellB = { totalRows: 4, totalColumns: 4, column: 3, row: 3 };
+    // Three stencils sharing one atlas: two of cell A, one of cell B.
+    const members = [
+      fakeStencilEl({ cell: cellA, position: [0, 0, 0] }),
+      fakeStencilEl({ cell: cellA, position: [2, 0, 0] }),
+      fakeStencilEl({ cell: cellB, position: [4, 0, 0] })
+    ];
+    const root = fakeBatchRoot();
+    const group = batch._test.batchMergedByMaterial(
+      root,
+      'geomat|atlas',
+      members
+    );
+
+    expect(group).toBeTruthy();
+    expect(group.heterogeneous).toBe(true);
+    const bm = group.batchedMeshes[0].batchedMesh;
+    expect(bm.instanceCount).toBe(3); // one instance per member
+    expect(bm._geometryCount).toBe(2); // deduped: cell A shared, cell B distinct
+    expect(group.ownedMaterials.length).toBe(1); // single cloned atlas material
+
+    for (const m of members) {
+      expect(batch.isBatched(m)).toBe(true);
+      expect(m.object3D.userData._batchSlots).toHaveLength(1);
+      expect(m._mesh.visible).toBe(false); // original hidden in place
+      expect(m.object3D.userData._batchLocalBbox).toBeTruthy(); // per-member selection box
+    }
+  });
+
+  it('does not merge when fewer than two members are batchable', () => {
+    const root = fakeBatchRoot();
+    expect(
+      batch._test.batchMergedByMaterial(root, 'geomat|atlas', [fakeStencilEl()])
+    ).toBeNull();
+  });
+
+  it('pops a batched member when a batch-defining component changes (mixin/atlas-uvs swap)', () => {
+    const cellA = { totalRows: 4, totalColumns: 4, column: 3, row: 2 };
+    const members = [
+      fakeStencilEl({ cell: cellA, position: [0, 0, 0] }),
+      fakeStencilEl({ cell: cellA, position: [2, 0, 0] }),
+      fakeStencilEl({ cell: cellA, position: [4, 0, 0] })
+    ];
+    const root = fakeBatchRoot();
+    const sceneEl = fakeSceneEl();
+    root.sceneEl = sceneEl;
+    const group = batch._test.batchMergedByMaterial(
+      root,
+      'geomat|atlas',
+      members
+    );
+    sceneEl._batchModelsBuilt.push(group);
+
+    const swapped = members[0];
+    expect(batch.isBatched(swapped)).toBe(true);
+    expect(swapped._mesh.visible).toBe(false);
+
+    // Simulate A-Frame firing componentchanged for atlas-uvs (a mixin swap changed the cell).
+    batch._test.onSceneComponentChanged({
+      type: 'componentchanged',
+      detail: { name: 'atlas-uvs' },
+      currentTarget: sceneEl,
+      target: swapped
+    });
+
+    // Popped: dropped from the batch and its now-updated original mesh is shown again.
+    expect(batch.isBatched(swapped)).toBe(false);
+    expect(swapped._mesh.visible).toBe(true);
+    expect(group.activeMemberCount).toBe(2);
+    // Untouched members stay batched.
+    expect(batch.isBatched(members[1])).toBe(true);
+    expect(batch.isBatched(members[2])).toBe(true);
+  });
+
+  it('does not pop on a batch-defining change to an UNBATCHED entity', () => {
+    const el = fakeStencilEl();
+    const sceneEl = fakeSceneEl();
+    // A built group must exist or the listener early-outs; use an unrelated empty-ish marker.
+    sceneEl._batchModelsBuilt.push({ key: 'other' });
+    batch._test.onSceneComponentChanged({
+      type: 'componentchanged',
+      detail: { name: 'atlas-uvs' },
+      currentTarget: sceneEl,
+      target: el
+    });
+    expect(batch.isBatched(el)).toBe(false); // no-op, no throw
+    expect(el._mesh.visible).toBe(true); // never hidden
+  });
+});

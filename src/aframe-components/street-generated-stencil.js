@@ -1,5 +1,7 @@
 /* global AFRAME */
 
+import { BATCHING_ENABLED } from '../batch-models';
+
 // generate cloned stencils on a street surface
 AFRAME.registerComponent('street-generated-stencil', {
   multiple: true,
@@ -201,6 +203,13 @@ AFRAME.registerComponent('street-generated-stencil', {
         clone.setAttribute('data-layer-name', `Cloned Model • ${stencilName}`);
         clone.setAttribute('data-parent-component', this.attrName);
         clone.setAttribute('polygon-offset', { factor: -2, units: -2 });
+
+        // Lifecycle hook so batch-models frees this stencil's BatchedMesh slot from the entity's
+        // own disconnectedCallback when it's regenerated / deleted (see batch-member.js). Only
+        // meaningful when batching runs; skipped otherwise to avoid a component on every stencil.
+        if (BATCHING_ENABLED) {
+          clone.setAttribute('batch-member', '');
+        }
 
         this.createdEntities.push(clone);
       });

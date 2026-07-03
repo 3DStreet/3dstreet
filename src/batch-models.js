@@ -10,7 +10,7 @@ export const BATCHING_ENABLED = window.BATCHING_ENABLED ?? true;
 
 // Batch skinned meshes too (BatchedMesh does no skinning, so they render at bind pose).
 // This is only correct while the skeleton never moves — but any entity that could animate its
-// bones carries a component outside BATCH_SAFE_COMPONENTS (animation-mixer, etc.) and is already
+// bones carries a component outside its provider's safe-components set (animation-mixer, etc.) and is already
 // excluded from batching by getBlockingComponents, so the skinned meshes that reach batching are
 // all static-rigged (e.g. car assets with wheel bones we don't animate). At bind pose three.js's
 // skinning resolves to worldVertex = mesh.matrixWorld · position, exactly what the static batch
@@ -18,7 +18,18 @@ export const BATCHING_ENABLED = window.BATCHING_ENABLED ?? true;
 // the bundle loads to keep them unbatched (A/B benchmarking).
 export const BATCH_SKINNED_MESHES = window.BATCH_SKINNED_MESHES ?? true;
 
-// Automatic runtime batching of repeated gltf-model and gltf-part entities.
+// Automatic runtime batching of repeated gltf-model, gltf-part, and geometry+material (stencil)
+// entities. Each is a "provider" (getBatchProvider) exposing a batch key, strip/reload behavior,
+// and whether it owns its resources. The gltf providers dedupe identical models by src; the
+// geometry-material provider (scoped to stencils via their atlas-uvs marker) is mergeByMaterial:
+// it groups by material ALONE, so an entire atlas's stencils collapse into ONE BatchedMesh via a
+// dedicated build path (batchMergedByMaterial) that registers each distinct cell geometry once and
+// points each member's instance at its cell — one draw call per atlas. Per-instance variation is
+// the cell UVs (baked into the geometry by atlas-uvs) and the slot transform. A-Frame disposes a
+// stencil's material on entity
+// removal, that provider clones the material + its textures for the BatchedMesh (clones share the
+// texture Source, so no extra VRAM) and hides — never detaches — the original mesh, since A-Frame's
+// geometry.remove() assumes the mesh object3D still exists.
 //
 // - Deferral (gltf-model only): when a scene will be batched, beginBatching called from createEntities sets
 //   `sceneEl._batchingEnabled = true` and gltf-model.update() parks its GLB load until
@@ -31,7 +42,7 @@ export const BATCH_SKINNED_MESHES = window.BATCH_SKINNED_MESHES ?? true;
 //   sets `sceneEl._batchGroupingDone = true` and emits "batch-grouping-done" to release the
 //   parked gltf-model components: refs load, deferred ones skip.
 // - It then waits for every non-deferred model to load, filters to entities whose components
-//   are all in BATCH_SAFE_COMPONENTS, groups by batch key (gltf-model src, or gltf-part
+//   are all in the per-provider safe-components set, groups by batch key (gltf-model src, or gltf-part
 //   src+part), and for each group >= 2 builds one THREE.BatchedMesh per material from the
 //   reference member (members[0]).
 // - Per-member: addInstance(geometryId) x sub-mesh-count, setMatrixAt(instanceId,
@@ -47,7 +58,7 @@ export const BATCH_SKINNED_MESHES = window.BATCH_SKINNED_MESHES ?? true;
 //   A-Frame runtime cursor can raycast them. The cursor doesn't yet resolve BatchedMesh
 //   hits to entities via batchId.
 // - processKeyGroup classifies an entity as unsafe only when it carries a component outside
-//   BATCH_SAFE_COMPONENTS (getBlockingComponents); those load/render unbatched.
+//   its per-provider safe-components set (getBlockingComponents); those load/render unbatched.
 // - Each member stores `_batchSlots` + `_batchGroup` (back-reference to the group object)
 //   on object3D.userData; the group tracks `activeMemberCount`. When removeMember drops
 //   the count to 0, teardownBuiltGroup disposes the BatchedMesh and, for gltf-model groups
@@ -80,15 +91,53 @@ export const BATCH_SKINNED_MESHES = window.BATCH_SKINNED_MESHES ?? true;
 // get a BVH on the BatchedMesh and unbatched / runtime-`.clickable` entities get one on their
 // original mesh.
 
-const BATCH_SAFE_COMPONENTS = new Set([
+// Components that never block batching, regardless of provider: pure transforms, visibility,
+// shadow flags, and the batch-member lifecycle hook batch-models attaches itself.
+const COMMON_SAFE_COMPONENTS = [
   'position',
   'rotation',
   'scale',
   'visible',
   'shadow',
-  'gltf-model',
-  'gltf-part'
-]);
+  'batch-member'
+];
+
+// Per-provider allowlist. A member batches only if every one of its components is safe for its
+// provider kind. The gltf providers must keep excluding `material` (a per-instance material swap
+// would be lost — see collectRefSubMeshes), but the geometry-material (stencil) provider is
+// DEFINED by its geometry+material+atlas-uvs components, so those are safe for it; polygon-offset
+// only tweaks the shared material's depth bias uniformly, so it's safe too.
+const SAFE_COMPONENTS_BY_KIND = {
+  'gltf-model': new Set([...COMMON_SAFE_COMPONENTS, 'gltf-model']),
+  'gltf-part': new Set([...COMMON_SAFE_COMPONENTS, 'gltf-part']),
+  'geometry-material': new Set([
+    ...COMMON_SAFE_COMPONENTS,
+    'geometry',
+    'material',
+    'atlas-uvs',
+    'polygon-offset'
+  ])
+};
+
+// Fallback for an entity with no batch provider (shouldn't be classified, but stay strict).
+const DEFAULT_SAFE_COMPONENTS = new Set(COMMON_SAFE_COMPONENTS);
+
+function safeComponentsForKind(kind) {
+  return SAFE_COMPONENTS_BY_KIND[kind] || DEFAULT_SAFE_COMPONENTS;
+}
+
+// Safe components whose VALUE nonetheless defines what a batched member renders — so a change to
+// one (e.g. an atlas-uvs cell swap when the mixin changes) makes that member's BatchedMesh instance
+// stale: the hidden mesh gets the new UVs/material, but the instance still points at the old cell
+// geometry / old cloned material. onSceneComponentChanged pops the member on such a change so it
+// re-renders unbatched with the new appearance (re-slotting isn't generally possible — a new cell
+// geometry may not fit the fixed BatchedMesh buffer, and a material change means a different group).
+// The gltf providers self-handle src changes in their own component update() (gltf-model reload /
+// gltf-part removeMember), so only geometry-material — built from stock/third-party components that
+// don't call removeMember — needs this.
+const BATCH_DEFINING_COMPONENTS_BY_KIND = {
+  'geometry-material': new Set(['geometry', 'material', 'atlas-uvs'])
+};
 
 // Below this triangle count, BVH build + traversal + memory cost outweighs the gain over
 // three.js's linear raycast in Mesh.raycast.
@@ -132,10 +181,12 @@ function getOrCreateBatchRoot() {
   return el;
 }
 
-// Entities batch-models can fold into a BatchedMesh: gltf-model (its own component) and
-// gltf-part (a named sub-mesh of a shared GLB, usually applied via a mixin). querySelectorAll
-// matches both attributes, including the mixin-applied ones.
-const BATCHABLE_SELECTOR = '[gltf-model], [gltf-part]';
+// Entities batch-models can fold into a BatchedMesh: gltf-model (its own component), gltf-part
+// (a named sub-mesh of a shared GLB, usually applied via a mixin), and geometry+material stencils
+// (matched via their `atlas-uvs` marker — the one component every stencil mixin carries and
+// nothing else uses, which scopes this selector to stencils rather than every [geometry] entity).
+// querySelectorAll matches all three, including the mixin-applied ones.
+const BATCHABLE_SELECTOR = '[gltf-model], [gltf-part], [atlas-uvs]';
 
 // Per-entity batching adapter abstracting the two providers' differences:
 // - key: identical key ⇒ identical geometry + material ⇒ batchable together. Kept distinct
@@ -168,7 +219,94 @@ function getBatchProvider(el) {
       reload: () => gltfPart.update()
     };
   }
+  // Stencils: a `geometry` (plane) + `material` (shared atlas texture) entity whose per-instance
+  // variation is UVs (baked into the geometry by atlas-uvs) and transform. ownsResources is false
+  // (the atlas Source is A-Frame-cache-shared and the plane geometry is copied into the BatchedMesh
+  // at build), and clonesMaterial is true — the BatchedMesh runs off a cloned material + textures
+  // so A-Frame's per-entity material disposal (material.remove() disposes a member's material AND
+  // textures) can't pull the material out from under a group that outlives that member.
+  const geometry = el.components?.['geometry'];
+  const material = el.components?.['material'];
+  if (geometry && material) {
+    return {
+      kind: 'geometry-material',
+      // Group by MATERIAL alone: every stencil sharing one atlas material folds into a single
+      // BatchedMesh. Their per-cell UV geometries differ, but a BatchedMesh holds many geometries
+      // under one material, so the group's build path (batchMergedByMaterial) registers each
+      // distinct cell geometry once (deduped by stencilGeometrySignature) and points each member's
+      // instance at its own cell — collapsing a whole atlas's stencils to ONE draw call.
+      key: stencilGroupKey(el),
+      mergeByMaterial: true,
+      ownsResources: false,
+      clonesMaterial: true,
+      strip: () => hideGeometryMaterialMesh(el),
+      reload: () => showGeometryMaterialMesh(el)
+    };
+  }
   return null;
+}
+
+// The geometry-material (stencil) provider HIDES the original mesh in place rather than detaching
+// it. A-Frame's geometry component remove() assumes the 'mesh' object3D still exists
+// (geometry.js: `getObject3D('mesh').geometry = dummy`, with no null guard), so removeObject3D here
+// would crash the entity's own teardown. A hidden mesh draws nothing, so the BatchedMesh still
+// collapses the draw calls; only the (tiny) plane geometry stays resident. reload() reverses it
+// for popMember, so an entity that grows an unsafe component renders unbatched from its own mesh.
+function hideGeometryMaterialMesh(el) {
+  const mesh = el.getObject3D('mesh');
+  if (mesh) mesh.visible = false;
+}
+function showGeometryMaterialMesh(el) {
+  const mesh = el.getObject3D('mesh');
+  if (mesh) mesh.visible = true;
+}
+
+// Stable, order-independent string for a component's data object, so two entities with equal
+// material / geometry / atlas-uvs values yield the same batch key. DOM elements (a material's
+// resolved `src` asset) collapse to their id / url; a source lacking both (e.g. a per-label
+// canvas) gets a unique token so distinct sources never accidentally share a key.
+const domTokens = new WeakMap();
+let domTokenSeq = 0;
+function domToken(node) {
+  if (node.id) return `#${node.id}`;
+  if (node.src) return `url(${node.src})`;
+  let token = domTokens.get(node);
+  if (token === undefined) {
+    token = `dom:${domTokenSeq++}`;
+    domTokens.set(node, token);
+  }
+  return token;
+}
+function stableStringify(value) {
+  if (value === null || value === undefined) return String(value);
+  if (typeof value !== 'object') return JSON.stringify(value);
+  if (value.nodeType) return domToken(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const keys = Object.keys(value).sort();
+  return `{${keys
+    .map((k) => `${JSON.stringify(k)}:${stableStringify(value[k])}`)
+    .join(',')}}`;
+}
+
+// Batch GROUP key for a stencil: material only. All stencils sharing one atlas material (whatever
+// their cell) fold into one BatchedMesh — the BatchedMesh renders every instance with this single
+// (cloned) material, so members must agree on it, but their geometries may differ. Different
+// materials (a second atlas, a per-stencil color/repeat) key apart into their own group.
+function stencilGroupKey(el) {
+  const material = el.components?.['material']?.data;
+  const geometry = el.components?.['geometry']?.data;
+  if (!material || !geometry) return null;
+  return `geomat|${stableStringify(material)}`;
+}
+
+// Geometry signature WITHIN a stencil group: identical geometry (plane dims) + atlas-uv cell ⇒ an
+// identical rendered quad, so batchMergedByMaterial registers it once (addGeometry) and every
+// member with this signature shares that geometryId. Scale / position / rotation are excluded —
+// they're baked per-instance into the slot matrix.
+function stencilGeometrySignature(el) {
+  const geometry = el.components?.['geometry']?.data;
+  const atlas = el.components?.['atlas-uvs']?.data;
+  return `${stableStringify(geometry)}|${atlas ? stableStringify(atlas) : ''}`;
 }
 
 // Strip a gltf-part member's mesh once it's in the BatchedMesh: dispose its per-instance
@@ -222,7 +360,7 @@ function adjustSrcLoadCount(src, delta) {
 // slots. Reading the live DOM means entities a component mints during its own init are
 // grouped and deferred too, not just the ones present in the scene JSON.
 //
-// Only defers entities whose components are all in BATCH_SAFE_COMPONENTS; anything with a
+// Only defers entities whose components are all in the per-provider safe-components set; anything with a
 // blocking component would be unbatched anyway and must load. .clickable is intentionally
 // not gated here — in editor every member is stripped so deferral is fine, and in runtime
 // batchModels releases them before processKeyGroup runs. After classifying each group's
@@ -265,9 +403,10 @@ function markDeferredLoads(gltfEntities) {
 }
 
 function getBlockingComponents(el) {
+  const safe = safeComponentsForKind(getBatchProvider(el)?.kind);
   const blocking = [];
   for (const name in el.components) {
-    if (!BATCH_SAFE_COMPONENTS.has(name)) blocking.push(name);
+    if (!safe.has(name)) blocking.push(name);
   }
   return blocking;
 }
@@ -399,7 +538,7 @@ function withoutSkinningAttributes(geometry) {
 // and the Map keys are consistent. Other members' materials are never read; the BatchedMesh
 // renders every instance with the reference material. Any per-instance material divergence
 // (tint, texture swap, material-values) would therefore be lost — which is why the
-// BATCH_SAFE_COMPONENTS allowlist must keep excluding components that mutate materials.
+// per-provider safe-components allowlist (SAFE_COMPONENTS_BY_KIND) must keep excluding components that mutate materials.
 function collectRefSubMeshes(refMesh, refWorldMatrix) {
   // Build each sub-mesh's localMatrix relative to the ENTITY's world matrix (refWorldMatrix),
   // not the mesh's — batchGroup composes every slot as `el.object3D.matrixWorld · localMatrix`,
@@ -516,6 +655,26 @@ function markRefMeshResources(materialGroups) {
   return { withUserData, imageBitmaps };
 }
 
+// Clone a member's material AND its textures for exclusive use by a BatchedMesh (the
+// geometry-material / stencil provider). The texture clones share the original THREE.Source, so
+// three.js keeps a single refcounted GPU upload (WebGLTextures tracks usedTimes per source) — zero
+// extra VRAM — while giving the batch a material A-Frame's per-entity disposal can't reach: when a
+// member entity is removed, material.remove() disposes THAT member's material + textures, which
+// would otherwise blank the BatchedMesh for the group's remaining members. Disposed at teardown
+// via group.ownedMaterials.
+function cloneMaterialWithTextures(material) {
+  const clone = material.clone();
+  for (const propName in clone) {
+    const tex = clone[propName];
+    if (tex?.isTexture) {
+      const texClone = tex.clone();
+      texClone.needsUpdate = true;
+      clone[propName] = texClone;
+    }
+  }
+  return clone;
+}
+
 // Compute the AABB of the model in entity-local space so the editor's OrientedBoxHelper
 // can draw a selection/hover box without relying on the (stripped) mesh tree. localMatrix
 // from collectRefSubMeshes is each sub-mesh's transform in refMesh's local space — the
@@ -582,7 +741,166 @@ function addMemberToBatchedMeshes(group, el) {
   }
 }
 
+// Return the single batchable sub-mesh of a member's object3D, or null. Stencils are one plane
+// Mesh, but tolerate a Group wrapping exactly one qualifying Mesh. Any member that is multi-mesh,
+// skinned, morphed, multi-material, or empty is rejected (returns null) — the merged path only
+// handles single-quad members.
+function singleBatchableSubMesh(root) {
+  let found = null;
+  let meshCount = 0;
+  root.traverse((node) => {
+    if (!node.isMesh) return;
+    meshCount++;
+    if (
+      node.isSkinnedMesh ||
+      node.morphTargetInfluences?.length > 0 ||
+      Array.isArray(node.material) ||
+      !node.geometry?.attributes.position
+    ) {
+      return;
+    }
+    found = node;
+  });
+  return meshCount === 1 ? found : null;
+}
+
+// Build ONE BatchedMesh for a whole stencil group (mergeByMaterial providers). Unlike the
+// homogeneous batchGroup — where every member shares members[0]'s geometry via a single
+// addGeometry — here each member brings its OWN cell geometry. We register each distinct geometry
+// once (deduped by stencilGeometrySignature) and point each member's single instance at its cell,
+// so an atlas's worth of stencils collapses to one draw call. Members that aren't a single
+// batchable quad are marked unbatched in place (mesh kept, so they still render). Returns the built
+// group, or null if fewer than two members end up batchable (caller then marks the rest unbatched).
+function batchMergedByMaterial(batchRootEl, key, members) {
+  const inEditor = !!AFRAME.INSPECTOR;
+  const tmpInv = new THREE.Matrix4();
+  const perMember = []; // { el, geometry, localMatrix, signature }
+  let refMaterial = null;
+  let castShadow = false;
+  let receiveShadow = false;
+
+  for (const el of members) {
+    const mesh = el.getObject3D('mesh');
+    const sub = mesh && singleBatchableSubMesh(mesh);
+    if (!sub) {
+      // Not a single quad — leave its mesh in place and render it unbatched.
+      setStatus(el, false, 'not a single batchable quad');
+      if (inEditor) ensureOriginalBvh(el);
+      continue;
+    }
+    tmpInv.copy(el.object3D.matrixWorld).invert();
+    const localMatrix = new THREE.Matrix4().multiplyMatrices(
+      tmpInv,
+      sub.matrixWorld
+    );
+    perMember.push({
+      el,
+      geometry: sub.geometry,
+      localMatrix,
+      signature: stencilGeometrySignature(el)
+    });
+    if (!refMaterial) {
+      refMaterial = sub.material;
+      castShadow = sub.castShadow;
+      receiveShadow = sub.receiveShadow;
+    }
+  }
+
+  if (perMember.length < 2) return null;
+
+  // Distinct cell geometries → exact vertex/index capacity (BatchedMesh buffers are fixed at
+  // construction). One instance per member.
+  const geometryBySignature = new Map();
+  for (const m of perMember) {
+    if (!geometryBySignature.has(m.signature)) {
+      geometryBySignature.set(m.signature, m.geometry);
+    }
+  }
+  let vertexCount = 0;
+  let indexCount = 0;
+  for (const geometry of geometryBySignature.values()) {
+    vertexCount += geometry.attributes.position.count;
+    indexCount += geometry.index
+      ? geometry.index.count
+      : geometry.attributes.position.count;
+  }
+
+  const batchMaterial = cloneMaterialWithTextures(refMaterial);
+  const batched = new THREE.BatchedMesh(
+    perMember.length,
+    vertexCount,
+    indexCount,
+    batchMaterial
+  );
+  const object3DKey = `${BATCH_GROUP_NAME_PREFIX}${key}:${batchMaterial.uuid}`;
+  batched.name = object3DKey;
+  batched.castShadow = castShadow;
+  batched.receiveShadow = receiveShadow;
+  batched.userData.batchIdToEl = [];
+  batched.userData.freeInstanceIds = [];
+
+  const geometryIdBySignature = new Map();
+  for (const [signature, geometry] of geometryBySignature) {
+    geometryIdBySignature.set(signature, batched.addGeometry(geometry));
+  }
+  batchRootEl.setObject3D(object3DKey, batched);
+
+  const group = {
+    batchRootEl,
+    object3DKeys: [object3DKey],
+    // entries stays empty: the merged path slots members directly below (each has its OWN geometry,
+    // so there's no shared template for addMemberToBatchedMeshes to replay). removeMember / sync /
+    // visibility / teardown all read per-member _batchSlots + object3DKeys, so they work unchanged.
+    batchedMeshes: [{ batchedMesh: batched, entries: [] }],
+    localBbox: null, // per-member (heterogeneous geometry); each member gets its own below
+    members: perMember.map((m) => m.el),
+    key,
+    keepAlive: { withUserData: new Set(), imageBitmaps: new Set() },
+    ownsResources: false,
+    ownedMaterials: [batchMaterial],
+    heterogeneous: true,
+    activeMemberCount: perMember.length
+  };
+
+  const worldMatrix = new THREE.Matrix4();
+  for (const { el, geometry, localMatrix, signature } of perMember) {
+    const geometryId = geometryIdBySignature.get(signature);
+    const visible = computeEffectiveVisible(el.object3D);
+    const instanceId = batched.addInstance(geometryId);
+    if (!visible) batched.setVisibleAt(instanceId, false);
+    worldMatrix.multiplyMatrices(el.object3D.matrixWorld, localMatrix);
+    batched.setMatrixAt(instanceId, worldMatrix);
+    batched.userData.batchIdToEl[instanceId] = el;
+    el.object3D.userData._batchSlots = el.object3D.userData._batchSlots || [];
+    el.object3D.userData._batchSlots.push({
+      batchedMesh: batched,
+      instanceId,
+      localMatrix,
+      geometry
+    });
+    el.object3D.userData._batchGroup = group;
+    // Per-member selection box from this member's own cell geometry (in entity-local space), since
+    // there's no single shared group bbox in a heterogeneous group.
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    el.object3D.userData._batchLocalBbox = geometry.boundingBox
+      .clone()
+      .applyMatrix4(localMatrix);
+    finalizeStrippedMember(el, inEditor);
+  }
+  batched.computeBoundsTree?.();
+
+  console.log(
+    `[batch-models] merged "${key}": ${perMember.length} members, ${geometryBySignature.size} geometr(ies), 1 draw call`
+  );
+  return group;
+}
+
 function batchGroup(batchRootEl, key, members) {
+  // mergeByMaterial providers (stencils) collapse an entire atlas material into one BatchedMesh via
+  // a distinct build path — each member keeps its own cell geometry under a single shared material.
+  if (getBatchProvider(members[0])?.mergeByMaterial) {
+    return batchMergedByMaterial(batchRootEl, key, members);
+  }
   const src = getSrc(members[0]);
   const refMesh = members[0].getObject3D('mesh');
   if (!refMesh) {
@@ -611,7 +929,14 @@ function batchGroup(batchRootEl, key, members) {
   // _batchKeepAlive (disposeNode spares them at strip) and dispose them at teardown. gltf-part
   // shares its material with the module cache, so there's nothing to keep alive or dispose —
   // strip() frees only the per-instance geometry.
-  const ownsResources = getBatchProvider(members[0])?.ownsResources ?? true;
+  const provider = getBatchProvider(members[0]);
+  const ownsResources = provider?.ownsResources ?? true;
+  // When the provider shares its material with the member entities (geometry-material stencils,
+  // whose per-entity material A-Frame disposes on removal), the BatchedMesh runs off an independent
+  // clone so a member's teardown can't dispose it. These clones (and their cloned textures) are
+  // batch-owned regardless of ownsResources, so teardownBuiltGroup disposes them explicitly.
+  const clonesMaterial = provider?.clonesMaterial ?? false;
+  const ownedMaterials = [];
   const keepAlive = ownsResources
     ? markRefMeshResources(materialGroups)
     : { withUserData: new Set(), imageBitmaps: new Set() };
@@ -640,13 +965,17 @@ function batchGroup(batchRootEl, key, members) {
         : geometry.attributes.position.count;
     }
     const maxInstances = members.length * entries.length;
+    const batchMaterial = clonesMaterial
+      ? cloneMaterialWithTextures(material)
+      : material;
+    if (clonesMaterial) ownedMaterials.push(batchMaterial);
     const batched = new THREE.BatchedMesh(
       maxInstances,
       vertexCount,
       indexCount,
-      material
+      batchMaterial
     );
-    const object3DKey = `${BATCH_GROUP_NAME_PREFIX}${key}:${material.uuid}`;
+    const object3DKey = `${BATCH_GROUP_NAME_PREFIX}${key}:${batchMaterial.uuid}`;
     batched.name = object3DKey;
     batched.castShadow = castShadow;
     batched.receiveShadow = receiveShadow;
@@ -678,6 +1007,7 @@ function batchGroup(batchRootEl, key, members) {
     key,
     keepAlive,
     ownsResources,
+    ownedMaterials,
     activeMemberCount: members.length
   };
 
@@ -703,23 +1033,8 @@ function batchGroup(batchRootEl, key, members) {
   //   removers, so reparented entities under sceneEl stay alive.
   const inEditor = !!AFRAME.INSPECTOR;
   for (const el of members) {
-    // Clear the deferLoad flag on every batched member: those still flagged would
-    // otherwise be permanently batched-with-no-mesh, and a future popMember →
-    // reload() must be free to actually load. (gltf-part has no deferLoad — no-op.)
-    const gltfComp = el.components['gltf-model'];
-    if (gltfComp) gltfComp.deferLoad = false;
     el.object3D.userData._batchGroup = group;
-    setStatus(el, true);
-    if (!inEditor && el.classList.contains('clickable')) {
-      const mesh = el.getObject3D('mesh');
-      if (mesh) mesh.visible = false;
-    } else {
-      getBatchProvider(el)?.strip();
-    }
-    // Deferred members never got their own model-loaded; emit one now so
-    // listeners that need to wait for batch completion (e.g. subtract-mesh
-    // resolving cutter readiness) can proceed via _batchSlots.
-    el.emit('model-loaded', { format: 'gltf-batched', model: null });
+    finalizeStrippedMember(el, inEditor);
   }
 
   console.log(
@@ -727,6 +1042,26 @@ function batchGroup(batchRootEl, key, members) {
   );
 
   return group;
+}
+
+// Put a batched member into its final state: clear deferLoad (a still-flagged member would be
+// permanently batched-with-no-mesh, and a future popMember → reload() must be free to load), mark
+// it batched, and either keep its hidden mesh (runtime .clickable, the cursor's raycast target) or
+// strip it via its provider. Finally emit model-loaded so listeners waiting on batch completion
+// (deferred gltf members never got their own; subtract-mesh resolving cutter readiness) proceed via
+// _batchSlots. Assumes _batchGroup / _batchSlots are already set. Shared by the homogeneous
+// (batchGroup) and merged (batchMergedByMaterial) build paths so they can't drift.
+function finalizeStrippedMember(el, inEditor) {
+  const gltfComp = el.components['gltf-model'];
+  if (gltfComp) gltfComp.deferLoad = false;
+  setStatus(el, true);
+  if (!inEditor && el.classList.contains('clickable')) {
+    const mesh = el.getObject3D('mesh');
+    if (mesh) mesh.visible = false;
+  } else {
+    getBatchProvider(el)?.strip();
+  }
+  el.emit('model-loaded', { format: 'gltf-batched', model: null });
 }
 
 // Effective visibility = local visible AND every ancestor's visible. Three.js does this
@@ -766,12 +1101,24 @@ function onSceneComponentChanged(evt) {
   // because the unsafe component is now classified as a blocking component.
   if (
     evt.type === 'componentinitialized' &&
-    !BATCH_SAFE_COMPONENTS.has(name) &&
+    !safeComponentsForKind(getBatchProvider(root)?.kind).has(name) &&
     isBatched(root)
   ) {
     popMember(root);
     // root is now unbatched; the transform / visible branches below only apply to the safe
     // components that batching tracks, which this non-safe component can never be.
+    return;
+  }
+  // A change to a batch-defining component (e.g. a stencil's atlas-uvs cell / material / geometry
+  // after a mixin swap) leaves the member's BatchedMesh instance stale. Pop it so its now-updated
+  // original mesh renders unbatched with the new appearance. (componentchanged only — a first-time
+  // init is handled above; the initial batch pass runs with these listeners torn down.)
+  if (
+    evt.type === 'componentchanged' &&
+    isBatched(root) &&
+    BATCH_DEFINING_COMPONENTS_BY_KIND[getBatchProvider(root)?.kind]?.has(name)
+  ) {
+    popMember(root);
     return;
   }
   if (name === 'visible') {
@@ -1107,7 +1454,7 @@ const LATE_BATCH_THRESHOLD = 1;
 function trackLateUnbatched(el) {
   const key = getBatchKey(el);
   if (!key) return;
-  // Only entities that could actually batch: a component outside BATCH_SAFE_COMPONENTS means
+  // Only entities that could actually batch: a component outside its provider's safe-components set means
   // it must stay unbatched (same rule markDeferredLoads / processKeyGroup apply). This also
   // keeps a just-popped member (popMember added an unsafe component) from being re-folded.
   if (getBlockingComponents(el).length > 0) return;
@@ -1159,6 +1506,14 @@ function repackLateUnbatched(sceneEl, key) {
   }
 
   const group = findBuiltGroup(sceneEl, key);
+  // Merged (heterogeneous) groups have no shared template for addMemberToBatchedMeshes to replay,
+  // and their BatchedMesh buffers are fixed-size, so late-folding isn't supported — leave the
+  // candidates unbatched. In practice this never fires: stencils don't emit model-loaded, so they
+  // never reach trackLateUnbatched to begin with. Guarded so a future late path can't corrupt one.
+  if (group?.heterogeneous) {
+    sceneEl._lateUnbatched.delete(key);
+    return;
+  }
   // Need >= 2 to form a NEW group; if one already exists, even a single candidate folds in.
   const canBatch = candidates.length > 0 && (group || candidates.length >= 2);
   if (!canBatch) {
@@ -1222,11 +1577,37 @@ function addLateMember(group, el) {
 // for the model's GLB-loaded materials/textures/geometries exists — they'd otherwise leak
 // GPU memory since the entities' mesh trees were stripped at batch time.
 function teardownBuiltGroup(group) {
-  const { batchRootEl, object3DKeys, keepAlive, ownsResources } = group;
+  const {
+    batchRootEl,
+    object3DKeys,
+    keepAlive,
+    ownsResources,
+    ownedMaterials
+  } = group;
   for (const key of object3DKeys) {
     const batched = batchRootEl.getObject3D(key);
     batchRootEl.removeObject3D(key);
     if (batched?.isBatchedMesh) batched.dispose();
+  }
+  // Dispose batch-owned material clones and their cloned textures (geometry-material provider).
+  // Runs regardless of ownsResources — these clones exist only for the BatchedMesh.
+  //
+  // Deliberately NOT disposeUtils.disposeMaterial(): that closes the backing ImageBitmap (or
+  // releases the shared Source), which is correct for gltf-model — it OWNS its bitmaps via
+  // sharedTextureSources refcounting. A stencil clone does not: cloneMaterialWithTextures shares
+  // the atlas THREE.Source with A-Frame's member textures and its sourceCache (which retains it for
+  // the app's life), so closing that bitmap would blank every other live stencil. We only own the
+  // cloned Texture/material wrappers. texture.dispose() frees exactly those — it decrements the
+  // Source's GPU refcount (upload frees once no texture references it) and never touches the shared
+  // image. (Today the atlas Source is an HTMLImageElement anyway, so there's no bitmap to close.)
+  if (ownedMaterials) {
+    for (const material of ownedMaterials) {
+      for (const propName in material) {
+        const tex = material[propName];
+        if (tex?.isTexture) tex.dispose();
+      }
+      material.dispose();
+    }
   }
   // gltf-part groups don't own their resources: materials are shared with the module-level
   // MODELS cache (and may be reused by the next scene), and per-instance geometries were
@@ -1330,5 +1711,13 @@ export const _test = {
   trackLateUnbatched,
   untrackLateUnbatched,
   repackLateUnbatched,
+  getBatchProvider,
+  stencilGroupKey,
+  stencilGeometrySignature,
+  singleBatchableSubMesh,
+  batchMergedByMaterial,
+  getBlockingComponents,
+  cloneMaterialWithTextures,
+  onSceneComponentChanged,
   LATE_BATCH_THRESHOLD
 };

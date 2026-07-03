@@ -12,6 +12,7 @@ require('./three-bvh.js'); // patch THREE prototypes with three-mesh-bvh (accele
 require('./batch-models.js');
 require('./aframe-components/gltf-model.js');
 require('./aframe-components/gltf-part');
+require('./aframe-components/batch-member.js');
 require('./aframe-components/ocean');
 require('./aframe-components/svg-extruder.js');
 require('./lib/animation-mixer.js');
