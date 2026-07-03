@@ -770,6 +770,9 @@ function onSceneComponentChanged(evt) {
     isBatched(root)
   ) {
     popMember(root);
+    // root is now unbatched; the transform / visible branches below only apply to the safe
+    // components that batching tracks, which this non-safe component can never be.
+    return;
   }
   if (name === 'visible') {
     applyEffectiveVisibility(root);
