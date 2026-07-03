@@ -1,5 +1,6 @@
 import './instrument';
 import '../styles/tailwind.css';
+import posthog from 'posthog-js';
 import { createRoot } from 'react-dom/client';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import MainWrapper from './components/MainWrapper';
@@ -15,6 +16,7 @@ import { Viewport } from './lib/viewport';
 import './style/index.scss';
 import { initPostHog } from '@shared/analytics/posthog';
 import { commandsByType } from './lib/commands/index.js';
+import { LocaleProvider } from './i18n/LocaleProvider';
 import useStore from '@/store';
 import { initializeLocationSync } from './lib/location-sync';
 
@@ -89,18 +91,24 @@ Inspector.prototype = {
     document.body.appendChild(div);
     const root = createRoot(div);
     root.render(
-      <AuthProvider>
-        <GeoProvider>
-          <MainWrapper />
-        </GeoProvider>
-      </AuthProvider>
+      <LocaleProvider>
+        <AuthProvider>
+          <GeoProvider>
+            <MainWrapper />
+          </GeoProvider>
+        </AuthProvider>
+      </LocaleProvider>
     );
 
     // Mount AR Controls to the AR overlay div
     const arControlsContainer = document.getElementById('react-ar-controls');
     if (arControlsContainer) {
       const arRoot = createRoot(arControlsContainer);
-      arRoot.render(<ARControls />);
+      arRoot.render(
+        <LocaleProvider>
+          <ARControls />
+        </LocaleProvider>
+      );
     }
 
     // Mount Visibility Toggle to the AR overlay div
@@ -109,7 +117,11 @@ Inspector.prototype = {
     );
     if (visibilityToggleContainer) {
       const visibilityRoot = createRoot(visibilityToggleContainer);
-      visibilityRoot.render(<VisibilityToggle />);
+      visibilityRoot.render(
+        <LocaleProvider>
+          <VisibilityToggle />
+        </LocaleProvider>
+      );
     }
 
     this.scene = this.sceneEl.object3D;
@@ -209,6 +221,18 @@ Inspector.prototype = {
     }
   },
 
+  onNewScene: function (sceneEl) {
+    this.history.clear();
+    if (useStore.getState().isLoadingScene) {
+      useStore.getState().updateLoadingProgress(95, 'Loading scene...');
+      setTimeout(() => {
+        useStore.getState().finishLoadingScene();
+      }, 500);
+    }
+    // Model batching is armed and released by batch-models.js itself (beginBatching hooks
+    // the "newScene" event), so it no longer needs an editor-side trigger here.
+  },
+
   initEvents: function () {
     // Remove inspector component to properly unregister keydown listener when the inspector is loaded via a script tag,
     // otherwise the listener will be registered twice and we can't toggle the inspector from viewer mode with the shortcut.
@@ -228,16 +252,6 @@ Inspector.prototype = {
     Events.on('showcursor', () => {
       this.cursor.play();
       this.cursor.setAttribute('raycaster', 'enabled', true);
-    });
-
-    this.sceneEl.addEventListener('newScene', () => {
-      this.history.clear();
-      if (useStore.getState().isLoadingScene) {
-        useStore.getState().updateLoadingProgress(95, 'Loading scene...');
-        setTimeout(() => {
-          useStore.getState().finishLoadingScene();
-        }, 500);
-      }
     });
 
     document.addEventListener('child-detached', (event) => {
@@ -374,6 +388,9 @@ const inspector = (AFRAME.INSPECTOR = new Inspector(
   window.AFRAME_INSPECTOR_CONFIG
 ));
 initPostHog();
+// Tag every event with the active UI locale so the #656 experiment can compare
+// activation/retention/conversion across en / es / pt-BR cohorts in PostHog.
+posthog.register({ locale: useStore.getState().locale });
 
 // A-Frame canvas needs to be outside of a-scene for posthog recording to work
 const sceneLoaded = () => {
@@ -384,6 +401,13 @@ const sceneLoaded = () => {
 };
 document.addEventListener('DOMContentLoaded', () => {
   const scene = document.querySelector('a-scene');
+  // Register the newScene handler here — as early as the <a-scene> element
+  // exists in the DOM, before A-Frame initializes/plays it and set-loader-from-
+  // hash kicks off the scene-JSON fetch that ends in emit('newScene'). Doing it
+  // in Inspector init (initEvents) was too late and lost the race
+  // intermittently, leaving the loading modal stuck at "Finalizing..." until its
+  // 30s optimistic timeout. See issue #1760.
+  scene.addEventListener('newScene', () => inspector.onNewScene(scene));
   if (scene.hasLoaded) {
     sceneLoaded();
   } else {

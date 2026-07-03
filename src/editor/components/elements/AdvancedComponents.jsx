@@ -2,6 +2,7 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import Component from './Component';
 import DEFAULT_COMPONENTS from './DefaultComponents';
+import { isGeneratorComponent } from '../../lib/featuredComponents';
 import { Button } from '../elements';
 import posthog from 'posthog-js';
 const AdvancedComponents = ({ entity }) => {
@@ -9,7 +10,11 @@ const AdvancedComponents = ({ entity }) => {
 
   const components = entity ? entity.components : {};
   const definedComponents = Object.keys(components).filter((key) => {
-    return DEFAULT_COMPONENTS.indexOf(key) === -1;
+    // Skip default transform components and generator components (fully shown in
+    // the featured section). geometry/material are intentionally kept here too,
+    // so a technical user editing their first-class controls can still reach the
+    // full set of advanced geometry/material settings.
+    return DEFAULT_COMPONENTS.indexOf(key) === -1 && !isGeneratorComponent(key);
   });
 
   const toggleAdvanced = () => {

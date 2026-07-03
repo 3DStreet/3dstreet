@@ -16,10 +16,13 @@
  * Test fixtures represent real-world Streetmix data structures.
  */
 
-const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
-const streetmixUtils = require('../../src/tested/streetmix-utils');
+import assert from 'assert';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import * as streetmixUtils from '../../src/tested/streetmix-utils.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Fixture: Schema v22 (legacy - feet, integer elevation)
 const SCHEMA_V22_STREET = {

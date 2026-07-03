@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { Button } from '../elements';
 import { useAuthContext } from '@/editor/contexts/index.js';
 import PropertyRow from './PropertyRow';
@@ -9,6 +10,7 @@ import useStore from '@/store';
 import { useState, useEffect } from 'react';
 import Events from '../../lib/Events';
 import { Tooltip } from 'radix-ui';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   return (
@@ -43,6 +45,7 @@ const FlatteningShapeSelector = ({
   shapeEntities,
   currentValue
 }) => {
+  const intl = useIntl();
   const handleShapeChange = (event) => {
     const value = event.target.value;
     // Use AFRAME inspector to properly update the entity and trigger re-renders
@@ -118,7 +121,12 @@ const FlatteningShapeSelector = ({
   return (
     <>
       <div className="propertyRow">
-        <div className="fakePropertyRowLabel">Flattening Shape</div>
+        <div className="fakePropertyRowLabel">
+          <FormattedMessage
+            id="geoSidebar.flatteningShape"
+            defaultMessage="Flattening Shape"
+          />
+        </div>
         <div className="fakePropertyRowValue">
           {shapeEntities.length > 0 ? (
             <select
@@ -130,7 +138,12 @@ const FlatteningShapeSelector = ({
                 color: currentValue ? 'white' : 'inherit'
               }}
             >
-              <option value="">Select a shape...</option>
+              <option value="">
+                {intl.formatMessage({
+                  id: 'geoSidebar.selectShape',
+                  defaultMessage: 'Select a shape...'
+                })}
+              </option>
               {shapeEntities.map((entity) => (
                 <option key={entity.id} value={entity.id}>
                   {entity.name}
@@ -138,7 +151,12 @@ const FlatteningShapeSelector = ({
               ))}
             </select>
           ) : (
-            <div className="text-center text-sm">No shapes found in scene.</div>
+            <div className="text-center text-sm">
+              <FormattedMessage
+                id="geoSidebar.noShapesFound"
+                defaultMessage="No shapes found in scene."
+              />
+            </div>
           )}
         </div>
       </div>
@@ -147,7 +165,10 @@ const FlatteningShapeSelector = ({
           <div className="fakePropertyRowLabel"></div>
           <div className="fakePropertyRowValue">
             <Button variant="toolbtn" onClick={handleCreateShape}>
-              Create Flattening Shape
+              <FormattedMessage
+                id="geoSidebar.createFlatteningShape"
+                defaultMessage="Create Flattening Shape"
+              />
             </Button>
           </div>
         </div>
@@ -164,6 +185,7 @@ FlatteningShapeSelector.propTypes = {
 };
 
 const EnvironmentSection = () => {
+  const intl = useIntl();
   const envEntity = document.getElementById('environment');
   const [, forceUpdate] = useState({});
 
@@ -191,11 +213,19 @@ const EnvironmentSection = () => {
         <div className="componentHeader collapsible-header">
           <span
             className="componentTitle"
-            title="Environment"
+            title={intl.formatMessage({
+              id: 'geoSidebar.environment',
+              defaultMessage: 'Environment'
+            })}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
             <SunIcon />
-            <span>Environment</span>
+            <span>
+              <FormattedMessage
+                id="geoSidebar.environment"
+                defaultMessage="Environment"
+              />
+            </span>
           </span>
         </div>
       </div>
@@ -204,7 +234,10 @@ const EnvironmentSection = () => {
           <PropertyRow
             key="preset"
             name="preset"
-            label="Preset"
+            label={intl.formatMessage({
+              id: 'geoSidebar.preset',
+              defaultMessage: 'Preset'
+            })}
             schema={component.schema['preset']}
             data={component.data['preset']}
             componentname="street-environment"
@@ -215,7 +248,10 @@ const EnvironmentSection = () => {
           <PropertyRow
             key="backgroundColor"
             name="backgroundColor"
-            label="Background"
+            label={intl.formatMessage({
+              id: 'geoSidebar.background',
+              defaultMessage: 'Background'
+            })}
             schema={component.schema['backgroundColor']}
             data={component.data['backgroundColor']}
             componentname="street-environment"
@@ -244,11 +280,23 @@ const GeoHero = ({
   onAdd,
   onUpgrade
 }) => {
+  const intl = useIntl();
   const outOfTokens = !isPro && geoToken === 0;
   const sourcePhrase = geoSourcePhrase(source);
   const savedLocationCopy = sourcePhrase
-    ? `This scene has a saved location ${sourcePhrase}. Add the geo layer to load 3D buildings, terrain, and satellite imagery.`
-    : 'This scene has a saved location. Add the geo layer to load 3D buildings, terrain, and satellite imagery.';
+    ? intl.formatMessage(
+        {
+          id: 'geoSidebar.savedLocationWithSource',
+          defaultMessage:
+            'This scene has a saved location {sourcePhrase}. Add the geo layer to load 3D buildings, terrain, and satellite imagery.'
+        },
+        { sourcePhrase }
+      )
+    : intl.formatMessage({
+        id: 'geoSidebar.savedLocation',
+        defaultMessage:
+          'This scene has a saved location. Add the geo layer to load 3D buildings, terrain, and satellite imagery.'
+      });
   return (
     <div
       style={{
@@ -266,12 +314,24 @@ const GeoHero = ({
     >
       <div style={{ fontSize: '30px', lineHeight: 1 }}>🌍</div>
       <div style={{ fontWeight: 600, color: '#fff', fontSize: '14px' }}>
-        {hasLocation ? 'Map not loaded yet' : 'Add a real-world location'}
+        {hasLocation
+          ? intl.formatMessage({
+              id: 'geoSidebar.mapNotLoaded',
+              defaultMessage: 'Map not loaded yet'
+            })
+          : intl.formatMessage({
+              id: 'geoSidebar.addRealWorldLocation',
+              defaultMessage: 'Add a real-world location'
+            })}
       </div>
       <div style={{ fontSize: '12px', lineHeight: 1.45, color: '#b8b8b8' }}>
         {hasLocation
           ? savedLocationCopy
-          : 'Drop your scene onto real-world maps with 3D buildings, terrain, and satellite imagery.'}
+          : intl.formatMessage({
+              id: 'geoSidebar.dropSceneCopy',
+              defaultMessage:
+                'Drop your scene onto real-world maps with 3D buildings, terrain, and satellite imagery.'
+            })}
       </div>
       <Button
         variant={outOfTokens ? 'upgrade' : 'toolbtn'}
@@ -292,7 +352,12 @@ const GeoHero = ({
         }}
         onClick={outOfTokens ? onUpgrade : onAdd}
       >
-        {outOfTokens ? 'Upgrade to Pro' : 'Add Geo Layer'}
+        {outOfTokens
+          ? intl.formatMessage(commonMessages.upgradeToPro)
+          : intl.formatMessage({
+              id: 'geoSidebar.addGeoLayer',
+              defaultMessage: 'Add Geo Layer'
+            })}
       </Button>
       {!isPro && (
         <div
@@ -307,13 +372,26 @@ const GeoHero = ({
         >
           <img
             src="/ui_assets/token-geo.png"
-            alt="Geo Token"
+            alt={intl.formatMessage({
+              id: 'geoSidebar.geoTokenAlt',
+              defaultMessage: 'Geo Token'
+            })}
             style={{ width: '16px', height: '16px', verticalAlign: 'middle' }}
           />
           <span>
             {outOfTokens
-              ? "You're out of free geo tokens."
-              : `Uses 1 of ${geoToken} free geo tokens to add real-world map data.`}
+              ? intl.formatMessage({
+                  id: 'geoSidebar.outOfTokens',
+                  defaultMessage: "You're out of free geo tokens."
+                })
+              : intl.formatMessage(
+                  {
+                    id: 'geoSidebar.usesFreeTokens',
+                    defaultMessage:
+                      'Uses 1 of {geoToken} free geo tokens to add real-world map data.'
+                  },
+                  { geoToken }
+                )}
           </span>
         </div>
       )}
@@ -331,6 +409,7 @@ GeoHero.propTypes = {
 };
 
 const GeoSidebar = ({ entity }) => {
+  const intl = useIntl();
   const setModal = useStore((state) => state.setModal);
   const { currentUser, tokenProfile } = useAuthContext();
   const startCheckout = useStore((state) => state.startCheckout);
@@ -417,7 +496,12 @@ const GeoSidebar = ({ entity }) => {
             {/* Map Source Selection */}
             {isActivated && component && component.schema && component.data && (
               <div className="propertyRow" style={{ marginBottom: '16px' }}>
-                <div className="fakePropertyRowLabel">Map Type</div>
+                <div className="fakePropertyRowLabel">
+                  <FormattedMessage
+                    id="geoSidebar.mapType"
+                    defaultMessage="Map Type"
+                  />
+                </div>
                 <div
                   style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
                 >
@@ -426,12 +510,25 @@ const GeoSidebar = ({ entity }) => {
                       key={mapType}
                       content={
                         mapType === 'google3d'
-                          ? 'Google 3D Map Tiles'
+                          ? intl.formatMessage({
+                              id: 'geoSidebar.mapGoogle3d',
+                              defaultMessage: 'Google 3D Map Tiles'
+                            })
                           : mapType === 'mapbox2d'
-                            ? 'Mapbox 2D Satellite'
+                            ? intl.formatMessage({
+                                id: 'geoSidebar.mapMapbox2d',
+                                defaultMessage: 'Mapbox 2D Satellite'
+                              })
                             : mapType === 'osm3d'
-                              ? 'Open Street Map 2.5D Buildings'
-                              : 'No Map'
+                              ? intl.formatMessage({
+                                  id: 'geoSidebar.mapOsm3d',
+                                  defaultMessage:
+                                    'Open Street Map 2.5D Buildings'
+                                })
+                              : intl.formatMessage({
+                                  id: 'geoSidebar.mapNone',
+                                  defaultMessage: 'No Map'
+                                })
                       }
                     >
                       <button
@@ -472,7 +569,10 @@ const GeoSidebar = ({ entity }) => {
                           <>
                             <img
                               src="/ui_assets/map-icon1.jpg"
-                              alt="Google 3D"
+                              alt={intl.formatMessage({
+                                id: 'geoSidebar.mapGoogle3dAlt',
+                                defaultMessage: 'Google 3D'
+                              })}
                               style={{
                                 width: '24px',
                                 height: '24px',
@@ -500,7 +600,10 @@ const GeoSidebar = ({ entity }) => {
                           <>
                             <img
                               src="/ui_assets/map-icon2.jpg"
-                              alt="Mapbox 2D"
+                              alt={intl.formatMessage({
+                                id: 'geoSidebar.mapMapbox2dAlt',
+                                defaultMessage: 'Mapbox 2D'
+                              })}
                               style={{
                                 width: '24px',
                                 height: '24px',
@@ -528,7 +631,10 @@ const GeoSidebar = ({ entity }) => {
                           <>
                             <img
                               src="/ui_assets/map-icon3.jpg"
-                              alt="OSM 3D"
+                              alt={intl.formatMessage({
+                                id: 'geoSidebar.mapOsm3dAlt',
+                                defaultMessage: 'OSM 3D'
+                              })}
                               style={{
                                 width: '24px',
                                 height: '24px',
@@ -580,7 +686,17 @@ const GeoSidebar = ({ entity }) => {
                     }}
                   >
                     <TooltipWrapper
-                      content={`This scene's centerpoint is ${geoData.latitude}, ${geoData.longitude}`}
+                      content={intl.formatMessage(
+                        {
+                          id: 'geoSidebar.centerpointTooltip',
+                          defaultMessage:
+                            "This scene's centerpoint is {latitude}, {longitude}"
+                        },
+                        {
+                          latitude: geoData.latitude,
+                          longitude: geoData.longitude
+                        }
+                      )}
                     >
                       <span
                         className="success-badge"
@@ -594,11 +710,19 @@ const GeoSidebar = ({ entity }) => {
                           fontWeight: '500'
                         }}
                       >
-                        ✅ Location Set
+                        ✅{' '}
+                        <FormattedMessage
+                          id="geoSidebar.locationSet"
+                          defaultMessage="Location Set"
+                        />
                       </span>
                     </TooltipWrapper>
                     {!currentUser?.isPro && tokenProfile && (
-                      <TooltipWrapper content="Use geo tokens to set or change a geolocation for your scene.">
+                      <TooltipWrapper
+                        content={intl.formatMessage(
+                          commonMessages.useGeoTokensTooltip
+                        )}
+                      >
                         <span
                           className="token-badge"
                           style={{
@@ -611,7 +735,10 @@ const GeoSidebar = ({ entity }) => {
                         >
                           <img
                             src="/ui_assets/token-geo.png"
-                            alt="Geo Token"
+                            alt={intl.formatMessage({
+                              id: 'geoSidebar.geoTokenAlt',
+                              defaultMessage: 'Geo Token'
+                            })}
                             style={{
                               width: '20px',
                               height: '20px',
@@ -620,14 +747,21 @@ const GeoSidebar = ({ entity }) => {
                               verticalAlign: 'middle'
                             }}
                           />
-                          {tokenProfile.geoToken} free
+                          <FormattedMessage
+                            id="geoSidebar.tokensFree"
+                            defaultMessage="{geoToken, plural, one {# free} other {# free}}"
+                            values={{ geoToken: tokenProfile.geoToken }}
+                          />
                         </span>
                       </TooltipWrapper>
                     )}
                   </div>
                   <Button variant="toolbtn" onClick={openGeoModal}>
                     <Magnifier20Icon />
-                    Change Location
+                    <FormattedMessage
+                      id="geoSidebar.changeLocation"
+                      defaultMessage="Change Location"
+                    />
                   </Button>
                 </div>
               </div>
@@ -653,7 +787,10 @@ const GeoSidebar = ({ entity }) => {
                     }}
                     onClick={() => startCheckout('geo')}
                   >
-                    Upgrade to Pro for unlimited geo lookups
+                    <FormattedMessage
+                      id="geoSidebar.upgradeForLookups"
+                      defaultMessage="Upgrade to Pro for unlimited geo lookups"
+                    />
                   </Button>
                 </div>
               )}
@@ -667,7 +804,12 @@ const GeoSidebar = ({ entity }) => {
               component.data.locationString && (
                 <>
                   <div className="propertyRow">
-                    <div className="fakePropertyRowLabel">Location</div>
+                    <div className="fakePropertyRowLabel">
+                      <FormattedMessage
+                        id="geoSidebar.location"
+                        defaultMessage="Location"
+                      />
+                    </div>
                     <div
                       className="fakePropertyRowValue"
                       style={{ fontSize: '12px', color: '#ccc' }}
@@ -679,8 +821,11 @@ const GeoSidebar = ({ entity }) => {
                   {component.data.intersectionString && (
                     <div className="propertyRow">
                       <div className="fakePropertyRowLabel">
-                        Nearest
-                        <br /> Intersection
+                        <FormattedMessage
+                          id="geoSidebar.nearestIntersection"
+                          defaultMessage="Nearest<br></br> Intersection"
+                          values={{ br: () => <br /> }}
+                        />
                       </div>
                       <div
                         className="fakePropertyRowValue"
@@ -693,7 +838,12 @@ const GeoSidebar = ({ entity }) => {
 
                   {component.data.orthometricHeight && (
                     <div className="propertyRow">
-                      <div className="fakePropertyRowLabel">Elevation</div>
+                      <div className="fakePropertyRowLabel">
+                        <FormattedMessage
+                          id="geoSidebar.elevation"
+                          defaultMessage="Elevation"
+                        />
+                      </div>
                       <div
                         className="fakePropertyRowValue"
                         style={{ fontSize: '12px', color: '#ccc' }}
@@ -714,8 +864,16 @@ const GeoSidebar = ({ entity }) => {
                   <div className="collapsible component">
                     <div className="static">
                       <div className="componentHeader collapsible-header">
-                        <span className="componentTitle" title="Surface">
-                          <span>Blending & Flattening</span>
+                        <span
+                          className="componentTitle"
+                          title={intl.formatMessage(commonMessages.surface)}
+                        >
+                          <span>
+                            <FormattedMessage
+                              id="geoSidebar.blendingFlattening"
+                              defaultMessage="Blending & Flattening"
+                            />
+                          </span>
                         </span>
                       </div>
                     </div>
@@ -724,7 +882,10 @@ const GeoSidebar = ({ entity }) => {
                         <PropertyRow
                           key="blendingEnabled"
                           name="blendingEnabled"
-                          label="Blending"
+                          label={intl.formatMessage({
+                            id: 'geoSidebar.blending',
+                            defaultMessage: 'Blending'
+                          })}
                           schema={component.schema['blendingEnabled']}
                           data={component.data['blendingEnabled']}
                           componentname="street-geo"
@@ -736,7 +897,10 @@ const GeoSidebar = ({ entity }) => {
                           <PropertyRow
                             key="blendMode"
                             name="blendMode"
-                            label="Blend Mode"
+                            label={intl.formatMessage({
+                              id: 'geoSidebar.blendMode',
+                              defaultMessage: 'Blend Mode'
+                            })}
                             schema={component.schema['blendMode']}
                             data={component.data['blendMode']}
                             componentname="street-geo"
@@ -748,7 +912,10 @@ const GeoSidebar = ({ entity }) => {
                         <PropertyRow
                           key="enableFlattening"
                           name="enableFlattening"
-                          label="Terrain Flattening"
+                          label={intl.formatMessage({
+                            id: 'geoSidebar.terrainFlattening',
+                            defaultMessage: 'Terrain Flattening'
+                          })}
                           schema={component.schema['enableFlattening']}
                           data={component.data['enableFlattening']}
                           componentname="street-geo"

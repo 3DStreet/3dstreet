@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { createPortal } from 'react-dom';
 import { isOfficialDeployment } from '@shared/utils/deployment.js';
 import styles from './UnofficialDeploymentBanner.module.scss';
@@ -15,6 +16,7 @@ const DISMISS_KEY = '3dstreet:unofficialDeploymentBannerDismissed';
  * but doesn't nag within a session.
  */
 const UnofficialDeploymentBanner = () => {
+  const intl = useIntl();
   const [dismissed, setDismissed] = useState(() => {
     try {
       return sessionStorage.getItem(DISMISS_KEY) === 'true';
@@ -41,24 +43,31 @@ const UnofficialDeploymentBanner = () => {
   return createPortal(
     <div className={styles.banner} role="status">
       <span className={styles.message}>
-        You&apos;re using a forked or self-hosted build of 3DStreet (open
-        source, AGPL-3.0). Local editing works, but cloud features are
-        unavailable. To use cloud services, visit{' '}
-        <a
-          className={styles.link}
-          href="https://3dstreet.app"
-          target="_blank"
-          rel="noreferrer"
-        >
-          3dstreet.app
-        </a>
-        .
+        <FormattedMessage
+          id="deploymentBanner.message"
+          defaultMessage="You're using a forked or self-hosted build of 3DStreet (open source, AGPL-3.0). Local editing works, but cloud features are unavailable. To use cloud services, visit <link>3dstreet.app</link>."
+          values={{
+            link: (chunks) => (
+              <a
+                className={styles.link}
+                href="https://3dstreet.app"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {chunks}
+              </a>
+            )
+          }}
+        />
       </span>
       <button
         type="button"
         className={styles.close}
         onClick={onDismiss}
-        aria-label="Dismiss notice"
+        aria-label={intl.formatMessage({
+          id: 'deploymentBanner.dismiss',
+          defaultMessage: 'Dismiss notice'
+        })}
       >
         ×
       </button>

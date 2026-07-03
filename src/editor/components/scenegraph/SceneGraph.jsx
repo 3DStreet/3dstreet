@@ -3,11 +3,13 @@ import classNames from 'classnames';
 import debounce from 'lodash-es/debounce';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { FormattedMessage, injectIntl } from 'react-intl';
 import Events from '../../lib/Events';
 import Entity, { isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
 import { Plus20Circle } from '@shared/icons';
 import { createUniqueId, getEntityDisplayName } from '../../lib/entity';
+import { isEditableTarget } from '@shared/utils/dom.js';
 import posthog from 'posthog-js';
 import AssetsPanel from './AssetsPanel';
 import GeoSidebar from '../elements/GeoSidebar';
@@ -18,12 +20,14 @@ import { Save } from '../elements/Save';
 import { Tabs } from '../elements';
 import useStore from '@/store';
 import { AuthContext } from '@/editor/contexts';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 const HIDDEN_CLASSES = ['teleportRay', 'hitEntity', 'hideFromSceneGraph'];
 const HIDDEN_IDS = ['dropPlane', 'previewEntity'];
 
-export default class SceneGraph extends React.Component {
+class SceneGraph extends React.Component {
   static contextType = AuthContext;
   static propTypes = {
+    intl: PropTypes.object,
     scene: PropTypes.object,
     selectedEntity: PropTypes.object
   };
@@ -73,6 +77,7 @@ export default class SceneGraph extends React.Component {
   componentDidMount() {
     this.rebuildEntityOptions();
     Events.on('entityupdate', this.onEntityUpdate);
+    Events.on('openassetspanel', this.showAssetsPanel);
     document.addEventListener('child-attached', this.onChildAttachedDetached);
     document.addEventListener('child-detached', this.onChildAttachedDetached);
     this.unsubscribePanels = useStore.subscribe(
@@ -83,6 +88,7 @@ export default class SceneGraph extends React.Component {
 
   componentWillUnmount() {
     Events.off('entityupdate', this.onEntityUpdate);
+    Events.off('openassetspanel', this.showAssetsPanel);
     document.removeEventListener(
       'child-attached',
       this.onChildAttachedDetached
@@ -147,6 +153,7 @@ export default class SceneGraph extends React.Component {
       !element.isEntity ||
       element.isInspector ||
       'aframeInspector' in element.dataset ||
+      element.id === 'batch-models-root' ||
       HIDDEN_CLASSES.includes(element.className) ||
       HIDDEN_IDS.includes(element.id)
     );
@@ -292,6 +299,13 @@ export default class SceneGraph extends React.Component {
   };
 
   onKeyDown = (event) => {
+    // Events from modals rendered via React portals (e.g. the asset gallery's
+    // detail modal) bubble up through the React tree to this handler even though
+    // they live elsewhere in the DOM. Never swallow arrow keys while the user is
+    // typing in a field, or the caret can't move / edits are blocked (#1735).
+    if (isEditableTarget(event.target)) {
+      return;
+    }
     switch (event.keyCode) {
       case 37: // left
       case 38: // up
@@ -304,7 +318,7 @@ export default class SceneGraph extends React.Component {
   };
 
   onKeyUp = (event) => {
-    if (this.props.selectedEntity === null) {
+    if (this.props.selectedEntity === null || isEditableTarget(event.target)) {
       return;
     }
 
@@ -392,6 +406,12 @@ export default class SceneGraph extends React.Component {
     this.setState({ activeTab: tab });
   };
 
+  // Reveal the Assets tab when an asset upload starts elsewhere (e.g. the Add
+  // Layer Panel's upload cards) so the user sees their upload progress.
+  showAssetsPanel = () => {
+    this.setActiveTab('assets');
+  };
+
   openAddLayer = () => {
     useStore.getState().setModal('addlayer');
     posthog.capture('add_layer_panel_opened', { source: 'left_panel_plus' });
@@ -461,6 +481,7 @@ export default class SceneGraph extends React.Component {
   };
 
   render() {
+    const { intl } = this.props;
     const isCollapsed = !this.state.panelsVisible;
     const className = classNames({
       'scenegraph-panel': true,
@@ -505,19 +526,28 @@ export default class SceneGraph extends React.Component {
                 <Tabs
                   tabs={[
                     {
-                      label: 'Layers',
+                      label: intl.formatMessage({
+                        id: 'sceneGraph.tabLayers',
+                        defaultMessage: 'Layers'
+                      }),
                       value: 'layers',
                       isSelected: this.state.activeTab === 'layers',
                       onClick: () => this.setActiveTab('layers')
                     },
                     {
-                      label: 'Geospatial',
+                      label: intl.formatMessage({
+                        id: 'sceneGraph.tabGeospatial',
+                        defaultMessage: 'Geospatial'
+                      }),
                       value: 'geo',
                       isSelected: this.state.activeTab === 'geo',
                       onClick: this.selectGeoTab
                     },
                     {
-                      label: 'Assets',
+                      label: intl.formatMessage({
+                        id: 'sceneGraph.tabAssets',
+                        defaultMessage: 'Assets'
+                      }),
                       value: 'assets',
                       isSelected: this.state.activeTab === 'assets',
                       onClick: () => this.setActiveTab('assets')
@@ -529,8 +559,8 @@ export default class SceneGraph extends React.Component {
                     type="button"
                     className="left-panel-add-layer"
                     onClick={this.openAddLayer}
-                    aria-label="Add layer"
-                    title="Add layer"
+                    aria-label={intl.formatMessage(commonMessages.addLayer)}
+                    title={intl.formatMessage(commonMessages.addLayer)}
                   >
                     <Plus20Circle />
                   </button>
@@ -540,14 +570,24 @@ export default class SceneGraph extends React.Component {
                 <div className="layers">
                   {this.state.entities.length === 0 ? (
                     <div className="layers-empty-state">
-                      <p>Add a new layer to get started.</p>
+                      <p>
+                        <FormattedMessage
+                          id="sceneGraph.emptyStateMessage"
+                          defaultMessage="Add a new layer to get started."
+                        />
+                      </p>
                       <button
                         type="button"
                         className="layers-empty-state-button"
                         onClick={this.openAddLayer}
                       >
                         <Plus20Circle />
-                        <span>Add Layer</span>
+                        <span>
+                          <FormattedMessage
+                            id="sceneGraph.addLayerButton"
+                            defaultMessage="Add Layer"
+                          />
+                        </span>
                       </button>
                     </div>
                   ) : (
@@ -568,3 +608,5 @@ export default class SceneGraph extends React.Component {
     );
   }
 }
+
+export default injectIntl(SceneGraph);

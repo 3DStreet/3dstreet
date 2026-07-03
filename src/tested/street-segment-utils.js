@@ -72,9 +72,11 @@ function migrateSegmentLevelToElevation(componentValue) {
   return componentValue;
 }
 
-module.exports.calculateHeight = calculateHeight;
-module.exports.calculateSlopedHeights = calculateSlopedHeights;
-module.exports.levelToElevation = levelToElevation;
-module.exports.migrateSegmentLevelToElevation = migrateSegmentLevelToElevation;
-module.exports.CURB_HEIGHT = CURB_HEIGHT;
-module.exports.BASE_SURFACE_DEPTH = BASE_SURFACE_DEPTH;
+export {
+  calculateHeight,
+  calculateSlopedHeights,
+  levelToElevation,
+  migrateSegmentLevelToElevation,
+  CURB_HEIGHT,
+  BASE_SURFACE_DEPTH
+};

@@ -1,0 +1,72 @@
+name: i18n
+
+# Keeps the translation catalogs (es, pt-BR, fr) in sync with the English
+# source of truth (#656). On PRs it only verifies there is no drift. On pushes
+# to main it re-extracts, translates any new/changed keys with an LLM, and
+# commits the updated catalogs so locales never go stale.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**/*.js'
+      - 'src/**/*.jsx'
+      - 'src/editor/i18n/locales/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**/*.js'
+      - 'src/**/*.jsx'
+      - 'src/editor/i18n/locales/**'
+
+permissions:
+  contents: write
+
+jobs:
+  i18n:
+    name: Check / refresh translations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Extract English source catalog
+        run: npm run i18n:extract
+
+      # On PRs: fail if catalogs are out of date so authors run translate locally
+      # (or rely on the post-merge job). No API key needed for the check.
+      - name: Check for translation drift
+        if: github.event_name == 'pull_request'
+        run: npm run i18n:check
+
+      # On main: translate any stale keys and commit the refreshed catalogs.
+      - name: Translate new/changed strings
+        if: github.event_name == 'push'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run i18n:translate
+
+      - name: Commit refreshed catalogs
+        if: github.event_name == 'push'
+        run: |
+          if [[ -n "$(git status --porcelain src/editor/i18n/locales)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add src/editor/i18n/locales
+            git commit -m "chore(i18n): refresh translation catalogs"
+            git push
+          else
+            echo "Catalogs already up to date."
+          fi

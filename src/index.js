@@ -8,7 +8,11 @@ STREET.utils.newScene = streetUtils.newScene;
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 
+require('./three-bvh.js'); // patch THREE prototypes with three-mesh-bvh (accelerated raycast + BVH)
+require('./batch-models.js');
+require('./aframe-components/gltf-model.js');
 require('./aframe-components/gltf-part');
+require('./aframe-components/batch-member.js');
 require('./aframe-components/ocean');
 require('./aframe-components/svg-extruder.js');
 require('./lib/animation-mixer.js');
@@ -31,6 +35,7 @@ require('./aframe-components/street-generated-striping.js');
 require('./aframe-components/street-generated-pedestrians.js');
 require('./aframe-components/street-generated-rail.js');
 require('./aframe-components/street-generated-clones.js');
+require('./aframe-components/street-generated-grass.js');
 require('./aframe-components/polygon-offset.js');
 require('./aframe-components/street-align.js');
 require('./aframe-components/street-ground.js');

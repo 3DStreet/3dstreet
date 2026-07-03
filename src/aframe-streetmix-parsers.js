@@ -1,6 +1,5 @@
 // Orientation - default model orientation is "outbound" (away from camera)
 var streetmixParsersTested = require('./tested/aframe-streetmix-parsers-tested');
-var streetmixUtils = require('./tested/streetmix-utils');
 var { segmentVariants } = require('./segments-variants.js');
 
 function cloneMixinAsChildren({
@@ -1009,7 +1008,9 @@ function processSegments(
     const elevationPosY = segments[i].elevation || 0;
     // this legacy parser's geometry lookup tables (createSegmentElement) are
     // still indexed by integer level, so derive it from the metric elevation
-    const elevation = streetmixUtils.metricElevationToLevel(elevationPosY);
+    // (inline rather than importing streetmix-utils: that module is ESM and
+    // this deprecated parser must stay require()-able by the mocha tests)
+    const elevation = Math.round(elevationPosY / 0.15);
 
     // add y elevation position as a data attribute to segment entity
     segmentParentEl.setAttribute('data-elevation-posY', elevationPosY);

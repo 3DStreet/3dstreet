@@ -18,6 +18,8 @@ import {
   useCurrentUploadStore
 } from '@shared/assets';
 import { Loader } from '@shared/icons';
+import { formatCurrency, getPeriodSuffix } from '@shared/utils/format';
+import { PRICING } from '@shared/components/UpgradeModal/pricing';
 import {
   uploadAsset as sharedUploadAsset,
   FILE_PICKER_ACCEPT
@@ -39,6 +41,8 @@ const AssetsPanelBody = ({
   // Image/video card actions — only meaningful in the generator.
   onUseForGenerator,
   onUseForVideo,
+  // Editor-only: open a snapshot's scene and focus its captured pose (#1605).
+  onFocusScene,
   // Host notification (FluxUI.showNotification in generator, no-op default).
   onNotification,
   // Sign-in CTA action.
@@ -287,7 +291,11 @@ const AssetsPanelBody = ({
             className={styles.goProButton}
             onClick={() => handleUpgradeClick(isFull ? 'full' : 'near_full')}
           >
-            Go Pro: unlock 5 GB <span className={styles.pricePill}>$7/mo</span>
+            Go Pro: unlock 5 GB{' '}
+            <span className={styles.pricePill}>
+              {formatCurrency(PRICING.pro.yearly.pricePerMonth)}
+              {getPeriodSuffix('month')}
+            </span>
           </button>
           <button
             type="button"
@@ -340,6 +348,7 @@ const AssetsPanelBody = ({
           }
           onUseForGenerator={onUseForGenerator}
           onUseForVideo={onUseForVideo}
+          onFocusScene={onFocusScene}
           onNotification={onNotification}
           placeable={placeable}
           onPlaceAsset={onPlaceAsset}

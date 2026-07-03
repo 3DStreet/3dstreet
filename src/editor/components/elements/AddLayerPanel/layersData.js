@@ -1,136 +1,143 @@
 import * as createFunctions from './createLayerFunctions';
+import { layerCardMessages as m } from './addLayerMessages';
+
+// Each card's canonical English `name`/`description` is derived from the shared
+// i18n messages (single source of truth), while `nameId`/`descriptionId` carry
+// the message descriptors used to render the localized text. The English `name`
+// is what gets written to `data-layer-name` and sent to analytics, so it must
+// stay locale-independent — see addLayerMessages.js.
+const card = (nameMsg, descMsg, rest) => ({
+  name: nameMsg.defaultMessage,
+  nameId: nameMsg,
+  description: descMsg.defaultMessage,
+  descriptionId: descMsg,
+  ...rest
+});
 
 export const streetLayersData = [
-  {
-    name: 'Create Intersection',
+  card(m.createIntersectionName, m.createIntersectionDesc, {
     img: '',
     icon: 'ui_assets/cards/icons/3dst24.png',
-    description: 'Create 90º intersection entity.',
     handlerFunction: createFunctions.createIntersection
-  },
-  {
-    name: 'Street from Streetmix URL',
+  }),
+  card(m.streetmixStreetName, m.streetmixStreetDesc, {
     img: 'ui_assets/cards/streetmix.jpg',
     icon: 'ui_assets/cards/icons/streetmix24.png',
-    description:
-      'Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets.',
     handlerFunction: createFunctions.createStreetmixStreet
-  },
-  {
-    name: '(Beta) Managed Street from Streetmix URL',
+  }),
+  card(m.managedStreetmixName, m.managedStreetmixDesc, {
     img: '',
     icon: 'ui_assets/cards/icons/streetmix24.png',
-    description:
-      'Create a new street from Streetmix URL using the Managed Street component.',
     handlerFunction: createFunctions.createManagedStreetFromStreetmixURLPrompt
-  },
-  {
-    name: '(Beta) Managed Street 40ft RoW / 24ft Roadway Width',
+  }),
+  card(m.managedStreet4024Name, m.managedStreet4024Desc, {
     img: 'ui_assets/cards/street-preset-40-24.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
-    description: 'Premade Street 40ft Right of Way / 24ft Roadway Width',
     handlerFunction: createFunctions.create40ftRightOfWayManagedStreet
-  },
-  {
-    name: '(Beta) Managed Street 60ft RoW / 36ft Roadway Width',
+  }),
+  card(m.managedStreet6036Name, m.managedStreet6036Desc, {
     img: 'ui_assets/cards/street-preset-60-36.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
-    description: 'Premade Street 60ft Right of Way / 36ft Roadway Width',
     handlerFunction: createFunctions.create60ftRightOfWayManagedStreet
-  },
-  {
-    name: '(Beta) Managed Street 80ft RoW / 56ft Roadway Width',
+  }),
+  card(m.managedStreet8056Name, m.managedStreet8056Desc, {
     img: 'ui_assets/cards/street-preset-80-56.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
-    description: 'Premade Street 80ft Right of Way / 56ft Roadway Width',
     handlerFunction: createFunctions.create80ftRightOfWayManagedStreet
-  },
-  {
-    name: '(Beta) Managed Street 94ft RoW / 70ft Roadway Width',
+  }),
+  card(m.managedStreet9470Name, m.managedStreet9470Desc, {
     img: 'ui_assets/cards/street-preset-94-70.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
-    description: 'Premade Street 94ft Right of Way / 70ft Roadway Width',
     handlerFunction: createFunctions.create94ftRightOfWayManagedStreet
-  },
-  {
-    name: '(Beta) Managed Street 150ft RoW / 124ft Roadway Width',
+  }),
+  card(m.managedStreet150124Name, m.managedStreet150124Desc, {
     img: 'ui_assets/cards/street-preset-150-124.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
-    description: 'Premade Street 150ft Right of Way / 124ft Roadway Width',
     handlerFunction: createFunctions.create150ftRightOfWayManagedStreet
-  },
-  {
-    name: '(Beta) Building Placement Demo',
+  }),
+  card(m.buildingDemoName, m.buildingDemoDesc, {
     img: '',
     icon: 'ui_assets/cards/icons/3dst24.png',
-    description:
-      'Demo street with buildings on both sides using the new fit mode for building placement',
     handlerFunction: createFunctions.createBuildingDemoManagedStreet
-  },
-  {
-    name: '(Beta) Managed Street from Streetplan URL',
+  }),
+  card(m.managedStreetplanName, m.managedStreetplanDesc, {
     img: '',
     requiresPro: true,
     icon: '',
-    description:
-      'Create a new street from Streetplan URL using the Managed Street component.',
     handlerFunction: createFunctions.createManagedStreetFromStreetplanURLPrompt
-  }
+  })
+].map((layer, index) => ({ ...layer, id: index + 1 }));
+
+// A-Frame geometry primitives — host shapes that surface first-class geometry +
+// material controls in the properties sidebar (the host-primitive pattern).
+export const shapeLayersData = [
+  card(m.buildingBoxName, m.buildingBoxDesc, {
+    img: '',
+    icon: '',
+    requiresPro: false,
+    handlerFunction: createFunctions.createBuildingBox
+  }),
+  card(m.asphaltCircleName, m.asphaltCircleDesc, {
+    img: '',
+    icon: '',
+    requiresPro: false,
+    handlerFunction: createFunctions.createPrimitiveGeometry
+  }),
+  card(m.grassBoxName, m.grassBoxDesc, {
+    img: '',
+    icon: '',
+    requiresPro: false,
+    handlerFunction: createFunctions.createGrassBox
+  }),
+  card(m.concreteCylinderName, m.concreteCylinderDesc, {
+    img: '',
+    icon: '',
+    requiresPro: false,
+    handlerFunction: createFunctions.createConcreteCylinder
+  }),
+  card(m.torusKnotName, m.torusKnotDesc, {
+    img: '',
+    icon: '',
+    requiresPro: false,
+    handlerFunction: createFunctions.createTorusKnot
+  }),
+  card(m.highlightRingName, m.highlightRingDesc, {
+    img: '',
+    icon: '',
+    requiresPro: false,
+    handlerFunction: createFunctions.createHighlightRing
+  })
 ].map((layer, index) => ({ ...layer, id: index + 1 }));
 
 export const customLayersData = [
-  {
-    name: 'Entity from extruded SVG',
+  card(m.uploadImageName, m.uploadImageDesc, {
     img: '',
-    icon: '',
-    requiresPro: true,
-    description:
-      'Create entity with svg-extruder component, that accepts a svgString and creates a new entity with geometry extruded from the svg and applies the default mixin material grass.',
-    handlerFunction: createFunctions.createSvgExtrudedEntity
-  },
-  {
-    name: 'glTF model from URL',
-    img: '',
-    requiresPro: true,
-    icon: '',
-    description:
-      'Create entity with model from path for a glTF (or Glb) file hosted on any publicly accessible HTTP server.',
-    handlerFunction: createFunctions.createCustomModel
-  },
-  {
-    name: 'Create primitive geometry',
-    img: '',
-    requiresPro: true,
-    icon: '',
-    description:
-      'Create entity with A-Frame primitive geometry. Geometry type could be changed in properties panel.',
-    handlerFunction: createFunctions.createPrimitiveGeometry
-  },
-  {
-    name: 'Place New Image Entity',
-    img: '',
-    requiresPro: true,
+    requiresPro: false,
     icon: 'ui_assets/cards/icons/gallery24.png',
-    description:
-      'Place an image such as a sign, reference photo, custom map, etc.',
     handlerFunction: createFunctions.createImageEntity
-  },
-  {
-    name: '360° Panorama Sphere',
+  }),
+  card(m.uploadModelName, m.uploadModelDesc, {
     img: '',
     requiresPro: false,
     icon: '',
-    description:
-      'Create an immersive 360° environment from a panoramic image for AR/VR experiences.',
-    handlerFunction: createFunctions.createPanoramaSphere
-  },
-  {
-    name: 'Gaussian Splat from URL',
+    handlerFunction: createFunctions.createCustomModel
+  }),
+  card(m.uploadSplatName, m.uploadSplatDesc, {
     img: '',
-    requiresPro: true,
+    requiresPro: false,
     icon: '',
-    description:
-      'Create entity with Gaussian Splat model from a URL. Supports .splat, .ply, and .spz file formats.',
     handlerFunction: createFunctions.createSplatObject
-  }
+  }),
+  card(m.panoramaSphereName, m.panoramaSphereDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createPanoramaSphere
+  }),
+  card(m.svgExtrudedName, m.svgExtrudedDesc, {
+    img: '',
+    icon: '',
+    requiresPro: false,
+    handlerFunction: createFunctions.createSvgExtrudedEntity
+  })
 ].map((layer, index) => ({ ...layer, id: index + 1 }));

@@ -29,6 +29,48 @@ export function getCurrentCameraState() {
 }
 
 /**
+ * Serialize a camera state into a compact URL-hash param value
+ * (`px,py,pz,rx,ry,rz,fov`) for camera vantage deep links like
+ * `#/scenes/UUID?camera=…`. Decoded by decodeCameraStateFromParam in
+ * set-loader-from-hash. Rounded — cm position / ~0.006° rotation — to keep
+ * the URL short; well beyond visual precision either way.
+ * @param {Object} cameraState - Camera state with position, rotation, zoom
+ * @returns {string|null} Param value, or null if the state is unusable
+ */
+export function encodeCameraStateToParam(cameraState) {
+  const { position, rotation } = cameraState || {};
+  const values = [
+    position?.x,
+    position?.y,
+    position?.z,
+    rotation?.x,
+    rotation?.y,
+    rotation?.z,
+    cameraState?.zoom ?? 60
+  ];
+  if (!values.every(Number.isFinite)) return null;
+  return values.map((v, i) => Number(v.toFixed(i < 3 ? 2 : 4))).join(',');
+}
+
+/**
+ * Parse a `camera` hash-param value back into a camera state object.
+ * @param {string} param - Value produced by encodeCameraStateToParam
+ * @returns {Object|null} Camera state, or null if malformed
+ */
+export function decodeCameraStateFromParam(param) {
+  if (typeof param !== 'string') return null;
+  const values = param.split(',').map(Number);
+  if (values.length !== 7 || !values.every(Number.isFinite)) return null;
+  const [px, py, pz, rx, ry, rz, fov] = values;
+  return {
+    position: { x: px, y: py, z: pz },
+    rotation: { x: rx, y: ry, z: rz },
+    zoom: fov,
+    type: 'PerspectiveCamera'
+  };
+}
+
+/**
  * Set camera to a specific state
  * @param {Object} cameraState - Camera state object with position, rotation, and zoom
  */

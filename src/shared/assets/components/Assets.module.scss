@@ -837,6 +837,36 @@
   }
 }
 
+/* Scene name as a combined open-scene-and-focus-camera action (#1605): a
+   crosshair marks that clicking also returns the camera to the capture pose. */
+.sceneFocusBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #93c5fd; /* blue-300 */
+  font-weight: 500;
+  transition: color 0.15s ease;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    color: #60a5fa; /* blue-400 */
+
+    span {
+      text-decoration: underline;
+    }
+  }
+}
+
 /* Modal Actions - Button container */
 .modalActions {
   display: flex;
