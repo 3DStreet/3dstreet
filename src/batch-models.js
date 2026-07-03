@@ -109,6 +109,9 @@ function getOrCreateBatchRoot() {
   }
   el = document.createElement('a-entity');
   el.id = BATCH_ROOT_ID;
+  // Mark autocreated so the scene serializer (json-utils_1.1.js) skips it; otherwise
+  // the batch root leaks into saved scene JSON, AI-chat context, and MCP scene dumps.
+  el.classList.add('autocreated');
   sceneContainer.appendChild(el);
   return el;
 }
