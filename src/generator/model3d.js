@@ -29,11 +29,16 @@ import posthog from 'posthog-js';
 const MODEL3D_MODELS = [
   {
     id: 'hunyuan-3d',
-    name: 'Hunyuan3D (latest)',
+    name: 'Hunyuan3D v2 (faster)',
     tokenCost: 3,
     estimatedTime: 30
   },
-  { id: 'trellis', name: 'TRELLIS (latest)', tokenCost: 6, estimatedTime: 60 }
+  {
+    id: 'trellis',
+    name: 'TRELLIS 2 (best quality)',
+    tokenCost: 6,
+    estimatedTime: 60
+  }
 ];
 
 const Model3DTab = {

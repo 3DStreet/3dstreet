@@ -1,6 +1,6 @@
 /**
  * Generator Tab Base Class
- * Shared functionality for Create and Modify tabs
+ * Shared functionality for the Image tab (and other GeneratorTabBase tabs)
  */
 
 import FluxUI from './main.js';
@@ -341,21 +341,34 @@ class GeneratorTabBase {
   }
 
   /**
-   * Generate HTML for the source-image section.
-   * When optionalSourceImage is set, the image is a recommendation (amber `*`)
-   * rather than a hard requirement (red `*`).
+   * Whether a source image is required for the current selection. On the Image
+   * tab this is model-aware (some models cannot run without one); legacy tabs
+   * fall back to the tab-level requiresSourceImage flag.
+   */
+  sourceImageRequired() {
+    if (this.config.optionalSourceImage) {
+      return !!REPLICATE_MODELS[this.selectedModel]?.requiresSourceImage;
+    }
+    return this.config.requiresSourceImage;
+  }
+
+  /**
+   * Generate HTML for the source-image section. The `*` indicator is amber when
+   * an image is merely recommended and red when the selected model requires one
+   * (updated live by updateSourceImageIndicator on model change).
    */
   getImagePromptHTML() {
     if (!this.config.showImagePromptUI) return '';
 
-    const optional = this.config.optionalSourceImage;
-    const labelText = optional ? 'Reference Image' : 'Source Image';
-    const indicator = optional
-      ? `<span style="color: #F5A623;" title="Recommended for better results">*</span>`
-      : `<span class="text-red-500">*</span>`;
-    const helper = optional
-      ? `<p class="text-xs text-gray-500">Optional — a reference image guides the result. Text-only works too.</p>`
-      : '';
+    const labelText = this.config.optionalSourceImage
+      ? 'Reference Image'
+      : 'Source Image';
+    const required = this.sourceImageRequired();
+    const indicator = `<span id="source-image-indicator" style="color: ${
+      required ? '#ef4444' : '#F5A623'
+    };" title="${
+      required ? 'Required for this model' : 'Recommended for better results'
+    }">*</span>`;
 
     return `
                     <!-- Source Image -->
@@ -377,7 +390,6 @@ class GeneratorTabBase {
                                     </svg>
                                 </button>
                             </div>
-                            ${helper}
                             <div class="hidden" id="source-image-strength-container">
                                 <label class="block text-xs font-medium text-gray-700 mb-1">Image Strength: <span id="source-image-strength-value">0.3</span></label>
                                 <input type="range" id="source-image-strength" min="0" max="1" step="0.05" value="0.3" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
@@ -419,11 +431,11 @@ class GeneratorTabBase {
 
     this.modelSelectorInstance = mountModelSelector(container, {
       value: this.selectedModel,
-      // With an optional source image the model list adapts to whether one is
-      // present (edit-only models are hidden until an image is added). Legacy
-      // tabs key off showImagePromptUI as before.
+      // The Image tab (optionalSourceImage) shows all models at all times,
+      // regardless of whether an image is present. Legacy tabs key off
+      // showImagePromptUI to hide edit-only models when there's no image.
       hasSourceImage: this.config.optionalSourceImage
-        ? !!this.imagePromptData
+        ? true
         : this.config.showImagePromptUI,
       onChange: (modelId) => {
         this.selectedModel = modelId;
@@ -432,15 +444,10 @@ class GeneratorTabBase {
         if (this.modelSelectorInstance) {
           this.modelSelectorInstance.update({ value: modelId });
         }
-        // Update prompt input with model's default prompt if current prompt is empty
-        const modelConfig = REPLICATE_MODELS[modelId];
-        if (
-          modelConfig?.prompt &&
-          this.elements.promptInput &&
-          !this.elements.promptInput.value.trim()
-        ) {
-          this.elements.promptInput.value = modelConfig.prompt;
-        }
+        // Note: the model's default prompt is applied at generation time when
+        // the box is left empty (see generateImage). We intentionally do NOT
+        // write it into the textarea here — the suggestion stays as placeholder
+        // help text so the field reflects only what the user actually typed.
       },
       disabled: false
     });
@@ -849,6 +856,9 @@ class GeneratorTabBase {
       this.elements.tokenCost.textContent = 1;
     }
 
+    // Keep the source-image `*` in sync: red when this model requires an image.
+    this.updateSourceImageIndicator();
+
     // Default visibility states
     let showDimensions = true;
     let showAspectRatio = false;
@@ -1094,32 +1104,8 @@ class GeneratorTabBase {
     this.elements.imagePromptUploadLabel.classList.add('hidden');
     this.elements.imagePromptPreviewContainer.classList.remove('hidden');
 
-    // A source image is now present — unhide edit-only models.
-    this.updateModelSelectorSourceImage(true);
-  }
-
-  /**
-   * Keep the model list in sync with whether a source image is present. Only
-   * meaningful for the optional-source-image tab; other tabs fix hasSourceImage
-   * at mount time.
-   */
-  updateModelSelectorSourceImage(hasImage) {
-    if (!this.config.optionalSourceImage || !this.modelSelectorInstance) return;
-
-    // Dropping the image can hide the current (edit-only) model; fall back to
-    // the default so the selector doesn't show a hidden selection.
-    if (
-      !hasImage &&
-      REPLICATE_MODELS[this.selectedModel]?.requiresSourceImage
-    ) {
-      this.selectedModel = 'nano-banana-pro';
-      this.updateModelParams();
-    }
-
-    this.modelSelectorInstance.update({
-      value: this.selectedModel,
-      hasSourceImage: hasImage
-    });
+    // An image is now present — clear any lingering "add it here" hint.
+    this.removeReferenceImageArrow();
   }
 
   /**
@@ -1148,9 +1134,6 @@ class GeneratorTabBase {
     if (this.elements.imagePromptStrengthContainer) {
       this.elements.imagePromptStrengthContainer.classList.add('hidden');
     }
-
-    // No source image — re-hide edit-only models.
-    this.updateModelSelectorSourceImage(false);
   }
 
   /**
@@ -1187,15 +1170,16 @@ class GeneratorTabBase {
       }
     }
 
-    // Check source image requirement
-    if (this.config.requiresSourceImage) {
-      if (!this.imagePromptData) {
-        FluxUI.showNotification(
-          'Source image is required. Please upload an image to modify.',
-          'error'
-        );
-        return false;
-      }
+    // Check source image requirement (tab-level or, on the Image tab,
+    // model-level). Some models cannot run without a source image, so deny
+    // hard at the client — there is no "generate anyway" bypass for these.
+    if (this.sourceImageRequired() && !this.imagePromptData) {
+      FluxUI.showNotification(
+        'This model requires a source image. Please upload one to continue.',
+        'error'
+      );
+      this.showReferenceImageArrow();
+      return false;
     }
 
     return true;
@@ -1252,19 +1236,17 @@ class GeneratorTabBase {
     modal.id = 'image-nudge-modal';
     modal.className = 'modal';
     modal.innerHTML = `
-      <div class="modal-content p-6">
-        <h3 class="text-lg font-semibold mb-2">Add a reference image for better results</h3>
-        <p class="text-sm text-gray-500 mb-6">
-          A photo or reference image gives the AI real-world structure to match —
-          producing far more accurate, usable results. Text-only generation
-          works, but results are rougher and best for quick concepts.
+      <div class="modal-content" style="max-width: 440px; padding: 1.5rem;">
+        <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">Add a reference image for better results</h3>
+        <p style="font-size: 0.875rem; line-height: 1.55; color: #9ca3af; margin-bottom: 1.5rem;">
+          A photo or reference image gives the AI real-world structure to match, producing far more accurate, usable results. Text-only generation works, but results are rougher and best for quick concepts.
         </p>
-        <div class="flex justify-end gap-3">
-          <button id="image-nudge-generate" class="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button id="image-nudge-generate" style="padding: 0.5rem 1rem; border: 1px solid #4b5563; background: transparent; color: #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer;">
             Generate anyway
           </button>
-          <button id="image-nudge-add" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            Add image
+          <button id="image-nudge-goback" style="padding: 0.5rem 1rem; border: none; background: #4f46e5; color: #fff; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer;">
+            Go back
           </button>
         </div>
       </div>
@@ -1276,11 +1258,11 @@ class GeneratorTabBase {
       if (e.target === modal) close();
     });
 
-    modal.querySelector('#image-nudge-add').addEventListener('click', () => {
+    // "Go back" simply dismisses the dialog and points an arrow at the
+    // reference-image upload area — it does not open the file chooser.
+    modal.querySelector('#image-nudge-goback').addEventListener('click', () => {
       close();
-      if (this.elements.imagePromptInput) {
-        this.elements.imagePromptInput.click();
-      }
+      this.showReferenceImageArrow();
     });
 
     modal
@@ -1292,6 +1274,77 @@ class GeneratorTabBase {
       });
 
     document.body.appendChild(modal);
+  }
+
+  /**
+   * Point a left-facing arrow at the reference-image upload area so the user
+   * knows where to add an image after dismissing the nudge. Auto-removes on a
+   * timer or once an image is added.
+   */
+  showReferenceImageArrow() {
+    this.removeReferenceImageArrow();
+
+    const group = this.elements.imagePromptGroup;
+    const label = this.elements.imagePromptUploadLabel;
+    if (!group || !label) return;
+
+    if (!document.getElementById('ref-arrow-style')) {
+      const style = document.createElement('style');
+      style.id = 'ref-arrow-style';
+      style.textContent =
+        '@keyframes ref-arrow-nudge{0%,100%{transform:translateY(-50%) translateX(0);}50%{transform:translateY(-50%) translateX(-7px);}}';
+      document.head.appendChild(style);
+    }
+
+    group.style.position = 'relative';
+    label.style.boxShadow = '0 0 0 2px #F5A623';
+    label.style.borderColor = '#F5A623';
+
+    const arrow = document.createElement('div');
+    arrow.id = 'reference-image-arrow';
+    arrow.style.cssText = `position:absolute;left:100%;top:${
+      label.offsetTop + label.offsetHeight / 2
+    }px;margin-left:0.5rem;display:flex;align-items:center;gap:0.375rem;color:#F5A623;font-size:0.8125rem;font-weight:600;white-space:nowrap;pointer-events:none;z-index:20;animation:ref-arrow-nudge 1s ease-in-out infinite;`;
+    arrow.innerHTML = `
+      <svg width="30" height="20" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+        <path d="M29 10H3M3 10L11 3M3 10L11 17" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Add image here</span>
+    `;
+    group.appendChild(arrow);
+
+    this._refArrowTimer = setTimeout(
+      () => this.removeReferenceImageArrow(),
+      8000
+    );
+  }
+
+  removeReferenceImageArrow() {
+    if (this._refArrowTimer) {
+      clearTimeout(this._refArrowTimer);
+      this._refArrowTimer = null;
+    }
+    const arrow = document.getElementById('reference-image-arrow');
+    if (arrow) arrow.remove();
+    const label = this.elements.imagePromptUploadLabel;
+    if (label) {
+      label.style.boxShadow = '';
+      label.style.borderColor = '';
+    }
+  }
+
+  /**
+   * Refresh the source-image `*` color/tooltip for the current model: red when
+   * the model requires an image, amber when it is only recommended.
+   */
+  updateSourceImageIndicator() {
+    const el = document.getElementById('source-image-indicator');
+    if (!el) return;
+    const required = this.sourceImageRequired();
+    el.style.color = required ? '#ef4444' : '#F5A623';
+    el.title = required
+      ? 'Required for this model'
+      : 'Recommended for better results';
   }
 
   /**
@@ -1325,7 +1378,7 @@ class GeneratorTabBase {
       return;
     }
 
-    // For modify tab, check image requirement
+    // Tab-level source-image requirement (legacy tabs)
     if (this.config.requiresSourceImage && !this.imagePromptData) {
       FluxUI.showNotification(
         'Source image is required for this model',
@@ -1457,7 +1510,7 @@ class GeneratorTabBase {
       return;
     }
 
-    // For modify tab, check image requirement
+    // Tab-level source-image requirement (legacy tabs)
     if (this.config.requiresSourceImage && !this.imagePromptData) {
       FluxUI.showNotification(
         'Source image is required for this model',
