@@ -810,6 +810,13 @@ function processKeyGroup(key, entities) {
 export function beginBatching(sceneEl) {
   sceneEl._batchingEnabled = true;
   sceneEl._batchGroupingDone = false;
+  // Tear down the post-pass listeners (model-loaded / componentchanged / componentinitialized)
+  // for the duration of this pass. They stay live across scene loads, so on a 2nd+ load the
+  // models and components that fire while createEntities runs would otherwise be mis-handled by
+  // onLateModelLoaded / onSceneComponentChanged as post-batch additions — racing ahead of
+  // batchModels' own classification. batchModels re-adds them once the pass settles. No-op on
+  // the first pass (nothing registered yet).
+  removeLateListeners(sceneEl);
   resetSrcLoadCounts();
   // Signal a new scene is loading. gltf-model listens to drop the PREVIOUS scene's clone
   // templates (its listener, added mid-scene, catches the next begin-batching). Emitted for
@@ -845,7 +852,12 @@ export async function batchModels(sceneEl) {
   sceneEl._batchGroupingDone = true;
   sceneEl.emit('batch-grouping-done');
 
-  if (gltfEntities.length === 0) return [];
+  if (gltfEntities.length === 0) {
+    // Nothing to batch, but the pass is over — re-arm the late listeners so that starting from
+    // an empty scene and then adding a model (editor) still triggers late batching.
+    registerLateListeners(sceneEl);
+    return [];
+  }
 
   // Skip deferred entities in the wait — model-loaded will never fire for them. After we
   // classify each group's loaded ref, we either keep them deferred (group will batch) or
@@ -947,40 +959,55 @@ export async function batchModels(sceneEl) {
   const existing = sceneEl._batchModelsBuilt || [];
   sceneEl._batchModelsBuilt = existing.concat(built);
 
-  // Register (once) a listener that catches gltf-model entities created AFTER the initial
-  // batch pass — typically from the editor's entityclone command. They don't get auto-
-  // added to an existing batch (could regress the group), but they need a BVH so the
-  // editor raycaster / runtime .clickable cursor still hits accelerated geometry.
-  if (!sceneEl._batchLateListenerAdded) {
-    sceneEl.addEventListener('model-loaded', onLateModelLoaded);
-    // Batch-slot release on removal is NOT done from a child-detached listener: it doesn't
-    // reliably reach the scene (a managed-street teardown detaches the whole subtree, then
-    // street-generated clearEntities removes the already-disconnected members, so their
-    // child-detached never bubbles). Instead gltf-model / gltf-part call removeMember /
-    // untrackLateUnbatched from their component remove(), which A-Frame fires during the
-    // entity's own disconnectedCallback for any document-disconnection.
-    // componentchanged is emitted with bubbles=false, but the capture phase still
-    // visits ancestors. Listening with { capture: true } lets one hook on sceneEl
-    // see every entity's transform / visible change; we then walk evt.target's
-    // subtree to re-sync batched descendants whose slots live under batchRootEl.
-    // Also listen for componentinitialized: A-Frame's first-time component init
-    // (e.g. setAttribute('visible', false) on an entity that had no `visible`
-    // attribute) emits componentinitialized rather than componentchanged
-    // (aframe/src/core/component.js: initComponent vs callUpdateHandler).
-    sceneEl.addEventListener('componentchanged', onSceneComponentChanged, {
-      capture: true
-    });
-    sceneEl.addEventListener('componentinitialized', onSceneComponentChanged, {
-      capture: true
-    });
-    sceneEl._batchLateListenerAdded = true;
-  }
+  // Re-arm the post-pass listeners that catch entities created / edited AFTER this pass —
+  // typically from the editor's entityclone command or a layer reorder. They were torn down
+  // in beginBatching so nothing during the pass hit them.
+  registerLateListeners(sceneEl);
 
-  // The initial batch pass is complete. gltf-model listens to drop this scene's clone templates
-  // in runtime (the scene is final); the editor keeps them for the session.
+  // The initial batch pass is complete.
   sceneEl.emit('initial-batching-done');
 
   return built;
+}
+
+// The listeners for entities/edits AFTER a batch pass. Registered at the end of every
+// batchModels run and torn down at the start of the next pass (beginBatching), so events that
+// fire while a pass is in flight are handled by the pass itself, not mis-routed here. Both use
+// the same function references so removeLateListeners can unregister them.
+//
+// - model-loaded (onLateModelLoaded): catches gltf-model entities created after the pass —
+//   typically the editor's entityclone command. Batch-slot RELEASE on removal is NOT done from a
+//   child-detached listener: it doesn't reliably reach the scene (a managed-street teardown
+//   detaches the whole subtree, then street-generated clearEntities removes the already-
+//   disconnected members, so their child-detached never bubbles). Instead gltf-model / gltf-part
+//   call removeMember / untrackLateUnbatched from their component remove(), which A-Frame fires
+//   during the entity's own disconnectedCallback for any document-disconnection.
+// - componentchanged / componentinitialized (onSceneComponentChanged): componentchanged is
+//   emitted with bubbles=false, but the capture phase still visits ancestors — so one hook on
+//   sceneEl with { capture: true } sees every descendant's transform / visible change, and we
+//   walk evt.target's subtree to re-sync batched slots that live under batchRootEl. We also
+//   listen for componentinitialized because A-Frame's first-time component init (e.g.
+//   setAttribute('visible', false) on an entity with no prior `visible` attribute) emits
+//   componentinitialized rather than componentchanged (aframe/src/core/component.js:
+//   initComponent vs callUpdateHandler).
+function registerLateListeners(sceneEl) {
+  sceneEl.addEventListener('model-loaded', onLateModelLoaded);
+  sceneEl.addEventListener('componentchanged', onSceneComponentChanged, {
+    capture: true
+  });
+  sceneEl.addEventListener('componentinitialized', onSceneComponentChanged, {
+    capture: true
+  });
+}
+
+function removeLateListeners(sceneEl) {
+  sceneEl.removeEventListener('model-loaded', onLateModelLoaded);
+  sceneEl.removeEventListener('componentchanged', onSceneComponentChanged, {
+    capture: true
+  });
+  sceneEl.removeEventListener('componentinitialized', onSceneComponentChanged, {
+    capture: true
+  });
 }
 
 function onLateModelLoaded(evt) {
