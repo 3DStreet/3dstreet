@@ -7,7 +7,17 @@ function disposeTextures(material) {
     if (texture?.isTexture) {
       if (texture.userData?._batchKeepAlive) continue;
       const image = texture.source.data;
-      if (image instanceof ImageBitmap && !image._batchKeepAlive) {
+      // Release/close the backing bitmap at most once per texture. GLTFLoader assigns the same
+      // Texture instance to metalnessMap AND roughnessMap (plus aoMap for packed ORM), and a
+      // material can repeat across nodes, so iterating properties would otherwise decrement the
+      // shared Source's refcount several times against a single acquire — closing an ImageBitmap
+      // still backing live models (template, sibling clones, cross-GLB imageHash sharers).
+      if (
+        image instanceof ImageBitmap &&
+        !image._batchKeepAlive &&
+        !texture._sharedReleased
+      ) {
+        texture._sharedReleased = true;
         // A canonical Source shared via gltf-model-plus' load-time dedup is refcounted:
         // release it (closes the bitmap only when this is its last live texture). three.js
         // frees the GPU texture via Source refcounting on texture.dispose() either way.

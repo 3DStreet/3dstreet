@@ -166,3 +166,40 @@ describe('non-hashed shared Source survives clone/template disposal', () => {
     expect(registry.has(key)).toBe(false);
   });
 });
+
+// Regression for the refcount over-release bug: GLTFLoader assigns the SAME Texture instance to
+// metalnessMap AND roughnessMap (and aoMap for packed ORM). disposeTextures iterates material
+// properties, so without a per-texture guard it would release the shared Source's refcount once
+// per slot against a single acquire — closing the ImageBitmap while the template / sibling clones
+// still reference it.
+describe('shared Source is not over-released across material slots', () => {
+  it('releases once per texture even when reused in metalnessMap and roughnessMap', () => {
+    const registry = new Map();
+    const bitmap = new FakeImageBitmap();
+    const source = { uuid: 's1', data: bitmap };
+    const key = sharedSourceKey(source, undefined);
+    source._sharedSourceHash = key;
+
+    acquireSharedSource(registry, key, source); // template -> ref 1
+    acquireSharedSource(registry, key, source); // this instance -> ref 2
+    expect(registry.get(key).refCount).toBe(2);
+
+    // One Texture instance shared across two material slots, as GLTFLoader produces.
+    const texture = { isTexture: true, source, dispose() {} };
+    disposeNode({
+      isMesh: true,
+      geometry: { dispose() {}, userData: {} },
+      material: {
+        metalnessMap: texture,
+        roughnessMap: texture,
+        dispose() {},
+        userData: {}
+      },
+      userData: {}
+    });
+
+    // Exactly one release (2 -> 1), NOT one per slot — the template's reference survives.
+    expect(registry.get(key).refCount).toBe(1);
+    expect(bitmap.closed).toBe(false);
+  });
+});

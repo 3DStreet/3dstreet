@@ -401,8 +401,15 @@ export const gltfModelPlus = {
     // child-detached never bubbles). removeMember frees a built member's slot or drops a pending
     // late-batch candidate from the tally. Without this a batched instance stays visible and its
     // now-parentless object3D crashes the editor's hover box.
-    removeMember(this.el);
+    //
+    // removeMesh() runs BEFORE removeMember(): on last-member teardown removeMember clears the
+    // _batchKeepAlive tags and releases the reference member's shared texture Sources. Doing it
+    // first would leave disposeNode's guards no longer firing, so removeMesh() would release the
+    // same Sources a second time. With this order a kept mesh (runtime .clickable reference
+    // member) still carries the tags when disposeNode walks it, so its shared Sources are spared
+    // and released exactly once by teardown.
     this.removeMesh();
+    removeMember(this.el);
   },
 
   removeMesh: function () {
