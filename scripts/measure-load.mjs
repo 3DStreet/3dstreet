@@ -15,8 +15,8 @@
 //   CDP=http://127.0.0.1:9222 node scripts/measure-load.mjs          # attach to a Chrome you launched yourself
 //
 // By default it spawns real Chrome with remote debugging (real GPU → realistic
-// timings), toggles STREET.batchingEnabled at runtime for each mode, and prints a
-// side-by-side comparison table. No rebuild needed between modes.
+// timings), sets window.BATCHING_ENABLED before the bundle loads for each mode, and
+// prints a side-by-side comparison table. No rebuild needed between modes.
 
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -33,8 +33,8 @@ const CHROME_BIN = process.env.CHROME || '/usr/bin/google-chrome-stable';
 const PORT = Number(process.env.PORT || 9222);
 const NAV_TIMEOUT = 90000;
 
-// BATCHING=off|on forces STREET.batchingEnabled before load (needs the runtime
-// toggle instrumentation). Unset = whatever the build defaults to.
+// BATCHING=off|on forces window.BATCHING_ENABLED before the bundle loads. Unset =
+// whatever the build defaults to (on).
 const B = (process.env.BATCHING || '').toLowerCase();
 const forceBatching =
   B === 'off' || B === 'false' || B === '0'
@@ -45,8 +45,8 @@ const forceBatching =
 
 // Injected into every navigation (before page scripts). Sets window.__ml and
 // flips __ml.done when the measurement finishes (or errors).
-// arg.forceBatching: 'off' | 'on' | undefined — override STREET.batchingEnabled
-// before the scene loads (requires the runtime-toggle instrumentation).
+// arg.forceBatching: 'off' | 'on' | undefined — set window.BATCHING_ENABLED
+// before the bundle loads.
 function probe(arg) {
   const start = performance.now();
   const forceBatching = arg && arg.forceBatching;
@@ -66,14 +66,12 @@ function probe(arg) {
     done: false
   });
 
-  // Force STREET.batchingEnabled as soon as STREET exists and keep it pinned until
-  // the scene loads — beginBatching() reads it during createEntities (before newScene).
+  // Set the static batching flag before any page script runs. batch-models reads
+  // `window.BATCHING_ENABLED ?? true` once at module-eval to decide whether to swap
+  // in the defer-and-clone gltf-model component, so it must be set here (this init
+  // script runs before the bundle) and cannot be flipped at runtime.
   if (forceBatching === 'off' || forceBatching === 'on') {
-    const val = forceBatching === 'on';
-    const pin = setInterval(() => {
-      if (window.STREET) window.STREET.batchingEnabled = val;
-    }, 5);
-    window.__unpinBatching = () => clearInterval(pin);
+    window.BATCHING_ENABLED = forceBatching === 'on';
   }
 
   function getRoot() {
@@ -171,7 +169,6 @@ function probe(arg) {
     attached = true;
     clearInterval(iv);
     s.addEventListener('newScene', () => {
-      if (window.__unpinBatching) window.__unpinBatching();
       M.tNewScene = performance.now() - start;
       let gate;
       if (s._batchingEnabled) {

@@ -408,8 +408,7 @@ export const gltfModelPlus = {
   }
 };
 
-// Static feature gate: swap in the defer-and-clone component at registration time. Read from
-// the imported const (not window.STREET) so it doesn't depend on json-utils having run first.
+// Static feature gate: swap in the defer-and-clone component at registration time.
 if (BATCHING_ENABLED) {
   delete AFRAME.components['gltf-model'];
   AFRAME.registerComponent('gltf-model', gltfModelPlus);

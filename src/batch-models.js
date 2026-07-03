@@ -2,16 +2,15 @@
 
 import { releaseSharedSource } from './sharedTextureSources';
 
-// Single owner of the batching feature flag. This module is the low-level dependency both
-// consumers (gltf-model's component swap, json-utils' per-scene gate) already import, so the
-// value resolves at module-eval regardless of import order — unlike reading window.STREET,
-// which required json-utils to have run first. STREET.batchingEnabled is initialized from
-// this and remains a runtime-mutable mirror for A/B benchmarking (scripts/measure-load.mjs).
-export const BATCHING_ENABLED = true;
+// Static batching feature flag.
+// The flag is used to conditionnaly register the gltf-model component override and batch models, so it can't be
+// set at runtime. If you want to disable batching for A/B benchmarking (scripts/measure-load.mjs),
+// set globaThis.BATCHING_ENABLED to false before loading the js bundle.
+export const BATCHING_ENABLED = window.BATCHING_ENABLED ?? true;
 
 // Automatic runtime batching of repeated gltf-model and gltf-part entities.
 //
-// - Deferral (gltf-model only): when a scene will be batched, createEntities sets
+// - Deferral (gltf-model only): when a scene will be batched, beginBatching called from createEntities sets
 //   `sceneEl._batchingEnabled = true` and gltf-model.update() parks its GLB load until
 //   batchModels signals grouping is done. gltf-part is never deferred — it already parses
 //   each GLB once via its own module-level cache.
@@ -808,8 +807,8 @@ function processKeyGroup(key, entities) {
 // flips (and emits "batch-grouping-done") once that decision is made. The per-src tally is reset
 // for every new scene (batched or not): gltf-model.update bumps it as entities are created and
 // batchModels reads it to decide cloning. batchModels then runs on the "newScene" event.
-export function beginBatching(sceneEl, batchingEnabled) {
-  sceneEl._batchingEnabled = batchingEnabled;
+export function beginBatching(sceneEl) {
+  sceneEl._batchingEnabled = true;
   sceneEl._batchGroupingDone = false;
   resetSrcLoadCounts();
   // Signal a new scene is loading. gltf-model listens to drop the PREVIOUS scene's clone
@@ -818,15 +817,10 @@ export function beginBatching(sceneEl, batchingEnabled) {
   sceneEl.emit('begin-batching');
   // Open the grouping gate ourselves once this scene's entities are minted: createEntities
   // (our only caller) emits "newScene" when its pass finishes, and batchModels then groups
-  // every [gltf-model]/[gltf-part] and releases the parked loads. Arming the gate-opener here
-  // — rather than relying on the editor's onNewScene — keeps parked gltf-model loads from
-  // hanging forever in an editor-free core bundle. Guarded so we only arm it when batching
-  // is actually on (the park itself is gated on `_batchingEnabled`).
-  if (batchingEnabled) {
-    sceneEl.addEventListener('newScene', () => batchModels(sceneEl), {
-      once: true
-    });
-  }
+  // every [gltf-model]/[gltf-part] and releases the parked loads.
+  sceneEl.addEventListener('newScene', () => batchModels(sceneEl), {
+    once: true
+  });
 }
 
 export async function batchModels(sceneEl) {

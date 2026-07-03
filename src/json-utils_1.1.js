@@ -9,11 +9,6 @@ window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
 STREET.store = useStore;
-// Runtime toggle for batching, read per scene load in createEntities. Seeded from
-// batch-models' BATCHING_ENABLED (its single owner / canonical default) but kept mutable so it
-// can be flipped live: today by scripts/measure-load.mjs for A/B benchmarking, and in future by
-// user-facing performance options or user/local settings.
-STREET.batchingEnabled = BATCHING_ENABLED;
 function getSceneUuidFromURLHash() {
   const currentHash = window.location.hash;
   const match = currentHash.match(/#\/scenes\/([a-zA-Z0-9-]+)/);
@@ -427,8 +422,8 @@ function createEntities(entitiesData, parentEl) {
   const removeEntities = ['environment', 'reference-layers'];
   // Arm batching before any entity is minted below; batchModels runs on the "newScene"
   // event emitted after this createEntities pass. See beginBatching for the state model.
-  if (STREET.batchingEnabled) {
-    beginBatching(sceneElement, STREET.batchingEnabled);
+  if (BATCHING_ENABLED) {
+    beginBatching(sceneElement);
   }
   for (const entityData of entitiesData) {
     // Legacy migration: the geospatial layer's visibility used to be toggled
