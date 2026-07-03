@@ -2,6 +2,13 @@
 
 import { releaseSharedSource } from './sharedTextureSources';
 
+// Single owner of the batching feature flag. This module is the low-level dependency both
+// consumers (gltf-model's component swap, json-utils' per-scene gate) already import, so the
+// value resolves at module-eval regardless of import order — unlike reading window.STREET,
+// which required json-utils to have run first. STREET.batchingEnabled is initialized from
+// this and remains a runtime-mutable mirror for A/B benchmarking (scripts/measure-load.mjs).
+export const BATCHING_ENABLED = true;
+
 // Automatic runtime batching of repeated gltf-model and gltf-part entities.
 //
 // - Deferral (gltf-model only): when a scene will be batched, createEntities sets

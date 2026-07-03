@@ -1,6 +1,6 @@
 import useStore from './store';
 import { createUniqueId } from './editor/lib/entity';
-import { beginBatching } from './batch-models';
+import { beginBatching, BATCHING_ENABLED } from './batch-models';
 import { decodeCameraStateFromParam } from './editor/lib/cameraUtils';
 import JSONCrush from 'jsoncrush';
 
@@ -9,8 +9,10 @@ window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
 STREET.store = useStore;
-// Group duplicate gltf-model meshes into batches when loading a scene. Set false to disable.
-STREET.batchingEnabled = true;
+// Runtime-mutable mirror of batch-models' BATCHING_ENABLED, read per scene load in
+// createEntities. Kept mutable so scripts/measure-load.mjs can flip it live to A/B benchmark;
+// the canonical default lives in batch-models.js (its single owner).
+STREET.batchingEnabled = BATCHING_ENABLED;
 function getSceneUuidFromURLHash() {
   const currentHash = window.location.hash;
   const match = currentHash.match(/#\/scenes\/([a-zA-Z0-9-]+)/);

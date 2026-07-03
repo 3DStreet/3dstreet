@@ -2,7 +2,12 @@
 import { disposeNode } from '../disposeUtils';
 import { acquireSharedSource, sharedSourceKey } from '../sharedTextureSources';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
-import { noteSrcLoad, srcLoadCount, removeMember } from '../batch-models';
+import {
+  noteSrcLoad,
+  srcLoadCount,
+  removeMember,
+  BATCHING_ENABLED
+} from '../batch-models';
 
 // Share one decoded THREE.Source across textures (within and across GLBs) that embed the
 // byte-identical image. The server bakes images[].extras.imageHash; GLTFLoader.loadImageSource
@@ -403,7 +408,9 @@ export const gltfModelPlus = {
   }
 };
 
-if (STREET.batchingEnabled) {
+// Static feature gate: swap in the defer-and-clone component at registration time. Read from
+// the imported const (not window.STREET) so it doesn't depend on json-utils having run first.
+if (BATCHING_ENABLED) {
   delete AFRAME.components['gltf-model'];
   AFRAME.registerComponent('gltf-model', gltfModelPlus);
 }
