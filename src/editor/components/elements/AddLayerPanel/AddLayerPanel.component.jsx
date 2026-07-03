@@ -89,6 +89,7 @@ const createEntityOnPosition = (mixinId, position, mixinName) => {
     previewEntity.remove();
   }
   AFRAME.INSPECTOR.execute('entitycreate', {
+    // English name for scene-JSON/analytics consistency (mixin id is the canonical key); user can rename freely.
     'data-layer-name': mixinName,
     mixin: mixinId,
     components: {
@@ -103,6 +104,7 @@ const createEntity = (mixinId, mixinName) => {
     previewEntity.remove();
   }
   const newEntityObject = {
+    // English name for scene-JSON/analytics consistency (mixin id is the canonical key); user can rename freely.
     'data-layer-name': mixinName,
     mixin: mixinId,
     components: {}
