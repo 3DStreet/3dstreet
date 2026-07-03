@@ -14,6 +14,11 @@ const { inspectPlyGeometry } = require('./ply-sanity.js');
 // preempts long jobs). Provider adapter only; the job/billing machinery in
 // this file is shared across providers.
 const { MODAL_SECRETS, enqueueModalJob, fetchModalPrediction } = require('./modal-backend.js');
+// fal is a third provider (image → 3D mesh). saveMeshToGallery persists the GLB
+// on the shared terminal path; fetchFalPrediction is the poll adapter used by
+// getGenerationJobStatus and the reconciler. One-directional require: fal-3d.js
+// does NOT require this module, so there's no cycle.
+const { saveMeshToGallery, fetchFalPrediction } = require('./fal-3d.js');
 // Real-time completion email: the webhook calls this the instant a job finishes
 // so the user isn't waiting on the 10-min reconciler sweep. Shared, idempotent
 // send (the sweep is the backstop). No circular dep: scheduledEmails doesn't
@@ -1738,6 +1743,9 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
         if ((j.kind || 'splat') === 'video') {
           return { status: 'succeeded', video_url: j.videoUrl, assetId: j.assetId };
         }
+        if ((j.kind || 'splat') === 'mesh') {
+          return { status: 'succeeded', mesh_url: j.meshUrl, assetId: j.assetId };
+        }
         return { status: 'succeeded', splat_url: j.splatUrl, assetId: j.assetId };
       }
       // Already finalized as failed/canceled (e.g. the reconciler gave up and
@@ -1824,6 +1832,49 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
         // Release the claim so a webhook retry / next poll can re-attempt.
         await jobRef.update({ status: 'running' });
         throw new functions.https.HttpsError('internal', `Failed to save video: ${saveError.message}`);
+      }
+    }
+
+    // kind: 'mesh' — persist the GLB (fal image → 3D). Like video, there is no
+    // geometry gate (that's a splat-specific SfM check). saveMeshToGallery keys
+    // the asset off the fal request_id so webhook-less poll/reconciler retries
+    // converge on one asset.
+    if ((job.kind || 'splat') === 'mesh') {
+      try {
+        const { assetId, storageUrl } = await saveMeshToGallery(userId, splatUrl, {
+          ...job,
+          predictionId: job.providerJobId || jobRef.id
+        });
+        await cleanupSplatTempFile(job.tempFilePath);
+        await jobRef.update({
+          status: 'succeeded',
+          assetId,
+          meshUrl: storageUrl,
+          completedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        db.collection('generationLog').add({
+          userId,
+          provider: job.provider || 'fal',
+          model: job.model,
+          modelId: job.modelId || null,
+          generationType: 'mesh',
+          tokenCost: job.tokenCost,
+          // Submit → saved-to-gallery, i.e. the user-perceived duration
+          // (includes fal queue wait, unlike the old inline-poll timing).
+          processingTimeMs: job.createdAt?.toMillis
+            ? Date.now() - job.createdAt.toMillis()
+            : null,
+          providerPredictionId: job.providerJobId || null,
+          status: 'succeeded',
+          source: job.source,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        }).catch(err => console.error('Failed to write generationLog:', err));
+        return { status: 'succeeded', mesh_url: storageUrl, assetId };
+      } catch (saveError) {
+        console.error('Failed to save mesh to gallery:', saveError);
+        // Release the claim so the next poll / reconciler can re-attempt.
+        await jobRef.update({ status: 'running' });
+        throw new functions.https.HttpsError('internal', `Failed to save mesh: ${saveError.message}`);
       }
     }
 
@@ -1936,7 +1987,9 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
     const snap = await jobRef.get();
     const job = snap.data() || {};
     const kind = job.kind || 'splat';
-    const genericError = `${kind === 'video' ? 'Video' : 'Splat'} generation failed.`;
+    const kindNoun =
+      kind === 'video' ? 'Video' : kind === 'mesh' ? '3D model' : 'Splat';
+    const genericError = `${kindNoun} generation failed.`;
     const remainingTokens = await refundSplatToken(db, userId, jobRef, job);
     await cleanupSplatTempFile(job.tempFilePath);
     await jobRef.update({
@@ -1999,7 +2052,8 @@ const getGenerationJobStatus = functions
   .runWith({
     // DISCORD_WEBHOOK_URL: the shared terminal processor posts finished videos
     // to Discord, and a poll can be the path that carries a job to terminal.
-    secrets: ['REPLICATE_API_TOKEN', 'DISCORD_WEBHOOK_URL', ...MODAL_SECRETS],
+    // FAL_KEY: a poll can finalize a fal (mesh) job by hitting fal's status API.
+    secrets: ['REPLICATE_API_TOKEN', 'DISCORD_WEBHOOK_URL', 'FAL_KEY', ...MODAL_SECRETS],
     // saveSplatToGallery streams the .ply through (no full-file buffering), so
     // memory no longer scales with splat size. 512 MB is fixed headroom over the
     // firebase-admin cold-start baseline, not sized to the file.
@@ -2040,6 +2094,10 @@ const getGenerationJobStatus = functions
       await ackClientSeen(jobRef, job);
       return { status: 'succeeded', video_url: job.videoUrl, assetId: job.assetId };
     }
+    if (job.status === 'succeeded' && (job.kind || 'splat') === 'mesh' && job.meshUrl) {
+      await ackClientSeen(jobRef, job);
+      return { status: 'succeeded', mesh_url: job.meshUrl, assetId: job.assetId };
+    }
     if (job.status === 'succeeded' && job.splatUrl) {
       await ackClientSeen(jobRef, job);
       return { status: 'succeeded', splat_url: job.splatUrl, assetId: job.assetId };
@@ -2063,6 +2121,12 @@ const getGenerationJobStatus = functions
         if (fetched.absent) {
           // Provider lost the job (expired result) — keep reporting the stored
           // status; the reconciler's give-up window owns declaring it dead.
+          return { status: job.status || 'running' };
+        }
+        prediction = fetched.prediction;
+      } else if (job.provider === 'fal') {
+        const fetched = await fetchFalPrediction(job);
+        if (fetched.absent) {
           return { status: job.status || 'running' };
         }
         prediction = fetched.prediction;

@@ -39,6 +39,8 @@ const {
   modalEndpointHealthy,
   stagingPathForJob
 } = require('../modal-backend.js');
+// fal (image → 3D mesh) poll adapter — the sweep is one of its two finalizers.
+const { fetchFalPrediction } = require('../fal-3d.js');
 const { enqueueRadTask } = require('../rad-dispatch.js');
 const { withJobHealth } = require('./job-health.js');
 
@@ -144,6 +146,11 @@ async function fetchProviderPrediction(job, replicate, jobId) {
       // Returns a Replicate-shaped prediction synthesized from the Modal
       // status endpoint + a staged-.ply existence check in our own bucket.
       return fetchModalPrediction(admin, job, jobId);
+    case 'fal':
+      // fal image → 3D mesh: poll fal's status endpoint and shape the result
+      // as a Replicate prediction (GLB URL as `output`). No webhook, so the
+      // client poll + this sweep are the only finalizers.
+      return fetchFalPrediction(job);
     default:
       throw new Error(`Unknown provider: ${job.provider}`);
   }
@@ -540,7 +547,7 @@ function escalateIfNeeded(summary, notify) {
 
 const reconcileGenerationJobs = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL', ...MODAL_SECRETS],
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL', 'FAL_KEY', ...MODAL_SECRETS],
     // processTerminalPrediction may stream a .ply save (no full-file buffering);
     // 512 MB is fixed headroom, not sized to the file. 540s covers a backlog.
     timeoutSeconds: 540,
@@ -581,7 +588,7 @@ const reconcileGenerationJobs = functions
 
 const triggerReconcileGenerationJobs = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL', ...MODAL_SECRETS],
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL', 'FAL_KEY', ...MODAL_SECRETS],
     timeoutSeconds: 540,
     memory: '512MB'
   })

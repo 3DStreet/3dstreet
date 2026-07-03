@@ -584,3 +584,37 @@ full queue plus two things the Replicate kinds don't:
 - **Secrets:** none new for splat — reuses `REPLICATE_API_TOKEN` and
   `ALLOWED_PRO_TEAM_DOMAINS`. Email (Phase 4) reuses the existing Postmark
   secret. cloudrun adds **no secrets** (OIDC via the invoker SA).
+
+## Third provider — fal (image → 3D mesh) ✅ DONE
+
+The first **poll-provider**: fal has no webhook wired here, so completion is
+discovered by polling — the exact seam the reconciler's `switch (job.provider)`
+anticipated. It also fixed a real bug: `generateFalMesh` used to be a
+synchronous callable that polled fal inline for up to ~4.6 min, so longer jobs
+(TRELLIS 2, or fal queue congestion) hit the 300s function timeout and 500'd
+with the token uncharged-but-work-wasted feel. Same class of failure as the
+video migration (#1780).
+
+- **Kind/provider:** `kind: 'mesh'`, `provider: 'fal'`. Models Hunyuan3D v2 and
+  TRELLIS 2 (`type: 'fal-3d'` in `replicate-models.js`), image-to-3D only.
+- **Submit-and-return:** `generateFalMesh` stages the input image, writes the
+  pending job, charges at submit (refund-once-on-failure, shared
+  `refundSplatToken` path), submits to `queue.fal.run`, stores the fal
+  `request_id` as `providerJobId` plus `statusUrl`/`responseUrl`, and returns
+  `{ jobId }`. No inline poll.
+- **Completion (no webhook):** `fetchFalPrediction(job)` (in `fal-3d.js`) polls
+  `statusUrl` and shapes the result as a Replicate-style prediction (GLB URL as
+  `output`, mapped to Replicate status words), returning `{ prediction }` or
+  `{ absent }`. Both `getGenerationJobStatus` (client poll, live UX) and the
+  reconciler (closed-tab backstop) call it, then run the shared
+  `processTerminalPrediction`, whose new `kind: 'mesh'` branch saves the GLB via
+  `saveMeshToGallery` (streamed to `users/{uid}/assets/meshes/{assetId}.glb`,
+  `type: 'mesh'` / `category: 'ai-render'`, asset id keyed on the fal
+  `request_id` so retries converge). Result field is `meshUrl` (returned as
+  `mesh_url`).
+- **Client:** `model3d.js` mirrors `splat.js`/`video.js` — submit → `jobId` →
+  self-rescheduling `pollMeshStatus`, "email me when my 3D model is ready"
+  checkbox (default on), pending gallery card via the kind-agnostic
+  `generationJobs` listener (`mesh` noun added to `PendingJobCard`).
+- **Secrets:** `FAL_KEY` added to `getGenerationJobStatus` and the reconciler
+  (either can carry a fal job to terminal).

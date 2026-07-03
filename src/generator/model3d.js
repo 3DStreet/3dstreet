@@ -7,10 +7,12 @@
  *   - TRELLIS   (fal-ai/trellis-2)
  *
  * Both endpoints are image-to-3D only (no text prompt input), so a reference
- * image is required to generate. Generation is a single synchronous callable
- * (generateFalMesh):
- * the Cloud Function submits to fal, polls to completion, downloads the GLB and
- * saves it as a first-class `mesh` asset, then charges tokens.
+ * image is required to generate. Generation uses the async job queue (like
+ * splats/videos): generateFalMesh submits to fal and returns a jobId
+ * immediately; the client polls getGenerationJobStatus while the tab is open,
+ * and the server saves the GLB as a first-class `mesh` asset when fal finishes
+ * (surviving a closed tab, with an opt-in completion email). This is what fixed
+ * the old synchronous-callable timeout on longer fal jobs.
  *
  * Named "3D Model" (not "Model") to avoid confusion with the AI Model selector
  * used elsewhere in the app.
@@ -47,6 +49,14 @@ const Model3DTab = {
   currentModelUrl: '',
   timerInterval: null,
   startTime: null,
+  pollTimeout: null, // setTimeout handle for the status poll loop
+  pollDeadline: 0,
+
+  // Poll cadence + how long we keep polling before telling the user to check
+  // their gallery. The job still completes server-side past this; we just stop
+  // watching from this tab.
+  POLL_INTERVAL_MS: 3000,
+  POLL_MAX_MS: 20 * 60 * 1000,
 
   elements: {},
 
@@ -130,6 +140,15 @@ const Model3DTab = {
               <span id="model3d-token-cost" class="text-sm font-medium">3</span>
             </span>
           </button>
+
+          <!-- Email when done. Default on: a fal queue wait can stretch a job
+               past what anyone keeps a tab open for. The email is suppressed
+               server-side if the tab is still open when it finishes. -->
+          <label class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
+            <input id="model3d-notify-email" type="checkbox" checked
+              class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+            Email me when my 3D model is ready
+          </label>
         </div>
 
         <!-- Preview Column -->
@@ -204,7 +223,8 @@ const Model3DTab = {
       result: document.getElementById('model3d-result'),
       viewerFrame: document.getElementById('model3d-viewer-frame'),
       openBtn: document.getElementById('model3d-open-btn'),
-      downloadBtn: document.getElementById('model3d-download-btn')
+      downloadBtn: document.getElementById('model3d-download-btn'),
+      notifyEmail: document.getElementById('model3d-notify-email')
     };
   },
 
@@ -316,34 +336,32 @@ const Model3DTab = {
   async startGeneration() {
     if (!this.validate()) return;
 
-    const model = this.selectedModel;
-    const modelConfig = this.getModelConfig(model);
-
+    this.stopPolling();
     this.toggleLoading(true);
     this.startTimer();
 
+    const model = this.selectedModel;
+
     try {
-      const generateFalMesh = httpsCallable(functions, 'generateFalMesh', {
-        timeout: 300000
-      });
+      const generateFalMesh = httpsCallable(functions, 'generateFalMesh');
 
       const result = await generateFalMesh({
         model_id: model,
         input_image: this.imageData,
         scene_id: null,
-        source: 'generator'
+        source: 'generator',
+        // Opt-in completion email, recorded on the job doc. The server only
+        // sends it if this tab isn't around to ack the result (i.e. closed).
+        notify: { email: !!this.elements.notifyEmail?.checked }
       });
 
-      if (!result.data.success) {
-        throw new Error('Failed to generate 3D model');
+      if (!result.data || !result.data.success || !result.data.jobId) {
+        throw new Error('Could not start 3D generation');
       }
 
-      this.stopTimer();
-      this.toggleLoading(false);
-      this.showResult(result.data);
-
-      // Surface the new mesh in the gallery island and refresh the token count.
-      window.dispatchEvent(new Event('assets:refresh'));
+      // The token was charged on submit; reflect that immediately. The job now
+      // shows as a pending card in the gallery island (live Firestore listener),
+      // so it persists across reloads/tabs without any client state here.
       window.dispatchEvent(new CustomEvent('tokenCountChanged'));
 
       posthog.capture('ai_render_used', {
@@ -354,33 +372,110 @@ const Model3DTab = {
         is_pro_user: window.authState?.currentUser?.isPro || false
       });
 
-      const remaining = result.data.remainingTokens;
-      FluxUI.showNotification(
-        remaining !== undefined
-          ? `3D model generated! ${remaining} gen tokens remaining. (${modelConfig.name})`
-          : `3D model generated! (${modelConfig.name})`,
-        'success'
-      );
+      this.pollDeadline = Date.now() + this.POLL_MAX_MS;
+      this.pollMeshStatus(result.data.jobId);
     } catch (error) {
-      console.error('Error generating 3D model:', error);
+      console.error('Error starting 3D generation:', error);
       this.stopTimer();
-      this.toggleLoading(false);
-
-      let message = 'Failed to generate 3D model';
-      if (error.code === 'unauthenticated') {
-        message = 'Please sign in to generate 3D models';
-      } else if (error.code === 'resource-exhausted') {
-        message =
-          'No tokens available. Please purchase more tokens or upgrade to Pro.';
-      } else if (error.message) {
-        message = error.message;
-      }
-      FluxUI.showNotification(message, 'error');
+      this.failGeneration(this.errorMessage(error));
     }
   },
 
-  showResult(data) {
-    this.currentModelUrl = data.model_url || '';
+  // Poll getGenerationJobStatus until terminal. Re-schedules itself with
+  // setTimeout (not setInterval) so a slow request can't overlap the next tick.
+  // Any non-terminal status (queued|running|saving) just keeps polling.
+  async pollMeshStatus(jobId) {
+    const getGenerationJobStatus = httpsCallable(
+      functions,
+      'getGenerationJobStatus'
+    );
+
+    try {
+      const { data } = await getGenerationJobStatus({ jobId });
+
+      if (data.status === 'succeeded' && data.mesh_url) {
+        // Saved to the gallery server-side (works even if this tab had been
+        // closed). Reflect it in the UI and refresh the gallery island.
+        this.stopTimer();
+        this.toggleLoading(false);
+        this.showResult(data.mesh_url, data.assetId);
+        window.dispatchEvent(new Event('assets:refresh'));
+        FluxUI.showNotification('3D model generated!', 'success');
+        return;
+      }
+
+      if (data.status === 'failed' || data.status === 'canceled') {
+        // The server refunds on failure; refresh the displayed balance.
+        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+        this.stopTimer();
+        this.failGeneration(
+          data.error
+            ? `3D generation failed: ${data.error}`
+            : '3D generation failed. Your tokens were refunded.'
+        );
+        return;
+      }
+
+      // Still queued/running/saving — keep polling until the deadline.
+      if (Date.now() > this.pollDeadline) {
+        this.stopTimer();
+        this.failGeneration(
+          '3D generation is taking longer than expected. Check your gallery shortly.'
+        );
+        return;
+      }
+      this.pollTimeout = setTimeout(
+        () => this.pollMeshStatus(jobId),
+        this.POLL_INTERVAL_MS
+      );
+    } catch (error) {
+      console.error('Error polling 3D status:', error);
+      // Transient poll error — retry until the deadline rather than failing hard.
+      if (Date.now() > this.pollDeadline) {
+        this.stopTimer();
+        this.failGeneration(this.errorMessage(error));
+        return;
+      }
+      this.pollTimeout = setTimeout(
+        () => this.pollMeshStatus(jobId),
+        this.POLL_INTERVAL_MS
+      );
+    }
+  },
+
+  stopPolling() {
+    if (this.pollTimeout) {
+      clearTimeout(this.pollTimeout);
+      this.pollTimeout = null;
+    }
+  },
+
+  // Reset to the idle placeholder and surface an error toast. The gallery's
+  // pending-job card clears itself when the job doc reaches a terminal state; a
+  // local poll timeout just stops our polling — the job may still finish
+  // server-side and surface in the gallery later.
+  failGeneration(message) {
+    this.stopPolling();
+    this.toggleLoading(false);
+    this.elements.placeholder.classList.remove('hidden');
+    FluxUI.showNotification(message, 'error');
+  },
+
+  errorMessage(error) {
+    if (error.code === 'unauthenticated') {
+      return 'Please sign in to generate 3D models';
+    }
+    if (error.code === 'resource-exhausted') {
+      return 'No tokens available. Please purchase more tokens or upgrade to Pro.';
+    }
+    if (error.message) {
+      return `Failed to generate 3D model: ${error.message}`;
+    }
+    return 'Failed to generate 3D model';
+  },
+
+  showResult(meshUrl, assetId) {
+    this.currentModelUrl = meshUrl || '';
     this.elements.placeholder.classList.add('hidden');
     this.elements.loading.classList.add('hidden');
     this.elements.result.classList.remove('hidden');
@@ -396,8 +491,8 @@ const Model3DTab = {
     // back to the raw GLB if we somehow lack an assetId/uid.
     const uid = auth.currentUser?.uid;
     this.elements.openBtn.href =
-      data.assetId && uid
-        ? `${window.location.origin}/?utm_source=generator&utm_medium=mesh_result&utm_campaign=open_in_editor#asset:${uid}/${data.assetId}`
+      assetId && uid
+        ? `${window.location.origin}/?utm_source=generator&utm_medium=mesh_result&utm_campaign=open_in_editor#asset:${uid}/${assetId}`
         : this.currentModelUrl;
   },
 

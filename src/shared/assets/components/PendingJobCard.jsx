@@ -27,7 +27,8 @@ const STATUS_LABELS = {
 const KIND_NOUNS = {
   splat: 'Splat',
   image: 'Image',
-  video: 'Video'
+  video: 'Video',
+  mesh: '3D Model'
 };
 
 const PendingJobCard = ({ job }) => {

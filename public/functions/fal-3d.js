@@ -106,14 +106,115 @@ async function saveMeshToGallery(userId, glbUrl, job) {
   return { assetId, storageUrl, name: job.assetName || 'Generated 3D Model' };
 }
 
-// fal.ai image → 3D mesh (GLB) generation. Synchronous callable: submit to the
-// fal queue, poll to completion, download+save the GLB, then charge tokens.
-// These endpoints (Hunyuan3D v2, TRELLIS 2) are image-to-3D only: a reference
-// image is required (no text prompt input).
+// fal is a poll-provider in the async job queue (like modal): there is no
+// webhook, so completion is discovered by polling fal's status endpoint. This
+// returns a Replicate-shaped prediction ({ status, output, error }) so the
+// shared terminal processor and the reconciler handle it uninstrumented, or
+// { absent: true } if fal no longer knows the request (expired/unknown). The
+// `output` on success is the plain GLB URL string, which extractSplatUrl in
+// replicate.js resolves the same as a splat/video output.
+async function fetchFalPrediction(job) {
+  const key = process.env.FAL_KEY;
+  const statusUrl = job.statusUrl;
+  const responseUrl = job.responseUrl;
+
+  // No status URL recorded (submit crashed before it could be stored) — let the
+  // reconciler's give-up window own declaring it dead.
+  if (!statusUrl) return { absent: true };
+
+  const statusResp = await fetch(statusUrl, {
+    method: 'GET',
+    headers: { Authorization: `Key ${key}` }
+  });
+  if (statusResp.status === 404) return { absent: true };
+  if (!statusResp.ok) {
+    throw new Error(`fal status fetch failed: ${statusResp.status}`);
+  }
+  const statusResult = await statusResp.json();
+  const falStatus = statusResult.status;
+
+  if (falStatus === 'COMPLETED') {
+    let response = statusResult.response;
+    if (!response && responseUrl) {
+      const r = await fetch(responseUrl, {
+        method: 'GET',
+        headers: { Authorization: `Key ${key}` }
+      });
+      if (r.ok) response = await r.json();
+    }
+    // fal 3D models return the mesh under model_mesh; accept aliases defensively.
+    const meshUrl =
+      response?.model_mesh?.url ||
+      response?.model_glb?.url ||
+      response?.mesh?.url ||
+      response?.glb?.url ||
+      null;
+    if (!meshUrl) {
+      console.error('Unexpected fal 3D output:', JSON.stringify(response));
+      return {
+        prediction: {
+          status: 'failed',
+          error: 'No mesh URL returned from fal.ai.'
+        }
+      };
+    }
+    return { prediction: { status: 'succeeded', output: meshUrl } };
+  }
+
+  if (falStatus === 'FAILED' || falStatus === 'ERROR') {
+    return {
+      prediction: {
+        status: 'failed',
+        error: statusResult.error || 'fal.ai 3D generation failed.'
+      }
+    };
+  }
+
+  // IN_QUEUE / IN_PROGRESS → still working. Map to Replicate's vocabulary so
+  // normalizeReplicateStatus lands on queued/running.
+  return {
+    prediction: {
+      status: falStatus === 'IN_QUEUE' ? 'starting' : 'processing'
+    }
+  };
+}
+
+// Refund a charged fal mesh job once (submit-time failure path). Duplicated
+// from replicate.js's refundSplatToken rather than imported, to keep fal-3d.js
+// free of a require on replicate.js (replicate.js requires THIS module).
+async function refundMeshTokenInline(db, userId, jobRef, tokenCost) {
+  try {
+    await db.runTransaction(async (tx) => {
+      const jobDoc = await tx.get(jobRef);
+      const job = jobDoc.exists ? jobDoc.data() : {};
+      if (!job.tokenCharged || job.refunded) return;
+      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+      const tokenDoc = await tx.get(tokenProfileRef);
+      if (tokenDoc.exists) {
+        tx.update(tokenProfileRef, {
+          genToken: (tokenDoc.data().genToken || 0) + tokenCost,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      tx.update(jobRef, { refunded: true });
+    });
+  } catch (err) {
+    console.error('Failed to refund mesh token:', err);
+  }
+}
+
+// fal.ai image → 3D mesh (GLB) generation. Submit-and-return: stage the input,
+// write a pending `kind: 'mesh'` job to the async queue, charge tokens at submit
+// (refunded once on failure), submit to fal's queue, and return the jobId
+// immediately. The client polls getGenerationJobStatus; the reconciler backstops
+// a closed tab. These endpoints (Hunyuan3D v2, TRELLIS 2) are image-to-3D only:
+// a reference image is required (no text prompt input).
 const generateFalMesh = functions
   .runWith({
     secrets: ['FAL_KEY'],
-    timeoutSeconds: 300 // 5 minutes; 3D generation typically runs 30-90s
+    // Submit-and-return: only stages the image + submits, so no long poll. The
+    // long-running fal job is finalized later by the poll/reconciler paths.
+    timeoutSeconds: 120
   })
   .https.onCall(async (data, context) => {
     if (!process.env.FAL_KEY) {
@@ -133,7 +234,10 @@ const generateFalMesh = functions
     assertAppCheck(context);
 
     const userId = context.auth.uid;
-    const { input_image, model_id, scene_id, source = 'generator' } = data;
+    const { input_image, model_id, scene_id, source = 'generator', notify } = data;
+    // Opt-in completion email. `pending: true` is the flag the notify sweep
+    // queries on; it clears when the email sends or an open tab acks the result.
+    const wantsEmail = notify?.email === true;
 
     const modelConfig = REPLICATE_MODELS[model_id];
     if (!modelConfig || modelConfig.type !== 'fal-3d') {
@@ -154,6 +258,8 @@ const generateFalMesh = functions
 
     const tokenCost = modelConfig.tokenCost || 3;
 
+    // Fast, friendly insufficient-tokens check before we stage anything. The
+    // charge transaction below re-checks authoritatively.
     let tokenData;
     try {
       tokenData = await checkAndRefillImageTokensInternal(userId);
@@ -164,21 +270,31 @@ const generateFalMesh = functions
         `Failed to retrieve token information: ${tokenError.message}`
       );
     }
-    if (!tokenData) {
-      throw new functions.https.HttpsError(
-        'internal',
-        'Failed to retrieve token information. Please try again.'
-      );
-    }
-    if (!tokenData.genToken || tokenData.genToken < tokenCost) {
+    if (!tokenData || !tokenData.genToken || tokenData.genToken < tokenCost) {
       throw new functions.https.HttpsError(
         'resource-exhausted',
-        `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${tokenData.genToken || 0}.`
+        `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${tokenData?.genToken || 0}.`
       );
     }
 
-    const generationStartTime = Date.now();
-    let falRequestId = null;
+    const db = admin.firestore();
+    // jobId (a uuid) is the Firestore doc id; the fal request_id is stored as
+    // providerJobId. Frozen at submit so the poll/reconciler paths converge.
+    const jobId = crypto.randomUUID();
+    const jobRef = db
+      .collection('users')
+      .doc(userId)
+      .collection('generationJobs')
+      .doc(jobId);
+
+    // Stable names for the saved gallery asset, fixed at submit so every
+    // finalize path produces identical metadata.
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const assetSlug = modelConfig.assetSlug || 'fal-3d';
+    const assetLabel = modelConfig.assetLabel || `${modelConfig.name} Model`;
+    const originalFilename = `${assetSlug}-${stamp}.glb`;
+    const assetName = `${assetLabel} ${stamp}`;
+
     let tempImagePath = null;
 
     try {
@@ -211,111 +327,42 @@ const generateFalMesh = functions
       } else {
         // Already a URL.
         imageUrl = input_image;
-        tempImagePath = null;
       }
 
-      // Build the model-specific payload. imageField/params come from the model
-      // config because the two endpoints differ (input_image_url vs image_url).
-      const falPayload = {
-        [modelConfig.imageField]: imageUrl,
-        ...(modelConfig.params || {})
-      };
-
-      const endpoint = modelConfig.endpoint;
-      const submitResponse = await fetch(`https://queue.fal.run/${endpoint}`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Key ${process.env.FAL_KEY}`,
-          'Content-Type': 'application/json'
+      // Write the pending job BEFORE charging/submitting, mirroring the splat and
+      // video submit paths. Normalized status vocabulary keeps the reconciler's
+      // "find non-terminal jobs" query provider-agnostic.
+      await jobRef.set({
+        status: 'queued',
+        providerStatus: null,
+        kind: 'mesh',
+        provider: 'fal',
+        providerJobId: null,
+        statusUrl: null,
+        responseUrl: null,
+        model: modelConfig.attribution?.modelName || modelConfig.name,
+        modelId: model_id,
+        endpoint: modelConfig.endpoint,
+        source,
+        tokenCost,
+        tokenCharged: false,
+        refunded: false,
+        tempFilePath: tempImagePath || null,
+        originalFilename,
+        assetName,
+        attribution: modelConfig.attribution || {
+          model: 'fal-3d',
+          modelName: '3D Model',
+          sourceType: 'image'
         },
-        body: JSON.stringify(falPayload)
+        sceneId: scene_id || null,
+        notify: { email: wantsEmail, pending: wantsEmail },
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
-      if (!submitResponse.ok) {
-        const errorText = await submitResponse.text();
-        console.error(`fal 3D submit error: ${submitResponse.status} - ${errorText}`);
-        throw new Error(`fal.ai API error: ${submitResponse.status}`);
-      }
-
-      const submitResult = await submitResponse.json();
-      const requestId = submitResult.request_id;
-      falRequestId = requestId || null;
-      const statusUrl = submitResult.status_url;
-      const responseUrl = submitResult.response_url;
-
-      if (!requestId || !statusUrl || !responseUrl) {
-        console.error('Missing fields in fal 3D response:', JSON.stringify(submitResult));
-        throw new Error('Invalid response from fal.ai - missing request_id/status_url/response_url');
-      }
-
-      // Poll for the result. 140 attempts × 2s ≈ 4.6 min, bounded by the 300s
-      // function timeout.
-      let attempts = 0;
-      const maxAttempts = 140;
-      let result = null;
-
-      while (attempts < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        const statusResponse = await fetch(statusUrl, {
-          method: 'GET',
-          headers: { Authorization: `Key ${process.env.FAL_KEY}` }
-        });
-
-        if (!statusResponse.ok) {
-          attempts++;
-          continue;
-        }
-
-        const statusResult = await statusResponse.json();
-
-        if (statusResult.status === 'COMPLETED') {
-          if (statusResult.response) {
-            result = statusResult.response;
-            break;
-          }
-          const resultResponse = await fetch(responseUrl, {
-            method: 'GET',
-            headers: { Authorization: `Key ${process.env.FAL_KEY}` }
-          });
-          if (resultResponse.ok) {
-            result = await resultResponse.json();
-            break;
-          }
-        } else if (statusResult.status === 'FAILED') {
-          throw new Error(statusResult.error || 'fal.ai 3D generation failed');
-        }
-
-        attempts++;
-      }
-
-      if (!result) {
-        throw new Error('fal.ai 3D generation timed out');
-      }
-
-      // Extract the GLB URL. fal 3D models return the mesh under model_mesh;
-      // accept a couple of aliases defensively.
-      const meshUrl =
-        result.model_mesh?.url ||
-        result.model_glb?.url ||
-        result.mesh?.url ||
-        result.glb?.url;
-      if (!meshUrl) {
-        console.error('Unexpected fal 3D output:', JSON.stringify(result));
-        throw new Error('No mesh URL returned from fal.ai');
-      }
-
-      // Persist the GLB as a mesh asset (server-side download + save).
-      const saved = await saveMeshToGallery(userId, meshUrl, {
-        predictionId: requestId,
-        assetName: `${modelConfig.name} Model`,
-        originalFilename: `${modelConfig.assetSlug || 'model'}.glb`,
-        attribution: modelConfig.attribution,
-        source
-      });
-
-      // Charge tokens only after a successful save.
-      const db = admin.firestore();
+      // Charge at submit and set `tokenCharged` in the same transaction, so every
+      // later refund path (poll, reconciler) observes tokenCharged:true and
+      // refunds exactly once.
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
       let remainingTokens = 0;
       await db.runTransaction(async (transaction) => {
@@ -332,46 +379,69 @@ const generateFalMesh = functions
           genToken: remainingTokens,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
+        transaction.update(jobRef, { tokenCharged: true });
       });
 
-      // Best-effort temp cleanup.
-      if (tempImagePath) {
-        admin
-          .storage()
-          .bucket()
-          .file(tempImagePath)
-          .delete()
-          .catch((err) => console.warn('Failed to cleanup temp 3D input:', err.message));
+      // Submit to fal's queue. imageField/params come from the model config
+      // because the two endpoints differ (input_image_url vs image_url).
+      const falPayload = {
+        [modelConfig.imageField]: imageUrl,
+        ...(modelConfig.params || {})
+      };
+      const submitResponse = await fetch(
+        `https://queue.fal.run/${modelConfig.endpoint}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Key ${process.env.FAL_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(falPayload)
+        }
+      );
+      if (!submitResponse.ok) {
+        const errorText = await submitResponse.text();
+        console.error(`fal 3D submit error: ${submitResponse.status} - ${errorText}`);
+        throw new Error(`fal.ai API error: ${submitResponse.status}`);
+      }
+      const submitResult = await submitResponse.json();
+      const requestId = submitResult.request_id;
+      const statusUrl = submitResult.status_url;
+      const responseUrl = submitResult.response_url;
+      if (!requestId || !statusUrl || !responseUrl) {
+        console.error('Missing fields in fal 3D response:', JSON.stringify(submitResult));
+        throw new Error('Invalid response from fal.ai - missing request_id/status_url/response_url');
       }
 
-      // Fire-and-forget audit log (same shape as the fal image path).
-      db.collection('generationLog')
-        .add({
-          userId,
-          provider: 'fal',
-          model: modelConfig.endpoint,
-          modelId: model_id,
-          generationType: 'mesh',
-          tokenCost,
-          processingTimeMs: Date.now() - generationStartTime,
-          providerPredictionId: falRequestId,
-          status: 'succeeded',
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
-        })
-        .catch((err) => console.error('Failed to write generationLog:', err));
+      // Record the provider identity so the poll/reconciler can finalize it.
+      await jobRef.update({
+        providerJobId: requestId,
+        statusUrl,
+        responseUrl,
+        providerStatus: 'IN_QUEUE'
+      });
 
       return {
         success: true,
-        assetId: saved.assetId,
-        model_url: saved.storageUrl,
-        name: saved.name,
-        scene_id: scene_id || null,
+        jobId,
+        status: 'queued',
         remainingTokens
       };
     } catch (error) {
-      console.error('Error generating 3D model with fal.ai:', error.message);
+      console.error('Error submitting 3D model to fal.ai:', error.message);
 
-      // Best-effort temp cleanup on failure too.
+      // Refund if we already charged, and finalize the job as failed so it
+      // doesn't sit non-terminal until the reconciler's give-up window.
+      await refundMeshTokenInline(db, userId, jobRef, tokenCost);
+      await jobRef
+        .update({
+          status: 'failed',
+          error: error.message,
+          completedAt: admin.firestore.FieldValue.serverTimestamp()
+        })
+        .catch(() => {});
+
+      // Best-effort temp cleanup.
       if (tempImagePath) {
         admin
           .storage()
@@ -391,8 +461,6 @@ const generateFalMesh = functions
           modelId: model_id,
           generationType: 'mesh',
           tokenCost,
-          processingTimeMs: Date.now() - generationStartTime,
-          providerPredictionId: falRequestId,
           status: 'failed',
           error: error.message,
           createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -410,9 +478,9 @@ const generateFalMesh = functions
       }
       throw new functions.https.HttpsError(
         'internal',
-        `Failed to generate 3D model: ${error.message}`
+        `Failed to start 3D generation: ${error.message}`
       );
     }
   });
 
-module.exports = { generateFalMesh };
+module.exports = { generateFalMesh, saveMeshToGallery, fetchFalPrediction };
