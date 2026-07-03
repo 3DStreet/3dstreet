@@ -258,3 +258,41 @@ describe('batch-models late-batch tally (tier 3)', () => {
     expect(el.object3D.userData._lateUnbatchedKey).toBeUndefined();
   });
 });
+
+describe('batch-models shadow flag capture', () => {
+  // A gltf-model-like ref: a Group root (as A-Frame's mesh object3D is) holding one Mesh.
+  // The shadow component sets castShadow/receiveShadow on the Mesh, never on the Group root.
+  function refMeshWith(cast, receive) {
+    const root = new THREE.Group();
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(),
+      new THREE.MeshBasicMaterial()
+    );
+    mesh.castShadow = cast;
+    mesh.receiveShadow = receive;
+    root.add(mesh);
+    root.updateMatrixWorld(true);
+    return root;
+  }
+
+  it('copies castShadow/receiveShadow from the sub-mesh, not the Group root', () => {
+    const refMesh = refMeshWith(true, true);
+    const { castShadow, receiveShadow } = batch._test.collectRefSubMeshes(
+      refMesh,
+      refMesh.matrixWorld
+    );
+    // Group root defaults both to false; reading true proves we captured the child mesh.
+    expect(castShadow).toBe(true);
+    expect(receiveShadow).toBe(true);
+  });
+
+  it('preserves a shadow-off sub-mesh (does not force flags on)', () => {
+    const refMesh = refMeshWith(false, false);
+    const { castShadow, receiveShadow } = batch._test.collectRefSubMeshes(
+      refMesh,
+      refMesh.matrixWorld
+    );
+    expect(castShadow).toBe(false);
+    expect(receiveShadow).toBe(false);
+  });
+});

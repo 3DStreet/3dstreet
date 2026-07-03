@@ -373,6 +373,13 @@ function collectRefSubMeshes(refMesh, refWorldMatrix) {
   const refInv = new THREE.Matrix4().copy(refWorldMatrix).invert();
   const materialGroups = new Map(); // material -> [{ geometry, localMatrix }]
   const skipReasons = [];
+  // castShadow/receiveShadow are Object3D flags, not carried by geometry/material, so the
+  // BatchedMesh (a fresh Object3D defaulting both to false) would drop them unless we copy
+  // them across. The shadow component sets them uniformly on every descendant mesh, so the
+  // first batchable sub-mesh is representative; the refMesh root is skipped (it's a Group).
+  let castShadow = false;
+  let receiveShadow = false;
+  let shadowCaptured = false;
 
   refMesh.traverse((node) => {
     if (!node.isMesh) return;
@@ -391,6 +398,11 @@ function collectRefSubMeshes(refMesh, refWorldMatrix) {
     if (!node.geometry || !node.geometry.attributes.position) {
       skipReasons.push(`empty geometry on "${node.name}"`);
       return;
+    }
+    if (!shadowCaptured) {
+      castShadow = node.castShadow;
+      receiveShadow = node.receiveShadow;
+      shadowCaptured = true;
     }
     const material = node.material;
     if (!materialGroups.has(material)) materialGroups.set(material, []);
@@ -419,7 +431,7 @@ function collectRefSubMeshes(refMesh, refWorldMatrix) {
     }
   });
 
-  return { materialGroups, skipReasons };
+  return { materialGroups, skipReasons, castShadow, receiveShadow };
 }
 
 // Mark every resource the BatchedMesh references (members[0]'s materials, their textures
@@ -527,10 +539,8 @@ function batchGroup(batchRootEl, key, members) {
     return null;
   }
 
-  const { materialGroups, skipReasons } = collectRefSubMeshes(
-    refMesh,
-    members[0].object3D.matrixWorld
-  );
+  const { materialGroups, skipReasons, castShadow, receiveShadow } =
+    collectRefSubMeshes(refMesh, members[0].object3D.matrixWorld);
   if (skipReasons.length > 0) {
     console.log(
       `[batch-models] not batched "${key}" (${members.length} members): ${skipReasons.join(', ')} (src: ${src})`
@@ -585,6 +595,8 @@ function batchGroup(batchRootEl, key, members) {
     );
     const object3DKey = `${BATCH_GROUP_NAME_PREFIX}${key}:${material.uuid}`;
     batched.name = object3DKey;
+    batched.castShadow = castShadow;
+    batched.receiveShadow = receiveShadow;
     batched.userData.batchIdToEl = [];
     // Instance ids freed by removeMember (hidden, not deleted), available for reuse by a later
     // addMemberToBatchedMeshes before growing the buffer. See removeMember for why we hide
@@ -1257,6 +1269,7 @@ export function removeMember(el) {
 // the module's public API. Kept in one object so the named-export surface stays intentional.
 export const _test = {
   addMemberToBatchedMeshes,
+  collectRefSubMeshes,
   ensureInstanceCapacity,
   trackLateUnbatched,
   untrackLateUnbatched,
