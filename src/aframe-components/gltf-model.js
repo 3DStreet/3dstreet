@@ -280,6 +280,10 @@ export const gltfModelPlus = {
         // entity removed while parked: a grandparent may be detached, so el.isConnected can
         // be false even when el.parentNode is still set
         if (this.el.isConnected === false) return;
+        // component removed/replaced while parked (removeAttribute or a mixin swap): A-Frame
+        // already ran this instance's remove() and detached it from el.components, so loading
+        // now would attach an orphan mesh no remove path will ever dispose.
+        if (this.el.components['gltf-model'] !== this) return;
         this.loadModel();
       };
       sceneEl.addEventListener('batch-grouping-done', finish, { once: true });
@@ -386,7 +390,8 @@ export const gltfModelPlus = {
 
   remove: function () {
     // A pending batch park (if any) is harmless: its "batch-grouping-done" handler is
-    // {once} and bails on the isConnected check, so nothing to clean up here.
+    // {once} and bails on the ownership / isConnected checks (removeAttribute detaches this
+    // instance from el.components, entity detach flips isConnected), so nothing to clean up here.
     //
     // batch-models' removal cleanup runs HERE, not from a child-detached listener. A-Frame
     // calls component.remove() during the entity's disconnectedCallback for ANY document-
