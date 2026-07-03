@@ -9,9 +9,10 @@ window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
 STREET.store = useStore;
-// Runtime-mutable mirror of batch-models' BATCHING_ENABLED, read per scene load in
-// createEntities. Kept mutable so scripts/measure-load.mjs can flip it live to A/B benchmark;
-// the canonical default lives in batch-models.js (its single owner).
+// Runtime toggle for batching, read per scene load in createEntities. Seeded from
+// batch-models' BATCHING_ENABLED (its single owner / canonical default) but kept mutable so it
+// can be flipped live: today by scripts/measure-load.mjs for A/B benchmarking, and in future by
+// user-facing performance options or user/local settings.
 STREET.batchingEnabled = BATCHING_ENABLED;
 function getSceneUuidFromURLHash() {
   const currentHash = window.location.hash;
