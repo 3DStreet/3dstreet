@@ -8,6 +8,16 @@ import { releaseSharedSource } from './sharedTextureSources';
 // set globaThis.BATCHING_ENABLED to false before loading the js bundle.
 export const BATCHING_ENABLED = window.BATCHING_ENABLED ?? true;
 
+// Batch skinned meshes too (BatchedMesh does no skinning, so they render at bind pose).
+// This is only correct while the skeleton never moves — but any entity that could animate its
+// bones carries a component outside BATCH_SAFE_COMPONENTS (animation-mixer, etc.) and is already
+// excluded from batching by getBlockingComponents, so the skinned meshes that reach batching are
+// all static-rigged (e.g. car assets with wheel bones we don't animate). At bind pose three.js's
+// skinning resolves to worldVertex = mesh.matrixWorld · position, exactly what the static batch
+// path computes, so the result is pixel-identical. Set window.BATCH_SKINNED_MESHES = false before
+// the bundle loads to keep them unbatched (A/B benchmarking).
+export const BATCH_SKINNED_MESHES = window.BATCH_SKINNED_MESHES ?? true;
+
 // Automatic runtime batching of repeated gltf-model and gltf-part entities.
 //
 // - Deferral (gltf-model only): when a scene will be batched, beginBatching called from createEntities sets
@@ -352,6 +362,34 @@ function getSrc(el) {
   return src.startsWith('data:') ? 'data:...' : src;
 }
 
+// BatchedMesh does no skinning, so a skinned mesh's skinIndex/skinWeight attributes are dead
+// weight in the combined buffer — and worse, addGeometry requires a consistent attribute set,
+// so it throws if some sub-meshes sharing a material carry them and others don't. Return a
+// shallow geometry that shares the vertex buffers but drops the skinning attributes; addGeometry
+// copies the data out immediately and the result is never rendered, so sharing BufferAttributes
+// with the (about-to-be-stripped) original is safe. Non-skinned geometry is returned unchanged
+// (same identity), so the EXT_mesh_gpu_instancing / shared-geometry dedup still collapses it.
+function withoutSkinningAttributes(geometry) {
+  if (
+    !geometry.getAttribute('skinIndex') &&
+    !geometry.getAttribute('skinWeight')
+  ) {
+    return geometry;
+  }
+  const stripped = new THREE.BufferGeometry();
+  for (const name in geometry.attributes) {
+    if (name === 'skinIndex' || name === 'skinWeight') continue;
+    stripped.setAttribute(name, geometry.attributes[name]);
+  }
+  if (geometry.index) stripped.setIndex(geometry.index);
+  stripped.groups = geometry.groups;
+  if (geometry.boundingBox) stripped.boundingBox = geometry.boundingBox.clone();
+  if (geometry.boundingSphere) {
+    stripped.boundingSphere = geometry.boundingSphere.clone();
+  }
+  return stripped;
+}
+
 // Group this model's sub-meshes by material, keyed by material reference.
 //
 // THREE.Cache caches only the downloaded bytes — every GLTFLoader.load() re-parses and
@@ -380,10 +418,22 @@ function collectRefSubMeshes(refMesh, refWorldMatrix) {
   let castShadow = false;
   let receiveShadow = false;
   let shadowCaptured = false;
+  // Memoize per original geometry so a skinned geometry reused across entries (gpu-instancing
+  // expansion, shared sub-meshes) yields ONE stripped clone — keeping the identity-based dedup
+  // in batchGroup intact.
+  const strippedGeometries = new Map();
+  const batchGeometryFor = (geometry) => {
+    let stripped = strippedGeometries.get(geometry);
+    if (stripped === undefined) {
+      stripped = withoutSkinningAttributes(geometry);
+      strippedGeometries.set(geometry, stripped);
+    }
+    return stripped;
+  };
 
   refMesh.traverse((node) => {
     if (!node.isMesh) return;
-    if (node.isSkinnedMesh) {
+    if (node.isSkinnedMesh && !BATCH_SKINNED_MESHES) {
       skipReasons.push(`skinned mesh "${node.name}"`);
       return;
     }
@@ -407,6 +457,9 @@ function collectRefSubMeshes(refMesh, refWorldMatrix) {
     const material = node.material;
     if (!materialGroups.has(material)) materialGroups.set(material, []);
     const group = materialGroups.get(material);
+    // Skinned meshes render at bind pose (no bones move — see BATCH_SKINNED_MESHES), so we
+    // batch their static geometry minus the skinning attributes.
+    const geometry = batchGeometryFor(node.geometry);
     if (node.isInstancedMesh) {
       // EXT_mesh_gpu_instancing: expand each GPU instance into its own entry so the
       // BatchedMesh renders them individually (BatchedMesh can't nest InstancedMesh).
@@ -416,13 +469,13 @@ function collectRefSubMeshes(refMesh, refWorldMatrix) {
         node.getMatrixAt(i, instanceMatrix);
         worldMatrix.multiplyMatrices(node.matrixWorld, instanceMatrix);
         group.push({
-          geometry: node.geometry,
+          geometry,
           localMatrix: new THREE.Matrix4().multiplyMatrices(refInv, worldMatrix)
         });
       }
     } else {
       group.push({
-        geometry: node.geometry,
+        geometry,
         localMatrix: new THREE.Matrix4().multiplyMatrices(
           refInv,
           node.matrixWorld

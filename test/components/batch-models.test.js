@@ -296,3 +296,66 @@ describe('batch-models shadow flag capture', () => {
     expect(receiveShadow).toBe(false);
   });
 });
+
+describe('batch-models skinned mesh batching', () => {
+  // A skinned box: BoxGeometry plus the skinIndex/skinWeight attributes a rigged GLB carries.
+  function skinnedRoot() {
+    const geometry = new THREE.BoxGeometry();
+    const n = geometry.attributes.position.count;
+    const skinIndex = new Uint16Array(n * 4);
+    const skinWeight = new Float32Array(n * 4);
+    for (let i = 0; i < n; i++) skinWeight[i * 4] = 1; // fully weighted to bone 0
+    geometry.setAttribute(
+      'skinIndex',
+      new THREE.Uint16BufferAttribute(skinIndex, 4)
+    );
+    geometry.setAttribute(
+      'skinWeight',
+      new THREE.Float32BufferAttribute(skinWeight, 4)
+    );
+    const root = new THREE.Group();
+    root.add(new THREE.SkinnedMesh(geometry, new THREE.MeshBasicMaterial()));
+    root.updateMatrixWorld(true);
+    return root;
+  }
+
+  it('batches a static skinned mesh at bind pose by default', () => {
+    // Static-rigged model (e.g. a car with wheel bones we never animate): the SkinnedMesh
+    // used to be skipped outright; with BATCH_SKINNED_MESHES on it's collected like any mesh.
+    expect(batch.BATCH_SKINNED_MESHES).toBe(true);
+    const { materialGroups, skipReasons } = batch._test.collectRefSubMeshes(
+      skinnedRoot(),
+      new THREE.Matrix4()
+    );
+    expect(skipReasons).toEqual([]);
+    expect(materialGroups.size).toBe(1);
+  });
+
+  it('strips skinIndex/skinWeight from the batched geometry, keeping position', () => {
+    const { materialGroups } = batch._test.collectRefSubMeshes(
+      skinnedRoot(),
+      new THREE.Matrix4()
+    );
+    const [{ geometry }] = [...materialGroups.values()][0];
+    expect(geometry.getAttribute('position')).toBeTruthy();
+    expect(geometry.getAttribute('skinIndex')).toBeUndefined();
+    expect(geometry.getAttribute('skinWeight')).toBeUndefined();
+  });
+
+  it('reuses one stripped clone per source geometry (dedup stays intact)', () => {
+    // Two sub-meshes sharing one skinned geometry + material must collapse to a single
+    // stripped clone, or batchGroup's identity-based dedup would addGeometry it twice.
+    const root = skinnedRoot();
+    const shared = root.children[0];
+    const twin = new THREE.SkinnedMesh(shared.geometry, shared.material);
+    root.add(twin);
+    root.updateMatrixWorld(true);
+    const { materialGroups } = batch._test.collectRefSubMeshes(
+      root,
+      new THREE.Matrix4()
+    );
+    const entries = [...materialGroups.values()][0];
+    expect(entries.length).toBe(2);
+    expect(entries[0].geometry).toBe(entries[1].geometry);
+  });
+});
