@@ -204,21 +204,29 @@ async function triggerLegacy(page, url) {
 }
 
 async function triggerManaged(page, url) {
-  await page.evaluate((streetURL) => {
-    const el = document.createElement('a-entity');
-    el.id = 'parity-managed-street';
-    el.setAttribute('street-align', 'width: center; length: middle');
-    // No synchronize: we run the conversion explicitly below so we can pass the
-    // import-time showBuildings option (a conversion argument, not component
-    // state). The component otherwise only auto-imports when synchronize: true.
-    el.setAttribute('managed-street', {
-      sourceType: 'streetmix-url',
-      sourceValue: streetURL
-    });
-    document.getElementById('street-container').appendChild(el);
-  }, url);
+  await page.evaluate(
+    (streetURL, showBuildings) => {
+      const el = document.createElement('a-entity');
+      el.id = 'parity-managed-street';
+      el.setAttribute('street-align', 'width: center; length: middle');
+      // No synchronize: we run the conversion explicitly below so we can await
+      // it. showBuildings is real component state — buildings are always
+      // imported and the property controls their visibility and layout
+      // participation, so a with/without-buildings run is the same toggle a
+      // user flips in the sidebar.
+      el.setAttribute('managed-street', {
+        sourceType: 'streetmix-url',
+        sourceValue: streetURL,
+        showBuildings
+      });
+      document.getElementById('street-container').appendChild(el);
+    },
+    url,
+    SHOW_BUILDINGS
+  );
   // Wait for the component to initialize, then drive the Streetmix->managed
-  // conversion directly with the unified building toggle.
+  // conversion directly (visibility follows the showBuildings property set
+  // above).
   await page.waitForFunction(
     () => {
       const el = document.getElementById('parity-managed-street');
@@ -226,18 +234,11 @@ async function triggerManaged(page, url) {
     },
     { timeout: LOAD_TIMEOUT }
   );
-  await page.evaluate(
-    (streetURL, showBuildings) => {
-      document
-        .getElementById('parity-managed-street')
-        .components['managed-street'].loadAndParseStreetmixURL(
-          streetURL,
-          showBuildings
-        );
-    },
-    url,
-    SHOW_BUILDINGS
-  );
+  await page.evaluate((streetURL) => {
+    document
+      .getElementById('parity-managed-street')
+      .components['managed-street'].loadAndParseStreetmixURL(streetURL);
+  }, url);
   await page.waitForFunction(
     () => {
       const el = document.getElementById('parity-managed-street');
@@ -282,7 +283,11 @@ async function settleAndCapture(page, outPath) {
     rig.object3D.rotation.set(0, 0, 0);
     const camera = document.getElementById('camera');
     camera.removeAttribute('look-controls');
-    camera.object3D.position.set(cam.position.x, cam.position.y, cam.position.z);
+    camera.object3D.position.set(
+      cam.position.x,
+      cam.position.y,
+      cam.position.z
+    );
     camera.object3D.rotation.set((cam.rotationXDeg * Math.PI) / 180, 0, 0);
     AFRAME.scenes[0].pause(); // freeze ticks/animations; render loop continues
     // element screenshots composite everything above the canvas (modals,
@@ -348,7 +353,9 @@ async function compare(legacyPath, managedPath, diffPath) {
 try {
   await fetch(BASE_URL, { signal: AbortSignal.timeout(3000) });
 } catch {
-  console.error(`Dev server not reachable at ${BASE_URL} — run \`npm start\` first.`);
+  console.error(
+    `Dev server not reachable at ${BASE_URL} — run \`npm start\` first.`
+  );
   process.exit(1);
 }
 
@@ -410,7 +417,12 @@ console.log(`\nImages: ${OUT_DIR}`);
 await writeFile(
   join(OUT_DIR, 'report.json'),
   JSON.stringify(
-    { baseUrl: BASE_URL, compareSize: COMPARE_SIZE, pixelThreshold: PIXEL_THRESHOLD, results },
+    {
+      baseUrl: BASE_URL,
+      compareSize: COMPARE_SIZE,
+      pixelThreshold: PIXEL_THRESHOLD,
+      results
+    },
     null,
     2
   )

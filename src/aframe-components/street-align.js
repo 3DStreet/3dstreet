@@ -1,4 +1,5 @@
 /* global AFRAME */
+const { getLayoutSegments } = require('./street-layout-utils');
 
 AFRAME.registerComponent('street-align', {
   dependencies: ['managed-street'],
@@ -44,8 +45,8 @@ AFRAME.registerComponent('street-align', {
   realignStreet: function () {
     const data = this.data;
 
-    // Get all segments
-    const segments = Array.from(this.el.querySelectorAll('[street-segment]'));
+    // Get all layout segments (excludes buildings hidden by showBuildings)
+    const segments = getLayoutSegments(this.el);
     if (segments.length === 0) return;
 
     // Calculate total width

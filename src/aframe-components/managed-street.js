@@ -144,6 +144,17 @@ AFRAME.registerComponent('managed-street', {
     sourceValue: {
       type: 'string'
     },
+    showBuildings: {
+      // Buildings (boundary edges) toggle. Imports always create the building
+      // segments when the source has boundary data; this property controls
+      // whether they are shown. Toggling is realtime and non-destructive: off
+      // hides the building segments and excludes them from street layout
+      // (alignment, ground, labels — see street-layout-utils.js), on restores
+      // them. Set false at creation time to import a travelled-way-only street
+      // (e.g. the parity harness).
+      type: 'boolean',
+      default: true
+    },
     synchronize: {
       type: 'boolean',
       default: false
@@ -305,6 +316,36 @@ AFRAME.registerComponent('managed-street', {
         newValue: data.length
       });
     }
+
+    if (dataDiffKeys.includes('showBuildings')) {
+      this.updateBuildingVisibility();
+    }
+  },
+  // Apply the showBuildings toggle to existing building segments and notify
+  // layout siblings (street-align, street-ground, street-label) so the street
+  // reflows as if hidden buildings were absent. Non-destructive: segments stay
+  // in the DOM and keep serializing with the scene.
+  updateBuildingVisibility: function () {
+    const show = this.data.showBuildings;
+    const buildingEls = Array.from(
+      this.el.querySelectorAll('[street-segment]')
+    ).filter(
+      (segmentEl) =>
+        segmentEl.getAttribute('street-segment')?.type === 'building'
+    );
+    if (buildingEls.length === 0) {
+      return;
+    }
+    buildingEls.forEach((segmentEl) => {
+      segmentEl.setAttribute('visible', show);
+    });
+    this.el.emit('segments-changed', {
+      changeType: 'property',
+      property: 'showBuildings',
+      segment: null,
+      oldValue: !show,
+      newValue: show
+    });
   },
   refreshFromSource: function () {
     const data = this.data;
@@ -375,6 +416,10 @@ AFRAME.registerComponent('managed-street', {
         ...(segment.floors !== undefined ? { floors: segment.floors } : {})
       });
       segmentEl.setAttribute('data-layer-name', segment.name);
+      // honor the buildings toggle for building segments carried in the blob
+      if (segment.type === 'building' && !this.data.showBuildings) {
+        segmentEl.setAttribute('visible', false);
+      }
       // wait for street-segment to be loaded, then generate components from segment object
       segmentEl.addEventListener('loaded', () => {
         if (!segment.generated?.striping) {
@@ -616,17 +661,23 @@ AFRAME.registerComponent('managed-street', {
 
     return variantString;
   },
-  // showBuildings decides, at conversion time, whether the Streetmix import
-  // emits the boundary building segments. It is a property of this one-time
-  // Streetmix->managed conversion, not component state: once imported, buildings
-  // are ordinary street-segment children (saved/loaded via json-blob, editable
-  // and deletable like any segment). Defaults true; callers that want the
-  // travelled way alone (e.g. the import-parity harness) pass false.
-  loadAndParseStreetmixURL: async function (
-    streetmixURL,
-    showBuildings = true
-  ) {
+  // The import always creates the boundary building segments (when the source
+  // has boundary data); the component's `showBuildings` property controls
+  // whether they are shown and participate in layout. That keeps the toggle
+  // non-destructive and realtime: once imported, buildings are ordinary
+  // street-segment children (saved/loaded via json-blob, editable and
+  // deletable like any segment) that can be re-shown at any time. The optional
+  // `showBuildings` argument is kept for callers that drive the conversion
+  // directly (e.g. the import-parity harness) — when passed, it is written
+  // back to the component property so state stays consistent.
+  loadAndParseStreetmixURL: async function (streetmixURL, showBuildings) {
     const currentState = useStore.getState();
+    if (
+      showBuildings !== undefined &&
+      showBuildings !== this.data.showBuildings
+    ) {
+      this.el.setAttribute('managed-street', 'showBuildings', showBuildings);
+    }
     const data = this.data;
     // Normally rewrite a streetmix.net user URL to its API endpoint. If the
     // sourceValue is some other URL (e.g. a locally served Streetmix-shaped
@@ -698,23 +749,24 @@ AFRAME.registerComponent('managed-street', {
       // the canonical schemaVersion 34+ `boundary` object first and falls back
       // to the deprecated flat leftBuildingVariant/rightBuildingVariant fields.
       // street-align positions segments by DOM order, so the left building goes
-      // before the travelled way and the right building after it. Gated by the
-      // showBuildings conversion argument so callers can render the travelled
-      // way alone.
-      const leftBuildingEl = showBuildings
-        ? createStreetmixBuildingElement(
-            streetmixUtils.getBoundaryFromStreetData(streetData, 'left'),
-            'left',
-            data.length
-          )
-        : null;
-      const rightBuildingEl = showBuildings
-        ? createStreetmixBuildingElement(
-            streetmixUtils.getBoundaryFromStreetData(streetData, 'right'),
-            'right',
-            data.length
-          )
-        : null;
+      // before the travelled way and the right building after it. Always
+      // created; the showBuildings property only controls visibility (set
+      // before append so layout siblings never count hidden buildings).
+      const leftBuildingEl = createStreetmixBuildingElement(
+        streetmixUtils.getBoundaryFromStreetData(streetData, 'left'),
+        'left',
+        data.length
+      );
+      const rightBuildingEl = createStreetmixBuildingElement(
+        streetmixUtils.getBoundaryFromStreetData(streetData, 'right'),
+        'right',
+        data.length
+      );
+      [leftBuildingEl, rightBuildingEl].forEach((buildingEl) => {
+        if (buildingEl && !this.data.showBuildings) {
+          buildingEl.setAttribute('visible', false);
+        }
+      });
       const allEls = [
         ...(leftBuildingEl ? [leftBuildingEl] : []),
         ...segmentEls,
