@@ -79,7 +79,7 @@ const Model3DTab = {
           <h2 class="text-lg font-medium mb-1">3D Model Settings</h2>
           <p class="text-sm text-gray-500 mb-4">
             Generate a 3D mesh (GLB) from a reference image. Best for placemaking
-            objects and props — shelters, kiosks, benches, bollards, wayfinding,
+            objects and props: shelters, kiosks, benches, bollards, wayfinding,
             vehicles.
           </p>
 
@@ -91,7 +91,7 @@ const Model3DTab = {
             </select>
           </div>
 
-          <!-- Reference Image (required — these endpoints are image-to-3D) -->
+          <!-- Reference Image (required; these endpoints are image-to-3D) -->
           <div class="mb-4 param-group">
             <label class="block text-sm font-medium text-gray-700 mb-1">
               Reference Image <span class="text-red-500" title="Required">*</span>
@@ -113,7 +113,7 @@ const Model3DTab = {
                 </button>
               </div>
               <p class="text-xs text-gray-500">
-                Required — these models generate a 3D mesh from a reference image.
+                Required: these models generate a 3D mesh from a reference image.
               </p>
             </div>
           </div>
@@ -162,7 +162,7 @@ const Model3DTab = {
                 title="3D model preview"
                 allow="fullscreen"></iframe>
               <p class="text-xs text-gray-500 mt-2 mb-3 text-center">
-                Drag to orbit · scroll to zoom. Saved to your gallery — open it in
+                Drag to orbit · scroll to zoom. Saved to your gallery; open it in
                 the editor and drag it into a scene.
               </p>
               <div class="flex items-center justify-center gap-3">
@@ -392,7 +392,7 @@ const Model3DTab = {
     )}`;
 
     // "Open in 3DStreet" deep-links to the editor with the asset's detail modal
-    // already open (#asset:OWNER/ID — same shape as the splat result). Falls
+    // already open (#asset:OWNER/ID, same shape as the splat result). Falls
     // back to the raw GLB if we somehow lack an assetId/uid.
     const uid = auth.currentUser?.uid;
     this.elements.openBtn.href =

@@ -446,7 +446,7 @@ class GeneratorTabBase {
         }
         // Note: the model's default prompt is applied at generation time when
         // the box is left empty (see generateImage). We intentionally do NOT
-        // write it into the textarea here — the suggestion stays as placeholder
+        // write it into the textarea here; the suggestion stays as placeholder
         // help text so the field reflects only what the user actually typed.
       },
       disabled: false
@@ -1104,7 +1104,7 @@ class GeneratorTabBase {
     this.elements.imagePromptUploadLabel.classList.add('hidden');
     this.elements.imagePromptPreviewContainer.classList.remove('hidden');
 
-    // An image is now present — clear any lingering "add it here" hint.
+    // An image is now present, so clear any lingering "add it here" hint.
     this.removeReferenceImageArrow();
   }
 
@@ -1172,7 +1172,7 @@ class GeneratorTabBase {
 
     // Check source image requirement (tab-level or, on the Image tab,
     // model-level). Some models cannot run without a source image, so deny
-    // hard at the client — there is no "generate anyway" bypass for these.
+    // hard at the client; there is no "generate anyway" bypass for these.
     if (this.sourceImageRequired() && !this.imagePromptData) {
       FluxUI.showNotification(
         'This model requires a source image. Please upload one to continue.',
@@ -1259,7 +1259,7 @@ class GeneratorTabBase {
     });
 
     // "Go back" simply dismisses the dialog and points an arrow at the
-    // reference-image upload area — it does not open the file chooser.
+    // reference-image upload area; it does not open the file chooser.
     modal.querySelector('#image-nudge-goback').addEventListener('click', () => {
       close();
       this.showReferenceImageArrow();

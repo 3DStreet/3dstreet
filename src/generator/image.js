@@ -5,7 +5,7 @@
  * A source image is optional: the upload shows an amber "recommended" indicator
  * and an empty-image submit nudges the user toward providing one, but text-only
  * generation is allowed. All models are shown at all times, regardless of
- * whether an image is present. The prompt is optional — when left empty the
+ * whether an image is present. The prompt is optional; when left empty the
  * selected model's default prompt is used (behavior carried over from the
  * former Modify tab).
  */
