@@ -79,7 +79,7 @@ const saveToGallery = async (blob) => {
     await assetsService.addAsset(
       dataUri,
       {
-        model: 'Bollard Buddy',
+        model: 'Bollard Buddy Web',
         source: 'bollard-buddy',
         capturedAt: new Date().toISOString()
       },
@@ -102,6 +102,41 @@ const handleSignIn = () =>
   );
 
 /**
+ * Hand a gallery image off to the AI generator (same localStorage mechanism
+ * as the editor's openInGenerator helper — the generator tab reads
+ * `pendingAssetItem` on init). Navigates in the same tab: leaving the AR
+ * session is intended, the user is switching apps.
+ * @param {object} item - Gallery item
+ * @param {string} tabName - Generator tab to open ('modify' or 'video')
+ */
+const openInGenerator = async (item, tabName) => {
+  try {
+    const imageUrl = item.fullImageURL || item.storageUrl || item.objectURL;
+    if (!imageUrl) throw new Error('No valid image URL available');
+
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    const dataUrl = await blobToDataUri(blob);
+
+    localStorage.setItem(
+      'pendingAssetItem',
+      JSON.stringify({
+        imageDataUrl: dataUrl,
+        id: item.id,
+        metadata: item.metadata,
+        timestamp: Date.now(),
+        targetTab: tabName
+      })
+    );
+
+    window.location.href = `/generator/#${tabName}`;
+  } catch (error) {
+    console.error('Failed to open generator with item:', error);
+    showNotification('Failed to send photo to the AI generator', 'error');
+  }
+};
+
+/**
  * Mount the React Assets sidebar.
  */
 export const mountAssets = async () => {
@@ -114,6 +149,8 @@ export const mountAssets = async () => {
   root.render(
     <Assets
       mode="sidebar"
+      onUseForGenerator={(item) => openInGenerator(item, 'modify')}
+      onUseForVideo={(item) => openInGenerator(item, 'video')}
       onNotification={(message, type) => showNotification(message, type)}
       onSignIn={handleSignIn}
     />

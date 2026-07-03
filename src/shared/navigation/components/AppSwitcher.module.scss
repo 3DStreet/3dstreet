@@ -130,3 +130,23 @@
   color: white;
   flex-shrink: 0;
 }
+
+.badgeMuted {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #d1d5db;
+  flex-shrink: 0;
+}
+
+.about {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 0 12px 8px;
+  color: #d1d5db;
+  max-width: 260px;
+}

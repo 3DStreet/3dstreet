@@ -73,6 +73,10 @@ const AppSwitcher = () => {
     }
   };
 
+  const handleBollardBuddyIOSClick = () => {
+    window.open('https://www.3dstreet.com/bollardbuddy/', '_blank');
+  };
+
   return (
     <HoverCard.Root openDelay={200}>
       <DropdownMenu.Root>
@@ -92,18 +96,42 @@ const AppSwitcher = () => {
             align="start"
             sideOffset={5}
           >
+            {isBollardBuddy && (
+              <>
+                <DropdownMenu.Label className={styles.label}>
+                  About Bollard Buddy
+                </DropdownMenu.Label>
+                <div className={styles.about}>
+                  Place virtual bollards in AR and save photos to your 3DStreet
+                  gallery. The web version is a beta — the native iOS app has
+                  the best experience.
+                </div>
+                <DropdownMenu.Separator className={styles.separator} />
+              </>
+            )}
             <DropdownMenu.Label className={styles.label}>
               Switch Apps
             </DropdownMenu.Label>
             <DropdownMenu.Separator className={styles.separator} />
             <DropdownMenu.Item
               className={styles.item}
+              onClick={handleBollardBuddyIOSClick}
+            >
+              <div className={styles.itemContent}>
+                <span className={styles.appName}>Bollard Buddy iOS</span>
+                <span className={styles.badge}>Get the App</span>
+              </div>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
+              className={styles.item}
               onClick={handleBollardBuddyClick}
             >
               <div className={styles.itemContent}>
                 <span className={styles.appName}>Bollard Buddy Web</span>
-                {isBollardBuddy && (
+                {isBollardBuddy ? (
                   <span className={styles.badge}>Current</span>
+                ) : (
+                  <span className={styles.badgeMuted}>Beta</span>
                 )}
               </div>
             </DropdownMenu.Item>
