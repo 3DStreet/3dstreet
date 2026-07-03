@@ -17,11 +17,173 @@
   "actionBar.zoomOut": {
     "defaultMessage": "Zoom Out"
   },
+  "addLayer.card.asphaltCircle.desc": {
+    "defaultMessage": "Add a large flat asphalt circle on the ground. Geometry and material can be changed in the properties panel."
+  },
+  "addLayer.card.asphaltCircle.name": {
+    "defaultMessage": "Asphalt Circle"
+  },
+  "addLayer.card.buildingBox.desc": {
+    "defaultMessage": "Add a simple box roughly the size of a 3-story building, sitting on the ground in a bright blue. A quick placeholder for blocking out buildings."
+  },
+  "addLayer.card.buildingBox.name": {
+    "defaultMessage": "Building Box"
+  },
+  "addLayer.card.buildingDemo.desc": {
+    "defaultMessage": "Demo street with buildings on both sides using the new fit mode for building placement"
+  },
+  "addLayer.card.buildingDemo.name": {
+    "defaultMessage": "(Beta) Building Placement Demo"
+  },
+  "addLayer.card.concreteCylinder.desc": {
+    "defaultMessage": "Add a gray concrete cylinder roughly the size of an interstate highway support pillar. A quick placeholder for elevated-roadway columns."
+  },
+  "addLayer.card.concreteCylinder.name": {
+    "defaultMessage": "Concrete Cylinder"
+  },
+  "addLayer.card.createIntersection.desc": {
+    "defaultMessage": "Create 90º intersection entity."
+  },
+  "addLayer.card.createIntersection.name": {
+    "defaultMessage": "Create Intersection"
+  },
+  "addLayer.card.grassBox.desc": {
+    "defaultMessage": "Add a large green ground slab with animated instanced grass. The box dimensions, color, and grass options (density, blade height) are all editable in the properties panel."
+  },
+  "addLayer.card.grassBox.name": {
+    "defaultMessage": "Grass Box"
+  },
+  "addLayer.card.highlightRing.desc": {
+    "defaultMessage": "Add a bright red ring, big enough to circle and highlight a real-world element like a vehicle, tree, or part of a lane."
+  },
+  "addLayer.card.highlightRing.name": {
+    "defaultMessage": "Highlight Ring"
+  },
+  "addLayer.card.managedStreet150124.desc": {
+    "defaultMessage": "Premade Street 150ft Right of Way / 124ft Roadway Width"
+  },
+  "addLayer.card.managedStreet150124.name": {
+    "defaultMessage": "(Beta) Managed Street 150ft RoW / 124ft Roadway Width"
+  },
+  "addLayer.card.managedStreet4024.desc": {
+    "defaultMessage": "Premade Street 40ft Right of Way / 24ft Roadway Width"
+  },
+  "addLayer.card.managedStreet4024.name": {
+    "defaultMessage": "(Beta) Managed Street 40ft RoW / 24ft Roadway Width"
+  },
+  "addLayer.card.managedStreet6036.desc": {
+    "defaultMessage": "Premade Street 60ft Right of Way / 36ft Roadway Width"
+  },
+  "addLayer.card.managedStreet6036.name": {
+    "defaultMessage": "(Beta) Managed Street 60ft RoW / 36ft Roadway Width"
+  },
+  "addLayer.card.managedStreet8056.desc": {
+    "defaultMessage": "Premade Street 80ft Right of Way / 56ft Roadway Width"
+  },
+  "addLayer.card.managedStreet8056.name": {
+    "defaultMessage": "(Beta) Managed Street 80ft RoW / 56ft Roadway Width"
+  },
+  "addLayer.card.managedStreet9470.desc": {
+    "defaultMessage": "Premade Street 94ft Right of Way / 70ft Roadway Width"
+  },
+  "addLayer.card.managedStreet9470.name": {
+    "defaultMessage": "(Beta) Managed Street 94ft RoW / 70ft Roadway Width"
+  },
+  "addLayer.card.managedStreetmix.desc": {
+    "defaultMessage": "Create a new street from Streetmix URL using the Managed Street component."
+  },
+  "addLayer.card.managedStreetmix.name": {
+    "defaultMessage": "(Beta) Managed Street from Streetmix URL"
+  },
+  "addLayer.card.managedStreetplan.desc": {
+    "defaultMessage": "Create a new street from Streetplan URL using the Managed Street component."
+  },
+  "addLayer.card.managedStreetplan.name": {
+    "defaultMessage": "(Beta) Managed Street from Streetplan URL"
+  },
+  "addLayer.card.panoramaSphere.desc": {
+    "defaultMessage": "Create an immersive 360° environment from a panoramic image for AR/VR experiences."
+  },
+  "addLayer.card.panoramaSphere.name": {
+    "defaultMessage": "360° Panorama Sphere"
+  },
+  "addLayer.card.streetmixStreet.desc": {
+    "defaultMessage": "Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets."
+  },
+  "addLayer.card.streetmixStreet.name": {
+    "defaultMessage": "Street from Streetmix URL"
+  },
+  "addLayer.card.svgExtruded.desc": {
+    "defaultMessage": "Create entity with svg-extruder component, that accepts a svgString and creates a new entity with geometry extruded from the svg and applies the default mixin material grass."
+  },
+  "addLayer.card.svgExtruded.name": {
+    "defaultMessage": "Entity from extruded SVG"
+  },
+  "addLayer.card.torusKnot.desc": {
+    "defaultMessage": "Add a polished metallic torus knot. A decorative primitive that shows off the geometry and material (metalness/roughness) controls in the properties panel."
+  },
+  "addLayer.card.torusKnot.name": {
+    "defaultMessage": "Torus Knot"
+  },
+  "addLayer.card.uploadImage.desc": {
+    "defaultMessage": "Upload an image (sign, reference photo, custom map, etc.) from your device and place it in the scene."
+  },
+  "addLayer.card.uploadImage.name": {
+    "defaultMessage": "Upload Image"
+  },
+  "addLayer.card.uploadModel.desc": {
+    "defaultMessage": "Upload a glTF or GLB model from your device. It is rendered immediately and saved to your asset library."
+  },
+  "addLayer.card.uploadModel.name": {
+    "defaultMessage": "Upload 3D Model"
+  },
+  "addLayer.card.uploadSplat.desc": {
+    "defaultMessage": "Upload a Gaussian Splat (.splat, .ply, .spz, .rad) from your device and place it in the scene."
+  },
+  "addLayer.card.uploadSplat.name": {
+    "defaultMessage": "Upload Gaussian Splat"
+  },
   "addLayer.onlyFirstFileAdded": {
     "defaultMessage": "Only the first file was added. Drop one file at a time."
   },
+  "addLayer.tab.bicycles": {
+    "defaultMessage": "🚲 Bicycles"
+  },
+  "addLayer.tab.buildings": {
+    "defaultMessage": "🏠 Buildings"
+  },
+  "addLayer.tab.custom": {
+    "defaultMessage": "⚙️ Custom"
+  },
+  "addLayer.tab.fixtures": {
+    "defaultMessage": "🚏 Fixtures"
+  },
+  "addLayer.tab.people": {
+    "defaultMessage": "🚶 People"
+  },
+  "addLayer.tab.plants": {
+    "defaultMessage": "🌿 Plants"
+  },
+  "addLayer.tab.shapes": {
+    "defaultMessage": "🔵 Shapes"
+  },
+  "addLayer.tab.signs": {
+    "defaultMessage": "🚸 Signs"
+  },
+  "addLayer.tab.streets": {
+    "defaultMessage": "🚦 Streets"
+  },
+  "addLayer.tab.trafficControl": {
+    "defaultMessage": "🚧 Control"
+  },
+  "addLayer.tab.vehicles": {
+    "defaultMessage": "🚗 Vehicles"
+  },
   "addLayer.unsupportedFileType": {
     "defaultMessage": "Unsupported file type: {fileName}. Supported formats: GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ."
+  },
+  "aiChatPanel.inputPlaceholder": {
+    "defaultMessage": "Type a command or type /help for options"
   },
   "appMenu.export.arReadyGlb": {
     "defaultMessage": "AR Ready GLB"
@@ -118,6 +280,543 @@
   },
   "assetInfo.upgradeStorage": {
     "defaultMessage": "Upgrade for {storage} storage"
+  },
+  "catalog.Bicycle_1.name": {
+    "defaultMessage": "Bicycle Model 1"
+  },
+  "catalog.ElectricScooter_1.name": {
+    "defaultMessage": "Electric Scooter"
+  },
+  "catalog.SM3D_Bld_Mixed_4fl.name": {
+    "defaultMessage": "Mixed 4fl"
+  },
+  "catalog.SM3D_Bld_Mixed_4fl_2.name": {
+    "defaultMessage": "Mixed 4fl 2"
+  },
+  "catalog.SM3D_Bld_Mixed_5fl.name": {
+    "defaultMessage": "Mixed 5fl"
+  },
+  "catalog.SM3D_Bld_Mixed_Corner_4fl.name": {
+    "defaultMessage": "Mixed Corner 4fl"
+  },
+  "catalog.SM3D_Bld_Mixed_Double_5fl.name": {
+    "defaultMessage": "Mixed Double 5fl"
+  },
+  "catalog.SM_Bld_House_Preset_03_1800.name": {
+    "defaultMessage": "Suburban House 1"
+  },
+  "catalog.SM_Bld_House_Preset_08_1809.name": {
+    "defaultMessage": "Suburban House 3"
+  },
+  "catalog.SM_Bld_House_Preset_09_1845.name": {
+    "defaultMessage": "Suburban House 2"
+  },
+  "catalog.USPS-mailbox.name": {
+    "defaultMessage": "USPS Mailbox"
+  },
+  "catalog.arched-building-01.name": {
+    "defaultMessage": "Arched Building 1"
+  },
+  "catalog.arched-building-02.name": {
+    "defaultMessage": "Arched Building 2"
+  },
+  "catalog.arched-building-03.name": {
+    "defaultMessage": "Arched Building 3"
+  },
+  "catalog.arched-building-04.name": {
+    "defaultMessage": "Arched Building 4"
+  },
+  "catalog.bb-bollard.name": {
+    "defaultMessage": "Bollard (Bollard Buddy)"
+  },
+  "catalog.bench.name": {
+    "defaultMessage": "Bench"
+  },
+  "catalog.bench_orientation_center.name": {
+    "defaultMessage": "Bench Orientation Center"
+  },
+  "catalog.bike-only-cargo.name": {
+    "defaultMessage": "Cargo Bike"
+  },
+  "catalog.bike-only-dutch.name": {
+    "defaultMessage": "Dutch Bike"
+  },
+  "catalog.bike-only-hybrid.name": {
+    "defaultMessage": "Hybrid Bike"
+  },
+  "catalog.bikerack.name": {
+    "defaultMessage": "Bike Rack"
+  },
+  "catalog.bikeshare.name": {
+    "defaultMessage": "Bike Share"
+  },
+  "catalog.bollard.name": {
+    "defaultMessage": "Bollard"
+  },
+  "catalog.box-truck-rig.name": {
+    "defaultMessage": "Box Truck"
+  },
+  "catalog.brt-station.name": {
+    "defaultMessage": "BRT Station"
+  },
+  "catalog.bus-stop-alternate.name": {
+    "defaultMessage": "Bus Stop Alternate"
+  },
+  "catalog.bus-stop.name": {
+    "defaultMessage": "Bus Stop"
+  },
+  "catalog.bus.description": {
+    "defaultMessage": "The New Flyer XD40 is a modern, stylish, and comfortable bus that is perfect for people in urban settings."
+  },
+  "catalog.bus.name": {
+    "defaultMessage": "Bus New Flyer XD40"
+  },
+  "catalog.char1.name": {
+    "defaultMessage": "Character 1"
+  },
+  "catalog.char10.name": {
+    "defaultMessage": "Character 10"
+  },
+  "catalog.char11.name": {
+    "defaultMessage": "Character 11"
+  },
+  "catalog.char12.name": {
+    "defaultMessage": "Character 12"
+  },
+  "catalog.char13.name": {
+    "defaultMessage": "Character 13"
+  },
+  "catalog.char14.name": {
+    "defaultMessage": "Character 14"
+  },
+  "catalog.char15.name": {
+    "defaultMessage": "Character 15"
+  },
+  "catalog.char16.name": {
+    "defaultMessage": "Character 16"
+  },
+  "catalog.char2.name": {
+    "defaultMessage": "Character 2"
+  },
+  "catalog.char3.name": {
+    "defaultMessage": "Character 3"
+  },
+  "catalog.char4.name": {
+    "defaultMessage": "Character 4"
+  },
+  "catalog.char5.name": {
+    "defaultMessage": "Character 5"
+  },
+  "catalog.char6.name": {
+    "defaultMessage": "Character 6"
+  },
+  "catalog.char7.name": {
+    "defaultMessage": "Character 7"
+  },
+  "catalog.char8.name": {
+    "defaultMessage": "Character 8"
+  },
+  "catalog.char9.name": {
+    "defaultMessage": "Character 9"
+  },
+  "catalog.concrete-bollard.name": {
+    "defaultMessage": "Concrete Bollard"
+  },
+  "catalog.cone.name": {
+    "defaultMessage": "Traffic Cone"
+  },
+  "catalog.corner-island.name": {
+    "defaultMessage": "Corner Island"
+  },
+  "catalog.crosswalk-zebra-box.name": {
+    "defaultMessage": "Crosswalk Zebra Box"
+  },
+  "catalog.cyclist-cargo.name": {
+    "defaultMessage": "Cargo Bike"
+  },
+  "catalog.cyclist-dutch.name": {
+    "defaultMessage": "Dutch Cyclist"
+  },
+  "catalog.cyclist-kid.name": {
+    "defaultMessage": "Kid Cyclist"
+  },
+  "catalog.cyclist1.name": {
+    "defaultMessage": "Cyclist 1"
+  },
+  "catalog.cyclist2.name": {
+    "defaultMessage": "Cyclist 2"
+  },
+  "catalog.cyclist3.name": {
+    "defaultMessage": "Cyclist 3"
+  },
+  "catalog.dividers-bush.name": {
+    "defaultMessage": "Bush"
+  },
+  "catalog.dividers-dome.name": {
+    "defaultMessage": "Dome"
+  },
+  "catalog.dividers-flowers.name": {
+    "defaultMessage": "Flowers"
+  },
+  "catalog.dividers-planter-box.name": {
+    "defaultMessage": "Planter Box"
+  },
+  "catalog.dividers-planting-strip.name": {
+    "defaultMessage": "Planting Strip"
+  },
+  "catalog.fire-ladder-rig.name": {
+    "defaultMessage": "Fire Ladder Truck"
+  },
+  "catalog.fire-truck-rig.name": {
+    "defaultMessage": "Fire Truck"
+  },
+  "catalog.fixture-bench-modern.name": {
+    "defaultMessage": "Modern Bench"
+  },
+  "catalog.fixture-bike-rack.name": {
+    "defaultMessage": "Bike Rack"
+  },
+  "catalog.fixture-bus-stop.name": {
+    "defaultMessage": "Bus Stop"
+  },
+  "catalog.fixture-picnic-table.name": {
+    "defaultMessage": "Picnic Table"
+  },
+  "catalog.fixture-trash-can.name": {
+    "defaultMessage": "Trash Can"
+  },
+  "catalog.food-trailer-rig.name": {
+    "defaultMessage": "Food Trailer"
+  },
+  "catalog.green-flowers.name": {
+    "defaultMessage": "Flowers"
+  },
+  "catalog.green-garden-urn.name": {
+    "defaultMessage": "Garden Urn"
+  },
+  "catalog.green-planter-cactus.name": {
+    "defaultMessage": "Cactus"
+  },
+  "catalog.green-planter-fan-palm.name": {
+    "defaultMessage": "Fan Palm"
+  },
+  "catalog.green-planter-snake-plant.name": {
+    "defaultMessage": "Potted Plant"
+  },
+  "catalog.green-planter-tree.name": {
+    "defaultMessage": "Planter Tree"
+  },
+  "catalog.lamp-modern-double.name": {
+    "defaultMessage": "Lamp Modern Double"
+  },
+  "catalog.lamp-modern.name": {
+    "defaultMessage": "Lamp Modern"
+  },
+  "catalog.lamp-traditional.name": {
+    "defaultMessage": "Lamp Traditional"
+  },
+  "catalog.large-parklet.name": {
+    "defaultMessage": "Large Parklet"
+  },
+  "catalog.lending-library.name": {
+    "defaultMessage": "Lending Library"
+  },
+  "catalog.minibus.name": {
+    "defaultMessage": "Minibus"
+  },
+  "catalog.motorbike.name": {
+    "defaultMessage": "Motorbike"
+  },
+  "catalog.outdoor_dining.name": {
+    "defaultMessage": "Outdoor Dining"
+  },
+  "catalog.palm-tree.name": {
+    "defaultMessage": "Palm Tree"
+  },
+  "catalog.parklet.name": {
+    "defaultMessage": "Parklet"
+  },
+  "catalog.picnic-bench.name": {
+    "defaultMessage": "Picnic Bench"
+  },
+  "catalog.residential-mailbox.name": {
+    "defaultMessage": "Residential Mailbox"
+  },
+  "catalog.royal-bollard.name": {
+    "defaultMessage": "Royal Bollard"
+  },
+  "catalog.safehit.name": {
+    "defaultMessage": "Safehit"
+  },
+  "catalog.seawall.name": {
+    "defaultMessage": "Seawall"
+  },
+  "catalog.sedan-rig.name": {
+    "defaultMessage": "Sedan"
+  },
+  "catalog.sedan-taxi-rig.name": {
+    "defaultMessage": "Sedan Taxi"
+  },
+  "catalog.self-driving-cruise-car-rig.name": {
+    "defaultMessage": "Self-Driving Cruise Car"
+  },
+  "catalog.self-driving-waymo-car.name": {
+    "defaultMessage": "Self-Driving Waymo Car"
+  },
+  "catalog.signal_left.name": {
+    "defaultMessage": "Signal Left"
+  },
+  "catalog.signal_right.name": {
+    "defaultMessage": "Signal Right"
+  },
+  "catalog.sp-furn-bench1-5x2ft.name": {
+    "defaultMessage": "Bench with people #1"
+  },
+  "catalog.sp-furn-bench2-5x2ft.name": {
+    "defaultMessage": "Bench with people #2"
+  },
+  "catalog.sp-furn-busstop-roundshelter-12x13ft.name": {
+    "defaultMessage": "Bus stop rounded shelter with people"
+  },
+  "catalog.sp-furn-busstop-shelter-12x4ft.name": {
+    "defaultMessage": "Bus stop shelter with people"
+  },
+  "catalog.sp-furn-farmertent1-10x10ft.name": {
+    "defaultMessage": "Farmer's market tent 10x10 with people 1"
+  },
+  "catalog.sp-furn-farmertent2-10x10ft.name": {
+    "defaultMessage": "Farmer's market tent 10x10 with people 2"
+  },
+  "catalog.sp-furn-foodcart-5dot5x9ft.name": {
+    "defaultMessage": "Food cart with people"
+  },
+  "catalog.sp-furn-table-2x7ft.name": {
+    "defaultMessage": "Outdoor seating with people"
+  },
+  "catalog.sp-furn-table-blue-7x7ft.name": {
+    "defaultMessage": "Outdoor seating with umbrella and people"
+  },
+  "catalog.sp-grand-suv.name": {
+    "defaultMessage": "Grand SUV"
+  },
+  "catalog.sp-gutter-25ft-left.name": {
+    "defaultMessage": "sp Gutter-2.5ft left"
+  },
+  "catalog.sp-gutter-25ft-right.name": {
+    "defaultMessage": "sp Gutter-2.5ft right"
+  },
+  "catalog.sp-hatchback-yellow.name": {
+    "defaultMessage": "Hatchback Car"
+  },
+  "catalog.sp-light-flowerP-bannerBY-13ft.name": {
+    "defaultMessage": "Light pole 13 ft with purple flowers and blue & yellow banners"
+  },
+  "catalog.sp-light-flowerY-bannerRG-13ft.name": {
+    "defaultMessage": "Light pole 13 ft with yellow flowers and red & green banners"
+  },
+  "catalog.sp-median-planterbox-tall-06x30ft.name": {
+    "defaultMessage": "Median Planterbox 6x30 ft"
+  },
+  "catalog.sp-median-tallflower-RYB-10x10ft.name": {
+    "defaultMessage": "Median Planterbox 10x10 ft"
+  },
+  "catalog.sp-median-tallflower-RYB-6x10ft.name": {
+    "defaultMessage": "Median Planterbox 6x10 ft"
+  },
+  "catalog.sp-parking-planter-5x8ft.name": {
+    "defaultMessage": "Parking Planter 5x8 ft"
+  },
+  "catalog.sp-prop-bigbox-1L-220ft.name": {
+    "defaultMessage": "Big Box 1 Story 220ft"
+  },
+  "catalog.sp-prop-bigbox-1L-291ft.name": {
+    "defaultMessage": "Big Box 1 Story 291ft"
+  },
+  "catalog.sp-prop-gov-3L-61ft.name": {
+    "defaultMessage": "Government Building 3 Story 61ft"
+  },
+  "catalog.sp-prop-mixeduse-2L-29ft.name": {
+    "defaultMessage": "Mixed Use 2L 29ft"
+  },
+  "catalog.sp-prop-mixeduse-2L-30ft.name": {
+    "defaultMessage": "Mixed Use 2L 30ft"
+  },
+  "catalog.sp-prop-mixeduse-3L-18ft.name": {
+    "defaultMessage": "Mixed Use 3L 18ft"
+  },
+  "catalog.sp-prop-mixeduse-3L-22ft.name": {
+    "defaultMessage": "Mixed Use 3L 22ft"
+  },
+  "catalog.sp-prop-mixeduse-3L-23ft-corner.name": {
+    "defaultMessage": "Mixed Use 3L 23ft Corner"
+  },
+  "catalog.sp-prop-mixeduse-3L-42ft.name": {
+    "defaultMessage": "Mixed Use 3L 42ft"
+  },
+  "catalog.sp-prop-mixeduse-3L-78ft-corner.name": {
+    "defaultMessage": "Mixed Use 3L 78ft Corner"
+  },
+  "catalog.sp-prop-parking-3L-155ft.name": {
+    "defaultMessage": "Parking Structure 3 Story 155ft"
+  },
+  "catalog.sp-prop-parking-3L-97ft-centered.name": {
+    "defaultMessage": "Parking Structure 3 Story 97ft Centered"
+  },
+  "catalog.sp-prop-sf-1L-41ft.name": {
+    "defaultMessage": "Single Family 1 Story 41ft"
+  },
+  "catalog.sp-prop-sf-1L-62ft.name": {
+    "defaultMessage": "Single Family 1 Story 62ft"
+  },
+  "catalog.sp-prop-sf-2L-62ft.name": {
+    "defaultMessage": "Single Family 2 Story 62ft"
+  },
+  "catalog.sp-prop-sf-2L-64ft.name": {
+    "defaultMessage": "Single Family 2 Story 64ft"
+  },
+  "catalog.sp-prop-townhouse-3L-20ft.name": {
+    "defaultMessage": "Townhouse 3 Story 20ft"
+  },
+  "catalog.sp-prop-townhouse-3L-23ft.name": {
+    "defaultMessage": "Townhouse 3 Story 23ft"
+  },
+  "catalog.sp-sign-speed-limit-10mph.name": {
+    "defaultMessage": "Speed Limit 10 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-15mph.name": {
+    "defaultMessage": "Speed Limit 15 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-20mph.name": {
+    "defaultMessage": "Speed Limit 20 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-25mph.name": {
+    "defaultMessage": "Speed Limit 25 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-30mph.name": {
+    "defaultMessage": "Speed Limit 30 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-35mph.name": {
+    "defaultMessage": "Speed Limit 35 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-40mph.name": {
+    "defaultMessage": "Speed Limit 40 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-45mph.name": {
+    "defaultMessage": "Speed Limit 45 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-50mph.name": {
+    "defaultMessage": "Speed Limit 50 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-55mph.name": {
+    "defaultMessage": "Speed Limit 55 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-60mph.name": {
+    "defaultMessage": "Speed Limit 60 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-65mph.name": {
+    "defaultMessage": "Speed Limit 65 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-70mph.name": {
+    "defaultMessage": "Speed Limit 70 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-75mph.name": {
+    "defaultMessage": "Speed Limit 75 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-80mph.name": {
+    "defaultMessage": "Speed Limit 80 MPH Sign"
+  },
+  "catalog.sp-tree-buroak-24ft.name": {
+    "defaultMessage": "Bur Oak Tree 24ft"
+  },
+  "catalog.sp-tree-buroak-28ft.name": {
+    "defaultMessage": "Bur Oak Tree 28ft"
+  },
+  "catalog.sp-tree-honeylocust-24ft.name": {
+    "defaultMessage": "Honey Locust Tree 24ft"
+  },
+  "catalog.sp-tree-japaneselilac-20ft.name": {
+    "defaultMessage": "Japanese Lilac Tree 20ft"
+  },
+  "catalog.sp-tree-palm-26ft.name": {
+    "defaultMessage": "Palm Tree 26 ft"
+  },
+  "catalog.sp-tree-palm-28ft.name": {
+    "defaultMessage": "Palm Tree 28ft"
+  },
+  "catalog.sp-tree-purpleplum-16ft.name": {
+    "defaultMessage": "Purple Plum Tree 16ft"
+  },
+  "catalog.sp-tree-small-15ft.name": {
+    "defaultMessage": "Small Tree 15ft"
+  },
+  "catalog.ssp-median-planterbox-tall-10x30ft.name": {
+    "defaultMessage": "Median Planterbox 10x30 ft"
+  },
+  "catalog.stop_sign.name": {
+    "defaultMessage": "Stop Sign"
+  },
+  "catalog.street-element-crosswalk-raised.name": {
+    "defaultMessage": "Crosswalk Raised"
+  },
+  "catalog.street-element-sign-warning-ped-rrfb.name": {
+    "defaultMessage": "Sign Warning Ped RRFB"
+  },
+  "catalog.street-element-speed-hump.name": {
+    "defaultMessage": "Speed Hump"
+  },
+  "catalog.street-element-traffic-island-end-rounded.name": {
+    "defaultMessage": "Traffic Island End Rounded"
+  },
+  "catalog.street-element-traffic-island.name": {
+    "defaultMessage": "Traffic Island"
+  },
+  "catalog.street-element-traffic-post-k71.name": {
+    "defaultMessage": "Traffic Post K71"
+  },
+  "catalog.suv-rig.name": {
+    "defaultMessage": "SUV"
+  },
+  "catalog.temporary-barricade.name": {
+    "defaultMessage": "Temporary Barricade"
+  },
+  "catalog.temporary-jersey-barrier-concrete.name": {
+    "defaultMessage": "Temporary Jersey Barrier Concrete"
+  },
+  "catalog.temporary-jersey-barrier-plastic.name": {
+    "defaultMessage": "Temporary Jersey Barrier Plastic"
+  },
+  "catalog.temporary-traffic-cone.name": {
+    "defaultMessage": "Temporary Traffic Cone"
+  },
+  "catalog.track.name": {
+    "defaultMessage": "Track"
+  },
+  "catalog.traffic-calming-bumps.name": {
+    "defaultMessage": "Traffic Calming Bumps"
+  },
+  "catalog.tram.name": {
+    "defaultMessage": "Tram"
+  },
+  "catalog.trash-bin.name": {
+    "defaultMessage": "Trash Bin"
+  },
+  "catalog.trash-truck-side-loading.name": {
+    "defaultMessage": "Side-Loading Trash Truck"
+  },
+  "catalog.tree3.name": {
+    "defaultMessage": "Tree"
+  },
+  "catalog.trolley.name": {
+    "defaultMessage": "Trolley"
+  },
+  "catalog.tuk-tuk.name": {
+    "defaultMessage": "Tuk-Tuk"
+  },
+  "catalog.utility_pole.name": {
+    "defaultMessage": "Utility Pole"
+  },
+  "catalog.wayfinding.name": {
+    "defaultMessage": "Wayfinding Box"
   },
   "common.addLayer": {
     "defaultMessage": "Add layer"
@@ -728,6 +1427,18 @@
   "rightPanel.tabProperties": {
     "defaultMessage": "Properties"
   },
+  "save.notSavedSaveAs": {
+    "defaultMessage": "Scene not saved, press to save as..."
+  },
+  "save.notSavedSignIn": {
+    "defaultMessage": "Scene not saved, sign in to save as..."
+  },
+  "save.savedSaveAgain": {
+    "defaultMessage": "Scene saved to cloud, press to save again"
+  },
+  "save.saving": {
+    "defaultMessage": "Saving..."
+  },
   "savingModal.saving": {
     "defaultMessage": "Saving"
   },
@@ -1009,6 +1720,12 @@
   },
   "toolbar.logoAlt": {
     "defaultMessage": "3DStreet Logo"
+  },
+  "undoRedo.redo": {
+    "defaultMessage": "Redo"
+  },
+  "undoRedo.undo": {
+    "defaultMessage": "Undo"
   },
   "units.imperial": {
     "defaultMessage": "imperial"

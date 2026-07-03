@@ -532,6 +532,11 @@ export function Viewport(inspector) {
     controls.focus(object);
   });
 
+  // Restore the camera to a snapshot's captured pose (#1605).
+  Events.on('cameraposefocus', (cameraState) => {
+    controls.focusCameraState(cameraState);
+  });
+
   Events.on('geometrychanged', (object) => {
     if (object !== null) {
       selectionBox.setFromObject(object);
