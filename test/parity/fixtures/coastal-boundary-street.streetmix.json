@@ -28,43 +28,74 @@
           "type": "sidewalk",
           "variantString": "normal",
           "width": 2.4,
-          "elevation": 0.15
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
         },
         {
           "type": "bike-lane",
           "variantString": "inbound|green|road",
           "width": 1.8,
-          "elevation": 0
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
         },
         {
           "type": "drive-lane",
           "variantString": "inbound|car",
           "width": 3,
-          "elevation": 0
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
         },
         {
           "type": "drive-lane",
           "variantString": "outbound|car",
           "width": 3,
-          "elevation": 0
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
         },
         {
           "type": "bike-lane",
           "variantString": "outbound|green|road",
           "width": 1.8,
-          "elevation": 0
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
         },
         {
           "type": "sidewalk",
           "variantString": "dense",
           "width": 2.4,
-          "elevation": 0.15
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
         },
         {
           "type": "divider",
           "variantString": "planting-strip",
           "width": 3,
-          "elevation": 0.15
+          "elevation": 0.15,
+          "slope": {
+            "on": true,
+            "values": [
+              0.15,
+              0
+            ]
+          }
         }
       ]
     }

@@ -1,5 +1,8 @@
 /* global AFRAME */
-const { calculateHeight } = require('../tested/street-segment-utils');
+const {
+  calculateHeight,
+  calculateSlopedHeights
+} = require('../tested/street-segment-utils');
 
 /*
 <a-entity street-way="source: xyz">
@@ -260,6 +263,26 @@ AFRAME.registerComponent('street-segment', {
       // (Streetmix boundary object). Metadata only for now — it does not yet
       // drive the generated building model height. 0 = unspecified.
       type: 'int',
+      default: 0
+    },
+    slope: {
+      // tilt the segment surface between two elevations across its width
+      // (coastmix schema v34 `slope: { on, values }`). When true, the surface
+      // interpolates from slopeStart (start/-x edge) to slopeEnd (end/+x edge)
+      // and `elevation` is ignored; generated content sits at the mean
+      // elevation for now.
+      type: 'boolean',
+      default: false
+    },
+    slopeStart: {
+      // elevation in meters at the segment's start edge (local -x, toward the
+      // previous segment) when slope is on
+      type: 'number',
+      default: 0
+    },
+    slopeEnd: {
+      // elevation in meters at the segment's end edge (local +x) when slope is on
+      type: 'number',
       default: 0
     },
     direction: {
@@ -535,7 +558,16 @@ AFRAME.registerComponent('street-segment', {
       }
     }
     this.clearMesh();
-    this.height = this.calculateHeight(data.elevation);
+    if (data.slope) {
+      // sloped surface: entity sits at the mean height, the mesh top face is
+      // tilted between the two edge heights (see generateMesh)
+      const sloped = calculateSlopedHeights(data.slopeStart, data.slopeEnd);
+      this.height = sloped.height;
+      this.slopeDeltas = { start: sloped.startDelta, end: sloped.endDelta };
+    } else {
+      this.height = this.calculateHeight(data.elevation);
+      this.slopeDeltas = null;
+    }
     this.tempXPosition = this.el.getAttribute('position').x;
     this.tempZPosition = this.el.getAttribute('position').z;
     this.el.setAttribute('position', {
@@ -573,13 +605,16 @@ AFRAME.registerComponent('street-segment', {
     this.generatedComponents.length = 0;
   },
   generateMesh: function (data) {
-    // create geometry
+    // create geometry; slope deltas tilt the top face between the segment's
+    // start (-x) and end (+x) edges
     this.el.setAttribute(
       'geometry',
-      `primitive: below-box; 
-          height: ${this.height}; 
+      `primitive: below-box;
+          height: ${this.height};
           depth: ${data.length};
-          width: ${data.width};`
+          width: ${data.width};
+          slopeStartDelta: ${this.slopeDeltas?.start ?? 0};
+          slopeEndDelta: ${this.slopeDeltas?.end ?? 0};`
     );
 
     // create a lookup table to convert UI shortname into A-Frame img id's
@@ -701,7 +736,12 @@ AFRAME.registerGeometry('below-box', {
     width: { default: 1, min: 0 },
     segmentsHeight: { default: 1, min: 1, max: 20, type: 'int' },
     segmentsWidth: { default: 1, min: 1, max: 20, type: 'int' },
-    segmentsDepth: { default: 1, min: 1, max: 20, type: 'int' }
+    segmentsDepth: { default: 1, min: 1, max: 20, type: 'int' },
+    // vertical displacement (meters) applied to the top face at the -x edge
+    // (slopeStartDelta) and +x edge (slopeEndDelta) — tilts the surface for
+    // sloped street segments while the bottom stays at the dirt layer
+    slopeStartDelta: { default: 0 },
+    slopeEndDelta: { default: 0 }
   },
 
   init: function (data) {
@@ -714,5 +754,22 @@ AFRAME.registerGeometry('below-box', {
       data.segmentsDepth
     );
     this.geometry.translate(0, -data.height / 2, 0);
+    if (data.slopeStartDelta !== 0 || data.slopeEndDelta !== 0) {
+      // After the translate the top-face vertices sit at y=0 (everything else
+      // is below). Displace them by the edge delta their x-side belongs to;
+      // side-face top edges follow along so the box stays watertight.
+      const position = this.geometry.attributes.position;
+      for (let i = 0; i < position.count; i++) {
+        if (position.getY(i) > -data.height / 2) {
+          position.setY(
+            i,
+            position.getY(i) +
+              (position.getX(i) < 0 ? data.slopeStartDelta : data.slopeEndDelta)
+          );
+        }
+      }
+      position.needsUpdate = true;
+      this.geometry.computeVertexNormals();
+    }
   }
 });

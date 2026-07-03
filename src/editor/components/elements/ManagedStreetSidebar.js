@@ -40,6 +40,36 @@ const ManagedStreetSidebar = ({ entity }) => {
                   entity={entity}
                 />
                 <PropertyRow
+                  key="showGround"
+                  name="showGround"
+                  label="Ground"
+                  schema={component.schema.showGround}
+                  data={component.data.showGround}
+                  componentname={componentName}
+                  isSingle={false}
+                  entity={entity}
+                />
+                <PropertyRow
+                  key="showStriping"
+                  name="showStriping"
+                  label="Striping"
+                  schema={component.schema.showStriping}
+                  data={component.data.showStriping}
+                  componentname={componentName}
+                  isSingle={false}
+                  entity={entity}
+                />
+                <PropertyRow
+                  key="showVehicles"
+                  name="showVehicles"
+                  label="Vehicles"
+                  schema={component.schema.showVehicles}
+                  data={component.data.showVehicles}
+                  componentname={componentName}
+                  isSingle={false}
+                  entity={entity}
+                />
+                <PropertyRow
                   key="enabled"
                   name="enabled"
                   label="Labels"

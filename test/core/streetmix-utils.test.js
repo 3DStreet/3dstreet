@@ -116,6 +116,39 @@ describe('StreetmixUtils', function () {
     });
   });
 
+  describe('#getSegmentSlope()', function () {
+    it('should return start/end for an active slope', function () {
+      assert.deepStrictEqual(
+        streetmixUtils.getSegmentSlope({
+          slope: { on: true, values: [0.15, 0] }
+        }),
+        { start: 0.15, end: 0 }
+      );
+    });
+    it('should return null for the seeded v34 default (off, empty values)', function () {
+      assert.strictEqual(
+        streetmixUtils.getSegmentSlope({ slope: { on: false, values: [] } }),
+        null
+      );
+    });
+    it('should return null when slope is on but values are malformed', function () {
+      assert.strictEqual(
+        streetmixUtils.getSegmentSlope({ slope: { on: true, values: [0.15] } }),
+        null
+      );
+      assert.strictEqual(
+        streetmixUtils.getSegmentSlope({
+          slope: { on: true, values: ['a', 'b'] }
+        }),
+        null
+      );
+    });
+    it('should return null for pre-v34 segments without slope', function () {
+      assert.strictEqual(streetmixUtils.getSegmentSlope({}), null);
+      assert.strictEqual(streetmixUtils.getSegmentSlope(undefined), null);
+    });
+  });
+
   describe('#getBoundaryFromStreetData()', function () {
     it('should read the canonical boundary object (schemaVersion 34+)', function () {
       const streetData = {

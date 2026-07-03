@@ -230,6 +230,16 @@ describe('Streetmix Schema Version Handling', function () {
       assert.strictEqual(right.elevation, 0.15);
     });
 
+    it('should read slope from the sloped segment and none from flat ones', function () {
+      const segments = fixture.data.street.segments;
+      const sloped = segments[segments.length - 1];
+      assert.deepStrictEqual(streetmixUtils.getSegmentSlope(sloped), {
+        start: 0.15,
+        end: 0
+      });
+      assert.strictEqual(streetmixUtils.getSegmentSlope(segments[0]), null);
+    });
+
     it('should prefer boundary over the deprecated flat fields', function () {
       const street = JSON.parse(JSON.stringify(fixture.data.street));
       // poison the flat fields; boundary must win

@@ -17,6 +17,22 @@ function calculateHeight(elevation) {
   return Math.max(BASE_SURFACE_DEPTH, BASE_SURFACE_DEPTH + elevation);
 }
 
+// Surface heights for a sloped segment (coastmix schema v34): the surface
+// tilts between two metric elevations across the segment width. The segment
+// entity sits at the mean height; the geometry's top face is displaced by
+// startDelta at the segment's start (local -x) edge and endDelta at the end
+// (local +x) edge.
+function calculateSlopedHeights(startElevation, endElevation) {
+  const startHeight = calculateHeight(startElevation);
+  const endHeight = calculateHeight(endElevation);
+  const height = (startHeight + endHeight) / 2;
+  return {
+    height,
+    startDelta: startHeight - height,
+    endDelta: endHeight - height
+  };
+}
+
 // Convert a deprecated integer elevation level to meters.
 // e.g., level 0 → 0m, level 1 → 0.15m, level 2 → 0.30m
 function levelToElevation(level) {
@@ -57,6 +73,7 @@ function migrateSegmentLevelToElevation(componentValue) {
 }
 
 module.exports.calculateHeight = calculateHeight;
+module.exports.calculateSlopedHeights = calculateSlopedHeights;
 module.exports.levelToElevation = levelToElevation;
 module.exports.migrateSegmentLevelToElevation = migrateSegmentLevelToElevation;
 module.exports.CURB_HEIGHT = CURB_HEIGHT;

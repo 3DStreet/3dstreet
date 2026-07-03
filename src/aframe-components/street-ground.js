@@ -79,6 +79,13 @@ AFRAME.registerComponent('street-ground', {
     }
 
     this.dirtbox.setAttribute('position', `${xPosition} -1 ${zPosition}`);
+
+    // honor the managed-street showGround toggle (managed-street emits
+    // segments-changed when it flips, which re-runs this method)
+    this.dirtbox.setAttribute(
+      'visible',
+      this.el.getAttribute('managed-street')?.showGround !== false
+    );
   },
 
   remove: function () {

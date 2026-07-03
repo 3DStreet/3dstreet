@@ -123,3 +123,24 @@ function getBoundaryFromStreetData(streetData, side) {
   };
 }
 module.exports.getBoundaryFromStreetData = getBoundaryFromStreetData;
+
+// Read a segment's slope (coastmix schema v34): `slope: { on, values }` where
+// values = [startElevation, endElevation] in meters (same unit as elevation).
+// The v34 migration seeds `{ on: false, values: [] }` on every segment, so
+// only coastmix-edited streets carry an active slope. Returns
+// { start, end } in meters when the slope is active and well-formed, else
+// null (flat segment — nothing changes for existing streets).
+function getSegmentSlope(segmentData) {
+  const slope = segmentData?.slope;
+  if (
+    !slope?.on ||
+    !Array.isArray(slope.values) ||
+    slope.values.length < 2 ||
+    typeof slope.values[0] !== 'number' ||
+    typeof slope.values[1] !== 'number'
+  ) {
+    return null;
+  }
+  return { start: slope.values[0], end: slope.values[1] };
+}
+module.exports.getSegmentSlope = getSegmentSlope;

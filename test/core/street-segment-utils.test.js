@@ -3,6 +3,7 @@
 const assert = require('assert');
 const {
   calculateHeight,
+  calculateSlopedHeights,
   levelToElevation,
   migrateSegmentLevelToElevation,
   CURB_HEIGHT,
@@ -38,6 +39,35 @@ describe('StreetSegmentUtils', function () {
     });
     it('should use BASE_SURFACE_DEPTH of 0.15m', function () {
       assert.strictEqual(BASE_SURFACE_DEPTH, 0.15);
+    });
+  });
+
+  describe('#calculateSlopedHeights()', function () {
+    it('should tilt between curb height and road level', function () {
+      // 0.15m -> surface height 0.30, 0m -> 0.15; mean 0.225, deltas ±0.075
+      const { height, startDelta, endDelta } = calculateSlopedHeights(0.15, 0);
+      assert.ok(Math.abs(height - 0.225) < 1e-10);
+      assert.ok(Math.abs(startDelta - 0.075) < 1e-10);
+      assert.ok(Math.abs(endDelta + 0.075) < 1e-10);
+    });
+    it('should degenerate to a flat surface when both elevations match', function () {
+      const { height, startDelta, endDelta } = calculateSlopedHeights(
+        0.15,
+        0.15
+      );
+      assert.strictEqual(height, calculateHeight(0.15));
+      assert.strictEqual(startDelta, 0);
+      assert.strictEqual(endDelta, 0);
+    });
+    it('should respect the base-depth clamp at each edge', function () {
+      // a negative edge elevation clamps to BASE_SURFACE_DEPTH before averaging
+      const { height, startDelta, endDelta } = calculateSlopedHeights(
+        -0.3,
+        0.15
+      );
+      assert.ok(Math.abs(height - (0.15 + 0.3) / 2) < 1e-10);
+      assert.ok(Math.abs(startDelta - (0.15 - height)) < 1e-10);
+      assert.ok(Math.abs(endDelta - (0.3 - height)) < 1e-10);
     });
   });
 
