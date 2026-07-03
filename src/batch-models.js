@@ -809,6 +809,17 @@ export function beginBatching(sceneEl, batchingEnabled) {
   // templates (its listener, added mid-scene, catches the next begin-batching). Emitted for
   // every scene load, batched or not, so cross-scene cleanup always happens.
   sceneEl.emit('begin-batching');
+  // Open the grouping gate ourselves once this scene's entities are minted: createEntities
+  // (our only caller) emits "newScene" when its pass finishes, and batchModels then groups
+  // every [gltf-model]/[gltf-part] and releases the parked loads. Arming the gate-opener here
+  // — rather than relying on the editor's onNewScene — keeps parked gltf-model loads from
+  // hanging forever in an editor-free core bundle. Guarded so we only arm it when batching
+  // is actually on (the park itself is gated on `_batchingEnabled`).
+  if (batchingEnabled) {
+    sceneEl.addEventListener('newScene', () => batchModels(sceneEl), {
+      once: true
+    });
+  }
 }
 
 export async function batchModels(sceneEl) {

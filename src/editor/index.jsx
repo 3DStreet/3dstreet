@@ -19,7 +19,6 @@ import { commandsByType } from './lib/commands/index.js';
 import { LocaleProvider } from './i18n/LocaleProvider';
 import useStore from '@/store';
 import { initializeLocationSync } from './lib/location-sync';
-import { batchModels } from '../batch-models.js';
 
 // Helper function to check if viewer mode is requested via URL parameter
 function isViewerModeRequested() {
@@ -230,9 +229,8 @@ Inspector.prototype = {
         useStore.getState().finishLoadingScene();
       }, 500);
     }
-    if (STREET.batchingEnabled) {
-      batchModels(sceneEl);
-    }
+    // Model batching is armed and released by batch-models.js itself (beginBatching hooks
+    // the "newScene" event), so it no longer needs an editor-side trigger here.
   },
 
   initEvents: function () {
