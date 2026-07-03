@@ -12,7 +12,7 @@ export const stroad60ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 1.829,
       direction: 'none',
       generated: {
@@ -28,7 +28,7 @@ export const stroad60ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914,
       direction: 'none',
       generated: {
@@ -46,7 +46,7 @@ export const stroad60ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914,
       direction: 'none',
       generated: {
@@ -65,7 +65,7 @@ export const stroad60ftROW = {
       type: 'parking-lane',
       surface: 'concrete',
       color: '#dddddd',
-      level: 0,
+      elevation: 0,
       width: 2.438,
       direction: 'inbound',
       generated: {
@@ -91,7 +91,7 @@ export const stroad60ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.048,
       direction: 'inbound',
       generated: {
@@ -111,7 +111,7 @@ export const stroad60ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.048,
       direction: 'outbound',
       generated: {
@@ -131,7 +131,7 @@ export const stroad60ftROW = {
       type: 'parking-lane',
       surface: 'concrete',
       color: '#dddddd',
-      level: 0,
+      elevation: 0,
       width: 2.438,
       direction: 'outbound',
       generated: {
@@ -157,7 +157,7 @@ export const stroad60ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914,
       direction: 'none',
       generated: {
@@ -176,7 +176,7 @@ export const stroad60ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914,
       direction: 'none',
       generated: {
@@ -194,7 +194,7 @@ export const stroad60ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 1.829,
       direction: 'none',
       generated: {
@@ -220,7 +220,7 @@ export const stroad40ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 1.829, // Original 6ft
       direction: 'none',
       generated: {
@@ -236,7 +236,7 @@ export const stroad40ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.61, // Original 2ft
       direction: 'none',
       generated: {
@@ -254,7 +254,7 @@ export const stroad40ftROW = {
       type: 'parking-lane',
       surface: 'concrete',
       color: '#dddddd',
-      level: 0,
+      elevation: 0,
       width: 2.134, // Original 7ft
       direction: 'inbound',
       generated: {
@@ -280,7 +280,7 @@ export const stroad40ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.048, // Original 10ft
       direction: 'inbound',
       generated: {
@@ -300,7 +300,7 @@ export const stroad40ftROW = {
       type: 'parking-lane',
       surface: 'concrete',
       color: '#dddddd',
-      level: 0,
+      elevation: 0,
       width: 2.134, // Original 7ft
       direction: 'outbound',
       generated: {
@@ -326,7 +326,7 @@ export const stroad40ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.61, // Original 2ft
       direction: 'none',
       generated: {
@@ -344,7 +344,7 @@ export const stroad40ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 1.829, // Original 6ft
       direction: 'none',
       generated: {
@@ -370,7 +370,7 @@ export const stroad80ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 1.829, // Original 6ft
       direction: 'none',
       generated: {
@@ -386,7 +386,7 @@ export const stroad80ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914, // Original 3ft
       direction: 'none',
       generated: {
@@ -404,7 +404,7 @@ export const stroad80ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914, // Original 3ft
       direction: 'none',
       generated: {
@@ -423,7 +423,7 @@ export const stroad80ftROW = {
       type: 'parking-lane',
       surface: 'concrete',
       color: '#dddddd',
-      level: 0,
+      elevation: 0,
       width: 2.438, // Original 8ft
       direction: 'inbound',
       generated: {
@@ -449,7 +449,7 @@ export const stroad80ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.048, // Original 10ft
       direction: 'inbound',
       generated: {
@@ -469,7 +469,7 @@ export const stroad80ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.048, // Original 10ft
       direction: 'inbound',
       generated: {
@@ -489,7 +489,7 @@ export const stroad80ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.048, // Original 10ft
       direction: 'outbound',
       generated: {
@@ -509,7 +509,7 @@ export const stroad80ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.048, // Original 10ft
       direction: 'outbound',
       generated: {
@@ -529,7 +529,7 @@ export const stroad80ftROW = {
       type: 'parking-lane',
       surface: 'concrete',
       color: '#dddddd',
-      level: 0,
+      elevation: 0,
       width: 2.438, // Original 8ft
       direction: 'outbound',
       generated: {
@@ -555,7 +555,7 @@ export const stroad80ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914, // Original 3ft
       direction: 'none',
       generated: {
@@ -574,7 +574,7 @@ export const stroad80ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914, // Original 3ft
       direction: 'none',
       generated: {
@@ -592,7 +592,7 @@ export const stroad80ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 1.829, // Original 6ft
       direction: 'none',
       generated: {
@@ -618,7 +618,7 @@ export const stroad94ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 1.829, // Original 6ft
       direction: 'none',
       generated: {
@@ -634,7 +634,7 @@ export const stroad94ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914, // Original 3ft
       direction: 'none',
       generated: {
@@ -652,7 +652,7 @@ export const stroad94ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914, // Original 3ft
       direction: 'none',
       generated: {
@@ -671,7 +671,7 @@ export const stroad94ftROW = {
       type: 'parking-lane',
       surface: 'concrete',
       color: '#dddddd',
-      level: 0,
+      elevation: 0,
       width: 2.438, // Original 8ft
       direction: 'inbound',
       generated: {
@@ -697,7 +697,7 @@ export const stroad94ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.353, // Original 11ft
       direction: 'inbound',
       generated: {
@@ -717,7 +717,7 @@ export const stroad94ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.353, // Original 11ft
       direction: 'inbound',
       generated: {
@@ -737,7 +737,7 @@ export const stroad94ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.048, // Original 10ft
       generated: {
         stencil: [
@@ -770,7 +770,7 @@ export const stroad94ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.353, // Original 11ft
       direction: 'outbound',
       generated: {
@@ -795,7 +795,7 @@ export const stroad94ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.353, // Original 11ft
       direction: 'outbound',
       generated: {
@@ -815,7 +815,7 @@ export const stroad94ftROW = {
       type: 'parking-lane',
       surface: 'concrete',
       color: '#dddddd',
-      level: 0,
+      elevation: 0,
       width: 2.438, // Original 8ft
       direction: 'outbound',
       generated: {
@@ -841,7 +841,7 @@ export const stroad94ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914, // Original 3ft
       direction: 'none',
       generated: {
@@ -860,7 +860,7 @@ export const stroad94ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914, // Original 3ft
       direction: 'none',
       generated: {
@@ -878,7 +878,7 @@ export const stroad94ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 1.829, // Original 6ft
       direction: 'none',
       generated: {
@@ -904,7 +904,7 @@ export const stroad150ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 2.134, // Original 7ft
       direction: 'none',
       generated: {
@@ -920,7 +920,7 @@ export const stroad150ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914, // Original 3ft
       direction: 'none',
       generated: {
@@ -938,7 +938,7 @@ export const stroad150ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914, // Original 3ft
       direction: 'none',
       generated: {
@@ -957,7 +957,7 @@ export const stroad150ftROW = {
       type: 'parking-lane',
       surface: 'concrete',
       color: '#dddddd',
-      level: 0,
+      elevation: 0,
       width: 2.438, // Original 8ft
       direction: 'inbound',
       generated: {
@@ -983,7 +983,7 @@ export const stroad150ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.048, // Original 10ft
       direction: 'inbound',
       generated: {
@@ -1009,7 +1009,7 @@ export const stroad150ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.353, // Original 11ft
       direction: 'inbound',
       generated: {
@@ -1029,7 +1029,7 @@ export const stroad150ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.353, // Original 11ft
       direction: 'inbound',
       generated: {
@@ -1048,7 +1048,7 @@ export const stroad150ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.353, // Original 11ft
       direction: 'inbound',
       generated: {
@@ -1068,7 +1068,7 @@ export const stroad150ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.048, // Original 10ft
       direction: 'inbound',
       generated: {
@@ -1094,7 +1094,7 @@ export const stroad150ftROW = {
       type: 'divider',
       surface: 'planting-strip',
       color: '#338833',
-      level: 1,
+      elevation: 0.15,
       width: 0.61, // Original 2ft
       direction: 'none',
       generated: {
@@ -1112,7 +1112,7 @@ export const stroad150ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.048, // Original 10ft
       direction: 'outbound',
       generated: {
@@ -1138,7 +1138,7 @@ export const stroad150ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.353, // Original 11ft
       direction: 'outbound',
       generated: {
@@ -1158,7 +1158,7 @@ export const stroad150ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.353, // Original 11ft
       direction: 'outbound',
       generated: {
@@ -1177,7 +1177,7 @@ export const stroad150ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.353, // Original 11ft
       direction: 'outbound',
       generated: {
@@ -1197,7 +1197,7 @@ export const stroad150ftROW = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 3.048, // Original 10ft
       direction: 'outbound',
       generated: {
@@ -1223,7 +1223,7 @@ export const stroad150ftROW = {
       type: 'parking-lane',
       surface: 'concrete',
       color: '#dddddd',
-      level: 0,
+      elevation: 0,
       width: 2.438, // Original 8ft
       direction: 'outbound',
       generated: {
@@ -1249,7 +1249,7 @@ export const stroad150ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914, // Original 3ft
       direction: 'none',
       generated: {
@@ -1268,7 +1268,7 @@ export const stroad150ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 0.914, // Original 3ft
       direction: 'none',
       generated: {
@@ -1286,7 +1286,7 @@ export const stroad150ftROW = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 2.134, // Original 7ft
       direction: 'none',
       generated: {
@@ -1320,7 +1320,7 @@ export const buildingDemo = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 3,
       direction: 'none'
     },
@@ -1329,7 +1329,7 @@ export const buildingDemo = {
       type: 'drive-lane',
       surface: 'asphalt',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 12,
       direction: 'inbound'
     },
@@ -1338,7 +1338,7 @@ export const buildingDemo = {
       type: 'sidewalk',
       surface: 'sidewalk',
       color: '#ffffff',
-      level: 1,
+      elevation: 0.15,
       width: 3,
       direction: 'none'
     },
@@ -1348,7 +1348,7 @@ export const buildingDemo = {
       variant: 'suburban',
       side: 'right',
       color: '#ffffff',
-      level: 0,
+      elevation: 0,
       width: 6
     }
   ]

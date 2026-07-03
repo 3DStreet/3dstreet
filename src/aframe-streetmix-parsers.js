@@ -1,5 +1,6 @@
 // Orientation - default model orientation is "outbound" (away from camera)
 var streetmixParsersTested = require('./tested/aframe-streetmix-parsers-tested');
+var streetmixUtils = require('./tested/streetmix-utils');
 var { segmentVariants } = require('./segments-variants.js');
 
 function cloneMixinAsChildren({
@@ -1003,11 +1004,12 @@ function processSegments(
     // show warning message if segment or variantString are not supported
     supportCheck(segments[i].type, segments[i].variantString);
 
-    // elevation property from streetmix segment (already converted to integer level by convertStreetValues)
-    const elevation = segments[i].elevation || 0;
-    // Convert level to meters: Level 0 = 0m, Level 1 = 0.15m (curb height), etc.
-    const CURB_HEIGHT = 0.15;
-    const elevationPosY = elevation * CURB_HEIGHT;
+    // elevation property from streetmix segment, in meters (convertStreetValues
+    // normalizes older integer-level payloads to meters)
+    const elevationPosY = segments[i].elevation || 0;
+    // this legacy parser's geometry lookup tables (createSegmentElement) are
+    // still indexed by integer level, so derive it from the metric elevation
+    const elevation = streetmixUtils.metricElevationToLevel(elevationPosY);
 
     // add y elevation position as a data attribute to segment entity
     segmentParentEl.setAttribute('data-elevation-posY', elevationPosY);

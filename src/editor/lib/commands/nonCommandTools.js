@@ -31,7 +31,7 @@ async function managedStreetCreateHandler(args) {
       name: segment.name || `${segment.type || 'segment'} • default`,
       type: segment.type || 'drive-lane',
       width: typeof segment.width === 'number' ? segment.width : 3,
-      level: typeof segment.level === 'number' ? segment.level : 0,
+      elevation: typeof segment.elevation === 'number' ? segment.elevation : 0,
       direction: segment.direction || 'none',
       color: segment.color || '#888888',
       surface: segment.surface || 'asphalt',
@@ -375,7 +375,11 @@ const segmentSchema = {
         'Surface material (e.g., "asphalt", "concrete", "grass", "sidewalk", "gravel", "sand", "hatched", "planting-strip", "none", "solid"). Optional for building segments — the variant supplies a sensible default.'
     },
     color: { type: 'string', description: 'Hex color code (e.g., "#ffffff")' },
-    level: { type: 'number', description: 'Vertical offset (-1, 0, 1, 2)' },
+    elevation: {
+      type: 'number',
+      description:
+        'Vertical offset in meters (0 = road level, 0.15 = curb/sidewalk height)'
+    },
     width: { type: 'number', description: 'Width in meters' },
     direction: {
       type: 'string',
@@ -491,7 +495,7 @@ const segmentSchema = {
       }
     }
   },
-  required: ['type', 'surface', 'color', 'level', 'width', 'direction']
+  required: ['type', 'surface', 'color', 'elevation', 'width', 'direction']
 };
 
 // For update-segment, every field is optional — the caller patches only what

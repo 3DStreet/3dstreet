@@ -26,7 +26,7 @@ const TYPES = {
     type: 'drive-lane',
     color: COLORS.white,
     surface: 'asphalt',
-    level: 0,
+    elevation: 0,
     generated: {
       clones: [
         {
@@ -43,7 +43,7 @@ const TYPES = {
     type: 'bus-lane',
     surface: 'asphalt',
     color: COLORS.red,
-    level: 0,
+    elevation: 0,
     generated: {
       clones: [
         {
@@ -66,7 +66,7 @@ const TYPES = {
     type: 'bike-lane',
     color: COLORS.green,
     surface: 'asphalt',
-    level: 0,
+    elevation: 0,
     generated: {
       stencil: [
         {
@@ -90,7 +90,7 @@ const TYPES = {
     type: 'sidewalk',
     surface: 'sidewalk',
     color: COLORS.white,
-    level: 1,
+    elevation: 0.15,
     direction: 'none',
     generated: {
       pedestrians: [
@@ -103,7 +103,7 @@ const TYPES = {
   'parking-lane': {
     surface: 'concrete',
     color: COLORS.lightGray,
-    level: 0,
+    elevation: 0,
     generated: {
       clones: [
         {
@@ -125,17 +125,17 @@ const TYPES = {
   divider: {
     surface: 'hatched',
     color: COLORS.white,
-    level: 0
+    elevation: 0
   },
   grass: {
     surface: 'grass',
     color: COLORS.white,
-    level: 0
+    elevation: 0
   },
   rail: {
     surface: 'asphalt',
     color: COLORS.white,
-    level: 0,
+    elevation: 0,
     generated: {
       clones: [
         {
@@ -156,7 +156,7 @@ const TYPES = {
     type: 'building',
     surface: 'cracked-asphalt',
     color: COLORS.white,
-    level: 1,
+    elevation: 0.15,
     variants: {
       brownstone: {
         modelsArray:
@@ -247,7 +247,18 @@ AFRAME.registerComponent('street-segment', {
     length: {
       type: 'number'
     },
-    level: {
+    elevation: {
+      // vertical offset of the segment surface in meters (matches Streetmix
+      // schema 33+ units): 0 = road level, 0.15 = curb/sidewalk height.
+      // Replaces the deprecated integer `level` (1 level == 0.15m); legacy
+      // saved scenes are migrated at load time (see json-utils_1.1.js).
+      type: 'number',
+      default: 0
+    },
+    floors: {
+      // building height in floors, carried over from the imported source
+      // (Streetmix boundary object). Metadata only for now — it does not yet
+      // drive the generated building model height. 0 = unspecified.
       type: 'int',
       default: 0
     },
@@ -436,7 +447,7 @@ AFRAME.registerComponent('street-segment', {
     }
   },
   updateSurfaceFromType: function (typeObject) {
-    // update color, surface, level from segment type preset
+    // update color, surface, elevation from segment type preset
     let surface = typeObject.surface;
 
     // if segment has variants and a variant is specified, override surface if variant has one
@@ -454,7 +465,7 @@ AFRAME.registerComponent('street-segment', {
 
     this.el.setAttribute(
       'street-segment',
-      `surface: ${surface}; color: ${typeObject.color}; level: ${typeObject.level};`
+      `surface: ${surface}; color: ${typeObject.color}; elevation: ${typeObject.elevation};`
     ); // to do: this should be more elegant to check for undefined and set default values
   },
   updateGeneratedComponentsList: function () {
@@ -479,7 +490,7 @@ AFRAME.registerComponent('street-segment', {
       this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
       this.remove();
       this.generateComponentsFromSegmentObject(typeObject); // add components for this type
-      this.updateSurfaceFromType(typeObject); // update surface color, surface, level
+      this.updateSurfaceFromType(typeObject); // update surface color, surface, elevation
     }
     // propagate change of direction to generated components is solo changed
     if (changedProps.includes('direction')) {
@@ -524,7 +535,7 @@ AFRAME.registerComponent('street-segment', {
       }
     }
     this.clearMesh();
-    this.height = this.calculateHeight(data.level);
+    this.height = this.calculateHeight(data.elevation);
     this.tempXPosition = this.el.getAttribute('position').x;
     this.tempZPosition = this.el.getAttribute('position').z;
     this.el.setAttribute('position', {

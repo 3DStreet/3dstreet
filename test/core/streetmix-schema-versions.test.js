@@ -8,11 +8,17 @@
  * - Schema < 30: widths in feet, elevation as integer levels
  * - Schema 30-32: widths in meters, elevation as integer levels
  * - Schema >= 33: widths in meters, elevation in meters
+ * - Schema >= 34: adds canonical `boundary` object (building edges)
+ *
+ * 3DStreet's canonical internal unit is meters everywhere, so
+ * convertStreetValues normalizes the older integer-level payloads to meters.
  *
  * Test fixtures represent real-world Streetmix data structures.
  */
 
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const streetmixUtils = require('../../src/tested/streetmix-utils');
 
 // Fixture: Schema v22 (legacy - feet, integer elevation)
@@ -130,13 +136,13 @@ describe('Streetmix Schema Version Handling', function () {
       );
     });
 
-    it('should preserve integer elevation levels', function () {
+    it('should convert integer elevation levels to meters', function () {
       const result = streetmixUtils.convertStreetValues(
         JSON.parse(JSON.stringify(SCHEMA_V22_STREET))
       );
-      assert.strictEqual(result.segments[0].elevation, 0);
-      assert.strictEqual(result.segments[1].elevation, 1);
-      assert.strictEqual(result.segments[2].elevation, 2);
+      assert.strictEqual(result.segments[0].elevation, 0); // level 0 -> 0m
+      assert.strictEqual(result.segments[1].elevation, 0.15); // level 1 -> 0.15m
+      assert.strictEqual(result.segments[2].elevation, 0.3); // level 2 -> 0.30m
     });
   });
 
@@ -148,13 +154,13 @@ describe('Streetmix Schema Version Handling', function () {
       assert.strictEqual(result.segments[0].width, 3.048);
     });
 
-    it('should preserve integer elevation levels', function () {
+    it('should convert integer elevation levels to meters', function () {
       const result = streetmixUtils.convertStreetValues(
         JSON.parse(JSON.stringify(SCHEMA_V32_STREET))
       );
-      assert.strictEqual(result.segments[0].elevation, 0);
-      assert.strictEqual(result.segments[1].elevation, 1);
-      assert.strictEqual(result.segments[2].elevation, 2);
+      assert.strictEqual(result.segments[0].elevation, 0); // level 0 -> 0m
+      assert.strictEqual(result.segments[1].elevation, 0.15); // level 1 -> 0.15m
+      assert.strictEqual(result.segments[2].elevation, 0.3); // level 2 -> 0.30m
     });
   });
 
@@ -166,30 +172,77 @@ describe('Streetmix Schema Version Handling', function () {
       assert.strictEqual(result.segments[0].width, 3.048);
     });
 
-    it('should convert metric elevation to integer levels', function () {
+    it('should pass metric elevation through unchanged', function () {
       const result = streetmixUtils.convertStreetValues(
         JSON.parse(JSON.stringify(SCHEMA_V33_STREET))
       );
-      assert.strictEqual(result.segments[0].elevation, 0); // 0m -> level 0 (road)
-      assert.strictEqual(result.segments[1].elevation, 1); // 0.15m -> level 1 (curb)
-      assert.strictEqual(result.segments[2].elevation, 5); // 0.75m -> level 5 (raised platform)
+      assert.strictEqual(result.segments[0].elevation, 0); // road
+      assert.strictEqual(result.segments[1].elevation, 0.15); // curb
+      assert.strictEqual(result.segments[2].elevation, 0.75); // raised platform
     });
 
     it('should handle edge cases gracefully', function () {
       const result = streetmixUtils.convertStreetValues(
         JSON.parse(JSON.stringify(SCHEMA_V33_EDGE_CASES))
       );
-      assert.strictEqual(result.segments[0].elevation, 0); // 0m -> level 0
-      assert.strictEqual(result.segments[1].elevation, 1); // 0.15m -> level 1
-      assert.strictEqual(result.segments[2].elevation, 2); // 0.30m -> level 2
+      assert.strictEqual(result.segments[0].elevation, 0);
+      assert.strictEqual(result.segments[1].elevation, 0.15);
+      assert.strictEqual(result.segments[2].elevation, 0.3);
       // undefined and missing elevation should remain as-is (handled downstream)
       assert.strictEqual(result.segments[3].elevation, undefined);
       assert.strictEqual(result.segments[4].elevation, undefined);
     });
   });
 
+  describe('Schema v34 (boundary object)', function () {
+    const fixture = JSON.parse(
+      fs.readFileSync(
+        path.join(
+          __dirname,
+          '../parity/fixtures/coastal-boundary-street.streetmix.json'
+        ),
+        'utf8'
+      )
+    );
+
+    it('should pass metric segment elevation through unchanged', function () {
+      const result = streetmixUtils.convertStreetValues(
+        JSON.parse(JSON.stringify(fixture.data.street))
+      );
+      assert.strictEqual(result.segments[0].elevation, 0.15); // sidewalk
+      assert.strictEqual(result.segments[2].elevation, 0); // drive lane
+    });
+
+    it('should read boundary variant, floors, and metric elevation', function () {
+      const left = streetmixUtils.getBoundaryFromStreetData(
+        fixture.data.street,
+        'left'
+      );
+      assert.strictEqual(left.variant, 'waterfront');
+      assert.strictEqual(left.floors, 2);
+      assert.strictEqual(left.elevation, 0.15);
+      const right = streetmixUtils.getBoundaryFromStreetData(
+        fixture.data.street,
+        'right'
+      );
+      assert.strictEqual(right.variant, 'fence');
+      assert.strictEqual(right.floors, 3);
+      assert.strictEqual(right.elevation, 0.15);
+    });
+
+    it('should prefer boundary over the deprecated flat fields', function () {
+      const street = JSON.parse(JSON.stringify(fixture.data.street));
+      // poison the flat fields; boundary must win
+      street.leftBuildingVariant = 'narrow';
+      street.leftBuildingHeight = 99;
+      const left = streetmixUtils.getBoundaryFromStreetData(street, 'left');
+      assert.strictEqual(left.variant, 'waterfront');
+      assert.strictEqual(left.floors, 2);
+    });
+  });
+
   describe('Cross-schema compatibility', function () {
-    it('should produce equivalent elevation levels from v32 and v33 data', function () {
+    it('should produce equivalent metric elevations from v32 and v33 data', function () {
       // Same logical street in v32 (integer) and v33 (metric) formats
       const v32Street = {
         schemaVersion: 32,
@@ -213,7 +266,7 @@ describe('Streetmix Schema Version Handling', function () {
         JSON.parse(JSON.stringify(v33Street))
       );
 
-      // Both should have the same elevation levels after conversion
+      // Both should have the same metric elevations after conversion
       assert.strictEqual(
         resultV32.segments[0].elevation,
         resultV33.segments[0].elevation

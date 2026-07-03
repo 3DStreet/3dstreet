@@ -1,4 +1,4 @@
-const { CURB_HEIGHT } = require('./street-segment-utils');
+const { CURB_HEIGHT, levelToElevation } = require('./street-segment-utils');
 
 function streetmixUserToAPI(userURL) {
   // this takes in a user facing Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
@@ -58,8 +58,9 @@ function streetmixAPIToUser(APIURL) {
 }
 module.exports.streetmixAPIToUser = streetmixAPIToUser;
 
-// Convert metric elevation (from schemaVersion 33+) to integer level
-// Curb height is 0.15m, so we divide by that to get integer levels
+// Convert metric elevation to the nearest integer level. Kept only for the
+// legacy `street` parser (aframe-streetmix-parsers.js), whose geometry lookup
+// tables are still indexed by integer level.
 // e.g., 0m → 0, 0.15m → 1, 0.30m → 2, 0.75m → 5
 function metricElevationToLevel(elevation) {
   if (elevation === undefined || elevation === null) {
@@ -69,8 +70,10 @@ function metricElevationToLevel(elevation) {
 }
 module.exports.metricElevationToLevel = metricElevationToLevel;
 
-// convert all feet values to meters for schemaVersion < 30
-// convert metric elevation to integer levels for schemaVersion >= 33
+// Normalize street data to 3DStreet's canonical units — meters everywhere:
+// - schemaVersion < 30: convert widths from feet to meters
+// - schemaVersion < 33: convert integer elevation levels to meters
+// - schemaVersion >= 33: elevation is already meters, pass through
 function convertStreetValues(streetData) {
   if (streetData.schemaVersion < 30) {
     // convert width from feet to meters
@@ -80,11 +83,10 @@ function convertStreetValues(streetData) {
     if (streetData.width) streetData.width *= 0.3048;
   }
 
-  // For schemaVersion 33+, elevation is in meters - convert back to integer levels
-  if (streetData.schemaVersion >= 33) {
+  if (streetData.schemaVersion < 33) {
     streetData.segments.forEach((segmentData) => {
       if (segmentData.elevation !== undefined) {
-        segmentData.elevation = metricElevationToLevel(segmentData.elevation);
+        segmentData.elevation = levelToElevation(segmentData.elevation);
       }
     });
   }
@@ -92,3 +94,32 @@ function convertStreetValues(streetData) {
   return streetData;
 }
 module.exports.convertStreetValues = convertStreetValues;
+
+// Read one side of a street's boundary (building edge) data. Streetmix
+// schemaVersion 34+ provides a canonical `boundary` object:
+//   boundary.left/right = { id, variant, floors, elevation }
+// where `elevation` is meters (same unit as segment elevation) and `floors`
+// replaces the old *BuildingHeight. Older payloads only carry the deprecated
+// flat fields (leftBuildingVariant / leftBuildingHeight / ...), which are
+// still emitted for back-compat but no longer stored upstream — use them only
+// as a fallback. Returns null when the street has no boundary on that side.
+function getBoundaryFromStreetData(streetData, side) {
+  const boundarySide = streetData?.boundary?.[side];
+  if (boundarySide && typeof boundarySide === 'object') {
+    return {
+      id: boundarySide.id,
+      variant: boundarySide.variant,
+      floors: boundarySide.floors,
+      elevation: boundarySide.elevation
+    };
+  }
+  const variant = streetData?.[`${side}BuildingVariant`];
+  if (!variant) {
+    return null;
+  }
+  return {
+    variant,
+    floors: streetData[`${side}BuildingHeight`]
+  };
+}
+module.exports.getBoundaryFromStreetData = getBoundaryFromStreetData;

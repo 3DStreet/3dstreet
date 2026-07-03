@@ -3,24 +3,29 @@
 const assert = require('assert');
 const {
   calculateHeight,
+  levelToElevation,
+  migrateSegmentLevelToElevation,
   CURB_HEIGHT,
   BASE_SURFACE_DEPTH
 } = require('../../src/tested/street-segment-utils');
 
 describe('StreetSegmentUtils', function () {
   describe('#calculateHeight()', function () {
-    it('should return 0.15m for level 0 (base depth only)', function () {
+    it('should return 0.15m for elevation 0 (base depth only)', function () {
       assert.strictEqual(calculateHeight(0), 0.15);
     });
-    it('should return 0.30m for level 1', function () {
-      assert.strictEqual(calculateHeight(1), 0.3);
+    it('should return 0.30m for elevation 0.15m (curb height)', function () {
+      assert.strictEqual(calculateHeight(0.15), 0.3);
     });
-    it('should return ~0.45m for level 2', function () {
-      assert.ok(Math.abs(calculateHeight(2) - 0.45) < 1e-10);
+    it('should return ~0.45m for elevation 0.30m', function () {
+      assert.ok(Math.abs(calculateHeight(0.3) - 0.45) < 1e-10);
     });
-    it('should clamp negative levels to BASE_SURFACE_DEPTH', function () {
-      assert.strictEqual(calculateHeight(-1), BASE_SURFACE_DEPTH);
-      assert.strictEqual(calculateHeight(-2), BASE_SURFACE_DEPTH);
+    it('should return 0.90m for elevation 0.75m (light rail platform)', function () {
+      assert.ok(Math.abs(calculateHeight(0.75) - 0.9) < 1e-10);
+    });
+    it('should clamp negative elevations to BASE_SURFACE_DEPTH', function () {
+      assert.strictEqual(calculateHeight(-0.15), BASE_SURFACE_DEPTH);
+      assert.strictEqual(calculateHeight(-0.3), BASE_SURFACE_DEPTH);
     });
     it('should return BASE_SURFACE_DEPTH for undefined', function () {
       assert.strictEqual(calculateHeight(undefined), BASE_SURFACE_DEPTH);
@@ -33,6 +38,80 @@ describe('StreetSegmentUtils', function () {
     });
     it('should use BASE_SURFACE_DEPTH of 0.15m', function () {
       assert.strictEqual(BASE_SURFACE_DEPTH, 0.15);
+    });
+  });
+
+  describe('#levelToElevation()', function () {
+    it('should convert level 0 to 0m', function () {
+      assert.strictEqual(levelToElevation(0), 0);
+    });
+    it('should convert level 1 to 0.15m', function () {
+      assert.strictEqual(levelToElevation(1), 0.15);
+    });
+    it('should convert level 2 to 0.30m', function () {
+      assert.ok(Math.abs(levelToElevation(2) - 0.3) < 1e-10);
+    });
+    it('should convert level -1 to -0.15m', function () {
+      assert.strictEqual(levelToElevation(-1), -0.15);
+    });
+    it('should convert undefined/null/NaN to 0m', function () {
+      assert.strictEqual(levelToElevation(undefined), 0);
+      assert.strictEqual(levelToElevation(null), 0);
+      assert.strictEqual(levelToElevation(NaN), 0);
+    });
+  });
+
+  describe('#migrateSegmentLevelToElevation()', function () {
+    it('should convert level to elevation in a prop string', function () {
+      assert.strictEqual(
+        migrateSegmentLevelToElevation(
+          'type: sidewalk; width: 3; level: 1; direction: none'
+        ),
+        'type: sidewalk; width: 3; elevation: 0.15; direction: none'
+      );
+    });
+    it('should convert level 0 to elevation 0 in a prop string', function () {
+      assert.strictEqual(
+        migrateSegmentLevelToElevation('level: 0; surface: asphalt'),
+        'elevation: 0; surface: asphalt'
+      );
+    });
+    it('should convert negative levels in a prop string', function () {
+      assert.strictEqual(
+        migrateSegmentLevelToElevation('type: divider; level: -1'),
+        'type: divider; elevation: -0.15'
+      );
+    });
+    it('should leave prop strings without level untouched', function () {
+      const value = 'type: drive-lane; width: 3';
+      assert.strictEqual(migrateSegmentLevelToElevation(value), value);
+    });
+    it('should leave prop strings that already carry elevation untouched', function () {
+      const value = 'type: sidewalk; elevation: 0.15';
+      assert.strictEqual(migrateSegmentLevelToElevation(value), value);
+    });
+    it('should convert level to elevation in an object value', function () {
+      const migrated = migrateSegmentLevelToElevation({
+        type: 'sidewalk',
+        width: 3,
+        level: 2
+      });
+      assert.deepStrictEqual(migrated, {
+        type: 'sidewalk',
+        width: 3,
+        elevation: 0.3
+      });
+    });
+    it('should drop level but keep existing elevation in an object value', function () {
+      const migrated = migrateSegmentLevelToElevation({
+        level: 1,
+        elevation: 0.75
+      });
+      assert.deepStrictEqual(migrated, { elevation: 0.75 });
+    });
+    it('should pass through non-segment values unchanged', function () {
+      assert.strictEqual(migrateSegmentLevelToElevation(undefined), undefined);
+      assert.strictEqual(migrateSegmentLevelToElevation(null), null);
     });
   });
 });

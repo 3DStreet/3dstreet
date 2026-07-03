@@ -7,6 +7,7 @@ import {
 import useStore from '../store.js';
 import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 const { segmentVariants } = require('../segments-variants.js');
+const { levelToElevation } = require('../tested/street-segment-utils');
 const streetmixUtils = require('../tested/streetmix-utils');
 const streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested');
 
@@ -51,13 +52,14 @@ function getManagedStreetJSON(streetEl) {
       name: child.getAttribute('data-layer-name') || `${segData.type}`,
       type: segData.type,
       width: segData.width,
-      level: segData.level,
+      elevation: segData.elevation,
       direction: segData.direction,
       color: segData.color,
       surface: segData.surface
     };
     if (segData.variant) segment.variant = segData.variant;
     if (segData.side) segment.side = segData.side;
+    if (segData.floors) segment.floors = segData.floors;
 
     const generatedByKind = {};
     for (const compName in child.components) {
@@ -216,7 +218,7 @@ AFRAME.registerComponent('managed-street', {
       type: type,
       width: segmentObject?.width || defaultProps.width || 3,
       length: this.data.length,
-      level: segmentObject?.level ?? defaultProps.level ?? 0,
+      elevation: segmentObject?.elevation ?? defaultProps.elevation ?? 0,
       direction:
         segmentObject?.direction || defaultProps.direction || 'outbound',
       color:
@@ -362,12 +364,15 @@ AFRAME.registerComponent('managed-street', {
         type: segment.type, // this is the base type, it won't load its defaults since we are changing more than just the type value
         width: segment.width,
         length: streetObject.length,
-        level: segment.level,
+        // legacy json-blobs carry the deprecated integer `level` instead of
+        // metric `elevation` — convert on the fly (1 level == 0.15m)
+        elevation: segment.elevation ?? levelToElevation(segment.level),
         direction: segment.direction,
         color: segment.color || window.STREET.types[segment.type]?.color,
         surface: segment.surface || window.STREET.types[segment.type]?.surface, // no error handling for segmentPreset not found
         variant: segment.variant,
-        side: segment.side
+        side: segment.side,
+        ...(segment.floors !== undefined ? { floors: segment.floors } : {})
       });
       segmentEl.setAttribute('data-layer-name', segment.name);
       // wait for street-segment to be loaded, then generate components from segment object
@@ -516,7 +521,7 @@ AFRAME.registerComponent('managed-street', {
           type: segmentType,
           width: segmentWidth,
           name: segmentName,
-          level: parseFloat(segment.MaterialH) === 0.5 ? 1 : 0,
+          elevation: parseFloat(segment.MaterialH) === 0.5 ? 0.15 : 0,
           direction: segmentDirection,
           color: mappedColor || window.STREET.types[segmentType]?.color,
           surface: mappedSurface,
@@ -689,20 +694,23 @@ AFRAME.registerComponent('managed-street', {
 
       const segmentEls = parseStreetmixSegments(streetmixSegments, data.length);
 
-      // Buildings (Streetmix "boundary" variants). street-align positions
-      // segments by DOM order, so the left building goes before the travelled
-      // way and the right building after it. Gated by the showBuildings
-      // conversion argument so callers can render the travelled way alone.
+      // Buildings (Streetmix boundary edges). getBoundaryFromStreetData reads
+      // the canonical schemaVersion 34+ `boundary` object first and falls back
+      // to the deprecated flat leftBuildingVariant/rightBuildingVariant fields.
+      // street-align positions segments by DOM order, so the left building goes
+      // before the travelled way and the right building after it. Gated by the
+      // showBuildings conversion argument so callers can render the travelled
+      // way alone.
       const leftBuildingEl = showBuildings
         ? createStreetmixBuildingElement(
-            streetData.leftBuildingVariant,
+            streetmixUtils.getBoundaryFromStreetData(streetData, 'left'),
             'left',
             data.length
           )
         : null;
       const rightBuildingEl = showBuildings
         ? createStreetmixBuildingElement(
-            streetData.rightBuildingVariant,
+            streetmixUtils.getBoundaryFromStreetData(streetData, 'right'),
             'right',
             data.length
           )
@@ -912,10 +920,9 @@ function supportCheck(segmentType, segmentVariantString) {
   }
 }
 
-// Maps a Streetmix building/boundary variant (leftBuildingVariant /
-// rightBuildingVariant) to a managed `building` street-segment. `variant` is the
-// street-segment building variant (see TYPES.building.variants in
-// street-segment.js); `width` is the cross-street footprint depth in meters
+// Maps a Streetmix boundary variant to a managed `building` street-segment.
+// `variant` is the street-segment building variant (see TYPES.building.variants
+// in street-segment.js); `width` is the cross-street footprint depth in meters
 // (Streetmix does not provide a building width). Variants render via the
 // building type's generated clones (mode: fit, facing derived from side).
 const STREETMIX_BUILDING_VARIANT_MAP = {
@@ -931,17 +938,20 @@ const STREETMIX_BUILDING_VARIANT_MAP = {
   'compound-wall': { variant: 'water', width: 6 }
 };
 
-// Build a `building` street-segment element for a Streetmix boundary variant.
-// Returns null for unsupported variants (caller skips it). The element relies on
-// street-align to position it by DOM order, so the caller controls left/right
-// placement by appending it before/after the travelled-way segments.
-function createStreetmixBuildingElement(streetmixVariant, side, length) {
+// Build a `building` street-segment element for a Streetmix boundary
+// ({ variant, floors, elevation } from getBoundaryFromStreetData). Returns null
+// when the street has no boundary on that side or the variant is unsupported
+// (caller skips it). The element relies on street-align to position it by DOM
+// order, so the caller controls left/right placement by appending it
+// before/after the travelled-way segments.
+function createStreetmixBuildingElement(boundary, side, length) {
+  const streetmixVariant = boundary?.variant;
   const mapping = STREETMIX_BUILDING_VARIANT_MAP[streetmixVariant];
   if (!mapping) {
     if (streetmixVariant && streetmixVariant !== 'none') {
       console.warn(
         '[managed-street] loader',
-        `Streetmix building variant '${streetmixVariant}' is not yet supported`
+        `Streetmix boundary variant '${streetmixVariant}' is not yet supported`
       );
     }
     return null;
@@ -953,7 +963,12 @@ function createStreetmixBuildingElement(streetmixVariant, side, length) {
     type: 'building',
     width: mapping.width,
     length: length,
-    level: buildingType.level,
+    // boundary elevation is meters (same unit as segment elevation); older
+    // payloads have no boundary elevation, so fall back to the type preset
+    elevation:
+      typeof boundary.elevation === 'number'
+        ? boundary.elevation
+        : buildingType.elevation,
     direction: 'outbound',
     surface: variantConfig.surface || buildingType.surface,
     variant: mapping.variant,
@@ -969,12 +984,15 @@ function createStreetmixBuildingElement(streetmixVariant, side, length) {
     type: segmentObject.type,
     width: segmentObject.width,
     length: segmentObject.length,
-    level: segmentObject.level,
+    elevation: segmentObject.elevation,
     direction: segmentObject.direction,
     color: buildingType.color || window.STREET.colors.white,
     surface: segmentObject.surface,
     variant: segmentObject.variant,
-    side: segmentObject.side
+    side: segmentObject.side,
+    // floors is persisted as metadata so the imported building height survives
+    // save/load; it does not drive the generated model height yet
+    ...(typeof boundary.floors === 'number' ? { floors: boundary.floors } : {})
   });
   segmentEl.setAttribute(
     'data-layer-name',
@@ -1017,7 +1035,8 @@ function parseStreetmixSegments(segments, length) {
     // show warning message if segment or variantString are not supported
     supportCheck(segments[i].type, segments[i].variantString);
 
-    // elevation property from streetmix segment
+    // elevation property from streetmix segment, in meters
+    // (convertStreetValues normalizes older integer-level payloads to meters)
     const elevation = segments[i].elevation;
 
     const direction =
@@ -1504,7 +1523,7 @@ function parseStreetmixSegments(segments, length) {
       type: segmentPreset,
       width: segmentWidthInMeters,
       length: length,
-      level: elevation,
+      elevation: elevation,
       direction: direction,
       color: segmentColor ?? window.STREET.types[segmentPreset]?.color, // find default color for segmentPreset
       surface: window.STREET.types[segmentPreset]?.surface // find default surface type for segmentPreset

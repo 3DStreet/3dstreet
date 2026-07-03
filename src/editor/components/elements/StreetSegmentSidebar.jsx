@@ -160,11 +160,11 @@ const StreetSegmentSidebar = ({ entity }) => {
                       entity={entity}
                     />
                     <PropertyRow
-                      key="level"
-                      name="level"
-                      label="Curb Level"
-                      schema={component.schema['level']}
-                      data={component.data['level']}
+                      key="elevation"
+                      name="elevation"
+                      label="Elevation (m)"
+                      schema={component.schema['elevation']}
+                      data={component.data['elevation']}
                       componentname={componentName}
                       isSingle={false}
                       entity={entity}
