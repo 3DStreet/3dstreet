@@ -9,6 +9,7 @@ import Entity, { isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
 import { Plus20Circle } from '@shared/icons';
 import { createUniqueId, getEntityDisplayName } from '../../lib/entity';
+import { isEditableTarget } from '@shared/utils/dom.js';
 import posthog from 'posthog-js';
 import AssetsPanel from './AssetsPanel';
 import GeoSidebar from '../elements/GeoSidebar';
@@ -297,6 +298,13 @@ class SceneGraph extends React.Component {
   };
 
   onKeyDown = (event) => {
+    // Events from modals rendered via React portals (e.g. the asset gallery's
+    // detail modal) bubble up through the React tree to this handler even though
+    // they live elsewhere in the DOM. Never swallow arrow keys while the user is
+    // typing in a field, or the caret can't move / edits are blocked (#1735).
+    if (isEditableTarget(event.target)) {
+      return;
+    }
     switch (event.keyCode) {
       case 37: // left
       case 38: // up
@@ -309,7 +317,7 @@ class SceneGraph extends React.Component {
   };
 
   onKeyUp = (event) => {
-    if (this.props.selectedEntity === null) {
+    if (this.props.selectedEntity === null || isEditableTarget(event.target)) {
       return;
     }
 

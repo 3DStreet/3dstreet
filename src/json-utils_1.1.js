@@ -1,5 +1,6 @@
 import useStore from './store';
 import { createUniqueId } from './editor/lib/entity';
+import { decodeCameraStateFromParam } from './editor/lib/cameraUtils';
 import JSONCrush from 'jsoncrush';
 
 /* global AFRAME, Node */
@@ -627,9 +628,21 @@ AFRAME.registerComponent('set-loader-from-hash', {
     if (!this.runOnce) {
       this.runOnce = true;
       // get hash from window
-      const streetURL = window.location.hash.substring(1);
+      let streetURL = window.location.hash.substring(1);
       if (!streetURL) {
         return;
+      }
+      // Camera vantage deep link: #/scenes/UUID?camera=px,py,pz,rx,ry,rz,fov
+      // (e.g. snapshot gallery "open scene at capture pose", #1605). Strip
+      // the param before the path is used to build the fetch URL; the decoded
+      // pose overrides the scene's default snapshot camera in fetchJSON.
+      this.urlCameraState = null;
+      if (streetURL.startsWith('/scenes/') && streetURL.includes('?')) {
+        const [scenePath, queryString] = streetURL.split('?');
+        this.urlCameraState = decodeCameraStateFromParam(
+          new URLSearchParams(queryString).get('camera')
+        );
+        streetURL = scenePath;
       }
       // `#mcp` (with optional `=PORT`) is the MCP relay auto-pair URL —
       // handled by AIChatPanel, not the scene loader. Without this bail,
@@ -916,6 +929,8 @@ AFRAME.registerComponent('set-loader-from-hash', {
     }
   },
   fetchJSON: function (requestURL) {
+    // Captured for the onload closure (`this` is the XHR in there).
+    const urlCameraState = this.urlCameraState || null;
     const request = new XMLHttpRequest();
 
     // Prepend the base URL to the requestURL
@@ -985,6 +1000,11 @@ AFRAME.registerComponent('set-loader-from-hash', {
             if (defaultSnapshot && defaultSnapshot.cameraState) {
               defaultSnapshotCameraState = defaultSnapshot.cameraState;
             }
+          }
+          // A ?camera= vantage deep link wins over the scene's default
+          // snapshot pose.
+          if (urlCameraState) {
+            defaultSnapshotCameraState = urlCameraState;
           }
           if (defaultSnapshotCameraState) {
             console.log(
