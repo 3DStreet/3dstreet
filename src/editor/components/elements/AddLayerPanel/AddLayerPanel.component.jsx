@@ -25,12 +25,9 @@ import { localizeCard, localizeTabLabel } from './addLayerMessages.js';
 import Events from '../../../lib/Events.js';
 import useStore from '@/store.js';
 import { getGroupedMixinOptions } from '../../../lib/mixinUtils';
+import { getEmptyDragImage } from '@shared/utils/dragImage.js';
 
 const ASSET_CARD_MIME = 'application/x-3dstreet-asset';
-
-// Create an empty image
-const emptyImg = new Image();
-emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
 // get array with objects data (cardsData) from mixinGroups of selectedOption
 const getSelectedMixinCards = (groupedMixins, selectedOption) => {
@@ -661,8 +658,10 @@ const AddLayerPanel = () => {
                         'application/json',
                         JSON.stringify(transferData)
                       );
-                      // Set the empty image as the drag image
-                      e.dataTransfer.setDragImage(emptyImg, 0, 0);
+                      // Set the empty image as the drag image (suppress the
+                      // browser's default card ghost). Uses a DOM-attached
+                      // transparent image so Safari honors it — see #1527.
+                      e.dataTransfer.setDragImage(getEmptyDragImage(), 0, 0);
                     }
                     return false;
                   }}

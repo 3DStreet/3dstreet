@@ -7,6 +7,7 @@ import useStore from '@/store';
 import { Button } from '../../elements';
 import { DownloadIcon } from '@shared/icons';
 import { takeScreenshotWithOptions } from '../../../api/scene';
+import { getCurrentCameraState } from '../../../lib/cameraUtils';
 import {
   createSceneSnapshot,
   createSnapshotFromImageUrl,
@@ -450,6 +451,9 @@ function ScreenshotModal() {
                 modelKey: baseModelKey,
                 prompt: aiPrompt,
                 renderMode: renderMode,
+                // The camera hasn't moved since the base capture, so this is
+                // the render's vantage — persist it for the focus button (#1605).
+                cameraState: getCurrentCameraState(),
                 isPro: currentUser?.isPro || false
               },
               'image', // type
@@ -780,6 +784,9 @@ function ScreenshotModal() {
                     model: 'Editor Snapshot',
                     width: img.width,
                     height: img.height,
+                    // Persist the capture pose so the gallery can offer a
+                    // "focus" button that returns the camera here later (#1605).
+                    cameraState: getCurrentCameraState(),
                     isPro: isPro
                   },
                   'image', // type
