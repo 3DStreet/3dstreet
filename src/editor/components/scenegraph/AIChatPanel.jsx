@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useIntl } from 'react-intl';
 import { Tooltip } from 'radix-ui';
 import { createProxyChat } from '../../services/aiChatProxy.js';
 import {
@@ -691,6 +692,7 @@ const getEnhancedSystemPrompt = () => {
 };
 
 function AIChatPanel() {
+  const intl = useIntl();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [latestResponseId, setLatestResponseId] = useState(null);
@@ -1661,7 +1663,10 @@ function AIChatPanel() {
                   }
                 }
               }}
-              placeholder="Type a command or type /help for options"
+              placeholder={intl.formatMessage({
+                id: 'aiChatPanel.inputPlaceholder',
+                defaultMessage: 'Type a command or type /help for options'
+              })}
               disabled={!currentUser}
               rows="1"
               className={styles.chatTextarea}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useIntl } from 'react-intl';
 import { saveSceneWithScreenshot } from '@/editor/lib/SceneUtils';
 import useStore from '@/store';
 import { Button } from '@/editor/components/elements';
@@ -39,6 +40,7 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
 };
 
 export const Save = ({ currentUser }) => {
+  const intl = useIntl();
   const [savedScene, setSavedScene] = useState(false);
   const {
     isSavingScene,
@@ -105,7 +107,12 @@ export const Save = ({ currentUser }) => {
         {currentUser ? (
           <div className="relative">
             {isSavingScene ? (
-              <TooltipWrapper content="Saving...">
+              <TooltipWrapper
+                content={intl.formatMessage({
+                  id: 'save.saving',
+                  defaultMessage: 'Saving...'
+                })}
+              >
                 <Button variant="save">
                   <CloudSavingIcon />
                 </Button>
@@ -113,7 +120,12 @@ export const Save = ({ currentUser }) => {
             ) : (
               <>
                 {!isAuthor() ? (
-                  <TooltipWrapper content="Scene not saved, press to save as...">
+                  <TooltipWrapper
+                    content={intl.formatMessage({
+                      id: 'save.notSavedSaveAs',
+                      defaultMessage: 'Scene not saved, press to save as...'
+                    })}
+                  >
                     <Button
                       onClick={() => {
                         saveScene(true, true);
@@ -124,7 +136,13 @@ export const Save = ({ currentUser }) => {
                     </Button>
                   </TooltipWrapper>
                 ) : (
-                  <TooltipWrapper content="Scene saved to cloud, press to save again">
+                  <TooltipWrapper
+                    content={intl.formatMessage({
+                      id: 'save.savedSaveAgain',
+                      defaultMessage:
+                        'Scene saved to cloud, press to save again'
+                    })}
+                  >
                     <Button
                       onClick={() => {
                         saveScene(false);
@@ -139,7 +157,12 @@ export const Save = ({ currentUser }) => {
             )}
           </div>
         ) : (
-          <TooltipWrapper content="Scene not saved, sign in to save as...">
+          <TooltipWrapper
+            content={intl.formatMessage({
+              id: 'save.notSavedSignIn',
+              defaultMessage: 'Scene not saved, sign in to save as...'
+            })}
+          >
             <Button
               onClick={!isSavingScene ? handleUnsignedSave : undefined}
               variant="save"

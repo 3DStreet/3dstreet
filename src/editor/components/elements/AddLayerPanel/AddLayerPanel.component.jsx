@@ -21,6 +21,7 @@ import {
   streetLayersData
 } from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
+import { localizeCard, localizeTabLabel } from './addLayerMessages.js';
 import Events from '../../../lib/Events.js';
 import useStore from '@/store.js';
 import { getGroupedMixinOptions } from '../../../lib/mixinUtils';
@@ -85,6 +86,7 @@ const createEntityOnPosition = (mixinId, position, mixinName) => {
     previewEntity.remove();
   }
   AFRAME.INSPECTOR.execute('entitycreate', {
+    // English name for scene-JSON/analytics consistency (mixin id is the canonical key); user can rename freely.
     'data-layer-name': mixinName,
     mixin: mixinId,
     components: {
@@ -99,6 +101,7 @@ const createEntity = (mixinId, mixinName) => {
     previewEntity.remove();
   }
   const newEntityObject = {
+    // English name for scene-JSON/analytics consistency (mixin id is the canonical key); user can rename freely.
     'data-layer-name': mixinName,
     mixin: mixinId,
     components: {}
@@ -607,7 +610,7 @@ const AddLayerPanel = () => {
           <div className={styles.categories}>
             <Tabs
               tabs={LayersOptions.map((option) => ({
-                label: option.label,
+                label: localizeTabLabel(intl, option),
                 value: option.value,
                 isSelected: selectedOption === option.value,
                 onClick: () => handleSelect(option.value)
@@ -625,71 +628,77 @@ const AddLayerPanel = () => {
 
         <div className={styles.contentContainer}>
           <div className={styles.cards}>
-            {selectedCards.map((card) => (
-              <div
-                key={card.id}
-                className={styles.card}
-                onMouseEnter={() => cardMouseEnter(card.mixinId)}
-                onMouseLeave={() => cardMouseLeave(card.mixinId)}
-                draggable={true}
-                onDragStart={(e) => {
-                  const transferData = {
-                    mixinName: card.name,
-                    mixinId: card.mixinId,
-                    layerCardId: card.handlerFunction ? card.id : undefined
-                  };
-                  e.stopPropagation();
-                  if (card.requiresPro && !isProUser) {
-                    startCheckout('addlayer');
-                    return;
-                  }
-                  fadeInDropPlane();
-                  if (e.dataTransfer) {
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData(
-                      'application/json',
-                      JSON.stringify(transferData)
-                    );
-                    // Set the empty image as the drag image (suppress the
-                    // browser's default card ghost). Uses a DOM-attached
-                    // transparent image so Safari honors it — see #1527.
-                    e.dataTransfer.setDragImage(getEmptyDragImage(), 0, 0);
-                  }
-                  return false;
-                }}
-                onDragEnd={(e) => {
-                  e.stopPropagation();
-                  fadeOutDropPlane();
-                  return false;
-                }}
-                onClick={() => cardClick(card, isProUser)}
-                title={card.description}
-              >
-                {card.requiresPro && !isProUser ? (
-                  <div
-                    className={styles.img}
-                    style={{
-                      backgroundImage: `url(${LockedCard})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center'
-                    }}
-                  />
-                ) : (
-                  <div
-                    className={styles.img}
-                    style={{
-                      backgroundImage: `url(${card.img || CardPlaceholder})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center'
-                    }}
-                  />
-                )}
-                <div className={styles.body}>
-                  {card.icon ? <img src={card.icon} /> : null}
-                  <p className={styles.description}>{card.name}</p>
+            {selectedCards.map((card) => {
+              // Display text is localized; card.name (English) is still what we
+              // pass to createEntity/analytics/drag so data-layer-name and event
+              // props stay locale-independent.
+              const localized = localizeCard(intl, card);
+              return (
+                <div
+                  key={card.id}
+                  className={styles.card}
+                  onMouseEnter={() => cardMouseEnter(card.mixinId)}
+                  onMouseLeave={() => cardMouseLeave(card.mixinId)}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    const transferData = {
+                      mixinName: card.name,
+                      mixinId: card.mixinId,
+                      layerCardId: card.handlerFunction ? card.id : undefined
+                    };
+                    e.stopPropagation();
+                    if (card.requiresPro && !isProUser) {
+                      startCheckout('addlayer');
+                      return;
+                    }
+                    fadeInDropPlane();
+                    if (e.dataTransfer) {
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData(
+                        'application/json',
+                        JSON.stringify(transferData)
+                      );
+                      // Set the empty image as the drag image (suppress the
+                      // browser's default card ghost). Uses a DOM-attached
+                      // transparent image so Safari honors it — see #1527.
+                      e.dataTransfer.setDragImage(getEmptyDragImage(), 0, 0);
+                    }
+                    return false;
+                  }}
+                  onDragEnd={(e) => {
+                    e.stopPropagation();
+                    fadeOutDropPlane();
+                    return false;
+                  }}
+                  onClick={() => cardClick(card, isProUser)}
+                  title={localized.description}
+                >
+                  {card.requiresPro && !isProUser ? (
+                    <div
+                      className={styles.img}
+                      style={{
+                        backgroundImage: `url(${LockedCard})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className={styles.img}
+                      style={{
+                        backgroundImage: `url(${card.img || CardPlaceholder})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }}
+                    />
+                  )}
+                  <div className={styles.body}>
+                    {card.icon ? <img src={card.icon} /> : null}
+                    <p className={styles.description}>{localized.name}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
