@@ -1,5 +1,6 @@
 import useStore from './store';
 import { createUniqueId } from './editor/lib/entity';
+import { beginBatching, BATCHING_ENABLED } from './batch-models';
 import { decodeCameraStateFromParam } from './editor/lib/cameraUtils';
 import JSONCrush from 'jsoncrush';
 
@@ -419,6 +420,11 @@ function getModifiedProperty(entity, componentName) {
 function createEntities(entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
   const removeEntities = ['environment', 'reference-layers'];
+  // Arm batching before any entity is minted below; batchModels runs on the "newScene"
+  // event emitted after this createEntities pass. See beginBatching for the state model.
+  if (BATCHING_ENABLED) {
+    beginBatching(sceneElement);
+  }
   for (const entityData of entitiesData) {
     // Legacy migration: the geospatial layer's visibility used to be toggled
     // via the entity's `visible` attribute. The new sidepanel exposes this

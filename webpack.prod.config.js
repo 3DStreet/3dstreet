@@ -21,8 +21,8 @@ function buildVersion() {
 
 module.exports = {
   performance: {
-    maxAssetSize: 3774874, // 3.6 MiB
-    maxEntrypointSize: 3774874, // 3.6 MiB
+    maxAssetSize: 3984589, // 3.8 MiB
+    maxEntrypointSize: 3984589, // 3.8 MiB
     hints: 'error',
     assetFilter: function (assetFilename) {
       // Only check named entry point bundles, not async-loaded chunks.

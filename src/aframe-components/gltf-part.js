@@ -1,11 +1,11 @@
 /* global AFRAME, THREE */
+import { removeMember } from '../batch-models';
 
 var LOADING_MODELS = {};
 var MODELS = {};
 
 AFRAME.registerComponent('gltf-part', {
   schema: {
-    buffer: { default: true },
     part: { type: 'string' },
     src: { type: 'asset' }
   },
@@ -16,17 +16,53 @@ AFRAME.registerComponent('gltf-part', {
       .systems['gltf-model'].getDRACOLoader();
   },
 
-  update: function () {
+  update: function (oldData) {
+    var self = this;
     var el = this.el;
+    // A part/src change on an already-batched entity must drop its batch slot first: batching
+    // stripped the original mesh, so the stale part would otherwise ghost in the BatchedMesh and
+    // onLateModelLoaded won't re-classify it (its _batchStatus is still set). gltf-model gets
+    // this for free via loadModel() -> remove() -> removeMember; gltf-part only released in
+    // remove() until now. No-op when the entity isn't batched.
+    if (
+      oldData &&
+      (oldData.part !== this.data.part || oldData.src !== this.data.src)
+    ) {
+      removeMember(el);
+    }
+    // Cleared now, set true once the part resolves (model-loaded) or fails (model-error).
+    // batch-models' waitForModelLoaded reads it so a part that resolved before it started
+    // listening doesn't hang Promise.all.
+    this._loadSettled = false;
     if (!this.data.part && this.data.src) {
+      // No part name to select — nothing will load. Mark settled so batch-models doesn't wait
+      // out LOAD_TIMEOUT_MS for a mesh that never arrives (the entity still matches
+      // BATCHABLE_SELECTOR).
+      this._loadSettled = true;
       return;
     }
     this.getModel(function (modelPart) {
       if (!modelPart) {
+        self._loadSettled = true;
+        el.emit('model-error', { format: 'gltf-part', src: self.data.src });
         return;
       }
       el.setObject3D('mesh', modelPart);
+      self._loadSettled = true;
+      el.emit('model-loaded', { format: 'gltf-part', model: modelPart });
     });
+  },
+
+  remove: function () {
+    // batch-models' removal cleanup runs HERE, not from a child-detached listener. A-Frame calls
+    // component.remove() during the entity's disconnectedCallback for ANY document-disconnection
+    // — including every descendant of a removed subtree — whereas child-detached doesn't reliably
+    // reach the scene (a managed-street teardown detaches the whole subtree, then street-generated
+    // clearEntities removes the already-disconnected members, so their child-detached never
+    // bubbles). removeMember frees a built member's slot or drops a pending late-batch candidate
+    // from the tally. Without this its instance stays visible and its now-parentless object3D
+    // crashes the editor hover box.
+    removeMember(this.el);
   },
 
   /**
@@ -43,10 +79,11 @@ AFRAME.registerComponent('gltf-part', {
       return;
     }
 
-    // Currently loading, wait for it.
+    // Currently loading, wait for it. A null model means the shared load failed (see the
+    // error callback below) — pass undefined through so update()'s callback emits model-error.
     if (LOADING_MODELS[this.data.src]) {
       return LOADING_MODELS[this.data.src].then(function (model) {
-        cb(self.selectFromModel(model));
+        cb(model ? self.selectFromModel(model) : undefined);
       });
     }
 
@@ -66,7 +103,17 @@ AFRAME.registerComponent('gltf-part', {
           resolve(model);
         },
         function () {},
-        console.error
+        function (error) {
+          // Settle this component (cb() -> update() emits model-error, sets _loadSettled),
+          // evict the cache entry so a later use of this src retries instead of chaining onto a
+          // dead promise, and resolve waiters with null so they emit model-error too. Without
+          // this a 404'd part never settles and stalls batchModels' Promise.all for the full
+          // LOAD_TIMEOUT_MS, leaving every deferred duplicate invisible until then.
+          console.error(error);
+          delete LOADING_MODELS[self.data.src];
+          cb();
+          resolve(null);
+        }
       );
     });
   },
@@ -86,11 +133,9 @@ AFRAME.registerComponent('gltf-part', {
 
     mesh = part.getObjectByProperty('type', 'Mesh').clone(true);
 
-    if (this.data.buffer) {
-      mesh.geometry = mesh.geometry.toNonIndexed();
-      return mesh;
-    }
-    mesh.geometry = new THREE.Geometry().fromBufferGeometry(mesh.geometry);
+    // Own geometry per instance (the cached model's geometry is shared by reference via
+    // clone(true)); the material stays shared with the cache and other instances.
+    mesh.geometry = mesh.geometry.clone();
     return mesh;
   }
 });

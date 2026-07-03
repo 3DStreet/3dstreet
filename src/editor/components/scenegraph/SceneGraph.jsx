@@ -153,6 +153,7 @@ class SceneGraph extends React.Component {
       !element.isEntity ||
       element.isInspector ||
       'aframeInspector' in element.dataset ||
+      element.id === 'batch-models-root' ||
       HIDDEN_CLASSES.includes(element.className) ||
       HIDDEN_IDS.includes(element.id)
     );
