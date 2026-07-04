@@ -15,12 +15,116 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
-    /* App Switcher in upper-left */
+    /* App Switcher in upper-left. z-index sits above the 8th Wall landing page
+       (shown to desktop visitors) so the logo stays visible and clickable there
+       for the About blurb and app switcher, even while the QR fallback shows. */
     #app-switcher-root {
       position: fixed;
       top: 8px;
       left: 6px;
-      z-index: 100;
+      z-index: 10000;
+    }
+
+    /* The Radix dropdown renders in a body-level portal; keep it above the
+       landing page too so the menu is usable on desktop. */
+    [data-radix-popper-content-wrapper] {
+      z-index: 10001 !important;
+    }
+
+    /* Beta pill tucked under the app switcher logo. Sits above the landing
+       page but below the iOS CTA so the CTA is never clipped by it. */
+    #beta-pill {
+      position: fixed;
+      top: 66px;
+      left: 16px;
+      z-index: 9999;
+      padding: 3px 8px;
+      background: #774dee;
+      border-radius: 6px;
+      color: white;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      pointer-events: none;
+    }
+
+    /* iOS app CTA pill (shown on iPhone/iPad only). This is the primary
+       nudge toward the native app, so it is deliberately large and prominent. */
+    #ios-cta {
+      position: fixed;
+      top: 64px;
+      left: 14px;
+      right: 14px;
+      /* Above the Beta pill (which tucks under the logo) so it isn't clipped,
+         but below the app-switcher dropdown so the menu stays usable. */
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, rgba(139, 99, 255, 0.95), rgba(106, 62, 224, 0.95));
+      border-radius: 14px;
+      color: white;
+      font-size: 16px;
+      line-height: 1.3;
+      text-decoration: none;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+    }
+
+    #ios-cta.visible {
+      display: flex;
+    }
+
+    #ios-cta strong {
+      font-weight: 700;
+    }
+
+    #ios-cta .dismiss {
+      background: rgba(255, 255, 255, 0.18);
+      border: none;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 16px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 0;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    /* Desktop-only iOS app strip layered above the landing page */
+    #desktop-ios-strip {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      font-size: 14px;
+      backdrop-filter: blur(10px);
+    }
+
+    #desktop-ios-strip.visible {
+      display: flex;
+    }
+
+    #desktop-ios-strip a {
+      color: #b195ff;
+      font-weight: 600;
+      text-decoration: underline;
     }
 
     /* Object Picker UI - bottom left */
@@ -195,19 +299,35 @@
 
   <!-- App Switcher Mount Point (upper-left) -->
   <div id="app-switcher-root"></div>
+  <div id="beta-pill">WebXR Beta</div>
+
+  <!-- iOS app CTA (iPhone/iPad only; best experience is the native app).
+       Links straight to the App Store, not the marketing landing page. -->
+  <a id="ios-cta" href="https://apps.apple.com/us/app/bollard-buddy/id6756771127" target="_blank" rel="noopener">
+    <span>📱 <strong>Best on iOS:</strong> Get the app</span>
+    <button class="dismiss" id="ios-cta-dismiss" aria-label="Dismiss">✕</button>
+  </a>
+
+  <!-- Desktop strip layered above the landing page QR fallback -->
+  <div id="desktop-ios-strip">
+    <span>📱 Bollard Buddy is best on iPhone.</span>
+    <a href="https://apps.apple.com/us/app/bollard-buddy/id6756771127" target="_blank" rel="noopener">get the iOS app</a>
+    <span>or scan the QR code above to use the web version.</span>
+  </div>
 
   <!-- React Auth Island Mount Point -->
   <div id="auth-root"></div>
 
-  <!-- Camera button container (button added dynamically after first object placed) -->
+  <!-- Camera button container (button added dynamically once tracking is ready) -->
   <div id="camera-container"></div>
 
-  <!-- 8th Wall SDK scripts -->
-  <script src="https://cdn.8thwall.com/web/aframe/8frame-1.4.1.min.js"></script>
-  <script src="https://cdn.8thwall.com/web/xrextras/xrextras.js"></script>
-  <script src="https://cdn.8thwall.com/web/landing-page/landing-page.js"></script>
-  <script src="https://cdn.8thwall.com/web/coaching-overlay/coaching-overlay.js"></script>
-  <script src="https://apps.8thwall.com/xrweb?appKey=ytGX1RewlSvtViblkupyoCZFFPktzeZbcCf3wX4TVXI1CKtIiQlGEKdKj6Y9cJadtd8j6S"></script>
+  <!-- 8th Wall open distribution (no app key / domain authorization required).
+       8frame is 8th Wall's A-Frame build; no npm package exists so it is vendored locally.
+       Engine binary, XRExtras and Landing Page are official @8thwall npm releases. -->
+  <script src="/bollardbuddy/scripts/8frame-1.5.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/xrextras@1/dist/xrextras.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/landing-page@1/dist/landing-page.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1/dist/xr.js" async crossorigin="anonymous" data-preload-chunks="slam"></script>
 
   <!-- Object Picker Logic -->
   <script>
@@ -261,13 +381,12 @@
 
     // Track state
     window.hasPlacedObject = false;
-    window.coachingVisible = true;
 
     const cameraContainer = document.getElementById('camera-container');
 
-    // Show camera button (dynamically create it after coaching hides)
+    // Show camera button (dynamically create it once AR tracking is running)
     window.showCameraButton = () => {
-      if (!window.coachingVisible && !window.cameraButtonAdded) {
+      if (!window.cameraButtonAdded) {
         window.cameraButtonAdded = true;
         const captureButton = document.createElement('xrextras-capture-button');
         captureButton.setAttribute('capture-mode', 'photo');
@@ -277,38 +396,43 @@
       }
     };
 
-    // Show hint after coaching overlay hides (if user hasn't placed yet)
-    const showHintAfterCoaching = () => {
-      const scene = document.querySelector('a-scene');
-      if (scene) {
-        scene.addEventListener('coaching-overlay.hide', () => {
-          window.coachingVisible = false;
-          if (window.selectedModel && !window.hasPlacedObject) {
-            pickerHint.classList.add('visible');
-          }
-          window.showCameraButton();
-        });
-        scene.addEventListener('coaching-overlay.show', () => {
-          window.coachingVisible = true;
-          pickerHint.classList.remove('visible');
-        });
+    // The open-distribution 8th Wall library has no coaching overlay, so key
+    // off `realityready` (emitted on the scene when the camera + tracking are
+    // up) to reveal the shutter button and the placement hint.
+    const onRealityReady = () => {
+      if (window.selectedModel && !window.hasPlacedObject) {
+        pickerHint.classList.add('visible');
       }
+      window.showCameraButton();
     };
 
-    // Wait for scene to be fully loaded before attaching listeners
-    const initCoachingListeners = () => {
+    const initRealityListeners = () => {
       const scene = document.querySelector('a-scene');
       if (scene) {
-        if (scene.hasLoaded) {
-          showHintAfterCoaching();
-        } else {
-          scene.addEventListener('loaded', showHintAfterCoaching);
-        }
+        scene.addEventListener('realityready', onRealityReady, { once: true });
       } else {
-        setTimeout(initCoachingListeners, 100);
+        setTimeout(initRealityListeners, 100);
       }
     };
-    initCoachingListeners();
+    initRealityListeners();
+
+    // Device-targeted CTAs: iOS users get a "native app is better" pill;
+    // desktop users get a strip under the landing page QR fallback.
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isMobile = isIOS || /Android|Mobi/i.test(navigator.userAgent);
+
+    if (isIOS) {
+      const iosCta = document.getElementById('ios-cta');
+      iosCta.classList.add('visible');
+      document.getElementById('ios-cta-dismiss').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        iosCta.classList.remove('visible');
+      });
+    } else if (!isMobile) {
+      document.getElementById('desktop-ios-strip').classList.add('visible');
+    }
   </script>
 
   <!-- tap-place component -->
@@ -377,12 +501,13 @@
   <!-- A-Frame Scene -->
   <a-scene
     tap-place
-    landing-page
+    landing-page="logoSrc: /ui_assets/logo-bollard-buddy-text-rect.png; logoAlt: Bollard Buddy; promptPrefix: Scan or visit; promptSuffix: on your phone to continue"
+    xrextras-loading
+    xrextras-runtime-error
     xrextras-gesture-detector
-    coaching-overlay="animationColor: #E86FFF; promptText: For accurate scale push your phone forward and then pull back;"
     renderer="colorManagement: true"
-    gltf-model="dracoDecoderPath: https://cdn.8thwall.com/web/aframe/draco-decoder/"
-    xrweb="allowedDevices: any; scale: absolute">
+    gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.7/"
+    xrweb="allowedDevices: mobile; scale: absolute">
 
     <a-assets>
       <a-asset-item id="model-bollard" src="https://assets.3dstreet.app/sets/dividers/gltf-exports/draco/dividers-bollard.glb"></a-asset-item>
@@ -414,7 +539,7 @@
 
     <!-- Photo capture config and preview -->
     <xrextras-capture-config
-      file-name-prefix="bollardbuddy-"
+      file-name-prefix="bollardbuddy-web-"
       request-mic="false"
     ></xrextras-capture-config>
     <xrextras-capture-preview></xrextras-capture-preview>

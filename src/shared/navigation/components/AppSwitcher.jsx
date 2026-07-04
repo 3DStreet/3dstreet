@@ -37,6 +37,19 @@ const AppSwitcher = () => {
     : '/ui_assets/3D-St-stacked-128.png';
   const currentAlt = isBollardBuddy ? 'Bollard Buddy Logo' : '3DStreet Logo';
 
+  // Name + one-line blurb for whichever app is currently open. The dropdown
+  // header reiterates the active app, so it just shows the name (no "About").
+  const currentAppName = isBollardBuddy
+    ? 'Bollard Buddy Web'
+    : isImageGenerator
+      ? 'AI Generator'
+      : '3DStreet Editor';
+  const currentAppAbout = isBollardBuddy
+    ? 'Place virtual bollards in AR and save photos to your 3DStreet gallery. The web version is in beta; the native iOS app has the best experience.'
+    : isImageGenerator
+      ? 'Generate images and videos of your street scenes with AI, from text prompts or reference photos.'
+      : 'Design 3D street scenes in your browser, add real world context, and render high quality shareable visualizations.';
+
   const handleEditorClick = (e) => {
     if (isEditor) {
       return;
@@ -73,6 +86,14 @@ const AppSwitcher = () => {
     }
   };
 
+  const handleBollardBuddyIOSClick = () => {
+    // Link straight to the App Store rather than the marketing landing page.
+    window.open(
+      'https://apps.apple.com/us/app/bollard-buddy/id6756771127',
+      '_blank'
+    );
+  };
+
   return (
     <HoverCard.Root openDelay={200}>
       <DropdownMenu.Root>
@@ -93,38 +114,47 @@ const AppSwitcher = () => {
             sideOffset={5}
           >
             <DropdownMenu.Label className={styles.label}>
+              {currentAppName}
+            </DropdownMenu.Label>
+            <div className={styles.about}>{currentAppAbout}</div>
+            <DropdownMenu.Separator className={styles.separator} />
+            <DropdownMenu.Label className={styles.label}>
               Switch Apps
             </DropdownMenu.Label>
-            <DropdownMenu.Separator className={styles.separator} />
             <DropdownMenu.Item
-              className={styles.item}
-              onClick={handleBollardBuddyClick}
-            >
-              <div className={styles.itemContent}>
-                <span className={styles.appName}>Bollard Buddy Web</span>
-                {isBollardBuddy && (
-                  <span className={styles.badge}>Current</span>
-                )}
-              </div>
-            </DropdownMenu.Item>
-            <DropdownMenu.Item
-              className={styles.item}
+              className={isEditor ? styles.itemActive : styles.item}
               onClick={handleEditorClick}
             >
               <div className={styles.itemContent}>
-                <span className={styles.appName}>Editor</span>
-                {isEditor && <span className={styles.badge}>Current</span>}
+                <span className={styles.appName}>3DStreet Editor</span>
               </div>
             </DropdownMenu.Item>
             <DropdownMenu.Item
-              className={styles.item}
+              className={isImageGenerator ? styles.itemActive : styles.item}
               onClick={handleImageGeneratorClick}
             >
               <div className={styles.itemContent}>
                 <span className={styles.appName}>AI Generator</span>
-                {isImageGenerator && (
-                  <span className={styles.badge}>Current</span>
+              </div>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
+              className={isBollardBuddy ? styles.itemActive : styles.item}
+              onClick={handleBollardBuddyClick}
+            >
+              <div className={styles.itemContent}>
+                <span className={styles.appName}>Bollard Buddy Web</span>
+                {!isBollardBuddy && (
+                  <span className={styles.badgeMuted}>Beta</span>
                 )}
+              </div>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
+              className={styles.item}
+              onClick={handleBollardBuddyIOSClick}
+            >
+              <div className={styles.itemContent}>
+                <span className={styles.appName}>Bollard Buddy iOS</span>
+                <span className={styles.badge}>Get the App</span>
               </div>
             </DropdownMenu.Item>
           </DropdownMenu.Content>
