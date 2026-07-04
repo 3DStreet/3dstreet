@@ -378,7 +378,7 @@ const segmentSchema = {
     elevation: {
       type: 'number',
       description:
-        'Vertical offset in meters (0 = road level, 0.15 = curb/sidewalk height)'
+        'Vertical offset in meters (0 = road level, 0.15 = curb/sidewalk height). Negative values are not supported.'
     },
     width: { type: 'number', description: 'Width in meters' },
     direction: {

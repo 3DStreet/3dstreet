@@ -24,7 +24,7 @@ describe('StreetSegmentUtils', function () {
     it('should return 0.90m for elevation 0.75m (light rail platform)', function () {
       assert.ok(Math.abs(calculateHeight(0.75) - 0.9) < 1e-10);
     });
-    it('should clamp negative elevations to BASE_SURFACE_DEPTH', function () {
+    it('should clamp negative elevations to BASE_SURFACE_DEPTH (negatives are intentionally unsupported)', function () {
       assert.strictEqual(calculateHeight(-0.15), BASE_SURFACE_DEPTH);
       assert.strictEqual(calculateHeight(-0.3), BASE_SURFACE_DEPTH);
     });
@@ -81,8 +81,9 @@ describe('StreetSegmentUtils', function () {
     it('should convert level 2 to 0.30m', function () {
       assert.ok(Math.abs(levelToElevation(2) - 0.3) < 1e-10);
     });
-    it('should convert level -1 to -0.15m', function () {
-      assert.strictEqual(levelToElevation(-1), -0.15);
+    it('should clamp negative levels to 0m (negatives are intentionally unsupported)', function () {
+      assert.strictEqual(levelToElevation(-1), 0);
+      assert.strictEqual(levelToElevation(-2), 0);
     });
     it('should convert undefined/null/NaN to 0m', function () {
       assert.strictEqual(levelToElevation(undefined), 0);
@@ -106,10 +107,10 @@ describe('StreetSegmentUtils', function () {
         'elevation: 0; surface: asphalt'
       );
     });
-    it('should convert negative levels in a prop string', function () {
+    it('should clamp negative levels to elevation 0 in a prop string', function () {
       assert.strictEqual(
         migrateSegmentLevelToElevation('type: divider; level: -1'),
-        'type: divider; elevation: -0.15'
+        'type: divider; elevation: 0'
       );
     });
     it('should leave prop strings without level untouched', function () {

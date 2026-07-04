@@ -10,6 +10,9 @@ const BASE_SURFACE_DEPTH = 0.15; // Minimum material depth above dirt layer
 // top surface sits at Y=height and the box extends downward to Y=0 (the dirt
 // layer top).
 // elevation 0 = 0.15m (base depth only), 0.15m (curb) = 0.30m, 0.30m = 0.45m, etc.
+// Negative elevations (below road level) are intentionally unsupported for
+// now: the Math.max clamps them to the base surface depth, so they render at
+// road level.
 function calculateHeight(elevation) {
   if (elevation === undefined || elevation === null) {
     return BASE_SURFACE_DEPTH;
@@ -35,11 +38,13 @@ function calculateSlopedHeights(startElevation, endElevation) {
 
 // Convert a deprecated integer elevation level to meters.
 // e.g., level 0 → 0m, level 1 → 0.15m, level 2 → 0.30m
+// Negative levels clamp to 0: negative elevations are intentionally
+// unsupported, and legacy levels below 0 already rendered at road level.
 function levelToElevation(level) {
   if (level === undefined || level === null || isNaN(level)) {
     return 0;
   }
-  return level * CURB_HEIGHT;
+  return Math.max(0, level * CURB_HEIGHT);
 }
 
 // Migrate a saved street-segment component value from the deprecated integer

@@ -255,7 +255,10 @@ AFRAME.registerComponent('street-segment', {
       // schema 33+ units): 0 = road level, 0.15 = curb/sidewalk height.
       // Replaces the deprecated integer `level` (1 level == 0.15m); legacy
       // saved scenes are migrated at load time (see json-utils_1.1.js).
+      // Negative elevations (below road level) are intentionally unsupported
+      // for now — calculateHeight clamps to the base surface depth anyway.
       type: 'number',
+      min: 0,
       default: 0
     },
     floors: {
@@ -276,13 +279,17 @@ AFRAME.registerComponent('street-segment', {
     },
     slopeStart: {
       // elevation in meters at the segment's start edge (local -x, toward the
-      // previous segment) when slope is on
+      // previous segment) when slope is on. Negative values unsupported, like
+      // `elevation`.
       type: 'number',
+      min: 0,
       default: 0
     },
     slopeEnd: {
-      // elevation in meters at the segment's end edge (local +x) when slope is on
+      // elevation in meters at the segment's end edge (local +x) when slope is
+      // on. Negative values unsupported, like `elevation`.
       type: 'number',
+      min: 0,
       default: 0
     },
     direction: {
