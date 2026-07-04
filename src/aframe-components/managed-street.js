@@ -192,6 +192,7 @@ AFRAME.registerComponent('managed-street', {
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
     this.onSegmentChanged = this.onSegmentChanged.bind(this);
+    this.onChildComponentChanged = this.onChildComponentChanged.bind(this);
 
     if (!this.el.hasAttribute('street-align')) {
       this.el.setAttribute('street-align', '');
@@ -207,6 +208,19 @@ AFRAME.registerComponent('managed-street', {
     // catches every descendant segment without per-segment bookkeeping.
     this.el.addEventListener('segment-changed', this.onSegmentChanged);
 
+    // A building segment's visibility is layout state: hidden buildings are
+    // excluded from alignment/ground/labels (street-layout-utils). Visibility
+    // can change outside the showBuildings toggle — e.g. the scene graph's
+    // per-layer eye icon — and without a re-layout, a building re-shown via
+    // the eye keeps the stale position it had before the street re-centered
+    // and lands on the travelled way. A-Frame's componentchanged does NOT
+    // bubble, so each segment gets its own listener (attached here for saved
+    // scenes whose children exist before this init, and in the mutation
+    // observer for segments added later).
+    Array.from(this.el.querySelectorAll('[street-segment]')).forEach(
+      (segmentEl) => this.watchSegmentVisibility(segmentEl)
+    );
+
     // Watch DOM child mutations to notify siblings (street-align,
     // street-label, street-ground) when segments are added or removed.
     this.observer = new MutationObserver((mutations) => {
@@ -217,6 +231,9 @@ AFRAME.registerComponent('managed-street', {
         );
         const removedSegments = Array.from(mutation.removedNodes).filter(
           (node) => node.hasAttribute && node.hasAttribute('street-segment')
+        );
+        addedSegments.forEach((segmentEl) =>
+          this.watchSegmentVisibility(segmentEl)
         );
         if (addedSegments.length || removedSegments.length) {
           this.el.emit('segments-changed', {
@@ -330,6 +347,41 @@ AFRAME.registerComponent('managed-street', {
     });
     this.refreshManagedEntities();
   },
+  // Attach the visibility watcher to a segment exactly once. Listeners live on
+  // the segment itself because componentchanged does not bubble. Attached to
+  // every segment (not just buildings) since a segment's type can change; the
+  // handler filters by current type.
+  watchSegmentVisibility: function (segmentEl) {
+    if (segmentEl.msVisibilityWatched) {
+      return;
+    }
+    segmentEl.msVisibilityWatched = true;
+    segmentEl.addEventListener(
+      'componentchanged',
+      this.onChildComponentChanged
+    );
+  },
+  // Re-run layout when a building segment's `visible` component changes from
+  // anywhere other than updateBuildingVisibility (which emits its own event) —
+  // e.g. the scene graph eye icon. Non-building segments never affect layout
+  // via visibility, so this stays cheap and cannot feed back on itself (layout
+  // siblings only write `position` on segments, not `visible`).
+  onChildComponentChanged: function (event) {
+    if (
+      event.detail?.name !== 'visible' ||
+      this.isBulkVisibilityUpdate ||
+      event.target.getAttribute?.('street-segment')?.type !== 'building'
+    ) {
+      return;
+    }
+    this.el.emit('segments-changed', {
+      changeType: 'property',
+      property: 'visible',
+      segment: event.target,
+      oldValue: !event.target.getAttribute('visible'),
+      newValue: event.target.getAttribute('visible')
+    });
+  },
   update: function (oldData) {
     const data = this.data;
     const dataDiff = AFRAME.utils.diff(oldData, data);
@@ -406,9 +458,16 @@ AFRAME.registerComponent('managed-street', {
     if (buildingEls.length === 0) {
       return;
     }
-    buildingEls.forEach((segmentEl) => {
-      segmentEl.setAttribute('visible', show);
-    });
+    // suppress the per-building componentchanged handler while bulk-setting —
+    // one segments-changed below covers the whole toggle
+    this.isBulkVisibilityUpdate = true;
+    try {
+      buildingEls.forEach((segmentEl) => {
+        segmentEl.setAttribute('visible', show);
+      });
+    } finally {
+      this.isBulkVisibilityUpdate = false;
+    }
     this.el.emit('segments-changed', {
       changeType: 'property',
       property: 'showBuildings',
@@ -909,6 +968,15 @@ AFRAME.registerComponent('managed-street', {
       this.contentObserver.disconnect();
     }
     this.el.removeEventListener('segment-changed', this.onSegmentChanged);
+    Array.from(this.el.querySelectorAll('[street-segment]')).forEach(
+      (segmentEl) => {
+        segmentEl.removeEventListener(
+          'componentchanged',
+          this.onChildComponentChanged
+        );
+        segmentEl.msVisibilityWatched = false;
+      }
+    );
     this.clearManagedEntities();
   }
 });
