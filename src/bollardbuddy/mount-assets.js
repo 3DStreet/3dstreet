@@ -103,7 +103,7 @@ const handleSignIn = () =>
 
 /**
  * Hand a gallery image off to the AI generator (same localStorage mechanism
- * as the editor's openInGenerator helper — the generator tab reads
+ * as the editor's openInGenerator helper; the generator tab reads
  * `pendingAssetItem` on init). Navigates in the same tab: leaving the AR
  * session is intended, the user is switching apps.
  * @param {object} item - Gallery item

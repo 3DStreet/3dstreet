@@ -15,12 +15,20 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
-    /* App Switcher in upper-left */
+    /* App Switcher in upper-left. z-index sits above the 8th Wall landing page
+       (shown to desktop visitors) so the logo stays visible and clickable there
+       for the About blurb and app switcher, even while the QR fallback shows. */
     #app-switcher-root {
       position: fixed;
       top: 8px;
       left: 6px;
-      z-index: 100;
+      z-index: 10000;
+    }
+
+    /* The Radix dropdown renders in a body-level portal; keep it above the
+       landing page too so the menu is usable on desktop. */
+    [data-radix-popper-content-wrapper] {
+      z-index: 10001 !important;
     }
 
     /* Beta pill tucked under the app switcher logo */
@@ -28,7 +36,7 @@
       position: fixed;
       top: 66px;
       left: 16px;
-      z-index: 100;
+      z-index: 10000;
       padding: 3px 8px;
       background: #774dee;
       border-radius: 6px;
@@ -40,22 +48,27 @@
       pointer-events: none;
     }
 
-    /* iOS app CTA pill (shown on iPhone/iPad only) */
+    /* iOS app CTA pill (shown on iPhone/iPad only). This is the primary
+       nudge toward the native app, so it is deliberately large and prominent. */
     #ios-cta {
       position: fixed;
       top: 64px;
+      left: 14px;
       right: 14px;
       z-index: 100;
       display: none;
       align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      background: rgba(0, 0, 0, 0.7);
-      border-radius: 10px;
+      justify-content: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, rgba(139, 99, 255, 0.95), rgba(106, 62, 224, 0.95));
+      border-radius: 14px;
       color: white;
-      font-size: 12px;
+      font-size: 16px;
+      line-height: 1.3;
       text-decoration: none;
       backdrop-filter: blur(10px);
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
     }
 
     #ios-cta.visible {
@@ -63,15 +76,22 @@
     }
 
     #ios-cta strong {
-      font-weight: 600;
+      font-weight: 700;
     }
 
     #ios-cta .dismiss {
-      background: none;
+      background: rgba(255, 255, 255, 0.18);
       border: none;
-      color: rgba(255, 255, 255, 0.6);
-      font-size: 14px;
-      padding: 0 0 0 4px;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 16px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 0;
       cursor: pointer;
       line-height: 1;
     }
@@ -286,7 +306,7 @@
 
   <!-- Desktop strip layered above the landing page QR fallback -->
   <div id="desktop-ios-strip">
-    <span>📱 Bollard Buddy is best on iPhone —</span>
+    <span>📱 Bollard Buddy is best on iPhone.</span>
     <a href="https://www.3dstreet.com/bollardbuddy/" target="_blank" rel="noopener">get the iOS app</a>
     <span>or scan the QR code above to use the web version.</span>
   </div>

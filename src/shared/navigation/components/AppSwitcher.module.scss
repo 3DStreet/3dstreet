@@ -117,20 +117,25 @@
 .appName {
   font-weight: 500;
   color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  // Reserve the selection-marker gutter on every app row so labels stay
+  // aligned whether or not the row is active (standard OS menu behavior).
+  // The dot is only painted in on the active row (see .itemActive).
+  &::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: transparent;
+    flex-shrink: 0;
+  }
 }
 
-.badge {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  background-color: #774dee;
-  color: white;
-  flex-shrink: 0;
-}
-
+// Shared pill geometry for the non-status badges (Get the App, Beta).
+.badge,
 .badgeMuted {
   font-size: 10px;
   font-weight: 600;
@@ -138,9 +143,49 @@
   border-radius: 4px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+// "Get the App" is a call to action, styled as an outlined/ghost accent so it
+// reads as an invitation to act rather than a status like the active row.
+.badge {
+  background-color: rgba(119, 77, 238, 0.15);
+  color: #b9a3f5;
+  border: 1px solid rgba(119, 77, 238, 0.6);
+}
+
+// "Beta" is a quiet status tag, deliberately the lowest-emphasis pill.
+.badgeMuted {
   background-color: rgba(255, 255, 255, 0.15);
   color: #d1d5db;
-  flex-shrink: 0;
+}
+
+// Active app row: the "you are here" marker lives on the row itself, not a
+// pill, so it can't be confused with the Get the App / Beta badges. The whole
+// row is filled with a solid brand-purple (an inverted menu-item selection),
+// plus a leading dot that reads like a selected radio (only one app can be
+// open in a given window).
+.itemActive {
+  @extend .item;
+  background: linear-gradient(135deg, #8b63ff, #6a3ee0);
+  box-shadow: 0 0 12px rgba(119, 77, 238, 0.35);
+  cursor: default;
+
+  .appName {
+    font-weight: 600;
+
+    // Paint in the dot that every row already reserves space for.
+    &::before {
+      background: #ffffff;
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.85);
+    }
+  }
+
+  // Keep the filled look on hover instead of reverting to the translucent
+  // highlight the base .item uses.
+  &[data-highlighted] {
+    background: linear-gradient(135deg, #9670ff, #764ae8);
+  }
 }
 
 .about {
