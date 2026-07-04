@@ -31,12 +31,13 @@
       z-index: 10001 !important;
     }
 
-    /* Beta pill tucked under the app switcher logo */
+    /* Beta pill tucked under the app switcher logo. Sits above the landing
+       page but below the iOS CTA so the CTA is never clipped by it. */
     #beta-pill {
       position: fixed;
       top: 66px;
       left: 16px;
-      z-index: 10000;
+      z-index: 9999;
       padding: 3px 8px;
       background: #774dee;
       border-radius: 6px;
@@ -55,7 +56,9 @@
       top: 64px;
       left: 14px;
       right: 14px;
-      z-index: 100;
+      /* Above the Beta pill (which tucks under the logo) so it isn't clipped,
+         but below the app-switcher dropdown so the menu stays usable. */
+      z-index: 10000;
       display: none;
       align-items: center;
       justify-content: center;
@@ -296,10 +299,11 @@
 
   <!-- App Switcher Mount Point (upper-left) -->
   <div id="app-switcher-root"></div>
-  <div id="beta-pill">Beta</div>
+  <div id="beta-pill">WebXR Beta</div>
 
-  <!-- iOS app CTA (iPhone/iPad only; best experience is the native app) -->
-  <a id="ios-cta" href="https://www.3dstreet.com/bollardbuddy/" target="_blank" rel="noopener">
+  <!-- iOS app CTA (iPhone/iPad only; best experience is the native app).
+       Links straight to the App Store, not the marketing landing page. -->
+  <a id="ios-cta" href="https://apps.apple.com/us/app/bollard-buddy/id6756771127" target="_blank" rel="noopener">
     <span>📱 <strong>Best on iOS:</strong> Get the app</span>
     <button class="dismiss" id="ios-cta-dismiss" aria-label="Dismiss">✕</button>
   </a>
@@ -307,7 +311,7 @@
   <!-- Desktop strip layered above the landing page QR fallback -->
   <div id="desktop-ios-strip">
     <span>📱 Bollard Buddy is best on iPhone.</span>
-    <a href="https://www.3dstreet.com/bollardbuddy/" target="_blank" rel="noopener">get the iOS app</a>
+    <a href="https://apps.apple.com/us/app/bollard-buddy/id6756771127" target="_blank" rel="noopener">get the iOS app</a>
     <span>or scan the QR code above to use the web version.</span>
   </div>
 

@@ -48,7 +48,7 @@ const AppSwitcher = () => {
     ? 'Place virtual bollards in AR and save photos to your 3DStreet gallery. The web version is in beta; the native iOS app has the best experience.'
     : isImageGenerator
       ? 'Generate images and videos of your street scenes with AI, from text prompts or reference photos.'
-      : 'Design 3D street scenes in your browser, then output AI renderings, video, and shareable visualizations.';
+      : 'Design 3D street scenes in your browser, add real world context, and render high quality shareable visualizations.';
 
   const handleEditorClick = (e) => {
     if (isEditor) {
@@ -87,7 +87,11 @@ const AppSwitcher = () => {
   };
 
   const handleBollardBuddyIOSClick = () => {
-    window.open('https://www.3dstreet.com/bollardbuddy/', '_blank');
+    // Link straight to the App Store rather than the marketing landing page.
+    window.open(
+      'https://apps.apple.com/us/app/bollard-buddy/id6756771127',
+      '_blank'
+    );
   };
 
   return (
