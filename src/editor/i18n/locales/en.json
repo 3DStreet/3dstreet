@@ -1616,14 +1616,14 @@
   "screenshotModal.upgradeToPro": {
     "defaultMessage": "Upgrade to Pro to hide 3DStreet Free watermark"
   },
-  "segmentSidebar.buildingVariant": {
-    "defaultMessage": "Building Variant"
+  "segmentSidebar.boundaryVariant": {
+    "defaultMessage": "Boundary Variant"
   },
   "segmentSidebar.color": {
     "defaultMessage": "Color"
   },
-  "segmentSidebar.curbLevel": {
-    "defaultMessage": "Curb Level"
+  "segmentSidebar.elevation": {
+    "defaultMessage": "Elevation (m)"
   },
   "segmentSidebar.direction": {
     "defaultMessage": "Direction"

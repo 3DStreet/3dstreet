@@ -234,8 +234,22 @@ AFRAME.registerComponent('streetmix-loader', {
         el.setAttribute('data-layer-name', 'Streetmix • ' + streetmixName);
 
         if (data.showBuildings) {
-          el.setAttribute('street', 'right', streetData.rightBuildingVariant);
-          el.setAttribute('street', 'left', streetData.leftBuildingVariant);
+          // Prefer the canonical boundary object (schemaVersion 34+) and fall
+          // back to the deprecated flat *BuildingVariant fields. The legacy
+          // street component only understands the variant string; boundary
+          // floors/elevation are handled by the managed-street path.
+          el.setAttribute(
+            'street',
+            'right',
+            streetmixUtils.getBoundaryFromStreetData(streetData, 'right')
+              ?.variant || ''
+          );
+          el.setAttribute(
+            'street',
+            'left',
+            streetmixUtils.getBoundaryFromStreetData(streetData, 'left')
+              ?.variant || ''
+          );
         }
         el.setAttribute('street', 'type', 'streetmixSegmentsMetric');
         // set JSON attribute last or it messes things up

@@ -1,3 +1,5 @@
+const { getTravelledWaySegments } = require('./street-layout-utils');
+
 AFRAME.registerComponent('street-ground', {
   dependencies: ['managed-street', 'street-align'],
 
@@ -40,8 +42,9 @@ AFRAME.registerComponent('street-ground', {
       });
     }
 
-    // Get all segments
-    const segments = Array.from(this.el.querySelectorAll('[street-segment]'));
+    // The ground slab spans the travelled way only — boundaries render their
+    // own surface boxes and never affect street layout (street-layout-utils).
+    const segments = getTravelledWaySegments(this.el);
     if (segments.length === 0) return;
 
     const totalWidth = segments.reduce((sum, segment) => {
@@ -77,6 +80,13 @@ AFRAME.registerComponent('street-ground', {
     }
 
     this.dirtbox.setAttribute('position', `${xPosition} -1 ${zPosition}`);
+
+    // honor the managed-street showGround toggle (managed-street emits
+    // segments-changed when it flips, which re-runs this method)
+    this.dirtbox.setAttribute(
+      'visible',
+      this.el.getAttribute('managed-street')?.showGround !== false
+    );
   },
 
   remove: function () {

@@ -83,13 +83,19 @@ const shortcuts = [
     {
       key: ['ctrl | cmd', 'z'],
       description: (
-        <FormattedMessage id="help.shortcut.undo" defaultMessage="Undo action" />
+        <FormattedMessage
+          id="help.shortcut.undo"
+          defaultMessage="Undo action"
+        />
       )
     },
     {
       key: ['ctrl | cmd', 'shift', 'z'],
       description: (
-        <FormattedMessage id="help.shortcut.redo" defaultMessage="Redo action" />
+        <FormattedMessage
+          id="help.shortcut.redo"
+          defaultMessage="Redo action"
+        />
       )
     }
   ],
@@ -133,7 +139,10 @@ const shortcuts = [
     {
       key: ['4'],
       description: (
-        <FormattedMessage id="help.shortcut.topView" defaultMessage="Top view" />
+        <FormattedMessage
+          id="help.shortcut.topView"
+          defaultMessage="Top view"
+        />
       )
     },
     {

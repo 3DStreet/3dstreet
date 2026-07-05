@@ -8,8 +8,9 @@ import { createUniqueId } from '../entity.js';
  *
  * payload: { streetId, segment, segmentIndex?, name? }
  *   - streetId: id of the managed-street parent
- *   - segment: object describing the segment (type, width, level, direction,
- *     color, surface, name, generated). All fields optional except type.
+ *   - segment: object describing the segment (type, width, elevation,
+ *     direction, color, surface, name, generated). All fields optional except
+ *     type. `elevation` is meters (0 = road level, 0.15 = curb height).
  *   - segmentIndex: 0..N to insert at; if omitted or >= N, appends.
  *   - name: optional history label (e.g. "Add bike lane")
  */
@@ -47,7 +48,7 @@ export class SegmentAddCommand extends Command {
       type: segment.type,
       width: typeof segment.width === 'number' ? segment.width : 3,
       length: streetEl.components['managed-street']?.data?.length || 60,
-      level: typeof segment.level === 'number' ? segment.level : 0,
+      elevation: typeof segment.elevation === 'number' ? segment.elevation : 0,
       direction: segment.direction || 'none',
       color: segment.color || '#888888',
       surface: segment.surface || 'asphalt'

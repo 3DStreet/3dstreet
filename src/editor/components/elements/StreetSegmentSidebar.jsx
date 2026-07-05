@@ -52,14 +52,14 @@ const StreetSegmentSidebar = ({ entity }) => {
                 isSingle={false}
                 entity={entity}
               />
-              {component.data['type'] === 'building' && (
+              {component.data['type'] === 'boundary' && (
                 <>
                   <PropertyRow
                     key="variant"
                     name="variant"
                     label={intl.formatMessage({
-                      id: 'segmentSidebar.buildingVariant',
-                      defaultMessage: 'Building Variant'
+                      id: 'segmentSidebar.boundaryVariant',
+                      defaultMessage: 'Boundary Variant'
                     })}
                     schema={component.schema['variant']}
                     data={component.data['variant']}
@@ -129,7 +129,7 @@ const StreetSegmentSidebar = ({ entity }) => {
                 isSingle={false}
                 entity={entity}
               />
-              {component.data['type'] !== 'building' && (
+              {component.data['type'] !== 'boundary' && (
                 <PropertyRow
                   key="direction"
                   name="direction"
@@ -185,14 +185,14 @@ const StreetSegmentSidebar = ({ entity }) => {
                       entity={entity}
                     />
                     <PropertyRow
-                      key="level"
-                      name="level"
+                      key="elevation"
+                      name="elevation"
                       label={intl.formatMessage({
-                        id: 'segmentSidebar.curbLevel',
-                        defaultMessage: 'Curb Level'
+                        id: 'segmentSidebar.elevation',
+                        defaultMessage: 'Elevation (m)'
                       })}
-                      schema={component.schema['level']}
-                      data={component.data['level']}
+                      schema={component.schema['elevation']}
+                      data={component.data['elevation']}
                       componentname={componentName}
                       isSingle={false}
                       entity={entity}

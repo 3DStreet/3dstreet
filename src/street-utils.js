@@ -65,21 +65,20 @@ export function newScene(clearMetaData = true, clearUrlHash = true) {
   }
 }
 
-export function getVehicleEntities() {
-  return getEntitiesByCategories([
-    'vehicles',
-    'vehicles-rigged',
-    'vehicles-transit',
-    'cyclists'
-  ]);
+export function getVehicleEntities(root = document) {
+  return getEntitiesByCategories(
+    ['vehicles', 'vehicles-rigged', 'vehicles-transit', 'cyclists'],
+    root
+  );
 }
 
-export function getStripingEntities() {
-  return getEntitiesByCategories(['lane-separator']);
+export function getStripingEntities(root = document) {
+  return getEntitiesByCategories(['lane-separator'], root);
 }
 
-function getEntitiesByCategories(categoriesArray) {
-  // get entity Nodes by array of their mixin categories
+function getEntitiesByCategories(categoriesArray, root = document) {
+  // get entity Nodes by array of their mixin categories, scoped to `root`
+  // (mixin definitions always live at the document level via street-assets)
   const queryForCategoriesMixins = categoriesArray
     .map((categoryName) => `a-mixin[category="${categoryName}"]`)
     .join(',');
@@ -92,5 +91,5 @@ function getEntitiesByCategories(categoriesArray) {
     .map((mixinId) => `a-entity[mixin~="${mixinId}"]`)
     .join(',');
   if (!queryForAllElements) return [];
-  return document.querySelectorAll(queryForAllElements);
+  return root.querySelectorAll(queryForAllElements);
 }

@@ -73,7 +73,10 @@ export function createSvgExtrudedEntity(position) {
   }
 }
 
-export function createManagedStreetFromStreetmixURLPrompt(position) {
+export function createManagedStreetFromStreetmixURLPrompt(
+  position,
+  hideBuildings
+) {
   // This creates a new Managed Street
   let streetmixURL = prompt(
     'Please enter a Streetmix URL',
@@ -88,6 +91,7 @@ export function createManagedStreetFromStreetmixURLPrompt(position) {
         'managed-street': {
           sourceType: 'streetmix-url',
           sourceValue: streetmixURL,
+          showBoundaries: !hideBuildings,
           showVehicles: true,
           showStriping: true,
           synchronize: true
