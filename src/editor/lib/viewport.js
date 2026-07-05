@@ -70,7 +70,7 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       // Batched entities have their original mesh tree stripped at batch time, so
       // setFromObject finds no geometry under them. batch-models stashes a per-entity-local
       // AABB — apply the entity's now-zeroed-rotation matrixWorld and union it in.
-      const cachedBbox = this.object.userData?._batchLocalBbox;
+      const cachedBbox = this.object._batchLocalBbox;
       if (cachedBbox) {
         this.object.updateWorldMatrix(false, false);
         auxLocalBbox.copy(cachedBbox).applyMatrix4(this.object.matrixWorld);

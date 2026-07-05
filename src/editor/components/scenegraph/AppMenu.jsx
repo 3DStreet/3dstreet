@@ -7,7 +7,7 @@ import posthog from 'posthog-js';
 import Events from '../../lib/Events.js';
 import { useAuthContext } from '@/editor/contexts';
 import { saveBlob } from '../../lib/utils';
-import { prepareSceneForGltfExport } from '../../lib/prepareGltfExport';
+import { expandBatchedMeshesForExport } from '../../../batch-models';
 import {
   uploadAndPlaceAsset,
   FILE_PICKER_ACCEPT
@@ -105,13 +105,15 @@ const filterRiggedEntities = (scene, visible) => {
             category.includes('vehicles-transit') ||
             category.includes('cyclists'))
         ) {
-          node.visible = visible;
-          console.log(
-            'Hiding Rigged Entity',
-            node.el.id || 'unnamed',
-            'category:',
-            category
-          );
+          if (node.visible !== visible) {
+            node.visible = visible;
+            console.log(
+              visible ? 'Showing Rigged Entity' : 'Hiding Rigged Entity',
+              node.el.id || 'unnamed',
+              'category:',
+              category
+            );
+          }
         }
       }
     }
@@ -227,9 +229,9 @@ const AppMenu = ({ currentUser }) => {
           filterRiggedEntities(scene, false);
         }
         filterHelpers(scene, false);
-        // Expand BatchedMeshes into exportable meshes and normalize the pivot property
-        // (see prepareGltfExport.js) — restored in BOTH exporter callbacks below.
-        restoreExportScene = prepareSceneForGltfExport(scene);
+        // Expand BatchedMeshes into exportable meshes — restored in BOTH
+        // exporter callbacks below.
+        restoreExportScene = expandBatchedMeshesForExport(scene);
         // Modified to handle post-processing
         AFRAME.INSPECTOR.exporters.gltf.parse(
           scene,
@@ -254,7 +256,8 @@ const AppMenu = ({ currentUser }) => {
                   finalBuffer = await transformUVs(buffer);
                   console.log('Successfully post-processed GLB file');
                 } catch (error) {
-                  console.warn('Error in GLB post-processing:', error);
+                  // console.error (not warn) so it's captured by Sentry
+                  console.error('Error in GLB post-processing:', error);
                   // Fall back to original buffer if post-processing fails
                   STREET.notify.warningMessage(
                     intl.formatMessage({
@@ -279,10 +282,16 @@ const AppMenu = ({ currentUser }) => {
                     geoLayer.getAttribute('street-geo').ellipsoidalHeight,
                   orientation: 270
                 };
-                finalBuffer = await addGLBMetadata(finalBuffer, metadata);
-                console.log(
-                  'Successfully added geospatial metadata to GLB file'
-                );
+                try {
+                  finalBuffer = await addGLBMetadata(finalBuffer, metadata);
+                  console.log(
+                    'Successfully added geospatial metadata to GLB file'
+                  );
+                } catch (error) {
+                  // console.error (not warn) so it's captured by Sentry; the
+                  // GLB is still saved, just without geospatial metadata.
+                  console.error('Error adding geospatial metadata:', error);
+                }
               }
               const blob = new Blob([finalBuffer], {
                 type: 'application/octet-stream'

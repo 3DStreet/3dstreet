@@ -2,8 +2,9 @@
 <html>
 
 <head>
-  <!-- aframe -->
-  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@6a054e85953bbcc71854bcd64f9abde0897be649/dist/aframe-master.min.js"></script>
+  <!-- aframe: this release ships super-three 0.184.0. The npm `three` version in
+       package.json must match, so upgrade A-Frame and npm `three` together. -->
+  <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
   <!-- 3dstreet -->
   <script src="/dist/aframe-street-component.js"></script>
   <!-- mapbox -->
@@ -76,7 +77,7 @@
   </div> -->
 
   <a-scene
-    renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: true; antialias: true;"
+    renderer="anisotropy: 16; logarithmicDepthBuffer: true; antialias: true;"
     loading-screen="enabled: false" notify metadata
     device-orientation-permission-ui="enabled: false"
     reflection device-orientation-permission-ui="enabled: false"

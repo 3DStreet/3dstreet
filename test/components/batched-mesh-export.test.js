@@ -9,7 +9,6 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 // Chromium (browser mode) because THREE.BatchedMesh allocates data textures and behaves
 // like production only in a real browser.
 let batch;
-let prepareSceneForGltfExport;
 let THREE;
 
 beforeAll(async () => {
@@ -18,8 +17,6 @@ beforeAll(async () => {
   THREE = window.THREE;
   window.STREET = window.STREET || {};
   batch = await import('../../src/batch-models.js');
-  ({ prepareSceneForGltfExport } =
-    await import('../../src/editor/lib/prepareGltfExport.js'));
   window.AFRAME.emitReady?.();
 });
 
@@ -32,8 +29,8 @@ function makeBatchedScene() {
   geometry.name = 'box-sub-mesh';
   const material = new THREE.MeshBasicMaterial();
   const batchedMesh = new THREE.BatchedMesh(2, 256, 512, material);
-  batchedMesh.userData.batchIdToEl = [];
-  batchedMesh.userData.freeInstanceIds = [];
+  batchedMesh._batchIdToEl = [];
+  batchedMesh._freeInstanceIds = [];
   const geometryId = batchedMesh.addGeometry(geometry);
   root.add(batchedMesh);
 
@@ -49,19 +46,12 @@ function makeBatchedScene() {
       instanceId,
       new THREE.Matrix4().multiplyMatrices(memberRoot.matrixWorld, localMatrix)
     );
-    memberRoot.userData._batchSlots = [
+    memberRoot._batchSlots = [
       { batchedMesh, instanceId, localMatrix, geometry }
     ];
     members.push(memberRoot);
   }
   return { root, batchedMesh, members, geometry, material };
-}
-
-// Strip the Object3D.pivot property from every node, simulating a scene built by a
-// super-three build that predates the pivot feature — the production state that made
-// three r184's GLTFExporter crash with "Cannot read properties of undefined (reading 'x')".
-function stripPivots(root) {
-  root.traverse((node) => delete node.pivot);
 }
 
 function exportGltf(root) {
@@ -84,9 +74,9 @@ describe('expandBatchedMeshesForExport', () => {
       expect(temp.geometry).toBe(geometry);
       expect(temp.material).toBe(material);
       expect(temp.matrixAutoUpdate).toBe(false);
-      expect(
-        temp.matrix.equals(memberRoot.userData._batchSlots[0].localMatrix)
-      ).toBe(true);
+      expect(temp.matrix.equals(memberRoot._batchSlots[0].localMatrix)).toBe(
+        true
+      );
       // Renderer/raycaster never see the temp mesh; only the exporter (which
       // ignores layers) does.
       expect(temp.layers.mask).toBe(0);
@@ -111,18 +101,11 @@ describe('expandBatchedMeshesForExport', () => {
   });
 });
 
-describe('prepareSceneForGltfExport + GLTFExporter (production pairing)', () => {
-  it('reproduces the "reading \'x\'" crash on a pivot-less scene without prep', async () => {
-    const { root } = makeBatchedScene();
-    stripPivots(root);
-    await expect(exportGltf(root)).rejects.toThrow(/reading 'x'/);
-  });
-
-  it('exports a batched, pivot-less scene once prepared, then restores', async () => {
+describe('expandBatchedMeshesForExport + GLTFExporter (production pairing)', () => {
+  it('exports a batched scene once prepared, then restores', async () => {
     const { root, batchedMesh, members } = makeBatchedScene();
-    stripPivots(root);
 
-    const restore = prepareSceneForGltfExport(root);
+    const restore = batch.expandBatchedMeshesForExport(root);
     const gltf = await exportGltf(root);
     restore();
 
