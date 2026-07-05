@@ -282,10 +282,16 @@ const AppMenu = ({ currentUser }) => {
                     geoLayer.getAttribute('street-geo').ellipsoidalHeight,
                   orientation: 270
                 };
-                finalBuffer = await addGLBMetadata(finalBuffer, metadata);
-                console.log(
-                  'Successfully added geospatial metadata to GLB file'
-                );
+                try {
+                  finalBuffer = await addGLBMetadata(finalBuffer, metadata);
+                  console.log(
+                    'Successfully added geospatial metadata to GLB file'
+                  );
+                } catch (error) {
+                  // console.error (not warn) so it's captured by Sentry; the
+                  // GLB is still saved, just without geospatial metadata.
+                  console.error('Error adding geospatial metadata:', error);
+                }
               }
               const blob = new Blob([finalBuffer], {
                 type: 'application/octet-stream'
