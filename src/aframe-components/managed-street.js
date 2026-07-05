@@ -320,12 +320,15 @@ AFRAME.registerComponent('managed-street', {
     return segmentEl;
   },
   onSegmentChanged: function (event) {
-    if (!event.detail.widthChanged) {
+    const { widthChanged, typeChanged, sideChanged } = event.detail;
+    // type and side changes re-layout too: type alters travelled-way
+    // membership (boundary vs not), side moves a boundary to the other edge
+    if (!widthChanged && !typeChanged && !sideChanged) {
       return;
     }
     this.el.emit('segments-changed', {
       changeType: 'property',
-      property: 'width',
+      property: widthChanged ? 'width' : typeChanged ? 'type' : 'side',
       segment: event.target,
       oldValue: event.detail.oldWidth,
       newValue: event.detail.newWidth

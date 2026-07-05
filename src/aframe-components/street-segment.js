@@ -586,13 +586,23 @@ AFRAME.registerComponent('street-segment', {
       z: this.tempZPosition
     });
     this.generateMesh(data);
-    // notify children and managed-street of width/length changes in a single event
+    // notify children and managed-street of layout-relevant changes in a
+    // single event. type and side changes must also trigger a street re-layout
+    // (they alter travelled-way membership / which edge a boundary flanks);
+    // the generated-content listeners self-guard on width/length so the extra
+    // emits don't cause spurious clone regeneration.
     const widthChanged = changedProps.includes('width');
     const lengthChanged = changedProps.includes('length');
-    if (widthChanged || lengthChanged) {
+    const typeChanged =
+      oldData.type !== undefined && changedProps.includes('type');
+    const sideChanged =
+      oldData.side !== undefined && changedProps.includes('side');
+    if (widthChanged || lengthChanged || typeChanged || sideChanged) {
       this.el.emit('segment-changed', {
         widthChanged,
         lengthChanged,
+        typeChanged,
+        sideChanged,
         oldWidth: oldData.width,
         newWidth: data.width,
         oldLength: oldData.length,
