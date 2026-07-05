@@ -9,6 +9,7 @@ import { getVehicleEntities } from '../street-utils.js';
 import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 const { segmentVariants } = require('../segments-variants.js');
 const { levelToElevation } = require('../tested/street-segment-utils');
+const { isBoundarySegment } = require('./street-layout-utils');
 const streetmixUtils = require('../tested/streetmix-utils');
 const streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested');
 
@@ -150,19 +151,20 @@ AFRAME.registerComponent('managed-street', {
     sourceValue: {
       type: 'string'
     },
-    showBuildings: {
-      // Buildings (boundary edges) toggle. Imports always create the building
+    showBoundaries: {
+      // Boundaries (adjacent land use flanking the street: buildings,
+      // waterfront, fences, ...) toggle. Imports always create the boundary
       // segments when the source has boundary data; this property controls
-      // whether they are shown. Toggling is realtime and non-destructive: off
-      // hides the building segments and excludes them from street layout
-      // (alignment, ground, labels — see street-layout-utils.js), on restores
-      // them. Set false at creation time to import a travelled-way-only street
-      // (e.g. the parity harness).
+      // whether they are shown. Toggling is realtime, non-destructive, and
+      // never moves the street: boundaries are positioned outside the
+      // travelled way's edges and are not part of alignment/ground/labels
+      // (see street-layout-utils.js). Set false at creation time to import a
+      // travelled-way-only street (e.g. the parity harness).
       type: 'boolean',
       default: true
     },
     // Content toggles migrated from the legacy `street` component prototype.
-    // Like showBuildings they are realtime and non-destructive: content is
+    // Like showBoundaries they are realtime and non-destructive: content is
     // always generated, the toggles only control visibility.
     showGround: {
       // the dirt slab under the street (rendered by the street-ground sibling)
@@ -192,7 +194,6 @@ AFRAME.registerComponent('managed-street', {
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
     this.onSegmentChanged = this.onSegmentChanged.bind(this);
-    this.onChildComponentChanged = this.onChildComponentChanged.bind(this);
 
     if (!this.el.hasAttribute('street-align')) {
       this.el.setAttribute('street-align', '');
@@ -208,19 +209,6 @@ AFRAME.registerComponent('managed-street', {
     // catches every descendant segment without per-segment bookkeeping.
     this.el.addEventListener('segment-changed', this.onSegmentChanged);
 
-    // A building segment's visibility is layout state: hidden buildings are
-    // excluded from alignment/ground/labels (street-layout-utils). Visibility
-    // can change outside the showBuildings toggle — e.g. the scene graph's
-    // per-layer eye icon — and without a re-layout, a building re-shown via
-    // the eye keeps the stale position it had before the street re-centered
-    // and lands on the travelled way. A-Frame's componentchanged does NOT
-    // bubble, so each segment gets its own listener (attached here for saved
-    // scenes whose children exist before this init, and in the mutation
-    // observer for segments added later).
-    Array.from(this.el.querySelectorAll('[street-segment]')).forEach(
-      (segmentEl) => this.watchSegmentVisibility(segmentEl)
-    );
-
     // Watch DOM child mutations to notify siblings (street-align,
     // street-label, street-ground) when segments are added or removed.
     this.observer = new MutationObserver((mutations) => {
@@ -231,9 +219,6 @@ AFRAME.registerComponent('managed-street', {
         );
         const removedSegments = Array.from(mutation.removedNodes).filter(
           (node) => node.hasAttribute && node.hasAttribute('street-segment')
-        );
-        addedSegments.forEach((segmentEl) =>
-          this.watchSegmentVisibility(segmentEl)
         );
         if (addedSegments.length || removedSegments.length) {
           this.el.emit('segments-changed', {
@@ -347,41 +332,6 @@ AFRAME.registerComponent('managed-street', {
     });
     this.refreshManagedEntities();
   },
-  // Attach the visibility watcher to a segment exactly once. Listeners live on
-  // the segment itself because componentchanged does not bubble. Attached to
-  // every segment (not just buildings) since a segment's type can change; the
-  // handler filters by current type.
-  watchSegmentVisibility: function (segmentEl) {
-    if (segmentEl.msVisibilityWatched) {
-      return;
-    }
-    segmentEl.msVisibilityWatched = true;
-    segmentEl.addEventListener(
-      'componentchanged',
-      this.onChildComponentChanged
-    );
-  },
-  // Re-run layout when a building segment's `visible` component changes from
-  // anywhere other than updateBuildingVisibility (which emits its own event) —
-  // e.g. the scene graph eye icon. Non-building segments never affect layout
-  // via visibility, so this stays cheap and cannot feed back on itself (layout
-  // siblings only write `position` on segments, not `visible`).
-  onChildComponentChanged: function (event) {
-    if (
-      event.detail?.name !== 'visible' ||
-      this.isBulkVisibilityUpdate ||
-      event.target.getAttribute?.('street-segment')?.type !== 'building'
-    ) {
-      return;
-    }
-    this.el.emit('segments-changed', {
-      changeType: 'property',
-      property: 'visible',
-      segment: event.target,
-      oldValue: !event.target.getAttribute('visible'),
-      newValue: event.target.getAttribute('visible')
-    });
-  },
   update: function (oldData) {
     const data = this.data;
     const dataDiff = AFRAME.utils.diff(oldData, data);
@@ -406,8 +356,8 @@ AFRAME.registerComponent('managed-street', {
       });
     }
 
-    if (dataDiffKeys.includes('showBuildings')) {
-      this.updateBuildingVisibility();
+    if (dataDiffKeys.includes('showBoundaries')) {
+      this.updateBoundaryVisibility();
     }
 
     if (
@@ -443,38 +393,18 @@ AFRAME.registerComponent('managed-street', {
       vehicleEl.setAttribute('visible', data.showVehicles)
     );
   },
-  // Apply the showBuildings toggle to existing building segments and notify
-  // layout siblings (street-align, street-ground, street-label) so the street
-  // reflows as if hidden buildings were absent. Non-destructive: segments stay
+  // Apply the showBoundaries toggle to existing boundary segments. Pure
+  // visibility: boundaries never participate in street layout (street-align
+  // positions them off the travelled way's edges whether hidden or shown), so
+  // no re-layout is needed and nothing moves. Non-destructive: segments stay
   // in the DOM and keep serializing with the scene.
-  updateBuildingVisibility: function () {
-    const show = this.data.showBuildings;
-    const buildingEls = Array.from(
-      this.el.querySelectorAll('[street-segment]')
-    ).filter(
-      (segmentEl) =>
-        segmentEl.getAttribute('street-segment')?.type === 'building'
-    );
-    if (buildingEls.length === 0) {
-      return;
-    }
-    // suppress the per-building componentchanged handler while bulk-setting —
-    // one segments-changed below covers the whole toggle
-    this.isBulkVisibilityUpdate = true;
-    try {
-      buildingEls.forEach((segmentEl) => {
+  updateBoundaryVisibility: function () {
+    const show = this.data.showBoundaries;
+    Array.from(this.el.querySelectorAll('[street-segment]'))
+      .filter((segmentEl) => isBoundarySegment(segmentEl))
+      .forEach((segmentEl) => {
         segmentEl.setAttribute('visible', show);
       });
-    } finally {
-      this.isBulkVisibilityUpdate = false;
-    }
-    this.el.emit('segments-changed', {
-      changeType: 'property',
-      property: 'showBuildings',
-      segment: null,
-      oldValue: !show,
-      newValue: show
-    });
   },
   refreshFromSource: function () {
     const data = this.data;
@@ -530,16 +460,19 @@ AFRAME.registerComponent('managed-street', {
       const segmentEl = document.createElement('a-entity');
       this.el.appendChild(segmentEl);
 
+      // 'building' is the deprecated pre-rename value for boundary segments
+      const segmentType =
+        segment.type === 'building' ? 'boundary' : segment.type;
       segmentEl.setAttribute('street-segment', {
-        type: segment.type, // this is the base type, it won't load its defaults since we are changing more than just the type value
+        type: segmentType, // this is the base type, it won't load its defaults since we are changing more than just the type value
         width: segment.width,
         length: streetObject.length,
         // legacy json-blobs carry the deprecated integer `level` instead of
         // metric `elevation` — convert on the fly (1 level == 0.15m)
         elevation: segment.elevation ?? levelToElevation(segment.level),
         direction: segment.direction,
-        color: segment.color || window.STREET.types[segment.type]?.color,
-        surface: segment.surface || window.STREET.types[segment.type]?.surface, // no error handling for segmentPreset not found
+        color: segment.color || window.STREET.types[segmentType]?.color,
+        surface: segment.surface || window.STREET.types[segmentType]?.surface, // no error handling for segmentPreset not found
         variant: segment.variant,
         side: segment.side,
         ...(segment.floors !== undefined ? { floors: segment.floors } : {}),
@@ -552,8 +485,8 @@ AFRAME.registerComponent('managed-street', {
           : {})
       });
       segmentEl.setAttribute('data-layer-name', segment.name);
-      // honor the buildings toggle for building segments carried in the blob
-      if (segment.type === 'building' && !this.data.showBuildings) {
+      // honor the boundaries toggle for boundary segments carried in the blob
+      if (segmentType === 'boundary' && !this.data.showBoundaries) {
         segmentEl.setAttribute('visible', false);
       }
       // wait for street-segment to be loaded, then generate components from segment object
@@ -637,7 +570,7 @@ AFRAME.registerComponent('managed-street', {
         // convert from streetplan segment types to managed street presets
 
         const STREETPLAN_TYPE_MAPPING = {
-          Buildings: { type: 'building', name: 'Land Use' },
+          Buildings: { type: 'boundary', name: 'Land Use' },
           BikesPaths: { type: 'bike-lane', name: 'Bikes' },
           Walkways: { type: 'sidewalk', name: 'Walkways' },
           Transit: { type: 'bus-lane', name: 'Transit' },
@@ -797,22 +730,22 @@ AFRAME.registerComponent('managed-street', {
 
     return variantString;
   },
-  // The import always creates the boundary building segments (when the source
-  // has boundary data); the component's `showBuildings` property controls
-  // whether they are shown and participate in layout. That keeps the toggle
-  // non-destructive and realtime: once imported, buildings are ordinary
-  // street-segment children (saved/loaded via json-blob, editable and
-  // deletable like any segment) that can be re-shown at any time. The optional
-  // `showBuildings` argument is kept for callers that drive the conversion
-  // directly (e.g. the import-parity harness) — when passed, it is written
-  // back to the component property so state stays consistent.
-  loadAndParseStreetmixURL: async function (streetmixURL, showBuildings) {
+  // The import always creates the boundary segments (when the source has
+  // boundary data); the component's `showBoundaries` property controls whether
+  // they are shown. That keeps the toggle non-destructive and realtime: once
+  // imported, boundaries are ordinary street-segment children (saved/loaded
+  // via json-blob, editable and deletable like any segment) that can be
+  // re-shown at any time. The optional `showBoundaries` argument is kept for
+  // callers that drive the conversion directly (e.g. the import-parity
+  // harness) — when passed, it is written back to the component property so
+  // state stays consistent.
+  loadAndParseStreetmixURL: async function (streetmixURL, showBoundaries) {
     const currentState = useStore.getState();
     if (
-      showBuildings !== undefined &&
-      showBuildings !== this.data.showBuildings
+      showBoundaries !== undefined &&
+      showBoundaries !== this.data.showBoundaries
     ) {
-      this.el.setAttribute('managed-street', 'showBuildings', showBuildings);
+      this.el.setAttribute('managed-street', 'showBoundaries', showBoundaries);
     }
     const data = this.data;
     // Normally rewrite a streetmix.net user URL to its API endpoint. If the
@@ -881,32 +814,32 @@ AFRAME.registerComponent('managed-street', {
 
       const segmentEls = parseStreetmixSegments(streetmixSegments, data.length);
 
-      // Buildings (Streetmix boundary edges). getBoundaryFromStreetData reads
+      // Boundaries (Streetmix boundary edges). getBoundaryFromStreetData reads
       // the canonical schemaVersion 34+ `boundary` object first and falls back
       // to the deprecated flat leftBuildingVariant/rightBuildingVariant fields.
-      // street-align positions segments by DOM order, so the left building goes
-      // before the travelled way and the right building after it. Always
-      // created; the showBuildings property only controls visibility (set
-      // before append so layout siblings never count hidden buildings).
-      const leftBuildingEl = createStreetmixBuildingElement(
+      // Always created; the showBoundaries property only controls visibility.
+      // street-align positions boundaries off the travelled way's edges by
+      // their `side`, so their DOM position is cosmetic — kept at the ends for
+      // a tidy scene graph.
+      const leftBoundaryEl = createStreetmixBoundaryElement(
         streetmixUtils.getBoundaryFromStreetData(streetData, 'left'),
         'left',
         data.length
       );
-      const rightBuildingEl = createStreetmixBuildingElement(
+      const rightBoundaryEl = createStreetmixBoundaryElement(
         streetmixUtils.getBoundaryFromStreetData(streetData, 'right'),
         'right',
         data.length
       );
-      [leftBuildingEl, rightBuildingEl].forEach((buildingEl) => {
-        if (buildingEl && !this.data.showBuildings) {
-          buildingEl.setAttribute('visible', false);
+      [leftBoundaryEl, rightBoundaryEl].forEach((boundaryEl) => {
+        if (boundaryEl && !this.data.showBoundaries) {
+          boundaryEl.setAttribute('visible', false);
         }
       });
       const allEls = [
-        ...(leftBuildingEl ? [leftBuildingEl] : []),
+        ...(leftBoundaryEl ? [leftBoundaryEl] : []),
         ...segmentEls,
-        ...(rightBuildingEl ? [rightBuildingEl] : [])
+        ...(rightBoundaryEl ? [rightBoundaryEl] : [])
       ];
       this.el.append(...allEls);
 
@@ -968,15 +901,6 @@ AFRAME.registerComponent('managed-street', {
       this.contentObserver.disconnect();
     }
     this.el.removeEventListener('segment-changed', this.onSegmentChanged);
-    Array.from(this.el.querySelectorAll('[street-segment]')).forEach(
-      (segmentEl) => {
-        segmentEl.removeEventListener(
-          'componentchanged',
-          this.onChildComponentChanged
-        );
-        segmentEl.msVisibilityWatched = false;
-      }
-    );
     this.clearManagedEntities();
   }
 });
@@ -1120,12 +1044,12 @@ function supportCheck(segmentType, segmentVariantString) {
   }
 }
 
-// Maps a Streetmix boundary variant to a managed `building` street-segment.
-// `variant` is the street-segment building variant (see TYPES.building.variants
+// Maps a Streetmix boundary variant to a managed `boundary` street-segment.
+// `variant` is the street-segment boundary variant (see TYPES.boundary.variants
 // in street-segment.js); `width` is the cross-street footprint depth in meters
-// (Streetmix does not provide a building width). Variants render via the
-// building type's generated clones (mode: fit, facing derived from side).
-const STREETMIX_BUILDING_VARIANT_MAP = {
+// (Streetmix does not provide a boundary width). Variants render via the
+// boundary type's generated clones (mode: fit, facing derived from side).
+const STREETMIX_BOUNDARY_VARIANT_MAP = {
   narrow: { variant: 'brownstone', width: 12 },
   wide: { variant: 'brownstone', width: 12 },
   residential: { variant: 'suburban', width: 18 },
@@ -1138,15 +1062,14 @@ const STREETMIX_BUILDING_VARIANT_MAP = {
   'compound-wall': { variant: 'water', width: 6 }
 };
 
-// Build a `building` street-segment element for a Streetmix boundary
+// Build a `boundary` street-segment element for a Streetmix boundary
 // ({ variant, floors, elevation } from getBoundaryFromStreetData). Returns null
 // when the street has no boundary on that side or the variant is unsupported
-// (caller skips it). The element relies on street-align to position it by DOM
-// order, so the caller controls left/right placement by appending it
-// before/after the travelled-way segments.
-function createStreetmixBuildingElement(boundary, side, length) {
+// (caller skips it). street-align positions it off the travelled way's edge by
+// its `side` property.
+function createStreetmixBoundaryElement(boundary, side, length) {
   const streetmixVariant = boundary?.variant;
-  const mapping = STREETMIX_BUILDING_VARIANT_MAP[streetmixVariant];
+  const mapping = STREETMIX_BOUNDARY_VARIANT_MAP[streetmixVariant];
   if (!mapping) {
     if (streetmixVariant && streetmixVariant !== 'none') {
       console.warn(
@@ -1157,10 +1080,10 @@ function createStreetmixBuildingElement(boundary, side, length) {
     return null;
   }
 
-  const buildingType = window.STREET.types.building;
-  const variantConfig = buildingType.variants[mapping.variant] || {};
+  const boundaryType = window.STREET.types.boundary;
+  const variantConfig = boundaryType.variants[mapping.variant] || {};
   const segmentObject = {
-    type: 'building',
+    type: 'boundary',
     width: mapping.width,
     length: length,
     // boundary elevation is meters (same unit as segment elevation); older
@@ -1168,15 +1091,15 @@ function createStreetmixBuildingElement(boundary, side, length) {
     elevation:
       typeof boundary.elevation === 'number'
         ? boundary.elevation
-        : buildingType.elevation,
+        : boundaryType.elevation,
     direction: 'outbound',
-    surface: variantConfig.surface || buildingType.surface,
+    surface: variantConfig.surface || boundaryType.surface,
     variant: mapping.variant,
     side: side,
     // generateComponentsFromSegmentObject resolves the model list by looking up
     // `variants[variant].modelsArray`, so both must be passed through.
-    generated: buildingType.generated,
-    variants: buildingType.variants
+    generated: boundaryType.generated,
+    variants: boundaryType.variants
   };
 
   const segmentEl = document.createElement('a-entity');
@@ -1186,7 +1109,7 @@ function createStreetmixBuildingElement(boundary, side, length) {
     length: segmentObject.length,
     elevation: segmentObject.elevation,
     direction: segmentObject.direction,
-    color: buildingType.color || window.STREET.colors.white,
+    color: boundaryType.color || window.STREET.colors.white,
     surface: segmentObject.surface,
     variant: segmentObject.variant,
     side: segmentObject.side,
@@ -1196,7 +1119,7 @@ function createStreetmixBuildingElement(boundary, side, length) {
   });
   segmentEl.setAttribute(
     'data-layer-name',
-    `Building • ${streetmixVariant} (${side})`
+    `Boundary • ${streetmixVariant} (${side})`
   );
   // Generate the building clones once the street-segment component is ready
   // (mirrors parseStreetObject's streetplan path).

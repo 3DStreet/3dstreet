@@ -30,11 +30,11 @@ const ManagedStreetSidebar = ({ entity }) => {
                   entity={entity}
                 />
                 <PropertyRow
-                  key="showBuildings"
-                  name="showBuildings"
-                  label="Buildings"
-                  schema={component.schema.showBuildings}
-                  data={component.data.showBuildings}
+                  key="showBoundaries"
+                  name="showBoundaries"
+                  label="Boundaries"
+                  schema={component.schema.showBoundaries}
+                  data={component.data.showBoundaries}
                   componentname={componentName}
                   isSingle={false}
                   entity={entity}

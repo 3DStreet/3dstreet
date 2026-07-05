@@ -77,11 +77,58 @@ function migrateSegmentLevelToElevation(componentValue) {
   return componentValue;
 }
 
+// Migrate a saved street-segment component value from the deprecated
+// `type: building` to `type: boundary` (the rename covers the wider set of
+// adjacent land uses: buildings, waterfront, fences, parking lots, ...).
+// Handles the serialized prop-string form and the parsed object form.
+function migrateSegmentBuildingType(componentValue) {
+  if (typeof componentValue === 'string') {
+    return componentValue.replace(
+      /(^|;)(\s*)type\s*:\s*building(\s*)(;|$)/,
+      '$1$2type: boundary$3$4'
+    );
+  }
+  if (
+    componentValue &&
+    typeof componentValue === 'object' &&
+    componentValue.type === 'building'
+  ) {
+    return { ...componentValue, type: 'boundary' };
+  }
+  return componentValue;
+}
+
+// Migrate a saved managed-street component value from the short-lived
+// `showBuildings` property name to `showBoundaries` (renamed with the
+// building -> boundary segment type).
+function migrateShowBuildingsFlag(componentValue) {
+  if (typeof componentValue === 'string') {
+    return componentValue.replace(
+      /(^|;)(\s*)showBuildings\s*:/,
+      '$1$2showBoundaries:'
+    );
+  }
+  if (
+    componentValue &&
+    typeof componentValue === 'object' &&
+    'showBuildings' in componentValue
+  ) {
+    const { showBuildings, ...rest } = componentValue;
+    if (rest.showBoundaries === undefined) {
+      rest.showBoundaries = showBuildings;
+    }
+    return rest;
+  }
+  return componentValue;
+}
+
 export {
   calculateHeight,
   calculateSlopedHeights,
   levelToElevation,
   migrateSegmentLevelToElevation,
+  migrateSegmentBuildingType,
+  migrateShowBuildingsFlag,
   CURB_HEIGHT,
   BASE_SURFACE_DEPTH
 };

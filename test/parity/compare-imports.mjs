@@ -199,21 +199,22 @@ async function triggerManaged(page, url) {
       el.id = 'parity-managed-street';
       el.setAttribute('street-align', 'width: center; length: middle');
       // No synchronize: we run the conversion explicitly below so we can await
-      // it. showBuildings is real component state — buildings are always
-      // imported and the property controls their visibility and layout
-      // participation, so a with/without-buildings run is the same toggle a
-      // user flips in the sidebar.
+      // it. showBoundaries is real component state — boundaries are always
+      // imported and the property controls their visibility (they are outside
+      // the travelled way and never affect its alignment), so a
+      // with/without-boundaries run is the same toggle a user flips in the
+      // sidebar.
       el.setAttribute('managed-street', {
         sourceType: 'streetmix-url',
         sourceValue: streetURL,
-        showBuildings
+        showBoundaries: showBuildings
       });
       document.getElementById('street-container').appendChild(el);
     },
     [url, SHOW_BUILDINGS]
   );
   // Wait for the component to initialize, then drive the Streetmix->managed
-  // conversion directly (visibility follows the showBuildings property set
+  // conversion directly (visibility follows the showBoundaries property set
   // above).
   await page.waitForFunction(
     () => {

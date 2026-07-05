@@ -6,6 +6,8 @@ import {
   calculateSlopedHeights,
   levelToElevation,
   migrateSegmentLevelToElevation,
+  migrateSegmentBuildingType,
+  migrateShowBuildingsFlag,
   CURB_HEIGHT,
   BASE_SURFACE_DEPTH
 } from '../../src/tested/street-segment-utils.js';
@@ -143,6 +145,57 @@ describe('StreetSegmentUtils', function () {
     it('should pass through non-segment values unchanged', function () {
       assert.strictEqual(migrateSegmentLevelToElevation(undefined), undefined);
       assert.strictEqual(migrateSegmentLevelToElevation(null), null);
+    });
+  });
+
+  describe('#migrateSegmentBuildingType()', function () {
+    it('should rename type building to boundary in a prop string', function () {
+      assert.strictEqual(
+        migrateSegmentBuildingType(
+          'type: building; width: 10; variant: water; side: left'
+        ),
+        'type: boundary; width: 10; variant: water; side: left'
+      );
+    });
+    it('should handle type at the end of a prop string', function () {
+      assert.strictEqual(
+        migrateSegmentBuildingType('width: 10; type: building'),
+        'width: 10; type: boundary'
+      );
+    });
+    it('should not touch other types or building-ish values', function () {
+      const lane = 'type: drive-lane; width: 3';
+      assert.strictEqual(migrateSegmentBuildingType(lane), lane);
+      // model names containing "building" in other props must survive
+      const models = 'type: boundary; modelsArray: arched-building-01';
+      assert.strictEqual(migrateSegmentBuildingType(models), models);
+    });
+    it('should rename type in an object value', function () {
+      assert.deepStrictEqual(
+        migrateSegmentBuildingType({ type: 'building', width: 10 }),
+        { type: 'boundary', width: 10 }
+      );
+    });
+  });
+
+  describe('#migrateShowBuildingsFlag()', function () {
+    it('should rename showBuildings to showBoundaries in a prop string', function () {
+      assert.strictEqual(
+        migrateShowBuildingsFlag(
+          'sourceType: streetmix-url; showBuildings: false'
+        ),
+        'sourceType: streetmix-url; showBoundaries: false'
+      );
+    });
+    it('should rename the flag in an object value', function () {
+      assert.deepStrictEqual(
+        migrateShowBuildingsFlag({ length: 60, showBuildings: false }),
+        { length: 60, showBoundaries: false }
+      );
+    });
+    it('should leave values without the flag untouched', function () {
+      const value = 'sourceType: streetmix-url; showBoundaries: true';
+      assert.strictEqual(migrateShowBuildingsFlag(value), value);
     });
   });
 });

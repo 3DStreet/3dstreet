@@ -1309,7 +1309,7 @@ export const buildingDemo = {
   segments: [
     {
       name: 'Brownstone Buildings',
-      type: 'building',
+      type: 'boundary',
       variant: 'brownstone',
       side: 'left',
       color: '#ffffff',
@@ -1344,7 +1344,7 @@ export const buildingDemo = {
     },
     {
       name: 'Suburban Houses',
-      type: 'building',
+      type: 'boundary',
       variant: 'suburban',
       side: 'right',
       color: '#ffffff',

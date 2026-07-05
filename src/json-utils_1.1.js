@@ -3,7 +3,11 @@ import { createUniqueId } from './editor/lib/entity';
 import { beginBatching, BATCHING_ENABLED } from './batch-models';
 import { decodeCameraStateFromParam } from './editor/lib/cameraUtils';
 import JSONCrush from 'jsoncrush';
-import { migrateSegmentLevelToElevation } from './tested/street-segment-utils';
+import {
+  migrateSegmentLevelToElevation,
+  migrateSegmentBuildingType,
+  migrateShowBuildingsFlag
+} from './tested/street-segment-utils';
 
 /* global AFRAME, Node */
 window.STREET = {};
@@ -592,14 +596,21 @@ function createEntityFromObj(entityData, parentEl, beforeEl) {
     );
   }
 
-  // Migrate legacy saved scenes: street-segment used to store its vertical
-  // offset as an integer `level` (1 level == 0.15m curb height); the current
-  // schema only knows metric `elevation`. Without this conversion A-Frame
-  // drops the unknown property and raised segments (e.g. sidewalks) would
-  // load flush with the road.
+  // Migrate legacy saved scenes:
+  // - street-segment used to store its vertical offset as an integer `level`
+  //   (1 level == 0.15m curb height); the current schema only knows metric
+  //   `elevation`. Without this conversion A-Frame drops the unknown property
+  //   and raised segments (e.g. sidewalks) would load flush with the road.
+  // - `type: building` was renamed to `type: boundary` (and the managed-street
+  //   `showBuildings` toggle to `showBoundaries`).
   if (entityData.components?.['street-segment']) {
-    entityData.components['street-segment'] = migrateSegmentLevelToElevation(
-      entityData.components['street-segment']
+    entityData.components['street-segment'] = migrateSegmentBuildingType(
+      migrateSegmentLevelToElevation(entityData.components['street-segment'])
+    );
+  }
+  if (entityData.components?.['managed-street']) {
+    entityData.components['managed-street'] = migrateShowBuildingsFlag(
+      entityData.components['managed-street']
     );
   }
 

@@ -1,6 +1,6 @@
 /* global AFRAME */
 import useStore from '../store.js';
-const { getLayoutSegments } = require('./street-layout-utils');
+const { getTravelledWaySegments } = require('./street-layout-utils');
 
 AFRAME.registerComponent('street-label', {
   dependencies: ['managed-street', 'street-align'],
@@ -69,8 +69,9 @@ AFRAME.registerComponent('street-label', {
     // Guard against a torn-down or not-yet-initialized instance: the units
     // store listener can fire updateLabels() on an instance whose data is gone.
     if (!this.data) return;
-    // layout segments only — buildings hidden by showBuildings get no label
-    const segments = getLayoutSegments(this.el);
+    // travelled way only — boundaries are not part of the labeled cross
+    // section and never affect street layout (street-layout-utils)
+    const segments = getTravelledWaySegments(this.el);
     if (segments.length === 0) return;
 
     const widthsArray = [];

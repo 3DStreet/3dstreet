@@ -1,4 +1,4 @@
-const { getLayoutSegments } = require('./street-layout-utils');
+const { getTravelledWaySegments } = require('./street-layout-utils');
 
 AFRAME.registerComponent('street-ground', {
   dependencies: ['managed-street', 'street-align'],
@@ -42,8 +42,9 @@ AFRAME.registerComponent('street-ground', {
       });
     }
 
-    // Get all layout segments (excludes buildings hidden by showBuildings)
-    const segments = getLayoutSegments(this.el);
+    // The ground slab spans the travelled way only — boundaries render their
+    // own surface boxes and never affect street layout (street-layout-utils).
+    const segments = getTravelledWaySegments(this.el);
     if (segments.length === 0) return;
 
     const totalWidth = segments.reduce((sum, segment) => {

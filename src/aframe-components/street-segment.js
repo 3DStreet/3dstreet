@@ -155,8 +155,11 @@ const TYPES = {
       ]
     }
   },
-  building: {
-    type: 'building',
+  boundary: {
+    // adjacent land use flanking the street (buildings, waterfront, fences,
+    // parking lots, ...). Renamed from 'building'; saved scenes carrying the
+    // old type are migrated at load time (see json-utils_1.1.js).
+    type: 'boundary',
     surface: 'cracked-asphalt',
     color: COLORS.white,
     elevation: 0.15,
@@ -240,7 +243,7 @@ AFRAME.registerComponent('street-segment', {
         'divider',
         'grass',
         'rail',
-        'building'
+        'boundary'
       ]
     },
     width: {
@@ -262,9 +265,9 @@ AFRAME.registerComponent('street-segment', {
       default: 0
     },
     floors: {
-      // building height in floors, carried over from the imported source
-      // (Streetmix boundary object). Metadata only for now — it does not yet
-      // drive the generated building model height. 0 = unspecified.
+      // boundary building height in floors, carried over from the imported
+      // source (Streetmix boundary object). Metadata only for now — it does
+      // not yet drive the generated building model height. 0 = unspecified.
       type: 'int',
       default: 0
     },
@@ -398,9 +401,9 @@ AFRAME.registerComponent('street-segment', {
       }
     }
 
-    // calculate facing for building segments based on side
+    // calculate facing for boundary segments based on side
     if (
-      this.data.type === 'building' &&
+      this.data.type === 'boundary' &&
       this.data.side &&
       componentsToGenerate?.clones?.length > 0
     ) {
@@ -537,10 +540,10 @@ AFRAME.registerComponent('street-segment', {
         this.el.setAttribute(componentName, 'direction', this.data.direction);
       }
     }
-    // regenerate components if variant has changed (only relevant for building segments)
+    // regenerate components if variant has changed (only relevant for boundary segments)
     if (changedProps.includes('variant')) {
-      // Only process variant changes for building segments
-      if (this.data.type === 'building') {
+      // Only process variant changes for boundary segments
+      if (this.data.type === 'boundary') {
         let typeObject = this.types[this.data.type];
         this.updateGeneratedComponentsList();
 
@@ -552,12 +555,12 @@ AFRAME.registerComponent('street-segment', {
         }
       }
     }
-    // regenerate components if side has changed (only for building segments and only if it's an actual change, not initial load)
+    // regenerate components if side has changed (only for boundary segments and only if it's an actual change, not initial load)
     if (changedProps.includes('side')) {
       // Only regenerate if:
-      // 1. This is a building segment that actually uses the 'side' property
+      // 1. This is a boundary segment that actually uses the 'side' property
       // 2. AND it's not the initial load (oldData.side exists, meaning side actually changed)
-      if (this.data.type === 'building' && oldData.side !== undefined) {
+      if (this.data.type === 'boundary' && oldData.side !== undefined) {
         let typeObject = this.types[this.data.type];
         this.updateGeneratedComponentsList();
         this.remove();

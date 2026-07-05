@@ -91,7 +91,7 @@ export function createManagedStreetFromStreetmixURLPrompt(
         'managed-street': {
           sourceType: 'streetmix-url',
           sourceValue: streetmixURL,
-          showBuildings: !hideBuildings,
+          showBoundaries: !hideBuildings,
           showVehicles: true,
           showStriping: true,
           synchronize: true
