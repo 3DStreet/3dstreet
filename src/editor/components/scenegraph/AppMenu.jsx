@@ -358,51 +358,66 @@ const AppMenu = ({ currentUser }) => {
   // managedStreetToDxf; a future combined-export modal will supply an options
   // object here. Kept as a quick-export item (no dialog) so the parity with
   // the GLB / .3dstreet.json quick items is preserved.
-  const exportSceneToDXF = async () => {
-    try {
-      posthog.capture('export_initiated', {
-        export_type: 'dxf',
-        scene_id: STREET.utils.getCurrentSceneId()
-      });
+  const exportSceneToDXF = () => {
+    // Same blocking saving-style indicator as the GLB export (issue #1797) —
+    // the segment walk + serialization run on the main thread.
+    startExportingScene(
+      intl.formatMessage({
+        id: 'appMenu.export.exportingDxf',
+        defaultMessage: 'Exporting scene as DXF file...'
+      })
+    );
+    // Defer the export so the indicator paints before the synchronous export
+    // work blocks the main thread.
+    setTimeout(async () => {
+      try {
+        posthog.capture('export_initiated', {
+          export_type: 'dxf',
+          scene_id: STREET.utils.getCurrentSceneId()
+        });
 
-      const { exportManagedStreetsToDxf } =
-        await import('../../lib/dxf/managedStreetToDxf');
-      const { dxfString, streetCount, segmentCount } =
-        exportManagedStreetsToDxf();
+        const { exportManagedStreetsToDxf } =
+          await import('../../lib/dxf/managedStreetToDxf');
+        const { dxfString, streetCount, segmentCount } =
+          exportManagedStreetsToDxf();
 
-      if (streetCount === 0 || segmentCount === 0) {
-        STREET.notify.warningMessage(
+        if (streetCount === 0 || segmentCount === 0) {
+          STREET.notify.warningMessage(
+            intl.formatMessage({
+              id: 'appMenu.export.dxfEmpty',
+              defaultMessage:
+                'No managed-street segments found to export as DXF.'
+            })
+          );
+          return;
+        }
+
+        const sceneName = getSceneName(AFRAME.scenes[0]);
+        const blob = new Blob([dxfString], { type: 'application/dxf' });
+        saveBlob(blob, sceneName + '.dxf');
+
+        STREET.notify.successMessage(
           intl.formatMessage({
-            id: 'appMenu.export.dxfEmpty',
-            defaultMessage: 'No managed-street segments found to export as DXF.'
+            id: 'appMenu.export.dxfSuccess',
+            defaultMessage: '3DStreet scene exported as DXF file.'
           })
         );
-        return;
+      } catch (error) {
+        console.error(error);
+        STREET.notify.errorMessage(
+          intl.formatMessage(
+            {
+              id: 'appMenu.export.dxfError',
+              defaultMessage:
+                'Error while trying to save DXF file. Error: {error}'
+            },
+            { error: error?.message ?? String(error) }
+          )
+        );
+      } finally {
+        finishExportingScene();
       }
-
-      const sceneName = getSceneName(AFRAME.scenes[0]);
-      const blob = new Blob([dxfString], { type: 'application/dxf' });
-      saveBlob(blob, sceneName + '.dxf');
-
-      STREET.notify.successMessage(
-        intl.formatMessage({
-          id: 'appMenu.export.dxfSuccess',
-          defaultMessage: '3DStreet scene exported as DXF file.'
-        })
-      );
-    } catch (error) {
-      console.error(error);
-      STREET.notify.errorMessage(
-        intl.formatMessage(
-          {
-            id: 'appMenu.export.dxfError',
-            defaultMessage:
-              'Error while trying to save DXF file. Error: {error}'
-          },
-          { error: error?.message ?? String(error) }
-        )
-      );
-    }
+    }, 50);
   };
 
   const importAssetFromPicker = () => {
@@ -834,6 +849,14 @@ const AppMenu = ({ currentUser }) => {
                       id="appMenu.export.dxf"
                       defaultMessage="DXF (AutoCAD plan)"
                     />
+                    <div className="RightSlot">
+                      <span className="beta-badge">
+                        <FormattedMessage
+                          id="appMenu.betaBadge"
+                          defaultMessage="Beta"
+                        />
+                      </span>
+                    </div>
                   </Menubar.Item>
                 </Menubar.SubContent>
               </Menubar.Portal>
