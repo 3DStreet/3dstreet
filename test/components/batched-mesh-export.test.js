@@ -9,7 +9,6 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 // Chromium (browser mode) because THREE.BatchedMesh allocates data textures and behaves
 // like production only in a real browser.
 let batch;
-let prepareSceneForGltfExport;
 let THREE;
 
 beforeAll(async () => {
@@ -18,8 +17,6 @@ beforeAll(async () => {
   THREE = window.THREE;
   window.STREET = window.STREET || {};
   batch = await import('../../src/batch-models.js');
-  ({ prepareSceneForGltfExport } =
-    await import('../../src/editor/lib/prepareGltfExport.js'));
   window.AFRAME.emitReady?.();
 });
 
@@ -107,11 +104,11 @@ describe('expandBatchedMeshesForExport', () => {
   });
 });
 
-describe('prepareSceneForGltfExport + GLTFExporter (production pairing)', () => {
+describe('expandBatchedMeshesForExport + GLTFExporter (production pairing)', () => {
   it('exports a batched scene once prepared, then restores', async () => {
     const { root, batchedMesh, members } = makeBatchedScene();
 
-    const restore = prepareSceneForGltfExport(root);
+    const restore = batch.expandBatchedMeshesForExport(root);
     const gltf = await exportGltf(root);
     restore();
 

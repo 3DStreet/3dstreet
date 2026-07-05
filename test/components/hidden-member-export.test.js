@@ -2,7 +2,6 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 
 let batch;
-let prepareSceneForGltfExport;
 let THREE;
 
 beforeAll(async () => {
@@ -11,8 +10,6 @@ beforeAll(async () => {
   THREE = window.THREE;
   window.STREET = window.STREET || {};
   batch = await import('../../src/batch-models.js');
-  ({ prepareSceneForGltfExport } =
-    await import('../../src/editor/lib/prepareGltfExport.js'));
   window.AFRAME.emitReady?.();
 });
 
@@ -74,7 +71,7 @@ describe('expandBatchedMeshesForExport + hidden members', () => {
     const { root, members } = makeBatchedScene();
     members[1].visible = false;
 
-    const restore = prepareSceneForGltfExport(root);
+    const restore = batch.expandBatchedMeshesForExport(root);
     const gltf = await exportGltf(root);
     restore();
 

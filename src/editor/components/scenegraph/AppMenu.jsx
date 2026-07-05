@@ -7,7 +7,7 @@ import posthog from 'posthog-js';
 import Events from '../../lib/Events.js';
 import { useAuthContext } from '@/editor/contexts';
 import { saveBlob } from '../../lib/utils';
-import { prepareSceneForGltfExport } from '../../lib/prepareGltfExport';
+import { expandBatchedMeshesForExport } from '../../../batch-models';
 import {
   uploadAndPlaceAsset,
   FILE_PICKER_ACCEPT
@@ -229,9 +229,9 @@ const AppMenu = ({ currentUser }) => {
           filterRiggedEntities(scene, false);
         }
         filterHelpers(scene, false);
-        // Expand BatchedMeshes into exportable meshes and normalize the pivot property
-        // (see prepareGltfExport.js) — restored in BOTH exporter callbacks below.
-        restoreExportScene = prepareSceneForGltfExport(scene);
+        // Expand BatchedMeshes into exportable meshes — restored in BOTH
+        // exporter callbacks below.
+        restoreExportScene = expandBatchedMeshesForExport(scene);
         // Modified to handle post-processing
         AFRAME.INSPECTOR.exporters.gltf.parse(
           scene,
