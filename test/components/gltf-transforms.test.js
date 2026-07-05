@@ -43,14 +43,17 @@ describe('gltfTransforms on a GLB with webp textures', () => {
   it('post-processes a GLB whose exporter output requires EXT_texture_webp', async () => {
     const glb = await exportGlb(makeWebpTexturedScene());
     // Sanity: the exporter really did declare the required extension the reader
-    // must have registered (the JSON chunk lives at the start of the GLB).
-    const json = new TextDecoder().decode(new Uint8Array(glb));
+    // must have registered. Decode only the JSON chunk: 12-byte GLB header,
+    // then [u32 chunkLength][u32 chunkType] with the chunk data at byte 20.
+    const jsonLength = new DataView(glb).getUint32(12, true);
+    const json = new TextDecoder().decode(new Uint8Array(glb, 20, jsonLength));
     expect(json).toContain('EXT_texture_webp');
 
     const transformed = await transformUVs(glb);
     expect(transformed.byteLength).toBeGreaterThan(0);
 
-    const withMetadata = await addGLBMetadata(transformed.buffer, {
+    // Pass the Uint8Array as-is, mirroring AppMenu.jsx's export flow.
+    const withMetadata = await addGLBMetadata(transformed, {
       longitude: 1,
       latitude: 2
     });
