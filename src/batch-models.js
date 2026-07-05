@@ -1785,12 +1785,31 @@ export function expandBatchedMeshesForExport(root) {
   }
   for (const batched of batchedMeshes) batched.visible = false;
 
+  // GLTFExporter serializes each exported node's userData into glTF `extras` via
+  // JSON.stringify; our bookkeeping there is circular (_batchSlots → batchedMesh →
+  // batchIdToEl → el), so every batched node would log a "userData won't be
+  // serialized" warning and lose its legitimate extras. Move our keys out for the
+  // duration of the export. Per-frame syncs (syncBatchedSlots etc.) no-op gracefully
+  // on the missing _batchSlots meanwhile.
+  const stashedUserData = [];
+  root.traverse((node) => {
+    for (const key of Object.keys(node.userData)) {
+      if (key.startsWith('_batch') || key === '_lateUnbatchedKey') {
+        stashedUserData.push([node, key, node.userData[key]]);
+        delete node.userData[key];
+      }
+    }
+  });
+
   let restored = false;
   return function restore() {
     if (restored) return;
     restored = true;
     for (const mesh of tempMeshes) mesh.parent?.remove(mesh);
     for (const batched of batchedMeshes) batched.visible = true;
+    for (const [node, key, value] of stashedUserData) {
+      node.userData[key] = value;
+    }
   };
 }
 

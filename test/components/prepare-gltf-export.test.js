@@ -67,28 +67,31 @@ describe('expandBatchedMeshesForExport', () => {
   it('creates export-only meshes per slot and hides the BatchedMesh', () => {
     const { root, batchedMesh, members, geometry, material } =
       makeBatchedScene();
+    const slotsByMember = members.map((m) => m.userData._batchSlots);
     const restore = batch.expandBatchedMeshesForExport(root);
 
     expect(batchedMesh.visible).toBe(false);
-    for (const memberRoot of members) {
+    for (const [i, memberRoot] of members.entries()) {
       const temps = memberRoot.children.filter((c) => c.isMesh);
       expect(temps).toHaveLength(1);
       const temp = temps[0];
       expect(temp.geometry).toBe(geometry);
       expect(temp.material).toBe(material);
       expect(temp.matrixAutoUpdate).toBe(false);
-      expect(
-        temp.matrix.equals(memberRoot.userData._batchSlots[0].localMatrix)
-      ).toBe(true);
+      expect(temp.matrix.equals(slotsByMember[i][0].localMatrix)).toBe(true);
       // Renderer/raycaster never see the temp mesh; only the exporter (which
       // ignores layers) does.
       expect(temp.layers.mask).toBe(0);
+      // Batch bookkeeping is circular (slot → batchedMesh → batchIdToEl → el),
+      // so it's stashed out of userData while the exporter serializes extras.
+      expect(memberRoot.userData._batchSlots).toBeUndefined();
     }
 
     restore();
     expect(batchedMesh.visible).toBe(true);
-    for (const memberRoot of members) {
+    for (const [i, memberRoot] of members.entries()) {
       expect(memberRoot.children.filter((c) => c.isMesh)).toHaveLength(0);
+      expect(memberRoot.userData._batchSlots).toBe(slotsByMember[i]);
     }
     restore(); // idempotent — a second call must not double-toggle anything
     expect(batchedMesh.visible).toBe(true);
