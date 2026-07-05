@@ -188,6 +188,9 @@
   "appMenu.export.arReadyGlb": {
     "defaultMessage": "AR Ready GLB"
   },
+  "appMenu.export.exportingGlb": {
+    "defaultMessage": "Exporting scene as GLB file..."
+  },
   "appMenu.export.glb": {
     "defaultMessage": "GLB glTF"
   },

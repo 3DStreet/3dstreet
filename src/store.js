@@ -102,6 +102,18 @@ const useStore = create(
             loadingSceneError: errorMessage,
             loadingSceneMessage: 'Error loading scene'
           }),
+        // Blocking overlay shown while a GLB/glTF export is running (issue
+        // #1797). Export work happens on the main thread and can take several
+        // seconds on large scenes, so we surface a saving-style indicator.
+        isExportingScene: false,
+        exportingSceneMessage: '',
+        startExportingScene: (message) =>
+          set({
+            isExportingScene: true,
+            exportingSceneMessage: message || 'Exporting scene...'
+          }),
+        finishExportingScene: () =>
+          set({ isExportingScene: false, exportingSceneMessage: '' }),
         sceneTitle: null,
         setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
         locationString: null,

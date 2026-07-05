@@ -128,6 +128,8 @@ const AppMenu = ({ currentUser }) => {
     setGeojsonImportData,
     setRightPanelTab,
     startCheckout,
+    startExportingScene,
+    finishExportingScene,
     locale,
     setLocale
   } = useStore();
@@ -188,7 +190,21 @@ const AppMenu = ({ currentUser }) => {
   };
 
   const exportSceneToGLTF = (arReady) => {
-    if (authUser?.isPro) {
+    if (!authUser?.isPro) {
+      startCheckout('export');
+      return;
+    }
+    // Blocking saving-style indicator (issue #1797) — export runs on the
+    // main thread and can take several seconds on large scenes.
+    startExportingScene(
+      intl.formatMessage({
+        id: 'appMenu.export.exportingGlb',
+        defaultMessage: 'Exporting scene as GLB file...'
+      })
+    );
+    // Defer the export so the indicator paints before the heavy synchronous
+    // export work blocks the main thread.
+    setTimeout(() => {
       let restoreExportScene;
       try {
         posthog.capture('export_initiated', {
@@ -222,58 +238,83 @@ const AppMenu = ({ currentUser }) => {
             filterHelpers(scene, true);
             filterRiggedEntities(scene, true);
 
-            // Lazy-load the GLB post-processing helpers. They pull in the heavy
-            // @gltf-transform/* libraries, which we keep out of the core bundle
-            // (loaded only when a user actually exports a GLB) to stay under the
-            // webpack entrypoint size budget.
-            const { transformUVs, addGLBMetadata } =
-              await import('../modals/ScreenshotModal/gltfTransforms');
+            try {
+              // Lazy-load the GLB post-processing helpers. They pull in the heavy
+              // @gltf-transform/* libraries, which we keep out of the core bundle
+              // (loaded only when a user actually exports a GLB) to stay under the
+              // webpack entrypoint size budget.
+              const { transformUVs, addGLBMetadata } =
+                await import('../modals/ScreenshotModal/gltfTransforms');
 
-            let finalBuffer = buffer;
+              let finalBuffer = buffer;
 
-            // Post-process GLB if AR Ready option is selected
-            if (arReady) {
-              try {
-                finalBuffer = await transformUVs(buffer);
-                console.log('Successfully post-processed GLB file');
-              } catch (error) {
-                console.warn('Error in GLB post-processing:', error);
-                // Fall back to original buffer if post-processing fails
-                STREET.notify.warningMessage(
-                  intl.formatMessage({
-                    id: 'appMenu.export.uvTransformSkipped',
-                    defaultMessage:
-                      'UV transformation skipped - using original export'
-                  })
+              // Post-process GLB if AR Ready option is selected
+              if (arReady) {
+                try {
+                  finalBuffer = await transformUVs(buffer);
+                  console.log('Successfully post-processed GLB file');
+                } catch (error) {
+                  console.warn('Error in GLB post-processing:', error);
+                  // Fall back to original buffer if post-processing fails
+                  STREET.notify.warningMessage(
+                    intl.formatMessage({
+                      id: 'appMenu.export.uvTransformSkipped',
+                      defaultMessage:
+                        'UV transformation skipped - using original export'
+                    })
+                  );
+                }
+              }
+
+              // fetch metadata from scene
+              const geoLayer = document.getElementById('reference-layers');
+              if (geoLayer && geoLayer.hasAttribute('street-geo')) {
+                const metadata = {
+                  longitude: geoLayer.getAttribute('street-geo').longitude,
+                  latitude: geoLayer.getAttribute('street-geo').latitude,
+                  orthometricHeight:
+                    geoLayer.getAttribute('street-geo').orthometricHeight,
+                  geoidHeight: geoLayer.getAttribute('street-geo').geoidHeight,
+                  ellipsoidalHeight:
+                    geoLayer.getAttribute('street-geo').ellipsoidalHeight,
+                  orientation: 270
+                };
+                finalBuffer = await addGLBMetadata(finalBuffer, metadata);
+                console.log(
+                  'Successfully added geospatial metadata to GLB file'
                 );
               }
+              const blob = new Blob([finalBuffer], {
+                type: 'application/octet-stream'
+              });
+              saveBlob(blob, sceneName + '.glb');
+              STREET.notify.successMessage(
+                intl.formatMessage({
+                  id: 'appMenu.export.gltfSuccess',
+                  defaultMessage: '3DStreet scene exported as glTF file.'
+                })
+              );
+            } catch (error) {
+              console.error(error);
+              STREET.notify.errorMessage(
+                intl.formatMessage(
+                  {
+                    id: 'appMenu.export.gltfError',
+                    defaultMessage:
+                      'Error while trying to save glTF file. Error: {error}'
+                  },
+                  { error: error?.message ?? String(error) }
+                )
+              );
+            } finally {
+              finishExportingScene();
             }
-
-            // fetch metadata from scene
-            const geoLayer = document.getElementById('reference-layers');
-            if (geoLayer && geoLayer.hasAttribute('street-geo')) {
-              const metadata = {
-                longitude: geoLayer.getAttribute('street-geo').longitude,
-                latitude: geoLayer.getAttribute('street-geo').latitude,
-                orthometricHeight:
-                  geoLayer.getAttribute('street-geo').orthometricHeight,
-                geoidHeight: geoLayer.getAttribute('street-geo').geoidHeight,
-                ellipsoidalHeight:
-                  geoLayer.getAttribute('street-geo').ellipsoidalHeight,
-                orientation: 270
-              };
-              finalBuffer = await addGLBMetadata(finalBuffer, metadata);
-              console.log('Successfully added geospatial metadata to GLB file');
-            }
-            const blob = new Blob([finalBuffer], {
-              type: 'application/octet-stream'
-            });
-            saveBlob(blob, sceneName + '.glb');
           },
           function (error) {
             restoreExportScene();
             filterHelpers(scene, true);
             filterRiggedEntities(scene, true);
+            finishExportingScene();
             console.error(error);
             STREET.notify.errorMessage(
               intl.formatMessage(
@@ -288,14 +329,9 @@ const AppMenu = ({ currentUser }) => {
           },
           { binary: true }
         );
-        STREET.notify.successMessage(
-          intl.formatMessage({
-            id: 'appMenu.export.gltfSuccess',
-            defaultMessage: '3DStreet scene exported as glTF file.'
-          })
-        );
       } catch (error) {
         restoreExportScene?.();
+        finishExportingScene();
         STREET.notify.errorMessage(
           intl.formatMessage(
             {
@@ -308,9 +344,7 @@ const AppMenu = ({ currentUser }) => {
         );
         console.error(error);
       }
-    } else {
-      startCheckout('export');
-    }
+    }, 50);
   };
 
   const exportSceneToJSON = () => {
