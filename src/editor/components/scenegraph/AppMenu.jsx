@@ -282,7 +282,7 @@ const AppMenu = ({ currentUser }) => {
                   defaultMessage:
                     'Error while trying to save glTF file. Error: {error}'
                 },
-                { error }
+                { error: error?.message ?? String(error) }
               )
             );
           },
@@ -303,7 +303,7 @@ const AppMenu = ({ currentUser }) => {
               defaultMessage:
                 'Error while trying to save glTF file. Error: {error}'
             },
-            { error }
+            { error: error?.message ?? String(error) }
           )
         );
         console.error(error);
