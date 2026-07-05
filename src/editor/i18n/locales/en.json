@@ -185,8 +185,26 @@
   "aiChatPanel.inputPlaceholder": {
     "defaultMessage": "Type a command or type /help for options"
   },
+  "appMenu.betaBadge": {
+    "defaultMessage": "Beta"
+  },
   "appMenu.export.arReadyGlb": {
     "defaultMessage": "AR Ready GLB"
+  },
+  "appMenu.export.dxf": {
+    "defaultMessage": "DXF (AutoCAD plan)"
+  },
+  "appMenu.export.dxfEmpty": {
+    "defaultMessage": "No managed-street segments found to export as DXF."
+  },
+  "appMenu.export.dxfError": {
+    "defaultMessage": "Error while trying to save DXF file. Error: {error}"
+  },
+  "appMenu.export.dxfSuccess": {
+    "defaultMessage": "3DStreet scene exported as DXF file."
+  },
+  "appMenu.export.exportingDxf": {
+    "defaultMessage": "Exporting scene as DXF file..."
   },
   "appMenu.export.exportingGlb": {
     "defaultMessage": "Exporting scene as GLB file..."
@@ -1622,11 +1640,11 @@
   "segmentSidebar.color": {
     "defaultMessage": "Color"
   },
-  "segmentSidebar.elevation": {
-    "defaultMessage": "Elevation (m)"
-  },
   "segmentSidebar.direction": {
     "defaultMessage": "Direction"
+  },
+  "segmentSidebar.elevation": {
+    "defaultMessage": "Elevation (m)"
   },
   "segmentSidebar.segmentType": {
     "defaultMessage": "Segment Type"
