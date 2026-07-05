@@ -254,6 +254,48 @@ describe('Streetmix Schema Version Handling', function () {
     });
   });
 
+  describe('Schema v34 (real streetmix.net export, kfarr/3)', function () {
+    // Live export of https://streetmix.net/kfarr/3 fetched 2026-07-04. Unlike
+    // the synthesized coastal fixture it has no sloped segments, so it only
+    // covers the boundary object and metric elevations against real data.
+    const fixture = JSON.parse(
+      fs.readFileSync(
+        path.join(
+          __dirname,
+          '../parity/fixtures/kfarr-demo-street-v34.streetmix.json'
+        ),
+        'utf8'
+      )
+    );
+
+    it('should read the boundary object from a real v34 export', function () {
+      const street = fixture.data.street;
+      assert.strictEqual(street.schemaVersion, 34);
+      const left = streetmixUtils.getBoundaryFromStreetData(street, 'left');
+      assert.strictEqual(left.variant, 'waterfront');
+      assert.strictEqual(left.floors, 2);
+      assert.strictEqual(left.elevation, 0.15);
+      const right = streetmixUtils.getBoundaryFromStreetData(street, 'right');
+      assert.strictEqual(right.variant, 'fence');
+      assert.strictEqual(right.floors, 3);
+      assert.strictEqual(right.elevation, 0.15);
+    });
+
+    it('should pass real metric elevations through unchanged', function () {
+      const result = streetmixUtils.convertStreetValues(
+        JSON.parse(JSON.stringify(fixture.data.street))
+      );
+      const sidewalk = result.segments.find((s) => s.type === 'sidewalk');
+      const driveLane = result.segments.find((s) => s.type === 'drive-lane');
+      assert.strictEqual(sidewalk.elevation, 0.15);
+      assert.strictEqual(driveLane.elevation, 0);
+      // no sloped segments in this export
+      result.segments.forEach((s) => {
+        assert.strictEqual(streetmixUtils.getSegmentSlope(s), null);
+      });
+    });
+  });
+
   describe('Cross-schema compatibility', function () {
     it('should produce equivalent metric elevations from v32 and v33 data', function () {
       // Same logical street in v32 (integer) and v33 (metric) formats
