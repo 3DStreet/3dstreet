@@ -256,7 +256,8 @@ const AppMenu = ({ currentUser }) => {
                   finalBuffer = await transformUVs(buffer);
                   console.log('Successfully post-processed GLB file');
                 } catch (error) {
-                  console.warn('Error in GLB post-processing:', error);
+                  // console.error (not warn) so it's captured by Sentry
+                  console.error('Error in GLB post-processing:', error);
                   // Fall back to original buffer if post-processing fails
                   STREET.notify.warningMessage(
                     intl.formatMessage({
