@@ -29,8 +29,8 @@ function makeBatchedMesh(maxInstances) {
     512,
     new THREE.MeshBasicMaterial()
   );
-  bm.userData.batchIdToEl = [];
-  bm.userData.freeInstanceIds = [];
+  bm._batchIdToEl = [];
+  bm._freeInstanceIds = [];
   const geometry = new THREE.BoxGeometry();
   const geometryId = bm.addGeometry(geometry);
   return { bm, geometryId, geometry };
@@ -50,7 +50,7 @@ function makeGroup(bm, geometryId, geometry, sceneEl, overrides = {}) {
     localBbox: new THREE.Box3(),
     members: [],
     key: 'x.glb',
-    keepAlive: { withUserData: new Set(), imageBitmaps: new Set() },
+    keepAlive: { marked: new Set(), imageBitmaps: new Set() },
     ownsResources: false,
     activeMemberCount: 0,
     ...overrides
@@ -61,7 +61,7 @@ function makeGroup(bm, geometryId, geometry, sceneEl, overrides = {}) {
 function fakeEl() {
   const object3D = new THREE.Object3D();
   object3D.updateMatrixWorld();
-  object3D.userData._batchSlots = [];
+  object3D._batchSlots = [];
   return { object3D, tagName: 'A-ENTITY' };
 }
 
@@ -111,23 +111,23 @@ describe('batch-models slot reclamation (tier 2)', () => {
     const m1 = fakeEl();
     const m2 = fakeEl();
     for (const m of [m1, m2]) {
-      m.object3D.userData._batchGroup = group;
+      m.object3D._batchGroup = group;
       batch._test.addMemberToBatchedMeshes(group, m);
     }
     group.members.push(m1, m2);
     group.activeMemberCount = 2;
     expect(bm.instanceCount).toBe(2);
 
-    const id1 = m1.object3D.userData._batchSlots[0].instanceId;
+    const id1 = m1.object3D._batchSlots[0].instanceId;
     expect(batch.removeMember(m1)).toBe(true);
 
     // Hidden, not deleted: the id stays valid (getVisibleAt must not throw) and is parked.
-    expect(bm.userData.freeInstanceIds).toContain(id1);
+    expect(bm._freeInstanceIds).toContain(id1);
     expect(bm.getVisibleAt(id1)).toBe(false);
     expect(bm.instanceCount).toBe(2); // still active — reclaimed via our own pool, not deleteInstance
     expect(group.members).toEqual([m2]); // detached member spliced out
     expect(group.activeMemberCount).toBe(1);
-    expect(m1.object3D.userData._batchSlots).toBeUndefined();
+    expect(m1.object3D._batchSlots).toBeUndefined();
     expect(sceneEl._batchModelsBuilt).toContain(group); // not torn down yet
   });
 
@@ -145,7 +145,7 @@ describe('batch-models slot reclamation (tier 2)', () => {
     sceneEl._batchModelsBuilt.push(group);
 
     const m1 = fakeEl();
-    m1.object3D.userData._batchGroup = group;
+    m1.object3D._batchGroup = group;
     batch._test.addMemberToBatchedMeshes(group, m1);
     group.members.push(m1);
     group.activeMemberCount = 1;
@@ -177,7 +177,7 @@ describe('batch-models capacity (tier 3 primitives)', () => {
     const m1 = fakeEl();
     const m2 = fakeEl();
     for (const m of [m1, m2]) {
-      m.object3D.userData._batchGroup = group;
+      m.object3D._batchGroup = group;
       batch._test.addMemberToBatchedMeshes(group, m);
     }
     group.members.push(m1, m2);
@@ -186,16 +186,16 @@ describe('batch-models capacity (tier 3 primitives)', () => {
     expect(bm.maxInstanceCount).toBe(2);
 
     // Free m1's slot, then add a fresh member: it must reuse the parked slot, not grow.
-    const freedId = m1.object3D.userData._batchSlots[0].instanceId;
+    const freedId = m1.object3D._batchSlots[0].instanceId;
     batch.removeMember(m1);
-    expect(bm.userData.freeInstanceIds).toEqual([freedId]);
+    expect(bm._freeInstanceIds).toEqual([freedId]);
 
     const m3 = fakeEl();
     batch._test.addMemberToBatchedMeshes(group, m3);
-    expect(m3.object3D.userData._batchSlots[0].instanceId).toBe(freedId); // reused
+    expect(m3.object3D._batchSlots[0].instanceId).toBe(freedId); // reused
     expect(bm.getVisibleAt(freedId)).toBe(true); // re-shown
     expect(bm.maxInstanceCount).toBe(2); // no growth — parked slot reused
-    expect(bm.userData.freeInstanceIds.length).toBe(0);
+    expect(bm._freeInstanceIds.length).toBe(0);
 
     // Now over capacity: must grow via setInstanceCount.
     const m4 = fakeEl();
@@ -231,9 +231,7 @@ describe('batch-models late-batch tally (tier 3)', () => {
     expect(group.activeMemberCount).toBe(4);
     expect(bm.instanceCount).toBe(4);
     expect(bm.maxInstanceCount).toBe(4); // grew from 2 via setInstanceCount
-    expect(
-      els.every((e) => e.object3D.userData._batchSlots?.length === 1)
-    ).toBe(true);
+    expect(els.every((e) => e.object3D._batchSlots?.length === 1)).toBe(true);
     expect(els.every((e) => e._removeMesh.mock.calls.length === 1)).toBe(true);
   });
 
@@ -251,11 +249,11 @@ describe('batch-models late-batch tally (tier 3)', () => {
     const el = fakeGltfEl(sceneEl);
     batch._test.trackLateUnbatched(el);
     expect(sceneEl._lateUnbatched.get('x.glb').size).toBe(1);
-    expect(el.object3D.userData._lateUnbatchedKey).toBe('x.glb');
+    expect(el.object3D._lateUnbatchedKey).toBe('x.glb');
 
     batch._test.untrackLateUnbatched(sceneEl, el);
     expect(sceneEl._lateUnbatched.has('x.glb')).toBe(false);
-    expect(el.object3D.userData._lateUnbatchedKey).toBeUndefined();
+    expect(el.object3D._lateUnbatchedKey).toBeUndefined();
   });
 });
 
@@ -548,9 +546,9 @@ describe('batch-models geometry-material (stencil) provider', () => {
 
     for (const m of members) {
       expect(batch.isBatched(m)).toBe(true);
-      expect(m.object3D.userData._batchSlots).toHaveLength(1);
+      expect(m.object3D._batchSlots).toHaveLength(1);
       expect(m._mesh.visible).toBe(false); // original hidden in place
-      expect(m.object3D.userData._batchLocalBbox).toBeTruthy(); // per-member selection box
+      expect(m.object3D._batchLocalBbox).toBeTruthy(); // per-member selection box
     }
   });
 

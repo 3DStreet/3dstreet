@@ -13,7 +13,7 @@ beforeAll(async () => {
   window.AFRAME.emitReady?.();
 });
 
-// Same shape as prepare-gltf-export.test.js: one BatchedMesh with 2 box instances
+// Same shape as batched-mesh-export.test.js: one BatchedMesh with 2 box instances
 // and two member object3Ds carrying _batchSlots.
 function makeBatchedScene() {
   const root = new THREE.Scene();
@@ -21,8 +21,8 @@ function makeBatchedScene() {
   geometry.name = 'box-sub-mesh';
   const material = new THREE.MeshBasicMaterial();
   const batchedMesh = new THREE.BatchedMesh(2, 256, 512, material);
-  batchedMesh.userData.batchIdToEl = [];
-  batchedMesh.userData.freeInstanceIds = [];
+  batchedMesh._batchIdToEl = [];
+  batchedMesh._freeInstanceIds = [];
   const geometryId = batchedMesh.addGeometry(geometry);
   root.add(batchedMesh);
 
@@ -38,7 +38,7 @@ function makeBatchedScene() {
       instanceId,
       new THREE.Matrix4().multiplyMatrices(memberRoot.matrixWorld, localMatrix)
     );
-    memberRoot.userData._batchSlots = [
+    memberRoot._batchSlots = [
       { batchedMesh, instanceId, localMatrix, geometry }
     ];
     members.push(memberRoot);

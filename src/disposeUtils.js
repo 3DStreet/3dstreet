@@ -5,7 +5,7 @@ function disposeTextures(material) {
   for (const propertyName in material) {
     const texture = material[propertyName];
     if (texture?.isTexture) {
-      if (texture.userData?._batchKeepAlive) continue;
+      if (texture._batchKeepAlive) continue;
       const image = texture.source.data;
       // Release/close the backing bitmap at most once per texture. GLTFLoader assigns the same
       // Texture instance to metalnessMap AND roughnessMap (plus aoMap for packed ORM), and a
@@ -33,7 +33,7 @@ function disposeTextures(material) {
 }
 
 function disposeMaterial(m) {
-  if (m.userData?._batchKeepAlive) return;
+  if (m._batchKeepAlive) return;
   disposeTextures(m);
   m.dispose(); // disposes any programs associated with the material
 }
@@ -41,7 +41,7 @@ function disposeMaterial(m) {
 export function disposeNode(node) {
   if (node.isMesh) {
     const geometry = node.geometry;
-    if (geometry && !geometry.userData?._batchKeepAlive) {
+    if (geometry && !geometry._batchKeepAlive) {
       geometry.dispose();
     }
 
