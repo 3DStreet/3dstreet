@@ -1,15 +1,13 @@
 import { NodeIO } from '@gltf-transform/core';
-import {
-  KHRXMP,
-  ALL_EXTENSIONS,
-  KHRTextureTransform
-} from '@gltf-transform/extensions';
+import { KHRXMP, ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { vec3, mat3 } from 'gl-matrix';
 
-async function transformUVs(glbBuffer) {
+export async function transformUVs(glbBuffer) {
   try {
-    // Initialize IO with extension
-    const io = new NodeIO().registerExtensions([KHRTextureTransform]);
+    // ALL_EXTENSIONS so required extensions in the exporter output (e.g.
+    // EXT_texture_webp, emitted for textures loaded from webp images) don't
+    // make readBinary throw "Missing required extension".
+    const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
 
     // Read the buffer directly instead of file
     const document = await io.readBinary(new Uint8Array(glbBuffer));
@@ -69,9 +67,7 @@ async function transformUVs(glbBuffer) {
   }
 }
 
-export { transformUVs };
-
-async function addGLBMetadata(glbBuffer, metadata) {
+export async function addGLBMetadata(glbBuffer, metadata) {
   try {
     const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
     // Create an Extension attached to the Document.
@@ -101,5 +97,3 @@ async function addGLBMetadata(glbBuffer, metadata) {
     throw error;
   }
 }
-
-export { addGLBMetadata };
