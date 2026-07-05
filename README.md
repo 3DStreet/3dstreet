@@ -1,7 +1,7 @@
 
 # 3DStreet
-[![Version](http://img.shields.io/npm/v/3dstreet.svg)](https://npmjs.org/package/3dstreet)
-[![License](http://img.shields.io/npm/l/3dstreet.svg)](LICENSE)
+[![Version](https://img.shields.io/github/package-json/v/3DStreet/3dstreet)](https://github.com/3DStreet/3dstreet/commits/main)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 [![Build Status](https://github.com/3DStreet/3dstreet/actions/workflows/ci.yml/badge.svg)](https://github.com/3DStreet/3dstreet/actions/workflows/ci.yml)
 
 3DStreet is an open-source geospatial design application for creating urban planning scenes with detailed street configurations. Based on three.js and A-Frame, 3DStreet empowers users to rapidly prototype custom urban design scenarios using procedural street design tools combined with a rich library of accurately scaled and oriented creative-commons licensed 3D models. 
