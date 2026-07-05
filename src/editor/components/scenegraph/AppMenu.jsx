@@ -7,6 +7,7 @@ import posthog from 'posthog-js';
 import Events from '../../lib/Events.js';
 import { useAuthContext } from '@/editor/contexts';
 import { saveBlob } from '../../lib/utils';
+import { prepareSceneForGltfExport } from '../../lib/prepareGltfExport';
 import {
   uploadAndPlaceAsset,
   FILE_PICKER_ACCEPT
@@ -188,6 +189,7 @@ const AppMenu = ({ currentUser }) => {
 
   const exportSceneToGLTF = (arReady) => {
     if (authUser?.isPro) {
+      let restoreExportScene;
       try {
         posthog.capture('export_initiated', {
           export_type: arReady ? 'ar_glb' : 'glb',
@@ -209,10 +211,14 @@ const AppMenu = ({ currentUser }) => {
           filterRiggedEntities(scene, false);
         }
         filterHelpers(scene, false);
+        // Expand BatchedMeshes into exportable meshes and normalize the pivot property
+        // (see prepareGltfExport.js) — restored in BOTH exporter callbacks below.
+        restoreExportScene = prepareSceneForGltfExport(scene);
         // Modified to handle post-processing
         AFRAME.INSPECTOR.exporters.gltf.parse(
           scene,
           async function (buffer) {
+            restoreExportScene();
             filterHelpers(scene, true);
             filterRiggedEntities(scene, true);
 
@@ -265,6 +271,9 @@ const AppMenu = ({ currentUser }) => {
             saveBlob(blob, sceneName + '.glb');
           },
           function (error) {
+            restoreExportScene();
+            filterHelpers(scene, true);
+            filterRiggedEntities(scene, true);
             console.error(error);
             STREET.notify.errorMessage(
               intl.formatMessage(
@@ -286,6 +295,7 @@ const AppMenu = ({ currentUser }) => {
           })
         );
       } catch (error) {
+        restoreExportScene?.();
         STREET.notify.errorMessage(
           intl.formatMessage(
             {

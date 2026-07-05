@@ -4,6 +4,7 @@ import DEFAULT_COMPONENTS from './DefaultComponents';
 import PropertyRow from './PropertyRow';
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
+import { prepareSceneForGltfExport } from '../../lib/prepareGltfExport';
 
 export default class CommonComponents extends React.Component {
   static propTypes = {
@@ -65,13 +66,19 @@ export default class CommonComponents extends React.Component {
 
   exportToGLTF() {
     const entity = this.props.entity;
+    // A batched entity's own mesh was stripped into a scene-level BatchedMesh; expansion
+    // rebuilds temporary meshes under the entity so the export isn't empty. Also
+    // normalizes the pivot property the bundled exporter expects (see prepareGltfExport).
+    const restoreExportScene = prepareSceneForGltfExport(entity.object3D);
     AFRAME.INSPECTOR.exporters.gltf.parse(
       entity.object3D,
       function (buffer) {
+        restoreExportScene();
         const blob = new Blob([buffer], { type: 'application/octet-stream' });
         saveBlob(blob, (entity.id || 'entity') + '.glb');
       },
       function (error) {
+        restoreExportScene();
         console.error(error);
       },
       { binary: true }

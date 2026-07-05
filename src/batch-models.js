@@ -1741,6 +1741,55 @@ export function isBatched(el) {
   return !!el?.object3D?.userData?._batchSlots?.length;
 }
 
+// Make a batched scene exportable by GLTFExporter, which has no BatchedMesh support: it
+// serializes one as a plain Mesh — the merged capacity buffer, parked at the batch root,
+// with no per-instance transforms — so batched entities come out as a garbage blob (or
+// vanish once the BatchedMesh is filtered out). Instead, re-expand every batched member
+// into ordinary Meshes for the duration of the export:
+// - Each member object3D found under `root` gets one temporary Mesh per batch slot, built
+//   from the slot's source geometry (the template collectRefSubMeshes/batchMergedByMaterial
+//   registered) and the BatchedMesh's material, with the slot's entity-local matrix — the
+//   exact geometry/material/transform the slot renders. matrixAutoUpdate stays false so the
+//   exporter serializes the matrix as-is (a decompose would lose shear).
+// - The temp meshes are export-only: layers.mask = 0 keeps the renderer, shadow pass, and
+//   raycasters from ever seeing them (no GPU upload), while GLTFExporter ignores layers.
+// - Every BatchedMesh under `root` is hidden so the exporter's default onlyVisible pass
+//   skips its merged blob. The viewport shows neither copy until restore() runs, matching
+//   how exports already hide inspector helpers mid-export.
+// Returns an idempotent restore() that detaches the temp meshes and re-shows the
+// BatchedMeshes. Works for whole-scene roots and for a single member entity's object3D
+// (whose BatchedMesh lives outside `root` and is then simply not part of the export).
+export function expandBatchedMeshesForExport(root) {
+  const batchedMeshes = [];
+  const memberRoots = [];
+  root.traverse((node) => {
+    if (node.isBatchedMesh && node.visible) batchedMeshes.push(node);
+    if (node.userData._batchSlots?.length) memberRoots.push(node);
+  });
+
+  const tempMeshes = [];
+  for (const object3D of memberRoots) {
+    for (const slot of object3D.userData._batchSlots) {
+      const mesh = new THREE.Mesh(slot.geometry, slot.batchedMesh.material);
+      mesh.name = slot.geometry.name || '';
+      mesh.matrix.copy(slot.localMatrix);
+      mesh.matrixAutoUpdate = false;
+      mesh.layers.mask = 0;
+      object3D.add(mesh);
+      tempMeshes.push(mesh);
+    }
+  }
+  for (const batched of batchedMeshes) batched.visible = false;
+
+  let restored = false;
+  return function restore() {
+    if (restored) return;
+    restored = true;
+    for (const mesh of tempMeshes) mesh.parent?.remove(mesh);
+    for (const batched of batchedMeshes) batched.visible = true;
+  };
+}
+
 // All batched members are stripped (no original mesh), so popMember can't restore the
 // original in place. Drop the slot and trigger a fresh GLB load; once model-loaded fires
 // the entity is a normal unbatched gltf-model with the new (unsafe) component applied.
