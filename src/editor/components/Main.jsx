@@ -16,6 +16,7 @@ import EditorUpgradeModal from './EditorUpgradeModal.jsx';
 import { AddLayerPanel } from './elements/AddLayerPanel';
 import { NewModal } from './modals/NewModal';
 import { LoadingSceneModal } from './modals/LoadingSceneModal';
+import { ExportingSceneModal } from './modals/ExportingSceneModal';
 import AssetDeepLinkModal from './AssetDeepLinkModal.jsx';
 import JobHealthModal from './JobHealthModal.jsx';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
@@ -97,6 +98,7 @@ export default function Main() {
       <ProfileModal />
       <NewModal />
       <LoadingSceneModal />
+      <ExportingSceneModal />
       <AssetDeepLinkModal />
       <JobHealthModal />
       <LoadScript

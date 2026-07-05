@@ -62,6 +62,7 @@
   "addLayer.unsupportedFileType": "Tipo de archivo no compatible: {fileName}. Formatos admitidos: GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ.",
   "aiChatPanel.inputPlaceholder": "Escribe un comando o escribe /help para ver las opciones",
   "appMenu.export.arReadyGlb": "GLB listo para AR",
+  "appMenu.export.exportingGlb": "Exportando escena como archivo GLB...",
   "appMenu.export.glb": "GLB glTF",
   "appMenu.export.gltfError": "Error al intentar guardar el archivo glTF. Error: {error}",
   "appMenu.export.gltfSuccess": "Escena de 3DStreet exportada como archivo glTF.",
