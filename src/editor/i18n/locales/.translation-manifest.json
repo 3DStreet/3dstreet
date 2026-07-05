@@ -584,7 +584,8 @@
     "save.savedSaveAgain": "Scene saved to cloud, press to save again",
     "save.saving": "Saving...",
     "undoRedo.redo": "Redo",
-    "undoRedo.undo": "Undo"
+    "undoRedo.undo": "Undo",
+    "appMenu.export.exportingGlb": "Exporting scene as GLB file..."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1171,7 +1172,8 @@
     "save.savedSaveAgain": "Scene saved to cloud, press to save again",
     "save.saving": "Saving...",
     "undoRedo.redo": "Redo",
-    "undoRedo.undo": "Undo"
+    "undoRedo.undo": "Undo",
+    "appMenu.export.exportingGlb": "Exporting scene as GLB file..."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1758,6 +1760,7 @@
     "save.savedSaveAgain": "Scene saved to cloud, press to save again",
     "save.saving": "Saving...",
     "undoRedo.redo": "Redo",
-    "undoRedo.undo": "Undo"
+    "undoRedo.undo": "Undo",
+    "appMenu.export.exportingGlb": "Exporting scene as GLB file..."
   }
 }
