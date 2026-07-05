@@ -57,13 +57,6 @@ function makeBatchedScene() {
   return { root, batchedMesh, members, geometry, material };
 }
 
-// Strip the Object3D.pivot property from every node, simulating a scene built by a
-// super-three build that predates the pivot feature — the production state that made
-// three r184's GLTFExporter crash with "Cannot read properties of undefined (reading 'x')".
-function stripPivots(root) {
-  root.traverse((node) => delete node.pivot);
-}
-
 function exportGltf(root) {
   return new Promise((resolve, reject) => {
     new GLTFExporter().parse(root, resolve, reject, { binary: false });
@@ -112,15 +105,8 @@ describe('expandBatchedMeshesForExport', () => {
 });
 
 describe('prepareSceneForGltfExport + GLTFExporter (production pairing)', () => {
-  it('reproduces the "reading \'x\'" crash on a pivot-less scene without prep', async () => {
-    const { root } = makeBatchedScene();
-    stripPivots(root);
-    await expect(exportGltf(root)).rejects.toThrow(/reading 'x'/);
-  });
-
-  it('exports a batched, pivot-less scene once prepared, then restores', async () => {
+  it('exports a batched scene once prepared, then restores', async () => {
     const { root, batchedMesh, members } = makeBatchedScene();
-    stripPivots(root);
 
     const restore = prepareSceneForGltfExport(root);
     const gltf = await exportGltf(root);

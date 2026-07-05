@@ -190,7 +190,7 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 
 ## Tech Stack
 
-A-Frame master build (commit 6a054e8, loaded via CDN in index.html — required for Three.js r181 compatibility with the Spark splat library), Three.js r181, React 18.2.0, Zustand 5.0.1, Firebase 11.10.0, Webpack 5.91.0, TailwindCSS 3.4.14
+A-Frame 1.8.0 (loaded via CDN in index.html), Three.js r184, React 18.2.0, Zustand 5.0.1, Firebase 11.10.0, Webpack 5.91.0, TailwindCSS 3.4.14
 
 ## Resources
 
