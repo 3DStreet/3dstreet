@@ -585,7 +585,11 @@
     "save.saving": "Saving...",
     "undoRedo.redo": "Redo",
     "undoRedo.undo": "Undo",
-    "appMenu.export.exportingGlb": "Exporting scene as GLB file..."
+    "appMenu.export.exportingGlb": "Exporting scene as GLB file...",
+    "appMenu.export.dxf": "DXF (AutoCAD plan)",
+    "appMenu.export.dxfEmpty": "No managed-street segments found to export as DXF.",
+    "appMenu.export.dxfError": "Error while trying to save DXF file. Error: {error}",
+    "appMenu.export.dxfSuccess": "3DStreet scene exported as DXF file."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1173,7 +1177,11 @@
     "save.saving": "Saving...",
     "undoRedo.redo": "Redo",
     "undoRedo.undo": "Undo",
-    "appMenu.export.exportingGlb": "Exporting scene as GLB file..."
+    "appMenu.export.exportingGlb": "Exporting scene as GLB file...",
+    "appMenu.export.dxf": "DXF (AutoCAD plan)",
+    "appMenu.export.dxfEmpty": "No managed-street segments found to export as DXF.",
+    "appMenu.export.dxfError": "Error while trying to save DXF file. Error: {error}",
+    "appMenu.export.dxfSuccess": "3DStreet scene exported as DXF file."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1761,6 +1769,10 @@
     "save.saving": "Saving...",
     "undoRedo.redo": "Redo",
     "undoRedo.undo": "Undo",
-    "appMenu.export.exportingGlb": "Exporting scene as GLB file..."
+    "appMenu.export.exportingGlb": "Exporting scene as GLB file...",
+    "appMenu.export.dxf": "DXF (AutoCAD plan)",
+    "appMenu.export.dxfEmpty": "No managed-street segments found to export as DXF.",
+    "appMenu.export.dxfError": "Error while trying to save DXF file. Error: {error}",
+    "appMenu.export.dxfSuccess": "3DStreet scene exported as DXF file."
   }
 }
