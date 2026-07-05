@@ -1769,6 +1769,10 @@ export function expandBatchedMeshesForExport(root) {
 
   const tempMeshes = [];
   for (const object3D of memberRoots) {
+    // A member hidden for the export (e.g. AR-ready's filterRiggedEntities sets
+    // object3D.visible = false) must not reappear via a recreated mesh. No need
+    // to check ancestors: the exporter prunes hidden subtrees (onlyVisible).
+    if (!object3D.visible) continue;
     for (const slot of object3D.userData._batchSlots) {
       const mesh = new THREE.Mesh(slot.geometry, slot.batchedMesh.material);
       mesh.name = slot.geometry.name || '';

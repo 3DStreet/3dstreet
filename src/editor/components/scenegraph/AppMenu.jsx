@@ -105,13 +105,15 @@ const filterRiggedEntities = (scene, visible) => {
             category.includes('vehicles-transit') ||
             category.includes('cyclists'))
         ) {
-          node.visible = visible;
-          console.log(
-            'Hiding Rigged Entity',
-            node.el.id || 'unnamed',
-            'category:',
-            category
-          );
+          if (node.visible !== visible) {
+            node.visible = visible;
+            console.log(
+              visible ? 'Showing Rigged Entity' : 'Hiding Rigged Entity',
+              node.el.id || 'unnamed',
+              'category:',
+              category
+            );
+          }
         }
       }
     }
