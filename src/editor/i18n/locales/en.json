@@ -1622,11 +1622,11 @@
   "segmentSidebar.color": {
     "defaultMessage": "Color"
   },
-  "segmentSidebar.elevation": {
-    "defaultMessage": "Elevation (m)"
-  },
   "segmentSidebar.direction": {
     "defaultMessage": "Direction"
+  },
+  "segmentSidebar.elevation": {
+    "defaultMessage": "Elevation (m)"
   },
   "segmentSidebar.segmentType": {
     "defaultMessage": "Segment Type"
