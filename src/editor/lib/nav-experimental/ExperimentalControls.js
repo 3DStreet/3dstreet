@@ -229,7 +229,7 @@ const NAV_DEBUG = (() => {
 })();
 
 export class ExperimentalControls extends THREE.EventDispatcher {
-  constructor(camera, domElement) {
+  constructor(camera, domElement, sceneEl) {
     super();
 
     // EditorControls-compatible knobs.
@@ -252,8 +252,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._disabledByOrtho = false;
     this._aspectRatio = 1;
 
+    // The scene element may be injected explicitly (third argument); when it
+    // is omitted the app path resolves it from the A-Frame global, exactly as
+    // before. Injection lets the controller be constructed and exercised
+    // outside a live A-Frame scene (e.g. headless tests) without changing the
+    // app's behaviour. `undefined` = not supplied; pass `null` to force the
+    // no-scene branch.
     this._sceneEl =
-      typeof AFRAME !== 'undefined' && AFRAME.scenes ? AFRAME.scenes[0] : null;
+      sceneEl !== undefined
+        ? sceneEl
+        : typeof AFRAME !== 'undefined' && AFRAME.scenes
+          ? AFRAME.scenes[0]
+          : null;
 
     this._modifiers = new ModifierState(domElement);
     this._latch = new GestureLatch();
