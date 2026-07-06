@@ -453,8 +453,8 @@ export function withInvariantDisabled(controls, which, fn) {
       // Force grounded re-derivation to a no-op: _deriveGroundedFromPose
       // normally re-reads grounded from the settled pose; disable it so the
       // stale grounded flag persists across the settle.
-      saved.fn = controls._deriveGroundedFromPose;
-      controls._deriveGroundedFromPose = () => {};
+      saved.fn = controls._groundedState.deriveFromPose;
+      controls._groundedState.deriveFromPose = () => {};
     } else if (which === 'rotationEndForWasd') {
       saved.fn = controls._endRotationGestureForWasd;
       controls._endRotationGestureForWasd = () => {};
@@ -477,7 +477,7 @@ export function withInvariantDisabled(controls, which, fn) {
     return fn();
   } finally {
     if (which === 'clearZoomUndo') controls._clearZoomUndo = saved.fn;
-    else if (which === 'grounded') controls._deriveGroundedFromPose = saved.fn;
+    else if (which === 'grounded') controls._groundedState.deriveFromPose = saved.fn;
     else if (which === 'rotationEndForWasd') controls._endRotationGestureForWasd = saved.fn;
     else if (which === 'idleGateStale') controls._updateLegitSnapshotAndCue = saved.fn;
   }

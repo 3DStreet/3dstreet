@@ -30,10 +30,6 @@ export class CollisionProbe {
     this._raycaster = new THREE.Raycaster();
   }
 
-  get lastGroundY() {
-    return this._lastGroundY;
-  }
-
   // Downward floor probe at an arbitrary XZ column. Returns
   // { y, normal, source, hit }. Casts from `fromY` (default = the live camera y)
   // and uses the same y as the floor ceiling, so a teleport endpoint validated

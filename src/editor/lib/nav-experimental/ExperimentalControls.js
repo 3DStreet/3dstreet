@@ -54,6 +54,7 @@ import {
 import { RotationIndicator } from './rotationIndicator.js';
 import { TickAnimator } from './tickAnimator.js';
 import { CollisionProbe } from './collisionProbe.js';
+import { GroundedState } from './groundedState.js';
 import {
   ZOOM_PER_WHEEL_TICK,
   FOV_PER_WHEEL_TICK,
@@ -131,7 +132,6 @@ import {
   phase2NextElevation,
   classifyWasdStep,
   wasdVerticalY,
-  groundedAtLoad,
   isLegitPose,
   cueState,
   classifyDoubleClick,
@@ -281,19 +281,31 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // getters (camera/scene can be swapped via setCamera) — never cache the ref.
     // A module reads its siblings via `ctx` at call time, never in its own
     // constructor.
+    // No `controls: this` here on purpose: the ctx is a curated service locator
+    // (read-only refs + tuning getters + named services), never a back-door to
+    // the whole orchestrator. Dispatch identity is handed to the write funnel as
+    // an explicit bound callback; predicates are exposed as named ctx functions.
     const self = this;
     this._ctx = {
-      controls: this,
       get camera() {
         return self._camera;
       },
       get sceneEl() {
         return self._sceneEl;
+      },
+      get probe() {
+        return self._probe;
+      },
+      get grounded() {
+        return self._groundedState;
       }
     };
     // Collision-floor probe (stateful _lastGroundY cache). Owns its own scratch
     // + raycaster so a probe never aliases another gesture's scratch.
     this._probe = new CollisionProbe(this._ctx);
+    // Shared grounded-vs-flying state (SPEC D1/D4), read + written by the wheel,
+    // WASD, pedestal, and transition subsystems.
+    this._groundedState = new GroundedState(this._ctx);
 
     // TASK-010 (D2): the single tilt threshold T governing the LB
     // sub-mode, the wheel cut, the rotation regime, and the letterbox.
@@ -534,20 +546,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     };
     this._lastResolvedKind = 'drone';
 
-    // TASK-024a grounded/fly state.
-    //   _grounded — SPEC D1: "I'm walking on the surface" vs "I'm flying
-    //     above it". Cannot be computed truthfully in the constructor (pose /
-    //     scene not ready, _floorYBelowAt returns the _lastGroundY=0 cache).
-    //     Default false; re-derived at every load/teleport edge via
-    //     _deriveGroundedFromPose(). Ground-true only on a deliberate descent
-    //     reaching the surface; never because terrain rose under us (D1/H3).
-    //   _H — SPEC D4 cruise-height scalar; null = not yet captured.
-    //     Captured at every un-ground edge; lazily seeded on the first
-    //     not-grounded WASD step. Held as an absolute y (DEC-A: option 3 is
-    //     the sole flying behaviour — the 3-way toggle and options 1/2 are
-    //     retired).
-    this._grounded = false;
-    this._H = null;
 
     // CR-D1: idle-gate cache for the per-frame enclosure probe. A stationary
     // camera's enclosure/legit/cue state cannot change, so the whole-scene
@@ -722,7 +720,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._lastLegitPose = null;
     // TASK-024a (D1): re-derive grounded from the post-reset pose (the reset
     // camera at (0,15,30) is high → not-grounded unless a floor sits near it).
-    this._deriveGroundedFromPose();
+    this._groundedState.deriveFromPose();
     // TASK-022: belt-and-braces — a reset/new-scene wipes all nav state.
     // Init is already valid:false, but an explicit clear is self-documenting.
     this._clearZoomUndo();
@@ -751,7 +749,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // TASK-024a (D1, MED-2/PA-4): re-derive grounded from the explicit-pose
     // teleport. (The resetZoom() fallback branches above already route through
     // resetZoom's own derive call, so only this explicit-pose path needs it.)
-    this._deriveGroundedFromPose();
+    this._groundedState.deriveFromPose();
     // TASK-022: explicit-pose teleport is a non-wheel camera move → clear.
     this._clearZoomUndo();
     this.dispatchEvent(this._changeEvent);
@@ -1851,7 +1849,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // but "legit" is camY >= floor + eye-margin (at-or-ABOVE) — it can
         // settle you hovering. DERIVE from the settled pose rather than
         // force-true, so a hover recovery does not falsely ground.
-        this._deriveGroundedFromPose();
+        this._groundedState.deriveFromPose();
         this._reseedLegitPose();
         this.dispatchEvent(this._changeEvent);
       }
@@ -2030,7 +2028,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // resulting tilt now (not on the next mouse nudge).
         this._maybeEmitLbModeChange();
         // TASK-024a: a teleport is a load/teleport edge.
-        this._deriveGroundedFromPose();
+        this._groundedState.deriveFromPose();
         this._teleportActive = false;
         // TASK-025 (merge): refresh the context-button snapshot on settle, like
         // every other tween — so the button icon reflects the landed pose
@@ -2165,45 +2163,27 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     };
   }
 
-  // TASK-024a (D1): re-derive `_grounded` from the current settled pose.
-  // Grounded iff the collision floor under the camera was a real hit (not a
-  // cache miss) AND the camera sits within eye-margin of it (M3, inclusive).
-  // Forces `_H = null` so the next un-ground edge lazily re-captures a cruise
-  // height. Called at every load/teleport edge (reset / new-scene / swoop-
-  // land / recovery-tween settle).
-  _deriveGroundedFromPose() {
-    const cam = this._camera;
-    const floor = this._probe.collisionFloorAt(cam.position.x, cam.position.z);
-    this._grounded = groundedAtLoad({
-      camY: cam.position.y,
-      floorY: floor.y,
-      source: floor.source,
-      eyeMargin: EYE_MARGIN_METRES
-    });
-    this._H = null; // re-capture on next un-ground (D4)
+  // Grounded-state surface. The state and logic live in the GroundedState
+  // service (this._groundedState); these thin instance-level accessors exist
+  // because the characterization suite pins `_grounded` / `_captureH` /
+  // `_deriveGroundedFromPose` on the controls instance. Production code inside
+  // this class reads the service directly.
+  get _grounded() {
+    return this._groundedState.grounded;
   }
 
-  // TASK-024a (D4 / DEC-A): capture the cruise height `H` from the current
-  // pose. Held as the absolute camera y (option 3 is the sole flying
-  // behaviour). Called AFTER `_grounded` is set false, at every un-ground
-  // edge, and again on deliberate vertical nav while already not-grounded
-  // (that re-capture IS the D4 update).
+  set _grounded(v) {
+    this._groundedState.grounded = v;
+  }
+
   _captureH() {
-    this._H = this._camera.position.y; // absolute cruise height (option 3)
+    this._groundedState.captureH();
   }
 
-  // TASK-024a (1.3.2 / PA-2): shared net-upward-rise un-ground check. Given
-  // the camera y captured BEFORE a motion (wheel-drain pass or toolbar zoom),
-  // if the camera ended net-higher, the user deliberately left the surface
-  // upward → un-ground and re-capture H. A pure FOV zoom or a zoom-in that
-  // lowers the camera produces no rise and never flips the flag.
-  _checkUngroundOnRise(startY) {
-    const EPS = 1e-3;
-    if (this._camera.position.y > startY + EPS) {
-      this._grounded = false;
-      this._captureH();
-    }
+  _deriveGroundedFromPose() {
+    this._groundedState.deriveFromPose();
   }
+
 
   // TASK-024 (3c): pop-to-daylight. One up-ray collects accepted overhead
   // solids in the camera column; target just above the HIGHEST one
@@ -2268,7 +2248,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // standing on that roof → grounded. (The two early-return no-op
         // branches above must NOT set this — the camera wasn't moved onto a
         // surface there.)
-        this._grounded = true;
+        this._groundedState.grounded = true;
         this._reseedLegitPose();
         this._refreshContextSnapshot(); // TASK-025 (H4)
         this.dispatchEvent(this._changeEvent);
@@ -2614,7 +2594,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         this._recoveryActive = false;
         // Lands at collisionFloor + eye-margin → grounded by construction,
         // mirroring `_fallTo`'s street landing.
-        this._grounded = true;
+        this._groundedState.grounded = true;
         this._reseedLegitPose();
         this._maybeEmitLbModeChange();
         this._refreshContextSnapshot(); // TASK-025 (H4)
@@ -2747,8 +2727,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         this._recoveryActive = false;
         // Drone view deliberately leaves the surface upward → flying, and
         // re-capture the cruise height (mirrors `_checkUngroundOnRise`).
-        this._grounded = false;
-        this._captureH();
+        this._groundedState.grounded = false;
+        this._groundedState.captureH();
         this._reseedLegitPose();
         this._refreshContextSnapshot(); // TASK-025 (H4): flip icon drone→street
         this.dispatchEvent(this._changeEvent);
@@ -2834,7 +2814,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         this._recoveryActive = false;
         // TASK-024a (D1, 1.2.1 / WE-6): a Space fall / level-out swoop lands
         // the camera at collisionFloor + eye-margin → grounded by construction.
-        this._grounded = true;
+        this._groundedState.grounded = true;
         this._reseedLegitPose();
         this._maybeEmitLbModeChange();
         this._refreshContextSnapshot(); // TASK-025 (H4)
@@ -3284,15 +3264,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       const EPS = 1e-3;
       if (this._camera.position.y > wheelStartY + EPS) {
         // Net-upward pass — deliberate up-move leaves the surface (1.3.2).
-        this._checkUngroundOnRise(wheelStartY);
+        this._groundedState.checkUngroundOnRise(wheelStartY);
       } else if (
         this._camera.position.y < wheelStartY - EPS &&
-        !this._grounded
+        !this._groundedState.grounded
       ) {
         // Net-downward pass while still flying (a swoop landing this pass would
         // have grounded us, so the `!_grounded` test excludes that case) →
         // deliberate vertical nav: lower H (D4, 2.2).
-        this._captureH();
+        this._groundedState.captureH();
       }
       this.dispatchEvent(this._changeEvent);
     }
@@ -3757,7 +3737,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // against a fresh collision-floor probe and survives either constant
       // being retuned. `groundY` here is the collision floor under the camera,
       // so a swoop onto a roof grounds to the roof (D5/WE-7).
-      this._deriveGroundedFromPose();
+      this._groundedState.deriveFromPose();
       this._maybeEmitLbModeChange();
       return;
     }
@@ -4138,14 +4118,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // Lazily seed H if we are flying but never captured it (scene loaded
       // not-grounded). The helper only READS H. `distMetres` (== deltaMs/1000)
       // is the per-tick dt in seconds; reuse it for the rate limit.
-      if (!this._grounded && this._H == null) this._captureH();
+      if (!this._groundedState.grounded && this._groundedState.H == null) this._groundedState.captureH();
       const newY = wasdVerticalY({
-        grounded: this._grounded,
+        grounded: this._groundedState.grounded,
         camY: camera.position.y,
         floorNowY: outcome.floorNowY,
         collisionFloorDestY: outcome.floorDestY,
         destFloorHit: outcome.destFloorHit,
-        H: this._H,
+        H: this._groundedState.H,
         eyeMargin: EYE_MARGIN_METRES,
         dtSeconds: distMetres,
         rateMps: WASD_VERTICAL_LIFT_RATE_MPS
@@ -4159,9 +4139,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // at the roof height so the next W holds altitude over the street rather
       // than terrain-following down. Only the grounded→not-grounded transition
       // matters. y itself is held (no plunge — WE-5); centre y unchanged.
-      if (this._grounded) {
-        this._grounded = false;
-        this._captureH();
+      if (this._groundedState.grounded) {
+        this._groundedState.grounded = false;
+        this._groundedState.captureH();
       }
     }
 
@@ -4413,15 +4393,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const EPS = 1e-3;
     if (clampedToFloor) {
       // Pedestal-down reached the descent clamp → grounded (D1, 1.2.4).
-      this._grounded = true;
+      this._groundedState.grounded = true;
     } else if (dY > EPS) {
       // Pedestal-up leaves the surface → un-ground + capture H (D1, 1.3.1).
-      this._grounded = false;
-      this._captureH();
-    } else if (dY < -EPS && !this._grounded) {
+      this._groundedState.grounded = false;
+      this._groundedState.captureH();
+    } else if (dY < -EPS && !this._groundedState.grounded) {
       // Pedestal-down NOT reaching the clamp, while already flying, is
       // deliberate vertical nav → lower H (D4, 2.2).
-      this._captureH();
+      this._groundedState.captureH();
     }
     // TASK-022: clear on ACTUAL movement only — a near-zero-delta drag (no
     // truck, no clamped y-change) must NOT clear (WE-6). (no-hit / degenerate
@@ -4715,7 +4695,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // un-grounds (else the next W terrain-follows down instead of holding).
     const zoomStartY = camera.position.y;
     camera.position.add(delta);
-    this._checkUngroundOnRise(zoomStartY);
+    this._groundedState.checkUngroundOnRise(zoomStartY);
     // TASK-022: the toolbar zoom buttons move the camera by a non-wheel
     // mechanism → clear. `delta` is non-zero while a button is held
     // (interval-driven), so no gate needed.
