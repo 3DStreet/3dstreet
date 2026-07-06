@@ -6,7 +6,6 @@ import PropertyRow from './PropertyRow';
 import {
   cloneEntity,
   removeSelectedEntity,
-  renameEntity,
   reorderEntityRelativeTo,
   setFocusCameraPose
 } from '../../lib/entity';
@@ -17,7 +16,6 @@ import {
   ArrowRightIcon,
   ArrowsPointingInwardIcon,
   Copy32Icon,
-  Edit24Icon,
   TrashIcon
 } from '@shared/icons';
 import { Button } from '../elements';
@@ -85,13 +83,6 @@ const StreetSegmentSidebar = ({ entity }) => {
                     leadingIcon={<ArrowsPointingInwardIcon />}
                   >
                     <FormattedMessage {...commonMessages.focus} />
-                  </Button>
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => renameEntity(entity)}
-                    leadingIcon={<Edit24Icon />}
-                  >
-                    <FormattedMessage {...commonMessages.rename} />
                   </Button>
                   <Button
                     variant={'toolbtn'}
