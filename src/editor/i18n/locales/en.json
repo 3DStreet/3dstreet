@@ -1352,6 +1352,12 @@
   "primaryToolbar.hidePanels": {
     "defaultMessage": "Hide panels"
   },
+  "primaryToolbar.play": {
+    "defaultMessage": "Play"
+  },
+  "primaryToolbar.playTitle": {
+    "defaultMessage": "Enter view mode and start the simulation"
+  },
   "primaryToolbar.showPanels": {
     "defaultMessage": "Show panels"
   },
@@ -1363,6 +1369,12 @@
   },
   "primaryToolbar.togglePanels": {
     "defaultMessage": "Toggle panels visibility (`)"
+  },
+  "primaryToolbar.view": {
+    "defaultMessage": "View"
+  },
+  "primaryToolbar.viewTitle": {
+    "defaultMessage": "View the scene without editor panels"
   },
   "profileModal.accountInformation": {
     "defaultMessage": "Account Information"
@@ -1756,5 +1768,47 @@
   },
   "userLayers.tipsHeading": {
     "defaultMessage": "Tips"
+  },
+  "viewer.byAuthor": {
+    "defaultMessage": "by {username}"
+  },
+  "viewer.hintClickDrag": {
+    "defaultMessage": "Click + Drag"
+  },
+  "viewer.hintLook": {
+    "defaultMessage": "to look"
+  },
+  "viewer.hintMove": {
+    "defaultMessage": "to move"
+  },
+  "viewer.play": {
+    "defaultMessage": "Play"
+  },
+  "viewer.remix": {
+    "defaultMessage": "Remix"
+  },
+  "viewer.remixTitle": {
+    "defaultMessage": "Open the editor — saving will create your own copy"
+  },
+  "viewer.reset": {
+    "defaultMessage": "Reset"
+  },
+  "viewer.resetTitle": {
+    "defaultMessage": "Reset — restart the simulation from t=0 with objects at spawn"
+  },
+  "viewer.simClockPaused": {
+    "defaultMessage": "Paused — click to resume"
+  },
+  "viewer.simClockRunning": {
+    "defaultMessage": "Simulation time — click to pause"
+  },
+  "viewer.stop": {
+    "defaultMessage": "Stop"
+  },
+  "viewer.untitledScene": {
+    "defaultMessage": "Untitled Scene"
+  },
+  "viewer.viewOnly": {
+    "defaultMessage": "View only"
   }
 }

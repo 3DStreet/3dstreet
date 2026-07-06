@@ -1,0 +1,124 @@
+// Viewer top bar (the marquee). Base #toolbar positioning (absolute,
+// top, full-width, blur) comes from AppMenu.scss; this module handles
+// the row layout and viewer-specific pieces.
+.toolbarRoot {
+  background: rgba(23, 23, 23, 0.55);
+}
+
+.toolbarRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 10px;
+}
+
+.leftCluster {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.rightCluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.sceneMeta {
+  min-width: 0;
+}
+
+.sceneTitle {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.byline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.author {
+  color: #c7c7c7;
+  font-size: 13px;
+}
+
+.viewOnlyChip {
+  color: #d7d7d7;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+
+// Simulation clock pill — click to pause/resume.
+.simClock {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  padding: 6px 10px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.simClockPaused {
+  color: #ffd479;
+}
+
+.simClockValue {
+  font-family: monospace;
+  font-size: 14px;
+  min-width: 62px;
+  text-align: right;
+}
+
+// Locomotion controls hint, bottom-left of the viewport.
+.controlsHint {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  color: white;
+  font-size: 14px;
+  padding: 10px 14px;
+  pointer-events: none;
+}
+
+.keyGroup {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-weight: bold;
+}
