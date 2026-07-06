@@ -160,21 +160,21 @@ class SceneGraph extends React.Component {
   };
 
   canBeDragged = (entity) => {
-    return (
-      !isContainer(entity) &&
-      !entity.classList.contains('autocreated') &&
-      !entity.hasAttribute('street-segment')
-    );
+    return !isContainer(entity) && !entity.classList.contains('autocreated');
   };
 
   canBeDropTarget = (entity, draggedEntity) => {
+    // Segments only accept other segments (reorder within their managed
+    // street, which relayouts via its childList observer); dropping anything
+    // else into a street is still disallowed.
     if (
       !draggedEntity ||
       draggedEntity === entity ||
       entity.id === 'reference-layers' ||
       entity.id === 'environment' ||
       entity.id === 'cameraRig' ||
-      entity.hasAttribute('street-segment')
+      (entity.hasAttribute('street-segment') &&
+        !draggedEntity.hasAttribute('street-segment'))
     ) {
       return false;
     }
