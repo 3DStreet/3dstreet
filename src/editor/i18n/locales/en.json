@@ -1262,6 +1262,12 @@
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
   },
+  "managedStreetSidebar.reloadConfirm": {
+    "defaultMessage": "Reload this street from {source}? Local segment edits will be lost."
+  },
+  "managedStreetSidebar.reloadFromSource": {
+    "defaultMessage": "Reload from {source}"
+  },
   "modalTextures.back": {
     "defaultMessage": "BACK"
   },

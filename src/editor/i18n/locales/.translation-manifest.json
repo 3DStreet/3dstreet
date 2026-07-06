@@ -590,7 +590,9 @@
     "segmentSidebar.moveRight": "Move Right",
     "segmentSidebar.slope": "Slope",
     "segmentSidebar.slopeStart": "Start Edge (m)",
-    "segmentSidebar.slopeEnd": "End Edge (m)"
+    "segmentSidebar.slopeEnd": "End Edge (m)",
+    "managedStreetSidebar.reloadFromSource": "Reload from {source}",
+    "managedStreetSidebar.reloadConfirm": "Reload this street from {source}? Local segment edits will be lost."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1183,7 +1185,9 @@
     "segmentSidebar.moveRight": "Move Right",
     "segmentSidebar.slope": "Slope",
     "segmentSidebar.slopeStart": "Start Edge (m)",
-    "segmentSidebar.slopeEnd": "End Edge (m)"
+    "segmentSidebar.slopeEnd": "End Edge (m)",
+    "managedStreetSidebar.reloadFromSource": "Reload from {source}",
+    "managedStreetSidebar.reloadConfirm": "Reload this street from {source}? Local segment edits will be lost."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1776,6 +1780,8 @@
     "segmentSidebar.moveRight": "Move Right",
     "segmentSidebar.slope": "Slope",
     "segmentSidebar.slopeStart": "Start Edge (m)",
-    "segmentSidebar.slopeEnd": "End Edge (m)"
+    "segmentSidebar.slopeEnd": "End Edge (m)",
+    "managedStreetSidebar.reloadFromSource": "Reload from {source}",
+    "managedStreetSidebar.reloadConfirm": "Reload this street from {source}? Local segment edits will be lost."
   }
 }

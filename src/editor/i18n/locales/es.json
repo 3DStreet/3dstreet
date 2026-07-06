@@ -420,6 +420,8 @@
   "jobHealthModal.recentRuns": "Ejecuciones recientes",
   "jobHealthModal.title": "Estado del sistema",
   "loadingSceneModal.dismiss": "Descartar",
+  "managedStreetSidebar.reloadConfirm": "¿Recargar esta calle desde {source}? Se perderán las ediciones locales de segmentos.",
+  "managedStreetSidebar.reloadFromSource": "Recargar desde {source}",
   "modalTextures.back": "ATRÁS",
   "modalTextures.filenameLabel": "Nombre de archivo:",
   "modalTextures.filterPlaceholder": "Filtrar...",

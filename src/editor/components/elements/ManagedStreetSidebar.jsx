@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { useIntl } from 'react-intl';
 import PropertyRow from './PropertyRow';
 import { Button } from './Button';
 
@@ -8,6 +9,7 @@ const sourceLabels = {
 };
 
 const ManagedStreetSidebar = ({ entity }) => {
+  const intl = useIntl();
   const componentName = 'managed-street';
   const labelComponentName = 'street-label';
   // Check if entity and its components exist
@@ -16,13 +18,21 @@ const ManagedStreetSidebar = ({ entity }) => {
   const sourceLabel = sourceLabels[component?.data?.sourceType];
 
   const reloadFromSource = () => {
-    // destructive: replaces all segments (and local edits) with the source
+    // Replaces all segments (and local edits) with the source; runs as a
+    // command so the pre-reload street is restorable via undo.
     if (
       window.confirm(
-        `Reload this street from ${sourceLabel}? Local segment edits will be lost.`
+        intl.formatMessage(
+          {
+            id: 'managedStreetSidebar.reloadConfirm',
+            defaultMessage:
+              'Reload this street from {source}? Local segment edits will be lost.'
+          },
+          { source: sourceLabel }
+        )
       )
     ) {
-      component.refreshFromSource();
+      AFRAME.INSPECTOR.execute('streetreload', { entity });
     }
   };
 
@@ -99,7 +109,13 @@ const ManagedStreetSidebar = ({ entity }) => {
                 />
                 {sourceLabel && (
                   <Button variant="toolbtn" onClick={reloadFromSource}>
-                    Reload from {sourceLabel}
+                    {intl.formatMessage(
+                      {
+                        id: 'managedStreetSidebar.reloadFromSource',
+                        defaultMessage: 'Reload from {source}'
+                      },
+                      { source: sourceLabel }
+                    )}
                   </Button>
                 )}
               </>

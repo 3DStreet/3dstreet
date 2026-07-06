@@ -420,6 +420,8 @@
   "jobHealthModal.recentRuns": "Exécutions récentes",
   "jobHealthModal.title": "État du système",
   "loadingSceneModal.dismiss": "Ignorer",
+  "managedStreetSidebar.reloadConfirm": "Recharger cette rue depuis {source} ? Les modifications locales des segments seront perdues.",
+  "managedStreetSidebar.reloadFromSource": "Recharger depuis {source}",
   "modalTextures.back": "RETOUR",
   "modalTextures.filenameLabel": "Nom du fichier :",
   "modalTextures.filterPlaceholder": "Filtrer...",
