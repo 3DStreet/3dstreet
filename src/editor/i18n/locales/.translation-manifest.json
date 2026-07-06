@@ -592,7 +592,8 @@
     "segmentSidebar.slopeStart": "Start Edge (m)",
     "segmentSidebar.slopeEnd": "End Edge (m)",
     "managedStreetSidebar.reloadFromSource": "Reload from {source}",
-    "managedStreetSidebar.reloadConfirm": "Reload this street from {source}? Local segment edits will be lost."
+    "managedStreetSidebar.reloadConfirm": "Reload this street from {source}? Local segment edits will be lost.",
+    "managedStreetSidebar.downloadJSON": "Download Street JSON"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1187,7 +1188,8 @@
     "segmentSidebar.slopeStart": "Start Edge (m)",
     "segmentSidebar.slopeEnd": "End Edge (m)",
     "managedStreetSidebar.reloadFromSource": "Reload from {source}",
-    "managedStreetSidebar.reloadConfirm": "Reload this street from {source}? Local segment edits will be lost."
+    "managedStreetSidebar.reloadConfirm": "Reload this street from {source}? Local segment edits will be lost.",
+    "managedStreetSidebar.downloadJSON": "Download Street JSON"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1782,6 +1784,7 @@
     "segmentSidebar.slopeStart": "Start Edge (m)",
     "segmentSidebar.slopeEnd": "End Edge (m)",
     "managedStreetSidebar.reloadFromSource": "Reload from {source}",
-    "managedStreetSidebar.reloadConfirm": "Reload this street from {source}? Local segment edits will be lost."
+    "managedStreetSidebar.reloadConfirm": "Reload this street from {source}? Local segment edits will be lost.",
+    "managedStreetSidebar.downloadJSON": "Download Street JSON"
   }
 }

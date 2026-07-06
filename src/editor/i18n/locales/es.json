@@ -420,6 +420,7 @@
   "jobHealthModal.recentRuns": "Ejecuciones recientes",
   "jobHealthModal.title": "Estado del sistema",
   "loadingSceneModal.dismiss": "Descartar",
+  "managedStreetSidebar.downloadJSON": "Descargar JSON de la calle",
   "managedStreetSidebar.reloadConfirm": "¿Recargar esta calle desde {source}? Se perderán las ediciones locales de segmentos.",
   "managedStreetSidebar.reloadFromSource": "Recargar desde {source}",
   "modalTextures.back": "ATRÁS",
