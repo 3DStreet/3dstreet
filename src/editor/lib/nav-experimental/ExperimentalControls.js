@@ -55,6 +55,7 @@ import { RotationIndicator } from './rotationIndicator.js';
 import { TickAnimator } from './tickAnimator.js';
 import { CollisionProbe } from './collisionProbe.js';
 import { GroundedState } from './groundedState.js';
+import { SituationSensor } from './situationSensor.js';
 import {
   ZOOM_PER_WHEEL_TICK,
   FOV_PER_WHEEL_TICK,
@@ -103,8 +104,6 @@ import {
   DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES,
   DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES,
   DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES,
-  DRONE_ELEVATED_ENTRY_METRES,
-  DRONE_ELEVATED_EXIT_METRES,
   DEFAULT_DRONE_HEIGHT,
   ROOF_CLEARANCE,
   DEFAULT_FOV_DEGREES
@@ -133,12 +132,10 @@ import {
   classifyWasdStep,
   wasdVerticalY,
   isLegitPose,
-  cueState,
   classifyDoubleClick,
   desiredDoubleClickPose,
   clampFramingPitch,
-  pullBackTowardTarget,
-  elevationState
+  pullBackTowardTarget
 } from './navMath.js';
 import { captureNavDiscovery } from '../navAnalytics.js';
 
@@ -159,12 +156,6 @@ const MOVEMENT_KEY_CODES = new Set([
   'ArrowRight'
 ]);
 
-// CR-D5: bounded-fallback cadence (ms) for the idle-gated enclosure probe.
-// While the camera is stationary and no scene-geometry-dirty signal fired,
-// the enclosure re-evaluation runs at most once per this interval so a
-// streaming geometry source we didn't wire (e.g. Google 3D Tiles) is still
-// picked up promptly. ~250 ms ⇒ ≤4 raycasts/sec worst-case idle cost.
-const ENCLOSURE_FALLBACK_INTERVAL_MS = 250;
 
 // Normalize an angle in degrees to (-180, 180].
 function normalizeDeg(deg) {
@@ -293,12 +284,36 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       get sceneEl() {
         return self._sceneEl;
       },
+      get center() {
+        return self.center;
+      },
+      get latch() {
+        return self._latch;
+      },
+      get streetLevelEnabled() {
+        return self._streetLevelEnabled;
+      },
       get probe() {
         return self._probe;
       },
       get grounded() {
         return self._groundedState;
-      }
+      },
+      get sensor() {
+        return self._sensor;
+      },
+      // Dispatch identity: the `change`/cue events must fire ON the controls
+      // instance (frozen external contract) — hand modules a bound callback,
+      // never the instance itself.
+      dispatch: self.dispatchEvent.bind(self),
+      // The situation-sensor idle gate: is any engine actively moving the
+      // camera? (Deliberately distinct from the resolveContextAction busy
+      // predicate, which additionally counts recovery/inactive.)
+      isCameraBusy: () =>
+        self._wasdVelocity.lengthSq() > 0 ||
+        self._wheelAccum !== 0 ||
+        self._latch.isActive() ||
+        self._tick.isAnimating()
     };
     // Collision-floor probe (stateful _lastGroundY cache). Owns its own scratch
     // + raycaster so a probe never aliases another gesture's scratch.
@@ -306,6 +321,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Shared grounded-vs-flying state (SPEC D1/D4), read + written by the wheel,
     // WASD, pedestal, and transition subsystems.
     this._groundedState = new GroundedState(this._ctx);
+    // Per-tick situation sensor: legit-pose snapshot, recovery cue, context
+    // snapshot from one idle-gated enclosure ray.
+    this._sensor = new SituationSensor(this._ctx);
 
     // TASK-010 (D2): the single tilt threshold T governing the LB
     // sub-mode, the wheel cut, the rotation regime, and the letterbox.
@@ -506,15 +524,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     //     While set, _drainWASD/_drainWheel suspend, the legit snapshot is
     //     suppressed, triggerContextAction is inert (busy), and a fresh
     //     mousedown aborts the tween (N4).
-    //   _lastLegitPose — { position, quaternion, center } running snapshot
-    //     of the most-recent legit camera pose (D3 includes center).
     //   _lastWasdBlocked — WASD block hysteresis carry (WE-3b).
-    //   _cueShown — discoverability-cue shown state for the show/hide
-    //     hysteresis comparator (D7).
+    // (The legit-pose snapshot and the discoverability-cue shown state live in
+    //  the SituationSensor service.)
     this._recoveryActive = false;
-    this._lastLegitPose = null;
     this._lastWasdBlocked = false;
-    this._cueShown = false;
 
     // TASK-012 (H-4): "a Phase-4 double-click teleport tween owns the camera"
     // flag. Mirrors `_recoveryActive` exactly — set for the tween's life,
@@ -524,56 +538,21 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // _teleportActive`.
     this._teleportActive = false;
 
-    // TASK-025: the per-tick context snapshot the view-button resolver reads.
-    //   Produced once per controls tick in `_updateLegitSnapshotAndCue`
-    //   (reusing that pass's enclosure probe — no extra raycast) and again on
-    //   every tween settle via `_refreshContextSnapshot`. The resolver
-    //   (`resolveContextAction`) is a PURE READ of this — it never probes — so
-    //   the React button can poll it every frame at zero raycast cost.
-    //   Fields:
-    //     enclosed       — bool, from the enclosure probe.
-    //     floorY         — collision floor directly below, or null on a miss.
-    //     topOverhead    — highest overhead solid Y, or null (daylight grey-out).
-    //     elevationState — 'street' | 'elevated', hysteresis output.
-    //   Initialised here so the first poll (before any tick) is valid.
-    //   `_lastResolvedKind` lets a `busy` frame hold the last icon.
-    this._contextSnapshot = {
-      enclosed: false,
-      floorY: null,
-      lookAtFloorY: null,
-      topOverhead: null,
-      elevationState: 'street'
-    };
+    // The per-tick context snapshot the view-button resolver reads lives in the
+    // SituationSensor service (a pure read — the resolver never probes, so the
+    // React button polls it every frame at zero raycast cost). `_lastResolvedKind`
+    // lets a `busy` frame hold the last icon.
     this._lastResolvedKind = 'drone';
 
 
-    // CR-D1: idle-gate cache for the per-frame enclosure probe. A stationary
-    // camera's enclosure/legit/cue state cannot change, so the whole-scene
-    // recursive raycast in _updateLegitSnapshotAndCue is skipped when the
-    // pose hasn't moved since last evaluation AND no input/tween is active.
-    // Null until the first tick evaluates (so tick 1 always runs).
-    this._lastEvalPos = null;
-    this._lastEvalQuat = null;
-
-    // CR-D5: scene-geometry-dirty trigger. The CR-D1 idle gate skips the
-    // per-frame enclosure raycast when the camera is stationary and idle —
-    // but solid geometry can change AROUND a motionless camera (scene load,
-    // teleport inside a building, tiles streaming in). When that happens the
-    // cached not-enclosed result would otherwise stand until the camera
-    // moves, so the recovery cue never appears (WE-9 / M-3c). This flag,
-    // set by the scene geometry listeners below (and started true so the
-    // first settled state always evaluates), forces one re-evaluation; it is
-    // cleared each time _updateLegitSnapshotAndCue actually evaluates.
-    this._sceneGeometryDirty = true;
-    // CR-D5 bounded fallback: timestamp of the last enclosure evaluation.
-    // While stationary AND no dirty signal fired, re-evaluate at most once
-    // per FALLBACK_INTERVAL so a streaming source we didn't wire (e.g.
-    // Google 3D Tiles, whose load event lives on the internal TilesRenderer,
-    // not a scene DOM event) is still picked up within a quarter-second.
-    // Bounds worst-case idle cost to ~4 raycasts/sec, not per-frame.
-    this._lastEvalTime = 0;
+    // The enclosure idle-gate cache + scene-geometry-dirty state live in the
+    // SituationSensor service. This scene-geometry listener (wired in _attach)
+    // marks the sensor dirty so it re-evaluates once around a motionless camera
+    // when solid geometry changes under it (scene load, teleport into a
+    // building, tiles streaming in) — otherwise the cached result would stand
+    // until the camera moves and the recovery cue would never appear.
     this._onSceneGeometryDirty = () => {
-      this._sceneGeometryDirty = true;
+      this._sensor.markGeometryDirty();
     };
 
     this.setCamera(camera);
@@ -717,7 +696,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // TASK-024 (D4): invalidate the legit-pose snapshot so a subsequent
     // recovery never tweens back to the pre-reset pose. It re-seeds on the
     // next legit tick.
-    this._lastLegitPose = null;
+    this._sensor.lastLegitPose = null;
     // TASK-024a (D1): re-derive grounded from the post-reset pose (the reset
     // camera at (0,15,30) is high → not-grounded unless a floor sits near it).
     this._groundedState.deriveFromPose();
@@ -985,7 +964,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // TASK-024 (D4): reseed the legit-pose snapshot from the committed
         // plan-view pose so recovery can never ease back to a pre-teleport
         // pose.
-        this._reseedLegitPose();
+        this._sensor.reseedLegitPose();
         this._emitModeChange(null);
         // Plan View ends at near-90° tilt — guaranteed truck-mode. Per
         // A6, refresh the indicator on tween end so users who never
@@ -1274,7 +1253,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // ease back to the pre-teleport pose. The component sets
         // `transitioning = false` on its final frame.
         if (this._focusAnimation && !this._focusAnimation.transitioning) {
-          this._reseedLegitPose();
+          this._sensor.reseedLegitPose();
         }
         this.dispatchEvent(this._changeEvent);
       };
@@ -1640,7 +1619,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // pop to the roof.
   _maybeRecoverAtGestureEnd() {
     const camera = this._camera;
-    const probe = this._enclosureProbe();
+    const probe = this._sensor.enclosureProbe();
     const legitNow = isLegitPose({
       enclosed: probe.enclosed,
       camY: camera.position.y,
@@ -1648,7 +1627,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     });
     if (legitNow) return; // gesture ended clear — nothing to do.
 
-    const stored = this._lastLegitPose;
+    const stored = this._sensor.lastLegitPose;
     if (stored && this._poseStillLegit(stored)) {
       this._tweenToPose(stored, FALL_DURATION_MS);
     } else {
@@ -1850,7 +1829,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // settle you hovering. DERIVE from the settled pose rather than
         // force-true, so a hover recovery does not falsely ground.
         this._groundedState.deriveFromPose();
-        this._reseedLegitPose();
+        this._sensor.reseedLegitPose();
         this.dispatchEvent(this._changeEvent);
       }
     });
@@ -2023,7 +2002,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // DC7: a teleport is a non-wheel move → clear 022's transient memory.
         this._clearZoomUndo();
         // D4: recovery must not ease back to the pre-teleport pose.
-        this._reseedLegitPose();
+        this._sensor.reseedLegitPose();
         // Landed pose is programmatic → re-eval mode/letterbox from the
         // resulting tilt now (not on the next mouse nudge).
         this._maybeEmitLbModeChange();
@@ -2033,7 +2012,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // TASK-025 (merge): refresh the context-button snapshot on settle, like
         // every other tween — so the button icon reflects the landed pose
         // immediately rather than one tick later.
-        this._refreshContextSnapshot();
+        this._sensor.refreshContextSnapshot();
       }
     });
   }
@@ -2151,18 +2130,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     });
   }
 
-  // TASK-024 (D4): reseed `_lastLegitPose` from the current committed pose.
-  // Called at the onDone of every pose-setting tween so recovery can never
-  // ease back to a pre-teleport pose.
-  _reseedLegitPose() {
-    const camera = this._camera;
-    this._lastLegitPose = {
-      position: camera.position.clone(),
-      quaternion: camera.quaternion.clone(),
-      center: this.center.clone()
-    };
-  }
-
   // Grounded-state surface. The state and logic live in the GroundedState
   // service (this._groundedState); these thin instance-level accessors exist
   // because the characterization suite pins `_grounded` / `_captureH` /
@@ -2192,7 +2159,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // bury at a stale height).
   _popToRoof() {
     const camera = this._camera;
-    const probe = this._enclosureProbe();
+    const probe = this._sensor.enclosureProbe();
     if (!probe.overheadHits.length) {
       // Nothing overhead — nothing to pop out of. No-op.
       this._recoveryActive = false;
@@ -2217,7 +2184,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       durationMs: POP_TO_ROOF_DURATION_MS,
       onTick: (eased) => {
         if (!retargeted) {
-          const reprobe = this._enclosureProbe();
+          const reprobe = this._sensor.enclosureProbe();
           if (reprobe.overheadHits.length) {
             const newTop =
               reprobe.overheadHits[reprobe.overheadHits.length - 1] +
@@ -2249,8 +2216,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // branches above must NOT set this — the camera wasn't moved onto a
         // surface there.)
         this._groundedState.grounded = true;
-        this._reseedLegitPose();
-        this._refreshContextSnapshot(); // TASK-025 (H4)
+        this._sensor.reseedLegitPose();
+        this._sensor.refreshContextSnapshot(); // TASK-025 (H4)
         this.dispatchEvent(this._changeEvent);
       }
     });
@@ -2418,7 +2385,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // order — load-bearing, spec): enclosed → daylight; elevated → street;
   // else (at street level) → drone.
   resolveContextAction() {
-    const s = this._contextSnapshot;
+    const s = this._sensor.contextSnapshot;
     const camY = this._camera.position.y;
     const busy =
       this._isInactive() || this._tick.isAnimating() || this._recoveryActive;
@@ -2595,9 +2562,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // Lands at collisionFloor + eye-margin → grounded by construction,
         // mirroring `_fallTo`'s street landing.
         this._groundedState.grounded = true;
-        this._reseedLegitPose();
+        this._sensor.reseedLegitPose();
         this._maybeEmitLbModeChange();
-        this._refreshContextSnapshot(); // TASK-025 (H4)
+        this._sensor.refreshContextSnapshot(); // TASK-025 (H4)
         this.dispatchEvent(this._changeEvent);
       }
     });
@@ -2667,7 +2634,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // is offset back from the camera column.) Streaming-in-overhead mid-rise
     // retarget is deferred polish — the rise is short (600 ms).
     let endXZ = computeEndXZ(targetY);
-    const endProbe = this._enclosureProbeAt(endXZ.x, targetY, endXZ.z);
+    const endProbe = this._sensor.enclosureProbeAt(endXZ.x, targetY, endXZ.z);
     if (endProbe.overheadHits.length) {
       const popTargetY =
         endProbe.overheadHits[endProbe.overheadHits.length - 1] +
@@ -2729,8 +2696,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // re-capture the cruise height (mirrors `_checkUngroundOnRise`).
         this._groundedState.grounded = false;
         this._groundedState.captureH();
-        this._reseedLegitPose();
-        this._refreshContextSnapshot(); // TASK-025 (H4): flip icon drone→street
+        this._sensor.reseedLegitPose();
+        this._sensor.refreshContextSnapshot(); // TASK-025 (H4): flip icon drone→street
         this.dispatchEvent(this._changeEvent);
       }
     });
@@ -2815,9 +2782,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // TASK-024a (D1, 1.2.1 / WE-6): a Space fall / level-out swoop lands
         // the camera at collisionFloor + eye-margin → grounded by construction.
         this._groundedState.grounded = true;
-        this._reseedLegitPose();
+        this._sensor.reseedLegitPose();
         this._maybeEmitLbModeChange();
-        this._refreshContextSnapshot(); // TASK-025 (H4)
+        this._sensor.refreshContextSnapshot(); // TASK-025 (H4)
         this.dispatchEvent(this._changeEvent);
       }
     });
@@ -2902,243 +2869,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
   }
 
-  // TASK-024 (3b/3e): refresh `_lastLegitPose` if the current pose is
-  // legit, and emit the discoverability cue on a show/hide transition. One
-  // enclosure up-ray (double duty: enclosure + collision floor under the
-  // camera) per call.
+  // The per-tick situation eval lives in the SituationSensor service. This
+  // named delegator is kept on the instance because the characterization
+  // harness's idle-gate break-check monkey-patches `_updateLegitSnapshotAndCue`
+  // here; `_onTick` invokes it so the patch still intercepts.
   _updateLegitSnapshotAndCue() {
-    const camera = this._camera;
-
-    // CR-D1: idle gate. A motionless camera with no active input/gesture/
-    // tween cannot change its enclosure/legit/cue state, so skip the
-    // whole-scene recursive enclosure raycast and let the cached cue/legit
-    // result stand. Evaluate when ANY of: the pose moved since last eval
-    // (within EPS), WASD velocity is non-zero, wheel budget is pending, a
-    // drag is latched, a tween is animating, or there is no cache yet (the
-    // first tick). Cache is refreshed below whenever we do evaluate.
-    const POS_EPS_SQ = 1e-8; // ~1e-4 m
-    const QUAT_EPS = 1e-6; // 1 - |dot| threshold
-    const moved =
-      this._lastEvalPos == null ||
-      this._lastEvalQuat == null ||
-      camera.position.distanceToSquared(this._lastEvalPos) > POS_EPS_SQ ||
-      1 - Math.abs(camera.quaternion.dot(this._lastEvalQuat)) > QUAT_EPS;
-    const busy =
-      this._wasdVelocity.lengthSq() > 0 ||
-      this._wheelAccum !== 0 ||
-      this._latch.isActive() ||
-      this._tick.isAnimating();
-    // CR-D5: geometry around a stationary camera may have changed. Force one
-    // re-evaluation when a scene-geometry-dirty signal fired since the last
-    // eval, OR (bounded fallback) when ~250 ms have elapsed while idle so a
-    // streaming source we didn't wire still gets picked up within a quarter-
-    // second. The fallback caps idle cost at ~4 raycasts/sec, not per-frame.
-    const now =
-      typeof performance !== 'undefined' && performance.now
-        ? performance.now()
-        : Date.now();
-    const fallbackDue =
-      now - this._lastEvalTime >= ENCLOSURE_FALLBACK_INTERVAL_MS;
-    if (!moved && !busy && !this._sceneGeometryDirty && !fallbackDue) return;
-
-    // We are evaluating this tick: clear the dirty flag and stamp the
-    // eval-time so the next idle frame measures the fallback window from here.
-    this._sceneGeometryDirty = false;
-    this._lastEvalTime = now;
-
-    // Update the eval-pose cache (this evaluation establishes the new
-    // baseline a subsequent stationary frame compares against).
-    if (this._lastEvalPos == null) {
-      this._lastEvalPos = camera.position.clone();
-      this._lastEvalQuat = camera.quaternion.clone();
-    } else {
-      this._lastEvalPos.copy(camera.position);
-      this._lastEvalQuat.copy(camera.quaternion);
-    }
-
-    const probe = this._enclosureProbe();
-    const camY = camera.position.y;
-    const legit = isLegitPose({
-      enclosed: probe.enclosed,
-      camY,
-      floorY: probe.floorY
-    });
-    if (legit) {
-      if (!this._lastLegitPose) {
-        this._lastLegitPose = {
-          position: camera.position.clone(),
-          quaternion: camera.quaternion.clone(),
-          center: this.center.clone()
-        };
-      } else {
-        this._lastLegitPose.position.copy(camera.position);
-        this._lastLegitPose.quaternion.copy(camera.quaternion);
-        this._lastLegitPose.center.copy(this.center);
-      }
-    }
-    // Discoverability cue (D7): keyed off height above the collision floor
-    // below, with show/hide hysteresis; enclosure forces show. Street-level
-    // mode off: the 'drop' cue advertises the gated street action (Space),
-    // so only the enclosure cue may show — the gate feeds the shown state
-    // (not just the emit) so `_cueShown` keeps tracking what is displayed.
-    const agl = probe.floorY != null ? camY - probe.floorY : 0;
-    const nextShown =
-      cueState(this._cueShown, agl, probe.enclosed) &&
-      (probe.enclosed || this._streetLevelEnabled);
-    if (nextShown !== this._cueShown) {
-      this._cueShown = nextShown;
-      if (nextShown) {
-        this._emitRecoveryCue(probe.enclosed ? 'enclosed' : 'drop');
-      } else {
-        this._emitRecoveryCue(null);
-      }
-    }
-
-    // TASK-025: refresh the context snapshot from this same probe (no extra
-    // raycast). MUST live here in the post-gate body — never before the idle
-    // early-return above, or an idle frame would write a snapshot with no
-    // fresh probe.
-    this._computeContextSnapshot(probe);
-  }
-
-  // TASK-025: build `_contextSnapshot` from an enclosure `probe`
-  // (`_enclosureProbe()` shape: { enclosed, floorY, overheadHits }). The agl
-  // used for the elevation hysteresis preserves NULL on a probe miss (separate
-  // from the cue's `:0`-coerced agl above — H2): `elevationState` HOLDS the
-  // previous state on null rather than collapsing it to 'street'. `topOverhead`
-  // is the highest overhead solid (overheadHits is ascending-sorted), or null.
-  _computeContextSnapshot(probe) {
-    const camY = this._camera.position.y;
-    // TASK-025 v2 (R2-REV-C / finding 4): the `enclosed` flag strobes as the view
-    // ray crosses a wall mid-orbit/drag (sunshine icon flickers while orbiting
-    // THROUGH a building). Gate it on the GESTURE LATCH: while a pointer
-    // drag/orbit is latched, CARRY FORWARD the previous `enclosed` ONLY —
-    // recompute on settle (pointer-up triggers a non-idle tick; tween onDones
-    // call `_refreshContextSnapshot`). Do NOT freeze `elevationState` (the
-    // 1.8/2.5 hysteresis already anti-flickers height). WASD-walking into a
-    // building (no latch) still classifies enclosed promptly.
-    const enclosed = this._latch.isActive()
-      ? this._contextSnapshot.enclosed
-      : probe.enclosed;
-    // R4: look-at-aware elevation + street-enabled. When the straight-down probe
-    // MISSES (camera above/outside the scene footprint), the floor below is null
-    // even though the camera-centre ray may be staring at the street — so derive
-    // a fallback ground from the look-at hit, the SAME point `_swoopToStreet`
-    // swoops to. Only needed when `floorY == null`: when the floor below hits, it
-    // governs elevation (priority below) AND street-enabled (`belowOk` in the
-    // resolver), so the look-at would be unused — skip the extra raycast (the
-    // common tilted-map case keeps its single probe). Use the per-column floor at
-    // P (`_floorYBelowAt`, the SAME pick the action uses — NOT the raw ray-hit y,
-    // which would sit partway up a wall facade), read-only (refreshCache:false)
-    // so it does not perturb the wheel floor cache.
-    let lookAtFloorY = null;
-    if (!enclosed && probe.floorY == null) {
-      const P = this._probe.centerRayGroundHit();
-      if (P) {
-        const floorAtP = this._probe.floorYBelowAt(P.x, P.z, { refreshCache: false });
-        lookAtFloorY = floorAtP.source !== 'cache' ? floorAtP.y : P.y;
-      }
-    }
-    const aglForState =
-      probe.floorY != null
-        ? camY - probe.floorY
-        : lookAtFloorY != null
-          ? camY - lookAtFloorY
-          : null;
-    const topOverhead = probe.overheadHits.length
-      ? probe.overheadHits[probe.overheadHits.length - 1]
-      : null;
-    this._contextSnapshot = {
-      enclosed,
-      floorY: probe.floorY,
-      lookAtFloorY,
-      topOverhead,
-      elevationState: elevationState(
-        this._contextSnapshot.elevationState,
-        aglForState,
-        DRONE_ELEVATED_ENTRY_METRES,
-        DRONE_ELEVATED_EXIT_METRES
-      )
-    };
-  }
-
-  // TASK-025 (H4): recompute the context snapshot from a fresh probe. Called
-  // from every tween onDone (after `_reseedLegitPose`) so the post-settle
-  // resolver answer is correct on the FIRST frame the button polls — without
-  // this, the idle-gated tick wouldn't refresh the snapshot until the next
-  // non-idle frame, leaving the icon stale for the settle frame (e.g. the
-  // drone→street flip would lag a frame after a rise completes).
-  _refreshContextSnapshot() {
-    this._computeContextSnapshot(this._enclosureProbe());
-  }
-
-  // TASK-024 (3e): emit a transient recovery cue on the sceneEl bus,
-  // mirroring `_emitModeChange`. `kind` is 'enclosed' | 'drop' to show, or
-  // null to hide.
-  _emitRecoveryCue(kind) {
-    const event = { type: 'nav-experimental:recovery-cue', kind };
-    this.dispatchEvent(event);
-    if (this._sceneEl && this._sceneEl.emit) {
-      this._sceneEl.emit('nav-experimental:recovery-cue', { kind }, false);
-    }
-  }
-
-  // TASK-024 (3a): enclosure / overhead probe. Casts (0,-1,0) from
-  // (camera.x, camera.y + UP_MARGIN, camera.z), filtered by isSolidFloorHit.
-  // Any accepted hit with point.y > camera.y means solid overhead →
-  // enclosed; the nearest accepted hit with point.y <= camera.y is the
-  // collision floor (one ray, double duty). Returns
-  // { enclosed, floorY, overheadHits } — overheadHits is the raw array of
-  // accepted hits above the camera, sorted ascending by y, so _popToRoof can
-  // pick the highest exit face (D6/N7).
-  _enclosureProbe() {
-    const camera = this._camera;
-    return this._enclosureProbeAt(
-      camera.position.x,
-      camera.position.y,
-      camera.position.z
-    );
-  }
-
-  // TASK-025 (H1): the parameterised enclosure probe — classifies an
-  // ARBITRARY (x, y, z) column rather than only the live camera position.
-  // `_enclosureProbe()` delegates here with the camera column; the drone-rise
-  // end-pose overhang check (`_riseToDrone`, WE-7) calls it with the target
-  // pose to decide whether the rise would surface still enclosed. Same math as
-  // the original live probe: ray origin = (x, y + UP_MARGIN, z), overhead =
-  // accepted hits with point.y > y, floor via the shared priority picker with
-  // refY = y. `enclosed`/`floorY`/`overheadHits` are relative to the GIVEN y,
-  // not the live camera y.
-  _enclosureProbeAt(x, y, z) {
-    const sceneEl = this._sceneEl;
-    if (!sceneEl || !sceneEl.object3D) {
-      return { enclosed: false, floorY: null, overheadHits: [] };
-    }
-    this._tmpV3a.set(x, y + ENCLOSURE_PROBE_UP_MARGIN_METRES, z);
-    this._raycaster.set(this._tmpV3a, GROUND_PROBE_DIR);
-    this._raycaster.near = 0;
-    this._raycaster.far = Infinity;
-    const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
-    const overhead = [];
-    for (const hit of hits) {
-      if (!isSolidFloorHit(hit)) continue;
-      if (hit.point.y > y + 1e-3) {
-        overhead.push(hit.point.y);
-      }
-    }
-    overhead.sort((a, b) => a - b);
-    // CR-D3: route the floor selection through the SAME priority picker as
-    // the WASD/swoop path (_collisionFloorAt → _floorYBelowAt). The old
-    // "nearest accepted hit at/below the camera" could return a tiles
-    // rooftop where a lower segment/building sits below it (TASK-019 D3),
-    // making isLegitPose / the cue / the context resolver read a different
-    // floor than the swoop. refY = y so only hits at/below the probe column count.
-    const pick = this._probe.pickFloorFromHits(hits, y, {
-      acceptBuildings: true,
-      acceptTiles: true
-    });
-    const floorY = pick ? pick.hit.point.y : null;
-    return { enclosed: overhead.length > 0, floorY, overheadHits: overhead };
+    this._sensor.update();
   }
 
   // TASK-014a (#6 Option B): continuous single-drain. ONE frame, ONE ground
