@@ -1,4 +1,4 @@
-const { getTravelledWaySegments } = require('./street-layout-utils');
+import { getTravelledWaySegments } from './street-layout-utils';
 
 AFRAME.registerComponent('street-ground', {
   dependencies: ['managed-street', 'street-align'],

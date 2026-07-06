@@ -424,6 +424,7 @@
   "jobHealthModal.recentRuns": "Execuções recentes",
   "jobHealthModal.title": "Integridade do Sistema",
   "loadingSceneModal.dismiss": "Dispensar",
+  "managedStreetSidebar.downloadJSON": "Baixar JSON da rua",
   "managedStreetSidebar.reloadConfirm": "Recarregar esta rua de {source}? As edições locais de segmentos serão perdidas.",
   "managedStreetSidebar.reloadFromSource": "Recarregar de {source}",
   "modalTextures.back": "VOLTAR",
