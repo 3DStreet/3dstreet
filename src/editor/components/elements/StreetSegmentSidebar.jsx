@@ -148,35 +148,33 @@ const StreetSegmentSidebar = ({ entity }) => {
                   >
                     <FormattedMessage {...commonMessages.delete} />
                   </Button>
-                  {segmentPos !== -1 && (
-                    <>
-                      <Button
-                        variant={'toolbtn'}
-                        disabled={segmentPos === 0}
-                        onClick={() => moveSegment(-1)}
-                        leadingIcon={<ArrowLeftIcon />}
-                      >
-                        {intl.formatMessage({
-                          id: 'segmentSidebar.moveLeft',
-                          defaultMessage: 'Move Left'
-                        })}
-                      </Button>
-                      <Button
-                        variant={'toolbtn'}
-                        disabled={
-                          segmentPos === travelledWaySiblings.length - 1
-                        }
-                        onClick={() => moveSegment(1)}
-                        leadingIcon={<ArrowRightIcon />}
-                      >
-                        {intl.formatMessage({
-                          id: 'segmentSidebar.moveRight',
-                          defaultMessage: 'Move Right'
-                        })}
-                      </Button>
-                    </>
-                  )}
                 </div>
+                {segmentPos !== -1 && (
+                  <div className="sidebar-buttons-small">
+                    <Button
+                      variant={'toolbtn'}
+                      disabled={segmentPos === 0}
+                      onClick={() => moveSegment(-1)}
+                      leadingIcon={<ArrowLeftIcon />}
+                    >
+                      {intl.formatMessage({
+                        id: 'segmentSidebar.moveLeft',
+                        defaultMessage: 'Move Left'
+                      })}
+                    </Button>
+                    <Button
+                      variant={'toolbtn'}
+                      disabled={segmentPos === travelledWaySiblings.length - 1}
+                      onClick={() => moveSegment(1)}
+                      leadingIcon={<ArrowRightIcon />}
+                    >
+                      {intl.formatMessage({
+                        id: 'segmentSidebar.moveRight',
+                        defaultMessage: 'Move Right'
+                      })}
+                    </Button>
+                  </div>
+                )}
               </div>
               <PropertyRow
                 key="width"
