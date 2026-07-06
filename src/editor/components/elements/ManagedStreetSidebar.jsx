@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { useIntl } from 'react-intl';
+import posthog from 'posthog-js';
 import PropertyRow from './PropertyRow';
 import { Button } from './Button';
 
@@ -16,6 +17,39 @@ const ManagedStreetSidebar = ({ entity }) => {
   const component = entity?.components?.[componentName];
   const labelComponent = entity?.components?.[labelComponentName];
   const sourceLabel = sourceLabels[component?.data?.sourceType];
+
+  const downloadStreetJSON = () => {
+    // Serializes the live DOM state (not the possibly-stale sourceValue blob)
+    // into a Format-2 street object that re-imports via `sourceType: json-blob`.
+    try {
+      const streetJSON = window.STREET.utils.getManagedStreetJSON(entity);
+      posthog.capture('export_initiated', {
+        export_type: 'managed-street-json',
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
+      const layerName = entity.getAttribute('data-layer-name') || 'street';
+      // strip characters that are invalid in filenames (same set as the scene
+      // JSON download in SceneUtils)
+      const sanitized =
+        layerName.replace(/[<>:"/\\|?*]+/g, '').trim() || 'street';
+      const blob = new Blob([JSON.stringify(streetJSON, null, 2)], {
+        type: 'application/json'
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${sanitized}.managed-street.json`;
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      STREET.notify.successMessage('Street JSON file saved successfully.');
+    } catch (error) {
+      STREET.notify.errorMessage(
+        `Error trying to save Street JSON file. Error: ${error}`
+      );
+      console.error(error);
+    }
+  };
 
   const reloadFromSource = () => {
     // Replaces all segments (and local edits) with the source; runs as a
@@ -118,6 +152,12 @@ const ManagedStreetSidebar = ({ entity }) => {
                     )}
                   </Button>
                 )}
+                <Button variant="toolbtn" onClick={downloadStreetJSON}>
+                  {intl.formatMessage({
+                    id: 'managedStreetSidebar.downloadJSON',
+                    defaultMessage: 'Download Street JSON'
+                  })}
+                </Button>
               </>
             )}
         </div>

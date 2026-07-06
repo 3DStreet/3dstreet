@@ -39,6 +39,4 @@ function getBoundarySegments(streetEl) {
   };
 }
 
-module.exports.isBoundarySegment = isBoundarySegment;
-module.exports.getTravelledWaySegments = getTravelledWaySegments;
-module.exports.getBoundarySegments = getBoundarySegments;
+export { isBoundarySegment, getTravelledWaySegments, getBoundarySegments };

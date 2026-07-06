@@ -4,14 +4,30 @@ import {
   STREETPLAN_MATERIAL_MAPPING,
   STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING
 } from './street-mapping-streetplan.js';
-import useStore from '../store.js';
-import { getVehicleEntities } from '../street-utils.js';
+import { getVehicleEntities } from '../street-entity-utils.js';
 import { GEO_SOURCES } from '@shared/constants/geoSources.js';
-const { segmentVariants } = require('../segments-variants.js');
-const { levelToElevation } = require('../tested/street-segment-utils');
-const { isBoundarySegment } = require('./street-layout-utils');
-const streetmixUtils = require('../tested/streetmix-utils');
-const streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested');
+import { levelToElevation } from '../tested/street-segment-utils';
+import { isBoundarySegment } from './street-layout-utils';
+import * as streetmixUtils from '../tested/streetmix-utils';
+
+// segments-variants.js and aframe-streetmix-parsers-tested.js are CommonJS
+// (shared with the mocha suite, which require()s them), and Vite — which runs
+// the browser-mode component tests — can't import CJS source statically. They
+// are only needed by the Streetmix URL loader, so load them on demand there;
+// the json-blob import/export path never touches them.
+let segmentVariants = null;
+let streetmixParsersTested = null;
+async function loadStreetmixParserDeps() {
+  if (segmentVariants && streetmixParsersTested) return;
+  const variantsModule = await import('../segments-variants.js');
+  segmentVariants =
+    variantsModule.segmentVariants ?? variantsModule.default?.segmentVariants;
+  const parsersModule =
+    await import('../tested/aframe-streetmix-parsers-tested');
+  streetmixParsersTested = parsersModule.isSidewalk
+    ? parsersModule
+    : parsersModule.default;
+}
 
 const GENERATED_KINDS = [
   'clones',
@@ -28,13 +44,81 @@ const GENERATED_RE = new RegExp(
   `^street-generated-(${GENERATED_KINDS.join('|')})(?:__(\\d+))?$`
 );
 
+// Striping auto-added between adjacent lane pairs on import (parseStreetObject)
+// when a segment carries no `striping` key. Module-scope because the export
+// (getManagedStreetJSON) also needs it to decide when to pin an explicit empty
+// striping list. Pure function of the two Format-2 segment objects.
+function getStripingFromSegments(previousSegment, currentSegment) {
+  if (!previousSegment || !currentSegment) {
+    return null;
+  }
+
+  // Valid lane types that should have striping
+  const validLaneTypes = [
+    'drive-lane',
+    'bus-lane',
+    'bike-lane',
+    'parking-lane'
+  ];
+
+  // Only add striping between valid lane types
+  if (
+    !validLaneTypes.includes(previousSegment.type) ||
+    !validLaneTypes.includes(currentSegment.type)
+  ) {
+    return null;
+  }
+
+  // Default to solid line
+  let variantString = 'solid-stripe';
+
+  // Check for opposite directions
+  if (
+    previousSegment.direction !== currentSegment.direction &&
+    previousSegment.direction !== 'none' &&
+    currentSegment.direction !== 'none'
+  ) {
+    variantString = 'solid-doubleyellow';
+
+    // Special case for bike lanes
+    if (
+      currentSegment.type === 'bike-lane' &&
+      previousSegment.type === 'bike-lane'
+    ) {
+      variantString = 'short-dashed-stripe-yellow';
+    }
+  } else {
+    // Same direction cases
+    if (currentSegment.type === previousSegment.type) {
+      variantString = 'dashed-stripe';
+    }
+
+    // Drive lane and turn lane combination would go here if needed
+  }
+
+  // Special case for parking lanes - use solid line between parking and drive lanes
+  if (
+    currentSegment.type === 'parking-lane' ||
+    previousSegment.type === 'parking-lane'
+  ) {
+    variantString = 'solid-stripe';
+  }
+
+  return variantString;
+}
+
 /**
  * Reverse of `parseStreetObject`: walk a managed-street entity and rebuild
  * the Format-2 segment list from live DOM. Per-segment mutations
  * (SegmentAddCommand etc.) edit the DOM directly without rewriting the
  * parent `sourceValue` blob, so the cached blob is stale after edits — this
  * helper reads the authoritative state for callers that need the current
- * segment list (MCP `getManagedStreet`, future export flows).
+ * segment list (MCP `getManagedStreet`, the sidebar's .managed-street.json
+ * download).
+ *
+ * Round-trip contract: importing the returned object through
+ * `parseStreetObject` and exporting again must yield a deep-equal object (see
+ * test/components/managed-street-json.test.js).
  */
 function getManagedStreetJSON(streetEl) {
   if (!streetEl || !streetEl.components?.['managed-street']) {
@@ -75,6 +159,11 @@ function getManagedStreetJSON(streetEl) {
       const kind = m[1];
       const idx = m[2] ? parseInt(m[2], 10) - 1 : 0;
       const data = { ...child.components[compName].data };
+      // A-Frame array-type props come back as arrays; serialize with the
+      // comma-joined authoring convention used in json-blobs and presets.
+      if (Array.isArray(data.modelsArray)) {
+        data.modelsArray = data.modelsArray.join(', ');
+      }
       if (!generatedByKind[kind]) generatedByKind[kind] = [];
       generatedByKind[kind][idx] = data;
     }
@@ -88,6 +177,17 @@ function getManagedStreetJSON(streetEl) {
         }
       }
       segment.generated = generated;
+    }
+    // parseStreetObject auto-adds a stripe between adjacent lane pairs when a
+    // segment carries no `striping` key. If this segment has none (e.g. the
+    // user deleted it) but auto-striping would apply, pin an explicit empty
+    // list so re-importing this export doesn't grow a stripe back.
+    if (
+      !segment.generated?.striping &&
+      getStripingFromSegments(segments[segments.length - 1], segment)
+    ) {
+      segment.generated = segment.generated || {};
+      segment.generated.striping = [];
     }
     segments.push(segment);
   }
@@ -518,6 +618,10 @@ AFRAME.registerComponent('managed-street', {
     }
   },
   loadAndParseStreetplanURL: async function (streetplanURL) {
+    // Lazy store import: keeps this module (and everything the json-blob
+    // import/export round trip touches) loadable without the Zustand store's
+    // Firebase/PostHog dependency chain — see the round-trip component test.
+    const { default: useStore } = await import('../store.js');
     const currentState = useStore.getState();
 
     console.log(
@@ -676,62 +780,8 @@ AFRAME.registerComponent('managed-street', {
   },
 
   getStripingFromSegments: function (previousSegment, currentSegment) {
-    if (!previousSegment || !currentSegment) {
-      return null;
-    }
-
-    // Valid lane types that should have striping
-    const validLaneTypes = [
-      'drive-lane',
-      'bus-lane',
-      'bike-lane',
-      'parking-lane'
-    ];
-
-    // Only add striping between valid lane types
-    if (
-      !validLaneTypes.includes(previousSegment.type) ||
-      !validLaneTypes.includes(currentSegment.type)
-    ) {
-      return null;
-    }
-
-    // Default to solid line
-    let variantString = 'solid-stripe';
-
-    // Check for opposite directions
-    if (
-      previousSegment.direction !== currentSegment.direction &&
-      previousSegment.direction !== 'none' &&
-      currentSegment.direction !== 'none'
-    ) {
-      variantString = 'solid-doubleyellow';
-
-      // Special case for bike lanes
-      if (
-        currentSegment.type === 'bike-lane' &&
-        previousSegment.type === 'bike-lane'
-      ) {
-        variantString = 'short-dashed-stripe-yellow';
-      }
-    } else {
-      // Same direction cases
-      if (currentSegment.type === previousSegment.type) {
-        variantString = 'dashed-stripe';
-      }
-
-      // Drive lane and turn lane combination would go here if needed
-    }
-
-    // Special case for parking lanes - use solid line between parking and drive lanes
-    if (
-      currentSegment.type === 'parking-lane' ||
-      previousSegment.type === 'parking-lane'
-    ) {
-      variantString = 'solid-stripe';
-    }
-
-    return variantString;
+    // moved to module scope so the export helper can reuse it
+    return getStripingFromSegments(previousSegment, currentSegment);
   },
   // The import always creates the boundary segments (when the source has
   // boundary data); the component's `showBoundaries` property controls whether
@@ -743,6 +793,9 @@ AFRAME.registerComponent('managed-street', {
   // harness) — when passed, it is written back to the component property so
   // state stays consistent.
   loadAndParseStreetmixURL: async function (streetmixURL, showBoundaries) {
+    // Lazy store import (see loadAndParseStreetplanURL).
+    const { default: useStore } = await import('../store.js');
+    await loadStreetmixParserDeps();
     const currentState = useStore.getState();
     if (
       showBoundaries !== undefined &&
