@@ -1,6 +1,6 @@
-// Characterization: LB pan / truck (WE6). Frozen surface: camera position +
-// the grabbed world point's on-screen projection (KD-4a). Non-square, offset
-// DOM rect (KD-6) so a width/height transposition or dropped offset shows.
+// Characterization: LB pan / truck. Frozen surface: camera position + the
+// grabbed world point's on-screen projection. Non-square, offset DOM rect so a
+// width/height transposition or dropped offset shows.
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as H from './_harness.js';
 
@@ -9,10 +9,13 @@ beforeAll(async () => {
   Controls = await H.loadControls();
   H.useControlsClass(Controls);
 });
-beforeEach(() => H.stubClock());
+beforeEach(() => {
+  H.stubClock();
+  H.clearSceneGlobals();
+});
 afterEach(() => H.teardownAll());
 
-describe('LB pan — WE6 truck (Tier 1, non-square rect)', () => {
+describe('LB pan — truck (Tier 1.5, non-square rect)', () => {
   it('the grabbed world point tracks the cursor; camera height is unchanged', () => {
     const scene = H.groundPlaneScene({ y: 0 });
     const cam = H.makePerspectiveCam({ pos: [0, 50, 40], lookAt: [0, 0, 0] });

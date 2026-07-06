@@ -1,5 +1,5 @@
-// Characterization: WASD flight (WE4 fly at altitude / discontinuity, WE5
-// street-level flat off-axis yaw). Frozen surface: camera position (KD-4a).
+// Characterization: WASD flight (forward flight at altitude over a building
+// edge, street-level flat off-axis yaw). Frozen surface: camera position.
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as H from './_harness.js';
 
@@ -8,21 +8,25 @@ beforeAll(async () => {
   Controls = await H.loadControls();
   H.useControlsClass(Controls);
 });
-beforeEach(() => H.stubClock());
+beforeEach(() => {
+  H.stubClock();
+  H.clearSceneGlobals();
+});
 afterEach(() => H.teardownAll());
 
-describe('WASD — WE4 forward flight at altitude over a building edge (Tier 2)', () => {
+describe('WASD — forward flight at altitude over a building edge (Tier 2)', () => {
   it('holds absolute height flying above the roof (no ground-snap, no ratchet-up)', () => {
     const scene = H.representativeScene(); // building roof y=52
     const cam = H.makePerspectiveCam({ pos: [0, 70, 20], lookAt: [0, 70, -40] });
     const c = H.makeControls({ camera: cam, scene, wasd: true, streetLevel: true });
-    c._deriveGroundedFromPose();
-    expect(c._grounded).toBe(false); // flying above the roof
+    c._deriveGroundedFromPose(); // settle grounded from the (flying) pose
 
     H.keyDown(c, 'KeyW');
     for (let i = 0; i < 40; i++) {
-      H.step(c, 16);
-      expect(cam.position.y).toBeCloseTo(70, 3); // absolute-height hold across the edge
+      H.tickInput(c, 16);
+      // Absolute-height hold across the edge is the observable of "flying":
+      // a ground-snap or ratchet-up would move y off 70.
+      expect(cam.position.y).toBeCloseTo(70, 3);
     }
     expect(cam.position.z).toBeLessThan(20); // made forward progress
   });
@@ -35,7 +39,7 @@ describe('WASD — WE4 forward flight at altitude over a building edge (Tier 2)'
 
     H.keyDown(c, 'KeyW');
     for (let i = 0; i < 200; i++) {
-      H.step(c, 16);
+      H.tickInput(c, 16);
       expect(cam.position.y).toBeCloseTo(40, 3); // altitude still held
     }
     // Halted at the wall standoff — never penetrates the footprint (z > -25).
@@ -44,7 +48,7 @@ describe('WASD — WE4 forward flight at altitude over a building edge (Tier 2)'
   });
 });
 
-describe('WASD — WE5 street-level flat ground, non-axis-aligned yaw (Tier 1.5)', () => {
+describe('WASD — street-level flat ground, non-axis-aligned yaw (Tier 1.5)', () => {
   it('moves along the camera heading, ramps over dt, snaps to zero on release', () => {
     const scene = H.groundPlaneScene({ y: 0 });
     const yawRad = (35 * Math.PI) / 180;
@@ -56,11 +60,11 @@ describe('WASD — WE5 street-level flat ground, non-axis-aligned yaw (Tier 1.5)
 
     H.keyDown(c, 'KeyW');
     const p0 = cam.position.clone();
-    H.step(c, 16);
+    H.tickInput(c, 16);
     const d1 = cam.position.distanceTo(p0);
-    for (let i = 0; i < 20; i++) H.step(c, 16);
+    for (let i = 0; i < 20; i++) H.tickInput(c, 16);
     const pMid = cam.position.clone();
-    H.step(c, 16);
+    H.tickInput(c, 16);
     const dLate = cam.position.distanceTo(pMid);
     // At street level the speed pins to the MIN_SPEED floor (TH-38 = 10 m/s):
     // 10 m/s × 16 ms ≈ 0.16 m/frame, reached immediately and held steady (the
@@ -79,7 +83,7 @@ describe('WASD — WE5 street-level flat ground, non-axis-aligned yaw (Tier 1.5)
     // Release snaps velocity to zero — the next frame produces no motion.
     H.keyUp(c, 'KeyW');
     const pRel = cam.position.clone();
-    H.step(c, 16);
+    H.tickInput(c, 16);
     expect(cam.position.distanceTo(pRel)).toBeCloseTo(0, 6);
   });
 });

@@ -1,6 +1,6 @@
-// Characterization: wheel swoop engine (WE1 swoop-in, WE2 reverse, WE3
-// ctrl-bypass). Behaviour pinned as-observed at e5a39479 (KD-2). Frozen
-// surface only: camera position / tilt / fov (KD-4a).
+// Characterization: the wheel swoop engine (swoop-in, wheel-out reverse,
+// ctrl-bypass). Behaviour pinned as-observed. Frozen surface only: camera
+// position / tilt / fov.
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as H from './_harness.js';
 
@@ -9,16 +9,20 @@ beforeAll(async () => {
   Controls = await H.loadControls();
   H.useControlsClass(Controls);
 });
-beforeEach(() => H.stubClock());
+beforeEach(() => {
+  H.stubClock();
+  H.clearSceneGlobals();
+});
 afterEach(() => H.teardownAll());
 
-describe('wheel swoop — WE1 birds-eye → street over a building (Tier 2)', () => {
+describe('wheel swoop — birds-eye → street over a building (Tier 2)', () => {
   it('descends monotonically, lands on the roof (not the footprint), tilts to horizontal', () => {
     const scene = H.representativeScene(); // ground y=12, building roof y=52
     const cam = H.makePerspectiveCam({ pos: [0, 92, -10], lookAt: [0, 52, -40] });
     const c = H.makeControls({ camera: cam, scene, streetLevel: true });
 
-    // KD-2 gate: the swoop must probe a REAL surface, not the miss/cache path.
+    // Real-surface gate: the swoop must probe a REAL surface, not the
+    // miss/cache path (else the descent characterises the fallback).
     expect(H.floorBelow(c, cam).source).not.toBe('cache');
 
     const startTilt = H.tilt(cam);
@@ -29,7 +33,7 @@ describe('wheel swoop — WE1 birds-eye → street over a building (Tier 2)', ()
     let phase1Tilt = null;
     for (let i = 0; i < 12; i++) {
       H.wheel(c, { dy: -100 });
-      H.step(c, 16);
+      H.tickInput(c, 16);
       expect(cam.position.y).toBeLessThanOrEqual(prevY + 1e-6); // monotone descent
       prevY = cam.position.y;
       if (H.aglBelow(c, cam) > 22) phase1Tilt = H.tilt(cam);
@@ -40,7 +44,7 @@ describe('wheel swoop — WE1 birds-eye → street over a building (Tier 2)', ()
     // Drive the rest of the descent to the floor.
     for (let i = 0; i < 200; i++) {
       H.wheel(c, { dy: -100 });
-      H.step(c, 16);
+      H.tickInput(c, 16);
       expect(cam.position.y).toBeLessThanOrEqual(prevY + 1e-6);
       prevY = cam.position.y;
     }
@@ -56,14 +60,17 @@ describe('wheel swoop — WE1 birds-eye → street over a building (Tier 2)', ()
   });
 });
 
-describe('wheel swoop — WE2 reverse from a mid-swoop excursion (Tier 2)', () => {
+describe('wheel swoop — reverse from a mid-swoop excursion (Tier 2)', () => {
   it('zoom-out returns toward the tilt it dove from', () => {
     const scene = H.representativeScene();
     const cam = H.makePerspectiveCam({ pos: [0, 92, -10], lookAt: [0, 52, -40] });
     const c = H.makeControls({ camera: cam, scene, streetLevel: true });
+
+    // Real-surface gate: the reverse path must probe a real surface too.
+    expect(H.floorBelow(c, cam).source).not.toBe('cache');
     const entryTilt = H.tilt(cam); // ~53°
 
-    // Dive into the Phase-2 transition band.
+    // Dive into the transition band.
     H.driveSwoopIn(c, cam, 8);
     expect(H.tilt(cam)).toBeLessThan(entryTilt - 10); // genuinely transitioned
 
@@ -74,8 +81,8 @@ describe('wheel swoop — WE2 reverse from a mid-swoop excursion (Tier 2)', () =
   });
 });
 
-describe('wheel swoop — WE3 ctrl-bypass (Tier 1.5, flat ground)', () => {
-  it('is a fixed-tilt plain dolly: tilt and fov constant, camera dollies in', () => {
+describe('wheel swoop — ctrl-bypass is a fixed-tilt plain dolly (Tier 1.5, flat ground)', () => {
+  it('holds tilt and fov constant while the camera dollies in', () => {
     const scene = H.groundPlaneScene({ y: 0 });
     const cam = H.makePerspectiveCam({ pos: [0, 60, 30], lookAt: [0, 0, 0] });
     const c = H.makeControls({ camera: cam, scene, streetLevel: true });
@@ -85,7 +92,7 @@ describe('wheel swoop — WE3 ctrl-bypass (Tier 1.5, flat ground)', () => {
 
     for (let i = 0; i < 8; i++) {
       H.wheel(c, { dy: -100, ctrl: true });
-      H.step(c, 16);
+      H.tickInput(c, 16);
     }
 
     expect(H.tilt(cam)).toBeCloseTo(startTilt, 3); // no phase machinery — tilt fixed

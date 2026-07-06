@@ -1,19 +1,17 @@
-/* Characterization-test harness for ExperimentalControls (TASK-035).
+/* Characterization-test harness for ExperimentalControls.
  *
  * Leading underscore => not collected as a `*.test.js` suite. Imported by
  * the per-module test files. Owns: the THREE global install, non-degenerate
- * camera / DOM / scene fixtures (KD-6), construction via the DI seam (KD-5),
- * the drive layer (KD-3 — the single place private entry points are named),
- * observation helpers, the clock stub (§2), hermetic teardown (§2), and the
- * break-it monkey-patch helper (KD-4b).
+ * camera / DOM / scene fixtures, construction via the dependency-injection
+ * seam, the drive layer (the single place private entry points are named),
+ * observation helpers, the clock stub, hermetic teardown, and the break-it
+ * monkey-patch helper.
  *
  * Nothing here asserts. Assertions live in the test files.
  */
 
 import * as THREE from 'three';
 import { cameraTiltDegrees } from '../../../../src/editor/lib/nav-experimental/navMath.js';
-
-const DEG2RAD = Math.PI / 180;
 
 // ---------------------------------------------------------------------------
 // THREE global + SUT import
@@ -43,10 +41,10 @@ export async function loadControls() {
 export { THREE };
 
 // ---------------------------------------------------------------------------
-// Fixtures (KD-6 — non-degenerate by mandate)
+// Fixtures — non-degenerate by mandate
 // ---------------------------------------------------------------------------
 
-// Aspect defaults to 1.6 (≠ 1); a symmetric camera hides split-NDC bugs.
+// Aspect defaults to 1.6 (≠ 1); a symmetric camera would hide split-NDC bugs.
 export function makePerspectiveCam({
   pos = [0, 50, 0],
   lookAt = [0, 0, 0],
@@ -62,7 +60,7 @@ export function makePerspectiveCam({
   return cam;
 }
 
-// Non-square rect with nonzero left/top (KD-6): a width/height transposition
+// Non-square rect with nonzero left/top: a width/height transposition
 // or a dropped offset in the split NDC code is otherwise invisible.
 export function makeDomElement({
   width = 1280,
@@ -99,8 +97,6 @@ function makeEl(attrs) {
   };
 }
 
-export { makeEl };
-
 // A DOM-capable scene object: a real jsdom element so TickAnimator's
 // `sceneEl.appendChild(document.createElement('a-entity'))` works, plus the
 // `.object3D` root and a no-op `.emit` the controls guard on. Not attached to
@@ -110,11 +106,6 @@ function makeSceneEl(rootObj) {
   sceneEl.object3D = rootObj;
   sceneEl.emit = () => {};
   return sceneEl;
-}
-
-// Tier 1 — no scene. The probe-miss / fallback path.
-export function emptyScene() {
-  return null;
 }
 
 // Tier 1.5 — a single large horizontal ground-plane mesh at `y`, tagged as a
@@ -134,7 +125,7 @@ export function groundPlaneScene({ y = 0, size = 100000 } = {}) {
   return makeSceneEl(root);
 }
 
-// Tier 2 — a minimal representative scene at nonzero ground elevation (KD-6):
+// Tier 2 — a minimal representative scene at nonzero ground elevation:
 //   - a bounded ground segment surface at `groundY`,
 //   - one solid building box (segment-tagged → solid floor + wall block +
 //     roof + enclosure),
@@ -212,7 +203,7 @@ export function rampScene({ baseY = 12, slopeDeg = 8, size = 2000 } = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// Construction (via the DI seam — KD-5) + teardown registry
+// Construction (via the dependency-injection seam) + teardown registry
 // ---------------------------------------------------------------------------
 
 let _ControlsClass = null;
@@ -249,7 +240,7 @@ export function makeControls({
 }
 
 // ---------------------------------------------------------------------------
-// Drive layer (KD-3 — the single place private entry points are named)
+// Drive layer (the single place private entry points are named)
 // ---------------------------------------------------------------------------
 
 // Wheel: accumulate only (motion applies on the next drain/tick). dy<0 = zoom
@@ -308,14 +299,14 @@ export function mouseUp(controls) {
 
 // Per-frame INPUT drain only (drains wheel + WASD, updates the legit/cue
 // snapshot). Does NOT advance in-flight tweens.
-export function step(controls, dt = 16, n = 1) {
+export function tickInput(controls, dt = 16, n = 1) {
   for (let i = 0; i < n; i++) controls._onTick(dt);
 }
 
 // Full-frame drive: fans out to EVERY tick subscriber — the in-flight tween
 // AND _onTick — in subscription order. Use where tween progress or
 // subscriber ordering matters.
-export function run(controls, dt = 16, n = 1) {
+export function tickAll(controls, dt = 16, n = 1) {
   for (let i = 0; i < n; i++) controls._tick._tick(dt);
 }
 
@@ -367,16 +358,6 @@ export function pose(camera) {
   };
 }
 
-export function yawDegrees(camera) {
-  const fwd = new THREE.Vector3();
-  camera.getWorldDirection(fwd);
-  fwd.y = 0;
-  if (fwd.lengthSq() < 1e-9) return 0;
-  fwd.normalize();
-  // bearing clockwise from -Z
-  return Math.atan2(fwd.x, -fwd.z) / DEG2RAD;
-}
-
 // Project a world point to pixel coordinates in the dom rect (for the
 // "pivot stays fixed" assertions). Returns { x, y, behind }.
 export function screenOf(camera, dom, worldPoint) {
@@ -387,18 +368,6 @@ export function screenOf(camera, dom, worldPoint) {
     y: rect.top + ((1 - v.y) / 2) * rect.height,
     behind: v.z > 1
   };
-}
-
-// Attach a change listener; returns { count, last, stop }.
-export function onChange(controls) {
-  const rec = { count: 0, last: null };
-  const fn = (e) => {
-    rec.count++;
-    rec.last = e;
-  };
-  controls.addEventListener('change', fn);
-  rec.stop = () => controls.removeEventListener('change', fn);
-  return rec;
 }
 
 // Attach an event listener for an arbitrary controls event type; returns
@@ -428,10 +397,6 @@ export function stubClock() {
   Date.now = () => _clockState.t;
 }
 
-export function advanceClock(ms) {
-  if (_clockState) _clockState.t += ms;
-}
-
 function restoreClock() {
   if (_clockState) {
     performance.now = _clockState.realPerfNow;
@@ -444,6 +409,16 @@ function restoreClock() {
 // Teardown (§2 — hermetic; dispose every instance, drop globals, restore clock)
 // ---------------------------------------------------------------------------
 
+// Clear scene-derived globals a test relies on being ABSENT. Notably the
+// representative scene's scatter mesh classifies as a rejected scatter (not a
+// solid floor) ONLY while `globalThis.STREET` (the asset catalog) is
+// undefined — a STREET left behind by another suite would reclassify it and
+// silently break the floor/scatter fixtures. Run at BOTH setup and teardown.
+export function clearSceneGlobals() {
+  delete globalThis.STREET;
+  if (globalThis.AFRAME) delete globalThis.AFRAME;
+}
+
 export function teardownAll() {
   for (const c of _liveControls) {
     try {
@@ -453,17 +428,21 @@ export function teardownAll() {
     }
   }
   _liveControls.clear();
-  delete globalThis.STREET;
-  if (globalThis.AFRAME) delete globalThis.AFRAME;
+  // THREE is deliberately NOT deleted here: the SUT captured it at module-load
+  // time (dynamic import, cached across the whole worker), so dropping the
+  // global mid-run would strand the already-loaded class with a dangling
+  // reference. STREET/AFRAME, by contrast, are read live per test and must be
+  // cleared so scene classification stays hermetic.
+  clearSceneGlobals();
   restoreClock();
 }
 
 // ---------------------------------------------------------------------------
-// Break-it harness (KD-4b — per-proxy invariant disablement)
+// Break-it harness — per-proxy invariant disablement
 // ---------------------------------------------------------------------------
 
 // Monkey-patch a specific invariant OFF for the duration of `fn`, then
-// restore. `which` selects the disablement target (PLAN §2 table).
+// restore. `which` selects which invariant's implementation is disabled.
 export function withInvariantDisabled(controls, which, fn) {
   const saved = {};
   try {
@@ -479,11 +458,19 @@ export function withInvariantDisabled(controls, which, fn) {
     } else if (which === 'rotationEndForWasd') {
       saved.fn = controls._endRotationGestureForWasd;
       controls._endRotationGestureForWasd = () => {};
-    } else if (which === 'idleGateWake') {
-      // Force the situation-sensor idle gate to always skip so the cue goes
-      // stale during motion.
+    } else if (which === 'idleGateStale') {
+      // Model "the situation sensor goes stale DURING motion": let the first
+      // evaluation run (establishing the baseline) then skip every subsequent
+      // one, so a cue that should transition mid-flight never fires. This is a
+      // sharper break than disabling the whole method — it reproduces a sensor
+      // that stops re-probing once the camera starts moving.
       saved.fn = controls._updateLegitSnapshotAndCue;
-      controls._updateLegitSnapshotAndCue = () => {};
+      let firstDone = false;
+      controls._updateLegitSnapshotAndCue = function () {
+        if (firstDone) return undefined;
+        firstDone = true;
+        return saved.fn.call(this);
+      };
     } else {
       throw new Error(`withInvariantDisabled: unknown target '${which}'`);
     }
@@ -492,17 +479,21 @@ export function withInvariantDisabled(controls, which, fn) {
     if (which === 'clearZoomUndo') controls._clearZoomUndo = saved.fn;
     else if (which === 'grounded') controls._deriveGroundedFromPose = saved.fn;
     else if (which === 'rotationEndForWasd') controls._endRotationGestureForWasd = saved.fn;
-    else if (which === 'idleGateWake') controls._updateLegitSnapshotAndCue = saved.fn;
+    else if (which === 'idleGateStale') controls._updateLegitSnapshotAndCue = saved.fn;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Scene-probe read-outs (used by tests to confirm a real hit — KD-2 gate)
+// Scene-probe read-outs (used by tests to confirm a real hit — the real-surface gate)
 // ---------------------------------------------------------------------------
 
-// The collision floor directly below the camera: { y, source }.
+// The collision floor directly below the camera: { y, source }. Read-only
+// (refreshCache:false) so an observation never mutates `_lastGroundY` and
+// perturbs a subsequent probe-miss fallback.
 export function floorBelow(controls, camera) {
-  return controls._collisionFloorAt(camera.position.x, camera.position.z);
+  return controls._collisionFloorAt(camera.position.x, camera.position.z, {
+    refreshCache: false
+  });
 }
 
 // AGL = camera.y − collision floor y directly below.
@@ -517,7 +508,7 @@ export function driveSwoopIn(controls, camera, targetAgl, { maxTicks = 400, clie
   for (; i < maxTicks; i++) {
     if (aglBelow(controls, camera) <= targetAgl) break;
     wheel(controls, { dy: -100, clientX, clientY });
-    step(controls, 16);
+    tickInput(controls, 16);
   }
   return i;
 }
@@ -526,7 +517,7 @@ export function driveSwoopIn(controls, camera, targetAgl, { maxTicks = 400, clie
 export function driveSwoopOut(controls, n = 80, { clientX = 640, clientY = 360 } = {}) {
   for (let i = 0; i < n; i++) {
     wheel(controls, { dy: +100, clientX, clientY });
-    step(controls, 16);
+    tickInput(controls, 16);
   }
 }
 
