@@ -5,6 +5,7 @@ import ModalTextures from './modals/ModalTextures';
 import SceneGraph from './scenegraph/SceneGraph';
 import { ScreenshotModal } from './modals/ScreenshotModal';
 import { ShareModal } from './modals/ShareModal';
+import { ExportModal } from './modals/ExportModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
@@ -92,6 +93,7 @@ export default function Main() {
       )}
       <ScreenshotModal />
       <ShareModal />
+      <ExportModal />
       <SignInModal />
       <EditorUpgradeModal />
       <ScenesModal />

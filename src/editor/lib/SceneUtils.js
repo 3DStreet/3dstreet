@@ -133,6 +133,16 @@ export function fileJSON(event) {
   reader.readAsText(event.target.files[0]);
 }
 
+// Scene-title-based filename stem for exports (e.g. "Untitled.glb",
+// "My Street.3dstreet.json") — callers append the extension.
+export function getExportFilename() {
+  const sceneTitle = useStore.getState().sceneTitle;
+  const sanitized = sceneTitle
+    ? sceneTitle.replace(/[<>:"/\\|?*]+/g, '').trim()
+    : '';
+  return sanitized || 'Untitled';
+}
+
 export async function convertToObject() {
   try {
     posthog.capture('export_initiated', {
@@ -178,13 +188,7 @@ export async function convertToObject() {
 
     const link = document.createElement('a');
     link.href = jsonString;
-    const sceneTitle = useStore.getState().sceneTitle;
-    const sanitized = sceneTitle
-      ? sceneTitle.replace(/[<>:"/\\|?*]+/g, '').trim()
-      : '';
-    link.download = sanitized
-      ? `${sanitized}.3dstreet.json`
-      : 'scene.3dstreet.json';
+    link.download = `${getExportFilename()}.3dstreet.json`;
 
     link.click();
     link.remove();

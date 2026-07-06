@@ -67,6 +67,13 @@ export function updateEntity(entity, component, property, value) {
     });
   }
 
+  // A pure rename doesn't change street-segment data, so managed-street never
+  // re-emits segments-changed; refresh the 3D street labels directly so they
+  // pick up the new name (also runs on undo/redo of a rename).
+  if (component === 'data-layer-name') {
+    entity.parentElement?.components?.['street-label']?.updateLabels();
+  }
+
   Events.emit('entityupdate', { entity, component, property, value });
 }
 
@@ -179,26 +186,6 @@ export function reorderEntityRelativeTo(entity, targetEntity, insertionMode) {
  */
 export function cloneEntity(entity) {
   return AFRAME.INSPECTOR.execute('entityclone', entity);
-}
-
-/**
- * Rename an entity, inserting it after the cloned one.
- * @param {Element} entity Entity to clone
- * @returns {Element} The clone
- */
-export function renameEntity(entity) {
-  const promptedName = prompt(
-    'Enter new name for entity',
-    entity.getAttribute('data-layer-name') || getEntityDisplayName(entity)
-  );
-  // If user cancels or enters empty name, abort
-  if (!promptedName) return;
-  AFRAME.INSPECTOR.execute('entityupdate', {
-    entity,
-    component: 'data-layer-name',
-    property: '',
-    value: promptedName
-  });
 }
 
 function recursivelyRegenerateId(element) {
