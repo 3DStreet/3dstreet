@@ -10,6 +10,7 @@ import { SceneTitleCommand } from './SceneTitleCommand.js';
 import { SegmentAddCommand } from './SegmentAddCommand.js';
 import { SegmentRemoveCommand } from './SegmentRemoveCommand.js';
 import { SegmentUpdateCommand } from './SegmentUpdateCommand.js';
+import { StreetReloadCommand } from './StreetReloadCommand.js';
 
 export const commandsByType = new Map();
 commandsByType.set('componentadd', ComponentAddCommand);
@@ -24,3 +25,4 @@ commandsByType.set('scenetitle', SceneTitleCommand);
 commandsByType.set('segmentadd', SegmentAddCommand);
 commandsByType.set('segmentremove', SegmentRemoveCommand);
 commandsByType.set('segmentupdate', SegmentUpdateCommand);
+commandsByType.set('streetreload', StreetReloadCommand);

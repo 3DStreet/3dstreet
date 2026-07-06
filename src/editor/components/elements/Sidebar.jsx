@@ -178,7 +178,7 @@ export default class Sidebar extends React.Component {
                 {entity.hasAttribute('data-no-transform') ? (
                   <></>
                 ) : (
-                  <div id="sidebar-buttons-small">
+                  <div className="sidebar-buttons-small">
                     <Button
                       variant={'toolbtn'}
                       onClick={() =>

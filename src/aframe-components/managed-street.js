@@ -876,6 +876,9 @@ AFRAME.registerComponent('managed-street', {
       });
     } catch (error) {
       console.error('[managed-street] loader', 'Loading Error:', error);
+      STREET.notify.warningMessage(
+        'Error loading Streetmix data: ' + error.message
+      );
     }
   },
   onEntityLoaded: function (entity) {

@@ -339,7 +339,7 @@ body.aframe-inspector-opened {
     width: 100%;
   }
 
-  #sidebar-buttons-small {
+  .sidebar-buttons-small {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
@@ -348,7 +348,7 @@ body.aframe-inspector-opened {
     column-gap: 4px;
   }
 
-  #sidebar-buttons-small button {
+  .sidebar-buttons-small button {
     width: 100%;
     font-size: 0.8rem !important; /* Make font smaller if needed */
     padding: 10px !important;
