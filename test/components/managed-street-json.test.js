@@ -168,13 +168,20 @@ async function createManagedStreet(streetObject) {
     () => {
       const segments = el.querySelectorAll('[street-segment]');
       expect(segments).toHaveLength(streetObject.segments.length);
-      segments.forEach((segment) => expect(segment.hasLoaded).toBe(true));
+      segments.forEach((segment) => {
+        expect(segment.hasLoaded).toBe(true);
+        // Positive completion signal (no magic delay): every fixture segment
+        // carries generated content, so its `loaded` handler
+        // (generateComponentsFromSegmentObject) has run once at least one
+        // street-generated-* component is attached.
+        const hasGenerated = Object.keys(segment.components).some((name) =>
+          name.startsWith('street-generated')
+        );
+        expect(hasGenerated).toBe(true);
+      });
     },
     { timeout: 10000 }
   );
-  // one extra macrotask so every segment's `loaded` handler
-  // (generateComponentsFromSegmentObject) has definitely run
-  await new Promise((resolve) => setTimeout(resolve, 50));
   return el;
 }
 

@@ -19,11 +19,12 @@ let segmentVariants = null;
 let streetmixParsersTested = null;
 async function loadStreetmixParserDeps() {
   if (segmentVariants && streetmixParsersTested) return;
-  const variantsModule = await import('../segments-variants.js');
+  const [variantsModule, parsersModule] = await Promise.all([
+    import('../segments-variants.js'),
+    import('../tested/aframe-streetmix-parsers-tested')
+  ]);
   segmentVariants =
     variantsModule.segmentVariants ?? variantsModule.default?.segmentVariants;
-  const parsersModule =
-    await import('../tested/aframe-streetmix-parsers-tested');
   streetmixParsersTested = parsersModule.isSidewalk
     ? parsersModule
     : parsersModule.default;

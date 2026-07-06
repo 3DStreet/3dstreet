@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import posthog from 'posthog-js';
 import PropertyRow from './PropertyRow';
 import { Button } from './Button';
+import { saveString } from '@/editor/lib/utils';
 
 const sourceLabels = {
   'streetmix-url': 'Streetmix',
@@ -23,25 +24,25 @@ const ManagedStreetSidebar = ({ entity }) => {
     // into a Format-2 street object that re-imports via `sourceType: json-blob`.
     try {
       const streetJSON = window.STREET.utils.getManagedStreetJSON(entity);
+      // Base the filename on the JSON's own `name` (already prefix-stripped by
+      // getManagedStreetJSON) so the on-disk name matches the exported name;
+      // strip characters that are invalid in filenames (same set as the scene
+      // JSON download in SceneUtils).
+      const sanitized =
+        (streetJSON.name || 'street').replace(/[<>:"/\\|?*]+/g, '').trim() ||
+        'street';
+      // saveString handles the append-to-body + delayed revoke browser quirks.
+      saveString(
+        JSON.stringify(streetJSON, null, 2),
+        `${sanitized}.managed-street.json`,
+        'application/json'
+      );
+      // Capture after the download is triggered so the metric reflects an
+      // actual export, not just a successful serialization.
       posthog.capture('export_initiated', {
         export_type: 'managed-street-json',
         scene_id: STREET.utils.getCurrentSceneId()
       });
-      const layerName = entity.getAttribute('data-layer-name') || 'street';
-      // strip characters that are invalid in filenames (same set as the scene
-      // JSON download in SceneUtils)
-      const sanitized =
-        layerName.replace(/[<>:"/\\|?*]+/g, '').trim() || 'street';
-      const blob = new Blob([JSON.stringify(streetJSON, null, 2)], {
-        type: 'application/json'
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${sanitized}.managed-street.json`;
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
       STREET.notify.successMessage('Street JSON file saved successfully.');
     } catch (error) {
       STREET.notify.errorMessage(
