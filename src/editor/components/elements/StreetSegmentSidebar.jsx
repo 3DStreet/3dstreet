@@ -5,12 +5,15 @@ import Component from './StreetSegmentComponent';
 import PropertyRow from './PropertyRow';
 import {
   cloneEntity,
+  createUniqueId,
   removeSelectedEntity,
   renameEntity,
   setFocusCameraPose
 } from '../../lib/entity';
 import {
   StreetSurfaceIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
   ArrowsPointingInwardIcon,
   Copy32Icon,
   Edit24Icon,
@@ -32,6 +35,37 @@ const StreetSegmentSidebar = ({ entity }) => {
   // generic primitives surface street-generated-* the same way.
   const featuredComponents =
     Object.keys(components).filter(isGeneratorComponent);
+
+  // Move left/right reorders this segment among the travelled-way segments of
+  // its managed street (#1751). Boundaries are excluded: street-align places
+  // them by `side`, not index, so reordering past one is a visual no-op.
+  const parentEl = entity?.parentNode;
+  const isManagedStreetChild = !!parentEl?.components?.['managed-street'];
+  const travelledWaySiblings = isManagedStreetChild
+    ? Array.from(parentEl.children).filter(
+        (el) =>
+          el.hasAttribute &&
+          el.hasAttribute('street-segment') &&
+          el.getAttribute('street-segment')?.type !== 'boundary'
+      )
+    : [];
+  const segmentPos = travelledWaySiblings.indexOf(entity);
+
+  const moveSegment = (offset) => {
+    const target = travelledWaySiblings[segmentPos + offset];
+    if (!target) return;
+    if (!parentEl.id) {
+      parentEl.setAttribute('id', createUniqueId());
+    }
+    // insert before the target when moving left, after it when moving right
+    const indexInParent =
+      Array.from(parentEl.children).indexOf(target) + (offset > 0 ? 1 : 0);
+    AFRAME.INSPECTOR.execute('entityreparent', {
+      entity,
+      parentEl: parentEl.id,
+      indexInParent
+    });
+  };
 
   return (
     <div className="segment-sidebar">
@@ -114,6 +148,34 @@ const StreetSegmentSidebar = ({ entity }) => {
                   >
                     <FormattedMessage {...commonMessages.delete} />
                   </Button>
+                  {segmentPos !== -1 && (
+                    <>
+                      <Button
+                        variant={'toolbtn'}
+                        disabled={segmentPos === 0}
+                        onClick={() => moveSegment(-1)}
+                        leadingIcon={<ArrowLeftIcon />}
+                      >
+                        {intl.formatMessage({
+                          id: 'segmentSidebar.moveLeft',
+                          defaultMessage: 'Move Left'
+                        })}
+                      </Button>
+                      <Button
+                        variant={'toolbtn'}
+                        disabled={
+                          segmentPos === travelledWaySiblings.length - 1
+                        }
+                        onClick={() => moveSegment(1)}
+                        leadingIcon={<ArrowRightIcon />}
+                      >
+                        {intl.formatMessage({
+                          id: 'segmentSidebar.moveRight',
+                          defaultMessage: 'Move Right'
+                        })}
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
               <PropertyRow
