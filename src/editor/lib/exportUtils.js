@@ -1,7 +1,7 @@
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { saveBlob } from './utils';
-import { convertToObject } from './SceneUtils';
+import { convertToObject, getExportFilename } from './SceneUtils';
 import { expandBatchedMeshesForExport } from '../../batch-models';
 
 const filterHelpers = (scene, visible) => {
@@ -10,21 +10,6 @@ const filterHelpers = (scene, visible) => {
       o.visible = visible;
     }
   });
-};
-
-const slugify = (text) => {
-  return text
-    .toString()
-    .toLowerCase()
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^\w-]+/g, '-') // Replace all non-word chars with -
-    .replace(/--+/g, '-') // Replace multiple - with single -
-    .replace(/^-+/, '') // Trim - from start of text
-    .replace(/-+$/, ''); // Trim - from end of text
-};
-
-const getSceneName = (scene) => {
-  return scene.id || slugify(window.location.host + window.location.pathname);
 };
 
 const getMixinCategories = () => {
@@ -92,7 +77,7 @@ export const exportSceneToGLTF = (intl, arReady) => {
         scene_id: STREET.utils.getCurrentSceneId()
       });
 
-      const sceneName = getSceneName(AFRAME.scenes[0]);
+      const sceneName = getExportFilename();
       let scene = AFRAME.scenes[0].object3D;
       if (arReady) {
         // only export user layers, not geospatial
