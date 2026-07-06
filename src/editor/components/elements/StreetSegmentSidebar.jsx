@@ -247,18 +247,65 @@ const StreetSegmentSidebar = ({ entity }) => {
                       entity={entity}
                     />
                     <PropertyRow
-                      key="elevation"
-                      name="elevation"
+                      key="slope"
+                      name="slope"
                       label={intl.formatMessage({
-                        id: 'segmentSidebar.elevation',
-                        defaultMessage: 'Elevation (m)'
+                        id: 'segmentSidebar.slope',
+                        defaultMessage: 'Slope'
                       })}
-                      schema={component.schema['elevation']}
-                      data={component.data['elevation']}
+                      schema={component.schema['slope']}
+                      data={component.data['slope']}
                       componentname={componentName}
                       isSingle={false}
                       entity={entity}
                     />
+                    {/* sloped surfaces interpolate between the two edge
+                        elevations and ignore the flat elevation, so show
+                        one set of controls or the other */}
+                    {component.data['slope'] ? (
+                      <>
+                        <PropertyRow
+                          key="slopeStart"
+                          name="slopeStart"
+                          label={intl.formatMessage({
+                            id: 'segmentSidebar.slopeStart',
+                            defaultMessage: 'Start Edge (m)'
+                          })}
+                          schema={component.schema['slopeStart']}
+                          data={component.data['slopeStart']}
+                          componentname={componentName}
+                          isSingle={false}
+                          entity={entity}
+                        />
+                        <PropertyRow
+                          key="slopeEnd"
+                          name="slopeEnd"
+                          label={intl.formatMessage({
+                            id: 'segmentSidebar.slopeEnd',
+                            defaultMessage: 'End Edge (m)'
+                          })}
+                          schema={component.schema['slopeEnd']}
+                          data={component.data['slopeEnd']}
+                          componentname={componentName}
+                          isSingle={false}
+                          entity={entity}
+                        />
+                      </>
+                    ) : (
+                      <PropertyRow
+                        key="elevation"
+                        name="elevation"
+                        label={intl.formatMessage({
+                          id: 'segmentSidebar.elevation',
+                          defaultMessage: 'Elevation (m)'
+                        })}
+                        schema={component.schema['elevation']}
+                        data={component.data['elevation']}
+                        componentname={componentName}
+                        isSingle={false}
+                        entity={entity}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
