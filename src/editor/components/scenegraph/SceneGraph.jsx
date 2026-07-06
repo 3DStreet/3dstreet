@@ -8,7 +8,10 @@ import Events from '../../lib/Events';
 import Entity, { isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
 import { Plus20Circle } from '@shared/icons';
-import { createUniqueId, getEntityDisplayName } from '../../lib/entity';
+import {
+  getEntityDisplayName,
+  reorderEntityRelativeTo
+} from '../../lib/entity';
 import { isEditableTarget } from '@shared/utils/dom.js';
 import posthog from 'posthog-js';
 import AssetsPanel from './AssetsPanel';
@@ -212,44 +215,19 @@ class SceneGraph extends React.Component {
       return;
     }
 
-    let parentEl;
-    let indexInParent;
-
-    if (insertionMode === 'child') {
-      // Make draggedEntity a child of targetEntity
-      parentEl = targetEntity.id;
-      indexInParent = targetEntity.children.length; // Add at the end
-
-      // Expand the target entity in the UI
-      this.state.expandedElements.set(targetEntity, true);
-      this.setState({ expandedElements: this.state.expandedElements });
-    } else {
+    if (insertionMode !== 'child') {
       // Insert before or after targetEntity (same parent)
-      const targetParent = targetEntity.parentNode;
-      if (!targetParent) {
-        return;
-      }
-
-      if (!targetParent.id) {
-        targetParent.id = createUniqueId();
-      }
-
-      if (!draggedEntity.parentNode.id) {
-        draggedEntity.parentNode.id = createUniqueId();
-      }
-
-      parentEl = targetParent.id;
-      const targetIndex = Array.from(targetParent.children).indexOf(
-        targetEntity
-      );
-
-      if (insertionMode === 'before') {
-        indexInParent = targetIndex;
-      } else {
-        // 'after'
-        indexInParent = targetIndex + 1;
-      }
+      reorderEntityRelativeTo(draggedEntity, targetEntity, insertionMode);
+      return;
     }
+
+    // Make draggedEntity a child of targetEntity, added at the end
+    const parentEl = targetEntity.id;
+    const indexInParent = targetEntity.children.length;
+
+    // Expand the target entity in the UI
+    this.state.expandedElements.set(targetEntity, true);
+    this.setState({ expandedElements: this.state.expandedElements });
 
     AFRAME.INSPECTOR.execute('entityreparent', {
       entity: draggedEntity,

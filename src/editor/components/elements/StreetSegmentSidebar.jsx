@@ -5,11 +5,12 @@ import Component from './StreetSegmentComponent';
 import PropertyRow from './PropertyRow';
 import {
   cloneEntity,
-  createUniqueId,
   removeSelectedEntity,
   renameEntity,
+  reorderEntityRelativeTo,
   setFocusCameraPose
 } from '../../lib/entity';
+import { getTravelledWaySegments } from '@/aframe-components/street-layout-utils';
 import {
   StreetSurfaceIcon,
   ArrowLeftIcon,
@@ -42,29 +43,30 @@ const StreetSegmentSidebar = ({ entity }) => {
   const parentEl = entity?.parentNode;
   const isManagedStreetChild = !!parentEl?.components?.['managed-street'];
   const travelledWaySiblings = isManagedStreetChild
-    ? Array.from(parentEl.children).filter(
-        (el) =>
-          el.hasAttribute &&
-          el.hasAttribute('street-segment') &&
-          el.getAttribute('street-segment')?.type !== 'boundary'
-      )
+    ? getTravelledWaySegments(parentEl)
     : [];
   const segmentPos = travelledWaySiblings.indexOf(entity);
 
   const moveSegment = (offset) => {
-    const target = travelledWaySiblings[segmentPos + offset];
+    // Re-resolve by id: a move destroys and recreates the element, and this
+    // sidebar re-renders only after the new entity finishes loading, so on a
+    // quick second click the render-time `entity` is already detached. The
+    // recreated element keeps the same id.
+    const liveEntity =
+      (entity.id && document.getElementById(entity.id)) || entity;
+    const streetEl = liveEntity.parentNode;
+    if (!streetEl?.components?.['managed-street']) return;
+    const siblings = getTravelledWaySegments(streetEl);
+    const pos = siblings.indexOf(liveEntity);
+    if (pos === -1) return;
+    const target = siblings[pos + offset];
     if (!target) return;
-    if (!parentEl.id) {
-      parentEl.setAttribute('id', createUniqueId());
-    }
     // insert before the target when moving left, after it when moving right
-    const indexInParent =
-      Array.from(parentEl.children).indexOf(target) + (offset > 0 ? 1 : 0);
-    AFRAME.INSPECTOR.execute('entityreparent', {
-      entity,
-      parentEl: parentEl.id,
-      indexInParent
-    });
+    reorderEntityRelativeTo(
+      liveEntity,
+      target,
+      offset > 0 ? 'after' : 'before'
+    );
   };
 
   return (
@@ -74,7 +76,7 @@ const StreetSegmentSidebar = ({ entity }) => {
           {component && component.schema && component.data && (
             <>
               <div className="sidepanelContent">
-                <div id="sidebar-buttons-small">
+                <div className="sidebar-buttons-small">
                   <Button
                     variant={'toolbtn'}
                     onClick={() => Events.emit('objectfocus', entity.object3D)}
