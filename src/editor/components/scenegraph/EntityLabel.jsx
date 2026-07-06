@@ -1,8 +1,9 @@
 import PropTypes from 'prop-types';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { getEntityIcon, getEntityDisplayName } from '../../lib/entity';
 import useAssetUploadStatus from '../elements/useAssetUploadStatus';
+import InlineEditInput from '../elements/InlineEditInput';
 import { Edit24Icon } from '@shared/icons';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 
@@ -30,15 +31,6 @@ const EntityLabel = ({ entity, editable = false }) => {
   const intl = useIntl();
   const state = useAssetUploadStatus(entity);
   const [editing, setEditing] = useState(false);
-  const cancelledRef = useRef(false);
-  const inputRef = useRef(null);
-
-  useEffect(() => {
-    if (editing) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
-  }, [editing]);
 
   // Leave edit mode when the selection changes mid-edit.
   useEffect(() => {
@@ -70,35 +62,15 @@ const EntityLabel = ({ entity, editable = false }) => {
     });
   };
 
-  const onKeyDown = (event) => {
-    if (event.key === 'Enter') {
-      inputRef.current?.blur();
-    } else if (event.key === 'Escape') {
-      cancelledRef.current = true;
-      inputRef.current?.blur();
-    }
-  };
-
-  const onBlur = (event) => {
-    const cancelled = cancelledRef.current;
-    cancelledRef.current = false;
-    setEditing(false);
-    if (!cancelled) {
-      commitRename(event.target.value);
-    }
-  };
-
   if (canEdit && editing) {
     return (
       <span className="entityPrint">
         {icon && <span className="entityIcons">{icon}</span>}
-        <input
-          ref={inputRef}
+        <InlineEditInput
           className="entityNameInput"
-          type="text"
           defaultValue={displayName}
-          onKeyDown={onKeyDown}
-          onBlur={onBlur}
+          onCommit={commitRename}
+          onClose={() => setEditing(false)}
         />
       </span>
     );
