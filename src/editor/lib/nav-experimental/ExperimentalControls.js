@@ -56,6 +56,7 @@ import { TickAnimator } from './tickAnimator.js';
 import { CollisionProbe } from './collisionProbe.js';
 import { GroundedState } from './groundedState.js';
 import { SituationSensor } from './situationSensor.js';
+import { CameraWriteFunnel } from './cameraWriteFunnel.js';
 import {
   ZOOM_PER_WHEEL_TICK,
   FOV_PER_WHEEL_TICK,
@@ -302,6 +303,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       get sensor() {
         return self._sensor;
       },
+      get funnel() {
+        return self._funnel;
+      },
       // Dispatch identity: the `change`/cue events must fire ON the controls
       // instance (frozen external contract) — hand modules a bound callback,
       // never the instance itself.
@@ -324,6 +328,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Per-tick situation sensor: legit-pose snapshot, recovery cue, context
     // snapshot from one idle-gated enclosure ray.
     this._sensor = new SituationSensor(this._ctx);
+    // Camera-write funnel (M1): the single `change`-dispatch + wheel-memory-
+    // invalidation edge every camera move passes through. `clearWheelMemory`
+    // points at the wheel's zoom-undo reset, which still lives on this class
+    // until the wheel engine extracts (a one-line re-point then).
+    this._funnel = new CameraWriteFunnel({
+      dispatch: this._ctx.dispatch,
+      clearWheelMemory: () => this._clearZoomUndo()
+    });
 
     // TASK-010 (D2): the single tilt threshold T governing the LB
     // sub-mode, the wheel cut, the rotation regime, and the letterbox.
@@ -700,10 +712,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // TASK-024a (D1): re-derive grounded from the post-reset pose (the reset
     // camera at (0,15,30) is high → not-grounded unless a floor sits near it).
     this._groundedState.deriveFromPose();
-    // TASK-022: belt-and-braces — a reset/new-scene wipes all nav state.
-    // Init is already valid:false, but an explicit clear is self-documenting.
-    this._clearZoomUndo();
-    this.dispatchEvent(this._changeEvent);
+    // A reset/new-scene wipes all nav state: a non-wheel move → invalidate the
+    // wheel zoom-undo memory, then dispatch.
+    this._funnel.commitMove('reset');
   }
 
   newSceneCameraZoom(snapshotCameraState) {
@@ -729,9 +740,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // teleport. (The resetZoom() fallback branches above already route through
     // resetZoom's own derive call, so only this explicit-pose path needs it.)
     this._groundedState.deriveFromPose();
-    // TASK-022: explicit-pose teleport is a non-wheel camera move → clear.
-    this._clearZoomUndo();
-    this.dispatchEvent(this._changeEvent);
+    // Explicit-pose teleport is a non-wheel camera move → invalidate + dispatch.
+    this._funnel.commitMove('reset');
   }
 
   zoomInStart() {
@@ -3992,11 +4002,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
     camera.position.add(delta);
     this.center.add(delta);
-    // TASK-022: clear on ACTUAL movement only — a jitter drag that nets ~0
-    // on the latched plane must NOT clear (WE-6).
-    if (delta.x || delta.y || delta.z) this._clearZoomUndo();
+    // Invalidate on ACTUAL movement only — a jitter drag that nets ~0 on the
+    // latched plane must NOT invalidate (WE-6) — but always dispatch.
+    if (delta.x || delta.y || delta.z) this._funnel.invalidateWheelMemory('pan');
     camera.updateMatrixWorld();
-    this.dispatchEvent(this._changeEvent);
+    this._funnel.dispatch();
   }
 
   // --- LB hit-anchored truck ---
@@ -4036,12 +4046,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     camera.position.z += sz;
     this.center.x += sx;
     this.center.z += sz;
-    // TASK-022: clear on ACTUAL movement only — a jitter drag that nets ~0 on
-    // the latched plane must NOT clear (WE-6). (no-hit / non-finite cases
-    // already early-returned above.)
-    if (sx || sz) this._clearZoomUndo();
+    // Invalidate on ACTUAL movement only — a jitter drag that nets ~0 on the
+    // latched plane must NOT invalidate (WE-6) — but always dispatch. (no-hit /
+    // non-finite cases already early-returned above.)
+    if (sx || sz) this._funnel.invalidateWheelMemory('pan');
     camera.updateMatrixWorld();
-    this.dispatchEvent(this._changeEvent);
+    this._funnel.dispatch();
   }
 
   // --- LB pedestal move (Phase 2) ---
@@ -4139,12 +4149,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // deliberate vertical nav → lower H (D4, 2.2).
       this._groundedState.captureH();
     }
-    // TASK-022: clear on ACTUAL movement only — a near-zero-delta drag (no
-    // truck, no clamped y-change) must NOT clear (WE-6). (no-hit / degenerate
-    // cases already early-returned above.)
-    if (sR || dY) this._clearZoomUndo();
+    // Invalidate on ACTUAL movement only — a near-zero-delta drag (no truck, no
+    // clamped y-change) must NOT invalidate (WE-6) — but always dispatch.
+    // (no-hit / degenerate cases already early-returned above.)
+    if (sR || dY) this._funnel.invalidateWheelMemory('pan');
     camera.updateMatrixWorld();
-    this.dispatchEvent(this._changeEvent);
+    this._funnel.dispatch();
   }
 
   // --- TASK-010 rotation regime (two-way, latched at gesture start) ---
@@ -4398,15 +4408,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // rotate-in-place case (centre coincides with camera) `pos === camPos`
     // and the latched centre equals camera position anyway.
     this.center.copy(center);
-    // TASK-022: clear on ACTUAL rotation only — a zero-delta drag
-    // (dxPx==dyPx==0) reaches here with R≈identity and would otherwise clear
-    // (WE-6 violation). Gate on a non-zero applied pixel delta.
-    if (dxPx || dyPx) this._clearZoomUndo();
+    // Invalidate on ACTUAL rotation only — a zero-delta drag (dxPx==dyPx==0)
+    // reaches here with R≈identity and would otherwise invalidate (WE-6). Gate
+    // on a non-zero applied pixel delta — but always dispatch.
+    if (dxPx || dyPx) this._funnel.invalidateWheelMemory('rotate');
     camera.updateMatrixWorld();
     // TASK-010 (D3): billboard the ring as the camera orbits. No-op when
     // the ring is hidden (Street regime / not rotating).
     this._indicator.update(camera);
-    this.dispatchEvent(this._changeEvent);
+    this._funnel.dispatch();
   }
 
   // --- ActionBar zoom buttons (held-down repeat) ---
@@ -4432,11 +4442,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const zoomStartY = camera.position.y;
     camera.position.add(delta);
     this._groundedState.checkUngroundOnRise(zoomStartY);
-    // TASK-022: the toolbar zoom buttons move the camera by a non-wheel
-    // mechanism → clear. `delta` is non-zero while a button is held
-    // (interval-driven), so no gate needed.
-    this._clearZoomUndo();
+    // The toolbar zoom buttons move the camera by a non-wheel mechanism →
+    // invalidate the wheel memory (delta is non-zero while a button is held), then
+    // dispatch.
+    this._funnel.invalidateWheelMemory('action-bar');
     camera.updateMatrixWorld();
-    this.dispatchEvent(this._changeEvent);
+    this._funnel.dispatch();
   }
 }
