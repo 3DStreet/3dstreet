@@ -53,6 +53,7 @@ import {
 } from './cursorAnchor.js';
 import { RotationIndicator } from './rotationIndicator.js';
 import { TickAnimator } from './tickAnimator.js';
+import { CollisionProbe } from './collisionProbe.js';
 import {
   ZOOM_PER_WHEEL_TICK,
   FOV_PER_WHEEL_TICK,
@@ -276,6 +277,24 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._indicator = new RotationIndicator(this._sceneEl);
     this._tick = new TickAnimator(this._sceneEl);
 
+    // The shared context object handed to the extracted nav modules. Live
+    // getters (camera/scene can be swapped via setCamera) — never cache the ref.
+    // A module reads its siblings via `ctx` at call time, never in its own
+    // constructor.
+    const self = this;
+    this._ctx = {
+      controls: this,
+      get camera() {
+        return self._camera;
+      },
+      get sceneEl() {
+        return self._sceneEl;
+      }
+    };
+    // Collision-floor probe (stateful _lastGroundY cache). Owns its own scratch
+    // + raycaster so a probe never aliases another gesture's scratch.
+    this._probe = new CollisionProbe(this._ctx);
+
     // TASK-010 (D2): the single tilt threshold T governing the LB
     // sub-mode, the wheel cut, the rotation regime, and the letterbox.
     // Live value (overridable via `setTiltThreshold` / the
@@ -423,12 +442,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // never flips `valid` mid-ascent).
     this._ascentAnchor = null;
 
-    // Last ground height found directly below the camera by the AGL probe
-    // (TASK-013). Held through probe misses so the inferred ground stays
-    // continuous as the camera crosses a scene edge (spec D2 / WE-8). Init
-    // 0 so the never-probed-yet case == today's absolute-y behaviour on
-    // the flat default scene.
-    this._lastGroundY = 0;
     // Per-pass snapshot of the ground height directly below the camera,
     // set at the top of each _drainWheel pass from _collisionFloorAt()
     // (TASK-024 — the collision floor, so the swoop lands on roofs).
@@ -1672,7 +1685,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // `_collisionFloorAt`/`_enclosureProbe` — rather than a manual
     // nearest-hit loop, so legit-pose re-validation reads the same floor
     // the WASD/swoop path does.
-    const pick = this._pickFloorFromHits(hits, p.y, {
+    const pick = this._probe.pickFloorFromHits(hits, p.y, {
       acceptBuildings: true,
       acceptTiles: true
     });
@@ -1934,7 +1947,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // camera; the per-column cap is applied in the clearance step below. A void
     // below the camera (no floor) → no downward reference → no cap.
     const currentCamY = camera.position.y;
-    const curFloor = this._collisionFloorAt(
+    const curFloor = this._probe.collisionFloorAt(
       camera.position.x,
       camera.position.z,
       {
@@ -1953,7 +1966,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // Lane landing: eye height above the clicked point, AGL-capped, not
       // buried. (A's clicked point guaranteed a hit; a 'cache' miss is
       // degenerate — keep the desired eye-height Y.)
-      const floor = this._collisionFloorAt(position.x, position.z, {
+      const floor = this._probe.collisionFloorAt(position.x, position.z, {
         fromY: position.y,
         refreshCache: false
       });
@@ -2056,7 +2069,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     let pulled = 0;
     let fallback = null; // first column with a real floor (nominal framing)
     while (pulled <= DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES) {
-      const floor = this._collisionFloorAt(cand.x, cand.z, {
+      const floor = this._probe.collisionFloorAt(cand.x, cand.z, {
         fromY: cand.y,
         refreshCache: false
       });
@@ -2160,7 +2173,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // land / recovery-tween settle).
   _deriveGroundedFromPose() {
     const cam = this._camera;
-    const floor = this._collisionFloorAt(cam.position.x, cam.position.z);
+    const floor = this._probe.collisionFloorAt(cam.position.x, cam.position.z);
     this._grounded = groundedAtLoad({
       camY: cam.position.y,
       floorY: floor.y,
@@ -2507,7 +2520,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   _swoopToStreet() {
     if (!this._streetLevelEnabled) return; // gated upstream; belt-and-braces
     const cam = this._camera;
-    const P = this._centerRayGroundHit();
+    const P = this._probe.centerRayGroundHit();
     // Discriminate the two street-view cases by HOW STEEPLY you are looking down
     // (live-test v2 #2). The look-at point sits on the view ray, so the swoop's
     // descent-path angle IS the camera pitch: a shallow gaze means "big
@@ -2522,7 +2535,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const lookingDownEnough = cameraTiltDegrees(cam) > this._tiltThreshold;
     if (P && lookingDownEnough) {
       // Look-at swoop: end at street eye-height above the look-at point P.
-      const floorAtP = this._collisionFloorAt(P.x, P.z);
+      const floorAtP = this._probe.collisionFloorAt(P.x, P.z);
       // Prefer the per-column collision floor at P (slope-safe); if that misses
       // (P sits over a void seam), fall back to P.y itself (the ray hit).
       const groundYAtP = floorAtP.source !== 'cache' ? floorAtP.y : P.y;
@@ -2539,7 +2552,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // at a spot), or an unsuitable look-at (above the camera): fall back to the
     // v1 VERTICAL drop to the surface directly below, leveling out — preserves
     // WE-3 and gives the "settle back down where I was" feel for a small pedestal.
-    const floor = this._collisionFloorAt(cam.position.x, cam.position.z);
+    const floor = this._probe.collisionFloorAt(cam.position.x, cam.position.z);
     if (floor.source === 'cache') return; // no surface below either → no-op (WE-8)
     const targetY = floor.y + EYE_MARGIN_METRES;
     if (targetY >= cam.position.y) return; // already at/below
@@ -2610,34 +2623,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     });
   }
 
-  // TASK-025 v2 (R2-REV-B): forward raycast from the camera along its view
-  // direction to the collision floor — "what am I looking at?". Returns the
-  // first hit passing `isSolidFloorHit` as a THREE.Vector3, else NULL. NULL is
-  // expected and common when looking horizontal / above the horizon (the reason
-  // TASK-026 removed `_screenCenterHit()` — `_viewRayGroundPoint`'s y=0 plane
-  // returns null at/above the horizon). Callers MUST handle null. This is NEW
-  // code, not a reuse: `_collisionFloorAt`/`_enclosureProbeAt` hard-code a
-  // VERTICAL ray and `_pickFloorFromHits`'s "below refY" filter assumes that;
-  // `_viewRayGroundPoint` uses the analytic y=0 plane (not slope-safe). Only the
-  // per-hit `isSolidFloorHit` predicate is shared — slope-safe (real geometry).
-  _centerRayGroundHit() {
-    const sceneEl = this._sceneEl;
-    if (!sceneEl || !sceneEl.object3D) return null;
-    const cam = this._camera;
-    const dir = this._tmpV3c;
-    cam.getWorldDirection(dir); // unit view direction (camera -Z in world)
-    this._raycaster.set(cam.position, dir);
-    this._raycaster.near = 0;
-    this._raycaster.far = Infinity;
-    const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
-    for (const hit of hits) {
-      if (isSolidFloorHit(hit)) {
-        return hit.point.clone();
-      }
-    }
-    return null;
-  }
-
   // TASK-025 v2 (R2-REV-B): drone view — an ASCENDING / REVERSE SWOOP. The
   // camera pulls UP-AND-BACK along its horizontal heading to a canonical height
   // H, ending at the 60° overview attitude LOOKING AT the feet point F (so the
@@ -2657,8 +2642,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // degrades to a sane pose. `_collisionFloorAt` refreshes the floor cache
     // (refreshCache: true) — NOT a pure read; call it exactly once. The `busy`
     // gate prevents interleave with an in-flight `_fallTo` retarget (M6).
-    const groundLevel = this._travelHeightFloorYBelow();
-    const floor = this._collisionFloorAt(cam.position.x, cam.position.z);
+    const groundLevel = this._probe.travelHeightFloorYBelow();
+    const floor = this._probe.collisionFloorAt(cam.position.x, cam.position.z);
     // surfaceBelow = the collision floor directly below (the roof you stand on,
     // for the ROOF_CLEARANCE term) AND the feet point the drone looks AT / offsets
     // back from. On a feet-miss (cache, over a void) substitute groundLevel so the
@@ -2809,7 +2794,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       durationMs: FALL_DURATION_MS,
       onTick: (eased) => {
         if (!retargeted) {
-          const floor = this._collisionFloorAt(
+          const floor = this._probe.collisionFloorAt(
             camera.position.x,
             camera.position.z
           );
@@ -3068,9 +3053,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // so it does not perturb the wheel floor cache.
     let lookAtFloorY = null;
     if (!enclosed && probe.floorY == null) {
-      const P = this._centerRayGroundHit();
+      const P = this._probe.centerRayGroundHit();
       if (P) {
-        const floorAtP = this._floorYBelowAt(P.x, P.z, { refreshCache: false });
+        const floorAtP = this._probe.floorYBelowAt(P.x, P.z, { refreshCache: false });
         lookAtFloorY = floorAtP.source !== 'cache' ? floorAtP.y : P.y;
       }
     }
@@ -3116,151 +3101,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._sceneEl && this._sceneEl.emit) {
       this._sceneEl.emit('nav-experimental:recovery-cue', { kind }, false);
     }
-  }
-
-  // TASK-024 (1b): downward floor probe at an arbitrary XZ column. Casts
-  // (0,-1,0) from (x, camera.y, z), classifies each hit, and picks the
-  // nearest segment-or-building hit (priority) else the nearest tiles hit
-  // (TASK-019 D3 — a tiles rooftop must never beat a lower segment). Honours
-  // `acceptBuildings` / `acceptTiles` flags so the travel-height query can
-  // exclude buildings. Returns { y, normal, source, hit } (hit = the raw
-  // intersection for normal extraction). On a miss returns the last-known
-  // ground cache with source 'cache'. When `refreshCache` is set, a hit
-  // updates `_lastGroundY` (D2 continuity).
-  _floorYBelowAt(x, z, opts = {}) {
-    const camera = this._camera;
-    const sceneEl = this._sceneEl;
-    const acceptBuildings = opts.acceptBuildings !== false;
-    const acceptTiles = opts.acceptTiles !== false;
-    // TASK-012 (H-1): cast from an arbitrary candidate Y (default = the live
-    // camera, so EXISTING callers are unchanged), and reference the same Y as
-    // the floor ceiling so a teleport endpoint validated under an overpass
-    // finds the LANE below it, not the deck the high camera would otherwise
-    // probe through. A downward ray from `fromY` only produces hits at/below
-    // `fromY`, so passing it as refY (vs the old Infinity) excludes nothing
-    // for the default camera-Y callers — byte-identical.
-    const fromY = opts.fromY != null ? opts.fromY : camera.position.y;
-    if (!sceneEl || !sceneEl.object3D) {
-      return { y: this._lastGroundY, normal: null, source: 'cache', hit: null };
-    }
-    this._tmpV3a.set(x, fromY, z);
-    this._raycaster.set(this._tmpV3a, GROUND_PROBE_DIR);
-    this._raycaster.near = 0;
-    this._raycaster.far = Infinity;
-    const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
-    const pick = this._pickFloorFromHits(hits, fromY, {
-      acceptBuildings,
-      acceptTiles
-    });
-    if (pick) {
-      if (opts.refreshCache) this._lastGroundY = pick.hit.point.y;
-      return {
-        y: pick.hit.point.y,
-        normal: worldHitNormal(pick.hit),
-        source: pick.source,
-        hit: pick.hit
-      };
-    }
-    return { y: this._lastGroundY, normal: null, source: 'cache', hit: null };
-  }
-
-  // TASK-024 (TASK-019 D3): the SHARED floor-priority picker. Given a
-  // near→far hit list and a reference height `refY` (only hits at/below
-  // refY + epsilon are floor candidates), return the priority floor:
-  //   { hit, source: 'segment-or-building' } — nearest accepted
-  //     segment/building below refY, if any; else
-  //   { hit, source: 'tiles' } — nearest accepted tiles hit below refY;
-  //   else null.
-  // A tiles rooftop must never beat a lower segment/building, even when the
-  // tiles hit is nearer. Reused by `_floorYBelowAt` (the WASD/swoop floor)
-  // and `_enclosureProbe` (the enclosure floor) so consumers — isLegitPose,
-  // the cue, the context resolver — read the SAME floor the swoop/WASD path does.
-  _pickFloorFromHits(hits, refY, { acceptBuildings, acceptTiles }) {
-    const ceil = refY === Infinity ? Infinity : refY + 1e-3;
-    let tilesHit = null;
-    for (const hit of hits) {
-      if (hit.point.y > ceil) continue; // overhead — not a floor candidate
-      if (isSolidFloorHit(hit, { acceptBuildings, acceptTiles: false })) {
-        return { hit, source: 'segment-or-building' };
-      }
-      if (
-        acceptTiles &&
-        !tilesHit &&
-        isSolidFloorHit(hit, { acceptBuildings: false, acceptTiles: true })
-      ) {
-        tilesHit = hit;
-      }
-    }
-    if (tilesHit) return { hit: tilesHit, source: 'tiles' };
-    return null;
-  }
-
-  // TASK-024: collision floor at an XZ column — nearest solid surface
-  // (ground OR building roof OR tiles), scatter excluded. Used by the
-  // descent clamp, swoop, orbit clamp, WASD destination, enclosure floor.
-  _collisionFloorAt(x, z, opts = {}) {
-    // TASK-012 (H-1 / L-A): pass `fromY` through (default camera-Y) so a
-    // teleport clearance probe can cast from the candidate position; and let
-    // a clearance/standoff probe opt out of the `_lastGroundY` cache refresh
-    // (`refreshCache: false`) so a candidate column the camera never visits
-    // doesn't poison the next recovery/WASD miss fallback. Defaults keep all
-    // existing callers unchanged.
-    return this._floorYBelowAt(x, z, {
-      acceptBuildings: true,
-      acceptTiles: true,
-      refreshCache: opts.refreshCache !== false,
-      fromY: opts.fromY
-    });
-  }
-
-  // TASK-024: travel-height floor below the camera (WASD fly-speed only).
-  //   3DStreet: nearest segment-only hit (buildings see-through — B4 speed
-  //     rationale preserved).
-  //   Tiles (no separable ground): the MINIMUM collision-floor y over a
-  //     small fixed grid below the camera, approximating the street/ground
-  //     between roofs so speed doesn't crawl over a single roof.
-  _travelHeightFloorYBelow() {
-    return this._travelHeightFloorAt(
-      this._camera.position.x,
-      this._camera.position.z
-    );
-  }
-
-  // TASK-024 / TASK-024a: travel-height floor at an arbitrary XZ column.
-  // `_travelHeightFloorYBelow` delegates here with the camera column for WASD
-  // *speed* scaling (height above the land beneath buildings). Same math:
-  // segment-only first, else the ±2 m 3×3 grid minimum over tiles.
-  // (The retired option-2 destination-column sampler used this too; DEC-A.)
-  _travelHeightFloorAt(cx, cz) {
-    // Segment-only first (3DStreet land-floor).
-    const seg = this._floorYBelowAt(cx, cz, {
-      acceptBuildings: false,
-      acceptTiles: false,
-      refreshCache: false
-    });
-    if (seg.source === 'segment-or-building') return seg.y;
-    // No segment ground — tiles regime. Sample a small 3×3 grid (±2 m) and
-    // take the lowest collision floor (the low point ≈ street/ground).
-    // Perf worst-case: this 3×3 grid is the ~9-ray path, reached only while
-    // WASD is held over tiles (no street segment below); the common
-    // segment-below case early-returns above after a single ray.
-    const SPAN = 2;
-    let minY = Infinity;
-    let any = false;
-    for (let ix = -1; ix <= 1; ix++) {
-      for (let iz = -1; iz <= 1; iz++) {
-        const f = this._floorYBelowAt(cx + ix * SPAN, cz + iz * SPAN, {
-          acceptBuildings: true,
-          acceptTiles: true,
-          refreshCache: false
-        });
-        if (f.source !== 'cache') {
-          any = true;
-          if (f.y < minY) minY = f.y;
-        }
-      }
-    }
-    return any ? minY : this._lastGroundY;
   }
 
   // TASK-024 (3a): enclosure / overhead probe. Casts (0,-1,0) from
@@ -3313,7 +3153,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // rooftop where a lower segment/building sits below it (TASK-019 D3),
     // making isLegitPose / the cue / the context resolver read a different
     // floor than the swoop. refY = y so only hits at/below the probe column count.
-    const pick = this._pickFloorFromHits(hits, y, {
+    const pick = this._probe.pickFloorFromHits(hits, y, {
       acceptBuildings: true,
       acceptTiles: true
     });
@@ -3344,7 +3184,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // reads this._frameGroundY so they see a single consistent ground for the
     // frame. The swoop reads the COLLISION floor (ground OR building roof OR
     // tiles), so a swoop over a building lands on the roof (WE-2 / C5).
-    const frameFloor = this._collisionFloorAt(
+    const frameFloor = this._probe.collisionFloorAt(
       this._camera.position.x,
       this._camera.position.z
     );
@@ -4228,7 +4068,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // TASK-024: WASD fly-speed scales by TRAVEL HEIGHT (height above the
     // land/ground beneath buildings), NOT the collision floor — so speed
     // doesn't crawl over a building roof (B4 speed rationale; TASK-013 WE-4).
-    const groundY = this._travelHeightFloorYBelow();
+    const groundY = this._probe.travelHeightFloorYBelow();
     const aglRaw = camera.position.y - groundY;
     const height = Math.max(0.1, aglRaw);
     const targetSpeed = THREE.MathUtils.clamp(
@@ -4339,14 +4179,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const reach = stepThisFrame + WASD_CAMERA_RADIUS_METRES;
 
     // Floor under the camera now (collision floor).
-    const floorNow = this._collisionFloorAt(
+    const floorNow = this._probe.collisionFloorAt(
       camera.position.x,
       camera.position.z
     );
     // Destination column floor.
     const destX = camera.position.x + dirX * reach;
     const destZ = camera.position.z + dirZ * reach;
-    const floorDest = this._collisionFloorAt(destX, destZ);
+    const floorDest = this._probe.collisionFloorAt(destX, destZ);
 
     // Forward ray: from the camera along the horizontal travel direction,
     // length `reach`, first accepted solid-floor hit (the wall/façade/cliff
@@ -4550,7 +4390,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // through a solid surface. Clamp to collisionFloor + eye-margin at the
     // (post-truck) XZ column. y-write only; the truck-right component is
     // unaffected.
-    const floor = this._collisionFloorAt(camera.position.x, camera.position.z);
+    const floor = this._probe.collisionFloorAt(camera.position.x, camera.position.z);
     const minY = floor.y + EYE_MARGIN_METRES;
     // TASK-024a (solid-geometry guard): a probe miss (source 'cache' = stale
     // last-known ground, no real surface below) means "no floor below" —
@@ -4803,7 +4643,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // probe misses and returns a stale cached floor (`source==='cache'`)
       // — using it would over-restrict downward orbit tilt. A miss ⇒ no
       // floor bound.
-      const pivotFloor = this._collisionFloorAt(center.x, center.z);
+      const pivotFloor = this._probe.collisionFloorAt(center.x, center.z);
       if (pivotFloor.source !== 'cache') floorY = pivotFloor.y;
     }
     // TASK-023: camera's screen-right axis (local +X in world space). Used

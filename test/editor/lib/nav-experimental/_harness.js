@@ -491,7 +491,10 @@ export function withInvariantDisabled(controls, which, fn) {
 // (refreshCache:false) so an observation never mutates `_lastGroundY` and
 // perturbs a subsequent probe-miss fallback.
 export function floorBelow(controls, camera) {
-  return controls._collisionFloorAt(camera.position.x, camera.position.z, {
+  // Collision probing lives in the CollisionProbe module (controls._probe).
+  // This drive/observation layer is the single place the moved private surface
+  // is re-pointed; the assertion files never name it.
+  return controls._probe.collisionFloorAt(camera.position.x, camera.position.z, {
     refreshCache: false
   });
 }
