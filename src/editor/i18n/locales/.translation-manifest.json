@@ -585,7 +585,12 @@
     "save.saving": "Saving...",
     "undoRedo.redo": "Redo",
     "undoRedo.undo": "Undo",
-    "appMenu.export.exportingGlb": "Exporting scene as GLB file..."
+    "appMenu.export.exportingGlb": "Exporting scene as GLB file...",
+    "segmentSidebar.moveLeft": "Move Left",
+    "segmentSidebar.moveRight": "Move Right",
+    "segmentSidebar.slope": "Slope",
+    "segmentSidebar.slopeStart": "Start Edge (m)",
+    "segmentSidebar.slopeEnd": "End Edge (m)"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1173,7 +1178,12 @@
     "save.saving": "Saving...",
     "undoRedo.redo": "Redo",
     "undoRedo.undo": "Undo",
-    "appMenu.export.exportingGlb": "Exporting scene as GLB file..."
+    "appMenu.export.exportingGlb": "Exporting scene as GLB file...",
+    "segmentSidebar.moveLeft": "Move Left",
+    "segmentSidebar.moveRight": "Move Right",
+    "segmentSidebar.slope": "Slope",
+    "segmentSidebar.slopeStart": "Start Edge (m)",
+    "segmentSidebar.slopeEnd": "End Edge (m)"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1761,6 +1771,11 @@
     "save.saving": "Saving...",
     "undoRedo.redo": "Redo",
     "undoRedo.undo": "Undo",
-    "appMenu.export.exportingGlb": "Exporting scene as GLB file..."
+    "appMenu.export.exportingGlb": "Exporting scene as GLB file...",
+    "segmentSidebar.moveLeft": "Move Left",
+    "segmentSidebar.moveRight": "Move Right",
+    "segmentSidebar.slope": "Slope",
+    "segmentSidebar.slopeStart": "Start Edge (m)",
+    "segmentSidebar.slopeEnd": "End Edge (m)"
   }
 }

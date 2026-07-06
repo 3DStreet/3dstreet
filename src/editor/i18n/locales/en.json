@@ -1628,11 +1628,26 @@
   "segmentSidebar.elevation": {
     "defaultMessage": "Elevation (m)"
   },
+  "segmentSidebar.moveLeft": {
+    "defaultMessage": "Move Left"
+  },
+  "segmentSidebar.moveRight": {
+    "defaultMessage": "Move Right"
+  },
   "segmentSidebar.segmentType": {
     "defaultMessage": "Segment Type"
   },
   "segmentSidebar.side": {
     "defaultMessage": "Side"
+  },
+  "segmentSidebar.slope": {
+    "defaultMessage": "Slope"
+  },
+  "segmentSidebar.slopeEnd": {
+    "defaultMessage": "End Edge (m)"
+  },
+  "segmentSidebar.slopeStart": {
+    "defaultMessage": "Start Edge (m)"
   },
   "segmentSidebar.width": {
     "defaultMessage": "Width"
