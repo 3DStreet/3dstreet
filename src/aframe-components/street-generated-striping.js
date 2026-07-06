@@ -11,6 +11,7 @@ AFRAME.registerComponent('street-generated-striping', {
       oneOf: [
         'none',
         'solid-stripe',
+        'solid-stripe-yellow',
         'dashed-stripe',
         'short-dashed-stripe',
         'short-dashed-stripe-yellow',
@@ -118,6 +119,9 @@ AFRAME.registerComponent('street-generated-striping', {
     let stripingWidth = 0.2;
     if (stripingName === 'solid-stripe') {
       stripingTextureId = 'striping-solid-stripe';
+    } else if (stripingName === 'solid-stripe-yellow') {
+      stripingTextureId = 'striping-solid-stripe';
+      color = '#f7d117';
     } else if (stripingName === 'dashed-stripe') {
       stripingTextureId = 'striping-dashed-stripe';
     } else if (stripingName === 'short-dashed-stripe') {

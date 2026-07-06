@@ -1,5 +1,11 @@
 import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
+import { Button } from './Button';
+
+const sourceLabels = {
+  'streetmix-url': 'Streetmix',
+  'streetplan-url': 'StreetPlan'
+};
 
 const ManagedStreetSidebar = ({ entity }) => {
   const componentName = 'managed-street';
@@ -7,6 +13,18 @@ const ManagedStreetSidebar = ({ entity }) => {
   // Check if entity and its components exist
   const component = entity?.components?.[componentName];
   const labelComponent = entity?.components?.[labelComponentName];
+  const sourceLabel = sourceLabels[component?.data?.sourceType];
+
+  const reloadFromSource = () => {
+    // destructive: replaces all segments (and local edits) with the source
+    if (
+      window.confirm(
+        `Reload this street from ${sourceLabel}? Local segment edits will be lost.`
+      )
+    ) {
+      component.refreshFromSource();
+    }
+  };
 
   return (
     <div className="managed-street-sidebar">
@@ -79,6 +97,11 @@ const ManagedStreetSidebar = ({ entity }) => {
                   isSingle={false}
                   entity={entity}
                 />
+                {sourceLabel && (
+                  <Button variant="toolbtn" onClick={reloadFromSource}>
+                    Reload from {sourceLabel}
+                  </Button>
+                )}
               </>
             )}
         </div>
