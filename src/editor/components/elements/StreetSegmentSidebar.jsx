@@ -73,49 +73,6 @@ const StreetSegmentSidebar = ({ entity }) => {
         <div className="details">
           {component && component.schema && component.data && (
             <>
-              <PropertyRow
-                key="type"
-                name="type"
-                label={intl.formatMessage({
-                  id: 'segmentSidebar.segmentType',
-                  defaultMessage: 'Segment Type'
-                })}
-                schema={component.schema['type']}
-                data={component.data['type']}
-                componentname={componentName}
-                isSingle={false}
-                entity={entity}
-              />
-              {component.data['type'] === 'boundary' && (
-                <>
-                  <PropertyRow
-                    key="variant"
-                    name="variant"
-                    label={intl.formatMessage({
-                      id: 'segmentSidebar.boundaryVariant',
-                      defaultMessage: 'Boundary Variant'
-                    })}
-                    schema={component.schema['variant']}
-                    data={component.data['variant']}
-                    componentname={componentName}
-                    isSingle={false}
-                    entity={entity}
-                  />
-                  <PropertyRow
-                    key="side"
-                    name="side"
-                    label={intl.formatMessage({
-                      id: 'segmentSidebar.side',
-                      defaultMessage: 'Side'
-                    })}
-                    schema={component.schema['side']}
-                    data={component.data['side']}
-                    componentname={componentName}
-                    isSingle={false}
-                    entity={entity}
-                  />
-                </>
-              )}
               <div className="sidepanelContent">
                 <div id="sidebar-buttons-small">
                   <Button
@@ -176,6 +133,49 @@ const StreetSegmentSidebar = ({ entity }) => {
                   </div>
                 )}
               </div>
+              <PropertyRow
+                key="type"
+                name="type"
+                label={intl.formatMessage({
+                  id: 'segmentSidebar.segmentType',
+                  defaultMessage: 'Segment Type'
+                })}
+                schema={component.schema['type']}
+                data={component.data['type']}
+                componentname={componentName}
+                isSingle={false}
+                entity={entity}
+              />
+              {component.data['type'] === 'boundary' && (
+                <>
+                  <PropertyRow
+                    key="variant"
+                    name="variant"
+                    label={intl.formatMessage({
+                      id: 'segmentSidebar.boundaryVariant',
+                      defaultMessage: 'Boundary Variant'
+                    })}
+                    schema={component.schema['variant']}
+                    data={component.data['variant']}
+                    componentname={componentName}
+                    isSingle={false}
+                    entity={entity}
+                  />
+                  <PropertyRow
+                    key="side"
+                    name="side"
+                    label={intl.formatMessage({
+                      id: 'segmentSidebar.side',
+                      defaultMessage: 'Side'
+                    })}
+                    schema={component.schema['side']}
+                    data={component.data['side']}
+                    componentname={componentName}
+                    isSingle={false}
+                    entity={entity}
+                  />
+                </>
+              )}
               <PropertyRow
                 key="width"
                 name="width"
