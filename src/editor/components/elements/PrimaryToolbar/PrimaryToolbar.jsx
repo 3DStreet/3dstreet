@@ -17,9 +17,11 @@ export const PrimaryToolbar = () => {
   const hasPlayable = useHasPlayable();
 
   // Enter the Viewer from the editor camera's current pose (WYSIWYG).
-  // When the scene has a playable capability the button reads "Play"
-  // and also starts the simulation clock; otherwise it's just "View".
-  const handleView = () => {
+  // Always labeled "Play" (a "View" label collides conceptually with the
+  // View app menu); the simulation clock only starts when the scene has
+  // a registered playable capability — on static scenes Play is simply
+  // the read-only presentation.
+  const handlePlay = () => {
     useStore.getState().enterViewerMode('editor');
     if (hasPlayable) {
       document.querySelector('a-scene')?.systems?.['play-mode']?.start();
@@ -60,10 +62,8 @@ export const PrimaryToolbar = () => {
       <div className={styles.divider} />
       <Button
         variant="toolbtn"
-        onClick={handleView}
-        leadingIcon={
-          <AwesomeIcon icon={hasPlayable ? faPlay : faEye} size={16} />
-        }
+        onClick={handlePlay}
+        leadingIcon={<AwesomeIcon icon={faPlay} size={16} />}
         title={
           hasPlayable
             ? intl.formatMessage({
@@ -71,16 +71,12 @@ export const PrimaryToolbar = () => {
                 defaultMessage: 'Enter view mode and start the simulation'
               })
             : intl.formatMessage({
-                id: 'primaryToolbar.viewTitle',
+                id: 'primaryToolbar.playStaticTitle',
                 defaultMessage: 'View the scene without editor panels'
               })
         }
       >
-        {hasPlayable ? (
-          <FormattedMessage id="primaryToolbar.play" defaultMessage="Play" />
-        ) : (
-          <FormattedMessage id="primaryToolbar.view" defaultMessage="View" />
-        )}
+        <FormattedMessage id="primaryToolbar.play" defaultMessage="Play" />
       </Button>
       <div className={styles.divider} />
       <Button

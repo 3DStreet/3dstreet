@@ -1355,6 +1355,9 @@
   "primaryToolbar.play": {
     "defaultMessage": "Play"
   },
+  "primaryToolbar.playStaticTitle": {
+    "defaultMessage": "View the scene without editor panels"
+  },
   "primaryToolbar.playTitle": {
     "defaultMessage": "Enter view mode and start the simulation"
   },
@@ -1369,12 +1372,6 @@
   },
   "primaryToolbar.togglePanels": {
     "defaultMessage": "Toggle panels visibility (`)"
-  },
-  "primaryToolbar.view": {
-    "defaultMessage": "View"
-  },
-  "primaryToolbar.viewTitle": {
-    "defaultMessage": "View the scene without editor panels"
   },
   "profileModal.accountInformation": {
     "defaultMessage": "Account Information"

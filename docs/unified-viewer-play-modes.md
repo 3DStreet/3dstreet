@@ -238,6 +238,7 @@ URL/embed ("Open in Viewer mode" button from #1267's share modal sketch).
    (the parked chassis-persistence work heads that way).
 3. **Username availability** (#1288): what's the fallback byline before
    public usernames ship — display name, "a 3DStreet creator", or hide?
-4. **Naming**: user-facing verb for entering the Viewer from the editor —
-   "Play" (when playable) vs "Present"/"View" (when static)? One button
-   whose label depends on `hasPlayable` may be the honest answer.
+4. **Naming** — resolved: the button is always **"Play"** ("View" collides
+   conceptually with the View app menu, and Play matches the driving-sim
+   branch). On static scenes Play simply presents the scene read-only; the
+   simulation clock only starts when a playable capability is registered.
