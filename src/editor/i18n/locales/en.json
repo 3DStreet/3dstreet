@@ -1484,9 +1484,6 @@
   "primaryToolbar.play": {
     "defaultMessage": "Start"
   },
-  "primaryToolbar.view": {
-    "defaultMessage": "View"
-  },
   "primaryToolbar.playStaticTitle": {
     "defaultMessage": "View the scene without editor panels"
   },
@@ -1504,6 +1501,9 @@
   },
   "primaryToolbar.togglePanels": {
     "defaultMessage": "Toggle panels visibility (`)"
+  },
+  "primaryToolbar.view": {
+    "defaultMessage": "View"
   },
   "profileModal.accountInformation": {
     "defaultMessage": "Account Information"
