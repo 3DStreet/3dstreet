@@ -317,7 +317,11 @@ AFRAME.registerComponent('street-traffic-replay', {
     entity.setAttribute('mixin', mixin);
     entity.setAttribute('data-no-transform', '');
     entity.setAttribute('data-layer-name', 'Traffic Replay');
+    // data-play-mode-traffic (attribute) = drive-mode collider-seeder selector;
+    // play-mode-traffic (component) = exclude from the static mesh batcher so
+    // the moving replay agent renders instead of freezing into a batch.
     entity.setAttribute('data-play-mode-traffic', '');
+    entity.setAttribute('play-mode-traffic', '');
     entity.classList.add('autocreated');
     if (dirSign === -1) entity.setAttribute('rotation', '0 180 0');
     // Enter at the near end for the travel direction; X centred (lane offset

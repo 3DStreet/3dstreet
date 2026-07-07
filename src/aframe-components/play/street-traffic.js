@@ -66,6 +66,19 @@ const SEGMENT_TRAFFIC_DEFAULTS = {
   // divider/grass/rail/building: no traffic.
 };
 
+// Marker component put on every animated traffic / replay entity. Beyond being
+// a stable selector, it is deliberately NOT in batch-models' safe-component
+// allowlist (SAFE_COMPONENTS_BY_KIND), so its presence makes getBlockingComponents
+// return non-empty and the entity is excluded from the static BatchedMesh.
+// Without it, a traffic entity carrying only its mixin's gltf-part/gltf-model is
+// batch-eligible: it gets folded into a static batch and its own mesh is stripped,
+// so moving object3D.position each tick moves only the (separately-synced)
+// kinematic collider — you can collide with the car/pedestrian but never see it
+// where it moves. A no-op component is enough; batch exclusion is the whole point.
+if (!AFRAME.components['play-mode-traffic']) {
+  AFRAME.registerComponent('play-mode-traffic', {});
+}
+
 AFRAME.registerComponent('street-traffic', {
   init: function () {
     this.onPlayStart = this.onPlayStart.bind(this);
@@ -281,9 +294,14 @@ AFRAME.registerComponent('street-traffic', {
         entity.setAttribute('mixin', defaults.mixin);
         entity.setAttribute('data-no-transform', '');
         entity.setAttribute('data-layer-name', 'Traffic');
-        // Mark as animated traffic so drive-mode's static-collider
-        // seeder skips us (we get kinematic colliders instead).
+        // Mark as animated traffic. Two markers with two jobs:
+        //  - data-play-mode-traffic (attribute): drive-mode's static-collider
+        //    seeder selector — skip us, we get kinematic colliders instead.
+        //  - play-mode-traffic (component): excludes us from the static mesh
+        //    batcher (it's outside batch-models' safe-component set), so the
+        //    moving mesh renders instead of being folded into a frozen batch.
         entity.setAttribute('data-play-mode-traffic', '');
+        entity.setAttribute('play-mode-traffic', '');
         entity.classList.add('autocreated');
         // Catalog models are authored forward = +Z. inbound (dir=+1)
         // keeps default rotation; outbound (dir=-1) flips 180° so the
