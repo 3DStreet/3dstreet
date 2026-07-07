@@ -494,6 +494,7 @@
   "playControls.wall": "Réel",
   "primaryToolbar.hidePanels": "Masquer les panneaux",
   "primaryToolbar.play": "Démarrer",
+  "primaryToolbar.view": "Voir",
   "primaryToolbar.playStaticTitle": "Visualiser la scène sans les panneaux de l'éditeur",
   "primaryToolbar.playTitle": "Passer en mode visualisation et démarrer la simulation",
   "primaryToolbar.showPanels": "Afficher les panneaux",

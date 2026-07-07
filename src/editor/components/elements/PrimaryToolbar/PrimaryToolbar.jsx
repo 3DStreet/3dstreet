@@ -17,12 +17,12 @@ export const PrimaryToolbar = () => {
   const hasPlayable = useHasPlayable();
 
   // Enter the Viewer from the editor camera's current pose (WYSIWYG).
-  // Labeled "Start" — it reads cleanly for a lay (non-gamer) audience,
-  // pairs with the Stop/Reset shuttle, and translates without the
-  // media-player baggage "Play" carries ("Reproducir"/"Lecture"). The
-  // simulation clock only starts when the scene has a registered playable
-  // capability — on static scenes Start is simply the read-only
-  // presentation. (A future per-capability label can say "Drive" etc.)
+  // The one button does both jobs, and its label reflects which: when the
+  // scene has a registered playable capability it reads "Start" (enter view
+  // AND run the simulation); with nothing to animate it reads "View" (enter
+  // the read-only presentation). "Start" avoids the media-player baggage
+  // "Play" carries ("Reproducir"/"Lecture") for a lay audience. (A future
+  // per-capability label can say "Drive" etc.)
   const handlePlay = () => {
     useStore.getState().enterViewerMode('editor');
     if (hasPlayable) {
@@ -65,7 +65,9 @@ export const PrimaryToolbar = () => {
       <Button
         variant="toolbtn"
         onClick={handlePlay}
-        leadingIcon={<AwesomeIcon icon={faPlay} size={16} />}
+        leadingIcon={
+          <AwesomeIcon icon={hasPlayable ? faPlay : faEye} size={16} />
+        }
         title={
           hasPlayable
             ? intl.formatMessage({
@@ -78,7 +80,11 @@ export const PrimaryToolbar = () => {
               })
         }
       >
-        <FormattedMessage id="primaryToolbar.play" defaultMessage="Start" />
+        {hasPlayable ? (
+          <FormattedMessage id="primaryToolbar.play" defaultMessage="Start" />
+        ) : (
+          <FormattedMessage id="primaryToolbar.view" defaultMessage="View" />
+        )}
       </Button>
       <div className={styles.divider} />
       <Button

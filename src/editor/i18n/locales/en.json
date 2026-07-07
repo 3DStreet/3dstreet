@@ -1484,6 +1484,9 @@
   "primaryToolbar.play": {
     "defaultMessage": "Start"
   },
+  "primaryToolbar.view": {
+    "defaultMessage": "View"
+  },
   "primaryToolbar.playStaticTitle": {
     "defaultMessage": "View the scene without editor panels"
   },
