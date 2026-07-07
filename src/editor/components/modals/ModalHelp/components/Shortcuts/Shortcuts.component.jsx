@@ -174,6 +174,15 @@ const shortcuts = [
     },
 
     {
+      key: ['ctrl | cmd', 'x'],
+      description: (
+        <FormattedMessage
+          id="help.shortcut.cut"
+          defaultMessage="Cut selected entity"
+        />
+      )
+    },
+    {
       key: ['ctrl | cmd', 'c'],
       description: (
         <FormattedMessage

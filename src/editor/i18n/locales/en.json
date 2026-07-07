@@ -185,6 +185,27 @@
   "aiChatPanel.inputPlaceholder": {
     "defaultMessage": "Type a command or type /help for options"
   },
+  "appMenu.edit": {
+    "defaultMessage": "Edit"
+  },
+  "appMenu.edit.copy": {
+    "defaultMessage": "Copy"
+  },
+  "appMenu.edit.cut": {
+    "defaultMessage": "Cut"
+  },
+  "appMenu.edit.delete": {
+    "defaultMessage": "Delete"
+  },
+  "appMenu.edit.deselect": {
+    "defaultMessage": "Deselect"
+  },
+  "appMenu.edit.duplicate": {
+    "defaultMessage": "Duplicate"
+  },
+  "appMenu.edit.paste": {
+    "defaultMessage": "Paste"
+  },
   "appMenu.export.exportingGlb": {
     "defaultMessage": "Exporting scene as GLB file..."
   },
@@ -262,6 +283,9 @@
   },
   "appMenu.view.snapshotRender": {
     "defaultMessage": "Snapshot & Render..."
+  },
+  "appMenu.view.zoomToSelection": {
+    "defaultMessage": "Zoom to Selection"
   },
   "assetInfo.assetSource": {
     "defaultMessage": "Asset source: {ownership} · {assetIdShort}…"
@@ -1150,6 +1174,9 @@
   },
   "help.shortcut.copy": {
     "defaultMessage": "Copy selected entity"
+  },
+  "help.shortcut.cut": {
+    "defaultMessage": "Cut selected entity"
   },
   "help.shortcut.delete": {
     "defaultMessage": "Delete selected entity"
