@@ -195,8 +195,9 @@ AFRAME.registerComponent('street-traffic', {
       if (r.el && r.el.parentNode) r.el.parentNode.removeChild(r.el);
     }
     // Restore any static auto-generated entities we hid on play-start.
+    // setAttribute (not a raw object3D write) so the batcher re-shows the slot.
     for (const h of this.hidden) {
-      if (h.el?.object3D) h.el.object3D.visible = h.wasVisible;
+      if (h.el?.parentNode) h.el.setAttribute('visible', h.wasVisible);
     }
     console.log(
       '[street-traffic] stop: removed',
@@ -260,7 +261,12 @@ AFRAME.registerComponent('street-traffic', {
           el: existing,
           wasVisible: existing.object3D?.visible ?? true
         });
-        if (existing.object3D) existing.object3D.visible = false;
+        // Hide via setAttribute, NOT a direct object3D.visible write: static
+        // clones are folded into a shared BatchedMesh, and the batcher only
+        // syncs a slot's visibility off the A-Frame `visible` componentchanged
+        // event. A raw object3D mutation fires nothing, leaving the batched
+        // geometry on screen as a frozen, non-colliding duplicate.
+        existing.setAttribute('visible', false);
       });
 
       // Determine direction sign on segment-local Z. 'inbound' moves

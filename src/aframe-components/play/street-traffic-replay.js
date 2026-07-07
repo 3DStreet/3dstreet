@@ -155,6 +155,7 @@ AFRAME.registerComponent('street-traffic-replay', {
     this.manifest = null; // parsed manifest
     this.duration = 0; // manifest length in seconds
     this.records = []; // live agents: { el, dirSign, speedMS, startZ, halfLen, spawnTRel }
+    this.hidden = []; // static clones hidden on play-start: { el, wasVisible }
     this.active = false;
     this.nextIdx = 0; // next manifest agent to spawn
     this.cycleBase = 0; // manifest-time at the start of the current loop
@@ -250,6 +251,7 @@ AFRAME.registerComponent('street-traffic-replay', {
       return;
     }
     this.indexLanes(streetEl);
+    this.hideStaticClones(streetEl);
 
     this.nextIdx = 0;
     this.cycleBase = 0;
@@ -261,6 +263,49 @@ AFRAME.registerComponent('street-traffic-replay', {
       'agents at timeScale',
       this.data.timeScale
     );
+  },
+
+  // Hide the target street's static auto-generated vehicle/pedestrian clones
+  // for the duration of the replay, so the recorded agents don't animate over
+  // a frozen duplicate crowd. Same rationale as street-traffic: hide via
+  // setAttribute('visible', ...) — NOT a raw object3D.visible write — because
+  // batched clones only re-sync their slot visibility off the `visible`
+  // componentchanged event. Restored in teardown().
+  hideStaticClones: function (streetEl) {
+    streetEl.querySelectorAll(':scope > [street-segment]').forEach((segEl) => {
+      const seg = segEl.getAttribute('street-segment');
+      if (!seg) return;
+      // Mirror street-traffic's per-type hide rule so replay and synthetic
+      // flow behave identically. Only lane types that carry a moving cast
+      // are touched; medians, parking, grass, rail, buildings are left alone
+      // (their props must stay visible).
+      let hideFilter;
+      if (seg.type === 'sidewalk') {
+        // Hide only the static pedestrian clones — keep sidewalk trees,
+        // poles, benches (those come from street-generated-clones).
+        hideFilter = (compName) =>
+          compName.startsWith('street-generated-pedestrians');
+      } else if (
+        seg.type === 'drive-lane' ||
+        seg.type === 'bus-lane' ||
+        seg.type === 'bike-lane'
+      ) {
+        // Vehicle/cyclist lanes: every procedural child is a moving-cast
+        // clone. (Matches street-traffic's TODO-tracked v1 behavior.)
+        hideFilter = () => true;
+      } else {
+        return; // no moving cast on this lane type
+      }
+      segEl.querySelectorAll('[data-parent-component]').forEach((existing) => {
+        const compName = existing.getAttribute('data-parent-component') || '';
+        if (!hideFilter(compName)) return;
+        this.hidden.push({
+          el: existing,
+          wasVisible: existing.object3D?.visible ?? true
+        });
+        existing.setAttribute('visible', false);
+      });
+    });
   },
 
   // Build mode-lane lookup: laneType -> [{ el, length, halfLen }]. Direction
@@ -426,7 +471,13 @@ AFRAME.registerComponent('street-traffic-replay', {
     for (const r of this.records) {
       if (r.el && r.el.parentNode) r.el.parentNode.removeChild(r.el);
     }
+    // Restore the static clones we hid on play-start. setAttribute (not a raw
+    // object3D write) so the batcher re-shows the slot.
+    for (const h of this.hidden) {
+      if (h.el?.parentNode) h.el.setAttribute('visible', h.wasVisible);
+    }
     this.records.length = 0;
+    this.hidden.length = 0;
     this.active = false;
   }
 });
