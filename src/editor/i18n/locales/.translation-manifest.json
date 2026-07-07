@@ -597,7 +597,12 @@
     "exportModal.glbDescription": "Download this scene as a .glb 3D model file for use in Blender, Unreal, and other 3D tools.",
     "exportModal.arReadyLabel": "AR Ready: omit people, vehicles and geospatial layers for augmented reality apps",
     "exportModal.jsonDescription": "Download this scene as a .3dstreet.json file to back up your work or import into another 3DStreet account.",
-    "exportModal.download": "Download"
+    "exportModal.download": "Download",
+    "appMenu.edit": "Edit",
+    "appMenu.edit.copy": "Copy",
+    "appMenu.edit.cut": "Cut",
+    "appMenu.edit.paste": "Paste",
+    "help.shortcut.cut": "Cut selected entity"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1197,7 +1202,12 @@
     "exportModal.glbDescription": "Download this scene as a .glb 3D model file for use in Blender, Unreal, and other 3D tools.",
     "exportModal.arReadyLabel": "AR Ready: omit people, vehicles and geospatial layers for augmented reality apps",
     "exportModal.jsonDescription": "Download this scene as a .3dstreet.json file to back up your work or import into another 3DStreet account.",
-    "exportModal.download": "Download"
+    "exportModal.download": "Download",
+    "appMenu.edit": "Edit",
+    "appMenu.edit.copy": "Copy",
+    "appMenu.edit.cut": "Cut",
+    "appMenu.edit.paste": "Paste",
+    "help.shortcut.cut": "Cut selected entity"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1797,6 +1807,11 @@
     "exportModal.glbDescription": "Download this scene as a .glb 3D model file for use in Blender, Unreal, and other 3D tools.",
     "exportModal.arReadyLabel": "AR Ready: omit people, vehicles and geospatial layers for augmented reality apps",
     "exportModal.jsonDescription": "Download this scene as a .3dstreet.json file to back up your work or import into another 3DStreet account.",
-    "exportModal.download": "Download"
+    "exportModal.download": "Download",
+    "appMenu.edit": "Edit",
+    "appMenu.edit.copy": "Copy",
+    "appMenu.edit.cut": "Cut",
+    "appMenu.edit.paste": "Paste",
+    "help.shortcut.cut": "Cut selected entity"
   }
 }
