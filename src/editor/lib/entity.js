@@ -67,6 +67,13 @@ export function updateEntity(entity, component, property, value) {
     });
   }
 
+  // A pure rename doesn't change street-segment data, so managed-street never
+  // re-emits segments-changed; refresh the 3D street labels directly so they
+  // pick up the new name (also runs on undo/redo of a rename).
+  if (component === 'data-layer-name') {
+    entity.parentElement?.components?.['street-label']?.updateLabels();
+  }
+
   Events.emit('entityupdate', { entity, component, property, value });
 }
 
@@ -144,32 +151,41 @@ export function insertAfter(newNode, referenceNode) {
 }
 
 /**
+ * Reorder an entity next to a sibling (or move it under another parent) via
+ * the undoable entityreparent command. Shared by scene-graph drag-drop and
+ * the segment sidebar's move buttons.
+ * @param {Element} entity        Entity to move.
+ * @param {Element} targetEntity  Sibling to insert relative to.
+ * @param {string}  insertionMode 'before' or 'after' the target.
+ */
+export function reorderEntityRelativeTo(entity, targetEntity, insertionMode) {
+  const targetParent = targetEntity.parentNode;
+  if (!targetParent) {
+    return;
+  }
+  // entityreparent looks parents up by id (undo needs the old parent's id
+  // too), so make sure both ends have one.
+  if (!targetParent.id) {
+    targetParent.setAttribute('id', createUniqueId());
+  }
+  if (entity.parentNode && !entity.parentNode.id) {
+    entity.parentNode.setAttribute('id', createUniqueId());
+  }
+  const targetIndex = Array.from(targetParent.children).indexOf(targetEntity);
+  AFRAME.INSPECTOR.execute('entityreparent', {
+    entity,
+    parentEl: targetParent.id,
+    indexInParent: insertionMode === 'after' ? targetIndex + 1 : targetIndex
+  });
+}
+
+/**
  * Clone an entity, inserting it after the cloned one.
  * @param {Element} entity Entity to clone
  * @returns {Element} The clone
  */
 export function cloneEntity(entity) {
   return AFRAME.INSPECTOR.execute('entityclone', entity);
-}
-
-/**
- * Rename an entity, inserting it after the cloned one.
- * @param {Element} entity Entity to clone
- * @returns {Element} The clone
- */
-export function renameEntity(entity) {
-  const promptedName = prompt(
-    'Enter new name for entity',
-    entity.getAttribute('data-layer-name') || getEntityDisplayName(entity)
-  );
-  // If user cancels or enters empty name, abort
-  if (!promptedName) return;
-  AFRAME.INSPECTOR.execute('entityupdate', {
-    entity,
-    component: 'data-layer-name',
-    property: '',
-    value: promptedName
-  });
 }
 
 function recursivelyRegenerateId(element) {

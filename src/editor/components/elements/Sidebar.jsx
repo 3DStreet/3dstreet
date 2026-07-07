@@ -1,7 +1,6 @@
 import {
   cloneEntity,
   removeSelectedEntity,
-  renameEntity,
   setFocusCameraPose
 } from '../../lib/entity';
 import { Button } from '../elements';
@@ -15,7 +14,6 @@ import AddGeneratorComponent from './AddGeneratorComponent';
 import {
   Object24IconCyan,
   ArrowLeftHookIcon,
-  Edit24Icon,
   TrashIcon,
   Copy32Icon,
   ArrowsPointingInwardIcon
@@ -108,11 +106,19 @@ export default class Sidebar extends React.Component {
       );
     }
 
+    // The fixed pseudo-layers (environment, reference layers, user layers)
+    // and no-transform entities never had a rename affordance; everything
+    // else gets the inline rename on the title label.
+    const canRename =
+      !['reference-layers', 'environment', 'street-container'].includes(
+        entity.id
+      ) && !entity.hasAttribute('data-no-transform');
+
     return (
       <div className="properties-panel" tabIndex="0">
         <div id="layers-title">
           <div className="layersBlock">
-            <EntityLabel entity={entity} />
+            <EntityLabel entity={entity} editable={canRename} />
           </div>
         </div>
         <div className="scroll">
@@ -178,7 +184,7 @@ export default class Sidebar extends React.Component {
                 {entity.hasAttribute('data-no-transform') ? (
                   <></>
                 ) : (
-                  <div id="sidebar-buttons-small">
+                  <div className="sidebar-buttons-small">
                     <Button
                       variant={'toolbtn'}
                       onClick={() =>
@@ -189,13 +195,6 @@ export default class Sidebar extends React.Component {
                       leadingIcon={<ArrowsPointingInwardIcon />}
                     >
                       <FormattedMessage {...commonMessages.focus} />
-                    </Button>
-                    <Button
-                      variant={'toolbtn'}
-                      onClick={() => renameEntity(entity)}
-                      leadingIcon={<Edit24Icon />}
-                    >
-                      <FormattedMessage {...commonMessages.rename} />
                     </Button>
                     <Button
                       variant={'toolbtn'}

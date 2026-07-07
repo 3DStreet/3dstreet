@@ -339,7 +339,7 @@ body.aframe-inspector-opened {
     width: 100%;
   }
 
-  #sidebar-buttons-small {
+  .sidebar-buttons-small {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
@@ -348,7 +348,7 @@ body.aframe-inspector-opened {
     column-gap: 4px;
   }
 
-  #sidebar-buttons-small button {
+  .sidebar-buttons-small button {
     width: 100%;
     font-size: 0.8rem !important; /* Make font smaller if needed */
     padding: 10px !important;
@@ -535,6 +535,8 @@ body.aframe-inspector-opened {
       display: flex;
       align-items: center;
       column-gap: 8px;
+      flex: 1 1 auto;
+      min-width: 0;
     }
 
     span {
@@ -542,6 +544,59 @@ body.aframe-inspector-opened {
       font-size: 16px;
       color: variables.$white;
       line-height: 20px;
+    }
+
+    // Inline rename: pencil appears on hover, clicking the name or pencil
+    // swaps the label for an input.
+    .entityPrint {
+      display: flex;
+      align-items: center;
+      flex: 1 1 auto;
+      min-width: 0;
+
+      &.editable .entityName {
+        cursor: text;
+      }
+    }
+
+    .entityRenameButton {
+      visibility: hidden;
+      display: flex;
+      align-items: center;
+      background: none;
+      border: none;
+      padding: 0;
+      margin-left: 6px;
+      cursor: pointer;
+      color: variables.$lightgray-100;
+
+      svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      &:hover {
+        color: variables.$white;
+      }
+    }
+
+    .entityPrint:hover .entityRenameButton {
+      visibility: visible;
+    }
+
+    .entityNameInput {
+      flex: 1 1 auto;
+      min-width: 0;
+      margin-left: 6px;
+      font-weight: 500;
+      font-size: 16px;
+      line-height: 20px;
+      color: variables.$white;
+      background-color: variables.$black-300;
+      border: 1px solid variables.$blue-100;
+      border-radius: 4px;
+      padding: 0 4px;
+      outline: none;
     }
   }
 

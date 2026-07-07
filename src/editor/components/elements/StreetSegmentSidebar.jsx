@@ -6,14 +6,16 @@ import PropertyRow from './PropertyRow';
 import {
   cloneEntity,
   removeSelectedEntity,
-  renameEntity,
+  reorderEntityRelativeTo,
   setFocusCameraPose
 } from '../../lib/entity';
+import { getTravelledWaySegments } from '@/aframe-components/street-layout-utils';
 import {
   StreetSurfaceIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
   ArrowsPointingInwardIcon,
   Copy32Icon,
-  Edit24Icon,
   TrashIcon
 } from '@shared/icons';
 import { Button } from '../elements';
@@ -33,12 +35,97 @@ const StreetSegmentSidebar = ({ entity }) => {
   const featuredComponents =
     Object.keys(components).filter(isGeneratorComponent);
 
+  // Move left/right reorders this segment among the travelled-way segments of
+  // its managed street (#1751). Boundaries are excluded: street-align places
+  // them by `side`, not index, so reordering past one is a visual no-op.
+  const parentEl = entity?.parentNode;
+  const isManagedStreetChild = !!parentEl?.components?.['managed-street'];
+  const travelledWaySiblings = isManagedStreetChild
+    ? getTravelledWaySegments(parentEl)
+    : [];
+  const segmentPos = travelledWaySiblings.indexOf(entity);
+
+  const moveSegment = (offset) => {
+    // Re-resolve by id: a move destroys and recreates the element, and this
+    // sidebar re-renders only after the new entity finishes loading, so on a
+    // quick second click the render-time `entity` is already detached. The
+    // recreated element keeps the same id.
+    const liveEntity =
+      (entity.id && document.getElementById(entity.id)) || entity;
+    const streetEl = liveEntity.parentNode;
+    if (!streetEl?.components?.['managed-street']) return;
+    const siblings = getTravelledWaySegments(streetEl);
+    const pos = siblings.indexOf(liveEntity);
+    if (pos === -1) return;
+    const target = siblings[pos + offset];
+    if (!target) return;
+    // insert before the target when moving left, after it when moving right
+    reorderEntityRelativeTo(
+      liveEntity,
+      target,
+      offset > 0 ? 'after' : 'before'
+    );
+  };
+
   return (
     <div className="segment-sidebar">
       <div className="segment-controls">
         <div className="details">
           {component && component.schema && component.data && (
             <>
+              <div className="sidepanelContent">
+                <div className="sidebar-buttons-small">
+                  <Button
+                    variant={'toolbtn'}
+                    onClick={() => Events.emit('objectfocus', entity.object3D)}
+                    onLongPress={() => setFocusCameraPose(entity)}
+                    longPressDelay={1500} // Optional, defaults to 2000ms
+                    leadingIcon={<ArrowsPointingInwardIcon />}
+                  >
+                    <FormattedMessage {...commonMessages.focus} />
+                  </Button>
+                  <Button
+                    variant={'toolbtn'}
+                    onClick={() => cloneEntity(entity)}
+                    leadingIcon={<Copy32Icon />}
+                  >
+                    <FormattedMessage {...commonMessages.duplicate} />
+                  </Button>
+                  <Button
+                    variant={'toolbtn'}
+                    onClick={() => removeSelectedEntity()}
+                    leadingIcon={<TrashIcon />}
+                  >
+                    <FormattedMessage {...commonMessages.delete} />
+                  </Button>
+                </div>
+                {segmentPos !== -1 && (
+                  <div className="sidebar-buttons-small">
+                    <Button
+                      variant={'toolbtn'}
+                      disabled={segmentPos === 0}
+                      onClick={() => moveSegment(-1)}
+                      leadingIcon={<ArrowLeftIcon />}
+                    >
+                      {intl.formatMessage({
+                        id: 'segmentSidebar.moveLeft',
+                        defaultMessage: 'Move Left'
+                      })}
+                    </Button>
+                    <Button
+                      variant={'toolbtn'}
+                      disabled={segmentPos === travelledWaySiblings.length - 1}
+                      onClick={() => moveSegment(1)}
+                      leadingIcon={<ArrowRightIcon />}
+                    >
+                      {intl.formatMessage({
+                        id: 'segmentSidebar.moveRight',
+                        defaultMessage: 'Move Right'
+                      })}
+                    </Button>
+                  </div>
+                )}
+              </div>
               <PropertyRow
                 key="type"
                 name="type"
@@ -82,40 +169,6 @@ const StreetSegmentSidebar = ({ entity }) => {
                   />
                 </>
               )}
-              <div className="sidepanelContent">
-                <div id="sidebar-buttons-small">
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => Events.emit('objectfocus', entity.object3D)}
-                    onLongPress={() => setFocusCameraPose(entity)}
-                    longPressDelay={1500} // Optional, defaults to 2000ms
-                    leadingIcon={<ArrowsPointingInwardIcon />}
-                  >
-                    <FormattedMessage {...commonMessages.focus} />
-                  </Button>
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => renameEntity(entity)}
-                    leadingIcon={<Edit24Icon />}
-                  >
-                    <FormattedMessage {...commonMessages.rename} />
-                  </Button>
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => cloneEntity(entity)}
-                    leadingIcon={<Copy32Icon />}
-                  >
-                    <FormattedMessage {...commonMessages.duplicate} />
-                  </Button>
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => removeSelectedEntity()}
-                    leadingIcon={<TrashIcon />}
-                  >
-                    <FormattedMessage {...commonMessages.delete} />
-                  </Button>
-                </div>
-              </div>
               <PropertyRow
                 key="width"
                 name="width"
@@ -185,18 +238,65 @@ const StreetSegmentSidebar = ({ entity }) => {
                       entity={entity}
                     />
                     <PropertyRow
-                      key="elevation"
-                      name="elevation"
+                      key="slope"
+                      name="slope"
                       label={intl.formatMessage({
-                        id: 'segmentSidebar.elevation',
-                        defaultMessage: 'Elevation (m)'
+                        id: 'segmentSidebar.slope',
+                        defaultMessage: 'Slope'
                       })}
-                      schema={component.schema['elevation']}
-                      data={component.data['elevation']}
+                      schema={component.schema['slope']}
+                      data={component.data['slope']}
                       componentname={componentName}
                       isSingle={false}
                       entity={entity}
                     />
+                    {/* sloped surfaces interpolate between the two edge
+                        elevations and ignore the flat elevation, so show
+                        one set of controls or the other */}
+                    {component.data['slope'] ? (
+                      <>
+                        <PropertyRow
+                          key="slopeStart"
+                          name="slopeStart"
+                          label={intl.formatMessage({
+                            id: 'segmentSidebar.slopeStart',
+                            defaultMessage: 'Start Edge (m)'
+                          })}
+                          schema={component.schema['slopeStart']}
+                          data={component.data['slopeStart']}
+                          componentname={componentName}
+                          isSingle={false}
+                          entity={entity}
+                        />
+                        <PropertyRow
+                          key="slopeEnd"
+                          name="slopeEnd"
+                          label={intl.formatMessage({
+                            id: 'segmentSidebar.slopeEnd',
+                            defaultMessage: 'End Edge (m)'
+                          })}
+                          schema={component.schema['slopeEnd']}
+                          data={component.data['slopeEnd']}
+                          componentname={componentName}
+                          isSingle={false}
+                          entity={entity}
+                        />
+                      </>
+                    ) : (
+                      <PropertyRow
+                        key="elevation"
+                        name="elevation"
+                        label={intl.formatMessage({
+                          id: 'segmentSidebar.elevation',
+                          defaultMessage: 'Elevation (m)'
+                        })}
+                        schema={component.schema['elevation']}
+                        data={component.data['elevation']}
+                        componentname={componentName}
+                        isSingle={false}
+                        entity={entity}
+                      />
+                    )}
                   </div>
                 </div>
               </div>

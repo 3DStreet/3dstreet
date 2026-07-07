@@ -411,11 +411,33 @@ AFRAME.registerComponent('street-segment', {
       componentsToGenerate.clones[0].facing = sideRotation;
     }
 
+    // Copy every schema-known property from a generated entry so an entry
+    // that came from getManagedStreetJSON (full component data: seed,
+    // cycleOffset, facing, positionX/Y, stencilHeight, ...) survives the
+    // import round trip. Unknown keys (e.g. preset-only `variants` metadata)
+    // are dropped rather than passed to setAttribute, and unset keys keep
+    // their schema defaults. `overrides` carries the segment-derived
+    // fallbacks that predate this passthrough.
+    const buildGeneratedAttributes = (componentName, entry, overrides = {}) => {
+      const schema = AFRAME.components[componentName].schema;
+      const attributes = {};
+      for (const key in entry) {
+        if (key in schema && entry[key] !== undefined) {
+          attributes[key] = entry[key];
+        }
+      }
+      return Object.assign(attributes, overrides);
+    };
+
     // for each of clones, stencils, rail, pedestrians, etc.
     if (componentsToGenerate?.clones?.length > 0) {
       componentsToGenerate.clones.forEach((clone, index) => {
+        // modelsArray may be an authored string or a re-imported array
+        const models = Array.isArray(clone.modelsArray)
+          ? clone.modelsArray.join(', ')
+          : clone.modelsArray;
         // Skip clones with empty modelsArray
-        if (!clone.modelsArray || clone.modelsArray.trim() === '') {
+        if (!models || models.trim() === '') {
           return;
         }
 
@@ -425,57 +447,55 @@ AFRAME.registerComponent('street-segment', {
           justifyWidth = this.data.side === 'right' ? 'left' : 'right';
         }
 
-        this.el.setAttribute(`street-generated-clones__${index + 1}`, {
-          mode: clone.mode,
-          modelsArray: clone.modelsArray,
-          spacing: clone.spacing,
-          direction: this.data.direction,
-          count: clone.count,
-          facing: clone.facing,
-          positionX: clone.positionX,
-          positionY: clone.positionY,
-          justifyWidth: justifyWidth
-        });
+        this.el.setAttribute(
+          `street-generated-clones__${index + 1}`,
+          buildGeneratedAttributes('street-generated-clones', clone, {
+            modelsArray: models,
+            // entries without an explicit direction follow the segment
+            direction: clone.direction ?? this.data.direction,
+            ...(justifyWidth !== undefined ? { justifyWidth } : {})
+          })
+        );
       });
     }
 
     if (componentsToGenerate?.stencil?.length > 0) {
-      componentsToGenerate.stencil.forEach((clone, index) => {
-        this.el.setAttribute(`street-generated-stencil__${index + 1}`, {
-          modelsArray: clone.modelsArray,
-          spacing: clone.spacing,
-          direction: clone.direction ?? this.data.direction,
-          padding: clone.padding,
-          cycleOffset: clone.cycleOffset
-        });
+      componentsToGenerate.stencil.forEach((stencil, index) => {
+        this.el.setAttribute(
+          `street-generated-stencil__${index + 1}`,
+          buildGeneratedAttributes('street-generated-stencil', stencil, {
+            direction: stencil.direction ?? this.data.direction
+          })
+        );
       });
     }
 
     if (componentsToGenerate?.pedestrians?.length > 0) {
       componentsToGenerate.pedestrians.forEach((pedestrian, index) => {
-        this.el.setAttribute(`street-generated-pedestrians__${index + 1}`, {
-          density: pedestrian.density,
-          direction: this.data.direction
-        });
+        this.el.setAttribute(
+          `street-generated-pedestrians__${index + 1}`,
+          buildGeneratedAttributes('street-generated-pedestrians', pedestrian, {
+            direction: pedestrian.direction ?? this.data.direction
+          })
+        );
       });
     }
 
     if (componentsToGenerate?.striping?.length > 0) {
       componentsToGenerate.striping.forEach((stripe, index) => {
-        this.el.setAttribute(`street-generated-striping__${index + 1}`, {
-          striping: stripe.striping,
-          positionY: stripe.positionY ?? 0.05, // Default to 0.05 if not specified
-          side: stripe.side ?? 'left', // Default to left if not specified
-          facing: stripe.facing ?? 0 // Default to 0 if not specified
-        });
+        this.el.setAttribute(
+          `street-generated-striping__${index + 1}`,
+          buildGeneratedAttributes('street-generated-striping', stripe)
+        );
       });
     }
 
     if (componentsToGenerate?.rail?.length > 0) {
       componentsToGenerate.rail.forEach((rail, index) => {
-        this.el.setAttribute(`street-generated-rail__${index + 1}`, {
-          gauge: rail.gauge
-        });
+        this.el.setAttribute(
+          `street-generated-rail__${index + 1}`,
+          buildGeneratedAttributes('street-generated-rail', rail)
+        );
       });
     }
   },

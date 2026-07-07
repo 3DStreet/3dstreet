@@ -188,8 +188,26 @@
   "appMenu.betaBadge": {
     "defaultMessage": "Beta"
   },
-  "appMenu.export.arReadyGlb": {
-    "defaultMessage": "AR Ready GLB"
+  "appMenu.edit": {
+    "defaultMessage": "Edit"
+  },
+  "appMenu.edit.copy": {
+    "defaultMessage": "Copy"
+  },
+  "appMenu.edit.cut": {
+    "defaultMessage": "Cut"
+  },
+  "appMenu.edit.delete": {
+    "defaultMessage": "Delete"
+  },
+  "appMenu.edit.deselect": {
+    "defaultMessage": "Deselect"
+  },
+  "appMenu.edit.duplicate": {
+    "defaultMessage": "Duplicate"
+  },
+  "appMenu.edit.paste": {
+    "defaultMessage": "Paste"
   },
   "appMenu.export.dxf": {
     "defaultMessage": "DXF (AutoCAD plan)"
@@ -209,9 +227,6 @@
   "appMenu.export.exportingGlb": {
     "defaultMessage": "Exporting scene as GLB file..."
   },
-  "appMenu.export.glb": {
-    "defaultMessage": "GLB glTF"
-  },
   "appMenu.export.gltfError": {
     "defaultMessage": "Error while trying to save glTF file. Error: {error}"
   },
@@ -225,7 +240,7 @@
     "defaultMessage": "File"
   },
   "appMenu.file.export": {
-    "defaultMessage": "Export"
+    "defaultMessage": "Export..."
   },
   "appMenu.file.import": {
     "defaultMessage": "Import..."
@@ -286,6 +301,9 @@
   },
   "appMenu.view.snapshotRender": {
     "defaultMessage": "Snapshot & Render..."
+  },
+  "appMenu.view.zoomToSelection": {
+    "defaultMessage": "Zoom to Selection"
   },
   "assetInfo.assetSource": {
     "defaultMessage": "Asset source: {ownership} · {assetIdShort}…"
@@ -914,6 +932,24 @@
   "entity.toggleVisibility": {
     "defaultMessage": "Toggle entity visibility"
   },
+  "exportModal.arReadyLabel": {
+    "defaultMessage": "AR Ready: omit people, vehicles and geospatial layers for augmented reality apps"
+  },
+  "exportModal.download": {
+    "defaultMessage": "Download"
+  },
+  "exportModal.glbDescription": {
+    "defaultMessage": "Download this scene as a .glb 3D model file for use in Blender, Unreal, and other 3D tools."
+  },
+  "exportModal.glbTitle": {
+    "defaultMessage": "GLB 3D Model"
+  },
+  "exportModal.jsonDescription": {
+    "defaultMessage": "Download this scene as a .3dstreet.json file to back up your work or import into another 3DStreet account."
+  },
+  "exportModal.title": {
+    "defaultMessage": "Export Scene"
+  },
   "geoModal.centerpoint": {
     "defaultMessage": "Centerpoint"
   },
@@ -1157,6 +1193,9 @@
   "help.shortcut.copy": {
     "defaultMessage": "Copy selected entity"
   },
+  "help.shortcut.cut": {
+    "defaultMessage": "Cut selected entity"
+  },
   "help.shortcut.delete": {
     "defaultMessage": "Delete selected entity"
   },
@@ -1279,6 +1318,15 @@
   },
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
+  },
+  "managedStreetSidebar.downloadJSON": {
+    "defaultMessage": "Download Street JSON"
+  },
+  "managedStreetSidebar.reloadConfirm": {
+    "defaultMessage": "Reload this street from {source}? Local segment edits will be lost."
+  },
+  "managedStreetSidebar.reloadFromSource": {
+    "defaultMessage": "Reload from {source}"
   },
   "modalTextures.back": {
     "defaultMessage": "BACK"
@@ -1646,11 +1694,26 @@
   "segmentSidebar.elevation": {
     "defaultMessage": "Elevation (m)"
   },
+  "segmentSidebar.moveLeft": {
+    "defaultMessage": "Move Left"
+  },
+  "segmentSidebar.moveRight": {
+    "defaultMessage": "Move Right"
+  },
   "segmentSidebar.segmentType": {
     "defaultMessage": "Segment Type"
   },
   "segmentSidebar.side": {
     "defaultMessage": "Side"
+  },
+  "segmentSidebar.slope": {
+    "defaultMessage": "Slope"
+  },
+  "segmentSidebar.slopeEnd": {
+    "defaultMessage": "End Edge (m)"
+  },
+  "segmentSidebar.slopeStart": {
+    "defaultMessage": "Start Edge (m)"
   },
   "segmentSidebar.width": {
     "defaultMessage": "Width"

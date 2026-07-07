@@ -1,8 +1,8 @@
 /* global AFRAME */
-const {
+import {
   getTravelledWaySegments,
   getBoundarySegments
-} = require('./street-layout-utils');
+} from './street-layout-utils';
 
 AFRAME.registerComponent('street-align', {
   dependencies: ['managed-street'],

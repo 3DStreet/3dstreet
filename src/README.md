@@ -19,7 +19,7 @@ A Screentock component for [A-Frame](https://aframe.io), which allows you to tak
 ```html
 <head>
   <title>My A-Frame Scene</title>
-  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
   <script src="path/to/aframe-screentock-component.min.js"></script>
 </head>
 

@@ -80,6 +80,10 @@ const config = {
   },
   externals: {
     // Stubs out `import ... from 'three'` so it returns `import ... from window.THREE` effectively using THREE global variable that is defined by AFRAME.
+    // Only bare `three` imports are externalized; `three/examples/jsm/...` addon code
+    // (GLTFExporter etc.) is bundled from the npm `three` package and runs against the
+    // externalized core, so npm `three` must stay on the same version as the super-three
+    // inside the A-Frame build loaded in index.html. Upgrade them together.
     three: 'THREE'
   },
   plugins: [
