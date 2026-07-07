@@ -4,8 +4,11 @@ How 3DStreet sends lifecycle emails (welcome, upsell nudges, payment notices,
 re-engagement) from Cloud Functions via Postmark, with per-category
 unsubscribe, stop-rules, and a full send audit — no external ESP workflows.
 
-**Code:** `public/functions/email/` (send service + stop-rules + transport) ·
-`public/functions/scheduled/scheduledEmails.js` (daily sweep trigger, see
+**Code:** `public/functions/email/` — `lifecycle-email.js` (send service),
+`stop-rules.js`, `postmark.js` (transport), `templates.js` (all copy),
+`lifecycle-triggers.js` (welcome on signup), `lifecycle-sweeps.js` (hourly
+sweep) · Stripe-driven sends live in `index.js`'s `stripeWebhook` ·
+`public/functions/scheduled/scheduledEmails.js` (daily sweep, see
 [SCHEDULED_EMAILS_SYSTEM.md](../public/functions/scheduled/SCHEDULED_EMAILS_SYSTEM.md))
 
 ## Architecture
@@ -102,18 +105,16 @@ Declared per email, enforced transactionally (`email/stop-rules.js`):
 4. **Trigger** — call `sendLifecycleEmail` from wherever the moment is
    detected:
    - *Event-driven* (a webhook or function already fires at the right moment):
-     call it inline — e.g. a `stripeWebhook` event handler with
-     `dedupeKey: invoiceId`.
+     call it inline — `handleInvoicePaymentFailed` in `index.js` and the
+     welcome trigger in `lifecycle-triggers.js` are the reference examples.
    - *Sweep-driven* (the moment is "state X has persisted for N hours/days"):
-     add an entry to `EMAIL_TYPES` in `scheduledEmails.js` with
-     `getEligibleUsers(db)` + template selection, and the daily sweep does the
-     rest. (Sub-daily timing needs a new hourly cron.)
+     add a sweep function in `lifecycle-sweeps.js` (hourly) or an
+     `EMAIL_TYPES` entry in `scheduledEmails.js` (daily is enough). Sweeps can
+     re-scan the same candidates forever — stop-rules make that free.
 5. **Test** — dry-run first (see below); add stop-rule unit tests if you add a
-   new rule, and an emulator test if the trigger logic is nontrivial.
-
-`tokenExhaustion` (in `scheduledEmails.js`) is the reference example of a
-sweep-driven email; `triggerLifecycleEmail`'s `testPing` shows the minimal
-event-driven shape.
+   new rule, and an emulator test if the trigger logic is nontrivial
+   (`test/rules/lifecycle-email.emulator.test.js` has patterns for both
+   trigger styles).
 
 ## Testing and manual dry runs
 
@@ -128,8 +129,13 @@ event-driven shape.
   await adminTools.testLifecycleEmail({ stream: 'conversion' })  // dry run, broadcast stream
   await adminTools.testLifecycleEmail({ dryRun: false })         // actually send
   ```
-- **Sweep dry run:** `await adminTools.triggerEmails()` reports who would
-  receive sweep emails without sending.
+- **Sweep dry runs:** `await adminTools.triggerLifecycleSweep()` (hourly
+  sweeps: abandoned checkout, pricing nudge, geo) and
+  `await adminTools.triggerEmails()` (daily sweep: token exhaustion) report
+  who would receive emails without sending.
+- **Stripe events:** replay against the deployed dev project with the Stripe
+  CLI — `stripe trigger checkout.session.completed` /
+  `stripe trigger invoice.payment_failed`.
 
 Roll out any new email by dry-running against the dev Firebase project and
 checking Postmark activity (correct stream, footer renders) before prod.
@@ -169,12 +175,35 @@ deploying email changes to dev, before promoting to prod.
    (`await adminTools.triggerEmails(false)` on dev), immediately re-run the
    dry run → that account is gone from `wouldSend` (once-ever enforced), and
    its `emailLog` shows the send.
+8. **Welcome on signup.** Create a fresh account on dev → welcome email
+   arrives within a minute (no unsubscribe footer, `outbound` stream);
+   `emailLog/{new-uid}.emails.welcome` appears.
+9. **Purchase flow.** Buy a plan on dev with a Stripe test card → post-upgrade
+   welcome arrives once; `checkoutSessions/{sessionId}` flips to
+   `status: 'complete'` in Firestore. Or skip the UI and run
+   `stripe trigger checkout.session.completed` with the Stripe CLI.
+10. **Failed payment.** `stripe trigger invoice.payment_failed` against dev →
+    failed-payment email for the matched test user; re-trigger with the same
+    invoice → `skipped/dedupeKey` in the function logs, no second email.
+11. **Abandoned checkout.** Start a checkout on dev, close the tab, confirm
+    `checkoutSessions/{id}` exists with `status: 'open'`. After >1h run
+    `await adminTools.triggerLifecycleSweep()` → the account appears under
+    `sweeps.checkoutAbandoned1h.wouldSend`; `{ dryRun: false }` sends it (on
+    the `conversion` stream, with footer).
+12. **Pricing nudge + geo.** Open the upgrade modal on dev (don't check out)
+    → `userSignals/{uid}.lastPaymentModalAt` appears in Firestore. Sweep dry
+    runs list the account under `pricingPageNudge` after 24h, and a 3-day-old
+    account that never activated geo under `geoNotUsed`. Activate a
+    geospatial map → `tokenProfile.firstGeoActivatedAt` appears and the
+    account drops out of the geo list.
 
 For each **new** email added later, repeat the same shape: dry run → real
 send to yourself → check rendering, stream, footer, and the `emailLog`
 record → only then enable the trigger in prod.
 
-## Operational setup (Postmark dashboard, one-time)
+## Operational setup (one-time)
+
+Postmark dashboard:
 
 1. Create the `conversion` and `lifecycle` broadcast streams (IDs must be
    exactly those strings).
@@ -184,25 +213,53 @@ record → only then enable the trigger in prod.
    pointing at
    `https://user:pass@<region>-<project>.cloudfunctions.net/postmarkSubscriptionWebhook`.
 
+Stripe dashboard (dev first, then prod):
+
+4. On the existing `stripeWebhook` endpoint, add `checkout.session.expired`
+   and `invoice.payment_failed` to the enabled events
+   (`checkout.session.completed` is already on). Same endpoint, same signing
+   secret — no code or secret changes needed; unrecognized events are acked
+   and ignored, so this is safe to do before or after deploy.
+
+## The emails
+
+| Email (`emailId`) | Stream | Trigger | Rules |
+|-------------------|--------|---------|-------|
+| `welcome` | outbound | Firebase Auth `onCreate` (`lifecycle-triggers.js`) — instant, new accounts only, no backfill | `onceEver` |
+| `postUpgradeWelcome` | outbound | `checkout.session.completed` in `stripeWebhook` | `dedupeKey: sessionId` |
+| `failedPayment` | outbound | `invoice.payment_failed` in `stripeWebhook` (fires per retry; deduped) | `dedupeKey: invoiceId` |
+| `checkoutAbandoned1h` | conversion | hourly sweep over `checkoutSessions` not `complete`, created >1h ago | `dedupeKey: sessionId`, `categoryNotWithinDays: 7`, `stopIfPro` |
+| `checkoutAbandoned72h` | conversion | same, >72h — **built but disabled** (`ENABLE_ABANDONED_72H` in `lifecycle-sweeps.js`) | same |
+| `pricingPageNudge` | conversion | hourly sweep over `userSignals`: saw payment modal >24h ago, never started a checkout since | `notWithinDays: 30`, `categoryNotWithinDays: 7`, `stopIfPro` |
+| `geoNotUsed` | lifecycle | hourly sweep: welcomed ≥3d ago (emailLog welcome timestamp = signup marker), no `firstGeoActivatedAt` | `onceEver`, `stopIfPro` |
+| `tokenExhaustion` | outbound | daily sweep in `scheduledEmails.js` (`genToken`/`geoToken` at 0) | `onceEver`, `stopIfPro` (+ legacy notifyLog guard) |
+
+The `generationReady` notification intentionally stays on its own job-level
+idempotency (opt-in per generation job, acked by open tabs) and shares only
+the transport.
+
+## Trigger instrumentation (who writes the signal data)
+
+- **`checkoutSessions/{sessionId}`** — `createStripeSession` writes
+  `{ userId, email, priceId, mode, status: 'open', createdAt }` after
+  creating the Stripe session; `stripeWebhook` flips `status` to `complete`
+  (purchase) or `expired`. Cloud-only rules — a spoofed record would trigger
+  email to an arbitrary user.
+- **`userSignals/{uid}`** — two fields with different writers:
+  `lastPaymentModalAt` is written by the client when the shared UpgradeModal
+  opens (`UpgradeModal.jsx`; rules allow exactly that one field, owner-only,
+  server clock — see `userSignals` in firestore.rules), and
+  `lastCheckoutStartedAt` is written server-side by `createStripeSession`.
+  The pricing nudge fires only when the first exists without a later second.
+  No PostHog dependency — the funnel analytics and the email trigger are
+  deliberately separate systems.
+- **`tokenProfile.firstGeoActivatedAt`** — stamped by `geoid-height.js` on a
+  user's first geo activation (both the token-decrement path and the Pro
+  path).
+
 ## Status / roadmap
 
-**Shipped:** the send service and everything above, plus the first migrated
-email (`tokenExhaustion`). The `generationReady` notification intentionally
-stays on its own job-level idempotency (opt-in per generation job, acked by
-open tabs) and shares only the transport.
-
-**Planned emails** (templates + triggers not yet implemented; instrumentation
-noted where it doesn't exist yet):
-
-| Email | Stream | Trigger | Rules |
-|-------|--------|---------|-------|
-| Welcome | outbound | new Firebase Auth user | `onceEver` |
-| Post-Upgrade Welcome | outbound | `checkout.session.completed` (existing `stripeWebhook`) | `dedupeKey: sessionId` |
-| Failed Payment | outbound | `invoice.payment_failed` (webhook must subscribe to this event) | `dedupeKey: invoiceId` |
-| Checkout Abandoned | conversion | checkout open >1h (needs a `checkoutSessions` record written by `createStripeSession`) | `dedupeKey: sessionId`, `categoryNotWithinDays: 7`, `stopIfPro` |
-| Pricing Page, No Checkout | conversion | payment modal opened, no checkout in 24h (needs a server-side signal, e.g. `lastPaymentModalAt`) | `notWithinDays: 30`, `stopIfPro` |
-| Activation: Geo Not Used | lifecycle | signed up ≥3d ago, never used geo (needs `firstGeoActivatedAt` on `tokenProfile`) | `onceEver`, `stopIfPro` |
-
-Longer-term: move the newsletter onto a `newsletter` broadcast stream and
-decommission Mailchimp (import its unsubscribes into stream suppressions
-first).
+Longer-term: enable `checkoutAbandoned72h` once the 1h email's numbers
+justify a second touch; move the newsletter onto a `newsletter` broadcast
+stream and decommission Mailchimp (import its unsubscribes into stream
+suppressions first).

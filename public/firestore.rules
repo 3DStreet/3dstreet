@@ -125,6 +125,35 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Stripe checkout trigger records (PRIVATE - cloud functions only)
+    // Written by createStripeSession / stripeWebhook; scanned by the
+    // abandoned-checkout lifecycle email sweep. Clients must never touch
+    // these — a spoofed record would trigger emails to arbitrary users.
+    match /checkoutSessions/{sessionId} {
+      allow read, write: if false;
+    }
+
+    // User behavior signals for lifecycle emails (email/lifecycle-sweeps.js).
+    // The ONLY field a client may write is its own lastPaymentModalAt, and
+    // only with the server's clock — enough for the pricing-page nudge,
+    // useless for forging anyone else's state. lastCheckoutStartedAt is
+    // written server-side by createStripeSession (Admin SDK bypasses rules).
+    match /userSignals/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['userId', 'lastPaymentModalAt'])
+        && request.resource.data.userId == userId
+        && request.resource.data.lastPaymentModalAt == request.time;
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['userId', 'lastPaymentModalAt'])
+        && request.resource.data.userId == userId
+        && request.resource.data.lastPaymentModalAt == request.time;
+      allow delete: if false;
+    }
+
     // Asset usage doc (PRIVATE - cloud functions write, owner reads)
     // Maintained by onAssetWritten trigger; read by getUploadQuota and the
     // Assets panel storage meter.

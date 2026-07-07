@@ -94,6 +94,8 @@ public/
 
 **Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated
 
+**Lifecycle emails:** one send path (`sendLifecycleEmail` in `public/functions/email/`) with per-stream Postmark routing, `emailPrefs` unsubscribe suppression, and transactional stop-rules on `emailLog`. Triggers: Auth onCreate (welcome), `stripeWebhook` (post-upgrade, failed payment), hourly sweep (abandoned checkout, pricing nudge, geo-not-used), daily sweep (token exhaustion). Docs: `docs/email-lifecycle.md`.
+
 ## User Asset Upload
 
 Drag-and-drop GLB/image upload with client-side optimization, cloud persistence, quota enforcement, and per-entity status UI.

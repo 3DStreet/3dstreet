@@ -408,4 +408,195 @@ describe('sendLifecycleEmail (emulator)', () => {
       expect(await summaryDoc(uid)).toBeUndefined();
     });
   });
+
+  describe('welcome email (Auth onCreate trigger helper)', () => {
+    let sendWelcomeEmailForUser;
+
+    beforeAll(() => {
+      ({ sendWelcomeEmailForUser } = functionsRequire(
+        './email/lifecycle-triggers.js'
+      ));
+    });
+
+    it('sends once on signup; a retried trigger is a no-op', async () => {
+      const uid = await makeUser();
+      const fetchMock = okFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const first = await sendWelcomeEmailForUser(db, uid);
+      expect(first.action).toBe('sent');
+      const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(payload.MessageStream).toBe('outbound');
+      expect(payload.Subject).toContain('Welcome');
+      expect((await summaryDoc(uid)).emails.welcome.sentCount).toBe(1);
+
+      // Firebase retries onCreate on error; onceEver must absorb a re-fire.
+      const second = await sendWelcomeEmailForUser(db, uid);
+      expect(second).toMatchObject({ action: 'skipped', reason: 'onceEver' });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('hourly lifecycle sweep (abandoned checkout, pricing nudge, geo not used)', () => {
+    let runLifecycleSweeps;
+    let abandonedUid; // open checkout, 2h old → gets checkoutAbandoned1h
+    let convertedUid; // completed checkout → nothing
+    let nudgeUid; // saw pricing 2d ago, never checked out → gets pricingPageNudge
+    let checkedOutUid; // saw pricing, then started checkout → excluded from nudge
+    let geoUid; // welcomed 4d ago, never used geo → gets geoNotUsed
+    let geoUsedUid; // welcomed 4d ago, used geo → excluded
+    let freshUid2; // welcomed 1d ago → outside the 3d window
+
+    const ts = (agoMs) =>
+      admin.firestore.Timestamp.fromMillis(Date.now() - agoMs);
+    const HOUR = 60 * 60 * 1000;
+    const DAY = 24 * HOUR;
+
+    beforeAll(async () => {
+      ({ runLifecycleSweeps } = functionsRequire(
+        './email/lifecycle-sweeps.js'
+      ));
+
+      [
+        abandonedUid,
+        convertedUid,
+        nudgeUid,
+        checkedOutUid,
+        geoUid,
+        geoUsedUid,
+        freshUid2
+      ] = await Promise.all(Array.from({ length: 7 }, makeUser));
+
+      await db
+        .collection('checkoutSessions')
+        .doc('cs_abandoned')
+        .set({
+          userId: abandonedUid,
+          status: 'open',
+          createdAt: ts(2 * HOUR)
+        });
+      await db
+        .collection('checkoutSessions')
+        .doc('cs_converted')
+        .set({
+          userId: convertedUid,
+          status: 'complete',
+          createdAt: ts(2 * HOUR)
+        });
+
+      await db
+        .collection('userSignals')
+        .doc(nudgeUid)
+        .set({
+          userId: nudgeUid,
+          lastPaymentModalAt: ts(2 * DAY)
+        });
+      await db
+        .collection('userSignals')
+        .doc(checkedOutUid)
+        .set({
+          userId: checkedOutUid,
+          lastPaymentModalAt: ts(2 * DAY),
+          lastCheckoutStartedAt: ts(1 * DAY)
+        });
+
+      const welcomeLog = (when) => ({
+        emails: { welcome: { lastSentAt: when, sentCount: 1 } }
+      });
+      await db
+        .collection('emailLog')
+        .doc(geoUid)
+        .set(welcomeLog(ts(4 * DAY)));
+      await db
+        .collection('emailLog')
+        .doc(geoUsedUid)
+        .set(welcomeLog(ts(4 * DAY)));
+      await db
+        .collection('emailLog')
+        .doc(freshUid2)
+        .set(welcomeLog(ts(1 * DAY)));
+      await db
+        .collection('tokenProfile')
+        .doc(geoUsedUid)
+        .set({
+          userId: geoUsedUid,
+          firstGeoActivatedAt: ts(3 * DAY)
+        });
+    });
+
+    it('first pass sends exactly the three eligible emails on the right streams', async () => {
+      const fetchMock = okFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const results = await runLifecycleSweeps(db, {});
+
+      expect(results.sweeps.checkoutAbandoned1h.sent).toBe(1);
+      expect(results.sweeps.checkoutAbandoned72h).toEqual({ disabled: true });
+      expect(results.sweeps.pricingPageNudge.sent).toBe(1);
+      expect(results.sweeps.geoNotUsed.sent).toBe(1);
+      expect(results.sent).toBe(3);
+      expect(results.errors).toBe(0);
+
+      const payloads = fetchMock.mock.calls.map((c) => JSON.parse(c[1].body));
+      const byTo = Object.fromEntries(payloads.map((p) => [p.To, p]));
+
+      const abandoned = byTo[`${abandonedUid}@example.test`];
+      expect(abandoned.MessageStream).toBe('conversion');
+      expect(abandoned.HtmlBody).toContain('{{{ pm:unsubscribe_url }}}');
+
+      const nudge = byTo[`${nudgeUid}@example.test`];
+      expect(nudge.MessageStream).toBe('conversion');
+
+      const geo = byTo[`${geoUid}@example.test`];
+      expect(geo.MessageStream).toBe('lifecycle');
+      expect(geo.HtmlBody).toContain('{{{ pm:unsubscribe_url }}}');
+
+      // The excluded users got nothing.
+      expect(byTo[`${convertedUid}@example.test`]).toBeUndefined();
+      expect(byTo[`${checkedOutUid}@example.test`]).toBeUndefined();
+      expect(byTo[`${geoUsedUid}@example.test`]).toBeUndefined();
+      expect(byTo[`${freshUid2}@example.test`]).toBeUndefined();
+    });
+
+    it('second pass is idempotent: stop-rules absorb the hourly re-scan', async () => {
+      const fetchMock = okFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const results = await runLifecycleSweeps(db, {});
+
+      expect(results.sent).toBe(0);
+      expect(fetchMock).not.toHaveBeenCalled();
+      // Within 7 days the conversion-category cooldown blocks the re-scan
+      // first (it fires before the dedupeKey/notWithinDays checks); the
+      // per-session dedupeKey remains the permanent guard once the category
+      // window lapses. Geo has no category rule, so onceEver is its reason.
+      expect(
+        results.sweeps.checkoutAbandoned1h.skipped.categoryNotWithinDays
+      ).toBe(1);
+      expect(results.sweeps.pricingPageNudge.skipped.notWithinDays).toBe(1);
+      expect(results.sweeps.geoNotUsed.skipped.onceEver).toBe(1);
+    });
+
+    it('dry run reports would-sends without claiming', async () => {
+      const uid = await makeUser();
+      await db
+        .collection('checkoutSessions')
+        .doc('cs_dry')
+        .set({
+          userId: uid,
+          status: 'open',
+          createdAt: ts(2 * HOUR)
+        });
+      const fetchMock = okFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const results = await runLifecycleSweeps(db, { dryRun: true });
+
+      expect(results.sweeps.checkoutAbandoned1h.wouldSend).toContain(
+        `${uid}@example.test`
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(await summaryDoc(uid)).toBeUndefined();
+    });
+  });
 });

@@ -106,6 +106,21 @@ window.adminTools = {
   },
 
   /**
+   * Run the hourly lifecycle email sweep on demand (admin only): abandoned
+   * checkout, pricing-page nudge, geo-not-used. Dry run by default.
+   *
+   * Usage from browser console:
+   *   await adminTools.triggerLifecycleSweep()                  // dry run
+   *   await adminTools.triggerLifecycleSweep({ dryRun: false }) // actually send
+   */
+  triggerLifecycleSweep: async ({ dryRun = true } = {}) => {
+    const trigger = httpsCallable(functions, 'triggerLifecycleSweep');
+    const result = await trigger({ dryRun });
+    console.log(result.data);
+    return result.data;
+  },
+
+  /**
    * Audit user subscriptions vs claims (admin/PRO only)
    * Identifies discrepancies between Stripe subscriptions and Firebase PRO claims
    * @param {boolean} fixDiscrepancies - If true, automatically fix claim issues

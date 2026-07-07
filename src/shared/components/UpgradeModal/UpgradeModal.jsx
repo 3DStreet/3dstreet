@@ -19,8 +19,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { httpsCallable } from 'firebase/functions';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import posthog from 'posthog-js';
-import { functions } from '@shared/services/firebase';
+import { db, functions } from '@shared/services/firebase';
 import { useAuthContext } from '@shared/contexts';
 import EmbeddedCheckout from '@shared/components/EmbeddedCheckout';
 import { openBillingPortal } from '@shared/utils/billing';
@@ -194,6 +195,23 @@ const UpgradeModal = ({
     onAlreadyPro,
     handleClose
   ]);
+
+  // Server-side "saw the pricing modal" signal for the pricing-nudge
+  // lifecycle email (public/functions/email/lifecycle-sweeps.js). Firestore
+  // rules restrict this write to the user's own lastPaymentModalAt with the
+  // server clock — see userSignals in firestore.rules. Fire-and-forget;
+  // never blocks the modal. PostHog keeps capturing independently, but the
+  // email sweep deliberately reads only this Firestore signal.
+  useEffect(() => {
+    if (!isOpen || !currentUser?.uid || currentUser.isPro) return;
+    setDoc(
+      doc(db, 'userSignals', currentUser.uid),
+      { userId: currentUser.uid, lastPaymentModalAt: serverTimestamp() },
+      { merge: true }
+    ).catch((error) =>
+      console.error('Error recording payment modal signal:', error)
+    );
+  }, [isOpen, currentUser?.uid, currentUser?.isPro]);
 
   // Pre-check for an existing subscription so we can route to billing portal
   // before showing pricing — avoids duplicate purchases. Fires
