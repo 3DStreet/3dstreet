@@ -1531,6 +1531,18 @@ AFRAME.registerComponent('drive-mode', {
     const COLLIDER_SHRINK = 0.8;
     const add = (el) => {
       const box = new THREE.Box3().setFromObject(el.object3D);
+      // Runtime mesh batching strips a static model's mesh out of its own
+      // object3D (folded into a shared BatchedMesh), so setFromObject yields
+      // an empty box and the obstacle — a user-placed cone, bollard, jersey
+      // barrier — would get no collider. batch-models stashes the entity-local
+      // AABB on object3D for exactly this "no mesh tree" case (also used by the
+      // editor's selection box, EditorControls.js); transform it to world space.
+      if (box.isEmpty() && el.object3D._batchLocalBbox) {
+        el.object3D.updateMatrixWorld();
+        box
+          .copy(el.object3D._batchLocalBbox)
+          .applyMatrix4(el.object3D.matrixWorld);
+      }
       if (box.isEmpty()) return;
       const size = box.getSize(new THREE.Vector3());
       const center = box.getCenter(new THREE.Vector3());
