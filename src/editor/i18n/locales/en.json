@@ -1793,6 +1793,9 @@
   "viewer.resetTitle": {
     "defaultMessage": "Reset — restart the simulation from t=0 with objects at spawn"
   },
+  "viewer.signIn": {
+    "defaultMessage": "Sign In"
+  },
   "viewer.simClockPaused": {
     "defaultMessage": "Paused — click to resume"
   },

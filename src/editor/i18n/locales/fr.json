@@ -597,6 +597,7 @@
   "viewer.remixTitle": "Ouvre l'éditeur — l'enregistrement créera votre propre copie",
   "viewer.reset": "Réinitialiser",
   "viewer.resetTitle": "Réinitialiser — relance la simulation à t=0 avec les objets à leur position initiale",
+  "viewer.signIn": "Se connecter",
   "viewer.simClockPaused": "En pause — cliquez pour reprendre",
   "viewer.simClockRunning": "Temps de simulation — cliquez pour mettre en pause",
   "viewer.stop": "Arrêter",

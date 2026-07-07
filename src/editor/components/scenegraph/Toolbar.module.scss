@@ -70,6 +70,13 @@
   padding: 1px 8px;
 }
 
+// Compact avatar in the top bar (the shared ProfileButton renders a
+// 43px icon; scale it down to bar height).
+.profileButton {
+  transform: scale(0.75);
+  margin: -6px -4px;
+}
+
 // Simulation clock pill — click to pause/resume.
 .simClock {
   all: unset;

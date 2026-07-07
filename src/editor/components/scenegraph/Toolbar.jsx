@@ -11,6 +11,7 @@ import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
 import { useHasPlayable } from '@/editor/hooks';
 import { getUserProfile } from '@shared/utils/username';
+import { ProfileButton } from '@shared/auth/components';
 import { Button } from '../elements/Button';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import styles from './Toolbar.module.scss';
@@ -90,7 +91,8 @@ function Toolbar() {
   const sceneTitle = useStore((s) => s.sceneTitle);
   const isPlaying = useStore((s) => s.isPlaying);
   const isLocomotionEnabled = useStore((s) => s.isLocomotionEnabled);
-  const { currentUser } = useAuthContext() || {};
+  const { currentUser, isLoading: isAuthLoading } = useAuthContext() || {};
+  const setModal = useStore((s) => s.setModal);
   const hasPlayable = useHasPlayable();
   const [authorId, setAuthorId] = useState(null);
   const [authorUsername, setAuthorUsername] = useState(null);
@@ -240,6 +242,25 @@ function Toolbar() {
                 <FormattedMessage id="viewer.remix" defaultMessage="Remix" />
               )}
             </Button>
+            {/* Auth status: what a visitor may access (byline lookup,
+                remix-save, future private scenes) depends on who they
+                are, so surface it in view mode too. */}
+            {currentUser || isAuthLoading ? (
+              <ProfileButton
+                currentUser={currentUser}
+                isLoading={isAuthLoading}
+                className={styles.profileButton}
+                onClick={() => {
+                  if (isAuthLoading) return;
+                  setModal(currentUser ? 'profile' : 'signin');
+                }}
+                tooltipSide="bottom"
+              />
+            ) : (
+              <Button variant="toolbtn" onClick={() => setModal('signin')}>
+                <FormattedMessage id="viewer.signIn" defaultMessage="Sign In" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
