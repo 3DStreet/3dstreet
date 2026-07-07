@@ -9,7 +9,8 @@ import {
 import { isLegitPose, cueState, elevationState } from './navMath.js';
 
 // Downward direction for the enclosure up-ray. Module-level frozen constant so
-// the per-tick probe never allocates.
+// the per-tick probe never allocates. (Kept per-module rather than in
+// constants.js, which must stay THREE-free for the pure navMath test layer.)
 const GROUND_PROBE_DIR = Object.freeze(new THREE.Vector3(0, -1, 0));
 
 // Bounded-fallback cadence (ms) for the idle-gated enclosure probe: while the

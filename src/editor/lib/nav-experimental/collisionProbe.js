@@ -4,7 +4,9 @@ import { isSolidFloorHit, worldHitNormal } from './cursorAnchor.js';
 
 // Downward direction for the AGL ground probe. Module-level frozen constant so
 // the per-frame floor probes never allocate per call. `Raycaster.set` copies it
-// into `ray.direction`, so a shared read-only vector is safe.
+// into `ray.direction`, so a shared read-only vector is safe. (Kept per-module
+// rather than in constants.js, which must stay THREE-free — it is imported by
+// the pure navMath layer, whose tests run without a THREE global.)
 const GROUND_PROBE_DIR = Object.freeze(new THREE.Vector3(0, -1, 0));
 
 // Collision-floor probing for the experimental nav controls. Answers "what solid
