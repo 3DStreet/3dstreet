@@ -158,31 +158,43 @@ function Toolbar() {
   const [authorId, setAuthorId] = useState(null);
   const [authorUsername, setAuthorUsername] = useState(null);
 
-  // Snapshot the scene's author on viewer entry, and resolve their
-  // public username (socialProfile reads require a signed-in user, so
-  // signed-out visitors just don't get a byline yet).
+  // Resolve the scene creator's username for the "by {creator}" byline.
+  // authorId lives on the scene's `metadata` component, stamped a tick after
+  // the `newScene` event fires — so key off that event, not just auth/mode
+  // state. Otherwise a viewer that mounted before the scene finished loading
+  // reads no author and the byline never appears (the original bug). Shown to
+  // the owner too, so an owner viewing their own scene still gets the byline.
+  // socialProfile reads require auth (firestore.rules), so signed-out visitors
+  // get no byline yet.
   useEffect(() => {
-    if (isInspectorEnabled) return undefined;
-    const id = STREET.utils.getAuthorId() || null;
-    setAuthorId(id);
-    setAuthorUsername(null);
-    // Resolve the creator's username for the byline — including when the
-    // viewer IS the author, so an owner viewing their own scene still sees
-    // the "by {creator}" attribution. socialProfile reads require auth, so
-    // signed-out visitors get no byline yet.
-    if (!id || !currentUser) return undefined;
+    const sceneEl = AFRAME.scenes[0] || document.querySelector('a-scene');
+    if (!sceneEl) return undefined;
     let cancelled = false;
-    getUserProfile(id)
-      .then((profile) => {
-        if (!cancelled && profile?.username) {
-          setAuthorUsername(profile.username);
-        }
-      })
-      .catch(() => {});
+    const resolveByline = () => {
+      // metadata is stamped synchronously right after createElementsFromJSON
+      // returns (just after newScene) — defer one tick so authorId is readable.
+      setTimeout(() => {
+        if (cancelled) return;
+        const id = STREET.utils.getAuthorId() || null;
+        setAuthorId(id);
+        setAuthorUsername(null);
+        if (!id || !currentUser) return;
+        getUserProfile(id)
+          .then((profile) => {
+            if (!cancelled && profile?.username) {
+              setAuthorUsername(profile.username);
+            }
+          })
+          .catch(() => {});
+      }, 0);
+    };
+    resolveByline(); // catch a scene already loaded before this effect ran
+    sceneEl.addEventListener('newScene', resolveByline);
     return () => {
       cancelled = true;
+      sceneEl.removeEventListener('newScene', resolveByline);
     };
-  }, [isInspectorEnabled, currentUser]);
+  }, [currentUser]);
 
   // Escape backs out one level: stop the running simulation first,
   // then (next press) return to the editor.
