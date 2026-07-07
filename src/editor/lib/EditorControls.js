@@ -41,6 +41,7 @@ THREE.EditorControls = function (_object, domElement) {
   var focusWorldPos = new THREE.Vector3();
   var focusWorldQuat = new THREE.Quaternion();
   var focusWorldScale = new THREE.Vector3();
+  var batchBox = new THREE.Box3();
 
   this.isOrthographic = false;
   this.rotationEnabled = true;
@@ -74,6 +75,14 @@ THREE.EditorControls = function (_object, domElement) {
     );
 
     box.setFromObject(target);
+
+    // Batched entities have their mesh tree stripped at batch time, so setFromObject
+    // finds no geometry under them. batch-models stashes an entity-local AABB on the
+    // object3D (same fallback OrientedBoxHelper uses) — union it in world space.
+    if (target._batchLocalBbox) {
+      batchBox.copy(target._batchLocalBbox).applyMatrix4(target.matrixWorld);
+      box.union(batchBox);
+    }
 
     if (box.isEmpty() === false && !isNaN(box.min.x)) {
       box.getCenter(center);

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import classNames from 'classnames';
 import styles from './SceneEditTitle.module.scss';
 import { useAuthContext } from '../../../contexts/index.js';
 import { updateSceneIdAndTitle } from '../../../api/scene';
@@ -12,8 +13,14 @@ import { Edit24Icon } from '@shared/icons';
 const SceneEditTitle = ({ readOnly = false }) => {
   const title = useStore((state) => state.sceneTitle);
   const saveScene = useStore((state) => state.saveScene);
+  // Hidden-panel mode shows the title for context only — no inline editing.
+  const editable = useStore((state) => state.panelsVisible);
   const { currentUser } = useAuthContext();
   const [editing, setEditing] = useState(false);
+
+  // Inline rename is offered only when the panels are visible (editing
+  // session) AND the Viewer hasn't asked for a read-only title.
+  const canEdit = editable && !readOnly;
 
   const displayTitle = title || 'Untitled';
 
@@ -48,7 +55,7 @@ const SceneEditTitle = ({ readOnly = false }) => {
     }
   };
 
-  if (editing && !readOnly) {
+  if (editing && canEdit) {
     return (
       <div className={styles.wrapper}>
         <InlineEditInput
@@ -63,12 +70,12 @@ const SceneEditTitle = ({ readOnly = false }) => {
 
   return (
     <div
-      className={styles.wrapper}
-      onClick={readOnly ? undefined : () => setEditing(true)}
+      className={classNames(styles.wrapper, !canEdit && styles.static)}
+      onClick={canEdit ? () => setEditing(true) : undefined}
     >
       <div className={styles.readOnly}>
         <p className={styles.title}>{displayTitle}</p>
-        {!readOnly && (
+        {canEdit && (
           <span className={styles.editIcon}>
             <Edit24Icon />
           </span>

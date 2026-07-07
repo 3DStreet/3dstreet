@@ -1,9 +1,10 @@
 import Events from './Events';
+import { removeSelectedEntity, cloneSelectedEntity } from './entity';
 import {
-  removeSelectedEntity,
-  cloneSelectedEntity,
-  cloneEntity
-} from './entity';
+  copySelectedEntity,
+  cutSelectedEntity,
+  pasteFromClipboard
+} from './clipboard';
 import { getOS } from './utils';
 import useStore from '@/store';
 
@@ -137,18 +138,35 @@ export const Shortcuts = {
         }
       }
 
-      if (
-        AFRAME.INSPECTOR.selectedEntity &&
-        document.activeElement.tagName !== 'INPUT'
-      ) {
-        // c: copy selected entity
-        if (event.keyCode === 67) {
-          AFRAME.INSPECTOR.entityToCopy = AFRAME.INSPECTOR.selectedEntity;
+      if (document.activeElement.tagName !== 'INPUT') {
+        // Let the browser handle a native text-selection copy (e.g. text
+        // highlighted in a panel) instead of hijacking it for the entity.
+        const hasTextSelection = !!window.getSelection()?.toString();
+
+        // c: copy selected entity to clipboard
+        if (
+          event.keyCode === 67 &&
+          AFRAME.INSPECTOR.selectedEntity &&
+          !hasTextSelection
+        ) {
+          event.preventDefault();
+          copySelectedEntity();
         }
 
-        // v: paste copied entity
+        // x: cut selected entity (copy + undoable delete)
+        if (
+          event.keyCode === 88 &&
+          AFRAME.INSPECTOR.selectedEntity &&
+          !hasTextSelection
+        ) {
+          event.preventDefault();
+          cutSelectedEntity();
+        }
+
+        // v: paste entity from clipboard
         if (event.keyCode === 86) {
-          cloneEntity(AFRAME.INSPECTOR.entityToCopy);
+          event.preventDefault();
+          pasteFromClipboard();
         }
       }
     }

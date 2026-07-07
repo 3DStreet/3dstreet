@@ -21,6 +21,15 @@
     }
   }
 
+  // Hidden-panel mode: title is display-only.
+  &.static {
+    cursor: default;
+
+    &:hover {
+      background: none;
+    }
+  }
+
   .readOnly {
     display: flex;
     align-items: center;
@@ -59,9 +68,11 @@
     width: min(400px, 50vw);
     font-size: 16px;
     font-weight: 500;
-    color: variables.$white;
-    background-color: variables.$black-300;
-    border: 1px solid variables.$blue-100;
+    // !important: the global `#aframeInspector input` rule (index.scss) outranks this
+    // module class and would otherwise gray out the text and flatten the border.
+    color: variables.$white !important;
+    background-color: variables.$black-300 !important;
+    border: 1px solid variables.$blue-100 !important;
     border-radius: 4px;
     padding: 0 4px;
     outline: none;
