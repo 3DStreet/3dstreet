@@ -238,7 +238,39 @@ URL/embed ("Open in Viewer mode" button from #1267's share modal sketch).
    (the parked chassis-persistence work heads that way).
 3. **Username availability** (#1288): what's the fallback byline before
    public usernames ship — display name, "a 3DStreet creator", or hide?
-4. **Naming** — resolved: the button is always **"Play"** ("View" collides
-   conceptually with the View app menu, and Play matches the driving-sim
-   branch). On static scenes Play simply presents the scene read-only; the
-   simulation clock only starts when a playable capability is registered.
+4. **Naming** — resolved: the button is **"Start"**. "View" collides with
+   the View app menu; "Play" only reads well in English and localized into
+   the media-player sense (es "Reproducir", pt-BR "Reproduzir", fr "Lecture"),
+   which misdescribes what the button does. "Start" pairs with the
+   Stop/Reset/Pause shuttle, reads for a lay (non-gamer) audience, and
+   translates unambiguously (Iniciar / Démarrer). On static scenes Start
+   simply presents the scene read-only; the simulation clock only starts when
+   a playable capability is registered. A future per-capability label (say
+   "Drive" on a driving scene) can specialize it — the capability registry
+   already knows which case applies.
+
+## Implementation status — PR #1812
+
+Landed on this branch (supersedes #1627; magical-faraday fully absorbed):
+
+- **Phase 0** ✅ lifecycle: `play-mode` system, `scene-timer.simulationTime`,
+  `mode-manager` with registered control modes (editor / locomotion / drive)
+  and the playable-capability registry that gates all Play UI.
+- **Phase 1** ✅ Viewer MVP: viewer top bar reusing the editor's hidden-panels
+  chrome; locomotion camera; saved-vantage resolution chain; legacy
+  `viewer-mode` component + its json-utils round-trip removed.
+- **Phase 2** ✅ viewer-first for non-editors: non-owners land in the Viewer;
+  Edit → Remix (unauthed, sign-in at save). Byline shows only for signed-in
+  visitors (Firestore `socialProfile` rule; anonymous fallback is title +
+  VIEW ONLY, pending #1288/#1289).
+- **Phase 3** ◐ play controls in the Viewer: Start/Pause/Reset/Stop + sim
+  clock appear for **any** viewer of a scene with a registered playable
+  capability (owner or visitor) — playing is permissionless. The ms sim clock
+  shows only in drive mode. Capabilities shipped: physics **drive** (Rapier,
+  code-split WASM/JS chunk, lazy-loaded on first Start) and **traffic-sensor
+  replay**, plus synthetic `street-traffic`. **Deferred:** per-capability
+  *ambient auto-play* (a traffic/replay link starting to move on entry without
+  a click) — needs an `ambient` flag on the registry; drive would stay
+  click-to-enter. Today a visitor presses Start to bring an ambient scene to
+  life.
+- **Phase 4** ⏳ access control & XR-as-capability: unchanged, tracks #1267.
