@@ -17,10 +17,12 @@ export const PrimaryToolbar = () => {
   const hasPlayable = useHasPlayable();
 
   // Enter the Viewer from the editor camera's current pose (WYSIWYG).
-  // Always labeled "Play" (a "View" label collides conceptually with the
-  // View app menu); the simulation clock only starts when the scene has
-  // a registered playable capability — on static scenes Play is simply
-  // the read-only presentation.
+  // Labeled "Start" — it reads cleanly for a lay (non-gamer) audience,
+  // pairs with the Stop/Reset shuttle, and translates without the
+  // media-player baggage "Play" carries ("Reproducir"/"Lecture"). The
+  // simulation clock only starts when the scene has a registered playable
+  // capability — on static scenes Start is simply the read-only
+  // presentation. (A future per-capability label can say "Drive" etc.)
   const handlePlay = () => {
     useStore.getState().enterViewerMode('editor');
     if (hasPlayable) {
@@ -76,7 +78,7 @@ export const PrimaryToolbar = () => {
               })
         }
       >
-        <FormattedMessage id="primaryToolbar.play" defaultMessage="Play" />
+        <FormattedMessage id="primaryToolbar.play" defaultMessage="Start" />
       </Button>
       <div className={styles.divider} />
       <Button

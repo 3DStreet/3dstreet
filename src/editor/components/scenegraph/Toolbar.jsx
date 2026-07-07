@@ -298,7 +298,7 @@ function Toolbar() {
                 onClick={() => getPlayModeSystem()?.start()}
                 leadingIcon={<AwesomeIcon icon={faPlay} size={14} />}
               >
-                <FormattedMessage id="viewer.play" defaultMessage="Play" />
+                <FormattedMessage id="viewer.play" defaultMessage="Start" />
               </Button>
             )}
           </div>

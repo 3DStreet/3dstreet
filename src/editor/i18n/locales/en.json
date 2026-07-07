@@ -1431,7 +1431,7 @@
     "defaultMessage": "Hide panels"
   },
   "primaryToolbar.play": {
-    "defaultMessage": "Play"
+    "defaultMessage": "Start"
   },
   "primaryToolbar.playStaticTitle": {
     "defaultMessage": "View the scene without editor panels"
@@ -1872,7 +1872,7 @@
     "defaultMessage": "Pause"
   },
   "viewer.play": {
-    "defaultMessage": "Play"
+    "defaultMessage": "Start"
   },
   "viewer.remix": {
     "defaultMessage": "Remix"
