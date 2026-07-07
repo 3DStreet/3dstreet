@@ -290,4 +290,122 @@ describe('sendLifecycleEmail (emulator)', () => {
     expect(result.action).toBe('error');
     expect(result.reason).toMatch(/unknown stream/);
   });
+
+  // The daily tokenExhaustion sweep now routes through sendLifecycleEmail.
+  // These cover the sweep-specific glue: the legacy notifyLog guard (sends
+  // recorded before the emailLog migration), template selection, PRO skip via
+  // stopIfPro, and that new sends land in emailLog — never notifyLog.
+  describe('tokenExhaustion sweep (migrated to the lifecycle send service)', () => {
+    let processEmailType;
+    let EMAIL_TYPES;
+    let freshUid;
+    let legacyUid;
+    let proUid;
+
+    beforeAll(async () => {
+      ({ processEmailType, EMAIL_TYPES } = functionsRequire(
+        './scheduled/scheduledEmails.js'
+      ));
+
+      freshUid = await makeUser();
+      legacyUid = await makeUser();
+      proUid = await makeUser();
+
+      await db
+        .collection('tokenProfile')
+        .doc(freshUid)
+        .set({ genToken: 0, geoToken: 5 });
+      await db
+        .collection('tokenProfile')
+        .doc(legacyUid)
+        .set({ genToken: 3, geoToken: 0 });
+      await db
+        .collection('tokenProfile')
+        .doc(proUid)
+        .set({ genToken: 0, geoToken: 0 });
+
+      // Send recorded under the pre-migration notifyLog tracking: this user
+      // has no emailLog history but must never be emailed again.
+      await db.collection('notifyLog').doc(legacyUid).set({
+        userId: legacyUid,
+        tokenExhaustionEmailSent: new Date()
+      });
+
+      await admin.auth().setCustomUserClaims(proUid, { plan: 'PRO' });
+    });
+
+    it('sends via sendLifecycleEmail, honoring legacy notifyLog and PRO skip', async () => {
+      const fetchMock = okFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const results = await processEmailType(
+        db,
+        'tokenExhaustion',
+        EMAIL_TYPES.tokenExhaustion
+      );
+
+      expect(results.processed).toBe(3);
+      expect(results.sent).toBe(1);
+      expect(results.skipped.alreadySent).toBe(1); // legacy notifyLog guard
+      expect(results.skipped.filtered).toBe(1); // PRO user
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(payload.To).toBe(`${freshUid}@example.test`);
+      expect(payload.MessageStream).toBe('outbound');
+      expect(payload.Subject).toContain('AI tokens'); // genToken===0 wins template selection
+
+      // New sends are tracked in emailLog, not notifyLog.
+      const summary = await summaryDoc(freshUid);
+      expect(summary.emails.tokenExhaustion.sentCount).toBe(1);
+      expect(
+        (await db.collection('notifyLog').doc(freshUid).get()).exists
+      ).toBe(false);
+
+      // The legacy-guarded user gets no emailLog claim either.
+      expect(await summaryDoc(legacyUid)).toBeUndefined();
+    });
+
+    it('second sweep sends nothing: onceEver now blocks the fresh user too', async () => {
+      const fetchMock = okFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const results = await processEmailType(
+        db,
+        'tokenExhaustion',
+        EMAIL_TYPES.tokenExhaustion
+      );
+
+      expect(results.sent).toBe(0);
+      expect(results.skipped.alreadySent).toBe(2); // legacy guard + onceEver
+      expect(results.skipped.filtered).toBe(1);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('dry run reports recipient and subject without claiming or sending', async () => {
+      const uid = await makeUser();
+      await db
+        .collection('tokenProfile')
+        .doc(uid)
+        .set({ genToken: 5, geoToken: 0 });
+      const fetchMock = okFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const results = await processEmailType(
+        db,
+        'tokenExhaustion',
+        EMAIL_TYPES.tokenExhaustion,
+        { dryRun: true }
+      );
+
+      const entry = results.wouldSend.find(
+        (w) => w.email === `${uid}@example.test`
+      );
+      expect(entry).toBeTruthy();
+      expect(entry.templateKey).toBe('geoTokenExhaustion');
+      expect(entry.subject).toContain('geo tokens');
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(await summaryDoc(uid)).toBeUndefined();
+    });
+  });
 });

@@ -1,11 +1,12 @@
 /**
- * Lifecycle email foundation (P0 wave, PR 1).
+ * Lifecycle email send service.
  *
  * One send path for every lifecycle email: suppression check → stop-rules
  * (transactional claim on the emailLog summary doc) → Postmark send → audit
- * record. Email *definitions* (templates + triggers) arrive in later PRs;
- * this module only ships the plumbing plus a `testPing` definition so the
- * whole pipeline can be exercised end-to-end via the admin callable.
+ * record. Email *definitions* (templates + triggers) live with their
+ * triggers — e.g. the tokenExhaustion sweep in scheduled/scheduledEmails.js —
+ * and call sendLifecycleEmail to do the sending. See docs/email-lifecycle.md
+ * (repo root) for the full system overview and how to add a new email.
  *
  * Firestore (all cloud-only, see firestore.rules):
  *   emailLog/{uid}            — summary doc backing stop-rules (shape in stop-rules.js)
@@ -32,10 +33,7 @@ const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('../app-check.js');
 const { isUserProInternal } = require('../token-management.js');
-const {
-  sendPostmarkEmail,
-  getUserInfo
-} = require('../scheduled/scheduledEmails.js');
+const { sendPostmarkEmail, getUserInfo } = require('./postmark.js');
 const { evaluateStopRules } = require('./stop-rules.js');
 
 const TRANSACTIONAL_STREAM = 'outbound';
@@ -75,7 +73,7 @@ Don't want these emails? Unsubscribe: {{{ pm:unsubscribe_url }}}`;
  * @param {Object} [p.rules] - stop-rules (see stop-rules.js)
  * @param {string} [p.dedupeKey] - once-per-key guard (invoice id, session id)
  * @param {boolean} [p.dryRun] - evaluate everything, claim and send nothing
- * @returns {Promise<{action: 'sent'|'would-send'|'skipped'|'no-email'|'error', reason?: string, messageId?: string}>}
+ * @returns {Promise<{action: 'sent'|'would-send'|'skipped'|'no-email'|'error', reason?: string, messageId?: string, to?: string, subject?: string}>}
  */
 const sendLifecycleEmail = async ({
   db,
@@ -152,7 +150,7 @@ const sendLifecycleEmail = async ({
       return;
     }
     if (dryRun) {
-      outcome = { action: 'would-send' };
+      outcome = { action: 'would-send', to: userInfo.email, subject };
       return;
     }
 
@@ -244,7 +242,8 @@ const sendLifecycleEmail = async ({
 
 // ============================================================================
 // TEST EMAIL — exercises the full pipeline (prefs → stop-rules → stream →
-// emailLog) before any real P0 email exists. Admin-only via the callable.
+// emailLog) without touching any real email's state. Admin-only via the
+// callable.
 // ============================================================================
 
 const TEST_TEMPLATE = {

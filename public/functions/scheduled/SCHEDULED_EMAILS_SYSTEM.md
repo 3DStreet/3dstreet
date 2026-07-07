@@ -2,12 +2,12 @@
 
 This document describes the scheduled email notification system that sends transactional emails via Postmark.
 
-> **Lifecycle emails (P0 wave):** new lifecycle emails should use the send
-> service in `../email/lifecycle-email.js` (per-stream routing, `emailPrefs`
-> suppression, `emailLog` stop-rules + audit) rather than adding more
-> `notifyLog` booleans here. This system continues to run `tokenExhaustion`
-> and provides `sendPostmarkEmail` / `getUserInfo` that the lifecycle service
-> reuses. Plan: `docs/email-lifecycle-p0-plan.md` (repo root).
+> **Lifecycle emails:** all sends go through the send service in
+> `../email/lifecycle-email.js` (per-stream routing, `emailPrefs` suppression,
+> `emailLog` stop-rules + audit). This file owns the daily *sweep trigger* and
+> the email type configs (eligibility query + template selection); the actual
+> send, stop-rules, and bookkeeping happen in the send service. Full system
+> docs: `docs/email-lifecycle.md` (repo root).
 
 ## Overview
 
@@ -36,9 +36,12 @@ Sends ONE email per user, ever, when they exhaust either token type.
 
 **Behavior:**
 - Queries users with `geoToken == 0` OR `genToken == 0`
-- Skips PRO users
-- Sends only ONE email per user lifetime (tracked via `tokenExhaustionEmailSent`)
+- Skips PRO users (`stopIfPro` rule)
+- Sends only ONE email per user lifetime (`onceEver` rule against `emailLog`;
+  sends recorded before the emailLog migration are honored via the legacy
+  `notifyLog.tokenExhaustionEmailSent` flag)
 - Selects template based on which token is exhausted (AI prioritized if both)
+- Delivered on the `outbound` (transactional) Postmark stream
 
 ## Adding New Email Types
 
@@ -63,7 +66,11 @@ const EMAIL_TYPES = {
   // ... existing types ...
 
   welcome: {
-    notifyLogField: 'welcomeEmailSent',  // Track in notifyLog
+    // Identity + routing for sendLifecycleEmail (see docs/email-lifecycle.md)
+    emailId: 'welcome',
+    category: 'transactional',
+    stream: 'outbound',
+    rules: { onceEver: true },
 
     // Query users who need this email
     async getEligibleUsers(db) {
@@ -76,16 +83,16 @@ const EMAIL_TYPES = {
       }));
     },
 
-    // Optional: additional filter
-    async shouldSendToUser(userId) {
-      return true;
-    },
-
     // Static template (or use getTemplateKey for dynamic selection)
     templateKey: 'welcome'
   }
 };
 ```
+
+Stop-rules (once-ever, cooldowns, PRO skip, dedupe keys), the `emailPrefs`
+suppression check, and Postmark stream routing are enforced by
+`sendLifecycleEmail`, not here — see `docs/email-lifecycle.md` for the full
+list of supported `rules`.
 
 ### Dynamic Template Selection
 
@@ -93,7 +100,10 @@ For email types that select different templates based on user data:
 
 ```js
 myEmailType: {
-  notifyLogField: 'myEmailSent',
+  emailId: 'myEmail',
+  category: 'transactional',
+  stream: 'outbound',
+  rules: { onceEver: true },
   async getEligibleUsers(db) { ... },
 
   // Dynamic template selection based on user data
@@ -111,14 +121,19 @@ myEmailType: {
 ### `tokenProfile/{userId}` (read)
 Queried to find users with exhausted tokens.
 
-### `notifyLog/{userId}` (read/write)
-Tracks email sends:
+### `emailLog/{userId}` (via sendLifecycleEmail)
+Summary doc backing stop-rules plus a `sends` audit subcollection recording
+every attempted send. Written only by the send service — see
+`docs/email-lifecycle.md`.
+
+### `notifyLog/{userId}` (read, legacy)
+Pre-emailLog send tracking. Still read as a guard so users emailed under the
+old system are never re-emailed, but no new sends are recorded here:
 ```js
 {
   userId: string,
   email: string,
-  tokenExhaustionEmailSent: Timestamp,  // If exists, email was sent
-  // Add more fields as you add email types
+  tokenExhaustionEmailSent: Timestamp,  // If exists, email was sent pre-migration
   updatedAt: Timestamp
 }
 ```
@@ -211,7 +226,7 @@ firebase functions:log --only sendScheduledEmails --follow
 Starting scheduled email job
 Processing email type: tokenExhaustion
 Found 15 eligible users for tokenExhaustion
-Sent tokenExhaustion (genTokenExhaustion) email to user@example.com: abc123
+Sent lifecycle email tokenExhaustion to user@example.com (stream=outbound, MessageID=abc123)
 Completed tokenExhaustion: {"type":"tokenExhaustion","processed":15,"sent":3,"skipped":{"alreadySent":10,"noEmail":1,"filtered":1,"error":0}}
 ```
 
@@ -219,14 +234,14 @@ Completed tokenExhaustion: {"type":"tokenExhaustion","processed":15,"sent":3,"sk
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| No emails sent | All users already emailed | Check `notifyLog` collection |
+| No emails sent | All users already emailed | Check `emailLog` (and legacy `notifyLog`) |
 | No emails sent | All users are PRO | Expected behavior |
 | Postmark 401 | Invalid API key | Verify secret |
 | Postmark 422 | Invalid sender | Verify sender in Postmark |
 
 ## Security
 
-- `notifyLog` collection denies all client access (Cloud Functions only)
+- `emailLog` and `notifyLog` collections deny all client access (Cloud Functions only)
 - User emails retrieved from Firebase Auth, not Firestore
 - API key stored as Cloud Secret
 - Manual trigger requires authentication
