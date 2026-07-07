@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FormattedMessage, defineMessages, useIntl } from 'react-intl';
 import useStore from '@/store';
 import styles from './PlayModeControls.module.scss';
 
@@ -17,19 +18,29 @@ const formatSeconds = (ms) => (Math.max(0, ms) / 1000).toFixed(2) + 's';
  * loaded lazily). If play mode is entered without a driveable vehicle
  * (future traffic-only play), this panel stays hidden.
  */
-const FIELDS = [
-  {
-    key: 'accelerateForce',
-    label: 'Engine force',
-    min: 0,
-    max: 20,
-    step: 0.5
+const fieldLabels = defineMessages({
+  accelerateForce: {
+    id: 'playControls.engineForce',
+    defaultMessage: 'Engine force'
   },
-  { key: 'brakeForce', label: 'Brake force', min: 0, max: 0.5, step: 0.01 },
-  { key: 'steerAngle', label: 'Steer (rad)', min: 0, max: 0.5, step: 0.01 }
+  brakeForce: {
+    id: 'playControls.brakeForce',
+    defaultMessage: 'Brake force'
+  },
+  steerAngle: {
+    id: 'playControls.steer',
+    defaultMessage: 'Steer (rad)'
+  }
+});
+
+const FIELDS = [
+  { key: 'accelerateForce', min: 0, max: 20, step: 0.5 },
+  { key: 'brakeForce', min: 0, max: 0.5, step: 0.01 },
+  { key: 'steerAngle', min: 0, max: 0.5, step: 0.01 }
 ];
 
 export const PlayModeControls = () => {
+  const intl = useIntl();
   const isPlaying = useStore((s) => s.isPlaying);
   const isPlayPaused = useStore((s) => s.isPlayPaused);
   const [data, setData] = useState(null);
@@ -144,10 +155,17 @@ export const PlayModeControls = () => {
 
   return (
     <div className={styles.wrapper}>
-      <h3 className={styles.title}>Drive controls</h3>
+      <h3 className={styles.title}>
+        <FormattedMessage
+          id="playControls.title"
+          defaultMessage="Drive controls"
+        />
+      </h3>
       {FIELDS.map((f) => (
         <label key={f.key} className={styles.row}>
-          <span className={styles.name}>{f.label}</span>
+          <span className={styles.name}>
+            {intl.formatMessage(fieldLabels[f.key])}
+          </span>
           <input
             type="range"
             min={f.min}
@@ -165,14 +183,28 @@ export const PlayModeControls = () => {
       ))}
       <div className={styles.timers}>
         <div className={styles.timerRow}>
-          <span className={styles.name}>Wall</span>
+          <span className={styles.name}>
+            <FormattedMessage id="playControls.wall" defaultMessage="Wall" />
+          </span>
           <span className={styles.value}>{formatSeconds(times.wall)}</span>
         </div>
         <div className={styles.timerRow}>
-          <span className={styles.name}>Sim</span>
+          <span className={styles.name}>
+            <FormattedMessage id="playControls.sim" defaultMessage="Sim" />
+          </span>
           <span
             className={`${styles.value} ${desynced ? styles.valueWarn : ''}`}
-            title={desynced ? `Sim lagging wall by ${drift.toFixed(0)}ms` : ''}
+            title={
+              desynced
+                ? intl.formatMessage(
+                    {
+                      id: 'playControls.driftWarning',
+                      defaultMessage: 'Sim lagging wall by {ms}ms'
+                    },
+                    { ms: drift.toFixed(0) }
+                  )
+                : ''
+            }
           >
             {formatSeconds(times.sim)}
             {desynced ? ` (-${(drift / 1000).toFixed(2)}s)` : ''}
@@ -180,11 +212,16 @@ export const PlayModeControls = () => {
         </div>
       </div>
       <p className={styles.hint}>
-        WASD drive · Space brake · R reset · C camera
+        <FormattedMessage
+          id="playControls.keyboardHint"
+          defaultMessage="WASD drive · Space brake · R reset · C camera"
+        />
       </p>
       <p className={styles.hint}>
-        Gamepad: RT/LT throttle · B brake · stick steer · Y reset · X camera ·
-        Start pause · Back stop
+        <FormattedMessage
+          id="playControls.gamepadHint"
+          defaultMessage="Gamepad: RT/LT throttle · B brake · stick steer · Y reset · X camera · Start pause · Back stop"
+        />
       </p>
     </div>
   );

@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
+import { FormattedMessage, defineMessages, useIntl } from 'react-intl';
 import PropertyRow from './PropertyRow';
 import Events from '../../lib/Events';
 
@@ -10,14 +11,28 @@ import Events from '../../lib/Events';
 // three numbers a player will actually want to feel; chassis size,
 // wheel layout, mesh offset, etc. stay in Advanced for less-common
 // tuning.
+const fieldLabels = defineMessages({
+  preset: { id: 'driveControls.preset', defaultMessage: 'Vehicle Preset' },
+  accelerateForce: {
+    id: 'driveControls.engineForce',
+    defaultMessage: 'Engine Force'
+  },
+  brakeForce: { id: 'driveControls.brakeForce', defaultMessage: 'Brake Force' },
+  steerAngle: {
+    id: 'driveControls.steerAngle',
+    defaultMessage: 'Steer Angle (rad)'
+  }
+});
+
 const PRIMARY_FIELDS = [
-  { name: 'preset', label: 'Vehicle Preset' },
-  { name: 'accelerateForce', label: 'Engine Force' },
-  { name: 'brakeForce', label: 'Brake Force' },
-  { name: 'steerAngle', label: 'Steer Angle (rad)' }
+  { name: 'preset' },
+  { name: 'accelerateForce' },
+  { name: 'brakeForce' },
+  { name: 'steerAngle' }
 ];
 
 const DriveControlsSidebar = ({ entity }) => {
+  const intl = useIntl();
   const [, setUpdateTrigger] = useState(0);
   const componentName = 'drive-controls';
   const component = entity?.components?.[componentName];
@@ -43,7 +58,7 @@ const DriveControlsSidebar = ({ entity }) => {
             <PropertyRow
               key={f.name}
               name={f.name}
-              label={f.label}
+              label={intl.formatMessage(fieldLabels[f.name])}
               schema={component.schema[f.name]}
               data={component.data[f.name]}
               componentname={componentName}
@@ -54,13 +69,33 @@ const DriveControlsSidebar = ({ entity }) => {
         )}
         <div className="propertyRow">
           <div className="rounded bg-blue-50 p-2 text-gray-600">
-            <div className="mb-1 font-semibold uppercase">💡 Drive tips</div>
+            <div className="mb-1 font-semibold uppercase">
+              <FormattedMessage
+                id="driveControls.tipsHeading"
+                defaultMessage="💡 Drive tips"
+              />
+            </div>
             <ul className="space-y-1">
-              <li>• Press Play, then drive with WASD / arrows</li>
-              <li>• Space = brake · R = reset · C = camera mode</li>
               <li>
-                • Pick a preset to swap mesh + physics in one shot, or hand-tune
-                fields below
+                •{' '}
+                <FormattedMessage
+                  id="driveControls.tipStart"
+                  defaultMessage="Press Start, then drive with WASD / arrows"
+                />
+              </li>
+              <li>
+                •{' '}
+                <FormattedMessage
+                  id="driveControls.tipKeys"
+                  defaultMessage="Space = brake · R = reset · C = camera mode"
+                />
+              </li>
+              <li>
+                •{' '}
+                <FormattedMessage
+                  id="driveControls.tipPreset"
+                  defaultMessage="Pick a preset to swap mesh + physics in one shot, or hand-tune fields below"
+                />
               </li>
             </ul>
           </div>

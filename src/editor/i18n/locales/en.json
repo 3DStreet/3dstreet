@@ -929,6 +929,30 @@
   "deploymentBanner.message": {
     "defaultMessage": "You're using a forked or self-hosted build of 3DStreet (open source, AGPL-3.0). Local editing works, but cloud features are unavailable. To use cloud services, visit <link>3dstreet.app</link>."
   },
+  "driveControls.brakeForce": {
+    "defaultMessage": "Brake Force"
+  },
+  "driveControls.engineForce": {
+    "defaultMessage": "Engine Force"
+  },
+  "driveControls.preset": {
+    "defaultMessage": "Vehicle Preset"
+  },
+  "driveControls.steerAngle": {
+    "defaultMessage": "Steer Angle (rad)"
+  },
+  "driveControls.tipKeys": {
+    "defaultMessage": "Space = brake · R = reset · C = camera mode"
+  },
+  "driveControls.tipPreset": {
+    "defaultMessage": "Pick a preset to swap mesh + physics in one shot, or hand-tune fields below"
+  },
+  "driveControls.tipStart": {
+    "defaultMessage": "Press Start, then drive with WASD / arrows"
+  },
+  "driveControls.tipsHeading": {
+    "defaultMessage": "💡 Drive tips"
+  },
   "editorUpgradeModal.alreadyPro": {
     "defaultMessage": "You're already a Pro member — try that action again to continue."
   },
@@ -1427,6 +1451,33 @@
   "newModal.title": {
     "defaultMessage": "Create a New Scene"
   },
+  "playControls.brakeForce": {
+    "defaultMessage": "Brake force"
+  },
+  "playControls.driftWarning": {
+    "defaultMessage": "Sim lagging wall by {ms}ms"
+  },
+  "playControls.engineForce": {
+    "defaultMessage": "Engine force"
+  },
+  "playControls.gamepadHint": {
+    "defaultMessage": "Gamepad: RT/LT throttle · B brake · stick steer · Y reset · X camera · Start pause · Back stop"
+  },
+  "playControls.keyboardHint": {
+    "defaultMessage": "WASD drive · Space brake · R reset · C camera"
+  },
+  "playControls.sim": {
+    "defaultMessage": "Sim"
+  },
+  "playControls.steer": {
+    "defaultMessage": "Steer (rad)"
+  },
+  "playControls.title": {
+    "defaultMessage": "Drive controls"
+  },
+  "playControls.wall": {
+    "defaultMessage": "Wall"
+  },
   "primaryToolbar.hidePanels": {
     "defaultMessage": "Hide panels"
   },
@@ -1495,6 +1546,27 @@
   },
   "profileModal.unlimitedGeoTokens": {
     "defaultMessage": "Unlimited Geo Tokens"
+  },
+  "raceFinish.collisionsSuffix": {
+    "defaultMessage": "{collisions,plural,one{# collision} other{# collisions}}"
+  },
+  "raceFinish.dismissHint": {
+    "defaultMessage": "click to dismiss"
+  },
+  "raceFinish.finished": {
+    "defaultMessage": "Finished"
+  },
+  "raceFinish.firstRun": {
+    "defaultMessage": "First run on this course"
+  },
+  "raceFinish.newBest": {
+    "defaultMessage": "New best!"
+  },
+  "raceFinish.vsBest": {
+    "defaultMessage": "{delta} vs best {best}"
+  },
+  "raceFinish.withCollisions": {
+    "defaultMessage": "{collisions,plural,one{{time} + # collision} other{{time} + # collisions}}"
   },
   "rightPanel.planTooltipFree": {
     "defaultMessage": "3DStreet Free Community Edition"
@@ -1822,6 +1894,63 @@
   },
   "toolbar.edit": {
     "defaultMessage": "Edit"
+  },
+  "trafficReplay.autoStreet": {
+    "defaultMessage": "Auto (first managed street)"
+  },
+  "trafficReplay.createStreet": {
+    "defaultMessage": "Create a street to replay onto"
+  },
+  "trafficReplay.hideSynthetic": {
+    "defaultMessage": "Hide synthetic traffic"
+  },
+  "trafficReplay.importManifest": {
+    "defaultMessage": "Import manifest…"
+  },
+  "trafficReplay.linkStreet": {
+    "defaultMessage": "Link a street"
+  },
+  "trafficReplay.linkedStreet": {
+    "defaultMessage": "Linked street"
+  },
+  "trafficReplay.loop": {
+    "defaultMessage": "Loop"
+  },
+  "trafficReplay.noManifest": {
+    "defaultMessage": "No manifest loaded — import a replay JSON."
+  },
+  "trafficReplay.notManifest": {
+    "defaultMessage": "That JSON is not a replay manifest (no \"agents\" array)."
+  },
+  "trafficReplay.parseError": {
+    "defaultMessage": "Could not parse that JSON file."
+  },
+  "trafficReplay.placeAtSensor": {
+    "defaultMessage": "Place scene at sensor location"
+  },
+  "trafficReplay.placedAt": {
+    "defaultMessage": "Placed scene at {lat}, {lon}."
+  },
+  "trafficReplay.replaceManifest": {
+    "defaultMessage": "Replace manifest…"
+  },
+  "trafficReplay.streetUsers": {
+    "defaultMessage": "{count} street users"
+  },
+  "trafficReplay.timeScale": {
+    "defaultMessage": "Playback speed (×)"
+  },
+  "trafficReplay.tipAnon": {
+    "defaultMessage": "Only mode is shown — the data is anonymized"
+  },
+  "trafficReplay.tipLink": {
+    "defaultMessage": "Link a managed street (or create one), then press Start"
+  },
+  "trafficReplay.tipSaves": {
+    "defaultMessage": "Saves with the scene; shareable via the scene link"
+  },
+  "trafficReplay.tipsHeading": {
+    "defaultMessage": "💡 Replay"
   },
   "undoRedo.redo": {
     "defaultMessage": "Redo"

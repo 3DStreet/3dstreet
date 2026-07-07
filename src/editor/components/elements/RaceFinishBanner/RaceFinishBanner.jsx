@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useIntl } from 'react-intl';
 import useStore from '@/store';
 import styles from './RaceFinishBanner.module.scss';
 import {
@@ -18,6 +19,7 @@ import {
  * reset, or stop all clear `playFinish`).
  */
 export const RaceFinishBanner = () => {
+  const intl = useIntl();
   const playFinish = useStore((s) => s.playFinish);
   const [dismissed, setDismissed] = useState(false);
 
@@ -41,16 +43,52 @@ export const RaceFinishBanner = () => {
         : styles.bannerSlower
   ].join(' ');
 
-  const headline = isFirst ? 'Finished' : isNewBest ? 'New best!' : 'Finished';
+  const headline = isNewBest
+    ? intl.formatMessage({
+        id: 'raceFinish.newBest',
+        defaultMessage: 'New best!'
+      })
+    : intl.formatMessage({
+        id: 'raceFinish.finished',
+        defaultMessage: 'Finished'
+      });
 
-  const subline = isFirst
-    ? collisions > 0
-      ? `${formatTime(simMs)} + ${collisions} collision${collisions === 1 ? '' : 's'}`
-      : 'First run on this course'
-    : `${formatDelta(deltaMs)} vs best ${formatTime(previousBestMs)}` +
-      (collisions > 0
-        ? ` · ${collisions} collision${collisions === 1 ? '' : 's'}`
-        : '');
+  let subline;
+  if (isFirst) {
+    subline =
+      collisions > 0
+        ? intl.formatMessage(
+            {
+              id: 'raceFinish.withCollisions',
+              defaultMessage:
+                '{time} + {collisions, plural, one {# collision} other {# collisions}}'
+            },
+            { time: formatTime(simMs), collisions }
+          )
+        : intl.formatMessage({
+            id: 'raceFinish.firstRun',
+            defaultMessage: 'First run on this course'
+          });
+  } else {
+    const vsBest = intl.formatMessage(
+      {
+        id: 'raceFinish.vsBest',
+        defaultMessage: '{delta} vs best {best}'
+      },
+      { delta: formatDelta(deltaMs), best: formatTime(previousBestMs) }
+    );
+    subline =
+      collisions > 0
+        ? `${vsBest} · ${intl.formatMessage(
+            {
+              id: 'raceFinish.collisionsSuffix',
+              defaultMessage:
+                '{collisions, plural, one {# collision} other {# collisions}}'
+            },
+            { collisions }
+          )}`
+        : vsBest;
+  }
 
   return (
     <div
@@ -62,7 +100,12 @@ export const RaceFinishBanner = () => {
       <div className={styles.headline}>{headline}</div>
       <div className={styles.finalTime}>{formatTime(finalMs)}</div>
       <div className={styles.subline}>{subline}</div>
-      <div className={styles.dismissHint}>click to dismiss</div>
+      <div className={styles.dismissHint}>
+        {intl.formatMessage({
+          id: 'raceFinish.dismissHint',
+          defaultMessage: 'click to dismiss'
+        })}
+      </div>
     </div>
   );
 };

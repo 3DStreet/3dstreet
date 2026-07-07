@@ -1,16 +1,29 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect, useMemo } from 'react';
+import { FormattedMessage, defineMessages, useIntl } from 'react-intl';
 import PropertyRow from './PropertyRow';
 import Events from '../../lib/Events';
 import { Button, Dropdown } from '../elements';
 import { createUniqueId } from '../../lib/entity';
 import * as defaultStreetObjects from './AddLayerPanel/defaultStreets.js';
 
+const fieldLabels = defineMessages({
+  timeScale: {
+    id: 'trafficReplay.timeScale',
+    defaultMessage: 'Playback speed (×)'
+  },
+  loop: { id: 'trafficReplay.loop', defaultMessage: 'Loop' },
+  suppressSyntheticTraffic: {
+    id: 'trafficReplay.hideSynthetic',
+    defaultMessage: 'Hide synthetic traffic'
+  }
+});
+
 // Fields surfaced inline (the rest of the component's props stay internal).
 const PRIMARY_FIELDS = [
-  { name: 'timeScale', label: 'Playback speed (×)' },
-  { name: 'loop', label: 'Loop' },
-  { name: 'suppressSyntheticTraffic', label: 'Hide synthetic traffic' }
+  { name: 'timeScale' },
+  { name: 'loop' },
+  { name: 'suppressSyntheticTraffic' }
 ];
 
 /**
@@ -19,6 +32,7 @@ const PRIMARY_FIELDS = [
  * tune playback, and optionally place the scene at the sensor's location.
  */
 const StreetTrafficReplaySidebar = ({ entity }) => {
+  const intl = useIntl();
   const [, setTick] = useState(0);
   const componentName = 'street-traffic-replay';
   const component = entity?.components?.[componentName];
@@ -66,13 +80,20 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
         parsed = JSON.parse(await file.text());
       } catch {
         window.STREET?.notify?.errorMessage?.(
-          'Could not parse that JSON file.'
+          intl.formatMessage({
+            id: 'trafficReplay.parseError',
+            defaultMessage: 'Could not parse that JSON file.'
+          })
         );
         return;
       }
       if (!parsed || !Array.isArray(parsed.agents) || !parsed.agents.length) {
         window.STREET?.notify?.errorMessage?.(
-          'That JSON is not a replay manifest (no "agents" array).'
+          intl.formatMessage({
+            id: 'trafficReplay.notManifest',
+            defaultMessage:
+              'That JSON is not a replay manifest (no "agents" array).'
+          })
         );
         return;
       }
@@ -86,7 +107,13 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
     document.querySelectorAll('[managed-street]')
   ).filter((el) => el.id);
   const targetOptions = [
-    { value: '', label: 'Auto (first managed street)' },
+    {
+      value: '',
+      label: intl.formatMessage({
+        id: 'trafficReplay.autoStreet',
+        defaultMessage: 'Auto (first managed street)'
+      })
+    },
     ...streetEls.map((el) => ({
       value: el.id,
       label: el.getAttribute('data-layer-name') || el.id
@@ -130,7 +157,13 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
       component: 'street-geo'
     });
     window.STREET?.notify?.successMessage?.(
-      `Placed scene at ${dep.lat}, ${dep.lon}.`
+      intl.formatMessage(
+        {
+          id: 'trafficReplay.placedAt',
+          defaultMessage: 'Placed scene at {lat}, {lon}.'
+        },
+        { lat: dep.lat, lon: dep.lon }
+      )
     );
   };
 
@@ -146,7 +179,14 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
             {manifest ? (
               <>
                 <div className="mb-1 font-semibold uppercase">
-                  📊 {manifest.agents.length} street users
+                  📊{' '}
+                  {intl.formatMessage(
+                    {
+                      id: 'trafficReplay.streetUsers',
+                      defaultMessage: '{count} street users'
+                    },
+                    { count: manifest.agents.length }
+                  )}
                   {windowLabel ? ` · ${windowLabel}` : ''}
                 </div>
                 {counts && (
@@ -159,22 +199,45 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
                 )}
               </>
             ) : (
-              <div>No manifest loaded — import a replay JSON.</div>
+              <div>
+                <FormattedMessage
+                  id="trafficReplay.noManifest"
+                  defaultMessage="No manifest loaded — import a replay JSON."
+                />
+              </div>
             )}
           </div>
         </div>
         <div className="propertyRow">
           <Button variant="toolbtn" onClick={importManifest}>
-            {manifest ? 'Replace manifest…' : 'Import manifest…'}
+            {manifest ? (
+              <FormattedMessage
+                id="trafficReplay.replaceManifest"
+                defaultMessage="Replace manifest…"
+              />
+            ) : (
+              <FormattedMessage
+                id="trafficReplay.importManifest"
+                defaultMessage="Import manifest…"
+              />
+            )}
           </Button>
         </div>
 
         {/* Linked street */}
         <div className="propertyRow">
-          <div className="fakePropertyRowLabel">Linked street</div>
+          <div className="fakePropertyRowLabel">
+            <FormattedMessage
+              id="trafficReplay.linkedStreet"
+              defaultMessage="Linked street"
+            />
+          </div>
           <div className="fakePropertyRowValue">
             <Dropdown
-              placeholder="Link a street"
+              placeholder={intl.formatMessage({
+                id: 'trafficReplay.linkStreet',
+                defaultMessage: 'Link a street'
+              })}
               options={targetOptions}
               selectedOptionValue={component.data.target || ''}
               onSelect={(value) => setProp('target', value)}
@@ -183,7 +246,10 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
         </div>
         <div className="propertyRow">
           <Button variant="toolbtn" onClick={createStreet}>
-            Create a street to replay onto
+            <FormattedMessage
+              id="trafficReplay.createStreet"
+              defaultMessage="Create a street to replay onto"
+            />
           </Button>
         </div>
 
@@ -193,7 +259,7 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
             <PropertyRow
               key={f.name}
               name={f.name}
-              label={f.label}
+              label={intl.formatMessage(fieldLabels[f.name])}
               schema={component.schema[f.name]}
               data={component.data[f.name]}
               componentname={componentName}
@@ -207,18 +273,44 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
         {dep && (
           <div className="propertyRow">
             <Button variant="toolbtn" onClick={placeAtSensor}>
-              Place scene at sensor location
+              <FormattedMessage
+                id="trafficReplay.placeAtSensor"
+                defaultMessage="Place scene at sensor location"
+              />
             </Button>
           </div>
         )}
 
         <div className="propertyRow">
           <div className="rounded bg-blue-50 p-2 text-gray-600">
-            <div className="mb-1 font-semibold uppercase">💡 Replay</div>
+            <div className="mb-1 font-semibold uppercase">
+              <FormattedMessage
+                id="trafficReplay.tipsHeading"
+                defaultMessage="💡 Replay"
+              />
+            </div>
             <ul className="space-y-1">
-              <li>• Link a managed street (or create one), then press Play</li>
-              <li>• Only mode is shown — the data is anonymized</li>
-              <li>• Saves with the scene; shareable via the scene link</li>
+              <li>
+                •{' '}
+                <FormattedMessage
+                  id="trafficReplay.tipLink"
+                  defaultMessage="Link a managed street (or create one), then press Start"
+                />
+              </li>
+              <li>
+                •{' '}
+                <FormattedMessage
+                  id="trafficReplay.tipAnon"
+                  defaultMessage="Only mode is shown — the data is anonymized"
+                />
+              </li>
+              <li>
+                •{' '}
+                <FormattedMessage
+                  id="trafficReplay.tipSaves"
+                  defaultMessage="Saves with the scene; shareable via the scene link"
+                />
+              </li>
             </ul>
           </div>
         </div>
