@@ -134,6 +134,46 @@ event-driven shape.
 Roll out any new email by dry-running against the dev Firebase project and
 checking Postmark activity (correct stream, footer renders) before prod.
 
+## Manual verification checklist (black-box QA)
+
+A human pass over the whole pipeline that requires **no code reading** — just
+a browser console on the dev site (signed in as admin), the Firebase console
+(Firestore data browser), and the Postmark Activity page. Run it after
+deploying email changes to dev, before promoting to prod.
+
+1. **Dry run is really dry.** `await adminTools.testLifecycleEmail()` →
+   returns `{ action: 'would-send', to: <your email> }`. Confirm no email
+   arrives and `emailLog/{your-uid}` did not change in Firestore.
+2. **Transactional send.** `await adminTools.testLifecycleEmail({ dryRun:
+   false })` → email arrives from `notify@3dstreet.com` with **no**
+   unsubscribe footer; Postmark Activity shows it on the `outbound` stream;
+   Firestore `emailLog/{your-uid}` now has `emails.testPing` and a
+   `sends` record with `status: 'sent'` and a `messageId`.
+3. **Broadcast send.** `await adminTools.testLifecycleEmail({ stream:
+   'conversion', dryRun: false })` → email **has** an unsubscribe footer and
+   Postmark Activity shows the `conversion` stream.
+4. **Unsubscribe round-trip.** Click Unsubscribe in that email. Within a few
+   seconds `emailPrefs/{your-uid}.streams.conversion.suppressed` becomes
+   `true` in Firestore (that's the webhook working). Repeat step 3 → returns
+   `{ action: 'skipped', reason: 'unsubscribed' }` and nothing arrives.
+5. **Resubscribe.** Reactivate via Postmark's hosted page (linked from the
+   unsubscribe confirmation) → `suppressed` flips back to `false`; step 3
+   sends again. Also confirm the other stream (`lifecycle`) still sends while
+   `conversion` is suppressed — that's the per-stream granularity.
+6. **Sweep dry run.** `await adminTools.triggerEmails()` → returns a
+   `wouldSend` list for `tokenExhaustion`. Spot-check one listed user in
+   Firestore: their `tokenProfile` has `genToken` or `geoToken` at 0, and they
+   have neither `emailLog.emails.tokenExhaustion` nor a legacy
+   `notifyLog.tokenExhaustionEmailSent`. Users with either must NOT be listed.
+7. **Stop-rule regression.** After a real sweep send to a test account
+   (`await adminTools.triggerEmails(false)` on dev), immediately re-run the
+   dry run → that account is gone from `wouldSend` (once-ever enforced), and
+   its `emailLog` shows the send.
+
+For each **new** email added later, repeat the same shape: dry run → real
+send to yourself → check rendering, stream, footer, and the `emailLog`
+record → only then enable the trigger in prod.
+
 ## Operational setup (Postmark dashboard, one-time)
 
 1. Create the `conversion` and `lifecycle` broadcast streams (IDs must be
