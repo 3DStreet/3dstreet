@@ -9,7 +9,14 @@
  *
  * Firestore (all cloud-only, see firestore.rules):
  *   emailLog/{uid}            — summary doc backing stop-rules (shape in stop-rules.js)
- *   emailLog/{uid}/sends/{id} — append-only audit of every attempted send
+ *   emailLog/{uid}/sends/{id} — audit of every attempted send. status is
+ *                               'pending' (claimed, Postmark call in flight;
+ *                               written atomically with the claim) → 'sent' or
+ *                               'error' (claim rolled back). A record stuck on
+ *                               'pending' means the instance died mid-send:
+ *                               the claim survives but no email went out —
+ *                               rare enough at current volumes that we surface
+ *                               it as data instead of building a sweep.
  *   emailPrefs/{uid}          — per-stream suppression state, written by
  *                               postmarkSubscriptionWebhook
  *
@@ -108,9 +115,24 @@ const sendLifecycleEmail = async ({
 
   const summaryRef = db.collection('emailLog').doc(uid);
 
+  const subject = template.getSubject(userInfo.displayName, data);
+  let htmlBody = template.getHtmlBody(userInfo.displayName, data);
+  let textBody = template.getTextBody(userInfo.displayName, data);
+  if (isBroadcast) {
+    htmlBody = htmlBody.includes('</body>')
+      ? htmlBody.replace('</body>', `${UNSUBSCRIBE_HTML}</body>`)
+      : htmlBody + UNSUBSCRIBE_HTML;
+    textBody += UNSUBSCRIBE_TEXT;
+  }
+
   // Transaction: evaluate stop-rules against the live summary doc and claim
-  // the send by writing it. `prevEntries` captures the pre-claim state so a
-  // failed Postmark call can roll the claim back.
+  // the send by writing it, atomically with a status:'pending' audit record.
+  // `prevEntries` captures the pre-claim state so a failed Postmark call can
+  // roll the claim back. If the instance dies between this commit and the
+  // Postmark response, the claim sticks and the audit record stays 'pending'
+  // forever — that's the detectable signal for a (future) orphan sweep; at
+  // current volumes we accept the tiny crash window rather than build one now.
+  const sendRef = summaryRef.collection('sends').doc();
   let outcome = null; // { action, reason } when blocked/dry-run; null → claimed
   let prevEntries = null;
   await db.runTransaction(async (tx) => {
@@ -158,20 +180,20 @@ const sendLifecycleEmail = async ({
       },
       { merge: true }
     );
+    tx.set(sendRef, {
+      emailId,
+      category,
+      stream,
+      to: userInfo.email,
+      subject,
+      dedupeKey,
+      status: 'pending',
+      createdAt: now
+    });
   });
 
   if (outcome) {
     return outcome;
-  }
-
-  const subject = template.getSubject(userInfo.displayName, data);
-  let htmlBody = template.getHtmlBody(userInfo.displayName, data);
-  let textBody = template.getTextBody(userInfo.displayName, data);
-  if (isBroadcast) {
-    htmlBody = htmlBody.includes('</body>')
-      ? htmlBody.replace('</body>', `${UNSUBSCRIBE_HTML}</body>`)
-      : htmlBody + UNSUBSCRIBE_HTML;
-    textBody += UNSUBSCRIBE_TEXT;
   }
 
   try {
@@ -182,13 +204,7 @@ const sendLifecycleEmail = async ({
       textBody,
       { stream }
     );
-    await summaryRef.collection('sends').add({
-      emailId,
-      category,
-      stream,
-      to: userInfo.email,
-      subject,
-      dedupeKey,
+    await sendRef.update({
       status: 'sent',
       messageId: result.MessageID || null,
       sentAt: admin.firestore.FieldValue.serverTimestamp()
@@ -199,27 +215,23 @@ const sendLifecycleEmail = async ({
     return { action: 'sent', messageId: result.MessageID };
   } catch (err) {
     // Roll the claim back so a retry/sweep isn't blocked by a send that never
-    // happened. Restoring the captured pre-claim entries can race another
-    // concurrent send of a *different* email to the same user (only the
-    // category entry overlaps); at current volumes that's acceptable.
+    // happened. update() with FieldPath replaces the ENTIRE entry (unlike
+    // set+merge, which would leave a freshly-added dedupeKey behind and block
+    // the retry forever); FieldPath segments are literal, so Stripe ids and
+    // other dotted keys are safe. Restoring the captured pre-claim entries can
+    // race another concurrent send of a *different* email to the same user
+    // (only the category entry overlaps); at current volumes that's acceptable.
+    const { FieldPath, FieldValue } = admin.firestore;
     await summaryRef
-      .set(
-        {
-          emails: { [emailId]: prevEntries.email },
-          categories: { [category]: prevEntries.category }
-        },
-        { merge: true }
+      .update(
+        new FieldPath('emails', emailId),
+        prevEntries.email ?? FieldValue.delete(),
+        new FieldPath('categories', category),
+        prevEntries.category ?? FieldValue.delete()
       )
       .catch(() => {});
-    await summaryRef
-      .collection('sends')
-      .add({
-        emailId,
-        category,
-        stream,
-        to: userInfo.email,
-        subject,
-        dedupeKey,
+    await sendRef
+      .update({
         status: 'error',
         error: String(err?.message || err),
         sentAt: admin.firestore.FieldValue.serverTimestamp()

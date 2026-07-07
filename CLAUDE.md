@@ -156,7 +156,7 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 
 **Test:** `npm test` (Mocha + Vitest), `npm run lint`, `npm run prettier`
 
-**Firestore rules tests:** `npm run test:rules` — local-only (boots the firestore emulator via `firebase emulators:exec`, runs vitest against `test/rules/`). Not wired into CI to keep CI cheap; run manually when touching `public/firestore.rules`. Requires JDK 21+ on `PATH` (Firestore emulator dependency).
+**Firestore emulator tests:** `npm run test:rules` — local-only (boots the firestore + auth emulators via `firebase emulators:exec`, runs vitest against `test/rules/`). Covers security rules AND the lifecycle email send service (`sendLifecycleEmail`). Not wired into CI to keep CI cheap; run manually when touching `public/firestore.rules` or `public/functions/email/`. Requires JDK 21+ on `PATH` (emulator dependency; if `java -version` shows an older default, prefix with `JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"`).
 
 **Deploy:** `npm run deploy` or `npm run deploy:staging`
 

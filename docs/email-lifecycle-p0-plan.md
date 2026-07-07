@@ -5,6 +5,8 @@
 
 ## Inputs (read these first)
 
+Note: several inputs live in the private ops repo (`3dstreet-private`) or in access-controlled Google Docs — paths/IDs below are for Kieran (and agents running on his machine), not resolvable from this public repo alone.
+
 - **Phase 0 audit (start here):** `~/dev/3dstreet-private/reports/email-lifecycle-phase0-audit-2026-07-06.md` — trigger inventory, Firestore state, Postmark/Stripe/Mailchimp account state, volumes, gap list.
 - **Spec / architecture decisions:** Google Doc `1VA9AvNQyaLhWEOVPmYENIP-KuX8PDjKOxYaXzU33Jvc` ("Lifecycle Email System: Audit + Build").
 - **P0 email copy:** Google Doc `1oT0RgoAgC7TFJbcMJCLlxw-ITzCFm0r733oEa_YzIm8` (3DStreet_P0_Emails.md).
@@ -35,9 +37,9 @@
 
 ### PR 1 — Foundation: `emailLog` + send service + streams ✅ (in review)
 
-- ✅ `emailLog/{uid}` summary doc (per-email `lastSentAt`/`sentCount`/`dedupeKeys` + per-category `lastSentAt`) backs stop-rules in one read; `emailLog/{uid}/sends/{autoId}` is the append-only audit (`{ emailId, category, stream, to, subject, dedupeKey, status, messageId, sentAt }`). This resolves **D3**: one summary doc per uid (not flat `{uid}_{emailId}`) so the "≤1 per category per 7d" check needs no query, + the sends subcollection. `notifyLog` untouched (tokenExhaustion back-compat).
+- ✅ `emailLog/{uid}` summary doc (per-email `lastSentAt`/`sentCount`/`dedupeKeys` + per-category `lastSentAt`) backs stop-rules in one read; `emailLog/{uid}/sends/{autoId}` is the audit (`{ emailId, category, stream, to, subject, dedupeKey, status, messageId, createdAt, sentAt }`); `status` goes `pending` (written atomically with the claim) → `sent`/`error`, so a record stuck on `pending` is the detectable signal of an instance dying mid-send (claim survives, no email — accepted crash window at current volumes, no orphan sweep yet). This resolves **D3**: one summary doc per uid (not flat `{uid}_{emailId}`) so the "≤1 per category per 7d" check needs no query, + the sends subcollection. `notifyLog` untouched (tokenExhaustion back-compat).
 - ✅ `sendLifecycleEmail({ db, uid, emailId, category, stream, template, data, rules, dedupeKey, dryRun })` in `public/functions/email/lifecycle-email.js`; stop-rules are a pure module (`email/stop-rules.js`, unit-tested: `onceEver`, `notWithinDays`, `categoryNotWithinDays`, `stopIfPro`, `dedupeKey`). Claim happens in a transaction (safe under Stripe webhook retries), rolled back on Postmark failure. Broadcast sends get an `{{{ pm:unsubscribe_url }}}` footer + `emailPrefs` check.
-- ✅ Firestore rules: `emailLog` (+ `sends`) and `emailPrefs` cloud-only, with rules tests.
+- ✅ Firestore rules: `emailLog` (+ `sends`) and `emailPrefs` cloud-only, with rules tests. Emulator-backed tests for `sendLifecycleEmail` itself (claim + audit records, failure rollback, suppression, unsubscribe footer, concurrent idempotency) run in the same `npm run test:rules` suite (now boots firestore + auth emulators).
 - ✅ `postmarkSubscriptionWebhook` — Basic-auth-gated (secret `POSTMARK_WEBHOOK_AUTH`), writes per-stream opt-outs to `emailPrefs/{uid}` via Auth email lookup.
 - ✅ `triggerLifecycleEmail` admin callable + `adminTools.testLifecycleEmail()` console helper — end-to-end pipeline test (`testPing` email, dry-run default, stream selectable).
 - **Manual (Kieran, Postmark dashboard):** create `conversion` + `lifecycle` broadcast streams (stream IDs must be exactly those strings); set secret `firebase functions:secrets:set POSTMARK_WEBHOOK_AUTH` (value `user:pass`); after deploy, add Subscription Change webhook on both broadcast streams pointing at `https://user:pass@<region>-<project>.cloudfunctions.net/postmarkSubscriptionWebhook`. Confirm DKIM status while in there (audit couldn't check: server token only).
