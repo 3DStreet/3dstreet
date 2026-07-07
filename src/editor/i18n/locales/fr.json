@@ -620,7 +620,6 @@
   "viewer.reset": "Réinitialiser",
   "viewer.resetTitle": "Réinitialiser — relance la simulation à t=0 avec les objets à leur position initiale",
   "viewer.resume": "Reprendre",
-  "viewer.signIn": "Se connecter",
   "viewer.simClockCrash": "Collision à {time}",
   "viewer.simClockFinish": "Terminé en {time} — cliquez pour reprendre",
   "viewer.simClockPaused": "En pause — cliquez pour reprendre",

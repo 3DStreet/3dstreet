@@ -1,61 +1,37 @@
-// Viewer top bar (the marquee). Base #toolbar positioning (absolute,
-// top, full-width, blur) comes from AppMenu.scss; this module handles
-// the row layout and viewer-specific pieces.
-.toolbarRoot {
-  background: rgba(23, 23, 23, 0.55);
+// Viewer chrome docks. The header pill itself reuses the editor's
+// global .scenegraph-panel.hide styles (see scenegraph.scss); this
+// module only positions the viewer-specific docks.
+
+// Shuttle controls (Play/Pause/Reset/Stop), centered like the editor's
+// PrimaryToolbar dock (Main.module.scss .primaryToolbarDock).
+.shuttleDock {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
 }
 
-.toolbarRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 10px;
-}
-
-.leftCluster {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.rightCluster {
+// Identity + access, top-right like the editor's collapsed auth dock.
+.rightDock {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
 }
 
-// Wraps the shared SceneEditTitle so long titles truncate instead of
-// pushing the right cluster off-screen.
-.sceneTitleWrap {
-  min-width: 0;
-  overflow: hidden;
-}
-
-.author {
-  color: #c7c7c7;
+// "View only" label inside the action pill (next to Edit/Remix),
+// matching the toolbar button typography without being clickable.
+.viewOnlyText {
+  color: #9a9a9a;
   font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
-}
-
-.viewOnlyChip {
-  color: #d7d7d7;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 10px;
-  padding: 1px 8px;
-}
-
-// Compact avatar in the top bar (the shared ProfileButton renders a
-// 43px icon; scale it down to bar height).
-.profileButton {
-  transform: scale(0.75);
-  margin: -6px -4px;
+  padding: 0 10px;
+  user-select: none;
 }
 
 // Simulation clock pill — click to pause/resume.

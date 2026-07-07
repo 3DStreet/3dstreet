@@ -18,6 +18,7 @@ import { AppSwitcher } from '@shared/navigation/components';
 import { SceneEditTitle } from '../elements/SceneEditTitle';
 import { Button } from '../elements/Button';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
+import primaryStyles from '../elements/PrimaryToolbar/PrimaryToolbar.module.scss';
 import styles from './Toolbar.module.scss';
 
 function getPlayModeSystem() {
@@ -215,154 +216,153 @@ function Toolbar() {
 
   return (
     <>
-      <div id="toolbar" data-inspector="false" className={styles.toolbarRoot}>
-        <div className={styles.toolbarRow}>
-          <div className={styles.leftCluster}>
-            {/* Same chrome as the editor's hidden-panels mode: the app
-                switcher (logo + "what is 3DStreet" dropdown) and the
-                standard scene title. Title stays renameable for the
-                author, read-only for everyone else. */}
-            <AppSwitcher />
-            <div className={styles.sceneTitleWrap}>
-              <SceneEditTitle readOnly={!isAuthor} />
+      {/* Exactly the editor's hidden-panels header pill (same DOM +
+          global classes), minus the Save cloud icon and with a wider
+          title allowance. Title stays renameable for the author,
+          read-only for everyone else. */}
+      <div id="scenegraph" className="scenegraph">
+        <div className="scenegraph-panel hide viewer-header">
+          <div id="left-panel-header">
+            <div className="left-panel-header-row">
+              <AppSwitcher />
+              <div className="scene-title clickable truncate">
+                <SceneEditTitle readOnly={!isAuthor} />
+              </div>
+              {!isAuthor && authorUsername && (
+                <span className="viewer-byline">
+                  <FormattedMessage
+                    id="viewer.byAuthor"
+                    defaultMessage="by {username}"
+                    values={{ username: authorUsername }}
+                  />
+                </span>
+              )}
             </div>
-            {!isAuthor && authorUsername && (
-              <span className={styles.author}>
-                <FormattedMessage
-                  id="viewer.byAuthor"
-                  defaultMessage="by {username}"
-                  values={{ username: authorUsername }}
-                />
-              </span>
-            )}
           </div>
-          <div className={styles.rightCluster}>
-            {hasPlayable &&
-              (isPlaying ? (
-                <>
-                  {showSimClock ? (
-                    <SimClock />
-                  ) : (
-                    <Button
-                      variant="toolbtn"
-                      onClick={() => getPlayModeSystem()?.togglePause()}
-                      leadingIcon={
-                        <AwesomeIcon
-                          icon={isPlayPaused ? faPlay : faPause}
-                          size={14}
-                        />
-                      }
-                      title={intl.formatMessage(
-                        isPlayPaused
-                          ? {
-                              id: 'viewer.resume',
-                              defaultMessage: 'Resume'
-                            }
-                          : {
-                              id: 'viewer.pause',
-                              defaultMessage: 'Pause'
-                            }
-                      )}
-                    >
-                      {isPlayPaused ? (
-                        <FormattedMessage
-                          id="viewer.resume"
-                          defaultMessage="Resume"
-                        />
-                      ) : (
-                        <FormattedMessage
-                          id="viewer.pause"
-                          defaultMessage="Pause"
-                        />
-                      )}
-                    </Button>
-                  )}
+        </div>
+      </div>
+
+      {/* Shuttle controls, centered like the editor's PrimaryToolbar.
+          Only the scene's owner gets them, and only when the scene has
+          something playable — visitors and static scenes see none. */}
+      {isAuthor && hasPlayable && (
+        <div id="viewer-shuttle" className={`clickable ${styles.shuttleDock}`}>
+          <div className={primaryStyles.wrapper}>
+            {isPlaying ? (
+              <>
+                {showSimClock ? (
+                  <SimClock />
+                ) : (
                   <Button
                     variant="toolbtn"
-                    onClick={() => getPlayModeSystem()?.reset()}
-                    leadingIcon={<AwesomeIcon icon={faRotateRight} size={14} />}
-                    title={intl.formatMessage({
-                      id: 'viewer.resetTitle',
-                      defaultMessage:
-                        'Reset — restart the simulation from t=0 with objects at spawn'
-                    })}
+                    onClick={() => getPlayModeSystem()?.togglePause()}
+                    leadingIcon={
+                      <AwesomeIcon
+                        icon={isPlayPaused ? faPlay : faPause}
+                        size={14}
+                      />
+                    }
                   >
-                    <FormattedMessage
-                      id="viewer.reset"
-                      defaultMessage="Reset"
-                    />
+                    {isPlayPaused ? (
+                      <FormattedMessage
+                        id="viewer.resume"
+                        defaultMessage="Resume"
+                      />
+                    ) : (
+                      <FormattedMessage
+                        id="viewer.pause"
+                        defaultMessage="Pause"
+                      />
+                    )}
                   </Button>
-                  <Button
-                    variant="toolbtn"
-                    onClick={() => getPlayModeSystem()?.stop()}
-                    leadingIcon={<AwesomeIcon icon={faStop} size={14} />}
-                  >
-                    <FormattedMessage id="viewer.stop" defaultMessage="Stop" />
-                  </Button>
-                </>
-              ) : (
+                )}
+                <div className={primaryStyles.divider} />
                 <Button
                   variant="toolbtn"
-                  onClick={() => getPlayModeSystem()?.start()}
-                  leadingIcon={<AwesomeIcon icon={faPlay} size={14} />}
+                  onClick={() => getPlayModeSystem()?.reset()}
+                  leadingIcon={<AwesomeIcon icon={faRotateRight} size={14} />}
+                  title={intl.formatMessage({
+                    id: 'viewer.resetTitle',
+                    defaultMessage:
+                      'Reset — restart the simulation from t=0 with objects at spawn'
+                  })}
                 >
-                  <FormattedMessage id="viewer.play" defaultMessage="Play" />
+                  <FormattedMessage id="viewer.reset" defaultMessage="Reset" />
                 </Button>
-              ))}
-            <Button
-              onClick={() => setIsInspectorEnabled(true)}
-              variant="toolbtn"
-              title={
-                isAuthor
-                  ? undefined
-                  : intl.formatMessage({
-                      id: 'viewer.remixTitle',
-                      defaultMessage:
-                        'Open the editor — saving will create your own copy'
-                    })
-              }
-            >
-              {isAuthor ? (
-                <FormattedMessage id="toolbar.edit" defaultMessage="Edit" />
-              ) : (
-                <FormattedMessage id="viewer.remix" defaultMessage="Remix" />
-              )}
-            </Button>
-            {/* Access state sits with identity: whether you can edit or
-                only view is a function of who you are. */}
-            {!isAuthor && (
-              <span className={styles.viewOnlyChip}>
+                <div className={primaryStyles.divider} />
+                <Button
+                  variant="toolbtn"
+                  onClick={() => getPlayModeSystem()?.stop()}
+                  leadingIcon={<AwesomeIcon icon={faStop} size={14} />}
+                >
+                  <FormattedMessage id="viewer.stop" defaultMessage="Stop" />
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="toolbtn"
+                onClick={() => getPlayModeSystem()?.start()}
+                leadingIcon={<AwesomeIcon icon={faPlay} size={14} />}
+              >
+                <FormattedMessage id="viewer.play" defaultMessage="Play" />
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Identity + access, top-right — mirrors the editor's collapsed
+          auth dock. The primary action (Edit for the owner, Remix for
+          everyone else) works unauthenticated: Remix opens the editor
+          and sign-in happens at save time. Same ProfileButton component
+          as the editor, including its signed-out state. */}
+      <div id="viewer-right-dock" className={`clickable ${styles.rightDock}`}>
+        <div className={primaryStyles.wrapper}>
+          {/* Access state: view-only when unauthenticated (nothing can
+              be owned without an identity) or when the scene belongs to
+              someone else. Sits right next to the action that changes
+              that state. */}
+          {(!currentUser || !isAuthor) && (
+            <>
+              <span className={styles.viewOnlyText}>
                 <FormattedMessage
                   id="viewer.viewOnly"
                   defaultMessage="View only"
                 />
               </span>
-            )}
-            {/* Auth status: what a visitor may access (byline lookup,
-                remix-save, future private scenes) depends on who they
-                are, so surface it in view mode too. */}
-            {currentUser || isAuthLoading ? (
-              <ProfileButton
-                currentUser={currentUser}
-                isLoading={isAuthLoading}
-                className={styles.profileButton}
-                onClick={() => {
-                  if (isAuthLoading) return;
-                  setModal(currentUser ? 'profile' : 'signin');
-                }}
-                tooltipSide="bottom"
-              />
+              <div className={primaryStyles.divider} />
+            </>
+          )}
+          <Button
+            onClick={() => setIsInspectorEnabled(true)}
+            variant="toolbtn"
+            title={
+              isAuthor
+                ? undefined
+                : intl.formatMessage({
+                    id: 'viewer.remixTitle',
+                    defaultMessage:
+                      'Open the editor — saving will create your own copy'
+                  })
+            }
+          >
+            {isAuthor ? (
+              <FormattedMessage id="toolbar.edit" defaultMessage="Edit" />
             ) : (
-              <Button variant="toolbtn" onClick={() => setModal('signin')}>
-                <FormattedMessage id="viewer.signIn" defaultMessage="Sign In" />
-              </Button>
+              <FormattedMessage id="viewer.remix" defaultMessage="Remix" />
             )}
-          </div>
+          </Button>
         </div>
+        <ProfileButton
+          currentUser={currentUser}
+          isLoading={isAuthLoading}
+          onClick={() => {
+            if (isAuthLoading) return;
+            setModal(currentUser ? 'profile' : 'signin');
+          }}
+          tooltipSide="bottom"
+        />
       </div>
-      {/* Sibling of #toolbar, not a child: the bar's backdrop-filter makes
-          it the containing block for position:fixed descendants, which
-          would pin the hint to the bar instead of the viewport. */}
       {isLocomotionEnabled && (
         <div className={styles.controlsHint}>
           <span className={styles.keyGroup}>W A S D</span>{' '}
