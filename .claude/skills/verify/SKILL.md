@@ -21,8 +21,15 @@ for WebGL in headless).
 
 Gotchas that cost time:
 
-- **Sandboxed envs block external CDNs** (aframe.io, dev-3dstreet.web.app,
-  assets.3dstreet.app). Intercept with `context.route()`:
+- **With network enabled**, Chromium still can't reach external hosts
+  out of the box: it doesn't inherit `HTTPS_PROXY`, and the egress MITM
+  resets its TLS 1.3 ClientHello. Launch with
+  `proxy: { server: process.env.HTTPS_PROXY, bypass: 'localhost' }` and
+  args `--ssl-version-max=tls1.2 --ignore-certificate-errors` — then real
+  CDN assets, cloud scenes, and Firebase work with no interception.
+- **Without network access, external CDNs are blocked** (aframe.io,
+  dev-3dstreet.web.app, assets.3dstreet.app). Intercept with
+  `context.route()`:
   - `**/aframe.min.js` → fulfill from
     `node_modules/aframe/dist/aframe-v<version>.min.js` (version must match
     the CDN pin in index.html).
