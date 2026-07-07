@@ -1,6 +1,6 @@
 /**
- * bestTimes
- * =========
+ * best-times
+ * ==========
  *
  * Local-only best-time storage for play-mode races. Keyed by
  * "<sceneId>::<sceneTitle>" so a saved scene's leaderboard survives

@@ -1,21 +1,10 @@
 import { useState, useEffect } from 'react';
 import useStore from '@/store';
 import styles from './RaceFinishBanner.module.scss';
-
-const formatTime = (ms) => {
-  const totalMs = Math.max(0, ms);
-  const minutes = Math.floor(totalMs / 60000);
-  const seconds = (totalMs % 60000) / 1000;
-  return `${minutes}:${seconds.toFixed(2).padStart(5, '0')}`;
-};
-
-const formatDelta = (ms) => {
-  const sign = ms < 0 ? '-' : '+';
-  const totalMs = Math.abs(ms);
-  const minutes = Math.floor(totalMs / 60000);
-  const seconds = (totalMs % 60000) / 1000;
-  return `${sign}${minutes}:${seconds.toFixed(2).padStart(5, '0')}`;
-};
+import {
+  formatSimTime as formatTime,
+  formatSimDelta as formatDelta
+} from '@/aframe-components/play/format-sim-time';
 
 /**
  * Trackmania-style banner shown on race-finish. Reads `playFinish` from

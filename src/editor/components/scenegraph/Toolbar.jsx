@@ -20,6 +20,7 @@ import { Button } from '../elements/Button';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import primaryStyles from '../elements/PrimaryToolbar/PrimaryToolbar.module.scss';
 import styles from './Toolbar.module.scss';
+import { formatSimTime } from '@/aframe-components/play/format-sim-time';
 
 function getPlayModeSystem() {
   return document.querySelector('a-scene')?.systems?.['play-mode'];
@@ -41,13 +42,6 @@ function useControlMode() {
     return () => sceneEl.removeEventListener('mode-changed', update);
   }, []);
   return mode;
-}
-
-function formatSimTime(ms) {
-  const totalMs = Math.max(0, ms);
-  const minutes = Math.floor(totalMs / 60000);
-  const seconds = (totalMs % 60000) / 1000;
-  return `${minutes}:${seconds.toFixed(2).padStart(5, '0')}`;
 }
 
 /**

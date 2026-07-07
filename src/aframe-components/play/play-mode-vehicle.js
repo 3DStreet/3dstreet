@@ -579,6 +579,12 @@ AFRAME.registerComponent('play-mode-vehicle', {
     this._chaseDragging = false;
     this.onChaseWheel = (e) => {
       if (this.data.cameraMode !== 'chase') return;
+      // Only zoom (and swallow the wheel) when the pointer is over the scene
+      // canvas — otherwise this window-level listener would eat every scroll
+      // on the page, freezing UI panels while driving. Mirrors the canvas
+      // gate in onChasePointerDown.
+      const canvas = this.el.sceneEl && this.el.sceneEl.canvas;
+      if (!canvas || e.target !== canvas) return;
       // deltaY > 0 = scroll down = zoom out.
       const factor = Math.exp(e.deltaY * 0.001);
       this.chaseZoom = THREE.MathUtils.clamp(this.chaseZoom * factor, 0.4, 4);

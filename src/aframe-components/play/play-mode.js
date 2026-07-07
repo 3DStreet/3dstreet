@@ -36,7 +36,8 @@
  * scene events directly.
  */
 import useStore from '../../store.js';
-import { courseKey, recordFinish } from './bestTimes.js';
+import { courseKey, recordFinish } from './best-times.js';
+import { formatSimTime } from './format-sim-time.js';
 
 // Collision penalty added to the final race time, in ms. One second
 // per collision matches the trackmania-style "shake-it-off" feel.
@@ -62,10 +63,7 @@ AFRAME.registerSystem('play-mode', {
   },
 
   formatSimTime: function (ms) {
-    const totalMs = Math.max(0, ms);
-    const minutes = Math.floor(totalMs / 60000);
-    const seconds = (totalMs % 60000) / 1000;
-    return `${minutes}:${seconds.toFixed(2).padStart(5, '0')}`;
+    return formatSimTime(ms);
   },
 
   onCollision: function (e) {
@@ -250,7 +248,10 @@ AFRAME.registerSystem('play-mode', {
    * 60× per second. Driving inputs are level-sampled — they need the
    * current value every tick.
    */
-  pollGamepad: function () {
+  // pausedOnly: while play is paused we still want the controller to be able
+  // to unpause (Start) or stop (Back), but must NOT process reset, camera
+  // cycling, or analog driving inputs — those are for a live run only.
+  pollGamepad: function (pausedOnly) {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     let pad = null;
     for (const p of pads) {
@@ -275,6 +276,10 @@ AFRAME.registerSystem('play-mode', {
       this._padPrev = {};
       return;
     }
+    // Paused: pause/stop above are the only live inputs; bail before reset,
+    // camera cycling, and driving so a resting trigger/stick can't seed stale
+    // input that lands on resume.
+    if (pausedOnly) return;
     if (edge(3)) this.reset();
     const car = document.getElementById('play-mode-player-car');
     const pmv = car && car.components && car.components['play-mode-vehicle'];
@@ -311,12 +316,13 @@ AFRAME.registerSystem('play-mode', {
 
   tick: function (time, deltaMs) {
     if (!this.isPlaying || this.isPaused) {
-      // Still poll for Start/Back so the controller can unpause/stop
-      // even while paused. Reset/X/driving inputs are gated below.
-      if (this.isPlaying) this.pollGamepad();
+      // Still poll for Start/Back so the controller can unpause/stop even
+      // while paused, but in pausedOnly mode so reset/camera/driving inputs
+      // stay gated off.
+      if (this.isPlaying) this.pollGamepad(true);
       return;
     }
-    this.pollGamepad();
+    this.pollGamepad(false);
     // simulationTime ownership:
     //   - When a physics feature is active, IT advances simulationTime
     //     by exactly one timestep per completed sub-step (so slow CPUs

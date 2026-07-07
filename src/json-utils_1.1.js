@@ -533,14 +533,22 @@ function createEntityFromObj(entityData, parentEl, beforeEl) {
       }
     }
   }
-  // Skip a legacy cameraRig-only entry that carried nothing but
-  // viewer-mode (which we just stripped). Otherwise we'd recreate an
-  // empty cameraRig sibling.
-  if (
-    entityData.id === 'cameraRig' &&
-    (!entityData.components || Object.keys(entityData.components).length === 0)
-  ) {
-    return document.querySelector('#cameraRig');
+  // A saved cameraRig entry (legacy scenes stored one, typically carrying
+  // only the now-stripped viewer-mode/controls) must never spawn a second
+  // element: index.html already ships a static #cameraRig, and a duplicate id
+  // would make querySelector('#cameraRig') — used by mode-manager for
+  // locomotion and vantage — bind to the wrong node. Reuse the existing rig,
+  // applying any surviving components onto it rather than creating a sibling.
+  if (entityData.id === 'cameraRig') {
+    const existingRig = document.querySelector('#cameraRig');
+    if (existingRig) {
+      if (entityData.components) {
+        for (const [name, value] of Object.entries(entityData.components)) {
+          existingRig.setAttribute(name, value);
+        }
+      }
+      return existingRig;
+    }
   }
 
   const tagName = entityData.element || 'a-entity';

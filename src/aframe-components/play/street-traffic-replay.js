@@ -128,9 +128,11 @@ AFRAME.registerComponent('street-traffic-replay', {
   init: function () {
     this.onPlayStart = this.onPlayStart.bind(this);
     this.onPlayStop = this.onPlayStop.bind(this);
+    this.onPlayReset = this.onPlayReset.bind(this);
     // play-mode events fire on the scene (bubbles off), so subscribe there.
     this.el.sceneEl.addEventListener('play-mode-start', this.onPlayStart);
     this.el.sceneEl.addEventListener('play-mode-stop', this.onPlayStop);
+    this.el.sceneEl.addEventListener('play-mode-reset', this.onPlayReset);
     // Playable capability: a replay layer with a usable manifest and a
     // street to animate onto lights up the Play UI on its own — the
     // target street doesn't need the synthetic-traffic playable flag.
@@ -174,6 +176,7 @@ AFRAME.registerComponent('street-traffic-replay', {
   remove: function () {
     this.el.sceneEl.removeEventListener('play-mode-start', this.onPlayStart);
     this.el.sceneEl.removeEventListener('play-mode-stop', this.onPlayStop);
+    this.el.sceneEl.removeEventListener('play-mode-reset', this.onPlayReset);
     this.teardown();
   },
 
@@ -396,6 +399,23 @@ AFRAME.registerComponent('street-traffic-replay', {
 
   onPlayStop: function () {
     this.teardown();
+  },
+
+  // Reset re-arms the replay to the top of the manifest without leaving play.
+  // play-mode.reset() zeroes scene-timer.simulationTime, so every cycle/stat
+  // counter derived from it must be zeroed too — otherwise tRel goes negative
+  // (manifestTime 0 minus a stale cycleBase) and the replay freezes for as
+  // long as the previous run lasted. No-op when a replay isn't running.
+  onPlayReset: function () {
+    if (!this.active) return;
+    for (const r of this.records) {
+      if (r.el && r.el.parentNode) r.el.parentNode.removeChild(r.el);
+    }
+    this.records.length = 0;
+    this.nextIdx = 0;
+    this.cycleBase = 0;
+    this.cumulative = {};
+    this._lastStatsEmit = 0;
   },
 
   teardown: function () {

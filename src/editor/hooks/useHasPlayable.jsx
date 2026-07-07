@@ -21,15 +21,29 @@ export function useHasPlayable() {
   useEffect(() => {
     const sceneEl = document.querySelector('a-scene');
     if (!sceneEl) return undefined;
-    const recheck = () => {
+    const runCheck = () => {
       const modeManager = sceneEl.systems?.['mode-manager'];
       setHas(!!(modeManager && modeManager.hasPlayable()));
     };
-    recheck();
+    // hasPlayable() runs several full-scene querySelectorAll sweeps. A managed
+    // street generation inserts hundreds of nodes in one burst, and both the
+    // MutationObserver and the entityupdate bus can fire per node — coalesce a
+    // burst into a single rAF-deferred check so we don't re-scan the whole
+    // scene O(mutations) times on the load hot path.
+    let scheduled = 0;
+    const recheck = () => {
+      if (scheduled) return;
+      scheduled = requestAnimationFrame(() => {
+        scheduled = 0;
+        runCheck();
+      });
+    };
+    runCheck();
     const obs = new MutationObserver(recheck);
     obs.observe(sceneEl, { childList: true, subtree: true });
     Events.on('entityupdate', recheck);
     return () => {
+      if (scheduled) cancelAnimationFrame(scheduled);
       obs.disconnect();
       Events.off('entityupdate', recheck);
     };
