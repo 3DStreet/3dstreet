@@ -6,7 +6,10 @@ import useStore from '../../../../store.js';
 import InlineEditInput from '../InlineEditInput';
 import { Edit24Icon } from '@shared/icons';
 
-const SceneEditTitle = () => {
+// readOnly renders the same title styling without the inline-rename
+// affordance — used by the Viewer top bar for scenes the current user
+// cannot edit.
+const SceneEditTitle = ({ readOnly = false }) => {
   const title = useStore((state) => state.sceneTitle);
   const saveScene = useStore((state) => state.saveScene);
   const { currentUser } = useAuthContext();
@@ -45,7 +48,7 @@ const SceneEditTitle = () => {
     }
   };
 
-  if (editing) {
+  if (editing && !readOnly) {
     return (
       <div className={styles.wrapper}>
         <InlineEditInput
@@ -59,12 +62,17 @@ const SceneEditTitle = () => {
   }
 
   return (
-    <div className={styles.wrapper} onClick={() => setEditing(true)}>
+    <div
+      className={styles.wrapper}
+      onClick={readOnly ? undefined : () => setEditing(true)}
+    >
       <div className={styles.readOnly}>
         <p className={styles.title}>{displayTitle}</p>
-        <span className={styles.editIcon}>
-          <Edit24Icon />
-        </span>
+        {!readOnly && (
+          <span className={styles.editIcon}>
+            <Edit24Icon />
+          </span>
+        )}
       </div>
     </div>
   );

@@ -27,36 +27,17 @@
   flex-shrink: 0;
 }
 
-.logo {
-  width: 42px;
-  height: 42px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-.sceneMeta {
+// Wraps the shared SceneEditTitle so long titles truncate instead of
+// pushing the right cluster off-screen.
+.sceneTitleWrap {
   min-width: 0;
-}
-
-.sceneTitle {
-  color: #fff;
-  font-size: 18px;
-  font-weight: 500;
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.byline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 2px;
 }
 
 .author {
   color: #c7c7c7;
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .viewOnlyChip {

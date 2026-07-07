@@ -1796,9 +1796,6 @@
   "toolbar.edit": {
     "defaultMessage": "Edit"
   },
-  "toolbar.logoAlt": {
-    "defaultMessage": "3DStreet Logo"
-  },
   "undoRedo.redo": {
     "defaultMessage": "Redo"
   },
@@ -1844,6 +1841,9 @@
   "viewer.hintMove": {
     "defaultMessage": "to move"
   },
+  "viewer.pause": {
+    "defaultMessage": "Pause"
+  },
   "viewer.play": {
     "defaultMessage": "Play"
   },
@@ -1858,6 +1858,9 @@
   },
   "viewer.resetTitle": {
     "defaultMessage": "Reset — restart the simulation from t=0 with objects at spawn"
+  },
+  "viewer.resume": {
+    "defaultMessage": "Resume"
   },
   "viewer.signIn": {
     "defaultMessage": "Sign In"
@@ -1876,9 +1879,6 @@
   },
   "viewer.stop": {
     "defaultMessage": "Stop"
-  },
-  "viewer.untitledScene": {
-    "defaultMessage": "Untitled Scene"
   },
   "viewer.viewOnly": {
     "defaultMessage": "View only"

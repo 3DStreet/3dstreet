@@ -14,12 +14,32 @@ import { useAuthContext } from '@/editor/contexts';
 import { useHasPlayable } from '@/editor/hooks';
 import { getUserProfile } from '@shared/utils/username';
 import { ProfileButton } from '@shared/auth/components';
+import { AppSwitcher } from '@shared/navigation/components';
+import { SceneEditTitle } from '../elements/SceneEditTitle';
 import { Button } from '../elements/Button';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import styles from './Toolbar.module.scss';
 
 function getPlayModeSystem() {
   return document.querySelector('a-scene')?.systems?.['play-mode'];
+}
+
+/**
+ * The mode-manager's current control mode ('editor' | 'locomotion' |
+ * 'drive' | ...), tracked reactively via the mode-changed scene event.
+ */
+function useControlMode() {
+  const [mode, setMode] = useState(null);
+  useEffect(() => {
+    const sceneEl = document.querySelector('a-scene');
+    if (!sceneEl) return undefined;
+    const update = () =>
+      setMode(sceneEl.systems?.['mode-manager']?.getMode() || null);
+    update();
+    sceneEl.addEventListener('mode-changed', update);
+    return () => sceneEl.removeEventListener('mode-changed', update);
+  }, []);
+  return mode;
 }
 
 function formatSimTime(ms) {
@@ -133,12 +153,13 @@ function Toolbar() {
   const intl = useIntl();
   const isInspectorEnabled = useStore((s) => s.isInspectorEnabled);
   const setIsInspectorEnabled = useStore((s) => s.setIsInspectorEnabled);
-  const sceneTitle = useStore((s) => s.sceneTitle);
   const isPlaying = useStore((s) => s.isPlaying);
+  const isPlayPaused = useStore((s) => s.isPlayPaused);
   const isLocomotionEnabled = useStore((s) => s.isLocomotionEnabled);
   const { currentUser, isLoading: isAuthLoading } = useAuthContext() || {};
   const setModal = useStore((s) => s.setModal);
   const hasPlayable = useHasPlayable();
+  const controlMode = useControlMode();
   const [authorId, setAuthorId] = useState(null);
   const [authorUsername, setAuthorUsername] = useState(null);
 
@@ -187,55 +208,75 @@ function Toolbar() {
   if (isInspectorEnabled) return null;
 
   const isAuthor = !authorId || (currentUser && currentUser.uid === authorId);
+  // A counting millisecond clock only earns its place when time IS the
+  // game (drive mode: lap timing, crash penalties). Other simulations
+  // (traffic, replay) get a plain pause toggle instead.
+  const showSimClock = controlMode === 'drive';
 
   return (
     <>
       <div id="toolbar" data-inspector="false" className={styles.toolbarRoot}>
         <div className={styles.toolbarRow}>
           <div className={styles.leftCluster}>
-            <img
-              src="/ui_assets/3D-St-stacked-128.png"
-              alt={intl.formatMessage({
-                id: 'toolbar.logoAlt',
-                defaultMessage: '3DStreet Logo'
-              })}
-              className={styles.logo}
-            />
-            <div className={styles.sceneMeta}>
-              <div className={styles.sceneTitle}>
-                {sceneTitle || (
-                  <FormattedMessage
-                    id="viewer.untitledScene"
-                    defaultMessage="Untitled Scene"
-                  />
-                )}
-              </div>
-              {!isAuthor && (
-                <div className={styles.byline}>
-                  {authorUsername && (
-                    <span className={styles.author}>
-                      <FormattedMessage
-                        id="viewer.byAuthor"
-                        defaultMessage="by {username}"
-                        values={{ username: authorUsername }}
-                      />
-                    </span>
-                  )}
-                  <span className={styles.viewOnlyChip}>
-                    <FormattedMessage
-                      id="viewer.viewOnly"
-                      defaultMessage="View only"
-                    />
-                  </span>
-                </div>
-              )}
+            {/* Same chrome as the editor's hidden-panels mode: the app
+                switcher (logo + "what is 3DStreet" dropdown) and the
+                standard scene title. Title stays renameable for the
+                author, read-only for everyone else. */}
+            <AppSwitcher />
+            <div className={styles.sceneTitleWrap}>
+              <SceneEditTitle readOnly={!isAuthor} />
             </div>
+            {!isAuthor && authorUsername && (
+              <span className={styles.author}>
+                <FormattedMessage
+                  id="viewer.byAuthor"
+                  defaultMessage="by {username}"
+                  values={{ username: authorUsername }}
+                />
+              </span>
+            )}
           </div>
           <div className={styles.rightCluster}>
             {hasPlayable &&
               (isPlaying ? (
                 <>
-                  <SimClock />
+                  {showSimClock ? (
+                    <SimClock />
+                  ) : (
+                    <Button
+                      variant="toolbtn"
+                      onClick={() => getPlayModeSystem()?.togglePause()}
+                      leadingIcon={
+                        <AwesomeIcon
+                          icon={isPlayPaused ? faPlay : faPause}
+                          size={14}
+                        />
+                      }
+                      title={intl.formatMessage(
+                        isPlayPaused
+                          ? {
+                              id: 'viewer.resume',
+                              defaultMessage: 'Resume'
+                            }
+                          : {
+                              id: 'viewer.pause',
+                              defaultMessage: 'Pause'
+                            }
+                      )}
+                    >
+                      {isPlayPaused ? (
+                        <FormattedMessage
+                          id="viewer.resume"
+                          defaultMessage="Resume"
+                        />
+                      ) : (
+                        <FormattedMessage
+                          id="viewer.pause"
+                          defaultMessage="Pause"
+                        />
+                      )}
+                    </Button>
+                  )}
                   <Button
                     variant="toolbtn"
                     onClick={() => getPlayModeSystem()?.reset()}
@@ -287,6 +328,16 @@ function Toolbar() {
                 <FormattedMessage id="viewer.remix" defaultMessage="Remix" />
               )}
             </Button>
+            {/* Access state sits with identity: whether you can edit or
+                only view is a function of who you are. */}
+            {!isAuthor && (
+              <span className={styles.viewOnlyChip}>
+                <FormattedMessage
+                  id="viewer.viewOnly"
+                  defaultMessage="View only"
+                />
+              </span>
+            )}
             {/* Auth status: what a visitor may access (byline lookup,
                 remix-save, future private scenes) depends on who they
                 are, so surface it in view mode too. */}
