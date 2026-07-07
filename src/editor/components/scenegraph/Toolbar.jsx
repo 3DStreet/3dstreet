@@ -5,7 +5,9 @@ import {
   faPlay,
   faPause,
   faStop,
-  faRotateRight
+  faRotateRight,
+  faFlagCheckered,
+  faTriangleExclamation
 } from '@fortawesome/free-solid-svg-icons';
 import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
@@ -34,6 +36,8 @@ function formatSimTime(ms) {
  */
 function SimClock() {
   const isPlayPaused = useStore((s) => s.isPlayPaused);
+  const playOutcome = useStore((s) => s.playOutcome);
+  const playOutcomeTimeMs = useStore((s) => s.playOutcomeTimeMs);
   const [simMs, setSimMs] = useState(0);
   const rafRef = useRef(null);
 
@@ -52,8 +56,8 @@ function SimClock() {
   }, []);
 
   const intl = useIntl();
-  // Two separate formatMessage calls so formatjs can statically
-  // extract both descriptors.
+  // Separate formatMessage calls so formatjs can statically extract
+  // each descriptor.
   const pausedTitle = intl.formatMessage({
     id: 'viewer.simClockPaused',
     defaultMessage: 'Paused — click to resume'
@@ -62,15 +66,56 @@ function SimClock() {
     id: 'viewer.simClockRunning',
     defaultMessage: 'Simulation time — click to pause'
   });
+  const finishTitle = intl.formatMessage(
+    {
+      id: 'viewer.simClockFinish',
+      defaultMessage: 'Finished in {time} — click to resume'
+    },
+    { time: formatSimTime(playOutcomeTimeMs) }
+  );
+  const crashTitle = intl.formatMessage(
+    {
+      id: 'viewer.simClockCrash',
+      defaultMessage: 'Crash at {time}'
+    },
+    { time: formatSimTime(playOutcomeTimeMs) }
+  );
+
+  const isFinish = playOutcome === 'finish';
+  const isCrash = playOutcome === 'crash';
+  // Outcome states freeze the display value so the user sees the
+  // event time, not the still-running sim clock.
+  const displayMs = isFinish || isCrash ? playOutcomeTimeMs : simMs;
+  const icon = isFinish
+    ? faFlagCheckered
+    : isCrash
+      ? faTriangleExclamation
+      : isPlayPaused
+        ? faPlay
+        : faPause;
+  const title = isFinish
+    ? finishTitle
+    : isCrash
+      ? crashTitle
+      : isPlayPaused
+        ? pausedTitle
+        : runningTitle;
+  const className = [
+    styles.simClock,
+    isFinish ? styles.simClockFinish : '',
+    isCrash ? styles.simClockCrash : '',
+    !isFinish && !isCrash && isPlayPaused ? styles.simClockPaused : ''
+  ].join(' ');
+
   return (
     <button
       type="button"
-      className={`${styles.simClock} ${isPlayPaused ? styles.simClockPaused : ''}`}
+      className={className}
       onClick={() => getPlayModeSystem()?.togglePause()}
-      title={isPlayPaused ? pausedTitle : runningTitle}
+      title={title}
     >
-      <AwesomeIcon icon={isPlayPaused ? faPlay : faPause} size={10} />
-      <span className={styles.simClockValue}>{formatSimTime(simMs)}</span>
+      <AwesomeIcon icon={icon} size={10} />
+      <span className={styles.simClockValue}>{formatSimTime(displayMs)}</span>
     </button>
   );
 }

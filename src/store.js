@@ -239,6 +239,16 @@ const useStore = create(
         // call sceneEl.systems['play-mode'].start()/stop()/togglePause().
         isPlaying: false,
         isPlayPaused: false,
+        // Transient outcome shown by the viewer top bar's sim pill.
+        //   null      – normal running state
+        //   'finish'  – race-target was crossed (blue, pinned at finish time)
+        //   'crash'   – a recent chassis collision (red, auto-clears)
+        playOutcome: null,
+        playOutcomeTimeMs: 0,
+        // Race-finish detail consumed by the end-of-race banner.
+        // playFinish: null | { finalMs, simMs, collisions, previousBestMs,
+        //   isNewBest, deltaMs, courseKey, finishedAt }
+        playFinish: null,
         // Mirrored from mode-manager: true while the viewer's
         // WASD/look controls are active (drives the controls hint).
         isLocomotionEnabled: false,

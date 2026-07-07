@@ -1,5 +1,6 @@
 import { createUniqueId } from '../../../lib/entity.js';
 import * as defaultStreetObjects from './defaultStreets.js';
+import { VEHICLE_PRESETS } from '../../../../aframe-components/play/vehicle-presets.js';
 import { uploadAndPlaceAsset } from '../../../lib/asset-upload/uploadAndPlaceAsset.js';
 import {
   GLB_EXTS,
@@ -379,6 +380,17 @@ export function createHighlightRing(position) {
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
+export function createRaceTarget(position) {
+  const definition = {
+    'data-layer-name': 'Race Target',
+    components: {
+      position: position ?? '0 0 0',
+      'race-target': 'width: 6; height: 4; color: #2196f3'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
 export function createPrimitiveGeometry(position) {
   const definition = {
     'data-layer-name': 'Geometry • Circle Asphalt',
@@ -392,6 +404,92 @@ export function createPrimitiveGeometry(position) {
   };
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
+
+/**
+ * Spawn a driveable-vehicle entity from a named preset
+ * (`tuk-tuk`, `delivery-bot`, `taxi`). The preset bundle in
+ * `vehicle-presets.js` drives chassis size, engine/brake/steer
+ * tuning, wheel dimensions, AND the mesh — either a catalog mixin
+ * or a registered procedural component.
+ *
+ * Switching preset later in the property panel re-applies the
+ * whole bundle via drive-controls' update() hook, so users aren't
+ * locked into whichever preset they spawned with.
+ */
+function createDriveableFromPreset(presetName, layerName, position) {
+  const p = VEHICLE_PRESETS[presetName];
+  if (!p) {
+    console.error('createDriveableFromPreset: unknown preset', presetName);
+    return;
+  }
+  // Build the drive-controls attribute string from the preset.
+  // `preset: ...` is included so the schema field reflects the
+  // current choice in the property panel.
+  const driveControlsStr = [
+    `preset: ${presetName}`,
+    `vehicleSize: ${p.vehicleSize.x} ${p.vehicleSize.y} ${p.vehicleSize.z}`,
+    `accelerateForce: ${p.accelerateForce}`,
+    `brakeForce: ${p.brakeForce}`,
+    `steerAngle: ${p.steerAngle}`,
+    `wheelRadius: ${p.wheelRadius}`,
+    `wheelWidth: ${p.wheelWidth}`,
+    `wheelLayout: ${p.wheelLayout || 'four-wheel'}`,
+    `meshYOffset: ${p.meshYOffset || 0}`
+  ].join('; ');
+
+  // Mesh-slot child: catalog mixin OR procedural component. The
+  // 180° editor-rotation trick aligns the mesh's +Z forward with
+  // the entity's -Z forward marker.
+  const meshSlotComponents = {
+    'vehicle-mesh-slot': '',
+    rotation: '0 180 0',
+    shadow: 'cast: true; receive: true'
+  };
+  if (p.meshComponent) {
+    meshSlotComponents[p.meshComponent] = '';
+  } else if (p.meshMixin) {
+    meshSlotComponents.mixin = p.meshMixin;
+  }
+
+  const definition = {
+    'data-layer-name': layerName,
+    components: {
+      position: position ?? '0 1 0',
+      'drive-controls': driveControlsStr,
+      geometry: `primitive: box; width: ${p.vehicleSize.x}; height: ${p.vehicleSize.y}; depth: ${p.vehicleSize.z}`,
+      material: `color: ${p.placeholderColor}; opacity: 0.0; transparent: true`,
+      shadow: 'cast: false; receive: false'
+    },
+    children: [
+      {
+        'data-layer-name': 'Vehicle Mesh',
+        components: meshSlotComponents
+      }
+    ]
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
+export function createDriveableTukTuk(position) {
+  createDriveableFromPreset('tuk-tuk', 'Driveable Tuk-tuk', position);
+}
+
+export function createDriveableDeliveryRobot(position) {
+  createDriveableFromPreset(
+    'delivery-bot',
+    'Driveable Delivery Robot',
+    position
+  );
+}
+
+export function createDriveableTaxi(position) {
+  createDriveableFromPreset('taxi', 'Driveable Taxi', position);
+}
+
+// Backwards compat: old layersData entries that referenced
+// `createDriveableVehicle` keep working and now point at the
+// Delivery Robot preset.
+export const createDriveableVehicle = createDriveableDeliveryRobot;
 
 export function createImageEntity(position) {
   // Upload an image (sign, reference photo, custom map, etc.) from the user's

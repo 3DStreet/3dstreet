@@ -214,6 +214,42 @@ export const layerCardMessages = defineMessages({
     defaultMessage:
       'Upload a glTF or GLB model from your device. It is rendered immediately and saved to your asset library.'
   },
+  driveableTukTukName: {
+    id: 'addLayer.card.driveableTukTuk.name',
+    defaultMessage: 'Driveable Tuk-tuk'
+  },
+  driveableTukTukDesc: {
+    id: 'addLayer.card.driveableTukTuk.desc',
+    defaultMessage:
+      'A small three-wheeler-style driveable vehicle with the tuk-tuk catalog mesh. Can mount curbs at speed. Switch presets from the drive-controls properties panel.'
+  },
+  driveableDeliveryRobotName: {
+    id: 'addLayer.card.driveableDeliveryRobot.name',
+    defaultMessage: 'Driveable Delivery Robot'
+  },
+  driveableDeliveryRobotDesc: {
+    id: 'addLayer.card.driveableDeliveryRobot.desc',
+    defaultMessage:
+      'A small-chassis driveable bot (~Starship/Serve-sized) with a procedural mesh + dynamic antenna. Like real delivery robots, it cannot mount standard 6" curbs. Switch presets from the drive-controls properties panel.'
+  },
+  driveableTaxiName: {
+    id: 'addLayer.card.driveableTaxi.name',
+    defaultMessage: 'Driveable Taxi'
+  },
+  driveableTaxiDesc: {
+    id: 'addLayer.card.driveableTaxi.desc',
+    defaultMessage:
+      'A full-size sedan with real-car physics (~Camry-sized). Mounts standard curbs with momentum, hits real-world speeds. Switch presets from the drive-controls properties panel.'
+  },
+  raceTargetName: {
+    id: 'addLayer.card.raceTarget.name',
+    defaultMessage: 'Race Target'
+  },
+  raceTargetDesc: {
+    id: 'addLayer.card.raceTarget.desc',
+    defaultMessage:
+      'A finish-line gate. Driving the player vehicle through it during play ends the race, pauses the simulation, and pins the finish time in the toolbar.'
+  },
   uploadSplatName: {
     id: 'addLayer.card.uploadSplat.name',
     defaultMessage: 'Upload Gaussian Splat'

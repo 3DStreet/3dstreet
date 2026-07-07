@@ -122,6 +122,30 @@ export const customLayersData = [
     icon: '',
     handlerFunction: createFunctions.createCustomModel
   }),
+  card(m.driveableTukTukName, m.driveableTukTukDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createDriveableTukTuk
+  }),
+  card(m.driveableDeliveryRobotName, m.driveableDeliveryRobotDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createDriveableDeliveryRobot
+  }),
+  card(m.driveableTaxiName, m.driveableTaxiDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createDriveableTaxi
+  }),
+  card(m.raceTargetName, m.raceTargetDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createRaceTarget
+  }),
   card(m.uploadSplatName, m.uploadSplatDesc, {
     img: '',
     requiresPro: false,

@@ -79,6 +79,16 @@ const ManagedStreetSidebar = ({ entity }) => {
                   isSingle={false}
                   entity={entity}
                 />
+                <PropertyRow
+                  key="playable"
+                  name="playable"
+                  label="Animate in Play"
+                  schema={component.schema.playable}
+                  data={component.data.playable}
+                  componentname={componentName}
+                  isSingle={false}
+                  entity={entity}
+                />
               </>
             )}
         </div>

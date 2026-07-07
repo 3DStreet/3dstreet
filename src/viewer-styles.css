@@ -1,223 +1,221 @@
-@import url("notyf.min.css");
+@import url('notyf.min.css');
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;500');
 
 html {
-	font-family: 'Lato', sans-serif;
+  font-family: 'Lato', sans-serif;
 }
 
 * {
-	padding: 0;
-	margin: 0;
+  padding: 0;
+  margin: 0;
 }
 
 body {
-	font-family: 'Lato', sans-serif;
-	background-color: #C4C4C4;
-	color: #283237;
-	padding: 0;
-	margin: 0;
+  font-family: 'Lato', sans-serif;
+  background-color: #c4c4c4;
+  color: #283237;
+  padding: 0;
+  margin: 0;
 }
 
 /* maps copyright notice */
 #map-data-attribution {
-	position: absolute;
-	bottom: 0;
-	left: 0;
-	font-size: 12px;
-	background-color: rgba(0, 0, 0, 0.3);
-	color: #bebebe;
-	z-index: 1;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  font-size: 12px;
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #bebebe;
+  z-index: 1;
 }
 
 #map-logo {
-	display: inline;
-	font-style: normal;
-	font-size: 12px;
-	color: #bebebe;
+  display: inline;
+  font-style: normal;
+  font-size: 12px;
+  color: #bebebe;
 }
 
 #map-copyright {
-	display: inline-block;
-	line-height: 12px;
-	color: #bebebe;
-
+  display: inline-block;
+  line-height: 12px;
+  color: #bebebe;
 }
 
 /* notification hack */
 .notyf__message {
-	font-size: 20px !important;
+  font-size: 20px !important;
 }
 
 /* notification width hack */
 .notyf__toast {
-	max-width: 66.66vw !important;
-	/* 2/3rds of viewport width */
-	width: auto !important;
-	/* Resetting any specific width, if set */
+  max-width: 66.66vw !important;
+  /* 2/3rds of viewport width */
+  width: auto !important;
+  /* Resetting any specific width, if set */
 }
-
 
 /* editor geomodal styles - google places autocomplete input styling
  * this needs to be in global css, didn't work as part of geomodal scss
  */
 .pac-container {
-	background-color: #282828 !important;
-	color: #ffffff !important;
+  background-color: #282828 !important;
+  color: #ffffff !important;
 }
 
 .pac-item {
-	color: #ffffff !important;
-	border-top: 1px solid #333 !important;
+  color: #ffffff !important;
+  border-top: 1px solid #333 !important;
 }
 
 .pac-item:hover {
-	background-color: #714FE5
+  background-color: #714fe5;
 }
 
 .pac-item-query {
-	color: #ffffff !important;
+  color: #ffffff !important;
 }
 
 /********* right menu css *********/
 
 .right-fixed {
-	position: fixed;
-	right: 0;
-	margin-top: 22.5vh;
-	z-index: 1;
+  position: fixed;
+  right: 0;
+  margin-top: 22.5vh;
+  z-index: 1;
 }
 
 body.aframe-inspector-opened .right-fixed {
-	display: none;
+  display: none;
 }
 
 .right-menu {
-	padding-left: 0;
-	text-align: right;
+  padding-left: 0;
+  text-align: right;
 }
 
 .right-menu li {
-	list-style: none;
-	margin-right: 0;
-	position: relative;
+  list-style: none;
+  margin-right: 0;
+  position: relative;
 }
 
 .right-menu li a {
-	background: rgba(50, 50, 50, 0.5);
-	padding: 0;
-	list-style: none;
-	margin: 10px 0;
-	border-radius: 12px 0 0 12px;
-	display: inline-flex;
-	font-size: 18px;
-	align-items: center;
-	transition: all .4s ease-in-out 0s;
+  background: rgba(50, 50, 50, 0.5);
+  padding: 0;
+  list-style: none;
+  margin: 10px 0;
+  border-radius: 12px 0 0 12px;
+  display: inline-flex;
+  font-size: 18px;
+  align-items: center;
+  transition: all 0.4s ease-in-out 0s;
 }
 
 .right-menu li a:hover {
-	background: #6100FF;
-	transition: all .4s ease-in-out 0s;
+  background: #6100ff;
+  transition: all 0.4s ease-in-out 0s;
 }
 
 .right-menu li a span {
-	margin-left: 16px;
-	transition: all .4s ease-in-out 0s;
-	text-align: left;
-	width: 200px;
-	letter-spacing: .5;
-	margin-right: -270px;
-	padding-left: 60px;
-	color: rgba(50, 50, 50, 0.5);
+  margin-left: 16px;
+  transition: all 0.4s ease-in-out 0s;
+  text-align: left;
+  width: 200px;
+  letter-spacing: 0.5;
+  margin-right: -270px;
+  padding-left: 60px;
+  color: rgba(50, 50, 50, 0.5);
 }
 
 .right-menu li a:hover span {
-	margin-right: 0;
-	padding-left: 0;
-	color: #fff;
+  margin-right: 0;
+  padding-left: 0;
+  color: #fff;
 }
 
 .right-menu li a {
-	color: #fff;
-	text-decoration: none;
+  color: #fff;
+  text-decoration: none;
 }
 
 .right-menu li a img {
-	vertical-align: middle;
-	width: 32px;
-	height: 32px;
-	z-index: 999;
-	padding: 16px;
+  vertical-align: middle;
+  width: 32px;
+  height: 32px;
+  z-index: 999;
+  padding: 16px;
 }
 
 .right-menu li a:hover img {
-	background: #6100FF;
-	z-index: 9999;
+  background: #6100ff;
+  z-index: 9999;
 }
 
 /********* scene title css *********/
 
 #sceneTitle {
-	position: fixed;
-	color: white;
-	font-size: 20px;
-	font-family: Lato;
-	font-weight: 400;
-	word-wrap: break-word;
-	bottom: 43px;
-	pointer-events: none;
-	z-index: 2;
-	width: 100%;
-	text-align: center;
-	height: 26px;
-	overflow: hidden;
-	text-overflow: ellipsis;
+  position: fixed;
+  color: white;
+  font-size: 20px;
+  font-family: Lato;
+  font-weight: 400;
+  word-wrap: break-word;
+  bottom: 43px;
+  pointer-events: none;
+  z-index: 2;
+  width: 100%;
+  text-align: center;
+  height: 26px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 body.aframe-inspector-opened #sceneTitle {
-	display: none;
+  display: none;
 }
 
 /********* Loading Animation Styles *********/
 .loader__wrapper {
-	width: 100vw;
-	height: 100vh;
-	display: flex;
-	justify-content: center;
-	align-items: center;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .loader {
-	position: relative;
-	z-index: 999999;
+  position: relative;
+  z-index: 999999;
 }
 .road {
-	width: 320px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding-top: 12px;
-	/* Remove the solid border and replace with animated background */
-	border-top: none;
-	background: repeating-linear-gradient(
-			90deg,
-			#6100FF 0px,
-			#ae7cff 320px,
-			transparent 0px,
-			transparent 320px
-	);
-	background-size: 200% 4px;
-	background-repeat: repeat-x;
-	background-position: top;
-	animation: moveStripes 1s linear infinite;
-	color: #fff;
-	font-weight: normal;
+  width: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 12px;
+  /* Remove the solid border and replace with animated background */
+  border-top: none;
+  background: repeating-linear-gradient(
+    90deg,
+    #6100ff 0px,
+    #ae7cff 320px,
+    transparent 0px,
+    transparent 320px
+  );
+  background-size: 200% 4px;
+  background-repeat: repeat-x;
+  background-position: top;
+  animation: moveStripes 1s linear infinite;
+  color: #fff;
+  font-weight: normal;
 }
 
 @keyframes moveStripes {
-	0% {
-			background-position: 0 0;
-	}
-	100% {
-			background-position: 320px 0;
-	}
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 320px 0;
+  }
 }

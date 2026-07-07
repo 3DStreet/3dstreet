@@ -47,6 +47,24 @@
   "addLayer.card.createIntersection.name": {
     "defaultMessage": "Create Intersection"
   },
+  "addLayer.card.driveableDeliveryRobot.desc": {
+    "defaultMessage": "A small-chassis driveable bot (~Starship/Serve-sized) with a procedural mesh + dynamic antenna. Like real delivery robots, it cannot mount standard 6\" curbs. Switch presets from the drive-controls properties panel."
+  },
+  "addLayer.card.driveableDeliveryRobot.name": {
+    "defaultMessage": "Driveable Delivery Robot"
+  },
+  "addLayer.card.driveableTaxi.desc": {
+    "defaultMessage": "A full-size sedan with real-car physics (~Camry-sized). Mounts standard curbs with momentum, hits real-world speeds. Switch presets from the drive-controls properties panel."
+  },
+  "addLayer.card.driveableTaxi.name": {
+    "defaultMessage": "Driveable Taxi"
+  },
+  "addLayer.card.driveableTukTuk.desc": {
+    "defaultMessage": "A small three-wheeler-style driveable vehicle with the tuk-tuk catalog mesh. Can mount curbs at speed. Switch presets from the drive-controls properties panel."
+  },
+  "addLayer.card.driveableTukTuk.name": {
+    "defaultMessage": "Driveable Tuk-tuk"
+  },
   "addLayer.card.grassBox.desc": {
     "defaultMessage": "Add a large green ground slab with animated instanced grass. The box dimensions, color, and grass options (density, blade height) are all editable in the properties panel."
   },
@@ -106,6 +124,12 @@
   },
   "addLayer.card.panoramaSphere.name": {
     "defaultMessage": "360° Panorama Sphere"
+  },
+  "addLayer.card.raceTarget.desc": {
+    "defaultMessage": "A finish-line gate. Driving the player vehicle through it during play ends the race, pauses the simulation, and pins the finish time in the toolbar."
+  },
+  "addLayer.card.raceTarget.name": {
+    "defaultMessage": "Race Target"
   },
   "addLayer.card.streetmixStreet.desc": {
     "defaultMessage": "Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets."
@@ -1795,6 +1819,12 @@
   },
   "viewer.signIn": {
     "defaultMessage": "Sign In"
+  },
+  "viewer.simClockCrash": {
+    "defaultMessage": "Crash at {time}"
+  },
+  "viewer.simClockFinish": {
+    "defaultMessage": "Finished in {time} — click to resume"
   },
   "viewer.simClockPaused": {
     "defaultMessage": "Paused — click to resume"

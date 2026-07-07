@@ -1,0 +1,76 @@
+@use '../../../style/variables.scss';
+
+.wrapper {
+  position: absolute;
+  // Below the viewer top bar (the marquee), which occupies the top strip.
+  top: 64px;
+  right: 12px;
+  z-index: 5;
+  background: rgba(0, 0, 0, 0.6);
+  color: variables.$lightgray-300;
+  border: 1px solid variables.$gray-700;
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 280px;
+  max-width: 33vw;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+
+.title {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 72px 1fr 40px;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+
+  input[type='range'] {
+    width: 100%;
+  }
+}
+
+.name {
+  white-space: nowrap;
+}
+
+.value {
+  text-align: right;
+  color: #ffd54a;
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.timers {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid variables.$gray-700;
+}
+
+.timerRow {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.valueWarn {
+  color: #ffd54a;
+}

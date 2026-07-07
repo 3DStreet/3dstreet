@@ -43,6 +43,7 @@
   "homepage": "https://github.com/3dstreet/3dstreet/",
   "license": "AGPLv3",
   "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.14.0",
     "@fortawesome/free-regular-svg-icons": "^7.2.0",
     "@fortawesome/free-solid-svg-icons": "^7.2.0",
     "@gltf-transform/core": "^4.3.0",
