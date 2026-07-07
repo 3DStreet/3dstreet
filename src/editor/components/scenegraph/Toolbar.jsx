@@ -318,11 +318,13 @@ function Toolbar() {
           as the editor, including its signed-out state. */}
       <div id="viewer-right-dock" className={`clickable ${styles.rightDock}`}>
         <div className={primaryStyles.wrapper}>
-          {/* Access state: view-only when unauthenticated (nothing can
-              be owned without an identity) or when the scene belongs to
-              someone else. Sits right next to the action that changes
-              that state. */}
-          {(!currentUser || !isAuthor) && (
+          {/* Access state pairs exactly with the action: "View only"
+              appears iff the action is Remix (you can't edit this scene
+              in place). When the action is Edit, you can edit — so no
+              view-only label. Covers unauthenticated visitors on cloud
+              scenes (not theirs → Remix) without mislabeling an
+              unauthed user's own local draft (Edit). */}
+          {!isAuthor && (
             <>
               <span className={styles.viewOnlyText}>
                 <FormattedMessage
