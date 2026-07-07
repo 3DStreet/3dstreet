@@ -110,6 +110,26 @@ export function toShapesData(entityData) {
 }
 
 /**
+ * Rewrite the street root's display name for shapes mode. Managed streets
+ * are named "<kind> • <street name>" (kind is "Managed Street" for
+ * json-blob/template imports, "Street" for the streetmix loader); the
+ * converted root must not read as managed, so the kind becomes
+ * "Street Shapes". Names without a kind prefix (user renames) get the
+ * prefix added so the layer still reads as converted.
+ */
+export function shapesLayerName(layerName) {
+  const name = (layerName || '').trim();
+  if (!name) {
+    return 'Street Shapes';
+  }
+  const separatorIndex = name.indexOf('•');
+  if (separatorIndex !== -1) {
+    return 'Street Shapes • ' + name.slice(separatorIndex + 1).trim();
+  }
+  return 'Street Shapes • ' + name;
+}
+
+/**
  * Serialize a live managed-street entity into the entity-data form that
  * STREET.utils.createEntityFromObj can recreate as plain shapes.
  */
@@ -117,13 +137,11 @@ export function buildStreetShapesData(streetEntity) {
   const entityData = STREET.utils.getElementData(streetEntity, {
     includeAutocreated: true
   });
-  const shapesData = toShapesData(entityData);
+  const shapesData = toShapesData(entityData) || { id: entityData.id };
   // The root is a plain group now, but never "empty": keep it even if a
   // pathological street serialized to nothing so the command stays symmetric.
-  return (
-    shapesData || {
-      id: entityData.id,
-      'data-layer-name': entityData['data-layer-name']
-    }
+  shapesData['data-layer-name'] = shapesLayerName(
+    entityData['data-layer-name']
   );
+  return shapesData;
 }

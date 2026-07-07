@@ -1,5 +1,8 @@
 import { describe, expect, it, afterEach } from 'vitest';
-import { toShapesData } from '../../src/editor/lib/convertToShapes.js';
+import {
+  toShapesData,
+  shapesLayerName
+} from '../../src/editor/lib/convertToShapes.js';
 
 // A serialized managed street in getElementData({ includeAutocreated: true })
 // form, reduced to the shapes the transform must handle: the managed root
@@ -151,5 +154,27 @@ describe('toShapesData', () => {
     const shapes = toShapesData(makeStreetData());
     const names = shapes.children.map((c) => c['data-layer-name']);
     expect(names).toContain('Segment Labels');
+  });
+});
+
+describe('shapesLayerName', () => {
+  it('replaces the managed kind before the bullet', () => {
+    expect(shapesLayerName('Managed Street • 60ft Right of Way')).toBe(
+      'Street Shapes • 60ft Right of Way'
+    );
+    expect(shapesLayerName('Street • 3dstreet-demo-street')).toBe(
+      'Street Shapes • 3dstreet-demo-street'
+    );
+  });
+
+  it('prefixes names that carry no kind', () => {
+    expect(shapesLayerName('My Renamed Street')).toBe(
+      'Street Shapes • My Renamed Street'
+    );
+  });
+
+  it('falls back to a bare label for unnamed streets', () => {
+    expect(shapesLayerName(undefined)).toBe('Street Shapes');
+    expect(shapesLayerName('  ')).toBe('Street Shapes');
   });
 });
