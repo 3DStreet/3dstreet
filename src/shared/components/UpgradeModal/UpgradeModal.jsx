@@ -204,13 +204,20 @@ const UpgradeModal = ({
   // email sweep deliberately reads only this Firestore signal.
   useEffect(() => {
     if (!isOpen || !currentUser?.uid || currentUser.isPro) return;
-    setDoc(
-      doc(db, 'userSignals', currentUser.uid),
-      { userId: currentUser.uid, lastPaymentModalAt: serverTimestamp() },
-      { merge: true }
-    ).catch((error) =>
-      console.error('Error recording payment modal signal:', error)
-    );
+    // try/catch on top of the promise .catch: doc() can throw synchronously
+    // (e.g. uninitialized Firestore) and a lost signal must never take down
+    // the paywall.
+    try {
+      setDoc(
+        doc(db, 'userSignals', currentUser.uid),
+        { userId: currentUser.uid, lastPaymentModalAt: serverTimestamp() },
+        { merge: true }
+      ).catch((error) =>
+        console.error('Error recording payment modal signal:', error)
+      );
+    } catch (error) {
+      console.error('Error recording payment modal signal:', error);
+    }
   }, [isOpen, currentUser?.uid, currentUser?.isPro]);
 
   // Pre-check for an existing subscription so we can route to billing portal
