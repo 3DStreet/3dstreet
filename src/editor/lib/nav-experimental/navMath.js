@@ -556,11 +556,7 @@ export function desiredDoubleClickPose({
     const radius = 0.5 * Math.hypot(sx, sy, sz);
     const s = radius * DOUBLECLICK_OBJECT_STANDOFF_RADII;
     const lookTarget = new THREE.Vector3(cx, cy, cz);
-    const position = new THREE.Vector3(
-      cx - dir.x * s,
-      cy,
-      cz - dir.z * s
-    );
+    const position = new THREE.Vector3(cx - dir.x * s, cy, cz - dir.z * s);
     return { position, lookTarget };
   }
 
@@ -578,11 +574,7 @@ export function desiredDoubleClickPose({
   const camY = objectBox.min.y + sy * DOUBLECLICK_BUILDING_VIEW_HEIGHT_FRAC;
   const diag = Math.hypot(sx, sz);
   const s = diag * DOUBLECLICK_BUILDING_STANDOFF_DIAG;
-  const position = new THREE.Vector3(
-    cx - dir.x * s,
-    camY,
-    cz - dir.z * s
-  );
+  const position = new THREE.Vector3(cx - dir.x * s, camY, cz - dir.z * s);
   const lookTarget = new THREE.Vector3(cx, objectBox.min.y + sy / 2, cz);
   // Framing-pitch cap (first pass, against the DESIRED height). This is a
   // convenience pass only — the camera height is lowered again by never-raise
@@ -594,7 +586,11 @@ export function desiredDoubleClickPose({
   // first-pass look target.
   return {
     position,
-    lookTarget: clampFramingPitch(position, lookTarget, DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES)
+    lookTarget: clampFramingPitch(
+      position,
+      lookTarget,
+      DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES
+    )
   };
 }
 
@@ -1043,4 +1039,20 @@ export function reaimQuatForFov({
   const fullArc = new THREE.Quaternion().setFromUnitVectors(rayDir, toP);
   const delta = new THREE.Quaternion().identity().slerp(fullArc, weight);
   return delta.multiply(baselineQuat).normalize();
+}
+
+// The point where the camera's view-direction ray meets the ground plane y=0,
+// or null if it points at/above the horizon. Pure given the camera position +
+// unit view direction. Shared by the Map-orbit pivot and the compass plan-view
+// pivot, so it lives here rather than on either controller.
+//
+// Rejects a non-forward intersection: if the camera sits below y=0 (camPos.y <
+// 0), t is negative and the plane meets the ray *behind* the camera. Returning
+// that point would make callers orbit/anchor on a behind-camera pivot (a fling).
+// t <= 0 → null; callers fall back to their no-pivot path (TASK-026).
+export function viewRayGroundPoint(camPos, fwd) {
+  if (fwd.y >= -1e-4) return null;
+  const t = camPos.y / -fwd.y; // along-ray distance to y=0
+  if (t <= 0) return null;
+  return new THREE.Vector3(camPos.x + fwd.x * t, 0, camPos.z + fwd.z * t);
 }

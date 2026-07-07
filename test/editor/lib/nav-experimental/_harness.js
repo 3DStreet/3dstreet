@@ -484,8 +484,10 @@ export function withInvariantDisabled(controls, which, fn) {
       saved.fn = controls._groundedState.deriveFromPose;
       controls._groundedState.deriveFromPose = () => {};
     } else if (which === 'rotationEndForWasd') {
-      saved.fn = controls._endRotationGestureForWasd;
-      controls._endRotationGestureForWasd = () => {};
+      // Strategy B (TASK-036 step 7): the WASD-yield rotation-end moved to the
+      // drag controller.
+      saved.fn = controls._drag.endRotationForWasd;
+      controls._drag.endRotationForWasd = () => {};
     } else if (which === 'idleGateStale') {
       // Model "the situation sensor goes stale DURING motion": let the first
       // evaluation run (establishing the baseline) then skip every subsequent
@@ -509,7 +511,7 @@ export function withInvariantDisabled(controls, which, fn) {
     } else if (which === 'grounded') {
       controls._groundedState.deriveFromPose = saved.fn;
     } else if (which === 'rotationEndForWasd') {
-      controls._endRotationGestureForWasd = saved.fn;
+      controls._drag.endRotationForWasd = saved.fn;
     } else if (which === 'idleGateStale') {
       controls._updateLegitSnapshotAndCue = saved.fn;
     }
