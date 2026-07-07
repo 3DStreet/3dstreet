@@ -94,12 +94,16 @@ function convertDOMElToObject(entity) {
 }
 STREET.utils.convertDOMElToObject = convertDOMElToObject;
 
-function getElementData(entity) {
+function getElementData(entity, options = {}) {
   if (
     !entity.isEntity ||
-    entity.classList.contains('autocreated') ||
+    (entity.classList.contains('autocreated') && !options.includeAutocreated) ||
     entity.hasAttribute('data-temporary-file')
   ) {
+    // autocreated entities are procedural output (regenerated on load from
+    // their generator component's config) and are skipped on save. Callers
+    // that need the rendered output itself — like convert-to-shapes, which
+    // bakes a managed street into plain entities — pass includeAutocreated.
     // data-temporary-file marks an in-flight or local-only asset upload
     // (a gltf-model/src pointing at a transient blob: URL). Skipping these
     // honors the design brief's "Local only — will not persist" guarantee.
@@ -115,7 +119,7 @@ function getElementData(entity) {
     const savedChildren = [];
     for (const child of children) {
       if (child.nodeType === Node.ELEMENT_NODE) {
-        const elementData = getElementData(child);
+        const elementData = getElementData(child, options);
         if (elementData) savedChildren.push(elementData);
       }
     }

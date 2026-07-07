@@ -52,6 +52,26 @@ const ManagedStreetSidebar = ({ entity }) => {
     }
   };
 
+  const convertToShapes = () => {
+    // One-way workflow (undoable in-session): bakes the street into plain
+    // entities and strips all managed components, so a saved scene keeps the
+    // shapes, not the managed-street JSON.
+    if (
+      window.confirm(
+        intl.formatMessage({
+          id: 'managedStreetSidebar.convertToShapesConfirm',
+          defaultMessage:
+            'Convert this street into plain, freely-editable 3D objects? This is permanent: street and segment settings (widths, clone spacing, striping, reload from source) will be removed and the street cannot be converted back. Tip: Duplicate the street first if you also want to keep a managed copy.'
+        })
+      )
+    ) {
+      AFRAME.INSPECTOR.execute('streetconverttoshapes', { entity });
+      posthog.capture('convert_street_to_shapes', {
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
+    }
+  };
+
   const reloadFromSource = () => {
     // Replaces all segments (and local edits) with the source; runs as a
     // command so the pre-reload street is restorable via undo.
@@ -157,6 +177,12 @@ const ManagedStreetSidebar = ({ entity }) => {
                   {intl.formatMessage({
                     id: 'managedStreetSidebar.downloadJSON',
                     defaultMessage: 'Download Street JSON'
+                  })}
+                </Button>
+                <Button variant="toolbtn" onClick={convertToShapes}>
+                  {intl.formatMessage({
+                    id: 'managedStreetSidebar.convertToShapes',
+                    defaultMessage: 'Convert to Shapes'
                   })}
                 </Button>
               </>

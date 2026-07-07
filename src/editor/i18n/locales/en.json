@@ -1301,6 +1301,12 @@
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
   },
+  "managedStreetSidebar.convertToShapes": {
+    "defaultMessage": "Convert to Shapes"
+  },
+  "managedStreetSidebar.convertToShapesConfirm": {
+    "defaultMessage": "Convert this street into plain, freely-editable 3D objects? This is permanent: street and segment settings (widths, clone spacing, striping, reload from source) will be removed and the street cannot be converted back. Tip: Duplicate the street first if you also want to keep a managed copy."
+  },
   "managedStreetSidebar.downloadJSON": {
     "defaultMessage": "Download Street JSON"
   },
@@ -1762,9 +1768,6 @@
   },
   "sidebar.autocreatedEntity": {
     "defaultMessage": "Autocreated Entity"
-  },
-  "sidebar.detach": {
-    "defaultMessage": "Detach"
   },
   "sidebar.editCloneSettings": {
     "defaultMessage": "Edit Clone Settings"

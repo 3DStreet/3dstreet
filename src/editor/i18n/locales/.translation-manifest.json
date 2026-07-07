@@ -327,7 +327,6 @@
     "shareModal.urlCopied": "Scene URL copied to clipboard",
     "shareModal.webShareUnsupported": "Web Share API is not supported in this browser",
     "sidebar.autocreatedEntity": "Autocreated Entity",
-    "sidebar.detach": "Detach",
     "sidebar.editCloneSettings": "Edit Clone Settings",
     "sidebar.managedBy": "Managed by",
     "sidebar.selectObject": "Select an object to edit properties.",
@@ -606,7 +605,9 @@
     "appMenu.edit.duplicate": "Duplicate",
     "appMenu.edit.delete": "Delete",
     "appMenu.edit.deselect": "Deselect",
-    "appMenu.view.zoomToSelection": "Zoom to Selection"
+    "appMenu.view.zoomToSelection": "Zoom to Selection",
+    "managedStreetSidebar.convertToShapes": "Convert to Shapes",
+    "managedStreetSidebar.convertToShapesConfirm": "Convert this street into plain, freely-editable 3D objects? This is permanent: street and segment settings (widths, clone spacing, striping, reload from source) will be removed and the street cannot be converted back. Tip: Duplicate the street first if you also want to keep a managed copy."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -936,7 +937,6 @@
     "shareModal.urlCopied": "Scene URL copied to clipboard",
     "shareModal.webShareUnsupported": "Web Share API is not supported in this browser",
     "sidebar.autocreatedEntity": "Autocreated Entity",
-    "sidebar.detach": "Detach",
     "sidebar.editCloneSettings": "Edit Clone Settings",
     "sidebar.managedBy": "Managed by",
     "sidebar.selectObject": "Select an object to edit properties.",
@@ -1215,7 +1215,9 @@
     "appMenu.edit.duplicate": "Duplicate",
     "appMenu.edit.delete": "Delete",
     "appMenu.edit.deselect": "Deselect",
-    "appMenu.view.zoomToSelection": "Zoom to Selection"
+    "appMenu.view.zoomToSelection": "Zoom to Selection",
+    "managedStreetSidebar.convertToShapes": "Convert to Shapes",
+    "managedStreetSidebar.convertToShapesConfirm": "Convert this street into plain, freely-editable 3D objects? This is permanent: street and segment settings (widths, clone spacing, striping, reload from source) will be removed and the street cannot be converted back. Tip: Duplicate the street first if you also want to keep a managed copy."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1545,7 +1547,6 @@
     "shareModal.urlCopied": "Scene URL copied to clipboard",
     "shareModal.webShareUnsupported": "Web Share API is not supported in this browser",
     "sidebar.autocreatedEntity": "Autocreated Entity",
-    "sidebar.detach": "Detach",
     "sidebar.editCloneSettings": "Edit Clone Settings",
     "sidebar.managedBy": "Managed by",
     "sidebar.selectObject": "Select an object to edit properties.",
@@ -1824,6 +1825,8 @@
     "appMenu.edit.duplicate": "Duplicate",
     "appMenu.edit.delete": "Delete",
     "appMenu.edit.deselect": "Deselect",
-    "appMenu.view.zoomToSelection": "Zoom to Selection"
+    "appMenu.view.zoomToSelection": "Zoom to Selection",
+    "managedStreetSidebar.convertToShapes": "Convert to Shapes",
+    "managedStreetSidebar.convertToShapesConfirm": "Convert this street into plain, freely-editable 3D objects? This is permanent: street and segment settings (widths, clone spacing, striping, reload from source) will be removed and the street cannot be converted back. Tip: Duplicate the street first if you also want to keep a managed copy."
   }
 }
