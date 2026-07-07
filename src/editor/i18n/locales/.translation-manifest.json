@@ -607,12 +607,13 @@
     "appMenu.edit.delete": "Delete",
     "appMenu.edit.deselect": "Deselect",
     "appMenu.view.zoomToSelection": "Zoom to Selection",
-    "appMenu.export.dxf": "DXF (AutoCAD plan)",
     "appMenu.export.dxfEmpty": "No managed-street segments found to export as DXF.",
     "appMenu.export.dxfError": "Error while trying to save DXF file. Error: {error}",
     "appMenu.export.dxfSuccess": "3DStreet scene exported as DXF file.",
     "appMenu.export.exportingDxf": "Exporting scene as DXF file...",
-    "appMenu.betaBadge": "Beta"
+    "appMenu.betaBadge": "Beta",
+    "exportModal.dxfTitle": "DXF Plan View",
+    "exportModal.dxfDescription": "Download a 2D plan view of this scene's streets as a .dxf file for use in AutoCAD and other CAD tools."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1222,12 +1223,13 @@
     "appMenu.edit.delete": "Delete",
     "appMenu.edit.deselect": "Deselect",
     "appMenu.view.zoomToSelection": "Zoom to Selection",
-    "appMenu.export.dxf": "DXF (AutoCAD plan)",
     "appMenu.export.dxfEmpty": "No managed-street segments found to export as DXF.",
     "appMenu.export.dxfError": "Error while trying to save DXF file. Error: {error}",
     "appMenu.export.dxfSuccess": "3DStreet scene exported as DXF file.",
     "appMenu.export.exportingDxf": "Exporting scene as DXF file...",
-    "appMenu.betaBadge": "Beta"
+    "appMenu.betaBadge": "Beta",
+    "exportModal.dxfTitle": "DXF Plan View",
+    "exportModal.dxfDescription": "Download a 2D plan view of this scene's streets as a .dxf file for use in AutoCAD and other CAD tools."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1837,11 +1839,12 @@
     "appMenu.edit.delete": "Delete",
     "appMenu.edit.deselect": "Deselect",
     "appMenu.view.zoomToSelection": "Zoom to Selection",
-    "appMenu.export.dxf": "DXF (AutoCAD plan)",
     "appMenu.export.dxfEmpty": "No managed-street segments found to export as DXF.",
     "appMenu.export.dxfError": "Error while trying to save DXF file. Error: {error}",
     "appMenu.export.dxfSuccess": "3DStreet scene exported as DXF file.",
     "appMenu.export.exportingDxf": "Exporting scene as DXF file...",
-    "appMenu.betaBadge": "Beta"
+    "appMenu.betaBadge": "Beta",
+    "exportModal.dxfTitle": "DXF Plan View",
+    "exportModal.dxfDescription": "Download a 2D plan view of this scene's streets as a .dxf file for use in AutoCAD and other CAD tools."
   }
 }

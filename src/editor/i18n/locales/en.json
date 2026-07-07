@@ -209,9 +209,6 @@
   "appMenu.edit.paste": {
     "defaultMessage": "Paste"
   },
-  "appMenu.export.dxf": {
-    "defaultMessage": "DXF (AutoCAD plan)"
-  },
   "appMenu.export.dxfEmpty": {
     "defaultMessage": "No managed-street segments found to export as DXF."
   },
@@ -937,6 +934,12 @@
   },
   "exportModal.download": {
     "defaultMessage": "Download"
+  },
+  "exportModal.dxfDescription": {
+    "defaultMessage": "Download a 2D plan view of this scene's streets as a .dxf file for use in AutoCAD and other CAD tools."
+  },
+  "exportModal.dxfTitle": {
+    "defaultMessage": "DXF Plan View"
   },
   "exportModal.glbDescription": {
     "defaultMessage": "Download this scene as a .glb 3D model file for use in Blender, Unreal, and other 3D tools."

@@ -6,7 +6,11 @@ import { Button, Checkbox } from '../../elements';
 import Modal from '@shared/components/Modal/Modal.jsx';
 import posthog from 'posthog-js';
 import useStore from '@/store';
-import { exportSceneToGLTF, exportSceneToJSON } from '@/editor/lib/exportUtils';
+import {
+  exportSceneToGLTF,
+  exportSceneToJSON,
+  exportSceneToDXF
+} from '@/editor/lib/exportUtils';
 
 function ExportModal() {
   const intl = useIntl();
@@ -47,6 +51,20 @@ function ExportModal() {
     });
     setModal(null);
     exportSceneToJSON();
+  };
+
+  const handleDXFExport = () => {
+    posthog.capture('export_modal_export_clicked', {
+      export_type: 'dxf',
+      scene_id: STREET.utils.getCurrentSceneId()
+    });
+    if (!isPro) {
+      startCheckout('export');
+      return;
+    }
+    // Close the modal so the blocking export indicator is visible.
+    setModal(null);
+    exportSceneToDXF(intl);
   };
 
   return (
@@ -118,6 +136,43 @@ function ExportModal() {
             </p>
           </div>
           <Button onClick={handleJSONExport} variant="toolbtn">
+            <FormattedMessage
+              id="exportModal.download"
+              defaultMessage="Download"
+            />
+          </Button>
+        </div>
+
+        <div className={styles.formatCard}>
+          <div className={styles.formatInfo}>
+            <h3 className={styles.formatTitle}>
+              <FormattedMessage
+                id="exportModal.dxfTitle"
+                defaultMessage="DXF Plan View"
+              />
+              <span className="beta-badge">
+                <FormattedMessage
+                  id="appMenu.betaBadge"
+                  defaultMessage="Beta"
+                />
+              </span>
+              {!isPro && (
+                <span className="pro-badge">
+                  <FormattedMessage
+                    id="appMenu.proBadge"
+                    defaultMessage="Pro"
+                  />
+                </span>
+              )}
+            </h3>
+            <p className={styles.formatDescription}>
+              <FormattedMessage
+                id="exportModal.dxfDescription"
+                defaultMessage="Download a 2D plan view of this scene's streets as a .dxf file for use in AutoCAD and other CAD tools."
+              />
+            </p>
+          </div>
+          <Button onClick={handleDXFExport} variant="toolbtn">
             <FormattedMessage
               id="exportModal.download"
               defaultMessage="Download"

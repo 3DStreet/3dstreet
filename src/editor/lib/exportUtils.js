@@ -225,3 +225,68 @@ export const exportSceneToJSON = () => {
   });
   convertToObject();
 };
+
+// First-cut DXF plan-view export. Uses stubbed defaults from
+// managedStreetToDxf; a future options panel can supply an options object
+// here. Callers are responsible for the Pro gate (`startCheckout('export')`)
+// — this assumes the user may export.
+export const exportSceneToDXF = (intl) => {
+  const { startExportingScene, finishExportingScene } = useStore.getState();
+  // Same blocking saving-style indicator as the GLB export (issue #1797) —
+  // the segment walk + serialization run on the main thread.
+  startExportingScene(
+    intl.formatMessage({
+      id: 'appMenu.export.exportingDxf',
+      defaultMessage: 'Exporting scene as DXF file...'
+    })
+  );
+  // Defer the export so the indicator paints before the synchronous export
+  // work blocks the main thread.
+  setTimeout(async () => {
+    try {
+      posthog.capture('export_initiated', {
+        export_type: 'dxf',
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
+
+      const { exportManagedStreetsToDxf } =
+        await import('./dxf/managedStreetToDxf');
+      const { dxfString, streetCount, segmentCount } =
+        exportManagedStreetsToDxf();
+
+      if (streetCount === 0 || segmentCount === 0) {
+        STREET.notify.warningMessage(
+          intl.formatMessage({
+            id: 'appMenu.export.dxfEmpty',
+            defaultMessage: 'No managed-street segments found to export as DXF.'
+          })
+        );
+        return;
+      }
+
+      const blob = new Blob([dxfString], { type: 'application/dxf' });
+      saveBlob(blob, getExportFilename() + '.dxf');
+
+      STREET.notify.successMessage(
+        intl.formatMessage({
+          id: 'appMenu.export.dxfSuccess',
+          defaultMessage: '3DStreet scene exported as DXF file.'
+        })
+      );
+    } catch (error) {
+      console.error(error);
+      STREET.notify.errorMessage(
+        intl.formatMessage(
+          {
+            id: 'appMenu.export.dxfError',
+            defaultMessage:
+              'Error while trying to save DXF file. Error: {error}'
+          },
+          { error: error?.message ?? String(error) }
+        )
+      );
+    } finally {
+      finishExportingScene();
+    }
+  }, 50);
+};
