@@ -101,10 +101,30 @@ AFRAME.registerComponent('street-traffic', {
 
   onPlayStart: function () {
     const streets = this.el.querySelectorAll('[managed-street]');
+
+    // Streets owned by a street-traffic-replay layer (real-data replay) skip
+    // synthetic flow. Replays are their own entities now, so resolve which
+    // street each one targets.
+    const replayed = new Set();
+    this.el.querySelectorAll('[street-traffic-replay]').forEach((el) => {
+      const c = el.components?.['street-traffic-replay'];
+      if (c?.data?.suppressSyntheticTraffic && c.hasAgents?.()) {
+        const s = c.resolveStreet?.();
+        if (s) replayed.add(s);
+      }
+    });
+
     let playableCount = 0;
     streets.forEach((streetEl) => {
       const ms = streetEl.components?.['managed-street']?.data;
       if (!ms || !ms.playable) return;
+      if (replayed.has(streetEl)) {
+        console.log(
+          '[street-traffic] skipping street with active replay',
+          streetEl.id || ''
+        );
+        return;
+      }
       playableCount++;
       this.spawnForStreet(streetEl);
     });

@@ -49,6 +49,8 @@
   "addLayer.card.svgExtruded.name": "Entité à partir d'un SVG extrudé",
   "addLayer.card.torusKnot.desc": "Ajoute un nœud torique métallique poli. Une primitive décorative qui met en valeur les contrôles de géométrie et de matériau (métallicité/rugosité) dans le panneau de propriétés.",
   "addLayer.card.torusKnot.name": "Nœud torique",
+  "addLayer.card.trafficReplay.desc": "Rejouez des usagers réels et anonymisés de la rue à partir d'un manifeste de capteur de trafic (JSON). S'attache à votre Managed Street ; appuyez sur Lecture pour voir le trafic réel par mode.",
+  "addLayer.card.trafficReplay.name": "(Bêta) Relecture de trafic à partir de données de capteurs",
   "addLayer.card.uploadImage.desc": "Téléversez une image (panneau, photo de référence, carte personnalisée, etc.) depuis votre appareil et placez-la dans la scène.",
   "addLayer.card.uploadImage.name": "Téléverser une image",
   "addLayer.card.uploadModel.desc": "Téléversez un modèle glTF ou GLB depuis votre appareil. Il est rendu immédiatement et enregistré dans votre bibliothèque de ressources.",

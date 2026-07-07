@@ -49,6 +49,8 @@
   "addLayer.card.svgExtruded.name": "Entidad a partir de SVG extruido",
   "addLayer.card.torusKnot.desc": "Añade un nudo toroidal metálico pulido. Una primitiva decorativa que muestra los controles de geometría y material (metalicidad/rugosidad) en el panel de propiedades.",
   "addLayer.card.torusKnot.name": "Nudo toroidal",
+  "addLayer.card.trafficReplay.desc": "Reproduce usuarios reales y anonimizados de la calle a partir de un manifiesto de sensor de tráfico (JSON). Se vincula a tu Managed Street; pulsa Reproducir para ver el tráfico real por modo.",
+  "addLayer.card.trafficReplay.name": "(Beta) Repetición de tráfico con datos de sensores",
   "addLayer.card.uploadImage.desc": "Sube una imagen (señal, foto de referencia, mapa personalizado, etc.) desde tu dispositivo y colócala en la escena.",
   "addLayer.card.uploadImage.name": "Subir imagen",
   "addLayer.card.uploadModel.desc": "Sube un modelo glTF o GLB desde tu dispositivo. Se renderiza inmediatamente y se guarda en tu biblioteca de recursos.",

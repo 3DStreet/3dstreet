@@ -25,6 +25,7 @@ import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
 import MeasureLineSidebar from './MeasureLineSidebar';
 import DriveControlsSidebar from './DriveControlsSidebar';
+import StreetTrafficReplaySidebar from './StreetTrafficReplaySidebar';
 import UserLayersSidebar from './UserLayersSidebar';
 import AdvancedComponents from './AdvancedComponents';
 import AssetInfoPanel from './AssetInfoPanel';
@@ -244,8 +245,17 @@ export default class Sidebar extends React.Component {
                   </div>
                 </>
               )}
+              {entity.getAttribute('street-traffic-replay') && (
+                <>
+                  <StreetTrafficReplaySidebar entity={entity} />
+                  <div className="propertyRow">
+                    <AdvancedComponents entity={entity} />
+                  </div>
+                </>
+              )}
               {!entity.getAttribute('measure-line') &&
-                !entity.getAttribute('drive-controls') && (
+                !entity.getAttribute('drive-controls') &&
+                !entity.getAttribute('street-traffic-replay') && (
                   <ComponentsContainer entity={entity} />
                 )}
             </>

@@ -517,6 +517,88 @@ export function createSplatObject(position) {
   openAssetUploadPicker(position, 'splat');
 }
 
+// --- Traffic Replay ---------------------------------------------------------
+// Ingest an anonymized replay manifest (see scripts/tmd-replay/) and add it as
+// a standalone "Traffic Replay" layer (a street-traffic-replay entity). The
+// layer is linked to a managed-street and tuned in its own sidebar. v1 takes a
+// pre-converted JSON manifest; .sqlite-in-browser conversion is a fast-follow.
+
+function notifyError(msg) {
+  if (window.STREET?.notify?.errorMessage) {
+    window.STREET.notify.errorMessage(msg);
+  } else console.error('[traffic-replay]', msg);
+}
+function notifySuccess(msg) {
+  if (window.STREET?.notify?.successMessage) {
+    window.STREET.notify.successMessage(msg);
+  } else console.log('[traffic-replay]', msg);
+}
+
+// Human-readable one-liner of a manifest's mode mix. Exported so the sidebar
+// can reuse it.
+export function summarizeManifest(manifest) {
+  const counts =
+    manifest.meta?.countsByMode ||
+    manifest.agents.reduce((acc, a) => {
+      acc[a.mode] = (acc[a.mode] || 0) + 1;
+      return acc;
+    }, {});
+  const parts = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `${k} ${v}`)
+    .join(', ');
+  return `${manifest.agents.length} agents (${parts})`;
+}
+
+// Create a standalone Traffic Replay layer carrying the manifest. The
+// entitycreate command selects it, so its sidebar opens for linking a street.
+export function createReplayEntityFromManifest(manifest) {
+  const definition = {
+    id: createUniqueId(),
+    'data-layer-name': 'Traffic Replay',
+    components: {
+      'street-traffic-replay': {
+        manifestData: JSON.stringify(manifest),
+        timeScale: 1,
+        loop: true
+      }
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  notifySuccess(
+    `Traffic Replay layer added — ${summarizeManifest(manifest)}. ` +
+      'Link a street in its panel, then press Play.'
+  );
+}
+
+export function createTrafficReplay() {
+  // v1: pick a pre-converted JSON manifest from disk.
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json,.json';
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    let manifest;
+    try {
+      manifest = JSON.parse(await file.text());
+    } catch {
+      notifyError('Could not parse that file as JSON.');
+      return;
+    }
+    if (
+      !manifest ||
+      !Array.isArray(manifest.agents) ||
+      !manifest.agents.length
+    ) {
+      notifyError('That JSON is not a replay manifest (no "agents" array).');
+      return;
+    }
+    createReplayEntityFromManifest(manifest);
+  });
+  input.click();
+}
+
 export function createPanoramaSphere() {
   // Create a sphere with panorama texture for AR/VR experiences
   const panoramaUrl = prompt(

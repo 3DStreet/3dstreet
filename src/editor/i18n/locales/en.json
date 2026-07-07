@@ -149,6 +149,12 @@
   "addLayer.card.torusKnot.name": {
     "defaultMessage": "Torus Knot"
   },
+  "addLayer.card.trafficReplay.desc": {
+    "defaultMessage": "Replay anonymized real-world street users from a traffic-sensor manifest (JSON). Attaches to your Managed Street; press Play to watch real traffic by mode."
+  },
+  "addLayer.card.trafficReplay.name": {
+    "defaultMessage": "(Beta) Traffic Replay from Sensor Data"
+  },
   "addLayer.card.uploadImage.desc": {
     "defaultMessage": "Upload an image (sign, reference photo, custom map, etc.) from your device and place it in the scene."
   },

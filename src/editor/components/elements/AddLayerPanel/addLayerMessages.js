@@ -214,6 +214,15 @@ export const layerCardMessages = defineMessages({
     defaultMessage:
       'Upload a glTF or GLB model from your device. It is rendered immediately and saved to your asset library.'
   },
+  trafficReplayName: {
+    id: 'addLayer.card.trafficReplay.name',
+    defaultMessage: '(Beta) Traffic Replay from Sensor Data'
+  },
+  trafficReplayDesc: {
+    id: 'addLayer.card.trafficReplay.desc',
+    defaultMessage:
+      'Replay anonymized real-world street users from a traffic-sensor manifest (JSON). Attaches to your Managed Street; press Play to watch real traffic by mode.'
+  },
   driveableTukTukName: {
     id: 'addLayer.card.driveableTukTuk.name',
     defaultMessage: 'Driveable Tuk-tuk'
