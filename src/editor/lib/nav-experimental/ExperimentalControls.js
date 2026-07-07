@@ -56,6 +56,7 @@ import { WheelSwoopEngine } from './wheelSwoopEngine.js';
 import { WasdFlight, MOVEMENT_KEY_CODES } from './wasdFlight.js';
 import { DragGestureController } from './dragGestureController.js';
 import { TransitionController } from './transitionController.js';
+import { RecoveryService } from './recoveryService.js';
 import {
   ROTATION_SPEED_RAD_PER_PX,
   PLAN_VIEW_DURATION_MS,
@@ -77,7 +78,6 @@ import {
 } from './constants.js';
 import {
   cameraTiltDegrees,
-  isLegitPose,
   classifyDoubleClick,
   desiredDoubleClickPose,
   clampFramingPitch,
@@ -336,6 +336,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // street / rise-to-drone / fall-to) + the context-view-button resolver + the
     // ActionBar zoom. Each preset hands its tween to the runner.
     this._transition = new TransitionController(this._ctx);
+    // Recovery service: the gesture-end ease-back-or-pop policy (uses the runner
+    // + the transition controller's pop-to-roof; reached by the mouseup router).
+    this._recovery = new RecoveryService(this._ctx);
 
     // TASK-010 (D2): the single tilt threshold T governing the LB
     // sub-mode, the wheel cut, the rotation regime, and the letterbox.
@@ -1295,32 +1298,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       (endedMode === 'pan' || endedMode === 'rotate') &&
       !this._runner.isRecovering()
     ) {
-      this._maybeRecoverAtGestureEnd();
-    }
-  }
-
-  // TASK-024 (3b): if the current pose isn't legit, tween back to the
-  // stored legit pose (re-validated against current geometry — H-C), else
-  // pop to the roof.
-  _maybeRecoverAtGestureEnd() {
-    const camera = this._camera;
-    const probe = this._sensor.enclosureProbe();
-    const legitNow = isLegitPose({
-      enclosed: probe.enclosed,
-      camY: camera.position.y,
-      floorY: probe.floorY
-    });
-    if (legitNow) return; // gesture ended clear — nothing to do.
-
-    const stored = this._sensor.lastLegitPose;
-    if (stored && this._runner.poseStillLegit(stored)) {
-      // Recovery ease-back (runner Door 1). On a mid-tween target invalidation
-      // it hands off once to pop-to-roof.
-      this._runner.runRecovery(stored, FALL_DURATION_MS, () =>
-        this._transition.popToRoof()
-      );
-    } else {
-      this._transition.popToRoof();
+      this._recovery.maybeRecoverAtGestureEnd();
     }
   }
 
