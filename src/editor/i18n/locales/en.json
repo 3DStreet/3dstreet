@@ -194,6 +194,12 @@
   "appMenu.edit.cut": {
     "defaultMessage": "Cut"
   },
+  "appMenu.edit.delete": {
+    "defaultMessage": "Delete"
+  },
+  "appMenu.edit.duplicate": {
+    "defaultMessage": "Duplicate"
+  },
   "appMenu.edit.paste": {
     "defaultMessage": "Paste"
   },

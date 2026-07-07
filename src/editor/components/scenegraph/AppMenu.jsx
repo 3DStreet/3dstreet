@@ -22,6 +22,7 @@ import {
   cutSelectedEntity,
   pasteFromClipboard
 } from '../../lib/clipboard.js';
+import { cloneSelectedEntity, removeSelectedEntity } from '../../lib/entity.js';
 import { getOS } from '../../lib/utils.js';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { SUPPORTED_LOCALES } from '@/editor/i18n/config';
@@ -33,7 +34,9 @@ const editShortcuts = {
   redo: isMac ? '⇧⌘Z' : 'Ctrl+Shift+Z',
   cut: isMac ? '⌘X' : 'Ctrl+X',
   copy: isMac ? '⌘C' : 'Ctrl+C',
-  paste: isMac ? '⌘V' : 'Ctrl+V'
+  paste: isMac ? '⌘V' : 'Ctrl+V',
+  duplicate: 'D',
+  delete: isMac ? '⌫' : 'Del'
 };
 
 const cameraOptions = [
@@ -606,6 +609,36 @@ const AppMenu = ({ currentUser }) => {
                 defaultMessage="Paste"
               />
               <div className="RightSlot">{editShortcuts.paste}</div>
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                cloneSelectedEntity();
+                posthog.capture('duplicate_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.edit.duplicate"
+                defaultMessage="Duplicate"
+              />
+              <div className="RightSlot">{editShortcuts.duplicate}</div>
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                // No confirm prompt: like Cut, the removal is undoable.
+                removeSelectedEntity(true);
+                posthog.capture('delete_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.edit.delete"
+                defaultMessage="Delete"
+              />
+              <div className="RightSlot">{editShortcuts.delete}</div>
             </Menubar.Item>
           </Menubar.Content>
         </Menubar.Portal>

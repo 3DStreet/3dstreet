@@ -64,6 +64,8 @@
   "appMenu.edit": "Édition",
   "appMenu.edit.copy": "Copier",
   "appMenu.edit.cut": "Couper",
+  "appMenu.edit.delete": "Supprimer",
+  "appMenu.edit.duplicate": "Dupliquer",
   "appMenu.edit.paste": "Coller",
   "appMenu.export.exportingGlb": "Exportation de la scène en fichier GLB...",
   "appMenu.export.gltfError": "Erreur lors de l'enregistrement du fichier glTF. Erreur : {error}",
