@@ -40,8 +40,9 @@ function getCurrentSceneId() {
 STREET.utils.getCurrentSceneId = getCurrentSceneId;
 
 function getAuthorId() {
-  const authorId = AFRAME.scenes[0].getAttribute('metadata').authorId;
-  return authorId;
+  // Same guard as getCurrentSceneId: AFRAME.scenes[0] can be undefined during
+  // teardown/before attach, and this runs right after it in the beforeunload handler.
+  return AFRAME.scenes[0]?.getAttribute('metadata')?.authorId;
 }
 STREET.utils.getAuthorId = getAuthorId;
 

@@ -48,6 +48,11 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     // It undoes the local entity rotation and then restores so box has the expected size.
     // We also undo the parent world rotation.
 
+    // tempBox3 is module-level and shared across all helper instances; reset it so
+    // that if we skip both bbox branches below (e.g. a detached object with no
+    // parent) we don't reuse the previous helper's box left over in it.
+    tempBox3.makeEmpty();
+
     // Skip the position/rotation zeroing for splat entities as it interferes with
     // how Spark's SplatMesh handles matrix updates
     const isSplatEntity = this.object?.el?.hasAttribute('splat');
