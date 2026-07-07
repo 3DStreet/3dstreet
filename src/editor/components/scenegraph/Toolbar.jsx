@@ -166,7 +166,11 @@ function Toolbar() {
     const id = STREET.utils.getAuthorId() || null;
     setAuthorId(id);
     setAuthorUsername(null);
-    if (!id || !currentUser || currentUser.uid === id) return undefined;
+    // Resolve the creator's username for the byline — including when the
+    // viewer IS the author, so an owner viewing their own scene still sees
+    // the "by {creator}" attribution. socialProfile reads require auth, so
+    // signed-out visitors get no byline yet.
+    if (!id || !currentUser) return undefined;
     let cancelled = false;
     getUserProfile(id)
       .then((profile) => {
@@ -212,17 +216,17 @@ function Toolbar() {
     <>
       {/* Exactly the editor's hidden-panels header pill (same DOM +
           global classes), minus the Save cloud icon and with a wider
-          title allowance. Title stays renameable for the author,
-          read-only for everyone else. */}
+          title allowance. The title is always read-only in the viewer —
+          renaming is an editor-only action, even for the owner. */}
       <div id="scenegraph" className="scenegraph">
         <div className="scenegraph-panel hide viewer-header">
           <div id="left-panel-header">
             <div className="left-panel-header-row">
               <AppSwitcher />
               <div className="scene-title clickable truncate">
-                <SceneEditTitle readOnly={!isAuthor} />
+                <SceneEditTitle readOnly />
               </div>
-              {!isAuthor && authorUsername && (
+              {authorUsername && (
                 <span className="viewer-byline">
                   <FormattedMessage
                     id="viewer.byAuthor"
