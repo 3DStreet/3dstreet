@@ -1,0 +1,68 @@
+@use '../../../style/variables.scss';
+
+.exportModalWrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: auto;
+  max-width: 640px;
+  min-width: 520px;
+  height: auto;
+  max-height: 80vh;
+  overflow-y: auto;
+
+  .wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px;
+
+    .formatCard {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 16px 20px;
+      border: 1px solid variables.$darkgray-600;
+      border-radius: 8px;
+      background-color: variables.$darkgray-300;
+
+      .formatInfo {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+
+        .formatTitle {
+          display: flex;
+          align-items: center;
+          font-size: 18px;
+          font-weight: 600;
+          color: white;
+          margin: 0;
+        }
+
+        .formatDescription {
+          font-size: 14px;
+          color: variables.$lightgray-200;
+          margin: 0;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .exportModalWrapper {
+    width: 95vw;
+    max-width: none;
+    min-width: auto;
+
+    .wrapper {
+      .formatCard {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  }
+}

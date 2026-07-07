@@ -1,6 +1,6 @@
 /* global AFRAME */
 import useStore from '../store.js';
-const { getTravelledWaySegments } = require('./street-layout-utils');
+import { getTravelledWaySegments } from './street-layout-utils';
 
 AFRAME.registerComponent('street-label', {
   dependencies: ['managed-street', 'street-align'],

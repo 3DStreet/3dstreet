@@ -896,13 +896,13 @@ export const ArrowLeftIcon = ({ className }) => (
 export const ArrowRightIcon = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width="32"
-    height="32"
-    viewBox="0 0 32 32"
+    width="8"
+    height="13"
+    viewBox="0 0 8 13"
     fill="none"
     className={className}
   >
-    <path d="M12.5 9L19.5 15.5L12.5 22V9Z" fill="white" />
+    <path d="M0.5 0L7.5 6.5L0.5 13L0.5 0Z" fill="white" />
   </svg>
 );
 
