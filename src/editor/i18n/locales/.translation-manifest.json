@@ -604,7 +604,9 @@
     "appMenu.edit.paste": "Paste",
     "help.shortcut.cut": "Cut selected entity",
     "appMenu.edit.duplicate": "Duplicate",
-    "appMenu.edit.delete": "Delete"
+    "appMenu.edit.delete": "Delete",
+    "appMenu.edit.deselect": "Deselect",
+    "appMenu.view.zoomToSelection": "Zoom to Selection"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1211,7 +1213,9 @@
     "appMenu.edit.paste": "Paste",
     "help.shortcut.cut": "Cut selected entity",
     "appMenu.edit.duplicate": "Duplicate",
-    "appMenu.edit.delete": "Delete"
+    "appMenu.edit.delete": "Delete",
+    "appMenu.edit.deselect": "Deselect",
+    "appMenu.view.zoomToSelection": "Zoom to Selection"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1818,6 +1822,8 @@
     "appMenu.edit.paste": "Paste",
     "help.shortcut.cut": "Cut selected entity",
     "appMenu.edit.duplicate": "Duplicate",
-    "appMenu.edit.delete": "Delete"
+    "appMenu.edit.delete": "Delete",
+    "appMenu.edit.deselect": "Deselect",
+    "appMenu.view.zoomToSelection": "Zoom to Selection"
   }
 }

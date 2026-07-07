@@ -197,6 +197,9 @@
   "appMenu.edit.delete": {
     "defaultMessage": "Delete"
   },
+  "appMenu.edit.deselect": {
+    "defaultMessage": "Deselect"
+  },
   "appMenu.edit.duplicate": {
     "defaultMessage": "Duplicate"
   },
@@ -280,6 +283,9 @@
   },
   "appMenu.view.snapshotRender": {
     "defaultMessage": "Snapshot & Render..."
+  },
+  "appMenu.view.zoomToSelection": {
+    "defaultMessage": "Zoom to Selection"
   },
   "assetInfo.assetSource": {
     "defaultMessage": "Asset source: {ownership} · {assetIdShort}…"

@@ -36,7 +36,9 @@ const editShortcuts = {
   copy: isMac ? '⌘C' : 'Ctrl+C',
   paste: isMac ? '⌘V' : 'Ctrl+V',
   duplicate: 'D',
-  delete: isMac ? '⌫' : 'Del'
+  delete: isMac ? '⌫' : 'Del',
+  deselect: 'Esc',
+  zoomToSelection: 'F'
 };
 
 const cameraOptions = [
@@ -640,6 +642,21 @@ const AppMenu = ({ currentUser }) => {
               />
               <div className="RightSlot">{editShortcuts.delete}</div>
             </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                AFRAME.INSPECTOR.selectEntity(null);
+                posthog.capture('deselect_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.edit.deselect"
+                defaultMessage="Deselect"
+              />
+              <div className="RightSlot">{editShortcuts.deselect}</div>
+            </Menubar.Item>
           </Menubar.Content>
         </Menubar.Portal>
       </Menubar.Menu>
@@ -685,6 +702,23 @@ const AppMenu = ({ currentUser }) => {
               </Menubar.CheckboxItem>
             ))}
             <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                const selectedEntity = AFRAME.INSPECTOR.selectedEntity;
+                if (selectedEntity) {
+                  Events.emit('objectfocus', selectedEntity.object3D);
+                }
+                posthog.capture('zoom_to_selection_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.view.zoomToSelection"
+                defaultMessage="Zoom to Selection"
+              />
+              <div className="RightSlot">{editShortcuts.zoomToSelection}</div>
+            </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"
               onClick={() => AFRAME.INSPECTOR.controls.resetZoom()}
