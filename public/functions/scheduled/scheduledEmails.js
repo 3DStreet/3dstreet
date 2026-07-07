@@ -332,8 +332,15 @@ const EMAIL_TYPES = {
 
 /**
  * Send email via Postmark API
+ *
+ * options.stream selects the Postmark message stream: 'outbound'
+ * (transactional, default) or a broadcast stream ('conversion', 'lifecycle')
+ * where Postmark manages unsubscribe. Callers sending to a broadcast stream
+ * must include an unsubscribe link/placeholder in the body (the lifecycle
+ * send service in ../email/lifecycle-email.js appends one).
  */
-const sendPostmarkEmail = async (toEmail, subject, htmlBody, textBody) => {
+const sendPostmarkEmail = async (toEmail, subject, htmlBody, textBody, options = {}) => {
+  const { stream = 'outbound' } = options;
   const apiKey = process.env.POSTMARK_API_KEY;
 
   if (!apiKey) {
@@ -353,7 +360,7 @@ const sendPostmarkEmail = async (toEmail, subject, htmlBody, textBody) => {
       Subject: subject,
       HtmlBody: htmlBody,
       TextBody: textBody,
-      MessageStream: 'outbound'
+      MessageStream: stream
     })
   });
 

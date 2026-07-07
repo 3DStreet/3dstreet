@@ -88,6 +88,24 @@ window.adminTools = {
   },
 
   /**
+   * Test the lifecycle email pipeline (admin only). Sends the `testPing`
+   * email through the full send path: emailPrefs suppression check,
+   * emailLog stop-rules + audit record, Postmark stream routing.
+   *
+   * Usage from browser console:
+   *   await adminTools.testLifecycleEmail()                          // dry run to yourself, outbound
+   *   await adminTools.testLifecycleEmail({ stream: 'conversion' })  // dry run, broadcast stream
+   *   await adminTools.testLifecycleEmail({ dryRun: false })         // actually send
+   *   await adminTools.testLifecycleEmail({ uid: '...', dryRun: false })
+   */
+  testLifecycleEmail: async ({ uid, stream, dryRun = true } = {}) => {
+    const trigger = httpsCallable(functions, 'triggerLifecycleEmail');
+    const result = await trigger({ uid, stream, dryRun });
+    console.log(result.data);
+    return result.data;
+  },
+
+  /**
    * Audit user subscriptions vs claims (admin/PRO only)
    * Identifies discrepancies between Stripe subscriptions and Firebase PRO claims
    * @param {boolean} fixDiscrepancies - If true, automatically fix claim issues

@@ -2,6 +2,13 @@
 
 This document describes the scheduled email notification system that sends transactional emails via Postmark.
 
+> **Lifecycle emails (P0 wave):** new lifecycle emails should use the send
+> service in `../email/lifecycle-email.js` (per-stream routing, `emailPrefs`
+> suppression, `emailLog` stop-rules + audit) rather than adding more
+> `notifyLog` booleans here. This system continues to run `tokenExhaustion`
+> and provides `sendPostmarkEmail` / `getUserInfo` that the lifecycle service
+> reuses. Plan: `docs/email-lifecycle-p0-plan.md` (repo root).
+
 ## Overview
 
 A daily scheduled Cloud Function queries Firestore for users who meet certain criteria (e.g., exhausted tokens) and sends notification emails. The system is designed to be extensible for adding new email types.

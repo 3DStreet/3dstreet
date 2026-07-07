@@ -107,6 +107,24 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Lifecycle email log (PRIVATE - cloud functions only)
+    // Summary doc backs stop-rules (once-ever, cooldowns, dedupe keys);
+    // sends subcollection is the append-only audit of every attempted send.
+    // See public/functions/email/lifecycle-email.js.
+    match /emailLog/{userId} {
+      allow read, write: if false;
+      match /sends/{sendId} {
+        allow read, write: if false;
+      }
+    }
+
+    // Email preferences / suppression (PRIVATE - cloud functions only)
+    // Per-stream opt-out state mirrored from Postmark's Subscription Change
+    // webhook (postmarkSubscriptionWebhook); checked before broadcast sends.
+    match /emailPrefs/{userId} {
+      allow read, write: if false;
+    }
+
     // Asset usage doc (PRIVATE - cloud functions write, owner reads)
     // Maintained by onAssetWritten trigger; read by getUploadQuota and the
     // Assets panel storage meter.

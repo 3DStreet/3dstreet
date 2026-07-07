@@ -8,6 +8,7 @@ const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-manag
 const { generateFalImage } = require('./fal-proxy.js');
 const { assertAppCheck } = require('./app-check.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduled/scheduledEmails.js');
+const { triggerLifecycleEmail, postmarkSubscriptionWebhook } = require('./email/lifecycle-email.js');
 const { auditUserSubscriptions, auditUserSubscriptionsHttp } = require('./utilities/user-audit.js');
 const { onAssetWritten, getUploadQuota } = require('./asset-quota.js');
 const { purgeSoftDeletedAssets, triggerPurgeSoftDeletedAssets } = require('./scheduled/asset-gc.js');
@@ -39,6 +40,11 @@ exports.generateFalImage = generateFalImage;
 // Re-export the scheduled email functions
 exports.sendScheduledEmails = sendScheduledEmails;
 exports.triggerScheduledEmails = triggerScheduledEmails;
+
+// Lifecycle email foundation — admin test callable + Postmark Subscription
+// Change webhook (opt-outs → emailPrefs). See email/lifecycle-email.js.
+exports.triggerLifecycleEmail = triggerLifecycleEmail;
+exports.postmarkSubscriptionWebhook = postmarkSubscriptionWebhook;
 
 // Re-export the user audit functions
 exports.auditUserSubscriptions = auditUserSubscriptions;
