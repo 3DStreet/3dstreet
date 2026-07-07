@@ -1,4 +1,9 @@
-import { faEye, faEyeSlash, faPlay } from '@fortawesome/free-solid-svg-icons';
+import {
+  faEye,
+  faEyeSlash,
+  faPlay,
+  faExpand
+} from '@fortawesome/free-solid-svg-icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
@@ -66,7 +71,7 @@ export const PrimaryToolbar = () => {
         variant="toolbtn"
         onClick={handlePlay}
         leadingIcon={
-          <AwesomeIcon icon={hasPlayable ? faPlay : faEye} size={16} />
+          <AwesomeIcon icon={hasPlayable ? faPlay : faExpand} size={16} />
         }
         title={
           hasPlayable
