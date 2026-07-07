@@ -40,7 +40,7 @@ export class WasdFlight {
     // Current WASD velocity in the world horizontal plane (m/s). Ramps toward
     // the target while keys are held; snaps to zero on release.
     this._wasdVelocity = new THREE.Vector3();
-    // WASD block hysteresis carry (WE-3b).
+    // WASD block hysteresis carry.
     this._lastWasdBlocked = false;
 
     // Own scratch + raycaster — never aliases another gesture's.
@@ -75,7 +75,7 @@ export class WasdFlight {
 
   drain(deltaMs) {
     const camera = this._ctx.camera;
-    // TASK-024 (D2) / TASK-012 (M-3): a recovery OR teleport tween owns the
+    // A recovery OR teleport tween owns the
     // camera — held keys must not fight it. Snap velocity to zero and suspend.
     if (this._ctx.runner.ownsCamera()) {
       this._wasdVelocity.set(0, 0, 0);
@@ -129,9 +129,9 @@ export class WasdFlight {
     const targetDirX = this._tmpV3c.x;
     const targetDirZ = this._tmpV3c.z;
 
-    // TASK-024: WASD fly-speed scales by TRAVEL HEIGHT (height above the
+    // WASD fly-speed scales by TRAVEL HEIGHT (height above the
     // land/ground beneath buildings), NOT the collision floor — so speed
-    // doesn't crawl over a building roof (B4 speed rationale; TASK-013 WE-4).
+    // doesn't crawl over a building roof.
     const groundY = this._ctx.probe.travelHeightFloorYBelow();
     const aglRaw = camera.position.y - groundY;
     const height = Math.max(0.1, aglRaw);
@@ -165,7 +165,7 @@ export class WasdFlight {
       .copy(this._wasdVelocity)
       .multiplyScalar(distMetres);
 
-    // TASK-024 (2b): forward-ray step classifier. Decide block / step-up /
+    // Forward-ray step classifier. Decide block / step-up /
     // follow / hover from the surface geometry ahead before committing the
     // horizontal move + any y change.
     const stepThisFrame = Math.hypot(move.x, move.z);
@@ -189,15 +189,15 @@ export class WasdFlight {
     camera.position.z += move.z;
     this._ctx.center.x += move.x;
     this._ctx.center.z += move.z;
-    // TASK-022: an advancing WASD step is a non-wheel camera move → clear the
+    // An advancing WASD step is a non-wheel camera move → clear the
     // zoom-undo memory. The `block` outcome early-returns above (zero-delta —
     // no clear); a hover/step-up that changes only y still moved → clear.
     this._ctx.funnel.invalidateWheelMemory('wasd');
 
     if (outcome.kind === 'step-up' || outcome.kind === 'follow') {
-      // TASK-024a (DEC-A/DEC-B): grounded collision-follow (preserve AGL,
+      // Grounded collision-follow (preserve AGL,
       // push-up clamp — walking hugs the surface); not-grounded eases toward
-      // the option-3 absolute target `max(H, collisionFloorDest + eye)`,
+      // the absolute target `max(H, collisionFloorDest + eye)`,
       // rate-limited per tick so the lift/settle composes with continuous WASD.
       // Lazily seed H if we are flying but never captured it (scene loaded
       // not-grounded). The helper only READS H. `distMetres` (== deltaMs/1000)
@@ -220,11 +220,11 @@ export class WasdFlight {
       camera.position.y = newY;
       this._ctx.center.y += dy;
     } else if (outcome.kind === 'hover') {
-      // TASK-024a (1.3.3 / WE-4): walking off a sharp drop floats the camera
+      // Walking off a sharp drop floats the camera
       // off the surface — the ground is now far below; un-ground and capture H
       // at the roof height so the next W holds altitude over the street rather
       // than terrain-following down. Only the grounded→not-grounded transition
-      // matters. y itself is held (no plunge — WE-5); centre y unchanged.
+      // matters. y itself is held (no plunge); centre y unchanged.
       if (this._ctx.grounded.grounded) {
         this._ctx.grounded.grounded = false;
         this._ctx.grounded.captureH();
@@ -235,7 +235,7 @@ export class WasdFlight {
     this._ctx.funnel.dispatch();
   }
 
-  // TASK-024 (2b): run the WASD forward-ray + destination-floor probes and
+  // Run the WASD forward-ray + destination-floor probes and
   // classify the step. Returns { kind, floorDestY }. `kind` is
   // 'block' | 'step-up' | 'follow' | 'hover'. Gated to held-WASD-with-input
   // (the caller only invokes it inside the hasInput branch), so idle frames
@@ -276,7 +276,7 @@ export class WasdFlight {
     };
   }
 
-  // TASK-024 (2b): cast a forward (horizontal) ray of length `reach` along
+  // Cast a forward (horizontal) ray of length `reach` along
   // (dirX, 0, dirZ) and return the first accepted solid-floor hit as
   // { hit, dist, normalY, normalH } — or { hit: false } when clear.
   _forwardRayHit(dirX, dirZ, reach) {

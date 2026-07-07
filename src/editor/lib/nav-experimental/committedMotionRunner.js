@@ -10,7 +10,7 @@ import { ENCLOSURE_PROBE_UP_MARGIN_METRES } from './constants.js';
 // test layer.)
 const GROUND_PROBE_DIR = Object.freeze(new THREE.Vector3(0, -1, 0));
 
-// The committed-motion runner (M2). Every camera-owning tween the nav system
+// The committed-motion runner. Every camera-owning tween the nav system
 // runs — recovery ease-back, double-click teleport, and the four preset-pose
 // motions (pop-to-roof / swoop-to / rise-to-drone / fall-to) — is a "committed
 // motion": only its ENDPOINT is validated; the path may pass through solid.

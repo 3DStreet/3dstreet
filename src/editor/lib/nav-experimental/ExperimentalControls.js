@@ -3,21 +3,21 @@
 // Sibling to THREE.EditorControls. Drives the editor camera when the
 // `?nav=experimental` URL flag is set.
 //
-// Phase 1 mechanics — see claude/specs/001-phase-1-plan.md:
+// Phase 1 mechanics:
 //   - LB+drag        -> world-horizontal hit-anchored truck/dolly
-//   - Shift+LB+drag  -> two-regime rotate, split on the tilt threshold T
-//                       (TASK-010): Map orbit around the cursor pivot
-//                       above T, rotate-in-place below T
+//   - Shift+LB+drag  -> two-regime rotate, split on the tilt threshold T:
+//                       Map orbit around the cursor pivot above T,
+//                       rotate-in-place below T
 //   - Wheel          -> exponential cursor-anchored dolly (budget drained
 //                       per A-Frame tick; tilt-preserving)
 //   - WASD           -> camera-yaw-projected horizontal motion
 //   - Plan View      -> animated tween to top-down N-up (entered via
 //                       handlePlanViewRequest, called by viewport.js)
 //
-// Phase 3 mechanics — see claude/specs/001-phase-3-plan.md:
+// Phase 3 mechanics:
 //   - Wheel zoom is a 3-phase "swoop" gated by camera elevation **above
 //     ground (AGL)** = camera.y − groundY, measured by a downward probe
-//     (`_collisionFloorAt`, TASK-013/024 — collision floor incl. building
+//     (`_collisionFloorAt` — collision floor incl. building
 //     roofs + tiles); on a flat scene at y=0 this equals absolute camera.y:
 //       AGL > 20m         -> phase1: cursor-anchored dolly (tilt-conditional)
 //       1.5m < AGL ≤ 20m  -> phase2: pedestal + tilt-toward-horizontal
@@ -28,8 +28,7 @@
 //     -> plain camera-Z dolly at current tilt and elevation.
 //   - Per-phase drain cap: Phase 2 = 3 ticks/frame; Phase 1/3 = 10.
 //
-// Public API (mirrors THREE.EditorControls — see plan §"Toggle insertion
-// in viewport.js"):
+// Public API (mirrors THREE.EditorControls):
 //   - enabled, center, panSpeed, zoomSpeed, minSpeedFactor, rotationSpeed
 //   - setCamera(camera), setAspectRatio(ratio)
 //   - focus(target) — reuses focus-animation A-Frame component
@@ -90,9 +89,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this.center = new THREE.Vector3();
     this.panSpeed = 0.002;
     // Legacy field used only by the ActionBar +/- buttons (_zoomActionBar),
-    // which is OUT OF SCOPE for TASK-014a and must keep its current feel.
-    // It previously aliased ZOOM_PER_WHEEL_TICK (0.1); B7 halved that
-    // constant to 0.05 for the WHEEL dolly only, so pin zoomSpeed to the
+    // which is out of the wheel-dolly path and must keep its current feel.
+    // It previously aliased ZOOM_PER_WHEEL_TICK (0.1); that constant was
+    // later halved to 0.05 for the WHEEL dolly only, so pin zoomSpeed to the
     // prior literal here rather than re-deriving — otherwise halving the
     // wheel dolly would silently halve the ActionBar button step too.
     this.zoomSpeed = 0.1;
@@ -223,7 +222,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // Re-evaluate the LB sub-mode from the live camera and emit a modechange
       // on transition. A committed-motion settle epilogue that lands the camera
       // programmatically calls this so the toolbar/letterbox reflect the landed
-      // tilt immediately. Now owned by the drag controller (Fable A6b).
+      // tilt immediately. Now owned by the drag controller.
       emitLbModeChange: () => self._drag.maybeEmitLbModeChange(),
       // Coarse `nav-experimental:modechange` (pan/rotate/null) dual-dispatch,
       // owned by the orchestrator; the drag controller emits through it.
@@ -243,20 +242,20 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Collision-floor probe (stateful _lastGroundY cache). Owns its own scratch
     // + raycaster so a probe never aliases another gesture's scratch.
     this._probe = new CollisionProbe(this._ctx);
-    // Shared grounded-vs-flying state (SPEC D1/D4), read + written by the wheel,
+    // Shared grounded-vs-flying state, read + written by the wheel,
     // WASD, pedestal, and transition subsystems.
     this._groundedState = new GroundedState(this._ctx);
     // Per-tick situation sensor: legit-pose snapshot, recovery cue, context
     // snapshot from one idle-gated enclosure ray.
     this._sensor = new SituationSensor(this._ctx);
-    // Camera-write funnel (M1): the single `change`-dispatch + wheel-memory-
+    // Camera-write funnel: the single `change`-dispatch + wheel-memory-
     // invalidation edge every camera move passes through. `clearWheelMemory`
     // points at the wheel engine's zoom-undo reset.
     this._funnel = new CameraWriteFunnel({
       dispatch: this._ctx.dispatch,
       clearWheelMemory: () => this._wheel.clearZoomUndo()
     });
-    // Committed-motion runner (M2): the single home for every camera-owning
+    // Committed-motion runner: the single home for every camera-owning
     // tween (recovery ease-back, teleport, and the four preset motions) — the
     // ownership flags, the anti-stranding cancel, the per-tick write-funnel
     // commit, and the parameterized settle epilogue.
@@ -288,13 +287,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // flags (feeding _isInactive); does NOT enter the runner.
     this._compass = new CompassController(this._ctx);
 
-    // TASK-010 (D2): the single tilt threshold T governing the LB
+    // The single tilt threshold T governing the LB
     // sub-mode, the wheel cut, the rotation regime, and the letterbox.
     // Live value (overridable via `setTiltThreshold` / the
     // `nav-experimental-tuning` component); defaults to the constant.
     this._tiltThreshold = TILT_THRESHOLD_DEFAULT_DEGREES;
 
-    // TASK-010 (D-LT-3): Map-pivot bounds radius (metres on the ground,
+    // Map-pivot bounds radius (metres on the ground,
     // measured from the screen-centre point). Live value, overridable via
     // the tuning component.
     this._mapPivotBoundsRadius = MAP_PIVOT_BOUNDS_RADIUS_METRES;
@@ -304,7 +303,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // component (mapPivotFarAcceptGain → setMapPivotFarAcceptGain).
     this._mapPivotFarAcceptGain = MAP_PIVOT_FAR_ACCEPT_GAIN;
 
-    // TASK-014d / TASK-027 Part F: lower bound on the per-tick wheel-zoom
+    // Lower bound on the per-tick wheel-zoom
     // lateral cap. The live cap is `max(lowerBound, 0.1×AGL)` (navMath.
     // lateralCap), so it scales with height; this lower bound governs near the
     // ground and on the no-AGL Ctrl+wheel path. Live value, overridable via
@@ -480,11 +479,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     camera.position.set(0, 15, 30);
     camera.lookAt(this.center);
     camera.updateMatrixWorld();
-    // TASK-024 (D4): invalidate the legit-pose snapshot so a subsequent
+    // Invalidate the legit-pose snapshot so a subsequent
     // recovery never tweens back to the pre-reset pose. It re-seeds on the
     // next legit tick.
     this._sensor.lastLegitPose = null;
-    // TASK-024a (D1): re-derive grounded from the post-reset pose (the reset
+    // Re-derive grounded from the post-reset pose (the reset
     // camera at (0,15,30) is high → not-grounded unless a floor sits near it).
     this._groundedState.deriveFromPose();
     // A reset/new-scene wipes all nav state: a non-wheel move → invalidate the
@@ -511,7 +510,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     );
     camera.rotation.set(rot.x || 0, rot.y || 0, rot.z || 0);
     camera.updateMatrixWorld();
-    // TASK-024a (D1, MED-2/PA-4): re-derive grounded from the explicit-pose
+    // Re-derive grounded from the explicit-pose
     // teleport. (The resetZoom() fallback branches above already route through
     // resetZoom's own derive call, so only this explicit-pose path needs it.)
     this._groundedState.deriveFromPose();
@@ -544,7 +543,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._zoomOutInterval = null;
   }
 
-  // TASK-010 (D2): set the live tilt threshold T. Clamped to a sane range
+  // Set the live tilt threshold T. Clamped to a sane range
   // (5–45°). Re-emits the LB-mode after storing: changing T while the
   // camera sits at a fixed tilt can flip the comparator (e.g. pan-truck →
   // pan-pedestal) without any mouse-move, and `_maybeEmitLbModeChange`
@@ -557,7 +556,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._drag.maybeEmitLbModeChange();
   }
 
-  // TASK-010 (D-LT-3 / #6): live-tunable Map-pivot bounds radius (metres
+  // Live-tunable Map-pivot bounds radius (metres
   // on the ground from the screen-centre point). Relayed from the tuning
   // component.
   setMapPivotBoundsRadius(metres) {
@@ -573,7 +572,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._mapPivotFarAcceptGain = THREE.MathUtils.clamp(gain, 0.05, 100);
   }
 
-  // TASK-014d / TASK-027 Part F: live-tunable LOWER BOUND of the wheel-zoom
+  // Live-tunable LOWER BOUND of the wheel-zoom
   // lateral cap (metres). The live cap is `max(lowerBound, 0.1×AGL)`. Relayed
   // from the tuning component (wheelZoomLateralCapLowerBoundMetres).
   setWheelZoomLateralCap(metres) {
@@ -608,7 +607,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (!enabled) this._wasd.clearHeldKeys();
   }
 
-  // TASK-010 (D-LT-3 / #6): live-tunable Shift+LB rotation speed
+  // Live-tunable Shift+LB rotation speed
   // (radians per pixel). Relayed from the tuning component.
   setRotationSpeed(radPerPx) {
     if (typeof radPerPx !== 'number' || !isFinite(radPerPx) || radPerPx <= 0) {
@@ -617,10 +616,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this.rotationSpeed = radPerPx;
   }
 
-  // --- TASK-011 compass ---
+  // --- Compass ---
 
   dispose() {
-    // TASK-011: drop any in-flight compass tween/queue (belt-and-braces;
+    // Drop any in-flight compass tween/queue (belt-and-braces;
     // the derived gate already self-heals).
     this._compass.cancelPending();
     this._detach();
@@ -630,7 +629,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._cursorAnchor) this._cursorAnchor.dispose();
     if (this._drag) this._drag.dispose();
     if (this._tick) this._tick.dispose();
-    // TASK-010 (D2): remove the tuning component this controls instance
+    // Remove the tuning component this controls instance
     // caused viewport.js to attach, mirroring how dispose() tears down
     // everything else it owns. The app never re-instantiates the controls
     // today, but if it ever does, a stale component left attached would
@@ -657,20 +656,20 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._focusAnimation) {
       // Wrap the change callback so a focus-animation tween that
       // crosses the 30° tilt boundary updates the visual indicator
-      // mid-animation (per A6). The plan asked for an `onDone`-only
-      // hook, but the focus-animation component doesn't expose one;
+      // mid-animation. An `onDone`-only hook would be cleaner,
+      // but the focus-animation component doesn't expose one;
       // `_maybeEmitLbModeChange` is a no-op unless the comparator
       // flips, so per-frame is fine — cost is one asin + one
       // comparison, and the user gets the indicator update *during*
       // the tween rather than at its end.
       const callback = () => {
         this._drag.maybeEmitLbModeChange();
-        // TASK-022: focus-to-object moves the camera via the A-Frame
+        // Focus-to-object moves the camera via the A-Frame
         // focus-animation component — a non-wheel move. Invalidate the
         // zoom-undo memory on its change hook (fires each frame of the
         // transition; idempotent).
         this._funnel.invalidateWheelMemory('focus');
-        // TASK-024 (D4): reseed the legit-pose snapshot once the focus
+        // Reseed the legit-pose snapshot once the focus
         // (double-click teleport) animation has settled, so recovery can't
         // ease back to the pre-teleport pose. The component sets
         // `transitioning = false` on its final frame.
@@ -707,7 +706,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     window.addEventListener('keydown', this._onKeyDown, false);
     window.addEventListener('keyup', this._onKeyUp, false);
     window.addEventListener('blur', this._onWindowBlur, false);
-    // CR-D5: subscribe to the signals that mean "solid geometry under/around
+    // Subscribe to the signals that mean "solid geometry under/around
     // the camera may have changed", each marking the enclosure cache dirty so
     // the idle gate re-evaluates once. `object3dset` fires when entities
     // add/replace their object3D (street-segment/building clones appearing,
@@ -737,7 +736,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     window.removeEventListener('keydown', this._onKeyDown, false);
     window.removeEventListener('keyup', this._onKeyUp, false);
     window.removeEventListener('blur', this._onWindowBlur, false);
-    // CR-D5: tear down the scene-geometry-dirty listeners added in _attach.
+    // Tear down the scene-geometry-dirty listeners added in _attach.
     if (
       this._sceneEl &&
       typeof this._sceneEl.removeEventListener === 'function'
@@ -783,16 +782,16 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     event.preventDefault();
   }
 
-  // TASK-012 (H-4): "a camera-owning tween is in flight" — the recovery
-  // ease-back OR the Phase-4 teleport. The PASSIVE input gates (wheel, WASD,
-  // toolbar zoom, the legit-snapshot) read this so neither races the tween.
+  // "a camera-owning tween is in flight" — the recovery
+  // ease-back OR the double-click teleport. The PASSIVE input gates (wheel,
+  // WASD, toolbar zoom, the legit-snapshot) read this so neither races the tween.
   // NOT used by `_onMouseDown` (an active grab must still reach the abort).
   // Delegates to the runner, which owns the ownership flags.
   _tweenOwnsCamera() {
     return this._runner.ownsCamera();
   }
 
-  // TASK-012 (H-4): cancel whatever camera-owning tween is in flight and clear
+  // Cancel whatever camera-owning tween is in flight and clear
   // its ownership flags. Delegates to the runner. Clears recovery + teleport
   // only — NOT `_planViewActive` / `_compassAnimating` (those own their own
   // lifecycles; a teleport can never start mid-plan-view/compass). Every
@@ -848,7 +847,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._isInactive()) return;
     const mode = this._drag.decideMouseMode(event);
     if (!mode) return;
-    // TASK-024 (N4) / TASK-012 (L-3): a fresh press mid-tween would otherwise
+    // A fresh press mid-tween would otherwise
     // start a drag that fights the still-running tween — abort the recovery OR
     // teleport (its onDone is skipped; the next legit tick reseeds). An active
     // grab must reach this abort, so it is NOT gated by the passive-input guard.
@@ -870,7 +869,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const endedMode = this._drag.endGesture();
     window.removeEventListener('mousemove', this._onMouseMove, false);
     window.removeEventListener('mouseup', this._onMouseUp, false);
-    // TASK-024 (3b): gesture-end correction — the one bounded automatic motion
+    // Gesture-end correction — the one bounded automatic motion
     // the principle allows. If a camera-drag (pan/rotate) ended with the camera
     // inside a building (not legit), ease it back to the most recent legit pose
     // (or pop to the roof if none / no longer valid).
@@ -904,8 +903,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
 
   _onWheel(event) {
-    // TASK-012 (M-3): a camera-owning tween (recovery or teleport) owns the
-    // camera — passive wheel input is ignored, not raced (L-3). Input plumbing
+    // A camera-owning tween (recovery or teleport) owns the
+    // camera — passive wheel input is ignored, not raced. Input plumbing
     // stays on the orchestrator; the accumulate + drain logic lives on the
     // wheel-swoop engine.
     if (this._isInactive() || this._tweenOwnsCamera()) return;
@@ -920,18 +919,18 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._latch.isActive()) {
       this._latch.end();
       this._emitModeChange(null);
-      // TASK-010 (S-4): hide the ring on a window blur (e.g. Alt-Tab
+      // Hide the ring on a window blur (e.g. Alt-Tab
       // mid-orbit) so it can't leak visible.
       this._drag.hideIndicator();
     }
   }
 
   _onKeyDown(event) {
-    // TASK-010 (B6): first line, before every other guard, so keydown
+    // First line, before every other guard, so keydown
     // and keyup are symmetric and the Shift sync isn't swallowed by the
     // typing/modifier/WASD early returns below.
     this._drag.syncDragModeToShift(event.shiftKey);
-    // TASK-025 v2 (R2-REV-F / finding 6): Space focus-yield. `_onKeyDown` is a
+    // Space focus-yield. `_onKeyDown` is a
     // WINDOW keydown listener, so `event.target` is the focused element. When an
     // interactive control (button, link, the compass `role=button` div, the
     // context action slot, etc.) is focused, Space belongs to THAT control —
@@ -968,28 +967,28 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       return;
     }
 
-    // TASK-024 (3d) / TASK-025: Space — discrete context-action key (not a
+    // Space — discrete context-action key (not a
     // held key). Only reached when focus is NOT on an interactive control (the
     // focus-yield guard above handles that case) — i.e. the canvas/body has
     // focus, so Space is the nav key here: preventDefault (suppress scroll) +
     // dispatch. Routes through the SAME resolver + dispatch as the view button,
-    // so the two never disagree (spec "one resolver, two triggers").
+    // so the two never disagree (one resolver, two triggers).
     // `triggerContextAction` owns the full gate (busy = inactive / animating /
     // recovery), so an un-gated Space mid-tween can no longer cancel/restart a
-    // motion (H-5). This adds the third rung Space lacked in 024: at street
+    // motion. This adds the third rung Space previously lacked: at street
     // level Space now rises to drone view (was a no-op).
     if (k === 'Space') {
       event.preventDefault(); // stop page scroll
-      // TASK-025 supersedes TASK-024's Space→fall: Space now routes through the
-      // shared context resolver (the view-button action). Its `busy` gate
-      // includes `_tick.isAnimating()`, so Space is inert during a Phase-4
-      // teleport tween (TASK-012) — no separate guard needed here.
+      // Space now routes through the shared context resolver (the view-button
+      // action), superseding its earlier Space→fall behaviour. Its `busy` gate
+      // includes `_tick.isAnimating()`, so Space is inert during a double-click
+      // teleport tween — no separate guard needed here.
       this.triggerContextAction();
     }
   }
 
   _onKeyUp(event) {
-    // TASK-010 (B6): symmetric with `_onKeyDown` — same first-line sync.
+    // Symmetric with `_onKeyDown` — same first-line sync.
     this._drag.syncDragModeToShift(event.shiftKey);
     const k = event.code;
     const wasHeld = this._wasd.hasHeldKey(k);
@@ -1010,7 +1009,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     return false;
   }
 
-  // TASK-025 v2 (R2-REV-F): a SUPERSET of `_isTypingTarget` — any focusable
+  // A SUPERSET of `_isTypingTarget` — any focusable
   // interactive control that should own Space when focused. Covers native
   // buttons/links/form fields, contenteditable, ARIA `role="button"` divs (the
   // compass needle / rotate arrows are such divs), and anything with a tabindex
@@ -1041,9 +1040,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
     this._wheel.drain();
     this._wasd.drain(deltaMs);
-    // TASK-024 (3b/3e): legit-pose snapshot + discoverability cue. Runs
+    // Legit-pose snapshot + discoverability cue. Runs
     // after the drains so it captures the post-move pose. Suppressed while a
-    // recovery OR teleport tween owns the camera (D2 / TASK-012 M-C) — the
+    // recovery OR teleport tween owns the camera — the
     // legit snapshot must not capture a mid-flight teleport pose.
     if (!this._tweenOwnsCamera()) {
       this._updateLegitSnapshotAndCue();
@@ -1060,7 +1059,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
   // --- LB hit-anchored truck ---
 
-  // --- TASK-010 rotation regime (two-way, latched at gesture start) ---
+  // --- Rotation regime (two-way, latched at gesture start) ---
 
   // --- Shift+LB orbit/tilt around latched center ---
 }

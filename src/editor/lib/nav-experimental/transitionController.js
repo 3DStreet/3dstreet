@@ -35,10 +35,10 @@ export class TransitionController {
     this._normalMatrix = new THREE.Matrix3();
   }
 
-  // TASK-024 (3c): pop-to-daylight. One up-ray collects accepted overhead
+  // Pop-to-daylight. One up-ray collects accepted overhead
   // solids in the camera column; target just above the HIGHEST one
-  // (+ EYE_MARGIN) so a single press clears a multi-slab / nested stack
-  // (D6). Vertical only (preserve yaw/pitch). Probe-miss → no-op (don't
+  // (+ EYE_MARGIN) so a single press clears a multi-slab / nested stack.
+  // Vertical only (preserve yaw/pitch). Probe-miss → no-op (don't
   // bury at a stale height).
   popToRoof() {
     const camera = this._ctx.camera;
@@ -55,7 +55,7 @@ export class TransitionController {
     }
     const startY = camera.position.y;
     const startCenterY = this._ctx.center.y;
-    // CR-D2: single mid-tween retarget. If a higher overhead slab streams
+    // Single mid-tween retarget. If a higher overhead slab streams
     // in during the pop, the original target would surface still enclosed;
     // raise the target once (a single hand-off — guarded by a small
     // threshold so it can't oscillate).
@@ -99,16 +99,16 @@ export class TransitionController {
     });
   }
 
-  // TASK-025: the shared context resolver — a PURE READ of the per-tick
+  // The shared context resolver — a PURE READ of the per-tick
   // `_contextSnapshot` (it does NOT probe). Returns { kind, enabled, busy }:
   //   kind    — 'daylight' | 'street' | 'drone' (the destination state; the
-  //             icon shows where the button will take you, spec D-C).
+  //             icon shows where the button will take you).
   //   enabled — false = the no-op grey-out (no valid target for `kind`).
   //   busy    — a tween is in flight or the controls are inactive; both
   //             triggers are inert and the button holds its last icon greyed.
   // The resolver is the SINGLE authority on busy/enabled — the button never
-  // independently inspects `_tick` (round-1 M5). Precedence ladder (fixed
-  // order — load-bearing, spec): enclosed → daylight; elevated → street;
+  // independently inspects `_tick`. Precedence ladder (fixed
+  // order — load-bearing): enclosed → daylight; elevated → street;
   // else (at street level) → drone.
   resolveContextAction() {
     const s = this._ctx.sensor.contextSnapshot;
@@ -141,12 +141,12 @@ export class TransitionController {
         this._lastResolvedKind = 'none';
         return { kind: 'none', enabled: false, busy: false };
       }
-      // Street view. Enabled mirrors `_swoopToStreet` EXACTLY (R4): it swoops to
+      // Street view. Enabled mirrors `_swoopToStreet` EXACTLY: it swoops to
       // the camera-centre look-at when tilted past T, else drops vertically to
       // the floor below. So it has a target — and the button is enabled — when
       // EITHER the look-at swoop (tilt > T, a per-column floor at the look-at
       // below us) OR the vertical drop (a floor below us) would move. Grey out
-      // only when neither does (over the void with nothing in view, WE-8). This
+      // only when neither does (over the void with nothing in view). This
       // is why a fresh load looking down at the street from over the scene edge
       // is correctly ENABLED even though nothing is directly below.
       kind = 'street';
@@ -161,7 +161,7 @@ export class TransitionController {
       enabled = (tiltedToGround && lookAtOk) || belowOk;
     } else {
       // Drone view: rise. Never greys — it always targets a height above the
-      // surface below, rising past an overhang if need be (spec D-A).
+      // surface below, rising past an overhang if need be.
       kind = 'drone';
       enabled = true;
     }
@@ -169,8 +169,8 @@ export class TransitionController {
     return { kind, enabled, busy: false };
   }
 
-  // TASK-025: the single dispatch both the button click and Space funnel into.
-  // One gate (busy || !enabled), shared by both triggers (H-5), so neither can
+  // The single dispatch both the button click and Space funnel into.
+  // One gate (busy || !enabled), shared by both triggers, so neither can
   // interrupt an in-flight camera tween or click into a no-op.
   triggerContextAction() {
     const { kind, enabled, busy } = this.resolveContextAction();
@@ -181,7 +181,7 @@ export class TransitionController {
     return undefined;
   }
 
-  // TASK-025 v2 (R2-REV-B): street view is a DESCENDING SWOOP to the point you
+  // Street view is a DESCENDING SWOOP to the point you
   // are LOOKING AT, not the point directly below. Anchor = the camera-center
   // ground hit (`_centerRayGroundHit`, a forward raycast to the collision
   // floor). The motion is still the v1 `_fallTo` TWEEN MECHANISM (pre-computed
@@ -196,8 +196,8 @@ export class TransitionController {
     if (!this._ctx.streetLevelEnabled) return; // gated upstream; belt-and-braces
     const cam = this._ctx.camera;
     const P = this._ctx.probe.centerRayGroundHit();
-    // Discriminate the two street-view cases by HOW STEEPLY you are looking down
-    // (live-test v2 #2). The look-at point sits on the view ray, so the swoop's
+    // Discriminate the two street-view cases by HOW STEEPLY you are looking
+    // down. The look-at point sits on the view ray, so the swoop's
     // descent-path angle IS the camera pitch: a shallow gaze means "big
     // horizontal / tiny drop" = a lurch. So swoop to the look-at ONLY when
     // pitched down past the low-tilt threshold (`_tiltThreshold`, the SAME T the
@@ -216,7 +216,7 @@ export class TransitionController {
       const groundYAtP = floorAtP.source !== 'cache' ? floorAtP.y : P.y;
       const targetY = groundYAtP + EYE_MARGIN_METRES;
       // Only swoop if the target is strictly below the camera (else the click
-      // would be a silent no-op though the button reads enabled — v2 MEDIUM-1);
+      // would be a silent no-op though the button reads enabled);
       // otherwise fall through to the vertical drop.
       if (targetY < cam.position.y) {
         this._swoopTo(P.x, targetY, P.z);
@@ -225,19 +225,19 @@ export class TransitionController {
     }
     // P null (looking at sky / off-scene), a shallow gaze (looking out, not down
     // at a spot), or an unsuitable look-at (above the camera): fall back to the
-    // v1 VERTICAL drop to the surface directly below, leveling out — preserves
-    // WE-3 and gives the "settle back down where I was" feel for a small pedestal.
+    // v1 VERTICAL drop to the surface directly below, leveling out — gives
+    // the "settle back down where I was" feel for a small pedestal.
     const floor = this._ctx.probe.collisionFloorAt(
       cam.position.x,
       cam.position.z
     );
-    if (floor.source === 'cache') return; // no surface below either → no-op (WE-8)
+    if (floor.source === 'cache') return; // no surface below either → no-op
     const targetY = floor.y + EYE_MARGIN_METRES;
     if (targetY >= cam.position.y) return; // already at/below
     this._fallTo(targetY, /* levelOut = */ true); // v1 vertical level-out swoop
   }
 
-  // TASK-025 v2 (R2-REV-B): the look-at descending swoop tween. End pose =
+  // The look-at descending swoop tween. End pose =
   // (endX, endY, endZ) at street eye-height over the look-at point, yaw kept,
   // pitch leveled to ~0° (the v1 street landing). Position is interpolated
   // LINEARLY start→end (x and z change too, unlike `_fallTo`'s y-only lerp) and
@@ -245,8 +245,8 @@ export class TransitionController {
   // onDone lifecycle discipline verbatim (grounded=true, _clearZoomUndo,
   // _reseedLegitPose, _refreshContextSnapshot). No mid-tween floor retarget here
   // (the target column is the look-at point, fixed at commit; the destination is
-  // street level and clear by construction — 024 permits passing through solid
-  // mid-swoop, forbidding only ending inside).
+  // street level and clear by construction — the committed motion permits
+  // passing through solid mid-swoop, forbidding only ending inside).
   _swoopTo(endX, endY, endZ) {
     const cam = this._ctx.camera;
     const startPos = cam.position.clone();
@@ -300,12 +300,12 @@ export class TransitionController {
     });
   }
 
-  // TASK-025 v2 (R2-REV-B): drone view — an ASCENDING / REVERSE SWOOP. The
+  // Drone view — an ASCENDING / REVERSE SWOOP. The
   // camera pulls UP-AND-BACK along its horizontal heading to a canonical height
   // H, ending at the 60° overview attitude LOOKING AT the feet point F (so the
   // round-trip closes: from drone, the center-ray hit ≈ F, and street swoops
   // back down to F). Anchor = the FEET (`_collisionFloorAt` below the camera),
-  // which is ALWAYS defined → drone has no null case (spec D-A: drone never
+  // which is ALWAYS defined → drone has no null case (drone never
   // greys). This is the v1 TWEEN MECHANISM (pre-computed start→end pose + linear
   // position lerp + quaternion slerp + FOV lerp) with a CLOSED-FORM end pose —
   // NOT `_dollyAlongRay`, NOT the wheel tilt-coupling. A separate method from
@@ -313,12 +313,12 @@ export class TransitionController {
   // `_grounded = false` + `_captureH`).
   _riseToDrone() {
     const cam = this._ctx.camera;
-    // Anchor = the feet (surface directly below). Feet-miss fallback (R2-REV-B /
-    // round-2 §3d): `_collisionFloorAt` returns source 'cache' on a miss (over a
+    // Anchor = the feet (surface directly below). Feet-miss fallback:
+    // `_collisionFloorAt` returns source 'cache' on a miss (over a
     // void); substitute the travel-height ground for F.y so the void case
     // degrades to a sane pose. `_collisionFloorAt` refreshes the floor cache
     // (refreshCache: true) — NOT a pure read; call it exactly once. The `busy`
-    // gate prevents interleave with an in-flight `_fallTo` retarget (M6).
+    // gate prevents interleave with an in-flight `_fallTo` retarget.
     const groundLevel = this._ctx.probe.travelHeightFloorYBelow();
     const floor = this._ctx.probe.collisionFloorAt(
       cam.position.x,
@@ -336,7 +336,7 @@ export class TransitionController {
     // LEVEL (travel height — looks past tall buildings to the ground between
     // them), OR a fixed clearance above the ROOF directly below when atop a
     // building taller than that. Both per-column raycasts (slope-safe). Keeps
-    // the drone reliably "elevated" for the toggle (b1).
+    // the drone reliably "elevated" for the toggle.
     let targetY = Math.max(
       groundLevel + DEFAULT_DRONE_HEIGHT,
       surfaceBelow + ROOF_CLEARANCE
@@ -358,8 +358,8 @@ export class TransitionController {
       return { x: camX - fwdH.x * d, z: camZ - fwdH.z * d };
     };
 
-    // WE-7 overhang end-pose check: the rise may pass THROUGH solid mid-motion
-    // (024 permits that), but the END pose must be clear. If the end column is
+    // Overhang end-pose check: the rise may pass THROUGH solid mid-motion
+    // (the committed motion permits that), but the END pose must be clear. If the end column is
     // itself enclosed (overhead solid above targetY — multiple floors), raise
     // the target to just above the highest overhead solid there (a daylight-
     // style pop). One extra raycast at commit time only. Keeps drone's "never
@@ -389,7 +389,7 @@ export class TransitionController {
 
     // End quaternion: a scratch camera at the end position looking AT the feet
     // point F = (camX, feetY, camZ), up=+Y. At 60° there is no nadir/roll
-    // singularity (TASK-023 is about the straight-down case only). Yaw is
+    // singularity (the nadir handling is about the straight-down case only). Yaw is
     // preserved by construction (the back-offset is along the heading; lookAt(F)
     // keeps the same azimuth).
     const endX = endXZ.x;
@@ -440,7 +440,7 @@ export class TransitionController {
     });
   }
 
-  // TASK-024 (3d): vertical descent tween to `targetY`. When `levelOut`,
+  // Vertical descent tween to `targetY`. When `levelOut`,
   // lerp the camera tilt toward horizontal during the descent (swoop feel);
   // otherwise preserve orientation (straight fall). Owns `_recoveryActive`.
   _fallTo(targetY, levelOut) {
@@ -452,7 +452,7 @@ export class TransitionController {
     if (levelOut) {
       // Build a level (tilt=0) target orientation preserving yaw. The level
       // look is independent of the target height, so a mid-fall retarget of
-      // `targetY` (CR-D2) leaves this orientation valid.
+      // `targetY` retarget leaves this orientation valid.
       const scratch = new THREE.PerspectiveCamera();
       scratch.position.set(camera.position.x, targetY, camera.position.z);
       const fwd = new THREE.Vector3();
@@ -467,7 +467,7 @@ export class TransitionController {
       );
       endQuat = scratch.quaternion.clone();
     }
-    // CR-D2: single mid-fall retarget. If a closer solid surface streams in
+    // Single mid-fall retarget. If a closer solid surface streams in
     // ABOVE the original floor target during the descent, halt higher so the
     // camera doesn't sink through it. One hand-off — guarded by a threshold
     // so it can't oscillate. The level-out orientation above stays valid.
@@ -525,10 +525,10 @@ export class TransitionController {
   }
 
   // --- ActionBar zoom buttons (held-down repeat) ---
-  // Phase 0 used a center-anchored dolly; Phase 1 keeps the same behavior
-  // for the toolbar path so the zoom buttons feel unchanged.
+  // A center-anchored dolly (the toolbar path keeps its original feel, distinct
+  // from the wheel swoop) so the zoom buttons feel unchanged.
   zoomActionBar(sign) {
-    // TASK-012 (M-3): suspend the toolbar zoom while a camera-owning tween
+    // Suspend the toolbar zoom while a camera-owning tween
     // (recovery or teleport) is in flight.
     if (this._ctx.isInactive() || this._ctx.runner.ownsCamera()) return;
     const camera = this._ctx.camera;
@@ -540,7 +540,7 @@ export class TransitionController {
       Math.max(this._ctx.minSpeedFactor, distance) * this._ctx.zoomSpeed
     );
     delta.applyMatrix3(this._normalMatrix.getNormalMatrix(camera.matrix));
-    // TASK-024a (1.3.3 / PA-2): the toolbar zoom buttons move camera.y but do
+    // The toolbar zoom buttons move camera.y but do
     // NOT route through _drainWheel, so the wheel-pass un-ground check misses
     // them. Apply the same net-y-rise check here so a toolbar zoom-out-up
     // un-grounds (else the next W terrain-follows down instead of holding).

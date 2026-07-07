@@ -28,7 +28,7 @@ import { captureNavDiscovery } from '../navAnalytics.js';
 //
 // Reads the live camera / DOM / scene / services through the shared controls
 // context, carries its own scratch, and commits camera writes through the write
-// funnel (invalidate zoom-undo on ACTUAL movement only — the WE-6 jitter guard —
+// funnel (invalidate zoom-undo on ACTUAL movement only — the jitter guard —
 // but always dispatch).
 export class DragGestureController {
   constructor(ctx) {
@@ -64,7 +64,7 @@ export class DragGestureController {
     this._pointerOld.set(event.clientX, event.clientY);
     this._lastClientX = event.clientX;
     this._lastClientY = event.clientY;
-    // Per A6: catch stale-from-tween states (a Plan View / focus tween moved the
+    // Catch stale-from-tween states (a Plan View / focus tween moved the
     // camera across the tilt boundary without going through _shiftRotate). Emit a
     // fresh LB-mode if changed, before the gesture latches.
     this.maybeEmitLbModeChange();
@@ -142,8 +142,7 @@ export class DragGestureController {
   // single screen-space pan ('pan-screen') at every tilt — the legacy
   // THREE.EditorControls LB behaviour. The tilt-gated truck/pedestal split
   // (and the letterbox indicator driven off it) is the Stage 2 street mode
-  // and only engages when street-level is enabled. See
-  // docs/07-phased-rollout-plan.md §"the seam". The single decision point
+  // and only engages when street-level is enabled. The single decision point
   // for all three callers (the mode cache, the mode-change emitter, and the
   // pan gesture latch).
   _decideLbModeLive() {
@@ -193,7 +192,7 @@ export class DragGestureController {
     return 'pan';
   }
 
-  // TASK-010 (B6): start (or restart, mid-drag) the pan sub-gesture. The
+  // Start (or restart, mid-drag) the pan sub-gesture. The
   // truck-vs-pedestal pick reads the *current* tilt here (not at the call
   // site), so a mid-drag rotate→pan switch re-picks the sub-mode from the
   // live tilt — the pan-side mirror of the rotate-side regime re-eval.
@@ -202,7 +201,7 @@ export class DragGestureController {
   // anchor. `_latch.start` replaces the latch's value bag wholesale, so a
   // rotate→pan switch wipes the stale rotate keys (center/regime).
   _beginPanSubGesture(clientX, clientY) {
-    // TASK-010 (D3/D6): a pan sub-gesture never shows the ring. Hide it
+    // A pan sub-gesture never shows the ring. Hide it
     // here at the single pan-start point so a mid-drag Map-rotate→pan
     // switch (Shift released while the button is still held) clears the
     // ring left visible by the rotate — otherwise it leaks on the stale
@@ -245,7 +244,7 @@ export class DragGestureController {
       // camera-forward-horizontal (camera -Z projected onto the
       // horizontal plane and normalized). Spans world-Y plus camera-
       // right-horizontal — sits "in front of" the camera like a
-      // window. (See plan §"_lbPedestalMove" + inline discussion #1.)
+      // window.
       const fwd = new THREE.Vector3();
       this._ctx.camera.getWorldDirection(fwd);
       fwd.y = 0;
@@ -270,22 +269,22 @@ export class DragGestureController {
     }
   }
 
-  // TASK-010 (B6): start (or restart, mid-drag) the rotate sub-gesture.
+  // Start (or restart, mid-drag) the rotate sub-gesture.
   // `_latchRotationCenter` reads the current tilt to pick the regime
   // (Map orbit vs rotate-in-place) and the pivot, and toggles the ring.
   _beginRotateSubGesture(clientX, clientY) {
     this._latchRotationCenter(this._ctx.camera, clientX, clientY);
   }
 
-  // TASK-010 (B6): make the active LB drag's sub-gesture match the live
+  // Make the active LB drag's sub-gesture match the live
   // Shift state. Idempotent and driven by `event.shiftKey` (not by
-  // edge-detecting the Shift key), so it is symmetric on keydown/keyup
-  // (H1), correct for two Shift keys / autorepeat (H2) and Ctrl+Shift
-  // orderings (H3). Inert when no LB drag is latched — the latch-active
+  // edge-detecting the Shift key), so it is symmetric on keydown/keyup,
+  // correct for two Shift keys / autorepeat and Ctrl+Shift
+  // orderings. Inert when no LB drag is latched — the latch-active
   // gate is the safety guarantee (not any "drags don't happen while
   // typing" claim): a latched window-bound LB drag survives the cursor
   // moving off-canvas, and a Shift toggle while the button is held is a
-  // deliberate switch regardless of focus (decision D-R1-5).
+  // deliberate switch regardless of focus.
   syncDragModeToShift(shiftHeld) {
     if (this._ctx.isInactive() || !this._ctx.latch.isActive()) return; // only mid-drag
     // LB drags only: an RMB rotate is Shift-independent (legacy parity —
@@ -301,7 +300,7 @@ export class DragGestureController {
     } else {
       this._beginPanSubGesture(this._lastClientX, this._lastClientY);
     }
-    // B7: reset the pointer-delta baseline so the first move after the
+    // Reset the pointer-delta baseline so the first move after the
     // switch doesn't apply an accumulated jump.
     this._pointerOld.set(this._lastClientX, this._lastClientY);
     // Two emit channels, matching the mousedown/mouseup contract:
@@ -339,9 +338,9 @@ export class DragGestureController {
   // the world point under the cursor stays under the cursor. Because that
   // plane tilts with the camera, the same gesture slides across the ground
   // when looking down and pedestals straight up when looking at the horizon
-  // — one behaviour that degrades gracefully across tilt (see
-  // docs/07-phased-rollout-plan.md). No floor clamp / grounding (Stage 2
-  // machinery): matching legacy, dragging up always lifts back out.
+  // — one behaviour that degrades gracefully across tilt. No floor clamp /
+  // grounding (Stage 2 machinery): matching legacy, dragging up always lifts
+  // back out.
   _lbScreenPan(clientX, clientY) {
     const camera = this._ctx.camera;
     const anchor = this._ctx.latch.get('anchor');
@@ -371,7 +370,7 @@ export class DragGestureController {
     camera.position.add(delta);
     this._ctx.center.add(delta);
     // Invalidate on ACTUAL movement only — a jitter drag that nets ~0 on the
-    // latched plane must NOT invalidate (WE-6) — but always dispatch.
+    // latched plane must NOT invalidate — but always dispatch.
     if (delta.x || delta.y || delta.z) {
       this._ctx.funnel.invalidateWheelMemory('pan');
     }
@@ -415,7 +414,7 @@ export class DragGestureController {
     this._ctx.center.x += sx;
     this._ctx.center.z += sz;
     // Invalidate on ACTUAL movement only — a jitter drag that nets ~0 on the
-    // latched plane must NOT invalidate (WE-6) — but always dispatch. (no-hit /
+    // latched plane must NOT invalidate — but always dispatch. (no-hit /
     // non-finite cases already early-returned above.)
     if (sx || sz) this._ctx.funnel.invalidateWheelMemory('pan');
     camera.updateMatrixWorld();
@@ -480,7 +479,7 @@ export class DragGestureController {
     camera.position.x += right.x * sR;
     camera.position.z += right.z * sR;
     let newY = camera.position.y + sU;
-    // TASK-024 (2a / WE-6): descent clamp — pedestal-down can't sink
+    // Descent clamp — pedestal-down can't sink
     // through a solid surface. Clamp to collisionFloor + eye-margin at the
     // (post-truck) XZ column. y-write only; the truck-right component is
     // unaffected.
@@ -489,17 +488,17 @@ export class DragGestureController {
       camera.position.z
     );
     const minY = floor.y + EYE_MARGIN_METRES;
-    // TASK-024a (solid-geometry guard): a probe miss (source 'cache' = stale
+    // Solid-geometry guard: a probe miss (source 'cache' = stale
     // last-known ground, no real surface below) means "no floor below" —
     // outside a finite scene's bounds. No floor clamp, no grounding, so
-    // pedestal-down stays available to reach street level (spec D1).
+    // pedestal-down stays available to reach street level.
     const hasFloor = floor.source !== 'cache';
-    // TASK-024a (1.2.4 / 1.3.1 / 2.2): grounded / H edges for pedestal nav.
+    // Grounded / H edges for pedestal nav.
     // `clampedToFloor` is read BEFORE the assignment — a descent that would
     // have sunk below collisionFloor + eye is "a deliberate down-nav reaching
-    // the surface" (D1). `dY` (clamped) is the up/down signal; safe to read
+    // the surface". `dY` (clamped) is the up/down signal; safe to read
     // because the descent clamp is one-directional (only ever raises newY),
-    // so for an up-move dY == sU (MED-3).
+    // so for an up-move dY == sU.
     const clampedToFloor = hasFloor && newY < minY;
     if (clampedToFloor) newY = minY;
     const dY = newY - camera.position.y;
@@ -509,19 +508,19 @@ export class DragGestureController {
     this._ctx.center.y += dY;
     const EPS = 1e-3;
     if (clampedToFloor) {
-      // Pedestal-down reached the descent clamp → grounded (D1, 1.2.4).
+      // Pedestal-down reached the descent clamp → grounded.
       this._ctx.grounded.grounded = true;
     } else if (dY > EPS) {
-      // Pedestal-up leaves the surface → un-ground + capture H (D1, 1.3.1).
+      // Pedestal-up leaves the surface → un-ground + capture H.
       this._ctx.grounded.grounded = false;
       this._ctx.grounded.captureH();
     } else if (dY < -EPS && !this._ctx.grounded.grounded) {
       // Pedestal-down NOT reaching the clamp, while already flying, is
-      // deliberate vertical nav → lower H (D4, 2.2).
+      // deliberate vertical nav → lower H.
       this._ctx.grounded.captureH();
     }
     // Invalidate on ACTUAL movement only — a near-zero-delta drag (no truck, no
-    // clamped y-change) must NOT invalidate (WE-6) — but always dispatch.
+    // clamped y-change) must NOT invalidate — but always dispatch.
     // (no-hit / degenerate cases already early-returned above.)
     if (sR || dY) this._ctx.funnel.invalidateWheelMemory('pan');
     camera.updateMatrixWorld();
@@ -529,17 +528,15 @@ export class DragGestureController {
   }
 
   // Pick the rotation pivot from the live tilt and the cursor position,
-  // and latch it for the whole rotate sub-gesture. Two regimes split on
-  // T (D2):
-  //   Map (tilt > T):    orbit the world point under the cursor (D7
-  //                      fallback chain + D5/far-cap clamp). Show the
-  //                      ring on that point (D3).
+  // and latch it for the whole rotate sub-gesture. Two regimes split on T:
+  //   Map (tilt > T):    orbit the world point under the cursor (fallback
+  //                      chain + far-cap clamp). Show the ring on that point.
   //   Street (tilt ≤ T): rotate in place around the camera's own
-  //                      position. No ring (D6).
+  //                      position. No ring.
   // The regime and the ring are LATCHED here at sub-gesture start; the
   // letterbox is driven separately by LIVE tilt (`_maybeEmitLbModeChange`),
-  // so mid-drag the two can disagree by design (see plan §4b / worked
-  // examples 3 & 4). Do NOT wire the ring off live tilt.
+  // so mid-drag the two can disagree by design. Do NOT wire the ring off
+  // live tilt.
   _latchRotationCenter(camera, clientX, clientY) {
     // Street-level mode off: the Street rotate-in-place regime never
     // engages — rotation is always the Map orbit. At/above the horizon
@@ -549,8 +546,8 @@ export class DragGestureController {
     const isMap =
       !this._ctx.streetLevelEnabled || tiltDeg > this._ctx.tiltThreshold;
     // Stage 1 (street-level off): rotate about the SCREEN-CENTRE collision
-    // point, not the cursor. Cursor-anchored orbit is deferred to Stage 2
-    // (07-phased-rollout-plan.md). We still use the new collision raycast
+    // point, not the cursor. Cursor-anchored orbit is deferred to Stage 2.
+    // We still use the new collision raycast
     // (mesh → ground via `worldPointAt`) and still show the ring — it is
     // just fired through the screen centre instead of the pointer. With
     // street-level on, the cursor pivot (Stage 2) is used as before.
@@ -562,7 +559,7 @@ export class DragGestureController {
       pivotY = rect.top + rect.height / 2;
     }
     const center = isMap
-      ? this._mapModePivot(pivotX, pivotY) // bounds sphere + D-LT-3 fallback
+      ? this._mapModePivot(pivotX, pivotY) // bounds sphere + fallback
       : camera.position.clone(); // street: rotate-in-place
     this._ctx.latch.start({
       mode: 'rotate',
@@ -570,16 +567,16 @@ export class DragGestureController {
       regime: isMap ? 'map' : 'street'
     });
     if (isMap) {
-      this._indicator.show(center); // D3
+      this._indicator.show(center);
       // Set the ring's apparent size for the latched pivot *now*, on the
       // same frame as show(). `show()` only sets position + visibility;
       // without this, the first rendered frame (before the first
       // mousemove drives `_shiftRotate`→`update`) uses the previous
-      // gesture's scale, which flashes the ring at the wrong size
-      // (reports/010-testing.md — "circle briefly flashes up massive").
+      // gesture's scale, which flashes the ring at the wrong size ("circle
+      // briefly flashes up massive").
       this._indicator.update(camera);
     } else {
-      this._indicator.hide(); // D6
+      this._indicator.hide();
     }
   }
 
@@ -592,8 +589,8 @@ export class DragGestureController {
   //     `sc` itself (the ring sits there).
   // Both pivots are on the ground (y=0), so rotation visibly pivots a
   // ground feature. (Ideally the pivot's height would be true ground
-  // level rather than y=0 — that is TASK-018, gated on the AGL work in
-  // TASK-013/019, not yet landed.)
+  // level rather than y=0 — a future improvement gated on the AGL work,
+  // not yet landed.)
   //
   // NOTE: `_latchRotationCenter` passes the SCREEN-CENTRE coords here when
   // street-level mode is off (Stage 1 rotate-about-centre), so "the cursor"
@@ -601,7 +598,7 @@ export class DragGestureController {
   // anchored pivot only applies with street-level on (Stage 2).
   //
   // History: replaced (a) the MAX_ORBIT_RADIUS inward cap along the
-  // cursor ray, which drifted on tilt when zoomed out (#7); and (b) a
+  // cursor ray, which drifted on tilt when zoomed out; and (b) a
   // fixed-distance point straight ahead, which sat off the ground and
   // read as rotating about the cursor. The bounds centre is `sc`, not the
   // camera nadir/position. Orbiting a far pivot at a shallow
@@ -708,16 +705,16 @@ export class DragGestureController {
 
     const fwd = this._tmpV3c;
     camera.getWorldDirection(fwd); // unit, camera -Z in world space
-    // TASK-024 (2c/D8/C3): in the Map-orbit regime, pass the COLLISION
+    // In the Map-orbit regime, pass the COLLISION
     // floor under the latched pivot as a reversible floor bound.
     // `shiftRotateStep` caps the *input* down-tilt so the resulting
-    // `pos.y >= pivotFloor + EYE_MARGIN` (fixing C2's flat-plane y=0+0.5
+    // `pos.y >= pivotFloor + EYE_MARGIN` (fixing the old flat-plane y=0+0.5
     // guard), without accumulating over-drag — reversing the drag retraces
     // exactly. Street-mode rotate is rotate-in-place (no vertical motion),
     // so no floor bound there.
     let floorY = null;
     if (this._ctx.latch.get('regime') === 'map') {
-      // OOB-1 (extended to orbit): only apply the floor bound when the
+      // Only apply the floor bound when the
       // probe actually HIT real geometry. Outside the finite scene the
       // probe misses and returns a stale cached floor (`source==='cache'`)
       // — using it would over-restrict downward orbit tilt. A miss ⇒ no
@@ -725,7 +722,7 @@ export class DragGestureController {
       const pivotFloor = this._ctx.probe.collisionFloorAt(center.x, center.z);
       if (pivotFloor.source !== 'cache') floorY = pivotFloor.y;
     }
-    // TASK-023: camera's screen-right axis (local +X in world space). Used
+    // Camera's screen-right axis (local +X in world space). Used
     // by shiftRotateStep as the pitch axis only at exact nadir, where
     // `view × up` degenerates — lets tilt work out of top-down.
     const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(
@@ -743,18 +740,18 @@ export class DragGestureController {
     });
 
     camera.position.copy(pos);
-    // TASK-023: apply the step's rotation as an orientation delta instead
+    // Apply the step's rotation as an orientation delta instead
     // of re-deriving it via lookAt(lookTarget). lookAt rebuilds the basis
     // from camera.up = (0,1,0), which is singular at nadir (forward ∥ up)
     // → roll snaps to an arbitrary value (the ~90°/135° jump). premultiply
     // is continuous everywhere and preserves the inherited roll. R is the
     // same rotation shiftRotateStep applied to pos/lookTarget (for the
-    // floor-bounded clampedTilt — TASK-024 D8), so position and orientation
+    // floor-bounded clampedTilt), so position and orientation
     // stay locked. The map-regime floor guard is now the input-tilt bound
     // inside shiftRotateStep (the old applyGroundFloor y-shove was removed),
     // which keeps pos and R consistent — so premultiply is unconditional.
     camera.quaternion.premultiply(R);
-    camera.quaternion.normalize(); // guard against drift over a long drag (A1)
+    camera.quaternion.normalize(); // guard against drift over a long drag
     // `this._ctx.center` (EditorControls API field) reflects the orbit
     // anchor — distance-from-camera reference used by ActionBar / wheel
     // zoom. Use the latched rotation centre in the orbit case; for the
@@ -762,11 +759,11 @@ export class DragGestureController {
     // and the latched centre equals camera position anyway.
     this._ctx.center.copy(center);
     // Invalidate on ACTUAL rotation only — a zero-delta drag (dxPx==dyPx==0)
-    // reaches here with R≈identity and would otherwise invalidate (WE-6). Gate
+    // reaches here with R≈identity and would otherwise invalidate. Gate
     // on a non-zero applied pixel delta — but always dispatch.
     if (dxPx || dyPx) this._ctx.funnel.invalidateWheelMemory('rotate');
     camera.updateMatrixWorld();
-    // TASK-010 (D3): billboard the ring as the camera orbits. No-op when
+    // Billboard the ring as the camera orbits. No-op when
     // the ring is hidden (Street regime / not rotating).
     this._indicator.update(camera);
     this._ctx.funnel.dispatch();

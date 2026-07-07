@@ -29,11 +29,11 @@ export class DoubleClickNav {
     this._ctx = ctx;
   }
 
-  // TASK-012 Phase-4: double-click navigation. Wired from viewport.js
+  // Double-click navigation. Wired from viewport.js
   // (`nav-experimental:doubleclick` → here) when the experimental flag is on.
   // Classifies what is under the cursor, computes a predictable "good view"
   // desired pose (navMath, pure), resolves it onto a clear non-buried camera
-  // pose (never-raise + the shared TASK-024 clearance machinery), and eases
+  // pose (never-raise + the shared clearance machinery), and eases
   // the camera there. The endpoint is the ONLY thing validated — the tween is
   // a committed motion (it may descend through an intervening roof).
   navigateDoubleClick(_payload) {
@@ -41,7 +41,7 @@ export class DoubleClickNav {
     const camera = this._ctx.camera;
     if (!camera || camera.type !== 'PerspectiveCamera') return;
 
-    // (1) Single source of truth for "what's under the cursor" (M-4/H-B): the
+    // (1) Single source of truth for "what's under the cursor": the
     // raw A-Frame cursor intersection — NOT getIntersectedEl() (which remaps a
     // lane-child car up to the parent segment) and NOT cursorAnchor's own
     // differently-excluded raycast. The cursor raycasts continuously
@@ -111,8 +111,7 @@ export class DoubleClickNav {
     const position = desired.position;
     const lookTarget = desired.lookTarget;
 
-    // (5) Never-raise — DC6′, AGL-relative (spec delta
-    // TASK-012-phase4-navheight-delta, supersedes the absolute-Y DC6/H4): the
+    // (5) Never-raise, AGL-relative: the
     // camera may never sit higher above the LOCAL collision floor than it
     // currently does. Measure the current height above the floor beneath the
     // camera; the per-column cap is applied in the clearance step below. A void
@@ -131,8 +130,8 @@ export class DoubleClickNav {
         : Math.max(0, currentCamY - curFloor.y);
 
     // (6) Resolve onto a sensible pose against the live scene (probe from the
-    // CANDIDATE, not the live camera — H-1). A double-click ALWAYS moves; the
-    // AGL cap constrains WHERE it lands, never WHETHER (spec delta).
+    // CANDIDATE, not the live camera). A double-click ALWAYS moves; the
+    // AGL cap constrains WHERE it lands, never WHETHER.
     if (category === 'A') {
       // Lane landing: eye height above the clicked point, AGL-capped, not
       // buried. (A's clicked point guaranteed a hit; a 'cache' miss is
@@ -142,7 +141,7 @@ export class DoubleClickNav {
         refreshCache: false
       });
       if (floor.source !== 'cache') {
-        const cap = floor.y + currentAGL; // DC6′ AGL never-raise
+        const cap = floor.y + currentAGL; // AGL never-raise
         if (position.y > cap) position.y = cap; // clamp down — never raise above AGL
         if (position.y < floor.y) position.y = floor.y; // not buried
       }
@@ -156,10 +155,10 @@ export class DoubleClickNav {
 
     // (7) End orientation from the (possibly lowered/capped) position toward
     // the look target. No Phase-4 path approaches nadir, so a plain
-    // up=+Y lookAt is roll-safe (R2-5 guard, not a dependency).
+    // up=+Y lookAt is roll-safe.
     // Category B: re-apply the framing-pitch cap against the FINAL position
-    // (round-3 H1) — never-raise/standoff lowered the camera since the pure
-    // helper's first-pass cap, and WE-8 (street-level look-up at a tall tower)
+    // — never-raise/standoff lowered the camera since the pure
+    // helper's first-pass cap, and the street-level look-up at a tall tower
     // is exactly the case where the final height is well below the desired one.
     let finalLook = lookTarget;
     if (category === 'B') {
@@ -183,9 +182,9 @@ export class DoubleClickNav {
     // Teleport is the ONE motion that does NOT clear the zoom-undo memory per
     // tick (`perTick: 'dispatch'`) — it clears once in the settle. FOV tweens
     // from its current (in-flight on a re-click) value to the default so a
-    // telephoto arrival reframes smoothly (WE-11); DEFAULT_FOV_DEGREES literal
-    // (TASK-025 found a construction-time `camera.fov` capture unreliable on a
-    // re-attach mid-zoom, and 50 is the shared resting FOV across nav views).
+    // telephoto arrival reframes smoothly; the DEFAULT_FOV_DEGREES literal is
+    // used because a construction-time `camera.fov` capture proved unreliable
+    // on a re-attach mid-zoom, and 50 is the shared resting FOV across nav views.
     const startPos = camera.position.clone();
     const startQuat = camera.quaternion.clone();
     const fromFov = camera.fov;
@@ -209,11 +208,11 @@ export class DoubleClickNav {
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld();
       },
-      // Settle: clear zoom-undo (DC7), reseed legit-pose so recovery can't ease
-      // back to the pre-teleport pose (D4), re-eval letterbox from the landed
-      // tilt, derive grounded (teleport = a load/teleport edge, TASK-024a), and
+      // Settle: clear zoom-undo, reseed legit-pose so recovery can't ease
+      // back to the pre-teleport pose, re-eval letterbox from the landed
+      // tilt, derive grounded (teleport = a load/teleport edge), and
       // refresh the context-button snapshot so its icon reflects the landed
-      // pose immediately (TASK-025).
+      // pose immediately.
       settle: {
         grounded: 'derive',
         reseedLegit: true,
@@ -223,24 +222,23 @@ export class DoubleClickNav {
     });
   }
 
-  // TASK-012 (spec delta — AGL never-raise + always-move) + TASK-028 (spec
-  // delta — never bounded to the finite scene): resolve a B/C standoff onto a
+  // Resolve a B/C standoff onto a
   // sensible, non-buried camera point. Per candidate column:
   //   - Floor present below the candidate → clamp the height to
-  //     `floor + currentAGL` (DC6′ — never higher above the local floor than
+  //     `floor + currentAGL` (never higher above the local floor than
   //     the camera currently is) and keep it above the floor (not buried).
   //   - Void below the candidate (probe miss — beyond a bounded scene's edge)
   //     → no floor to measure against, so keep the desired framing height
-  //     unclamped. A double-click is NEVER bounded to the finite scene
-  //     (TASK-028): a camera hanging over the void at framing distance, looking
-  //     back at the edge item, is a valid pose — consistent with KD-02 (the
-  //     finite-scene-boundary concept was removed system-wide) and WASD/fly,
+  //     unclamped. A double-click is NEVER bounded to the finite scene:
+  //     a camera hanging over the void at framing distance, looking
+  //     back at the edge item, is a valid pose — the finite-scene-boundary
+  //     concept was removed system-wide, consistent with WASD/fly,
   //     which holds height over the void rather than snapping back inside.
   // The accept-gate (`_poseStillLegit`, skipping the floor-clearance half —
   // the AGL clamp + not-buried already own height) runs for BOTH floored and
   // void columns: the floor's only jobs are the AGL cap and not-buried, and a
   // void column triggers neither. Pull the standoff inward (toward the look
-  // target) ONLY when the candidate is inside SOLID (a building, WE-13) —
+  // target) ONLY when the candidate is inside SOLID (a building) —
   // never merely because there is no ground beneath it. ALWAYS returns a
   // THREE.Vector3 — never null: the double-click must always move (the cap
   // constrains *where*, not *whether*). If no clear standoff is found within
@@ -256,17 +254,17 @@ export class DoubleClickNav {
         fromY: cand.y,
         refreshCache: false
       });
-      // Floor present → DC6′ AGL never-raise + not-buried clamp. Void (probe
+      // Floor present → AGL never-raise + not-buried clamp. Void (probe
       // miss, beyond bounds) → leave the desired framing height untouched.
       if (floor.source !== 'cache') {
-        const cap = floor.y + currentAGL; // DC6′ AGL never-raise
+        const cap = floor.y + currentAGL; // AGL never-raise
         if (cand.y > cap) cand.y = cap; // clamp down — never raise above AGL
         if (cand.y < floor.y) cand.y = floor.y; // not buried (below the floor)
         if (!fallback) fallback = cand.clone(); // nominal framing distance
       }
       // Accept unless inside SOLID. Same gate for floored and void columns; a
       // void standoff (not inside the target box, no overhead solid) passes
-      // here and is taken at framing distance — never dragged inside (TASK-028).
+      // here and is taken at framing distance — never dragged inside.
       if (
         this._ctx.runner.poseStillLegit(
           { position: cand },
@@ -276,7 +274,7 @@ export class DoubleClickNav {
         return cand;
       }
       // Inside solid → pull the standoff inward (toward the look target) and
-      // re-test (WE-13).
+      // re-test.
       const next = pullBackTowardTarget(cand, lookTarget, step);
       cand.set(next.x, next.y, next.z);
       pulled += step;

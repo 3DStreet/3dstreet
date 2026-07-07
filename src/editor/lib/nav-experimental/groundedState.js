@@ -1,7 +1,7 @@
 import { groundedAtLoad } from './navMath.js';
 import { EYE_MARGIN_METRES } from './constants.js';
 
-// Grounded-vs-flying state for the experimental nav controls (SPEC D1/D4).
+// Grounded-vs-flying state for the experimental nav controls.
 // Shared: the wheel drain, WASD flight, the LB pedestal move, and the preset
 // transitions all read AND write it, so it lives in one object rather than
 // private to any single gesture.

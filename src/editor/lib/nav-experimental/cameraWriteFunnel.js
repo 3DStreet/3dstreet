@@ -1,4 +1,4 @@
-// The camera-write funnel (M1). Every camera-moving path ends the same way: it
+// The camera-write funnel. Every camera-moving path ends the same way: it
 // dispatches the `change` event, and — if the move was NOT the wheel's own — it
 // invalidates the wheel's transient zoom-undo memory (a non-wheel move must not
 // be reversible by a later swoop-out). Concentrating that postlude here replaces
@@ -19,7 +19,7 @@ export class CameraWriteFunnel {
 
   // Invalidate the wheel's zoom-undo memory for a non-wheel camera move. A
   // 'wheel' source is a no-op — the wheel preserves its own memory across its
-  // own moves. Callers that clear only on actual movement (the WE-6 jitter
+  // own moves. Callers that clear only on actual movement (the jitter
   // guard) call this under their own `if (moved)` and dispatch unconditionally.
   invalidateWheelMemory(source) {
     if (source !== 'wheel') this._clearWheelMemory();

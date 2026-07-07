@@ -96,7 +96,7 @@ export class CompassController {
     const camera = this._ctx.camera;
     if (!camera || camera.type !== 'PerspectiveCamera') return;
 
-    // TASK-011: when an EXTERNAL plan view (key-4 / menu) pre-empts a live
+    // When an EXTERNAL plan view (key-4 / menu) pre-empts a live
     // compass tween, drop the compass queue so it can't resurrect. The
     // derived `_compassAnimating` already goes false when this method's
     // `_tick.animate()` cancels the compass tween below; this just clears
@@ -166,7 +166,7 @@ export class CompassController {
     // Recenter "this._ctx.center" to be on the ground beneath the end pose.
     this._ctx.center.set(endPos.x, 0, endPos.z);
 
-    // TASK-012 (H-4): a recovery/teleport tween may own the camera (e.g. Plan
+    // A recovery/teleport tween may own the camera (e.g. Plan
     // View pre-empting a gesture-end recovery). Cancel it and clear its flags
     // first so `_tick.animate` below doesn't drop the prior tween's onDone and
     // strand `_recoveryActive`/`_teleportActive` true.
@@ -184,7 +184,7 @@ export class CompassController {
         camera.position.lerpVectors(startPos, endPos, eased);
         camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
         camera.updateMatrixWorld();
-        // TASK-022: Plan View moves the camera by a non-wheel mechanism →
+        // Plan View moves the camera by a non-wheel mechanism →
         // clear the zoom-undo memory. In onTick (idempotent) so it's gone the
         // instant the tween starts moving — a tween pre-empted at frame 0
         // never ticks, correctly leaving the memory intact.
@@ -195,20 +195,20 @@ export class CompassController {
         camera.position.copy(endPos);
         camera.quaternion.copy(endQuat);
         camera.updateMatrixWorld();
-        this._ctx.funnel.invalidateWheelMemory('compass'); // TASK-022 (idempotent; closes the onTick window)
+        this._ctx.funnel.invalidateWheelMemory('compass'); // (idempotent; closes the onTick window)
         this._planViewActive = false;
         this._planViewHandle = null;
-        // TASK-024 (D4): reseed the legit-pose snapshot from the committed
+        // Reseed the legit-pose snapshot from the committed
         // plan-view pose so recovery can never ease back to a pre-teleport
         // pose.
         this._ctx.sensor.reseedLegitPose();
         this._ctx.emitModeChange(null);
-        // Plan View ends at near-90° tilt — guaranteed truck-mode. Per
-        // A6, refresh the indicator on tween end so users who never
+        // Plan View ends at near-90° tilt — guaranteed truck-mode. Refresh
+        // the indicator on tween end so users who never
         // touch Shift+LB see the correct toolbar state.
         this._ctx.drag.maybeEmitLbModeChange();
         this._ctx.funnel.dispatch();
-        // TASK-011: when this plan view was the compass's stage 1, null the
+        // When this plan view was the compass's stage 1, null the
         // compass handle and drain any queued action — placed LAST, after
         // the end pose is committed above, so the re-dispatched action sees
         // the settled pose.
@@ -229,7 +229,7 @@ export class CompassController {
   }
 
   // Body click — pose dispatcher. Top-down test FIRST, then north test,
-  // then strict no-op (resolved decision #1). Decided from the LIVE camera
+  // then strict no-op. Decided from the LIVE camera
   // pose at click time, so it stays correct if the user moved between
   // clicks.
   handleCompassBodyClick() {
@@ -258,7 +258,7 @@ export class CompassController {
   }
 
   // Rotation arrow — relative ±90° heading turn. sign=+1 (right) = view 90°
-  // CW; sign=-1 (left) = 90° CCW (spec examples 7-8).
+  // CW; sign=-1 (left) = 90° CCW.
   handleCompassRotate(sign) {
     if (this._ctx.disabledByOrtho) return;
     const camera = this._ctx.camera;
@@ -276,7 +276,7 @@ export class CompassController {
     // spin in place (null pivot). Top-down is just the steep end of Map:
     // the screen-centre point sits ~directly below, so the orbit degrades
     // to a spin in place on its own — no dedicated top-down case needed.
-    // (TASK-026: this replaces a call to a never-implemented
+    // (This replaces a call to a never-implemented
     // _screenCenterHit() that threw on every non-top-down click.)
     // Street-level mode off: always the Map turn (orbit the screen-centre
     // ground point). At/above the horizon that point is null and the code
@@ -343,7 +343,7 @@ export class CompassController {
   // Returns the TickAnimator handle (caller stores as _compassHandle).
   _animateYawAboutPivot({ deltaYaw = null, endQuat = null, pivot = null }) {
     const camera = this._ctx.camera;
-    // TASK-012 (H-4): a compass action can pre-empt a recovery/teleport tween
+    // A compass action can pre-empt a recovery/teleport tween
     // (those are not in `_compassAnimating`). Cancel + clear flags first so
     // `_tick.animate` doesn't strand `_recoveryActive`/`_teleportActive`.
     this._ctx.runner.cancel();
@@ -376,7 +376,7 @@ export class CompassController {
         );
       }
       camera.updateMatrixWorld();
-      // TASK-022: compass rotate / align / body-click top-down all route here
+      // Compass rotate / align / body-click top-down all route here
       // — a non-wheel camera move. Clear the zoom-undo memory.
       this._ctx.funnel.invalidateWheelMemory('compass');
       this._ctx.funnel.dispatch();
@@ -406,7 +406,7 @@ export class CompassController {
           );
         }
         camera.updateMatrixWorld();
-        // TASK-022: clear the instant the tween starts moving (idempotent).
+        // Clear the instant the tween starts moving (idempotent).
         this._ctx.funnel.invalidateWheelMemory('compass');
         this._ctx.funnel.dispatch();
       },
