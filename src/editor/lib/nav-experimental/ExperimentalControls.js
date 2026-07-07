@@ -329,34 +329,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // tuning component (wasdEnabled → setWasdEnabled).
     this._wasdEnabled = isWasdNav();
 
-    this._delta = new THREE.Vector3();
-    this._normalMatrix = new THREE.Matrix3();
-    this._changeEvent = { type: 'change' };
-
-    // Scratch.
-    this._tmpV3a = new THREE.Vector3();
-    this._tmpV3b = new THREE.Vector3();
-    this._tmpV3c = new THREE.Vector3();
-    // TASK-022: dedicated scratch for the roll-safe re-tilt. `_tmpV3d` holds
-    // the TRUE (un-flattened) camera forward through the rotation build, and
-    // `_tmpQuat` is the minimal-arc rotation applied via premultiply.
-    this._tmpV3d = new THREE.Vector3();
-    this._tmpQuat = new THREE.Quaternion();
-    // TASK-027 Part B: scratch for the cursor-lock re-aim. `_tmpV3f` holds the
-    // camera→P direction; `_tmpQuatB/C` build the minimal-arc rotation and its
-    // slerp-from-identity; `_reaimRaycaster` is a dedicated raycaster so the
-    // re-aim's baseline-orientation probe never disturbs the CursorAnchor's.
-    // (The target point P is held in the `_phase3Reaim` session, not scratch.)
-    this._tmpV3f = new THREE.Vector3();
-    this._tmpQuatB = new THREE.Quaternion();
-    this._tmpQuatC = new THREE.Quaternion();
-    this._reaimRaycaster = new THREE.Raycaster();
-    this._groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    this._anchorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    this._tmpRay = new THREE.Ray();
-    this._raycaster = new THREE.Raycaster();
-    this._tmpNDC = new THREE.Vector2();
-
     // ActionBar zoom-in/out hold-down intervals.
     this._zoomInInterval = null;
     this._zoomOutInterval = null;
@@ -694,9 +666,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       const callback = () => {
         this._drag.maybeEmitLbModeChange();
         // TASK-022: focus-to-object moves the camera via the A-Frame
-        // focus-animation component — a non-wheel move. Clear on its change
-        // hook (fires each frame of the transition; idempotent).
-        this._wheel.clearZoomUndo();
+        // focus-animation component — a non-wheel move. Invalidate the
+        // zoom-undo memory on its change hook (fires each frame of the
+        // transition; idempotent).
+        this._funnel.invalidateWheelMemory('focus');
         // TASK-024 (D4): reseed the legit-pose snapshot once the focus
         // (double-click teleport) animation has settled, so recovery can't
         // ease back to the pre-teleport pose. The component sets
@@ -704,7 +677,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         if (this._focusAnimation && !this._focusAnimation.transitioning) {
           this._sensor.reseedLegitPose();
         }
-        this.dispatchEvent(this._changeEvent);
+        this._funnel.dispatch();
       };
       this._focusAnimation.setCamera(this._camera, callback);
     } else {

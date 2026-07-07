@@ -177,8 +177,17 @@ export class CommittedMotionRunner {
     const funnel = this._ctx.funnel;
     // Anti-stranding: route every start through cancel first.
     this.cancel();
-    if (ownership === 'teleport') this._teleportActive = true;
-    else this._recoveryActive = true;
+    // Explicit two-value ownership: 'teleport' or 'recovery'. Reject anything
+    // else rather than silently defaulting a typo'd knob into the recovery gate.
+    if (ownership === 'teleport') {
+      this._teleportActive = true;
+    } else if (ownership === 'recovery') {
+      this._recoveryActive = true;
+    } else {
+      throw new Error(
+        `CommittedMotionRunner.run: ownership must be 'teleport' or 'recovery', got ${ownership}`
+      );
+    }
     return this._ctx.tick.animate({
       durationMs,
       onTick: (eased) => {
