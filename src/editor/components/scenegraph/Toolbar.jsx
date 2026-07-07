@@ -237,9 +237,14 @@ function Toolbar() {
       </div>
 
       {/* Shuttle controls, centered like the editor's PrimaryToolbar.
-          Only the scene's owner gets them, and only when the scene has
-          something playable — visitors and static scenes see none. */}
-      {isAuthor && hasPlayable && (
+          Shown to anyone viewing a scene with something playable — owner
+          or visitor — because playing mutates nothing persistent (the
+          design doc: "Playing requires no permission"). This also matches
+          the `P` shortcut, which already gates on hasPlayable() alone.
+          Drive still requires an explicit action, so a visitor is never
+          dropped into a vehicle they didn't ask for. Static scenes
+          (hasPlayable === false) show nothing. */}
+      {hasPlayable && (
         <div id="viewer-shuttle" className={`clickable ${styles.shuttleDock}`}>
           <div className={primaryStyles.wrapper}>
             {isPlaying ? (
