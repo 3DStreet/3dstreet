@@ -21,7 +21,10 @@ function getSceneUuidFromURLHash() {
 }
 
 function getCurrentSceneId() {
-  let currentSceneId = AFRAME.scenes[0].getAttribute('metadata').sceneId;
+  // AFRAME.scenes[0] can be undefined when this runs before the scene attaches
+  // or after it's torn down (e.g. the beforeunload handler on fast nav-away).
+  const scene = AFRAME.scenes[0];
+  let currentSceneId = scene?.getAttribute('metadata')?.sceneId;
   // console.log('currentSceneId from scene metadata', currentSceneId);
   const urlSceneId = getSceneUuidFromURLHash();
   // console.log('urlSceneId', urlSceneId);
@@ -37,8 +40,9 @@ function getCurrentSceneId() {
 STREET.utils.getCurrentSceneId = getCurrentSceneId;
 
 function getAuthorId() {
-  const authorId = AFRAME.scenes[0].getAttribute('metadata').authorId;
-  return authorId;
+  // Same guard as getCurrentSceneId: AFRAME.scenes[0] can be undefined during
+  // teardown/before attach, and this runs right after it in the beforeunload handler.
+  return AFRAME.scenes[0]?.getAttribute('metadata')?.authorId;
 }
 STREET.utils.getAuthorId = getAuthorId;
 
