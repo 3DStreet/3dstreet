@@ -1,18 +1,29 @@
-import {
-  faEye,
-  faEyeSlash,
-  faPlay,
-  faExpand
-} from '@fortawesome/free-solid-svg-icons';
+import { faPlay, faExpand } from '@fortawesome/free-solid-svg-icons';
 import { FormattedMessage, useIntl } from 'react-intl';
+import { Tooltip } from 'radix-ui';
 import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
 import { useHasPlayable } from '@/editor/hooks';
 import { Button } from '../Button';
 import { AwesomeIcon } from '../AwesomeIcon';
-import { CameraSparkleIcon } from '@shared/icons';
+import { CameraSparkleIcon, PanelsIcon } from '@shared/icons';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import styles from './PrimaryToolbar.module.scss';
+
+// Immediate (no-delay) tooltip matching the dark style used across the
+// editor (RightPanel, Save, etc.). Replaces the browser's slow native
+// `title` so hovering a toolbar button explains it instantly.
+const ToolTip = ({ content, children }) => (
+  <Tooltip.Root delayDuration={0}>
+    <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
+    <Tooltip.Portal>
+      <Tooltip.Content side="bottom" sideOffset={5} className={styles.tooltip}>
+        {content}
+        <Tooltip.Arrow className={styles.tooltipArrow} />
+      </Tooltip.Content>
+    </Tooltip.Portal>
+  </Tooltip.Root>
+);
 
 export const PrimaryToolbar = () => {
   const intl = useIntl();
@@ -43,69 +54,85 @@ export const PrimaryToolbar = () => {
     useStore.getState().setModal('screenshot');
   };
 
+  const panelsTooltip = panelsVisible
+    ? intl.formatMessage({
+        id: 'primaryToolbar.hidePanels',
+        defaultMessage: 'Hide panels'
+      })
+    : intl.formatMessage({
+        id: 'primaryToolbar.showPanels',
+        defaultMessage: 'Show panels'
+      });
+
+  const playTooltip = hasPlayable
+    ? intl.formatMessage({
+        id: 'primaryToolbar.playTitle',
+        defaultMessage: 'Enter View mode and run the simulation'
+      })
+    : intl.formatMessage({
+        id: 'primaryToolbar.playStaticTitle',
+        defaultMessage:
+          'Enter View mode — explore the scene like your audience (WASD to move, click-drag to look). Read-only; Edit to return.'
+      });
+
   return (
     <div className={styles.wrapper}>
-      <Button
-        variant="toolbtn"
-        onClick={togglePanelsVisible}
-        title={intl.formatMessage({
-          id: 'primaryToolbar.togglePanels',
-          defaultMessage: 'Toggle panels visibility (`)'
-        })}
-        leadingIcon={
-          <AwesomeIcon icon={panelsVisible ? faEyeSlash : faEye} size={16} />
-        }
-      >
-        {panelsVisible
-          ? intl.formatMessage({
-              id: 'primaryToolbar.hidePanels',
-              defaultMessage: 'Hide panels'
-            })
-          : intl.formatMessage({
-              id: 'primaryToolbar.showPanels',
-              defaultMessage: 'Show panels'
-            })}
-      </Button>
-      <div className={styles.divider} />
-      <Button
-        variant="toolbtn"
-        onClick={handlePlay}
-        leadingIcon={
-          <AwesomeIcon icon={hasPlayable ? faPlay : faExpand} size={16} />
-        }
-        title={
-          hasPlayable
-            ? intl.formatMessage({
-                id: 'primaryToolbar.playTitle',
-                defaultMessage: 'Enter view mode and start the simulation'
-              })
-            : intl.formatMessage({
-                id: 'primaryToolbar.playStaticTitle',
-                defaultMessage: 'View the scene without editor panels'
-              })
-        }
-      >
-        {hasPlayable ? (
-          <FormattedMessage id="primaryToolbar.play" defaultMessage="Start" />
-        ) : (
-          <FormattedMessage id="primaryToolbar.view" defaultMessage="View" />
-        )}
-      </Button>
-      <div className={styles.divider} />
-      <Button
-        variant="toolbtn"
-        onClick={handleSnapshot}
-        leadingIcon={<CameraSparkleIcon />}
-        title={intl.formatMessage({
-          id: 'primaryToolbar.snapshotTitle',
-          defaultMessage: 'Capture screenshot and generate rendered images'
-        })}
-      >
-        <FormattedMessage
-          id="primaryToolbar.snapshot"
-          defaultMessage="Snapshot"
-        />
-      </Button>
+      <Tooltip.Provider>
+        <ToolTip
+          content={
+            <>
+              {panelsTooltip} <span className={styles.tooltipKbd}>`</span>
+            </>
+          }
+        >
+          <Button
+            variant="toolbtn"
+            onClick={togglePanelsVisible}
+            aria-label={panelsTooltip}
+            leadingIcon={<PanelsIcon filled={panelsVisible} size={16} />}
+          />
+        </ToolTip>
+        <div className={styles.divider} />
+        <ToolTip content={playTooltip}>
+          <Button
+            variant="toolbtn"
+            onClick={handlePlay}
+            leadingIcon={
+              <AwesomeIcon icon={hasPlayable ? faPlay : faExpand} size={16} />
+            }
+          >
+            {hasPlayable ? (
+              <FormattedMessage
+                id="primaryToolbar.play"
+                defaultMessage="Start"
+              />
+            ) : (
+              <FormattedMessage
+                id="primaryToolbar.view"
+                defaultMessage="View"
+              />
+            )}
+          </Button>
+        </ToolTip>
+        <div className={styles.divider} />
+        <ToolTip
+          content={intl.formatMessage({
+            id: 'primaryToolbar.snapshotTitle',
+            defaultMessage: 'Capture screenshot and generate rendered images'
+          })}
+        >
+          <Button
+            variant="toolbtn"
+            onClick={handleSnapshot}
+            leadingIcon={<CameraSparkleIcon />}
+          >
+            <FormattedMessage
+              id="primaryToolbar.snapshot"
+              defaultMessage="Snapshot"
+            />
+          </Button>
+        </ToolTip>
+      </Tooltip.Provider>
     </div>
   );
 };

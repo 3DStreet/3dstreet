@@ -311,6 +311,9 @@
   "appMenu.view.showGrid": {
     "defaultMessage": "Show Grid"
   },
+  "appMenu.view.showPanels": {
+    "defaultMessage": "Show Panels"
+  },
   "appMenu.view.snapshotRender": {
     "defaultMessage": "Snapshot & Render..."
   },
@@ -1485,10 +1488,10 @@
     "defaultMessage": "Start"
   },
   "primaryToolbar.playStaticTitle": {
-    "defaultMessage": "View the scene without editor panels"
+    "defaultMessage": "Enter View mode — explore the scene like your audience (WASD to move, click-drag to look). Read-only; Edit to return."
   },
   "primaryToolbar.playTitle": {
-    "defaultMessage": "Enter view mode and start the simulation"
+    "defaultMessage": "Enter View mode and run the simulation"
   },
   "primaryToolbar.showPanels": {
     "defaultMessage": "Show panels"
@@ -1498,9 +1501,6 @@
   },
   "primaryToolbar.snapshotTitle": {
     "defaultMessage": "Capture screenshot and generate rendered images"
-  },
-  "primaryToolbar.togglePanels": {
-    "defaultMessage": "Toggle panels visibility (`)"
   },
   "primaryToolbar.view": {
     "defaultMessage": "View"
