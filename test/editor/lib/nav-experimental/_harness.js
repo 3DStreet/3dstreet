@@ -28,9 +28,8 @@ export function installThree() {
 // file's beforeAll for belt-and-braces.
 installThree();
 
-const _sutPromise = import(
-  '../../../../src/editor/lib/nav-experimental/ExperimentalControls.js'
-);
+const _sutPromise =
+  import('../../../../src/editor/lib/nav-experimental/ExperimentalControls.js');
 
 export async function loadControls() {
   installThree();
@@ -245,7 +244,10 @@ export function makeControls({
 
 // Wheel: accumulate only (motion applies on the next drain/tick). dy<0 = zoom
 // in (swoop down), dy>0 = zoom out.
-export function wheel(controls, { dy, clientX = 640, clientY = 360, ctrl = false } = {}) {
+export function wheel(
+  controls,
+  { dy, clientX = 640, clientY = 360, ctrl = false } = {}
+) {
   controls._onWheel({
     deltaY: dy,
     deltaMode: 0,
@@ -311,7 +313,10 @@ export function tickAll(controls, dt = 16, n = 1) {
 }
 
 // Real-DOM dispatch variants (wiring smoke set only).
-export function dispatchWheel(controls, { dy, clientX = 640, clientY = 360, ctrl = false } = {}) {
+export function dispatchWheel(
+  controls,
+  { dy, clientX = 640, clientY = 360, ctrl = false } = {}
+) {
   const evt = new WheelEvent('wheel', {
     deltaY: dy,
     deltaMode: 0,
@@ -324,14 +329,26 @@ export function dispatchWheel(controls, { dy, clientX = 640, clientY = 360, ctrl
   controls._domElement.dispatchEvent(evt);
 }
 
-export function dispatchMouseDown(controls, { clientX, clientY, button = 0, shiftKey = false } = {}) {
+export function dispatchMouseDown(
+  controls,
+  { clientX, clientY, button = 0, shiftKey = false } = {}
+) {
   controls._domElement.dispatchEvent(
-    new MouseEvent('mousedown', { clientX, clientY, button, shiftKey, bubbles: true, cancelable: true })
+    new MouseEvent('mousedown', {
+      clientX,
+      clientY,
+      button,
+      shiftKey,
+      bubbles: true,
+      cancelable: true
+    })
   );
 }
 
 export function dispatchWindowMouseMove({ clientX, clientY }) {
-  window.dispatchEvent(new MouseEvent('mousemove', { clientX, clientY, bubbles: true }));
+  window.dispatchEvent(
+    new MouseEvent('mousemove', { clientX, clientY, bubbles: true })
+  );
 }
 
 export function dispatchWindowMouseUp() {
@@ -339,7 +356,15 @@ export function dispatchWindowMouseUp() {
 }
 
 export function dispatchKey(type, code, { shiftKey = false } = {}) {
-  window.dispatchEvent(new KeyboardEvent(type, { code, key: code, shiftKey, bubbles: true, cancelable: true }));
+  window.dispatchEvent(
+    new KeyboardEvent(type, {
+      code,
+      key: code,
+      shiftKey,
+      bubbles: true,
+      cancelable: true
+    })
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -447,17 +472,22 @@ export function withInvariantDisabled(controls, which, fn) {
   const saved = {};
   try {
     if (which === 'clearZoomUndo') {
-      saved.fn = controls._clearZoomUndo;
-      controls._clearZoomUndo = () => {};
+      // Strategy B (TASK-036 step 6): the zoom-undo reset moved to the
+      // wheel-swoop engine — patch it there. Every clear path (funnel callback,
+      // WASD, preset tweens, compass) reaches this same method.
+      saved.fn = controls._wheel.clearZoomUndo;
+      controls._wheel.clearZoomUndo = () => {};
     } else if (which === 'grounded') {
       // Force grounded re-derivation to a no-op: _deriveGroundedFromPose
       // normally re-reads grounded from the settled pose; disable it so the
       // stale grounded flag persists across the settle.
-      saved.fn = controls._deriveGroundedFromPose;
-      controls._deriveGroundedFromPose = () => {};
+      saved.fn = controls._groundedState.deriveFromPose;
+      controls._groundedState.deriveFromPose = () => {};
     } else if (which === 'rotationEndForWasd') {
-      saved.fn = controls._endRotationGestureForWasd;
-      controls._endRotationGestureForWasd = () => {};
+      // Strategy B (TASK-036 step 7): the WASD-yield rotation-end moved to the
+      // drag controller.
+      saved.fn = controls._drag.endRotationForWasd;
+      controls._drag.endRotationForWasd = () => {};
     } else if (which === 'idleGateStale') {
       // Model "the situation sensor goes stale DURING motion": let the first
       // evaluation run (establishing the baseline) then skip every subsequent
@@ -476,10 +506,15 @@ export function withInvariantDisabled(controls, which, fn) {
     }
     return fn();
   } finally {
-    if (which === 'clearZoomUndo') controls._clearZoomUndo = saved.fn;
-    else if (which === 'grounded') controls._deriveGroundedFromPose = saved.fn;
-    else if (which === 'rotationEndForWasd') controls._endRotationGestureForWasd = saved.fn;
-    else if (which === 'idleGateStale') controls._updateLegitSnapshotAndCue = saved.fn;
+    if (which === 'clearZoomUndo') {
+      controls._wheel.clearZoomUndo = saved.fn;
+    } else if (which === 'grounded') {
+      controls._groundedState.deriveFromPose = saved.fn;
+    } else if (which === 'rotationEndForWasd') {
+      controls._drag.endRotationForWasd = saved.fn;
+    } else if (which === 'idleGateStale') {
+      controls._updateLegitSnapshotAndCue = saved.fn;
+    }
   }
 }
 
@@ -491,9 +526,16 @@ export function withInvariantDisabled(controls, which, fn) {
 // (refreshCache:false) so an observation never mutates `_lastGroundY` and
 // perturbs a subsequent probe-miss fallback.
 export function floorBelow(controls, camera) {
-  return controls._collisionFloorAt(camera.position.x, camera.position.z, {
-    refreshCache: false
-  });
+  // Collision probing lives in the CollisionProbe module (controls._probe).
+  // This drive/observation layer is the single place the moved private surface
+  // is re-pointed; the assertion files never name it.
+  return controls._probe.collisionFloorAt(
+    camera.position.x,
+    camera.position.z,
+    {
+      refreshCache: false
+    }
+  );
 }
 
 // AGL = camera.y − collision floor y directly below.
@@ -503,7 +545,12 @@ export function aglBelow(controls, camera) {
 
 // Drive wheel-IN (swoop descent) one frame at a time until AGL ≤ targetAgl or
 // maxTicks is reached. Returns the number of ticks driven.
-export function driveSwoopIn(controls, camera, targetAgl, { maxTicks = 400, clientX = 640, clientY = 360 } = {}) {
+export function driveSwoopIn(
+  controls,
+  camera,
+  targetAgl,
+  { maxTicks = 400, clientX = 640, clientY = 360 } = {}
+) {
   let i = 0;
   for (; i < maxTicks; i++) {
     if (aglBelow(controls, camera) <= targetAgl) break;
@@ -514,7 +561,11 @@ export function driveSwoopIn(controls, camera, targetAgl, { maxTicks = 400, clie
 }
 
 // Drive wheel-OUT (ascent) for n frames.
-export function driveSwoopOut(controls, n = 80, { clientX = 640, clientY = 360 } = {}) {
+export function driveSwoopOut(
+  controls,
+  n = 80,
+  { clientX = 640, clientY = 360 } = {}
+) {
   for (let i = 0; i < n; i++) {
     wheel(controls, { dy: +100, clientX, clientY });
     tickInput(controls, 16);

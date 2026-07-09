@@ -1,5 +1,11 @@
 // Single source-of-truth knobs for the experimental nav-controls system.
 // See claude/specs/001-phase-1-plan.md.
+//
+// This module MUST stay THREE-free at module scope: it is imported by the pure
+// navMath layer, whose unit tests run without a THREE global. A top-level
+// `new THREE.Vector3(...)` here throws `ReferenceError: THREE is not defined` at
+// import in those tests. Keep any THREE-typed shared constant (e.g. a frozen
+// direction vector) as a per-module const in the THREE-using modules instead.
 
 // Tilt clamps (degrees from horizontal). Positive = looking down,
 // negative = looking up. Phase 2 lowered MIN to -89 so the user can pitch
