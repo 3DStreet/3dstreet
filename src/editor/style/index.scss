@@ -360,6 +360,22 @@ body.aframe-inspector-opened {
     }
   }
 
+  /* Full-width stacked actions (Reload / Download JSON / Convert to Shapes).
+     The base Button is width: fit-content, so without this they shrink to
+     their label and stack raggedly. */
+  .sidebar-buttons-stack {
+    display: flex;
+    flex-direction: column;
+    row-gap: 8px;
+    margin-top: 12px;
+
+    button {
+      width: 100%;
+      font-size: 0.85rem !important;
+      padding: 9px 12px !important;
+    }
+  }
+
   input,
   textarea,
   select {

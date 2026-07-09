@@ -173,29 +173,31 @@ const ManagedStreetSidebar = ({ entity }) => {
                   isSingle={false}
                   entity={entity}
                 />
-                {sourceLabel && (
-                  <Button variant="toolbtn" onClick={reloadFromSource}>
-                    {intl.formatMessage(
-                      {
-                        id: 'managedStreetSidebar.reloadFromSource',
-                        defaultMessage: 'Reload from {source}'
-                      },
-                      { source: sourceLabel }
-                    )}
+                <div className="sidebar-buttons-stack">
+                  {sourceLabel && (
+                    <Button variant="toolbtn" onClick={reloadFromSource}>
+                      {intl.formatMessage(
+                        {
+                          id: 'managedStreetSidebar.reloadFromSource',
+                          defaultMessage: 'Reload from {source}'
+                        },
+                        { source: sourceLabel }
+                      )}
+                    </Button>
+                  )}
+                  <Button variant="toolbtn" onClick={downloadStreetJSON}>
+                    {intl.formatMessage({
+                      id: 'managedStreetSidebar.downloadJSON',
+                      defaultMessage: 'Download Street JSON'
+                    })}
                   </Button>
-                )}
-                <Button variant="toolbtn" onClick={downloadStreetJSON}>
-                  {intl.formatMessage({
-                    id: 'managedStreetSidebar.downloadJSON',
-                    defaultMessage: 'Download Street JSON'
-                  })}
-                </Button>
-                <Button variant="toolbtn" onClick={convertToShapes}>
-                  {intl.formatMessage({
-                    id: 'managedStreetSidebar.convertToShapes',
-                    defaultMessage: 'Convert to Shapes'
-                  })}
-                </Button>
+                  <Button variant="toolbtn" onClick={convertToShapes}>
+                    {intl.formatMessage({
+                      id: 'managedStreetSidebar.convertToShapes',
+                      defaultMessage: 'Convert to Shapes'
+                    })}
+                  </Button>
+                </div>
               </>
             )}
         </div>
