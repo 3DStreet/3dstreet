@@ -385,12 +385,14 @@ const generateFalMesh = functions
       // refunds exactly once.
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
       let remainingTokens = 0;
+      let tokensBefore = 0;
       await db.runTransaction(async (transaction) => {
         const tokenDoc = await transaction.get(tokenProfileRef);
         if (!tokenDoc.exists) {
           throw new functions.https.HttpsError('not-found', 'Token profile not found');
         }
         const currentTokens = tokenDoc.data().genToken || 0;
+        tokensBefore = currentTokens;
         if (currentTokens < tokenCost) {
           throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
         }
@@ -401,6 +403,21 @@ const generateFalMesh = functions
         });
         transaction.update(jobRef, { tokenCharged: true });
       });
+
+      // Fire-and-forget: audit the deduction, same ledger entry the image/
+      // video/splat submits write, so tokenLog accounts for mesh charges too.
+      db.collection('tokenLog')
+        .add({
+          userId,
+          type: 'deduction',
+          tokensBefore,
+          tokensAfter: remainingTokens,
+          tokenCost,
+          source: 'mesh-generation',
+          relatedModel: modelConfig.attribution?.modelName || modelConfig.name,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        })
+        .catch((err) => console.error('Failed to write tokenLog:', err));
 
       // Submit to fal's queue. imageField/params come from the model config
       // because the two endpoints differ (input_image_url vs image_url).
