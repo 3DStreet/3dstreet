@@ -313,15 +313,33 @@ function ExportModal() {
 
   const renderPreview = () => {
     if (formatKey === 'glb') {
+      // Rendered in both the ready state (footer strip under the iframe) and
+      // the empty state — with auto-preview on, the iframe appears
+      // immediately, so the footer is the only place left to turn it off.
+      const autoPreviewCheckbox = (
+        <Checkbox
+          id="export-auto-glb-preview"
+          isChecked={autoGlbPreview}
+          onChange={setAutoGlbPreviewPersisted}
+          label={intl.formatMessage({
+            id: 'exportModal.autoPreviewLabel',
+            defaultMessage: 'Automatically generate 3D preview'
+          })}
+        />
+      );
+
       if (glbPreviewCurrent.status === 'ready') {
         return (
-          <iframe
-            className={styles.previewIframe}
-            title="GLB preview"
-            src={`/model-viewer.html?src=${encodeURIComponent(
-              glbPreviewCurrent.url
-            )}`}
-          />
+          <div className={styles.glbPreviewWrapper}>
+            <iframe
+              className={styles.previewIframe}
+              title="GLB preview"
+              src={`/model-viewer.html?src=${encodeURIComponent(
+                glbPreviewCurrent.url
+              )}`}
+            />
+            <div className={styles.previewFooter}>{autoPreviewCheckbox}</div>
+          </div>
         );
       }
       return (
@@ -357,17 +375,7 @@ function ExportModal() {
               </p>
             </>
           )}
-          <div className={styles.autoPreviewOption}>
-            <Checkbox
-              id="export-auto-glb-preview"
-              isChecked={autoGlbPreview}
-              onChange={setAutoGlbPreviewPersisted}
-              label={intl.formatMessage({
-                id: 'exportModal.autoPreviewLabel',
-                defaultMessage: 'Automatically generate 3D preview'
-              })}
-            />
-          </div>
+          <div className={styles.autoPreviewOption}>{autoPreviewCheckbox}</div>
         </div>
       );
     }
