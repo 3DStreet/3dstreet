@@ -92,39 +92,6 @@ AFRAME.registerComponent('street-generated-clones', {
     this.clearEntities();
   },
 
-  detach: function () {
-    const commands = [];
-    commands.push([
-      'componentremove',
-      { entity: this.el, component: this.attrName }
-    ]);
-    let entityObjToPushAtTheEnd = null; // so that the entity is selected after executing the multi command
-    this.createdEntities.forEach((entity) => {
-      const position = entity.getAttribute('position');
-      const rotation = entity.getAttribute('rotation');
-      const entityObj = {
-        parentEl: this.el,
-        mixin: entity.getAttribute('mixin'),
-        'data-layer-name': entity
-          .getAttribute('data-layer-name')
-          .replace('Cloned Model', 'Detached Model'),
-        components: {
-          position: { x: position.x, y: position.y, z: position.z },
-          rotation: { x: rotation.x, y: rotation.y, z: rotation.z }
-        }
-      };
-      if (AFRAME.INSPECTOR?.selectedEntity === entity) {
-        entityObjToPushAtTheEnd = entityObj;
-      } else {
-        commands.push(['entitycreate', entityObj]);
-      }
-    });
-    if (entityObjToPushAtTheEnd !== null) {
-      commands.push(['entitycreate', entityObjToPushAtTheEnd]);
-    }
-    AFRAME.INSPECTOR.execute('multi', commands);
-  },
-
   update: function (oldData) {
     const segment = this.el.components['street-segment']?.data;
     if (!segment?.length || !segment?.width) {

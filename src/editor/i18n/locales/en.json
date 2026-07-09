@@ -893,6 +893,9 @@
   "common.widthLabel": {
     "defaultMessage": "Width:"
   },
+  "confirmModal.confirm": {
+    "defaultMessage": "Confirm"
+  },
   "deploymentBanner.dismiss": {
     "defaultMessage": "Dismiss notice"
   },
@@ -1300,6 +1303,15 @@
   },
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
+  },
+  "managedStreetSidebar.convertToShapes": {
+    "defaultMessage": "Convert to Shapes"
+  },
+  "managedStreetSidebar.convertToShapesConfirm": {
+    "defaultMessage": "This turns the street into plain 3D shapes you can move, duplicate, and delete individually. After you save and reload this scene you cannot undo this action. Tip: duplicate the street first if you want to keep a copy of this managed street."
+  },
+  "managedStreetSidebar.convertToShapesTitle": {
+    "defaultMessage": "Convert Street to Shapes?"
   },
   "managedStreetSidebar.downloadJSON": {
     "defaultMessage": "Download Street JSON"
@@ -1762,9 +1774,6 @@
   },
   "sidebar.autocreatedEntity": {
     "defaultMessage": "Autocreated Entity"
-  },
-  "sidebar.detach": {
-    "defaultMessage": "Detach"
   },
   "sidebar.editCloneSettings": {
     "defaultMessage": "Edit Clone Settings"

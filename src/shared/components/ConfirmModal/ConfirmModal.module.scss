@@ -1,0 +1,80 @@
+// ConfirmModal.module.scss — shared themed confirm dialog
+
+$purple: #8b5cf6;
+$purple-hover: #7c3aed;
+$red: #f2164b;
+$red-hover: #c00f3a;
+
+.confirmModal {
+  max-width: 480px;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 8px 0 4px;
+}
+
+.graphic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.message {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #b6b6b6;
+  white-space: pre-line;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+%button-base {
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cancelButton {
+  @extend %button-base;
+  background: transparent;
+  color: #ccc;
+  border: 1px solid #3a3a3a;
+
+  &:hover {
+    background: #2a2a2a;
+    color: #fff;
+  }
+}
+
+.confirmButton {
+  @extend %button-base;
+  background: $purple;
+  color: #fff;
+  border: none;
+
+  &:hover {
+    background: $purple-hover;
+  }
+}
+
+.destructiveButton {
+  @extend %button-base;
+  background: $red;
+  color: #fff;
+  border: none;
+
+  &:hover {
+    background: $red-hover;
+  }
+}
