@@ -85,6 +85,32 @@ describe('letterbox — funnel-driven resolution (TASK-037 Q4)', () => {
     modes.stop();
   });
 
+  it('a compass plan-view (non-runner tween) resolves the letterbox at settle', () => {
+    // A plan-view is a NON-runner programmatic tween (exact-T per frame, no
+    // hysteresis). From a street-level pose (< T = pan-pedestal) it tilts to
+    // top-down 90° (> T = pan-truck). Before TASK-037 the compass onDone had an
+    // explicit hand-call; now its terminal funnel.dispatch() resolves the
+    // letterbox exact-T, so the removed hand-call loses no coverage and the
+    // indicator is correct at settle without further interaction.
+    const scene = H.representativeScene();
+    const cam = H.makePerspectiveCam({
+      pos: [80, 13.5, 80],
+      lookAt: [70, 13, 70]
+    });
+    const c = H.makeControls({ camera: cam, scene, streetLevel: true });
+    expect(H.tilt(cam)).toBeLessThan(25); // Street at start
+    expect(c.getCurrentLbMode()).toBe('pan-pedestal');
+
+    const modes = H.onEvent(c, 'nav-experimental:modechange');
+    c.handlePlanViewRequest();
+    for (let i = 0; i < 120; i++) H.tickAll(c, 16); // run to settle
+    expect(H.tilt(cam)).toBeCloseTo(90, 0); // top-down after plan-view
+
+    expect(c.getCurrentLbMode()).toBe('pan-truck');
+    expect(lbSeq(modes)).toContain('pan-truck');
+    modes.stop();
+  });
+
   it('street-level OFF keeps the sub-mode pinned to pan-screen (Stage-1 short-circuit)', () => {
     // With street-level disabled the comparator short-circuits: every write
     // resolves to pan-screen regardless of tilt — no Map/Street split.
