@@ -31,6 +31,18 @@ import {
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
 
+// Hot-path scratch. `_WORLD_UP` is a frozen read-only constant (a cross-product
+// operand / rotation axis — never mutated, never returned). The mutable
+// scratch vectors are each used by exactly ONE non-re-entrant function and are
+// pure-local temps (scalar-consumed or copied out before the call returns), so
+// no cross-function or cross-call aliasing is possible. Escaping/retained
+// returns are NOT pooled — they take an optional caller-owned `target` instead.
+const _WORLD_UP = Object.freeze(new THREE.Vector3(0, 1, 0));
+const _tiltFwd = new THREE.Vector3(); // cameraTiltDegrees only
+const _lfaFwd = new THREE.Vector3(); // levelForwardAnchor only
+const _srsView = new THREE.Vector3(); // shiftRotateStep only
+const _srsRight = new THREE.Vector3(); // shiftRotateStep only
+
 // Camera tilt in degrees below horizontal. 0° = horizontal, +90° =
 // straight down, -90° = straight up. Caller passes in the camera so the
 // helper stays pure.
@@ -38,7 +50,7 @@ export function cameraTiltDegrees(camera) {
   // camera.getWorldDirection returns the camera's -Z direction (its
   // "look" vector). Tilt-down is `-y`-component, so:
   //   sin(tilt) = -fwd.y
-  const fwd = new THREE.Vector3();
+  const fwd = _tiltFwd;
   camera.getWorldDirection(fwd);
   const sin = THREE.MathUtils.clamp(-fwd.y, -1, 1);
   return Math.asin(sin) * RAD2DEG;
@@ -397,14 +409,10 @@ export function elevationState(prev, agl, entryM, exitM) {
 // FIXED hit, so each elementary step is position-invertible about hit; an
 // in/out pair on the same side of the cap threshold composes to identity.
 // Pure.
-export function cappedDollyStep({
-  camPos,
-  hit,
-  sign,
-  alpha,
-  factor,
-  lateralCapMetres
-}) {
+export function cappedDollyStep(
+  { camPos, hit, sign, alpha, factor, lateralCapMetres },
+  target
+) {
   // TASK-014a (#6 Option B merge): accept a precomputed CONTINUOUS `factor`
   // (from dollyFactorForTicks) for the fractional single-drain path; fall back
   // to the per-whole-tick factor from sign+alpha for the swoop hand-off
@@ -437,11 +445,11 @@ export function cappedDollyStep({
     stepZ *= k;
   }
 
-  return new THREE.Vector3(
-    camPos.x + stepX,
-    camPos.y + stepY,
-    camPos.z + stepZ
-  );
+  // Escaping return (applied to camera.position). Fill the caller's `target`
+  // when supplied — the hot wheel path passes an engine-owned scratch it copies
+  // out of immediately — otherwise a fresh Vector3 keeps pure callers unchanged.
+  const out = target || new THREE.Vector3();
+  return out.set(camPos.x + stepX, camPos.y + stepY, camPos.z + stepZ);
 }
 
 // TASK-014d (D-P5): level-forward synthetic anchor for the no-real-hit
@@ -457,15 +465,19 @@ export function cappedDollyStep({
 // horizontal heading is genuinely undefined (|forward.xz| < 1e-6 — true
 // vertical), which the ±89° tilt clamp prevents in live use; the caller
 // no-ops that tick. Pure.
-export function levelForwardAnchor(camera, dist) {
-  const fwd = new THREE.Vector3();
+export function levelForwardAnchor(camera, dist, target) {
+  const fwd = _lfaFwd;
   camera.getWorldDirection(fwd);
   const h = Math.hypot(fwd.x, fwd.z);
   if (h < 1e-6) return null; // near-straight-up/down: yaw undefined
   const dirX = fwd.x / h;
   const dirZ = fwd.z / h;
   const camPos = camera.position;
-  return new THREE.Vector3(
+  // Escaping return (feeds the wheel dolly). Fill the caller's `target` when
+  // supplied, else a fresh Vector3 for pure callers. `null` early-outs above
+  // stay null regardless of `target`.
+  const out = target || new THREE.Vector3();
+  return out.set(
     camPos.x + dirX * dist,
     camPos.y, // level: hold the camera's own height
     camPos.z + dirZ * dist
@@ -855,8 +867,12 @@ export function shiftRotateStep({
   floorY,
   camRight
 }) {
-  const WORLD_UP = new THREE.Vector3(0, 1, 0);
-  const view = new THREE.Vector3(viewDir.x, viewDir.y, viewDir.z).normalize();
+  // Per-call pure-local scratch (module _srsView/_srsRight): read throughout
+  // this call — including inside the re-entrant evalAtTilt bisection — but never
+  // overwritten mid-call, and never escaping. The escaping pos/lookTarget/R and
+  // evalAtTilt's interior temps stay freshly allocated (pointer-cadence; pooling
+  // a re-entrant bisection's temps carries aliasing risk for near-zero saving).
+  const view = _srsView.set(viewDir.x, viewDir.y, viewDir.z).normalize();
 
   // (1) Yaw about world up.
   const dTheta = -dxPx * speed;
@@ -871,7 +887,7 @@ export function shiftRotateStep({
   //     (TASK-023) — without it the pitch term is skipped and tilt is dead
   //     at top-down. Off-nadir, `view × up` is well-defined and used as
   //     before (no behaviour change).
-  const right = new THREE.Vector3().crossVectors(view, WORLD_UP);
+  const right = _srsRight.crossVectors(view, _WORLD_UP);
   let rightLen = right.length();
   if (rightLen <= 1e-6 && camRight) {
     right.set(camRight.x, camRight.y, camRight.z);
@@ -889,7 +905,7 @@ export function shiftRotateStep({
   // and the view dir.
   const evalAtTilt = (tiltValue) => {
     const dTilt = tiltValue - curTilt;
-    const R = new THREE.Quaternion().setFromAxisAngle(WORLD_UP, dTheta);
+    const R = new THREE.Quaternion().setFromAxisAngle(_WORLD_UP, dTheta);
     if (rightLen > 1e-6 && dTilt !== 0) {
       const r = right.clone().multiplyScalar(1 / rightLen);
       const qPitch = new THREE.Quaternion().setFromAxisAngle(r, -dTilt);
