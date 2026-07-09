@@ -27,6 +27,47 @@ import AIModelSelector from '@shared/components/AIModelSelector';
 // Available AI models (use shared constants)
 const AI_MODELS = REPLICATE_MODELS;
 
+// AI renders are async generation jobs since #1835: the submit callable
+// returns a jobId immediately and the server saves the finished image to the
+// gallery (so closing this modal or the tab mid-render no longer loses it).
+// This poll only drives the live modal UI.
+const AI_RENDER_POLL_INTERVAL_MS = 3000;
+const AI_RENDER_POLL_MAX_MS = 10 * 60 * 1000;
+
+// Poll getGenerationJobStatus until the job is terminal. Resolves with the
+// terminal payload ({ image_url, assetId, … }) on success; throws on
+// failure/timeout. Transient poll errors just retry — the job is unaffected
+// server-side.
+const pollGenerationJob = async (jobId) => {
+  const getGenerationJobStatus = httpsCallable(
+    functions,
+    'getGenerationJobStatus'
+  );
+  const deadline = Date.now() + AI_RENDER_POLL_MAX_MS;
+  for (;;) {
+    let data = null;
+    try {
+      ({ data } = await getGenerationJobStatus({ jobId }));
+    } catch (pollError) {
+      console.warn('AI render status poll failed (will retry):', pollError);
+    }
+    if (data?.status === 'succeeded' && data.image_url) {
+      return data;
+    }
+    if (data?.status === 'failed' || data?.status === 'canceled') {
+      throw new Error(data.error || 'AI render failed.');
+    }
+    if (Date.now() > deadline) {
+      throw new Error(
+        'AI render is taking longer than expected. Check your gallery shortly — it will appear there when finished.'
+      );
+    }
+    await new Promise((resolve) =>
+      setTimeout(resolve, AI_RENDER_POLL_INTERVAL_MS)
+    );
+  }
+};
+
 function ScreenshotModal() {
   const intl = useIntl();
   const setModal = useStore((state) => state.setModal);
@@ -392,24 +433,46 @@ function ScreenshotModal() {
         setRenderStartTime(startTime);
       }
 
-      // Route to the correct cloud function based on model type
+      // Metadata for the saved gallery asset. The gallery save happens
+      // SERVER-SIDE now (#1835) in the job's terminal processor, so anything
+      // only this client knows — the scene link fields and the camera pose
+      // that powers the focus button (#1605) — rides the job doc from submit.
+      const galleryMetadata = {
+        sceneId: sceneId || null,
+        sceneTitle: useStore.getState().sceneTitle || 'Untitled',
+        source: 'ai-render',
+        model: selectedModelConfig.name,
+        modelKey: baseModelKey,
+        prompt: aiPrompt,
+        renderMode: renderMode,
+        // The camera hasn't moved since the base capture, so this is the
+        // render's vantage.
+        cameraState: getCurrentCameraState(),
+        isPro: currentUser?.isPro || false
+      };
+
+      // Route to the correct cloud function based on model type. Both are
+      // submit-and-return: they charge tokens, create the provider job, and
+      // hand back a jobId; the render is finished (and saved to the gallery)
+      // server-side even if this modal or tab closes mid-render.
       let result;
       if (selectedModelConfig.type === 'fal') {
         const generateFalImage = httpsCallable(functions, 'generateFalImage', {
-          timeout: 300000
+          timeout: 120000
         });
         result = await generateFalImage({
           prompt: aiPrompt,
           input_image: inputImageSrc,
           model_id: baseModelKey,
           scene_id: sceneId || null,
-          source: 'editor'
+          source: 'editor',
+          gallery_metadata: galleryMetadata
         });
       } else {
         const generateReplicateImage = httpsCallable(
           functions,
           'generateReplicateImage',
-          { timeout: 300000 }
+          { timeout: 120000 }
         );
         result = await generateReplicateImage({
           prompt: aiPrompt,
@@ -418,53 +481,31 @@ function ScreenshotModal() {
           num_inference_steps: 30,
           model_version: selectedModelConfig.version,
           model_id: baseModelKey,
-          scene_id: sceneId || null
+          scene_id: sceneId || null,
+          gallery_metadata: galleryMetadata
         });
       }
 
-      if (result.data.success) {
+      if (result.data.success && result.data.jobId) {
+        // Poll until the job is terminal; the server has already saved the
+        // image to the gallery by the time this resolves.
+        const jobData = await pollGenerationJob(result.data.jobId);
+        const renderedImageUrl = jobData.image_url;
+
         // Store image in the appropriate place based on render mode
         if (renderMode === '1x') {
-          setAiImageUrl(result.data.image_url);
+          setAiImageUrl(renderedImageUrl);
           setShowOriginal(false);
         } else {
           setAiImages((prev) => ({
             ...prev,
-            [targetModel]: result.data.image_url
+            [targetModel]: renderedImageUrl
           }));
         }
 
-        // Save AI render to gallery
-        if (currentUser?.uid) {
-          try {
-            // Initialize gallery service V2 if needed
-            await assetsService.init();
-
-            await assetsService.addAsset(
-              result.data.image_url,
-              {
-                timestamp: new Date().toISOString(),
-                sceneId: sceneId || STREET.utils.getCurrentSceneId(),
-                sceneTitle: useStore.getState().sceneTitle || 'Untitled',
-                source: 'ai-render',
-                model: selectedModelConfig.name,
-                modelKey: baseModelKey,
-                prompt: aiPrompt,
-                renderMode: renderMode,
-                // The camera hasn't moved since the base capture, so this is
-                // the render's vantage — persist it for the focus button (#1605).
-                cameraState: getCurrentCameraState(),
-                isPro: currentUser?.isPro || false
-              },
-              'image', // type
-              'ai-render', // category
-              currentUser.uid // userId
-            );
-            console.log('AI render saved to gallery');
-          } catch (error) {
-            console.error('Failed to save AI render to gallery:', error);
-          }
-        }
+        // Nudge the Assets panel — the server-side save doesn't fire the
+        // client-side assetAdded events the old in-browser save did.
+        window.dispatchEvent(new Event('assets:refresh'));
 
         // Show appropriate success message based on user type
         if (currentUser?.isProTeam) {

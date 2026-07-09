@@ -1,81 +1,33 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const crypto = require('crypto');
 const { checkAndRefillImageTokensInternal } = require('./token-management.js');
-const { REPLICATE_MODELS, AI_MODEL_NAMES } = require('./replicate-models.js');
+const { REPLICATE_MODELS } = require('./replicate-models.js');
 const { assertAppCheck } = require('./app-check.js');
+// Shared fal plumbing: webhook-attached queue submit URL, submit-failure
+// refund, and gallery-metadata sanitizer. One-directional require (fal-3d.js
+// requires nothing from this module), so there's no cycle.
+const {
+  falQueueSubmitUrl,
+  refundFalJobInline,
+  sanitizeGalleryMetadata
+} = require('./fal-3d.js');
 
-// Helper function to post AI-generated images to Discord
-async function postAIImageToDiscord(userId, imageUrl, prompt, modelId, sceneId, source = 'generator') {
-  // Only proceed if Discord webhook is configured
-  if (!process.env.DISCORD_WEBHOOK_URL) {
-    console.log('Discord webhook not configured, skipping Discord post');
-    return;
-  }
-
-  try {
-    // Get username from social profile
-    const db = admin.firestore();
-    const socialProfileRef = db.collection('socialProfile').doc(userId);
-    const socialProfileDoc = await socialProfileRef.get();
-
-    let username = 'anonymous';
-    if (socialProfileDoc.exists) {
-      username = socialProfileDoc.data().username || 'anonymous';
-    }
-
-    // Get model name from model ID
-    const modelName = AI_MODEL_NAMES[modelId] || 'fal.ai Model';
-
-    // Truncate prompt if it's too long for Discord
-    const truncatedPrompt = prompt.length > 200 ? prompt.substring(0, 200) + '...' : prompt;
-
-    // Construct scene URL if sceneId is provided
-    const sceneUrl = sceneId ? `https://3dstreet.app/#scenes/${sceneId}` : null;
-
-    // Determine footer text based on source parameter
-    const footerText = source === 'generator' ? '3DStreet AI Generator' : '3DStreet Editor Snapshot AI Render';
-
-    // Create Discord message with embed
-    const message = {
-      content: `🎨 **${username}** generated a new AI image!`,
-      embeds: [{
-        title: `${modelName} Render`,
-        description: `**Prompt:** ${truncatedPrompt}`,
-        url: sceneUrl,
-        color: 0x9333EA, // Purple color for AI generations
-        image: {
-          url: imageUrl
-        },
-        footer: {
-          text: footerText,
-          icon_url: 'https://3dstreet.app/favicon-32x32.png'
-        },
-        timestamp: new Date().toISOString()
-      }]
-    };
-
-    const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(message)
-    });
-
-    if (!response.ok) {
-      console.error(`Discord API error: ${response.status}`);
-    } else {
-      console.log(`AI image successfully posted to Discord for user ${userId}`);
-    }
-  } catch (error) {
-    // Don't throw error - we don't want Discord posting to fail the image generation
-    console.error('Error posting AI image to Discord:', error);
-  }
-}
-
-// fal.ai API function for image generation
+// fal.ai image generation (flux-2 edit family). Asynchronous since #1835:
+// stage the input, write a pending `kind: 'image'` / `provider: 'fal'` job to
+// the async queue, charge tokens at submit (refunded once on failure), submit
+// to fal's queue (with a completion webhook, #1832), and return the jobId
+// immediately. The old synchronous form polled fal inline for up to ~4 min
+// while the client saved the result to the gallery itself — a closed
+// tab/modal lost the image. Completion (gallery save + Discord post) now
+// happens server-side in the shared terminal processor
+// (replicate.js:processTerminalPrediction, kind 'image'), reached by the fal
+// webhook, the client poll, and the reconciler via fetchFalPrediction.
 const generateFalImage = functions
   .runWith({
-    secrets: ['FAL_KEY', 'DISCORD_WEBHOOK_URL'],
-    timeoutSeconds: 300 // 5 minutes - image generation can take several minutes
+    secrets: ['FAL_KEY'],
+    // Submit-and-return: only stages the image + submits, so no long poll.
+    timeoutSeconds: 120
   })
   .https
   .onCall(async (data, context) => {
@@ -102,8 +54,14 @@ const generateFalImage = functions
       source = 'generator',
       guidance_scale = 2.5,
       num_inference_steps = 28,
-      image_size = { width: 1600, height: 900 } // 16:9 widescreen default
+      image_size = { width: 1600, height: 900 }, // 16:9 widescreen default
+      notify,
+      gallery_metadata
     } = data;
+
+    // Opt-in completion email — default OFF for images (they usually render
+    // in seconds; see generateReplicateImage).
+    const wantsEmail = notify?.email === true;
 
     // Get the model configuration
     const modelConfig = REPLICATE_MODELS[model_id];
@@ -145,15 +103,31 @@ const generateFalImage = functions
       throw new functions.https.HttpsError('invalid-argument', 'This model requires a source image. Please upload a reference image.');
     }
 
-    // Outside the try so the catch can log them (block-scoped declarations
-    // inside the try aren't visible there).
-    const generationStartTime = Date.now();
-    let falRequestId = null;
+    const db = admin.firestore();
+    // jobId (a uuid) is the Firestore doc id; the fal request_id is stored as
+    // providerJobId. Frozen at submit so the webhook/poll/reconciler converge.
+    const jobId = crypto.randomUUID();
+    const webhookSecret = crypto.randomUUID();
+    const jobRef = db
+      .collection('users')
+      .doc(userId)
+      .collection('generationJobs')
+      .doc(jobId);
+
+    // Stable names for the saved gallery asset, fixed at submit so every
+    // finalize path produces identical metadata.
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const originalFilename = `ai-image-${stamp}.jpg`;
+    const assetName = `AI Image ${stamp}`;
+
+    let tempImagePath = null;
 
     try {
       let imageUrl = null;
 
-      // If input_image is a base64 data URL, upload it to Firebase Storage first
+      // If input_image is a base64 data URL, upload it to Firebase Storage
+      // first. The staged path is recorded on the job doc (tempFilePath) and
+      // deleted by the terminal processor when the job finishes.
       if (input_image.startsWith('data:image/')) {
         // Extract the base64 data and mime type
         const matches = input_image.match(/^data:([^;]+);base64,(.+)$/);
@@ -168,10 +142,11 @@ const generateFalImage = functions
         // Generate a unique filename
         const timestamp = Date.now();
         const filename = `temp-fal-input-${context.auth.uid}-${timestamp}.jpg`;
+        tempImagePath = `temp/${filename}`;
 
         // Upload to Firebase Storage
         const bucket = admin.storage().bucket();
-        const file = bucket.file(`temp/${filename}`);
+        const file = bucket.file(tempImagePath);
 
         await file.save(imageBuffer, {
           metadata: {
@@ -185,12 +160,87 @@ const generateFalImage = functions
         await file.makePublic();
 
         // Get the public URL
-        imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
-        console.log(`Uploaded input image to: ${imageUrl}`);
+        imageUrl = `https://storage.googleapis.com/${bucket.name}/${tempImagePath}`;
       } else {
         // input_image is already a URL
         imageUrl = input_image;
       }
+
+      // Write the pending job BEFORE charging/submitting, mirroring the other
+      // submit paths — a crash mid-submit becomes a visible, reconcilable row.
+      await jobRef.set({
+        status: 'queued',
+        providerStatus: null,
+        kind: 'image',
+        provider: 'fal',
+        providerJobId: null,
+        statusUrl: null,
+        responseUrl: null,
+        model: modelConfig.name,
+        modelId: model_id,
+        endpoint: modelConfig.endpoint,
+        source,
+        tokenCost,
+        tokenCharged: false,
+        refunded: false,
+        tempFilePath: tempImagePath || null,
+        webhookSecret,
+        originalFilename,
+        assetName,
+        // Everything the terminal processor needs to finish the job without a
+        // browser: gallery generationMetadata + the Discord post inputs.
+        generationParams: {
+          model_id,
+          model_name: modelConfig.name,
+          prompt,
+          guidance: guidance_scale,
+          num_inference_steps,
+          scene_id: scene_id || null
+        },
+        // Client extras merged into the saved asset's generationMetadata (the
+        // editor's sceneTitle/cameraState/renderMode — see saveImageToGallery).
+        galleryMetadata: sanitizeGalleryMetadata(gallery_metadata),
+        notify: { email: wantsEmail, pending: wantsEmail },
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Charge at submit and set `tokenCharged` in the same transaction, so
+      // every later refund path (poll, webhook, reconciler) observes
+      // tokenCharged:true and refunds exactly once.
+      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+      let remainingTokens = 0;
+      let tokensBefore = 0;
+      await db.runTransaction(async (transaction) => {
+        const tokenDoc = await transaction.get(tokenProfileRef);
+        if (!tokenDoc.exists) {
+          throw new functions.https.HttpsError('not-found', 'Token profile not found');
+        }
+        const currentTokens = tokenDoc.data().genToken || 0;
+        tokensBefore = currentTokens;
+        if (currentTokens < tokenCost) {
+          throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
+        }
+        remainingTokens = Math.max(0, currentTokens - tokenCost);
+        transaction.update(tokenProfileRef, {
+          genToken: remainingTokens,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        transaction.update(jobRef, { tokenCharged: true });
+      });
+
+      // Fire-and-forget: write token deduction audit log
+      db.collection('tokenLog')
+        .add({
+          userId,
+          type: 'deduction',
+          tokensBefore,
+          tokensAfter: remainingTokens,
+          tokenCost,
+          source: 'image-generation',
+          relatedModel: modelConfig.name,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        })
+        .catch((err) => console.error('Failed to write tokenLog:', err));
 
       // Build the fal.ai request payload
       const falPayload = {
@@ -208,19 +258,26 @@ const generateFalImage = functions
         falPayload.loras = modelConfig.loras;
       }
 
-      console.log(`Generating fal.ai image for user ${userId} with model ${model_id} (cost: ${tokenCost} tokens)`);
-      console.log('fal.ai payload:', JSON.stringify(falPayload, null, 2));
+      console.log(`Submitting fal.ai image job for user ${userId} with model ${model_id} (cost: ${tokenCost} tokens)`);
 
-      // Submit the request to fal.ai queue
-      const endpoint = modelConfig.endpoint;
-      const submitResponse = await fetch(`https://queue.fal.run/${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Key ${process.env.FAL_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(falPayload)
-      });
+      // Submit the request to fal.ai queue. fal_webhook makes fal call
+      // falJobWebhook on completion for real-time finalize + email; the client
+      // poll and the reconciler remain as backstops.
+      const submitResponse = await fetch(
+        falQueueSubmitUrl(modelConfig.endpoint, {
+          jobId,
+          userId,
+          webhookSecret
+        }),
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Key ${process.env.FAL_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(falPayload)
+        }
+      );
 
       if (!submitResponse.ok) {
         const errorText = await submitResponse.text();
@@ -229,10 +286,7 @@ const generateFalImage = functions
       }
 
       const submitResult = await submitResponse.json();
-      console.log('fal.ai submit response:', JSON.stringify(submitResult, null, 2));
-
       const requestId = submitResult.request_id;
-      falRequestId = requestId || null;
       const statusUrl = submitResult.status_url;
       const responseUrl = submitResult.response_url;
 
@@ -241,153 +295,46 @@ const generateFalImage = functions
         throw new Error('Invalid response from fal.ai - missing request_id, status_url, or response_url');
       }
 
-      console.log(`fal.ai request submitted: ${requestId}`);
-      console.log(`Using status_url from response: ${statusUrl}`);
-      console.log(`Using response_url from response: ${responseUrl}`);
-
-      // Poll for result using URLs from fal.ai response
-      let attempts = 0;
-      const maxAttempts = 120; // 2 minutes with 2 second intervals
-      let result = null;
-
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-
-        const statusResponse = await fetch(statusUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Key ${process.env.FAL_KEY}`
-          }
-        });
-
-        if (!statusResponse.ok) {
-          const errorBody = await statusResponse.text();
-          console.error(`fal.ai status check error: ${statusResponse.status} - ${errorBody}`);
-          attempts++;
-          continue;
-        }
-
-        const statusResult = await statusResponse.json();
-        console.log(`fal.ai status (attempt ${attempts + 1}): ${statusResult.status}`);
-
-        if (statusResult.status === 'COMPLETED') {
-          // Per fal.ai docs, the response is embedded in the status response when COMPLETED
-          if (statusResult.response) {
-            result = statusResult.response;
-            console.log('fal.ai result received successfully from status response');
-            break;
-          } else {
-            // Fallback: try fetching from response_url if not embedded
-            console.log('Response not embedded in status, trying response_url...');
-            const resultResponse = await fetch(responseUrl, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Key ${process.env.FAL_KEY}`
-              }
-            });
-
-            if (resultResponse.ok) {
-              result = await resultResponse.json();
-              console.log('fal.ai result received from response_url');
-              break;
-            } else {
-              const resultError = await resultResponse.text();
-              console.error(`fal.ai result fetch error: ${resultResponse.status} - ${resultError}`);
-            }
-          }
-        } else if (statusResult.status === 'FAILED') {
-          const errorMessage = statusResult.error || 'fal.ai generation failed';
-          console.error(`fal.ai generation failed: ${errorMessage}`);
-          throw new Error(errorMessage);
-        }
-
-        attempts++;
-      }
-
-      if (!result) {
-        throw new Error('fal.ai generation timed out');
-      }
-
-      // Clean up temp file if we created one
-      if (input_image.startsWith('data:image/') && imageUrl !== input_image) {
-        try {
-          const bucket = admin.storage().bucket();
-          const filename = imageUrl.split('/').pop();
-          await bucket.file(`temp/${filename}`).delete();
-        } catch (cleanupError) {
-          console.warn('Failed to cleanup temp file:', cleanupError);
-        }
-      }
-
-      // Extract image URL from result
-      let finalImageUrl;
-      if (result.images && result.images.length > 0) {
-        finalImageUrl = result.images[0].url;
-      } else {
-        console.error('Unexpected output format from fal.ai:', JSON.stringify(result, null, 2));
-        throw new Error('No image URL returned from fal.ai');
-      }
-
-      // Decrement token for ALL users (only after successful image generation)
-      const db = admin.firestore();
-      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
-
-      let remainingTokens = 0;
-      await db.runTransaction(async (transaction) => {
-        const tokenDoc = await transaction.get(tokenProfileRef);
-
-        if (!tokenDoc.exists) {
-          throw new functions.https.HttpsError('not-found', 'Token profile not found');
-        }
-
-        const currentTokens = tokenDoc.data().genToken || 0;
-
-        if (currentTokens < tokenCost) {
-          throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
-        }
-
-        const newTokenCount = Math.max(0, currentTokens - tokenCost);
-        remainingTokens = newTokenCount;
-
-        transaction.update(tokenProfileRef, {
-          genToken: newTokenCount,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+      // Record the provider identity so the webhook/poll/reconciler can
+      // finalize it.
+      await jobRef.update({
+        providerJobId: requestId,
+        statusUrl,
+        responseUrl,
+        providerStatus: 'IN_QUEUE'
       });
-
-      console.log(`fal.ai generation successful for user ${userId}: ${finalImageUrl}`);
-
-      // Fire-and-forget: write generation audit log (same collection/shape as
-      // the Replicate image path — fal traffic was missing from generationLog).
-      db.collection('generationLog').add({
-        userId,
-        provider: 'fal',
-        model: modelConfig.endpoint,
-        modelId: model_id,
-        generationType: 'image',
-        tokenCost,
-        processingTimeMs: Date.now() - generationStartTime,
-        providerPredictionId: falRequestId,
-        status: 'succeeded',
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      }).catch(err => console.error('Failed to write generationLog:', err));
-
-      // Post AI-generated image to Discord (non-blocking)
-      postAIImageToDiscord(userId, finalImageUrl, prompt, model_id, scene_id, source)
-        .catch(err => console.error('Discord posting failed:', err));
 
       return {
         success: true,
-        image_url: finalImageUrl,
-        message: 'Image generated successfully!',
-        remainingTokens: remainingTokens
+        jobId,
+        status: 'queued',
+        remainingTokens
       };
     } catch (error) {
-      console.error('Error generating image with fal.ai:', error);
-      console.error('Error details:', error.message);
+      console.error('Error submitting image to fal.ai:', error.message);
 
-      // Fire-and-forget: write failed generation audit log. No token was
-      // charged (deduction only happens after success above).
+      // Refund if we already charged, and finalize the job as failed so it
+      // doesn't sit non-terminal until the reconciler's give-up window.
+      await refundFalJobInline(db, userId, jobRef, tokenCost);
+      await jobRef
+        .update({
+          status: 'failed',
+          error: error.message,
+          completedAt: admin.firestore.FieldValue.serverTimestamp()
+        })
+        .catch(() => {});
+
+      // Best-effort temp cleanup.
+      if (tempImagePath) {
+        admin
+          .storage()
+          .bucket()
+          .file(tempImagePath)
+          .delete()
+          .catch(() => {});
+      }
+
+      // Fire-and-forget: write failed generation audit log
       admin.firestore().collection('generationLog').add({
         userId,
         provider: 'fal',
@@ -395,15 +342,20 @@ const generateFalImage = functions
         modelId: model_id,
         generationType: 'image',
         tokenCost,
-        processingTimeMs: Date.now() - generationStartTime,
-        providerPredictionId: falRequestId,
         status: 'failed',
         error: error.message,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       }).catch(err => console.error('Failed to write generationLog:', err));
 
       // Check if it's a Firebase HttpsError and rethrow
-      if (error.code && (error.code.startsWith('resource-exhausted') || error.code.startsWith('unauthenticated'))) {
+      if (
+        error.code &&
+        (error.code.startsWith('resource-exhausted') ||
+          error.code.startsWith('unauthenticated') ||
+          error.code.startsWith('invalid-argument') ||
+          error.code.startsWith('failed-precondition') ||
+          error.code.startsWith('not-found'))
+      ) {
         throw error;
       }
 

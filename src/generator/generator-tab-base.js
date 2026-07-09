@@ -4,11 +4,10 @@
  */
 
 import FluxUI from './main.js';
-import { assetsService as galleryService } from '@shared/assets';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
 import { httpsCallable } from 'firebase/functions';
-import { functions, auth } from '@shared/services/firebase.js';
+import { functions } from '@shared/services/firebase.js';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import { mountModelSelector } from './mount-model-selector.js';
 import posthog from 'posthog-js';
@@ -60,6 +59,17 @@ class GeneratorTabBase {
     this.elapsedTime = 0;
     this.renderProgress = 0;
     this.timerInterval = null;
+
+    // Job-status poll state (see pollImageStatus). Images are async jobs now
+    // (#1835): submit returns a jobId and this poll drives the live UI, while
+    // completion (gallery save) happens server-side.
+    this.pollTimeout = null; // setTimeout handle for the status poll loop
+    this.pollDeadline = 0; // wall-clock ms after which we stop polling
+    // Most image renders finish in seconds; 15 min is generous headroom before
+    // we give up locally (the job still finishes server-side regardless — the
+    // image lands in the gallery either way).
+    this.POLL_INTERVAL_MS = 3000;
+    this.POLL_MAX_MS = 15 * 60 * 1000;
 
     // Estimated generation times (in seconds) - built from shared constants
     this.estimatedTimes = buildEstimatedTimes();
@@ -323,6 +333,7 @@ class GeneratorTabBase {
       getId('generate-text')
     );
     this.elements.tokenCost = document.getElementById(getId('token-cost'));
+    this.elements.notifyEmail = document.getElementById(getId('notify-email'));
 
     // Verify critical elements
     const missingElements = [];
@@ -610,6 +621,17 @@ class GeneratorTabBase {
                             <span id="${getId('token-cost')}" class="text-sm font-medium">1</span>
                         </span>
                     </button>
+
+                    <!-- Email when done. Unlike video/splat this defaults OFF:
+                         most image renders finish in seconds, so the email
+                         would usually arrive after the user already saw the
+                         result. Suppressed server-side if this tab is still
+                         open when it finishes. -->
+                    <label class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
+                        <input id="${getId('notify-email')}" type="checkbox"
+                            class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                        Email me when my image is ready
+                    </label>
                 </div>
 
                 <!-- Preview Column -->
@@ -1369,7 +1391,35 @@ class GeneratorTabBase {
   }
 
   /**
-   * Generate image using Replicate API
+   * Prepare the source image (if any) for submission: normalize to a data URL
+   * and re-encode as JPEG at 90% quality to reduce upload time.
+   */
+  async prepareInputImage() {
+    if (!this.imagePromptData) return null;
+
+    let inputImageSrc = this.imagePromptData.startsWith('data:')
+      ? this.imagePromptData
+      : `data:image/jpeg;base64,${this.imagePromptData}`;
+
+    if (inputImageSrc.startsWith('data:image/')) {
+      try {
+        inputImageSrc = await this.convertToJpeg(inputImageSrc, 0.9);
+      } catch (error) {
+        console.warn('Failed to convert to JPEG, using original:', error);
+      }
+    }
+    return inputImageSrc;
+  }
+
+  /**
+   * Generate image using Replicate API.
+   *
+   * Async, browser-independent flow since #1835 (mirrors video.js):
+   * generateReplicateImage creates a generation job (with a webhook) and
+   * returns its jobId immediately instead of holding the callable connection
+   * open for the whole render. The server saves the finished image to the
+   * gallery; this UI polls getGenerationJobStatus only to reflect progress
+   * and show the result while open.
    */
   async generateReplicateImage(model) {
     const modelConfig = REPLICATE_MODELS[model];
@@ -1387,6 +1437,7 @@ class GeneratorTabBase {
       return;
     }
 
+    this.stopPolling();
     this.toggleLoading(true);
     this.startTimer(model);
 
@@ -1395,29 +1446,14 @@ class GeneratorTabBase {
         functions,
         'generateReplicateImage',
         {
-          timeout: 300000
+          // Submit-and-return; the render itself is async.
+          timeout: 120000
         }
       );
 
       const prompt =
         this.elements.promptInput.value.trim() || modelConfig.prompt;
-
-      // Prepare input image if available
-      let inputImageSrc = null;
-      if (this.imagePromptData) {
-        inputImageSrc = this.imagePromptData.startsWith('data:')
-          ? this.imagePromptData
-          : `data:image/jpeg;base64,${this.imagePromptData}`;
-
-        // Convert to JPEG with 90% quality to reduce upload time
-        if (inputImageSrc.startsWith('data:image/')) {
-          try {
-            inputImageSrc = await this.convertToJpeg(inputImageSrc, 0.9);
-          } catch (error) {
-            console.warn('Failed to convert to JPEG, using original:', error);
-          }
-        }
-      }
+      const inputImageSrc = await this.prepareInputImage();
 
       const result = await generateReplicateImage({
         prompt: prompt,
@@ -1427,81 +1463,23 @@ class GeneratorTabBase {
         model_version: modelConfig.version,
         model_id: model,
         scene_id: null,
-        source: 'generator'
+        source: 'generator',
+        // Opt-in completion email, recorded on the job doc. The server only
+        // sends it if this tab isn't around to ack the result (i.e. closed).
+        notify: { email: !!this.elements.notifyEmail?.checked }
       });
 
-      if (result.data.success) {
-        const imageUrl = result.data.image_url;
-
-        this.currentParams = {
-          model: model,
-          model_name: modelConfig.name,
-          prompt: prompt,
-          timestamp: new Date().toISOString()
-        };
-
-        this.currentImageUrl = imageUrl;
-        this.displayImage(imageUrl);
-        this.saveToGallery(imageUrl);
-        this.stopTimer();
-        this.toggleLoading(false);
-
-        if (result.data.remainingTokens !== undefined) {
-          FluxUI.showNotification(
-            `Image generated successfully! ${result.data.remainingTokens} gen tokens remaining. (${modelConfig.name})`,
-            'success'
-          );
-        } else {
-          FluxUI.showNotification(
-            `Image generated successfully! (${modelConfig.name})`,
-            'success'
-          );
-        }
-
-        // Funnel event: ai_render_used (for conversion funnel analysis)
-        posthog.capture('ai_render_used', {
-          token_type: 'gen',
-          model: model,
-          source: 'generator',
-          is_pro_user: window.authState?.currentUser?.isPro || false
-        });
-
-        // Check if user just used their last gen token (track token_limit_reached)
-        if (
-          result.data.remainingTokens !== undefined &&
-          result.data.remainingTokens === 0
-        ) {
-          posthog.capture('token_limit_reached', {
-            token_type: 'gen',
-            source: 'generator'
-          });
-        }
-
-        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
-      } else {
-        throw new Error('Failed to generate image');
-      }
+      this.onImageJobSubmitted(result, model, modelConfig, prompt);
     } catch (error) {
       console.error('Error generating Replicate image:', error);
-      this.stopTimer();
-
-      let errorMessage = 'Failed to generate image';
-      if (error.code === 'unauthenticated') {
-        errorMessage = 'Please sign in to use image generation';
-      } else if (error.code === 'resource-exhausted') {
-        errorMessage =
-          'No tokens available. Please purchase more tokens or upgrade to Pro.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      FluxUI.showNotification(errorMessage, 'error');
-      this.toggleLoading(false);
+      this.handleGenerationError(error);
     }
   }
 
   /**
-   * Generate image using fal.ai API
+   * Generate image using fal.ai API. Same async job flow as
+   * generateReplicateImage above — only the submit callable and its
+   * model-specific parameters differ.
    */
   async generateFalImage(model) {
     const modelConfig = REPLICATE_MODELS[model];
@@ -1519,33 +1497,19 @@ class GeneratorTabBase {
       return;
     }
 
+    this.stopPolling();
     this.toggleLoading(true);
     this.startTimer(model);
 
     try {
       const generateFalImage = httpsCallable(functions, 'generateFalImage', {
-        timeout: 300000
+        // Submit-and-return; the render itself is async.
+        timeout: 120000
       });
 
       const prompt =
         this.elements.promptInput.value.trim() || modelConfig.prompt;
-
-      // Prepare input image if available
-      let inputImageSrc = null;
-      if (this.imagePromptData) {
-        inputImageSrc = this.imagePromptData.startsWith('data:')
-          ? this.imagePromptData
-          : `data:image/jpeg;base64,${this.imagePromptData}`;
-
-        // Convert to JPEG with 90% quality to reduce upload time
-        if (inputImageSrc.startsWith('data:image/')) {
-          try {
-            inputImageSrc = await this.convertToJpeg(inputImageSrc, 0.9);
-          } catch (error) {
-            console.warn('Failed to convert to JPEG, using original:', error);
-          }
-        }
-      }
+      const inputImageSrc = await this.prepareInputImage();
 
       const result = await generateFalImage({
         prompt: prompt,
@@ -1555,77 +1519,172 @@ class GeneratorTabBase {
         guidance_scale: 2.5,
         num_inference_steps: 28,
         scene_id: null,
-        source: 'generator'
+        source: 'generator',
+        notify: { email: !!this.elements.notifyEmail?.checked }
       });
 
-      if (result.data.success) {
-        const imageUrl = result.data.image_url;
-
-        this.currentParams = {
-          model: model,
-          model_name: modelConfig.name,
-          prompt: prompt,
-          timestamp: new Date().toISOString()
-        };
-
-        this.currentImageUrl = imageUrl;
-        this.displayImage(imageUrl);
-        this.saveToGallery(imageUrl);
-        this.stopTimer();
-        this.toggleLoading(false);
-
-        if (result.data.remainingTokens !== undefined) {
-          FluxUI.showNotification(
-            `Image generated successfully! ${result.data.remainingTokens} gen tokens remaining. (${modelConfig.name})`,
-            'success'
-          );
-        } else {
-          FluxUI.showNotification(
-            `Image generated successfully! (${modelConfig.name})`,
-            'success'
-          );
-        }
-
-        // Funnel event: ai_render_used (for conversion funnel analysis)
-        posthog.capture('ai_render_used', {
-          token_type: 'gen',
-          model: model,
-          source: 'generator',
-          is_pro_user: window.authState?.currentUser?.isPro || false
-        });
-
-        // Check if user just used their last gen token (track token_limit_reached)
-        if (
-          result.data.remainingTokens !== undefined &&
-          result.data.remainingTokens === 0
-        ) {
-          posthog.capture('token_limit_reached', {
-            token_type: 'gen',
-            source: 'generator'
-          });
-        }
-
-        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
-      } else {
-        throw new Error('Failed to generate image');
-      }
+      this.onImageJobSubmitted(result, model, modelConfig, prompt);
     } catch (error) {
       console.error('Error generating fal.ai image:', error);
-      this.stopTimer();
+      this.handleGenerationError(error);
+    }
+  }
 
-      let errorMessage = 'Failed to generate image';
-      if (error.code === 'unauthenticated') {
-        errorMessage = 'Please sign in to use image generation';
-      } else if (error.code === 'resource-exhausted') {
-        errorMessage =
-          'No tokens available. Please purchase more tokens or upgrade to Pro.';
-      } else if (error.message) {
-        errorMessage = error.message;
+  /**
+   * Shared post-submit handling: tokens are charged at submit (refunded on
+   * failure), so reflect that immediately, record the funnel events, and
+   * start the status poll that drives this tab's live UI. The job also shows
+   * as a pending card in the assets sidebar via the live Firestore listener
+   * on the job doc.
+   */
+  onImageJobSubmitted(result, model, modelConfig, prompt) {
+    if (!result.data || !result.data.success || !result.data.jobId) {
+      throw new Error(
+        result.data?.message || 'Could not start image generation'
+      );
+    }
+
+    this.currentParams = {
+      model: model,
+      model_name: modelConfig.name,
+      prompt: prompt,
+      timestamp: new Date().toISOString()
+    };
+    // Remembered for the success toast once the poll sees the job finish.
+    this.lastRemainingTokens = result.data.remainingTokens;
+
+    window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+
+    // Funnel event: ai_render_used (for conversion funnel analysis)
+    posthog.capture('ai_render_used', {
+      token_type: 'gen',
+      model: model,
+      source: 'generator',
+      is_pro_user: window.authState?.currentUser?.isPro || false
+    });
+
+    // Check if user just used their last gen token (track token_limit_reached)
+    if (
+      result.data.remainingTokens !== undefined &&
+      result.data.remainingTokens === 0
+    ) {
+      posthog.capture('token_limit_reached', {
+        token_type: 'gen',
+        source: 'generator'
+      });
+    }
+
+    this.pollDeadline = Date.now() + this.POLL_MAX_MS;
+    this.pollImageStatus(result.data.jobId, modelConfig);
+  }
+
+  /**
+   * Poll getGenerationJobStatus until the job is terminal. Re-schedules itself
+   * with setTimeout (not setInterval) so a slow request can't overlap the next
+   * tick. Any non-terminal status (queued|running|saving) just keeps polling.
+   */
+  async pollImageStatus(jobId, modelConfig) {
+    const getGenerationJobStatus = httpsCallable(
+      functions,
+      'getGenerationJobStatus'
+    );
+
+    try {
+      const { data } = await getGenerationJobStatus({ jobId });
+
+      if (data.status === 'succeeded' && data.image_url) {
+        // The image was saved to the gallery server-side (works even if this
+        // tab had been closed). Just show it and refresh the gallery island so
+        // the pending-job card hands its slot to the real asset.
+        this.currentImageUrl = data.image_url;
+        this.displayImage(data.image_url);
+        this.stopTimer();
+        this.toggleLoading(false);
+        window.dispatchEvent(new Event('assets:refresh'));
+        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+        const remaining = this.lastRemainingTokens;
+        FluxUI.showNotification(
+          remaining !== undefined
+            ? `Image generated and saved to your gallery! ${remaining} gen tokens remaining. (${modelConfig.name})`
+            : `Image generated and saved to your gallery! (${modelConfig.name})`,
+          'success'
+        );
+        return;
       }
 
-      FluxUI.showNotification(errorMessage, 'error');
-      this.toggleLoading(false);
+      if (data.status === 'failed' || data.status === 'canceled') {
+        // The server refunds on failure; refresh the displayed balance.
+        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+        this.stopTimer();
+        this.toggleLoading(false);
+        FluxUI.showNotification(
+          data.error
+            ? `Image generation failed: ${data.error}`
+            : 'Image generation failed. Your tokens were refunded.',
+          'error'
+        );
+        return;
+      }
+
+      // Still queued/running/saving — keep polling until the deadline.
+      if (Date.now() > this.pollDeadline) {
+        this.stopTimer();
+        this.toggleLoading(false);
+        FluxUI.showNotification(
+          'Image generation is taking longer than expected. Check your gallery shortly — it will appear there when finished.',
+          'error'
+        );
+        return;
+      }
+      this.pollTimeout = setTimeout(
+        () => this.pollImageStatus(jobId, modelConfig),
+        this.POLL_INTERVAL_MS
+      );
+    } catch (error) {
+      console.error('Error polling image status:', error);
+      // Transient poll error — retry until the deadline rather than failing
+      // hard; the job is unaffected server-side.
+      if (Date.now() > this.pollDeadline) {
+        this.stopTimer();
+        this.toggleLoading(false);
+        FluxUI.showNotification(
+          'Lost track of the image job. Check your gallery shortly — it will appear there when finished.',
+          'error'
+        );
+        return;
+      }
+      this.pollTimeout = setTimeout(
+        () => this.pollImageStatus(jobId, modelConfig),
+        this.POLL_INTERVAL_MS
+      );
     }
+  }
+
+  stopPolling() {
+    if (this.pollTimeout) {
+      clearTimeout(this.pollTimeout);
+      this.pollTimeout = null;
+    }
+  }
+
+  /**
+   * Shared submit-failure handling (validation, auth, insufficient tokens…).
+   */
+  handleGenerationError(error) {
+    this.stopTimer();
+
+    let errorMessage = 'Failed to generate image';
+    if (error.code === 'unauthenticated') {
+      errorMessage = 'Please sign in to use image generation';
+    } else if (error.code === 'resource-exhausted') {
+      errorMessage =
+        'No tokens available. Please purchase more tokens or upgrade to Pro.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    FluxUI.showNotification(errorMessage, 'error');
+    this.toggleLoading(false);
   }
 
   /**
@@ -1838,107 +1897,10 @@ class GeneratorTabBase {
       });
   }
 
-  /**
-   * Save the generated image to the gallery
-   */
-  async saveToGallery(imageUrl) {
-    if (!galleryService) {
-      console.error('Gallery service not available');
-      FluxUI.showNotification('Failed to save to gallery', 'error');
-      return;
-    }
-
-    // Initialize gallery service
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      try {
-        await galleryService.init();
-      } catch (err) {
-        console.warn('Failed to initialize gallery service:', err);
-      }
-    }
-
-    // Proceed with saving even if V2 init failed (V1 fallback will be used)
-    fetch(imageUrl)
-      .then((response) => response.blob())
-      .then(
-        (blob) =>
-          new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          })
-      )
-      .then(async (dataUrl) => {
-        const imageDimensions = await new Promise((resolve) => {
-          const img = new Image();
-          img.onload = () => {
-            resolve({ width: img.width, height: img.height });
-          };
-          img.onerror = () => {
-            resolve({ width: undefined, height: undefined });
-          };
-          img.src = dataUrl;
-        });
-
-        const metadata = {
-          model: this.currentParams.model || this.selectedModel,
-          prompt: this.elements.promptInput.value,
-          seed: this.currentParams.seed,
-          width: this.currentParams.width || imageDimensions.width,
-          height: this.currentParams.height || imageDimensions.height,
-          output_format:
-            this.currentParams.output_format ||
-            (this.elements.formatJpeg?.checked ? 'jpeg' : 'png'),
-          ...(this.currentParams.aspect_ratio && {
-            aspect_ratio: this.currentParams.aspect_ratio
-          }),
-          ...(this.currentParams.steps && { steps: this.currentParams.steps }),
-          ...(this.currentParams.guidance && {
-            guidance: this.currentParams.guidance
-          }),
-          ...(this.currentParams.interval && {
-            interval: this.currentParams.interval
-          }),
-          ...(this.currentParams.raw && { raw: this.currentParams.raw }),
-          ...(this.currentParams.prompt_upsampling !== undefined && {
-            prompt_upsampling: this.currentParams.prompt_upsampling
-          })
-        };
-
-        try {
-          const currentUser = auth.currentUser;
-          if (!currentUser) {
-            console.warn('User not authenticated, skipping gallery save');
-            return;
-          }
-
-          // Initialize gallery service if needed
-          await galleryService.init();
-
-          // Use V2 API: addAsset(file, metadata, type, category, userId)
-          await galleryService.addAsset(
-            dataUrl,
-            metadata,
-            'image', // type
-            'ai-render', // category
-            currentUser.uid // userId
-          );
-          FluxUI.showNotification('Image saved to gallery!', 'success');
-        } catch (e) {
-          console.error('Gallery addAsset error:', e);
-          FluxUI.showNotification('Failed to save image to gallery.', 'error');
-        }
-      })
-      .catch((error) => {
-        console.error('Error saving to gallery:', error);
-        FluxUI.showNotification(
-          'Failed to save image to gallery: ' + error.message,
-          'error'
-        );
-      });
-  }
+  // NOTE: the old client-side saveToGallery was removed — the image is now
+  // persisted to the gallery server-side by the generation job's terminal
+  // processor (public/functions/replicate.js:saveImageToGallery), so it saves
+  // even if this tab is closed mid-render (#1835).
 
   /**
    * Start the timer
