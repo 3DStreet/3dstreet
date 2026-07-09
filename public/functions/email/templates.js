@@ -71,14 +71,14 @@ const welcome = {
   getHtmlBody: (userName) =>
     htmlLayout(
       userName,
-      `  <p>Welcome to <strong>3DStreet</strong> — design and share 3D street scenes right in your browser.</p>
+      `  <p>Welcome to <strong>3DStreet</strong>, the browser-based tool for designing and sharing 3D street scenes.</p>
 
   <p>A few ways to get going:</p>
 
   <ul style="padding-left: 20px;">
-    <li><strong>Start from a template</strong> — pick a street layout and make it yours</li>
-    <li><strong>Import from Streetmix</strong> — paste a Streetmix URL to bring a 2D design into 3D</li>
-    <li><strong>Place your street in the real world</strong> — your account includes free geo tokens for Google 3D Tiles</li>
+    <li><strong>Start from a template:</strong> pick a street layout and make it yours</li>
+    <li><strong>Import from Streetmix:</strong> paste a Streetmix URL to bring a 2D design into 3D</li>
+    <li><strong>Place your street in the real world:</strong> your account includes free geo tokens for Google 3D Tiles</li>
   </ul>`,
       {
         ctaUrl: `${APP_BASE}/?${utm('welcome', 'cta_button')}`,
@@ -90,13 +90,13 @@ const welcome = {
   getTextBody: (userName) =>
     textLayout(
       userName,
-      `Welcome to 3DStreet — design and share 3D street scenes right in your browser.
+      `Welcome to 3DStreet, the browser-based tool for designing and sharing 3D street scenes.
 
 A few ways to get going:
 
-- Start from a template — pick a street layout and make it yours
-- Import from Streetmix — paste a Streetmix URL to bring a 2D design into 3D
-- Place your street in the real world — your account includes free geo tokens for Google 3D Tiles`,
+- Start from a template: pick a street layout and make it yours
+- Import from Streetmix: paste a Streetmix URL to bring a 2D design into 3D
+- Place your street in the real world: your account includes free geo tokens for Google 3D Tiles`,
       {
         ctaUrl: `${APP_BASE}/?${utm('welcome', 'cta_link')}`,
         ctaLabel: 'Start designing',
@@ -109,7 +109,7 @@ A few ways to get going:
 // data: { planTier: 'PRO' | 'MAX' }
 const postUpgradeWelcome = {
   getSubject: (userName, data = {}) =>
-    `You're on 3DStreet ${data.planTier === 'MAX' ? 'Max' : 'Pro'} — here's what's unlocked`,
+    `You're on 3DStreet ${data.planTier === 'MAX' ? 'Max' : 'Pro'}! Here's what's unlocked`,
   getHtmlBody: (userName, data = {}) =>
     htmlLayout(
       userName,
@@ -123,7 +123,7 @@ const postUpgradeWelcome = {
     <li>A monthly allowance of AI generation tokens</li>
   </ul>
 
-  <p>Everything is active on your account already — just open the editor.</p>`,
+  <p>Everything is already active on your account. Just open the editor.</p>`,
       {
         ctaUrl: `${APP_BASE}/?${utm('post_upgrade', 'cta_button')}`,
         ctaLabel: 'Open 3DStreet',
@@ -142,7 +142,7 @@ const postUpgradeWelcome = {
 - Custom 3D model & SVG imports
 - A monthly allowance of AI generation tokens
 
-Everything is active on your account already — just open the editor.`,
+Everything is already active on your account. Just open the editor.`,
       {
         ctaUrl: `${APP_BASE}/?${utm('post_upgrade', 'cta_link')}`,
         ctaLabel: 'Open 3DStreet',
@@ -223,7 +223,7 @@ const checkoutAbandoned72h = {
   getHtmlBody: (userName) =>
     htmlLayout(
       userName,
-      `  <p>A few days ago you started a <strong>3DStreet Pro</strong> checkout. No pressure — but if something held you back, we'd genuinely like to know. Just reply to this email.</p>
+      `  <p>A few days ago you started a <strong>3DStreet Pro</strong> checkout. No pressure. But if something held you back, we'd genuinely like to know, and a reply to this email goes straight to us.</p>
 
   <p>If you're ready, picking up where you left off takes about a minute.</p>`,
       {
@@ -235,7 +235,7 @@ const checkoutAbandoned72h = {
   getTextBody: (userName) =>
     textLayout(
       userName,
-      `A few days ago you started a 3DStreet Pro checkout. No pressure — but if something held you back, we'd genuinely like to know. Just reply to this email.
+      `A few days ago you started a 3DStreet Pro checkout. No pressure. But if something held you back, we'd genuinely like to know, and a reply to this email goes straight to us.
 
 If you're ready, picking up where you left off takes about a minute.`,
       {
@@ -251,7 +251,7 @@ const pricingPageNudge = {
   getHtmlBody: (userName) =>
     htmlLayout(
       userName,
-      `  <p>You recently checked out the <strong>3DStreet Pro</strong> plans. If anything was unclear — pricing, features, whether it fits your project — just reply to this email and a human will answer.</p>
+      `  <p>You recently checked out the <strong>3DStreet Pro</strong> plans. If anything was unclear about pricing, features, or whether it fits your project, just reply to this email and a human will answer.</p>
 
   <p>The short version: Pro removes watermarks, makes geospatial maps unlimited, and adds HD renders, custom imports, and monthly AI tokens.</p>`,
       {
@@ -263,7 +263,7 @@ const pricingPageNudge = {
   getTextBody: (userName) =>
     textLayout(
       userName,
-      `You recently checked out the 3DStreet Pro plans. If anything was unclear — pricing, features, whether it fits your project — just reply to this email and a human will answer.
+      `You recently checked out the 3DStreet Pro plans. If anything was unclear about pricing, features, or whether it fits your project, just reply to this email and a human will answer.
 
 The short version: Pro removes watermarks, makes geospatial maps unlimited, and adds HD renders, custom imports, and monthly AI tokens.`,
       {
@@ -285,7 +285,7 @@ const geoNotUsed = {
       userName,
       `  <p>Did you know your 3DStreet scenes can sit on a photorealistic 3D map of the real world?</p>
 
-  <p>Your account includes <strong>free geo tokens</strong> for Google 3D Tiles — search for any address, drop your street design into the actual neighborhood, and see it in context. It's the fastest way to make a proposal feel real.</p>`,
+  <p>Your account includes <strong>free geo tokens</strong> for Google 3D Tiles. Search for any address, drop your street design into the actual neighborhood, and see it in context. It's the fastest way to make a proposal feel real.</p>`,
       {
         ctaUrl: `${APP_BASE}/?${utm('geo_not_used', 'cta_button')}`,
         ctaLabel: 'Try 3D maps',
@@ -297,7 +297,7 @@ const geoNotUsed = {
       userName,
       `Did you know your 3DStreet scenes can sit on a photorealistic 3D map of the real world?
 
-Your account includes free geo tokens for Google 3D Tiles — search for any address, drop your street design into the actual neighborhood, and see it in context. It's the fastest way to make a proposal feel real.`,
+Your account includes free geo tokens for Google 3D Tiles. Search for any address, drop your street design into the actual neighborhood, and see it in context. It's the fastest way to make a proposal feel real.`,
       {
         ctaUrl: `${APP_BASE}/?${utm('geo_not_used', 'cta_link')}`,
         ctaLabel: 'Try 3D maps',
