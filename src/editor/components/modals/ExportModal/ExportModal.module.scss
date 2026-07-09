@@ -158,6 +158,26 @@
   height: 100%;
 }
 
+// Iframe + footer column for the ready GLB preview.
+.glbPreviewWrapper {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+// Thin strip under the iframe hosting the auto-preview checkbox — with
+// auto-preview on, the iframe replaces the empty state instantly, so this is
+// the only place left to turn the setting back off.
+.previewFooter {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: variables.$lightgray-700;
+  border-top: 1px solid variables.$darkgray-600;
+  background-color: variables.$darkgray-300;
+}
+
 .previewEmptyState {
   flex: 1;
   display: flex;
