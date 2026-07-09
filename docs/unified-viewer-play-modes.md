@@ -282,6 +282,16 @@ canvas at a fixed aspect ratio, letterboxed/pillarboxed inside the
 window, so subject framing (and any capture of the canvas buffer) is
 identical across devices.
 
+Display and capture are decoupled: the canvas CSS rect fits the window,
+but while a fixed aspect is active the drawing buffer renders at the
+aspect's **canonical output resolution** — 1080 on the short side,
+pixel ratio 1 (16:9 → 1920×1080, 9:16 → 1080×1920, 1:1 → 1080×1080,
+4:5 → 1080×1350, 21:9 → 2520×1080; even dimensions for H.264). Anything
+that reads the buffer — `screentock` snapshots, `CanvasRecorder`'s
+`captureStream` — therefore outputs exactly that WxH on every device,
+not "whatever fit the window". `fill` keeps A-Frame's normal
+window-size × devicePixelRatio buffer.
+
 - **State:** `viewerAspectRatio` in the store — `'fill'` (default,
   today's full-window behavior) or `'W:H'`. Editor presentation always
   fills the window.

@@ -3,6 +3,7 @@ import {
   VIEWER_ASPECT_PRESETS,
   parseAspectRatio,
   fitRectToContainer,
+  canonicalRenderSize,
   constrainSizeTo
 } from '../../src/aframe-components/viewer-aspect-utils.js';
 
@@ -89,6 +90,38 @@ describe('fitRectToContainer', () => {
     const rect = fitRectToContainer(10, 5, 5);
     expect(rect.width).toBeGreaterThan(0);
     expect(rect.height).toBeGreaterThan(0);
+  });
+});
+
+describe('canonicalRenderSize', () => {
+  it('uses the social/video convention for the presets', () => {
+    expect(canonicalRenderSize(16 / 9)).toEqual({ width: 1920, height: 1080 });
+    expect(canonicalRenderSize(9 / 16)).toEqual({ width: 1080, height: 1920 });
+    expect(canonicalRenderSize(1)).toEqual({ width: 1080, height: 1080 });
+    expect(canonicalRenderSize(4 / 5)).toEqual({ width: 1080, height: 1350 });
+    expect(canonicalRenderSize(21 / 9)).toEqual({ width: 2520, height: 1080 });
+  });
+
+  it('pins the short side regardless of orientation', () => {
+    expect(canonicalRenderSize(2).height).toBe(1080);
+    expect(canonicalRenderSize(0.5).width).toBe(1080);
+  });
+
+  it('rounds to even dimensions (H.264 requires them)', () => {
+    // 1080 * 1.85 = 1998 (even); 1080 / 0.7 = 1542.86 -> 1542.
+    const wide = canonicalRenderSize(1.85);
+    expect(wide.width % 2).toBe(0);
+    expect(wide.height % 2).toBe(0);
+    const tall = canonicalRenderSize(0.7);
+    expect(tall.width % 2).toBe(0);
+    expect(tall.height % 2).toBe(0);
+  });
+
+  it('respects a custom short side', () => {
+    expect(canonicalRenderSize(16 / 9, 720)).toEqual({
+      width: 1280,
+      height: 720
+    });
   });
 });
 

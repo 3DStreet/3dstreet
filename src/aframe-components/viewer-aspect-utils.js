@@ -72,6 +72,27 @@ export function fitRectToContainer(aspect, containerWidth, containerHeight) {
 }
 
 /**
+ * Canonical output resolution for a fixed aspect ratio — the size the
+ * render buffer uses while letterboxed, independent of window size and
+ * devicePixelRatio, so canvas captures (screentock snapshots,
+ * CanvasRecorder's captureStream) are deterministic across devices.
+ * The short side is `shortSide` px (default 1080 — the social/video
+ * convention: 16:9 → 1920×1080, 9:16 → 1080×1920, 1:1 → 1080×1080,
+ * 4:5 → 1080×1350, 21:9 → 2520×1080). Dimensions are rounded to even
+ * numbers because H.264 encoders reject odd frame sizes.
+ *
+ * @param {number} aspect width/height ratio (> 0)
+ * @param {number} [shortSide]
+ * @returns {{width: number, height: number}}
+ */
+export function canonicalRenderSize(aspect, shortSide = 1080) {
+  const even = (n) => Math.max(2, 2 * Math.round(n / 2));
+  return aspect >= 1
+    ? { width: even(shortSide * aspect), height: even(shortSide) }
+    : { width: even(shortSide), height: even(shortSide / aspect) };
+}
+
+/**
  * Cap a CSS-pixel size to the scene's maxCanvasSize (device pixels),
  * preserving aspect — same semantics as A-Frame's private
  * constrainSizeTo (a-scene.js). a-scene.resize() applies this cap when

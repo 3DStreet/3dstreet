@@ -1,4 +1,4 @@
-/* global AFRAME */
+/* global AFRAME, THREE */
 
 /**
  * viewer-aspect
@@ -21,11 +21,19 @@
  * inspector toggled, VR exited) just call sceneEl.resize() and let the
  * event handler converge. Window resizes already flow through
  * a-scene's own resize handler, so they re-letterbox for free.
+ *
+ * Display and capture are decoupled: the canvas CSS rect fits the
+ * window, but the drawing buffer renders at the aspect's canonical
+ * output resolution (1080-based, pixel ratio 1 — see
+ * canonicalRenderSize). Anything that reads the buffer — screentock
+ * snapshots, CanvasRecorder's captureStream — therefore produces
+ * exactly the same WxH on every device, not "whatever fit the window".
  */
 import useStore from '../store.js';
 import {
   parseAspectRatio,
   fitRectToContainer,
+  canonicalRenderSize,
   constrainSizeTo
 } from './viewer-aspect-utils.js';
 
@@ -116,15 +124,29 @@ AFRAME.registerSystem('viewer-aspect', {
     if (!this.applied) {
       this.savedBodyBackground = document.body.style.backgroundColor;
       document.body.style.backgroundColor = '#000';
+      // A-Frame runs the renderer at devicePixelRatio; drop to 1 while
+      // letterboxed so the buffer is exactly the canonical size (not
+      // canonical × DPR). Restored in clearLetterbox.
+      renderer.setPixelRatio(1);
       this.applied = true;
     }
 
+    // Deterministic buffer: the aspect's canonical output resolution
+    // (still honoring an explicit maxCanvasSize cap), NOT the window-
+    // dependent rect — CSS scales it into the rect for display.
     const size = constrainSizeTo(
-      { width: rect.width, height: rect.height },
+      canonicalRenderSize(ratio),
       sceneEl.maxCanvasSize,
-      window.devicePixelRatio
+      1
     );
-    renderer.setSize(size.width, size.height, false);
+    const current = renderer.getSize(this.rendererSize || new THREE.Vector2());
+    this.rendererSize = current;
+    if (current.x !== size.width || current.y !== size.height) {
+      // Guard: re-setting the same size still resets the canvas bitmap,
+      // which would needlessly disturb an in-flight captureStream on
+      // every window resize.
+      renderer.setSize(size.width, size.height, false);
+    }
     if (camera && camera.isPerspectiveCamera) {
       // The exact requested ratio, not the px-rounded rect's — output
       // framing must be deterministic across devices.
@@ -135,6 +157,10 @@ AFRAME.registerSystem('viewer-aspect', {
 
   clearLetterbox: function () {
     if (!this.applied) return;
+    // Back to A-Frame's normal density (a-scene.setupRenderer's value).
+    if (this.sceneEl.renderer) {
+      this.sceneEl.renderer.setPixelRatio(window.devicePixelRatio);
+    }
     const canvas = this.sceneEl.canvas;
     if (canvas) {
       canvas.style.removeProperty('width');
