@@ -13,6 +13,10 @@ import { cameraTiltDegrees, viewRayGroundPoint } from './navMath.js';
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
 
+// Frozen read-only world-up axis (rotation axis for the orbit tween). Never
+// mutated, never returned.
+const _WORLD_UP = Object.freeze(new THREE.Vector3(0, 1, 0));
+
 // Normalize an angle in degrees to (-180, 180].
 function normalizeDeg(deg) {
   let d = deg % 360;
@@ -73,6 +77,10 @@ export class CompassController {
     this._compassPending = null;
     // Screen-centre view-ray scratch.
     this._tmpV3c = new THREE.Vector3();
+    // Per-frame orbit onTick scratch (reused each tween frame; pivot/offset are
+    // retained but never mutated — the scratch takes the rotated copy).
+    this._tmpQuat = new THREE.Quaternion();
+    this._tmpOrbitVec = new THREE.Vector3();
   }
 
   // Plan-view active? (feeds the orchestrator's _isInactive gate).
@@ -396,13 +404,12 @@ export class CompassController {
       onTick: (eased) => {
         camera.quaternion.slerpQuaternions(startQuat, targetQuat, eased);
         if (orbiting) {
-          const stepR = new THREE.Quaternion().setFromAxisAngle(
-            new THREE.Vector3(0, 1, 0),
+          const stepR = this._tmpQuat.setFromAxisAngle(
+            _WORLD_UP,
             deltaYaw * eased * DEG2RAD
           );
-          camera.position.copy(
-            pivot.clone().add(offset.clone().applyQuaternion(stepR))
-          );
+          this._tmpOrbitVec.copy(offset).applyQuaternion(stepR);
+          camera.position.copy(pivot).add(this._tmpOrbitVec);
         }
         camera.updateMatrixWorld();
         // Clear the instant the tween starts moving (idempotent).
