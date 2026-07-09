@@ -32,7 +32,7 @@ const AssetsPanel = () => (
     placeable
     onPlaceAsset={handlePlaceAsset}
     onUpload={(file) => uploadAndPlaceAsset(file)}
-    onUseForGenerator={(item) => openInGenerator(item, 'modify')}
+    onUseForGenerator={(item) => openInGenerator(item, 'image')}
     onUseForVideo={(item) => openInGenerator(item, 'video')}
     onFocusScene={focusSnapshotScene}
     onSignIn={() => signIn()}

@@ -231,7 +231,7 @@ const AssetInfoPanel = ({ entity }) => {
           ownerUid={state.ownerUid}
           type={state.type}
           onClose={() => setDetailsOpen(false)}
-          onUseForGenerator={(item) => openInGenerator(item, 'modify')}
+          onUseForGenerator={(item) => openInGenerator(item, 'image')}
           onUseForVideo={(item) => openInGenerator(item, 'video')}
         />
       )}

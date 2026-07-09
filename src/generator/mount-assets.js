@@ -8,7 +8,7 @@ import { signInWithGoogle } from '@shared/auth/api/auth';
 import { auth } from '@shared/services/firebase';
 import posthog from 'posthog-js';
 import FluxUI from './main.js';
-import ModifyTab from './modify.js';
+import ImageTab from './image.js';
 import VideoTab from './video.js';
 
 /**
@@ -39,26 +39,27 @@ const getBlobDataUri = async (blobOrUrl) => {
 };
 
 /**
- * Use image for Modify tab
+ * Use a gallery image as the source image on the Image tab
  * @param {object} item - Gallery item
  */
 const handleUseForGenerator = async (item) => {
-  if (ModifyTab && typeof ModifyTab.setImagePrompt === 'function') {
+  if (ImageTab && typeof ImageTab.setImagePrompt === 'function') {
     try {
       const imageUrl = item.storageUrl || item.objectURL;
       const dataUri = await getBlobDataUri(imageUrl);
-      const modifyTabButton = document.querySelector(
-        '.tab-button[data-tab="modify-tab"]'
+      // Activate the Image tab, then set its source image.
+      const imageTabButton = document.querySelector(
+        '.tab-button[data-tab="image-tab"]'
       );
-      if (modifyTabButton) modifyTabButton.click();
-      ModifyTab.setImagePrompt(dataUri, `Gallery Image ${item.id}`);
-      FluxUI.showNotification('Image sent to Modify tab!', 'success');
+      if (imageTabButton) imageTabButton.click();
+      ImageTab.setImagePrompt(dataUri, `Gallery Image ${item.id}`);
+      FluxUI.showNotification('Image sent to the Image tab!', 'success');
     } catch (error) {
-      console.error('Error sending to Modify:', error);
-      FluxUI.showNotification('Failed to prepare image for Modify.', 'error');
+      console.error('Error sending to Image tab:', error);
+      FluxUI.showNotification('Failed to prepare image.', 'error');
     }
   } else {
-    FluxUI.showNotification('Modify tab is not ready yet', 'warning');
+    FluxUI.showNotification('Image tab is not ready yet', 'warning');
   }
 };
 
