@@ -107,6 +107,13 @@ export class WheelSwoopEngine {
     this._tmpQuatB = new THREE.Quaternion();
     this._tmpQuatC = new THREE.Quaternion();
     this._reaimRaycaster = new THREE.Raycaster();
+    // Caller-owned targets for the navMath / cursorAnchor out-param idiom. Each
+    // is filled and consumed within a single drain pass (copied to the camera,
+    // or compared then cloned) before the next step reuses it — the three
+    // dolly/level-anchor sites are mutually exclusive per drain.
+    this._dollyScratch = new THREE.Vector3(); // cappedDollyStep target
+    this._levelAnchorScratch = new THREE.Vector3(); // levelForwardAnchor target
+    this._ndcScratch = new THREE.Vector2(); // ndcFor target
   }
 
   // Is a wheel pass pending? (Feeds the situation-sensor idle gate.)
@@ -378,7 +385,11 @@ export class WheelSwoopEngine {
       maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES
     });
     if (hit.source !== 'mesh' && hit.source !== 'ground') {
-      hit = levelForwardAnchor(camera, FALLBACK_FORWARD_DIST);
+      hit = levelForwardAnchor(
+        camera,
+        FALLBACK_FORWARD_DIST,
+        this._levelAnchorScratch
+      );
       if (hit == null) return t; // near-vertical at sky → consume, no move
     }
     this._dollyAlongRay(dollyFactorForTicks(t, ZOOM_PER_WHEEL_TICK), hit);
@@ -444,7 +455,11 @@ export class WheelSwoopEngine {
       maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES
     });
     if (hit.source !== 'mesh' && hit.source !== 'ground') {
-      hit = levelForwardAnchor(camera, FALLBACK_FORWARD_DIST);
+      hit = levelForwardAnchor(
+        camera,
+        FALLBACK_FORWARD_DIST,
+        this._levelAnchorScratch
+      );
       if (hit == null) return t; // near-vertical at sky → consume, no move
     }
 
@@ -548,12 +563,15 @@ export class WheelSwoopEngine {
       this._ctx.wheelZoomLateralCapLowerBound,
       WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF
     );
-    const newPos = cappedDollyStep({
-      camPos: camera.position,
-      hit,
-      factor,
-      lateralCapMetres: cap
-    });
+    const newPos = cappedDollyStep(
+      {
+        camPos: camera.position,
+        hit,
+        factor,
+        lateralCapMetres: cap
+      },
+      this._dollyScratch
+    );
     if (newPos == null) return; // non-finite step: skip this tick
     camera.position.copy(newPos);
 
@@ -582,7 +600,11 @@ export class WheelSwoopEngine {
       maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES
     });
     if (hit.source !== 'mesh' && hit.source !== 'ground') {
-      hit = levelForwardAnchor(camera, FALLBACK_FORWARD_DIST);
+      hit = levelForwardAnchor(
+        camera,
+        FALLBACK_FORWARD_DIST,
+        this._levelAnchorScratch
+      );
       if (hit == null) return; // near-vertical at sky → no move
     }
     this._dollyAlongRay(dollyFactorForTicks(sign, ZOOM_PER_WHEEL_TICK), hit);
@@ -830,7 +852,8 @@ export class WheelSwoopEngine {
     const camera = this._ctx.camera;
     const ndc = this._ctx.cursorAnchor.ndcFor(
       this._lastWheelClientX,
-      this._lastWheelClientY
+      this._lastWheelClientY,
+      this._ndcScratch
     );
 
     // Baseline session: capture on the first Phase-3 tick; re-capture at the

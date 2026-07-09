@@ -2526,3 +2526,73 @@ describe('phase2NextElevation with B7-trimmed SWOOP_PHASE2_STEP=0.15', () => {
     expect(inOnce).toBeLessThan(yAgl);
   });
 });
+
+// --- Optional out-param idiom (scratch-vector refactor) -------------------
+// Each escaping-return helper now takes an optional trailing `target`: bare
+// calls still return a fresh vector; a passed target is filled and returned.
+
+describe('cappedDollyStep — optional target idiom', () => {
+  const args = () => ({
+    camPos: new THREE.Vector3(0, 10, 0),
+    hit: new THREE.Vector3(0, 0, -10),
+    factor: 0.9,
+    lateralCapMetres: 100
+  });
+
+  it('returns a fresh Vector3 each call with no target', () => {
+    const a = cappedDollyStep(args());
+    const b = cappedDollyStep(args());
+    expect(a).toBeInstanceOf(THREE.Vector3);
+    expect(a).not.toBe(b);
+    expect(a.x).toBeCloseTo(b.x, 12);
+    expect(a.y).toBeCloseTo(b.y, 12);
+    expect(a.z).toBeCloseTo(b.z, 12);
+  });
+
+  it('fills and returns the supplied target, component-identical to the fresh result', () => {
+    const fresh = cappedDollyStep(args());
+    const t = new THREE.Vector3();
+    const r = cappedDollyStep(args(), t);
+    expect(r).toBe(t);
+    expect(t.x).toBeCloseTo(fresh.x, 12);
+    expect(t.y).toBeCloseTo(fresh.y, 12);
+    expect(t.z).toBeCloseTo(fresh.z, 12);
+  });
+
+  it('non-finite step still returns null with and without a target', () => {
+    const bad = {
+      camPos: new THREE.Vector3(0, 10, 0),
+      hit: new THREE.Vector3(0, Infinity, 0),
+      factor: 0.9,
+      lateralCapMetres: 0
+    };
+    expect(cappedDollyStep(bad)).toBe(null);
+    expect(cappedDollyStep(bad, new THREE.Vector3())).toBe(null);
+  });
+});
+
+describe('levelForwardAnchor — optional target idiom', () => {
+  it('returns a fresh Vector3 each call with no target', () => {
+    const cam = camAt({ x: 0, y: 5, z: 10 }, { x: 0, y: 5, z: 0 });
+    const a = levelForwardAnchor(cam, 30);
+    const b = levelForwardAnchor(cam, 30);
+    expect(a).toBeInstanceOf(THREE.Vector3);
+    expect(a).not.toBe(b);
+    expect(a.x).toBeCloseTo(b.x, 12);
+    expect(a.y).toBeCloseTo(b.y, 12);
+    expect(a.z).toBeCloseTo(b.z, 12);
+    // level: holds the camera's own height
+    expect(a.y).toBeCloseTo(5, 12);
+  });
+
+  it('fills and returns the supplied target, component-identical to the fresh result', () => {
+    const cam = camAt({ x: 0, y: 5, z: 10 }, { x: 0, y: 5, z: 0 });
+    const fresh = levelForwardAnchor(cam, 30);
+    const t = new THREE.Vector3();
+    const r = levelForwardAnchor(cam, 30, t);
+    expect(r).toBe(t);
+    expect(t.x).toBeCloseTo(fresh.x, 12);
+    expect(t.y).toBeCloseTo(fresh.y, 12);
+    expect(t.z).toBeCloseTo(fresh.z, 12);
+  });
+});

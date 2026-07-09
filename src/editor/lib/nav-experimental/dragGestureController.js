@@ -18,6 +18,10 @@ import {
 } from './navMath.js';
 import { captureNavDiscovery } from '../navAnalytics.js';
 
+// Frozen read-only world-up axis (cross-product operand). Never mutated,
+// never returned.
+const _WORLD_UP = Object.freeze(new THREE.Vector3(0, 1, 0));
+
 // The drag-gesture controller — the merged pan + rotate mouse gesture core. Owns
 // the letterbox sub-mode comparator (the `nav-experimental:modechange` LB
 // stream), the rotation ring indicator, the live-Shift pan<->rotate switch, all
@@ -54,6 +58,13 @@ export class DragGestureController {
     this._tmpNDC = new THREE.Vector2();
     this._raycaster = new THREE.Raycaster();
     this._anchorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    // Per-move pan/rotate scratch. The three pan sub-modes are mutually
+    // exclusive within one onMove (dispatched on the latched sub-mode), so they
+    // share these slots; each is a pure-local temp consumed within the handler.
+    this._tmpHNow = new THREE.Vector3();
+    this._tmpDelta = new THREE.Vector3();
+    this._tmpRight = new THREE.Vector3();
+    this._tmpCamRight = new THREE.Vector3();
   }
 
   // --- Gesture lifecycle (driven by the orchestrator's thin mouse routers) ---
@@ -373,14 +384,14 @@ export class DragGestureController {
     this._tmpNDC.set(ndcX, ndcY);
     this._raycaster.setFromCamera(this._tmpNDC, camera);
 
-    const hNow = new THREE.Vector3();
+    const hNow = this._tmpHNow;
     const ok = this._raycaster.ray.intersectPlane(this._anchorPlane, hNow);
     if (!ok) return; // ray parallel to plane — no-op
 
     // Both points are coplanar with the image plane, so `delta` has no
     // camera-forward component: the camera translates purely in its
     // right/up basis and the anchor's screen projection is preserved.
-    const delta = new THREE.Vector3().subVectors(anchor, hNow);
+    const delta = this._tmpDelta.subVectors(anchor, hNow);
     if (!isFinite(delta.x) || !isFinite(delta.y) || !isFinite(delta.z)) return;
 
     // Sanity cap to avoid teleports from a degenerate plane solution.
@@ -412,7 +423,7 @@ export class DragGestureController {
     this._tmpNDC.set(ndcX, ndcY);
     this._raycaster.setFromCamera(this._tmpNDC, camera);
 
-    const hNow = new THREE.Vector3();
+    const hNow = this._tmpHNow;
     const ok = this._raycaster.ray.intersectPlane(this._anchorPlane, hNow);
     if (!ok) return; // ray parallel to plane (camera looking horizontally) — no-op
 
@@ -463,7 +474,7 @@ export class DragGestureController {
     this._tmpNDC.set(ndcX, ndcY);
     this._raycaster.setFromCamera(this._tmpNDC, camera);
 
-    const hNow = new THREE.Vector3();
+    const hNow = this._tmpHNow;
     const ok = this._raycaster.ray.intersectPlane(this._anchorPlane, hNow);
     if (!ok) return; // ray parallel to plane — no-op
 
@@ -473,14 +484,11 @@ export class DragGestureController {
     // in the plane; this is just choosing a basis to read it in.
     const planeNormal = this._ctx.latch.get('planeNormal');
     if (!planeNormal) return;
-    const right = new THREE.Vector3().crossVectors(
-      planeNormal,
-      new THREE.Vector3(0, 1, 0)
-    );
+    const right = this._tmpRight.crossVectors(planeNormal, _WORLD_UP);
     if (right.lengthSq() < 1e-6) return;
     right.normalize();
 
-    const delta = new THREE.Vector3().subVectors(anchor, hNow);
+    const delta = this._tmpDelta.subVectors(anchor, hNow);
     const stepRight = delta.dot(right);
     const stepUp = delta.y;
     if (!isFinite(stepRight) || !isFinite(stepUp)) return;
@@ -746,9 +754,9 @@ export class DragGestureController {
     // Camera's screen-right axis (local +X in world space). Used
     // by shiftRotateStep as the pitch axis only at exact nadir, where
     // `view × up` degenerates — lets tilt work out of top-down.
-    const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(
-      camera.quaternion
-    );
+    const camRight = this._tmpCamRight
+      .set(1, 0, 0)
+      .applyQuaternion(camera.quaternion);
     const { pos, R } = shiftRotateStep({
       camPos: camera.position,
       viewDir: fwd,

@@ -442,3 +442,76 @@ describe('classifyHitEntity (TASK-012 Phase-4 source classifier)', () => {
     expect(classifyHitEntity({})).toBe(null);
   });
 });
+
+describe('CursorAnchor.ndcFor (optional out-param idiom)', () => {
+  function makeCa() {
+    return new CursorAnchor({
+      camera: makeCameraLookingDown(50),
+      sceneEl: makeSceneEl(new THREE.Group()),
+      domElement: makeDom()
+    });
+  }
+
+  it('returns a fresh Vector2 each call when no target is passed', () => {
+    const ca = makeCa();
+    const a = ca.ndcFor(25, 75);
+    const b = ca.ndcFor(25, 75);
+    expect(a).toBeInstanceOf(THREE.Vector2);
+    expect(b).toBeInstanceOf(THREE.Vector2);
+    expect(a).not.toBe(b);
+    // Same pixel → same NDC value.
+    expect(a.x).toBeCloseTo(b.x, 12);
+    expect(a.y).toBeCloseTo(b.y, 12);
+  });
+
+  it('fills and returns the caller-supplied target when passed', () => {
+    const ca = makeCa();
+    const fresh = ca.ndcFor(25, 75);
+    const t = new THREE.Vector2();
+    const r = ca.ndcFor(25, 75, t);
+    expect(r).toBe(t);
+    expect(t.x).toBeCloseTo(fresh.x, 12);
+    expect(t.y).toBeCloseTo(fresh.y, 12);
+  });
+});
+
+describe('worldHitNormal — two live results stay independent', () => {
+  const { worldHitNormal } = _internals;
+
+  function makeMeshHit(rot, normal, pos) {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial()
+    );
+    if (pos) mesh.position.set(pos[0], pos[1], pos[2]);
+    if (rot) mesh.rotation.set(rot[0], rot[1], rot[2]);
+    mesh.updateWorldMatrix(true, false);
+    return { object: mesh, face: { normal: normal.clone() }, distance: 1 };
+  }
+
+  it('two normals held at once are distinct objects and distinct values', () => {
+    // Distinct object transforms + distinct face normals → distinct results,
+    // exactly the wasdFlight floorNow/floorDest two-live-normals hazard.
+    const hitA = makeMeshHit(null, new THREE.Vector3(0, 1, 0), [10, 0, 0]);
+    const hitB = makeMeshHit([0, 0, Math.PI / 4], new THREE.Vector3(1, 0, 0), [
+      -10, 0, 0
+    ]);
+
+    const nA = worldHitNormal(hitA);
+    const nB = worldHitNormal(hitB);
+
+    // Different objects — the pooled Matrix3 must NOT leak into the returns.
+    expect(nA).not.toBe(nB);
+    // Different values.
+    expect(nA.distanceTo(nB)).toBeGreaterThan(0.1);
+
+    // nA must be untouched by computing nB (both held live).
+    const ax = nA.x;
+    const ay = nA.y;
+    const az = nA.z;
+    worldHitNormal(hitB); // a third call must not perturb the earlier result
+    expect(nA.x).toBe(ax);
+    expect(nA.y).toBe(ay);
+    expect(nA.z).toBe(az);
+  });
+});
