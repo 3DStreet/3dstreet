@@ -48,6 +48,12 @@ export class WasdFlight {
     this._tmpV3b = new THREE.Vector3();
     this._tmpV3c = new THREE.Vector3();
     this._raycaster = new THREE.Raycaster();
+    // Dedicated drain() scratch. Kept separate from _tmpV3a/b/c because the
+    // step classifier's raycasts clobber those between building `move` and
+    // reading it back; these three are pure-local temps consumed within drain().
+    this._tmpVel = new THREE.Vector3();
+    this._tmpDv = new THREE.Vector3();
+    this._tmpMove = new THREE.Vector3();
   }
 
   // Held-key accessors used by the orchestrator's keydown/keyup/blur routers
@@ -140,18 +146,16 @@ export class WasdFlight {
       WASD_MIN_SPEED,
       WASD_MAX_SPEED
     );
-    const targetVel = new THREE.Vector3(
-      targetDirX,
-      0,
-      targetDirZ
-    ).multiplyScalar(targetSpeed);
+    const targetVel = this._tmpVel
+      .set(targetDirX, 0, targetDirZ)
+      .multiplyScalar(targetSpeed);
 
     // Acceleration ramp toward target. accel = max-speed / ramp-time so a
     // standing-start key-press reaches WASD_MAX_SPEED in WASD_RAMP_UP_MS;
     // for lower target speeds the ramp completes proportionally faster.
     const accel = WASD_MAX_SPEED / (WASD_RAMP_UP_MS / 1000);
     const maxStep = accel * (deltaMs / 1000);
-    const dv = new THREE.Vector3().subVectors(targetVel, this._wasdVelocity);
+    const dv = this._tmpDv.subVectors(targetVel, this._wasdVelocity);
     const dvMag = dv.length();
     if (dvMag <= maxStep) {
       this._wasdVelocity.copy(targetVel);
@@ -161,7 +165,7 @@ export class WasdFlight {
 
     if (this._wasdVelocity.lengthSq() === 0) return;
     const distMetres = deltaMs / 1000;
-    const move = new THREE.Vector3()
+    const move = this._tmpMove
       .copy(this._wasdVelocity)
       .multiplyScalar(distMetres);
 
