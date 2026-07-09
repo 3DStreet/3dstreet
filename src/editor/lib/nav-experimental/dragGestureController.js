@@ -4,11 +4,13 @@ import { RotationIndicator } from './rotationIndicator.js';
 import {
   LB_PAN_MAX_STEP_METRES,
   EYE_MARGIN_METRES,
-  MIN_ORBIT_RADIUS_METRES
+  MIN_ORBIT_RADIUS_METRES,
+  LB_TWEEN_HYSTERESIS_DEGREES
 } from './constants.js';
 import {
   cameraTiltDegrees,
   decideLbMode,
+  decideLbModeHysteresis,
   decideDragModeSwitch,
   clampOrbitRadius,
   shiftRotateStep,
@@ -67,7 +69,7 @@ export class DragGestureController {
     // Catch stale-from-tween states (a Plan View / focus tween moved the
     // camera across the tilt boundary without going through _shiftRotate). Emit a
     // fresh LB-mode if changed, before the gesture latches.
-    this.maybeEmitLbModeChange();
+    this.resolveLetterbox();
     this._gestureButton = event.button;
     if (mode === 'pan') {
       this._beginPanSubGesture(event.clientX, event.clientY);
@@ -104,8 +106,9 @@ export class DragGestureController {
     } else if (mode === 'rotate') {
       captureNavDiscovery('rotate');
       this._shiftRotate(dx, dy);
-      // Emit LB-mode change the moment the tilt crosses T mid-gesture.
-      this.maybeEmitLbModeChange();
+      // The letterbox re-evaluates the moment the tilt crosses T: `_shiftRotate`
+      // ends in `funnel.dispatch()`, which resolves it at exact T — no explicit
+      // call needed here.
     }
   }
 
@@ -123,7 +126,7 @@ export class DragGestureController {
       // Hide the ring on any latch-end via mouseup so it can't leak visible.
       this._indicator.hide();
       // Safety-net recompute in case the final move was missed.
-      this.maybeEmitLbModeChange();
+      this.resolveLetterbox();
     }
     return endedMode;
   }
@@ -145,12 +148,25 @@ export class DragGestureController {
   // and only engages when street-level is enabled. The single decision point
   // for all three callers (the mode cache, the mode-change emitter, and the
   // pan gesture latch).
-  _decideLbModeLive() {
+  // Compute the LB sub-mode from the live camera. Street-level off (Stage 1)
+  // short-circuits to 'pan-screen'. `useHysteresis` selects the eval mode: exact
+  // T (the default — every real-time write, every settle, and the indicator's
+  // initial seed) or a dead-band δ around T (only a committed-motion-runner tween
+  // frame, so a tween settling on / running along T can't strobe the indicator).
+  // A null `_currentLbMode` anchor falls through to exact T even under hysteresis
+  // (nothing to hold across the band yet — seed first).
+  _decideLbModeLive(useHysteresis = false) {
     if (!this._ctx.streetLevelEnabled) return 'pan-screen';
-    return decideLbMode(
-      cameraTiltDegrees(this._ctx.camera),
-      this._ctx.tiltThreshold
-    );
+    const tilt = cameraTiltDegrees(this._ctx.camera);
+    if (useHysteresis && this._currentLbMode != null) {
+      return decideLbModeHysteresis(
+        tilt,
+        this._ctx.tiltThreshold,
+        LB_TWEEN_HYSTERESIS_DEGREES,
+        this._currentLbMode
+      );
+    }
+    return decideLbMode(tilt, this._ctx.tiltThreshold);
   }
 
   // Phase 2: read the cached LB sub-mode for the visual indicator. The
@@ -164,13 +180,17 @@ export class DragGestureController {
     return this._currentLbMode;
   }
 
-  // Recompute the LB sub-mode from the live camera and emit on change.
-  // Called from gesture-start (catches stale-from-tween states), from
-  // every Shift+LB move (the moment the tilt crosses 30°), and from
-  // Plan-View / focus-animation onDone callbacks.
-  maybeEmitLbModeChange() {
+  // Recompute the LB sub-mode from the live camera and emit `modechange` on a
+  // transition (emit-on-change — a no-op otherwise). This is the single
+  // letterbox resolution point: the camera-write funnel calls it on every write
+  // (exact-T via `dispatch`, hysteresis via `commitTween`), and the handful of
+  // non-camera-write triggers (gesture-start seed, gesture-end safety-net, the
+  // Shift-switch re-latch, the WASD-yield, and the T / street-level setters,
+  // which flip the comparator at a fixed pose with no camera write to ride)
+  // call it directly with exact T (`useHysteresis` omitted).
+  resolveLetterbox(useHysteresis = false) {
     if (!this._ctx.camera) return;
-    const next = this._decideLbModeLive();
+    const next = this._decideLbModeLive(useHysteresis);
     if (next !== this._currentLbMode) {
       this._currentLbMode = next;
       this._ctx.emitModeChange(next);
@@ -304,12 +324,13 @@ export class DragGestureController {
     // switch doesn't apply an accumulated jump.
     this._pointerOld.set(this._lastClientX, this._lastClientY);
     // Two emit channels, matching the mousedown/mouseup contract:
-    // `_emitModeChange` carries the coarse 'pan'/'rotate' mode the hook
-    // tolerates; `_maybeEmitLbModeChange` drives the separate
-    // pan-truck/pan-pedestal letterbox stream. Firing both keeps the
-    // indicator and letterbox consistent after a switch.
+    // `emitModeChange` carries the coarse 'pan'/'rotate' mode the hook
+    // tolerates; `resolveLetterbox` drives the separate pan-truck/pan-pedestal
+    // letterbox stream. This is a fixed-pose re-latch (no camera write to ride),
+    // so resolve directly at exact T. Firing both keeps the indicator and
+    // letterbox consistent after a switch.
     this._ctx.emitModeChange(desired);
-    this.maybeEmitLbModeChange();
+    this.resolveLetterbox();
   }
 
   // WASD ↔ rotation interplay: entering WASD mode (first movement key
@@ -326,7 +347,7 @@ export class DragGestureController {
     this._ctx.latch.end();
     this._ctx.emitModeChange(null);
     this._indicator.hide();
-    this.maybeEmitLbModeChange();
+    this.resolveLetterbox();
   }
 
   // --- LB screen-space pan (Stage 1 parity-plus) ---
@@ -534,9 +555,9 @@ export class DragGestureController {
   //   Street (tilt ≤ T): rotate in place around the camera's own
   //                      position. No ring.
   // The regime and the ring are LATCHED here at sub-gesture start; the
-  // letterbox is driven separately by LIVE tilt (`_maybeEmitLbModeChange`),
-  // so mid-drag the two can disagree by design. Do NOT wire the ring off
-  // live tilt.
+  // letterbox is driven separately by LIVE tilt (`resolveLetterbox`, exact T on
+  // each drag write via the funnel), so mid-drag the two can disagree by design.
+  // Do NOT wire the ring off live tilt.
   _latchRotationCenter(camera, clientX, clientY) {
     // Street-level mode off: the Street rotate-in-place regime never
     // engages — rotation is always the Map orbit. At/above the horizon
@@ -758,9 +779,15 @@ export class DragGestureController {
     // rotate-in-place case (centre coincides with camera) `pos === camPos`
     // and the latched centre equals camera position anyway.
     this._ctx.center.copy(center);
-    // Invalidate on ACTUAL rotation only — a zero-delta drag (dxPx==dyPx==0)
-    // reaches here with R≈identity and would otherwise invalidate. Gate
-    // on a non-zero applied pixel delta — but always dispatch.
+    // Invalidate on ACTUAL movement only (shared with the pan sites — the WE-6 /
+    // C1 zero-motion guard: a drag that doesn't move the camera must preserve the
+    // wheel zoom-undo memory). The pans express "moved" as a non-zero world-space
+    // step; a ROTATE has no world-translation step (a rotate-in-place changes
+    // orientation with pos===camPos, zero position delta), so gating on a
+    // position delta would wrongly skip the clear on a real rotation. The
+    // gesture-appropriate "moved" quantity for a rotate is its non-zero pixel
+    // input: R≈identity iff dxPx==dyPx==0, so this is the exact rotate analogue of
+    // the pans' world-step gate. Always dispatch regardless.
     if (dxPx || dyPx) this._ctx.funnel.invalidateWheelMemory('rotate');
     camera.updateMatrixWorld();
     // Billboard the ring as the camera orbits. No-op when

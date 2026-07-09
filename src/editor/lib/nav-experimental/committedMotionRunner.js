@@ -124,8 +124,9 @@ export class CommittedMotionRunner {
         center.lerpVectors(startCenter, endCenter, eased);
         camera.updateMatrixWorld();
         // Per-tick commit: the ease-back moves the camera by a non-wheel
-        // mechanism, so clear the wheel zoom-undo memory + dispatch `change`.
-        funnel.commitMove('tween');
+        // mechanism, so clear the wheel zoom-undo memory + resolve the letterbox
+        // (hysteresis, tween-scoped) + dispatch `change`.
+        funnel.commitTween('tween');
       },
       onDone: () => {
         // Superseded by a same-frame hand-off — do not run the stale terminal
@@ -190,7 +191,7 @@ export class CommittedMotionRunner {
       durationMs,
       onTick: (eased) => {
         onTick(eased);
-        funnel.commitMove('tween');
+        funnel.commitTween('tween');
       },
       onDone: () => {
         commitPose();
@@ -207,10 +208,13 @@ export class CommittedMotionRunner {
     });
   }
 
-  // The parameterized settle epilogue. Order — grounded → reseed → lbMode →
-  // refresh — is observationally identical to each motion's inline onDone (the
-  // four steps read the committed pose and write independent state; only lbMode
-  // and the terminal dispatch emit events, in that order, in every original).
+  // The parameterized settle epilogue. Order — grounded → reseed → refresh — is
+  // observationally identical to each motion's inline onDone (the steps read the
+  // committed pose and write independent state). The letterbox re-eval that used
+  // to live here (`settle.lbMode`) is gone: the terminal `funnel.dispatch()` now
+  // resolves the letterbox at exact T for EVERY settle, so pop-to-roof and
+  // rise-to-drone — which formerly skipped it — canonicalise too. modechange
+  // still fires before the terminal change (inside dispatch).
   _applySettle(settle) {
     if (!settle) return;
     const ctx = this._ctx;
@@ -223,7 +227,6 @@ export class CommittedMotionRunner {
       ctx.grounded.captureH();
     }
     if (settle.reseedLegit) ctx.sensor.reseedLegitPose();
-    if (settle.lbMode) ctx.emitLbModeChange();
     // Every committed-motion settle refreshes the context-button snapshot so
     // the button icon reflects the landed pose on the settle frame, not one
     // idle tick later. (Formerly opt-in via `settle.refreshSnapshot`, which

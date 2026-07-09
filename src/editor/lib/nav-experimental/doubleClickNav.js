@@ -207,15 +207,15 @@ export class DoubleClickNav {
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld();
       },
-      // Settle: clear zoom-undo, reseed legit-pose so recovery can't ease
-      // back to the pre-teleport pose, re-eval letterbox from the landed
-      // tilt, derive grounded (teleport = a load/teleport edge), and
-      // refresh the context-button snapshot so its icon reflects the landed
-      // pose immediately.
+      // Settle: reseed legit-pose so recovery can't ease back to the
+      // pre-teleport pose, derive grounded (teleport = a load/teleport edge),
+      // and refresh the context-button snapshot so its icon reflects the landed
+      // pose immediately. Zoom-undo is cleared and the letterbox re-evaluated
+      // from the landed tilt by the terminal `funnel.dispatch()` (uniform for
+      // every settle).
       settle: {
         grounded: 'derive',
-        reseedLegit: true,
-        lbMode: true
+        reseedLegit: true
       }
     });
   }

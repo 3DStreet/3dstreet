@@ -29,6 +29,19 @@ export const MAX_TILT_DEGREES = 89;
 // `nav-experimental-tuning` so end-user testing can re-tune it.
 export const TILT_THRESHOLD_DEFAULT_DEGREES = 25;
 
+// TASK-037 (TH-73): letterbox-indicator hysteresis dead-band δ, in degrees,
+// applied ONLY during a committed-motion-runner tween. While a tween runs, the
+// indicator flips Street→Map only above T+δ and Map→Street only below T−δ, so a
+// tween that settles right on the boundary (or runs along it) can't strobe the
+// indicator. It flips promptly for a substantial crossing near T. Scoped to
+// runner tweens: live drags, the wheel swoop, and every settle resolve at exact
+// T (no dead-band), because the regime CONTROL is always exact-T and the
+// indicator must not desync from it outside a tween. Build-time constant (NOT
+// runtime-tunable — the runtime surface is fixed at four knobs). Too small ⇒ a
+// boundary-run tween still flickers; too large ⇒ a genuine near-T crossing is
+// delayed within the band. Working range 1–4°.
+export const LB_TWEEN_HYSTERESIS_DEGREES = 2;
+
 // TASK-024 — solid-geometry prevention & recovery. All metres / degrees.
 // Starting values from the SPEC; tunable.
 //

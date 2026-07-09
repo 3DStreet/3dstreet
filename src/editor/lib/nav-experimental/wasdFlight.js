@@ -189,10 +189,6 @@ export class WasdFlight {
     camera.position.z += move.z;
     this._ctx.center.x += move.x;
     this._ctx.center.z += move.z;
-    // An advancing WASD step is a non-wheel camera move → clear the
-    // zoom-undo memory. The `block` outcome early-returns above (zero-delta —
-    // no clear); a hover/step-up that changes only y still moved → clear.
-    this._ctx.funnel.invalidateWheelMemory('wasd');
 
     if (outcome.kind === 'step-up' || outcome.kind === 'follow') {
       // Grounded collision-follow (preserve AGL,
@@ -232,7 +228,11 @@ export class WasdFlight {
     }
 
     camera.updateMatrixWorld();
-    this._ctx.funnel.dispatch();
+    // An advancing WASD step is a non-wheel camera move that ALWAYS moves the
+    // camera (the `block` outcome early-returns above — no zero-motion case), so
+    // commit unconditionally: clear the zoom-undo memory + resolve the letterbox
+    // (exact T) + dispatch `change`.
+    this._ctx.funnel.commitMove('wasd');
   }
 
   // Run the WASD forward-ray + destination-floor probes and

@@ -292,8 +292,7 @@ export class TransitionController {
       },
       settle: {
         grounded: 'force-true',
-        reseedLegit: true,
-        lbMode: true
+        reseedLegit: true
       }
     });
   }
@@ -514,8 +513,7 @@ export class TransitionController {
       },
       settle: {
         grounded: 'force-true',
-        reseedLegit: true,
-        lbMode: true
+        reseedLegit: true
       }
     });
   }
