@@ -179,9 +179,9 @@ export class DoubleClickNav {
     // pose — the live reads above already used the mid-flight camera, so no
     // jump. `run()` does the cancel + ownership set internally.
     //
-    // Teleport is the ONE motion that does NOT clear the zoom-undo memory per
-    // tick (`perTick: 'dispatch'`) — it clears once in the settle. FOV tweens
-    // from its current (in-flight on a re-click) value to the default so a
+    // Like every committed motion, the teleport clears the zoom-undo memory per
+    // tick, so an interrupted teleport can't leave stale zoom-undo armed. FOV
+    // tweens from its current (in-flight on a re-click) value to the default so a
     // telephoto arrival reframes smoothly; the DEFAULT_FOV_DEGREES literal is
     // used because a construction-time `camera.fov` capture proved unreliable
     // on a re-attach mid-zoom, and 50 is the shared resting FOV across nav views.
@@ -193,7 +193,6 @@ export class DoubleClickNav {
     this._ctx.runner.run({
       ownership: 'teleport',
       durationMs: FALL_DURATION_MS,
-      perTick: 'dispatch',
       onTick: (eased) => {
         camera.position.lerpVectors(startPos, endPos, eased);
         camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
@@ -216,8 +215,7 @@ export class DoubleClickNav {
       settle: {
         grounded: 'derive',
         reseedLegit: true,
-        lbMode: true,
-        refreshSnapshot: true
+        lbMode: true
       }
     });
   }

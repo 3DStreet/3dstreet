@@ -93,8 +93,7 @@ export class TransitionController {
       },
       settle: {
         grounded: 'force-true',
-        reseedLegit: true,
-        refreshSnapshot: true
+        reseedLegit: true
       }
     });
   }
@@ -294,8 +293,7 @@ export class TransitionController {
       settle: {
         grounded: 'force-true',
         reseedLegit: true,
-        lbMode: true,
-        refreshSnapshot: true
+        lbMode: true
       }
     });
   }
@@ -434,8 +432,7 @@ export class TransitionController {
       },
       settle: {
         grounded: 'force-false-captureH',
-        reseedLegit: true,
-        refreshSnapshot: true
+        reseedLegit: true
       }
     });
   }
@@ -518,8 +515,7 @@ export class TransitionController {
       settle: {
         grounded: 'force-true',
         reseedLegit: true,
-        lbMode: true,
-        refreshSnapshot: true
+        lbMode: true
       }
     });
   }

@@ -114,6 +114,23 @@ export class TickAnimator {
     return this._currentTween !== null;
   }
 
+  // Return the live current-tween handle (or null). Used by a caller that must
+  // survive a same-frame hand-off: it captures the handle a hand-off started so
+  // a trailing terminal block on the same frame can't orphan it. Reads the field
+  // at call time — capture AFTER the hand-off runs.
+  captureCurrent() {
+    return this._currentTween;
+  }
+
+  // Re-install a previously captured handle as the current tween. The terminal
+  // block of a superseded tween nulls `_currentTween` after the hand-off's onTick
+  // returns; adopting the captured handle restores the hand-off tween so it isn't
+  // orphaned. A null handle is a no-op (a hand-off that started no tween must not
+  // clobber the current one).
+  adoptHandle(handle) {
+    if (handle) this._currentTween = handle;
+  }
+
   _tick(delta) {
     const snapshot = Array.from(this._subscribers);
     for (const fn of snapshot) {
