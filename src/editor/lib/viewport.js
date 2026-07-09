@@ -48,11 +48,21 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     // It undoes the local entity rotation and then restores so box has the expected size.
     // We also undo the parent world rotation.
 
+    // tempBox3 is module-level and shared across all helper instances; reset it so
+    // that if we skip both bbox branches below (e.g. a detached object with no
+    // parent) we don't reuse the previous helper's box left over in it.
+    tempBox3.makeEmpty();
+
     // Skip the position/rotation zeroing for splat entities as it interferes with
     // how Spark's SplatMesh handles matrix updates
     const isSplatEntity = this.object?.el?.hasAttribute('splat');
 
-    if (this.object !== undefined && !isSplatEntity) {
+    // this.object.parent is null when the tracked object has been detached from
+    // the scene graph (deleted/undo'd) while still hovered or selected; the
+    // parent-relative rezeroing below would then throw on matrixWorld.
+    const hasParent = this.object?.parent != null;
+
+    if (this.object !== undefined && hasParent && !isSplatEntity) {
       auxEuler.copy(this.object.rotation);
       auxLocalPosition.copy(this.object.position);
       this.object.rotation.set(0, 0, 0);
@@ -138,7 +148,7 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     }
 
     // Restore rotations (skip for splat entities since we didn't modify them).
-    if (this.object !== undefined && !isSplatEntity) {
+    if (this.object !== undefined && hasParent && !isSplatEntity) {
       this.object.parent.matrixWorld.compose(
         auxPosition,
         auxQuaternion,

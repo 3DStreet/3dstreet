@@ -12,7 +12,6 @@ import React from 'react';
 import { FormattedMessage } from 'react-intl';
 import AddGeneratorComponent from './AddGeneratorComponent';
 import {
-  Object24IconCyan,
   ArrowLeftHookIcon,
   TrashIcon,
   Copy32Icon,
@@ -42,12 +41,6 @@ export default class Sidebar extends React.Component {
 
   hasParentComponent = (entity) => {
     return entity.getAttribute('data-parent-component');
-  };
-
-  fireParentComponentDetach = (entity) => {
-    const componentName = entity.getAttribute('data-parent-component');
-    const parentEntity = entity.parentElement;
-    parentEntity.components[componentName].detach();
   };
 
   selectParentEntity = (entity) => {
@@ -162,16 +155,6 @@ export default class Sidebar extends React.Component {
                           <FormattedMessage
                             id="sidebar.editCloneSettings"
                             defaultMessage="Edit Clone Settings"
-                          />
-                        </Button>
-                        <Button
-                          variant={'toolbtn'}
-                          onClick={() => this.fireParentComponentDetach(entity)}
-                        >
-                          <Object24IconCyan />
-                          <FormattedMessage
-                            id="sidebar.detach"
-                            defaultMessage="Detach"
                           />
                         </Button>
                       </div>
