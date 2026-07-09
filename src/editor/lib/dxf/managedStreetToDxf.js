@@ -60,9 +60,10 @@ export const DEFAULT_DXF_EXPORT_OPTIONS = {
 
 // Compact corner list for a segment's top face. Geometry is built as
 // `below-box` with width along local X and depth along local Z, translated so
-// the top face sits at local Y=0 (see street-segment.js:generateMesh). Corners
-// are ordered CCW when viewed from above so the resulting polyline is a
-// well-formed closed area in AutoCAD.
+// the top face sits at local Y=0 (see street-segment.js:generateMesh). Corner
+// order is consistent around the face; note that projectToPlan's Z-flip means
+// the emitted polyline winds clockwise, which AutoCAD accepts for closed
+// LWPOLYLINEs (winding only matters if hatch/area logic is added later).
 function segmentLocalCorners(width, length) {
   const halfW = width / 2;
   const halfL = length / 2;
@@ -123,14 +124,17 @@ export function exportManagedStreetsToDxf(options = {}) {
     segmentEls.sort((a, b) => a.object3D.position.x - b.object3D.position.x);
 
     let previousSegmentType = null;
-    let previousRightEdgeWorld = null;
 
     for (const segEl of segmentEls) {
       const segData = segEl.getAttribute('street-segment');
-      if (!segData) continue;
-      const width = Number(segData.width) || 0;
-      const length = Number(segData.length) || 0;
-      if (width <= 0 || length <= 0) continue;
+      const width = Number(segData?.width) || 0;
+      const length = Number(segData?.length) || 0;
+      if (width <= 0 || length <= 0) {
+        // A skipped segment breaks adjacency — reset so we don't draw a curb
+        // across the gap between its two neighbors.
+        previousSegmentType = null;
+        continue;
+      }
 
       // A-Frame updates object3D.matrixWorld lazily. Force an update so the
       // first export after a scene load doesn't ship a matrix from before
@@ -158,8 +162,7 @@ export function exportManagedStreetsToDxf(options = {}) {
       // with the previous, lower-x segment).
       if (
         previousSegmentType &&
-        needsCurbBetween(previousSegmentType, segData.type) &&
-        previousRightEdgeWorld
+        needsCurbBetween(previousSegmentType, segData.type)
       ) {
         const curbLayerName = opts.layerPrefix
           ? `${opts.layerPrefix}${CURB_LAYER.name}`
@@ -175,10 +178,6 @@ export function exportManagedStreetsToDxf(options = {}) {
       }
 
       previousSegmentType = segData.type;
-      // Save this segment's +x edge world coords for the next iteration
-      // (currently unused since we draw the curb on the -x edge of the next
-      // segment, but keeps the intent explicit if the shared-edge case grows).
-      previousRightEdgeWorld = [worldCorners[1], worldCorners[2]];
     }
   }
 

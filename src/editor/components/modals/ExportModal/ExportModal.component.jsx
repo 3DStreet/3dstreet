@@ -59,7 +59,8 @@ function ExportModal() {
       scene_id: STREET.utils.getCurrentSceneId()
     });
     if (!isPro) {
-      startCheckout('export');
+      // Dedicated surface so the paywall shows DXF/CAD copy, not GLB.
+      startCheckout('export-dxf');
       return;
     }
     // Close the modal so the blocking export indicator is visible.

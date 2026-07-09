@@ -28,6 +28,25 @@ const CubeIcon = () => (
   </svg>
 );
 
+const DraftingCompassIcon = () => (
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="m12.99 6.74 1.93 3.44" />
+    <path d="M19.136 12a10 10 0 0 1-14.271 0" />
+    <path d="m21 21-2.16-3.84" />
+    <path d="m3 21 8.02-14.26" />
+    <circle cx="12" cy="5" r="2" />
+  </svg>
+);
+
 const ImageIcon = () => (
   <svg
     width="22"
@@ -110,6 +129,25 @@ export const PAYWALL_SURFACES = {
       'Download JPEG snapshots without watermark',
       'Unlimited geospatial maps & location changes',
       'Import custom 3D models & SVG / glTF files',
+      TOKEN_FEATURE_LINE
+    ]
+  },
+
+  // DXF plan-view export — fired from the Export modal's DXF card. Separate
+  // key from 'export' so the paywall speaks CAD (not GLB) and analytics can
+  // tell the two export paywalls apart.
+  'export-dxf': {
+    icon: <DraftingCompassIcon />,
+    title: 'DXF Plan View',
+    subtitle: '.dxf · 2D CAD export',
+    headline: 'Export requires Pro',
+    description:
+      'DXF plan view export brings your street design into AutoCAD and other CAD tools as clean, layered 2D linework.',
+    features: [
+      'DXF plan view export for AutoCAD & CAD tools',
+      'GLB glTF & AR Ready GLB export',
+      'Download JPEG snapshots without watermark',
+      'Unlimited geospatial maps & location changes',
       TOKEN_FEATURE_LINE
     ]
   },
