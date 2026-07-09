@@ -264,7 +264,7 @@ export class CursorAnchor {
     // object's flat fields.
     this._tmpGround = new THREE.Vector3();
     this._tmpForward = new THREE.Vector3();
-    this._tmpFp = new THREE.Vector3();
+    this._tmpFallbackPoint = new THREE.Vector3();
   }
 
   setCamera(camera) {
@@ -351,7 +351,7 @@ export class CursorAnchor {
     // distinct scratch — do not read _tmpForward after this point.)
     const fwd = this._tmpForward;
     camera.getWorldDirection(fwd);
-    const fp = this._tmpFp
+    const fp = this._tmpFallbackPoint
       .copy(camera.position)
       .addScaledVector(fwd, FALLBACK_FORWARD_DIST);
     return {

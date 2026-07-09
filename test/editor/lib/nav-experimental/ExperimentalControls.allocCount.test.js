@@ -32,6 +32,9 @@ import { runAllocRefactorScript } from './_allocRefactorScript.js';
 //                 baseline commit; tightened to the achieved count after the
 //                 conversions land.
 const PRE_BUDGET = 947;
+// Set to the exact achieved count (zero slack), so this is a hard ratchet: a
+// future legitimate allocation on these paths will trip it. That is intended —
+// bump this deliberately (and note why) if you add one.
 const POST_BUDGET = 174;
 
 let Controls;
@@ -106,7 +109,6 @@ describe('scratch-vector refactor — allocation count', () => {
 
       // Visible in the vitest run output so the achieved number can be read
       // and POST_BUDGET tightened after the conversions land.
-      // eslint-disable-next-line no-console
       console.log(
         `[allocCount] THREE allocations over the drive script: ${COUNTER.n} (PRE_BUDGET ${PRE_BUDGET}, POST_BUDGET ${POST_BUDGET})`
       );
