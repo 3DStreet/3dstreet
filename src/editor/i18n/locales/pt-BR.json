@@ -316,6 +316,8 @@
   "entity.toggleVisibility": "Alternar visibilidade da entidade",
   "exportModal.arReadyHint": "Omite pessoas, veículos e camadas geoespaciais para aplicativos de realidade aumentada.",
   "exportModal.arReadyPill": "Pronto para AR",
+  "exportModal.autoPreviewHint": "A prévia automática gera a prévia 3D ao abrir. Deixe desativada para cenas muito grandes.",
+  "exportModal.autoPreviewPill": "Prévia automática",
   "exportModal.downloadExt": "Baixar {ext}",
   "exportModal.dxfDescription": "Baixe uma vista em planta 2D das ruas desta cena como um arquivo .dxf para usar no AutoCAD e outras ferramentas CAD.",
   "exportModal.format.dxf": "Planta CAD",

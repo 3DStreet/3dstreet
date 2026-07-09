@@ -316,6 +316,8 @@
   "entity.toggleVisibility": "Basculer la visibilité de l'entité",
   "exportModal.arReadyHint": "Omet les personnes, les véhicules et les couches géospatiales pour les applications de réalité augmentée.",
   "exportModal.arReadyPill": "Prêt pour l'AR",
+  "exportModal.autoPreviewHint": "L'aperçu automatique génère l'aperçu 3D à l'ouverture. Laissez-le désactivé pour les très grandes scènes.",
+  "exportModal.autoPreviewPill": "Aperçu automatique",
   "exportModal.downloadExt": "Télécharger {ext}",
   "exportModal.dxfDescription": "Télécharger une vue en plan 2D des rues de cette scène sous forme de fichier .dxf pour l'utiliser dans AutoCAD et d'autres outils de CAO.",
   "exportModal.format.dxf": "Plan CAO",

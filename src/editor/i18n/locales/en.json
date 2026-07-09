@@ -950,6 +950,12 @@
   "exportModal.arReadyPill": {
     "defaultMessage": "AR Ready"
   },
+  "exportModal.autoPreviewHint": {
+    "defaultMessage": "Auto-preview builds the 3D preview on open. Leave off for very large scenes."
+  },
+  "exportModal.autoPreviewPill": {
+    "defaultMessage": "Auto-preview"
+  },
   "exportModal.downloadExt": {
     "defaultMessage": "Download {ext}"
   },

@@ -636,7 +636,9 @@
     "exportModal.settings": "Settings",
     "exportModal.unitsFeet": "Feet",
     "exportModal.unitsLabel": "Units",
-    "exportModal.unitsMeters": "Meters"
+    "exportModal.unitsMeters": "Meters",
+    "exportModal.autoPreviewHint": "Auto-preview builds the 3D preview on open. Leave off for very large scenes.",
+    "exportModal.autoPreviewPill": "Auto-preview"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1275,7 +1277,9 @@
     "exportModal.settings": "Settings",
     "exportModal.unitsFeet": "Feet",
     "exportModal.unitsLabel": "Units",
-    "exportModal.unitsMeters": "Meters"
+    "exportModal.unitsMeters": "Meters",
+    "exportModal.autoPreviewHint": "Auto-preview builds the 3D preview on open. Leave off for very large scenes.",
+    "exportModal.autoPreviewPill": "Auto-preview"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1914,6 +1918,8 @@
     "exportModal.settings": "Settings",
     "exportModal.unitsFeet": "Feet",
     "exportModal.unitsLabel": "Units",
-    "exportModal.unitsMeters": "Meters"
+    "exportModal.unitsMeters": "Meters",
+    "exportModal.autoPreviewHint": "Auto-preview builds the 3D preview on open. Leave off for very large scenes.",
+    "exportModal.autoPreviewPill": "Auto-preview"
   }
 }

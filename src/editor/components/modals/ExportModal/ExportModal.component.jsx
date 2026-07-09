@@ -40,6 +40,22 @@ const FORMATS = [
     )
   },
   {
+    key: 'json',
+    ext: '.3dstreet.json',
+    pro: false,
+    beta: false,
+    surface: null,
+    label: (
+      <FormattedMessage id="exportModal.format.json" defaultMessage="JSON" />
+    ),
+    description: (
+      <FormattedMessage
+        id="exportModal.jsonDescription"
+        defaultMessage="Download this scene as a .3dstreet.json file to back up your work or import into another 3DStreet account."
+      />
+    )
+  },
+  {
     key: 'dxf',
     ext: '.dxf',
     pro: true,
@@ -70,28 +86,17 @@ const FORMATS = [
         defaultMessage="Download a 2D plan view of this scene's streets as a vector .pdf file, ready to print or publish."
       />
     )
-  },
-  {
-    key: 'json',
-    ext: '.3dstreet.json',
-    pro: false,
-    beta: false,
-    surface: null,
-    label: (
-      <FormattedMessage id="exportModal.format.json" defaultMessage="JSON" />
-    ),
-    description: (
-      <FormattedMessage
-        id="exportModal.jsonDescription"
-        defaultMessage="Download this scene as a .3dstreet.json file to back up your work or import into another 3DStreet account."
-      />
-    )
   }
 ];
 
 // Cap the JSON code-view at ~300k chars — scenes with cloud snapshot memory
 // can serialize to multiple MB, which would tank the modal's render.
 const JSON_PREVIEW_CHAR_LIMIT = 300000;
+
+// Persisted (localStorage) opt-in to auto-generate the GLB preview when the
+// 3D Model format is selected. Default off: on some systems just rendering
+// the scene itself is a big lift, so heavy work stays behind a click.
+const AUTO_GLB_PREVIEW_KEY = '3dstreet-export-auto-glb-preview';
 
 function ExportModal() {
   const intl = useIntl();
@@ -106,6 +111,25 @@ function ExportModal() {
   const [formatKey, setFormatKey] = useState('glb');
   const [arReady, setArReady] = useState(false);
   const [unitsFeet, setUnitsFeet] = useState(false);
+  const [autoGlbPreview, setAutoGlbPreview] = useState(() => {
+    try {
+      return localStorage.getItem(AUTO_GLB_PREVIEW_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleAutoGlbPreview = () => {
+    setAutoGlbPreview((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(AUTO_GLB_PREVIEW_KEY, String(next));
+      } catch {
+        // Storage unavailable (private mode etc.) — setting just won't stick.
+      }
+      return next;
+    });
+  };
 
   // On-demand GLB preview — generating a GLB blocks the main thread for
   // seconds on large scenes, so it runs on click, not on selection, and the
@@ -118,6 +142,10 @@ function ExportModal() {
   const glbUrlRef = useRef(null);
 
   const [jsonPreview, setJsonPreview] = useState({ status: 'idle', text: '' });
+  // Invalidation token for in-flight JSON serialization: bumped on modal
+  // close so a late resolve can't paint stale scene data into a reopened
+  // modal. NOT a cleanup-cancel — see the fetch effect below.
+  const jsonFetchSeqRef = useRef(0);
 
   const format = FORMATS.find((f) => f.key === formatKey);
   const isPlanFormat = formatKey === 'dxf' || formatKey === 'pdf';
@@ -140,6 +168,7 @@ function ExportModal() {
       releaseGlbUrl();
       setGlbPreview({ status: 'idle', url: null, arReady: false });
       setJsonPreview({ status: 'idle', text: '' });
+      jsonFetchSeqRef.current++;
     }
   }, [isOpen]);
 
@@ -159,15 +188,21 @@ function ExportModal() {
   }, [isOpen, isPlanFormat, unitsFeet]);
 
   // JSON preview — serialized lazily the first time the JSON pill is picked.
+  // No cleanup-cancel here on purpose: this effect sets its own dep
+  // (status idle → loading), which re-runs the effect immediately, and a
+  // cleanup flag would cancel the fetch it just started — the preview then
+  // hangs on "Serializing scene…" whenever serialization loses that race
+  // (always, for saved scenes: the Firestore snapshot merge takes real
+  // time). Staleness is handled by jsonFetchSeqRef instead, bumped on close.
   useEffect(() => {
     if (!isOpen || formatKey !== 'json' || jsonPreview.status !== 'idle') {
       return;
     }
-    let cancelled = false;
+    const seq = ++jsonFetchSeqRef.current;
     setJsonPreview({ status: 'loading', text: '' });
     getSceneJsonString()
       .then((raw) => {
-        if (cancelled) return;
+        if (seq !== jsonFetchSeqRef.current) return;
         let pretty = raw;
         try {
           pretty = JSON.stringify(JSON.parse(raw), null, 2);
@@ -185,11 +220,10 @@ function ExportModal() {
       })
       .catch((error) => {
         console.error('Error serializing scene JSON:', error);
-        if (!cancelled) setJsonPreview({ status: 'error', text: '' });
+        if (seq === jsonFetchSeqRef.current) {
+          setJsonPreview({ status: 'error', text: '' });
+        }
       });
-    return () => {
-      cancelled = true;
-    };
   }, [isOpen, formatKey, jsonPreview.status]);
 
   const selectFormat = (key) => {
@@ -221,6 +255,33 @@ function ExportModal() {
     }
   }, [arReady]);
 
+  // GLB preview cache is only valid for the arReady flavor it was built
+  // with; a stale flavor shows the Generate button again.
+  const glbPreviewCurrent =
+    glbPreview.status !== 'idle' && glbPreview.arReady === arReady
+      ? glbPreview
+      : { status: 'idle', url: null, arReady };
+
+  // Opt-in auto-generation (persisted): kick off the GLB preview as soon as
+  // the 3D Model format is showing an idle preview slot. Also re-fires when
+  // toggling AR Ready invalidates the cache — auto mode means auto.
+  useEffect(() => {
+    if (
+      isOpen &&
+      formatKey === 'glb' &&
+      autoGlbPreview &&
+      glbPreviewCurrent.status === 'idle'
+    ) {
+      handleGenerateGlbPreview();
+    }
+  }, [
+    isOpen,
+    formatKey,
+    autoGlbPreview,
+    glbPreviewCurrent.status,
+    handleGenerateGlbPreview
+  ]);
+
   const handleDownload = () => {
     posthog.capture('export_modal_export_clicked', {
       export_type: formatKey === 'glb' && arReady ? 'ar_glb' : formatKey,
@@ -242,13 +303,6 @@ function ExportModal() {
       exportSceneToJSON();
     }
   };
-
-  // GLB preview cache is only valid for the arReady flavor it was built
-  // with; a stale flavor shows the Generate button again.
-  const glbPreviewCurrent =
-    glbPreview.status !== 'idle' && glbPreview.arReady === arReady
-      ? glbPreview
-      : { status: 'idle', url: null, arReady };
 
   const planIsEmpty = isPlanFormat && !planModel?.bounds;
 
@@ -451,11 +505,30 @@ function ExportModal() {
                         defaultMessage="AR Ready"
                       />
                     </button>
+                    <button
+                      type="button"
+                      aria-pressed={autoGlbPreview}
+                      className={`${styles.pill} ${
+                        autoGlbPreview ? styles.pillActive : ''
+                      }`}
+                      onClick={toggleAutoGlbPreview}
+                    >
+                      <FormattedMessage
+                        id="exportModal.autoPreviewPill"
+                        defaultMessage="Auto-preview"
+                      />
+                    </button>
                   </div>
                   <p className={styles.settingHint}>
                     <FormattedMessage
                       id="exportModal.arReadyHint"
                       defaultMessage="Omits people, vehicles and geospatial layers for augmented reality apps."
+                    />
+                  </p>
+                  <p className={styles.settingHint}>
+                    <FormattedMessage
+                      id="exportModal.autoPreviewHint"
+                      defaultMessage="Auto-preview builds the 3D preview on open. Leave off for very large scenes."
                     />
                   </p>
                 </>
