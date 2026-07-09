@@ -4,6 +4,8 @@ import posthog from 'posthog-js';
 import PropertyRow from './PropertyRow';
 import { Button } from './Button';
 import { saveString } from '@/editor/lib/utils';
+import useStore from '@/store.js';
+import { StreetToShapesGraphic } from '@/editor/components/modals/ConfirmModal/StreetToShapesGraphic';
 
 const sourceLabels = {
   'streetmix-url': 'Streetmix',
@@ -12,6 +14,7 @@ const sourceLabels = {
 
 const ManagedStreetSidebar = ({ entity }) => {
   const intl = useIntl();
+  const showConfirm = useStore((state) => state.showConfirm);
   const componentName = 'managed-street';
   const labelComponentName = 'street-label';
   // Check if entity and its components exist
@@ -56,20 +59,28 @@ const ManagedStreetSidebar = ({ entity }) => {
     // One-way workflow (undoable in-session): bakes the street into plain
     // entities and strips all managed components, so a saved scene keeps the
     // shapes, not the managed-street JSON.
-    if (
-      window.confirm(
-        intl.formatMessage({
-          id: 'managedStreetSidebar.convertToShapesConfirm',
-          defaultMessage:
-            'Convert this street into plain, freely-editable 3D objects? This is permanent: street and segment settings (widths, clone spacing, striping, reload from source) will be removed and the street cannot be converted back. Tip: Duplicate the street first if you also want to keep a managed copy.'
-        })
-      )
-    ) {
-      AFRAME.INSPECTOR.execute('streetconverttoshapes', { entity });
-      posthog.capture('convert_street_to_shapes', {
-        scene_id: STREET.utils.getCurrentSceneId()
-      });
-    }
+    showConfirm({
+      title: intl.formatMessage({
+        id: 'managedStreetSidebar.convertToShapesTitle',
+        defaultMessage: 'Convert Street to Shapes?'
+      }),
+      graphic: <StreetToShapesGraphic />,
+      message: intl.formatMessage({
+        id: 'managedStreetSidebar.convertToShapesConfirm',
+        defaultMessage:
+          'This turns the street into plain 3D shapes you can move, duplicate, and delete individually. After you save and reload this scene you cannot undo this action. Tip: duplicate the street first if you want to keep a copy of this managed street.'
+      }),
+      confirmLabel: intl.formatMessage({
+        id: 'managedStreetSidebar.convertToShapes',
+        defaultMessage: 'Convert to Shapes'
+      }),
+      onConfirm: () => {
+        AFRAME.INSPECTOR.execute('streetconverttoshapes', { entity });
+        posthog.capture('convert_street_to_shapes', {
+          scene_id: STREET.utils.getCurrentSceneId()
+        });
+      }
+    });
   };
 
   const reloadFromSource = () => {

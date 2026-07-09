@@ -56,6 +56,7 @@
     "common.upgradeToPro": "Upgrade to Pro",
     "common.useGeoTokensTooltip": "Use geo tokens to set or change a geolocation for your scene.",
     "common.widthLabel": "Width:",
+    "confirmModal.confirm": "Confirm",
     "deploymentBanner.dismiss": "Dismiss notice",
     "deploymentBanner.message": "You're using a forked or self-hosted build of 3DStreet (open source, AGPL-3.0). Local editing works, but cloud features are unavailable. To use cloud services, visit <link>3dstreet.app</link>.",
     "editorUpgradeModal.alreadyPro": "You're already a Pro member — try that action again to continue.",
@@ -607,7 +608,8 @@
     "appMenu.edit.deselect": "Deselect",
     "appMenu.view.zoomToSelection": "Zoom to Selection",
     "managedStreetSidebar.convertToShapes": "Convert to Shapes",
-    "managedStreetSidebar.convertToShapesConfirm": "Convert this street into plain, freely-editable 3D objects? This is permanent: street and segment settings (widths, clone spacing, striping, reload from source) will be removed and the street cannot be converted back. Tip: Duplicate the street first if you also want to keep a managed copy."
+    "managedStreetSidebar.convertToShapesTitle": "Convert Street to Shapes?",
+    "managedStreetSidebar.convertToShapesConfirm": "This turns the street into plain 3D shapes you can move, duplicate, and delete individually. After you save and reload this scene you cannot undo this action. Tip: duplicate the street first if you want to keep a copy of this managed street."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -666,6 +668,7 @@
     "common.upgradeToPro": "Upgrade to Pro",
     "common.useGeoTokensTooltip": "Use geo tokens to set or change a geolocation for your scene.",
     "common.widthLabel": "Width:",
+    "confirmModal.confirm": "Confirm",
     "deploymentBanner.dismiss": "Dismiss notice",
     "deploymentBanner.message": "You're using a forked or self-hosted build of 3DStreet (open source, AGPL-3.0). Local editing works, but cloud features are unavailable. To use cloud services, visit <link>3dstreet.app</link>.",
     "editorUpgradeModal.alreadyPro": "You're already a Pro member — try that action again to continue.",
@@ -1217,7 +1220,8 @@
     "appMenu.edit.deselect": "Deselect",
     "appMenu.view.zoomToSelection": "Zoom to Selection",
     "managedStreetSidebar.convertToShapes": "Convert to Shapes",
-    "managedStreetSidebar.convertToShapesConfirm": "Convert this street into plain, freely-editable 3D objects? This is permanent: street and segment settings (widths, clone spacing, striping, reload from source) will be removed and the street cannot be converted back. Tip: Duplicate the street first if you also want to keep a managed copy."
+    "managedStreetSidebar.convertToShapesTitle": "Convert Street to Shapes?",
+    "managedStreetSidebar.convertToShapesConfirm": "This turns the street into plain 3D shapes you can move, duplicate, and delete individually. After you save and reload this scene you cannot undo this action. Tip: duplicate the street first if you want to keep a copy of this managed street."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1276,6 +1280,7 @@
     "common.upgradeToPro": "Upgrade to Pro",
     "common.useGeoTokensTooltip": "Use geo tokens to set or change a geolocation for your scene.",
     "common.widthLabel": "Width:",
+    "confirmModal.confirm": "Confirm",
     "deploymentBanner.dismiss": "Dismiss notice",
     "deploymentBanner.message": "You're using a forked or self-hosted build of 3DStreet (open source, AGPL-3.0). Local editing works, but cloud features are unavailable. To use cloud services, visit <link>3dstreet.app</link>.",
     "editorUpgradeModal.alreadyPro": "You're already a Pro member — try that action again to continue.",
@@ -1827,6 +1832,7 @@
     "appMenu.edit.deselect": "Deselect",
     "appMenu.view.zoomToSelection": "Zoom to Selection",
     "managedStreetSidebar.convertToShapes": "Convert to Shapes",
-    "managedStreetSidebar.convertToShapesConfirm": "Convert this street into plain, freely-editable 3D objects? This is permanent: street and segment settings (widths, clone spacing, striping, reload from source) will be removed and the street cannot be converted back. Tip: Duplicate the street first if you also want to keep a managed copy."
+    "managedStreetSidebar.convertToShapesTitle": "Convert Street to Shapes?",
+    "managedStreetSidebar.convertToShapesConfirm": "This turns the street into plain 3D shapes you can move, duplicate, and delete individually. After you save and reload this scene you cannot undo this action. Tip: duplicate the street first if you want to keep a copy of this managed street."
   }
 }
