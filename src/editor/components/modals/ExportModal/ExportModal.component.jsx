@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styles from './ExportModal.module.scss';
 import { useAuthContext } from '../../../contexts';
-import { Button } from '../../elements';
+import { Button, Checkbox } from '../../elements';
 import Modal from '@shared/components/Modal/Modal.jsx';
 import posthog from 'posthog-js';
 import useStore from '@/store';
@@ -22,6 +22,10 @@ import PlanPreviewSvg from './PlanPreviewSvg';
 // description line and the Download CTA. `surface` is the paywall surface
 // key passed to startCheckout for Pro-gated downloads (preview stays free —
 // the preview IS the upsell).
+// Renders <code>…</code> spans in description messages (file extensions in
+// fixed-width type).
+const codeChunks = (chunks) => <code>{chunks}</code>;
+
 const FORMATS = [
   {
     key: 'glb',
@@ -35,7 +39,8 @@ const FORMATS = [
     description: (
       <FormattedMessage
         id="exportModal.glbDescription"
-        defaultMessage="Download this scene as a .glb 3D model file for use in Blender, Unreal, and other 3D tools."
+        defaultMessage="Download this scene as a <code>.glb</code> 3D model file for use in Blender, Unreal, and other 3D tools."
+        values={{ code: codeChunks }}
       />
     )
   },
@@ -51,7 +56,8 @@ const FORMATS = [
     description: (
       <FormattedMessage
         id="exportModal.jsonDescription"
-        defaultMessage="Download this scene as a .3dstreet.json file to back up your work or import into another 3DStreet account."
+        defaultMessage="Download this scene as a <code>.3dstreet.json</code> file to back up your work or import into another 3DStreet account."
+        values={{ code: codeChunks }}
       />
     )
   },
@@ -67,7 +73,8 @@ const FORMATS = [
     description: (
       <FormattedMessage
         id="exportModal.dxfDescription"
-        defaultMessage="Download a 2D plan view of this scene's streets as a .dxf file for use in AutoCAD and other CAD tools."
+        defaultMessage="Download a 2D plan view of this scene's streets as a <code>.dxf</code> file for use in AutoCAD and other CAD tools."
+        values={{ code: codeChunks }}
       />
     )
   },
@@ -83,7 +90,8 @@ const FORMATS = [
     description: (
       <FormattedMessage
         id="exportModal.pdfDescription"
-        defaultMessage="Download a 2D plan view of this scene's streets as a vector .pdf file, ready to print or publish."
+        defaultMessage="Download a 2D plan view of this scene's streets as a vector <code>.pdf</code> file, ready to print or publish."
+        values={{ code: codeChunks }}
       />
     )
   }
@@ -119,16 +127,13 @@ function ExportModal() {
     }
   });
 
-  const toggleAutoGlbPreview = () => {
-    setAutoGlbPreview((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(AUTO_GLB_PREVIEW_KEY, String(next));
-      } catch {
-        // Storage unavailable (private mode etc.) — setting just won't stick.
-      }
-      return next;
-    });
+  const setAutoGlbPreviewPersisted = (value) => {
+    setAutoGlbPreview(value);
+    try {
+      localStorage.setItem(AUTO_GLB_PREVIEW_KEY, String(value));
+    } catch {
+      // Storage unavailable (private mode etc.) — setting just won't stick.
+    }
   };
 
   // On-demand GLB preview — generating a GLB blocks the main thread for
@@ -352,6 +357,17 @@ function ExportModal() {
               </p>
             </>
           )}
+          <div className={styles.autoPreviewOption}>
+            <Checkbox
+              id="export-auto-glb-preview"
+              isChecked={autoGlbPreview}
+              onChange={setAutoGlbPreviewPersisted}
+              label={intl.formatMessage({
+                id: 'exportModal.autoPreviewLabel',
+                defaultMessage: 'Automatically generate 3D preview'
+              })}
+            />
+          </div>
         </div>
       );
     }
@@ -459,14 +475,6 @@ function ExportModal() {
                 onClick={() => selectFormat(f.key)}
               >
                 {f.label}
-                {f.beta && (
-                  <span className={styles.betaChip}>
-                    <FormattedMessage
-                      id="appMenu.betaBadge"
-                      defaultMessage="Beta"
-                    />
-                  </span>
-                )}
                 {f.pro && !isPro && (
                   <span className={styles.proChip}>
                     <FormattedMessage
@@ -480,6 +488,14 @@ function ExportModal() {
           </div>
 
           <p className={styles.formatDescription}>{format.description}</p>
+          {format.beta && (
+            <p className={styles.settingHint}>
+              <FormattedMessage
+                id="exportModal.betaNote"
+                defaultMessage="Beta format: the preview is exactly what you'll download."
+              />
+            </p>
+          )}
 
           {(formatKey === 'glb' || isPlanFormat) && (
             <div className={styles.settingsSection}>
@@ -505,30 +521,11 @@ function ExportModal() {
                         defaultMessage="AR Ready"
                       />
                     </button>
-                    <button
-                      type="button"
-                      aria-pressed={autoGlbPreview}
-                      className={`${styles.pill} ${
-                        autoGlbPreview ? styles.pillActive : ''
-                      }`}
-                      onClick={toggleAutoGlbPreview}
-                    >
-                      <FormattedMessage
-                        id="exportModal.autoPreviewPill"
-                        defaultMessage="Auto-preview"
-                      />
-                    </button>
                   </div>
                   <p className={styles.settingHint}>
                     <FormattedMessage
                       id="exportModal.arReadyHint"
                       defaultMessage="Omits people, vehicles and geospatial layers for augmented reality apps."
-                    />
-                  </p>
-                  <p className={styles.settingHint}>
-                    <FormattedMessage
-                      id="exportModal.autoPreviewHint"
-                      defaultMessage="Auto-preview builds the 3D preview on open. Leave off for very large scenes."
                     />
                   </p>
                 </>

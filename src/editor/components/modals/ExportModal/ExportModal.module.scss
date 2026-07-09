@@ -71,22 +71,14 @@
   }
 }
 
-// Tiny plan/status chips rendered inside a pill.
-.proChip,
-.betaChip {
+// Tiny plan chip rendered inside a pill.
+.proChip {
   padding: 0 6px;
   border-radius: 6px;
   font-size: 0.65rem;
   font-weight: normal;
   color: white;
-}
-
-.proChip {
   background-color: #774dee;
-}
-
-.betaChip {
-  background-color: #b45309;
 }
 
 .formatDescription {
@@ -94,6 +86,16 @@
   line-height: 1.4;
   color: variables.$lightgray-200;
   margin: 0;
+
+  code {
+    font-family:
+      'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+    font-size: 0.85em;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background-color: variables.$darkgray-300;
+    border: 1px solid variables.$darkgray-600;
+  }
 }
 
 .settingsSection {
@@ -174,6 +176,13 @@
 }
 
 .previewHint {
+  font-size: 12px;
+  color: variables.$lightgray-700;
+}
+
+// Small persisted auto-preview opt-in living under the generate hint.
+.autoPreviewOption {
+  margin-top: 8px;
   font-size: 12px;
   color: variables.$lightgray-700;
 }

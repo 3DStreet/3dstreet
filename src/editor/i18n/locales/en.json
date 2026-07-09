@@ -185,9 +185,6 @@
   "aiChatPanel.inputPlaceholder": {
     "defaultMessage": "Type a command or type /help for options"
   },
-  "appMenu.betaBadge": {
-    "defaultMessage": "Beta"
-  },
   "appMenu.edit": {
     "defaultMessage": "Edit"
   },
@@ -950,17 +947,17 @@
   "exportModal.arReadyPill": {
     "defaultMessage": "AR Ready"
   },
-  "exportModal.autoPreviewHint": {
-    "defaultMessage": "Auto-preview builds the 3D preview on open. Leave off for very large scenes."
+  "exportModal.autoPreviewLabel": {
+    "defaultMessage": "Automatically generate 3D preview"
   },
-  "exportModal.autoPreviewPill": {
-    "defaultMessage": "Auto-preview"
+  "exportModal.betaNote": {
+    "defaultMessage": "Beta format: the preview is exactly what you'll download."
   },
   "exportModal.downloadExt": {
     "defaultMessage": "Download {ext}"
   },
   "exportModal.dxfDescription": {
-    "defaultMessage": "Download a 2D plan view of this scene's streets as a .dxf file for use in AutoCAD and other CAD tools."
+    "defaultMessage": "Download a 2D plan view of this scene's streets as a <code>.dxf</code> file for use in AutoCAD and other CAD tools."
   },
   "exportModal.format.dxf": {
     "defaultMessage": "CAD Plan"
@@ -984,16 +981,16 @@
     "defaultMessage": "Generating 3D preview…"
   },
   "exportModal.glbDescription": {
-    "defaultMessage": "Download this scene as a .glb 3D model file for use in Blender, Unreal, and other 3D tools."
+    "defaultMessage": "Download this scene as a <code>.glb</code> 3D model file for use in Blender, Unreal, and other 3D tools."
   },
   "exportModal.jsonDescription": {
-    "defaultMessage": "Download this scene as a .3dstreet.json file to back up your work or import into another 3DStreet account."
+    "defaultMessage": "Download this scene as a <code>.3dstreet.json</code> file to back up your work or import into another 3DStreet account."
   },
   "exportModal.jsonTruncated": {
     "defaultMessage": "Preview truncated. The downloaded file contains the full scene."
   },
   "exportModal.pdfDescription": {
-    "defaultMessage": "Download a 2D plan view of this scene's streets as a vector .pdf file, ready to print or publish."
+    "defaultMessage": "Download a 2D plan view of this scene's streets as a vector <code>.pdf</code> file, ready to print or publish."
   },
   "exportModal.planEmpty": {
     "defaultMessage": "No street segments to draw yet. Add a street layer to see a plan preview."
