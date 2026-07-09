@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import classNames from 'classnames';
 import styles from './SceneEditTitle.module.scss';
 import { useAuthContext } from '../../../contexts/index.js';
 import { updateSceneIdAndTitle } from '../../../api/scene';
@@ -9,6 +10,8 @@ import { Edit24Icon } from '@shared/icons';
 const SceneEditTitle = () => {
   const title = useStore((state) => state.sceneTitle);
   const saveScene = useStore((state) => state.saveScene);
+  // Hidden-panel mode shows the title for context only — no inline editing.
+  const editable = useStore((state) => state.panelsVisible);
   const { currentUser } = useAuthContext();
   const [editing, setEditing] = useState(false);
 
@@ -45,7 +48,7 @@ const SceneEditTitle = () => {
     }
   };
 
-  if (editing) {
+  if (editing && editable) {
     return (
       <div className={styles.wrapper}>
         <InlineEditInput
@@ -59,12 +62,17 @@ const SceneEditTitle = () => {
   }
 
   return (
-    <div className={styles.wrapper} onClick={() => setEditing(true)}>
+    <div
+      className={classNames(styles.wrapper, !editable && styles.static)}
+      onClick={editable ? () => setEditing(true) : undefined}
+    >
       <div className={styles.readOnly}>
         <p className={styles.title}>{displayTitle}</p>
-        <span className={styles.editIcon}>
-          <Edit24Icon />
-        </span>
+        {editable && (
+          <span className={styles.editIcon}>
+            <Edit24Icon />
+          </span>
+        )}
       </div>
     </div>
   );

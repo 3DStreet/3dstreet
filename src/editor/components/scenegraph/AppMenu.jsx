@@ -17,8 +17,29 @@ import {
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { useState, useEffect } from 'react';
 import { currentOrthoDir } from '../../lib/cameras.js';
+import {
+  copySelectedEntity,
+  cutSelectedEntity,
+  pasteFromClipboard
+} from '../../lib/clipboard.js';
+import { cloneSelectedEntity, removeSelectedEntity } from '../../lib/entity.js';
+import { getOS } from '../../lib/utils.js';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { SUPPORTED_LOCALES } from '@/editor/i18n/config';
+
+// Keyboard hints shown in the Edit menu's right slot.
+const isMac = getOS() === 'macos';
+const editShortcuts = {
+  undo: isMac ? '⌘Z' : 'Ctrl+Z',
+  redo: isMac ? '⇧⌘Z' : 'Ctrl+Shift+Z',
+  cut: isMac ? '⌘X' : 'Ctrl+X',
+  copy: isMac ? '⌘C' : 'Ctrl+C',
+  paste: isMac ? '⌘V' : 'Ctrl+V',
+  duplicate: 'D',
+  delete: isMac ? '⌫' : 'Del',
+  deselect: 'Esc',
+  zoomToSelection: 'F'
+};
 
 const cameraOptions = [
   {
@@ -63,6 +84,15 @@ const AppMenu = ({ currentUser }) => {
     setLocale
   } = useStore();
   const [currentCamera, setCurrentCamera] = useState('perspective');
+  const [undoDisabled, setUndoDisabled] = useState(
+    !AFRAME.INSPECTOR?.history || AFRAME.INSPECTOR.history.undos.length === 0
+  );
+  const [redoDisabled, setRedoDisabled] = useState(
+    !AFRAME.INSPECTOR?.history || AFRAME.INSPECTOR.history.redos.length === 0
+  );
+  const [hasSelectedEntity, setHasSelectedEntity] = useState(
+    !!AFRAME.INSPECTOR?.selectedEntity
+  );
 
   // Function to get current camera state from the actual camera system
   const getCurrentCameraState = () => {
@@ -93,12 +123,26 @@ const AppMenu = ({ currentUser }) => {
       }, 100);
     };
 
+    // Mirror the action bar's undo/redo enabled state and track the current
+    // selection so Edit menu items enable/disable correctly.
+    const handleHistoryChanged = () => {
+      setUndoDisabled(AFRAME.INSPECTOR.history.undos.length === 0);
+      setRedoDisabled(AFRAME.INSPECTOR.history.redos.length === 0);
+    };
+    const handleEntitySelect = (entity) => {
+      setHasSelectedEntity(!!entity);
+    };
+
     Events.on('cameratoggle', handleCameraToggle);
     Events.on('inspectortoggle', handleInspectorToggle);
+    Events.on('historychanged', handleHistoryChanged);
+    Events.on('entityselect', handleEntitySelect);
 
     return () => {
       Events.off('cameratoggle', handleCameraToggle);
       Events.off('inspectortoggle', handleInspectorToggle);
+      Events.off('historychanged', handleHistoryChanged);
+      Events.off('entityselect', handleEntitySelect);
     };
   }, []);
 
@@ -501,6 +545,124 @@ const AppMenu = ({ currentUser }) => {
 
       <Menubar.Menu>
         <Menubar.Trigger className="MenubarTrigger">
+          <FormattedMessage id="appMenu.edit" defaultMessage="Edit" />
+        </Menubar.Trigger>
+        <Menubar.Portal>
+          <Menubar.Content
+            className="MenubarContent"
+            align="start"
+            sideOffset={5}
+            alignOffset={-3}
+          >
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={undoDisabled}
+              onClick={() => {
+                AFRAME.INSPECTOR.undo();
+                posthog.capture('undo_clicked');
+              }}
+            >
+              <FormattedMessage id="undoRedo.undo" defaultMessage="Undo" />
+              <div className="RightSlot">{editShortcuts.undo}</div>
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={redoDisabled}
+              onClick={() => {
+                AFRAME.INSPECTOR.redo();
+                posthog.capture('redo_clicked');
+              }}
+            >
+              <FormattedMessage id="undoRedo.redo" defaultMessage="Redo" />
+              <div className="RightSlot">{editShortcuts.redo}</div>
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                cutSelectedEntity();
+                posthog.capture('cut_clicked');
+              }}
+            >
+              <FormattedMessage id="appMenu.edit.cut" defaultMessage="Cut" />
+              <div className="RightSlot">{editShortcuts.cut}</div>
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                copySelectedEntity();
+                posthog.capture('copy_clicked');
+              }}
+            >
+              <FormattedMessage id="appMenu.edit.copy" defaultMessage="Copy" />
+              <div className="RightSlot">{editShortcuts.copy}</div>
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() => {
+                pasteFromClipboard();
+                posthog.capture('paste_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.edit.paste"
+                defaultMessage="Paste"
+              />
+              <div className="RightSlot">{editShortcuts.paste}</div>
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                cloneSelectedEntity();
+                posthog.capture('duplicate_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.edit.duplicate"
+                defaultMessage="Duplicate"
+              />
+              <div className="RightSlot">{editShortcuts.duplicate}</div>
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                // No confirm prompt: like Cut, the removal is undoable.
+                removeSelectedEntity(true);
+                posthog.capture('delete_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.edit.delete"
+                defaultMessage="Delete"
+              />
+              <div className="RightSlot">{editShortcuts.delete}</div>
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                AFRAME.INSPECTOR.selectEntity(null);
+                posthog.capture('deselect_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.edit.deselect"
+                defaultMessage="Deselect"
+              />
+              <div className="RightSlot">{editShortcuts.deselect}</div>
+            </Menubar.Item>
+          </Menubar.Content>
+        </Menubar.Portal>
+      </Menubar.Menu>
+
+      <Menubar.Menu>
+        <Menubar.Trigger className="MenubarTrigger">
           <FormattedMessage id="appMenu.view" defaultMessage="View" />
         </Menubar.Trigger>
         <Menubar.Portal>
@@ -540,6 +702,23 @@ const AppMenu = ({ currentUser }) => {
               </Menubar.CheckboxItem>
             ))}
             <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                const selectedEntity = AFRAME.INSPECTOR.selectedEntity;
+                if (selectedEntity) {
+                  Events.emit('objectfocus', selectedEntity.object3D);
+                }
+                posthog.capture('zoom_to_selection_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.view.zoomToSelection"
+                defaultMessage="Zoom to Selection"
+              />
+              <div className="RightSlot">{editShortcuts.zoomToSelection}</div>
+            </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"
               onClick={() => AFRAME.INSPECTOR.controls.resetZoom()}

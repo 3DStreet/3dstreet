@@ -288,16 +288,6 @@ AFRAME.registerComponent('street-generated-grass', {
     this.createdEntities.length = 0;
   },
 
-  // "Detach" from the autocreated-child sidebar simply stops managing the field
-  // by removing this component (the instanced mesh is procedural and has no
-  // independent serializable form, unlike cloned model entities).
-  detach: function () {
-    AFRAME.INSPECTOR.execute('componentremove', {
-      entity: this.el,
-      component: this.attrName
-    });
-  },
-
   remove: function () {
     this.el.removeEventListener('componentchanged', this.onComponentChanged);
     this.clearEntities();
