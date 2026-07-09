@@ -170,8 +170,9 @@ const REPLICATE_MODELS = {
   },
   // Image → 3D mesh (GLB) via fal's unified 3D API. Both are image-to-3D only
   // (no text prompt input). Consumed by the 3D Model tab through
-  // generateFalMesh, a synchronous callable (submit → poll → download+save),
-  // NOT the image generator or the splat job queue. `imageField` names the
+  // generateFalMesh, an async-queue submit callable (kind: 'mesh',
+  // provider: 'fal'); the client poll + reconciler finalize via
+  // fetchFalPrediction. NOT used by the image generator. `imageField` names the
   // model's input-image key (they differ); `params` are model-specific extras.
   // Token cost ≈ fal $ / $0.10 base × 2 margin (Hunyuan $0.16→3, TRELLIS 1024
   // texture $0.30→6).

@@ -184,10 +184,14 @@ async function fetchFalPrediction(job) {
 // free of a require on replicate.js (replicate.js requires THIS module).
 async function refundMeshTokenInline(db, userId, jobRef, tokenCost) {
   try {
+    let refundedNow = false;
+    let relatedModel = null;
     await db.runTransaction(async (tx) => {
+      refundedNow = false; // reset — the transaction may retry
       const jobDoc = await tx.get(jobRef);
       const job = jobDoc.exists ? jobDoc.data() : {};
       if (!job.tokenCharged || job.refunded) return;
+      relatedModel = job.model || null;
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
       const tokenDoc = await tx.get(tokenProfileRef);
       if (tokenDoc.exists) {
@@ -197,7 +201,23 @@ async function refundMeshTokenInline(db, userId, jobRef, tokenCost) {
         });
       }
       tx.update(jobRef, { refunded: true });
+      refundedNow = true;
     });
+
+    // Fire-and-forget: audit the refund, same ledger entry refundSplatToken
+    // writes, so tokenLog balances against generationLog for mesh failures too.
+    if (refundedNow) {
+      db.collection('tokenLog')
+        .add({
+          userId,
+          type: 'refund',
+          tokenCost,
+          source: 'mesh-generation-failed',
+          relatedModel,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        })
+        .catch((err) => console.error('Failed to write tokenLog:', err));
+    }
   } catch (err) {
     console.error('Failed to refund mesh token:', err);
   }
