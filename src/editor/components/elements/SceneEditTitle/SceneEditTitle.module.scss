@@ -15,6 +15,24 @@
 
   &:hover {
     background: rgba(50, 50, 50, 0.4);
+
+    .editIcon {
+      visibility: visible;
+    }
+  }
+
+  // Hidden-panel mode: title is display-only.
+  &.static {
+    cursor: default;
+
+    &:hover {
+      background: none;
+    }
+  }
+
+  .readOnly {
+    display: flex;
+    align-items: center;
   }
 
   .title {
@@ -30,6 +48,41 @@
 
     @media (max-width: 480px) {
       max-width: 20vw;
+    }
+  }
+
+  .editIcon {
+    visibility: hidden;
+    display: flex;
+    align-items: center;
+    margin-left: 6px;
+    color: variables.$lightgray-100;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .titleInput {
+    width: min(400px, 50vw);
+    font-size: 16px;
+    font-weight: 500;
+    // !important: the global `#aframeInspector input` rule (index.scss) outranks this
+    // module class and would otherwise gray out the text and flatten the border.
+    color: variables.$white !important;
+    background-color: variables.$black-300 !important;
+    border: 1px solid variables.$blue-100 !important;
+    border-radius: 4px;
+    padding: 0 4px;
+    outline: none;
+
+    @media (max-width: 768px) {
+      width: 25vw;
+    }
+
+    @media (max-width: 480px) {
+      width: 20vw;
     }
   }
 }

@@ -221,7 +221,7 @@ Inspector.prototype = {
     }
   },
 
-  onNewScene: function () {
+  onNewScene: function (sceneEl) {
     this.history.clear();
     if (useStore.getState().isLoadingScene) {
       useStore.getState().updateLoadingProgress(95, 'Loading scene...');
@@ -229,6 +229,8 @@ Inspector.prototype = {
         useStore.getState().finishLoadingScene();
       }, 500);
     }
+    // Model batching is armed and released by batch-models.js itself (beginBatching hooks
+    // the "newScene" event), so it no longer needs an editor-side trigger here.
   },
 
   initEvents: function () {
@@ -405,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // in Inspector init (initEvents) was too late and lost the race
   // intermittently, leaving the loading modal stuck at "Finalizing..." until its
   // 30s optimistic timeout. See issue #1760.
-  scene.addEventListener('newScene', () => inspector.onNewScene());
+  scene.addEventListener('newScene', () => inspector.onNewScene(scene));
   if (scene.hasLoaded) {
     sceneLoaded();
   } else {

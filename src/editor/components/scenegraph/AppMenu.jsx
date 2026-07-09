@@ -2,11 +2,9 @@ import { Menubar } from 'radix-ui';
 import { FormattedMessage, useIntl, defineMessages } from 'react-intl';
 import '../../style/AppMenu.scss';
 import useStore from '@/store';
-import { makeScreenshot, convertToObject } from '@/editor/lib/SceneUtils';
+import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import posthog from 'posthog-js';
 import Events from '../../lib/Events.js';
-import { useAuthContext } from '@/editor/contexts';
-import { saveBlob } from '../../lib/utils';
 import {
   uploadAndPlaceAsset,
   FILE_PICKER_ACCEPT
@@ -19,8 +17,29 @@ import {
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { useState, useEffect } from 'react';
 import { currentOrthoDir } from '../../lib/cameras.js';
+import {
+  copySelectedEntity,
+  cutSelectedEntity,
+  pasteFromClipboard
+} from '../../lib/clipboard.js';
+import { cloneSelectedEntity, removeSelectedEntity } from '../../lib/entity.js';
+import { getOS } from '../../lib/utils.js';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { SUPPORTED_LOCALES } from '@/editor/i18n/config';
+
+// Keyboard hints shown in the Edit menu's right slot.
+const isMac = getOS() === 'macos';
+const editShortcuts = {
+  undo: isMac ? '⌘Z' : 'Ctrl+Z',
+  redo: isMac ? '⇧⌘Z' : 'Ctrl+Shift+Z',
+  cut: isMac ? '⌘X' : 'Ctrl+X',
+  copy: isMac ? '⌘C' : 'Ctrl+C',
+  paste: isMac ? '⌘V' : 'Ctrl+V',
+  duplicate: 'D',
+  delete: isMac ? '⌫' : 'Del',
+  deselect: 'Esc',
+  zoomToSelection: 'F'
+};
 
 const cameraOptions = [
   {
@@ -52,71 +71,6 @@ const cameraMessages = defineMessages({
   }
 });
 
-// Export utility functions
-const filterHelpers = (scene, visible) => {
-  scene.traverse((o) => {
-    if (o.userData.source === 'INSPECTOR') {
-      o.visible = visible;
-    }
-  });
-};
-
-const slugify = (text) => {
-  return text
-    .toString()
-    .toLowerCase()
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^\w-]+/g, '-') // Replace all non-word chars with -
-    .replace(/--+/g, '-') // Replace multiple - with single -
-    .replace(/^-+/, '') // Trim - from start of text
-    .replace(/-+$/, ''); // Trim - from end of text
-};
-
-const getSceneName = (scene) => {
-  return scene.id || slugify(window.location.host + window.location.pathname);
-};
-
-const getMixinCategories = () => {
-  const mapping = {};
-  const mixinElements = document.querySelectorAll('a-mixin');
-  for (let mixinEl of Array.from(mixinElements)) {
-    const category = mixinEl.getAttribute('category');
-    if (category) {
-      mapping[mixinEl.id] = category;
-    }
-  }
-  return mapping;
-};
-
-const filterRiggedEntities = (scene, visible) => {
-  const mixinToCategory = getMixinCategories();
-
-  scene.traverse((node) => {
-    if (node.el && node.el.components) {
-      const mixin = node.el.getAttribute('mixin');
-      if (mixin) {
-        const category = mixinToCategory[mixin];
-        if (
-          category &&
-          (category.includes('people') ||
-            category.includes('people-rigged') ||
-            category.includes('vehicles') ||
-            category.includes('vehicles-transit') ||
-            category.includes('cyclists'))
-        ) {
-          node.visible = visible;
-          console.log(
-            'Hiding Rigged Entity',
-            node.el.id || 'unnamed',
-            'category:',
-            category
-          );
-        }
-      }
-    }
-  });
-};
-
 const AppMenu = ({ currentUser }) => {
   const intl = useIntl();
   const {
@@ -126,12 +80,19 @@ const AppMenu = ({ currentUser }) => {
     saveScene,
     setGeojsonImportData,
     setRightPanelTab,
-    startCheckout,
     locale,
     setLocale
   } = useStore();
-  const { currentUser: authUser } = useAuthContext();
   const [currentCamera, setCurrentCamera] = useState('perspective');
+  const [undoDisabled, setUndoDisabled] = useState(
+    !AFRAME.INSPECTOR?.history || AFRAME.INSPECTOR.history.undos.length === 0
+  );
+  const [redoDisabled, setRedoDisabled] = useState(
+    !AFRAME.INSPECTOR?.history || AFRAME.INSPECTOR.history.redos.length === 0
+  );
+  const [hasSelectedEntity, setHasSelectedEntity] = useState(
+    !!AFRAME.INSPECTOR?.selectedEntity
+  );
 
   // Function to get current camera state from the actual camera system
   const getCurrentCameraState = () => {
@@ -162,12 +123,26 @@ const AppMenu = ({ currentUser }) => {
       }, 100);
     };
 
+    // Mirror the action bar's undo/redo enabled state and track the current
+    // selection so Edit menu items enable/disable correctly.
+    const handleHistoryChanged = () => {
+      setUndoDisabled(AFRAME.INSPECTOR.history.undos.length === 0);
+      setRedoDisabled(AFRAME.INSPECTOR.history.redos.length === 0);
+    };
+    const handleEntitySelect = (entity) => {
+      setHasSelectedEntity(!!entity);
+    };
+
     Events.on('cameratoggle', handleCameraToggle);
     Events.on('inspectortoggle', handleInspectorToggle);
+    Events.on('historychanged', handleHistoryChanged);
+    Events.on('entityselect', handleEntitySelect);
 
     return () => {
       Events.off('cameratoggle', handleCameraToggle);
       Events.off('inspectortoggle', handleInspectorToggle);
+      Events.off('historychanged', handleHistoryChanged);
+      Events.off('entityselect', handleEntitySelect);
     };
   }, []);
 
@@ -184,130 +159,6 @@ const AppMenu = ({ currentUser }) => {
 
   const showAIChatPanel = () => {
     setRightPanelTab('console');
-  };
-
-  const exportSceneToGLTF = (arReady) => {
-    if (authUser?.isPro) {
-      try {
-        posthog.capture('export_initiated', {
-          export_type: arReady ? 'ar_glb' : 'glb',
-          scene_id: STREET.utils.getCurrentSceneId()
-        });
-
-        const sceneName = getSceneName(AFRAME.scenes[0]);
-        let scene = AFRAME.scenes[0].object3D;
-        if (arReady) {
-          // only export user layers, not geospatial
-          scene = document.querySelector('#street-container').object3D;
-        }
-        posthog.capture('export_scene_to_gltf_clicked', {
-          scene_id: STREET.utils.getCurrentSceneId()
-        });
-
-        // if AR Ready mode, then remove rigged vehicles and people from the scene
-        if (arReady) {
-          filterRiggedEntities(scene, false);
-        }
-        filterHelpers(scene, false);
-        // Modified to handle post-processing
-        AFRAME.INSPECTOR.exporters.gltf.parse(
-          scene,
-          async function (buffer) {
-            filterHelpers(scene, true);
-            filterRiggedEntities(scene, true);
-
-            // Lazy-load the GLB post-processing helpers. They pull in the heavy
-            // @gltf-transform/* libraries, which we keep out of the core bundle
-            // (loaded only when a user actually exports a GLB) to stay under the
-            // webpack entrypoint size budget.
-            const { transformUVs, addGLBMetadata } =
-              await import('../modals/ScreenshotModal/gltfTransforms');
-
-            let finalBuffer = buffer;
-
-            // Post-process GLB if AR Ready option is selected
-            if (arReady) {
-              try {
-                finalBuffer = await transformUVs(buffer);
-                console.log('Successfully post-processed GLB file');
-              } catch (error) {
-                console.warn('Error in GLB post-processing:', error);
-                // Fall back to original buffer if post-processing fails
-                STREET.notify.warningMessage(
-                  intl.formatMessage({
-                    id: 'appMenu.export.uvTransformSkipped',
-                    defaultMessage:
-                      'UV transformation skipped - using original export'
-                  })
-                );
-              }
-            }
-
-            // fetch metadata from scene
-            const geoLayer = document.getElementById('reference-layers');
-            if (geoLayer && geoLayer.hasAttribute('street-geo')) {
-              const metadata = {
-                longitude: geoLayer.getAttribute('street-geo').longitude,
-                latitude: geoLayer.getAttribute('street-geo').latitude,
-                orthometricHeight:
-                  geoLayer.getAttribute('street-geo').orthometricHeight,
-                geoidHeight: geoLayer.getAttribute('street-geo').geoidHeight,
-                ellipsoidalHeight:
-                  geoLayer.getAttribute('street-geo').ellipsoidalHeight,
-                orientation: 270
-              };
-              finalBuffer = await addGLBMetadata(finalBuffer, metadata);
-              console.log('Successfully added geospatial metadata to GLB file');
-            }
-            const blob = new Blob([finalBuffer], {
-              type: 'application/octet-stream'
-            });
-            saveBlob(blob, sceneName + '.glb');
-          },
-          function (error) {
-            console.error(error);
-            STREET.notify.errorMessage(
-              intl.formatMessage(
-                {
-                  id: 'appMenu.export.gltfError',
-                  defaultMessage:
-                    'Error while trying to save glTF file. Error: {error}'
-                },
-                { error }
-              )
-            );
-          },
-          { binary: true }
-        );
-        STREET.notify.successMessage(
-          intl.formatMessage({
-            id: 'appMenu.export.gltfSuccess',
-            defaultMessage: '3DStreet scene exported as glTF file.'
-          })
-        );
-      } catch (error) {
-        STREET.notify.errorMessage(
-          intl.formatMessage(
-            {
-              id: 'appMenu.export.gltfError',
-              defaultMessage:
-                'Error while trying to save glTF file. Error: {error}'
-            },
-            { error }
-          )
-        );
-        console.error(error);
-      }
-    } else {
-      startCheckout('export');
-    }
-  };
-
-  const exportSceneToJSON = () => {
-    posthog.capture('convert_to_json_clicked', {
-      scene_id: STREET.utils.getCurrentSceneId()
-    });
-    convertToObject();
   };
 
   const importAssetFromPicker = () => {
@@ -679,61 +530,133 @@ const AppMenu = ({ currentUser }) => {
                 defaultMessage="Import..."
               />
             </Menubar.Item>
-            <Menubar.Sub>
-              <Menubar.SubTrigger className="MenubarItem">
-                <FormattedMessage
-                  id="appMenu.file.export"
-                  defaultMessage="Export"
-                />
-                <div className="RightSlot">
-                  <AwesomeIcon icon={faChevronRight} size={12} />
-                </div>
-              </Menubar.SubTrigger>
-              <Menubar.Portal>
-                <Menubar.SubContent className="MenubarContent">
-                  <Menubar.Item
-                    className="MenubarItem"
-                    onClick={() => exportSceneToGLTF(false)}
-                  >
-                    <FormattedMessage
-                      id="appMenu.export.glb"
-                      defaultMessage="GLB glTF"
-                    />
-                    <div className="RightSlot">
-                      <span className="pro-badge">
-                        <FormattedMessage
-                          id="appMenu.proBadge"
-                          defaultMessage="Pro"
-                        />
-                      </span>
-                    </div>
-                  </Menubar.Item>
-                  <Menubar.Item
-                    className="MenubarItem"
-                    onClick={() => exportSceneToGLTF(true)}
-                  >
-                    <FormattedMessage
-                      id="appMenu.export.arReadyGlb"
-                      defaultMessage="AR Ready GLB"
-                    />
-                    <div className="RightSlot">
-                      <span className="pro-badge">
-                        <FormattedMessage
-                          id="appMenu.proBadge"
-                          defaultMessage="Pro"
-                        />
-                      </span>
-                    </div>
-                  </Menubar.Item>
-                  <Menubar.Item
-                    className="MenubarItem"
-                    onClick={exportSceneToJSON}
-                  >
-                    .3dstreet.json
-                  </Menubar.Item>
-                </Menubar.SubContent>
-              </Menubar.Portal>
-            </Menubar.Sub>
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() => setModal('export')}
+            >
+              <FormattedMessage
+                id="appMenu.file.export"
+                defaultMessage="Export..."
+              />
+            </Menubar.Item>
+          </Menubar.Content>
+        </Menubar.Portal>
+      </Menubar.Menu>
+
+      <Menubar.Menu>
+        <Menubar.Trigger className="MenubarTrigger">
+          <FormattedMessage id="appMenu.edit" defaultMessage="Edit" />
+        </Menubar.Trigger>
+        <Menubar.Portal>
+          <Menubar.Content
+            className="MenubarContent"
+            align="start"
+            sideOffset={5}
+            alignOffset={-3}
+          >
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={undoDisabled}
+              onClick={() => {
+                AFRAME.INSPECTOR.undo();
+                posthog.capture('undo_clicked');
+              }}
+            >
+              <FormattedMessage id="undoRedo.undo" defaultMessage="Undo" />
+              <div className="RightSlot">{editShortcuts.undo}</div>
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={redoDisabled}
+              onClick={() => {
+                AFRAME.INSPECTOR.redo();
+                posthog.capture('redo_clicked');
+              }}
+            >
+              <FormattedMessage id="undoRedo.redo" defaultMessage="Redo" />
+              <div className="RightSlot">{editShortcuts.redo}</div>
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                cutSelectedEntity();
+                posthog.capture('cut_clicked');
+              }}
+            >
+              <FormattedMessage id="appMenu.edit.cut" defaultMessage="Cut" />
+              <div className="RightSlot">{editShortcuts.cut}</div>
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                copySelectedEntity();
+                posthog.capture('copy_clicked');
+              }}
+            >
+              <FormattedMessage id="appMenu.edit.copy" defaultMessage="Copy" />
+              <div className="RightSlot">{editShortcuts.copy}</div>
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() => {
+                pasteFromClipboard();
+                posthog.capture('paste_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.edit.paste"
+                defaultMessage="Paste"
+              />
+              <div className="RightSlot">{editShortcuts.paste}</div>
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                cloneSelectedEntity();
+                posthog.capture('duplicate_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.edit.duplicate"
+                defaultMessage="Duplicate"
+              />
+              <div className="RightSlot">{editShortcuts.duplicate}</div>
+            </Menubar.Item>
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                // No confirm prompt: like Cut, the removal is undoable.
+                removeSelectedEntity(true);
+                posthog.capture('delete_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.edit.delete"
+                defaultMessage="Delete"
+              />
+              <div className="RightSlot">{editShortcuts.delete}</div>
+            </Menubar.Item>
+            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                AFRAME.INSPECTOR.selectEntity(null);
+                posthog.capture('deselect_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.edit.deselect"
+                defaultMessage="Deselect"
+              />
+              <div className="RightSlot">{editShortcuts.deselect}</div>
+            </Menubar.Item>
           </Menubar.Content>
         </Menubar.Portal>
       </Menubar.Menu>
@@ -779,6 +702,23 @@ const AppMenu = ({ currentUser }) => {
               </Menubar.CheckboxItem>
             ))}
             <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              disabled={!hasSelectedEntity}
+              onClick={() => {
+                const selectedEntity = AFRAME.INSPECTOR.selectedEntity;
+                if (selectedEntity) {
+                  Events.emit('objectfocus', selectedEntity.object3D);
+                }
+                posthog.capture('zoom_to_selection_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.view.zoomToSelection"
+                defaultMessage="Zoom to Selection"
+              />
+              <div className="RightSlot">{editShortcuts.zoomToSelection}</div>
+            </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"
               onClick={() => AFRAME.INSPECTOR.controls.resetZoom()}

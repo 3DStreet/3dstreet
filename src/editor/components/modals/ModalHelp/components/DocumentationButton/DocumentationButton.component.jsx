@@ -19,8 +19,7 @@ class DocumentationButton extends Component {
           className={styles.docsButtonWrapper}
           onClick={() => window.open('https://3dstreet.org/docs/')}
         >
-          <FormattedMessage {...commonMessages.documentation} />{' '}
-          <Open />
+          <FormattedMessage {...commonMessages.documentation} /> <Open />
         </div>
       </Button>
     );

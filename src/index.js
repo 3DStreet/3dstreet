@@ -8,7 +8,11 @@ STREET.utils.newScene = streetUtils.newScene;
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 
+require('./three-bvh.js'); // patch THREE prototypes with three-mesh-bvh (accelerated raycast + BVH)
+require('./batch-models.js');
+require('./aframe-components/gltf-model.js');
 require('./aframe-components/gltf-part');
+require('./aframe-components/batch-member.js');
 require('./aframe-components/ocean');
 require('./aframe-components/svg-extruder.js');
 require('./lib/animation-mixer.js');
@@ -230,8 +234,22 @@ AFRAME.registerComponent('streetmix-loader', {
         el.setAttribute('data-layer-name', 'Streetmix • ' + streetmixName);
 
         if (data.showBuildings) {
-          el.setAttribute('street', 'right', streetData.rightBuildingVariant);
-          el.setAttribute('street', 'left', streetData.leftBuildingVariant);
+          // Prefer the canonical boundary object (schemaVersion 34+) and fall
+          // back to the deprecated flat *BuildingVariant fields. The legacy
+          // street component only understands the variant string; boundary
+          // floors/elevation are handled by the managed-street path.
+          el.setAttribute(
+            'street',
+            'right',
+            streetmixUtils.getBoundaryFromStreetData(streetData, 'right')
+              ?.variant || ''
+          );
+          el.setAttribute(
+            'street',
+            'left',
+            streetmixUtils.getBoundaryFromStreetData(streetData, 'left')
+              ?.variant || ''
+          );
         }
         el.setAttribute('street', 'type', 'streetmixSegmentsMetric');
         // set JSON attribute last or it messes things up

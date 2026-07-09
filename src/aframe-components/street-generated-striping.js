@@ -3,6 +3,9 @@
 // a-frame component to generate cloned models along a street
 // this moves logic from aframe-streetmix-parsers into this component
 
+// lane-marking yellow shared by every *-yellow striping variant
+const STRIPE_YELLOW = '#f7d117';
+
 AFRAME.registerComponent('street-generated-striping', {
   multiple: true,
   schema: {
@@ -11,6 +14,7 @@ AFRAME.registerComponent('street-generated-striping', {
       oneOf: [
         'none',
         'solid-stripe',
+        'solid-stripe-yellow',
         'dashed-stripe',
         'short-dashed-stripe',
         'short-dashed-stripe-yellow',
@@ -118,6 +122,9 @@ AFRAME.registerComponent('street-generated-striping', {
     let stripingWidth = 0.2;
     if (stripingName === 'solid-stripe') {
       stripingTextureId = 'striping-solid-stripe';
+    } else if (stripingName === 'solid-stripe-yellow') {
+      stripingTextureId = 'striping-solid-stripe';
+      color = STRIPE_YELLOW;
     } else if (stripingName === 'dashed-stripe') {
       stripingTextureId = 'striping-dashed-stripe';
     } else if (stripingName === 'short-dashed-stripe') {
@@ -126,21 +133,21 @@ AFRAME.registerComponent('street-generated-striping', {
     } else if (stripingName === 'short-dashed-stripe-yellow') {
       stripingTextureId = 'striping-dashed-stripe';
       repeatY = length / 3;
-      color = '#f7d117';
+      color = STRIPE_YELLOW;
     } else if (stripingName === 'solid-doubleyellow') {
       stripingTextureId = 'striping-solid-double';
       stripingWidth = 0.5;
-      color = '#f7d117';
+      color = STRIPE_YELLOW;
     } else if (stripingName === 'solid-dashed') {
       stripingTextureId = 'striping-solid-dashed';
       stripingWidth = 0.4;
     } else if (stripingName === 'solid-dashed-yellow') {
       stripingTextureId = 'striping-solid-dashed';
-      color = '#f7d117';
+      color = STRIPE_YELLOW;
       stripingWidth = 0.4;
     } else if (stripingName === 'solid-dashed-yellow-mirror') {
       stripingTextureId = 'striping-solid-dashed-mirror';
-      color = '#f7d117';
+      color = STRIPE_YELLOW;
       stripingWidth = 0.4;
     }
     return { stripingTextureId, repeatY, color, stripingWidth };

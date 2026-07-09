@@ -4,11 +4,31 @@ import {
   STREETPLAN_MATERIAL_MAPPING,
   STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING
 } from './street-mapping-streetplan.js';
-import useStore from '../store.js';
+import { getVehicleEntities } from '../street-entity-utils.js';
 import { GEO_SOURCES } from '@shared/constants/geoSources.js';
-const { segmentVariants } = require('../segments-variants.js');
-const streetmixUtils = require('../tested/streetmix-utils');
-const streetmixParsersTested = require('../tested/aframe-streetmix-parsers-tested');
+import { levelToElevation } from '../tested/street-segment-utils';
+import { isBoundarySegment } from './street-layout-utils';
+import * as streetmixUtils from '../tested/streetmix-utils';
+
+// segments-variants.js and aframe-streetmix-parsers-tested.js are CommonJS
+// (shared with the mocha suite, which require()s them), and Vite — which runs
+// the browser-mode component tests — can't import CJS source statically. They
+// are only needed by the Streetmix URL loader, so load them on demand there;
+// the json-blob import/export path never touches them.
+let segmentVariants = null;
+let streetmixParsersTested = null;
+async function loadStreetmixParserDeps() {
+  if (segmentVariants && streetmixParsersTested) return;
+  const [variantsModule, parsersModule] = await Promise.all([
+    import('../segments-variants.js'),
+    import('../tested/aframe-streetmix-parsers-tested')
+  ]);
+  segmentVariants =
+    variantsModule.segmentVariants ?? variantsModule.default?.segmentVariants;
+  streetmixParsersTested = parsersModule.isSidewalk
+    ? parsersModule
+    : parsersModule.default;
+}
 
 const GENERATED_KINDS = [
   'clones',
@@ -25,13 +45,81 @@ const GENERATED_RE = new RegExp(
   `^street-generated-(${GENERATED_KINDS.join('|')})(?:__(\\d+))?$`
 );
 
+// Striping auto-added between adjacent lane pairs on import (parseStreetObject)
+// when a segment carries no `striping` key. Module-scope because the export
+// (getManagedStreetJSON) also needs it to decide when to pin an explicit empty
+// striping list. Pure function of the two Format-2 segment objects.
+function getStripingFromSegments(previousSegment, currentSegment) {
+  if (!previousSegment || !currentSegment) {
+    return null;
+  }
+
+  // Valid lane types that should have striping
+  const validLaneTypes = [
+    'drive-lane',
+    'bus-lane',
+    'bike-lane',
+    'parking-lane'
+  ];
+
+  // Only add striping between valid lane types
+  if (
+    !validLaneTypes.includes(previousSegment.type) ||
+    !validLaneTypes.includes(currentSegment.type)
+  ) {
+    return null;
+  }
+
+  // Default to solid line
+  let variantString = 'solid-stripe';
+
+  // Check for opposite directions
+  if (
+    previousSegment.direction !== currentSegment.direction &&
+    previousSegment.direction !== 'none' &&
+    currentSegment.direction !== 'none'
+  ) {
+    variantString = 'solid-doubleyellow';
+
+    // Special case for bike lanes
+    if (
+      currentSegment.type === 'bike-lane' &&
+      previousSegment.type === 'bike-lane'
+    ) {
+      variantString = 'short-dashed-stripe-yellow';
+    }
+  } else {
+    // Same direction cases
+    if (currentSegment.type === previousSegment.type) {
+      variantString = 'dashed-stripe';
+    }
+
+    // Drive lane and turn lane combination would go here if needed
+  }
+
+  // Special case for parking lanes - use solid line between parking and drive lanes
+  if (
+    currentSegment.type === 'parking-lane' ||
+    previousSegment.type === 'parking-lane'
+  ) {
+    variantString = 'solid-stripe';
+  }
+
+  return variantString;
+}
+
 /**
  * Reverse of `parseStreetObject`: walk a managed-street entity and rebuild
  * the Format-2 segment list from live DOM. Per-segment mutations
  * (SegmentAddCommand etc.) edit the DOM directly without rewriting the
  * parent `sourceValue` blob, so the cached blob is stale after edits — this
  * helper reads the authoritative state for callers that need the current
- * segment list (MCP `getManagedStreet`, future export flows).
+ * segment list (MCP `getManagedStreet`, the sidebar's .managed-street.json
+ * download).
+ *
+ * Round-trip contract: importing the returned object through
+ * `parseStreetObject` and exporting again must yield a deep-equal object (see
+ * test/components/managed-street-json.test.js).
  */
 function getManagedStreetJSON(streetEl) {
   if (!streetEl || !streetEl.components?.['managed-street']) {
@@ -51,13 +139,19 @@ function getManagedStreetJSON(streetEl) {
       name: child.getAttribute('data-layer-name') || `${segData.type}`,
       type: segData.type,
       width: segData.width,
-      level: segData.level,
+      elevation: segData.elevation,
       direction: segData.direction,
       color: segData.color,
       surface: segData.surface
     };
     if (segData.variant) segment.variant = segData.variant;
     if (segData.side) segment.side = segData.side;
+    if (segData.floors) segment.floors = segData.floors;
+    if (segData.slope) {
+      segment.slope = true;
+      segment.slopeStart = segData.slopeStart;
+      segment.slopeEnd = segData.slopeEnd;
+    }
 
     const generatedByKind = {};
     for (const compName in child.components) {
@@ -66,6 +160,11 @@ function getManagedStreetJSON(streetEl) {
       const kind = m[1];
       const idx = m[2] ? parseInt(m[2], 10) - 1 : 0;
       const data = { ...child.components[compName].data };
+      // A-Frame array-type props come back as arrays; serialize with the
+      // comma-joined authoring convention used in json-blobs and presets.
+      if (Array.isArray(data.modelsArray)) {
+        data.modelsArray = data.modelsArray.join(', ');
+      }
       if (!generatedByKind[kind]) generatedByKind[kind] = [];
       generatedByKind[kind][idx] = data;
     }
@@ -79,6 +178,17 @@ function getManagedStreetJSON(streetEl) {
         }
       }
       segment.generated = generated;
+    }
+    // parseStreetObject auto-adds a stripe between adjacent lane pairs when a
+    // segment carries no `striping` key. If this segment has none (e.g. the
+    // user deleted it) but auto-striping would apply, pin an explicit empty
+    // list so re-importing this export doesn't grow a stripe back.
+    if (
+      !segment.generated?.striping &&
+      getStripingFromSegments(segments[segments.length - 1], segment)
+    ) {
+      segment.generated = segment.generated || {};
+      segment.generated.striping = [];
     }
     segments.push(segment);
   }
@@ -142,6 +252,37 @@ AFRAME.registerComponent('managed-street', {
     sourceValue: {
       type: 'string'
     },
+    showBoundaries: {
+      // Boundaries (adjacent land use flanking the street: buildings,
+      // waterfront, fences, ...) toggle. Imports always create the boundary
+      // segments when the source has boundary data; this property controls
+      // whether they are shown. Toggling is realtime, non-destructive, and
+      // never moves the street: boundaries are positioned outside the
+      // travelled way's edges and are not part of alignment/ground/labels
+      // (see street-layout-utils.js). Set false at creation time to import a
+      // travelled-way-only street (e.g. the parity harness).
+      type: 'boolean',
+      default: true
+    },
+    // Content toggles migrated from the legacy `street` component prototype.
+    // Like showBoundaries they are realtime and non-destructive: content is
+    // always generated, the toggles only control visibility.
+    showGround: {
+      // the dirt slab under the street (rendered by the street-ground sibling)
+      type: 'boolean',
+      default: true
+    },
+    showStriping: {
+      // lane striping planes generated by street-generated-striping
+      type: 'boolean',
+      default: true
+    },
+    showVehicles: {
+      // vehicle/cyclist clones (identified by their mixin's catalog category,
+      // same approach as the legacy street component)
+      type: 'boolean',
+      default: true
+    },
     synchronize: {
       type: 'boolean',
       default: false
@@ -190,6 +331,18 @@ AFRAME.registerComponent('managed-street', {
       });
     });
     this.observer.observe(this.el, { childList: true });
+
+    // Content generated after a toggle was switched off (import completing,
+    // clones regenerating after a segment edit) must still respect the
+    // showVehicles/showStriping state. No-op while both toggles are on (the
+    // default), so it costs nothing for typical scenes. Setting the A-Frame
+    // `visible` component does not mutate the DOM tree, so re-applying from
+    // the observer cannot loop.
+    this.contentObserver = new MutationObserver(() => {
+      if (this.data.showVehicles && this.data.showStriping) return;
+      this.updateContentVisibility();
+    });
+    this.contentObserver.observe(this.el, { childList: true, subtree: true });
   },
   /**
    * Inserts a new street segment at the specified index
@@ -216,7 +369,7 @@ AFRAME.registerComponent('managed-street', {
       type: type,
       width: segmentObject?.width || defaultProps.width || 3,
       length: this.data.length,
-      level: segmentObject?.level ?? defaultProps.level ?? 0,
+      elevation: segmentObject?.elevation ?? defaultProps.elevation ?? 0,
       direction:
         segmentObject?.direction || defaultProps.direction || 'outbound',
       color:
@@ -268,12 +421,15 @@ AFRAME.registerComponent('managed-street', {
     return segmentEl;
   },
   onSegmentChanged: function (event) {
-    if (!event.detail.widthChanged) {
+    const { widthChanged, typeChanged, sideChanged } = event.detail;
+    // type and side changes re-layout too: type alters travelled-way
+    // membership (boundary vs not), side moves a boundary to the other edge
+    if (!widthChanged && !typeChanged && !sideChanged) {
       return;
     }
     this.el.emit('segments-changed', {
       changeType: 'property',
-      property: 'width',
+      property: widthChanged ? 'width' : typeChanged ? 'type' : 'side',
       segment: event.target,
       oldValue: event.detail.oldWidth,
       newValue: event.detail.newWidth
@@ -303,6 +459,56 @@ AFRAME.registerComponent('managed-street', {
         newValue: data.length
       });
     }
+
+    if (dataDiffKeys.includes('showBoundaries')) {
+      this.updateBoundaryVisibility();
+    }
+
+    if (
+      dataDiffKeys.includes('showStriping') ||
+      dataDiffKeys.includes('showVehicles')
+    ) {
+      this.updateContentVisibility();
+    }
+
+    if (dataDiffKeys.includes('showGround')) {
+      // street-ground listens for segments-changed and reads showGround
+      this.el.emit('segments-changed', {
+        changeType: 'property',
+        property: 'showGround',
+        segment: null,
+        oldValue: oldData.showGround,
+        newValue: data.showGround
+      });
+    }
+  },
+  // Apply the showStriping / showVehicles toggles to generated content.
+  // Runs when a toggle changes and — via the content observer in init —
+  // whenever content is (re)generated while a toggle is off, so late-generated
+  // clones and striping respect it too.
+  updateContentVisibility: function () {
+    const data = this.data;
+    this.el
+      .querySelectorAll('[data-layer-name^="Cloned Striping"]')
+      .forEach((stripingEl) =>
+        stripingEl.setAttribute('visible', data.showStriping)
+      );
+    getVehicleEntities(this.el).forEach((vehicleEl) =>
+      vehicleEl.setAttribute('visible', data.showVehicles)
+    );
+  },
+  // Apply the showBoundaries toggle to existing boundary segments. Pure
+  // visibility: boundaries never participate in street layout (street-align
+  // positions them off the travelled way's edges whether hidden or shown), so
+  // no re-layout is needed and nothing moves. Non-destructive: segments stay
+  // in the DOM and keep serializing with the scene.
+  updateBoundaryVisibility: function () {
+    const show = this.data.showBoundaries;
+    Array.from(this.el.querySelectorAll('[street-segment]'))
+      .filter((segmentEl) => isBoundarySegment(segmentEl))
+      .forEach((segmentEl) => {
+        segmentEl.setAttribute('visible', show);
+      });
   },
   refreshFromSource: function () {
     const data = this.data;
@@ -358,18 +564,35 @@ AFRAME.registerComponent('managed-street', {
       const segmentEl = document.createElement('a-entity');
       this.el.appendChild(segmentEl);
 
+      // 'building' is the deprecated pre-rename value for boundary segments
+      const segmentType =
+        segment.type === 'building' ? 'boundary' : segment.type;
       segmentEl.setAttribute('street-segment', {
-        type: segment.type, // this is the base type, it won't load its defaults since we are changing more than just the type value
+        type: segmentType, // this is the base type, it won't load its defaults since we are changing more than just the type value
         width: segment.width,
         length: streetObject.length,
-        level: segment.level,
+        // legacy json-blobs carry the deprecated integer `level` instead of
+        // metric `elevation` — convert on the fly (1 level == 0.15m)
+        elevation: segment.elevation ?? levelToElevation(segment.level),
         direction: segment.direction,
-        color: segment.color || window.STREET.types[segment.type]?.color,
-        surface: segment.surface || window.STREET.types[segment.type]?.surface, // no error handling for segmentPreset not found
+        color: segment.color || window.STREET.types[segmentType]?.color,
+        surface: segment.surface || window.STREET.types[segmentType]?.surface, // no error handling for segmentPreset not found
         variant: segment.variant,
-        side: segment.side
+        side: segment.side,
+        ...(segment.floors !== undefined ? { floors: segment.floors } : {}),
+        ...(segment.slope
+          ? {
+              slope: true,
+              slopeStart: segment.slopeStart,
+              slopeEnd: segment.slopeEnd
+            }
+          : {})
       });
       segmentEl.setAttribute('data-layer-name', segment.name);
+      // honor the boundaries toggle for boundary segments carried in the blob
+      if (segmentType === 'boundary' && !this.data.showBoundaries) {
+        segmentEl.setAttribute('visible', false);
+      }
       // wait for street-segment to be loaded, then generate components from segment object
       segmentEl.addEventListener('loaded', () => {
         if (!segment.generated?.striping) {
@@ -396,6 +619,10 @@ AFRAME.registerComponent('managed-street', {
     }
   },
   loadAndParseStreetplanURL: async function (streetplanURL) {
+    // Lazy store import: keeps this module (and everything the json-blob
+    // import/export round trip touches) loadable without the Zustand store's
+    // Firebase/PostHog dependency chain — see the round-trip component test.
+    const { default: useStore } = await import('../store.js');
     const currentState = useStore.getState();
 
     console.log(
@@ -451,7 +678,7 @@ AFRAME.registerComponent('managed-street', {
         // convert from streetplan segment types to managed street presets
 
         const STREETPLAN_TYPE_MAPPING = {
-          Buildings: { type: 'building', name: 'Land Use' },
+          Buildings: { type: 'boundary', name: 'Land Use' },
           BikesPaths: { type: 'bike-lane', name: 'Bikes' },
           Walkways: { type: 'sidewalk', name: 'Walkways' },
           Transit: { type: 'bus-lane', name: 'Transit' },
@@ -516,7 +743,7 @@ AFRAME.registerComponent('managed-street', {
           type: segmentType,
           width: segmentWidth,
           name: segmentName,
-          level: parseFloat(segment.MaterialH) === 0.5 ? 1 : 0,
+          elevation: parseFloat(segment.MaterialH) === 0.5 ? 0.15 : 0,
           direction: segmentDirection,
           color: mappedColor || window.STREET.types[segmentType]?.color,
           surface: mappedSurface,
@@ -554,65 +781,29 @@ AFRAME.registerComponent('managed-street', {
   },
 
   getStripingFromSegments: function (previousSegment, currentSegment) {
-    if (!previousSegment || !currentSegment) {
-      return null;
-    }
-
-    // Valid lane types that should have striping
-    const validLaneTypes = [
-      'drive-lane',
-      'bus-lane',
-      'bike-lane',
-      'parking-lane'
-    ];
-
-    // Only add striping between valid lane types
-    if (
-      !validLaneTypes.includes(previousSegment.type) ||
-      !validLaneTypes.includes(currentSegment.type)
-    ) {
-      return null;
-    }
-
-    // Default to solid line
-    let variantString = 'solid-stripe';
-
-    // Check for opposite directions
-    if (
-      previousSegment.direction !== currentSegment.direction &&
-      previousSegment.direction !== 'none' &&
-      currentSegment.direction !== 'none'
-    ) {
-      variantString = 'solid-doubleyellow';
-
-      // Special case for bike lanes
-      if (
-        currentSegment.type === 'bike-lane' &&
-        previousSegment.type === 'bike-lane'
-      ) {
-        variantString = 'short-dashed-stripe-yellow';
-      }
-    } else {
-      // Same direction cases
-      if (currentSegment.type === previousSegment.type) {
-        variantString = 'dashed-stripe';
-      }
-
-      // Drive lane and turn lane combination would go here if needed
-    }
-
-    // Special case for parking lanes - use solid line between parking and drive lanes
-    if (
-      currentSegment.type === 'parking-lane' ||
-      previousSegment.type === 'parking-lane'
-    ) {
-      variantString = 'solid-stripe';
-    }
-
-    return variantString;
+    // moved to module scope so the export helper can reuse it
+    return getStripingFromSegments(previousSegment, currentSegment);
   },
-  loadAndParseStreetmixURL: async function (streetmixURL) {
+  // The import always creates the boundary segments (when the source has
+  // boundary data); the component's `showBoundaries` property controls whether
+  // they are shown. That keeps the toggle non-destructive and realtime: once
+  // imported, boundaries are ordinary street-segment children (saved/loaded
+  // via json-blob, editable and deletable like any segment) that can be
+  // re-shown at any time. The optional `showBoundaries` argument is kept for
+  // callers that drive the conversion directly (e.g. the import-parity
+  // harness) — when passed, it is written back to the component property so
+  // state stays consistent.
+  loadAndParseStreetmixURL: async function (streetmixURL, showBoundaries) {
+    // Lazy store import (see loadAndParseStreetplanURL).
+    const { default: useStore } = await import('../store.js');
+    await loadStreetmixParserDeps();
     const currentState = useStore.getState();
+    if (
+      showBoundaries !== undefined &&
+      showBoundaries !== this.data.showBoundaries
+    ) {
+      this.el.setAttribute('managed-street', 'showBoundaries', showBoundaries);
+    }
     const data = this.data;
     // Normally rewrite a streetmix.net user URL to its API endpoint. If the
     // sourceValue is some other URL (e.g. a locally served Streetmix-shaped
@@ -679,9 +870,37 @@ AFRAME.registerComponent('managed-street', {
       // );
 
       const segmentEls = parseStreetmixSegments(streetmixSegments, data.length);
-      this.el.append(...segmentEls);
 
-      this.pendingEntities = segmentEls;
+      // Boundaries (Streetmix boundary edges). getBoundaryFromStreetData reads
+      // the canonical schemaVersion 34+ `boundary` object first and falls back
+      // to the deprecated flat leftBuildingVariant/rightBuildingVariant fields.
+      // Always created; the showBoundaries property only controls visibility.
+      // street-align positions boundaries off the travelled way's edges by
+      // their `side`, so their DOM position is cosmetic — kept at the ends for
+      // a tidy scene graph.
+      const leftBoundaryEl = createStreetmixBoundaryElement(
+        streetmixUtils.getBoundaryFromStreetData(streetData, 'left'),
+        'left',
+        data.length
+      );
+      const rightBoundaryEl = createStreetmixBoundaryElement(
+        streetmixUtils.getBoundaryFromStreetData(streetData, 'right'),
+        'right',
+        data.length
+      );
+      [leftBoundaryEl, rightBoundaryEl].forEach((boundaryEl) => {
+        if (boundaryEl && !this.data.showBoundaries) {
+          boundaryEl.setAttribute('visible', false);
+        }
+      });
+      const allEls = [
+        ...(leftBoundaryEl ? [leftBoundaryEl] : []),
+        ...segmentEls,
+        ...(rightBoundaryEl ? [rightBoundaryEl] : [])
+      ];
+      this.el.append(...allEls);
+
+      this.pendingEntities = allEls;
       // for each pending entity Listen for loaded event
       for (const entity of this.pendingEntities) {
         entity.addEventListener(
@@ -711,6 +930,9 @@ AFRAME.registerComponent('managed-street', {
       });
     } catch (error) {
       console.error('[managed-street] loader', 'Loading Error:', error);
+      STREET.notify.warningMessage(
+        'Error loading Streetmix data: ' + error.message
+      );
     }
   },
   onEntityLoaded: function (entity) {
@@ -734,6 +956,9 @@ AFRAME.registerComponent('managed-street', {
   remove: function () {
     if (this.observer) {
       this.observer.disconnect();
+    }
+    if (this.contentObserver) {
+      this.contentObserver.disconnect();
     }
     this.el.removeEventListener('segment-changed', this.onSegmentChanged);
     this.clearManagedEntities();
@@ -879,6 +1104,93 @@ function supportCheck(segmentType, segmentVariantString) {
   }
 }
 
+// Maps a Streetmix boundary variant to a managed `boundary` street-segment.
+// `variant` is the street-segment boundary variant (see TYPES.boundary.variants
+// in street-segment.js); `width` is the cross-street footprint depth in meters
+// (Streetmix does not provide a boundary width). Variants render via the
+// boundary type's generated clones (mode: fit, facing derived from side).
+const STREETMIX_BOUNDARY_VARIANT_MAP = {
+  narrow: { variant: 'brownstone', width: 12 },
+  wide: { variant: 'brownstone', width: 12 },
+  residential: { variant: 'suburban', width: 18 },
+  arcade: { variant: 'arcade', width: 12 },
+  waterfront: { variant: 'water', width: 10 },
+  grass: { variant: 'grass', width: 4 },
+  fence: { variant: 'grass', width: 4 },
+  'parking-lot': { variant: 'parking', width: 8 },
+  // No dedicated managed variant yet; seawall is the closest existing model.
+  'compound-wall': { variant: 'water', width: 6 }
+};
+
+// Build a `boundary` street-segment element for a Streetmix boundary
+// ({ variant, floors, elevation } from getBoundaryFromStreetData). Returns null
+// when the street has no boundary on that side or the variant is unsupported
+// (caller skips it). street-align positions it off the travelled way's edge by
+// its `side` property.
+function createStreetmixBoundaryElement(boundary, side, length) {
+  const streetmixVariant = boundary?.variant;
+  const mapping = STREETMIX_BOUNDARY_VARIANT_MAP[streetmixVariant];
+  if (!mapping) {
+    if (streetmixVariant && streetmixVariant !== 'none') {
+      console.warn(
+        '[managed-street] loader',
+        `Streetmix boundary variant '${streetmixVariant}' is not yet supported`
+      );
+    }
+    return null;
+  }
+
+  const boundaryType = window.STREET.types.boundary;
+  const variantConfig = boundaryType.variants[mapping.variant] || {};
+  const segmentObject = {
+    type: 'boundary',
+    width: mapping.width,
+    length: length,
+    // boundary elevation is meters (same unit as segment elevation); older
+    // payloads have no boundary elevation, so fall back to the type preset
+    elevation:
+      typeof boundary.elevation === 'number'
+        ? boundary.elevation
+        : boundaryType.elevation,
+    direction: 'outbound',
+    surface: variantConfig.surface || boundaryType.surface,
+    variant: mapping.variant,
+    side: side,
+    // generateComponentsFromSegmentObject resolves the model list by looking up
+    // `variants[variant].modelsArray`, so both must be passed through.
+    generated: boundaryType.generated,
+    variants: boundaryType.variants
+  };
+
+  const segmentEl = document.createElement('a-entity');
+  segmentEl.setAttribute('street-segment', {
+    type: segmentObject.type,
+    width: segmentObject.width,
+    length: segmentObject.length,
+    elevation: segmentObject.elevation,
+    direction: segmentObject.direction,
+    color: boundaryType.color || window.STREET.colors.white,
+    surface: segmentObject.surface,
+    variant: segmentObject.variant,
+    side: segmentObject.side,
+    // floors is persisted as metadata so the imported building height survives
+    // save/load; it does not drive the generated model height yet
+    ...(typeof boundary.floors === 'number' ? { floors: boundary.floors } : {})
+  });
+  segmentEl.setAttribute(
+    'data-layer-name',
+    `Boundary • ${streetmixVariant} (${side})`
+  );
+  // Generate the building clones once the street-segment component is ready
+  // (mirrors parseStreetObject's streetplan path).
+  segmentEl.addEventListener('loaded', () => {
+    segmentEl.components['street-segment']?.generateComponentsFromSegmentObject(
+      segmentObject
+    );
+  });
+  return segmentEl;
+}
+
 // OLD: takes a street's `segments` (array) from streetmix and a `streetElementId` (string) and places objects to make up a street with all segments
 // NEW: takes a `segments` (array) from streetmix and return an element and its children which represent the 3D street scene
 function parseStreetmixSegments(segments, length) {
@@ -906,8 +1218,13 @@ function parseStreetmixSegments(segments, length) {
     // show warning message if segment or variantString are not supported
     supportCheck(segments[i].type, segments[i].variantString);
 
-    // elevation property from streetmix segment
+    // elevation property from streetmix segment, in meters
+    // (convertStreetValues normalizes older integer-level payloads to meters)
     const elevation = segments[i].elevation;
+
+    // slope between two elevations across the segment width (coastmix v34);
+    // null for flat segments
+    const slope = streetmixUtils.getSegmentSlope(segments[i]);
 
     const direction =
       variantList[0] === 'inbound' || variantList[1] === 'inbound'
@@ -1393,7 +1710,10 @@ function parseStreetmixSegments(segments, length) {
       type: segmentPreset,
       width: segmentWidthInMeters,
       length: length,
-      level: elevation,
+      elevation: elevation,
+      ...(slope
+        ? { slope: true, slopeStart: slope.start, slopeEnd: slope.end }
+        : {}),
       direction: direction,
       color: segmentColor ?? window.STREET.types[segmentPreset]?.color, // find default color for segmentPreset
       surface: window.STREET.types[segmentPreset]?.surface // find default surface type for segmentPreset

@@ -65,32 +65,9 @@ export function newScene(clearMetaData = true, clearUrlHash = true) {
   }
 }
 
-export function getVehicleEntities() {
-  return getEntitiesByCategories([
-    'vehicles',
-    'vehicles-rigged',
-    'vehicles-transit',
-    'cyclists'
-  ]);
-}
-
-export function getStripingEntities() {
-  return getEntitiesByCategories(['lane-separator']);
-}
-
-function getEntitiesByCategories(categoriesArray) {
-  // get entity Nodes by array of their mixin categories
-  const queryForCategoriesMixins = categoriesArray
-    .map((categoryName) => `a-mixin[category="${categoryName}"]`)
-    .join(',');
-  if (!queryForCategoriesMixins) return [];
-  const allCategoriesMixins = document.querySelectorAll(
-    queryForCategoriesMixins
-  );
-  const categoriesMixinIds = Array.from(allCategoriesMixins).map((el) => el.id);
-  const queryForAllElements = categoriesMixinIds
-    .map((mixinId) => `a-entity[mixin~="${mixinId}"]`)
-    .join(',');
-  if (!queryForAllElements) return [];
-  return document.querySelectorAll(queryForAllElements);
-}
+// Moved to street-entity-utils.js (store-free); re-exported here for callers
+// that import them from street-utils.
+export {
+  getVehicleEntities,
+  getStripingEntities
+} from './street-entity-utils.js';

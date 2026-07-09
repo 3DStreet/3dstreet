@@ -1,0 +1,414 @@
+{
+  "id": "7a633310-e598-11e6-80db-ebe3de713876",
+  "namespacedId": 3,
+  "name": "3DStreet Demo Street",
+  "clientUpdatedAt": "2026-06-12T16:53:19.735Z",
+  "data": {
+    "street": {
+      "schemaVersion": 34,
+      "showAnalytics": false,
+      "width": 31.1,
+      "id": "7a633310-e598-11e6-80db-ebe3de713876",
+      "namespacedId": 3,
+      "units": 0,
+      "location": {
+        "latlng": {
+          "lat": 37.767985,
+          "lng": -122.413954
+        },
+        "wofId": "us/ca/san_francisco:855f4861c62a71fa",
+        "label": "1830 Harrison St, San Francisco, CA, USA",
+        "hierarchy": {
+          "country": "United States",
+          "region": "California",
+          "locality": "San Francisco",
+          "neighbourhood": "Mission",
+          "street": "Harrison St"
+        },
+        "geometryId": null,
+        "intersectionId": null
+      },
+      "userUpdated": true,
+      "skybox": "day",
+      "weather": null,
+      "boundary": {
+        "left": {
+          "id": "DUEjvVfK4HESoCjc3u41K",
+          "variant": "waterfront",
+          "floors": 2,
+          "elevation": 0.15
+        },
+        "right": {
+          "id": "U2fyayLTqOpaLFxc_vT_B",
+          "variant": "fence",
+          "floors": 3,
+          "elevation": 0.15
+        }
+      },
+      "segments": [
+        {
+          "id": "WEiWY6pQcfldXW4roppTB",
+          "type": "sidewalk",
+          "variantString": "sparse",
+          "width": 1,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "tyd8t9lUZjohFmIoldCUg",
+          "type": "sidewalk-tree",
+          "variantString": "palm-tree",
+          "width": 1.2,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "lHKoEPAh7ByVGdg-4Hkxc",
+          "type": "utilities",
+          "variantString": "left",
+          "width": 1.2,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "Nm-_nLK0q9rm8H6go2FFg",
+          "type": "sidewalk-bench",
+          "variantString": "center",
+          "width": 1.2,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "HdYaHjHkKVrK2nncEkvRW",
+          "type": "bikeshare",
+          "variantString": "left|road",
+          "width": 2,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "tf9pd1Q8M7H5T5LvXsDJm",
+          "type": "outdoor-dining",
+          "variantString": "empty|sidewalk",
+          "width": 2.4,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "YV9hSRBWkmyxqmd6nnchX",
+          "type": "bike-lane",
+          "variantString": "inbound|green|sidewalk",
+          "width": 1.5,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "6Ae0gVHTJ_qq1laQiIkGM",
+          "type": "temporary",
+          "variantString": "traffic-cone",
+          "width": 0.6,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "ac828gMm5cg1DqLNPKBOq",
+          "type": "food-truck",
+          "variantString": "right",
+          "width": 3,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "l8Kzj2egqlMzuU1C4WgUs",
+          "type": "flex-zone",
+          "variantString": "taxi|inbound|left",
+          "width": 2,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "2_xjmKSsLUkHZtSXzH_cf",
+          "type": "parking-lane",
+          "variantString": "angled-front-left|left",
+          "width": 4.9,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "G_09lV4XAULIpp9MVYKRL",
+          "type": "drive-lane",
+          "variantString": "inbound|car",
+          "width": 3,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "pmEqfIea4vUGcSWzX4CKo",
+          "type": "bus-lane",
+          "variantString": "inbound|shared|typical",
+          "width": 3.6,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "se9mf_Ud70pUl5kvgXnHT",
+          "type": "transit-shelter",
+          "variantString": "right|street-level",
+          "width": 2.7,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "5ZaMMP8HC8i9pXyXEX5qp",
+          "type": "sidewalk-wayfinding",
+          "variantString": "large",
+          "width": 1.2,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "iE9Hl_6E9GXOkQrBgbIBI",
+          "type": "drive-lane",
+          "variantString": "inbound|sharrow",
+          "width": 3,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "_Sjc1qCjXiKKjCWhzSxLj",
+          "type": "turn-lane",
+          "variantString": "inbound|shared",
+          "width": 3,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "B2zc27lQyyoNRrkkBS0tH",
+          "type": "drive-lane",
+          "variantString": "outbound|sharrow",
+          "width": 3,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "g7xR_U8HuWPDLIcAzWUC5",
+          "type": "turn-lane",
+          "variantString": "outbound|right",
+          "width": 3,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "au4hgIL4an_npRuekC345",
+          "type": "temporary",
+          "variantString": "jersey-barrier-concrete",
+          "width": 0.5,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "9e_cToz8J7dNHaMlZljNv",
+          "type": "magic-carpet",
+          "variantString": "jasmine-aladdin",
+          "width": 3,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "jNeVFbcC0HR4MG25uZTDa",
+          "type": "sidewalk-lamp",
+          "variantString": "right|pride",
+          "width": 1.2,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "EYKeaOlJuSzsGwDek53QD",
+          "type": "streetcar",
+          "variantString": "inbound|colored",
+          "width": 3.6,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "DXhAGB0UUiiqGTlLX7Ew-",
+          "type": "brt-station",
+          "variantString": "right",
+          "width": 4,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "5SUzf2oyyEz0gGMa389KZ",
+          "type": "light-rail",
+          "variantString": "outbound|regular",
+          "width": 3.6,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "sUh6ys69EYovcGZpA088C",
+          "type": "divider",
+          "variantString": "bollard",
+          "width": 1.3,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "4-tW1tcjZSahliVR7yC_o",
+          "type": "scooter",
+          "variantString": "outbound|red",
+          "width": 1.5,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "eirZNCidZziY6DQDDEfBT",
+          "type": "parklet",
+          "variantString": "right",
+          "width": 2.4,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "WRMxHBwZAlVP_xxWtPgpX",
+          "type": "sidewalk-lamp",
+          "variantString": "left|modern",
+          "width": 1.2,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "0dzftFP-4WGb2EG3Vm9Nq",
+          "type": "utilities",
+          "variantString": "right",
+          "width": 0.6,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "Fg4wQSmdjdsENITbu7F_I",
+          "type": "sidewalk-tree",
+          "variantString": "big",
+          "width": 1.2,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "id": "GQLECXqVXp3wCBEEpp_OV",
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 3.2,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        }
+      ],
+      "editCount": 1,
+      "leftBuildingVariant": "waterfront",
+      "leftBuildingHeight": 2,
+      "rightBuildingVariant": "fence",
+      "rightBuildingHeight": 3
+    },
+    "plugins": {}
+  },
+  "createdAt": "2017-01-28T20:29:33.279Z",
+  "updatedAt": "2026-06-12T16:53:20.417Z",
+  "originalStreetId": "7a633310-e598-11e6-80db-ebe3de713876",
+  "creatorId": "kfarr"
+}

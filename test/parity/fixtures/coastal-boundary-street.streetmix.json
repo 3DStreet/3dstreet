@@ -1,0 +1,103 @@
+{
+  "name": "Coastal boundary street",
+  "data": {
+    "street": {
+      "schemaVersion": 34,
+      "units": 2,
+      "width": 17.4,
+      "boundary": {
+        "left": {
+          "id": "1e2f3a4b-0000-4000-8000-000000000001",
+          "variant": "waterfront",
+          "floors": 2,
+          "elevation": 0.15
+        },
+        "right": {
+          "id": "1e2f3a4b-0000-4000-8000-000000000002",
+          "variant": "fence",
+          "floors": 3,
+          "elevation": 0.15
+        }
+      },
+      "leftBuildingVariant": "waterfront",
+      "leftBuildingHeight": 2,
+      "rightBuildingVariant": "fence",
+      "rightBuildingHeight": 3,
+      "segments": [
+        {
+          "type": "sidewalk",
+          "variantString": "normal",
+          "width": 2.4,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "inbound|green|road",
+          "width": 1.8,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "inbound|car",
+          "width": 3,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "type": "drive-lane",
+          "variantString": "outbound|car",
+          "width": 3,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "type": "bike-lane",
+          "variantString": "outbound|green|road",
+          "width": 1.8,
+          "elevation": 0,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "type": "sidewalk",
+          "variantString": "dense",
+          "width": 2.4,
+          "elevation": 0.15,
+          "slope": {
+            "on": false,
+            "values": []
+          }
+        },
+        {
+          "type": "divider",
+          "variantString": "planting-strip",
+          "width": 3,
+          "elevation": 0.15,
+          "slope": {
+            "on": true,
+            "values": [
+              0.15,
+              0
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

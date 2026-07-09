@@ -87,7 +87,7 @@ describe('StreetmixUtils', function () {
   });
 
   describe('#convertStreetValues()', function () {
-    it('should convert metric elevation to integer levels for schemaVersion >= 33', function () {
+    it('should keep metric elevation in meters for schemaVersion >= 33', function () {
       const streetData = {
         schemaVersion: 33,
         segments: [
@@ -97,11 +97,11 @@ describe('StreetmixUtils', function () {
         ]
       };
       const result = streetmixUtils.convertStreetValues(streetData);
-      assert.strictEqual(result.segments[0].elevation, 0); // 0m -> level 0
-      assert.strictEqual(result.segments[1].elevation, 1); // 0.15m -> level 1
-      assert.strictEqual(result.segments[2].elevation, 2); // 0.30m -> level 2
+      assert.strictEqual(result.segments[0].elevation, 0);
+      assert.strictEqual(result.segments[1].elevation, 0.15);
+      assert.strictEqual(result.segments[2].elevation, 0.3);
     });
-    it('should not convert elevation for schemaVersion < 33', function () {
+    it('should convert integer elevation levels to meters for schemaVersion < 33', function () {
       const streetData = {
         schemaVersion: 32,
         segments: [
@@ -111,9 +111,104 @@ describe('StreetmixUtils', function () {
         ]
       };
       const result = streetmixUtils.convertStreetValues(streetData);
-      assert.strictEqual(result.segments[0].elevation, 0);
-      assert.strictEqual(result.segments[1].elevation, 1);
-      assert.strictEqual(result.segments[2].elevation, 2);
+      assert.strictEqual(result.segments[0].elevation, 0); // level 0 -> 0m
+      assert.strictEqual(result.segments[1].elevation, 0.15); // level 1 -> 0.15m
+      assert.strictEqual(result.segments[2].elevation, 0.3); // level 2 -> 0.30m
+    });
+  });
+
+  describe('#getSegmentSlope()', function () {
+    it('should return start/end for an active slope', function () {
+      assert.deepStrictEqual(
+        streetmixUtils.getSegmentSlope({
+          slope: { on: true, values: [0.15, 0] }
+        }),
+        { start: 0.15, end: 0 }
+      );
+    });
+    it('should return null for the seeded v34 default (off, empty values)', function () {
+      assert.strictEqual(
+        streetmixUtils.getSegmentSlope({ slope: { on: false, values: [] } }),
+        null
+      );
+    });
+    it('should return null when slope is on but values are malformed', function () {
+      assert.strictEqual(
+        streetmixUtils.getSegmentSlope({ slope: { on: true, values: [0.15] } }),
+        null
+      );
+      assert.strictEqual(
+        streetmixUtils.getSegmentSlope({
+          slope: { on: true, values: ['a', 'b'] }
+        }),
+        null
+      );
+    });
+    it('should return null for pre-v34 segments without slope', function () {
+      assert.strictEqual(streetmixUtils.getSegmentSlope({}), null);
+      assert.strictEqual(streetmixUtils.getSegmentSlope(undefined), null);
+    });
+  });
+
+  describe('#getBoundaryFromStreetData()', function () {
+    it('should read the canonical boundary object (schemaVersion 34+)', function () {
+      const streetData = {
+        schemaVersion: 34,
+        boundary: {
+          left: {
+            id: 'abc123',
+            variant: 'waterfront',
+            floors: 2,
+            elevation: 0.15
+          },
+          right: { id: 'def456', variant: 'fence', floors: 3, elevation: 0.15 }
+        },
+        // deprecated flat fields still emitted for back-compat — must lose
+        leftBuildingVariant: 'narrow',
+        leftBuildingHeight: 9,
+        rightBuildingVariant: 'wide',
+        rightBuildingHeight: 9
+      };
+      const left = streetmixUtils.getBoundaryFromStreetData(streetData, 'left');
+      assert.strictEqual(left.variant, 'waterfront');
+      assert.strictEqual(left.floors, 2);
+      assert.strictEqual(left.elevation, 0.15);
+      const right = streetmixUtils.getBoundaryFromStreetData(
+        streetData,
+        'right'
+      );
+      assert.strictEqual(right.variant, 'fence');
+      assert.strictEqual(right.floors, 3);
+      assert.strictEqual(right.elevation, 0.15);
+    });
+    it('should fall back to deprecated flat fields when boundary is absent', function () {
+      const streetData = {
+        schemaVersion: 33,
+        leftBuildingVariant: 'narrow',
+        leftBuildingHeight: 4,
+        rightBuildingVariant: 'wide',
+        rightBuildingHeight: 3
+      };
+      const left = streetmixUtils.getBoundaryFromStreetData(streetData, 'left');
+      assert.strictEqual(left.variant, 'narrow');
+      assert.strictEqual(left.floors, 4);
+      assert.strictEqual(left.elevation, undefined);
+      const right = streetmixUtils.getBoundaryFromStreetData(
+        streetData,
+        'right'
+      );
+      assert.strictEqual(right.variant, 'wide');
+      assert.strictEqual(right.floors, 3);
+    });
+    it('should return null when the street has no boundary data', function () {
+      assert.strictEqual(
+        streetmixUtils.getBoundaryFromStreetData({ schemaVersion: 33 }, 'left'),
+        null
+      );
+      assert.strictEqual(
+        streetmixUtils.getBoundaryFromStreetData(undefined, 'right'),
+        null
+      );
     });
   });
 });

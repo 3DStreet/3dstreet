@@ -82,7 +82,7 @@ export default class PropertyRow extends React.Component {
         const streetSegment = props.entity.getAttribute('street-segment');
         if (
           streetSegment &&
-          streetSegment.type === 'building' &&
+          streetSegment.type === 'boundary' &&
           streetSegment.variant !== 'custom'
         ) {
           // First switch to custom variant to prevent overrides

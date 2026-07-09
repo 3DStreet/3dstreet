@@ -1,7 +1,13 @@
 import useStore from './store';
 import { createUniqueId } from './editor/lib/entity';
+import { beginBatching, BATCHING_ENABLED } from './batch-models';
 import { decodeCameraStateFromParam } from './editor/lib/cameraUtils';
 import JSONCrush from 'jsoncrush';
+import {
+  migrateSegmentLevelToElevation,
+  migrateSegmentBuildingType,
+  migrateShowBuildingsFlag
+} from './tested/street-segment-utils';
 
 /* global AFRAME, Node */
 window.STREET = {};
@@ -15,7 +21,10 @@ function getSceneUuidFromURLHash() {
 }
 
 function getCurrentSceneId() {
-  let currentSceneId = AFRAME.scenes[0].getAttribute('metadata').sceneId;
+  // AFRAME.scenes[0] can be undefined when this runs before the scene attaches
+  // or after it's torn down (e.g. the beforeunload handler on fast nav-away).
+  const scene = AFRAME.scenes[0];
+  let currentSceneId = scene?.getAttribute('metadata')?.sceneId;
   // console.log('currentSceneId from scene metadata', currentSceneId);
   const urlSceneId = getSceneUuidFromURLHash();
   // console.log('urlSceneId', urlSceneId);
@@ -31,8 +40,9 @@ function getCurrentSceneId() {
 STREET.utils.getCurrentSceneId = getCurrentSceneId;
 
 function getAuthorId() {
-  const authorId = AFRAME.scenes[0].getAttribute('metadata').authorId;
-  return authorId;
+  // Same guard as getCurrentSceneId: AFRAME.scenes[0] can be undefined during
+  // teardown/before attach, and this runs right after it in the beforeunload handler.
+  return AFRAME.scenes[0]?.getAttribute('metadata')?.authorId;
 }
 STREET.utils.getAuthorId = getAuthorId;
 
@@ -88,12 +98,16 @@ function convertDOMElToObject(entity) {
 }
 STREET.utils.convertDOMElToObject = convertDOMElToObject;
 
-function getElementData(entity) {
+function getElementData(entity, options = {}) {
   if (
     !entity.isEntity ||
-    entity.classList.contains('autocreated') ||
+    (entity.classList.contains('autocreated') && !options.includeAutocreated) ||
     entity.hasAttribute('data-temporary-file')
   ) {
+    // autocreated entities are procedural output (regenerated on load from
+    // their generator component's config) and are skipped on save. Callers
+    // that need the rendered output itself — like convert-to-shapes, which
+    // bakes a managed street into plain entities — pass includeAutocreated.
     // data-temporary-file marks an in-flight or local-only asset upload
     // (a gltf-model/src pointing at a transient blob: URL). Skipping these
     // honors the design brief's "Local only — will not persist" guarantee.
@@ -109,7 +123,7 @@ function getElementData(entity) {
     const savedChildren = [];
     for (const child of children) {
       if (child.nodeType === Node.ELEMENT_NODE) {
-        const elementData = getElementData(child);
+        const elementData = getElementData(child, options);
         if (elementData) savedChildren.push(elementData);
       }
     }
@@ -419,6 +433,11 @@ function getModifiedProperty(entity, componentName) {
 function createEntities(entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
   const removeEntities = ['environment', 'reference-layers'];
+  // Arm batching before any entity is minted below; batchModels runs on the "newScene"
+  // event emitted after this createEntities pass. See beginBatching for the state model.
+  if (BATCHING_ENABLED) {
+    beginBatching(sceneElement);
+  }
   for (const entityData of entitiesData) {
     // Legacy migration: the geospatial layer's visibility used to be toggled
     // via the entity's `visible` attribute. The new sidepanel exposes this
@@ -582,6 +601,24 @@ function createEntityFromObj(entityData, parentEl, beforeEl) {
     entity.setAttribute(
       'data-asset-owner-uid',
       entityData['data-asset-owner-uid']
+    );
+  }
+
+  // Migrate legacy saved scenes:
+  // - street-segment used to store its vertical offset as an integer `level`
+  //   (1 level == 0.15m curb height); the current schema only knows metric
+  //   `elevation`. Without this conversion A-Frame drops the unknown property
+  //   and raised segments (e.g. sidewalks) would load flush with the road.
+  // - `type: building` was renamed to `type: boundary` (and the managed-street
+  //   `showBuildings` toggle to `showBoundaries`).
+  if (entityData.components?.['street-segment']) {
+    entityData.components['street-segment'] = migrateSegmentBuildingType(
+      migrateSegmentLevelToElevation(entityData.components['street-segment'])
+    );
+  }
+  if (entityData.components?.['managed-street']) {
+    entityData.components['managed-street'] = migrateShowBuildingsFlag(
+      entityData.components['managed-street']
     );
   }
 

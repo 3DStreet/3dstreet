@@ -5,6 +5,7 @@ import ModalTextures from './modals/ModalTextures';
 import SceneGraph from './scenegraph/SceneGraph';
 import { ScreenshotModal } from './modals/ScreenshotModal';
 import { ShareModal } from './modals/ShareModal';
+import { ExportModal } from './modals/ExportModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
@@ -16,6 +17,8 @@ import EditorUpgradeModal from './EditorUpgradeModal.jsx';
 import { AddLayerPanel } from './elements/AddLayerPanel';
 import { NewModal } from './modals/NewModal';
 import { LoadingSceneModal } from './modals/LoadingSceneModal';
+import { ExportingSceneModal } from './modals/ExportingSceneModal';
+import { ConfirmModal } from './modals/ConfirmModal';
 import AssetDeepLinkModal from './AssetDeepLinkModal.jsx';
 import JobHealthModal from './JobHealthModal.jsx';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
@@ -91,12 +94,15 @@ export default function Main() {
       )}
       <ScreenshotModal />
       <ShareModal />
+      <ExportModal />
       <SignInModal />
       <EditorUpgradeModal />
       <ScenesModal />
       <ProfileModal />
       <NewModal />
       <LoadingSceneModal />
+      <ExportingSceneModal />
+      <ConfirmModal />
       <AssetDeepLinkModal />
       <JobHealthModal />
       <LoadScript

@@ -185,17 +185,59 @@
   "aiChatPanel.inputPlaceholder": {
     "defaultMessage": "Type a command or type /help for options"
   },
-  "appMenu.export.arReadyGlb": {
-    "defaultMessage": "AR Ready GLB"
+  "appMenu.edit": {
+    "defaultMessage": "Edit"
   },
-  "appMenu.export.glb": {
-    "defaultMessage": "GLB glTF"
+  "appMenu.edit.copy": {
+    "defaultMessage": "Copy"
+  },
+  "appMenu.edit.cut": {
+    "defaultMessage": "Cut"
+  },
+  "appMenu.edit.delete": {
+    "defaultMessage": "Delete"
+  },
+  "appMenu.edit.deselect": {
+    "defaultMessage": "Deselect"
+  },
+  "appMenu.edit.duplicate": {
+    "defaultMessage": "Duplicate"
+  },
+  "appMenu.edit.paste": {
+    "defaultMessage": "Paste"
+  },
+  "appMenu.export.dxfEmpty": {
+    "defaultMessage": "No managed-street segments found to export as DXF."
+  },
+  "appMenu.export.dxfError": {
+    "defaultMessage": "Error while trying to save DXF file. Error: {error}"
+  },
+  "appMenu.export.dxfSuccess": {
+    "defaultMessage": "3DStreet scene exported as DXF file."
+  },
+  "appMenu.export.exportingDxf": {
+    "defaultMessage": "Exporting scene as DXF file..."
+  },
+  "appMenu.export.exportingGlb": {
+    "defaultMessage": "Exporting scene as GLB file..."
+  },
+  "appMenu.export.exportingPdf": {
+    "defaultMessage": "Exporting scene as PDF file..."
   },
   "appMenu.export.gltfError": {
     "defaultMessage": "Error while trying to save glTF file. Error: {error}"
   },
   "appMenu.export.gltfSuccess": {
     "defaultMessage": "3DStreet scene exported as glTF file."
+  },
+  "appMenu.export.pdfEmpty": {
+    "defaultMessage": "No managed-street segments found to export as PDF."
+  },
+  "appMenu.export.pdfError": {
+    "defaultMessage": "Error while trying to save PDF file. Error: {error}"
+  },
+  "appMenu.export.pdfSuccess": {
+    "defaultMessage": "3DStreet scene exported as PDF file."
   },
   "appMenu.export.uvTransformSkipped": {
     "defaultMessage": "UV transformation skipped - using original export"
@@ -204,7 +246,7 @@
     "defaultMessage": "File"
   },
   "appMenu.file.export": {
-    "defaultMessage": "Export"
+    "defaultMessage": "Export..."
   },
   "appMenu.file.import": {
     "defaultMessage": "Import..."
@@ -265,6 +307,9 @@
   },
   "appMenu.view.snapshotRender": {
     "defaultMessage": "Snapshot & Render..."
+  },
+  "appMenu.view.zoomToSelection": {
+    "defaultMessage": "Zoom to Selection"
   },
   "assetInfo.assetSource": {
     "defaultMessage": "Asset source: {ownership} · {assetIdShort}…"
@@ -872,6 +917,9 @@
   "common.widthLabel": {
     "defaultMessage": "Width:"
   },
+  "confirmModal.confirm": {
+    "defaultMessage": "Confirm"
+  },
   "deploymentBanner.dismiss": {
     "defaultMessage": "Dismiss notice"
   },
@@ -892,6 +940,84 @@
   },
   "entity.toggleVisibility": {
     "defaultMessage": "Toggle entity visibility"
+  },
+  "exportModal.arReadyHint": {
+    "defaultMessage": "Omits people, vehicles and geospatial layers for augmented reality apps."
+  },
+  "exportModal.arReadyPill": {
+    "defaultMessage": "AR Ready"
+  },
+  "exportModal.autoPreviewLabel": {
+    "defaultMessage": "Automatically generate 3D preview"
+  },
+  "exportModal.betaNote": {
+    "defaultMessage": "Beta format: the preview is exactly what you'll download."
+  },
+  "exportModal.downloadExt": {
+    "defaultMessage": "Download {ext}"
+  },
+  "exportModal.dxfDescription": {
+    "defaultMessage": "Download a 2D plan view of this scene's streets as a <code>.dxf</code> file for use in AutoCAD and other CAD tools."
+  },
+  "exportModal.format.dxf": {
+    "defaultMessage": "CAD Plan"
+  },
+  "exportModal.format.glb": {
+    "defaultMessage": "3D Model"
+  },
+  "exportModal.format.json": {
+    "defaultMessage": "JSON"
+  },
+  "exportModal.format.pdf": {
+    "defaultMessage": "PDF Plan"
+  },
+  "exportModal.generatePreview": {
+    "defaultMessage": "Generate 3D preview"
+  },
+  "exportModal.generatePreviewHint": {
+    "defaultMessage": "Builds the .glb in your browser; this may take a few seconds on large scenes."
+  },
+  "exportModal.generatingPreview": {
+    "defaultMessage": "Generating 3D preview…"
+  },
+  "exportModal.glbDescription": {
+    "defaultMessage": "Download this scene as a <code>.glb</code> 3D model file for use in Blender, Unreal, and other 3D tools."
+  },
+  "exportModal.jsonDescription": {
+    "defaultMessage": "Download this scene as a <code>.3dstreet.json</code> file to back up your work or import into another 3DStreet account."
+  },
+  "exportModal.jsonTruncated": {
+    "defaultMessage": "Preview truncated. The downloaded file contains the full scene."
+  },
+  "exportModal.pdfDescription": {
+    "defaultMessage": "Download a 2D plan view of this scene's streets as a vector <code>.pdf</code> file, ready to print or publish."
+  },
+  "exportModal.planEmpty": {
+    "defaultMessage": "No street segments to draw yet. Add a street layer to see a plan preview."
+  },
+  "exportModal.previewError": {
+    "defaultMessage": "Could not generate the preview. Please try again."
+  },
+  "exportModal.proDownloadHint": {
+    "defaultMessage": "Preview is free. Downloading requires 3DStreet Pro."
+  },
+  "exportModal.serializingScene": {
+    "defaultMessage": "Serializing scene…"
+  },
+  "exportModal.settings": {
+    "defaultMessage": "Settings"
+  },
+  "exportModal.title": {
+    "defaultMessage": "Export Scene"
+  },
+  "exportModal.unitsFeet": {
+    "defaultMessage": "Feet"
+  },
+  "exportModal.unitsLabel": {
+    "defaultMessage": "Units"
+  },
+  "exportModal.unitsMeters": {
+    "defaultMessage": "Meters"
   },
   "geoModal.centerpoint": {
     "defaultMessage": "Centerpoint"
@@ -1136,6 +1262,9 @@
   "help.shortcut.copy": {
     "defaultMessage": "Copy selected entity"
   },
+  "help.shortcut.cut": {
+    "defaultMessage": "Cut selected entity"
+  },
   "help.shortcut.delete": {
     "defaultMessage": "Delete selected entity"
   },
@@ -1258,6 +1387,24 @@
   },
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
+  },
+  "managedStreetSidebar.convertToShapes": {
+    "defaultMessage": "Convert to Shapes"
+  },
+  "managedStreetSidebar.convertToShapesConfirm": {
+    "defaultMessage": "This turns the street into plain 3D shapes you can move, duplicate, and delete individually. After you save and reload this scene you cannot undo this action. Tip: duplicate the street first if you want to keep a copy of this managed street."
+  },
+  "managedStreetSidebar.convertToShapesTitle": {
+    "defaultMessage": "Convert Street to Shapes?"
+  },
+  "managedStreetSidebar.downloadJSON": {
+    "defaultMessage": "Download Street JSON"
+  },
+  "managedStreetSidebar.reloadConfirm": {
+    "defaultMessage": "Reload this street from {source}? Local segment edits will be lost."
+  },
+  "managedStreetSidebar.reloadFromSource": {
+    "defaultMessage": "Reload from {source}"
   },
   "modalTextures.back": {
     "defaultMessage": "BACK"
@@ -1613,23 +1760,38 @@
   "screenshotModal.upgradeToPro": {
     "defaultMessage": "Upgrade to Pro to hide 3DStreet Free watermark"
   },
-  "segmentSidebar.buildingVariant": {
-    "defaultMessage": "Building Variant"
+  "segmentSidebar.boundaryVariant": {
+    "defaultMessage": "Boundary Variant"
   },
   "segmentSidebar.color": {
     "defaultMessage": "Color"
   },
-  "segmentSidebar.curbLevel": {
-    "defaultMessage": "Curb Level"
-  },
   "segmentSidebar.direction": {
     "defaultMessage": "Direction"
+  },
+  "segmentSidebar.elevation": {
+    "defaultMessage": "Elevation (m)"
+  },
+  "segmentSidebar.moveLeft": {
+    "defaultMessage": "Move Left"
+  },
+  "segmentSidebar.moveRight": {
+    "defaultMessage": "Move Right"
   },
   "segmentSidebar.segmentType": {
     "defaultMessage": "Segment Type"
   },
   "segmentSidebar.side": {
     "defaultMessage": "Side"
+  },
+  "segmentSidebar.slope": {
+    "defaultMessage": "Slope"
+  },
+  "segmentSidebar.slopeEnd": {
+    "defaultMessage": "End Edge (m)"
+  },
+  "segmentSidebar.slopeStart": {
+    "defaultMessage": "Start Edge (m)"
   },
   "segmentSidebar.width": {
     "defaultMessage": "Width"
@@ -1696,9 +1858,6 @@
   },
   "sidebar.autocreatedEntity": {
     "defaultMessage": "Autocreated Entity"
-  },
-  "sidebar.detach": {
-    "defaultMessage": "Detach"
   },
   "sidebar.editCloneSettings": {
     "defaultMessage": "Edit Clone Settings"
