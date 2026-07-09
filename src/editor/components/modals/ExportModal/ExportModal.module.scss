@@ -1,68 +1,256 @@
 @use '../../../style/variables.scss';
 
+// 2-column export modal: controls panel (format pills + settings + download)
+// on the left, dominant live preview on the right. Wide-modal sizing follows
+// the ScreenshotModal precedent.
 .exportModalWrapper {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: auto;
-  max-width: 640px;
-  min-width: 520px;
-  height: auto;
-  max-height: 80vh;
-  overflow-y: auto;
-
-  .wrapper {
+  &:global(.modal-content) {
+    width: 90%;
+    max-width: 1100px;
+    height: 80vh;
+    max-height: 80vh;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 24px;
-
-    .formatCard {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      padding: 16px 20px;
-      border: 1px solid variables.$darkgray-600;
-      border-radius: 8px;
-      background-color: variables.$darkgray-300;
-
-      .formatInfo {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-
-        .formatTitle {
-          display: flex;
-          align-items: center;
-          font-size: 18px;
-          font-weight: 600;
-          color: white;
-          margin: 0;
-        }
-
-        .formatDescription {
-          font-size: 14px;
-          color: variables.$lightgray-200;
-          margin: 0;
-        }
-      }
-    }
   }
 }
 
-@media (max-width: 768px) {
-  .exportModalWrapper {
-    width: 95vw;
-    max-width: none;
-    min-width: auto;
+.wrapper {
+  display: flex;
+  flex: 1;
+  min-height: 0; // critical: lets the preview panel scroll instead of the modal
+  min-width: 0; // keep wide preview content (JSON pre) from growing the modal
+  gap: 20px;
+  padding: 20px 24px 24px;
+}
 
-    .wrapper {
-      .formatCard {
-        flex-direction: column;
-        align-items: stretch;
-      }
-    }
+.controlsPanel {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formatPills,
+.settingPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid variables.$darkgray-600;
+  background-color: variables.$darkgray-300;
+  color: variables.$lightgray-200;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+
+  &:hover {
+    border-color: variables.$lightgray-700;
+    color: white;
+  }
+}
+
+.pillActive {
+  background-color: rgba(119, 77, 238, 0.25); // pro purple @ low alpha
+  border-color: #774dee;
+  color: white;
+
+  &:hover {
+    border-color: #774dee;
+  }
+}
+
+// Tiny plan/status chips rendered inside a pill.
+.proChip,
+.betaChip {
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: normal;
+  color: white;
+}
+
+.proChip {
+  background-color: #774dee;
+}
+
+.betaChip {
+  background-color: #b45309;
+}
+
+.formatDescription {
+  font-size: 14px;
+  line-height: 1.4;
+  color: variables.$lightgray-200;
+  margin: 0;
+}
+
+.settingsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid variables.$darkgray-600;
+}
+
+.settingsLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: variables.$lightgray-700;
+}
+
+.settingHint {
+  font-size: 12px;
+  color: variables.$lightgray-700;
+  margin: 0;
+}
+
+.downloadSection {
+  margin-top: auto; // pin the CTA to the bottom of the controls column
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid variables.$darkgray-600;
+}
+
+.downloadButton {
+  width: 100%;
+  justify-content: center;
+}
+
+.proHint {
+  font-size: 12px;
+  color: variables.$lightgray-700;
+  margin: 0;
+  text-align: center;
+}
+
+.previewPanel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  border: 1px solid variables.$darkgray-600;
+  border-radius: 8px;
+  background-color: variables.$darkgray-100;
+  overflow: hidden;
+}
+
+.previewIframe {
+  flex: 1;
+  border: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.previewEmptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  color: variables.$lightgray-200;
+  font-size: 14px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.previewHint {
+  font-size: 12px;
+  color: variables.$lightgray-700;
+}
+
+.previewError {
+  color: #f87171;
+}
+
+// DXF preview: dark CAD model-space canvas.
+.dxfCanvas {
+  flex: 1;
+  display: flex;
+  padding: 16px;
+  background-color: #16181d;
+}
+
+// PDF preview: white letter-landscape page floating on the panel background.
+.pdfPage {
+  margin: auto;
+  aspect-ratio: 11 / 8.5;
+  max-width: calc(100% - 48px);
+  max-height: calc(100% - 48px);
+  width: 100%;
+  display: flex;
+  padding: 4%;
+  background-color: white;
+  border-radius: 2px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+.planSvg {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.jsonPreviewWrapper {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.jsonPreview {
+  flex: 1;
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  font-family:
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #a7f3d0; // soft green-on-dark code tint
+  background-color: #16181d;
+  white-space: pre;
+}
+
+.jsonTruncatedNote {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: variables.$lightgray-700;
+  border-top: 1px solid variables.$darkgray-600;
+  background-color: variables.$darkgray-300;
+}
+
+@media (max-width: 900px) {
+  .wrapper {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .controlsPanel {
+    width: auto;
+  }
+
+  .previewPanel {
+    min-height: 320px;
   }
 }

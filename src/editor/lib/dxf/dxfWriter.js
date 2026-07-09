@@ -28,21 +28,10 @@ export const INSUNITS = {
   FEET: Units.Feet
 };
 
-// AutoCAD Color Index — 1-based palette baked into every AutoCAD install. Using
-// ACI (not true RGB) keeps the file the smallest possible and lets users apply
-// their office ctb/stb plot styles by layer, which is what the target workflow
-// actually wants.
-export const ACI = {
-  RED: 1,
-  YELLOW: 2,
-  GREEN: 3,
-  CYAN: 4,
-  BLUE: 5,
-  MAGENTA: 6,
-  WHITE: 7,
-  DARK_GREY: 8,
-  LIGHT_GREY: 9
-};
+// Layer colors are AutoCAD Color Index codes — the ACI palette lives with
+// the shared plan model (plan/planModel.js:ACI) since the SVG and PDF
+// consumers need the same codes. 7 = ACI white, the DXF default.
+const ACI_WHITE = 7;
 
 class DxfBuilder {
   constructor() {
@@ -56,7 +45,7 @@ class DxfBuilder {
 
   // Register a layer once; repeat calls with the same name are no-ops so
   // callers can declare a layer inline on every entity without bookkeeping.
-  addLayer(name, color = ACI.WHITE) {
+  addLayer(name, color = ACI_WHITE) {
     if (!this.layerNames.has(name)) {
       this.layerNames.add(name);
       this.writer.addLayer(name, color, 'Continuous');

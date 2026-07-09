@@ -47,6 +47,25 @@ const DraftingCompassIcon = () => (
   </svg>
 );
 
+const FileTextIcon = () => (
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z" />
+    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    <path d="M10 9H8" />
+    <path d="M16 13H8" />
+    <path d="M16 17H8" />
+  </svg>
+);
+
 const ImageIcon = () => (
   <svg
     width="22"
@@ -145,6 +164,24 @@ export const PAYWALL_SURFACES = {
       'DXF plan view export brings your street design into AutoCAD and other CAD tools as clean, layered 2D linework.',
     features: [
       'DXF plan view export for AutoCAD & CAD tools',
+      'GLB glTF & AR Ready GLB export',
+      'Download JPEG snapshots without watermark',
+      'Unlimited geospatial maps & location changes',
+      TOKEN_FEATURE_LINE
+    ]
+  },
+
+  // PDF plan-view export — fired from the Export modal's PDF format. Same
+  // rationale as export-dxf: format-true copy + distinguishable analytics.
+  'export-pdf': {
+    icon: <FileTextIcon />,
+    title: 'PDF Plan View',
+    subtitle: '.pdf · 2D plan export',
+    headline: 'Export requires Pro',
+    description:
+      'PDF plan view export turns your street design into a print-ready vector plan you can publish and share anywhere.',
+    features: [
+      'PDF & DXF plan view export',
       'GLB glTF & AR Ready GLB export',
       'Download JPEG snapshots without watermark',
       'Unlimited geospatial maps & location changes',
