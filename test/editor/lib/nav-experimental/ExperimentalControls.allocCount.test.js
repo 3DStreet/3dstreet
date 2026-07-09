@@ -32,7 +32,7 @@ import { runAllocRefactorScript } from './_allocRefactorScript.js';
 //                 baseline commit; tightened to the achieved count after the
 //                 conversions land.
 const PRE_BUDGET = 947;
-const POST_BUDGET = 947;
+const POST_BUDGET = 174;
 
 let Controls;
 beforeAll(async () => {

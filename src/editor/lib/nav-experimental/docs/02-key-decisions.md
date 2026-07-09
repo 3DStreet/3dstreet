@@ -525,6 +525,47 @@ only puts a ring on a world pivot).
 
 ---
 
+## H. Implementation conventions
+
+### KD-31 — Hot paths reuse scratch; escaping returns take an optional target
+
+Per-frame and per-pointer-event paths must not allocate THREE objects
+(`Vector3` / `Vector2` / `Quaternion` / `Matrix3` / …) — that is A-Frame /
+3DStreet convention (`measure-line.js`, `EditorControls.js`) and GC
+pressure on a nav gesture reads as frame-time stutter. Each hot allocation
+is classified by its **dataflow**, not by its function, and converted one
+of three ways:
+
+- **Pure-local temp** (created, used, discarded within one call — nothing
+  escapes): reuse a constructor `_tmpX` scratch (model: `MeasureLineControls`),
+  or a module-level scratch for a pure `navMath` helper whose observable
+  result is a scalar.
+- **Constant literal** (`(0,1,0)` / `(1,0,0)` used only as a read operand):
+  hoist to a frozen module const (`Object.freeze(new THREE.Vector3(...))`).
+- **Escaping / retained return** (the caller keeps the object across frames,
+  or two results are live at once): do **not** pool — either keep allocating,
+  or take an optional trailing `target` param that the function fills and
+  returns, defaulting to a fresh allocation (the three.js
+  `crossVectors(a, b, target)` idiom). The parent owns the lifetime.
+
+Deliberately **left allocating** because pooling them would alias a retained
+value or a re-entrant temp: `worldHitNormal`'s returned normal (the WASD
+classifier holds `floorNow.normal` + `floorDest.normal` live together — only
+its Matrix3 is pooled); `worldPointAt`'s ground-branch `.normal`;
+`shiftRotateStep`'s escaping `pos` / `lookTarget` / `R` and its re-entrant
+floor-bisection interior temps (pointer-cadence, near-zero saving, real
+aliasing risk).
+
+Safety rests on a **synchronous-only invariant**: every pooled scratch is
+held within a single synchronous drain / handler call and never crosses an
+`await` / rAF / callback yield. If a hot path ever becomes async this
+guarantee breaks — no converted scratch may cross a yield boundary. Two
+guard tests pin it: a golden-trajectory snapshot (behaviour unchanged
+across the conversions) and an allocation-count harness (the win is a
+committed number, not a vibe).
+
+---
+
 ## Worked examples
 
 Concrete scenarios annotated with the phase / pivot / control outcome.
