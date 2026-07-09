@@ -87,7 +87,7 @@ const Dropdown = ({
                     tabIndex={0}
                     onClick={() => {
                       onSelect(value);
-                      onClick();
+                      onClick?.();
                       toggleOptionsMenu();
                     }}
                     className={classNames(

@@ -44,6 +44,7 @@ require('./aframe-components/measure-line.js');
 require('./aframe-components/css2d-renderer.js');
 require('./aframe-components/google-maps-aerial.js');
 require('./aframe-components/mode-manager.js');
+require('./aframe-components/viewer-aspect.js');
 require('./aframe-components/play/play-mode.js');
 require('./aframe-components/play/play-mode-vehicle.js');
 require('./aframe-components/play/race-target.js');

@@ -31,29 +31,29 @@ else changes.
 
 The features listed in the brief look different but decompose into five
 small orthogonal axes. Three of them already exist in code or in-flight
-branches; this proposal mostly *names* them and stops conflating them.
+branches; this proposal mostly _names_ them and stops conflating them.
 (This extends the "editor is not a mode" analysis in PR #1627's
 `docs/play-mode-notes.md`, and matches axis D "Presentation" in #1267 —
 which explicitly says Presentation must stay out of the access dialog.)
 
-| Axis | Values | Where it lives |
-| --- | --- | --- |
-| **Presentation** | `editor` \| `viewer` | Exists today: `isInspectorEnabled` in `src/store.js` (inverted). The Viewer *is* "inspector closed", upgraded from an afterthought to a first-class surface. |
-| **Permission** | can-edit \| view-only (later: #1267's full Access/Permission axes) | Exists minimally: `metadata.authorId` vs `currentUser.uid` (`SceneUtils.js` already forces save-as for non-authors). |
-| **Play state** | `stopped` \| `playing` \| `paused` | PR #1627: `play-mode` system, `isPlaying`/`isPlayPaused` in store, `scene-timer.simulationTime` as the canonical deterministic clock. |
-| **Capabilities** | drive, synthetic traffic, sensor replay, locomotion, XR/AR, (future: recorded playback, camera paths) | PR #1627's `mode-manager` registry + play-mode event subscribers. Derived from scene content, never a saved "mode" flag. |
-| **Vantage** | saved start camera pose | Exists today: `memory.cameraState` + `memory.snapshots[].isDefault` + `?camera=` deep link — currently only feeds the *editor* fly-in. |
+| Axis             | Values                                                                                                | Where it lives                                                                                                                                               |
+| ---------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Presentation** | `editor` \| `viewer`                                                                                  | Exists today: `isInspectorEnabled` in `src/store.js` (inverted). The Viewer _is_ "inspector closed", upgraded from an afterthought to a first-class surface. |
+| **Permission**   | can-edit \| view-only (later: #1267's full Access/Permission axes)                                    | Exists minimally: `metadata.authorId` vs `currentUser.uid` (`SceneUtils.js` already forces save-as for non-authors).                                         |
+| **Play state**   | `stopped` \| `playing` \| `paused`                                                                    | PR #1627: `play-mode` system, `isPlaying`/`isPlayPaused` in store, `scene-timer.simulationTime` as the canonical deterministic clock.                        |
+| **Capabilities** | drive, synthetic traffic, sensor replay, locomotion, XR/AR, (future: recorded playback, camera paths) | PR #1627's `mode-manager` registry + play-mode event subscribers. Derived from scene content, never a saved "mode" flag.                                     |
+| **Vantage**      | saved start camera pose                                                                               | Exists today: `memory.cameraState` + `memory.snapshots[].isDefault` + `?camera=` deep link — currently only feeds the _editor_ fly-in.                       |
 
 Every user story in the brief is a coordinate in this space:
 
-| Story | Presentation | Permission | Play | Capabilities |
-| --- | --- | --- | --- | --- |
-| Visitor opens someone else's (static) scene | viewer | view-only | n/a (no subscribers) | locomotion |
-| Author presses Play on a physics/race scene | viewer | can-edit | playing | drive (+ traffic) |
-| Author disables editing, sets a start view | viewer (forced for others) | view-only | n/a | locomotion, vantage |
-| Visitor moves around like the editor + WASD | viewer | either | any | locomotion |
-| Author plays animated managed-street lanes | viewer | can-edit | playing | traffic, from current vantage |
-| Sensor-data replay (magical-faraday branch) | viewer | either | playing | replay |
+| Story                                       | Presentation               | Permission | Play                 | Capabilities                  |
+| ------------------------------------------- | -------------------------- | ---------- | -------------------- | ----------------------------- |
+| Visitor opens someone else's (static) scene | viewer                     | view-only  | n/a (no subscribers) | locomotion                    |
+| Author presses Play on a physics/race scene | viewer                     | can-edit   | playing              | drive (+ traffic)             |
+| Author disables editing, sets a start view  | viewer (forced for others) | view-only  | n/a                  | locomotion, vantage           |
+| Visitor moves around like the editor + WASD | viewer                     | either     | any                  | locomotion                    |
+| Author plays animated managed-street lanes  | viewer                     | can-edit   | playing              | traffic, from current vantage |
+| Sensor-data replay (magical-faraday branch) | viewer                     | either     | playing              | replay                        |
 
 The two-way doors: **Play button = "switch Presentation to viewer and
 start the clock."** **Stop / Edit button = "switch Presentation to editor"**
@@ -69,7 +69,7 @@ instead. Same state machine, one button swapped.
 - The editor/viewer toggle exists (`isInspectorEnabled`,
   `src/store.js:237`), but the only ways into viewer are `?viewer=true`
   (`src/editor/index.jsx:24`) and there is **no Play/View button** in the
-  UI. `Toolbar.jsx` renders a lone "Edit" button *only while in viewer*.
+  UI. `Toolbar.jsx` renders a lone "Edit" button _only while in viewer_.
 - The legacy `viewer-mode` component (`src/aframe-components/viewer-mode.js`)
   carries three presets (locomotion / camera-path / ar-webxr). Its UI was
   removed in panels-v2 (PR #1566); camera-path is the default but never
@@ -80,7 +80,7 @@ instead. Same state machine, one button swapped.
   save-as — the implicit "remix").
 - **Saved vantage exists but isn't used for viewers**: on load,
   `set-loader-from-hash` resolves `memory.cameraState` → default snapshot →
-  `?camera=` param, but the result only animates the *editor* camera
+  `?camera=` param, but the result only animates the _editor_ camera
   fly-in (`viewport.js:429`). A plain viewer keeps `#camera` at `0 1.6 0`.
 
 **On PR #1627 (`physics-play-mode`):**
@@ -94,7 +94,7 @@ instead. Same state machine, one button swapped.
 - The Play button appears only when the scene has something playable
   (`useHasPlayable`) — correct instinct, generalized below.
 - **Deletes** `viewer-mode.js`, the `#viewer-mode-ui` DOM, locomotion
-  controls, and the AR/XR entry — currently leaving *nothing* for the
+  controls, and the AR/XR entry — currently leaving _nothing_ for the
   plain-viewing case. This is the main thing to reconcile: the deletion
   is fine, but its replacement should be the Viewer described here, not
   just the drive-mode toolbar.
@@ -126,7 +126,7 @@ when the inspector is closed):
 - **Title + author username** — satisfies #1289. Requires the public
   username lookup from #1288/#1289 (scene JSON stores only the author
   uid today).
-- **Play/Pause + sim clock** — rendered *only if* the scene has ≥1
+- **Play/Pause + sim clock** — rendered _only if_ the scene has ≥1
   registered playable capability (generalized `useHasPlayable`). PR
   #1627's SIM readout/pause pill slots here unchanged. Static scenes never
   see it.
@@ -147,7 +147,7 @@ when the inspector is closed):
   snapshots with `cameraState` and an `isDefault` flag — "set viewer start
   view" is just surfacing that flag in the screenshot modal and future
   scene settings. No new persistence format.
-- **Controls**: resurrect the *locomotion* preset from deleted
+- **Controls**: resurrect the _locomotion_ preset from deleted
   `viewer-mode` as the Viewer's default capability — `movement-controls`
   (WASD/arrows, fly) + `look-controls` click-drag, matching editor feel.
   Pointer lock is a later enhancement, not v1 (click-drag matches the
@@ -173,13 +173,13 @@ when the inspector is closed):
 
 ### Entry rules
 
-| How you arrive | Result |
-| --- | --- |
-| Owner/editor loads `#/scenes/UUID` | editor (unchanged today; a per-scene "open in viewer" preference can come later) |
-| Non-editor loads `#/scenes/UUID` | **viewer** (new — today they get the full editor) |
-| Editor presses Play (or `P`) | viewer + `playState=playing` |
-| Viewer presses Edit | editor (pauses clock) — or Remix flow if view-only |
-| `?viewer=true` / share/present link | viewer, regardless of permission |
+| How you arrive                      | Result                                                                           |
+| ----------------------------------- | -------------------------------------------------------------------------------- |
+| Owner/editor loads `#/scenes/UUID`  | editor (unchanged today; a per-scene "open in viewer" preference can come later) |
+| Non-editor loads `#/scenes/UUID`    | **viewer** (new — today they get the full editor)                                |
+| Editor presses Play (or `P`)        | viewer + `playState=playing`                                                     |
+| Viewer presses Edit                 | editor (pauses clock) — or Remix flow if view-only                               |
+| `?viewer=true` / share/present link | viewer, regardless of permission                                                 |
 
 Note this needs **no access-control backend**: "non-editor sees viewer"
 is pure Presentation, decided client-side from `authorId !==
@@ -205,7 +205,7 @@ controls; start pose applied from the existing snapshot/cameraState chain;
 "set as viewer start view" surfaced in the screenshot modal. Delete the
 legacy `viewer-mode` component + its json-utils round-trip wiring (PR
 #1627 already removes the component; the wiring note in its header says
-to keep it *until this lands* — this is that landing).
+to keep it _until this lands_ — this is that landing).
 
 **Phase 2 — viewer-first for non-editors.**
 Non-owners land in the Viewer; Edit becomes Remix (#1325's flow, i.e.
@@ -215,12 +215,12 @@ today's forced save-as made visible). Requires public usernames (#1288/
 **Phase 3 — play controls in the Viewer.**
 Generalize `useHasPlayable` into the capability registry
 (`mode-manager.hasPlayable()`); Play/Pause + sim clock appear in the top
-bar for editors *and* visitors; ambient auto-play flags; drive's
+bar for editors _and_ visitors; ambient auto-play flags; drive's
 click-to-enter. The magical-faraday replay layer plugs in with zero
 lifecycle changes.
 
 **Phase 4 — access control & polish (tracks #1267).**
-`Only me` / link scopes gate who can *load* the scene at all; Presentation
+`Only me` / link scopes gate who can _load_ the scene at all; Presentation
 is already orthogonal so nothing here changes. Later: pointer lock,
 XR/AR as a registered capability (restoring what #1627 deleted, behind
 the same registry), per-scene "open in viewer" owner preference, viewer
@@ -228,12 +228,12 @@ URL/embed ("Open in Viewer mode" button from #1267's share modal sketch).
 
 ## Open questions
 
-1. **Owner default**: should owners *also* land in the Viewer (view-first
+1. **Owner default**: should owners _also_ land in the Viewer (view-first
    like docs tools)? Recommend no for now — 3DStreet sessions are
    overwhelmingly editing sessions — but the entry rule makes it a
    one-line preference later.
 2. **Does Play exist in editor presentation at all?** PR #1627 says no
-   (Play closes the inspector). Keep that: previewing simulation *is*
+   (Play closes the inspector). Keep that: previewing simulation _is_
    viewing. Revisit only if "tweak-while-simulating" becomes a real need
    (the parked chassis-persistence work heads that way).
 3. **Username availability** (#1288): what's the fallback byline before
@@ -269,8 +269,34 @@ Landed on this branch (supersedes #1627; magical-faraday fully absorbed):
   shows only in drive mode. Capabilities shipped: physics **drive** (Rapier,
   code-split WASM/JS chunk, lazy-loaded on first Start) and **traffic-sensor
   replay**, plus synthetic `street-traffic`. **Deferred:** per-capability
-  *ambient auto-play* (a traffic/replay link starting to move on entry without
+  _ambient auto-play_ (a traffic/replay link starting to move on entry without
   a click) — needs an `ambient` flag on the registry; drive would stay
   click-to-enter. Today a visitor presses Start to bring an ambient scene to
   life.
 - **Phase 4** ⏳ access control & XR-as-capability: unchanged, tracks #1267.
+
+### Follow-up: fixed aspect ratio (letterbox) in the Viewer
+
+A first step toward viewer-mode recording: the Viewer can present the
+canvas at a fixed aspect ratio, letterboxed/pillarboxed inside the
+window, so subject framing (and any capture of the canvas buffer) is
+identical across devices.
+
+- **State:** `viewerAspectRatio` in the store — `'fill'` (default,
+  today's full-window behavior) or `'W:H'`. Editor presentation always
+  fills the window.
+- **Mechanism:** the `viewer-aspect` A-Frame system. `a-scene.resize()`
+  stays the single sizing authority; the system listens for its
+  `rendererresize` event and overlays the letterbox rect (canvas CSS +
+  renderer size + camera aspect) while active. State changes just call
+  `sceneEl.resize()` and converge through the same event, which also
+  keeps `css2d-renderer` overlays aligned to the canvas rect.
+- **Entry point:** `?aspect=16:9` (also `9x16`, decimals) pins the
+  format from the URL and implies the viewer; the in-viewer picker
+  mirrors the choice back into the URL so the current link is shareable.
+- **Related fix:** `a-scene.resize()` only updates the _active_ camera,
+  but the editor⇄viewer handoff swapped `sceneEl.camera` after
+  `Inspector.open()/close()` had already resized — so a window resize in
+  one presentation left the other's camera aspect stale (the "wrong
+  aspect after re-entering the viewer" regression). `viewport.js` now
+  resizes immediately after each swap.

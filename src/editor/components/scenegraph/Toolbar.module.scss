@@ -23,6 +23,14 @@
   gap: 8px;
 }
 
+// Aspect-ratio picker in the right dock. The Dropdown component is
+// sized for panel forms; compact it to sit beside the toolbar pills.
+.aspectDropdown {
+  width: 196px;
+  max-width: 196px;
+  row-gap: 0;
+}
+
 // "View only" label inside the action pill (next to Edit/Remix),
 // matching the toolbar button typography without being clickable.
 .viewOnlyText {

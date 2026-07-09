@@ -6,6 +6,15 @@ import canvasRecorder from './editor/lib/CanvasRecorder';
 import { auth } from '@shared/services/firebase';
 import { saveUserProfile } from '@shared/utils/username';
 import { resolveInitialLocale, persistLocale } from './editor/i18n/config';
+import { parseAspectRatio } from './aframe-components/viewer-aspect-utils';
+
+// Seed the viewer's canvas aspect from the ?aspect= URL param so an entry
+// link can pin the output format (e.g. ?viewer=true&aspect=9:16). Invalid
+// or absent → 'fill' (match the window, letterbox off).
+const initialViewerAspectRatio = () => {
+  const param = new URLSearchParams(window.location.search).get('aspect');
+  return param && parseAspectRatio(param) !== null ? param.trim() : 'fill';
+};
 
 const firstModal = () => {
   const hash = window.location.hash;
@@ -259,6 +268,31 @@ const useStore = create(
         //              memory.cameraState > ?camera= deep link), used
         //              when arriving in the viewer without an editing
         //              session (?viewer=true, non-author scene loads)
+        // Viewer canvas aspect: 'fill' (default — use the whole window)
+        // or a fixed ratio string ('16:9', '9:16', ...) that letterboxes
+        // the canvas for consistent output framing across devices. The
+        // viewer-aspect A-Frame system reacts to this; the editor always
+        // fills the window. Seeded from the ?aspect= URL param.
+        viewerAspectRatio: initialViewerAspectRatio(),
+        setViewerAspectRatio: (newAspectRatio) => {
+          posthog.capture('viewer_aspect_changed', {
+            aspect: newAspectRatio
+          });
+          // Mirror the choice into the URL so the current link IS the
+          // entry point that pins the output format when reshared.
+          try {
+            const url = new URL(window.location);
+            if (parseAspectRatio(newAspectRatio) === null) {
+              url.searchParams.delete('aspect');
+            } else {
+              url.searchParams.set('aspect', newAspectRatio);
+            }
+            window.history.replaceState(null, '', url);
+          } catch (e) {
+            // URL not writable (e.g. sandboxed iframe) — state still applies.
+          }
+          set({ viewerAspectRatio: newAspectRatio });
+        },
         viewerVantage: 'editor',
         enterViewerMode: (vantage = 'editor') => {
           set({ viewerVantage: vantage });

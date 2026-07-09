@@ -7,7 +7,8 @@ import {
   faStop,
   faRotateRight,
   faFlagCheckered,
-  faTriangleExclamation
+  faTriangleExclamation,
+  faCropSimple
 } from '@fortawesome/free-solid-svg-icons';
 import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
@@ -18,6 +19,8 @@ import { AppSwitcher } from '@shared/navigation/components';
 import { SceneEditTitle } from '../elements/SceneEditTitle';
 import { Button } from '../elements/Button';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
+import { Dropdown } from '../elements/Dropdown';
+import { VIEWER_ASPECT_PRESETS } from '@/aframe-components/viewer-aspect-utils';
 import primaryStyles from '../elements/PrimaryToolbar/PrimaryToolbar.module.scss';
 import styles from './Toolbar.module.scss';
 import { formatSimTime } from '@/aframe-components/play/format-sim-time';
@@ -132,6 +135,69 @@ function SimClock() {
       <AwesomeIcon icon={icon} size={10} />
       <span className={styles.simClockValue}>{formatSimTime(displayMs)}</span>
     </button>
+  );
+}
+
+/**
+ * Aspect-ratio picker for the viewer canvas. 'Fill window' (default)
+ * uses A-Frame's normal full-window sizing; fixed ratios letterbox the
+ * canvas (viewer-aspect system) so the framing — and any capture or
+ * future recording of the canvas — is identical on every device. The
+ * choice is mirrored into the ?aspect= URL param, so sharing the
+ * current link pins the format for the recipient.
+ */
+function AspectRatioPicker() {
+  const intl = useIntl();
+  const viewerAspectRatio = useStore((s) => s.viewerAspectRatio);
+  const setViewerAspectRatio = useStore((s) => s.setViewerAspectRatio);
+
+  // Separate formatMessage calls so formatjs can statically extract
+  // each descriptor. Ratio numbers stay untranslated.
+  const qualifierByPreset = {
+    fill: intl.formatMessage({
+      id: 'viewer.aspectFill',
+      defaultMessage: 'Fill window'
+    }),
+    '16:9': `16:9 · ${intl.formatMessage({
+      id: 'viewer.aspectLandscape',
+      defaultMessage: 'Landscape'
+    })}`,
+    '9:16': `9:16 · ${intl.formatMessage({
+      id: 'viewer.aspectPortrait',
+      defaultMessage: 'Portrait'
+    })}`,
+    '1:1': `1:1 · ${intl.formatMessage({
+      id: 'viewer.aspectSquare',
+      defaultMessage: 'Square'
+    })}`,
+    '4:5': `4:5 · ${intl.formatMessage({
+      id: 'viewer.aspectSocial',
+      defaultMessage: 'Social'
+    })}`,
+    '21:9': `21:9 · ${intl.formatMessage({
+      id: 'viewer.aspectCinematic',
+      defaultMessage: 'Cinematic'
+    })}`
+  };
+  const options = VIEWER_ASPECT_PRESETS.map((value) => ({
+    value,
+    label: qualifierByPreset[value] || value
+  }));
+  // A custom ratio can arrive via the ?aspect= URL param — keep it
+  // selectable rather than showing an empty control.
+  if (!options.some((option) => option.value === viewerAspectRatio)) {
+    options.push({ value: viewerAspectRatio, label: viewerAspectRatio });
+  }
+
+  return (
+    <Dropdown
+      className={styles.aspectDropdown}
+      icon={<AwesomeIcon icon={faCropSimple} size={16} />}
+      placeholder={qualifierByPreset.fill}
+      options={options}
+      selectedOptionValue={viewerAspectRatio}
+      onSelect={setViewerAspectRatio}
+    />
   );
 }
 
@@ -332,6 +398,7 @@ function Toolbar() {
           and sign-in happens at save time. Same ProfileButton component
           as the editor, including its signed-out state. */}
       <div id="viewer-right-dock" className={`clickable ${styles.rightDock}`}>
+        <AspectRatioPicker />
         <div className={primaryStyles.wrapper}>
           {/* Access state pairs exactly with the action: "View only"
               appears iff the action is Remix (you can't edit this scene

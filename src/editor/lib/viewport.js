@@ -638,6 +638,12 @@ export function Viewport(inspector) {
         modeManager?.setMode('editor');
         enableControls();
         AFRAME.scenes[0].camera = inspector.camera;
+        // a-scene.resize() only ever updates the *active* camera, so any
+        // window resize that happened while the viewer camera was active
+        // left this one with a stale aspect. Resync it now that it's
+        // active again (rendererresize also lets updateAspectRatio fix
+        // the ortho frustum).
+        AFRAME.scenes[0].resize();
         Array.prototype.slice
           .call(document.querySelectorAll('.a-enter-vr,.rs-base'))
           .forEach((element) => {
@@ -655,6 +661,13 @@ export function Viewport(inspector) {
         inspector.cameras.original.setAttribute('camera', 'active', 'true');
         AFRAME.scenes[0].camera =
           inspector.cameras.original.getObject3D('camera');
+        // Same resync on the way out: the viewer camera's projection is
+        // stale if the window was resized during the editing session
+        // (a-scene's resize handler only touched the editor camera).
+        // This was the "wrong aspect ratio after re-entering the viewer"
+        // bug. Also lets the viewer-aspect system letterbox the canvas
+        // via the rendererresize event this emits.
+        AFRAME.scenes[0].resize();
         Array.prototype.slice
           .call(document.querySelectorAll('.a-enter-vr,.rs-base'))
           .forEach((element) => {

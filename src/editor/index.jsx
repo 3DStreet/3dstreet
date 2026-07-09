@@ -18,11 +18,18 @@ import { commandsByType } from './lib/commands/index.js';
 import { LocaleProvider } from './i18n/LocaleProvider';
 import useStore from '@/store';
 import { initializeLocationSync } from './lib/location-sync';
+import { parseAspectRatio } from '../aframe-components/viewer-aspect-utils';
 
-// Helper function to check if viewer mode is requested via URL parameter
+// Helper function to check if viewer mode is requested via URL parameter.
+// A valid ?aspect= param implies the viewer too: a fixed output format
+// only exists in the viewer presentation, so an aspect entry link is a
+// viewer link (?aspect=9:16 ≡ ?viewer=true&aspect=9:16).
 function isViewerModeRequested() {
   const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('viewer') === 'true';
+  return (
+    urlParams.get('viewer') === 'true' ||
+    parseAspectRatio(urlParams.get('aspect')) !== null
+  );
 }
 
 function Inspector(configOverrides) {

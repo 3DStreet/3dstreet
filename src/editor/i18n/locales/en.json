@@ -1988,6 +1988,24 @@
   "userLayers.tipsHeading": {
     "defaultMessage": "Tips"
   },
+  "viewer.aspectCinematic": {
+    "defaultMessage": "Cinematic"
+  },
+  "viewer.aspectFill": {
+    "defaultMessage": "Fill window"
+  },
+  "viewer.aspectLandscape": {
+    "defaultMessage": "Landscape"
+  },
+  "viewer.aspectPortrait": {
+    "defaultMessage": "Portrait"
+  },
+  "viewer.aspectSocial": {
+    "defaultMessage": "Social"
+  },
+  "viewer.aspectSquare": {
+    "defaultMessage": "Square"
+  },
   "viewer.byAuthor": {
     "defaultMessage": "by {username}"
   },
