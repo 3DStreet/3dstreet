@@ -136,6 +136,51 @@ describe('TickAnimator', () => {
     expect(cb).not.toHaveBeenCalled();
   });
 
+  it('captureCurrent() returns the live handle; adoptHandle() restores it (same-frame hand-off)', () => {
+    // Reproduces the CommittedMotionRunner recovery→pop hand-off: on the final
+    // frame the recovery onTick cancels its own tween and starts a pop tween,
+    // captures the pop handle, and returns — then the recovery tween's trailing
+    // terminal block nulls `_currentTween`; onDone re-adopts the captured pop
+    // handle so it isn't orphaned.
+    let handoffTween = null;
+    const recovery = ta.animate({
+      durationMs: 100,
+      ease: (t) => t,
+      onTick: (eased, raw) => {
+        if (raw >= 1 && !handoffTween) {
+          // Hand off: cancel this tween's tick, start the pop, capture it.
+          ta.cancel();
+          ta.animate({ durationMs: 50, ease: (t) => t, onTick: () => {} });
+          handoffTween = ta.captureCurrent();
+        }
+      },
+      onDone: () => {
+        // The terminal block already nulled _currentTween; re-adopt the pop.
+        ta.adoptHandle(handoffTween);
+      }
+    });
+    // One tick straight to raw=1 so onTick's hand-off and the trailing terminal
+    // block (unsubscribe → _currentTween=null → onDone) run on the same frame.
+    runTick(100);
+    expect(handoffTween).not.toBeNull();
+    // The captured pop tween is the current tween, not null — not orphaned.
+    expect(ta.isAnimating()).toBe(true);
+    expect(handoffTween.isActive()).toBe(true);
+    // The pop still runs to completion.
+    runTick(50);
+    expect(ta.isAnimating()).toBe(false);
+    expect(recovery.isActive()).toBe(false);
+  });
+
+  it('adoptHandle(null) does not clobber the current tween (hand-off started none)', () => {
+    ta.animate({ durationMs: 100, ease: (t) => t, onTick: () => {} });
+    const current = ta.captureCurrent();
+    expect(current).not.toBeNull();
+    ta.adoptHandle(null);
+    expect(ta.captureCurrent()).toBe(current);
+    expect(ta.isAnimating()).toBe(true);
+  });
+
   it('two animators receive ticks independently', () => {
     const ta2 = new TickAnimator(makeSceneEl());
     const a = vi.fn();

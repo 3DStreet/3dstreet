@@ -61,6 +61,26 @@ only four such knobs.
 
 ---
 
+## The letterbox indicator: folded into the camera-write funnel (post-refactor)
+
+**Proposal / original SPEC aspiration:** the letterbox mode comparator would
+be a subscriber on the camera-write funnel, firing on every camera write.
+
+**Implemented (TASK-037):** originally the comparator stayed a set of
+scattered explicit `emitLbModeChange` calls at a hand-picked subset of write
+sites, so after certain tweens the indicator could be **stale until the next
+gesture**. TASK-037 delivers the deferred aspiration — the funnel now resolves
+the letterbox on every camera write — and adds a nuance the proposal did not
+anticipate: the indicator evaluates with a **tween-scoped hysteresis dead-band
+δ** (`TH-73`) during committed-motion-runner tweens (so a tween settling on /
+running along T can't strobe the toolbar) while every real-time write and every
+settle resolves at **exact T**. The regime *control* stays exact-T everywhere;
+only the *indicator during a tween* uses the dead-band (KD-05). Drag-time
+boundary hysteresis on the shared T is deliberately **not** added — a known
+limitation (register Q7).
+
+---
+
 ## The swoop: cursor anchoring dropped from the transition; gated on AGL
 
 **Proposal:** a 3-phase swoop where **cursor anchoring continues through

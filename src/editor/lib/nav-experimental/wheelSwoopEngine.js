@@ -733,7 +733,6 @@ export class WheelSwoopEngine {
       // being retuned. `groundY` here is the collision floor under the camera,
       // so a swoop onto a roof grounds to the roof.
       this._ctx.grounded.deriveFromPose();
-      this._ctx.emitLbModeChange();
       return;
     }
 
@@ -757,7 +756,6 @@ export class WheelSwoopEngine {
       // ceiling the tilt is the user's to set freely (Phase 1 tilt-preserving).
       this._ascentAnchor = null;
       camera.updateMatrixWorld();
-      this._ctx.emitLbModeChange();
       // Now dispatch a Phase 1 tick. The tilt split was collapsed, so
       // this is always the cursor-anchored Phase-1 tick (reads the same
       // `this._frameGroundY` snapshot). This is a sign > 0 (zoom-out) tick
@@ -807,12 +805,10 @@ export class WheelSwoopEngine {
     }
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
-    // Toolbar visual indicator: Phase 2's tilt lerp crosses the 30°
-    // boundary silently from the LB-mode comparator's perspective. Emit
-    // here so the toolbar restyles in lock-step with the swoop. (Phase
-    // 1 and Phase 3 are tilt-preserving, so no equivalent calls needed
-    // there.)
-    this._ctx.emitLbModeChange();
+    // Phase 2's tilt lerp crosses the tilt threshold silently from the LB-mode
+    // comparator's perspective; the wheel drain's terminal `commitMove('wheel')`
+    // resolves the letterbox at exact T once per frame, so the toolbar restyles
+    // in lock-step with the swoop. (Phase 1 and Phase 3 are tilt-preserving.)
   }
 
   // (Phase 3 FOV-only zoom is now handled continuously inside

@@ -116,7 +116,7 @@ export class CommittedMotionRunner {
           onHandoff();
           // Capture the pop tween's handle (if the handoff started one) so a
           // trailing terminal block on this same final frame can't orphan it.
-          handoffTween = ctx.tick._currentTween;
+          handoffTween = ctx.tick.captureCurrent();
           return;
         }
         camera.position.lerpVectors(startPos, endPos, eased);
@@ -124,15 +124,16 @@ export class CommittedMotionRunner {
         center.lerpVectors(startCenter, endCenter, eased);
         camera.updateMatrixWorld();
         // Per-tick commit: the ease-back moves the camera by a non-wheel
-        // mechanism, so clear the wheel zoom-undo memory + dispatch `change`.
-        funnel.commitMove('tween');
+        // mechanism, so clear the wheel zoom-undo memory + resolve the letterbox
+        // (hysteresis, tween-scoped) + dispatch `change`.
+        funnel.commitTween('tween');
       },
       onDone: () => {
         // Superseded by a same-frame hand-off — do not run the stale terminal
         // commit. Restore the pop tween's handle in case the trailing block
         // nulled it.
         if (handedOff) {
-          if (handoffTween) ctx.tick._currentTween = handoffTween;
+          ctx.tick.adoptHandle(handoffTween);
           return;
         }
         camera.position.copy(endPos);
@@ -147,6 +148,10 @@ export class CommittedMotionRunner {
         // falsely ground.
         ctx.grounded.deriveFromPose();
         ctx.sensor.reseedLegitPose();
+        // Refresh the context-button snapshot on the settle frame (uniform with
+        // every other committed-motion settle) so the button icon is correct on
+        // arrival, not one idle tick later.
+        ctx.sensor.refreshContextSnapshot();
         funnel.dispatch();
       }
     });
@@ -161,19 +166,13 @@ export class CommittedMotionRunner {
   //     commit.
   //   - commitPose(): snap the exact endpoint (position / quaternion / fov).
   //     Does NOT clear/dispatch.
-  //   - perTick: 'commit' (clear wheel memory + dispatch — the 4 presets) or
-  //     'dispatch' (dispatch ONLY — the teleport never clears zoom-undo per
-  //     tick; it clears once in the settle).
   //   - settle: the parameterized onDone epilogue (see _applySettle).
+  // Every committed motion clears the wheel zoom-undo memory each tick (a tween
+  // moves the camera by a non-wheel mechanism): the double-click teleport is not
+  // an outlier — like its four preset siblings it commits per tick, so an
+  // interrupted teleport can't leave stale zoom-undo memory armed.
   // Returns the TickAnimator handle.
-  run({
-    ownership,
-    durationMs,
-    onTick,
-    commitPose,
-    perTick = 'commit',
-    settle
-  }) {
+  run({ ownership, durationMs, onTick, commitPose, settle }) {
     const funnel = this._ctx.funnel;
     // Anti-stranding: route every start through cancel first.
     this.cancel();
@@ -192,8 +191,7 @@ export class CommittedMotionRunner {
       durationMs,
       onTick: (eased) => {
         onTick(eased);
-        if (perTick === 'commit') funnel.commitMove('tween');
-        else funnel.dispatch();
+        funnel.commitTween('tween');
       },
       onDone: () => {
         commitPose();
@@ -210,10 +208,13 @@ export class CommittedMotionRunner {
     });
   }
 
-  // The parameterized settle epilogue. Order — grounded → reseed → lbMode →
-  // refresh — is observationally identical to each motion's inline onDone (the
-  // four steps read the committed pose and write independent state; only lbMode
-  // and the terminal dispatch emit events, in that order, in every original).
+  // The parameterized settle epilogue. Order — grounded → reseed → refresh — is
+  // observationally identical to each motion's inline onDone (the steps read the
+  // committed pose and write independent state). The letterbox re-eval that used
+  // to live here (`settle.lbMode`) is gone: the terminal `funnel.dispatch()` now
+  // resolves the letterbox at exact T for EVERY settle, so pop-to-roof and
+  // rise-to-drone — which formerly skipped it — canonicalise too. modechange
+  // still fires before the terminal change (inside dispatch).
   _applySettle(settle) {
     if (!settle) return;
     const ctx = this._ctx;
@@ -226,8 +227,12 @@ export class CommittedMotionRunner {
       ctx.grounded.captureH();
     }
     if (settle.reseedLegit) ctx.sensor.reseedLegitPose();
-    if (settle.lbMode) ctx.emitLbModeChange();
-    if (settle.refreshSnapshot) ctx.sensor.refreshContextSnapshot();
+    // Every committed-motion settle refreshes the context-button snapshot so
+    // the button icon reflects the landed pose on the settle frame, not one
+    // idle tick later. (Formerly opt-in via `settle.refreshSnapshot`, which
+    // every in-runner caller set true anyway — the recovery ease-back was the
+    // only motion that skipped it, and it does so no longer; see runRecovery.)
+    ctx.sensor.refreshContextSnapshot();
   }
 
   // Re-validate a stored / candidate pose against CURRENT geometry (a tile may

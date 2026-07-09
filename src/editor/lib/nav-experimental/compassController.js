@@ -203,10 +203,9 @@ export class CompassController {
         // pose.
         this._ctx.sensor.reseedLegitPose();
         this._ctx.emitModeChange(null);
-        // Plan View ends at near-90° tilt — guaranteed truck-mode. Refresh
-        // the indicator on tween end so users who never
-        // touch Shift+LB see the correct toolbar state.
-        this._ctx.drag.maybeEmitLbModeChange();
+        // Plan View ends at near-90° tilt — guaranteed truck-mode. The terminal
+        // `funnel.dispatch()` resolves the letterbox at exact T, so users who
+        // never touch Shift+LB still see the correct toolbar state.
         this._ctx.funnel.dispatch();
         // When this plan view was the compass's stage 1, null the
         // compass handle and drain any queued action — placed LAST, after

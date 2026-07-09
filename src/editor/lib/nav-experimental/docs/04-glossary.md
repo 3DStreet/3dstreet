@@ -218,6 +218,17 @@ pop straight up to the nearest clear surface, out into the open.
 **Letterbox / mode indicator.** The full-width black toolbar strips shown
 when in **Street mode** (tilt ≤ T) — the visual signal that the control
 scheme has switched regime (KD-30). The aspect-ratio change is the cue.
+Resolved by the camera-write funnel on every camera write (TASK-037): exact
+T for real-time writes and settles, a tween-scoped hysteresis dead-band
+during committed-motion tweens (see below).
+
+**Hysteresis dead-band (δ, `TH-73`).** A small margin around a threshold
+inside which the state is held rather than flipped, so a value hovering on
+the boundary can't strobe. Used for the letterbox indicator *during a
+committed-motion-runner tween* (flip only past `T±δ`); the same idea drives
+the elevated↔street-level context state (`TH-67`/`TH-68`) and the recovery
+cue (`TH-52`/`TH-53`). The letterbox dead-band is tween-scoped only — the
+control regime a user drives is always exact-T.
 
 **Recovery cue.** A transient on-screen prompt that flashes when you
 become stranded-high or enclosed, drawing the eye to the context button

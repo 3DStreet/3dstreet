@@ -57,6 +57,24 @@ export function decideLbMode(
   return tiltDeg > threshold ? 'pan-truck' : 'pan-pedestal';
 }
 
+// TASK-037: the hysteresis variant of `decideLbMode`, used ONLY for the
+// letterbox indicator DURING a committed-motion-runner tween. A dead-band δ
+// around T holds the current mode across the boundary so a tween that settles
+// on / runs along T can't strobe the indicator: flip to 'pan-truck' (Map) only
+// above T+δ, flip to 'pan-pedestal' (Street) only below T−δ, otherwise keep the
+// current mode. Seeds via exact `decideLbMode` when `currentMode` is null (the
+// tween is the first camera motion and nothing has established the anchor yet).
+// Regime CONTROL never uses this — only the indicator, only inside a tween.
+export function decideLbModeHysteresis(tiltDeg, threshold, delta, currentMode) {
+  if (currentMode === 'pan-truck') {
+    return tiltDeg < threshold - delta ? 'pan-pedestal' : 'pan-truck';
+  }
+  if (currentMode === 'pan-pedestal') {
+    return tiltDeg > threshold + delta ? 'pan-truck' : 'pan-pedestal';
+  }
+  return decideLbMode(tiltDeg, threshold);
+}
+
 // TASK-010 (live-Shift, B6): pure decision for whether an in-progress LB
 // drag should switch sub-gesture given the live Shift state. Returns the
 // sub-mode to switch *to* ('pan' | 'rotate'), or null for no change.

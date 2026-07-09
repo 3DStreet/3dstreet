@@ -219,11 +219,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // instance (frozen external contract) — hand modules a bound callback,
       // never the instance itself.
       dispatch: self.dispatchEvent.bind(self),
-      // Re-evaluate the LB sub-mode from the live camera and emit a modechange
-      // on transition. A committed-motion settle epilogue that lands the camera
-      // programmatically calls this so the toolbar/letterbox reflect the landed
-      // tilt immediately. Now owned by the drag controller.
-      emitLbModeChange: () => self._drag.maybeEmitLbModeChange(),
+      // Re-evaluate the LB sub-mode from the live camera and emit a modechange on
+      // transition. The camera-write funnel drives this on every camera write
+      // (exact T via `dispatch`, hysteresis via `commitTween`); the drag
+      // controller owns the comparator.
+      resolveLetterbox: (useHysteresis) =>
+        self._drag.resolveLetterbox(useHysteresis),
       // Coarse `nav-experimental:modechange` (pan/rotate/null) dual-dispatch,
       // owned by the orchestrator; the drag controller emits through it.
       emitModeChange: (mode) => self._emitModeChange(mode),
@@ -248,12 +249,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Per-tick situation sensor: legit-pose snapshot, recovery cue, context
     // snapshot from one idle-gated enclosure ray.
     this._sensor = new SituationSensor(this._ctx);
-    // Camera-write funnel: the single `change`-dispatch + wheel-memory-
-    // invalidation edge every camera move passes through. `clearWheelMemory`
-    // points at the wheel engine's zoom-undo reset.
+    // Camera-write funnel: the single edge every camera move passes through —
+    // letterbox resolve + `change`-dispatch + wheel-memory invalidation.
+    // `clearWheelMemory` points at the wheel engine's zoom-undo reset;
+    // `resolveLetterbox` at the drag controller's letterbox comparator.
     this._funnel = new CameraWriteFunnel({
       dispatch: this._ctx.dispatch,
-      clearWheelMemory: () => this._wheel.clearZoomUndo()
+      clearWheelMemory: () => this._wheel.clearZoomUndo(),
+      resolveLetterbox: this._ctx.resolveLetterbox
     });
     // Committed-motion runner: the single home for every camera-owning
     // tween (recovery ease-back, teleport, and the four preset motions) — the
@@ -544,16 +547,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
 
   // Set the live tilt threshold T. Clamped to a sane range
-  // (5–45°). Re-emits the LB-mode after storing: changing T while the
+  // (5–45°). Re-resolves the LB-mode after storing: changing T while the
   // camera sits at a fixed tilt can flip the comparator (e.g. pan-truck →
-  // pan-pedestal) without any mouse-move, and `_maybeEmitLbModeChange`
-  // otherwise only fires on a move/tween — without this call the
-  // letterbox wouldn't update until the next interaction. The re-emit is
-  // a no-op when the comparator result is unchanged, so it is cheap.
+  // pan-pedestal) without any mouse-move — a fixed-pose flip with no camera
+  // write for the funnel to ride, so it is resolved directly (exact T). The
+  // resolve is a no-op when the comparator result is unchanged, so it is cheap.
   setTiltThreshold(deg) {
     if (typeof deg !== 'number' || !isFinite(deg)) return;
     this._tiltThreshold = THREE.MathUtils.clamp(deg, 5, 45);
-    this._drag.maybeEmitLbModeChange();
+    this._drag.resolveLetterbox();
   }
 
   // Live-tunable Map-pivot bounds radius (metres
@@ -589,9 +591,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (typeof enabled !== 'boolean') return;
     this._streetLevelEnabled = enabled;
     // Flipping the gate can change the LB sub-mode comparator at a fixed
-    // tilt (pedestal ↔ truck) — re-emit so the letterbox updates without
-    // waiting for the next interaction (same reasoning as setTiltThreshold).
-    this._drag.maybeEmitLbModeChange();
+    // tilt (pedestal ↔ truck) — resolve directly (exact T, no camera write to
+    // ride) so the letterbox updates without waiting for the next interaction
+    // (same reasoning as setTiltThreshold).
+    this._drag.resolveLetterbox();
   }
 
   // First-person kit gate (see the constructor field). Relayed from the
@@ -654,16 +657,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._focusAnimation =
       el && el.components ? el.components['focus-animation'] : null;
     if (this._focusAnimation) {
-      // Wrap the change callback so a focus-animation tween that
-      // crosses the 30° tilt boundary updates the visual indicator
-      // mid-animation. An `onDone`-only hook would be cleaner,
-      // but the focus-animation component doesn't expose one;
-      // `_maybeEmitLbModeChange` is a no-op unless the comparator
-      // flips, so per-frame is fine — cost is one asin + one
-      // comparison, and the user gets the indicator update *during*
-      // the tween rather than at its end.
+      // Wrap the change callback so a focus-animation tween that crosses the
+      // tilt boundary updates the visual indicator mid-animation. The callback's
+      // terminal `funnel.dispatch()` resolves the letterbox at exact T every
+      // frame (emit-on-change, one asin + compare), so the indicator updates
+      // *during* the tween rather than at its end — no explicit resolve needed
+      // here. (Focus is a point-to-point tween that crosses T at most once, so
+      // exact T is correct; the runner-tween hysteresis does not apply.)
       const callback = () => {
-        this._drag.maybeEmitLbModeChange();
         // Focus-to-object moves the camera via the A-Frame
         // focus-animation component — a non-wheel move. Invalidate the
         // zoom-undo memory on its change hook (fires each frame of the

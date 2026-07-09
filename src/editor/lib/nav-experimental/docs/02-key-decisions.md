@@ -68,6 +68,19 @@ Accepted consequence of unification: lowering T also lowers the
 wheel-zoom cursor-anchor cut, slightly widening the band in which "cursor
 over empty sky anchors oddly."
 
+**Refinement (TASK-037): the letterbox _indicator_ uses a tween-scoped
+dead-band δ (`TH-73`); regime _control_ stays exact-T.** All four behaviours
+still cut on the same T. The only nuance is *when* the letterbox indicator
+re-evaluates: during a committed-motion-runner tween it applies hysteresis
+(flip only past `T±δ`) so a tween that settles on / runs along T can't strobe
+the toolbar; on live drags, the wheel swoop, and at every settle it resolves
+at exact T. The dead-band is on the *indicator during a tween only* — the
+control regime a user drives is always exact-T, so the indicator never
+desyncs from the controls outside a tween. (Hysteresis on *user-driven*
+regime transitions at T — drag-time boundary chatter — is deliberately not
+added; a known limitation revisited only if observed. See TASK-036 quirk
+register Q4/Q7.)
+
 ### KD-07 — Keep the hand-rolled orbit math; do not adopt a camera-control library
 
 Evaluated `THREE.OrbitControls`, `MapControls`, and `camera-controls`

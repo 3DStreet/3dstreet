@@ -63,11 +63,12 @@ export class TransitionController {
     let retargeted = false;
     // Runner Door 2 (preset motion). y-delta center follow; per-tick commit.
     // Settle: a pop-to-roof / pop-to-daylight lands you standing on that roof →
-    // grounded; reseed; refresh the context snapshot. No letterbox re-eval.
+    // grounded; reseed; refresh the context snapshot. The letterbox is resolved
+    // at exact T by the runner's terminal funnel.dispatch() (a no-op here — pop
+    // preserves pitch — but uniform across every settle since TASK-037 Q3/Q4).
     this._ctx.runner.run({
       ownership: 'recovery',
       durationMs: POP_TO_ROOF_DURATION_MS,
-      perTick: 'commit',
       onTick: (eased) => {
         if (!retargeted) {
           const reprobe = this._ctx.sensor.enclosureProbe();
@@ -93,8 +94,7 @@ export class TransitionController {
       },
       settle: {
         grounded: 'force-true',
-        reseedLegit: true,
-        refreshSnapshot: true
+        reseedLegit: true
       }
     });
   }
@@ -278,7 +278,6 @@ export class TransitionController {
     this._ctx.runner.run({
       ownership: 'recovery',
       durationMs: FALL_DURATION_MS,
-      perTick: 'commit',
       onTick: (eased) => {
         cam.position.lerpVectors(startPos, endPos, eased);
         this._ctx.center.lerpVectors(startCenter, endCenter, eased);
@@ -293,9 +292,7 @@ export class TransitionController {
       },
       settle: {
         grounded: 'force-true',
-        reseedLegit: true,
-        lbMode: true,
-        refreshSnapshot: true
+        reseedLegit: true
       }
     });
   }
@@ -411,11 +408,13 @@ export class TransitionController {
     // per-tick commit; suspends WASD / holds the busy gate via the 'recovery'
     // ownership. Settle: drone deliberately leaves the surface upward → flying,
     // re-capture the cruise height (mirrors `_checkUngroundOnRise`), reseed, and
-    // refresh the context snapshot (flip icon drone→street). No letterbox re-eval.
+    // refresh the context snapshot (flip icon drone→street). The letterbox is
+    // resolved at exact T by the runner's terminal funnel.dispatch(): the rise
+    // ends at the ~60° overview tilt (> T = Map), so the indicator now flips to
+    // Map at settle instead of lagging until the next input (TASK-037 Q3/Q4).
     this._ctx.runner.run({
       ownership: 'recovery',
       durationMs: FALL_DURATION_MS,
-      perTick: 'commit',
       onTick: (eased) => {
         cam.position.lerpVectors(startPos, endPos, eased);
         this._ctx.center.lerpVectors(startCenter, endCenter, eased);
@@ -434,8 +433,7 @@ export class TransitionController {
       },
       settle: {
         grounded: 'force-false-captureH',
-        reseedLegit: true,
-        refreshSnapshot: true
+        reseedLegit: true
       }
     });
   }
@@ -481,7 +479,6 @@ export class TransitionController {
     this._ctx.runner.run({
       ownership: 'recovery',
       durationMs: FALL_DURATION_MS,
-      perTick: 'commit',
       onTick: (eased) => {
         if (!retargeted) {
           const floor = this._ctx.probe.collisionFloorAt(
@@ -517,9 +514,7 @@ export class TransitionController {
       },
       settle: {
         grounded: 'force-true',
-        reseedLegit: true,
-        lbMode: true,
-        refreshSnapshot: true
+        reseedLegit: true
       }
     });
   }

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   cameraTiltDegrees,
   decideLbMode,
+  decideLbModeHysteresis,
   decideDragModeSwitch,
   clampOrbitRadius,
   wheelDeltaToTicks,
@@ -123,6 +124,63 @@ describe('decideLbMode', () => {
     expect(decideLbMode(-1, 18)).toBe('pan-pedestal');
     expect(decideLbMode(-45, 18)).toBe('pan-pedestal');
     expect(decideLbMode(-89, 18)).toBe('pan-pedestal');
+  });
+});
+
+describe('decideLbModeHysteresis (TASK-037, tween-scoped dead-band δ)', () => {
+  // Signature: (tiltDeg, threshold, delta, currentMode).
+  const T = 25;
+  const D = 2; // δ
+
+  it('holds the current mode inside the dead-band [T−δ, T+δ]', () => {
+    // Currently Street (pan-pedestal): stays Street anywhere up to T+δ.
+    expect(decideLbModeHysteresis(T, T, D, 'pan-pedestal')).toBe(
+      'pan-pedestal'
+    );
+    expect(decideLbModeHysteresis(T + D, T, D, 'pan-pedestal')).toBe(
+      'pan-pedestal'
+    );
+    expect(decideLbModeHysteresis(T + 1.9, T, D, 'pan-pedestal')).toBe(
+      'pan-pedestal'
+    );
+    // Currently Map (pan-truck): stays Map anywhere down to T−δ.
+    expect(decideLbModeHysteresis(T, T, D, 'pan-truck')).toBe('pan-truck');
+    expect(decideLbModeHysteresis(T - D, T, D, 'pan-truck')).toBe('pan-truck');
+    expect(decideLbModeHysteresis(T - 1.9, T, D, 'pan-truck')).toBe(
+      'pan-truck'
+    );
+  });
+
+  it('flips Street→Map only strictly above T+δ', () => {
+    expect(decideLbModeHysteresis(T + D + 0.001, T, D, 'pan-pedestal')).toBe(
+      'pan-truck'
+    );
+    // At exactly T+δ it must still hold Street (strict boundary).
+    expect(decideLbModeHysteresis(T + D, T, D, 'pan-pedestal')).toBe(
+      'pan-pedestal'
+    );
+  });
+
+  it('flips Map→Street only strictly below T−δ', () => {
+    expect(decideLbModeHysteresis(T - D - 0.001, T, D, 'pan-truck')).toBe(
+      'pan-pedestal'
+    );
+    // At exactly T−δ it must still hold Map (strict boundary).
+    expect(decideLbModeHysteresis(T - D, T, D, 'pan-truck')).toBe('pan-truck');
+  });
+
+  it('seeds via exact decideLbMode when the anchor is null/unknown', () => {
+    // No current mode to hold across the band → resolve exact T.
+    expect(decideLbModeHysteresis(T + 0.001, T, D, null)).toBe('pan-truck');
+    expect(decideLbModeHysteresis(T, T, D, null)).toBe('pan-pedestal');
+    expect(decideLbModeHysteresis(T - 0.001, T, D, undefined)).toBe(
+      'pan-pedestal'
+    );
+  });
+
+  it('a substantial crossing flips promptly (well outside the band)', () => {
+    expect(decideLbModeHysteresis(89, T, D, 'pan-pedestal')).toBe('pan-truck');
+    expect(decideLbModeHysteresis(-89, T, D, 'pan-truck')).toBe('pan-pedestal');
   });
 });
 
@@ -2002,7 +2060,10 @@ describe('desiredDoubleClickPose', () => {
       currentYaw: 90,
       eyeHeight: EYE_MARGIN_METRES
     });
-    expect(r.position.y).toBeCloseTo(30 * DOUBLECLICK_BUILDING_VIEW_HEIGHT_FRAC, 6);
+    expect(r.position.y).toBeCloseTo(
+      30 * DOUBLECLICK_BUILDING_VIEW_HEIGHT_FRAC,
+      6
+    );
   });
 
   it('Category B aims at the building CENTRE, not the clicked hit-point', () => {
