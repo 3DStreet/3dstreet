@@ -27,6 +27,13 @@
 
 import { MAX_GROUND_DIST, FALLBACK_FORWARD_DIST } from './constants.js';
 
+// Reused normal-matrix scratch for worldHitNormal (a per-tick / per-swoop-frame
+// hot path). The matrix is a pure-local temp fully consumed within one
+// synchronous call — getNormalMatrix overwrites it wholesale each time, and the
+// call extracts its return Vector3 before any sibling call begins — so a single
+// shared instance never aliases across calls.
+const _worldHitNormalMat3 = new THREE.Matrix3();
+
 // Substring-match against object3D / DOM-element ancestors. Anchor must
 // not lock onto these.
 const EXCLUDE_NAME_SUBSTRINGS = [
@@ -229,10 +236,14 @@ export function worldHitNormal(hit) {
   }
   const obj = hit.object;
   obj.updateWorldMatrix(true, false);
-  const normalMatrix = new THREE.Matrix3().getNormalMatrix(obj.matrixWorld);
+  _worldHitNormalMat3.getNormalMatrix(obj.matrixWorld);
+  // The return is deliberately a fresh allocation: callers retain it as
+  // `.normal` (the WASD classifier holds two normals live at once), so it must
+  // never be a shared scratch. The `.clone()` also protects the mesh's
+  // BufferGeometry from the in-place applyMatrix3/normalize.
   const n = hit.face.normal
     .clone()
-    .applyMatrix3(normalMatrix)
+    .applyMatrix3(_worldHitNormalMat3)
     .normalize();
   if (!isFinite(n.x) || !isFinite(n.y) || !isFinite(n.z) || n.lengthSq() === 0) {
     return new THREE.Vector3(0, 1, 0);
@@ -248,6 +259,12 @@ export class CursorAnchor {
     this._raycaster = new THREE.Raycaster();
     this._ndc = new THREE.Vector2();
     this._groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    // worldPointAt scratch — pure-local position temps, reused each call. None
+    // escape: their values are copied out as primitive x/y/z into the return
+    // object's flat fields.
+    this._tmpGround = new THREE.Vector3();
+    this._tmpForward = new THREE.Vector3();
+    this._tmpFp = new THREE.Vector3();
   }
 
   setCamera(camera) {
@@ -264,12 +281,15 @@ export class CursorAnchor {
   // exceeds even the raised ceiling and falls to Step 3 'fallback'.
   // TASK-027: NDC for a client pixel. Factored out of worldPointAt so the
   // Part-B re-aim path can resolve the cursor pixel without a full raycast
-  // (one source of truth for the rect math). Returns a fresh THREE.Vector2.
-  ndcFor(clientX, clientY) {
+  // (one source of truth for the rect math). Fills the optional `target`
+  // Vector2 and returns it (three.js out-param idiom); defaults to a fresh
+  // allocation so bare callers keep getting a fresh Vector2.
+  ndcFor(clientX, clientY, target) {
     const rect = this._domElement.getBoundingClientRect();
     const x = ((clientX - rect.left) / rect.width) * 2 - 1;
     const y = -((clientY - rect.top) / rect.height) * 2 + 1;
-    return new THREE.Vector2(x, y);
+    const out = target || new THREE.Vector2();
+    return out.set(x, y);
   }
 
   worldPointAt(clientX, clientY, opts = {}) {
@@ -302,14 +322,14 @@ export class CursorAnchor {
     }
 
     // Step 2: ground plane intersection.
-    const groundHit = new THREE.Vector3();
+    const groundHit = this._tmpGround;
     const ok = this._raycaster.ray.intersectPlane(this._groundPlane, groundHit);
     if (ok) {
       const dist = camera.position.distanceTo(groundHit);
       // intersectPlane returns null if the ray is parallel to the plane;
       // also reject points behind the camera (intersectPlane already does
       // this for forward rays, but we double-check for very-shallow rays).
-      const forward = new THREE.Vector3()
+      const forward = this._tmpForward
         .subVectors(groundHit, camera.position)
         .dot(this._raycaster.ray.direction);
       if (forward > 0 && dist <= maxGroundDist) {
@@ -324,10 +344,14 @@ export class CursorAnchor {
       }
     }
 
-    // Step 3: fixed forward fallback.
-    const fwd = new THREE.Vector3();
+    // Step 3: fixed forward fallback. Reuses _tmpForward: the Step-2 value it
+    // held was reduced to the scalar `forward` (a .dot()) and is never read
+    // again once the ground branch falls through, so the slot is dead here.
+    // (If a future edit needs the Step-2 direction past that gate, give it a
+    // distinct scratch — do not read _tmpForward after this point.)
+    const fwd = this._tmpForward;
     camera.getWorldDirection(fwd);
-    const fp = new THREE.Vector3()
+    const fp = this._tmpFp
       .copy(camera.position)
       .addScaledVector(fwd, FALLBACK_FORWARD_DIST);
     return {

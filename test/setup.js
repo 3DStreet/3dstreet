@@ -1,6 +1,13 @@
 import { vi, beforeEach, afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import * as THREE from 'three';
+
+// A-Frame exposes THREE as a global at runtime; the nav modules read it as one
+// (they `/* global THREE */` and import `three` nowhere) and some allocate a
+// module-scope scratch at load. Mirror that here so a direct SUT import — which
+// evaluates before a test's own beforeAll — always finds THREE present.
+if (!globalThis.THREE) globalThis.THREE = THREE;
 
 // Cleanup after each test
 afterEach(() => {
