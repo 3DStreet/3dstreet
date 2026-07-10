@@ -1,8 +1,5 @@
 import Events from './Events';
-import {
-  isExperimentalNav,
-  isStreetLevelNav
-} from './nav-experimental/flag.js';
+import { isExperimentalNav } from './nav-experimental/flag.js';
 import { captureNavDiscovery } from './navAnalytics.js';
 
 export function initRaycaster(inspector) {
@@ -134,12 +131,14 @@ export function initRaycaster(inspector) {
    * Only this canvas dblclick reroutes — F-key / scene-tree / sidebar
    * objectfocus callers still run the legacy frame-this-entity animation.
    *
-   * The teleport ships with the street-level featureset (?streetview=on);
-   * gated off, double-click keeps the legacy frame-the-entity behaviour
-   * (deploy-at-parity).
+   * The reroute runs whenever experimental nav is on (the default). The
+   * legacy frame-the-entity double-click is reachable only under
+   * ?nav=classic. It is NOT gated on the street-level sub-flag: the
+   * cursor-aware double-click — including its lane landing — ships in the
+   * default build.
    */
   function onDoubleClick(event) {
-    if (isExperimentalNav() && isStreetLevelNav()) {
+    if (isExperimentalNav()) {
       Events.emit('nav-experimental:doubleclick', {
         clientX: event.clientX,
         clientY: event.clientY
