@@ -5,8 +5,7 @@ import { MeasureLineControls } from './MeasureLineControls.js';
 import InfiniteGridHelper from './InfiniteGridHelper.js';
 import {
   ExperimentalControls,
-  isExperimentalNav,
-  isStreetLevelNav
+  isExperimentalNav
 } from './nav-experimental/index.js';
 
 import { copyCameraPosition } from './cameras';
@@ -258,11 +257,11 @@ export function Viewport(inspector) {
     // cursor intersection navigateDoubleClick classifies off (NOT the
     // segment-remapped getIntersectedEl). So hovering a car-in-lane shows the
     // car (Category C) and a pixel aside shows the lane (Category A), matching
-    // WE-7 by construction. The teleport ships with ?streetview=on
+    // WE-7 by construction. The reroute runs whenever experimental nav is on
     // (raycaster.js gates the dblclick reroute the same way), so the preview
-    // follows the same flag — at parity, hover matches legacy selection.
+    // follows the same flag — hover previews what a double-click will do.
     let target = el;
-    if (isExperimentalNav() && isStreetLevelNav()) {
+    if (isExperimentalNav()) {
       const cursorComp =
         inspector.cursor && inspector.cursor.components
           ? inspector.cursor.components.cursor

@@ -83,8 +83,11 @@ legacy behaviour.
 - **Under-tiles recovery**: if a rotation dips the camera beneath the
   Google 3D tiles, it auto-lifts back above the surface — no getting
   trapped under the world.
-- **Object / building double-click to frame.** *(preserved with street
-  off.)*
+- **Cursor-aware double-click to navigate** (categories A/B/C/D — lane
+  landing, building, generic object, empty-no-op). *(Un-gated from the
+  street-level sub-flag: the whole double-click now ships in the default
+  build, replacing the legacy frame-the-entity double-click, which is
+  reachable only under `?nav=classic`.)*
 - **Momentum pan** to match the existing momentum zoom; **zoom in/out
   velocity fix.** *(polish — to build.)*
 
@@ -102,7 +105,7 @@ change, which is exactly why it ships on its own once the feel is locked,
 rather than blocking Stage 1.
 
 **In:** **rotate about the cursor** (vs Stage 1's rotate-about-centre);
-lane double-click → teleport to eye height; letterbox mode
+letterbox mode
 indicator; rotate-in-place at low tilt; smooth **swoop + focal-zoom**
 transitions between birds-eye and street; **WASD / arrow flight**;
 **Space-to-ground**; **drone/streetview toggle**; the enclosure escape
