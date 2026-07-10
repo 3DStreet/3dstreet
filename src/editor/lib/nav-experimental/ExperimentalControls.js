@@ -70,11 +70,6 @@ import { captureNavDiscovery } from '../navAnalytics.js';
 // module. Re-export it from its new home (the compass controller).
 export { needleScreenAngle } from './compassController.js';
 
-// Note: spherical phi clamps for Shift+LB rotation now live in
-// navMath.shiftRotateStep (derived from MIN/MAX_TILT_DEGREES at module
-// load time there). They were removed from this file when the rotation
-// step extracted to a pure helper.
-
 const NAV_DEBUG = (() => {
   if (typeof window === 'undefined' || !window.location) return false;
   return new URLSearchParams(window.location.search).get('navDebug') === 'true';
