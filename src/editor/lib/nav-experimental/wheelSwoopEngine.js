@@ -361,12 +361,11 @@ export class WheelSwoopEngine {
   }
 
   // A swoop↔dolly regime switch mid-descent is an intent
-  // change — invalidate the transient zoom-undo memory and drop any
-  // ascent anchor. Per-tick; no latched mode.
+  // change — invalidate the transient zoom-undo memory (which also drops the
+  // ascent anchor). Per-tick; no latched mode.
   _notePhase2Regime(regime) {
     if (this._lastSwoopRegime != null && regime !== this._lastSwoopRegime) {
       this.clearZoomUndo();
-      this._ascentAnchor = null;
     }
     this._lastSwoopRegime = regime;
   }
@@ -936,6 +935,10 @@ export class WheelSwoopEngine {
     this._phase3Reaim = null;
     this._lastSwoopRegime = null;
     this._breakoutDollyDepth = 0;
+    // ...and any in-flight swoop-out ascent: the anchor captured the pose the
+    // ascent tilt eases from, which the move has just invalidated. Dropping it
+    // makes the next ascent re-capture from the live pose (no tilt snap).
+    this._ascentAnchor = null;
   }
 
   // Apply a tilt (in degrees from horizontal, positive = looking down)
