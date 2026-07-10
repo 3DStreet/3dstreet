@@ -239,6 +239,9 @@ export class DoubleClickNav {
     const step = DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES;
     let pulled = 0;
     let fallback = null; // first column with a real floor (nominal framing)
+    // Reuse each struck building's AABB across the pull-back iterations (the
+    // scene is static, so a box computed once stays valid for the whole walk).
+    const boxCache = new Map();
     while (pulled <= DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES) {
       const floor = this._ctx.probe.collisionFloorAt(cand.x, cand.z, {
         fromY: cand.y,
@@ -258,7 +261,12 @@ export class DoubleClickNav {
       if (
         this._ctx.runner.poseStillLegit(
           { position: cand },
-          { checkBuried: true, extraBox: targetBox, skipFloorClearance: true }
+          {
+            checkBuried: true,
+            extraBox: targetBox,
+            skipFloorClearance: true,
+            boxCache
+          }
         )
       ) {
         return cand;
