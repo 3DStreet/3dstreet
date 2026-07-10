@@ -1,6 +1,10 @@
 /* global THREE */
 
-import { isSolidFloorHit, classifyHitEntity } from './cursorAnchor.js';
+import {
+  isSolidFloorHit,
+  classifyHitEntity,
+  owningEntity
+} from './cursorAnchor.js';
 import { isLegitPose } from './navMath.js';
 import { ENCLOSURE_PROBE_UP_MARGIN_METRES } from './constants.js';
 
@@ -327,15 +331,7 @@ export class CommittedMotionRunner {
     const seen = new Set();
     for (const hit of hits) {
       if (classifyHitEntity(hit) !== 'building') continue;
-      let node = hit.object;
-      let el = null;
-      while (node) {
-        if (node.el) {
-          el = node.el;
-          break;
-        }
-        node = node.parent;
-      }
+      const el = owningEntity(hit.object);
       if (!el || !el.object3D || seen.has(el)) continue;
       seen.add(el);
       if (inBox(new THREE.Box3().setFromObject(el.object3D))) return true;

@@ -139,6 +139,19 @@ export function isSolidFloorHit(hit, opts) {
   return false;
 }
 
+// First inclusive ancestor of `object3D` carrying a truthy `.el` (the owning
+// A-Frame entity), or null. A-Frame sets `.el` on an entity's root object3D,
+// not on nested gltf submeshes, so a deep submesh resolves to its entity (a
+// clone's submesh → the clone entity; a segment's below-box → the segment).
+export function owningEntity(object3D) {
+  let node = object3D;
+  while (node) {
+    if (node.el) return node.el;
+    node = node.parent;
+  }
+  return null;
+}
+
 // TASK-012: classify a raycast hit by owning-entity identity into one of the
 // double-click navigation source types: 'segment' | 'tiles' | 'building' |
 // 'scatter' | null. Extracted from `isSolidFloorHit` (the segment / catalog-
@@ -151,19 +164,7 @@ export function isSolidFloorHit(hit, opts) {
 export function classifyHitEntity(hit) {
   if (!hit || !hit.object) return null;
 
-  // Resolve owning A-Frame entity: first ancestor (inclusive) with a truthy
-  // `.el`. A-Frame sets `.el` on the entity's root object3D, not on nested
-  // gltf submeshes, so a clone's deep submesh resolves to the *clone* entity
-  // and the segment's below-box resolves to the *segment* entity.
-  let node = hit.object;
-  let el = null;
-  while (node) {
-    if (node.el) {
-      el = node.el;
-      break;
-    }
-    node = node.parent;
-  }
+  const el = owningEntity(hit.object);
   if (!el || !el.hasAttribute) return null;
 
   // (b) Segment: the owning entity is itself a street-segment.
@@ -182,8 +183,9 @@ export function classifyHitEntity(hit) {
 
   // (d) Tiles (TASK-019): climb ancestors PAST the first `.el` (the tiles
   //     `offsetEl`, carrying neither id nor layer-name) for `#google3d` /
-  //     data-layer-name 'Google 3D Tiles'.
-  if (_isGoogleTilesDescendant(node)) return 'tiles';
+  //     data-layer-name 'Google 3D Tiles'. Walk from `hit.object`: every node
+  //     below the owning entity carries no `.el`, so it reaches the same chain.
+  if (_isGoogleTilesDescendant(hit.object)) return 'tiles';
 
   // (e) Else scatter.
   return 'scatter';
@@ -392,6 +394,7 @@ export class CursorAnchor {
 export const _internals = {
   _isExcludedObject,
   isSolidFloorHit,
+  owningEntity,
   classifyHitEntity,
   worldHitNormal,
   MAX_GROUND_DIST,
