@@ -194,7 +194,7 @@ export class SituationSensor {
     if (!enclosed && probe.floorY == null) {
       const P = this._ctx.probe.centerRayGroundHit();
       if (P) {
-        const floorAtP = this._ctx.probe.floorYBelowAt(P.x, P.z, {
+        const floorAtP = this._ctx.probe.probeFloorColumn(P.x, P.z, {
           refreshCache: false
         });
         lookAtFloorY = floorAtP.source !== 'cache' ? floorAtP.y : P.y;

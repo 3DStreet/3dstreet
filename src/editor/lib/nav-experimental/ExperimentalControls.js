@@ -17,7 +17,7 @@
 // Phase 3 mechanics:
 //   - Wheel zoom is a 3-phase "swoop" gated by camera elevation **above
 //     ground (AGL)** = camera.y − groundY, measured by a downward probe
-//     (`_collisionFloorAt` — collision floor incl. building
+//     (`collisionFloorAt` — collision floor incl. building
 //     roofs + tiles); on a flat scene at y=0 this equals absolute camera.y:
 //       AGL > 20m         -> phase1: cursor-anchored dolly (tilt-conditional)
 //       1.5m < AGL ≤ 20m  -> phase2: pedestal + tilt-toward-horizontal

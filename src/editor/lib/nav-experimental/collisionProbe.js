@@ -43,7 +43,7 @@ export class CollisionProbe {
   // and uses the same y as the floor ceiling, so a teleport endpoint validated
   // under an overpass finds the lane below it, not the deck the high camera
   // would probe through. `acceptBuildings`/`acceptTiles` default true.
-  floorYBelowAt(x, z, opts = {}) {
+  probeFloorColumn(x, z, opts = {}) {
     const camera = this._ctx.camera;
     const sceneEl = this._ctx.sceneEl;
     const acceptBuildings = opts.acceptBuildings !== false;
@@ -105,7 +105,7 @@ export class CollisionProbe {
   // a clearance/standoff probe opts out of the `_lastGroundY` cache refresh via
   // `refreshCache:false`. Defaults keep every plain caller unchanged.
   collisionFloorAt(x, z, opts = {}) {
-    return this.floorYBelowAt(x, z, {
+    return this.probeFloorColumn(x, z, {
       acceptBuildings: true,
       acceptTiles: true,
       refreshCache: opts.refreshCache !== false,
@@ -114,7 +114,7 @@ export class CollisionProbe {
   }
 
   // Travel-height floor below the camera (WASD fly-speed scaling only).
-  travelHeightFloorYBelow() {
+  travelHeightFloorBelowCamera() {
     return this.travelHeightFloorAt(
       this._ctx.camera.position.x,
       this._ctx.camera.position.z
@@ -126,7 +126,7 @@ export class CollisionProbe {
   // over a ±2 m 3×3 grid (approximating the street/ground between roofs so speed
   // doesn't crawl over a single roof).
   travelHeightFloorAt(cx, cz) {
-    const seg = this.floorYBelowAt(cx, cz, {
+    const seg = this.probeFloorColumn(cx, cz, {
       acceptBuildings: false,
       acceptTiles: false,
       refreshCache: false
@@ -136,7 +136,7 @@ export class CollisionProbe {
     let any = false;
     for (let ix = -1; ix <= 1; ix++) {
       for (let iz = -1; iz <= 1; iz++) {
-        const f = this.floorYBelowAt(
+        const f = this.probeFloorColumn(
           cx + ix * TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES,
           cz + iz * TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES,
           {

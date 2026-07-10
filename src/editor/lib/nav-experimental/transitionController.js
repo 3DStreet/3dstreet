@@ -304,7 +304,7 @@ export class TransitionController {
   // camera pulls UP-AND-BACK along its horizontal heading to a canonical height
   // H, ending at the 60° overview attitude LOOKING AT the feet point F (so the
   // round-trip closes: from drone, the center-ray hit ≈ F, and street swoops
-  // back down to F). Anchor = the FEET (`_collisionFloorAt` below the camera),
+  // back down to F). Anchor = the FEET (`collisionFloorAt` below the camera),
   // which is ALWAYS defined → drone has no null case (drone never
   // greys). This is the v1 TWEEN MECHANISM (pre-computed start→end pose + linear
   // position lerp + quaternion slerp + FOV lerp) with a CLOSED-FORM end pose —
@@ -314,12 +314,12 @@ export class TransitionController {
   _riseToDrone() {
     const cam = this._ctx.camera;
     // Anchor = the feet (surface directly below). Feet-miss fallback:
-    // `_collisionFloorAt` returns source 'cache' on a miss (over a
+    // `collisionFloorAt` returns source 'cache' on a miss (over a
     // void); substitute the travel-height ground for F.y so the void case
-    // degrades to a sane pose. `_collisionFloorAt` refreshes the floor cache
+    // degrades to a sane pose. `collisionFloorAt` refreshes the floor cache
     // (refreshCache: true) — NOT a pure read; call it exactly once. The `busy`
     // gate prevents interleave with an in-flight `_fallTo` retarget.
-    const groundLevel = this._ctx.probe.travelHeightFloorYBelow();
+    const groundLevel = this._ctx.probe.travelHeightFloorBelowCamera();
     const floor = this._ctx.probe.collisionFloorAt(
       cam.position.x,
       cam.position.z
