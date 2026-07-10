@@ -18,6 +18,7 @@ import { AddLayerPanel } from './elements/AddLayerPanel';
 import { NewModal } from './modals/NewModal';
 import { LoadingSceneModal } from './modals/LoadingSceneModal';
 import { ExportingSceneModal } from './modals/ExportingSceneModal';
+import { ConfirmModal } from './modals/ConfirmModal';
 import AssetDeepLinkModal from './AssetDeepLinkModal.jsx';
 import JobHealthModal from './JobHealthModal.jsx';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
@@ -105,6 +106,7 @@ export default function Main() {
       <NewModal />
       <LoadingSceneModal />
       <ExportingSceneModal />
+      <ConfirmModal />
       <AssetDeepLinkModal />
       <JobHealthModal />
       <LoadScript

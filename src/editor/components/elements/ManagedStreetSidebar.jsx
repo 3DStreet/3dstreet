@@ -4,6 +4,8 @@ import posthog from 'posthog-js';
 import PropertyRow from './PropertyRow';
 import { Button } from './Button';
 import { saveString } from '@/editor/lib/utils';
+import useStore from '@/store.js';
+import { StreetToShapesGraphic } from '@/editor/components/modals/ConfirmModal/StreetToShapesGraphic';
 
 const sourceLabels = {
   'streetmix-url': 'Streetmix',
@@ -12,6 +14,7 @@ const sourceLabels = {
 
 const ManagedStreetSidebar = ({ entity }) => {
   const intl = useIntl();
+  const showConfirm = useStore((state) => state.showConfirm);
   const componentName = 'managed-street';
   const labelComponentName = 'street-label';
   // Check if entity and its components exist
@@ -50,6 +53,34 @@ const ManagedStreetSidebar = ({ entity }) => {
       );
       console.error(error);
     }
+  };
+
+  const convertToShapes = () => {
+    // One-way workflow (undoable in-session): bakes the street into plain
+    // entities and strips all managed components, so a saved scene keeps the
+    // shapes, not the managed-street JSON.
+    showConfirm({
+      title: intl.formatMessage({
+        id: 'managedStreetSidebar.convertToShapesTitle',
+        defaultMessage: 'Convert Street to Shapes?'
+      }),
+      graphic: <StreetToShapesGraphic />,
+      message: intl.formatMessage({
+        id: 'managedStreetSidebar.convertToShapesConfirm',
+        defaultMessage:
+          'This turns the street into plain 3D shapes you can move, duplicate, and delete individually. After you save and reload this scene you cannot undo this action. Tip: duplicate the street first if you want to keep a copy of this managed street.'
+      }),
+      confirmLabel: intl.formatMessage({
+        id: 'managedStreetSidebar.convertToShapes',
+        defaultMessage: 'Convert to Shapes'
+      }),
+      onConfirm: () => {
+        AFRAME.INSPECTOR.execute('streetconverttoshapes', { entity });
+        posthog.capture('convert_street_to_shapes', {
+          scene_id: STREET.utils.getCurrentSceneId()
+        });
+      }
+    });
   };
 
   const reloadFromSource = () => {
@@ -152,23 +183,31 @@ const ManagedStreetSidebar = ({ entity }) => {
                   isSingle={false}
                   entity={entity}
                 />
-                {sourceLabel && (
-                  <Button variant="toolbtn" onClick={reloadFromSource}>
-                    {intl.formatMessage(
-                      {
-                        id: 'managedStreetSidebar.reloadFromSource',
-                        defaultMessage: 'Reload from {source}'
-                      },
-                      { source: sourceLabel }
-                    )}
+                <div className="sidebar-buttons-stack">
+                  {sourceLabel && (
+                    <Button variant="toolbtn" onClick={reloadFromSource}>
+                      {intl.formatMessage(
+                        {
+                          id: 'managedStreetSidebar.reloadFromSource',
+                          defaultMessage: 'Reload from {source}'
+                        },
+                        { source: sourceLabel }
+                      )}
+                    </Button>
+                  )}
+                  <Button variant="toolbtn" onClick={downloadStreetJSON}>
+                    {intl.formatMessage({
+                      id: 'managedStreetSidebar.downloadJSON',
+                      defaultMessage: 'Download Street JSON'
+                    })}
                   </Button>
-                )}
-                <Button variant="toolbtn" onClick={downloadStreetJSON}>
-                  {intl.formatMessage({
-                    id: 'managedStreetSidebar.downloadJSON',
-                    defaultMessage: 'Download Street JSON'
-                  })}
-                </Button>
+                  <Button variant="toolbtn" onClick={convertToShapes}>
+                    {intl.formatMessage({
+                      id: 'managedStreetSidebar.convertToShapes',
+                      defaultMessage: 'Convert to Shapes'
+                    })}
+                  </Button>
+                </div>
               </>
             )}
         </div>

@@ -46,6 +46,11 @@ Gotchas that cost time:
   `position: fixed` descendants — don't put fixed overlays inside it.
 - `element.innerText` reflects CSS `text-transform` — match uppercase-styled
   strings case-insensitively.
+- File > Export... opens the Export modal. Downloads: `acceptDownloads: true`
+  + `page.waitForEvent('download')`.
+- Pro-gated flows: anonymous users get the "Export requires Pro" upgrade modal.
+  To exercise a Pro-only path locally, temporarily hardcode the `isPro` flag in
+  the component under test and revert after (webpack dev server hot-rebuilds).
 
 Useful in-page handles: `AFRAME.scenes[0]`, `AFRAME.INSPECTOR.opened`,
 `STREET.store.getState()`, `scene.systems['mode-manager'].getMode()`,
