@@ -4,13 +4,13 @@ import { useEffect, useState, useRef } from 'react';
 import { isExperimentalNav } from './flag.js';
 
 // Subscribes to `nav-experimental:modechange` events from the active
-// `ExperimentalControls` instance via the sceneEl event bus (per A11
-// recommendation). Exposes `isPedestalMode` so the toolbar can restyle
-// when the next LB drag would be a truck/pedestal gesture.
+// `ExperimentalControls` instance via the sceneEl event bus. Exposes
+// `isPedestalMode` so the toolbar can restyle when the next LB drag would be
+// a truck/pedestal gesture.
 //
 // Flag-off: returns `false` immediately and never subscribes.
 //
-// Tail-debounce (per A9): the React state lags the underlying event by
+// Tail-debounce: the React state lags the underlying event by
 // ~100ms so a rapid mode toggle on the 30° boundary doesn't visibly
 // flicker the toolbar. The mode-change *event* itself is uncoalesced —
 // any subscriber that needs the immediate value can read it from the

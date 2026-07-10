@@ -4,7 +4,8 @@
 // get() until end() clears them.
 //
 // Used to avoid mid-drag mode flips when the camera or modifier state
-// crosses a threshold during a gesture (see plan §3a, §3b).
+// crosses a threshold during a gesture (latching — see docs/04-glossary.md
+// "Latching"; KD-04 hard-switch-at-T, KD-06 live-Shift re-latch).
 
 export class GestureLatch {
   constructor() {
