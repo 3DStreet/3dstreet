@@ -1,8 +1,9 @@
 /* global THREE */
 
-// Phase 2 pure-math helpers for `ExperimentalControls`. Lifted out of the
-// class so each piece can be unit-tested without instantiating an
-// A-Frame scene. See claude/specs/001-phase-2-plan.md.
+// Pure-math helpers for `ExperimentalControls`. Lifted out of the class so
+// each piece can be unit-tested without instantiating an A-Frame scene. The
+// pure-math layering (THREE-free at module scope) is KD-31; canonical values
+// live in docs/03-configurable-thresholds.md.
 
 import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
@@ -34,7 +35,7 @@ const RAD2DEG = 180 / Math.PI;
 // Hot-path scratch is held in each function's own closure and allocated LAZILY on
 // first call, so this pure-math module stays THREE-free at module scope: its unit
 // tests import it without a THREE global, and a module-scope `new THREE.*` would
-// break that (the pure-math layering invariant — see docs/02-key-decisions.md).
+// break that (the pure-math layering invariant, KD-31 — see docs/02-key-decisions.md).
 // The IIFE bodies below run at import but only declare `let` bindings — no THREE —
 // while the `new THREE.*` is deferred to the first call, keeping the allocate-once
 // win. Each scratch vector is private to one function (no cross-function or
@@ -70,14 +71,15 @@ export function decideLbMode(
   return tiltDeg > threshold ? 'pan-truck' : 'pan-pedestal';
 }
 
-// TASK-037: the hysteresis variant of `decideLbMode`, used ONLY for the
-// letterbox indicator DURING a committed-motion-runner tween. A dead-band δ
-// around T holds the current mode across the boundary so a tween that settles
-// on / runs along T can't strobe the indicator: flip to 'pan-truck' (Map) only
-// above T+δ, flip to 'pan-pedestal' (Street) only below T−δ, otherwise keep the
-// current mode. Seeds via exact `decideLbMode` when `currentMode` is null (the
-// tween is the first camera motion and nothing has established the anchor yet).
-// Regime CONTROL never uses this — only the indicator, only inside a tween.
+// The hysteresis variant of `decideLbMode` (dead-band δ = TH-73), used ONLY
+// for the letterbox indicator DURING a committed-motion-runner tween. A
+// dead-band δ around T holds the current mode across the boundary so a tween
+// that settles on / runs along T can't strobe the indicator: flip to
+// 'pan-truck' (Map) only above T+δ, flip to 'pan-pedestal' (Street) only below
+// T−δ, otherwise keep the current mode. Seeds via exact `decideLbMode` when
+// `currentMode` is null (the tween is the first camera motion and nothing has
+// established the anchor yet). Regime CONTROL never uses this (KD-05/KD-30) —
+// only the indicator, only inside a tween.
 export function decideLbModeHysteresis(tiltDeg, threshold, delta, currentMode) {
   if (currentMode === 'pan-truck') {
     return tiltDeg < threshold - delta ? 'pan-pedestal' : 'pan-truck';
@@ -88,21 +90,21 @@ export function decideLbModeHysteresis(tiltDeg, threshold, delta, currentMode) {
   return decideLbMode(tiltDeg, threshold);
 }
 
-// TASK-010 (live-Shift, B6): pure decision for whether an in-progress LB
-// drag should switch sub-gesture given the live Shift state. Returns the
-// sub-mode to switch *to* ('pan' | 'rotate'), or null for no change.
-// Only LB gestures ('pan' | 'rotate') switch; any other latch mode (e.g.
-// a wheel gesture, which is never latched here anyway) returns null.
-// This is where the H1/H2/H3 symmetry/idempotency correctness lives, so
-// it is extracted for unit testing without a DOM or constructed controls.
+// Live-Shift (KD-06): pure decision for whether an in-progress LB drag should
+// switch sub-gesture given the live Shift state. Returns the sub-mode to
+// switch *to* ('pan' | 'rotate'), or null for no change. Only LB gestures
+// ('pan' | 'rotate') switch; any other latch mode (e.g. a wheel gesture, which
+// is never latched here anyway) returns null. This is where the
+// symmetry/idempotency correctness lives, so it is extracted for unit testing
+// without a DOM or constructed controls.
 export function decideDragModeSwitch(currentMode, shiftHeld) {
   if (currentMode !== 'pan' && currentMode !== 'rotate') return null;
   const desired = shiftHeld ? 'rotate' : 'pan';
   return desired === currentMode ? null : desired;
 }
 
-// TASK-010 (D5 + far-ground cap): clamp the orbit pivot to a sane radius
-// from the camera. **Moves the pivot, never the camera** — moving the
+// Clamp the orbit pivot to a sane radius from the camera (min radius TH-04;
+// KD-03). **Moves the pivot, never the camera** — moving the
 // camera at gesture start would be a visible teleport, whereas moving the
 // pivot only changes what we orbit. Let `v = pivot − camPos`, `r = |v|`.
 //   r === 0 (degenerate, pivot coincident with camera):
@@ -112,8 +114,7 @@ export function decideDragModeSwitch(currentMode, shiftHeld) {
 //   else: pivot unchanged.
 // In the clamped cases the returned pivot is a point along the same view
 // ray at a clamped depth — no longer exactly the world point the cursor
-// grabbed (intentional; see decision log D-R1-1/2). Returns a new
-// THREE.Vector3.
+// grabbed (intentional). Returns a new THREE.Vector3.
 export function clampOrbitRadius(camPos, pivot, minR, maxR, fallbackDir) {
   const v = new THREE.Vector3(
     pivot.x - camPos.x,
@@ -152,7 +153,7 @@ export function clampOrbitRadius(camPos, pivot, minR, maxR, fallbackDir) {
   return new THREE.Vector3(pivot.x, pivot.y, pivot.z);
 }
 
-// TASK-024 (D1/N2/N3): WASD forward-ray step classifier. Pure decision —
+// WASD forward-ray step classifier (KD-18). Pure decision —
 // given the collision floor under the camera now and at the destination
 // column, plus the first solid-floor forward-ray hit, decide whether the
 // horizontal step is blocked, steps up onto a ledge, follows the surface,
@@ -168,11 +169,11 @@ export function clampOrbitRadius(camPos, pivot, minR, maxR, fallbackDir) {
 //     y-component, `normalH` a THREE.Vector3-like horizontal component (for
 //     the facing test). `{ hit: false }` when the forward ray is clear.
 //   reach     — forward-ray length this frame (stepThisFrame + radius),
-//     used to make the down-step decision reach-invariant (N2-b).
+//     used to make the down-step decision reach-invariant.
 //   targetDir — { x, z } normalized horizontal travel direction (for the
-//     facing dot, N3).
-//   lastBlocked — previous frame's block state, for a small height
-//     hysteresis dead-band (WE-3b). Never holds a block when the forward
+//     facing dot, TH-44).
+//   lastBlocked — previous frame's block state, for a small facing-dot
+//     hysteresis dead-band (TH-45). Never holds a block when the forward
 //     ray is clear or non-facing.
 // Returns 'block' | 'step-up' | 'follow' | 'hover'.
 export function classifyWasdStep({
@@ -186,7 +187,7 @@ export function classifyWasdStep({
   const delta = floorDest.y - floorNow.y;
   const slopeMinRad = BLOCK_SLOPE_MIN_DEGREES * DEG2RAD;
 
-  // Forward-ray facing test (N3): only a wall that FACES travel can block.
+  // Forward-ray facing test (TH-44): only a wall that FACES travel can block.
   // A grazing/tangential skim has its normal ~perpendicular to travel.
   let facing = false;
   let forwardSteep = false;
@@ -198,7 +199,7 @@ export function classifyWasdStep({
       if (nhLen > 1e-6) {
         const dot =
           targetDir.x * (-nh.x / nhLen) + targetDir.z * (-nh.z / nhLen);
-        // Facing hysteresis (WE-3b): once blocked, hold the block through
+        // Facing hysteresis (TH-45): once blocked, hold the block through
         // minor dot wobble while skimming a façade, to damp block/pass
         // stutter. A clearly non-facing (tangent) hit still passes.
         const facingMin = lastBlocked
@@ -228,16 +229,15 @@ export function classifyWasdStep({
     return 'block';
   }
 
-  // No block — a TOTAL split over the remaining cases (N2-a / N2-b).
+  // No block — a TOTAL split over the remaining cases (up-step / down-step).
   if (delta > 0) {
     // Every non-blocked up-step mounts the step/ledge (step-up == follow in
-    // y outcome). Catch-all; cannot fall through (N2-a).
+    // y outcome). Catch-all; cannot fall through.
     return 'step-up';
   }
   if (delta < 0) {
-    // Down-step: hover iff the descent is BOTH steep (angle, reach-invariant
-    // — N2-b) AND a real drop. Else follow (gentle ramps follow at any
-    // fly-speed; WE-4 vs WE-5).
+    // Down-step: hover iff the descent is BOTH steep (angle, reach-invariant)
+    // AND a real drop. Else follow (gentle ramps follow at any fly-speed).
     const descentAngle = Math.atan2(-delta, Math.max(reach, 1e-6));
     if (descentAngle >= slopeMinRad && -delta >= BLOCK_HEIGHT_MIN_METRES) {
       return 'hover';
@@ -248,8 +248,8 @@ export function classifyWasdStep({
   return 'follow';
 }
 
-// TASK-024 (live-test fix): the camera y for a 'follow'/'step-up' WASD step.
-// W must NEVER pin the camera to eye-height — that discarded a deliberate
+// The camera y for a 'follow'/'step-up' WASD step (KD-19, grounded). W must
+// NEVER pin the camera to eye-height — that discarded a deliberate
 // elevation (LB+up to 2 m, then W snapped back to 1.5 m) and made a hard
 // "walking band" cliff. Instead PRESERVE the camera's current height above
 // the ground by tracking the floor's change (so flat ground at any altitude
@@ -261,8 +261,8 @@ export function wasdFollowY(camY, floorNowY, floorDestY, eyeMargin) {
   return Math.max(tracked, floorDestY + eyeMargin); // but keep min clearance
 }
 
-// TASK-024a (DEC-A/DEC-B): pure vertical rule for a WASD follow/step-up step.
-// Returns the new camera y.
+// Pure vertical rule for a WASD follow/step-up step (KD-19). Returns the new
+// camera y.
 //   grounded (or H == null) -> collision-follow (`wasdFollowY`): walking hugs
 //     the surface directly, NOT rate-limited (terrain follow is immediate).
 //   not-grounded            -> "option 3": ease toward the absolute cruise
@@ -273,7 +273,7 @@ export function wasdFollowY(camY, floorNowY, floorDestY, eyeMargin) {
 // is the sole flying behaviour: the forward ray blocks approach to any building
 // taller than flight height, so the clamp only ever lifts ≤ eye-margin.
 //
-// DEC-B — the vertical move is ANIMATED in BOTH directions. Rather than snap
+// The vertical move is ANIMATED in BOTH directions (rate TH-41). Rather than snap
 // `newY = target`, we step toward it by at most `maxStep = rate * dtSeconds`
 // this frame, so the lift onto a roof (up) and the settle back to cruise H
 // (down) both ease over ~0.3-0.4 s and compose with continuous per-frame WASD
@@ -284,9 +284,9 @@ export function wasdFollowY(camY, floorNowY, floorDestY, eyeMargin) {
 // `floorNowY` is consumed by the grounded collision-follow branch (preserve
 // AGL). `H == null` falls back to collision-follow so the helper never returns
 // NaN (defensive; the caller lazily captures H first). Pure — never touches
-// `grounded` (terrain rising must not ground, D1/H3).
+// `grounded` (terrain rising must not ground).
 //
-// TASK-024a (solid-geometry guard): `destFloorHit` is false when the
+// Solid-geometry guard: `destFloorHit` is false when the
 // destination-column probe MISSED (source 'cache' = stale last-known ground,
 // no real surface ahead — outside a finite scene's bounds). In that case
 // `collisionFloorDestY` is meaningless: the not-grounded path eases toward H
@@ -324,9 +324,9 @@ export function wasdVerticalY({
   return Math.max(eased, collisionFloorDestY);
 }
 
-// TASK-024a (D1): pure initial-grounded predicate from a load/teleport pose.
+// Pure initial-grounded predicate from a load/teleport pose (KD-19).
 // Grounded iff the collision-floor probe HIT (not a cache miss) AND the
-// camera sits within eye-margin (inclusive, M3) of that floor. A cache-miss
+// camera sits within eye-margin (inclusive) of that floor. A cache-miss
 // (scene graph not yet populated) reads not-grounded — a safe high/option-3
 // reading that self-heals on the first deliberate descent.
 export function groundedAtLoad({ camY, floorY, source, eyeMargin }) {
@@ -334,17 +334,17 @@ export function groundedAtLoad({ camY, floorY, source, eyeMargin }) {
   return camY - floorY <= eyeMargin + 1e-6;
 }
 
-// TASK-024 (3a / H-B / WE-8a): legit-pose predicate. A pose is legit iff
-// BOTH (not enclosed) AND (camera.y >= collision floor under it + eye
-// margin). Neither alone (enclosure-only accepts grazing under an overhang;
-// floor-only accepts tucked under an arch). Pure.
+// Legit-pose predicate (KD-17). A pose is legit iff BOTH (not enclosed) AND
+// (camera.y >= collision floor under it + eye margin, TH-46). Neither alone
+// (enclosure-only accepts grazing under an overhang; floor-only accepts tucked
+// under an arch). Pure.
 export function isLegitPose({ enclosed, camY, floorY }) {
   if (enclosed) return false;
   if (floorY == null || !isFinite(floorY)) return true; // no floor = open sky
   return camY >= floorY + EYE_MARGIN_METRES;
 }
 
-// TASK-024 (D7): discoverability-cue show/hide hysteresis. `prevShown` is
+// Discoverability-cue show/hide hysteresis (TH-52/TH-53; KD-21). `prevShown` is
 // the previous shown state; returns the next shown state. Enclosure forces
 // show; otherwise show above SHOW metres, hide below HIDE metres, and hold
 // between (no strobe). Pure.
@@ -355,13 +355,14 @@ export function cueState(prevShown, aglAboveCollisionFloor, enclosed) {
   return prevShown;
 }
 
-// TASK-025 (D-B): elevated↔street-level hysteresis tracker for the context
-// view button. `prev` is the previous state ('street' | 'elevated'); `agl` is
-// the height above the collision floor directly below the camera, or NULL on a
-// probe miss. Above `exitM` → 'elevated'; at/below `entryM` → 'street'; in the
-// dead band between → hold `prev` (anti-flicker, spec D-B). A null agl (probe
-// miss — e.g. over the void at a scene edge) HOLDS the previous state rather
-// than collapsing it, mirroring the collision-floor cache's hold-on-miss. Pure.
+// Elevated↔street-level hysteresis tracker for the context view button
+// (KD-21; entry TH-67, exit TH-68). `prev` is the previous state ('street' |
+// 'elevated'); `agl` is the height above the collision floor directly below
+// the camera, or NULL on a probe miss. Above `exitM` → 'elevated'; at/below
+// `entryM` → 'street'; in the dead band between → hold `prev` (anti-flicker).
+// A null agl (probe miss — e.g. over the void at a scene edge) HOLDS the
+// previous state rather than collapsing it, mirroring the collision-floor
+// cache's hold-on-miss. Pure.
 export function elevationState(prev, agl, entryM, exitM) {
   if (agl == null) return prev; // probe miss — hold
   if (agl >= exitM) return 'elevated';
@@ -369,9 +370,9 @@ export function elevationState(prev, agl, entryM, exitM) {
   return prev; // dead band — hold
 }
 
-// TASK-014d (D-P1/D-P2): one wheel-zoom dolly step toward a fixed `hit`,
-// with the HORIZONTAL component of the translation capped to
-// `lateralCapMetres`. Returns the NEW camera position (THREE.Vector3), or
+// One wheel-zoom dolly step toward a fixed `hit` (KD-09), with the HORIZONTAL
+// component of the translation capped to `lateralCapMetres` (the cap is
+// TH-16/TH-17; KD-15). Returns the NEW camera position (THREE.Vector3), or
 // `null` if the step is non-finite (the caller then falls through to the
 // level-forward fallback).
 //
@@ -381,8 +382,8 @@ export function elevationState(prev, agl, entryM, exitM) {
 // factor = (1 − alpha) for zoom-in (sign<0, step toward hit) and
 // 1/(1 − alpha) for zoom-out (sign>0, step away from hit).
 //
-// The cap acts on the HORIZONTAL part h = hypot(step.x, step.z) (spec
-// Decision 5 — NOT |step|), and when it fires it scales the WHOLE vector
+// The cap acts on the HORIZONTAL part h = hypot(step.x, step.z) (NOT
+// |step|), and when it fires it scales the WHOLE vector
 // (x, y, z together) by lateralCapMetres / h. This preserves the H:V ratio
 // so the move stays on the camera→hit ray — just shorter — keeping the
 // target locked under the cursor and reversibility exact. A straight-down
@@ -397,8 +398,8 @@ export function cappedDollyStep(
   { camPos, hit, sign, alpha, factor, lateralCapMetres },
   target
 ) {
-  // TASK-014a (#6 Option B merge): accept a precomputed CONTINUOUS `factor`
-  // (from dollyFactorForTicks) for the fractional single-drain path; fall back
+  // Continuous-accumulator merge (KD-09): accept a precomputed CONTINUOUS
+  // `factor` (from dollyFactorForTicks) for the fractional single-drain path; fall back
   // to the per-whole-tick factor from sign+alpha for the swoop hand-off
   // callers. Either way the lateral-cap algebra below is identical.
   const f = factor != null ? factor : sign < 0 ? 1 - alpha : 1 / (1 - alpha);
@@ -409,7 +410,7 @@ export function cappedDollyStep(
 
   const h = Math.hypot(stepX, stepZ);
 
-  // Non-finite guard (AR #2): a near-parallel grazing ray (now reachable
+  // Non-finite guard: a near-parallel grazing ray (now reachable
   // with the raised wheel-path reach ceiling) can return a `hit` near
   // Float.MAX whose step overflows. Bail so the caller falls to
   // level-forward rather than NaN the camera.
@@ -436,12 +437,12 @@ export function cappedDollyStep(
   return out.set(camPos.x + stepX, camPos.y + stepY, camPos.z + stepZ);
 }
 
-// TASK-014d (D-P5): level-forward synthetic anchor for the no-real-hit
-// wheel-zoom case (cursor ray hit nothing — open sky). Returns a point
-// `dist` metres ahead of the camera along its YAW HEADING (forward
-// projected to horizontal), held at the camera's OWN y so the resulting
-// dolly is level — zoom-in advances forward at constant height instead of
-// drifting up into empty sky (which would read as zoom-out).
+// Level-forward synthetic anchor for the no-real-hit wheel-zoom case (cursor
+// ray hit nothing — open sky), so the swoop's forward dolly (KD-08) still has
+// a target. Returns a point `dist` (TH-21) metres ahead of the camera along
+// its YAW HEADING (forward projected to horizontal), held at the camera's OWN
+// y so the resulting dolly is level — zoom-in advances forward at constant
+// height instead of drifting up into empty sky (which would read as zoom-out).
 //
 // Uses the yaw heading (not raw camera-forward) so it stays well-defined at
 // any pitch: looking near-vertically, forward.xz → 0 and a forward-based
@@ -472,15 +473,15 @@ export const levelForwardAnchor = (() => {
 })();
 
 // ---------------------------------------------------------------------------
-// TASK-012 Phase-4 double-click navigation — pure pose math.
-// THREE in, THREE out; no scene access (the controls do the raycasts and feed
-// the results in). See claude/plans/.../TASK-012-phase4-double-click-plan.md.
+// Double-click navigation — pure pose math (KD-23). THREE in, THREE out; no
+// scene access (the controls do the raycasts and feed the results in). See
+// docs/02-key-decisions.md.
 // ---------------------------------------------------------------------------
 
 // Snap a heading bearing (degrees, 0 = North = +X, increasing toward +Z)
 // to the nearest cardinal of {0, 90, 180, 270}. Returns the snapped bearing
 // in [0, 360). Bounds rotation at ≤ 45° per click and removes any dependence
-// on objects defining a "front" (spec WE-9). No hysteresis (feel-test first).
+// on objects defining a "front". No hysteresis (feel-test first).
 export function cardinalSnapYaw(bearingDeg) {
   const snapped = Math.round(bearingDeg / 90) * 90;
   return ((snapped % 360) + 360) % 360;
@@ -494,7 +495,7 @@ export function cardinalDir(bearingDeg) {
 }
 
 // Map an owning-entity kind (from cursorAnchor.classifyHitEntity) to a
-// Phase-4 category: segment/tiles → A (lane/ground surface point),
+// double-click category (KD-23): segment/tiles → A (lane/ground surface point),
 // building → B, scatter → C, null → D (empty space / no hit → no-op).
 export function classifyDoubleClick(kind) {
   if (kind === 'segment' || kind === 'tiles') return 'A';
@@ -503,16 +504,17 @@ export function classifyDoubleClick(kind) {
   return 'D';
 }
 
-// Never-raise (spec DC6): a double-click may lower or keep the camera height
+// Never-raise (KD-23): a double-click may lower or keep the camera height
 // but never raise it. Absolute world height, full stop.
 export function neverRaiseY(targetY, currentCamY) {
   return Math.min(targetY, currentCamY);
 }
 
-// One standoff-clearance pull-back step: move `pos` horizontally toward
-// `target` by up to `stepMetres` (the B/C clearance search pulls the camera
-// inward — toward the look target — when its column is blocked or void). Y is
-// held (never lifts above the pre-click height). Returns { x, y, z }.
+// One standoff-clearance pull-back step (KD-23; step TH-65, ceiling TH-66):
+// move `pos` horizontally toward `target` by up to `stepMetres` (the B/C
+// clearance search pulls the camera inward — toward the look target — when its
+// column is blocked or void). Y is held (never lifts above the pre-click
+// height). Returns { x, y, z }.
 export function pullBackTowardTarget(pos, target, stepMetres) {
   const dx = target.x - pos.x;
   const dz = target.z - pos.z;
@@ -536,7 +538,7 @@ export function pullBackTowardTarget(pos, target, stepMetres) {
 //     building height. The look angle falls out of the camera height (gentle
 //     from above, steep from the street); the framing-pitch cap is the
 //     backstop, moving the aim point TOWARD camera height if it would otherwise
-//     crane past MAX_FRAMING_PITCH (WE-8).
+//     crane past MAX_FRAMING_PITCH (TH-64).
 //   C (generic): look at the object centre; stand off ~RADII×bounding-radius
 //     back along the heading at centre height.
 export function desiredDoubleClickPose({
@@ -581,13 +583,12 @@ export function desiredDoubleClickPose({
   // hit-point. The camera height is set elsewhere (⅓ building height from
   // above, front-door height from the street via AGL never-raise), so aiming at
   // a FIXED point lets the look angle fall out of that height automatically:
-  // gentle from above, steep-but-pitch-capped from the street (WE-8). There is
-  // no need to distinguish "from the air" from "street → tall tower" — the
-  // distinction is already encoded in the resulting camera height. Aiming at
-  // the moving hit-point instead coupled the look to where you clicked, so an
-  // aerial click (which lands on the roof) craned up at the roof. (Spec delta —
-  // supersedes H3's hit-point aim for Category B; the pitch cap is the
-  // backstop, not the primary mechanism.)
+  // gentle from above, steep-but-pitch-capped from the street (TH-64; KD-24).
+  // There is no need to distinguish "from the air" from "street → tall tower" —
+  // the distinction is already encoded in the resulting camera height. Aiming
+  // at the moving hit-point instead coupled the look to where you clicked, so
+  // an aerial click (which lands on the roof) craned up at the roof. (KD-24:
+  // the pitch cap is the backstop, not the primary mechanism.)
   const camY = objectBox.min.y + sy * DOUBLECLICK_BUILDING_VIEW_HEIGHT_FRAC;
   const diag = Math.hypot(sx, sz);
   const s = diag * DOUBLECLICK_BUILDING_STANDOFF_DIAG;
@@ -597,7 +598,7 @@ export function desiredDoubleClickPose({
   // convenience pass only — the camera height is lowered again by never-raise
   // and standoff resolution in the controls, so the AUTHORITATIVE cap is
   // re-applied post-clearance via `clampFramingPitch` against the FINAL
-  // position (round-3 H1: the cap must hold at the height the camera actually
+  // position (the cap must hold at the height the camera actually
   // lands, which for a street-level look-up at a tall tower is well below
   // `camY`). Keeping it here too is harmless (idempotent) and gives a sane
   // first-pass look target.
@@ -616,7 +617,7 @@ export function desiredDoubleClickPose({
 // height — reducing |dy| (down for a steep look-up, up for a steep look-down).
 // Returns a new THREE.Vector3 look target (x/z unchanged). The controls call
 // this AFTER never-raise + standoff resolution so the cap holds at the final
-// landing height, not the desired one (WE-8 / round-3 H1).
+// landing height, not the desired one (TH-64; KD-24).
 export function clampFramingPitch(position, lookTarget, maxDeg) {
   const out = new THREE.Vector3(lookTarget.x, lookTarget.y, lookTarget.z);
   const hdist = Math.hypot(out.x - position.x, out.z - position.z);
@@ -628,7 +629,7 @@ export function clampFramingPitch(position, lookTarget, maxDeg) {
   return out;
 }
 
-// ── TASK-014a (#6 Option B): wheel input-plumbing pure helpers ──────────
+// ── Wheel input-plumbing pure helpers (KD-09) ───────────────────────────
 
 // Normalise a raw wheel event to a signed, magnitude-clamped "nominal
 // tick" count.
@@ -677,15 +678,13 @@ export function fovFactorForTicks(t, beta) {
   return Math.pow(1 + beta, t);
 }
 
-// Phase 3 swoop helpers. See claude/specs/001-phase-3-plan.md.
+// Swoop helpers (KD-08). See docs/02-key-decisions.md.
 
-// Decide which of the 3 swoop phases applies, from camera elevation
-// **above ground (AGL)** = camera.y − groundY (TASK-013). Callers pass
-// AGL; the function is otherwise unchanged (the 20 / 1.5 thresholds are
-// now AGL thresholds, not absolute-y).
-//   AGL > 20m         -> 'phase1'  (cursor-anchored dolly, tilt-conditional)
-//   1.5m < AGL ≤ 20m  -> 'phase2'  (pedestal + tilt-toward-horizontal)
-//   AGL ≤ 1.5m        -> 'phase3'  (FOV-only zoom)
+// Decide which of the 3 swoop phases applies (KD-08), from camera elevation
+// **above ground (AGL)** = camera.y − groundY. Callers pass AGL.
+//   AGL > TH-22           -> 'phase1'  (cursor-anchored dolly, tilt-conditional)
+//   TH-23 < AGL ≤ TH-22   -> 'phase2'  (pedestal + tilt-toward-horizontal)
+//   AGL ≤ TH-23           -> 'phase3'  (FOV-only zoom)
 // Pure.
 export function decideSwoopPhase(yAgl) {
   if (yAgl > SWOOP_PHASE2_ENTRY_ELEVATION_METRES) return 'phase1';
@@ -693,9 +692,9 @@ export function decideSwoopPhase(yAgl) {
   return 'phase3';
 }
 
-// TASK-022: Phase-2 height fraction. 1 at the ceiling (AGL 20), 0 at the
-// floor (AGL 1.5), clamped outside the band. Single source of truth for
-// the descent tilt, the ascent tilt, and (future) the 014b FOV ramp. Pure.
+// Phase-2 height fraction (KD-08). 1 at the ceiling (AGL TH-22), 0 at the
+// floor (AGL TH-23), clamped outside the band. Single source of truth for
+// the descent tilt, the ascent tilt, and the landing FOV ramp. Pure.
 export function phase2HeightFrac(yAgl) {
   const yHi = SWOOP_PHASE2_ENTRY_ELEVATION_METRES; // 20
   const yLo = SWOOP_PHASE2_EXIT_ELEVATION_METRES; // 1.5
@@ -703,28 +702,28 @@ export function phase2HeightFrac(yAgl) {
 }
 
 // Phase 2 (descent / swoop-IN) tilt lerp: θ(yAgl) = θ_stored × frac, where
-// frac = phase2HeightFrac(yAgl). Linear in AGL from θ_stored at AGL=20 to
-// 0° at AGL=1.5. Both ends inclusive. Outside the Phase 2 band the helper
-// clamps: AGL ≥ 20 → θ_stored; AGL ≤ 1.5 → 0°. Input is AGL (TASK-013).
-// Pure. TASK-022: routed through phase2HeightFrac so the descent and the
-// swoop-OUT ascent (phase2AscentTilt) read the SAME frac at the SAME
-// height — the C1 reverse can't drift by a ULP at the band boundaries.
-// Numerically identical to the old inline `(yAgl - yLo)/(yHi - yLo)` form.
+// frac = phase2HeightFrac(yAgl). Linear in AGL from θ_stored at AGL=TH-22 to
+// 0° at AGL=TH-23. Both ends inclusive. Outside the Phase 2 band the helper
+// clamps: AGL ≥ TH-22 → θ_stored; AGL ≤ TH-23 → 0°. Input is AGL. Pure.
+// Routed through phase2HeightFrac so the descent and the swoop-OUT ascent
+// (phase2AscentTilt) read the SAME frac at the SAME height (KD-11) — the
+// reverse can't drift by a ULP at the band boundaries. Numerically identical
+// to the old inline `(yAgl - yLo)/(yHi - yLo)` form.
 export function phase2TargetTilt(yAgl, storedTiltDeg) {
   return storedTiltDeg * phase2HeightFrac(yAgl);
 }
 
-// TASK-022: swoop-OUT Phase-2 tilt. Linear in height fraction, anchored
+// Swoop-OUT Phase-2 tilt (KD-11). Linear in height fraction, anchored
 // through (startFrac, startTilt) captured when this ascent began and
 // (1, targetTilt) at the ceiling. frac = phase2HeightFrac(yAgl): 1 at the
-// ceiling (AGL 20), 0 at the floor (AGL 1.5). Reaches startTilt at the
-// start height (no jump — WE-5) and target at the ceiling. Pure.
+// ceiling (AGL TH-22), 0 at the floor (AGL TH-23). Reaches startTilt at the
+// start height (no jump) and target at the ceiling. Pure.
 //
 // For the immediate-undo case (startFrac=0, startTilt=0, target=entryTilt)
 // this reduces to `entryTilt × frac` — the SAME curve phase2TargetTilt
-// drew on the way down, so the ascent retraces the descent exactly (C1).
-// The general anchored form handles the interrupted / default case (started
-// mid-band at an arbitrary startTilt/startFrac, target = default 60°).
+// drew on the way down, so the ascent retraces the descent exactly. The
+// general anchored form handles the interrupted / default case (started
+// mid-band at an arbitrary startTilt/startFrac, target = default TH-28).
 // There is exactly ONE formula; immediate-undo is its startFrac=startTilt=0
 // special case (no separate "ease onto rail" branch).
 export function phase2AscentTilt(yAgl, startFrac, startTilt, targetTilt) {
@@ -734,7 +733,7 @@ export function phase2AscentTilt(yAgl, startFrac, startTilt, targetTilt) {
   return startTilt + (targetTilt - startTilt) * t;
 }
 
-// TASK-022: zoom-undo state reducer. Pure. `state` is {valid, tilt, fov};
+// Zoom-undo state reducer (KD-11). Pure. `state` is {valid, tilt, fov};
 // `event` is one of:
 //   'wheel-in-crossing' — wheel zoom-in crossed AGL 20 downward; capture.
 //       payload {tilt, fov} = the camera attitude at the crossing.
@@ -755,18 +754,17 @@ export function nextZoomUndo(state, event) {
   }
 }
 
-// Phase 2 elevation step. Input/output are AGL (TASK-013).
-//   sign < 0 (zoom-in):  yAgl_next = yAgl - α × (yAgl - 1.5)  -- exponential
-//                                                       approach to 1.5m AGL
-//                                                       floor.
-//   sign > 0 (zoom-out): yAgl_next = 1.5 + (yAgl - 1.5) / (1 - α)  -- exact
+// Phase 2 elevation step. Input/output are AGL.
+//   sign < 0 (zoom-in):  yAgl_next = yAgl - α × (yAgl - yFloor)  -- exponential
+//                                                       approach to the TH-23
+//                                                       AGL floor.
+//   sign > 0 (zoom-out): yAgl_next = yFloor + (yAgl - yFloor)/(1 - α)  -- exact
 //                                                                multiplicative
 //                                                                inverse.
-// Per H2 of `claude/reports/007-phase-3-plan-review.md`: the zoom-out
-// formula has `(yAgl - 1.5)` in the numerator, so for yAgl < 1.5 it
-// produces yAgl_next < yAgl (further down — wrong direction). Caller must
-// clamp yAgl up to 1.5 *before* invoking on zoom-out if camera is below
-// the floor (e.g. saved-scene-at-street-level case). Pure.
+// The zoom-out formula has `(yAgl - yFloor)` in the numerator, so for
+// yAgl < yFloor it produces yAgl_next < yAgl (further down — wrong direction).
+// Caller must clamp yAgl up to yFloor (TH-23) *before* invoking on zoom-out if
+// the camera is below the floor (e.g. saved-scene-at-street-level case). Pure.
 export function phase2NextElevation(yAgl, sign, alpha = SWOOP_PHASE2_STEP) {
   const yLo = SWOOP_PHASE2_EXIT_ELEVATION_METRES;
   if (sign < 0) {
@@ -779,7 +777,7 @@ export function phase2NextElevation(yAgl, sign, alpha = SWOOP_PHASE2_STEP) {
 // view direction + rotation centre + per-event deltas, returns new
 // camera position + lookAt target. Caller writes back to the camera.
 //
-// **Rigid orbit about the latched centre** (TASK-010). The yaw + pitch
+// **Rigid orbit about the latched centre** (KD-03). The yaw + pitch
 // deltas are composed into a *single* rotation `R`, which is applied to
 // **both** the camera's position-offset-from-centre **and** its view
 // direction. Because the camera basis and the camera→centre vector
@@ -787,13 +785,14 @@ export function phase2NextElevation(yAgl, sign, alpha = SWOOP_PHASE2_STEP) {
 // is invariant — so the latched point stays pinned on screen (under the
 // cursor) at *any* tilt.
 //
-// This replaces the earlier "museum diorama" math, which applied the
-// same spherical (dTheta, dPhi) increments to the position-offset and
-// the view-direction *independently*. That is only a single rotation
-// when the two vectors share a meridian (camera looking straight down
-// the offset, i.e. top-down); at any other tilt the pitch component
-// rotated each vector about a different horizontal axis and the pivot
-// drifted across the screen (reports/010-testing.md #1).
+// This replaces the earlier "museum diorama" math (the whole diorama
+// concept was later removed, KD-02), which applied the same spherical
+// (dTheta, dPhi) increments to the position-offset and the view-direction
+// *independently*. That is only a single rotation when the two vectors
+// share a meridian (camera looking straight down the offset, i.e.
+// top-down); at any other tilt the pitch component rotated each vector
+// about a different horizontal axis and the pivot drifted across the
+// screen.
 //
 //   • Yaw  — rotation about world up (0,1,0) by `dTheta = -dxPx*speed`
 //            (matches the prior azimuth sign).
@@ -834,8 +833,8 @@ export function phase2NextElevation(yAgl, sign, alpha = SWOOP_PHASE2_STEP) {
 // [MIN_TILT_DEGREES, MAX_TILT_DEGREES]. The same clamped pitch drives
 // both position and view, so they stay consistent.
 //
-// TASK-024 (D8/C3): optional `floorY` adds a reversible underground guard
-// for the Map-orbit regime. The constraint is on the RESULTING camera
+// Optional `floorY` adds a reversible underground guard for the Map-orbit
+// regime (KD-29). The constraint is on the RESULTING camera
 // height (`pos.y >= floorY + EYE_MARGIN_METRES`), not on view-tilt —
 // `shiftRotateStep`'s pivot sits under the cursor (not screen-centre), so
 // view-tilt and the position-elevation angle are decoupled and the clean
@@ -880,7 +879,7 @@ export const shiftRotateStep = (() => {
     //     and the horizontal heading is undefined; fall back to the camera's
     //     own screen-right axis (camRight), which is well-defined and
     //     horizontal there. This is what lets you tilt *out* of exact nadir
-    //     (TASK-023) — without it the pitch term is skipped and tilt is dead
+    //     (KD-28) — without it the pitch term is skipped and tilt is dead
     //     at top-down. Off-nadir, `view × up` is well-defined and used as
     //     before (no behaviour change).
     const right = srsRight.crossVectors(view, worldUp);
@@ -924,12 +923,12 @@ export const shiftRotateStep = (() => {
         pos.z + newView.z
       );
       // R is returned so the caller can apply it via
-      // `camera.quaternion.premultiply(R)` (TASK-023 — continuous at nadir),
+      // `camera.quaternion.premultiply(R)` (KD-28 — continuous at nadir),
       // instead of re-deriving orientation from lookTarget via lookAt.
       return { pos, lookTarget, R };
     };
 
-    // TASK-024 (D8): numeric down-tilt floor bound. Tilting further down
+    // Numeric down-tilt floor bound (KD-29). Tilting further down
     // (larger tilt) on an above-pivot orbit lowers the camera. If the wanted
     // tilt would dip `pos.y` below `floorY + EYE_MARGIN`, bisect between the
     // current tilt (known clear — the camera is there now, presumed legit)
@@ -951,7 +950,7 @@ export const shiftRotateStep = (() => {
       }
     }
 
-    // Merge (TASK-023 × TASK-024): evalAtTilt applies the same single
+    // Merge (KD-28 × KD-29): evalAtTilt applies the same single
     // rotation R to the offset and view and now returns it, so the
     // floor-bounded `clampedTilt` yields a consistent { pos, lookTarget, R }.
     // The caller applies R via `premultiply` (continuous at nadir).
@@ -960,10 +959,10 @@ export const shiftRotateStep = (() => {
 })();
 
 // ---------------------------------------------------------------------------
-// TASK-027 — final zoom polish helpers (pure).
+// Final zoom polish helpers (pure).
 // ---------------------------------------------------------------------------
 
-// Part F — per-tick horizontal lurch cap. Scales with height above ground so
+// Per-tick horizontal lurch cap (KD-15). Scales with height above ground so
 // the lurch is bounded proportionally rather than by a fixed metre value; a
 // lower bound keeps it usable near the ground and on the no-AGL Ctrl+wheel /
 // out-of-bounds path (where `yAgl` is non-finite). Pure.
@@ -972,10 +971,10 @@ export function lateralCap(yAgl, lowerBound, coeff) {
   return Math.max(lowerBound, coeff * yAgl);
 }
 
-// Part A — swoop FOV as a PURE FUNCTION OF HEIGHT (both legs). FOV eases from
+// Swoop FOV as a PURE FUNCTION OF HEIGHT (KD-12), both legs. FOV eases from
 // `narrowFov` (at/above the ceiling) to the landing FOV (at the floor),
 // back-loaded into the final stretch by the exponent so the "opening up" reads
-// as an arrival rather than rushing at the top of the descent (live-test #2).
+// as an arrival rather than rushing at the top of the descent.
 //   wide = max(narrowFov, landingFov) — an already-wide camera never NARROWS.
 //   open = (1 − heightFrac)^exponent  — 0 at the ceiling, 1 at the floor.
 //   FOV  = narrowFov + (wide − narrowFov)·open.
@@ -983,23 +982,23 @@ export function lateralCap(yAgl, lowerBound, coeff) {
 // an immediate-undo ascent (narrow = captured entry FOV) evaluate the SAME
 // curve at the same height → exact retrace, with no anchor and no jump if the
 // ascent starts mid-band. A cleared-memory ascent passes the default map FOV as
-// `narrowFov` (C2 — eases to the default by the ceiling). Pure.
+// `narrowFov` (eases to the default by the ceiling). Pure.
 export function swoopLandingFov(yAgl, narrowFov, landingFov, exponent) {
   const wide = Math.max(narrowFov, landingFov);
   const open = Math.pow(1 - phase2HeightFrac(yAgl), exponent);
   return narrowFov + (wide - narrowFov) * open;
 }
 
-// Part C — decide the Phase-2-band zoom-IN regime from the resolved cursor
-// anchor. Break out of the swoop ('dolly') ONLY when the user is craning UP at
+// Decide the Phase-2-band zoom-IN regime from the resolved cursor anchor
+// (KD-14). Break out of the swoop ('dolly') ONLY when the user is craning UP at
 // something they can't land on and clearly want to approach — a solid building
 // WALL/façade, or open sky/horizon. In EVERY other case continue the 'swoop':
 //   - looking DOWN or level → always 'swoop' (you are descending; a façade or
 //     sky the cursor grazes on the way down must not abort the descent — this
-//     is the live-test #2 refinement: only an *upward* look at a façade breaks
+//     is the refinement: only an *upward* look at a façade breaks
 //     out, a downward look keeps swooping);
 //   - looking up at scatter (car/tree/sign — not a solid floor) → 'swoop'
-//     (live-test #1: scatter must never break the swoop);
+//     (scatter must never break the swoop);
 //   - looking up at ground/rooftop (near-horizontal) → 'swoop'.
 // Only `lookingUp AND (open sky OR a solid near-vertical wall)` breaks out.
 // `Math.abs(normalY)`: an up/down-facing horizontal surface both read as
@@ -1020,12 +1019,12 @@ export function classifySwoopTickTarget({
   return 'swoop';
 }
 
-// Part C-add-2 ("B": a broke-out dolly is a BOUNDED EXCURSION) is implemented
-// directly in ExperimentalControls' continuous drain loop (TASK-014a) as a
-// float dolly-depth that zoom-out unwinds before resuming the swoop — there is
-// no separate pure decision helper under the continuous model.
+// The broke-out dolly is a BOUNDED EXCURSION (KD-14), implemented directly in
+// ExperimentalControls' continuous drain loop as a float dolly-depth that
+// zoom-out unwinds before resuming the swoop — there is no separate pure
+// decision helper under the continuous model.
 
-// Part B (M4) — re-aim continuity weight. 1 for near cursor targets, ramps
+// Re-aim continuity weight (KD-13; fade band TH-34→TH-35). 1 for near cursor targets, ramps
 // linearly to 0 by `far`, so the cursor-lock re-aim magnitude falls to zero
 // continuously as the target recedes toward the horizon — no jump crossing
 // into the no-real-hit fallback at the rooftop/sky edge. Pure.
@@ -1034,12 +1033,12 @@ export function reaimWeight(distance, near, far) {
   return THREE.MathUtils.clamp((far - distance) / (far - near), 0, 1);
 }
 
-// Part B — cursor-lock re-aim quaternion (pure; extracted for unit testing).
+// Cursor-lock re-aim quaternion (KD-13; pure, extracted for unit testing).
 // Given the captured baseline orientation/fov and the cursor world point P,
 // returns the camera quaternion that, at `fovAfter`, holds P pinned under the
 // cursor pixel `ndc`. Computed ABSOLUTELY from the baseline (not composed
 // per-tick) so it is a pure function of fov → exactly reversible, and reduces
-// to `baselineQuat` at fovAfter === baselineFov (the B.3 unwind contract).
+// to `baselineQuat` at fovAfter === baselineFov (the unwind contract).
 //
 // `weight` scales the minimal-arc rotation via slerp from identity (NOT a
 // direction lerp — that would change the rotation axis with the weight and
@@ -1080,7 +1079,7 @@ export function reaimQuatForFov({
 // Rejects a non-forward intersection: if the camera sits below y=0 (camPos.y <
 // 0), t is negative and the plane meets the ray *behind* the camera. Returning
 // that point would make callers orbit/anchor on a behind-camera pivot (a fling).
-// t <= 0 → null; callers fall back to their no-pivot path (TASK-026).
+// t <= 0 → null; callers fall back to their no-pivot path (KD-26/KD-02).
 export function viewRayGroundPoint(camPos, fwd) {
   if (fwd.y >= -1e-4) return null;
   const t = camPos.y / -fwd.y; // along-ray distance to y=0
