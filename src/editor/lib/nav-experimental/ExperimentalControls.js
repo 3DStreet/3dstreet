@@ -523,6 +523,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
   zoomInStart() {
     if (this._disabledByOrtho) return;
+    // Clear any prior timer first — a second start without an intervening stop
+    // (e.g. a mouseup lost to a window blur mid-press) would otherwise orphan it.
+    this.zoomInStop();
     captureNavDiscovery('zoom');
     this._zoomInInterval = setInterval(
       () => this._transition.zoomActionBar(-1),
@@ -535,6 +538,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
   zoomOutStart() {
     if (this._disabledByOrtho) return;
+    // Clear any prior timer first (see zoomInStart).
+    this.zoomOutStop();
     captureNavDiscovery('zoom');
     this._zoomOutInterval = setInterval(
       () => this._transition.zoomActionBar(1),

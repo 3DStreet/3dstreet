@@ -1,6 +1,6 @@
 /* global THREE */
 
-import { classifyHitEntity } from './cursorAnchor.js';
+import { classifyHitEntity, owningEntity } from './cursorAnchor.js';
 import {
   DEFAULT_FOV_DEGREES,
   DOUBLECLICK_MAX_FRAMING_PITCH_DEGREES,
@@ -80,15 +80,7 @@ export class DoubleClickNav {
     const hitPoint = new THREE.Vector3(hit.point.x, hit.point.y, hit.point.z);
     let objectBox = null;
     if (category === 'B' || category === 'C') {
-      let node = hit.object;
-      let el = null;
-      while (node) {
-        if (node.el) {
-          el = node.el;
-          break;
-        }
-        node = node.parent;
-      }
+      const el = owningEntity(hit.object);
       const obj3D = el && el.object3D ? el.object3D : hit.object;
       objectBox = new THREE.Box3().setFromObject(obj3D);
       if (objectBox.isEmpty()) return; // degenerate — nothing to frame
@@ -247,6 +239,9 @@ export class DoubleClickNav {
     const step = DOUBLECLICK_STANDOFF_PULLBACK_STEP_METRES;
     let pulled = 0;
     let fallback = null; // first column with a real floor (nominal framing)
+    // Reuse each struck building's AABB across the pull-back iterations (the
+    // scene is static, so a box computed once stays valid for the whole walk).
+    const boxCache = new Map();
     while (pulled <= DOUBLECLICK_STANDOFF_PULLBACK_MAX_METRES) {
       const floor = this._ctx.probe.collisionFloorAt(cand.x, cand.z, {
         fromY: cand.y,
@@ -266,7 +261,12 @@ export class DoubleClickNav {
       if (
         this._ctx.runner.poseStillLegit(
           { position: cand },
-          { checkBuried: true, extraBox: targetBox, skipFloorClearance: true }
+          {
+            checkBuried: true,
+            extraBox: targetBox,
+            skipFloorClearance: true,
+            boxCache
+          }
         )
       ) {
         return cand;

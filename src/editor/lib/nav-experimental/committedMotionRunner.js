@@ -1,6 +1,10 @@
 /* global THREE */
 
-import { isSolidFloorHit, classifyHitEntity } from './cursorAnchor.js';
+import {
+  isSolidFloorHit,
+  classifyHitEntity,
+  owningEntity
+} from './cursorAnchor.js';
 import { isLegitPose } from './navMath.js';
 import { ENCLOSURE_PROBE_UP_MARGIN_METRES } from './constants.js';
 
@@ -296,7 +300,7 @@ export class CommittedMotionRunner {
     // which pass no opts, are byte-identical.
     if (
       opts.checkBuried &&
-      this.pointInsideBuildingHit(p, hits, opts.extraBox)
+      this.pointInsideBuildingHit(p, hits, opts.extraBox, opts.boxCache)
     ) {
       return false;
     }
@@ -315,7 +319,11 @@ export class CommittedMotionRunner {
   // treats the full bounding box as solid, so a concave footprint can
   // false-positive a clear standoff in a notch and pull it inward — accepted as
   // low-cost (the camera never ends up buried, only framed from further back).
-  pointInsideBuildingHit(point, hits, extraBox) {
+  // `boxCache` (optional Map<el, Box3>): when a caller runs this repeatedly over
+  // one static scene (e.g. the double-click standoff pull-back), it reuses each
+  // building's AABB across calls — the geometry is pose-independent, so a box
+  // computed once stays valid. Absent → each call recomputes as before.
+  pointInsideBuildingHit(point, hits, extraBox, boxCache) {
     const inBox = (box) =>
       point.x >= box.min.x &&
       point.x <= box.max.x &&
@@ -327,18 +335,15 @@ export class CommittedMotionRunner {
     const seen = new Set();
     for (const hit of hits) {
       if (classifyHitEntity(hit) !== 'building') continue;
-      let node = hit.object;
-      let el = null;
-      while (node) {
-        if (node.el) {
-          el = node.el;
-          break;
-        }
-        node = node.parent;
-      }
+      const el = owningEntity(hit.object);
       if (!el || !el.object3D || seen.has(el)) continue;
       seen.add(el);
-      if (inBox(new THREE.Box3().setFromObject(el.object3D))) return true;
+      let box = boxCache && boxCache.get(el);
+      if (!box) {
+        box = new THREE.Box3().setFromObject(el.object3D);
+        if (boxCache) boxCache.set(el, box);
+      }
+      if (inBox(box)) return true;
     }
     return false;
   }
