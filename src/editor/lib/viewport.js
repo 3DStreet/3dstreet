@@ -248,7 +248,7 @@ export function Viewport(inspector) {
   Events.on('raycastermouseenter', (el) => {
     // update hoverBox to match el.object3D bounding box
     //
-    // TASK-012 Stage 7 (audited). Flag-OFF: the legacy hover box is driven
+    // Hover-highlight parity (KD-27). Flag-OFF: the legacy hover box is driven
     // from the same getIntersectedEl() result a single-click selects (the
     // `el` payload), so hover already matches selection — there is NO
     // divergence to fix, and we leave the audited legacy behaviour untouched.
@@ -257,7 +257,7 @@ export function Viewport(inspector) {
     // cursor intersection navigateDoubleClick classifies off (NOT the
     // segment-remapped getIntersectedEl). So hovering a car-in-lane shows the
     // car (Category C) and a pixel aside shows the lane (Category A), matching
-    // WE-7 by construction. The reroute runs whenever experimental nav is on
+    // what a click selects (KD-27) by construction. The reroute runs whenever experimental nav is on
     // (raycaster.js gates the dblclick reroute the same way), so the preview
     // follows the same flag — hover previews what a double-click will do.
     let target = el;
@@ -434,14 +434,15 @@ export function Viewport(inspector) {
   });
 
   // Controls need to be added *after* main logic.
-  // URL flag `?nav=experimental` selects the experimental nav-controls
-  // system (Phase 0 placeholder; see claude/specs/001-phase-0-plan.md).
-  // The two control classes are mutually exclusive at construction time.
+  // The experimental nav-controls system is default-on; `?nav=classic` opts
+  // out to the legacy controls (KD-01). The two control classes are mutually
+  // exclusive at construction time.
   const controls = isExperimentalNav()
     ? new ExperimentalControls(camera, inspector.container)
     : new THREE.EditorControls(camera, inspector.container);
   inspector.controls = controls; // used by ActionBar zoom/reset buttons
-  // TASK-010 (D2): attach the tilt-threshold tuning component so T is
+  // Attach the tilt-threshold tuning component (T = TH-03, exposed via the
+  // nav-experimental-tuning A-Frame component — KD-32) so T is
   // live-tweakable during feel-testing. No-op for legacy controls (they
   // have no setTiltThreshold); only attach when experimental nav is on.
   if (isExperimentalNav()) {
@@ -462,7 +463,7 @@ export function Viewport(inspector) {
   });
 
   Events.on('cameratoggle', (data) => {
-    // Phase 1 Plan View intercept (claude/specs/001-phase-1-plan.md): when
+    // Plan View intercept (KD-26): when
     // experimental nav is on and the user triggered Plan View (which
     // cameras.js dispatched as `orthotop`), revert the camera swap and
     // delegate to the experimental controls' animated tween instead. The
@@ -597,7 +598,7 @@ export function Viewport(inspector) {
     controls.focus(object);
   });
 
-  // TASK-012 Phase 4: cursor-aware double-click navigation (experimental nav
+  // Cursor-aware double-click navigation (KD-23; experimental nav
   // only). Guarded by method presence so legacy EditorControls is unaffected.
   Events.on('nav-experimental:doubleclick', (payload) => {
     if (controls.navigateDoubleClick) {
