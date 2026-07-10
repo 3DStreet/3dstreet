@@ -3,7 +3,7 @@
 // Sibling to THREE.EditorControls. Drives the editor camera when the
 // `?nav=experimental` URL flag is set.
 //
-// Phase 1 mechanics:
+// Core gesture mechanics (LB / Shift+LB / wheel / WASD / Plan View):
 //   - LB+drag        -> world-horizontal hit-anchored truck/dolly
 //   - Shift+LB+drag  -> two-regime rotate, split on the tilt threshold T:
 //                       Map orbit around the cursor pivot above T,
@@ -14,7 +14,7 @@
 //   - Plan View      -> animated tween to top-down N-up (entered via
 //                       handlePlanViewRequest, called by viewport.js)
 //
-// Phase 3 mechanics:
+// Wheel-zoom swoop mechanics:
 //   - Wheel zoom is a 3-phase "swoop" gated by camera elevation **above
 //     ground (AGL)** = camera.y − groundY, measured by a downward probe
 //     (`collisionFloorAt` — collision floor incl. building
@@ -35,7 +35,7 @@
 //   - newSceneCameraZoom(snapshotCameraState)
 //   - resetZoom()
 //   - zoomInStart/Stop, zoomOutStart/Stop
-//   - handlePlanViewRequest()         (new in Phase 1)
+//   - handlePlanViewRequest()
 //   - addEventListener / dispatchEvent (Three EventDispatcher)
 //   - dispose()
 
@@ -133,8 +133,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // constructor.
     // No `controls: this` here on purpose: the ctx is a curated service locator
     // (read-only refs + tuning getters + named services), never a back-door to
-    // the whole orchestrator. Dispatch identity is handed to the write funnel as
-    // an explicit bound callback; predicates are exposed as named ctx functions.
+    // the whole orchestrator (KD-32, the shared-context decomposition). Dispatch
+    // identity is handed to the write funnel as an explicit bound callback;
+    // predicates are exposed as named ctx functions.
     const self = this;
     this._ctx = {
       get camera() {
@@ -358,10 +359,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     );
 
     if (NAV_DEBUG) {
-      console.info(
-        '[nav-experimental] ExperimentalControls active (Phase 1). ' +
-          'See claude/specs/001-phase-1-plan.md.'
-      );
+      console.info('[nav-experimental] ExperimentalControls active.');
     }
   }
 
@@ -380,8 +378,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
         console.info(
           'ExperimentalControls: orthographic camera not supported; ' +
-            'controls disabled until a perspective camera is restored. ' +
-            'See claude/issues-for-discussion.md #2.'
+            'controls disabled until a perspective camera is restored.'
         );
       }
     } else {
@@ -626,8 +623,6 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this.rotationSpeed = radPerPx;
   }
 
-  // --- Compass ---
-
   dispose() {
     // Drop any in-flight compass tween/queue (belt-and-braces;
     // the derived gate already self-heals).
@@ -771,7 +766,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   }
 
   _emitModeChange(mode) {
-    // Phase 2's visual indicator subscribes via the sceneEl event bus;
+    // The letterbox mode indicator subscribes via the sceneEl event bus (KD-30);
     // the controls dispatch on both `this` (Three.EventDispatcher) and
     // the scene element so React-side hooks have a stable mounting
     // point that survives camera-swap paths.
@@ -849,8 +844,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
   // Mouse gesture entry points. These stay named on the orchestrator (the
   // window listeners bind their identity) but are thin routers over the drag
-  // controller: O owns only the passive-input guard, the window-listener
-  // attach/detach, the mid-tween abort, and the gesture-end recovery call.
+  // controller: the orchestrator owns only the passive-input guard, the
+  // window-listener attach/detach, the mid-tween abort, and the gesture-end
+  // recovery call.
   _onMouseDown(event) {
     if (this._isInactive()) return;
     const mode = this._drag.decideMouseMode(event);
@@ -956,7 +952,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const k = event.code;
     // Both WASD and arrow keys drive movement. The original W/S/D
     // editor shortcuts (translate-mode, scale-mode, clone-entity) were
-    // remapped to T/L/C in shortcuts.js on 2026-05-09 so WASD is free
+    // remapped to T/L/C in shortcuts.js so WASD is free
     // for camera movement.
     // First-person kit off: movement keys are NOT claimed — no
     // preventDefault, no held-key tracking — so w/s/d fall through to the
@@ -1064,10 +1060,4 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   _updateLegitSnapshotAndCue() {
     this._sensor.update();
   }
-
-  // --- LB hit-anchored truck ---
-
-  // --- Rotation regime (two-way, latched at gesture start) ---
-
-  // --- Shift+LB orbit/tilt around latched center ---
 }
