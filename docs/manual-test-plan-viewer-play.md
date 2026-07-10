@@ -21,6 +21,20 @@ Load 2–3 real scenes covering different eras:
 **Pass:** every scene renders with nothing missing, no duplicated entities,
 no console errors on load.
 
+### 1b. Review-fix spot checks (2 min)
+
+Regression checks for the three P0 review fixes (2026-07-10):
+
+- [ ] **Click vs drag:** click an entity without moving the mouse → selects;
+      click-drag ~15px ending over an entity → selection does NOT change
+      (raycaster now compares raw pixel deltas, ≤2px = click)
+- [ ] **Escape + modal in Viewer:** in the Viewer, open the sign-in/profile
+      modal, press Escape → modal closes, you STAY in the Viewer
+      (second Escape exits as before)
+- [ ] **Legacy component strip:** load an old scene → no console errors,
+      cameraRig behaves; a scene entity deliberately carrying
+      `look-controls` (hand-edited JSON) survives load + re-save
+
 ### 2. Editor basics (4 min)
 
 On one loaded scene:

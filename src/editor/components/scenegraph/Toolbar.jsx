@@ -202,6 +202,11 @@ function Toolbar() {
     if (isInspectorEnabled) return undefined;
     const onKeyDown = (e) => {
       if (e.code !== 'Escape') return;
+      if (e.defaultPrevented) return;
+      // A modal owns Escape while it is open (it closes itself on keyup,
+      // which fires after this keydown — acting here too would close the
+      // modal AND kick the user out of the viewer in one press).
+      if (useStore.getState().modal) return;
       const a = document.activeElement;
       if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
       e.preventDefault();

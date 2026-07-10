@@ -530,11 +530,13 @@ Add a new entity with a list of components and children (if exists)
  * @return {Element} Entity created
 */
 function createEntityFromObj(entityData, parentEl, beforeEl) {
-  // Strip legacy viewer-mode / WebXR components from saved scenes. These
-  // were removed from the codebase along with the legacy viewer mode;
-  // ignoring them here lets old scenes load cleanly and re-save without
-  // the attrs.
-  if (entityData.components) {
+  // Strip legacy viewer-mode / WebXR components from a saved cameraRig
+  // entry. These were removed from the codebase along with the legacy
+  // viewer mode; ignoring them here lets old scenes load cleanly and
+  // re-save without the attrs. Scoped to the cameraRig — the only entity
+  // legacy saves wrote them to — so a user-authored entity carrying e.g.
+  // look-controls is not silently stripped on load/reparent/paste.
+  if (entityData.id === 'cameraRig' && entityData.components) {
     for (const legacy of LEGACY_STRIPPED_COMPONENTS) {
       if (legacy in entityData.components) {
         delete entityData.components[legacy];
