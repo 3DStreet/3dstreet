@@ -98,6 +98,76 @@ the camera directly every tick, which would fight a library's internal
 camera-editing** becomes a goal (`camera-controls` ships multi-touch) or
 if the model ever drops KD-03 for a locked-on turntable.
 
+### KD-32 — Decompose the controls into orchestrated classes, not composable A-Frame components
+
+The controls began as one ~4900-line class. It was split into ~13 collaborating
+ES-class modules — stateful services, two camera-write mechanisms, a per-tick
+sensor, and one controller per gesture — constructed and ordered by a thin
+orchestrator that hands each module a shared **context** object (live refs, tuning
+getters, sibling services). The rejected alternative was an **ECS-native** shape:
+register each behaviour as a composable A-Frame **component** on the camera entity,
+coordinated by a system, letting the framework own construction, lifecycle,
+per-component `tick`, and enable/disable.
+
+**The gating reason: the editor camera is not an entity.** The inspector owns the
+editor camera as a plain `THREE.PerspectiveCamera` (`cameras.js`), outside the
+A-Frame entity graph — there is no camera entity to attach components to, so an ECS
+decomposition would first have to invent a proxy entity mirroring inspector state.
+This follows from the editor's architecture: the entity graph **is the user's
+document** (the scene serializer walks it as user data), so every editor-owned
+mechanism — `EditorControls`, `TransformControls`, the selection box, the
+measure-line controls — is a plain object, not a component. The controls are built
+the same way, as a plain object beside `EditorControls.js`; within the editor layer
+an ECS nav system would be the anomaly, not the norm.
+
+**Even with a camera entity, the problem shape favours one owner.** Every module
+ultimately writes one thing — the camera pose, once per frame — so correctness lives
+in the **mutual exclusion and ordering between modules**, not inside any one: a
+committed motion locks out wheel and WASD input, a "camera busy" test ORs four
+engines' state, and a live-Shift drag re-grabs its anchor mid-gesture (KD-06).
+Composition assumes the parts need not know about each other; here that mutual
+awareness *is* the behaviour. Two consequences bite an ECS shape specifically:
+
+- **No ordering contract.** A-Frame tick order is deterministic but *undeclarable* —
+  it falls out of attachment order. The load-bearing per-frame drain order (wheel →
+  WASD → sensor) would rest on that accident, and the frame is in any case a
+  **pipeline with intra-frame data flow** (the sensor's idle gate reads live engine
+  state the same frame; the per-tick camera-write commit interleaves with the motion
+  math) — not independent updates that merely want an order.
+- **The idiomatic ECS answer collapses into the orchestrator.** The clean ECS
+  response to shared-resource contention is *intent submission* — behaviours emit
+  motion requests and one arbiter resolves and performs the single write. It does not
+  fit here: the swoop is a phase machine consuming a wheel accumulator under per-phase
+  caps, a recovery can hand off mid-tween within one frame, live-Shift restructures a
+  gesture in flight — so the "intents" would have to carry the shared machine state
+  that makes the modules interdependent, moving the complexity into the message
+  schema rather than removing it. A coordinating system that ticks components in its
+  own order likewise contributes only registration and schema parsing; ordering,
+  mutual exclusion, and camera ownership stay hand-rolled inside it — that system *is*
+  the orchestrator with added framework ceremony. The cost of that ceremony is visible
+  in the one place the subsystem integrates with A-Frame's tick: the tick pump spends
+  a registered component plus a hidden host entity to buy a single per-frame callback.
+
+**Testability made this the right shape for the extraction specifically.** The
+controls are decomposed behind a characterization test suite that constructs them
+with a stub camera, headless, and pins private structure. That oracle exists only
+because the controls are a plain, directly-constructable object; migrating to
+components would have dissolved it during the very refactor it existed to protect.
+
+What the split produced — modules owning their own state and reading siblings through
+a shared context at call time — is **functionally already an A-Frame system**; the
+only thing not delegated to the framework is construction and tick order, and because
+that order is load-bearing, holding it explicit is the point. Config still gets a
+declarative A-Frame face where it earns one: the tuning knobs and the street/WASD
+enable gates are exposed on a component schema (`nav-experimental-tuning`) that relays
+onto the live instance, so the logic being a plain object does not cost the
+inspector-tunable surface.
+
+**Reconsider if** the editor camera ever becomes a real A-Frame entity (which removes
+the gating reason), or a genuinely pose-independent camera behaviour is added — a
+follow-cam, a screenshot framer, an idle orbit — which, being orthogonal, would
+belong as its own component. The pose-owning navigation core does not qualify.
+
 ---
 
 ## B. Rotation
