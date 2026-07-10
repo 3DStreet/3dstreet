@@ -25,7 +25,8 @@ const TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES = 2;
 // scene edge. A miss returns that cache with source 'cache'. Only a HIT with
 // `refreshCache` set updates it — a clearance/standoff probe over a column the
 // camera never visits must pass `refreshCache:false` so it does not poison the
-// next recovery/WASD miss fallback. That asymmetry is load-bearing; preserve it.
+// next recovery/WASD miss fallback. That asymmetry is load-bearing; preserve
+// it (KD-33).
 //
 // Reads the live camera/scene through the shared controls context, and carries
 // its own scratch + raycaster so a probe never aliases another gesture's scratch.

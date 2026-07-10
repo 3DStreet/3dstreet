@@ -57,7 +57,7 @@ export class WasdFlight {
   }
 
   // Held-key accessors used by the orchestrator's keydown/keyup/blur routers
-  // (input plumbing stays on O; the held-key STATE lives here).
+  // (input plumbing stays on the orchestrator; the held-key STATE lives here).
   clearHeldKeys() {
     this._heldKeys.clear();
   }
