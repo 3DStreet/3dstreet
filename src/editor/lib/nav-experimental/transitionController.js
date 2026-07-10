@@ -7,7 +7,10 @@ import {
   EYE_MARGIN_METRES,
   FALL_DURATION_MS,
   POP_TO_ROOF_DURATION_MS,
-  ROOF_CLEARANCE
+  ROOF_CLEARANCE,
+  CAMERA_FAR_PLANE_MIN_METRES,
+  CAMERA_FAR_PLANE_MAX_METRES,
+  CAMERA_FAR_PLANE_DISTANCE_FACTOR
 } from './constants.js';
 import { cameraTiltDegrees } from './navMath.js';
 
@@ -528,7 +531,13 @@ export class TransitionController {
     if (this._ctx.isInactive() || this._ctx.runner.ownsCamera()) return;
     const camera = this._ctx.camera;
     const distance = camera.position.distanceTo(this._ctx.center);
-    camera.far = Math.min(100000000, Math.max(20000, distance * 10));
+    camera.far = Math.min(
+      CAMERA_FAR_PLANE_MAX_METRES,
+      Math.max(
+        CAMERA_FAR_PLANE_MIN_METRES,
+        distance * CAMERA_FAR_PLANE_DISTANCE_FACTOR
+      )
+    );
     camera.updateProjectionMatrix();
     const delta = this._delta.set(0, 0, sign);
     delta.multiplyScalar(

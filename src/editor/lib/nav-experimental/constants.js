@@ -277,6 +277,11 @@ export const PLAN_VIEW_DURATION_MS = 1000;
 export const SWOOP_PHASE2_ENTRY_ELEVATION_METRES = 20;
 export const SWOOP_PHASE2_EXIT_ELEVATION_METRES = 1.5;
 
+// Sticky tolerance (metres AGL) added to the Phase-2→3 entry test so a
+// reverse swoop that settles right on the exit elevation still latches to
+// Phase 3. 1 cm — imperceptible for swoop entry.
+export const SWOOP_PHASE3_STICKY_TOLERANCE_METRES = 0.01;
+
 // TASK-022: default swoop-out overview attitude (degrees below
 // horizontal). The target the swoop-out tilts toward when there is no
 // valid transient zoom-undo memory (any non-wheel descent, or after the
@@ -445,3 +450,12 @@ export const ROOF_CLEARANCE = 20; // metres above roof; >= EXIT + margin; tunabl
 // a defensive default, not the resting fov; using it would ship drone view
 // ~20% wider than every other view, violating spec D-A "normal FOV").
 export const DEFAULT_FOV_DEGREES = 50;
+
+// Camera far-plane, tracked to the camera's distance from the scene centre
+// so a birds-eye view keeps distant geometry in frustum without over-
+// extending near the ground: far = clamp(distance × factor, min, max).
+// Render-frustum plumbing (not a nav-behaviour threshold), shared by the
+// wheel-swoop and committed-motion tick loops.
+export const CAMERA_FAR_PLANE_MIN_METRES = 20000;
+export const CAMERA_FAR_PLANE_MAX_METRES = 100000000;
+export const CAMERA_FAR_PLANE_DISTANCE_FACTOR = 10;

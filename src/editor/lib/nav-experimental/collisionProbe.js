@@ -9,6 +9,12 @@ import { isSolidFloorHit, worldHitNormal } from './cursorAnchor.js';
 // the pure navMath layer, whose tests run without a THREE global.)
 const GROUND_PROBE_DIR = Object.freeze(new THREE.Vector3(0, -1, 0));
 
+// Half-span (metres) of the travel-height sampling patch: the ground beneath
+// buildings is approximated by the lowest solid hit over a 3×3 grid stepped by
+// this span around the camera column, so a single roof under the camera centre
+// doesn't fool WASD fly-speed scaling.
+const TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES = 2;
+
 // Collision-floor probing for the experimental nav controls. Answers "what solid
 // surface is directly below this XZ column?" (ground OR building roof OR tiles;
 // scatter excluded) for the descent clamp, swoop, orbit clamp, WASD destination,
@@ -126,16 +132,19 @@ export class CollisionProbe {
       refreshCache: false
     });
     if (seg.source === 'segment-or-building') return seg.y;
-    const SPAN = 2;
     let minY = Infinity;
     let any = false;
     for (let ix = -1; ix <= 1; ix++) {
       for (let iz = -1; iz <= 1; iz++) {
-        const f = this.floorYBelowAt(cx + ix * SPAN, cz + iz * SPAN, {
-          acceptBuildings: true,
-          acceptTiles: true,
-          refreshCache: false
-        });
+        const f = this.floorYBelowAt(
+          cx + ix * TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES,
+          cz + iz * TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES,
+          {
+            acceptBuildings: true,
+            acceptTiles: true,
+            refreshCache: false
+          }
+        );
         if (f.source !== 'cache') {
           any = true;
           if (f.y < minY) minY = f.y;

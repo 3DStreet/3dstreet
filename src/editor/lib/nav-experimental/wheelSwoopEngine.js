@@ -22,7 +22,11 @@ import {
   REAIM_FADE_NEAR_METRES,
   REAIM_FADE_FAR_METRES,
   PHASE3_REAIM_NDC_EPS,
-  DEFAULT_OVERVIEW_TILT_DEGREES
+  DEFAULT_OVERVIEW_TILT_DEGREES,
+  SWOOP_PHASE3_STICKY_TOLERANCE_METRES,
+  CAMERA_FAR_PLANE_MIN_METRES,
+  CAMERA_FAR_PLANE_MAX_METRES,
+  CAMERA_FAR_PLANE_DISTANCE_FACTOR
 } from './constants.js';
 import {
   cameraTiltDegrees,
@@ -325,7 +329,9 @@ export class WheelSwoopEngine {
     // reverse swoop. 1 cm shift, imperceptible for swoop entry.
     if (
       phase === 'phase2' &&
-      yAgl <= SWOOP_PHASE2_EXIT_ELEVATION_METRES + 0.01
+      yAgl <=
+        SWOOP_PHASE2_EXIT_ELEVATION_METRES +
+          SWOOP_PHASE3_STICKY_TOLERANCE_METRES
     ) {
       phase = 'phase3';
     }
@@ -576,7 +582,13 @@ export class WheelSwoopEngine {
 
     // Track far plane based on distance.
     const distance = camera.position.distanceTo(this._ctx.center);
-    camera.far = Math.min(100000000, Math.max(20000, distance * 10));
+    camera.far = Math.min(
+      CAMERA_FAR_PLANE_MAX_METRES,
+      Math.max(
+        CAMERA_FAR_PLANE_MIN_METRES,
+        distance * CAMERA_FAR_PLANE_DISTANCE_FACTOR
+      )
+    );
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
   }
