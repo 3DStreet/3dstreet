@@ -35,7 +35,19 @@ const PRE_BUDGET = 947;
 // Set to the exact achieved count (zero slack), so this is a hard ratchet: a
 // future legitimate allocation on these paths will trip it. That is intended —
 // bump this deliberately (and note why) if you add one.
-const POST_BUDGET = 174;
+//
+// Raised 174 → 223 when navMath's scratch moved to closure-private lazy
+// allocation (restoring THREE-free-at-module-scope). That moves those scratch
+// vectors' construction *after* the counting-proxy swap, so their `.clone()`
+// results (`shiftRotateStep`'s `right.clone()` in the orbit bisection) are now
+// counted — real per-call allocations the previous 174 silently MISSED because
+// `.clone()` copies the source's constructor, and pre-swap scratch was a real
+// (uncounted) THREE.Vector3. So 223 is the *honest* count, not slack. NOTE: the
+// counting discipline is still provenance-dependent (it under-counts clones of
+// any pre-swap object, e.g. controller-layer module-scope scratch) — TASK-038a
+// makes it sound (patch `.clone()` on the pooled prototypes) and will re-derive
+// this number.
+const POST_BUDGET = 223;
 
 let Controls;
 beforeAll(async () => {
