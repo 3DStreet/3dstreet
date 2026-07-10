@@ -31,30 +31,31 @@ import {
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
 
-// Hot-path scratch. `_WORLD_UP` is a frozen read-only constant (a cross-product
-// operand / rotation axis — never mutated, never returned). The mutable
-// scratch vectors are each used by exactly ONE non-re-entrant function and are
-// pure-local temps (scalar-consumed or copied out before the call returns), so
-// no cross-function or cross-call aliasing is possible. Escaping/retained
-// returns are NOT pooled — they take an optional caller-owned `target` instead.
-const _WORLD_UP = Object.freeze(new THREE.Vector3(0, 1, 0));
-const _tiltFwd = new THREE.Vector3(); // cameraTiltDegrees only
-const _lfaFwd = new THREE.Vector3(); // levelForwardAnchor only
-const _srsView = new THREE.Vector3(); // shiftRotateStep only
-const _srsRight = new THREE.Vector3(); // shiftRotateStep only
+// Hot-path scratch is held in each function's own closure and allocated LAZILY on
+// first call, so this pure-math module stays THREE-free at module scope: its unit
+// tests import it without a THREE global, and a module-scope `new THREE.*` would
+// break that (the pure-math layering invariant — see docs/02-key-decisions.md).
+// The IIFE bodies below run at import but only declare `let` bindings — no THREE —
+// while the `new THREE.*` is deferred to the first call, keeping the allocate-once
+// win. Each scratch vector is private to one function (no cross-function or
+// cross-call aliasing); escaping/retained returns are NOT pooled — they take an
+// optional caller-owned `target` instead.
 
 // Camera tilt in degrees below horizontal. 0° = horizontal, +90° =
 // straight down, -90° = straight up. Caller passes in the camera so the
 // helper stays pure.
-export function cameraTiltDegrees(camera) {
-  // camera.getWorldDirection returns the camera's -Z direction (its
-  // "look" vector). Tilt-down is `-y`-component, so:
-  //   sin(tilt) = -fwd.y
-  const fwd = _tiltFwd;
-  camera.getWorldDirection(fwd);
-  const sin = THREE.MathUtils.clamp(-fwd.y, -1, 1);
-  return Math.asin(sin) * RAD2DEG;
-}
+export const cameraTiltDegrees = (() => {
+  let fwd; // closure-private scratch, lazily allocated on first call
+  return function cameraTiltDegrees(camera) {
+    // camera.getWorldDirection returns the camera's -Z direction (its
+    // "look" vector). Tilt-down is `-y`-component, so:
+    //   sin(tilt) = -fwd.y
+    if (!fwd) fwd = new THREE.Vector3();
+    camera.getWorldDirection(fwd);
+    const sin = THREE.MathUtils.clamp(-fwd.y, -1, 1);
+    return Math.asin(sin) * RAD2DEG;
+  };
+})();
 
 // LB-mode dispatch. Cuts on absolute angle from horizontal: looking up
 // by any amount = pedestal. Only "looking down by more than the
@@ -465,24 +466,27 @@ export function cappedDollyStep(
 // horizontal heading is genuinely undefined (|forward.xz| < 1e-6 — true
 // vertical), which the ±89° tilt clamp prevents in live use; the caller
 // no-ops that tick. Pure.
-export function levelForwardAnchor(camera, dist, target) {
-  const fwd = _lfaFwd;
-  camera.getWorldDirection(fwd);
-  const h = Math.hypot(fwd.x, fwd.z);
-  if (h < 1e-6) return null; // near-straight-up/down: yaw undefined
-  const dirX = fwd.x / h;
-  const dirZ = fwd.z / h;
-  const camPos = camera.position;
-  // Escaping return (feeds the wheel dolly). Fill the caller's `target` when
-  // supplied, else a fresh Vector3 for pure callers. `null` early-outs above
-  // stay null regardless of `target`.
-  const out = target || new THREE.Vector3();
-  return out.set(
-    camPos.x + dirX * dist,
-    camPos.y, // level: hold the camera's own height
-    camPos.z + dirZ * dist
-  );
-}
+export const levelForwardAnchor = (() => {
+  let fwd; // closure-private scratch, lazily allocated on first call
+  return function levelForwardAnchor(camera, dist, target) {
+    if (!fwd) fwd = new THREE.Vector3();
+    camera.getWorldDirection(fwd);
+    const h = Math.hypot(fwd.x, fwd.z);
+    if (h < 1e-6) return null; // near-straight-up/down: yaw undefined
+    const dirX = fwd.x / h;
+    const dirZ = fwd.z / h;
+    const camPos = camera.position;
+    // Escaping return (feeds the wheel dolly). Fill the caller's `target` when
+    // supplied, else a fresh Vector3 for pure callers. `null` early-outs above
+    // stay null regardless of `target`.
+    const out = target || new THREE.Vector3();
+    return out.set(
+      camPos.x + dirX * dist,
+      camPos.y, // level: hold the camera's own height
+      camPos.z + dirZ * dist
+    );
+  };
+})();
 
 // ---------------------------------------------------------------------------
 // TASK-012 Phase-4 double-click navigation — pure pose math.
@@ -857,110 +861,120 @@ export function phase2NextElevation(yAgl, sign, alpha = SWOOP_PHASE2_STEP) {
 // down-tilt input bound (capping the *input* tilt, so over-drag past the
 // floor never accumulates → reversing the drag retraces exactly). The
 // street regime (rotate-in-place) passes no `floorY`.
-export function shiftRotateStep({
-  camPos,
-  viewDir,
-  centre,
-  dxPx,
-  dyPx,
-  speed,
-  floorY,
-  camRight
-}) {
-  // Per-call pure-local scratch (module _srsView/_srsRight): read throughout
-  // this call — including inside the re-entrant evalAtTilt bisection — but never
-  // overwritten mid-call, and never escaping. The escaping pos/lookTarget/R and
-  // evalAtTilt's interior temps stay freshly allocated (pointer-cadence; pooling
-  // a re-entrant bisection's temps carries aliasing risk for near-zero saving).
-  const view = _srsView.set(viewDir.x, viewDir.y, viewDir.z).normalize();
-
-  // (1) Yaw about world up.
-  const dTheta = -dxPx * speed;
-
-  // (2) Pitch about the camera's horizontal right axis. `view × up` is
-  //     horizontal and perpendicular to the view azimuth, so a rotation
-  //     about it by β changes the view tilt by exactly −β regardless of
-  //     the current tilt. At *exact* nadir `view ∥ up` so `view × up` → 0
-  //     and the horizontal heading is undefined; fall back to the camera's
-  //     own screen-right axis (camRight), which is well-defined and
-  //     horizontal there. This is what lets you tilt *out* of exact nadir
-  //     (TASK-023) — without it the pitch term is skipped and tilt is dead
-  //     at top-down. Off-nadir, `view × up` is well-defined and used as
-  //     before (no behaviour change).
-  const right = _srsRight.crossVectors(view, _WORLD_UP);
-  let rightLen = right.length();
-  if (rightLen <= 1e-6 && camRight) {
-    right.set(camRight.x, camRight.y, camRight.z);
-    rightLen = right.length();
-  }
-
-  const curTilt = Math.asin(THREE.MathUtils.clamp(-view.y, -1, 1));
-  const MIN_TILT = MIN_TILT_DEGREES * DEG2RAD;
-  const MAX_TILT = MAX_TILT_DEGREES * DEG2RAD;
-  const wantTilt = curTilt + dyPx * speed; // drag-down (+dyPx) → tilt down
-  let clampedTilt = THREE.MathUtils.clamp(wantTilt, MIN_TILT, MAX_TILT);
-
-  // Build the rotated pose for a candidate absolute tilt value. Returns
-  // { pos, lookTarget } applying the SAME single rotation R to the offset
-  // and the view dir.
-  const evalAtTilt = (tiltValue) => {
-    const dTilt = tiltValue - curTilt;
-    const R = new THREE.Quaternion().setFromAxisAngle(_WORLD_UP, dTheta);
-    if (rightLen > 1e-6 && dTilt !== 0) {
-      const r = right.clone().multiplyScalar(1 / rightLen);
-      const qPitch = new THREE.Quaternion().setFromAxisAngle(r, -dTilt);
-      R.multiply(qPitch);
+export const shiftRotateStep = (() => {
+  // closure-private scratch, lazily allocated on first call
+  let srsView, srsRight, worldUp;
+  return function shiftRotateStep({
+    camPos,
+    viewDir,
+    centre,
+    dxPx,
+    dyPx,
+    speed,
+    floorY,
+    camRight
+  }) {
+    // Per-call pure-local scratch (closure-private srsView/srsRight): read
+    // throughout this call — including inside the re-entrant evalAtTilt bisection —
+    // but never overwritten mid-call, and never escaping. The escaping
+    // pos/lookTarget/R and evalAtTilt's interior temps stay freshly allocated
+    // (pointer-cadence; pooling a re-entrant bisection's temps carries aliasing
+    // risk for near-zero saving).
+    if (!srsView) {
+      srsView = new THREE.Vector3();
+      srsRight = new THREE.Vector3();
+      worldUp = Object.freeze(new THREE.Vector3(0, 1, 0));
     }
-    const offset = new THREE.Vector3(
-      camPos.x - centre.x,
-      camPos.y - centre.y,
-      camPos.z - centre.z
-    ).applyQuaternion(R);
-    const pos = new THREE.Vector3(
-      centre.x + offset.x,
-      centre.y + offset.y,
-      centre.z + offset.z
-    );
-    const newView = view.clone().applyQuaternion(R);
-    const lookTarget = new THREE.Vector3(
-      pos.x + newView.x,
-      pos.y + newView.y,
-      pos.z + newView.z
-    );
-    // R is returned so the caller can apply it via
-    // `camera.quaternion.premultiply(R)` (TASK-023 — continuous at nadir),
-    // instead of re-deriving orientation from lookTarget via lookAt.
-    return { pos, lookTarget, R };
-  };
+    const view = srsView.set(viewDir.x, viewDir.y, viewDir.z).normalize();
 
-  // TASK-024 (D8): numeric down-tilt floor bound. Tilting further down
-  // (larger tilt) on an above-pivot orbit lowers the camera. If the wanted
-  // tilt would dip `pos.y` below `floorY + EYE_MARGIN`, bisect between the
-  // current tilt (known clear — the camera is there now, presumed legit)
-  // and the wanted tilt to find the lowest input tilt that keeps the
-  // resulting height at or above the bound.
-  if (floorY != null && isFinite(floorY) && clampedTilt > curTilt) {
-    const bound = floorY + EYE_MARGIN_METRES;
-    const candidate = evalAtTilt(clampedTilt);
-    if (candidate.pos.y < bound) {
-      // Tilting down breaches the floor. Bisect [curTilt, clampedTilt].
-      let lo = curTilt; // assumed to clear the bound (current pose)
-      let hi = clampedTilt; // breaches the bound
-      for (let i = 0; i < 24; i++) {
-        const mid = (lo + hi) / 2;
-        if (evalAtTilt(mid).pos.y >= bound) lo = mid;
-        else hi = mid;
+    // (1) Yaw about world up.
+    const dTheta = -dxPx * speed;
+
+    // (2) Pitch about the camera's horizontal right axis. `view × up` is
+    //     horizontal and perpendicular to the view azimuth, so a rotation
+    //     about it by β changes the view tilt by exactly −β regardless of
+    //     the current tilt. At *exact* nadir `view ∥ up` so `view × up` → 0
+    //     and the horizontal heading is undefined; fall back to the camera's
+    //     own screen-right axis (camRight), which is well-defined and
+    //     horizontal there. This is what lets you tilt *out* of exact nadir
+    //     (TASK-023) — without it the pitch term is skipped and tilt is dead
+    //     at top-down. Off-nadir, `view × up` is well-defined and used as
+    //     before (no behaviour change).
+    const right = srsRight.crossVectors(view, worldUp);
+    let rightLen = right.length();
+    if (rightLen <= 1e-6 && camRight) {
+      right.set(camRight.x, camRight.y, camRight.z);
+      rightLen = right.length();
+    }
+
+    const curTilt = Math.asin(THREE.MathUtils.clamp(-view.y, -1, 1));
+    const MIN_TILT = MIN_TILT_DEGREES * DEG2RAD;
+    const MAX_TILT = MAX_TILT_DEGREES * DEG2RAD;
+    const wantTilt = curTilt + dyPx * speed; // drag-down (+dyPx) → tilt down
+    let clampedTilt = THREE.MathUtils.clamp(wantTilt, MIN_TILT, MAX_TILT);
+
+    // Build the rotated pose for a candidate absolute tilt value. Returns
+    // { pos, lookTarget } applying the SAME single rotation R to the offset
+    // and the view dir.
+    const evalAtTilt = (tiltValue) => {
+      const dTilt = tiltValue - curTilt;
+      const R = new THREE.Quaternion().setFromAxisAngle(worldUp, dTheta);
+      if (rightLen > 1e-6 && dTilt !== 0) {
+        const r = right.clone().multiplyScalar(1 / rightLen);
+        const qPitch = new THREE.Quaternion().setFromAxisAngle(r, -dTilt);
+        R.multiply(qPitch);
       }
-      clampedTilt = lo;
-    }
-  }
+      const offset = new THREE.Vector3(
+        camPos.x - centre.x,
+        camPos.y - centre.y,
+        camPos.z - centre.z
+      ).applyQuaternion(R);
+      const pos = new THREE.Vector3(
+        centre.x + offset.x,
+        centre.y + offset.y,
+        centre.z + offset.z
+      );
+      const newView = view.clone().applyQuaternion(R);
+      const lookTarget = new THREE.Vector3(
+        pos.x + newView.x,
+        pos.y + newView.y,
+        pos.z + newView.z
+      );
+      // R is returned so the caller can apply it via
+      // `camera.quaternion.premultiply(R)` (TASK-023 — continuous at nadir),
+      // instead of re-deriving orientation from lookTarget via lookAt.
+      return { pos, lookTarget, R };
+    };
 
-  // Merge (TASK-023 × TASK-024): evalAtTilt applies the same single
-  // rotation R to the offset and view and now returns it, so the
-  // floor-bounded `clampedTilt` yields a consistent { pos, lookTarget, R }.
-  // The caller applies R via `premultiply` (continuous at nadir).
-  return evalAtTilt(clampedTilt);
-}
+    // TASK-024 (D8): numeric down-tilt floor bound. Tilting further down
+    // (larger tilt) on an above-pivot orbit lowers the camera. If the wanted
+    // tilt would dip `pos.y` below `floorY + EYE_MARGIN`, bisect between the
+    // current tilt (known clear — the camera is there now, presumed legit)
+    // and the wanted tilt to find the lowest input tilt that keeps the
+    // resulting height at or above the bound.
+    if (floorY != null && isFinite(floorY) && clampedTilt > curTilt) {
+      const bound = floorY + EYE_MARGIN_METRES;
+      const candidate = evalAtTilt(clampedTilt);
+      if (candidate.pos.y < bound) {
+        // Tilting down breaches the floor. Bisect [curTilt, clampedTilt].
+        let lo = curTilt; // assumed to clear the bound (current pose)
+        let hi = clampedTilt; // breaches the bound
+        for (let i = 0; i < 24; i++) {
+          const mid = (lo + hi) / 2;
+          if (evalAtTilt(mid).pos.y >= bound) lo = mid;
+          else hi = mid;
+        }
+        clampedTilt = lo;
+      }
+    }
+
+    // Merge (TASK-023 × TASK-024): evalAtTilt applies the same single
+    // rotation R to the offset and view and now returns it, so the
+    // floor-bounded `clampedTilt` yields a consistent { pos, lookTarget, R }.
+    // The caller applies R via `premultiply` (continuous at nadir).
+    return evalAtTilt(clampedTilt);
+  };
+})();
 
 // ---------------------------------------------------------------------------
 // TASK-027 — final zoom polish helpers (pure).

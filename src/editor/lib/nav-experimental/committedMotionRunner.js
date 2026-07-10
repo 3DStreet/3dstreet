@@ -105,7 +105,7 @@ export class CommittedMotionRunner {
     let handoffTween = null;
     ctx.tick.animate({
       durationMs,
-      onTick: (eased) => {
+      onTick: (eased, tRaw) => {
         // Re-validate the stored TARGET against current geometry each tick
         // (cheap — the same short probe used at tween start). Hand off to
         // pop-to-roof exactly once.
@@ -125,8 +125,13 @@ export class CommittedMotionRunner {
         camera.updateMatrixWorld();
         // Per-tick commit: the ease-back moves the camera by a non-wheel
         // mechanism, so clear the wheel zoom-undo memory + resolve the letterbox
-        // (hysteresis, tween-scoped) + dispatch `change`.
-        funnel.commitTween('tween');
+        // (hysteresis, tween-scoped) + dispatch `change`. Skip on the TERMINAL
+        // frame (tRaw >= 1): onDone's funnel.dispatch() resolves the letterbox at
+        // exact-T and fires the one authoritative `change` for the settle. Without
+        // this gate the final frame runs BOTH this hysteresis commit AND onDone's
+        // exact-T dispatch in one tickAnimator sub() call — two resolves, two
+        // `change` events (and a possible contradictory double modechange).
+        if (tRaw < 1) funnel.commitTween('tween');
       },
       onDone: () => {
         // Superseded by a same-frame hand-off — do not run the stale terminal
@@ -189,9 +194,13 @@ export class CommittedMotionRunner {
     }
     return this._ctx.tick.animate({
       durationMs,
-      onTick: (eased) => {
+      onTick: (eased, tRaw) => {
         onTick(eased);
-        funnel.commitTween('tween');
+        // Terminal-frame gate — see runRecovery: onDone's dispatch() owns the
+        // settle's single exact-T letterbox resolve + `change`, so skip the
+        // per-tick hysteresis commit on the last frame to avoid a double
+        // resolve / double `change` emit in the same tickAnimator sub() call.
+        if (tRaw < 1) funnel.commitTween('tween');
       },
       onDone: () => {
         commitPose();
