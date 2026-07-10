@@ -1,5 +1,4 @@
-// Scene-bounds derivation with caching, per the navigation proposal
-// (`/claude/reference/3D Street Navigation Proposal.md`).
+// Scene-bounds derivation with caching.
 //
 // Detection rule:
 //   A scene is UNBOUNDED if it contains a `street-geo` or
@@ -7,21 +6,13 @@
 //
 // Computation (when bounded):
 //   Union AABB of all `managed-street`, `street`, and `intersection`
-//   entities. The bounds object exposes both representations:
-//     - `aabb: {minX, maxX, minZ, maxZ}` — the actual horizontal
-//       footprint. Phase 2's rotation-center inside/outside test reads
-//       this. Solves the long-thin-street pathology directly: a 100m
-//       × 5m street has a 5m-wide AABB in z, so a camera 10m off the
-//       side is correctly outside.
-//     - `center` + `radius` — derived cylinder (`max(width, depth) / 2`
-//       half-extent as radius), kept for the Plan View tween's
-//       framing math which needs a single radius. The Phase 1
-//       implementation read these for both purposes; Phase 2 split
-//       them so the rotation-center boundary could move without
-//       breaking Plan View.
+//   entities, reduced to a `center` + `radius` cylinder
+//   (`max(width, depth) / 2` half-extent as radius). Only the cylinder is
+//   exposed: it frames Plan View (KD-26), which needs a single radius. (The
+//   raw AABB once fed the finite-scene inside/outside rotation test, which
+//   KD-02 removed — so it is no longer exposed.)
 //
-// Invalidation policy (mirrors the docs in
-// claude/specs/001-phase-0-plan.md):
+// Invalidation policy:
 //   INVALIDATES on:
 //     - scene-level `child-attached` / `child-detached` (catches
 //       managed-street rebuilds that detach and reattach segments,
@@ -141,22 +132,12 @@ export class SceneBounds {
     if (!min) return EMPTY_BOUNDS;
 
     const { center, radius } = cylinderFromAABB(min, max);
-    // The cylinder (`center` + `radius`) is kept for the Plan View tween
-    // which needs a single radius for framing. The AABB (`aabb`) is the
-    // scene's actual horizontal footprint and is what Phase 2's
-    // rotation-center inside/outside test uses — a long-thin street
-    // doesn't get a 50m-radius "cylinder of influence" off the side any
-    // more (per planning-pass discussion item #2).
+    // The cylinder (`center` + `radius`) frames Plan View (KD-26), which
+    // needs a single radius.
     return {
       bounded: true,
       center,
-      radius,
-      aabb: {
-        minX: min.x,
-        maxX: max.x,
-        minZ: min.z,
-        maxZ: max.z
-      }
+      radius
     };
   }
 

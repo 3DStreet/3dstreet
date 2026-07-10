@@ -22,7 +22,6 @@ import {
   wasdFollowY,
   wasdVerticalY,
   groundedAtLoad,
-  classifyFallAction,
   isLegitPose,
   cueState,
   cardinalSnapYaw,
@@ -813,48 +812,6 @@ describe('groundedAtLoad', () => {
     expect(
       groundedAtLoad({ camY: 0.5, floorY: 0, source: 'cache', eyeMargin: EYE })
     ).toBe(false);
-  });
-});
-
-describe('classifyFallAction', () => {
-  it('enclosed → pop (wins regardless of tilt)', () => {
-    expect(
-      classifyFallAction({ enclosed: true, camY: 5, floorY: 0, tiltDeg: 80 })
-    ).toBe('pop');
-  });
-
-  it('elevated + looking down → swoop', () => {
-    expect(
-      classifyFallAction({ enclosed: false, camY: 50, floorY: 0, tiltDeg: 60 })
-    ).toBe('swoop');
-  });
-
-  it('elevated + ~horizontal → fall', () => {
-    expect(
-      classifyFallAction({ enclosed: false, camY: 50, floorY: 0, tiltDeg: 5 })
-    ).toBe('fall');
-  });
-
-  it('at street level (within eye margin) → noop', () => {
-    expect(
-      classifyFallAction({
-        enclosed: false,
-        camY: EYE_MARGIN_METRES,
-        floorY: 0,
-        tiltDeg: 5
-      })
-    ).toBe('noop');
-  });
-
-  it('no surface below (probe miss) → noop', () => {
-    expect(
-      classifyFallAction({
-        enclosed: false,
-        camY: 50,
-        floorY: null,
-        tiltDeg: 5
-      })
-    ).toBe('noop');
   });
 });
 

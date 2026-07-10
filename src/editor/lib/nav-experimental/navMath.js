@@ -334,23 +334,6 @@ export function groundedAtLoad({ camY, floorY, source, eyeMargin }) {
   return camY - floorY <= eyeMargin + 1e-6;
 }
 
-// TASK-024 (3d): pure precedence decision for the Space fall/pop key.
-// States overlap (enclosed + looking down), so order is load-bearing:
-//   1. enclosed             -> 'pop'   (wins regardless of tilt)
-//   2. elevated + down      -> 'swoop'
-//   3. elevated + ~horiz    -> 'fall'
-//   no surface below        -> 'noop'
-// `floorY` is the collision floor below (null/undefined = probe miss).
-// `aboveFloor` lets the caller decide "elevated" (camY - floorY > margin).
-export function classifyFallAction({ enclosed, camY, floorY, tiltDeg }) {
-  if (enclosed) return 'pop';
-  if (floorY == null || !isFinite(floorY)) return 'noop';
-  const agl = camY - floorY;
-  if (agl <= EYE_MARGIN_METRES) return 'noop'; // already at the surface
-  if (tiltDeg > TILT_THRESHOLD_DEFAULT_DEGREES) return 'swoop';
-  return 'fall';
-}
-
 // TASK-024 (3a / H-B / WE-8a): legit-pose predicate. A pose is legit iff
 // BOTH (not enclosed) AND (camera.y >= collision floor under it + eye
 // margin). Neither alone (enclosure-only accepts grazing under an overhang;
