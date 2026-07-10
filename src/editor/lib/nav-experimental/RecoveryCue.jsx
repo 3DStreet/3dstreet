@@ -1,14 +1,15 @@
 import { isExperimentalNav } from './flag.js';
 import { useRecoveryCue } from './useRecoveryCue.js';
 
-// TASK-024 (3e): transient on-screen hint shown when the camera is enclosed
-// (inside solid geometry) or stranded well above the surface it could drop
-// to. Prompts the user to press Space. Not a persistent toolbar button —
-// that is deferred to TASK-025.
+// Recovery cue (see docs/04-glossary.md "Recovery cue"): transient on-screen
+// hint shown when the camera is enclosed (inside solid geometry) or stranded
+// well above the surface it could drop to. Prompts the user to press Space.
+// This is only the transient flash; the persistent affordance is the context
+// view button (KD-21).
 //
 // The cue is driven entirely by `nav-experimental:recovery-cue` events from
-// the controls (show/hide hysteresis lives there — D7), so this component
-// just renders the latest kind.
+// the controls (show/hide elevation hysteresis lives there — TH-52/TH-53), so
+// this component just renders the latest kind.
 const MESSAGES = {
   enclosed: 'Press Space to get out',
   drop: 'Press Space to drop down'

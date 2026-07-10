@@ -7,7 +7,10 @@ import {
   EYE_MARGIN_METRES,
   FALL_DURATION_MS,
   POP_TO_ROOF_DURATION_MS,
-  ROOF_CLEARANCE
+  ROOF_CLEARANCE,
+  CAMERA_FAR_PLANE_MIN_METRES,
+  CAMERA_FAR_PLANE_MAX_METRES,
+  CAMERA_FAR_PLANE_DISTANCE_FACTOR
 } from './constants.js';
 import { cameraTiltDegrees } from './navMath.js';
 
@@ -61,11 +64,13 @@ export class TransitionController {
     // threshold so it can't oscillate).
     const RETARGET_EPS = 0.1; // metres
     let retargeted = false;
-    // Runner Door 2 (preset motion). y-delta center follow; per-tick commit.
+    // Committed via Runner Door 2 (preset motion — glossary: Runner entry
+    // modes). y-delta center follow; per-tick commit.
     // Settle: a pop-to-roof / pop-to-daylight lands you standing on that roof →
     // grounded; reseed; refresh the context snapshot. The letterbox is resolved
     // at exact T by the runner's terminal funnel.dispatch() (a no-op here — pop
-    // preserves pitch — but uniform across every settle since TASK-037 Q3/Q4).
+    // preserves pitch — but the exact-T resolve is uniform across every settle;
+    // KD-05 / KD-30).
     this._ctx.runner.run({
       ownership: 'recovery',
       durationMs: POP_TO_ROOF_DURATION_MS,
@@ -183,15 +188,15 @@ export class TransitionController {
 
   // Street view is a DESCENDING SWOOP to the point you
   // are LOOKING AT, not the point directly below. Anchor = the camera-center
-  // ground hit (`_centerRayGroundHit`, a forward raycast to the collision
-  // floor). The motion is still the v1 `_fallTo` TWEEN MECHANISM (pre-computed
-  // start→end pose + linear position lerp + quaternion slerp) — NOT
-  // `_dollyAlongRay` (its 15 m lateral cap can't reach a distant look-at point)
-  // and NOT the wheel tilt-coupling (welded to wheel accumulator state). The
-  // only change from v1 is the END POSE: when the look-at hit `P` is non-null,
-  // we land at street eye-height AT `P` (not straight down). The combined
-  // down+forward translation + the tilt slerp gives the forward-and-down swoop
-  // arc to the spot you were looking at — "drop the pegman where I am looking".
+  // ground hit (`probe.centerRayGroundHit`, a forward raycast to the collision
+  // floor). The motion is the preset TWEEN MECHANISM (pre-computed
+  // start→end pose + linear position lerp + quaternion slerp) — NOT a cursor
+  // dolly (whose lateral cap can't reach a distant look-at point) and NOT the
+  // wheel tilt-coupling (welded to wheel accumulator state). The END POSE: when
+  // the look-at hit `P` is non-null, we land at street eye-height AT `P` (not
+  // straight down). The combined down+forward translation + the tilt slerp gives
+  // the forward-and-down swoop arc to the spot you were looking at — "drop the
+  // pegman where I am looking".
   _swoopToStreet() {
     if (!this._ctx.streetLevelEnabled) return; // gated upstream; belt-and-braces
     const cam = this._ctx.camera;
@@ -225,7 +230,7 @@ export class TransitionController {
     }
     // P null (looking at sky / off-scene), a shallow gaze (looking out, not down
     // at a spot), or an unsuitable look-at (above the camera): fall back to the
-    // v1 VERTICAL drop to the surface directly below, leveling out — gives
+    // VERTICAL drop to the surface directly below, leveling out — gives
     // the "settle back down where I was" feel for a small pedestal.
     const floor = this._ctx.probe.collisionFloorAt(
       cam.position.x,
@@ -234,16 +239,16 @@ export class TransitionController {
     if (floor.source === 'cache') return; // no surface below either → no-op
     const targetY = floor.y + EYE_MARGIN_METRES;
     if (targetY >= cam.position.y) return; // already at/below
-    this._fallTo(targetY, /* levelOut = */ true); // v1 vertical level-out swoop
+    this._fallTo(targetY, /* levelOut = */ true); // vertical level-out swoop
   }
 
   // The look-at descending swoop tween. End pose =
   // (endX, endY, endZ) at street eye-height over the look-at point, yaw kept,
-  // pitch leveled to ~0° (the v1 street landing). Position is interpolated
+  // pitch leveled to ~0° (the street landing). Position is interpolated
   // LINEARLY start→end (x and z change too, unlike `_fallTo`'s y-only lerp) and
-  // the quaternion is slerped to a level orientation. Carries the v1 `_fallTo`
-  // onDone lifecycle discipline verbatim (grounded=true, _clearZoomUndo,
-  // _reseedLegitPose, _refreshContextSnapshot). No mid-tween floor retarget here
+  // the quaternion is slerped to a level orientation. Uses the standard
+  // grounded-landing settle (grounded=true, reseed legit-pose, refresh the
+  // context snapshot; KD-22). No mid-tween floor retarget here
   // (the target column is the look-at point, fixed at commit; the destination is
   // street level and clear by construction — the committed motion permits
   // passing through solid mid-swoop, forbidding only ending inside).
@@ -252,9 +257,9 @@ export class TransitionController {
     const startPos = cam.position.clone();
     const startCenter = this._ctx.center.clone();
     const startQuat = cam.quaternion.clone();
-    // Level (tilt=0) end orientation preserving yaw, the v1 `_fallTo` levelOut
-    // way: scratch camera at the end position, looking 1 m ahead along the live
-    // horizontal forward.
+    // Level (tilt=0) end orientation preserving yaw, the same way `_fallTo`'s
+    // levelOut builds it: scratch camera at the end position, looking 1 m ahead
+    // along the live horizontal forward.
     const scratch = new THREE.PerspectiveCamera();
     scratch.position.set(endX, endY, endZ);
     const fwd = new THREE.Vector3();
@@ -272,7 +277,8 @@ export class TransitionController {
       startCenter.y + (endY - startPos.y),
       startCenter.z + (endZ - startPos.z)
     );
-    // Runner Door 2 (preset motion). Full-vector center lerp; per-tick commit;
+    // Committed via Runner Door 2 (preset motion — glossary: Runner entry
+    // modes). Full-vector center lerp; per-tick commit;
     // lands at collisionFloor + eye-margin → grounded by construction, mirroring
     // `_fallTo`'s street landing (reseed, re-eval letterbox, refresh snapshot).
     this._ctx.runner.run({
@@ -301,22 +307,22 @@ export class TransitionController {
   // camera pulls UP-AND-BACK along its horizontal heading to a canonical height
   // H, ending at the 60° overview attitude LOOKING AT the feet point F (so the
   // round-trip closes: from drone, the center-ray hit ≈ F, and street swoops
-  // back down to F). Anchor = the FEET (`_collisionFloorAt` below the camera),
+  // back down to F). Anchor = the FEET (`collisionFloorAt` below the camera),
   // which is ALWAYS defined → drone has no null case (drone never
-  // greys). This is the v1 TWEEN MECHANISM (pre-computed start→end pose + linear
+  // greys). The TWEEN MECHANISM (pre-computed start→end pose + linear
   // position lerp + quaternion slerp + FOV lerp) with a CLOSED-FORM end pose —
-  // NOT `_dollyAlongRay`, NOT the wheel tilt-coupling. A separate method from
+  // NOT a cursor dolly, NOT the wheel tilt-coupling. A separate method from
   // `_fallTo` (opposite grounded semantics: drone leaves the surface upward →
-  // `_grounded = false` + `_captureH`).
+  // ungrounded + capture cruise height).
   _riseToDrone() {
     const cam = this._ctx.camera;
     // Anchor = the feet (surface directly below). Feet-miss fallback:
-    // `_collisionFloorAt` returns source 'cache' on a miss (over a
+    // `collisionFloorAt` returns source 'cache' on a miss (over a
     // void); substitute the travel-height ground for F.y so the void case
-    // degrades to a sane pose. `_collisionFloorAt` refreshes the floor cache
+    // degrades to a sane pose. `collisionFloorAt` refreshes the floor cache
     // (refreshCache: true) — NOT a pure read; call it exactly once. The `busy`
     // gate prevents interleave with an in-flight `_fallTo` retarget.
-    const groundLevel = this._ctx.probe.travelHeightFloorYBelow();
+    const groundLevel = this._ctx.probe.travelHeightFloorBelowCamera();
     const floor = this._ctx.probe.collisionFloorAt(
       cam.position.x,
       cam.position.z
@@ -329,7 +335,7 @@ export class TransitionController {
     const feetY = surfaceBelow;
     const camX = cam.position.x;
     const camZ = cam.position.z;
-    // Canonical target height (v1 max(...)): default drone height above GROUND
+    // Canonical target height — the max(...) below: default drone height above GROUND
     // LEVEL (travel height — looks past tall buildings to the ground between
     // them), OR a fixed clearance above the ROOF directly below when atop a
     // building taller than that. Both per-column raycasts (slope-safe). Keeps
@@ -404,14 +410,16 @@ export class TransitionController {
       startCenter.z + (endZ - startPos.z)
     );
 
-    // Runner Door 2 (preset motion). Full-vector center lerp + FOV lerp;
+    // Committed via Runner Door 2 (preset motion — glossary: Runner entry
+    // modes). Full-vector center lerp + FOV lerp;
     // per-tick commit; suspends WASD / holds the busy gate via the 'recovery'
     // ownership. Settle: drone deliberately leaves the surface upward → flying,
-    // re-capture the cruise height (mirrors `_checkUngroundOnRise`), reseed, and
+    // re-capture the cruise height (the ungrounded rise path), reseed, and
     // refresh the context snapshot (flip icon drone→street). The letterbox is
     // resolved at exact T by the runner's terminal funnel.dispatch(): the rise
-    // ends at the ~60° overview tilt (> T = Map), so the indicator now flips to
-    // Map at settle instead of lagging until the next input (TASK-037 Q3/Q4).
+    // ends at the ~60° overview attitude (TH-28, > T = Map), so the indicator
+    // now flips to Map at settle instead of lagging until the next input
+    // (KD-05 / KD-30).
     this._ctx.runner.run({
       ownership: 'recovery',
       durationMs: FALL_DURATION_MS,
@@ -471,7 +479,8 @@ export class TransitionController {
     // so it can't oscillate. The level-out orientation above stays valid.
     const RETARGET_EPS = 0.1; // metres
     let retargeted = false;
-    // Runner Door 2 (preset motion). Per-tick commit (clears zoom-undo + the
+    // Committed via Runner Door 2 (preset motion — glossary: Runner entry
+    // modes). Per-tick commit (clears zoom-undo + the
     // Space fall / level-out swoop is a non-wheel descent — callers early-return
     // on noop/pop/already-below, so a no-op Space never reaches here). Settle:
     // grounded by construction (lands at collisionFloor + eye-margin), reseed,
@@ -520,15 +529,21 @@ export class TransitionController {
   }
 
   // --- ActionBar zoom buttons (held-down repeat) ---
-  // A center-anchored dolly (the toolbar path keeps its original feel, distinct
-  // from the wheel swoop) so the zoom buttons feel unchanged.
+  // A center-anchored dolly, deliberately distinct from the wheel swoop, so the
+  // toolbar zoom buttons keep their own simple in/out feel.
   zoomActionBar(sign) {
     // Suspend the toolbar zoom while a camera-owning tween
     // (recovery or teleport) is in flight.
     if (this._ctx.isInactive() || this._ctx.runner.ownsCamera()) return;
     const camera = this._ctx.camera;
     const distance = camera.position.distanceTo(this._ctx.center);
-    camera.far = Math.min(100000000, Math.max(20000, distance * 10));
+    camera.far = Math.min(
+      CAMERA_FAR_PLANE_MAX_METRES,
+      Math.max(
+        CAMERA_FAR_PLANE_MIN_METRES,
+        distance * CAMERA_FAR_PLANE_DISTANCE_FACTOR
+      )
+    );
     camera.updateProjectionMatrix();
     const delta = this._delta.set(0, 0, sign);
     delta.multiplyScalar(

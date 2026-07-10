@@ -180,7 +180,7 @@ export class DragGestureController {
     return decideLbMode(tilt, this._ctx.tiltThreshold);
   }
 
-  // Phase 2: read the cached LB sub-mode for the visual indicator. The
+  // Read the cached LB sub-mode for the letterbox indicator (KD-30). The
   // hook (`useNavMode`) calls this on mount to seed initial state, then
   // listens for `nav-experimental:modechange` for updates. Forces a
   // recompute if the cache is empty so the first read is always honest.
@@ -208,9 +208,9 @@ export class DragGestureController {
     }
   }
 
-  // Mouse-mode dispatch. Phase 1 returns 'pan' (LB) or 'rotate' (Shift+LB).
-  // Phase 2 splits the 'pan' branch further at gesture-start time via
-  // `decideLbMode(cameraTiltDegrees(camera))`.
+  // Mouse-mode dispatch. Returns 'pan' (LB) or 'rotate' (Shift+LB). With
+  // street-level mode on, the 'pan' branch splits further at gesture-start
+  // time via `decideLbMode(cameraTiltDegrees(camera))` (KD-30).
   decideMouseMode(event) {
     // RMB = rotate, identical to Shift+LB — legacy-EditorControls parity
     // (its mapping was LB pan / MMB zoom / RMB rotate; the canvas context
@@ -453,7 +453,7 @@ export class DragGestureController {
     this._ctx.funnel.dispatch();
   }
 
-  // --- LB pedestal move (Phase 2) ---
+  // --- LB pedestal move (Stage 2 street mode) ---
   //
   // Mirrors `_lbTruckMove` but operates on a *vertical* plane through
   // the latched anchor. Plane normal = camera-forward-horizontal (latched
@@ -787,8 +787,8 @@ export class DragGestureController {
     // rotate-in-place case (centre coincides with camera) `pos === camPos`
     // and the latched centre equals camera position anyway.
     this._ctx.center.copy(center);
-    // Invalidate on ACTUAL movement only (shared with the pan sites — the WE-6 /
-    // C1 zero-motion guard: a drag that doesn't move the camera must preserve the
+    // Invalidate on ACTUAL movement only (shared with the pan sites — the
+    // zero-motion guard: a drag that doesn't move the camera must preserve the
     // wheel zoom-undo memory). The pans express "moved" as a non-zero world-space
     // step; a ROTATE has no world-translation step (a rotate-in-place changes
     // orientation with pos===camPos, zero position delta), so gating on a

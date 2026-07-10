@@ -57,7 +57,7 @@ export class WasdFlight {
   }
 
   // Held-key accessors used by the orchestrator's keydown/keyup/blur routers
-  // (input plumbing stays on O; the held-key STATE lives here).
+  // (input plumbing stays on the orchestrator; the held-key STATE lives here).
   clearHeldKeys() {
     this._heldKeys.clear();
   }
@@ -138,7 +138,7 @@ export class WasdFlight {
     // WASD fly-speed scales by TRAVEL HEIGHT (height above the
     // land/ground beneath buildings), NOT the collision floor — so speed
     // doesn't crawl over a building roof.
-    const groundY = this._ctx.probe.travelHeightFloorYBelow();
+    const groundY = this._ctx.probe.travelHeightFloorBelowCamera();
     const aglRaw = camera.position.y - groundY;
     const height = Math.max(0.1, aglRaw);
     const targetSpeed = THREE.MathUtils.clamp(

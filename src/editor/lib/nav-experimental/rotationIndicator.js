@@ -1,12 +1,14 @@
 /* global THREE */
 
-// TASK-010 (D3): a single reusable billboarded ring mesh marking the
-// rotation pivot during a Map-mode Shift+LB rotate. The user sees what
-// they're orbiting around. Built once and toggled via `.visible` (B9 —
-// rapid Shift chatter re-latches cheaply, no per-toggle create/destroy).
+// A single reusable billboarded ring mesh marking the rotation pivot during
+// a Map-mode Shift+LB rotate. The user sees what they're orbiting around.
+// Its on-screen size is held constant (TH-06 — a fraction of viewport
+// half-height). Built once and toggled via `.visible` — rapid Shift chatter
+// re-latches cheaply, no per-toggle create/destroy.
 //
-// Shown only in Map mode (a Street-mode rotate pivots the camera itself,
-// so there is no world point to mark — per D6 it stays hidden).
+// Shown only in Map mode (a Street-mode rotate pivots the camera itself, so
+// there is no world point to mark; per KD-30 the ring stays hidden — KD-03
+// only puts a ring on a world pivot).
 //
 // The mesh is added to `sceneEl.object3D` and excluded from cursor-anchor
 // raycasts (`.name = 'navRotationIndicator'`, also added to cursorAnchor's
@@ -86,7 +88,9 @@ export class RotationIndicator {
     // perspective camera (no `fov`).
     const halfFov = ((camera.fov || 60) * DEG2RAD) / 2;
     const halfHeightWorld = d * Math.tan(halfFov);
-    mesh.scale.setScalar(Math.max(halfHeightWorld * RING_SCREEN_FRACTION, 1e-3));
+    mesh.scale.setScalar(
+      Math.max(halfHeightWorld * RING_SCREEN_FRACTION, 1e-3)
+    );
   }
 
   dispose() {

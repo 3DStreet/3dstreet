@@ -28,6 +28,26 @@ mutually exclusive at construction time, which lets you A/B the feel in
 one session by toggling that parameter. (`&navDebug=true` adds console
 diagnostics.)
 
+> **What actually ships in the default build — read this before testing.**
+> The experimental controls being on does *not* mean everything below is
+> live. Two **sub-flags gate the Stage-2 behaviour OFF by default** (see
+> `07-phased-rollout-plan.md` for the staging rationale):
+>
+> - **`?streetview=on`** (default **off**) gates the whole street-level
+>   regime — the swoop descent, the street-level FOV zoom, the context
+>   button's *street view* action, lane double-click teleport, the
+>   letterbox indicator, and rotate-in-place at low tilt.
+> - **`?wasd=on`** (default **off**) gates WASD / arrow-key flight.
+>
+> So the **default** (`?nav` unset, no sub-flags) ships the *elevated*
+> half: Map-mode LB/Shift+LB, cursor-anchored dolly zoom, the compass,
+> drone view, and building/object double-click framing — **but not** the
+> swoop-to-street, WASD, letterbox, or lane teleport. A maintainer testing
+> the default build will not see the two-regime mechanics that docs 02–05
+> describe until `?streetview=on` (and `?wasd=on`) are added. Everything
+> below documents the full Stage-2 system; treat the swoop / Street-mode /
+> WASD material as flag-gated.
+
 The code lives entirely in `src/editor/lib/nav-experimental/`;
 `ExperimentalControls` is `new`-ed in `viewport.js` unless `?nav=classic`
 is present, and mirrors the `EditorControls` public API, so the rest of
@@ -49,9 +69,11 @@ splits all behaviour into two regimes:
 | **Wheel** | Cursor-anchored dolly | Plain dolly along the view |
 | Indicator | (none) | Letterbox: toolbars become full-width black strips |
 
-The same T governs the LB sub-mode, the wheel cut, the rotation pivot,
-and the letterbox — one number to reason about. **Shift is live during a
-drag**: you can switch truck↔rotate without releasing the button.
+The same live T governs *every* tilt-conditional decision — the four
+primary (LB sub-mode, wheel cut, rotation regime, letterbox) plus the
+context-button and compass-arrow reuses — one number to reason about.
+**Shift is live during a drag**: you can switch truck↔rotate without
+releasing the button.
 
 This two-regime model is itself a major simplification: an earlier design
 chose the rotation pivot from a multi-rule, scene-aware scheme (orbit the

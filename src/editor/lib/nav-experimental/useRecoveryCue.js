@@ -3,27 +3,29 @@ import { useEffect, useRef, useState } from 'react';
 
 import { isExperimentalNav } from './flag.js';
 
-// TASK-024 (3e): subscribes to `nav-experimental:recovery-cue` events from
-// the active `ExperimentalControls` instance via the sceneEl event bus
-// (mirroring `useNavMode`). Exposes `cueKind` ('enclosed' | 'drop' | null)
-// so a small transient hint can prompt the user to press Space.
+// Recovery cue (see docs/04-glossary.md "Recovery cue"): subscribes to
+// `nav-experimental:recovery-cue` events from the active
+// `ExperimentalControls` instance via the sceneEl event bus (mirroring
+// `useNavMode`). Exposes `cueKind` ('enclosed' | 'drop' | null) so a small
+// transient hint can prompt the user to press Space.
 //
 // The controls emit on a real show/hide transition only (the show/hide
-// hysteresis — DISCOVERABILITY_CUE_SHOW/HIDE = 8/6 m — lives in the controls,
+// elevation hysteresis — TH-52/TH-53, 8/6 m — lives in the controls,
 // independent of the 1.8/2.5 elevation band; they are different concerns).
 //
-// TASK-025 v2 (R2-REV-D / finding 3): "Press Space to drop down" fired and
-// STAYED for the whole time you were high — too naggy. Make it a FLASH:
+// Flash-not-sticky (KD-35): "Press Space to drop down" used to fire and STAY
+// for the whole time you were high — too naggy. It is a FLASH instead:
 // on the non-null (show) edge start a ~3 s timeout that clears the cue kind
 // EVEN WHILE the condition still holds; on the null (hide) edge cancel any
-// pending timeout (and clear). Re-arm is automatic via the controls' 8/6
-// hysteresis — the cue re-shows only after dropping below 6 m then rising
-// above 8 m again (flash once per stranding). The auto-hide is expressed here
-// as a timer, NOT in the sticky `cueState` (which can't auto-hide-while-true).
+// pending timeout (and clear). Re-arm is automatic via the controls'
+// TH-52/TH-53 hysteresis — the cue re-shows only after dropping below 6 m
+// then rising above 8 m again (flash once per stranding). The auto-hide is
+// expressed here as a timer, NOT in the sticky `cueState` (which can't
+// auto-hide-while-true).
 //
 // Flag-off: returns null and never subscribes.
 
-const CUE_FLASH_MS = 3000;
+const CUE_FLASH_MS = 3000; // TH-75 — recovery-cue flash window (~3 s)
 
 function getSceneEl() {
   if (typeof AFRAME === 'undefined' || !AFRAME.scenes) return null;

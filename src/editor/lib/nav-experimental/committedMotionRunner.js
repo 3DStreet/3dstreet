@@ -20,12 +20,12 @@ const GROUND_PROBE_DIR = Object.freeze(new THREE.Vector3(0, -1, 0));
 // motion": only its ENDPOINT is validated; the path may pass through solid.
 // This module concentrates the parts those tweens duplicated — the ownership
 // flags, the anti-stranding cancel, the per-tick write-funnel commit, and the
-// onDone settle epilogue — behind TWO entry points:
+// onDone settle epilogue — behind TWO entry points (glossary: Runner entry
+// modes):
 //
 //   - runRecovery(pose, durationMs, onHandoff): the recovery ease-back. It is
 //     the ONLY path that re-validates its target every tick and can hand off
-//     mid-tween to a pop-to-roof (the `_tick._currentTween` dance). Relocated
-//     near-verbatim from the orchestrator — not reworked.
+//     mid-tween to a pop-to-roof (the `_tick._currentTween` dance).
 //   - run(policy): the generic committed lerp for the five PRE-validated motions
 //     (teleport + the four presets). No per-tick re-validation; each caller
 //     supplies its own per-tick pose math (`onTick`) + exact endpoint
@@ -40,8 +40,8 @@ export class CommittedMotionRunner {
   constructor(ctx) {
     this._ctx = ctx;
     // "A recovery ease-back / preset motion owns the camera" and "the double-click
-    // teleport owns the camera" — the two passive-input gates. Mirror the old
-    // orchestrator fields exactly; `ownsCamera()` = their OR.
+    // teleport owns the camera" — the two passive-input gates;
+    // `ownsCamera()` = their OR.
     this._recoveryActive = false;
     this._teleportActive = false;
     // Own scratch + raycaster for the candidate re-validation probe, so a
@@ -76,7 +76,8 @@ export class CommittedMotionRunner {
     this._teleportActive = false;
   }
 
-  // Door 1 — the recovery ease-back. Tween the camera back to a stored pose
+  // Door 1 (glossary: Runner entry modes) — the recovery ease-back. Tween the
+  // camera back to a stored pose
   // (position + quaternion + center), re-validating the TARGET against current
   // geometry every tick: a newly-streamed tile can render it no longer legit,
   // so hand off to `onHandoff` (pop-to-roof) exactly once. On a clean finish,
@@ -97,7 +98,7 @@ export class CommittedMotionRunner {
     // there (behaviour-preserving).
     this.cancel();
     this._recoveryActive = true;
-    // Single mid-tween hand-off latch. When the hand-off fires on the SAME frame
+    // Single mid-tween hand-off latch (KD-36). When the hand-off fires on the SAME frame
     // the tween reaches its final frame, TickAnimator's `sub` still runs its
     // trailing terminal block AFTER onTick returns — it would (a) null
     // `_currentTween`, clobbering the just-started pop tween's handle, and (b)
@@ -166,7 +167,8 @@ export class CommittedMotionRunner {
     });
   }
 
-  // Door 2 — the generic committed lerp for the five PRE-validated motions
+  // Door 2 (glossary: Runner entry modes) — the generic committed lerp for the
+  // five PRE-validated motions
   // (teleport + the four presets). The caller supplies:
   //   - ownership: 'teleport' | 'recovery' (which passive-input gate to hold)
   //   - durationMs
@@ -221,12 +223,11 @@ export class CommittedMotionRunner {
     });
   }
 
-  // The parameterized settle epilogue. Order — grounded → reseed → refresh — is
-  // observationally identical to each motion's inline onDone (the steps read the
-  // committed pose and write independent state). The letterbox re-eval that used
-  // to live here (`settle.lbMode`) is gone: the terminal `funnel.dispatch()` now
-  // resolves the letterbox at exact T for EVERY settle, so pop-to-roof and
-  // rise-to-drone — which formerly skipped it — canonicalise too. modechange
+  // The parameterized settle epilogue. Order is grounded → reseed → refresh (the
+  // steps read the committed pose and write independent state). The terminal
+  // `funnel.dispatch()` resolves the letterbox at exact T for EVERY settle
+  // (KD-05 / KD-30), so every committed motion — including pop-to-roof and
+  // rise-to-drone — canonicalises the letterbox uniformly. modechange
   // still fires before the terminal change (inside dispatch).
   _applySettle(settle) {
     if (!settle) return;
@@ -242,9 +243,7 @@ export class CommittedMotionRunner {
     if (settle.reseedLegit) ctx.sensor.reseedLegitPose();
     // Every committed-motion settle refreshes the context-button snapshot so
     // the button icon reflects the landed pose on the settle frame, not one
-    // idle tick later. (Formerly opt-in via `settle.refreshSnapshot`, which
-    // every in-runner caller set true anyway — the recovery ease-back was the
-    // only motion that skipped it, and it does so no longer; see runRecovery.)
+    // idle tick later.
     ctx.sensor.refreshContextSnapshot();
   }
 
@@ -296,8 +295,8 @@ export class CommittedMotionRunner {
     // closed building with no solid straight up. 3DStreet building glTF is
     // single-sided (FrontSide), so a normal-parity test gives a false negative —
     // instead test AABB containment against the building(s) whose column this
-    // candidate sits in. Opt-in (`checkBuried`) so existing recovery callers,
-    // which pass no opts, are byte-identical.
+    // candidate sits in (KD-16 sub-note). Opt-in (`checkBuried`) so existing
+    // recovery callers, which pass no opts, are byte-identical.
     if (
       opts.checkBuried &&
       this.pointInsideBuildingHit(p, hits, opts.extraBox, opts.boxCache)

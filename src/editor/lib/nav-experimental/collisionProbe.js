@@ -9,6 +9,25 @@ import { isSolidFloorHit, worldHitNormal } from './cursorAnchor.js';
 // the pure navMath layer, whose tests run without a THREE global.)
 const GROUND_PROBE_DIR = Object.freeze(new THREE.Vector3(0, -1, 0));
 
+// Half-span (metres) of the travel-height sampling patch: the ground beneath
+// buildings is approximated by the lowest solid hit over a 3×3 grid stepped by
+// this span around the camera column, so a single roof under the camera centre
+// doesn't fool WASD fly-speed scaling.
+const TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES = 2;
+
+/**
+ * The floor-probe boundary record returned by `probeFloorColumn` /
+ * `collisionFloorAt`. `source` is a closed set of string sentinels; `'cache'`
+ * means the probe hit nothing solid and returns the stale last-known ground
+ * (treat as void / outside a bounded scene). See the `source` sentinel table
+ * in `docs/04-glossary.md`.
+ * @typedef {Object} FloorProbe
+ * @property {number} y collision-floor height (or the cached last-known y)
+ * @property {?THREE.Vector3} normal surface normal, or null on a cache miss
+ * @property {'cache'|'segment-or-building'|'tiles'} source hit provenance
+ * @property {?Object} hit the raw THREE.Intersection, or null on a miss
+ */
+
 // Collision-floor probing for the experimental nav controls. Answers "what solid
 // surface is directly below this XZ column?" (ground OR building roof OR tiles;
 // scatter excluded) for the descent clamp, swoop, orbit clamp, WASD destination,
@@ -19,7 +38,8 @@ const GROUND_PROBE_DIR = Object.freeze(new THREE.Vector3(0, -1, 0));
 // scene edge. A miss returns that cache with source 'cache'. Only a HIT with
 // `refreshCache` set updates it — a clearance/standoff probe over a column the
 // camera never visits must pass `refreshCache:false` so it does not poison the
-// next recovery/WASD miss fallback. That asymmetry is load-bearing; preserve it.
+// next recovery/WASD miss fallback. That asymmetry is load-bearing; preserve
+// it (KD-33).
 //
 // Reads the live camera/scene through the shared controls context, and carries
 // its own scratch + raycaster so a probe never aliases another gesture's scratch.
@@ -37,7 +57,7 @@ export class CollisionProbe {
   // and uses the same y as the floor ceiling, so a teleport endpoint validated
   // under an overpass finds the lane below it, not the deck the high camera
   // would probe through. `acceptBuildings`/`acceptTiles` default true.
-  floorYBelowAt(x, z, opts = {}) {
+  probeFloorColumn(x, z, opts = {}) {
     const camera = this._ctx.camera;
     const sceneEl = this._ctx.sceneEl;
     const acceptBuildings = opts.acceptBuildings !== false;
@@ -99,7 +119,7 @@ export class CollisionProbe {
   // a clearance/standoff probe opts out of the `_lastGroundY` cache refresh via
   // `refreshCache:false`. Defaults keep every plain caller unchanged.
   collisionFloorAt(x, z, opts = {}) {
-    return this.floorYBelowAt(x, z, {
+    return this.probeFloorColumn(x, z, {
       acceptBuildings: true,
       acceptTiles: true,
       refreshCache: opts.refreshCache !== false,
@@ -108,7 +128,7 @@ export class CollisionProbe {
   }
 
   // Travel-height floor below the camera (WASD fly-speed scaling only).
-  travelHeightFloorYBelow() {
+  travelHeightFloorBelowCamera() {
     return this.travelHeightFloorAt(
       this._ctx.camera.position.x,
       this._ctx.camera.position.z
@@ -120,22 +140,25 @@ export class CollisionProbe {
   // over a ±2 m 3×3 grid (approximating the street/ground between roofs so speed
   // doesn't crawl over a single roof).
   travelHeightFloorAt(cx, cz) {
-    const seg = this.floorYBelowAt(cx, cz, {
+    const seg = this.probeFloorColumn(cx, cz, {
       acceptBuildings: false,
       acceptTiles: false,
       refreshCache: false
     });
     if (seg.source === 'segment-or-building') return seg.y;
-    const SPAN = 2;
     let minY = Infinity;
     let any = false;
     for (let ix = -1; ix <= 1; ix++) {
       for (let iz = -1; iz <= 1; iz++) {
-        const f = this.floorYBelowAt(cx + ix * SPAN, cz + iz * SPAN, {
-          acceptBuildings: true,
-          acceptTiles: true,
-          refreshCache: false
-        });
+        const f = this.probeFloorColumn(
+          cx + ix * TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES,
+          cz + iz * TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES,
+          {
+            acceptBuildings: true,
+            acceptTiles: true,
+            refreshCache: false
+          }
+        );
         if (f.source !== 'cache') {
           any = true;
           if (f.y < minY) minY = f.y;

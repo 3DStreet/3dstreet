@@ -65,17 +65,24 @@ behaviour itself is under question — see OI-9.)
 
 ## Review / confirmation gates (work required before upstream merge)
 
-### OI-4 — Code-review, consolidation, quality & possible decomposition pass before merge
+### OI-4 — Engineering-quality pass before merge — RESOLVED (decomposition + readability sweep landed)
 
-The subsystem is prototype-grade and has not had a dedicated
-engineering-quality pass. Before merging upstream it needs **code review,
-consolidation, and a quality sweep** — and **possibly decomposition**:
-`ExperimentalControls.js` is a single very large file (~4,500 lines)
-carrying the controller, the wheel/swoop state machine, the compass and
-plan-view tweens, the recovery machinery, and the context-resolver, so
-splitting it into focused modules is a candidate. This is a known,
-expected piece of work, not a discovered defect — but it is a hard gate on
-upstream readiness and should not be skipped.
+Both concerns this item originally raised have landed:
+
+- **Decomposition** — the ~4,900-line monolith was split into ~13
+  orchestrated modules (a thin orchestrator over per-gesture controllers,
+  two camera-write mechanisms, a per-tick situation sensor, and stateful
+  services); `ExperimentalControls.js` is now ~1,070 lines. See **KD-32**
+  for the decision and why an orchestrated-classes shape was chosen over an
+  ECS-native one.
+- **Readability / consolidation** — a dedicated pass reconciled the code
+  comments to the maintained `KD` / `TH` / `OI` namespace (this was the work
+  `OI-1` tracked), stripped dev-process leakage and dead code, and
+  disambiguated the confusable floor-probe method names.
+
+What remains a genuine upstream gate is the **maintainer's own review** —
+the "buildings are solid" nod (`OI-5`) and the placeholder UI affordances
+(`OI-6`/`OI-7`) — not the internal-quality work this item described.
 
 ### OI-5 — "Buildings are solid" / rooftop landing needs the maintainer's final nod
 
@@ -243,3 +250,11 @@ roof directly below, two drone presses at adjacent spots near a tower base
 can reach different altitudes (street vs roof). Accepted as a tuning
 nicety — the hysteresis governs the *icon*, not the target — not a
 correctness bug.
+
+### OI-29 — Non-catalog glTF buildings are not solid
+Solidity is catalog-gated (KD-34): only a building whose `mixin` resolves
+to a `STREET.catalog` entry with `category:'buildings'` reads as solid. A
+user-imported glTF or any non-catalog building model classifies as
+`'scatter'`, so the camera passes through it — no collision floor, no
+wall-block, no enclosure. Accepted boundary for the managed-street
+prototype (the scenes that need solidity are catalog-built), not a bug.

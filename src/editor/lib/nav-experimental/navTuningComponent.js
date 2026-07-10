@@ -1,17 +1,18 @@
 /* global AFRAME */
 
-// TASK-010 (D2, D-LT-3): a thin A-Frame component that surfaces
-// experimental-navigation tuning knobs on schema properties so Diarmid
-// can tweak them live during feel-testing — via the A-Frame inspector or
-// the console
+// A thin A-Frame component that surfaces experimental-navigation tuning
+// knobs on schema properties so Diarmid can tweak them live during
+// feel-testing — via the A-Frame inspector or the console
 // (`sceneEl.setAttribute('nav-experimental-tuning','tiltThresholdDegrees',15)`)
-// — without a rebuild. Exposed knobs: the tilt threshold T, the far-pivot
-// fallback distance (D-LT-3), the Shift+LB rotation speed, and the
-// wheel-zoom lateral movement cap (TASK-014d). The
-// navigation controls themselves are not an A-Frame component
-// (`ExperimentalControls` is `new`-ed in viewport.js), so this component
-// just relays each schema value onto the live controls instance via the
-// matching setter.
+// — without a rebuild. Exposed knobs: the tilt threshold T (TH-03, the one
+// value governing all four tilt-conditional behaviours — KD-05), the far
+// Map-pivot bounds radius (TH-05), the Shift+LB rotation speed, and the
+// wheel-zoom lateral-movement cap lower bound (TH-16). The navigation
+// controls themselves are not an A-Frame component (`ExperimentalControls`
+// is `new`-ed in viewport.js), so this component just relays each schema
+// value onto the live controls instance via the matching setter. Exposing
+// config through a component schema while the logic stays a plain object is
+// the deliberate split in KD-32.
 //
 // Registration: this module is side-effect-only (it registers the
 // component on import). A bare `export {…}` barrel does NOT pull in a
@@ -56,9 +57,9 @@ if (
         type: 'number',
         default: ROTATION_SPEED_RAD_PER_PX
       },
-      // TASK-027 Part F: the wheel lateral cap is now `max(lowerBound,
-      // 0.1×AGL)`; this knob is the lower bound (the value that governs near
-      // the ground and on the no-AGL Ctrl+wheel path).
+      // The live wheel lateral cap is `max(TH-16, TH-17 × AGL)`; this knob is
+      // the lower bound TH-16 (the value that governs near the ground and on
+      // the no-AGL Ctrl+wheel path).
       wheelZoomLateralCapLowerBoundMetres: {
         type: 'number',
         default: WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES

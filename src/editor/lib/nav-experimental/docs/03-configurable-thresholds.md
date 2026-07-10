@@ -37,7 +37,7 @@ location is named.
 
 ## Runtime-config surface (authoritative)
 
-Exactly **four** knobs are live-tunable at runtime. This list is
+Exactly **five** knobs are live-tunable at runtime. This list is
 enumerated from what is actually wired in `navTuningComponent.js` →
 the matching setter on the controls instance — **not** inferred from
 `constants.js` comments (several other constants are commented
@@ -55,10 +55,17 @@ sceneEl.setAttribute('nav-experimental-tuning', 'tiltThresholdDegrees', 30);
 | `mapPivotBoundsRadiusMetres` | `setMapPivotBoundsRadius` | `TH-05` | clamped to **1–100 000 m** |
 | `rotationSpeedRadPerPx` | `setRotationSpeed` | `TH-07` | must be **> 0** |
 | `wheelZoomLateralCapLowerBoundMetres` | `setWheelZoomLateralCap` | `TH-16` | must be **> 0** |
+| `mapPivotFarAcceptGain` | `setMapPivotFarAcceptGain` | `TH-74` | clamp **0.05–100** |
 
 Each setter ignores non-finite / out-of-range input. The component's
 schema defaults are imported from the constants, so the component and
 `constants.js` cannot drift.
+
+Two **boolean enable-gates** — `streetLevelEnabled` (`?streetview=on`) and
+`wasdEnabled` (`?wasd=on`) — are also wired on the `nav-experimental-tuning`
+component. They are **gates, not tuning knobs**: each turns a whole
+behaviour on or off rather than adjusting a numeric value, so they are not
+counted among the five runtime-live threshold knobs above.
 
 ---
 
@@ -79,6 +86,7 @@ schema defaults are imported from the constants, so the component and
 | `TH-05` | `MAP_PIVOT_BOUNDS_RADIUS_METRES` | 500 m | Map-mode rotation-pivot bounds radius, measured on the ground from the screen-centre ground point. Cursor hit inside → orbit the cursor point; outside (or sky) → orbit the screen-centre point. | **yes** | `D-LT-3`, `#6` (TASK-010) | 100–2000 m. Too small ⇒ most off-centre clicks fall back to the screen-centre pivot; too large ⇒ a far hit gives a huge lever arm (orbit degrades toward rotate-in-place). |
 | `TH-06` | `RING_SCREEN_FRACTION` | 0.035 | Rotation-centre ring indicator radius, as a fraction of viewport half-height. Sized `fraction × distance × tan(fov/2)` per frame so on-screen size is constant across distance **and** FOV. | no | `D3` (TASK-010) | 0.02–0.06 (feel). |
 | `TH-07` | `ROTATION_SPEED_RAD_PER_PX` | 0.0035 rad/px | Shift+LB rotation gain. Matches the legacy `EditorControls` feel. | **yes** | — (TASK-010 `#6`) | 0.002–0.006 (feel). |
+| `TH-74` | `MAP_PIVOT_FAR_ACCEPT_GAIN` | 2 | Gain on the acceptance radius for a far Map-orbit pivot when street mode is off (KD-02): a cursor hit beyond `TH-05` is still accepted as the orbit pivot out to `TH-05 × this gain` before falling back to the screen-centre ground point, so an off-centre far click still orbits its target rather than snapping to centre. The genuine **5th runtime-live knob** — setter `setMapPivotFarAcceptGain`, wired in `navTuningComponent`. | **yes** | — | 1–5 (feel). Too low ⇒ far clicks fall back to screen-centre readily; too high ⇒ a very distant hit gives a huge lever arm (orbit degrades toward rotate-in-place). |
 
 ## Wheel input plumbing (continuous step model)
 
@@ -118,6 +126,7 @@ These are measured **above ground (AGL)** = `camera.y − groundY`, where
 | `TH-25` | `SWOOP_PHASE2_MAX_TICKS_PER_FRAME` | 3 | Phase-2 per-frame drain cap (vs 10 elsewhere). Latched at frame start so a boundary-crossing frame can't unlock the higher cap. Makes a trackpad burst read as a deliberate ~350 ms transition. | no | `H4` | 2–5. |
 | `TH-26` | `SWOOP_PHASE2_FLOOR_SNAP_METRES` | 1.0 m | Phase-2 floor snap (zoom-in) and zoom-out kick-start distance. Eliminates the asymptotic stall near the floor. | no | `H6` | 0.5–1.5. |
 | `TH-27` | `SWOOP_PHASE3_FOV_FLOOR_DEGREES` | 15° | Phase-3 FOV floor: further zoom-in ticks at the floor are no-ops. | no | — | 10–20 (telephoto limit). |
+| `TH-76` | `SWOOP_PHASE3_STICKY_TOLERANCE_METRES` | 0.01 m | Sticky-street-level tolerance (1 cm) on the Phase-2→3 entry test: once at/within this of the floor, the swoop stays latched in Phase 3 rather than re-entering Phase 2 on tiny AGL jitter, so a camera resting exactly at street level can't chatter across the boundary. | no | — | 0.005–0.02. Too small ⇒ floor jitter re-triggers Phase 2; too large ⇒ Phase 3 latches while still perceptibly above the floor. |
 
 ## Swoop — FOV "sense of arrival" & overview
 
@@ -164,7 +173,9 @@ These are measured **above ground (AGL)** = `camera.y − groundY`, where
 | `TH-51` | `POP_TO_ROOF_DURATION_MS` | 400 ms | Pop-to-roof / pop-to-daylight tween duration. | no | TASK-024 | 300–600 (feel). |
 | `TH-52` | `DISCOVERABILITY_CUE_SHOW_METRES` | 8 m | Show the recovery/discoverability cue above this height over the collision floor. (This is the *flash* trigger, the button being the persistent affordance.) | no | `D7` (TASK-024) | 5–12; must exceed `TH-53`. |
 | `TH-53` | `DISCOVERABILITY_CUE_HIDE_METRES` | 6 m | Hide the cue below this height (2 m dead-band vs `TH-52` to stop strobing). | no | TASK-024 | < `TH-52`. |
-| `TH-72` | `ENCLOSURE_FALLBACK_INTERVAL_MS` | 250 ms | **Lives in `ExperimentalControls.js`, not `constants.js`.** Idle-gated enclosure re-probe cadence: while stationary with no scene-dirty signal, re-evaluate at most this often so a streaming source we didn't wire (e.g. Google 3D Tiles) is still picked up. ~4 raycasts/sec idle worst-case. | no | `CR-D5` | 200–500. |
+| `TH-75` | `CUE_FLASH_MS` | 3000 ms | Recovery-cue flash window (KD-35): once shown, the cue kind auto-clears after this long *even while the stranding condition still holds*, so it flashes once per stranding episode instead of nagging. **Lives in `useRecoveryCue.js`, not `constants.js`.** Sibling of `TH-52`/`TH-53`. | no | — | 2000–5000. Too short ⇒ the flash is missed; too long ⇒ it reads as sticky/naggy. |
+| `TH-77` | `TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES` | 2 m | Half-span of the travel-height sampling patch (KD-16): the ground-beneath-buildings estimate for WASD fly-speed scaling casts multiple downward rays across a `2 × half-span` square below the camera and takes the lowest hit, so a single roof under the camera centre doesn't fool the speed scaling. **Lives in `collisionProbe.js`.** | no | — | 1–4. Too small ⇒ a centred roof still skews the estimate; too large ⇒ the patch samples unrelated distant ground. |
+| `TH-72` | `ENCLOSURE_FALLBACK_INTERVAL_MS` | 250 ms | **Lives in `situationSensor.js`, not `constants.js`** (moved there with the per-tick sensor during the decomposition — KD-32). Idle-gated enclosure re-probe cadence: while stationary with no scene-dirty signal, re-evaluate at most this often so a streaming source we didn't wire (e.g. Google 3D Tiles) is still picked up. ~4 raycasts/sec idle worst-case. | no | `CR-D5` | 200–500. |
 
 ## Plan View
 

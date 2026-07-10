@@ -1,5 +1,5 @@
 // Barrel for the experimental nav-controls system.
-// See claude/specs/001-phase-0-plan.md, 001-phase-1-plan.md.
+// See docs/01-overview.md.
 
 export { isExperimentalNav, isStreetLevelNav, isWasdNav } from './flag.js';
 export { ExperimentalControls } from './ExperimentalControls.js';

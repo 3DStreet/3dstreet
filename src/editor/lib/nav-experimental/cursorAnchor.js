@@ -1,8 +1,7 @@
 /* global THREE, STREET */
 
 // Resolves a cursor position (clientX/clientY) to a world-space anchor
-// point used by Phase 1 wheel zoom and LB-pan gestures. See
-// claude/specs/001-phase-1-plan.md.
+// point used by the wheel-zoom and LB-pan gestures.
 //
 // Fallback chain:
 //   1. Raycast against scene meshes (excluding gizmos / helpers / animated
@@ -16,16 +15,31 @@
 // `source` on the returned object is one of 'mesh', 'ground', 'fallback'
 // for debugging.
 //
-// **Wheel-zoom consumer note (TASK-014d):** the Phase-1 wheel-zoom path
+// **Wheel-zoom consumer note (KD-08 / TH-22):** the wheel-zoom path
 // passes `{ maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES }` (1000 km)
 // so legitimate high-altitude ground (e.g. a straight-down hit thousands of
 // m below) is kept rather than thrown to Step 3 — the cap on the *movement*
 // (cappedDollyStep) tames the shallow-tilt lurch, not a reach reject. All
-// other callers (LB-pan, the orbit-pivot at ExperimentalControls.js:2889)
-// pass nothing → the 2000 m default reject is unchanged, and the
-// orbit-pivot still relies on far ground returning Step 3 'fallback'.
+// other callers (LB-pan, the Map-orbit pivot caller) pass nothing → the
+// 2000 m default reject is unchanged, and the orbit pivot still relies on
+// far ground returning Step 3 'fallback'.
 
 import { MAX_GROUND_DIST, FALLBACK_FORWARD_DIST } from './constants.js';
+
+/**
+ * The world-anchor boundary record returned by `worldPointAt`. Flat x/y/z with
+ * a `source` sentinel; `normal`/`distance`/`raw` are additive siblings present
+ * only on the mesh/ground branches (existing x/y/z/source callers are
+ * unaffected). See the `source` sentinel table in `docs/04-glossary.md`.
+ * @typedef {Object} WorldPoint
+ * @property {number} x
+ * @property {number} y
+ * @property {number} z
+ * @property {'mesh'|'ground'|'fallback'} source resolution provenance
+ * @property {THREE.Vector3} [normal] world-space face normal (mesh/ground only)
+ * @property {number} [distance] camera→point distance (mesh/ground only)
+ * @property {Object} [raw] the raw THREE.Intersection (mesh branch only)
+ */
 
 // Reused normal-matrix scratch for worldHitNormal (a per-tick / per-swoop-frame
 // hot path). The matrix is a pure-local temp fully consumed within one
@@ -46,7 +60,7 @@ const EXCLUDE_NAME_SUBSTRINGS = [
   'selectionBox',
   'hoverBox',
   'gridHelper',
-  // TASK-010 (D3): the rotation-centre ring billboard. depthTest is off
+  // The rotation-centre ring billboard (KD-30 / KD-03). depthTest is off
   // so it would otherwise be a tempting raycast hit; never let it become
   // a pivot/anchor target.
   'navRotationIndicator'
@@ -99,23 +113,22 @@ function _isExcludedObject(obj) {
   return false;
 }
 
-// Solid-floor filter (TASK-013 → TASK-024). Classifies a raycast hit as a
+// Solid-floor filter (KD-16). Classifies a raycast hit as a
 // *solid floor surface* the camera lands on / stops against / is enclosed
 // by — i.e. a street-segment ground surface, a (catalog-known) building
 // mass, or the Google 3D Tiles surface. Thin scatter (signs, plants,
 // people, vehicles, fences) is excluded. `hit` is a THREE.Intersection-
 // like object: { object, point, distance, face? }.
 //
-// Renamed from `isGroundSegmentHit` (TASK-024): once buildings count as
-// floor the old name is a misnomer. The collision floor uses the wide
-// predicate; the travel-height floor passes `{ acceptBuildings: false }`
-// to fall back to the TASK-013 segment-only behaviour.
+// The collision floor uses this wide predicate (buildings count as floor);
+// the travel-height floor passes `{ acceptBuildings: false }` for
+// segment-only behaviour.
 //
-// Coverage boundary (D9): the building branch matches only catalog-known
-// building mixins (`category === 'buildings'`). A user-imported glTF or
-// any non-catalog building model carries no catalog category, so it reads
-// as scatter and the camera can sink through it. Accepted boundary for the
-// managed-street prototype.
+// Coverage boundary (KD-34 / OI-29): the building branch matches only
+// catalog-known building mixins (`category === 'buildings'`). A
+// user-imported glTF or any non-catalog building model carries no catalog
+// category, so it reads as scatter and the camera can sink through it.
+// Accepted boundary for the managed-street prototype.
 //
 // It deliberately does NOT call `_isExcludedObject`: editor chrome carries
 // no `.el`, so the owning-entity resolution returns null and rejects them
@@ -126,8 +139,8 @@ export function isSolidFloorHit(hit, opts) {
   const acceptBuildings = !opts || opts.acceptBuildings !== false;
   const acceptTiles = !opts || opts.acceptTiles !== false;
 
-  // Classify by owning-entity identity (shared with the Phase-4 teleport
-  // classifier — TASK-012), then apply the accept flags + visibility gate.
+  // Classify by owning-entity identity (shared with the double-click
+  // teleport classifier — KD-23), then apply the accept flags + visibility gate.
   const kind = classifyHitEntity(hit);
   if (kind === 'segment') return _hitSurfaceVisible(hit.object);
   if (kind === 'building') {
@@ -152,13 +165,12 @@ export function owningEntity(object3D) {
   return null;
 }
 
-// TASK-012: classify a raycast hit by owning-entity identity into one of the
-// double-click navigation source types: 'segment' | 'tiles' | 'building' |
-// 'scatter' | null. Extracted from `isSolidFloorHit` (the segment / catalog-
-// category / tiles resolution it already did inline) so both the floor /
-// collision probes AND the Phase-4 teleport classifier read the SAME
-// owning-entity walk (no duplicated logic, no divergence). Returns null when
-// the hit has no owning A-Frame entity (editor chrome).
+// Classify a raycast hit by owning-entity identity into one of the
+// double-click navigation source types (KD-23): 'segment' | 'tiles' |
+// 'building' | 'scatter' | null. Both the floor / collision probes AND the
+// double-click teleport classifier read this SAME owning-entity walk (one
+// resolution of segment / catalog-category / tiles, no divergence). Returns
+// null when the hit has no owning A-Frame entity (editor chrome).
 //
 // `hit` is a THREE.Intersection-like object: { object, point, ... }.
 export function classifyHitEntity(hit) {
@@ -181,7 +193,7 @@ export function classifyHitEntity(hit) {
     if (entry && entry.category === 'buildings') return 'building';
   }
 
-  // (d) Tiles (TASK-019): climb ancestors PAST the first `.el` (the tiles
+  // (d) Tiles: climb ancestors PAST the first `.el` (the tiles
   //     `offsetEl`, carrying neither id nor layer-name) for `#google3d` /
   //     data-layer-name 'Google 3D Tiles'. Walk from `hit.object`: every node
   //     below the owning entity carries no `.el`, so it reaches the same chain.
@@ -191,7 +203,7 @@ export function classifyHitEntity(hit) {
   return 'scatter';
 }
 
-// Shared visibility gate (TASK-013 D3): skip invisible (surface: none)
+// Shared visibility gate: skip invisible (surface: none)
 // surfaces. The mesh sets material.visible=false; three.js still raycasts
 // it. Check the hit mesh's own material visibility (handle material-array),
 // falling back to object.visible if no material.
@@ -209,7 +221,7 @@ function _hitSurfaceVisible(obj) {
 
 // Walk the object3D ancestor chain (starting from `node`, which is the
 // first `.el`-bearing node found above the hit) looking for the Google 3D
-// Tiles root entity. TASK-019 verified the trap: the hit's first `.el` is
+// Tiles root entity. The trap: the hit's first `.el` is
 // the tiles `offsetEl`, which carries no id / layer-name; the marked
 // entity is `#google3d` (id + data-layer-name='Google 3D Tiles'), an
 // ancestor of offsetEl. So we must climb past the first `.el`.
@@ -229,7 +241,7 @@ function _isGoogleTilesDescendant(node) {
 }
 
 // Transform a raycast hit's face normal into world space, accounting for
-// non-uniform scale (D4). Returns a normalized THREE.Vector3, or a +Y
+// non-uniform scale (KD-20). Returns a normalized THREE.Vector3, or a +Y
 // fallback when no face / normal is available (e.g. tiles hits without a
 // `face`). Shared by the WASD classifier and future tilt-to-slope landing.
 export function worldHitNormal(hit) {
@@ -247,7 +259,12 @@ export function worldHitNormal(hit) {
     .clone()
     .applyMatrix3(_worldHitNormalMat3)
     .normalize();
-  if (!isFinite(n.x) || !isFinite(n.y) || !isFinite(n.z) || n.lengthSq() === 0) {
+  if (
+    !isFinite(n.x) ||
+    !isFinite(n.y) ||
+    !isFinite(n.z) ||
+    n.lengthSq() === 0
+  ) {
     return new THREE.Vector3(0, 1, 0);
   }
   return n;
@@ -275,14 +292,14 @@ export class CursorAnchor {
 
   // Returns { x, y, z, source }. Always non-null.
   //
-  // opts.maxGroundDist (TASK-014d): per-caller reach ceiling for the Step-2
+  // opts.maxGroundDist: per-caller reach ceiling for the Step-2
   // ground hit, in metres. Defaults to MAX_GROUND_DIST (2000) — LB-pan and
-  // the orbit-pivot caller are unchanged. The wheel-zoom path raises it (to
+  // the Map-orbit pivot caller are unchanged. The wheel-zoom path raises it (to
   // WHEEL_GROUND_REACH_CEILING_METRES) so a legitimate far/straight-down
   // ground hit is kept; a degenerate Float.MAX grazing-ray hit still
   // exceeds even the raised ceiling and falls to Step 3 'fallback'.
-  // TASK-027: NDC for a client pixel. Factored out of worldPointAt so the
-  // Part-B re-aim path can resolve the cursor pixel without a full raycast
+  // NDC for a client pixel. Factored out of worldPointAt so the
+  // re-aim path can resolve the cursor pixel without a full raycast
   // (one source of truth for the rect math). Fills the optional `target`
   // Vector2 and returns it (three.js out-param idiom); defaults to a fresh
   // allocation so bare callers keep getting a fresh Vector2.
@@ -304,9 +321,10 @@ export class CursorAnchor {
     this._ndc.set(x, y);
     this._raycaster.setFromCamera(this._ndc, camera);
 
-    // Step 1: scene mesh raycast. TASK-027: `_raycastScene` now returns the
-    // full THREE.Intersection (was `hit.point`), so Part C can read the face
-    // normal and Part B can classify the surface. The returned object stays
+    // Step 1: scene mesh raycast. `_raycastScene` returns the
+    // full THREE.Intersection, so the swoop break-out classifier (KD-14) can
+    // read the face normal, and the surface `source` provenance is available
+    // for the re-aim and other consumers. The returned object stays
     // FLAT { x, y, z, source, ... } — `normal`/`distance`/`raw` are additive
     // siblings; existing callers (LB-pan, orbit-pivot, the dolly) read only
     // x/y/z/source and are unaffected.
@@ -319,7 +337,7 @@ export class CursorAnchor {
         source: 'mesh',
         normal: worldHitNormal(meshHit), // world-space face normal, +Y fallback
         distance: meshHit.distance,
-        raw: meshHit // THREE.Intersection — for isSolidFloorHit (Part C)
+        raw: meshHit // THREE.Intersection — for isSolidFloorHit (swoop break-out, KD-14)
       };
     }
 
@@ -365,10 +383,10 @@ export class CursorAnchor {
     };
   }
 
-  // TASK-027: returns the full THREE.Intersection of the nearest non-excluded
-  // scene mesh hit (was `hit.point`), or null. The extra fields (face, object,
-  // distance) feed worldHitNormal + isSolidFloorHit for the Part-C swoop
-  // break-out classifier.
+  // Returns the full THREE.Intersection of the nearest non-excluded
+  // scene mesh hit, or null. The extra fields (face, object,
+  // distance) feed worldHitNormal + isSolidFloorHit for the swoop
+  // break-out classifier (KD-14).
   _raycastScene() {
     if (!this._sceneEl || !this._sceneEl.object3D) return null;
     const intersects = this._raycaster.intersectObject(
