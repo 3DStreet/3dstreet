@@ -265,13 +265,15 @@ export function wasdFollowY(camY, floorNowY, floorDestY, eyeMargin) {
 // camera y.
 //   grounded (or H == null) -> collision-follow (`wasdFollowY`): walking hugs
 //     the surface directly, NOT rate-limited (terrain follow is immediate).
-//   not-grounded            -> "option 3": ease toward the absolute cruise
-//     target `max(H, collisionFloorDest + eye)`, rate-limited per tick.
+//   not-grounded            -> the flying cruise-height rule (KD-19): ease
+//     toward the absolute cruise target `max(H, collisionFloorDest + eye)`,
+//     rate-limited per tick.
 //
-// The 3-way toggle and options 1 & 2 are RETIRED (live A/B: they jumped the
-// camera by the full building height when crossing onto a footprint). Option 3
-// is the sole flying behaviour: the forward ray blocks approach to any building
-// taller than flight height, so the clamp only ever lifts ≤ eye-margin.
+// (Two earlier candidate rules were retired in live A/B — they jumped the
+// camera by the full building height when crossing onto a footprint.) The
+// flying rule above is the sole flying behaviour: the forward ray blocks
+// approach to any building taller than flight height, so the clamp only ever
+// lifts ≤ eye-margin.
 //
 // The vertical move is ANIMATED in BOTH directions (rate TH-41). Rather than snap
 // `newY = target`, we step toward it by at most `maxStep = rate * dtSeconds`
@@ -315,7 +317,7 @@ export function wasdVerticalY({
     const delta = THREE.MathUtils.clamp(H - camY, -maxStep, maxStep);
     return camY + delta;
   }
-  // Not grounded: ease toward the option-3 absolute target, rate-limited.
+  // Not grounded: ease toward the flying cruise-height target (KD-19), rate-limited.
   const target = Math.max(H, collisionFloorDestY + eyeMargin);
   const maxStep = rateMps * dtSeconds;
   const delta = THREE.MathUtils.clamp(target - camY, -maxStep, maxStep);
@@ -327,8 +329,8 @@ export function wasdVerticalY({
 // Pure initial-grounded predicate from a load/teleport pose (KD-19).
 // Grounded iff the collision-floor probe HIT (not a cache miss) AND the
 // camera sits within eye-margin (inclusive) of that floor. A cache-miss
-// (scene graph not yet populated) reads not-grounded — a safe high/option-3
-// reading that self-heals on the first deliberate descent.
+// (scene graph not yet populated) reads not-grounded — a safe high, flying
+// reading (KD-19) that self-heals on the first deliberate descent.
 export function groundedAtLoad({ camY, floorY, source, eyeMargin }) {
   if (source === 'cache') return false;
   return camY - floorY <= eyeMargin + 1e-6;

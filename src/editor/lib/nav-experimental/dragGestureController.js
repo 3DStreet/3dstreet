@@ -39,11 +39,13 @@ const _WORLD_UP = Object.freeze(new THREE.Vector3(0, 1, 0));
 export class DragGestureController {
   constructor(ctx) {
     this._ctx = ctx;
-    // The rotation ring (Map-orbit pivot indicator) — DRG-private.
+    // The rotation ring (Map-orbit pivot indicator) — private to this controller.
     this._indicator = new RotationIndicator(ctx.sceneEl);
-    // Last emitted LB sub-mode (letterbox comparator state); lazily seeded.
+    // Last emitted LB sub-mode — the pan sub-mode that also drives the letterbox
+    // comparator (glossary: "LB"). Lazily seeded.
     this._currentLbMode = null;
-    // Which mouse button latched the current gesture (0 = LB, 2 = RMB); the
+    // Which mouse button latched the current gesture (0 = LB left button,
+    // 2 = RMB right button); the
     // mid-drag Shift mode-switch applies to LB drags only.
     this._gestureButton = null;
     // Last cursor coords, kept fresh so a mid-drag Shift toggle can re-latch the

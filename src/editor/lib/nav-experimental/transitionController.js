@@ -210,8 +210,6 @@ export class TransitionController {
     // targeting the ground"); otherwise drop straight down to settle back where
     // you were. This makes the drone→street toggle (steep, ~60°) swoop to your
     // start, while a small pedestal-up-looking-forward just drops vertically.
-    // (Supersedes the crude absolute distance cap — the lurch happens within it
-    // at low elevation, and it wrongly blocked legit far swoops when high+steep.)
     const lookingDownEnough = cameraTiltDegrees(cam) > this._ctx.tiltThreshold;
     if (P && lookingDownEnough) {
       // Look-at swoop: end at street eye-height above the look-at point P.

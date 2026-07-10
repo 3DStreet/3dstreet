@@ -643,12 +643,9 @@ export class WheelSwoopEngine {
   // Phase 2 — pedestal + tilt-toward-horizontal. No cursor anchoring.
   // Yaw and (x,z) preserved across the tick; only y and tilt change.
   //
-  // Boundary handling at zoom-out is *active*, not deferred to next
-  // tick. The naive "clamp at boundary, let next tick re-dispatch"
-  // model deadlocks because `decideSwoopPhase(yCeil)` returns 'phase2'
-  // (the table is inclusive on the Phase 2 side at y = yCeil) and the
-  // next tick fires the boundary again. The active hand-off applies
-  // this tick's energy in the destination phase.
+  // Boundary handling at zoom-out is *active* — this tick's energy is applied
+  // in the destination phase, rather than clamping at the boundary and letting
+  // the next tick re-dispatch (which deadlocks — see KD-37).
   //
   // Runs entirely in AGL space (yAgl = camera.y − groundY), reading the
   // per-pass ground snapshot `this._frameGroundY`, and writes the result
@@ -1000,6 +997,7 @@ export class WheelSwoopEngine {
       // reaches this: the per-tick step is ≤ a few °, and the largest
       // single-step hand-off is a ≤90° arc. The guard is mandatory to cover
       // the degenerate-axis case regardless.)
+      // reuses _tmpV3b — the yaw stand-in above is fully consumed by this point.
       const axis = this._tmpV3b.set(1, 0, 0).applyQuaternion(camera.quaternion); // camera-right in world
       R.setFromAxisAngle(axis, Math.PI);
     } else {

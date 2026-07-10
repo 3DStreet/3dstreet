@@ -248,6 +248,14 @@ view), sharing one resolver with the Space key. **Icon = destination**
 one mouse detent ≈ 1.0 tick, a trackpad delta ≈ a fraction, so behaviour
 is consistent across devices. Accumulated as a float (KD-09).
 
+**LB.** The **left mouse button** (RMB = right button). The *LB sub-mode*
+(`pan-screen` / truck / pedestal) is the pan gesture LB drives, selected by
+tilt vs `T` when street-level is on; that **same** sub-mode value also selects
+the letterbox indicator state (see **Letterbox / mode indicator**) — which is
+why one token spans both. In code, "LB" alone means the button; the `LbMode`
+identifiers (`getCurrentLbMode`, `_currentLbMode`, `navMath.decideLbMode`) mean
+the sub-mode.
+
 **Live Shift.** Shift read continuously *during* an LB drag (not latched
 at mouse-down), so truck↔rotate can switch mid-drag (KD-06).
 
@@ -261,6 +269,14 @@ raycast, and a streaming source we didn't wire (e.g. Google 3D Tiles) is
 still picked up on the `TH-72` fallback cadence. Distinct from the
 context-resolver busy predicate (which additionally counts
 recovery/inactive).
+
+**Camera-write funnel.** The single commit point every camera mutation passes
+through (`_ctx.funnel`). `commitMove(...)` applies a validated camera write and
+notifies subscribers — e.g. the letterbox comparator re-resolves on each write
+(KD-30 / `TH-73`); `dispatch(...)` emits a mode / forward-hook payload; and
+`invalidateWheelMemory()` clears the transient zoom-undo memory (KD-11) when a
+non-wheel move interrupts a swoop. Centralising writes here is what keeps the
+letterbox indicator in sync without scattered emit calls.
 
 **Committed motion.** A tween (double-click teleport, drone rise, swoop
 recovery) whose **endpoint** is collision-validated but whose **path** is

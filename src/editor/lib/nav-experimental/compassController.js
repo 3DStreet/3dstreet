@@ -6,7 +6,8 @@ import {
   COMPASS_TOPDOWN_TOLERANCE_DEGREES,
   COMPASS_NORTH_TOLERANCE_DEGREES,
   COMPASS_ROTATE_STEP_DEGREES,
-  PLAN_VIEW_DURATION_MS
+  PLAN_VIEW_DURATION_MS,
+  COMPASS_UNBOUNDED_PLAN_VIEW_HEIGHT_METRES
 } from './constants.js';
 import { cameraTiltDegrees, viewRayGroundPoint } from './navMath.js';
 
@@ -138,7 +139,7 @@ export class CompassController {
     } else {
       endX = camera.position.x;
       endZ = camera.position.z;
-      endY = Math.max(camera.position.y, 200);
+      endY = Math.max(camera.position.y, COMPASS_UNBOUNDED_PLAN_VIEW_HEIGHT_METRES);
     }
     // Don't drop below the current altitude — Plan View should zoom out,
     // never zoom in.
