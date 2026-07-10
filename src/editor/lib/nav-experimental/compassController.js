@@ -95,7 +95,7 @@ export class CompassController {
     this._compassPending = null;
   }
 
-  // Phase 1 entry point used by viewport.js when the user triggers Plan
+  // Plan-view entry point used by viewport.js when the user triggers Plan
   // View (App menu / toolbar / keyboard) in flag-on mode. The camera was
   // briefly swapped to ortho by cameras.js; viewport.js reverts it back to
   // the perspective camera before calling this.
@@ -181,9 +181,9 @@ export class CompassController {
     this._ctx.runner.cancel();
 
     this._planViewActive = true;
-    // 'plan-view' is a forward-hook payload — no Phase 2 consumer reads
-    // it (`useNavMode` filters to pan-truck/pan-pedestal only). Phase 3
-    // / future indicator work may key off it; left dispatched so the
+    // 'plan-view' is a forward-hook payload — no current consumer reads
+    // it (`useNavMode` filters to pan-truck/pan-pedestal only). Future
+    // indicator work may key off it; left dispatched so the
     // tween bracket is symmetric with the closing `null` emission.
     this._ctx.emitModeChange('plan-view');
     this._planViewHandle = this._ctx.tick.animate({
