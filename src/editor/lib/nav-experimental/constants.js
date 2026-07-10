@@ -35,7 +35,7 @@ export const TILT_THRESHOLD_DEFAULT_DEGREES = 25;
 // runner tweens: live drags, the wheel swoop, and every settle resolve at exact
 // T (no dead-band), because the regime CONTROL is always exact-T and the
 // indicator must not desync from it outside a tween. Build-time constant (NOT
-// runtime-tunable — the runtime surface is fixed at four knobs). Too small ⇒ a
+// runtime-tunable — the runtime surface is fixed at five knobs). Too small ⇒ a
 // boundary-run tween still flickers; too large ⇒ a genuine near-T crossing is
 // delayed within the band. Working range 1–4°.
 export const LB_TWEEN_HYSTERESIS_DEGREES = 2;

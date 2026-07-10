@@ -31,7 +31,7 @@ here cover the *specification*, not the file-by-file structure.
    **single source of truth for every numeric value**, each verified
    against `constants.js`, with what it controls, whether it is
    runtime-configurable, and its working range. Thresholds are identified
-   `TH-NN`. The four runtime-live knobs are enumerated up front.
+   `TH-NN`. The five runtime-live knobs are enumerated up front.
 4. **[Glossary](04-glossary.md)** — precise meanings of the terms of art,
    with disambiguation of the ones that have actually caused confusion
    (tilt-from-horizontal, AGL vs `camera.y`, collision floor vs travel
