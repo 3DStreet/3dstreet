@@ -283,17 +283,27 @@ object" you frame — but it is never *floor*.)
 
 **Floor `source` / hit `kind` sentinels.** The boundary-record string
 enums the probes and classifiers pass around (complemented by exported
-named consts in the code). Compared read-only in ≥10 sites across 6 files;
-one authored source per enum.
+named consts in the code). Compared read-only in ≥10 sites across 6 files.
+**Two *distinct* `source` enums share the word — they are NOT
+interchangeable**, each authored in one module:
 
-*Floor-probe `source`* (provenance of a floor query's result):
+*Floor-query `source`* (`FloorProbe.source`, authored in `collisionProbe.js`
+— provenance of a floor query's result; a `collisionFloorAt()` result is
+only ever one of these three):
 
 | `source` | Meaning |
 |---|---|
 | `'cache'` | The probe hit nothing solid; returns the stale last-known ground (`_lastGroundY`, KD-33) — treat as void / outside a bounded scene. |
 | `'segment-or-building'` | Hit a managed-street segment or a catalog building (a solid surface). |
 | `'tiles'` | Hit Google 3D Tiles / photogrammetry geometry. |
-| `'mesh'` | Hit some other scene mesh. |
+
+*Cursor-anchor / world-point `source`* (`WorldPoint.source`, authored in
+`cursorAnchor.js` — how `worldPointAt` resolved a screen point to a world
+position; **not** a floor query, and never returned by `collisionFloorAt`):
+
+| `source` | Meaning |
+|---|---|
+| `'mesh'` | Hit some scene mesh. |
 | `'ground'` | Fell back to the flat ground plane (y = 0). |
 | `'fallback'` | Fell back to a synthetic level-forward anchor (no real hit). |
 
