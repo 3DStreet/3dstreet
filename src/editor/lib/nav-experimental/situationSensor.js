@@ -13,11 +13,12 @@ import { isLegitPose, cueState, elevationState } from './navMath.js';
 // constants.js, which must stay THREE-free for the pure navMath test layer.)
 const GROUND_PROBE_DIR = Object.freeze(new THREE.Vector3(0, -1, 0));
 
-// Bounded-fallback cadence (ms) for the idle-gated enclosure probe: while the
-// camera is stationary and no scene-geometry-dirty signal fired, re-evaluate at
-// most once per this interval so a streaming geometry source we didn't wire
-// (e.g. Google 3D Tiles, whose load event lives on the internal TilesRenderer)
-// is still picked up within a quarter-second. Caps idle cost at ~4 raycasts/sec.
+// Bounded-fallback cadence (ms) for the idle-gated enclosure probe (TH-72; see
+// the situation-sensor / idle-gate glossary entry): while the camera is
+// stationary and no scene-geometry-dirty signal fired, re-evaluate at most once
+// per this interval so a streaming geometry source we didn't wire (e.g. Google
+// 3D Tiles, whose load event lives on the internal TilesRenderer) is still
+// picked up within a quarter-second. Caps idle cost at ~4 raycasts/sec.
 const ENCLOSURE_FALLBACK_INTERVAL_MS = 250;
 
 // Per-tick situation sensor. From ONE downward enclosure/overhead ray it derives

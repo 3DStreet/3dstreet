@@ -245,16 +245,17 @@ export class WheelSwoopEngine {
               fov: this._ctx.camera.fov
             });
           }
-          this._applyPhase2WheelTick(sign); // whole-tick internals unchanged
+          this._applyPhase2WheelTick(sign);
           this._wheelAccum -= sign; // consume one whole tick
           swoopTicksLeft -= 1;
           this._breakoutDollyDepth = 0; // a swoop tick commits the excursion
           changed = true;
         }
       } else {
-        // high / lowtilt / fov: leaving the swoop band — reset the Part-C
-        // excursion + regime tracker so a stale value can't spuriously clear a
-        // fresh descent's memory. Apply the ENTIRE remaining accumulator as one
+        // high / lowtilt / fov: leaving the swoop band — reset the break-out
+        // dolly excursion + regime tracker (KD-14) so a stale value can't
+        // spuriously clear a fresh descent's memory. Apply the ENTIRE remaining
+        // accumulator as one
         // continuous step (a zoom-in crossing phase1→phase2 stops at the
         // boundary; the remainder re-dispatches to the swoop). Returns the
         // ticks actually consumed.
@@ -289,13 +290,11 @@ export class WheelSwoopEngine {
   }
 
   // Decide which regime the wheel is in RIGHT NOW (read each loop iteration
-  // off the current, post-step camera pose). Extracted from the old
-  // `_applyWheelTick` dispatch. Elevation-first: the swoop runs regardless of
-  // tilt. The tilt-conditional anchor split was collapsed — 'high' and
-  // 'lowtilt' both dolly toward the cursor now (the lurch is bounded by the
-  // lateral cap in the dolly step, not by switching anchor source), so the
-  // two are treated identically by the drain; the labels are retained only to
-  // mark the Ctrl / no-ground / low-tilt cases.
+  // off the current, post-step camera pose). Elevation-first: the swoop runs
+  // regardless of tilt. 'high' and 'lowtilt' both dolly toward the cursor (the
+  // lurch is bounded by the lateral cap in the dolly step, not by switching
+  // anchor source), so the two are treated identically by the drain; the labels
+  // are retained only to mark the Ctrl / no-ground / low-tilt cases.
   //   'swoop'   — Phase 2 pedestal+tilt band (whole-tick, rate-capped)
   //   'fov'     — Phase 3 street-level FOV-only
   //   'lowtilt' — Ctrl+wheel, no-ground, or live tilt ≤ threshold dolly
@@ -447,9 +446,9 @@ export class WheelSwoopEngine {
       return t;
     }
 
-    // Dolly. The tilt-conditional anchor split was collapsed: cursor-
-    // anchor at EVERY tilt (the lurch is bounded by the lateral cap in
-    // `_dollyAlongRay`, not by switching anchor source). Anchor dispatch on the
+    // Dolly. Cursor-anchored at EVERY tilt (the lurch is bounded by the
+    // lateral cap in `_dollyAlongRay`, not by switching anchor source). Anchor
+    // dispatch on the
     // hit *source*: mesh/ground → a real target; fallback (open sky) → a
     // LEVEL-forward anchor so zoom-in advances forward at constant height
     // rather than drifting up into empty sky; near-vertical-at-sky → no move.
@@ -493,7 +492,7 @@ export class WheelSwoopEngine {
         // Degenerate denominator (near-horizontal anchor ≈ camera height)
         // — the analytic solve divides by ~0. Fall back to the proven
         // per-tick path: apply the full step, then post-step y-clamp exactly
-        // as the old _applyPhase1WheelTick did, and consume the whole `t`.
+        // as `_applyPhase1WheelTick` does, and consume the whole `t`.
         if (Math.abs(denom) <= WHEEL_ANCHOR_DENOM_EPS_METRES) {
           this._dollyAlongRay(fullFactor, hit);
           if (camera.position.y - groundY < yEntry) {
@@ -517,7 +516,7 @@ export class WheelSwoopEngine {
           const alpha = ZOOM_PER_WHEEL_TICK;
           const tStar = -Math.log(factorStar) / Math.log(1 - alpha);
           this._dollyAlongRay(factorStar, hit);
-          camera.position.y = targetY; // exact y-clamp (matches old behaviour)
+          camera.position.y = targetY; // exact y-clamp at the entry boundary
           this._zoomUndo = nextZoomUndo(this._zoomUndo, {
             type: 'wheel-in-crossing',
             tilt: cameraTiltDegrees(camera),
@@ -552,7 +551,7 @@ export class WheelSwoopEngine {
   // translation capped (via cappedDollyStep). The cap scales the
   // whole step vector uniformly, so the move stays on the camera→hit ray
   // (target stays under the cursor) and reversibility about a fixed target is
-  // exact. `factor` is the continuous generalisation of the old per-tick step
+  // exact. `factor` is the continuous form of the whole-tick step
   // (dollyFactorForTicks(t)·dollyFactorForTicks(−t) === 1). A non-finite step
   // (degenerate grazing ray) is dropped — a no-op rather than NaN-ing the
   // camera. The cap scales with height — max(lowerBound,
@@ -654,7 +653,7 @@ export class WheelSwoopEngine {
   // Runs entirely in AGL space (yAgl = camera.y − groundY), reading the
   // per-pass ground snapshot `this._frameGroundY`, and writes the result
   // back as absolute camera.y = groundY + yAglNext. On a flat
-  // scene at y=0 this is behaviour-identical to the old absolute math
+  // scene at y=0 this is behaviour-identical to plain absolute-Y math
   // (modulo one cheap extra probe per pass).
   //
   // Boundary handling (all in AGL):
@@ -671,7 +670,7 @@ export class WheelSwoopEngine {
   //   zoom-out: yAglNext ≥ yCeil → clamp to groundY + yCeil, set tilt to
   //     the recomputed ascentTarget, hand the tick's energy to Phase 1.
   //
-  // The DESCENT (zoom-in) tilt is unchanged — it lerps
+  // The DESCENT (zoom-in) tilt lerps
   // the captured entry tilt (`_zoomUndo.tilt`) toward 0° via phase2TargetTilt.
   // The ASCENT (zoom-out) interpolates from the camera's LIVE current tilt
   // toward a target — the captured entry tilt if `_zoomUndo.valid`, else the
@@ -717,7 +716,7 @@ export class WheelSwoopEngine {
       }
     } else {
       // DESCENT (zoom-in): reset the ascent anchor so the next ascent
-      // re-captures from the live pose. Descent tilt semantics are unchanged.
+      // re-captures from the live pose.
       this._ascentAnchor = null;
     }
 
@@ -789,8 +788,8 @@ export class WheelSwoopEngine {
       // ceiling the tilt is the user's to set freely (Phase 1 tilt-preserving).
       this._ascentAnchor = null;
       camera.updateMatrixWorld();
-      // Now dispatch a Phase 1 tick. The tilt split was collapsed, so
-      // this is always the cursor-anchored Phase-1 tick (reads the same
+      // Now dispatch a Phase 1 tick. This is always the cursor-anchored
+      // Phase-1 tick (reads the same
       // `this._frameGroundY` snapshot). This is a sign > 0 (zoom-out) tick
       // and the Phase-1 boundary clamp body is sign < 0-gated, so routing
       // through the full Phase-1 tick does NOT re-fire the clamp or re-latch
@@ -801,7 +800,7 @@ export class WheelSwoopEngine {
 
     camera.position.y = groundY + yAglNext; // ← write back
     // Per-tick re-tilt, branched on direction.
-    //   sign < 0 (descent): unchanged — lerp the captured entry tilt → 0°.
+    //   sign < 0 (descent): lerp the captured entry tilt → 0°.
     //   sign > 0 (ascent):  interpolate the ascent anchor (startFrac,
     //     startTilt) → ascentTarget, anchored so there is no jump and
     //     an immediate undo retraces the descent exactly.
@@ -843,12 +842,6 @@ export class WheelSwoopEngine {
     // resolves the letterbox at exact T once per frame, so the toolbar restyles
     // in lock-step with the swoop. (Phase 1 and Phase 3 are tilt-preserving.)
   }
-
-  // (Phase 3 FOV-only zoom is now handled continuously inside
-  // `_applyContinuousHighStep` (regime 'fov') — the old per-tick
-  // `_applyPhase3WheelTick` was folded in. The
-  // zoom-out→Phase-2 baseline hand-off and the lazy baseline latch live
-  // there now.)
 
   // Cursor-lock re-aim. Re-aims the camera so the world point
   // under the cursor stays pinned to the same screen pixel as FOV changes. The
@@ -957,16 +950,15 @@ export class WheelSwoopEngine {
   // while preserving the camera's current yaw. Used by Phase 2 (both swoop
   // legs).
   //
-  // Re-tilt is ROLL-SAFE and NADIR-CONTINUOUS. We build the
-  // absolute target forward from the live yaw + commanded tiltDeg (the same
-  // direction the old lookAt aimed at — so descent and ascent passing through
-  // the same height command identically-pointed forwards), then rotate
-  // the camera's TRUE current forward onto it with the minimal-arc rotation
-  // and apply it via premultiply (modelled on _shiftRotate). The
+  // Re-tilt is ROLL-SAFE and NADIR-CONTINUOUS (KD-28). We build the
+  // absolute target forward from the live yaw + commanded tiltDeg (so descent
+  // and ascent passing through the same height command identically-pointed
+  // forwards), then rotate the camera's TRUE current forward onto it with the
+  // minimal-arc rotation and apply it via premultiply. The
   // shortest-arc axis `curFwd × newFwd` lies in the yaw-tilt plane (≈ the
   // camera's right axis), never the forward axis, so it adds NO roll — any
   // roll the camera carries in is preserved exactly, and there is no world-up
-  // lookAt singularity at nadir (the old path's catastrophe).
+  // lookAt singularity at nadir.
   _setCameraTiltPreservingYaw(tiltDeg) {
     const camera = this._ctx.camera;
     // (1) Capture the TRUE current forward BEFORE any yaw-flattening — keep it
@@ -1014,6 +1006,6 @@ export class WheelSwoopEngine {
       R.setFromUnitVectors(curFwd, newFwd);
     }
     camera.quaternion.premultiply(R);
-    camera.quaternion.normalize(); // drift guard, mirrors _shiftRotate
+    camera.quaternion.normalize(); // drift guard
   }
 }

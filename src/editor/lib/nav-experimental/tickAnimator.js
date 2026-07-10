@@ -5,8 +5,8 @@
 //   subscribe(fn) -> unsubscribe()    // called every frame with delta-ms
 //   animate({ durationMs, ease, onTick, onDone }) -> handle
 //
-// `animate` is built on `subscribe`. WASD uses `subscribe` directly; Plan
-// View (and future Phase 3 swoop / Phase 5 transitions) use `animate`.
+// `animate` is built on `subscribe`. WASD uses `subscribe` directly; the Plan
+// View / compass tweens and the committed-motion presets use `animate`.
 //
 // Implementation: a `nav-experimental-tick` A-Frame component, attached
 // to a hidden child entity of the scene. Mirrors the `focus-animation`
