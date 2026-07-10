@@ -37,10 +37,12 @@ threshold T is the same convention. Do not read "tilt" as "degrees from
 straight-down."
 
 **T — the tilt threshold.** The single angle (`TH-03`, a modest look-down)
-that splits Map mode (tilt > T) from Street mode (tilt ≤ T). Governs the
-LB sub-mode, the wheel cut, the rotation regime, and the letterbox.
-Exactly-T is Street mode. Looking up (negative tilt) is always Street
-mode.
+that splits Map mode (tilt > T) from Street mode (tilt ≤ T). The same live
+T governs **every** tilt-conditional decision — the four primary (the LB
+sub-mode, the wheel cut, the rotation regime, and the letterbox) plus the
+context/compass reuses (the context street-view-vs-drop discriminator and
+the compass-arrow Map/Street pivot). Exactly-T is Street mode. Looking up
+(negative tilt) is always Street mode. (KD-05.)
 
 **AGL — Above Ground Level.** ⚠ *Distinct from `camera.y`.* The camera's
 height **above the solid surface directly below it**, found by a
@@ -249,12 +251,57 @@ is consistent across devices. Accumulated as a float (KD-09).
 **Live Shift.** Shift read continuously *during* an LB drag (not latched
 at mouse-down), so truck↔rotate can switch mid-drag (KD-06).
 
+**Situation sensor / idle gate.** The per-tick evaluator
+(`situationSensor.js`) that computes the legit-pose snapshot, the
+recovery-cue state, and the enclosure snapshot. The **idle gate** is the
+`isCameraBusy` OR (`wasd.isMoving() || wheel.hasAccum() ||
+latch.isActive() || tick.isAnimating()`) that suppresses re-probing while
+any engine is moving the camera — so an idle frame does no whole-scene
+raycast, and a streaming source we didn't wire (e.g. Google 3D Tiles) is
+still picked up on the `TH-72` fallback cadence. Distinct from the
+context-resolver busy predicate (which additionally counts
+recovery/inactive).
+
 **Committed motion.** A tween (double-click teleport, drone rise, swoop
 recovery) whose **endpoint** is collision-validated but whose **path** is
 not per-frame clamped — so it can pass *through* solid geometry to reach a
 clear destination, but never *ends* inside solid.
 
+**Runner entry modes ("Door 1" / "Door 2").** The committed-motion runner
+has two entry points. **Door 1** = the re-validating recovery ease-back
+(`runRecovery`), whose endpoint is re-checked each frame so it can bail or
+hand off if the target stops being legit. **Door 2** = the generic
+committed lerp for the five pre-validated motions (double-click teleport,
+drone rise, swoop-to-street, fall, pop) whose endpoint is validated once up
+front (see **Committed motion**). Named here so call sites can reference
+the modes instead of a bare "Door N".
+
 **Scatter.** Thin scene objects ignored entirely by the collision/floor
 probes: traffic control, signs, plants, fixtures, people, bicycles,
 vehicles. (As a double-click target, scatter is Category C — a "generic
 object" you frame — but it is never *floor*.)
+
+**Floor `source` / hit `kind` sentinels.** The boundary-record string
+enums the probes and classifiers pass around (complemented by exported
+named consts in the code). Compared read-only in ≥10 sites across 6 files;
+one authored source per enum.
+
+*Floor-probe `source`* (provenance of a floor query's result):
+
+| `source` | Meaning |
+|---|---|
+| `'cache'` | The probe hit nothing solid; returns the stale last-known ground (`_lastGroundY`, KD-33) — treat as void / outside a bounded scene. |
+| `'segment-or-building'` | Hit a managed-street segment or a catalog building (a solid surface). |
+| `'tiles'` | Hit Google 3D Tiles / photogrammetry geometry. |
+| `'mesh'` | Hit some other scene mesh. |
+| `'ground'` | Fell back to the flat ground plane (y = 0). |
+| `'fallback'` | Fell back to a synthetic level-forward anchor (no real hit). |
+
+*Double-click hit `kind`* (entity classification, KD-23):
+
+| `kind` | Meaning |
+|---|---|
+| `'segment'` | A lane/street surface (Category A). |
+| `'building'` | A catalog building (Category B). |
+| `'tiles'` | Google 3D Tiles / photogrammetry geometry. |
+| `'scatter'` | Thin scatter or a non-catalog glTF (Category C generic object; never floor — KD-34). |

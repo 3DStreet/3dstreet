@@ -56,15 +56,20 @@ inside/outside test, the scene-centre pivot, the blend band, and the
 **removed**. This is the largest simplification in the system; the
 `SceneBounds` cylinder now survives only to frame Plan View.
 
-### KD-05 — One threshold T governs all four tilt-conditional behaviours, and is runtime-tunable
+### KD-05 — One threshold T governs every tilt-conditional decision, and is runtime-tunable
 
-T is not four separate cutoffs. The **same** value gates: the LB
+T is not a family of separate cutoffs. The **same** live value gates
+**every** tilt-conditional decision — the four primary behaviours (the LB
 truck/dolly-vs-pedestal sub-mode, the wheel cursor-anchored-vs-dolly cut,
-the rotation regime (Map/Street), and the letterbox indicator. Unifying
-them means there is one number to reason about and tune. T is surfaced on
-an A-Frame component schema (`TH-03` is one of only four runtime-live
-knobs) so it can be retuned during feel-testing without a rebuild.
-Accepted consequence of unification: lowering T also lowers the
+the rotation regime (Map/Street), and the letterbox indicator) **plus** the
+context/compass reuses (the context street-view-vs-drop discriminator in
+`transitionController`, and the compass-arrow Map/Street pivot in
+`compassController`). Unifying them means there is one number to reason
+about and tune, and the single-T audit surface is complete: retuning T
+moves every regime cut in lockstep, so none can drift out of agreement. T
+is surfaced on an A-Frame component schema (`TH-03` is one of only five
+runtime-live knobs) so it can be retuned during feel-testing without a
+rebuild. Accepted consequence of unification: lowering T also lowers the
 wheel-zoom cursor-anchor cut, slightly widening the band in which "cursor
 over empty sky anchors oddly."
 
@@ -357,6 +362,14 @@ travel height and doesn't crawl over roofs. "Buildings are solid" is
 enclosure — so it needs the maintainer's confirmation before upstream
 (see `05-open-issues.md`).
 
+**Buried-candidate detection uses AABB containment, not surface-normal
+parity.** When a candidate camera pose must be tested for being *inside* a
+building mass, the check tests the candidate point against the **AABB** of
+the building(s) in its column — it does **not** cast a ray and count
+surface crossings for parity. 3DStreet building glTF is single-sided
+(`FrontSide`), so a normal-parity interior test false-negatives (an inward
+face has no back to cross), which is why the buried check is AABB-based.
+
 ### KD-17 — Automatic motion may only block/prevent; all recovery is user-invoked
 
 The hard rule: **automatic behaviour never adds unrequested camera
@@ -418,6 +431,31 @@ them even though it need not *accommodate* them now. The steepness-based
 WASD rule (KD-18) and the AGL probes are inherently slope-agnostic as a
 result; the swoop landing stays horizontal for now but keeps the hit
 normal available so orient-to-slope can be added later without a rewrite.
+
+### KD-33 — The collision-probe ground cache is refreshed only at the camera's own column
+
+`CollisionProbe` carries `_lastGroundY`, the last-known ground height
+returned (with `source:'cache'`) on a probe *miss*, so inferred ground
+stays continuous as the camera crosses a scene edge or a streaming gap. The
+refresh is **asymmetric**: only a probe with `refreshCache` set updates
+`_lastGroundY`, and only camera-column queries (`collisionFloorAt`, default
+on) set it. Exploratory probes — clearance / standoff pull-backs, the
+travel-height grid, look-ahead — pass `refreshCache:false`: they *read* the
+cache but must not *write* it, so a miss over a column the camera never
+visits cannot poison the camera's own ground-continuity fallback. The
+asymmetry is load-bearing; preserve it.
+
+### KD-34 — Solidity is catalog-gated; non-catalog glTF buildings read as scatter
+
+The floor/enclosure classifier treats a building as solid (landable roof,
+blocking wall, enclosure) only when its `mixin` resolves to a
+`STREET.catalog` entry with `category:'buildings'`. A user-imported glTF or
+any non-catalog building model carries no catalog category, so
+`classifyHitEntity` returns `'scatter'`, `isSolidFloorHit` rejects it, and
+the camera passes through it (no collision floor, no wall-block, no
+enclosure). Accepted boundary for the managed-street prototype — the scenes
+that need solidity are catalog-built. (Pairs with KD-16 "buildings are
+solid"; also recorded as a known constraint in `05-open-issues.md`, OI-29.)
 
 ---
 
@@ -492,6 +530,19 @@ camera's own screen-right axis, which stays well-defined and horizontal at
 nadir and equals `view × up` off-nadir, so tilting *out* of exact nadir is
 continuous and roll-free. Rotations are applied via quaternion premultiply
 rather than re-deriving from `lookAt`.
+
+### KD-35 — The recovery cue flashes once per stranding, not stickily
+
+The transient "press Space to get out" cue is expressed as a **timer, not
+a sticky state**: on the show edge (crossing above `TH-52`) it appears and
+a `TH-75` (~3 s) timer clears the cue kind *even while the stranding
+condition still holds*; the hide edge (dropping below `TH-53`) cancels any
+pending timer and hides immediately. Re-arming is automatic via the
+`TH-52`/`TH-53` show/hide elevation hysteresis, so the cue flashes once per
+stranding episode (re-shows only after dropping below `TH-53` then rising
+above `TH-52` again). Sticky was rejected as too naggy in feel-test; a
+sticky `cueState` cannot express "hide while still true," which is why the
+auto-hide is a timer.
 
 ---
 
@@ -633,6 +684,18 @@ guarantee breaks — no converted scratch may cross a yield boundary. Two
 guard tests pin it: a golden-trajectory snapshot (behaviour unchanged
 across the conversions) and an allocation-count harness (the win is a
 committed number, not a vibe).
+
+### KD-36 — A committed motion may hand off to a follow-on tween on its own final frame
+
+When a mid-tween recovery (e.g. pop-to-roof) fires on the tween's terminal
+frame, the `TickAnimator`'s trailing terminal block runs *after* `onTick`
+returns and would otherwise null `_currentTween` (orphaning the
+just-started follow-on) and re-run a stale `onDone`. A
+`handedOff`/`handoffTween` latch suppresses both, so the hand-off survives
+a same-frame boundary. This is the intra-frame ordering invariant behind
+KD-17's recovery policy: a recovery that starts on the exact frame the
+prior motion ends must not be silently dropped by the animator's own
+end-of-tween cleanup.
 
 ---
 

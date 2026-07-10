@@ -243,3 +243,11 @@ roof directly below, two drone presses at adjacent spots near a tower base
 can reach different altitudes (street vs roof). Accepted as a tuning
 nicety — the hysteresis governs the *icon*, not the target — not a
 correctness bug.
+
+### OI-29 — Non-catalog glTF buildings are not solid
+Solidity is catalog-gated (KD-34): only a building whose `mixin` resolves
+to a `STREET.catalog` entry with `category:'buildings'` reads as solid. A
+user-imported glTF or any non-catalog building model classifies as
+`'scatter'`, so the camera passes through it — no collision floor, no
+wall-block, no enclosure. Accepted boundary for the managed-street
+prototype (the scenes that need solidity are catalog-built), not a bug.
