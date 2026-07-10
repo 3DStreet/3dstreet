@@ -15,6 +15,19 @@ const GROUND_PROBE_DIR = Object.freeze(new THREE.Vector3(0, -1, 0));
 // doesn't fool WASD fly-speed scaling.
 const TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES = 2;
 
+/**
+ * The floor-probe boundary record returned by `probeFloorColumn` /
+ * `collisionFloorAt`. `source` is a closed set of string sentinels; `'cache'`
+ * means the probe hit nothing solid and returns the stale last-known ground
+ * (treat as void / outside a bounded scene). See the `source` sentinel table
+ * in `docs/04-glossary.md`.
+ * @typedef {Object} FloorProbe
+ * @property {number} y collision-floor height (or the cached last-known y)
+ * @property {?THREE.Vector3} normal surface normal, or null on a cache miss
+ * @property {'cache'|'segment-or-building'|'tiles'} source hit provenance
+ * @property {?Object} hit the raw THREE.Intersection, or null on a miss
+ */
+
 // Collision-floor probing for the experimental nav controls. Answers "what solid
 // surface is directly below this XZ column?" (ground OR building roof OR tiles;
 // scatter excluded) for the descent clamp, swoop, orbit clamp, WASD destination,

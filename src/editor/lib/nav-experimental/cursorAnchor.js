@@ -26,6 +26,21 @@
 
 import { MAX_GROUND_DIST, FALLBACK_FORWARD_DIST } from './constants.js';
 
+/**
+ * The world-anchor boundary record returned by `worldPointAt`. Flat x/y/z with
+ * a `source` sentinel; `normal`/`distance`/`raw` are additive siblings present
+ * only on the mesh/ground branches (existing x/y/z/source callers are
+ * unaffected). See the `source` sentinel table in `docs/04-glossary.md`.
+ * @typedef {Object} WorldPoint
+ * @property {number} x
+ * @property {number} y
+ * @property {number} z
+ * @property {'mesh'|'ground'|'fallback'} source resolution provenance
+ * @property {THREE.Vector3} [normal] world-space face normal (mesh/ground only)
+ * @property {number} [distance] camera→point distance (mesh/ground only)
+ * @property {Object} [raw] the raw THREE.Intersection (mesh branch only)
+ */
+
 // Reused normal-matrix scratch for worldHitNormal (a per-tick / per-swoop-frame
 // hot path). The matrix is a pure-local temp fully consumed within one
 // synchronous call — getNormalMatrix overwrites it wholesale each time, and the
