@@ -21,6 +21,11 @@ const TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES = 2;
  * means the probe hit nothing solid and returns the stale last-known ground
  * (treat as void / outside a bounded scene). See the `source` sentinel table
  * in `docs/04-glossary.md`.
+ *
+ * NOTE: this `@typedef` is **documentation only** — the project runs no
+ * `tsc`/`checkJs` and no runtime shape assertion, so it is never parsed or
+ * enforced. Keep the fields and the `source` sentinel set in sync with the
+ * code by hand.
  * @typedef {Object} FloorProbe
  * @property {number} y collision-floor height (or the cached last-known y)
  * @property {?THREE.Vector3} normal surface normal, or null on a cache miss
