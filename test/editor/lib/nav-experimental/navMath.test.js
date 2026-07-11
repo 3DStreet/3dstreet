@@ -1501,6 +1501,60 @@ describe('shiftRotateStep', () => {
     expect(back.pos.distanceTo(camPos)).toBeLessThan(0.05);
   });
 
+  it('floor-bisection is aliasing-safe when a returned pose is fed back as camPos', () => {
+    // The interior floor-bisection temps and the throwaway candidate pose are
+    // pooled closure scratch; only the single accepted final pose escapes (via
+    // a caller-owned target, or fresh when none is passed — as here). This
+    // guards that separation: fire the 24-iteration bisection (a hard down-drag
+    // near the floor), then feed the RETURNED pose straight back in as `camPos`
+    // and fire the bisection AGAIN. If the escaping pose shared a buffer with
+    // the interior bisection scratch, the second call's repeated re-reads of
+    // `camPos` across the iterations would be corrupted — and the first call's
+    // returned pose would be mutated under the caller's feet.
+    const centre = new THREE.Vector3(0, 0, 0);
+    const camPos = new THREE.Vector3(0, 5, 4); // R ≈ 6.4, above pivot
+    const viewDir = new THREE.Vector3(0, -0.7, -0.7).normalize();
+    const floorY = 0;
+    const bound = floorY + EYE_MARGIN_METRES;
+
+    const first = shiftRotateStep({
+      camPos,
+      viewDir,
+      centre,
+      dxPx: 0,
+      dyPx: 5000, // huge drag-down → breaches the floor → bisection fires
+      speed: SPEED,
+      floorY
+    });
+    expect(first.pos.y).toBeGreaterThanOrEqual(bound - 1e-6);
+    const firstPosY = first.pos.y;
+    const firstPosX = first.pos.x;
+
+    // Feed the returned pose back in as the next call's input.
+    const fedViewDir = new THREE.Vector3()
+      .subVectors(first.lookTarget, first.pos)
+      .normalize();
+    const second = shiftRotateStep({
+      camPos: first.pos,
+      viewDir: fedViewDir,
+      centre,
+      dxPx: 0,
+      dyPx: 5000, // again breaches → the second call also fires the bisection
+      speed: SPEED,
+      floorY
+    });
+
+    // Result is finite and the floor still holds — no interior aliasing corruption.
+    expect(Number.isFinite(second.pos.x)).toBe(true);
+    expect(Number.isFinite(second.pos.y)).toBe(true);
+    expect(Number.isFinite(second.pos.z)).toBe(true);
+    expect(second.pos.y).toBeGreaterThanOrEqual(bound - 1e-6);
+    // The first call's returned pose must be UNTOUCHED by the second call — it
+    // is an independent object, not shared pooled scratch.
+    expect(first.pos.y).toBe(firstPosY);
+    expect(first.pos.x).toBe(firstPosX);
+  });
+
   it('no floorY param: street regime is unaffected (rotate-in-place)', () => {
     const camPos = new THREE.Vector3(5, 1.6, 5);
     const viewDir = new THREE.Vector3(0, 0, -1);

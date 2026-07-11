@@ -848,6 +848,13 @@ export function phase2NextElevation(yAgl, sign, alpha = SWOOP_PHASE2_STEP) {
 export const shiftRotateStep = (() => {
   // closure-private scratch, lazily allocated on first call
   let srsView, srsRight, worldUp;
+  // Interior evalAtTilt scratch — pure-local temps fully consumed within one
+  // evalAtTilt call, never escaping (offset, the rotated view, the normalised
+  // pitch axis, the pitch quaternion), plus the interior POSE buffers the
+  // throwaway floor-probe candidate and every bisection iteration write into
+  // (only their `.pos.y` is read, immediately). All pooled: the whole
+  // re-entrant bisection allocates nothing.
+  let srsOffset, srsNewView, srsPitchAxis, srsQPitch, srsIPos, srsILook, srsIR;
   return function shiftRotateStep({
     camPos,
     viewDir,
@@ -856,18 +863,37 @@ export const shiftRotateStep = (() => {
     dyPx,
     speed,
     floorY,
-    camRight
+    camRight,
+    // Optional caller-owned targets for the single escaping final pose (the
+    // three.js `crossVectors(a, b, target)` idiom — the scratch convention at
+    // the top of this file: escaping returns take a caller-owned target). Pass
+    // ALL THREE or NONE, and each must be a distinct object; `outPos` must NOT
+    // be the same object as `camPos`. When omitted (e.g. unit tests) the final
+    // pose is freshly allocated, so returned poses are independent objects.
+    outPos,
+    outLookTarget,
+    outR
   }) {
-    // Per-call pure-local scratch (closure-private srsView/srsRight): read
-    // throughout this call — including inside the re-entrant evalAtTilt bisection —
-    // but never overwritten mid-call, and never escaping. The escaping
-    // pos/lookTarget/R and evalAtTilt's interior temps stay freshly allocated
-    // (pointer-cadence; pooling a re-entrant bisection's temps carries aliasing
-    // risk for near-zero saving).
+    // The bisection's interior temps used to stay freshly allocated on the
+    // theory that pooling a re-entrant bisection's temps risked aliasing for a
+    // near-zero saving. The steady-state allocation measurement falsified the
+    // "near-zero": this one function was ~90% of the recurring per-frame THREE
+    // allocation on the shift-orbit path. The aliasing concern is real but
+    // manageable — the bisection is SEQUENTIAL, not recursive, and every
+    // interior result is consumed (`.pos.y`) before the next overwrites it — so
+    // the interior temps are now pooled closure scratch (below), and only the
+    // single accepted final pose escapes, via a caller-owned target.
     if (!srsView) {
       srsView = new THREE.Vector3();
       srsRight = new THREE.Vector3();
       worldUp = Object.freeze(new THREE.Vector3(0, 1, 0));
+      srsOffset = new THREE.Vector3();
+      srsNewView = new THREE.Vector3();
+      srsPitchAxis = new THREE.Vector3();
+      srsQPitch = new THREE.Quaternion();
+      srsIPos = new THREE.Vector3();
+      srsILook = new THREE.Vector3();
+      srsIR = new THREE.Quaternion();
     }
     const view = srsView.set(viewDir.x, viewDir.y, viewDir.z).normalize();
 
@@ -897,37 +923,31 @@ export const shiftRotateStep = (() => {
     const wantTilt = curTilt + dyPx * speed; // drag-down (+dyPx) → tilt down
     let clampedTilt = THREE.MathUtils.clamp(wantTilt, MIN_TILT, MAX_TILT);
 
-    // Build the rotated pose for a candidate absolute tilt value. Returns
-    // { pos, lookTarget } applying the SAME single rotation R to the offset
-    // and the view dir.
-    const evalAtTilt = (tiltValue) => {
+    // Build the rotated pose for a candidate absolute tilt value into the
+    // caller-supplied buffers (pos, look, r), applying the SAME single
+    // rotation R to the offset and the view dir. Every temp is pooled
+    // closure scratch; `right`/`rightLen` are the raw `view × up` cross
+    // product and its length, read-only for the whole call INCLUDING every
+    // bisection iteration (each call re-derives `r = right / rightLen`) — do
+    // not normalise `srsRight` in place; `srsPitchAxis` is a distinct buffer.
+    const evalAtTilt = (tiltValue, pos, look, R) => {
       const dTilt = tiltValue - curTilt;
-      const R = new THREE.Quaternion().setFromAxisAngle(worldUp, dTheta);
+      R.setFromAxisAngle(worldUp, dTheta);
       if (rightLen > 1e-6 && dTilt !== 0) {
-        const r = right.clone().multiplyScalar(1 / rightLen);
-        const qPitch = new THREE.Quaternion().setFromAxisAngle(r, -dTilt);
+        const axis = srsPitchAxis.copy(right).multiplyScalar(1 / rightLen);
+        const qPitch = srsQPitch.setFromAxisAngle(axis, -dTilt);
         R.multiply(qPitch);
       }
-      const offset = new THREE.Vector3(
-        camPos.x - centre.x,
-        camPos.y - centre.y,
-        camPos.z - centre.z
-      ).applyQuaternion(R);
-      const pos = new THREE.Vector3(
-        centre.x + offset.x,
-        centre.y + offset.y,
-        centre.z + offset.z
-      );
-      const newView = view.clone().applyQuaternion(R);
-      const lookTarget = new THREE.Vector3(
-        pos.x + newView.x,
-        pos.y + newView.y,
-        pos.z + newView.z
-      );
+      const offset = srsOffset
+        .set(camPos.x - centre.x, camPos.y - centre.y, camPos.z - centre.z)
+        .applyQuaternion(R);
+      pos.set(centre.x + offset.x, centre.y + offset.y, centre.z + offset.z);
+      const newView = srsNewView.copy(view).applyQuaternion(R);
+      look.set(pos.x + newView.x, pos.y + newView.y, pos.z + newView.z);
       // R is returned so the caller can apply it via
       // `camera.quaternion.premultiply(R)` (KD-28 — continuous at nadir),
       // instead of re-deriving orientation from lookTarget via lookAt.
-      return { pos, lookTarget, R };
+      return { pos, lookTarget: look, R };
     };
 
     // Numeric down-tilt floor bound (KD-29). Tilting further down
@@ -938,15 +958,18 @@ export const shiftRotateStep = (() => {
     // resulting height at or above the bound.
     if (floorY != null && isFinite(floorY) && clampedTilt > curTilt) {
       const bound = floorY + EYE_MARGIN_METRES;
-      const candidate = evalAtTilt(clampedTilt);
+      // Probe into the pooled interior buffers — only `.pos.y` is read, and
+      // immediately, before the next evalAtTilt overwrites them.
+      const candidate = evalAtTilt(clampedTilt, srsIPos, srsILook, srsIR);
       if (candidate.pos.y < bound) {
         // Tilting down breaches the floor. Bisect [curTilt, clampedTilt].
         let lo = curTilt; // assumed to clear the bound (current pose)
         let hi = clampedTilt; // breaches the bound
         for (let i = 0; i < 24; i++) {
           const mid = (lo + hi) / 2;
-          if (evalAtTilt(mid).pos.y >= bound) lo = mid;
-          else hi = mid;
+          if (evalAtTilt(mid, srsIPos, srsILook, srsIR).pos.y >= bound) {
+            lo = mid;
+          } else hi = mid;
         }
         clampedTilt = lo;
       }
@@ -955,8 +978,15 @@ export const shiftRotateStep = (() => {
     // Merge (KD-28 × KD-29): evalAtTilt applies the same single
     // rotation R to the offset and view and now returns it, so the
     // floor-bounded `clampedTilt` yields a consistent { pos, lookTarget, R }.
-    // The caller applies R via `premultiply` (continuous at nadir).
-    return evalAtTilt(clampedTilt);
+    // The caller applies R via `premultiply` (continuous at nadir). This is the
+    // single accepted final pose that escapes: write it into the caller-owned
+    // targets, or freshly allocate independent objects when none were supplied.
+    return evalAtTilt(
+      clampedTilt,
+      outPos || new THREE.Vector3(),
+      outLookTarget || new THREE.Vector3(),
+      outR || new THREE.Quaternion()
+    );
   };
 })();
 
