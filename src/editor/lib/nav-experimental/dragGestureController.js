@@ -67,6 +67,15 @@ export class DragGestureController {
     this._tmpDelta = new THREE.Vector3();
     this._tmpRight = new THREE.Vector3();
     this._tmpCamRight = new THREE.Vector3();
+    // Caller-owned targets for shiftRotateStep's escaping final pose, so the
+    // per-move shift-orbit path allocates nothing. Dedicated buffers (never
+    // camera.position/quaternion — outPos must not alias camPos). `_srsOutLook`
+    // is written by the helper but unused here (the orbit applies `R` via
+    // premultiply, not lookAt) — a deliberate throwaway so the helper needs no
+    // internal allocation, not dead code to remove.
+    this._srsOutPos = new THREE.Vector3();
+    this._srsOutLook = new THREE.Vector3();
+    this._srsOutR = new THREE.Quaternion();
   }
 
   // --- Gesture lifecycle (driven by the orchestrator's thin mouse routers) ---
@@ -759,7 +768,7 @@ export class DragGestureController {
     const camRight = this._tmpCamRight
       .set(1, 0, 0)
       .applyQuaternion(camera.quaternion);
-    const { pos, R } = shiftRotateStep({
+    shiftRotateStep({
       camPos: camera.position,
       viewDir: fwd,
       centre: center,
@@ -767,8 +776,15 @@ export class DragGestureController {
       dyPx,
       speed: this._ctx.rotationSpeed,
       floorY,
-      camRight
+      camRight,
+      // Caller-owned targets → the escaping final pose is written here, not
+      // allocated. `_srsOutPos` is distinct from `camPos` (=camera.position).
+      outPos: this._srsOutPos,
+      outLookTarget: this._srsOutLook,
+      outR: this._srsOutR
     });
+    const pos = this._srsOutPos;
+    const R = this._srsOutR;
 
     camera.position.copy(pos);
     // Apply the step's rotation as an orientation delta instead

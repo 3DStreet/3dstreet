@@ -670,12 +670,20 @@ of three ways:
   `crossVectors(a, b, target)` idiom). The parent owns the lifetime.
 
 Deliberately **left allocating** because pooling them would alias a retained
-value or a re-entrant temp: `worldHitNormal`'s returned normal (the WASD
-classifier holds `floorNow.normal` + `floorDest.normal` live together — only
-its Matrix3 is pooled); `worldPointAt`'s ground-branch `.normal`;
-`shiftRotateStep`'s escaping `pos` / `lookTarget` / `R` and its re-entrant
-floor-bisection interior temps (pointer-cadence, near-zero saving, real
-aliasing risk).
+value: `worldHitNormal`'s returned normal (the WASD classifier holds
+`floorNow.normal` + `floorDest.normal` live together — only its Matrix3 is
+pooled); `worldPointAt`'s ground-branch `.normal`.
+
+`shiftRotateStep` **now conforms to the convention** (it previously left its
+whole `evalAtTilt` closure allocating on the theory the saving was near-zero — a
+steady-state measurement falsified that: it was ~90% of the recurring per-frame
+THREE allocation on the shift-orbit path). Its re-entrant floor-bisection is
+**sequential, not recursive**, and every interior result is consumed (`.pos.y`)
+before the next overwrites it, so the interior temps and the throwaway
+floor-probe candidate pose are pooled closure scratch; the single escaping final
+`pos` / `lookTarget` / `R` takes the optional caller-owned `target` route (the
+caller passes dedicated scratch it copies out, falling back to a fresh
+allocation when no target is supplied).
 
 Safety rests on a **synchronous-only invariant**: every pooled scratch is
 held within a single synchronous drain / handler call and never crosses an

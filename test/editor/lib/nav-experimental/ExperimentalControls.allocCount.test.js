@@ -62,9 +62,20 @@ const PRE_BUDGET = 947;
 // the driven paths trips it. Bump deliberately (and note why) when you add one. A
 // *drop* also trips the exact-match assertion — intended: it surfaces wins ("did
 // you mean to remove an allocation?"). On the current tree run-1 (setup +
-// first-call lazy init) is 223 — the number the old single-run budget conflated —
-// of which 47 is one-time; the recurring per-run steady state is 176.
-const POST_BUDGET = 176;
+// first-call lazy init) is 74, of which 57 is one-time; the recurring per-run
+// steady state is 17.
+//
+// History: the steady state was 176 until `shiftRotateStep`'s `evalAtTilt`
+// closure was pooled — that one function was ~90% of the recurring total (a
+// throwaway floor-probe pose + the final pose, ~5–7 THREE temps each, per
+// shift-orbit move). Pooling its interior temps and routing the single escaping
+// final pose through a caller-owned target (dragGestureController's `_srsOut*`
+// scratch) took the shift-orbit path to ~0 recurring, 176 → 17. The one-time
+// count rose 47 → 57 (+10): 7 new first-call navMath closure-scratch temps plus
+// 3 new dragGestureController constructor scratch (`_srsOutPos`/`_srsOutLook`/
+// `_srsOutR`, built under the swapped counting THREE) — the intended trade of a
+// one-time bump for a recurring win.
+const POST_BUDGET = 17;
 
 let Controls;
 beforeAll(async () => {
