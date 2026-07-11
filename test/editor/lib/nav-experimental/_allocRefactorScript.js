@@ -10,7 +10,7 @@
  * reached regardless of where the previous phase left the camera):
  *   1. wheel-swoop-in  — cursorAnchor worldPointAt/ndcFor + navMath dolly path
  *   2. shift-orbit     — navMath.shiftRotateStep via dragGestureController
- *   3. WASD-hold       — wasdFlight.drain
+ *   3. WASD-hold       — wasdFlight.stepFlight
  *   4. compass orbit   — compassController orbit onTick
  *   5. LB truck / pedestal / screen pan — the three drag pan handlers
  *

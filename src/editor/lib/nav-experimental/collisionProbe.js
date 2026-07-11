@@ -9,10 +9,10 @@ import { isSolidFloorHit, worldHitNormal } from './cursorAnchor.js';
 // the pure navMath layer, whose tests run without a THREE global.)
 const GROUND_PROBE_DIR = Object.freeze(new THREE.Vector3(0, -1, 0));
 
-// Half-span (metres) of the travel-height sampling patch: the ground beneath
-// buildings is approximated by the lowest solid hit over a 3×3 grid stepped by
-// this span around the camera column, so a single roof under the camera centre
-// doesn't fool WASD fly-speed scaling.
+// Half-span (metres) of the travel-height sampling patch (TH-77; KD-16): the
+// ground beneath buildings is approximated by the lowest solid hit over a 3×3
+// grid stepped by this span around the camera column, so a single roof under
+// the camera centre doesn't fool WASD fly-speed scaling.
 const TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES = 2;
 
 /**
@@ -21,6 +21,11 @@ const TRAVEL_HEIGHT_PATCH_HALF_SPAN_METRES = 2;
  * means the probe hit nothing solid and returns the stale last-known ground
  * (treat as void / outside a bounded scene). See the `source` sentinel table
  * in `docs/04-glossary.md`.
+ *
+ * NOTE: this `@typedef` is **documentation only** — the project runs no
+ * `tsc`/`checkJs` and no runtime shape assertion, so it is never parsed or
+ * enforced. Keep the fields and the `source` sentinel set in sync with the
+ * code by hand.
  * @typedef {Object} FloorProbe
  * @property {number} y collision-floor height (or the cached last-known y)
  * @property {?THREE.Vector3} normal surface normal, or null on a cache miss

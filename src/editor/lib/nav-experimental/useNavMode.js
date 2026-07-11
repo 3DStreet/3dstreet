@@ -10,7 +10,7 @@ import { isExperimentalNav } from './flag.js';
 //
 // Flag-off: returns `false` immediately and never subscribes.
 //
-// Tail-debounce: the React state lags the underlying event by
+// Tail-debounce (TH-79): the React state lags the underlying event by
 // ~100ms so a rapid mode toggle on the tilt-threshold (T, TH-03) boundary doesn't visibly
 // flicker the toolbar. The mode-change *event* itself is uncoalesced —
 // any subscriber that needs the immediate value can read it from the

@@ -697,6 +697,19 @@ KD-17's recovery policy: a recovery that starts on the exact frame the
 prior motion ends must not be silently dropped by the animator's own
 end-of-tween cleanup.
 
+### KD-37 — Swoop phase-boundary hand-off is active, not clamp-and-re-dispatch
+
+At a wheel-swoop phase boundary (zoom-out especially) the tick's remaining
+energy is applied *this tick* in the destination phase — an **active
+hand-off** — rather than clamping the camera at the boundary and letting the
+next tick re-dispatch. The naive clamp-and-re-dispatch model **deadlocks**:
+`decideSwoopPhase(yCeil)` returns `'phase2'` (the dispatch table is inclusive
+on the Phase-2 side at `y = yCeil`), so the next tick re-fires the same
+boundary and the camera never crosses. The active hand-off (the zoom-out
+`yAglNext ≥ yCeil` branch of `_applyPhase2WheelTick`, and the symmetric
+Phase-1/3 seams) carries the energy across in one tick. This is the
+phase-transition analogue of KD-36's intra-frame hand-off latch.
+
 ---
 
 ## Worked examples

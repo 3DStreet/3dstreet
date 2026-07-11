@@ -39,12 +39,12 @@ for this documentation task** and is the standing open item. The
 `03-configurable-thresholds.md` cross-reference column is the migration
 aid: it maps each current code tag to its `TH-NN`.
 
-### OI-2 — Only four knobs are runtime-configurable, despite many "tunable" comments
+### OI-2 — Only five knobs are runtime-configurable, despite many "tunable" comments
 
 Numerous `constants.js` comments say "tunable" / "tune at feel-test."
-That means *re-tune in code and rebuild* for all but four values. Only
+That means *re-tune in code and rebuild* for all but five values. Only
 the knobs wired through `navTuningComponent.js` are live without a
-rebuild (`TH-03`, `TH-05`, `TH-07`, `TH-16` — see
+rebuild (`TH-03`, `TH-05`, `TH-07`, `TH-16`, `TH-74` — see
 `03-configurable-thresholds.md`, "Runtime-config surface"). The comment
 wording reads as a larger live surface than exists; worth a clarifying
 pass.

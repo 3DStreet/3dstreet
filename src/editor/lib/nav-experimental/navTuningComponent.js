@@ -1,13 +1,14 @@
 /* global AFRAME */
 
 // A thin A-Frame component that surfaces experimental-navigation tuning
-// knobs on schema properties so Diarmid can tweak them live during
+// knobs on schema properties so they can be tuned live during
 // feel-testing — via the A-Frame inspector or the console
 // (`sceneEl.setAttribute('nav-experimental-tuning','tiltThresholdDegrees',15)`)
-// — without a rebuild. Exposed knobs: the tilt threshold T (TH-03, the one
-// value governing all four tilt-conditional behaviours — KD-05), the far
-// Map-pivot bounds radius (TH-05), the Shift+LB rotation speed, and the
-// wheel-zoom lateral-movement cap lower bound (TH-16). The navigation
+// — without a rebuild. Exposed knobs (the five runtime-live values): the
+// tilt threshold T (TH-03, the one value governing all four tilt-conditional
+// behaviours — KD-05), the far Map-pivot bounds radius (TH-05), the Shift+LB
+// rotation speed (TH-07), the wheel-zoom lateral-movement cap lower bound
+// (TH-16), and the far Map-pivot far-accept gain (TH-74). The navigation
 // controls themselves are not an A-Frame component (`ExperimentalControls`
 // is `new`-ed in viewport.js), so this component just relays each schema
 // value onto the live controls instance via the matching setter. Exposing

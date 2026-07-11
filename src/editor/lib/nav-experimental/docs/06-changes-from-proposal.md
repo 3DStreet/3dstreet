@@ -57,7 +57,7 @@ proposal's 30°) governs **four**
 behaviours at once — the LB sub-mode, the wheel cursor-anchor cut, the
 rotation regime, and the letterbox indicator — with **no blend** (KD-04,
 KD-05). T is **live-tunable at runtime** via an A-Frame component, one of
-only four such knobs.
+only five such knobs.
 
 ---
 

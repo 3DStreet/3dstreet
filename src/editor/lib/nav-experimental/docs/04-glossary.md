@@ -248,6 +248,14 @@ view), sharing one resolver with the Space key. **Icon = destination**
 one mouse detent ≈ 1.0 tick, a trackpad delta ≈ a fraction, so behaviour
 is consistent across devices. Accumulated as a float (KD-09).
 
+**LB.** The **left mouse button** (RMB = right button). The *LB sub-mode*
+(`pan-screen` / truck / pedestal) is the pan gesture LB drives, selected by
+tilt vs `T` when street-level is on; that **same** sub-mode value also selects
+the letterbox indicator state (see **Letterbox / mode indicator**) — which is
+why one token spans both. In code, "LB" alone means the button; the `LbMode`
+identifiers (`getCurrentLbMode`, `_currentLbMode`, `navMath.decideLbMode`) mean
+the sub-mode.
+
 **Live Shift.** Shift read continuously *during* an LB drag (not latched
 at mouse-down), so truck↔rotate can switch mid-drag (KD-06).
 
@@ -261,6 +269,14 @@ raycast, and a streaming source we didn't wire (e.g. Google 3D Tiles) is
 still picked up on the `TH-72` fallback cadence. Distinct from the
 context-resolver busy predicate (which additionally counts
 recovery/inactive).
+
+**Camera-write funnel.** The single commit point every camera mutation passes
+through (`_ctx.funnel`). `commitMove(...)` applies a validated camera write and
+notifies subscribers — e.g. the letterbox comparator re-resolves on each write
+(KD-30 / `TH-73`); `dispatch(...)` emits a mode / forward-hook payload; and
+`invalidateWheelMemory()` clears the transient zoom-undo memory (KD-11) when a
+non-wheel move interrupts a swoop. Centralising writes here is what keeps the
+letterbox indicator in sync without scattered emit calls.
 
 **Committed motion.** A tween (double-click teleport, drone rise, swoop
 recovery) whose **endpoint** is collision-validated but whose **path** is
@@ -283,17 +299,27 @@ object" you frame — but it is never *floor*.)
 
 **Floor `source` / hit `kind` sentinels.** The boundary-record string
 enums the probes and classifiers pass around (complemented by exported
-named consts in the code). Compared read-only in ≥10 sites across 6 files;
-one authored source per enum.
+named consts in the code). Compared read-only in ≥10 sites across 6 files.
+**Two *distinct* `source` enums share the word — they are NOT
+interchangeable**, each authored in one module:
 
-*Floor-probe `source`* (provenance of a floor query's result):
+*Floor-query `source`* (`FloorProbe.source`, authored in `collisionProbe.js`
+— provenance of a floor query's result; a `collisionFloorAt()` result is
+only ever one of these three):
 
 | `source` | Meaning |
 |---|---|
 | `'cache'` | The probe hit nothing solid; returns the stale last-known ground (`_lastGroundY`, KD-33) — treat as void / outside a bounded scene. |
 | `'segment-or-building'` | Hit a managed-street segment or a catalog building (a solid surface). |
 | `'tiles'` | Hit Google 3D Tiles / photogrammetry geometry. |
-| `'mesh'` | Hit some other scene mesh. |
+
+*Cursor-anchor / world-point `source`* (`WorldPoint.source`, authored in
+`cursorAnchor.js` — how `worldPointAt` resolved a screen point to a world
+position; **not** a floor query, and never returned by `collisionFloorAt`):
+
+| `source` | Meaning |
+|---|---|
+| `'mesh'` | Hit some scene mesh. |
 | `'ground'` | Fell back to the flat ground plane (y = 0). |
 | `'fallback'` | Fell back to a synthetic level-forward anchor (no real hit). |
 

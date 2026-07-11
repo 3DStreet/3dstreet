@@ -35,7 +35,7 @@ export const TILT_THRESHOLD_DEFAULT_DEGREES = 25;
 // runner tweens: live drags, the wheel swoop, and every settle resolve at exact
 // T (no dead-band), because the regime CONTROL is always exact-T and the
 // indicator must not desync from it outside a tween. Build-time constant (NOT
-// runtime-tunable — the runtime surface is fixed at four knobs). Too small ⇒ a
+// runtime-tunable — the runtime surface is fixed at five knobs). Too small ⇒ a
 // boundary-run tween still flickers; too large ⇒ a genuine near-T crossing is
 // delayed within the band. Working range 1–4°.
 export const LB_TWEEN_HYSTERESIS_DEGREES = 2;
@@ -49,7 +49,7 @@ export const LB_TWEEN_HYSTERESIS_DEGREES = 2;
 //     clamp, and the fall/pop targets. == the AGL street floor (TH-23, 1.5 m).
 export const EYE_MARGIN_METRES = 1.5;
 // Rate limit (TH-41) for the not-grounded (flying) vertical ease
-// toward the option-3 target `max(H, collisionFloorDest + eye)`. Applied per
+// toward the flying cruise-height target (KD-19) `max(H, collisionFloorDest + eye)`. Applied per
 // WASD tick as `maxStep = rate * dtSeconds`, easing BOTH the ≤ eye-margin lift
 // onto a roof AND the settle back to cruise altitude H over ~0.3-0.4 s, so the
 // vertical move composes with continuous per-frame WASD rather than snapping.
@@ -256,6 +256,10 @@ export const WASD_RAMP_UP_MS = 200;
 
 // Plan View transition.
 export const PLAN_VIEW_DURATION_MS = 1000;
+// Fallback Plan-View lift height (metres, TH-78): when the scene has no bounds
+// to frame, Plan View rises to at least this altitude (it never drops below the
+// current camera height — Plan View only ever zooms out).
+export const COMPASS_UNBOUNDED_PLAN_VIEW_HEIGHT_METRES = 200;
 
 // Swoop wheel-zoom phase boundaries (TH-22/TH-23; KD-08), in metres **above
 // ground (AGL)** = camera.y − groundY, where groundY is the collision-floor

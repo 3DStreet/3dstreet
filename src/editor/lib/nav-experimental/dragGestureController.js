@@ -39,11 +39,13 @@ const _WORLD_UP = Object.freeze(new THREE.Vector3(0, 1, 0));
 export class DragGestureController {
   constructor(ctx) {
     this._ctx = ctx;
-    // The rotation ring (Map-orbit pivot indicator) — DRG-private.
+    // The rotation ring (Map-orbit pivot indicator) — private to this controller.
     this._indicator = new RotationIndicator(ctx.sceneEl);
-    // Last emitted LB sub-mode (letterbox comparator state); lazily seeded.
+    // Last emitted LB sub-mode — the pan sub-mode that also drives the letterbox
+    // comparator (glossary: "LB"). Lazily seeded.
     this._currentLbMode = null;
-    // Which mouse button latched the current gesture (0 = LB, 2 = RMB); the
+    // Which mouse button latched the current gesture (0 = LB left button,
+    // 2 = RMB right button); the
     // mid-drag Shift mode-switch applies to LB drags only.
     this._gestureButton = null;
     // Last cursor coords, kept fresh so a mid-drag Shift toggle can re-latch the
@@ -152,14 +154,14 @@ export class DragGestureController {
     if (this._indicator) this._indicator.dispose();
   }
 
-  // LB sub-mode from the live tilt. Street-level mode off (Stage 1): a
+  // LB sub-mode from the live tilt. Street-level mode off: a
   // single screen-space pan ('pan-screen') at every tilt — the legacy
   // THREE.EditorControls LB behaviour. The tilt-gated truck/pedestal split
-  // (and the letterbox indicator driven off it) is the Stage 2 street mode
+  // (and the letterbox indicator driven off it) is the street-level street mode
   // and only engages when street-level is enabled. The single decision point
   // for all three callers (the mode cache, the mode-change emitter, and the
   // pan gesture latch).
-  // Compute the LB sub-mode from the live camera. Street-level off (Stage 1)
+  // Compute the LB sub-mode from the live camera. Street-level off
   // short-circuits to 'pan-screen'. `useHysteresis` selects the eval mode: exact
   // T (the default — every real-time write, every settle, and the indicator's
   // initial seed) or a dead-band δ around T (only a committed-motion-runner tween
@@ -242,7 +244,7 @@ export class DragGestureController {
     const anchor = this._ctx.cursorAnchor.worldPointAt(clientX, clientY);
 
     if (subMode === 'pan-screen') {
-      // Stage 1 screen-space pan: plane through the anchor whose normal is
+      // Street-level-off screen-space pan: plane through the anchor whose normal is
       // the camera-facing direction (i.e. parallel to the image plane).
       // Translating the camera within this plane keeps the anchor under the
       // cursor and moves purely in the camera's right/up basis — the legacy
@@ -361,7 +363,7 @@ export class DragGestureController {
     this.resolveLetterbox();
   }
 
-  // --- LB screen-space pan (Stage 1 parity-plus) ---
+  // --- LB screen-space pan (street-level off, parity-plus) ---
   //
   // The legacy THREE.EditorControls LB behaviour, restored: one continuous
   // pan in the camera's own right/up basis with no tilt-gated mode switch.
@@ -371,7 +373,7 @@ export class DragGestureController {
   // plane tilts with the camera, the same gesture slides across the ground
   // when looking down and pedestals straight up when looking at the horizon
   // — one behaviour that degrades gracefully across tilt. No floor clamp /
-  // grounding (Stage 2 machinery): matching legacy, dragging up always lifts
+  // grounding (street-level street-mode machinery): matching legacy, dragging up always lifts
   // back out.
   _lbScreenPan(clientX, clientY) {
     const camera = this._ctx.camera;
@@ -453,7 +455,7 @@ export class DragGestureController {
     this._ctx.funnel.dispatch();
   }
 
-  // --- LB pedestal move (Stage 2 street mode) ---
+  // --- LB pedestal move (street-level street mode) ---
   //
   // Mirrors `_lbTruckMove` but operates on a *vertical* plane through
   // the latched anchor. Plane normal = camera-forward-horizontal (latched
@@ -574,12 +576,12 @@ export class DragGestureController {
     const tiltDeg = cameraTiltDegrees(camera);
     const isMap =
       !this._ctx.streetLevelEnabled || tiltDeg > this._ctx.tiltThreshold;
-    // Stage 1 (street-level off): rotate about the SCREEN-CENTRE collision
-    // point, not the cursor. Cursor-anchored orbit is deferred to Stage 2.
+    // Street-level off: rotate about the SCREEN-CENTRE collision
+    // point, not the cursor. Cursor-anchored orbit is deferred to street mode.
     // We still use the new collision raycast
     // (mesh → ground via `worldPointAt`) and still show the ring — it is
     // just fired through the screen centre instead of the pointer. With
-    // street-level on, the cursor pivot (Stage 2) is used as before.
+    // street-level on, the cursor pivot is used as before.
     let pivotX = clientX;
     let pivotY = clientY;
     if (!this._ctx.streetLevelEnabled) {
@@ -622,9 +624,9 @@ export class DragGestureController {
   // not yet landed.)
   //
   // NOTE: `_latchRotationCenter` passes the SCREEN-CENTRE coords here when
-  // street-level mode is off (Stage 1 rotate-about-centre), so "the cursor"
+  // street-level mode is off (rotate-about-centre), so "the cursor"
   // in the comments below is the screen centre in that path; the cursor-
-  // anchored pivot only applies with street-level on (Stage 2).
+  // anchored pivot only applies with street-level on.
   //
   // History: replaced (a) the MAX_ORBIT_RADIUS inward cap along the
   // cursor ray, which drifted on tilt when zoomed out; and (b) a

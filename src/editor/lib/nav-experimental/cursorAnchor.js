@@ -31,6 +31,11 @@ import { MAX_GROUND_DIST, FALLBACK_FORWARD_DIST } from './constants.js';
  * a `source` sentinel; `normal`/`distance`/`raw` are additive siblings present
  * only on the mesh/ground branches (existing x/y/z/source callers are
  * unaffected). See the `source` sentinel table in `docs/04-glossary.md`.
+ *
+ * NOTE: this `@typedef` is **documentation only** — the project runs no
+ * `tsc`/`checkJs` and no runtime shape assertion, so it is never parsed or
+ * enforced. Keep the fields and the `source` sentinel set in sync with the
+ * code by hand.
  * @typedef {Object} WorldPoint
  * @property {number} x
  * @property {number} y

@@ -146,8 +146,8 @@ export class DoubleClickNav {
     }
 
     // (7) End orientation from the (possibly lowered/capped) position toward
-    // the look target. No Phase-4 path approaches nadir, so a plain
-    // up=+Y lookAt is roll-safe.
+    // the look target. No double-click path approaches nadir, so a plain
+    // up=+Y lookAt is roll-safe (KD-28).
     // Category B: re-apply the framing-pitch cap against the FINAL position
     // — never-raise/standoff lowered the camera since the pure
     // helper's first-pass cap, and the street-level look-up at a tall tower

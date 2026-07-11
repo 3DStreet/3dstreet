@@ -16,7 +16,7 @@ import { classifyWasdStep, wasdVerticalY } from './navMath.js';
 // velocity, and the per-tick move: yaw-projected horizontal motion with the
 // forward-ray step classifier (block / step-up / follow / hover) and the
 // grounded-vs-flying vertical policy. The orchestrator's key routers feed the
-// held-key set via the accessors below; `_onTick` drives the move via `drain`.
+// held-key set via the accessors below; `_onTick` drives the move via `stepFlight`.
 //
 // Reads the live camera/scene/services through the shared controls context and
 // carries its own scratch + raycaster. An advancing step commits through the
@@ -48,9 +48,9 @@ export class WasdFlight {
     this._tmpV3b = new THREE.Vector3();
     this._tmpV3c = new THREE.Vector3();
     this._raycaster = new THREE.Raycaster();
-    // Dedicated drain() scratch. Kept separate from _tmpV3a/b/c because the
+    // Dedicated stepFlight() scratch. Kept separate from _tmpV3a/b/c because the
     // step classifier's raycasts clobber those between building `move` and
-    // reading it back; these three are pure-local temps consumed within drain().
+    // reading it back; these three are pure-local temps consumed within stepFlight().
     this._tmpVel = new THREE.Vector3();
     this._tmpDv = new THREE.Vector3();
     this._tmpMove = new THREE.Vector3();
@@ -79,7 +79,7 @@ export class WasdFlight {
     return this._wasdVelocity.lengthSq() > 0;
   }
 
-  drain(deltaMs) {
+  stepFlight(deltaMs) {
     const camera = this._ctx.camera;
     // A recovery OR teleport tween owns the
     // camera — held keys must not fight it. Snap velocity to zero and suspend.

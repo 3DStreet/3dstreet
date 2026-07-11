@@ -70,11 +70,6 @@ import { captureNavDiscovery } from '../navAnalytics.js';
 // module. Re-export it from its new home (the compass controller).
 export { needleScreenAngle } from './compassController.js';
 
-// Note: spherical phi clamps for Shift+LB rotation now live in
-// navMath.shiftRotateStep (derived from MIN/MAX_TILT_DEGREES at module
-// load time there). They were removed from this file when the rotation
-// step extracted to a pure helper.
-
 const NAV_DEBUG = (() => {
   if (typeof window === 'undefined' || !window.location) return false;
   return new URLSearchParams(window.location.search).get('navDebug') === 'true';
@@ -1043,7 +1038,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       return;
     }
     this._wheel.drain();
-    this._wasd.drain(deltaMs);
+    this._wasd.stepFlight(deltaMs);
     // Legit-pose snapshot + discoverability cue. Runs
     // after the drains so it captures the post-move pose. Suppressed while a
     // recovery OR teleport tween owns the camera — the

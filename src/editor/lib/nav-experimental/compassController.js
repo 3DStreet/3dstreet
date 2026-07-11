@@ -6,7 +6,8 @@ import {
   COMPASS_TOPDOWN_TOLERANCE_DEGREES,
   COMPASS_NORTH_TOLERANCE_DEGREES,
   COMPASS_ROTATE_STEP_DEGREES,
-  PLAN_VIEW_DURATION_MS
+  PLAN_VIEW_DURATION_MS,
+  COMPASS_UNBOUNDED_PLAN_VIEW_HEIGHT_METRES
 } from './constants.js';
 import { cameraTiltDegrees, viewRayGroundPoint } from './navMath.js';
 
@@ -95,7 +96,7 @@ export class CompassController {
     this._compassPending = null;
   }
 
-  // Phase 1 entry point used by viewport.js when the user triggers Plan
+  // Plan-view entry point used by viewport.js when the user triggers Plan
   // View (App menu / toolbar / keyboard) in flag-on mode. The camera was
   // briefly swapped to ortho by cameras.js; viewport.js reverts it back to
   // the perspective camera before calling this.
@@ -138,7 +139,10 @@ export class CompassController {
     } else {
       endX = camera.position.x;
       endZ = camera.position.z;
-      endY = Math.max(camera.position.y, 200);
+      endY = Math.max(
+        camera.position.y,
+        COMPASS_UNBOUNDED_PLAN_VIEW_HEIGHT_METRES
+      );
     }
     // Don't drop below the current altitude — Plan View should zoom out,
     // never zoom in.
@@ -181,9 +185,9 @@ export class CompassController {
     this._ctx.runner.cancel();
 
     this._planViewActive = true;
-    // 'plan-view' is a forward-hook payload — no Phase 2 consumer reads
-    // it (`useNavMode` filters to pan-truck/pan-pedestal only). Phase 3
-    // / future indicator work may key off it; left dispatched so the
+    // 'plan-view' is a forward-hook payload — no current consumer reads
+    // it (`useNavMode` filters to pan-truck/pan-pedestal only). Future
+    // indicator work may key off it; left dispatched so the
     // tween bracket is symmetric with the closing `null` emission.
     this._ctx.emitModeChange('plan-view');
     this._planViewHandle = this._ctx.tick.animate({
