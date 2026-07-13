@@ -75,6 +75,11 @@ AFRAME.registerSystem('play-mode-physics', {
   init: function () {
     this.active = false;
     this.world = null;
+    // Bumped by every deactivate(). An activate() that awaited the
+    // Rapier WASM load compares its captured value after the await so
+    // a Stop that landed mid-load can't be undone by the late
+    // continuation (which would resurrect a world nothing owns).
+    this._generation = 0;
     this.synced = []; // [{ body, el }]
     this.physAcc = 0;
     this.timestep = 1 / 60;
@@ -94,7 +99,12 @@ AFRAME.registerSystem('play-mode-physics', {
    */
   activate: async function () {
     if (this.active) return;
+    const gen = this._generation;
     await loadRapier();
+    // deactivate() ran while the WASM chunk was in flight: that play
+    // session is already over, so stay down instead of rebuilding a
+    // world that would step every frame with nothing playing.
+    if (this._generation !== gen) return;
     if (!this.world) {
       const g = this.data.gravity;
       this.world = new RAPIER.World({ x: g.x, y: g.y, z: g.z });
@@ -107,6 +117,7 @@ AFRAME.registerSystem('play-mode-physics', {
   },
 
   deactivate: function () {
+    this._generation++;
     this.active = false;
     // Drop synced refs but keep the world around in case we re-enter.
     this.synced.length = 0;
@@ -579,12 +590,6 @@ AFRAME.registerComponent('play-mode-vehicle', {
     this._chaseDragging = false;
     this.onChaseWheel = (e) => {
       if (this.data.cameraMode !== 'chase') return;
-      // Only zoom (and swallow the wheel) when the pointer is over the scene
-      // canvas — otherwise this window-level listener would eat every scroll
-      // on the page, freezing UI panels while driving. Mirrors the canvas
-      // gate in onChasePointerDown.
-      const canvas = this.el.sceneEl && this.el.sceneEl.canvas;
-      if (!canvas || e.target !== canvas) return;
       // deltaY > 0 = scroll down = zoom out.
       const factor = Math.exp(e.deltaY * 0.001);
       this.chaseZoom = THREE.MathUtils.clamp(this.chaseZoom * factor, 0.4, 4);
@@ -631,7 +636,17 @@ AFRAME.registerComponent('play-mode-vehicle', {
         this._chasePointerId = undefined;
       }
     };
-    window.addEventListener('wheel', this.onChaseWheel, { passive: false });
+    // The wheel listener must be non-passive (it preventDefaults to
+    // stop the page scrolling while zooming the chase cam), and a
+    // non-passive wheel listener disables the browser's threaded-
+    // scroll fast path for its whole target subtree. Scoping it to the
+    // scene canvas keeps zoom working over the 3D view while scrolling
+    // in UI panels stays on the fast path. The component initializes
+    // at play start, long after the scene canvas exists.
+    this._wheelTarget = this.el.sceneEl.canvas || window;
+    this._wheelTarget.addEventListener('wheel', this.onChaseWheel, {
+      passive: false
+    });
     window.addEventListener('pointerdown', this.onChasePointerDown);
     window.addEventListener('pointermove', this.onChasePointerMove);
     window.addEventListener('pointerup', this.onChasePointerUp);
@@ -645,6 +660,10 @@ AFRAME.registerComponent('play-mode-vehicle', {
     this.onPlayModeReset = () => {
       this.chaseZoom = 1;
       this.chaseYaw = 0;
+      // Forget the pre-reset crash: reset zeroes simulationTime, and a
+      // stale record would suppress any post-reset crash within 1.5 m
+      // of the old site (the de-dupe compares sim-time deltas).
+      this._lastCollisionAt = null;
       if (!this.chassisBody) return;
       this.chassisBody.setTranslation(this.data.spawnPosition, true);
       this.chassisBody.setRotation(this.spawnQuat, true);
@@ -670,8 +689,12 @@ AFRAME.registerComponent('play-mode-vehicle', {
     };
     this.el.sceneEl.addEventListener('play-mode-reset', this.onPlayModeReset);
 
-    // Boot physics, then build the vehicle.
+    // Boot physics, then build the vehicle. Stop can land while the
+    // Rapier chunk is still loading (first Play of a session): the
+    // player car is removed and the system deactivated, so bail
+    // instead of building a ghost chassis on a dead component.
     await this.system.activate();
+    if (!this.el.isConnected || !this.system.active) return;
     this.buildVehicle();
   },
 
@@ -882,11 +905,19 @@ AFRAME.registerComponent('play-mode-vehicle', {
     // Cache ref to follow camera target.
     this.cameraEl = document.querySelector(this.data.cameraSelector) || null;
 
-    // Cache scratch objects for the wheel sync pass.
+    // Cache scratch objects + per-wheel constants for the tick() sync
+    // pass. Connection points and the axle direction are fixed at
+    // addWheel time; fetching them back from Rapier every frame
+    // allocates a fresh JS object across the WASM boundary per call.
     this._up = new THREE.Vector3(0, 1, 0);
     this._qSteer = new THREE.Quaternion();
     this._qSpin = new THREE.Quaternion();
-    this._axleVec = new THREE.Vector3();
+    this._wheelConn = wheelPositions;
+    this._axleVec = new THREE.Vector3(
+      wheelInfo.axleCs.x,
+      wheelInfo.axleCs.y,
+      wheelInfo.axleCs.z
+    );
 
     // Let listeners (e.g. PlayModeControls) know the car is drivable.
     this.el.emit('vehicle-built', {}, true);
@@ -948,7 +979,9 @@ AFRAME.registerComponent('play-mode-vehicle', {
     const simMs = timer ? timer.simulationTime || 0 : 0;
     const t = this.chassisBody.translation();
     if (this._lastCollisionAt != null) {
-      const dtMs = simMs - this._lastCollisionAt.simMs;
+      // abs: belt-and-suspenders against any other path that rewinds
+      // simulationTime (reset clears this record explicitly).
+      const dtMs = Math.abs(simMs - this._lastCollisionAt.simMs);
       const dx = t.x - this._lastCollisionAt.x;
       const dz = t.z - this._lastCollisionAt.z;
       const distSq = dx * dx + dz * dz;
@@ -975,11 +1008,12 @@ AFRAME.registerComponent('play-mode-vehicle', {
     for (let i = 0; i < this.wheelOuterEls.length; i++) {
       const outer = this.wheelOuterEls[i];
       if (!outer) continue;
-      const conn = this.vehicle.wheelChassisConnectionPointCs(i);
+      // conn/axle are build-time constants (cached in buildVehicle);
+      // only suspension, steering, and spin actually change per frame.
+      const conn = this._wheelConn[i];
       const sus = this.vehicle.wheelSuspensionLength(i) || 0;
       const stY = this.vehicle.wheelSteering(i) || 0;
       const spin = this.vehicle.wheelRotation(i) || 0;
-      const axle = this.vehicle.wheelAxleCs(i);
       // Rapier's suspensionLength is measured to the wheel CONTACT
       // point with the ground (where the raycast lands). Placing a
       // radius-symmetric cylinder centered there would half-bury it
@@ -991,7 +1025,6 @@ AFRAME.registerComponent('play-mode-vehicle', {
         conn.z
       );
       this._qSteer.setFromAxisAngle(this._up, stY);
-      this._axleVec.set(axle.x, axle.y, axle.z);
       this._qSpin.setFromAxisAngle(this._axleVec, spin);
       outer.object3D.quaternion.multiplyQuaternions(this._qSteer, this._qSpin);
     }
@@ -1159,7 +1192,9 @@ AFRAME.registerComponent('play-mode-vehicle', {
   remove: function () {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
-    window.removeEventListener('wheel', this.onChaseWheel);
+    if (this._wheelTarget) {
+      this._wheelTarget.removeEventListener('wheel', this.onChaseWheel);
+    }
     window.removeEventListener('pointerdown', this.onChasePointerDown);
     window.removeEventListener('pointermove', this.onChasePointerMove);
     window.removeEventListener('pointerup', this.onChasePointerUp);

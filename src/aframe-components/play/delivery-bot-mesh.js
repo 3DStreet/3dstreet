@@ -169,8 +169,15 @@ AFRAME.registerComponent('delivery-bot-mesh', {
     mount.setAttribute('position', `0 ${this._mountY + 0.03} 0`);
     this._spawn(this.el, mount);
 
-    // Line from mount to tip — thin cylinder, regenerated each tick.
+    // Line from mount to tip — a unit-height cylinder built ONCE;
+    // tick() stretches it to the current length via object3D.scale.y
+    // and re-aims it. (Regenerating the geometry attribute per tick
+    // meant a new BufferGeometry + GPU upload every frame.)
     const line = document.createElement('a-entity');
+    line.setAttribute(
+      'geometry',
+      'primitive: cylinder; radius: 0.008; height: 1; segmentsRadial: 6'
+    );
     line.setAttribute('material', `color: ${d.antennaColor}; shader: flat`);
     this._spawn(this.el, line);
     this._line = line;
@@ -257,17 +264,14 @@ AFRAME.registerComponent('delivery-bot-mesh', {
 
     this._ball.object3D.position.set(tipX, tipY, tipZ);
 
-    // Line: cylinder primitive recreated each tick. Cheap enough
-    // because there's only one.
+    // Line: stretch + aim the prebuilt unit cylinder (no geometry
+    // rebuild — scale.y only affects height, not radius).
     const dx = tipX;
     const dy = tipY - this._mountY;
     const dz = tipZ;
     const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
     if (length > 1e-4) {
-      this._line.setAttribute(
-        'geometry',
-        `primitive: cylinder; radius: 0.008; height: ${length}; segmentsRadial: 6`
-      );
+      this._line.object3D.scale.set(1, length, 1);
       this._line.object3D.position.set(
         dx * 0.5,
         this._mountY + dy * 0.5,

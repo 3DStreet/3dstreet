@@ -134,9 +134,16 @@ AFRAME.registerSystem('play-mode', {
       'data-layer-name',
       `Collision (${this.formatSimTime(simMs || 0)})`
     );
-    // Lives at scene root so json-utils picks it up at save time the
-    // same way it picks up any other top-level layer.
+    // Lives at scene root, OUTSIDE the persisted containers
+    // (#street-container etc.), so markers are never saved. They are
+    // session-only: stripped again in stop() and reset().
     this.sceneEl.appendChild(el);
+  },
+
+  removeCollisionMarkers: function () {
+    this.sceneEl.querySelectorAll('[collision-marker]').forEach((el) => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    });
   },
 
   resetClocks: function () {
@@ -175,6 +182,10 @@ AFRAME.registerSystem('play-mode', {
     this.playStartedAt = null;
     this._collisions = 0;
     this._padPrev = {};
+    // Markers live at scene root (unreachable from the SceneGraph and
+    // never saved), so leaving them past the play session would strand
+    // undeletable floating spheres in the editor viewport.
+    this.removeCollisionMarkers();
     useStore.setState({
       isPlaying: false,
       isPlayPaused: false,
@@ -196,7 +207,16 @@ AFRAME.registerSystem('play-mode', {
   resume: function () {
     if (!this.isPlaying || !this.isPaused) return;
     this.isPaused = false;
-    useStore.setState({ isPlayPaused: false });
+    // Clear any race-finish outcome: resuming after crossing the gate
+    // means "keep driving", so the pinned clock and finish banner must
+    // not survive into the live run. ('crash' clears via its own
+    // timeout; nulling it here too is harmless.)
+    useStore.setState({
+      isPlayPaused: false,
+      playOutcome: null,
+      playOutcomeTimeMs: 0,
+      playFinish: null
+    });
     this.sceneEl.emit('timer-start');
   },
 
@@ -221,9 +241,7 @@ AFRAME.registerSystem('play-mode', {
     this.resetClocks();
     // Strip collision markers from prior attempts so the scene reads
     // fresh. They re-spawn naturally on the next crash.
-    this.sceneEl.querySelectorAll('[collision-marker]').forEach((el) => {
-      if (el.parentNode) el.parentNode.removeChild(el);
-    });
+    this.removeCollisionMarkers();
     if (this._crashFlashTimeout) {
       clearTimeout(this._crashFlashTimeout);
       this._crashFlashTimeout = null;

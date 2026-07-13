@@ -1,4 +1,9 @@
 /* global AFRAME, THREE */
+import {
+  movingCastFilter,
+  hideSegmentClones,
+  releaseClones
+} from './clone-visibility.js';
 
 /**
  * street-traffic
@@ -98,8 +103,9 @@ AFRAME.registerComponent('street-traffic', {
 
     // Per-spawned-entity records: { el, segmentEl, speed, startZ, halfLen, dir }
     this.records = [];
-    // Pre-existing auto-generated entities we hid on play-start so we
-    // can restore them on play-stop. [{ el, wasVisible }]
+    // Pre-existing auto-generated clones we hid on play-start, held as
+    // refcounted entries in the shared clone-visibility registry so a
+    // concurrent replay layer hiding the same clones can't double-hide.
     this.hidden = [];
     this.active = false;
   },
@@ -194,20 +200,18 @@ AFRAME.registerComponent('street-traffic', {
     for (const r of this.records) {
       if (r.el && r.el.parentNode) r.el.parentNode.removeChild(r.el);
     }
-    // Restore any static auto-generated entities we hid on play-start.
-    // setAttribute (not a raw object3D write) so the batcher re-shows the slot.
-    for (const h of this.hidden) {
-      if (h.el?.parentNode) h.el.setAttribute('visible', h.wasVisible);
-    }
     console.log(
       '[street-traffic] stop: removed',
       this.records.length,
-      'animated entities, restored',
+      'animated entities, released',
       this.hidden.length,
       'static'
     );
     this.records.length = 0;
-    this.hidden.length = 0;
+    // Release our hold on the hidden static clones; the registry
+    // restores each one when its last holder (us or a replay layer)
+    // lets go.
+    releaseClones(this.hidden);
     this.active = false;
   },
 
@@ -220,17 +224,11 @@ AFRAME.registerComponent('street-traffic', {
       const defaults = SEGMENT_TRAFFIC_DEFAULTS[seg.type];
       if (!defaults) return; // unsupported lane type
 
-      // Per-type rules for which existing children to hide and whether
-      // to animate at all. Sidewalks specifically must not hide trees,
-      // poles, benches (those come from street-generated-clones, not
-      // street-generated-pedestrians) — only the static pedestrian
-      // clones get hidden. And we only animate a sidewalk if the user
-      // actually configured pedestrians on it.
-      let hideFilter; // (componentName) => boolean
+      // Only animate a sidewalk if the user actually configured
+      // pedestrians on it: look for any `street-generated-pedestrians__N`
+      // component with density != 'empty'. If none, leave this sidewalk
+      // alone entirely (don't hide, don't spawn).
       if (seg.type === 'sidewalk') {
-        // Look for any `street-generated-pedestrians__N` component on
-        // the segment with density != 'empty'. If none, leave this
-        // sidewalk alone entirely (don't hide, don't spawn).
         const pedComponents = Object.keys(segEl.components || {}).filter((n) =>
           n.startsWith('street-generated-pedestrians')
         );
@@ -244,30 +242,15 @@ AFRAME.registerComponent('street-traffic', {
           );
           return;
         }
-        hideFilter = (compName) =>
-          compName.startsWith('street-generated-pedestrians');
-      } else {
-        // drive-lane / bus-lane / bike-lane: legacy v1 behavior, hide
-        // every procedural child on the segment. TODO: tighten this
-        // the same way we did for sidewalks once we have a reliable
-        // signal for "this entity is a static vehicle vs. street prop".
-        hideFilter = () => true;
       }
 
-      segEl.querySelectorAll('[data-parent-component]').forEach((existing) => {
-        const compName = existing.getAttribute('data-parent-component') || '';
-        if (!hideFilter(compName)) return;
-        this.hidden.push({
-          el: existing,
-          wasVisible: existing.object3D?.visible ?? true
-        });
-        // Hide via setAttribute, NOT a direct object3D.visible write: static
-        // clones are folded into a shared BatchedMesh, and the batcher only
-        // syncs a slot's visibility off the A-Frame `visible` componentchanged
-        // event. A raw object3D mutation fires nothing, leaving the batched
-        // geometry on screen as a frozen, non-colliding duplicate.
-        existing.setAttribute('visible', false);
-      });
+      // Hide the static moving-cast clones this lane type replaces with
+      // animated ones (shared rule + refcounted registry — see
+      // clone-visibility.js). Stencils / striping / props stay visible.
+      const hideFilter = movingCastFilter(seg.type);
+      if (hideFilter) {
+        this.hidden.push(...hideSegmentClones(segEl, hideFilter));
+      }
 
       // Determine direction sign on segment-local Z. 'inbound' moves
       // toward +Z, 'outbound' toward -Z. 'none' (sidewalks set to none)
@@ -344,6 +327,7 @@ AFRAME.registerComponent('street-traffic', {
     const t = (timer.simulationTime || 0) / 1000;
     const wp = this._wp || (this._wp = new THREE.Vector3());
     const wq = this._wq || (this._wq = new THREE.Quaternion());
+    const ws = this._ws || (this._ws = new THREE.Vector3());
     // Pre-allocated plain-object scratches reused for every kinematic
     // setNext* call below. Without this we churned ~3,700 short-lived
     // {x,y,z}/{x,y,z,w} object literals per second (31 traffic entities
@@ -363,10 +347,17 @@ AFRAME.registerComponent('street-traffic', {
       // body has been created). setNext* gives Rapier the future
       // pose so the solver can compute a proper velocity for the
       // dynamic player chassis to bounce off.
-      if (r.body) {
-        r.el.object3D.updateMatrixWorld();
-        r.el.object3D.getWorldPosition(wp);
-        r.el.object3D.getWorldQuaternion(wq);
+      if (r.body && r.el.object3D.parent) {
+        // One local-matrix compose + decompose per record instead of
+        // three full ancestor-chain recomposes (updateMatrixWorld +
+        // getWorldPosition + getWorldQuaternion each re-walk every
+        // ancestor). The parent chain (segment/street) is static during
+        // play, so its matrixWorld — kept fresh by the render loop —
+        // can be composed against directly.
+        const obj = r.el.object3D;
+        obj.updateMatrix();
+        obj.matrixWorld.multiplyMatrices(obj.parent.matrixWorld, obj.matrix);
+        obj.matrixWorld.decompose(wp, wq, ws);
         posOut.x = wp.x;
         posOut.y = wp.y;
         posOut.z = wp.z;

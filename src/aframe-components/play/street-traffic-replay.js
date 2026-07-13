@@ -1,4 +1,9 @@
 /* global AFRAME */
+import {
+  movingCastFilter,
+  hideSegmentClones,
+  releaseClones
+} from './clone-visibility.js';
 
 /**
  * street-traffic-replay
@@ -155,7 +160,7 @@ AFRAME.registerComponent('street-traffic-replay', {
     this.manifest = null; // parsed manifest
     this.duration = 0; // manifest length in seconds
     this.records = []; // live agents: { el, dirSign, speedMS, startZ, halfLen, spawnTRel }
-    this.hidden = []; // static clones hidden on play-start: { el, wasVisible }
+    this.hidden = []; // clones we hold hidden in the shared registry (clone-visibility.js)
     this.active = false;
     this.nextIdx = 0; // next manifest agent to spawn
     this.cycleBase = 0; // manifest-time at the start of the current loop
@@ -267,44 +272,16 @@ AFRAME.registerComponent('street-traffic-replay', {
 
   // Hide the target street's static auto-generated vehicle/pedestrian clones
   // for the duration of the replay, so the recorded agents don't animate over
-  // a frozen duplicate crowd. Same rationale as street-traffic: hide via
-  // setAttribute('visible', ...) — NOT a raw object3D.visible write — because
-  // batched clones only re-sync their slot visibility off the `visible`
-  // componentchanged event. Restored in teardown().
+  // a frozen duplicate crowd. Shared rule + refcounted registry (see
+  // clone-visibility.js) so street-traffic hiding the same clones on the same
+  // street can't double-hide. Released in teardown().
   hideStaticClones: function (streetEl) {
     streetEl.querySelectorAll(':scope > [street-segment]').forEach((segEl) => {
       const seg = segEl.getAttribute('street-segment');
       if (!seg) return;
-      // Mirror street-traffic's per-type hide rule so replay and synthetic
-      // flow behave identically. Only lane types that carry a moving cast
-      // are touched; medians, parking, grass, rail, buildings are left alone
-      // (their props must stay visible).
-      let hideFilter;
-      if (seg.type === 'sidewalk') {
-        // Hide only the static pedestrian clones — keep sidewalk trees,
-        // poles, benches (those come from street-generated-clones).
-        hideFilter = (compName) =>
-          compName.startsWith('street-generated-pedestrians');
-      } else if (
-        seg.type === 'drive-lane' ||
-        seg.type === 'bus-lane' ||
-        seg.type === 'bike-lane'
-      ) {
-        // Vehicle/cyclist lanes: every procedural child is a moving-cast
-        // clone. (Matches street-traffic's TODO-tracked v1 behavior.)
-        hideFilter = () => true;
-      } else {
-        return; // no moving cast on this lane type
-      }
-      segEl.querySelectorAll('[data-parent-component]').forEach((existing) => {
-        const compName = existing.getAttribute('data-parent-component') || '';
-        if (!hideFilter(compName)) return;
-        this.hidden.push({
-          el: existing,
-          wasVisible: existing.object3D?.visible ?? true
-        });
-        existing.setAttribute('visible', false);
-      });
+      const hideFilter = movingCastFilter(seg.type);
+      if (!hideFilter) return; // no moving cast on this lane type
+      this.hidden.push(...hideSegmentClones(segEl, hideFilter));
     });
   },
 
@@ -328,15 +305,23 @@ AFRAME.registerComponent('street-traffic-replay', {
   // Find a lane segment for an agent, preferring one whose nominal direction
   // matches and falling back through the mode's candidate lane types.
   pickLane: function (rule, dir) {
+    // Pass 1: a lane whose own direction matches the agent, honoring the
+    // mode's lane-type priority order — an outbound cyclist on a street
+    // with only an inbound bike-lane should fall through to an outbound
+    // drive-lane, not ride against the bike lane.
     for (const type of rule.lanes) {
       const lanes = this.lanesByType[type];
       if (!lanes || !lanes.length) continue;
-      // Prefer a lane whose own direction matches the agent.
       const byDir = lanes.find((l) => l.direction === dir);
       if (byDir) return byDir;
-      // No directional lane (e.g. sidewalks are 'none'): split opposing flows
-      // so they don't pile onto one segment — inbound takes the first lane of
-      // this type, outbound the last (e.g. pedestrians use both sidewalks).
+    }
+    // Pass 2: no directional match anywhere (e.g. sidewalks are 'none').
+    // Split opposing flows so they don't pile onto one segment — inbound
+    // takes the first lane of the highest-priority type present, outbound
+    // the last (e.g. pedestrians use both sidewalks).
+    for (const type of rule.lanes) {
+      const lanes = this.lanesByType[type];
+      if (!lanes || !lanes.length) continue;
       return dir === 'outbound' ? lanes[lanes.length - 1] : lanes[0];
     }
     // Last resort: any segment at all, so the agent still appears.
@@ -471,13 +456,10 @@ AFRAME.registerComponent('street-traffic-replay', {
     for (const r of this.records) {
       if (r.el && r.el.parentNode) r.el.parentNode.removeChild(r.el);
     }
-    // Restore the static clones we hid on play-start. setAttribute (not a raw
-    // object3D write) so the batcher re-shows the slot.
-    for (const h of this.hidden) {
-      if (h.el?.parentNode) h.el.setAttribute('visible', h.wasVisible);
-    }
     this.records.length = 0;
-    this.hidden.length = 0;
+    // Release our hold on the hidden static clones; the registry restores
+    // each one when its last holder (us or street-traffic) lets go.
+    releaseClones(this.hidden);
     this.active = false;
   }
 });

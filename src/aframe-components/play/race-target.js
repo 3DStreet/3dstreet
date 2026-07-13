@@ -107,8 +107,16 @@ AFRAME.registerComponent('race-target', {
     // entity's rotation is respected.
     const obj = this.el.object3D;
     obj.updateMatrixWorld();
+    // The gate is static during play — cache the inverse and only
+    // re-invert when matrixWorld actually changed (a 16-element compare
+    // beats a full 4x4 invert every frame).
     const inv = this._inv || (this._inv = new THREE.Matrix4());
-    inv.copy(obj.matrixWorld).invert();
+    const invFor = this._invFor || (this._invFor = new THREE.Matrix4());
+    if (!this._invValid || !invFor.equals(obj.matrixWorld)) {
+      invFor.copy(obj.matrixWorld);
+      inv.copy(obj.matrixWorld).invert();
+      this._invValid = true;
+    }
     const cp = this._cp || (this._cp = new THREE.Vector3());
     chassis.object3D.getWorldPosition(cp);
     cp.applyMatrix4(inv);
