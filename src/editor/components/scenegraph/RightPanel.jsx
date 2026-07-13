@@ -90,6 +90,26 @@ export default function RightPanel({ entity }) {
 
   return (
     <Tooltip.Provider>
+      {/* Auth status stays visible even with panels hidden — a user's
+          identity governs what they can do, so it shouldn't vanish with
+          the editing chrome. (The full panel below stays mounted but
+          display:none so tab/chat state survives the toggle.) */}
+      {!panelsVisible && (
+        <div className={`clickable ${styles.collapsedAuthDock}`}>
+          <ProfileButton
+            currentUser={authUser}
+            isLoading={isLoading}
+            onClick={() => {
+              if (isLoading) return;
+              posthog.capture('profile_button_clicked', {
+                is_logged_in: !!authUser
+              });
+              setModal(authUser ? 'profile' : 'signin');
+            }}
+            tooltipSide="bottom"
+          />
+        </div>
+      )}
       <div
         id="rightPanel"
         className={styles.rightPanel}

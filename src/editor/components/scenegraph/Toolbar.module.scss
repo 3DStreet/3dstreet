@@ -1,0 +1,98 @@
+// Viewer chrome docks. The header pill itself reuses the editor's
+// global .scenegraph-panel.hide styles (see scenegraph.scss); this
+// module only positions the viewer-specific docks.
+
+// Shuttle controls (Play/Pause/Reset/Stop), centered like the editor's
+// PrimaryToolbar dock (Main.module.scss .primaryToolbarDock).
+.shuttleDock {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+// Identity + access, top-right like the editor's collapsed auth dock.
+.rightDock {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+// "View only" label inside the action pill (next to Edit/Remix),
+// matching the toolbar button typography without being clickable.
+.viewOnlyText {
+  color: #9a9a9a;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 0 10px;
+  user-select: none;
+}
+
+// Simulation clock pill — click to pause/resume.
+.simClock {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  padding: 6px 10px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.simClockPaused {
+  color: #ffd479;
+}
+
+.simClockFinish {
+  color: #7dc4ff;
+  border-color: rgba(125, 196, 255, 0.5);
+}
+
+.simClockCrash {
+  color: #ff8383;
+  border-color: rgba(255, 131, 131, 0.5);
+}
+
+.simClockValue {
+  font-family: monospace;
+  font-size: 14px;
+  min-width: 62px;
+  text-align: right;
+}
+
+// Locomotion controls hint, bottom-left of the viewport.
+.controlsHint {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  color: white;
+  font-size: 14px;
+  padding: 10px 14px;
+  pointer-events: none;
+}
+
+.keyGroup {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-weight: bold;
+}

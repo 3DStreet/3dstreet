@@ -30,6 +30,11 @@ export const streetLayersData = [
     icon: 'ui_assets/cards/icons/streetmix24.png',
     handlerFunction: createFunctions.createManagedStreetFromStreetmixURLPrompt
   }),
+  card(m.trafficReplayName, m.trafficReplayDesc, {
+    img: '',
+    icon: 'ui_assets/cards/icons/3dst24.png',
+    handlerFunction: createFunctions.createTrafficReplay
+  }),
   card(m.managedStreet4024Name, m.managedStreet4024Desc, {
     img: 'ui_assets/cards/street-preset-40-24.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
@@ -121,6 +126,30 @@ export const customLayersData = [
     requiresPro: false,
     icon: '',
     handlerFunction: createFunctions.createCustomModel
+  }),
+  card(m.driveableTukTukName, m.driveableTukTukDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createDriveableTukTuk
+  }),
+  card(m.driveableDeliveryRobotName, m.driveableDeliveryRobotDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createDriveableDeliveryRobot
+  }),
+  card(m.driveableTaxiName, m.driveableTaxiDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createDriveableTaxi
+  }),
+  card(m.raceTargetName, m.raceTargetDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createRaceTarget
   }),
   card(m.uploadSplatName, m.uploadSplatDesc, {
     img: '',

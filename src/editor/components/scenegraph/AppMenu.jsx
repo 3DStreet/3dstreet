@@ -77,6 +77,8 @@ const AppMenu = ({ currentUser }) => {
     setModal,
     isGridVisible,
     setIsGridVisible,
+    panelsVisible,
+    setPanelsVisible,
     saveScene,
     setGeojsonImportData,
     setRightPanelTab,
@@ -685,6 +687,20 @@ const AppMenu = ({ currentUser }) => {
                 defaultMessage="Show Grid"
               />
               <div className="RightSlot">G</div>
+            </Menubar.CheckboxItem>
+            <Menubar.CheckboxItem
+              className="MenubarCheckboxItem"
+              checked={panelsVisible}
+              onCheckedChange={setPanelsVisible}
+            >
+              <Menubar.ItemIndicator className="MenubarItemIndicator">
+                <AwesomeIcon icon={faCheck} size={14} />
+              </Menubar.ItemIndicator>
+              <FormattedMessage
+                id="appMenu.view.showPanels"
+                defaultMessage="Show Panels"
+              />
+              <div className="RightSlot">`</div>
             </Menubar.CheckboxItem>
             <Menubar.Separator className="MenubarSeparator" />
             {cameraOptions.map((option) => (

@@ -25,6 +25,8 @@ import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
 import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
 import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
+import { PlayModeControls } from './elements/PlayModeControls';
+import { RaceFinishBanner } from './elements/RaceFinishBanner';
 import useStore from '@/store';
 import { useProfileLocaleSync } from '../i18n/useProfileLocaleSync';
 import styles from './Main.module.scss';
@@ -80,6 +82,8 @@ export default function Main() {
     <div id="inspectorContainer">
       <UnofficialDeploymentBanner />
       <ToolbarWrapper />
+      {!isInspectorEnabled && <PlayModeControls />}
+      {!isInspectorEnabled && <RaceFinishBanner />}
       {isInspectorEnabled && (
         <div>
           <SceneGraph scene={scene} selectedEntity={state.entity} />
