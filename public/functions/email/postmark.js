@@ -10,6 +10,12 @@ const { getAuth } = require('firebase-admin/auth');
 
 const POSTMARK_API_URL = 'https://api.postmarkapp.com/email';
 
+// Sender signatures: transactional mail keeps the root-domain address;
+// broadcast streams send from the updates subdomain so marketing reputation
+// is isolated from transactional deliverability.
+const FROM_TRANSACTIONAL = 'notify@3dstreet.com';
+const FROM_BROADCAST = 'team@updates.3dstreet.com';
+
 /**
  * Send email via Postmark API
  *
@@ -41,7 +47,7 @@ const sendPostmarkEmail = async (
       'X-Postmark-Server-Token': apiKey
     },
     body: JSON.stringify({
-      From: 'notify@3dstreet.com',
+      From: stream === 'outbound' ? FROM_TRANSACTIONAL : FROM_BROADCAST,
       To: toEmail,
       Subject: subject,
       HtmlBody: htmlBody,
