@@ -708,7 +708,12 @@
     "viewer.simClockPaused": "Paused — click to resume",
     "viewer.simClockRunning": "Simulation time — click to pause",
     "viewer.stop": "Stop",
-    "viewer.viewOnly": "View only"
+    "viewer.viewOnly": "View only",
+    "viewer.hintPan": "to pan",
+    "viewer.hintRightDrag": "Right + Drag",
+    "viewer.hintOrbit": "to orbit",
+    "viewer.hintScroll": "Scroll",
+    "viewer.hintZoom": "to zoom"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1419,7 +1424,12 @@
     "viewer.simClockPaused": "Paused — click to resume",
     "viewer.simClockRunning": "Simulation time — click to pause",
     "viewer.stop": "Stop",
-    "viewer.viewOnly": "View only"
+    "viewer.viewOnly": "View only",
+    "viewer.hintPan": "to pan",
+    "viewer.hintRightDrag": "Right + Drag",
+    "viewer.hintOrbit": "to orbit",
+    "viewer.hintScroll": "Scroll",
+    "viewer.hintZoom": "to zoom"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2130,6 +2140,11 @@
     "viewer.simClockPaused": "Paused — click to resume",
     "viewer.simClockRunning": "Simulation time — click to pause",
     "viewer.stop": "Stop",
-    "viewer.viewOnly": "View only"
+    "viewer.viewOnly": "View only",
+    "viewer.hintPan": "to pan",
+    "viewer.hintRightDrag": "Right + Drag",
+    "viewer.hintOrbit": "to orbit",
+    "viewer.hintScroll": "Scroll",
+    "viewer.hintZoom": "to zoom"
   }
 }

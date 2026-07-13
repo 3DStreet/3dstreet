@@ -635,6 +635,18 @@ export function Viewport(inspector) {
     (isEnabled) => {
       const modeManager = AFRAME.scenes[0].systems['mode-manager'];
       if (isEnabled) {
+        if (inspector.config.copyCameraPosition) {
+          // Read the viewer camera's pose BEFORE leaving the current
+          // mode — orbit's exit() resets the runtime camera chain to
+          // its neutral pose. Under orbit the real vantage lives on the
+          // THREE camera, not the #camera el's object3D.
+          copyCameraPosition(
+            inspector.cameras.original.getObject3D('camera') ||
+              inspector.cameras.original.object3D,
+            inspector.cameras.perspective,
+            controls
+          );
+        }
         modeManager?.setMode('editor');
         enableControls();
         AFRAME.scenes[0].camera = inspector.camera;
@@ -643,13 +655,6 @@ export function Viewport(inspector) {
           .forEach((element) => {
             element.style.display = 'none';
           });
-        if (inspector.config.copyCameraPosition) {
-          copyCameraPosition(
-            inspector.cameras.original.object3D,
-            inspector.cameras.perspective,
-            controls
-          );
-        }
       } else {
         disableControls();
         inspector.cameras.original.setAttribute('camera', 'active', 'true');
@@ -660,7 +665,7 @@ export function Viewport(inspector) {
           .forEach((element) => {
             element.style.display = 'block';
           });
-        // Hand the scene over to the Viewer's locomotion mode at the
+        // Hand the scene over to the Viewer's orbit mode at the
         // requested vantage: the scene's saved start view when arriving
         // without an editing session, otherwise the current editor
         // camera pose so entering the Viewer doesn't jump the view.
@@ -670,7 +675,7 @@ export function Viewport(inspector) {
               ? AFRAME.scenes[0].viewerVantageCameraState ||
                 getEditorCameraPose()
               : getEditorCameraPose();
-          modeManager.setMode('locomotion');
+          modeManager.setMode('orbit');
           if (vantage) modeManager.applyViewerVantage(vantage);
         }
       }

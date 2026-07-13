@@ -1279,26 +1279,22 @@ AFRAME.registerComponent('drive-mode', {
     const mgr = this.el.systems['mode-manager'];
     if (!mgr || !this.el.querySelector('[drive-controls]')) return;
     // Take the camera for the drive session; restore the Viewer's
-    // locomotion pose when the session ends (the chase/fpv cameras
-    // move #camera inside the rig).
-    const cameraEl = document.getElementById('camera');
-    this._savedCameraPose = cameraEl
-      ? {
-          position: cameraEl.object3D.position.clone(),
-          rotation: cameraEl.object3D.rotation.clone()
-        }
-      : null;
+    // vantage when the session ends (the top-down/chase/fpv cameras
+    // move #camera inside the rig). Save the WORLD pose — under orbit
+    // the #camera el sits flattened at identity, so an el-local
+    // snapshot would lose the real vantage.
+    this._savedCameraPose = mgr.getViewerCameraPose();
     mgr.setMode('drive');
   },
 
   onPlayModeStop: function () {
     const mgr = this.el.systems['mode-manager'];
     if (!mgr || mgr.getMode() !== 'drive') return;
-    mgr.setMode('locomotion');
-    const cameraEl = document.getElementById('camera');
-    if (cameraEl && this._savedCameraPose) {
-      cameraEl.object3D.position.copy(this._savedCameraPose.position);
-      cameraEl.object3D.rotation.copy(this._savedCameraPose.rotation);
+    // Enter orbit first, then place it — same enter-then-place order
+    // viewport.js uses on viewer entry.
+    mgr.setMode('orbit');
+    if (this._savedCameraPose) {
+      mgr.applyViewerVantage(this._savedCameraPose);
       this._savedCameraPose = null;
     }
   },

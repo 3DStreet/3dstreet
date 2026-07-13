@@ -69,7 +69,7 @@ Unified Viewer presentation with a Start/Stop play lifecycle. Playing is present
 
 **Lifecycle:** `play-mode` system owns start/stop/pause/reset and emits `play-mode-start|stop|reset` scene events; features subscribe independently and do their own setup/teardown. The canonical clock is `scene-timer.simulationTime` — advanced by physics sub-steps while driving (deterministic, slow-motion on weak CPUs), else at wall-clock rate.
 
-**Mode arbitration:** `mode-manager` system arbitrates control modes (`locomotion` vs `drive`) and aggregates per-feature "playable checks" that light up the Play UI.
+**Mode arbitration:** `mode-manager` system arbitrates control modes (`orbit` vs `drive`) and aggregates per-feature "playable checks" that light up the Play UI. Viewer navigation is editor-style orbit (`THREE.EditorControls` on the runtime camera); `locomotion` (WASD) stays registered but dormant pending the nav-selection branch.
 
 **Features (all play-mode subscribers, unaware of each other):**
 

@@ -2087,6 +2087,21 @@
   "viewer.hintMove": {
     "defaultMessage": "to move"
   },
+  "viewer.hintOrbit": {
+    "defaultMessage": "to orbit"
+  },
+  "viewer.hintPan": {
+    "defaultMessage": "to pan"
+  },
+  "viewer.hintRightDrag": {
+    "defaultMessage": "Right + Drag"
+  },
+  "viewer.hintScroll": {
+    "defaultMessage": "Scroll"
+  },
+  "viewer.hintZoom": {
+    "defaultMessage": "to zoom"
+  },
   "viewer.pause": {
     "defaultMessage": "Pause"
   },

@@ -14,9 +14,14 @@
  *
  * Built-in modes:
  *   - `editor`     — inspector open; no scene-side input controls.
- *   - `locomotion` — the Viewer's default: WASD/arrows movement
- *                    (movement-controls) + click-drag look
- *                    (look-controls) on the existing cameraRig.
+ *   - `orbit`      — the Viewer's default: the same THREE.EditorControls
+ *                    the editor uses (left-drag pan, right-drag orbit,
+ *                    scroll zoom), driving the runtime THREE camera.
+ *   - `locomotion` — WASD/arrows movement (movement-controls) +
+ *                    click-drag look (look-controls) on the existing
+ *                    cameraRig. Registered but currently unreachable
+ *                    from the Viewer UI (kept for the in-progress
+ *                    nav-scheme-selection work).
  *
  * Future modes (drive, replay-follow, ar-webxr, ...) are registered
  * externally by their own feature file:
@@ -35,6 +40,9 @@
  * always false and play controls stay hidden.
  */
 import useStore from '../store.js';
+// Side-effect import: defines THREE.EditorControls (already in the main
+// bundle via the editor — this adds no weight, just guarantees load order).
+import '../editor/lib/EditorControls.js';
 
 AFRAME.registerSystem('mode-manager', {
   init: function () {
@@ -43,6 +51,10 @@ AFRAME.registerSystem('mode-manager', {
     this.registerMode('editor', {
       enter: () => {},
       exit: () => {}
+    });
+    this.registerMode('orbit', {
+      enter: () => this.enterOrbit(),
+      exit: () => this.exitOrbit()
     });
     this.registerMode('locomotion', {
       enter: () => this.setLocomotionEnabled(true),
@@ -98,7 +110,147 @@ AFRAME.registerSystem('mode-manager', {
     return this.getPlayableCapabilities().length > 0;
   },
 
-  /* ---------------- locomotion (viewer default) ---------------- */
+  /* ---------------- orbit (viewer default) ---------------- */
+
+  /**
+   * Hand the runtime camera to THREE.EditorControls so the Viewer's
+   * mouse behaves exactly like the editor (left-drag pan, right-drag
+   * orbit, scroll zoom).
+   *
+   * EditorControls assumes the object it drives has its WORLD transform
+   * on its LOCAL transform, but the runtime camera is nested:
+   * #cameraRig > #camera el (eye-height offset + look-controls) > THREE
+   * camera via getObject3D('camera'). So on enter we flatten the chain:
+   * decompose the camera's current world pose, zero the rig and the
+   * #camera el, and put the world pose directly on the THREE camera.
+   * (It must be the THREE camera, never the el's plain object3D —
+   * lookAt points +Z for plain objects and -Z for cameras.)
+   */
+  enterOrbit: function () {
+    const rig = document.getElementById('cameraRig');
+    const cameraEl = document.getElementById('camera');
+    const cam = cameraEl && cameraEl.getObject3D('camera');
+    if (!rig || !cam) return;
+
+    // Capture the neutral eye offset once — the first viewer entry
+    // always happens with the hierarchy still neutral (0 1.6 0).
+    if (!this._orbitEyeOffset) {
+      this._orbitEyeOffset = cameraEl.object3D.position.clone();
+    }
+
+    cam.updateWorldMatrix(true, false);
+    const pos = new THREE.Vector3();
+    const quat = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    cam.matrixWorld.decompose(pos, quat, scale);
+
+    rig.object3D.position.set(0, 0, 0);
+    rig.object3D.rotation.set(0, 0, 0);
+    cameraEl.object3D.position.set(0, 0, 0);
+    cameraEl.object3D.rotation.set(0, 0, 0);
+    cam.position.copy(pos);
+    cam.quaternion.copy(quat);
+    cam.updateMatrixWorld();
+
+    // EditorControls' constructor re-points the singleton
+    // focus-animation component at the camera it's given. Remember the
+    // editor's binding so exitOrbit can hand it back — otherwise
+    // focus-to-entity in the editor animates the runtime camera after
+    // the first viewer visit.
+    const faEl = document.querySelector('[focus-animation]');
+    const fa = faEl && faEl.components['focus-animation'];
+    if (fa) {
+      this._prevFocusCamera = fa.camera;
+      this._prevFocusCallback = fa.changeEventCallback;
+    }
+
+    const controls = new THREE.EditorControls(cam, this.sceneEl.canvas);
+    // Same feel overrides the editor viewport applies.
+    controls.rotationSpeed = 0.0035;
+    controls.zoomSpeed = 0.05;
+    this._orbitControls = controls;
+    this.syncOrbitCenter();
+    // Mirror into the store so React (the viewer controls hint) can react.
+    useStore.setState({ isOrbitEnabled: true });
+  },
+
+  exitOrbit: function () {
+    if (this._orbitControls) {
+      this._orbitControls.dispose();
+      this._orbitControls = null;
+    }
+    // Give focus-animation back to the editor's EditorControls instance.
+    const faEl = document.querySelector('[focus-animation]');
+    const fa = faEl && faEl.components['focus-animation'];
+    if (fa && this._prevFocusCamera) {
+      fa.setCamera(this._prevFocusCamera, this._prevFocusCallback);
+    }
+    this._prevFocusCamera = null;
+    this._prevFocusCallback = null;
+
+    // Un-flatten: THREE camera back to local identity, #camera el back
+    // to its neutral eye offset. (Anything that needs the vantage —
+    // the editor handoff, drive's pose restore — reads it BEFORE the
+    // mode switch via getViewerCameraPose/copyCameraPosition.)
+    const cameraEl = document.getElementById('camera');
+    const cam = cameraEl && cameraEl.getObject3D('camera');
+    if (cam) {
+      cam.position.set(0, 0, 0);
+      cam.quaternion.identity();
+      cam.updateMatrix();
+    }
+    if (cameraEl && this._orbitEyeOffset) {
+      cameraEl.object3D.position.copy(this._orbitEyeOffset);
+      cameraEl.object3D.rotation.set(0, 0, 0);
+    }
+    useStore.setState({ isOrbitEnabled: false });
+  },
+
+  /**
+   * Point the orbit pivot at what the camera is likely looking at: the
+   * ground hit of the view ray when looking down (distance clamped to
+   * [2, 100]), else a point 20 m ahead. Called on orbit enter and every
+   * time a vantage is applied.
+   */
+  syncOrbitCenter: function () {
+    const controls = this._orbitControls;
+    const cameraEl = document.getElementById('camera');
+    const cam = cameraEl && cameraEl.getObject3D('camera');
+    if (!controls || !cam) return;
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+    let distance = 20;
+    if (forward.y < -0.05 && cam.position.y > 0) {
+      distance = THREE.MathUtils.clamp(-cam.position.y / forward.y, 2, 100);
+    }
+    controls.center.copy(cam.position).addScaledVector(forward, distance);
+  },
+
+  /**
+   * Current viewer camera world pose in the cameraState shape used by
+   * saved vantages (same shape viewport.js's getEditorCameraPose
+   * returns). Valid in any mode — it decomposes the runtime camera's
+   * matrixWorld, so it works whether the pose lives on the THREE camera
+   * (orbit), the #camera el (drive), or the rig chain (locomotion).
+   */
+  getViewerCameraPose: function () {
+    const cameraEl = document.getElementById('camera');
+    const cam = cameraEl && cameraEl.getObject3D('camera');
+    if (!cam) return null;
+    cam.updateWorldMatrix(true, false);
+    const position = new THREE.Vector3().setFromMatrixPosition(cam.matrixWorld);
+    const euler = new THREE.Euler().setFromRotationMatrix(
+      cam.matrixWorld,
+      'YXZ'
+    );
+    return {
+      position: { x: position.x, y: position.y, z: position.z },
+      rotation: { x: euler.x, y: euler.y, z: euler.z },
+      rotationOrder: 'YXZ',
+      zoom: cam.isPerspectiveCamera ? cam.fov : 60
+    };
+  },
+
+  /* ---------------- locomotion (dormant pending nav-selection) ---------------- */
 
   setLocomotionEnabled: function (enabled) {
     const rig = document.getElementById('cameraRig');
@@ -110,7 +262,7 @@ AFRAME.registerSystem('mode-manager', {
   },
 
   /**
-   * Place the viewer camera rig at a saved camera vantage. Accepts the
+   * Place the viewer camera at a saved camera vantage. Accepts the
    * cameraState shape used everywhere else (memory.cameraState,
    * snapshots[].cameraState, ?camera= deep links, and the editor camera
    * pose handed over by viewport.js): position + rotation in radians
@@ -118,15 +270,35 @@ AFRAME.registerSystem('mode-manager', {
    * camera.rotation, which is what all saved states came from) and
    * zoom (= fov).
    *
-   * Position goes on the rig (so movement-controls moves from there);
-   * rotation goes into look-controls' pitch/yaw objects (so the first
-   * mouse drag continues from the vantage instead of snapping to 0,0).
+   * In orbit mode the pose goes straight onto the flattened THREE
+   * camera and the orbit pivot re-syncs. In locomotion mode, position
+   * goes on the rig (so movement-controls moves from there) and
+   * rotation into look-controls' pitch/yaw objects (so the first mouse
+   * drag continues from the vantage instead of snapping to 0,0).
    */
   applyViewerVantage: function (cameraState) {
     if (!cameraState || !cameraState.position) return;
     const rig = document.getElementById('cameraRig');
     const cameraEl = document.getElementById('camera');
     if (!rig || !cameraEl) return;
+
+    if (this.currentMode === 'orbit' && this._orbitControls) {
+      const orbitCam = cameraEl.getObject3D('camera');
+      if (!orbitCam) return;
+      const p = cameraState.position;
+      orbitCam.position.set(p.x, p.y, p.z);
+      const r = cameraState.rotation || { x: 0, y: 0, z: 0 };
+      orbitCam.quaternion.setFromEuler(
+        new THREE.Euler(r.x, r.y, r.z, cameraState.rotationOrder || 'XYZ')
+      );
+      if (orbitCam.isPerspectiveCamera && Number.isFinite(cameraState.zoom)) {
+        orbitCam.fov = cameraState.zoom;
+        orbitCam.updateProjectionMatrix();
+      }
+      orbitCam.updateMatrixWorld();
+      this.syncOrbitCenter();
+      return;
+    }
 
     // #camera sits at a local offset inside the rig (0 1.6 0 —
     // eye height); place the rig so the camera lands exactly on the

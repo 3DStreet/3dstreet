@@ -27,8 +27,9 @@ function getPlayModeSystem() {
 }
 
 /**
- * The mode-manager's current control mode ('editor' | 'locomotion' |
- * 'drive' | ...), tracked reactively via the mode-changed scene event.
+ * The mode-manager's current control mode ('editor' | 'orbit' |
+ * 'locomotion' | 'drive' | ...), tracked reactively via the
+ * mode-changed scene event.
  */
 function useControlMode() {
   const [mode, setMode] = useState(null);
@@ -151,6 +152,7 @@ function Toolbar() {
   const isPlaying = useStore((s) => s.isPlaying);
   const isPlayPaused = useStore((s) => s.isPlayPaused);
   const isLocomotionEnabled = useStore((s) => s.isLocomotionEnabled);
+  const isOrbitEnabled = useStore((s) => s.isOrbitEnabled);
   const { currentUser, isLoading: isAuthLoading } = useAuthContext() || {};
   const setModal = useStore((s) => s.setModal);
   const hasPlayable = useHasPlayable();
@@ -385,6 +387,30 @@ function Toolbar() {
           tooltipSide="bottom"
         />
       </div>
+      {isOrbitEnabled && (
+        <div className={styles.controlsHint}>
+          <span className={styles.keyGroup}>
+            <FormattedMessage
+              id="viewer.hintClickDrag"
+              defaultMessage="Click + Drag"
+            />
+          </span>{' '}
+          <FormattedMessage id="viewer.hintPan" defaultMessage="to pan" />
+          {' · '}
+          <span className={styles.keyGroup}>
+            <FormattedMessage
+              id="viewer.hintRightDrag"
+              defaultMessage="Right + Drag"
+            />
+          </span>{' '}
+          <FormattedMessage id="viewer.hintOrbit" defaultMessage="to orbit" />
+          {' · '}
+          <span className={styles.keyGroup}>
+            <FormattedMessage id="viewer.hintScroll" defaultMessage="Scroll" />
+          </span>{' '}
+          <FormattedMessage id="viewer.hintZoom" defaultMessage="to zoom" />
+        </div>
+      )}
       {isLocomotionEnabled && (
         <div className={styles.controlsHint}>
           <span className={styles.keyGroup}>W A S D</span>{' '}

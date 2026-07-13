@@ -257,6 +257,9 @@ const useStore = create(
         // Mirrored from mode-manager: true while the viewer's
         // WASD/look controls are active (drives the controls hint).
         isLocomotionEnabled: false,
+        // Mirrored from mode-manager: true while the viewer's
+        // editor-style orbit controls are active (drives the hint).
+        isOrbitEnabled: false,
         // Which camera vantage the next viewer entry should use:
         //   'editor' — hand off the current editor camera pose (the
         //              WYSIWYG View/Play button)

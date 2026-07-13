@@ -332,6 +332,12 @@ THREE.EditorControls = function (_object, domElement) {
   }
 
   function onMouseWheel(event) {
+    // Match every other handler: a disabled instance must not consume
+    // input. Without this, the editor's (disabled) controls kept
+    // zooming the hidden editor camera on wheel events bubbling up
+    // from the Viewer, shifting the vantage the editor returns to.
+    if (scope.enabled === false) return;
+
     event.preventDefault();
 
     // Normalize deltaY due to https://bugzilla.mozilla.org/show_bug.cgi?id=1392460
