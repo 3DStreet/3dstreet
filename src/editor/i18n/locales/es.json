@@ -527,8 +527,6 @@
   "playControls.wall": "Real",
   "primaryToolbar.hidePanels": "Ocultar paneles",
   "primaryToolbar.play": "Iniciar",
-  "primaryToolbar.view": "Ver",
-  "primaryToolbar.playStaticTitle": "Entrar al modo de vista — explora la escena como tu público (WASD para moverte, clic y arrastrar para mirar). Solo lectura; usa Editar para volver.",
   "primaryToolbar.playTitle": "Entrar al modo de vista y ejecutar la simulación",
   "primaryToolbar.showPanels": "Mostrar paneles",
   "primaryToolbar.snapshot": "Captura",

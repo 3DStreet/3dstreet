@@ -1583,9 +1583,6 @@
   "primaryToolbar.play": {
     "defaultMessage": "Start"
   },
-  "primaryToolbar.playStaticTitle": {
-    "defaultMessage": "Enter View mode — explore the scene like your audience (WASD to move, click-drag to look). Read-only; Edit to return."
-  },
   "primaryToolbar.playTitle": {
     "defaultMessage": "Enter View mode and run the simulation"
   },
@@ -1597,9 +1594,6 @@
   },
   "primaryToolbar.snapshotTitle": {
     "defaultMessage": "Capture screenshot and generate rendered images"
-  },
-  "primaryToolbar.view": {
-    "defaultMessage": "View"
   },
   "profileModal.accountInformation": {
     "defaultMessage": "Account Information"

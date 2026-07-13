@@ -527,8 +527,6 @@
   "playControls.wall": "Réel",
   "primaryToolbar.hidePanels": "Masquer les panneaux",
   "primaryToolbar.play": "Démarrer",
-  "primaryToolbar.view": "Voir",
-  "primaryToolbar.playStaticTitle": "Passer en mode visualisation — explorez la scène comme votre public (WASD pour vous déplacer, cliquer-glisser pour regarder). Lecture seule ; utilisez Éditer pour revenir.",
   "primaryToolbar.playTitle": "Passer en mode visualisation et lancer la simulation",
   "primaryToolbar.showPanels": "Afficher les panneaux",
   "primaryToolbar.snapshot": "Capture",

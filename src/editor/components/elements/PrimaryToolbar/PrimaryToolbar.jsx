@@ -1,4 +1,4 @@
-import { faPlay, faExpand } from '@fortawesome/free-solid-svg-icons';
+import { faPlay } from '@fortawesome/free-solid-svg-icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { Tooltip } from 'radix-ui';
 import useStore from '@/store';
@@ -32,18 +32,17 @@ export const PrimaryToolbar = () => {
   const { currentUser } = useAuthContext() || {};
   const hasPlayable = useHasPlayable();
 
-  // Enter the Viewer from the editor camera's current pose (WYSIWYG).
-  // The one button does both jobs, and its label reflects which: when the
-  // scene has a registered playable capability it reads "Start" (enter view
-  // AND run the simulation); with nothing to animate it reads "View" (enter
-  // the read-only presentation). "Start" avoids the media-player baggage
-  // "Play" carries ("Reproducir"/"Lecture") for a lay audience. (A future
-  // per-capability label can say "Drive" etc.)
+  // Enter the Viewer from the editor camera's current pose (WYSIWYG) and
+  // run the simulation. Only rendered when the scene has a registered
+  // playable capability (a driveable vehicle, playable street traffic, a
+  // traffic replay layer, ...) — a static scene gets no button, since a
+  // bare "View" presentation confused users more than it helped. "Start"
+  // avoids the media-player baggage "Play" carries ("Reproducir"/
+  // "Lecture") for a lay audience. (A future per-capability label can
+  // say "Drive" etc.)
   const handlePlay = () => {
     useStore.getState().enterViewerMode('editor');
-    if (hasPlayable) {
-      document.querySelector('a-scene')?.systems?.['play-mode']?.start();
-    }
+    document.querySelector('a-scene')?.systems?.['play-mode']?.start();
   };
 
   const handleSnapshot = () => {
@@ -64,16 +63,10 @@ export const PrimaryToolbar = () => {
         defaultMessage: 'Show panels'
       });
 
-  const playTooltip = hasPlayable
-    ? intl.formatMessage({
-        id: 'primaryToolbar.playTitle',
-        defaultMessage: 'Enter View mode and run the simulation'
-      })
-    : intl.formatMessage({
-        id: 'primaryToolbar.playStaticTitle',
-        defaultMessage:
-          'Enter View mode — explore the scene like your audience (WASD to move, click-drag to look). Read-only; Edit to return.'
-      });
+  const playTooltip = intl.formatMessage({
+    id: 'primaryToolbar.playTitle',
+    defaultMessage: 'Enter View mode and run the simulation'
+  });
 
   return (
     <div className={styles.wrapper}>
@@ -92,28 +85,23 @@ export const PrimaryToolbar = () => {
             leadingIcon={<PanelsIcon filled={panelsVisible} size={16} />}
           />
         </ToolTip>
-        <div className={styles.divider} />
-        <ToolTip content={playTooltip}>
-          <Button
-            variant="toolbtn"
-            onClick={handlePlay}
-            leadingIcon={
-              <AwesomeIcon icon={hasPlayable ? faPlay : faExpand} size={16} />
-            }
-          >
-            {hasPlayable ? (
-              <FormattedMessage
-                id="primaryToolbar.play"
-                defaultMessage="Start"
-              />
-            ) : (
-              <FormattedMessage
-                id="primaryToolbar.view"
-                defaultMessage="View"
-              />
-            )}
-          </Button>
-        </ToolTip>
+        {hasPlayable && (
+          <>
+            <div className={styles.divider} />
+            <ToolTip content={playTooltip}>
+              <Button
+                variant="toolbtn"
+                onClick={handlePlay}
+                leadingIcon={<AwesomeIcon icon={faPlay} size={16} />}
+              >
+                <FormattedMessage
+                  id="primaryToolbar.play"
+                  defaultMessage="Start"
+                />
+              </Button>
+            </ToolTip>
+          </>
+        )}
         <div className={styles.divider} />
         <ToolTip
           content={intl.formatMessage({
