@@ -96,12 +96,29 @@ export function initRaycaster(inspector) {
     });
   });
 
+  // Raw clientX/Y (viewport pixels), NOT container-normalized coords:
+  // layout shifts between Viewer and editor presentations move the
+  // container's bounding rect between mousedown and mouseup, which made
+  // normalized positions drift for a physically stationary click. Client
+  // coordinates are viewport-absolute and immune to that.
   const onDownPosition = new THREE.Vector2();
   const onUpPosition = new THREE.Vector2();
+  // Any real drag travels further than this; it only absorbs sub-pixel
+  // jitter so a stationary click still counts as a click.
+  const CLICK_MAX_DRAG_PX = 2;
 
   function handleClick(evt) {
-    // Check to make sure not dragging.
-    if (onDownPosition.distanceTo(onUpPosition) === 0) {
+    // Compute up position from the click event's source mouseup rather
+    // than the side-state onUpPosition. The cursor component emits
+    // click synchronously from inside its canvas mouseup handler, which
+    // runs before our container bubble mouseup — so onUpPosition would
+    // be stale (the previous click's value). evt.detail.mouseEvent is
+    // the originating mouseup; reading from it is order-independent.
+    const upEvt = evt && evt.detail && evt.detail.mouseEvent;
+    const up = upEvt
+      ? new THREE.Vector2(upEvt.clientX, upEvt.clientY)
+      : onUpPosition;
+    if (onDownPosition.distanceTo(up) <= CLICK_MAX_DRAG_PX) {
       inspector.selectEntity(getIntersectedEl());
       // Force the cursor component to trigger again an intersection to show hover box on the original intersected el inside the street-segment.
       mouseCursor.components.cursor.clearCurrentIntersection(false);
@@ -113,12 +130,7 @@ export function initRaycaster(inspector) {
       return;
     }
     event.preventDefault();
-    const array = getMousePosition(
-      inspector.container,
-      event.clientX,
-      event.clientY
-    );
-    onDownPosition.fromArray(array);
+    onDownPosition.set(event.clientX, event.clientY);
   }
 
   function onMouseUp(event) {
@@ -126,12 +138,7 @@ export function initRaycaster(inspector) {
       return;
     }
     event.preventDefault();
-    const array = getMousePosition(
-      inspector.container,
-      event.clientX,
-      event.clientY
-    );
-    onUpPosition.fromArray(array);
+    onUpPosition.set(event.clientX, event.clientY);
   }
 
   /**
@@ -160,9 +167,4 @@ export function initRaycaster(inspector) {
       inspector.container.removeEventListener('dblclick', onDoubleClick);
     }
   };
-}
-
-function getMousePosition(dom, x, y) {
-  const rect = dom.getBoundingClientRect();
-  return [(x - rect.left) / rect.width, (y - rect.top) / rect.height];
 }
