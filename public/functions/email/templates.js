@@ -77,8 +77,9 @@ const welcome = {
 
   <ul style="padding-left: 20px;">
     <li><strong>Start from a template:</strong> pick a street layout and make it yours</li>
-    <li><strong>Import from Streetmix:</strong> paste a Streetmix URL to bring a 2D design into 3D</li>
     <li><strong>Place your street in the real world:</strong> your account includes free geo tokens for Google 3D Tiles</li>
+    <li><strong>Import from Streetmix:</strong> paste a Streetmix URL to bring a 2D design into 3D</li>
+    <li><strong>Render high quality visuals:</strong> use the Snapshot &amp; Render or AI Generator tools to create photorealistic or stylized renderings</li>
   </ul>`,
       {
         ctaUrl: `${APP_BASE}/?${utm('welcome', 'cta_button')}`,
@@ -95,8 +96,9 @@ const welcome = {
 A few ways to get going:
 
 - Start from a template: pick a street layout and make it yours
+- Place your street in the real world: your account includes free geo tokens for Google 3D Tiles
 - Import from Streetmix: paste a Streetmix URL to bring a 2D design into 3D
-- Place your street in the real world: your account includes free geo tokens for Google 3D Tiles`,
+- Render high quality visuals: use the Snapshot & Render or AI Generator tools to create photorealistic or stylized renderings`,
       {
         ctaUrl: `${APP_BASE}/?${utm('welcome', 'cta_link')}`,
         ctaLabel: 'Start designing',
@@ -119,7 +121,7 @@ const postUpgradeWelcome = {
     <li>Watermark-free snapshots and HD renders</li>
     <li>Unlimited geospatial maps &amp; location changes</li>
     <li>AR-ready glTF and video export</li>
-    <li>Custom 3D model &amp; SVG imports</li>
+    <li>Custom 3D models &amp; 3D scans (splat or mesh)</li>
     <li>A monthly allowance of AI generation tokens</li>
   </ul>
 
@@ -139,7 +141,7 @@ const postUpgradeWelcome = {
 - Watermark-free snapshots and HD renders
 - Unlimited geospatial maps & location changes
 - AR-ready glTF and video export
-- Custom 3D model & SVG imports
+- Custom 3D models & 3D scans (splat or mesh)
 - A monthly allowance of AI generation tokens
 
 Everything is already active on your account. Just open the editor.`,
@@ -285,7 +287,7 @@ const geoNotUsed = {
       userName,
       `  <p>Did you know your 3DStreet scenes can sit on a photorealistic 3D map of the real world?</p>
 
-  <p>Your account includes <strong>free geo tokens</strong> for Google 3D Tiles. Search for any address, drop your street design into the actual neighborhood, and see it in context. It's the fastest way to make a proposal feel real.</p>`,
+  <p>Your account includes <strong>free geo tokens</strong> for Google 3D Map Tiles. Search for any address, drop your street design into the actual neighborhood, and see it in context. It's the fastest way to make a proposal feel real.</p>`,
       {
         ctaUrl: `${APP_BASE}/?${utm('geo_not_used', 'cta_button')}`,
         ctaLabel: 'Try 3D maps',
@@ -297,7 +299,7 @@ const geoNotUsed = {
       userName,
       `Did you know your 3DStreet scenes can sit on a photorealistic 3D map of the real world?
 
-Your account includes free geo tokens for Google 3D Tiles. Search for any address, drop your street design into the actual neighborhood, and see it in context. It's the fastest way to make a proposal feel real.`,
+Your account includes free geo tokens for Google 3D Map Tiles. Search for any address, drop your street design into the actual neighborhood, and see it in context. It's the fastest way to make a proposal feel real.`,
       {
         ctaUrl: `${APP_BASE}/?${utm('geo_not_used', 'cta_link')}`,
         ctaLabel: 'Try 3D maps',
