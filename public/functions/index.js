@@ -6,6 +6,7 @@ const { getGeoidHeight } = require('./geoid-height.js');
 const { generateReplicateImage, generateReplicateVideo, generateReplicateSplat, getGenerationJobStatus, replicateJobWebhook, modalJobWebhook } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { generateFalImage } = require('./fal-proxy.js');
+const { generateFalMesh } = require('./fal-3d.js');
 const { assertAppCheck } = require('./app-check.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduled/scheduledEmails.js');
 const { sendLifecycleEmail, triggerLifecycleEmail, postmarkSubscriptionWebhook } = require('./email/lifecycle-email.js');
@@ -39,6 +40,9 @@ exports.checkUserProStatus = checkUserProStatus;
 
 // Re-export the fal.ai proxy function
 exports.generateFalImage = generateFalImage;
+
+// Re-export the fal.ai 3D mesh generation function
+exports.generateFalMesh = generateFalMesh;
 
 // Re-export the scheduled email functions
 exports.sendScheduledEmails = sendScheduledEmails;

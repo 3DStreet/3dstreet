@@ -17,7 +17,7 @@ single completion shape:
 
 | Provider | Kind(s) | Completion model | Tokens |
 | --- | --- | --- | --- |
-| `replicate` | `splat` (image→splat, SHARP) | **convergent**: provider webhook + client poll + reconciler all funnel into one idempotent processor | charged on submit, refunded once on failure |
+| `replicate` | `splat` (image→splat, SHARP), `video` (image→video, Veo/Kling/LTX/…) | **convergent**: provider webhook + client poll + reconciler all funnel into one idempotent processor | charged on submit, refunded once on failure |
 | `cloudrun` | `splat-rad` (.ply→RAD/LOD) | **worker-writeback**: the Cloud Run worker writes its own terminal status; reconciler re-enqueues a stalled task (no external state to poll) | **`tokenCost: 0`** — silent backend optimization, never charges |
 
 The design generalizes further so Replicate image/video, fal, and Teleport/Varjo
@@ -214,6 +214,54 @@ splat asset doc created  (uploaded OR generator-saved)
 | Converter service (Dockerfile + handler) | `rad-converter/` |
 | Bucket byte-range CORS | `public/cors.json` |
 | Full design + deploy/IAM ops | `docs/rad-cloud-run-pipeline.md`, `rad-converter/README.md` |
+
+---
+
+## Second kind on Replicate — Video (image → video) ✅ DONE
+
+**Why it moved here (issue #1780):** `generateReplicateVideo` used to be a
+synchronous callable that blocked on `replicate.run(...)` for the whole render
+(~2 min median) with zero streamed bytes. Safari drops idle data-less HTTPS
+connections well before that — the client surfaced a spurious
+`FirebaseError: internal` while the server kept running, charged tokens, and
+produced a video nobody received. There is no timeout to tune (onCall can't
+stream), so the fix is the same create-and-return pattern as splat.
+
+**What's different from splat (the deltas, everything else is reused as-is):**
+
+- **Model addressing:** video models are official Replicate models addressed by
+  NAME (`replicate.predictions.create({ model: 'google/veo-3.1-fast', ... })`),
+  no version hash — splat pins a resolved `version` because community models
+  404 on the name form. `SUPPORTED_VIDEO_MODELS` in `replicate.js` is the
+  allowlist.
+- **Terminal persist:** `saveVideoToGallery` streams the `.mp4` from the
+  (ephemeral) `replicate.delivery` URL into
+  `users/{uid}/assets/videos/{assetId}.mp4` and writes the same
+  `type: 'video'` / `category: 'ai-render'` asset doc the client-side save used
+  to write, so pre- and post-migration gallery videos render identically. The
+  gallery save previously ran in the browser (`video.js:saveToGallery`) and
+  died with a closed tab — moving it into the terminal processor is the core
+  browser-independence win.
+- **Discord post** moved from the submit callable into the terminal processor's
+  claimed success branch — fires on real completion, exactly once (the
+  `saving` claim serializes webhook/poll/reconciler), with the durable Storage
+  URL instead of the ephemeral provider URL.
+- **No geometry gate** (that's a splat-specific SfM sanity check). The
+  completion-email opt-in works exactly like splat's (checkbox on the tab →
+  `notify: { email, pending }` on the job doc; the `generationReady` template
+  already had video copy) — renders are usually ~2 min, but provider queue
+  waits can stretch far past what anyone keeps a tab open for.
+- **Job doc extras:** `generationParams` ({model_name, prompt, aspect_ratio,
+  duration_seconds, scene_id}) — everything the terminal processor needs to
+  build the gallery metadata + Discord post without a browser. Terminal result
+  field is `videoUrl` (returned to the client as `video_url`, mirroring
+  `splat_url`).
+
+Tokens flipped from charge-after-success to charge-at-submit + refund-once on
+failure (the old ordering is exactly what stranded charges on disconnect).
+Client (`src/generator/video.js`) mirrors `splat.js`: submit → `jobId` →
+`pollVideoStatus` loop; the gallery's pending-job card lights up from the
+existing job-doc listener for free.
 
 ---
 
@@ -536,3 +584,37 @@ full queue plus two things the Replicate kinds don't:
 - **Secrets:** none new for splat — reuses `REPLICATE_API_TOKEN` and
   `ALLOWED_PRO_TEAM_DOMAINS`. Email (Phase 4) reuses the existing Postmark
   secret. cloudrun adds **no secrets** (OIDC via the invoker SA).
+
+## Third provider — fal (image → 3D mesh) ✅ DONE
+
+The first **poll-provider**: fal has no webhook wired here, so completion is
+discovered by polling — the exact seam the reconciler's `switch (job.provider)`
+anticipated. It also fixed a real bug: `generateFalMesh` used to be a
+synchronous callable that polled fal inline for up to ~4.6 min, so longer jobs
+(TRELLIS 2, or fal queue congestion) hit the 300s function timeout and 500'd
+with the token uncharged-but-work-wasted feel. Same class of failure as the
+video migration (#1780).
+
+- **Kind/provider:** `kind: 'mesh'`, `provider: 'fal'`. Models Hunyuan3D v2 and
+  TRELLIS 2 (`type: 'fal-3d'` in `replicate-models.js`), image-to-3D only.
+- **Submit-and-return:** `generateFalMesh` stages the input image, writes the
+  pending job, charges at submit (refund-once-on-failure, shared
+  `refundSplatToken` path), submits to `queue.fal.run`, stores the fal
+  `request_id` as `providerJobId` plus `statusUrl`/`responseUrl`, and returns
+  `{ jobId }`. No inline poll.
+- **Completion (no webhook):** `fetchFalPrediction(job)` (in `fal-3d.js`) polls
+  `statusUrl` and shapes the result as a Replicate-style prediction (GLB URL as
+  `output`, mapped to Replicate status words), returning `{ prediction }` or
+  `{ absent }`. Both `getGenerationJobStatus` (client poll, live UX) and the
+  reconciler (closed-tab backstop) call it, then run the shared
+  `processTerminalPrediction`, whose new `kind: 'mesh'` branch saves the GLB via
+  `saveMeshToGallery` (streamed to `users/{uid}/assets/meshes/{assetId}.glb`,
+  `type: 'mesh'` / `category: 'ai-render'`, asset id keyed on the fal
+  `request_id` so retries converge). Result field is `meshUrl` (returned as
+  `mesh_url`).
+- **Client:** `model3d.js` mirrors `splat.js`/`video.js` — submit → `jobId` →
+  self-rescheduling `pollMeshStatus`, "email me when my 3D model is ready"
+  checkbox (default on), pending gallery card via the kind-agnostic
+  `generationJobs` listener (`mesh` noun added to `PendingJobCard`).
+- **Secrets:** `FAL_KEY` added to `getGenerationJobStatus` and the reconciler
+  (either can carry a fal job to terminal).

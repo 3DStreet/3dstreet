@@ -156,7 +156,8 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
     copyByKind: {
       splat: { noun: 'splat', desc: '3D Gaussian Splat' },
       video: { noun: 'video', desc: 'video' },
-      image: { noun: 'image', desc: 'image' }
+      image: { noun: 'image', desc: 'image' },
+      mesh: { noun: '3D model', desc: '3D model (GLB)' }
     },
     getCopy(kind) {
       return this.copyByKind[kind] || { noun: 'generation', desc: 'generation' };
