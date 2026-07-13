@@ -49,6 +49,7 @@ public/
 ## Key A-Frame Components
 
 **Core Street:**
+
 - `managed-street` - **Preferred**: Manages `street-segment` children, loads from `streetmix-url`, `streetplan-url`, or `json-blob`
 - `street` + `streetmix-loader` - **Legacy**: Being phased out
 - `street-segment` - Individual lane/segment (drive-lane, bike-lane, sidewalk, etc.)
@@ -61,6 +62,23 @@ public/
 **Environment:** `street-environment`, `viewer-mode`, `ocean`
 
 **Utilities:** `create-from-json`, `gltf-part`, `screentock`, `measure-line`
+
+## Play Mode & Viewer
+
+Unified Viewer presentation with a Start/Stop play lifecycle. Playing is presentation-only (nothing persists, no edit permission needed). Code lives in `src/aframe-components/play/` plus `mode-manager.js`.
+
+**Lifecycle:** `play-mode` system owns start/stop/pause/reset and emits `play-mode-start|stop|reset` scene events; features subscribe independently and do their own setup/teardown. The canonical clock is `scene-timer.simulationTime` — advanced by physics sub-steps while driving (deterministic, slow-motion on weak CPUs), else at wall-clock rate.
+
+**Mode arbitration:** `mode-manager` system arbitrates control modes (`locomotion` vs `drive`) and aggregates per-feature "playable checks" that light up the Play UI.
+
+**Features (all play-mode subscribers, unaware of each other):**
+
+- `drive-mode` + `play-mode-vehicle` / `play-mode-physics` — Rapier raycast-wheel driving sim (WASM lazy-loaded on first Play); spawns the player car from a `[drive-controls]` entity; keyboard + gamepad input
+- `street-traffic` — synthetic traffic on `[managed-street][playable]` lanes, pure function of sim-time
+- `street-traffic-replay` — replays anonymized roadside-sensor manifests as agents on a linked managed-street; suppresses synthetic traffic on its target street
+- `race-target`, `collision-marker`, `best-times` — race finish gate, crash markers (session-only, stripped on stop/reset), localStorage best times
+
+**Shared gotchas:** hide/restore of static street clones during play goes through the refcounted registry in `play/clone-visibility.js` (never hide independently — double-hide breaks restore); visibility changes must use `setAttribute('visible', ...)`, never raw `object3D.visible` (mesh batching). Dev-only `?replay=sample` bootstrap (`play/replay-demo.js`) is gated out of production builds.
 
 ## Editor (React)
 
@@ -99,6 +117,7 @@ public/
 Drag-and-drop GLB/image upload with client-side optimization, cloud persistence, quota enforcement, and per-entity status UI.
 
 **Persistence — two identity attributes written to saved JSON:**
+
 - `data-asset-id` — Firestore doc id under the owner's subcollection
 - `data-asset-owner-uid` — needed to reconstruct the owner-only Firestore path (`users/{ownerUid}/assets/{assetId}`) without auth context (e.g. for anonymous viewers)
 
@@ -109,12 +128,14 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 **All other metadata** (`size`, `originalFilename`, etc.) lives in Firestore and is fetched on demand — never saved in the scene JSON.
 
 **Cloud Functions:**
+
 - `onAssetWritten` — Firestore trigger, maintains `users/{uid}/meta/usage.bytesUsed` via transaction. Only `size` (original) counts toward quota; `optimizedSourceSize` is excluded (platform cost).
 - `getUploadQuota` — callable, reads plan via `getAuth().getUser(uid)` (Admin SDK, always fresh custom claims). Returns `{ bytesUsed, planLimit, planName, allowed }`.
 
 **Plan limits (decimal):** FREE 100 MB · PRO 5 GB · MAX 25 GB (reserved; no users today). Per-file caps: GLB 50 MB · image 10 MB.
 
 **Security rules:**
+
 - `size`, `storagePath`, `optimizedSourcePath`, `userId` immutable after create — prevents quota spoofing
 - Client hard-delete (`deleteDoc`) disallowed; UI soft-deletes (`deleted: true`); GC Cloud Function purges via Admin SDK
 - `users/{uid}/meta/usage` owner-readable, write-only via Cloud Functions
@@ -131,11 +152,12 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 
 **Async job queue:** Long-running AI jobs use `users/{uid}/generationJobs/{jobId}` (provider-agnostic, survives a closed browser). Providers today: `replicate` (image→splat via SHARP, and image→video via Veo/Kling/LTX — converge on one idempotent processor via webhook + poll + reconciler; results saved to the gallery server-side), `fal` (image→3D mesh via Hunyuan3D/TRELLIS — a poll-provider with no webhook: the client poll and the reconciler both finalize via the same `fetchFalPrediction` adapter + shared terminal processor), and `cloudrun` (`.ply`→RAD/LOD conversion via the `rad-converter` Cloud Run service; worker-writeback, `tokenCost: 0`, triggered by `onSplatAssetCreated`). A scheduled reconciler backstops all of them. Design: `docs/generation-job-queue.md`; RAD pipeline: `docs/rad-cloud-run-pipeline.md`.
 
-## Shared Library (@shared/*)
+## Shared Library (@shared/\*)
 
 **Purpose:** Reusable components/services across editor + generator, imported via webpack alias
 
 **Categories:**
+
 - `auth/` - ProfileButton, SignInModal, TokenDisplay, TokenDetailsCard
 - `navigation/` - AppSwitcher (app switcher dropdown)
 - `contexts/` - AuthProvider (wraps Firebase auth, provides user/tokenProfile)
@@ -163,6 +185,7 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 ## Key Patterns
 
 **A-Frame ↔ React:**
+
 - React → A-Frame: `entity.setAttribute()` or `AFRAME.INSPECTOR.execute()`
 - A-Frame → React: `Events.emit()` or `useStore.setState()`
 

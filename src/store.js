@@ -239,11 +239,44 @@ const useStore = create(
           set((state) => ({ panelsVisible: !state.panelsVisible })),
         rightPanelTab: 'properties',
         setRightPanelTab: (newTab) => set({ rightPanelTab: newTab }),
+        // Play lifecycle state, mirrored from the play-mode A-Frame
+        // system so React can render off it. Never set these directly —
+        // call sceneEl.systems['play-mode'].start()/stop()/togglePause().
+        isPlaying: false,
+        isPlayPaused: false,
+        // Transient outcome shown by the viewer top bar's sim pill.
+        //   null      – normal running state
+        //   'finish'  – race-target was crossed (blue, pinned at finish time)
+        //   'crash'   – a recent chassis collision (red, auto-clears)
+        playOutcome: null,
+        playOutcomeTimeMs: 0,
+        // Race-finish detail consumed by the end-of-race banner.
+        // playFinish: null | { finalMs, simMs, collisions, previousBestMs,
+        //   isNewBest, deltaMs, courseKey, finishedAt }
+        playFinish: null,
+        // Mirrored from mode-manager: true while the viewer's
+        // WASD/look controls are active (drives the controls hint).
+        isLocomotionEnabled: false,
+        // Which camera vantage the next viewer entry should use:
+        //   'editor' — hand off the current editor camera pose (the
+        //              WYSIWYG View/Play button)
+        //   'saved'  — the scene's saved start view (default snapshot >
+        //              memory.cameraState > ?camera= deep link), used
+        //              when arriving in the viewer without an editing
+        //              session (?viewer=true, non-author scene loads)
+        viewerVantage: 'editor',
+        enterViewerMode: (vantage = 'editor') => {
+          set({ viewerVantage: vantage });
+          useStore.getState().setIsInspectorEnabled(false);
+        },
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
-          const viewerModeUI = document.getElementById('viewer-mode-ui');
-
           if (newIsInspectorEnabled) {
+            // Opening the inspector exits play mode (regardless of how
+            // the open was triggered — Edit button, Escape,
+            // programmatic). Subscribers tear down their own state via
+            // the play-mode-stop scene event.
+            document.querySelector('a-scene')?.systems?.['play-mode']?.stop();
             posthog.capture('inspector_opened');
             AFRAME.INSPECTOR.open();
 
@@ -252,19 +285,9 @@ const useStore = create(
               console.log('Stopping recording due to returning to editor mode');
               canvasRecorder.stopRecording();
             }
-
-            // Hide viewer mode UI when inspector is visible
-            if (viewerModeUI) {
-              viewerModeUI.style.display = 'none';
-            }
           } else {
             posthog.capture('inspector_closed');
             AFRAME.INSPECTOR.close();
-
-            // Show viewer mode UI when inspector is not visible
-            if (viewerModeUI) {
-              viewerModeUI.style.display = 'block';
-            }
           }
           set({ isInspectorEnabled: newIsInspectorEnabled });
         }

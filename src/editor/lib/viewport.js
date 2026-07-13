@@ -610,10 +610,32 @@ export function Viewport(inspector) {
     originIndicator.visible = grid.visible;
   });
 
+  // Current editor camera pose in the cameraState shape used by saved
+  // vantages, so the Viewer can pick up exactly where the editor camera
+  // was looking (the WYSIWYG View/Play handoff).
+  function getEditorCameraPose() {
+    const cam = inspector.camera;
+    if (!cam) return null;
+    cam.updateMatrixWorld();
+    const position = new THREE.Vector3().setFromMatrixPosition(cam.matrixWorld);
+    const euler = new THREE.Euler().setFromRotationMatrix(
+      cam.matrixWorld,
+      'YXZ'
+    );
+    return {
+      position: { x: position.x, y: position.y, z: position.z },
+      rotation: { x: euler.x, y: euler.y, z: euler.z },
+      rotationOrder: 'YXZ',
+      zoom: cam.isPerspectiveCamera ? cam.fov : 60
+    };
+  }
+
   useStore.subscribe(
     (state) => state.isInspectorEnabled,
     (isEnabled) => {
+      const modeManager = AFRAME.scenes[0].systems['mode-manager'];
       if (isEnabled) {
+        modeManager?.setMode('editor');
         enableControls();
         AFRAME.scenes[0].camera = inspector.camera;
         Array.prototype.slice
@@ -638,6 +660,19 @@ export function Viewport(inspector) {
           .forEach((element) => {
             element.style.display = 'block';
           });
+        // Hand the scene over to the Viewer's locomotion mode at the
+        // requested vantage: the scene's saved start view when arriving
+        // without an editing session, otherwise the current editor
+        // camera pose so entering the Viewer doesn't jump the view.
+        if (modeManager) {
+          const vantage =
+            useStore.getState().viewerVantage === 'saved'
+              ? AFRAME.scenes[0].viewerVantageCameraState ||
+                getEditorCameraPose()
+              : getEditorCameraPose();
+          modeManager.setMode('locomotion');
+          if (vantage) modeManager.applyViewerVantage(vantage);
+        }
       }
     }
   );

@@ -177,6 +177,26 @@ export const Shortcuts = {
       event.preventDefault();
       event.stopPropagation();
     }
+
+    // p: enter the Viewer and start playing. Gated to non-input focus +
+    // a registered playable capability in the scene (driveable vehicle,
+    // playable managed-street, ...). Mirrors the toolbar Play button.
+    if (
+      event.keyCode === 80 &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      document.activeElement.tagName !== 'INPUT' &&
+      document.activeElement.tagName !== 'TEXTAREA'
+    ) {
+      const sceneEl = document.querySelector('a-scene');
+      if (sceneEl?.systems?.['mode-manager']?.hasPlayable()) {
+        useStore.getState().enterViewerMode('editor');
+        sceneEl.systems['play-mode'].start();
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
   },
   enable: function () {
     if (this.enabled) {
