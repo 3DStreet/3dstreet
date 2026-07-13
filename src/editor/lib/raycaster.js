@@ -103,9 +103,11 @@ export function initRaycaster(inspector) {
   // coordinates are viewport-absolute and immune to that.
   const onDownPosition = new THREE.Vector2();
   const onUpPosition = new THREE.Vector2();
-  // Any real drag travels further than this; it only absorbs sub-pixel
-  // jitter so a stationary click still counts as a click.
-  const CLICK_MAX_DRAG_PX = 2;
+  // 0 = exact main-parity strictness: any down->up movement at all is
+  // treated as a drag, not a click. (A small value like 2 would rescue
+  // clicks with 1-2px of hand jitter, common on trackpads — revisit if
+  // dead clicks get reported.)
+  const CLICK_MAX_DRAG_PX = 0;
 
   function handleClick(evt) {
     // Compute up position from the click event's source mouseup rather
