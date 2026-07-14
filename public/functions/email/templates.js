@@ -120,9 +120,9 @@ const postUpgradeWelcome = {
   <ul style="padding-left: 20px;">
     <li>Watermark-free snapshots and HD renders</li>
     <li>Unlimited geospatial maps &amp; location changes</li>
-    <li>AR-ready glTF and video export</li>
-    <li>Custom 3D models &amp; 3D scans (splat or mesh)</li>
-    <li>A monthly allowance of AI generation tokens</li>
+    <li>An allowance of AI generation tokens topped up each month</li>
+    <li>3D Model glTF Export</li>
+    <li>Larger asset storage allowance for uploading custom 3D models, scans (splat or mesh), and images</li>
   </ul>
 
   <p>Everything is already active on your account. Just open the editor.</p>`,
@@ -140,9 +140,9 @@ const postUpgradeWelcome = {
 
 - Watermark-free snapshots and HD renders
 - Unlimited geospatial maps & location changes
-- AR-ready glTF and video export
-- Custom 3D models & 3D scans (splat or mesh)
-- A monthly allowance of AI generation tokens
+- An allowance of AI generation tokens topped up each month
+- 3D Model glTF Export
+- Larger asset storage allowance for uploading custom 3D models, scans (splat or mesh), and images
 
 Everything is already active on your account. Just open the editor.`,
       {
