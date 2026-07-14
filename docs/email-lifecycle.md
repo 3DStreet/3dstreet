@@ -134,8 +134,7 @@ Declared per email, enforced transactionally (`email/stop-rules.js`):
   `await adminTools.triggerEmails()` (daily sweep: token exhaustion) report
   who would receive emails without sending.
 - **Stripe events:** replay against the deployed dev project with the Stripe
-  CLI — `stripe trigger checkout.session.completed` /
-  `stripe trigger invoice.payment_failed`.
+  CLI — `stripe trigger checkout.session.completed`.
 
 Roll out any new email by dry-running against the dev Firebase project and
 checking Postmark activity (correct stream, footer renders) before prod.
@@ -183,9 +182,11 @@ deploying email changes to dev, before promoting to prod.
    welcome arrives once; `checkoutSessions/{sessionId}` flips to
    `status: 'complete'` in Firestore. Or skip the UI and run
    `stripe trigger checkout.session.completed` with the Stripe CLI.
-10. **Failed payment.** `stripe trigger invoice.payment_failed` against dev →
-    failed-payment email for the matched test user; re-trigger with the same
-    invoice → `skipped/dedupeKey` in the function logs, no second email.
+10. **Failed payment.** N/A — dunning is handled by Stripe's hosted
+    failed-payment emails (Settings → Billing → Automatic collection), not by
+    our `failedPayment` template. `invoice.payment_failed` is not enabled on
+    the webhook endpoint; the code stays dormant. Don't enable both — that
+    double-emails the customer.
 11. **Abandoned checkout.** Start a checkout on dev, close the tab, confirm
     `checkoutSessions/{id}` exists with `status: 'open'`. After >1h run
     `await adminTools.triggerLifecycleSweep()` → the account appears under
@@ -217,10 +218,12 @@ Postmark dashboard:
 Stripe dashboard (dev first, then prod):
 
 4. On the existing `stripeWebhook` endpoint, add `checkout.session.expired`
-   and `invoice.payment_failed` to the enabled events
-   (`checkout.session.completed` is already on). Same endpoint, same signing
-   secret — no code or secret changes needed; unrecognized events are acked
-   and ignored, so this is safe to do before or after deploy.
+   to the enabled events (`checkout.session.completed` is already on). Same
+   endpoint, same signing secret — no code or secret changes needed;
+   unrecognized events are acked and ignored, so this is safe to do before or
+   after deploy. Do **not** enable `invoice.payment_failed` — failed-payment
+   dunning uses Stripe's hosted customer emails (enable under Settings →
+   Billing → Automatic collection), and enabling both would double-email.
 
 ## The emails
 
@@ -228,7 +231,7 @@ Stripe dashboard (dev first, then prod):
 |-------------------|--------|---------|-------|
 | `welcome` | outbound | Firebase Auth `onCreate` (`lifecycle-triggers.js`) — instant, new accounts only, no backfill | `onceEver` |
 | `postUpgradeWelcome` | outbound | `checkout.session.completed` in `stripeWebhook` | `dedupeKey: sessionId` |
-| `failedPayment` | outbound | `invoice.payment_failed` in `stripeWebhook` (fires per retry; deduped) | `dedupeKey: invoiceId` |
+| `failedPayment` | outbound | **dormant** — dunning uses Stripe's hosted emails instead; `invoice.payment_failed` not enabled on the webhook. Code kept as fallback. | `dedupeKey: invoiceId` |
 | `checkoutAbandoned1h` | conversion | hourly sweep over `checkoutSessions` not `complete`, created >1h ago | `dedupeKey: sessionId`, `categoryNotWithinDays: 7`, `stopIfPro` |
 | `checkoutAbandoned72h` | conversion | same, >72h — **built but disabled** (`ENABLE_ABANDONED_72H` in `lifecycle-sweeps.js`) | same |
 | `pricingPageNudge` | conversion | hourly sweep over `userSignals`: saw payment modal >24h ago, never started a checkout since | `notWithinDays: 30`, `categoryNotWithinDays: 7`, `stopIfPro` |

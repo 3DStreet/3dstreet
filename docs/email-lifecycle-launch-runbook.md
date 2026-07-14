@@ -39,7 +39,7 @@ are tiny (~11 signups/day, ~1 abandoned checkout/2 days). Rollback is a
 |-------|------|--------|
 | Welcome | instantly on signup | transactional |
 | Post-Upgrade Welcome | on completed checkout | transactional |
-| Failed Payment | on failed subscription payment | transactional |
+| Failed Payment | **not shipping** — Stripe hosted dunning emails instead; code dormant | — |
 | Checkout Abandoned (1h) | 1h after an unfinished checkout | conversion (unsubscribable) |
 | Pricing Page Nudge | 24h after viewing plans w/o checkout | conversion (unsubscribable) |
 | Geo Not Used | 3d after signup, geo never tried | lifecycle (unsubscribable) |
@@ -69,12 +69,14 @@ are tiny (~11 signups/day, ~1 abandoned checkout/2 days). Rollback is a
    ```
 4. **Stripe dashboard** (~5 min, safe to do before deploy — unknown events
    are acked and ignored): on the existing `stripeWebhook` endpoint
-   (dev and prod), add these to the enabled events, keeping
-   `checkout.session.completed`:
-   - `checkout.session.expired`
-   - `invoice.payment_failed`
+   (dev and prod), add `checkout.session.expired` to the enabled events,
+   keeping `checkout.session.completed`. Same endpoint, same signing secret —
+   no code or secret changes.
 
-   Same endpoint, same signing secret — no code or secret changes.
+   **Dunning decision (2026-07-13): use Stripe's hosted failed-payment
+   emails**, not our `failedPayment` template. Remove `invoice.payment_failed`
+   from the endpoint if it was added, and enable customer emails under
+   Settings → Billing → Automatic collection. Never run both (double email).
 
 ## Thursday morning — dev deploy + verification (~1.5h)
 
@@ -103,9 +105,8 @@ are tiny (~11 signups/day, ~1 abandoned checkout/2 days). Rollback is a
    // then re-run the line above → returns skipped/unsubscribed
    await adminTools.triggerLifecycleSweep()                         // sweep dry run
    ```
-   Plus: create a throwaway account on dev → welcome email arrives; and
-   `stripe trigger invoice.payment_failed` (Stripe CLI, dev keys) → failed
-   payment email fires once.
+   Plus: create a throwaway account on dev → welcome email arrives; and a
+   test-card purchase on dev → post-upgrade welcome fires once.
 4. **Check System Health** (admin page): `lifecycleEmailSweep` appears and
    goes green after the top of the hour.
 5. **Merge PR #1819** (flip from draft → ready → merge).
