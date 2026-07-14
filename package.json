@@ -43,7 +43,7 @@
   "homepage": "https://github.com/3dstreet/3dstreet/",
   "license": "AGPLv3",
   "dependencies": {
-    "@dimforge/rapier3d-compat": "^0.14.0",
+    "@dimforge/rapier3d-compat": "^0.19.3",
     "@fortawesome/free-regular-svg-icons": "^7.2.0",
     "@fortawesome/free-solid-svg-icons": "^7.2.0",
     "@gltf-transform/core": "^4.3.0",
@@ -80,7 +80,7 @@
     "react-intl": "^7.1.14",
     "react-markdown": "^10.1.0",
     "react-select": "^5.10.2",
-    "three": "0.184.0",
+    "three": "0.185.1",
     "three-mesh-bvh": "^0.9.10",
     "uuid": "^14.0.0",
     "zustand": "^5.0.11"
