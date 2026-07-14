@@ -39,6 +39,11 @@ const EXPECTED_JOBS = [
   },
   { id: 'sendScheduledEmails', label: 'Scheduled emails', cadence: 'daily' },
   {
+    id: 'lifecycleEmailSweep',
+    label: 'Lifecycle email sweep',
+    cadence: 'hourly'
+  },
+  {
     id: 'purgeSoftDeletedAssets',
     label: 'Asset GC (purge soft-deleted)',
     cadence: 'weekly'

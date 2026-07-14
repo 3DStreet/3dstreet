@@ -112,6 +112,8 @@ Unified Viewer presentation with a Start/Stop play lifecycle. Playing is present
 
 **Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated
 
+**Lifecycle emails:** one send path (`sendLifecycleEmail` in `public/functions/email/`) with per-stream Postmark routing, `emailPrefs` unsubscribe suppression, and transactional stop-rules on `emailLog`. Triggers: Auth onCreate (welcome), `stripeWebhook` (post-upgrade; failed-payment handler dormant — Stripe hosted dunning instead), hourly sweep (abandoned checkout, pricing nudge, geo-not-used), daily sweep (token exhaustion). Docs: `docs/email-lifecycle.md`.
+
 ## User Asset Upload
 
 Drag-and-drop GLB/image upload with client-side optimization, cloud persistence, quota enforcement, and per-entity status UI.
@@ -178,7 +180,7 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 
 **Test:** `npm test` (Mocha + Vitest), `npm run lint`, `npm run prettier`
 
-**Firestore rules tests:** `npm run test:rules` — local-only (boots the firestore emulator via `firebase emulators:exec`, runs vitest against `test/rules/`). Not wired into CI to keep CI cheap; run manually when touching `public/firestore.rules`. Requires JDK 21+ on `PATH` (Firestore emulator dependency).
+**Firestore emulator tests:** `npm run test:rules` — local-only (boots the firestore + auth emulators via `firebase emulators:exec`, runs vitest against `test/rules/`). Covers security rules AND the lifecycle email send service (`sendLifecycleEmail`). Not wired into CI to keep CI cheap; run manually when touching `public/firestore.rules` or `public/functions/email/`. Requires JDK 21+ on `PATH` (emulator dependency; if `java -version` shows an older default, prefix with `JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"`).
 
 **Deploy:** `npm run deploy` or `npm run deploy:staging`
 
