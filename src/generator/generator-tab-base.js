@@ -10,7 +10,12 @@ import ImageUploadUtils from './image-upload-utils.js';
 import { httpsCallable } from 'firebase/functions';
 import { functions, auth } from '@shared/services/firebase.js';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import {
+  DEFAULT_RENDER_STYLE_ID,
+  buildStyledPrompt
+} from '@shared/constants/renderStyles.js';
 import { mountModelSelector } from './mount-model-selector.js';
+import { mountStyleSelector } from './mount-style-selector.js';
 import posthog from 'posthog-js';
 
 /**
@@ -54,6 +59,7 @@ class GeneratorTabBase {
     this.selectedOrientation = 'portrait';
     this.selectedDimension = '1024x1440';
     this.selectedModel = 'nano-banana-pro'; // Default model
+    this.selectedStyleId = DEFAULT_RENDER_STYLE_ID; // Render style preset
 
     // Timer state
     this.renderStartTime = null;
@@ -69,6 +75,7 @@ class GeneratorTabBase {
 
     // React component instances
     this.modelSelectorInstance = null;
+    this.styleSelectorInstance = null;
   }
 
   /**
@@ -102,6 +109,7 @@ class GeneratorTabBase {
     this.createTabContent(tabContainer);
     this.getElements();
     this.mountModelSelectorComponent();
+    this.mountStyleSelectorComponent();
     this.updateModelParams();
     this.setupEventListeners();
     this.generateRandomSeed();
@@ -158,6 +166,11 @@ class GeneratorTabBase {
     // Model Selection - React component container
     this.elements.modelSelectorContainer = document.getElementById(
       getId('model-selector-container')
+    );
+
+    // Render Style - React component container
+    this.elements.styleSelectorContainer = document.getElementById(
+      getId('style-selector-container')
     );
 
     // Prompt and dimensions
@@ -454,6 +467,30 @@ class GeneratorTabBase {
   }
 
   /**
+   * Mount the RenderStyleSelector React component. The selected style is
+   * applied to the prompt at generation time (see buildStyledPrompt) so the
+   * textarea keeps reflecting only what the user actually typed.
+   */
+  mountStyleSelectorComponent() {
+    const container = this.elements.styleSelectorContainer;
+    if (!container) {
+      console.error('Style selector container not found');
+      return;
+    }
+
+    this.styleSelectorInstance = mountStyleSelector(container, {
+      value: this.selectedStyleId,
+      onChange: (styleId) => {
+        this.selectedStyleId = styleId;
+        if (this.styleSelectorInstance) {
+          this.styleSelectorInstance.update({ value: styleId });
+        }
+      },
+      disabled: false
+    });
+  }
+
+  /**
    * Create the tab content HTML
    * This method generates the complete HTML structure for the tab
    */
@@ -480,6 +517,12 @@ class GeneratorTabBase {
                         <label class="block text-sm font-medium text-gray-700 mb-1">${this.getPromptLabel()}</label>
                         <textarea id="${getId('prompt-input')}" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                   placeholder="${this.getPromptPlaceholder()}"></textarea>
+                    </div>
+
+                    <!-- Render Style -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Render Style</label>
+                        <div id="${getId('style-selector-container')}"></div>
                     </div>
 
                     <!-- Image Dimensions -->
@@ -1399,8 +1442,11 @@ class GeneratorTabBase {
         }
       );
 
-      const prompt =
-        this.elements.promptInput.value.trim() || modelConfig.prompt;
+      const prompt = buildStyledPrompt({
+        userPrompt: this.elements.promptInput.value,
+        modelDefaultPrompt: modelConfig.prompt,
+        styleId: this.selectedStyleId
+      });
 
       // Prepare input image if available
       let inputImageSrc = null;
@@ -1437,6 +1483,7 @@ class GeneratorTabBase {
           model: model,
           model_name: modelConfig.name,
           prompt: prompt,
+          render_style: this.selectedStyleId,
           timestamp: new Date().toISOString()
         };
 
@@ -1462,6 +1509,7 @@ class GeneratorTabBase {
         posthog.capture('ai_render_used', {
           token_type: 'gen',
           model: model,
+          render_style: this.selectedStyleId,
           source: 'generator',
           is_pro_user: window.authState?.currentUser?.isPro || false
         });
@@ -1527,8 +1575,11 @@ class GeneratorTabBase {
         timeout: 300000
       });
 
-      const prompt =
-        this.elements.promptInput.value.trim() || modelConfig.prompt;
+      const prompt = buildStyledPrompt({
+        userPrompt: this.elements.promptInput.value,
+        modelDefaultPrompt: modelConfig.prompt,
+        styleId: this.selectedStyleId
+      });
 
       // Prepare input image if available
       let inputImageSrc = null;
@@ -1565,6 +1616,7 @@ class GeneratorTabBase {
           model: model,
           model_name: modelConfig.name,
           prompt: prompt,
+          render_style: this.selectedStyleId,
           timestamp: new Date().toISOString()
         };
 
@@ -1590,6 +1642,7 @@ class GeneratorTabBase {
         posthog.capture('ai_render_used', {
           token_type: 'gen',
           model: model,
+          render_style: this.selectedStyleId,
           source: 'generator',
           is_pro_user: window.authState?.currentUser?.isPro || false
         });
@@ -1884,7 +1937,13 @@ class GeneratorTabBase {
 
         const metadata = {
           model: this.currentParams.model || this.selectedModel,
-          prompt: this.elements.promptInput.value,
+          // The full composed prompt (user text or model default + style
+          // suffix) actually sent to the backend; falls back to the raw
+          // textarea contents for non-styled legacy paths.
+          prompt: this.currentParams.prompt || this.elements.promptInput.value,
+          ...(this.currentParams.render_style && {
+            renderStyle: this.currentParams.render_style
+          }),
           seed: this.currentParams.seed,
           width: this.currentParams.width || imageDimensions.width,
           height: this.currentParams.height || imageDimensions.height,

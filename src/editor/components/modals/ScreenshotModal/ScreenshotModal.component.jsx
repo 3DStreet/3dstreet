@@ -22,7 +22,12 @@ import { canUseImageFeature } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
 import { assetsService } from '@shared/assets';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import {
+  DEFAULT_RENDER_STYLE_ID,
+  buildStyledPrompt
+} from '@shared/constants/renderStyles.js';
 import AIModelSelector from '@shared/components/AIModelSelector';
+import RenderStyleSelector from '@shared/components/RenderStyleSelector';
 
 // Available AI models (use shared constants)
 const AI_MODELS = REPLICATE_MODELS;
@@ -55,6 +60,7 @@ function ScreenshotModal() {
   const [renderStartTime, setRenderStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [selectedModel, setSelectedModel] = useState('nano-banana-pro');
+  const [renderStyle, setRenderStyle] = useState(DEFAULT_RENDER_STYLE_ID); // Render style preset
   const [renderMode, setRenderMode] = useState('1x'); // '1x' or '4x'
   const [aiImages, setAiImages] = useState({}); // Store multiple AI images with model keys
   const [renderTimers, setRenderTimers] = useState({}); // Individual timers for each model
@@ -355,8 +361,14 @@ function ScreenshotModal() {
       }
 
       // Only allow custom prompts for Pro users (subscription or team).
-      const aiPrompt =
-        (isPro && customPrompt.trim()) || selectedModelConfig.prompt;
+      // Style presets are available to everyone: the selected style is
+      // appended to the user's custom prompt or, if none, replaces/extends
+      // the model's default (photorealistic) prompt.
+      const aiPrompt = buildStyledPrompt({
+        userPrompt: isPro ? customPrompt : '',
+        modelDefaultPrompt: selectedModelConfig.prompt,
+        styleId: renderStyle
+      });
 
       const screentockImgElement = document.getElementById(
         'screentock-destination'
@@ -450,6 +462,7 @@ function ScreenshotModal() {
                 model: selectedModelConfig.name,
                 modelKey: baseModelKey,
                 prompt: aiPrompt,
+                renderStyle: renderStyle,
                 renderMode: renderMode,
                 // The camera hasn't moved since the base capture, so this is
                 // the render's vantage — persist it for the focus button (#1605).
@@ -523,6 +536,7 @@ function ScreenshotModal() {
           scene_id: STREET.utils.getCurrentSceneId(),
           prompt: aiPrompt,
           model: baseModelKey,
+          render_style: renderStyle,
           render_mode: renderMode,
           is_pro_user: currentUser?.isPro || false,
           tokens_available: tokenProfile?.genToken || 0
@@ -532,6 +546,7 @@ function ScreenshotModal() {
         posthog.capture('ai_render_used', {
           token_type: 'gen',
           model: baseModelKey,
+          render_style: renderStyle,
           render_mode: renderMode,
           is_pro_user: currentUser?.isPro || false,
           scene_id: STREET.utils.getCurrentSceneId()
@@ -913,6 +928,24 @@ function ScreenshotModal() {
                 )}
               </div>
             )}
+
+            {/* Render Style Presets - available to all users */}
+            <div className={styles.promptSection}>
+              <label className={styles.promptLabel}>
+                <FormattedMessage
+                  id="screenshotModal.renderStyleLabel"
+                  defaultMessage="Render Style:"
+                />
+              </label>
+              <RenderStyleSelector
+                value={renderStyle}
+                onChange={setRenderStyle}
+                disabled={
+                  isGeneratingAI ||
+                  Object.values(renderingStates).some((state) => state)
+                }
+              />
+            </div>
 
             {/* Custom Prompt Input - Only show for Pro users (subscription or team) */}
             {isPro && (
