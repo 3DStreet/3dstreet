@@ -156,7 +156,8 @@ deploying email changes to dev, before promoting to prod.
    Firestore `emailLog/{your-uid}` now has `emails.testPing` and a
    `sends` record with `status: 'sent'` and a `messageId`.
 3. **Broadcast send.** `await adminTools.testLifecycleEmail({ stream:
-   'conversion', dryRun: false })` → email **has** an unsubscribe footer and
+   'conversion', dryRun: false })` → email arrives from
+   `team@updates.3dstreet.com`, **has** an unsubscribe footer, and
    Postmark Activity shows the `conversion` stream.
 4. **Unsubscribe round-trip.** Click Unsubscribe in that email. Within a few
    seconds `emailPrefs/{your-uid}.streams.conversion.suppressed` becomes

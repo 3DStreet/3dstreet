@@ -75,7 +75,6 @@ are tiny (~11 signups/day, ~1 abandoned checkout/2 days). Rollback is a
    - `invoice.payment_failed`
 
    Same endpoint, same signing secret — no code or secret changes.
-5. **Merge PR #1819** (flip from draft → ready → merge).
 
 ## Thursday morning — dev deploy + verification (~1.5h)
 
@@ -109,6 +108,7 @@ are tiny (~11 signups/day, ~1 abandoned checkout/2 days). Rollback is a
    payment email fires once.
 4. **Check System Health** (admin page): `lifecycleEmailSweep` appears and
    goes green after the top of the hour.
+5. **Merge PR #1819** (flip from draft → ready → merge).
 
 ## Thursday afternoon — prod deploy (~45 min)
 
