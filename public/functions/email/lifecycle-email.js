@@ -338,7 +338,7 @@ const triggerLifecycleEmail = functions
  * users up front (and so we have consent state in our own database).
  *
  * Payload (RecordType 'SubscriptionChange'): Recipient, MessageStream,
- * SuppressSender (true = suppressed, false = reactivated), SuppressionReason
+ * SuppressSending (true = suppressed, false = reactivated), SuppressionReason
  * ('ManualSuppression' | 'HardBounce' | 'SpamComplaint'), Origin, ChangedAt.
  *
  * Auth: the webhook URL is configured in Postmark with HTTP Basic credentials
@@ -397,7 +397,7 @@ const postmarkSubscriptionWebhook = functions
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           streams: {
             [stream]: {
-              suppressed: body.SuppressSender === true,
+              suppressed: body.SuppressSending === true,
               reason: body.SuppressionReason || null,
               origin: body.Origin || null,
               changedAt: body.ChangedAt ? new Date(body.ChangedAt) : null
@@ -408,7 +408,7 @@ const postmarkSubscriptionWebhook = functions
       );
 
     console.log(
-      `postmarkSubscriptionWebhook: ${body.Recipient} stream=${stream} suppressed=${body.SuppressSender === true}`
+      `postmarkSubscriptionWebhook: ${body.Recipient} stream=${stream} suppressed=${body.SuppressSending === true}`
     );
     return res.status(200).json({ ok: true, matched: true });
   });
