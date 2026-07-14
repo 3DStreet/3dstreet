@@ -73,6 +73,11 @@ function convertDOMElToObject(entity) {
   for (const entry of sceneEntities) {
     const entityData = getElementData(entry);
     if (entityData) {
+      // visible is never persisted for the User Layers root: a saved
+      // visible:false blanks every scene load (see createEntities).
+      if (entityData.id === 'street-container' && entityData.components) {
+        delete entityData.components.visible;
+      }
       data.push(entityData);
     }
   }
@@ -447,6 +452,17 @@ function createEntities(entitiesData, parentEl) {
       } else if (typeof geoVal === 'object' && geoVal !== null) {
         geoVal.maps = 'none';
       }
+      delete components.visible;
+    }
+
+    // Never apply a saved visible:false to the User Layers root. Some older
+    // scenes were saved with it (an old UI exposed an eye toggle on the
+    // container), which blanks the whole scene on load; and because the
+    // singleton #street-container element is reused across loads, it then
+    // blanks every scene loaded after it in the same session. Container
+    // visibility is session UI state, not scene data: ignored here, stripped
+    // on save (convertDOMElToObject), healed by newScene (street-utils.js).
+    if (entityData.id === 'street-container' && components) {
       delete components.visible;
     }
 
