@@ -399,6 +399,10 @@ const markCheckoutSessionStatus = async (sessionId, status) => {
 
 // invoice.payment_failed → Failed Payment email, once per invoice (Stripe
 // fires this event again on each retry attempt; the dedupeKey absorbs them).
+// DORMANT: dunning uses Stripe's hosted failed-payment emails instead, so
+// invoice.payment_failed is not enabled on the webhook endpoint. Kept as a
+// fallback — re-enabling the event in the Stripe dashboard reactivates this.
+// Never run both (double email). See docs/email-lifecycle.md.
 const handleInvoicePaymentFailed = async (invoice) => {
   const customerId = invoice.customer;
   if (!customerId) {
@@ -437,7 +441,8 @@ const handleInvoicePaymentFailed = async (invoice) => {
 // enabled events in the Stripe dashboard must include:
 //   checkout.session.completed  — plan claim + token grant + post-upgrade email
 //   checkout.session.expired    — marks the abandoned-checkout trigger record
-//   invoice.payment_failed      — failed-payment email
+// (invoice.payment_failed is handled below but deliberately NOT enabled —
+// see the dormant note on handleInvoicePaymentFailed.)
 // Unrecognized events are acked and ignored, so enabling extra events is safe.
 exports.stripeWebhook = functions
   .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_CHECKOUT', 'STRIPE_YEARLY_PRICE_ID', 'STRIPE_MONTHLY_PRICE_ID', 'STRIPE_MAX_YEARLY_PRICE_ID', 'STRIPE_MAX_MONTHLY_PRICE_ID', 'POSTMARK_API_KEY'] })
