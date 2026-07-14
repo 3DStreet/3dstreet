@@ -4,6 +4,7 @@ import {
   hideSegmentClones,
   releaseClones
 } from './clone-visibility.js';
+import { createRNG } from '../../lib/rng';
 
 /**
  * street-traffic
@@ -12,25 +13,35 @@ import {
  * Scene-level play-mode subscriber that animates entities along each
  * lane of every `[managed-street][playable]` in the scene.
  *
- * v1 design (intentionally simple, deterministic):
+ * Design (deterministic, mirrors the edit-time cast — #1823 A):
+ *
+ *   - The animated cast IS the edit-time cast. On play-start each
+ *     static moving-cast clone (street-generated-clones /
+ *     street-generated-pedestrians child) is hidden and replaced by an
+ *     animated twin with the identical mixin, position, and rotation,
+ *     so the frozen frame the user was editing reads as t=0 of the
+ *     animation: nothing pops in or out on Start, and model variety /
+ *     spacing / lateral offsets come from the clones' own seeded
+ *     layout instead of a synthetic uniform flow. Lanes that are
+ *     playable but have no static cast fall back to synthesizing a
+ *     seeded mixed-model flow.
  *
  *   - Pure function of scene-time. Each entity's position is computed
- *     from `(scene-timer.elapsed, lane_index, slot_index)` with no
- *     stored per-entity state. Two viewers of the same scene at the
- *     same scene-time see traffic in identical positions.
+ *     from `(scene-timer.simulationTime, its t=0 layout)` with no
+ *     stored per-entity state, and all randomness is seeded from
+ *     stable segment/entity indices. Two viewers of the same scene at
+ *     the same scene-time see traffic in identical positions.
  *
- *   - Uniform speed within a lane (no overtake, no pass-through).
- *     Different speed across lane types (car > bus > bike > pedestrian).
+ *   - Uniform speed within a vehicle/bike lane (no overtake, no
+ *     pass-through), varied ±10% per lane so parallel lanes don't move
+ *     in lockstep. Pedestrians get per-entity speed jitter (people
+ *     passing each other on a sidewalk is normal).
  *
- *   - Visual-only. No Rapier colliders, no interaction with the
- *     player chassis. If the player drives into traffic, they pass
- *     through. Kinematic-collider coupling is deferred to v1.5 — see
- *     play-mode-notes.md.
+ *   - Visual-only unless drive-mode is active, in which case entities
+ *     get kinematic Rapier colliders (see play-mode-notes.md).
  *
- *   - One loop per lane: entities are evenly spaced and wrap around
- *     the segment's length axis. Coprime per-lane periods (different
- *     speed × different lane length) hide the repetition for the
- *     human-eye timescale most users will spend looking.
+ *   - One loop per lane: entities keep their t=0 spacing and wrap
+ *     around the segment's length axis.
  *
  *   - Segment-local coordinates (matches street-generated-*): X is
  *     width, Z is length, Z range is [-L/2, L/2]. Direction 'inbound'
@@ -39,36 +50,63 @@ import {
  */
 
 const SEGMENT_TRAFFIC_DEFAULTS = {
-  // [speed m/s, default mixin id, default density (entities per 60m),
-  //  kinematic collider half-extents in ENTITY-local frame
-  //  (x=width, y=height, z=length, since catalog models are
-  //  authored forward = +Z so length lies on z).]
+  // [speed m/s, fallback mixin pool (used only when the lane has no
+  //  static cast to mirror; matches the street-segment TYPES
+  //  modelsArray), default density (entities per 60m), kinematic
+  //  collider half-extents in ENTITY-local frame (x=width, y=height,
+  //  z=length, since catalog models are authored forward = +Z so
+  //  length lies on z).]
   'drive-lane': {
     speed: 11.2,
-    mixin: 'sedan-rig',
+    mixins: [
+      'sedan-rig',
+      'box-truck-rig',
+      'self-driving-waymo-car',
+      'suv-rig',
+      'motorbike'
+    ],
     density: 2,
     half: { x: 0.9, y: 0.75, z: 2.25 } // 1.8 W × 1.5 H × 4.5 L
   },
   'bus-lane': {
     speed: 9.0,
-    mixin: 'bus',
+    mixins: ['bus'],
     density: 1,
     half: { x: 1.25, y: 1.5, z: 6.0 } // 2.5 W × 3.0 H × 12 L
   },
   'bike-lane': {
     speed: 6.0,
-    mixin: 'cyclist1',
+    mixins: [
+      'cyclist-cargo',
+      'cyclist1',
+      'cyclist2',
+      'cyclist3',
+      'cyclist-dutch',
+      'cyclist-kid'
+    ],
     density: 3,
     half: { x: 0.25, y: 0.85, z: 0.85 } // 0.5 W × 1.7 H × 1.7 L
   },
   sidewalk: {
     speed: 1.4,
-    mixin: 'char1',
+    mixins: null, // fallback picks char1..char16 via rng
     density: 6,
     half: { x: 0.25, y: 0.85, z: 0.25 } // 0.5 W × 1.7 H × 0.5 L
   }
   // parking-lane intentionally absent: parked cars are static.
   // divider/grass/rail/building: no traffic.
+};
+
+// Kinematic collider half-extents for known moving-cast mixins; anything
+// not listed falls back to its lane type's `half` above. Same entity-local
+// frame (x=width, y=height, z=length).
+const MIXIN_HALF_EXTENTS = {
+  'sedan-rig': { x: 0.9, y: 0.75, z: 2.25 },
+  'suv-rig': { x: 0.95, y: 0.9, z: 2.4 },
+  'box-truck-rig': { x: 1.1, y: 1.4, z: 3.6 },
+  'self-driving-waymo-car': { x: 0.95, y: 0.9, z: 2.4 },
+  motorbike: { x: 0.4, y: 0.8, z: 1.1 },
+  bus: { x: 1.25, y: 1.5, z: 6.0 }
 };
 
 // Marker component put on every animated traffic / replay entity. Beyond being
@@ -216,9 +254,9 @@ AFRAME.registerComponent('street-traffic', {
   },
 
   spawnForStreet: function (streetEl) {
-    // Each direct street-segment child is a lane. Spawn evenly-spaced
-    // entities along its length axis (segment-local Z).
-    streetEl.querySelectorAll(':scope > [street-segment]').forEach((segEl) => {
+    // Each direct street-segment child is a lane.
+    const segments = streetEl.querySelectorAll(':scope > [street-segment]');
+    segments.forEach((segEl, segIndex) => {
       const seg = segEl.getAttribute('street-segment');
       if (!seg) return;
       const defaults = SEGMENT_TRAFFIC_DEFAULTS[seg.type];
@@ -244,75 +282,146 @@ AFRAME.registerComponent('street-traffic', {
         }
       }
 
-      // Hide the static moving-cast clones this lane type replaces with
-      // animated ones (shared rule + refcounted registry — see
-      // clone-visibility.js). Stencils / striping / props stay visible.
-      const hideFilter = movingCastFilter(seg.type);
-      if (hideFilter) {
-        this.hidden.push(...hideSegmentClones(segEl, hideFilter));
-      }
-
-      // Determine direction sign on segment-local Z. 'inbound' moves
-      // toward +Z, 'outbound' toward -Z. 'none' (sidewalks set to none)
-      // defaults to inbound so a v1 sidewalk still animates; we vary
-      // by spawning a mix of both directions below.
       const length = seg.length || 60;
       const halfLen = length / 2;
 
-      // Density scales with length so a 30m segment doesn't get the
-      // same crowd as a 120m one. Minimum 1 to ensure something shows.
-      const N = Math.max(1, Math.round((defaults.density * length) / 60));
+      // Seeded per-segment rng: speed jitter and fallback layout are
+      // deterministic per (street, segment index), so two viewers at the
+      // same sim-time still agree.
+      const rng = createRNG(segIndex + 1);
+      // Vehicle/bike lanes stay uniform-speed within the lane (no
+      // pass-through) but vary ±10% across lanes so parallel lanes
+      // don't move in lockstep.
+      const laneSpeed = defaults.speed * (0.9 + 0.2 * rng());
 
-      const directions = [];
-      if (seg.direction === 'none') {
-        // Split evenly between inbound/outbound for a "people on
-        // sidewalk going both ways" look.
-        for (let i = 0; i < N; i++) directions.push(i % 2 === 0 ? 1 : -1);
-      } else {
-        const dir = seg.direction === 'outbound' ? -1 : 1;
-        for (let i = 0; i < N; i++) directions.push(dir);
+      // Snapshot the edit-time moving cast BEFORE hiding it, then hide
+      // via the shared refcounted registry (see clone-visibility.js).
+      // Stencils / striping / props stay visible.
+      const hideFilter = movingCastFilter(seg.type);
+      const cast = [];
+      if (hideFilter) {
+        segEl.querySelectorAll('[data-parent-component]').forEach((el) => {
+          const compName = el.getAttribute('data-parent-component') || '';
+          if (!hideFilter(compName)) return;
+          const position = el.getAttribute('position') || { x: 0, y: 0, z: 0 };
+          cast.push({
+            mixin: el.getAttribute('mixin') || '',
+            position: { x: position.x, y: position.y, z: position.z },
+            rotationY: (el.getAttribute('rotation') || { y: 0 }).y,
+            isPedestrian: compName.startsWith('street-generated-pedestrians')
+          });
+        });
+        this.hidden.push(...hideSegmentClones(segEl, hideFilter));
       }
 
+      if (cast.length > 0) {
+        // Mirror path (#1823 A): every hidden static clone becomes an
+        // animated twin with the identical mixin/pose, so the frame the
+        // user was editing is exactly t=0 of the animation and the
+        // lane keeps its authored variety and spacing.
+        for (const member of cast) {
+          // Motion sign on segment-local Z. Directed lanes move as the
+          // segment says; 'none' (sidewalks) infers per-entity from the
+          // clone's own facing (0° faces +Z, 180° faces -Z).
+          let dir;
+          if (seg.direction === 'inbound') dir = 1;
+          else if (seg.direction === 'outbound') dir = -1;
+          else {
+            dir =
+              Math.cos(THREE.MathUtils.degToRad(member.rotationY)) >= 0
+                ? 1
+                : -1;
+          }
+          const speed = member.isPedestrian
+            ? SEGMENT_TRAFFIC_DEFAULTS.sidewalk.speed * (0.7 + 0.6 * rng())
+            : laneSpeed;
+          this.spawnRecord(segEl, {
+            mixin: member.mixin,
+            position: member.position,
+            rotationY: member.rotationY,
+            dir,
+            speed,
+            halfLen,
+            length,
+            half: MIXIN_HALF_EXTENTS[member.mixin] || defaults.half
+          });
+        }
+        return;
+      }
+
+      // Fallback: playable lane with no static cast to mirror —
+      // synthesize a seeded flow with mixed models and jittered spacing
+      // (still deterministic per segment index).
+      const N = Math.max(1, Math.round((defaults.density * length) / 60));
+      const slot = length / N;
       for (let i = 0; i < N; i++) {
-        const dir = directions[i];
-        // Even spacing along [-L/2, L/2]. Offset half a slot so the
-        // first entity doesn't sit exactly on the lane endpoint.
-        const startZ = -halfLen + ((i + 0.5) * length) / N;
+        // 'none' splits evenly between both directions for a "people
+        // going both ways" look; directed lanes follow the segment.
+        let dir;
+        if (seg.direction === 'none') dir = i % 2 === 0 ? 1 : -1;
+        else dir = seg.direction === 'outbound' ? -1 : 1;
 
-        const entity = document.createElement('a-entity');
-        entity.setAttribute('mixin', defaults.mixin);
-        entity.setAttribute('data-no-transform', '');
-        entity.setAttribute('data-layer-name', 'Traffic');
-        // Mark as animated traffic. Two markers with two jobs:
-        //  - data-play-mode-traffic (attribute): drive-mode's static-collider
-        //    seeder selector — skip us, we get kinematic colliders instead.
-        //  - play-mode-traffic (component): excludes us from the static mesh
-        //    batcher (it's outside batch-models' safe-component set), so the
-        //    moving mesh renders instead of being folded into a frozen batch.
-        entity.setAttribute('data-play-mode-traffic', '');
-        entity.setAttribute('play-mode-traffic', '');
-        entity.classList.add('autocreated');
-        // Catalog models are authored forward = +Z. inbound (dir=+1)
-        // keeps default rotation; outbound (dir=-1) flips 180° so the
-        // mesh faces the direction it's moving.
-        if (dir === -1) entity.setAttribute('rotation', '0 180 0');
-        // X stays at 0 (segment-local center). The segment itself is
-        // positioned at the right lateral offset by managed-street.
-        entity.object3D.position.set(0, 0, startZ);
-        segEl.appendChild(entity);
+        // Even slots, offset half a slot from the lane endpoint, with
+        // up to ±25%-of-slot jitter so the flow doesn't read as a
+        // conveyor belt.
+        const startZ = -halfLen + (i + 0.5) * slot + (rng() - 0.5) * slot * 0.5;
 
-        this.records.push({
-          el: entity,
-          segmentEl: segEl,
-          speed: defaults.speed,
-          startZ,
+        const mixin = defaults.mixins
+          ? defaults.mixins[Math.floor(rng() * defaults.mixins.length)]
+          : `char${Math.floor(rng() * 16) + 1}`;
+        const speed = defaults.mixins
+          ? laneSpeed
+          : defaults.speed * (0.7 + 0.6 * rng());
+
+        this.spawnRecord(segEl, {
+          mixin,
+          position: { x: 0, y: 0, z: startZ },
+          // Catalog models are authored forward = +Z; flip 180° when
+          // moving -Z so the mesh faces its direction of travel.
+          rotationY: dir === -1 ? 180 : 0,
+          dir,
+          speed,
           halfLen,
           length,
-          dir,
-          half: defaults.half,
-          body: null
+          half: MIXIN_HALF_EXTENTS[mixin] || defaults.half
         });
       }
+    });
+  },
+
+  spawnRecord: function (segEl, opts) {
+    const entity = document.createElement('a-entity');
+    entity.setAttribute('mixin', opts.mixin);
+    entity.setAttribute('data-no-transform', '');
+    entity.setAttribute('data-layer-name', 'Traffic');
+    // Mark as animated traffic. Two markers with two jobs:
+    //  - data-play-mode-traffic (attribute): drive-mode's static-collider
+    //    seeder selector — skip us, we get kinematic colliders instead.
+    //  - play-mode-traffic (component): excludes us from the static mesh
+    //    batcher (it's outside batch-models' safe-component set), so the
+    //    moving mesh renders instead of being folded into a frozen batch.
+    entity.setAttribute('data-play-mode-traffic', '');
+    entity.setAttribute('play-mode-traffic', '');
+    entity.classList.add('autocreated');
+    entity.setAttribute('rotation', `0 ${opts.rotationY} 0`);
+    // Full t=0 pose: X (lateral offset within the lane) and Y come from
+    // the mirrored clone; tick only ever advances Z.
+    entity.setAttribute(
+      'position',
+      `${opts.position.x} ${opts.position.y} ${opts.position.z}`
+    );
+    segEl.appendChild(entity);
+
+    this.records.push({
+      el: entity,
+      segmentEl: segEl,
+      speed: opts.speed,
+      startZ: opts.position.z,
+      halfLen: opts.halfLen,
+      length: opts.length,
+      dir: opts.dir,
+      half: opts.half,
+      body: null
     });
   },
 
