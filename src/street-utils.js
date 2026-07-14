@@ -48,7 +48,18 @@ export function newScene(clearMetaData = true, clearUrlHash = true) {
   );
   geoLayer.setAttribute('data-no-transform', '');
 
-  checkOrCreateEntity('street-container', AFRAME.scenes[0], 'User Layers');
+  const streetContainer = checkOrCreateEntity(
+    'street-container',
+    AFRAME.scenes[0],
+    'User Layers'
+  );
+  // Heal a hidden User Layers root (e.g. stamped by a legacy scene saved
+  // with visible:false before load-side stripping existed): the singleton
+  // element is reused across scene loads, so a stale false would blank
+  // every scene loaded for the rest of the session.
+  if (streetContainer.object3D && !streetContainer.object3D.visible) {
+    streetContainer.setAttribute('visible', true);
+  }
 
   // clear metadata
   if (clearMetaData) {
