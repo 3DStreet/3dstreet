@@ -76,16 +76,16 @@ const welcome = {
   <p>A few ways to get going:</p>
 
   <ul style="padding-left: 20px;">
-    <li><strong>Start from a template:</strong> pick a street layout and make it yours</li>
-    <li><strong>Place your street in the real world:</strong> your account includes free geo tokens for Google 3D Tiles</li>
-    <li><strong>Import from Streetmix:</strong> paste a Streetmix URL to bring a 2D design into 3D</li>
-    <li><strong>Render high quality visuals:</strong> use the Snapshot &amp; Render or AI Generator tools to create photorealistic or stylized renderings</li>
+    <li><strong>Place your street in the real world:</strong> your new account includes 3 free geo tokens for adding Google 3D Map Tiles to your scene</li>
+    <li><strong>Render high quality visuals:</strong> use the Snapshot &amp; Render or AI Generator tools to create photorealistic or stylized renderings &ndash; your new account includes free AI Rendering tokens to try this, no credit card required</li>
+    <li><strong>Start from scratch and add built-in 3D models and streets:</strong> create a blank scene and click (+) to add streets, vehicles, people, greening, and more from our included asset library</li>
+    <li><strong>Import your own creations:</strong> drag-and-drop to upload your own images, 3D models, or Gaussian splat 3D scans to mix with your scene</li>
   </ul>`,
       {
         ctaUrl: `${APP_BASE}/?${utm('welcome', 'cta_button')}`,
         ctaLabel: 'Start designing',
         footnote:
-          'You received this email because you created an account on 3DStreet. This message is only sent once. If you have questions, reply to this email or visit <a href="https://3dstreet.com/docs/" style="color: #6366f1;">our documentation</a>.'
+          'You received this email because you created an account on 3DStreet. This message is only sent once. Questions? Just reply to this email.'
       }
     ),
   getTextBody: (userName) =>
@@ -95,15 +95,15 @@ const welcome = {
 
 A few ways to get going:
 
-- Start from a template: pick a street layout and make it yours
-- Place your street in the real world: your account includes free geo tokens for Google 3D Tiles
-- Import from Streetmix: paste a Streetmix URL to bring a 2D design into 3D
-- Render high quality visuals: use the Snapshot & Render or AI Generator tools to create photorealistic or stylized renderings`,
+- Place your street in the real world: your new account includes 3 free geo tokens for adding Google 3D Map Tiles to your scene
+- Render high quality visuals: use the Snapshot & Render or AI Generator tools to create photorealistic or stylized renderings - your new account includes free AI Rendering tokens to try this, no credit card required
+- Start from scratch and add built-in 3D models and streets: create a blank scene and click (+) to add streets, vehicles, people, greening, and more from our included asset library
+- Import your own creations: drag-and-drop to upload your own images, 3D models, or Gaussian splat 3D scans to mix with your scene`,
       {
         ctaUrl: `${APP_BASE}/?${utm('welcome', 'cta_link')}`,
         ctaLabel: 'Start designing',
         footnote:
-          'You received this email because you created an account on 3DStreet. This message is only sent once. If you have questions, reply to this email or visit https://3dstreet.com/docs/'
+          'You received this email because you created an account on 3DStreet. This message is only sent once. Questions? Just reply to this email.'
       }
     )
 };
