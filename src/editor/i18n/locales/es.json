@@ -607,6 +607,7 @@
   "screenshotModal.ready": "Listo",
   "screenshotModal.render1x": "Renderizado 1x",
   "screenshotModal.render4x": "Renderizado 4x",
+  "screenshotModal.renderStyleLabel": "Estilo de renderizado:",
   "screenshotModal.rendering": "Renderizando...",
   "screenshotModal.sameModel": "Mismo modelo",
   "screenshotModal.saveSceneFirst": "Primero guarda tu escena",

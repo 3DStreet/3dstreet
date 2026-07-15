@@ -84,14 +84,6 @@ export const RENDER_STYLES = {
     stylePrompt:
       'a flat vector urban planning diagram in the style of the NACTO Urban Street Design Guide, with clean flat colors, simplified stylized people and vehicles, muted greens and grays, crisp geometry, and no photorealistic textures'
   },
-  blueprint: {
-    name: 'Blueprint',
-    description: 'White technical linework on blueprint blue',
-    emoji: '📘',
-    swatch: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
-    stylePrompt:
-      'an architectural blueprint with crisp white technical linework on a deep blueprint-blue background, drafting-style dimension lines and annotations, and a subtle cyanotype print texture'
-  },
   'isometric-miniature': {
     name: 'Miniature',
     description: 'Cute isometric tilt-shift diorama',
@@ -99,14 +91,6 @@ export const RENDER_STYLES = {
     swatch: 'linear-gradient(135deg, #fddb92 0%, #d1fdff 100%)',
     stylePrompt:
       'a cute miniature diorama render with soft studio lighting, clay-like materials, pastel colors, and tilt-shift depth of field, as if photographing a tiny physical scale model'
-  },
-  'anime-film': {
-    name: 'Anime Film',
-    description: 'Painterly anime background art',
-    emoji: '🌸',
-    swatch: 'linear-gradient(135deg, #a1c4fd 0%, #ffc3a0 100%)',
-    stylePrompt:
-      'painterly anime background art in the style of a hand-drawn animated film, with lush saturated colors, soft billowing clouds, and warm nostalgic light'
   }
 };
 

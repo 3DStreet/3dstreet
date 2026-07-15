@@ -1823,6 +1823,9 @@
   "screenshotModal.render4x": {
     "defaultMessage": "4x Render"
   },
+  "screenshotModal.renderStyleLabel": {
+    "defaultMessage": "Render Style:"
+  },
   "screenshotModal.rendering": {
     "defaultMessage": "Rendering..."
   },

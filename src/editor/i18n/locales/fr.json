@@ -607,6 +607,7 @@
   "screenshotModal.ready": "Prêt",
   "screenshotModal.render1x": "Rendu 1x",
   "screenshotModal.render4x": "Rendu 4x",
+  "screenshotModal.renderStyleLabel": "Style de rendu :",
   "screenshotModal.rendering": "Rendu en cours...",
   "screenshotModal.sameModel": "Même modèle",
   "screenshotModal.saveSceneFirst": "Veuillez d'abord enregistrer votre scène",
