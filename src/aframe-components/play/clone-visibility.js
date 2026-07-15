@@ -56,12 +56,17 @@ export function movingCastFilter(segType) {
  * Hide every generated child of `segEl` whose data-parent-component
  * passes `filter`. Returns the elements hidden ON BEHALF OF THIS
  * CALLER — pass that array to releaseClones() on teardown.
+ *
+ * `onHeld(el, compName)` (optional) is called for each held element
+ * before it is hidden, so callers can snapshot the clone (pose, mixin)
+ * in the same DOM walk instead of re-querying.
  */
-export function hideSegmentClones(segEl, filter) {
+export function hideSegmentClones(segEl, filter, onHeld) {
   const held = [];
   segEl.querySelectorAll('[data-parent-component]').forEach((el) => {
     const compName = el.getAttribute('data-parent-component') || '';
     if (!filter(compName)) return;
+    if (onHeld) onHeld(el, compName);
     const state = hiddenState.get(el);
     if (state) {
       state.count++;

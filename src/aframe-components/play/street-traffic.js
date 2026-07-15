@@ -5,6 +5,10 @@ import {
   releaseClones
 } from './clone-visibility.js';
 import { createRNG } from '../../lib/rng';
+import {
+  varyLaneSpeed,
+  directionFromFacing
+} from '../../tested/street-traffic-utils';
 
 /**
  * street-traffic
@@ -172,7 +176,7 @@ AFRAME.registerComponent('street-traffic', {
     });
 
     let playableCount = 0;
-    streets.forEach((streetEl) => {
+    streets.forEach((streetEl, streetIndex) => {
       const ms = streetEl.components?.['managed-street']?.data;
       if (!ms || !ms.playable) return;
       if (replayed.has(streetEl)) {
@@ -183,7 +187,7 @@ AFRAME.registerComponent('street-traffic', {
         return;
       }
       playableCount++;
-      this.spawnForStreet(streetEl);
+      this.spawnForStreet(streetEl, streetIndex);
     });
     this.active = this.records.length > 0;
 
@@ -253,7 +257,7 @@ AFRAME.registerComponent('street-traffic', {
     this.active = false;
   },
 
-  spawnForStreet: function (streetEl) {
+  spawnForStreet: function (streetEl, streetIndex) {
     // Each direct street-segment child is a lane.
     const segments = streetEl.querySelectorAll(':scope > [street-segment]');
     segments.forEach((segEl, segIndex) => {
@@ -285,33 +289,38 @@ AFRAME.registerComponent('street-traffic', {
       const length = seg.length || 60;
       const halfLen = length / 2;
 
-      // Seeded per-segment rng: speed jitter and fallback layout are
-      // deterministic per (street, segment index), so two viewers at the
-      // same sim-time still agree.
-      const rng = createRNG(segIndex + 1);
+      // Seeded rng keyed on (street index, segment index): speed jitter
+      // and fallback layout are deterministic so two viewers at the same
+      // sim-time agree, while identical lane layouts on different
+      // streets (parallel streets in a grid) still decorrelate.
+      const rng = createRNG((streetIndex || 0) * 1000 + segIndex + 1);
       // Vehicle/bike lanes stay uniform-speed within the lane (no
       // pass-through) but vary ±10% across lanes so parallel lanes
       // don't move in lockstep.
-      const laneSpeed = defaults.speed * (0.9 + 0.2 * rng());
+      const laneSpeed = varyLaneSpeed(defaults.speed, rng);
 
-      // Snapshot the edit-time moving cast BEFORE hiding it, then hide
-      // via the shared refcounted registry (see clone-visibility.js).
-      // Stencils / striping / props stay visible.
+      // Hide the edit-time moving cast via the shared refcounted
+      // registry, snapshotting each clone's pose in the same DOM walk
+      // (see clone-visibility.js). Stencils / striping / props stay
+      // visible.
       const hideFilter = movingCastFilter(seg.type);
       const cast = [];
       if (hideFilter) {
-        segEl.querySelectorAll('[data-parent-component]').forEach((el) => {
-          const compName = el.getAttribute('data-parent-component') || '';
-          if (!hideFilter(compName)) return;
-          const position = el.getAttribute('position') || { x: 0, y: 0, z: 0 };
-          cast.push({
-            mixin: el.getAttribute('mixin') || '',
-            position: { x: position.x, y: position.y, z: position.z },
-            rotationY: (el.getAttribute('rotation') || { y: 0 }).y,
-            isPedestrian: compName.startsWith('street-generated-pedestrians')
-          });
-        });
-        this.hidden.push(...hideSegmentClones(segEl, hideFilter));
+        this.hidden.push(
+          ...hideSegmentClones(segEl, hideFilter, (el, compName) => {
+            const position = el.getAttribute('position') || {
+              x: 0,
+              y: 0,
+              z: 0
+            };
+            cast.push({
+              mixin: el.getAttribute('mixin') || '',
+              position: { x: position.x, y: position.y, z: position.z },
+              rotationY: el.getAttribute('rotation').y,
+              isPedestrian: compName.startsWith('street-generated-pedestrians')
+            });
+          })
+        );
       }
 
       if (cast.length > 0) {
@@ -326,15 +335,15 @@ AFRAME.registerComponent('street-traffic', {
           let dir;
           if (seg.direction === 'inbound') dir = 1;
           else if (seg.direction === 'outbound') dir = -1;
-          else {
-            dir =
-              Math.cos(THREE.MathUtils.degToRad(member.rotationY)) >= 0
-                ? 1
-                : -1;
-          }
+          else dir = directionFromFacing(member.rotationY);
           const speed = member.isPedestrian
             ? SEGMENT_TRAFFIC_DEFAULTS.sidewalk.speed * (0.7 + 0.6 * rng())
             : laneSpeed;
+          // A pedestrian authored on a vehicle lane (e.g. a crossing)
+          // must not inherit the lane's car-sized collider.
+          const fallbackHalf = member.isPedestrian
+            ? SEGMENT_TRAFFIC_DEFAULTS.sidewalk.half
+            : defaults.half;
           this.spawnRecord(segEl, {
             mixin: member.mixin,
             position: member.position,
@@ -343,7 +352,7 @@ AFRAME.registerComponent('street-traffic', {
             speed,
             halfLen,
             length,
-            half: MIXIN_HALF_EXTENTS[member.mixin] || defaults.half
+            half: MIXIN_HALF_EXTENTS[member.mixin] || fallbackHalf
           });
         }
         return;
@@ -403,13 +412,15 @@ AFRAME.registerComponent('street-traffic', {
     entity.setAttribute('data-play-mode-traffic', '');
     entity.setAttribute('play-mode-traffic', '');
     entity.classList.add('autocreated');
-    entity.setAttribute('rotation', `0 ${opts.rotationY} 0`);
+    // Object form skips A-Frame's string parse on set.
+    entity.setAttribute('rotation', { x: 0, y: opts.rotationY, z: 0 });
     // Full t=0 pose: X (lateral offset within the lane) and Y come from
     // the mirrored clone; tick only ever advances Z.
-    entity.setAttribute(
-      'position',
-      `${opts.position.x} ${opts.position.y} ${opts.position.z}`
-    );
+    entity.setAttribute('position', {
+      x: opts.position.x,
+      y: opts.position.y,
+      z: opts.position.z
+    });
     segEl.appendChild(entity);
 
     this.records.push({
