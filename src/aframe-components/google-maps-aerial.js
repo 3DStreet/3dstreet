@@ -10,6 +10,9 @@ import {
 const MathUtils = AFRAME.THREE.MathUtils;
 const Vector3 = AFRAME.THREE.Vector3;
 const Box3 = AFRAME.THREE.Box3;
+const Matrix4 = AFRAME.THREE.Matrix4;
+
+const _relativeMatrix = new Matrix4();
 
 if (typeof AFRAME === 'undefined') {
   throw new Error(
@@ -126,11 +129,15 @@ AFRAME.registerComponent('google-maps-aerial', {
       .multiplyScalar(-1);
 
     // Add the transformed plane as a flattening shape
-    this.flatteningPlugin.addShape(relativeShape, direction, Infinity);
+    this.flatteningPlugin.addShape(relativeShape, direction, {
+      threshold: Infinity
+    });
 
     // Store references for cleanup and updates
     this.flatteningShape = relativeShape;
+    this.flatteningShapeEl = testMeshEl;
     this.originalFlatteningMesh = testMesh;
+    this.lastFlatteningMatrix = new Matrix4().copy(relativeShape.matrixWorld);
   },
 
   tick: function () {
@@ -142,29 +149,54 @@ AFRAME.registerComponent('google-maps-aerial', {
         this.renderer
       );
 
-      // Update flattening shape if it exists
+      // Update flattening shape only when its transform relative to the
+      // tile set actually changed — updateShape() forces a full CPU
+      // re-flatten (per-vertex raycasts) of every active tile.
       if (
         this.flatteningPlugin &&
         this.flatteningShape &&
         this.originalFlatteningMesh
       ) {
+        // The shape was cloned from the host mesh, sharing its geometry by
+        // reference. Editing the host's geometry (e.g. box width/depth/height
+        // in the geometry controls) replaces that geometry instance, so the
+        // clone goes stale — detect the swap and rebuild the shape.
+        const currentMesh = this.flatteningShapeEl?.object3D.children[0];
+        if (
+          currentMesh &&
+          (currentMesh !== this.originalFlatteningMesh ||
+            currentMesh.geometry !== this.flatteningShape.geometry)
+        ) {
+          this.flatteningPlugin.deleteShape(this.flatteningShape);
+          this.flatteningShape = null;
+          this.originalFlatteningMesh = null;
+          this.addFlatteningShape(this.data.flatteningShape);
+          this.tiles.update();
+          return;
+        }
+
         // Update world transforms
         this.tiles.group.updateMatrixWorld();
         this.originalFlatteningMesh.updateMatrixWorld(true);
 
-        // Re-transform the shape into the local frame of the tile set
-        this.flatteningShape.matrixWorld.copy(
-          this.originalFlatteningMesh.matrixWorld
-        );
-        this.flatteningShape.matrixWorld
-          .premultiply(this.tiles.group.matrixWorldInverse)
-          .decompose(
-            this.flatteningShape.position,
-            this.flatteningShape.quaternion,
-            this.flatteningShape.scale
-          );
+        _relativeMatrix
+          .copy(this.originalFlatteningMesh.matrixWorld)
+          .premultiply(this.tiles.group.matrixWorldInverse);
 
-        this.flatteningPlugin.updateShape(this.flatteningShape);
+        if (!_relativeMatrix.equals(this.lastFlatteningMatrix)) {
+          this.lastFlatteningMatrix.copy(_relativeMatrix);
+
+          // Re-transform the shape into the local frame of the tile set
+          this.flatteningShape.matrixWorld
+            .copy(_relativeMatrix)
+            .decompose(
+              this.flatteningShape.position,
+              this.flatteningShape.quaternion,
+              this.flatteningShape.scale
+            );
+
+          this.flatteningPlugin.updateShape(this.flatteningShape);
+        }
       }
 
       this.tiles.update();
