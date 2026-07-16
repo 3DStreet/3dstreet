@@ -323,6 +323,9 @@
   "appMenu.view": {
     "defaultMessage": "View"
   },
+  "appMenu.view.autoplayInViewer": {
+    "defaultMessage": "Autoplay in Viewer"
+  },
   "appMenu.view.camera.orthotop": {
     "defaultMessage": "Plan View"
   },
@@ -1577,6 +1580,9 @@
   "playControls.wall": {
     "defaultMessage": "Wall"
   },
+  "primaryToolbar.captureRender": {
+    "defaultMessage": "Capture & Render"
+  },
   "primaryToolbar.hidePanels": {
     "defaultMessage": "Hide panels"
   },
@@ -1588,9 +1594,6 @@
   },
   "primaryToolbar.showPanels": {
     "defaultMessage": "Show panels"
-  },
-  "primaryToolbar.snapshot": {
-    "defaultMessage": "Snapshot"
   },
   "primaryToolbar.snapshotTitle": {
     "defaultMessage": "Capture screenshot and generate rendered images"
@@ -2119,6 +2122,21 @@
   },
   "viewer.simClockRunning": {
     "defaultMessage": "Simulation time — click to pause"
+  },
+  "viewer.snapshotDownloadHint": {
+    "defaultMessage": "Click to download — sign in to save to your gallery"
+  },
+  "viewer.snapshotFailed": {
+    "defaultMessage": "Snapshot failed. Please try again."
+  },
+  "viewer.snapshotSaved": {
+    "defaultMessage": "Saved to your gallery — click to download"
+  },
+  "viewer.snapshotThumbAlt": {
+    "defaultMessage": "Captured snapshot — click to download"
+  },
+  "viewer.snapshotTitle": {
+    "defaultMessage": "Capture a snapshot of this view"
   },
   "viewer.stop": {
     "defaultMessage": "Stop"

@@ -42,7 +42,9 @@ export const PrimaryToolbar = () => {
   // say "Drive" etc.)
   const handlePlay = () => {
     useStore.getState().enterViewerMode('editor');
-    document.querySelector('a-scene')?.systems?.['play-mode']?.start();
+    document
+      .querySelector('a-scene')
+      ?.systems?.['play-mode']?.start({ origin: 'editor' });
   };
 
   const handleSnapshot = () => {
@@ -109,14 +111,17 @@ export const PrimaryToolbar = () => {
             defaultMessage: 'Capture screenshot and generate rendered images'
           })}
         >
+          {/* "Capture & Render" (#1824 Q2): the editor keeps the richer
+              modal flow (AI render, thumbnail, download); the Viewer has
+              its own capture-only snapshot button. */}
           <Button
             variant="toolbtn"
             onClick={handleSnapshot}
             leadingIcon={<CameraSparkleIcon />}
           >
             <FormattedMessage
-              id="primaryToolbar.snapshot"
-              defaultMessage="Snapshot"
+              id="primaryToolbar.captureRender"
+              defaultMessage="Capture & Render"
             />
           </Button>
         </ToolTip>

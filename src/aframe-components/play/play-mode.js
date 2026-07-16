@@ -155,7 +155,16 @@ AFRAME.registerSystem('play-mode', {
     }
   },
 
-  start: function () {
+  /**
+   * @param {Object} [opts]
+   * @param {'editor'|'viewer'} [opts.origin='viewer'] — where this play
+   *   session was entered from. 'editor' = the editor's Start button /
+   *   `P` shortcut (an editing session); 'viewer' = the viewer chrome's
+   *   Start button or View-entry autoplay. Stop is entry-aware (#1824
+   *   Q1): store.stopPlaying() returns 'editor'-origin sessions to the
+   *   editor and 'viewer'-origin sessions to View-idle.
+   */
+  start: function (opts) {
     if (this.isPlaying) return;
     this.isPlaying = true;
     this.isPaused = false;
@@ -164,6 +173,7 @@ AFRAME.registerSystem('play-mode', {
     useStore.setState({
       isPlaying: true,
       isPlayPaused: false,
+      playEntryOrigin: opts && opts.origin === 'editor' ? 'editor' : 'viewer',
       playOutcome: null,
       playOutcomeTimeMs: 0,
       playFinish: null
@@ -189,6 +199,7 @@ AFRAME.registerSystem('play-mode', {
     useStore.setState({
       isPlaying: false,
       isPlayPaused: false,
+      playEntryOrigin: null,
       playOutcome: null,
       playOutcomeTimeMs: 0,
       playFinish: null
@@ -289,8 +300,9 @@ AFRAME.registerSystem('play-mode', {
     // Standard Gamepad mapping: 8=Back/View, 9=Start/Menu, 3=Y, 2=X.
     if (edge(9)) this.togglePause();
     if (edge(8)) {
-      // Back = stop play (stay in the Viewer, matching the Stop button).
-      this.stop();
+      // Back = stop play, matching the Stop button — entry-aware: back
+      // to the editor if Play was entered from there, else View-idle.
+      useStore.getState().stopPlaying();
       this._padPrev = {};
       return;
     }

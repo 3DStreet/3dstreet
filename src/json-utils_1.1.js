@@ -1079,6 +1079,13 @@ AFRAME.registerComponent('set-loader-from-hash', {
           AFRAME.scenes[0].viewerVantageCameraState =
             defaultSnapshotCameraState || null;
 
+          // Per-scene View autoplay opt-out (#1824 Q1). Set
+          // unconditionally so a scene without the setting resets a
+          // previously-loaded scene's opt-out.
+          useStore
+            .getState()
+            .setSceneAutoplay(jsonData.memory?.autoplay !== false);
+
           useStore.getState().updateLoadingProgress(50, 'Creating scene...');
           STREET.utils.createElementsFromJSON(jsonData, false);
           const sceneId = getUUIDFromPath(requestURL);

@@ -18,6 +18,7 @@ import { AppSwitcher } from '@shared/navigation/components';
 import { SceneEditTitle } from '../elements/SceneEditTitle';
 import { Button } from '../elements/Button';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
+import { ViewerSnapshot } from '../elements/ViewerSnapshot/ViewerSnapshot';
 import primaryStyles from '../elements/PrimaryToolbar/PrimaryToolbar.module.scss';
 import styles from './Toolbar.module.scss';
 import { formatSimTime } from '@/aframe-components/play/format-sim-time';
@@ -196,8 +197,11 @@ function Toolbar() {
     };
   }, [currentUser]);
 
-  // Escape backs out one level: stop the running simulation first,
-  // then (next press) return to the editor.
+  // Escape backs out one level. Stopping is entry-aware (#1824 Q1):
+  // Play entered from the editor pops straight back to the editor (the
+  // simulation and the mode were entered as one step, so they exit as
+  // one); a visitor's session pops to View-idle, and the next press
+  // returns to the editor (Remix).
   useEffect(() => {
     if (isInspectorEnabled) return undefined;
     const onKeyDown = (e) => {
@@ -212,7 +216,7 @@ function Toolbar() {
       e.preventDefault();
       const playMode = getPlayModeSystem();
       if (playMode?.isPlaying) {
-        playMode.stop();
+        useStore.getState().stopPlaying();
       } else {
         useStore.getState().setIsInspectorEnabled(true);
       }
@@ -220,6 +224,21 @@ function Toolbar() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isInspectorEnabled]);
+
+  // Entering View implicitly autoplays (#1824 Q1): each View entry arms
+  // a one-shot; when the scene reports a playable capability (which can
+  // land after entry — managed streets build asynchronously) the
+  // simulation starts on its own, unless the scene opted out via the
+  // per-scene autoplay setting. One-shot so Stop lands in View-idle
+  // instead of restarting.
+  useEffect(() => {
+    if (isInspectorEnabled || isPlaying || !hasPlayable) return;
+    const { viewerAutoplayArmed, sceneAutoplay } = useStore.getState();
+    if (!viewerAutoplayArmed) return;
+    useStore.setState({ viewerAutoplayArmed: false });
+    if (!sceneAutoplay) return;
+    getPlayModeSystem()?.start();
+  }, [isInspectorEnabled, isPlaying, hasPlayable]);
 
   if (isInspectorEnabled) return null;
 
@@ -310,9 +329,11 @@ function Toolbar() {
                   <FormattedMessage id="viewer.reset" defaultMessage="Reset" />
                 </Button>
                 <div className={primaryStyles.divider} />
+                {/* Entry-aware (#1824 Q1): back to the editor if Play was
+                    entered from there, else to View-idle. */}
                 <Button
                   variant="toolbtn"
-                  onClick={() => getPlayModeSystem()?.stop()}
+                  onClick={() => useStore.getState().stopPlaying()}
                   leadingIcon={<AwesomeIcon icon={faStop} size={14} />}
                 >
                   <FormattedMessage id="viewer.stop" defaultMessage="Stop" />
@@ -338,6 +359,11 @@ function Toolbar() {
           as the editor, including its signed-out state. */}
       <div id="viewer-right-dock" className={`clickable ${styles.rightDock}`}>
         <div className={primaryStyles.wrapper}>
+          {/* Capture-only snapshot (#1824 Q2): instant capture +
+              non-blocking toast; no modal, no pause. The richer
+              Capture & Render flow stays an editor action. */}
+          <ViewerSnapshot />
+          <div className={primaryStyles.divider} />
           {/* Access state pairs exactly with the action: "View only"
               appears iff the action is Remix (you can't edit this scene
               in place). When the action is Edit, you can edit — so no

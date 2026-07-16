@@ -38,6 +38,13 @@ returns to the editor. Visitor (no editor origin) → Stop returns to View-idle.
 Same control, context-aware destination. With that, keeping a separate Edit
 affordance is fine.
 
+**Shipped:** `play-mode.start({ origin })` stamps the entry origin into the
+store; every stop affordance (viewer Stop button, Escape, gamepad Back) routes
+through `store.stopPlaying()`, which picks the destination. View entry now
+implicitly autoplays via a one-shot armed by `enterViewerMode()`, with a
+per-scene opt-out (`memory.autoplay: false`, toggled at View → Autoplay in
+Viewer).
+
 ## Q2 — Snapshot in View
 
 A blocking modal mid-flow pulls the user out; pause-then-resume is jarring and
@@ -51,6 +58,12 @@ corrupts a drive run.
 - **Editor:** the richer action can be labeled to signal intent, e.g.
   **"Capture & Render"** (distinct action) or **"Capture…"** (ellipsis = opens
   the modal).
+
+**Shipped:** viewer right dock has a capture-only camera button
+(`ViewerSnapshot.jsx`): instant screentock capture, thumbnail toast
+(click-to-download), background save to the signed-in user's gallery
+(`source: 'viewer-snapshot'`); no modal, no pause. The editor toolbar button
+is relabeled **Capture & Render**.
 
 ## Q3 — Enter/exit asymmetry, mode as a toggle
 

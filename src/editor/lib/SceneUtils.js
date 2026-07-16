@@ -284,6 +284,12 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
     filteredData.memory.cameraState = currentCameraState;
   }
 
+  // Per-scene View autoplay opt-out (#1824 Q1). Autoplay-on is the
+  // default, so only the opt-out is persisted.
+  if (!useStore.getState().sceneAutoplay) {
+    filteredData.memory.autoplay = false;
+  }
+
   // If we have an existing scene ID, fetch and preserve snapshots from Firebase
   if (sceneId && !doSaveAs) {
     try {

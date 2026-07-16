@@ -124,7 +124,8 @@ const useStore = create(
             sceneId: null,
             sceneTitle: null,
             authorId: null,
-            locationString: null
+            locationString: null,
+            sceneAutoplay: true
           }),
         authorId: null, // not used anywhere yet, we still use the metadata component
         setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }), // not used anywhere yet
@@ -244,6 +245,26 @@ const useStore = create(
         // call sceneEl.systems['play-mode'].start()/stop()/togglePause().
         isPlaying: false,
         isPlayPaused: false,
+        // Where the current play session was entered from, stamped by
+        // play-mode.start(): 'editor' (Start/P from an editing session)
+        // or 'viewer' (viewer Start button, View-entry autoplay). Read
+        // by stopPlaying() to pick Stop's destination. null while idle.
+        playEntryOrigin: null,
+        // Entry-aware Stop (#1824 Q1): every user-facing stop affordance
+        // (viewer Stop button, Escape, gamepad Back) routes through here.
+        // Entered Play from the editor → Stop returns to the editor;
+        // a visitor (viewer origin) → Stop returns to View-idle.
+        stopPlaying: () => {
+          const playMode =
+            document.querySelector('a-scene')?.systems?.['play-mode'];
+          if (useStore.getState().playEntryOrigin === 'editor') {
+            // setIsInspectorEnabled(true) stops play as part of opening
+            // the editor, so this is one transition, not two.
+            useStore.getState().setIsInspectorEnabled(true);
+          } else {
+            playMode?.stop();
+          }
+        },
         // Transient outcome shown by the viewer top bar's sim pill.
         //   null      – normal running state
         //   'finish'  – race-target was crossed (blue, pinned at finish time)
@@ -265,8 +286,19 @@ const useStore = create(
         //              when arriving in the viewer without an editing
         //              session (?viewer=true, non-author scene loads)
         viewerVantage: 'editor',
+        // Per-scene "autoplay: false" opt-out (#1824 Q1). Entering View
+        // implicitly autoplays when the scene has a playable capability;
+        // this scene-level setting (persisted as memory.autoplay) turns
+        // that off. Default true; reset on every scene load.
+        sceneAutoplay: true,
+        setSceneAutoplay: (newSceneAutoplay) =>
+          set({ sceneAutoplay: newSceneAutoplay }),
+        // Armed on each View entry, consumed (or discarded) by the viewer
+        // chrome's autoplay effect. A one-shot: pressing Stop must land in
+        // View-idle, not re-trigger autoplay while hasPlayable is true.
+        viewerAutoplayArmed: false,
         enterViewerMode: (vantage = 'editor') => {
-          set({ viewerVantage: vantage });
+          set({ viewerVantage: vantage, viewerAutoplayArmed: true });
           useStore.getState().setIsInspectorEnabled(false);
         },
         isInspectorEnabled: true,
@@ -275,7 +307,9 @@ const useStore = create(
             // Opening the inspector exits play mode (regardless of how
             // the open was triggered — Edit button, Escape,
             // programmatic). Subscribers tear down their own state via
-            // the play-mode-stop scene event.
+            // the play-mode-stop scene event. Also disarm any pending
+            // View-entry autoplay so it can't fire on a later re-entry.
+            set({ viewerAutoplayArmed: false });
             document.querySelector('a-scene')?.systems?.['play-mode']?.stop();
             posthog.capture('inspector_opened');
             AFRAME.INSPECTOR.open();
