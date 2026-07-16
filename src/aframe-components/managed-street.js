@@ -1263,7 +1263,7 @@ function parseStreetmixSegments(segments, length) {
       segmentParentEl.setAttribute(
         'street-generated-clones',
         `mode: random;
-        modelsArray: cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-dutch, cyclist-kid${segments[i].type === 'scooter' ? 'ElectricScooter_1' : ''};
+        modelsArray: cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-dutch, cyclist-kid${segments[i].type === 'scooter' ? ', ElectricScooter_1' : ''};
         spacing: 2.03;
         direction: ${direction};
         count: ${getRandomIntInclusive(2, 5)};`

@@ -32,7 +32,7 @@ function loaded(el) {
  * inbound drive-lane. Fixed-mode clones are deterministic (no seed
  * round-trip): floor(100 / 20) = 5 'box' clones.
  */
-async function makePlayableStreet({ withClones }) {
+async function makePlayableStreet({ withClones, segment, clones }) {
   const streetEl = await elFactory();
   const sceneEl = streetEl.sceneEl;
   sceneEl.setAttribute('street-traffic', '');
@@ -41,12 +41,13 @@ async function makePlayableStreet({ withClones }) {
   const segEl = document.createElement('a-entity');
   segEl.setAttribute(
     'street-segment',
-    'type: drive-lane; width: 3; length: 100; direction: inbound; surface: asphalt; color: #ffffff'
+    segment ||
+      'type: drive-lane; width: 3; length: 100; direction: inbound; surface: asphalt; color: #ffffff'
   );
   if (withClones) {
     segEl.setAttribute(
       'street-generated-clones',
-      'mode: fixed; modelsArray: box; spacing: 20; cycleOffset: 0.5'
+      clones || 'mode: fixed; modelsArray: box; spacing: 20; cycleOffset: 0.5'
     );
   }
   streetEl.appendChild(segEl);
@@ -107,6 +108,78 @@ describe('street-traffic', () => {
     // Walking speed with jitter (0.7–1.3 × 1.4 m/s), not car speed.
     expect(pedRecord.speed).toBeLessThan(2);
     sceneEl.emit('play-mode-stop');
+  });
+
+  it('leaves static props (food truck, cones, parklets, dining) visible and unanimated, with no synthetic fallback', async () => {
+    const { sceneEl, segEl } = await makePlayableStreet({
+      withClones: true,
+      clones:
+        'mode: fixed; modelsArray: temporary-traffic-cone; spacing: 20; cycleOffset: 0.5'
+    });
+    const cones = segEl.components['street-generated-clones'].createdEntities;
+    expect(cones.length).toBeGreaterThan(0);
+
+    // Other static props authored on the same lane (Streetmix maps
+    // food-truck / parklet / outdoor-dining to drive-lane segments).
+    const props = ['food-trailer-rig', 'parklet', 'outdoor_dining'].map(
+      (mixin, i) => {
+        const el = document.createElement('a-entity');
+        el.setAttribute('mixin', mixin);
+        el.setAttribute(
+          'data-parent-component',
+          `street-generated-clones__${i + 2}`
+        );
+        segEl.appendChild(el);
+        return el;
+      }
+    );
+    await Promise.all(props.map(loaded));
+
+    sceneEl.emit('play-mode-start');
+    const comp = sceneEl.components['street-traffic'];
+    // No animated twins AND no synthesized sedans through the props.
+    expect(comp.records).toHaveLength(0);
+    cones.forEach((c) => expect(c.getAttribute('visible')).toBe(true));
+    props.forEach((p) => expect(p.getAttribute('visible')).toBe(true));
+    sceneEl.emit('play-mode-stop');
+  });
+
+  it('skips a vehicle lane with direction none (e.g. a center turn lane)', async () => {
+    const { sceneEl, segEl } = await makePlayableStreet({
+      withClones: true,
+      segment:
+        'type: drive-lane; width: 3; length: 100; direction: none; surface: asphalt; color: #ffffff'
+    });
+    const clones = segEl.components['street-generated-clones'].createdEntities;
+
+    sceneEl.emit('play-mode-start');
+    const comp = sceneEl.components['street-traffic'];
+    expect(comp.records).toHaveLength(0);
+    clones.forEach((c) => expect(c.getAttribute('visible')).toBe(true));
+    sceneEl.emit('play-mode-stop');
+  });
+
+  it('animates the tram cast on a rail lane', async () => {
+    const { sceneEl, segEl } = await makePlayableStreet({
+      withClones: true,
+      segment:
+        'type: rail; width: 3; length: 100; direction: outbound; surface: asphalt; color: #ffffff',
+      clones: 'mode: fixed; modelsArray: tram; spacing: 20; cycleOffset: 0.5'
+    });
+    const trams = segEl.components['street-generated-clones'].createdEntities;
+    expect(trams).toHaveLength(5);
+
+    sceneEl.emit('play-mode-start');
+    const comp = sceneEl.components['street-traffic'];
+    expect(comp.records).toHaveLength(5);
+    comp.records.forEach((r) => {
+      expect(r.el.getAttribute('mixin')).toBe('tram');
+      expect(r.dir).toBe(-1); // outbound lane moves -Z
+      expect(r.half.z).toBe(11.5); // tram-sized collider
+    });
+    trams.forEach((c) => expect(c.getAttribute('visible')).toBe(false));
+    sceneEl.emit('play-mode-stop');
+    trams.forEach((c) => expect(c.getAttribute('visible')).toBe(true));
   });
 
   it('falls back to a synthesized mixed-model flow when a lane has no cast', async () => {

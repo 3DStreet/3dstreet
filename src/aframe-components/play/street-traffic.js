@@ -96,9 +96,15 @@ const SEGMENT_TRAFFIC_DEFAULTS = {
     mixins: null, // fallback picks char1..char16 via rng
     density: 6,
     half: { x: 0.25, y: 0.85, z: 0.25 } // 0.5 W × 1.7 H × 0.5 L
+  },
+  rail: {
+    speed: 8.0,
+    mixins: ['tram'],
+    density: 1,
+    half: { x: 1.25, y: 1.75, z: 11.5 } // 2.5 W × 3.5 H × 23 L
   }
   // parking-lane intentionally absent: parked cars are static.
-  // divider/grass/rail/building: no traffic.
+  // divider/grass/boundary: no traffic.
 };
 
 // Kinematic collider half-extents for known moving-cast mixins; anything
@@ -110,7 +116,9 @@ const MIXIN_HALF_EXTENTS = {
   'box-truck-rig': { x: 1.1, y: 1.4, z: 3.6 },
   'self-driving-waymo-car': { x: 0.95, y: 0.9, z: 2.4 },
   motorbike: { x: 0.4, y: 0.8, z: 1.1 },
-  bus: { x: 1.25, y: 1.5, z: 6.0 }
+  bus: { x: 1.25, y: 1.5, z: 6.0 },
+  tram: { x: 1.25, y: 1.75, z: 11.5 },
+  trolley: { x: 1.25, y: 1.75, z: 5.25 }
 };
 
 // Marker component put on every animated traffic / replay entity. Beyond being
@@ -266,6 +274,13 @@ AFRAME.registerComponent('street-traffic', {
       const defaults = SEGMENT_TRAFFIC_DEFAULTS[seg.type];
       if (!defaults) return; // unsupported lane type
 
+      // A vehicle lane with no travel direction (e.g. a center turn
+      // lane) has no traffic flow: leave its authored cast static and
+      // synthesize nothing. Sidewalks are direction 'none' by design —
+      // pedestrians infer their walk direction from each clone's own
+      // facing instead.
+      if (seg.type !== 'sidewalk' && seg.direction === 'none') return;
+
       // Only animate a sidewalk if the user actually configured
       // pedestrians on it: look for any `street-generated-pedestrians__N`
       // component with density != 'empty'. If none, leave this sidewalk
@@ -355,6 +370,19 @@ AFRAME.registerComponent('street-traffic', {
             half: MIXIN_HALF_EXTENTS[member.mixin] || fallbackHalf
           });
         }
+        return;
+      }
+
+      // A lane whose authored cast is entirely static props (a parked
+      // food trailer, cones / jersey barriers on a closed lane) is
+      // scenery, not an empty lane — don't synthesize a flow through it.
+      // (movingCastFilter excluded those props from `cast` above.)
+      if (
+        seg.type !== 'sidewalk' &&
+        segEl.querySelector(
+          '[data-parent-component^="street-generated-clones"]'
+        )
+      ) {
         return;
       }
 
