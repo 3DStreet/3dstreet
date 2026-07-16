@@ -231,12 +231,21 @@ function Toolbar() {
   // simulation starts on its own, unless the scene opted out via the
   // per-scene autoplay setting. One-shot so Stop lands in View-idle
   // instead of restarting.
+  //
+  // Ambient simulations only: play-mode-vehicle switches the control
+  // mode to `drive` on play-mode-start whenever a [drive-controls]
+  // entity exists, so autoplaying a drive scene would drop the visitor
+  // into the car uninvited. Those scenes keep the explicit Start.
   useEffect(() => {
     if (isInspectorEnabled || isPlaying || !hasPlayable) return;
     const { viewerAutoplayArmed, sceneAutoplay } = useStore.getState();
     if (!viewerAutoplayArmed) return;
     useStore.setState({ viewerAutoplayArmed: false });
     if (!sceneAutoplay) return;
+    const sceneEl = document.querySelector('a-scene');
+    const caps =
+      sceneEl?.systems?.['mode-manager']?.getPlayableCapabilities() || [];
+    if (caps.includes('drive-controls')) return;
     getPlayModeSystem()?.start();
   }, [isInspectorEnabled, isPlaying, hasPlayable]);
 
