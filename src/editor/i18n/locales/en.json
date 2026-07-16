@@ -2121,7 +2121,7 @@
     "defaultMessage": "Crash at {time}"
   },
   "viewer.simClockFinish": {
-    "defaultMessage": "Finished in {time} — click to resume"
+    "defaultMessage": "Finished in {time} — press Reset to race again"
   },
   "viewer.simClockPaused": {
     "defaultMessage": "Paused — click to resume"

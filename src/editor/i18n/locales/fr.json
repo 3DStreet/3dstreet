@@ -706,7 +706,7 @@
   "viewer.signInToEdit": "Se connecter pour éditer",
   "viewer.signInToEditTitle": "Connectez-vous pour ouvrir l'éditeur — l'enregistrement créera votre propre copie",
   "viewer.simClockCrash": "Collision à {time}",
-  "viewer.simClockFinish": "Terminé en {time} — cliquez pour reprendre",
+  "viewer.simClockFinish": "Terminé en {time} — appuyez sur Réinitialiser pour recommencer",
   "viewer.simClockPaused": "En pause — cliquez pour reprendre",
   "viewer.simClockRunning": "Temps de simulation — cliquez pour mettre en pause",
   "viewer.snapshotDownloadHint": "Cliquez pour télécharger — connectez-vous pour l'enregistrer dans votre galerie",

@@ -706,7 +706,7 @@
   "viewer.signInToEdit": "Faça login para editar",
   "viewer.signInToEditTitle": "Faça login para abrir o editor — ao salvar, será criada sua própria cópia",
   "viewer.simClockCrash": "Colisão em {time}",
-  "viewer.simClockFinish": "Concluído em {time} — clique para retomar",
+  "viewer.simClockFinish": "Concluído em {time} — pressione Reiniciar para correr novamente",
   "viewer.simClockPaused": "Pausado — clique para retomar",
   "viewer.simClockRunning": "Tempo de simulação — clique para pausar",
   "viewer.snapshotDownloadHint": "Clique para baixar — faça login para salvar na sua galeria",

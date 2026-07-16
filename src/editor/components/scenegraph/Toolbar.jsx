@@ -85,7 +85,7 @@ function SimClock() {
   const finishTitle = intl.formatMessage(
     {
       id: 'viewer.simClockFinish',
-      defaultMessage: 'Finished in {time} — click to resume'
+      defaultMessage: 'Finished in {time} — press Reset to race again'
     },
     { time: formatSimTime(playOutcomeTimeMs) }
   );

@@ -121,8 +121,10 @@ AFRAME.registerSystem('play-mode', {
         finishedAt: performance.now()
       }
     });
-    // Pause so the player can savor the moment + line up a snapshot.
-    this.pause();
+    // No auto-pause: the run keeps going (coast through the gate) with
+    // the clock pinned at the finish time and the banner up. Reset is a
+    // one-click fresh run; the pinned outcome clears on reset/stop (or
+    // on a manual pause+resume).
   },
 
   spawnCollisionMarker: function (pos, simMs) {
