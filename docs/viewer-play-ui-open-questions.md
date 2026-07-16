@@ -116,11 +116,12 @@ draft), and making changes doesn't prompt login/save. The Remix/Edit label and
 the save/login prompting need to account for: unsaved local drafts, unauthed
 users, and edits made after entering the editor from a non-authored scene.
 
-**Shipped (first step):** Remix is auth-gated. A signed-out visitor on a cloud
-scene gets **"Sign in to Remix"** (button and Escape both open the sign-in
-modal); the editor only opens for signed-in users. Local drafts (no authorId)
-keep Edit with no auth requirement. Post-signin edit/save prompting for
-non-authors remains open.
+**Shipped (v1):** the action is always **"Edit"** — Remix is gone as
+vocabulary. A signed-out visitor on a cloud scene gets **"Sign in to Edit"**
+(button and Escape both open the sign-in modal). A signed-in non-author who
+enters the editor gets a warning toast — "This is an unsaved copy. Click Save
+to make your own copy." — and saving forks via the existing save-as-fork flow.
+Local drafts (no authorId) keep Edit with no auth requirement.
 
 ## Loose end — creator byline for unauthenticated viewers
 

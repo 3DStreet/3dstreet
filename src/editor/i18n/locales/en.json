@@ -2078,6 +2078,12 @@
   "viewer.byAuthor": {
     "defaultMessage": "by {username}"
   },
+  "viewer.editCopyTitle": {
+    "defaultMessage": "Open the editor — saving will create your own copy"
+  },
+  "viewer.editingCopyWarning": {
+    "defaultMessage": "This is an unsaved copy. Click Save to make your own copy."
+  },
   "viewer.hintClickDrag": {
     "defaultMessage": "Click + Drag"
   },
@@ -2093,12 +2099,6 @@
   "viewer.play": {
     "defaultMessage": "Start"
   },
-  "viewer.remix": {
-    "defaultMessage": "Remix"
-  },
-  "viewer.remixTitle": {
-    "defaultMessage": "Open the editor — saving will create your own copy"
-  },
   "viewer.reset": {
     "defaultMessage": "Reset"
   },
@@ -2108,10 +2108,10 @@
   "viewer.resume": {
     "defaultMessage": "Resume"
   },
-  "viewer.signInToRemix": {
-    "defaultMessage": "Sign in to Remix"
+  "viewer.signInToEdit": {
+    "defaultMessage": "Sign in to Edit"
   },
-  "viewer.signInToRemixTitle": {
+  "viewer.signInToEditTitle": {
     "defaultMessage": "Sign in to open the editor — saving will create your own copy"
   },
   "viewer.simClockCrash": {

@@ -139,9 +139,11 @@ function SimClock() {
 /**
  * Viewer top bar — the marquee shown whenever the scene is presented
  * without the editor (inspector closed). One component for every
- * audience; permission only changes the primary action:
- *   - scene author (or unsaved local scene): "Edit Scene"
- *   - anyone else: "Remix" (opens the editor; saving forks a copy)
+ * audience; the primary action is always "Edit":
+ *   - scene author (or unsaved local scene): opens the editor in place
+ *   - signed-in non-author: opens the editor on a copy (warning toast;
+ *     saving forks via the existing save-as-fork flow)
+ *   - signed-out visitor on a cloud scene: "Sign in to Edit"
  * Play/pause controls appear only when the scene has a registered
  * playable capability — static scenes never see them.
  */
@@ -201,7 +203,7 @@ function Toolbar() {
   // Play entered from the editor pops straight back to the editor (the
   // simulation and the mode were entered as one step, so they exit as
   // one); a visitor's session pops to View-idle, and the next press
-  // returns to the editor (Remix).
+  // opens the editor (auth-gated, mirroring the Edit button).
   useEffect(() => {
     if (isInspectorEnabled) return undefined;
     const onKeyDown = (e) => {
@@ -219,25 +221,57 @@ function Toolbar() {
         useStore.getState().stopPlaying();
       } else if (authorId && !currentUser) {
         // Editor entry is auth-gated for a signed-out visitor on a
-        // cloud scene (matches the Sign in to Remix button) — offer
+        // cloud scene (matches the Sign in to Edit button) — offer
         // sign-in instead of silently ignoring the key.
         useStore.getState().setModal('signin');
       } else {
         useStore.getState().setIsInspectorEnabled(true);
+        // Same unsaved-copy warning as the Edit button for a signed-in
+        // non-author (see handleEnterEditor).
+        if (authorId && currentUser && currentUser.uid !== authorId) {
+          STREET.notify.warningMessage(
+            intl.formatMessage({
+              id: 'viewer.editingCopyWarning',
+              defaultMessage:
+                'This is an unsaved copy. Click Save to make your own copy.'
+            })
+          );
+        }
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isInspectorEnabled, authorId, currentUser]);
+  }, [isInspectorEnabled, authorId, currentUser, intl]);
 
   if (isInspectorEnabled) return null;
 
   const isAuthor = !authorId || (currentUser && currentUser.uid === authorId);
-  // Remix requires an account (#1824 Remix flow): a signed-out visitor
-  // on a cloud scene gets a "Sign in to Remix" action instead of the
-  // editor. Local drafts (no authorId) keep Edit — the visitor is
-  // effectively the author of their own unsaved work.
-  const needsAuthToRemix = !isAuthor && !currentUser;
+  // Editing requires an account (#1824 Remix flow): a signed-out
+  // visitor on a cloud scene gets a "Sign in to Edit" action instead of
+  // the editor. Local drafts (no authorId) keep Edit with no auth —
+  // the visitor is effectively the author of their own unsaved work.
+  const needsAuthToEdit = !isAuthor && !currentUser;
+
+  // The action is always "Edit"; permission shows up as consequence,
+  // not vocabulary. A signed-in non-author entering the editor gets a
+  // warning toast that they're on a copy — saving forks it to their
+  // account (the existing save-as-fork flow).
+  const handleEnterEditor = () => {
+    if (needsAuthToEdit) {
+      setModal('signin');
+      return;
+    }
+    setIsInspectorEnabled(true);
+    if (!isAuthor) {
+      STREET.notify.warningMessage(
+        intl.formatMessage({
+          id: 'viewer.editingCopyWarning',
+          defaultMessage:
+            'This is an unsaved copy. Click Save to make your own copy.'
+        })
+      );
+    }
+  };
   // A counting millisecond clock only earns its place when time IS the
   // game (drive mode: lap timing, crash penalties). Other simulations
   // (traffic, replay) get a plain pause toggle instead.
@@ -348,10 +382,10 @@ function Toolbar() {
       )}
 
       {/* Identity + access, top-right — mirrors the editor's collapsed
-          auth dock. The primary action (Edit for the owner, Remix for
-          everyone else) works unauthenticated: Remix opens the editor
-          and sign-in happens at save time. Same ProfileButton component
-          as the editor, including its signed-out state. */}
+          auth dock. The primary action is always Edit; a signed-out
+          visitor on a cloud scene is asked to sign in first. Same
+          ProfileButton component as the editor, including its
+          signed-out state. */}
       <div id="viewer-right-dock" className={`clickable ${styles.rightDock}`}>
         <div className={primaryStyles.wrapper}>
           {/* Capture-only snapshot (#1824 Q2): instant capture +
@@ -359,12 +393,10 @@ function Toolbar() {
               Capture & Render flow stays an editor action. */}
           <ViewerSnapshot />
           <div className={primaryStyles.divider} />
-          {/* Access state pairs exactly with the action: "View only"
-              appears iff the action is Remix (you can't edit this scene
-              in place). When the action is Edit, you can edit — so no
-              view-only label. Covers unauthenticated visitors on cloud
-              scenes (not theirs → Remix) without mislabeling an
-              unauthed user's own local draft (Edit). */}
+          {/* "View only" appears for non-authors: this scene can't be
+              edited in place — Edit opens a copy (reinforced by the
+              unsaved-copy toast on entry). An unauthed user's own local
+              draft is not view-only (isAuthor covers it). */}
           {!isAuthor && (
             <>
               <span className={styles.viewOnlyText}>
@@ -377,37 +409,31 @@ function Toolbar() {
             </>
           )}
           <Button
-            onClick={() =>
-              needsAuthToRemix
-                ? setModal('signin')
-                : setIsInspectorEnabled(true)
-            }
+            onClick={handleEnterEditor}
             variant="toolbtn"
             title={
               isAuthor
                 ? undefined
-                : needsAuthToRemix
+                : needsAuthToEdit
                   ? intl.formatMessage({
-                      id: 'viewer.signInToRemixTitle',
+                      id: 'viewer.signInToEditTitle',
                       defaultMessage:
                         'Sign in to open the editor — saving will create your own copy'
                     })
                   : intl.formatMessage({
-                      id: 'viewer.remixTitle',
+                      id: 'viewer.editCopyTitle',
                       defaultMessage:
                         'Open the editor — saving will create your own copy'
                     })
             }
           >
-            {isAuthor ? (
-              <FormattedMessage id="toolbar.edit" defaultMessage="Edit" />
-            ) : needsAuthToRemix ? (
+            {needsAuthToEdit ? (
               <FormattedMessage
-                id="viewer.signInToRemix"
-                defaultMessage="Sign in to Remix"
+                id="viewer.signInToEdit"
+                defaultMessage="Sign in to Edit"
               />
             ) : (
-              <FormattedMessage id="viewer.remix" defaultMessage="Remix" />
+              <FormattedMessage id="toolbar.edit" defaultMessage="Edit" />
             )}
           </Button>
         </div>
