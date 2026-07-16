@@ -714,7 +714,8 @@
     "viewer.snapshotFailed": "Snapshot failed. Please try again.",
     "viewer.snapshotSaved": "Saved to your gallery — click to download",
     "viewer.snapshotThumbAlt": "Captured snapshot — click to download",
-    "viewer.snapshotTitle": "Capture a snapshot of this view"
+    "viewer.snapshotTitle": "Capture a snapshot of this view",
+    "viewer.resetPausedTitle": "Reset — return to the start frame; press Start to play again"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1431,7 +1432,8 @@
     "viewer.snapshotFailed": "Snapshot failed. Please try again.",
     "viewer.snapshotSaved": "Saved to your gallery — click to download",
     "viewer.snapshotThumbAlt": "Captured snapshot — click to download",
-    "viewer.snapshotTitle": "Capture a snapshot of this view"
+    "viewer.snapshotTitle": "Capture a snapshot of this view",
+    "viewer.resetPausedTitle": "Reset — return to the start frame; press Start to play again"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2148,6 +2150,7 @@
     "viewer.snapshotFailed": "Snapshot failed. Please try again.",
     "viewer.snapshotSaved": "Saved to your gallery — click to download",
     "viewer.snapshotThumbAlt": "Captured snapshot — click to download",
-    "viewer.snapshotTitle": "Capture a snapshot of this view"
+    "viewer.snapshotTitle": "Capture a snapshot of this view",
+    "viewer.resetPausedTitle": "Reset — return to the start frame; press Start to play again"
   }
 }

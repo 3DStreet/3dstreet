@@ -700,6 +700,7 @@
   "viewer.pause": "Pause",
   "viewer.play": "Démarrer",
   "viewer.reset": "Réinitialiser",
+  "viewer.resetPausedTitle": "Réinitialiser — revient à l'image de départ ; appuyez sur Démarrer pour relancer",
   "viewer.resetTitle": "Réinitialiser — relance la simulation à t=0 avec les objets à leur position initiale",
   "viewer.resume": "Reprendre",
   "viewer.signInToEdit": "Se connecter pour éditer",

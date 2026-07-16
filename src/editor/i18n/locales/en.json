@@ -2102,6 +2102,9 @@
   "viewer.reset": {
     "defaultMessage": "Reset"
   },
+  "viewer.resetPausedTitle": {
+    "defaultMessage": "Reset — return to the start frame; press Start to play again"
+  },
   "viewer.resetTitle": {
     "defaultMessage": "Reset — restart the simulation from t=0 with objects at spawn"
   },

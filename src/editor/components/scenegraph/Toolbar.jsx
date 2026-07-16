@@ -345,15 +345,36 @@ function Toolbar() {
                   </Button>
                 )}
                 <div className={primaryStyles.divider} />
+                {/* Reset meaning depends on transport state: while
+                    playing it's a quick restart (t=0, still running —
+                    matches R / gamepad Y mid-drive); while paused it
+                    winds all the way back to the viewer's initial
+                    state — idle at frame zero, showing Start. Raw
+                    stop(), not stopPlaying(): Reset never changes
+                    mode, so it stays in the viewer even for an
+                    editor-origin session. */}
                 <Button
                   variant="toolbtn"
-                  onClick={() => getPlayModeSystem()?.reset()}
+                  onClick={() => {
+                    const playMode = getPlayModeSystem();
+                    if (!playMode) return;
+                    if (playMode.isPaused) playMode.stop();
+                    else playMode.reset();
+                  }}
                   leadingIcon={<AwesomeIcon icon={faRotateRight} size={14} />}
-                  title={intl.formatMessage({
-                    id: 'viewer.resetTitle',
-                    defaultMessage:
-                      'Reset — restart the simulation from t=0 with objects at spawn'
-                  })}
+                  title={
+                    isPlayPaused
+                      ? intl.formatMessage({
+                          id: 'viewer.resetPausedTitle',
+                          defaultMessage:
+                            'Reset — return to the start frame; press Start to play again'
+                        })
+                      : intl.formatMessage({
+                          id: 'viewer.resetTitle',
+                          defaultMessage:
+                            'Reset — restart the simulation from t=0 with objects at spawn'
+                        })
+                  }
                 >
                   <FormattedMessage id="viewer.reset" defaultMessage="Reset" />
                 </Button>

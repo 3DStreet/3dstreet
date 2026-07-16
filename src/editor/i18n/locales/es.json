@@ -700,6 +700,7 @@
   "viewer.pause": "Pausar",
   "viewer.play": "Iniciar",
   "viewer.reset": "Reiniciar",
+  "viewer.resetPausedTitle": "Reiniciar — vuelve al fotograma inicial; pulsa Iniciar para reproducir de nuevo",
   "viewer.resetTitle": "Reiniciar — vuelve a ejecutar la simulación desde t=0 con los objetos en su posición inicial",
   "viewer.resume": "Reanudar",
   "viewer.signInToEdit": "Inicia sesión para editar",
