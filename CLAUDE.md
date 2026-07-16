@@ -69,7 +69,7 @@ Unified Viewer presentation with a Start/Stop play lifecycle. Playing is present
 
 **Lifecycle:** `play-mode` system owns start/stop/pause/reset and emits `play-mode-start|stop|reset` scene events; features subscribe independently and do their own setup/teardown. The canonical clock is `scene-timer.simulationTime` — advanced by physics sub-steps while driving (deterministic, slow-motion on weak CPUs), else at wall-clock rate.
 
-**Mode arbitration:** `mode-manager` system arbitrates control modes (`locomotion` vs `drive`) and aggregates per-feature "playable checks" that light up the Play UI.
+**Mode arbitration:** `mode-manager` system arbitrates control modes (`editor` / `viewer` / `drive`) and aggregates per-feature "playable checks" that light up the Play UI. Edit and View share the editor's camera + EditorControls (#1848) — there is no separate viewer control scheme; drive mode (and WebXR) borrow the scene's `#cameraRig` camera via `activateSceneCamera()`/`activateEditorCamera()` and give it back.
 
 **Features (all play-mode subscribers, unaware of each other):**
 

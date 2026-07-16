@@ -2084,15 +2084,6 @@
   "viewer.editingCopyWarning": {
     "defaultMessage": "This is an unsaved copy. Click Save to make your own copy."
   },
-  "viewer.hintClickDrag": {
-    "defaultMessage": "Click + Drag"
-  },
-  "viewer.hintLook": {
-    "defaultMessage": "to look"
-  },
-  "viewer.hintMove": {
-    "defaultMessage": "to move"
-  },
   "viewer.pause": {
     "defaultMessage": "Pause"
   },

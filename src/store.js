@@ -274,19 +274,12 @@ const useStore = create(
         // playFinish: null | { finalMs, simMs, collisions, previousBestMs,
         //   isNewBest, deltaMs, courseKey, finishedAt }
         playFinish: null,
-        // Mirrored from mode-manager: true while the viewer's
-        // WASD/look controls are active (drives the controls hint).
-        isLocomotionEnabled: false,
-        // Which camera vantage the next viewer entry should use:
-        //   'editor' — hand off the current editor camera pose (the
-        //              WYSIWYG View/Play button)
-        //   'saved'  — the scene's saved start view (default snapshot >
-        //              memory.cameraState > ?camera= deep link), used
-        //              when arriving in the viewer without an editing
-        //              session (?viewer=true, non-author scene loads)
-        viewerVantage: 'editor',
-        enterViewerMode: (vantage = 'editor') => {
-          set({ viewerVantage: vantage });
+        // Enter viewer presentation. The camera needs no handoff: view
+        // and edit share the editor camera and its controls (#1848), so
+        // the viewer starts exactly where the editor was looking — and a
+        // scene arriving in the viewer flies to its saved start view via
+        // the same newScene camera animation the editor uses.
+        enterViewerMode: () => {
           useStore.getState().setIsInspectorEnabled(false);
         },
         isInspectorEnabled: true,

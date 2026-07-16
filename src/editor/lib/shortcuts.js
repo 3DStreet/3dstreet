@@ -191,7 +191,7 @@ export const Shortcuts = {
     ) {
       const sceneEl = document.querySelector('a-scene');
       if (sceneEl?.systems?.['mode-manager']?.hasPlayable()) {
-        useStore.getState().enterViewerMode('editor');
+        useStore.getState().enterViewerMode();
         sceneEl.systems['play-mode'].start({ origin: 'editor' });
         event.preventDefault();
         event.stopPropagation();

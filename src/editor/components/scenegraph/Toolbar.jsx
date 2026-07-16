@@ -28,7 +28,7 @@ function getPlayModeSystem() {
 }
 
 /**
- * The mode-manager's current control mode ('editor' | 'locomotion' |
+ * The mode-manager's current control mode ('editor' | 'viewer' |
  * 'drive' | ...), tracked reactively via the mode-changed scene event.
  */
 function useControlMode() {
@@ -153,7 +153,6 @@ function Toolbar() {
   const setIsInspectorEnabled = useStore((s) => s.setIsInspectorEnabled);
   const isPlaying = useStore((s) => s.isPlaying);
   const isPlayPaused = useStore((s) => s.isPlayPaused);
-  const isLocomotionEnabled = useStore((s) => s.isLocomotionEnabled);
   const { currentUser, isLoading: isAuthLoading } = useAuthContext() || {};
   const setModal = useStore((s) => s.setModal);
   const hasPlayable = useHasPlayable();
@@ -456,20 +455,6 @@ function Toolbar() {
           tooltipSide="bottom"
         />
       </div>
-      {isLocomotionEnabled && (
-        <div className={styles.controlsHint}>
-          <span className={styles.keyGroup}>W A S D</span>{' '}
-          <FormattedMessage id="viewer.hintMove" defaultMessage="to move" />
-          {' · '}
-          <span className={styles.keyGroup}>
-            <FormattedMessage
-              id="viewer.hintClickDrag"
-              defaultMessage="Click + Drag"
-            />
-          </span>{' '}
-          <FormattedMessage id="viewer.hintLook" defaultMessage="to look" />
-        </div>
-      )}
     </>
   );
 }

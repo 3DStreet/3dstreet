@@ -74,12 +74,11 @@
 
     <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;" data-no-transform></a-entity>
 
-    <!-- Locomotion controls start disabled: `editor` is the boot mode and the
-         mode-manager system enables them when the Viewer's locomotion mode
-         becomes active. -->
-    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform
-      movement-controls="camera: #camera; fly: true; enabled: false">
-      <a-entity id="camera" data-layer-name="Camera" position="0 1.6 0" camera look-controls="reverseMouseDrag: true; enabled: false" class="autocreated"></a-entity>
+    <!-- The rig carries no input controls: edit and view share the editor's
+         camera controls (#1848). Features that need a scene-driven camera
+         (drive mode, WebXR) borrow #camera via mode-manager. -->
+    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform>
+      <a-entity id="camera" data-layer-name="Camera" position="0 1.6 0" camera class="autocreated"></a-entity>
       <a-entity
         id="screenshot"
         data-layer-name="Focus Animation"

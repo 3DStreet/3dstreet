@@ -41,7 +41,7 @@ export const PrimaryToolbar = () => {
   // "Lecture") for a lay audience. (A future per-capability label can
   // say "Drive" etc.)
   const handlePlay = () => {
-    useStore.getState().enterViewerMode('editor');
+    useStore.getState().enterViewerMode();
     document
       .querySelector('a-scene')
       ?.systems?.['play-mode']?.start({ origin: 'editor' });

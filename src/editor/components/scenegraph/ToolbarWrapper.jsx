@@ -1,4 +1,4 @@
-/* global AFRAME, STREET */
+/* global STREET */
 import { useEffect, useState } from 'react';
 import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
@@ -46,15 +46,11 @@ function useViewerFirstEntry() {
     if (!pendingAuthorId || isLoading) return;
     const isAuthor = currentUser && currentUser.uid === pendingAuthorId;
     const { isInspectorEnabled, enterViewerMode } = useStore.getState();
+    // No camera vantage handling needed here: view and edit share the
+    // editor camera (#1848), and the newScene camera animation already
+    // flew it to the scene's saved start view.
     if (!isAuthor && isInspectorEnabled) {
-      enterViewerMode('saved');
-    } else if (!isInspectorEnabled) {
-      // Already presenting (e.g. ?viewer=true arrived before the scene
-      // JSON) — apply the freshly-loaded scene's saved vantage.
-      const sceneEl = AFRAME.scenes[0];
-      sceneEl?.systems?.['mode-manager']?.applyViewerVantage(
-        sceneEl.viewerVantageCameraState
-      );
+      enterViewerMode();
     }
     setPendingAuthorId(null);
   }, [pendingAuthorId, isLoading, currentUser]);
