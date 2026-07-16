@@ -26,9 +26,10 @@ import {
  *     so the frozen frame the user was editing reads as t=0 of the
  *     animation: nothing pops in or out on Start, and model variety /
  *     spacing / lateral offsets come from the clones' own seeded
- *     layout instead of a synthetic uniform flow. Lanes that are
- *     playable but have no static cast fall back to synthesizing a
- *     seeded mixed-model flow.
+ *     layout instead of a synthetic uniform flow. A lane with no
+ *     moving cast plays empty — removing the clones is how a user
+ *     opts a lane out of traffic. (Wanting traffic on a bare lane is
+ *     a segment-defaults question: give the segment clones.)
  *
  *   - Pure function of scene-time. Each entity's position is computed
  *     from `(scene-timer.simulationTime, its t=0 layout)` with no
@@ -54,53 +55,27 @@ import {
  */
 
 const SEGMENT_TRAFFIC_DEFAULTS = {
-  // [speed m/s, fallback mixin pool (used only when the lane has no
-  //  static cast to mirror; matches the street-segment TYPES
-  //  modelsArray), default density (entities per 60m), kinematic
-  //  collider half-extents in ENTITY-local frame (x=width, y=height,
-  //  z=length, since catalog models are authored forward = +Z so
-  //  length lies on z).]
+  // [speed m/s, kinematic collider half-extents in ENTITY-local frame
+  //  (x=width, y=height, z=length, since catalog models are authored
+  //  forward = +Z so length lies on z)]
   'drive-lane': {
     speed: 11.2,
-    mixins: [
-      'sedan-rig',
-      'box-truck-rig',
-      'self-driving-waymo-car',
-      'suv-rig',
-      'motorbike'
-    ],
-    density: 2,
     half: { x: 0.9, y: 0.75, z: 2.25 } // 1.8 W × 1.5 H × 4.5 L
   },
   'bus-lane': {
     speed: 9.0,
-    mixins: ['bus'],
-    density: 1,
     half: { x: 1.25, y: 1.5, z: 6.0 } // 2.5 W × 3.0 H × 12 L
   },
   'bike-lane': {
     speed: 6.0,
-    mixins: [
-      'cyclist-cargo',
-      'cyclist1',
-      'cyclist2',
-      'cyclist3',
-      'cyclist-dutch',
-      'cyclist-kid'
-    ],
-    density: 3,
     half: { x: 0.25, y: 0.85, z: 0.85 } // 0.5 W × 1.7 H × 1.7 L
   },
   sidewalk: {
     speed: 1.4,
-    mixins: null, // fallback picks char1..char16 via rng
-    density: 6,
     half: { x: 0.25, y: 0.85, z: 0.25 } // 0.5 W × 1.7 H × 0.5 L
   },
   rail: {
     speed: 8.0,
-    mixins: ['tram'],
-    density: 1,
     half: { x: 1.25, y: 1.75, z: 11.5 } // 2.5 W × 3.5 H × 23 L
   }
   // parking-lane intentionally absent: parked cars are static.
@@ -281,33 +256,13 @@ AFRAME.registerComponent('street-traffic', {
       // facing instead.
       if (seg.type !== 'sidewalk' && seg.direction === 'none') return;
 
-      // Only animate a sidewalk if the user actually configured
-      // pedestrians on it: look for any `street-generated-pedestrians__N`
-      // component with density != 'empty'. If none, leave this sidewalk
-      // alone entirely (don't hide, don't spawn).
-      if (seg.type === 'sidewalk') {
-        const pedComponents = Object.keys(segEl.components || {}).filter((n) =>
-          n.startsWith('street-generated-pedestrians')
-        );
-        const hasPedestrians = pedComponents.some((n) => {
-          const d = segEl.components[n]?.data?.density;
-          return d && d !== 'empty';
-        });
-        if (!hasPedestrians) {
-          console.log(
-            '[street-traffic] skipping sidewalk segment without pedestrian density'
-          );
-          return;
-        }
-      }
-
       const length = seg.length || 60;
       const halfLen = length / 2;
 
       // Seeded rng keyed on (street index, segment index): speed jitter
-      // and fallback layout are deterministic so two viewers at the same
-      // sim-time agree, while identical lane layouts on different
-      // streets (parallel streets in a grid) still decorrelate.
+      // is deterministic so two viewers at the same sim-time agree,
+      // while identical lane layouts on different streets (parallel
+      // streets in a grid) still decorrelate.
       const rng = createRNG((streetIndex || 0) * 1000 + segIndex + 1);
       // Vehicle/bike lanes stay uniform-speed within the lane (no
       // pass-through) but vary ±10% across lanes so parallel lanes
@@ -338,89 +293,43 @@ AFRAME.registerComponent('street-traffic', {
         );
       }
 
-      if (cast.length > 0) {
-        // Mirror path (#1823 A): every hidden static clone becomes an
-        // animated twin with the identical mixin/pose, so the frame the
-        // user was editing is exactly t=0 of the animation and the
-        // lane keeps its authored variety and spacing.
-        for (const member of cast) {
-          // Motion sign on segment-local Z. Directed lanes move as the
-          // segment says; 'none' (sidewalks) infers per-entity from the
-          // clone's own facing (0° faces +Z, 180° faces -Z).
-          let dir;
-          if (seg.direction === 'inbound') dir = 1;
-          else if (seg.direction === 'outbound') dir = -1;
-          else dir = directionFromFacing(member.rotationY);
-          const speed = member.isPedestrian
-            ? SEGMENT_TRAFFIC_DEFAULTS.sidewalk.speed * (0.7 + 0.6 * rng())
-            : laneSpeed;
-          // A pedestrian authored on a vehicle lane (e.g. a crossing)
-          // must not inherit the lane's car-sized collider.
-          const fallbackHalf = member.isPedestrian
-            ? SEGMENT_TRAFFIC_DEFAULTS.sidewalk.half
-            : defaults.half;
-          this.spawnRecord(segEl, {
-            mixin: member.mixin,
-            position: member.position,
-            rotationY: member.rotationY,
-            dir,
-            speed,
-            halfLen,
-            length,
-            half: MIXIN_HALF_EXTENTS[member.mixin] || fallbackHalf
-          });
-        }
-        return;
-      }
+      // No moving cast on this lane → it plays empty. Removing the
+      // clones is the user's way of opting a lane out of traffic;
+      // nothing is synthesized to fill the gap (static props like a
+      // parked food trailer or cones were excluded from `cast` by
+      // movingCastFilter and stay visible). Wanting traffic on a bare
+      // lane means giving the segment clones, not play-time invention.
+      if (cast.length === 0) return;
 
-      // A lane whose authored cast is entirely static props (a parked
-      // food trailer, cones / jersey barriers on a closed lane) is
-      // scenery, not an empty lane — don't synthesize a flow through it.
-      // (movingCastFilter excluded those props from `cast` above.)
-      if (
-        seg.type !== 'sidewalk' &&
-        segEl.querySelector(
-          '[data-parent-component^="street-generated-clones"]'
-        )
-      ) {
-        return;
-      }
-
-      // Fallback: playable lane with no static cast to mirror —
-      // synthesize a seeded flow with mixed models and jittered spacing
-      // (still deterministic per segment index).
-      const N = Math.max(1, Math.round((defaults.density * length) / 60));
-      const slot = length / N;
-      for (let i = 0; i < N; i++) {
-        // 'none' splits evenly between both directions for a "people
-        // going both ways" look; directed lanes follow the segment.
+      // Mirror path (#1823 A): every hidden static clone becomes an
+      // animated twin with the identical mixin/pose, so the frame the
+      // user was editing is exactly t=0 of the animation and the
+      // lane keeps its authored variety and spacing.
+      for (const member of cast) {
+        // Motion sign on segment-local Z. Directed lanes move as the
+        // segment says; 'none' (sidewalks) infers per-entity from the
+        // clone's own facing (0° faces +Z, 180° faces -Z).
         let dir;
-        if (seg.direction === 'none') dir = i % 2 === 0 ? 1 : -1;
-        else dir = seg.direction === 'outbound' ? -1 : 1;
-
-        // Even slots, offset half a slot from the lane endpoint, with
-        // up to ±25%-of-slot jitter so the flow doesn't read as a
-        // conveyor belt.
-        const startZ = -halfLen + (i + 0.5) * slot + (rng() - 0.5) * slot * 0.5;
-
-        const mixin = defaults.mixins
-          ? defaults.mixins[Math.floor(rng() * defaults.mixins.length)]
-          : `char${Math.floor(rng() * 16) + 1}`;
-        const speed = defaults.mixins
-          ? laneSpeed
-          : defaults.speed * (0.7 + 0.6 * rng());
-
+        if (seg.direction === 'inbound') dir = 1;
+        else if (seg.direction === 'outbound') dir = -1;
+        else dir = directionFromFacing(member.rotationY);
+        const speed = member.isPedestrian
+          ? SEGMENT_TRAFFIC_DEFAULTS.sidewalk.speed * (0.7 + 0.6 * rng())
+          : laneSpeed;
+        // A pedestrian authored on a vehicle lane (e.g. a crossing)
+        // must not inherit the lane's car-sized collider.
+        const fallbackHalf = member.isPedestrian
+          ? SEGMENT_TRAFFIC_DEFAULTS.sidewalk.half
+          : defaults.half;
         this.spawnRecord(segEl, {
-          mixin,
-          position: { x: 0, y: 0, z: startZ },
-          // Catalog models are authored forward = +Z; flip 180° when
-          // moving -Z so the mesh faces its direction of travel.
-          rotationY: dir === -1 ? 180 : 0,
+          mixin: member.mixin,
+          position: member.position,
+          rotationY: member.rotationY,
           dir,
           speed,
           halfLen,
           length,
-          half: MIXIN_HALF_EXTENTS[mixin] || defaults.half
+          half: MIXIN_HALF_EXTENTS[member.mixin] || fallbackHalf
         });
       }
     });

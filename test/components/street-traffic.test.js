@@ -110,7 +110,7 @@ describe('street-traffic', () => {
     sceneEl.emit('play-mode-stop');
   });
 
-  it('leaves static props (food truck, cones, parklets, dining) visible and unanimated, with no synthetic fallback', async () => {
+  it('leaves static props (food truck, cones, parklets, dining) visible and unanimated', async () => {
     const { sceneEl, segEl } = await makePlayableStreet({
       withClones: true,
       clones:
@@ -182,24 +182,14 @@ describe('street-traffic', () => {
     trams.forEach((c) => expect(c.getAttribute('visible')).toBe(true));
   });
 
-  it('falls back to a synthesized mixed-model flow when a lane has no cast', async () => {
+  it('plays a lane with no cast empty — removing clones opts a lane out of traffic', async () => {
     const { sceneEl } = await makePlayableStreet({ withClones: false });
     sceneEl.emit('play-mode-start');
     const comp = sceneEl.components['street-traffic'];
 
-    // density 2 per 60m over 100m → 3 records.
-    expect(comp.records).toHaveLength(3);
-    const pool = [
-      'sedan-rig',
-      'box-truck-rig',
-      'self-driving-waymo-car',
-      'suv-rig',
-      'motorbike'
-    ];
-    comp.records.forEach((r) => {
-      expect(pool).toContain(r.el.getAttribute('mixin'));
-      expect(Math.abs(r.startZ)).toBeLessThanOrEqual(50);
-    });
+    // No synthesized flow: an empty edit-time cast mirrors as an
+    // empty animated cast (nothing pops in at Start).
+    expect(comp.records).toHaveLength(0);
     sceneEl.emit('play-mode-stop');
   });
 });

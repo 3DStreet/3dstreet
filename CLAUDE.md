@@ -74,7 +74,7 @@ Unified Viewer presentation with a Start/Stop play lifecycle. Playing is present
 **Features (all play-mode subscribers, unaware of each other):**
 
 - `drive-mode` + `play-mode-vehicle` / `play-mode-physics` — Rapier raycast-wheel driving sim (WASM lazy-loaded on first Play); spawns the player car from a `[drive-controls]` entity; keyboard + gamepad input
-- `street-traffic` — synthetic traffic on `[managed-street][playable]` lanes, pure function of sim-time
+- `street-traffic` — animates the edit-time cast on `[managed-street][playable]` lanes (each static clone gets an animated twin; a lane with no clones plays empty by design), pure function of sim-time
 - `street-traffic-replay` — replays anonymized roadside-sensor manifests as agents on a linked managed-street; suppresses synthetic traffic on its target street
 - `race-target`, `collision-marker`, `best-times` — race finish gate, crash markers (session-only, stripped on stop/reset), localStorage best times
 
