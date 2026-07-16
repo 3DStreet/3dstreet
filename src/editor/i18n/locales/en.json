@@ -2143,8 +2143,5 @@
   },
   "viewer.stop": {
     "defaultMessage": "Stop"
-  },
-  "viewer.viewOnly": {
-    "defaultMessage": "View only"
   }
 }

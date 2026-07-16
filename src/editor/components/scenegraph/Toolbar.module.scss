@@ -23,17 +23,6 @@
   gap: 8px;
 }
 
-// "View only" label inside the action pill (next to Edit/Remix),
-// matching the toolbar button typography without being clickable.
-.viewOnlyText {
-  color: #9a9a9a;
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  padding: 0 10px;
-  user-select: none;
-}
-
 // Simulation clock pill — click to pause/resume.
 .simClock {
   all: unset;

@@ -393,21 +393,9 @@ function Toolbar() {
               Capture & Render flow stays an editor action. */}
           <ViewerSnapshot />
           <div className={primaryStyles.divider} />
-          {/* "View only" appears for non-authors: this scene can't be
-              edited in place — Edit opens a copy (reinforced by the
-              unsaved-copy toast on entry). An unauthed user's own local
-              draft is not view-only (isAuthor covers it). */}
-          {!isAuthor && (
-            <>
-              <span className={styles.viewOnlyText}>
-                <FormattedMessage
-                  id="viewer.viewOnly"
-                  defaultMessage="View only"
-                />
-              </span>
-              <div className={primaryStyles.divider} />
-            </>
-          )}
+          {/* No "View only" label: the absence of edit controls plus an
+              Edit / Sign in to Edit action already says this isn't edit
+              mode; copy semantics surface via the unsaved-copy toast. */}
           <Button
             onClick={handleEnterEditor}
             variant="toolbtn"
