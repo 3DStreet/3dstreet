@@ -23,8 +23,13 @@ The mechanism that ties this together already exists: the `mode-manager`
 **playable-capability registry** (`registerPlayableCheck`). That is the
 "provider" concept. Everything below leans on it.
 
-Entry model we're adopting: **entering View implicitly autoplays** (when a
-provider exists). A future per-scene setting `autoplay: false` can opt out.
+Entry model we're adopting (revised during #1824 implementation): **entering
+View lands idle; Start is always explicit.** Autoplay-on-entry was prototyped
+and pulled back — a drive provider hijacks the camera on play-start, so
+autoplay had to special-case drive scenes anyway; making every viewer entry
+idle-first is simpler and treats all providers the same. A per-scene
+`memory.autoplay` opt-in can be revisited later if wanted (the machinery is in
+git history).
 
 ## Q1 — Stop vs Edit
 
@@ -40,10 +45,8 @@ affordance is fine.
 
 **Shipped:** `play-mode.start({ origin })` stamps the entry origin into the
 store; every stop affordance (viewer Stop button, Escape, gamepad Back) routes
-through `store.stopPlaying()`, which picks the destination. View entry now
-implicitly autoplays via a one-shot armed by `enterViewerMode()`, with a
-per-scene opt-out (`memory.autoplay: false`, toggled at View → Autoplay in
-Viewer).
+through `store.stopPlaying()`, which picks the destination. View entry lands
+idle — Start is always an explicit action (see the entry-model note above).
 
 ## Q2 — Snapshot in View
 
@@ -112,6 +115,12 @@ For a local, unauthenticated, unsaved scene with edits, the viewer shows
 draft), and making changes doesn't prompt login/save. The Remix/Edit label and
 the save/login prompting need to account for: unsaved local drafts, unauthed
 users, and edits made after entering the editor from a non-authored scene.
+
+**Shipped (first step):** Remix is auth-gated. A signed-out visitor on a cloud
+scene gets **"Sign in to Remix"** (button and Escape both open the sign-in
+modal); the editor only opens for signed-in users. Local drafts (no authorId)
+keep Edit with no auth requirement. Post-signin edit/save prompting for
+non-authors remains open.
 
 ## Loose end — creator byline for unauthenticated viewers
 

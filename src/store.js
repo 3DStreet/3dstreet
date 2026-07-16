@@ -124,8 +124,7 @@ const useStore = create(
             sceneId: null,
             sceneTitle: null,
             authorId: null,
-            locationString: null,
-            sceneAutoplay: true
+            locationString: null
           }),
         authorId: null, // not used anywhere yet, we still use the metadata component
         setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }), // not used anywhere yet
@@ -286,19 +285,8 @@ const useStore = create(
         //              when arriving in the viewer without an editing
         //              session (?viewer=true, non-author scene loads)
         viewerVantage: 'editor',
-        // Per-scene "autoplay: false" opt-out (#1824 Q1). Entering View
-        // implicitly autoplays when the scene has a playable capability;
-        // this scene-level setting (persisted as memory.autoplay) turns
-        // that off. Default true; reset on every scene load.
-        sceneAutoplay: true,
-        setSceneAutoplay: (newSceneAutoplay) =>
-          set({ sceneAutoplay: newSceneAutoplay }),
-        // Armed on each View entry, consumed (or discarded) by the viewer
-        // chrome's autoplay effect. A one-shot: pressing Stop must land in
-        // View-idle, not re-trigger autoplay while hasPlayable is true.
-        viewerAutoplayArmed: false,
         enterViewerMode: (vantage = 'editor') => {
-          set({ viewerVantage: vantage, viewerAutoplayArmed: true });
+          set({ viewerVantage: vantage });
           useStore.getState().setIsInspectorEnabled(false);
         },
         isInspectorEnabled: true,
@@ -307,9 +295,7 @@ const useStore = create(
             // Opening the inspector exits play mode (regardless of how
             // the open was triggered — Edit button, Escape,
             // programmatic). Subscribers tear down their own state via
-            // the play-mode-stop scene event. Also disarm any pending
-            // View-entry autoplay so it can't fire on a later re-entry.
-            set({ viewerAutoplayArmed: false });
+            // the play-mode-stop scene event.
             document.querySelector('a-scene')?.systems?.['play-mode']?.stop();
             posthog.capture('inspector_opened');
             AFRAME.INSPECTOR.open();

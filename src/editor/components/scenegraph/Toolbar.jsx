@@ -217,41 +217,27 @@ function Toolbar() {
       const playMode = getPlayModeSystem();
       if (playMode?.isPlaying) {
         useStore.getState().stopPlaying();
+      } else if (authorId && !currentUser) {
+        // Editor entry is auth-gated for a signed-out visitor on a
+        // cloud scene (matches the Sign in to Remix button) — offer
+        // sign-in instead of silently ignoring the key.
+        useStore.getState().setModal('signin');
       } else {
         useStore.getState().setIsInspectorEnabled(true);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isInspectorEnabled]);
-
-  // Entering View implicitly autoplays (#1824 Q1): each View entry arms
-  // a one-shot; when the scene reports a playable capability (which can
-  // land after entry — managed streets build asynchronously) the
-  // simulation starts on its own, unless the scene opted out via the
-  // per-scene autoplay setting. One-shot so Stop lands in View-idle
-  // instead of restarting.
-  //
-  // Ambient simulations only: play-mode-vehicle switches the control
-  // mode to `drive` on play-mode-start whenever a [drive-controls]
-  // entity exists, so autoplaying a drive scene would drop the visitor
-  // into the car uninvited. Those scenes keep the explicit Start.
-  useEffect(() => {
-    if (isInspectorEnabled || isPlaying || !hasPlayable) return;
-    const { viewerAutoplayArmed, sceneAutoplay } = useStore.getState();
-    if (!viewerAutoplayArmed) return;
-    useStore.setState({ viewerAutoplayArmed: false });
-    if (!sceneAutoplay) return;
-    const sceneEl = document.querySelector('a-scene');
-    const caps =
-      sceneEl?.systems?.['mode-manager']?.getPlayableCapabilities() || [];
-    if (caps.includes('drive-controls')) return;
-    getPlayModeSystem()?.start();
-  }, [isInspectorEnabled, isPlaying, hasPlayable]);
+  }, [isInspectorEnabled, authorId, currentUser]);
 
   if (isInspectorEnabled) return null;
 
   const isAuthor = !authorId || (currentUser && currentUser.uid === authorId);
+  // Remix requires an account (#1824 Remix flow): a signed-out visitor
+  // on a cloud scene gets a "Sign in to Remix" action instead of the
+  // editor. Local drafts (no authorId) keep Edit — the visitor is
+  // effectively the author of their own unsaved work.
+  const needsAuthToRemix = !isAuthor && !currentUser;
   // A counting millisecond clock only earns its place when time IS the
   // game (drive mode: lap timing, crash penalties). Other simulations
   // (traffic, replay) get a plain pause toggle instead.
@@ -391,20 +377,35 @@ function Toolbar() {
             </>
           )}
           <Button
-            onClick={() => setIsInspectorEnabled(true)}
+            onClick={() =>
+              needsAuthToRemix
+                ? setModal('signin')
+                : setIsInspectorEnabled(true)
+            }
             variant="toolbtn"
             title={
               isAuthor
                 ? undefined
-                : intl.formatMessage({
-                    id: 'viewer.remixTitle',
-                    defaultMessage:
-                      'Open the editor — saving will create your own copy'
-                  })
+                : needsAuthToRemix
+                  ? intl.formatMessage({
+                      id: 'viewer.signInToRemixTitle',
+                      defaultMessage:
+                        'Sign in to open the editor — saving will create your own copy'
+                    })
+                  : intl.formatMessage({
+                      id: 'viewer.remixTitle',
+                      defaultMessage:
+                        'Open the editor — saving will create your own copy'
+                    })
             }
           >
             {isAuthor ? (
               <FormattedMessage id="toolbar.edit" defaultMessage="Edit" />
+            ) : needsAuthToRemix ? (
+              <FormattedMessage
+                id="viewer.signInToRemix"
+                defaultMessage="Sign in to Remix"
+              />
             ) : (
               <FormattedMessage id="viewer.remix" defaultMessage="Remix" />
             )}

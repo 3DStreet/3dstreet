@@ -79,8 +79,6 @@ const AppMenu = ({ currentUser }) => {
     setIsGridVisible,
     panelsVisible,
     setPanelsVisible,
-    sceneAutoplay,
-    setSceneAutoplay,
     saveScene,
     setGeojsonImportData,
     setRightPanelTab,
@@ -703,23 +701,6 @@ const AppMenu = ({ currentUser }) => {
                 defaultMessage="Show Panels"
               />
               <div className="RightSlot">`</div>
-            </Menubar.CheckboxItem>
-            {/* Per-scene setting (#1824 Q1), saved with the scene as
-                memory.autoplay. When on (the default), entering View —
-                including a visitor opening the shared link — starts the
-                simulation automatically if the scene has one. */}
-            <Menubar.CheckboxItem
-              className="MenubarCheckboxItem"
-              checked={sceneAutoplay}
-              onCheckedChange={setSceneAutoplay}
-            >
-              <Menubar.ItemIndicator className="MenubarItemIndicator">
-                <AwesomeIcon icon={faCheck} size={14} />
-              </Menubar.ItemIndicator>
-              <FormattedMessage
-                id="appMenu.view.autoplayInViewer"
-                defaultMessage="Autoplay in Viewer"
-              />
             </Menubar.CheckboxItem>
             <Menubar.Separator className="MenubarSeparator" />
             {cameraOptions.map((option) => (

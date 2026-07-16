@@ -323,9 +323,6 @@
   "appMenu.view": {
     "defaultMessage": "View"
   },
-  "appMenu.view.autoplayInViewer": {
-    "defaultMessage": "Autoplay in Viewer"
-  },
   "appMenu.view.camera.orthotop": {
     "defaultMessage": "Plan View"
   },
@@ -2110,6 +2107,12 @@
   },
   "viewer.resume": {
     "defaultMessage": "Resume"
+  },
+  "viewer.signInToRemix": {
+    "defaultMessage": "Sign in to Remix"
+  },
+  "viewer.signInToRemixTitle": {
+    "defaultMessage": "Sign in to open the editor — saving will create your own copy"
   },
   "viewer.simClockCrash": {
     "defaultMessage": "Crash at {time}"
