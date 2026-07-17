@@ -323,12 +323,6 @@
   "appMenu.view": {
     "defaultMessage": "View"
   },
-  "appMenu.view.camera.orthotop": {
-    "defaultMessage": "Plan View"
-  },
-  "appMenu.view.camera.perspective": {
-    "defaultMessage": "3D View"
-  },
   "appMenu.view.language": {
     "defaultMessage": "Language"
   },
@@ -1310,12 +1304,6 @@
   "help.shortcut.addEntity": {
     "defaultMessage": "Add new entity"
   },
-  "help.shortcut.backView": {
-    "defaultMessage": "Back view"
-  },
-  "help.shortcut.bottomView": {
-    "defaultMessage": "Bottom view"
-  },
   "help.shortcut.copy": {
     "defaultMessage": "Copy selected entity"
   },
@@ -1331,12 +1319,6 @@
   "help.shortcut.focus": {
     "defaultMessage": "Focus on selected entity"
   },
-  "help.shortcut.frontView": {
-    "defaultMessage": "Front view"
-  },
-  "help.shortcut.leftView": {
-    "defaultMessage": "Left view"
-  },
   "help.shortcut.paste": {
     "defaultMessage": "Paste entity"
   },
@@ -1345,9 +1327,6 @@
   },
   "help.shortcut.redo": {
     "defaultMessage": "Redo action"
-  },
-  "help.shortcut.rightView": {
-    "defaultMessage": "Right view"
   },
   "help.shortcut.rotate": {
     "defaultMessage": "Rotate"
@@ -1369,9 +1348,6 @@
   },
   "help.shortcut.toggleTransform": {
     "defaultMessage": "Toggle local between global transform"
-  },
-  "help.shortcut.topView": {
-    "defaultMessage": "Top view"
   },
   "help.shortcut.translate": {
     "defaultMessage": "Translate"
