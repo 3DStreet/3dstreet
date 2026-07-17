@@ -9,12 +9,12 @@ export function isExperimentalNav() {
 }
 
 // Sub-flag: the street-level navigation regime (the swoop descent, street
-// FOV zoom, and the context button's street action). Default OFF — pass
+// FOV zoom, the cursor-aware double-click teleport incl. its lane landing,
+// and the whole context-action system — the drone/street/daylight button,
+// its Space shortcut, and the recovery cues). Default OFF — pass
 // ?streetview=on to enable while it is iterated on. The elevated "drone
-// view" nav (everything else) ships regardless. The cursor-aware
-// double-click — including its lane landing — is NOT gated here; it ships
-// in the default build (see raycaster.js onDoubleClick). Also flippable at
-// runtime via the `nav-experimental-tuning` component's `streetLevelEnabled`
+// view" nav (everything else) ships regardless. Also flippable at runtime
+// via the `nav-experimental-tuning` component's `streetLevelEnabled`
 // property.
 export function isStreetLevelNav() {
   if (typeof window === 'undefined' || !window.location) return false;

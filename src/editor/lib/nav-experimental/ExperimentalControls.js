@@ -315,12 +315,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // street-level regime as a whole: the wheel never dispatches to the
     // swoop / street-FOV phases (it stays a plain anchored dolly at every
     // height, like Ctrl+wheel), the context button offers no street action,
-    // and the 'drop' discoverability cue is suppressed. Elevated nav, drone
-    // rise, the enclosure (daylight) recovery, and the cursor-aware
-    // double-click (incl. its lane landing) are unaffected — the double-click
-    // ships in the default build regardless of this gate. Live value,
-    // flippable at runtime via the tuning component
-    // (streetLevelEnabled → setStreetLevelEnabled).
+    // the 'drop' discoverability cue is suppressed, and a lane double-click
+    // no-ops. Elevated nav, drone rise, and the enclosure (daylight)
+    // recovery are unaffected. Live value, flippable at runtime via the
+    // tuning component (streetLevelEnabled → setStreetLevelEnabled).
     this._streetLevelEnabled = isStreetLevelNav();
 
     // First-person kit gate (?wasd=on, default off): WASD / arrow-key
