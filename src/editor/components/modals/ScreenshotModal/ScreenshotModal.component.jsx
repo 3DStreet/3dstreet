@@ -176,8 +176,11 @@ function ScreenshotModal() {
   const performDownloadScreenshot = (targetImageUrl, modelKey) => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const isOriginal = targetImageUrl === originalImageUrl;
+    // 4x slots use compound keys like 'nano-banana-2-3'; strip the numeric
+    // slot suffix if the key doesn't match a model id directly.
     const modelName = modelKey
-      ? AI_MODELS[modelKey.split('-')[0]]?.name || 'ai-render'
+      ? (AI_MODELS[modelKey] || AI_MODELS[modelKey.replace(/-\d+$/, '')])
+          ?.name || 'ai-render'
       : 'ai-render';
 
     const filename = isOriginal
@@ -601,9 +604,9 @@ function ScreenshotModal() {
       }
     } catch (error) {
       console.error('Error generating AI image:', error);
-      const baseModelKey = targetModel.includes('-')
-        ? targetModel.split('-').slice(0, -1).join('-')
-        : targetModel;
+      const baseModelKey = AI_MODELS[targetModel]
+        ? targetModel
+        : targetModel.replace(/-\d+$/, '');
       const modelName =
         AI_MODELS[baseModelKey]?.name ||
         intl.formatMessage({
@@ -929,8 +932,7 @@ function ScreenshotModal() {
 
               {/* The prompt, shown as its two parts stacked in send order:
                 instructions + style sentence (composePrompt joins them
-                verbatim). Style chips write only the style field. Free
-                users get both fields read-only; editing is Pro. */}
+                verbatim). Style chips write only the style field. */}
               <div className={styles.promptSection}>
                 <label className={styles.promptLabel}>
                   <FormattedMessage

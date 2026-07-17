@@ -957,11 +957,13 @@ class GeneratorTabBase {
 
     // Update slider ranges and visibility based on model
     switch (model) {
-      case 'nano-banana':
       case 'nano-banana-pro':
       case 'nano-banana-2':
-      case 'seedream-4':
       case 'seedream-4.5':
+      case 'fal-flux-2-max-edit':
+      case 'fal-flux-2-pro-edit':
+        // The fal edit endpoints ignore dimensions/steps/guidance/safety/seed
+        // (generateFalImage sends a fixed image_size and sampler settings).
         showDimensions = false;
         showAspectRatio = false;
         showRaw = false;
