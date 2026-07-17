@@ -526,25 +526,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       pos.y != null ? pos.y : 15,
       pos.z != null ? pos.z : 30
     );
-    // Reconstruct the look-at target from the stored rotation: cast the
-    // pose's forward ray and, where it dips below the horizon, intersect
-    // the ground plane — the same heuristic the legacy controls use, so
-    // the arrival orbit center matches the saved vantage.
-    const scratch = new THREE.PerspectiveCamera();
-    scratch.position.copy(endPos);
-    scratch.rotation.set(rot.x || 0, rot.y || 0, rot.z || 0);
-    scratch.updateMatrixWorld();
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(
-      scratch.quaternion
+    const { look: endLookAt, quaternion: endQuat } = this._snapshotLookAt(
+      endPos,
+      rot
     );
-    let t = 30;
-    if (Math.abs(forward.y) > 0.001) {
-      const ground = -endPos.y / forward.y;
-      if (ground > 0 && ground <= 1000) t = ground;
-    }
-    const endLookAt = endPos.clone().addScaledVector(forward, t);
-    if (endLookAt.y < 0) endLookAt.y = 0;
-    const endQuat = scratch.quaternion.clone();
     const startPos = camera.position.clone();
     const startQuat = camera.quaternion.clone();
     const fromFov = camera.fov;
@@ -593,37 +578,100 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._funnel.commitMove('reset');
   }
 
+  // Reconstruct the look-at target of a stored pose (position + Euler
+  // rotation): cast the pose's forward ray and, where it dips below the
+  // horizon, intersect the ground plane — the legacy EditorControls
+  // heuristic, so arrival orbit centers match saved vantages. Returns the
+  // look point and the pose's world quaternion.
+  _snapshotLookAt(endPos, rot) {
+    const scratch = new THREE.PerspectiveCamera();
+    scratch.position.copy(endPos);
+    scratch.rotation.set(rot.x || 0, rot.y || 0, rot.z || 0);
+    scratch.updateMatrixWorld();
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(
+      scratch.quaternion
+    );
+    let t = 30;
+    if (Math.abs(forward.y) > 0.001) {
+      const ground = -endPos.y / forward.y;
+      if (ground > 0 && ground <= 1000) t = ground;
+    }
+    const look = endPos.clone().addScaledVector(forward, t);
+    if (look.y < 0) look.y = 0;
+    return { look, quaternion: scratch.quaternion.clone() };
+  }
+
   newSceneCameraZoom(snapshotCameraState) {
     if (this._disabledByOrtho) {
       this.resetZoom();
       return;
     }
     const camera = this._camera;
-    if (!snapshotCameraState) {
-      this.resetZoom();
-      return;
+    // Scene-load fly-in (legacy EditorControls parity): a 3 s easeOutCubic
+    // glide from the fixed intro vantage to the scene's saved pose — or the
+    // default overview when none is saved — honoring the saved fov (`zoom`,
+    // the ?camera= deep-link's 7th param). Runs through the runner so it
+    // obeys the single-writer discipline: any committed user motion or the
+    // mode-manager enabled=false handoff cancels it like every other tween.
+    const startPos = new THREE.Vector3(0, 30, 60);
+    const startLookAt = new THREE.Vector3(0, 1.6, 0);
+    let endPos;
+    let endLookAt;
+    if (snapshotCameraState) {
+      const pos = snapshotCameraState.position || {};
+      endPos = new THREE.Vector3(
+        pos.x != null ? pos.x : 0,
+        pos.y != null ? pos.y : 15,
+        pos.z != null ? pos.z : 30
+      );
+      endLookAt = this._snapshotLookAt(
+        endPos,
+        snapshotCameraState.rotation || {}
+      ).look;
+    } else {
+      endPos = new THREE.Vector3(0, 15, 30);
+      endLookAt = startLookAt.clone();
     }
-    const pos = snapshotCameraState.position || {};
-    const rot = snapshotCameraState.rotation || {};
-    camera.position.set(
-      pos.x != null ? pos.x : 0,
-      pos.y != null ? pos.y : 15,
-      pos.z != null ? pos.z : 30
-    );
-    camera.rotation.set(rot.x || 0, rot.y || 0, rot.z || 0);
-    // Honor the snapshot's saved fov (`zoom`) so `?camera=` deep links and
-    // scene loads restore the captured framing, not just the pose.
-    if (snapshotCameraState.zoom) {
-      camera.fov = snapshotCameraState.zoom;
-      camera.updateProjectionMatrix();
-    }
-    camera.updateMatrixWorld();
-    // Re-derive grounded from the explicit-pose
-    // teleport. (The resetZoom() fallback branches above already route through
-    // resetZoom's own derive call, so only this explicit-pose path needs it.)
-    this._groundedState.deriveFromPose();
-    // Explicit-pose teleport is a non-wheel camera move → invalidate + dispatch.
-    this._funnel.commitMove('reset');
+    const fromFov = camera.fov;
+    const toFov = (snapshotCameraState && snapshotCameraState.zoom) || fromFov;
+    const curPos = new THREE.Vector3();
+    const curLook = new THREE.Vector3();
+    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+    this._runner.run({
+      ownership: 'teleport',
+      durationMs: 3000,
+      ease: easeOutCubic,
+      onTick: (eased) => {
+        curPos.lerpVectors(startPos, endPos, eased);
+        curLook.lerpVectors(startLookAt, endLookAt, eased);
+        camera.position.copy(curPos);
+        this.center.copy(curLook);
+        camera.up.set(0, 1, 0);
+        camera.lookAt(curLook);
+        if (toFov !== fromFov) {
+          camera.fov = fromFov + (toFov - fromFov) * eased;
+          camera.updateProjectionMatrix();
+        }
+        camera.updateMatrixWorld();
+      },
+      commitPose: () => {
+        camera.position.copy(endPos);
+        this.center.copy(endLookAt);
+        camera.up.set(0, 1, 0);
+        camera.lookAt(endLookAt);
+        camera.fov = toFov;
+        camera.updateProjectionMatrix();
+        camera.updateMatrixWorld();
+      },
+      // Settle: derive grounded from the landed pose and reseed the
+      // legit-pose snapshot (a scene load is a teleport edge) — the terminal
+      // dispatch also clears wheel zoom-undo, matching the old snap's
+      // commitMove('reset').
+      settle: {
+        grounded: 'derive',
+        reseedLegit: true
+      }
+    });
   }
 
   zoomInStart() {

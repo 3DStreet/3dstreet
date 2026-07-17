@@ -178,12 +178,15 @@ export class CommittedMotionRunner {
   //   - commitPose(): snap the exact endpoint (position / quaternion / fov).
   //     Does NOT clear/dispatch.
   //   - settle: the parameterized onDone epilogue (see _applySettle).
+  //   - ease (optional): easing passed through to the TickAnimator (defaults
+  //     to its easeInOutQuad). The scene-load fly-in uses easeOutCubic for
+  //     legacy-EditorControls parity.
   // Every committed motion clears the wheel zoom-undo memory each tick (a tween
   // moves the camera by a non-wheel mechanism): the double-click teleport is not
   // an outlier — like its four preset siblings it commits per tick, so an
   // interrupted teleport can't leave stale zoom-undo memory armed.
   // Returns the TickAnimator handle.
-  run({ ownership, durationMs, onTick, commitPose, settle }) {
+  run({ ownership, durationMs, onTick, commitPose, settle, ease }) {
     const funnel = this._ctx.funnel;
     // Anti-stranding: route every start through cancel first.
     this.cancel();
@@ -200,6 +203,7 @@ export class CommittedMotionRunner {
     }
     return this._ctx.tick.animate({
       durationMs,
+      ease,
       onTick: (eased, tRaw) => {
         onTick(eased);
         // Terminal-frame gate — see runRecovery: onDone's dispatch() owns the
