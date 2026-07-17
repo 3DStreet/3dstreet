@@ -339,7 +339,7 @@
     "defaultMessage": "Show Panels"
   },
   "appMenu.view.snapshotRender": {
-    "defaultMessage": "Snapshot & Render..."
+    "defaultMessage": "Capture & Render..."
   },
   "appMenu.view.zoomToSelection": {
     "defaultMessage": "Zoom to Selection"
@@ -2124,16 +2124,16 @@
     "defaultMessage": "Click to download — sign in to save to your gallery"
   },
   "viewer.snapshotFailed": {
-    "defaultMessage": "Snapshot failed. Please try again."
+    "defaultMessage": "Capture failed. Please try again."
   },
   "viewer.snapshotSaved": {
     "defaultMessage": "Saved to your gallery — click to download"
   },
   "viewer.snapshotThumbAlt": {
-    "defaultMessage": "Captured snapshot — click to download"
+    "defaultMessage": "Captured image — click to download"
   },
   "viewer.snapshotTitle": {
-    "defaultMessage": "Capture a snapshot of this view"
+    "defaultMessage": "Capture this view"
   },
   "viewer.stop": {
     "defaultMessage": "Stop"

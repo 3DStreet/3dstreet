@@ -113,7 +113,7 @@
     "appMenu.view.language": "Language",
     "appMenu.view.showGrid": "Show Grid",
     "appMenu.view.showPanels": "Show Panels",
-    "appMenu.view.snapshotRender": "Snapshot & Render...",
+    "appMenu.view.snapshotRender": "Capture & Render...",
     "appMenu.view.zoomToSelection": "Zoom to Selection",
     "assetInfo.assetSource": "Asset source: {ownership} · {assetIdShort}…",
     "assetInfo.details": "Details",
@@ -708,10 +708,10 @@
     "viewer.signInToEdit": "Sign in to Edit",
     "viewer.signInToEditTitle": "Sign in to open the editor — saving will create your own copy",
     "viewer.snapshotDownloadHint": "Click to download — sign in to save to your gallery",
-    "viewer.snapshotFailed": "Snapshot failed. Please try again.",
+    "viewer.snapshotFailed": "Capture failed. Please try again.",
     "viewer.snapshotSaved": "Saved to your gallery — click to download",
-    "viewer.snapshotThumbAlt": "Captured snapshot — click to download",
-    "viewer.snapshotTitle": "Capture a snapshot of this view",
+    "viewer.snapshotThumbAlt": "Captured image — click to download",
+    "viewer.snapshotTitle": "Capture this view",
     "viewer.resetPausedTitle": "Reset — return to the start frame; press Start to play again"
   },
   "fr": {
@@ -828,7 +828,7 @@
     "appMenu.view.language": "Language",
     "appMenu.view.showGrid": "Show Grid",
     "appMenu.view.showPanels": "Show Panels",
-    "appMenu.view.snapshotRender": "Snapshot & Render...",
+    "appMenu.view.snapshotRender": "Capture & Render...",
     "appMenu.view.zoomToSelection": "Zoom to Selection",
     "assetInfo.assetSource": "Asset source: {ownership} · {assetIdShort}…",
     "assetInfo.details": "Details",
@@ -1423,10 +1423,10 @@
     "viewer.signInToEdit": "Sign in to Edit",
     "viewer.signInToEditTitle": "Sign in to open the editor — saving will create your own copy",
     "viewer.snapshotDownloadHint": "Click to download — sign in to save to your gallery",
-    "viewer.snapshotFailed": "Snapshot failed. Please try again.",
+    "viewer.snapshotFailed": "Capture failed. Please try again.",
     "viewer.snapshotSaved": "Saved to your gallery — click to download",
-    "viewer.snapshotThumbAlt": "Captured snapshot — click to download",
-    "viewer.snapshotTitle": "Capture a snapshot of this view",
+    "viewer.snapshotThumbAlt": "Captured image — click to download",
+    "viewer.snapshotTitle": "Capture this view",
     "viewer.resetPausedTitle": "Reset — return to the start frame; press Start to play again"
   },
   "pt-BR": {
@@ -1543,7 +1543,7 @@
     "appMenu.view.language": "Language",
     "appMenu.view.showGrid": "Show Grid",
     "appMenu.view.showPanels": "Show Panels",
-    "appMenu.view.snapshotRender": "Snapshot & Render...",
+    "appMenu.view.snapshotRender": "Capture & Render...",
     "appMenu.view.zoomToSelection": "Zoom to Selection",
     "assetInfo.assetSource": "Asset source: {ownership} · {assetIdShort}…",
     "assetInfo.details": "Details",
@@ -2138,10 +2138,10 @@
     "viewer.signInToEdit": "Sign in to Edit",
     "viewer.signInToEditTitle": "Sign in to open the editor — saving will create your own copy",
     "viewer.snapshotDownloadHint": "Click to download — sign in to save to your gallery",
-    "viewer.snapshotFailed": "Snapshot failed. Please try again.",
+    "viewer.snapshotFailed": "Capture failed. Please try again.",
     "viewer.snapshotSaved": "Saved to your gallery — click to download",
-    "viewer.snapshotThumbAlt": "Captured snapshot — click to download",
-    "viewer.snapshotTitle": "Capture a snapshot of this view",
+    "viewer.snapshotThumbAlt": "Captured image — click to download",
+    "viewer.snapshotTitle": "Capture this view",
     "viewer.resetPausedTitle": "Reset — return to the start frame; press Start to play again"
   }
 }

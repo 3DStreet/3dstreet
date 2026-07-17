@@ -70,7 +70,7 @@ export const ViewerSnapshot = () => {
       STREET.notify?.errorMessage(
         intl.formatMessage({
           id: 'viewer.snapshotFailed',
-          defaultMessage: 'Snapshot failed. Please try again.'
+          defaultMessage: 'Capture failed. Please try again.'
         })
       );
     } finally {
@@ -94,7 +94,7 @@ export const ViewerSnapshot = () => {
 
   const captureTitle = intl.formatMessage({
     id: 'viewer.snapshotTitle',
-    defaultMessage: 'Capture a snapshot of this view'
+    defaultMessage: 'Capture this view'
   });
 
   return (
@@ -114,7 +114,7 @@ export const ViewerSnapshot = () => {
             src={toast.dataUrl}
             alt={intl.formatMessage({
               id: 'viewer.snapshotThumbAlt',
-              defaultMessage: 'Captured snapshot — click to download'
+              defaultMessage: 'Captured image — click to download'
             })}
             onClick={handleDownload}
           />
