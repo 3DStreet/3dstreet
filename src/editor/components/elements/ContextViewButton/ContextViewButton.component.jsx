@@ -56,9 +56,11 @@ export const ContextViewButton = () => {
   // Resolved destination kind + whether the action has a valid target. `busy` is
   // folded into `enabled` for rendering (a busy frame greys the button, holding
   // the last icon — spec D-C allows the two greys to read alike for the
-  // prototype).
-  const [kind, setKind] = useState('drone');
-  const [enabled, setEnabled] = useState(true);
+  // prototype). Seed 'none'/disabled: nothing renders until the resolver has
+  // actually run (the RAF loop no-ops while AFRAME.INSPECTOR.controls is not
+  // wired yet, e.g. during scene load).
+  const [kind, setKind] = useState('none');
+  const [enabled, setEnabled] = useState(false);
   const [tooltip, setTooltip] = useState(false);
 
   // Poll the resolver each frame, committing to React state only on change
@@ -82,8 +84,9 @@ export const ContextViewButton = () => {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  // Street-level mode off: the resolver returns kind 'none' from an elevated
-  // pose (no street action to offer) — hide the button entirely.
+  // Street-level mode off (the default tier): the resolver always returns
+  // kind 'none' — hide the button entirely. (The dock also only mounts with
+  // the flag on; this guard additionally covers the pre-resolver seed.)
   if (!ICONS[kind]) return null;
 
   const label = TOOLTIP[kind];

@@ -27,7 +27,10 @@ import useStore from '@/store';
 import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
 import { useNavMode } from '../lib/nav-experimental/useNavMode';
 import { RecoveryCue } from '../lib/nav-experimental/RecoveryCue.jsx';
-import { isExperimentalNav } from '../lib/nav-experimental/index.js';
+import {
+  isExperimentalNav,
+  isStreetLevelNav
+} from '../lib/nav-experimental/index.js';
 import styles from './Main.module.scss';
 
 // Define the libraries array as a constant outside of the component
@@ -99,8 +102,10 @@ export default function Main() {
     if (!isInspectorEnabled || !isExperimentalNav()) return;
     const barDock = actionBarDockRef.current;
     const compassDock = compassDockRef.current;
+    // The context dock only mounts with street-level nav on — the compass must
+    // still be positioned without it.
     const contextDock = contextButtonDockRef.current;
-    if (!barDock || !compassDock || !contextDock) return;
+    if (!barDock || !compassDock) return;
     const GAP = 12;
     const COMPASS_SIZE = 64; // .compass is 64x64 (Compass.module.scss)
     // The compass's visible dial BODY is smaller than its 64px container: a
@@ -119,18 +124,20 @@ export default function Main() {
       // Compass — just to the right of the centred toolbar.
       compassDock.style.transform = `translateX(${bar.offsetWidth / 2 + GAP}px)`;
       compassDock.style.bottom = `${compassBottom}px`;
-      // Context button (44px = compass body) — a GAP to the right of the
-      // compass's visible BODY right edge, bottom-aligned with the body.
-      // Compass container left edge (translateX, both docks pinned left:50%) =
-      // barWidth/2 + GAP; its body right edge adds (COMPASS_SIZE/2 + BODY_R);
-      // then a GAP to the button's left edge.
-      const contextLeft =
-        bar.offsetWidth / 2 + GAP + (COMPASS_SIZE / 2 + COMPASS_BODY_R) + GAP;
-      contextDock.style.transform = `translateX(${contextLeft}px)`;
-      // Bottom-aligned with the compass body (compass body bottom edge sits
-      // COMPASS_BODY_INSET above the container bottom). Same-size button + same
-      // bottom ⇒ the button occupies the compass body's exact vertical band.
-      contextDock.style.bottom = `${compassBottom + COMPASS_BODY_INSET}px`;
+      if (contextDock) {
+        // Context button (44px = compass body) — a GAP to the right of the
+        // compass's visible BODY right edge, bottom-aligned with the body.
+        // Compass container left edge (translateX, both docks pinned left:50%) =
+        // barWidth/2 + GAP; its body right edge adds (COMPASS_SIZE/2 + BODY_R);
+        // then a GAP to the button's left edge.
+        const contextLeft =
+          bar.offsetWidth / 2 + GAP + (COMPASS_SIZE / 2 + COMPASS_BODY_R) + GAP;
+        contextDock.style.transform = `translateX(${contextLeft}px)`;
+        // Bottom-aligned with the compass body (compass body bottom edge sits
+        // COMPASS_BODY_INSET above the container bottom). Same-size button + same
+        // bottom ⇒ the button occupies the compass body's exact vertical band.
+        contextDock.style.bottom = `${compassBottom + COMPASS_BODY_INSET}px`;
+      }
     };
     place();
     const ro =
@@ -168,7 +175,7 @@ export default function Main() {
               <Compass />
             </div>
           )}
-          {isExperimentalNav() && (
+          {isExperimentalNav() && isStreetLevelNav() && (
             <div
               ref={contextButtonDockRef}
               className={dockClass(`clickable ${styles.contextButtonDock}`)}
@@ -176,7 +183,7 @@ export default function Main() {
               <ContextViewButton />
             </div>
           )}
-          {isExperimentalNav() && <RecoveryCue />}
+          {isExperimentalNav() && isStreetLevelNav() && <RecoveryCue />}
         </div>
       )}
       <ScreenshotModal />

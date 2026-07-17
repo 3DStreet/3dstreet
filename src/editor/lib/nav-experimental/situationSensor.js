@@ -145,14 +145,15 @@ export class SituationSensor {
     }
 
     // Discoverability cue: keyed off height above the collision floor below,
-    // with show/hide hysteresis; enclosure forces show. Street-level mode off:
-    // the 'drop' cue advertises the gated street action, so only the enclosure
-    // cue may show — the gate feeds the shown state so _cueShown keeps tracking
-    // what is displayed.
+    // with show/hide hysteresis; enclosure forces show. Street-level mode off
+    // (the default tier): NO cue may show — both cues prompt Space, and the
+    // whole context-action system (resolveContextAction) is inert with the
+    // flag off, so a cue would advertise a dead key. The gate feeds the shown
+    // state so _cueShown keeps tracking what is displayed.
     const agl = probe.floorY != null ? camY - probe.floorY : 0;
     const nextShown =
       cueState(this._cueShown, agl, probe.enclosed) &&
-      (probe.enclosed || this._ctx.streetLevelEnabled);
+      this._ctx.streetLevelEnabled;
     if (nextShown !== this._cueShown) {
       this._cueShown = nextShown;
       if (nextShown) {

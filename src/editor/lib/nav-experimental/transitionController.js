@@ -116,6 +116,14 @@ export class TransitionController {
   // order — load-bearing): enclosed → daylight; elevated → street;
   // else (at street level) → drone.
   resolveContextAction() {
+    // Street-level mode off (the default tier): the whole context-action
+    // system is inert — no button icon (any kind), Space no-ops, and the
+    // busy-hold below never leaks a stale icon. Checked before the busy
+    // branch so load-time busy frames also resolve to 'none'.
+    if (!this._ctx.streetLevelEnabled) {
+      this._lastResolvedKind = 'none';
+      return { kind: 'none', enabled: false, busy: false };
+    }
     const s = this._ctx.sensor.contextSnapshot;
     const camY = this._ctx.camera.position.y;
     const busy =
@@ -139,13 +147,6 @@ export class TransitionController {
       enabled =
         s.topOverhead != null && s.topOverhead + EYE_MARGIN_METRES > camY;
     } else if (s.elevationState === 'elevated') {
-      // Street-level mode off: there is no street action to offer from an
-      // elevated pose. 'none' hides the button entirely (ContextViewButton
-      // renders nothing for it) and `triggerContextAction` / Space no-op.
-      if (!this._ctx.streetLevelEnabled) {
-        this._lastResolvedKind = 'none';
-        return { kind: 'none', enabled: false, busy: false };
-      }
       // Street view. Enabled mirrors `_swoopToStreet` EXACTLY: it swoops to
       // the camera-centre look-at when tilted past T, else drops vertically to
       // the floor below. So it has a target — and the button is enabled — when
