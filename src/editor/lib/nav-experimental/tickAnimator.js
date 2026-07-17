@@ -46,6 +46,13 @@ function _ensureHostEntity(sceneEl) {
   ent.setAttribute('id', 'nav-experimental-tick-host');
   ent.setAttribute(COMPONENT_NAME, '');
   ent.setAttribute('visible', 'false');
+  // The inspector pauses the whole scene on open (Inspector.open() →
+  // sceneEl.pause()) and revives only [data-no-pause] entities. Without
+  // this attribute a Start→Stop round-trip leaves the host paused, its
+  // tick never fires again, and everything tick-driven dies: wheel zoom
+  // (accumulates but never drains), WASD, and all tweens. Same pattern as
+  // the focus-animation host entity in index.html.
+  ent.setAttribute('data-no-pause', '');
   sceneEl.appendChild(ent);
   _hostEntity = ent;
 }

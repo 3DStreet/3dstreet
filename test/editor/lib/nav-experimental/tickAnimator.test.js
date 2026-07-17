@@ -37,6 +37,16 @@ describe('TickAnimator', () => {
     ta.dispose();
   });
 
+  it('host entity is marked data-no-pause so Inspector.open() revives it', () => {
+    // Inspector.open() (the Stop → editor transition) calls sceneEl.pause()
+    // and re-plays only [data-no-pause] entities. Without the attribute the
+    // host stays paused after a Start/Stop round-trip and every tick-driven
+    // nav feature (wheel-zoom drain, WASD, tweens) silently dies.
+    const host = sceneEl.querySelector('#nav-experimental-tick-host');
+    expect(host).not.toBeNull();
+    expect(host.hasAttribute('data-no-pause')).toBe(true);
+  });
+
   it('subscribe() invokes callback on each tick with delta', () => {
     const cb = vi.fn();
     const unsub = ta.subscribe(cb);
