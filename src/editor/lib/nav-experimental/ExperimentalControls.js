@@ -79,8 +79,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   constructor(camera, domElement, sceneEl) {
     super();
 
-    // EditorControls-compatible knobs.
-    this.enabled = true;
+    // EditorControls-compatible knobs. `enabled` is an accessor (see below):
+    // input handlers and `_onTick` gate on `_isInactive()`, but runner/compass
+    // tweens run as their OWN TickAnimator subscriptions which never re-check
+    // the flag — so the false edge must actively cancel any in-flight motion,
+    // or a tween started before a mode handoff (drive start, WebXR entry —
+    // mode-manager's activateSceneCamera() sets `controls.enabled = false`)
+    // would keep writing the now-unrendered editor camera.
+    this._enabled = true;
     this.center = new THREE.Vector3();
     this.panSpeed = 0.002;
     // Legacy field used only by the ActionBar +/- buttons (_zoomActionBar),
@@ -380,6 +386,31 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
   }
 
+  // `enabled` false edge: freeze EVERYTHING, including motions already in
+  // flight. Handlers and `_onTick` already gate on `_isInactive()`; this
+  // covers the runner/compass tweens (own TickAnimator subscriptions), held
+  // WASD keys, a latched drag (also hides the rotation ring), and the legacy
+  // focus glide — so a camera borrower (drive mode, WebXR) never has the
+  // editor camera written underneath it. The true edge restores nothing:
+  // subsystems re-engage on the next input, from the camera's current pose.
+  get enabled() {
+    return this._enabled;
+  }
+
+  set enabled(value) {
+    const wasEnabled = this._enabled;
+    this._enabled = value;
+    if (wasEnabled && !value) {
+      if (this._runner) this._runner.cancel();
+      if (this._compass) this._compass.cancelPending();
+      if (this._wasd) this._wasd.clearHeldKeys();
+      if (this._drag && this._latch && this._latch.isActive()) {
+        this._drag.endGesture();
+      }
+      if (this._focusAnimation) this._focusAnimation.transitioning = false;
+    }
+  }
+
   setAspectRatio(ratio) {
     this._aspectRatio = ratio;
   }
@@ -393,6 +424,17 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     fa.transitionCamQuaternionStart.copy(camera.quaternion);
 
     const box = new THREE.Box3().setFromObject(target);
+    // Batched entities have their mesh tree stripped at batch time, so
+    // setFromObject finds no geometry under them. batch-models stashes an
+    // entity-local AABB on the object3D (same fallback OrientedBoxHelper
+    // uses) — union it in world space.
+    if (target._batchLocalBbox) {
+      box.union(
+        new THREE.Box3()
+          .copy(target._batchLocalBbox)
+          .applyMatrix4(target.matrixWorld)
+      );
+    }
     const targetCenter = new THREE.Vector3();
     let distance;
     let localCenterY;
@@ -467,6 +509,71 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     fa.transitioning = true;
   }
 
+  // Smoothly return the camera to a stored snapshot pose (#1605) — the
+  // ExperimentalControls port of EditorControls.focusCameraState (the
+  // snapshot gallery's "focus on pose" glide). Same look-at reconstruction
+  // as the legacy version, but the glide runs through the committed-motion
+  // runner (teleport ownership) so it obeys the single-writer/interrupt
+  // discipline and settles grounded/legit/context state like every other
+  // committed tween.
+  focusCameraState(cameraState) {
+    if (this._disabledByOrtho || !cameraState) return;
+    const camera = this._camera;
+    const pos = cameraState.position || {};
+    const rot = cameraState.rotation || {};
+    const endPos = new THREE.Vector3(
+      pos.x != null ? pos.x : 0,
+      pos.y != null ? pos.y : 15,
+      pos.z != null ? pos.z : 30
+    );
+    // Reconstruct the look-at target from the stored rotation: cast the
+    // pose's forward ray and, where it dips below the horizon, intersect
+    // the ground plane — the same heuristic the legacy controls use, so
+    // the arrival orbit center matches the saved vantage.
+    const scratch = new THREE.PerspectiveCamera();
+    scratch.position.copy(endPos);
+    scratch.rotation.set(rot.x || 0, rot.y || 0, rot.z || 0);
+    scratch.updateMatrixWorld();
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(
+      scratch.quaternion
+    );
+    let t = 30;
+    if (Math.abs(forward.y) > 0.001) {
+      const ground = -endPos.y / forward.y;
+      if (ground > 0 && ground <= 1000) t = ground;
+    }
+    const endLookAt = endPos.clone().addScaledVector(forward, t);
+    if (endLookAt.y < 0) endLookAt.y = 0;
+    const endQuat = scratch.quaternion.clone();
+    const startPos = camera.position.clone();
+    const startQuat = camera.quaternion.clone();
+    const fromFov = camera.fov;
+    const toFov = cameraState.zoom || fromFov;
+    this._runner.run({
+      ownership: 'teleport',
+      durationMs: 1000,
+      onTick: (eased) => {
+        camera.position.lerpVectors(startPos, endPos, eased);
+        camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
+        camera.fov = fromFov + (toFov - fromFov) * eased;
+        camera.updateProjectionMatrix();
+        camera.updateMatrixWorld();
+      },
+      commitPose: () => {
+        camera.position.copy(endPos);
+        camera.quaternion.copy(endQuat);
+        camera.fov = toFov;
+        camera.updateProjectionMatrix();
+        camera.updateMatrixWorld();
+        this.center.copy(endLookAt);
+      },
+      settle: {
+        grounded: 'derive',
+        reseedLegit: true
+      }
+    });
+  }
+
   resetZoom() {
     if (this._disabledByOrtho) return;
     const camera = this._camera;
@@ -504,6 +611,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       pos.z != null ? pos.z : 30
     );
     camera.rotation.set(rot.x || 0, rot.y || 0, rot.z || 0);
+    // Honor the snapshot's saved fov (`zoom`) so `?camera=` deep links and
+    // scene loads restore the captured framing, not just the pose.
+    if (snapshotCameraState.zoom) {
+      camera.fov = snapshotCameraState.zoom;
+      camera.updateProjectionMatrix();
+    }
     camera.updateMatrixWorld();
     // Re-derive grounded from the explicit-pose
     // teleport. (The resetZoom() fallback branches above already route through
