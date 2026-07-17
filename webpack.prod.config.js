@@ -21,8 +21,11 @@ function buildVersion() {
 
 module.exports = {
   performance: {
-    maxAssetSize: 3984589, // 3.8 MiB
-    maxEntrypointSize: 3984589, // 3.8 MiB
+    // 4.0 MiB — raised from 3.8 MiB for the experimental nav-controls system
+    // (src/editor/lib/nav-experimental), which ships in the core bundle.
+    // Candidate for code-splitting under the bundle-size effort (#1624/#1628).
+    maxAssetSize: 4194304, // 4.0 MiB
+    maxEntrypointSize: 4194304, // 4.0 MiB
     hints: 'error',
     assetFilter: function (assetFilename) {
       // Only check named entry point bundles, not async-loaded chunks.
