@@ -1,0 +1,67 @@
+// Shared prompt-field styling for the AI prompt group (editor Screenshot
+// modal + generator Image tab) so the two surfaces stay visually unified.
+//
+// Three text levels, all the same size, differing only in color/emphasis:
+// - helptext (placeholder, empty field): italic, darkest gray
+// - default text (prefilled, not user-authored): regular, middle gray
+// - user text (.userText): regular, white
+//
+// The !important on color/background/border guards against host-app element
+// selectors with higher specificity (e.g. the editor's global
+// `#inspectorContainer textarea` rules).
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  background: rgba(30, 30, 30, 0.6);
+}
+
+.fieldLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 6px;
+  font-size: 14px !important;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-style: normal;
+  line-height: 1.4;
+  // Same fill as the AIModelSelector trigger and the style chips — slightly
+  // darker than the surrounding modal surface
+  background: rgba(30, 30, 30, 0.95) !important;
+  color: #9ca3af !important; // default text: middle gray
+  resize: vertical;
+
+  &::placeholder {
+    color: #6b7280 !important; // helptext: darkest gray
+    font-style: italic;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #774dee !important;
+    box-shadow: 0 0 0 2px rgba(119, 77, 238, 0.2);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.userText {
+    color: #fff !important; // user-authored text
+  }
+}
