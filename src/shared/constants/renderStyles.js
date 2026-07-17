@@ -1,32 +1,44 @@
 /**
- * Render Style Presets
- * Pre-made stylistic rendering options for AI image-to-image generation.
+ * Render Style Prompts
  *
- * "Photorealistic" is the default style and preserves the legacy behavior:
- * the selected model's default prompt is used as-is (all model default
- * prompts already ask for a photorealistic result). Every other style
- * appends a style description to the user's prompt — or, when the prompt is
- * empty, to a generic geometry-preserving base prompt — so the input image's
- * layout and composition survive the restyle.
+ * The generation prompt is composed of two user-visible parts:
+ *
+ *   [instructions] + [style sentence]
+ *
+ * Both parts live in their own editable text field, stacked so the UI reads
+ * top-to-bottom as the exact prompt that gets sent (composePrompt does the
+ * literal join — no hidden rewriting). Style chips write only the style
+ * field, so a user's instructions always survive switching styles. This
+ * deliberately teaches that output styling is controlled by prompt text (a
+ * workflow power users discovered on their own): the user watches the style
+ * sentence swap while their instructions stay put.
  */
 
 /**
- * Base prompt used for non-photorealistic styles when the user leaves the
- * prompt empty. Model default prompts all say "photorealistic", which would
- * fight the style suffix, so styled renders get this neutral base instead.
+ * Default instructions, prefilled into the instructions field.
+ * - editor: renders always start from a screenshot of the 3D scene, so the
+ *   default anchors the render to the input geometry (layout, composition
+ *   and camera angle survive the restyle).
+ * - generator: a friendly example edit; "if provided" keeps it valid
+ *   whether or not a source image is attached.
  */
-export const STYLED_BASE_PROMPT =
-  'use the guidance of the geometry in the input image to re-render this urban street scene, keeping the same layout, composition and camera angle';
+const DEFAULT_INSTRUCTIONS = {
+  editor:
+    'Use the guidance of the geometry in the input image to re-render this urban street scene, keeping the same layout, composition and camera angle.',
+  generator:
+    'Add trees, flowers, and other green things to the source image if provided.'
+};
 
 /**
  * All available render styles, in display order.
  *
  * Each style:
- * - name/description: shown in the style picker UI
+ * - name/description: shown in the style picker UI (English fallback; the
+ *   editor passes translated labels via the RenderStyleSelector labels prop)
  * - emoji + swatch (CSS background): lightweight visual thumbnail, no image
  *   assets required
- * - stylePrompt: appended to the base prompt; null means "no restyle"
- *   (photorealistic default)
+ * - stylePrompt: the style description wrapped into the full style sentence
+ *   by getStyleSentence
  */
 export const RENDER_STYLES = {
   photorealistic: {
@@ -34,7 +46,8 @@ export const RENDER_STYLES = {
     description: 'High-detail realistic render (default)',
     emoji: '📷',
     swatch: 'linear-gradient(135deg, #4b6cb7 0%, #182848 100%)',
-    stylePrompt: null
+    stylePrompt:
+      'a photorealistic rendering with accurate materials, natural lighting and realistic shading'
   },
   watercolor: {
     name: 'Watercolor',
@@ -95,7 +108,19 @@ export const RENDER_STYLES = {
 };
 
 /**
- * Default render style ID (legacy behavior — model default prompts apply)
+ * Pseudo-style rendered as the last chip: clears the style field so the
+ * prompt is instructions only (for asks unrelated to styling).
+ */
+export const NONE_STYLE = {
+  id: 'none',
+  name: 'None',
+  description: 'No style language; instructions only',
+  emoji: '∅',
+  swatch: 'linear-gradient(135deg, #6b7280 0%, #374151 100%)'
+};
+
+/**
+ * Default style ID prefilled into the style field.
  */
 export const DEFAULT_RENDER_STYLE_ID = 'photorealistic';
 
@@ -107,33 +132,57 @@ export const getRenderStylesList = () =>
   Object.entries(RENDER_STYLES).map(([id, config]) => ({ id, ...config }));
 
 /**
- * Compose the final generation prompt from the user prompt, the selected
- * model's default prompt, and the selected render style.
- *
- * - photorealistic (or unknown style): user prompt, falling back to the
- *   model's default prompt — identical to pre-style behavior
- * - any other style: user prompt (or the neutral STYLED_BASE_PROMPT when
- *   empty) with the style description appended
- *
- * @param {Object} options
- * @param {string} [options.userPrompt] - Raw text the user typed (may be empty)
- * @param {string} [options.modelDefaultPrompt] - Selected model's default prompt
- * @param {string} [options.styleId] - Selected render style ID
- * @returns {string} The composed prompt to send to the generation backend
+ * Default text for the instructions field.
+ * @param {string} [variant='editor'] - Which app's default: 'editor' or
+ *   'generator'
+ * @returns {string}
  */
-export const buildStyledPrompt = ({
-  userPrompt,
-  modelDefaultPrompt,
-  styleId
-}) => {
-  const style =
-    RENDER_STYLES[styleId] || RENDER_STYLES[DEFAULT_RENDER_STYLE_ID];
-  const trimmedPrompt = (userPrompt || '').trim();
+export const getDefaultInstructions = (variant = 'editor') =>
+  DEFAULT_INSTRUCTIONS[variant] || DEFAULT_INSTRUCTIONS.editor;
 
-  if (!style.stylePrompt) {
-    return trimmedPrompt || modelDefaultPrompt || '';
-  }
+/**
+ * The full sentence a style chip writes into the style field.
+ * @param {string} styleId - Render style ID
+ * @returns {string} Style sentence, or '' for 'none'/unknown IDs
+ */
+export const getStyleSentence = (styleId) => {
+  const style = RENDER_STYLES[styleId];
+  return style ? `Render as ${style.stylePrompt}.` : '';
+};
 
-  const base = trimmedPrompt || STYLED_BASE_PROMPT;
-  return `${base}. Render the result as ${style.stylePrompt}.`;
+/**
+ * Describe the style field contents: the matching style ID for an unedited
+ * chip sentence, 'none' when empty, 'custom' for user-edited text. Drives
+ * both chip highlighting (the 'none' chip lights up on empty; 'custom'
+ * matches no chip) and analytics.
+ *
+ * @param {string} styleText - Current contents of the style field
+ * @returns {string} Style ID, 'none', or 'custom'
+ */
+export const describeStyleText = (styleText) => {
+  const trimmed = (styleText || '').trim();
+  if (!trimmed) return NONE_STYLE.id;
+  const match = getRenderStylesList().find(
+    (style) => getStyleSentence(style.id) === trimmed
+  );
+  return match ? match.id : 'custom';
+};
+
+/**
+ * Compose the final generation prompt: instructions then style sentence,
+ * joined verbatim (with a period added if the instructions don't end in
+ * punctuation). Either part may be empty.
+ *
+ * @param {Object} parts
+ * @param {string} [parts.instructions]
+ * @param {string} [parts.style]
+ * @returns {string}
+ */
+export const composePrompt = ({ instructions, style } = {}) => {
+  const first = (instructions || '').trim();
+  const second = (style || '').trim();
+  if (!first) return second;
+  if (!second) return first;
+  const separator = /[.!?,;:]$/.test(first) ? ' ' : '. ';
+  return `${first}${separator}${second}`;
 };

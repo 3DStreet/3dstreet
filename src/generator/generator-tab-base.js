@@ -12,7 +12,10 @@ import { functions, auth } from '@shared/services/firebase.js';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import {
   DEFAULT_RENDER_STYLE_ID,
-  buildStyledPrompt
+  getDefaultInstructions,
+  getStyleSentence,
+  describeStyleText,
+  composePrompt
 } from '@shared/constants/renderStyles.js';
 import { mountModelSelector } from './mount-model-selector.js';
 import { mountStyleSelector } from './mount-style-selector.js';
@@ -59,7 +62,6 @@ class GeneratorTabBase {
     this.selectedOrientation = 'portrait';
     this.selectedDimension = '1024x1440';
     this.selectedModel = 'nano-banana-pro'; // Default model
-    this.selectedStyleId = DEFAULT_RENDER_STYLE_ID; // Render style preset
 
     // Timer state
     this.renderStartTime = null;
@@ -108,6 +110,7 @@ class GeneratorTabBase {
 
     this.createTabContent(tabContainer);
     this.getElements();
+    this.prefillPromptDefaults();
     this.mountModelSelectorComponent();
     this.mountStyleSelectorComponent();
     this.updateModelParams();
@@ -175,6 +178,7 @@ class GeneratorTabBase {
 
     // Prompt and dimensions
     this.elements.promptInput = document.getElementById(getId('prompt-input'));
+    this.elements.styleInput = document.getElementById(getId('style-input'));
     this.elements.dimensionsGroup = document.getElementById(
       getId('dimensions-group')
     );
@@ -207,9 +211,6 @@ class GeneratorTabBase {
     );
     this.elements.randomizeSeedCheckbox = document.getElementById(
       getId('randomize-seed-checkbox')
-    );
-    this.elements.promptUpsampling = document.getElementById(
-      getId('prompt-upsampling')
     );
     this.elements.rawMode = document.getElementById(getId('raw-mode'));
     this.elements.intervalSlider = document.getElementById(
@@ -269,9 +270,6 @@ class GeneratorTabBase {
     );
     this.elements.intervalGroup = document.getElementById(
       getId('interval-group')
-    );
-    this.elements.promptUpsamplingGroup = document.getElementById(
-      getId('prompt-upsampling-group')
     );
     this.elements.safetyGroup = document.getElementById(getId('safety-group'));
     this.elements.seedGroup = document.getElementById(getId('seed-group'));
@@ -339,7 +337,12 @@ class GeneratorTabBase {
 
     // Verify critical elements
     const missingElements = [];
-    ['modelSelectorContainer', 'promptInput', 'generateBtn'].forEach((elem) => {
+    [
+      'modelSelectorContainer',
+      'promptInput',
+      'styleInput',
+      'generateBtn'
+    ].forEach((elem) => {
       if (!this.elements[elem]) {
         missingElements.push(elem);
       }
@@ -419,17 +422,18 @@ class GeneratorTabBase {
     if (this.config.requiresPrompt) {
       return 'Prompt <span class="text-red-500">*</span>';
     }
-    return 'Prompt (Optional)';
+    return 'Prompt';
   }
 
   /**
-   * Get prompt placeholder based on tab type
+   * Get instructions placeholder based on tab type (fields are prefilled
+   * with defaults, so this only shows if the user clears the field)
    */
   getPromptPlaceholder() {
     if (this.config.tabType === 'create') {
       return 'Describe what to generate...';
     }
-    return 'create a photorealistic render of an urban street scene with accurate shading and lighting';
+    return 'Describe what to generate or how to change the source image...';
   }
 
   /**
@@ -467,9 +471,48 @@ class GeneratorTabBase {
   }
 
   /**
-   * Mount the RenderStyleSelector React component. The selected style is
-   * applied to the prompt at generation time (see buildStyledPrompt) so the
-   * textarea keeps reflecting only what the user actually typed.
+   * Prefill the two prompt fields with real default text so what's sent is
+   * always fully visible (no hidden fallback prompt). The generator default
+   * is written to work with or without a source image.
+   */
+  prefillPromptDefaults() {
+    if (this.elements.promptInput) {
+      this.elements.promptInput.value = getDefaultInstructions('generator');
+    }
+    if (this.elements.styleInput) {
+      this.elements.styleInput.value = getStyleSentence(
+        DEFAULT_RENDER_STYLE_ID
+      );
+    }
+    this.updatePromptTint();
+  }
+
+  /**
+   * Default/preset text shows muted (gray-500); user-authored text shows
+   * dark (gray-900). Mirrors the editor's gray-default/edited treatment.
+   */
+  updatePromptTint() {
+    const setTint = (el, isDefault) => {
+      if (!el) return;
+      el.classList.toggle('text-gray-500', isDefault);
+      el.classList.toggle('text-gray-900', !isDefault);
+    };
+    setTint(
+      this.elements.promptInput,
+      this.elements.promptInput?.value.trim() ===
+        getDefaultInstructions('generator')
+    );
+    setTint(
+      this.elements.styleInput,
+      describeStyleText(this.elements.styleInput?.value) !== 'custom'
+    );
+  }
+
+  /**
+   * Mount the RenderStyleSelector React component. Chips write only the
+   * style field: clicking one replaces the style sentence (the 'none' chip
+   * clears it) while the instructions field is untouched. A chip stays
+   * highlighted only while its unedited sentence is in the style field.
    */
   mountStyleSelectorComponent() {
     const container = this.elements.styleSelectorContainer;
@@ -479,14 +522,25 @@ class GeneratorTabBase {
     }
 
     this.styleSelectorInstance = mountStyleSelector(container, {
-      value: this.selectedStyleId,
-      onChange: (styleId) => {
-        this.selectedStyleId = styleId;
-        if (this.styleSelectorInstance) {
-          this.styleSelectorInstance.update({ value: styleId });
-        }
+      activeStyleId: describeStyleText(this.elements.styleInput?.value),
+      onSelect: (styleId) => {
+        this.elements.styleInput.value = getStyleSentence(styleId);
+        this.refreshStyleHighlight();
       },
       disabled: false
+    });
+  }
+
+  /**
+   * Sync chip highlighting with the style field contents. Called on chip
+   * click and on manual edits; edited text highlights no chip ('custom'),
+   * an empty field highlights the 'none' chip.
+   */
+  refreshStyleHighlight() {
+    this.updatePromptTint();
+    if (!this.styleSelectorInstance) return;
+    this.styleSelectorInstance.update({
+      activeStyleId: describeStyleText(this.elements.styleInput?.value)
     });
   }
 
@@ -512,17 +566,20 @@ class GeneratorTabBase {
 
                     ${this.getImagePromptHTML()}
 
-                    <!-- Prompt -->
+                    <!-- Prompt: two stacked fields sent as one string
+                         (instructions + style sentence, joined verbatim).
+                         Style chips write only the style field. -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">${this.getPromptLabel()}</label>
-                        <textarea id="${getId('prompt-input')}" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                  placeholder="${this.getPromptPlaceholder()}"></textarea>
-                    </div>
-
-                    <!-- Render Style -->
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Render Style</label>
-                        <div id="${getId('style-selector-container')}"></div>
+                        <div class="p-3 border border-gray-200 rounded-lg">
+                            <label for="${getId('prompt-input')}" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Instructions</label>
+                            <textarea id="${getId('prompt-input')}" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+                                      placeholder="${this.getPromptPlaceholder()}"></textarea>
+                            <label for="${getId('style-input')}" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Style</label>
+                            <div id="${getId('style-selector-container')}" class="mb-2"></div>
+                            <textarea id="${getId('style-input')}" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                      placeholder="No style; instructions only"></textarea>
+                        </div>
                     </div>
 
                     <!-- Image Dimensions -->
@@ -597,15 +654,6 @@ class GeneratorTabBase {
                                     <input type="checkbox" id="${getId('randomize-seed-checkbox')}" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" checked>
                                     <label for="${getId('randomize-seed-checkbox')}" class="ml-2 block text-sm text-gray-700">Randomize seed before each generation</label>
                                 </div>
-                            </div>
-
-                            <!-- Prompt Upsampling -->
-                            <div class="mb-3 param-group" id="${getId('prompt-upsampling-group')}">
-                                <div class="flex items-center">
-                                    <input type="checkbox" id="${getId('prompt-upsampling')}" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                                    <label for="${getId('prompt-upsampling')}" class="ml-2 block text-sm text-gray-700">Prompt Upsampling</label>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-1">Automatically enhances prompt with additional details</p>
                             </div>
 
                             <!-- Raw Mode (Ultra only) -->
@@ -730,12 +778,23 @@ class GeneratorTabBase {
       this.generateImage.bind(this)
     );
 
-    // Keyboard shortcut for prompt input
-    this.elements.promptInput.addEventListener('keydown', (e) => {
+    // Keyboard shortcut for both prompt fields
+    const generateOnCmdEnter = (e) => {
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         this.elements.generateBtn.click();
       }
+    };
+    this.elements.promptInput.addEventListener('keydown', generateOnCmdEnter);
+    this.elements.styleInput.addEventListener('keydown', generateOnCmdEnter);
+
+    // Editing the style field clears (or restores) the chip highlight;
+    // editing either field updates the default-vs-edited text tint
+    this.elements.styleInput.addEventListener('input', () => {
+      this.refreshStyleHighlight();
+    });
+    this.elements.promptInput.addEventListener('input', () => {
+      this.updatePromptTint();
     });
 
     // Setup sliders
@@ -931,7 +990,6 @@ class GeneratorTabBase {
         showGuidance = false;
         showSafetyTolerance = false;
         showSeed = false;
-        this.elements.promptUpsamplingGroup.classList.add('hidden');
         break;
 
       // fal.ai models
@@ -944,7 +1002,6 @@ class GeneratorTabBase {
         showGuidance = false;
         showSafetyTolerance = false;
         showSeed = false;
-        this.elements.promptUpsamplingGroup.classList.add('hidden');
         break;
     }
 
@@ -964,9 +1021,6 @@ class GeneratorTabBase {
         !showImagePrompt
       );
     }
-
-    this.elements.promptUpsamplingGroup.classList.remove('hidden');
-
     if (showDimensions) {
       this.updateDimensionGrid(this.selectedOrientation);
     }
@@ -1201,16 +1255,18 @@ class GeneratorTabBase {
       return false;
     }
 
-    // Check prompt requirement
-    if (this.config.requiresPrompt) {
-      const prompt = this.elements.promptInput.value.trim();
-      if (!prompt) {
-        FluxUI.showNotification(
-          'Prompt is required. Please enter a text prompt to create an image.',
-          'error'
-        );
-        return false;
-      }
+    // Explicit prompts only: the two visible fields are the whole prompt,
+    // with no hidden fallback, so an all-empty prompt has nothing to send.
+    const prompt = composePrompt({
+      instructions: this.elements.promptInput.value,
+      style: this.elements.styleInput.value
+    });
+    if (!prompt) {
+      FluxUI.showNotification(
+        'Add instructions or pick a style to generate an image.',
+        'error'
+      );
+      return false;
     }
 
     // Check source image requirement (tab-level or, on the Image tab,
@@ -1442,11 +1498,13 @@ class GeneratorTabBase {
         }
       );
 
-      const prompt = buildStyledPrompt({
-        userPrompt: this.elements.promptInput.value,
-        modelDefaultPrompt: modelConfig.prompt,
-        styleId: this.selectedStyleId
+      // The two visible fields are the whole prompt, joined verbatim — no
+      // hidden fallback (validateGeneration rejects an all-empty prompt).
+      const prompt = composePrompt({
+        instructions: this.elements.promptInput.value,
+        style: this.elements.styleInput.value
       });
+      const promptStyle = describeStyleText(this.elements.styleInput.value);
 
       // Prepare input image if available
       let inputImageSrc = null;
@@ -1483,7 +1541,7 @@ class GeneratorTabBase {
           model: model,
           model_name: modelConfig.name,
           prompt: prompt,
-          render_style: this.selectedStyleId,
+          render_style: promptStyle,
           timestamp: new Date().toISOString()
         };
 
@@ -1509,7 +1567,7 @@ class GeneratorTabBase {
         posthog.capture('ai_render_used', {
           token_type: 'gen',
           model: model,
-          render_style: this.selectedStyleId,
+          render_style: promptStyle,
           source: 'generator',
           is_pro_user: window.authState?.currentUser?.isPro || false
         });
@@ -1575,11 +1633,13 @@ class GeneratorTabBase {
         timeout: 300000
       });
 
-      const prompt = buildStyledPrompt({
-        userPrompt: this.elements.promptInput.value,
-        modelDefaultPrompt: modelConfig.prompt,
-        styleId: this.selectedStyleId
+      // The two visible fields are the whole prompt, joined verbatim — no
+      // hidden fallback (validateGeneration rejects an all-empty prompt).
+      const prompt = composePrompt({
+        instructions: this.elements.promptInput.value,
+        style: this.elements.styleInput.value
       });
+      const promptStyle = describeStyleText(this.elements.styleInput.value);
 
       // Prepare input image if available
       let inputImageSrc = null;
@@ -1616,7 +1676,7 @@ class GeneratorTabBase {
           model: model,
           model_name: modelConfig.name,
           prompt: prompt,
-          render_style: this.selectedStyleId,
+          render_style: promptStyle,
           timestamp: new Date().toISOString()
         };
 
@@ -1642,7 +1702,7 @@ class GeneratorTabBase {
         posthog.capture('ai_render_used', {
           token_type: 'gen',
           model: model,
-          render_style: this.selectedStyleId,
+          render_style: promptStyle,
           source: 'generator',
           is_pro_user: window.authState?.currentUser?.isPro || false
         });
@@ -1960,10 +2020,7 @@ class GeneratorTabBase {
           ...(this.currentParams.interval && {
             interval: this.currentParams.interval
           }),
-          ...(this.currentParams.raw && { raw: this.currentParams.raw }),
-          ...(this.currentParams.prompt_upsampling !== undefined && {
-            prompt_upsampling: this.currentParams.prompt_upsampling
-          })
+          ...(this.currentParams.raw && { raw: this.currentParams.raw })
         };
 
         try {

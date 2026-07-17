@@ -25,10 +25,14 @@ import { assetsService } from '@shared/assets';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import {
   DEFAULT_RENDER_STYLE_ID,
-  buildStyledPrompt
+  getDefaultInstructions,
+  getStyleSentence,
+  describeStyleText,
+  composePrompt
 } from '@shared/constants/renderStyles.js';
 import AIModelSelector from '@shared/components/AIModelSelector';
 import RenderStyleSelector from '@shared/components/RenderStyleSelector';
+import { getLocalizedStyleLabels } from './renderStyleMessages';
 
 // Available AI models (use shared constants)
 const AI_MODELS = REPLICATE_MODELS;
@@ -61,16 +65,32 @@ function ScreenshotModal() {
   const [renderStartTime, setRenderStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [selectedModel, setSelectedModel] = useState('nano-banana-pro');
-  const [renderStyle, setRenderStyle] = useState(DEFAULT_RENDER_STYLE_ID); // Render style preset
   const [renderMode, setRenderMode] = useState('1x'); // '1x' or '4x'
   const [aiImages, setAiImages] = useState({}); // Store multiple AI images with model keys
   const [renderTimers, setRenderTimers] = useState({}); // Individual timers for each model
   const [renderingStates, setRenderingStates] = useState({}); // Track which models are rendering
   const [renderErrors, setRenderErrors] = useState({}); // Track which models had errors
   const [useMixedModels, setUseMixedModels] = useState(true); // Toggle for model mixing
-  const [customPrompt, setCustomPrompt] = useState(''); // Custom prompt text
+  // The prompt is two stacked, prefilled fields sent as one string
+  // (composePrompt): instructions + style sentence. Style chips write only
+  // the style field, so instructions survive style switching.
+  const [promptInstructions, setPromptInstructions] = useState(
+    getDefaultInstructions()
+  );
+  const [promptStyleText, setPromptStyleText] = useState(
+    getStyleSentence(DEFAULT_RENDER_STYLE_ID)
+  );
   const [showOvertimeWarning, setShowOvertimeWarning] = useState(false); // Show overtime warning for 1x mode
   const [isClosing, setIsClosing] = useState(false); // Track closing animation
+
+  // Chip highlight and analytics derive from the style text itself: an
+  // unedited chip sentence maps to its style, empty is 'none', anything
+  // else is 'custom' (which highlights no chip).
+  const activeStyleId = describeStyleText(promptStyleText);
+  const styleLabels = getLocalizedStyleLabels(intl);
+  // Default/preset text stays muted gray; user-authored text renders white
+  const isInstructionsEdited =
+    promptInstructions.trim() !== getDefaultInstructions().trim();
 
   // Get token cost for the selected model
   const getTokenCost = (modelKey) => {
@@ -117,7 +137,8 @@ function ScreenshotModal() {
     setRenderTimers({});
     setRenderingStates({});
     setRenderErrors({});
-    setCustomPrompt('');
+    setPromptInstructions(getDefaultInstructions());
+    setPromptStyleText(getStyleSentence(DEFAULT_RENDER_STYLE_ID));
     setShowOvertimeWarning(false);
     // Keep model selection and render mode when resetting
   };
@@ -290,6 +311,22 @@ function ScreenshotModal() {
       return;
     }
 
+    // Explicit prompts only: the two visible fields are the whole prompt,
+    // with no hidden fallback. Both cleared means there's nothing to send.
+    const aiPrompt = composePrompt({
+      instructions: promptInstructions,
+      style: promptStyleText
+    });
+    if (!aiPrompt) {
+      STREET.notify.errorMessage(
+        intl.formatMessage({
+          id: 'screenshotModal.emptyPromptError',
+          defaultMessage: 'Add instructions or pick a style before rendering.'
+        })
+      );
+      return;
+    }
+
     const targetModel = modelKey || selectedModel;
 
     // Guard against re-entry (e.g. double-click before state flushes)
@@ -361,15 +398,9 @@ function ScreenshotModal() {
         throw new Error(`Model configuration not found for: ${baseModelKey}`);
       }
 
-      // Only allow custom prompts for Pro users (subscription or team).
-      // Style presets are available to everyone: the selected style is
-      // appended to the user's custom prompt or, if none, replaces/extends
-      // the model's default (photorealistic) prompt.
-      const aiPrompt = buildStyledPrompt({
-        userPrompt: isPro ? customPrompt : '',
-        modelDefaultPrompt: selectedModelConfig.prompt,
-        styleId: renderStyle
-      });
+      // aiPrompt was composed (and emptiness rejected) at the top of this
+      // handler; here we only derive the analytics label for the style field.
+      const promptStyle = describeStyleText(promptStyleText);
 
       const screentockImgElement = document.getElementById(
         'screentock-destination'
@@ -463,7 +494,7 @@ function ScreenshotModal() {
                 model: selectedModelConfig.name,
                 modelKey: baseModelKey,
                 prompt: aiPrompt,
-                renderStyle: renderStyle,
+                renderStyle: promptStyle,
                 renderMode: renderMode,
                 // The camera hasn't moved since the base capture, so this is
                 // the render's vantage — persist it for the focus button (#1605).
@@ -537,7 +568,7 @@ function ScreenshotModal() {
           scene_id: STREET.utils.getCurrentSceneId(),
           prompt: aiPrompt,
           model: baseModelKey,
-          render_style: renderStyle,
+          render_style: promptStyle,
           render_mode: renderMode,
           is_pro_user: currentUser?.isPro || false,
           tokens_available: tokenProfile?.genToken || 0
@@ -547,7 +578,7 @@ function ScreenshotModal() {
         posthog.capture('ai_render_used', {
           token_type: 'gen',
           model: baseModelKey,
-          render_style: renderStyle,
+          render_style: promptStyle,
           render_mode: renderMode,
           is_pro_user: currentUser?.isPro || false,
           scene_id: STREET.utils.getCurrentSceneId()
@@ -892,50 +923,37 @@ function ScreenshotModal() {
               </div>
             )}
 
-            {/* Render Style Presets - available to all users */}
+            {/* The prompt, shown as its two parts stacked in send order:
+                instructions + style sentence (composePrompt joins them
+                verbatim). Style chips write only the style field. Free
+                users get both fields read-only; editing is Pro. */}
             <div className={styles.promptSection}>
               <label className={styles.promptLabel}>
                 <FormattedMessage
-                  id="screenshotModal.renderStyleLabel"
-                  defaultMessage="Render Style:"
+                  id="screenshotModal.promptLabel"
+                  defaultMessage="Prompt:"
                 />
               </label>
-              <RenderStyleSelector
-                value={renderStyle}
-                onChange={setRenderStyle}
-                disabled={
-                  isGeneratingAI ||
-                  Object.values(renderingStates).some((state) => state)
-                }
-              />
-            </div>
-
-            {/* Custom Prompt Input - Only show for Pro users (subscription or team) */}
-            {isPro && (
-              <div className={styles.promptSection}>
-                <label htmlFor="custom-prompt" className={styles.promptLabel}>
+              <div className={styles.promptGroup}>
+                <label
+                  htmlFor="prompt-instructions"
+                  className={styles.promptSubLabel}
+                >
                   <FormattedMessage
-                    id="screenshotModal.customPromptLabel"
-                    defaultMessage="Custom Prompt (optional):"
+                    id="screenshotModal.promptInstructionsLabel"
+                    defaultMessage="Instructions"
                   />
                 </label>
                 <textarea
-                  id="custom-prompt"
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder={
-                    renderMode === '1x' && selectedModel
-                      ? AI_MODELS[selectedModel]?.prompt ||
-                        intl.formatMessage({
-                          id: 'screenshotModal.customPromptPlaceholder',
-                          defaultMessage: 'Enter custom prompt...'
-                        })
-                      : intl.formatMessage({
-                          id: 'screenshotModal.customPromptPlaceholder',
-                          defaultMessage: 'Enter custom prompt...'
-                        })
+                  id="prompt-instructions"
+                  value={promptInstructions}
+                  onChange={(e) =>
+                    isPro && setPromptInstructions(e.target.value)
                   }
-                  className={styles.promptTextarea}
+                  readOnly={!isPro}
+                  className={`${styles.promptTextarea} ${
+                    isInstructionsEdited ? styles.editedText : ''
+                  }`}
                   disabled={
                     isGeneratingAI ||
                     Object.values(renderingStates).some((state) => state)
@@ -943,8 +961,62 @@ function ScreenshotModal() {
                   rows={3}
                   maxLength={500}
                 />
+                <label htmlFor="prompt-style" className={styles.promptSubLabel}>
+                  <FormattedMessage
+                    id="screenshotModal.promptStyleLabel"
+                    defaultMessage="Style"
+                  />
+                </label>
+                <RenderStyleSelector
+                  activeStyleId={activeStyleId}
+                  labels={styleLabels}
+                  onSelect={(styleId) =>
+                    setPromptStyleText(getStyleSentence(styleId))
+                  }
+                  disabled={
+                    isGeneratingAI ||
+                    Object.values(renderingStates).some((state) => state)
+                  }
+                />
+                <textarea
+                  id="prompt-style"
+                  value={promptStyleText}
+                  onChange={(e) => isPro && setPromptStyleText(e.target.value)}
+                  readOnly={!isPro}
+                  placeholder={intl.formatMessage({
+                    id: 'screenshotModal.promptStylePlaceholder',
+                    defaultMessage: 'No style; instructions only'
+                  })}
+                  className={`${styles.promptTextarea} ${
+                    activeStyleId === 'custom' ? styles.editedText : ''
+                  }`}
+                  disabled={
+                    isGeneratingAI ||
+                    Object.values(renderingStates).some((state) => state)
+                  }
+                  rows={2}
+                  maxLength={500}
+                />
+                {!isPro && (
+                  <div className={styles.promptHelper}>
+                    <FormattedMessage
+                      id="screenshotModal.promptProHint"
+                      defaultMessage="Pick a style, or <upgrade>upgrade to Pro</upgrade> to edit the prompt text."
+                      values={{
+                        upgrade: (chunks) => (
+                          <a
+                            className={styles.upgradeLink}
+                            onClick={() => startCheckout('image')}
+                          >
+                            {chunks}
+                          </a>
+                        )
+                      }}
+                    />
+                  </div>
+                )}
               </div>
-            )}
+            </div>
             {/* Render Buttons */}
             {renderMode === '1x' ? (
               <Button

@@ -5,7 +5,7 @@
  * video, inpaint, and outpaint tabs. These pure functions will
  * be extracted for React migration.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // ============= VIDEO TAB EXTRACTABLE FUNCTIONS =============
 
@@ -93,7 +93,6 @@ const buildInpaintParams = (formData) => {
     steps = 50,
     guidance = 60,
     seed = null,
-    promptUpsampling = false,
     outputFormat = 'jpeg',
     safetyTolerance = 2
   } = formData;
@@ -105,7 +104,6 @@ const buildInpaintParams = (formData) => {
     steps: parseInt(steps),
     guidance: parseFloat(guidance),
     seed: seed ? parseInt(seed) : null,
-    prompt_upsampling: promptUpsampling,
     output_format: outputFormat,
     safety_tolerance: parseInt(safetyTolerance)
   };
@@ -169,7 +167,6 @@ const buildOutpaintParams = (formData) => {
     steps = 50,
     guidance = 60,
     seed = null,
-    promptUpsampling = false,
     outputFormat = 'jpeg',
     safetyTolerance = 2
   } = formData;
@@ -182,7 +179,6 @@ const buildOutpaintParams = (formData) => {
     steps: parseInt(steps),
     guidance: parseFloat(guidance),
     seed: seed ? parseInt(seed) : null,
-    prompt_upsampling: promptUpsampling,
     output_format: outputFormat,
     safety_tolerance: parseInt(safetyTolerance)
   };
@@ -208,8 +204,12 @@ const isPendingItemValidForTab = (pendingItem, targetTab) => {
   if (!pendingItem) return false;
   if (pendingItem.targetTab !== targetTab) return false;
   if (Date.now() - pendingItem.timestamp >= 10000) return false;
-  if (!pendingItem.imageDataUrl || typeof pendingItem.imageDataUrl !== 'string')
+  if (
+    !pendingItem.imageDataUrl ||
+    typeof pendingItem.imageDataUrl !== 'string'
+  ) {
     return false;
+  }
   return true;
 };
 
@@ -231,10 +231,7 @@ const extractBase64FromDataUrl = (dataUrl) => {
  * @returns {string}
  */
 const generateDownloadFilename = (prefix, extension = 'mp4') => {
-  const timestamp = new Date()
-    .toISOString()
-    .replace(/[:.]/g, '-')
-    .slice(0, 19);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   return `3dstreet-${prefix}-${timestamp}.${extension}`;
 };
 
@@ -355,7 +352,6 @@ describe('Inpaint Tab Parameters', () => {
         steps: 40,
         guidance: 50,
         seed: 12345,
-        promptUpsampling: true,
         outputFormat: 'png',
         safetyTolerance: 3
       };
@@ -369,7 +365,6 @@ describe('Inpaint Tab Parameters', () => {
         steps: 40,
         guidance: 50,
         seed: 12345,
-        prompt_upsampling: true,
         output_format: 'png',
         safety_tolerance: 3
       });
@@ -387,7 +382,6 @@ describe('Inpaint Tab Parameters', () => {
       expect(result.steps).toBe(50);
       expect(result.guidance).toBe(60);
       expect(result.seed).toBeNull();
-      expect(result.prompt_upsampling).toBe(false);
       expect(result.output_format).toBe('jpeg');
       expect(result.safety_tolerance).toBe(2);
     });
@@ -631,7 +625,9 @@ describe('Common Utility Functions', () => {
     it('should generate filename with prefix and extension', () => {
       const filename = generateDownloadFilename('video');
 
-      expect(filename).toMatch(/^3dstreet-video-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.mp4$/);
+      expect(filename).toMatch(
+        /^3dstreet-video-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.mp4$/
+      );
     });
 
     it('should use custom extension', () => {
@@ -643,7 +639,9 @@ describe('Common Utility Functions', () => {
     it('should use different prefixes correctly', () => {
       expect(generateDownloadFilename('video')).toContain('3dstreet-video');
       expect(generateDownloadFilename('inpaint')).toContain('3dstreet-inpaint');
-      expect(generateDownloadFilename('outpaint')).toContain('3dstreet-outpaint');
+      expect(generateDownloadFilename('outpaint')).toContain(
+        '3dstreet-outpaint'
+      );
     });
   });
 });

@@ -1,21 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import {
   RENDER_STYLES,
+  NONE_STYLE,
   DEFAULT_RENDER_STYLE_ID,
-  STYLED_BASE_PROMPT,
   getRenderStylesList,
-  buildStyledPrompt
+  getDefaultInstructions,
+  getStyleSentence,
+  describeStyleText,
+  composePrompt
 } from '@shared/constants/renderStyles.js';
 
-const MODEL_DEFAULT =
-  'use the guidance of the geometry in the input image to create a photorealistic rendering of street improvements with accurate shading and lighting';
-
 describe('RENDER_STYLES', () => {
-  it('includes the photorealistic default with no style prompt', () => {
-    expect(RENDER_STYLES[DEFAULT_RENDER_STYLE_ID]).toBeDefined();
-    expect(RENDER_STYLES[DEFAULT_RENDER_STYLE_ID].stylePrompt).toBeNull();
-  });
-
   it('gives every style the fields the picker UI needs', () => {
     getRenderStylesList().forEach((style) => {
       expect(style.id).toBeTruthy();
@@ -23,79 +18,110 @@ describe('RENDER_STYLES', () => {
       expect(style.description).toBeTruthy();
       expect(style.emoji).toBeTruthy();
       expect(style.swatch).toContain('gradient');
+      expect(style.stylePrompt).toBeTruthy();
     });
   });
 
-  it('gives every non-default style a non-empty style prompt', () => {
-    getRenderStylesList()
-      .filter((style) => style.id !== DEFAULT_RENDER_STYLE_ID)
-      .forEach((style) => {
-        expect(style.stylePrompt).toBeTruthy();
-      });
+  it('lists the default style first', () => {
+    expect(getRenderStylesList()[0].id).toBe(DEFAULT_RENDER_STYLE_ID);
   });
 
-  it('lists photorealistic first as the default option', () => {
-    expect(getRenderStylesList()[0].id).toBe(DEFAULT_RENDER_STYLE_ID);
+  it('keeps the none pseudo-style out of the styles list', () => {
+    expect(RENDER_STYLES[NONE_STYLE.id]).toBeUndefined();
   });
 });
 
-describe('buildStyledPrompt', () => {
-  it('preserves legacy behavior for photorealistic: user prompt wins', () => {
-    expect(
-      buildStyledPrompt({
-        userPrompt: '  add street trees  ',
-        modelDefaultPrompt: MODEL_DEFAULT,
-        styleId: 'photorealistic'
-      })
-    ).toBe('add street trees');
+describe('getDefaultInstructions', () => {
+  it('anchors the editor default to the input image geometry', () => {
+    expect(getDefaultInstructions()).toContain('input image');
+    expect(getDefaultInstructions('editor')).toBe(getDefaultInstructions());
   });
 
-  it('preserves legacy behavior for photorealistic: falls back to model default', () => {
-    expect(
-      buildStyledPrompt({
-        userPrompt: '',
-        modelDefaultPrompt: MODEL_DEFAULT,
-        styleId: 'photorealistic'
-      })
-    ).toBe(MODEL_DEFAULT);
+  it('keeps the generator default valid with or without a source image', () => {
+    expect(getDefaultInstructions('generator')).toContain('if provided');
   });
 
-  it('appends the style description to the user prompt', () => {
-    const result = buildStyledPrompt({
-      userPrompt: 'add street trees',
-      modelDefaultPrompt: MODEL_DEFAULT,
-      styleId: 'watercolor'
-    });
-    expect(result.startsWith('add street trees. ')).toBe(true);
-    expect(result).toContain(RENDER_STYLES.watercolor.stylePrompt);
-  });
-
-  it('uses the neutral styled base prompt when user prompt is empty', () => {
-    const result = buildStyledPrompt({
-      userPrompt: '   ',
-      modelDefaultPrompt: MODEL_DEFAULT,
-      styleId: 'pixel-16bit'
-    });
-    expect(result.startsWith(STYLED_BASE_PROMPT)).toBe(true);
-    expect(result).toContain(RENDER_STYLES['pixel-16bit'].stylePrompt);
-    // The model's photorealistic default must not leak into styled renders
-    expect(result).not.toContain('photorealistic');
-  });
-
-  it('falls back to photorealistic behavior for unknown style IDs', () => {
-    expect(
-      buildStyledPrompt({
-        userPrompt: '',
-        modelDefaultPrompt: MODEL_DEFAULT,
-        styleId: 'not-a-style'
-      })
-    ).toBe(MODEL_DEFAULT);
-  });
-
-  it('handles missing arguments without throwing', () => {
-    expect(buildStyledPrompt({})).toBe('');
-    expect(buildStyledPrompt({ styleId: 'watercolor' })).toContain(
-      RENDER_STYLES.watercolor.stylePrompt
+  it('falls back to the editor default for unknown variants', () => {
+    expect(getDefaultInstructions('not-an-app')).toBe(
+      getDefaultInstructions('editor')
     );
+  });
+});
+
+describe('getStyleSentence', () => {
+  it('wraps every style prompt into a full sentence', () => {
+    getRenderStylesList().forEach((style) => {
+      const sentence = getStyleSentence(style.id);
+      expect(sentence.startsWith('Render as ')).toBe(true);
+      expect(sentence).toContain(style.stylePrompt);
+      expect(sentence.endsWith('.')).toBe(true);
+    });
+  });
+
+  it('returns an empty string for none and unknown IDs', () => {
+    expect(getStyleSentence(NONE_STYLE.id)).toBe('');
+    expect(getStyleSentence('not-a-style')).toBe('');
+    expect(getStyleSentence(undefined)).toBe('');
+  });
+});
+
+describe('describeStyleText', () => {
+  it('round-trips every style sentence', () => {
+    getRenderStylesList().forEach((style) => {
+      expect(describeStyleText(getStyleSentence(style.id))).toBe(style.id);
+    });
+  });
+
+  it('ignores surrounding whitespace', () => {
+    expect(describeStyleText(`  ${getStyleSentence('watercolor')}\n`)).toBe(
+      'watercolor'
+    );
+  });
+
+  it('reports none for an empty field', () => {
+    expect(describeStyleText('')).toBe('none');
+    expect(describeStyleText('   ')).toBe('none');
+    expect(describeStyleText(undefined)).toBe('none');
+  });
+
+  it('reports custom for edited text', () => {
+    expect(describeStyleText('Render as a crayon drawing.')).toBe('custom');
+    expect(
+      describeStyleText(getStyleSentence('watercolor') + ' At night.')
+    ).toBe('custom');
+  });
+});
+
+describe('composePrompt', () => {
+  it('joins instructions and style verbatim', () => {
+    expect(
+      composePrompt({ instructions: 'Add trees.', style: 'Render as x.' })
+    ).toBe('Add trees. Render as x.');
+  });
+
+  it('adds a period when the instructions lack terminal punctuation', () => {
+    expect(
+      composePrompt({ instructions: 'Add trees', style: 'Render as x.' })
+    ).toBe('Add trees. Render as x.');
+  });
+
+  it('handles either part being empty', () => {
+    expect(composePrompt({ instructions: 'Add trees.', style: '' })).toBe(
+      'Add trees.'
+    );
+    expect(composePrompt({ instructions: '', style: 'Render as x.' })).toBe(
+      'Render as x.'
+    );
+    expect(composePrompt({})).toBe('');
+    expect(composePrompt()).toBe('');
+  });
+
+  it('composes the default prefill into a complete prompt', () => {
+    const prompt = composePrompt({
+      instructions: getDefaultInstructions(),
+      style: getStyleSentence(DEFAULT_RENDER_STYLE_ID)
+    });
+    expect(prompt).toContain('input image');
+    expect(prompt).toContain('photorealistic');
   });
 });

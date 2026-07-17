@@ -1,21 +1,18 @@
 // RenderStyleSelector styles - Dark theme matching AIModelSelector
 // Works in both 3DStreet Editor and Image Generator
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-  gap: 6px;
+.row {
+  display: flex;
+  gap: 4px;
   width: 100%;
 }
 
 .chip {
   all: unset;
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 4px;
+  flex: 1;
+  min-width: 0;
+  padding: 2px;
   border-radius: 0.375rem;
   border: 1px solid rgba(255, 255, 255, 0.15);
   background-color: rgba(30, 30, 30, 0.95);
@@ -39,13 +36,7 @@
 
   &.selected {
     border-color: #774dee;
-    background-color: rgba(119, 77, 238, 0.2);
     box-shadow: 0 0 0 1px #774dee;
-
-    .name {
-      color: #c4b5fd;
-      font-weight: 600;
-    }
   }
 }
 
@@ -54,24 +45,42 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 34px;
+  height: 24px;
   border-radius: 0.25rem;
   overflow: hidden;
 }
 
 .emoji {
-  font-size: 18px;
+  font-size: 14px;
   line-height: 1;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 }
 
-.name {
-  font-size: 10px;
-  line-height: 1.2;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.85);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+// Tooltip renders in a portal at the document body, above the modal (z 1000)
+.tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 220px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(20, 20, 20, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 1100;
+}
+
+.tooltipName {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.tooltipDescription {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.tooltipArrow {
+  fill: rgba(20, 20, 20, 0.97);
 }

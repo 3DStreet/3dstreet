@@ -1,11 +1,21 @@
 .screenshotModalWrapper {
   &:global(.modal-content) {
     width: 95%;
-    max-width: 1400px;
+    max-width: 1680px;
     height: 85vh;
     max-height: 85vh;
     display: flex;
     flex-direction: column;
+    row-gap: 8px; // global modal row-gap (32px) wastes vertical space here
+  }
+
+  // The global .modal-body reserves header space with a fixed max-height and
+  // a 40px bottom margin; let it flex-fill instead so the content area gets
+  // the room back. Its 32px side padding matches the header/close button.
+  :global(.modal-body) {
+    flex: 1;
+    max-height: none;
+    margin-bottom: 16px;
   }
 }
 
@@ -13,12 +23,12 @@
   display: flex;
   flex: 1;
   min-height: 0; // Critical for preventing overflow
-  padding: 20px;
+  padding: 0;
   gap: 20px;
 }
 
 .sidebar {
-  width: 280px;
+  width: 340px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -197,6 +207,38 @@
   color: #666;
   font-style: italic;
   padding-left: 4px;
+}
+
+// Groups the instructions + style fields so they read as one prompt,
+// stacked in the order they are joined and sent.
+.promptGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.promptSubLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+// Prompt fields keep the muted global gray while showing default/preset
+// text; text the user actually authored renders white. !important beats
+// the higher-specificity global `#inspectorContainer textarea` color.
+.editedText {
+  color: #fff !important;
+}
+
+.upgradeLink {
+  color: #774dee;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .modelSelector {

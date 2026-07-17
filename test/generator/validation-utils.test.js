@@ -17,12 +17,20 @@ const validateGeneration = (authState, config, formData) => {
 
   // Check authentication
   if (!authState?.isAuthenticated) {
-    return { valid: false, error: 'auth_required', errors: ['Not authenticated'] };
+    return {
+      valid: false,
+      error: 'auth_required',
+      errors: ['Not authenticated']
+    };
   }
 
   // Check tokens
   if (!(authState?.tokenProfile?.genToken > 0)) {
-    return { valid: false, error: 'no_tokens', errors: ['No tokens available'] };
+    return {
+      valid: false,
+      error: 'no_tokens',
+      errors: ['No tokens available']
+    };
   }
 
   // Check prompt requirement
@@ -60,8 +68,7 @@ const parseDimension = (dimensionString) => {
 const buildRequestParams = (model, formData, options = {}) => {
   const params = {
     safety_tolerance: options.safetyTolerance ?? 2,
-    output_format: options.outputFormat ?? 'jpeg',
-    prompt_upsampling: options.promptUpsampling ?? false
+    output_format: options.outputFormat ?? 'jpeg'
   };
 
   // Add prompt
@@ -274,7 +281,10 @@ describe('Validation Utils', () => {
       const result = validateGeneration(
         createAuthState(),
         createConfig({ requiresPrompt: true, requiresSourceImage: true }),
-        { prompt: 'A beautiful sunset', sourceImage: 'data:image/jpeg;base64,...' }
+        {
+          prompt: 'A beautiful sunset',
+          sourceImage: 'data:image/jpeg;base64,...'
+        }
       );
 
       expect(result.valid).toBe(true);
@@ -299,7 +309,10 @@ describe('Validation Utils', () => {
     });
 
     it('should parse large dimensions', () => {
-      expect(parseDimension('1920x1080')).toEqual({ width: 1920, height: 1080 });
+      expect(parseDimension('1920x1080')).toEqual({
+        width: 1920,
+        height: 1080
+      });
     });
 
     it('should return null for invalid format', () => {
@@ -326,19 +339,17 @@ describe('Validation Utils', () => {
 
         expect(params.safety_tolerance).toBe(2);
         expect(params.output_format).toBe('jpeg');
-        expect(params.prompt_upsampling).toBe(false);
       });
 
       it('should override default options', () => {
         const params = buildRequestParams(
           'flux-pro-1.1',
           {},
-          { safetyTolerance: 5, outputFormat: 'png', promptUpsampling: true }
+          { safetyTolerance: 5, outputFormat: 'png' }
         );
 
         expect(params.safety_tolerance).toBe(5);
         expect(params.output_format).toBe('png');
-        expect(params.prompt_upsampling).toBe(true);
       });
 
       it('should trim prompt whitespace', () => {
