@@ -148,6 +148,12 @@ AFRAME.registerSystem('mode-manager', {
     // previous session — assert the render camera explicitly.
     const cam = cameraEl.getObject3D('camera');
     if (cam) this.sceneEl.camera = cam;
+    // While the scene camera renders, EditorControls must not move the
+    // editor camera: its mouse/wheel listeners stay attached to the
+    // always-visible canvas and would silently orbit/zoom the unrendered
+    // camera, displacing the vantage the user returns to on Stop.
+    const controls = AFRAME.INSPECTOR && AFRAME.INSPECTOR.controls;
+    if (controls) controls.enabled = false;
   },
 
   /**
@@ -157,6 +163,8 @@ AFRAME.registerSystem('mode-manager', {
   activateEditorCamera: function () {
     const inspectorCam = AFRAME.INSPECTOR && AFRAME.INSPECTOR.camera;
     if (inspectorCam) this.sceneEl.camera = inspectorCam;
+    const controls = AFRAME.INSPECTOR && AFRAME.INSPECTOR.controls;
+    if (controls) controls.enabled = true;
   },
 
   /**

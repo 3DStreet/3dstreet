@@ -54,17 +54,32 @@ import {
  *     motion (rotation 0 180 0).
  */
 
+// Kinematic collider half-extents for known moving-cast mixins, in
+// ENTITY-local frame (x=width, y=height, z=length, since catalog models
+// are authored forward = +Z so length lies on z). Anything not listed
+// falls back to its lane type's `half` below.
+const MIXIN_HALF_EXTENTS = {
+  'sedan-rig': { x: 0.9, y: 0.75, z: 2.25 }, // 1.8 W × 1.5 H × 4.5 L
+  'suv-rig': { x: 0.95, y: 0.9, z: 2.4 },
+  'box-truck-rig': { x: 1.1, y: 1.4, z: 3.6 },
+  'self-driving-waymo-car': { x: 0.95, y: 0.9, z: 2.4 },
+  motorbike: { x: 0.4, y: 0.8, z: 1.1 },
+  bus: { x: 1.25, y: 1.5, z: 6.0 }, // 2.5 W × 3.0 H × 12 L
+  tram: { x: 1.25, y: 1.75, z: 11.5 }, // 2.5 W × 3.5 H × 23 L
+  trolley: { x: 1.25, y: 1.75, z: 5.25 }
+};
+
 const SEGMENT_TRAFFIC_DEFAULTS = {
-  // [speed m/s, kinematic collider half-extents in ENTITY-local frame
-  //  (x=width, y=height, z=length, since catalog models are authored
-  //  forward = +Z so length lies on z)]
+  // [speed m/s, fallback collider half-extents = the lane's archetypal
+  //  vehicle, shared with MIXIN_HALF_EXTENTS so retuning a model's
+  //  collider can't diverge from its lane default]
   'drive-lane': {
     speed: 11.2,
-    half: { x: 0.9, y: 0.75, z: 2.25 } // 1.8 W × 1.5 H × 4.5 L
+    half: MIXIN_HALF_EXTENTS['sedan-rig']
   },
   'bus-lane': {
     speed: 9.0,
-    half: { x: 1.25, y: 1.5, z: 6.0 } // 2.5 W × 3.0 H × 12 L
+    half: MIXIN_HALF_EXTENTS.bus
   },
   'bike-lane': {
     speed: 6.0,
@@ -76,24 +91,10 @@ const SEGMENT_TRAFFIC_DEFAULTS = {
   },
   rail: {
     speed: 8.0,
-    half: { x: 1.25, y: 1.75, z: 11.5 } // 2.5 W × 3.5 H × 23 L
+    half: MIXIN_HALF_EXTENTS.tram
   }
   // parking-lane intentionally absent: parked cars are static.
   // divider/grass/boundary: no traffic.
-};
-
-// Kinematic collider half-extents for known moving-cast mixins; anything
-// not listed falls back to its lane type's `half` above. Same entity-local
-// frame (x=width, y=height, z=length).
-const MIXIN_HALF_EXTENTS = {
-  'sedan-rig': { x: 0.9, y: 0.75, z: 2.25 },
-  'suv-rig': { x: 0.95, y: 0.9, z: 2.4 },
-  'box-truck-rig': { x: 1.1, y: 1.4, z: 3.6 },
-  'self-driving-waymo-car': { x: 0.95, y: 0.9, z: 2.4 },
-  motorbike: { x: 0.4, y: 0.8, z: 1.1 },
-  bus: { x: 1.25, y: 1.5, z: 6.0 },
-  tram: { x: 1.25, y: 1.75, z: 11.5 },
-  trolley: { x: 1.25, y: 1.75, z: 5.25 }
 };
 
 // Marker component put on every animated traffic / replay entity. Beyond being
@@ -283,10 +284,15 @@ AFRAME.registerComponent('street-traffic', {
               y: 0,
               z: 0
             };
+            // A clone that never had rotation set (inbound pedestrians)
+            // or hasn't initialized yet returns null here — default to
+            // facing +Z rather than throwing mid-walk, which would strand
+            // already-hidden clones in the registry with no holder.
+            const rotation = el.getAttribute('rotation');
             cast.push({
               mixin: el.getAttribute('mixin') || '',
               position: { x: position.x, y: position.y, z: position.z },
-              rotationY: el.getAttribute('rotation').y,
+              rotationY: rotation?.y || 0,
               isPedestrian: compName.startsWith('street-generated-pedestrians')
             });
           })

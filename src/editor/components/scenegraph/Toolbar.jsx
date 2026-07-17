@@ -1,5 +1,5 @@
 /* global STREET */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import {
   faPlay,
@@ -198,6 +198,49 @@ function Toolbar() {
     };
   }, [currentUser]);
 
+  const isAuthor = !authorId || (currentUser && currentUser.uid === authorId);
+  // While Firebase is still restoring the session on a cloud scene we
+  // can't tell a signed-out visitor from the scene's own author — hold
+  // the Edit action (plain label, disabled) instead of bouncing an
+  // already-signed-in user into the sign-in modal. Resolves within ~1s;
+  // the label corrects itself the moment auth settles.
+  const authPending = isAuthLoading && !!authorId && !currentUser;
+  // Editing requires an account (#1824 Remix flow): a signed-out
+  // visitor on a cloud scene gets a "Sign in to Edit" action instead of
+  // the editor. Local drafts (no authorId) keep Edit with no auth —
+  // the visitor is effectively the author of their own unsaved work.
+  const needsAuthToEdit = !authPending && !isAuthor && !currentUser;
+
+  // The action is always "Edit"; permission shows up as consequence,
+  // not vocabulary. A signed-in non-author entering the editor gets a
+  // warning toast that they're on a copy — saving forks it to their
+  // account (the existing save-as-fork flow). Shared by the Edit
+  // button and the viewer's Escape key so the gate can't diverge.
+  const handleEnterEditor = useCallback(() => {
+    if (authPending) return;
+    if (needsAuthToEdit) {
+      setModal('signin');
+      return;
+    }
+    setIsInspectorEnabled(true);
+    if (!isAuthor) {
+      STREET.notify.warningMessage(
+        intl.formatMessage({
+          id: 'viewer.editingCopyWarning',
+          defaultMessage:
+            'This is an unsaved copy. Click Save to make your own copy.'
+        })
+      );
+    }
+  }, [
+    authPending,
+    needsAuthToEdit,
+    isAuthor,
+    setModal,
+    setIsInspectorEnabled,
+    intl
+  ]);
+
   // Escape backs out one level. Stopping is entry-aware (#1824 Q1):
   // Play entered from the editor pops straight back to the editor (the
   // simulation and the mode were entered as one step, so they exit as
@@ -218,59 +261,15 @@ function Toolbar() {
       const playMode = getPlayModeSystem();
       if (playMode?.isPlaying) {
         useStore.getState().stopPlaying();
-      } else if (authorId && !currentUser) {
-        // Editor entry is auth-gated for a signed-out visitor on a
-        // cloud scene (matches the Sign in to Edit button) — offer
-        // sign-in instead of silently ignoring the key.
-        useStore.getState().setModal('signin');
       } else {
-        useStore.getState().setIsInspectorEnabled(true);
-        // Same unsaved-copy warning as the Edit button for a signed-in
-        // non-author (see handleEnterEditor).
-        if (authorId && currentUser && currentUser.uid !== authorId) {
-          STREET.notify.warningMessage(
-            intl.formatMessage({
-              id: 'viewer.editingCopyWarning',
-              defaultMessage:
-                'This is an unsaved copy. Click Save to make your own copy.'
-            })
-          );
-        }
+        handleEnterEditor();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isInspectorEnabled, authorId, currentUser, intl]);
+  }, [isInspectorEnabled, handleEnterEditor]);
 
   if (isInspectorEnabled) return null;
-
-  const isAuthor = !authorId || (currentUser && currentUser.uid === authorId);
-  // Editing requires an account (#1824 Remix flow): a signed-out
-  // visitor on a cloud scene gets a "Sign in to Edit" action instead of
-  // the editor. Local drafts (no authorId) keep Edit with no auth —
-  // the visitor is effectively the author of their own unsaved work.
-  const needsAuthToEdit = !isAuthor && !currentUser;
-
-  // The action is always "Edit"; permission shows up as consequence,
-  // not vocabulary. A signed-in non-author entering the editor gets a
-  // warning toast that they're on a copy — saving forks it to their
-  // account (the existing save-as-fork flow).
-  const handleEnterEditor = () => {
-    if (needsAuthToEdit) {
-      setModal('signin');
-      return;
-    }
-    setIsInspectorEnabled(true);
-    if (!isAuthor) {
-      STREET.notify.warningMessage(
-        intl.formatMessage({
-          id: 'viewer.editingCopyWarning',
-          defaultMessage:
-            'This is an unsaved copy. Click Save to make your own copy.'
-        })
-      );
-    }
-  };
   // A counting millisecond clock only earns its place when time IS the
   // game (drive mode: lap timing, crash penalties). Other simulations
   // (traffic, replay) get a plain pause toggle instead.
@@ -419,6 +418,7 @@ function Toolbar() {
           <Button
             onClick={handleEnterEditor}
             variant="toolbtn"
+            disabled={authPending}
             title={
               isAuthor
                 ? undefined

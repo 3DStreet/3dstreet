@@ -5,53 +5,15 @@ import { faCamera } from '@fortawesome/free-solid-svg-icons';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
-import { takeScreenshotWithOptions } from '@/editor/api/scene';
-import { getCurrentCameraState } from '@/editor/lib/cameraUtils';
-import { assetsService } from '@shared/assets';
+import {
+  captureScreenshotAsJpeg,
+  saveScreenshotToGallery
+} from '@/editor/api/snapshot';
 import { Button } from '../Button';
 import { AwesomeIcon } from '../AwesomeIcon';
 import styles from './ViewerSnapshot.module.scss';
 
 const TOAST_MS = 6000;
-
-/**
- * Capture the current frame via screentock into the (always-mounted,
- * hidden) #screentock-destination img, then re-encode as JPEG. Returns
- * a data URL plus dimensions. Purely read-only: no pause, no modal —
- * a running simulation (or drive run) is never interrupted.
- */
-async function captureFrame(isPro) {
-  const imgEl = document.getElementById('screentock-destination');
-  if (!imgEl) throw new Error('screenshot destination not found');
-  const loaded = new Promise((resolve) =>
-    imgEl.addEventListener('load', resolve, { once: true })
-  );
-  await takeScreenshotWithOptions({
-    type: 'img',
-    showLogo: !isPro,
-    showWatermark: !isPro,
-    imgElementSelector: '#screentock-destination'
-  });
-  await loaded;
-
-  // Re-encode the PNG data URI as JPEG — much smaller for the gallery
-  // upload and the local download (same approach as ScreenshotModal).
-  const img = new Image();
-  img.src = imgEl.src;
-  await new Promise((resolve) => {
-    img.onload = resolve;
-    if (img.complete) resolve();
-  });
-  const canvas = document.createElement('canvas');
-  canvas.width = img.width;
-  canvas.height = img.height;
-  canvas.getContext('2d').drawImage(img, 0, 0);
-  return {
-    dataUrl: canvas.toDataURL('image/jpeg', 0.95),
-    width: img.width,
-    height: img.height
-  };
-}
 
 /**
  * Capture-only snapshot for the Viewer (#1824 Q2): instant capture, a
@@ -76,7 +38,7 @@ export const ViewerSnapshot = () => {
     if (busy) return;
     setBusy(true);
     try {
-      const { dataUrl, width, height } = await captureFrame(isPro);
+      const { dataUrl, width, height } = await captureScreenshotAsJpeg(isPro);
       setToast({ dataUrl, savedToGallery: !!currentUser?.uid });
       clearTimeout(timeoutRef.current);
       timeoutRef.current = setTimeout(() => setToast(null), TOAST_MS);
@@ -89,32 +51,19 @@ export const ViewerSnapshot = () => {
 
       // Background gallery save — never blocks the toast or the sim.
       if (currentUser?.uid) {
-        (async () => {
-          try {
-            await assetsService.init();
-            await assetsService.addAsset(
-              dataUrl,
-              {
-                timestamp: new Date().toISOString(),
-                sceneId: STREET.utils.getCurrentSceneId(),
-                sceneTitle: useStore.getState().sceneTitle || 'Untitled',
-                source: 'viewer-snapshot',
-                model: 'Viewer Snapshot',
-                width,
-                height,
-                // Persist the capture pose so the gallery can offer a
-                // "focus" button that returns the camera here (#1605).
-                cameraState: getCurrentCameraState(),
-                isPro: !!isPro
-              },
-              'image',
-              'screenshot',
-              currentUser.uid
-            );
-          } catch (error) {
-            console.error('Failed to save snapshot to gallery:', error);
-          }
-        })();
+        saveScreenshotToGallery(
+          dataUrl,
+          {
+            source: 'viewer-snapshot',
+            model: 'Viewer Snapshot',
+            width,
+            height,
+            isPro
+          },
+          currentUser.uid
+        ).catch((error) => {
+          console.error('Failed to save snapshot to gallery:', error);
+        });
       }
     } catch (error) {
       console.error('Viewer snapshot failed:', error);
