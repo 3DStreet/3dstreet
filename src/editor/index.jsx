@@ -114,10 +114,10 @@ Inspector.prototype = {
     this.open();
 
     // If viewer mode is requested, switch to it after initialization is
-    // complete. 'saved' vantage: no editing session to hand a camera
-    // over from — start at the scene's saved start view once it loads.
+    // complete. The camera flies to the scene's saved start view via
+    // the newScene camera animation once it loads.
     if (isViewerModeRequested()) {
-      useStore.getState().enterViewerMode('saved');
+      useStore.getState().enterViewerMode();
     }
   },
 

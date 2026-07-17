@@ -1,6 +1,7 @@
 /* global STREET */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
+import { Tooltip } from 'radix-ui';
 import {
   faPlay,
   faPause,
@@ -18,6 +19,8 @@ import { AppSwitcher } from '@shared/navigation/components';
 import { SceneEditTitle } from '../elements/SceneEditTitle';
 import { Button } from '../elements/Button';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
+import { ViewerSnapshot } from '../elements/ViewerSnapshot/ViewerSnapshot';
+import { ToolTip } from '../elements/PrimaryToolbar/PrimaryToolbar';
 import primaryStyles from '../elements/PrimaryToolbar/PrimaryToolbar.module.scss';
 import styles from './Toolbar.module.scss';
 import { formatSimTime } from '@/aframe-components/play/format-sim-time';
@@ -27,7 +30,7 @@ function getPlayModeSystem() {
 }
 
 /**
- * The mode-manager's current control mode ('editor' | 'locomotion' |
+ * The mode-manager's current control mode ('editor' | 'viewer' |
  * 'drive' | ...), tracked reactively via the mode-changed scene event.
  */
 function useControlMode() {
@@ -84,7 +87,7 @@ function SimClock() {
   const finishTitle = intl.formatMessage(
     {
       id: 'viewer.simClockFinish',
-      defaultMessage: 'Finished in {time} — click to resume'
+      defaultMessage: 'Finished in {time} — press Reset to race again'
     },
     { time: formatSimTime(playOutcomeTimeMs) }
   );
@@ -138,9 +141,11 @@ function SimClock() {
 /**
  * Viewer top bar — the marquee shown whenever the scene is presented
  * without the editor (inspector closed). One component for every
- * audience; permission only changes the primary action:
- *   - scene author (or unsaved local scene): "Edit Scene"
- *   - anyone else: "Remix" (opens the editor; saving forks a copy)
+ * audience; the primary action is always "Edit":
+ *   - scene author (or unsaved local scene): opens the editor in place
+ *   - signed-in non-author: opens the editor on a copy (warning toast;
+ *     saving forks via the existing save-as-fork flow)
+ *   - signed-out visitor on a cloud scene: "Sign in to Edit"
  * Play/pause controls appear only when the scene has a registered
  * playable capability — static scenes never see them.
  */
@@ -150,7 +155,6 @@ function Toolbar() {
   const setIsInspectorEnabled = useStore((s) => s.setIsInspectorEnabled);
   const isPlaying = useStore((s) => s.isPlaying);
   const isPlayPaused = useStore((s) => s.isPlayPaused);
-  const isLocomotionEnabled = useStore((s) => s.isLocomotionEnabled);
   const { currentUser, isLoading: isAuthLoading } = useAuthContext() || {};
   const setModal = useStore((s) => s.setModal);
   const hasPlayable = useHasPlayable();
@@ -196,8 +200,54 @@ function Toolbar() {
     };
   }, [currentUser]);
 
-  // Escape backs out one level: stop the running simulation first,
-  // then (next press) return to the editor.
+  const isAuthor = !authorId || (currentUser && currentUser.uid === authorId);
+  // While Firebase is still restoring the session on a cloud scene we
+  // can't tell a signed-out visitor from the scene's own author — hold
+  // the Edit action (plain label, disabled) instead of bouncing an
+  // already-signed-in user into the sign-in modal. Resolves within ~1s;
+  // the label corrects itself the moment auth settles.
+  const authPending = isAuthLoading && !!authorId && !currentUser;
+  // Editing requires an account (#1824 Remix flow): a signed-out
+  // visitor on a cloud scene gets a "Sign in to Edit" action instead of
+  // the editor. Local drafts (no authorId) keep Edit with no auth —
+  // the visitor is effectively the author of their own unsaved work.
+  const needsAuthToEdit = !authPending && !isAuthor && !currentUser;
+
+  // The action is always "Edit"; permission shows up as consequence,
+  // not vocabulary. A signed-in non-author entering the editor gets a
+  // warning toast that they're on a copy — saving forks it to their
+  // account (the existing save-as-fork flow). Shared by the Edit
+  // button and the viewer's Escape key so the gate can't diverge.
+  const handleEnterEditor = useCallback(() => {
+    if (authPending) return;
+    if (needsAuthToEdit) {
+      setModal('signin');
+      return;
+    }
+    setIsInspectorEnabled(true);
+    if (!isAuthor) {
+      STREET.notify.warningMessage(
+        intl.formatMessage({
+          id: 'viewer.editingCopyWarning',
+          defaultMessage:
+            'This is an unsaved copy. Click Save to make your own copy.'
+        })
+      );
+    }
+  }, [
+    authPending,
+    needsAuthToEdit,
+    isAuthor,
+    setModal,
+    setIsInspectorEnabled,
+    intl
+  ]);
+
+  // Escape backs out one level. Stopping is entry-aware (#1824 Q1):
+  // Play entered from the editor pops straight back to the editor (the
+  // simulation and the mode were entered as one step, so they exit as
+  // one); a visitor's session pops to View-idle, and the next press
+  // opens the editor (auth-gated, mirroring the Edit button).
   useEffect(() => {
     if (isInspectorEnabled) return undefined;
     const onKeyDown = (e) => {
@@ -212,18 +262,16 @@ function Toolbar() {
       e.preventDefault();
       const playMode = getPlayModeSystem();
       if (playMode?.isPlaying) {
-        playMode.stop();
+        useStore.getState().stopPlaying();
       } else {
-        useStore.getState().setIsInspectorEnabled(true);
+        handleEnterEditor();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isInspectorEnabled]);
+  }, [isInspectorEnabled, handleEnterEditor]);
 
   if (isInspectorEnabled) return null;
-
-  const isAuthor = !authorId || (currentUser && currentUser.uid === authorId);
   // A counting millisecond clock only earns its place when time IS the
   // game (drive mode: lap timing, crash penalties). Other simulations
   // (traffic, replay) get a plain pause toggle instead.
@@ -268,112 +316,150 @@ function Toolbar() {
       {hasPlayable && (
         <div id="viewer-shuttle" className={`clickable ${styles.shuttleDock}`}>
           <div className={primaryStyles.wrapper}>
-            {isPlaying ? (
-              <>
-                {showSimClock ? (
-                  <SimClock />
-                ) : (
+            <Tooltip.Provider>
+              {isPlaying ? (
+                <>
+                  {showSimClock ? (
+                    <SimClock />
+                  ) : (
+                    <ToolTip
+                      content={
+                        isPlayPaused
+                          ? intl.formatMessage({
+                              id: 'viewer.resumeTitle',
+                              defaultMessage: 'Resume the simulation'
+                            })
+                          : intl.formatMessage({
+                              id: 'viewer.pauseTitle',
+                              defaultMessage: 'Pause the simulation'
+                            })
+                      }
+                    >
+                      <Button
+                        variant="toolbtn"
+                        onClick={() => getPlayModeSystem()?.togglePause()}
+                        leadingIcon={
+                          <AwesomeIcon
+                            icon={isPlayPaused ? faPlay : faPause}
+                            size={14}
+                          />
+                        }
+                      >
+                        {isPlayPaused ? (
+                          <FormattedMessage
+                            id="viewer.resume"
+                            defaultMessage="Resume"
+                          />
+                        ) : (
+                          <FormattedMessage
+                            id="viewer.pause"
+                            defaultMessage="Pause"
+                          />
+                        )}
+                      </Button>
+                    </ToolTip>
+                  )}
+                  <div className={primaryStyles.divider} />
+                  {/* Reset meaning depends on transport state: while
+                    playing it's a quick restart (t=0, still running —
+                    matches R / gamepad Y mid-drive); while paused it
+                    winds all the way back to the viewer's initial
+                    state — idle at frame zero, showing Start. Raw
+                    stop(), not stopPlaying(): Reset never changes
+                    mode, so it stays in the viewer even for an
+                    editor-origin session. */}
                   <Button
                     variant="toolbtn"
-                    onClick={() => getPlayModeSystem()?.togglePause()}
-                    leadingIcon={
-                      <AwesomeIcon
-                        icon={isPlayPaused ? faPlay : faPause}
-                        size={14}
-                      />
-                    }
+                    onClick={() => {
+                      const playMode = getPlayModeSystem();
+                      if (!playMode) return;
+                      if (playMode.isPaused) playMode.stop();
+                      else playMode.reset();
+                    }}
+                    leadingIcon={<AwesomeIcon icon={faRotateRight} size={14} />}
                   >
-                    {isPlayPaused ? (
-                      <FormattedMessage
-                        id="viewer.resume"
-                        defaultMessage="Resume"
-                      />
-                    ) : (
-                      <FormattedMessage
-                        id="viewer.pause"
-                        defaultMessage="Pause"
-                      />
-                    )}
+                    <FormattedMessage
+                      id="viewer.reset"
+                      defaultMessage="Reset"
+                    />
                   </Button>
-                )}
-                <div className={primaryStyles.divider} />
+                  <div className={primaryStyles.divider} />
+                  {/* Entry-aware (#1824 Q1): back to the editor if Play was
+                    entered from there, else to View-idle. */}
+                  <Button
+                    variant="toolbtn"
+                    onClick={() => useStore.getState().stopPlaying()}
+                    leadingIcon={<AwesomeIcon icon={faStop} size={14} />}
+                  >
+                    <FormattedMessage id="viewer.stop" defaultMessage="Stop" />
+                  </Button>
+                </>
+              ) : (
                 <Button
                   variant="toolbtn"
-                  onClick={() => getPlayModeSystem()?.reset()}
-                  leadingIcon={<AwesomeIcon icon={faRotateRight} size={14} />}
-                  title={intl.formatMessage({
-                    id: 'viewer.resetTitle',
-                    defaultMessage:
-                      'Reset — restart the simulation from t=0 with objects at spawn'
-                  })}
+                  onClick={() => getPlayModeSystem()?.start()}
+                  leadingIcon={<AwesomeIcon icon={faPlay} size={14} />}
                 >
-                  <FormattedMessage id="viewer.reset" defaultMessage="Reset" />
+                  <FormattedMessage id="viewer.play" defaultMessage="Start" />
                 </Button>
-                <div className={primaryStyles.divider} />
-                <Button
-                  variant="toolbtn"
-                  onClick={() => getPlayModeSystem()?.stop()}
-                  leadingIcon={<AwesomeIcon icon={faStop} size={14} />}
-                >
-                  <FormattedMessage id="viewer.stop" defaultMessage="Stop" />
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="toolbtn"
-                onClick={() => getPlayModeSystem()?.start()}
-                leadingIcon={<AwesomeIcon icon={faPlay} size={14} />}
-              >
-                <FormattedMessage id="viewer.play" defaultMessage="Start" />
-              </Button>
-            )}
+              )}
+            </Tooltip.Provider>
           </div>
         </div>
       )}
 
       {/* Identity + access, top-right — mirrors the editor's collapsed
-          auth dock. The primary action (Edit for the owner, Remix for
-          everyone else) works unauthenticated: Remix opens the editor
-          and sign-in happens at save time. Same ProfileButton component
-          as the editor, including its signed-out state. */}
+          auth dock. The primary action is always Edit; a signed-out
+          visitor on a cloud scene is asked to sign in first. Same
+          ProfileButton component as the editor, including its
+          signed-out state. */}
       <div id="viewer-right-dock" className={`clickable ${styles.rightDock}`}>
         <div className={primaryStyles.wrapper}>
-          {/* Access state pairs exactly with the action: "View only"
-              appears iff the action is Remix (you can't edit this scene
-              in place). When the action is Edit, you can edit — so no
-              view-only label. Covers unauthenticated visitors on cloud
-              scenes (not theirs → Remix) without mislabeling an
-              unauthed user's own local draft (Edit). */}
-          {!isAuthor && (
-            <>
-              <span className={styles.viewOnlyText}>
-                <FormattedMessage
-                  id="viewer.viewOnly"
-                  defaultMessage="View only"
-                />
-              </span>
-              <div className={primaryStyles.divider} />
-            </>
-          )}
-          <Button
-            onClick={() => setIsInspectorEnabled(true)}
-            variant="toolbtn"
-            title={
-              isAuthor
-                ? undefined
-                : intl.formatMessage({
-                    id: 'viewer.remixTitle',
-                    defaultMessage:
-                      'Open the editor — saving will create your own copy'
-                  })
-            }
-          >
-            {isAuthor ? (
-              <FormattedMessage id="toolbar.edit" defaultMessage="Edit" />
-            ) : (
-              <FormattedMessage id="viewer.remix" defaultMessage="Remix" />
-            )}
-          </Button>
+          <Tooltip.Provider>
+            {/* Capture-only snapshot (#1824 Q2): instant capture +
+              non-blocking toast; no modal, no pause. The richer
+              Capture & Render flow stays an editor action. */}
+            <ViewerSnapshot />
+            <div className={primaryStyles.divider} />
+            {/* No "View only" label: the absence of edit controls plus an
+              Edit / Sign in to Edit action already says this isn't edit
+              mode; copy semantics surface via the unsaved-copy toast. */}
+            <ToolTip
+              content={
+                needsAuthToEdit
+                  ? intl.formatMessage({
+                      id: 'viewer.signInToEditTitle',
+                      defaultMessage:
+                        'Sign in to open the editor — saving will create your own copy'
+                    })
+                  : isAuthor
+                    ? intl.formatMessage({
+                        id: 'viewer.editTitle',
+                        defaultMessage: 'Open the editor'
+                      })
+                    : intl.formatMessage({
+                        id: 'viewer.editCopyTitle',
+                        defaultMessage:
+                          'Open the editor — saving will create your own copy'
+                      })
+              }
+            >
+              <Button
+                onClick={handleEnterEditor}
+                variant="toolbtn"
+                disabled={authPending}
+              >
+                {needsAuthToEdit ? (
+                  <FormattedMessage
+                    id="viewer.signInToEdit"
+                    defaultMessage="Sign in to Edit"
+                  />
+                ) : (
+                  <FormattedMessage id="toolbar.edit" defaultMessage="Edit" />
+                )}
+              </Button>
+            </ToolTip>
+          </Tooltip.Provider>
         </div>
         <ProfileButton
           currentUser={currentUser}
@@ -385,20 +471,6 @@ function Toolbar() {
           tooltipSide="bottom"
         />
       </div>
-      {isLocomotionEnabled && (
-        <div className={styles.controlsHint}>
-          <span className={styles.keyGroup}>W A S D</span>{' '}
-          <FormattedMessage id="viewer.hintMove" defaultMessage="to move" />
-          {' · '}
-          <span className={styles.keyGroup}>
-            <FormattedMessage
-              id="viewer.hintClickDrag"
-              defaultMessage="Click + Drag"
-            />
-          </span>{' '}
-          <FormattedMessage id="viewer.hintLook" defaultMessage="to look" />
-        </div>
-      )}
     </>
   );
 }

@@ -69,12 +69,12 @@ Unified Viewer presentation with a Start/Stop play lifecycle. Playing is present
 
 **Lifecycle:** `play-mode` system owns start/stop/pause/reset and emits `play-mode-start|stop|reset` scene events; features subscribe independently and do their own setup/teardown. The canonical clock is `scene-timer.simulationTime` — advanced by physics sub-steps while driving (deterministic, slow-motion on weak CPUs), else at wall-clock rate.
 
-**Mode arbitration:** `mode-manager` system arbitrates control modes (`locomotion` vs `drive`) and aggregates per-feature "playable checks" that light up the Play UI.
+**Mode arbitration:** `mode-manager` system arbitrates control modes (`editor` / `viewer` / `drive`) and aggregates per-feature "playable checks" that light up the Play UI. Edit and View share the editor's camera + EditorControls (#1848) — there is no separate viewer control scheme; drive mode (and WebXR) borrow the scene's `#cameraRig` camera via `activateSceneCamera()`/`activateEditorCamera()` and give it back.
 
 **Features (all play-mode subscribers, unaware of each other):**
 
 - `drive-mode` + `play-mode-vehicle` / `play-mode-physics` — Rapier raycast-wheel driving sim (WASM lazy-loaded on first Play); spawns the player car from a `[drive-controls]` entity; keyboard + gamepad input
-- `street-traffic` — synthetic traffic on `[managed-street][playable]` lanes, pure function of sim-time
+- `street-traffic` — animates the edit-time cast on `[managed-street][playable]` lanes (each static clone gets an animated twin; a lane with no clones plays empty by design), pure function of sim-time
 - `street-traffic-replay` — replays anonymized roadside-sensor manifests as agents on a linked managed-street; suppresses synthetic traffic on its target street
 - `race-target`, `collision-marker`, `best-times` — race finish gate, crash markers (session-only, stripped on stop/reset), localStorage best times
 
@@ -134,7 +134,7 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 - `onAssetWritten` — Firestore trigger, maintains `users/{uid}/meta/usage.bytesUsed` via transaction. Only `size` (original) counts toward quota; `optimizedSourceSize` is excluded (platform cost).
 - `getUploadQuota` — callable, reads plan via `getAuth().getUser(uid)` (Admin SDK, always fresh custom claims). Returns `{ bytesUsed, planLimit, planName, allowed }`.
 
-**Plan limits (decimal):** FREE 100 MB · PRO 5 GB · MAX 25 GB (reserved; no users today). Per-file caps: GLB 50 MB · image 10 MB.
+**Plan limits (decimal):** total storage FREE 100 MB · PRO 5 GB · MAX 25 GB (reserved; no users today). Per-file caps are plan-scaled and type-agnostic (`MAX_FILE_BYTES_BY_PLAN` in `public/functions/asset-quota.js`, surfaced as `getUploadQuota().perFileLimit`): FREE 100 MB · PRO 1 GB · MAX 5 GB. Soft-enforced client-side + preflight; `storage.rules` holds a flat 5 GB hard ceiling.
 
 **Security rules:**
 

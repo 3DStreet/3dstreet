@@ -244,6 +244,26 @@ const useStore = create(
         // call sceneEl.systems['play-mode'].start()/stop()/togglePause().
         isPlaying: false,
         isPlayPaused: false,
+        // Where the current play session was entered from, stamped by
+        // play-mode.start(): 'editor' (Start/P from an editing session)
+        // or 'viewer' (viewer Start button, View-entry autoplay). Read
+        // by stopPlaying() to pick Stop's destination. null while idle.
+        playEntryOrigin: null,
+        // Entry-aware Stop (#1824 Q1): every user-facing stop affordance
+        // (viewer Stop button, Escape, gamepad Back) routes through here.
+        // Entered Play from the editor → Stop returns to the editor;
+        // a visitor (viewer origin) → Stop returns to View-idle.
+        stopPlaying: () => {
+          const playMode =
+            document.querySelector('a-scene')?.systems?.['play-mode'];
+          if (useStore.getState().playEntryOrigin === 'editor') {
+            // setIsInspectorEnabled(true) stops play as part of opening
+            // the editor, so this is one transition, not two.
+            useStore.getState().setIsInspectorEnabled(true);
+          } else {
+            playMode?.stop();
+          }
+        },
         // Transient outcome shown by the viewer top bar's sim pill.
         //   null      – normal running state
         //   'finish'  – race-target was crossed (blue, pinned at finish time)
@@ -254,19 +274,12 @@ const useStore = create(
         // playFinish: null | { finalMs, simMs, collisions, previousBestMs,
         //   isNewBest, deltaMs, courseKey, finishedAt }
         playFinish: null,
-        // Mirrored from mode-manager: true while the viewer's
-        // WASD/look controls are active (drives the controls hint).
-        isLocomotionEnabled: false,
-        // Which camera vantage the next viewer entry should use:
-        //   'editor' — hand off the current editor camera pose (the
-        //              WYSIWYG View/Play button)
-        //   'saved'  — the scene's saved start view (default snapshot >
-        //              memory.cameraState > ?camera= deep link), used
-        //              when arriving in the viewer without an editing
-        //              session (?viewer=true, non-author scene loads)
-        viewerVantage: 'editor',
-        enterViewerMode: (vantage = 'editor') => {
-          set({ viewerVantage: vantage });
+        // Enter viewer presentation. The camera needs no handoff: view
+        // and edit share the editor camera and its controls (#1848), so
+        // the viewer starts exactly where the editor was looking — and a
+        // scene arriving in the viewer flies to its saved start view via
+        // the same newScene camera animation the editor uses.
+        enterViewerMode: () => {
           useStore.getState().setIsInspectorEnabled(false);
         },
         isInspectorEnabled: true,

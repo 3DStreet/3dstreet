@@ -6,11 +6,12 @@ import posthog from 'posthog-js';
 import useStore from '@/store';
 import { Button } from '../../elements';
 import { DownloadIcon } from '@shared/icons';
-import { takeScreenshotWithOptions } from '../../../api/scene';
 import { getCurrentCameraState } from '../../../lib/cameraUtils';
 import {
+  captureScreenshotAsJpeg,
   createSceneSnapshot,
   createSnapshotFromImageUrl,
+  saveScreenshotToGallery,
   setSnapshotAsSceneThumbnail
 } from '../../../api/snapshot';
 import { functions } from '@shared/services/firebase';
@@ -749,75 +750,37 @@ function ScreenshotModal() {
 
   useEffect(() => {
     if (modal === 'screenshot') {
-      takeScreenshotWithOptions({
-        type: 'img',
-        showLogo: !isPro,
-        showWatermark: !isPro,
-        imgElementSelector: '#screentock-destination'
-      }).then(async () => {
-        const imgElement = document.getElementById('screentock-destination');
-        if (imgElement && imgElement.src) {
-          setOriginalImageUrl(imgElement.src);
-
-          // Save screenshot to gallery (async, don't block UI)
-          if (currentUser?.uid) {
-            // Upload to gallery in the background
-            (async () => {
-              try {
-                // Load the image to get dimensions and convert to JPEG
-                const img = new Image();
-                img.src = imgElement.src;
-                await new Promise((resolve) => {
-                  img.onload = resolve;
-                  // If already loaded, resolve immediately
-                  if (img.complete) resolve();
-                });
-
-                // Convert PNG data URI to JPEG for smaller file size
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-
-                // Convert to JPEG at 95% quality (much smaller than PNG)
-                const jpegDataUri = canvas.toDataURL('image/jpeg', 0.95);
-
-                // Initialize gallery service V2 if needed
-                await assetsService.init();
-
-                console.log('Uploading screenshot to gallery (JPEG format)...');
-
-                // Add to gallery using V2 API
-                const assetId = await assetsService.addAsset(
-                  jpegDataUri, // JPEG Data URI (will be auto-converted to blob)
-                  {
-                    timestamp: new Date().toISOString(),
-                    sceneId: STREET.utils.getCurrentSceneId(),
-                    sceneTitle: useStore.getState().sceneTitle || 'Untitled',
-                    source: 'screenshot',
-                    model: 'Editor Snapshot',
-                    width: img.width,
-                    height: img.height,
-                    // Persist the capture pose so the gallery can offer a
-                    // "focus" button that returns the camera here later (#1605).
-                    cameraState: getCurrentCameraState(),
-                    isPro: isPro
-                  },
-                  'image', // type
-                  'screenshot', // category
-                  currentUser.uid // userId
-                );
-                console.log(`Screenshot saved to gallery with ID: ${assetId}`);
-              } catch (error) {
-                console.error('Failed to save screenshot to gallery:', error);
-              }
-            })();
-          } else {
+      // Shared capture + gallery-save pipeline (also used by the
+      // viewer's snapshot button) — see editor/api/snapshot.js.
+      captureScreenshotAsJpeg(isPro)
+        .then(({ dataUrl, width, height, pngSrc }) => {
+          setOriginalImageUrl(pngSrc);
+          if (!currentUser?.uid) {
             console.log('User not logged in, skipping gallery save');
+            return;
           }
-        }
-      });
+          // Save to gallery in the background (never blocks the UI)
+          saveScreenshotToGallery(
+            dataUrl,
+            {
+              source: 'screenshot',
+              model: 'Editor Snapshot',
+              width,
+              height,
+              isPro
+            },
+            currentUser.uid
+          )
+            .then((assetId) => {
+              console.log(`Screenshot saved to gallery with ID: ${assetId}`);
+            })
+            .catch((error) => {
+              console.error('Failed to save screenshot to gallery:', error);
+            });
+        })
+        .catch((error) => {
+          console.error('Screenshot capture failed:', error);
+        });
     }
   }, [modal, isPro, currentUser?.uid]);
 

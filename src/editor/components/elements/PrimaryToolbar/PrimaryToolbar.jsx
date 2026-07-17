@@ -12,8 +12,10 @@ import styles from './PrimaryToolbar.module.scss';
 
 // Immediate (no-delay) tooltip matching the dark style used across the
 // editor (RightPanel, Save, etc.). Replaces the browser's slow native
-// `title` so hovering a toolbar button explains it instantly.
-const ToolTip = ({ content, children }) => (
+// `title` so hovering a toolbar button explains it instantly. Exported
+// for the viewer toolbar's buttons (Toolbar.jsx, ViewerSnapshot.jsx),
+// which share this module's styles. Callers wrap in Tooltip.Provider.
+export const ToolTip = ({ content, children }) => (
   <Tooltip.Root delayDuration={0}>
     <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
     <Tooltip.Portal>
@@ -41,8 +43,10 @@ export const PrimaryToolbar = () => {
   // "Lecture") for a lay audience. (A future per-capability label can
   // say "Drive" etc.)
   const handlePlay = () => {
-    useStore.getState().enterViewerMode('editor');
-    document.querySelector('a-scene')?.systems?.['play-mode']?.start();
+    useStore.getState().enterViewerMode();
+    document
+      .querySelector('a-scene')
+      ?.systems?.['play-mode']?.start({ origin: 'editor' });
   };
 
   const handleSnapshot = () => {
@@ -103,23 +107,20 @@ export const PrimaryToolbar = () => {
           </>
         )}
         <div className={styles.divider} />
-        <ToolTip
-          content={intl.formatMessage({
-            id: 'primaryToolbar.snapshotTitle',
-            defaultMessage: 'Capture screenshot and generate rendered images'
-          })}
+        {/* "Capture & Render" (#1824 Q2): the editor keeps the richer
+            modal flow (AI render, thumbnail, download); the Viewer has
+            its own capture-only snapshot button. No tooltip — the label
+            already says what it does. */}
+        <Button
+          variant="toolbtn"
+          onClick={handleSnapshot}
+          leadingIcon={<CameraSparkleIcon />}
         >
-          <Button
-            variant="toolbtn"
-            onClick={handleSnapshot}
-            leadingIcon={<CameraSparkleIcon />}
-          >
-            <FormattedMessage
-              id="primaryToolbar.snapshot"
-              defaultMessage="Snapshot"
-            />
-          </Button>
-        </ToolTip>
+          <FormattedMessage
+            id="primaryToolbar.captureRender"
+            defaultMessage="Capture & Render"
+          />
+        </Button>
       </Tooltip.Provider>
     </div>
   );

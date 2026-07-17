@@ -1,5 +1,4 @@
 /* global AFRAME, XMLHttpRequest, VERSION */
-import 'aframe-extras/controls/index.js';
 import useStore from './store.js';
 import * as streetUtils from './street-utils.js';
 require('./json-utils_1.1.js'); // this defines STREET.utils
