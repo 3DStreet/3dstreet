@@ -1,16 +1,11 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
-const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('../app-check.js');
 const { withJobHealth } = require('./job-health.js');
+const { sendPostmarkEmail, getUserInfo } = require('../email/postmark.js');
+const { sendLifecycleEmail } = require('../email/lifecycle-email.js');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const { isUserProInternal } = require('../token-management.js');
-
-// Postmark API endpoint
-const POSTMARK_API_URL = 'https://api.postmarkapp.com/email';
-
-// No cooldown - we only send token exhaustion emails once ever per user
 
 // ============================================================================
 // EMAIL TEMPLATES
@@ -161,7 +156,8 @@ If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
     copyByKind: {
       splat: { noun: 'splat', desc: '3D Gaussian Splat' },
       video: { noun: 'video', desc: 'video' },
-      image: { noun: 'image', desc: 'image' }
+      image: { noun: 'image', desc: 'image' },
+      mesh: { noun: '3D model', desc: '3D model (GLB)' }
     },
     getCopy(kind) {
       return this.copyByKind[kind] || { noun: 'generation', desc: 'generation' };
@@ -274,13 +270,26 @@ ${generatedLine}
 
 // ============================================================================
 // EMAIL TYPE CONFIGURATIONS
-// Each type defines how to find eligible users and what template to use
+// Each type defines how to find eligible users (the trigger) and how the send
+// service should treat the email (id/category/stream/stop-rules). Sending,
+// stop-rule enforcement, and audit logging all happen in
+// ../email/lifecycle-email.js — see docs/email-lifecycle.md.
 // ============================================================================
 
 const EMAIL_TYPES = {
   tokenExhaustion: {
-    // Template is selected dynamically based on which token is exhausted
-    notifyLogField: 'tokenExhaustionEmailSent',
+    // Identity + routing for sendLifecycleEmail. onceEver means one
+    // tokenExhaustion email per user, ever (regardless of which template
+    // variant they get); stopIfPro skips PRO users.
+    emailId: 'tokenExhaustion',
+    category: 'transactional',
+    stream: 'outbound',
+    rules: { onceEver: true, stopIfPro: true },
+
+    // Sends recorded before the emailLog migration live in
+    // notifyLog/{uid}.tokenExhaustionEmailSent; users with that flag must
+    // never be emailed again even though their emailLog is empty.
+    legacyNotifyLogField: 'tokenExhaustionEmailSent',
 
     // Query users with either token at 0
     // Firestore doesn't support OR queries, so we run two queries and merge
@@ -305,12 +314,6 @@ const EMAIL_TYPES = {
       return Array.from(userMap.values());
     },
 
-    // Skip PRO users
-    async shouldSendToUser(userId) {
-      const isPro = await isUserProInternal(userId);
-      return !isPro;
-    },
-
     // Select template based on which token is exhausted
     // Prioritize AI (genToken) if both are exhausted
     getTemplateKey(userData) {
@@ -329,47 +332,15 @@ const EMAIL_TYPES = {
 // ============================================================================
 // CORE EMAIL FUNCTIONS
 // ============================================================================
+// The Postmark transport (sendPostmarkEmail) and Auth lookup (getUserInfo)
+// live in ../email/postmark.js, shared with the lifecycle send service.
 
 /**
- * Send email via Postmark API
+ * Check whether a pre-emailLog send was recorded in notifyLog. Only consulted
+ * for history that predates the lifecycle-email migration; new sends are
+ * tracked in emailLog by sendLifecycleEmail.
  */
-const sendPostmarkEmail = async (toEmail, subject, htmlBody, textBody) => {
-  const apiKey = process.env.POSTMARK_API_KEY;
-
-  if (!apiKey) {
-    throw new Error('POSTMARK_API_KEY is not configured');
-  }
-
-  const response = await fetch(POSTMARK_API_URL, {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'X-Postmark-Server-Token': apiKey
-    },
-    body: JSON.stringify({
-      From: 'notify@3dstreet.com',
-      To: toEmail,
-      Subject: subject,
-      HtmlBody: htmlBody,
-      TextBody: textBody,
-      MessageStream: 'outbound'
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Postmark API error sending to ${toEmail}: status=${response.status}, body=${errorText}`);
-    throw new Error(`Postmark API error (${response.status}): ${errorText}`);
-  }
-
-  return response.json();
-};
-
-/**
- * Check if user has already received this email type (once ever)
- */
-const hasAlreadyReceivedEmail = (notifyLog, notifyLogField) => {
+const hasLegacyNotifyLogEntry = (notifyLog, notifyLogField) => {
   if (!notifyLog || !notifyLog[notifyLogField]) {
     return false;
   }
@@ -377,34 +348,14 @@ const hasAlreadyReceivedEmail = (notifyLog, notifyLogField) => {
 };
 
 /**
- * Record that an email was sent
+ * Adapt a static-subject EMAIL_TEMPLATES entry to the template interface
+ * sendLifecycleEmail expects ({ getSubject, getHtmlBody, getTextBody }).
  */
-const recordEmailSent = async (db, userId, notifyLogField, email) => {
-  const notifyLogRef = db.collection('notifyLog').doc(userId);
-
-  await notifyLogRef.set({
-    userId: userId,
-    email: email,
-    [notifyLogField]: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
-};
-
-/**
- * Get user info from Firebase Auth
- */
-const getUserInfo = async (userId) => {
-  try {
-    const userRecord = await getAuth().getUser(userId);
-    return {
-      email: userRecord.email,
-      displayName: userRecord.displayName || (userRecord.email ? userRecord.email.split('@')[0] : 'there')
-    };
-  } catch (error) {
-    console.error(`Failed to get user info for ${userId}:`, error);
-    return null;
-  }
-};
+const asLifecycleTemplate = (template) => ({
+  getSubject: () => template.subject,
+  getHtmlBody: (userName) => template.getHtmlBody(userName),
+  getTextBody: (userName) => template.getTextBody(userName)
+});
 
 /**
  * Send the "your generation is ready" email for a single succeeded, opted-in
@@ -556,8 +507,8 @@ const processEmailType = async (db, emailTypeKey, emailType, options = {}) => {
     return results;
   }
 
-  // Get all notify logs in batch for efficiency
-  // Firestore getAll() has a limit of 100 documents per call, so we chunk
+  // Batch-read legacy notifyLog docs (sends recorded before the emailLog
+  // migration). Firestore getAll() has a limit of 100 documents per call.
   const userIds = eligibleUsers.map(u => u.userId);
   const notifyLogMap = {};
   const BATCH_SIZE = 100;
@@ -573,32 +524,19 @@ const processEmailType = async (db, emailTypeKey, emailType, options = {}) => {
     });
   }
 
-  // Process each user
+  // Process each user. Stop-rules (once-ever, PRO skip), the Auth email
+  // lookup, the Postmark call, and emailLog bookkeeping all happen inside
+  // sendLifecycleEmail; this loop only picks the template and tallies results.
   for (const user of eligibleUsers) {
     results.processed++;
     const userId = user.userId;
 
     try {
-      // Check if already sent (once ever per email type)
+      // Users emailed under the old notifyLog tracking have no emailLog
+      // entry, so onceEver alone wouldn't stop a resend.
       const notifyLog = notifyLogMap[userId];
-      if (hasAlreadyReceivedEmail(notifyLog, emailType.notifyLogField)) {
+      if (hasLegacyNotifyLogEntry(notifyLog, emailType.legacyNotifyLogField)) {
         results.skipped.alreadySent++;
-        continue;
-      }
-
-      // Apply additional filters (e.g., skip PRO users)
-      if (emailType.shouldSendToUser) {
-        const shouldSend = await emailType.shouldSendToUser(userId);
-        if (!shouldSend) {
-          results.skipped.filtered++;
-          continue;
-        }
-      }
-
-      // Get user email from Firebase Auth
-      const userInfo = await getUserInfo(userId);
-      if (!userInfo || !userInfo.email) {
-        results.skipped.noEmail++;
         continue;
       }
 
@@ -614,37 +552,46 @@ const processEmailType = async (db, emailTypeKey, emailType, options = {}) => {
         continue;
       }
 
-      // Send email (or log in dry run mode)
-      const subject = template.subject;
-      const textBody = template.getTextBody(userInfo.displayName);
-      const htmlBody = template.getHtmlBody(userInfo.displayName);
+      const result = await sendLifecycleEmail({
+        db,
+        uid: userId,
+        emailId: emailType.emailId,
+        category: emailType.category,
+        stream: emailType.stream,
+        template: asLifecycleTemplate(template),
+        rules: emailType.rules,
+        dryRun
+      });
 
-      if (dryRun) {
-        // Dry run - just log what would be sent
-        console.log(`[DRY RUN] Would send ${emailTypeKey} (${templateKey}) email to ${userInfo.email}`);
-        results.wouldSend.push({
-          email: userInfo.email,
-          displayName: userInfo.displayName,
-          templateKey,
-          subject
-        });
-        results.sent++;
-        continue;
+      switch (result.action) {
+        case 'sent':
+          results.sent++;
+          break;
+        case 'would-send':
+          console.log(`[DRY RUN] Would send ${emailTypeKey} (${templateKey}) email to ${result.to}`);
+          results.wouldSend.push({
+            email: result.to,
+            templateKey,
+            subject: result.subject
+          });
+          results.sent++;
+          break;
+        case 'no-email':
+          results.skipped.noEmail++;
+          break;
+        case 'skipped':
+          // 'pro' and 'unsubscribed' are eligibility filters; everything else
+          // ('onceEver', cooldowns, dedupe) means a prior send blocked this one.
+          if (result.reason === 'pro' || result.reason === 'unsubscribed') {
+            results.skipped.filtered++;
+          } else {
+            results.skipped.alreadySent++;
+          }
+          break;
+        default:
+          console.error(`Error processing ${emailTypeKey} for user ${userId}:`, result.reason);
+          results.skipped.error++;
       }
-
-      const postmarkResult = await sendPostmarkEmail(
-        userInfo.email,
-        subject,
-        htmlBody,
-        textBody
-      );
-
-      console.log(`Sent ${emailTypeKey} email to ${userInfo.email}, MessageID: ${postmarkResult.MessageID}`);
-
-      // Record email sent
-      await recordEmailSent(db, userId, emailType.notifyLogField, userInfo.email);
-      results.sent++;
-
     } catch (error) {
       console.error(`Error processing ${emailTypeKey} for user ${userId}:`, error.message || error);
       results.skipped.error++;
@@ -770,7 +717,7 @@ const triggerScheduledEmails = functions
 module.exports = {
   sendScheduledEmails,
   triggerScheduledEmails,
-  // Reused by the generation-job reconciler to send completion emails.
+  // Re-exported from ../email/postmark.js for existing callers.
   sendPostmarkEmail,
   getUserInfo,
   // Shared, idempotent completion-email send: the webhook calls it in real time;
@@ -778,5 +725,6 @@ module.exports = {
   sendGenerationReadyEmail,
   // Export for testing
   EMAIL_TEMPLATES,
-  EMAIL_TYPES
+  EMAIL_TYPES,
+  processEmailType
 };

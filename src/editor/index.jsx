@@ -1,9 +1,9 @@
 import './instrument';
 import '../styles/tailwind.css';
+import posthog from 'posthog-js';
 import { createRoot } from 'react-dom/client';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import MainWrapper from './components/MainWrapper';
-import { ARControls, VisibilityToggle } from './components/viewport/ARControls';
 import { AuthProvider, GeoProvider } from './contexts';
 import Events from './lib/Events';
 import { AssetsLoader } from './lib/assetsLoader';
@@ -15,6 +15,7 @@ import { Viewport } from './lib/viewport';
 import './style/index.scss';
 import { initPostHog } from '@shared/analytics/posthog';
 import { commandsByType } from './lib/commands/index.js';
+import { LocaleProvider } from './i18n/LocaleProvider';
 import useStore from '@/store';
 import { initializeLocationSync } from './lib/location-sync';
 
@@ -89,28 +90,14 @@ Inspector.prototype = {
     document.body.appendChild(div);
     const root = createRoot(div);
     root.render(
-      <AuthProvider>
-        <GeoProvider>
-          <MainWrapper />
-        </GeoProvider>
-      </AuthProvider>
+      <LocaleProvider>
+        <AuthProvider>
+          <GeoProvider>
+            <MainWrapper />
+          </GeoProvider>
+        </AuthProvider>
+      </LocaleProvider>
     );
-
-    // Mount AR Controls to the AR overlay div
-    const arControlsContainer = document.getElementById('react-ar-controls');
-    if (arControlsContainer) {
-      const arRoot = createRoot(arControlsContainer);
-      arRoot.render(<ARControls />);
-    }
-
-    // Mount Visibility Toggle to the AR overlay div
-    const visibilityToggleContainer = document.getElementById(
-      'react-visibility-toggle'
-    );
-    if (visibilityToggleContainer) {
-      const visibilityRoot = createRoot(visibilityToggleContainer);
-      visibilityRoot.render(<VisibilityToggle />);
-    }
 
     this.scene = this.sceneEl.object3D;
     this.helpers = {};
@@ -126,9 +113,11 @@ Inspector.prototype = {
     this.scene.add(this.sceneHelpers);
     this.open();
 
-    // If viewer mode is requested, switch to it after initialization is complete
+    // If viewer mode is requested, switch to it after initialization is
+    // complete. The camera flies to the scene's saved start view via
+    // the newScene camera animation once it loads.
     if (isViewerModeRequested()) {
-      useStore.getState().setIsInspectorEnabled(false);
+      useStore.getState().enterViewerMode();
     }
   },
 
@@ -209,7 +198,7 @@ Inspector.prototype = {
     }
   },
 
-  onNewScene: function () {
+  onNewScene: function (sceneEl) {
     this.history.clear();
     if (useStore.getState().isLoadingScene) {
       useStore.getState().updateLoadingProgress(95, 'Loading scene...');
@@ -217,6 +206,8 @@ Inspector.prototype = {
         useStore.getState().finishLoadingScene();
       }, 500);
     }
+    // Model batching is armed and released by batch-models.js itself (beginBatching hooks
+    // the "newScene" event), so it no longer needs an editor-side trigger here.
   },
 
   initEvents: function () {
@@ -374,6 +365,9 @@ const inspector = (AFRAME.INSPECTOR = new Inspector(
   window.AFRAME_INSPECTOR_CONFIG
 ));
 initPostHog();
+// Tag every event with the active UI locale so the #656 experiment can compare
+// activation/retention/conversion across en / es / pt-BR cohorts in PostHog.
+posthog.register({ locale: useStore.getState().locale });
 
 // A-Frame canvas needs to be outside of a-scene for posthog recording to work
 const sceneLoaded = () => {
@@ -390,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // in Inspector init (initEvents) was too late and lost the race
   // intermittently, leaving the loading modal stuck at "Finalizing..." until its
   // 30s optimistic timeout. See issue #1760.
-  scene.addEventListener('newScene', () => inspector.onNewScene());
+  scene.addEventListener('newScene', () => inspector.onNewScene(scene));
   if (scene.hasLoaded) {
     sceneLoaded();
   } else {

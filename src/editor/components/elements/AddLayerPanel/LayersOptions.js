@@ -1,12 +1,12 @@
 const LayersOptions = [
   {
     value: 'Streets and Intersections',
-    label: '🚦 Streets & Intersections',
+    label: '🚦 Streets',
     onClick: () => {}
   },
   {
     value: 'Traffic Control',
-    label: '🚧 Traffic Control',
+    label: '🚧 Control',
     mixinGroups: ['dividers', 'traffic-control'],
     onClick: () => {}
   },
@@ -53,8 +53,13 @@ const LayersOptions = [
     onClick: () => {}
   },
   {
+    value: 'Shapes',
+    label: '🔵 Shapes',
+    onClick: () => {}
+  },
+  {
     value: 'Custom Layers',
-    label: '⚙️ Custom Layers',
+    label: '⚙️ Custom',
     onClick: () => {}
   }
 ];

@@ -14,6 +14,11 @@ const { inspectPlyGeometry } = require('./ply-sanity.js');
 // preempts long jobs). Provider adapter only; the job/billing machinery in
 // this file is shared across providers.
 const { MODAL_SECRETS, enqueueModalJob, fetchModalPrediction } = require('./modal-backend.js');
+// fal is a third provider (image → 3D mesh). saveMeshToGallery persists the GLB
+// on the shared terminal path; fetchFalPrediction is the poll adapter used by
+// getGenerationJobStatus and the reconciler. One-directional require: fal-3d.js
+// does NOT require this module, so there's no cycle.
+const { saveMeshToGallery, fetchFalPrediction } = require('./fal-3d.js');
 // Real-time completion email: the webhook calls this the instant a job finishes
 // so the user isn't waiting on the 10-min reconciler sweep. Shared, idempotent
 // send (the sweep is the backstop). No circular dep: scheduledEmails doesn't
@@ -489,11 +494,38 @@ const generateReplicateImage = functions
     }
   });
 
-// Replicate API function for video generation
+// Video models offered by generateReplicateVideo, keyed by Replicate model
+// name. These are official models addressed by NAME (no version hash — unlike
+// SHARP, which must pin a version). The label is the user-facing name shown in
+// the Discord post. Module-scoped because both the submit validation and the
+// terminal processor (Discord post) need it.
+const SUPPORTED_VIDEO_MODELS = {
+  'bytedance/seedance-1-pro-fast': 'SeeDance 1 Pro Fast',
+  'wan-video/wan-2.2-i2v-fast': 'Wan 2.2 I2V Fast',
+  'wan-video/wan-2.6-i2v': 'Wan 2.6 I2V',
+  'kwaivgi/kling-v2.5-turbo-pro': 'Kling v2.5 Turbo Pro',
+  'kwaivgi/kling-v3-video': 'Kling v3.0 Pro',
+  'lightricks/ltx-2-fast': 'LTX-2 Fast',
+  'google/veo-3.1': 'Veo 3.1',
+  'google/veo-3.1-fast': 'Veo 3.1 Fast'
+};
+
+// Replicate API function for video generation (image → video).
+// Asynchronous: creates the Replicate prediction and returns the internal job
+// id immediately; the client polls getGenerationJobStatus until terminal. The
+// old synchronous form (`await replicate.run(...)`) held the callable
+// connection open, idle, for the whole render (~2 min median) — Safari drops
+// idle data-less connections well before that, so the client lost the result
+// while the server finished and charged tokens anyway (issue #1780). Same
+// job-queue pattern as generateReplicateSplat: charge at submit, webhook +
+// poll + reconciler converge on one idempotent terminal processor, which also
+// saves the video to the gallery server-side so it lands even if the tab is
+// closed.
 const generateReplicateVideo = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', 'DISCORD_WEBHOOK_URL'],
-    timeoutSeconds: 540 // 9 minutes - video generation can take several minutes
+    secrets: ['REPLICATE_API_TOKEN'],
+    // Creation only (stage the source image + submit); the render is async.
+    timeoutSeconds: 120
   })
   .https
   .onCall(async (data, context) => {
@@ -512,7 +544,19 @@ const generateReplicateVideo = functions
     assertAppCheck(context);
 
     const userId = context.auth.uid;
-    const { prompt, input_image, model_name = 'lightricks/ltx-2-fast', aspect_ratio = '16:9', duration_seconds = 5 } = data;
+    const { prompt, input_image, model_name = 'lightricks/ltx-2-fast', aspect_ratio = '16:9', duration_seconds = 5, scene_id, source = 'generator', notify } = data;
+
+    // Opt-in completion email, same contract as the splat submit: `pending:
+    // true` is the flag the notify sweep queries on; it clears when the email
+    // is sent OR when a live poll acks the result (tab was open → no email).
+    // Renders are usually ~2 min, but provider queue waits can stretch a job
+    // far past what anyone keeps a tab open for.
+    const wantsEmail = notify?.email === true;
+
+    // Validate the model before staging anything or charging tokens.
+    if (!SUPPORTED_VIDEO_MODELS[model_name]) {
+      throw new functions.https.HttpsError('invalid-argument', `Unsupported model: ${model_name}`);
+    }
 
     // Per-model token costs based on duration
     const VIDEO_TOKEN_COSTS = {
@@ -560,7 +604,7 @@ const generateReplicateVideo = functions
     }
 
     const db = admin.firestore();
-    let videoGenerationStartTime;
+    let tempFilePath = null;
 
     try {
       const replicate = new Replicate({
@@ -570,7 +614,9 @@ const generateReplicateVideo = functions
 
       let imageUrl = input_image;
 
-      // If input_image is a base64 string, upload it to Firebase Storage first
+      // If input_image is a base64 string, upload it to Firebase Storage first.
+      // The staged path is recorded on the job doc (tempFilePath) and deleted by
+      // the terminal processor when the job finishes.
       if (!input_image.startsWith('http://') && !input_image.startsWith('https://')) {
         // Assume it's base64 data (without the data URL prefix since we strip it client-side)
         // Reconstruct the data URL
@@ -598,24 +644,8 @@ const generateReplicateVideo = functions
 
         // Get the public URL
         imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
+        tempFilePath = `temp/${filename}`;
         console.log(`Uploaded input image to: ${imageUrl}`);
-      }
-
-      // Supported models
-      const supportedModels = {
-        'bytedance/seedance-1-pro-fast': 'SeeDance 1 Pro Fast',
-        'wan-video/wan-2.2-i2v-fast': 'Wan 2.2 I2V Fast',
-        'wan-video/wan-2.6-i2v': 'Wan 2.6 I2V',
-        'kwaivgi/kling-v2.5-turbo-pro': 'Kling v2.5 Turbo Pro',
-        'kwaivgi/kling-v3-video': 'Kling v3.0 Pro',
-        'lightricks/ltx-2-fast': 'LTX-2 Fast',
-        'google/veo-3.1': 'Veo 3.1',
-        'google/veo-3.1-fast': 'Veo 3.1 Fast'
-      };
-
-      // Validate model name
-      if (!supportedModels[model_name]) {
-        throw new functions.https.HttpsError('invalid-argument', `Unsupported model: ${model_name}`);
       }
 
       // Prepare model input based on the model
@@ -672,66 +702,96 @@ const generateReplicateVideo = functions
         modelInput.generate_audio = false;
       }
 
-      console.log(`Generating ${duration_seconds}s video for user ${userId} with model ${model_name} (tokenCost: ${tokenCost})`);
+      console.log(`Submitting ${duration_seconds}s video job for user ${userId} with model ${model_name} (tokenCost: ${tokenCost})`);
       console.log('Model input parameters:', JSON.stringify(modelInput, null, 2));
 
-      // Use run() with model name instead of predictions.create with version
-      videoGenerationStartTime = Date.now();
-      const output = await replicate.run(model_name, {
-        input: modelInput
-      });
-      const videoGenerationElapsedMs = Date.now() - videoGenerationStartTime;
+      // Durable job identity, same contract as the splat submit: the internal
+      // jobId (a uuid) is the Firestore doc id, NOT the Replicate prediction id
+      // (stored as providerJobId). The pending row is written BEFORE submit so
+      // a crash mid-submit becomes a visible, reconcilable job.
+      const jobId = crypto.randomUUID();
+      const webhookSecret = crypto.randomUUID();
+      const jobRef = db
+        .collection('users').doc(userId)
+        .collection('generationJobs').doc(jobId);
 
-      console.log(`Video generation completed for user ${userId}`);
+      // Stable names for the saved gallery asset, fixed at submit so the
+      // webhook, poll, and reconciler paths all produce identical metadata.
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const originalFilename = `ai-video-${stamp}.mp4`;
+      const assetName = `AI Video ${stamp}`;
 
-      // Decrement tokens for ALL users (only after successful video generation)
-      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
-
-      let remainingTokens = 0;
-      let videoTokensBefore = 0;
-      await db.runTransaction(async (transaction) => {
-        const tokenDoc = await transaction.get(tokenProfileRef);
-
-        if (!tokenDoc.exists) {
-          throw new functions.https.HttpsError('not-found', 'Token profile not found');
-        }
-
-        const currentTokens = tokenDoc.data().genToken || 0;
-        videoTokensBefore = currentTokens;
-
-        // Verify user still has enough tokens (double-check after generation)
-        if (currentTokens < tokenCost) {
-          throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
-        }
-
-        // Deduct the appropriate number of tokens based on duration
-        const newTokenCount = Math.max(0, currentTokens - tokenCost);
-        remainingTokens = newTokenCount;
-
-        transaction.update(tokenProfileRef, {
-          genToken: newTokenCount,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-      });
-
-      // Fire-and-forget: write generation audit log
-      db.collection('generationLog').add({
-        userId,
+      await jobRef.set({
+        status: 'queued',
+        providerStatus: null,
+        kind: 'video',
         provider: 'replicate',
+        providerJobId: null,
         model: model_name,
-        generationType: 'video',
+        source,
         tokenCost,
-        processingTimeMs: videoGenerationElapsedMs,
-        providerPredictionId: null, // replicate.run() doesn't expose prediction ID; use predictions.create() if needed
-        status: 'succeeded',
+        tokenCharged: false,
+        refunded: false,
+        tempFilePath: tempFilePath || null,
+        webhookSecret,
+        originalFilename,
+        assetName,
+        // Everything the terminal processor needs to finish the job without a
+        // browser: gallery generationMetadata + the Discord post inputs.
+        generationParams: {
+          model_name,
+          prompt,
+          aspect_ratio,
+          duration_seconds,
+          scene_id: scene_id || null
+        },
+        notify: { email: wantsEmail, pending: wantsEmail },
         createdAt: admin.firestore.FieldValue.serverTimestamp()
-      }).catch(err => console.error('Failed to write generationLog:', err));
+      });
+
+      // Charge BEFORE creating the prediction, with tokenCharged flipped in the
+      // same transaction — same reasoning as the splat submit: every later
+      // refund path is then guaranteed to observe tokenCharged:true and refund
+      // exactly once. This is what closes the #1780 stranded-charge gap: the
+      // charge is tied to the job's real outcome, not to a connection staying
+      // open.
+      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+      let remainingTokens = 0;
+      let tokensBefore = 0;
+      try {
+        await db.runTransaction(async (transaction) => {
+          const tokenDoc = await transaction.get(tokenProfileRef);
+          if (!tokenDoc.exists) {
+            throw new functions.https.HttpsError('not-found', 'Token profile not found');
+          }
+          const currentTokens = tokenDoc.data().genToken || 0;
+          tokensBefore = currentTokens;
+          if (currentTokens < tokenCost) {
+            throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
+          }
+          const newTokenCount = Math.max(0, currentTokens - tokenCost);
+          remainingTokens = newTokenCount;
+          transaction.update(tokenProfileRef, {
+            genToken: newTokenCount,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          transaction.update(jobRef, { tokenCharged: true });
+        });
+      } catch (chargeError) {
+        await jobRef.update({
+          status: 'failed',
+          error: 'Token charge failed.',
+          completedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        await cleanupSplatTempFile(tempFilePath);
+        throw chargeError;
+      }
 
       // Fire-and-forget: write token deduction audit log
       db.collection('tokenLog').add({
         userId,
         type: 'deduction',
-        tokensBefore: videoTokensBefore,
+        tokensBefore,
         tokensAfter: remainingTokens,
         tokenCost,
         source: 'video-generation',
@@ -739,36 +799,74 @@ const generateReplicateVideo = functions
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       }).catch(err => console.error('Failed to write tokenLog:', err));
 
-      // Handle different output formats from Replicate
-      let finalVideoUrl;
-      if (output && output.output) {
-        finalVideoUrl = Array.isArray(output.output) ? output.output[0] : output.output;
-      } else if (Array.isArray(output)) {
-        finalVideoUrl = output[0];
-      } else if (typeof output === 'string') {
-        finalVideoUrl = output;
-      } else {
-        console.error('Unexpected output format from Replicate:', output);
-        throw new Error('Invalid output format from Replicate API');
+      // Webhook URL: uid to locate the job doc, internal jobId, per-job secret.
+      // The webhook body is never trusted; the handler re-fetches the
+      // prediction from Replicate authoritatively.
+      const projectId =
+        process.env.GCLOUD_PROJECT ||
+        process.env.GOOGLE_CLOUD_PROJECT ||
+        admin.app().options.projectId;
+      const region = process.env.FUNCTION_REGION || 'us-central1';
+      const webhookUrl =
+        `https://${region}-${projectId}.cloudfunctions.net/replicateJobWebhook` +
+        `?jobId=${jobId}&uid=${userId}&token=${webhookSecret}`;
+
+      let prediction;
+      try {
+        // Video models are official Replicate models addressed by NAME — the
+        // predictions API takes `model` instead of a `version` hash (splat
+        // pins a version because community models 404 on the name form).
+        prediction = await replicate.predictions.create({
+          model: model_name,
+          input: modelInput,
+          webhook: webhookUrl,
+          webhook_events_filter: ['completed']
+        });
+      } catch (createError) {
+        // Already paid above — refund (once) before failing the job so a
+        // submit failure never costs the user tokens.
+        const refunded = await refundSplatToken(db, userId, jobRef, {
+          kind: 'video',
+          tokenCharged: true,
+          refunded: false,
+          tokenCost,
+          model: model_name
+        });
+        if (typeof refunded !== 'undefined') remainingTokens = refunded;
+        await jobRef.update({
+          status: 'failed',
+          error: `Failed to create prediction: ${createError.message}`,
+          completedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        await cleanupSplatTempFile(tempFilePath);
+        throw createError;
       }
 
-      console.log(`Video generation successful for user ${userId}: ${finalVideoUrl}`);
-
-      // Post AI-generated video to Discord (non-blocking)
-      // This runs in the background and won't fail the video generation if it errors
-      const readableModelName = supportedModels[model_name] || model_name;
-      postAIVideoToDiscord(userId, finalVideoUrl, prompt, readableModelName, duration_seconds, data.scene_id)
-        .catch(err => console.error('Discord posting failed:', err));
+      // Record the provider identity for the webhook/poll/reconciler re-fetch.
+      // Only advance the status while it's still the pre-submit 'queued' —
+      // never regress a status a racing completion path already moved past.
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(jobRef);
+        const j = snap.data() || {};
+        const update = { providerJobId: prediction.id };
+        if (j.status === 'queued') {
+          update.status = normalizeReplicateStatus(prediction.status);
+          update.providerStatus = prediction.status || null;
+        }
+        tx.update(jobRef, update);
+      });
 
       return {
         success: true,
-        video_url: finalVideoUrl,
-        message: 'Video generated successfully!',
-        remainingTokens: remainingTokens
+        jobId,
+        status: normalizeReplicateStatus(prediction.status),
+        remainingTokens
       };
     } catch (error) {
-      console.error('Error generating video with Replicate:', error);
-      console.error('Error details:', error.message);
+      console.error('Error creating video prediction:', error);
+
+      // Best-effort cleanup of the staged input on failure.
+      await cleanupSplatTempFile(tempFilePath);
 
       // Fire-and-forget: write failed generation audit log
       db.collection('generationLog').add({
@@ -777,14 +875,14 @@ const generateReplicateVideo = functions
         model: model_name,
         generationType: 'video',
         tokenCost,
-        processingTimeMs: videoGenerationStartTime ? Date.now() - videoGenerationStartTime : null,
-        providerPredictionId: null, // replicate.run() doesn't expose prediction ID; use predictions.create() if needed
         status: 'failed',
         error: error.message,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       }).catch(err => console.error('Failed to write generationLog:', err));
 
-      // If it's a Replicate error, include more details
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
       if (error.response) {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
@@ -1204,9 +1302,11 @@ function extractSplatUrl(output) {
   return null;
 }
 
-// Refund a failed splat job's charge exactly once, guarded by the job's
+// Refund a failed generation job's charge exactly once, guarded by the job's
 // `refunded` flag inside a transaction. Returns the resulting token count, or
-// undefined if there was nothing to refund / the refund failed.
+// undefined if there was nothing to refund / the refund failed. Kind-generic
+// despite the name (splat was the first consumer): the tokenLog source is
+// derived from job.kind.
 async function refundSplatToken(db, userId, jobRef, job) {
   if (job.refunded || !job.tokenCharged) return undefined;
   const tokenCost = job.tokenCost || 1;
@@ -1240,7 +1340,7 @@ async function refundSplatToken(db, userId, jobRef, job) {
       userId,
       type: 'refund',
       tokenCost,
-      source: 'splat-generation-failed',
+      source: `${job.kind || 'splat'}-generation-failed`,
       relatedModel: job.model,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     }).catch(err => console.error('Failed to write tokenLog:', err));
@@ -1449,6 +1549,100 @@ async function saveSplatToGallery(userId, plyUrl, job) {
   return { assetId, storageUrl };
 }
 
+// Copy the finished video from Replicate's (short-lived) CDN URL into the
+// user's gallery server-side — the same asset contract the client's
+// assetsService.addAsset used to write for videos (Storage file at
+// users/{uid}/assets/videos/ + users/{uid}/assets/{assetId} doc with
+// type 'video' / category 'ai-render'), so the gallery grid and the
+// onAssetWritten quota trigger pick it up unchanged. Moving this server-side
+// is the core of the #1780 fix: the save no longer dies with a closed tab.
+// Streamed like saveSplatToGallery so memory stays flat regardless of size,
+// and keyed on the deterministic assetId so webhook/poll/reconciler retries
+// converge on one Storage object + one asset doc.
+async function saveVideoToGallery(userId, videoUrl, job) {
+  validateSplatUserId(userId);
+
+  const assetId = deterministicAssetId(job.predictionId || crypto.randomUUID());
+  const filename = `${assetId}.mp4`;
+  const storagePath = `users/${userId}/assets/videos/${filename}`;
+  const downloadToken = crypto.randomUUID();
+
+  const bucket = admin.storage().bucket();
+  const file = bucket.file(storagePath);
+
+  const response = await fetch(videoUrl);
+  if (!response.ok || !response.body) {
+    throw new Error(`Failed to download video from provider (${response.status})`);
+  }
+  const writeStream = file.createWriteStream({
+    metadata: {
+      contentType: 'video/mp4',
+      // Immutable content (keyed by assetId): matches the client upload path.
+      cacheControl: 'public, max-age=31536000',
+      metadata: {
+        firebaseStorageDownloadTokens: downloadToken,
+        assetRole: 'original',
+        assetId
+      }
+    }
+  });
+  await pipeline(Readable.fromWeb(response.body), writeStream);
+
+  const [meta] = await file.getMetadata();
+  const size = Number(meta.size) || 0;
+
+  const storageUrl =
+    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
+    `${encodeURIComponent(storagePath)}?alt=media&token=${downloadToken}`;
+
+  const originalFilename = job.originalFilename || filename;
+  const lastDot = originalFilename.lastIndexOf('.');
+  const defaultName =
+    lastDot > 0 ? originalFilename.slice(0, lastDot) : originalFilename;
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  const params = job.generationParams || {};
+
+  await admin
+    .firestore()
+    .collection('users').doc(userId)
+    .collection('assets').doc(assetId)
+    .set({
+      assetId,
+      userId,
+      type: 'video',
+      category: 'ai-render',
+      storagePath,
+      storageUrl,
+      name: job.assetName || defaultName,
+      filename,
+      originalFilename,
+      size,
+      mimeType: 'video/mp4',
+      generationMetadata: {
+        // Same shape the old client-side save wrote (src/generator/video.js
+        // saveToGallery) so pre-migration and job-queue videos render
+        // identically in the gallery.
+        model: params.model_name || job.model || null,
+        prompt: params.prompt || null,
+        aspect_ratio: params.aspect_ratio || null,
+        duration_seconds: params.duration_seconds || null,
+        source: job.source || 'generator',
+        predictionId: job.predictionId || null,
+        timestamp: new Date().toISOString()
+      },
+      createdAt: now,
+      updatedAt: now,
+      uploadedAt: now,
+      publishedAt: now,
+      visibility: 'public',
+      tags: [],
+      collections: [],
+      deleted: false
+    });
+
+  return { assetId, storageUrl };
+}
+
 // Guard a uid before using it in a Storage/Firestore path. Mirrors the client's
 // validateUserIdForPath so a forged webhook uid can't escape the user subtree.
 function validateSplatUserId(userId) {
@@ -1489,11 +1683,13 @@ function estimateModalCostUsd(metrics) {
   return priced ? Math.round(usd * 100) / 100 : null;
 }
 
-// Idempotently handle a terminal Replicate prediction. Called by BOTH the
-// webhook and the poller, possibly concurrently, so the success path claims the
-// save by flipping status → 'saving' in a transaction; only the winner uploads.
-// Failure refunds once (guarded by refundSplatToken). Returns a client-facing
-// status object.
+// Idempotently handle a terminal Replicate prediction. Called by the webhook,
+// the poller, AND the scheduled reconciler, possibly concurrently, so the
+// success path claims the save by flipping status → 'saving' in a transaction;
+// only the winner uploads. Failure refunds once (guarded by refundSplatToken).
+// Returns a client-facing status object. Kind-aware: `job.kind` picks the
+// finalize path — 'video' saves an .mp4 gallery asset + posts to Discord;
+// 'splat' (the default, for pre-kind docs) runs the geometry gate + .ply save.
 async function processTerminalPrediction(db, userId, jobRef, prediction) {
   const normalized = normalizeReplicateStatus(prediction.status);
 
@@ -1541,8 +1737,15 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
     if (!claimed) {
       const snap = await jobRef.get();
       const j = snap.data() || {};
-      // Already saved by a racing caller.
+      // Already saved by a racing caller. The result field is kind-specific
+      // (video_url vs splat_url) so each client keys off its own terminal.
       if (j.status === 'succeeded') {
+        if ((j.kind || 'splat') === 'video') {
+          return { status: 'succeeded', video_url: j.videoUrl, assetId: j.assetId };
+        }
+        if ((j.kind || 'splat') === 'mesh') {
+          return { status: 'succeeded', mesh_url: j.meshUrl, assetId: j.assetId };
+        }
         return { status: 'succeeded', splat_url: j.splatUrl, assetId: j.assetId };
       }
       // Already finalized as failed/canceled (e.g. the reconciler gave up and
@@ -1561,9 +1764,11 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
       };
     }
 
+    // Output normalization is shared across kinds — video models return the
+    // same string/array/object shapes SHARP does.
     const splatUrl = extractSplatUrl(prediction.output);
     if (!splatUrl) {
-      console.error('Unexpected SHARP output:', JSON.stringify(prediction.output, null, 2));
+      console.error('Unexpected model output:', JSON.stringify(prediction.output, null, 2));
       const remainingTokens = await refundSplatToken(db, userId, jobRef, job);
       await cleanupSplatTempFile(job.tempFilePath);
       await jobRef.update({
@@ -1572,6 +1777,105 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
         completedAt: admin.firestore.FieldValue.serverTimestamp()
       });
       return { status: 'failed', error: 'Invalid output from model.', remainingTokens };
+    }
+
+    // kind: 'video' — persist the .mp4 to the gallery and finish. No geometry
+    // gate (that's a splat-specific SfM sanity check). The Discord post lives
+    // HERE (not in the submit callable) so it fires on real completion, and the
+    // claim above guarantees it fires exactly once even when webhook + poll +
+    // reconciler all reach terminal.
+    if ((job.kind || 'splat') === 'video') {
+      try {
+        const { assetId, storageUrl } = await saveVideoToGallery(userId, splatUrl, {
+          ...job,
+          predictionId: job.providerJobId || jobRef.id
+        });
+        await cleanupSplatTempFile(job.tempFilePath);
+        await jobRef.update({
+          status: 'succeeded',
+          assetId,
+          videoUrl: storageUrl,
+          completedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        db.collection('generationLog').add({
+          userId,
+          provider: job.provider || 'replicate',
+          model: job.model,
+          generationType: 'video',
+          tokenCost: job.tokenCost,
+          // Submit → saved-to-gallery, i.e. the user-perceived duration
+          // (includes provider queue wait, unlike the old replicate.run timing).
+          processingTimeMs: job.createdAt?.toMillis
+            ? Date.now() - job.createdAt.toMillis()
+            : null,
+          providerPredictionId: job.providerJobId || null,
+          status: 'succeeded',
+          source: job.source,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        }).catch(err => console.error('Failed to write generationLog:', err));
+
+        // Fire-and-forget: post the durable Storage URL (the replicate.delivery
+        // URL is ephemeral). Errors never fail the (already-committed) save.
+        const params = job.generationParams || {};
+        postAIVideoToDiscord(
+          userId,
+          storageUrl,
+          params.prompt || '',
+          SUPPORTED_VIDEO_MODELS[job.model] || job.model,
+          params.duration_seconds,
+          params.scene_id
+        ).catch(err => console.error('Discord posting failed:', err));
+
+        return { status: 'succeeded', video_url: storageUrl, assetId };
+      } catch (saveError) {
+        console.error('Failed to save video to gallery:', saveError);
+        // Release the claim so a webhook retry / next poll can re-attempt.
+        await jobRef.update({ status: 'running' });
+        throw new functions.https.HttpsError('internal', `Failed to save video: ${saveError.message}`);
+      }
+    }
+
+    // kind: 'mesh' — persist the GLB (fal image → 3D). Like video, there is no
+    // geometry gate (that's a splat-specific SfM check). saveMeshToGallery keys
+    // the asset off the fal request_id so webhook-less poll/reconciler retries
+    // converge on one asset.
+    if ((job.kind || 'splat') === 'mesh') {
+      try {
+        const { assetId, storageUrl } = await saveMeshToGallery(userId, splatUrl, {
+          ...job,
+          predictionId: job.providerJobId || jobRef.id
+        });
+        await cleanupSplatTempFile(job.tempFilePath);
+        await jobRef.update({
+          status: 'succeeded',
+          assetId,
+          meshUrl: storageUrl,
+          completedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        db.collection('generationLog').add({
+          userId,
+          provider: job.provider || 'fal',
+          model: job.model,
+          modelId: job.modelId || null,
+          generationType: 'mesh',
+          tokenCost: job.tokenCost,
+          // Submit → saved-to-gallery, i.e. the user-perceived duration
+          // (includes fal queue wait, unlike the old inline-poll timing).
+          processingTimeMs: job.createdAt?.toMillis
+            ? Date.now() - job.createdAt.toMillis()
+            : null,
+          providerPredictionId: job.providerJobId || null,
+          status: 'succeeded',
+          source: job.source,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        }).catch(err => console.error('Failed to write generationLog:', err));
+        return { status: 'succeeded', mesh_url: storageUrl, assetId };
+      } catch (saveError) {
+        console.error('Failed to save mesh to gallery:', saveError);
+        // Release the claim so the next poll / reconciler can re-attempt.
+        await jobRef.update({ status: 'running' });
+        throw new functions.https.HttpsError('internal', `Failed to save mesh: ${saveError.message}`);
+      }
     }
 
     // Sanity-gate the generated .ply BEFORE we keep the charge and save a
@@ -1682,12 +1986,16 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
   if (normalized === 'failed' || normalized === 'canceled') {
     const snap = await jobRef.get();
     const job = snap.data() || {};
+    const kind = job.kind || 'splat';
+    const kindNoun =
+      kind === 'video' ? 'Video' : kind === 'mesh' ? '3D model' : 'Splat';
+    const genericError = `${kindNoun} generation failed.`;
     const remainingTokens = await refundSplatToken(db, userId, jobRef, job);
     await cleanupSplatTempFile(job.tempFilePath);
     await jobRef.update({
       status: normalized,
       providerStatus: prediction.status,
-      error: prediction.error || 'Splat generation failed.',
+      error: prediction.error || genericError,
       completedAt: admin.firestore.FieldValue.serverTimestamp()
     });
     db.collection('generationLog').add({
@@ -1695,7 +2003,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
       provider: job.provider || 'replicate',
       model: job.model,
       modelId: job.modelId || null,
-      generationType: 'splat',
+      generationType: kind,
       tokenCost: job.tokenCost,
       processingTimeMs: job.createdAt?.toMillis
         ? Date.now() - job.createdAt.toMillis()
@@ -1707,7 +2015,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
     }).catch(err => console.error('Failed to write generationLog:', err));
     return {
       status: normalized,
-      error: prediction.error || 'Splat generation failed.',
+      error: prediction.error || genericError,
       remainingTokens
     };
   }
@@ -1742,7 +2050,10 @@ async function ackClientSeen(jobRef, job) {
 
 const getGenerationJobStatus = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', ...MODAL_SECRETS],
+    // DISCORD_WEBHOOK_URL: the shared terminal processor posts finished videos
+    // to Discord, and a poll can be the path that carries a job to terminal.
+    // FAL_KEY: a poll can finalize a fal (mesh) job by hitting fal's status API.
+    secrets: ['REPLICATE_API_TOKEN', 'DISCORD_WEBHOOK_URL', 'FAL_KEY', ...MODAL_SECRETS],
     // saveSplatToGallery streams the .ply through (no full-file buffering), so
     // memory no longer scales with splat size. 512 MB is fixed headroom over the
     // firebase-admin cold-start baseline, not sized to the file.
@@ -1777,7 +2088,16 @@ const getGenerationJobStatus = functions
     }
     const job = jobSnap.data();
 
-    // Terminal in our records (likely the webhook already handled it).
+    // Terminal in our records (likely the webhook already handled it). The
+    // result field is kind-specific: video jobs carry videoUrl, splats splatUrl.
+    if (job.status === 'succeeded' && (job.kind || 'splat') === 'video' && job.videoUrl) {
+      await ackClientSeen(jobRef, job);
+      return { status: 'succeeded', video_url: job.videoUrl, assetId: job.assetId };
+    }
+    if (job.status === 'succeeded' && (job.kind || 'splat') === 'mesh' && job.meshUrl) {
+      await ackClientSeen(jobRef, job);
+      return { status: 'succeeded', mesh_url: job.meshUrl, assetId: job.assetId };
+    }
     if (job.status === 'succeeded' && job.splatUrl) {
       await ackClientSeen(jobRef, job);
       return { status: 'succeeded', splat_url: job.splatUrl, assetId: job.assetId };
@@ -1801,6 +2121,12 @@ const getGenerationJobStatus = functions
         if (fetched.absent) {
           // Provider lost the job (expired result) — keep reporting the stored
           // status; the reconciler's give-up window owns declaring it dead.
+          return { status: job.status || 'running' };
+        }
+        prediction = fetched.prediction;
+      } else if (job.provider === 'fal') {
+        const fetched = await fetchFalPrediction(job);
+        if (fetched.absent) {
           return { status: job.status || 'running' };
         }
         prediction = fetched.prediction;
@@ -1942,7 +2268,9 @@ const replicateJobWebhook = functions
   .runWith({
     // POSTMARK_API_KEY: the webhook sends the completion email in real time
     // (sendGenerationReadyEmail), so it needs the Postmark secret in its env.
-    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY'],
+    // DISCORD_WEBHOOK_URL: the terminal processor posts finished videos to
+    // Discord, and the webhook is the usual path that reaches terminal.
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL'],
     // Same streamed save as the poll path; 512 MB is fixed cold-start headroom,
     // not sized to the splat.
     memory: '512MB',

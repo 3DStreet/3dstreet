@@ -24,32 +24,19 @@ export default class AddGeneratorComponent extends React.Component {
     const entity = this.props.entity;
 
     if (AFRAME.components[componentName].multiple) {
-      let id = prompt(
-        `Provide an ID for this component (e.g., 'foo' for ${componentName}__foo).`
-      );
-      if (id) {
-        id = id
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9-]/g, '');
-        // With the transform, id could be empty string, so we need to check again.
-      }
-      if (id) {
-        componentName = `${componentName}__${id}`;
-      } else {
-        // If components already exist, be sure to suffix with an id,
-        // if it's first one, use the component name without id.
-        const numberOfComponents = Object.keys(
-          this.props.entity.components
-        ).filter(function (name) {
-          return (
-            name === componentName || name.startsWith(`${componentName}__`)
-          );
-        }).length;
-        if (numberOfComponents > 0) {
-          id = numberOfComponents + 1;
-          componentName = `${componentName}__${id}`;
+      // Auto-assign the lowest unused numeric modifier instead of prompting
+      // the user to invent a name before they've defined the component (#1752).
+      // The first instance uses the bare name (modifier index 1); subsequent
+      // instances use __2, __3, … matching the managed-street `__n` convention.
+      // Scanning for the lowest unused slot (rather than count + 1) keeps
+      // modifiers collision-free even after intermediate instances are deleted.
+      const existing = Object.keys(entity.components);
+      if (existing.includes(componentName)) {
+        let id = 2;
+        while (existing.includes(`${componentName}__${id}`)) {
+          id++;
         }
+        componentName = `${componentName}__${id}`;
       }
     }
 

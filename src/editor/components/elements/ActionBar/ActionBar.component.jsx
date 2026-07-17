@@ -6,6 +6,7 @@ import { captureNavDiscovery } from '../../../lib/navAnalytics.js';
 import styles from './ActionBar.module.scss';
 import { Button, UnitsPreference, UndoRedo } from '../../elements';
 import { useState, useEffect } from 'react';
+import { useIntl } from 'react-intl';
 import posthog from 'posthog-js';
 import {
   Rotate24Icon,
@@ -20,8 +21,10 @@ import {
   fadeOutRulerCursorEntity,
   useRulerTool
 } from './RulerAction.jsx';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const ActionBar = ({ selectedEntity }) => {
+  const intl = useIntl();
   const [measureLineCounter, setMeasureLineCounter] = useState(1);
   const [transformMode, setTransformMode] = useState('translate');
   const [newToolMode, setNewToolMode] = useState('off');
@@ -100,7 +103,11 @@ const ActionBar = ({ selectedEntity }) => {
             selectedEntity?.hasAttribute('data-no-transform')
         })}
         onClick={handleNewToolClick.bind(null, 'hand')}
-        title="Hand Tool (h) - pan and rotate the view without selecting objects"
+        title={intl.formatMessage({
+          id: 'actionBar.handTool',
+          defaultMessage:
+            'Hand Tool (h) - pan and rotate the view without selecting objects'
+        })}
       >
         <AwesomeIcon icon={faHand} />
       </Button>
@@ -113,7 +120,10 @@ const ActionBar = ({ selectedEntity }) => {
         })}
         onClick={() => changeTransformMode('translate')}
         disabled={selectedEntity?.hasAttribute('data-no-transform')}
-        title="Translate Tool (w) - Select and move objects"
+        title={intl.formatMessage({
+          id: 'actionBar.translateTool',
+          defaultMessage: 'Translate Tool (w) - Select and move objects'
+        })}
       >
         <Translate24Icon />
       </Button>
@@ -126,7 +136,10 @@ const ActionBar = ({ selectedEntity }) => {
         })}
         onClick={() => changeTransformMode('rotate')}
         disabled={selectedEntity?.hasAttribute('data-no-transform')}
-        title="Rotate Tool (e) - Select and rotate objects"
+        title={intl.formatMessage({
+          id: 'actionBar.rotateTool',
+          defaultMessage: 'Rotate Tool (e) - Select and rotate objects'
+        })}
       >
         <Rotate24Icon />
       </Button>
@@ -136,7 +149,10 @@ const ActionBar = ({ selectedEntity }) => {
           [styles.active]: newToolMode === 'ruler'
         })}
         onClick={handleNewToolClick.bind(null, 'ruler')}
-        title="Ruler Tool (r) - Measure distances between points"
+        title={intl.formatMessage({
+          id: 'actionBar.rulerTool',
+          defaultMessage: 'Ruler Tool (r) - Measure distances between points'
+        })}
       >
         <Ruler24Icon />
       </Button>
@@ -148,7 +164,10 @@ const ActionBar = ({ selectedEntity }) => {
         onPointerDown={() => AFRAME.INSPECTOR.controls.zoomOutStart()}
         onPointerUp={() => AFRAME.INSPECTOR.controls.zoomOutStop()}
         onPointerLeave={() => AFRAME.INSPECTOR.controls.zoomOutStop()}
-        title="Zoom Out"
+        title={intl.formatMessage({
+          id: 'actionBar.zoomOut',
+          defaultMessage: 'Zoom Out'
+        })}
       >
         <ZoomOut24Icon />
       </Button>
@@ -157,7 +176,10 @@ const ActionBar = ({ selectedEntity }) => {
         onPointerDown={() => AFRAME.INSPECTOR.controls.zoomInStart()}
         onPointerUp={() => AFRAME.INSPECTOR.controls.zoomInStop()}
         onPointerLeave={() => AFRAME.INSPECTOR.controls.zoomInStop()}
-        title="Zoom In"
+        title={intl.formatMessage({
+          id: 'actionBar.zoomIn',
+          defaultMessage: 'Zoom In'
+        })}
       >
         <ZoomIn24Icon />
       </Button>
@@ -167,7 +189,7 @@ const ActionBar = ({ selectedEntity }) => {
           captureNavDiscovery('reset_view');
           AFRAME.INSPECTOR.controls.resetZoom();
         }}
-        title="Reset Camera View"
+        title={intl.formatMessage(commonMessages.resetCameraView)}
       >
         <CameraReset24Icon />
       </Button>

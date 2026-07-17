@@ -48,7 +48,18 @@ export function newScene(clearMetaData = true, clearUrlHash = true) {
   );
   geoLayer.setAttribute('data-no-transform', '');
 
-  checkOrCreateEntity('street-container', AFRAME.scenes[0], 'User Layers');
+  const streetContainer = checkOrCreateEntity(
+    'street-container',
+    AFRAME.scenes[0],
+    'User Layers'
+  );
+  // Heal a hidden User Layers root (e.g. stamped by a legacy scene saved
+  // with visible:false before load-side stripping existed): the singleton
+  // element is reused across scene loads, so a stale false would blank
+  // every scene loaded for the rest of the session.
+  if (streetContainer.object3D && !streetContainer.object3D.visible) {
+    streetContainer.setAttribute('visible', true);
+  }
 
   // clear metadata
   if (clearMetaData) {
@@ -65,32 +76,9 @@ export function newScene(clearMetaData = true, clearUrlHash = true) {
   }
 }
 
-export function getVehicleEntities() {
-  return getEntitiesByCategories([
-    'vehicles',
-    'vehicles-rigged',
-    'vehicles-transit',
-    'cyclists'
-  ]);
-}
-
-export function getStripingEntities() {
-  return getEntitiesByCategories(['lane-separator']);
-}
-
-function getEntitiesByCategories(categoriesArray) {
-  // get entity Nodes by array of their mixin categories
-  const queryForCategoriesMixins = categoriesArray
-    .map((categoryName) => `a-mixin[category="${categoryName}"]`)
-    .join(',');
-  if (!queryForCategoriesMixins) return [];
-  const allCategoriesMixins = document.querySelectorAll(
-    queryForCategoriesMixins
-  );
-  const categoriesMixinIds = Array.from(allCategoriesMixins).map((el) => el.id);
-  const queryForAllElements = categoriesMixinIds
-    .map((mixinId) => `a-entity[mixin~="${mixinId}"]`)
-    .join(',');
-  if (!queryForAllElements) return [];
-  return document.querySelectorAll(queryForAllElements);
-}
+// Moved to street-entity-utils.js (store-free); re-exported here for callers
+// that import them from street-utils.
+export {
+  getVehicleEntities,
+  getStripingEntities
+} from './street-entity-utils.js';

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useIntl } from 'react-intl';
 import { Cross24Icon } from '@shared/icons';
 import { createPortal } from 'react-dom';
 import { useAuthContext } from '../../../contexts/index.js';
@@ -14,17 +15,19 @@ import {
   isAcceptedAssetFile,
   placeCloudAsset
 } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
-import { customLayersData, streetLayersData } from './layersData.js';
+import {
+  customLayersData,
+  shapeLayersData,
+  streetLayersData
+} from './layersData.js';
 import { LayersOptions } from './LayersOptions.js';
+import { localizeCard, localizeTabLabel } from './addLayerMessages.js';
 import Events from '../../../lib/Events.js';
 import useStore from '@/store.js';
 import { getGroupedMixinOptions } from '../../../lib/mixinUtils';
+import { getEmptyDragImage } from '@shared/utils/dragImage.js';
 
 const ASSET_CARD_MIME = 'application/x-3dstreet-asset';
-
-// Create an empty image
-const emptyImg = new Image();
-emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
 // get array with objects data (cardsData) from mixinGroups of selectedOption
 const getSelectedMixinCards = (groupedMixins, selectedOption) => {
@@ -83,6 +86,7 @@ const createEntityOnPosition = (mixinId, position, mixinName) => {
     previewEntity.remove();
   }
   AFRAME.INSPECTOR.execute('entitycreate', {
+    // English name for scene-JSON/analytics consistency (mixin id is the canonical key); user can rename freely.
     'data-layer-name': mixinName,
     mixin: mixinId,
     components: {
@@ -97,6 +101,7 @@ const createEntity = (mixinId, mixinName) => {
     previewEntity.remove();
   }
   const newEntityObject = {
+    // English name for scene-JSON/analytics consistency (mixin id is the canonical key); user can rename freely.
     'data-layer-name': mixinName,
     mixin: mixinId,
     components: {}
@@ -241,6 +246,7 @@ const cardMouseLeave = (mixinId) => {
 };
 
 const AddLayerPanel = () => {
+  const intl = useIntl();
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'addlayer');
   const startCheckout = useStore((state) => state.startCheckout);
@@ -371,12 +377,23 @@ const AddLayerPanel = () => {
           uploadAndPlaceAsset(file, position);
           if (e.dataTransfer.files.length > 1) {
             STREET.notify.warningMessage(
-              `Only the first file was added. Drop one file at a time.`
+              intl.formatMessage({
+                id: 'addLayer.onlyFirstFileAdded',
+                defaultMessage:
+                  'Only the first file was added. Drop one file at a time.'
+              })
             );
           }
         } else {
           STREET.notify.errorMessage(
-            `Unsupported file type: ${file.name || 'file'}. Supported formats: GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ.`
+            intl.formatMessage(
+              {
+                id: 'addLayer.unsupportedFileType',
+                defaultMessage:
+                  'Unsupported file type: {fileName}. Supported formats: GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ.'
+              },
+              { fileName: file.name || 'file' }
+            )
           );
         }
 
@@ -429,12 +446,15 @@ const AddLayerPanel = () => {
       document.body.removeEventListener('drop', handleGlobalDrop);
       document.body.removeEventListener('dragleave', handleGlobalDragLeave);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectedCards = useMemo(() => {
     switch (selectedOption) {
       case 'Custom Layers':
         return customLayersData;
+      case 'Shapes':
+        return shapeLayersData;
       case 'Streets and Intersections':
         return streetLayersData;
       default:
@@ -590,7 +610,7 @@ const AddLayerPanel = () => {
           <div className={styles.categories}>
             <Tabs
               tabs={LayersOptions.map((option) => ({
-                label: option.label,
+                label: localizeTabLabel(intl, option),
                 value: option.value,
                 isSelected: selectedOption === option.value,
                 onClick: () => handleSelect(option.value)
@@ -608,69 +628,77 @@ const AddLayerPanel = () => {
 
         <div className={styles.contentContainer}>
           <div className={styles.cards}>
-            {selectedCards.map((card) => (
-              <div
-                key={card.id}
-                className={styles.card}
-                onMouseEnter={() => cardMouseEnter(card.mixinId)}
-                onMouseLeave={() => cardMouseLeave(card.mixinId)}
-                draggable={true}
-                onDragStart={(e) => {
-                  const transferData = {
-                    mixinName: card.name,
-                    mixinId: card.mixinId,
-                    layerCardId: card.handlerFunction ? card.id : undefined
-                  };
-                  e.stopPropagation();
-                  if (card.requiresPro && !isProUser) {
-                    startCheckout('addlayer');
-                    return;
-                  }
-                  fadeInDropPlane();
-                  if (e.dataTransfer) {
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData(
-                      'application/json',
-                      JSON.stringify(transferData)
-                    );
-                    // Set the empty image as the drag image
-                    e.dataTransfer.setDragImage(emptyImg, 0, 0);
-                  }
-                  return false;
-                }}
-                onDragEnd={(e) => {
-                  e.stopPropagation();
-                  fadeOutDropPlane();
-                  return false;
-                }}
-                onClick={() => cardClick(card, isProUser)}
-                title={card.description}
-              >
-                {card.requiresPro && !isProUser ? (
-                  <div
-                    className={styles.img}
-                    style={{
-                      backgroundImage: `url(${LockedCard})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center'
-                    }}
-                  />
-                ) : (
-                  <div
-                    className={styles.img}
-                    style={{
-                      backgroundImage: `url(${card.img || CardPlaceholder})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center'
-                    }}
-                  />
-                )}
-                <div className={styles.body}>
-                  {card.icon ? <img src={card.icon} /> : null}
-                  <p className={styles.description}>{card.name}</p>
+            {selectedCards.map((card) => {
+              // Display text is localized; card.name (English) is still what we
+              // pass to createEntity/analytics/drag so data-layer-name and event
+              // props stay locale-independent.
+              const localized = localizeCard(intl, card);
+              return (
+                <div
+                  key={card.id}
+                  className={styles.card}
+                  onMouseEnter={() => cardMouseEnter(card.mixinId)}
+                  onMouseLeave={() => cardMouseLeave(card.mixinId)}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    const transferData = {
+                      mixinName: card.name,
+                      mixinId: card.mixinId,
+                      layerCardId: card.handlerFunction ? card.id : undefined
+                    };
+                    e.stopPropagation();
+                    if (card.requiresPro && !isProUser) {
+                      startCheckout('addlayer');
+                      return;
+                    }
+                    fadeInDropPlane();
+                    if (e.dataTransfer) {
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData(
+                        'application/json',
+                        JSON.stringify(transferData)
+                      );
+                      // Set the empty image as the drag image (suppress the
+                      // browser's default card ghost). Uses a DOM-attached
+                      // transparent image so Safari honors it — see #1527.
+                      e.dataTransfer.setDragImage(getEmptyDragImage(), 0, 0);
+                    }
+                    return false;
+                  }}
+                  onDragEnd={(e) => {
+                    e.stopPropagation();
+                    fadeOutDropPlane();
+                    return false;
+                  }}
+                  onClick={() => cardClick(card, isProUser)}
+                  title={localized.description}
+                >
+                  {card.requiresPro && !isProUser ? (
+                    <div
+                      className={styles.img}
+                      style={{
+                        backgroundImage: `url(${LockedCard})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className={styles.img}
+                      style={{
+                        backgroundImage: `url(${card.img || CardPlaceholder})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }}
+                    />
+                  )}
+                  <div className={styles.body}>
+                    {card.icon ? <img src={card.icon} /> : null}
+                    <p className={styles.description}>{localized.name}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

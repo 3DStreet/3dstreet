@@ -38,8 +38,24 @@ export function initRaycaster(inspector) {
   inspector.sceneEl.appendChild(mouseCursor);
   inspector.cursor = mouseCursor;
 
+  function getBatchedIntersectedEl() {
+    // BatchedMeshes are hosted on a dedicated batch-models-root a-entity via setObject3D,
+    // so A-Frame's raycaster keeps the intersection (it has .el). The closest intersection
+    // may be a BatchedMesh — remap it to the real entity via _batchIdToEl[batchId].
+    const intersections = mouseCursor.components.raycaster.intersections;
+    if (!intersections || intersections.length === 0) return undefined;
+    const closest = intersections[0];
+    if (!closest.object?.isBatchedMesh) return undefined;
+    const map = closest.object._batchIdToEl;
+    return map ? map[closest.batchId] || null : null;
+  }
+
   function getIntersectedEl() {
-    let intersectedEl = mouseCursor.components.cursor.intersectedEl;
+    const batched = getBatchedIntersectedEl();
+    let intersectedEl =
+      batched !== undefined
+        ? batched
+        : mouseCursor.components.cursor.intersectedEl;
     // The user needs to click on the street-segment first to then select a car or pedestrian.
     if (
       intersectedEl !== null &&
@@ -59,9 +75,22 @@ export function initRaycaster(inspector) {
     return intersectedEl;
   }
 
+  // Poll the raycaster's closest intersection each check and fire hover events when the
+  // RESOLVED entity changes. Cursor-based mouseenter/mouseleave compare `el` references
+  // and miss transitions within a BatchedMesh (both hits have the same batchRootEl).
+  let lastHoveredEl = null;
+  const origCheckIntersections = raycaster.checkIntersections.bind(raycaster);
+  raycaster.checkIntersections = function () {
+    origCheckIntersections();
+    const resolved = getIntersectedEl();
+    if (resolved !== lastHoveredEl) {
+      if (lastHoveredEl) Events.emit('raycastermouseleave', lastHoveredEl);
+      if (resolved) Events.emit('raycastermouseenter', resolved);
+      lastHoveredEl = resolved;
+    }
+  };
+
   mouseCursor.addEventListener('click', handleClick);
-  mouseCursor.addEventListener('mouseenter', onMouseEnter);
-  mouseCursor.addEventListener('mouseleave', onMouseLeave);
   inspector.container.addEventListener('mousedown', onMouseDown);
   inspector.container.addEventListener('mouseup', onMouseUp);
   inspector.container.addEventListener('dblclick', onDoubleClick);
@@ -72,20 +101,31 @@ export function initRaycaster(inspector) {
     });
   });
 
+  // Raw clientX/Y (viewport pixels), NOT container-normalized coords:
+  // layout shifts between Viewer and editor presentations move the
+  // container's bounding rect between mousedown and mouseup, which made
+  // normalized positions drift for a physically stationary click. Client
+  // coordinates are viewport-absolute and immune to that.
   const onDownPosition = new THREE.Vector2();
   const onUpPosition = new THREE.Vector2();
-
-  function onMouseEnter() {
-    Events.emit('raycastermouseenter', getIntersectedEl());
-  }
-
-  function onMouseLeave() {
-    Events.emit('raycastermouseleave', getIntersectedEl());
-  }
+  // 0 = exact main-parity strictness: any down->up movement at all is
+  // treated as a drag, not a click. (A small value like 2 would rescue
+  // clicks with 1-2px of hand jitter, common on trackpads — revisit if
+  // dead clicks get reported.)
+  const CLICK_MAX_DRAG_PX = 0;
 
   function handleClick(evt) {
-    // Check to make sure not dragging.
-    if (onDownPosition.distanceTo(onUpPosition) === 0) {
+    // Compute up position from the click event's source mouseup rather
+    // than the side-state onUpPosition. The cursor component emits
+    // click synchronously from inside its canvas mouseup handler, which
+    // runs before our container bubble mouseup — so onUpPosition would
+    // be stale (the previous click's value). evt.detail.mouseEvent is
+    // the originating mouseup; reading from it is order-independent.
+    const upEvt = evt && evt.detail && evt.detail.mouseEvent;
+    const up = upEvt
+      ? new THREE.Vector2(upEvt.clientX, upEvt.clientY)
+      : onUpPosition;
+    if (onDownPosition.distanceTo(up) <= CLICK_MAX_DRAG_PX) {
       const intersectedEl = getIntersectedEl();
       // Feature-discovery: count a viewport click that actually selects an
       // entity (a click on empty space deselects — not a "select").
@@ -101,12 +141,7 @@ export function initRaycaster(inspector) {
       return;
     }
     event.preventDefault();
-    const array = getMousePosition(
-      inspector.container,
-      event.clientX,
-      event.clientY
-    );
-    onDownPosition.fromArray(array);
+    onDownPosition.set(event.clientX, event.clientY);
   }
 
   function onMouseUp(event) {
@@ -114,12 +149,7 @@ export function initRaycaster(inspector) {
       return;
     }
     event.preventDefault();
-    const array = getMousePosition(
-      inspector.container,
-      event.clientX,
-      event.clientY
-    );
-    onUpPosition.fromArray(array);
+    onUpPosition.set(event.clientX, event.clientY);
   }
 
   /**
@@ -168,9 +198,4 @@ export function initRaycaster(inspector) {
       inspector.container.removeEventListener('dblclick', onDoubleClick);
     }
   };
-}
-
-function getMousePosition(dom, x, y) {
-  const rect = dom.getBoundingClientRect();
-  return [(x - rect.left) / rect.width, (y - rect.top) / rect.height];
 }

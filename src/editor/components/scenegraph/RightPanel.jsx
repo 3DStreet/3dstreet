@@ -1,10 +1,12 @@
 import { useContext } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { Tooltip } from 'radix-ui';
 import posthog from 'posthog-js';
 import { faLockOpen } from '@fortawesome/free-solid-svg-icons';
 import { ProfileButton } from '@shared/auth/components';
 import useStore from '@/store';
 import { AuthContext } from '@/editor/contexts';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 import ComponentsSidebar from '../elements/Sidebar';
 import { Button, Tabs } from '../elements';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
@@ -36,6 +38,7 @@ const TooltipWrapper = ({ children, content, side = 'bottom' }) => (
 );
 
 export default function RightPanel({ entity }) {
+  const intl = useIntl();
   const { currentUser: authUser, isLoading } = useContext(AuthContext) || {};
   const setModal = useStore((s) => s.setModal);
   const activeTab = useStore((s) => s.rightPanelTab);
@@ -53,12 +56,27 @@ export default function RightPanel({ entity }) {
         ? 'PRO TEAM'
         : 'PRO';
   const planTooltip = !authUser?.isPro
-    ? '3DStreet Free Community Edition'
+    ? intl.formatMessage({
+        id: 'rightPanel.planTooltipFree',
+        defaultMessage: '3DStreet Free Community Edition'
+      })
     : isMax
-      ? '3DStreet Max Plan'
+      ? intl.formatMessage({
+          id: 'rightPanel.planTooltipMax',
+          defaultMessage: '3DStreet Max Plan'
+        })
       : authUser?.isProTeam
-        ? `3DStreet Team Plan (${authUser?.teamDomain})`
-        : '3DStreet Pro Plan';
+        ? intl.formatMessage(
+            {
+              id: 'rightPanel.planTooltipTeam',
+              defaultMessage: '3DStreet Team Plan ({teamDomain})'
+            },
+            { teamDomain: authUser?.teamDomain }
+          )
+        : intl.formatMessage({
+            id: 'rightPanel.planTooltipPro',
+            defaultMessage: '3DStreet Pro Plan'
+          });
 
   const handleShare = () => {
     if (authUser && window.STREET?.utils?.getAuthorId?.() === authUser.uid) {
@@ -72,6 +90,26 @@ export default function RightPanel({ entity }) {
 
   return (
     <Tooltip.Provider>
+      {/* Auth status stays visible even with panels hidden — a user's
+          identity governs what they can do, so it shouldn't vanish with
+          the editing chrome. (The full panel below stays mounted but
+          display:none so tab/chat state survives the toggle.) */}
+      {!panelsVisible && (
+        <div className={`clickable ${styles.collapsedAuthDock}`}>
+          <ProfileButton
+            currentUser={authUser}
+            isLoading={isLoading}
+            onClick={() => {
+              if (isLoading) return;
+              posthog.capture('profile_button_clicked', {
+                is_logged_in: !!authUser
+              });
+              setModal(authUser ? 'profile' : 'signin');
+            }}
+            tooltipSide="bottom"
+          />
+        </div>
+      )}
       <div
         id="rightPanel"
         className={styles.rightPanel}
@@ -79,13 +117,22 @@ export default function RightPanel({ entity }) {
       >
         <div className={styles.header}>
           <div className={styles.headerRow}>
-            <TooltipWrapper content="Share scene">
+            <TooltipWrapper
+              content={
+                <FormattedMessage
+                  id="rightPanel.shareScene"
+                  defaultMessage="Share scene"
+                />
+              }
+            >
               <Button
                 leadingIcon={<AwesomeIcon icon={faLockOpen} size={18} />}
                 onClick={handleShare}
                 variant="toolbtn"
               >
-                <div>Share</div>
+                <div>
+                  <FormattedMessage {...commonMessages.share} />
+                </div>
               </Button>
             </TooltipWrapper>
             <div className={styles.headerSpacer} />
@@ -115,13 +162,19 @@ export default function RightPanel({ entity }) {
           <Tabs
             tabs={[
               {
-                label: 'Properties',
+                label: intl.formatMessage({
+                  id: 'rightPanel.tabProperties',
+                  defaultMessage: 'Properties'
+                }),
                 value: 'properties',
                 isSelected: activeTab === 'properties',
                 onClick: openPropertiesTab
               },
               {
-                label: 'Console',
+                label: intl.formatMessage({
+                  id: 'rightPanel.tabConsole',
+                  defaultMessage: 'Console'
+                }),
                 value: 'console',
                 isSelected: activeTab === 'console',
                 onClick: openConsoleTab

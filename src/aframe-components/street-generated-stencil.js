@@ -1,5 +1,7 @@
 /* global AFRAME */
 
+import { BATCHING_ENABLED } from '../batch-models';
+
 // generate cloned stencils on a street surface
 AFRAME.registerComponent('street-generated-stencil', {
   multiple: true,
@@ -76,8 +78,14 @@ AFRAME.registerComponent('street-generated-stencil', {
   },
   init: function () {
     this.createdEntities = [];
-    this.onSegmentChanged = (event) => {
-      if (!event.detail.lengthChanged) return;
+    this.onSegmentChanged = () => {
+      const segment = this.el.components['street-segment']?.data;
+      if (!segment) return;
+      // Stencils depend only on length. Skip when it is unchanged since our
+      // last run: the segment's first-init emit during scene load carries the
+      // same length we already generated with, so regenerating would tear the
+      // stencils down and recreate them identically (#1759).
+      if (segment.length === this.length) return;
       this.update();
     };
     this.el.addEventListener('segment-changed', this.onSegmentChanged);
@@ -92,38 +100,6 @@ AFRAME.registerComponent('street-generated-stencil', {
   remove: function () {
     this.el.removeEventListener('segment-changed', this.onSegmentChanged);
     this.clearEntities();
-  },
-  detach: function () {
-    const commands = [];
-    commands.push([
-      'componentremove',
-      { entity: this.el, component: this.attrName }
-    ]);
-    let entityObjToPushAtTheEnd = null; // so that the entity is selected after executing the multi command
-    this.createdEntities.forEach((entity) => {
-      const position = entity.getAttribute('position');
-      const rotation = entity.getAttribute('rotation');
-      const entityObj = {
-        parentEl: this.el,
-        mixin: entity.getAttribute('mixin'),
-        'data-layer-name': entity
-          .getAttribute('data-layer-name')
-          .replace('Cloned Model', 'Detached Model'),
-        components: {
-          position: { x: position.x, y: position.y, z: position.z },
-          rotation: { x: rotation.x, y: rotation.y, z: rotation.z }
-        }
-      };
-      if (AFRAME.INSPECTOR?.selectedEntity === entity) {
-        entityObjToPushAtTheEnd = entityObj;
-      } else {
-        commands.push(['entitycreate', entityObj]);
-      }
-    });
-    if (entityObjToPushAtTheEnd !== null) {
-      commands.push(['entitycreate', entityObjToPushAtTheEnd]);
-    }
-    AFRAME.INSPECTOR.execute('multi', commands);
   },
   update: function (oldData) {
     const segment = this.el.components['street-segment']?.data;
@@ -195,6 +171,13 @@ AFRAME.registerComponent('street-generated-stencil', {
         clone.setAttribute('data-layer-name', `Cloned Model • ${stencilName}`);
         clone.setAttribute('data-parent-component', this.attrName);
         clone.setAttribute('polygon-offset', { factor: -2, units: -2 });
+
+        // Lifecycle hook so batch-models frees this stencil's BatchedMesh slot from the entity's
+        // own disconnectedCallback when it's regenerated / deleted (see batch-member.js). Only
+        // meaningful when batching runs; skipped otherwise to avoid a component on every stencil.
+        if (BATCHING_ENABLED) {
+          clone.setAttribute('batch-member', '');
+        }
 
         this.createdEntities.push(clone);
       });

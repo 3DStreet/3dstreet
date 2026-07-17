@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import PropTypes from 'prop-types';
 import posthog from 'posthog-js';
 import useAssetUploadStatus, {
@@ -12,8 +13,22 @@ import { AssetDetailModal, formatBytes } from '@shared/assets';
 import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
 import useStore from '@/store.js';
 import { Button } from './Button';
+import { commonMessages } from '@/editor/i18n/commonMessages';
+import { formatNumber } from '@shared/utils/format';
+
+// Pro asset-storage allowance. Kept as a number + locale-aware unit format so
+// changing it never requires touching the translation catalogs (the size is
+// interpolated into the message, not baked into each translation).
+const PRO_STORAGE_GB = 5;
+const formatStorage = () =>
+  formatNumber(PRO_STORAGE_GB, {
+    style: 'unit',
+    unit: 'gigabyte',
+    unitDisplay: 'short'
+  });
 
 const AssetInfoPanel = ({ entity }) => {
+  const intl = useIntl();
   const state = useAssetUploadStatus(entity);
   const [detailsOpen, setDetailsOpen] = useState(false);
   if (!state) return null;
@@ -101,7 +116,7 @@ const AssetInfoPanel = ({ entity }) => {
               cursor: 'pointer'
             }}
           >
-            Cancel
+            <FormattedMessage {...commonMessages.cancel} />
           </button>
         )}
         {canRetry && (
@@ -119,7 +134,7 @@ const AssetInfoPanel = ({ entity }) => {
               cursor: 'pointer'
             }}
           >
-            Retry
+            <FormattedMessage {...commonMessages.retry} />
           </button>
         )}
       </div>
@@ -147,7 +162,11 @@ const AssetInfoPanel = ({ entity }) => {
             fontSize: 11
           }}
         >
-          Upgrade for 5 GB storage
+          <FormattedMessage
+            id="assetInfo.upgradeStorage"
+            defaultMessage="Upgrade for {storage} storage"
+            values={{ storage: formatStorage() }}
+          />
         </Button>
       )}
       {state.assetId && (
@@ -162,8 +181,22 @@ const AssetInfoPanel = ({ entity }) => {
           }}
         >
           <span>
-            Asset source: {isOwned ? 'your cloud' : 'not owned by you'} ·{' '}
-            {state.assetId.slice(0, 8)}…
+            <FormattedMessage
+              id="assetInfo.assetSource"
+              defaultMessage="Asset source: {ownership} · {assetIdShort}…"
+              values={{
+                ownership: isOwned
+                  ? intl.formatMessage({
+                      id: 'assetInfo.ownershipYours',
+                      defaultMessage: 'your cloud'
+                    })
+                  : intl.formatMessage({
+                      id: 'assetInfo.ownershipNotOwned',
+                      defaultMessage: 'not owned by you'
+                    }),
+                assetIdShort: state.assetId.slice(0, 8)
+              }}
+            />
           </span>
           <button
             type="button"
@@ -180,7 +213,7 @@ const AssetInfoPanel = ({ entity }) => {
               opacity: 1
             }}
           >
-            Details
+            <FormattedMessage id="assetInfo.details" defaultMessage="Details" />
           </button>
         </div>
       )}
@@ -198,7 +231,7 @@ const AssetInfoPanel = ({ entity }) => {
           ownerUid={state.ownerUid}
           type={state.type}
           onClose={() => setDetailsOpen(false)}
-          onUseForGenerator={(item) => openInGenerator(item, 'modify')}
+          onUseForGenerator={(item) => openInGenerator(item, 'image')}
           onUseForVideo={(item) => openInGenerator(item, 'video')}
         />
       )}

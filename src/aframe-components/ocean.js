@@ -96,8 +96,30 @@ AFRAME.registerComponent('wobble-geometry-box', {
     speedVariance: { default: 2 }
   },
   play: function () {
+    // Use the geometry component's mesh, not object3D.children[0] — child
+    // entities (e.g. street-generated-clones on a water street-segment) can
+    // attach their Groups before the surface mesh exists, so positional
+    // indexing grabs the wrong object and crashes entity load. If the mesh
+    // isn't built yet, pick it up when the geometry component sets it.
+    if (!this.buildWaves()) {
+      this.el.addEventListener(
+        'object3dset',
+        (evt) => {
+          if (evt.detail.type === 'mesh') {
+            this.buildWaves();
+          }
+        },
+        { once: true }
+      );
+    }
+  },
+  buildWaves: function () {
     const data = this.data;
-    const geometry = (this.geometry = this.el.object3D.children[0].geometry);
+    const mesh = this.el.getObject3D('mesh');
+    if (!mesh?.geometry) {
+      return false;
+    }
+    const geometry = (this.geometry = mesh.geometry);
 
     this.waves = [];
     const posAttribute = geometry.getAttribute('position');
@@ -109,9 +131,10 @@ AFRAME.registerComponent('wobble-geometry-box', {
         speed: (data.speed + Math.random() * data.speedVariance) / 1000 // radians / frame
       });
     }
+    return true;
   },
   tick: function (t, dt) {
-    if (!dt) return;
+    if (!dt || !this.geometry) return;
 
     const posAttribute = this.geometry.getAttribute('position');
     for (let i = 0; i < posAttribute.count; i++) {

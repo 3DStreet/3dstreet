@@ -19,13 +19,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { httpsCallable } from 'firebase/functions';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import posthog from 'posthog-js';
-import { functions } from '@shared/services/firebase';
+import { db, functions } from '@shared/services/firebase';
 import { useAuthContext } from '@shared/contexts';
 import EmbeddedCheckout from '@shared/components/EmbeddedCheckout';
 import { openBillingPortal } from '@shared/utils/billing';
 import { getPaywallSurface } from './paywallSurfaces';
 import { PRICING, TOKEN_FEATURE_LINE } from './pricing';
+import { formatCurrency, getPeriodSuffix } from '@shared/utils/format';
 import styles from './UpgradeModal.module.scss';
 
 // Stripe price IDs by tier + billing cycle. Injected at build time by
@@ -194,6 +196,30 @@ const UpgradeModal = ({
     handleClose
   ]);
 
+  // Server-side "saw the pricing modal" signal for the pricing-nudge
+  // lifecycle email (public/functions/email/lifecycle-sweeps.js). Firestore
+  // rules restrict this write to the user's own lastPaymentModalAt with the
+  // server clock — see userSignals in firestore.rules. Fire-and-forget;
+  // never blocks the modal. PostHog keeps capturing independently, but the
+  // email sweep deliberately reads only this Firestore signal.
+  useEffect(() => {
+    if (!isOpen || !currentUser?.uid || currentUser.isPro) return;
+    // try/catch on top of the promise .catch: doc() can throw synchronously
+    // (e.g. uninitialized Firestore) and a lost signal must never take down
+    // the paywall.
+    try {
+      setDoc(
+        doc(db, 'userSignals', currentUser.uid),
+        { userId: currentUser.uid, lastPaymentModalAt: serverTimestamp() },
+        { merge: true }
+      ).catch((error) =>
+        console.error('Error recording payment modal signal:', error)
+      );
+    } catch (error) {
+      console.error('Error recording payment modal signal:', error);
+    }
+  }, [isOpen, currentUser?.uid, currentUser?.isPro]);
+
   // Pre-check for an existing subscription so we can route to billing portal
   // before showing pricing — avoids duplicate purchases. Fires
   // existing_subscription_detected only when the precheck finds one, which
@@ -320,8 +346,10 @@ const UpgradeModal = ({
     <div className={styles.planCard}>
       <div className={styles.planName}>{tier === 'max' ? 'Max' : 'Pro'}</div>
       <div className={styles.planPriceRow}>
-        <span className={styles.planPriceLarge}>${planData.pricePerMonth}</span>
-        <span className={styles.planPricePer}>/mo</span>
+        <span className={styles.planPriceLarge}>
+          {formatCurrency(planData.pricePerMonth)}
+        </span>
+        <span className={styles.planPricePer}>{getPeriodSuffix('month')}</span>
       </div>
       <div className={styles.planCycleDetail}>{planData.cycleDetail}</div>
       <ul className={styles.planPerks}>

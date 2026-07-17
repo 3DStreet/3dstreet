@@ -142,7 +142,7 @@ const generateFalImage = functions
     // fal.ai edit models require an input image
     if (!input_image) {
       console.error(`Missing required input image for fal.ai edit model: ${model_id}`);
-      throw new functions.https.HttpsError('invalid-argument', 'This model requires a source image. Please use the Modify tab or upload an image.');
+      throw new functions.https.HttpsError('invalid-argument', 'This model requires a source image. Please upload a reference image.');
     }
 
     // Outside the try so the catch can log them (block-scoped declarations

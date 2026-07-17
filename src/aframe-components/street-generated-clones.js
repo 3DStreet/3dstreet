@@ -61,7 +61,18 @@ AFRAME.registerComponent('street-generated-clones', {
 
   init: function () {
     this.createdEntities = [];
-    this.onSegmentChanged = () => this.update();
+    this.onSegmentChanged = () => {
+      const segment = this.el.components['street-segment']?.data;
+      if (!segment) return;
+      // Clones depend on length and width. Skip when both are unchanged since
+      // our last run: the segment's first-init emit during scene load carries
+      // the same dimensions we already generated with, so regenerating would
+      // tear the clones down and recreate them identically (#1759).
+      if (segment.length === this.length && segment.width === this.width) {
+        return;
+      }
+      this.update();
+    };
     this.el.addEventListener('segment-changed', this.onSegmentChanged);
   },
 
@@ -79,39 +90,6 @@ AFRAME.registerComponent('street-generated-clones', {
   remove: function () {
     this.el.removeEventListener('segment-changed', this.onSegmentChanged);
     this.clearEntities();
-  },
-
-  detach: function () {
-    const commands = [];
-    commands.push([
-      'componentremove',
-      { entity: this.el, component: this.attrName }
-    ]);
-    let entityObjToPushAtTheEnd = null; // so that the entity is selected after executing the multi command
-    this.createdEntities.forEach((entity) => {
-      const position = entity.getAttribute('position');
-      const rotation = entity.getAttribute('rotation');
-      const entityObj = {
-        parentEl: this.el,
-        mixin: entity.getAttribute('mixin'),
-        'data-layer-name': entity
-          .getAttribute('data-layer-name')
-          .replace('Cloned Model', 'Detached Model'),
-        components: {
-          position: { x: position.x, y: position.y, z: position.z },
-          rotation: { x: rotation.x, y: rotation.y, z: rotation.z }
-        }
-      };
-      if (AFRAME.INSPECTOR?.selectedEntity === entity) {
-        entityObjToPushAtTheEnd = entityObj;
-      } else {
-        commands.push(['entitycreate', entityObj]);
-      }
-    });
-    if (entityObjToPushAtTheEnd !== null) {
-      commands.push(['entitycreate', entityObjToPushAtTheEnd]);
-    }
-    AFRAME.INSPECTOR.execute('multi', commands);
   },
 
   update: function (oldData) {

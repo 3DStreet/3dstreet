@@ -1,0 +1,2207 @@
+{
+  "actionBar.handTool": {
+    "defaultMessage": "Hand Tool (h) - pan and rotate the view without selecting objects"
+  },
+  "actionBar.rotateTool": {
+    "defaultMessage": "Rotate Tool (e) - Select and rotate objects"
+  },
+  "actionBar.rulerTool": {
+    "defaultMessage": "Ruler Tool (r) - Measure distances between points"
+  },
+  "actionBar.translateTool": {
+    "defaultMessage": "Translate Tool (w) - Select and move objects"
+  },
+  "actionBar.zoomIn": {
+    "defaultMessage": "Zoom In"
+  },
+  "actionBar.zoomOut": {
+    "defaultMessage": "Zoom Out"
+  },
+  "addLayer.card.asphaltCircle.desc": {
+    "defaultMessage": "Add a large flat asphalt circle on the ground. Geometry and material can be changed in the properties panel."
+  },
+  "addLayer.card.asphaltCircle.name": {
+    "defaultMessage": "Asphalt Circle"
+  },
+  "addLayer.card.buildingBox.desc": {
+    "defaultMessage": "Add a simple box roughly the size of a 3-story building, sitting on the ground in a bright blue. A quick placeholder for blocking out buildings."
+  },
+  "addLayer.card.buildingBox.name": {
+    "defaultMessage": "Building Box"
+  },
+  "addLayer.card.buildingDemo.desc": {
+    "defaultMessage": "Demo street with buildings on both sides using the new fit mode for building placement"
+  },
+  "addLayer.card.buildingDemo.name": {
+    "defaultMessage": "(Beta) Building Placement Demo"
+  },
+  "addLayer.card.concreteCylinder.desc": {
+    "defaultMessage": "Add a gray concrete cylinder roughly the size of an interstate highway support pillar. A quick placeholder for elevated-roadway columns."
+  },
+  "addLayer.card.concreteCylinder.name": {
+    "defaultMessage": "Concrete Cylinder"
+  },
+  "addLayer.card.createIntersection.desc": {
+    "defaultMessage": "Create 90º intersection entity."
+  },
+  "addLayer.card.createIntersection.name": {
+    "defaultMessage": "Create Intersection"
+  },
+  "addLayer.card.driveableDeliveryRobot.desc": {
+    "defaultMessage": "A small-chassis driveable bot (~Starship/Serve-sized) with a procedural mesh + dynamic antenna. Like real delivery robots, it cannot mount standard 6\" curbs. Switch presets from the drive-controls properties panel."
+  },
+  "addLayer.card.driveableDeliveryRobot.name": {
+    "defaultMessage": "Driveable Delivery Robot"
+  },
+  "addLayer.card.driveableTaxi.desc": {
+    "defaultMessage": "A full-size sedan with real-car physics (~Camry-sized). Mounts standard curbs with momentum, hits real-world speeds. Switch presets from the drive-controls properties panel."
+  },
+  "addLayer.card.driveableTaxi.name": {
+    "defaultMessage": "Driveable Taxi"
+  },
+  "addLayer.card.driveableTukTuk.desc": {
+    "defaultMessage": "A small three-wheeler-style driveable vehicle with the tuk-tuk catalog mesh. Can mount curbs at speed. Switch presets from the drive-controls properties panel."
+  },
+  "addLayer.card.driveableTukTuk.name": {
+    "defaultMessage": "Driveable Tuk-tuk"
+  },
+  "addLayer.card.grassBox.desc": {
+    "defaultMessage": "Add a large green ground slab with animated instanced grass. The box dimensions, color, and grass options (density, blade height) are all editable in the properties panel."
+  },
+  "addLayer.card.grassBox.name": {
+    "defaultMessage": "Grass Box"
+  },
+  "addLayer.card.highlightRing.desc": {
+    "defaultMessage": "Add a bright red ring, big enough to circle and highlight a real-world element like a vehicle, tree, or part of a lane."
+  },
+  "addLayer.card.highlightRing.name": {
+    "defaultMessage": "Highlight Ring"
+  },
+  "addLayer.card.managedStreet150124.desc": {
+    "defaultMessage": "Premade Street 150ft Right of Way / 124ft Roadway Width"
+  },
+  "addLayer.card.managedStreet150124.name": {
+    "defaultMessage": "(Beta) Managed Street 150ft RoW / 124ft Roadway Width"
+  },
+  "addLayer.card.managedStreet4024.desc": {
+    "defaultMessage": "Premade Street 40ft Right of Way / 24ft Roadway Width"
+  },
+  "addLayer.card.managedStreet4024.name": {
+    "defaultMessage": "(Beta) Managed Street 40ft RoW / 24ft Roadway Width"
+  },
+  "addLayer.card.managedStreet6036.desc": {
+    "defaultMessage": "Premade Street 60ft Right of Way / 36ft Roadway Width"
+  },
+  "addLayer.card.managedStreet6036.name": {
+    "defaultMessage": "(Beta) Managed Street 60ft RoW / 36ft Roadway Width"
+  },
+  "addLayer.card.managedStreet8056.desc": {
+    "defaultMessage": "Premade Street 80ft Right of Way / 56ft Roadway Width"
+  },
+  "addLayer.card.managedStreet8056.name": {
+    "defaultMessage": "(Beta) Managed Street 80ft RoW / 56ft Roadway Width"
+  },
+  "addLayer.card.managedStreet9470.desc": {
+    "defaultMessage": "Premade Street 94ft Right of Way / 70ft Roadway Width"
+  },
+  "addLayer.card.managedStreet9470.name": {
+    "defaultMessage": "(Beta) Managed Street 94ft RoW / 70ft Roadway Width"
+  },
+  "addLayer.card.managedStreetmix.desc": {
+    "defaultMessage": "Create a new street from Streetmix URL using the Managed Street component."
+  },
+  "addLayer.card.managedStreetmix.name": {
+    "defaultMessage": "(Beta) Managed Street from Streetmix URL"
+  },
+  "addLayer.card.managedStreetplan.desc": {
+    "defaultMessage": "Create a new street from Streetplan URL using the Managed Street component."
+  },
+  "addLayer.card.managedStreetplan.name": {
+    "defaultMessage": "(Beta) Managed Street from Streetplan URL"
+  },
+  "addLayer.card.panoramaSphere.desc": {
+    "defaultMessage": "Create an immersive 360° environment from a panoramic image for AR/VR experiences."
+  },
+  "addLayer.card.panoramaSphere.name": {
+    "defaultMessage": "360° Panorama Sphere"
+  },
+  "addLayer.card.raceTarget.desc": {
+    "defaultMessage": "A finish-line gate. Driving the player vehicle through it during play ends the race, pauses the simulation, and pins the finish time in the toolbar."
+  },
+  "addLayer.card.raceTarget.name": {
+    "defaultMessage": "Race Target"
+  },
+  "addLayer.card.streetmixStreet.desc": {
+    "defaultMessage": "Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets."
+  },
+  "addLayer.card.streetmixStreet.name": {
+    "defaultMessage": "Street from Streetmix URL"
+  },
+  "addLayer.card.svgExtruded.desc": {
+    "defaultMessage": "Create entity with svg-extruder component, that accepts a svgString and creates a new entity with geometry extruded from the svg and applies the default mixin material grass."
+  },
+  "addLayer.card.svgExtruded.name": {
+    "defaultMessage": "Entity from extruded SVG"
+  },
+  "addLayer.card.torusKnot.desc": {
+    "defaultMessage": "Add a polished metallic torus knot. A decorative primitive that shows off the geometry and material (metalness/roughness) controls in the properties panel."
+  },
+  "addLayer.card.torusKnot.name": {
+    "defaultMessage": "Torus Knot"
+  },
+  "addLayer.card.trafficReplay.desc": {
+    "defaultMessage": "Replay anonymized real-world street users from a traffic-sensor manifest (JSON). Attaches to your Managed Street; press Play to watch real traffic by mode."
+  },
+  "addLayer.card.trafficReplay.name": {
+    "defaultMessage": "(Beta) Traffic Replay from Sensor Data"
+  },
+  "addLayer.card.uploadImage.desc": {
+    "defaultMessage": "Upload an image (sign, reference photo, custom map, etc.) from your device and place it in the scene."
+  },
+  "addLayer.card.uploadImage.name": {
+    "defaultMessage": "Upload Image"
+  },
+  "addLayer.card.uploadModel.desc": {
+    "defaultMessage": "Upload a glTF or GLB model from your device. It is rendered immediately and saved to your asset library."
+  },
+  "addLayer.card.uploadModel.name": {
+    "defaultMessage": "Upload 3D Model"
+  },
+  "addLayer.card.uploadSplat.desc": {
+    "defaultMessage": "Upload a Gaussian Splat (.splat, .ply, .spz, .rad) from your device and place it in the scene."
+  },
+  "addLayer.card.uploadSplat.name": {
+    "defaultMessage": "Upload Gaussian Splat"
+  },
+  "addLayer.onlyFirstFileAdded": {
+    "defaultMessage": "Only the first file was added. Drop one file at a time."
+  },
+  "addLayer.tab.bicycles": {
+    "defaultMessage": "🚲 Bicycles"
+  },
+  "addLayer.tab.buildings": {
+    "defaultMessage": "🏠 Buildings"
+  },
+  "addLayer.tab.custom": {
+    "defaultMessage": "⚙️ Custom"
+  },
+  "addLayer.tab.fixtures": {
+    "defaultMessage": "🚏 Fixtures"
+  },
+  "addLayer.tab.people": {
+    "defaultMessage": "🚶 People"
+  },
+  "addLayer.tab.plants": {
+    "defaultMessage": "🌿 Plants"
+  },
+  "addLayer.tab.shapes": {
+    "defaultMessage": "🔵 Shapes"
+  },
+  "addLayer.tab.signs": {
+    "defaultMessage": "🚸 Signs"
+  },
+  "addLayer.tab.streets": {
+    "defaultMessage": "🚦 Streets"
+  },
+  "addLayer.tab.trafficControl": {
+    "defaultMessage": "🚧 Control"
+  },
+  "addLayer.tab.vehicles": {
+    "defaultMessage": "🚗 Vehicles"
+  },
+  "addLayer.unsupportedFileType": {
+    "defaultMessage": "Unsupported file type: {fileName}. Supported formats: GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ."
+  },
+  "aiChatPanel.inputPlaceholder": {
+    "defaultMessage": "Type a command or type /help for options"
+  },
+  "appMenu.edit": {
+    "defaultMessage": "Edit"
+  },
+  "appMenu.edit.copy": {
+    "defaultMessage": "Copy"
+  },
+  "appMenu.edit.cut": {
+    "defaultMessage": "Cut"
+  },
+  "appMenu.edit.delete": {
+    "defaultMessage": "Delete"
+  },
+  "appMenu.edit.deselect": {
+    "defaultMessage": "Deselect"
+  },
+  "appMenu.edit.duplicate": {
+    "defaultMessage": "Duplicate"
+  },
+  "appMenu.edit.paste": {
+    "defaultMessage": "Paste"
+  },
+  "appMenu.export.dxfEmpty": {
+    "defaultMessage": "No managed-street segments found to export as DXF."
+  },
+  "appMenu.export.dxfError": {
+    "defaultMessage": "Error while trying to save DXF file. Error: {error}"
+  },
+  "appMenu.export.dxfSuccess": {
+    "defaultMessage": "3DStreet scene exported as DXF file."
+  },
+  "appMenu.export.exportingDxf": {
+    "defaultMessage": "Exporting scene as DXF file..."
+  },
+  "appMenu.export.exportingGlb": {
+    "defaultMessage": "Exporting scene as GLB file..."
+  },
+  "appMenu.export.exportingPdf": {
+    "defaultMessage": "Exporting scene as PDF file..."
+  },
+  "appMenu.export.gltfError": {
+    "defaultMessage": "Error while trying to save glTF file. Error: {error}"
+  },
+  "appMenu.export.gltfSuccess": {
+    "defaultMessage": "3DStreet scene exported as glTF file."
+  },
+  "appMenu.export.pdfEmpty": {
+    "defaultMessage": "No managed-street segments found to export as PDF."
+  },
+  "appMenu.export.pdfError": {
+    "defaultMessage": "Error while trying to save PDF file. Error: {error}"
+  },
+  "appMenu.export.pdfSuccess": {
+    "defaultMessage": "3DStreet scene exported as PDF file."
+  },
+  "appMenu.export.uvTransformSkipped": {
+    "defaultMessage": "UV transformation skipped - using original export"
+  },
+  "appMenu.file": {
+    "defaultMessage": "File"
+  },
+  "appMenu.file.export": {
+    "defaultMessage": "Export..."
+  },
+  "appMenu.file.import": {
+    "defaultMessage": "Import..."
+  },
+  "appMenu.file.new": {
+    "defaultMessage": "New..."
+  },
+  "appMenu.file.open": {
+    "defaultMessage": "Open..."
+  },
+  "appMenu.file.save": {
+    "defaultMessage": "Save"
+  },
+  "appMenu.file.saveAs": {
+    "defaultMessage": "Save As..."
+  },
+  "appMenu.file.share": {
+    "defaultMessage": "Share..."
+  },
+  "appMenu.geojson.importSuccess": {
+    "defaultMessage": "GeoJSON file imported successfully. Found {count} polygon features."
+  },
+  "appMenu.geojson.largeFileWarning": {
+    "defaultMessage": "GeoJSON file is {sizeKB}KB. Large files may affect performance."
+  },
+  "appMenu.geojson.loadError": {
+    "defaultMessage": "Error loading GeoJSON: {message}"
+  },
+  "appMenu.geojson.parseError": {
+    "defaultMessage": "Error parsing GeoJSON file. Please ensure it is valid JSON."
+  },
+  "appMenu.help": {
+    "defaultMessage": "Help"
+  },
+  "appMenu.help.aiSceneAssistant": {
+    "defaultMessage": "AI Scene Assistant"
+  },
+  "appMenu.help.mouseTouchControls": {
+    "defaultMessage": "Mouse and Touch Controls"
+  },
+  "appMenu.proBadge": {
+    "defaultMessage": "Pro"
+  },
+  "appMenu.view": {
+    "defaultMessage": "View"
+  },
+  "appMenu.view.camera.orthotop": {
+    "defaultMessage": "Plan View"
+  },
+  "appMenu.view.camera.perspective": {
+    "defaultMessage": "3D View"
+  },
+  "appMenu.view.language": {
+    "defaultMessage": "Language"
+  },
+  "appMenu.view.showGrid": {
+    "defaultMessage": "Show Grid"
+  },
+  "appMenu.view.showPanels": {
+    "defaultMessage": "Show Panels"
+  },
+  "appMenu.view.snapshotRender": {
+    "defaultMessage": "Capture & Render..."
+  },
+  "appMenu.view.zoomToSelection": {
+    "defaultMessage": "Zoom to Selection"
+  },
+  "assetInfo.assetSource": {
+    "defaultMessage": "Asset source: {ownership} · {assetIdShort}…"
+  },
+  "assetInfo.details": {
+    "defaultMessage": "Details"
+  },
+  "assetInfo.ownershipNotOwned": {
+    "defaultMessage": "not owned by you"
+  },
+  "assetInfo.ownershipYours": {
+    "defaultMessage": "your cloud"
+  },
+  "assetInfo.upgradeStorage": {
+    "defaultMessage": "Upgrade for {storage} storage"
+  },
+  "catalog.Bicycle_1.name": {
+    "defaultMessage": "Bicycle Model 1"
+  },
+  "catalog.ElectricScooter_1.name": {
+    "defaultMessage": "Electric Scooter"
+  },
+  "catalog.SM3D_Bld_Mixed_4fl.name": {
+    "defaultMessage": "Mixed 4fl"
+  },
+  "catalog.SM3D_Bld_Mixed_4fl_2.name": {
+    "defaultMessage": "Mixed 4fl 2"
+  },
+  "catalog.SM3D_Bld_Mixed_5fl.name": {
+    "defaultMessage": "Mixed 5fl"
+  },
+  "catalog.SM3D_Bld_Mixed_Corner_4fl.name": {
+    "defaultMessage": "Mixed Corner 4fl"
+  },
+  "catalog.SM3D_Bld_Mixed_Double_5fl.name": {
+    "defaultMessage": "Mixed Double 5fl"
+  },
+  "catalog.SM_Bld_House_Preset_03_1800.name": {
+    "defaultMessage": "Suburban House 1"
+  },
+  "catalog.SM_Bld_House_Preset_08_1809.name": {
+    "defaultMessage": "Suburban House 3"
+  },
+  "catalog.SM_Bld_House_Preset_09_1845.name": {
+    "defaultMessage": "Suburban House 2"
+  },
+  "catalog.USPS-mailbox.name": {
+    "defaultMessage": "USPS Mailbox"
+  },
+  "catalog.arched-building-01.name": {
+    "defaultMessage": "Arched Building 1"
+  },
+  "catalog.arched-building-02.name": {
+    "defaultMessage": "Arched Building 2"
+  },
+  "catalog.arched-building-03.name": {
+    "defaultMessage": "Arched Building 3"
+  },
+  "catalog.arched-building-04.name": {
+    "defaultMessage": "Arched Building 4"
+  },
+  "catalog.bb-bollard.name": {
+    "defaultMessage": "Bollard (Bollard Buddy)"
+  },
+  "catalog.bench.name": {
+    "defaultMessage": "Bench"
+  },
+  "catalog.bench_orientation_center.name": {
+    "defaultMessage": "Bench Orientation Center"
+  },
+  "catalog.bike-only-cargo.name": {
+    "defaultMessage": "Cargo Bike"
+  },
+  "catalog.bike-only-dutch.name": {
+    "defaultMessage": "Dutch Bike"
+  },
+  "catalog.bike-only-hybrid.name": {
+    "defaultMessage": "Hybrid Bike"
+  },
+  "catalog.bikerack.name": {
+    "defaultMessage": "Bike Rack"
+  },
+  "catalog.bikeshare.name": {
+    "defaultMessage": "Bike Share"
+  },
+  "catalog.bollard.name": {
+    "defaultMessage": "Bollard"
+  },
+  "catalog.box-truck-rig.name": {
+    "defaultMessage": "Box Truck"
+  },
+  "catalog.brt-station.name": {
+    "defaultMessage": "BRT Station"
+  },
+  "catalog.bus-stop-alternate.name": {
+    "defaultMessage": "Bus Stop Alternate"
+  },
+  "catalog.bus-stop.name": {
+    "defaultMessage": "Bus Stop"
+  },
+  "catalog.bus.description": {
+    "defaultMessage": "The New Flyer XD40 is a modern, stylish, and comfortable bus that is perfect for people in urban settings."
+  },
+  "catalog.bus.name": {
+    "defaultMessage": "Bus New Flyer XD40"
+  },
+  "catalog.char1.name": {
+    "defaultMessage": "Character 1"
+  },
+  "catalog.char10.name": {
+    "defaultMessage": "Character 10"
+  },
+  "catalog.char11.name": {
+    "defaultMessage": "Character 11"
+  },
+  "catalog.char12.name": {
+    "defaultMessage": "Character 12"
+  },
+  "catalog.char13.name": {
+    "defaultMessage": "Character 13"
+  },
+  "catalog.char14.name": {
+    "defaultMessage": "Character 14"
+  },
+  "catalog.char15.name": {
+    "defaultMessage": "Character 15"
+  },
+  "catalog.char16.name": {
+    "defaultMessage": "Character 16"
+  },
+  "catalog.char2.name": {
+    "defaultMessage": "Character 2"
+  },
+  "catalog.char3.name": {
+    "defaultMessage": "Character 3"
+  },
+  "catalog.char4.name": {
+    "defaultMessage": "Character 4"
+  },
+  "catalog.char5.name": {
+    "defaultMessage": "Character 5"
+  },
+  "catalog.char6.name": {
+    "defaultMessage": "Character 6"
+  },
+  "catalog.char7.name": {
+    "defaultMessage": "Character 7"
+  },
+  "catalog.char8.name": {
+    "defaultMessage": "Character 8"
+  },
+  "catalog.char9.name": {
+    "defaultMessage": "Character 9"
+  },
+  "catalog.concrete-bollard.name": {
+    "defaultMessage": "Concrete Bollard"
+  },
+  "catalog.cone.name": {
+    "defaultMessage": "Traffic Cone"
+  },
+  "catalog.corner-island.name": {
+    "defaultMessage": "Corner Island"
+  },
+  "catalog.crosswalk-zebra-box.name": {
+    "defaultMessage": "Crosswalk Zebra Box"
+  },
+  "catalog.cyclist-cargo.name": {
+    "defaultMessage": "Cargo Bike"
+  },
+  "catalog.cyclist-dutch.name": {
+    "defaultMessage": "Dutch Cyclist"
+  },
+  "catalog.cyclist-kid.name": {
+    "defaultMessage": "Kid Cyclist"
+  },
+  "catalog.cyclist1.name": {
+    "defaultMessage": "Cyclist 1"
+  },
+  "catalog.cyclist2.name": {
+    "defaultMessage": "Cyclist 2"
+  },
+  "catalog.cyclist3.name": {
+    "defaultMessage": "Cyclist 3"
+  },
+  "catalog.dividers-bush.name": {
+    "defaultMessage": "Bush"
+  },
+  "catalog.dividers-dome.name": {
+    "defaultMessage": "Dome"
+  },
+  "catalog.dividers-flowers.name": {
+    "defaultMessage": "Flowers"
+  },
+  "catalog.dividers-planter-box.name": {
+    "defaultMessage": "Planter Box"
+  },
+  "catalog.dividers-planting-strip.name": {
+    "defaultMessage": "Planting Strip"
+  },
+  "catalog.fire-ladder-rig.name": {
+    "defaultMessage": "Fire Ladder Truck"
+  },
+  "catalog.fire-truck-rig.name": {
+    "defaultMessage": "Fire Truck"
+  },
+  "catalog.fixture-bench-modern.name": {
+    "defaultMessage": "Modern Bench"
+  },
+  "catalog.fixture-bike-rack.name": {
+    "defaultMessage": "Bike Rack"
+  },
+  "catalog.fixture-bus-stop.name": {
+    "defaultMessage": "Bus Stop"
+  },
+  "catalog.fixture-picnic-table.name": {
+    "defaultMessage": "Picnic Table"
+  },
+  "catalog.fixture-trash-can.name": {
+    "defaultMessage": "Trash Can"
+  },
+  "catalog.food-trailer-rig.name": {
+    "defaultMessage": "Food Trailer"
+  },
+  "catalog.green-flowers.name": {
+    "defaultMessage": "Flowers"
+  },
+  "catalog.green-garden-urn.name": {
+    "defaultMessage": "Garden Urn"
+  },
+  "catalog.green-planter-cactus.name": {
+    "defaultMessage": "Cactus"
+  },
+  "catalog.green-planter-fan-palm.name": {
+    "defaultMessage": "Fan Palm"
+  },
+  "catalog.green-planter-snake-plant.name": {
+    "defaultMessage": "Potted Plant"
+  },
+  "catalog.green-planter-tree.name": {
+    "defaultMessage": "Planter Tree"
+  },
+  "catalog.lamp-modern-double.name": {
+    "defaultMessage": "Lamp Modern Double"
+  },
+  "catalog.lamp-modern.name": {
+    "defaultMessage": "Lamp Modern"
+  },
+  "catalog.lamp-traditional.name": {
+    "defaultMessage": "Lamp Traditional"
+  },
+  "catalog.large-parklet.name": {
+    "defaultMessage": "Large Parklet"
+  },
+  "catalog.lending-library.name": {
+    "defaultMessage": "Lending Library"
+  },
+  "catalog.minibus.name": {
+    "defaultMessage": "Minibus"
+  },
+  "catalog.motorbike.name": {
+    "defaultMessage": "Motorbike"
+  },
+  "catalog.outdoor_dining.name": {
+    "defaultMessage": "Outdoor Dining"
+  },
+  "catalog.palm-tree.name": {
+    "defaultMessage": "Palm Tree"
+  },
+  "catalog.parklet.name": {
+    "defaultMessage": "Parklet"
+  },
+  "catalog.picnic-bench.name": {
+    "defaultMessage": "Picnic Bench"
+  },
+  "catalog.residential-mailbox.name": {
+    "defaultMessage": "Residential Mailbox"
+  },
+  "catalog.royal-bollard.name": {
+    "defaultMessage": "Royal Bollard"
+  },
+  "catalog.safehit.name": {
+    "defaultMessage": "Safehit"
+  },
+  "catalog.seawall.name": {
+    "defaultMessage": "Seawall"
+  },
+  "catalog.sedan-rig.name": {
+    "defaultMessage": "Sedan"
+  },
+  "catalog.sedan-taxi-rig.name": {
+    "defaultMessage": "Sedan Taxi"
+  },
+  "catalog.self-driving-cruise-car-rig.name": {
+    "defaultMessage": "Self-Driving Cruise Car"
+  },
+  "catalog.self-driving-waymo-car.name": {
+    "defaultMessage": "Self-Driving Waymo Car"
+  },
+  "catalog.signal_left.name": {
+    "defaultMessage": "Signal Left"
+  },
+  "catalog.signal_right.name": {
+    "defaultMessage": "Signal Right"
+  },
+  "catalog.sp-furn-bench1-5x2ft.name": {
+    "defaultMessage": "Bench with people #1"
+  },
+  "catalog.sp-furn-bench2-5x2ft.name": {
+    "defaultMessage": "Bench with people #2"
+  },
+  "catalog.sp-furn-busstop-roundshelter-12x13ft.name": {
+    "defaultMessage": "Bus stop rounded shelter with people"
+  },
+  "catalog.sp-furn-busstop-shelter-12x4ft.name": {
+    "defaultMessage": "Bus stop shelter with people"
+  },
+  "catalog.sp-furn-farmertent1-10x10ft.name": {
+    "defaultMessage": "Farmer's market tent 10x10 with people 1"
+  },
+  "catalog.sp-furn-farmertent2-10x10ft.name": {
+    "defaultMessage": "Farmer's market tent 10x10 with people 2"
+  },
+  "catalog.sp-furn-foodcart-5dot5x9ft.name": {
+    "defaultMessage": "Food cart with people"
+  },
+  "catalog.sp-furn-table-2x7ft.name": {
+    "defaultMessage": "Outdoor seating with people"
+  },
+  "catalog.sp-furn-table-blue-7x7ft.name": {
+    "defaultMessage": "Outdoor seating with umbrella and people"
+  },
+  "catalog.sp-grand-suv.name": {
+    "defaultMessage": "Grand SUV"
+  },
+  "catalog.sp-gutter-25ft-left.name": {
+    "defaultMessage": "sp Gutter-2.5ft left"
+  },
+  "catalog.sp-gutter-25ft-right.name": {
+    "defaultMessage": "sp Gutter-2.5ft right"
+  },
+  "catalog.sp-hatchback-yellow.name": {
+    "defaultMessage": "Hatchback Car"
+  },
+  "catalog.sp-light-flowerP-bannerBY-13ft.name": {
+    "defaultMessage": "Light pole 13 ft with purple flowers and blue & yellow banners"
+  },
+  "catalog.sp-light-flowerY-bannerRG-13ft.name": {
+    "defaultMessage": "Light pole 13 ft with yellow flowers and red & green banners"
+  },
+  "catalog.sp-median-planterbox-tall-06x30ft.name": {
+    "defaultMessage": "Median Planterbox 6x30 ft"
+  },
+  "catalog.sp-median-tallflower-RYB-10x10ft.name": {
+    "defaultMessage": "Median Planterbox 10x10 ft"
+  },
+  "catalog.sp-median-tallflower-RYB-6x10ft.name": {
+    "defaultMessage": "Median Planterbox 6x10 ft"
+  },
+  "catalog.sp-parking-planter-5x8ft.name": {
+    "defaultMessage": "Parking Planter 5x8 ft"
+  },
+  "catalog.sp-prop-bigbox-1L-220ft.name": {
+    "defaultMessage": "Big Box 1 Story 220ft"
+  },
+  "catalog.sp-prop-bigbox-1L-291ft.name": {
+    "defaultMessage": "Big Box 1 Story 291ft"
+  },
+  "catalog.sp-prop-gov-3L-61ft.name": {
+    "defaultMessage": "Government Building 3 Story 61ft"
+  },
+  "catalog.sp-prop-mixeduse-2L-29ft.name": {
+    "defaultMessage": "Mixed Use 2L 29ft"
+  },
+  "catalog.sp-prop-mixeduse-2L-30ft.name": {
+    "defaultMessage": "Mixed Use 2L 30ft"
+  },
+  "catalog.sp-prop-mixeduse-3L-18ft.name": {
+    "defaultMessage": "Mixed Use 3L 18ft"
+  },
+  "catalog.sp-prop-mixeduse-3L-22ft.name": {
+    "defaultMessage": "Mixed Use 3L 22ft"
+  },
+  "catalog.sp-prop-mixeduse-3L-23ft-corner.name": {
+    "defaultMessage": "Mixed Use 3L 23ft Corner"
+  },
+  "catalog.sp-prop-mixeduse-3L-42ft.name": {
+    "defaultMessage": "Mixed Use 3L 42ft"
+  },
+  "catalog.sp-prop-mixeduse-3L-78ft-corner.name": {
+    "defaultMessage": "Mixed Use 3L 78ft Corner"
+  },
+  "catalog.sp-prop-parking-3L-155ft.name": {
+    "defaultMessage": "Parking Structure 3 Story 155ft"
+  },
+  "catalog.sp-prop-parking-3L-97ft-centered.name": {
+    "defaultMessage": "Parking Structure 3 Story 97ft Centered"
+  },
+  "catalog.sp-prop-sf-1L-41ft.name": {
+    "defaultMessage": "Single Family 1 Story 41ft"
+  },
+  "catalog.sp-prop-sf-1L-62ft.name": {
+    "defaultMessage": "Single Family 1 Story 62ft"
+  },
+  "catalog.sp-prop-sf-2L-62ft.name": {
+    "defaultMessage": "Single Family 2 Story 62ft"
+  },
+  "catalog.sp-prop-sf-2L-64ft.name": {
+    "defaultMessage": "Single Family 2 Story 64ft"
+  },
+  "catalog.sp-prop-townhouse-3L-20ft.name": {
+    "defaultMessage": "Townhouse 3 Story 20ft"
+  },
+  "catalog.sp-prop-townhouse-3L-23ft.name": {
+    "defaultMessage": "Townhouse 3 Story 23ft"
+  },
+  "catalog.sp-sign-speed-limit-10mph.name": {
+    "defaultMessage": "Speed Limit 10 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-15mph.name": {
+    "defaultMessage": "Speed Limit 15 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-20mph.name": {
+    "defaultMessage": "Speed Limit 20 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-25mph.name": {
+    "defaultMessage": "Speed Limit 25 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-30mph.name": {
+    "defaultMessage": "Speed Limit 30 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-35mph.name": {
+    "defaultMessage": "Speed Limit 35 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-40mph.name": {
+    "defaultMessage": "Speed Limit 40 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-45mph.name": {
+    "defaultMessage": "Speed Limit 45 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-50mph.name": {
+    "defaultMessage": "Speed Limit 50 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-55mph.name": {
+    "defaultMessage": "Speed Limit 55 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-60mph.name": {
+    "defaultMessage": "Speed Limit 60 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-65mph.name": {
+    "defaultMessage": "Speed Limit 65 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-70mph.name": {
+    "defaultMessage": "Speed Limit 70 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-75mph.name": {
+    "defaultMessage": "Speed Limit 75 MPH Sign"
+  },
+  "catalog.sp-sign-speed-limit-80mph.name": {
+    "defaultMessage": "Speed Limit 80 MPH Sign"
+  },
+  "catalog.sp-tree-buroak-24ft.name": {
+    "defaultMessage": "Bur Oak Tree 24ft"
+  },
+  "catalog.sp-tree-buroak-28ft.name": {
+    "defaultMessage": "Bur Oak Tree 28ft"
+  },
+  "catalog.sp-tree-honeylocust-24ft.name": {
+    "defaultMessage": "Honey Locust Tree 24ft"
+  },
+  "catalog.sp-tree-japaneselilac-20ft.name": {
+    "defaultMessage": "Japanese Lilac Tree 20ft"
+  },
+  "catalog.sp-tree-palm-26ft.name": {
+    "defaultMessage": "Palm Tree 26 ft"
+  },
+  "catalog.sp-tree-palm-28ft.name": {
+    "defaultMessage": "Palm Tree 28ft"
+  },
+  "catalog.sp-tree-purpleplum-16ft.name": {
+    "defaultMessage": "Purple Plum Tree 16ft"
+  },
+  "catalog.sp-tree-small-15ft.name": {
+    "defaultMessage": "Small Tree 15ft"
+  },
+  "catalog.ssp-median-planterbox-tall-10x30ft.name": {
+    "defaultMessage": "Median Planterbox 10x30 ft"
+  },
+  "catalog.stop_sign.name": {
+    "defaultMessage": "Stop Sign"
+  },
+  "catalog.street-element-crosswalk-raised.name": {
+    "defaultMessage": "Crosswalk Raised"
+  },
+  "catalog.street-element-sign-warning-ped-rrfb.name": {
+    "defaultMessage": "Sign Warning Ped RRFB"
+  },
+  "catalog.street-element-speed-hump.name": {
+    "defaultMessage": "Speed Hump"
+  },
+  "catalog.street-element-traffic-island-end-rounded.name": {
+    "defaultMessage": "Traffic Island End Rounded"
+  },
+  "catalog.street-element-traffic-island.name": {
+    "defaultMessage": "Traffic Island"
+  },
+  "catalog.street-element-traffic-post-k71.name": {
+    "defaultMessage": "Traffic Post K71"
+  },
+  "catalog.suv-rig.name": {
+    "defaultMessage": "SUV"
+  },
+  "catalog.temporary-barricade.name": {
+    "defaultMessage": "Temporary Barricade"
+  },
+  "catalog.temporary-jersey-barrier-concrete.name": {
+    "defaultMessage": "Temporary Jersey Barrier Concrete"
+  },
+  "catalog.temporary-jersey-barrier-plastic.name": {
+    "defaultMessage": "Temporary Jersey Barrier Plastic"
+  },
+  "catalog.temporary-traffic-cone.name": {
+    "defaultMessage": "Temporary Traffic Cone"
+  },
+  "catalog.track.name": {
+    "defaultMessage": "Track"
+  },
+  "catalog.traffic-calming-bumps.name": {
+    "defaultMessage": "Traffic Calming Bumps"
+  },
+  "catalog.tram.name": {
+    "defaultMessage": "Tram"
+  },
+  "catalog.trash-bin.name": {
+    "defaultMessage": "Trash Bin"
+  },
+  "catalog.trash-truck-side-loading.name": {
+    "defaultMessage": "Side-Loading Trash Truck"
+  },
+  "catalog.tree3.name": {
+    "defaultMessage": "Tree"
+  },
+  "catalog.trolley.name": {
+    "defaultMessage": "Trolley"
+  },
+  "catalog.tuk-tuk.name": {
+    "defaultMessage": "Tuk-Tuk"
+  },
+  "catalog.utility_pole.name": {
+    "defaultMessage": "Utility Pole"
+  },
+  "catalog.wayfinding.name": {
+    "defaultMessage": "Wayfinding Box"
+  },
+  "common.addLayer": {
+    "defaultMessage": "Add layer"
+  },
+  "common.cancel": {
+    "defaultMessage": "Cancel"
+  },
+  "common.delete": {
+    "defaultMessage": "Delete"
+  },
+  "common.discord": {
+    "defaultMessage": "Discord"
+  },
+  "common.documentation": {
+    "defaultMessage": "Documentation"
+  },
+  "common.duplicate": {
+    "defaultMessage": "Duplicate"
+  },
+  "common.focus": {
+    "defaultMessage": "Focus"
+  },
+  "common.heightLabel": {
+    "defaultMessage": "Height:"
+  },
+  "common.keyboardShortcuts": {
+    "defaultMessage": "Keyboard Shortcuts"
+  },
+  "common.rename": {
+    "defaultMessage": "Rename"
+  },
+  "common.resetCameraView": {
+    "defaultMessage": "Reset Camera View"
+  },
+  "common.retry": {
+    "defaultMessage": "Retry"
+  },
+  "common.share": {
+    "defaultMessage": "Share"
+  },
+  "common.signInToCloud": {
+    "defaultMessage": "Sign in to 3DStreet Cloud"
+  },
+  "common.surface": {
+    "defaultMessage": "Surface"
+  },
+  "common.upgradeToPro": {
+    "defaultMessage": "Upgrade to Pro"
+  },
+  "common.useGeoTokensTooltip": {
+    "defaultMessage": "Use geo tokens to set or change a geolocation for your scene."
+  },
+  "common.widthLabel": {
+    "defaultMessage": "Width:"
+  },
+  "confirmModal.confirm": {
+    "defaultMessage": "Confirm"
+  },
+  "deploymentBanner.dismiss": {
+    "defaultMessage": "Dismiss notice"
+  },
+  "deploymentBanner.message": {
+    "defaultMessage": "You're using a forked or self-hosted build of 3DStreet (open source, AGPL-3.0). Local editing works, but cloud features are unavailable. To use cloud services, visit <link>3dstreet.app</link>."
+  },
+  "driveControls.brakeForce": {
+    "defaultMessage": "Brake Force"
+  },
+  "driveControls.engineForce": {
+    "defaultMessage": "Engine Force"
+  },
+  "driveControls.preset": {
+    "defaultMessage": "Vehicle Preset"
+  },
+  "driveControls.steerAngle": {
+    "defaultMessage": "Steer Angle (rad)"
+  },
+  "driveControls.tipKeys": {
+    "defaultMessage": "Space = brake · R = reset · C = camera mode"
+  },
+  "driveControls.tipPreset": {
+    "defaultMessage": "Pick a preset to swap mesh + physics in one shot, or hand-tune fields below"
+  },
+  "driveControls.tipStart": {
+    "defaultMessage": "Press Start, then drive with WASD / arrows"
+  },
+  "driveControls.tipsHeading": {
+    "defaultMessage": "💡 Drive tips"
+  },
+  "editorUpgradeModal.alreadyPro": {
+    "defaultMessage": "You're already a Pro member — try that action again to continue."
+  },
+  "entity.cloneEntity": {
+    "defaultMessage": "Clone entity"
+  },
+  "entity.dragToReorder": {
+    "defaultMessage": "Drag to reorder"
+  },
+  "entity.removeEntity": {
+    "defaultMessage": "Remove entity"
+  },
+  "entity.toggleVisibility": {
+    "defaultMessage": "Toggle entity visibility"
+  },
+  "exportModal.arReadyHint": {
+    "defaultMessage": "Omits people, vehicles and geospatial layers for augmented reality apps."
+  },
+  "exportModal.arReadyPill": {
+    "defaultMessage": "AR Ready"
+  },
+  "exportModal.autoPreviewLabel": {
+    "defaultMessage": "Automatically generate 3D preview"
+  },
+  "exportModal.betaNote": {
+    "defaultMessage": "Beta format: the preview is exactly what you'll download."
+  },
+  "exportModal.downloadExt": {
+    "defaultMessage": "Download {ext}"
+  },
+  "exportModal.dxfDescription": {
+    "defaultMessage": "Download a 2D plan view of this scene's streets as a <code>.dxf</code> file for use in AutoCAD and other CAD tools."
+  },
+  "exportModal.format.dxf": {
+    "defaultMessage": "CAD Plan"
+  },
+  "exportModal.format.glb": {
+    "defaultMessage": "3D Model"
+  },
+  "exportModal.format.json": {
+    "defaultMessage": "JSON"
+  },
+  "exportModal.format.pdf": {
+    "defaultMessage": "PDF Plan"
+  },
+  "exportModal.generatePreview": {
+    "defaultMessage": "Generate 3D preview"
+  },
+  "exportModal.generatePreviewHint": {
+    "defaultMessage": "Builds the .glb in your browser; this may take a few seconds on large scenes."
+  },
+  "exportModal.generatingPreview": {
+    "defaultMessage": "Generating 3D preview…"
+  },
+  "exportModal.glbDescription": {
+    "defaultMessage": "Download this scene as a <code>.glb</code> 3D model file for use in Blender, Unreal, and other 3D tools."
+  },
+  "exportModal.jsonDescription": {
+    "defaultMessage": "Download this scene as a <code>.3dstreet.json</code> file to back up your work or import into another 3DStreet account."
+  },
+  "exportModal.jsonTruncated": {
+    "defaultMessage": "Preview truncated. The downloaded file contains the full scene."
+  },
+  "exportModal.pdfDescription": {
+    "defaultMessage": "Download a 2D plan view of this scene's streets as a vector <code>.pdf</code> file, ready to print or publish."
+  },
+  "exportModal.planEmpty": {
+    "defaultMessage": "No street segments to draw yet. Add a street layer to see a plan preview."
+  },
+  "exportModal.previewError": {
+    "defaultMessage": "Could not generate the preview. Please try again."
+  },
+  "exportModal.proDownloadHint": {
+    "defaultMessage": "Preview is free. Downloading requires 3DStreet Pro."
+  },
+  "exportModal.serializingScene": {
+    "defaultMessage": "Serializing scene…"
+  },
+  "exportModal.settings": {
+    "defaultMessage": "Settings"
+  },
+  "exportModal.title": {
+    "defaultMessage": "Export Scene"
+  },
+  "exportModal.unitsFeet": {
+    "defaultMessage": "Feet"
+  },
+  "exportModal.unitsLabel": {
+    "defaultMessage": "Units"
+  },
+  "exportModal.unitsMeters": {
+    "defaultMessage": "Meters"
+  },
+  "geoModal.centerpoint": {
+    "defaultMessage": "Centerpoint"
+  },
+  "geoModal.elevationLabel": {
+    "defaultMessage": "Elevation:"
+  },
+  "geoModal.freeDuringBeta": {
+    "defaultMessage": "Free During Beta"
+  },
+  "geoModal.freeTokens": {
+    "defaultMessage": "{count} free tokens"
+  },
+  "geoModal.geoTokensRemaining": {
+    "defaultMessage": "{count} geo tokens remaining"
+  },
+  "geoModal.geojsonImportDetected": {
+    "defaultMessage": "GeoJSON Import Detected"
+  },
+  "geoModal.geojsonTipBeta": {
+    "defaultMessage": "This feature is in beta please join our {discordLink} to provide feedback"
+  },
+  "geoModal.geojsonTipDetected": {
+    "defaultMessage": "We've detected geographic coordinates from your imported GeoJSON data"
+  },
+  "geoModal.geojsonTipMarker": {
+    "defaultMessage": "The red marker shows the calculated center of your imported buildings"
+  },
+  "geoModal.geojsonTipSetLocation": {
+    "defaultMessage": "Click 'Set Location' to position your scene at this location"
+  },
+  "geoModal.geospatialTips": {
+    "defaultMessage": "Geospatial Tips"
+  },
+  "geoModal.latLong": {
+    "defaultMessage": "Lat, Long"
+  },
+  "geoModal.locationLabel": {
+    "defaultMessage": "Location:"
+  },
+  "geoModal.locationSetSuccess": {
+    "defaultMessage": "Location Set Successfully!"
+  },
+  "geoModal.nearestIntersectionLabel": {
+    "defaultMessage": "Nearest Intersection:"
+  },
+  "geoModal.none": {
+    "defaultMessage": "None"
+  },
+  "geoModal.outOfGeoTokensTitle": {
+    "defaultMessage": "Out of Geo Tokens"
+  },
+  "geoModal.outOfTokensProIncludes": {
+    "defaultMessage": "Pro includes unlimited geo lookups, map access, and more"
+  },
+  "geoModal.outOfTokensSetChange": {
+    "defaultMessage": "Set and change scene locations as often as you need"
+  },
+  "geoModal.outOfTokensUpgrade": {
+    "defaultMessage": "Upgrade to 3DStreet Pro for unlimited geospatial features"
+  },
+  "geoModal.outOfTokensUsedAll": {
+    "defaultMessage": "You've used all your free geo tokens"
+  },
+  "geoModal.searchForLocation": {
+    "defaultMessage": "Search for a location"
+  },
+  "geoModal.setLocation": {
+    "defaultMessage": "Set Location"
+  },
+  "geoModal.setLocationFailed": {
+    "defaultMessage": "Failed to set scene location. Please try again."
+  },
+  "geoModal.setSceneLocation": {
+    "defaultMessage": "Set Scene Location"
+  },
+  "geoModal.tipChoosePoint": {
+    "defaultMessage": "Choose a point that is easy to identify visually from aerial view such as utility pole, road marking, crosswalk ramp, or other landmark"
+  },
+  "geoModal.tipClickMap": {
+    "defaultMessage": "Click on the map to change the location of the red marker point"
+  },
+  "geoModal.tipMarkerOrigin": {
+    "defaultMessage": "The red marker sets the geospatial location for the centerpoint origin of the scene"
+  },
+  "geoModal.tipZoomIn": {
+    "defaultMessage": "Zoom in as much as possible when placing point to ensure accurate scene alignment"
+  },
+  "geoModal.upgradeToChangeLocation": {
+    "defaultMessage": "Upgrade to Pro to Change Location"
+  },
+  "geoModal.upgradeUnlimitedAccess": {
+    "defaultMessage": "Upgrade to Pro for unlimited access"
+  },
+  "geoModal.working": {
+    "defaultMessage": "Working"
+  },
+  "geoSidebar.addGeoLayer": {
+    "defaultMessage": "Add Geo Layer"
+  },
+  "geoSidebar.addRealWorldLocation": {
+    "defaultMessage": "Add a real-world location"
+  },
+  "geoSidebar.background": {
+    "defaultMessage": "Background"
+  },
+  "geoSidebar.blendMode": {
+    "defaultMessage": "Blend Mode"
+  },
+  "geoSidebar.blending": {
+    "defaultMessage": "Blending"
+  },
+  "geoSidebar.blendingFlattening": {
+    "defaultMessage": "Blending & Flattening"
+  },
+  "geoSidebar.centerpointTooltip": {
+    "defaultMessage": "This scene's centerpoint is {latitude}, {longitude}"
+  },
+  "geoSidebar.changeLocation": {
+    "defaultMessage": "Change Location"
+  },
+  "geoSidebar.createFlatteningShape": {
+    "defaultMessage": "Create Flattening Shape"
+  },
+  "geoSidebar.dropSceneCopy": {
+    "defaultMessage": "Drop your scene onto real-world maps with 3D buildings, terrain, and satellite imagery."
+  },
+  "geoSidebar.elevation": {
+    "defaultMessage": "Elevation"
+  },
+  "geoSidebar.environment": {
+    "defaultMessage": "Environment"
+  },
+  "geoSidebar.flatteningShape": {
+    "defaultMessage": "Flattening Shape"
+  },
+  "geoSidebar.geoTokenAlt": {
+    "defaultMessage": "Geo Token"
+  },
+  "geoSidebar.location": {
+    "defaultMessage": "Location"
+  },
+  "geoSidebar.locationSet": {
+    "defaultMessage": "Location Set"
+  },
+  "geoSidebar.mapGoogle3d": {
+    "defaultMessage": "Google 3D Map Tiles"
+  },
+  "geoSidebar.mapGoogle3dAlt": {
+    "defaultMessage": "Google 3D"
+  },
+  "geoSidebar.mapMapbox2d": {
+    "defaultMessage": "Mapbox 2D Satellite"
+  },
+  "geoSidebar.mapMapbox2dAlt": {
+    "defaultMessage": "Mapbox 2D"
+  },
+  "geoSidebar.mapNone": {
+    "defaultMessage": "No Map"
+  },
+  "geoSidebar.mapNotLoaded": {
+    "defaultMessage": "Map not loaded yet"
+  },
+  "geoSidebar.mapOsm3d": {
+    "defaultMessage": "Open Street Map 2.5D Buildings"
+  },
+  "geoSidebar.mapOsm3dAlt": {
+    "defaultMessage": "OSM 3D"
+  },
+  "geoSidebar.mapType": {
+    "defaultMessage": "Map Type"
+  },
+  "geoSidebar.nearestIntersection": {
+    "defaultMessage": "Nearest<br></br> Intersection"
+  },
+  "geoSidebar.noShapesFound": {
+    "defaultMessage": "No shapes found in scene."
+  },
+  "geoSidebar.outOfTokens": {
+    "defaultMessage": "You're out of free geo tokens."
+  },
+  "geoSidebar.preset": {
+    "defaultMessage": "Preset"
+  },
+  "geoSidebar.savedLocation": {
+    "defaultMessage": "This scene has a saved location. Add the geo layer to load 3D buildings, terrain, and satellite imagery."
+  },
+  "geoSidebar.savedLocationWithSource": {
+    "defaultMessage": "This scene has a saved location {sourcePhrase}. Add the geo layer to load 3D buildings, terrain, and satellite imagery."
+  },
+  "geoSidebar.selectShape": {
+    "defaultMessage": "Select a shape..."
+  },
+  "geoSidebar.terrainFlattening": {
+    "defaultMessage": "Terrain Flattening"
+  },
+  "geoSidebar.tokensFree": {
+    "defaultMessage": "{geoToken,plural,one{# free} other{# free}}"
+  },
+  "geoSidebar.upgradeForLookups": {
+    "defaultMessage": "Upgrade to Pro for unlimited geo lookups"
+  },
+  "geoSidebar.usesFreeTokens": {
+    "defaultMessage": "Uses 1 of {geoToken} free geo tokens to add real-world map data."
+  },
+  "help.action.modeSwitch.description": {
+    "defaultMessage": "To switch between the \"View\" and \"Edit\" modes, click the button in the upper right corner."
+  },
+  "help.action.modeSwitch.title": {
+    "defaultMessage": "Mode switch"
+  },
+  "help.action.moveMap.description": {
+    "defaultMessage": "Click and drag to pan the map view."
+  },
+  "help.action.moveMap.title": {
+    "defaultMessage": "Move the map by dragging"
+  },
+  "help.action.or": {
+    "defaultMessage": "or"
+  },
+  "help.action.rotateMap.description": {
+    "defaultMessage": "Right-click and drag to rotate the map while staying in place."
+  },
+  "help.action.rotateMap.title": {
+    "defaultMessage": "Rotate the map by right-clicking and dragging"
+  },
+  "help.action.zoomMap.description": {
+    "defaultMessage": "Use the mouse scrollwheel (or touchpad scrolling motion) to zoom in and out."
+  },
+  "help.action.zoomMap.title": {
+    "defaultMessage": "Zoom the map by scrolling"
+  },
+  "help.shortcut.addEntity": {
+    "defaultMessage": "Add new entity"
+  },
+  "help.shortcut.backView": {
+    "defaultMessage": "Back view"
+  },
+  "help.shortcut.bottomView": {
+    "defaultMessage": "Bottom view"
+  },
+  "help.shortcut.copy": {
+    "defaultMessage": "Copy selected entity"
+  },
+  "help.shortcut.cut": {
+    "defaultMessage": "Cut selected entity"
+  },
+  "help.shortcut.delete": {
+    "defaultMessage": "Delete selected entity"
+  },
+  "help.shortcut.duplicate": {
+    "defaultMessage": "Duplicate selected entity"
+  },
+  "help.shortcut.focus": {
+    "defaultMessage": "Focus on selected entity"
+  },
+  "help.shortcut.frontView": {
+    "defaultMessage": "Front view"
+  },
+  "help.shortcut.leftView": {
+    "defaultMessage": "Left view"
+  },
+  "help.shortcut.paste": {
+    "defaultMessage": "Paste entity"
+  },
+  "help.shortcut.perspectiveView": {
+    "defaultMessage": "Perspective view"
+  },
+  "help.shortcut.redo": {
+    "defaultMessage": "Redo action"
+  },
+  "help.shortcut.rightView": {
+    "defaultMessage": "Right view"
+  },
+  "help.shortcut.rotate": {
+    "defaultMessage": "Rotate"
+  },
+  "help.shortcut.scale": {
+    "defaultMessage": "Scale"
+  },
+  "help.shortcut.showHelp": {
+    "defaultMessage": "Show this help"
+  },
+  "help.shortcut.switchVr": {
+    "defaultMessage": "Switch Edit and VR Modes"
+  },
+  "help.shortcut.toggleGrid": {
+    "defaultMessage": "Toggle grid visibility"
+  },
+  "help.shortcut.togglePanels": {
+    "defaultMessage": "Toggle panels"
+  },
+  "help.shortcut.toggleTransform": {
+    "defaultMessage": "Toggle local between global transform"
+  },
+  "help.shortcut.topView": {
+    "defaultMessage": "Top view"
+  },
+  "help.shortcut.translate": {
+    "defaultMessage": "Translate"
+  },
+  "help.shortcut.undo": {
+    "defaultMessage": "Undo action"
+  },
+  "help.shortcut.unselect": {
+    "defaultMessage": "Unselect entity"
+  },
+  "help.tab.essentialActions": {
+    "defaultMessage": "Essential Actions"
+  },
+  "intersectionSidebar.approaches": {
+    "defaultMessage": "Approaches"
+  },
+  "intersectionSidebar.crosswalk": {
+    "defaultMessage": "Crosswalk:"
+  },
+  "intersectionSidebar.curb": {
+    "defaultMessage": "Curb:"
+  },
+  "intersectionSidebar.curbRadius": {
+    "defaultMessage": "Radius:"
+  },
+  "intersectionSidebar.curbs": {
+    "defaultMessage": "Curbs"
+  },
+  "intersectionSidebar.side": {
+    "defaultMessage": "Side:"
+  },
+  "intersectionSidebar.sidewalk": {
+    "defaultMessage": "Sidewalk:"
+  },
+  "intersectionSidebar.trafficControl": {
+    "defaultMessage": "Traffic Control:"
+  },
+  "jobHealthModal.adminsOnly": {
+    "defaultMessage": "Admins only. Sign in with an admin account to view background-job health."
+  },
+  "jobHealthModal.checkingAccess": {
+    "defaultMessage": "Checking access…"
+  },
+  "jobHealthModal.failedToLoad": {
+    "defaultMessage": "Failed to load: {error}"
+  },
+  "jobHealthModal.footerNote": {
+    "defaultMessage": "Heartbeats are written on each scheduled run. A red row that says “stale” means the schedule isn’t firing. Expand a row to copy its summary/error for diagnosis."
+  },
+  "jobHealthModal.lastRunSummary": {
+    "defaultMessage": "Last run summary"
+  },
+  "jobHealthModal.overallGray": {
+    "defaultMessage": "Awaiting first heartbeats"
+  },
+  "jobHealthModal.overallGreen": {
+    "defaultMessage": "All background jobs healthy"
+  },
+  "jobHealthModal.overallRed": {
+    "defaultMessage": "Attention needed"
+  },
+  "jobHealthModal.overallYellow": {
+    "defaultMessage": "Some jobs ran with issues"
+  },
+  "jobHealthModal.recentRuns": {
+    "defaultMessage": "Recent runs"
+  },
+  "jobHealthModal.title": {
+    "defaultMessage": "System Health"
+  },
+  "loadingSceneModal.dismiss": {
+    "defaultMessage": "Dismiss"
+  },
+  "managedStreetSidebar.convertToShapes": {
+    "defaultMessage": "Convert to Shapes"
+  },
+  "managedStreetSidebar.convertToShapesConfirm": {
+    "defaultMessage": "This turns the street into plain 3D shapes you can move, duplicate, and delete individually. After you save and reload this scene you cannot undo this action. Tip: duplicate the street first if you want to keep a copy of this managed street."
+  },
+  "managedStreetSidebar.convertToShapesTitle": {
+    "defaultMessage": "Convert Street to Shapes?"
+  },
+  "managedStreetSidebar.downloadJSON": {
+    "defaultMessage": "Download Street JSON"
+  },
+  "managedStreetSidebar.reloadConfirm": {
+    "defaultMessage": "Reload this street from {source}? Local segment edits will be lost."
+  },
+  "managedStreetSidebar.reloadFromSource": {
+    "defaultMessage": "Reload from {source}"
+  },
+  "modalTextures.back": {
+    "defaultMessage": "BACK"
+  },
+  "modalTextures.filenameLabel": {
+    "defaultMessage": "Filename:"
+  },
+  "modalTextures.filterPlaceholder": {
+    "defaultMessage": "Filter..."
+  },
+  "modalTextures.fromAssetsRegistry": {
+    "defaultMessage": "From assets registry:"
+  },
+  "modalTextures.fromUrl": {
+    "defaultMessage": "From URL (and press Enter):"
+  },
+  "modalTextures.loadFromSources": {
+    "defaultMessage": "Load a new texture from one of these sources:"
+  },
+  "modalTextures.loadTexture": {
+    "defaultMessage": "LOAD TEXTURE"
+  },
+  "modalTextures.loadThisTexture": {
+    "defaultMessage": "LOAD THIS TEXTURE"
+  },
+  "modalTextures.nameLabel": {
+    "defaultMessage": "Name:"
+  },
+  "modalTextures.nameNotValid": {
+    "defaultMessage": "Name is not valid"
+  },
+  "modalTextures.nameTaken": {
+    "defaultMessage": "Name already taken by another asset or entity"
+  },
+  "modalTextures.textureAlreadyLoaded": {
+    "defaultMessage": "Texture already loaded"
+  },
+  "modalTextures.title": {
+    "defaultMessage": "Textures"
+  },
+  "newModal.aiAssistant.description": {
+    "defaultMessage": "Get help building your scene with AI"
+  },
+  "newModal.aiAssistant.title": {
+    "defaultMessage": "Create with AI assistant"
+  },
+  "newModal.aiGenerator.description": {
+    "defaultMessage": "Create street images with AI"
+  },
+  "newModal.aiGenerator.title": {
+    "defaultMessage": "AI Image Generator"
+  },
+  "newModal.basicStreet.description": {
+    "defaultMessage": "Start with a pre-configured street template"
+  },
+  "newModal.basicStreet.title": {
+    "defaultMessage": "Create a basic street"
+  },
+  "newModal.geolocation.description": {
+    "defaultMessage": "Start with maps and real-world context"
+  },
+  "newModal.geolocation.title": {
+    "defaultMessage": "Create from geolocation"
+  },
+  "newModal.intersection.description": {
+    "defaultMessage": "Begin with a 90° street intersection"
+  },
+  "newModal.intersection.title": {
+    "defaultMessage": "Create intersection"
+  },
+  "newModal.newBlankScene": {
+    "defaultMessage": "New Blank Scene"
+  },
+  "newModal.openScene": {
+    "defaultMessage": "Open Scene"
+  },
+  "newModal.startWithTemplate": {
+    "defaultMessage": "Start with a template"
+  },
+  "newModal.streetmix.description": {
+    "defaultMessage": "Import an existing Streetmix design"
+  },
+  "newModal.streetmix.title": {
+    "defaultMessage": "Import from Streetmix"
+  },
+  "newModal.title": {
+    "defaultMessage": "Create a New Scene"
+  },
+  "playControls.brakeForce": {
+    "defaultMessage": "Brake force"
+  },
+  "playControls.driftWarning": {
+    "defaultMessage": "Sim lagging wall by {ms}ms"
+  },
+  "playControls.engineForce": {
+    "defaultMessage": "Engine force"
+  },
+  "playControls.gamepadHint": {
+    "defaultMessage": "Gamepad: RT/LT throttle · B brake · stick steer · Y reset · X camera · Start pause · Back stop"
+  },
+  "playControls.keyboardHint": {
+    "defaultMessage": "WASD drive · Space brake · R reset · C camera"
+  },
+  "playControls.sim": {
+    "defaultMessage": "Sim"
+  },
+  "playControls.steer": {
+    "defaultMessage": "Steer (rad)"
+  },
+  "playControls.title": {
+    "defaultMessage": "Drive controls"
+  },
+  "playControls.wall": {
+    "defaultMessage": "Wall"
+  },
+  "primaryToolbar.captureRender": {
+    "defaultMessage": "Capture & Render"
+  },
+  "primaryToolbar.hidePanels": {
+    "defaultMessage": "Hide panels"
+  },
+  "primaryToolbar.play": {
+    "defaultMessage": "Start"
+  },
+  "primaryToolbar.playTitle": {
+    "defaultMessage": "Enter View mode and run the simulation"
+  },
+  "primaryToolbar.showPanels": {
+    "defaultMessage": "Show panels"
+  },
+  "profileModal.accountInformation": {
+    "defaultMessage": "Account Information"
+  },
+  "profileModal.loadingUsername": {
+    "defaultMessage": "Loading username..."
+  },
+  "profileModal.logOut": {
+    "defaultMessage": "Log Out"
+  },
+  "profileModal.manageSubscription": {
+    "defaultMessage": "Manage subscription"
+  },
+  "profileModal.managingSubscription": {
+    "defaultMessage": "Managing subscription"
+  },
+  "profileModal.monthlyProRefill": {
+    "defaultMessage": "Monthly Pro refill: {date}"
+  },
+  "profileModal.planFree": {
+    "defaultMessage": "Plan: Free"
+  },
+  "profileModal.planMax": {
+    "defaultMessage": "Plan: Max"
+  },
+  "profileModal.planPro": {
+    "defaultMessage": "Plan: Pro"
+  },
+  "profileModal.planProTeam": {
+    "defaultMessage": "Plan: Pro Team ({domain})"
+  },
+  "profileModal.publicProfile": {
+    "defaultMessage": "Public Profile"
+  },
+  "profileModal.signedInWith": {
+    "defaultMessage": "Signed in with {provider}"
+  },
+  "profileModal.subscription": {
+    "defaultMessage": "Subscription"
+  },
+  "profileModal.title": {
+    "defaultMessage": "3DStreet Account"
+  },
+  "profileModal.unlimitedGeoTokens": {
+    "defaultMessage": "Unlimited Geo Tokens"
+  },
+  "raceFinish.collisionsSuffix": {
+    "defaultMessage": "{collisions,plural,one{# collision} other{# collisions}}"
+  },
+  "raceFinish.dismissHint": {
+    "defaultMessage": "click to dismiss"
+  },
+  "raceFinish.finished": {
+    "defaultMessage": "Finished"
+  },
+  "raceFinish.firstRun": {
+    "defaultMessage": "First run on this course"
+  },
+  "raceFinish.newBest": {
+    "defaultMessage": "New best!"
+  },
+  "raceFinish.vsBest": {
+    "defaultMessage": "{delta} vs best {best}"
+  },
+  "raceFinish.withCollisions": {
+    "defaultMessage": "{collisions,plural,one{{time} + # collision} other{{time} + # collisions}}"
+  },
+  "renderStyles.architectural-cartoon.description": {
+    "defaultMessage": "Playful cartoonish architectural illustration"
+  },
+  "renderStyles.architectural-cartoon.name": {
+    "defaultMessage": "Cartoon"
+  },
+  "renderStyles.color-pencil.description": {
+    "defaultMessage": "Blue colored-pencil architecture concept sketch"
+  },
+  "renderStyles.color-pencil.name": {
+    "defaultMessage": "Blue Pencil"
+  },
+  "renderStyles.isometric-miniature.description": {
+    "defaultMessage": "Cute isometric tilt-shift diorama"
+  },
+  "renderStyles.isometric-miniature.name": {
+    "defaultMessage": "Miniature"
+  },
+  "renderStyles.marker-sketch.description": {
+    "defaultMessage": "Quick urban-design marker rendering"
+  },
+  "renderStyles.marker-sketch.name": {
+    "defaultMessage": "Marker Sketch"
+  },
+  "renderStyles.none.description": {
+    "defaultMessage": "No style language; instructions only"
+  },
+  "renderStyles.none.name": {
+    "defaultMessage": "None"
+  },
+  "renderStyles.photorealistic.description": {
+    "defaultMessage": "High-detail realistic render"
+  },
+  "renderStyles.photorealistic.name": {
+    "defaultMessage": "Photorealistic"
+  },
+  "renderStyles.pixel-16bit.description": {
+    "defaultMessage": "Retro 16-bit pixel art video game scene"
+  },
+  "renderStyles.pixel-16bit.name": {
+    "defaultMessage": "16-bit Game"
+  },
+  "renderStyles.urban-diagram.description": {
+    "defaultMessage": "Flat street-design-guide planning diagram"
+  },
+  "renderStyles.urban-diagram.name": {
+    "defaultMessage": "Urban Diagram"
+  },
+  "renderStyles.watercolor.description": {
+    "defaultMessage": "Soft hand-painted architectural watercolor"
+  },
+  "renderStyles.watercolor.name": {
+    "defaultMessage": "Watercolor"
+  },
+  "rightPanel.planTooltipFree": {
+    "defaultMessage": "3DStreet Free Community Edition"
+  },
+  "rightPanel.planTooltipMax": {
+    "defaultMessage": "3DStreet Max Plan"
+  },
+  "rightPanel.planTooltipPro": {
+    "defaultMessage": "3DStreet Pro Plan"
+  },
+  "rightPanel.planTooltipTeam": {
+    "defaultMessage": "3DStreet Team Plan ({teamDomain})"
+  },
+  "rightPanel.shareScene": {
+    "defaultMessage": "Share scene"
+  },
+  "rightPanel.tabConsole": {
+    "defaultMessage": "Console"
+  },
+  "rightPanel.tabProperties": {
+    "defaultMessage": "Properties"
+  },
+  "save.notSavedSaveAs": {
+    "defaultMessage": "Scene not saved, press to save as..."
+  },
+  "save.notSavedSignIn": {
+    "defaultMessage": "Scene not saved, sign in to save as..."
+  },
+  "save.savedSaveAgain": {
+    "defaultMessage": "Scene saved to cloud, press to save again"
+  },
+  "save.saving": {
+    "defaultMessage": "Saving..."
+  },
+  "savingModal.saving": {
+    "defaultMessage": "Saving"
+  },
+  "sceneGraph.addLayerButton": {
+    "defaultMessage": "Add Layer"
+  },
+  "sceneGraph.emptyStateMessage": {
+    "defaultMessage": "Add a new layer to get started."
+  },
+  "sceneGraph.tabAssets": {
+    "defaultMessage": "Assets"
+  },
+  "sceneGraph.tabGeospatial": {
+    "defaultMessage": "Geospatial"
+  },
+  "sceneGraph.tabLayers": {
+    "defaultMessage": "Layers"
+  },
+  "scenesModal.fetchError": {
+    "defaultMessage": "Error fetching scenes: {error}"
+  },
+  "scenesModal.loadError": {
+    "defaultMessage": "Error trying to load 3DStreet scene from cloud. Error: Scene data is undefined or invalid."
+  },
+  "scenesModal.loadMore": {
+    "defaultMessage": "Load More"
+  },
+  "scenesModal.loadSuccess": {
+    "defaultMessage": "Scene loaded from 3DStreet Cloud."
+  },
+  "scenesModal.loadingFromCloud": {
+    "defaultMessage": "Loading scene from cloud..."
+  },
+  "scenesModal.signInPrompt": {
+    "defaultMessage": "To view your scenes you have to sign in:"
+  },
+  "scenesModal.tabs.communityScenes": {
+    "defaultMessage": "Community Scenes"
+  },
+  "scenesModal.tabs.myScenes": {
+    "defaultMessage": "My Scenes"
+  },
+  "scenesModal.title": {
+    "defaultMessage": "Open scene"
+  },
+  "scenesModal.uploadJsonFile": {
+    "defaultMessage": "Upload 3DStreet JSON File"
+  },
+  "scenesModal.viewCommunityScenes": {
+    "defaultMessage": "View Community Scenes"
+  },
+  "screenshotModal.aiModelLabel": {
+    "defaultMessage": "AI Model:"
+  },
+  "screenshotModal.aiRenderCompleteGenTokens": {
+    "defaultMessage": "AI render complete! {remainingTokens} gen tokens remaining. ({modelName})"
+  },
+  "screenshotModal.aiRenderCompleteTokens": {
+    "defaultMessage": "AI render complete! {remainingTokens} tokens remaining. ({modelName})"
+  },
+  "screenshotModal.aiRenderFailed": {
+    "defaultMessage": "Failed to generate AI render for {modelName}. Please try again."
+  },
+  "screenshotModal.aiRenderSuccess": {
+    "defaultMessage": "AI render generated successfully! ({modelName})"
+  },
+  "screenshotModal.compareAB": {
+    "defaultMessage": "Compare A/B"
+  },
+  "screenshotModal.confirmClose": {
+    "defaultMessage": "Rendering in progress. Are you sure you want to close? The render will be cancelled."
+  },
+  "screenshotModal.download": {
+    "defaultMessage": "Download"
+  },
+  "screenshotModal.downloadImage": {
+    "defaultMessage": "Download image"
+  },
+  "screenshotModal.empty": {
+    "defaultMessage": "Empty"
+  },
+  "screenshotModal.emptyPromptError": {
+    "defaultMessage": "Add instructions or pick a style before rendering."
+  },
+  "screenshotModal.error": {
+    "defaultMessage": "Error"
+  },
+  "screenshotModal.generate4xTooltip": {
+    "defaultMessage": "Generate 4 renders simultaneously (uses {tokens} tokens)"
+  },
+  "screenshotModal.generateRender": {
+    "defaultMessage": "Generate Render"
+  },
+  "screenshotModal.generateRenders": {
+    "defaultMessage": "Generate Renders"
+  },
+  "screenshotModal.insufficientTokens4x": {
+    "defaultMessage": "You need at least {totalTokenCost} tokens for 4x render"
+  },
+  "screenshotModal.loginPrompt": {
+    "defaultMessage": "Please log in to use AI rendering"
+  },
+  "screenshotModal.mixedModels": {
+    "defaultMessage": "Mixed Models"
+  },
+  "screenshotModal.noImageToDownload": {
+    "defaultMessage": "No image available to download"
+  },
+  "screenshotModal.noScreenshotToRender": {
+    "defaultMessage": "No screenshot available to render"
+  },
+  "screenshotModal.onlyAuthorCanSetThumbnail": {
+    "defaultMessage": "Only the scene author can set the thumbnail"
+  },
+  "screenshotModal.overtimeWarning": {
+    "defaultMessage": "Generation taking longer than expected."
+  },
+  "screenshotModal.promptInstructionsLabel": {
+    "defaultMessage": "Instructions"
+  },
+  "screenshotModal.promptInstructionsPlaceholder": {
+    "defaultMessage": "Describe how to use the input image such as keeping or changing layout, composition or camera angle..."
+  },
+  "screenshotModal.promptLabel": {
+    "defaultMessage": "Prompt:"
+  },
+  "screenshotModal.promptStyleLabel": {
+    "defaultMessage": "Style"
+  },
+  "screenshotModal.promptStylePlaceholder": {
+    "defaultMessage": "No style; instructions only"
+  },
+  "screenshotModal.ready": {
+    "defaultMessage": "Ready"
+  },
+  "screenshotModal.render1x": {
+    "defaultMessage": "1x Render"
+  },
+  "screenshotModal.render4x": {
+    "defaultMessage": "4x Render"
+  },
+  "screenshotModal.rendering": {
+    "defaultMessage": "Rendering..."
+  },
+  "screenshotModal.sameModel": {
+    "defaultMessage": "Same Model"
+  },
+  "screenshotModal.saveSceneFirst": {
+    "defaultMessage": "Please save your scene first"
+  },
+  "screenshotModal.saving": {
+    "defaultMessage": "Saving..."
+  },
+  "screenshotModal.selectedModelFallback": {
+    "defaultMessage": "selected model"
+  },
+  "screenshotModal.sending": {
+    "defaultMessage": "Sending..."
+  },
+  "screenshotModal.sendingRequest": {
+    "defaultMessage": "Sending request..."
+  },
+  "screenshotModal.setAsThumbnail": {
+    "defaultMessage": "Set as Scene Thumbnail"
+  },
+  "screenshotModal.setAsThumbnailTooltip": {
+    "defaultMessage": "Set as scene thumbnail"
+  },
+  "screenshotModal.showOriginal": {
+    "defaultMessage": "Show Original"
+  },
+  "screenshotModal.showRender": {
+    "defaultMessage": "Show Render"
+  },
+  "screenshotModal.thumbnailFailed": {
+    "defaultMessage": "Failed to set scene thumbnail. Please try again."
+  },
+  "screenshotModal.thumbnailSaved": {
+    "defaultMessage": "Scene thumbnail saved successfully!"
+  },
+  "screenshotModal.title": {
+    "defaultMessage": "Screenshot & Render"
+  },
+  "screenshotModal.upgradeToPro": {
+    "defaultMessage": "Upgrade to Pro to hide 3DStreet Free watermark"
+  },
+  "segmentSidebar.boundaryVariant": {
+    "defaultMessage": "Boundary Variant"
+  },
+  "segmentSidebar.color": {
+    "defaultMessage": "Color"
+  },
+  "segmentSidebar.direction": {
+    "defaultMessage": "Direction"
+  },
+  "segmentSidebar.elevation": {
+    "defaultMessage": "Elevation (m)"
+  },
+  "segmentSidebar.moveLeft": {
+    "defaultMessage": "Move Left"
+  },
+  "segmentSidebar.moveRight": {
+    "defaultMessage": "Move Right"
+  },
+  "segmentSidebar.segmentType": {
+    "defaultMessage": "Segment Type"
+  },
+  "segmentSidebar.side": {
+    "defaultMessage": "Side"
+  },
+  "segmentSidebar.slope": {
+    "defaultMessage": "Slope"
+  },
+  "segmentSidebar.slopeEnd": {
+    "defaultMessage": "End Edge (m)"
+  },
+  "segmentSidebar.slopeStart": {
+    "defaultMessage": "Start Edge (m)"
+  },
+  "segmentSidebar.width": {
+    "defaultMessage": "Width"
+  },
+  "shareModal.anonymous": {
+    "defaultMessage": "anonymous"
+  },
+  "shareModal.changeThumbnail": {
+    "defaultMessage": "Change Thumbnail"
+  },
+  "shareModal.copyUrl": {
+    "defaultMessage": "Copy URL"
+  },
+  "shareModal.discordError": {
+    "defaultMessage": "Failed to share scene to Discord. Please try again."
+  },
+  "shareModal.discordSuccess": {
+    "defaultMessage": "Scene shared to Discord successfully!"
+  },
+  "shareModal.discordTooltip": {
+    "defaultMessage": "Post this scene to the 3DStreet Discord server to share with other creators"
+  },
+  "shareModal.emailBody": {
+    "defaultMessage": "I wanted to share this 3DStreet scene with you: Title: {sceneTitle} Created by: @{authorName} Location: {location} View scene: {shareUrl}"
+  },
+  "shareModal.emailButton": {
+    "defaultMessage": "Email"
+  },
+  "shareModal.emailSubject": {
+    "defaultMessage": "Check out \"{sceneTitle}\" on 3DStreet"
+  },
+  "shareModal.emailTooltip": {
+    "defaultMessage": "Share scene as a new email draft"
+  },
+  "shareModal.locationNotSet": {
+    "defaultMessage": "Location not set"
+  },
+  "shareModal.osShareText": {
+    "defaultMessage": "Check out \"{sceneTitle}\" by @{authorName} on 3DStreet"
+  },
+  "shareModal.osShareTitle": {
+    "defaultMessage": "{sceneTitle} - 3DStreet Scene"
+  },
+  "shareModal.osShareTooltip": {
+    "defaultMessage": "Use your browser's share feature to send your scene to others"
+  },
+  "shareModal.saveToShare": {
+    "defaultMessage": "Please save your scene to share it"
+  },
+  "shareModal.signInToShare": {
+    "defaultMessage": "Please sign in to share your scene"
+  },
+  "shareModal.title": {
+    "defaultMessage": "Share Scene"
+  },
+  "shareModal.untitledScene": {
+    "defaultMessage": "Untitled Scene"
+  },
+  "shareModal.urlCopied": {
+    "defaultMessage": "Scene URL copied to clipboard"
+  },
+  "shareModal.webShareUnsupported": {
+    "defaultMessage": "Web Share API is not supported in this browser"
+  },
+  "sidebar.autocreatedEntity": {
+    "defaultMessage": "Autocreated Entity"
+  },
+  "sidebar.editCloneSettings": {
+    "defaultMessage": "Edit Clone Settings"
+  },
+  "sidebar.managedBy": {
+    "defaultMessage": "Managed by"
+  },
+  "sidebar.selectObject": {
+    "defaultMessage": "Select an object to edit properties."
+  },
+  "signInModal.message": {
+    "defaultMessage": "Sign in to save and share scenes."
+  },
+  "signInModal.signingIn": {
+    "defaultMessage": "Signing in"
+  },
+  "toolbar.edit": {
+    "defaultMessage": "Edit"
+  },
+  "trafficReplay.autoStreet": {
+    "defaultMessage": "Auto (first managed street)"
+  },
+  "trafficReplay.createStreet": {
+    "defaultMessage": "Create a street to replay onto"
+  },
+  "trafficReplay.hideSynthetic": {
+    "defaultMessage": "Hide synthetic traffic"
+  },
+  "trafficReplay.importManifest": {
+    "defaultMessage": "Import manifest…"
+  },
+  "trafficReplay.linkStreet": {
+    "defaultMessage": "Link a street"
+  },
+  "trafficReplay.linkedStreet": {
+    "defaultMessage": "Linked street"
+  },
+  "trafficReplay.loop": {
+    "defaultMessage": "Loop"
+  },
+  "trafficReplay.noManifest": {
+    "defaultMessage": "No manifest loaded — import a replay JSON."
+  },
+  "trafficReplay.notManifest": {
+    "defaultMessage": "That JSON is not a replay manifest (no \"agents\" array)."
+  },
+  "trafficReplay.parseError": {
+    "defaultMessage": "Could not parse that JSON file."
+  },
+  "trafficReplay.placeAtSensor": {
+    "defaultMessage": "Place scene at sensor location"
+  },
+  "trafficReplay.placedAt": {
+    "defaultMessage": "Placed scene at {lat}, {lon}."
+  },
+  "trafficReplay.replaceManifest": {
+    "defaultMessage": "Replace manifest…"
+  },
+  "trafficReplay.streetUsers": {
+    "defaultMessage": "{count} street users"
+  },
+  "trafficReplay.timeScale": {
+    "defaultMessage": "Playback speed (×)"
+  },
+  "trafficReplay.tipAnon": {
+    "defaultMessage": "Only mode is shown — the data is anonymized"
+  },
+  "trafficReplay.tipLink": {
+    "defaultMessage": "Link a managed street (or create one), then press Start"
+  },
+  "trafficReplay.tipSaves": {
+    "defaultMessage": "Saves with the scene; shareable via the scene link"
+  },
+  "trafficReplay.tipsHeading": {
+    "defaultMessage": "💡 Replay"
+  },
+  "undoRedo.redo": {
+    "defaultMessage": "Redo"
+  },
+  "undoRedo.undo": {
+    "defaultMessage": "Undo"
+  },
+  "units.imperial": {
+    "defaultMessage": "imperial"
+  },
+  "units.imperialLabel": {
+    "defaultMessage": "Imperial"
+  },
+  "units.metric": {
+    "defaultMessage": "metric"
+  },
+  "units.metricLabel": {
+    "defaultMessage": "Metric"
+  },
+  "units.switchTo": {
+    "defaultMessage": "Switch to {units} units"
+  },
+  "userLayers.tipContain": {
+    "defaultMessage": "User Layers contain all objects you add to your scene"
+  },
+  "userLayers.tipRename": {
+    "defaultMessage": "Rename layers by clicking on the layer, then the Rename button in the right-hand properties panel"
+  },
+  "userLayers.tipVisibility": {
+    "defaultMessage": "Toggle layer visibility by using the switch on the left on each row of the layers panel"
+  },
+  "userLayers.tipsHeading": {
+    "defaultMessage": "Tips"
+  },
+  "viewer.byAuthor": {
+    "defaultMessage": "by {username}"
+  },
+  "viewer.editCopyTitle": {
+    "defaultMessage": "Open the editor — saving will create your own copy"
+  },
+  "viewer.editTitle": {
+    "defaultMessage": "Open the editor"
+  },
+  "viewer.editingCopyWarning": {
+    "defaultMessage": "This is an unsaved copy. Click Save to make your own copy."
+  },
+  "viewer.pause": {
+    "defaultMessage": "Pause"
+  },
+  "viewer.pauseTitle": {
+    "defaultMessage": "Pause the simulation"
+  },
+  "viewer.play": {
+    "defaultMessage": "Start"
+  },
+  "viewer.reset": {
+    "defaultMessage": "Reset"
+  },
+  "viewer.resume": {
+    "defaultMessage": "Resume"
+  },
+  "viewer.resumeTitle": {
+    "defaultMessage": "Resume the simulation"
+  },
+  "viewer.signInToEdit": {
+    "defaultMessage": "Sign in to Edit"
+  },
+  "viewer.signInToEditTitle": {
+    "defaultMessage": "Sign in to open the editor — saving will create your own copy"
+  },
+  "viewer.simClockCrash": {
+    "defaultMessage": "Crash at {time}"
+  },
+  "viewer.simClockFinish": {
+    "defaultMessage": "Finished in {time} — press Reset to race again"
+  },
+  "viewer.simClockPaused": {
+    "defaultMessage": "Paused — click to resume"
+  },
+  "viewer.simClockRunning": {
+    "defaultMessage": "Simulation time — click to pause"
+  },
+  "viewer.snapshotDownloadHint": {
+    "defaultMessage": "Click to download — sign in to save to your gallery"
+  },
+  "viewer.snapshotFailed": {
+    "defaultMessage": "Capture failed. Please try again."
+  },
+  "viewer.snapshotSaved": {
+    "defaultMessage": "Saved to your gallery — click to download"
+  },
+  "viewer.snapshotThumbAlt": {
+    "defaultMessage": "Captured image — click to download"
+  },
+  "viewer.snapshotTitle": {
+    "defaultMessage": "Capture this view"
+  },
+  "viewer.stop": {
+    "defaultMessage": "Stop"
+  }
+}

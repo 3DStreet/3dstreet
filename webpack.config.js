@@ -1,10 +1,24 @@
 const webpack = require('webpack');
 const path = require('path');
 const net = require('net');
+const { execSync } = require('child_process');
 const Dotenv = require('dotenv-webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 const DEFAULT_PORT = 3333;
+
+// Full build identity: CalVer base from package.json + short git SHA.
+// e.g. "2026.6.0+a1b2c3d". The base is bumped by hand at release time;
+// the SHA advances automatically on every build so each deploy is unique.
+function buildVersion() {
+  const base = process.env.npm_package_version;
+  try {
+    const sha = execSync('git rev-parse --short HEAD').toString().trim();
+    return `${base}+${sha}`;
+  } catch {
+    return base;
+  }
+}
 
 // Find a free port, starting at `basePort` and incrementing on conflict.
 // Lets multiple dev servers (e.g. one per git worktree) run at once instead
@@ -66,6 +80,10 @@ const config = {
   },
   externals: {
     // Stubs out `import ... from 'three'` so it returns `import ... from window.THREE` effectively using THREE global variable that is defined by AFRAME.
+    // Only bare `three` imports are externalized; `three/examples/jsm/...` addon code
+    // (GLTFExporter etc.) is bundled from the npm `three` package and runs against the
+    // externalized core, so npm `three` must stay on the same version as the super-three
+    // inside the A-Frame build loaded in index.html. Upgrade them together.
     three: 'THREE'
   },
   plugins: [
@@ -81,7 +99,7 @@ const config = {
       path: './config/.env.development'
     }),
     new webpack.DefinePlugin({
-      VERSION: JSON.stringify(process.env.npm_package_version)
+      VERSION: JSON.stringify(buildVersion())
     }),
     new CopyWebpackPlugin({
       patterns: [

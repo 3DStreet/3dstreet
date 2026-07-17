@@ -1,35 +1,71 @@
 import PropTypes from 'prop-types';
+import { FormattedMessage, useIntl } from 'react-intl';
 // import Component from './Component';
 import Component from './StreetSegmentComponent';
 import PropertyRow from './PropertyRow';
 import {
   cloneEntity,
   removeSelectedEntity,
-  renameEntity,
+  reorderEntityRelativeTo,
   setFocusCameraPose
 } from '../../lib/entity';
+import { getTravelledWaySegments } from '@/aframe-components/street-layout-utils';
 import {
   StreetSurfaceIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
   ArrowsPointingInwardIcon,
   Copy32Icon,
-  Edit24Icon,
   TrashIcon
 } from '@shared/icons';
 import { Button } from '../elements';
 import Events from '../../lib/Events';
-
-// Define featured component prefixes that should be shown in their own section
-const FEATURED_COMPONENT_PREFIXES = ['street-generated-'];
+import { commonMessages } from '@/editor/i18n/commonMessages';
+import { isGeneratorComponent } from '../../lib/featuredComponents';
 
 const StreetSegmentSidebar = ({ entity }) => {
+  const intl = useIntl();
   const componentName = 'street-segment';
   const component = entity?.components?.[componentName];
   const components = entity ? entity.components : {};
 
-  // Filter for featured components that exist on this entity
-  const featuredComponents = Object.keys(components).filter((key) =>
-    FEATURED_COMPONENT_PREFIXES.some((prefix) => key.startsWith(prefix))
-  );
+  // Filter for featured generator components that exist on this entity. Shares
+  // the generalized prefix list (see lib/featuredComponents.js) so segments and
+  // generic primitives surface street-generated-* the same way.
+  const featuredComponents =
+    Object.keys(components).filter(isGeneratorComponent);
+
+  // Move left/right reorders this segment among the travelled-way segments of
+  // its managed street (#1751). Boundaries are excluded: street-align places
+  // them by `side`, not index, so reordering past one is a visual no-op.
+  const parentEl = entity?.parentNode;
+  const isManagedStreetChild = !!parentEl?.components?.['managed-street'];
+  const travelledWaySiblings = isManagedStreetChild
+    ? getTravelledWaySegments(parentEl)
+    : [];
+  const segmentPos = travelledWaySiblings.indexOf(entity);
+
+  const moveSegment = (offset) => {
+    // Re-resolve by id: a move destroys and recreates the element, and this
+    // sidebar re-renders only after the new entity finishes loading, so on a
+    // quick second click the render-time `entity` is already detached. The
+    // recreated element keeps the same id.
+    const liveEntity =
+      (entity.id && document.getElementById(entity.id)) || entity;
+    const streetEl = liveEntity.parentNode;
+    if (!streetEl?.components?.['managed-street']) return;
+    const siblings = getTravelledWaySegments(streetEl);
+    const pos = siblings.indexOf(liveEntity);
+    if (pos === -1) return;
+    const target = siblings[pos + offset];
+    if (!target) return;
+    // insert before the target when moving left, after it when moving right
+    reorderEntityRelativeTo(
+      liveEntity,
+      target,
+      offset > 0 ? 'after' : 'before'
+    );
+  };
 
   return (
     <div className="segment-sidebar">
@@ -37,22 +73,81 @@ const StreetSegmentSidebar = ({ entity }) => {
         <div className="details">
           {component && component.schema && component.data && (
             <>
+              <div className="sidepanelContent">
+                <div className="sidebar-buttons-small">
+                  <Button
+                    variant={'toolbtn'}
+                    onClick={() => Events.emit('objectfocus', entity.object3D)}
+                    onLongPress={() => setFocusCameraPose(entity)}
+                    longPressDelay={1500} // Optional, defaults to 2000ms
+                    leadingIcon={<ArrowsPointingInwardIcon />}
+                  >
+                    <FormattedMessage {...commonMessages.focus} />
+                  </Button>
+                  <Button
+                    variant={'toolbtn'}
+                    onClick={() => cloneEntity(entity)}
+                    leadingIcon={<Copy32Icon />}
+                  >
+                    <FormattedMessage {...commonMessages.duplicate} />
+                  </Button>
+                  <Button
+                    variant={'toolbtn'}
+                    onClick={() => removeSelectedEntity()}
+                    leadingIcon={<TrashIcon />}
+                  >
+                    <FormattedMessage {...commonMessages.delete} />
+                  </Button>
+                </div>
+                {segmentPos !== -1 && (
+                  <div className="sidebar-buttons-small">
+                    <Button
+                      variant={'toolbtn'}
+                      disabled={segmentPos === 0}
+                      onClick={() => moveSegment(-1)}
+                      leadingIcon={<ArrowLeftIcon />}
+                    >
+                      {intl.formatMessage({
+                        id: 'segmentSidebar.moveLeft',
+                        defaultMessage: 'Move Left'
+                      })}
+                    </Button>
+                    <Button
+                      variant={'toolbtn'}
+                      disabled={segmentPos === travelledWaySiblings.length - 1}
+                      onClick={() => moveSegment(1)}
+                      leadingIcon={<ArrowRightIcon />}
+                    >
+                      {intl.formatMessage({
+                        id: 'segmentSidebar.moveRight',
+                        defaultMessage: 'Move Right'
+                      })}
+                    </Button>
+                  </div>
+                )}
+              </div>
               <PropertyRow
                 key="type"
                 name="type"
-                label="Segment Type"
+                label={intl.formatMessage({
+                  id: 'segmentSidebar.segmentType',
+                  defaultMessage: 'Segment Type'
+                })}
                 schema={component.schema['type']}
                 data={component.data['type']}
                 componentname={componentName}
                 isSingle={false}
                 entity={entity}
               />
-              {component.data['type'] === 'building' && (
+              {component.data['type'] === 'boundary' && (
                 <>
                   <PropertyRow
                     key="variant"
                     name="variant"
-                    label="Building Variant"
+                    label={intl.formatMessage({
+                      id: 'segmentSidebar.boundaryVariant',
+                      defaultMessage: 'Boundary Variant'
+                    })}
                     schema={component.schema['variant']}
                     data={component.data['variant']}
                     componentname={componentName}
@@ -62,7 +157,10 @@ const StreetSegmentSidebar = ({ entity }) => {
                   <PropertyRow
                     key="side"
                     name="side"
-                    label="Side"
+                    label={intl.formatMessage({
+                      id: 'segmentSidebar.side',
+                      defaultMessage: 'Side'
+                    })}
                     schema={component.schema['side']}
                     data={component.data['side']}
                     componentname={componentName}
@@ -71,55 +169,27 @@ const StreetSegmentSidebar = ({ entity }) => {
                   />
                 </>
               )}
-              <div className="sidepanelContent">
-                <div id="sidebar-buttons-small">
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => Events.emit('objectfocus', entity.object3D)}
-                    onLongPress={() => setFocusCameraPose(entity)}
-                    longPressDelay={1500} // Optional, defaults to 2000ms
-                    leadingIcon={<ArrowsPointingInwardIcon />}
-                  >
-                    Focus
-                  </Button>
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => renameEntity(entity)}
-                    leadingIcon={<Edit24Icon />}
-                  >
-                    Rename
-                  </Button>
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => cloneEntity(entity)}
-                    leadingIcon={<Copy32Icon />}
-                  >
-                    Duplicate
-                  </Button>
-                  <Button
-                    variant={'toolbtn'}
-                    onClick={() => removeSelectedEntity()}
-                    leadingIcon={<TrashIcon />}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
               <PropertyRow
                 key="width"
                 name="width"
-                label="Width"
+                label={intl.formatMessage({
+                  id: 'segmentSidebar.width',
+                  defaultMessage: 'Width'
+                })}
                 schema={component.schema['width']}
                 data={component.data['width']}
                 componentname={componentName}
                 isSingle={false}
                 entity={entity}
               />
-              {component.data['type'] !== 'building' && (
+              {component.data['type'] !== 'boundary' && (
                 <PropertyRow
                   key="direction"
                   name="direction"
-                  label="Direction"
+                  label={intl.formatMessage({
+                    id: 'segmentSidebar.direction',
+                    defaultMessage: 'Direction'
+                  })}
                   schema={component.schema['direction']}
                   data={component.data['direction']}
                   componentname={componentName}
@@ -131,9 +201,14 @@ const StreetSegmentSidebar = ({ entity }) => {
               <div className="collapsible component">
                 <div className="static">
                   <div className="componentHeader collapsible-header">
-                    <span className="componentTitle" title="Surface">
+                    <span
+                      className="componentTitle"
+                      title={intl.formatMessage(commonMessages.surface)}
+                    >
                       <StreetSurfaceIcon />
-                      <span>Surface</span>
+                      <span>
+                        <FormattedMessage {...commonMessages.surface} />
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -142,7 +217,7 @@ const StreetSegmentSidebar = ({ entity }) => {
                     <PropertyRow
                       key="surface"
                       name="surface"
-                      label="Surface"
+                      label={intl.formatMessage(commonMessages.surface)}
                       schema={component.schema['surface']}
                       data={component.data['surface']}
                       componentname={componentName}
@@ -152,7 +227,10 @@ const StreetSegmentSidebar = ({ entity }) => {
                     <PropertyRow
                       key="color"
                       name="color"
-                      label="Color"
+                      label={intl.formatMessage({
+                        id: 'segmentSidebar.color',
+                        defaultMessage: 'Color'
+                      })}
                       schema={component.schema['color']}
                       data={component.data['color']}
                       componentname={componentName}
@@ -160,15 +238,65 @@ const StreetSegmentSidebar = ({ entity }) => {
                       entity={entity}
                     />
                     <PropertyRow
-                      key="level"
-                      name="level"
-                      label="Curb Level"
-                      schema={component.schema['level']}
-                      data={component.data['level']}
+                      key="slope"
+                      name="slope"
+                      label={intl.formatMessage({
+                        id: 'segmentSidebar.slope',
+                        defaultMessage: 'Slope'
+                      })}
+                      schema={component.schema['slope']}
+                      data={component.data['slope']}
                       componentname={componentName}
                       isSingle={false}
                       entity={entity}
                     />
+                    {/* sloped surfaces interpolate between the two edge
+                        elevations and ignore the flat elevation, so show
+                        one set of controls or the other */}
+                    {component.data['slope'] ? (
+                      <>
+                        <PropertyRow
+                          key="slopeStart"
+                          name="slopeStart"
+                          label={intl.formatMessage({
+                            id: 'segmentSidebar.slopeStart',
+                            defaultMessage: 'Start Edge (m)'
+                          })}
+                          schema={component.schema['slopeStart']}
+                          data={component.data['slopeStart']}
+                          componentname={componentName}
+                          isSingle={false}
+                          entity={entity}
+                        />
+                        <PropertyRow
+                          key="slopeEnd"
+                          name="slopeEnd"
+                          label={intl.formatMessage({
+                            id: 'segmentSidebar.slopeEnd',
+                            defaultMessage: 'End Edge (m)'
+                          })}
+                          schema={component.schema['slopeEnd']}
+                          data={component.data['slopeEnd']}
+                          componentname={componentName}
+                          isSingle={false}
+                          entity={entity}
+                        />
+                      </>
+                    ) : (
+                      <PropertyRow
+                        key="elevation"
+                        name="elevation"
+                        label={intl.formatMessage({
+                          id: 'segmentSidebar.elevation',
+                          defaultMessage: 'Elevation (m)'
+                        })}
+                        schema={component.schema['elevation']}
+                        data={component.data['elevation']}
+                        componentname={componentName}
+                        isSingle={false}
+                        entity={entity}
+                      />
+                    )}
                   </div>
                 </div>
               </div>

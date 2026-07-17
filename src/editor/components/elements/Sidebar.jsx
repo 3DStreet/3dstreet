@@ -1,7 +1,6 @@
 import {
   cloneEntity,
   removeSelectedEntity,
-  renameEntity,
   setFocusCameraPose
 } from '../../lib/entity';
 import { Button } from '../elements';
@@ -10,11 +9,10 @@ import Events from '../../lib/Events';
 import Mixins from '../widgets/Mixins';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { FormattedMessage } from 'react-intl';
 import AddGeneratorComponent from './AddGeneratorComponent';
 import {
-  Object24IconCyan,
   ArrowLeftHookIcon,
-  Edit24Icon,
   TrashIcon,
   Copy32Icon,
   ArrowsPointingInwardIcon
@@ -23,10 +21,13 @@ import IntersectionSidebar from './IntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
 import MeasureLineSidebar from './MeasureLineSidebar';
+import DriveControlsSidebar from './DriveControlsSidebar';
+import StreetTrafficReplaySidebar from './StreetTrafficReplaySidebar';
 import UserLayersSidebar from './UserLayersSidebar';
 import AdvancedComponents from './AdvancedComponents';
 import AssetInfoPanel from './AssetInfoPanel';
 import EntityLabel from '../scenegraph/EntityLabel';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 export default class Sidebar extends React.Component {
   static propTypes = {
     entity: PropTypes.object
@@ -42,12 +43,6 @@ export default class Sidebar extends React.Component {
 
   hasParentComponent = (entity) => {
     return entity.getAttribute('data-parent-component');
-  };
-
-  fireParentComponentDetach = (entity) => {
-    const componentName = entity.getAttribute('data-parent-component');
-    const parentEntity = entity.parentElement;
-    parentEntity.components[componentName].detach();
   };
 
   selectParentEntity = (entity) => {
@@ -98,16 +93,27 @@ export default class Sidebar extends React.Component {
     if (!entity) {
       return (
         <div className="properties-empty-state">
-          Select an object to edit properties.
+          <FormattedMessage
+            id="sidebar.selectObject"
+            defaultMessage="Select an object to edit properties."
+          />
         </div>
       );
     }
+
+    // The fixed pseudo-layers (environment, reference layers, user layers)
+    // and no-transform entities never had a rename affordance; everything
+    // else gets the inline rename on the title label.
+    const canRename =
+      !['reference-layers', 'environment', 'street-container'].includes(
+        entity.id
+      ) && !entity.hasAttribute('data-no-transform');
 
     return (
       <div className="properties-panel" tabIndex="0">
         <div id="layers-title">
           <div className="layersBlock">
-            <EntityLabel entity={entity} />
+            <EntityLabel entity={entity} editable={canRename} />
           </div>
         </div>
         <div className="scroll">
@@ -119,13 +125,21 @@ export default class Sidebar extends React.Component {
               {entity.classList.contains('autocreated') && (
                 <div className="sidepanelContent">
                   <div className="flex items-center gap-2">
-                    Autocreated Entity
+                    <FormattedMessage
+                      id="sidebar.autocreatedEntity"
+                      defaultMessage="Autocreated Entity"
+                    />
                   </div>
                   {this.hasParentComponent(entity) && (
                     <>
                       <div className="collapsible-content">
                         <div className="propertyRow">
-                          <label className="text">Managed by</label>
+                          <label className="text">
+                            <FormattedMessage
+                              id="sidebar.managedBy"
+                              defaultMessage="Managed by"
+                            />
+                          </label>
                           <input
                             className="string"
                             type="text"
@@ -139,14 +153,11 @@ export default class Sidebar extends React.Component {
                           variant={'toolbtn'}
                           onClick={() => this.selectParentEntity(entity)}
                         >
-                          <ArrowLeftHookIcon /> Edit Clone Settings
-                        </Button>
-                        <Button
-                          variant={'toolbtn'}
-                          onClick={() => this.fireParentComponentDetach(entity)}
-                        >
-                          <Object24IconCyan />
-                          Detach
+                          <ArrowLeftHookIcon />{' '}
+                          <FormattedMessage
+                            id="sidebar.editCloneSettings"
+                            defaultMessage="Edit Clone Settings"
+                          />
                         </Button>
                       </div>
                     </>
@@ -158,7 +169,7 @@ export default class Sidebar extends React.Component {
                 {entity.hasAttribute('data-no-transform') ? (
                   <></>
                 ) : (
-                  <div id="sidebar-buttons-small">
+                  <div className="sidebar-buttons-small">
                     <Button
                       variant={'toolbtn'}
                       onClick={() =>
@@ -168,28 +179,21 @@ export default class Sidebar extends React.Component {
                       longPressDelay={1500} // Optional, defaults to 2000ms
                       leadingIcon={<ArrowsPointingInwardIcon />}
                     >
-                      Focus
-                    </Button>
-                    <Button
-                      variant={'toolbtn'}
-                      onClick={() => renameEntity(entity)}
-                      leadingIcon={<Edit24Icon />}
-                    >
-                      Rename
+                      <FormattedMessage {...commonMessages.focus} />
                     </Button>
                     <Button
                       variant={'toolbtn'}
                       onClick={() => cloneEntity(entity)}
                       leadingIcon={<Copy32Icon />}
                     >
-                      Duplicate
+                      <FormattedMessage {...commonMessages.duplicate} />
                     </Button>
                     <Button
                       variant={'toolbtn'}
                       onClick={() => removeSelectedEntity()}
                       leadingIcon={<TrashIcon />}
                     >
-                      Delete
+                      <FormattedMessage {...commonMessages.delete} />
                     </Button>
                   </div>
                 )}
@@ -215,9 +219,27 @@ export default class Sidebar extends React.Component {
                   </div>
                 </>
               )}
-              {!entity.getAttribute('measure-line') && (
-                <ComponentsContainer entity={entity} />
+              {entity.getAttribute('drive-controls') && (
+                <>
+                  <DriveControlsSidebar entity={entity} />
+                  <div className="propertyRow">
+                    <AdvancedComponents entity={entity} />
+                  </div>
+                </>
               )}
+              {entity.getAttribute('street-traffic-replay') && (
+                <>
+                  <StreetTrafficReplaySidebar entity={entity} />
+                  <div className="propertyRow">
+                    <AdvancedComponents entity={entity} />
+                  </div>
+                </>
+              )}
+              {!entity.getAttribute('measure-line') &&
+                !entity.getAttribute('drive-controls') &&
+                !entity.getAttribute('street-traffic-replay') && (
+                  <ComponentsContainer entity={entity} />
+                )}
             </>
           ) : (
             <>

@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
+import { FormattedMessage } from 'react-intl';
 import useStore from '@/store';
 import { Loader } from '@shared/icons';
 import styles from './LoadingSceneModal.module.scss';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const TIMEOUT_MS = 30000;
 
@@ -51,10 +53,13 @@ const LoadingSceneModal = () => {
           <span className={styles.errorMessage}>{error}</span>
           <div className={styles.errorButtons}>
             <button className={styles.retryButton} onClick={handleRetry}>
-              Retry
+              <FormattedMessage {...commonMessages.retry} />
             </button>
             <button className={styles.dismissButton} onClick={handleDismiss}>
-              Dismiss
+              <FormattedMessage
+                id="loadingSceneModal.dismiss"
+                defaultMessage="Dismiss"
+              />
             </button>
           </div>
         </div>

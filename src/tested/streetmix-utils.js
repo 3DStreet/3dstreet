@@ -1,6 +1,6 @@
-const { CURB_HEIGHT } = require('./street-segment-utils');
+import { CURB_HEIGHT, levelToElevation } from './street-segment-utils.js';
 
-function streetmixUserToAPI(userURL) {
+export function streetmixUserToAPI(userURL) {
   // this takes in a user facing Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
   // and turns it into the API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
   var pathArray = new URL(userURL).pathname.split('/');
@@ -20,9 +20,8 @@ function streetmixUserToAPI(userURL) {
     );
   }
 }
-module.exports.streetmixUserToAPI = streetmixUserToAPI;
 
-function pathStartsWithAPI(urlString) {
+export function pathStartsWithAPI(urlString) {
   // First, check the URL path to see if it starts with /api/
   const url = document.createElement('a');
   url.href = urlString;
@@ -30,9 +29,8 @@ function pathStartsWithAPI(urlString) {
   const topDir = pathname.split('/')[1];
   return topDir === 'api';
 }
-module.exports.pathStartsWithAPI = pathStartsWithAPI;
 
-function streetmixAPIToUser(APIURL) {
+export function streetmixAPIToUser(APIURL) {
   // this takes in a Streetmix.net API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
   // and turns it into the user facing friendly Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
 
@@ -56,22 +54,23 @@ function streetmixAPIToUser(APIURL) {
 
   return 'https://streetmix.net/' + creatorId + '/' + namespacedId;
 }
-module.exports.streetmixAPIToUser = streetmixAPIToUser;
 
-// Convert metric elevation (from schemaVersion 33+) to integer level
-// Curb height is 0.15m, so we divide by that to get integer levels
+// Convert metric elevation to the nearest integer level. Kept only for the
+// legacy `street` parser (aframe-streetmix-parsers.js), whose geometry lookup
+// tables are still indexed by integer level.
 // e.g., 0m → 0, 0.15m → 1, 0.30m → 2, 0.75m → 5
-function metricElevationToLevel(elevation) {
+export function metricElevationToLevel(elevation) {
   if (elevation === undefined || elevation === null) {
     return 0;
   }
   return Math.round(elevation / CURB_HEIGHT);
 }
-module.exports.metricElevationToLevel = metricElevationToLevel;
 
-// convert all feet values to meters for schemaVersion < 30
-// convert metric elevation to integer levels for schemaVersion >= 33
-function convertStreetValues(streetData) {
+// Normalize street data to 3DStreet's canonical units — meters everywhere:
+// - schemaVersion < 30: convert widths from feet to meters
+// - schemaVersion < 33: convert integer elevation levels to meters
+// - schemaVersion >= 33: elevation is already meters, pass through
+export function convertStreetValues(streetData) {
   if (streetData.schemaVersion < 30) {
     // convert width from feet to meters
     streetData.segments.forEach((segmentData) => {
@@ -80,15 +79,61 @@ function convertStreetValues(streetData) {
     if (streetData.width) streetData.width *= 0.3048;
   }
 
-  // For schemaVersion 33+, elevation is in meters - convert back to integer levels
-  if (streetData.schemaVersion >= 33) {
+  if (streetData.schemaVersion < 33) {
     streetData.segments.forEach((segmentData) => {
       if (segmentData.elevation !== undefined) {
-        segmentData.elevation = metricElevationToLevel(segmentData.elevation);
+        segmentData.elevation = levelToElevation(segmentData.elevation);
       }
     });
   }
 
   return streetData;
 }
-module.exports.convertStreetValues = convertStreetValues;
+
+// Read one side of a street's boundary (building edge) data. Streetmix
+// schemaVersion 34+ provides a canonical `boundary` object:
+//   boundary.left/right = { id, variant, floors, elevation }
+// where `elevation` is meters (same unit as segment elevation) and `floors`
+// replaces the old *BuildingHeight. Older payloads only carry the deprecated
+// flat fields (leftBuildingVariant / leftBuildingHeight / ...), which are
+// still emitted for back-compat but no longer stored upstream — use them only
+// as a fallback. Returns null when the street has no boundary on that side.
+export function getBoundaryFromStreetData(streetData, side) {
+  const boundarySide = streetData?.boundary?.[side];
+  if (boundarySide && typeof boundarySide === 'object') {
+    return {
+      id: boundarySide.id,
+      variant: boundarySide.variant,
+      floors: boundarySide.floors,
+      elevation: boundarySide.elevation
+    };
+  }
+  const variant = streetData?.[`${side}BuildingVariant`];
+  if (!variant) {
+    return null;
+  }
+  return {
+    variant,
+    floors: streetData[`${side}BuildingHeight`]
+  };
+}
+
+// Read a segment's slope (coastmix schema v34): `slope: { on, values }` where
+// values = [startElevation, endElevation] in meters (same unit as elevation).
+// The v34 migration seeds `{ on: false, values: [] }` on every segment, so
+// only coastmix-edited streets carry an active slope. Returns
+// { start, end } in meters when the slope is active and well-formed, else
+// null (flat segment — nothing changes for existing streets).
+export function getSegmentSlope(segmentData) {
+  const slope = segmentData?.slope;
+  if (
+    !slope?.on ||
+    !Array.isArray(slope.values) ||
+    slope.values.length < 2 ||
+    typeof slope.values[0] !== 'number' ||
+    typeof slope.values[1] !== 'number'
+  ) {
+    return null;
+  }
+  return { start: slope.values[0], end: slope.values[1] };
+}

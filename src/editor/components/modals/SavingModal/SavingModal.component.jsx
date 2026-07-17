@@ -1,6 +1,7 @@
 import styles from './SavingModal.module.scss';
 
 import { Component } from 'react';
+import { FormattedMessage } from 'react-intl';
 
 /**
  * SavingModal component.
@@ -10,7 +11,7 @@ import { Component } from 'react';
  */
 class SavingModal extends Component {
   render() {
-    const { action = 'Saving' } = this.props;
+    const { action } = this.props;
 
     return (
       <div className={styles.savingModalWrapper}>
@@ -36,7 +37,12 @@ class SavingModal extends Component {
             </defs>
           </svg>
         </div>
-        <span className={styles.action}>{action} ...</span>
+        <span className={styles.action}>
+          {action ?? (
+            <FormattedMessage id="savingModal.saving" defaultMessage="Saving" />
+          )}{' '}
+          ...
+        </span>
       </div>
     );
   }

@@ -168,6 +168,46 @@ const REPLICATE_MODELS = {
     },
     tokenCost: 30
   },
+  // Image → 3D mesh (GLB) via fal's unified 3D API. Both are image-to-3D only
+  // (no text prompt input). Consumed by the 3D Model tab through
+  // generateFalMesh, an async-queue submit callable (kind: 'mesh',
+  // provider: 'fal'); the client poll + reconciler finalize via
+  // fetchFalPrediction. NOT used by the image generator. `imageField` names the
+  // model's input-image key (they differ); `params` are model-specific extras.
+  // Token cost ≈ fal $ / $0.10 base × 2 margin (Hunyuan $0.16→3, TRELLIS 1024
+  // texture $0.30→6).
+  'hunyuan-3d': {
+    name: 'Hunyuan3D',
+    type: 'fal-3d',
+    endpoint: 'fal-ai/hunyuan3d/v2',
+    imageField: 'input_image_url',
+    // textured_mesh bakes a texture (fal charges 3× the white-mesh price, which
+    // the token cost below already accounts for).
+    params: { textured_mesh: true },
+    assetSlug: 'hunyuan3d-model',
+    assetLabel: 'Hunyuan3D Model',
+    attribution: {
+      model: 'tencent/hunyuan3d-2',
+      modelName: 'Hunyuan3D v2',
+      sourceType: 'image'
+    },
+    tokenCost: 3
+  },
+  trellis: {
+    name: 'TRELLIS',
+    type: 'fal-3d',
+    endpoint: 'fal-ai/trellis-2',
+    imageField: 'image_url',
+    params: { texture_resolution: 1024 },
+    assetSlug: 'trellis-model',
+    assetLabel: 'TRELLIS Model',
+    attribution: {
+      model: 'microsoft/trellis-2',
+      modelName: 'TRELLIS 2',
+      sourceType: 'image'
+    },
+    tokenCost: 6
+  },
   'vid2scene-max': {
     name: 'vid2scene Max (Video to Splat)',
     modelName: 'kfarr/vid2scene',

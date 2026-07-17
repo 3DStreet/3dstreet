@@ -1,14 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import styles from './ScreenshotModal.module.scss';
 import Modal from '@shared/components/Modal/Modal.jsx';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { Button } from '../../elements';
 import { DownloadIcon } from '@shared/icons';
-import { takeScreenshotWithOptions } from '../../../api/scene';
+import { getCurrentCameraState } from '../../../lib/cameraUtils';
 import {
+  captureScreenshotAsJpeg,
   createSceneSnapshot,
   createSnapshotFromImageUrl,
+  saveScreenshotToGallery,
   setSnapshotAsSceneThumbnail
 } from '../../../api/snapshot';
 import { functions } from '@shared/services/firebase';
@@ -20,12 +23,23 @@ import { canUseImageFeature } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
 import { assetsService } from '@shared/assets';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import {
+  DEFAULT_RENDER_STYLE_ID,
+  getDefaultInstructions,
+  getStyleSentence,
+  describeStyleText,
+  composePrompt
+} from '@shared/constants/renderStyles.js';
 import AIModelSelector from '@shared/components/AIModelSelector';
+import RenderStyleSelector from '@shared/components/RenderStyleSelector';
+import promptFieldStyles from '@shared/styles/promptFields.module.scss';
+import { getLocalizedStyleLabels } from './renderStyleMessages';
 
 // Available AI models (use shared constants)
 const AI_MODELS = REPLICATE_MODELS;
 
 function ScreenshotModal() {
+  const intl = useIntl();
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const startCheckout = useStore((state) => state.startCheckout);
@@ -58,9 +72,29 @@ function ScreenshotModal() {
   const [renderingStates, setRenderingStates] = useState({}); // Track which models are rendering
   const [renderErrors, setRenderErrors] = useState({}); // Track which models had errors
   const [useMixedModels, setUseMixedModels] = useState(true); // Toggle for model mixing
-  const [customPrompt, setCustomPrompt] = useState(''); // Custom prompt text
+  // The prompt is two stacked, prefilled fields sent as one string
+  // (composePrompt): instructions + style sentence. Style chips write only
+  // the style field, so instructions survive style switching.
+  const [promptInstructions, setPromptInstructions] = useState(
+    getDefaultInstructions()
+  );
+  const [promptStyleText, setPromptStyleText] = useState(
+    getStyleSentence(DEFAULT_RENDER_STYLE_ID)
+  );
   const [showOvertimeWarning, setShowOvertimeWarning] = useState(false); // Show overtime warning for 1x mode
   const [isClosing, setIsClosing] = useState(false); // Track closing animation
+
+  // Chip highlight and analytics derive from the style text itself: an
+  // unedited chip sentence maps to its style, empty is 'none', anything
+  // else is 'custom' (which highlights no chip).
+  const activeStyleId = describeStyleText(promptStyleText);
+  const styleLabels = useMemo(() => getLocalizedStyleLabels(intl), [intl]);
+  // Default/preset text stays muted gray; user-authored text renders white
+  const isInstructionsEdited =
+    promptInstructions.trim() !== getDefaultInstructions().trim();
+  // Any generation in flight (1x or 4x) — gates every prompt/model control
+  const isAnyRendering =
+    isGeneratingAI || Object.values(renderingStates).some((state) => state);
 
   // Get token cost for the selected model
   const getTokenCost = (modelKey) => {
@@ -107,19 +141,20 @@ function ScreenshotModal() {
     setRenderTimers({});
     setRenderingStates({});
     setRenderErrors({});
-    setCustomPrompt('');
+    setPromptInstructions(getDefaultInstructions());
+    setPromptStyleText(getStyleSentence(DEFAULT_RENDER_STYLE_ID));
     setShowOvertimeWarning(false);
     // Keep model selection and render mode when resetting
   };
 
   const handleClose = () => {
-    // Check if any rendering is in progress (1x or 4x)
-    const isAnyRendering =
-      isGeneratingAI || Object.values(renderingStates).some((state) => state);
-
     if (isAnyRendering) {
       const confirmClose = window.confirm(
-        'Rendering in progress. Are you sure you want to close? The render will be cancelled.'
+        intl.formatMessage({
+          id: 'screenshotModal.confirmClose',
+          defaultMessage:
+            'Rendering in progress. Are you sure you want to close? The render will be cancelled.'
+        })
       );
       if (!confirmClose) {
         return;
@@ -141,8 +176,11 @@ function ScreenshotModal() {
   const performDownloadScreenshot = (targetImageUrl, modelKey) => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const isOriginal = targetImageUrl === originalImageUrl;
+    // 4x slots use compound keys like 'nano-banana-2-3'; strip the numeric
+    // slot suffix if the key doesn't match a model id directly.
     const modelName = modelKey
-      ? AI_MODELS[modelKey.split('-')[0]]?.name || 'ai-render'
+      ? (AI_MODELS[modelKey] || AI_MODELS[modelKey.replace(/-\d+$/, '')])
+          ?.name || 'ai-render'
       : 'ai-render';
 
     const filename = isOriginal
@@ -169,7 +207,12 @@ function ScreenshotModal() {
     const targetImageUrl =
       imageUrl || (showOriginal ? originalImageUrl : aiImageUrl);
     if (!targetImageUrl) {
-      STREET.notify.errorMessage('No image available to download');
+      STREET.notify.errorMessage(
+        intl.formatMessage({
+          id: 'screenshotModal.noImageToDownload',
+          defaultMessage: 'No image available to download'
+        })
+      );
       return;
     }
 
@@ -194,12 +237,22 @@ function ScreenshotModal() {
     const authorId = STREET.utils.getAuthorId();
 
     if (!sceneId) {
-      STREET.notify.errorMessage('Please save your scene first');
+      STREET.notify.errorMessage(
+        intl.formatMessage({
+          id: 'screenshotModal.saveSceneFirst',
+          defaultMessage: 'Please save your scene first'
+        })
+      );
       return;
     }
 
     if (!currentUser || currentUser.uid !== authorId) {
-      STREET.notify.errorMessage('Only the scene author can set the thumbnail');
+      STREET.notify.errorMessage(
+        intl.formatMessage({
+          id: 'screenshotModal.onlyAuthorCanSetThumbnail',
+          defaultMessage: 'Only the scene author can set the thumbnail'
+        })
+      );
       return;
     }
 
@@ -226,7 +279,12 @@ function ScreenshotModal() {
         await createSceneSnapshot(sceneId, true, 'Scene Thumbnail');
       }
 
-      STREET.notify.successMessage('Scene thumbnail saved successfully!');
+      STREET.notify.successMessage(
+        intl.formatMessage({
+          id: 'screenshotModal.thumbnailSaved',
+          defaultMessage: 'Scene thumbnail saved successfully!'
+        })
+      );
 
       posthog.capture('scene_thumbnail_set', {
         scene_id: sceneId,
@@ -235,7 +293,10 @@ function ScreenshotModal() {
     } catch (error) {
       console.error('Error setting scene thumbnail:', error);
       STREET.notify.errorMessage(
-        'Failed to set scene thumbnail. Please try again.'
+        intl.formatMessage({
+          id: 'screenshotModal.thumbnailFailed',
+          defaultMessage: 'Failed to set scene thumbnail. Please try again.'
+        })
       );
     } finally {
       setIsSavingSnapshot(false);
@@ -244,7 +305,28 @@ function ScreenshotModal() {
 
   const handleGenerateAIImage = async (modelKey = null) => {
     if (!originalImageUrl) {
-      STREET.notify.errorMessage('No screenshot available to render');
+      STREET.notify.errorMessage(
+        intl.formatMessage({
+          id: 'screenshotModal.noScreenshotToRender',
+          defaultMessage: 'No screenshot available to render'
+        })
+      );
+      return;
+    }
+
+    // Explicit prompts only: the two visible fields are the whole prompt,
+    // with no hidden fallback. Both cleared means there's nothing to send.
+    const aiPrompt = composePrompt({
+      instructions: promptInstructions,
+      style: promptStyleText
+    });
+    if (!aiPrompt) {
+      STREET.notify.errorMessage(
+        intl.formatMessage({
+          id: 'screenshotModal.emptyPromptError',
+          defaultMessage: 'Add instructions or pick a style before rendering.'
+        })
+      );
       return;
     }
 
@@ -319,9 +401,9 @@ function ScreenshotModal() {
         throw new Error(`Model configuration not found for: ${baseModelKey}`);
       }
 
-      // Only allow custom prompts for Pro users (subscription or team).
-      const aiPrompt =
-        (isPro && customPrompt.trim()) || selectedModelConfig.prompt;
+      // aiPrompt was composed (and emptiness rejected) at the top of this
+      // handler; here we only derive the analytics label for the style field.
+      const promptStyle = describeStyleText(promptStyleText);
 
       const screentockImgElement = document.getElementById(
         'screentock-destination'
@@ -415,7 +497,11 @@ function ScreenshotModal() {
                 model: selectedModelConfig.name,
                 modelKey: baseModelKey,
                 prompt: aiPrompt,
+                renderStyle: promptStyle,
                 renderMode: renderMode,
+                // The camera hasn't moved since the base capture, so this is
+                // the render's vantage — persist it for the focus button (#1605).
+                cameraState: getCurrentCameraState(),
                 isPro: currentUser?.isPro || false
               },
               'image', // type
@@ -431,16 +517,50 @@ function ScreenshotModal() {
         // Show appropriate success message based on user type
         if (currentUser?.isProTeam) {
           STREET.notify.successMessage(
-            `AI render generated successfully! (${selectedModelConfig.name})`
+            intl.formatMessage(
+              {
+                id: 'screenshotModal.aiRenderSuccess',
+                defaultMessage:
+                  'AI render generated successfully! ({modelName})'
+              },
+              { modelName: selectedModelConfig.name }
+            )
           );
         } else if (result.data.remainingTokens !== undefined) {
           const message = currentUser?.isPro
-            ? `AI render complete! ${result.data.remainingTokens} tokens remaining. (${selectedModelConfig.name})`
-            : `AI render complete! ${result.data.remainingTokens} gen tokens remaining. (${selectedModelConfig.name})`;
+            ? intl.formatMessage(
+                {
+                  id: 'screenshotModal.aiRenderCompleteTokens',
+                  defaultMessage:
+                    'AI render complete! {remainingTokens} tokens remaining. ({modelName})'
+                },
+                {
+                  remainingTokens: result.data.remainingTokens,
+                  modelName: selectedModelConfig.name
+                }
+              )
+            : intl.formatMessage(
+                {
+                  id: 'screenshotModal.aiRenderCompleteGenTokens',
+                  defaultMessage:
+                    'AI render complete! {remainingTokens} gen tokens remaining. ({modelName})'
+                },
+                {
+                  remainingTokens: result.data.remainingTokens,
+                  modelName: selectedModelConfig.name
+                }
+              );
           STREET.notify.successMessage(message);
         } else {
           STREET.notify.successMessage(
-            `AI render generated successfully! (${selectedModelConfig.name})`
+            intl.formatMessage(
+              {
+                id: 'screenshotModal.aiRenderSuccess',
+                defaultMessage:
+                  'AI render generated successfully! ({modelName})'
+              },
+              { modelName: selectedModelConfig.name }
+            )
           );
         }
 
@@ -451,6 +571,7 @@ function ScreenshotModal() {
           scene_id: STREET.utils.getCurrentSceneId(),
           prompt: aiPrompt,
           model: baseModelKey,
+          render_style: promptStyle,
           render_mode: renderMode,
           is_pro_user: currentUser?.isPro || false,
           tokens_available: tokenProfile?.genToken || 0
@@ -460,6 +581,7 @@ function ScreenshotModal() {
         posthog.capture('ai_render_used', {
           token_type: 'gen',
           model: baseModelKey,
+          render_style: promptStyle,
           render_mode: renderMode,
           is_pro_user: currentUser?.isPro || false,
           scene_id: STREET.utils.getCurrentSceneId()
@@ -482,10 +604,15 @@ function ScreenshotModal() {
       }
     } catch (error) {
       console.error('Error generating AI image:', error);
-      const baseModelKey = targetModel.includes('-')
-        ? targetModel.split('-').slice(0, -1).join('-')
-        : targetModel;
-      const modelName = AI_MODELS[baseModelKey]?.name || 'selected model';
+      const baseModelKey = AI_MODELS[targetModel]
+        ? targetModel
+        : targetModel.replace(/-\d+$/, '');
+      const modelName =
+        AI_MODELS[baseModelKey]?.name ||
+        intl.formatMessage({
+          id: 'screenshotModal.selectedModelFallback',
+          defaultMessage: 'selected model'
+        });
 
       // Track error state for this model
       setRenderErrors((prev) => ({ ...prev, [targetModel]: true }));
@@ -493,7 +620,14 @@ function ScreenshotModal() {
       // Only show error notification for single renders or if all renders have completed
       if (renderMode === '1x') {
         STREET.notify.errorMessage(
-          `Failed to generate AI render for ${modelName}. Please try again.`
+          intl.formatMessage(
+            {
+              id: 'screenshotModal.aiRenderFailed',
+              defaultMessage:
+                'Failed to generate AI render for {modelName}. Please try again.'
+            },
+            { modelName }
+          )
         );
       }
     } finally {
@@ -512,7 +646,30 @@ function ScreenshotModal() {
 
   const handleGenerate4xRender = async () => {
     if (!originalImageUrl) {
-      STREET.notify.errorMessage('No screenshot available to render');
+      STREET.notify.errorMessage(
+        intl.formatMessage({
+          id: 'screenshotModal.noScreenshotToRender',
+          defaultMessage: 'No screenshot available to render'
+        })
+      );
+      return;
+    }
+
+    // Reject an all-empty prompt once, up front — the per-model guard in
+    // handleGenerateAIImage fires after the previous batch is already wiped
+    // below, and would toast once per model.
+    if (
+      !composePrompt({
+        instructions: promptInstructions,
+        style: promptStyleText
+      })
+    ) {
+      STREET.notify.errorMessage(
+        intl.formatMessage({
+          id: 'screenshotModal.emptyPromptError',
+          defaultMessage: 'Add instructions or pick a style before rendering.'
+        })
+      );
       return;
     }
 
@@ -535,7 +692,14 @@ function ScreenshotModal() {
         startCheckout('image');
       } else {
         STREET.notify.errorMessage(
-          `You need at least ${totalTokenCost} tokens for 4x render`
+          intl.formatMessage(
+            {
+              id: 'screenshotModal.insufficientTokens4x',
+              defaultMessage:
+                'You need at least {totalTokenCost} tokens for 4x render'
+            },
+            { totalTokenCost }
+          )
         );
       }
       return;
@@ -638,72 +802,37 @@ function ScreenshotModal() {
 
   useEffect(() => {
     if (modal === 'screenshot') {
-      takeScreenshotWithOptions({
-        type: 'img',
-        showLogo: !isPro,
-        showWatermark: !isPro,
-        imgElementSelector: '#screentock-destination'
-      }).then(async () => {
-        const imgElement = document.getElementById('screentock-destination');
-        if (imgElement && imgElement.src) {
-          setOriginalImageUrl(imgElement.src);
-
-          // Save screenshot to gallery (async, don't block UI)
-          if (currentUser?.uid) {
-            // Upload to gallery in the background
-            (async () => {
-              try {
-                // Load the image to get dimensions and convert to JPEG
-                const img = new Image();
-                img.src = imgElement.src;
-                await new Promise((resolve) => {
-                  img.onload = resolve;
-                  // If already loaded, resolve immediately
-                  if (img.complete) resolve();
-                });
-
-                // Convert PNG data URI to JPEG for smaller file size
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-
-                // Convert to JPEG at 95% quality (much smaller than PNG)
-                const jpegDataUri = canvas.toDataURL('image/jpeg', 0.95);
-
-                // Initialize gallery service V2 if needed
-                await assetsService.init();
-
-                console.log('Uploading screenshot to gallery (JPEG format)...');
-
-                // Add to gallery using V2 API
-                const assetId = await assetsService.addAsset(
-                  jpegDataUri, // JPEG Data URI (will be auto-converted to blob)
-                  {
-                    timestamp: new Date().toISOString(),
-                    sceneId: STREET.utils.getCurrentSceneId(),
-                    sceneTitle: useStore.getState().sceneTitle || 'Untitled',
-                    source: 'screenshot',
-                    model: 'Editor Snapshot',
-                    width: img.width,
-                    height: img.height,
-                    isPro: isPro
-                  },
-                  'image', // type
-                  'screenshot', // category
-                  currentUser.uid // userId
-                );
-                console.log(`Screenshot saved to gallery with ID: ${assetId}`);
-              } catch (error) {
-                console.error('Failed to save screenshot to gallery:', error);
-              }
-            })();
-          } else {
+      // Shared capture + gallery-save pipeline (also used by the
+      // viewer's snapshot button) — see editor/api/snapshot.js.
+      captureScreenshotAsJpeg(isPro)
+        .then(({ dataUrl, width, height, pngSrc }) => {
+          setOriginalImageUrl(pngSrc);
+          if (!currentUser?.uid) {
             console.log('User not logged in, skipping gallery save');
+            return;
           }
-        }
-      });
+          // Save to gallery in the background (never blocks the UI)
+          saveScreenshotToGallery(
+            dataUrl,
+            {
+              source: 'screenshot',
+              model: 'Editor Snapshot',
+              width,
+              height,
+              isPro
+            },
+            currentUser.uid
+          )
+            .then((assetId) => {
+              console.log(`Screenshot saved to gallery with ID: ${assetId}`);
+            })
+            .catch((error) => {
+              console.error('Failed to save screenshot to gallery:', error);
+            });
+        })
+        .catch((error) => {
+          console.error('Screenshot capture failed:', error);
+        });
     }
   }, [modal, isPro, currentUser?.uid]);
 
@@ -715,7 +844,10 @@ function ScreenshotModal() {
       titleElement={
         <div className="flex pr-4 pt-5">
           <div className="font-large text-center text-2xl">
-            Screenshot & Render
+            <FormattedMessage
+              id="screenshotModal.title"
+              defaultMessage="Screenshot & Render"
+            />
           </div>
         </div>
       }
@@ -727,97 +859,217 @@ function ScreenshotModal() {
             <button
               className={`${styles.tabButton} ${renderMode === '1x' ? styles.active : ''}`}
               onClick={() => setRenderMode('1x')}
-              disabled={
-                isGeneratingAI ||
-                Object.values(renderingStates).some((state) => state)
-              }
+              disabled={isAnyRendering}
             >
-              1x Render
+              <FormattedMessage
+                id="screenshotModal.render1x"
+                defaultMessage="1x Render"
+              />
             </button>
             <button
               className={`${styles.tabButton} ${renderMode === '4x' ? styles.active : ''}`}
               onClick={() => setRenderMode('4x')}
-              disabled={
-                isGeneratingAI ||
-                Object.values(renderingStates).some((state) => state)
-              }
+              disabled={isAnyRendering}
             >
-              4x Render
+              <FormattedMessage
+                id="screenshotModal.render4x"
+                defaultMessage="4x Render"
+              />
             </button>
           </div>
 
-          <div className={styles.aiSection}>
-            {renderMode === '1x' && (
-              <div className={styles.modelSelector}>
-                <label className={styles.modelLabel}>AI Model:</label>
-                <AIModelSelector
-                  value={selectedModel}
-                  onChange={setSelectedModel}
-                  disabled={
-                    isGeneratingAI ||
-                    Object.values(renderingStates).some((state) => state)
-                  }
-                />
-              </div>
-            )}
-
-            {renderMode === '4x' && (
-              <div className={styles.modelMixToggle}>
-                <label className={styles.toggleLabel}>
-                  <span className={styles.toggleText}>
-                    {useMixedModels ? 'Mixed Models' : 'Same Model'}
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={useMixedModels}
-                    onChange={(e) => setUseMixedModels(e.target.checked)}
-                    disabled={
-                      isGeneratingAI ||
-                      Object.values(renderingStates).some((state) => state)
-                    }
-                  />
-                  <div className={styles.toggleSwitch}></div>
-                </label>
-                {!useMixedModels && (
+          <div className={styles.sidebarScroll}>
+            <div className={styles.aiSection}>
+              {renderMode === '1x' && (
+                <div className={styles.modelSelector}>
+                  <label className={styles.modelLabel}>
+                    <FormattedMessage
+                      id="screenshotModal.aiModelLabel"
+                      defaultMessage="AI Model:"
+                    />
+                  </label>
                   <AIModelSelector
                     value={selectedModel}
                     onChange={setSelectedModel}
-                    disabled={
-                      isGeneratingAI ||
-                      Object.values(renderingStates).some((state) => state)
-                    }
+                    disabled={isAnyRendering}
                   />
-                )}
+                </div>
+              )}
+
+              {renderMode === '4x' && (
+                <div className={styles.modelMixToggle}>
+                  <label className={styles.toggleLabel}>
+                    <span className={styles.toggleText}>
+                      {useMixedModels ? (
+                        <FormattedMessage
+                          id="screenshotModal.mixedModels"
+                          defaultMessage="Mixed Models"
+                        />
+                      ) : (
+                        <FormattedMessage
+                          id="screenshotModal.sameModel"
+                          defaultMessage="Same Model"
+                        />
+                      )}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={useMixedModels}
+                      onChange={(e) => setUseMixedModels(e.target.checked)}
+                      disabled={isAnyRendering}
+                    />
+                    <div className={styles.toggleSwitch}></div>
+                  </label>
+                  {!useMixedModels && (
+                    <AIModelSelector
+                      value={selectedModel}
+                      onChange={setSelectedModel}
+                      disabled={isAnyRendering}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* The prompt, shown as its two parts stacked in send order:
+                instructions + style sentence (composePrompt joins them
+                verbatim). Style chips write only the style field. */}
+              <div className={styles.promptSection}>
+                <label className={styles.promptLabel}>
+                  <FormattedMessage
+                    id="screenshotModal.promptLabel"
+                    defaultMessage="Prompt:"
+                  />
+                </label>
+                <div className={promptFieldStyles.fieldGroup}>
+                  <label
+                    htmlFor="prompt-instructions"
+                    className={promptFieldStyles.fieldLabel}
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.promptInstructionsLabel"
+                      defaultMessage="Instructions"
+                    />
+                  </label>
+                  <textarea
+                    id="prompt-instructions"
+                    value={promptInstructions}
+                    onChange={(e) => setPromptInstructions(e.target.value)}
+                    placeholder={intl.formatMessage({
+                      id: 'screenshotModal.promptInstructionsPlaceholder',
+                      defaultMessage:
+                        'Describe how to use the input image such as keeping or changing layout, composition or camera angle...'
+                    })}
+                    className={`${promptFieldStyles.textarea} ${
+                      isInstructionsEdited ? promptFieldStyles.userText : ''
+                    }`}
+                    disabled={isAnyRendering}
+                    rows={4}
+                    maxLength={500}
+                  />
+                  <label
+                    htmlFor="prompt-style"
+                    className={promptFieldStyles.fieldLabel}
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.promptStyleLabel"
+                      defaultMessage="Style"
+                    />
+                  </label>
+                  <RenderStyleSelector
+                    activeStyleId={activeStyleId}
+                    labels={styleLabels}
+                    onSelect={(styleId) =>
+                      setPromptStyleText(getStyleSentence(styleId))
+                    }
+                    disabled={isAnyRendering}
+                  />
+                  <textarea
+                    id="prompt-style"
+                    value={promptStyleText}
+                    onChange={(e) => setPromptStyleText(e.target.value)}
+                    placeholder={intl.formatMessage({
+                      id: 'screenshotModal.promptStylePlaceholder',
+                      defaultMessage: 'No style; instructions only'
+                    })}
+                    className={`${promptFieldStyles.textarea} ${
+                      activeStyleId === 'custom'
+                        ? promptFieldStyles.userText
+                        : ''
+                    }`}
+                    disabled={isAnyRendering}
+                    rows={3}
+                    maxLength={500}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {renderMode === '1x' && aiImageUrl && (
+              <div className={styles.viewControls}>
+                <div className={styles.toggleButtons}>
+                  <Button
+                    variant={
+                      showOriginal && !comparisonMode ? 'filled' : 'outline'
+                    }
+                    onClick={() => {
+                      setShowOriginal(true);
+                      setComparisonMode(false);
+                    }}
+                    size="small"
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.showOriginal"
+                      defaultMessage="Show Original"
+                    />
+                  </Button>
+                  <Button
+                    variant={
+                      !showOriginal && !comparisonMode ? 'filled' : 'outline'
+                    }
+                    onClick={() => {
+                      setShowOriginal(false);
+                      setComparisonMode(false);
+                    }}
+                    size="small"
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.showRender"
+                      defaultMessage="Show Render"
+                    />
+                  </Button>
+                  <Button
+                    variant={comparisonMode ? 'filled' : 'outline'}
+                    onClick={() => setComparisonMode(!comparisonMode)}
+                    size="small"
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.compareAB"
+                      defaultMessage="Compare A/B"
+                    />
+                  </Button>
+                </div>
               </div>
             )}
 
-            {/* Custom Prompt Input - Only show for Pro users (subscription or team) */}
-            {isPro && (
-              <div className={styles.promptSection}>
-                <label htmlFor="custom-prompt" className={styles.promptLabel}>
-                  Custom Prompt (optional):
-                </label>
-                <textarea
-                  id="custom-prompt"
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder={
-                    renderMode === '1x' && selectedModel
-                      ? AI_MODELS[selectedModel]?.prompt ||
-                        'Enter custom prompt...'
-                      : 'Enter custom prompt...'
-                  }
-                  className={styles.promptTextarea}
-                  disabled={
-                    isGeneratingAI ||
-                    Object.values(renderingStates).some((state) => state)
-                  }
-                  rows={3}
-                  maxLength={500}
-                />
+            {!isPro && (
+              <div className={styles.upsellSection}>
+                <Button
+                  variant="toolbtn"
+                  className={styles.upsellButton}
+                  onClick={() => startCheckout('watermark')}
+                >
+                  <FormattedMessage
+                    id="screenshotModal.upgradeToPro"
+                    defaultMessage="Upgrade to Pro to hide 3DStreet Free watermark"
+                  />
+                </Button>
               </div>
             )}
-            {/* Render Buttons */}
+          </div>
+
+          {/* Pinned footer: the generate button stays visible even when the
+              controls above need to scroll on short screens */}
+          <div className={styles.sidebarFooter}>
             {renderMode === '1x' ? (
               <Button
                 onClick={() => handleGenerateAIImage()}
@@ -841,13 +1093,19 @@ function ScreenshotModal() {
                         </span>
                         {showOvertimeWarning && (
                           <span className={styles.overtimeText}>
-                            Generation taking longer than expected.
+                            <FormattedMessage
+                              id="screenshotModal.overtimeWarning"
+                              defaultMessage="Generation taking longer than expected."
+                            />
                           </span>
                         )}
                       </>
                     ) : (
                       <span className={styles.progressText}>
-                        Sending request...
+                        <FormattedMessage
+                          id="screenshotModal.sendingRequest"
+                          defaultMessage="Sending request..."
+                        />
                       </span>
                     )}
                   </div>
@@ -859,7 +1117,12 @@ function ScreenshotModal() {
                       gap: '8px'
                     }}
                   >
-                    <span>Generate Render</span>
+                    <span>
+                      <FormattedMessage
+                        id="screenshotModal.generateRender"
+                        defaultMessage="Generate Render"
+                      />
+                    </span>
                     {tokenProfile && (
                       <TokenDisplayInner
                         count={getTokenCost(selectedModel)}
@@ -874,22 +1137,31 @@ function ScreenshotModal() {
                 onClick={handleGenerate4xRender}
                 variant="filled"
                 className={styles.aiButton}
-                disabled={
-                  Object.values(renderingStates).some((state) => state) ||
-                  !currentUser
-                }
-                title={`Generate 4 renders simultaneously (uses ${
-                  useMixedModels
-                    ? Object.keys(AI_MODELS)
-                        .filter((key) => AI_MODELS[key].includeIn4x === true)
-                        .reduce((sum, key) => sum + getTokenCost(key), 0)
-                    : getTokenCost(selectedModel) * 4
-                } tokens)`}
+                disabled={isAnyRendering || !currentUser}
+                title={intl.formatMessage(
+                  {
+                    id: 'screenshotModal.generate4xTooltip',
+                    defaultMessage:
+                      'Generate 4 renders simultaneously (uses {tokens} tokens)'
+                  },
+                  {
+                    tokens: useMixedModels
+                      ? Object.keys(AI_MODELS)
+                          .filter((key) => AI_MODELS[key].includeIn4x === true)
+                          .reduce((sum, key) => sum + getTokenCost(key), 0)
+                      : getTokenCost(selectedModel) * 4
+                  }
+                )}
               >
                 <span
                   style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
-                  <span>Generate Renders</span>
+                  <span>
+                    <FormattedMessage
+                      id="screenshotModal.generateRenders"
+                      defaultMessage="Generate Renders"
+                    />
+                  </span>
                   {tokenProfile && (
                     <TokenDisplayInner
                       count={
@@ -909,67 +1181,18 @@ function ScreenshotModal() {
             )}
             {!currentUser && (
               <p className={styles.loginPrompt}>
-                Please log in to use AI rendering
+                <FormattedMessage
+                  id="screenshotModal.loginPrompt"
+                  defaultMessage="Please log in to use AI rendering"
+                />
               </p>
             )}
-          </div>
-
-          {/* Token Display at bottom of sidebar */}
-          {tokenProfile && (
-            <div className={styles.sidebarTokenDisplay}>
-              <TokenDisplayInner showLabel={true} />
-            </div>
-          )}
-
-          {renderMode === '1x' && aiImageUrl && (
-            <div className={styles.viewControls}>
-              <div className={styles.toggleButtons}>
-                <Button
-                  variant={
-                    showOriginal && !comparisonMode ? 'filled' : 'outline'
-                  }
-                  onClick={() => {
-                    setShowOriginal(true);
-                    setComparisonMode(false);
-                  }}
-                  size="small"
-                >
-                  Show Original
-                </Button>
-                <Button
-                  variant={
-                    !showOriginal && !comparisonMode ? 'filled' : 'outline'
-                  }
-                  onClick={() => {
-                    setShowOriginal(false);
-                    setComparisonMode(false);
-                  }}
-                  size="small"
-                >
-                  Show Render
-                </Button>
-                <Button
-                  variant={comparisonMode ? 'filled' : 'outline'}
-                  onClick={() => setComparisonMode(!comparisonMode)}
-                  size="small"
-                >
-                  Compare A/B
-                </Button>
+            {tokenProfile && (
+              <div className={styles.sidebarTokenDisplay}>
+                <TokenDisplayInner showLabel={true} />
               </div>
-            </div>
-          )}
-
-          {!isPro && (
-            <div className={styles.upsellSection}>
-              <Button
-                variant="toolbtn"
-                className={styles.upsellButton}
-                onClick={() => startCheckout('watermark')}
-              >
-                Upgrade to Pro to hide 3DStreet Free watermark
-              </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className={styles.imageContainer}>
@@ -1003,15 +1226,31 @@ function ScreenshotModal() {
                       className={styles.thumbnailButton}
                       onClick={handleSetAsSceneThumbnail}
                       disabled={isSavingSnapshot}
-                      title="Set as scene thumbnail"
-                      aria-label="Set as scene thumbnail"
+                      title={intl.formatMessage({
+                        id: 'screenshotModal.setAsThumbnailTooltip',
+                        defaultMessage: 'Set as scene thumbnail'
+                      })}
+                      aria-label={intl.formatMessage({
+                        id: 'screenshotModal.setAsThumbnailTooltip',
+                        defaultMessage: 'Set as scene thumbnail'
+                      })}
                     >
                       {isSavingSnapshot ? (
-                        <span>Saving...</span>
+                        <span>
+                          <FormattedMessage
+                            id="screenshotModal.saving"
+                            defaultMessage="Saving..."
+                          />
+                        </span>
                       ) : (
                         <>
                           <span>📌</span>
-                          <span>Set as Scene Thumbnail</span>
+                          <span>
+                            <FormattedMessage
+                              id="screenshotModal.setAsThumbnail"
+                              defaultMessage="Set as Scene Thumbnail"
+                            />
+                          </span>
                         </>
                       )}
                     </button>
@@ -1029,11 +1268,22 @@ function ScreenshotModal() {
                 <button
                   className={styles.downloadButton}
                   onClick={() => handleDownloadScreenshot()}
-                  title="Download image"
-                  aria-label="Download image"
+                  title={intl.formatMessage({
+                    id: 'screenshotModal.downloadImage',
+                    defaultMessage: 'Download image'
+                  })}
+                  aria-label={intl.formatMessage({
+                    id: 'screenshotModal.downloadImage',
+                    defaultMessage: 'Download image'
+                  })}
                 >
                   <DownloadIcon />
-                  <span>Download</span>
+                  <span>
+                    <FormattedMessage
+                      id="screenshotModal.download"
+                      defaultMessage="Download"
+                    />
+                  </span>
                 </button>
               </div>
             )
@@ -1053,15 +1303,31 @@ function ScreenshotModal() {
                         className={styles.thumbnailButton}
                         onClick={handleSetAsSceneThumbnail}
                         disabled={isSavingSnapshot}
-                        title="Set as scene thumbnail"
-                        aria-label="Set as scene thumbnail"
+                        title={intl.formatMessage({
+                          id: 'screenshotModal.setAsThumbnailTooltip',
+                          defaultMessage: 'Set as scene thumbnail'
+                        })}
+                        aria-label={intl.formatMessage({
+                          id: 'screenshotModal.setAsThumbnailTooltip',
+                          defaultMessage: 'Set as scene thumbnail'
+                        })}
                       >
                         {isSavingSnapshot ? (
-                          <span>Saving...</span>
+                          <span>
+                            <FormattedMessage
+                              id="screenshotModal.saving"
+                              defaultMessage="Saving..."
+                            />
+                          </span>
                         ) : (
                           <>
                             <span>📌</span>
-                            <span>Set as Scene Thumbnail</span>
+                            <span>
+                              <FormattedMessage
+                                id="screenshotModal.setAsThumbnail"
+                                defaultMessage="Set as Scene Thumbnail"
+                              />
+                            </span>
                           </>
                         )}
                       </button>
@@ -1125,9 +1391,17 @@ function ScreenshotModal() {
                               <div className={styles.renderingPlaceholder}>
                                 <div className={styles.spinner}></div>
                                 <span>
-                                  {timer?.startTime
-                                    ? 'Rendering...'
-                                    : 'Sending...'}
+                                  {timer?.startTime ? (
+                                    <FormattedMessage
+                                      id="screenshotModal.rendering"
+                                      defaultMessage="Rendering..."
+                                    />
+                                  ) : (
+                                    <FormattedMessage
+                                      id="screenshotModal.sending"
+                                      defaultMessage="Sending..."
+                                    />
+                                  )}
                                 </span>
                               </div>
                             ) : imageUrl ? (
@@ -1142,25 +1416,46 @@ function ScreenshotModal() {
                                   onClick={() =>
                                     handleDownloadScreenshot(imageUrl, modelKey)
                                   }
-                                  title="Download image"
-                                  aria-label="Download image"
+                                  title={intl.formatMessage({
+                                    id: 'screenshotModal.downloadImage',
+                                    defaultMessage: 'Download image'
+                                  })}
+                                  aria-label={intl.formatMessage({
+                                    id: 'screenshotModal.downloadImage',
+                                    defaultMessage: 'Download image'
+                                  })}
                                 >
                                   <DownloadIcon />
                                 </button>
                               </>
                             ) : hasError ? (
                               <div className={styles.errorSlot}>
-                                <span>Error</span>
+                                <span>
+                                  <FormattedMessage
+                                    id="screenshotModal.error"
+                                    defaultMessage="Error"
+                                  />
+                                </span>
                               </div>
                             ) : (
                               <div className={styles.emptySlot}>
-                                <span>Ready</span>
+                                <span>
+                                  <FormattedMessage
+                                    id="screenshotModal.ready"
+                                    defaultMessage="Ready"
+                                  />
+                                </span>
                               </div>
                             )}
                           </>
                         ) : (
                           <div className={styles.emptySlot}>
-                            <span>Empty</span>
+                            <span>
+                              <FormattedMessage
+                                id="screenshotModal.empty"
+                                defaultMessage="Empty"
+                              />
+                            </span>
                           </div>
                         )}
                       </div>

@@ -1,11 +1,21 @@
 .screenshotModalWrapper {
   &:global(.modal-content) {
     width: 95%;
-    max-width: 1400px;
+    max-width: 1680px;
     height: 85vh;
     max-height: 85vh;
     display: flex;
     flex-direction: column;
+    row-gap: 8px; // global modal row-gap (32px) wastes vertical space here
+  }
+
+  // The global .modal-body reserves header space with a fixed max-height and
+  // a 40px bottom margin; let it flex-fill instead so the content area gets
+  // the room back. Its 32px side padding matches the header/close button.
+  :global(.modal-body) {
+    flex: 1;
+    max-height: none;
+    margin-bottom: 16px;
   }
 }
 
@@ -13,16 +23,37 @@
   display: flex;
   flex: 1;
   min-height: 0; // Critical for preventing overflow
-  padding: 20px;
+  padding: 0;
   gap: 20px;
 }
 
 .sidebar {
-  width: 280px;
+  width: 340px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
+  min-height: 0; // let sidebarScroll shrink and scroll on short screens
+}
+
+// Controls scroll independently so the footer (generate button + tokens)
+// stays visible even when the viewport is short
+.sidebarScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  scrollbar-width: thin;
+  padding-right: 2px;
+}
+
+.sidebarFooter {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .renderModeTabs {
@@ -162,42 +193,9 @@
   letter-spacing: 0.5px;
 }
 
-.promptTextarea {
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  background: white;
-  resize: vertical;
-  min-height: 72px;
-  line-height: 1.4;
-
-  &:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-  }
-
-  &:disabled {
-    background: #f5f5f5;
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-
-  &::placeholder {
-    color: #999;
-    font-style: italic;
-  }
-}
-
-.promptHelper {
-  font-size: 11px;
-  color: #666;
-  font-style: italic;
-  padding-left: 4px;
-}
+// The prompt group (instructions + style fields) is styled by the shared
+// @shared/styles/promptFields.module.scss so the editor and generator stay
+// visually unified.
 
 .modelSelector {
   display: flex;
@@ -386,8 +384,7 @@
 }
 
 .sidebarTokenDisplay {
-  margin-top: auto;
-  padding-top: 16px;
+  padding-top: 8px;
   border-top: 1px solid #333;
   display: flex;
   justify-content: center;

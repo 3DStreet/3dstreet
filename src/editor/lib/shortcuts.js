@@ -1,9 +1,10 @@
 import Events from './Events';
+import { removeSelectedEntity, cloneSelectedEntity } from './entity';
 import {
-  removeSelectedEntity,
-  cloneSelectedEntity,
-  cloneEntity
-} from './entity';
+  copySelectedEntity,
+  cutSelectedEntity,
+  pasteFromClipboard
+} from './clipboard';
 import { getOS } from './utils';
 import useStore from '@/store';
 import { isWasdNav } from './nav-experimental/flag.js';
@@ -153,18 +154,35 @@ export const Shortcuts = {
         }
       }
 
-      if (
-        AFRAME.INSPECTOR.selectedEntity &&
-        document.activeElement.tagName !== 'INPUT'
-      ) {
-        // c: copy selected entity
-        if (event.keyCode === 67) {
-          AFRAME.INSPECTOR.entityToCopy = AFRAME.INSPECTOR.selectedEntity;
+      if (document.activeElement.tagName !== 'INPUT') {
+        // Let the browser handle a native text-selection copy (e.g. text
+        // highlighted in a panel) instead of hijacking it for the entity.
+        const hasTextSelection = !!window.getSelection()?.toString();
+
+        // c: copy selected entity to clipboard
+        if (
+          event.keyCode === 67 &&
+          AFRAME.INSPECTOR.selectedEntity &&
+          !hasTextSelection
+        ) {
+          event.preventDefault();
+          copySelectedEntity();
         }
 
-        // v: paste copied entity
+        // x: cut selected entity (copy + undoable delete)
+        if (
+          event.keyCode === 88 &&
+          AFRAME.INSPECTOR.selectedEntity &&
+          !hasTextSelection
+        ) {
+          event.preventDefault();
+          cutSelectedEntity();
+        }
+
+        // v: paste entity from clipboard
         if (event.keyCode === 86) {
-          cloneEntity(AFRAME.INSPECTOR.entityToCopy);
+          event.preventDefault();
+          pasteFromClipboard();
         }
       }
     }
@@ -174,6 +192,26 @@ export const Shortcuts = {
       useStore.getState().togglePanelsVisible();
       event.preventDefault();
       event.stopPropagation();
+    }
+
+    // p: enter the Viewer and start playing. Gated to non-input focus +
+    // a registered playable capability in the scene (driveable vehicle,
+    // playable managed-street, ...). Mirrors the toolbar Play button.
+    if (
+      event.keyCode === 80 &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      document.activeElement.tagName !== 'INPUT' &&
+      document.activeElement.tagName !== 'TEXTAREA'
+    ) {
+      const sceneEl = document.querySelector('a-scene');
+      if (sceneEl?.systems?.['mode-manager']?.hasPlayable()) {
+        useStore.getState().enterViewerMode();
+        sceneEl.systems['play-mode'].start({ origin: 'editor' });
+        event.preventDefault();
+        event.stopPropagation();
+      }
     }
   },
   enable: function () {

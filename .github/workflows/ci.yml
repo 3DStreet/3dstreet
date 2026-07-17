@@ -17,23 +17,29 @@ jobs:
         node-version: ['22.x']
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Use Node.js ${{ matrix['node-version'] }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix['node-version'] }}
           cache: 'npm'
           cache-dependency-path: 'package-lock.json'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Check Lint
         run: npm run lint
 
       - name: Check Build
         run: npm run dist
+
+      # Component tests (part of `npm run test`) need the Chromium headless
+      # shell. The JS deps are already installed via npm ci above; the headless
+      # shell shares Chromium's system libraries.
+      - name: Install Playwright headless shell
+        run: npm run test:setup && npx playwright install-deps chromium
 
       - name: Tests
         run: npm run test

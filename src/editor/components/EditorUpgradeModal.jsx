@@ -4,6 +4,7 @@
  * and the Pro-claim refresh that confirms a successful upgrade.
  */
 import { useCallback, useState } from 'react';
+import { useIntl } from 'react-intl';
 import UpgradeModal from '@shared/components/UpgradeModal';
 import { useAuthContext } from '../contexts/index.js';
 import { isUserPro } from '@shared/auth/api/user';
@@ -30,6 +31,7 @@ const parsePaymentHash = (hash = '') => {
 };
 
 const EditorUpgradeModal = () => {
+  const intl = useIntl();
   const { currentUser, setCurrentUser } = useAuthContext();
   const modal = useStore((state) => state.modal);
   const setModal = useStore((state) => state.setModal);
@@ -125,7 +127,11 @@ const EditorUpgradeModal = () => {
   // previous modal (geo, screenshot) is restored if there was one.
   const onAlreadyPro = () => {
     STREET.notify.successMessage(
-      "You're already a Pro member — try that action again to continue."
+      intl.formatMessage({
+        id: 'editorUpgradeModal.alreadyPro',
+        defaultMessage:
+          "You're already a Pro member — try that action again to continue."
+      })
     );
     returnToPreviousModal();
   };

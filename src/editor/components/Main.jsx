@@ -5,6 +5,7 @@ import ModalTextures from './modals/ModalTextures';
 import SceneGraph from './scenegraph/SceneGraph';
 import { ScreenshotModal } from './modals/ScreenshotModal';
 import { ShareModal } from './modals/ShareModal';
+import { ExportModal } from './modals/ExportModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
@@ -16,6 +17,8 @@ import EditorUpgradeModal from './EditorUpgradeModal.jsx';
 import { AddLayerPanel } from './elements/AddLayerPanel';
 import { NewModal } from './modals/NewModal';
 import { LoadingSceneModal } from './modals/LoadingSceneModal';
+import { ExportingSceneModal } from './modals/ExportingSceneModal';
+import { ConfirmModal } from './modals/ConfirmModal';
 import AssetDeepLinkModal from './AssetDeepLinkModal.jsx';
 import JobHealthModal from './JobHealthModal.jsx';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
@@ -23,6 +26,8 @@ import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
 import { Compass } from './elements/Compass';
 import { ContextViewButton } from './elements/ContextViewButton';
+import { PlayModeControls } from './elements/PlayModeControls';
+import { RaceFinishBanner } from './elements/RaceFinishBanner';
 import useStore from '@/store';
 import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
 import { useNavMode } from '../lib/nav-experimental/useNavMode';
@@ -31,6 +36,7 @@ import {
   isExperimentalNav,
   isStreetLevelNav
 } from '../lib/nav-experimental/index.js';
+import { useProfileLocaleSync } from '../i18n/useProfileLocaleSync';
 import styles from './Main.module.scss';
 
 // Define the libraries array as a constant outside of the component
@@ -77,6 +83,8 @@ export default function Main() {
 
   const scene = state.sceneEl;
   const isInspectorEnabled = useStore((state) => state.isInspectorEnabled);
+  // Sync the UI locale with the signed-in user's stored profile preference.
+  useProfileLocaleSync();
   const { isPedestalMode } = useNavMode();
   const dockClass = (base) =>
     isPedestalMode ? `${base} ${styles.pedestalMode}` : base;
@@ -154,6 +162,8 @@ export default function Main() {
     <div id="inspectorContainer">
       <UnofficialDeploymentBanner />
       <ToolbarWrapper />
+      {!isInspectorEnabled && <PlayModeControls />}
+      {!isInspectorEnabled && <RaceFinishBanner />}
       {isInspectorEnabled && (
         <div>
           <SceneGraph scene={scene} selectedEntity={state.entity} />
@@ -188,12 +198,15 @@ export default function Main() {
       )}
       <ScreenshotModal />
       <ShareModal />
+      <ExportModal />
       <SignInModal />
       <EditorUpgradeModal />
       <ScenesModal />
       <ProfileModal />
       <NewModal />
       <LoadingSceneModal />
+      <ExportingSceneModal />
+      <ConfirmModal />
       <AssetDeepLinkModal />
       <JobHealthModal />
       <LoadScript

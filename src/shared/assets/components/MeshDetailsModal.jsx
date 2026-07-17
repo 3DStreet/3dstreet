@@ -20,6 +20,7 @@ import {
   getOptimizationDisplay,
   getServedUrl
 } from '../utils.js';
+import { isEditableTarget } from '@shared/utils/dom.js';
 import styles from './MeshDetailsModal.module.scss';
 
 // User-editable attribution fields. `title` deliberately is NOT here — the
@@ -177,6 +178,9 @@ const MeshDetailsModal = ({
   // Keyboard nav — mirrors AssetsModal.
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Don't hijack arrow keys while the user is typing in a field (e.g.
+      // editing the title / attribution) — let the caret move instead.
+      if (e.key !== 'Escape' && isEditableTarget(e.target)) return;
       if (e.key === 'ArrowLeft' && onNavigate) onNavigate('prev');
       else if (e.key === 'ArrowRight' && onNavigate) onNavigate('next');
       else if (e.key === 'Escape') onCloseRef.current?.();
@@ -352,6 +356,14 @@ const MeshDetailsModal = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  // Enter commits pending edits — same as clicking "Save changes" (onSave
+  // no-ops when nothing is dirty).
+  const onFieldKeyDown = (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    onSave();
   };
 
   const cancelAttributionEdit = () => {
@@ -643,6 +655,7 @@ const MeshDetailsModal = ({
                 className={styles.fieldInput}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onKeyDown={onFieldKeyDown}
                 disabled={!isOwner || saving || !data}
               />
             </div>
@@ -653,6 +666,7 @@ const MeshDetailsModal = ({
               editing={editingAttribution}
               onEnterEdit={() => setEditingAttribution(true)}
               onCancel={cancelAttributionEdit}
+              onFieldKeyDown={onFieldKeyDown}
               isOwner={isOwner && !!data}
               disabled={saving || !data}
             />
@@ -886,6 +900,7 @@ const AttributionBlock = ({
   editing,
   onEnterEdit,
   onCancel,
+  onFieldKeyDown,
   isOwner,
   disabled
 }) => {
@@ -951,6 +966,7 @@ const AttributionBlock = ({
             className={styles.fieldInput}
             value={attribution.author}
             onChange={setField('author')}
+            onKeyDown={onFieldKeyDown}
             disabled={disabled}
           />
         </div>
@@ -964,6 +980,7 @@ const AttributionBlock = ({
             className={styles.fieldInput}
             value={attribution.license}
             onChange={setField('license')}
+            onKeyDown={onFieldKeyDown}
             disabled={disabled}
             placeholder="e.g. CC-BY-4.0"
           />
@@ -978,6 +995,7 @@ const AttributionBlock = ({
             className={styles.fieldInput}
             value={attribution.source}
             onChange={setField('source')}
+            onKeyDown={onFieldKeyDown}
             disabled={disabled}
             placeholder="https://…"
           />
@@ -1012,6 +1030,7 @@ AttributionBlock.propTypes = {
   editing: PropTypes.bool.isRequired,
   onEnterEdit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
+  onFieldKeyDown: PropTypes.func,
   isOwner: PropTypes.bool,
   disabled: PropTypes.bool
 };

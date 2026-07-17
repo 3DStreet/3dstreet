@@ -1,0 +1,86 @@
+// RenderStyleSelector styles - Dark theme matching AIModelSelector
+// Works in both 3DStreet Editor and Image Generator
+
+.row {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+
+.chip {
+  all: unset;
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  padding: 2px;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background-color: rgba(30, 30, 30, 0.95);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.35);
+    background-color: rgba(38, 38, 38, 1);
+  }
+
+  &:focus-visible {
+    border-color: #774dee;
+    box-shadow: 0 0 0 2px rgba(119, 77, 238, 0.2);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.selected {
+    border-color: #774dee;
+    box-shadow: 0 0 0 1px #774dee;
+  }
+}
+
+.swatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 24px;
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.emoji {
+  font-size: 14px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+
+// Tooltip renders in a portal at the document body, above the modal (z 1000)
+.tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 220px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(20, 20, 20, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 1100;
+}
+
+.tooltipName {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.tooltipDescription {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.tooltipArrow {
+  fill: rgba(20, 20, 20, 0.97);
+}
