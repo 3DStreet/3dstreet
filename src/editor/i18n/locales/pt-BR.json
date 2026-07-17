@@ -623,7 +623,6 @@
   "screenshotModal.promptInstructionsLabel": "Instruções",
   "screenshotModal.promptInstructionsPlaceholder": "Descreva como usar a imagem de entrada, por exemplo manter ou mudar o layout, a composição ou o ângulo da câmera...",
   "screenshotModal.promptLabel": "Prompt:",
-  "screenshotModal.promptProHint": "Escolha um estilo, ou <upgrade>faça upgrade para Pro</upgrade> para editar o texto do prompt.",
   "screenshotModal.promptStyleLabel": "Estilo",
   "screenshotModal.promptStylePlaceholder": "Sem estilo; apenas instruções",
   "screenshotModal.ready": "Pronto",

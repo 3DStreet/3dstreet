@@ -1871,9 +1871,6 @@
   "screenshotModal.promptLabel": {
     "defaultMessage": "Prompt:"
   },
-  "screenshotModal.promptProHint": {
-    "defaultMessage": "Pick a style, or <upgrade>upgrade to Pro</upgrade> to edit the prompt text."
-  },
   "screenshotModal.promptStyleLabel": {
     "defaultMessage": "Style"
   },

@@ -623,7 +623,6 @@
   "screenshotModal.promptInstructionsLabel": "Instructions",
   "screenshotModal.promptInstructionsPlaceholder": "Décrivez comment utiliser l’image d’entrée, par exemple conserver ou modifier la disposition, la composition ou l’angle de caméra...",
   "screenshotModal.promptLabel": "Invite :",
-  "screenshotModal.promptProHint": "Choisissez un style, ou <upgrade>passez à Pro</upgrade> pour modifier le texte de l’invite.",
   "screenshotModal.promptStyleLabel": "Style",
   "screenshotModal.promptStylePlaceholder": "Pas de style ; instructions uniquement",
   "screenshotModal.ready": "Prêt",

@@ -951,10 +951,7 @@ function ScreenshotModal() {
                   <textarea
                     id="prompt-instructions"
                     value={promptInstructions}
-                    onChange={(e) =>
-                      isPro && setPromptInstructions(e.target.value)
-                    }
-                    readOnly={!isPro}
+                    onChange={(e) => setPromptInstructions(e.target.value)}
                     placeholder={intl.formatMessage({
                       id: 'screenshotModal.promptInstructionsPlaceholder',
                       defaultMessage:
@@ -987,10 +984,7 @@ function ScreenshotModal() {
                   <textarea
                     id="prompt-style"
                     value={promptStyleText}
-                    onChange={(e) =>
-                      isPro && setPromptStyleText(e.target.value)
-                    }
-                    readOnly={!isPro}
+                    onChange={(e) => setPromptStyleText(e.target.value)}
                     placeholder={intl.formatMessage({
                       id: 'screenshotModal.promptStylePlaceholder',
                       defaultMessage: 'No style; instructions only'
@@ -1004,24 +998,6 @@ function ScreenshotModal() {
                     rows={3}
                     maxLength={500}
                   />
-                  {!isPro && (
-                    <div className={styles.promptHelper}>
-                      <FormattedMessage
-                        id="screenshotModal.promptProHint"
-                        defaultMessage="Pick a style, or <upgrade>upgrade to Pro</upgrade> to edit the prompt text."
-                        values={{
-                          upgrade: (chunks) => (
-                            <a
-                              className={styles.upgradeLink}
-                              onClick={() => startCheckout('image')}
-                            >
-                              {chunks}
-                            </a>
-                          )
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

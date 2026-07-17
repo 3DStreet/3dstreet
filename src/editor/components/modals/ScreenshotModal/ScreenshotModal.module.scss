@@ -193,22 +193,9 @@
   letter-spacing: 0.5px;
 }
 
-.promptHelper {
-  font-size: 11px;
-  color: #666;
-  font-style: italic;
-  padding-left: 4px;
-}
-
 // The prompt group (instructions + style fields) is styled by the shared
 // @shared/styles/promptFields.module.scss so the editor and generator stay
 // visually unified.
-
-.upgradeLink {
-  color: #774dee;
-  text-decoration: underline;
-  cursor: pointer;
-}
 
 .modelSelector {
   display: flex;
