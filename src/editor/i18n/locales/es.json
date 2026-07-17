@@ -530,7 +530,6 @@
   "primaryToolbar.play": "Iniciar",
   "primaryToolbar.playTitle": "Entrar al modo de vista y ejecutar la simulación",
   "primaryToolbar.showPanels": "Mostrar paneles",
-  "primaryToolbar.snapshotTitle": "Captura una imagen de pantalla y genera imágenes renderizadas",
   "profileModal.accountInformation": "Información de la cuenta",
   "profileModal.loadingUsername": "Cargando nombre de usuario...",
   "profileModal.logOut": "Cerrar sesión",
@@ -698,10 +697,7 @@
   "viewer.pause": "Pausar",
   "viewer.pauseTitle": "Pausa la simulación",
   "viewer.play": "Iniciar",
-  "viewer.playTitle": "Ejecuta la simulación",
   "viewer.reset": "Reiniciar",
-  "viewer.resetPausedTitle": "Reiniciar — vuelve al fotograma inicial; pulsa Iniciar para reproducir de nuevo",
-  "viewer.resetTitle": "Reiniciar — vuelve a ejecutar la simulación desde t=0 con los objetos en su posición inicial",
   "viewer.resume": "Reanudar",
   "viewer.resumeTitle": "Reanuda la simulación",
   "viewer.signInToEdit": "Inicia sesión para editar",
@@ -715,6 +711,5 @@
   "viewer.snapshotSaved": "Guardada en tu galería — haz clic para descargar",
   "viewer.snapshotThumbAlt": "Captura realizada — haz clic para descargar",
   "viewer.snapshotTitle": "Captura una imagen de esta vista",
-  "viewer.stop": "Detener",
-  "viewer.stopTitle": "Detiene la simulación"
+  "viewer.stop": "Detener"
 }

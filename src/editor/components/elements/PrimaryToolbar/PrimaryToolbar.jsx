@@ -107,26 +107,20 @@ export const PrimaryToolbar = () => {
           </>
         )}
         <div className={styles.divider} />
-        <ToolTip
-          content={intl.formatMessage({
-            id: 'primaryToolbar.snapshotTitle',
-            defaultMessage: 'Capture screenshot and generate rendered images'
-          })}
+        {/* "Capture & Render" (#1824 Q2): the editor keeps the richer
+            modal flow (AI render, thumbnail, download); the Viewer has
+            its own capture-only snapshot button. No tooltip — the label
+            already says what it does. */}
+        <Button
+          variant="toolbtn"
+          onClick={handleSnapshot}
+          leadingIcon={<CameraSparkleIcon />}
         >
-          {/* "Capture & Render" (#1824 Q2): the editor keeps the richer
-              modal flow (AI render, thumbnail, download); the Viewer has
-              its own capture-only snapshot button. */}
-          <Button
-            variant="toolbtn"
-            onClick={handleSnapshot}
-            leadingIcon={<CameraSparkleIcon />}
-          >
-            <FormattedMessage
-              id="primaryToolbar.captureRender"
-              defaultMessage="Capture & Render"
-            />
-          </Button>
-        </ToolTip>
+          <FormattedMessage
+            id="primaryToolbar.captureRender"
+            defaultMessage="Capture & Render"
+          />
+        </Button>
       </Tooltip.Provider>
     </div>
   );

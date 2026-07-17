@@ -531,7 +531,6 @@
     "primaryToolbar.play": "Start",
     "primaryToolbar.playTitle": "Enter View mode and run the simulation",
     "primaryToolbar.showPanels": "Show panels",
-    "primaryToolbar.snapshotTitle": "Capture screenshot and generate rendered images",
     "profileModal.accountInformation": "Account Information",
     "profileModal.loadingUsername": "Loading username...",
     "profileModal.logOut": "Log Out",
@@ -699,10 +698,7 @@
     "viewer.pause": "Pause",
     "viewer.pauseTitle": "Pause the simulation",
     "viewer.play": "Start",
-    "viewer.playTitle": "Run the simulation",
     "viewer.reset": "Reset",
-    "viewer.resetPausedTitle": "Reset — return to the start frame; press Start to play again",
-    "viewer.resetTitle": "Reset — restart the simulation from t=0 with objects at spawn",
     "viewer.resume": "Resume",
     "viewer.resumeTitle": "Resume the simulation",
     "viewer.signInToEdit": "Sign in to Edit",
@@ -716,8 +712,7 @@
     "viewer.snapshotSaved": "Saved to your gallery — click to download",
     "viewer.snapshotThumbAlt": "Captured image — click to download",
     "viewer.snapshotTitle": "Capture this view",
-    "viewer.stop": "Stop",
-    "viewer.stopTitle": "Stop the simulation"
+    "viewer.stop": "Stop"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1251,7 +1246,6 @@
     "primaryToolbar.play": "Start",
     "primaryToolbar.playTitle": "Enter View mode and run the simulation",
     "primaryToolbar.showPanels": "Show panels",
-    "primaryToolbar.snapshotTitle": "Capture screenshot and generate rendered images",
     "profileModal.accountInformation": "Account Information",
     "profileModal.loadingUsername": "Loading username...",
     "profileModal.logOut": "Log Out",
@@ -1419,10 +1413,7 @@
     "viewer.pause": "Pause",
     "viewer.pauseTitle": "Pause the simulation",
     "viewer.play": "Start",
-    "viewer.playTitle": "Run the simulation",
     "viewer.reset": "Reset",
-    "viewer.resetPausedTitle": "Reset — return to the start frame; press Start to play again",
-    "viewer.resetTitle": "Reset — restart the simulation from t=0 with objects at spawn",
     "viewer.resume": "Resume",
     "viewer.resumeTitle": "Resume the simulation",
     "viewer.signInToEdit": "Sign in to Edit",
@@ -1436,8 +1427,7 @@
     "viewer.snapshotSaved": "Saved to your gallery — click to download",
     "viewer.snapshotThumbAlt": "Captured image — click to download",
     "viewer.snapshotTitle": "Capture this view",
-    "viewer.stop": "Stop",
-    "viewer.stopTitle": "Stop the simulation"
+    "viewer.stop": "Stop"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1971,7 +1961,6 @@
     "primaryToolbar.play": "Start",
     "primaryToolbar.playTitle": "Enter View mode and run the simulation",
     "primaryToolbar.showPanels": "Show panels",
-    "primaryToolbar.snapshotTitle": "Capture screenshot and generate rendered images",
     "profileModal.accountInformation": "Account Information",
     "profileModal.loadingUsername": "Loading username...",
     "profileModal.logOut": "Log Out",
@@ -2139,10 +2128,7 @@
     "viewer.pause": "Pause",
     "viewer.pauseTitle": "Pause the simulation",
     "viewer.play": "Start",
-    "viewer.playTitle": "Run the simulation",
     "viewer.reset": "Reset",
-    "viewer.resetPausedTitle": "Reset — return to the start frame; press Start to play again",
-    "viewer.resetTitle": "Reset — restart the simulation from t=0 with objects at spawn",
     "viewer.resume": "Resume",
     "viewer.resumeTitle": "Resume the simulation",
     "viewer.signInToEdit": "Sign in to Edit",
@@ -2156,7 +2142,6 @@
     "viewer.snapshotSaved": "Saved to your gallery — click to download",
     "viewer.snapshotThumbAlt": "Captured image — click to download",
     "viewer.snapshotTitle": "Capture this view",
-    "viewer.stop": "Stop",
-    "viewer.stopTitle": "Stop the simulation"
+    "viewer.stop": "Stop"
   }
 }

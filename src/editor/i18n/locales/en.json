@@ -1592,9 +1592,6 @@
   "primaryToolbar.showPanels": {
     "defaultMessage": "Show panels"
   },
-  "primaryToolbar.snapshotTitle": {
-    "defaultMessage": "Capture screenshot and generate rendered images"
-  },
   "profileModal.accountInformation": {
     "defaultMessage": "Account Information"
   },
@@ -2096,17 +2093,8 @@
   "viewer.play": {
     "defaultMessage": "Start"
   },
-  "viewer.playTitle": {
-    "defaultMessage": "Run the simulation"
-  },
   "viewer.reset": {
     "defaultMessage": "Reset"
-  },
-  "viewer.resetPausedTitle": {
-    "defaultMessage": "Reset — return to the start frame; press Start to play again"
-  },
-  "viewer.resetTitle": {
-    "defaultMessage": "Reset — restart the simulation from t=0 with objects at spawn"
   },
   "viewer.resume": {
     "defaultMessage": "Resume"
@@ -2149,8 +2137,5 @@
   },
   "viewer.stop": {
     "defaultMessage": "Stop"
-  },
-  "viewer.stopTitle": {
-    "defaultMessage": "Stop the simulation"
   }
 }

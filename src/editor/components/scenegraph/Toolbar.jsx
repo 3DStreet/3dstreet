@@ -368,75 +368,40 @@ function Toolbar() {
                     stop(), not stopPlaying(): Reset never changes
                     mode, so it stays in the viewer even for an
                     editor-origin session. */}
-                  <ToolTip
-                    content={
-                      isPlayPaused
-                        ? intl.formatMessage({
-                            id: 'viewer.resetPausedTitle',
-                            defaultMessage:
-                              'Reset — return to the start frame; press Start to play again'
-                          })
-                        : intl.formatMessage({
-                            id: 'viewer.resetTitle',
-                            defaultMessage:
-                              'Reset — restart the simulation from t=0 with objects at spawn'
-                          })
-                    }
+                  <Button
+                    variant="toolbtn"
+                    onClick={() => {
+                      const playMode = getPlayModeSystem();
+                      if (!playMode) return;
+                      if (playMode.isPaused) playMode.stop();
+                      else playMode.reset();
+                    }}
+                    leadingIcon={<AwesomeIcon icon={faRotateRight} size={14} />}
                   >
-                    <Button
-                      variant="toolbtn"
-                      onClick={() => {
-                        const playMode = getPlayModeSystem();
-                        if (!playMode) return;
-                        if (playMode.isPaused) playMode.stop();
-                        else playMode.reset();
-                      }}
-                      leadingIcon={
-                        <AwesomeIcon icon={faRotateRight} size={14} />
-                      }
-                    >
-                      <FormattedMessage
-                        id="viewer.reset"
-                        defaultMessage="Reset"
-                      />
-                    </Button>
-                  </ToolTip>
+                    <FormattedMessage
+                      id="viewer.reset"
+                      defaultMessage="Reset"
+                    />
+                  </Button>
                   <div className={primaryStyles.divider} />
                   {/* Entry-aware (#1824 Q1): back to the editor if Play was
                     entered from there, else to View-idle. */}
-                  <ToolTip
-                    content={intl.formatMessage({
-                      id: 'viewer.stopTitle',
-                      defaultMessage: 'Stop the simulation'
-                    })}
-                  >
-                    <Button
-                      variant="toolbtn"
-                      onClick={() => useStore.getState().stopPlaying()}
-                      leadingIcon={<AwesomeIcon icon={faStop} size={14} />}
-                    >
-                      <FormattedMessage
-                        id="viewer.stop"
-                        defaultMessage="Stop"
-                      />
-                    </Button>
-                  </ToolTip>
-                </>
-              ) : (
-                <ToolTip
-                  content={intl.formatMessage({
-                    id: 'viewer.playTitle',
-                    defaultMessage: 'Run the simulation'
-                  })}
-                >
                   <Button
                     variant="toolbtn"
-                    onClick={() => getPlayModeSystem()?.start()}
-                    leadingIcon={<AwesomeIcon icon={faPlay} size={14} />}
+                    onClick={() => useStore.getState().stopPlaying()}
+                    leadingIcon={<AwesomeIcon icon={faStop} size={14} />}
                   >
-                    <FormattedMessage id="viewer.play" defaultMessage="Start" />
+                    <FormattedMessage id="viewer.stop" defaultMessage="Stop" />
                   </Button>
-                </ToolTip>
+                </>
+              ) : (
+                <Button
+                  variant="toolbtn"
+                  onClick={() => getPlayModeSystem()?.start()}
+                  leadingIcon={<AwesomeIcon icon={faPlay} size={14} />}
+                >
+                  <FormattedMessage id="viewer.play" defaultMessage="Start" />
+                </Button>
               )}
             </Tooltip.Provider>
           </div>
