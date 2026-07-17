@@ -30,11 +30,6 @@ export const streetLayersData = [
     icon: 'ui_assets/cards/icons/streetmix24.png',
     handlerFunction: createFunctions.createManagedStreetFromStreetmixURLPrompt
   }),
-  card(m.trafficReplayName, m.trafficReplayDesc, {
-    img: '',
-    icon: 'ui_assets/cards/icons/3dst24.png',
-    handlerFunction: createFunctions.createTrafficReplay
-  }),
   card(m.managedStreet4024Name, m.managedStreet4024Desc, {
     img: 'ui_assets/cards/street-preset-40-24.jpg',
     icon: 'ui_assets/cards/icons/3dst24.png',
@@ -139,17 +134,20 @@ export const customLayersData = [
     icon: '',
     handlerFunction: createFunctions.createDriveableDeliveryRobot
   }),
-  card(m.driveableTaxiName, m.driveableTaxiDesc, {
-    img: '',
-    requiresPro: false,
-    icon: '',
-    handlerFunction: createFunctions.createDriveableTaxi
-  }),
+  // Driveable Taxi card intentionally not surfaced yet (model/handling
+  // not ready) — the 'taxi' preset, createDriveableTaxi handler, and
+  // i18n messages all exist, so restoring it is one card() entry here.
   card(m.raceTargetName, m.raceTargetDesc, {
     img: '',
     requiresPro: false,
     icon: '',
     handlerFunction: createFunctions.createRaceTarget
+  }),
+  card(m.trafficReplayName, m.trafficReplayDesc, {
+    img: '',
+    requiresPro: false,
+    icon: 'ui_assets/cards/icons/3dst24.png',
+    handlerFunction: createFunctions.createTrafficReplay
   }),
   card(m.uploadSplatName, m.uploadSplatDesc, {
     img: '',
