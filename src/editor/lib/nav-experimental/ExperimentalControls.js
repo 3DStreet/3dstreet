@@ -233,6 +233,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // "Controls disabled / a Plan View or compass tween owns the frame" — the
       // gesture guard the drag controller reads.
       isInactive: () => self._isInactive(),
+      // Stop an in-flight F-key focus glide. Called from the runner's shared
+      // cancel (which every camera-owning tween start routes through) so a
+      // teleport/preset/compass tween never dual-writes the camera against
+      // the focus-animation component's per-tick lerp (PR #1851 review).
+      cancelFocusGlide: () => {
+        if (self._focusAnimation) self._focusAnimation.transitioning = false;
+      },
       // The situation-sensor idle gate: is any engine actively moving the
       // camera? (Deliberately distinct from the resolveContextAction busy
       // predicate, which additionally counts recovery/inactive.)
@@ -417,6 +424,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
 
   focus(target) {
     if (this._disabledByOrtho || !this._focusAnimation) return;
+    // A committed-motion tween (teleport / preset / recovery / scene-load
+    // fly-in) may own the camera. Cancel it first — wheel/WASD/mousedown are
+    // all tween-gated; focus was the one ungated writer, so F mid-tween had
+    // two per-frame camera writers fighting (PR #1851 review).
+    this._cancelCameraTween();
     const camera = this._camera;
     const fa = this._focusAnimation;
 

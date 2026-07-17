@@ -1,5 +1,5 @@
 import { Menubar } from 'radix-ui';
-import { FormattedMessage, useIntl, defineMessages } from 'react-intl';
+import { FormattedMessage, useIntl } from 'react-intl';
 import '../../style/AppMenu.scss';
 import useStore from '@/store';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
@@ -9,15 +9,9 @@ import {
   uploadAndPlaceAsset,
   FILE_PICKER_ACCEPT
 } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
-import {
-  faCheck,
-  faCircle,
-  faChevronRight
-} from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { useState, useEffect } from 'react';
-import { currentOrthoDir } from '../../lib/cameras.js';
-import { isExperimentalNav } from '../../lib/nav-experimental/index.js';
 import {
   copySelectedEntity,
   cutSelectedEntity,
@@ -42,36 +36,6 @@ const editShortcuts = {
   zoomToSelection: 'F'
 };
 
-const cameraOptions = [
-  {
-    value: 'perspective',
-    event: 'cameraperspectivetoggle',
-    payload: null,
-    label: '3D View',
-    shortcut: '1'
-  },
-  {
-    value: 'orthotop',
-    event: 'cameraorthographictoggle',
-    payload: 'top',
-    label: 'Plan View',
-    shortcut: '4'
-  }
-];
-
-// Static catalog for the camera labels so formatjs can extract them (a dynamic
-// `id={`appMenu.view.camera.${value}`}` would be invisible to the extractor).
-const cameraMessages = defineMessages({
-  perspective: {
-    id: 'appMenu.view.camera.perspective',
-    defaultMessage: '3D View'
-  },
-  orthotop: {
-    id: 'appMenu.view.camera.orthotop',
-    defaultMessage: 'Plan View'
-  }
-});
-
 const AppMenu = ({ currentUser }) => {
   const intl = useIntl();
   const {
@@ -86,7 +50,6 @@ const AppMenu = ({ currentUser }) => {
     locale,
     setLocale
   } = useStore();
-  const [currentCamera, setCurrentCamera] = useState('perspective');
   const [undoDisabled, setUndoDisabled] = useState(
     !AFRAME.INSPECTOR?.history || AFRAME.INSPECTOR.history.undos.length === 0
   );
@@ -97,35 +60,7 @@ const AppMenu = ({ currentUser }) => {
     !!AFRAME.INSPECTOR?.selectedEntity
   );
 
-  // Function to get current camera state from the actual camera system
-  const getCurrentCameraState = () => {
-    if (!AFRAME.INSPECTOR?.camera) return 'perspective';
-
-    const camera = AFRAME.INSPECTOR.camera;
-    if (camera.type === 'PerspectiveCamera') {
-      return 'perspective';
-    } else if (camera.type === 'OrthographicCamera') {
-      return `ortho${currentOrthoDir}`;
-    }
-    return 'perspective';
-  };
-
   useEffect(() => {
-    // Initialize with actual camera state
-    setCurrentCamera(getCurrentCameraState());
-
-    const handleCameraToggle = (event) => {
-      setCurrentCamera(event.value);
-    };
-
-    // Also sync when inspector is enabled/disabled
-    const handleInspectorToggle = () => {
-      // Small delay to ensure camera system has updated
-      setTimeout(() => {
-        setCurrentCamera(getCurrentCameraState());
-      }, 100);
-    };
-
     // Mirror the action bar's undo/redo enabled state and track the current
     // selection so Edit menu items enable/disable correctly.
     const handleHistoryChanged = () => {
@@ -136,24 +71,14 @@ const AppMenu = ({ currentUser }) => {
       setHasSelectedEntity(!!entity);
     };
 
-    Events.on('cameratoggle', handleCameraToggle);
-    Events.on('inspectortoggle', handleInspectorToggle);
     Events.on('historychanged', handleHistoryChanged);
     Events.on('entityselect', handleEntitySelect);
 
     return () => {
-      Events.off('cameratoggle', handleCameraToggle);
-      Events.off('inspectortoggle', handleInspectorToggle);
       Events.off('historychanged', handleHistoryChanged);
       Events.off('entityselect', handleEntitySelect);
     };
   }, []);
-
-  const handleCameraChange = (option) => {
-    // Let the camera system handle the camera change first
-    Events.emit(option.event, option.payload);
-    // The cameratoggle event will be emitted by the camera system with the proper camera object
-  };
 
   const newHandler = () => {
     posthog.capture('new_scene_clicked');
@@ -703,31 +628,11 @@ const AppMenu = ({ currentUser }) => {
               />
               <div className="RightSlot">`</div>
             </Menubar.CheckboxItem>
-            {/* TASK-011: in experimental-nav mode the compass owns the
-                plan-view role, so the whole camera-view radio group (3D View
-                + Plan View) is hidden — hiding only "Plan View" would leave a
-                lone always-checked "3D View" radio. The trailing separator
-                below stays so exactly one divider remains between "Show Grid"
-                and "Reset Camera View". Flag-off keeps the full menu. */}
-            {!isExperimentalNav() && (
-              <>
-                <Menubar.Separator className="MenubarSeparator" />
-                {cameraOptions.map((option) => (
-                  <Menubar.CheckboxItem
-                    key={option.value}
-                    className="MenubarCheckboxItem"
-                    checked={currentCamera === option.value}
-                    onCheckedChange={() => handleCameraChange(option)}
-                  >
-                    <Menubar.ItemIndicator className="MenubarItemIndicator">
-                      <AwesomeIcon icon={faCircle} size={8} />
-                    </Menubar.ItemIndicator>
-                    <FormattedMessage {...cameraMessages[option.value]} />
-                    <div className="RightSlot">{option.shortcut}</div>
-                  </Menubar.CheckboxItem>
-                ))}
-              </>
-            )}
+            {/* The camera-view radio group (3D View + Plan View) was removed
+                2026-07-17 along with the ortho-view shortcuts: the compass
+                owns the plan-view role under experimental nav, and
+                ExperimentalControls has no ortho navigation (PR #1851
+                review). Restore from git history if ortho views return. */}
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"

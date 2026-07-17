@@ -62,14 +62,19 @@ function signToYaw(sign) {
 // framing) and the compass body-click / rotate-arrow actions, plus the single
 // shared yaw-about-pivot tween primitive and the at-most-one queued-action drain.
 // These motions keep their OWN TickAnimator subscription + ownership flags
-// (_planViewActive / _compassAnimating feed the orchestrator's _isInactive) — they
+// (planViewActive / _compassAnimating feed the orchestrator's _isInactive) — they
 // do NOT enter the committed-motion runner. Camera writes commit through the write
 // funnel. Reads the live camera / scene-bounds / services through the context.
 export class CompassController {
   constructor(ctx) {
     this._ctx = ctx;
-    // Plan-view tween in flight — input ignored while true.
-    this._planViewActive = false;
+    // Plan-view tween handle. `planViewActive` (input ignored while true) is
+    // DERIVED from this handle's isActive(), same self-healing pattern as
+    // _compassAnimating: an external animate()/cancel() (compass arrow,
+    // enabled=false handoff, a runner tween starting) flips it false
+    // automatically. A raw boolean here once stranded true when the tween
+    // was cancelled without its onDone, permanently locking out all nav
+    // input (PR #1851 review).
     this._planViewHandle = null;
     // Compass tween handle + at-most-one queued action ({kind, sign?}).
     // _compassAnimating (a derived getter) reads _compassHandle.isActive(), so any
@@ -86,7 +91,7 @@ export class CompassController {
 
   // Plan-view active? (feeds the orchestrator's _isInactive gate).
   get planViewActive() {
-    return this._planViewActive;
+    return this._planViewHandle != null && this._planViewHandle.isActive();
   }
 
   // Drop any in-flight compass tween/queue (camera-swap / dispose cleanup; the
@@ -184,7 +189,6 @@ export class CompassController {
     // strand `_recoveryActive`/`_teleportActive` true.
     this._ctx.runner.cancel();
 
-    this._planViewActive = true;
     // 'plan-view' is a forward-hook payload — no current consumer reads
     // it (`useNavMode` filters to pan-truck/pan-pedestal only). Future
     // indicator work may key off it; left dispatched so the
@@ -208,7 +212,6 @@ export class CompassController {
         camera.quaternion.copy(endQuat);
         camera.updateMatrixWorld();
         this._ctx.funnel.invalidateWheelMemory('compass'); // (idempotent; closes the onTick window)
-        this._planViewActive = false;
         this._planViewHandle = null;
         // Reseed the legit-pose snapshot from the committed
         // plan-view pose so recovery can never ease back to a pre-teleport
@@ -319,7 +322,7 @@ export class CompassController {
   // drain the queue (nothing to await) — closes the early-return orphan.
   _runStage1FromCompass() {
     this.handlePlanViewRequest({ fromCompass: true });
-    if (this._planViewActive) {
+    if (this.planViewActive) {
       this._compassHandle = this._planViewHandle;
     } else {
       this._drainCompassPending();

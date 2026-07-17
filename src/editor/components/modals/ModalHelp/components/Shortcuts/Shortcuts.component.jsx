@@ -124,61 +124,8 @@ const shortcuts = [
         />
       )
     },
-    {
-      key: ['2'],
-      description: (
-        <FormattedMessage
-          id="help.shortcut.leftView"
-          defaultMessage="Left view"
-        />
-      )
-    },
-    {
-      key: ['3'],
-      description: (
-        <FormattedMessage
-          id="help.shortcut.rightView"
-          defaultMessage="Right view"
-        />
-      )
-    },
-    {
-      key: ['4'],
-      description: (
-        <FormattedMessage
-          id="help.shortcut.topView"
-          defaultMessage="Top view"
-        />
-      )
-    },
-    {
-      key: ['5'],
-      description: (
-        <FormattedMessage
-          id="help.shortcut.bottomView"
-          defaultMessage="Bottom view"
-        />
-      )
-    },
-    {
-      key: ['6'],
-      description: (
-        <FormattedMessage
-          id="help.shortcut.backView"
-          defaultMessage="Back view"
-        />
-      )
-    },
-    {
-      key: ['7'],
-      description: (
-        <FormattedMessage
-          id="help.shortcut.frontView"
-          defaultMessage="Front view"
-        />
-      )
-    },
-
+    // The ortho-view shortcut entries (2-7) were removed 2026-07-17 —
+    // ExperimentalControls has no ortho navigation (PR #1851 review).
     {
       key: ['ctrl | cmd', 'x'],
       description: (

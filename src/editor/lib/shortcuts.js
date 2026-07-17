@@ -88,14 +88,9 @@ export const Shortcuts = {
       removeSelectedEntity();
     }
 
-    // c: clone selected entity (was 'd' until 2026-05-09; remapped for
-    // nav controls). Skip when Ctrl/Cmd is held — that's the
-    // copy-entity shortcut handled in onKeyDown.
-    // 'd' still clones while the WASD kit is gated off.
-    if (
-      (keyCode === 67 && !event.ctrlKey && !event.metaKey) ||
-      (!wasdNav && keyCode === 68)
-    ) {
+    // d: clone selected entity (legacy binding, live while the WASD kit
+    // is gated off). Its 'c' replacement fires in onKeyDown — see there.
+    if (!wasdNav && keyCode === 68) {
       cloneSelectedEntity();
     }
 
@@ -107,18 +102,14 @@ export const Shortcuts = {
       }
     }
 
+    // 1: return to the perspective camera. The ortho-view shortcuts
+    // (2/3/4/6/7 → cameraorthographictoggle) were removed 2026-07-17:
+    // ExperimentalControls has no ortho navigation, so ortho views froze
+    // the camera with no menu path back (PR #1851 review). The cameras.js
+    // machinery is intact if ortho views return later; '1' stays as a
+    // recovery hatch should the editor ever land on an ortho camera.
     if (keyCode === 49) {
       Events.emit('cameraperspectivetoggle');
-    } else if (keyCode === 50) {
-      Events.emit('cameraorthographictoggle', 'left');
-    } else if (keyCode === 51) {
-      Events.emit('cameraorthographictoggle', 'right');
-    } else if (keyCode === 52) {
-      Events.emit('cameraorthographictoggle', 'top');
-    } else if (keyCode === 54) {
-      Events.emit('cameraorthographictoggle', 'back');
-    } else if (keyCode === 55) {
-      Events.emit('cameraorthographictoggle', 'front');
     }
 
     for (var moduleName in this.shortcuts.modules) {
@@ -185,6 +176,19 @@ export const Shortcuts = {
           pasteFromClipboard();
         }
       }
+    }
+
+    // c: clone selected entity (was 'd' until 2026-05-09; remapped for
+    // nav controls). On keydown so the Ctrl/Cmd state of the SAME press
+    // gates it — a keyup check misfired when Ctrl was released a beat
+    // before C on a copy, cloning the entity as a side effect.
+    if (
+      event.keyCode === 67 &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.repeat
+    ) {
+      cloneSelectedEntity();
     }
 
     // `: toggle panels visibility

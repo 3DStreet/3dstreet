@@ -74,6 +74,10 @@ export class CommittedMotionRunner {
     this._ctx.tick.cancel();
     this._recoveryActive = false;
     this._teleportActive = false;
+    // A focus glide (F key) is a third camera writer outside the tick/runner
+    // pair — stop it too, so a starting tween never fights its per-tick lerp.
+    // Optional: test harness ctxs may not wire it.
+    this._ctx.cancelFocusGlide?.();
   }
 
   // Door 1 (glossary: Runner entry modes) — the recovery ease-back. Tween the
