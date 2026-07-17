@@ -62,7 +62,7 @@ const messages = defineMessages({
   },
   urbanDiagramDescription: {
     id: 'renderStyles.urban-diagram.description',
-    defaultMessage: 'Flat NACTO-guide-style planning diagram'
+    defaultMessage: 'Flat street-design-guide planning diagram'
   },
   isometricMiniatureName: {
     id: 'renderStyles.isometric-miniature.name',

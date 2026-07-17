@@ -724,7 +724,7 @@
     "renderStyles.pixel-16bit.name": "16-bit Game",
     "renderStyles.pixel-16bit.description": "Retro 16-bit pixel art video game scene",
     "renderStyles.urban-diagram.name": "Urban Diagram",
-    "renderStyles.urban-diagram.description": "Flat NACTO-guide-style planning diagram",
+    "renderStyles.urban-diagram.description": "Flat street-design-guide planning diagram",
     "renderStyles.isometric-miniature.name": "Miniature",
     "renderStyles.isometric-miniature.description": "Cute isometric tilt-shift diorama",
     "screenshotModal.promptLabel": "Prompt:",
@@ -734,7 +734,8 @@
     "screenshotModal.promptInstructionsLabel": "Instructions",
     "screenshotModal.promptStyleLabel": "Style",
     "screenshotModal.promptStylePlaceholder": "No style; instructions only",
-    "screenshotModal.emptyPromptError": "Add instructions or pick a style before rendering."
+    "screenshotModal.emptyPromptError": "Add instructions or pick a style before rendering.",
+    "screenshotModal.promptInstructionsPlaceholder": "Describe how to use the input image such as keeping or changing layout, composition or camera angle..."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1461,7 +1462,7 @@
     "renderStyles.pixel-16bit.name": "16-bit Game",
     "renderStyles.pixel-16bit.description": "Retro 16-bit pixel art video game scene",
     "renderStyles.urban-diagram.name": "Urban Diagram",
-    "renderStyles.urban-diagram.description": "Flat NACTO-guide-style planning diagram",
+    "renderStyles.urban-diagram.description": "Flat street-design-guide planning diagram",
     "renderStyles.isometric-miniature.name": "Miniature",
     "renderStyles.isometric-miniature.description": "Cute isometric tilt-shift diorama",
     "screenshotModal.promptLabel": "Prompt:",
@@ -1471,7 +1472,8 @@
     "screenshotModal.promptInstructionsLabel": "Instructions",
     "screenshotModal.promptStyleLabel": "Style",
     "screenshotModal.promptStylePlaceholder": "No style; instructions only",
-    "screenshotModal.emptyPromptError": "Add instructions or pick a style before rendering."
+    "screenshotModal.emptyPromptError": "Add instructions or pick a style before rendering.",
+    "screenshotModal.promptInstructionsPlaceholder": "Describe how to use the input image such as keeping or changing layout, composition or camera angle..."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2198,7 +2200,7 @@
     "renderStyles.pixel-16bit.name": "16-bit Game",
     "renderStyles.pixel-16bit.description": "Retro 16-bit pixel art video game scene",
     "renderStyles.urban-diagram.name": "Urban Diagram",
-    "renderStyles.urban-diagram.description": "Flat NACTO-guide-style planning diagram",
+    "renderStyles.urban-diagram.description": "Flat street-design-guide planning diagram",
     "renderStyles.isometric-miniature.name": "Miniature",
     "renderStyles.isometric-miniature.description": "Cute isometric tilt-shift diorama",
     "screenshotModal.promptLabel": "Prompt:",
@@ -2208,6 +2210,7 @@
     "screenshotModal.promptInstructionsLabel": "Instructions",
     "screenshotModal.promptStyleLabel": "Style",
     "screenshotModal.promptStylePlaceholder": "No style; instructions only",
-    "screenshotModal.emptyPromptError": "Add instructions or pick a style before rendering."
+    "screenshotModal.emptyPromptError": "Add instructions or pick a style before rendering.",
+    "screenshotModal.promptInstructionsPlaceholder": "Describe how to use the input image such as keeping or changing layout, composition or camera angle..."
   }
 }

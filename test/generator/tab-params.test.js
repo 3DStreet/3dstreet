@@ -38,7 +38,7 @@ const buildVideoParams = (formData, options = {}) => {
     params.prompt = prompt.trim();
   } else {
     params.prompt =
-      'create photorealistic animated render of this urban street scene with accurate shading and lighting';
+      'create photorealistic animated render of this street scene with accurate shading and lighting';
   }
 
   return params;

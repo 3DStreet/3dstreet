@@ -11,7 +11,6 @@ import { httpsCallable } from 'firebase/functions';
 import { functions, auth } from '@shared/services/firebase.js';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import {
-  DEFAULT_RENDER_STYLE_ID,
   getDefaultInstructions,
   getStyleSentence,
   describeStyleText,
@@ -19,6 +18,7 @@ import {
 } from '@shared/constants/renderStyles.js';
 import { mountModelSelector } from './mount-model-selector.js';
 import { mountStyleSelector } from './mount-style-selector.js';
+import promptFieldStyles from '@shared/styles/promptFields.module.scss';
 import posthog from 'posthog-js';
 
 /**
@@ -471,40 +471,39 @@ class GeneratorTabBase {
   }
 
   /**
-   * Prefill the two prompt fields with real default text so what's sent is
-   * always fully visible (no hidden fallback prompt). The generator default
-   * is written to work with or without a source image.
+   * Prefill the instructions field with real default text so what's sent is
+   * always fully visible (no hidden fallback prompt); the wording works with
+   * or without a source image. The style field defaults to empty ('none'):
+   * in the generator the user's edit is the point, styling is opt-in.
    */
   prefillPromptDefaults() {
     if (this.elements.promptInput) {
       this.elements.promptInput.value = getDefaultInstructions('generator');
     }
     if (this.elements.styleInput) {
-      this.elements.styleInput.value = getStyleSentence(
-        DEFAULT_RENDER_STYLE_ID
-      );
+      this.elements.styleInput.value = '';
     }
     this.updatePromptTint();
   }
 
   /**
-   * Default/preset text shows muted (gray-500); user-authored text shows
-   * dark (gray-900). Mirrors the editor's gray-default/edited treatment.
+   * Three text levels, shared with the editor (promptFields.module.scss):
+   * helptext placeholder (italic, darkest gray), default/preset text
+   * (middle gray), and user-authored text (white via .userText).
    */
   updatePromptTint() {
-    const setTint = (el, isDefault) => {
+    const setTint = (el, isUserText) => {
       if (!el) return;
-      el.classList.toggle('text-gray-500', isDefault);
-      el.classList.toggle('text-gray-900', !isDefault);
+      el.classList.toggle(promptFieldStyles.userText, isUserText);
     };
     setTint(
       this.elements.promptInput,
-      this.elements.promptInput?.value.trim() ===
+      this.elements.promptInput?.value.trim() !==
         getDefaultInstructions('generator')
     );
     setTint(
       this.elements.styleInput,
-      describeStyleText(this.elements.styleInput?.value) !== 'custom'
+      describeStyleText(this.elements.styleInput?.value) === 'custom'
     );
   }
 
@@ -571,13 +570,13 @@ class GeneratorTabBase {
                          Style chips write only the style field. -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">${this.getPromptLabel()}</label>
-                        <div class="p-3 border border-gray-200 rounded-lg">
-                            <label for="${getId('prompt-input')}" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Instructions</label>
-                            <textarea id="${getId('prompt-input')}" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+                        <div class="${promptFieldStyles.fieldGroup}">
+                            <label for="${getId('prompt-input')}" class="${promptFieldStyles.fieldLabel}">Instructions</label>
+                            <textarea id="${getId('prompt-input')}" rows="3" class="${promptFieldStyles.textarea}"
                                       placeholder="${this.getPromptPlaceholder()}"></textarea>
-                            <label for="${getId('style-input')}" class="block text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Style</label>
-                            <div id="${getId('style-selector-container')}" class="mb-2"></div>
-                            <textarea id="${getId('style-input')}" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            <label for="${getId('style-input')}" class="${promptFieldStyles.fieldLabel}">Style</label>
+                            <div id="${getId('style-selector-container')}"></div>
+                            <textarea id="${getId('style-input')}" rows="2" class="${promptFieldStyles.textarea}"
                                       placeholder="No style; instructions only"></textarea>
                         </div>
                     </div>

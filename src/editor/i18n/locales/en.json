@@ -1701,7 +1701,7 @@
     "defaultMessage": "16-bit Game"
   },
   "renderStyles.urban-diagram.description": {
-    "defaultMessage": "Flat NACTO-guide-style planning diagram"
+    "defaultMessage": "Flat street-design-guide planning diagram"
   },
   "renderStyles.urban-diagram.name": {
     "defaultMessage": "Urban Diagram"
@@ -1864,6 +1864,9 @@
   },
   "screenshotModal.promptInstructionsLabel": {
     "defaultMessage": "Instructions"
+  },
+  "screenshotModal.promptInstructionsPlaceholder": {
+    "defaultMessage": "Describe how to use the input image such as keeping or changing layout, composition or camera angle..."
   },
   "screenshotModal.promptLabel": {
     "defaultMessage": "Prompt:"

@@ -32,6 +32,7 @@ import {
 } from '@shared/constants/renderStyles.js';
 import AIModelSelector from '@shared/components/AIModelSelector';
 import RenderStyleSelector from '@shared/components/RenderStyleSelector';
+import promptFieldStyles from '@shared/styles/promptFields.module.scss';
 import { getLocalizedStyleLabels } from './renderStyleMessages';
 
 // Available AI models (use shared constants)
@@ -863,54 +864,16 @@ function ScreenshotModal() {
             </button>
           </div>
 
-          <div className={styles.aiSection}>
-            {renderMode === '1x' && (
-              <div className={styles.modelSelector}>
-                <label className={styles.modelLabel}>
-                  <FormattedMessage
-                    id="screenshotModal.aiModelLabel"
-                    defaultMessage="AI Model:"
-                  />
-                </label>
-                <AIModelSelector
-                  value={selectedModel}
-                  onChange={setSelectedModel}
-                  disabled={
-                    isGeneratingAI ||
-                    Object.values(renderingStates).some((state) => state)
-                  }
-                />
-              </div>
-            )}
-
-            {renderMode === '4x' && (
-              <div className={styles.modelMixToggle}>
-                <label className={styles.toggleLabel}>
-                  <span className={styles.toggleText}>
-                    {useMixedModels ? (
-                      <FormattedMessage
-                        id="screenshotModal.mixedModels"
-                        defaultMessage="Mixed Models"
-                      />
-                    ) : (
-                      <FormattedMessage
-                        id="screenshotModal.sameModel"
-                        defaultMessage="Same Model"
-                      />
-                    )}
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={useMixedModels}
-                    onChange={(e) => setUseMixedModels(e.target.checked)}
-                    disabled={
-                      isGeneratingAI ||
-                      Object.values(renderingStates).some((state) => state)
-                    }
-                  />
-                  <div className={styles.toggleSwitch}></div>
-                </label>
-                {!useMixedModels && (
+          <div className={styles.sidebarScroll}>
+            <div className={styles.aiSection}>
+              {renderMode === '1x' && (
+                <div className={styles.modelSelector}>
+                  <label className={styles.modelLabel}>
+                    <FormattedMessage
+                      id="screenshotModal.aiModelLabel"
+                      defaultMessage="AI Model:"
+                    />
+                  </label>
                   <AIModelSelector
                     value={selectedModel}
                     onChange={setSelectedModel}
@@ -919,105 +882,223 @@ function ScreenshotModal() {
                       Object.values(renderingStates).some((state) => state)
                     }
                   />
-                )}
-              </div>
-            )}
+                </div>
+              )}
 
-            {/* The prompt, shown as its two parts stacked in send order:
+              {renderMode === '4x' && (
+                <div className={styles.modelMixToggle}>
+                  <label className={styles.toggleLabel}>
+                    <span className={styles.toggleText}>
+                      {useMixedModels ? (
+                        <FormattedMessage
+                          id="screenshotModal.mixedModels"
+                          defaultMessage="Mixed Models"
+                        />
+                      ) : (
+                        <FormattedMessage
+                          id="screenshotModal.sameModel"
+                          defaultMessage="Same Model"
+                        />
+                      )}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={useMixedModels}
+                      onChange={(e) => setUseMixedModels(e.target.checked)}
+                      disabled={
+                        isGeneratingAI ||
+                        Object.values(renderingStates).some((state) => state)
+                      }
+                    />
+                    <div className={styles.toggleSwitch}></div>
+                  </label>
+                  {!useMixedModels && (
+                    <AIModelSelector
+                      value={selectedModel}
+                      onChange={setSelectedModel}
+                      disabled={
+                        isGeneratingAI ||
+                        Object.values(renderingStates).some((state) => state)
+                      }
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* The prompt, shown as its two parts stacked in send order:
                 instructions + style sentence (composePrompt joins them
                 verbatim). Style chips write only the style field. Free
                 users get both fields read-only; editing is Pro. */}
-            <div className={styles.promptSection}>
-              <label className={styles.promptLabel}>
-                <FormattedMessage
-                  id="screenshotModal.promptLabel"
-                  defaultMessage="Prompt:"
-                />
-              </label>
-              <div className={styles.promptGroup}>
-                <label
-                  htmlFor="prompt-instructions"
-                  className={styles.promptSubLabel}
-                >
+              <div className={styles.promptSection}>
+                <label className={styles.promptLabel}>
                   <FormattedMessage
-                    id="screenshotModal.promptInstructionsLabel"
-                    defaultMessage="Instructions"
+                    id="screenshotModal.promptLabel"
+                    defaultMessage="Prompt:"
                   />
                 </label>
-                <textarea
-                  id="prompt-instructions"
-                  value={promptInstructions}
-                  onChange={(e) =>
-                    isPro && setPromptInstructions(e.target.value)
-                  }
-                  readOnly={!isPro}
-                  className={`${styles.promptTextarea} ${
-                    isInstructionsEdited ? styles.editedText : ''
-                  }`}
-                  disabled={
-                    isGeneratingAI ||
-                    Object.values(renderingStates).some((state) => state)
-                  }
-                  rows={3}
-                  maxLength={500}
-                />
-                <label htmlFor="prompt-style" className={styles.promptSubLabel}>
-                  <FormattedMessage
-                    id="screenshotModal.promptStyleLabel"
-                    defaultMessage="Style"
-                  />
-                </label>
-                <RenderStyleSelector
-                  activeStyleId={activeStyleId}
-                  labels={styleLabels}
-                  onSelect={(styleId) =>
-                    setPromptStyleText(getStyleSentence(styleId))
-                  }
-                  disabled={
-                    isGeneratingAI ||
-                    Object.values(renderingStates).some((state) => state)
-                  }
-                />
-                <textarea
-                  id="prompt-style"
-                  value={promptStyleText}
-                  onChange={(e) => isPro && setPromptStyleText(e.target.value)}
-                  readOnly={!isPro}
-                  placeholder={intl.formatMessage({
-                    id: 'screenshotModal.promptStylePlaceholder',
-                    defaultMessage: 'No style; instructions only'
-                  })}
-                  className={`${styles.promptTextarea} ${
-                    activeStyleId === 'custom' ? styles.editedText : ''
-                  }`}
-                  disabled={
-                    isGeneratingAI ||
-                    Object.values(renderingStates).some((state) => state)
-                  }
-                  rows={2}
-                  maxLength={500}
-                />
-                {!isPro && (
-                  <div className={styles.promptHelper}>
+                <div className={promptFieldStyles.fieldGroup}>
+                  <label
+                    htmlFor="prompt-instructions"
+                    className={promptFieldStyles.fieldLabel}
+                  >
                     <FormattedMessage
-                      id="screenshotModal.promptProHint"
-                      defaultMessage="Pick a style, or <upgrade>upgrade to Pro</upgrade> to edit the prompt text."
-                      values={{
-                        upgrade: (chunks) => (
-                          <a
-                            className={styles.upgradeLink}
-                            onClick={() => startCheckout('image')}
-                          >
-                            {chunks}
-                          </a>
-                        )
-                      }}
+                      id="screenshotModal.promptInstructionsLabel"
+                      defaultMessage="Instructions"
                     />
-                  </div>
-                )}
+                  </label>
+                  <textarea
+                    id="prompt-instructions"
+                    value={promptInstructions}
+                    onChange={(e) =>
+                      isPro && setPromptInstructions(e.target.value)
+                    }
+                    readOnly={!isPro}
+                    placeholder={intl.formatMessage({
+                      id: 'screenshotModal.promptInstructionsPlaceholder',
+                      defaultMessage:
+                        'Describe how to use the input image such as keeping or changing layout, composition or camera angle...'
+                    })}
+                    className={`${promptFieldStyles.textarea} ${
+                      isInstructionsEdited ? promptFieldStyles.userText : ''
+                    }`}
+                    disabled={
+                      isGeneratingAI ||
+                      Object.values(renderingStates).some((state) => state)
+                    }
+                    rows={4}
+                    maxLength={500}
+                  />
+                  <label
+                    htmlFor="prompt-style"
+                    className={promptFieldStyles.fieldLabel}
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.promptStyleLabel"
+                      defaultMessage="Style"
+                    />
+                  </label>
+                  <RenderStyleSelector
+                    activeStyleId={activeStyleId}
+                    labels={styleLabels}
+                    onSelect={(styleId) =>
+                      setPromptStyleText(getStyleSentence(styleId))
+                    }
+                    disabled={
+                      isGeneratingAI ||
+                      Object.values(renderingStates).some((state) => state)
+                    }
+                  />
+                  <textarea
+                    id="prompt-style"
+                    value={promptStyleText}
+                    onChange={(e) =>
+                      isPro && setPromptStyleText(e.target.value)
+                    }
+                    readOnly={!isPro}
+                    placeholder={intl.formatMessage({
+                      id: 'screenshotModal.promptStylePlaceholder',
+                      defaultMessage: 'No style; instructions only'
+                    })}
+                    className={`${promptFieldStyles.textarea} ${
+                      activeStyleId === 'custom'
+                        ? promptFieldStyles.userText
+                        : ''
+                    }`}
+                    disabled={
+                      isGeneratingAI ||
+                      Object.values(renderingStates).some((state) => state)
+                    }
+                    rows={3}
+                    maxLength={500}
+                  />
+                  {!isPro && (
+                    <div className={styles.promptHelper}>
+                      <FormattedMessage
+                        id="screenshotModal.promptProHint"
+                        defaultMessage="Pick a style, or <upgrade>upgrade to Pro</upgrade> to edit the prompt text."
+                        values={{
+                          upgrade: (chunks) => (
+                            <a
+                              className={styles.upgradeLink}
+                              onClick={() => startCheckout('image')}
+                            >
+                              {chunks}
+                            </a>
+                          )
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-            {/* Render Buttons */}
+
+            {renderMode === '1x' && aiImageUrl && (
+              <div className={styles.viewControls}>
+                <div className={styles.toggleButtons}>
+                  <Button
+                    variant={
+                      showOriginal && !comparisonMode ? 'filled' : 'outline'
+                    }
+                    onClick={() => {
+                      setShowOriginal(true);
+                      setComparisonMode(false);
+                    }}
+                    size="small"
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.showOriginal"
+                      defaultMessage="Show Original"
+                    />
+                  </Button>
+                  <Button
+                    variant={
+                      !showOriginal && !comparisonMode ? 'filled' : 'outline'
+                    }
+                    onClick={() => {
+                      setShowOriginal(false);
+                      setComparisonMode(false);
+                    }}
+                    size="small"
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.showRender"
+                      defaultMessage="Show Render"
+                    />
+                  </Button>
+                  <Button
+                    variant={comparisonMode ? 'filled' : 'outline'}
+                    onClick={() => setComparisonMode(!comparisonMode)}
+                    size="small"
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.compareAB"
+                      defaultMessage="Compare A/B"
+                    />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {!isPro && (
+              <div className={styles.upsellSection}>
+                <Button
+                  variant="toolbtn"
+                  className={styles.upsellButton}
+                  onClick={() => startCheckout('watermark')}
+                >
+                  <FormattedMessage
+                    id="screenshotModal.upgradeToPro"
+                    defaultMessage="Upgrade to Pro to hide 3DStreet Free watermark"
+                  />
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Pinned footer: the generate button stays visible even when the
+              controls above need to scroll on short screens */}
+          <div className={styles.sidebarFooter}>
             {renderMode === '1x' ? (
               <Button
                 onClick={() => handleGenerateAIImage()}
@@ -1138,76 +1219,12 @@ function ScreenshotModal() {
                 />
               </p>
             )}
-          </div>
-
-          {/* Token Display at bottom of sidebar */}
-          {tokenProfile && (
-            <div className={styles.sidebarTokenDisplay}>
-              <TokenDisplayInner showLabel={true} />
-            </div>
-          )}
-
-          {renderMode === '1x' && aiImageUrl && (
-            <div className={styles.viewControls}>
-              <div className={styles.toggleButtons}>
-                <Button
-                  variant={
-                    showOriginal && !comparisonMode ? 'filled' : 'outline'
-                  }
-                  onClick={() => {
-                    setShowOriginal(true);
-                    setComparisonMode(false);
-                  }}
-                  size="small"
-                >
-                  <FormattedMessage
-                    id="screenshotModal.showOriginal"
-                    defaultMessage="Show Original"
-                  />
-                </Button>
-                <Button
-                  variant={
-                    !showOriginal && !comparisonMode ? 'filled' : 'outline'
-                  }
-                  onClick={() => {
-                    setShowOriginal(false);
-                    setComparisonMode(false);
-                  }}
-                  size="small"
-                >
-                  <FormattedMessage
-                    id="screenshotModal.showRender"
-                    defaultMessage="Show Render"
-                  />
-                </Button>
-                <Button
-                  variant={comparisonMode ? 'filled' : 'outline'}
-                  onClick={() => setComparisonMode(!comparisonMode)}
-                  size="small"
-                >
-                  <FormattedMessage
-                    id="screenshotModal.compareAB"
-                    defaultMessage="Compare A/B"
-                  />
-                </Button>
+            {tokenProfile && (
+              <div className={styles.sidebarTokenDisplay}>
+                <TokenDisplayInner showLabel={true} />
               </div>
-            </div>
-          )}
-
-          {!isPro && (
-            <div className={styles.upsellSection}>
-              <Button
-                variant="toolbtn"
-                className={styles.upsellButton}
-                onClick={() => startCheckout('watermark')}
-              >
-                <FormattedMessage
-                  id="screenshotModal.upgradeToPro"
-                  defaultMessage="Upgrade to Pro to hide 3DStreet Free watermark"
-                />
-              </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className={styles.imageContainer}>

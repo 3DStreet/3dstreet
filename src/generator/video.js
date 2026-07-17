@@ -297,7 +297,7 @@ const VideoTab = {
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Prompt (Optional)</label>
                         <textarea id="video-prompt-input" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                  placeholder="create photorealistic animated render of this urban street scene with accurate shading and lighting"></textarea>
+                                  placeholder="create photorealistic animated render of this street scene with accurate shading and lighting"></textarea>
                     </div>
 
                     <!-- Aspect Ratio -->
@@ -766,7 +766,7 @@ const VideoTab = {
     } else {
       // Use default prompt
       params.prompt =
-        'create photorealistic animated render of this urban street scene with accurate shading and lighting';
+        'create photorealistic animated render of this street scene with accurate shading and lighting';
     }
 
     // Add aspect ratio

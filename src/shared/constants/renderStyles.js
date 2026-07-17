@@ -24,7 +24,7 @@
  */
 const DEFAULT_INSTRUCTIONS = {
   editor:
-    'Use the guidance of the geometry in the input image to re-render this urban street scene, keeping the same layout, composition and camera angle.',
+    'Use the guidance of the geometry in the input image to re-render this street scene, keeping the same layout, composition and camera angle.',
   generator:
     'Add trees, flowers, and other green things to the source image if provided.'
 };
@@ -91,11 +91,11 @@ export const RENDER_STYLES = {
   },
   'urban-diagram': {
     name: 'Urban Diagram',
-    description: 'Flat NACTO-guide-style planning diagram',
+    description: 'Flat street-design-guide planning diagram',
     emoji: '📐',
     swatch: 'linear-gradient(135deg, #96deda 0%, #50c9c3 100%)',
     stylePrompt:
-      'a flat vector urban planning diagram in the style of the NACTO Urban Street Design Guide, with clean flat colors, simplified stylized people and vehicles, muted greens and grays, crisp geometry, and no photorealistic textures'
+      'a flat vector urban planning diagram in the style of a modern street design guide, with clean flat colors, simplified stylized people and vehicles, muted greens and grays, crisp geometry, and no photorealistic textures'
   },
   'isometric-miniature': {
     name: 'Miniature',
