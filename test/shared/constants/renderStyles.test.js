@@ -105,6 +105,12 @@ describe('composePrompt', () => {
     ).toBe('Add trees. Render as x.');
   });
 
+  it('never rewrites trailing punctuation in the instructions', () => {
+    expect(
+      composePrompt({ instructions: 'Add trees,', style: 'Render as x.' })
+    ).toBe('Add trees, Render as x.');
+  });
+
   it('handles either part being empty', () => {
     expect(composePrompt({ instructions: 'Add trees.', style: '' })).toBe(
       'Add trees.'

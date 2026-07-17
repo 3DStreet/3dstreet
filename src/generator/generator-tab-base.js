@@ -44,13 +44,11 @@ class GeneratorTabBase {
       tabId: config.tabId, // 'create' or 'modify'
       tabType: config.tabType, // 'create' or 'modify'
       requiresSourceImage: config.requiresSourceImage || false,
-      requiresPrompt: config.requiresPrompt || false,
       showImagePromptUI: config.showImagePromptUI || false,
       // Optional source image: show the upload with an amber (recommended, not
       // required) indicator and nudge the user toward providing one, but allow
       // text-only generation.
       optionalSourceImage: config.optionalSourceImage || false,
-      defaultPrompt: config.defaultPrompt || null,
       title: config.title || 'Image Generator',
       description: config.description || 'Generate images with AI'
     };
@@ -219,9 +217,6 @@ class GeneratorTabBase {
     this.elements.intervalValue = document.getElementById(
       getId('interval-value')
     );
-    this.elements.formatJpeg = document.getElementById(getId('format-jpeg'));
-    this.elements.formatPng = document.getElementById(getId('format-png'));
-
     // Image prompt (if applicable)
     if (this.config.showImagePromptUI) {
       this.elements.imagePromptInput =
@@ -416,13 +411,11 @@ class GeneratorTabBase {
   }
 
   /**
-   * Get prompt label based on tab type
+   * Get prompt label. A non-empty composed prompt is always required
+   * (validateGeneration), so the required marker is unconditional.
    */
   getPromptLabel() {
-    if (this.config.requiresPrompt) {
-      return 'Prompt <span class="text-red-500">*</span>';
-    }
-    return 'Prompt';
+    return 'Prompt <span class="text-red-500">*</span>';
   }
 
   /**
@@ -461,10 +454,6 @@ class GeneratorTabBase {
         if (this.modelSelectorInstance) {
           this.modelSelectorInstance.update({ value: modelId });
         }
-        // Note: the model's default prompt is applied at generation time when
-        // the box is left empty (see generateImage). We intentionally do NOT
-        // write it into the textarea here; the suggestion stays as placeholder
-        // help text so the field reflects only what the user actually typed.
       },
       disabled: false
     });
@@ -520,8 +509,11 @@ class GeneratorTabBase {
       return;
     }
 
+    this._lastActiveStyleId = describeStyleText(
+      this.elements.styleInput?.value
+    );
     this.styleSelectorInstance = mountStyleSelector(container, {
-      activeStyleId: describeStyleText(this.elements.styleInput?.value),
+      activeStyleId: this._lastActiveStyleId,
       onSelect: (styleId) => {
         this.elements.styleInput.value = getStyleSentence(styleId);
         this.refreshStyleHighlight();
@@ -533,14 +525,16 @@ class GeneratorTabBase {
   /**
    * Sync chip highlighting with the style field contents. Called on chip
    * click and on manual edits; edited text highlights no chip ('custom'),
-   * an empty field highlights the 'none' chip.
+   * an empty field highlights the 'none' chip. Skips the React re-render
+   * when the highlight didn't change (typing custom text stays 'custom').
    */
   refreshStyleHighlight() {
     this.updatePromptTint();
     if (!this.styleSelectorInstance) return;
-    this.styleSelectorInstance.update({
-      activeStyleId: describeStyleText(this.elements.styleInput?.value)
-    });
+    const activeStyleId = describeStyleText(this.elements.styleInput?.value);
+    if (activeStyleId === this._lastActiveStyleId) return;
+    this._lastActiveStyleId = activeStyleId;
+    this.styleSelectorInstance.update({ activeStyleId });
   }
 
   /**
@@ -671,20 +665,6 @@ class GeneratorTabBase {
                                 <p class="text-xs text-gray-500 mt-1">Parameter for guidance control</p>
                             </div>
 
-                            <!-- Output Format -->
-                            <div class="mb-3">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Output Format</label>
-                                <div class="flex space-x-4">
-                                    <div class="flex items-center">
-                                        <input type="radio" id="${getId('format-jpeg')}" name="${getId('output-format')}" value="jpeg" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
-                                        <label for="${getId('format-jpeg')}" class="ml-2 block text-sm text-gray-700">JPEG</label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="${getId('format-png')}" name="${getId('output-format')}" value="png" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
-                                        <label for="${getId('format-png')}" class="ml-2 block text-sm text-gray-700">PNG</label>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -977,23 +957,11 @@ class GeneratorTabBase {
 
     // Update slider ranges and visibility based on model
     switch (model) {
-      case 'kontext-realearth':
       case 'nano-banana':
       case 'nano-banana-pro':
+      case 'nano-banana-2':
       case 'seedream-4':
       case 'seedream-4.5':
-        showDimensions = false;
-        showAspectRatio = false;
-        showRaw = false;
-        showSteps = false;
-        showGuidance = false;
-        showSafetyTolerance = false;
-        showSeed = false;
-        break;
-
-      // fal.ai models
-      case 'fal-flux-2-edit':
-      case 'fal-flux-2-lora-sfmta':
         showDimensions = false;
         showAspectRatio = false;
         showRaw = false;
@@ -1883,8 +1851,8 @@ class GeneratorTabBase {
           .toISOString()
           .replace(/[:.]/g, '-')
           .slice(0, 19);
-        const fileExtension = this.elements.formatJpeg.checked ? 'jpg' : 'png';
-        const filename = `flux-${modelName}-${timestamp}.${fileExtension}`;
+        // All image endpoints return JPEG (hardcoded server-side)
+        const filename = `flux-${modelName}-${timestamp}.jpg`;
 
         downloadLink.download = filename;
         document.body.appendChild(downloadLink);
@@ -1996,19 +1964,16 @@ class GeneratorTabBase {
 
         const metadata = {
           model: this.currentParams.model || this.selectedModel,
-          // The full composed prompt (user text or model default + style
-          // suffix) actually sent to the backend; falls back to the raw
-          // textarea contents for non-styled legacy paths.
-          prompt: this.currentParams.prompt || this.elements.promptInput.value,
+          // The full composed prompt actually sent to the backend
+          prompt: this.currentParams.prompt,
           ...(this.currentParams.render_style && {
             renderStyle: this.currentParams.render_style
           }),
           seed: this.currentParams.seed,
           width: this.currentParams.width || imageDimensions.width,
           height: this.currentParams.height || imageDimensions.height,
-          output_format:
-            this.currentParams.output_format ||
-            (this.elements.formatJpeg?.checked ? 'jpeg' : 'png'),
+          // All image endpoints return JPEG (hardcoded server-side)
+          output_format: 'jpeg',
           ...(this.currentParams.aspect_ratio && {
             aspect_ratio: this.currentParams.aspect_ratio
           }),

@@ -18,6 +18,7 @@ import { functions } from '@shared/services/firebase.js';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
 import { VIDEO_MODELS } from '@shared/constants/replicateModels.js';
+import { getDefaultInstructions } from '@shared/constants/renderStyles.js';
 import { mountVideoModelSelector } from './mount-video-model-selector.js';
 
 // Video tab module
@@ -297,7 +298,7 @@ const VideoTab = {
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Prompt (Optional)</label>
                         <textarea id="video-prompt-input" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                  placeholder="create photorealistic animated render of this street scene with accurate shading and lighting"></textarea>
+                                  placeholder="${getDefaultInstructions('video')}"></textarea>
                     </div>
 
                     <!-- Aspect Ratio -->
@@ -761,13 +762,7 @@ const VideoTab = {
 
     // Add prompt (optional with default)
     const prompt = this.elements.promptInput.value.trim();
-    if (prompt) {
-      params.prompt = prompt;
-    } else {
-      // Use default prompt
-      params.prompt =
-        'create photorealistic animated render of this street scene with accurate shading and lighting';
-    }
+    params.prompt = prompt || getDefaultInstructions('video');
 
     // Add aspect ratio
     params.aspect_ratio = this.elements.aspectRatioSelector.value;

@@ -21,12 +21,16 @@
  *   and camera angle survive the restyle).
  * - generator: a friendly example edit; "if provided" keeps it valid
  *   whether or not a source image is attached.
+ * - video: the video tab still uses a single prompt field with this as its
+ *   empty-field fallback (two-field conversion is a known follow-up).
  */
 const DEFAULT_INSTRUCTIONS = {
   editor:
     'Use the guidance of the geometry in the input image to re-render this street scene, keeping the same layout, composition and camera angle.',
   generator:
-    'Add trees, flowers, and other green things to the source image if provided.'
+    'Add trees, flowers, and other green things to the source image if provided.',
+  video:
+    'create photorealistic animated render of this street scene with accurate shading and lighting'
 };
 
 /**
@@ -43,7 +47,7 @@ const DEFAULT_INSTRUCTIONS = {
 export const RENDER_STYLES = {
   photorealistic: {
     name: 'Photorealistic',
-    description: 'High-detail realistic render (default)',
+    description: 'High-detail realistic render',
     emoji: '📷',
     swatch: 'linear-gradient(135deg, #4b6cb7 0%, #182848 100%)',
     stylePrompt:
@@ -150,6 +154,12 @@ export const getStyleSentence = (styleId) => {
   return style ? `Render as ${style.stylePrompt}.` : '';
 };
 
+// Style sentences are static, so the reverse lookup is built once
+// (describeStyleText runs per keystroke and per render).
+const STYLE_ID_BY_SENTENCE = new Map(
+  Object.keys(RENDER_STYLES).map((id) => [getStyleSentence(id), id])
+);
+
 /**
  * Describe the style field contents: the matching style ID for an unedited
  * chip sentence, 'none' when empty, 'custom' for user-edited text. Drives
@@ -162,10 +172,7 @@ export const getStyleSentence = (styleId) => {
 export const describeStyleText = (styleText) => {
   const trimmed = (styleText || '').trim();
   if (!trimmed) return NONE_STYLE.id;
-  const match = getRenderStylesList().find(
-    (style) => getStyleSentence(style.id) === trimmed
-  );
-  return match ? match.id : 'custom';
+  return STYLE_ID_BY_SENTENCE.get(trimmed) || 'custom';
 };
 
 /**
@@ -183,6 +190,8 @@ export const composePrompt = ({ instructions, style } = {}) => {
   const second = (style || '').trim();
   if (!first) return second;
   if (!second) return first;
+  // Any trailing punctuation counts as "already punctuated" — the user's
+  // text is never rewritten, only a period added when there's none at all.
   const separator = /[.!?,;:]$/.test(first) ? ' ' : '. ';
   return `${first}${separator}${second}`;
 };

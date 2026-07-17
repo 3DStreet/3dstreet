@@ -6,6 +6,7 @@
  * be extracted for React migration.
  */
 import { describe, it, expect, vi } from 'vitest';
+import { getDefaultInstructions } from '@shared/constants/renderStyles.js';
 
 // ============= VIDEO TAB EXTRACTABLE FUNCTIONS =============
 
@@ -34,12 +35,7 @@ const buildVideoParams = (formData, options = {}) => {
   };
 
   // Add prompt (use default if empty)
-  if (prompt?.trim()) {
-    params.prompt = prompt.trim();
-  } else {
-    params.prompt =
-      'create photorealistic animated render of this street scene with accurate shading and lighting';
-  }
+  params.prompt = prompt?.trim() || getDefaultInstructions('video');
 
   return params;
 };
@@ -275,7 +271,7 @@ describe('Video Tab Parameters', () => {
 
       const result = buildVideoParams(formData);
 
-      expect(result.prompt).toContain('create photorealistic animated render');
+      expect(result.prompt).toBe(getDefaultInstructions('video'));
     });
 
     it('should use default model when not provided', () => {

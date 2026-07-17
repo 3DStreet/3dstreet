@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styles from './ScreenshotModal.module.scss';
 import Modal from '@shared/components/Modal/Modal.jsx';
@@ -88,10 +88,13 @@ function ScreenshotModal() {
   // unedited chip sentence maps to its style, empty is 'none', anything
   // else is 'custom' (which highlights no chip).
   const activeStyleId = describeStyleText(promptStyleText);
-  const styleLabels = getLocalizedStyleLabels(intl);
+  const styleLabels = useMemo(() => getLocalizedStyleLabels(intl), [intl]);
   // Default/preset text stays muted gray; user-authored text renders white
   const isInstructionsEdited =
     promptInstructions.trim() !== getDefaultInstructions().trim();
+  // Any generation in flight (1x or 4x) — gates every prompt/model control
+  const isAnyRendering =
+    isGeneratingAI || Object.values(renderingStates).some((state) => state);
 
   // Get token cost for the selected model
   const getTokenCost = (modelKey) => {
@@ -145,10 +148,6 @@ function ScreenshotModal() {
   };
 
   const handleClose = () => {
-    // Check if any rendering is in progress (1x or 4x)
-    const isAnyRendering =
-      isGeneratingAI || Object.values(renderingStates).some((state) => state);
-
     if (isAnyRendering) {
       const confirmClose = window.confirm(
         intl.formatMessage({
@@ -653,6 +652,24 @@ function ScreenshotModal() {
       return;
     }
 
+    // Reject an all-empty prompt once, up front — the per-model guard in
+    // handleGenerateAIImage fires after the previous batch is already wiped
+    // below, and would toast once per model.
+    if (
+      !composePrompt({
+        instructions: promptInstructions,
+        style: promptStyleText
+      })
+    ) {
+      STREET.notify.errorMessage(
+        intl.formatMessage({
+          id: 'screenshotModal.emptyPromptError',
+          defaultMessage: 'Add instructions or pick a style before rendering.'
+        })
+      );
+      return;
+    }
+
     // Filter models to only include those with includeIn4x: true
     const modelKeys = Object.keys(AI_MODELS).filter(
       (key) => AI_MODELS[key].includeIn4x === true
@@ -839,10 +856,7 @@ function ScreenshotModal() {
             <button
               className={`${styles.tabButton} ${renderMode === '1x' ? styles.active : ''}`}
               onClick={() => setRenderMode('1x')}
-              disabled={
-                isGeneratingAI ||
-                Object.values(renderingStates).some((state) => state)
-              }
+              disabled={isAnyRendering}
             >
               <FormattedMessage
                 id="screenshotModal.render1x"
@@ -852,10 +866,7 @@ function ScreenshotModal() {
             <button
               className={`${styles.tabButton} ${renderMode === '4x' ? styles.active : ''}`}
               onClick={() => setRenderMode('4x')}
-              disabled={
-                isGeneratingAI ||
-                Object.values(renderingStates).some((state) => state)
-              }
+              disabled={isAnyRendering}
             >
               <FormattedMessage
                 id="screenshotModal.render4x"
@@ -877,10 +888,7 @@ function ScreenshotModal() {
                   <AIModelSelector
                     value={selectedModel}
                     onChange={setSelectedModel}
-                    disabled={
-                      isGeneratingAI ||
-                      Object.values(renderingStates).some((state) => state)
-                    }
+                    disabled={isAnyRendering}
                   />
                 </div>
               )}
@@ -905,10 +913,7 @@ function ScreenshotModal() {
                       type="checkbox"
                       checked={useMixedModels}
                       onChange={(e) => setUseMixedModels(e.target.checked)}
-                      disabled={
-                        isGeneratingAI ||
-                        Object.values(renderingStates).some((state) => state)
-                      }
+                      disabled={isAnyRendering}
                     />
                     <div className={styles.toggleSwitch}></div>
                   </label>
@@ -916,10 +921,7 @@ function ScreenshotModal() {
                     <AIModelSelector
                       value={selectedModel}
                       onChange={setSelectedModel}
-                      disabled={
-                        isGeneratingAI ||
-                        Object.values(renderingStates).some((state) => state)
-                      }
+                      disabled={isAnyRendering}
                     />
                   )}
                 </div>
@@ -961,10 +963,7 @@ function ScreenshotModal() {
                     className={`${promptFieldStyles.textarea} ${
                       isInstructionsEdited ? promptFieldStyles.userText : ''
                     }`}
-                    disabled={
-                      isGeneratingAI ||
-                      Object.values(renderingStates).some((state) => state)
-                    }
+                    disabled={isAnyRendering}
                     rows={4}
                     maxLength={500}
                   />
@@ -983,10 +982,7 @@ function ScreenshotModal() {
                     onSelect={(styleId) =>
                       setPromptStyleText(getStyleSentence(styleId))
                     }
-                    disabled={
-                      isGeneratingAI ||
-                      Object.values(renderingStates).some((state) => state)
-                    }
+                    disabled={isAnyRendering}
                   />
                   <textarea
                     id="prompt-style"
@@ -1004,10 +1000,7 @@ function ScreenshotModal() {
                         ? promptFieldStyles.userText
                         : ''
                     }`}
-                    disabled={
-                      isGeneratingAI ||
-                      Object.values(renderingStates).some((state) => state)
-                    }
+                    disabled={isAnyRendering}
                     rows={3}
                     maxLength={500}
                   />
@@ -1166,10 +1159,7 @@ function ScreenshotModal() {
                 onClick={handleGenerate4xRender}
                 variant="filled"
                 className={styles.aiButton}
-                disabled={
-                  Object.values(renderingStates).some((state) => state) ||
-                  !currentUser
-                }
+                disabled={isAnyRendering || !currentUser}
                 title={intl.formatMessage(
                   {
                     id: 'screenshotModal.generate4xTooltip',
