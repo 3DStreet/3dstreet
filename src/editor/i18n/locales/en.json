@@ -2081,14 +2081,23 @@
   "viewer.editCopyTitle": {
     "defaultMessage": "Open the editor — saving will create your own copy"
   },
+  "viewer.editTitle": {
+    "defaultMessage": "Open the editor"
+  },
   "viewer.editingCopyWarning": {
     "defaultMessage": "This is an unsaved copy. Click Save to make your own copy."
   },
   "viewer.pause": {
     "defaultMessage": "Pause"
   },
+  "viewer.pauseTitle": {
+    "defaultMessage": "Pause the simulation"
+  },
   "viewer.play": {
     "defaultMessage": "Start"
+  },
+  "viewer.playTitle": {
+    "defaultMessage": "Run the simulation"
   },
   "viewer.reset": {
     "defaultMessage": "Reset"
@@ -2101,6 +2110,9 @@
   },
   "viewer.resume": {
     "defaultMessage": "Resume"
+  },
+  "viewer.resumeTitle": {
+    "defaultMessage": "Resume the simulation"
   },
   "viewer.signInToEdit": {
     "defaultMessage": "Sign in to Edit"
@@ -2137,5 +2149,8 @@
   },
   "viewer.stop": {
     "defaultMessage": "Stop"
+  },
+  "viewer.stopTitle": {
+    "defaultMessage": "Stop the simulation"
   }
 }

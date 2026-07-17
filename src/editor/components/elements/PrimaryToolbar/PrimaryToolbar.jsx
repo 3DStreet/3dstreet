@@ -12,8 +12,10 @@ import styles from './PrimaryToolbar.module.scss';
 
 // Immediate (no-delay) tooltip matching the dark style used across the
 // editor (RightPanel, Save, etc.). Replaces the browser's slow native
-// `title` so hovering a toolbar button explains it instantly.
-const ToolTip = ({ content, children }) => (
+// `title` so hovering a toolbar button explains it instantly. Exported
+// for the viewer toolbar's buttons (Toolbar.jsx, ViewerSnapshot.jsx),
+// which share this module's styles. Callers wrap in Tooltip.Provider.
+export const ToolTip = ({ content, children }) => (
   <Tooltip.Root delayDuration={0}>
     <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
     <Tooltip.Portal>

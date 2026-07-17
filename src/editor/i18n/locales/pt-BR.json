@@ -693,13 +693,17 @@
   "userLayers.tipsHeading": "Dicas",
   "viewer.byAuthor": "por {username}",
   "viewer.editCopyTitle": "Abra o editor — ao salvar, será criada sua própria cópia",
+  "viewer.editTitle": "Abra o editor",
   "viewer.editingCopyWarning": "Esta é uma cópia não salva. Clique em Salvar para criar sua própria cópia.",
   "viewer.pause": "Pausar",
+  "viewer.pauseTitle": "Pause a simulação",
   "viewer.play": "Iniciar",
+  "viewer.playTitle": "Execute a simulação",
   "viewer.reset": "Reiniciar",
   "viewer.resetPausedTitle": "Reiniciar — volta ao quadro inicial; pressione Iniciar para reproduzir novamente",
   "viewer.resetTitle": "Reiniciar — recomeça a simulação em t=0 com os objetos na posição inicial",
   "viewer.resume": "Retomar",
+  "viewer.resumeTitle": "Retome a simulação",
   "viewer.signInToEdit": "Faça login para editar",
   "viewer.signInToEditTitle": "Faça login para abrir o editor — ao salvar, será criada sua própria cópia",
   "viewer.simClockCrash": "Colisão em {time}",
@@ -711,5 +715,6 @@
   "viewer.snapshotSaved": "Salva na sua galeria — clique para baixar",
   "viewer.snapshotThumbAlt": "Captura realizada — clique para baixar",
   "viewer.snapshotTitle": "Capturar uma imagem desta vista",
-  "viewer.stop": "Parar"
+  "viewer.stop": "Parar",
+  "viewer.stopTitle": "Pare a simulação"
 }

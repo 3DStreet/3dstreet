@@ -11,6 +11,7 @@ import {
 } from '@/editor/api/snapshot';
 import { Button } from '../Button';
 import { AwesomeIcon } from '../AwesomeIcon';
+import { ToolTip } from '../PrimaryToolbar/PrimaryToolbar';
 import styles from './ViewerSnapshot.module.scss';
 
 const TOAST_MS = 6000;
@@ -99,14 +100,17 @@ export const ViewerSnapshot = () => {
 
   return (
     <>
-      <Button
-        variant="toolbtn"
-        onClick={handleCapture}
-        disabled={busy}
-        title={captureTitle}
-        aria-label={captureTitle}
-        leadingIcon={<AwesomeIcon icon={faCamera} size={16} />}
-      />
+      {/* Radix tooltip (provider supplied by the viewer toolbar dock) —
+          replaces the slow native `title`, matching the other buttons. */}
+      <ToolTip content={captureTitle}>
+        <Button
+          variant="toolbtn"
+          onClick={handleCapture}
+          disabled={busy}
+          aria-label={captureTitle}
+          leadingIcon={<AwesomeIcon icon={faCamera} size={16} />}
+        />
+      </ToolTip>
       {toast && (
         <div className={styles.toast}>
           <img
