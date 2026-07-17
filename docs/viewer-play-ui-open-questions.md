@@ -23,8 +23,13 @@ The mechanism that ties this together already exists: the `mode-manager`
 **playable-capability registry** (`registerPlayableCheck`). That is the
 "provider" concept. Everything below leans on it.
 
-Entry model we're adopting: **entering View implicitly autoplays** (when a
-provider exists). A future per-scene setting `autoplay: false` can opt out.
+Entry model we're adopting (revised during #1824 implementation): **entering
+View lands idle; Start is always explicit.** Autoplay-on-entry was prototyped
+and pulled back — a drive provider hijacks the camera on play-start, so
+autoplay had to special-case drive scenes anyway; making every viewer entry
+idle-first is simpler and treats all providers the same. A per-scene
+`memory.autoplay` opt-in can be revisited later if wanted (the machinery is in
+git history).
 
 ## Q1 — Stop vs Edit
 
@@ -37,6 +42,11 @@ owner who entered Play from the editor.
 returns to the editor. Visitor (no editor origin) → Stop returns to View-idle.
 Same control, context-aware destination. With that, keeping a separate Edit
 affordance is fine.
+
+**Shipped:** `play-mode.start({ origin })` stamps the entry origin into the
+store; every stop affordance (viewer Stop button, Escape, gamepad Back) routes
+through `store.stopPlaying()`, which picks the destination. View entry lands
+idle — Start is always an explicit action (see the entry-model note above).
 
 ## Q2 — Snapshot in View
 
@@ -51,6 +61,12 @@ corrupts a drive run.
 - **Editor:** the richer action can be labeled to signal intent, e.g.
   **"Capture & Render"** (distinct action) or **"Capture…"** (ellipsis = opens
   the modal).
+
+**Shipped:** viewer right dock has a capture-only camera button
+(`ViewerSnapshot.jsx`): instant screentock capture, thumbnail toast
+(click-to-download), background save to the signed-in user's gallery
+(`source: 'viewer-snapshot'`); no modal, no pause. The editor toolbar button
+is relabeled **Capture & Render**.
 
 ## Q3 — Enter/exit asymmetry, mode as a toggle
 
@@ -99,6 +115,13 @@ For a local, unauthenticated, unsaved scene with edits, the viewer shows
 draft), and making changes doesn't prompt login/save. The Remix/Edit label and
 the save/login prompting need to account for: unsaved local drafts, unauthed
 users, and edits made after entering the editor from a non-authored scene.
+
+**Shipped (v1):** the action is always **"Edit"** — Remix is gone as
+vocabulary. A signed-out visitor on a cloud scene gets **"Sign in to Edit"**
+(button and Escape both open the sign-in modal). A signed-in non-author who
+enters the editor gets a warning toast — "This is an unsaved copy. Click Save
+to make your own copy." — and saving forks via the existing save-as-fork flow.
+Local drafts (no authorId) keep Edit with no auth requirement.
 
 ## Loose end — creator byline for unauthenticated viewers
 

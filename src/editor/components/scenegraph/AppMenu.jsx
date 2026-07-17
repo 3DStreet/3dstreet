@@ -782,7 +782,7 @@ const AppMenu = ({ currentUser }) => {
             >
               <FormattedMessage
                 id="appMenu.view.snapshotRender"
-                defaultMessage="Snapshot & Render..."
+                defaultMessage="Capture & Render..."
               />
             </Menubar.Item>
           </Menubar.Content>

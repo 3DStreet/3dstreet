@@ -1,0 +1,44 @@
+// Non-blocking snapshot toast (#1824 Q2), bottom-right of the viewport.
+// Matches the viewer's controls-hint styling (Toolbar.module.scss).
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  animation: snapshot-toast-in 0.25s ease-out;
+}
+
+.thumb {
+  display: block;
+  width: 220px;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.caption {
+  color: white;
+  font-size: 12px;
+  max-width: 220px;
+}
+
+@keyframes snapshot-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1278,9 +1278,9 @@ AFRAME.registerComponent('drive-mode', {
   onPlayModeStart: function () {
     const mgr = this.el.systems['mode-manager'];
     if (!mgr || !this.el.querySelector('[drive-controls]')) return;
-    // Take the camera for the drive session; restore the Viewer's
-    // locomotion pose when the session ends (the chase/fpv cameras
-    // move #camera inside the rig).
+    // Take the camera for the drive session; restore the rig camera's
+    // pose when the session ends (the chase/fpv cameras move #camera
+    // inside the rig, and WebXR entry expects its eye-height offset).
     const cameraEl = document.getElementById('camera');
     this._savedCameraPose = cameraEl
       ? {
@@ -1294,7 +1294,7 @@ AFRAME.registerComponent('drive-mode', {
   onPlayModeStop: function () {
     const mgr = this.el.systems['mode-manager'];
     if (!mgr || mgr.getMode() !== 'drive') return;
-    mgr.setMode('locomotion');
+    mgr.setMode('viewer');
     const cameraEl = document.getElementById('camera');
     if (cameraEl && this._savedCameraPose) {
       cameraEl.object3D.position.copy(this._savedCameraPose.position);
@@ -1307,6 +1307,9 @@ AFRAME.registerComponent('drive-mode', {
     const sceneEl = this.el;
     const driveEntity = sceneEl.querySelector('[drive-controls]');
     if (!driveEntity) return; // No driveable vehicle → nothing to do.
+    // Borrow the render camera from the viewer's EditorControls camera:
+    // the chase/fpv cameras drive the rig's #camera. Returned on exit.
+    sceneEl.systems['mode-manager'].activateSceneCamera();
     // Broadcast for drive-mode-scoped features (e.g. race-target) so
     // they don't have to listen to the broader play-mode-start event.
     sceneEl.emit('drive-mode-start', {}, false);
@@ -1436,6 +1439,10 @@ AFRAME.registerComponent('drive-mode', {
       this.cleanup = null;
       this.el.emit('drive-mode-stop', {}, false);
     }
+    // Return the render camera to the shared editor/viewer camera.
+    // Harmless when exiting straight to the editor — viewport.js
+    // asserts the same camera on inspector open.
+    this.el.systems['mode-manager'].activateEditorCamera();
   },
 
   /**

@@ -13,10 +13,12 @@
  * as `street-geo` swapping map providers.
  *
  * Built-in modes:
- *   - `editor`     — inspector open; no scene-side input controls.
- *   - `locomotion` — the Viewer's default: WASD/arrows movement
- *                    (movement-controls) + click-drag look
- *                    (look-controls) on the existing cameraRig.
+ *   - `editor` — inspector open; selection + transform tools active.
+ *   - `viewer` — presentation without the editor UI. The camera stays
+ *                on the inspector's EditorControls camera so viewing
+ *                feels identical to editing (#1848) — no scene-side
+ *                input controls. Alternate control schemes will come
+ *                back later behind an explicit input-scheme system.
  *
  * Future modes (drive, replay-follow, ar-webxr, ...) are registered
  * externally by their own feature file:
@@ -34,8 +36,6 @@
  * With no checks registered (the foundation state), hasPlayable() is
  * always false and play controls stay hidden.
  */
-import useStore from '../store.js';
-
 AFRAME.registerSystem('mode-manager', {
   init: function () {
     this.modes = {};
@@ -44,14 +44,32 @@ AFRAME.registerSystem('mode-manager', {
       enter: () => {},
       exit: () => {}
     });
-    this.registerMode('locomotion', {
-      enter: () => this.setLocomotionEnabled(true),
-      exit: () => this.setLocomotionEnabled(false)
+    // Viewer idle needs no scene-side setup: the render camera simply
+    // stays on the editor's EditorControls camera (see viewport.js).
+    this.registerMode('viewer', {
+      enter: () => {},
+      exit: () => {}
     });
     // The editor opens on boot (store default isInspectorEnabled: true),
-    // so `editor` is the initial mode. index.html ships the locomotion
-    // components with enabled: false to match.
+    // so `editor` is the initial mode.
     this.currentMode = 'editor';
+
+    // WebXR needs a scene-driven camera (the rig's #camera gets its pose
+    // from the headset) — the editor's THREE camera can't provide that.
+    // Borrow the rig for the immersive session, starting where the
+    // viewer was looking, and hand back on exit. Only from viewer idle:
+    // the editor exits VR on open, and drive already owns the camera.
+    this.onEnterVR = () => {
+      if (this.currentMode !== 'viewer') return;
+      this.placeRigAtEditorCamera();
+      this.activateSceneCamera();
+    };
+    this.onExitVR = () => {
+      if (this.currentMode !== 'viewer') return;
+      this.activateEditorCamera();
+    };
+    this.sceneEl.addEventListener('enter-vr', this.onEnterVR);
+    this.sceneEl.addEventListener('exit-vr', this.onExitVR);
   },
 
   registerMode: function (name, hooks) {
@@ -98,72 +116,84 @@ AFRAME.registerSystem('mode-manager', {
     return this.getPlayableCapabilities().length > 0;
   },
 
-  /* ---------------- locomotion (viewer default) ---------------- */
+  /* ---------------- render-camera ownership ----------------
+   *
+   * These two helpers are the seam between the shared editor/viewer
+   * camera (EditorControls on AFRAME.INSPECTOR.camera — how both edit
+   * and view render today, #1848) and a scene-driven camera on the
+   * rig's #camera. Right now only drive mode borrows the rig.
+   *
+   * This seam is also the intended path for restoring scene-native
+   * viewer control schemes later: when explicit, user-selectable
+   * input/control schemes exist (and/or viewing without the editor
+   * bundle becomes a requirement), a scheme registers itself as a mode
+   * whose enter() calls activateSceneCamera() and attaches its own
+   * control components, and whose exit() detaches them and calls
+   * activateEditorCamera() — exactly the pattern drive mode uses. The
+   * old WASD locomotion mode was removed rather than kept as a hidden
+   * second scheme; see #1848.
+   */
 
-  setLocomotionEnabled: function (enabled) {
-    const rig = document.getElementById('cameraRig');
+  /**
+   * Hand the render camera to the scene rig's #camera — for features
+   * that need a scene-driven camera (drive mode, WebXR). The rig entity
+   * survives save/load (json-utils reuses the static #cameraRig), so
+   * this is always safe to call.
+   */
+  activateSceneCamera: function () {
     const cameraEl = document.getElementById('camera');
-    if (rig) rig.setAttribute('movement-controls', 'enabled', enabled);
-    if (cameraEl) cameraEl.setAttribute('look-controls', 'enabled', enabled);
-    // Mirror into the store so React (e.g. the controls hint) can react.
-    useStore.setState({ isLocomotionEnabled: enabled });
+    if (!cameraEl) return;
+    cameraEl.setAttribute('camera', 'active', true);
+    // setAttribute is a no-op if the camera was already active from a
+    // previous session — assert the render camera explicitly.
+    const cam = cameraEl.getObject3D('camera');
+    if (cam) this.sceneEl.camera = cam;
+    // While the scene camera renders, EditorControls must not move the
+    // editor camera: its mouse/wheel listeners stay attached to the
+    // always-visible canvas and would silently orbit/zoom the unrendered
+    // camera, displacing the vantage the user returns to on Stop.
+    const controls = AFRAME.INSPECTOR && AFRAME.INSPECTOR.controls;
+    if (controls) controls.enabled = false;
   },
 
   /**
-   * Place the viewer camera rig at a saved camera vantage. Accepts the
-   * cameraState shape used everywhere else (memory.cameraState,
-   * snapshots[].cameraState, ?camera= deep links, and the editor camera
-   * pose handed over by viewport.js): position + rotation in radians
-   * (+ optional rotationOrder, default XYZ — the order of a THREE
-   * camera.rotation, which is what all saved states came from) and
-   * zoom (= fov).
-   *
-   * Position goes on the rig (so movement-controls moves from there);
-   * rotation goes into look-controls' pitch/yaw objects (so the first
-   * mouse drag continues from the vantage instead of snapping to 0,0).
+   * Give the render camera back to the editor/viewer EditorControls
+   * camera (the same object edit mode renders through).
    */
-  applyViewerVantage: function (cameraState) {
-    if (!cameraState || !cameraState.position) return;
+  activateEditorCamera: function () {
+    const inspectorCam = AFRAME.INSPECTOR && AFRAME.INSPECTOR.camera;
+    if (inspectorCam) this.sceneEl.camera = inspectorCam;
+    const controls = AFRAME.INSPECTOR && AFRAME.INSPECTOR.controls;
+    if (controls) controls.enabled = true;
+  },
+
+  /**
+   * Place the camera rig at the editor camera's current vantage so a
+   * feature borrowing the rig (WebXR) starts where the viewer was
+   * looking. Rig gets yaw only — the headset supplies pitch/roll — and
+   * sits one eye-height (#camera's local offset) below the vantage.
+   */
+  placeRigAtEditorCamera: function () {
+    const editorCam = AFRAME.INSPECTOR && AFRAME.INSPECTOR.camera;
     const rig = document.getElementById('cameraRig');
     const cameraEl = document.getElementById('camera');
-    if (!rig || !cameraEl) return;
-
-    // #camera sits at a local offset inside the rig (0 1.6 0 —
-    // eye height); place the rig so the camera lands exactly on the
-    // saved position.
+    if (!rig || !cameraEl || !editorCam || !editorCam.isPerspectiveCamera) {
+      return;
+    }
+    editorCam.updateMatrixWorld();
+    const pos = new THREE.Vector3().setFromMatrixPosition(
+      editorCam.matrixWorld
+    );
+    const yaw = new THREE.Euler().setFromRotationMatrix(
+      editorCam.matrixWorld,
+      'YXZ'
+    ).y;
     const camLocal = cameraEl.object3D.position;
     rig.object3D.position.set(
-      cameraState.position.x - camLocal.x,
-      cameraState.position.y - camLocal.y,
-      cameraState.position.z - camLocal.z
+      pos.x - camLocal.x,
+      pos.y - camLocal.y,
+      pos.z - camLocal.z
     );
-    // look-controls yaw is only world-aligned if the rig isn't rotated.
-    rig.object3D.rotation.set(0, 0, 0);
-
-    const rot = cameraState.rotation || { x: 0, y: 0, z: 0 };
-    const order = cameraState.rotationOrder || 'XYZ';
-    // Convert the saved euler to YXZ (yaw-then-pitch), the decomposition
-    // look-controls uses. Roll is dropped — free-look has none.
-    const yxz = new THREE.Euler().setFromQuaternion(
-      new THREE.Quaternion().setFromEuler(
-        new THREE.Euler(rot.x, rot.y, rot.z, order)
-      ),
-      'YXZ'
-    );
-    const lookControls = cameraEl.components['look-controls'];
-    if (lookControls && lookControls.pitchObject && lookControls.yawObject) {
-      lookControls.pitchObject.rotation.x = yxz.x;
-      lookControls.yawObject.rotation.y = yxz.y;
-    }
-    // Apply directly too, so the pose is right even before look-controls
-    // is enabled (or if it's ever absent).
-    cameraEl.object3D.rotation.order = 'YXZ';
-    cameraEl.object3D.rotation.set(yxz.x, yxz.y, 0);
-
-    const cam = cameraEl.getObject3D('camera');
-    if (cam && cam.isPerspectiveCamera && Number.isFinite(cameraState.zoom)) {
-      cam.fov = cameraState.zoom;
-      cam.updateProjectionMatrix();
-    }
+    rig.object3D.rotation.set(0, yaw, 0);
   }
 });

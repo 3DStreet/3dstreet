@@ -1,4 +1,5 @@
 // Camera utility functions for snapshot feature
+import * as THREE from 'three';
 
 /**
  * Get the current camera state including position, rotation, and zoom
@@ -11,16 +12,28 @@ export function getCurrentCameraState() {
     return null;
   }
 
+  // World-space pose: during drive/WebXR the render camera is nested
+  // inside #cameraRig and its local transform is near-identity (the rig
+  // carries the real vantage). The editor camera is scene-parented, so
+  // world == local there and this changes nothing for edit/view.
+  camera.updateMatrixWorld();
+  const position = new THREE.Vector3();
+  camera.getWorldPosition(position);
+  const rotation = new THREE.Euler().setFromRotationMatrix(
+    camera.matrixWorld,
+    camera.rotation.order
+  );
+
   return {
     position: {
-      x: camera.position.x,
-      y: camera.position.y,
-      z: camera.position.z
+      x: position.x,
+      y: position.y,
+      z: position.z
     },
     rotation: {
-      x: camera.rotation.x,
-      y: camera.rotation.y,
-      z: camera.rotation.z
+      x: rotation.x,
+      y: rotation.y,
+      z: rotation.z
     },
     // For perspective camera, we'll store FOV as "zoom"
     zoom: camera.fov || 60,

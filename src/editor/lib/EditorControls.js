@@ -553,6 +553,12 @@ THREE.EditorControls = function (_object, domElement) {
       endLookAt = { x: 0, y: 1.6, z: 0 };
     }
 
+    // Saved and deep-linked vantages carry fov as `zoom` (the 7th
+    // ?camera= param value) — honor it like focusCameraState does,
+    // easing from the current fov alongside the position glide.
+    const startFov = object.fov;
+    const endFov = snapshotCameraState?.zoom || startFov;
+
     // Animation duration in milliseconds
     const duration = 3000;
     const startTime = Date.now();
@@ -582,6 +588,10 @@ THREE.EditorControls = function (_object, domElement) {
       object.position.set(currentPos.x, currentPos.y, currentPos.z);
       center.set(currentLookAt.x, currentLookAt.y, currentLookAt.z);
       object.lookAt(center);
+      if (endFov !== startFov) {
+        object.fov = startFov + (endFov - startFov) * easeProgress;
+        object.updateProjectionMatrix();
+      }
       object.updateMatrixWorld();
 
       scope.dispatchEvent(changeEvent);

@@ -562,9 +562,10 @@ function createEntityFromObj(entityData, parentEl, beforeEl) {
   // A saved cameraRig entry (legacy scenes stored one, typically carrying
   // only the now-stripped viewer-mode/controls) must never spawn a second
   // element: index.html already ships a static #cameraRig, and a duplicate id
-  // would make querySelector('#cameraRig') — used by mode-manager for
-  // locomotion and vantage — bind to the wrong node. Reuse the existing rig,
-  // applying any surviving components onto it rather than creating a sibling.
+  // would make querySelector('#cameraRig') — used by mode-manager for the
+  // drive/WebXR camera handoff — bind to the wrong node. Reuse the existing
+  // rig, applying any surviving components onto it rather than creating a
+  // sibling.
   if (entityData.id === 'cameraRig') {
     const existingRig = document.querySelector('#cameraRig');
     if (existingRig) {
@@ -1071,14 +1072,6 @@ AFRAME.registerComponent('set-loader-from-hash', {
             AFRAME.scenes[0].defaultSnapshotCameraState =
               defaultSnapshotCameraState;
           }
-          // Durable copy for the Viewer: entering viewer presentation
-          // starts the camera at the scene's saved vantage. (The
-          // defaultSnapshotCameraState copy above is deleted right after
-          // the newScene event.) Set unconditionally so a scene without
-          // a saved vantage clears the previous scene's.
-          AFRAME.scenes[0].viewerVantageCameraState =
-            defaultSnapshotCameraState || null;
-
           useStore.getState().updateLoadingProgress(50, 'Creating scene...');
           STREET.utils.createElementsFromJSON(jsonData, false);
           const sceneId = getUUIDFromPath(requestURL);

@@ -108,6 +108,15 @@ const MODE_RULES = {
   }
 };
 
+// Lane types a replay can actually populate (union of MODE_RULES lanes).
+// Any other lane keeps its authored cast visible during replay: no recorded
+// agent will ever replace it (rail, notably — hiding a tram here would leave
+// the rail lane empty for the whole session, since street-traffic also skips
+// replayed streets).
+const REPLAYABLE_LANE_TYPES = new Set(
+  Object.values(MODE_RULES).flatMap((rule) => rule.lanes)
+);
+
 const MPH_TO_MS = 0.44704;
 const EXIT_MARGIN = 1.5; // metres past the lane end before we despawn
 
@@ -279,6 +288,7 @@ AFRAME.registerComponent('street-traffic-replay', {
     streetEl.querySelectorAll(':scope > [street-segment]').forEach((segEl) => {
       const seg = segEl.getAttribute('street-segment');
       if (!seg) return;
+      if (!REPLAYABLE_LANE_TYPES.has(seg.type)) return; // replay never spawns here
       const hideFilter = movingCastFilter(seg.type);
       if (!hideFilter) return; // no moving cast on this lane type
       this.hidden.push(...hideSegmentClones(segEl, hideFilter));

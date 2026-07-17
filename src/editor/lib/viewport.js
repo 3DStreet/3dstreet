@@ -449,12 +449,6 @@ export function Viewport(inspector) {
     updateAspectRatio();
   });
 
-  function disableControls() {
-    mouseCursor.disable();
-    transformControls.enabled = false;
-    controls.enabled = false;
-  }
-
   function enableControls() {
     mouseCursor.enable();
     transformControls.enabled = true;
@@ -610,26 +604,6 @@ export function Viewport(inspector) {
     originIndicator.visible = grid.visible;
   });
 
-  // Current editor camera pose in the cameraState shape used by saved
-  // vantages, so the Viewer can pick up exactly where the editor camera
-  // was looking (the WYSIWYG View/Play handoff).
-  function getEditorCameraPose() {
-    const cam = inspector.camera;
-    if (!cam) return null;
-    cam.updateMatrixWorld();
-    const position = new THREE.Vector3().setFromMatrixPosition(cam.matrixWorld);
-    const euler = new THREE.Euler().setFromRotationMatrix(
-      cam.matrixWorld,
-      'YXZ'
-    );
-    return {
-      position: { x: position.x, y: position.y, z: position.z },
-      rotation: { x: euler.x, y: euler.y, z: euler.z },
-      rotationOrder: 'YXZ',
-      zoom: cam.isPerspectiveCamera ? cam.fov : 60
-    };
-  }
-
   useStore.subscribe(
     (state) => state.isInspectorEnabled,
     (isEnabled) => {
@@ -651,28 +625,24 @@ export function Viewport(inspector) {
           );
         }
       } else {
-        disableControls();
-        inspector.cameras.original.setAttribute('camera', 'active', 'true');
-        AFRAME.scenes[0].camera =
-          inspector.cameras.original.getObject3D('camera');
+        // The Viewer keeps the editor's camera and EditorControls so
+        // viewing feels identical to editing (#1848) — same pose, same
+        // pan/orbit/zoom. Only selection and transform tools turn off.
+        // Features that need a scene-driven camera (drive mode, WebXR)
+        // borrow the rig via mode-manager and give it back.
+        mouseCursor.disable();
+        transformControls.enabled = false;
+        controls.enabled = true;
+        // The Viewer is always perspective — leave an ortho editing view.
+        if (inspector.camera.isOrthographicCamera) {
+          Events.emit('cameraperspectivetoggle');
+        }
         Array.prototype.slice
           .call(document.querySelectorAll('.a-enter-vr,.rs-base'))
           .forEach((element) => {
             element.style.display = 'block';
           });
-        // Hand the scene over to the Viewer's locomotion mode at the
-        // requested vantage: the scene's saved start view when arriving
-        // without an editing session, otherwise the current editor
-        // camera pose so entering the Viewer doesn't jump the view.
-        if (modeManager) {
-          const vantage =
-            useStore.getState().viewerVantage === 'saved'
-              ? AFRAME.scenes[0].viewerVantageCameraState ||
-                getEditorCameraPose()
-              : getEditorCameraPose();
-          modeManager.setMode('locomotion');
-          if (vantage) modeManager.applyViewerVantage(vantage);
-        }
+        modeManager?.setMode('viewer');
       }
     }
   );

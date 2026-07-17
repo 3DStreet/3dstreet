@@ -339,7 +339,7 @@
     "defaultMessage": "Show Panels"
   },
   "appMenu.view.snapshotRender": {
-    "defaultMessage": "Snapshot & Render..."
+    "defaultMessage": "Capture & Render..."
   },
   "appMenu.view.zoomToSelection": {
     "defaultMessage": "Zoom to Selection"
@@ -1577,6 +1577,9 @@
   "playControls.wall": {
     "defaultMessage": "Wall"
   },
+  "primaryToolbar.captureRender": {
+    "defaultMessage": "Capture & Render"
+  },
   "primaryToolbar.hidePanels": {
     "defaultMessage": "Hide panels"
   },
@@ -1588,12 +1591,6 @@
   },
   "primaryToolbar.showPanels": {
     "defaultMessage": "Show panels"
-  },
-  "primaryToolbar.snapshot": {
-    "defaultMessage": "Snapshot"
-  },
-  "primaryToolbar.snapshotTitle": {
-    "defaultMessage": "Capture screenshot and generate rendered images"
   },
   "profileModal.accountInformation": {
     "defaultMessage": "Account Information"
@@ -2078,41 +2075,44 @@
   "viewer.byAuthor": {
     "defaultMessage": "by {username}"
   },
-  "viewer.hintClickDrag": {
-    "defaultMessage": "Click + Drag"
+  "viewer.editCopyTitle": {
+    "defaultMessage": "Open the editor — saving will create your own copy"
   },
-  "viewer.hintLook": {
-    "defaultMessage": "to look"
+  "viewer.editTitle": {
+    "defaultMessage": "Open the editor"
   },
-  "viewer.hintMove": {
-    "defaultMessage": "to move"
+  "viewer.editingCopyWarning": {
+    "defaultMessage": "This is an unsaved copy. Click Save to make your own copy."
   },
   "viewer.pause": {
     "defaultMessage": "Pause"
   },
+  "viewer.pauseTitle": {
+    "defaultMessage": "Pause the simulation"
+  },
   "viewer.play": {
     "defaultMessage": "Start"
-  },
-  "viewer.remix": {
-    "defaultMessage": "Remix"
-  },
-  "viewer.remixTitle": {
-    "defaultMessage": "Open the editor — saving will create your own copy"
   },
   "viewer.reset": {
     "defaultMessage": "Reset"
   },
-  "viewer.resetTitle": {
-    "defaultMessage": "Reset — restart the simulation from t=0 with objects at spawn"
-  },
   "viewer.resume": {
     "defaultMessage": "Resume"
+  },
+  "viewer.resumeTitle": {
+    "defaultMessage": "Resume the simulation"
+  },
+  "viewer.signInToEdit": {
+    "defaultMessage": "Sign in to Edit"
+  },
+  "viewer.signInToEditTitle": {
+    "defaultMessage": "Sign in to open the editor — saving will create your own copy"
   },
   "viewer.simClockCrash": {
     "defaultMessage": "Crash at {time}"
   },
   "viewer.simClockFinish": {
-    "defaultMessage": "Finished in {time} — click to resume"
+    "defaultMessage": "Finished in {time} — press Reset to race again"
   },
   "viewer.simClockPaused": {
     "defaultMessage": "Paused — click to resume"
@@ -2120,10 +2120,22 @@
   "viewer.simClockRunning": {
     "defaultMessage": "Simulation time — click to pause"
   },
+  "viewer.snapshotDownloadHint": {
+    "defaultMessage": "Click to download — sign in to save to your gallery"
+  },
+  "viewer.snapshotFailed": {
+    "defaultMessage": "Capture failed. Please try again."
+  },
+  "viewer.snapshotSaved": {
+    "defaultMessage": "Saved to your gallery — click to download"
+  },
+  "viewer.snapshotThumbAlt": {
+    "defaultMessage": "Captured image — click to download"
+  },
+  "viewer.snapshotTitle": {
+    "defaultMessage": "Capture this view"
+  },
   "viewer.stop": {
     "defaultMessage": "Stop"
-  },
-  "viewer.viewOnly": {
-    "defaultMessage": "View only"
   }
 }
