@@ -260,6 +260,93 @@ ${generatedLine}
 </body>
 </html>`;
     }
+  },
+
+  // Failure counterpart of generationReady (same opt-in, same send/claim
+  // machinery — see sendGenerationOutcomeEmail). Honors the checkbox's "you
+  // can close this tab" promise for the unhappy path: the user learns the job
+  // didn't finish and that any charged tokens came back, instead of silence.
+  // There's nothing to deep-link (a failed job never creates a gallery
+  // asset), so the CTA returns them to where they generated to try again.
+  generationFailed: {
+    getCopy(kind) {
+      return EMAIL_TEMPLATES.generationReady.getCopy(kind);
+    },
+    formatWhen(when) {
+      return EMAIL_TEMPLATES.generationReady.formatWhen(when);
+    },
+    defaultCtaUrl:
+      'https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=generation_failed',
+    getSubject(kind, ctx = {}) {
+      const { noun } = this.getCopy(kind);
+      if (ctx.assetName) {
+        return `Your 3DStreet ${noun} "${ctx.assetName}" didn't finish`;
+      }
+      const when = this.formatWhen(ctx.when);
+      return when
+        ? `Your 3DStreet ${noun} didn't finish (${when})`
+        : `Your 3DStreet ${noun} didn't finish`;
+    },
+    getTextBody(userName, kind, ctaUrl, ctx = {}) {
+      const { noun, desc } = this.getCopy(kind);
+      const link = ctaUrl || this.defaultCtaUrl;
+      const name = ctx.assetName ? ` "${ctx.assetName}"` : '';
+      return `Hi ${userName},
+
+Unfortunately your ${desc}${name} didn't finish generating. Any tokens charged for it have been refunded to your account.
+
+This is usually a temporary problem with the generation service, and trying again often works:
+${link}
+
+If it keeps failing, reply to this email and we'll take a look.
+
+The 3DStreet Team
+https://3dstreet.com
+
+---
+You received this email because you asked to be notified about this ${noun}. You can opt out by unchecking that box next time.`;
+    },
+    getHtmlBody(userName, kind, ctaUrl, ctx = {}) {
+      const { noun, desc } = this.getCopy(kind);
+      const link = ctaUrl || this.defaultCtaUrl;
+      const name = ctx.assetName
+        ? ` <strong>&ldquo;${ctx.assetName}&rdquo;</strong>`
+        : '';
+      return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="https://3dstreet.app/ui_assets/3dstreet-logo-rect-r-640.png" alt="3DStreet" style="height: 40px;">
+  </div>
+
+  <h2 style="color: #1a1a1a; margin-bottom: 20px;">Hi ${userName},</h2>
+
+  <p>Unfortunately your <strong>${desc}</strong>${name} didn't finish generating. Any tokens charged for it have been <strong>refunded</strong> to your account.</p>
+
+  <p>This is usually a temporary problem with the generation service, and trying again often works.</p>
+
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="${link}" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Try again</a>
+  </div>
+
+  <p>If it keeps failing, reply to this email and we'll take a look.</p>
+
+  <p style="color: #666;">The 3DStreet Team<br>
+  <a href="https://3dstreet.com" style="color: #6366f1;">https://3dstreet.com</a></p>
+
+  <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+
+  <p style="font-size: 12px; color: #999;">
+    You received this email because you asked to be notified about this ${noun}.<br>
+    You can opt out by unchecking that box next time.
+  </p>
+</body>
+</html>`;
+    }
   }
 
   // Add more email templates here as needed:
@@ -357,27 +444,40 @@ const asLifecycleTemplate = (template) => ({
   getTextBody: (userName) => template.getTextBody(userName)
 });
 
+// Failure emails older than this are retired unsent (pending cleared, no
+// email). Guards the first deploy against a backfill flood of historic
+// failed jobs whose pending flag never cleared under the old success-only
+// rule, and generally against emailing about a failure the user has long
+// moved past.
+const STALE_FAILURE_CUTOFF_MS = DAY_MS;
+
 /**
- * Send the "your generation is ready" email for a single succeeded, opted-in
- * job, exactly once. Shared by BOTH the real-time path (the Replicate webhook,
- * which calls this the instant a job finishes) and the reconciler sweep (the
- * dropped-webhook backstop). Idempotency lives here, not at the call sites:
+ * Send the outcome email for a single terminal, opted-in job, exactly once:
+ * generationReady for succeeded jobs, generationFailed ("didn't finish, tokens
+ * refunded") for failed/canceled ones. Shared by BOTH the real-time path (the
+ * provider webhooks, which call this the instant a job finishes) and the
+ * reconciler sweep (the dropped-webhook backstop). Idempotency lives here, not
+ * at the call sites:
  *
  *   - A transaction CAS-claims the send by flipping `notify.pending` → false.
  *     Only the winner proceeds, so the webhook and the sweep can't double-send.
- *   - If the client already acked (an open tab saw the result), we clear the
- *     flag and skip — no email for a user who's watching.
+ *   - If the client already acked (an open tab saw the result — the render or
+ *     the failure toast), we clear the flag and skip — no email for a user
+ *     who's watching.
+ *   - Failed jobs with no providerJobId are retired silently: the failure
+ *     happened during submit, so the callable returned the error straight to
+ *     the still-open tab. Same for failures older than the staleness cutoff.
  *   - On a send failure we restore `notify.pending` so the sweep retries later
  *     (fail-safe: a transient Postmark/Auth error never silently drops the
  *     notification).
  *
- * Assumes the caller has already confirmed status === 'succeeded' is plausible;
- * the transaction re-checks against the live doc regardless. dryRun reports what
- * would send without claiming or sending.
+ * The transaction re-checks eligibility against the live doc regardless of
+ * what the caller saw. dryRun reports what would send without claiming or
+ * sending.
  *
  * @returns {Promise<{action: 'sent'|'suppressed'|'skip'|'no-email'|'would-send'|'error', error?: string}>}
  */
-const sendGenerationReadyEmail = async (db, uid, jobRef, options = {}) => {
+const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
   const { dryRun = false } = options;
 
   // Atomically decide whether THIS call owns the send.
@@ -387,16 +487,26 @@ const sendGenerationReadyEmail = async (db, uid, jobRef, options = {}) => {
     const snap = await tx.get(jobRef);
     if (!snap.exists) return;
     job = snap.data();
-    // Re-check against the live doc: only succeeded, opted-in, still-pending
-    // jobs are eligible. Anything else (already sent, not opted in, not yet
-    // terminal) drops out.
-    if (job.status !== 'succeeded') return;
+    const failed = job.status === 'failed' || job.status === 'canceled';
+    // Only terminal, opted-in, still-pending jobs are eligible. Anything else
+    // (already sent, not opted in, not yet terminal) drops out.
+    if (job.status !== 'succeeded' && !failed) return;
     if (!job.notify?.email || !job.notify?.pending) return;
     // An open tab acked → the user saw it. Clear the flag, send nothing.
     if (job.notify?.clientAckedAt) {
       outcome = 'suppressed';
       if (!dryRun) tx.update(jobRef, { 'notify.pending': false });
       return;
+    }
+    if (failed) {
+      const doneMs =
+        job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || 0;
+      const stale = doneMs && Date.now() - doneMs > STALE_FAILURE_CUTOFF_MS;
+      if (!job.providerJobId || stale) {
+        outcome = 'suppressed';
+        if (!dryRun) tx.update(jobRef, { 'notify.pending': false });
+        return;
+      }
     }
     if (dryRun) {
       outcome = 'would-send';
@@ -419,20 +529,28 @@ const sendGenerationReadyEmail = async (db, uid, jobRef, options = {}) => {
       return { action: 'no-email' };
     }
 
-    // Kind-aware copy (splat today; video/image reuse it for free). The CTA
-    // deep-links to the asset's detail modal (#asset:OWNER/ID). Project-aware
-    // base so a dev/staging email deep-links to the dev app where the asset
-    // actually lives, mirroring replicate.js's webhook-URL project resolution.
-    const tpl = EMAIL_TEMPLATES.generationReady;
+    // Kind-aware copy. Project-aware base so a dev/staging email deep-links to
+    // the dev app where the asset actually lives, mirroring replicate.js's
+    // webhook-URL project resolution. Success CTA deep-links to the asset's
+    // detail modal (#asset:OWNER/ID); a failed job has no asset, so its CTA
+    // returns the user to where they generated to try again.
+    const failed = job.status !== 'succeeded';
+    const tpl = failed
+      ? EMAIL_TEMPLATES.generationFailed
+      : EMAIL_TEMPLATES.generationReady;
     const project =
       process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || '';
     const appBase =
       project === 'dev-3dstreet'
         ? 'https://dev-3dstreet.web.app'
         : 'https://3dstreet.app';
-    const ctaUrl = job.assetId
-      ? `${appBase}/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready#asset:${uid}/${job.assetId}`
-      : undefined; // fall back to the template's default app link
+    let ctaUrl;
+    if (failed) {
+      const retryPath = job.source === 'generator' ? '/generator/' : '/';
+      ctaUrl = `${appBase}${retryPath}?utm_source=email&utm_medium=notification&utm_campaign=generation_failed`;
+    } else if (job.assetId) {
+      ctaUrl = `${appBase}/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready#asset:${uid}/${job.assetId}`;
+    } // else fall back to the template's default app link
     const emailCtx = {
       assetName: job.assetName || null,
       when: job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || null
@@ -722,7 +840,7 @@ module.exports = {
   getUserInfo,
   // Shared, idempotent completion-email send: the webhook calls it in real time;
   // the reconciler sweep calls it as the backstop.
-  sendGenerationReadyEmail,
+  sendGenerationOutcomeEmail,
   // Export for testing
   EMAIL_TEMPLATES,
   EMAIL_TYPES,

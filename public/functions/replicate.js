@@ -24,7 +24,7 @@ const { saveMeshToGallery, fetchFalPrediction, sanitizeGalleryMetadata } = requi
 // so the user isn't waiting on the 10-min reconciler sweep. Shared, idempotent
 // send (the sweep is the backstop). No circular dep: scheduledEmails doesn't
 // require this module.
-const { sendGenerationReadyEmail } = require('./scheduled/scheduledEmails.js');
+const { sendGenerationOutcomeEmail } = require('./scheduled/scheduledEmails.js');
 
 // Helper function to post AI-generated images to Discord. Called from the
 // terminal processor's claimed success branch (like the video post) so it
@@ -2364,6 +2364,9 @@ const getGenerationJobStatus = functions
       return { status: 'succeeded', splat_url: job.splatUrl, assetId: job.assetId };
     }
     if (job.status === 'failed' || job.status === 'canceled') {
+      // A live poll seeing the failure means the tab showed the error toast —
+      // ack it so the failure email is suppressed, same contract as success.
+      await ackClientSeen(jobRef, job);
       return { status: job.status, error: job.error || 'Generation failed.' };
     }
     // Submitted but the provider id hasn't been recorded yet (brief create
@@ -2404,9 +2407,11 @@ const getGenerationJobStatus = functions
     }
 
     const result = await processTerminalPrediction(db, userId, jobRef, prediction);
-    // If this poll is what carried the job to success, the tab is open — ack it
-    // so the completion email is suppressed.
-    if (result.status === 'succeeded') await ackClientSeen(jobRef, job);
+    // If this poll is what carried the job to a terminal outcome (success or
+    // failure), the tab is open — ack it so the outcome email is suppressed.
+    if (['succeeded', 'failed', 'canceled'].includes(result.status)) {
+      await ackClientSeen(jobRef, job);
+    }
     return result;
   });
 
@@ -2523,14 +2528,19 @@ async function handleJobWebhook(req, res) {
 
     try {
       const result = await processTerminalPrediction(db, uid, jobRef, prediction);
-      // Real-time completion email. The webhook is the provider's "it's done"
-      // signal, so this is the moment to notify an away user — no 10-min sweep
-      // wait. Best-effort and fully isolated: the helper is idempotent (it
-      // claims the send so the sweep can't double-send) and restores the
-      // pending flag on failure (the sweep retries). A send error must never
-      // fail the webhook — the save already succeeded, and a 500 would make
-      // the provider redeliver and re-run the (idempotent) save for nothing.
-      if (result && result.status === 'succeeded') {
+      // Real-time outcome email — success AND failure. The webhook is the
+      // provider's "it's done" signal, so this is the moment to notify an away
+      // user — no 10-min sweep wait. A failed job emails "didn't finish,
+      // tokens refunded" (the helper skips submit-time and stale failures).
+      // Best-effort and fully isolated: the helper is idempotent (it claims
+      // the send so the sweep can't double-send) and restores the pending flag
+      // on failure (the sweep retries). A send error must never fail the
+      // webhook — the save already succeeded, and a 500 would make the
+      // provider redeliver and re-run the (idempotent) save for nothing.
+      if (
+        result &&
+        ['succeeded', 'failed', 'canceled'].includes(result.status)
+      ) {
         // Open-tab suppression race (#1833): an open tab acks the result via
         // its next getGenerationJobStatus poll, which suppresses the email —
         // but that poll runs every ~3s, and the webhook reaches this line the
@@ -2548,7 +2558,7 @@ async function handleJobWebhook(req, res) {
           );
         }
         try {
-          await sendGenerationReadyEmail(db, uid, jobRef);
+          await sendGenerationOutcomeEmail(db, uid, jobRef);
         } catch (mailErr) {
           console.error('Webhook: completion email failed:', mailErr);
         }
@@ -2570,7 +2580,7 @@ const WEBHOOK_NOTIFY_ACK_GRACE_MS = 10 * 1000;
 const replicateJobWebhook = functions
   .runWith({
     // POSTMARK_API_KEY: the webhook sends the completion email in real time
-    // (sendGenerationReadyEmail), so it needs the Postmark secret in its env.
+    // (sendGenerationOutcomeEmail), so it needs the Postmark secret in its env.
     // DISCORD_WEBHOOK_URL: the terminal processor posts finished videos to
     // Discord, and the webhook is the usual path that reaches terminal.
     secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL'],

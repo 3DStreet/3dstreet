@@ -441,7 +441,7 @@ image providers became new `kind: 'image'` jobs on the existing machinery:
 - The **inline-wait wrapper** (~50s) was skipped: with a 3s poll the fast-image
   UX regression is one poll tick, not worth a second code path.
 
-### Phase 4 — Notifications ✅ DONE (splat, success-only)
+### Phase 4 — Notifications ✅ DONE (all kinds, success + failure)
 Built entirely on the job doc — **no separate notification system**, exactly as
 intended. The reminder request rides on the job; the reconciler delivers it.
 - **Opt-in at submit.** The Splat tab has an "Email me when my splat is ready"
@@ -462,11 +462,19 @@ intended. The reminder request rides on the job; the reconciler delivers it.
   `notify.sentAt`, clear `pending`. Idempotent: `pending` clears the instant we
   act, so each job emails **at most once**. Needs a collection-group index on
   `(notify.pending, status)` (added to `firestore.indexes.json`).
-- **Success-only** by design; failures refund silently (a closed-tab user just
-  finds the token back). Thresholds ("only if cost > x / time > y") are moot for
-  splat (fixed 1 token, always minutes) — revisit when fast image kinds fold in.
-- Deferred: failure emails, in-app **Jobs panel** reading `generationJobs`, web
-  push.
+- **Failure emails too (2026-07-18).** The same helper (now
+  `sendGenerationOutcomeEmail`) sends a `generationFailed` email ("didn't
+  finish, any charged tokens refunded", CTA back to the generating surface —
+  a failed job has no asset to deep-link) for opted-in `failed`/`canceled`
+  jobs. Same claim/ack machinery: a live poll seeing the failure acks (the tab
+  showed the red toast), the webhook waits the same ack grace, and the sweep
+  queries `status in ['succeeded','failed','canceled']` (same composite
+  index). Two failure-specific eligibility rules live in the helper: no
+  `providerJobId` → retired silently (submit-time failure, the callable
+  returned the error to a necessarily-open tab), and failures older than 24h →
+  retired silently (guards the first deploy against historic failed jobs whose
+  `pending` flag never cleared under the old success-only rule).
+- Deferred: in-app **Jobs panel** reading `generationJobs`, web push.
 
 ### Monitoring — reconciler self-escalation ✅ DONE
 No new infra. When a sweep finishes with `gaveUp > 0`, `errored > 0`, or
