@@ -52,6 +52,9 @@ AFRAME.registerComponent('notify', {
       STREET.notify.warningMessage = (messageText) => {
         return this.message(messageText, 'warning');
       };
+      STREET.notify.infoMessage = (messageText) => {
+        return this.message(messageText, 'info');
+      };
       STREET.notify.dismissNotification = (notification) => {
         return this.notify.dismiss(notification);
       };

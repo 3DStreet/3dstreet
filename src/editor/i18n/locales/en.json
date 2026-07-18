@@ -47,6 +47,24 @@
   "addLayer.card.createIntersection.name": {
     "defaultMessage": "Create Intersection"
   },
+  "addLayer.card.driveableDeliveryRobot.desc": {
+    "defaultMessage": "A small-chassis driveable bot (~Starship/Serve-sized) with a procedural mesh + dynamic antenna. Like real delivery robots, it cannot mount standard 6\" curbs. Switch presets from the drive-controls properties panel."
+  },
+  "addLayer.card.driveableDeliveryRobot.name": {
+    "defaultMessage": "Driveable Delivery Robot"
+  },
+  "addLayer.card.driveableTaxi.desc": {
+    "defaultMessage": "A full-size sedan with real-car physics (~Camry-sized). Mounts standard curbs with momentum, hits real-world speeds. Switch presets from the drive-controls properties panel."
+  },
+  "addLayer.card.driveableTaxi.name": {
+    "defaultMessage": "Driveable Taxi"
+  },
+  "addLayer.card.driveableTukTuk.desc": {
+    "defaultMessage": "A small three-wheeler-style driveable vehicle with the tuk-tuk catalog mesh. Can mount curbs at speed. Switch presets from the drive-controls properties panel."
+  },
+  "addLayer.card.driveableTukTuk.name": {
+    "defaultMessage": "Driveable Tuk-tuk"
+  },
   "addLayer.card.grassBox.desc": {
     "defaultMessage": "Add a large green ground slab with animated instanced grass. The box dimensions, color, and grass options (density, blade height) are all editable in the properties panel."
   },
@@ -107,6 +125,12 @@
   "addLayer.card.panoramaSphere.name": {
     "defaultMessage": "360° Panorama Sphere"
   },
+  "addLayer.card.raceTarget.desc": {
+    "defaultMessage": "A finish-line gate. Driving the player vehicle through it during play ends the race, pauses the simulation, and pins the finish time in the toolbar."
+  },
+  "addLayer.card.raceTarget.name": {
+    "defaultMessage": "Race Target"
+  },
   "addLayer.card.streetmixStreet.desc": {
     "defaultMessage": "Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets."
   },
@@ -124,6 +148,12 @@
   },
   "addLayer.card.torusKnot.name": {
     "defaultMessage": "Torus Knot"
+  },
+  "addLayer.card.trafficReplay.desc": {
+    "defaultMessage": "Replay anonymized real-world street users from a traffic-sensor manifest (JSON). Attaches to your Managed Street; press Play to watch real traffic by mode."
+  },
+  "addLayer.card.trafficReplay.name": {
+    "defaultMessage": "(Beta) Traffic Replay from Sensor Data"
   },
   "addLayer.card.uploadImage.desc": {
     "defaultMessage": "Upload an image (sign, reference photo, custom map, etc.) from your device and place it in the scene."
@@ -207,7 +237,7 @@
     "defaultMessage": "Paste"
   },
   "appMenu.export.dxfEmpty": {
-    "defaultMessage": "No managed-street segments found to export as DXF."
+    "defaultMessage": "No street or intersection elements found to export as DXF."
   },
   "appMenu.export.dxfError": {
     "defaultMessage": "Error while trying to save DXF file. Error: {error}"
@@ -231,7 +261,7 @@
     "defaultMessage": "3DStreet scene exported as glTF file."
   },
   "appMenu.export.pdfEmpty": {
-    "defaultMessage": "No managed-street segments found to export as PDF."
+    "defaultMessage": "No street or intersection elements found to export as PDF."
   },
   "appMenu.export.pdfError": {
     "defaultMessage": "Error while trying to save PDF file. Error: {error}"
@@ -284,6 +314,9 @@
   "appMenu.help.aiSceneAssistant": {
     "defaultMessage": "AI Scene Assistant"
   },
+  "appMenu.help.language": {
+    "defaultMessage": "Language"
+  },
   "appMenu.help.mouseTouchControls": {
     "defaultMessage": "Mouse and Touch Controls"
   },
@@ -293,20 +326,26 @@
   "appMenu.view": {
     "defaultMessage": "View"
   },
-  "appMenu.view.camera.orthotop": {
-    "defaultMessage": "Plan View"
+  "appMenu.view.navigationControls": {
+    "defaultMessage": "Navigation Controls"
   },
-  "appMenu.view.camera.perspective": {
-    "defaultMessage": "3D View"
+  "appMenu.view.navigationControls.experimental": {
+    "defaultMessage": "Experimental"
   },
-  "appMenu.view.language": {
-    "defaultMessage": "Language"
+  "appMenu.view.navigationControls.legacy": {
+    "defaultMessage": "Legacy"
+  },
+  "appMenu.view.navigationControls.standard": {
+    "defaultMessage": "Standard"
   },
   "appMenu.view.showGrid": {
     "defaultMessage": "Show Grid"
   },
+  "appMenu.view.showPanels": {
+    "defaultMessage": "Show Panels"
+  },
   "appMenu.view.snapshotRender": {
-    "defaultMessage": "Snapshot & Render..."
+    "defaultMessage": "Capture & Render..."
   },
   "appMenu.view.zoomToSelection": {
     "defaultMessage": "Zoom to Selection"
@@ -890,6 +929,12 @@
   "common.keyboardShortcuts": {
     "defaultMessage": "Keyboard Shortcuts"
   },
+  "common.planView": {
+    "defaultMessage": "Plan View"
+  },
+  "common.pointNorth": {
+    "defaultMessage": "Point North"
+  },
   "common.rename": {
     "defaultMessage": "Rename"
   },
@@ -917,6 +962,21 @@
   "common.widthLabel": {
     "defaultMessage": "Width:"
   },
+  "compass.label": {
+    "defaultMessage": "Compass"
+  },
+  "compass.rotateLeft": {
+    "defaultMessage": "Rotate left 90°"
+  },
+  "compass.rotateLeftAria": {
+    "defaultMessage": "Rotate left 90 degrees"
+  },
+  "compass.rotateRight": {
+    "defaultMessage": "Rotate right 90°"
+  },
+  "compass.rotateRightAria": {
+    "defaultMessage": "Rotate right 90 degrees"
+  },
   "confirmModal.confirm": {
     "defaultMessage": "Confirm"
   },
@@ -925,6 +985,30 @@
   },
   "deploymentBanner.message": {
     "defaultMessage": "You're using a forked or self-hosted build of 3DStreet (open source, AGPL-3.0). Local editing works, but cloud features are unavailable. To use cloud services, visit <link>3dstreet.app</link>."
+  },
+  "driveControls.brakeForce": {
+    "defaultMessage": "Brake Force"
+  },
+  "driveControls.engineForce": {
+    "defaultMessage": "Engine Force"
+  },
+  "driveControls.preset": {
+    "defaultMessage": "Vehicle Preset"
+  },
+  "driveControls.steerAngle": {
+    "defaultMessage": "Steer Angle (rad)"
+  },
+  "driveControls.tipKeys": {
+    "defaultMessage": "Space = brake · R = reset · C = camera mode"
+  },
+  "driveControls.tipPreset": {
+    "defaultMessage": "Pick a preset to swap mesh + physics in one shot, or hand-tune fields below"
+  },
+  "driveControls.tipStart": {
+    "defaultMessage": "Press Start, then drive with WASD / arrows"
+  },
+  "driveControls.tipsHeading": {
+    "defaultMessage": "💡 Drive tips"
   },
   "editorUpgradeModal.alreadyPro": {
     "defaultMessage": "You're already a Pro member — try that action again to continue."
@@ -989,11 +1073,29 @@
   "exportModal.jsonTruncated": {
     "defaultMessage": "Preview truncated. The downloaded file contains the full scene."
   },
+  "exportModal.layerClones": {
+    "defaultMessage": "Clones"
+  },
+  "exportModal.layerIntersections": {
+    "defaultMessage": "Intersections"
+  },
+  "exportModal.layerSegments": {
+    "defaultMessage": "Segments"
+  },
+  "exportModal.layerShapes": {
+    "defaultMessage": "Shapes"
+  },
+  "exportModal.layersLabel": {
+    "defaultMessage": "Layers"
+  },
   "exportModal.pdfDescription": {
     "defaultMessage": "Download a 2D plan view of this scene's streets as a vector <code>.pdf</code> file, ready to print or publish."
   },
   "exportModal.planEmpty": {
-    "defaultMessage": "No street segments to draw yet. Add a street layer to see a plan preview."
+    "defaultMessage": "Nothing to draw yet. Add a street or intersection layer to see a plan preview."
+  },
+  "exportModal.planEmptyFiltered": {
+    "defaultMessage": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview."
   },
   "exportModal.previewError": {
     "defaultMessage": "Could not generate the preview. Please try again."
@@ -1253,12 +1355,6 @@
   "help.shortcut.addEntity": {
     "defaultMessage": "Add new entity"
   },
-  "help.shortcut.backView": {
-    "defaultMessage": "Back view"
-  },
-  "help.shortcut.bottomView": {
-    "defaultMessage": "Bottom view"
-  },
   "help.shortcut.copy": {
     "defaultMessage": "Copy selected entity"
   },
@@ -1274,12 +1370,6 @@
   "help.shortcut.focus": {
     "defaultMessage": "Focus on selected entity"
   },
-  "help.shortcut.frontView": {
-    "defaultMessage": "Front view"
-  },
-  "help.shortcut.leftView": {
-    "defaultMessage": "Left view"
-  },
   "help.shortcut.paste": {
     "defaultMessage": "Paste entity"
   },
@@ -1288,9 +1378,6 @@
   },
   "help.shortcut.redo": {
     "defaultMessage": "Redo action"
-  },
-  "help.shortcut.rightView": {
-    "defaultMessage": "Right view"
   },
   "help.shortcut.rotate": {
     "defaultMessage": "Rotate"
@@ -1312,9 +1399,6 @@
   },
   "help.shortcut.toggleTransform": {
     "defaultMessage": "Toggle local between global transform"
-  },
-  "help.shortcut.topView": {
-    "defaultMessage": "Top view"
   },
   "help.shortcut.translate": {
     "defaultMessage": "Translate"
@@ -1493,20 +1577,47 @@
   "newModal.title": {
     "defaultMessage": "Create a New Scene"
   },
+  "playControls.brakeForce": {
+    "defaultMessage": "Brake force"
+  },
+  "playControls.driftWarning": {
+    "defaultMessage": "Sim lagging wall by {ms}ms"
+  },
+  "playControls.engineForce": {
+    "defaultMessage": "Engine force"
+  },
+  "playControls.gamepadHint": {
+    "defaultMessage": "Gamepad: RT/LT throttle · B brake · stick steer · Y reset · X camera · Start pause · Back stop"
+  },
+  "playControls.keyboardHint": {
+    "defaultMessage": "WASD drive · Space brake · R reset · C camera"
+  },
+  "playControls.sim": {
+    "defaultMessage": "Sim"
+  },
+  "playControls.steer": {
+    "defaultMessage": "Steer (rad)"
+  },
+  "playControls.title": {
+    "defaultMessage": "Drive controls"
+  },
+  "playControls.wall": {
+    "defaultMessage": "Wall"
+  },
+  "primaryToolbar.captureRender": {
+    "defaultMessage": "Capture & Render"
+  },
   "primaryToolbar.hidePanels": {
     "defaultMessage": "Hide panels"
   },
+  "primaryToolbar.play": {
+    "defaultMessage": "Start"
+  },
+  "primaryToolbar.playTitle": {
+    "defaultMessage": "Enter View mode and run the simulation"
+  },
   "primaryToolbar.showPanels": {
     "defaultMessage": "Show panels"
-  },
-  "primaryToolbar.snapshot": {
-    "defaultMessage": "Snapshot"
-  },
-  "primaryToolbar.snapshotTitle": {
-    "defaultMessage": "Capture screenshot and generate rendered images"
-  },
-  "primaryToolbar.togglePanels": {
-    "defaultMessage": "Toggle panels visibility (`)"
   },
   "profileModal.accountInformation": {
     "defaultMessage": "Account Information"
@@ -1552,6 +1663,81 @@
   },
   "profileModal.unlimitedGeoTokens": {
     "defaultMessage": "Unlimited Geo Tokens"
+  },
+  "raceFinish.collisionsSuffix": {
+    "defaultMessage": "{collisions,plural,one{# collision} other{# collisions}}"
+  },
+  "raceFinish.dismissHint": {
+    "defaultMessage": "click to dismiss"
+  },
+  "raceFinish.finished": {
+    "defaultMessage": "Finished"
+  },
+  "raceFinish.firstRun": {
+    "defaultMessage": "First run on this course"
+  },
+  "raceFinish.newBest": {
+    "defaultMessage": "New best!"
+  },
+  "raceFinish.vsBest": {
+    "defaultMessage": "{delta} vs best {best}"
+  },
+  "raceFinish.withCollisions": {
+    "defaultMessage": "{collisions,plural,one{{time} + # collision} other{{time} + # collisions}}"
+  },
+  "renderStyles.architectural-cartoon.description": {
+    "defaultMessage": "Playful cartoonish architectural illustration"
+  },
+  "renderStyles.architectural-cartoon.name": {
+    "defaultMessage": "Cartoon"
+  },
+  "renderStyles.color-pencil.description": {
+    "defaultMessage": "Blue colored-pencil architecture concept sketch"
+  },
+  "renderStyles.color-pencil.name": {
+    "defaultMessage": "Blue Pencil"
+  },
+  "renderStyles.isometric-miniature.description": {
+    "defaultMessage": "Cute isometric tilt-shift diorama"
+  },
+  "renderStyles.isometric-miniature.name": {
+    "defaultMessage": "Miniature"
+  },
+  "renderStyles.marker-sketch.description": {
+    "defaultMessage": "Quick urban-design marker rendering"
+  },
+  "renderStyles.marker-sketch.name": {
+    "defaultMessage": "Marker Sketch"
+  },
+  "renderStyles.none.description": {
+    "defaultMessage": "No style language; instructions only"
+  },
+  "renderStyles.none.name": {
+    "defaultMessage": "None"
+  },
+  "renderStyles.photorealistic.description": {
+    "defaultMessage": "High-detail realistic render"
+  },
+  "renderStyles.photorealistic.name": {
+    "defaultMessage": "Photorealistic"
+  },
+  "renderStyles.pixel-16bit.description": {
+    "defaultMessage": "Retro 16-bit pixel art video game scene"
+  },
+  "renderStyles.pixel-16bit.name": {
+    "defaultMessage": "16-bit Game"
+  },
+  "renderStyles.urban-diagram.description": {
+    "defaultMessage": "Flat street-design-guide planning diagram"
+  },
+  "renderStyles.urban-diagram.name": {
+    "defaultMessage": "Urban Diagram"
+  },
+  "renderStyles.watercolor.description": {
+    "defaultMessage": "Soft hand-painted architectural watercolor"
+  },
+  "renderStyles.watercolor.name": {
+    "defaultMessage": "Watercolor"
   },
   "rightPanel.planTooltipFree": {
     "defaultMessage": "3DStreet Free Community Edition"
@@ -1658,12 +1844,6 @@
   "screenshotModal.confirmClose": {
     "defaultMessage": "Rendering in progress. Are you sure you want to close? The render will be cancelled."
   },
-  "screenshotModal.customPromptLabel": {
-    "defaultMessage": "Custom Prompt (optional):"
-  },
-  "screenshotModal.customPromptPlaceholder": {
-    "defaultMessage": "Enter custom prompt..."
-  },
   "screenshotModal.download": {
     "defaultMessage": "Download"
   },
@@ -1672,6 +1852,9 @@
   },
   "screenshotModal.empty": {
     "defaultMessage": "Empty"
+  },
+  "screenshotModal.emptyPromptError": {
+    "defaultMessage": "Add instructions or pick a style before rendering."
   },
   "screenshotModal.error": {
     "defaultMessage": "Error"
@@ -1705,6 +1888,21 @@
   },
   "screenshotModal.overtimeWarning": {
     "defaultMessage": "Generation taking longer than expected."
+  },
+  "screenshotModal.promptInstructionsLabel": {
+    "defaultMessage": "Instructions"
+  },
+  "screenshotModal.promptInstructionsPlaceholder": {
+    "defaultMessage": "Describe how to use the input image such as keeping or changing layout, composition or camera angle..."
+  },
+  "screenshotModal.promptLabel": {
+    "defaultMessage": "Prompt:"
+  },
+  "screenshotModal.promptStyleLabel": {
+    "defaultMessage": "Style"
+  },
+  "screenshotModal.promptStylePlaceholder": {
+    "defaultMessage": "No style; instructions only"
   },
   "screenshotModal.ready": {
     "defaultMessage": "Ready"
@@ -1877,8 +2075,62 @@
   "toolbar.edit": {
     "defaultMessage": "Edit"
   },
-  "toolbar.logoAlt": {
-    "defaultMessage": "3DStreet Logo"
+  "trafficReplay.autoStreet": {
+    "defaultMessage": "Auto (first managed street)"
+  },
+  "trafficReplay.createStreet": {
+    "defaultMessage": "Create a street to replay onto"
+  },
+  "trafficReplay.hideSynthetic": {
+    "defaultMessage": "Hide synthetic traffic"
+  },
+  "trafficReplay.importManifest": {
+    "defaultMessage": "Import manifest…"
+  },
+  "trafficReplay.linkStreet": {
+    "defaultMessage": "Link a street"
+  },
+  "trafficReplay.linkedStreet": {
+    "defaultMessage": "Linked street"
+  },
+  "trafficReplay.loop": {
+    "defaultMessage": "Loop"
+  },
+  "trafficReplay.noManifest": {
+    "defaultMessage": "No manifest loaded — import a replay JSON."
+  },
+  "trafficReplay.notManifest": {
+    "defaultMessage": "That JSON is not a replay manifest (no \"agents\" array)."
+  },
+  "trafficReplay.parseError": {
+    "defaultMessage": "Could not parse that JSON file."
+  },
+  "trafficReplay.placeAtSensor": {
+    "defaultMessage": "Place scene at sensor location"
+  },
+  "trafficReplay.placedAt": {
+    "defaultMessage": "Placed scene at {lat}, {lon}."
+  },
+  "trafficReplay.replaceManifest": {
+    "defaultMessage": "Replace manifest…"
+  },
+  "trafficReplay.streetUsers": {
+    "defaultMessage": "{count} street users"
+  },
+  "trafficReplay.timeScale": {
+    "defaultMessage": "Playback speed (×)"
+  },
+  "trafficReplay.tipAnon": {
+    "defaultMessage": "Only mode is shown — the data is anonymized"
+  },
+  "trafficReplay.tipLink": {
+    "defaultMessage": "Link a managed street (or create one), then press Start"
+  },
+  "trafficReplay.tipSaves": {
+    "defaultMessage": "Saves with the scene; shareable via the scene link"
+  },
+  "trafficReplay.tipsHeading": {
+    "defaultMessage": "💡 Replay"
   },
   "undoRedo.redo": {
     "defaultMessage": "Redo"
@@ -1912,5 +2164,71 @@
   },
   "userLayers.tipsHeading": {
     "defaultMessage": "Tips"
+  },
+  "viewer.byAuthor": {
+    "defaultMessage": "by {username}"
+  },
+  "viewer.editCopyTitle": {
+    "defaultMessage": "Open the editor — saving will create your own copy"
+  },
+  "viewer.editTitle": {
+    "defaultMessage": "Open the editor"
+  },
+  "viewer.editingCopyWarning": {
+    "defaultMessage": "This is an unsaved copy. Click Save to make your own copy."
+  },
+  "viewer.pause": {
+    "defaultMessage": "Pause"
+  },
+  "viewer.pauseTitle": {
+    "defaultMessage": "Pause the simulation"
+  },
+  "viewer.play": {
+    "defaultMessage": "Start"
+  },
+  "viewer.reset": {
+    "defaultMessage": "Reset"
+  },
+  "viewer.resume": {
+    "defaultMessage": "Resume"
+  },
+  "viewer.resumeTitle": {
+    "defaultMessage": "Resume the simulation"
+  },
+  "viewer.signInToEdit": {
+    "defaultMessage": "Sign in to Edit"
+  },
+  "viewer.signInToEditTitle": {
+    "defaultMessage": "Sign in to open the editor — saving will create your own copy"
+  },
+  "viewer.simClockCrash": {
+    "defaultMessage": "Crash at {time}"
+  },
+  "viewer.simClockFinish": {
+    "defaultMessage": "Finished in {time} — press Reset to race again"
+  },
+  "viewer.simClockPaused": {
+    "defaultMessage": "Paused — click to resume"
+  },
+  "viewer.simClockRunning": {
+    "defaultMessage": "Simulation time — click to pause"
+  },
+  "viewer.snapshotDownloadHint": {
+    "defaultMessage": "Click to download — sign in to save to your gallery"
+  },
+  "viewer.snapshotFailed": {
+    "defaultMessage": "Capture failed. Please try again."
+  },
+  "viewer.snapshotSaved": {
+    "defaultMessage": "Saved to your gallery — click to download"
+  },
+  "viewer.snapshotThumbAlt": {
+    "defaultMessage": "Captured image — click to download"
+  },
+  "viewer.snapshotTitle": {
+    "defaultMessage": "Capture this view"
+  },
+  "viewer.stop": {
+    "defaultMessage": "Stop"
   }
 }

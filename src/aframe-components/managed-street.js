@@ -286,6 +286,15 @@ AFRAME.registerComponent('managed-street', {
     synchronize: {
       type: 'boolean',
       default: false
+    },
+    // Opt-in flag for the traffic animation feature. When true and the
+    // user presses Play, street-traffic spawns animated
+    // entities along each lane (drive-lane, bus-lane, bike-lane,
+    // sidewalk). Off by default so existing scenes don't start
+    // animating on Play after this feature lands.
+    playable: {
+      type: 'boolean',
+      default: false
     }
   },
   init: function () {
@@ -1254,7 +1263,7 @@ function parseStreetmixSegments(segments, length) {
       segmentParentEl.setAttribute(
         'street-generated-clones',
         `mode: random;
-        modelsArray: cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-dutch, cyclist-kid${segments[i].type === 'scooter' ? 'ElectricScooter_1' : ''};
+        modelsArray: cyclist-cargo, cyclist1, cyclist2, cyclist3, cyclist-dutch, cyclist-kid${segments[i].type === 'scooter' ? ', ElectricScooter_1' : ''};
         spacing: 2.03;
         direction: ${direction};
         count: ${getRandomIntInclusive(2, 5)};`

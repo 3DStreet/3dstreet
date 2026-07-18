@@ -29,6 +29,48 @@ export const CameraSparkleIcon = () => (
   </svg>
 );
 
+/**
+ * macOS-style "toggle panels" glyph: a rounded window with a left sidebar
+ * column. When `filled` the sidebar reads solid (panels shown); when not it
+ * is an empty outline (panels hidden) — the same shape flips state, matching
+ * the Finder show/hide-sidebar affordance. Uses currentColor so it inherits
+ * the button's text color.
+ */
+export const PanelsIcon = ({ filled = true, size = 16 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    <rect
+      x="2.75"
+      y="4.75"
+      width="14.5"
+      height="10.5"
+      rx="2.25"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    />
+    <line
+      x1="8"
+      y1="5.5"
+      x2="8"
+      y2="14.5"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    />
+    {filled && (
+      <path
+        d="M5 4.75 H8 V15.25 H5 A2.25 2.25 0 0 1 2.75 13 V7 A2.25 2.25 0 0 1 5 4.75 Z"
+        fill="currentColor"
+      />
+    )}
+  </svg>
+);
+
 export const PenPaperIconCyan = () => (
   <svg
     width="26"

@@ -485,6 +485,19 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
       overflow: visible;
 
+      // Viewer variant of the same pill: no Save icon, so the title can
+      // stretch a bit wider; optional author byline after the title.
+      &.viewer-header {
+        max-width: 560px;
+
+        .viewer-byline {
+          color: variables.$lightgray-300;
+          font-size: 13px;
+          white-space: nowrap;
+          padding-right: 4px;
+        }
+      }
+
       #left-panel-header {
         padding: 4px 12px 4px 4px;
         border-bottom: none;

@@ -10,6 +10,16 @@ import {
 } from './tested/street-segment-utils';
 
 /* global AFRAME, Node */
+// Components removed alongside the legacy viewer mode. Stripped from
+// saved-scene data on load so old scenes still open; re-save drops them.
+const LEGACY_STRIPPED_COMPONENTS = [
+  'viewer-mode',
+  'cursor-teleport',
+  'movement-controls',
+  'look-controls',
+  'hand-controls',
+  'blink-controls'
+];
 window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
@@ -63,27 +73,12 @@ function convertDOMElToObject(entity) {
   for (const entry of sceneEntities) {
     const entityData = getElementData(entry);
     if (entityData) {
+      // visible is never persisted for the User Layers root: a saved
+      // visible:false blanks every scene load (see createEntities).
+      if (entityData.id === 'street-container' && entityData.components) {
+        delete entityData.components.visible;
+      }
       data.push(entityData);
-    }
-  }
-
-  // Save viewer-mode component data separately. The Viewer Mode UI was
-  // removed in panels-v2 (PR #1566) but we keep persisting it so existing
-  // scenes round-trip cleanly until viewer mode is restored.
-  const cameraRig = document.querySelector('#cameraRig');
-  if (cameraRig && cameraRig.hasAttribute('viewer-mode')) {
-    // Create a minimal entity with just the viewer-mode component
-    const viewerModeData = {
-      id: 'cameraRig',
-      components: {}
-    };
-
-    // Get the viewer-mode component data
-    const viewerModeComponent = cameraRig.getAttribute('viewer-mode');
-    if (viewerModeComponent) {
-      viewerModeData.components['viewer-mode'] =
-        toPropString(viewerModeComponent);
-      data.push(viewerModeData);
     }
   }
 
@@ -460,6 +455,17 @@ function createEntities(entitiesData, parentEl) {
       delete components.visible;
     }
 
+    // Never apply a saved visible:false to the User Layers root. Some older
+    // scenes were saved with it (an old UI exposed an eye toggle on the
+    // container), which blanks the whole scene on load; and because the
+    // singleton #street-container element is reused across loads, it then
+    // blanks every scene loaded after it in the same session. Container
+    // visibility is session UI state, not scene data: ignored here, stripped
+    // on save (convertDOMElToObject), healed by newScene (street-utils.js).
+    if (entityData.id === 'street-container' && components) {
+      delete components.visible;
+    }
+
     const sceneChildElement = document.getElementById(entityData.id);
     if (sceneChildElement) {
       if (removeEntities.includes(entityData.id)) {
@@ -540,21 +546,35 @@ Add a new entity with a list of components and children (if exists)
  * @return {Element} Entity created
 */
 function createEntityFromObj(entityData, parentEl, beforeEl) {
-  // Special handling for cameraRig with viewer-mode component
-  if (
-    entityData.id === 'cameraRig' &&
-    entityData.components &&
-    entityData.components['viewer-mode']
-  ) {
-    // Get the existing cameraRig entity
-    const existingCameraRig = document.querySelector('#cameraRig');
-    if (existingCameraRig) {
-      // Apply the viewer-mode component to the existing cameraRig
-      existingCameraRig.setAttribute(
-        'viewer-mode',
-        entityData.components['viewer-mode']
-      );
-      return existingCameraRig;
+  // Strip legacy viewer-mode / WebXR components from a saved cameraRig
+  // entry. These were removed from the codebase along with the legacy
+  // viewer mode; ignoring them here lets old scenes load cleanly and
+  // re-save without the attrs. Scoped to the cameraRig — the only entity
+  // legacy saves wrote them to — so a user-authored entity carrying e.g.
+  // look-controls is not silently stripped on load/reparent/paste.
+  if (entityData.id === 'cameraRig' && entityData.components) {
+    for (const legacy of LEGACY_STRIPPED_COMPONENTS) {
+      if (legacy in entityData.components) {
+        delete entityData.components[legacy];
+      }
+    }
+  }
+  // A saved cameraRig entry (legacy scenes stored one, typically carrying
+  // only the now-stripped viewer-mode/controls) must never spawn a second
+  // element: index.html already ships a static #cameraRig, and a duplicate id
+  // would make querySelector('#cameraRig') — used by mode-manager for the
+  // drive/WebXR camera handoff — bind to the wrong node. Reuse the existing
+  // rig, applying any surviving components onto it rather than creating a
+  // sibling.
+  if (entityData.id === 'cameraRig') {
+    const existingRig = document.querySelector('#cameraRig');
+    if (existingRig) {
+      if (entityData.components) {
+        for (const [name, value] of Object.entries(entityData.components)) {
+          existingRig.setAttribute(name, value);
+        }
+      }
+      return existingRig;
     }
   }
 
@@ -1052,7 +1072,6 @@ AFRAME.registerComponent('set-loader-from-hash', {
             AFRAME.scenes[0].defaultSnapshotCameraState =
               defaultSnapshotCameraState;
           }
-
           useStore.getState().updateLoadingProgress(50, 'Creating scene...');
           STREET.utils.createElementsFromJSON(jsonData, false);
           const sceneId = getUUIDFromPath(requestURL);

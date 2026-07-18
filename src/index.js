@@ -1,6 +1,4 @@
 /* global AFRAME, XMLHttpRequest, VERSION */
-import 'aframe-cursor-teleport-component';
-import 'aframe-extras/controls/index.js';
 import useStore from './store.js';
 import * as streetUtils from './street-utils.js';
 require('./json-utils_1.1.js'); // this defines STREET.utils
@@ -44,7 +42,20 @@ require('./aframe-components/blending-opacity.js');
 require('./aframe-components/measure-line.js');
 require('./aframe-components/css2d-renderer.js');
 require('./aframe-components/google-maps-aerial.js');
-require('./aframe-components/viewer-mode.js');
+require('./aframe-components/mode-manager.js');
+require('./aframe-components/play/play-mode.js');
+require('./aframe-components/play/play-mode-vehicle.js');
+require('./aframe-components/play/race-target.js');
+require('./aframe-components/play/collision-marker.js');
+require('./aframe-components/play/delivery-bot-mesh.js');
+require('./aframe-components/play/street-traffic.js');
+require('./aframe-components/play/street-traffic-replay.js');
+if (process.env.NODE_ENV === 'development') {
+  // Dev-only ?replay=... demo bootstrap (see replay-demo.js header). The
+  // compile-time gate also keeps the bundled sample manifests out of
+  // production builds.
+  require('./aframe-components/play/replay-demo.js');
+}
 require('./aframe-components/scene-timer.js');
 require('./aframe-components/geojson.js');
 require('./aframe-components/asset-fallback-system.js');

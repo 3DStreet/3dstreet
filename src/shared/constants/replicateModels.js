@@ -14,10 +14,6 @@ export const MODEL_GROUPS = {
   'high-quality': {
     label: 'High quality',
     order: 2
-  },
-  specialized: {
-    label: 'Specialized',
-    order: 3
   }
 };
 
@@ -32,8 +28,6 @@ export const REPLICATE_MODELS = {
     group: 'best-quality',
     logo: '/ui_assets/model-google.png',
     version: '99256cc418d9ac41854575e2f1c8846ce2defd0c0fb6ff2d5cbc3c826be75bc8',
-    prompt:
-      'use the guidance of the geometry in the input image to create a photorealistic rendering of street improvements with accurate shading and lighting',
     estimatedTime: 60,
     includeIn4x: true,
     tokenCost: 3
@@ -44,10 +38,8 @@ export const REPLICATE_MODELS = {
     group: 'best-quality',
     logo: '/ui_assets/model-black-forest-labs.png',
     endpoint: 'fal-ai/flux-2-max/edit',
-    prompt:
-      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
     estimatedTime: 60,
-    includeIn4x: false,
+    includeIn4x: true,
     tokenCost: 3,
     requiresSourceImage: true
   },
@@ -59,8 +51,6 @@ export const REPLICATE_MODELS = {
     group: 'high-quality',
     logo: '/ui_assets/model-bytedance.png',
     modelName: 'bytedance/seedream-4.5',
-    prompt:
-      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
     estimatedTime: 20,
     includeIn4x: true,
     tokenCost: 2
@@ -71,10 +61,8 @@ export const REPLICATE_MODELS = {
     group: 'high-quality',
     logo: '/ui_assets/model-google.png',
     modelName: 'google/nano-banana-2',
-    prompt:
-      'use the guidance of the geometry in the input image to create a photorealistic rendering of street improvements with accurate shading and lighting',
     estimatedTime: 30,
-    includeIn4x: false,
+    includeIn4x: true,
     tokenCost: 2
   },
   'fal-flux-2-pro-edit': {
@@ -83,54 +71,6 @@ export const REPLICATE_MODELS = {
     group: 'high-quality',
     logo: '/ui_assets/model-black-forest-labs.png',
     endpoint: 'fal-ai/flux-2-pro/edit',
-    prompt:
-      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
-    estimatedTime: 30,
-    includeIn4x: true,
-    tokenCost: 2,
-    requiresSourceImage: true
-  },
-
-  // Specialized
-  'kontext-realearth': {
-    name: 'Kontext Real Earth',
-    type: 'replicate',
-    group: 'specialized',
-    logo: '/ui_assets/model-black-forest-labs.png',
-    version: '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755',
-    prompt: 'Transform satellite image into high-quality drone shot',
-    estimatedTime: 15,
-    includeIn4x: true,
-    tokenCost: 1,
-    requiresSourceImage: true
-  },
-  'fal-flux-2-lora-sfmta': {
-    name: 'Flux 2 SFMTA Striping LoRA',
-    type: 'fal',
-    group: 'specialized',
-    logo: '/ui_assets/model-black-forest-labs.png',
-    endpoint: 'fal-ai/flux-2/lora/edit',
-    loras: [
-      {
-        path: 'https://v3b.fal.media/files/b/0a87f612/4HKUTB4LNJycc4hyZOkr4_pytorch_lora_weights.safetensors',
-        scale: 1
-      }
-    ],
-    prompt:
-      'Generate a top-down satellite view from this sfmta style striping drawing',
-    estimatedTime: 35,
-    includeIn4x: false,
-    tokenCost: 2,
-    requiresSourceImage: true
-  },
-  'fal-flux-2-edit': {
-    name: 'Flux 2 Dev Base',
-    type: 'fal',
-    group: 'specialized',
-    logo: '/ui_assets/model-black-forest-labs.png',
-    endpoint: 'fal-ai/flux-2/edit',
-    prompt:
-      'photorealistic street view, professional photography, high detail, natural lighting, clear and sharp',
     estimatedTime: 30,
     includeIn4x: false,
     tokenCost: 2,

@@ -9,6 +9,10 @@ const { generateFalImage } = require('./fal-proxy.js');
 const { generateFalMesh } = require('./fal-3d.js');
 const { assertAppCheck } = require('./app-check.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduled/scheduledEmails.js');
+const { sendLifecycleEmail, triggerLifecycleEmail, postmarkSubscriptionWebhook } = require('./email/lifecycle-email.js');
+const { sendWelcomeEmail } = require('./email/lifecycle-triggers.js');
+const { lifecycleEmailSweep, triggerLifecycleSweep } = require('./email/lifecycle-sweeps.js');
+const EMAIL_TEMPLATES = require('./email/templates.js');
 const { auditUserSubscriptions, auditUserSubscriptionsHttp } = require('./utilities/user-audit.js');
 const { onAssetWritten, getUploadQuota } = require('./asset-quota.js');
 const { purgeSoftDeletedAssets, triggerPurgeSoftDeletedAssets } = require('./scheduled/asset-gc.js');
@@ -44,6 +48,15 @@ exports.generateFalMesh = generateFalMesh;
 // Re-export the scheduled email functions
 exports.sendScheduledEmails = sendScheduledEmails;
 exports.triggerScheduledEmails = triggerScheduledEmails;
+
+// Lifecycle emails — admin test callable, Postmark Subscription Change
+// webhook (opt-outs → emailPrefs), welcome-on-signup trigger, and the hourly
+// sweep for time-based emails. See docs/email-lifecycle.md.
+exports.triggerLifecycleEmail = triggerLifecycleEmail;
+exports.postmarkSubscriptionWebhook = postmarkSubscriptionWebhook;
+exports.sendWelcomeEmail = sendWelcomeEmail;
+exports.lifecycleEmailSweep = lifecycleEmailSweep;
+exports.triggerLifecycleSweep = triggerLifecycleSweep;
 
 // Re-export the user audit functions
 exports.auditUserSubscriptions = auditUserSubscriptions;
@@ -198,6 +211,29 @@ exports.createStripeSession = functions
 
     const session = await stripe.checkout.sessions.create(data);
 
+    // Trigger instrumentation for the abandoned-checkout lifecycle email
+    // (email/lifecycle-sweeps.js): record the open session, and stamp the
+    // user's last checkout start so the pricing-page nudge excludes anyone
+    // who actually reached checkout. Never blocks checkout on failure.
+    try {
+      const db = admin.firestore();
+      const now = admin.firestore.FieldValue.serverTimestamp();
+      await db.collection('checkoutSessions').doc(session.id).set({
+        userId,
+        email: userEmail || null,
+        priceId: data.line_items?.[0]?.price ?? null,
+        mode: data.mode || null,
+        status: 'open',
+        createdAt: now
+      });
+      await db.collection('userSignals').doc(userId).set(
+        { userId, lastCheckoutStartedAt: now },
+        { merge: true }
+      );
+    } catch (err) {
+      console.error(`checkoutSessions instrumentation failed for ${userId}:`, err);
+    }
+
     return {
       id: session.id,
       url: session.url, // For hosted checkout redirect (null in embedded mode)
@@ -348,9 +384,69 @@ exports.handleSubscriptionWebhook = functions
 
   });
 
-// function for Stripe webhook checkout.session.completed
+// Best-effort status update on the checkoutSessions trigger record (written
+// by createStripeSession). Feeds the abandoned-checkout sweep: 'complete'
+// sessions are excluded; 'open'/'expired' both count as abandoned.
+const markCheckoutSessionStatus = async (sessionId, status) => {
+  try {
+    await admin.firestore().collection('checkoutSessions').doc(sessionId).set({
+      status,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  } catch (err) {
+    console.error(`Failed to mark checkoutSession ${sessionId} ${status}:`, err);
+  }
+};
+
+// invoice.payment_failed → Failed Payment email, once per invoice (Stripe
+// fires this event again on each retry attempt; the dedupeKey absorbs them).
+// DORMANT: dunning uses Stripe's hosted failed-payment emails instead, so
+// invoice.payment_failed is not enabled on the webhook endpoint. Kept as a
+// fallback — re-enabling the event in the Stripe dashboard reactivates this.
+// Never run both (double email). See docs/email-lifecycle.md.
+const handleInvoicePaymentFailed = async (invoice) => {
+  const customerId = invoice.customer;
+  if (!customerId) {
+    console.warn(`invoice.payment_failed without customer: ${invoice.id}`);
+    return;
+  }
+
+  const querySnapshot = await admin.firestore()
+    .collection('userProfile')
+    .where('stripeCustomerId', '==', customerId)
+    .get();
+  let userId = null;
+  querySnapshot.forEach((doc) => {
+    userId = doc.data().userId;
+    return; // only need the first one
+  });
+
+  if (!userId) {
+    console.warn(`invoice.payment_failed: no userProfile for customer ${customerId} (invoice ${invoice.id})`);
+    return;
+  }
+
+  const result = await sendLifecycleEmail({
+    db: admin.firestore(),
+    uid: userId,
+    emailId: 'failedPayment',
+    category: 'transactional',
+    stream: 'outbound',
+    template: EMAIL_TEMPLATES.failedPayment,
+    dedupeKey: invoice.id
+  });
+  console.log(`failedPayment email for invoice ${invoice.id} (user ${userId}):`, JSON.stringify(result));
+};
+
+// Stripe webhook endpoint (one endpoint, one signing secret). The endpoint's
+// enabled events in the Stripe dashboard must include:
+//   checkout.session.completed  — plan claim + token grant + post-upgrade email
+//   checkout.session.expired    — marks the abandoned-checkout trigger record
+// (invoice.payment_failed is handled below but deliberately NOT enabled —
+// see the dormant note on handleInvoicePaymentFailed.)
+// Unrecognized events are acked and ignored, so enabling extra events is safe.
 exports.stripeWebhook = functions
-  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_CHECKOUT', 'STRIPE_YEARLY_PRICE_ID', 'STRIPE_MONTHLY_PRICE_ID', 'STRIPE_MAX_YEARLY_PRICE_ID', 'STRIPE_MAX_MONTHLY_PRICE_ID'] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_CHECKOUT', 'STRIPE_YEARLY_PRICE_ID', 'STRIPE_MONTHLY_PRICE_ID', 'STRIPE_MAX_YEARLY_PRICE_ID', 'STRIPE_MAX_MONTHLY_PRICE_ID', 'POSTMARK_API_KEY'] })
   .https
   .onRequest(async (req, res) => {
     const Stripe = require('stripe');
@@ -366,6 +462,21 @@ exports.stripeWebhook = functions
     } catch (err) {
       console.error('⚠️ Webhook signature verification failed.');
       return res.status(400).send(err);
+    }
+
+    if (event.type === 'checkout.session.expired') {
+      await markCheckoutSessionStatus(event.data.object.id, 'expired');
+      return res.sendStatus(200);
+    }
+
+    if (event.type === 'invoice.payment_failed') {
+      await handleInvoicePaymentFailed(event.data.object);
+      return res.sendStatus(200);
+    }
+
+    if (event.type !== 'checkout.session.completed') {
+      console.log(`stripeWebhook: ignoring event type ${event.type}`);
+      return res.sendStatus(200);
     }
 
     const checkoutSession = event.data.object;
@@ -487,6 +598,29 @@ exports.stripeWebhook = functions
         console.error(`${planType} token grant failed: user=${checkoutSession.metadata.userId}`, error);
         // Don't fail the webhook, just log the error
       }
+    }
+
+    // Close out the abandoned-checkout trigger record for this session.
+    await markCheckoutSessionStatus(checkoutSession.id, 'complete');
+
+    // Post-Upgrade Welcome email. Keyed on the session id so Stripe webhook
+    // retries (and re-purchases via a NEW session) behave correctly: one email
+    // per completed checkout. Errors are swallowed — failing the webhook here
+    // would make Stripe retry and re-run the non-idempotent token grant above.
+    try {
+      const result = await sendLifecycleEmail({
+        db: admin.firestore(),
+        uid: checkoutSession.metadata.userId,
+        emailId: 'postUpgradeWelcome',
+        category: 'transactional',
+        stream: 'outbound',
+        template: EMAIL_TEMPLATES.postUpgradeWelcome,
+        data: { planTier },
+        dedupeKey: checkoutSession.id
+      });
+      console.log(`postUpgradeWelcome for session ${checkoutSession.id} (user ${checkoutSession.metadata.userId}):`, JSON.stringify(result));
+    } catch (err) {
+      console.error(`postUpgradeWelcome failed for session ${checkoutSession.id}:`, err);
     }
 
     return res.sendStatus(200);

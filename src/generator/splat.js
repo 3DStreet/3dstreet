@@ -101,10 +101,16 @@ const SPLAT_MODELS = {
 
 const DEFAULT_SPLAT_MODEL = 'sharp-ml';
 
-// Per-file ceiling for the uploaded source video (client-side guard; the
-// Storage rules backstop is far higher). Keep videos short — a 10–30s orbit is
-// plenty and keeps reconstruction time and cost reasonable.
-const VIDEO_MAX_BYTES = 200 * 1024 * 1024; // 200 MB
+// The source video is capped by the user's plan-scaled PER-FILE limit
+// (MAX_FILE_BYTES_BY_PLAN in public/functions/asset-quota.js — FREE 100 MB /
+// PRO 1 GB / MAX 5 GB, type-agnostic by design), fetched via getUploadQuota's
+// `perFileLimit`. Only the per-file gate applies: the video is transient
+// (deleted server-side when the job finishes, never a gallery asset), so the
+// total-storage quota is irrelevant here. This constant is the FALLBACK used
+// when the plan can't be resolved (signed out, callable unavailable); decimal
+// MB to match how plan limits are displayed. Storage rules hold the 5 GB hard
+// ceiling either way.
+const VIDEO_FALLBACK_MAX_BYTES = 200 * 1000 * 1000; // 200 MB
 
 const SplatTab = {
   elements: {},
@@ -476,19 +482,51 @@ const SplatTab = {
     this.elements.sourceUploadLabel.classList.remove('hidden');
   },
 
-  setSourceVideo(file) {
-    if (file.size > VIDEO_MAX_BYTES) {
-      FluxUI.showNotification(
-        `Video is too large (max ${Math.round(VIDEO_MAX_BYTES / (1024 * 1024))} MB). Trim it to a short orbit and try again.`,
-        'error'
-      );
-      this.clearSourceVideo();
-      return;
+  // Plan-scaled per-file cap check. Resolves to an error message when the
+  // file exceeds the user's per-file limit, else null. Falls back to the
+  // flat 200 MB guard when the plan can't be resolved.
+  async videoSizeError(file) {
+    const fallbackError =
+      file.size > VIDEO_FALLBACK_MAX_BYTES
+        ? `Video is too large (max ${Math.round(VIDEO_FALLBACK_MAX_BYTES / 1e6)} MB). Trim it to a short orbit and try again.`
+        : null;
+    if (!auth.currentUser) {
+      // Signed-out users can still stage a file; generateSplat re-checks
+      // against the real plan after sign-in.
+      return fallbackError;
     }
+    try {
+      const getUploadQuota = httpsCallable(functions, 'getUploadQuota');
+      const { data: quota } = await getUploadQuota({ proposedBytes: 0 });
+      const limit = Number(quota?.perFileLimit);
+      if (!limit) return fallbackError;
+      if (file.size <= limit) return null;
+      const limitMb = Math.round(limit / 1e6);
+      const fileMb = Math.round(file.size / 1e6);
+      return `This video is ${fileMb} MB; the ${quota.planName} plan allows ${limitMb} MB per file. Upgrade for larger uploads, or trim the video to a shorter orbit.`;
+    } catch (err) {
+      console.warn(
+        '[splat] per-file limit check unavailable, using fallback',
+        err
+      );
+      return fallbackError;
+    }
+  },
+
+  async setSourceVideo(file) {
+    // Show the selection immediately, then validate against the plan's
+    // per-file cap (callable round-trip) and roll back if it fails.
     this.sourceVideoFile = file;
     this.elements.videoSelectedName.textContent = file.name;
     this.elements.videoUploadLabel.classList.add('hidden');
     this.elements.videoSelected.classList.remove('hidden');
+
+    const error = await this.videoSizeError(file);
+    // Only roll back if this file is still the active selection.
+    if (error && this.sourceVideoFile === file) {
+      FluxUI.showNotification(error, 'error');
+      this.clearSourceVideo();
+    }
   },
 
   clearSourceVideo() {
@@ -633,11 +671,22 @@ const SplatTab = {
   async generateSplat() {
     if (!this.validate()) return;
 
+    const model = this.currentModel();
+
+    // Re-check the per-file cap at generate time: the file may have been
+    // staged while signed out, or the plan may have changed since selection.
+    if (model.inputKind === 'video') {
+      const sizeError = await this.videoSizeError(this.sourceVideoFile);
+      if (sizeError) {
+        FluxUI.showNotification(sizeError, 'error');
+        return;
+      }
+    }
+
     this.stopPolling();
     this.toggleLoading(true);
 
     try {
-      const model = this.currentModel();
       const generateReplicateSplat = httpsCallable(
         functions,
         'generateReplicateSplat'

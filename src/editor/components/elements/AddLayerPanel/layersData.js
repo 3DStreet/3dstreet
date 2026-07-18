@@ -122,6 +122,33 @@ export const customLayersData = [
     icon: '',
     handlerFunction: createFunctions.createCustomModel
   }),
+  card(m.driveableTukTukName, m.driveableTukTukDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createDriveableTukTuk
+  }),
+  card(m.driveableDeliveryRobotName, m.driveableDeliveryRobotDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createDriveableDeliveryRobot
+  }),
+  // Driveable Taxi card intentionally not surfaced yet (model/handling
+  // not ready) — the 'taxi' preset, createDriveableTaxi handler, and
+  // i18n messages all exist, so restoring it is one card() entry here.
+  card(m.raceTargetName, m.raceTargetDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createRaceTarget
+  }),
+  card(m.trafficReplayName, m.trafficReplayDesc, {
+    img: '',
+    requiresPro: false,
+    icon: 'ui_assets/cards/icons/3dst24.png',
+    handlerFunction: createFunctions.createTrafficReplay
+  }),
   card(m.uploadSplatName, m.uploadSplatDesc, {
     img: '',
     requiresPro: false,

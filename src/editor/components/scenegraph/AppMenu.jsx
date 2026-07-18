@@ -1,5 +1,5 @@
 import { Menubar } from 'radix-ui';
-import { FormattedMessage, useIntl, defineMessages } from 'react-intl';
+import { FormattedMessage, useIntl } from 'react-intl';
 import '../../style/AppMenu.scss';
 import useStore from '@/store';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
@@ -11,12 +11,11 @@ import {
 } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import {
   faCheck,
-  faCircle,
-  faChevronRight
+  faChevronRight,
+  faCircle
 } from '@fortawesome/free-solid-svg-icons';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { useState, useEffect } from 'react';
-import { currentOrthoDir } from '../../lib/cameras.js';
 import {
   copySelectedEntity,
   cutSelectedEntity,
@@ -26,6 +25,18 @@ import { cloneSelectedEntity, removeSelectedEntity } from '../../lib/entity.js';
 import { getOS } from '../../lib/utils.js';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { SUPPORTED_LOCALES } from '@/editor/i18n/config';
+import {
+  getNavScheme,
+  applyNavScheme,
+  isExperimentalNav
+} from '@/editor/lib/nav-experimental/flag';
+import {
+  cameraTiltDegrees,
+  needleScreenAngle,
+  COMPASS_TOPDOWN_TOLERANCE_DEGREES,
+  COMPASS_NORTH_TOLERANCE_DEGREES
+} from '@/editor/lib/nav-experimental/index.js';
+import { captureNavDiscovery } from '@/editor/lib/navAnalytics.js';
 
 // Keyboard hints shown in the Edit menu's right slot.
 const isMac = getOS() === 'macos';
@@ -41,35 +52,38 @@ const editShortcuts = {
   zoomToSelection: 'F'
 };
 
-const cameraOptions = [
-  {
-    value: 'perspective',
-    event: 'cameraperspectivetoggle',
-    payload: null,
-    label: '3D View',
-    shortcut: '1'
-  },
-  {
-    value: 'orthotop',
-    event: 'cameraorthographictoggle',
-    payload: 'top',
-    label: 'Plan View',
-    shortcut: '4'
-  }
-];
-
-// Static catalog for the camera labels so formatjs can extract them (a dynamic
-// `id={`appMenu.view.camera.${value}`}` would be invisible to the extractor).
-const cameraMessages = defineMessages({
-  perspective: {
-    id: 'appMenu.view.camera.perspective',
-    defaultMessage: '3D View'
-  },
-  orthotop: {
-    id: 'appMenu.view.camera.orthotop',
-    defaultMessage: 'Plan View'
-  }
-});
+// Menu twin of the compass body: "Plan View" when the camera is not
+// top-down, "Point North" once it is, disabled when both top-down and
+// north-up (a click would be a no-op) — the same pose tests as the compass
+// tooltip. Rendered as its own component so the pose is read fresh each
+// time the View menu opens (Radix unmounts closed menu content). Only
+// rendered under the experimental-nav schemes, whose ExperimentalControls
+// own handleCompassBodyClick.
+const PlanViewMenuItem = () => {
+  const camera = AFRAME.INSPECTOR?.camera;
+  const isTopDown =
+    camera?.type === 'PerspectiveCamera' &&
+    90 - cameraTiltDegrees(camera) <= COMPASS_TOPDOWN_TOLERANCE_DEGREES;
+  const isNorthUp =
+    isTopDown &&
+    Math.abs(needleScreenAngle(camera)) <= COMPASS_NORTH_TOLERANCE_DEGREES;
+  return (
+    <Menubar.Item
+      className="MenubarItem"
+      disabled={isNorthUp}
+      onClick={() => {
+        captureNavDiscovery('orient_north');
+        AFRAME.INSPECTOR.controls?.handleCompassBodyClick?.();
+      }}
+    >
+      {isTopDown ? (
+        <FormattedMessage {...commonMessages.pointNorth} />
+      ) : (
+        <FormattedMessage {...commonMessages.planView} />
+      )}
+    </Menubar.Item>
+  );
+};
 
 const AppMenu = ({ currentUser }) => {
   const intl = useIntl();
@@ -77,13 +91,14 @@ const AppMenu = ({ currentUser }) => {
     setModal,
     isGridVisible,
     setIsGridVisible,
+    panelsVisible,
+    setPanelsVisible,
     saveScene,
     setGeojsonImportData,
     setRightPanelTab,
     locale,
     setLocale
   } = useStore();
-  const [currentCamera, setCurrentCamera] = useState('perspective');
   const [undoDisabled, setUndoDisabled] = useState(
     !AFRAME.INSPECTOR?.history || AFRAME.INSPECTOR.history.undos.length === 0
   );
@@ -94,35 +109,7 @@ const AppMenu = ({ currentUser }) => {
     !!AFRAME.INSPECTOR?.selectedEntity
   );
 
-  // Function to get current camera state from the actual camera system
-  const getCurrentCameraState = () => {
-    if (!AFRAME.INSPECTOR?.camera) return 'perspective';
-
-    const camera = AFRAME.INSPECTOR.camera;
-    if (camera.type === 'PerspectiveCamera') {
-      return 'perspective';
-    } else if (camera.type === 'OrthographicCamera') {
-      return `ortho${currentOrthoDir}`;
-    }
-    return 'perspective';
-  };
-
   useEffect(() => {
-    // Initialize with actual camera state
-    setCurrentCamera(getCurrentCameraState());
-
-    const handleCameraToggle = (event) => {
-      setCurrentCamera(event.value);
-    };
-
-    // Also sync when inspector is enabled/disabled
-    const handleInspectorToggle = () => {
-      // Small delay to ensure camera system has updated
-      setTimeout(() => {
-        setCurrentCamera(getCurrentCameraState());
-      }, 100);
-    };
-
     // Mirror the action bar's undo/redo enabled state and track the current
     // selection so Edit menu items enable/disable correctly.
     const handleHistoryChanged = () => {
@@ -133,24 +120,14 @@ const AppMenu = ({ currentUser }) => {
       setHasSelectedEntity(!!entity);
     };
 
-    Events.on('cameratoggle', handleCameraToggle);
-    Events.on('inspectortoggle', handleInspectorToggle);
     Events.on('historychanged', handleHistoryChanged);
     Events.on('entityselect', handleEntitySelect);
 
     return () => {
-      Events.off('cameratoggle', handleCameraToggle);
-      Events.off('inspectortoggle', handleInspectorToggle);
       Events.off('historychanged', handleHistoryChanged);
       Events.off('entityselect', handleEntitySelect);
     };
   }, []);
-
-  const handleCameraChange = (option) => {
-    // Let the camera system handle the camera change first
-    Events.emit(option.event, option.payload);
-    // The cameratoggle event will be emitted by the camera system with the proper camera object
-  };
 
   const newHandler = () => {
     posthog.capture('new_scene_clicked');
@@ -686,22 +663,89 @@ const AppMenu = ({ currentUser }) => {
               />
               <div className="RightSlot">G</div>
             </Menubar.CheckboxItem>
+            <Menubar.CheckboxItem
+              className="MenubarCheckboxItem"
+              checked={panelsVisible}
+              onCheckedChange={setPanelsVisible}
+            >
+              <Menubar.ItemIndicator className="MenubarItemIndicator">
+                <AwesomeIcon icon={faCheck} size={14} />
+              </Menubar.ItemIndicator>
+              <FormattedMessage
+                id="appMenu.view.showPanels"
+                defaultMessage="Show Panels"
+              />
+              <div className="RightSlot">`</div>
+            </Menubar.CheckboxItem>
             <Menubar.Separator className="MenubarSeparator" />
-            {cameraOptions.map((option) => (
-              <Menubar.CheckboxItem
-                key={option.value}
-                className="MenubarCheckboxItem"
-                checked={currentCamera === option.value}
-                onCheckedChange={() => handleCameraChange(option)}
-              >
-                <Menubar.ItemIndicator className="MenubarItemIndicator">
-                  <AwesomeIcon icon={faCircle} size={8} />
-                </Menubar.ItemIndicator>
-                <FormattedMessage {...cameraMessages[option.value]} />
-                <div className="RightSlot">{option.shortcut}</div>
-              </Menubar.CheckboxItem>
-            ))}
-            <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Sub>
+              <Menubar.SubTrigger className="MenubarItem">
+                <FormattedMessage
+                  id="appMenu.view.navigationControls"
+                  defaultMessage="Navigation Controls"
+                />
+                <div className="RightSlot">
+                  <AwesomeIcon icon={faChevronRight} size={12} />
+                </div>
+              </Menubar.SubTrigger>
+              <Menubar.Portal>
+                <Menubar.SubContent className="MenubarContent">
+                  <Menubar.RadioGroup
+                    value={getNavScheme()}
+                    onValueChange={(scheme) => {
+                      // Re-selecting the active scheme is a no-op (a reload
+                      // would otherwise drop unsaved local-only work).
+                      if (scheme === getNavScheme()) return;
+                      posthog.capture(
+                        'nav_scheme_changed',
+                        { scheme },
+                        { transport: 'sendBeacon' }
+                      );
+                      // Nav flags are read at load time, so this persists
+                      // the choice and reloads the page (see flag.js).
+                      applyNavScheme(scheme);
+                    }}
+                  >
+                    <Menubar.RadioItem
+                      className="MenubarRadioItem"
+                      value="legacy"
+                    >
+                      <Menubar.ItemIndicator className="MenubarItemIndicator">
+                        <AwesomeIcon icon={faCircle} size={8} />
+                      </Menubar.ItemIndicator>
+                      <FormattedMessage
+                        id="appMenu.view.navigationControls.legacy"
+                        defaultMessage="Legacy"
+                      />
+                    </Menubar.RadioItem>
+                    <Menubar.RadioItem
+                      className="MenubarRadioItem"
+                      value="standard"
+                    >
+                      <Menubar.ItemIndicator className="MenubarItemIndicator">
+                        <AwesomeIcon icon={faCircle} size={8} />
+                      </Menubar.ItemIndicator>
+                      <FormattedMessage
+                        id="appMenu.view.navigationControls.standard"
+                        defaultMessage="Standard"
+                      />
+                    </Menubar.RadioItem>
+                    <Menubar.RadioItem
+                      className="MenubarRadioItem"
+                      value="experimental"
+                    >
+                      <Menubar.ItemIndicator className="MenubarItemIndicator">
+                        <AwesomeIcon icon={faCircle} size={8} />
+                      </Menubar.ItemIndicator>
+                      <FormattedMessage
+                        id="appMenu.view.navigationControls.experimental"
+                        defaultMessage="Experimental"
+                      />
+                    </Menubar.RadioItem>
+                  </Menubar.RadioGroup>
+                </Menubar.SubContent>
+              </Menubar.Portal>
+            </Menubar.Sub>
             <Menubar.Item
               className="MenubarItem"
               disabled={!hasSelectedEntity}
@@ -725,37 +769,7 @@ const AppMenu = ({ currentUser }) => {
             >
               <FormattedMessage {...commonMessages.resetCameraView} />
             </Menubar.Item>
-            <Menubar.Separator className="MenubarSeparator" />
-            <Menubar.Sub>
-              <Menubar.SubTrigger className="MenubarItem">
-                <FormattedMessage
-                  id="appMenu.view.language"
-                  defaultMessage="Language"
-                />
-                <div className="RightSlot">
-                  <AwesomeIcon icon={faChevronRight} size={12} />
-                </div>
-              </Menubar.SubTrigger>
-              <Menubar.Portal>
-                <Menubar.SubContent className="MenubarContent">
-                  {SUPPORTED_LOCALES.map(({ code, label }) => (
-                    <Menubar.CheckboxItem
-                      key={code}
-                      className="MenubarCheckboxItem"
-                      checked={locale === code}
-                      onCheckedChange={() => setLocale(code)}
-                    >
-                      <Menubar.ItemIndicator className="MenubarItemIndicator">
-                        <AwesomeIcon icon={faCheck} size={14} />
-                      </Menubar.ItemIndicator>
-                      {/* Language names are shown as endonyms (in their own
-                          language), so they are intentionally not translated. */}
-                      {label}
-                    </Menubar.CheckboxItem>
-                  ))}
-                </Menubar.SubContent>
-              </Menubar.Portal>
-            </Menubar.Sub>
+            {isExperimentalNav() && <PlanViewMenuItem />}
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"
@@ -766,7 +780,7 @@ const AppMenu = ({ currentUser }) => {
             >
               <FormattedMessage
                 id="appMenu.view.snapshotRender"
-                defaultMessage="Snapshot & Render..."
+                defaultMessage="Capture & Render..."
               />
             </Menubar.Item>
           </Menubar.Content>
@@ -784,6 +798,41 @@ const AppMenu = ({ currentUser }) => {
             sideOffset={5}
             alignOffset={-3}
           >
+            <Menubar.Sub>
+              <Menubar.SubTrigger className="MenubarItem">
+                <FormattedMessage
+                  id="appMenu.help.language"
+                  defaultMessage="Language"
+                />
+                <div className="RightSlot">
+                  <AwesomeIcon icon={faChevronRight} size={12} />
+                </div>
+              </Menubar.SubTrigger>
+              <Menubar.Portal>
+                <Menubar.SubContent className="MenubarContent">
+                  <Menubar.RadioGroup
+                    value={locale}
+                    onValueChange={(code) => setLocale(code)}
+                  >
+                    {SUPPORTED_LOCALES.map(({ code, label }) => (
+                      <Menubar.RadioItem
+                        key={code}
+                        className="MenubarRadioItem"
+                        value={code}
+                      >
+                        <Menubar.ItemIndicator className="MenubarItemIndicator">
+                          <AwesomeIcon icon={faCircle} size={8} />
+                        </Menubar.ItemIndicator>
+                        {/* Language names are shown as endonyms (in their own
+                          language), so they are intentionally not translated. */}
+                        {label}
+                      </Menubar.RadioItem>
+                    ))}
+                  </Menubar.RadioGroup>
+                </Menubar.SubContent>
+              </Menubar.Portal>
+            </Menubar.Sub>
+            <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"
               onClick={() =>

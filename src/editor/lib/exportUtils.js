@@ -226,16 +226,15 @@ export const exportSceneToDXF = (intl, options = {}) => {
         scene_id: STREET.utils.getCurrentSceneId()
       });
 
-      const { exportManagedStreetsToDxf } =
-        await import('./dxf/managedStreetToDxf');
-      const { dxfString, streetCount, segmentCount } =
-        exportManagedStreetsToDxf(options);
+      const { exportScenePlanToDxf } = await import('./dxf/scenePlanToDxf');
+      const { dxfString, isEmpty } = exportScenePlanToDxf(options);
 
-      if (streetCount === 0 || segmentCount === 0) {
+      if (isEmpty) {
         STREET.notify.warningMessage(
           intl.formatMessage({
             id: 'appMenu.export.dxfEmpty',
-            defaultMessage: 'No managed-street segments found to export as DXF.'
+            defaultMessage:
+              'No street or intersection elements found to export as DXF.'
           })
         );
         return;
@@ -296,7 +295,8 @@ export const exportSceneToPDF = (intl, options = {}) => {
         STREET.notify.warningMessage(
           intl.formatMessage({
             id: 'appMenu.export.pdfEmpty',
-            defaultMessage: 'No managed-street segments found to export as PDF.'
+            defaultMessage:
+              'No street or intersection elements found to export as PDF.'
           })
         );
         return;

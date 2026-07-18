@@ -1,4 +1,9 @@
 import Events from './Events';
+import {
+  isExperimentalNav,
+  isStreetLevelNav
+} from './nav-experimental/flag.js';
+import { captureNavDiscovery } from './navAnalytics.js';
 
 export function initRaycaster(inspector) {
   // Use cursor="rayOrigin: mouse".
@@ -96,13 +101,36 @@ export function initRaycaster(inspector) {
     });
   });
 
+  // Raw clientX/Y (viewport pixels), NOT container-normalized coords:
+  // layout shifts between Viewer and editor presentations move the
+  // container's bounding rect between mousedown and mouseup, which made
+  // normalized positions drift for a physically stationary click. Client
+  // coordinates are viewport-absolute and immune to that.
   const onDownPosition = new THREE.Vector2();
   const onUpPosition = new THREE.Vector2();
+  // 0 = exact main-parity strictness: any down->up movement at all is
+  // treated as a drag, not a click. (A small value like 2 would rescue
+  // clicks with 1-2px of hand jitter, common on trackpads — revisit if
+  // dead clicks get reported.)
+  const CLICK_MAX_DRAG_PX = 0;
 
   function handleClick(evt) {
-    // Check to make sure not dragging.
-    if (onDownPosition.distanceTo(onUpPosition) === 0) {
-      inspector.selectEntity(getIntersectedEl());
+    // Compute up position from the click event's source mouseup rather
+    // than the side-state onUpPosition. The cursor component emits
+    // click synchronously from inside its canvas mouseup handler, which
+    // runs before our container bubble mouseup — so onUpPosition would
+    // be stale (the previous click's value). evt.detail.mouseEvent is
+    // the originating mouseup; reading from it is order-independent.
+    const upEvt = evt && evt.detail && evt.detail.mouseEvent;
+    const up = upEvt
+      ? new THREE.Vector2(upEvt.clientX, upEvt.clientY)
+      : onUpPosition;
+    if (onDownPosition.distanceTo(up) <= CLICK_MAX_DRAG_PX) {
+      const intersectedEl = getIntersectedEl();
+      // Feature-discovery: count a viewport click that actually selects an
+      // entity (a click on empty space deselects — not a "select").
+      if (intersectedEl) captureNavDiscovery('select');
+      inspector.selectEntity(intersectedEl);
       // Force the cursor component to trigger again an intersection to show hover box on the original intersected el inside the street-segment.
       mouseCursor.components.cursor.clearCurrentIntersection(false);
     }
@@ -113,12 +141,7 @@ export function initRaycaster(inspector) {
       return;
     }
     event.preventDefault();
-    const array = getMousePosition(
-      inspector.container,
-      event.clientX,
-      event.clientY
-    );
-    onDownPosition.fromArray(array);
+    onDownPosition.set(event.clientX, event.clientY);
   }
 
   function onMouseUp(event) {
@@ -126,18 +149,33 @@ export function initRaycaster(inspector) {
       return;
     }
     event.preventDefault();
-    const array = getMousePosition(
-      inspector.container,
-      event.clientX,
-      event.clientY
-    );
-    onUpPosition.fromArray(array);
+    onUpPosition.set(event.clientX, event.clientY);
   }
 
   /**
    * Focus on double click.
+   *
+   * TASK-012 Phase 4: with the experimental nav flag on, the canvas
+   * double-click NAVIGATES (a cursor-aware camera teleport) instead of
+   * framing the entity. Emit a new event carrying the cursor coords; the
+   * controls classify what's under the cursor from the live cursor raycast
+   * (incl. empty-space → Category D), so we must NOT early-return on a missing
+   * intersect when the flag is on. Flag-off keeps the legacy objectfocus path.
+   * Only this canvas dblclick reroutes — F-key / scene-tree / sidebar
+   * objectfocus callers still run the legacy frame-this-entity animation.
+   *
+   * The teleport ships with the street-level featureset (?streetview=on);
+   * gated off, double-click keeps the legacy frame-the-entity behaviour
+   * (deploy-at-parity).
    */
   function onDoubleClick(event) {
+    if (isExperimentalNav() && isStreetLevelNav()) {
+      Events.emit('nav-experimental:doubleclick', {
+        clientX: event.clientX,
+        clientY: event.clientY
+      });
+      return;
+    }
     const intersectedEl = getIntersectedEl();
     if (!intersectedEl) {
       return;
@@ -160,9 +198,4 @@ export function initRaycaster(inspector) {
       inspector.container.removeEventListener('dblclick', onDoubleClick);
     }
   };
-}
-
-function getMousePosition(dom, x, y) {
-  const rect = dom.getBoundingClientRect();
-  return [(x - rect.left) / rect.width, (y - rect.top) / rect.height];
 }

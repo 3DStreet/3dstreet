@@ -7,6 +7,7 @@
  * The patterns here define the contracts that React hooks must satisfy.
  */
 import { describe, it, expect } from 'vitest';
+import { composePrompt } from '@shared/constants/renderStyles.js';
 
 /**
  * Pure validation function - extracted from GeneratorTabBase.validateGeneration()
@@ -17,17 +18,30 @@ const validateGeneration = (authState, config, formData) => {
 
   // Check authentication
   if (!authState?.isAuthenticated) {
-    return { valid: false, error: 'auth_required', errors: ['Not authenticated'] };
+    return {
+      valid: false,
+      error: 'auth_required',
+      errors: ['Not authenticated']
+    };
   }
 
   // Check tokens
   if (!(authState?.tokenProfile?.genToken > 0)) {
-    return { valid: false, error: 'no_tokens', errors: ['No tokens available'] };
+    return {
+      valid: false,
+      error: 'no_tokens',
+      errors: ['No tokens available']
+    };
   }
 
-  // Check prompt requirement
-  if (config.requiresPrompt && !formData.prompt?.trim()) {
-    errors.push('Prompt is required');
+  // Explicit prompts only: the two visible fields are the whole prompt,
+  // with no hidden fallback, so an all-empty composed prompt is rejected.
+  const prompt = composePrompt({
+    instructions: formData.instructions,
+    style: formData.style
+  });
+  if (!prompt) {
+    errors.push('Add instructions or pick a style to generate an image.');
   }
 
   // Check source image requirement
@@ -60,8 +74,7 @@ const parseDimension = (dimensionString) => {
 const buildRequestParams = (model, formData, options = {}) => {
   const params = {
     safety_tolerance: options.safetyTolerance ?? 2,
-    output_format: options.outputFormat ?? 'jpeg',
-    prompt_upsampling: options.promptUpsampling ?? false
+    output_format: options.outputFormat ?? 'jpeg'
   };
 
   // Add prompt
@@ -178,7 +191,6 @@ describe('Validation Utils', () => {
     });
 
     const createConfig = (overrides = {}) => ({
-      requiresPrompt: false,
       requiresSourceImage: false,
       ...overrides
     });
@@ -223,34 +235,54 @@ describe('Validation Utils', () => {
       expect(result.error).toBe('no_tokens');
     });
 
-    it('should require prompt when config.requiresPrompt is true', () => {
-      const result = validateGeneration(
-        createAuthState(),
-        createConfig({ requiresPrompt: true }),
-        { prompt: '' }
-      );
+    it('should reject an all-empty composed prompt', () => {
+      const result = validateGeneration(createAuthState(), createConfig(), {
+        instructions: '',
+        style: ''
+      });
 
       expect(result.valid).toBe(false);
       expect(result.error).toBe('validation_failed');
-      expect(result.errors).toContain('Prompt is required');
+      expect(result.errors).toContain(
+        'Add instructions or pick a style to generate an image.'
+      );
     });
 
-    it('should accept whitespace-only prompt as empty', () => {
-      const result = validateGeneration(
-        createAuthState(),
-        createConfig({ requiresPrompt: true }),
-        { prompt: '   ' }
-      );
+    it('should treat whitespace-only fields as empty', () => {
+      const result = validateGeneration(createAuthState(), createConfig(), {
+        instructions: '   ',
+        style: '\n'
+      });
 
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Prompt is required');
+      expect(result.errors).toContain(
+        'Add instructions or pick a style to generate an image.'
+      );
+    });
+
+    it('should accept instructions without a style', () => {
+      const result = validateGeneration(createAuthState(), createConfig(), {
+        instructions: 'Add trees to the street',
+        style: ''
+      });
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('should accept a style without instructions', () => {
+      const result = validateGeneration(createAuthState(), createConfig(), {
+        instructions: '',
+        style: 'Render as a watercolor painting.'
+      });
+
+      expect(result.valid).toBe(true);
     });
 
     it('should require source image when config.requiresSourceImage is true', () => {
       const result = validateGeneration(
         createAuthState(),
         createConfig({ requiresSourceImage: true }),
-        { sourceImage: null }
+        { instructions: 'Add trees', sourceImage: null }
       );
 
       expect(result.valid).toBe(false);
@@ -260,32 +292,31 @@ describe('Validation Utils', () => {
     it('should return multiple errors when multiple validations fail', () => {
       const result = validateGeneration(
         createAuthState(),
-        createConfig({ requiresPrompt: true, requiresSourceImage: true }),
-        { prompt: '', sourceImage: null }
+        createConfig({ requiresSourceImage: true }),
+        { instructions: '', style: '', sourceImage: null }
       );
 
       expect(result.valid).toBe(false);
       expect(result.errors).toHaveLength(2);
-      expect(result.errors).toContain('Prompt is required');
+      expect(result.errors).toContain(
+        'Add instructions or pick a style to generate an image.'
+      );
       expect(result.errors).toContain('Source image is required');
     });
 
     it('should return valid when all requirements are met', () => {
       const result = validateGeneration(
         createAuthState(),
-        createConfig({ requiresPrompt: true, requiresSourceImage: true }),
-        { prompt: 'A beautiful sunset', sourceImage: 'data:image/jpeg;base64,...' }
+        createConfig({ requiresSourceImage: true }),
+        {
+          instructions: 'A beautiful sunset',
+          sourceImage: 'data:image/jpeg;base64,...'
+        }
       );
 
       expect(result.valid).toBe(true);
       expect(result.error).toBeNull();
       expect(result.errors).toHaveLength(0);
-    });
-
-    it('should pass when no requirements are set', () => {
-      const result = validateGeneration(createAuthState(), createConfig(), {});
-
-      expect(result.valid).toBe(true);
     });
   });
 
@@ -299,7 +330,10 @@ describe('Validation Utils', () => {
     });
 
     it('should parse large dimensions', () => {
-      expect(parseDimension('1920x1080')).toEqual({ width: 1920, height: 1080 });
+      expect(parseDimension('1920x1080')).toEqual({
+        width: 1920,
+        height: 1080
+      });
     });
 
     it('should return null for invalid format', () => {
@@ -326,19 +360,17 @@ describe('Validation Utils', () => {
 
         expect(params.safety_tolerance).toBe(2);
         expect(params.output_format).toBe('jpeg');
-        expect(params.prompt_upsampling).toBe(false);
       });
 
       it('should override default options', () => {
         const params = buildRequestParams(
           'flux-pro-1.1',
           {},
-          { safetyTolerance: 5, outputFormat: 'png', promptUpsampling: true }
+          { safetyTolerance: 5, outputFormat: 'png' }
         );
 
         expect(params.safety_tolerance).toBe(5);
         expect(params.output_format).toBe('png');
-        expect(params.prompt_upsampling).toBe(true);
       });
 
       it('should trim prompt whitespace', () => {
