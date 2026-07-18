@@ -9,7 +9,11 @@ import {
   uploadAndPlaceAsset,
   FILE_PICKER_ACCEPT
 } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
-import { faCheck, faChevronRight } from '@fortawesome/free-solid-svg-icons';
+import {
+  faCheck,
+  faChevronRight,
+  faCircle
+} from '@fortawesome/free-solid-svg-icons';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { useState, useEffect } from 'react';
 import {
@@ -21,6 +25,18 @@ import { cloneSelectedEntity, removeSelectedEntity } from '../../lib/entity.js';
 import { getOS } from '../../lib/utils.js';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { SUPPORTED_LOCALES } from '@/editor/i18n/config';
+import {
+  getNavScheme,
+  applyNavScheme,
+  isExperimentalNav
+} from '@/editor/lib/nav-experimental/flag';
+import {
+  cameraTiltDegrees,
+  needleScreenAngle,
+  COMPASS_TOPDOWN_TOLERANCE_DEGREES,
+  COMPASS_NORTH_TOLERANCE_DEGREES
+} from '@/editor/lib/nav-experimental/index.js';
+import { captureNavDiscovery } from '@/editor/lib/navAnalytics.js';
 
 // Keyboard hints shown in the Edit menu's right slot.
 const isMac = getOS() === 'macos';
@@ -34,6 +50,39 @@ const editShortcuts = {
   delete: isMac ? '⌫' : 'Del',
   deselect: 'Esc',
   zoomToSelection: 'F'
+};
+
+// Menu twin of the compass body: "Plan View" when the camera is not
+// top-down, "Point North" once it is, disabled when both top-down and
+// north-up (a click would be a no-op) — the same pose tests as the compass
+// tooltip. Rendered as its own component so the pose is read fresh each
+// time the View menu opens (Radix unmounts closed menu content). Only
+// rendered under the experimental-nav schemes, whose ExperimentalControls
+// own handleCompassBodyClick.
+const PlanViewMenuItem = () => {
+  const camera = AFRAME.INSPECTOR?.camera;
+  const isTopDown =
+    camera?.type === 'PerspectiveCamera' &&
+    90 - cameraTiltDegrees(camera) <= COMPASS_TOPDOWN_TOLERANCE_DEGREES;
+  const isNorthUp =
+    isTopDown &&
+    Math.abs(needleScreenAngle(camera)) <= COMPASS_NORTH_TOLERANCE_DEGREES;
+  return (
+    <Menubar.Item
+      className="MenubarItem"
+      disabled={isNorthUp}
+      onClick={() => {
+        captureNavDiscovery('orient_north');
+        AFRAME.INSPECTOR.controls?.handleCompassBodyClick?.();
+      }}
+    >
+      {isTopDown ? (
+        <FormattedMessage {...commonMessages.pointNorth} />
+      ) : (
+        <FormattedMessage {...commonMessages.planView} />
+      )}
+    </Menubar.Item>
+  );
 };
 
 const AppMenu = ({ currentUser }) => {
@@ -628,12 +677,75 @@ const AppMenu = ({ currentUser }) => {
               />
               <div className="RightSlot">`</div>
             </Menubar.CheckboxItem>
-            {/* The camera-view radio group (3D View + Plan View) was removed
-                2026-07-17 along with the ortho-view shortcuts: the compass
-                owns the plan-view role under experimental nav, and
-                ExperimentalControls has no ortho navigation (PR #1851
-                review). Restore from git history if ortho views return. */}
             <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Sub>
+              <Menubar.SubTrigger className="MenubarItem">
+                <FormattedMessage
+                  id="appMenu.view.navigationControls"
+                  defaultMessage="Navigation Controls"
+                />
+                <div className="RightSlot">
+                  <AwesomeIcon icon={faChevronRight} size={12} />
+                </div>
+              </Menubar.SubTrigger>
+              <Menubar.Portal>
+                <Menubar.SubContent className="MenubarContent">
+                  <Menubar.RadioGroup
+                    value={getNavScheme()}
+                    onValueChange={(scheme) => {
+                      // Re-selecting the active scheme is a no-op (a reload
+                      // would otherwise drop unsaved local-only work).
+                      if (scheme === getNavScheme()) return;
+                      posthog.capture(
+                        'nav_scheme_changed',
+                        { scheme },
+                        { transport: 'sendBeacon' }
+                      );
+                      // Nav flags are read at load time, so this persists
+                      // the choice and reloads the page (see flag.js).
+                      applyNavScheme(scheme);
+                    }}
+                  >
+                    <Menubar.RadioItem
+                      className="MenubarRadioItem"
+                      value="legacy"
+                    >
+                      <Menubar.ItemIndicator className="MenubarItemIndicator">
+                        <AwesomeIcon icon={faCircle} size={8} />
+                      </Menubar.ItemIndicator>
+                      <FormattedMessage
+                        id="appMenu.view.navigationControls.legacy"
+                        defaultMessage="Legacy"
+                      />
+                    </Menubar.RadioItem>
+                    <Menubar.RadioItem
+                      className="MenubarRadioItem"
+                      value="standard"
+                    >
+                      <Menubar.ItemIndicator className="MenubarItemIndicator">
+                        <AwesomeIcon icon={faCircle} size={8} />
+                      </Menubar.ItemIndicator>
+                      <FormattedMessage
+                        id="appMenu.view.navigationControls.standard"
+                        defaultMessage="Standard"
+                      />
+                    </Menubar.RadioItem>
+                    <Menubar.RadioItem
+                      className="MenubarRadioItem"
+                      value="experimental"
+                    >
+                      <Menubar.ItemIndicator className="MenubarItemIndicator">
+                        <AwesomeIcon icon={faCircle} size={8} />
+                      </Menubar.ItemIndicator>
+                      <FormattedMessage
+                        id="appMenu.view.navigationControls.experimental"
+                        defaultMessage="Experimental"
+                      />
+                    </Menubar.RadioItem>
+                  </Menubar.RadioGroup>
+                </Menubar.SubContent>
+              </Menubar.Portal>
+            </Menubar.Sub>
             <Menubar.Item
               className="MenubarItem"
               disabled={!hasSelectedEntity}
@@ -657,37 +769,7 @@ const AppMenu = ({ currentUser }) => {
             >
               <FormattedMessage {...commonMessages.resetCameraView} />
             </Menubar.Item>
-            <Menubar.Separator className="MenubarSeparator" />
-            <Menubar.Sub>
-              <Menubar.SubTrigger className="MenubarItem">
-                <FormattedMessage
-                  id="appMenu.view.language"
-                  defaultMessage="Language"
-                />
-                <div className="RightSlot">
-                  <AwesomeIcon icon={faChevronRight} size={12} />
-                </div>
-              </Menubar.SubTrigger>
-              <Menubar.Portal>
-                <Menubar.SubContent className="MenubarContent">
-                  {SUPPORTED_LOCALES.map(({ code, label }) => (
-                    <Menubar.CheckboxItem
-                      key={code}
-                      className="MenubarCheckboxItem"
-                      checked={locale === code}
-                      onCheckedChange={() => setLocale(code)}
-                    >
-                      <Menubar.ItemIndicator className="MenubarItemIndicator">
-                        <AwesomeIcon icon={faCheck} size={14} />
-                      </Menubar.ItemIndicator>
-                      {/* Language names are shown as endonyms (in their own
-                          language), so they are intentionally not translated. */}
-                      {label}
-                    </Menubar.CheckboxItem>
-                  ))}
-                </Menubar.SubContent>
-              </Menubar.Portal>
-            </Menubar.Sub>
+            {isExperimentalNav() && <PlanViewMenuItem />}
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"
@@ -716,6 +798,41 @@ const AppMenu = ({ currentUser }) => {
             sideOffset={5}
             alignOffset={-3}
           >
+            <Menubar.Sub>
+              <Menubar.SubTrigger className="MenubarItem">
+                <FormattedMessage
+                  id="appMenu.help.language"
+                  defaultMessage="Language"
+                />
+                <div className="RightSlot">
+                  <AwesomeIcon icon={faChevronRight} size={12} />
+                </div>
+              </Menubar.SubTrigger>
+              <Menubar.Portal>
+                <Menubar.SubContent className="MenubarContent">
+                  <Menubar.RadioGroup
+                    value={locale}
+                    onValueChange={(code) => setLocale(code)}
+                  >
+                    {SUPPORTED_LOCALES.map(({ code, label }) => (
+                      <Menubar.RadioItem
+                        key={code}
+                        className="MenubarRadioItem"
+                        value={code}
+                      >
+                        <Menubar.ItemIndicator className="MenubarItemIndicator">
+                          <AwesomeIcon icon={faCircle} size={8} />
+                        </Menubar.ItemIndicator>
+                        {/* Language names are shown as endonyms (in their own
+                          language), so they are intentionally not translated. */}
+                        {label}
+                      </Menubar.RadioItem>
+                    ))}
+                  </Menubar.RadioGroup>
+                </Menubar.SubContent>
+              </Menubar.Portal>
+            </Menubar.Sub>
+            <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"
               onClick={() =>

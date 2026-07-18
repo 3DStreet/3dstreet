@@ -14,6 +14,7 @@
 // Mount-gated by isExperimentalNav() in Main.jsx.
 
 import { useEffect, useRef, useState } from 'react';
+import { defineMessages, useIntl } from 'react-intl';
 import {
   needleScreenAngle,
   cameraTiltDegrees,
@@ -21,7 +22,28 @@ import {
   COMPASS_NORTH_TOLERANCE_DEGREES
 } from '../../../lib/nav-experimental/index.js';
 import { captureNavDiscovery } from '../../../lib/navAnalytics.js';
+import { commonMessages } from '../../../i18n/commonMessages';
 import styles from './Compass.module.scss';
+
+// Compass-only strings. The body tooltip reuses commonMessages.planView /
+// pointNorth so it always matches the View menu's Plan View item (its menu
+// twin). The aria variants spell out "degrees" for screen readers.
+const messages = defineMessages({
+  rotateLeft: { id: 'compass.rotateLeft', defaultMessage: 'Rotate left 90°' },
+  rotateRight: {
+    id: 'compass.rotateRight',
+    defaultMessage: 'Rotate right 90°'
+  },
+  rotateLeftAria: {
+    id: 'compass.rotateLeftAria',
+    defaultMessage: 'Rotate left 90 degrees'
+  },
+  rotateRightAria: {
+    id: 'compass.rotateRightAria',
+    defaultMessage: 'Rotate right 90 degrees'
+  },
+  label: { id: 'compass.label', defaultMessage: 'Compass' }
+});
 
 // SVG geometry. 64x64 viewBox, centre (32,32). Screen-angle convention
 // matches the needle math: 0deg = up (12 o'clock), positive = clockwise.
@@ -135,20 +157,24 @@ const controls = () =>
     : null;
 
 // Pose-aware body tooltip, computed from the same tests as the dispatcher.
-// Returns null when a body click would be a no-op (already top-down AND
-// north-up) — in that state there is nothing to do, so we show no caption.
+// Returns a message descriptor (callers format it), or null when a body
+// click would be a no-op (already top-down AND north-up) — in that state
+// there is nothing to do, so we show no caption.
 function bodyTooltip(camera) {
-  if (!camera || camera.type !== 'PerspectiveCamera') return 'Plan view';
+  if (!camera || camera.type !== 'PerspectiveCamera') {
+    return commonMessages.planView;
+  }
   const isTopDown =
     90 - cameraTiltDegrees(camera) <= COMPASS_TOPDOWN_TOLERANCE_DEGREES;
-  if (!isTopDown) return 'Plan view';
+  if (!isTopDown) return commonMessages.planView;
   const isNorthUp =
     Math.abs(needleScreenAngle(camera)) <= COMPASS_NORTH_TOLERANCE_DEGREES;
-  if (!isNorthUp) return 'Face north';
+  if (!isNorthUp) return commonMessages.pointNorth;
   return null; // already reset — clicking does nothing, so no caption
 }
 
 export const Compass = () => {
+  const intl = useIntl();
   const needleRef = useRef(null);
   // The region currently hovered or keyboard-focused: 'body' | 'left' |
   // 'right' | null. Drives the tooltip + the hover visuals.
@@ -163,10 +189,11 @@ export const Compass = () => {
   const activeRef = useRef(null);
 
   const staticTooltip = (region) => {
-    if (region === 'left') return 'Rotate left 90°';
-    if (region === 'right') return 'Rotate right 90°';
+    if (region === 'left') return intl.formatMessage(messages.rotateLeft);
+    if (region === 'right') return intl.formatMessage(messages.rotateRight);
     const inspector = typeof AFRAME !== 'undefined' ? AFRAME.INSPECTOR : null;
-    return bodyTooltip(inspector ? inspector.camera : null);
+    const descriptor = bodyTooltip(inspector ? inspector.camera : null);
+    return descriptor ? intl.formatMessage(descriptor) : null;
   };
 
   // rAF needle loop. Reads the live inspector camera each frame and writes
@@ -185,14 +212,17 @@ export const Compass = () => {
         needleRef.current.style.transform = `rotate(${angle}deg)`;
       }
       if (activeRef.current === 'body') {
-        const next = bodyTooltip(camera);
+        const descriptor = bodyTooltip(camera);
+        const next = descriptor ? intl.formatMessage(descriptor) : null;
         setTooltip((prev) => (prev === next ? prev : next));
       }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, []);
+    // `intl` changes identity only on locale switch — restarting the rAF
+    // loop then keeps the formatted tooltip from going stale.
+  }, [intl]);
 
   const dispatch = (region) => {
     const c = controls();
@@ -272,8 +302,8 @@ export const Compass = () => {
   // live camera the same way as the visible tooltip so screen-reader users
   // hear the action the click will actually perform.
   const inspector = typeof AFRAME !== 'undefined' ? AFRAME.INSPECTOR : null;
-  const bodyLabel =
-    bodyTooltip(inspector ? inspector.camera : null) || 'Compass';
+  const bodyDescriptor = bodyTooltip(inspector ? inspector.camera : null);
+  const bodyLabel = intl.formatMessage(bodyDescriptor || messages.label);
 
   return (
     <div className={styles.compass} onPointerLeave={leave}>
@@ -319,14 +349,14 @@ export const Compass = () => {
           className={styles.hitRegion}
           d={LEFT_SECTOR}
           fill="transparent"
-          aria-label="Rotate left 90 degrees"
+          aria-label={intl.formatMessage(messages.rotateLeftAria)}
         />
         <path
           {...handlers('right')}
           className={styles.hitRegion}
           d={RIGHT_SECTOR}
           fill="transparent"
-          aria-label="Rotate right 90 degrees"
+          aria-label={intl.formatMessage(messages.rotateRightAria)}
         />
         {/* Visible curved arrows (non-interactive) — left = CCW, right = CW.
             Each side is grouped so the active region gets a soft white halo. */}

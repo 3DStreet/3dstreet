@@ -314,6 +314,9 @@
   "appMenu.help.aiSceneAssistant": {
     "defaultMessage": "AI Scene Assistant"
   },
+  "appMenu.help.language": {
+    "defaultMessage": "Language"
+  },
   "appMenu.help.mouseTouchControls": {
     "defaultMessage": "Mouse and Touch Controls"
   },
@@ -323,8 +326,17 @@
   "appMenu.view": {
     "defaultMessage": "View"
   },
-  "appMenu.view.language": {
-    "defaultMessage": "Language"
+  "appMenu.view.navigationControls": {
+    "defaultMessage": "Navigation Controls"
+  },
+  "appMenu.view.navigationControls.experimental": {
+    "defaultMessage": "Experimental"
+  },
+  "appMenu.view.navigationControls.legacy": {
+    "defaultMessage": "Legacy"
+  },
+  "appMenu.view.navigationControls.standard": {
+    "defaultMessage": "Standard"
   },
   "appMenu.view.showGrid": {
     "defaultMessage": "Show Grid"
@@ -917,6 +929,12 @@
   "common.keyboardShortcuts": {
     "defaultMessage": "Keyboard Shortcuts"
   },
+  "common.planView": {
+    "defaultMessage": "Plan View"
+  },
+  "common.pointNorth": {
+    "defaultMessage": "Point North"
+  },
   "common.rename": {
     "defaultMessage": "Rename"
   },
@@ -943,6 +961,21 @@
   },
   "common.widthLabel": {
     "defaultMessage": "Width:"
+  },
+  "compass.label": {
+    "defaultMessage": "Compass"
+  },
+  "compass.rotateLeft": {
+    "defaultMessage": "Rotate left 90°"
+  },
+  "compass.rotateLeftAria": {
+    "defaultMessage": "Rotate left 90 degrees"
+  },
+  "compass.rotateRight": {
+    "defaultMessage": "Rotate right 90°"
+  },
+  "compass.rotateRightAria": {
+    "defaultMessage": "Rotate right 90 degrees"
   },
   "confirmModal.confirm": {
     "defaultMessage": "Confirm"

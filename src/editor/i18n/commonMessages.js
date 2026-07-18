@@ -38,6 +38,11 @@ export const commonMessages = defineMessages({
     id: 'common.resetCameraView',
     defaultMessage: 'Reset Camera View'
   },
+  // Shared by the View menu's Plan View item and the compass body tooltip —
+  // the two are twins (same pose tests, same click action), so they must
+  // always read identically.
+  planView: { id: 'common.planView', defaultMessage: 'Plan View' },
+  pointNorth: { id: 'common.pointNorth', defaultMessage: 'Point North' },
   upgradeToPro: {
     id: 'common.upgradeToPro',
     defaultMessage: 'Upgrade to Pro'
