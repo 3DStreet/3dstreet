@@ -1,4 +1,5 @@
 import { currentOrthoDir } from './cameras';
+import { captureNavDiscovery } from './navAnalytics.js';
 
 /**
  * @author qiao / https://github.com/qiao
@@ -305,7 +306,12 @@ THREE.EditorControls = function (_object, domElement) {
     var movementX = pointer.x - pointerOld.x;
     var movementY = pointer.y - pointerOld.y;
 
+    // nav_control_used discovery telemetry, mirroring the experimental
+    // controls' capture points (first real drag move, not mousedown) so the
+    // classic and experimental cohorts are comparable in the #1675 funnel.
+    // captureNavDiscovery dedupes per session, so per-move calls are cheap.
     if (state === STATE.ROTATE) {
+      captureNavDiscovery('rotate');
       scope.rotate(
         delta.set(
           -movementX * scope.rotationSpeed,
@@ -314,8 +320,10 @@ THREE.EditorControls = function (_object, domElement) {
         )
       );
     } else if (state === STATE.ZOOM) {
+      captureNavDiscovery('zoom');
       scope.zoom(delta.set(0, 0, movementY));
     } else if (state === STATE.PAN) {
+      captureNavDiscovery('pan');
       scope.pan(delta.set(-movementX, movementY, 0));
     }
 
@@ -334,6 +342,7 @@ THREE.EditorControls = function (_object, domElement) {
   function onMouseWheel(event) {
     event.preventDefault();
 
+    captureNavDiscovery('zoom');
     // Normalize deltaY due to https://bugzilla.mozilla.org/show_bug.cgi?id=1392460
     scope.zoom(delta.set(0, 0, event.deltaY > 0 ? 1 : -1));
   }
@@ -453,11 +462,13 @@ THREE.EditorControls = function (_object, domElement) {
   let zoomOutInterval;
 
   this.zoomInStart = () => {
+    captureNavDiscovery('zoom');
     zoomInInterval = setInterval(() => scope.zoom(delta.set(0, 0, -1)), 50);
   };
   this.zoomInStop = () => clearInterval(zoomInInterval);
 
   this.zoomOutStart = () => {
+    captureNavDiscovery('zoom');
     zoomOutInterval = setInterval(() => scope.zoom(delta.set(0, 0, 1)), 50);
   };
   this.zoomOutStop = () => clearInterval(zoomOutInterval);

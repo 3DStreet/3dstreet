@@ -314,6 +314,9 @@
   "appMenu.help.aiSceneAssistant": {
     "defaultMessage": "AI Scene Assistant"
   },
+  "appMenu.help.language": {
+    "defaultMessage": "Language"
+  },
   "appMenu.help.mouseTouchControls": {
     "defaultMessage": "Mouse and Touch Controls"
   },
@@ -323,14 +326,17 @@
   "appMenu.view": {
     "defaultMessage": "View"
   },
-  "appMenu.view.camera.orthotop": {
-    "defaultMessage": "Plan View"
+  "appMenu.view.navigationControls": {
+    "defaultMessage": "Navigation Controls"
   },
-  "appMenu.view.camera.perspective": {
-    "defaultMessage": "3D View"
+  "appMenu.view.navigationControls.experimental": {
+    "defaultMessage": "Experimental"
   },
-  "appMenu.view.language": {
-    "defaultMessage": "Language"
+  "appMenu.view.navigationControls.legacy": {
+    "defaultMessage": "Legacy"
+  },
+  "appMenu.view.navigationControls.standard": {
+    "defaultMessage": "Standard"
   },
   "appMenu.view.showGrid": {
     "defaultMessage": "Show Grid"
@@ -923,6 +929,12 @@
   "common.keyboardShortcuts": {
     "defaultMessage": "Keyboard Shortcuts"
   },
+  "common.planView": {
+    "defaultMessage": "Plan View"
+  },
+  "common.pointNorth": {
+    "defaultMessage": "Point North"
+  },
   "common.rename": {
     "defaultMessage": "Rename"
   },
@@ -949,6 +961,21 @@
   },
   "common.widthLabel": {
     "defaultMessage": "Width:"
+  },
+  "compass.label": {
+    "defaultMessage": "Compass"
+  },
+  "compass.rotateLeft": {
+    "defaultMessage": "Rotate left 90°"
+  },
+  "compass.rotateLeftAria": {
+    "defaultMessage": "Rotate left 90 degrees"
+  },
+  "compass.rotateRight": {
+    "defaultMessage": "Rotate right 90°"
+  },
+  "compass.rotateRightAria": {
+    "defaultMessage": "Rotate right 90 degrees"
   },
   "confirmModal.confirm": {
     "defaultMessage": "Confirm"
@@ -1310,12 +1337,6 @@
   "help.shortcut.addEntity": {
     "defaultMessage": "Add new entity"
   },
-  "help.shortcut.backView": {
-    "defaultMessage": "Back view"
-  },
-  "help.shortcut.bottomView": {
-    "defaultMessage": "Bottom view"
-  },
   "help.shortcut.copy": {
     "defaultMessage": "Copy selected entity"
   },
@@ -1331,12 +1352,6 @@
   "help.shortcut.focus": {
     "defaultMessage": "Focus on selected entity"
   },
-  "help.shortcut.frontView": {
-    "defaultMessage": "Front view"
-  },
-  "help.shortcut.leftView": {
-    "defaultMessage": "Left view"
-  },
   "help.shortcut.paste": {
     "defaultMessage": "Paste entity"
   },
@@ -1345,9 +1360,6 @@
   },
   "help.shortcut.redo": {
     "defaultMessage": "Redo action"
-  },
-  "help.shortcut.rightView": {
-    "defaultMessage": "Right view"
   },
   "help.shortcut.rotate": {
     "defaultMessage": "Rotate"
@@ -1369,9 +1381,6 @@
   },
   "help.shortcut.toggleTransform": {
     "defaultMessage": "Toggle local between global transform"
-  },
-  "help.shortcut.topView": {
-    "defaultMessage": "Top view"
   },
   "help.shortcut.translate": {
     "defaultMessage": "Translate"

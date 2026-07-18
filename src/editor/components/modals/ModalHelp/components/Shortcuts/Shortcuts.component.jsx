@@ -2,11 +2,17 @@ import { Component } from 'react';
 import { FormattedMessage } from 'react-intl';
 import styles from './Shortcuts.module.scss';
 import { DocumentationButton } from '../DocumentationButton';
+import { isWasdNav } from '../../../../../lib/nav-experimental/flag.js';
+
+// With the WASD kit gated off, the legacy w/s/d shortcuts remain live
+// (shortcuts.js keeps both keymaps) — advertise the familiar legacy keys.
+// With it on, w/s/d drive the camera and t/l/c are the only bindings.
+const wasdNav = isWasdNav();
 
 const shortcuts = [
   [
     {
-      key: ['w'],
+      key: [wasdNav ? 't' : 'w'],
       description: (
         <FormattedMessage
           id="help.shortcut.translate"
@@ -21,13 +27,13 @@ const shortcuts = [
       )
     },
     {
-      key: ['r'],
+      key: [wasdNav ? 'l' : 's'],
       description: (
         <FormattedMessage id="help.shortcut.scale" defaultMessage="Scale" />
       )
     },
     {
-      key: ['d'],
+      key: [wasdNav ? 'c' : 'd'],
       description: (
         <FormattedMessage
           id="help.shortcut.duplicate"
@@ -118,61 +124,8 @@ const shortcuts = [
         />
       )
     },
-    {
-      key: ['2'],
-      description: (
-        <FormattedMessage
-          id="help.shortcut.leftView"
-          defaultMessage="Left view"
-        />
-      )
-    },
-    {
-      key: ['3'],
-      description: (
-        <FormattedMessage
-          id="help.shortcut.rightView"
-          defaultMessage="Right view"
-        />
-      )
-    },
-    {
-      key: ['4'],
-      description: (
-        <FormattedMessage
-          id="help.shortcut.topView"
-          defaultMessage="Top view"
-        />
-      )
-    },
-    {
-      key: ['5'],
-      description: (
-        <FormattedMessage
-          id="help.shortcut.bottomView"
-          defaultMessage="Bottom view"
-        />
-      )
-    },
-    {
-      key: ['6'],
-      description: (
-        <FormattedMessage
-          id="help.shortcut.backView"
-          defaultMessage="Back view"
-        />
-      )
-    },
-    {
-      key: ['7'],
-      description: (
-        <FormattedMessage
-          id="help.shortcut.frontView"
-          defaultMessage="Front view"
-        />
-      )
-    },
-
+    // The ortho-view shortcut entries (2-7) were removed 2026-07-17 —
+    // ExperimentalControls has no ortho navigation (PR #1851 review).
     {
       key: ['ctrl | cmd', 'x'],
       description: (
