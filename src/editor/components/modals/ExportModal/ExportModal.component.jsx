@@ -387,7 +387,7 @@ function ExportModal() {
             <p>
               <FormattedMessage
                 id="exportModal.planEmpty"
-                defaultMessage="No street segments to draw yet. Add a street layer to see a plan preview."
+                defaultMessage="Nothing to draw yet. Add a street or intersection layer to see a plan preview."
               />
             </p>
           </div>

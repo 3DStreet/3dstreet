@@ -1,19 +1,29 @@
-// Shared 2D plan model for the managed-street plan-view exports.
+// Shared 2D plan model for the scene plan-view exports.
 //
-// Walks every [managed-street] in the scene, projects each street-segment's
-// top face to Z=0, and collects it as a closed polyline on a layer chosen
-// from the segment `type`. Segment corners are transformed by the segment's
-// own world matrix so multiple managed-streets, rotations, and translations
-// are preserved in one shared drawing origin.
+// Walks every street-shaped thing in the scene — managed-streets, legacy
+// street/streetmix-loader streets, and intersections — projects each footprint
+// to Z=0, and collects it as closed polylines on layers chosen by element
+// type. Points are transformed by each entity's own world matrix so multiple
+// streets, intersections, rotations, and translations are preserved in one
+// shared drawing origin.
 //
 // This model is the single geometry pass behind three consumers — the DXF
 // writer, the PDF writer, and the Export modal's SVG preview — so what the
 // user previews is guaranteed to match what they download.
 //
-// First-cut scope is explicit: segment outlines + curb lines where sidewalks
-// meet non-sidewalks. Striping, stencils, blocks for trees/furniture, and
-// intersection curb returns are deliberately out of scope — see the option
-// stubs below for where they will hook in.
+// Scope per element type:
+// - managed-street: segment outlines + curb lines where sidewalks meet
+//   non-sidewalks (from live [street-segment] children).
+// - legacy street (street component / streetmix-loader): same outlines +
+//   curbs, reconstructed from the component's streetmix segments JSON since
+//   its DOM children carry no per-segment geometry data.
+// - intersection: asphalt footprint, sidewalks, corner curbs (with radius
+//   arcs), and crosswalk markings, reconstructed from the same parametric
+//   layout math as the intersection component's update().
+// Striping, stencils, blocks for trees/furniture are deliberately out of
+// scope — see the option stubs below for where they will hook in.
+
+import { CROSSWALKS_REV } from '../../../aframe-components/intersection';
 
 // AutoCAD Color Index — 1-based palette baked into every AutoCAD install.
 // Using ACI (not true RGB) keeps the DXF the smallest possible and lets users
@@ -80,7 +90,29 @@ const SEGMENT_TYPE_TO_LAYER = {
 
 const CURB_LAYER = { name: 'C-TOPO-CURB', color: ACI.WHITE };
 const FALLBACK_LAYER = { name: 'C-ROAD', color: ACI.DARK_GREY };
+// Pavement markings (crosswalks). NCS-ish sibling of C-ROAD.
+const MARKING_LAYER = { name: 'C-ROAD-MRKG', color: ACI.WHITE };
 const METERS_TO_FEET = 3.28083989501312;
+
+// Streetmix segment types (legacy street component) that don't exist in the
+// managed street-segment vocabulary, mapped onto the closest layer type.
+// Any `sidewalk-*` flavor (tree, bench, lamp, wayfinding, …) normalizes to
+// plain sidewalk first — see normalizeLegacySegmentType.
+const LEGACY_SEGMENT_TYPE_ALIASES = {
+  'light-rail': 'rail',
+  streetcar: 'rail',
+  'turn-lane': 'drive-lane',
+  'brt-lane': 'bus-lane',
+  scooter: 'bike-lane',
+  'bike-share': 'bike-lane',
+  'magic-carpet': 'drive-lane'
+};
+
+function normalizeLegacySegmentType(type) {
+  if (!type) return type;
+  if (type.startsWith('sidewalk')) return 'sidewalk';
+  return LEGACY_SEGMENT_TYPE_ALIASES[type] || type;
+}
 
 // Stubbed options. Every field has a hard default so a future combined-export
 // modal can bind form state to this same object without a wire-up rewrite.
@@ -113,6 +145,8 @@ export const DEFAULT_PLAN_EXPORT_OPTIONS = {
 // order is consistent around the face; note that projectToPlan's Z-flip means
 // the emitted polyline winds clockwise, which AutoCAD accepts for closed
 // LWPOLYLINEs (winding only matters if hatch/area logic is added later).
+// Corners [0] and [3] are the segment's -x edge (shared with its lower-x
+// neighbor) — the curb-line passes rely on that.
 function segmentLocalCorners(width, length) {
   const halfW = width / 2;
   const halfL = length / 2;
@@ -130,14 +164,6 @@ function segmentLocalCorners(width, length) {
 function projectToPlan(worldVec3, unitsFeet) {
   const scale = unitsFeet ? METERS_TO_FEET : 1;
   return [worldVec3.x * scale, -worldVec3.z * scale];
-}
-
-function resolveLayer(type, prefix) {
-  const spec = SEGMENT_TYPE_TO_LAYER[type] || FALLBACK_LAYER;
-  return {
-    name: prefix ? `${prefix}${spec.name}` : spec.name,
-    color: spec.color
-  };
 }
 
 // True where a curb should be drawn — a sidewalk touching anything that isn't
@@ -158,8 +184,9 @@ function needsCurbBetween(typeA, typeB) {
 //     lines: [{ layer, p1: [x,y], p2: [x,y] }],
 //     bounds: { minX, minY, maxX, maxY } | null,     // null when empty
 //     unitsFeet,
-//     streetCount,
-//     segmentCount
+//     streetCount,        // managed + legacy streets
+//     segmentCount,       // segments across all streets
+//     intersectionCount
 //   }
 export function buildStreetPlanModel(options = {}) {
   const opts = { ...DEFAULT_PLAN_EXPORT_OPTIONS, ...options };
@@ -171,6 +198,13 @@ export function buildStreetPlanModel(options = {}) {
       layerNames.add(name);
       layers.push({ name, color });
     }
+  };
+  const resolveAndAddLayer = (spec) => {
+    const name = opts.layerPrefix
+      ? `${opts.layerPrefix}${spec.name}`
+      : spec.name;
+    addLayer(name, spec.color);
+    return name;
   };
 
   const polylines = [];
@@ -188,10 +222,51 @@ export function buildStreetPlanModel(options = {}) {
     if (y > bounds.maxY) bounds.maxY = y;
   };
 
-  const streets = Array.from(document.querySelectorAll('[managed-street]'));
+  // Transform entity-local [x, y, z] points through the entity's world matrix
+  // and project them to plan coordinates (growing the drawing bounds).
+  // A-Frame updates object3D.matrixWorld lazily — callers must
+  // updateWorldMatrix() once per entity before batching points through this.
+  const localPointsToPlan = (el, localPoints) =>
+    localPoints.map((p) => {
+      const v = new THREE.Vector3(p[0], p[1], p[2]);
+      v.applyMatrix4(el.object3D.matrixWorld);
+      const planPoint = projectToPlan(v, opts.unitsFeet);
+      growBounds(planPoint);
+      return planPoint;
+    });
 
-  // Nothing to export → caller decides how to surface the empty case.
-  let segmentCount = 0;
+  const ctx = {
+    opts,
+    polylines,
+    lines,
+    resolveAndAddLayer,
+    localPointsToPlan,
+    streetCount: 0,
+    segmentCount: 0,
+    intersectionCount: 0
+  };
+
+  collectManagedStreets(ctx);
+  collectLegacyStreets(ctx);
+  collectIntersections(ctx);
+
+  return {
+    layers,
+    polylines,
+    lines,
+    bounds: ctx.segmentCount > 0 || ctx.intersectionCount > 0 ? bounds : null,
+    unitsFeet: opts.unitsFeet,
+    streetCount: ctx.streetCount,
+    segmentCount: ctx.segmentCount,
+    intersectionCount: ctx.intersectionCount
+  };
+}
+
+// --- managed-street pass ----------------------------------------------------
+// Segment geometry read from the live [street-segment] children.
+function collectManagedStreets(ctx) {
+  const streets = Array.from(document.querySelectorAll('[managed-street]'));
+  ctx.streetCount += streets.length;
 
   for (const streetEl of streets) {
     const segmentEls = Array.from(
@@ -217,59 +292,291 @@ export function buildStreetPlanModel(options = {}) {
         continue;
       }
 
-      // A-Frame updates object3D.matrixWorld lazily. Force an update so the
-      // first export after a scene load doesn't ship a matrix from before
-      // the segment was positioned.
+      // Force the lazy world matrix so the first export after a scene load
+      // doesn't ship a matrix from before the segment was positioned.
       segEl.object3D.updateWorldMatrix(true, false);
 
-      const corners = segmentLocalCorners(width, length);
-      const worldCorners = corners.map((c) => {
-        const v = new THREE.Vector3(c[0], c[1], c[2]);
-        v.applyMatrix4(segEl.object3D.matrixWorld);
-        return v;
-      });
-
-      const planPoints = worldCorners.map((v) =>
-        projectToPlan(v, opts.unitsFeet)
+      const planPoints = ctx.localPointsToPlan(
+        segEl,
+        segmentLocalCorners(width, length)
       );
-      planPoints.forEach(growBounds);
 
-      const layer = resolveLayer(segData.type, opts.layerPrefix);
-      addLayer(layer.name, layer.color);
-      polylines.push({ layer: layer.name, points: planPoints, closed: true });
-      segmentCount++;
+      const layerName = ctx.resolveAndAddLayer(
+        SEGMENT_TYPE_TO_LAYER[segData.type] || FALLBACK_LAYER
+      );
+      ctx.polylines.push({
+        layer: layerName,
+        points: planPoints,
+        closed: true
+      });
+      ctx.segmentCount++;
 
-      // Curb between this segment and its left neighbor. worldCorners[0] and
-      // [3] are the two corners on this segment's -x edge (the shared edge
-      // with the previous, lower-x segment).
+      // Curb between this segment and its left neighbor, spanning this
+      // segment's own -x edge (the neighbor's +x edge is co-located).
       if (
         previousSegmentType &&
         needsCurbBetween(previousSegmentType, segData.type)
       ) {
-        const curbLayerName = opts.layerPrefix
-          ? `${opts.layerPrefix}${CURB_LAYER.name}`
-          : CURB_LAYER.name;
-        addLayer(curbLayerName, CURB_LAYER.color);
-        // Draw one line spanning the shared edge in world Z. Use this
-        // segment's own -x edge — the neighbor's +x edge is co-located.
-        lines.push({
+        const curbLayerName = ctx.resolveAndAddLayer(CURB_LAYER);
+        ctx.lines.push({
           layer: curbLayerName,
-          p1: projectToPlan(worldCorners[0], opts.unitsFeet),
-          p2: projectToPlan(worldCorners[3], opts.unitsFeet)
+          p1: planPoints[0],
+          p2: planPoints[3]
         });
       }
 
       previousSegmentType = segData.type;
     }
   }
+}
 
-  return {
-    layers,
-    polylines,
-    lines,
-    bounds: segmentCount > 0 ? bounds : null,
-    unitsFeet: opts.unitsFeet,
-    streetCount: streets.length,
-    segmentCount
-  };
+// --- legacy street pass -----------------------------------------------------
+// Streets built by the deprecated street component (incl. streetmix-loader
+// imports). Their DOM children are mixin-driven meshes with no per-segment
+// geometry attributes, so the footprint is reconstructed from the component's
+// streetmix segments JSON with the same layout math as
+// aframe-streetmix-parsers.js (createCenteredStreetElement + processSegments):
+// segments run along local Z for `length` meters, laid out left-to-right on
+// local X and centered on the street entity.
+function collectLegacyStreets(ctx) {
+  const streetEls = Array.from(document.querySelectorAll('[street]'));
+
+  for (const streetEl of streetEls) {
+    const data = streetEl.getAttribute('street');
+    if (!data?.JSON || !streetEl.object3D) continue;
+
+    let segments;
+    try {
+      segments = JSON.parse(data.JSON).streetmixSegmentsMetric;
+    } catch {
+      continue;
+    }
+    const length = Number(data.length) || 0;
+    if (!Array.isArray(segments) || segments.length === 0 || length <= 0) {
+      continue;
+    }
+
+    ctx.streetCount++;
+    streetEl.object3D.updateWorldMatrix(true, false);
+
+    const totalWidth = segments.reduce(
+      (sum, segment) => sum + (Number(segment.width) || 0),
+      0
+    );
+
+    let cumulativeWidth = 0;
+    let previousSegmentType = null;
+
+    for (const segment of segments) {
+      const width = Number(segment.width) || 0;
+      if (width <= 0) {
+        previousSegmentType = null;
+        continue;
+      }
+      const centerX = cumulativeWidth + width / 2 - totalWidth / 2;
+      cumulativeWidth += width;
+
+      const type = normalizeLegacySegmentType(segment.type);
+      const planPoints = ctx.localPointsToPlan(
+        streetEl,
+        segmentLocalCorners(width, length).map(([x, y, z]) => [
+          x + centerX,
+          y,
+          z
+        ])
+      );
+
+      const layerName = ctx.resolveAndAddLayer(
+        SEGMENT_TYPE_TO_LAYER[type] || FALLBACK_LAYER
+      );
+      ctx.polylines.push({
+        layer: layerName,
+        points: planPoints,
+        closed: true
+      });
+      ctx.segmentCount++;
+
+      if (previousSegmentType && needsCurbBetween(previousSegmentType, type)) {
+        const curbLayerName = ctx.resolveAndAddLayer(CURB_LAYER);
+        ctx.lines.push({
+          layer: curbLayerName,
+          p1: planPoints[0],
+          p2: planPoints[3]
+        });
+      }
+
+      previousSegmentType = type;
+    }
+  }
+}
+
+// --- intersection pass ------------------------------------------------------
+// The intersection component is fully parametric (see intersection.js:update),
+// so the plan reconstructs the same layout from the component data instead of
+// chasing its autocreated mixin/extrusion children: asphalt footprint,
+// sidewalk slabs, corner curbs (with the same bounded-radius arc), and
+// crosswalk markings. Stop signs and signals are point objects — out of scope
+// like street furniture. The intersection lies in its entity-local XY plane
+// (the entity itself carries the -90° X rotation), so local points are
+// [x, y, 0] here and the world matrix does the rest.
+const CURB_ARC_DIVISIONS = 12;
+
+// Plan width of a crosswalk band, from the crosswalk mixin geometries in
+// assets.js: zebra is a 2m-wide plane at scale 1; the image variants
+// (rainbow, double, mural, piano) are 2m planes at scale 1.5; the raised
+// crosswalk GLB is approximated at the same 3m.
+function crosswalkBandWidth(mixinName) {
+  return mixinName === 'crosswalk-zebra' ? 2 : 3;
+}
+
+function collectIntersections(ctx) {
+  const intersectionEls = Array.from(
+    document.querySelectorAll('[intersection]')
+  );
+
+  for (const el of intersectionEls) {
+    const data = el.getAttribute('intersection');
+    if (!data || !el.object3D) continue;
+
+    const [width, depth] = (data.dimensions || '')
+      .split(' ')
+      .map((n) => Number(n));
+    if (!(width > 0) || !(depth > 0)) continue;
+
+    ctx.intersectionCount++;
+    el.object3D.updateWorldMatrix(true, false);
+
+    const emitLocalXY = (layerSpec, xyPoints) => {
+      const layerName = ctx.resolveAndAddLayer(layerSpec);
+      ctx.polylines.push({
+        layer: layerName,
+        points: ctx.localPointsToPlan(
+          el,
+          xyPoints.map(([x, y]) => [x, y, 0])
+        ),
+        closed: true
+      });
+    };
+    const emitCenteredRect = (layerSpec, cx, cy, w, h) =>
+      emitLocalXY(layerSpec, [
+        [cx - w / 2, cy - h / 2],
+        [cx + w / 2, cy - h / 2],
+        [cx + w / 2, cy + h / 2],
+        [cx - w / 2, cy + h / 2]
+      ]);
+
+    // Asphalt footprint — the box geometry on the entity itself.
+    emitCenteredRect(FALLBACK_LAYER, 0, 0, width, depth);
+
+    // Sidewalk slabs + corner curbs share one shape recipe in the component
+    // (createSidewalkElem): a length×width rect anchored at positionVec and
+    // mirrored into its quadrant by scaleVec, with an optional corner arc.
+    const emitSlab = ({
+      position,
+      scale = [1, 1],
+      length,
+      width: slabWidth,
+      radius = 0
+    }) => {
+      if (!(length > 0) || !(slabWidth > 0)) return;
+      const shapePoints = [
+        [0, 0],
+        [length, 0]
+      ];
+      const boundedRadius = Math.min(radius, length, slabWidth);
+      if (radius > 0) {
+        const arc = new THREE.EllipseCurve(
+          length - boundedRadius,
+          slabWidth - boundedRadius,
+          boundedRadius,
+          boundedRadius,
+          0,
+          Math.PI / 2
+        );
+        arc
+          .getSpacedPoints(CURB_ARC_DIVISIONS)
+          .forEach((p) => shapePoints.push([p.x, p.y]));
+      } else {
+        shapePoints.push([length, slabWidth]);
+      }
+      shapePoints.push([0, slabWidth]);
+      emitLocalXY(
+        SEGMENT_TYPE_TO_LAYER.sidewalk,
+        shapePoints.map(([x, y]) => [
+          position[0] + scale[0] * x,
+          position[1] + scale[1] * y
+        ])
+      );
+    };
+
+    const sidewalkArray = (data.sidewalk || '')
+      .split(' ')
+      .map((n) => Number(n));
+    const sidewalkParams = [
+      // west, east, north, south — same order + anchors as intersection.js
+      {
+        position: [-width / 2, -depth / 2],
+        length: sidewalkArray[0],
+        width: depth
+      },
+      {
+        position: [width / 2, -depth / 2],
+        scale: [-1, 1],
+        length: sidewalkArray[1],
+        width: depth
+      },
+      {
+        position: [-width / 2, depth / 2],
+        scale: [1, -1],
+        length: width,
+        width: sidewalkArray[2]
+      },
+      {
+        position: [-width / 2, -depth / 2],
+        length: width,
+        width: sidewalkArray[3]
+      }
+    ];
+    sidewalkParams.forEach((params) => emitSlab(params));
+
+    const curbAnchors = {
+      northeastcurb: { position: [width / 2, depth / 2], scale: [-1, -1] },
+      southwestcurb: { position: [-width / 2, -depth / 2], scale: [1, 1] },
+      southeastcurb: { position: [width / 2, -depth / 2], scale: [-1, 1] },
+      northwestcurb: { position: [-width / 2, depth / 2], scale: [1, -1] }
+    };
+    for (const [curbName, anchor] of Object.entries(curbAnchors)) {
+      if (data[curbName] === '0 0 0') continue;
+      const [curbLength, curbWidth, curbRadius] = (data[curbName] || '')
+        .split(' ')
+        .map((n) => Number(n));
+      emitSlab({
+        ...anchor,
+        length: curbLength,
+        width: curbWidth,
+        radius: curbRadius || 0
+      });
+    }
+
+    // Crosswalk bands, centered 2m inside each edge like the component
+    // places them: west/east bands span the depth, north/south the width.
+    const crosswalkArray = (data.crosswalk || '')
+      .split(' ')
+      .map((n) => Number(n));
+    const crosswalkRects = [
+      // west, east, north, south
+      (band) => [-width / 2 + 2, 0, band, depth],
+      (band) => [width / 2 - 2, 0, band, depth],
+      (band) => [0, depth / 2 - 2, width, band],
+      (band) => [0, -depth / 2 + 2, width, band]
+    ];
+    crosswalkRects.forEach((rectFor, index) => {
+      const mixinName = CROSSWALKS_REV[crosswalkArray[index]];
+      if (!crosswalkArray[index] || !mixinName) return;
+      emitCenteredRect(
+        MARKING_LAYER,
+        ...rectFor(crosswalkBandWidth(mixinName))
+      );
+    });
+  }
 }
