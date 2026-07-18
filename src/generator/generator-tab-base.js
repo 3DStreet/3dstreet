@@ -10,7 +10,6 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '@shared/services/firebase.js';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import {
-  getDefaultInstructions,
   getStyleSentence,
   describeStyleText,
   composePrompt
@@ -125,7 +124,6 @@ class GeneratorTabBase {
     this.mountStyleSelectorComponent();
     this.updateModelParams();
     this.setupEventListeners();
-    this.generateRandomSeed();
 
     // Register this module with the main UI
     FluxUI.tabModules[this.config.tabType] = this;
@@ -202,33 +200,6 @@ class GeneratorTabBase {
       getId('aspect-ratio-selector')
     );
 
-    // Parameters
-    this.elements.stepsSlider = document.getElementById(getId('steps-slider'));
-    this.elements.stepsValue = document.getElementById(getId('steps-value'));
-    this.elements.guidanceSlider = document.getElementById(
-      getId('guidance-slider')
-    );
-    this.elements.guidanceValue = document.getElementById(
-      getId('guidance-value')
-    );
-    this.elements.safetySlider = document.getElementById(
-      getId('safety-slider')
-    );
-    this.elements.safetyValue = document.getElementById(getId('safety-value'));
-    this.elements.seedInput = document.getElementById(getId('seed-input'));
-    this.elements.randomSeedBtn = document.getElementById(
-      getId('random-seed-btn')
-    );
-    this.elements.randomizeSeedCheckbox = document.getElementById(
-      getId('randomize-seed-checkbox')
-    );
-    this.elements.rawMode = document.getElementById(getId('raw-mode'));
-    this.elements.intervalSlider = document.getElementById(
-      getId('interval-slider')
-    );
-    this.elements.intervalValue = document.getElementById(
-      getId('interval-value')
-    );
     // Image prompt (if applicable)
     if (this.config.showImagePromptUI) {
       this.elements.imagePromptInput =
@@ -264,33 +235,10 @@ class GeneratorTabBase {
     this.elements.aspectRatioGroup = document.getElementById(
       getId('aspect-ratio-group')
     );
-    this.elements.stepsGroup = document.getElementById(getId('steps-group'));
-    this.elements.guidanceGroup = document.getElementById(
-      getId('guidance-group')
-    );
     if (this.config.showImagePromptUI) {
       this.elements.imagePromptGroup =
         document.getElementById('source-image-group');
     }
-    this.elements.rawModeGroup = document.getElementById(
-      getId('raw-mode-group')
-    );
-    this.elements.intervalGroup = document.getElementById(
-      getId('interval-group')
-    );
-    this.elements.safetyGroup = document.getElementById(getId('safety-group'));
-    this.elements.seedGroup = document.getElementById(getId('seed-group'));
-
-    // Advanced options
-    this.elements.advancedToggle = document.getElementById(
-      getId('advanced-toggle')
-    );
-    this.elements.advancedOptions = document.getElementById(
-      getId('advanced-options')
-    );
-    this.elements.advancedIcon = document.getElementById(
-      getId('advanced-icon')
-    );
 
     // Preview
     this.elements.previewContainer = document.getElementById(
@@ -435,14 +383,14 @@ class GeneratorTabBase {
   }
 
   /**
-   * Get instructions placeholder based on tab type (fields are prefilled
-   * with defaults, so this only shows if the user clears the field)
+   * Get instructions placeholder based on tab type. Both fields start empty
+   * (helptext only); validateGeneration rejects an all-empty composed prompt.
    */
   getPromptPlaceholder() {
     if (this.config.tabType === 'create') {
-      return 'Describe what to generate...';
+      return 'Describe what to generate';
     }
-    return 'Describe what to generate or how to change the source image...';
+    return 'Describe what to generate or how to change the source image';
   }
 
   /**
@@ -476,14 +424,13 @@ class GeneratorTabBase {
   }
 
   /**
-   * Prefill the instructions field with real default text so what's sent is
-   * always fully visible (no hidden fallback prompt); the wording works with
-   * or without a source image. The style field defaults to empty ('none'):
-   * in the generator the user's edit is the point, styling is opt-in.
+   * Both fields start empty in the generator — helptext placeholders carry
+   * the guidance, and what's sent is always exactly what's visible (no
+   * hidden fallback prompt). Styling is opt-in via the chips.
    */
   prefillPromptDefaults() {
     if (this.elements.promptInput) {
-      this.elements.promptInput.value = getDefaultInstructions('generator');
+      this.elements.promptInput.value = '';
     }
     if (this.elements.styleInput) {
       this.elements.styleInput.value = '';
@@ -492,8 +439,8 @@ class GeneratorTabBase {
   }
 
   /**
-   * Three text levels, shared with the editor (promptFields.module.scss):
-   * helptext placeholder (italic, darkest gray), default/preset text
+   * Text levels, shared with the editor (promptFields.module.scss):
+   * helptext placeholder (italic, darkest gray), preset style text
    * (middle gray), and user-authored text (white via .userText).
    */
   updatePromptTint() {
@@ -501,11 +448,7 @@ class GeneratorTabBase {
       if (!el) return;
       el.classList.toggle(promptFieldStyles.userText, isUserText);
     };
-    setTint(
-      this.elements.promptInput,
-      this.elements.promptInput?.value.trim() !==
-        getDefaultInstructions('generator')
-    );
+    setTint(this.elements.promptInput, !!this.elements.promptInput?.value);
     setTint(
       this.elements.styleInput,
       describeStyleText(this.elements.styleInput?.value) === 'custom'
@@ -587,7 +530,7 @@ class GeneratorTabBase {
                             <label for="${getId('style-input')}" class="${promptFieldStyles.fieldLabel}">Style</label>
                             <div id="${getId('style-selector-container')}"></div>
                             <textarea id="${getId('style-input')}" rows="2" class="${promptFieldStyles.textarea}"
-                                      placeholder="No style; instructions only"></textarea>
+                                      placeholder="No style change, use instructions only"></textarea>
                         </div>
                     </div>
 
@@ -620,70 +563,6 @@ class GeneratorTabBase {
                         </select>
                     </div>
 
-                    <!-- Advanced Options -->
-                    <div class="mb-4">
-                        <div class="flex justify-between items-center cursor-pointer" id="${getId('advanced-toggle')}">
-                            <span class="text-sm font-medium text-gray-700">Advanced Options</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="${getId('advanced-icon')}">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </div>
-
-                        <div class="mt-2 hidden" id="${getId('advanced-options')}">
-                            <!-- Steps -->
-                            <div class="mb-3 param-group" id="${getId('steps-group')}">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Steps: <span id="${getId('steps-value')}">40</span></label>
-                                <input type="range" id="${getId('steps-slider')}" min="1" max="50" value="40" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                            </div>
-
-                            <!-- Guidance Scale -->
-                            <div class="mb-3 param-group" id="${getId('guidance-group')}">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Guidance Scale: <span id="${getId('guidance-value')}">2.5</span></label>
-                                <input type="range" id="${getId('guidance-slider')}" min="1.5" max="5" step="0.1" value="2.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                            </div>
-
-                            <!-- Safety Tolerance -->
-                            <div class="mb-3 param-group opacity-50 cursor-not-allowed" id="${getId('safety-group')}">
-                                <label class="block text-sm font-medium text-gray-500 mb-1">Safety Tolerance: <span id="${getId('safety-value')}">2</span></label>
-                                <input type="range" id="${getId('safety-slider')}" min="0" max="6" step="1" value="2" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed pointer-events-none" disabled>
-                                <p class="text-xs text-gray-500 mt-1">Higher values are less strict (0 = most strict, 6 = least strict)</p>
-                            </div>
-
-                            <!-- Seed -->
-                            <div class="mb-3 param-group" id="${getId('seed-group')}">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Seed</label>
-                                <div class="flex">
-                                    <input type="number" id="${getId('seed-input')}" placeholder="Random" class="w-full px-3 py-2 border border-gray-300 rounded-l-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                    <button id="${getId('random-seed-btn')}" class="px-3 py-2 bg-gray-100 border border-gray-300 border-l-0 rounded-r-md hover:bg-gray-200">
-                                        🎲
-                                    </button>
-                                </div>
-                                <!-- Randomize Seed Checkbox -->
-                                <div class="mt-2 flex items-center">
-                                    <input type="checkbox" id="${getId('randomize-seed-checkbox')}" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" checked>
-                                    <label for="${getId('randomize-seed-checkbox')}" class="ml-2 block text-sm text-gray-700">Randomize seed before each generation</label>
-                                </div>
-                            </div>
-
-                            <!-- Raw Mode (Ultra only) -->
-                            <div class="mb-3 param-group hidden" id="${getId('raw-mode-group')}">
-                                <div class="flex items-center">
-                                    <input type="checkbox" id="${getId('raw-mode')}" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                                    <label for="${getId('raw-mode')}" class="ml-2 block text-sm text-gray-700">Raw Mode</label>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-1">Generate less processed, more natural-looking images</p>
-                            </div>
-
-                            <!-- Interval (Pro only) -->
-                            <div class="mb-3 param-group hidden" id="${getId('interval-group')}">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Interval: <span id="${getId('interval-value')}">2.0</span></label>
-                                <input type="range" id="${getId('interval-slider')}" min="1" max="4" step="0.1" value="2.0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                                <p class="text-xs text-gray-500 mt-1">Parameter for guidance control</p>
-                            </div>
-
-                        </div>
-                    </div>
-
                     <!-- Generate Button -->
                     <button id="${getId('generate-btn')}" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-center gap-2">
                         <svg id="${getId('generate-spinner')}" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -697,18 +576,6 @@ class GeneratorTabBase {
                         </span>
                     </button>
 
-                    <!-- Email when done. Hidden until a job is actually in
-                         flight — pre-submit it's just config noise; mid-render
-                         it's the "you can close this tab" affordance. Toggling
-                         writes through to the job doc (setGenerationJobNotify).
-                         Unlike video/splat this defaults OFF: most image
-                         renders finish in seconds. Suppressed server-side if
-                         this tab is still open when it finishes. -->
-                    <label id="${getId('notify-email-row')}" class="hidden flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
-                        <input id="${getId('notify-email')}" type="checkbox"
-                            class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                        Email me when my image is ready (you can close this tab)
-                    </label>
                 </div>
 
                 <!-- Preview Column -->
@@ -734,6 +601,18 @@ class GeneratorTabBase {
                                 <span class="generator-progress-text" id="${getId('loading-text')}">Generating your image...</span>
                                 <span class="generator-progress-text hidden" id="${getId('generator-overtime-text')}" style="margin-top: 4px; color: #fbbf24;">Generation taking longer than expected.</span>
                             </div>
+                            <!-- Email when done. Hidden until the submit
+                                 returns a jobId — mid-render it's the "you
+                                 can close this tab" affordance. Toggling
+                                 writes through to the job doc
+                                 (setGenerationJobNotify); suppressed
+                                 server-side if this tab is still open when
+                                 the job finishes. -->
+                            <label id="${getId('notify-email-row')}" class="hidden flex items-center gap-2 mt-4 text-sm text-gray-600 cursor-pointer select-none">
+                                <input id="${getId('notify-email')}" type="checkbox" checked
+                                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                                Email me when my image is ready (you can close this tab)
+                            </label>
                         </div>
                     </div>
                     <div class="px-6 pb-6">
@@ -771,16 +650,6 @@ class GeneratorTabBase {
     // Model selector is now handled by React component
     // No need for manual event listener
 
-    this.elements.advancedToggle.addEventListener(
-      'click',
-      this.toggleAdvancedOptions.bind(this)
-    );
-
-    this.elements.randomSeedBtn.addEventListener(
-      'click',
-      this.generateRandomSeed.bind(this)
-    );
-
     this.elements.generateBtn.addEventListener(
       'click',
       this.generateImage.bind(this)
@@ -809,12 +678,6 @@ class GeneratorTabBase {
     this.elements.notifyEmail?.addEventListener('change', () => {
       this.syncJobNotify();
     });
-
-    // Setup sliders
-    this.setupSlider(this.elements.stepsSlider, this.elements.stepsValue);
-    this.setupSlider(this.elements.guidanceSlider, this.elements.guidanceValue);
-    this.setupSlider(this.elements.safetySlider, this.elements.safetyValue);
-    this.setupSlider(this.elements.intervalSlider, this.elements.intervalValue);
 
     // Setup image prompt listeners (if applicable)
     if (this.config.showImagePromptUI) {
@@ -974,49 +837,33 @@ class GeneratorTabBase {
     // Keep the source-image `*` in sync: red when this model requires an image.
     this.updateSourceImageIndicator();
 
-    // Default visibility states
+    // Default visibility states. All current models take a fixed size and
+    // sampler settings server-side, so the per-model tuning UI (steps,
+    // guidance, seed, …) is gone entirely; only dimensions/aspect-ratio
+    // remain, for a future model that accepts them.
     let showDimensions = true;
     let showAspectRatio = false;
-    let showSteps = true;
-    let showGuidance = true;
-    let showRaw = false;
-    let showInterval = false;
     let showImagePrompt = this.config.showImagePromptUI;
-    let showSafetyTolerance = true;
-    let showSeed = true;
 
     if (this.config.showImagePromptUI) {
       this.elements.imagePromptStrengthContainer.classList.add('hidden');
     }
 
-    // Update slider ranges and visibility based on model
     switch (model) {
       case 'nano-banana-pro':
       case 'nano-banana-2':
       case 'seedream-4.5':
       case 'fal-flux-2-max-edit':
       case 'fal-flux-2-pro-edit':
-        // The fal edit endpoints ignore dimensions/steps/guidance/safety/seed
-        // (generateFalImage sends a fixed image_size and sampler settings).
+        // These endpoints ignore dimensions (a fixed image_size is sent).
         showDimensions = false;
         showAspectRatio = false;
-        showRaw = false;
-        showSteps = false;
-        showGuidance = false;
-        showSafetyTolerance = false;
-        showSeed = false;
         break;
     }
 
     // Apply visibility
     this.elements.dimensionsGroup.classList.toggle('hidden', !showDimensions);
     this.elements.aspectRatioGroup.classList.toggle('hidden', !showAspectRatio);
-    this.elements.stepsGroup.classList.toggle('hidden', !showSteps);
-    this.elements.guidanceGroup.classList.toggle('hidden', !showGuidance);
-    this.elements.rawModeGroup.classList.toggle('hidden', !showRaw);
-    this.elements.intervalGroup.classList.toggle('hidden', !showInterval);
-    this.elements.safetyGroup.classList.toggle('hidden', !showSafetyTolerance);
-    this.elements.seedGroup.classList.toggle('hidden', !showSeed);
 
     if (this.config.showImagePromptUI) {
       this.elements.imagePromptGroup.classList.toggle(
@@ -1123,20 +970,6 @@ class GeneratorTabBase {
   }
 
   /**
-   * Toggle advanced options visibility
-   */
-  toggleAdvancedOptions() {
-    this.elements.advancedOptions.classList.toggle('hidden');
-    const isVisible =
-      !this.elements.advancedOptions.classList.contains('hidden');
-    if (isVisible) {
-      this.elements.advancedIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />`;
-    } else {
-      this.elements.advancedIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />`;
-    }
-  }
-
-  /**
    * Setup range sliders
    */
   setupSlider(slider, valueDisplay) {
@@ -1145,13 +978,6 @@ class GeneratorTabBase {
         valueDisplay.textContent = slider.value;
       });
     }
-  }
-
-  /**
-   * Generate a random seed
-   */
-  generateRandomSeed() {
-    this.elements.seedInput.value = Math.floor(Math.random() * 1000000);
   }
 
   /**
