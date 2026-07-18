@@ -3,9 +3,15 @@ import { TransformControls } from './TransformControls.js';
 import EditorControls from './EditorControls.js';
 import { MeasureLineControls } from './MeasureLineControls.js';
 import InfiniteGridHelper from './InfiniteGridHelper.js';
+import {
+  ExperimentalControls,
+  isExperimentalNav,
+  isStreetLevelNav
+} from './nav-experimental/index.js';
 
 import { copyCameraPosition } from './cameras';
 import { initRaycaster } from './raycaster';
+import { captureNavDiscovery } from './navAnalytics.js';
 import Events from './Events';
 import { isBatched, syncBatchedSubtree } from '../../batch-models';
 import useStore from '@/store';
@@ -255,9 +261,31 @@ export function Viewport(inspector) {
 
   Events.on('raycastermouseenter', (el) => {
     // update hoverBox to match el.object3D bounding box
-    if (el === inspector.selectedEntity) return;
+    //
+    // Hover-highlight parity (KD-27). Flag-OFF: the legacy hover box is driven
+    // from the same getIntersectedEl() result a single-click selects (the
+    // `el` payload), so hover already matches selection — there is NO
+    // divergence to fix, and we leave the audited legacy behaviour untouched.
+    // Flag-ON: "what a click does" IS navigate (teleport), so the hover box
+    // must preview the Phase-4 TELEPORT category — driven from the SAME raw
+    // cursor intersection navigateDoubleClick classifies off (NOT the
+    // segment-remapped getIntersectedEl). So hovering a car-in-lane shows the
+    // car (Category C) and a pixel aside shows the lane (Category A), matching
+    // WE-7 by construction. The teleport ships with ?streetview=on
+    // (raycaster.js gates the dblclick reroute the same way), so the preview
+    // follows the same flag — at parity, hover matches legacy selection.
+    let target = el;
+    if (isExperimentalNav() && isStreetLevelNav()) {
+      const cursorComp =
+        inspector.cursor && inspector.cursor.components
+          ? inspector.cursor.components.cursor
+          : null;
+      const raw = cursorComp ? cursorComp.intersectedEl : null;
+      if (raw) target = raw;
+    }
+    if (!target || target === inspector.selectedEntity) return;
     hoverBox.visible = true;
-    hoverBox.setFromObject(el.object3D);
+    hoverBox.setFromObject(target.object3D);
   });
 
   Events.on('raycastermouseleave', (el) => {
@@ -426,8 +454,20 @@ export function Viewport(inspector) {
   });
 
   // Controls need to be added *after* main logic.
-  const controls = new THREE.EditorControls(camera, inspector.container);
+  // The experimental nav-controls system is default-on; `?nav=classic` opts
+  // out to the legacy controls (KD-01). The two control classes are mutually
+  // exclusive at construction time.
+  const controls = isExperimentalNav()
+    ? new ExperimentalControls(camera, inspector.container)
+    : new THREE.EditorControls(camera, inspector.container);
   inspector.controls = controls; // used by ActionBar zoom/reset buttons
+  // Attach the tilt-threshold tuning component (T = TH-03, exposed via the
+  // nav-experimental-tuning A-Frame component — KD-32) so T is
+  // live-tweakable during feel-testing. No-op for legacy controls (they
+  // have no setTiltThreshold); only attach when experimental nav is on.
+  if (isExperimentalNav()) {
+    sceneEl.setAttribute('nav-experimental-tuning', '');
+  }
   controls.center.set(0, 1.6, 0);
   controls.rotationSpeed = 0.0035;
   controls.zoomSpeed = 0.05;
@@ -443,6 +483,30 @@ export function Viewport(inspector) {
   });
 
   Events.on('cameratoggle', (data) => {
+    // Plan View intercept (KD-26): when
+    // experimental nav is on and the user triggered Plan View (which
+    // cameras.js dispatched as `orthotop`), revert the camera swap and
+    // delegate to the experimental controls' animated tween instead. The
+    // brief revert happens before any frame renders, so there is no
+    // visual flicker. Other ortho-toggle paths (left/right/etc.) are
+    // unaffected by the intercept.
+    if (
+      isExperimentalNav() &&
+      data.value === 'orthotop' &&
+      typeof controls.handlePlanViewRequest === 'function'
+    ) {
+      const perspective = inspector.cameras && inspector.cameras.perspective;
+      if (perspective) {
+        sceneEl.camera = perspective;
+        inspector.camera = perspective;
+        transformControls.camera = perspective;
+        measureLineControls.camera = perspective;
+        controls.setCamera(perspective);
+        updateAspectRatio();
+        controls.handlePlanViewRequest();
+        return;
+      }
+    }
     controls.setCamera(data.camera);
     transformControls.camera = data.camera;
     measureLineControls.camera = data.camera;
@@ -544,7 +608,18 @@ export function Viewport(inspector) {
   });
 
   Events.on('objectfocus', (object) => {
+    // Feature-discovery: count the first focus-on-entity (double-click,
+    // F-key, or sidebar focus button all route through this event).
+    captureNavDiscovery('focus');
     controls.focus(object);
+  });
+
+  // Cursor-aware double-click navigation (KD-23; experimental nav
+  // only). Guarded by method presence so legacy EditorControls is unaffected.
+  Events.on('nav-experimental:doubleclick', (payload) => {
+    if (controls.navigateDoubleClick) {
+      controls.navigateDoubleClick(payload);
+    }
   });
 
   // Restore the camera to a snapshot's captured pose (#1605).
