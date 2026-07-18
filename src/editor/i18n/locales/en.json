@@ -237,7 +237,7 @@
     "defaultMessage": "Paste"
   },
   "appMenu.export.dxfEmpty": {
-    "defaultMessage": "No managed-street segments found to export as DXF."
+    "defaultMessage": "No street or intersection elements found to export as DXF."
   },
   "appMenu.export.dxfError": {
     "defaultMessage": "Error while trying to save DXF file. Error: {error}"
@@ -261,7 +261,7 @@
     "defaultMessage": "3DStreet scene exported as glTF file."
   },
   "appMenu.export.pdfEmpty": {
-    "defaultMessage": "No managed-street segments found to export as PDF."
+    "defaultMessage": "No street or intersection elements found to export as PDF."
   },
   "appMenu.export.pdfError": {
     "defaultMessage": "Error while trying to save PDF file. Error: {error}"
@@ -1073,11 +1073,29 @@
   "exportModal.jsonTruncated": {
     "defaultMessage": "Preview truncated. The downloaded file contains the full scene."
   },
+  "exportModal.layerClones": {
+    "defaultMessage": "Clones"
+  },
+  "exportModal.layerIntersections": {
+    "defaultMessage": "Intersections"
+  },
+  "exportModal.layerSegments": {
+    "defaultMessage": "Segments"
+  },
+  "exportModal.layerShapes": {
+    "defaultMessage": "Shapes"
+  },
+  "exportModal.layersLabel": {
+    "defaultMessage": "Layers"
+  },
   "exportModal.pdfDescription": {
     "defaultMessage": "Download a 2D plan view of this scene's streets as a vector <code>.pdf</code> file, ready to print or publish."
   },
   "exportModal.planEmpty": {
-    "defaultMessage": "No street segments to draw yet. Add a street layer to see a plan preview."
+    "defaultMessage": "Nothing to draw yet. Add a street or intersection layer to see a plan preview."
+  },
+  "exportModal.planEmptyFiltered": {
+    "defaultMessage": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview."
   },
   "exportModal.previewError": {
     "defaultMessage": "Could not generate the preview. Please try again."

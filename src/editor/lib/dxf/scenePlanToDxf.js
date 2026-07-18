@@ -1,13 +1,14 @@
-// managed-street → DXF plan-view exporter.
+// Scene → DXF plan-view exporter.
 //
 // Thin consumer of the shared plan model (see plan/planModel.js — the single
 // geometry pass shared with the PDF writer and the Export modal's SVG
-// preview). This file only maps the model onto the DXF builder API.
+// preview, covering managed streets, legacy streets, and intersections).
+// This file only maps the model onto the DXF builder API.
 
 import { createDxf, INSUNITS } from './dxfWriter';
 import { buildStreetPlanModel } from '../plan/planModel';
 
-export function exportManagedStreetsToDxf(options = {}) {
+export function exportScenePlanToDxf(options = {}) {
   const model = buildStreetPlanModel(options);
 
   const dxf = createDxf();
@@ -27,7 +28,11 @@ export function exportManagedStreetsToDxf(options = {}) {
 
   return {
     dxfString: dxf.toString(),
+    isEmpty: model.bounds === null,
     streetCount: model.streetCount,
-    segmentCount: model.segmentCount
+    segmentCount: model.segmentCount,
+    intersectionCount: model.intersectionCount,
+    shapeCount: model.shapeCount,
+    cloneCount: model.cloneCount
   };
 }
