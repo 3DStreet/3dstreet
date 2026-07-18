@@ -20,6 +20,7 @@ import ImageUploadUtils from './image-upload-utils.js';
 import { VIDEO_MODELS } from '@shared/constants/replicateModels.js';
 import { getDefaultInstructions } from '@shared/constants/renderStyles.js';
 import { mountVideoModelSelector } from './mount-video-model-selector.js';
+import { syncJobNotifyEmail } from './job-notify.js';
 
 // Video tab module
 const VideoTab = {
@@ -40,6 +41,7 @@ const VideoTab = {
   // Job-status poll state (see pollVideoStatus)
   pollTimeout: null, // setTimeout handle for the status poll loop
   pollDeadline: 0, // wall-clock ms after which we stop polling
+  activeJobId: null, // in-flight job — target of the email toggle
 
   // Poll cadence and overall ceiling. Renders run ~1.5–2.5 minutes; 15 min is
   // generous headroom before we give up locally (the job still finishes
@@ -221,6 +223,9 @@ const VideoTab = {
     this.elements.tokenCostDisplay =
       document.getElementById('video-token-cost');
     this.elements.notifyEmail = document.getElementById('video-notify-email');
+    this.elements.notifyEmailRow = document.getElementById(
+      'video-notify-email-row'
+    );
 
     // Verify critical elements
     let missingElements = [];
@@ -367,14 +372,17 @@ const VideoTab = {
                         </span>
                     </button>
 
-                    <!-- Email when done. Renders are usually ~2 minutes, but
-                         provider queue waits can stretch a job much longer;
-                         the email is suppressed server-side if this tab is
-                         still open when it finishes (same as the splat tab). -->
-                    <label class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
+                    <!-- Email when done. Hidden until a job is in flight —
+                         mid-render it's the "you can close this tab"
+                         affordance; toggling writes through to the job doc
+                         (setGenerationJobNotify). Defaults ON: renders are
+                         usually ~2 minutes but queue waits can stretch much
+                         longer. Suppressed server-side if this tab is still
+                         open when it finishes (same as the splat tab). -->
+                    <label id="video-notify-email-row" class="hidden flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
                         <input id="video-notify-email" type="checkbox" checked
                             class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                        Email me when my video is ready
+                        Email me when my video is ready (you can close this tab)
                     </label>
                 </div>
 
@@ -432,6 +440,11 @@ const VideoTab = {
       );
       return;
     }
+
+    // Mid-render email opt-in writes through to the in-flight job doc
+    this.elements.notifyEmail?.addEventListener('change', () => {
+      syncJobNotifyEmail(this.activeJobId, this.elements.notifyEmail);
+    });
 
     // Image upload
     this.elements.imageInput.addEventListener(
@@ -638,6 +651,11 @@ const VideoTab = {
 
         // Tokens are charged at submit (refunded on failure); reflect that.
         window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+
+        // The job is now really in flight — reveal the email opt-in (check
+        // it, close the tab, get the result by email).
+        this.activeJobId = result.data.jobId;
+        this.elements.notifyEmailRow?.classList.remove('hidden');
 
         // The job now shows as a pending card in the assets gallery, driven by
         // the live Firestore listener on the job doc — it persists across
@@ -906,6 +924,10 @@ const VideoTab = {
       const modelName = this.selectedModel;
       this.startTimer(modelName);
     } else {
+      // Terminal (or reset): the email toggle only applies to an in-flight
+      // job, so it leaves with the loading state.
+      this.activeJobId = null;
+      this.elements.notifyEmailRow?.classList.add('hidden');
       this.elements.loadingIndicator.classList.add('hidden');
       this.elements.generateBtn.disabled = false;
       this.elements.generateBtn.classList.remove(

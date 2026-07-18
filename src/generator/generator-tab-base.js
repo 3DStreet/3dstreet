@@ -16,6 +16,7 @@ import {
   composePrompt
 } from '@shared/constants/renderStyles.js';
 import { mountModelSelector } from './mount-model-selector.js';
+import { syncJobNotifyEmail } from './job-notify.js';
 import { mountStyleSelector } from './mount-style-selector.js';
 import promptFieldStyles from '@shared/styles/promptFields.module.scss';
 import posthog from 'posthog-js';
@@ -71,6 +72,7 @@ class GeneratorTabBase {
     // completion (gallery save) happens server-side.
     this.pollTimeout = null; // setTimeout handle for the status poll loop
     this.pollDeadline = 0; // wall-clock ms after which we stop polling
+    this.activeJobId = null; // in-flight job — target of the email toggle
     // Most image renders finish in seconds; 15 min is generous headroom before
     // we give up locally (the job still finishes server-side regardless — the
     // image lands in the gallery either way).
@@ -340,6 +342,9 @@ class GeneratorTabBase {
     );
     this.elements.tokenCost = document.getElementById(getId('token-cost'));
     this.elements.notifyEmail = document.getElementById(getId('notify-email'));
+    this.elements.notifyEmailRow = document.getElementById(
+      getId('notify-email-row')
+    );
 
     // Verify critical elements
     const missingElements = [];
@@ -692,15 +697,17 @@ class GeneratorTabBase {
                         </span>
                     </button>
 
-                    <!-- Email when done. Unlike video/splat this defaults OFF:
-                         most image renders finish in seconds, so the email
-                         would usually arrive after the user already saw the
-                         result. Suppressed server-side if this tab is still
-                         open when it finishes. -->
-                    <label class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
+                    <!-- Email when done. Hidden until a job is actually in
+                         flight — pre-submit it's just config noise; mid-render
+                         it's the "you can close this tab" affordance. Toggling
+                         writes through to the job doc (setGenerationJobNotify).
+                         Unlike video/splat this defaults OFF: most image
+                         renders finish in seconds. Suppressed server-side if
+                         this tab is still open when it finishes. -->
+                    <label id="${getId('notify-email-row')}" class="hidden flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
                         <input id="${getId('notify-email')}" type="checkbox"
                             class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                        Email me when my image is ready
+                        Email me when my image is ready (you can close this tab)
                     </label>
                 </div>
 
@@ -796,6 +803,11 @@ class GeneratorTabBase {
     });
     this.elements.promptInput.addEventListener('input', () => {
       this.updatePromptTint();
+    });
+
+    // Mid-render email opt-in writes through to the in-flight job doc
+    this.elements.notifyEmail?.addEventListener('change', () => {
+      this.syncJobNotify();
     });
 
     // Setup sliders
@@ -1622,6 +1634,32 @@ class GeneratorTabBase {
    * on the job doc.
    */
   onImageJobSubmitted(result, model, modelConfig, prompt, promptStyle) {
+    // Legacy sync response (a not-yet-updated function deployment): the render
+    // already finished server-side and `message` is a success string, so treat
+    // it as a completed job rather than throwing it into the error toast.
+    if (result.data?.success && result.data.image_url && !result.data.jobId) {
+      this.currentParams = {
+        model: model,
+        model_name: modelConfig.name,
+        prompt: prompt,
+        render_style: promptStyle,
+        timestamp: new Date().toISOString()
+      };
+      this.currentImageUrl = result.data.image_url;
+      this.displayImage(result.data.image_url);
+      this.stopTimer();
+      this.toggleLoading(false);
+      window.dispatchEvent(new Event('assets:refresh'));
+      window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+      FluxUI.showNotification(
+        result.data.remainingTokens !== undefined
+          ? `Image generated successfully! ${result.data.remainingTokens} gen tokens remaining. (${modelConfig.name})`
+          : `Image generated successfully! (${modelConfig.name})`,
+        'success'
+      );
+      return;
+    }
+
     if (!result.data || !result.data.success || !result.data.jobId) {
       throw new Error(
         result.data?.message || 'Could not start image generation'
@@ -1637,6 +1675,11 @@ class GeneratorTabBase {
     };
     // Remembered for the success toast once the poll sees the job finish.
     this.lastRemainingTokens = result.data.remainingTokens;
+
+    // The job is now really in flight — this is the moment the email opt-in
+    // becomes meaningful (check it, close the tab, get the result by email).
+    this.activeJobId = result.data.jobId;
+    this.elements.notifyEmailRow?.classList.remove('hidden');
 
     window.dispatchEvent(new CustomEvent('tokenCountChanged'));
 
@@ -1744,6 +1787,10 @@ class GeneratorTabBase {
         this.POLL_INTERVAL_MS
       );
     }
+  }
+
+  syncJobNotify() {
+    syncJobNotifyEmail(this.activeJobId, this.elements.notifyEmail);
   }
 
   stopPolling() {
@@ -1867,6 +1914,10 @@ class GeneratorTabBase {
         this.elements.previewContainer.removeChild(fallbackButton);
       }
     } else {
+      // Terminal (or reset): the email toggle only applies to an in-flight
+      // job, so it leaves with the loading state.
+      this.activeJobId = null;
+      this.elements.notifyEmailRow?.classList.add('hidden');
       this.elements.loadingIndicator.classList.add('hidden');
       this.elements.generateBtn.disabled = false;
       this.elements.generateBtn.classList.remove(

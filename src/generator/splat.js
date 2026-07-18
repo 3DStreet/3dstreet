@@ -32,6 +32,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions, auth, storage } from '@shared/services/firebase.js';
 import { ref as storageRef, uploadBytesResumable } from 'firebase/storage';
 import posthog from 'posthog-js';
+import { syncJobNotifyEmail } from './job-notify.js';
 
 // Shared notice for all vid2scene tiers.
 const VID2SCENE_NOTICE =
@@ -122,6 +123,7 @@ const SplatTab = {
   startTime: null,
   pollTimeout: null, // setTimeout handle for the status poll loop
   pollDeadline: 0, // wall-clock ms after which we stop polling
+  activeJobId: null, // in-flight job — target of the email toggle
 
   init() {
     const container = document.getElementById('splat-tab');
@@ -256,13 +258,16 @@ const SplatTab = {
             <span id="splat-generate-text">Generate Splat</span>
           </button>
 
-          <!-- Email when done. Default on: splats take minutes, so most users
-               navigate away. The email is suppressed server-side if the tab is
-               still open when it finishes (see generation-job-reconcile.js). -->
-          <label class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
+          <!-- Email when done. Hidden until a job is in flight — mid-render
+               it's the "you can close this tab" affordance; toggling writes
+               through to the job doc (setGenerationJobNotify). Default on:
+               splats take minutes, so most users navigate away. The email is
+               suppressed server-side if the tab is still open when it
+               finishes (see generation-job-reconcile.js). -->
+          <label id="splat-notify-email-row" class="hidden flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
             <input id="splat-notify-email" type="checkbox" checked
               class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-            Email me when my splat is ready
+            Email me when my splat is ready (you can close this tab)
           </label>
 
           <!-- Research preview / license notice (model-aware) -->
@@ -355,6 +360,7 @@ const SplatTab = {
       generateSpinner: byId('splat-generate-spinner'),
       generateText: byId('splat-generate-text'),
       notifyEmail: byId('splat-notify-email'),
+      notifyEmailRow: byId('splat-notify-email-row'),
       previewContainer: byId('splat-preview-container'),
       placeholder: byId('splat-placeholder'),
       placeholderText: byId('splat-placeholder-text'),
@@ -414,6 +420,11 @@ const SplatTab = {
     });
 
     els.generateBtn.addEventListener('click', () => this.generateSplat());
+
+    // Mid-render email opt-in writes through to the in-flight job doc
+    els.notifyEmail?.addEventListener('change', () => {
+      syncJobNotifyEmail(this.activeJobId, els.notifyEmail);
+    });
 
     els.downloadBtn.addEventListener('click', () => {
       if (this.currentSplatUrl) this.downloadSplat();
@@ -580,6 +591,10 @@ const SplatTab = {
       // actually submitted.
       this.setLoadingPhase('uploading');
     } else {
+      // Terminal (or reset): the email toggle only applies to an in-flight
+      // job, so it leaves with the loading state.
+      this.activeJobId = null;
+      els.notifyEmailRow?.classList.add('hidden');
       els.loadingIndicator.classList.add('hidden');
       this.stopTimer();
       this.updateGenerateLabel();
@@ -720,6 +735,11 @@ const SplatTab = {
       // Upload is done and the job is queued server-side — now it's safe to tell
       // the user they can close the tab, and to start the generation timer.
       this.setLoadingPhase('processing');
+
+      // Also the moment the email opt-in becomes meaningful (check it, close
+      // the tab, get the result by email).
+      this.activeJobId = result.data.jobId;
+      this.elements.notifyEmailRow?.classList.remove('hidden');
 
       // The job now shows as a pending card in the assets gallery, driven by a
       // live Firestore listener on the job doc (written before this returns) —

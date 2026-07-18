@@ -24,6 +24,7 @@ import useImageGenStore from './store.js';
 import { httpsCallable } from 'firebase/functions';
 import { functions, auth } from '@shared/services/firebase.js';
 import posthog from 'posthog-js';
+import { syncJobNotifyEmail } from './job-notify.js';
 
 // Selectable image -> mesh models (both GLB output via fal). tokenCost mirrors
 // the backend source of truth (public/functions/replicate-models.js); the
@@ -51,6 +52,7 @@ const Model3DTab = {
   startTime: null,
   pollTimeout: null, // setTimeout handle for the status poll loop
   pollDeadline: 0,
+  activeJobId: null, // in-flight job — target of the email toggle
 
   // Poll cadence + how long we keep polling before telling the user to check
   // their gallery. The job still completes server-side past this; we just stop
@@ -141,13 +143,16 @@ const Model3DTab = {
             </span>
           </button>
 
-          <!-- Email when done. Default on: a fal queue wait can stretch a job
-               past what anyone keeps a tab open for. The email is suppressed
-               server-side if the tab is still open when it finishes. -->
-          <label class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
+          <!-- Email when done. Hidden until a job is in flight — mid-render
+               it's the "you can close this tab" affordance; toggling writes
+               through to the job doc (setGenerationJobNotify). Default on: a
+               fal queue wait can stretch a job past what anyone keeps a tab
+               open for. The email is suppressed server-side if the tab is
+               still open when it finishes. -->
+          <label id="model3d-notify-email-row" class="hidden flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
             <input id="model3d-notify-email" type="checkbox" checked
               class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-            Email me when my 3D model is ready
+            Email me when my 3D model is ready (you can close this tab)
           </label>
         </div>
 
@@ -224,7 +229,8 @@ const Model3DTab = {
       viewerFrame: document.getElementById('model3d-viewer-frame'),
       openBtn: document.getElementById('model3d-open-btn'),
       downloadBtn: document.getElementById('model3d-download-btn'),
-      notifyEmail: document.getElementById('model3d-notify-email')
+      notifyEmail: document.getElementById('model3d-notify-email'),
+      notifyEmailRow: document.getElementById('model3d-notify-email-row')
     };
   },
 
@@ -256,6 +262,11 @@ const Model3DTab = {
       'click',
       this.handleGenerate.bind(this)
     );
+
+    // Mid-render email opt-in writes through to the in-flight job doc
+    this.elements.notifyEmail?.addEventListener('change', () => {
+      syncJobNotifyEmail(this.activeJobId, this.elements.notifyEmail);
+    });
 
     this.elements.downloadBtn.addEventListener(
       'click',
@@ -371,6 +382,11 @@ const Model3DTab = {
         generation_type: 'mesh',
         is_pro_user: window.authState?.currentUser?.isPro || false
       });
+
+      // The job is now really in flight — reveal the email opt-in (check it,
+      // close the tab, get the result by email).
+      this.activeJobId = result.data.jobId;
+      this.elements.notifyEmailRow?.classList.remove('hidden');
 
       this.pollDeadline = Date.now() + this.POLL_MAX_MS;
       this.pollMeshStatus(result.data.jobId);
@@ -529,6 +545,10 @@ const Model3DTab = {
       this.elements.generateSpinner.classList.remove('hidden');
       this.elements.generateText.textContent = 'Generating...';
     } else {
+      // Terminal (or reset): the email toggle only applies to an in-flight
+      // job, so it leaves with the loading state.
+      this.activeJobId = null;
+      this.elements.notifyEmailRow?.classList.add('hidden');
       this.elements.loading.classList.add('hidden');
       this.elements.generateBtn.disabled = false;
       this.elements.generateBtn.classList.remove(

@@ -2585,6 +2585,47 @@ const replicateJobWebhook = functions
   .https
   .onRequest(handleJobWebhook);
 
+// Post-submit toggle for the completion email. The opt-in checkbox lives in
+// the rendering UI (shown only while a job is in flight), so the client needs
+// a way to flip the preference after submit — and generationJobs docs are
+// deliberately client-write-denied in Firestore rules. Owner-only; terminal
+// jobs are left alone (the email decision has already played out by then).
+const setGenerationJobNotify = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
+  }
+  assertAppCheck(context);
+
+  const { jobId, email } = data || {};
+  if (!jobId || typeof jobId !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing jobId.');
+  }
+
+  const db = admin.firestore();
+  const jobRef = db.collection('users').doc(context.auth.uid).collection('generationJobs').doc(jobId);
+  const wantsEmail = email === true;
+
+  const applied = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(jobRef);
+    if (!snap.exists) {
+      throw new functions.https.HttpsError('not-found', 'Unknown generation job.');
+    }
+    const job = snap.data();
+    if (['succeeded', 'failed', 'canceled'].includes(job.status)) {
+      return false;
+    }
+    // `pending` mirrors `email` pre-terminal: it's the flag the webhook grace
+    // and the notify sweep act on, and the client-seen ack clears it.
+    tx.update(jobRef, {
+      'notify.email': wantsEmail,
+      'notify.pending': wantsEmail
+    });
+    return true;
+  });
+
+  return { applied };
+});
+
 // Modal's webhook target. Same handler; the Modal save is a same-bucket copy
 // (no streaming), but the memory/timeout stay matched to the shared path.
 const modalJobWebhook = functions
@@ -2618,6 +2659,7 @@ module.exports = {
   generateReplicateVideo,
   generateReplicateSplat,
   getGenerationJobStatus,
+  setGenerationJobNotify,
   replicateJobWebhook,
   modalJobWebhook,
   falJobWebhook,
