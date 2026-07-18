@@ -354,6 +354,11 @@ function ExportModal() {
   };
 
   const planIsEmpty = isPlanFormat && !planModel?.bounds;
+  // Distinguish "scene has no plan content" from "the user's own layer pills
+  // filtered everything out" — the latter should point at the pills, not tell
+  // the user to add streets they already have.
+  const planEmptyFromToggles =
+    planIsEmpty && Object.values(planLayerToggles).some((on) => !on);
 
   const renderPreview = () => {
     if (formatKey === 'glb') {
@@ -429,10 +434,17 @@ function ExportModal() {
         return (
           <div className={styles.previewEmptyState}>
             <p>
-              <FormattedMessage
-                id="exportModal.planEmpty"
-                defaultMessage="Nothing to draw yet. Add a street or intersection layer to see a plan preview."
-              />
+              {planEmptyFromToggles ? (
+                <FormattedMessage
+                  id="exportModal.planEmptyFiltered"
+                  defaultMessage="Nothing to draw with the current layer selection. Turn on more layers to see a plan preview."
+                />
+              ) : (
+                <FormattedMessage
+                  id="exportModal.planEmpty"
+                  defaultMessage="Nothing to draw yet. Add a street or intersection layer to see a plan preview."
+                />
+              )}
             </p>
           </div>
         );

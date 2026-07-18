@@ -1094,6 +1094,9 @@
   "exportModal.planEmpty": {
     "defaultMessage": "Nothing to draw yet. Add a street or intersection layer to see a plan preview."
   },
+  "exportModal.planEmptyFiltered": {
+    "defaultMessage": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview."
+  },
   "exportModal.previewError": {
     "defaultMessage": "Could not generate the preview. Please try again."
   },

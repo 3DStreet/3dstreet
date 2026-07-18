@@ -29,6 +29,7 @@
 // see the option stubs below for where they will hook in.
 
 import { CROSSWALKS_REV } from '../../../aframe-components/intersection';
+import { isSidewalk } from '../../../tested/aframe-streetmix-parsers-tested';
 
 // AutoCAD Color Index — 1-based palette baked into every AutoCAD install.
 // Using ACI (not true RGB) keeps the DXF the smallest possible and lets users
@@ -103,8 +104,9 @@ const METERS_TO_FEET = 3.28083989501312;
 
 // Streetmix segment types (legacy street component) that don't exist in the
 // managed street-segment vocabulary, mapped onto the closest layer type.
-// Any `sidewalk-*` flavor (tree, bench, lamp, wayfinding, …) normalizes to
-// plain sidewalk first — see normalizeLegacySegmentType.
+// Sidewalk-ish types (any `sidewalk-*` flavor plus transit-shelter, bikeshare,
+// utilities, … — the same list the 3D renderer uses via isSidewalk) normalize
+// to plain sidewalk first — see normalizeLegacySegmentType.
 const LEGACY_SEGMENT_TYPE_ALIASES = {
   'light-rail': 'rail',
   streetcar: 'rail',
@@ -117,7 +119,7 @@ const LEGACY_SEGMENT_TYPE_ALIASES = {
 
 function normalizeLegacySegmentType(type) {
   if (!type) return type;
-  if (type.startsWith('sidewalk')) return 'sidewalk';
+  if (isSidewalk(type)) return 'sidewalk';
   return LEGACY_SEGMENT_TYPE_ALIASES[type] || type;
 }
 
@@ -320,9 +322,10 @@ function collectManagedStreets(ctx) {
       const segData = segEl.getAttribute('street-segment');
       const width = Number(segData?.width) || 0;
       const length = Number(segData?.length) || 0;
-      if (width <= 0 || length <= 0) {
+      if (width <= 0 || length <= 0 || entityIsHidden(segEl)) {
         // A skipped segment breaks adjacency — reset so we don't draw a curb
-        // across the gap between its two neighbors.
+        // across the gap between its two neighbors. entityIsHidden also
+        // covers a hidden parent street (it walks ancestors).
         previousSegmentType = null;
         continue;
       }
@@ -379,6 +382,7 @@ function collectLegacyStreets(ctx) {
   for (const streetEl of streetEls) {
     const data = streetEl.getAttribute('street');
     if (!data?.JSON || !streetEl.object3D) continue;
+    if (entityIsHidden(streetEl)) continue;
 
     let segments;
     try {
@@ -472,6 +476,7 @@ function collectIntersections(ctx) {
   for (const el of intersectionEls) {
     const data = el.getAttribute('intersection');
     if (!data || !el.object3D) continue;
+    if (entityIsHidden(el)) continue;
 
     const [width, depth] = (data.dimensions || '')
       .split(' ')
@@ -692,7 +697,7 @@ function shapeLocalFootprint(geom) {
 // True when the entity or any ancestor is explicitly hidden. Reads the
 // visible attribute (never object3D.visible — see the batching gotcha in
 // CLAUDE.md) so hidden layers stay out of the drawing.
-function shapeIsHidden(el) {
+function entityIsHidden(el) {
   for (
     let node = el;
     node && node.getAttribute && node.tagName !== 'A-SCENE';
@@ -715,7 +720,18 @@ function collectGeometryShapes(ctx) {
   const sceneEl = document.querySelector('a-scene');
   if (!sceneEl) return;
 
-  for (const el of Array.from(sceneEl.querySelectorAll('[geometry]'))) {
+  // [geometry] catches entities with their own geometry attribute; clone
+  // entities usually get their plane geometry from a mixin instead (stencils
+  // with the default stencilHeight never write a geometry attribute), so the
+  // clone selectors also sweep mixin-carrying entities in/on "Cloned …"
+  // layers. getAttribute('geometry') below returns the merged component data
+  // either way; mixins with no geometry (GLB model clones) resolve to no
+  // footprint and are skipped.
+  const shapeSelector =
+    '[geometry],' +
+    ' [data-layer-name^="Cloned "] [mixin],' +
+    ' [mixin][data-layer-name^="Cloned "]';
+  for (const el of Array.from(sceneEl.querySelectorAll(shapeSelector))) {
     // Entities only — [geometry] also matches <a-mixin> definitions.
     if (!el.isEntity || !el.object3D) continue;
 
@@ -738,7 +754,7 @@ function collectGeometryShapes(ctx) {
       // Other generated helpers (street labels, …) — never plan linework.
       if (el.closest('.autocreated')) continue;
     }
-    if (shapeIsHidden(el)) continue;
+    if (entityIsHidden(el)) continue;
 
     const geom = el.getAttribute('geometry');
     const localPoints = geom && shapeLocalFootprint(geom);

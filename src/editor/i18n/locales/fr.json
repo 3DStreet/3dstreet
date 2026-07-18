@@ -364,6 +364,7 @@
   "exportModal.layersLabel": "Couches",
   "exportModal.pdfDescription": "Télécharger une vue en plan 2D des rues de cette scène sous forme de fichier <code>.pdf</code> vectoriel, prêt à imprimer ou à publier.",
   "exportModal.planEmpty": "Rien à dessiner pour l'instant. Ajoutez une couche de rue ou d'intersection pour voir un aperçu du plan.",
+  "exportModal.planEmptyFiltered": "Rien à dessiner avec la sélection de couches actuelle. Activez plus de couches pour voir un aperçu du plan.",
   "exportModal.previewError": "Impossible de générer l'aperçu. Veuillez réessayer.",
   "exportModal.proDownloadHint": "L'aperçu est gratuit. Le téléchargement nécessite 3DStreet Pro.",
   "exportModal.serializingScene": "Sérialisation de la scène…",

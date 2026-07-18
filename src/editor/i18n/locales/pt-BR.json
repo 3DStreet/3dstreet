@@ -364,6 +364,7 @@
   "exportModal.layersLabel": "Camadas",
   "exportModal.pdfDescription": "Baixe uma vista em planta 2D das ruas desta cena como um arquivo <code>.pdf</code> vetorial, pronto para imprimir ou publicar.",
   "exportModal.planEmpty": "Ainda não há nada para desenhar. Adicione uma camada de rua ou interseção para ver uma prévia da planta.",
+  "exportModal.planEmptyFiltered": "Não há nada para desenhar com a seleção de camadas atual. Ative mais camadas para ver uma prévia da planta.",
   "exportModal.previewError": "Não foi possível gerar a prévia. Tente novamente.",
   "exportModal.proDownloadHint": "A prévia é gratuita. Baixar requer o 3DStreet Pro.",
   "exportModal.serializingScene": "Serializando cena…",

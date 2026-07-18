@@ -364,6 +364,7 @@
   "exportModal.layersLabel": "Capas",
   "exportModal.pdfDescription": "Descarga una vista en planta 2D de las calles de esta escena como un archivo <code>.pdf</code> vectorial, listo para imprimir o publicar.",
   "exportModal.planEmpty": "Aún no hay nada que dibujar. Agrega una capa de calle o intersección para ver una vista previa del plano.",
+  "exportModal.planEmptyFiltered": "No hay nada que dibujar con la selección de capas actual. Activa más capas para ver una vista previa del plano.",
   "exportModal.previewError": "No se pudo generar la vista previa. Inténtalo de nuevo.",
   "exportModal.proDownloadHint": "La vista previa es gratuita. Descargar requiere 3DStreet Pro.",
   "exportModal.serializingScene": "Serializando escena…",

@@ -742,7 +742,8 @@
     "exportModal.layerIntersections": "Intersections",
     "exportModal.layerSegments": "Segments",
     "exportModal.layerShapes": "Shapes",
-    "exportModal.layersLabel": "Layers"
+    "exportModal.layersLabel": "Layers",
+    "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1487,7 +1488,8 @@
     "exportModal.layerIntersections": "Intersections",
     "exportModal.layerSegments": "Segments",
     "exportModal.layerShapes": "Shapes",
-    "exportModal.layersLabel": "Layers"
+    "exportModal.layersLabel": "Layers",
+    "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2232,6 +2234,7 @@
     "exportModal.layerIntersections": "Intersections",
     "exportModal.layerSegments": "Segments",
     "exportModal.layerShapes": "Shapes",
-    "exportModal.layersLabel": "Layers"
+    "exportModal.layersLabel": "Layers",
+    "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview."
   }
 }
