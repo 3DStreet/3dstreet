@@ -1634,32 +1634,6 @@ class GeneratorTabBase {
    * on the job doc.
    */
   onImageJobSubmitted(result, model, modelConfig, prompt, promptStyle) {
-    // Legacy sync response (a not-yet-updated function deployment): the render
-    // already finished server-side and `message` is a success string, so treat
-    // it as a completed job rather than throwing it into the error toast.
-    if (result.data?.success && result.data.image_url && !result.data.jobId) {
-      this.currentParams = {
-        model: model,
-        model_name: modelConfig.name,
-        prompt: prompt,
-        render_style: promptStyle,
-        timestamp: new Date().toISOString()
-      };
-      this.currentImageUrl = result.data.image_url;
-      this.displayImage(result.data.image_url);
-      this.stopTimer();
-      this.toggleLoading(false);
-      window.dispatchEvent(new Event('assets:refresh'));
-      window.dispatchEvent(new CustomEvent('tokenCountChanged'));
-      FluxUI.showNotification(
-        result.data.remainingTokens !== undefined
-          ? `Image generated successfully! ${result.data.remainingTokens} gen tokens remaining. (${modelConfig.name})`
-          : `Image generated successfully! (${modelConfig.name})`,
-        'success'
-      );
-      return;
-    }
-
     if (!result.data || !result.data.success || !result.data.jobId) {
       throw new Error(
         result.data?.message || 'Could not start image generation'
