@@ -20,8 +20,13 @@
 // - intersection: asphalt footprint, sidewalks, corner curbs (with radius
 //   arcs), and crosswalk markings, reconstructed from the same parametric
 //   layout math as the intersection component's update().
-// Striping, stencils, blocks for trees/furniture are deliberately out of
-// scope — see the option stubs below for where they will hook in.
+// - loose geometry shapes: any other entity carrying an A-Frame geometry
+//   component (shape layers, "Street Shapes" scenes) gets a best-effort
+//   parametric footprint, layered by its data-layer-name type prefix.
+// - clones (opt-in, includeClones): generated/baked striping, stencil, and
+//   flat model clones as footprints on the markings layer.
+// Parametric striping and blocks for trees/furniture remain out of scope —
+// see the option stubs below for where they will hook in.
 
 import { CROSSWALKS_REV } from '../../../aframe-components/intersection';
 
@@ -92,6 +97,8 @@ const CURB_LAYER = { name: 'C-TOPO-CURB', color: ACI.WHITE };
 const FALLBACK_LAYER = { name: 'C-ROAD', color: ACI.DARK_GREY };
 // Pavement markings (crosswalks). NCS-ish sibling of C-ROAD.
 const MARKING_LAYER = { name: 'C-ROAD-MRKG', color: ACI.WHITE };
+// Loose geometry shapes whose data-layer-name doesn't map to a segment type.
+const SHAPE_LAYER = { name: 'C-SITE', color: ACI.CYAN };
 const METERS_TO_FEET = 3.28083989501312;
 
 // Streetmix segment types (legacy street component) that don't exist in the
@@ -114,10 +121,11 @@ function normalizeLegacySegmentType(type) {
   return LEGACY_SEGMENT_TYPE_ALIASES[type] || type;
 }
 
-// Stubbed options. Every field has a hard default so a future combined-export
-// modal can bind form state to this same object without a wire-up rewrite.
-// Only unitsFeet and layerPrefix are honored today; the rest are read from
-// but no-ops so callers can already start persisting user preferences.
+// Export options. Every field has a hard default so the Export modal can bind
+// form state to this same object without a wire-up rewrite. unitsFeet,
+// layerPrefix, and the include* layer-group toggles are honored today; the
+// remaining fields are read but no-ops so callers can already start
+// persisting user preferences.
 export const DEFAULT_PLAN_EXPORT_OPTIONS = {
   // Output units. AutoCAD imports at the drawing's INSUNITS scale, so setting
   // this correctly is the difference between a 30-meter street landing as a
@@ -129,8 +137,20 @@ export const DEFAULT_PLAN_EXPORT_OPTIONS = {
   // keep 3DStreet output namespaced away from base-plan layers.
   layerPrefix: '',
 
+  // Layer-group toggles — one per collected group, surfaced as pills in the
+  // Export modal.
+  includeSegments: true, // managed + legacy street segments (and curbs)
+  includeIntersections: true,
+  includeShapes: true, // loose geometry primitives (shape layers)
+  // Generated/baked striping, stencil, and model clones, drawn as best-effort
+  // footprints on the markings layer. Off by default — dozens of tiny stencil
+  // rects bury the lane linework.
+  includeClones: false,
+
   // Reserved for the future modal — no-ops in the first cut so the field
-  // shapes are stable when the modal starts writing them.
+  // shapes are stable when the modal starts writing them. (includeStriping /
+  // includeStencils are the future *parametric* replacements for the
+  // footprint-only includeClones above — see issue #1828.)
   includeStriping: false, // striping polylines from street-generated-striping
   includeStencils: false, // arrow/bike/etc. blocks from street-generated-stencil
   includeVegetation: false, // tree/plant blocks from clones
@@ -186,7 +206,9 @@ function needsCurbBetween(typeA, typeB) {
 //     unitsFeet,
 //     streetCount,        // managed + legacy streets
 //     segmentCount,       // segments across all streets
-//     intersectionCount
+//     intersectionCount,
+//     shapeCount,         // loose geometry-primitive footprints
+//     cloneCount          // generated/baked clone footprints (opt-in)
 //   }
 export function buildStreetPlanModel(options = {}) {
   const opts = { ...DEFAULT_PLAN_EXPORT_OPTIONS, ...options };
@@ -243,22 +265,35 @@ export function buildStreetPlanModel(options = {}) {
     localPointsToPlan,
     streetCount: 0,
     segmentCount: 0,
-    intersectionCount: 0
+    intersectionCount: 0,
+    shapeCount: 0,
+    cloneCount: 0
   };
 
-  collectManagedStreets(ctx);
-  collectLegacyStreets(ctx);
-  collectIntersections(ctx);
+  if (opts.includeSegments) {
+    collectManagedStreets(ctx);
+    collectLegacyStreets(ctx);
+  }
+  if (opts.includeIntersections) {
+    collectIntersections(ctx);
+  }
+  if (opts.includeShapes || opts.includeClones) {
+    collectGeometryShapes(ctx);
+  }
+
+  const isEmpty = polylines.length === 0 && lines.length === 0;
 
   return {
     layers,
     polylines,
     lines,
-    bounds: ctx.segmentCount > 0 || ctx.intersectionCount > 0 ? bounds : null,
+    bounds: isEmpty ? null : bounds,
     unitsFeet: opts.unitsFeet,
     streetCount: ctx.streetCount,
     segmentCount: ctx.segmentCount,
-    intersectionCount: ctx.intersectionCount
+    intersectionCount: ctx.intersectionCount,
+    shapeCount: ctx.shapeCount,
+    cloneCount: ctx.cloneCount
   };
 }
 
@@ -578,5 +613,150 @@ function collectIntersections(ctx) {
         ...rectFor(crosswalkBandWidth(mixinName))
       );
     });
+  }
+}
+
+// --- loose geometry shapes pass ---------------------------------------------
+// Best-effort footprints for entities that carry an A-Frame geometry component
+// but belong to none of the passes above — shape layers (building box, asphalt
+// circle, …) and "Street Shapes" scenes whose lanes are plain below-box
+// entities. Footprints are parametric from the geometry component data (never
+// the mesh — runtime batching may have stripped it), so only known primitives
+// are drawn. Layer choice reuses the segment mapping via the entity's
+// data-layer-name type prefix ("drive-lane • inbound" → C-ROAD); anything
+// unrecognized lands on the generic C-SITE layer.
+const SHAPE_ARC_DIVISIONS = 24;
+
+// Closed N-gon of `radius` in the entity-local 'xy' plane (primitives that
+// face +Z: circle, ring, torus) or 'xz' plane (y-axis solids: cylinder).
+function shapeCirclePoints(radius, plane) {
+  const points = [];
+  for (let i = 0; i < SHAPE_ARC_DIVISIONS; i++) {
+    const angle = (i / SHAPE_ARC_DIVISIONS) * Math.PI * 2;
+    const a = radius * Math.cos(angle);
+    const b = radius * Math.sin(angle);
+    points.push(plane === 'xz' ? [a, 0, b] : [a, b, 0]);
+  }
+  return points;
+}
+
+// Entity-local footprint points for a geometry component, or null when the
+// primitive has no sensible plan footprint (or degenerate dimensions).
+function shapeLocalFootprint(geom) {
+  const num = (v) => Number(v) || 0;
+  switch (geom.primitive) {
+    case 'box':
+    case 'below-box': {
+      const w = num(geom.width);
+      const d = num(geom.depth);
+      return w > 0 && d > 0 ? segmentLocalCorners(w, d) : null;
+    }
+    case 'plane': {
+      const w = num(geom.width);
+      const h = num(geom.height);
+      if (!(w > 0) || !(h > 0)) return null;
+      return [
+        [-w / 2, -h / 2, 0],
+        [w / 2, -h / 2, 0],
+        [w / 2, h / 2, 0],
+        [-w / 2, h / 2, 0]
+      ];
+    }
+    case 'circle':
+      return num(geom.radius) > 0
+        ? shapeCirclePoints(num(geom.radius), 'xy')
+        : null;
+    case 'ring':
+      return num(geom.radiusOuter) > 0
+        ? shapeCirclePoints(num(geom.radiusOuter), 'xy')
+        : null;
+    case 'torus':
+    case 'torusKnot': {
+      const r = num(geom.radius) + num(geom.radiusTubular);
+      return r > 0 ? shapeCirclePoints(r, 'xy') : null;
+    }
+    case 'cylinder':
+    case 'sphere':
+      return num(geom.radius) > 0
+        ? shapeCirclePoints(num(geom.radius), 'xz')
+        : null;
+    case 'cone': {
+      const r = Math.max(num(geom.radiusBottom), num(geom.radiusTop));
+      return r > 0 ? shapeCirclePoints(r, 'xz') : null;
+    }
+    default:
+      return null;
+  }
+}
+
+// True when the entity or any ancestor is explicitly hidden. Reads the
+// visible attribute (never object3D.visible — see the batching gotcha in
+// CLAUDE.md) so hidden layers stay out of the drawing.
+function shapeIsHidden(el) {
+  for (
+    let node = el;
+    node && node.getAttribute && node.tagName !== 'A-SCENE';
+    node = node.parentElement
+  ) {
+    if (node.getAttribute('visible') === false) return true;
+  }
+  return false;
+}
+
+function shapeLayerSpec(el) {
+  const layerName = el.getAttribute('data-layer-name') || '';
+  const typeToken = normalizeLegacySegmentType(
+    layerName.split('•')[0].trim().toLowerCase()
+  );
+  return SEGMENT_TYPE_TO_LAYER[typeToken] || SHAPE_LAYER;
+}
+
+function collectGeometryShapes(ctx) {
+  const sceneEl = document.querySelector('a-scene');
+  if (!sceneEl) return;
+
+  for (const el of Array.from(sceneEl.querySelectorAll('[geometry]'))) {
+    // Entities only — [geometry] also matches <a-mixin> definitions.
+    if (!el.isEntity || !el.object3D) continue;
+
+    // Striping/stencil/model clones (opt-in via includeClones) — live clones
+    // are children of "Cloned …"-named wrappers; scenes saved from converted
+    // streets bake them as plain entities where only that data-layer-name
+    // survives, so the name prefix (self or ancestor) is the marker. Clones
+    // may live inside street entities (their lane is drawn by the street
+    // pass, which never draws markings), so ownership doesn't exclude them.
+    const isClone = !!el.closest('[data-layer-name^="Cloned "]');
+    if (isClone) {
+      if (!ctx.opts.includeClones) continue;
+    } else {
+      if (!ctx.opts.includeShapes) continue;
+      // Owned by an earlier pass (drawn parametrically there).
+      const owned = el.closest(
+        '[managed-street],[street],[street-segment],[intersection]'
+      );
+      if (owned) continue;
+      // Other generated helpers (street labels, …) — never plan linework.
+      if (el.closest('.autocreated')) continue;
+    }
+    if (shapeIsHidden(el)) continue;
+
+    const geom = el.getAttribute('geometry');
+    const localPoints = geom && shapeLocalFootprint(geom);
+    if (!localPoints) continue;
+
+    el.object3D.updateWorldMatrix(true, false);
+    const layerName = ctx.resolveAndAddLayer(
+      isClone ? MARKING_LAYER : shapeLayerSpec(el)
+    );
+    ctx.polylines.push({
+      layer: layerName,
+      points: ctx.localPointsToPlan(el, localPoints),
+      closed: true
+    });
+    if (isClone) {
+      ctx.cloneCount++;
+    } else {
+      ctx.shapeCount++;
+    }
   }
 }

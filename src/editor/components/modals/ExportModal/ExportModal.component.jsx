@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styles from './ExportModal.module.scss';
 import { useAuthContext } from '../../../contexts';
-import { Button, Checkbox } from '../../elements';
+import { Button, Checkbox, Toggle } from '../../elements';
 import Modal from '@shared/components/Modal/Modal.jsx';
 import posthog from 'posthog-js';
 import useStore from '@/store';
@@ -97,6 +97,47 @@ const FORMATS = [
   }
 ];
 
+// Layer-group pills for the plan formats — one per collected group in the
+// shared plan model (buildStreetPlanModel), keyed by its include* option.
+// Clones default off: dozens of tiny stencil/striping footprints bury the
+// lane linework in dense scenes.
+const PLAN_LAYER_GROUPS = [
+  {
+    key: 'includeSegments',
+    defaultOn: true,
+    label: (
+      <FormattedMessage
+        id="exportModal.layerSegments"
+        defaultMessage="Segments"
+      />
+    )
+  },
+  {
+    key: 'includeIntersections',
+    defaultOn: true,
+    label: (
+      <FormattedMessage
+        id="exportModal.layerIntersections"
+        defaultMessage="Intersections"
+      />
+    )
+  },
+  {
+    key: 'includeShapes',
+    defaultOn: true,
+    label: (
+      <FormattedMessage id="exportModal.layerShapes" defaultMessage="Shapes" />
+    )
+  },
+  {
+    key: 'includeClones',
+    defaultOn: false,
+    label: (
+      <FormattedMessage id="exportModal.layerClones" defaultMessage="Clones" />
+    )
+  }
+];
+
 // Cap the JSON code-view at ~300k chars — scenes with cloud snapshot memory
 // can serialize to multiple MB, which would tank the modal's render.
 const JSON_PREVIEW_CHAR_LIMIT = 300000;
@@ -119,6 +160,9 @@ function ExportModal() {
   const [formatKey, setFormatKey] = useState('glb');
   const [arReady, setArReady] = useState(false);
   const [unitsFeet, setUnitsFeet] = useState(false);
+  const [planLayerToggles, setPlanLayerToggles] = useState(() =>
+    Object.fromEntries(PLAN_LAYER_GROUPS.map((g) => [g.key, g.defaultOn]))
+  );
   const [autoGlbPreview, setAutoGlbPreview] = useState(() => {
     try {
       return localStorage.getItem(AUTO_GLB_PREVIEW_KEY) === 'true';
@@ -185,12 +229,12 @@ function ExportModal() {
   const planModel = useMemo(() => {
     if (!isOpen || !isPlanFormat) return null;
     try {
-      return buildStreetPlanModel({ unitsFeet });
+      return buildStreetPlanModel({ unitsFeet, ...planLayerToggles });
     } catch (error) {
       console.error('Error building plan preview:', error);
       return null;
     }
-  }, [isOpen, isPlanFormat, unitsFeet]);
+  }, [isOpen, isPlanFormat, unitsFeet, planLayerToggles]);
 
   // JSON preview — serialized lazily the first time the JSON pill is picked.
   // No cleanup-cancel here on purpose: this effect sets its own dep
@@ -301,9 +345,9 @@ function ExportModal() {
     if (formatKey === 'glb') {
       exportSceneToGLTF(intl, arReady);
     } else if (formatKey === 'dxf') {
-      exportSceneToDXF(intl, { unitsFeet });
+      exportSceneToDXF(intl, { unitsFeet, ...planLayerToggles });
     } else if (formatKey === 'pdf') {
-      exportSceneToPDF(intl, { unitsFeet });
+      exportSceneToPDF(intl, { unitsFeet, ...planLayerToggles });
     } else {
       exportSceneToJSON();
     }
@@ -515,21 +559,18 @@ function ExportModal() {
               </div>
               {formatKey === 'glb' && (
                 <>
-                  <div className={styles.settingPills}>
-                    <button
-                      type="button"
-                      aria-pressed={arReady}
-                      className={`${styles.pill} ${
-                        arReady ? styles.pillActive : ''
-                      }`}
-                      onClick={() => setArReady(!arReady)}
-                    >
-                      <FormattedMessage
-                        id="exportModal.arReadyPill"
-                        defaultMessage="AR Ready"
-                      />
-                    </button>
-                  </div>
+                  <Toggle
+                    id="export-ar-ready"
+                    status={arReady}
+                    onChange={setArReady}
+                    label={{
+                      text: intl.formatMessage({
+                        id: 'exportModal.arReadyPill',
+                        defaultMessage: 'AR Ready'
+                      }),
+                      position: 'right'
+                    }}
+                  />
                   <p className={styles.settingHint}>
                     <FormattedMessage
                       id="exportModal.arReadyHint"
@@ -539,43 +580,78 @@ function ExportModal() {
                 </>
               )}
               {isPlanFormat && (
-                <div
-                  className={styles.settingPills}
-                  role="radiogroup"
-                  aria-label={intl.formatMessage({
-                    id: 'exportModal.unitsLabel',
-                    defaultMessage: 'Units'
-                  })}
-                >
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={!unitsFeet}
-                    className={`${styles.pill} ${
-                      !unitsFeet ? styles.pillActive : ''
-                    }`}
-                    onClick={() => setUnitsFeet(false)}
+                <>
+                  <div
+                    className={styles.settingPills}
+                    role="radiogroup"
+                    aria-label={intl.formatMessage({
+                      id: 'exportModal.unitsLabel',
+                      defaultMessage: 'Units'
+                    })}
                   >
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={!unitsFeet}
+                      className={`${styles.pill} ${
+                        !unitsFeet ? styles.pillActive : ''
+                      }`}
+                      onClick={() => setUnitsFeet(false)}
+                    >
+                      <FormattedMessage
+                        id="exportModal.unitsMeters"
+                        defaultMessage="Meters"
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={unitsFeet}
+                      className={`${styles.pill} ${
+                        unitsFeet ? styles.pillActive : ''
+                      }`}
+                      onClick={() => setUnitsFeet(true)}
+                    >
+                      <FormattedMessage
+                        id="exportModal.unitsFeet"
+                        defaultMessage="Feet"
+                      />
+                    </button>
+                  </div>
+                  <div className={styles.settingsLabel}>
                     <FormattedMessage
-                      id="exportModal.unitsMeters"
-                      defaultMessage="Meters"
+                      id="exportModal.layersLabel"
+                      defaultMessage="Layers"
                     />
-                  </button>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={unitsFeet}
-                    className={`${styles.pill} ${
-                      unitsFeet ? styles.pillActive : ''
-                    }`}
-                    onClick={() => setUnitsFeet(true)}
+                  </div>
+                  <div
+                    className={styles.settingPills}
+                    role="group"
+                    aria-label={intl.formatMessage({
+                      id: 'exportModal.layersLabel',
+                      defaultMessage: 'Layers'
+                    })}
                   >
-                    <FormattedMessage
-                      id="exportModal.unitsFeet"
-                      defaultMessage="Feet"
-                    />
-                  </button>
-                </div>
+                    {PLAN_LAYER_GROUPS.map((group) => (
+                      <button
+                        key={group.key}
+                        type="button"
+                        aria-pressed={planLayerToggles[group.key]}
+                        className={`${styles.pill} ${
+                          planLayerToggles[group.key] ? styles.pillActive : ''
+                        }`}
+                        onClick={() =>
+                          setPlanLayerToggles((prev) => ({
+                            ...prev,
+                            [group.key]: !prev[group.key]
+                          }))
+                        }
+                      >
+                        {group.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           )}

@@ -227,10 +227,9 @@ export const exportSceneToDXF = (intl, options = {}) => {
       });
 
       const { exportScenePlanToDxf } = await import('./dxf/scenePlanToDxf');
-      const { dxfString, segmentCount, intersectionCount } =
-        exportScenePlanToDxf(options);
+      const { dxfString, isEmpty } = exportScenePlanToDxf(options);
 
-      if (segmentCount === 0 && intersectionCount === 0) {
+      if (isEmpty) {
         STREET.notify.warningMessage(
           intl.formatMessage({
             id: 'appMenu.export.dxfEmpty',

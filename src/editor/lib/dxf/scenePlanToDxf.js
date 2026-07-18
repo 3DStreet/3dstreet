@@ -28,8 +28,11 @@ export function exportScenePlanToDxf(options = {}) {
 
   return {
     dxfString: dxf.toString(),
+    isEmpty: model.bounds === null,
     streetCount: model.streetCount,
     segmentCount: model.segmentCount,
-    intersectionCount: model.intersectionCount
+    intersectionCount: model.intersectionCount,
+    shapeCount: model.shapeCount,
+    cloneCount: model.cloneCount
   };
 }

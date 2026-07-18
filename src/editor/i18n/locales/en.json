@@ -1073,6 +1073,21 @@
   "exportModal.jsonTruncated": {
     "defaultMessage": "Preview truncated. The downloaded file contains the full scene."
   },
+  "exportModal.layerClones": {
+    "defaultMessage": "Clones"
+  },
+  "exportModal.layerIntersections": {
+    "defaultMessage": "Intersections"
+  },
+  "exportModal.layerSegments": {
+    "defaultMessage": "Segments"
+  },
+  "exportModal.layerShapes": {
+    "defaultMessage": "Shapes"
+  },
+  "exportModal.layersLabel": {
+    "defaultMessage": "Layers"
+  },
   "exportModal.pdfDescription": {
     "defaultMessage": "Download a 2D plan view of this scene's streets as a vector <code>.pdf</code> file, ready to print or publish."
   },
