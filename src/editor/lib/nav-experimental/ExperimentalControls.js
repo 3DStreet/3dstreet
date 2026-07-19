@@ -44,6 +44,7 @@ import { isStreetLevelNav, isWasdNav } from './flag.js';
 import { ModifierState } from './modifierState.js';
 import { GestureLatch } from './gestureLatch.js';
 import { SceneBounds } from './sceneBounds.js';
+import { ProbeTargets } from './probeTargets.js';
 import { CursorAnchor } from './cursorAnchor.js';
 import { TickAnimator } from './tickAnimator.js';
 import { CollisionProbe } from './collisionProbe.js';
@@ -121,6 +122,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._modifiers = new ModifierState(domElement);
     this._latch = new GestureLatch();
     this._bounds = new SceneBounds(this._sceneEl);
+    // Curated raycast-target list for the floor/enclosure probes — the
+    // whole scene minus `[data-ignore-raycaster]` subtrees (excepting the
+    // Google 3D Tiles subtree, an accepted collision floor). See
+    // probeTargets.js for the exclusion contract (#1853).
+    this._probeTargets = new ProbeTargets(this._sceneEl);
     this._cursorAnchor = new CursorAnchor({
       camera,
       sceneEl: this._sceneEl,
@@ -159,6 +165,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       },
       get bounds() {
         return self._bounds;
+      },
+      get probeTargets() {
+        return self._probeTargets;
       },
       get disabledByOrtho() {
         return self._disabledByOrtho;
@@ -797,6 +806,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._unsubscribeTick) this._unsubscribeTick();
     this._modifiers.dispose();
     this._bounds.dispose();
+    this._probeTargets.dispose();
     if (this._cursorAnchor) this._cursorAnchor.dispose();
     if (this._drag) this._drag.dispose();
     if (this._tick) this._tick.dispose();
