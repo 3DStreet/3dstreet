@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styles from './ScreenshotModal.module.scss';
 import Modal from '@shared/components/Modal/Modal.jsx';
@@ -21,7 +21,6 @@ import { ImgComparisonSlider } from '@img-comparison-slider/react';
 import 'img-comparison-slider/dist/styles.css';
 import { canUseImageFeature } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
-import { assetsService } from '@shared/assets';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import {
   DEFAULT_RENDER_STYLE_ID,
@@ -33,10 +32,20 @@ import {
 import AIModelSelector from '@shared/components/AIModelSelector';
 import RenderStyleSelector from '@shared/components/RenderStyleSelector';
 import promptFieldStyles from '@shared/styles/promptFields.module.scss';
+import {
+  pollGenerationJob,
+  forceJobNotifyEmail
+} from '@shared/utils/generationJobs';
 import { getLocalizedStyleLabels } from './renderStyleMessages';
 
 // Available AI models (use shared constants)
 const AI_MODELS = REPLICATE_MODELS;
+
+// AI renders are async generation jobs since #1835: the submit callable
+// returns a jobId immediately and the server saves the finished image to the
+// gallery (so closing this modal or the tab mid-render no longer loses it).
+// The shared poll (pollGenerationJob) only drives the live modal UI.
+const AI_RENDER_POLL_MAX_MS = 10 * 60 * 1000;
 
 function ScreenshotModal() {
   const intl = useIntl();
@@ -83,6 +92,47 @@ function ScreenshotModal() {
   );
   const [showOvertimeWarning, setShowOvertimeWarning] = useState(false); // Show overtime warning for 1x mode
   const [isClosing, setIsClosing] = useState(false); // Track closing animation
+
+  // Completion-email opt-in. The checkbox only shows while a render is in
+  // flight (that's when "close this window and get emailed" is meaningful);
+  // its state at submit rides the job doc, and mid-render toggles write
+  // through via setGenerationJobNotify. In-flight job ids live in a ref (no
+  // re-render needed), as does the shared batch identity during a 4x submit.
+  const [notifyEmail, setNotifyEmail] = useState(true);
+  // Live mirror of the checkbox for async code: a submit callable can take
+  // seconds, and the job registers against the CURRENT preference, not the
+  // click-time closure value (a mid-submit toggle must not be lost).
+  const notifyEmailRef = useRef(true);
+  const activeJobIdsRef = useRef(new Set());
+  // Cancel handles for in-flight status polls. A poll that outlives the modal
+  // would keep acking the job server-side, which suppresses the opted-in
+  // completion email — cancelled on close/unmount (the render itself finishes
+  // and saves server-side regardless).
+  const activePollsRef = useRef(new Set());
+  const batch4xRef = useRef(null);
+
+  useEffect(() => {
+    const polls = activePollsRef.current;
+    return () => {
+      polls.forEach((poll) => poll.cancel());
+      polls.clear();
+    };
+  }, []);
+
+  const handleNotifyToggle = (checked) => {
+    setNotifyEmail(checked);
+    notifyEmailRef.current = checked;
+    if (activeJobIdsRef.current.size === 0) return;
+    const setGenerationJobNotify = httpsCallable(
+      functions,
+      'setGenerationJobNotify'
+    );
+    activeJobIdsRef.current.forEach((jobId) => {
+      setGenerationJobNotify({ jobId, email: checked }).catch((err) => {
+        console.warn('Failed to update email preference for job:', err);
+      });
+    });
+  };
 
   // Chip highlight and analytics derive from the style text itself: an
   // unedited chip sentence maps to its style, empty is 'none', anything
@@ -148,12 +198,16 @@ function ScreenshotModal() {
   };
 
   const handleClose = () => {
-    if (isAnyRendering) {
+    // Since #1835 the render finishes server-side either way; closing only
+    // stops the live preview. With the email opt-in checked, closing
+    // mid-render is the advertised flow ("you can close this window"), so
+    // only an opted-out user gets the are-you-sure prompt.
+    if (isAnyRendering && !notifyEmail) {
       const confirmClose = window.confirm(
         intl.formatMessage({
           id: 'screenshotModal.confirmClose',
           defaultMessage:
-            'Rendering in progress. Are you sure you want to close? The render will be cancelled.'
+            'Rendering in progress. Close anyway? The render will finish in the background and be saved to your gallery.'
         })
       );
       if (!confirmClose) {
@@ -166,6 +220,13 @@ function ScreenshotModal() {
 
     // Wait for animation to complete, then close
     setTimeout(() => {
+      // Stop the orphaned status polls: a poll that outlives the modal would
+      // ack the finished job server-side and suppress the opted-in email —
+      // the whole point of "you can close this window". The renders finish
+      // and save to the gallery server-side either way.
+      activePollsRef.current.forEach((poll) => poll.cancel());
+      activePollsRef.current.clear();
+      activeJobIdsRef.current.clear();
       // Reset all state when closing
       resetModalState();
       setIsClosing(false);
@@ -382,6 +443,9 @@ function ScreenshotModal() {
       return;
     }
 
+    // The submitted job's id, tracked for the mid-render email toggle and
+    // cleared in `finally` (the toggle only applies to an in-flight job).
+    let submittedJobId = null;
     try {
       // Simple approach: try the key as-is first, then try removing numeric suffix
       let selectedModelConfig = AI_MODELS[targetModel];
@@ -439,24 +503,60 @@ function ScreenshotModal() {
         setRenderStartTime(startTime);
       }
 
-      // Route to the correct cloud function based on model type
+      // Metadata for the saved gallery asset. The gallery save happens
+      // SERVER-SIDE now (#1835) in the job's terminal processor, so anything
+      // only this client knows — the scene link fields and the camera pose
+      // that powers the focus button (#1605) — rides the job doc from submit.
+      const galleryMetadata = {
+        sceneId: sceneId || null,
+        sceneTitle: useStore.getState().sceneTitle || 'Untitled',
+        source: 'ai-render',
+        model: selectedModelConfig.name,
+        modelKey: baseModelKey,
+        prompt: aiPrompt,
+        renderStyle: promptStyle,
+        renderMode: renderMode,
+        // The camera hasn't moved since the base capture, so this is the
+        // render's vantage.
+        cameraState: getCurrentCameraState(),
+        isPro: currentUser?.isPro || false
+      };
+
+      // Completion-email opt-in, recorded on the job doc. Only sends if
+      // nothing acks the result (i.e. this browser tab is gone before the
+      // render finishes). 4x jobs share a batch identity so the whole batch
+      // produces at most one email (first finisher decides, server-side).
+      const notify = {
+        email: notifyEmail,
+        ...(batch4xRef.current && {
+          batchId: batch4xRef.current.id,
+          batchTotal: batch4xRef.current.total
+        })
+      };
+
+      // Route to the correct cloud function based on model type. Both are
+      // submit-and-return: they charge tokens, create the provider job, and
+      // hand back a jobId; the render is finished (and saved to the gallery)
+      // server-side even if this modal or tab closes mid-render.
       let result;
       if (selectedModelConfig.type === 'fal') {
         const generateFalImage = httpsCallable(functions, 'generateFalImage', {
-          timeout: 300000
+          timeout: 120000
         });
         result = await generateFalImage({
           prompt: aiPrompt,
           input_image: inputImageSrc,
           model_id: baseModelKey,
           scene_id: sceneId || null,
-          source: 'editor'
+          source: 'editor',
+          gallery_metadata: galleryMetadata,
+          notify
         });
       } else {
         const generateReplicateImage = httpsCallable(
           functions,
           'generateReplicateImage',
-          { timeout: 300000 }
+          { timeout: 120000 }
         );
         result = await generateReplicateImage({
           prompt: aiPrompt,
@@ -465,54 +565,66 @@ function ScreenshotModal() {
           num_inference_steps: 30,
           model_version: selectedModelConfig.version,
           model_id: baseModelKey,
-          scene_id: sceneId || null
+          scene_id: sceneId || null,
+          gallery_metadata: galleryMetadata,
+          notify
         });
       }
 
-      if (result.data.success) {
+      if (result.data.success && result.data.jobId) {
+        // In flight — the email toggle targets this job until it's terminal.
+        submittedJobId = result.data.jobId;
+        activeJobIdsRef.current.add(submittedJobId);
+        // The submit rode the click-time notify value; if the checkbox was
+        // toggled while the upload was in flight (it wasn't addressable in
+        // activeJobIdsRef yet), write the current value through now.
+        if (notifyEmailRef.current !== notify.email) {
+          const setGenerationJobNotify = httpsCallable(
+            functions,
+            'setGenerationJobNotify'
+          );
+          setGenerationJobNotify({
+            jobId: submittedJobId,
+            email: notifyEmailRef.current
+          }).catch((err) => {
+            console.warn('Failed to sync email preference for job:', err);
+          });
+        }
+        // Poll until the job is terminal; the server has already saved the
+        // image to the gallery by the time this resolves. The cancel handle
+        // lets handleClose stop the poll (a null result means cancelled).
+        const poll = pollGenerationJob(submittedJobId, {
+          resultField: 'image_url',
+          maxMs: AI_RENDER_POLL_MAX_MS
+        });
+        activePollsRef.current.add(poll);
+        let jobData;
+        try {
+          jobData = await poll.promise;
+        } finally {
+          activePollsRef.current.delete(poll);
+        }
+        if (!jobData) {
+          // Modal closed mid-render — the server finishes, saves, and (if
+          // opted in) emails; nothing more for this UI to do.
+          return;
+        }
+        const renderedImageUrl = jobData.image_url;
+
         // Store image in the appropriate place based on render mode
         if (renderMode === '1x') {
-          setAiImageUrl(result.data.image_url);
+          setAiImageUrl(renderedImageUrl);
           setShowOriginal(false);
         } else {
           setAiImages((prev) => ({
             ...prev,
-            [targetModel]: result.data.image_url
+            [targetModel]: renderedImageUrl
           }));
         }
 
-        // Save AI render to gallery
-        if (currentUser?.uid) {
-          try {
-            // Initialize gallery service V2 if needed
-            await assetsService.init();
-
-            await assetsService.addAsset(
-              result.data.image_url,
-              {
-                timestamp: new Date().toISOString(),
-                sceneId: sceneId || STREET.utils.getCurrentSceneId(),
-                sceneTitle: useStore.getState().sceneTitle || 'Untitled',
-                source: 'ai-render',
-                model: selectedModelConfig.name,
-                modelKey: baseModelKey,
-                prompt: aiPrompt,
-                renderStyle: promptStyle,
-                renderMode: renderMode,
-                // The camera hasn't moved since the base capture, so this is
-                // the render's vantage — persist it for the focus button (#1605).
-                cameraState: getCurrentCameraState(),
-                isPro: currentUser?.isPro || false
-              },
-              'image', // type
-              'ai-render', // category
-              currentUser.uid // userId
-            );
-            console.log('AI render saved to gallery');
-          } catch (error) {
-            console.error('Failed to save AI render to gallery:', error);
-          }
-        }
+        // Nudge the Assets panel — the server-side save doesn't fire the
+        // client-side assetAdded events the old in-browser save did.
+        window.dispatchEvent(new Event('assets:refresh'));
 
         // Show appropriate success message based on user type
         if (currentUser?.isProTeam) {
@@ -603,6 +715,22 @@ function ScreenshotModal() {
         throw new Error('Failed to generate image');
       }
     } catch (error) {
+      if (error?.timedOut && submittedJobId) {
+        // The poll gave up but the job is still running server-side. A render
+        // that outlives the poll window is unusual — don't make the user
+        // babysit the tab for it: force the completion email on.
+        forceJobNotifyEmail(submittedJobId);
+        setNotifyEmail(true);
+        notifyEmailRef.current = true;
+        STREET.notify.warningMessage(
+          intl.formatMessage({
+            id: 'screenshotModal.aiRenderTimeoutEmail',
+            defaultMessage:
+              "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery."
+          })
+        );
+        return;
+      }
       console.error('Error generating AI image:', error);
       const baseModelKey = AI_MODELS[targetModel]
         ? targetModel
@@ -631,6 +759,7 @@ function ScreenshotModal() {
         );
       }
     } finally {
+      if (submittedJobId) activeJobIdsRef.current.delete(submittedJobId);
       // Update rendering state for this specific model
       setRenderingStates((prev) => ({ ...prev, [targetModel]: false }));
 
@@ -713,12 +842,23 @@ function ScreenshotModal() {
       ? modelKeys
       : [selectedModel, selectedModel, selectedModel, selectedModel];
 
-    // Generate renders for each model concurrently
-    const renderPromises = modelsToRender.map((modelKey, index) =>
-      handleGenerateAIImage(`${modelKey}-${index}`)
-    );
+    // One user action → one batch identity: every job in this 4x submit
+    // carries the same batchId, so the server sends at most one email for
+    // the whole batch (first finisher decides) instead of four.
+    batch4xRef.current = {
+      id: crypto.randomUUID(),
+      total: modelsToRender.length
+    };
+    try {
+      // Generate renders for each model concurrently
+      const renderPromises = modelsToRender.map((modelKey, index) =>
+        handleGenerateAIImage(`${modelKey}-${index}`)
+      );
 
-    await Promise.allSettled(renderPromises);
+      await Promise.allSettled(renderPromises);
+    } finally {
+      batch4xRef.current = null;
+    }
   };
 
   // Progress bar animation effect for single render
@@ -1178,6 +1318,22 @@ function ScreenshotModal() {
                   )}
                 </span>
               </Button>
+            )}
+            {/* Email opt-in: only meaningful while a render is in flight
+                (check it, close this window, get the result by email).
+                Toggling writes through to the in-flight job docs. */}
+            {isAnyRendering && (
+              <label className={styles.notifyEmailRow}>
+                <input
+                  type="checkbox"
+                  checked={notifyEmail}
+                  onChange={(e) => handleNotifyToggle(e.target.checked)}
+                />
+                <FormattedMessage
+                  id="screenshotModal.emailWhenDone"
+                  defaultMessage="Email me when it's ready (you can close this window)"
+                />
+              </label>
             )}
             {!currentUser && (
               <p className={styles.loginPrompt}>

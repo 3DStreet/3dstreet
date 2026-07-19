@@ -77,13 +77,23 @@ describe('break-it — zoom-undo proxy reds when _clearZoomUndo is disabled', ()
 function groundedArmDifference({ disableDerive }) {
   const build = () => {
     const scene = H.rampScene({ baseY: 12, slopeDeg: 8 });
-    const cam = H.makePerspectiveCam({ pos: [0, 13.5, 0], lookAt: [0, 13.5, 20] });
-    const c = H.makeControls({ camera: cam, scene, wasd: true, streetLevel: true });
+    const cam = H.makePerspectiveCam({
+      pos: [0, 13.5, 0],
+      lookAt: [0, 13.5, 20]
+    });
+    const c = H.makeControls({
+      camera: cam,
+      scene,
+      wasd: true,
+      streetLevel: true
+    });
     return { cam, c };
   };
   const G = build();
   if (disableDerive) {
-    H.withInvariantDisabled(G.c, 'grounded', () => G.c._deriveGroundedFromPose());
+    H.withInvariantDisabled(G.c, 'grounded', () =>
+      G.c._deriveGroundedFromPose()
+    );
   } else {
     G.c._deriveGroundedFromPose();
   }
@@ -103,12 +113,16 @@ function groundedArmDifference({ disableDerive }) {
 
 describe('break-it — grounded proxy reds when _deriveGroundedFromPose is disabled', () => {
   it('the proxy PASSES with the invariant live (grounded follows the slope down)', () => {
-    expect(groundedArmDifference({ disableDerive: false })).toBeGreaterThan(0.8);
+    expect(groundedArmDifference({ disableDerive: false })).toBeGreaterThan(
+      0.8
+    );
   });
 
   it('the proxy FAILS with _deriveGroundedFromPose disabled (grounded arm behaves like flying)', () => {
     const failed = H.assertionFails(() => {
-      expect(groundedArmDifference({ disableDerive: true })).toBeGreaterThan(0.8);
+      expect(groundedArmDifference({ disableDerive: true })).toBeGreaterThan(
+        0.8
+      );
     });
     expect(failed).toBe(true);
   });
@@ -139,12 +153,16 @@ function crossControllerDifference({ disableClear }) {
 
 describe('break-it — cross-controller invalidation reds when _clearZoomUndo is disabled', () => {
   it('the proxy PASSES with the invariant live (rotation invalidates the retrace)', () => {
-    expect(crossControllerDifference({ disableClear: false }).diff).toBeGreaterThan(3);
+    expect(
+      crossControllerDifference({ disableClear: false }).diff
+    ).toBeGreaterThan(3);
   });
 
   it('the proxy FAILS with _clearZoomUndo disabled (rotation no longer invalidates)', () => {
     const failed = H.assertionFails(() => {
-      expect(crossControllerDifference({ disableClear: true }).diff).toBeGreaterThan(3);
+      expect(
+        crossControllerDifference({ disableClear: true }).diff
+      ).toBeGreaterThan(3);
     });
     expect(failed).toBe(true);
   });
@@ -157,7 +175,12 @@ describe('break-it — cross-controller invalidation reds when _clearZoomUndo is
 function rotationAfterWasdEntry({ disableEnd }) {
   const scene = H.groundPlaneScene({ y: 0 });
   const cam = H.makePerspectiveCam({ pos: [0, 1.5, 0], lookAt: [0, 1.5, -1] });
-  const c = H.makeControls({ camera: cam, scene, wasd: true, streetLevel: true });
+  const c = H.makeControls({
+    camera: cam,
+    scene,
+    wasd: true,
+    streetLevel: true
+  });
 
   H.mouseDown(c, { clientX: 640, clientY: 360, button: 0, shiftKey: true });
   H.mouseMove(c, { clientX: 660, clientY: 360 }); // rotating

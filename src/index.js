@@ -22,6 +22,7 @@ require('./aframe-components/create-from-json');
 require('./aframe-components/screentock.js');
 require('./aframe-components/focus-animation');
 require('aframe-atlas-uvs-component');
+require('./aframe-components/bvh-geometry.js');
 require('./aframe-components/street-geo.js');
 require('./aframe-components/street-environment.js');
 require('./aframe-components/intersection.js');

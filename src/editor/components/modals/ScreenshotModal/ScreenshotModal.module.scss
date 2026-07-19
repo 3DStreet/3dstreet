@@ -344,6 +344,27 @@
   text-align: center;
 }
 
+/* Mid-render email opt-in, shown under the (progress-bar) generate button */
+.notifyEmailRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #999;
+  cursor: pointer;
+  user-select: none;
+
+  input {
+    /* #aframeInspector hides ALL native checkboxes (the properties panel
+       replaces them with styled widgets) — this one is a real checkbox and
+       must out-rank that id-scoped rule. */
+    visibility: visible !important;
+    accent-color: #6366f1;
+  }
+}
+
 .tokenBadge {
   display: inline-block;
   margin-left: 8px;
