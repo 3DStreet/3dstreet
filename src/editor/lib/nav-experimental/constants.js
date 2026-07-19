@@ -214,13 +214,14 @@ export const LB_PAN_MAX_STEP_METRES = 5000;
 // LB pan-anchor reach gain (TH-81, #1867 follow-up). The pan's
 // world-per-pixel rate scales with the anchor-plane depth, so a shallow grab
 // that raycasts distant ground near the horizon (hundreds/thousands of
-// metres out) catapults the camera. The anchor's camera-distance is capped
-// at `max(FALLBACK_FORWARD_DIST, GAIN × camera→center distance)` — the
-// legacy pan-rate bound (`max(minSpeedFactor, distanceToCenter) × panSpeed`
-// never read the cursor's hit distance at all), with ×GAIN slack so every
-// normal grab (anchor near the working distance) keeps exact
-// point-under-cursor tracking. A beyond-cap anchor is pulled IN along the
-// cursor ray (no lurch; the far point pans slower than the cursor).
+// metres out) catapults the camera. The reach `max(FALLBACK_FORWARD_DIST,
+// GAIN × camera→center distance)` — the legacy pan-rate bound
+// (`max(minSpeedFactor, distanceToCenter) × panSpeed` never read the
+// cursor's hit distance at all) — re-depths outlier anchors along the
+// cursor ray in both directions: a beyond-reach real hit is pulled IN
+// (anti-catapult), and a sky-grab 'fallback' anchor (fixed 30 m) is pushed
+// OUT, so above- and below-horizon grabs pan at the same rate. Real hits
+// within reach keep exact point-under-cursor tracking (the ×GAIN slack).
 export const LB_PAN_ANCHOR_REACH_CENTER_GAIN = 2; // dimensionless; feel
 
 // Focus (F / double-click) standoff for a target with no measurable

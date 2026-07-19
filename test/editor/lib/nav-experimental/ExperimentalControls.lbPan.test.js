@@ -77,10 +77,12 @@ describe('LB pan — sky grab at the horizon (GH-1867)', () => {
     H.mouseMove(c, { clientX: 677, clientY: 289 });
 
     const dy = cam.position.y - start.y;
-    // ~4.2 m up for 90 px at the ~29 m fallback depth (fov 60, 720 px tall).
-    // Pre-fix the first move NETS DOWNWARD (jump ≈ −8.7 m + drag ≈ +4.2 m).
-    expect(dy).toBeGreaterThan(2);
-    expect(dy).toBeLessThan(7);
+    // The sky-grab fallback anchor is pushed out to the TH-81 reach
+    // (2 × camera→center ≈ 82 m here — same depth a capped far-ground grab
+    // gets), so 90 px ≈ 11.4 m up (fov 60, 720 px tall). Pre-fix the first
+    // move NETS DOWNWARD (centre-forward fallback jump ≈ −8.7 m).
+    expect(dy).toBeGreaterThan(9);
+    expect(dy).toBeLessThan(14);
     // A vertical drag while looking down -Z never trucks sideways or dollies.
     expect(cam.position.x).toBeCloseTo(start.x, 4);
     expect(cam.position.z).toBeCloseTo(start.z, 4);
@@ -119,5 +121,40 @@ describe('LB pan — sky grab at the horizon (GH-1867)', () => {
     expect(moved).toBeGreaterThan(5);
     expect(moved).toBeLessThan(25);
     H.mouseUp(c);
+  });
+
+  it('grabbing sky and grabbing distant ground pan at the same rate (TH-81 harmonization)', () => {
+    // Both anchors are re-depthed to the same reach — the sky 'fallback'
+    // (fixed 30 m) is pushed OUT, the far ground hit is pulled IN — so the
+    // same drag from just above vs just below the horizon moves the camera
+    // nearly identically (they differ only by the rays' angle cosines).
+    const drag = (clientY) => {
+      const scene = H.groundPlaneScene({ y: 0 });
+      const cam = H.makePerspectiveCam({
+        pos: [0, 10, 40],
+        lookAt: [0, 10, 0]
+      });
+      const dom = H.makeDomElement({
+        width: 1280,
+        height: 720,
+        left: 37,
+        top: 19
+      });
+      const c = H.makeControls({ camera: cam, dom, scene });
+      const start = cam.position.clone();
+      H.mouseDown(c, { clientX: 677, clientY, button: 0 });
+      H.mouseMove(c, { clientX: 677, clientY: clientY + 100 });
+      const moved = cam.position.distanceTo(start);
+      H.mouseUp(c);
+      return moved;
+    };
+
+    const skyMove = drag(199); // top quarter — sky (fallback anchor)
+    const groundMove = drag(399); // just below horizon — far ground hit
+    expect(skyMove).toBeGreaterThan(5);
+    expect(groundMove).toBeGreaterThan(5);
+    const ratio = skyMove / groundMove;
+    expect(ratio).toBeGreaterThan(0.75);
+    expect(ratio).toBeLessThan(1.33);
   });
 });

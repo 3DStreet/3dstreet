@@ -322,16 +322,24 @@ export class DragGestureController {
   // anchor hundreds/thousands of metres out, and the drag "catapults" the
   // camera (metres of world per pixel). Legacy EditorControls never had this:
   // its pan rate was `max(minSpeedFactor, distanceToCENTER) × panSpeed`,
-  // independent of what sat under the cursor. Restore that bound: cap the
-  // anchor's camera-distance at max(FALLBACK_FORWARD_DIST, GAIN × the
-  // camera→center working distance), pulling a farther anchor IN along the
-  // cursor ray. Every worldPointAt anchor lies ON the cursor ray, so the
-  // pulled-in anchor does too — the first-move delta stays 0 (no lurch); the
-  // only trade is that a beyond-cap grab point no longer exactly tracks the
-  // cursor (it pans slower), the same trade legacy made for every point. The
-  // ×GAIN slack keeps exact cursor-tracking for every normal grab (anchors
-  // near the working distance); only far-outlier grabs are slowed. Returns a
-  // flat {x, y, z, source} like worldPointAt.
+  // independent of what sat under the cursor. Restore that bound: set the
+  // anchor's camera-distance to `reach = max(FALLBACK_FORWARD_DIST, GAIN ×
+  // the camera→center working distance)` whenever it disagrees, in BOTH
+  // directions along the cursor ray:
+  //   • a farther real hit (distant ground near the horizon) is pulled IN
+  //     to `reach` — the anti-catapult bound;
+  //   • a 'fallback' anchor (sky grab — parked at the fixed 30 m depth) is
+  //     pushed OUT to `reach`, so grabbing sky pans at the SAME rate as a
+  //     capped far-ground grab instead of crawling at the 30 m rate while
+  //     the pixel row just below the horizon flies (rate-harmonization,
+  //     PR #1868 feedback).
+  // Every worldPointAt anchor lies ON the cursor ray, so the re-depthed
+  // anchor does too — the first-move delta stays 0 (no lurch); the only
+  // trade is that a re-depthed grab point no longer exactly tracks the
+  // cursor, the same trade legacy made for every point. Real hits within
+  // reach are untouched — the ×GAIN slack keeps exact cursor-tracking for
+  // every normal grab (anchors near the working distance). Returns a flat
+  // {x, y, z, source} like worldPointAt.
   _capAnchorReach(anchor) {
     const camPos = this._ctx.camera.position;
     const dx = anchor.x - camPos.x;
@@ -342,7 +350,9 @@ export class DragGestureController {
       FALLBACK_FORWARD_DIST,
       LB_PAN_ANCHOR_REACH_CENTER_GAIN * camPos.distanceTo(this._ctx.center)
     );
-    if (!(d > reach)) return anchor; // within reach (or degenerate) — as-is
+    const pullIn = d > reach; // far real hit → anti-catapult bound
+    const pushOut = anchor.source === 'fallback' && d > 0 && d < reach;
+    if (!pullIn && !pushOut) return anchor; // at reach / in-reach real hit / degenerate
     const k = reach / d;
     return {
       x: camPos.x + dx * k,
