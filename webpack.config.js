@@ -71,6 +71,10 @@ const config = {
     bollardbuddy: {
       import: './src/bollardbuddy/index.js',
       filename: 'bollardbuddy.js'
+    },
+    render: {
+      import: './src/render/index.js',
+      filename: 'street-render.js'
     }
   },
   output: {

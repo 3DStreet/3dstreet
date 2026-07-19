@@ -1,0 +1,311 @@
+/**
+ * renderStreet — public HTTP endpoint that turns a managed-street JSON blob
+ * into a rendered "beauty shot" PNG: a 45°-offset pseudo-orthographic view
+ * (perspective camera, narrow FOV) with the cross-section label bar, exactly
+ * as the 3DStreet app renders it.
+ *
+ * Built for LLM / skill / MCP callers: text prompt → managed-street JSON →
+ * one POST → image, plus an `openInEditorUrl` deep link that loads the same
+ * street in the full 3DStreet editor (the inbound hook for further work:
+ * 3D maps, AI rendering, editing). See docs/street-render-endpoint.md.
+ *
+ * How it works: puppeteer drives the deployed render page (render.html +
+ * dist/street-render.js — a lean, editor-free bundle of the managed-street
+ * component stack). The page exposes window.__STREET_RENDER__ with a
+ * status/capture contract; readiness is model-load quiescence, not a fixed
+ * delay. Headless Chromium renders WebGL via SwiftShader (no GPU needed).
+ *
+ * API (also usable via hosting rewrite /render-street):
+ *   POST { street: {name, length, segments:[...]}, options?: {...} }
+ *   POST { name, length, segments:[...] }            (bare street works too)
+ *   GET  ?data=<base64url of either shape>
+ *
+ *   options: width, height (image px), fov, azimuth, elevation, margin,
+ *            environment (street-environment preset), labels, vehicles,
+ *            ground, boundaries, units ('metric'|'imperial'), title,
+ *            branding, type ('png'|'jpg'), quality
+ *
+ *   Response: image bytes (image/png or image/jpeg) with the editor deep
+ *   link in the X-3DStreet-Editor-Url header, or with ?format=json a JSON
+ *   body { image: <dataURL>, openInEditorUrl, meta, width, height }.
+ */
+/* global window */ // window only appears inside page.evaluate (browser ctx)
+const { onRequest } = require('firebase-functions/v2/https');
+
+const RENDER_PAGE_URL =
+  process.env.RENDER_PAGE_URL || 'https://3dstreet.app/render.html';
+const EDITOR_BASE_URL = process.env.EDITOR_BASE_URL || 'https://3dstreet.app/';
+
+const MAX_PAYLOAD_BYTES = 262144; // 256 KB of street JSON is plenty
+const MAX_SEGMENTS = 64;
+const READY_TIMEOUT_MS = 90000;
+
+// One shared browser per warm instance; relaunched if it dies.
+let browserPromise = null;
+
+async function launchBrowser() {
+  const puppeteer = require('puppeteer-core');
+  // Local/dev override (e.g. a system chromium); default is the
+  // lambda-compatible build @sparticuz/chromium unpacks into /tmp.
+  let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  let args = [
+    '--no-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--hide-scrollbars'
+  ];
+  if (!executablePath) {
+    const chromium = require('@sparticuz/chromium');
+    chromium.setGraphicsMode = true; // keep WebGL (SwiftShader) available
+    executablePath = await chromium.executablePath();
+    args = chromium.args;
+  }
+  return puppeteer.launch({
+    executablePath,
+    args: [...args, '--enable-unsafe-swiftshader'],
+    defaultViewport: null,
+    headless: 'shell'
+  });
+}
+
+async function getBrowser() {
+  if (browserPromise) {
+    try {
+      const browser = await browserPromise;
+      if (browser.connected) return browser;
+    } catch {
+      // fall through to relaunch
+    }
+  }
+  browserPromise = launchBrowser();
+  return browserPromise;
+}
+
+function badRequest(res, message) {
+  res.status(400).json({ error: message });
+}
+
+function decodeBase64Url(data) {
+  const b64 = data.replace(/-/g, '+').replace(/_/g, '/');
+  return Buffer.from(b64, 'base64').toString('utf8');
+}
+
+/**
+ * Normalize request input to { street, options }. Throws with a
+ * human-readable message on invalid input.
+ */
+function parseRenderRequest(req) {
+  let payload;
+  if (req.method === 'POST') {
+    payload = req.body;
+    if (typeof payload === 'string') payload = JSON.parse(payload);
+  } else if (req.method === 'GET' && req.query.data) {
+    payload = JSON.parse(decodeBase64Url(String(req.query.data)));
+  } else {
+    throw new Error(
+      'POST a JSON body { street, options } (or a bare managed-street ' +
+        'object), or GET with ?data=<base64url JSON>'
+    );
+  }
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('request payload must be a JSON object');
+  }
+
+  const street = payload.street || payload;
+  const options =
+    payload.options && typeof payload.options === 'object'
+      ? payload.options
+      : {};
+
+  if (!Array.isArray(street.segments) || street.segments.length === 0) {
+    throw new Error(
+      'street must contain a non-empty segments array — see ' +
+        'docs/street-render-endpoint.md for the managed-street JSON format'
+    );
+  }
+  if (street.segments.length > MAX_SEGMENTS) {
+    throw new Error(`too many segments (max ${MAX_SEGMENTS})`);
+  }
+  const size = Buffer.byteLength(JSON.stringify(street), 'utf8');
+  if (size > MAX_PAYLOAD_BYTES) {
+    throw new Error(
+      `street JSON too large (${size} bytes, max ${MAX_PAYLOAD_BYTES})`
+    );
+  }
+
+  // Merge flat GET query params as options for curl-friendly calls
+  // (?width=1600&type=jpg&environment=sunset ...).
+  const flat = { ...req.query };
+  delete flat.data;
+  delete flat.format;
+  const merged = { ...flat, ...options };
+
+  return { street, options: sanitizeOptions(merged) };
+}
+
+const NUMBER_OPTIONS = {
+  width: [320, 2560],
+  height: [240, 2560],
+  fov: [5, 90],
+  azimuth: [-180, 180],
+  elevation: [5, 85],
+  margin: [1, 2],
+  quality: [0.1, 1]
+};
+const BOOLEAN_OPTIONS = [
+  'labels',
+  'vehicles',
+  'ground',
+  'boundaries',
+  'branding',
+  'autoSide'
+];
+const STRING_OPTIONS = {
+  environment: /^[a-z0-9-]{1,32}$/,
+  units: /^(metric|imperial)$/,
+  type: /^(png|jpg|jpeg)$/,
+  title: /^[\s\S]{0,120}$/
+};
+
+function sanitizeOptions(raw) {
+  const options = {};
+  for (const [key, [min, max]] of Object.entries(NUMBER_OPTIONS)) {
+    if (raw[key] === undefined) continue;
+    const value = Number(raw[key]);
+    if (Number.isFinite(value)) {
+      options[key] = Math.min(max, Math.max(min, value));
+    }
+  }
+  for (const key of BOOLEAN_OPTIONS) {
+    if (raw[key] === undefined) continue;
+    options[key] = raw[key] === true || raw[key] === 'true';
+  }
+  for (const [key, pattern] of Object.entries(STRING_OPTIONS)) {
+    if (raw[key] === undefined) continue;
+    const value = String(raw[key]);
+    if (pattern.test(value)) options[key] = value;
+  }
+  return options;
+}
+
+function buildEditorUrl(street) {
+  return (
+    EDITOR_BASE_URL +
+    '#managed-street-json:' +
+    encodeURIComponent(JSON.stringify(street))
+  );
+}
+
+async function renderOnPage(street, options) {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.setViewport({
+      width: Math.round(options.width || 1280),
+      height: Math.round(options.height || 800),
+      deviceScaleFactor: 1
+    });
+    await page.evaluateOnNewDocument((payload) => {
+      window.__STREET_RENDER_PAYLOAD__ = payload;
+    }, { street, options });
+    await page.goto(RENDER_PAGE_URL, {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000
+    });
+    await page.waitForFunction(
+      () =>
+        window.__STREET_RENDER__ &&
+        ['ready', 'error'].includes(window.__STREET_RENDER__.status),
+      { timeout: READY_TIMEOUT_MS, polling: 500 }
+    );
+    const state = await page.evaluate(() => ({
+      status: window.__STREET_RENDER__.status,
+      error: window.__STREET_RENDER__.error,
+      meta: window.__STREET_RENDER__.meta
+    }));
+    if (state.status !== 'ready') {
+      const err = new Error(state.error || 'render failed');
+      err.isRenderError = true;
+      throw err;
+    }
+    const dataUrl = await page.evaluate(
+      (captureOpts) => window.__STREET_RENDER__.capture(captureOpts),
+      { type: options.type || 'png', quality: options.quality || 0.92 }
+    );
+    return { dataUrl, meta: state.meta };
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
+exports.renderStreet = onRequest(
+  {
+    memory: '2GiB',
+    cpu: 2,
+    timeoutSeconds: 180,
+    // puppeteer is memory-hungry: keep per-instance parallelism low and cap
+    // the fleet so a traffic spike degrades into 429s, not a runaway bill
+    concurrency: 2,
+    maxInstances: 10,
+    cors: true
+  },
+  async (req, res) => {
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+    if (req.method !== 'POST' && req.method !== 'GET') {
+      res.status(405).json({ error: 'use GET or POST' });
+      return;
+    }
+
+    let street, options;
+    try {
+      ({ street, options } = parseRenderRequest(req));
+    } catch (err) {
+      badRequest(res, String(err.message || err));
+      return;
+    }
+
+    try {
+      const started = Date.now();
+      const { dataUrl, meta } = await renderOnPage(street, options);
+      const editorUrl = buildEditorUrl(street);
+      console.log(
+        `renderStreet ok: "${meta && meta.name}" segments=${street.segments.length} ` +
+          `ms=${Date.now() - started}`
+      );
+
+      const wantsJson =
+        req.query.format === 'json' ||
+        (req.get('accept') || '').includes('application/json');
+      if (wantsJson) {
+        res.json({
+          image: dataUrl,
+          openInEditorUrl: editorUrl,
+          meta,
+          width: Math.round(options.width || 1280),
+          height: Math.round(options.height || 800)
+        });
+        return;
+      }
+
+      const [head, body] = dataUrl.split(',');
+      const contentType = head.includes('image/jpeg')
+        ? 'image/jpeg'
+        : 'image/png';
+      res.set('Content-Type', contentType);
+      // already ASCII-safe: the JSON fragment is encodeURIComponent-encoded
+      res.set('X-3DStreet-Editor-Url', editorUrl);
+      res.set('Cache-Control', 'public, max-age=3600');
+      res.send(Buffer.from(body, 'base64'));
+    } catch (err) {
+      console.error('renderStreet failed:', err);
+      if (err.isRenderError) {
+        res.status(422).json({ error: `could not render street: ${err.message}` });
+      } else {
+        res.status(500).json({ error: 'internal render error' });
+      }
+    }
+  }
+);

@@ -31,6 +31,8 @@ module.exports = {
       // Only check named entry point bundles, not async-loaded chunks.
       // The Spark splat library (~4.4 MiB) is dynamically imported and
       // lazy-loaded only when a splat component is used.
+      // street-render.js is excluded: it's only fetched by the headless
+      // renderStreet Cloud Function, never by end users.
       return /^(aframe-street-component|generator|bollardbuddy)\.js$/.test(
         assetFilename
       );
@@ -47,6 +49,10 @@ module.exports = {
     bollardbuddy: {
       import: './src/bollardbuddy/index.js',
       filename: 'bollardbuddy.js'
+    },
+    render: {
+      import: './src/render/index.js',
+      filename: 'street-render.js'
     }
   },
   output: {

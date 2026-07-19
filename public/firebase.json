@@ -18,6 +18,10 @@
         "function": "getScene"
       },
       {
+        "source": "render-street",
+        "function": "renderStreet"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       },

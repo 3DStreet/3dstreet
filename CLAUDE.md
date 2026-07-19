@@ -110,7 +110,9 @@ Unified Viewer presentation with a Start/Stop play lifecycle. Playing is present
 
 **Auth:** Google, Email/Password, user claims for plan levels
 
-**Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated
+**Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated, renderStreet
+
+**Street render endpoint:** `renderStreet` (public HTTP, also `/render-street` hosting rewrite) turns a managed-street JSON blob into a labeled 45° pseudo-ortho "beauty shot" PNG via puppeteer + the headless render page (`render.html` + `dist/street-render.js`, a lean editor-free bundle with `street-render-harness`). Aimed at LLM/skill/MCP callers; responses carry an `#managed-street-json:` editor deep link as the inbound funnel. Docs: `docs/street-render-endpoint.md`.
 
 **Lifecycle emails:** one send path (`sendLifecycleEmail` in `public/functions/email/`) with per-stream Postmark routing, `emailPrefs` unsubscribe suppression, and transactional stop-rules on `emailLog`. Triggers: Auth onCreate (welcome), `stripeWebhook` (post-upgrade; failed-payment handler dormant — Stripe hosted dunning instead), hourly sweep (abandoned checkout, pricing nudge, geo-not-used), daily sweep (token exhaustion). Docs: `docs/email-lifecycle.md`.
 

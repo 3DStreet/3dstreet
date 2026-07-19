@@ -22,6 +22,7 @@ const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./sch
 const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
 const { onSplatAssetCreated } = require('./rad-dispatch.js');
 const { generateEditorChat } = require('./ai-chat-proxy.js');
+const { renderStreet } = require('./render-street.js');
 
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;
@@ -94,6 +95,11 @@ exports.onSplatAssetCreated = onSplatAssetCreated;
 // model access now goes through this authenticated, rate-limited, model-locked
 // callable. See ai-chat-proxy.js.
 exports.generateEditorChat = generateEditorChat;
+
+// managed-street JSON → labeled 45° beauty-shot image (public endpoint for
+// LLM/skill/MCP callers; also rewired via hosting /render-street). See
+// docs/street-render-endpoint.md.
+exports.renderStreet = renderStreet;
 
 exports.getScene = functions
   .https
