@@ -1056,6 +1056,117 @@ describe('cappedDollyStep (TASK-014d)', () => {
       })
     ).toBeNull();
   });
+
+  // TH-80 / #1865 — zoom-out escape floor.
+  describe('minAnchorDistMetres (zoom-out escape floor, #1865)', () => {
+    const MIN = 16;
+
+    it('zoom-out from a sub-floor anchor distance steps as if the anchor were MIN away', () => {
+      // Camera 0.25 m from the anchor (the post-focus-on-empty-bbox pose).
+      // Without the floor the out-step is alpha·0.25 ≈ 0.025 m; with it the
+      // step is sized for a 16 m anchor: (1/(1−α) − 1)·16.
+      const camPos = new THREE.Vector3(0, 0.05, 0.25);
+      const hit = { x: 0, y: 0, z: 0 };
+      const out = cappedDollyStep({
+        camPos,
+        hit,
+        sign: 1,
+        alpha: ALPHA,
+        lateralCapMetres: 1000, // large — isolate the floor from the cap
+        minAnchorDistMetres: MIN
+      });
+      const step = Math.hypot(
+        out.x - camPos.x,
+        out.y - camPos.y,
+        out.z - camPos.z
+      );
+      const expected = (1 / (1 - ALPHA) - 1) * MIN;
+      expect(step).toBeCloseTo(expected, 6);
+      // Direction: away from the hit, along the hit→camera ray.
+      expect(out.z).toBeGreaterThan(camPos.z);
+      expect(out.y).toBeGreaterThan(camPos.y);
+    });
+
+    it('zoom-IN is untouched by the floor (stays asymptotic, never overshoots)', () => {
+      const camPos = new THREE.Vector3(0, 0.05, 0.25);
+      const hit = { x: 0, y: 0, z: 0 };
+      const withFloor = cappedDollyStep({
+        camPos,
+        hit,
+        sign: -1,
+        alpha: ALPHA,
+        lateralCapMetres: 1000,
+        minAnchorDistMetres: MIN
+      });
+      const withoutFloor = cappedDollyStep({
+        camPos,
+        hit,
+        sign: -1,
+        alpha: ALPHA,
+        lateralCapMetres: 1000
+      });
+      expect(withFloor.x).toBeCloseTo(withoutFloor.x, 9);
+      expect(withFloor.y).toBeCloseTo(withoutFloor.y, 9);
+      expect(withFloor.z).toBeCloseTo(withoutFloor.z, 9);
+    });
+
+    it('no effect at/beyond the floor distance (interior behaviour unchanged)', () => {
+      const camPos = new THREE.Vector3(0, 100, 0);
+      const hit = { x: 30, y: 0, z: 0 }; // ≈104 m ≫ MIN
+      const withFloor = cappedDollyStep({
+        camPos,
+        hit,
+        sign: 1,
+        alpha: ALPHA,
+        lateralCapMetres: 15,
+        minAnchorDistMetres: MIN
+      });
+      const withoutFloor = cappedDollyStep({
+        camPos,
+        hit,
+        sign: 1,
+        alpha: ALPHA,
+        lateralCapMetres: 15
+      });
+      expect(withFloor.x).toBeCloseTo(withoutFloor.x, 9);
+      expect(withFloor.y).toBeCloseTo(withoutFloor.y, 9);
+      expect(withFloor.z).toBeCloseTo(withoutFloor.z, 9);
+    });
+
+    it('camera exactly on the anchor → zero step, no NaN', () => {
+      const camPos = new THREE.Vector3(1, 2, 3);
+      const hit = { x: 1, y: 2, z: 3 };
+      const out = cappedDollyStep({
+        camPos,
+        hit,
+        sign: 1,
+        alpha: ALPHA,
+        lateralCapMetres: 15,
+        minAnchorDistMetres: MIN
+      });
+      expect(out.x).toBe(1);
+      expect(out.y).toBe(2);
+      expect(out.z).toBe(3);
+    });
+
+    it('the lateral cap still bounds a floored step', () => {
+      // Near-horizontal anchor 0.5 m ahead: the floored step (~1.68 m at
+      // alpha 0.1 × 16 m) is mostly horizontal; a 1 m cap must still bound it.
+      const camPos = new THREE.Vector3(0, 0.1, 0);
+      const hit = { x: 0, y: 0, z: -0.5 };
+      const out = cappedDollyStep({
+        camPos,
+        hit,
+        sign: 1,
+        alpha: ALPHA,
+        lateralCapMetres: 1,
+        minAnchorDistMetres: MIN
+      });
+      const h = Math.hypot(out.x - camPos.x, out.z - camPos.z);
+      expect(h).toBeLessThanOrEqual(1 + 1e-9);
+      expect(h).toBeCloseTo(1, 6);
+    });
+  });
 });
 
 describe('levelForwardAnchor (TASK-014d)', () => {

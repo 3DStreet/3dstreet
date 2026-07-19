@@ -149,6 +149,21 @@ export const RING_SCREEN_FRACTION = 0.035;
 // the two regimes tune independently.
 export const ZOOM_PER_WHEEL_TICK = 0.05;
 
+// Zoom-OUT escape floor (TH-80): minimum EFFECTIVE camera→anchor distance,
+// in metres, used to size a zoom-out dolly step. The dolly step is
+// multiplicative in the camera→anchor distance (ZOOM_PER_WHEEL_TICK × dist
+// per tick), so with the camera parked millimetres from its anchor a
+// zoom-out tick moves ~nothing and the wheel reads as dead. Reachable via
+// focus (F / double-click) on an entity with no measurable geometry — the
+// empty-bbox fallback flies the camera to 0.25 m from the entity origin
+// (e.g. a geojson data layer at 0 0 0, #1865). Legacy EditorControls had the
+// same escape valve as `minSpeedFactor = 8` (step = max(8, dist) × 0.1 ≥
+// 0.8 m/detent); 16 m × ZOOM_PER_WHEEL_TICK reproduces that 0.8 m/tick
+// minimum. Applied on zoom-OUT only — zoom-in stays asymptotic (never
+// overshoots through the anchor), which deliberately trades exact in/out
+// reversibility inside this radius for never getting stuck.
+export const WHEEL_ZOOM_OUT_MIN_ANCHOR_DIST_METRES = 16;
+
 // Wheel zoom — street-level FOV step (TH-09). Fraction by which
 // the field of view shrinks (zoom-in) / grows (zoom-out) per nominal tick.
 // Split out from ZOOM_PER_WHEEL_TICK so FOV tunes independently of the dolly.
