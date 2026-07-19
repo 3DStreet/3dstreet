@@ -578,7 +578,7 @@
     "screenshotModal.aiRenderFailed": "Failed to generate AI render for {modelName}. Please try again.",
     "screenshotModal.aiRenderSuccess": "AI render generated successfully! ({modelName})",
     "screenshotModal.compareAB": "Compare A/B",
-    "screenshotModal.confirmClose": "Rendering in progress. Are you sure you want to close? The render will be cancelled.",
+    "screenshotModal.confirmClose": "Rendering in progress. Close anyway? The render will finish in the background and be saved to your gallery.",
     "screenshotModal.download": "Download",
     "screenshotModal.downloadImage": "Download image",
     "screenshotModal.empty": "Empty",
@@ -743,7 +743,8 @@
     "exportModal.layerSegments": "Segments",
     "exportModal.layerShapes": "Shapes",
     "exportModal.layersLabel": "Layers",
-    "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview."
+    "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview.",
+    "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1324,7 +1325,7 @@
     "screenshotModal.aiRenderFailed": "Failed to generate AI render for {modelName}. Please try again.",
     "screenshotModal.aiRenderSuccess": "AI render generated successfully! ({modelName})",
     "screenshotModal.compareAB": "Compare A/B",
-    "screenshotModal.confirmClose": "Rendering in progress. Are you sure you want to close? The render will be cancelled.",
+    "screenshotModal.confirmClose": "Rendering in progress. Close anyway? The render will finish in the background and be saved to your gallery.",
     "screenshotModal.download": "Download",
     "screenshotModal.downloadImage": "Download image",
     "screenshotModal.empty": "Empty",
@@ -1489,7 +1490,8 @@
     "exportModal.layerSegments": "Segments",
     "exportModal.layerShapes": "Shapes",
     "exportModal.layersLabel": "Layers",
-    "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview."
+    "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview.",
+    "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2070,7 +2072,7 @@
     "screenshotModal.aiRenderFailed": "Failed to generate AI render for {modelName}. Please try again.",
     "screenshotModal.aiRenderSuccess": "AI render generated successfully! ({modelName})",
     "screenshotModal.compareAB": "Compare A/B",
-    "screenshotModal.confirmClose": "Rendering in progress. Are you sure you want to close? The render will be cancelled.",
+    "screenshotModal.confirmClose": "Rendering in progress. Close anyway? The render will finish in the background and be saved to your gallery.",
     "screenshotModal.download": "Download",
     "screenshotModal.downloadImage": "Download image",
     "screenshotModal.empty": "Empty",
@@ -2235,6 +2237,7 @@
     "exportModal.layerSegments": "Segments",
     "exportModal.layerShapes": "Shapes",
     "exportModal.layersLabel": "Layers",
-    "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview."
+    "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview.",
+    "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)"
   }
 }
