@@ -167,9 +167,11 @@ describe('camera-anchor writer ordering (Tier 1.5)', () => {
     expect(Math.abs(d.z)).toBeGreaterThan(2); // WASD advanced beyond tolerance
     // Pin the composite pose (the observable of the read-then-write order). A
     // dropped WASD writer shifts z by the ~2.4 m advance — outside this ±0.05
-    // (precision-1) tolerance — so the pin reds.
-    expect(cam.position.y).toBeCloseTo(8.48, 1);
-    expect(cam.position.z).toBeCloseTo(-8.57, 1);
+    // (precision-1) tolerance — so the pin reds. (Re-pinned for GH-1858: the
+    // lurch-cap budget now scales with the ticks a multi-tick frame applies,
+    // so these 3-tick frames dolly farther than under the old flat cap.)
+    expect(cam.position.y).toBeCloseTo(7.43, 1);
+    expect(cam.position.z).toBeCloseTo(-8.49, 1);
   });
 });
 

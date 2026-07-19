@@ -330,6 +330,13 @@ camera→target ray (target stays under the cursor, reversibility exact). A
 straight-down step has ~0 horizontal component, so the cap never throttles
 descent.
 
+The cap is **per tick, not per frame**. The continuous drain (KD-09)
+merges every tick accumulated since the last frame into one step, so the
+step's cap budget scales with the tick count it applies (floored at one
+tick's budget for the sub-tick steps a high-fps frame carries). A flat
+per-frame cap would make the maximum zoom rate `cap × fps` — proportional
+to frame rate, glacial on low-fps scenes (GH-1858).
+
 ---
 
 ## D. Solid geometry, collision & recovery
