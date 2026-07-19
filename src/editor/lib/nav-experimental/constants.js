@@ -214,8 +214,12 @@ export const FALLBACK_FORWARD_DIST = 30;
 // (TH-16 lower bound, TH-17 coefficient; KD-15). Bounds the shallow-tilt lurch
 // (~50 m/tick at 200 m / 22°) without throttling straight-down descent
 // (horizontal ≈ 0 there, so the cap never fires). Absolute metres/tick (NOT a
-// % of the step) so it does not silently track ZOOM_PER_WHEEL_TICK. Separate
-// knob from the orbit-pivot bounds (different origin: camera nadir vs
+// % of the step) so it does not silently track ZOOM_PER_WHEEL_TICK. PER TICK,
+// not per frame: the continuous drain merges every tick accumulated since the
+// last frame into one step, so the applying step scales its cap budget by the
+// tick count (floored at one tick) — otherwise the max zoom rate would be
+// cap × fps, i.e. proportional to frame rate (glacial on low-fps scenes).
+// Separate knob from the orbit-pivot bounds (different origin: camera nadir vs
 // screen-centre ground point). Live-tunable via nav-experimental-tuning.
 //
 // The cap scales with height (KD-15): `lateralCap(yAgl) = max(LOWER_BOUND,
