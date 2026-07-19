@@ -109,15 +109,22 @@ async function launchBrowser() {
 }
 
 async function getBrowser() {
-  if (browserPromise) {
+  const current = browserPromise;
+  if (current) {
     try {
-      const browser = await browserPromise;
+      const browser = await current;
       if (browser.connected) return browser;
+      browser.close().catch(() => {});
     } catch {
       // fall through to relaunch
     }
   }
-  browserPromise = launchBrowser();
+  // Single-flight relaunch: a concurrent request may have already swapped in
+  // a fresh launch while we awaited the dead one — reuse it rather than
+  // launching (and orphaning) a second Chromium.
+  if (browserPromise === current) {
+    browserPromise = launchBrowser();
+  }
   return browserPromise;
 }
 
@@ -174,11 +181,15 @@ function parseRenderRequest(req) {
   }
 
   // Merge flat GET query params as options for curl-friendly calls
-  // (?width=1600&type=jpg&environment=sunset ...).
-  const flat = { ...req.query };
-  delete flat.data;
-  delete flat.format;
-  const merged = { ...flat, ...options };
+  // (?width=1600&type=jpg&environment=sunset ...). Explicit query params
+  // win over options carried inside the ?data payload.
+  let merged = options;
+  if (req.method === 'GET') {
+    const flat = { ...req.query };
+    delete flat.data;
+    delete flat.format;
+    merged = { ...options, ...flat };
+  }
 
   return { street, options: sanitizeOptions(merged) };
 }
@@ -197,8 +208,7 @@ const BOOLEAN_OPTIONS = [
   'vehicles',
   'ground',
   'boundaries',
-  'branding',
-  'autoSide'
+  'branding'
 ];
 const STRING_OPTIONS = {
   environment: /^[a-z0-9-]{1,32}$/,
@@ -245,9 +255,12 @@ async function renderOnPage(street, options) {
       height: Math.round(options.height || 800),
       deviceScaleFactor: 1
     });
-    await page.evaluateOnNewDocument((payload) => {
-      window.__STREET_RENDER_PAYLOAD__ = payload;
-    }, { street, options });
+    await page.evaluateOnNewDocument(
+      (payload) => {
+        window.__STREET_RENDER_PAYLOAD__ = payload;
+      },
+      { street, options }
+    );
     await page.goto(RENDER_PAGE_URL, {
       waitUntil: 'domcontentloaded',
       timeout: 30000
@@ -276,6 +289,40 @@ async function renderOnPage(street, options) {
   } finally {
     await page.close().catch(() => {});
   }
+}
+
+// The hosting front end caps total response headers (~32 KiB), so the editor
+// deep link — which embeds the whole street JSON — only travels as a header
+// when it comfortably fits; larger streets still get it via ?format=json.
+const MAX_EDITOR_URL_HEADER_BYTES = 8192;
+
+function sendRenderResponse(
+  req,
+  res,
+  { buffer, contentType, editorUrl, imageUrl, meta, options }
+) {
+  const wantsJson =
+    req.query.format === 'json' ||
+    (req.get('accept') || '').includes('application/json');
+  if (wantsJson) {
+    res.json({
+      image: `data:${contentType};base64,${buffer.toString('base64')}`,
+      imageUrl,
+      openInEditorUrl: editorUrl,
+      meta,
+      width: Math.round(options.width || 1280),
+      height: Math.round(options.height || 800)
+    });
+    return;
+  }
+  res.set('Content-Type', contentType);
+  // already ASCII-safe: the JSON fragment is encodeURIComponent-encoded
+  if (Buffer.byteLength(editorUrl) <= MAX_EDITOR_URL_HEADER_BYTES) {
+    res.set('X-3DStreet-Editor-Url', editorUrl);
+  }
+  if (imageUrl) res.set('X-3DStreet-Image-Url', imageUrl);
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.send(buffer);
 }
 
 exports.renderStreet = onRequest(
@@ -310,10 +357,46 @@ exports.renderStreet = onRequest(
       return;
     }
 
+    const editorUrl = buildEditorUrl(street);
+    const hash = renderCacheKey(street, options);
+
+    // Cache read: an identical {street, options} request serves the stored
+    // image in ~100ms instead of paying a 30-90s puppeteer render (and one
+    // of the few concurrent render slots). Best-effort: a storage hiccup
+    // falls through to a live render.
+    try {
+      const cachedExt =
+        options.type === 'jpg' || options.type === 'jpeg' ? 'jpg' : 'png';
+      const base = `renders/${RENDER_CACHE_VERSION}/${hash}`;
+      const bucket = admin.storage().bucket();
+      const [exists] = await bucket.file(`${base}.${cachedExt}`).exists();
+      if (exists) {
+        const [[buffer], meta] = await Promise.all([
+          bucket.file(`${base}.${cachedExt}`).download(),
+          bucket
+            .file(`${base}.json`)
+            .download()
+            .then(([sidecar]) => JSON.parse(sidecar.toString('utf8')).meta)
+            .catch(() => null)
+        ]);
+        console.log(`renderStreet cache hit: ${hash}`);
+        sendRenderResponse(req, res, {
+          buffer,
+          contentType: cachedExt === 'jpg' ? 'image/jpeg' : 'image/png',
+          editorUrl,
+          imageUrl: `${EDITOR_BASE_URL}render/img/${RENDER_CACHE_VERSION}/${hash}.${cachedExt}`,
+          meta: meta || null,
+          options
+        });
+        return;
+      }
+    } catch (cacheErr) {
+      console.warn('renderStreet cache read failed:', cacheErr);
+    }
+
     try {
       const started = Date.now();
       const { dataUrl, meta } = await renderOnPage(street, options);
-      const editorUrl = buildEditorUrl(street);
       console.log(
         `renderStreet ok: "${meta && meta.name}" segments=${street.segments.length} ` +
           `ms=${Date.now() - started}`
@@ -327,10 +410,10 @@ exports.renderStreet = onRequest(
       const ext = contentType === 'image/jpeg' ? 'jpg' : 'png';
 
       // Best-effort cache write: a storage hiccup should degrade to a
-      // response without imageUrl, not a failed render.
+      // response without imageUrl, not a failed render. The sidecar keeps
+      // meta so cache hits can answer ?format=json completely.
       let imageUrl = null;
       try {
-        const hash = renderCacheKey(street, options);
         const bucket = admin.storage().bucket();
         const base = `renders/${RENDER_CACHE_VERSION}/${hash}`;
         await Promise.all([
@@ -341,41 +424,32 @@ exports.renderStreet = onRequest(
               cacheControl: 'public, max-age=31536000, immutable'
             }
           }),
-          bucket.file(`${base}.json`).save(JSON.stringify({ street, options }), {
-            resumable: false,
-            contentType: 'application/json'
-          })
+          bucket
+            .file(`${base}.json`)
+            .save(JSON.stringify({ street, options, meta }), {
+              resumable: false,
+              contentType: 'application/json'
+            })
         ]);
         imageUrl = `${EDITOR_BASE_URL}render/img/${RENDER_CACHE_VERSION}/${hash}.${ext}`;
       } catch (cacheErr) {
         console.warn('renderStreet cache write failed:', cacheErr);
       }
 
-      const wantsJson =
-        req.query.format === 'json' ||
-        (req.get('accept') || '').includes('application/json');
-      if (wantsJson) {
-        res.json({
-          image: dataUrl,
-          imageUrl,
-          openInEditorUrl: editorUrl,
-          meta,
-          width: Math.round(options.width || 1280),
-          height: Math.round(options.height || 800)
-        });
-        return;
-      }
-
-      res.set('Content-Type', contentType);
-      // already ASCII-safe: the JSON fragment is encodeURIComponent-encoded
-      res.set('X-3DStreet-Editor-Url', editorUrl);
-      if (imageUrl) res.set('X-3DStreet-Image-Url', imageUrl);
-      res.set('Cache-Control', 'public, max-age=3600');
-      res.send(buffer);
+      sendRenderResponse(req, res, {
+        buffer,
+        contentType,
+        editorUrl,
+        imageUrl,
+        meta,
+        options
+      });
     } catch (err) {
       console.error('renderStreet failed:', err);
       if (err.isRenderError) {
-        res.status(422).json({ error: `could not render street: ${err.message}` });
+        res
+          .status(422)
+          .json({ error: `could not render street: ${err.message}` });
       } else {
         res.status(500).json({ error: 'internal render error' });
       }

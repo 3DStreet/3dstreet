@@ -287,27 +287,7 @@ AFRAME.registerComponent('street-render-harness', {
     const vFov = THREE.MathUtils.degToRad(opts.fov);
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
 
-    // Auto-pick the viewing side unless the caller set an explicit azimuth:
-    // shoot from the side with the lower edge segment so a tall boundary
-    // (brownstones etc.) backdrops the street instead of occluding it.
-    // Segment DOM order runs left→right across +X, so the last segment sits
-    // on the +X side — where a positive azimuth places the camera.
-    let azimuthDeg = opts.azimuth;
-    if (opts.azimuth === DEFAULT_OPTIONS.azimuth && opts.autoSide !== false) {
-      const segEls = this.streetEl.querySelectorAll('[street-segment]');
-      if (segEls.length >= 2) {
-        const heightOf = (el) => {
-          const b = new THREE.Box3().setFromObject(el.object3D);
-          return b.isEmpty() ? 0 : b.max.y - b.min.y;
-        };
-        const leftH = heightOf(segEls[0]);
-        const rightH = heightOf(segEls[segEls.length - 1]);
-        if (rightH > leftH + 2) {
-          azimuthDeg = -Math.abs(azimuthDeg);
-        }
-      }
-    }
-    const az = THREE.MathUtils.degToRad(azimuthDeg);
+    const az = THREE.MathUtils.degToRad(opts.azimuth);
     const elev = THREE.MathUtils.degToRad(opts.elevation);
 
     // direction from street center toward the camera; +Z faces the street

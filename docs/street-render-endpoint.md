@@ -57,33 +57,35 @@ also works.
 ### GET
 
 `?data=<base64url of the same JSON>` — handy for quick links. Flat query
-params are merged as options: `&width=1600&type=jpg&environment=sunset`.
+params are merged as options and win over options inside the `data`
+payload: `&width=1600&type=jpg&environment=sunset`.
 
 ### Options
 
-| option        | default    | notes                                                    |
-| ------------- | ---------- | -------------------------------------------------------- |
-| `width`/`height` | 1280×800 | image size in px (320–2560)                              |
-| `fov`         | 20         | camera FOV in degrees; smaller = more orthographic       |
-| `azimuth`     | 20         | camera angle around the street (degrees; sign = side)    |
-| `elevation`   | 30         | camera height angle above the horizon                    |
-| `margin`      | 1.12       | fit margin around the street bounding box                |
-| `environment` | `day`      | `street-environment` preset (day, night, sunset, …)      |
-| `labels`      | true       | show the cross-section label bar                         |
-| `vehicles`    | true       | show generated vehicle clones                            |
-| `ground`      | true       | show the dirt ground slab                                |
-| `boundaries`  | true       | show boundary segments (buildings, fences, …)            |
-| `units`       | metric     | label units: `metric` or `imperial`                      |
-| `title`       | street name | title annotation ("" to hide)                           |
-| `branding`    | true       | "made with 3DStreet" annotation                          |
-| `type`        | `png`      | `png` or `jpg` (`quality` 0–1 for jpg)                   |
-| `autoSide`    | true       | auto-flip camera to the side with the lower boundary     |
+| option           | default     | notes                                                 |
+| ---------------- | ----------- | ----------------------------------------------------- |
+| `width`/`height` | 1280×800    | image size in px (320–2560)                           |
+| `fov`            | 20          | camera FOV in degrees; smaller = more orthographic    |
+| `azimuth`        | 20          | camera angle around the street (degrees; sign = side) |
+| `elevation`      | 30          | camera height angle above the horizon                 |
+| `margin`         | 1.12        | fit margin around the street bounding box             |
+| `environment`    | `day`       | `street-environment` preset (day, night, sunset, …)   |
+| `labels`         | true        | show the cross-section label bar                      |
+| `vehicles`       | true        | show generated vehicle clones                         |
+| `ground`         | true        | show the dirt ground slab                             |
+| `boundaries`     | true        | show boundary segments (buildings, fences, …)         |
+| `units`          | metric      | label units: `metric` or `imperial`                   |
+| `title`          | street name | title annotation ("" to hide)                         |
+| `branding`       | true        | "made with 3DStreet" annotation                       |
+| `type`           | `png`       | `png` or `jpg` (`quality` 0–1 for jpg)                |
 
 ## Response
 
 - Default: raw image bytes (`image/png` or `image/jpeg`), with the editor
   deep link in the `X-3DStreet-Editor-Url` response header and the stable
-  image URL (see below) in `X-3DStreet-Image-Url`.
+  image URL (see below) in `X-3DStreet-Image-Url`. For large streets whose
+  deep link exceeds ~8 KB the header is omitted (hosting caps response
+  header size); use `?format=json` to always get `openInEditorUrl`.
 - `?format=json` (or `Accept: application/json`):
 
 ```json
@@ -91,7 +93,13 @@ params are merged as options: `&width=1600&type=jpg&environment=sunset`.
   "image": "data:image/png;base64,...",
   "imageUrl": "https://3dstreet.app/render/img/v1/8f2a9c4d1e0b7a3f5c6d.png",
   "openInEditorUrl": "https://3dstreet.app/#managed-street-json:%7B...%7D",
-  "meta": { "name": "...", "width": 28.9, "length": 60, "segments": 9, "timedOut": false },
+  "meta": {
+    "name": "...",
+    "width": 28.9,
+    "length": 60,
+    "segments": 9,
+    "timedOut": false
+  },
   "width": 1280,
   "height": 800
 }
@@ -178,11 +186,9 @@ caller ──POST──▶ renderStreet (Cloud Function v2, 2GiB, puppeteer-core
 ```
 
 - Page contract: `window.__STREET_RENDER__ = { status, error, meta, start,
-  capture }` (see `src/render/street-render-harness.js`).
+capture }` (see `src/render/street-render-harness.js`).
 - Debug in a browser:
   `/render.html#managed-street-json:<uri-encoded JSON>`.
-- Camera framing auto-picks the viewing side so tall boundaries (buildings)
-  backdrop the street rather than hide it; explicit `azimuth` overrides.
 
 ## Deploy notes
 
