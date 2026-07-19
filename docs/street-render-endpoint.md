@@ -20,7 +20,7 @@ freemium on-ramp / traffic generator for 3dstreet.app.
 - `https://us-central1-<project>.cloudfunctions.net/renderStreet` (direct)
 
 No authentication. Abuse is bounded by instance caps (`concurrency: 2`,
-`maxInstances: 10`) and payload limits; see Limits below.
+`maxInstances: 2`) and payload limits; see Limits below.
 
 ## Request
 

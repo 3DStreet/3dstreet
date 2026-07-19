@@ -243,10 +243,13 @@ exports.renderStreet = onRequest(
     memory: '2GiB',
     cpu: 2,
     timeoutSeconds: 180,
-    // puppeteer is memory-hungry: keep per-instance parallelism low and cap
-    // the fleet so a traffic spike degrades into 429s, not a runaway bill
+    // concurrency 2 = two chromium tabs per instance: SwiftShader renders
+    // in system RAM and /tmp (chromium unpack) is RAM-backed, so a third
+    // tab risks OOM on 2GiB; it also halves the ~1 vCPU each render gets.
+    // maxInstances 2 bounds sustained-abuse cost at ~$280/mo (2 busy
+    // instances × ~$139: 2vCPU+2GiB at Cloud Run rates); spikes get 429s.
     concurrency: 2,
-    maxInstances: 10,
+    maxInstances: 2,
     cors: true
   },
   async (req, res) => {
