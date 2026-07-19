@@ -211,6 +211,7 @@ AFRAME.registerComponent('street-geo', {
     mapbox2dElement.classList.add('autocreated');
     mapbox2dElement.setAttribute('data-ignore-raycaster', '');
     mapbox2dElement.setAttribute('data-no-transform', '');
+    mapbox2dElement.setAttribute('bvh-geometry', '');
     el.appendChild(mapbox2dElement);
     this['mapbox2d'] = mapbox2dElement;
     document.getElementById('map-copyright').textContent = 'MapBox';
@@ -316,6 +317,7 @@ AFRAME.registerComponent('street-geo', {
       osm3dElement.classList.add('autocreated');
       osm3dElement.setAttribute('data-ignore-raycaster', '');
       osm3dElement.setAttribute('data-no-transform', '');
+      osm3dElement.setAttribute('bvh-geometry', '');
 
       const osm3dBuildingElement = document.createElement('a-entity');
       osm3dBuildingElement.setAttribute(
@@ -333,6 +335,10 @@ AFRAME.registerComponent('street-geo', {
       osm3dBuildingElement.classList.add('autocreated');
       osm3dBuildingElement.setAttribute('data-ignore-raycaster', '');
       osm3dBuildingElement.setAttribute('data-no-transform', '');
+      // BVH bounds trees for the merged per-tile building meshes so editor
+      // raycasts (cursor anchor, any probe reaching this subtree) stay
+      // O(log n) instead of scanning every building triangle (#1853).
+      osm3dBuildingElement.setAttribute('bvh-geometry', '');
 
       if (AFRAME.INSPECTOR?.opened) {
         osm3dElement.addEventListener(
