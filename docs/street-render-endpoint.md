@@ -1,7 +1,7 @@
 # Street Render Endpoint (`renderStreet`)
 
 A public HTTP endpoint that accepts a **managed-street JSON** blob and
-returns a rendered **"beauty shot"** image: a 45°-offset pseudo-orthographic
+returns a rendered **"beauty shot"** image: an angled pseudo-orthographic
 view (a real perspective camera with a narrow FOV, so parallel lanes stay
 near-parallel) with the street-label cross-section bar, rendered by the same
 A-Frame component stack the 3DStreet app uses.
@@ -65,7 +65,7 @@ params are merged as options: `&width=1600&type=jpg&environment=sunset`.
 | ------------- | ---------- | -------------------------------------------------------- |
 | `width`/`height` | 1280×800 | image size in px (320–2560)                              |
 | `fov`         | 20         | camera FOV in degrees; smaller = more orthographic       |
-| `azimuth`     | 45         | camera angle around the street (degrees; sign = side)    |
+| `azimuth`     | 20         | camera angle around the street (degrees; sign = side)    |
 | `elevation`   | 30         | camera height angle above the horizon                    |
 | `margin`      | 1.12       | fit margin around the street bounding box                |
 | `environment` | `day`      | `street-environment` preset (day, night, sunset, …)      |
@@ -111,7 +111,7 @@ The same Format-2 blob `managed-street` imports via `sourceType: json-blob`
 `.managed-street.json` download):
 
 ```
-{ name, length,               // street length in meters (default 60)
+{ name, length,               // street length in meters (default 27)
   segments: [ {
     name, type, width,        // type: drive-lane | bike-lane | bus-lane |
                               //   parking-lane | sidewalk | divider | boundary | ...

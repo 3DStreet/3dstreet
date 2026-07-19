@@ -4,7 +4,7 @@ import useStore from '../store.js';
 /**
  * street-render-harness — scene component for the headless render page
  * (render.html). Turns a managed-street JSON blob into a framed "beauty
- * shot": a 45°-offset pseudo-orthographic view (real perspective camera
+ * shot": an angled pseudo-orthographic view (real perspective camera
  * with a narrow FOV, fit to the street's bounding box) with the
  * street-label cross-section bar visible at the street's near end.
  *
@@ -36,7 +36,7 @@ import useStore from '../store.js';
 const DEFAULT_OPTIONS = {
   // camera
   fov: 20, // narrow FOV ≈ pseudo-ortho
-  azimuth: 45, // degrees around Y, 0 = looking down -Z (street axis)
+  azimuth: 20, // degrees around Y, 0 = looking down -Z (street axis)
   elevation: 30, // degrees above the horizon
   margin: 1.12, // extra space around the fitted street
   // scene
@@ -140,6 +140,9 @@ AFRAME.registerComponent('street-render-harness', {
         );
       }
       this.options = { ...DEFAULT_OPTIONS, ...(payload.options || {}) };
+      // Shorter than managed-street's 60m default: the camera fits the
+      // bounding box, so a shorter street fills the frame ("zooms in").
+      if (street.length == null) street.length = 27;
       this.street = street;
       api.status = 'loading';
 
@@ -167,7 +170,10 @@ AFRAME.registerComponent('street-render-harness', {
         showGround: this.options.ground !== false,
         showBoundaries: this.options.boundaries !== false
       });
-      streetEl.setAttribute('street-align', 'width: center; length: start');
+      // length: middle centers the street on the origin so it sits inside
+      // the origin-centered shadow camera box (street-environment) — with
+      // length: start a 60m street left the shadow volume halfway.
+      streetEl.setAttribute('street-align', 'width: center; length: middle');
       this.el.appendChild(streetEl);
       this.streetEl = streetEl;
 
@@ -178,9 +184,13 @@ AFRAME.registerComponent('street-render-harness', {
             // managed-street auto-attaches street-label in init; disable it.
             streetEl.setAttribute('street-label', 'enabled', false);
           } else {
-            // Push the label bar out from the street's start face so the
-            // ground slab doesn't clip it at the 45° camera angle.
-            streetEl.setAttribute('street-label', 'zOffset', 4);
+            // Tuck the label bar against the street's start face: top edge
+            // flush with the street surface (heightOffset = -labelHeight/2),
+            // just clear of the ground slab (its face is recessed 0.1m).
+            streetEl.setAttribute('street-label', {
+              zOffset: 0.3,
+              heightOffset: -1.25
+            });
           }
         },
         { once: true }
@@ -334,16 +344,49 @@ AFRAME.registerComponent('street-render-harness', {
     const tanV = Math.tan(vFov / 2);
     let dist = 0;
     corners.forEach((corner) => {
-      const o = corner.sub(center); // corner offset from center (mutates copy)
+      const o = corner.clone().sub(center);
       const alongForward = o.dot(forward);
       const needed =
         alongForward +
         Math.max(Math.abs(o.dot(right)) / tanH, Math.abs(o.dot(up)) / tanV);
       dist = Math.max(dist, needed);
     });
-    dist *= opts.margin;
 
-    const camPos = center.clone().add(dir.clone().multiplyScalar(dist));
+    // Screen-space refit: the analytic fit above centers on the 3D bbox
+    // center, but in perspective the near corners project larger than the
+    // far ones, so the street lands off-center with slack on the far side
+    // (worst at square aspects). Project the corners through a real camera,
+    // pan the target so the on-screen bounds are centered, and rescale the
+    // distance so the larger extent exactly fills 1/margin of the frame.
+    // Narrow FOV ≈ ortho, so a few iterations converge.
+    const target = center.clone();
+    const probe = new THREE.PerspectiveCamera(opts.fov, aspect, 0.1, 100000);
+    for (let i = 0; i < 3; i++) {
+      probe.position.copy(target).addScaledVector(dir, dist);
+      probe.lookAt(target);
+      probe.updateMatrixWorld(true);
+      probe.updateProjectionMatrix();
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      corners.forEach((corner) => {
+        const p = corner.clone().project(probe);
+        minX = Math.min(minX, p.x);
+        maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y);
+        maxY = Math.max(maxY, p.y);
+      });
+      const ndcCx = (minX + maxX) / 2;
+      const ndcCy = (minY + maxY) / 2;
+      target.addScaledVector(right, ndcCx * tanH * dist);
+      target.addScaledVector(up, ndcCy * tanV * dist);
+      const extent = Math.max((maxX - minX) / 2, (maxY - minY) / 2);
+      if (extent > 0) dist *= extent * opts.margin;
+    }
+
+    const center2 = target;
+    const camPos = center2.clone().add(dir.clone().multiplyScalar(dist));
     camEl.setAttribute('camera', {
       fov: opts.fov,
       near: Math.max(0.1, dist / 100),
@@ -355,7 +398,7 @@ AFRAME.registerComponent('street-render-harness', {
     // for the child camera, which looks down -Z. Matrix4.lookAt builds the
     // camera-convention orientation.
     camEl.object3D.quaternion.setFromRotationMatrix(
-      new THREE.Matrix4().lookAt(camPos, center, new THREE.Vector3(0, 1, 0))
+      new THREE.Matrix4().lookAt(camPos, center2, new THREE.Vector3(0, 1, 0))
     );
   },
 

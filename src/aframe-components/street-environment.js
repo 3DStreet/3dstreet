@@ -107,7 +107,10 @@ AFRAME.registerComponent('street-environment', {
     this.light1.setAttribute('light', 'intensity', intensity1);
     this.light2.setAttribute(
       'light',
-      `intensity: ${intensity2}; castShadow: true; shadowCameraBottom: -20; shadowCameraLeft: -30; shadowCameraRight: 40; shadowCameraTop: 30; shadowMapHeight: 2048; shadowMapWidth: 2048`
+      // shadow camera box must cover the whole scene: the old 70x50m box
+      // left everything beyond it unshadowed. Rule of thumb: ~100x100m on a
+      // 2048 map ≈ 5cm texels, no extra GPU memory over the old box.
+      `intensity: ${intensity2}; castShadow: true; shadowCameraBottom: -45; shadowCameraLeft: -45; shadowCameraRight: 45; shadowCameraTop: 45; shadowMapHeight: 2048; shadowMapWidth: 2048`
     );
   },
 

@@ -1,6 +1,6 @@
 /**
  * renderStreet — public HTTP endpoint that turns a managed-street JSON blob
- * into a rendered "beauty shot" PNG: a 45°-offset pseudo-orthographic view
+ * into a rendered "beauty shot" PNG: an angled pseudo-orthographic view
  * (perspective camera, narrow FOV) with the cross-section label bar, exactly
  * as the 3DStreet app renders it.
  *

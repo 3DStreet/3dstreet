@@ -2,6 +2,39 @@
 import useStore from '../store.js';
 import { getTravelledWaySegments } from './street-layout-utils';
 
+// Fallback accent swatches evoking each surface, used when the segment's own
+// color is white/near-white (white means "uncolored" — the lane's look comes
+// from its surface texture, so a white band would vanish on the white label).
+const SURFACE_SWATCHES = {
+  asphalt: '#4e5459',
+  'cracked-asphalt': '#4e5459',
+  concrete: '#c4c8cc',
+  sidewalk: '#c4c8cc',
+  grass: '#81b371',
+  'planting-strip': '#81b371',
+  gravel: '#b1a58f',
+  sand: '#e3d5ac',
+  hatched: '#d8dade'
+};
+
+function accentColorFor(color, surface) {
+  if (color) {
+    const hex = /^#([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(color.trim());
+    const isNamedWhite = /^white$/i.test(color.trim());
+    if (hex && !isNamedWhite) {
+      let [r, g, b] =
+        hex[1].length === 3
+          ? hex[1].split('').map((c) => parseInt(c + c, 16))
+          : [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16));
+      // keep any color that isn't near-white
+      if ((r + g + b) / 3 < 240) return color;
+    } else if (!isNamedWhite && !hex) {
+      return color; // named/other CSS color, trust it
+    }
+  }
+  return SURFACE_SWATCHES[surface] || '#d8dade';
+}
+
 AFRAME.registerComponent('street-label', {
   dependencies: ['managed-street', 'street-align'],
 
@@ -76,13 +109,18 @@ AFRAME.registerComponent('street-label', {
 
     const widthsArray = [];
     const labelsArray = [];
+    const accentsArray = [];
 
     segments.forEach((segmentEl) => {
-      const segmentWidth = segmentEl.getAttribute('street-segment')?.width;
+      const segmentData = segmentEl.getAttribute('street-segment');
+      const segmentWidth = segmentData?.width;
       if (!segmentWidth) return;
 
       widthsArray.push(segmentWidth);
       labelsArray.push(segmentEl.getAttribute('data-layer-name') || '');
+      accentsArray.push(
+        accentColorFor(segmentData?.color, segmentData?.surface)
+      );
     });
 
     if (widthsArray.length !== labelsArray.length) {
@@ -96,7 +134,7 @@ AFRAME.registerComponent('street-label', {
     );
 
     this.updateCanvasDimensions(totalWidth);
-    this.drawLabels(widthsArray, labelsArray, totalWidth);
+    this.drawLabels(widthsArray, labelsArray, totalWidth, accentsArray);
     this.createLabelPlane(totalWidth);
   },
 
@@ -114,8 +152,8 @@ AFRAME.registerComponent('street-label', {
     this.canvas.width = this.data.baseCanvasWidth;
     this.canvas.height = Math.round(this.data.baseCanvasWidth / aspectRatio);
 
-    this.fontSize = Math.round(this.canvas.height * 0.18);
-    this.subFontSize = Math.round(this.canvas.height * 0.14);
+    this.fontSize = Math.round(this.canvas.height * 0.2);
+    this.subFontSize = Math.round(this.canvas.height * 0.13);
   },
 
   wrapText: function (text, maxWidth) {
@@ -148,13 +186,17 @@ AFRAME.registerComponent('street-label', {
     });
   },
 
-  drawLabels: function (widthsArray, labelsArray, totalWidth) {
+  drawLabels: function (widthsArray, labelsArray, totalWidth, accentsArray) {
     const { ctx, canvas } = this;
+    const h = canvas.height;
+    const bandHeight = Math.round(h * 0.12); // segment-colored strip along the
+    // top edge — the edge that sits against the street surface
+    const fontStack =
+      "'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif";
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, h);
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, canvas.width, h);
 
     let currentX = 0;
     ctx.textAlign = 'center';
@@ -163,24 +205,23 @@ AFRAME.registerComponent('street-label', {
     widthsArray.forEach((width, index) => {
       const segmentWidth = (parseFloat(width) / totalWidth) * canvas.width;
       const maxLabelWidth = segmentWidth * 0.9;
-
-      // Draw segment background
-      ctx.fillStyle = index % 2 === 0 ? '#f0f0f0' : '#e0e0e0';
-      ctx.fillRect(currentX, 0, segmentWidth, canvas.height);
-
-      // Draw segment border
-      ctx.strokeStyle = '#999999';
-      ctx.beginPath();
-      ctx.moveTo(currentX, 0);
-      ctx.lineTo(currentX, canvas.height);
-      ctx.stroke();
-
-      // Draw width value
-      ctx.fillStyle = '#000000';
-      ctx.font = `${this.fontSize}px Arial`;
       const centerX = currentX + segmentWidth / 2;
-      const centerY = canvas.height / 2 - 30;
 
+      // Accent band tying the cell to its lane
+      ctx.fillStyle = (accentsArray && accentsArray[index]) || '#d8dade';
+      ctx.fillRect(currentX, 0, segmentWidth, bandHeight);
+
+      // Hairline separator between cells
+      if (index > 0) {
+        ctx.strokeStyle = '#e3e5e9';
+        ctx.lineWidth = Math.max(2, h * 0.015);
+        ctx.beginPath();
+        ctx.moveTo(currentX, bandHeight);
+        ctx.lineTo(currentX, h);
+        ctx.stroke();
+      }
+
+      // Width value
       let widthText;
       if (this.units === 'metric') {
         widthText = parseFloat(width).toFixed(1) + 'm';
@@ -188,30 +229,21 @@ AFRAME.registerComponent('street-label', {
         const widthFeet = width * 3.28084;
         widthText = parseFloat(widthFeet).toFixed(1) + 'ft';
       }
-      ctx.fillText(widthText, centerX, centerY - this.fontSize * 0.8);
+      ctx.fillStyle = '#22272e';
+      ctx.font = `700 ${this.fontSize}px ${fontStack}`;
+      ctx.fillText(widthText, centerX, h * 0.45);
 
-      // Draw wrapped label text
+      // Segment name below, wrapped
       if (labelsArray[index]) {
-        ctx.font = `${this.subFontSize}px Arial`;
+        ctx.fillStyle = '#6a7076';
+        ctx.font = `500 ${this.subFontSize}px ${fontStack}`;
         const lines = this.wrapText(labelsArray[index], maxLabelWidth);
         const lineHeight = this.subFontSize * 1.2;
-        this.drawMultilineText(
-          lines,
-          centerX,
-          centerY + this.fontSize * 0.4 + 65,
-          lineHeight
-        );
+        this.drawMultilineText(lines, centerX, h * 0.74, lineHeight);
       }
 
       currentX += segmentWidth;
     });
-
-    // Draw final border
-    ctx.strokeStyle = '#999999';
-    ctx.beginPath();
-    ctx.moveTo(canvas.width, 0);
-    ctx.lineTo(canvas.width, canvas.height);
-    ctx.stroke();
   },
 
   createLabelPlane: function (totalWidth) {
@@ -232,11 +264,15 @@ AFRAME.registerComponent('street-label', {
       height: this.data.labelHeight
     });
 
+    // Flat shader + no shadows: the label is a UI surface — scene lighting
+    // tints it and passing vehicles cast shadows across it otherwise.
     plane.setAttribute('material', {
       src: `#${this.canvasId}`,
+      shader: 'flat',
       transparent: true,
       alphaTest: 0.5
     });
+    plane.setAttribute('shadow', { cast: false, receive: false });
 
     // Get alignment from street-align component
     const streetAlign = this.el.components['street-align'];
