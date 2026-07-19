@@ -357,6 +357,10 @@
   user-select: none;
 
   input {
+    /* #aframeInspector hides ALL native checkboxes (the properties panel
+       replaces them with styled widgets) — this one is a real checkbox and
+       must out-rank that id-scoped rule. */
+    visibility: visible !important;
     accent-color: #6366f1;
   }
 }
