@@ -215,6 +215,23 @@ https://3dstreet.com
 ---
 You received this email because you asked to be notified when your ${noun} finished. You can opt out by unchecking that box next time.`;
     },
+    // Inline preview of the finished render, when the job carries an
+    // embeddable result URL (image jobs today: the same public download-token
+    // Storage URL the gallery serves; the Discord post embeds it the same
+    // way). Wrapped in the CTA link. Clients that block remote images still
+    // get the full copy + button, so the block is purely additive. Static alt
+    // text: assetName would land in an attribute context here, not worth the
+    // escaping surface. Video/splat/mesh join when server-side thumbnails
+    // exist for them.
+    previewHtml(link, ctx = {}) {
+      if (!ctx.imageUrl) return '';
+      return `
+  <div style="text-align: center; margin: 24px 0;">
+    <a href="${link}">
+      <img src="${ctx.imageUrl}" alt="Your finished render" style="max-width: 100%; border-radius: 8px; border: 1px solid #eee;">
+    </a>
+  </div>`;
+    },
     getHtmlBody(userName, kind, ctaUrl, ctx = {}) {
       const { noun, desc } = this.getCopy(kind);
       const link = ctaUrl || this.defaultCtaUrl;
@@ -239,7 +256,7 @@ You received this email because you asked to be notified when your ${noun} finis
   <h2 style="color: #1a1a1a; margin-bottom: 20px;">Hi ${userName},</h2>
 
   <p>Your <strong>${desc}</strong>${name} finished generating and has been saved to your 3DStreet gallery.</p>
-${generatedLine}
+${generatedLine}${this.previewHtml(link, ctx)}
   <p>Open it in the editor to preview it and drag it into your scene.</p>
 
   <div style="text-align: center; margin: 30px 0;">
@@ -389,6 +406,9 @@ https://3dstreet.com
 ---
 You received this email because you asked to be notified when your renders finished. You can opt out by unchecking that box next time.`;
     },
+    previewHtml(link, ctx = {}) {
+      return EMAIL_TEMPLATES.generationReady.previewHtml(link, ctx);
+    },
     getHtmlBody(userName, kind, ctaUrl, ctx = {}) {
       const { noun } = this.getCopy(kind);
       const link = ctaUrl || this.defaultCtaUrl;
@@ -407,7 +427,7 @@ You received this email because you asked to be notified when your renders finis
   <h2 style="color: #1a1a1a; margin-bottom: 20px;">Hi ${userName},</h2>
 
   <p>Your ${count}AI <strong>${noun} renders</strong> are coming in — the first is ready and saved to your 3DStreet gallery, and the rest will land there as they finish.</p>
-
+${this.previewHtml(link, ctx)}
   <div style="text-align: center; margin: 30px 0;">
     <a href="${link}" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">View my renders</a>
   </div>
@@ -724,7 +744,15 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
       assetName: job.assetName || null,
       when:
         job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || null,
-      batchTotal: job.notify?.batchTotal || null
+      batchTotal: job.notify?.batchTotal || null,
+      // Inline preview of the result. Only image jobs store an embeddable
+      // URL today (the gallery's public download-token Storage URL, written
+      // by saveImageToGallery); other kinds join when server-side thumbnails
+      // exist for them.
+      imageUrl:
+        !failed && (job.kind || 'splat') === 'image'
+          ? job.imageUrl || null
+          : null
     };
 
     await sendPostmarkEmail(
