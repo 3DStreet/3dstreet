@@ -58,10 +58,11 @@ export function is3dViewerType(type) {
 }
 
 /**
- * URL to use when loading or placing a GLB asset. Prefers the client-optimized
- * version (Draco + WebP) when available; falls back to the original source.
- * Safe to call on image/video assets too — they never have optimizedSourceUrl
- * so storageUrl is always returned.
+ * URL to use when loading or placing an asset. Prefers the optimized variant
+ * when available — for GLBs the client-optimized file (Draco + WebP), for
+ * images the server-generated display WebP (asset-processing pipeline,
+ * docs/asset-processing-pipeline.md) — falling back to the original source.
+ * Downloads must NOT use this: they keep item.storageUrl (the original).
  */
 export function getServedUrl(item) {
   return item?.optimizedSourceUrl ?? item?.storageUrl;
