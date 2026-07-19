@@ -436,8 +436,12 @@ image providers became new `kind: 'image'` jobs on the existing machinery:
 - Clients (`generator-tab-base.js` Image tab, editor `ScreenshotModal`) mirror
   `video.js`: submit → jobId → 3s poll loop; the editor modal keeps its UX but
   survives closure. Client-side `saveToGallery` retired.
-- Completion email defaults **OFF** for images (renders usually finish in
-  seconds); the generator tab has an unchecked opt-in, the editor sends none.
+- Completion email defaults **ON** for images, same as every other kind: the
+  generator tab's opt-in renders checked and the editor `ScreenshotModal`
+  defaults checked and passes `notify` on every render submit (a 4x batch
+  shares a `batchId` so it produces at most one email). Renders usually finish
+  in seconds, so the open tab's poll ack suppresses the email in the common
+  case.
 - The **inline-wait wrapper** (~50s) was skipped: with a 3s poll the fast-image
   UX regression is one poll tick, not worth a second code path.
 

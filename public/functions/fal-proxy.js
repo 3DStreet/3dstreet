@@ -1,7 +1,7 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
-const { checkAndRefillImageTokensInternal } = require('./token-management.js');
+const { checkAndRefillImageTokensInternal, chargeGenerationTokens } = require('./token-management.js');
 const { REPLICATE_MODELS } = require('./replicate-models.js');
 const { assertAppCheck } = require('./app-check.js');
 // Shared fal plumbing: webhook-attached queue submit URL, submit-failure
@@ -211,43 +211,16 @@ const generateFalImage = functions
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
-      // Charge at submit and set `tokenCharged` in the same transaction, so
-      // every later refund path (poll, webhook, reconciler) observes
-      // tokenCharged:true and refunds exactly once.
-      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
-      let remainingTokens = 0;
-      let tokensBefore = 0;
-      await db.runTransaction(async (transaction) => {
-        const tokenDoc = await transaction.get(tokenProfileRef);
-        if (!tokenDoc.exists) {
-          throw new functions.https.HttpsError('not-found', 'Token profile not found');
-        }
-        const currentTokens = tokenDoc.data().genToken || 0;
-        tokensBefore = currentTokens;
-        if (currentTokens < tokenCost) {
-          throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
-        }
-        remainingTokens = Math.max(0, currentTokens - tokenCost);
-        transaction.update(tokenProfileRef, {
-          genToken: remainingTokens,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        transaction.update(jobRef, { tokenCharged: true });
+      // Charge at submit and set `tokenCharged` in the same transaction
+      // (chargeGenerationTokens), so every later refund path (poll, webhook,
+      // reconciler) observes tokenCharged:true and refunds exactly once.
+      const { remainingTokens } = await chargeGenerationTokens(db, {
+        userId,
+        jobRef,
+        tokenCost,
+        source: 'image-generation',
+        relatedModel: modelConfig.name
       });
-
-      // Fire-and-forget: write token deduction audit log
-      db.collection('tokenLog')
-        .add({
-          userId,
-          type: 'deduction',
-          tokensBefore,
-          tokensAfter: remainingTokens,
-          tokenCost,
-          source: 'image-generation',
-          relatedModel: modelConfig.name,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
-        })
-        .catch((err) => console.error('Failed to write tokenLog:', err));
 
       // Build the fal.ai request payload
       const falPayload = {

@@ -576,10 +576,12 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
 
     // Batch jobs (editor 4x render): one email decision per batch, made by
     // the batch's FIRST finisher, recorded in an admin-only marker doc so
-    // racing webhooks can't each send. If the first finisher was being
-    // watched (acked), the whole batch stays silent — the user is following
-    // the grid live. Failures never speak for a batch (a sibling may still
-    // succeed) and never email individually; they just retire their flag.
+    // racing webhooks can't each send. If a finisher was being watched
+    // (acked), ackClientSeen wrote a 'seen' marker and the whole batch stays
+    // silent — the user is following the grid live. A failure never speaks
+    // for a batch while a sibling may still succeed; only the LAST finisher
+    // of an all-failed batch claims it, so the failure-email contract
+    // ("didn't finish, tokens refunded") holds for batches too.
     const batchId = job.notify?.batchId || null;
     if (batchId) {
       batchRef = db
@@ -588,9 +590,44 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
         .collection('notifyBatches')
         .doc(batchId);
       const batchSnap = await tx.get(batchRef);
-      if (batchSnap.exists || failed) {
+      if (batchSnap.exists) {
         outcome = 'suppressed';
         if (!dryRun) tx.update(jobRef, { 'notify.pending': false });
+        return;
+      }
+      if (failed) {
+        // Same submit-time/staleness guards as the single-job failure path.
+        const doneMs =
+          job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || 0;
+        const stale = doneMs && Date.now() - doneMs > STALE_FAILURE_CUTOFF_MS;
+        const sibSnap = await tx.get(
+          db
+            .collection('users')
+            .doc(uid)
+            .collection('generationJobs')
+            .where('notify.batchId', '==', batchId)
+        );
+        const siblings = sibSnap.docs.map((d) => d.data());
+        const anySucceeded = siblings.some((s) => s.status === 'succeeded');
+        const allTerminal = siblings.every((s) =>
+          ['succeeded', 'failed', 'canceled'].includes(s.status)
+        );
+        if (anySucceeded || !allTerminal || !job.providerJobId || stale) {
+          outcome = 'suppressed';
+          if (!dryRun) tx.update(jobRef, { 'notify.pending': false });
+          return;
+        }
+        if (dryRun) {
+          outcome = 'would-send';
+          return;
+        }
+        outcome = 'claimed';
+        tx.update(jobRef, { 'notify.pending': false });
+        tx.set(batchRef, {
+          decision: 'failed',
+          kind: job.kind || null,
+          at: admin.firestore.FieldValue.serverTimestamp()
+        });
         return;
       }
       if (job.notify?.clientAckedAt) {
@@ -660,9 +697,9 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
     // the dev app where the asset actually lives, mirroring replicate.js's
     // webhook-URL project resolution. Success CTA deep-links to the asset's
     // detail modal (#asset:OWNER/ID); a failed job has no asset, so its CTA
-    // returns the user to where they generated to try again. A batch claim is
-    // always a success (failures can't claim) and gets the plural first-of-
-    // the-batch copy, linking to the first finished asset.
+    // returns the user to where they generated to try again. A successful
+    // batch claim gets the plural first-of-the-batch copy, linking to the
+    // first finished asset; an all-failed batch claim reuses generationFailed.
     const failed = job.status !== 'succeeded';
     const isBatch = !!job.notify?.batchId;
     const tpl = failed

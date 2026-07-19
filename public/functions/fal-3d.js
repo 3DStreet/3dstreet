@@ -3,7 +3,7 @@ const admin = require('firebase-admin');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
-const { checkAndRefillImageTokensInternal } = require('./token-management.js');
+const { checkAndRefillImageTokensInternal, chargeGenerationTokens } = require('./token-management.js');
 const { REPLICATE_MODELS } = require('./replicate-models.js');
 const { assertAppCheck } = require('./app-check.js');
 
@@ -141,7 +141,13 @@ async function fetchFalPrediction(job) {
         method: 'GET',
         headers: { Authorization: `Key ${key}` }
       });
-      if (r.ok) response = await r.json();
+      // Throw (like the status fetch above) rather than fall through with an
+      // empty response: a transient non-OK here must stay retryable, or a
+      // COMPLETED job gets finalized as failed and can never be resurrected.
+      if (!r.ok) {
+        throw new Error(`fal response fetch failed: ${r.status}`);
+      }
+      response = await r.json();
     }
 
     // Image models (flux-2 edit family) return { images: [{ url }] }.
@@ -465,44 +471,16 @@ const generateFalMesh = functions
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
-      // Charge at submit and set `tokenCharged` in the same transaction, so every
-      // later refund path (poll, reconciler) observes tokenCharged:true and
-      // refunds exactly once.
-      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
-      let remainingTokens = 0;
-      let tokensBefore = 0;
-      await db.runTransaction(async (transaction) => {
-        const tokenDoc = await transaction.get(tokenProfileRef);
-        if (!tokenDoc.exists) {
-          throw new functions.https.HttpsError('not-found', 'Token profile not found');
-        }
-        const currentTokens = tokenDoc.data().genToken || 0;
-        tokensBefore = currentTokens;
-        if (currentTokens < tokenCost) {
-          throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
-        }
-        remainingTokens = Math.max(0, currentTokens - tokenCost);
-        transaction.update(tokenProfileRef, {
-          genToken: remainingTokens,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        transaction.update(jobRef, { tokenCharged: true });
+      // Charge at submit and set `tokenCharged` in the same transaction
+      // (chargeGenerationTokens), so every later refund path (poll,
+      // reconciler) observes tokenCharged:true and refunds exactly once.
+      const { remainingTokens } = await chargeGenerationTokens(db, {
+        userId,
+        jobRef,
+        tokenCost,
+        source: 'mesh-generation',
+        relatedModel: modelConfig.attribution?.modelName || modelConfig.name
       });
-
-      // Fire-and-forget: audit the deduction, same ledger entry the image/
-      // video/splat submits write, so tokenLog accounts for mesh charges too.
-      db.collection('tokenLog')
-        .add({
-          userId,
-          type: 'deduction',
-          tokensBefore,
-          tokensAfter: remainingTokens,
-          tokenCost,
-          source: 'mesh-generation',
-          relatedModel: modelConfig.attribution?.modelName || modelConfig.name,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
-        })
-        .catch((err) => console.error('Failed to write tokenLog:', err));
 
       // Submit to fal's queue. imageField/params come from the model config
       // because the two endpoints differ (input_image_url vs image_url).

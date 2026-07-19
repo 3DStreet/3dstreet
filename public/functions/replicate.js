@@ -4,7 +4,7 @@ const admin = require('firebase-admin');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
-const { checkAndRefillImageTokensInternal } = require('./token-management.js');
+const { checkAndRefillImageTokensInternal, chargeGenerationTokens } = require('./token-management.js');
 const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS, REPLICATE_MODELS } = require('./replicate-models.js');
 const { assertAppCheck } = require('./app-check.js');
 // Pure .ply sanity check — gates degenerate (failed-SfM) reconstructions out of
@@ -396,32 +396,19 @@ const generateReplicateImage = functions
       });
 
       // Charge BEFORE creating the prediction, with tokenCharged flipped in
-      // the same transaction — same reasoning as the video/splat submits:
-      // every later refund path then observes tokenCharged:true and refunds
-      // exactly once, and the charge is tied to the job's real outcome rather
-      // than to a connection staying open.
-      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+      // the same transaction (chargeGenerationTokens) — same reasoning as the
+      // video/splat submits: every later refund path then observes
+      // tokenCharged:true and refunds exactly once, and the charge is tied to
+      // the job's real outcome rather than to a connection staying open.
       let remainingTokens = 0;
-      let tokensBefore = 0;
       try {
-        await db.runTransaction(async (transaction) => {
-          const tokenDoc = await transaction.get(tokenProfileRef);
-          if (!tokenDoc.exists) {
-            throw new functions.https.HttpsError('not-found', 'Token profile not found');
-          }
-          const currentTokens = tokenDoc.data().genToken || 0;
-          tokensBefore = currentTokens;
-          if (currentTokens < tokenCost) {
-            throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
-          }
-          const newTokenCount = Math.max(0, currentTokens - tokenCost);
-          remainingTokens = newTokenCount;
-          transaction.update(tokenProfileRef, {
-            genToken: newTokenCount,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-          transaction.update(jobRef, { tokenCharged: true });
-        });
+        ({ remainingTokens } = await chargeGenerationTokens(db, {
+          userId,
+          jobRef,
+          tokenCost,
+          source: 'image-generation',
+          relatedModel: modelConfig?.modelName || AI_MODEL_NAMES[modelVersionToUse] || modelVersionToUse
+        }));
       } catch (chargeError) {
         await jobRef.update({
           status: 'failed',
@@ -431,18 +418,6 @@ const generateReplicateImage = functions
         await cleanupSplatTempFile(tempFilePath);
         throw chargeError;
       }
-
-      // Fire-and-forget: write token deduction audit log
-      db.collection('tokenLog').add({
-        userId,
-        type: 'deduction',
-        tokensBefore,
-        tokensAfter: remainingTokens,
-        tokenCost,
-        source: 'image-generation',
-        relatedModel: modelConfig?.modelName || AI_MODEL_NAMES[modelVersionToUse] || modelVersionToUse,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      }).catch(err => console.error('Failed to write tokenLog:', err));
 
       // Webhook URL: uid to locate the job doc, internal jobId, per-job secret.
       // The webhook body is never trusted; the handler re-fetches the
@@ -822,34 +797,21 @@ const generateReplicateVideo = functions
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
-      // Charge BEFORE creating the prediction, with tokenCharged flipped in the
-      // same transaction — same reasoning as the splat submit: every later
-      // refund path is then guaranteed to observe tokenCharged:true and refund
+      // Charge BEFORE creating the prediction, with tokenCharged flipped in
+      // the same transaction (chargeGenerationTokens) — every later refund
+      // path is then guaranteed to observe tokenCharged:true and refund
       // exactly once. This is what closes the #1780 stranded-charge gap: the
       // charge is tied to the job's real outcome, not to a connection staying
       // open.
-      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
       let remainingTokens = 0;
-      let tokensBefore = 0;
       try {
-        await db.runTransaction(async (transaction) => {
-          const tokenDoc = await transaction.get(tokenProfileRef);
-          if (!tokenDoc.exists) {
-            throw new functions.https.HttpsError('not-found', 'Token profile not found');
-          }
-          const currentTokens = tokenDoc.data().genToken || 0;
-          tokensBefore = currentTokens;
-          if (currentTokens < tokenCost) {
-            throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
-          }
-          const newTokenCount = Math.max(0, currentTokens - tokenCost);
-          remainingTokens = newTokenCount;
-          transaction.update(tokenProfileRef, {
-            genToken: newTokenCount,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-          transaction.update(jobRef, { tokenCharged: true });
-        });
+        ({ remainingTokens } = await chargeGenerationTokens(db, {
+          userId,
+          jobRef,
+          tokenCost,
+          source: 'video-generation',
+          relatedModel: model_name
+        }));
       } catch (chargeError) {
         await jobRef.update({
           status: 'failed',
@@ -859,18 +821,6 @@ const generateReplicateVideo = functions
         await cleanupSplatTempFile(tempFilePath);
         throw chargeError;
       }
-
-      // Fire-and-forget: write token deduction audit log
-      db.collection('tokenLog').add({
-        userId,
-        type: 'deduction',
-        tokensBefore,
-        tokensAfter: remainingTokens,
-        tokenCost,
-        source: 'video-generation',
-        relatedModel: model_name,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      }).catch(err => console.error('Failed to write tokenLog:', err));
 
       // Webhook URL: uid to locate the job doc, internal jobId, per-job secret.
       // The webhook body is never trusted; the handler re-fetches the
@@ -1166,34 +1116,22 @@ const generateReplicateSplat = functions
       });
 
       // Charge BEFORE creating the prediction, and set `tokenCharged` in the
-      // same transaction as the deduction. The flag is therefore committed
-      // before any prediction exists for a webhook to fire against, so every
-      // later refund path (webhook, poll, reconciler) is guaranteed to observe
-      // tokenCharged:true and refund exactly once. The old "create then charge"
-      // order left a window where a near-instant webhook read tokenCharged:false,
-      // no-op'd its refund, and the charge then stuck with no asset and no refund.
-      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+      // same transaction as the deduction (chargeGenerationTokens). The flag
+      // is therefore committed before any prediction exists for a webhook to
+      // fire against, so every later refund path (webhook, poll, reconciler)
+      // is guaranteed to observe tokenCharged:true and refund exactly once.
+      // The old "create then charge" order left a window where a near-instant
+      // webhook read tokenCharged:false, no-op'd its refund, and the charge
+      // then stuck with no asset and no refund.
       let remainingTokens = 0;
-      let tokensBefore = 0;
       try {
-        await db.runTransaction(async (transaction) => {
-          const tokenDoc = await transaction.get(tokenProfileRef);
-          if (!tokenDoc.exists) {
-            throw new functions.https.HttpsError('not-found', 'Token profile not found');
-          }
-          const currentTokens = tokenDoc.data().genToken || 0;
-          tokensBefore = currentTokens;
-          if (currentTokens < tokenCost) {
-            throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
-          }
-          const newTokenCount = Math.max(0, currentTokens - tokenCost);
-          remainingTokens = newTokenCount;
-          transaction.update(tokenProfileRef, {
-            genToken: newTokenCount,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-          transaction.update(jobRef, { tokenCharged: true });
-        });
+        ({ remainingTokens } = await chargeGenerationTokens(db, {
+          userId,
+          jobRef,
+          tokenCost,
+          source: 'splat-generation',
+          relatedModel: modelConfig.modelName
+        }));
       } catch (chargeError) {
         await jobRef.update({
           status: 'failed',
@@ -1203,17 +1141,6 @@ const generateReplicateSplat = functions
         await cleanupSplatTempFile(tempFilePath);
         throw chargeError;
       }
-
-      db.collection('tokenLog').add({
-        userId,
-        type: 'deduction',
-        tokensBefore,
-        tokensAfter: remainingTokens,
-        tokenCost,
-        source: 'splat-generation',
-        relatedModel: modelConfig.modelName,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      }).catch(err => console.error('Failed to write tokenLog:', err));
 
       // The webhook URL carries the owner uid (to locate the job doc), the
       // internal jobId (the doc id), and a per-job secret (to gate the
@@ -2306,6 +2233,26 @@ async function ackClientSeen(jobRef, job) {
       'notify.pending': false,
       'notify.clientAckedAt': admin.firestore.FieldValue.serverTimestamp()
     });
+    // A watched batch member records the batch-level "seen" decision here,
+    // not at send time: this ack just cleared `pending`, so this job can
+    // never reach the batch branch of sendGenerationOutcomeEmail — without
+    // the marker an unwatched sibling would find no decision and email a
+    // user who followed the batch live (#1833's batch variant).
+    if (job.notify?.batchId) {
+      try {
+        await jobRef.parent.parent
+          .collection('notifyBatches')
+          .doc(job.notify.batchId)
+          .create({
+            decision: 'seen',
+            kind: job.kind || null,
+            at: admin.firestore.FieldValue.serverTimestamp()
+          });
+      } catch (err) {
+        // ALREADY_EXISTS: the batch decision was already made — leave it.
+        if (err.code !== 6) throw err;
+      }
+    }
   } catch (err) {
     console.warn('Failed to ack client-seen for notify suppression:', err.message);
   }
@@ -2469,10 +2416,13 @@ async function handleJobWebhook(req, res) {
       try {
         const fetched = await fetchFalPrediction(job);
         if (fetched.absent) {
-          // fal no longer knows the request; nothing to finalize from here.
-          // Ack so fal stops retrying — the reconciler's give-up window owns
-          // declaring the job dead.
-          res.status(200).send('ok');
+          // Absent usually means the submit callable hasn't committed
+          // statusUrl yet — fal can webhook a near-instant completion inside
+          // that window. Non-2xx makes fal redeliver (bounded retries), which
+          // self-heals the race; a genuinely expired/unknown request just
+          // exhausts the retries and the reconciler's give-up window owns
+          // declaring the job dead either way.
+          res.status(503).send('Job not ready');
           return;
         }
         prediction = fetched.prediction;
@@ -2558,7 +2508,19 @@ async function handleJobWebhook(req, res) {
         // wait suppresses cleanly. Only jobs still awaiting a send pay the
         // wait, and a webhook killed mid-wait loses nothing — notify.pending
         // stays set and the reconciler sweep delivers instead.
-        if (job.notify?.email && job.notify?.pending) {
+        // `job` was read before processTerminalPrediction — which can run for
+        // minutes on a streamed save, and setGenerationJobNotify accepts
+        // toggles any time pre-terminal — so re-read the notify state or a
+        // mid-render opt-in skips the grace and beats the watching tab's ack.
+        // Best-effort: on a failed re-read fall back to the stale snapshot.
+        let notify = job.notify;
+        try {
+          const freshSnap = await jobRef.get();
+          if (freshSnap.exists) notify = freshSnap.data().notify;
+        } catch (err) {
+          console.warn('Webhook: notify re-read failed:', err.message);
+        }
+        if (notify?.email && notify?.pending) {
           await new Promise((resolve) =>
             setTimeout(resolve, WEBHOOK_NOTIFY_ACK_GRACE_MS)
           );
