@@ -211,9 +211,11 @@ function ScreenshotModal() {
   };
 
   const handleClose = () => {
-    if (isAnyRendering) {
-      // Since #1835 the render finishes server-side either way; closing only
-      // stops the live preview (and, if opted in, hands off to the email).
+    // Since #1835 the render finishes server-side either way; closing only
+    // stops the live preview. With the email opt-in checked, closing
+    // mid-render is the advertised flow ("you can close this window"), so
+    // only an opted-out user gets the are-you-sure prompt.
+    if (isAnyRendering && !notifyEmail) {
       const confirmClose = window.confirm(
         intl.formatMessage({
           id: 'screenshotModal.confirmClose',
