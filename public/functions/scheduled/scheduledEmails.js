@@ -347,6 +347,85 @@ You received this email because you asked to be notified about this ${noun}. You
 </body>
 </html>`;
     }
+  },
+
+  // First-finisher email for a BATCH of jobs submitted as one user action
+  // (editor 4x render). Sent once per batch — when the first job succeeds
+  // while nobody's watching — instead of one email per job. Deliberately
+  // present-progressive: the CTA links to the first finished asset and the
+  // rest of the batch lands in the gallery on its own.
+  generationBatchReady: {
+    getCopy(kind) {
+      return EMAIL_TEMPLATES.generationReady.getCopy(kind);
+    },
+    formatWhen(when) {
+      return EMAIL_TEMPLATES.generationReady.formatWhen(when);
+    },
+    defaultCtaUrl:
+      'https://3dstreet.app/?utm_source=email&utm_medium=notification&utm_campaign=generation_ready',
+    getSubject(kind, ctx = {}) {
+      const { noun } = this.getCopy(kind);
+      const when = this.formatWhen(ctx.when);
+      return when
+        ? `Your 3DStreet ${noun} renders are ready (${when})`
+        : `Your 3DStreet ${noun} renders are ready`;
+    },
+    getTextBody(userName, kind, ctaUrl, ctx = {}) {
+      const { noun } = this.getCopy(kind);
+      const link = ctaUrl || this.defaultCtaUrl;
+      const count = ctx.batchTotal ? `${ctx.batchTotal} ` : '';
+      return `Hi ${userName},
+
+Your ${count}AI ${noun} renders are coming in — the first is ready and saved to your 3DStreet gallery, and the rest will land there as they finish.
+
+View your renders:
+${link}
+
+Thanks for using 3DStreet!
+
+The 3DStreet Team
+https://3dstreet.com
+
+---
+You received this email because you asked to be notified when your renders finished. You can opt out by unchecking that box next time.`;
+    },
+    getHtmlBody(userName, kind, ctaUrl, ctx = {}) {
+      const { noun } = this.getCopy(kind);
+      const link = ctaUrl || this.defaultCtaUrl;
+      const count = ctx.batchTotal ? `${ctx.batchTotal} ` : '';
+      return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="https://3dstreet.app/ui_assets/3dstreet-logo-rect-r-640.png" alt="3DStreet" style="height: 40px;">
+  </div>
+
+  <h2 style="color: #1a1a1a; margin-bottom: 20px;">Hi ${userName},</h2>
+
+  <p>Your ${count}AI <strong>${noun} renders</strong> are coming in — the first is ready and saved to your 3DStreet gallery, and the rest will land there as they finish.</p>
+
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="${link}" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">View my renders</a>
+  </div>
+
+  <p>Thanks for using 3DStreet!</p>
+
+  <p style="color: #666;">The 3DStreet Team<br>
+  <a href="https://3dstreet.com" style="color: #6366f1;">https://3dstreet.com</a></p>
+
+  <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+
+  <p style="font-size: 12px; color: #999;">
+    You received this email because you asked to be notified when your renders finished.<br>
+    You can opt out by unchecking that box next time.
+  </p>
+</body>
+</html>`;
+    }
   }
 
   // Add more email templates here as needed:
@@ -483,7 +562,9 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
   // Atomically decide whether THIS call owns the send.
   let job = null;
   let outcome = 'skip';
+  let batchRef = null;
   await db.runTransaction(async (tx) => {
+    batchRef = null;
     const snap = await tx.get(jobRef);
     if (!snap.exists) return;
     job = snap.data();
@@ -492,6 +573,52 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
     // (already sent, not opted in, not yet terminal) drops out.
     if (job.status !== 'succeeded' && !failed) return;
     if (!job.notify?.email || !job.notify?.pending) return;
+
+    // Batch jobs (editor 4x render): one email decision per batch, made by
+    // the batch's FIRST finisher, recorded in an admin-only marker doc so
+    // racing webhooks can't each send. If the first finisher was being
+    // watched (acked), the whole batch stays silent — the user is following
+    // the grid live. Failures never speak for a batch (a sibling may still
+    // succeed) and never email individually; they just retire their flag.
+    const batchId = job.notify?.batchId || null;
+    if (batchId) {
+      batchRef = db
+        .collection('users')
+        .doc(uid)
+        .collection('notifyBatches')
+        .doc(batchId);
+      const batchSnap = await tx.get(batchRef);
+      if (batchSnap.exists || failed) {
+        outcome = 'suppressed';
+        if (!dryRun) tx.update(jobRef, { 'notify.pending': false });
+        return;
+      }
+      if (job.notify?.clientAckedAt) {
+        outcome = 'suppressed';
+        if (!dryRun) {
+          tx.update(jobRef, { 'notify.pending': false });
+          tx.set(batchRef, {
+            decision: 'seen',
+            kind: job.kind || null,
+            at: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }
+        return;
+      }
+      if (dryRun) {
+        outcome = 'would-send';
+        return;
+      }
+      outcome = 'claimed';
+      tx.update(jobRef, { 'notify.pending': false });
+      tx.set(batchRef, {
+        decision: 'sent',
+        kind: job.kind || null,
+        at: admin.firestore.FieldValue.serverTimestamp()
+      });
+      return;
+    }
+
     // An open tab acked → the user saw it. Clear the flag, send nothing.
     if (job.notify?.clientAckedAt) {
       outcome = 'suppressed';
@@ -533,11 +660,16 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
     // the dev app where the asset actually lives, mirroring replicate.js's
     // webhook-URL project resolution. Success CTA deep-links to the asset's
     // detail modal (#asset:OWNER/ID); a failed job has no asset, so its CTA
-    // returns the user to where they generated to try again.
+    // returns the user to where they generated to try again. A batch claim is
+    // always a success (failures can't claim) and gets the plural first-of-
+    // the-batch copy, linking to the first finished asset.
     const failed = job.status !== 'succeeded';
+    const isBatch = !!job.notify?.batchId;
     const tpl = failed
       ? EMAIL_TEMPLATES.generationFailed
-      : EMAIL_TEMPLATES.generationReady;
+      : isBatch
+        ? EMAIL_TEMPLATES.generationBatchReady
+        : EMAIL_TEMPLATES.generationReady;
     const project =
       process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || '';
     const appBase =
@@ -553,7 +685,9 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
     } // else fall back to the template's default app link
     const emailCtx = {
       assetName: job.assetName || null,
-      when: job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || null
+      when:
+        job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || null,
+      batchTotal: job.notify?.batchTotal || null
     };
 
     await sendPostmarkEmail(
@@ -568,12 +702,16 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
     return { action: 'sent' };
   } catch (err) {
     // Restore the flag so the backstop sweep retries — never drop it silently.
+    // For a batch claim, also roll the marker back: leaving it would make
+    // every retry (this job's or a sibling's) read "already decided" and the
+    // batch's email would be lost.
     await jobRef
       .update({
         'notify.pending': true,
         'notify.error': String(err?.message || err)
       })
       .catch(() => {});
+    if (batchRef) await batchRef.delete().catch(() => {});
     return { action: 'error', error: err?.message || String(err) };
   }
 };

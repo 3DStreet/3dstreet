@@ -215,6 +215,27 @@ function sanitizeGalleryMetadata(raw) {
   }
 }
 
+// Batch identity for the one-email-per-user-action contract (editor 4x
+// render): the client stamps the same batchId (+ batchTotal) on every job it
+// submits for a single action, and sendGenerationOutcomeEmail lets only the
+// batch's first finisher decide whether an email goes out. Untrusted client
+// input — validate shape, never interpolate unvalidated.
+function sanitizeNotifyBatch(notify) {
+  const batchId =
+    typeof notify?.batchId === 'string' &&
+    /^[a-zA-Z0-9_-]{1,64}$/.test(notify.batchId)
+      ? notify.batchId
+      : null;
+  if (!batchId) return {};
+  const batchTotal =
+    Number.isInteger(notify?.batchTotal) &&
+    notify.batchTotal >= 2 &&
+    notify.batchTotal <= 16
+      ? notify.batchTotal
+      : null;
+  return { batchId, ...(batchTotal && { batchTotal }) };
+}
+
 // Build the fal queue submit URL with our completion webhook attached
 // (fal_webhook query param — fal POSTs it when the request reaches a terminal
 // state). This gives fal kinds the same real-time, browser-independent
@@ -596,5 +617,6 @@ module.exports = {
   fetchFalPrediction,
   falQueueSubmitUrl,
   refundFalJobInline,
-  sanitizeGalleryMetadata
+  sanitizeGalleryMetadata,
+  sanitizeNotifyBatch
 };

@@ -19,7 +19,7 @@ const { MODAL_SECRETS, enqueueModalJob, fetchModalPrediction } = require('./moda
 // authoritative status adapter used by the poll, falJobWebhook, and the
 // reconciler. One-directional require: fal-3d.js does NOT require this module,
 // so there's no cycle.
-const { saveMeshToGallery, fetchFalPrediction, sanitizeGalleryMetadata } = require('./fal-3d.js');
+const { saveMeshToGallery, fetchFalPrediction, sanitizeGalleryMetadata, sanitizeNotifyBatch } = require('./fal-3d.js');
 // Real-time completion email: the webhook calls this the instant a job finishes
 // so the user isn't waiting on the 10-min reconciler sweep. Shared, idempotent
 // send (the sweep is the backstop). No circular dep: scheduledEmails doesn't
@@ -385,7 +385,13 @@ const generateReplicateImage = functions
         // gallery's scene link and focus-camera button keep working now that
         // the save is server-side.
         galleryMetadata: sanitizeGalleryMetadata(gallery_metadata),
-        notify: { email: wantsEmail, pending: wantsEmail },
+        notify: {
+          email: wantsEmail,
+          pending: wantsEmail,
+          // Editor 4x renders stamp a shared batch identity so the whole
+          // batch produces at most one email (first finisher decides).
+          ...sanitizeNotifyBatch(notify)
+        },
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 

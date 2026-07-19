@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styles from './ScreenshotModal.module.scss';
 import Modal from '@shared/components/Modal/Modal.jsx';
@@ -124,6 +124,29 @@ function ScreenshotModal() {
   const [showOvertimeWarning, setShowOvertimeWarning] = useState(false); // Show overtime warning for 1x mode
   const [isClosing, setIsClosing] = useState(false); // Track closing animation
 
+  // Completion-email opt-in. The checkbox only shows while a render is in
+  // flight (that's when "close this window and get emailed" is meaningful);
+  // its state at submit rides the job doc, and mid-render toggles write
+  // through via setGenerationJobNotify. In-flight job ids live in a ref (no
+  // re-render needed), as does the shared batch identity during a 4x submit.
+  const [notifyEmail, setNotifyEmail] = useState(true);
+  const activeJobIdsRef = useRef(new Set());
+  const batch4xRef = useRef(null);
+
+  const handleNotifyToggle = (checked) => {
+    setNotifyEmail(checked);
+    if (activeJobIdsRef.current.size === 0) return;
+    const setGenerationJobNotify = httpsCallable(
+      functions,
+      'setGenerationJobNotify'
+    );
+    activeJobIdsRef.current.forEach((jobId) => {
+      setGenerationJobNotify({ jobId, email: checked }).catch((err) => {
+        console.warn('Failed to update email preference for job:', err);
+      });
+    });
+  };
+
   // Chip highlight and analytics derive from the style text itself: an
   // unedited chip sentence maps to its style, empty is 'none', anything
   // else is 'custom' (which highlights no chip).
@@ -189,11 +212,13 @@ function ScreenshotModal() {
 
   const handleClose = () => {
     if (isAnyRendering) {
+      // Since #1835 the render finishes server-side either way; closing only
+      // stops the live preview (and, if opted in, hands off to the email).
       const confirmClose = window.confirm(
         intl.formatMessage({
           id: 'screenshotModal.confirmClose',
           defaultMessage:
-            'Rendering in progress. Are you sure you want to close? The render will be cancelled.'
+            'Rendering in progress. Close anyway? The render will finish in the background and be saved to your gallery.'
         })
       );
       if (!confirmClose) {
@@ -422,6 +447,9 @@ function ScreenshotModal() {
       return;
     }
 
+    // The submitted job's id, tracked for the mid-render email toggle and
+    // cleared in `finally` (the toggle only applies to an in-flight job).
+    let submittedJobId = null;
     try {
       // Simple approach: try the key as-is first, then try removing numeric suffix
       let selectedModelConfig = AI_MODELS[targetModel];
@@ -498,6 +526,18 @@ function ScreenshotModal() {
         isPro: currentUser?.isPro || false
       };
 
+      // Completion-email opt-in, recorded on the job doc. Only sends if
+      // nothing acks the result (i.e. this browser tab is gone before the
+      // render finishes). 4x jobs share a batch identity so the whole batch
+      // produces at most one email (first finisher decides, server-side).
+      const notify = {
+        email: notifyEmail,
+        ...(batch4xRef.current && {
+          batchId: batch4xRef.current.id,
+          batchTotal: batch4xRef.current.total
+        })
+      };
+
       // Route to the correct cloud function based on model type. Both are
       // submit-and-return: they charge tokens, create the provider job, and
       // hand back a jobId; the render is finished (and saved to the gallery)
@@ -513,7 +553,8 @@ function ScreenshotModal() {
           model_id: baseModelKey,
           scene_id: sceneId || null,
           source: 'editor',
-          gallery_metadata: galleryMetadata
+          gallery_metadata: galleryMetadata,
+          notify
         });
       } else {
         const generateReplicateImage = httpsCallable(
@@ -529,11 +570,15 @@ function ScreenshotModal() {
           model_version: selectedModelConfig.version,
           model_id: baseModelKey,
           scene_id: sceneId || null,
-          gallery_metadata: galleryMetadata
+          gallery_metadata: galleryMetadata,
+          notify
         });
       }
 
       if (result.data.success && result.data.jobId) {
+        // In flight — the email toggle targets this job until it's terminal.
+        submittedJobId = result.data.jobId;
+        activeJobIdsRef.current.add(submittedJobId);
         // Poll until the job is terminal; the server has already saved the
         // image to the gallery by the time this resolves.
         const jobData = await pollGenerationJob(result.data.jobId);
@@ -671,6 +716,7 @@ function ScreenshotModal() {
         );
       }
     } finally {
+      if (submittedJobId) activeJobIdsRef.current.delete(submittedJobId);
       // Update rendering state for this specific model
       setRenderingStates((prev) => ({ ...prev, [targetModel]: false }));
 
@@ -753,12 +799,23 @@ function ScreenshotModal() {
       ? modelKeys
       : [selectedModel, selectedModel, selectedModel, selectedModel];
 
-    // Generate renders for each model concurrently
-    const renderPromises = modelsToRender.map((modelKey, index) =>
-      handleGenerateAIImage(`${modelKey}-${index}`)
-    );
+    // One user action → one batch identity: every job in this 4x submit
+    // carries the same batchId, so the server sends at most one email for
+    // the whole batch (first finisher decides) instead of four.
+    batch4xRef.current = {
+      id: crypto.randomUUID(),
+      total: modelsToRender.length
+    };
+    try {
+      // Generate renders for each model concurrently
+      const renderPromises = modelsToRender.map((modelKey, index) =>
+        handleGenerateAIImage(`${modelKey}-${index}`)
+      );
 
-    await Promise.allSettled(renderPromises);
+      await Promise.allSettled(renderPromises);
+    } finally {
+      batch4xRef.current = null;
+    }
   };
 
   // Progress bar animation effect for single render
@@ -1218,6 +1275,22 @@ function ScreenshotModal() {
                   )}
                 </span>
               </Button>
+            )}
+            {/* Email opt-in: only meaningful while a render is in flight
+                (check it, close this window, get the result by email).
+                Toggling writes through to the in-flight job docs. */}
+            {isAnyRendering && (
+              <label className={styles.notifyEmailRow}>
+                <input
+                  type="checkbox"
+                  checked={notifyEmail}
+                  onChange={(e) => handleNotifyToggle(e.target.checked)}
+                />
+                <FormattedMessage
+                  id="screenshotModal.emailWhenDone"
+                  defaultMessage="Email me when it's ready (you can close this window)"
+                />
+              </label>
             )}
             {!currentUser && (
               <p className={styles.loginPrompt}>

@@ -10,7 +10,8 @@ const { assertAppCheck } = require('./app-check.js');
 const {
   falQueueSubmitUrl,
   refundFalJobInline,
-  sanitizeGalleryMetadata
+  sanitizeGalleryMetadata,
+  sanitizeNotifyBatch
 } = require('./fal-3d.js');
 
 // fal.ai image generation (flux-2 edit family). Asynchronous since #1835:
@@ -200,7 +201,13 @@ const generateFalImage = functions
         // Client extras merged into the saved asset's generationMetadata (the
         // editor's sceneTitle/cameraState/renderMode — see saveImageToGallery).
         galleryMetadata: sanitizeGalleryMetadata(gallery_metadata),
-        notify: { email: wantsEmail, pending: wantsEmail },
+        notify: {
+          email: wantsEmail,
+          pending: wantsEmail,
+          // Editor 4x renders stamp a shared batch identity so the whole
+          // batch produces at most one email (first finisher decides).
+          ...sanitizeNotifyBatch(notify)
+        },
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
