@@ -35,6 +35,11 @@ const { assertAppCheck } = require('../app-check.js');
 const { isUserProInternal } = require('../token-management.js');
 const { sendPostmarkEmail, getUserInfo } = require('./postmark.js');
 const { evaluateStopRules } = require('./stop-rules.js');
+const {
+  DEFAULT_EMAIL_LOCALE,
+  normalizeEmailLocale,
+  resolveEmailLocale
+} = require('./locale.js');
 
 const TRANSACTIONAL_STREAM = 'outbound';
 // Broadcast streams live in Postmark (created manually in the dashboard;
@@ -42,17 +47,54 @@ const TRANSACTIONAL_STREAM = 'outbound';
 // when P1 emails need them.
 const BROADCAST_STREAMS = ['conversion', 'lifecycle'];
 
-// Appended to broadcast-stream messages. Postmark replaces the placeholder
-// with a per-recipient, per-stream unsubscribe URL.
-const UNSUBSCRIBE_HTML = `
+// Appended to broadcast-stream messages, in the recipient's locale. Postmark
+// replaces the placeholder with a per-recipient, per-stream unsubscribe URL.
+const unsubscribeHtml = (prompt, label) => `
   <p style="font-size: 12px; color: #999;">
-    Don't want these emails?
-    <a href="{{{ pm:unsubscribe_url }}}" style="color: #6366f1;">Unsubscribe</a>.
+    ${prompt}
+    <a href="{{{ pm:unsubscribe_url }}}" style="color: #6366f1;">${label}</a>.
   </p>`;
-const UNSUBSCRIBE_TEXT = `
+const unsubscribeText = (prompt, label) => `
 
 ---
-Don't want these emails? Unsubscribe: {{{ pm:unsubscribe_url }}}`;
+${prompt} ${label}: {{{ pm:unsubscribe_url }}}`;
+
+const UNSUBSCRIBE = {
+  en: {
+    html: unsubscribeHtml("Don't want these emails?", 'Unsubscribe'),
+    text: unsubscribeText("Don't want these emails?", 'Unsubscribe')
+  },
+  es: {
+    html: unsubscribeHtml(
+      '¿No quieres recibir estos correos?',
+      'Cancela tu suscripción'
+    ),
+    text: unsubscribeText(
+      '¿No quieres recibir estos correos?',
+      'Cancela tu suscripción'
+    )
+  },
+  'pt-BR': {
+    html: unsubscribeHtml(
+      'Não quer receber estes e-mails?',
+      'Cancelar inscrição'
+    ),
+    text: unsubscribeText(
+      'Não quer receber estes e-mails?',
+      'Cancelar inscrição'
+    )
+  },
+  fr: {
+    html: unsubscribeHtml(
+      'Vous ne souhaitez plus recevoir ces e-mails ?',
+      'Se désinscrire'
+    ),
+    text: unsubscribeText(
+      'Vous ne souhaitez plus recevoir ces e-mails ?',
+      'Se désinscrire'
+    )
+  }
+};
 
 /**
  * Send one lifecycle email to one user, enforcing suppression + stop-rules.
@@ -68,10 +110,12 @@ Don't want these emails? Unsubscribe: {{{ pm:unsubscribe_url }}}`;
  * @param {string} p.emailId - stable id, e.g. 'welcome', 'checkoutAbandoned1h'
  * @param {string} p.category - preference category, e.g. 'transactional', 'conversion'
  * @param {string} p.stream - Postmark stream ('outbound' | broadcast stream id)
- * @param {Object} p.template - { getSubject(name, data), getHtmlBody(name, data), getTextBody(name, data) }
+ * @param {Object} p.template - { getSubject(name, data, locale), getHtmlBody(name, data, locale), getTextBody(name, data, locale) }
  * @param {Object} [p.data] - template data
  * @param {Object} [p.rules] - stop-rules (see stop-rules.js)
  * @param {string} [p.dedupeKey] - once-per-key guard (invoice id, session id)
+ * @param {string} [p.locale] - explicit send locale; omit to resolve from the
+ *   recipient's profile (locale.js), falling back to 'en'
  * @param {boolean} [p.dryRun] - evaluate everything, claim and send nothing
  * @returns {Promise<{action: 'sent'|'would-send'|'skipped'|'no-email'|'error', reason?: string, messageId?: string, to?: string, subject?: string}>}
  */
@@ -85,6 +129,7 @@ const sendLifecycleEmail = async ({
   data = {},
   rules = {},
   dedupeKey = null,
+  locale = null,
   dryRun = false
 }) => {
   const isBroadcast = stream !== TRANSACTIONAL_STREAM;
@@ -113,14 +158,23 @@ const sendLifecycleEmail = async ({
 
   const summaryRef = db.collection('emailLog').doc(uid);
 
-  const subject = template.getSubject(userInfo.displayName, data);
-  let htmlBody = template.getHtmlBody(userInfo.displayName, data);
-  let textBody = template.getTextBody(userInfo.displayName, data);
+  // Locale: explicit param wins (normalized); otherwise resolved from the
+  // recipient's socialProfile (explicit UI pick > detected browser locale >
+  // 'en'). Templates receive it as their third argument.
+  const sendLocale = locale
+    ? normalizeEmailLocale(locale)
+    : await resolveEmailLocale(db, uid);
+
+  const subject = template.getSubject(userInfo.displayName, data, sendLocale);
+  let htmlBody = template.getHtmlBody(userInfo.displayName, data, sendLocale);
+  let textBody = template.getTextBody(userInfo.displayName, data, sendLocale);
   if (isBroadcast) {
+    const unsubscribe =
+      UNSUBSCRIBE[sendLocale] || UNSUBSCRIBE[DEFAULT_EMAIL_LOCALE];
     htmlBody = htmlBody.includes('</body>')
-      ? htmlBody.replace('</body>', `${UNSUBSCRIBE_HTML}</body>`)
-      : htmlBody + UNSUBSCRIBE_HTML;
-    textBody += UNSUBSCRIBE_TEXT;
+      ? htmlBody.replace('</body>', `${unsubscribe.html}</body>`)
+      : htmlBody + unsubscribe.html;
+    textBody += unsubscribe.text;
   }
 
   // Transaction: evaluate stop-rules against the live summary doc and claim
@@ -184,6 +238,7 @@ const sendLifecycleEmail = async ({
       stream,
       to: userInfo.email,
       subject,
+      locale: sendLocale,
       dedupeKey,
       status: 'pending',
       createdAt: now
@@ -249,7 +304,7 @@ const sendLifecycleEmail = async ({
 const TEST_TEMPLATE = {
   getSubject: (userName, { stream }) =>
     `[3DStreet test] lifecycle email pipeline (${stream} stream)`,
-  getTextBody: (userName, { stream }) => `Hi ${userName},
+  getTextBody: (userName, { stream }) => `Hi ${userName || 'there'},
 
 This is a test of the 3DStreet lifecycle email pipeline, sent via the "${stream}" Postmark stream.
 
@@ -264,7 +319,7 @@ https://3dstreet.com`,
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <h2 style="color: #1a1a1a;">Hi ${userName},</h2>
+  <h2 style="color: #1a1a1a;">Hi ${userName || 'there'},</h2>
   <p>This is a test of the 3DStreet lifecycle email pipeline, sent via the <strong>${stream}</strong> Postmark stream.</p>
   <p>If you weren't expecting this, an admin is testing email infrastructure — no action needed.</p>
   <p style="color: #666;">The 3DStreet Team<br>

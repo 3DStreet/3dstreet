@@ -411,6 +411,9 @@ describe('sendLifecycleEmail (emulator)', () => {
 
   describe('welcome email (Auth onCreate trigger helper)', () => {
     let sendWelcomeEmailForUser;
+    // The real trigger polls ~9s for the client's locale write (the signup
+    // race); tests collapse the poll to a single immediate read.
+    const fastLocaleWait = { localeWait: { attempts: 1, delayMs: 0 } };
 
     beforeAll(() => {
       ({ sendWelcomeEmailForUser } = functionsRequire(
@@ -423,7 +426,7 @@ describe('sendLifecycleEmail (emulator)', () => {
       const fetchMock = okFetch();
       vi.stubGlobal('fetch', fetchMock);
 
-      const first = await sendWelcomeEmailForUser(db, uid);
+      const first = await sendWelcomeEmailForUser(db, uid, fastLocaleWait);
       expect(first.action).toBe('sent');
       const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
       expect(payload.MessageStream).toBe('outbound');
@@ -431,9 +434,124 @@ describe('sendLifecycleEmail (emulator)', () => {
       expect((await summaryDoc(uid)).emails.welcome.sentCount).toBe(1);
 
       // Firebase retries onCreate on error; onceEver must absorb a re-fire.
-      const second = await sendWelcomeEmailForUser(db, uid);
+      const second = await sendWelcomeEmailForUser(db, uid, fastLocaleWait);
       expect(second).toMatchObject({ action: 'skipped', reason: 'onceEver' });
       expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends in the locale the client captured at signup (detectedLocale)', async () => {
+      const uid = await makeUser();
+      await db
+        .collection('socialProfile')
+        .doc(uid)
+        .set({ userId: uid, detectedLocale: 'es-MX' });
+      const fetchMock = okFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await sendWelcomeEmailForUser(db, uid, fastLocaleWait);
+      expect(result.action).toBe('sent');
+      const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(payload.Subject).toBe('¡Te damos la bienvenida a 3DStreet!');
+      expect(payload.HtmlBody).toContain('¡Hola,');
+      expect(payload.TextBody).toContain('El equipo de 3DStreet');
+
+      // The audit record captures which locale actually went out.
+      const sends = await sendRecords(uid);
+      expect(sends[0].locale).toBe('es');
+    });
+
+    it('waits out the signup race: locale write landing after the first poll still wins', async () => {
+      const uid = await makeUser();
+      const fetchMock = okFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      // Simulate the client write landing between polls.
+      setTimeout(() => {
+        db.collection('socialProfile')
+          .doc(uid)
+          .set({ userId: uid, detectedLocale: 'fr' });
+      }, 150);
+      const result = await sendWelcomeEmailForUser(db, uid, {
+        localeWait: { attempts: 5, delayMs: 100 }
+      });
+      expect(result.action).toBe('sent');
+      const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(payload.Subject).toBe('Bienvenue sur 3DStreet !');
+    });
+  });
+
+  describe('locale resolution in the send service', () => {
+    let TEMPLATES;
+
+    beforeAll(() => {
+      TEMPLATES = functionsRequire('./email/templates.js');
+    });
+
+    const send = (uid, overrides = {}) =>
+      sendLifecycleEmail({
+        db,
+        uid,
+        emailId: 'geoNotUsed',
+        category: 'lifecycle',
+        stream: 'lifecycle',
+        template: TEMPLATES.geoNotUsed,
+        ...overrides
+      });
+
+    it('explicit UI locale wins over detectedLocale, and the unsubscribe footer localizes', async () => {
+      const uid = await makeUser();
+      await db.collection('socialProfile').doc(uid).set({
+        userId: uid,
+        locale: 'fr',
+        detectedLocale: 'es'
+      });
+      const fetchMock = okFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      expect((await send(uid)).action).toBe('sent');
+      const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(payload.Subject).toBe('Placez votre rue sur une vraie carte');
+      // Localized broadcast footer, placeholder intact, inside the document.
+      expect(payload.HtmlBody).toContain('Se désinscrire');
+      expect(payload.HtmlBody).toContain('{{{ pm:unsubscribe_url }}}');
+      expect(payload.TextBody).toContain('{{{ pm:unsubscribe_url }}}');
+      expect(payload.HtmlBody.indexOf('pm:unsubscribe_url')).toBeLessThan(
+        payload.HtmlBody.indexOf('</body>')
+      );
+    });
+
+    it('normalizes regioned tags (pt-PT → pt-BR) and defaults missing profiles to en', async () => {
+      const ptUid = await makeUser();
+      await db
+        .collection('socialProfile')
+        .doc(ptUid)
+        .set({ userId: ptUid, detectedLocale: 'pt-PT' });
+      const noProfileUid = await makeUser();
+      const fetchMock = okFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      await send(ptUid);
+      await send(noProfileUid);
+      const [ptPayload, enPayload] = fetchMock.mock.calls.map((c) =>
+        JSON.parse(c[1].body)
+      );
+      expect(ptPayload.Subject).toBe('Coloque sua rua em um mapa real');
+      expect(enPayload.Subject).toBe('Put your street on a real map');
+      expect(enPayload.HtmlBody).toContain('Unsubscribe');
+    });
+
+    it('an explicit locale param overrides profile resolution', async () => {
+      const uid = await makeUser();
+      await db
+        .collection('socialProfile')
+        .doc(uid)
+        .set({ userId: uid, locale: 'fr' });
+      const fetchMock = okFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      await send(uid, { locale: 'es' });
+      const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(payload.Subject).toBe('Pon tu calle en un mapa real');
     });
   });
 

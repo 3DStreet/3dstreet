@@ -5,7 +5,8 @@ re-engagement) from Cloud Functions via Postmark, with per-category
 unsubscribe, stop-rules, and a full send audit — no external ESP workflows.
 
 **Code:** `public/functions/email/` — `lifecycle-email.js` (send service),
-`stop-rules.js`, `postmark.js` (transport), `templates.js` (all copy),
+`stop-rules.js`, `postmark.js` (transport), `templates.js` (all copy, per
+locale), `locale.js` (recipient locale resolution),
 `lifecycle-triggers.js` (welcome on signup), `lifecycle-sweeps.js` (hourly
 sweep) · Stripe-driven sends live in `index.js`'s `stripeWebhook` ·
 `public/functions/scheduled/scheduledEmails.js` (daily sweep, see
@@ -72,8 +73,8 @@ Postmark message streams double as the unsubscribe preference center:
   per-email `lastSentAt` / `sentCount` / `dedupeKeys`, per-category
   `lastSentAt`.
 - **`emailLog/{uid}/sends/{autoId}`** — audit of every attempted send:
-  `{ emailId, category, stream, to, subject, dedupeKey, status, messageId,
-  createdAt, sentAt }`. A record stuck on `pending` means an instance died
+  `{ emailId, category, stream, to, subject, locale, dedupeKey, status,
+  messageId, createdAt, sentAt }`. A record stuck on `pending` means an instance died
   between claiming and the Postmark response — rare enough at current volumes
   that it's surfaced as data rather than swept.
 - **`emailPrefs/{uid}`** — per-stream opt-out state mirrored from the Postmark
@@ -94,11 +95,43 @@ Declared per email, enforced transactionally (`email/stop-rules.js`):
 | `stopIfPro: true` | skip PRO/MAX users (upsell emails) |
 | `dedupeKey` (send param) | once per external key — invoice id, checkout session id |
 
+## Localization
+
+Lifecycle emails send in the recipient's language — the same locale set the
+editor UI ships (`en` / `es` / `pt-BR` / `fr`, see
+`src/shared/i18n/locales.js`). Two-part design (#1841):
+
+- **Capture (client):** the shared Auth context
+  (`src/shared/contexts/Auth.context.jsx`) writes
+  `socialProfile/{uid}.detectedLocale` (from `navigator.language`) on
+  sign-in — fire-and-forget, localStorage-guarded to one write per
+  uid+locale. An explicit View > Language pick writes
+  `socialProfile/{uid}.locale` (store.js `setLocale` /
+  `useProfileLocaleSync`) and always wins.
+- **Resolve + render (server):** `sendLifecycleEmail` resolves the locale via
+  `email/locale.js` (`locale` > `detectedLocale` > `en`, region-insensitive
+  matching mirroring `matchSupportedLocale`) and passes it as the third
+  argument to `getSubject/getHtmlBody/getTextBody`. Templates in
+  `templates.js` hold per-locale copy (hand-written, reviewed in-repo);
+  a missing locale entry falls back to English for the whole template, so a
+  partial translation can never ship a mixed-language email. The broadcast
+  unsubscribe footer and the "Hi there" greeting fallback localize too.
+- **Welcome race:** Auth `onCreate` can fire before the client's
+  `detectedLocale` write lands, so the welcome trigger (alone) briefly polls
+  for the signal (`waitForEmailLocale`, ~9s max) before sending. Every other
+  email fires hours-to-days after signup and just reads the profile.
+- Callers may pass an explicit `locale` to `sendLifecycleEmail` to bypass
+  resolution; the audit record stores the locale each send actually used.
+
 ## Adding a new lifecycle email
 
-1. **Template** — `{ getSubject(name, data), getHtmlBody(name, data),
-   getTextBody(name, data) }`. Don't add an unsubscribe footer yourself; the
-   service appends it for broadcast streams.
+1. **Template** — build it in `templates.js` with `defineTemplate`, providing
+   copy for **every** supported locale (subject, bodies, CTA label,
+   footnote); the resulting object implements `{ getSubject(name, data,
+   locale), getHtmlBody(name, data, locale), getTextBody(name, data,
+   locale) }`. Don't add an unsubscribe footer yourself; the service appends
+   a localized one for broadcast streams. `test/core/email-templates.test.js`
+   sanity-checks every template × locale automatically.
 2. **Routing** — pick a stable `emailId`, a `category`, and a `stream`
    (transactional → `outbound`; marketing/behavioral → a broadcast stream).
 3. **Rules** — compose from the table above.
@@ -118,10 +151,13 @@ Declared per email, enforced transactionally (`email/stop-rules.js`):
 
 ## Testing and manual dry runs
 
-- **Unit:** `npm test` covers stop-rules (`test/core/email-stop-rules.test.js`).
+- **Unit:** `npm test` covers stop-rules (`test/core/email-stop-rules.test.js`)
+  and every template × locale (`test/core/email-templates.test.js` — chrome,
+  CTA links, greeting fallbacks, en-fallback behavior).
 - **Emulator:** `npm run test:rules` (JDK 21+, local-only) covers the send
   service end-to-end — claims, rollback, suppression, unsubscribe footer,
-  concurrency — and the migrated tokenExhaustion sweep
+  concurrency, locale resolution (explicit > detected > en, the welcome-race
+  poll) — and the migrated tokenExhaustion sweep
   (`test/rules/lifecycle-email.emulator.test.js`).
 - **Pipeline test (admin claim required), from the browser console:**
   ```js
@@ -178,6 +214,12 @@ deploying email changes to dev, before promoting to prod.
 8. **Welcome on signup.** Create a fresh account on dev → welcome email
    arrives within a minute (no unsubscribe footer, `outbound` stream);
    `emailLog/{new-uid}.emails.welcome` appears.
+   **Localized welcome:** repeat with the browser language set to Spanish
+   (or with `socialProfile/{uid}.locale` set to `es` before signup can't
+   exist — use a browser profile with `es` as the preferred language) → the
+   welcome arrives in Spanish and the `sends` audit record shows
+   `locale: 'es'`. Confirm `socialProfile/{uid}.detectedLocale` was written
+   at first sign-in.
 9. **Purchase flow.** Buy a plan on dev with a Stripe test card → post-upgrade
    welcome arrives once; `checkoutSessions/{sessionId}` flips to
    `status: 'complete'` in Firestore. Or skip the UI and run

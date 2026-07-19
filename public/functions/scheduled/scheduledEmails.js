@@ -4,6 +4,7 @@ const { assertAppCheck } = require('../app-check.js');
 const { withJobHealth } = require('./job-health.js');
 const { sendPostmarkEmail, getUserInfo } = require('../email/postmark.js');
 const { sendLifecycleEmail } = require('../email/lifecycle-email.js');
+const TEMPLATES = require('../email/templates.js');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -12,137 +13,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // ============================================================================
 
 const EMAIL_TEMPLATES = {
-  geoTokenExhaustion: {
-    subject: "You've used all your geo tokens on 3DStreet",
-    getTextBody: (userName) => `Hi ${userName},
-
-You've used all of your free geo tokens on 3DStreet. Geo tokens let you access Google 3D Tiles to see real-world context around your street designs.
-
-Want to keep designing with real-world context? Upgrade to 3DStreet Pro and get:
-
-- Unlimited geo tokens for Google 3D Tiles
-- 100 AI generation tokens per month
-- Priority support
-- Early access to new features
-
-Upgrade now: https://3dstreet.app/?utm_source=email&utm_medium=token_exhaustion&utm_campaign=geo_zero&utm_content=cta_link#modal/payment
-
-Thanks for using 3DStreet!
-
-The 3DStreet Team
-https://3dstreet.com
-
----
-You received this email because you created an account on 3DStreet. This message is only sent once.
-If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
-    getHtmlBody: (userName) => `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="text-align: center; margin-bottom: 30px;">
-    <img src="https://3dstreet.app/ui_assets/3dstreet-logo-rect-r-640.png" alt="3DStreet" style="height: 40px;">
-  </div>
-
-  <h2 style="color: #1a1a1a; margin-bottom: 20px;">Hi ${userName},</h2>
-
-  <p>You've used all of your free <strong>geo tokens</strong> on 3DStreet. Geo tokens let you access Google 3D Tiles to see real-world context around your street designs.</p>
-
-  <p>Want to keep designing with real-world context? <strong>Upgrade to 3DStreet Pro</strong> and get:</p>
-
-  <ul style="padding-left: 20px;">
-    <li>Unlimited geo tokens for Google 3D Tiles</li>
-    <li>100 AI generation tokens per month</li>
-    <li>Priority support</li>
-    <li>Early access to new features</li>
-  </ul>
-
-  <div style="text-align: center; margin: 30px 0;">
-    <a href="https://3dstreet.app/?utm_source=email&utm_medium=token_exhaustion&utm_campaign=geo_zero&utm_content=cta_button#modal/payment" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Upgrade to Pro</a>
-  </div>
-
-  <p>Thanks for using 3DStreet!</p>
-
-  <p style="color: #666;">The 3DStreet Team<br>
-  <a href="https://3dstreet.com" style="color: #6366f1;">https://3dstreet.com</a></p>
-
-  <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-
-  <p style="font-size: 12px; color: #999;">
-    You received this email because you created an account on 3DStreet.<br>
-    This message is only sent once. If you have questions, reply to this email or visit <a href="https://3dstreet.com/docs/" style="color: #6366f1;">our documentation</a>.
-  </p>
-</body>
-</html>`
-  },
-
-  genTokenExhaustion: {
-    subject: "You've used all your AI tokens on 3DStreet",
-    getTextBody: (userName) => `Hi ${userName},
-
-You've used all of your free AI generation tokens on 3DStreet. AI tokens let you create stunning photorealistic renders of your street designs using our AI image generator.
-
-Want to keep creating amazing renders? Upgrade to 3DStreet Pro and get:
-
-- 100 AI generation tokens per month
-- Unlimited geo tokens for Google 3D Tiles
-- Priority support
-- Early access to new features
-
-Upgrade now: https://3dstreet.app/?utm_source=email&utm_medium=token_exhaustion&utm_campaign=ai_zero&utm_content=cta_link#modal/payment
-
-Thanks for using 3DStreet!
-
-The 3DStreet Team
-https://3dstreet.com
-
----
-You received this email because you created an account on 3DStreet. This message is only sent once.
-If you have questions, reply to this email or visit https://3dstreet.com/docs/`,
-    getHtmlBody: (userName) => `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="text-align: center; margin-bottom: 30px;">
-    <img src="https://3dstreet.app/ui_assets/3dstreet-logo-rect-r-640.png" alt="3DStreet" style="height: 40px;">
-  </div>
-
-  <h2 style="color: #1a1a1a; margin-bottom: 20px;">Hi ${userName},</h2>
-
-  <p>You've used all of your free <strong>AI generation tokens</strong> on 3DStreet. AI tokens let you create stunning photorealistic renders of your street designs using our AI image generator.</p>
-
-  <p>Want to keep creating amazing renders? <strong>Upgrade to 3DStreet Pro</strong> and get:</p>
-
-  <ul style="padding-left: 20px;">
-    <li>100 AI generation tokens per month</li>
-    <li>Unlimited geo tokens for Google 3D Tiles</li>
-    <li>Priority support</li>
-    <li>Early access to new features</li>
-  </ul>
-
-  <div style="text-align: center; margin: 30px 0;">
-    <a href="https://3dstreet.app/?utm_source=email&utm_medium=token_exhaustion&utm_campaign=ai_zero&utm_content=cta_button#modal/payment" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Upgrade to Pro</a>
-  </div>
-
-  <p>Thanks for using 3DStreet!</p>
-
-  <p style="color: #666;">The 3DStreet Team<br>
-  <a href="https://3dstreet.com" style="color: #6366f1;">https://3dstreet.com</a></p>
-
-  <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-
-  <p style="font-size: 12px; color: #999;">
-    You received this email because you created an account on 3DStreet.<br>
-    This message is only sent once. If you have questions, reply to this email or visit <a href="https://3dstreet.com/docs/" style="color: #6366f1;">our documentation</a>.
-  </p>
-</body>
-</html>`
-  },
+  // geo/gen token exhaustion copy lives with the other lifecycle emails in
+  // ../email/templates.js (localized per-locale, #1841); the entries here
+  // implement the { getSubject, getHtmlBody, getTextBody } interface the
+  // send service expects, so they pass straight through.
+  geoTokenExhaustion: TEMPLATES.geoTokenExhaustion,
+  genTokenExhaustion: TEMPLATES.genTokenExhaustion,
 
   // Sent once per opted-in generation job that finishes while the user is away
   // (no live tab acked the result). Triggered from the generation-job reconciler,
@@ -348,16 +224,6 @@ const hasLegacyNotifyLogEntry = (notifyLog, notifyLogField) => {
 };
 
 /**
- * Adapt a static-subject EMAIL_TEMPLATES entry to the template interface
- * sendLifecycleEmail expects ({ getSubject, getHtmlBody, getTextBody }).
- */
-const asLifecycleTemplate = (template) => ({
-  getSubject: () => template.subject,
-  getHtmlBody: (userName) => template.getHtmlBody(userName),
-  getTextBody: (userName) => template.getTextBody(userName)
-});
-
-/**
  * Send the "your generation is ready" email for a single succeeded, opted-in
  * job, exactly once. Shared by BOTH the real-time path (the Replicate webhook,
  * which calls this the instant a job finishes) and the reconciler sweep (the
@@ -438,11 +304,15 @@ const sendGenerationReadyEmail = async (db, uid, jobRef, options = {}) => {
       when: job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || null
     };
 
+    // generationReady stays English-only (not a lifecycle email; see #1841
+    // scope) and does its own "Hi there" fallback since getUserInfo returns
+    // a null displayName when Auth has none.
+    const greetName = userInfo.displayName || 'there';
     await sendPostmarkEmail(
       userInfo.email,
       tpl.getSubject(job.kind, emailCtx),
-      tpl.getHtmlBody(userInfo.displayName, job.kind, ctaUrl, emailCtx),
-      tpl.getTextBody(userInfo.displayName, job.kind, ctaUrl, emailCtx)
+      tpl.getHtmlBody(greetName, job.kind, ctaUrl, emailCtx),
+      tpl.getTextBody(greetName, job.kind, ctaUrl, emailCtx)
     );
     await jobRef.update({
       'notify.sentAt': admin.firestore.FieldValue.serverTimestamp()
@@ -558,7 +428,7 @@ const processEmailType = async (db, emailTypeKey, emailType, options = {}) => {
         emailId: emailType.emailId,
         category: emailType.category,
         stream: emailType.stream,
-        template: asLifecycleTemplate(template),
+        template,
         rules: emailType.rules,
         dryRun
       });

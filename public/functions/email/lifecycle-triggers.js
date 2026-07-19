@@ -12,15 +12,27 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { sendLifecycleEmail } = require('./lifecycle-email.js');
+const { waitForEmailLocale } = require('./locale.js');
 const TEMPLATES = require('./templates.js');
 
 /**
  * Send the welcome email to one user. Split from the trigger so the emulator
  * suite can exercise it directly. Accounts without an email address (e.g.
  * anonymous auth) resolve to action 'no-email' inside the send service.
+ *
+ * Locale: onCreate fires the instant the account exists, which can beat the
+ * client's detectedLocale write to socialProfile by a few seconds — and a
+ * wrong-language welcome is the most visible miss localization can make. So
+ * this trigger (alone) briefly polls for the locale signal before sending;
+ * `localeWait` exists so tests can shrink the poll to a single read.
  */
-const sendWelcomeEmailForUser = (db, uid, { dryRun = false } = {}) =>
-  sendLifecycleEmail({
+const sendWelcomeEmailForUser = async (
+  db,
+  uid,
+  { dryRun = false, localeWait = undefined } = {}
+) => {
+  const locale = await waitForEmailLocale(db, uid, localeWait);
+  return sendLifecycleEmail({
     db,
     uid,
     emailId: 'welcome',
@@ -28,8 +40,10 @@ const sendWelcomeEmailForUser = (db, uid, { dryRun = false } = {}) =>
     stream: 'outbound',
     template: TEMPLATES.welcome,
     rules: { onceEver: true },
+    locale,
     dryRun
   });
+};
 
 const sendWelcomeEmail = functions
   .runWith({ secrets: ['POSTMARK_API_KEY'] })
