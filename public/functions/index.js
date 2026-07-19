@@ -3,7 +3,7 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 const { getAuth } = require('firebase-admin/auth');
 const { getGeoidHeight } = require('./geoid-height.js');
-const { generateReplicateImage, generateReplicateVideo, generateReplicateSplat, getGenerationJobStatus, replicateJobWebhook, modalJobWebhook } = require('./replicate.js');
+const { generateReplicateImage, generateReplicateVideo, generateReplicateSplat, getGenerationJobStatus, setGenerationJobNotify, replicateJobWebhook, modalJobWebhook, falJobWebhook } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { generateFalImage } = require('./fal-proxy.js');
 const { generateFalMesh } = require('./fal-3d.js');
@@ -31,8 +31,10 @@ exports.generateReplicateImage = generateReplicateImage;
 exports.generateReplicateVideo = generateReplicateVideo;
 exports.generateReplicateSplat = generateReplicateSplat;
 exports.getGenerationJobStatus = getGenerationJobStatus;
+exports.setGenerationJobNotify = setGenerationJobNotify;
 exports.replicateJobWebhook = replicateJobWebhook;
 exports.modalJobWebhook = modalJobWebhook;
+exports.falJobWebhook = falJobWebhook;
 
 // Re-export the token management functions
 exports.checkAndRefillImageTokens = checkAndRefillImageTokens;

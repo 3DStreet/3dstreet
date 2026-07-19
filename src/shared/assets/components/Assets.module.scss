@@ -636,9 +636,15 @@
 .imageFrame img,
 .imageFrame video {
   max-width: 100%;
-  max-height: 100%;
-  width: 100%;
-  height: 100%;
+  /* Clamp against the modal's own height budget, not the frame (100%): when
+     the asset carries no width/height (server-side gallery saves record
+     neither) the frame has no inline aspect-ratio/width, so percentage
+     clamps resolve against an indefinite box to auto — a tall image then
+     rendered at natural size and was cropped by the frame's overflow:hidden
+     instead of letterboxed. */
+  max-height: calc(90vh - 12rem);
+  width: auto;
+  height: auto;
   object-fit: contain;
 }
 

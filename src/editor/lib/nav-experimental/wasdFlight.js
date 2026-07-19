@@ -1,6 +1,7 @@
 /* global THREE */
 
 import { isSolidFloorHit, worldHitNormal } from './cursorAnchor.js';
+import { intersectProbeTargets } from './probeTargets.js';
 import {
   WASD_SPEED_HEIGHT_FACTOR,
   WASD_MIN_SPEED,
@@ -292,7 +293,7 @@ export class WasdFlight {
     this._raycaster.set(this._ctx.camera.position, this._tmpV3a);
     this._raycaster.near = 0;
     this._raycaster.far = reach;
-    const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
+    const hits = intersectProbeTargets(this._raycaster, this._ctx);
     for (const hit of hits) {
       if (!isSolidFloorHit(hit)) continue;
       const n = worldHitNormal(hit);

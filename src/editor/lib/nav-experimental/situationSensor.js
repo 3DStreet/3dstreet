@@ -7,6 +7,7 @@ import {
   DRONE_ELEVATED_EXIT_METRES
 } from './constants.js';
 import { isLegitPose, cueState, elevationState } from './navMath.js';
+import { intersectProbeTargets } from './probeTargets.js';
 
 // Downward direction for the enclosure up-ray. Module-level frozen constant so
 // the per-tick probe never allocates. (Kept per-module rather than in
@@ -18,8 +19,19 @@ const GROUND_PROBE_DIR = Object.freeze(new THREE.Vector3(0, -1, 0));
 // stationary and no scene-geometry-dirty signal fired, re-evaluate at most once
 // per this interval so a streaming geometry source we didn't wire (e.g. Google
 // 3D Tiles, whose load event lives on the internal TilesRenderer) is still
-// picked up within a quarter-second. Caps idle cost at ~4 raycasts/sec.
-const ENCLOSURE_FALLBACK_INTERVAL_MS = 250;
+// picked up within a second. Caps idle cost at 1 raycast/sec.
+const ENCLOSURE_FALLBACK_INTERVAL_MS = 1000;
+
+// Minimum spacing (ms) between geometry-dirty-triggered evaluations around a
+// motionless camera (#1853). The dirty signal fires per `object3dset` /
+// `child-attached`, which arrive in bursts while a map layer streams tiles in
+// (OSM 2.5D buildings load one merged mesh per tile) — an ungated dirty flag
+// turned every burst frame into a whole-scene raycast and tanked FPS for the
+// entire load window. Rate-limiting the response keeps the cue/context state
+// fresh within a quarter-second of a real geometry change while capping the
+// streaming-load cost at ~4 raycasts/sec. Motion/gesture evaluation is
+// unaffected (the `moved`/`busy` arms of the gate don't touch this timer).
+const GEOMETRY_DIRTY_MIN_INTERVAL_MS = 250;
 
 // Per-tick situation sensor. From ONE downward enclosure/overhead ray it derives
 // three outputs:
@@ -94,8 +106,12 @@ export class SituationSensor {
     // Idle gate. A motionless camera with no active input/gesture/tween cannot
     // change its enclosure/legit/cue state, so skip the whole-scene recursive
     // enclosure raycast. Evaluate when ANY of: the pose moved since last eval,
-    // the camera is busy (input/gesture/tween), a geometry-dirty signal fired,
-    // the bounded fallback window elapsed, or there is no cache yet.
+    // the camera is busy (input/gesture/tween), a geometry-dirty signal fired
+    // AND its rate-limit window elapsed, the bounded fallback window elapsed,
+    // or there is no cache yet. The dirty arm is rate-limited (#1853): dirty
+    // signals arrive per streamed tile during a map-layer load, and an
+    // ungated response meant one whole-scene raycast per frame for the whole
+    // load window.
     const POS_EPS_SQ = 1e-8; // ~1e-4 m
     const QUAT_EPS = 1e-6; // 1 - |dot| threshold
     const moved =
@@ -108,9 +124,11 @@ export class SituationSensor {
       typeof performance !== 'undefined' && performance.now
         ? performance.now()
         : Date.now();
-    const fallbackDue =
-      now - this._lastEvalTime >= ENCLOSURE_FALLBACK_INTERVAL_MS;
-    if (!moved && !busy && !this._sceneGeometryDirty && !fallbackDue) return;
+    const sinceEval = now - this._lastEvalTime;
+    const dirtyDue =
+      this._sceneGeometryDirty && sinceEval >= GEOMETRY_DIRTY_MIN_INTERVAL_MS;
+    const fallbackDue = sinceEval >= ENCLOSURE_FALLBACK_INTERVAL_MS;
+    if (!moved && !busy && !dirtyDue && !fallbackDue) return;
 
     this._sceneGeometryDirty = false;
     this._lastEvalTime = now;
@@ -265,7 +283,7 @@ export class SituationSensor {
     this._raycaster.set(this._origin, GROUND_PROBE_DIR);
     this._raycaster.near = 0;
     this._raycaster.far = Infinity;
-    const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
+    const hits = intersectProbeTargets(this._raycaster, this._ctx);
     const overhead = [];
     for (const hit of hits) {
       if (!isSolidFloorHit(hit)) continue;

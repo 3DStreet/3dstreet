@@ -6,6 +6,7 @@ import {
   owningEntity
 } from './cursorAnchor.js';
 import { isLegitPose } from './navMath.js';
+import { intersectProbeTargets } from './probeTargets.js';
 import { ENCLOSURE_PROBE_UP_MARGIN_METRES } from './constants.js';
 
 // Downward direction for the candidate re-validation up-ray. Module-level frozen
@@ -267,7 +268,7 @@ export class CommittedMotionRunner {
     this._raycaster.set(this._tmpV3a, GROUND_PROBE_DIR);
     this._raycaster.near = 0;
     this._raycaster.far = Infinity;
-    const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
+    const hits = intersectProbeTargets(this._raycaster, this._ctx);
     let enclosed = false;
     for (const hit of hits) {
       if (isSolidFloorHit(hit) && hit.point.y > p.y + 1e-3) {
