@@ -22,6 +22,10 @@
         "function": "renderStreet"
       },
       {
+        "source": "render/img/**",
+        "function": "serveRenderImage"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       },

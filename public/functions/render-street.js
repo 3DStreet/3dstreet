@@ -26,8 +26,9 @@
  *            branding, type ('png'|'jpg'), quality
  *
  *   Response: image bytes (image/png or image/jpeg) with the editor deep
- *   link in the X-3DStreet-Editor-Url header, or with ?format=json a JSON
- *   body { image: <dataURL>, openInEditorUrl, meta, width, height }.
+ *   link in the X-3DStreet-Editor-Url header and the stable cached image
+ *   URL in X-3DStreet-Image-Url, or with ?format=json a JSON body
+ *   { image: <dataURL>, imageUrl, openInEditorUrl, meta, width, height }.
  */
 /* global window */ // window only appears inside page.evaluate (browser ctx)
 const { onRequest } = require('firebase-functions/v2/https');
@@ -36,9 +37,48 @@ const RENDER_PAGE_URL =
   process.env.RENDER_PAGE_URL || 'https://3dstreet.app/render.html';
 const EDITOR_BASE_URL = process.env.EDITOR_BASE_URL || 'https://3dstreet.app/';
 
+const crypto = require('crypto');
+const admin = require('firebase-admin');
+
 const MAX_PAYLOAD_BYTES = 262144; // 256 KB of street JSON is plenty
 const MAX_SEGMENTS = 64;
 const READY_TIMEOUT_MS = 90000;
+
+// --- stable image URL cache ---------------------------------------------
+// Successful renders are stored in the default bucket under
+// renders/<version>/<hash>.<ext> with an input sidecar (<hash>.json), and
+// the response carries a stable URL served by serveRenderImage via the
+// hosting rewrite /render/img/**. The URL is the public contract; storage
+// is an implementation detail we can move later. The version segment lets
+// a future renderer change invalidate cleanly. The bucket path is
+// Admin-SDK-only (storage.rules default-deny; no public ACLs needed).
+const RENDER_CACHE_VERSION = 'v1';
+
+// Deterministic JSON: recursively sorted object keys, so semantically
+// identical payloads hash alike regardless of key order. Requests that
+// spell out a default option (e.g. azimuth: 20) hash differently from ones
+// that omit it — that's acceptable: same key ⇒ same pixels is the invariant,
+// perfect dedup is not.
+function canonicalize(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalize).join(',')}]`;
+  }
+  if (value && typeof value === 'object') {
+    const keys = Object.keys(value).sort();
+    return `{${keys
+      .map((k) => `${JSON.stringify(k)}:${canonicalize(value[k])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function renderCacheKey(street, options) {
+  return crypto
+    .createHash('sha256')
+    .update(canonicalize({ street, options }))
+    .digest('hex')
+    .slice(0, 20);
+}
 
 // One shared browser per warm instance; relaunched if it dies.
 let browserPromise = null;
@@ -279,12 +319,45 @@ exports.renderStreet = onRequest(
           `ms=${Date.now() - started}`
       );
 
+      const [head, body] = dataUrl.split(',');
+      const buffer = Buffer.from(body, 'base64');
+      const contentType = head.includes('image/jpeg')
+        ? 'image/jpeg'
+        : 'image/png';
+      const ext = contentType === 'image/jpeg' ? 'jpg' : 'png';
+
+      // Best-effort cache write: a storage hiccup should degrade to a
+      // response without imageUrl, not a failed render.
+      let imageUrl = null;
+      try {
+        const hash = renderCacheKey(street, options);
+        const bucket = admin.storage().bucket();
+        const base = `renders/${RENDER_CACHE_VERSION}/${hash}`;
+        await Promise.all([
+          bucket.file(`${base}.${ext}`).save(buffer, {
+            resumable: false,
+            contentType,
+            metadata: {
+              cacheControl: 'public, max-age=31536000, immutable'
+            }
+          }),
+          bucket.file(`${base}.json`).save(JSON.stringify({ street, options }), {
+            resumable: false,
+            contentType: 'application/json'
+          })
+        ]);
+        imageUrl = `${EDITOR_BASE_URL}render/img/${RENDER_CACHE_VERSION}/${hash}.${ext}`;
+      } catch (cacheErr) {
+        console.warn('renderStreet cache write failed:', cacheErr);
+      }
+
       const wantsJson =
         req.query.format === 'json' ||
         (req.get('accept') || '').includes('application/json');
       if (wantsJson) {
         res.json({
           image: dataUrl,
+          imageUrl,
           openInEditorUrl: editorUrl,
           meta,
           width: Math.round(options.width || 1280),
@@ -293,15 +366,12 @@ exports.renderStreet = onRequest(
         return;
       }
 
-      const [head, body] = dataUrl.split(',');
-      const contentType = head.includes('image/jpeg')
-        ? 'image/jpeg'
-        : 'image/png';
       res.set('Content-Type', contentType);
       // already ASCII-safe: the JSON fragment is encodeURIComponent-encoded
       res.set('X-3DStreet-Editor-Url', editorUrl);
+      if (imageUrl) res.set('X-3DStreet-Image-Url', imageUrl);
       res.set('Cache-Control', 'public, max-age=3600');
-      res.send(Buffer.from(body, 'base64'));
+      res.send(buffer);
     } catch (err) {
       console.error('renderStreet failed:', err);
       if (err.isRenderError) {
@@ -309,6 +379,50 @@ exports.renderStreet = onRequest(
       } else {
         res.status(500).json({ error: 'internal render error' });
       }
+    }
+  }
+);
+
+// Serves cached renders at the stable URL (hosting rewrite /render/img/**).
+// Cheap and highly concurrent, unlike the puppeteer function above; with
+// immutable cache headers the hosting CDN absorbs repeat traffic. Misses
+// are unknown hashes (nothing is evicted today), so 404 — re-rendering
+// from the .json sidecar is a deliberate non-goal until eviction exists.
+const SERVE_PATH_RE = /\/render\/img\/(v\d+)\/([a-f0-9]{20})\.(png|jpg)$/;
+
+exports.serveRenderImage = onRequest(
+  {
+    memory: '256MiB',
+    timeoutSeconds: 30,
+    concurrency: 80,
+    maxInstances: 4,
+    cors: true
+  },
+  async (req, res) => {
+    const match = SERVE_PATH_RE.exec(req.path || '');
+    if (!match) {
+      res
+        .status(400)
+        .json({ error: 'expected /render/img/v1/<hash>.png (or .jpg)' });
+      return;
+    }
+    const [, version, hash, ext] = match;
+    try {
+      const [buffer] = await admin
+        .storage()
+        .bucket()
+        .file(`renders/${version}/${hash}.${ext}`)
+        .download();
+      res.set('Content-Type', ext === 'jpg' ? 'image/jpeg' : 'image/png');
+      res.set('Cache-Control', 'public, max-age=31536000, immutable');
+      res.send(buffer);
+    } catch (err) {
+      if (err && err.code === 404) {
+        res.status(404).json({ error: 'unknown render hash' });
+        return;
+      }
+      console.error('serveRenderImage failed:', err);
+      res.status(500).json({ error: 'internal error' });
     }
   }
 );

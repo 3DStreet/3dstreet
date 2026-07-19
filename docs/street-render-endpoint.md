@@ -82,18 +82,41 @@ params are merged as options: `&width=1600&type=jpg&environment=sunset`.
 ## Response
 
 - Default: raw image bytes (`image/png` or `image/jpeg`), with the editor
-  deep link in the `X-3DStreet-Editor-Url` response header.
+  deep link in the `X-3DStreet-Editor-Url` response header and the stable
+  image URL (see below) in `X-3DStreet-Image-Url`.
 - `?format=json` (or `Accept: application/json`):
 
 ```json
 {
   "image": "data:image/png;base64,...",
+  "imageUrl": "https://3dstreet.app/render/img/v1/8f2a9c4d1e0b7a3f5c6d.png",
   "openInEditorUrl": "https://3dstreet.app/#managed-street-json:%7B...%7D",
   "meta": { "name": "...", "width": 28.9, "length": 60, "segments": 9, "timedOut": false },
   "width": 1280,
   "height": 800
 }
 ```
+
+### Stable image URLs
+
+Every successful render is cached and addressable at
+`/render/img/<version>/<hash>.<png|jpg>` — a durable URL that is safe to
+embed in artifacts, chats, and docs (`imageUrl` /
+`X-3DStreet-Image-Url`). `imageUrl` may be `null` if the cache write
+failed; the render itself still succeeds.
+
+- `<hash>` is a truncated sha256 of the canonicalized (sorted-key) street
+  JSON + sanitized options, so identical requests share one URL and one
+  stored image.
+- The URL is a proxy contract (hosting rewrite → `serveRenderImage`
+  function → Cloud Storage `renders/<version>/<hash>.*`): the storage
+  backend can move without breaking published URLs.
+- Responses are served with immutable year-long cache headers, so the CDN
+  absorbs repeat traffic. The `<version>` segment invalidates cleanly if
+  the renderer's look changes.
+- Alongside each image sits a `<hash>.json` sidecar with the exact input,
+  enabling future re-rendering, share pages, and editor links derived
+  from the hash alone.
 
 `openInEditorUrl` uses the same `#managed-street-json:` hash scheme the app's
 `set-loader-from-hash` component understands — opening it recreates the street
@@ -183,8 +206,10 @@ caller ──POST──▶ renderStreet (Cloud Function v2, 2GiB, puppeteer-core
 - Payload: ≤ 256 KB street JSON, ≤ 64 segments; options are clamped.
 - No auth / no tokens today (deliberate: zero-friction top-of-funnel). If
   abuse shows up: App Check, per-IP rate limiting, or a token-metered tier.
-- Response is not cached server-side; a content-hash → Cloud Storage cache
-  (returning a stable public image URL instead of bytes) is the natural next
-  step, and would also give LLM callers a hostable URL to embed.
+- Nothing is evicted from the render cache today; misses on the stable URL
+  mean an unknown hash (404). When eviction/GC arrives, `serveRenderImage`
+  can re-render from the `.json` sidecar instead of 404ing.
+- A user-facing share page per hash (og:image + "Open in editor") and the
+  rest of the distribution follow-ups are tracked in #1864.
 - Variations: callers fan out N POSTs with modified segment lists; the
   endpoint is stateless, so this parallelizes trivially.
