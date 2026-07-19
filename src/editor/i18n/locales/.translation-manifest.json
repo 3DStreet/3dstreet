@@ -744,6 +744,7 @@
     "exportModal.layerShapes": "Shapes",
     "exportModal.layersLabel": "Layers",
     "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview.",
+    "screenshotModal.aiRenderTimeoutEmail": "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery.",
     "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)"
   },
   "fr": {
@@ -1491,6 +1492,7 @@
     "exportModal.layerShapes": "Shapes",
     "exportModal.layersLabel": "Layers",
     "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview.",
+    "screenshotModal.aiRenderTimeoutEmail": "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery.",
     "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)"
   },
   "pt-BR": {
@@ -2238,6 +2240,7 @@
     "exportModal.layerShapes": "Shapes",
     "exportModal.layersLabel": "Layers",
     "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview.",
+    "screenshotModal.aiRenderTimeoutEmail": "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery.",
     "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)"
   }
 }

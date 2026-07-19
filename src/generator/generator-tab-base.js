@@ -16,6 +16,10 @@ import {
 } from '@shared/constants/renderStyles.js';
 import { mountModelSelector } from './mount-model-selector.js';
 import { syncJobNotifyEmail } from './job-notify.js';
+import {
+  pollGenerationJob,
+  forceJobNotifyEmail
+} from '@shared/utils/generationJobs.js';
 import { mountStyleSelector } from './mount-style-selector.js';
 import promptFieldStyles from '@shared/styles/promptFields.module.scss';
 import posthog from 'posthog-js';
@@ -67,15 +71,13 @@ class GeneratorTabBase {
     this.timerInterval = null;
 
     // Job-status poll state (see pollImageStatus). Images are async jobs now
-    // (#1835): submit returns a jobId and this poll drives the live UI, while
-    // completion (gallery save) happens server-side.
-    this.pollTimeout = null; // setTimeout handle for the status poll loop
-    this.pollDeadline = 0; // wall-clock ms after which we stop polling
+    // (#1835): submit returns a jobId and the shared pollGenerationJob loop
+    // drives the live UI, while completion (gallery save) happens server-side.
+    this.activePoll = null; // { promise, cancel } from pollGenerationJob
     this.activeJobId = null; // in-flight job — target of the email toggle
     // Most image renders finish in seconds; 15 min is generous headroom before
     // we give up locally (the job still finishes server-side regardless — the
     // image lands in the gallery either way).
-    this.POLL_INTERVAL_MS = 3000;
     this.POLL_MAX_MS = 15 * 60 * 1000;
 
     // Estimated generation times (in seconds) - built from shared constants
@@ -1503,25 +1505,24 @@ class GeneratorTabBase {
       });
     }
 
-    this.pollDeadline = Date.now() + this.POLL_MAX_MS;
     this.pollImageStatus(result.data.jobId, modelConfig);
   }
 
   /**
-   * Poll getGenerationJobStatus until the job is terminal. Re-schedules itself
-   * with setTimeout (not setInterval) so a slow request can't overlap the next
-   * tick. Any non-terminal status (queued|running|saving) just keeps polling.
+   * Drive the live UI off the shared getGenerationJobStatus poll until the
+   * job is terminal. Any non-terminal status (queued|running|saving) just
+   * keeps polling.
    */
-  async pollImageStatus(jobId, modelConfig) {
-    const getGenerationJobStatus = httpsCallable(
-      functions,
-      'getGenerationJobStatus'
-    );
+  pollImageStatus(jobId, modelConfig) {
+    this.stopPolling();
+    this.activePoll = pollGenerationJob(jobId, {
+      resultField: 'image_url',
+      maxMs: this.POLL_MAX_MS
+    });
+    this.activePoll.promise
+      .then((data) => {
+        if (!data) return; // cancelled — a newer submit or teardown took over
 
-    try {
-      const { data } = await getGenerationJobStatus({ jobId });
-
-      if (data.status === 'succeeded' && data.image_url) {
         // The image was saved to the gallery server-side (works even if this
         // tab had been closed). Just show it and refresh the gallery island so
         // the pending-job card hands its slot to the real asset.
@@ -1538,55 +1539,35 @@ class GeneratorTabBase {
             : `Image generated and saved to your gallery! (${modelConfig.name})`,
           'success'
         );
-        return;
-      }
-
-      if (data.status === 'failed' || data.status === 'canceled') {
-        // The server refunds on failure; refresh the displayed balance.
-        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+      })
+      .catch(async (error) => {
         this.stopTimer();
+        if (error.timedOut) {
+          // The job outlived the poll window — unusual enough that the user
+          // shouldn't have to babysit the tab: force the completion email on.
+          const forced = await forceJobNotifyEmail(jobId);
+          if (this.elements.notifyEmail) {
+            this.elements.notifyEmail.checked = true;
+          }
+          this.toggleLoading(false);
+          FluxUI.showNotification(
+            forced
+              ? "Image generation is taking longer than expected. We'll email you when it's ready — it will also appear in your gallery."
+              : 'Image generation is taking longer than expected. Check your gallery shortly — it will appear there when finished.',
+            forced ? 'warning' : 'error'
+          );
+          return;
+        }
+        // failed/canceled — the server refunds on failure; refresh the balance.
+        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
         this.toggleLoading(false);
         FluxUI.showNotification(
-          data.error
-            ? `Image generation failed: ${data.error}`
+          error.jobError
+            ? `Image generation failed: ${error.jobError}`
             : 'Image generation failed. Your tokens were refunded.',
           'error'
         );
-        return;
-      }
-
-      // Still queued/running/saving — keep polling until the deadline.
-      if (Date.now() > this.pollDeadline) {
-        this.stopTimer();
-        this.toggleLoading(false);
-        FluxUI.showNotification(
-          'Image generation is taking longer than expected. Check your gallery shortly — it will appear there when finished.',
-          'error'
-        );
-        return;
-      }
-      this.pollTimeout = setTimeout(
-        () => this.pollImageStatus(jobId, modelConfig),
-        this.POLL_INTERVAL_MS
-      );
-    } catch (error) {
-      console.error('Error polling image status:', error);
-      // Transient poll error — retry until the deadline rather than failing
-      // hard; the job is unaffected server-side.
-      if (Date.now() > this.pollDeadline) {
-        this.stopTimer();
-        this.toggleLoading(false);
-        FluxUI.showNotification(
-          'Lost track of the image job. Check your gallery shortly — it will appear there when finished.',
-          'error'
-        );
-        return;
-      }
-      this.pollTimeout = setTimeout(
-        () => this.pollImageStatus(jobId, modelConfig),
-        this.POLL_INTERVAL_MS
-      );
-    }
+      });
   }
 
   syncJobNotify() {
@@ -1594,9 +1575,9 @@ class GeneratorTabBase {
   }
 
   stopPolling() {
-    if (this.pollTimeout) {
-      clearTimeout(this.pollTimeout);
-      this.pollTimeout = null;
+    if (this.activePoll) {
+      this.activePoll.cancel();
+      this.activePoll = null;
     }
   }
 

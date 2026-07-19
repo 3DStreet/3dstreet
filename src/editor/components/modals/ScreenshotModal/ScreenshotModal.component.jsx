@@ -32,6 +32,10 @@ import {
 import AIModelSelector from '@shared/components/AIModelSelector';
 import RenderStyleSelector from '@shared/components/RenderStyleSelector';
 import promptFieldStyles from '@shared/styles/promptFields.module.scss';
+import {
+  pollGenerationJob,
+  forceJobNotifyEmail
+} from '@shared/utils/generationJobs';
 import { getLocalizedStyleLabels } from './renderStyleMessages';
 
 // Available AI models (use shared constants)
@@ -40,43 +44,8 @@ const AI_MODELS = REPLICATE_MODELS;
 // AI renders are async generation jobs since #1835: the submit callable
 // returns a jobId immediately and the server saves the finished image to the
 // gallery (so closing this modal or the tab mid-render no longer loses it).
-// This poll only drives the live modal UI.
-const AI_RENDER_POLL_INTERVAL_MS = 3000;
+// The shared poll (pollGenerationJob) only drives the live modal UI.
 const AI_RENDER_POLL_MAX_MS = 10 * 60 * 1000;
-
-// Poll getGenerationJobStatus until the job is terminal. Resolves with the
-// terminal payload ({ image_url, assetId, … }) on success; throws on
-// failure/timeout. Transient poll errors just retry — the job is unaffected
-// server-side.
-const pollGenerationJob = async (jobId) => {
-  const getGenerationJobStatus = httpsCallable(
-    functions,
-    'getGenerationJobStatus'
-  );
-  const deadline = Date.now() + AI_RENDER_POLL_MAX_MS;
-  for (;;) {
-    let data = null;
-    try {
-      ({ data } = await getGenerationJobStatus({ jobId }));
-    } catch (pollError) {
-      console.warn('AI render status poll failed (will retry):', pollError);
-    }
-    if (data?.status === 'succeeded' && data.image_url) {
-      return data;
-    }
-    if (data?.status === 'failed' || data?.status === 'canceled') {
-      throw new Error(data.error || 'AI render failed.');
-    }
-    if (Date.now() > deadline) {
-      throw new Error(
-        'AI render is taking longer than expected. Check your gallery shortly — it will appear there when finished.'
-      );
-    }
-    await new Promise((resolve) =>
-      setTimeout(resolve, AI_RENDER_POLL_INTERVAL_MS)
-    );
-  }
-};
 
 function ScreenshotModal() {
   const intl = useIntl();
@@ -130,11 +99,29 @@ function ScreenshotModal() {
   // through via setGenerationJobNotify. In-flight job ids live in a ref (no
   // re-render needed), as does the shared batch identity during a 4x submit.
   const [notifyEmail, setNotifyEmail] = useState(true);
+  // Live mirror of the checkbox for async code: a submit callable can take
+  // seconds, and the job registers against the CURRENT preference, not the
+  // click-time closure value (a mid-submit toggle must not be lost).
+  const notifyEmailRef = useRef(true);
   const activeJobIdsRef = useRef(new Set());
+  // Cancel handles for in-flight status polls. A poll that outlives the modal
+  // would keep acking the job server-side, which suppresses the opted-in
+  // completion email — cancelled on close/unmount (the render itself finishes
+  // and saves server-side regardless).
+  const activePollsRef = useRef(new Set());
   const batch4xRef = useRef(null);
+
+  useEffect(() => {
+    const polls = activePollsRef.current;
+    return () => {
+      polls.forEach((poll) => poll.cancel());
+      polls.clear();
+    };
+  }, []);
 
   const handleNotifyToggle = (checked) => {
     setNotifyEmail(checked);
+    notifyEmailRef.current = checked;
     if (activeJobIdsRef.current.size === 0) return;
     const setGenerationJobNotify = httpsCallable(
       functions,
@@ -233,6 +220,13 @@ function ScreenshotModal() {
 
     // Wait for animation to complete, then close
     setTimeout(() => {
+      // Stop the orphaned status polls: a poll that outlives the modal would
+      // ack the finished job server-side and suppress the opted-in email —
+      // the whole point of "you can close this window". The renders finish
+      // and save to the gallery server-side either way.
+      activePollsRef.current.forEach((poll) => poll.cancel());
+      activePollsRef.current.clear();
+      activeJobIdsRef.current.clear();
       // Reset all state when closing
       resetModalState();
       setIsClosing(false);
@@ -581,9 +575,40 @@ function ScreenshotModal() {
         // In flight — the email toggle targets this job until it's terminal.
         submittedJobId = result.data.jobId;
         activeJobIdsRef.current.add(submittedJobId);
+        // The submit rode the click-time notify value; if the checkbox was
+        // toggled while the upload was in flight (it wasn't addressable in
+        // activeJobIdsRef yet), write the current value through now.
+        if (notifyEmailRef.current !== notify.email) {
+          const setGenerationJobNotify = httpsCallable(
+            functions,
+            'setGenerationJobNotify'
+          );
+          setGenerationJobNotify({
+            jobId: submittedJobId,
+            email: notifyEmailRef.current
+          }).catch((err) => {
+            console.warn('Failed to sync email preference for job:', err);
+          });
+        }
         // Poll until the job is terminal; the server has already saved the
-        // image to the gallery by the time this resolves.
-        const jobData = await pollGenerationJob(result.data.jobId);
+        // image to the gallery by the time this resolves. The cancel handle
+        // lets handleClose stop the poll (a null result means cancelled).
+        const poll = pollGenerationJob(submittedJobId, {
+          resultField: 'image_url',
+          maxMs: AI_RENDER_POLL_MAX_MS
+        });
+        activePollsRef.current.add(poll);
+        let jobData;
+        try {
+          jobData = await poll.promise;
+        } finally {
+          activePollsRef.current.delete(poll);
+        }
+        if (!jobData) {
+          // Modal closed mid-render — the server finishes, saves, and (if
+          // opted in) emails; nothing more for this UI to do.
+          return;
+        }
         const renderedImageUrl = jobData.image_url;
 
         // Store image in the appropriate place based on render mode
@@ -690,6 +715,22 @@ function ScreenshotModal() {
         throw new Error('Failed to generate image');
       }
     } catch (error) {
+      if (error?.timedOut && submittedJobId) {
+        // The poll gave up but the job is still running server-side. A render
+        // that outlives the poll window is unusual — don't make the user
+        // babysit the tab for it: force the completion email on.
+        forceJobNotifyEmail(submittedJobId);
+        setNotifyEmail(true);
+        notifyEmailRef.current = true;
+        STREET.notify.warningMessage(
+          intl.formatMessage({
+            id: 'screenshotModal.aiRenderTimeoutEmail',
+            defaultMessage:
+              "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery."
+          })
+        );
+        return;
+      }
       console.error('Error generating AI image:', error);
       const baseModelKey = AI_MODELS[targetModel]
         ? targetModel

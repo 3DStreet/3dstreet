@@ -25,6 +25,10 @@ import { httpsCallable } from 'firebase/functions';
 import { functions, auth } from '@shared/services/firebase.js';
 import posthog from 'posthog-js';
 import { syncJobNotifyEmail } from './job-notify.js';
+import {
+  pollGenerationJob,
+  forceJobNotifyEmail
+} from '@shared/utils/generationJobs.js';
 
 // Selectable image -> mesh models (both GLB output via fal). tokenCost mirrors
 // the backend source of truth (public/functions/replicate-models.js); the
@@ -50,14 +54,12 @@ const Model3DTab = {
   currentModelUrl: '',
   timerInterval: null,
   startTime: null,
-  pollTimeout: null, // setTimeout handle for the status poll loop
-  pollDeadline: 0,
+  activePoll: null, // { promise, cancel } from pollGenerationJob
   activeJobId: null, // in-flight job — target of the email toggle
 
-  // Poll cadence + how long we keep polling before telling the user to check
-  // their gallery. The job still completes server-side past this; we just stop
-  // watching from this tab.
-  POLL_INTERVAL_MS: 3000,
+  // How long we keep polling before telling the user to check their gallery.
+  // The job still completes server-side past this; we just stop watching
+  // from this tab.
   POLL_MAX_MS: 20 * 60 * 1000,
 
   elements: {},
@@ -388,7 +390,6 @@ const Model3DTab = {
       this.activeJobId = result.data.jobId;
       this.elements.notifyEmailRow?.classList.remove('hidden');
 
-      this.pollDeadline = Date.now() + this.POLL_MAX_MS;
       this.pollMeshStatus(result.data.jobId);
     } catch (error) {
       console.error('Error starting 3D generation:', error);
@@ -397,19 +398,19 @@ const Model3DTab = {
     }
   },
 
-  // Poll getGenerationJobStatus until terminal. Re-schedules itself with
-  // setTimeout (not setInterval) so a slow request can't overlap the next tick.
-  // Any non-terminal status (queued|running|saving) just keeps polling.
-  async pollMeshStatus(jobId) {
-    const getGenerationJobStatus = httpsCallable(
-      functions,
-      'getGenerationJobStatus'
-    );
+  // Drive the live UI off the shared getGenerationJobStatus poll until the
+  // job is terminal. Any non-terminal status (queued|running|saving) just
+  // keeps polling.
+  pollMeshStatus(jobId) {
+    this.stopPolling();
+    this.activePoll = pollGenerationJob(jobId, {
+      resultField: 'mesh_url',
+      maxMs: this.POLL_MAX_MS
+    });
+    this.activePoll.promise
+      .then((data) => {
+        if (!data) return; // cancelled — a newer submit or teardown took over
 
-    try {
-      const { data } = await getGenerationJobStatus({ jobId });
-
-      if (data.status === 'succeeded' && data.mesh_url) {
         // Saved to the gallery server-side (works even if this tab had been
         // closed). Reflect it in the UI and refresh the gallery island.
         this.stopTimer();
@@ -417,52 +418,38 @@ const Model3DTab = {
         this.showResult(data.mesh_url, data.assetId);
         window.dispatchEvent(new Event('assets:refresh'));
         FluxUI.showNotification('3D model generated!', 'success');
-        return;
-      }
-
-      if (data.status === 'failed' || data.status === 'canceled') {
-        // The server refunds on failure; refresh the displayed balance.
-        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+      })
+      .catch(async (error) => {
         this.stopTimer();
+        if (error.timedOut) {
+          // The job outlived the poll window — unusual enough that the user
+          // shouldn't have to babysit the tab: force the completion email on.
+          const forced = await forceJobNotifyEmail(jobId);
+          if (this.elements.notifyEmail) {
+            this.elements.notifyEmail.checked = true;
+          }
+          this.failGeneration(
+            forced
+              ? "3D generation is taking longer than expected. We'll email you when it's ready — it will also appear in your gallery."
+              : '3D generation is taking longer than expected. Check your gallery shortly.',
+            forced ? 'warning' : 'error'
+          );
+          return;
+        }
+        // failed/canceled — the server refunds on failure; refresh the balance.
+        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
         this.failGeneration(
-          data.error
-            ? `3D generation failed: ${data.error}`
+          error.jobError
+            ? `3D generation failed: ${error.jobError}`
             : '3D generation failed. Your tokens were refunded.'
         );
-        return;
-      }
-
-      // Still queued/running/saving — keep polling until the deadline.
-      if (Date.now() > this.pollDeadline) {
-        this.stopTimer();
-        this.failGeneration(
-          '3D generation is taking longer than expected. Check your gallery shortly.'
-        );
-        return;
-      }
-      this.pollTimeout = setTimeout(
-        () => this.pollMeshStatus(jobId),
-        this.POLL_INTERVAL_MS
-      );
-    } catch (error) {
-      console.error('Error polling 3D status:', error);
-      // Transient poll error — retry until the deadline rather than failing hard.
-      if (Date.now() > this.pollDeadline) {
-        this.stopTimer();
-        this.failGeneration(this.errorMessage(error));
-        return;
-      }
-      this.pollTimeout = setTimeout(
-        () => this.pollMeshStatus(jobId),
-        this.POLL_INTERVAL_MS
-      );
-    }
+      });
   },
 
   stopPolling() {
-    if (this.pollTimeout) {
-      clearTimeout(this.pollTimeout);
-      this.pollTimeout = null;
+    if (this.activePoll) {
+      this.activePoll.cancel();
+      this.activePoll = null;
     }
   },
 
@@ -470,11 +457,11 @@ const Model3DTab = {
   // pending-job card clears itself when the job doc reaches a terminal state; a
   // local poll timeout just stops our polling — the job may still finish
   // server-side and surface in the gallery later.
-  failGeneration(message) {
+  failGeneration(message, type = 'error') {
     this.stopPolling();
     this.toggleLoading(false);
     this.elements.placeholder.classList.remove('hidden');
-    FluxUI.showNotification(message, 'error');
+    FluxUI.showNotification(message, type);
   },
 
   errorMessage(error) {

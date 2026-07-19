@@ -612,6 +612,7 @@
   "screenshotModal.aiRenderCompleteTokens": "¡Renderizado con IA completado! Quedan {remainingTokens} tokens. ({modelName})",
   "screenshotModal.aiRenderFailed": "No se pudo generar el renderizado con IA para {modelName}. Inténtalo de nuevo.",
   "screenshotModal.aiRenderSuccess": "¡Renderizado con IA generado correctamente! ({modelName})",
+  "screenshotModal.aiRenderTimeoutEmail": "Este renderizado está tardando más de lo esperado. Te enviaremos un correo cuando esté listo — también se guardará en tu galería.",
   "screenshotModal.compareAB": "Comparar A/B",
   "screenshotModal.confirmClose": "Renderizado en curso. ¿Cerrar de todos modos? El renderizado terminará en segundo plano y se guardará en tu galería.",
   "screenshotModal.download": "Descargar",

@@ -1838,6 +1838,9 @@
   "screenshotModal.aiRenderSuccess": {
     "defaultMessage": "AI render generated successfully! ({modelName})"
   },
+  "screenshotModal.aiRenderTimeoutEmail": {
+    "defaultMessage": "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery."
+  },
   "screenshotModal.compareAB": {
     "defaultMessage": "Compare A/B"
   },
