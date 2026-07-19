@@ -3,6 +3,8 @@
 import { RotationIndicator } from './rotationIndicator.js';
 import {
   LB_PAN_MAX_STEP_METRES,
+  LB_PAN_ANCHOR_REACH_CENTER_GAIN,
+  FALLBACK_FORWARD_DIST,
   EYE_MARGIN_METRES,
   MIN_ORBIT_RADIUS_METRES,
   LB_TWEEN_HYSTERESIS_DEGREES
@@ -250,7 +252,9 @@ export class DragGestureController {
     // pivot for the rest of the drag (it only marks a Map-rotate pivot).
     this._indicator.hide();
     const subMode = this._decideLbModeLive();
-    const anchor = this._ctx.cursorAnchor.worldPointAt(clientX, clientY);
+    const anchor = this._capAnchorReach(
+      this._ctx.cursorAnchor.worldPointAt(clientX, clientY)
+    );
 
     if (subMode === 'pan-screen') {
       // Street-level-off screen-space pan: plane through the anchor whose normal is
@@ -309,6 +313,43 @@ export class DragGestureController {
         planeNormal: fwd.clone()
       });
     }
+  }
+
+  // Pan-anchor reach cap (TH-81, #1867 follow-up). The pan gestures scale
+  // world-per-pixel with the anchor-plane DEPTH, and the anchor is the raw
+  // cursor raycast hit — unbounded for mesh hits, up to MAX_GROUND_DIST for
+  // the ground plane. A shallow grab near the horizon can therefore latch an
+  // anchor hundreds/thousands of metres out, and the drag "catapults" the
+  // camera (metres of world per pixel). Legacy EditorControls never had this:
+  // its pan rate was `max(minSpeedFactor, distanceToCENTER) × panSpeed`,
+  // independent of what sat under the cursor. Restore that bound: cap the
+  // anchor's camera-distance at max(FALLBACK_FORWARD_DIST, GAIN × the
+  // camera→center working distance), pulling a farther anchor IN along the
+  // cursor ray. Every worldPointAt anchor lies ON the cursor ray, so the
+  // pulled-in anchor does too — the first-move delta stays 0 (no lurch); the
+  // only trade is that a beyond-cap grab point no longer exactly tracks the
+  // cursor (it pans slower), the same trade legacy made for every point. The
+  // ×GAIN slack keeps exact cursor-tracking for every normal grab (anchors
+  // near the working distance); only far-outlier grabs are slowed. Returns a
+  // flat {x, y, z, source} like worldPointAt.
+  _capAnchorReach(anchor) {
+    const camPos = this._ctx.camera.position;
+    const dx = anchor.x - camPos.x;
+    const dy = anchor.y - camPos.y;
+    const dz = anchor.z - camPos.z;
+    const d = Math.hypot(dx, dy, dz);
+    const reach = Math.max(
+      FALLBACK_FORWARD_DIST,
+      LB_PAN_ANCHOR_REACH_CENTER_GAIN * camPos.distanceTo(this._ctx.center)
+    );
+    if (!(d > reach)) return anchor; // within reach (or degenerate) — as-is
+    const k = reach / d;
+    return {
+      x: camPos.x + dx * k,
+      y: camPos.y + dy * k,
+      z: camPos.z + dz * k,
+      source: anchor.source
+    };
   }
 
   // Start (or restart, mid-drag) the rotate sub-gesture.

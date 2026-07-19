@@ -211,6 +211,29 @@ export const WHEEL_ANCHOR_DENOM_EPS_METRES = 0.5;
 // degenerate ground-plane intersections at low tilt).
 export const LB_PAN_MAX_STEP_METRES = 5000;
 
+// LB pan-anchor reach gain (TH-81, #1867 follow-up). The pan's
+// world-per-pixel rate scales with the anchor-plane depth, so a shallow grab
+// that raycasts distant ground near the horizon (hundreds/thousands of
+// metres out) catapults the camera. The anchor's camera-distance is capped
+// at `max(FALLBACK_FORWARD_DIST, GAIN × camera→center distance)` — the
+// legacy pan-rate bound (`max(minSpeedFactor, distanceToCenter) × panSpeed`
+// never read the cursor's hit distance at all), with ×GAIN slack so every
+// normal grab (anchor near the working distance) keeps exact
+// point-under-cursor tracking. A beyond-cap anchor is pulled IN along the
+// cursor ray (no lurch; the far point pans slower than the cursor).
+export const LB_PAN_ANCHOR_REACH_CENTER_GAIN = 2; // dimensionless; feel
+
+// Focus (F / double-click) standoff for a target with no measurable
+// geometry — an empty/degenerate bounding box (lights, empty layer
+// wrappers, geojson data layers whose meshes aren't under the entity's
+// object3D). Legacy used 0.1 m, which parks the camera 0.25 m from the
+// entity origin — useless for a light and, at street level over a collision
+// floor (e.g. Google 3D Tiles), it strands the wheel in the Phase-3 FOV
+// regime where zoom-out visibly does nothing for several detents (#1865).
+// 10 m yields the standard framing offset (0, 5, 25) — a sane overview of
+// the entity origin with every nav regime immediately usable.
+export const FOCUS_EMPTY_BBOX_DISTANCE_METRES = 10;
+
 // cursorAnchor.worldPointAt fallback chain:
 //   Step 2 caps the ground-plane intersection distance at this many metres
 //     to reject grazing rays that would anchor far out of scene scope.

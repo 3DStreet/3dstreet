@@ -69,3 +69,39 @@ describe('wheel zoom-out — near-anchor escape floor (GH-1865)', () => {
     expect(cam.position.distanceTo(start)).toBeLessThan(0.2);
   });
 });
+
+describe('focus on an empty-bbox target — usable standoff (GH-1865)', () => {
+  it('frames the entity origin from ~25 m, not 0.25 m', () => {
+    // The root anomaly behind #1865: an entity with no measurable geometry
+    // (geojson data layer, light) focused with distance 0.1 parked the
+    // camera 0.25 m from the origin — and over a collision floor that pose
+    // lands in the swoop's Phase-3 FOV regime, where zoom-out visibly does
+    // nothing for several detents.
+    const scene = H.groundPlaneScene({ y: 0 });
+    const cam = H.makePerspectiveCam({ pos: [0, 50, 80], lookAt: [0, 0, 0] });
+    const c = H.makeControls({ camera: cam, scene });
+    // Minimal focus-animation stub (the harness scene has no A-Frame
+    // component host; focus() only writes these fields).
+    c._focusAnimation = {
+      transitionCamPosStart: new H.THREE.Vector3(),
+      transitionCamQuaternionStart: new H.THREE.Quaternion(),
+      transitionCamPosEnd: new H.THREE.Vector3(),
+      transitionCamQuaternionEnd: new H.THREE.Quaternion(),
+      transitionProgress: 0,
+      transitioning: false
+    };
+
+    const target = new H.THREE.Group(); // empty bounding box, at 0,0,0
+    target.updateMatrixWorld(true);
+    c.focus(target);
+
+    expect(c._focusAnimation.transitioning).toBe(true);
+    const end = c._focusAnimation.transitionCamPosEnd;
+    // Standard framing offset (0, d·0.5, d·2.5) at d = 10 → (0, 5, 25).
+    expect(end.x).toBeCloseTo(0, 6);
+    expect(end.y).toBeCloseTo(5, 6);
+    expect(end.z).toBeCloseTo(25, 6);
+    // Center tracks the focused origin.
+    expect(c.center.length()).toBeCloseTo(0, 6);
+  });
+});

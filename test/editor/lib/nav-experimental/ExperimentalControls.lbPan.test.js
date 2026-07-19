@@ -86,4 +86,38 @@ describe('LB pan — sky grab at the horizon (GH-1867)', () => {
     expect(cam.position.z).toBeCloseTo(start.z, 4);
     H.mouseUp(c);
   });
+
+  it('a shallow grab on DISTANT ground pans at the working-distance rate, not the hit distance (no catapult)', () => {
+    // TH-81. Just below the horizon the cursor ray grazes the ground mesh
+    // ~300 m out. Anchoring the pan plane THERE makes each pixel worth
+    // ~0.5 m of world (fov 60 / 720 px) — a drag "catapults" the camera.
+    // The anchor reach cap pulls the anchor in to
+    // max(30, 2 × camera→center distance) ≈ 82 m, so the same drag pans at
+    // the working-distance rate, like legacy's distance-to-center pan speed.
+    const scene = H.groundPlaneScene({ y: 0 });
+    const cam = H.makePerspectiveCam({ pos: [0, 10, 40], lookAt: [0, 10, 0] });
+    const dom = H.makeDomElement({
+      width: 1280,
+      height: 720,
+      left: 37,
+      top: 19
+    });
+    const c = H.makeControls({ camera: cam, dom, scene });
+
+    // 20 px below the screen centre (379): a ~1.8°-declined ray → ground
+    // hit ~300 m out. Confirm the raw anchor really is that far.
+    const raw = c._cursorAnchor.worldPointAt(677, 399);
+    expect(raw.source).toBe('mesh');
+    expect(raw.distance).toBeGreaterThan(200);
+
+    const start = cam.position.clone();
+    H.mouseDown(c, { clientX: 677, clientY: 399, button: 0 });
+    H.mouseMove(c, { clientX: 677, clientY: 499 }); // drag down 100 px
+
+    const moved = cam.position.distanceTo(start);
+    // Uncapped (plane ~300 m out): ~50 m for 100 px. Capped (~82 m): ~13 m.
+    expect(moved).toBeGreaterThan(5);
+    expect(moved).toBeLessThan(25);
+    H.mouseUp(c);
+  });
 });
