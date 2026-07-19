@@ -3,6 +3,7 @@
  */
 
 import AssetsItem from './AssetsItem.jsx';
+import { useSharedMessages } from '../../i18n/sharedMessages';
 import styles from './Assets.module.scss';
 
 const AssetsGrid = ({
@@ -21,6 +22,7 @@ const AssetsGrid = ({
   placeable = false,
   optimizingAssetIds
 }) => {
+  const t = useSharedMessages();
   const start = (page - 1) * pageSize;
   const end = start + pageSize;
   const pageItems = items.slice(start, end);
@@ -58,7 +60,7 @@ const AssetsGrid = ({
       {/* Grid */}
       <div className={styles.content}>
         {pageItems.length === 0 && (
-          <div className={styles.emptyState}>No assets yet</div>
+          <div className={styles.emptyState}>{t('noAssetsYet')}</div>
         )}
         {pageItems.map((item) => (
           <AssetsItem

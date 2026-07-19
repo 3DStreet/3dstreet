@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import * as HoverCard from '@radix-ui/react-hover-card';
 import { useAuthContext } from '../../contexts';
+import { useSharedMessages } from '../../i18n/sharedMessages';
 import styles from './TokenDetailsCard.module.scss';
 
 const TokenDetailsCard = ({
@@ -14,6 +15,7 @@ const TokenDetailsCard = ({
 }) => {
   const { currentUser, tokenProfile } = useAuthContext();
   const [isOpen, setIsOpen] = useState(false);
+  const t = useSharedMessages();
 
   // Handle click on trigger
   const handleTriggerClick = (e) => {
@@ -33,11 +35,11 @@ const TokenDetailsCard = ({
       ? '/ui_assets/token-geo.png'
       : '/ui_assets/token-image.png';
   const tokenLabel =
-    tokenType === 'geoToken' ? 'Geo Tokens' : 'AI Generation Tokens';
+    tokenType === 'geoToken' ? t('geoTokens') : t('aiGenerationTokens');
   const tokenDescription =
     tokenType === 'geoToken'
-      ? 'Used for geospatial features like 3D map tiles and location services.'
-      : 'Used for AI-powered image and video generation.';
+      ? t('geoTokensDescription')
+      : t('genTokensDescription');
 
   return (
     <HoverCard.Root open={isOpen} onOpenChange={setIsOpen} openDelay={200}>
@@ -63,7 +65,9 @@ const TokenDetailsCard = ({
               <div className={styles.tokenInfo}>
                 <h4 className={styles.tokenTitle}>{tokenLabel}</h4>
                 <div className={styles.tokenBalance}>
-                  <span className={styles.balanceLabel}>Current Balance:</span>
+                  <span className={styles.balanceLabel}>
+                    {t('currentBalance')}
+                  </span>
                   <span className={styles.balanceCount}>{tokenCount}</span>
                 </div>
               </div>
@@ -80,8 +84,9 @@ const TokenDetailsCard = ({
                   }
                 >
                   <p className={styles.warningText}>
-                    You are {tokenCount < 1 ? 'out of' : 'running low on'}{' '}
-                    {tokenLabel}!
+                    {tokenCount < 1
+                      ? t('outOfTokensWarning', { tokenLabel })
+                      : t('lowTokensWarning', { tokenLabel })}
                   </p>
                   <button
                     className={styles.purchaseButton}
@@ -93,7 +98,7 @@ const TokenDetailsCard = ({
                       );
                     }}
                   >
-                    Get More Tokens
+                    {t('getMoreTokens')}
                   </button>
                 </div>
               )}
@@ -101,18 +106,18 @@ const TokenDetailsCard = ({
 
             {/* Usage Tips */}
             <div className={styles.usageTips}>
-              <h5 className={styles.tipsTitle}>Token Usage:</h5>
+              <h5 className={styles.tipsTitle}>{t('tokenUsage')}</h5>
               <ul className={styles.tipsList}>
                 {tokenType === 'genToken' ? (
                   <>
-                    <li>1 token = 1 image generation</li>
-                    <li>2 tokens = 1 second of video generation</li>
+                    <li>{t('tipImageGeneration')}</li>
+                    <li>{t('tipVideoGeneration')}</li>
                   </>
                 ) : (
                   <>
-                    <li>1 token = 1 map tile request</li>
-                    <li>Location services use tokens</li>
-                    <li>Geospatial features require tokens</li>
+                    <li>{t('tipMapTile')}</li>
+                    <li>{t('tipLocationServices')}</li>
+                    <li>{t('tipGeospatialFeatures')}</li>
                   </>
                 )}
               </ul>

@@ -21,6 +21,7 @@ import {
   SUPPORTED_LOCALE_CODES as SUPPORTED_LOCALE_CODES_INTERNAL,
   detectBrowserLocale as detectBrowserLocaleInternal
 } from '@shared/i18n/locales';
+import { notifyLocaleChanged } from '@shared/i18n/sharedMessages';
 
 /**
  * Locales we ship message catalogs for, with their endonym labels for the
@@ -57,4 +58,7 @@ export function persistLocale(code) {
   } catch {
     // ignore storage errors (private mode, etc.)
   }
+  // Shared components (@shared/*) resolve their strings outside react-intl —
+  // let them know the language changed so they re-render (see sharedMessages).
+  notifyLocaleChanged();
 }
