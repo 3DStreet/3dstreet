@@ -68,8 +68,16 @@ describe('tween-settle — zoom-undo memory (two-arm)', () => {
     // grounded state was re-derived from the settled pose.
     const build = () => {
       const scene = H.rampScene({ baseY: 12, slopeDeg: 8 });
-      const cam = H.makePerspectiveCam({ pos: [0, 13.5, 0], lookAt: [0, 13.5, 20] });
-      const c = H.makeControls({ camera: cam, scene, wasd: true, streetLevel: true });
+      const cam = H.makePerspectiveCam({
+        pos: [0, 13.5, 0],
+        lookAt: [0, 13.5, 20]
+      });
+      const c = H.makeControls({
+        camera: cam,
+        scene,
+        wasd: true,
+        streetLevel: true
+      });
       return { cam, c };
     };
     const startY = 13.5;
@@ -105,7 +113,12 @@ describe('tween-settle — zoom-undo memory (two-arm)', () => {
     // Elevated above the ramp, gazing steeply down along +Z (down-slope) so the
     // resolver offers the descending 'street' swoop.
     const cam = H.makePerspectiveCam({ pos: [0, 40, -6], lookAt: [0, 12, 18] });
-    const c = H.makeControls({ camera: cam, scene, wasd: true, streetLevel: true });
+    const c = H.makeControls({
+      camera: cam,
+      scene,
+      wasd: true,
+      streetLevel: true
+    });
     expect(H.floorBelow(c, cam).source).not.toBe('cache'); // real ramp hit
 
     H.tickAll(c, 16, 1); // refresh the context snapshot
@@ -130,7 +143,12 @@ describe('camera-anchor writer ordering (Tier 1.5)', () => {
   it('a run of ticks where wheel and WASD both act produces a well-defined composite pose', () => {
     const scene = H.groundPlaneScene({ y: 0 });
     const cam = H.makePerspectiveCam({ pos: [0, 30, 0], lookAt: [0, 0, -20] });
-    const c = H.makeControls({ camera: cam, scene, wasd: true, streetLevel: true });
+    const c = H.makeControls({
+      camera: cam,
+      scene,
+      wasd: true,
+      streetLevel: true
+    });
 
     // Drive several mixed ticks so the WASD contribution (~2.4 m over the run)
     // sits well OUTSIDE the composite-pose tolerance — a dropped WASD writer
@@ -208,8 +226,16 @@ describe('cross-controller zoom-undo invalidation (two-arm)', () => {
 describe('WASD ↔ rotation hand-off (Tier 1.5)', () => {
   it('pressing a movement key mid-rotate ends the rotation gesture and starts WASD', () => {
     const scene = H.groundPlaneScene({ y: 0 });
-    const cam = H.makePerspectiveCam({ pos: [0, 1.5, 0], lookAt: [0, 1.5, -1] });
-    const c = H.makeControls({ camera: cam, scene, wasd: true, streetLevel: true });
+    const cam = H.makePerspectiveCam({
+      pos: [0, 1.5, 0],
+      lookAt: [0, 1.5, -1]
+    });
+    const c = H.makeControls({
+      camera: cam,
+      scene,
+      wasd: true,
+      streetLevel: true
+    });
 
     H.mouseDown(c, { clientX: 640, clientY: 360, button: 0, shiftKey: true });
     expect(c._latch.get('mode')).toBe('rotate'); // canary (KD-4c): latch is orchestrator-retained

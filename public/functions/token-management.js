@@ -345,6 +345,52 @@ const checkUserProStatus = functions
     }
   });
 
+// Charge-at-submit for async generation jobs, shared by every submit path
+// (image/video/splat in replicate.js, fal image in fal-proxy.js, fal mesh in
+// fal-3d.js). One transaction: read the token profile, reject on missing
+// profile / insufficient balance (the HttpsError codes clients already map),
+// decrement, and flip the job's `tokenCharged` in the same commit — so every
+// later refund path (webhook, poll, reconciler) observes tokenCharged:true
+// and refunds exactly once. Also writes the fire-and-forget tokenLog
+// 'deduction' ledger entry the refund side balances against.
+// Returns { tokensBefore, remainingTokens }.
+const chargeGenerationTokens = async (db, { userId, jobRef, tokenCost, source, relatedModel }) => {
+  const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+  let remainingTokens = 0;
+  let tokensBefore = 0;
+  await db.runTransaction(async (transaction) => {
+    const tokenDoc = await transaction.get(tokenProfileRef);
+    if (!tokenDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Token profile not found');
+    }
+    const currentTokens = tokenDoc.data().genToken || 0;
+    tokensBefore = currentTokens;
+    if (currentTokens < tokenCost) {
+      throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
+    }
+    remainingTokens = Math.max(0, currentTokens - tokenCost);
+    transaction.update(tokenProfileRef, {
+      genToken: remainingTokens,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    transaction.update(jobRef, { tokenCharged: true });
+  });
+
+  // Fire-and-forget: write token deduction audit log
+  db.collection('tokenLog').add({
+    userId,
+    type: 'deduction',
+    tokensBefore,
+    tokensAfter: remainingTokens,
+    tokenCost,
+    source,
+    relatedModel,
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  }).catch(err => console.error('Failed to write tokenLog:', err));
+
+  return { tokensBefore, remainingTokens };
+};
+
 // Internal helper function to check if user is pro (for other functions to use)
 const isUserProInternal = async (userId) => {
   try {
@@ -358,9 +404,10 @@ const isUserProInternal = async (userId) => {
   }
 };
 
-module.exports = { 
+module.exports = {
   checkAndRefillImageTokens,
   checkAndRefillImageTokensInternal,
+  chargeGenerationTokens,
   validateUserDomain,
   checkUserProStatus,
   isUserProInternal

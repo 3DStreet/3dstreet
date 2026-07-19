@@ -3,7 +3,7 @@ const admin = require('firebase-admin');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
-const { checkAndRefillImageTokensInternal } = require('./token-management.js');
+const { checkAndRefillImageTokensInternal, chargeGenerationTokens } = require('./token-management.js');
 const { REPLICATE_MODELS } = require('./replicate-models.js');
 const { assertAppCheck } = require('./app-check.js');
 
@@ -106,13 +106,14 @@ async function saveMeshToGallery(userId, glbUrl, job) {
   return { assetId, storageUrl, name: job.assetName || 'Generated 3D Model' };
 }
 
-// fal is a poll-provider in the async job queue (like modal): there is no
-// webhook, so completion is discovered by polling fal's status endpoint. This
-// returns a Replicate-shaped prediction ({ status, output, error }) so the
-// shared terminal processor and the reconciler handle it uninstrumented, or
+// Authoritative fal status fetch, shared by every finalize path (client poll,
+// falJobWebhook, reconciler — the webhook body is never trusted, so all three
+// converge here). Returns a Replicate-shaped prediction ({ status, output,
+// error }) so the shared terminal processor handles it uninstrumented, or
 // { absent: true } if fal no longer knows the request (expired/unknown). The
-// `output` on success is the plain GLB URL string, which extractSplatUrl in
-// replicate.js resolves the same as a splat/video output.
+// `output` on success is a plain URL string (GLB for mesh jobs, image URL for
+// image jobs — selected by job.kind), which extractSplatUrl in replicate.js
+// resolves the same as a splat/video output.
 async function fetchFalPrediction(job) {
   const key = process.env.FAL_KEY;
   const statusUrl = job.statusUrl;
@@ -140,8 +141,30 @@ async function fetchFalPrediction(job) {
         method: 'GET',
         headers: { Authorization: `Key ${key}` }
       });
-      if (r.ok) response = await r.json();
+      // Throw (like the status fetch above) rather than fall through with an
+      // empty response: a transient non-OK here must stay retryable, or a
+      // COMPLETED job gets finalized as failed and can never be resurrected.
+      if (!r.ok) {
+        throw new Error(`fal response fetch failed: ${r.status}`);
+      }
+      response = await r.json();
     }
+
+    // Image models (flux-2 edit family) return { images: [{ url }] }.
+    if (job.kind === 'image') {
+      const falImageUrl = response?.images?.[0]?.url || null;
+      if (!falImageUrl) {
+        console.error('Unexpected fal image output:', JSON.stringify(response));
+        return {
+          prediction: {
+            status: 'failed',
+            error: 'No image URL returned from fal.ai.'
+          }
+        };
+      }
+      return { prediction: { status: 'succeeded', output: falImageUrl } };
+    }
+
     // fal 3D models return the mesh under model_mesh; accept aliases defensively.
     const meshUrl =
       response?.model_mesh?.url ||
@@ -179,19 +202,84 @@ async function fetchFalPrediction(job) {
   };
 }
 
-// Refund a charged fal mesh job once (submit-time failure path). Duplicated
-// from replicate.js's refundSplatToken rather than imported, to keep fal-3d.js
-// free of a require on replicate.js (replicate.js requires THIS module).
-async function refundMeshTokenInline(db, userId, jobRef, tokenCost) {
+// Client-supplied extras for the saved gallery asset's generationMetadata
+// (e.g. the editor's sceneTitle/cameraState/renderMode, which power the
+// gallery's scene link and focus-camera button). The image submit callables
+// store this on the job doc so the server-side persist can write metadata
+// the old client-side save used to write. Owner-scoped data (the user could
+// already write arbitrary metadata onto their own asset docs client-side),
+// but sanitize shape and bound size so a job doc can't be ballooned.
+function sanitizeGalleryMetadata(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  try {
+    // Round-trip through JSON to drop undefined/functions/cycles.
+    const clean = JSON.parse(JSON.stringify(raw));
+    if (JSON.stringify(clean).length > 20000) return null;
+    return clean;
+  } catch {
+    return null;
+  }
+}
+
+// Batch identity for the one-email-per-user-action contract (editor 4x
+// render): the client stamps the same batchId (+ batchTotal) on every job it
+// submits for a single action, and sendGenerationOutcomeEmail lets only the
+// batch's first finisher decide whether an email goes out. Untrusted client
+// input — validate shape, never interpolate unvalidated.
+function sanitizeNotifyBatch(notify) {
+  const batchId =
+    typeof notify?.batchId === 'string' &&
+    /^[a-zA-Z0-9_-]{1,64}$/.test(notify.batchId)
+      ? notify.batchId
+      : null;
+  if (!batchId) return {};
+  const batchTotal =
+    Number.isInteger(notify?.batchTotal) &&
+    notify.batchTotal >= 2 &&
+    notify.batchTotal <= 16
+      ? notify.batchTotal
+      : null;
+  return { batchId, ...(batchTotal && { batchTotal }) };
+}
+
+// Build the fal queue submit URL with our completion webhook attached
+// (fal_webhook query param — fal POSTs it when the request reaches a terminal
+// state). This gives fal kinds the same real-time, browser-independent
+// finalize + email path the Replicate kinds get from replicateJobWebhook
+// (issue #1832); the client poll and the reconciler stay unchanged as
+// backstops for a dropped delivery. The webhook target (falJobWebhook,
+// defined in replicate.js next to the shared handler) is gated by the uid +
+// internal jobId + per-job secret in ITS query string; the webhook body is
+// never trusted — the handler re-fetches authoritatively via
+// fetchFalPrediction. Shared by the mesh and image submit paths.
+function falQueueSubmitUrl(endpoint, { jobId, userId, webhookSecret }) {
+  const projectId =
+    process.env.GCLOUD_PROJECT ||
+    process.env.GOOGLE_CLOUD_PROJECT ||
+    admin.app().options.projectId;
+  const region = process.env.FUNCTION_REGION || 'us-central1';
+  const webhookUrl =
+    `https://${region}-${projectId}.cloudfunctions.net/falJobWebhook` +
+    `?jobId=${jobId}&uid=${userId}&token=${webhookSecret}`;
+  return `https://queue.fal.run/${endpoint}?fal_webhook=${encodeURIComponent(webhookUrl)}`;
+}
+
+// Refund a charged fal job once (submit-time failure path; mesh + image
+// kinds). Duplicated from replicate.js's refundSplatToken rather than
+// imported, to keep fal-3d.js free of a require on replicate.js (replicate.js
+// requires THIS module).
+async function refundFalJobInline(db, userId, jobRef, tokenCost) {
   try {
     let refundedNow = false;
     let relatedModel = null;
+    let refundSource = 'generation-failed';
     await db.runTransaction(async (tx) => {
       refundedNow = false; // reset — the transaction may retry
       const jobDoc = await tx.get(jobRef);
       const job = jobDoc.exists ? jobDoc.data() : {};
       if (!job.tokenCharged || job.refunded) return;
       relatedModel = job.model || null;
+      refundSource = `${job.kind || 'mesh'}-generation-failed`;
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
       const tokenDoc = await tx.get(tokenProfileRef);
       if (tokenDoc.exists) {
@@ -205,30 +293,31 @@ async function refundMeshTokenInline(db, userId, jobRef, tokenCost) {
     });
 
     // Fire-and-forget: audit the refund, same ledger entry refundSplatToken
-    // writes, so tokenLog balances against generationLog for mesh failures too.
+    // writes, so tokenLog balances against generationLog for fal failures too.
     if (refundedNow) {
       db.collection('tokenLog')
         .add({
           userId,
           type: 'refund',
           tokenCost,
-          source: 'mesh-generation-failed',
+          source: refundSource,
           relatedModel,
           createdAt: admin.firestore.FieldValue.serverTimestamp()
         })
         .catch((err) => console.error('Failed to write tokenLog:', err));
     }
   } catch (err) {
-    console.error('Failed to refund mesh token:', err);
+    console.error('Failed to refund fal job token:', err);
   }
 }
 
 // fal.ai image → 3D mesh (GLB) generation. Submit-and-return: stage the input,
 // write a pending `kind: 'mesh'` job to the async queue, charge tokens at submit
-// (refunded once on failure), submit to fal's queue, and return the jobId
-// immediately. The client polls getGenerationJobStatus; the reconciler backstops
-// a closed tab. These endpoints (Hunyuan3D v2, TRELLIS 2) are image-to-3D only:
-// a reference image is required (no text prompt input).
+// (refunded once on failure), submit to fal's queue (with a completion webhook,
+// #1832), and return the jobId immediately. The webhook finalizes + emails in
+// real time; the client poll drives live UI and the reconciler backstops a
+// dropped delivery. These endpoints (Hunyuan3D v2, TRELLIS 2) are image-to-3D
+// only: a reference image is required (no text prompt input).
 const generateFalMesh = functions
   .runWith({
     secrets: ['FAL_KEY'],
@@ -301,6 +390,7 @@ const generateFalMesh = functions
     // jobId (a uuid) is the Firestore doc id; the fal request_id is stored as
     // providerJobId. Frozen at submit so the poll/reconciler paths converge.
     const jobId = crypto.randomUUID();
+    const webhookSecret = crypto.randomUUID();
     const jobRef = db
       .collection('users')
       .doc(userId)
@@ -368,6 +458,7 @@ const generateFalMesh = functions
         tokenCharged: false,
         refunded: false,
         tempFilePath: tempImagePath || null,
+        webhookSecret,
         originalFilename,
         assetName,
         attribution: modelConfig.attribution || {
@@ -380,53 +471,31 @@ const generateFalMesh = functions
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
-      // Charge at submit and set `tokenCharged` in the same transaction, so every
-      // later refund path (poll, reconciler) observes tokenCharged:true and
-      // refunds exactly once.
-      const tokenProfileRef = db.collection('tokenProfile').doc(userId);
-      let remainingTokens = 0;
-      let tokensBefore = 0;
-      await db.runTransaction(async (transaction) => {
-        const tokenDoc = await transaction.get(tokenProfileRef);
-        if (!tokenDoc.exists) {
-          throw new functions.https.HttpsError('not-found', 'Token profile not found');
-        }
-        const currentTokens = tokenDoc.data().genToken || 0;
-        tokensBefore = currentTokens;
-        if (currentTokens < tokenCost) {
-          throw new functions.https.HttpsError('resource-exhausted', 'Insufficient tokens');
-        }
-        remainingTokens = Math.max(0, currentTokens - tokenCost);
-        transaction.update(tokenProfileRef, {
-          genToken: remainingTokens,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        transaction.update(jobRef, { tokenCharged: true });
+      // Charge at submit and set `tokenCharged` in the same transaction
+      // (chargeGenerationTokens), so every later refund path (poll,
+      // reconciler) observes tokenCharged:true and refunds exactly once.
+      const { remainingTokens } = await chargeGenerationTokens(db, {
+        userId,
+        jobRef,
+        tokenCost,
+        source: 'mesh-generation',
+        relatedModel: modelConfig.attribution?.modelName || modelConfig.name
       });
-
-      // Fire-and-forget: audit the deduction, same ledger entry the image/
-      // video/splat submits write, so tokenLog accounts for mesh charges too.
-      db.collection('tokenLog')
-        .add({
-          userId,
-          type: 'deduction',
-          tokensBefore,
-          tokensAfter: remainingTokens,
-          tokenCost,
-          source: 'mesh-generation',
-          relatedModel: modelConfig.attribution?.modelName || modelConfig.name,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
-        })
-        .catch((err) => console.error('Failed to write tokenLog:', err));
 
       // Submit to fal's queue. imageField/params come from the model config
       // because the two endpoints differ (input_image_url vs image_url).
+      // fal_webhook makes fal call falJobWebhook on completion for real-time
+      // finalize + email; the poll/reconciler paths remain as backstops.
       const falPayload = {
         [modelConfig.imageField]: imageUrl,
         ...(modelConfig.params || {})
       };
       const submitResponse = await fetch(
-        `https://queue.fal.run/${modelConfig.endpoint}`,
+        falQueueSubmitUrl(modelConfig.endpoint, {
+          jobId,
+          userId,
+          webhookSecret
+        }),
         {
           method: 'POST',
           headers: {
@@ -469,7 +538,7 @@ const generateFalMesh = functions
 
       // Refund if we already charged, and finalize the job as failed so it
       // doesn't sit non-terminal until the reconciler's give-up window.
-      await refundMeshTokenInline(db, userId, jobRef, tokenCost);
+      await refundFalJobInline(db, userId, jobRef, tokenCost);
       await jobRef
         .update({
           status: 'failed',
@@ -520,4 +589,12 @@ const generateFalMesh = functions
     }
   });
 
-module.exports = { generateFalMesh, saveMeshToGallery, fetchFalPrediction };
+module.exports = {
+  generateFalMesh,
+  saveMeshToGallery,
+  fetchFalPrediction,
+  falQueueSubmitUrl,
+  refundFalJobInline,
+  sanitizeGalleryMetadata,
+  sanitizeNotifyBatch
+};

@@ -19,7 +19,12 @@ describe('LB pan — truck (Tier 1.5, non-square rect)', () => {
   it('the grabbed world point tracks the cursor; camera height is unchanged', () => {
     const scene = H.groundPlaneScene({ y: 0 });
     const cam = H.makePerspectiveCam({ pos: [0, 50, 40], lookAt: [0, 0, 0] });
-    const dom = H.makeDomElement({ width: 1280, height: 720, left: 37, top: 19 });
+    const dom = H.makeDomElement({
+      width: 1280,
+      height: 720,
+      left: 37,
+      top: 19
+    });
     const c = H.makeControls({ camera: cam, dom, scene, streetLevel: true });
     expect(H.tilt(cam)).toBeGreaterThan(25); // Map regime → truck sub-mode
 
