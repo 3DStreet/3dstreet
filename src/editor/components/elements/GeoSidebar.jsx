@@ -859,8 +859,9 @@ const GeoSidebar = ({ entity }) => {
 
             {isActivated && component && component.schema && component.data && (
               <>
-                {/* only show this if google3d is selected */}
-                {component.data['maps'] === 'google3d' && (
+                {/* Opacity applies to google3d tiles and the mapbox2d plane;
+                    flattening remains google3d-only. */}
+                {['google3d', 'mapbox2d'].includes(component.data['maps']) && (
                   <div className="collapsible component">
                     <div className="static">
                       <div className="componentHeader collapsible-header">
@@ -870,8 +871,8 @@ const GeoSidebar = ({ entity }) => {
                         >
                           <span>
                             <FormattedMessage
-                              id="geoSidebar.blendingFlattening"
-                              defaultMessage="Blending & Flattening"
+                              id="geoSidebar.opacityFlattening"
+                              defaultMessage="Opacity & Flattening"
                             />
                           </span>
                         </span>
@@ -880,56 +881,44 @@ const GeoSidebar = ({ entity }) => {
                     <div className="content">
                       <div className="collapsible-content">
                         <PropertyRow
-                          key="blendingEnabled"
-                          name="blendingEnabled"
+                          key="opacity"
+                          name="opacity"
                           label={intl.formatMessage({
-                            id: 'geoSidebar.blending',
-                            defaultMessage: 'Blending'
+                            id: 'geoSidebar.mapOpacity',
+                            defaultMessage: 'Map Opacity (%)'
                           })}
-                          schema={component.schema['blendingEnabled']}
-                          data={component.data['blendingEnabled']}
+                          schema={component.schema['opacity']}
+                          data={component.data['opacity']}
                           componentname="street-geo"
                           isSingle={false}
                           entity={entity}
                           noSelectEntity={true}
                         />
-                        {component.data['blendingEnabled'] && (
-                          <PropertyRow
-                            key="blendMode"
-                            name="blendMode"
-                            label={intl.formatMessage({
-                              id: 'geoSidebar.blendMode',
-                              defaultMessage: 'Blend Mode'
-                            })}
-                            schema={component.schema['blendMode']}
-                            data={component.data['blendMode']}
-                            componentname="street-geo"
-                            isSingle={false}
-                            entity={entity}
-                            noSelectEntity={true}
-                          />
-                        )}
-                        <PropertyRow
-                          key="enableFlattening"
-                          name="enableFlattening"
-                          label={intl.formatMessage({
-                            id: 'geoSidebar.terrainFlattening',
-                            defaultMessage: 'Terrain Flattening'
-                          })}
-                          schema={component.schema['enableFlattening']}
-                          data={component.data['enableFlattening']}
-                          componentname="street-geo"
-                          isSingle={false}
-                          entity={entity}
-                          noSelectEntity={true}
-                        />
-                        {component.data['enableFlattening'] && (
-                          <FlatteningShapeSelector
-                            entity={entity}
-                            componentName="street-geo"
-                            shapeEntities={getShapeEntities()}
-                            currentValue={component.data['flatteningShape']}
-                          />
+                        {component.data['maps'] === 'google3d' && (
+                          <>
+                            <PropertyRow
+                              key="enableFlattening"
+                              name="enableFlattening"
+                              label={intl.formatMessage({
+                                id: 'geoSidebar.terrainFlattening',
+                                defaultMessage: 'Terrain Flattening'
+                              })}
+                              schema={component.schema['enableFlattening']}
+                              data={component.data['enableFlattening']}
+                              componentname="street-geo"
+                              isSingle={false}
+                              entity={entity}
+                              noSelectEntity={true}
+                            />
+                            {component.data['enableFlattening'] && (
+                              <FlatteningShapeSelector
+                                entity={entity}
+                                componentName="street-geo"
+                                shapeEntities={getShapeEntities()}
+                                currentValue={component.data['flatteningShape']}
+                              />
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

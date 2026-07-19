@@ -4,8 +4,15 @@ import {
   TileCompressionPlugin,
   GLTFExtensionsPlugin,
   GoogleCloudAuthPlugin,
-  TileFlatteningPlugin
+  TileFlatteningPlugin,
+  ReorientationPlugin
 } from '3d-tiles-renderer/plugins';
+
+// The pre-0.5.0 setLatLonToYUp() oriented the tileset with +Y altitude,
+// +X north, +Z east. ReorientationPlugin's default frame is +X west,
+// +Z north; a 90° azimuth reproduces the legacy frame exactly, keeping
+// every previously saved geo scene aligned.
+const LEGACY_AZIMUTH = Math.PI / 2;
 
 const MathUtils = AFRAME.THREE.MathUtils;
 const Vector3 = AFRAME.THREE.Vector3;
@@ -30,7 +37,8 @@ AFRAME.registerComponent('google-maps-aerial', {
     ellipsoidalHeight: { type: 'number', default: 0 },
     copyrightEl: { type: 'selector' },
     enableFlattening: { type: 'boolean', default: false },
-    flatteningShape: { type: 'string', default: '' }
+    flatteningShape: { type: 'string', default: '' },
+    opacity: { type: 'number', default: 1, min: 0, max: 1 }
   },
 
   init: function () {
@@ -54,13 +62,23 @@ AFRAME.registerComponent('google-maps-aerial', {
     // Always create flattening plugin to support runtime toggling
     this.flatteningPlugin = new TileFlatteningPlugin();
     this.tiles.registerPlugin(this.flatteningPlugin);
-    // Set location
-    this.tiles.setLatLonToYUp(
-      this.data.latitude * MathUtils.DEG2RAD,
-      this.data.longitude * MathUtils.DEG2RAD
-    );
 
-    this.tiles.addEventListener('load-model', () => {
+    // Set location (replaces the setLatLonToYUp() API removed in 0.5.0)
+    this.reorientationPlugin = new ReorientationPlugin({
+      lat: this.data.latitude * MathUtils.DEG2RAD,
+      lon: this.data.longitude * MathUtils.DEG2RAD,
+      height: 0,
+      azimuth: LEGACY_AZIMUTH
+    });
+    this.tiles.registerPlugin(this.reorientationPlugin);
+
+    this.tiles.addEventListener('load-model', ({ scene }) => {
+      // Apply opacity to each tile as it loads, before its first render —
+      // no per-frame traversal, and no flash of opaque tiles popping in.
+      if (this.data.opacity < 1) {
+        this.applyOpacityToObject(scene);
+      }
+
       if (this.data.copyrightEl) {
         this.data.copyrightEl.innerHTML =
           this.tiles.getAttributions()[0]?.value || '';
@@ -86,14 +104,46 @@ AFRAME.registerComponent('google-maps-aerial', {
     // Get renderer
     this.renderer = this.el.sceneEl.renderer;
 
-    this.tiles.setResolutionFromRenderer(this.el.sceneEl.camera, this.renderer);
-    this.tiles.setCamera(this.el.sceneEl.camera);
+    this.activeCamera = this.el.sceneEl.camera;
+    this.tiles.setCamera(this.activeCamera);
+    this.tiles.setResolutionFromRenderer(this.activeCamera, this.renderer);
     this.tiles.update();
 
     if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
       // emit play event to start load tiles in aframe-inspector
       this.play();
     }
+  },
+
+  // Set opacity on every material under `object`, once — tiles keep their
+  // stock materials (no custom shader), so there is no extra draw cost when
+  // opacity is 1 and only standard alpha blending when it is below 1.
+  applyOpacityToObject: function (object) {
+    const opacity = this.data.opacity;
+    const transparent = opacity < 1;
+    object.traverse((obj) => {
+      if (obj.material) {
+        const materials = Array.isArray(obj.material)
+          ? obj.material
+          : [obj.material];
+        for (const material of materials) {
+          if (material.transparent !== transparent) {
+            material.transparent = transparent;
+            material.needsUpdate = true;
+          }
+          material.opacity = opacity;
+        }
+      }
+    });
+  },
+
+  applyOpacityToLoadedTiles: function () {
+    if (!this.tiles) {
+      return;
+    }
+    this.tiles.forEachLoadedModel((scene) => {
+      this.applyOpacityToObject(scene);
+    });
   },
 
   addFlatteningShape: function (shapeSelector) {
@@ -142,12 +192,19 @@ AFRAME.registerComponent('google-maps-aerial', {
 
   tick: function () {
     if (this.tiles && this.el.sceneEl.camera) {
-      // Ensure camera is set on each tick
-      this.tiles.setCamera(this.el.sceneEl.camera);
-      this.tiles.setResolutionFromRenderer(
-        this.el.sceneEl.camera,
-        this.renderer
-      );
+      // Track the scene's active camera. Registering only on change (and
+      // deleting the previous registration) keeps the tileset from
+      // frustum-testing and loading tiles for stale cameras after mode
+      // switches (editor <-> viewer <-> drive).
+      const camera = this.el.sceneEl.camera;
+      if (camera !== this.activeCamera) {
+        if (this.activeCamera) {
+          this.tiles.deleteCamera(this.activeCamera);
+        }
+        this.tiles.setCamera(camera);
+        this.activeCamera = camera;
+      }
+      this.tiles.setResolutionFromRenderer(camera, this.renderer);
 
       // Update flattening shape only when its transform relative to the
       // tile set actually changed — updateShape() forces a full CPU
@@ -218,6 +275,8 @@ AFRAME.registerComponent('google-maps-aerial', {
       }
       this.tiles.dispose();
       this.tiles = null;
+      this.reorientationPlugin = null;
+      this.activeCamera = null;
     }
   },
 
@@ -229,11 +288,22 @@ AFRAME.registerComponent('google-maps-aerial', {
         oldData.longitude !== this.data.longitude ||
         oldData.ellipsoidalHeight !== this.data.ellipsoidalHeight)
     ) {
-      this.tiles.setLatLonToYUp(
-        this.data.latitude * MathUtils.DEG2RAD,
-        this.data.longitude * MathUtils.DEG2RAD
+      const plugin = this.reorientationPlugin;
+      // Keep the plugin's fields in sync so its pending load-root-tileset
+      // callback (if the root hasn't loaded yet) uses the new location too.
+      plugin.lat = this.data.latitude * MathUtils.DEG2RAD;
+      plugin.lon = this.data.longitude * MathUtils.DEG2RAD;
+      plugin.transformLatLonHeightToOrigin(
+        plugin.lat,
+        plugin.lon,
+        0,
+        LEGACY_AZIMUTH
       );
       this.offsetEl.object3D.position.y = -this.data.ellipsoidalHeight;
+    }
+
+    if (this.tiles && oldData.opacity !== this.data.opacity) {
+      this.applyOpacityToLoadedTiles();
     }
 
     // Handle flattening changes

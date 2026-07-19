@@ -22,6 +22,12 @@ AFRAME.registerComponent('street-geo', {
     flatteningShape: {
       type: 'string'
     },
+    // Map layer opacity in percent (0 = invisible, 100 = fully opaque).
+    // Applies to the active map layer (google3d tiles, mapbox2d plane).
+    opacity: { type: 'number', default: 100, min: 0, max: 100 },
+    // Deprecated (#1738/#1236/#1235): kept in the schema so legacy scenes
+    // parse without warnings; migrated to `opacity` in update() and no
+    // longer written by the UI.
     blendMode: {
       type: 'string',
       default: '30% Opacity',
@@ -58,17 +64,20 @@ AFRAME.registerComponent('street-geo', {
   remove: function () {
     document.getElementById('map-data-attribution').style.visibility = 'hidden';
   },
-  returnBlendMode: function (blendModePreset) {
-    // on the target, such as
-    // for each blend mode preset option, create a dictionary of blend modes and their corresponding values
-    const blendModes = {
-      Normal: { blendMode: 'Normal', opacity: 1.0 },
-      '30% Opacity': { blendMode: 'Normal', opacity: 0.3 },
-      '60% Opacity': { blendMode: 'Normal', opacity: 0.6 },
-      Darker: { blendMode: 'Multiply', opacity: 1.0 },
-      Lighter: { blendMode: 'Additive', opacity: 1.0 }
-    };
-    return blendModes[blendModePreset];
+  // One-time migration of the legacy blendingEnabled/blendMode presets to
+  // the opacity property. The non-opacity blend modes (Darker/Lighter) are
+  // dropped — they were broken in practice (#1738) — so only the opacity
+  // presets carry over.
+  migrateLegacyBlendMode: function () {
+    const legacyOpacity =
+      {
+        '30% Opacity': 30,
+        '60% Opacity': 60
+      }[this.data.blendMode] ?? 100;
+    this.el.setAttribute('street-geo', {
+      opacity: legacyOpacity,
+      blendingEnabled: false
+    });
   },
   hasSuggestedLocation: function () {
     // A real location to activate, as opposed to the schema default 0,0.
@@ -106,6 +115,17 @@ AFRAME.registerComponent('street-geo', {
     const data = this.data;
     this.el.sceneEl.emit('newGeo', data);
 
+    // Legacy scene migration: convert saved blendingEnabled/blendMode
+    // presets to the opacity property. Deferred so the setAttribute does
+    // not re-enter this update() synchronously.
+    if (data.blendingEnabled) {
+      setTimeout(() => {
+        if (this.el.components['street-geo'] === this) {
+          this.migrateLegacyBlendMode();
+        }
+      }, 0);
+    }
+
     const updatedData = AFRAME.utils.diff(oldData, data);
 
     for (const mapType of this.mapTypes) {
@@ -140,7 +160,8 @@ AFRAME.registerComponent('street-geo', {
           updatedData.latitude !== undefined ||
           updatedData.ellipsoidalHeight !== undefined ||
           updatedData.enableFlattening !== undefined ||
-          updatedData.flatteningShape !== undefined)
+          updatedData.flatteningShape !== undefined ||
+          updatedData.opacity !== undefined)
       ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update']();
@@ -150,33 +171,6 @@ AFRAME.registerComponent('street-geo', {
         this[mapType] = null;
         if (mapType === 'osm3d') {
           this.el.removeChild(this['osm3dBuilding']);
-        }
-      }
-    }
-
-    if (this.google3d) {
-      // Handle blending updates
-      if (data.blendingEnabled) {
-        if (data.blendMode) {
-          this.google3d.setAttribute(
-            'blending-opacity',
-            this.returnBlendMode(data.blendMode)
-          );
-          if (oldData.blendingEnabled === false) {
-            const currentEl = this.google3d;
-            this.el.removeChild(currentEl);
-            this.google3d = null;
-            this.google3dCreate();
-          }
-        }
-      } else {
-        this.google3d.removeAttribute('blending-opacity');
-        if (oldData.blendingEnabled) {
-          // If blending was previously enabled and now disabled, recreate the tiles
-          const currentEl = this.google3d;
-          this.el.removeChild(currentEl);
-          this.google3d = null;
-          this.google3dCreate();
         }
       }
     }
@@ -197,7 +191,7 @@ AFRAME.registerComponent('street-geo', {
     );
     mapbox2dElement.setAttribute(
       'material',
-      'color: #ffffff; shader: flat; side: both; transparent: true;'
+      `color: #ffffff; shader: flat; side: both; transparent: true; opacity: ${data.opacity / 100};`
     );
     mapbox2dElement.setAttribute('rotation', '-90 -90 0');
     mapbox2dElement.setAttribute('anisotropy', '');
@@ -232,6 +226,7 @@ AFRAME.registerComponent('street-geo', {
       ellipsoidalHeight: data.ellipsoidalHeight,
       enableFlattening: data.enableFlattening,
       flatteningShape: data.flatteningShape ? '#' + data.flatteningShape : '',
+      opacity: data.opacity / 100,
       apiToken: firebaseConfig.apiKey,
       copyrightEl: '#map-copyright'
     });
@@ -250,16 +245,6 @@ AFRAME.registerComponent('street-geo', {
     google3dElement.setAttribute('data-ignore-raycaster', '');
     el.appendChild(google3dElement);
     self['google3d'] = google3dElement;
-
-    // Only set blending if enabled
-    if (data.blendingEnabled) {
-      if (data.blendMode) {
-        google3dElement.setAttribute(
-          'blending-opacity',
-          this.returnBlendMode(data.blendMode)
-        );
-      }
-    }
   },
   noneUpdate: function () {
     // do nothing
@@ -276,26 +261,16 @@ AFRAME.registerComponent('street-geo', {
       flatteningShape:
         data.flatteningShape && data.flatteningShape !== 'create-default'
           ? '#' + data.flatteningShape
-          : ''
+          : '',
+      opacity: data.opacity / 100
     });
-
-    // Handle blending updates
-    if (data.blendingEnabled) {
-      if (data.blendMode) {
-        this.google3d.setAttribute(
-          'blending-opacity',
-          this.returnBlendMode(data.blendMode)
-        );
-      }
-    } else {
-      this.google3d.removeAttribute('blending-opacity');
-    }
   },
   mapbox2dUpdate: function () {
     const data = this.data;
     this.mapbox2d.setAttribute('mapbox', {
       center: `${data.longitude}, ${data.latitude}`
     });
+    this.mapbox2d.setAttribute('material', 'opacity', data.opacity / 100);
   },
   osm3dCreate: function () {
     const data = this.data;

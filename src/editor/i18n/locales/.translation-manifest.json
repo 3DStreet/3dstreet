@@ -391,9 +391,6 @@
     "geoSidebar.addGeoLayer": "Add Geo Layer",
     "geoSidebar.addRealWorldLocation": "Add a real-world location",
     "geoSidebar.background": "Background",
-    "geoSidebar.blendMode": "Blend Mode",
-    "geoSidebar.blending": "Blending",
-    "geoSidebar.blendingFlattening": "Blending & Flattening",
     "geoSidebar.centerpointTooltip": "This scene's centerpoint is {latitude}, {longitude}",
     "geoSidebar.changeLocation": "Change Location",
     "geoSidebar.createFlatteningShape": "Create Flattening Shape",
@@ -745,7 +742,9 @@
     "exportModal.layersLabel": "Layers",
     "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview.",
     "screenshotModal.aiRenderTimeoutEmail": "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery.",
-    "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)"
+    "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)",
+    "geoSidebar.mapOpacity": "Map Opacity (%)",
+    "geoSidebar.opacityFlattening": "Opacity & Flattening"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1139,9 +1138,6 @@
     "geoSidebar.addGeoLayer": "Add Geo Layer",
     "geoSidebar.addRealWorldLocation": "Add a real-world location",
     "geoSidebar.background": "Background",
-    "geoSidebar.blendMode": "Blend Mode",
-    "geoSidebar.blending": "Blending",
-    "geoSidebar.blendingFlattening": "Blending & Flattening",
     "geoSidebar.centerpointTooltip": "This scene's centerpoint is {latitude}, {longitude}",
     "geoSidebar.changeLocation": "Change Location",
     "geoSidebar.createFlatteningShape": "Create Flattening Shape",
@@ -1493,7 +1489,9 @@
     "exportModal.layersLabel": "Layers",
     "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview.",
     "screenshotModal.aiRenderTimeoutEmail": "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery.",
-    "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)"
+    "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)",
+    "geoSidebar.mapOpacity": "Map Opacity (%)",
+    "geoSidebar.opacityFlattening": "Opacity & Flattening"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1887,9 +1885,6 @@
     "geoSidebar.addGeoLayer": "Add Geo Layer",
     "geoSidebar.addRealWorldLocation": "Add a real-world location",
     "geoSidebar.background": "Background",
-    "geoSidebar.blendMode": "Blend Mode",
-    "geoSidebar.blending": "Blending",
-    "geoSidebar.blendingFlattening": "Blending & Flattening",
     "geoSidebar.centerpointTooltip": "This scene's centerpoint is {latitude}, {longitude}",
     "geoSidebar.changeLocation": "Change Location",
     "geoSidebar.createFlatteningShape": "Create Flattening Shape",
@@ -2241,6 +2236,8 @@
     "exportModal.layersLabel": "Layers",
     "exportModal.planEmptyFiltered": "Nothing to draw with the current layer selection. Turn on more layers to see a plan preview.",
     "screenshotModal.aiRenderTimeoutEmail": "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery.",
-    "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)"
+    "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)",
+    "geoSidebar.mapOpacity": "Map Opacity (%)",
+    "geoSidebar.opacityFlattening": "Opacity & Flattening"
   }
 }
