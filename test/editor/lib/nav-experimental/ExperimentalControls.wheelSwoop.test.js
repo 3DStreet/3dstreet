@@ -18,7 +18,10 @@ afterEach(() => H.teardownAll());
 describe('wheel swoop — birds-eye → street over a building (Tier 2)', () => {
   it('descends monotonically, lands on the roof (not the footprint), tilts to horizontal', () => {
     const scene = H.representativeScene(); // ground y=12, building roof y=52
-    const cam = H.makePerspectiveCam({ pos: [0, 92, -10], lookAt: [0, 52, -40] });
+    const cam = H.makePerspectiveCam({
+      pos: [0, 92, -10],
+      lookAt: [0, 52, -40]
+    });
     const c = H.makeControls({ camera: cam, scene, streetLevel: true });
 
     // Real-surface gate: the swoop must probe a REAL surface, not the
@@ -63,7 +66,10 @@ describe('wheel swoop — birds-eye → street over a building (Tier 2)', () => 
 describe('wheel swoop — reverse from a mid-swoop excursion (Tier 2)', () => {
   it('zoom-out returns toward the tilt it dove from', () => {
     const scene = H.representativeScene();
-    const cam = H.makePerspectiveCam({ pos: [0, 92, -10], lookAt: [0, 52, -40] });
+    const cam = H.makePerspectiveCam({
+      pos: [0, 92, -10],
+      lookAt: [0, 52, -40]
+    });
     const c = H.makeControls({ camera: cam, scene, streetLevel: true });
 
     // Real-surface gate: the reverse path must probe a real surface too.

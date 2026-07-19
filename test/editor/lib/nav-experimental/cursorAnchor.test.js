@@ -188,7 +188,8 @@ describe('isSolidFloorHit (solid-floor filter, TASK-013 → TASK-024)', () => {
     return {
       _attrs: attrs,
       id: attrs && attrs.id != null ? attrs.id : undefined,
-      hasAttribute: (n) => attrs != null && Object.prototype.hasOwnProperty.call(attrs, n),
+      hasAttribute: (n) =>
+        attrs != null && Object.prototype.hasOwnProperty.call(attrs, n),
       getAttribute: (n) => (attrs != null ? attrs[n] : undefined)
     };
   }
@@ -428,9 +429,9 @@ describe('classifyHitEntity (TASK-012 Phase-4 source classifier)', () => {
   });
 
   it('classifies a plain entity (no segment/mixin/tiles) as scatter', () => {
-    expect(classifyHitEntity(makeHit({ attrs: { 'some-component': '' } }))).toBe(
-      'scatter'
-    );
+    expect(
+      classifyHitEntity(makeHit({ attrs: { 'some-component': '' } }))
+    ).toBe('scatter');
   });
 
   it('returns null for a hit with no owning entity (editor chrome)', () => {
@@ -493,9 +494,11 @@ describe('worldHitNormal — two live results stay independent', () => {
     // Distinct object transforms + distinct face normals → distinct results,
     // exactly the wasdFlight floorNow/floorDest two-live-normals hazard.
     const hitA = makeMeshHit(null, new THREE.Vector3(0, 1, 0), [10, 0, 0]);
-    const hitB = makeMeshHit([0, 0, Math.PI / 4], new THREE.Vector3(1, 0, 0), [
-      -10, 0, 0
-    ]);
+    const hitB = makeMeshHit(
+      [0, 0, Math.PI / 4],
+      new THREE.Vector3(1, 0, 0),
+      [-10, 0, 0]
+    );
 
     const nA = worldHitNormal(hitA);
     const nB = worldHitNormal(hitB);

@@ -1838,17 +1838,23 @@
   "screenshotModal.aiRenderSuccess": {
     "defaultMessage": "AI render generated successfully! ({modelName})"
   },
+  "screenshotModal.aiRenderTimeoutEmail": {
+    "defaultMessage": "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery."
+  },
   "screenshotModal.compareAB": {
     "defaultMessage": "Compare A/B"
   },
   "screenshotModal.confirmClose": {
-    "defaultMessage": "Rendering in progress. Are you sure you want to close? The render will be cancelled."
+    "defaultMessage": "Rendering in progress. Close anyway? The render will finish in the background and be saved to your gallery."
   },
   "screenshotModal.download": {
     "defaultMessage": "Download"
   },
   "screenshotModal.downloadImage": {
     "defaultMessage": "Download image"
+  },
+  "screenshotModal.emailWhenDone": {
+    "defaultMessage": "Email me when it's ready (you can close this window)"
   },
   "screenshotModal.empty": {
     "defaultMessage": "Empty"

@@ -148,11 +148,11 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 
 **Island Architecture:** React components mounted via `mount-*.js` files into specific DOM elements
 
-**Workflow:** User prompt → token check → Firebase Cloud Function (fal.ai or Replicate) → display + save to gallery
+**Workflow:** User prompt → token check → Firebase Cloud Function (fal.ai or Replicate) submits an async job → jobId → client polls; result saved to gallery server-side
 
 **Token system:** TokenSync syncs Firestore → Zustand, PurchaseModal for Stripe checkout
 
-**Async job queue:** Long-running AI jobs use `users/{uid}/generationJobs/{jobId}` (provider-agnostic, survives a closed browser). Providers today: `replicate` (image→splat via SHARP, and image→video via Veo/Kling/LTX — converge on one idempotent processor via webhook + poll + reconciler; results saved to the gallery server-side), `fal` (image→3D mesh via Hunyuan3D/TRELLIS — a poll-provider with no webhook: the client poll and the reconciler both finalize via the same `fetchFalPrediction` adapter + shared terminal processor), and `cloudrun` (`.ply`→RAD/LOD conversion via the `rad-converter` Cloud Run service; worker-writeback, `tokenCost: 0`, triggered by `onSplatAssetCreated`). A scheduled reconciler backstops all of them. Design: `docs/generation-job-queue.md`; RAD pipeline: `docs/rad-cloud-run-pipeline.md`.
+**Async job queue:** All user-initiated AI generations use `users/{uid}/generationJobs/{jobId}` (provider-agnostic, survives a closed browser). Providers today: `replicate` (image→splat via SHARP, image→video via Veo/Kling/LTX, image→image via nano-banana/seedream/kontext — converge on one idempotent processor via webhook + poll + reconciler; results saved to the gallery server-side), `fal` (image→3D mesh via Hunyuan3D/TRELLIS and image→image via flux-2 edit — same convergent shape via `fal_webhook` → `falJobWebhook` + the shared `fetchFalPrediction` adapter), and `cloudrun` (`.ply`→RAD/LOD conversion via the `rad-converter` Cloud Run service; worker-writeback, `tokenCost: 0`, triggered by `onSplatAssetCreated`). A scheduled reconciler backstops all of them. Outcome emails (success and failure — "didn't finish, tokens refunded") send from the webhook in real time (after a ~10s open-tab ack grace so a watching tab suppresses them); the opt-in checkbox appears only while a job is rendering, defaults checked for every kind, and writes through post-submit via `setGenerationJobNotify`. Design: `docs/generation-job-queue.md`; RAD pipeline: `docs/rad-cloud-run-pipeline.md`.
 
 ## Shared Library (@shared/\*)
 

@@ -19,7 +19,12 @@ describe('rotation — map-orbit keeps a tilted off-axis pivot fixed (Tier 2)', 
   it('the pivot stays within ε px of its screen position through the orbit arc', () => {
     const scene = H.representativeScene();
     const cam = H.makePerspectiveCam({ pos: [0, 80, 60], lookAt: [0, 12, 0] });
-    const c = H.makeControls({ camera: cam, dom: H.makeDomElement(), scene, streetLevel: true });
+    const c = H.makeControls({
+      camera: cam,
+      dom: H.makeDomElement(),
+      scene,
+      streetLevel: true
+    });
     expect(H.floorBelow(c, cam).source).not.toBe('cache'); // real surface, not the miss/cache path
     expect(H.tilt(cam)).toBeGreaterThan(25); // Map regime → orbit
 
@@ -56,7 +61,9 @@ describe('rotation — live-Shift truck↔rotate mid-drag switch (Tier 2)', () =
     const poseAfterFirstSwitch = H.pose(cam);
     H.mouseMove(c, { clientX: 680, clientY: 370 });
     // The pan actually moves the camera (pose evolves across the switch).
-    expect(cam.position.distanceTo(poseAfterFirstSwitch.pos)).toBeGreaterThan(1e-4);
+    expect(cam.position.distanceTo(poseAfterFirstSwitch.pos)).toBeGreaterThan(
+      1e-4
+    );
 
     // Shift pressed again → rotate.
     H.keyDown(c, 'ShiftLeft', { shiftKey: true });

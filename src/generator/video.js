@@ -20,6 +20,11 @@ import ImageUploadUtils from './image-upload-utils.js';
 import { VIDEO_MODELS } from '@shared/constants/replicateModels.js';
 import { getDefaultInstructions } from '@shared/constants/renderStyles.js';
 import { mountVideoModelSelector } from './mount-video-model-selector.js';
+import { syncJobNotifyEmail } from './job-notify.js';
+import {
+  pollGenerationJob,
+  forceJobNotifyEmail
+} from '@shared/utils/generationJobs.js';
 
 // Video tab module
 const VideoTab = {
@@ -38,13 +43,12 @@ const VideoTab = {
   timerInterval: null,
 
   // Job-status poll state (see pollVideoStatus)
-  pollTimeout: null, // setTimeout handle for the status poll loop
-  pollDeadline: 0, // wall-clock ms after which we stop polling
+  activePoll: null, // { promise, cancel } from pollGenerationJob
+  activeJobId: null, // in-flight job — target of the email toggle
 
-  // Poll cadence and overall ceiling. Renders run ~1.5–2.5 minutes; 15 min is
-  // generous headroom before we give up locally (the job still finishes
-  // server-side regardless — the video lands in the gallery either way).
-  POLL_INTERVAL_MS: 3000,
+  // Overall poll ceiling. Renders run ~1.5–2.5 minutes; 15 min is generous
+  // headroom before we give up locally (the job still finishes server-side
+  // regardless — the video lands in the gallery either way).
   POLL_MAX_MS: 15 * 60 * 1000,
 
   // Estimated generation times (in seconds) - built from VIDEO_MODELS
@@ -221,6 +225,9 @@ const VideoTab = {
     this.elements.tokenCostDisplay =
       document.getElementById('video-token-cost');
     this.elements.notifyEmail = document.getElementById('video-notify-email');
+    this.elements.notifyEmailRow = document.getElementById(
+      'video-notify-email-row'
+    );
 
     // Verify critical elements
     let missingElements = [];
@@ -367,14 +374,17 @@ const VideoTab = {
                         </span>
                     </button>
 
-                    <!-- Email when done. Renders are usually ~2 minutes, but
-                         provider queue waits can stretch a job much longer;
-                         the email is suppressed server-side if this tab is
-                         still open when it finishes (same as the splat tab). -->
-                    <label class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
+                    <!-- Email when done. Hidden until a job is in flight —
+                         mid-render it's the "you can close this tab"
+                         affordance; toggling writes through to the job doc
+                         (setGenerationJobNotify). Defaults ON: renders are
+                         usually ~2 minutes but queue waits can stretch much
+                         longer. Suppressed server-side if this tab is still
+                         open when it finishes (same as the splat tab). -->
+                    <label id="video-notify-email-row" class="hidden flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
                         <input id="video-notify-email" type="checkbox" checked
                             class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                        Email me when my video is ready
+                        Email me when my video is ready (you can close this tab)
                     </label>
                 </div>
 
@@ -432,6 +442,11 @@ const VideoTab = {
       );
       return;
     }
+
+    // Mid-render email opt-in writes through to the in-flight job doc
+    this.elements.notifyEmail?.addEventListener('change', () => {
+      syncJobNotifyEmail(this.activeJobId, this.elements.notifyEmail);
+    });
 
     // Image upload
     this.elements.imageInput.addEventListener(
@@ -639,10 +654,14 @@ const VideoTab = {
         // Tokens are charged at submit (refunded on failure); reflect that.
         window.dispatchEvent(new CustomEvent('tokenCountChanged'));
 
+        // The job is now really in flight — reveal the email opt-in (check
+        // it, close the tab, get the result by email).
+        this.activeJobId = result.data.jobId;
+        this.elements.notifyEmailRow?.classList.remove('hidden');
+
         // The job now shows as a pending card in the assets gallery, driven by
         // the live Firestore listener on the job doc — it persists across
         // reloads and tabs without any client state here.
-        this.pollDeadline = Date.now() + this.POLL_MAX_MS;
         this.pollVideoStatus(result.data.jobId);
       })
       .catch((error) => {
@@ -667,19 +686,19 @@ const VideoTab = {
       });
   },
 
-  // Poll getGenerationJobStatus until the job is terminal. Re-schedules itself
-  // with setTimeout (not setInterval) so a slow request can't overlap the next
-  // tick. Any non-terminal status (queued|running|saving) just keeps polling.
-  pollVideoStatus: async function (jobId) {
-    const getGenerationJobStatus = httpsCallable(
-      functions,
-      'getGenerationJobStatus'
-    );
+  // Drive the live UI off the shared getGenerationJobStatus poll until the
+  // job is terminal. Any non-terminal status (queued|running|saving) just
+  // keeps polling.
+  pollVideoStatus: function (jobId) {
+    this.stopPolling();
+    this.activePoll = pollGenerationJob(jobId, {
+      resultField: 'video_url',
+      maxMs: this.POLL_MAX_MS
+    });
+    this.activePoll.promise
+      .then((data) => {
+        if (!data) return; // cancelled — a newer submit or teardown took over
 
-    try {
-      const { data } = await getGenerationJobStatus({ jobId });
-
-      if (data.status === 'succeeded' && data.video_url) {
         // The video was saved to the gallery server-side (works even if this
         // tab had been closed). Just show it and refresh the gallery island so
         // the pending-job card hands its slot to the real asset.
@@ -691,58 +710,40 @@ const VideoTab = {
           'Video generated and saved to your gallery!',
           'success'
         );
-        return;
-      }
-
-      if (data.status === 'failed' || data.status === 'canceled') {
-        // The server refunds on failure; refresh the displayed balance.
+      })
+      .catch(async (error) => {
+        if (error.timedOut) {
+          // The job outlived the poll window — unusual enough that the user
+          // shouldn't have to babysit the tab: force the completion email on.
+          const forced = await forceJobNotifyEmail(jobId);
+          if (this.elements.notifyEmail) {
+            this.elements.notifyEmail.checked = true;
+          }
+          this.toggleLoading(false);
+          FluxUI.showNotification(
+            forced
+              ? "Video generation is taking longer than expected. We'll email you when it's ready — it will also appear in your gallery."
+              : 'Video generation is taking longer than expected. Check your gallery shortly — it will appear there when finished.',
+            forced ? 'warning' : 'error'
+          );
+          return;
+        }
+        // failed/canceled — the server refunds on failure; refresh the balance.
         window.dispatchEvent(new CustomEvent('tokenCountChanged'));
         this.toggleLoading(false);
         FluxUI.showNotification(
-          data.error
-            ? `Video generation failed: ${data.error}`
+          error.jobError
+            ? `Video generation failed: ${error.jobError}`
             : 'Video generation failed. Your tokens were refunded.',
           'error'
         );
-        return;
-      }
-
-      // Still queued/running/saving — keep polling until the deadline.
-      if (Date.now() > this.pollDeadline) {
-        this.toggleLoading(false);
-        FluxUI.showNotification(
-          'Video generation is taking longer than expected. Check your gallery shortly — it will appear there when finished.',
-          'error'
-        );
-        return;
-      }
-      this.pollTimeout = setTimeout(
-        () => this.pollVideoStatus(jobId),
-        this.POLL_INTERVAL_MS
-      );
-    } catch (error) {
-      console.error('Error polling video status:', error);
-      // Transient poll error — retry until the deadline rather than failing
-      // hard; the job is unaffected server-side.
-      if (Date.now() > this.pollDeadline) {
-        this.toggleLoading(false);
-        FluxUI.showNotification(
-          'Lost track of the video job. Check your gallery shortly — it will appear there when finished.',
-          'error'
-        );
-        return;
-      }
-      this.pollTimeout = setTimeout(
-        () => this.pollVideoStatus(jobId),
-        this.POLL_INTERVAL_MS
-      );
-    }
+      });
   },
 
   stopPolling: function () {
-    if (this.pollTimeout) {
-      clearTimeout(this.pollTimeout);
-      this.pollTimeout = null;
+    if (this.activePoll) {
+      this.activePoll.cancel();
+      this.activePoll = null;
     }
   },
 
@@ -906,6 +907,10 @@ const VideoTab = {
       const modelName = this.selectedModel;
       this.startTimer(modelName);
     } else {
+      // Terminal (or reset): the email toggle only applies to an in-flight
+      // job, so it leaves with the loading state.
+      this.activeJobId = null;
+      this.elements.notifyEmailRow?.classList.add('hidden');
       this.elements.loadingIndicator.classList.add('hidden');
       this.elements.generateBtn.disabled = false;
       this.elements.generateBtn.classList.remove(

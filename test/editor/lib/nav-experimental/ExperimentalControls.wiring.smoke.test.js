@@ -20,7 +20,12 @@ describe('wiring smoke — attach / detach', () => {
   it('a real wheel event on the element drives the camera; after dispose it does not', () => {
     const scene = H.groundPlaneScene({ y: 0 });
     const cam = H.makePerspectiveCam({ pos: [0, 50, 40], lookAt: [0, 0, 0] });
-    const c = H.makeControls({ camera: cam, dom: H.makeDomElement(), scene, streetLevel: true });
+    const c = H.makeControls({
+      camera: cam,
+      dom: H.makeDomElement(),
+      scene,
+      streetLevel: true
+    });
 
     const y0 = cam.position.y;
     H.dispatchWheel(c, { dy: -300, ctrl: true });
@@ -39,7 +44,12 @@ describe('wiring smoke — window-level drag + live-Shift switch', () => {
   it('mousedown adds window move/up listeners that drive the drag; Shift toggles the sub-mode', () => {
     const scene = H.representativeScene();
     const cam = H.makePerspectiveCam({ pos: [0, 80, 60], lookAt: [0, 12, 0] });
-    const c = H.makeControls({ camera: cam, dom: H.makeDomElement(), scene, streetLevel: true });
+    const c = H.makeControls({
+      camera: cam,
+      dom: H.makeDomElement(),
+      scene,
+      streetLevel: true
+    });
 
     // Real mousedown on the element; move/up dispatched on window (the
     // listeners are added at mousedown time).
@@ -47,7 +57,12 @@ describe('wiring smoke — window-level drag + live-Shift switch', () => {
     // orchestrator-retained, and here they witness that the REAL dispatched DOM
     // event reached the bound handler — which is the whole point of the smoke
     // set. Each is paired with a pose observable where one exists.
-    H.dispatchMouseDown(c, { clientX: 640, clientY: 360, button: 0, shiftKey: true });
+    H.dispatchMouseDown(c, {
+      clientX: 640,
+      clientY: 360,
+      button: 0,
+      shiftKey: true
+    });
     expect(c._latch.isActive()).toBe(true); // canary (KD-4c)
     expect(c._latch.get('mode')).toBe('rotate'); // canary (KD-4c)
 

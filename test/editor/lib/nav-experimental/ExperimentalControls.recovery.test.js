@@ -18,8 +18,16 @@ afterEach(() => H.teardownAll());
 describe('recovery — enclosure → context recovery (Tier 2, inside-solid)', () => {
   it('nothing moves on its own; a context action eases the camera out of the solid', () => {
     const scene = H.representativeScene(); // building [12,52] at (0,-40), 30×30
-    const cam = H.makePerspectiveCam({ pos: [0, 30, -40], lookAt: [10, 28, -30] });
-    const c = H.makeControls({ camera: cam, scene, streetLevel: true, wasd: true });
+    const cam = H.makePerspectiveCam({
+      pos: [0, 30, -40],
+      lookAt: [10, 28, -30]
+    });
+    const c = H.makeControls({
+      camera: cam,
+      scene,
+      streetLevel: true,
+      wasd: true
+    });
     expect(H.floorBelow(c, cam).source).not.toBe('cache'); // real surface, not the miss/cache path
 
     // Refresh the context snapshot (resolveContextAction is a pure read of it),
@@ -53,8 +61,16 @@ describe('recovery — cue wakes during motion, not just on the first frame (Tie
     // WASD-forward flies OFF the near roof edge (z=-25) out over the ground,
     // where AGL jumps past the show-threshold (8 m) — the cue must fire from
     // that motion, at a tick > 1, not from a first-frame evaluation.
-    const cam = H.makePerspectiveCam({ pos: [0, 53.5, -40], lookAt: [0, 53.5, 0] });
-    const c = H.makeControls({ camera: cam, scene, wasd: true, streetLevel: true });
+    const cam = H.makePerspectiveCam({
+      pos: [0, 53.5, -40],
+      lookAt: [0, 53.5, 0]
+    });
+    const c = H.makeControls({
+      camera: cam,
+      scene,
+      wasd: true,
+      streetLevel: true
+    });
     const cue = H.onEvent(c, 'nav-experimental:recovery-cue');
     c._deriveGroundedFromPose(); // grounded on the roof
 
