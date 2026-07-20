@@ -1226,15 +1226,6 @@
   "geoSidebar.background": {
     "defaultMessage": "Background"
   },
-  "geoSidebar.blendMode": {
-    "defaultMessage": "Blend Mode"
-  },
-  "geoSidebar.blending": {
-    "defaultMessage": "Blending"
-  },
-  "geoSidebar.blendingFlattening": {
-    "defaultMessage": "Blending & Flattening"
-  },
   "geoSidebar.centerpointTooltip": {
     "defaultMessage": "This scene's centerpoint is {latitude}, {longitude}"
   },
@@ -1283,6 +1274,9 @@
   "geoSidebar.mapNotLoaded": {
     "defaultMessage": "Map not loaded yet"
   },
+  "geoSidebar.mapOpacity": {
+    "defaultMessage": "Map Opacity (%)"
+  },
   "geoSidebar.mapOsm3d": {
     "defaultMessage": "Open Street Map 2.5D Buildings"
   },
@@ -1297,6 +1291,9 @@
   },
   "geoSidebar.noShapesFound": {
     "defaultMessage": "No shapes found in scene."
+  },
+  "geoSidebar.opacityFlattening": {
+    "defaultMessage": "Opacity & Flattening"
   },
   "geoSidebar.outOfTokens": {
     "defaultMessage": "You're out of free geo tokens."

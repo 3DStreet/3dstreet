@@ -454,28 +454,27 @@ div.vec4 {
     border-bottom: 1px solid variables.$darkgray-700;
   }
 }
-// Curated material panel (#1741): real opacity slider with live preview.
-.material-controls {
-  .opacity-row .opacity-slider {
-    display: flex;
-    align-items: center;
-    column-gap: 10px;
-    width: 100%;
-    margin-right: 12px;
+// Opacity slider row with live preview, introduced by the curated material
+// panel (#1741) and shared with the geo sidebar's map opacity (#1738).
+.opacity-row .opacity-slider {
+  display: flex;
+  align-items: center;
+  column-gap: 10px;
+  width: 100%;
+  margin-right: 12px;
 
-    input[type='range'] {
-      flex: 1;
-      width: auto !important;
-      accent-color: variables.$purple-400;
-      cursor: pointer;
-    }
+  input[type='range'] {
+    flex: 1;
+    width: auto !important;
+    accent-color: variables.$purple-400;
+    cursor: pointer;
+  }
 
-    .opacity-value {
-      min-width: 40px;
-      text-align: right;
-      font-size: 14px;
-      color: variables.$lightgray-200;
-    }
+  .opacity-value {
+    min-width: 40px;
+    text-align: right;
+    font-size: 14px;
+    color: variables.$lightgray-200;
   }
 }
 .components * {
