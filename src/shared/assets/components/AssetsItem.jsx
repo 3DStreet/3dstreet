@@ -138,7 +138,7 @@ const AssetsItem = ({
       }
     >
       {item.type === 'video' ? (
-        <video src={imageUrl} muted playsInline />
+        <video src={imageUrl} muted playsInline draggable={false} />
       ) : usesPlaceholder && !imageUrl ? (
         isSplat ? (
           <SplatPlaceholder />
@@ -146,12 +146,18 @@ const AssetsItem = ({
           <MeshPlaceholder />
         )
       ) : (
+        // draggable={false} so the card's drag always originates from the
+        // wrapper div with a clean ASSET_CARD_MIME payload. Otherwise the
+        // natively-draggable thumbnail image gets fetched into
+        // dataTransfer.files and the viewport drop is misread as an image
+        // upload (models/splats with a thumbnail dropped as images).
         <img
           src={imageUrl}
           alt={
             isMesh ? '3D model' : isSplat ? 'Gaussian splat' : 'Generated image'
           }
           loading="lazy"
+          draggable={false}
         />
       )}
 

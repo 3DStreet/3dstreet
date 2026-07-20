@@ -354,6 +354,33 @@ const AddLayerPanel = () => {
     };
 
     const handleGlobalDrop = (e) => {
+      // Asset-card drop from the gallery panel takes priority: place the
+      // existing cloud asset at the picked point (no upload). Checked *before*
+      // the file branch because a card with a thumbnail carries a natively-
+      // draggable <img>, and the browser adds that fetched thumbnail to
+      // dataTransfer.files — so a model/splat drag would otherwise be
+      // misrouted into the image-upload path (see #1781 follow-up).
+      const assetPayload = e.dataTransfer?.getData?.(ASSET_CARD_MIME);
+      if (assetPayload) {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          const asset = JSON.parse(assetPayload);
+          const position = pickPointOnGroundPlane({
+            x: e.clientX,
+            y: e.clientY,
+            canvas: AFRAME.scenes[0].canvas,
+            camera: AFRAME.INSPECTOR.camera
+          });
+          placeCloudAsset(asset, position);
+        } catch (err) {
+          console.warn('[AddLayerPanel] bad asset drag payload', err);
+        }
+        if (dropPlaneEl.current) fadeOutDropPlane();
+        removeDropCursor();
+        return;
+      }
+
       // File drop: upload + place.
       if (
         e.dataTransfer &&
@@ -397,29 +424,6 @@ const AddLayerPanel = () => {
           );
         }
 
-        if (dropPlaneEl.current) fadeOutDropPlane();
-        removeDropCursor();
-        return;
-      }
-
-      // Asset-card drop from the gallery panel: place the existing cloud
-      // asset at the picked point (no upload).
-      const assetPayload = e.dataTransfer?.getData?.(ASSET_CARD_MIME);
-      if (assetPayload) {
-        e.preventDefault();
-        e.stopPropagation();
-        try {
-          const asset = JSON.parse(assetPayload);
-          const position = pickPointOnGroundPlane({
-            x: e.clientX,
-            y: e.clientY,
-            canvas: AFRAME.scenes[0].canvas,
-            camera: AFRAME.INSPECTOR.camera
-          });
-          placeCloudAsset(asset, position);
-        } catch (err) {
-          console.warn('[AddLayerPanel] bad asset drag payload', err);
-        }
         if (dropPlaneEl.current) fadeOutDropPlane();
         removeDropCursor();
       }
