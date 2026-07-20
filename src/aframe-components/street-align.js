@@ -1,4 +1,8 @@
 /* global AFRAME */
+import {
+  getTravelledWaySegments,
+  getBoundarySegments
+} from './street-layout-utils';
 
 AFRAME.registerComponent('street-align', {
   dependencies: ['managed-street'],
@@ -44,15 +48,17 @@ AFRAME.registerComponent('street-align', {
   realignStreet: function () {
     const data = this.data;
 
-    // Get all segments
-    const segments = Array.from(this.el.querySelectorAll('[street-segment]'));
+    // Alignment is computed from the travelled way alone. Boundaries (adjacent
+    // land use at the street edges) are positioned afterwards, derived from
+    // the travelled way's outer edges — they never shift the street, whether
+    // present, hidden, or shown (see street-layout-utils.js).
+    const segments = getTravelledWaySegments(this.el);
     if (segments.length === 0) return;
 
-    // Calculate total width
+    // Calculate travelled way width
     const totalWidth = segments.reduce((sum, segment) => {
       return sum + (segment.getAttribute('street-segment')?.width || 0);
     }, 0);
-    console.log('total width', totalWidth);
 
     // Get street length from managed-street component
     const streetLength = this.el.getAttribute('managed-street')?.length || 0;
@@ -64,6 +70,8 @@ AFRAME.registerComponent('street-align', {
     } else if (data.width === 'right') {
       xPosition = -totalWidth;
     }
+    const leftEdge = xPosition;
+    const rightEdge = xPosition + totalWidth;
 
     let zPosition = 0;
     if (data.length === 'start') {
@@ -72,7 +80,7 @@ AFRAME.registerComponent('street-align', {
       zPosition = streetLength / 2;
     }
 
-    // Position segments
+    // Position travelled-way segments sequentially
     segments.forEach((segment) => {
       const width = segment.getAttribute('street-segment')?.width;
       const currentPos = segment.getAttribute('position');
@@ -86,6 +94,33 @@ AFRAME.registerComponent('street-align', {
       });
 
       xPosition += width / 2;
+    });
+
+    // Position boundaries outward from the travelled way's edges by their
+    // `side`, stacking multiples further out in DOM order. Hidden boundaries
+    // are positioned too, so toggling them visible never moves anything.
+    const boundaries = getBoundarySegments(this.el);
+    let leftOffset = 0;
+    boundaries.left.forEach((segment) => {
+      const width = segment.getAttribute('street-segment')?.width || 0;
+      const currentPos = segment.getAttribute('position');
+      leftOffset += width;
+      segment.setAttribute('position', {
+        x: leftEdge - leftOffset + width / 2,
+        y: currentPos.y,
+        z: zPosition
+      });
+    });
+    let rightOffset = 0;
+    boundaries.right.forEach((segment) => {
+      const width = segment.getAttribute('street-segment')?.width || 0;
+      const currentPos = segment.getAttribute('position');
+      segment.setAttribute('position', {
+        x: rightEdge + rightOffset + width / 2,
+        y: currentPos.y,
+        z: zPosition
+      });
+      rightOffset += width;
     });
   },
 

@@ -1,9 +1,88 @@
+/* global STREET */
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { db, storage } from '@shared/services/firebase';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { assetsService } from '@shared/assets';
+import useStore from '@/store';
 import { getCurrentCameraState } from '../lib/cameraUtils';
+import { takeScreenshotWithOptions } from './scene';
 import posthog from 'posthog-js';
+
+/**
+ * Capture the current frame via screentock into the (always-mounted,
+ * hidden) #screentock-destination img, then re-encode as JPEG — much
+ * smaller than PNG for gallery upload and local download. Shared by the
+ * editor's ScreenshotModal and the viewer's snapshot button so the
+ * capture options (watermark/logo policy) and JPEG quality can't
+ * diverge. Read-only: no pause, no modal.
+ * @returns {{dataUrl: string, width: number, height: number, pngSrc: string}}
+ */
+export async function captureScreenshotAsJpeg(isPro, quality = 0.95) {
+  const imgEl = document.getElementById('screentock-destination');
+  if (!imgEl) throw new Error('screenshot destination not found');
+  const loaded = new Promise((resolve) =>
+    imgEl.addEventListener('load', resolve, { once: true })
+  );
+  await takeScreenshotWithOptions({
+    type: 'img',
+    showLogo: !isPro,
+    showWatermark: !isPro,
+    imgElementSelector: '#screentock-destination'
+  });
+  await loaded;
+
+  const img = new Image();
+  img.src = imgEl.src;
+  await new Promise((resolve) => {
+    img.onload = resolve;
+    if (img.complete) resolve();
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  canvas.getContext('2d').drawImage(img, 0, 0);
+  return {
+    dataUrl: canvas.toDataURL('image/jpeg', quality),
+    width: img.width,
+    height: img.height,
+    pngSrc: imgEl.src
+  };
+}
+
+/**
+ * Save a captured screenshot to the user's gallery. One metadata
+ * contract for every capture surface — the gallery's planned "focus"
+ * action (#1605) reads cameraState back from it, so the shape must not
+ * drift between callers.
+ * @returns {Promise<string>} the new asset id
+ */
+export async function saveScreenshotToGallery(
+  dataUrl,
+  { source, model, width, height, isPro },
+  userId
+) {
+  await assetsService.init();
+  return assetsService.addAsset(
+    dataUrl,
+    {
+      timestamp: new Date().toISOString(),
+      sceneId: STREET.utils.getCurrentSceneId(),
+      sceneTitle: useStore.getState().sceneTitle || 'Untitled',
+      source,
+      model,
+      width,
+      height,
+      // Persist the capture pose so the gallery can offer a "focus"
+      // button that returns the camera here (#1605).
+      cameraState: getCurrentCameraState(),
+      isPro: !!isPro
+    },
+    'image',
+    'screenshot',
+    userId
+  );
+}
 
 /**
  * Create and upload a snapshot with camera state

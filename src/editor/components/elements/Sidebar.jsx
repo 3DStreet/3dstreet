@@ -1,7 +1,6 @@
 import {
   cloneEntity,
   removeSelectedEntity,
-  renameEntity,
   setFocusCameraPose
 } from '../../lib/entity';
 import { Button } from '../elements';
@@ -13,9 +12,7 @@ import React from 'react';
 import { FormattedMessage } from 'react-intl';
 import AddGeneratorComponent from './AddGeneratorComponent';
 import {
-  Object24IconCyan,
   ArrowLeftHookIcon,
-  Edit24Icon,
   TrashIcon,
   Copy32Icon,
   ArrowsPointingInwardIcon
@@ -25,6 +22,8 @@ import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
 import MeasureLineSidebar from './MeasureLineSidebar';
 import ParcelLayerSidebar from './ParcelLayerSidebar';
+import DriveControlsSidebar from './DriveControlsSidebar';
+import StreetTrafficReplaySidebar from './StreetTrafficReplaySidebar';
 import UserLayersSidebar from './UserLayersSidebar';
 import AdvancedComponents from './AdvancedComponents';
 import AssetInfoPanel from './AssetInfoPanel';
@@ -45,12 +44,6 @@ export default class Sidebar extends React.Component {
 
   hasParentComponent = (entity) => {
     return entity.getAttribute('data-parent-component');
-  };
-
-  fireParentComponentDetach = (entity) => {
-    const componentName = entity.getAttribute('data-parent-component');
-    const parentEntity = entity.parentElement;
-    parentEntity.components[componentName].detach();
   };
 
   selectParentEntity = (entity) => {
@@ -109,11 +102,19 @@ export default class Sidebar extends React.Component {
       );
     }
 
+    // The fixed pseudo-layers (environment, reference layers, user layers)
+    // and no-transform entities never had a rename affordance; everything
+    // else gets the inline rename on the title label.
+    const canRename =
+      !['reference-layers', 'environment', 'street-container'].includes(
+        entity.id
+      ) && !entity.hasAttribute('data-no-transform');
+
     return (
       <div className="properties-panel" tabIndex="0">
         <div id="layers-title">
           <div className="layersBlock">
-            <EntityLabel entity={entity} />
+            <EntityLabel entity={entity} editable={canRename} />
           </div>
         </div>
         <div className="scroll">
@@ -159,16 +160,6 @@ export default class Sidebar extends React.Component {
                             defaultMessage="Edit Clone Settings"
                           />
                         </Button>
-                        <Button
-                          variant={'toolbtn'}
-                          onClick={() => this.fireParentComponentDetach(entity)}
-                        >
-                          <Object24IconCyan />
-                          <FormattedMessage
-                            id="sidebar.detach"
-                            defaultMessage="Detach"
-                          />
-                        </Button>
                       </div>
                     </>
                   )}
@@ -179,7 +170,7 @@ export default class Sidebar extends React.Component {
                 {entity.hasAttribute('data-no-transform') ? (
                   <></>
                 ) : (
-                  <div id="sidebar-buttons-small">
+                  <div className="sidebar-buttons-small">
                     <Button
                       variant={'toolbtn'}
                       onClick={() =>
@@ -190,13 +181,6 @@ export default class Sidebar extends React.Component {
                       leadingIcon={<ArrowsPointingInwardIcon />}
                     >
                       <FormattedMessage {...commonMessages.focus} />
-                    </Button>
-                    <Button
-                      variant={'toolbtn'}
-                      onClick={() => renameEntity(entity)}
-                      leadingIcon={<Edit24Icon />}
-                    >
-                      <FormattedMessage {...commonMessages.rename} />
                     </Button>
                     <Button
                       variant={'toolbtn'}
@@ -244,8 +228,26 @@ export default class Sidebar extends React.Component {
                   </div>
                 </>
               )}
+              {entity.getAttribute('drive-controls') && (
+                <>
+                  <DriveControlsSidebar entity={entity} />
+                  <div className="propertyRow">
+                    <AdvancedComponents entity={entity} />
+                  </div>
+                </>
+              )}
+              {entity.getAttribute('street-traffic-replay') && (
+                <>
+                  <StreetTrafficReplaySidebar entity={entity} />
+                  <div className="propertyRow">
+                    <AdvancedComponents entity={entity} />
+                  </div>
+                </>
+              )}
               {!entity.getAttribute('measure-line') &&
-                !entity.getAttribute('parcel-data-layer') && (
+                !entity.getAttribute('parcel-data-layer') &&
+                !entity.getAttribute('drive-controls') &&
+                !entity.getAttribute('street-traffic-replay') && (
                   <ComponentsContainer entity={entity} />
                 )}
             </>

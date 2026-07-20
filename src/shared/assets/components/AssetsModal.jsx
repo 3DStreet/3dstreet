@@ -9,6 +9,7 @@ import { TrashIcon } from '@shared/icons';
 import styles from './Assets.module.scss';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import { getAssetTitle, formatBytes, formatDate } from '../utils.js';
+import { isEditableTarget } from '@shared/utils/dom.js';
 
 const METADATA_VISIBILITY_KEY = 'galleryModalMetadataVisible';
 
@@ -29,7 +30,11 @@ const AssetsModal = ({
   onDownload = defaultOnDownload,
   onDelete,
   onUseForGenerator,
-  onUseForVideo
+  onUseForVideo,
+  // Editor-only: open the snapshot's scene (if not active) and return the
+  // camera to the captured pose (#1605). Omitted by hosts without a viewport
+  // (generator), which fall back to a plain scene link.
+  onFocusScene
 }) => {
   // Initialize metadata visibility from sessionStorage
   const [isMetadataVisible, setIsMetadataVisible] = useState(() => {
@@ -66,6 +71,9 @@ const AssetsModal = ({
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Don't hijack arrow keys while the user is typing in a field (e.g.
+      // editing the title) — let the caret move within the input instead.
+      if (e.key !== 'Escape' && isEditableTarget(e.target)) return;
       if (e.key === 'ArrowLeft' && onNavigate) {
         onNavigate('prev');
       } else if (e.key === 'ArrowRight' && onNavigate) {
@@ -112,6 +120,14 @@ const AssetsModal = ({
   const date = dateSource ? formatDate(dateSource) : 'Unknown';
   const isVideo = item.type === 'video';
   const modalTitle = getAssetTitle(item);
+  // Snapshots captured after #1605 carry the camera pose; older ones don't, so
+  // only offer the combined open-scene-and-focus action when the host supports
+  // it and a pose exists. Older snapshots keep the plain scene link.
+  const canFocusScene = !!(
+    onFocusScene &&
+    sceneId &&
+    item.metadata?.cameraState
+  );
   // Surfaced for user-uploaded images (generator-created items don't set
   // these top-level fields, but they have model/prompt/seed instead).
   const filename = item.originalFilename;
@@ -389,15 +405,45 @@ const AssetsModal = ({
                 {sceneUrl && (
                   <div className={styles.metadataItem}>
                     <span className={styles.metadataLabel}>Scene</span>
-                    <a
-                      href={sceneUrl}
-                      className={styles.metadataLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Open scene in editor"
-                    >
-                      {sceneTitle || 'Untitled'}
-                    </a>
+                    {canFocusScene ? (
+                      <button
+                        className={styles.sceneFocusBtn}
+                        onClick={() => {
+                          onFocusScene(item);
+                          onClose();
+                        }}
+                        title="Open this scene and return the camera to where this snapshot was captured"
+                        aria-label="Open scene at capture position"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="12" cy="12" r="7" />
+                          <line x1="12" y1="1" x2="12" y2="4" />
+                          <line x1="12" y1="20" x2="12" y2="23" />
+                          <line x1="1" y1="12" x2="4" y2="12" />
+                          <line x1="20" y1="12" x2="23" y2="12" />
+                          <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                        </svg>
+                        <span>{sceneTitle || 'Untitled'}</span>
+                      </button>
+                    ) : (
+                      <a
+                        href={sceneUrl}
+                        className={styles.metadataLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Open scene in editor"
+                      >
+                        {sceneTitle || 'Untitled'}
+                      </a>
+                    )}
                   </div>
                 )}
               </div>

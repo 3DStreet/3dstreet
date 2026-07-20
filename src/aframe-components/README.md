@@ -31,10 +31,10 @@ them.
 
 ### Events
 
-| Event              | Emitter                                                        | Payload                                                                                                                                   | Bubbles |
-| ------------------ | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `segment-changed`  | `street-segment.update`, only when `width` or `length` changed | `{ widthChanged, lengthChanged, oldWidth, newWidth, oldLength, newLength }`                                                               | yes     |
-| `segments-changed` | `managed-street`                                               | `{ changeType: 'structure', added, removed }` or `{ changeType: 'property', property: 'width' \| 'length', segment, oldValue, newValue }` (`segment` is `null` for length changes, since the change is at the managed-street level) | yes     |
+| Event              | Emitter                                                        | Payload                                                                                                                                                                                                                                                        | Bubbles |
+| ------------------ | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `segment-changed`  | `street-segment.update`, only when `width` or `length` changed | `{ widthChanged, lengthChanged, oldWidth, newWidth, oldLength, newLength }`                                                                                                                                                                                    | yes     |
+| `segments-changed` | `managed-street`                                               | `{ changeType: 'structure', added, removed }` or `{ changeType: 'property', property: 'width' \| 'length' \| 'showGround', segment, oldValue, newValue }` (`segment` is `null` for length/showGround changes, since the change is at the managed-street level) | yes     |
 
 #### Listener wiring
 

@@ -8,6 +8,23 @@ import { TrashIcon } from '@shared/icons';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;
 
+// Friendly labels for the multi-instance street-generated components so the
+// panel header reads e.g. "Clones 2" instead of "street-generated-clones__2".
+const GENERATED_COMPONENT_LABELS = {
+  'street-generated-clones': 'Clones',
+  'street-generated-striping': 'Striping',
+  'street-generated-stencil': 'Stencils',
+  'street-generated-pedestrians': 'Pedestrians',
+  'street-generated-rail': 'Rail'
+};
+
+function getFriendlyComponentName(componentName) {
+  const [base, modifier] = componentName.split('__');
+  const label = GENERATED_COMPONENT_LABELS[base];
+  // Bare instance is index 1; the __n modifier maps directly to the label number.
+  return label ? `${label} ${modifier || '1'}` : componentName;
+}
+
 /**
  * Single component.
  */
@@ -135,7 +152,7 @@ export default class Component extends React.Component {
       <Collapsible collapsed={this.props.isCollapsed}>
         <div className="componentHeader collapsible-header">
           <span className="componentTitle" title={componentName}>
-            <span>{componentName}</span>
+            <span>{getFriendlyComponentName(componentName)}</span>
           </span>
           <div className="componentHeaderActions">
             <a

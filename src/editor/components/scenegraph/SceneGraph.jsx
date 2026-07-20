@@ -8,7 +8,11 @@ import Events from '../../lib/Events';
 import Entity, { isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
 import { Plus20Circle } from '@shared/icons';
-import { createUniqueId, getEntityDisplayName } from '../../lib/entity';
+import {
+  getEntityDisplayName,
+  reorderEntityRelativeTo
+} from '../../lib/entity';
+import { isEditableTarget } from '@shared/utils/dom.js';
 import posthog from 'posthog-js';
 import AssetsPanel from './AssetsPanel';
 import GeoSidebar from '../elements/GeoSidebar';
@@ -152,27 +156,28 @@ class SceneGraph extends React.Component {
       !element.isEntity ||
       element.isInspector ||
       'aframeInspector' in element.dataset ||
+      element.id === 'batch-models-root' ||
       HIDDEN_CLASSES.includes(element.className) ||
       HIDDEN_IDS.includes(element.id)
     );
   };
 
   canBeDragged = (entity) => {
-    return (
-      !isContainer(entity) &&
-      !entity.classList.contains('autocreated') &&
-      !entity.hasAttribute('street-segment')
-    );
+    return !isContainer(entity) && !entity.classList.contains('autocreated');
   };
 
   canBeDropTarget = (entity, draggedEntity) => {
+    // Segments only accept other segments (reorder within their managed
+    // street, which relayouts via its childList observer); dropping anything
+    // else into a street is still disallowed.
     if (
       !draggedEntity ||
       draggedEntity === entity ||
       entity.id === 'reference-layers' ||
       entity.id === 'environment' ||
       entity.id === 'cameraRig' ||
-      entity.hasAttribute('street-segment')
+      (entity.hasAttribute('street-segment') &&
+        !draggedEntity.hasAttribute('street-segment'))
     ) {
       return false;
     }
@@ -210,44 +215,19 @@ class SceneGraph extends React.Component {
       return;
     }
 
-    let parentEl;
-    let indexInParent;
-
-    if (insertionMode === 'child') {
-      // Make draggedEntity a child of targetEntity
-      parentEl = targetEntity.id;
-      indexInParent = targetEntity.children.length; // Add at the end
-
-      // Expand the target entity in the UI
-      this.state.expandedElements.set(targetEntity, true);
-      this.setState({ expandedElements: this.state.expandedElements });
-    } else {
+    if (insertionMode !== 'child') {
       // Insert before or after targetEntity (same parent)
-      const targetParent = targetEntity.parentNode;
-      if (!targetParent) {
-        return;
-      }
-
-      if (!targetParent.id) {
-        targetParent.id = createUniqueId();
-      }
-
-      if (!draggedEntity.parentNode.id) {
-        draggedEntity.parentNode.id = createUniqueId();
-      }
-
-      parentEl = targetParent.id;
-      const targetIndex = Array.from(targetParent.children).indexOf(
-        targetEntity
-      );
-
-      if (insertionMode === 'before') {
-        indexInParent = targetIndex;
-      } else {
-        // 'after'
-        indexInParent = targetIndex + 1;
-      }
+      reorderEntityRelativeTo(draggedEntity, targetEntity, insertionMode);
+      return;
     }
+
+    // Make draggedEntity a child of targetEntity, added at the end
+    const parentEl = targetEntity.id;
+    const indexInParent = targetEntity.children.length;
+
+    // Expand the target entity in the UI
+    this.state.expandedElements.set(targetEntity, true);
+    this.setState({ expandedElements: this.state.expandedElements });
 
     AFRAME.INSPECTOR.execute('entityreparent', {
       entity: draggedEntity,
@@ -297,6 +277,13 @@ class SceneGraph extends React.Component {
   };
 
   onKeyDown = (event) => {
+    // Events from modals rendered via React portals (e.g. the asset gallery's
+    // detail modal) bubble up through the React tree to this handler even though
+    // they live elsewhere in the DOM. Never swallow arrow keys while the user is
+    // typing in a field, or the caret can't move / edits are blocked (#1735).
+    if (isEditableTarget(event.target)) {
+      return;
+    }
     switch (event.keyCode) {
       case 37: // left
       case 38: // up
@@ -309,7 +296,7 @@ class SceneGraph extends React.Component {
   };
 
   onKeyUp = (event) => {
-    if (this.props.selectedEntity === null) {
+    if (this.props.selectedEntity === null || isEditableTarget(event.target)) {
       return;
     }
 

@@ -30,7 +30,10 @@ export const UnitsPreference = () => {
       )}
     >
       {isMetric
-        ? intl.formatMessage({ id: 'units.metricLabel', defaultMessage: 'Metric' })
+        ? intl.formatMessage({
+            id: 'units.metricLabel',
+            defaultMessage: 'Metric'
+          })
         : intl.formatMessage({
             id: 'units.imperialLabel',
             defaultMessage: 'Imperial'

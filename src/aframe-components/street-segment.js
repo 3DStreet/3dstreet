@@ -1,5 +1,8 @@
 /* global AFRAME */
-import { calculateHeight } from '../tested/street-segment-utils';
+import {
+  calculateHeight,
+  calculateSlopedHeights
+} from '../tested/street-segment-utils';
 
 /*
 <a-entity street-way="source: xyz">
@@ -26,7 +29,7 @@ const TYPES = {
     type: 'drive-lane',
     color: COLORS.white,
     surface: 'asphalt',
-    level: 0,
+    elevation: 0,
     generated: {
       clones: [
         {
@@ -43,7 +46,7 @@ const TYPES = {
     type: 'bus-lane',
     surface: 'asphalt',
     color: COLORS.red,
-    level: 0,
+    elevation: 0,
     generated: {
       clones: [
         {
@@ -66,7 +69,7 @@ const TYPES = {
     type: 'bike-lane',
     color: COLORS.green,
     surface: 'asphalt',
-    level: 0,
+    elevation: 0,
     generated: {
       stencil: [
         {
@@ -90,7 +93,7 @@ const TYPES = {
     type: 'sidewalk',
     surface: 'sidewalk',
     color: COLORS.white,
-    level: 1,
+    elevation: 0.15,
     direction: 'none',
     generated: {
       pedestrians: [
@@ -103,7 +106,7 @@ const TYPES = {
   'parking-lane': {
     surface: 'concrete',
     color: COLORS.lightGray,
-    level: 0,
+    elevation: 0,
     generated: {
       clones: [
         {
@@ -125,17 +128,17 @@ const TYPES = {
   divider: {
     surface: 'hatched',
     color: COLORS.white,
-    level: 0
+    elevation: 0
   },
   grass: {
     surface: 'grass',
     color: COLORS.white,
-    level: 0
+    elevation: 0
   },
   rail: {
     surface: 'asphalt',
     color: COLORS.white,
-    level: 0,
+    elevation: 0,
     generated: {
       clones: [
         {
@@ -152,10 +155,14 @@ const TYPES = {
       ]
     }
   },
-  building: {
-    type: 'building',
+  boundary: {
+    // adjacent land use flanking the street (buildings, waterfront, fences,
+    // parking lots, ...). Renamed from 'building'; saved scenes carrying the
+    // old type are migrated at load time (see json-utils_1.1.js).
+    type: 'boundary',
     surface: 'cracked-asphalt',
-    level: 1,
+    color: COLORS.white,
+    elevation: 0.15,
     variants: {
       brownstone: {
         modelsArray:
@@ -236,7 +243,7 @@ AFRAME.registerComponent('street-segment', {
         'divider',
         'grass',
         'rail',
-        'building'
+        'boundary'
       ]
     },
     width: {
@@ -246,8 +253,46 @@ AFRAME.registerComponent('street-segment', {
     length: {
       type: 'number'
     },
-    level: {
+    elevation: {
+      // vertical offset of the segment surface in meters (matches Streetmix
+      // schema 33+ units): 0 = road level, 0.15 = curb/sidewalk height.
+      // Replaces the deprecated integer `level` (1 level == 0.15m); legacy
+      // saved scenes are migrated at load time (see json-utils_1.1.js).
+      // Negative elevations (below road level) are intentionally unsupported
+      // for now — calculateHeight clamps to the base surface depth anyway.
+      type: 'number',
+      min: 0,
+      default: 0
+    },
+    floors: {
+      // boundary building height in floors, carried over from the imported
+      // source (Streetmix boundary object). Metadata only for now — it does
+      // not yet drive the generated building model height. 0 = unspecified.
       type: 'int',
+      default: 0
+    },
+    slope: {
+      // tilt the segment surface between two elevations across its width
+      // (coastmix schema v34 `slope: { on, values }`). When true, the surface
+      // interpolates from slopeStart (start/-x edge) to slopeEnd (end/+x edge)
+      // and `elevation` is ignored; generated content sits at the mean
+      // elevation for now.
+      type: 'boolean',
+      default: false
+    },
+    slopeStart: {
+      // elevation in meters at the segment's start edge (local -x, toward the
+      // previous segment) when slope is on. Negative values unsupported, like
+      // `elevation`.
+      type: 'number',
+      min: 0,
+      default: 0
+    },
+    slopeEnd: {
+      // elevation in meters at the segment's end edge (local +x) when slope is
+      // on. Negative values unsupported, like `elevation`.
+      type: 'number',
+      min: 0,
       default: 0
     },
     direction: {
@@ -356,9 +401,9 @@ AFRAME.registerComponent('street-segment', {
       }
     }
 
-    // calculate facing for building segments based on side
+    // calculate facing for boundary segments based on side
     if (
-      this.data.type === 'building' &&
+      this.data.type === 'boundary' &&
       this.data.side &&
       componentsToGenerate?.clones?.length > 0
     ) {
@@ -366,11 +411,33 @@ AFRAME.registerComponent('street-segment', {
       componentsToGenerate.clones[0].facing = sideRotation;
     }
 
+    // Copy every schema-known property from a generated entry so an entry
+    // that came from getManagedStreetJSON (full component data: seed,
+    // cycleOffset, facing, positionX/Y, stencilHeight, ...) survives the
+    // import round trip. Unknown keys (e.g. preset-only `variants` metadata)
+    // are dropped rather than passed to setAttribute, and unset keys keep
+    // their schema defaults. `overrides` carries the segment-derived
+    // fallbacks that predate this passthrough.
+    const buildGeneratedAttributes = (componentName, entry, overrides = {}) => {
+      const schema = AFRAME.components[componentName].schema;
+      const attributes = {};
+      for (const key in entry) {
+        if (key in schema && entry[key] !== undefined) {
+          attributes[key] = entry[key];
+        }
+      }
+      return Object.assign(attributes, overrides);
+    };
+
     // for each of clones, stencils, rail, pedestrians, etc.
     if (componentsToGenerate?.clones?.length > 0) {
       componentsToGenerate.clones.forEach((clone, index) => {
+        // modelsArray may be an authored string or a re-imported array
+        const models = Array.isArray(clone.modelsArray)
+          ? clone.modelsArray.join(', ')
+          : clone.modelsArray;
         // Skip clones with empty modelsArray
-        if (!clone.modelsArray || clone.modelsArray.trim() === '') {
+        if (!models || models.trim() === '') {
           return;
         }
 
@@ -380,62 +447,60 @@ AFRAME.registerComponent('street-segment', {
           justifyWidth = this.data.side === 'right' ? 'left' : 'right';
         }
 
-        this.el.setAttribute(`street-generated-clones__${index + 1}`, {
-          mode: clone.mode,
-          modelsArray: clone.modelsArray,
-          spacing: clone.spacing,
-          direction: this.data.direction,
-          count: clone.count,
-          facing: clone.facing,
-          positionX: clone.positionX,
-          positionY: clone.positionY,
-          justifyWidth: justifyWidth
-        });
+        this.el.setAttribute(
+          `street-generated-clones__${index + 1}`,
+          buildGeneratedAttributes('street-generated-clones', clone, {
+            modelsArray: models,
+            // entries without an explicit direction follow the segment
+            direction: clone.direction ?? this.data.direction,
+            ...(justifyWidth !== undefined ? { justifyWidth } : {})
+          })
+        );
       });
     }
 
     if (componentsToGenerate?.stencil?.length > 0) {
-      componentsToGenerate.stencil.forEach((clone, index) => {
-        this.el.setAttribute(`street-generated-stencil__${index + 1}`, {
-          modelsArray: clone.modelsArray,
-          spacing: clone.spacing,
-          direction: clone.direction ?? this.data.direction,
-          padding: clone.padding,
-          cycleOffset: clone.cycleOffset
-        });
+      componentsToGenerate.stencil.forEach((stencil, index) => {
+        this.el.setAttribute(
+          `street-generated-stencil__${index + 1}`,
+          buildGeneratedAttributes('street-generated-stencil', stencil, {
+            direction: stencil.direction ?? this.data.direction
+          })
+        );
       });
     }
 
     if (componentsToGenerate?.pedestrians?.length > 0) {
       componentsToGenerate.pedestrians.forEach((pedestrian, index) => {
-        this.el.setAttribute(`street-generated-pedestrians__${index + 1}`, {
-          density: pedestrian.density,
-          direction: this.data.direction
-        });
+        this.el.setAttribute(
+          `street-generated-pedestrians__${index + 1}`,
+          buildGeneratedAttributes('street-generated-pedestrians', pedestrian, {
+            direction: pedestrian.direction ?? this.data.direction
+          })
+        );
       });
     }
 
     if (componentsToGenerate?.striping?.length > 0) {
       componentsToGenerate.striping.forEach((stripe, index) => {
-        this.el.setAttribute(`street-generated-striping__${index + 1}`, {
-          striping: stripe.striping,
-          positionY: stripe.positionY ?? 0.05, // Default to 0.05 if not specified
-          side: stripe.side ?? 'left', // Default to left if not specified
-          facing: stripe.facing ?? 0 // Default to 0 if not specified
-        });
+        this.el.setAttribute(
+          `street-generated-striping__${index + 1}`,
+          buildGeneratedAttributes('street-generated-striping', stripe)
+        );
       });
     }
 
     if (componentsToGenerate?.rail?.length > 0) {
       componentsToGenerate.rail.forEach((rail, index) => {
-        this.el.setAttribute(`street-generated-rail__${index + 1}`, {
-          gauge: rail.gauge
-        });
+        this.el.setAttribute(
+          `street-generated-rail__${index + 1}`,
+          buildGeneratedAttributes('street-generated-rail', rail)
+        );
       });
     }
   },
   updateSurfaceFromType: function (typeObject) {
-    // update color, surface, level from segment type preset
+    // update color, surface, elevation from segment type preset
     let surface = typeObject.surface;
 
     // if segment has variants and a variant is specified, override surface if variant has one
@@ -453,7 +518,7 @@ AFRAME.registerComponent('street-segment', {
 
     this.el.setAttribute(
       'street-segment',
-      `surface: ${surface}; color: ${typeObject.color}; level: ${typeObject.level};`
+      `surface: ${surface}; color: ${typeObject.color}; elevation: ${typeObject.elevation};`
     ); // to do: this should be more elegant to check for undefined and set default values
   },
   updateGeneratedComponentsList: function () {
@@ -478,7 +543,7 @@ AFRAME.registerComponent('street-segment', {
       this.updateGeneratedComponentsList(); // if components were created through streetmix or streetplan import
       this.remove();
       this.generateComponentsFromSegmentObject(typeObject); // add components for this type
-      this.updateSurfaceFromType(typeObject); // update surface color, surface, level
+      this.updateSurfaceFromType(typeObject); // update surface color, surface, elevation
     }
     // propagate change of direction to generated components is solo changed
     if (changedProps.includes('direction')) {
@@ -495,10 +560,10 @@ AFRAME.registerComponent('street-segment', {
         this.el.setAttribute(componentName, 'direction', this.data.direction);
       }
     }
-    // regenerate components if variant has changed (only relevant for building segments)
+    // regenerate components if variant has changed (only relevant for boundary segments)
     if (changedProps.includes('variant')) {
-      // Only process variant changes for building segments
-      if (this.data.type === 'building') {
+      // Only process variant changes for boundary segments
+      if (this.data.type === 'boundary') {
         let typeObject = this.types[this.data.type];
         this.updateGeneratedComponentsList();
 
@@ -510,12 +575,12 @@ AFRAME.registerComponent('street-segment', {
         }
       }
     }
-    // regenerate components if side has changed (only for building segments and only if it's an actual change, not initial load)
+    // regenerate components if side has changed (only for boundary segments and only if it's an actual change, not initial load)
     if (changedProps.includes('side')) {
       // Only regenerate if:
-      // 1. This is a building segment that actually uses the 'side' property
+      // 1. This is a boundary segment that actually uses the 'side' property
       // 2. AND it's not the initial load (oldData.side exists, meaning side actually changed)
-      if (this.data.type === 'building' && oldData.side !== undefined) {
+      if (this.data.type === 'boundary' && oldData.side !== undefined) {
         let typeObject = this.types[this.data.type];
         this.updateGeneratedComponentsList();
         this.remove();
@@ -523,7 +588,16 @@ AFRAME.registerComponent('street-segment', {
       }
     }
     this.clearMesh();
-    this.height = this.calculateHeight(data.level);
+    if (data.slope) {
+      // sloped surface: entity sits at the mean height, the mesh top face is
+      // tilted between the two edge heights (see generateMesh)
+      const sloped = calculateSlopedHeights(data.slopeStart, data.slopeEnd);
+      this.height = sloped.height;
+      this.slopeDeltas = { start: sloped.startDelta, end: sloped.endDelta };
+    } else {
+      this.height = this.calculateHeight(data.elevation);
+      this.slopeDeltas = null;
+    }
     this.tempXPosition = this.el.getAttribute('position').x;
     this.tempZPosition = this.el.getAttribute('position').z;
     this.el.setAttribute('position', {
@@ -532,13 +606,23 @@ AFRAME.registerComponent('street-segment', {
       z: this.tempZPosition
     });
     this.generateMesh(data);
-    // notify children and managed-street of width/length changes in a single event
+    // notify children and managed-street of layout-relevant changes in a
+    // single event. type and side changes must also trigger a street re-layout
+    // (they alter travelled-way membership / which edge a boundary flanks);
+    // the generated-content listeners self-guard on width/length so the extra
+    // emits don't cause spurious clone regeneration.
     const widthChanged = changedProps.includes('width');
     const lengthChanged = changedProps.includes('length');
-    if (widthChanged || lengthChanged) {
+    const typeChanged =
+      oldData.type !== undefined && changedProps.includes('type');
+    const sideChanged =
+      oldData.side !== undefined && changedProps.includes('side');
+    if (widthChanged || lengthChanged || typeChanged || sideChanged) {
       this.el.emit('segment-changed', {
         widthChanged,
         lengthChanged,
+        typeChanged,
+        sideChanged,
         oldWidth: oldData.width,
         newWidth: data.width,
         oldLength: oldData.length,
@@ -561,13 +645,16 @@ AFRAME.registerComponent('street-segment', {
     this.generatedComponents.length = 0;
   },
   generateMesh: function (data) {
-    // create geometry
+    // create geometry; slope deltas tilt the top face between the segment's
+    // start (-x) and end (+x) edges
     this.el.setAttribute(
       'geometry',
-      `primitive: below-box; 
-          height: ${this.height}; 
+      `primitive: below-box;
+          height: ${this.height};
           depth: ${data.length};
-          width: ${data.width};`
+          width: ${data.width};
+          slopeStartDelta: ${this.slopeDeltas?.start ?? 0};
+          slopeEndDelta: ${this.slopeDeltas?.end ?? 0};`
     );
 
     // create a lookup table to convert UI shortname into A-Frame img id's
@@ -689,7 +776,12 @@ AFRAME.registerGeometry('below-box', {
     width: { default: 1, min: 0 },
     segmentsHeight: { default: 1, min: 1, max: 20, type: 'int' },
     segmentsWidth: { default: 1, min: 1, max: 20, type: 'int' },
-    segmentsDepth: { default: 1, min: 1, max: 20, type: 'int' }
+    segmentsDepth: { default: 1, min: 1, max: 20, type: 'int' },
+    // vertical displacement (meters) applied to the top face at the -x edge
+    // (slopeStartDelta) and +x edge (slopeEndDelta) — tilts the surface for
+    // sloped street segments while the bottom stays at the dirt layer
+    slopeStartDelta: { default: 0 },
+    slopeEndDelta: { default: 0 }
   },
 
   init: function (data) {
@@ -702,5 +794,22 @@ AFRAME.registerGeometry('below-box', {
       data.segmentsDepth
     );
     this.geometry.translate(0, -data.height / 2, 0);
+    if (data.slopeStartDelta !== 0 || data.slopeEndDelta !== 0) {
+      // After the translate the top-face vertices sit at y=0 (everything else
+      // is below). Displace them by the edge delta their x-side belongs to;
+      // side-face top edges follow along so the box stays watertight.
+      const position = this.geometry.attributes.position;
+      for (let i = 0; i < position.count; i++) {
+        if (position.getY(i) > -data.height / 2) {
+          position.setY(
+            i,
+            position.getY(i) +
+              (position.getX(i) < 0 ? data.slopeStartDelta : data.slopeEndDelta)
+          );
+        }
+      }
+      position.needsUpdate = true;
+      this.geometry.computeVertexNormals();
+    }
   }
 });

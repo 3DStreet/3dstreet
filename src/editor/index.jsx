@@ -4,7 +4,6 @@ import posthog from 'posthog-js';
 import { createRoot } from 'react-dom/client';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import MainWrapper from './components/MainWrapper';
-import { ARControls, VisibilityToggle } from './components/viewport/ARControls';
 import { AuthProvider, GeoProvider } from './contexts';
 import Events from './lib/Events';
 import { AssetsLoader } from './lib/assetsLoader';
@@ -100,30 +99,6 @@ Inspector.prototype = {
       </LocaleProvider>
     );
 
-    // Mount AR Controls to the AR overlay div
-    const arControlsContainer = document.getElementById('react-ar-controls');
-    if (arControlsContainer) {
-      const arRoot = createRoot(arControlsContainer);
-      arRoot.render(
-        <LocaleProvider>
-          <ARControls />
-        </LocaleProvider>
-      );
-    }
-
-    // Mount Visibility Toggle to the AR overlay div
-    const visibilityToggleContainer = document.getElementById(
-      'react-visibility-toggle'
-    );
-    if (visibilityToggleContainer) {
-      const visibilityRoot = createRoot(visibilityToggleContainer);
-      visibilityRoot.render(
-        <LocaleProvider>
-          <VisibilityToggle />
-        </LocaleProvider>
-      );
-    }
-
     this.scene = this.sceneEl.object3D;
     this.helpers = {};
     this.sceneHelpers = new THREE.Scene();
@@ -138,9 +113,11 @@ Inspector.prototype = {
     this.scene.add(this.sceneHelpers);
     this.open();
 
-    // If viewer mode is requested, switch to it after initialization is complete
+    // If viewer mode is requested, switch to it after initialization is
+    // complete. The camera flies to the scene's saved start view via
+    // the newScene camera animation once it loads.
     if (isViewerModeRequested()) {
-      useStore.getState().setIsInspectorEnabled(false);
+      useStore.getState().enterViewerMode();
     }
   },
 
@@ -221,7 +198,7 @@ Inspector.prototype = {
     }
   },
 
-  onNewScene: function () {
+  onNewScene: function (sceneEl) {
     this.history.clear();
     if (useStore.getState().isLoadingScene) {
       useStore.getState().updateLoadingProgress(95, 'Loading scene...');
@@ -229,6 +206,8 @@ Inspector.prototype = {
         useStore.getState().finishLoadingScene();
       }, 500);
     }
+    // Model batching is armed and released by batch-models.js itself (beginBatching hooks
+    // the "newScene" event), so it no longer needs an editor-side trigger here.
   },
 
   initEvents: function () {
@@ -405,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // in Inspector init (initEvents) was too late and lost the race
   // intermittently, leaving the loading modal stuck at "Finalizing..." until its
   // 30s optimistic timeout. See issue #1760.
-  scene.addEventListener('newScene', () => inspector.onNewScene());
+  scene.addEventListener('newScene', () => inspector.onNewScene(scene));
   if (scene.hasLoaded) {
     sceneLoaded();
   } else {

@@ -2,15 +2,13 @@
 <html>
 
 <head>
-  <!-- aframe -->
-  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@6a054e85953bbcc71854bcd64f9abde0897be649/dist/aframe-master.min.js"></script>
+  <!-- aframe: this release ships super-three 0.184.0. The npm `three` version in
+       package.json must match, so upgrade A-Frame and npm `three` together. -->
+  <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
   <!-- 3dstreet -->
   <script src="/dist/aframe-street-component.js"></script>
   <!-- mapbox -->
   <script src="/dist/aframe-mapbox-component.min.js"></script>
-
-  <!-- viewer controls - vr teleport -->
-  <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
 
   <title>3DStreet</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -33,35 +31,6 @@
     <span id="map-copyright"></span>
   </div>
 
-  <!-- Viewer Mode UI - shown when inspector not visible -->
-  <div id="viewer-mode-ui">
-    <!-- AR Play Button - shown if device supports XR mode -->
-    <div id="viewer-mode-ar-play-button"></div>
-    <!-- AR Error Message - shown if device does not support WebXR AR mode -->
-    <div id="viewer-mode-ar-webxr-not-supported">
-      Device does not support WebXR.
-    </div>
-    <!-- Viewer Mode - Locomotion Instructions -->
-    <div id="viewer-mode-locomotion-controls">
-      <div class="controls-container">
-        <div class="controls-title">Controls</div>
-        <div class="controls-item">
-          <span class="key-group">W A S D</span> or <span class="key-group">Arrow Keys</span> to move
-        </div>
-        <div class="controls-item">
-          <span class="key-group">Click + Drag</span> to pan screen
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- AR Overlay - only shown when in AR mode -->
-  <div id="viewer-mode-ar-overlay">
-    <button id="viewer-mode-ar-overlay-exit-button" onclick="AFRAME.scenes[0].renderer.xr.getSession().end()">Exit AR Mode</button>
-    <div id="react-ar-controls"></div>
-    <div id="react-visibility-toggle"></div>
-  </div>
-
   <!-- <div class="right-fixed">
     <ul class="right-menu">
       <li onclick="buttonScreenshotTock()"> <a class="camera" href="#"> <span> Capture image as PNG </span> <img
@@ -76,13 +45,13 @@
   </div> -->
 
   <a-scene
-    renderer="colorManagement: true; physicallyCorrectLights: true; anisotropy: 16; logarithmicDepthBuffer: true; antialias: true;"
+    renderer="anisotropy: 16; logarithmicDepthBuffer: true; antialias: true;"
     loading-screen="enabled: false" notify metadata
     device-orientation-permission-ui="enabled: false"
     reflection device-orientation-permission-ui="enabled: false"
-    webxr="requiredFeatures:hit-test,local-floor;referenceSpaceType:local-floor;"
-    xr-mode-ui="XRMode: ar; enterARButton: #viewer-mode-ar-play-button;"
-    css2d-renderer scene-timer="autoStart: false; format: mm:ss:ff">
+    xr-mode-ui="enabled: false"
+    css2d-renderer scene-timer="autoStart: false; format: mm:ss:ff"
+    drive-mode street-traffic>
     <a-assets>
       <!-- TODO: Add this to repo documentation  -->
       <!-- you can specify a custom asset path using below syntax  -->
@@ -105,14 +74,11 @@
 
     <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;" data-no-transform></a-entity>
 
-    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform viewer-mode="preset: camera-path;"
-      cursor-teleport="cameraRig: #cameraRig; cameraHead: #camera;"
-      movement-controls="camera: #camera; fly: true">
-      <a-entity id="camera" data-layer-name="Camera" position="0 1.6 0" camera look-controls="reverseMouseDrag: true" class="autocreated"></a-entity>
-      <a-entity id="leftHand" hand-controls="hand: left;" data-layer-name="Left Controls" class="autocreated" data-no-transform=""
-        blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
-      <a-entity id="rightHand" hand-controls="hand: right" data-layer-name="Right Controls" class="autocreated" data-no-transform=""
-        blink-controls="cameraRig: #cameraRig; teleportOrigin: #camera; rotateOnTeleport:false;"></a-entity>
+    <!-- The rig carries no input controls: edit and view share the editor's
+         camera controls (#1848). Features that need a scene-driven camera
+         (drive mode, WebXR) borrow #camera via mode-manager. -->
+    <a-entity id="cameraRig" class="ph-no-capture" data-layer-name="Viewer" data-no-transform>
+      <a-entity id="camera" data-layer-name="Camera" position="0 1.6 0" camera class="autocreated"></a-entity>
       <a-entity
         id="screenshot"
         data-layer-name="Focus Animation"
@@ -141,20 +107,6 @@
     });
   });
 
-  // XR session error handling
-  if (navigator.xr) {
-    const originalRequestSession = navigator.xr.requestSession.bind(navigator.xr);
-    navigator.xr.requestSession = async function(...args) {
-      try {
-        return await originalRequestSession(...args);
-      } catch (error) {
-        if (window.STREET?.notify) {
-          STREET.notify.errorMessage('XR session failed: ' + error.name);
-        }
-        throw error;
-      }
-    };
-  }
 </script>
 
 </html>

@@ -31,7 +31,11 @@ const ids = Object.keys(en);
 function Harness() {
   const [locale, setLocale] = useState('en');
   return (
-    <IntlProvider locale={locale} defaultLocale="en" messages={CATALOGS[locale]}>
+    <IntlProvider
+      locale={locale}
+      defaultLocale="en"
+      messages={CATALOGS[locale]}
+    >
       <select
         data-testid="locale-select"
         value={locale}

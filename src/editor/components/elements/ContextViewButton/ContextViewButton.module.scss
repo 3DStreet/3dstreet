@@ -1,0 +1,88 @@
+// TASK-025 — Context view button (single, actions-only). Always visible in
+// experimental-nav mode, sitting just RIGHT of the compass. Sized to match the
+// compass's visible DIAL BODY (44 px = the compass's DIAL_R 22 ×2), NOT its
+// 64 px container — the compass body is inset ~10 px inside its box, so a full
+// 64 px circle read significantly larger than the compass. The
+// `.contextButtonDock` placement lives in Main.module.scss; this module styles
+// the widget itself.
+
+$button-size: 44px; // match the compass dial body (Compass DIAL_R = 22)
+
+.contextControl {
+  position: relative;
+  width: $button-size;
+  height: $button-size;
+  user-select: none;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+}
+
+// The button — a round, dark face matching the compass, with the action glyph
+// centred. Clickable with a hover highlight.
+.button {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: #2b2b2b;
+  box-sizing: border-box;
+  cursor: pointer;
+  outline: none;
+
+  &:hover {
+    background: #3a3a3a;
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6);
+  }
+}
+
+// Mono glyphs rendered white to match the dark dock + the compass glyphs.
+.icon {
+  width: 56%;
+  height: 56%;
+  // The source SVGs vary in colour (sunshine fill, mono drone/streetview);
+  // normalise to white so all read consistently in the dark dock.
+  filter: brightness(0) invert(1);
+  pointer-events: none;
+}
+
+// Disabled — the no-op grey-out (no valid target here) AND the busy
+// (mid-animation) hold render identically for the prototype (spec D-C). Keep
+// showing the greyed icon of the would-be action rather than blanking it.
+.disabled {
+  cursor: default;
+  border-color: transparent;
+
+  &:hover {
+    background: #2b2b2b;
+    border-color: transparent;
+  }
+
+  .icon {
+    opacity: 0.4;
+  }
+}
+
+// Tooltip — real DOM (translatable). Opens upward (the widget sits at the
+// bottom edge). Anchored to the left edge.
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 1;
+}

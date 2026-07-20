@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { faRotateLeft, faRotateRight } from '@fortawesome/free-solid-svg-icons';
 import posthog from 'posthog-js';
 import { AwesomeIcon } from '../AwesomeIcon';
@@ -6,6 +7,7 @@ import { Button } from '../Button';
 import Events from '../../../lib/Events';
 
 export const UndoRedo = () => {
+  const intl = useIntl();
   const [undoDisabled, setUndoDisabled] = useState(
     AFRAME.INSPECTOR.history.undos.length === 0
   );
@@ -41,7 +43,10 @@ export const UndoRedo = () => {
         onClick={handleUndoClick}
         leadingIcon={<AwesomeIcon icon={faRotateLeft} />}
         disabled={undoDisabled}
-        title="Undo"
+        title={intl.formatMessage({
+          id: 'undoRedo.undo',
+          defaultMessage: 'Undo'
+        })}
       ></Button>
       <Button
         variant="toolbtn"
@@ -49,7 +54,10 @@ export const UndoRedo = () => {
         onClick={handleRedoClick}
         leadingIcon={<AwesomeIcon icon={faRotateRight} />}
         disabled={redoDisabled}
-        title="Redo"
+        title={intl.formatMessage({
+          id: 'undoRedo.redo',
+          defaultMessage: 'Redo'
+        })}
       ></Button>
     </>
   );

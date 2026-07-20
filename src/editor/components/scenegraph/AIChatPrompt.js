@@ -69,7 +69,7 @@ export const systemPrompt = `
           {
             "type": "sidewalk",
             "width": 3,
-            "level": 1,
+            "elevation": 0.15,
             "surface": "sidewalk",
             "color": "#cccccc",
             "direction": "none"
@@ -77,7 +77,7 @@ export const systemPrompt = `
           {
             "type": "bike-lane",
             "width": 1.5,
-            "level": 0,
+            "elevation": 0,
             "surface": "asphalt",
             "color": "#88cc88",
             "direction": "inbound"
@@ -85,7 +85,7 @@ export const systemPrompt = `
           {
             "type": "drive-lane",
             "width": 3.5,
-            "level": 0,
+            "elevation": 0,
             "surface": "asphalt",
             "color": "#888888",
             "direction": "inbound"
@@ -93,7 +93,7 @@ export const systemPrompt = `
           {
             "type": "drive-lane",
             "width": 3.5,
-            "level": 0,
+            "elevation": 0,
             "surface": "asphalt",
             "color": "#888888",
             "direction": "outbound"
@@ -101,7 +101,7 @@ export const systemPrompt = `
           {
             "type": "bike-lane",
             "width": 1.5,
-            "level": 0,
+            "elevation": 0,
             "surface": "asphalt",
             "color": "#88cc88",
             "direction": "outbound"
@@ -109,7 +109,7 @@ export const systemPrompt = `
           {
             "type": "sidewalk",
             "width": 3,
-            "level": 1,
+            "elevation": 0.15,
             "surface": "sidewalk",
             "color": "#cccccc",
             "direction": "none"
@@ -133,7 +133,7 @@ export const systemPrompt = `
         "segment": {
           "type": "drive-lane",
           "width": 3.5,
-          "level": 0,
+          "elevation": 0,
           "surface": "asphalt",
           "color": "#888888",
           "direction": "inbound"
@@ -153,7 +153,7 @@ export const systemPrompt = `
         "segment": {
           "type": "divider",
           "width": 0.3,
-          "level": 0.1,
+          "elevation": 0.015,
           "surface": "concrete",
           "color": "#888888",
           "direction": "none",

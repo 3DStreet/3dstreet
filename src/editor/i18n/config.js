@@ -42,7 +42,9 @@ const LOCALE_STORAGE_KEY = 'locale';
 export function resolveInitialLocale() {
   try {
     const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
-    if (stored && SUPPORTED_LOCALE_CODES_INTERNAL.includes(stored)) return stored;
+    if (stored && SUPPORTED_LOCALE_CODES_INTERNAL.includes(stored)) {
+      return stored;
+    }
   } catch {
     // ignore storage errors
   }

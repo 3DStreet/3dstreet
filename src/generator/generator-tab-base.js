@@ -1,16 +1,27 @@
 /**
  * Generator Tab Base Class
- * Shared functionality for Create and Modify tabs
+ * Shared functionality for the Image tab (and other GeneratorTabBase tabs)
  */
 
 import FluxUI from './main.js';
-import { assetsService as galleryService } from '@shared/assets';
 import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
 import { httpsCallable } from 'firebase/functions';
-import { functions, auth } from '@shared/services/firebase.js';
+import { functions } from '@shared/services/firebase.js';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import {
+  getStyleSentence,
+  describeStyleText,
+  composePrompt
+} from '@shared/constants/renderStyles.js';
 import { mountModelSelector } from './mount-model-selector.js';
+import { syncJobNotifyEmail } from './job-notify.js';
+import {
+  pollGenerationJob,
+  forceJobNotifyEmail
+} from '@shared/utils/generationJobs.js';
+import { mountStyleSelector } from './mount-style-selector.js';
+import promptFieldStyles from '@shared/styles/promptFields.module.scss';
 import posthog from 'posthog-js';
 
 /**
@@ -36,9 +47,11 @@ class GeneratorTabBase {
       tabId: config.tabId, // 'create' or 'modify'
       tabType: config.tabType, // 'create' or 'modify'
       requiresSourceImage: config.requiresSourceImage || false,
-      requiresPrompt: config.requiresPrompt || false,
       showImagePromptUI: config.showImagePromptUI || false,
-      defaultPrompt: config.defaultPrompt || null,
+      // Optional source image: show the upload with an amber (recommended, not
+      // required) indicator and nudge the user toward providing one, but allow
+      // text-only generation.
+      optionalSourceImage: config.optionalSourceImage || false,
       title: config.title || 'Image Generator',
       description: config.description || 'Generate images with AI'
     };
@@ -57,6 +70,16 @@ class GeneratorTabBase {
     this.renderProgress = 0;
     this.timerInterval = null;
 
+    // Job-status poll state (see pollImageStatus). Images are async jobs now
+    // (#1835): submit returns a jobId and the shared pollGenerationJob loop
+    // drives the live UI, while completion (gallery save) happens server-side.
+    this.activePoll = null; // { promise, cancel } from pollGenerationJob
+    this.activeJobId = null; // in-flight job — target of the email toggle
+    // Most image renders finish in seconds; 15 min is generous headroom before
+    // we give up locally (the job still finishes server-side regardless — the
+    // image lands in the gallery either way).
+    this.POLL_MAX_MS = 15 * 60 * 1000;
+
     // Estimated generation times (in seconds) - built from shared constants
     this.estimatedTimes = buildEstimatedTimes();
 
@@ -65,6 +88,7 @@ class GeneratorTabBase {
 
     // React component instances
     this.modelSelectorInstance = null;
+    this.styleSelectorInstance = null;
   }
 
   /**
@@ -97,10 +121,11 @@ class GeneratorTabBase {
 
     this.createTabContent(tabContainer);
     this.getElements();
+    this.prefillPromptDefaults();
     this.mountModelSelectorComponent();
+    this.mountStyleSelectorComponent();
     this.updateModelParams();
     this.setupEventListeners();
-    this.generateRandomSeed();
 
     // Register this module with the main UI
     FluxUI.tabModules[this.config.tabType] = this;
@@ -156,8 +181,14 @@ class GeneratorTabBase {
       getId('model-selector-container')
     );
 
+    // Render Style - React component container
+    this.elements.styleSelectorContainer = document.getElementById(
+      getId('style-selector-container')
+    );
+
     // Prompt and dimensions
     this.elements.promptInput = document.getElementById(getId('prompt-input'));
+    this.elements.styleInput = document.getElementById(getId('style-input'));
     this.elements.dimensionsGroup = document.getElementById(
       getId('dimensions-group')
     );
@@ -171,64 +202,31 @@ class GeneratorTabBase {
       getId('aspect-ratio-selector')
     );
 
-    // Parameters
-    this.elements.stepsSlider = document.getElementById(getId('steps-slider'));
-    this.elements.stepsValue = document.getElementById(getId('steps-value'));
-    this.elements.guidanceSlider = document.getElementById(
-      getId('guidance-slider')
-    );
-    this.elements.guidanceValue = document.getElementById(
-      getId('guidance-value')
-    );
-    this.elements.safetySlider = document.getElementById(
-      getId('safety-slider')
-    );
-    this.elements.safetyValue = document.getElementById(getId('safety-value'));
-    this.elements.seedInput = document.getElementById(getId('seed-input'));
-    this.elements.randomSeedBtn = document.getElementById(
-      getId('random-seed-btn')
-    );
-    this.elements.randomizeSeedCheckbox = document.getElementById(
-      getId('randomize-seed-checkbox')
-    );
-    this.elements.promptUpsampling = document.getElementById(
-      getId('prompt-upsampling')
-    );
-    this.elements.rawMode = document.getElementById(getId('raw-mode'));
-    this.elements.intervalSlider = document.getElementById(
-      getId('interval-slider')
-    );
-    this.elements.intervalValue = document.getElementById(
-      getId('interval-value')
-    );
-    this.elements.formatJpeg = document.getElementById(getId('format-jpeg'));
-    this.elements.formatPng = document.getElementById(getId('format-png'));
-
     // Image prompt (if applicable)
     if (this.config.showImagePromptUI) {
       this.elements.imagePromptInput =
-        document.getElementById('image-prompt-input');
+        document.getElementById('source-image-input');
       this.elements.imagePromptName =
-        document.getElementById('image-prompt-name');
+        document.getElementById('source-image-name');
       this.elements.imagePromptUploadLabel = document.getElementById(
-        'image-prompt-upload-label'
+        'source-image-upload-label'
       );
       this.elements.imagePromptPreviewContainer = document.getElementById(
-        'image-prompt-preview-container'
+        'source-image-preview-container'
       );
       this.elements.imagePromptPreview = document.getElementById(
-        'image-prompt-preview'
+        'source-image-preview'
       );
       this.elements.imagePromptClear =
-        document.getElementById('image-prompt-clear');
+        document.getElementById('source-image-clear');
       this.elements.imagePromptStrength = document.getElementById(
-        'image-prompt-strength'
+        'source-image-strength'
       );
       this.elements.imagePromptStrengthValue = document.getElementById(
-        'image-prompt-strength-value'
+        'source-image-strength-value'
       );
       this.elements.imagePromptStrengthContainer = document.getElementById(
-        'image-prompt-strength-container'
+        'source-image-strength-container'
       );
     }
 
@@ -239,36 +237,10 @@ class GeneratorTabBase {
     this.elements.aspectRatioGroup = document.getElementById(
       getId('aspect-ratio-group')
     );
-    this.elements.stepsGroup = document.getElementById(getId('steps-group'));
-    this.elements.guidanceGroup = document.getElementById(
-      getId('guidance-group')
-    );
     if (this.config.showImagePromptUI) {
       this.elements.imagePromptGroup =
-        document.getElementById('image-prompt-group');
+        document.getElementById('source-image-group');
     }
-    this.elements.rawModeGroup = document.getElementById(
-      getId('raw-mode-group')
-    );
-    this.elements.intervalGroup = document.getElementById(
-      getId('interval-group')
-    );
-    this.elements.promptUpsamplingGroup = document.getElementById(
-      getId('prompt-upsampling-group')
-    );
-    this.elements.safetyGroup = document.getElementById(getId('safety-group'));
-    this.elements.seedGroup = document.getElementById(getId('seed-group'));
-
-    // Advanced options
-    this.elements.advancedToggle = document.getElementById(
-      getId('advanced-toggle')
-    );
-    this.elements.advancedOptions = document.getElementById(
-      getId('advanced-options')
-    );
-    this.elements.advancedIcon = document.getElementById(
-      getId('advanced-icon')
-    );
 
     // Preview
     this.elements.previewContainer = document.getElementById(
@@ -319,10 +291,19 @@ class GeneratorTabBase {
       getId('generate-text')
     );
     this.elements.tokenCost = document.getElementById(getId('token-cost'));
+    this.elements.notifyEmail = document.getElementById(getId('notify-email'));
+    this.elements.notifyEmailRow = document.getElementById(
+      getId('notify-email-row')
+    );
 
     // Verify critical elements
     const missingElements = [];
-    ['modelSelectorContainer', 'promptInput', 'generateBtn'].forEach((elem) => {
+    [
+      'modelSelectorContainer',
+      'promptInput',
+      'styleInput',
+      'generateBtn'
+    ].forEach((elem) => {
       if (!this.elements[elem]) {
         missingElements.push(elem);
       }
@@ -337,34 +318,58 @@ class GeneratorTabBase {
   }
 
   /**
-   * Generate HTML for image prompt section (for modify tab)
+   * Whether a source image is required for the current selection. On the Image
+   * tab this is model-aware (some models cannot run without one); legacy tabs
+   * fall back to the tab-level requiresSourceImage flag.
+   */
+  sourceImageRequired() {
+    if (this.config.optionalSourceImage) {
+      return !!REPLICATE_MODELS[this.selectedModel]?.requiresSourceImage;
+    }
+    return this.config.requiresSourceImage;
+  }
+
+  /**
+   * Generate HTML for the source-image section. The `*` indicator is amber when
+   * an image is merely recommended and red when the selected model requires one
+   * (updated live by updateSourceImageIndicator on model change).
    */
   getImagePromptHTML() {
     if (!this.config.showImagePromptUI) return '';
 
+    const labelText = this.config.optionalSourceImage
+      ? 'Reference Image'
+      : 'Source Image';
+    const required = this.sourceImageRequired();
+    const indicator = `<span id="source-image-indicator" style="color: ${
+      required ? '#ef4444' : '#F5A623'
+    };" title="${
+      required ? 'Required for this model' : 'Recommended for better results'
+    }">*</span>`;
+
     return `
-                    <!-- Image Prompt (for remix) -->
-                    <div id="image-prompt-group" class="mb-4 param-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Source Image <span class="text-red-500">*</span></label>
+                    <!-- Source Image -->
+                    <div id="source-image-group" class="mb-4 param-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">${labelText} ${indicator}</label>
                         <div class="flex flex-col space-y-2">
-                            <label id="image-prompt-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+                            <label id="source-image-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
                                 <div class="flex flex-col items-center">
                                     <p class="text-sm text-gray-500">Click to upload an image</p>
-                                    <p id="image-prompt-name" class="text-xs text-gray-400 mt-1">No file selected</p>
+                                    <p id="source-image-name" class="text-xs text-gray-400 mt-1">No file selected</p>
                                 </div>
-                                <input id="image-prompt-input" type="file" class="hidden" accept="image/png, image/jpeg, image/jpg" />
+                                <input id="source-image-input" type="file" class="hidden" accept="image/png, image/jpeg, image/jpg" />
                             </label>
-                            <div id="image-prompt-preview-container" class="hidden relative">
-                                <img id="image-prompt-preview" class="w-full rounded-lg border border-gray-300" alt="Selected image">
-                                <button id="image-prompt-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="Clear image">
+                            <div id="source-image-preview-container" class="hidden relative">
+                                <img id="source-image-preview" class="w-full rounded-lg border border-gray-300" alt="Selected image">
+                                <button id="source-image-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="Clear image">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 hover:text-red-600 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
                             </div>
-                            <div class="hidden" id="image-prompt-strength-container">
-                                <label class="block text-xs font-medium text-gray-700 mb-1">Image Strength: <span id="image-prompt-strength-value">0.3</span></label>
-                                <input type="range" id="image-prompt-strength" min="0" max="1" step="0.05" value="0.3" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="hidden" id="source-image-strength-container">
+                                <label class="block text-xs font-medium text-gray-700 mb-1">Image Strength: <span id="source-image-strength-value">0.3</span></label>
+                                <input type="range" id="source-image-strength" min="0" max="1" step="0.05" value="0.3" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                             </div>
                         </div>
                     </div>
@@ -372,23 +377,22 @@ class GeneratorTabBase {
   }
 
   /**
-   * Get prompt label based on tab type
+   * Get prompt label. A non-empty composed prompt is always required
+   * (validateGeneration), so the required marker is unconditional.
    */
   getPromptLabel() {
-    if (this.config.requiresPrompt) {
-      return 'Prompt <span class="text-red-500">*</span>';
-    }
-    return 'Prompt (Optional)';
+    return 'Prompt <span class="text-red-500">*</span>';
   }
 
   /**
-   * Get prompt placeholder based on tab type
+   * Get instructions placeholder based on tab type. Both fields start empty
+   * (helptext only); validateGeneration rejects an all-empty composed prompt.
    */
   getPromptPlaceholder() {
     if (this.config.tabType === 'create') {
-      return 'Describe what to generate...';
+      return 'Describe what to generate';
     }
-    return 'create a photorealistic render of an urban street scene with accurate shading and lighting';
+    return 'Describe what to generate or how to change the source image';
   }
 
   /**
@@ -403,7 +407,12 @@ class GeneratorTabBase {
 
     this.modelSelectorInstance = mountModelSelector(container, {
       value: this.selectedModel,
-      hasSourceImage: this.config.showImagePromptUI, // Hide fal models on create tab (no source image)
+      // The Image tab (optionalSourceImage) shows all models at all times,
+      // regardless of whether an image is present. Legacy tabs key off
+      // showImagePromptUI to hide edit-only models when there's no image.
+      hasSourceImage: this.config.optionalSourceImage
+        ? true
+        : this.config.showImagePromptUI,
       onChange: (modelId) => {
         this.selectedModel = modelId;
         this.updateModelParams();
@@ -411,18 +420,82 @@ class GeneratorTabBase {
         if (this.modelSelectorInstance) {
           this.modelSelectorInstance.update({ value: modelId });
         }
-        // Update prompt input with model's default prompt if current prompt is empty
-        const modelConfig = REPLICATE_MODELS[modelId];
-        if (
-          modelConfig?.prompt &&
-          this.elements.promptInput &&
-          !this.elements.promptInput.value.trim()
-        ) {
-          this.elements.promptInput.value = modelConfig.prompt;
-        }
       },
       disabled: false
     });
+  }
+
+  /**
+   * Both fields start empty in the generator — helptext placeholders carry
+   * the guidance, and what's sent is always exactly what's visible (no
+   * hidden fallback prompt). Styling is opt-in via the chips.
+   */
+  prefillPromptDefaults() {
+    if (this.elements.promptInput) {
+      this.elements.promptInput.value = '';
+    }
+    if (this.elements.styleInput) {
+      this.elements.styleInput.value = '';
+    }
+    this.updatePromptTint();
+  }
+
+  /**
+   * Text levels, shared with the editor (promptFields.module.scss):
+   * helptext placeholder (italic, darkest gray), preset style text
+   * (middle gray), and user-authored text (white via .userText).
+   */
+  updatePromptTint() {
+    const setTint = (el, isUserText) => {
+      if (!el) return;
+      el.classList.toggle(promptFieldStyles.userText, isUserText);
+    };
+    setTint(this.elements.promptInput, !!this.elements.promptInput?.value);
+    setTint(
+      this.elements.styleInput,
+      describeStyleText(this.elements.styleInput?.value) === 'custom'
+    );
+  }
+
+  /**
+   * Mount the RenderStyleSelector React component. Chips write only the
+   * style field: clicking one replaces the style sentence (the 'none' chip
+   * clears it) while the instructions field is untouched. A chip stays
+   * highlighted only while its unedited sentence is in the style field.
+   */
+  mountStyleSelectorComponent() {
+    const container = this.elements.styleSelectorContainer;
+    if (!container) {
+      console.error('Style selector container not found');
+      return;
+    }
+
+    this._lastActiveStyleId = describeStyleText(
+      this.elements.styleInput?.value
+    );
+    this.styleSelectorInstance = mountStyleSelector(container, {
+      activeStyleId: this._lastActiveStyleId,
+      onSelect: (styleId) => {
+        this.elements.styleInput.value = getStyleSentence(styleId);
+        this.refreshStyleHighlight();
+      },
+      disabled: false
+    });
+  }
+
+  /**
+   * Sync chip highlighting with the style field contents. Called on chip
+   * click and on manual edits; edited text highlights no chip ('custom'),
+   * an empty field highlights the 'none' chip. Skips the React re-render
+   * when the highlight didn't change (typing custom text stays 'custom').
+   */
+  refreshStyleHighlight() {
+    this.updatePromptTint();
+    if (!this.styleSelectorInstance) return;
+    const activeStyleId = describeStyleText(this.elements.styleInput?.value);
+    if (activeStyleId === this._lastActiveStyleId) return;
+    this._lastActiveStyleId = activeStyleId;
+    this.styleSelectorInstance.update({ activeStyleId });
   }
 
   /**
@@ -447,11 +520,20 @@ class GeneratorTabBase {
 
                     ${this.getImagePromptHTML()}
 
-                    <!-- Prompt -->
+                    <!-- Prompt: two stacked fields sent as one string
+                         (instructions + style sentence, joined verbatim).
+                         Style chips write only the style field. -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">${this.getPromptLabel()}</label>
-                        <textarea id="${getId('prompt-input')}" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                  placeholder="${this.getPromptPlaceholder()}"></textarea>
+                        <div class="${promptFieldStyles.fieldGroup}">
+                            <label for="${getId('prompt-input')}" class="${promptFieldStyles.fieldLabel}">Instructions</label>
+                            <textarea id="${getId('prompt-input')}" rows="3" class="${promptFieldStyles.textarea}"
+                                      placeholder="${this.getPromptPlaceholder()}"></textarea>
+                            <label for="${getId('style-input')}" class="${promptFieldStyles.fieldLabel}">Style</label>
+                            <div id="${getId('style-selector-container')}"></div>
+                            <textarea id="${getId('style-input')}" rows="2" class="${promptFieldStyles.textarea}"
+                                      placeholder="No style change, use instructions only"></textarea>
+                        </div>
                     </div>
 
                     <!-- Image Dimensions -->
@@ -483,93 +565,6 @@ class GeneratorTabBase {
                         </select>
                     </div>
 
-                    <!-- Advanced Options -->
-                    <div class="mb-4">
-                        <div class="flex justify-between items-center cursor-pointer" id="${getId('advanced-toggle')}">
-                            <span class="text-sm font-medium text-gray-700">Advanced Options</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="${getId('advanced-icon')}">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </div>
-
-                        <div class="mt-2 hidden" id="${getId('advanced-options')}">
-                            <!-- Steps -->
-                            <div class="mb-3 param-group" id="${getId('steps-group')}">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Steps: <span id="${getId('steps-value')}">40</span></label>
-                                <input type="range" id="${getId('steps-slider')}" min="1" max="50" value="40" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                            </div>
-
-                            <!-- Guidance Scale -->
-                            <div class="mb-3 param-group" id="${getId('guidance-group')}">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Guidance Scale: <span id="${getId('guidance-value')}">2.5</span></label>
-                                <input type="range" id="${getId('guidance-slider')}" min="1.5" max="5" step="0.1" value="2.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                            </div>
-
-                            <!-- Safety Tolerance -->
-                            <div class="mb-3 param-group opacity-50 cursor-not-allowed" id="${getId('safety-group')}">
-                                <label class="block text-sm font-medium text-gray-500 mb-1">Safety Tolerance: <span id="${getId('safety-value')}">2</span></label>
-                                <input type="range" id="${getId('safety-slider')}" min="0" max="6" step="1" value="2" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed pointer-events-none" disabled>
-                                <p class="text-xs text-gray-500 mt-1">Higher values are less strict (0 = most strict, 6 = least strict)</p>
-                            </div>
-
-                            <!-- Seed -->
-                            <div class="mb-3 param-group" id="${getId('seed-group')}">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Seed</label>
-                                <div class="flex">
-                                    <input type="number" id="${getId('seed-input')}" placeholder="Random" class="w-full px-3 py-2 border border-gray-300 rounded-l-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                    <button id="${getId('random-seed-btn')}" class="px-3 py-2 bg-gray-100 border border-gray-300 border-l-0 rounded-r-md hover:bg-gray-200">
-                                        🎲
-                                    </button>
-                                </div>
-                                <!-- Randomize Seed Checkbox -->
-                                <div class="mt-2 flex items-center">
-                                    <input type="checkbox" id="${getId('randomize-seed-checkbox')}" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" checked>
-                                    <label for="${getId('randomize-seed-checkbox')}" class="ml-2 block text-sm text-gray-700">Randomize seed before each generation</label>
-                                </div>
-                            </div>
-
-                            <!-- Prompt Upsampling -->
-                            <div class="mb-3 param-group" id="${getId('prompt-upsampling-group')}">
-                                <div class="flex items-center">
-                                    <input type="checkbox" id="${getId('prompt-upsampling')}" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                                    <label for="${getId('prompt-upsampling')}" class="ml-2 block text-sm text-gray-700">Prompt Upsampling</label>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-1">Automatically enhances prompt with additional details</p>
-                            </div>
-
-                            <!-- Raw Mode (Ultra only) -->
-                            <div class="mb-3 param-group hidden" id="${getId('raw-mode-group')}">
-                                <div class="flex items-center">
-                                    <input type="checkbox" id="${getId('raw-mode')}" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                                    <label for="${getId('raw-mode')}" class="ml-2 block text-sm text-gray-700">Raw Mode</label>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-1">Generate less processed, more natural-looking images</p>
-                            </div>
-
-                            <!-- Interval (Pro only) -->
-                            <div class="mb-3 param-group hidden" id="${getId('interval-group')}">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Interval: <span id="${getId('interval-value')}">2.0</span></label>
-                                <input type="range" id="${getId('interval-slider')}" min="1" max="4" step="0.1" value="2.0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                                <p class="text-xs text-gray-500 mt-1">Parameter for guidance control</p>
-                            </div>
-
-                            <!-- Output Format -->
-                            <div class="mb-3">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Output Format</label>
-                                <div class="flex space-x-4">
-                                    <div class="flex items-center">
-                                        <input type="radio" id="${getId('format-jpeg')}" name="${getId('output-format')}" value="jpeg" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
-                                        <label for="${getId('format-jpeg')}" class="ml-2 block text-sm text-gray-700">JPEG</label>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <input type="radio" id="${getId('format-png')}" name="${getId('output-format')}" value="png" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
-                                        <label for="${getId('format-png')}" class="ml-2 block text-sm text-gray-700">PNG</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Generate Button -->
                     <button id="${getId('generate-btn')}" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-center gap-2">
                         <svg id="${getId('generate-spinner')}" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -582,6 +577,7 @@ class GeneratorTabBase {
                             <span id="${getId('token-cost')}" class="text-sm font-medium">1</span>
                         </span>
                     </button>
+
                 </div>
 
                 <!-- Preview Column -->
@@ -607,6 +603,18 @@ class GeneratorTabBase {
                                 <span class="generator-progress-text" id="${getId('loading-text')}">Generating your image...</span>
                                 <span class="generator-progress-text hidden" id="${getId('generator-overtime-text')}" style="margin-top: 4px; color: #fbbf24;">Generation taking longer than expected.</span>
                             </div>
+                            <!-- Email when done. Hidden until the submit
+                                 returns a jobId — mid-render it's the "you
+                                 can close this tab" affordance. Toggling
+                                 writes through to the job doc
+                                 (setGenerationJobNotify); suppressed
+                                 server-side if this tab is still open when
+                                 the job finishes. -->
+                            <label id="${getId('notify-email-row')}" class="hidden flex items-center gap-2 mt-4 text-sm text-gray-600 cursor-pointer select-none">
+                                <input id="${getId('notify-email')}" type="checkbox" checked
+                                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                                Email me when my image is ready (you can close this tab)
+                            </label>
                         </div>
                     </div>
                     <div class="px-6 pb-6">
@@ -644,34 +652,34 @@ class GeneratorTabBase {
     // Model selector is now handled by React component
     // No need for manual event listener
 
-    this.elements.advancedToggle.addEventListener(
-      'click',
-      this.toggleAdvancedOptions.bind(this)
-    );
-
-    this.elements.randomSeedBtn.addEventListener(
-      'click',
-      this.generateRandomSeed.bind(this)
-    );
-
     this.elements.generateBtn.addEventListener(
       'click',
       this.generateImage.bind(this)
     );
 
-    // Keyboard shortcut for prompt input
-    this.elements.promptInput.addEventListener('keydown', (e) => {
+    // Keyboard shortcut for both prompt fields
+    const generateOnCmdEnter = (e) => {
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         this.elements.generateBtn.click();
       }
+    };
+    this.elements.promptInput.addEventListener('keydown', generateOnCmdEnter);
+    this.elements.styleInput.addEventListener('keydown', generateOnCmdEnter);
+
+    // Editing the style field clears (or restores) the chip highlight;
+    // editing either field updates the default-vs-edited text tint
+    this.elements.styleInput.addEventListener('input', () => {
+      this.refreshStyleHighlight();
+    });
+    this.elements.promptInput.addEventListener('input', () => {
+      this.updatePromptTint();
     });
 
-    // Setup sliders
-    this.setupSlider(this.elements.stepsSlider, this.elements.stepsValue);
-    this.setupSlider(this.elements.guidanceSlider, this.elements.guidanceValue);
-    this.setupSlider(this.elements.safetySlider, this.elements.safetyValue);
-    this.setupSlider(this.elements.intervalSlider, this.elements.intervalValue);
+    // Mid-render email opt-in writes through to the in-flight job doc
+    this.elements.notifyEmail?.addEventListener('change', () => {
+      this.syncJobNotify();
+    });
 
     // Setup image prompt listeners (if applicable)
     if (this.config.showImagePromptUI) {
@@ -828,61 +836,36 @@ class GeneratorTabBase {
       this.elements.tokenCost.textContent = 1;
     }
 
-    // Default visibility states
+    // Keep the source-image `*` in sync: red when this model requires an image.
+    this.updateSourceImageIndicator();
+
+    // Default visibility states. All current models take a fixed size and
+    // sampler settings server-side, so the per-model tuning UI (steps,
+    // guidance, seed, …) is gone entirely; only dimensions/aspect-ratio
+    // remain, for a future model that accepts them.
     let showDimensions = true;
     let showAspectRatio = false;
-    let showSteps = true;
-    let showGuidance = true;
-    let showRaw = false;
-    let showInterval = false;
     let showImagePrompt = this.config.showImagePromptUI;
-    let showSafetyTolerance = true;
-    let showSeed = true;
 
     if (this.config.showImagePromptUI) {
       this.elements.imagePromptStrengthContainer.classList.add('hidden');
     }
 
-    // Update slider ranges and visibility based on model
     switch (model) {
-      case 'kontext-realearth':
-      case 'nano-banana':
       case 'nano-banana-pro':
-      case 'seedream-4':
+      case 'nano-banana-2':
       case 'seedream-4.5':
+      case 'fal-flux-2-max-edit':
+      case 'fal-flux-2-pro-edit':
+        // These endpoints ignore dimensions (a fixed image_size is sent).
         showDimensions = false;
         showAspectRatio = false;
-        showRaw = false;
-        showSteps = false;
-        showGuidance = false;
-        showSafetyTolerance = false;
-        showSeed = false;
-        this.elements.promptUpsamplingGroup.classList.add('hidden');
-        break;
-
-      // fal.ai models
-      case 'fal-flux-2-edit':
-      case 'fal-flux-2-lora-sfmta':
-        showDimensions = false;
-        showAspectRatio = false;
-        showRaw = false;
-        showSteps = false;
-        showGuidance = false;
-        showSafetyTolerance = false;
-        showSeed = false;
-        this.elements.promptUpsamplingGroup.classList.add('hidden');
         break;
     }
 
     // Apply visibility
     this.elements.dimensionsGroup.classList.toggle('hidden', !showDimensions);
     this.elements.aspectRatioGroup.classList.toggle('hidden', !showAspectRatio);
-    this.elements.stepsGroup.classList.toggle('hidden', !showSteps);
-    this.elements.guidanceGroup.classList.toggle('hidden', !showGuidance);
-    this.elements.rawModeGroup.classList.toggle('hidden', !showRaw);
-    this.elements.intervalGroup.classList.toggle('hidden', !showInterval);
-    this.elements.safetyGroup.classList.toggle('hidden', !showSafetyTolerance);
-    this.elements.seedGroup.classList.toggle('hidden', !showSeed);
 
     if (this.config.showImagePromptUI) {
       this.elements.imagePromptGroup.classList.toggle(
@@ -890,9 +873,6 @@ class GeneratorTabBase {
         !showImagePrompt
       );
     }
-
-    this.elements.promptUpsamplingGroup.classList.remove('hidden');
-
     if (showDimensions) {
       this.updateDimensionGrid(this.selectedOrientation);
     }
@@ -992,20 +972,6 @@ class GeneratorTabBase {
   }
 
   /**
-   * Toggle advanced options visibility
-   */
-  toggleAdvancedOptions() {
-    this.elements.advancedOptions.classList.toggle('hidden');
-    const isVisible =
-      !this.elements.advancedOptions.classList.contains('hidden');
-    if (isVisible) {
-      this.elements.advancedIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />`;
-    } else {
-      this.elements.advancedIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />`;
-    }
-  }
-
-  /**
    * Setup range sliders
    */
   setupSlider(slider, valueDisplay) {
@@ -1014,13 +980,6 @@ class GeneratorTabBase {
         valueDisplay.textContent = slider.value;
       });
     }
-  }
-
-  /**
-   * Generate a random seed
-   */
-  generateRandomSeed() {
-    this.elements.seedInput.value = Math.floor(Math.random() * 1000000);
   }
 
   /**
@@ -1072,6 +1031,9 @@ class GeneratorTabBase {
     this.elements.imagePromptPreview.src = imageDataUrl;
     this.elements.imagePromptUploadLabel.classList.add('hidden');
     this.elements.imagePromptPreviewContainer.classList.remove('hidden');
+
+    // An image is now present, so clear any lingering "add it here" hint.
+    this.removeReferenceImageArrow();
   }
 
   /**
@@ -1124,27 +1086,30 @@ class GeneratorTabBase {
       return false;
     }
 
-    // Check prompt requirement
-    if (this.config.requiresPrompt) {
-      const prompt = this.elements.promptInput.value.trim();
-      if (!prompt) {
-        FluxUI.showNotification(
-          'Prompt is required. Please enter a text prompt to create an image.',
-          'error'
-        );
-        return false;
-      }
+    // Explicit prompts only: the two visible fields are the whole prompt,
+    // with no hidden fallback, so an all-empty prompt has nothing to send.
+    const prompt = composePrompt({
+      instructions: this.elements.promptInput.value,
+      style: this.elements.styleInput.value
+    });
+    if (!prompt) {
+      FluxUI.showNotification(
+        'Add instructions or pick a style to generate an image.',
+        'error'
+      );
+      return false;
     }
 
-    // Check source image requirement
-    if (this.config.requiresSourceImage) {
-      if (!this.imagePromptData) {
-        FluxUI.showNotification(
-          'Source image is required. Please upload an image to modify.',
-          'error'
-        );
-        return false;
-      }
+    // Check source image requirement (tab-level or, on the Image tab,
+    // model-level). Some models cannot run without a source image, so deny
+    // hard at the client; there is no "generate anyway" bypass for these.
+    if (this.sourceImageRequired() && !this.imagePromptData) {
+      FluxUI.showNotification(
+        'This model requires a source image. Please upload one to continue.',
+        'error'
+      );
+      this.showReferenceImageArrow();
+      return false;
     }
 
     return true;
@@ -1158,6 +1123,18 @@ class GeneratorTabBase {
     if (!this.validateGeneration()) {
       return;
     }
+
+    // Optional-source-image tab: coax the user toward a reference image, but
+    // let them proceed text-only via the nudge's "Generate anyway".
+    if (
+      this.config.optionalSourceImage &&
+      !this.imagePromptData &&
+      !this._proceedWithoutImage
+    ) {
+      this.showImageNudge();
+      return;
+    }
+    this._proceedWithoutImage = false;
 
     const model = this.selectedModel;
     const modelConfig = REPLICATE_MODELS[model];
@@ -1175,6 +1152,129 @@ class GeneratorTabBase {
     }
 
     FluxUI.showNotification('Invalid model selected', 'error');
+  }
+
+  /**
+   * Empty-image nudge dialog (#1767): recommend a reference image without
+   * disparaging text-only generation, with a proceed-anyway escape hatch.
+   */
+  showImageNudge() {
+    const existing = document.getElementById('image-nudge-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'image-nudge-modal';
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content" style="max-width: 440px; padding: 1.5rem;">
+        <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">Add a reference image for better results</h3>
+        <p style="font-size: 0.875rem; line-height: 1.55; color: #9ca3af; margin-bottom: 1.5rem;">
+          A photo or reference image gives the AI real-world structure to match, producing far more accurate, usable results. Text-only generation works, but results are rougher and best for quick concepts.
+        </p>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button id="image-nudge-generate" style="padding: 0.5rem 1rem; border: 1px solid #4b5563; background: transparent; color: #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer;">
+            Generate anyway
+          </button>
+          <button id="image-nudge-goback" style="padding: 0.5rem 1rem; border: none; background: #4f46e5; color: #fff; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer;">
+            Go back
+          </button>
+        </div>
+      </div>
+    `;
+
+    const close = () => modal.remove();
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) close();
+    });
+
+    // "Go back" simply dismisses the dialog and points an arrow at the
+    // reference-image upload area; it does not open the file chooser.
+    modal.querySelector('#image-nudge-goback').addEventListener('click', () => {
+      close();
+      this.showReferenceImageArrow();
+    });
+
+    modal
+      .querySelector('#image-nudge-generate')
+      .addEventListener('click', () => {
+        close();
+        this._proceedWithoutImage = true;
+        this.generateImage();
+      });
+
+    document.body.appendChild(modal);
+  }
+
+  /**
+   * Point a left-facing arrow at the reference-image upload area so the user
+   * knows where to add an image after dismissing the nudge. Auto-removes on a
+   * timer or once an image is added.
+   */
+  showReferenceImageArrow() {
+    this.removeReferenceImageArrow();
+
+    const group = this.elements.imagePromptGroup;
+    const label = this.elements.imagePromptUploadLabel;
+    if (!group || !label) return;
+
+    if (!document.getElementById('ref-arrow-style')) {
+      const style = document.createElement('style');
+      style.id = 'ref-arrow-style';
+      style.textContent =
+        '@keyframes ref-arrow-nudge{0%,100%{transform:translateY(-50%) translateX(0);}50%{transform:translateY(-50%) translateX(-7px);}}';
+      document.head.appendChild(style);
+    }
+
+    group.style.position = 'relative';
+    label.style.boxShadow = '0 0 0 2px #F5A623';
+    label.style.borderColor = '#F5A623';
+
+    const arrow = document.createElement('div');
+    arrow.id = 'reference-image-arrow';
+    arrow.style.cssText = `position:absolute;left:100%;top:${
+      label.offsetTop + label.offsetHeight / 2
+    }px;margin-left:0.5rem;display:flex;align-items:center;gap:0.375rem;color:#F5A623;font-size:0.8125rem;font-weight:600;white-space:nowrap;pointer-events:none;z-index:20;animation:ref-arrow-nudge 1s ease-in-out infinite;`;
+    arrow.innerHTML = `
+      <svg width="30" height="20" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+        <path d="M29 10H3M3 10L11 3M3 10L11 17" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Add image here</span>
+    `;
+    group.appendChild(arrow);
+
+    this._refArrowTimer = setTimeout(
+      () => this.removeReferenceImageArrow(),
+      8000
+    );
+  }
+
+  removeReferenceImageArrow() {
+    if (this._refArrowTimer) {
+      clearTimeout(this._refArrowTimer);
+      this._refArrowTimer = null;
+    }
+    const arrow = document.getElementById('reference-image-arrow');
+    if (arrow) arrow.remove();
+    const label = this.elements.imagePromptUploadLabel;
+    if (label) {
+      label.style.boxShadow = '';
+      label.style.borderColor = '';
+    }
+  }
+
+  /**
+   * Refresh the source-image `*` color/tooltip for the current model: red when
+   * the model requires an image, amber when it is only recommended.
+   */
+  updateSourceImageIndicator() {
+    const el = document.getElementById('source-image-indicator');
+    if (!el) return;
+    const required = this.sourceImageRequired();
+    el.style.color = required ? '#ef4444' : '#F5A623';
+    el.title = required
+      ? 'Required for this model'
+      : 'Recommended for better results';
   }
 
   /**
@@ -1199,7 +1299,35 @@ class GeneratorTabBase {
   }
 
   /**
-   * Generate image using Replicate API
+   * Prepare the source image (if any) for submission: normalize to a data URL
+   * and re-encode as JPEG at 90% quality to reduce upload time.
+   */
+  async prepareInputImage() {
+    if (!this.imagePromptData) return null;
+
+    let inputImageSrc = this.imagePromptData.startsWith('data:')
+      ? this.imagePromptData
+      : `data:image/jpeg;base64,${this.imagePromptData}`;
+
+    if (inputImageSrc.startsWith('data:image/')) {
+      try {
+        inputImageSrc = await this.convertToJpeg(inputImageSrc, 0.9);
+      } catch (error) {
+        console.warn('Failed to convert to JPEG, using original:', error);
+      }
+    }
+    return inputImageSrc;
+  }
+
+  /**
+   * Generate image using Replicate API.
+   *
+   * Async, browser-independent flow since #1835 (mirrors video.js):
+   * generateReplicateImage creates a generation job (with a webhook) and
+   * returns its jobId immediately instead of holding the callable connection
+   * open for the whole render. The server saves the finished image to the
+   * gallery; this UI polls getGenerationJobStatus only to reflect progress
+   * and show the result while open.
    */
   async generateReplicateImage(model) {
     const modelConfig = REPLICATE_MODELS[model];
@@ -1208,7 +1336,7 @@ class GeneratorTabBase {
       return;
     }
 
-    // For modify tab, check image requirement
+    // Tab-level source-image requirement (legacy tabs)
     if (this.config.requiresSourceImage && !this.imagePromptData) {
       FluxUI.showNotification(
         'Source image is required for this model',
@@ -1217,6 +1345,7 @@ class GeneratorTabBase {
       return;
     }
 
+    this.stopPolling();
     this.toggleLoading(true);
     this.startTimer(model);
 
@@ -1225,29 +1354,19 @@ class GeneratorTabBase {
         functions,
         'generateReplicateImage',
         {
-          timeout: 300000
+          // Submit-and-return; the render itself is async.
+          timeout: 120000
         }
       );
 
-      const prompt =
-        this.elements.promptInput.value.trim() || modelConfig.prompt;
-
-      // Prepare input image if available
-      let inputImageSrc = null;
-      if (this.imagePromptData) {
-        inputImageSrc = this.imagePromptData.startsWith('data:')
-          ? this.imagePromptData
-          : `data:image/jpeg;base64,${this.imagePromptData}`;
-
-        // Convert to JPEG with 90% quality to reduce upload time
-        if (inputImageSrc.startsWith('data:image/')) {
-          try {
-            inputImageSrc = await this.convertToJpeg(inputImageSrc, 0.9);
-          } catch (error) {
-            console.warn('Failed to convert to JPEG, using original:', error);
-          }
-        }
-      }
+      // The two visible fields are the whole prompt, joined verbatim — no
+      // hidden fallback (validateGeneration rejects an all-empty prompt).
+      const prompt = composePrompt({
+        instructions: this.elements.promptInput.value,
+        style: this.elements.styleInput.value
+      });
+      const promptStyle = describeStyleText(this.elements.styleInput.value);
+      const inputImageSrc = await this.prepareInputImage();
 
       const result = await generateReplicateImage({
         prompt: prompt,
@@ -1257,81 +1376,26 @@ class GeneratorTabBase {
         model_version: modelConfig.version,
         model_id: model,
         scene_id: null,
-        source: 'generator'
+        source: 'generator',
+        // The gallery save happens server-side (#1835); ride the style label
+        // on the job doc so it lands in the saved asset's metadata.
+        gallery_metadata: { renderStyle: promptStyle },
+        // Opt-in completion email, recorded on the job doc. The server only
+        // sends it if this tab isn't around to ack the result (i.e. closed).
+        notify: { email: !!this.elements.notifyEmail?.checked }
       });
 
-      if (result.data.success) {
-        const imageUrl = result.data.image_url;
-
-        this.currentParams = {
-          model: model,
-          model_name: modelConfig.name,
-          prompt: prompt,
-          timestamp: new Date().toISOString()
-        };
-
-        this.currentImageUrl = imageUrl;
-        this.displayImage(imageUrl);
-        this.saveToGallery(imageUrl);
-        this.stopTimer();
-        this.toggleLoading(false);
-
-        if (result.data.remainingTokens !== undefined) {
-          FluxUI.showNotification(
-            `Image generated successfully! ${result.data.remainingTokens} gen tokens remaining. (${modelConfig.name})`,
-            'success'
-          );
-        } else {
-          FluxUI.showNotification(
-            `Image generated successfully! (${modelConfig.name})`,
-            'success'
-          );
-        }
-
-        // Funnel event: ai_render_used (for conversion funnel analysis)
-        posthog.capture('ai_render_used', {
-          token_type: 'gen',
-          model: model,
-          source: 'generator',
-          is_pro_user: window.authState?.currentUser?.isPro || false
-        });
-
-        // Check if user just used their last gen token (track token_limit_reached)
-        if (
-          result.data.remainingTokens !== undefined &&
-          result.data.remainingTokens === 0
-        ) {
-          posthog.capture('token_limit_reached', {
-            token_type: 'gen',
-            source: 'generator'
-          });
-        }
-
-        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
-      } else {
-        throw new Error('Failed to generate image');
-      }
+      this.onImageJobSubmitted(result, model, modelConfig, prompt, promptStyle);
     } catch (error) {
       console.error('Error generating Replicate image:', error);
-      this.stopTimer();
-
-      let errorMessage = 'Failed to generate image';
-      if (error.code === 'unauthenticated') {
-        errorMessage = 'Please sign in to use image generation';
-      } else if (error.code === 'resource-exhausted') {
-        errorMessage =
-          'No tokens available. Please purchase more tokens or upgrade to Pro.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      FluxUI.showNotification(errorMessage, 'error');
-      this.toggleLoading(false);
+      this.handleGenerationError(error);
     }
   }
 
   /**
-   * Generate image using fal.ai API
+   * Generate image using fal.ai API. Same async job flow as
+   * generateReplicateImage above — only the submit callable and its
+   * model-specific parameters differ.
    */
   async generateFalImage(model) {
     const modelConfig = REPLICATE_MODELS[model];
@@ -1340,7 +1404,7 @@ class GeneratorTabBase {
       return;
     }
 
-    // For modify tab, check image requirement
+    // Tab-level source-image requirement (legacy tabs)
     if (this.config.requiresSourceImage && !this.imagePromptData) {
       FluxUI.showNotification(
         'Source image is required for this model',
@@ -1349,33 +1413,24 @@ class GeneratorTabBase {
       return;
     }
 
+    this.stopPolling();
     this.toggleLoading(true);
     this.startTimer(model);
 
     try {
       const generateFalImage = httpsCallable(functions, 'generateFalImage', {
-        timeout: 300000
+        // Submit-and-return; the render itself is async.
+        timeout: 120000
       });
 
-      const prompt =
-        this.elements.promptInput.value.trim() || modelConfig.prompt;
-
-      // Prepare input image if available
-      let inputImageSrc = null;
-      if (this.imagePromptData) {
-        inputImageSrc = this.imagePromptData.startsWith('data:')
-          ? this.imagePromptData
-          : `data:image/jpeg;base64,${this.imagePromptData}`;
-
-        // Convert to JPEG with 90% quality to reduce upload time
-        if (inputImageSrc.startsWith('data:image/')) {
-          try {
-            inputImageSrc = await this.convertToJpeg(inputImageSrc, 0.9);
-          } catch (error) {
-            console.warn('Failed to convert to JPEG, using original:', error);
-          }
-        }
-      }
+      // The two visible fields are the whole prompt, joined verbatim — no
+      // hidden fallback (validateGeneration rejects an all-empty prompt).
+      const prompt = composePrompt({
+        instructions: this.elements.promptInput.value,
+        style: this.elements.styleInput.value
+      });
+      const promptStyle = describeStyleText(this.elements.styleInput.value);
+      const inputImageSrc = await this.prepareInputImage();
 
       const result = await generateFalImage({
         prompt: prompt,
@@ -1385,77 +1440,165 @@ class GeneratorTabBase {
         guidance_scale: 2.5,
         num_inference_steps: 28,
         scene_id: null,
-        source: 'generator'
+        source: 'generator',
+        // The gallery save happens server-side (#1835); ride the style label
+        // on the job doc so it lands in the saved asset's metadata.
+        gallery_metadata: { renderStyle: promptStyle },
+        notify: { email: !!this.elements.notifyEmail?.checked }
       });
 
-      if (result.data.success) {
-        const imageUrl = result.data.image_url;
-
-        this.currentParams = {
-          model: model,
-          model_name: modelConfig.name,
-          prompt: prompt,
-          timestamp: new Date().toISOString()
-        };
-
-        this.currentImageUrl = imageUrl;
-        this.displayImage(imageUrl);
-        this.saveToGallery(imageUrl);
-        this.stopTimer();
-        this.toggleLoading(false);
-
-        if (result.data.remainingTokens !== undefined) {
-          FluxUI.showNotification(
-            `Image generated successfully! ${result.data.remainingTokens} gen tokens remaining. (${modelConfig.name})`,
-            'success'
-          );
-        } else {
-          FluxUI.showNotification(
-            `Image generated successfully! (${modelConfig.name})`,
-            'success'
-          );
-        }
-
-        // Funnel event: ai_render_used (for conversion funnel analysis)
-        posthog.capture('ai_render_used', {
-          token_type: 'gen',
-          model: model,
-          source: 'generator',
-          is_pro_user: window.authState?.currentUser?.isPro || false
-        });
-
-        // Check if user just used their last gen token (track token_limit_reached)
-        if (
-          result.data.remainingTokens !== undefined &&
-          result.data.remainingTokens === 0
-        ) {
-          posthog.capture('token_limit_reached', {
-            token_type: 'gen',
-            source: 'generator'
-          });
-        }
-
-        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
-      } else {
-        throw new Error('Failed to generate image');
-      }
+      this.onImageJobSubmitted(result, model, modelConfig, prompt, promptStyle);
     } catch (error) {
       console.error('Error generating fal.ai image:', error);
-      this.stopTimer();
-
-      let errorMessage = 'Failed to generate image';
-      if (error.code === 'unauthenticated') {
-        errorMessage = 'Please sign in to use image generation';
-      } else if (error.code === 'resource-exhausted') {
-        errorMessage =
-          'No tokens available. Please purchase more tokens or upgrade to Pro.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      FluxUI.showNotification(errorMessage, 'error');
-      this.toggleLoading(false);
+      this.handleGenerationError(error);
     }
+  }
+
+  /**
+   * Shared post-submit handling: tokens are charged at submit (refunded on
+   * failure), so reflect that immediately, record the funnel events, and
+   * start the status poll that drives this tab's live UI. The job also shows
+   * as a pending card in the assets sidebar via the live Firestore listener
+   * on the job doc.
+   */
+  onImageJobSubmitted(result, model, modelConfig, prompt, promptStyle) {
+    if (!result.data || !result.data.success || !result.data.jobId) {
+      throw new Error(
+        result.data?.message || 'Could not start image generation'
+      );
+    }
+
+    this.currentParams = {
+      model: model,
+      model_name: modelConfig.name,
+      prompt: prompt,
+      render_style: promptStyle,
+      timestamp: new Date().toISOString()
+    };
+    // Remembered for the success toast once the poll sees the job finish.
+    this.lastRemainingTokens = result.data.remainingTokens;
+
+    // The job is now really in flight — this is the moment the email opt-in
+    // becomes meaningful (check it, close the tab, get the result by email).
+    this.activeJobId = result.data.jobId;
+    this.elements.notifyEmailRow?.classList.remove('hidden');
+
+    window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+
+    // Funnel event: ai_render_used (for conversion funnel analysis)
+    posthog.capture('ai_render_used', {
+      token_type: 'gen',
+      model: model,
+      render_style: promptStyle,
+      source: 'generator',
+      is_pro_user: window.authState?.currentUser?.isPro || false
+    });
+
+    // Check if user just used their last gen token (track token_limit_reached)
+    if (
+      result.data.remainingTokens !== undefined &&
+      result.data.remainingTokens === 0
+    ) {
+      posthog.capture('token_limit_reached', {
+        token_type: 'gen',
+        source: 'generator'
+      });
+    }
+
+    this.pollImageStatus(result.data.jobId, modelConfig);
+  }
+
+  /**
+   * Drive the live UI off the shared getGenerationJobStatus poll until the
+   * job is terminal. Any non-terminal status (queued|running|saving) just
+   * keeps polling.
+   */
+  pollImageStatus(jobId, modelConfig) {
+    this.stopPolling();
+    this.activePoll = pollGenerationJob(jobId, {
+      resultField: 'image_url',
+      maxMs: this.POLL_MAX_MS
+    });
+    this.activePoll.promise
+      .then((data) => {
+        if (!data) return; // cancelled — a newer submit or teardown took over
+
+        // The image was saved to the gallery server-side (works even if this
+        // tab had been closed). Just show it and refresh the gallery island so
+        // the pending-job card hands its slot to the real asset.
+        this.currentImageUrl = data.image_url;
+        this.displayImage(data.image_url);
+        this.stopTimer();
+        this.toggleLoading(false);
+        window.dispatchEvent(new Event('assets:refresh'));
+        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+        const remaining = this.lastRemainingTokens;
+        FluxUI.showNotification(
+          remaining !== undefined
+            ? `Image generated and saved to your gallery! ${remaining} gen tokens remaining. (${modelConfig.name})`
+            : `Image generated and saved to your gallery! (${modelConfig.name})`,
+          'success'
+        );
+      })
+      .catch(async (error) => {
+        this.stopTimer();
+        if (error.timedOut) {
+          // The job outlived the poll window — unusual enough that the user
+          // shouldn't have to babysit the tab: force the completion email on.
+          const forced = await forceJobNotifyEmail(jobId);
+          if (this.elements.notifyEmail) {
+            this.elements.notifyEmail.checked = true;
+          }
+          this.toggleLoading(false);
+          FluxUI.showNotification(
+            forced
+              ? "Image generation is taking longer than expected. We'll email you when it's ready — it will also appear in your gallery."
+              : 'Image generation is taking longer than expected. Check your gallery shortly — it will appear there when finished.',
+            forced ? 'warning' : 'error'
+          );
+          return;
+        }
+        // failed/canceled — the server refunds on failure; refresh the balance.
+        window.dispatchEvent(new CustomEvent('tokenCountChanged'));
+        this.toggleLoading(false);
+        FluxUI.showNotification(
+          error.jobError
+            ? `Image generation failed: ${error.jobError}`
+            : 'Image generation failed. Your tokens were refunded.',
+          'error'
+        );
+      });
+  }
+
+  syncJobNotify() {
+    syncJobNotifyEmail(this.activeJobId, this.elements.notifyEmail);
+  }
+
+  stopPolling() {
+    if (this.activePoll) {
+      this.activePoll.cancel();
+      this.activePoll = null;
+    }
+  }
+
+  /**
+   * Shared submit-failure handling (validation, auth, insufficient tokens…).
+   */
+  handleGenerationError(error) {
+    this.stopTimer();
+
+    let errorMessage = 'Failed to generate image';
+    if (error.code === 'unauthenticated') {
+      errorMessage = 'Please sign in to use image generation';
+    } else if (error.code === 'resource-exhausted') {
+      errorMessage =
+        'No tokens available. Please purchase more tokens or upgrade to Pro.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    FluxUI.showNotification(errorMessage, 'error');
+    this.toggleLoading(false);
   }
 
   /**
@@ -1552,6 +1695,10 @@ class GeneratorTabBase {
         this.elements.previewContainer.removeChild(fallbackButton);
       }
     } else {
+      // Terminal (or reset): the email toggle only applies to an in-flight
+      // job, so it leaves with the loading state.
+      this.activeJobId = null;
+      this.elements.notifyEmailRow?.classList.add('hidden');
       this.elements.loadingIndicator.classList.add('hidden');
       this.elements.generateBtn.disabled = false;
       this.elements.generateBtn.classList.remove(
@@ -1601,8 +1748,8 @@ class GeneratorTabBase {
           .toISOString()
           .replace(/[:.]/g, '-')
           .slice(0, 19);
-        const fileExtension = this.elements.formatJpeg.checked ? 'jpg' : 'png';
-        const filename = `flux-${modelName}-${timestamp}.${fileExtension}`;
+        // All image endpoints return JPEG (hardcoded server-side)
+        const filename = `flux-${modelName}-${timestamp}.jpg`;
 
         downloadLink.download = filename;
         document.body.appendChild(downloadLink);
@@ -1668,107 +1815,10 @@ class GeneratorTabBase {
       });
   }
 
-  /**
-   * Save the generated image to the gallery
-   */
-  async saveToGallery(imageUrl) {
-    if (!galleryService) {
-      console.error('Gallery service not available');
-      FluxUI.showNotification('Failed to save to gallery', 'error');
-      return;
-    }
-
-    // Initialize gallery service
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      try {
-        await galleryService.init();
-      } catch (err) {
-        console.warn('Failed to initialize gallery service:', err);
-      }
-    }
-
-    // Proceed with saving even if V2 init failed (V1 fallback will be used)
-    fetch(imageUrl)
-      .then((response) => response.blob())
-      .then(
-        (blob) =>
-          new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          })
-      )
-      .then(async (dataUrl) => {
-        const imageDimensions = await new Promise((resolve) => {
-          const img = new Image();
-          img.onload = () => {
-            resolve({ width: img.width, height: img.height });
-          };
-          img.onerror = () => {
-            resolve({ width: undefined, height: undefined });
-          };
-          img.src = dataUrl;
-        });
-
-        const metadata = {
-          model: this.currentParams.model || this.selectedModel,
-          prompt: this.elements.promptInput.value,
-          seed: this.currentParams.seed,
-          width: this.currentParams.width || imageDimensions.width,
-          height: this.currentParams.height || imageDimensions.height,
-          output_format:
-            this.currentParams.output_format ||
-            (this.elements.formatJpeg?.checked ? 'jpeg' : 'png'),
-          ...(this.currentParams.aspect_ratio && {
-            aspect_ratio: this.currentParams.aspect_ratio
-          }),
-          ...(this.currentParams.steps && { steps: this.currentParams.steps }),
-          ...(this.currentParams.guidance && {
-            guidance: this.currentParams.guidance
-          }),
-          ...(this.currentParams.interval && {
-            interval: this.currentParams.interval
-          }),
-          ...(this.currentParams.raw && { raw: this.currentParams.raw }),
-          ...(this.currentParams.prompt_upsampling !== undefined && {
-            prompt_upsampling: this.currentParams.prompt_upsampling
-          })
-        };
-
-        try {
-          const currentUser = auth.currentUser;
-          if (!currentUser) {
-            console.warn('User not authenticated, skipping gallery save');
-            return;
-          }
-
-          // Initialize gallery service if needed
-          await galleryService.init();
-
-          // Use V2 API: addAsset(file, metadata, type, category, userId)
-          await galleryService.addAsset(
-            dataUrl,
-            metadata,
-            'image', // type
-            'ai-render', // category
-            currentUser.uid // userId
-          );
-          FluxUI.showNotification('Image saved to gallery!', 'success');
-        } catch (e) {
-          console.error('Gallery addAsset error:', e);
-          FluxUI.showNotification('Failed to save image to gallery.', 'error');
-        }
-      })
-      .catch((error) => {
-        console.error('Error saving to gallery:', error);
-        FluxUI.showNotification(
-          'Failed to save image to gallery: ' + error.message,
-          'error'
-        );
-      });
-  }
+  // NOTE: the old client-side saveToGallery was removed — the image is now
+  // persisted to the gallery server-side by the generation job's terminal
+  // processor (public/functions/replicate.js:saveImageToGallery), so it saves
+  // even if this tab is closed mid-render (#1835).
 
   /**
    * Start the timer

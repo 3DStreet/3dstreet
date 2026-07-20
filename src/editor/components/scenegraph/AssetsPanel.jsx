@@ -10,7 +10,10 @@ import {
   uploadAndPlaceAsset,
   placeCloudAsset
 } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
-import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
+import {
+  openInGenerator,
+  focusSnapshotScene
+} from '@/editor/lib/asset-modal-handlers.js';
 import pickPointOnGroundPlane from '@/editor/lib/pick-point-on-ground-plane';
 import { signIn } from '../../api';
 import useStore from '@/store';
@@ -29,8 +32,9 @@ const AssetsPanel = () => (
     placeable
     onPlaceAsset={handlePlaceAsset}
     onUpload={(file) => uploadAndPlaceAsset(file)}
-    onUseForGenerator={(item) => openInGenerator(item, 'modify')}
+    onUseForGenerator={(item) => openInGenerator(item, 'image')}
     onUseForVideo={(item) => openInGenerator(item, 'video')}
+    onFocusScene={focusSnapshotScene}
     onSignIn={() => signIn()}
     onUpgrade={() => useStore.getState().startCheckout('storage')}
   />

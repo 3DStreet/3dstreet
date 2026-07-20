@@ -1,5 +1,6 @@
 import { createUniqueId } from '../../../lib/entity.js';
 import * as defaultStreetObjects from './defaultStreets.js';
+import { VEHICLE_PRESETS } from '../../../../aframe-components/play/vehicle-presets.js';
 import { uploadAndPlaceAsset } from '../../../lib/asset-upload/uploadAndPlaceAsset.js';
 import {
   GLB_EXTS,
@@ -74,7 +75,10 @@ export function createSvgExtrudedEntity(position) {
   }
 }
 
-export function createManagedStreetFromStreetmixURLPrompt(position) {
+export function createManagedStreetFromStreetmixURLPrompt(
+  position,
+  hideBuildings
+) {
   // This creates a new Managed Street
   let streetmixURL = prompt(
     'Please enter a Streetmix URL',
@@ -89,6 +93,7 @@ export function createManagedStreetFromStreetmixURLPrompt(position) {
         'managed-street': {
           sourceType: 'streetmix-url',
           sourceValue: streetmixURL,
+          showBoundaries: !hideBuildings,
           showVehicles: true,
           showStriping: true,
           synchronize: true
@@ -376,6 +381,17 @@ export function createHighlightRing(position) {
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
+export function createRaceTarget(position) {
+  const definition = {
+    'data-layer-name': 'Race Target',
+    components: {
+      position: position ?? '0 0 0',
+      'race-target': 'width: 6; height: 4; color: #2196f3'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
 export function createPrimitiveGeometry(position) {
   const definition = {
     'data-layer-name': 'Geometry • Circle Asphalt',
@@ -415,6 +431,92 @@ export function openZoningWizard(position) {
   useStore.getState().setModal('zoning');
 }
 
+/**
+ * Spawn a driveable-vehicle entity from a named preset
+ * (`tuk-tuk`, `delivery-bot`, `taxi`). The preset bundle in
+ * `vehicle-presets.js` drives chassis size, engine/brake/steer
+ * tuning, wheel dimensions, AND the mesh — either a catalog mixin
+ * or a registered procedural component.
+ *
+ * Switching preset later in the property panel re-applies the
+ * whole bundle via drive-controls' update() hook, so users aren't
+ * locked into whichever preset they spawned with.
+ */
+function createDriveableFromPreset(presetName, layerName, position) {
+  const p = VEHICLE_PRESETS[presetName];
+  if (!p) {
+    console.error('createDriveableFromPreset: unknown preset', presetName);
+    return;
+  }
+  // Build the drive-controls attribute string from the preset.
+  // `preset: ...` is included so the schema field reflects the
+  // current choice in the property panel.
+  const driveControlsStr = [
+    `preset: ${presetName}`,
+    `vehicleSize: ${p.vehicleSize.x} ${p.vehicleSize.y} ${p.vehicleSize.z}`,
+    `accelerateForce: ${p.accelerateForce}`,
+    `brakeForce: ${p.brakeForce}`,
+    `steerAngle: ${p.steerAngle}`,
+    `wheelRadius: ${p.wheelRadius}`,
+    `wheelWidth: ${p.wheelWidth}`,
+    `wheelLayout: ${p.wheelLayout || 'four-wheel'}`,
+    `meshYOffset: ${p.meshYOffset || 0}`
+  ].join('; ');
+
+  // Mesh-slot child: catalog mixin OR procedural component. The
+  // 180° editor-rotation trick aligns the mesh's +Z forward with
+  // the entity's -Z forward marker.
+  const meshSlotComponents = {
+    'vehicle-mesh-slot': '',
+    rotation: '0 180 0',
+    shadow: 'cast: true; receive: true'
+  };
+  if (p.meshComponent) {
+    meshSlotComponents[p.meshComponent] = '';
+  } else if (p.meshMixin) {
+    meshSlotComponents.mixin = p.meshMixin;
+  }
+
+  const definition = {
+    'data-layer-name': layerName,
+    components: {
+      position: position ?? '0 1 0',
+      'drive-controls': driveControlsStr,
+      geometry: `primitive: box; width: ${p.vehicleSize.x}; height: ${p.vehicleSize.y}; depth: ${p.vehicleSize.z}`,
+      material: `color: ${p.placeholderColor}; opacity: 0.0; transparent: true`,
+      shadow: 'cast: false; receive: false'
+    },
+    children: [
+      {
+        'data-layer-name': 'Vehicle Mesh',
+        components: meshSlotComponents
+      }
+    ]
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
+export function createDriveableTukTuk(position) {
+  createDriveableFromPreset('tuk-tuk', 'Driveable Tuk-tuk', position);
+}
+
+export function createDriveableDeliveryRobot(position) {
+  createDriveableFromPreset(
+    'delivery-bot',
+    'Driveable Delivery Robot',
+    position
+  );
+}
+
+export function createDriveableTaxi(position) {
+  createDriveableFromPreset('taxi', 'Driveable Taxi', position);
+}
+
+// Backwards compat: old layersData entries that referenced
+// `createDriveableVehicle` keep working and now point at the
+// Delivery Robot preset.
+export const createDriveableVehicle = createDriveableDeliveryRobot;
+
 export function createImageEntity(position) {
   // Upload an image (sign, reference photo, custom map, etc.) from the user's
   // device. The upload pipeline sizes the image plane and stores it in the
@@ -439,6 +541,88 @@ export function createSplatObject(position) {
   // The upload pipeline renders it locally and stores it in the user's asset
   // library (and queues RAD/LOD conversion where applicable).
   openAssetUploadPicker(position, 'splat');
+}
+
+// --- Traffic Replay ---------------------------------------------------------
+// Ingest an anonymized replay manifest (see scripts/tmd-replay/) and add it as
+// a standalone "Traffic Replay" layer (a street-traffic-replay entity). The
+// layer is linked to a managed-street and tuned in its own sidebar. v1 takes a
+// pre-converted JSON manifest; .sqlite-in-browser conversion is a fast-follow.
+
+function notifyError(msg) {
+  if (window.STREET?.notify?.errorMessage) {
+    window.STREET.notify.errorMessage(msg);
+  } else console.error('[traffic-replay]', msg);
+}
+function notifySuccess(msg) {
+  if (window.STREET?.notify?.successMessage) {
+    window.STREET.notify.successMessage(msg);
+  } else console.log('[traffic-replay]', msg);
+}
+
+// Human-readable one-liner of a manifest's mode mix. Exported so the sidebar
+// can reuse it.
+export function summarizeManifest(manifest) {
+  const counts =
+    manifest.meta?.countsByMode ||
+    manifest.agents.reduce((acc, a) => {
+      acc[a.mode] = (acc[a.mode] || 0) + 1;
+      return acc;
+    }, {});
+  const parts = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `${k} ${v}`)
+    .join(', ');
+  return `${manifest.agents.length} agents (${parts})`;
+}
+
+// Create a standalone Traffic Replay layer carrying the manifest. The
+// entitycreate command selects it, so its sidebar opens for linking a street.
+export function createReplayEntityFromManifest(manifest) {
+  const definition = {
+    id: createUniqueId(),
+    'data-layer-name': 'Traffic Replay',
+    components: {
+      'street-traffic-replay': {
+        manifestData: JSON.stringify(manifest),
+        timeScale: 1,
+        loop: true
+      }
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  notifySuccess(
+    `Traffic Replay layer added — ${summarizeManifest(manifest)}. ` +
+      'Link a street in its panel, then press Play.'
+  );
+}
+
+export function createTrafficReplay() {
+  // v1: pick a pre-converted JSON manifest from disk.
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json,.json';
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    let manifest;
+    try {
+      manifest = JSON.parse(await file.text());
+    } catch {
+      notifyError('Could not parse that file as JSON.');
+      return;
+    }
+    if (
+      !manifest ||
+      !Array.isArray(manifest.agents) ||
+      !manifest.agents.length
+    ) {
+      notifyError('That JSON is not a replay manifest (no "agents" array).');
+      return;
+    }
+    createReplayEntityFromManifest(manifest);
+  });
+  input.click();
 }
 
 export function createPanoramaSphere() {

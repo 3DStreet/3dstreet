@@ -1,6 +1,4 @@
 /* global AFRAME, XMLHttpRequest, VERSION */
-import 'aframe-cursor-teleport-component';
-import 'aframe-extras/controls/index.js';
 import useStore from './store.js';
 import * as streetUtils from './street-utils.js';
 require('./json-utils_1.1.js'); // this defines STREET.utils
@@ -8,7 +6,11 @@ STREET.utils.newScene = streetUtils.newScene;
 var streetmixParsers = require('./aframe-streetmix-parsers');
 var streetmixUtils = require('./tested/streetmix-utils');
 
+require('./three-bvh.js'); // patch THREE prototypes with three-mesh-bvh (accelerated raycast + BVH)
+require('./batch-models.js');
+require('./aframe-components/gltf-model.js');
 require('./aframe-components/gltf-part');
+require('./aframe-components/batch-member.js');
 require('./aframe-components/ocean');
 require('./aframe-components/svg-extruder.js');
 require('./lib/animation-mixer.js');
@@ -20,6 +22,7 @@ require('./aframe-components/create-from-json');
 require('./aframe-components/screentock.js');
 require('./aframe-components/focus-animation');
 require('aframe-atlas-uvs-component');
+require('./aframe-components/bvh-geometry.js');
 require('./aframe-components/street-geo.js');
 require('./aframe-components/street-environment.js');
 require('./aframe-components/intersection.js');
@@ -36,11 +39,23 @@ require('./aframe-components/polygon-offset.js');
 require('./aframe-components/street-align.js');
 require('./aframe-components/street-ground.js');
 require('./aframe-components/street-label.js');
-require('./aframe-components/blending-opacity.js');
 require('./aframe-components/measure-line.js');
 require('./aframe-components/css2d-renderer.js');
 require('./aframe-components/google-maps-aerial.js');
-require('./aframe-components/viewer-mode.js');
+require('./aframe-components/mode-manager.js');
+require('./aframe-components/play/play-mode.js');
+require('./aframe-components/play/play-mode-vehicle.js');
+require('./aframe-components/play/race-target.js');
+require('./aframe-components/play/collision-marker.js');
+require('./aframe-components/play/delivery-bot-mesh.js');
+require('./aframe-components/play/street-traffic.js');
+require('./aframe-components/play/street-traffic-replay.js');
+if (process.env.NODE_ENV === 'development') {
+  // Dev-only ?replay=... demo bootstrap (see replay-demo.js header). The
+  // compile-time gate also keeps the bundled sample manifests out of
+  // production builds.
+  require('./aframe-components/play/replay-demo.js');
+}
 require('./aframe-components/scene-timer.js');
 require('./aframe-components/geojson.js');
 require('./aframe-components/parcel-data-layer.js');
@@ -231,8 +246,22 @@ AFRAME.registerComponent('streetmix-loader', {
         el.setAttribute('data-layer-name', 'Streetmix • ' + streetmixName);
 
         if (data.showBuildings) {
-          el.setAttribute('street', 'right', streetData.rightBuildingVariant);
-          el.setAttribute('street', 'left', streetData.leftBuildingVariant);
+          // Prefer the canonical boundary object (schemaVersion 34+) and fall
+          // back to the deprecated flat *BuildingVariant fields. The legacy
+          // street component only understands the variant string; boundary
+          // floors/elevation are handled by the managed-street path.
+          el.setAttribute(
+            'street',
+            'right',
+            streetmixUtils.getBoundaryFromStreetData(streetData, 'right')
+              ?.variant || ''
+          );
+          el.setAttribute(
+            'street',
+            'left',
+            streetmixUtils.getBoundaryFromStreetData(streetData, 'left')
+              ?.variant || ''
+          );
         }
         el.setAttribute('street', 'type', 'streetmixSegmentsMetric');
         // set JSON attribute last or it messes things up

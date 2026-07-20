@@ -77,6 +77,24 @@ AFRAME.registerComponent('street-generated-grass', {
       }
     };
     this.el.addEventListener('componentchanged', this.onComponentChanged);
+    // street-segment hosts rebuild their geometry with removeAttribute +
+    // setAttribute, which re-initializes the component instead of firing
+    // componentchanged — so segment resizes announce themselves via
+    // segment-changed instead (same as the other street-generated-* children).
+    // Self-guard on the dimensions we last generated with so the segment's
+    // first-init emit doesn't tear down and rebuild an identical field (#1759).
+    this.onSegmentChanged = () => {
+      const segment = this.el.components['street-segment']?.data;
+      if (!segment) return;
+      if (
+        segment.width === this.hostWidth &&
+        segment.length === this.hostDepth
+      ) {
+        return;
+      }
+      this.update();
+    };
+    this.el.addEventListener('segment-changed', this.onSegmentChanged);
   },
 
   update: function (oldData) {
@@ -138,6 +156,10 @@ AFRAME.registerComponent('street-generated-grass', {
       topY =
         geometry.primitive === 'below-box' ? 0 : (geometry.height || 0) / 2;
       area = width * depth;
+      // Remember the dimensions this field was generated with so the
+      // segment-changed listener can skip no-op emits.
+      this.hostWidth = width;
+      this.hostDepth = depth;
     } else {
       // getObject3D('mesh') is the THREE.Mesh the A-Frame geometry component
       // builds; it may not exist yet on an early call, in which case the
@@ -288,18 +310,9 @@ AFRAME.registerComponent('street-generated-grass', {
     this.createdEntities.length = 0;
   },
 
-  // "Detach" from the autocreated-child sidebar simply stops managing the field
-  // by removing this component (the instanced mesh is procedural and has no
-  // independent serializable form, unlike cloned model entities).
-  detach: function () {
-    AFRAME.INSPECTOR.execute('componentremove', {
-      entity: this.el,
-      component: this.attrName
-    });
-  },
-
   remove: function () {
     this.el.removeEventListener('componentchanged', this.onComponentChanged);
+    this.el.removeEventListener('segment-changed', this.onSegmentChanged);
     this.clearEntities();
   }
 });

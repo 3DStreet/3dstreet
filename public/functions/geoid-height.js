@@ -160,6 +160,10 @@ exports.getGeoidHeight = functions
     ]);
 
     // Decrement token if not a Pro user and not from GeoJSON import (only after successful API calls)
+    // firstGeoActivatedAt marks the user's first-ever geo activation — the
+    // "geo not used" lifecycle email sweep (email/lifecycle-sweeps.js) checks
+    // it to skip anyone who has already tried the feature. Stamped for Pro
+    // users too (below), since they skip the decrement.
     let remainingTokens = null;
     if (!isProUser && !fromGeojsonImport) {
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
@@ -171,10 +175,29 @@ exports.getGeoidHeight = functions
 
         await tokenProfileRef.update({
           geoToken: newTokenCount,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          ...(tokenDoc.data().firstGeoActivatedAt
+            ? {}
+            : { firstGeoActivatedAt: admin.firestore.FieldValue.serverTimestamp() })
         });
 
         remainingTokens = newTokenCount;
+      }
+    } else if (isProUser && context.auth) {
+      // Pro users skip the decrement path entirely; stamp their first
+      // activation when they have a token profile. (A Pro user with no
+      // profile is fine to skip — they're excluded from the geo email by
+      // stopIfPro regardless; the stamp only matters if they later downgrade.)
+      try {
+        const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+        const tokenDoc = await tokenProfileRef.get();
+        if (tokenDoc.exists && !tokenDoc.data().firstGeoActivatedAt) {
+          await tokenProfileRef.update({
+            firstGeoActivatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      } catch (err) {
+        console.error(`firstGeoActivatedAt stamp failed for ${userId}:`, err);
       }
     }
 

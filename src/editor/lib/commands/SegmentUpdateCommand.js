@@ -50,7 +50,7 @@ function restoreSegment(entity, snapshot) {
  *
  * payload: { entity, segment, name? }
  *   - entity: the street-segment DOM element
- *   - segment: partial patch — any of { name, type, surface, color, level,
+ *   - segment: partial patch — any of { name, type, surface, color, elevation,
  *     width, direction, generated }. `generated[type] = []` or `null` removes
  *     all street-generated-${type}* components on the segment.
  *   - name: optional history label (e.g. "Update bike lane width")

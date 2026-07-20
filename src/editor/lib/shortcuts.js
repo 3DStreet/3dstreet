@@ -1,13 +1,21 @@
 import Events from './Events';
+import { removeSelectedEntity, cloneSelectedEntity } from './entity';
 import {
-  removeSelectedEntity,
-  cloneSelectedEntity,
-  cloneEntity
-} from './entity';
+  copySelectedEntity,
+  cutSelectedEntity,
+  pasteFromClipboard
+} from './clipboard';
 import { getOS } from './utils';
 import useStore from '@/store';
+import { isWasdNav } from './nav-experimental/flag.js';
 
 const os = getOS();
+
+// While the first-person kit (?wasd=on) is off, the nav controls do not
+// claim w/a/s/d, so the legacy w/s/d shortcuts (translate/scale/clone)
+// stay live ALONGSIDE their t/l/c replacements — launch keeps the exact
+// legacy keymap, and the eventual flag flip removes only the legacy keys.
+const wasdNav = isWasdNav();
 
 function shouldCaptureKeyEvent(event) {
   return (
@@ -36,8 +44,10 @@ export const Shortcuts = {
       }
     }
 
-    // w: translate
-    if (keyCode === 87) {
+    // t: translate (was 'w' until 2026-05-09; remapped because the
+    // experimental nav controls bind w/a/s/d for camera movement).
+    // 'w' still translates while the WASD kit is gated off.
+    if (keyCode === 84 || (!wasdNav && keyCode === 87)) {
       Events.emit('transformmodechange', 'translate');
     }
 
@@ -56,8 +66,9 @@ export const Shortcuts = {
       Events.emit('toolchange', 'hand');
     }
 
-    // s: scale
-    if (keyCode === 83) {
+    // l: scale (was 's' until 2026-05-09; remapped for nav controls).
+    // 's' still scales while the WASD kit is gated off.
+    if (keyCode === 76 || (!wasdNav && keyCode === 83)) {
       Events.emit('transformmodechange', 'scale');
     }
 
@@ -77,8 +88,9 @@ export const Shortcuts = {
       removeSelectedEntity();
     }
 
-    // d: clone selected entity
-    if (keyCode === 68) {
+    // d: clone selected entity (legacy binding, live while the WASD kit
+    // is gated off). Its 'c' replacement fires in onKeyDown — see there.
+    if (!wasdNav && keyCode === 68) {
       cloneSelectedEntity();
     }
 
@@ -90,18 +102,14 @@ export const Shortcuts = {
       }
     }
 
+    // 1: return to the perspective camera. The ortho-view shortcuts
+    // (2/3/4/6/7 → cameraorthographictoggle) were removed 2026-07-17:
+    // ExperimentalControls has no ortho navigation, so ortho views froze
+    // the camera with no menu path back (PR #1851 review). The cameras.js
+    // machinery is intact if ortho views return later; '1' stays as a
+    // recovery hatch should the editor ever land on an ortho camera.
     if (keyCode === 49) {
       Events.emit('cameraperspectivetoggle');
-    } else if (keyCode === 50) {
-      Events.emit('cameraorthographictoggle', 'left');
-    } else if (keyCode === 51) {
-      Events.emit('cameraorthographictoggle', 'right');
-    } else if (keyCode === 52) {
-      Events.emit('cameraorthographictoggle', 'top');
-    } else if (keyCode === 54) {
-      Events.emit('cameraorthographictoggle', 'back');
-    } else if (keyCode === 55) {
-      Events.emit('cameraorthographictoggle', 'front');
     }
 
     for (var moduleName in this.shortcuts.modules) {
@@ -137,20 +145,50 @@ export const Shortcuts = {
         }
       }
 
-      if (
-        AFRAME.INSPECTOR.selectedEntity &&
-        document.activeElement.tagName !== 'INPUT'
-      ) {
-        // c: copy selected entity
-        if (event.keyCode === 67) {
-          AFRAME.INSPECTOR.entityToCopy = AFRAME.INSPECTOR.selectedEntity;
+      if (document.activeElement.tagName !== 'INPUT') {
+        // Let the browser handle a native text-selection copy (e.g. text
+        // highlighted in a panel) instead of hijacking it for the entity.
+        const hasTextSelection = !!window.getSelection()?.toString();
+
+        // c: copy selected entity to clipboard
+        if (
+          event.keyCode === 67 &&
+          AFRAME.INSPECTOR.selectedEntity &&
+          !hasTextSelection
+        ) {
+          event.preventDefault();
+          copySelectedEntity();
         }
 
-        // v: paste copied entity
+        // x: cut selected entity (copy + undoable delete)
+        if (
+          event.keyCode === 88 &&
+          AFRAME.INSPECTOR.selectedEntity &&
+          !hasTextSelection
+        ) {
+          event.preventDefault();
+          cutSelectedEntity();
+        }
+
+        // v: paste entity from clipboard
         if (event.keyCode === 86) {
-          cloneEntity(AFRAME.INSPECTOR.entityToCopy);
+          event.preventDefault();
+          pasteFromClipboard();
         }
       }
+    }
+
+    // c: clone selected entity (was 'd' until 2026-05-09; remapped for
+    // nav controls). On keydown so the Ctrl/Cmd state of the SAME press
+    // gates it — a keyup check misfired when Ctrl was released a beat
+    // before C on a copy, cloning the entity as a side effect.
+    if (
+      event.keyCode === 67 &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.repeat
+    ) {
+      cloneSelectedEntity();
     }
 
     // `: toggle panels visibility
@@ -158,6 +196,26 @@ export const Shortcuts = {
       useStore.getState().togglePanelsVisible();
       event.preventDefault();
       event.stopPropagation();
+    }
+
+    // p: enter the Viewer and start playing. Gated to non-input focus +
+    // a registered playable capability in the scene (driveable vehicle,
+    // playable managed-street, ...). Mirrors the toolbar Play button.
+    if (
+      event.keyCode === 80 &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      document.activeElement.tagName !== 'INPUT' &&
+      document.activeElement.tagName !== 'TEXTAREA'
+    ) {
+      const sceneEl = document.querySelector('a-scene');
+      if (sceneEl?.systems?.['mode-manager']?.hasPlayable()) {
+        useStore.getState().enterViewerMode();
+        sceneEl.systems['play-mode'].start({ origin: 'editor' });
+        event.preventDefault();
+        event.stopPropagation();
+      }
     }
   },
   enable: function () {

@@ -39,11 +39,13 @@ const {
   modalEndpointHealthy,
   stagingPathForJob
 } = require('../modal-backend.js');
+// fal (image → 3D mesh) poll adapter — the sweep is one of its two finalizers.
+const { fetchFalPrediction } = require('../fal-3d.js');
 const { enqueueRadTask } = require('../rad-dispatch.js');
 const { withJobHealth } = require('./job-health.js');
 
 const TEN_MIN_MS = 10 * 60 * 1000;
-const { sendGenerationReadyEmail } = require('./scheduledEmails.js');
+const { sendGenerationOutcomeEmail } = require('./scheduledEmails.js');
 
 // Our normalized non-terminal vocabulary (see normalizeReplicateStatus). The
 // reconciler only ever touches jobs in these states; everything else is done.
@@ -144,6 +146,11 @@ async function fetchProviderPrediction(job, replicate, jobId) {
       // Returns a Replicate-shaped prediction synthesized from the Modal
       // status endpoint + a staged-.ply existence check in our own bucket.
       return fetchModalPrediction(admin, job, jobId);
+    case 'fal':
+      // fal image → 3D mesh: poll fal's status endpoint and shape the result
+      // as a Replicate prediction (GLB URL as `output`). No webhook, so the
+      // client poll + this sweep are the only finalizers.
+      return fetchFalPrediction(job);
     default:
       throw new Error(`Unknown provider: ${job.provider}`);
   }
@@ -432,21 +439,23 @@ async function reconcile({ dryRun }) {
   return summary;
 }
 
-// Completion-email sweep — the BACKSTOP for the real-time completion email.
-// The Replicate webhook now sends the email the instant a job finishes (see
-// sendGenerationReadyEmail, called from the webhook), so the happy path no
-// longer waits on this 10-min sweep. This sweep only catches jobs the webhook
-// missed: a dropped webhook where the user also closed the tab (no client ack),
-// or a transient send failure that restored `notify.pending`. It queries
-// opted-in, succeeded, still-pending jobs and delegates each to the shared,
-// idempotent send helper — so it can't double-send against a racing webhook.
-// Success-only by design; failed jobs refund silently.
+// Outcome-email sweep — the BACKSTOP for the real-time outcome email (success
+// AND failure). The provider webhooks send the email the instant a job
+// finishes (see sendGenerationOutcomeEmail, called from the webhook), so the
+// happy path no longer waits on this 10-min sweep. This sweep only catches
+// jobs the webhook missed: a dropped webhook where the user also closed the
+// tab (no client ack), or a transient send failure that restored
+// `notify.pending`. It queries opted-in, terminal, still-pending jobs and
+// delegates each to the shared, idempotent send helper — so it can't
+// double-send against a racing webhook, and the helper (not this query)
+// decides failure eligibility (skips submit-time failures and failures past
+// the staleness cutoff, retiring their pending flag so they aren't rescanned).
 async function sendReadyNotifications({ dryRun }) {
   const db = admin.firestore();
   const snap = await db
     .collectionGroup('generationJobs')
     .where('notify.pending', '==', true)
-    .where('status', '==', 'succeeded')
+    .where('status', 'in', ['succeeded', 'failed', 'canceled'])
     .limit(MAX_JOBS_PER_RUN)
     .get();
 
@@ -481,7 +490,7 @@ async function sendReadyNotifications({ dryRun }) {
       continue;
     }
 
-    const result = await sendGenerationReadyEmail(db, uid, jobRef, { dryRun });
+    const result = await sendGenerationOutcomeEmail(db, uid, jobRef, { dryRun });
     switch (result.action) {
       case 'sent':
       case 'would-send':
@@ -540,7 +549,7 @@ function escalateIfNeeded(summary, notify) {
 
 const reconcileGenerationJobs = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', ...MODAL_SECRETS],
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL', 'FAL_KEY', ...MODAL_SECRETS],
     // processTerminalPrediction may stream a .ply save (no full-file buffering);
     // 512 MB is fixed headroom, not sized to the file. 540s covers a backlog.
     timeoutSeconds: 540,
@@ -581,7 +590,7 @@ const reconcileGenerationJobs = functions
 
 const triggerReconcileGenerationJobs = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', ...MODAL_SECRETS],
+    secrets: ['REPLICATE_API_TOKEN', 'POSTMARK_API_KEY', 'DISCORD_WEBHOOK_URL', 'FAL_KEY', ...MODAL_SECRETS],
     timeoutSeconds: 540,
     memory: '512MB'
   })

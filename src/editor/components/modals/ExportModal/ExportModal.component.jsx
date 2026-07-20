@@ -1,0 +1,701 @@
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
+import styles from './ExportModal.module.scss';
+import { useAuthContext } from '../../../contexts';
+import { Button, Checkbox, Toggle } from '../../elements';
+import Modal from '@shared/components/Modal/Modal.jsx';
+import posthog from 'posthog-js';
+import useStore from '@/store';
+import {
+  exportSceneToGLTF,
+  exportSceneToJSON,
+  exportSceneToDXF,
+  exportSceneToPDF,
+  generateGlbBlob
+} from '@/editor/lib/exportUtils';
+import { buildStreetPlanModel } from '@/editor/lib/plan/planModel';
+import { getSceneJsonString } from '@/editor/lib/SceneUtils';
+import PlanPreviewSvg from './PlanPreviewSvg';
+
+// Format registry for the pill selector. Plain-language labels lead (a city
+// planner doesn't know "GLB"); the file extension is demoted to the
+// description line and the Download CTA. `surface` is the paywall surface
+// key passed to startCheckout for Pro-gated downloads (preview stays free —
+// the preview IS the upsell).
+// Renders <code>…</code> spans in description messages (file extensions in
+// fixed-width type).
+const codeChunks = (chunks) => <code>{chunks}</code>;
+
+const FORMATS = [
+  {
+    key: 'glb',
+    ext: '.glb',
+    pro: true,
+    beta: false,
+    surface: 'export',
+    label: (
+      <FormattedMessage id="exportModal.format.glb" defaultMessage="3D Model" />
+    ),
+    description: (
+      <FormattedMessage
+        id="exportModal.glbDescription"
+        defaultMessage="Download this scene as a <code>.glb</code> 3D model file for use in Blender, Unreal, and other 3D tools."
+        values={{ code: codeChunks }}
+      />
+    )
+  },
+  {
+    key: 'json',
+    ext: '.3dstreet.json',
+    pro: false,
+    beta: false,
+    surface: null,
+    label: (
+      <FormattedMessage id="exportModal.format.json" defaultMessage="JSON" />
+    ),
+    description: (
+      <FormattedMessage
+        id="exportModal.jsonDescription"
+        defaultMessage="Download this scene as a <code>.3dstreet.json</code> file to back up your work or import into another 3DStreet account."
+        values={{ code: codeChunks }}
+      />
+    )
+  },
+  {
+    key: 'dxf',
+    ext: '.dxf',
+    pro: true,
+    beta: true,
+    surface: 'export-dxf',
+    label: (
+      <FormattedMessage id="exportModal.format.dxf" defaultMessage="CAD Plan" />
+    ),
+    description: (
+      <FormattedMessage
+        id="exportModal.dxfDescription"
+        defaultMessage="Download a 2D plan view of this scene's streets as a <code>.dxf</code> file for use in AutoCAD and other CAD tools."
+        values={{ code: codeChunks }}
+      />
+    )
+  },
+  {
+    key: 'pdf',
+    ext: '.pdf',
+    pro: true,
+    beta: true,
+    surface: 'export-pdf',
+    label: (
+      <FormattedMessage id="exportModal.format.pdf" defaultMessage="PDF Plan" />
+    ),
+    description: (
+      <FormattedMessage
+        id="exportModal.pdfDescription"
+        defaultMessage="Download a 2D plan view of this scene's streets as a vector <code>.pdf</code> file, ready to print or publish."
+        values={{ code: codeChunks }}
+      />
+    )
+  }
+];
+
+// Layer-group pills for the plan formats — one per collected group in the
+// shared plan model (buildStreetPlanModel), keyed by its include* option.
+// Clones default off: dozens of tiny stencil/striping footprints bury the
+// lane linework in dense scenes.
+const PLAN_LAYER_GROUPS = [
+  {
+    key: 'includeSegments',
+    defaultOn: true,
+    label: (
+      <FormattedMessage
+        id="exportModal.layerSegments"
+        defaultMessage="Segments"
+      />
+    )
+  },
+  {
+    key: 'includeIntersections',
+    defaultOn: true,
+    label: (
+      <FormattedMessage
+        id="exportModal.layerIntersections"
+        defaultMessage="Intersections"
+      />
+    )
+  },
+  {
+    key: 'includeShapes',
+    defaultOn: true,
+    label: (
+      <FormattedMessage id="exportModal.layerShapes" defaultMessage="Shapes" />
+    )
+  },
+  {
+    key: 'includeClones',
+    defaultOn: false,
+    label: (
+      <FormattedMessage id="exportModal.layerClones" defaultMessage="Clones" />
+    )
+  }
+];
+
+// Cap the JSON code-view at ~300k chars — scenes with cloud snapshot memory
+// can serialize to multiple MB, which would tank the modal's render.
+const JSON_PREVIEW_CHAR_LIMIT = 300000;
+
+// Persisted (localStorage) opt-in to auto-generate the GLB preview when the
+// 3D Model format is selected. Default off: on some systems just rendering
+// the scene itself is a big lift, so heavy work stays behind a click.
+const AUTO_GLB_PREVIEW_KEY = '3dstreet-export-auto-glb-preview';
+
+function ExportModal() {
+  const intl = useIntl();
+  const setModal = useStore((state) => state.setModal);
+  const modal = useStore((state) => state.modal);
+  const startCheckout = useStore((state) => state.startCheckout);
+  const { currentUser } = useAuthContext();
+
+  const isPro = currentUser?.isPro;
+  const isOpen = modal === 'export';
+
+  const [formatKey, setFormatKey] = useState('glb');
+  const [arReady, setArReady] = useState(false);
+  const [unitsFeet, setUnitsFeet] = useState(false);
+  const [planLayerToggles, setPlanLayerToggles] = useState(() =>
+    Object.fromEntries(PLAN_LAYER_GROUPS.map((g) => [g.key, g.defaultOn]))
+  );
+  const [autoGlbPreview, setAutoGlbPreview] = useState(() => {
+    try {
+      return localStorage.getItem(AUTO_GLB_PREVIEW_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const setAutoGlbPreviewPersisted = (value) => {
+    setAutoGlbPreview(value);
+    try {
+      localStorage.setItem(AUTO_GLB_PREVIEW_KEY, String(value));
+    } catch {
+      // Storage unavailable (private mode etc.) — setting just won't stick.
+    }
+  };
+
+  // On-demand GLB preview — generating a GLB blocks the main thread for
+  // seconds on large scenes, so it runs on click, not on selection, and the
+  // result is cached (keyed by the arReady flag) until the modal closes.
+  const [glbPreview, setGlbPreview] = useState({
+    status: 'idle',
+    url: null,
+    arReady: false
+  });
+  const glbUrlRef = useRef(null);
+
+  const [jsonPreview, setJsonPreview] = useState({ status: 'idle', text: '' });
+  // Invalidation token for in-flight JSON serialization: bumped on modal
+  // close so a late resolve can't paint stale scene data into a reopened
+  // modal. NOT a cleanup-cancel — see the fetch effect below.
+  const jsonFetchSeqRef = useRef(0);
+
+  const format = FORMATS.find((f) => f.key === formatKey);
+  const isPlanFormat = formatKey === 'dxf' || formatKey === 'pdf';
+
+  const releaseGlbUrl = () => {
+    if (glbUrlRef.current) {
+      URL.revokeObjectURL(glbUrlRef.current);
+      glbUrlRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      posthog.capture('export_modal_opened', {
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
+    } else {
+      // Drop cached previews on close — the scene can change while the
+      // modal is away, and the blob URL pins the whole GLB in memory.
+      releaseGlbUrl();
+      setGlbPreview({ status: 'idle', url: null, arReady: false });
+      setJsonPreview({ status: 'idle', text: '' });
+      jsonFetchSeqRef.current++;
+    }
+  }, [isOpen]);
+
+  // Revoke any lingering blob URL on unmount.
+  useEffect(() => releaseGlbUrl, []);
+
+  // DXF/PDF preview — the same geometry pass as the exporters (planModel),
+  // cheap enough to rebuild on every selection / units change.
+  const planModel = useMemo(() => {
+    if (!isOpen || !isPlanFormat) return null;
+    try {
+      return buildStreetPlanModel({ unitsFeet, ...planLayerToggles });
+    } catch (error) {
+      console.error('Error building plan preview:', error);
+      return null;
+    }
+  }, [isOpen, isPlanFormat, unitsFeet, planLayerToggles]);
+
+  // JSON preview — serialized lazily the first time the JSON pill is picked.
+  // No cleanup-cancel here on purpose: this effect sets its own dep
+  // (status idle → loading), which re-runs the effect immediately, and a
+  // cleanup flag would cancel the fetch it just started — the preview then
+  // hangs on "Serializing scene…" whenever serialization loses that race
+  // (always, for saved scenes: the Firestore snapshot merge takes real
+  // time). Staleness is handled by jsonFetchSeqRef instead, bumped on close.
+  useEffect(() => {
+    if (!isOpen || formatKey !== 'json' || jsonPreview.status !== 'idle') {
+      return;
+    }
+    const seq = ++jsonFetchSeqRef.current;
+    setJsonPreview({ status: 'loading', text: '' });
+    getSceneJsonString()
+      .then((raw) => {
+        if (seq !== jsonFetchSeqRef.current) return;
+        let pretty = raw;
+        try {
+          pretty = JSON.stringify(JSON.parse(raw), null, 2);
+        } catch {
+          // filterJSONstreet output should always parse; fall back to raw.
+        }
+        setJsonPreview({
+          status: 'ready',
+          text:
+            pretty.length > JSON_PREVIEW_CHAR_LIMIT
+              ? pretty.slice(0, JSON_PREVIEW_CHAR_LIMIT)
+              : pretty,
+          truncated: pretty.length > JSON_PREVIEW_CHAR_LIMIT
+        });
+      })
+      .catch((error) => {
+        console.error('Error serializing scene JSON:', error);
+        if (seq === jsonFetchSeqRef.current) {
+          setJsonPreview({ status: 'error', text: '' });
+        }
+      });
+  }, [isOpen, formatKey, jsonPreview.status]);
+
+  const selectFormat = (key) => {
+    setFormatKey(key);
+    posthog.capture('export_modal_format_selected', {
+      export_type: key,
+      scene_id: STREET.utils.getCurrentSceneId()
+    });
+  };
+
+  const handleGenerateGlbPreview = useCallback(async () => {
+    setGlbPreview({ status: 'generating', url: null, arReady });
+    posthog.capture('export_modal_preview_generated', {
+      export_type: arReady ? 'ar_glb' : 'glb',
+      scene_id: STREET.utils.getCurrentSceneId()
+    });
+    // Let the "Generating…" state paint before the synchronous export work
+    // blocks the main thread (same trick as the export indicator).
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    try {
+      const { blob } = await generateGlbBlob(arReady);
+      releaseGlbUrl();
+      const url = URL.createObjectURL(blob);
+      glbUrlRef.current = url;
+      setGlbPreview({ status: 'ready', url, arReady });
+    } catch (error) {
+      console.error('Error generating GLB preview:', error);
+      setGlbPreview({ status: 'error', url: null, arReady });
+    }
+  }, [arReady]);
+
+  // GLB preview cache is only valid for the arReady flavor it was built
+  // with; a stale flavor shows the Generate button again.
+  const glbPreviewCurrent =
+    glbPreview.status !== 'idle' && glbPreview.arReady === arReady
+      ? glbPreview
+      : { status: 'idle', url: null, arReady };
+
+  // Opt-in auto-generation (persisted): kick off the GLB preview as soon as
+  // the 3D Model format is showing an idle preview slot. Also re-fires when
+  // toggling AR Ready invalidates the cache — auto mode means auto.
+  useEffect(() => {
+    if (
+      isOpen &&
+      formatKey === 'glb' &&
+      autoGlbPreview &&
+      glbPreviewCurrent.status === 'idle'
+    ) {
+      handleGenerateGlbPreview();
+    }
+  }, [
+    isOpen,
+    formatKey,
+    autoGlbPreview,
+    glbPreviewCurrent.status,
+    handleGenerateGlbPreview
+  ]);
+
+  const handleDownload = () => {
+    posthog.capture('export_modal_export_clicked', {
+      export_type: formatKey === 'glb' && arReady ? 'ar_glb' : formatKey,
+      scene_id: STREET.utils.getCurrentSceneId()
+    });
+    if (format.pro && !isPro) {
+      startCheckout(format.surface);
+      return;
+    }
+    // Close the modal so the blocking export indicator is visible.
+    setModal(null);
+    if (formatKey === 'glb') {
+      exportSceneToGLTF(intl, arReady);
+    } else if (formatKey === 'dxf') {
+      exportSceneToDXF(intl, { unitsFeet, ...planLayerToggles });
+    } else if (formatKey === 'pdf') {
+      exportSceneToPDF(intl, { unitsFeet, ...planLayerToggles });
+    } else {
+      exportSceneToJSON();
+    }
+  };
+
+  const planIsEmpty = isPlanFormat && !planModel?.bounds;
+  // Distinguish "scene has no plan content" from "the user's own layer pills
+  // filtered everything out" — the latter should point at the pills, not tell
+  // the user to add streets they already have.
+  const planEmptyFromToggles =
+    planIsEmpty && Object.values(planLayerToggles).some((on) => !on);
+
+  const renderPreview = () => {
+    if (formatKey === 'glb') {
+      // Rendered in both the ready state (footer strip under the iframe) and
+      // the empty state — with auto-preview on, the iframe appears
+      // immediately, so the footer is the only place left to turn it off.
+      const autoPreviewCheckbox = (
+        <Checkbox
+          id="export-auto-glb-preview"
+          isChecked={autoGlbPreview}
+          onChange={setAutoGlbPreviewPersisted}
+          label={intl.formatMessage({
+            id: 'exportModal.autoPreviewLabel',
+            defaultMessage: 'Automatically generate 3D preview'
+          })}
+        />
+      );
+
+      if (glbPreviewCurrent.status === 'ready') {
+        return (
+          <div className={styles.glbPreviewWrapper}>
+            <iframe
+              className={styles.previewIframe}
+              title="GLB preview"
+              src={`/model-viewer.html?src=${encodeURIComponent(
+                glbPreviewCurrent.url
+              )}`}
+            />
+            <div className={styles.previewFooter}>{autoPreviewCheckbox}</div>
+          </div>
+        );
+      }
+      return (
+        <div className={styles.previewEmptyState}>
+          {glbPreviewCurrent.status === 'generating' ? (
+            <p>
+              <FormattedMessage
+                id="exportModal.generatingPreview"
+                defaultMessage="Generating 3D preview…"
+              />
+            </p>
+          ) : (
+            <>
+              {glbPreviewCurrent.status === 'error' && (
+                <p className={styles.previewError}>
+                  <FormattedMessage
+                    id="exportModal.previewError"
+                    defaultMessage="Could not generate the preview. Please try again."
+                  />
+                </p>
+              )}
+              <Button onClick={handleGenerateGlbPreview} variant="toolbtn">
+                <FormattedMessage
+                  id="exportModal.generatePreview"
+                  defaultMessage="Generate 3D preview"
+                />
+              </Button>
+              <p className={styles.previewHint}>
+                <FormattedMessage
+                  id="exportModal.generatePreviewHint"
+                  defaultMessage="Builds the .glb in your browser; this may take a few seconds on large scenes."
+                />
+              </p>
+            </>
+          )}
+          <div className={styles.autoPreviewOption}>{autoPreviewCheckbox}</div>
+        </div>
+      );
+    }
+
+    if (isPlanFormat) {
+      if (planIsEmpty) {
+        return (
+          <div className={styles.previewEmptyState}>
+            <p>
+              {planEmptyFromToggles ? (
+                <FormattedMessage
+                  id="exportModal.planEmptyFiltered"
+                  defaultMessage="Nothing to draw with the current layer selection. Turn on more layers to see a plan preview."
+                />
+              ) : (
+                <FormattedMessage
+                  id="exportModal.planEmpty"
+                  defaultMessage="Nothing to draw yet. Add a street or intersection layer to see a plan preview."
+                />
+              )}
+            </p>
+          </div>
+        );
+      }
+      if (formatKey === 'pdf') {
+        // White letter-landscape "page" so the preview reads as the printed
+        // artifact; plot palette matches the PDF writer.
+        return (
+          <div className={styles.pdfPage}>
+            <PlanPreviewSvg
+              model={planModel}
+              palette="plot"
+              className={styles.planSvg}
+            />
+          </div>
+        );
+      }
+      return (
+        <div className={styles.dxfCanvas}>
+          <PlanPreviewSvg
+            model={planModel}
+            palette="screen"
+            className={styles.planSvg}
+          />
+        </div>
+      );
+    }
+
+    // JSON code view — the literal serialized artifact, monospace.
+    if (jsonPreview.status === 'ready') {
+      return (
+        <div className={styles.jsonPreviewWrapper}>
+          <pre className={styles.jsonPreview}>{jsonPreview.text}</pre>
+          {jsonPreview.truncated && (
+            <div className={styles.jsonTruncatedNote}>
+              <FormattedMessage
+                id="exportModal.jsonTruncated"
+                defaultMessage="Preview truncated. The downloaded file contains the full scene."
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+    return (
+      <div className={styles.previewEmptyState}>
+        <p>
+          {jsonPreview.status === 'error' ? (
+            <FormattedMessage
+              id="exportModal.previewError"
+              defaultMessage="Could not generate the preview. Please try again."
+            />
+          ) : (
+            <FormattedMessage
+              id="exportModal.serializingScene"
+              defaultMessage="Serializing scene…"
+            />
+          )}
+        </p>
+      </div>
+    );
+  };
+
+  return (
+    <Modal
+      className={styles.exportModalWrapper}
+      isOpen={isOpen}
+      onClose={() => setModal(null)}
+      titleElement={
+        <div className="flex pr-4 pt-5">
+          <div className="font-large text-center text-2xl">
+            <FormattedMessage
+              id="exportModal.title"
+              defaultMessage="Export Scene"
+            />
+          </div>
+        </div>
+      }
+    >
+      <div className={styles.wrapper}>
+        <div className={styles.controlsPanel}>
+          <div className={styles.formatPills} role="radiogroup">
+            {FORMATS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                role="radio"
+                aria-checked={f.key === formatKey}
+                className={`${styles.pill} ${
+                  f.key === formatKey ? styles.pillActive : ''
+                }`}
+                onClick={() => selectFormat(f.key)}
+              >
+                {f.label}
+                {f.pro && !isPro && (
+                  <span className={styles.proChip}>
+                    <FormattedMessage
+                      id="appMenu.proBadge"
+                      defaultMessage="Pro"
+                    />
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <p className={styles.formatDescription}>{format.description}</p>
+          {format.beta && (
+            <p className={styles.settingHint}>
+              <FormattedMessage
+                id="exportModal.betaNote"
+                defaultMessage="Beta format: the preview is exactly what you'll download."
+              />
+            </p>
+          )}
+
+          {(formatKey === 'glb' || isPlanFormat) && (
+            <div className={styles.settingsSection}>
+              <div className={styles.settingsLabel}>
+                <FormattedMessage
+                  id="exportModal.settings"
+                  defaultMessage="Settings"
+                />
+              </div>
+              {formatKey === 'glb' && (
+                <>
+                  <Toggle
+                    id="export-ar-ready"
+                    status={arReady}
+                    onChange={setArReady}
+                    label={{
+                      text: intl.formatMessage({
+                        id: 'exportModal.arReadyPill',
+                        defaultMessage: 'AR Ready'
+                      }),
+                      position: 'right'
+                    }}
+                  />
+                  <p className={styles.settingHint}>
+                    <FormattedMessage
+                      id="exportModal.arReadyHint"
+                      defaultMessage="Omits people, vehicles and geospatial layers for augmented reality apps."
+                    />
+                  </p>
+                </>
+              )}
+              {isPlanFormat && (
+                <>
+                  <div
+                    className={styles.settingPills}
+                    role="radiogroup"
+                    aria-label={intl.formatMessage({
+                      id: 'exportModal.unitsLabel',
+                      defaultMessage: 'Units'
+                    })}
+                  >
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={!unitsFeet}
+                      className={`${styles.pill} ${
+                        !unitsFeet ? styles.pillActive : ''
+                      }`}
+                      onClick={() => setUnitsFeet(false)}
+                    >
+                      <FormattedMessage
+                        id="exportModal.unitsMeters"
+                        defaultMessage="Meters"
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={unitsFeet}
+                      className={`${styles.pill} ${
+                        unitsFeet ? styles.pillActive : ''
+                      }`}
+                      onClick={() => setUnitsFeet(true)}
+                    >
+                      <FormattedMessage
+                        id="exportModal.unitsFeet"
+                        defaultMessage="Feet"
+                      />
+                    </button>
+                  </div>
+                  <div className={styles.settingsLabel}>
+                    <FormattedMessage
+                      id="exportModal.layersLabel"
+                      defaultMessage="Layers"
+                    />
+                  </div>
+                  <div
+                    className={styles.settingPills}
+                    role="group"
+                    aria-label={intl.formatMessage({
+                      id: 'exportModal.layersLabel',
+                      defaultMessage: 'Layers'
+                    })}
+                  >
+                    {PLAN_LAYER_GROUPS.map((group) => (
+                      <button
+                        key={group.key}
+                        type="button"
+                        aria-pressed={planLayerToggles[group.key]}
+                        className={`${styles.pill} ${
+                          planLayerToggles[group.key] ? styles.pillActive : ''
+                        }`}
+                        onClick={() =>
+                          setPlanLayerToggles((prev) => ({
+                            ...prev,
+                            [group.key]: !prev[group.key]
+                          }))
+                        }
+                      >
+                        {group.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className={styles.downloadSection}>
+            <Button
+              onClick={handleDownload}
+              variant="filled"
+              className={styles.downloadButton}
+              disabled={planIsEmpty}
+            >
+              <FormattedMessage
+                id="exportModal.downloadExt"
+                defaultMessage="Download {ext}"
+                values={{ ext: format.ext }}
+              />
+            </Button>
+            {format.pro && !isPro && (
+              <p className={styles.proHint}>
+                <FormattedMessage
+                  id="exportModal.proDownloadHint"
+                  defaultMessage="Preview is free. Downloading requires 3DStreet Pro."
+                />
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.previewPanel}>{renderPreview()}</div>
+      </div>
+    </Modal>
+  );
+}
+
+export { ExportModal };

@@ -109,7 +109,10 @@ class EssentialActions extends Component {
             </div>
             <div className={styles.icons}>
               {items.map((row, index) => (
-                <div className={styles.itemsRow} key={id.concat(index.toString())}>
+                <div
+                  className={styles.itemsRow}
+                  key={id.concat(index.toString())}
+                >
                   {row.map((item, index) => (
                     <span className={styles.item} key={index.toString()}>
                       {item}

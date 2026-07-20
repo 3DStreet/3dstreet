@@ -15,8 +15,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { httpsCallable } from 'firebase/functions';
+import { doc, setDoc } from 'firebase/firestore';
 import UpgradeModal from '../../../src/shared/components/UpgradeModal';
 import { AuthContext } from '@shared/contexts';
+
+// The modal records the pricing-nudge signal (userSignals.lastPaymentModalAt)
+// on open; the global setup mocks the db object but not the firestore API.
+vi.mock('firebase/firestore', () => ({
+  doc: vi.fn(() => ({ path: 'mock-doc' })),
+  setDoc: vi.fn(() => Promise.resolve()),
+  serverTimestamp: vi.fn(() => 'mock-server-timestamp')
+}));
 
 const renderModal = (props = {}, authValue = {}) => {
   const defaultProps = {
@@ -410,6 +419,59 @@ describe('UpgradeModal', () => {
       await user.click(screen.getByText('Upgrade to Pro'));
 
       expect(onClose).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Pricing-nudge signal (userSignals.lastPaymentModalAt)', () => {
+    beforeEach(() => {
+      doc.mockClear();
+      setDoc.mockClear();
+    });
+
+    it('records the signal when a signed-in non-Pro user opens the modal', async () => {
+      renderModal();
+      await waitFor(() => expect(setDoc).toHaveBeenCalled());
+      expect(doc).toHaveBeenCalledWith(
+        expect.anything(),
+        'userSignals',
+        'test-user-123'
+      );
+      expect(setDoc.mock.calls[0][1]).toEqual({
+        userId: 'test-user-123',
+        lastPaymentModalAt: 'mock-server-timestamp'
+      });
+      expect(setDoc.mock.calls[0][2]).toEqual({ merge: true });
+    });
+
+    it('does not record for signed-out users or when closed', () => {
+      renderModal({}, { currentUser: null });
+      expect(setDoc).not.toHaveBeenCalled();
+
+      renderModal({ isOpen: false });
+      expect(setDoc).not.toHaveBeenCalled();
+    });
+
+    it('does not record for Pro users', () => {
+      renderModal(
+        { onAlreadyPro: vi.fn() },
+        {
+          currentUser: {
+            uid: 'pro-user',
+            email: 'pro@example.com',
+            isPro: true,
+            getIdToken: () => Promise.resolve('mock-token')
+          }
+        }
+      );
+      expect(setDoc).not.toHaveBeenCalled();
+    });
+
+    it('a failing write never breaks the paywall UI', async () => {
+      setDoc.mockImplementationOnce(() => {
+        throw new Error('firestore offline');
+      });
+      renderModal();
+      expect(screen.getByText('Upgrade to Pro')).toBeInTheDocument();
     });
   });
 

@@ -102,6 +102,18 @@ const useStore = create(
             loadingSceneError: errorMessage,
             loadingSceneMessage: 'Error loading scene'
           }),
+        // Blocking overlay shown while a GLB/glTF export is running (issue
+        // #1797). Export work happens on the main thread and can take several
+        // seconds on large scenes, so we surface a saving-style indicator.
+        isExportingScene: false,
+        exportingSceneMessage: '',
+        startExportingScene: (message) =>
+          set({
+            isExportingScene: true,
+            exportingSceneMessage: message || 'Exporting scene...'
+          }),
+        finishExportingScene: () =>
+          set({ isExportingScene: false, exportingSceneMessage: '' }),
         sceneTitle: null,
         setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
         locationString: null,
@@ -167,6 +179,11 @@ const useStore = create(
             set({ modal: null });
           }
         },
+        // Payload for the shared ConfirmModal (title/message/labels + the
+        // onConfirm callback). Rendered whenever modal === 'confirm'; a themed
+        // in-app replacement for window.confirm. See ConfirmModal.
+        confirmProps: null,
+        showConfirm: (props) => set({ modal: 'confirm', confirmProps: props }),
         startCheckout: (postCheckout) => {
           // Snapshot the current modal so closing/completing the upgrade
           // flow lands the user back where they started (e.g. geo modal).
@@ -222,11 +239,57 @@ const useStore = create(
           set((state) => ({ panelsVisible: !state.panelsVisible })),
         rightPanelTab: 'properties',
         setRightPanelTab: (newTab) => set({ rightPanelTab: newTab }),
+        // Play lifecycle state, mirrored from the play-mode A-Frame
+        // system so React can render off it. Never set these directly —
+        // call sceneEl.systems['play-mode'].start()/stop()/togglePause().
+        isPlaying: false,
+        isPlayPaused: false,
+        // Where the current play session was entered from, stamped by
+        // play-mode.start(): 'editor' (Start/P from an editing session)
+        // or 'viewer' (viewer Start button, View-entry autoplay). Read
+        // by stopPlaying() to pick Stop's destination. null while idle.
+        playEntryOrigin: null,
+        // Entry-aware Stop (#1824 Q1): every user-facing stop affordance
+        // (viewer Stop button, Escape, gamepad Back) routes through here.
+        // Entered Play from the editor → Stop returns to the editor;
+        // a visitor (viewer origin) → Stop returns to View-idle.
+        stopPlaying: () => {
+          const playMode =
+            document.querySelector('a-scene')?.systems?.['play-mode'];
+          if (useStore.getState().playEntryOrigin === 'editor') {
+            // setIsInspectorEnabled(true) stops play as part of opening
+            // the editor, so this is one transition, not two.
+            useStore.getState().setIsInspectorEnabled(true);
+          } else {
+            playMode?.stop();
+          }
+        },
+        // Transient outcome shown by the viewer top bar's sim pill.
+        //   null      – normal running state
+        //   'finish'  – race-target was crossed (blue, pinned at finish time)
+        //   'crash'   – a recent chassis collision (red, auto-clears)
+        playOutcome: null,
+        playOutcomeTimeMs: 0,
+        // Race-finish detail consumed by the end-of-race banner.
+        // playFinish: null | { finalMs, simMs, collisions, previousBestMs,
+        //   isNewBest, deltaMs, courseKey, finishedAt }
+        playFinish: null,
+        // Enter viewer presentation. The camera needs no handoff: view
+        // and edit share the editor camera and its controls (#1848), so
+        // the viewer starts exactly where the editor was looking — and a
+        // scene arriving in the viewer flies to its saved start view via
+        // the same newScene camera animation the editor uses.
+        enterViewerMode: () => {
+          useStore.getState().setIsInspectorEnabled(false);
+        },
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
-          const viewerModeUI = document.getElementById('viewer-mode-ui');
-
           if (newIsInspectorEnabled) {
+            // Opening the inspector exits play mode (regardless of how
+            // the open was triggered — Edit button, Escape,
+            // programmatic). Subscribers tear down their own state via
+            // the play-mode-stop scene event.
+            document.querySelector('a-scene')?.systems?.['play-mode']?.stop();
             posthog.capture('inspector_opened');
             AFRAME.INSPECTOR.open();
 
@@ -235,19 +298,9 @@ const useStore = create(
               console.log('Stopping recording due to returning to editor mode');
               canvasRecorder.stopRecording();
             }
-
-            // Hide viewer mode UI when inspector is visible
-            if (viewerModeUI) {
-              viewerModeUI.style.display = 'none';
-            }
           } else {
             posthog.capture('inspector_closed');
             AFRAME.INSPECTOR.close();
-
-            // Show viewer mode UI when inspector is not visible
-            if (viewerModeUI) {
-              viewerModeUI.style.display = 'block';
-            }
           }
           set({ isInspectorEnabled: newIsInspectorEnabled });
         }

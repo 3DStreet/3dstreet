@@ -636,9 +636,15 @@
 .imageFrame img,
 .imageFrame video {
   max-width: 100%;
-  max-height: 100%;
-  width: 100%;
-  height: 100%;
+  /* Clamp against the modal's own height budget, not the frame (100%): when
+     the asset carries no width/height (server-side gallery saves record
+     neither) the frame has no inline aspect-ratio/width, so percentage
+     clamps resolve against an indefinite box to auto — a tall image then
+     rendered at natural size and was cropped by the frame's overflow:hidden
+     instead of letterboxed. */
+  max-height: calc(90vh - 12rem);
+  width: auto;
+  height: auto;
   object-fit: contain;
 }
 
@@ -834,6 +840,36 @@
   &:hover {
     color: #60a5fa; /* blue-400 */
     text-decoration: underline;
+  }
+}
+
+/* Scene name as a combined open-scene-and-focus-camera action (#1605): a
+   crosshair marks that clicking also returns the camera to the capture pose. */
+.sceneFocusBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #93c5fd; /* blue-300 */
+  font-weight: 500;
+  transition: color 0.15s ease;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    color: #60a5fa; /* blue-400 */
+
+    span {
+      text-decoration: underline;
+    }
   }
 }
 

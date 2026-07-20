@@ -57,14 +57,12 @@ const InteractiveWrapper = ({ initialValue, mode, disabled }) => {
 
 // Default image model selector
 export const Default = {
-  render: () => (
-    <InteractiveWrapper initialValue="kontext-realearth" mode="image" />
-  ),
+  render: () => <InteractiveWrapper initialValue="seedream-4.5" mode="image" />,
   parameters: {
     docs: {
       description: {
         story:
-          'Default image model selector with Kontext Real Earth selected. Click to see all available image models grouped by quality.'
+          'Default image model selector with Seedream 4.5 selected. Click to see all available image models grouped by quality.'
       }
     }
   }
@@ -137,7 +135,7 @@ export const VideoModeFast = {
 export const Disabled = {
   render: () => (
     <InteractiveWrapper
-      initialValue="kontext-realearth"
+      initialValue="seedream-4.5"
       mode="image"
       disabled={true}
     />
@@ -174,7 +172,7 @@ export const InFormContext = {
         >
           AI Model
         </label>
-        <InteractiveWrapper initialValue="kontext-realearth" mode="image" />
+        <InteractiveWrapper initialValue="seedream-4.5" mode="image" />
       </div>
       <div style={{ marginBottom: '16px' }}>
         <label
@@ -250,7 +248,7 @@ const ControlledWrapper = () => {
             Set to Nano Banana Pro
           </button>
           <button
-            onClick={() => setModel('kontext-realearth')}
+            onClick={() => setModel('seedream-4.5')}
             style={{
               padding: '6px 12px',
               fontSize: '12px',
@@ -259,7 +257,7 @@ const ControlledWrapper = () => {
               cursor: 'pointer'
             }}
           >
-            Set to Kontext Real Earth
+            Set to Seedream 4.5
           </button>
         </div>
       </div>
@@ -290,7 +288,7 @@ export const AllImageModels = {
       <h3 style={{ margin: 0, fontSize: '16px', marginTop: '8px' }}>
         High Quality and Fast
       </h3>
-      <InteractiveWrapper initialValue="kontext-realearth" mode="image" />
+      <InteractiveWrapper initialValue="seedream-4.5" mode="image" />
       <InteractiveWrapper initialValue="seedream-4" mode="image" />
 
       <h3 style={{ margin: 0, fontSize: '16px', marginTop: '8px' }}>

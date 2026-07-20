@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styles from './ScreenshotModal.module.scss';
 import Modal from '@shared/components/Modal/Modal.jsx';
@@ -6,10 +6,12 @@ import posthog from 'posthog-js';
 import useStore from '@/store';
 import { Button } from '../../elements';
 import { DownloadIcon } from '@shared/icons';
-import { takeScreenshotWithOptions } from '../../../api/scene';
+import { getCurrentCameraState } from '../../../lib/cameraUtils';
 import {
+  captureScreenshotAsJpeg,
   createSceneSnapshot,
   createSnapshotFromImageUrl,
+  saveScreenshotToGallery,
   setSnapshotAsSceneThumbnail
 } from '../../../api/snapshot';
 import { functions } from '@shared/services/firebase';
@@ -19,12 +21,31 @@ import { ImgComparisonSlider } from '@img-comparison-slider/react';
 import 'img-comparison-slider/dist/styles.css';
 import { canUseImageFeature } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
-import { assetsService } from '@shared/assets';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import {
+  DEFAULT_RENDER_STYLE_ID,
+  getDefaultInstructions,
+  getStyleSentence,
+  describeStyleText,
+  composePrompt
+} from '@shared/constants/renderStyles.js';
 import AIModelSelector from '@shared/components/AIModelSelector';
+import RenderStyleSelector from '@shared/components/RenderStyleSelector';
+import promptFieldStyles from '@shared/styles/promptFields.module.scss';
+import {
+  pollGenerationJob,
+  forceJobNotifyEmail
+} from '@shared/utils/generationJobs';
+import { getLocalizedStyleLabels } from './renderStyleMessages';
 
 // Available AI models (use shared constants)
 const AI_MODELS = REPLICATE_MODELS;
+
+// AI renders are async generation jobs since #1835: the submit callable
+// returns a jobId immediately and the server saves the finished image to the
+// gallery (so closing this modal or the tab mid-render no longer loses it).
+// The shared poll (pollGenerationJob) only drives the live modal UI.
+const AI_RENDER_POLL_MAX_MS = 10 * 60 * 1000;
 
 function ScreenshotModal() {
   const intl = useIntl();
@@ -60,9 +81,70 @@ function ScreenshotModal() {
   const [renderingStates, setRenderingStates] = useState({}); // Track which models are rendering
   const [renderErrors, setRenderErrors] = useState({}); // Track which models had errors
   const [useMixedModels, setUseMixedModels] = useState(true); // Toggle for model mixing
-  const [customPrompt, setCustomPrompt] = useState(''); // Custom prompt text
+  // The prompt is two stacked, prefilled fields sent as one string
+  // (composePrompt): instructions + style sentence. Style chips write only
+  // the style field, so instructions survive style switching.
+  const [promptInstructions, setPromptInstructions] = useState(
+    getDefaultInstructions()
+  );
+  const [promptStyleText, setPromptStyleText] = useState(
+    getStyleSentence(DEFAULT_RENDER_STYLE_ID)
+  );
   const [showOvertimeWarning, setShowOvertimeWarning] = useState(false); // Show overtime warning for 1x mode
   const [isClosing, setIsClosing] = useState(false); // Track closing animation
+
+  // Completion-email opt-in. The checkbox only shows while a render is in
+  // flight (that's when "close this window and get emailed" is meaningful);
+  // its state at submit rides the job doc, and mid-render toggles write
+  // through via setGenerationJobNotify. In-flight job ids live in a ref (no
+  // re-render needed), as does the shared batch identity during a 4x submit.
+  const [notifyEmail, setNotifyEmail] = useState(true);
+  // Live mirror of the checkbox for async code: a submit callable can take
+  // seconds, and the job registers against the CURRENT preference, not the
+  // click-time closure value (a mid-submit toggle must not be lost).
+  const notifyEmailRef = useRef(true);
+  const activeJobIdsRef = useRef(new Set());
+  // Cancel handles for in-flight status polls. A poll that outlives the modal
+  // would keep acking the job server-side, which suppresses the opted-in
+  // completion email — cancelled on close/unmount (the render itself finishes
+  // and saves server-side regardless).
+  const activePollsRef = useRef(new Set());
+  const batch4xRef = useRef(null);
+
+  useEffect(() => {
+    const polls = activePollsRef.current;
+    return () => {
+      polls.forEach((poll) => poll.cancel());
+      polls.clear();
+    };
+  }, []);
+
+  const handleNotifyToggle = (checked) => {
+    setNotifyEmail(checked);
+    notifyEmailRef.current = checked;
+    if (activeJobIdsRef.current.size === 0) return;
+    const setGenerationJobNotify = httpsCallable(
+      functions,
+      'setGenerationJobNotify'
+    );
+    activeJobIdsRef.current.forEach((jobId) => {
+      setGenerationJobNotify({ jobId, email: checked }).catch((err) => {
+        console.warn('Failed to update email preference for job:', err);
+      });
+    });
+  };
+
+  // Chip highlight and analytics derive from the style text itself: an
+  // unedited chip sentence maps to its style, empty is 'none', anything
+  // else is 'custom' (which highlights no chip).
+  const activeStyleId = describeStyleText(promptStyleText);
+  const styleLabels = useMemo(() => getLocalizedStyleLabels(intl), [intl]);
+  // Default/preset text stays muted gray; user-authored text renders white
+  const isInstructionsEdited =
+    promptInstructions.trim() !== getDefaultInstructions().trim();
+  // Any generation in flight (1x or 4x) — gates every prompt/model control
+  const isAnyRendering =
+    isGeneratingAI || Object.values(renderingStates).some((state) => state);
 
   // Get token cost for the selected model
   const getTokenCost = (modelKey) => {
@@ -109,22 +191,23 @@ function ScreenshotModal() {
     setRenderTimers({});
     setRenderingStates({});
     setRenderErrors({});
-    setCustomPrompt('');
+    setPromptInstructions(getDefaultInstructions());
+    setPromptStyleText(getStyleSentence(DEFAULT_RENDER_STYLE_ID));
     setShowOvertimeWarning(false);
     // Keep model selection and render mode when resetting
   };
 
   const handleClose = () => {
-    // Check if any rendering is in progress (1x or 4x)
-    const isAnyRendering =
-      isGeneratingAI || Object.values(renderingStates).some((state) => state);
-
-    if (isAnyRendering) {
+    // Since #1835 the render finishes server-side either way; closing only
+    // stops the live preview. With the email opt-in checked, closing
+    // mid-render is the advertised flow ("you can close this window"), so
+    // only an opted-out user gets the are-you-sure prompt.
+    if (isAnyRendering && !notifyEmail) {
       const confirmClose = window.confirm(
         intl.formatMessage({
           id: 'screenshotModal.confirmClose',
           defaultMessage:
-            'Rendering in progress. Are you sure you want to close? The render will be cancelled.'
+            'Rendering in progress. Close anyway? The render will finish in the background and be saved to your gallery.'
         })
       );
       if (!confirmClose) {
@@ -137,6 +220,13 @@ function ScreenshotModal() {
 
     // Wait for animation to complete, then close
     setTimeout(() => {
+      // Stop the orphaned status polls: a poll that outlives the modal would
+      // ack the finished job server-side and suppress the opted-in email —
+      // the whole point of "you can close this window". The renders finish
+      // and save to the gallery server-side either way.
+      activePollsRef.current.forEach((poll) => poll.cancel());
+      activePollsRef.current.clear();
+      activeJobIdsRef.current.clear();
       // Reset all state when closing
       resetModalState();
       setIsClosing(false);
@@ -147,8 +237,11 @@ function ScreenshotModal() {
   const performDownloadScreenshot = (targetImageUrl, modelKey) => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const isOriginal = targetImageUrl === originalImageUrl;
+    // 4x slots use compound keys like 'nano-banana-2-3'; strip the numeric
+    // slot suffix if the key doesn't match a model id directly.
     const modelName = modelKey
-      ? AI_MODELS[modelKey.split('-')[0]]?.name || 'ai-render'
+      ? (AI_MODELS[modelKey] || AI_MODELS[modelKey.replace(/-\d+$/, '')])
+          ?.name || 'ai-render'
       : 'ai-render';
 
     const filename = isOriginal
@@ -282,6 +375,22 @@ function ScreenshotModal() {
       return;
     }
 
+    // Explicit prompts only: the two visible fields are the whole prompt,
+    // with no hidden fallback. Both cleared means there's nothing to send.
+    const aiPrompt = composePrompt({
+      instructions: promptInstructions,
+      style: promptStyleText
+    });
+    if (!aiPrompt) {
+      STREET.notify.errorMessage(
+        intl.formatMessage({
+          id: 'screenshotModal.emptyPromptError',
+          defaultMessage: 'Add instructions or pick a style before rendering.'
+        })
+      );
+      return;
+    }
+
     const targetModel = modelKey || selectedModel;
 
     // Guard against re-entry (e.g. double-click before state flushes)
@@ -334,6 +443,9 @@ function ScreenshotModal() {
       return;
     }
 
+    // The submitted job's id, tracked for the mid-render email toggle and
+    // cleared in `finally` (the toggle only applies to an in-flight job).
+    let submittedJobId = null;
     try {
       // Simple approach: try the key as-is first, then try removing numeric suffix
       let selectedModelConfig = AI_MODELS[targetModel];
@@ -353,9 +465,9 @@ function ScreenshotModal() {
         throw new Error(`Model configuration not found for: ${baseModelKey}`);
       }
 
-      // Only allow custom prompts for Pro users (subscription or team).
-      const aiPrompt =
-        (isPro && customPrompt.trim()) || selectedModelConfig.prompt;
+      // aiPrompt was composed (and emptiness rejected) at the top of this
+      // handler; here we only derive the analytics label for the style field.
+      const promptStyle = describeStyleText(promptStyleText);
 
       const screentockImgElement = document.getElementById(
         'screentock-destination'
@@ -391,24 +503,60 @@ function ScreenshotModal() {
         setRenderStartTime(startTime);
       }
 
-      // Route to the correct cloud function based on model type
+      // Metadata for the saved gallery asset. The gallery save happens
+      // SERVER-SIDE now (#1835) in the job's terminal processor, so anything
+      // only this client knows — the scene link fields and the camera pose
+      // that powers the focus button (#1605) — rides the job doc from submit.
+      const galleryMetadata = {
+        sceneId: sceneId || null,
+        sceneTitle: useStore.getState().sceneTitle || 'Untitled',
+        source: 'ai-render',
+        model: selectedModelConfig.name,
+        modelKey: baseModelKey,
+        prompt: aiPrompt,
+        renderStyle: promptStyle,
+        renderMode: renderMode,
+        // The camera hasn't moved since the base capture, so this is the
+        // render's vantage.
+        cameraState: getCurrentCameraState(),
+        isPro: currentUser?.isPro || false
+      };
+
+      // Completion-email opt-in, recorded on the job doc. Only sends if
+      // nothing acks the result (i.e. this browser tab is gone before the
+      // render finishes). 4x jobs share a batch identity so the whole batch
+      // produces at most one email (first finisher decides, server-side).
+      const notify = {
+        email: notifyEmail,
+        ...(batch4xRef.current && {
+          batchId: batch4xRef.current.id,
+          batchTotal: batch4xRef.current.total
+        })
+      };
+
+      // Route to the correct cloud function based on model type. Both are
+      // submit-and-return: they charge tokens, create the provider job, and
+      // hand back a jobId; the render is finished (and saved to the gallery)
+      // server-side even if this modal or tab closes mid-render.
       let result;
       if (selectedModelConfig.type === 'fal') {
         const generateFalImage = httpsCallable(functions, 'generateFalImage', {
-          timeout: 300000
+          timeout: 120000
         });
         result = await generateFalImage({
           prompt: aiPrompt,
           input_image: inputImageSrc,
           model_id: baseModelKey,
           scene_id: sceneId || null,
-          source: 'editor'
+          source: 'editor',
+          gallery_metadata: galleryMetadata,
+          notify
         });
       } else {
         const generateReplicateImage = httpsCallable(
           functions,
           'generateReplicateImage',
-          { timeout: 300000 }
+          { timeout: 120000 }
         );
         result = await generateReplicateImage({
           prompt: aiPrompt,
@@ -417,50 +565,66 @@ function ScreenshotModal() {
           num_inference_steps: 30,
           model_version: selectedModelConfig.version,
           model_id: baseModelKey,
-          scene_id: sceneId || null
+          scene_id: sceneId || null,
+          gallery_metadata: galleryMetadata,
+          notify
         });
       }
 
-      if (result.data.success) {
+      if (result.data.success && result.data.jobId) {
+        // In flight — the email toggle targets this job until it's terminal.
+        submittedJobId = result.data.jobId;
+        activeJobIdsRef.current.add(submittedJobId);
+        // The submit rode the click-time notify value; if the checkbox was
+        // toggled while the upload was in flight (it wasn't addressable in
+        // activeJobIdsRef yet), write the current value through now.
+        if (notifyEmailRef.current !== notify.email) {
+          const setGenerationJobNotify = httpsCallable(
+            functions,
+            'setGenerationJobNotify'
+          );
+          setGenerationJobNotify({
+            jobId: submittedJobId,
+            email: notifyEmailRef.current
+          }).catch((err) => {
+            console.warn('Failed to sync email preference for job:', err);
+          });
+        }
+        // Poll until the job is terminal; the server has already saved the
+        // image to the gallery by the time this resolves. The cancel handle
+        // lets handleClose stop the poll (a null result means cancelled).
+        const poll = pollGenerationJob(submittedJobId, {
+          resultField: 'image_url',
+          maxMs: AI_RENDER_POLL_MAX_MS
+        });
+        activePollsRef.current.add(poll);
+        let jobData;
+        try {
+          jobData = await poll.promise;
+        } finally {
+          activePollsRef.current.delete(poll);
+        }
+        if (!jobData) {
+          // Modal closed mid-render — the server finishes, saves, and (if
+          // opted in) emails; nothing more for this UI to do.
+          return;
+        }
+        const renderedImageUrl = jobData.image_url;
+
         // Store image in the appropriate place based on render mode
         if (renderMode === '1x') {
-          setAiImageUrl(result.data.image_url);
+          setAiImageUrl(renderedImageUrl);
           setShowOriginal(false);
         } else {
           setAiImages((prev) => ({
             ...prev,
-            [targetModel]: result.data.image_url
+            [targetModel]: renderedImageUrl
           }));
         }
 
-        // Save AI render to gallery
-        if (currentUser?.uid) {
-          try {
-            // Initialize gallery service V2 if needed
-            await assetsService.init();
-
-            await assetsService.addAsset(
-              result.data.image_url,
-              {
-                timestamp: new Date().toISOString(),
-                sceneId: sceneId || STREET.utils.getCurrentSceneId(),
-                sceneTitle: useStore.getState().sceneTitle || 'Untitled',
-                source: 'ai-render',
-                model: selectedModelConfig.name,
-                modelKey: baseModelKey,
-                prompt: aiPrompt,
-                renderMode: renderMode,
-                isPro: currentUser?.isPro || false
-              },
-              'image', // type
-              'ai-render', // category
-              currentUser.uid // userId
-            );
-            console.log('AI render saved to gallery');
-          } catch (error) {
-            console.error('Failed to save AI render to gallery:', error);
-          }
-        }
+        // Nudge the Assets panel — the server-side save doesn't fire the
+        // client-side assetAdded events the old in-browser save did.
+        window.dispatchEvent(new Event('assets:refresh'));
 
         // Show appropriate success message based on user type
         if (currentUser?.isProTeam) {
@@ -519,6 +683,7 @@ function ScreenshotModal() {
           scene_id: STREET.utils.getCurrentSceneId(),
           prompt: aiPrompt,
           model: baseModelKey,
+          render_style: promptStyle,
           render_mode: renderMode,
           is_pro_user: currentUser?.isPro || false,
           tokens_available: tokenProfile?.genToken || 0
@@ -528,6 +693,7 @@ function ScreenshotModal() {
         posthog.capture('ai_render_used', {
           token_type: 'gen',
           model: baseModelKey,
+          render_style: promptStyle,
           render_mode: renderMode,
           is_pro_user: currentUser?.isPro || false,
           scene_id: STREET.utils.getCurrentSceneId()
@@ -549,10 +715,26 @@ function ScreenshotModal() {
         throw new Error('Failed to generate image');
       }
     } catch (error) {
+      if (error?.timedOut && submittedJobId) {
+        // The poll gave up but the job is still running server-side. A render
+        // that outlives the poll window is unusual — don't make the user
+        // babysit the tab for it: force the completion email on.
+        forceJobNotifyEmail(submittedJobId);
+        setNotifyEmail(true);
+        notifyEmailRef.current = true;
+        STREET.notify.warningMessage(
+          intl.formatMessage({
+            id: 'screenshotModal.aiRenderTimeoutEmail',
+            defaultMessage:
+              "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery."
+          })
+        );
+        return;
+      }
       console.error('Error generating AI image:', error);
-      const baseModelKey = targetModel.includes('-')
-        ? targetModel.split('-').slice(0, -1).join('-')
-        : targetModel;
+      const baseModelKey = AI_MODELS[targetModel]
+        ? targetModel
+        : targetModel.replace(/-\d+$/, '');
       const modelName =
         AI_MODELS[baseModelKey]?.name ||
         intl.formatMessage({
@@ -577,6 +759,7 @@ function ScreenshotModal() {
         );
       }
     } finally {
+      if (submittedJobId) activeJobIdsRef.current.delete(submittedJobId);
       // Update rendering state for this specific model
       setRenderingStates((prev) => ({ ...prev, [targetModel]: false }));
 
@@ -596,6 +779,24 @@ function ScreenshotModal() {
         intl.formatMessage({
           id: 'screenshotModal.noScreenshotToRender',
           defaultMessage: 'No screenshot available to render'
+        })
+      );
+      return;
+    }
+
+    // Reject an all-empty prompt once, up front — the per-model guard in
+    // handleGenerateAIImage fires after the previous batch is already wiped
+    // below, and would toast once per model.
+    if (
+      !composePrompt({
+        instructions: promptInstructions,
+        style: promptStyleText
+      })
+    ) {
+      STREET.notify.errorMessage(
+        intl.formatMessage({
+          id: 'screenshotModal.emptyPromptError',
+          defaultMessage: 'Add instructions or pick a style before rendering.'
         })
       );
       return;
@@ -641,12 +842,23 @@ function ScreenshotModal() {
       ? modelKeys
       : [selectedModel, selectedModel, selectedModel, selectedModel];
 
-    // Generate renders for each model concurrently
-    const renderPromises = modelsToRender.map((modelKey, index) =>
-      handleGenerateAIImage(`${modelKey}-${index}`)
-    );
+    // One user action → one batch identity: every job in this 4x submit
+    // carries the same batchId, so the server sends at most one email for
+    // the whole batch (first finisher decides) instead of four.
+    batch4xRef.current = {
+      id: crypto.randomUUID(),
+      total: modelsToRender.length
+    };
+    try {
+      // Generate renders for each model concurrently
+      const renderPromises = modelsToRender.map((modelKey, index) =>
+        handleGenerateAIImage(`${modelKey}-${index}`)
+      );
 
-    await Promise.allSettled(renderPromises);
+      await Promise.allSettled(renderPromises);
+    } finally {
+      batch4xRef.current = null;
+    }
   };
 
   // Progress bar animation effect for single render
@@ -730,72 +942,37 @@ function ScreenshotModal() {
 
   useEffect(() => {
     if (modal === 'screenshot') {
-      takeScreenshotWithOptions({
-        type: 'img',
-        showLogo: !isPro,
-        showWatermark: !isPro,
-        imgElementSelector: '#screentock-destination'
-      }).then(async () => {
-        const imgElement = document.getElementById('screentock-destination');
-        if (imgElement && imgElement.src) {
-          setOriginalImageUrl(imgElement.src);
-
-          // Save screenshot to gallery (async, don't block UI)
-          if (currentUser?.uid) {
-            // Upload to gallery in the background
-            (async () => {
-              try {
-                // Load the image to get dimensions and convert to JPEG
-                const img = new Image();
-                img.src = imgElement.src;
-                await new Promise((resolve) => {
-                  img.onload = resolve;
-                  // If already loaded, resolve immediately
-                  if (img.complete) resolve();
-                });
-
-                // Convert PNG data URI to JPEG for smaller file size
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-
-                // Convert to JPEG at 95% quality (much smaller than PNG)
-                const jpegDataUri = canvas.toDataURL('image/jpeg', 0.95);
-
-                // Initialize gallery service V2 if needed
-                await assetsService.init();
-
-                console.log('Uploading screenshot to gallery (JPEG format)...');
-
-                // Add to gallery using V2 API
-                const assetId = await assetsService.addAsset(
-                  jpegDataUri, // JPEG Data URI (will be auto-converted to blob)
-                  {
-                    timestamp: new Date().toISOString(),
-                    sceneId: STREET.utils.getCurrentSceneId(),
-                    sceneTitle: useStore.getState().sceneTitle || 'Untitled',
-                    source: 'screenshot',
-                    model: 'Editor Snapshot',
-                    width: img.width,
-                    height: img.height,
-                    isPro: isPro
-                  },
-                  'image', // type
-                  'screenshot', // category
-                  currentUser.uid // userId
-                );
-                console.log(`Screenshot saved to gallery with ID: ${assetId}`);
-              } catch (error) {
-                console.error('Failed to save screenshot to gallery:', error);
-              }
-            })();
-          } else {
+      // Shared capture + gallery-save pipeline (also used by the
+      // viewer's snapshot button) — see editor/api/snapshot.js.
+      captureScreenshotAsJpeg(isPro)
+        .then(({ dataUrl, width, height, pngSrc }) => {
+          setOriginalImageUrl(pngSrc);
+          if (!currentUser?.uid) {
             console.log('User not logged in, skipping gallery save');
+            return;
           }
-        }
-      });
+          // Save to gallery in the background (never blocks the UI)
+          saveScreenshotToGallery(
+            dataUrl,
+            {
+              source: 'screenshot',
+              model: 'Editor Snapshot',
+              width,
+              height,
+              isPro
+            },
+            currentUser.uid
+          )
+            .then((assetId) => {
+              console.log(`Screenshot saved to gallery with ID: ${assetId}`);
+            })
+            .catch((error) => {
+              console.error('Failed to save screenshot to gallery:', error);
+            });
+        })
+        .catch((error) => {
+          console.error('Screenshot capture failed:', error);
+        });
     }
   }, [modal, isPro, currentUser?.uid]);
 
@@ -822,10 +999,7 @@ function ScreenshotModal() {
             <button
               className={`${styles.tabButton} ${renderMode === '1x' ? styles.active : ''}`}
               onClick={() => setRenderMode('1x')}
-              disabled={
-                isGeneratingAI ||
-                Object.values(renderingStates).some((state) => state)
-              }
+              disabled={isAnyRendering}
             >
               <FormattedMessage
                 id="screenshotModal.render1x"
@@ -835,10 +1009,7 @@ function ScreenshotModal() {
             <button
               className={`${styles.tabButton} ${renderMode === '4x' ? styles.active : ''}`}
               onClick={() => setRenderMode('4x')}
-              disabled={
-                isGeneratingAI ||
-                Object.values(renderingStates).some((state) => state)
-              }
+              disabled={isAnyRendering}
             >
               <FormattedMessage
                 id="screenshotModal.render4x"
@@ -847,102 +1018,198 @@ function ScreenshotModal() {
             </button>
           </div>
 
-          <div className={styles.aiSection}>
-            {renderMode === '1x' && (
-              <div className={styles.modelSelector}>
-                <label className={styles.modelLabel}>
-                  <FormattedMessage
-                    id="screenshotModal.aiModelLabel"
-                    defaultMessage="AI Model:"
-                  />
-                </label>
-                <AIModelSelector
-                  value={selectedModel}
-                  onChange={setSelectedModel}
-                  disabled={
-                    isGeneratingAI ||
-                    Object.values(renderingStates).some((state) => state)
-                  }
-                />
-              </div>
-            )}
-
-            {renderMode === '4x' && (
-              <div className={styles.modelMixToggle}>
-                <label className={styles.toggleLabel}>
-                  <span className={styles.toggleText}>
-                    {useMixedModels ? (
-                      <FormattedMessage
-                        id="screenshotModal.mixedModels"
-                        defaultMessage="Mixed Models"
-                      />
-                    ) : (
-                      <FormattedMessage
-                        id="screenshotModal.sameModel"
-                        defaultMessage="Same Model"
-                      />
-                    )}
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={useMixedModels}
-                    onChange={(e) => setUseMixedModels(e.target.checked)}
-                    disabled={
-                      isGeneratingAI ||
-                      Object.values(renderingStates).some((state) => state)
-                    }
-                  />
-                  <div className={styles.toggleSwitch}></div>
-                </label>
-                {!useMixedModels && (
+          <div className={styles.sidebarScroll}>
+            <div className={styles.aiSection}>
+              {renderMode === '1x' && (
+                <div className={styles.modelSelector}>
+                  <label className={styles.modelLabel}>
+                    <FormattedMessage
+                      id="screenshotModal.aiModelLabel"
+                      defaultMessage="AI Model:"
+                    />
+                  </label>
                   <AIModelSelector
                     value={selectedModel}
                     onChange={setSelectedModel}
-                    disabled={
-                      isGeneratingAI ||
-                      Object.values(renderingStates).some((state) => state)
-                    }
+                    disabled={isAnyRendering}
                   />
-                )}
+                </div>
+              )}
+
+              {renderMode === '4x' && (
+                <div className={styles.modelMixToggle}>
+                  <label className={styles.toggleLabel}>
+                    <span className={styles.toggleText}>
+                      {useMixedModels ? (
+                        <FormattedMessage
+                          id="screenshotModal.mixedModels"
+                          defaultMessage="Mixed Models"
+                        />
+                      ) : (
+                        <FormattedMessage
+                          id="screenshotModal.sameModel"
+                          defaultMessage="Same Model"
+                        />
+                      )}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={useMixedModels}
+                      onChange={(e) => setUseMixedModels(e.target.checked)}
+                      disabled={isAnyRendering}
+                    />
+                    <div className={styles.toggleSwitch}></div>
+                  </label>
+                  {!useMixedModels && (
+                    <AIModelSelector
+                      value={selectedModel}
+                      onChange={setSelectedModel}
+                      disabled={isAnyRendering}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* The prompt, shown as its two parts stacked in send order:
+                instructions + style sentence (composePrompt joins them
+                verbatim). Style chips write only the style field. */}
+              <div className={styles.promptSection}>
+                <label className={styles.promptLabel}>
+                  <FormattedMessage
+                    id="screenshotModal.promptLabel"
+                    defaultMessage="Prompt:"
+                  />
+                </label>
+                <div className={promptFieldStyles.fieldGroup}>
+                  <label
+                    htmlFor="prompt-instructions"
+                    className={promptFieldStyles.fieldLabel}
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.promptInstructionsLabel"
+                      defaultMessage="Instructions"
+                    />
+                  </label>
+                  <textarea
+                    id="prompt-instructions"
+                    value={promptInstructions}
+                    onChange={(e) => setPromptInstructions(e.target.value)}
+                    placeholder={intl.formatMessage({
+                      id: 'screenshotModal.promptInstructionsPlaceholder',
+                      defaultMessage:
+                        'Describe how to use the input image such as keeping or changing layout, composition or camera angle...'
+                    })}
+                    className={`${promptFieldStyles.textarea} ${
+                      isInstructionsEdited ? promptFieldStyles.userText : ''
+                    }`}
+                    disabled={isAnyRendering}
+                    rows={4}
+                    maxLength={500}
+                  />
+                  <label
+                    htmlFor="prompt-style"
+                    className={promptFieldStyles.fieldLabel}
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.promptStyleLabel"
+                      defaultMessage="Style"
+                    />
+                  </label>
+                  <RenderStyleSelector
+                    activeStyleId={activeStyleId}
+                    labels={styleLabels}
+                    onSelect={(styleId) =>
+                      setPromptStyleText(getStyleSentence(styleId))
+                    }
+                    disabled={isAnyRendering}
+                  />
+                  <textarea
+                    id="prompt-style"
+                    value={promptStyleText}
+                    onChange={(e) => setPromptStyleText(e.target.value)}
+                    placeholder={intl.formatMessage({
+                      id: 'screenshotModal.promptStylePlaceholder',
+                      defaultMessage: 'No style; instructions only'
+                    })}
+                    className={`${promptFieldStyles.textarea} ${
+                      activeStyleId === 'custom'
+                        ? promptFieldStyles.userText
+                        : ''
+                    }`}
+                    disabled={isAnyRendering}
+                    rows={3}
+                    maxLength={500}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {renderMode === '1x' && aiImageUrl && (
+              <div className={styles.viewControls}>
+                <div className={styles.toggleButtons}>
+                  <Button
+                    variant={
+                      showOriginal && !comparisonMode ? 'filled' : 'outline'
+                    }
+                    onClick={() => {
+                      setShowOriginal(true);
+                      setComparisonMode(false);
+                    }}
+                    size="small"
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.showOriginal"
+                      defaultMessage="Show Original"
+                    />
+                  </Button>
+                  <Button
+                    variant={
+                      !showOriginal && !comparisonMode ? 'filled' : 'outline'
+                    }
+                    onClick={() => {
+                      setShowOriginal(false);
+                      setComparisonMode(false);
+                    }}
+                    size="small"
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.showRender"
+                      defaultMessage="Show Render"
+                    />
+                  </Button>
+                  <Button
+                    variant={comparisonMode ? 'filled' : 'outline'}
+                    onClick={() => setComparisonMode(!comparisonMode)}
+                    size="small"
+                  >
+                    <FormattedMessage
+                      id="screenshotModal.compareAB"
+                      defaultMessage="Compare A/B"
+                    />
+                  </Button>
+                </div>
               </div>
             )}
 
-            {/* Custom Prompt Input - Only show for Pro users (subscription or team) */}
-            {isPro && (
-              <div className={styles.promptSection}>
-                <label htmlFor="custom-prompt" className={styles.promptLabel}>
+            {!isPro && (
+              <div className={styles.upsellSection}>
+                <Button
+                  variant="toolbtn"
+                  className={styles.upsellButton}
+                  onClick={() => startCheckout('watermark')}
+                >
                   <FormattedMessage
-                    id="screenshotModal.customPromptLabel"
-                    defaultMessage="Custom Prompt (optional):"
+                    id="screenshotModal.upgradeToPro"
+                    defaultMessage="Upgrade to Pro to hide 3DStreet Free watermark"
                   />
-                </label>
-                <textarea
-                  id="custom-prompt"
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder={
-                    renderMode === '1x' && selectedModel
-                      ? AI_MODELS[selectedModel]?.prompt ||
-                        intl.formatMessage({
-                          id: 'screenshotModal.customPromptPlaceholder',
-                          defaultMessage: 'Enter custom prompt...'
-                        })
-                      : intl.formatMessage({
-                          id: 'screenshotModal.customPromptPlaceholder',
-                          defaultMessage: 'Enter custom prompt...'
-                        })
-                  }
-                  className={styles.promptTextarea}
-                  disabled={
-                    isGeneratingAI ||
-                    Object.values(renderingStates).some((state) => state)
-                  }
-                  rows={3}
-                  maxLength={500}
-                />
+                </Button>
               </div>
             )}
-            {/* Render Buttons */}
+          </div>
+
+          {/* Pinned footer: the generate button stays visible even when the
+              controls above need to scroll on short screens */}
+          <div className={styles.sidebarFooter}>
             {renderMode === '1x' ? (
               <Button
                 onClick={() => handleGenerateAIImage()}
@@ -1010,10 +1277,7 @@ function ScreenshotModal() {
                 onClick={handleGenerate4xRender}
                 variant="filled"
                 className={styles.aiButton}
-                disabled={
-                  Object.values(renderingStates).some((state) => state) ||
-                  !currentUser
-                }
+                disabled={isAnyRendering || !currentUser}
                 title={intl.formatMessage(
                   {
                     id: 'screenshotModal.generate4xTooltip',
@@ -1055,6 +1319,22 @@ function ScreenshotModal() {
                 </span>
               </Button>
             )}
+            {/* Email opt-in: only meaningful while a render is in flight
+                (check it, close this window, get the result by email).
+                Toggling writes through to the in-flight job docs. */}
+            {isAnyRendering && (
+              <label className={styles.notifyEmailRow}>
+                <input
+                  type="checkbox"
+                  checked={notifyEmail}
+                  onChange={(e) => handleNotifyToggle(e.target.checked)}
+                />
+                <FormattedMessage
+                  id="screenshotModal.emailWhenDone"
+                  defaultMessage="Email me when it's ready (you can close this window)"
+                />
+              </label>
+            )}
             {!currentUser && (
               <p className={styles.loginPrompt}>
                 <FormattedMessage
@@ -1063,76 +1343,12 @@ function ScreenshotModal() {
                 />
               </p>
             )}
-          </div>
-
-          {/* Token Display at bottom of sidebar */}
-          {tokenProfile && (
-            <div className={styles.sidebarTokenDisplay}>
-              <TokenDisplayInner showLabel={true} />
-            </div>
-          )}
-
-          {renderMode === '1x' && aiImageUrl && (
-            <div className={styles.viewControls}>
-              <div className={styles.toggleButtons}>
-                <Button
-                  variant={
-                    showOriginal && !comparisonMode ? 'filled' : 'outline'
-                  }
-                  onClick={() => {
-                    setShowOriginal(true);
-                    setComparisonMode(false);
-                  }}
-                  size="small"
-                >
-                  <FormattedMessage
-                    id="screenshotModal.showOriginal"
-                    defaultMessage="Show Original"
-                  />
-                </Button>
-                <Button
-                  variant={
-                    !showOriginal && !comparisonMode ? 'filled' : 'outline'
-                  }
-                  onClick={() => {
-                    setShowOriginal(false);
-                    setComparisonMode(false);
-                  }}
-                  size="small"
-                >
-                  <FormattedMessage
-                    id="screenshotModal.showRender"
-                    defaultMessage="Show Render"
-                  />
-                </Button>
-                <Button
-                  variant={comparisonMode ? 'filled' : 'outline'}
-                  onClick={() => setComparisonMode(!comparisonMode)}
-                  size="small"
-                >
-                  <FormattedMessage
-                    id="screenshotModal.compareAB"
-                    defaultMessage="Compare A/B"
-                  />
-                </Button>
+            {tokenProfile && (
+              <div className={styles.sidebarTokenDisplay}>
+                <TokenDisplayInner showLabel={true} />
               </div>
-            </div>
-          )}
-
-          {!isPro && (
-            <div className={styles.upsellSection}>
-              <Button
-                variant="toolbtn"
-                className={styles.upsellButton}
-                onClick={() => startCheckout('watermark')}
-              >
-                <FormattedMessage
-                  id="screenshotModal.upgradeToPro"
-                  defaultMessage="Upgrade to Pro to hide 3DStreet Free watermark"
-                />
-              </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className={styles.imageContainer}>

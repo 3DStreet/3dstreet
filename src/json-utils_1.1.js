@@ -1,8 +1,25 @@
 import useStore from './store';
 import { createUniqueId } from './editor/lib/entity';
+import { beginBatching, BATCHING_ENABLED } from './batch-models';
+import { decodeCameraStateFromParam } from './editor/lib/cameraUtils';
 import JSONCrush from 'jsoncrush';
+import {
+  migrateSegmentLevelToElevation,
+  migrateSegmentBuildingType,
+  migrateShowBuildingsFlag
+} from './tested/street-segment-utils';
 
 /* global AFRAME, Node */
+// Components removed alongside the legacy viewer mode. Stripped from
+// saved-scene data on load so old scenes still open; re-save drops them.
+const LEGACY_STRIPPED_COMPONENTS = [
+  'viewer-mode',
+  'cursor-teleport',
+  'movement-controls',
+  'look-controls',
+  'hand-controls',
+  'blink-controls'
+];
 window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
@@ -14,7 +31,10 @@ function getSceneUuidFromURLHash() {
 }
 
 function getCurrentSceneId() {
-  let currentSceneId = AFRAME.scenes[0].getAttribute('metadata').sceneId;
+  // AFRAME.scenes[0] can be undefined when this runs before the scene attaches
+  // or after it's torn down (e.g. the beforeunload handler on fast nav-away).
+  const scene = AFRAME.scenes[0];
+  let currentSceneId = scene?.getAttribute('metadata')?.sceneId;
   // console.log('currentSceneId from scene metadata', currentSceneId);
   const urlSceneId = getSceneUuidFromURLHash();
   // console.log('urlSceneId', urlSceneId);
@@ -30,8 +50,9 @@ function getCurrentSceneId() {
 STREET.utils.getCurrentSceneId = getCurrentSceneId;
 
 function getAuthorId() {
-  const authorId = AFRAME.scenes[0].getAttribute('metadata').authorId;
-  return authorId;
+  // Same guard as getCurrentSceneId: AFRAME.scenes[0] can be undefined during
+  // teardown/before attach, and this runs right after it in the beforeunload handler.
+  return AFRAME.scenes[0]?.getAttribute('metadata')?.authorId;
 }
 STREET.utils.getAuthorId = getAuthorId;
 
@@ -52,27 +73,12 @@ function convertDOMElToObject(entity) {
   for (const entry of sceneEntities) {
     const entityData = getElementData(entry);
     if (entityData) {
+      // visible is never persisted for the User Layers root: a saved
+      // visible:false blanks every scene load (see createEntities).
+      if (entityData.id === 'street-container' && entityData.components) {
+        delete entityData.components.visible;
+      }
       data.push(entityData);
-    }
-  }
-
-  // Save viewer-mode component data separately. The Viewer Mode UI was
-  // removed in panels-v2 (PR #1566) but we keep persisting it so existing
-  // scenes round-trip cleanly until viewer mode is restored.
-  const cameraRig = document.querySelector('#cameraRig');
-  if (cameraRig && cameraRig.hasAttribute('viewer-mode')) {
-    // Create a minimal entity with just the viewer-mode component
-    const viewerModeData = {
-      id: 'cameraRig',
-      components: {}
-    };
-
-    // Get the viewer-mode component data
-    const viewerModeComponent = cameraRig.getAttribute('viewer-mode');
-    if (viewerModeComponent) {
-      viewerModeData.components['viewer-mode'] =
-        toPropString(viewerModeComponent);
-      data.push(viewerModeData);
     }
   }
 
@@ -87,12 +93,16 @@ function convertDOMElToObject(entity) {
 }
 STREET.utils.convertDOMElToObject = convertDOMElToObject;
 
-function getElementData(entity) {
+function getElementData(entity, options = {}) {
   if (
     !entity.isEntity ||
-    entity.classList.contains('autocreated') ||
+    (entity.classList.contains('autocreated') && !options.includeAutocreated) ||
     entity.hasAttribute('data-temporary-file')
   ) {
+    // autocreated entities are procedural output (regenerated on load from
+    // their generator component's config) and are skipped on save. Callers
+    // that need the rendered output itself — like convert-to-shapes, which
+    // bakes a managed street into plain entities — pass includeAutocreated.
     // data-temporary-file marks an in-flight or local-only asset upload
     // (a gltf-model/src pointing at a transient blob: URL). Skipping these
     // honors the design brief's "Local only — will not persist" guarantee.
@@ -108,7 +118,7 @@ function getElementData(entity) {
     const savedChildren = [];
     for (const child of children) {
       if (child.nodeType === Node.ELEMENT_NODE) {
-        const elementData = getElementData(child);
+        const elementData = getElementData(child, options);
         if (elementData) savedChildren.push(elementData);
       }
     }
@@ -418,25 +428,66 @@ function getModifiedProperty(entity, componentName) {
 function createEntities(entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
   const removeEntities = ['environment', 'reference-layers'];
+  // Arm batching before any entity is minted below; batchModels runs on the "newScene"
+  // event emitted after this createEntities pass. See beginBatching for the state model.
+  if (BATCHING_ENABLED) {
+    beginBatching(sceneElement);
+  }
   for (const entityData of entitiesData) {
-    // Legacy migration: the geospatial layer's visibility used to be toggled
-    // via the entity's `visible` attribute. The new sidepanel exposes this
-    // through the map type ("No Map" = off), so convert any hidden geo entity
-    // into the equivalent maps:none state.
+    // Legacy street-geo migrations, applied to the saved data before the
+    // entity is minted so the component (and any open editor panel) only
+    // ever sees migrated values.
     const components = entityData.components;
-    if (
-      components &&
-      components['street-geo'] &&
-      (components.visible === false || components.visible === 'false')
-    ) {
-      const geoVal = components['street-geo'];
-      if (typeof geoVal === 'string') {
-        const parsed = AFRAME.utils.styleParser.parse(geoVal);
-        parsed.maps = 'none';
-        components['street-geo'] = AFRAME.utils.styleParser.stringify(parsed);
-      } else if (typeof geoVal === 'object' && geoVal !== null) {
-        geoVal.maps = 'none';
+    const geoVal = components?.['street-geo'];
+    if (geoVal) {
+      const isString = typeof geoVal === 'string';
+      const parsed = isString ? AFRAME.utils.styleParser.parse(geoVal) : geoVal;
+      if (parsed && typeof parsed === 'object') {
+        // The layer's visibility used to be toggled via the entity's
+        // `visible` attribute. The new sidepanel exposes this through the
+        // map type ("No Map" = off), so convert any hidden geo entity into
+        // the equivalent maps:none state.
+        if (components.visible === false || components.visible === 'false') {
+          parsed.maps = 'none';
+          delete components.visible;
+        }
+        // blendingEnabled/blendMode presets → opacity (#1738). Only google3d
+        // ever rendered blending, but switching map type never reset the
+        // flag, so scenes saved on other map types can carry a stale
+        // blendingEnabled:true — those migrate to the (default) full
+        // opacity. The non-opacity modes (Darker/Lighter) were broken in
+        // practice and are dropped.
+        if (
+          parsed.blendingEnabled === true ||
+          parsed.blendingEnabled === 'true'
+        ) {
+          if (
+            (parsed.maps ?? 'google3d') === 'google3d' &&
+            parsed.opacity === undefined
+          ) {
+            parsed.opacity =
+              {
+                '30% Opacity': 30,
+                '60% Opacity': 60
+              }[parsed.blendMode ?? '30% Opacity'] ?? 100;
+          }
+        }
+        delete parsed.blendingEnabled;
+        delete parsed.blendMode;
+        if (isString) {
+          components['street-geo'] = AFRAME.utils.styleParser.stringify(parsed);
+        }
       }
+    }
+
+    // Never apply a saved visible:false to the User Layers root. Some older
+    // scenes were saved with it (an old UI exposed an eye toggle on the
+    // container), which blanks the whole scene on load; and because the
+    // singleton #street-container element is reused across loads, it then
+    // blanks every scene loaded after it in the same session. Container
+    // visibility is session UI state, not scene data: ignored here, stripped
+    // on save (convertDOMElToObject), healed by newScene (street-utils.js).
+    if (entityData.id === 'street-container' && components) {
       delete components.visible;
     }
 
@@ -520,21 +571,35 @@ Add a new entity with a list of components and children (if exists)
  * @return {Element} Entity created
 */
 function createEntityFromObj(entityData, parentEl, beforeEl) {
-  // Special handling for cameraRig with viewer-mode component
-  if (
-    entityData.id === 'cameraRig' &&
-    entityData.components &&
-    entityData.components['viewer-mode']
-  ) {
-    // Get the existing cameraRig entity
-    const existingCameraRig = document.querySelector('#cameraRig');
-    if (existingCameraRig) {
-      // Apply the viewer-mode component to the existing cameraRig
-      existingCameraRig.setAttribute(
-        'viewer-mode',
-        entityData.components['viewer-mode']
-      );
-      return existingCameraRig;
+  // Strip legacy viewer-mode / WebXR components from a saved cameraRig
+  // entry. These were removed from the codebase along with the legacy
+  // viewer mode; ignoring them here lets old scenes load cleanly and
+  // re-save without the attrs. Scoped to the cameraRig — the only entity
+  // legacy saves wrote them to — so a user-authored entity carrying e.g.
+  // look-controls is not silently stripped on load/reparent/paste.
+  if (entityData.id === 'cameraRig' && entityData.components) {
+    for (const legacy of LEGACY_STRIPPED_COMPONENTS) {
+      if (legacy in entityData.components) {
+        delete entityData.components[legacy];
+      }
+    }
+  }
+  // A saved cameraRig entry (legacy scenes stored one, typically carrying
+  // only the now-stripped viewer-mode/controls) must never spawn a second
+  // element: index.html already ships a static #cameraRig, and a duplicate id
+  // would make querySelector('#cameraRig') — used by mode-manager for the
+  // drive/WebXR camera handoff — bind to the wrong node. Reuse the existing
+  // rig, applying any surviving components onto it rather than creating a
+  // sibling.
+  if (entityData.id === 'cameraRig') {
+    const existingRig = document.querySelector('#cameraRig');
+    if (existingRig) {
+      if (entityData.components) {
+        for (const [name, value] of Object.entries(entityData.components)) {
+          existingRig.setAttribute(name, value);
+        }
+      }
+      return existingRig;
     }
   }
 
@@ -584,6 +649,24 @@ function createEntityFromObj(entityData, parentEl, beforeEl) {
     );
   }
 
+  // Migrate legacy saved scenes:
+  // - street-segment used to store its vertical offset as an integer `level`
+  //   (1 level == 0.15m curb height); the current schema only knows metric
+  //   `elevation`. Without this conversion A-Frame drops the unknown property
+  //   and raised segments (e.g. sidewalks) would load flush with the road.
+  // - `type: building` was renamed to `type: boundary` (and the managed-street
+  //   `showBuildings` toggle to `showBoundaries`).
+  if (entityData.components?.['street-segment']) {
+    entityData.components['street-segment'] = migrateSegmentBuildingType(
+      migrateSegmentLevelToElevation(entityData.components['street-segment'])
+    );
+  }
+  if (entityData.components?.['managed-street']) {
+    entityData.components['managed-street'] = migrateShowBuildingsFlag(
+      entityData.components['managed-street']
+    );
+  }
+
   for (const attr in entityData.components) {
     entity.setAttribute(attr, entityData.components[attr]);
   }
@@ -627,9 +710,21 @@ AFRAME.registerComponent('set-loader-from-hash', {
     if (!this.runOnce) {
       this.runOnce = true;
       // get hash from window
-      const streetURL = window.location.hash.substring(1);
+      let streetURL = window.location.hash.substring(1);
       if (!streetURL) {
         return;
+      }
+      // Camera vantage deep link: #/scenes/UUID?camera=px,py,pz,rx,ry,rz,fov
+      // (e.g. snapshot gallery "open scene at capture pose", #1605). Strip
+      // the param before the path is used to build the fetch URL; the decoded
+      // pose overrides the scene's default snapshot camera in fetchJSON.
+      this.urlCameraState = null;
+      if (streetURL.startsWith('/scenes/') && streetURL.includes('?')) {
+        const [scenePath, queryString] = streetURL.split('?');
+        this.urlCameraState = decodeCameraStateFromParam(
+          new URLSearchParams(queryString).get('camera')
+        );
+        streetURL = scenePath;
       }
       // `#mcp` (with optional `=PORT`) is the MCP relay auto-pair URL —
       // handled by AIChatPanel, not the scene loader. Without this bail,
@@ -916,6 +1011,8 @@ AFRAME.registerComponent('set-loader-from-hash', {
     }
   },
   fetchJSON: function (requestURL) {
+    // Captured for the onload closure (`this` is the XHR in there).
+    const urlCameraState = this.urlCameraState || null;
     const request = new XMLHttpRequest();
 
     // Prepend the base URL to the requestURL
@@ -986,6 +1083,11 @@ AFRAME.registerComponent('set-loader-from-hash', {
               defaultSnapshotCameraState = defaultSnapshot.cameraState;
             }
           }
+          // A ?camera= vantage deep link wins over the scene's default
+          // snapshot pose.
+          if (urlCameraState) {
+            defaultSnapshotCameraState = urlCameraState;
+          }
           if (defaultSnapshotCameraState) {
             console.log(
               '[set-loader-from-hash] Resolved camera state:',
@@ -995,7 +1097,6 @@ AFRAME.registerComponent('set-loader-from-hash', {
             AFRAME.scenes[0].defaultSnapshotCameraState =
               defaultSnapshotCameraState;
           }
-
           useStore.getState().updateLoadingProgress(50, 'Creating scene...');
           STREET.utils.createElementsFromJSON(jsonData, false);
           const sceneId = getUUIDFromPath(requestURL);
