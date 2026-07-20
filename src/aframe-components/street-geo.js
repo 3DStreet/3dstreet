@@ -25,14 +25,11 @@ AFRAME.registerComponent('street-geo', {
     // Map layer opacity in percent (0 = invisible, 100 = fully opaque).
     // Applies to the active map layer (google3d tiles, mapbox2d plane).
     opacity: { type: 'number', default: 100, min: 0, max: 100 },
-    // Deprecated (#1738/#1236/#1235): kept in the schema so legacy scenes
-    // parse without warnings; migrated to `opacity` in update() and no
-    // longer written by the UI.
-    blendMode: {
-      type: 'string',
-      default: '30% Opacity',
-      oneOf: ['30% Opacity', '60% Opacity', 'Darker', 'Lighter', 'Normal']
-    },
+    // Deprecated (#1738/#1236/#1235): kept in the schema only so stray
+    // legacy attribute strings parse without warnings. Saved scenes are
+    // migrated to `opacity` at load time (createEntities in
+    // json-utils_1.1.js) and these are never written by the UI.
+    blendMode: { type: 'string', default: '30% Opacity' },
     blendingEnabled: { type: 'boolean', default: false },
     locationString: { type: 'string', default: '' },
     intersectionString: { type: 'string', default: '' },
@@ -64,20 +61,9 @@ AFRAME.registerComponent('street-geo', {
   remove: function () {
     document.getElementById('map-data-attribution').style.visibility = 'hidden';
   },
-  // One-time migration of the legacy blendingEnabled/blendMode presets to
-  // the opacity property. The non-opacity blend modes (Darker/Lighter) are
-  // dropped — they were broken in practice (#1738) — so only the opacity
-  // presets carry over.
-  migrateLegacyBlendMode: function () {
-    const legacyOpacity =
-      {
-        '30% Opacity': 30,
-        '60% Opacity': 60
-      }[this.data.blendMode] ?? 100;
-    this.el.setAttribute('street-geo', {
-      opacity: legacyOpacity,
-      blendingEnabled: false
-    });
+  // Single percent→fraction boundary for every map layer's opacity.
+  opacityFraction: function () {
+    return this.data.opacity / 100;
   },
   hasSuggestedLocation: function () {
     // A real location to activate, as opposed to the schema default 0,0.
@@ -114,17 +100,6 @@ AFRAME.registerComponent('street-geo', {
 
     const data = this.data;
     this.el.sceneEl.emit('newGeo', data);
-
-    // Legacy scene migration: convert saved blendingEnabled/blendMode
-    // presets to the opacity property. Deferred so the setAttribute does
-    // not re-enter this update() synchronously.
-    if (data.blendingEnabled) {
-      setTimeout(() => {
-        if (this.el.components['street-geo'] === this) {
-          this.migrateLegacyBlendMode();
-        }
-      }, 0);
-    }
 
     const updatedData = AFRAME.utils.diff(oldData, data);
 
@@ -191,8 +166,11 @@ AFRAME.registerComponent('street-geo', {
     );
     mapbox2dElement.setAttribute(
       'material',
-      `color: #ffffff; shader: flat; side: both; transparent: true; opacity: ${data.opacity / 100};`
+      `color: #ffffff; shader: flat; side: both; transparent: true; opacity: ${this.opacityFraction()};`
     );
+    // At opacity 0 hide the layer outright so it costs no render time.
+    // setAttribute (not raw object3D.visible) per the mesh-batching rule.
+    mapbox2dElement.setAttribute('visible', data.opacity > 0);
     mapbox2dElement.setAttribute('rotation', '-90 -90 0');
     mapbox2dElement.setAttribute('anisotropy', '');
     mapbox2dElement.setAttribute('mapbox', {
@@ -226,10 +204,14 @@ AFRAME.registerComponent('street-geo', {
       ellipsoidalHeight: data.ellipsoidalHeight,
       enableFlattening: data.enableFlattening,
       flatteningShape: data.flatteningShape ? '#' + data.flatteningShape : '',
-      opacity: data.opacity / 100,
+      opacity: this.opacityFraction(),
       apiToken: firebaseConfig.apiKey,
       copyrightEl: '#map-copyright'
     });
+    // At opacity 0 hide the layer outright — google-maps-aerial's tick also
+    // stops tile updates so no metered tile data downloads while invisible.
+    // setAttribute (not raw object3D.visible) per the mesh-batching rule.
+    google3dElement.setAttribute('visible', data.opacity > 0);
     google3dElement.classList.add('autocreated');
 
     if (AFRAME.INSPECTOR?.opened) {
@@ -262,17 +244,27 @@ AFRAME.registerComponent('street-geo', {
         data.flatteningShape && data.flatteningShape !== 'create-default'
           ? '#' + data.flatteningShape
           : '',
-      opacity: data.opacity / 100
+      opacity: this.opacityFraction()
     });
+    this.google3d.setAttribute('visible', data.opacity > 0);
   },
   mapbox2dUpdate: function () {
     const data = this.data;
     this.mapbox2d.setAttribute('mapbox', {
       center: `${data.longitude}, ${data.latitude}`
     });
-    this.mapbox2d.setAttribute('material', 'opacity', data.opacity / 100);
+    this.mapbox2d.setAttribute('material', 'opacity', this.opacityFraction());
+    this.mapbox2d.setAttribute('visible', data.opacity > 0);
   },
   osm3dCreate: function () {
+    // loadScript has no dedupe and this.osm3d is only assigned in its async
+    // callback, so a second update() landing while the script is still
+    // loading would create a duplicate osm3d + osm3dBuilding pair (and
+    // orphan the first on the next map-type switch). Guard with an
+    // in-flight flag until the callback runs.
+    if (this.osm3dPending) {
+      return;
+    }
     const data = this.data;
     const el = this.el;
     const self = this;
@@ -347,10 +339,11 @@ AFRAME.registerComponent('street-geo', {
     if (AFRAME.components['osm-tiles']) {
       createOsm3dElement();
     } else {
-      loadScript(
-        new URL('/src/lib/osm4vr.min.js', import.meta.url),
-        createOsm3dElement
-      );
+      this.osm3dPending = true;
+      loadScript(new URL('/src/lib/osm4vr.min.js', import.meta.url), () => {
+        this.osm3dPending = false;
+        createOsm3dElement();
+      });
     }
   },
   osm3dUpdate: function () {

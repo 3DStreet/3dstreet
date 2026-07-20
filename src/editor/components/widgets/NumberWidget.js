@@ -139,15 +139,20 @@ export default class NumberWidget extends React.Component {
       return;
     }
 
+    // Arrow keys. Integer fields (precision 0) must step by at least 1 —
+    // a 0.01 nudge gets truncated by setValue's parseInt, making ArrowUp a
+    // no-op while ArrowDown steps -1. Float fields keep the fine 0.01 nudge.
+    const arrowStep = this.props.precision === 0 ? this.props.step : 0.01;
+
     // up.
     if (event.keyCode === 38) {
-      this.setValue(parseFloat(this.state.value) + 0.01);
+      this.setValue(parseFloat(this.state.value) + arrowStep);
       return;
     }
 
     // down.
     if (event.keyCode === 40) {
-      this.setValue(parseFloat(this.state.value) - 0.01);
+      this.setValue(parseFloat(this.state.value) - arrowStep);
       return;
     }
   };

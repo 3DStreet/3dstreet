@@ -191,6 +191,14 @@ AFRAME.registerComponent('google-maps-aerial', {
   },
 
   tick: function () {
+    // At opacity 0 the layer is fully hidden (street-geo sets visible:false
+    // on this entity), so skip tiles.update() entirely — otherwise the
+    // tileset keeps frustum-testing and downloading metered Google 3D Tiles
+    // API data for tiles nobody can see. Resumes on the first tick after
+    // opacity returns above 0.
+    if (this.data.opacity <= 0) {
+      return;
+    }
     if (this.tiles && this.el.sceneEl.camera) {
       // Track the scene's active camera. Registering only on change (and
       // deleting the previous registration) keeps the tileset from
@@ -291,6 +299,16 @@ AFRAME.registerComponent('google-maps-aerial', {
       const plugin = this.reorientationPlugin;
       // Keep the plugin's fields in sync so its pending load-root-tileset
       // callback (if the root hasn't loaded yet) uses the new location too.
+      //
+      // UPGRADE REVIEW (3d-tiles-renderer > 0.5.0): plugin.lat/lon are
+      // incidentally-public instance fields — the shipped .d.ts/API.md
+      // document them only as constructor options, so a future refactor to
+      // private fields would silently break this pre-root-load sync. On any
+      // 3d-tiles-renderer (or this component) upgrade, revisit PR #1862
+      // review item 10: the supported path is tiles.unregisterPlugin(plugin)
+      // + registering a fresh ReorientationPlugin built by a shared options
+      // factory, which also de-duplicates height/azimuth between init and
+      // here.
       plugin.lat = this.data.latitude * MathUtils.DEG2RAD;
       plugin.lon = this.data.longitude * MathUtils.DEG2RAD;
       plugin.transformLatLonHeightToOrigin(

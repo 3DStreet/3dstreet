@@ -3,7 +3,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import { Button } from '../elements';
 import { useAuthContext } from '@/editor/contexts/index.js';
 import PropertyRow from './PropertyRow';
-import NumberWidget from '../widgets/NumberWidget';
+import OpacitySliderRow from '../widgets/OpacitySliderRow';
 import { Magnifier20Icon, SunIcon } from '@shared/icons';
 import { geoSourcePhrase } from '@shared/constants/geoSources.js';
 import posthog from 'posthog-js';
@@ -185,11 +185,10 @@ FlatteningShapeSelector.propTypes = {
   currentValue: PropTypes.string
 };
 
-// Slider + number input for street-geo opacity (#1738). The slider (same
-// pattern as MaterialControls' opacity row, #1741) gives coarse control;
-// the NumberWidget keeps exact typing and click-drag fine tuning. Both
-// write the same entityupdate, so consecutive drags collapse into one
-// undo step and the two inputs stay in sync via the sidebar's
+// Slider + number input for street-geo opacity (#1738). The slider gives
+// coarse control; the NumberWidget keeps exact typing and click-drag fine
+// tuning. Both write the same entityupdate, so consecutive drags collapse
+// into one undo step and the two inputs stay in sync via the sidebar's
 // entityupdate re-render.
 const MapOpacityRow = ({ entity, opacity }) => {
   const intl = useIntl();
@@ -203,38 +202,19 @@ const MapOpacityRow = ({ entity, opacity }) => {
     });
   };
   return (
-    <div className="propertyRow opacity-row">
-      <label
-        className="text"
-        htmlFor="street-geo-opacity"
-        style={{ textTransform: 'none' }}
-      >
-        {intl.formatMessage({
-          id: 'geoSidebar.mapOpacity',
-          defaultMessage: 'Map Opacity (%)'
-        })}
-      </label>
-      <div className="opacity-slider">
-        <input
-          id="street-geo-opacity"
-          type="range"
-          min="0"
-          max="100"
-          step="1"
-          value={opacity}
-          onChange={(e) => setOpacity(parseInt(e.target.value, 10))}
-        />
-        <NumberWidget
-          id="street-geo-opacity-number"
-          name="opacity"
-          min={0}
-          max={100}
-          precision={0}
-          value={opacity}
-          onChange={(name, value) => setOpacity(value)}
-        />
-      </div>
-    </div>
+    <OpacitySliderRow
+      id="street-geo-opacity"
+      label={intl.formatMessage({
+        id: 'geoSidebar.mapOpacity',
+        defaultMessage: 'Map Opacity (%)'
+      })}
+      min={0}
+      max={100}
+      step={1}
+      value={opacity}
+      onCommit={setOpacity}
+      showNumberInput
+    />
   );
 };
 
