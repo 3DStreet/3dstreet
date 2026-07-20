@@ -395,9 +395,19 @@ export function elevationState(prev, agl, entryM, exitM) {
 // H = hypot((hit−camPos).xz) is a pure function of camera position about a
 // FIXED hit, so each elementary step is position-invertible about hit; an
 // in/out pair on the same side of the cap threshold composes to identity.
+//
+// `minAnchorDistMetres` (optional; TH-80, #1865): zoom-out escape floor.
+// When zooming OUT (f > 1) with the camera closer to the anchor than this,
+// the step is sized as if the anchor were `minAnchorDistMetres` away (the
+// step vector is scaled up along the same camera→hit ray), so a camera
+// parked (near-)on its anchor — e.g. after focusing an empty-bbox entity —
+// still escapes at a usable rate instead of 5%-of-millimetres per tick.
+// Zoom-in is untouched (stays asymptotic; never shoots through the anchor).
+// This deliberately breaks exact in/out reversibility inside the floor
+// radius — never-stuck beats exact retrace there. Omitted/0 → old behaviour.
 // Pure.
 export function cappedDollyStep(
-  { camPos, hit, sign, alpha, factor, lateralCapMetres },
+  { camPos, hit, sign, alpha, factor, lateralCapMetres, minAnchorDistMetres },
   target
 ) {
   // Continuous-accumulator merge (KD-09): accept a precomputed CONTINUOUS
@@ -409,6 +419,20 @@ export function cappedDollyStep(
   let stepX = oneMinusFactor * (hit.x - camPos.x);
   let stepY = oneMinusFactor * (hit.y - camPos.y);
   let stepZ = oneMinusFactor * (hit.z - camPos.z);
+
+  // Zoom-out escape floor (TH-80): scale the step up to what a
+  // minAnchorDistMetres-away anchor would have produced. Applied before the
+  // lateral cap so the cap still bounds the result. A zero camera→hit
+  // distance has no ray direction to scale along — leave the (zero) step.
+  if (f > 1 && minAnchorDistMetres > 0) {
+    const d = Math.hypot(hit.x - camPos.x, hit.y - camPos.y, hit.z - camPos.z);
+    if (d > 1e-9 && d < minAnchorDistMetres) {
+      const k = minAnchorDistMetres / d;
+      stepX *= k;
+      stepY *= k;
+      stepZ *= k;
+    }
+  }
 
   const h = Math.hypot(stepX, stepZ);
 
