@@ -210,6 +210,14 @@ capture }` (see `src/render/street-render-harness.js`).
 - Local dev: set `PUPPETEER_EXECUTABLE_PATH` to a system Chromium and
   `RENDER_PAGE_URL=http://localhost:3333/render.html` with `npm start`
   running.
+- Discord showcase: a successful **fresh** render is posted to the 3DStreet
+  Discord via the shared `DISCORD_WEBHOOK_URL` secret (the same webhook the AI
+  generators use) — an embed with the rendered image, the street name/stats,
+  and the "Open in editor" deep link. Best-effort and bounded, so a Discord
+  outage never fails or noticeably delays a render. Cache hits don't re-post
+  (one post per new render), and posting is skipped entirely if
+  `DISCORD_WEBHOOK_URL` is unset or the render's stable `imageUrl` is
+  unavailable (a base64 data URL can't embed).
 
 ## Limits and future work
 

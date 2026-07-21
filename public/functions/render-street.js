@@ -296,6 +296,86 @@ async function renderOnPage(street, options) {
 // when it comfortably fits; larger streets still get it via ?format=json.
 const MAX_EDITOR_URL_HEADER_BYTES = 8192;
 
+// Discord embed URLs must stay short; the editor deep link embeds the whole
+// street JSON so it can be many KB. Above this we fall back to the (always
+// short) image URL as the clickable link rather than have Discord 400 the post.
+const MAX_DISCORD_EDITOR_URL = 1500;
+
+// Posts a fresh render to the 3DStreet Discord showcase channel via the same
+// webhook the AI generators use (DISCORD_WEBHOOK_URL). Anonymous by design —
+// the render endpoint has no auth/user. Best-effort and bounded: a Discord
+// hiccup must never fail or noticeably delay a render. The caller is expected
+// to gate this to fresh renders that produced a stable imageUrl (cache hits
+// already posted once; a base64 data URL can't embed), mirroring the AI
+// generators' one-post-per-new-generation behavior.
+async function postRenderToDiscord({ imageUrl, editorUrl, meta, street }) {
+  if (!process.env.DISCORD_WEBHOOK_URL || !imageUrl) {
+    return;
+  }
+  try {
+    const name = (meta && meta.name) || street.name || 'Untitled street';
+    const segCount =
+      (meta && meta.segments) ||
+      (street.segments && street.segments.length) ||
+      0;
+    const parts = [`${segCount} segment${segCount === 1 ? '' : 's'}`];
+    if (meta && typeof meta.width === 'number') {
+      parts.push(`${meta.width.toFixed(1)}m wide`);
+    }
+    if (meta && typeof meta.length === 'number') {
+      parts.push(`${meta.length}m long`);
+    }
+
+    const editorLinkOk =
+      typeof editorUrl === 'string' && editorUrl.length <= MAX_DISCORD_EDITOR_URL;
+    const description = editorLinkOk
+      ? `${parts.join(' · ')}\n[Open in the 3DStreet editor →](${editorUrl})`
+      : parts.join(' · ');
+
+    const message = {
+      content:
+        '🛣️ **New street cross-section** rendered via the 3DStreet render API!',
+      embeds: [
+        {
+          title: name,
+          description,
+          url: editorLinkOk ? editorUrl : imageUrl,
+          color: 0x2a9d8f, // teal — distinct from the AI generators' purple
+          image: { url: imageUrl },
+          footer: {
+            text: '3DStreet Render API',
+            icon_url: 'https://3dstreet.app/favicon-32x32.png'
+          },
+          timestamp: new Date().toISOString()
+        }
+      ]
+    };
+
+    // Bound the post so a slow/unreachable Discord can't stall the response
+    // (awaited before send on v2, where CPU is throttled after the response).
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    try {
+      const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(message),
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        console.error(`Discord API error: ${response.status}`);
+      } else {
+        console.log(`renderStreet posted to Discord: "${name}"`);
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch (error) {
+    // Never fail a render because of Discord.
+    console.error('Error posting render to Discord:', error);
+  }
+}
+
 function sendRenderResponse(
   req,
   res,
@@ -343,6 +423,7 @@ exports.renderStreet = onRequest(
     concurrency: 2,
     minInstances: 1,
     maxInstances: 2,
+    secrets: ['DISCORD_WEBHOOK_URL'],
     cors: true
   },
   async (req, res) => {
@@ -441,6 +522,13 @@ exports.renderStreet = onRequest(
       } catch (cacheErr) {
         console.warn('renderStreet cache write failed:', cacheErr);
       }
+
+      // Showcase fresh renders in Discord like the AI generators do (only when
+      // a stable imageUrl is available to embed). Awaited before the response
+      // so it reliably delivers on v2/Cloud Run — CPU is throttled once the
+      // response is sent — but bounded internally so it never noticeably delays
+      // the render. Cache hits above deliberately don't re-post.
+      await postRenderToDiscord({ imageUrl, editorUrl, meta, street });
 
       sendRenderResponse(req, res, {
         buffer,
