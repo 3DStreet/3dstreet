@@ -1,6 +1,7 @@
 import { createUniqueId } from '../../../lib/entity.js';
 import * as defaultStreetObjects from './defaultStreets.js';
 import { VEHICLE_PRESETS } from '../../../../aframe-components/play/vehicle-presets.js';
+import { encodeManifest } from '../../../../aframe-components/play/manifest-codec.js';
 import { uploadAndPlaceAsset } from '../../../lib/asset-upload/uploadAndPlaceAsset.js';
 import {
   GLB_EXTS,
@@ -558,7 +559,7 @@ export function createReplayEntityFromManifest(manifest) {
     'data-layer-name': 'Traffic Replay',
     components: {
       'street-traffic-replay': {
-        manifestData: JSON.stringify(manifest),
+        manifestData: encodeManifest(manifest),
         timeScale: 1,
         loop: true
       }

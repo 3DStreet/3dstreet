@@ -2,7 +2,7 @@
   "meta": {
     "schemaVersion": 1,
     "source": "tmdb-rvc-waterleaf-2025-10-11.sqlite",
-    "description": "Anonymized street-user replay manifest. Each agent carries only mode, direction, speed and duration; timestamps are relative to the window start. No identifiers, images, scores, or absolute per-user times.",
+    "description": "Anonymized street-user replay manifest. Each agent carries only mode, direction, speed and duration, and timestamps are relative to the window start. No identifiers, images, scores, or absolute per-user times.",
     "deployment": {
       "lat": 45.464152,
       "lon": -122.66961,
