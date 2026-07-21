@@ -335,7 +335,13 @@ exports.renderStreet = onRequest(
     // tab risks OOM on 2GiB; it also halves the ~1 vCPU each render gets.
     // maxInstances 2 bounds sustained-abuse cost at ~$280/mo (2 busy
     // instances × ~$139: 2vCPU+2GiB at Cloud Run rates); spikes get 429s.
+    // minInstances 1 keeps one instance warm to avoid the 30-90s cold start
+    // (@sparticuz/chromium unpack + first-render asset downloads) that GPT
+    // Actions / agent callers time out on. Idle min-instances bill CPU at the
+    // reduced idle rate (~10% of active), so the warm floor is ~$25-30/mo
+    // (2vCPU+2GiB: idle CPU + memory), not the ~$139 busy rate.
     concurrency: 2,
+    minInstances: 1,
     maxInstances: 2,
     cors: true
   },

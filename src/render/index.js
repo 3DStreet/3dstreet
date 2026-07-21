@@ -46,6 +46,5 @@ require('../aframe-components/polygon-offset.js');
 require('../aframe-components/street-align.js');
 require('../aframe-components/street-ground.js');
 require('../aframe-components/street-label.js');
-require('../aframe-components/blending-opacity.js');
 require('../aframe-components/street-environment.js');
 require('./street-render-harness.js');

@@ -199,14 +199,16 @@ three drive lanes (one inbound, two outbound), and no bike lane:
   public GPT) requires a privacy-policy URL in the Action config. Point it at a
   3DStreet privacy policy page (e.g. `https://3dstreet.com/privacy`) before
   submitting.
-- **Cold-start latency risk.** `renderStreet` launches a headless browser
-  server-side; a cold render can take **30–90s** (see the endpoint doc), while
-  GPT Actions may time out sooner. Mitigations, in order of preference:
-  - Keep the function warm — set `minInstances: 1` on `renderStreet` (trades a
-    small always-on cost for no cold starts), or ping it on a schedule.
-  - Otherwise, document the expected latency in the GPT instructions (already
-    included above) so the model waits and tells the user, and lean on the
-    content-hash cache — repeated/identical requests return instantly.
+- **Cold-start latency.** `renderStreet` launches a headless browser
+  server-side; a fully cold render can take **30–90s** (see the endpoint doc),
+  which GPT Actions may time out on. This is now mitigated at the source:
+  `renderStreet` runs with **`minInstances: 1`**, keeping one instance warm so
+  the common path skips the cold start (idle warm floor ~$25–30/mo — idle
+  min-instances bill CPU at ~10% of the active rate). Additional cushioning:
+  the GPT instructions above tell the model to keep waiting and warn the user,
+  and the content-hash cache returns identical/repeat requests instantly. If
+  traffic ever exceeds the two-instance ceiling, spikes get 429s rather than
+  unbounded cost.
 - **Name resolution.** Keeping the GPT named exactly **3DStreet** makes
   "use the 3DStreet GPT to…" resolve to it.
 

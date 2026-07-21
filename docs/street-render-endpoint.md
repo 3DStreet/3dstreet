@@ -202,7 +202,11 @@ capture }` (see `src/render/street-render-harness.js`).
 - `@sparticuz/chromium` unpacks its Chromium into `/tmp` at cold start;
   first render on a cold instance takes noticeably longer (asset downloads
   populate the browser cache — subsequent renders on a warm instance reuse
-  it). Budget 30–90 s per render; the function timeout is 180 s.
+  it). Budget 30–90 s per render on a cold instance; the function timeout is
+  180 s. `minInstances: 1` keeps one instance warm so agent callers
+  (ChatGPT/GPT Actions, skills) avoid that cold-start hit — idle
+  min-instances bill CPU at the reduced idle rate (~10% of active), so the
+  warm floor is ~$25–30/mo, well under the ~$139/mo busy-instance rate.
 - Local dev: set `PUPPETEER_EXECUTABLE_PATH` to a system Chromium and
   `RENDER_PAGE_URL=http://localhost:3333/render.html` with `npm start`
   running.
