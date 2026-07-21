@@ -434,25 +434,50 @@ function createEntities(entitiesData, parentEl) {
     beginBatching(sceneElement);
   }
   for (const entityData of entitiesData) {
-    // Legacy migration: the geospatial layer's visibility used to be toggled
-    // via the entity's `visible` attribute. The new sidepanel exposes this
-    // through the map type ("No Map" = off), so convert any hidden geo entity
-    // into the equivalent maps:none state.
+    // Legacy street-geo migrations, applied to the saved data before the
+    // entity is minted so the component (and any open editor panel) only
+    // ever sees migrated values.
     const components = entityData.components;
-    if (
-      components &&
-      components['street-geo'] &&
-      (components.visible === false || components.visible === 'false')
-    ) {
-      const geoVal = components['street-geo'];
-      if (typeof geoVal === 'string') {
-        const parsed = AFRAME.utils.styleParser.parse(geoVal);
-        parsed.maps = 'none';
-        components['street-geo'] = AFRAME.utils.styleParser.stringify(parsed);
-      } else if (typeof geoVal === 'object' && geoVal !== null) {
-        geoVal.maps = 'none';
+    const geoVal = components?.['street-geo'];
+    if (geoVal) {
+      const isString = typeof geoVal === 'string';
+      const parsed = isString ? AFRAME.utils.styleParser.parse(geoVal) : geoVal;
+      if (parsed && typeof parsed === 'object') {
+        // The layer's visibility used to be toggled via the entity's
+        // `visible` attribute. The new sidepanel exposes this through the
+        // map type ("No Map" = off), so convert any hidden geo entity into
+        // the equivalent maps:none state.
+        if (components.visible === false || components.visible === 'false') {
+          parsed.maps = 'none';
+          delete components.visible;
+        }
+        // blendingEnabled/blendMode presets → opacity (#1738). Only google3d
+        // ever rendered blending, but switching map type never reset the
+        // flag, so scenes saved on other map types can carry a stale
+        // blendingEnabled:true — those migrate to the (default) full
+        // opacity. The non-opacity modes (Darker/Lighter) were broken in
+        // practice and are dropped.
+        if (
+          parsed.blendingEnabled === true ||
+          parsed.blendingEnabled === 'true'
+        ) {
+          if (
+            (parsed.maps ?? 'google3d') === 'google3d' &&
+            parsed.opacity === undefined
+          ) {
+            parsed.opacity =
+              {
+                '30% Opacity': 30,
+                '60% Opacity': 60
+              }[parsed.blendMode ?? '30% Opacity'] ?? 100;
+          }
+        }
+        delete parsed.blendingEnabled;
+        delete parsed.blendMode;
+        if (isString) {
+          components['street-geo'] = AFRAME.utils.styleParser.stringify(parsed);
+        }
       }
-      delete components.visible;
     }
 
     // Never apply a saved visible:false to the User Layers root. Some older

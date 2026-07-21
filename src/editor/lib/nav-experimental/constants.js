@@ -149,6 +149,21 @@ export const RING_SCREEN_FRACTION = 0.035;
 // the two regimes tune independently.
 export const ZOOM_PER_WHEEL_TICK = 0.05;
 
+// Zoom-OUT escape floor (TH-80): minimum EFFECTIVE camera→anchor distance,
+// in metres, used to size a zoom-out dolly step. The dolly step is
+// multiplicative in the camera→anchor distance (ZOOM_PER_WHEEL_TICK × dist
+// per tick), so with the camera parked millimetres from its anchor a
+// zoom-out tick moves ~nothing and the wheel reads as dead. Reachable via
+// focus (F / double-click) on an entity with no measurable geometry — the
+// empty-bbox fallback flies the camera to 0.25 m from the entity origin
+// (e.g. a geojson data layer at 0 0 0, #1865). Legacy EditorControls had the
+// same escape valve as `minSpeedFactor = 8` (step = max(8, dist) × 0.1 ≥
+// 0.8 m/detent); 16 m × ZOOM_PER_WHEEL_TICK reproduces that 0.8 m/tick
+// minimum. Applied on zoom-OUT only — zoom-in stays asymptotic (never
+// overshoots through the anchor), which deliberately trades exact in/out
+// reversibility inside this radius for never getting stuck.
+export const WHEEL_ZOOM_OUT_MIN_ANCHOR_DIST_METRES = 16;
+
 // Wheel zoom — street-level FOV step (TH-09). Fraction by which
 // the field of view shrinks (zoom-in) / grows (zoom-out) per nominal tick.
 // Split out from ZOOM_PER_WHEEL_TICK so FOV tunes independently of the dolly.
@@ -196,6 +211,30 @@ export const WHEEL_ANCHOR_DENOM_EPS_METRES = 0.5;
 // degenerate ground-plane intersections at low tilt).
 export const LB_PAN_MAX_STEP_METRES = 5000;
 
+// LB pan-anchor reach gain (TH-81, #1867 follow-up). The pan's
+// world-per-pixel rate scales with the anchor-plane depth, so a shallow grab
+// that raycasts distant ground near the horizon (hundreds/thousands of
+// metres out) catapults the camera. The reach `max(FALLBACK_FORWARD_DIST,
+// GAIN × camera→center distance)` — the legacy pan-rate bound
+// (`max(minSpeedFactor, distanceToCenter) × panSpeed` never read the
+// cursor's hit distance at all) — re-depths outlier anchors along the
+// cursor ray in both directions: a beyond-reach real hit is pulled IN
+// (anti-catapult), and a sky-grab 'fallback' anchor (fixed 30 m) is pushed
+// OUT, so above- and below-horizon grabs pan at the same rate. Real hits
+// within reach keep exact point-under-cursor tracking (the ×GAIN slack).
+export const LB_PAN_ANCHOR_REACH_CENTER_GAIN = 2; // dimensionless; feel
+
+// Focus (F / double-click) standoff for a target with no measurable
+// geometry — an empty/degenerate bounding box (lights, empty layer
+// wrappers, geojson data layers whose meshes aren't under the entity's
+// object3D). Legacy used 0.1 m, which parks the camera 0.25 m from the
+// entity origin — useless for a light and, at street level over a collision
+// floor (e.g. Google 3D Tiles), it strands the wheel in the Phase-3 FOV
+// regime where zoom-out visibly does nothing for several detents (#1865).
+// 10 m yields the standard framing offset (0, 5, 25) — a sane overview of
+// the entity origin with every nav regime immediately usable.
+export const FOCUS_EMPTY_BBOX_DISTANCE_METRES = 10;
+
 // cursorAnchor.worldPointAt fallback chain:
 //   Step 2 caps the ground-plane intersection distance at this many metres
 //     to reject grazing rays that would anchor far out of scene scope.
@@ -214,8 +253,12 @@ export const FALLBACK_FORWARD_DIST = 30;
 // (TH-16 lower bound, TH-17 coefficient; KD-15). Bounds the shallow-tilt lurch
 // (~50 m/tick at 200 m / 22°) without throttling straight-down descent
 // (horizontal ≈ 0 there, so the cap never fires). Absolute metres/tick (NOT a
-// % of the step) so it does not silently track ZOOM_PER_WHEEL_TICK. Separate
-// knob from the orbit-pivot bounds (different origin: camera nadir vs
+// % of the step) so it does not silently track ZOOM_PER_WHEEL_TICK. PER TICK,
+// not per frame: the continuous drain merges every tick accumulated since the
+// last frame into one step, so the applying step scales its cap budget by the
+// tick count (floored at one tick) — otherwise the max zoom rate would be
+// cap × fps, i.e. proportional to frame rate (glacial on low-fps scenes).
+// Separate knob from the orbit-pivot bounds (different origin: camera nadir vs
 // screen-centre ground point). Live-tunable via nav-experimental-tuning.
 //
 // The cap scales with height (KD-15): `lateralCap(yAgl) = max(LOWER_BOUND,

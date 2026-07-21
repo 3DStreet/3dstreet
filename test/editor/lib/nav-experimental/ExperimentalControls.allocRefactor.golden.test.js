@@ -44,7 +44,10 @@ function r(v) {
 describe('scratch-vector refactor — golden trajectory (behaviour unchanged)', () => {
   it('reproduces the committed camera-pose trajectory across all five paths', () => {
     const scene = H.representativeScene();
-    const camera = H.makePerspectiveCam({ pos: [0, 120, 20], lookAt: [0, 52, -40] });
+    const camera = H.makePerspectiveCam({
+      pos: [0, 120, 20],
+      lookAt: [0, 52, -40]
+    });
     const controls = H.makeControls({
       camera,
       dom: H.makeDomElement(),

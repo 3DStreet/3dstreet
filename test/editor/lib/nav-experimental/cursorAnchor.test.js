@@ -90,6 +90,36 @@ describe('CursorAnchor.worldPointAt', () => {
     expect(p.y).toBeCloseTo(40, 3);
   });
 
+  it('fallback lies on the CURSOR ray, not the camera centre-forward (#1867)', () => {
+    const root = new THREE.Group(); // empty — mesh raycast misses
+    // Camera at y=10 looking at the horizon (-Z). A cursor in the TOP half
+    // casts an upward ray that never meets the y=0 ground plane → Step 3.
+    const cam = new THREE.PerspectiveCamera(60, 1, 0.1, 10000);
+    cam.position.set(0, 10, 0);
+    cam.lookAt(0, 10, -100);
+    cam.updateMatrixWorld();
+
+    const ca = new CursorAnchor({
+      camera: cam,
+      sceneEl: makeSceneEl(root),
+      domElement: makeDom()
+    });
+    // Cursor at (50, 25): horizontally centred, top quarter of the viewport.
+    const p = ca.worldPointAt(50, 25);
+    expect(p.source).toBe('fallback');
+    // 30 m from the camera…
+    const d = Math.hypot(p.x - 0, p.y - 10, p.z - 0);
+    expect(d).toBeCloseTo(30, 3);
+    // …along the cursor ray: ndc (0, +0.5), fov 60, aspect 1 → direction
+    // ∝ (0, 0.5·tan(30°), −1). Above the camera and ahead — NOT the
+    // centre-forward point (0, 10, −30) the old fallback returned.
+    const dirY = 0.5 * Math.tan(THREE.MathUtils.degToRad(30));
+    const len = Math.hypot(dirY, 1);
+    expect(p.x).toBeCloseTo(0, 3);
+    expect(p.y).toBeCloseTo(10 + 30 * (dirY / len), 3);
+    expect(p.z).toBeCloseTo(-30 * (1 / len), 3);
+  });
+
   it('skips excluded objects in the mesh hit list (transform gizmos)', () => {
     const root = new THREE.Group();
 
@@ -188,7 +218,8 @@ describe('isSolidFloorHit (solid-floor filter, TASK-013 → TASK-024)', () => {
     return {
       _attrs: attrs,
       id: attrs && attrs.id != null ? attrs.id : undefined,
-      hasAttribute: (n) => attrs != null && Object.prototype.hasOwnProperty.call(attrs, n),
+      hasAttribute: (n) =>
+        attrs != null && Object.prototype.hasOwnProperty.call(attrs, n),
       getAttribute: (n) => (attrs != null ? attrs[n] : undefined)
     };
   }
@@ -428,9 +459,9 @@ describe('classifyHitEntity (TASK-012 Phase-4 source classifier)', () => {
   });
 
   it('classifies a plain entity (no segment/mixin/tiles) as scatter', () => {
-    expect(classifyHitEntity(makeHit({ attrs: { 'some-component': '' } }))).toBe(
-      'scatter'
-    );
+    expect(
+      classifyHitEntity(makeHit({ attrs: { 'some-component': '' } }))
+    ).toBe('scatter');
   });
 
   it('returns null for a hit with no owning entity (editor chrome)', () => {
@@ -493,9 +524,11 @@ describe('worldHitNormal — two live results stay independent', () => {
     // Distinct object transforms + distinct face normals → distinct results,
     // exactly the wasdFlight floorNow/floorDest two-live-normals hazard.
     const hitA = makeMeshHit(null, new THREE.Vector3(0, 1, 0), [10, 0, 0]);
-    const hitB = makeMeshHit([0, 0, Math.PI / 4], new THREE.Vector3(1, 0, 0), [
-      -10, 0, 0
-    ]);
+    const hitB = makeMeshHit(
+      [0, 0, Math.PI / 4],
+      new THREE.Vector3(1, 0, 0),
+      [-10, 0, 0]
+    );
 
     const nA = worldHitNormal(hitA);
     const nB = worldHitNormal(hitB);

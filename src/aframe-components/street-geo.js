@@ -22,11 +22,14 @@ AFRAME.registerComponent('street-geo', {
     flatteningShape: {
       type: 'string'
     },
-    blendMode: {
-      type: 'string',
-      default: '30% Opacity',
-      oneOf: ['30% Opacity', '60% Opacity', 'Darker', 'Lighter', 'Normal']
-    },
+    // Map layer opacity in percent (0 = invisible, 100 = fully opaque).
+    // Applies to the active map layer (google3d tiles, mapbox2d plane).
+    opacity: { type: 'number', default: 100, min: 0, max: 100 },
+    // Deprecated (#1738/#1236/#1235): kept in the schema only so stray
+    // legacy attribute strings parse without warnings. Saved scenes are
+    // migrated to `opacity` at load time (createEntities in
+    // json-utils_1.1.js) and these are never written by the UI.
+    blendMode: { type: 'string', default: '30% Opacity' },
     blendingEnabled: { type: 'boolean', default: false },
     locationString: { type: 'string', default: '' },
     intersectionString: { type: 'string', default: '' },
@@ -58,17 +61,9 @@ AFRAME.registerComponent('street-geo', {
   remove: function () {
     document.getElementById('map-data-attribution').style.visibility = 'hidden';
   },
-  returnBlendMode: function (blendModePreset) {
-    // on the target, such as
-    // for each blend mode preset option, create a dictionary of blend modes and their corresponding values
-    const blendModes = {
-      Normal: { blendMode: 'Normal', opacity: 1.0 },
-      '30% Opacity': { blendMode: 'Normal', opacity: 0.3 },
-      '60% Opacity': { blendMode: 'Normal', opacity: 0.6 },
-      Darker: { blendMode: 'Multiply', opacity: 1.0 },
-      Lighter: { blendMode: 'Additive', opacity: 1.0 }
-    };
-    return blendModes[blendModePreset];
+  // Single percent→fraction boundary for every map layer's opacity.
+  opacityFraction: function () {
+    return this.data.opacity / 100;
   },
   hasSuggestedLocation: function () {
     // A real location to activate, as opposed to the schema default 0,0.
@@ -140,7 +135,8 @@ AFRAME.registerComponent('street-geo', {
           updatedData.latitude !== undefined ||
           updatedData.ellipsoidalHeight !== undefined ||
           updatedData.enableFlattening !== undefined ||
-          updatedData.flatteningShape !== undefined)
+          updatedData.flatteningShape !== undefined ||
+          updatedData.opacity !== undefined)
       ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update']();
@@ -150,33 +146,6 @@ AFRAME.registerComponent('street-geo', {
         this[mapType] = null;
         if (mapType === 'osm3d') {
           this.el.removeChild(this['osm3dBuilding']);
-        }
-      }
-    }
-
-    if (this.google3d) {
-      // Handle blending updates
-      if (data.blendingEnabled) {
-        if (data.blendMode) {
-          this.google3d.setAttribute(
-            'blending-opacity',
-            this.returnBlendMode(data.blendMode)
-          );
-          if (oldData.blendingEnabled === false) {
-            const currentEl = this.google3d;
-            this.el.removeChild(currentEl);
-            this.google3d = null;
-            this.google3dCreate();
-          }
-        }
-      } else {
-        this.google3d.removeAttribute('blending-opacity');
-        if (oldData.blendingEnabled) {
-          // If blending was previously enabled and now disabled, recreate the tiles
-          const currentEl = this.google3d;
-          this.el.removeChild(currentEl);
-          this.google3d = null;
-          this.google3dCreate();
         }
       }
     }
@@ -197,8 +166,11 @@ AFRAME.registerComponent('street-geo', {
     );
     mapbox2dElement.setAttribute(
       'material',
-      'color: #ffffff; shader: flat; side: both; transparent: true;'
+      `color: #ffffff; shader: flat; side: both; transparent: true; opacity: ${this.opacityFraction()};`
     );
+    // At opacity 0 hide the layer outright so it costs no render time.
+    // setAttribute (not raw object3D.visible) per the mesh-batching rule.
+    mapbox2dElement.setAttribute('visible', data.opacity > 0);
     mapbox2dElement.setAttribute('rotation', '-90 -90 0');
     mapbox2dElement.setAttribute('anisotropy', '');
     mapbox2dElement.setAttribute('mapbox', {
@@ -211,6 +183,7 @@ AFRAME.registerComponent('street-geo', {
     mapbox2dElement.classList.add('autocreated');
     mapbox2dElement.setAttribute('data-ignore-raycaster', '');
     mapbox2dElement.setAttribute('data-no-transform', '');
+    mapbox2dElement.setAttribute('bvh-geometry', '');
     el.appendChild(mapbox2dElement);
     this['mapbox2d'] = mapbox2dElement;
     document.getElementById('map-copyright').textContent = 'MapBox';
@@ -231,9 +204,14 @@ AFRAME.registerComponent('street-geo', {
       ellipsoidalHeight: data.ellipsoidalHeight,
       enableFlattening: data.enableFlattening,
       flatteningShape: data.flatteningShape ? '#' + data.flatteningShape : '',
+      opacity: this.opacityFraction(),
       apiToken: firebaseConfig.apiKey,
       copyrightEl: '#map-copyright'
     });
+    // At opacity 0 hide the layer outright — google-maps-aerial's tick also
+    // stops tile updates so no metered tile data downloads while invisible.
+    // setAttribute (not raw object3D.visible) per the mesh-batching rule.
+    google3dElement.setAttribute('visible', data.opacity > 0);
     google3dElement.classList.add('autocreated');
 
     if (AFRAME.INSPECTOR?.opened) {
@@ -249,16 +227,6 @@ AFRAME.registerComponent('street-geo', {
     google3dElement.setAttribute('data-ignore-raycaster', '');
     el.appendChild(google3dElement);
     self['google3d'] = google3dElement;
-
-    // Only set blending if enabled
-    if (data.blendingEnabled) {
-      if (data.blendMode) {
-        google3dElement.setAttribute(
-          'blending-opacity',
-          this.returnBlendMode(data.blendMode)
-        );
-      }
-    }
   },
   noneUpdate: function () {
     // do nothing
@@ -275,28 +243,28 @@ AFRAME.registerComponent('street-geo', {
       flatteningShape:
         data.flatteningShape && data.flatteningShape !== 'create-default'
           ? '#' + data.flatteningShape
-          : ''
+          : '',
+      opacity: this.opacityFraction()
     });
-
-    // Handle blending updates
-    if (data.blendingEnabled) {
-      if (data.blendMode) {
-        this.google3d.setAttribute(
-          'blending-opacity',
-          this.returnBlendMode(data.blendMode)
-        );
-      }
-    } else {
-      this.google3d.removeAttribute('blending-opacity');
-    }
+    this.google3d.setAttribute('visible', data.opacity > 0);
   },
   mapbox2dUpdate: function () {
     const data = this.data;
     this.mapbox2d.setAttribute('mapbox', {
       center: `${data.longitude}, ${data.latitude}`
     });
+    this.mapbox2d.setAttribute('material', 'opacity', this.opacityFraction());
+    this.mapbox2d.setAttribute('visible', data.opacity > 0);
   },
   osm3dCreate: function () {
+    // loadScript has no dedupe and this.osm3d is only assigned in its async
+    // callback, so a second update() landing while the script is still
+    // loading would create a duplicate osm3d + osm3dBuilding pair (and
+    // orphan the first on the next map-type switch). Guard with an
+    // in-flight flag until the callback runs.
+    if (this.osm3dPending) {
+      return;
+    }
     const data = this.data;
     const el = this.el;
     const self = this;
@@ -316,6 +284,7 @@ AFRAME.registerComponent('street-geo', {
       osm3dElement.classList.add('autocreated');
       osm3dElement.setAttribute('data-ignore-raycaster', '');
       osm3dElement.setAttribute('data-no-transform', '');
+      osm3dElement.setAttribute('bvh-geometry', '');
 
       const osm3dBuildingElement = document.createElement('a-entity');
       osm3dBuildingElement.setAttribute(
@@ -333,6 +302,10 @@ AFRAME.registerComponent('street-geo', {
       osm3dBuildingElement.classList.add('autocreated');
       osm3dBuildingElement.setAttribute('data-ignore-raycaster', '');
       osm3dBuildingElement.setAttribute('data-no-transform', '');
+      // BVH bounds trees for the merged per-tile building meshes so editor
+      // raycasts (cursor anchor, any probe reaching this subtree) stay
+      // O(log n) instead of scanning every building triangle (#1853).
+      osm3dBuildingElement.setAttribute('bvh-geometry', '');
 
       if (AFRAME.INSPECTOR?.opened) {
         osm3dElement.addEventListener(
@@ -366,10 +339,11 @@ AFRAME.registerComponent('street-geo', {
     if (AFRAME.components['osm-tiles']) {
       createOsm3dElement();
     } else {
-      loadScript(
-        new URL('/src/lib/osm4vr.min.js', import.meta.url),
-        createOsm3dElement
-      );
+      this.osm3dPending = true;
+      loadScript(new URL('/src/lib/osm4vr.min.js', import.meta.url), () => {
+        this.osm3dPending = false;
+        createOsm3dElement();
+      });
     }
   },
   osm3dUpdate: function () {

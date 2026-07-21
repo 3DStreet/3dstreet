@@ -23,8 +23,16 @@ afterEach(() => H.teardownAll());
 // after its first evaluation.
 function firstDropTickDuringMotion({ disableWake }) {
   const scene = H.representativeScene();
-  const cam = H.makePerspectiveCam({ pos: [0, 53.5, -40], lookAt: [0, 53.5, 0] });
-  const c = H.makeControls({ camera: cam, scene, wasd: true, streetLevel: true });
+  const cam = H.makePerspectiveCam({
+    pos: [0, 53.5, -40],
+    lookAt: [0, 53.5, 0]
+  });
+  const c = H.makeControls({
+    camera: cam,
+    scene,
+    wasd: true,
+    streetLevel: true
+  });
   const cue = H.onEvent(c, 'nav-experimental:recovery-cue');
   c._deriveGroundedFromPose(); // grounded on the roof
   H.keyDown(c, 'KeyW');
@@ -46,12 +54,16 @@ function firstDropTickDuringMotion({ disableWake }) {
 
 describe('break-it — recovery-cue wake proxy reds when the sensor goes stale mid-motion', () => {
   it('the proxy PASSES with the sensor live (cue fires at a tick > 1)', () => {
-    expect(firstDropTickDuringMotion({ disableWake: false })).toBeGreaterThan(1);
+    expect(firstDropTickDuringMotion({ disableWake: false })).toBeGreaterThan(
+      1
+    );
   });
 
   it('the proxy FAILS with the sensor stale after the first tick (cue never fires)', () => {
     const failed = H.assertionFails(() => {
-      expect(firstDropTickDuringMotion({ disableWake: true })).toBeGreaterThan(1);
+      expect(firstDropTickDuringMotion({ disableWake: true })).toBeGreaterThan(
+        1
+      );
     });
     expect(failed).toBe(true);
   });

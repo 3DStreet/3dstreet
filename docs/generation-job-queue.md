@@ -12,17 +12,19 @@ image, video, photogrammetry) that:
 - **notify by email** when a job finishes while the tab is closed (opt-in,
   default on; suppressed if a live tab acked the result — see Phase 4 below).
 
-**Two providers exist today**, and they prove the schema generalizes beyond a
+**Four providers exist today**, and they prove the schema generalizes beyond a
 single completion shape:
 
 | Provider | Kind(s) | Completion model | Tokens |
 | --- | --- | --- | --- |
-| `replicate` | `splat` (image→splat, SHARP), `video` (image→video, Veo/Kling/LTX/…) | **convergent**: provider webhook + client poll + reconciler all funnel into one idempotent processor | charged on submit, refunded once on failure |
+| `replicate` | `splat` (image→splat, SHARP), `video` (image→video, Veo/Kling/LTX/…), `image` (nano-banana/seedream/kontext) | **convergent**: provider webhook + client poll + reconciler all funnel into one idempotent processor | charged on submit, refunded once on failure |
+| `modal` | `splat` (video→splat, vid2scene tiers) | convergent, like replicate (status endpoint + staged-output existence check) | charged on submit, refunded once on failure |
+| `fal` | `mesh` (image→3D GLB, Hunyuan3D/TRELLIS), `image` (flux-2 edit family) | **convergent** since #1832: `fal_webhook` + client poll + reconciler via one authoritative status adapter (`fetchFalPrediction`) | charged on submit, refunded once on failure |
 | `cloudrun` | `splat-rad` (.ply→RAD/LOD) | **worker-writeback**: the Cloud Run worker writes its own terminal status; reconciler re-enqueues a stalled task (no external state to poll) | **`tokenCost: 0`** — silent backend optimization, never charges |
 
-The design generalizes further so Replicate image/video, fal, and Teleport/Varjo
-photogrammetry can drop in as additional **kinds** and **providers** without
-re-architecting.
+With image migrated (#1835) every user-initiated generation kind is on the
+queue; Teleport/Varjo photogrammetry can drop in as an additional **kind** and
+**provider** without re-architecting.
 
 > **Naming note:** this document was previously `splat-generation.md`. Splat is
 > now one consumer of the queue, not the headline.
@@ -415,23 +417,35 @@ behaves identically end-to-end.
 - `replicate.js` keeps only the splat *submit*; everything shared moves to
   `jobs/`.
 
-### Phase 3 — Fold in nano banana (Replicate image)
-Images gain browser-independence + email. Same provider → a new `kind`, not a
-provider integration.
-- `persistors.image` (server-side persist) — mirrors `saveSplatToGallery`:
-  download from Replicate → re-upload to Storage → write `type: 'image'` asset
-  doc. Capture the rich generation metadata (model, prompt, seed, steps,
-  guidance, dimensions) into the **job doc at submit** so the server writes it
-  without the browser; read dimensions server-side from the buffer if needed.
-- Lift the existing nano-banana/seedream/kontext input shaping from
-  `generateReplicateImage` into the image submit adapter.
-- Add the **inline-wait wrapper** (~50s) so the fast image UX doesn't regress.
-- `src/generator/generator-tab-base.js`: handle the `{ jobId, running }` branch
-  by polling (copy `splat.js`'s loop) and add an "email me when done" opt-in that
-  sets `notify.email`. Retire the client-side `saveToGallery(imageUrl)` for the
-  async route.
+### Phase 3 — Fold in images (Replicate + fal) ✅ DONE (#1835)
+Images gained browser-independence + email — the last synchronous kind. Both
+image providers became new `kind: 'image'` jobs on the existing machinery:
+- `generateReplicateImage` (nano-banana/seedream/kontext, input shaping kept)
+  and `generateFalImage` (flux-2 edit family) are now submit-and-return:
+  pending job → charge-at-submit + refund-once → provider submit **with a
+  webhook** → `{ jobId }`. Tokens flipped from charge-after-success to
+  charge-at-submit, same as the video migration.
+- `saveImageToGallery` in the shared terminal processor mirrors
+  `saveVideoToGallery` (streamed, deterministic assetId, `type: 'image'` /
+  `category: 'ai-render'`, MIME/extension from the downloaded bytes). The
+  Discord post moved from the submit callables into the claimed success branch.
+- **`galleryMetadata` job field**: client extras merged into the saved asset's
+  `generationMetadata` — the editor passes sceneId/sceneTitle/cameraState/
+  renderMode so the gallery's scene link + focus-camera button (#1605) keep
+  working now that the save is server-side. Sanitized + size-capped at submit.
+- Clients (`generator-tab-base.js` Image tab, editor `ScreenshotModal`) mirror
+  `video.js`: submit → jobId → 3s poll loop; the editor modal keeps its UX but
+  survives closure. Client-side `saveToGallery` retired.
+- Completion email defaults **ON** for images, same as every other kind: the
+  generator tab's opt-in renders checked and the editor `ScreenshotModal`
+  defaults checked and passes `notify` on every render submit (a 4x batch
+  shares a `batchId` so it produces at most one email). Renders usually finish
+  in seconds, so the open tab's poll ack suppresses the email in the common
+  case.
+- The **inline-wait wrapper** (~50s) was skipped: with a 3s poll the fast-image
+  UX regression is one poll tick, not worth a second code path.
 
-### Phase 4 — Notifications ✅ DONE (splat, success-only)
+### Phase 4 — Notifications ✅ DONE (all kinds, success + failure)
 Built entirely on the job doc — **no separate notification system**, exactly as
 intended. The reminder request rides on the job; the reconciler delivers it.
 - **Opt-in at submit.** The Splat tab has an "Email me when my splat is ready"
@@ -452,11 +466,19 @@ intended. The reminder request rides on the job; the reconciler delivers it.
   `notify.sentAt`, clear `pending`. Idempotent: `pending` clears the instant we
   act, so each job emails **at most once**. Needs a collection-group index on
   `(notify.pending, status)` (added to `firestore.indexes.json`).
-- **Success-only** by design; failures refund silently (a closed-tab user just
-  finds the token back). Thresholds ("only if cost > x / time > y") are moot for
-  splat (fixed 1 token, always minutes) — revisit when fast image kinds fold in.
-- Deferred: failure emails, in-app **Jobs panel** reading `generationJobs`, web
-  push.
+- **Failure emails too (2026-07-18).** The same helper (now
+  `sendGenerationOutcomeEmail`) sends a `generationFailed` email ("didn't
+  finish, any charged tokens refunded", CTA back to the generating surface —
+  a failed job has no asset to deep-link) for opted-in `failed`/`canceled`
+  jobs. Same claim/ack machinery: a live poll seeing the failure acks (the tab
+  showed the red toast), the webhook waits the same ack grace, and the sweep
+  queries `status in ['succeeded','failed','canceled']` (same composite
+  index). Two failure-specific eligibility rules live in the helper: no
+  `providerJobId` → retired silently (submit-time failure, the callable
+  returned the error to a necessarily-open tab), and failures older than 24h →
+  retired silently (guards the first deploy against historic failed jobs whose
+  `pending` flag never cleared under the old success-only rule).
+- Deferred: in-app **Jobs panel** reading `generationJobs`, web push.
 
 ### Monitoring — reconciler self-escalation ✅ DONE
 No new infra. When a sweep finishes with `gaveUp > 0`, `errored > 0`, or
@@ -468,9 +490,10 @@ outcomes (jobs the reconciler gave up on, emails that failed to send) loud enoug
 to alert on. A real admin Jobs dashboard remains deferred.
 
 ### Later — additional providers (justifies a real registry)
-- **fal** adapter: `submit`/`fetchStatus` over its queue API (`request_id`,
-  `status_url`, `fal_webhook`). The current in-callable 2-min poll in
-  `fal-proxy.js` becomes the optional short inline wait.
+- ✅ **fal** adapter — DONE: `submit`/`fetchStatus` over its queue API
+  (`request_id`, `status_url`, `fal_webhook`) for `mesh` (fal-3d.js) and
+  `image` (fal-proxy.js) kinds; the old in-callable 2-min poll in
+  `fal-proxy.js` is gone (pure submit-and-return, no inline wait).
 - **Teleport/Varjo** photogrammetry (see reference below): heavier `submit`
   (direct-to-Storage source upload, presigned multipart) + cost
   estimate/hold/reconcile.
@@ -587,13 +610,14 @@ full queue plus two things the Replicate kinds don't:
 
 ## Third provider — fal (image → 3D mesh) ✅ DONE
 
-The first **poll-provider**: fal has no webhook wired here, so completion is
-discovered by polling — the exact seam the reconciler's `switch (job.provider)`
-anticipated. It also fixed a real bug: `generateFalMesh` used to be a
-synchronous callable that polled fal inline for up to ~4.6 min, so longer jobs
-(TRELLIS 2, or fal queue congestion) hit the 300s function timeout and 500'd
-with the token uncharged-but-work-wasted feel. Same class of failure as the
-video migration (#1780).
+Landed as the first **poll-provider** (no webhook wired in v1), the exact seam
+the reconciler's `switch (job.provider)` anticipated — then upgraded to the
+full convergent shape in #1832 (see the webhook note at the end of this
+section). It also fixed a real bug: `generateFalMesh` used to be a synchronous
+callable that polled fal inline for up to ~4.6 min, so longer jobs (TRELLIS 2,
+or fal queue congestion) hit the 300s function timeout and 500'd with the
+token uncharged-but-work-wasted feel. Same class of failure as the video
+migration (#1780).
 
 - **Kind/provider:** `kind: 'mesh'`, `provider: 'fal'`. Models Hunyuan3D v2 and
   TRELLIS 2 (`type: 'fal-3d'` in `replicate-models.js`), image-to-3D only.
@@ -602,13 +626,13 @@ video migration (#1780).
   `refundSplatToken` path), submits to `queue.fal.run`, stores the fal
   `request_id` as `providerJobId` plus `statusUrl`/`responseUrl`, and returns
   `{ jobId }`. No inline poll.
-- **Completion (no webhook):** `fetchFalPrediction(job)` (in `fal-3d.js`) polls
+- **Completion:** `fetchFalPrediction(job)` (in `fal-3d.js`) fetches
   `statusUrl` and shapes the result as a Replicate-style prediction (GLB URL as
   `output`, mapped to Replicate status words), returning `{ prediction }` or
-  `{ absent }`. Both `getGenerationJobStatus` (client poll, live UX) and the
-  reconciler (closed-tab backstop) call it, then run the shared
-  `processTerminalPrediction`, whose new `kind: 'mesh'` branch saves the GLB via
-  `saveMeshToGallery` (streamed to `users/{uid}/assets/meshes/{assetId}.glb`,
+  `{ absent }`. `getGenerationJobStatus` (client poll, live UX), the fal
+  webhook, and the reconciler (closed-tab backstop) all call it, then run the
+  shared `processTerminalPrediction`, whose `kind: 'mesh'` branch saves the GLB
+  via `saveMeshToGallery` (streamed to `users/{uid}/assets/meshes/{assetId}.glb`,
   `type: 'mesh'` / `category: 'ai-render'`, asset id keyed on the fal
   `request_id` so retries converge). Result field is `meshUrl` (returned as
   `mesh_url`).
@@ -618,3 +642,25 @@ video migration (#1780).
   `generationJobs` listener (`mesh` noun added to `PendingJobCard`).
 - **Secrets:** `FAL_KEY` added to `getGenerationJobStatus` and the reconciler
   (either can carry a fal job to terminal).
+- **Webhook (#1832, added post-v1):** submits now attach `fal_webhook` to the
+  `queue.fal.run` URL (`falQueueSubmitUrl`), pointing at **`falJobWebhook`** —
+  the shared `handleJobWebhook` in `replicate.js` with a `provider: 'fal'`
+  branch that re-fetches via `fetchFalPrediction` (the body is never trusted)
+  and runs the same idempotent processor + real-time completion email. Gated
+  by a per-job `webhookSecret`, exactly like the Replicate/Modal webhooks.
+  Closed-tab mesh/image jobs now finalize + email in real time instead of on
+  the 10-min reconciler cadence; poll + reconciler stay as backstops.
+
+## Completion-email suppression race (#1833) ✅ FIXED
+
+The "no email while you're watching" contract: an open tab's poll acks a
+succeeded job (`notify.clientAckedAt`) and the email is suppressed. For
+webhook providers the webhook used to email the instant the save committed —
+always beating the tab's next ~3s poll, so open-tab suppression effectively
+never applied to webhook kinds (observed on dev: a watched video still
+emailed). Fix: after finalizing, the webhook waits `WEBHOOK_NOTIFY_ACK_GRACE_MS`
+(10s ≈ 3 poll cycles) **only when the job is opted-in and still pending**,
+then calls the transactional `sendGenerationReadyEmail`, which suppresses if
+an ack landed during the wait. A closed tab's email is delayed by those few
+seconds; a webhook killed mid-wait loses nothing (`notify.pending` stays set,
+the reconciler sweep delivers).

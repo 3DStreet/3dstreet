@@ -19,8 +19,16 @@ afterEach(() => H.teardownAll());
 // A street-level pose from which the context resolver offers a drone RISE.
 function droneRig() {
   const scene = H.representativeScene();
-  const cam = H.makePerspectiveCam({ pos: [80, 13.5, 80], lookAt: [70, 13, 70] });
-  const c = H.makeControls({ camera: cam, scene, streetLevel: true, wasd: true });
+  const cam = H.makePerspectiveCam({
+    pos: [80, 13.5, 80],
+    lookAt: [70, 13, 70]
+  });
+  const c = H.makeControls({
+    camera: cam,
+    scene,
+    streetLevel: true,
+    wasd: true
+  });
   H.tickAll(c, 16, 1); // refresh the context snapshot
   return { scene, cam, c };
 }
@@ -76,8 +84,15 @@ describe('input policy during a committed move — wheel is DROPPED (two-arm)', 
     // Control arm: the same wheel in a non-tween state moves the pose — proving
     // the wheel is potent, so "no change" in the test arm means dropped, not inert.
     const ctrlScene = H.representativeScene();
-    const ctrlCam = H.makePerspectiveCam({ pos: [80, 60, 80], lookAt: [40, 12, 40] });
-    const ctrl = H.makeControls({ camera: ctrlCam, scene: ctrlScene, streetLevel: true });
+    const ctrlCam = H.makePerspectiveCam({
+      pos: [80, 60, 80],
+      lookAt: [40, 12, 40]
+    });
+    const ctrl = H.makeControls({
+      camera: ctrlCam,
+      scene: ctrlScene,
+      streetLevel: true
+    });
     const cy0 = ctrlCam.position.y;
     H.wheel(ctrl, { dy: -500 });
     H.tickInput(ctrl, 16);
@@ -85,7 +100,10 @@ describe('input policy during a committed move — wheel is DROPPED (two-arm)', 
 
     // Test arm: identical wheel DURING a plan-view tween changes nothing.
     const scene = H.representativeScene();
-    const cam = H.makePerspectiveCam({ pos: [80, 60, 80], lookAt: [40, 12, 40] });
+    const cam = H.makePerspectiveCam({
+      pos: [80, 60, 80],
+      lookAt: [40, 12, 40]
+    });
     const c = H.makeControls({ camera: cam, scene, streetLevel: true });
     c.handlePlanViewRequest();
     H.wheel(c, { dy: -500 }); // delivered mid-tween

@@ -17,8 +17,16 @@ afterEach(() => H.teardownAll());
 describe('WASD — forward flight at altitude over a building edge (Tier 2)', () => {
   it('holds absolute height flying above the roof (no ground-snap, no ratchet-up)', () => {
     const scene = H.representativeScene(); // building roof y=52
-    const cam = H.makePerspectiveCam({ pos: [0, 70, 20], lookAt: [0, 70, -40] });
-    const c = H.makeControls({ camera: cam, scene, wasd: true, streetLevel: true });
+    const cam = H.makePerspectiveCam({
+      pos: [0, 70, 20],
+      lookAt: [0, 70, -40]
+    });
+    const c = H.makeControls({
+      camera: cam,
+      scene,
+      wasd: true,
+      streetLevel: true
+    });
     c._deriveGroundedFromPose(); // settle grounded from the (flying) pose
 
     H.keyDown(c, 'KeyW');
@@ -33,8 +41,16 @@ describe('WASD — forward flight at altitude over a building edge (Tier 2)', ()
 
   it('forward collision blocks at a taller obstacle (stops before the wall)', () => {
     const scene = H.representativeScene(); // building near face at z=-25, height [12,52]
-    const cam = H.makePerspectiveCam({ pos: [0, 40, -10], lookAt: [0, 40, -40] });
-    const c = H.makeControls({ camera: cam, scene, wasd: true, streetLevel: true });
+    const cam = H.makePerspectiveCam({
+      pos: [0, 40, -10],
+      lookAt: [0, 40, -40]
+    });
+    const c = H.makeControls({
+      camera: cam,
+      scene,
+      wasd: true,
+      streetLevel: true
+    });
     c._deriveGroundedFromPose();
 
     H.keyDown(c, 'KeyW');
@@ -56,7 +72,12 @@ describe('WASD — street-level flat ground, non-axis-aligned yaw (Tier 1.5)', (
       pos: [0, 1.6, 0],
       lookAt: [Math.sin(yawRad), 1.6, -Math.cos(yawRad)]
     });
-    const c = H.makeControls({ camera: cam, scene, wasd: true, streetLevel: true });
+    const c = H.makeControls({
+      camera: cam,
+      scene,
+      wasd: true,
+      streetLevel: true
+    });
 
     H.keyDown(c, 'KeyW');
     const p0 = cam.position.clone();

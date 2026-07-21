@@ -1,6 +1,7 @@
 /* global THREE */
 
 import { isSolidFloorHit, worldHitNormal } from './cursorAnchor.js';
+import { intersectProbeTargets } from './probeTargets.js';
 
 // Downward direction for the AGL ground probe. Module-level frozen constant so
 // the per-frame floor probes never allocate per call. `Raycaster.set` copies it
@@ -75,7 +76,7 @@ export class CollisionProbe {
     this._raycaster.set(this._origin, GROUND_PROBE_DIR);
     this._raycaster.near = 0;
     this._raycaster.far = Infinity;
-    const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
+    const hits = intersectProbeTargets(this._raycaster, this._ctx);
     const pick = this.pickFloorFromHits(hits, fromY, {
       acceptBuildings,
       acceptTiles
@@ -185,7 +186,7 @@ export class CollisionProbe {
     this._raycaster.set(cam.position, dir);
     this._raycaster.near = 0;
     this._raycaster.far = Infinity;
-    const hits = this._raycaster.intersectObject(sceneEl.object3D, true);
+    const hits = intersectProbeTargets(this._raycaster, this._ctx);
     for (const hit of hits) {
       if (isSolidFloorHit(hit)) {
         return hit.point.clone();
