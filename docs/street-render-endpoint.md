@@ -195,18 +195,24 @@ capture }` (see `src/render/street-render-harness.js`).
 - `npm run dist` builds `dist/street-render.js` (a `render` webpack entry);
   `npm run prefirebase` copies `render.html` + `dist/` into `public/` — the
   render page ships with normal hosting deploys.
-- The function needs the page **deployed** (it loads
-  `RENDER_PAGE_URL`, default `https://3dstreet.app/render.html`) — deploy
-  hosting before or with the function. Override `RENDER_PAGE_URL` /
-  `EDITOR_BASE_URL` env vars for staging.
+- The function needs the page **deployed** (it loads `RENDER_PAGE_URL`) —
+  deploy hosting before or with the function. The page and editor URLs are
+  resolved per project automatically from `GCLOUD_PROJECT` (prod
+  `dstreet-305604` → `https://3dstreet.app`, everything else →
+  `https://dev-3dstreet.web.app`), so a plain `firebase deploy --only
+  functions` targets the right environment with no per-deploy flags. An
+  explicit `RENDER_PAGE_URL` / `EDITOR_BASE_URL` env var still overrides (e.g.
+  local dev).
 - `@sparticuz/chromium` unpacks its Chromium into `/tmp` at cold start;
   first render on a cold instance takes noticeably longer (asset downloads
   populate the browser cache — subsequent renders on a warm instance reuse
   it). Budget 30–90 s per render on a cold instance; the function timeout is
-  180 s. `minInstances: 1` keeps one instance warm so agent callers
-  (ChatGPT/GPT Actions, skills) avoid that cold-start hit — idle
-  min-instances bill CPU at the reduced idle rate (~10% of active), so the
-  warm floor is ~$25–30/mo, well under the ~$139/mo busy-instance rate.
+  180 s. In **production only** one instance is kept warm (`minInstances`
+  gated on `GCLOUD_PROJECT`) so agent callers (ChatGPT/GPT Actions, skills)
+  avoid that cold-start hit — Firebase estimates ~$21/mo for the warm 2GiB
+  instance. Dev/staging default to `0` (no idle cost), so a disposable
+  project nobody hits pays nothing; the first render there just eats the cold
+  start.
 - Local dev: set `PUPPETEER_EXECUTABLE_PATH` to a system Chromium and
   `RENDER_PAGE_URL=http://localhost:3333/render.html` with `npm start`
   running.

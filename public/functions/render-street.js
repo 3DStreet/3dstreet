@@ -33,9 +33,30 @@
 /* global window */ // window only appears inside page.evaluate (browser ctx)
 const { onRequest } = require('firebase-functions/v2/https');
 
+// Per-project config without per-deploy flags. GCLOUD_PROJECT resolves to the
+// target project at both deploy-time discovery and runtime, so warm instances
+// and the page/editor URLs bake correctly per environment automatically — same
+// staging-vs-prod pattern as rad-dispatch.js. An explicit env var still wins,
+// and any non-prod project (dev, local, a new env) gets the safe dev defaults.
+const PROD_PROJECT_ID = 'dstreet-305604';
+const ACTIVE_PROJECT =
+  process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT;
+const IS_PROD = ACTIVE_PROJECT === PROD_PROJECT_ID;
+
 const RENDER_PAGE_URL =
-  process.env.RENDER_PAGE_URL || 'https://3dstreet.app/render.html';
-const EDITOR_BASE_URL = process.env.EDITOR_BASE_URL || 'https://3dstreet.app/';
+  process.env.RENDER_PAGE_URL ||
+  (IS_PROD
+    ? 'https://3dstreet.app/render.html'
+    : 'https://dev-3dstreet.web.app/render.html');
+const EDITOR_BASE_URL =
+  process.env.EDITOR_BASE_URL ||
+  (IS_PROD ? 'https://3dstreet.app/' : 'https://dev-3dstreet.web.app/');
+
+// Keep one instance warm only in production, where the cold-start hit matters
+// to real callers. Dev/staging/local default to 0 so they never reserve idle
+// capacity (Firebase estimates ~$21/mo for one warm 2GiB instance — not worth
+// paying on a disposable project nobody hits).
+const RENDER_MIN_INSTANCES = IS_PROD ? 1 : 0;
 
 const crypto = require('crypto');
 const admin = require('firebase-admin');
@@ -415,13 +436,12 @@ exports.renderStreet = onRequest(
     // tab risks OOM on 2GiB; it also halves the ~1 vCPU each render gets.
     // maxInstances 2 bounds sustained-abuse cost at ~$280/mo (2 busy
     // instances × ~$139: 2vCPU+2GiB at Cloud Run rates); spikes get 429s.
-    // minInstances 1 keeps one instance warm to avoid the 30-90s cold start
-    // (@sparticuz/chromium unpack + first-render asset downloads) that GPT
-    // Actions / agent callers time out on. Idle min-instances bill CPU at the
-    // reduced idle rate (~10% of active), so the warm floor is ~$25-30/mo
-    // (2vCPU+2GiB: idle CPU + memory), not the ~$139 busy rate.
+    // minInstances (prod only, see RENDER_MIN_INSTANCES) keeps one instance warm
+    // to avoid the 30-90s cold start (@sparticuz/chromium unpack + first-render
+    // asset downloads) that GPT Actions / agent callers time out on. Firebase
+    // estimates ~$21/mo for the warm 2GiB instance; dev/staging stay at 0.
     concurrency: 2,
-    minInstances: 1,
+    minInstances: RENDER_MIN_INSTANCES,
     maxInstances: 2,
     secrets: ['DISCORD_WEBHOOK_URL'],
     cors: true
