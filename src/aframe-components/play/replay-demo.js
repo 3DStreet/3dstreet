@@ -24,6 +24,8 @@
  * This is intentionally NOT the product UX — that's the "Traffic Replay" Add
  * Layer card. This is just a fast way to verify the engine end to end.
  */
+import { encodeManifest } from './manifest-codec.js';
+
 (function () {
   if (typeof window === 'undefined') return;
   const params = new URLSearchParams(window.location.search);
@@ -88,7 +90,7 @@
     const replayProps = { timeScale, loop: true, target: 'replay-demo-street' };
     if (sampleMod) {
       manifest = sampleMod.default || sampleMod;
-      replayProps.manifestData = JSON.stringify(manifest);
+      replayProps.manifestData = encodeManifest(manifest);
     } else {
       replayProps.manifestUrl = replay; // treat the param as a manifest URL
     }

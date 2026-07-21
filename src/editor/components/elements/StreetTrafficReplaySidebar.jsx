@@ -6,6 +6,10 @@ import Events from '../../lib/Events';
 import { Button, Dropdown } from '../elements';
 import { createUniqueId } from '../../lib/entity';
 import * as defaultStreetObjects from './AddLayerPanel/defaultStreets.js';
+import {
+  encodeManifest,
+  decodeManifest
+} from '../../../aframe-components/play/manifest-codec.js';
 
 const fieldLabels = defineMessages({
   timeScale: {
@@ -47,14 +51,7 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
     return () => Events.off('entityupdate', onEntityUpdate);
   }, [entity]);
 
-  const manifest = useMemo(() => {
-    if (!manifestData) return null;
-    try {
-      return JSON.parse(manifestData);
-    } catch {
-      return null;
-    }
-  }, [manifestData]);
+  const manifest = useMemo(() => decodeManifest(manifestData), [manifestData]);
 
   if (!component || !component.schema || !component.data) return null;
 
@@ -97,7 +94,7 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
         );
         return;
       }
-      setProp('manifestData', JSON.stringify(parsed));
+      setProp('manifestData', encodeManifest(parsed));
     };
     input.click();
   };

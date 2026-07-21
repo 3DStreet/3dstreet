@@ -4,6 +4,7 @@ import {
   hideSegmentClones,
   releaseClones
 } from './clone-visibility.js';
+import { decodeManifest } from './manifest-codec.js';
 
 /**
  * street-traffic-replay
@@ -214,11 +215,12 @@ AFRAME.registerComponent('street-traffic-replay', {
 
   loadFromData: function () {
     if (this.data.manifestData) {
-      try {
-        this.setManifest(JSON.parse(this.data.manifestData));
-      } catch (err) {
-        console.error('[street-traffic-replay] bad manifestData JSON', err);
-      }
+      // manifestData is base64-encoded (see manifest-codec.js) so it survives
+      // A-Frame's `;`-delimited component serialization; decodeManifest also
+      // accepts legacy raw-JSON values from scenes saved before that fix.
+      const parsed = decodeManifest(this.data.manifestData);
+      if (parsed) this.setManifest(parsed);
+      else console.error('[street-traffic-replay] bad manifestData');
     } else if (this.data.manifestUrl) {
       fetch(this.data.manifestUrl)
         .then((r) => {
