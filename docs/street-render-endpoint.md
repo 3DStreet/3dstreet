@@ -22,6 +22,19 @@ freemium on-ramp / traffic generator for 3dstreet.app.
 No authentication. Abuse is bounded by instance caps (`concurrency: 2`,
 `maxInstances: 2`) and payload limits; see Limits below.
 
+> **⚠️ The hosting rewrite has a hard 60 s timeout.** Firebase Hosting caps any
+> function/Cloud Run rewrite at 60 seconds and returns a **502** if the request
+> runs longer — even though the function keeps going to its own 180 s timeout
+> and still writes the render to cache. A **cold** render (30–90 s, see
+> Latency) therefore 502s through `…/render-street`. Mitigations: **prod stays
+> warm** (`minInstances: 1`, so typical renders finish well under 60 s) and the
+> **content cache** makes identical repeats instant. For **cold or one-off
+> renders — especially on dev/staging, which run `minInstances: 0`** — call the
+> **direct** function URL instead (full 180 s), then the same request through
+> the hosting URL comes back as a fast cache hit. (Independently, GPT Actions
+> impose their own ~45 s timeout, so cold renders are too slow for a GPT
+> regardless of the URL — warm + cache is the answer there.)
+
 ## Request
 
 ### POST (preferred)
