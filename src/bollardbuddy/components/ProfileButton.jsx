@@ -9,10 +9,12 @@ import {
 } from '@shared/auth/components';
 import { useAuthContext } from '../../editor/contexts';
 import { auth } from '@shared/services/firebase';
+import { useSharedMessages } from '@shared/i18n/sharedMessages';
 
 const ProfileButton = () => {
   const { currentUser, isLoading } = useAuthContext();
   const [showSignIn, setShowSignIn] = useState(false);
+  const t = useSharedMessages();
 
   const onClick = () => {
     if (isLoading) return;
@@ -41,7 +43,7 @@ const ProfileButton = () => {
       <SignInModal
         isOpen={showSignIn}
         onClose={() => setShowSignIn(false)}
-        message="Sign in to save your scenes and access your gallery."
+        message={t('bbSignInMessage')}
         firebaseAuth={auth}
         onAnalytics={handleAnalytics}
       />

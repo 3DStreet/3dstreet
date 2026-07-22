@@ -249,6 +249,97 @@ const SHARED_MESSAGES = {
     es: 'elementos',
     'pt-BR': 'itens',
     fr: 'éléments'
+  },
+
+  // Bollard Buddy — AR island strings (ProfileButton sign-in prompt + gallery
+  // toasts). "Bollard Buddy" is the product name and is never translated.
+  bbSignInMessage: {
+    en: 'Sign in to save your scenes and access your gallery.',
+    es: 'Inicia sesión para guardar tus escenas y acceder a tu galería.',
+    'pt-BR': 'Faça login para salvar suas cenas e acessar sua galeria.',
+    fr: 'Connectez-vous pour enregistrer vos scènes et accéder à votre galerie.'
+  },
+  bbPhotoSaved: {
+    en: 'Photo saved to gallery!',
+    es: '¡Foto guardada en la galería!',
+    'pt-BR': 'Foto salva na galeria!',
+    fr: 'Photo enregistrée dans la galerie !'
+  },
+  bbPhotoSaveFailed: {
+    en: 'Failed to save photo',
+    es: 'No se pudo guardar la foto',
+    'pt-BR': 'Falha ao salvar a foto',
+    fr: "Échec de l'enregistrement de la photo"
+  },
+  bbGeneratorSendFailed: {
+    en: 'Failed to send photo to the AI generator',
+    es: 'No se pudo enviar la foto al generador de IA',
+    'pt-BR': 'Falha ao enviar a foto para o gerador de IA',
+    fr: "Échec de l'envoi de la photo au générateur IA"
+  },
+
+  // Bollard Buddy — static AR page UI (object picker, CTAs). Object names label
+  // the placeable street furniture; "SafeHit" is a brand name kept as-is.
+  bbObjectBollard: {
+    en: 'Bollard',
+    es: 'Bolardo',
+    'pt-BR': 'Balizador',
+    fr: 'Borne'
+  },
+  bbObjectCone: { en: 'Cone', es: 'Cono', 'pt-BR': 'Cone', fr: 'Cône' },
+  bbSelectObject: {
+    en: 'Select Object',
+    es: 'Seleccionar objeto',
+    'pt-BR': 'Selecionar objeto',
+    fr: 'Sélectionner un objet'
+  },
+  bbTapToPlace: {
+    en: 'Tap on ground to place',
+    es: 'Toca el suelo para colocar',
+    'pt-BR': 'Toque no chão para posicionar',
+    fr: 'Touchez le sol pour placer'
+  },
+  bbWebxrBeta: {
+    en: 'WebXR Beta',
+    es: 'WebXR Beta',
+    'pt-BR': 'WebXR Beta',
+    fr: 'WebXR Beta'
+  },
+  bbIosBest: {
+    en: 'Best on iOS:',
+    es: 'Mejor en iOS:',
+    'pt-BR': 'Melhor no iOS:',
+    fr: 'Meilleur sur iOS :'
+  },
+  bbIosGetApp: {
+    en: 'Get the app',
+    es: 'Descarga la app',
+    'pt-BR': 'Baixe o app',
+    fr: "Télécharger l'app"
+  },
+  bbDismiss: {
+    en: 'Dismiss',
+    es: 'Descartar',
+    'pt-BR': 'Dispensar',
+    fr: 'Ignorer'
+  },
+  bbDesktopBestOniPhone: {
+    en: 'Bollard Buddy is best on iPhone.',
+    es: 'Bollard Buddy funciona mejor en iPhone.',
+    'pt-BR': 'O Bollard Buddy funciona melhor no iPhone.',
+    fr: 'Bollard Buddy est meilleur sur iPhone.'
+  },
+  bbGetIosApp: {
+    en: 'get the iOS app',
+    es: 'descarga la app de iOS',
+    'pt-BR': 'baixe o app para iOS',
+    fr: "télécharger l'app iOS"
+  },
+  bbScanQr: {
+    en: 'or scan the QR code above to use the web version.',
+    es: 'o escanea el código QR de arriba para usar la versión web.',
+    'pt-BR': 'ou escaneie o QR code acima para usar a versão web.',
+    fr: 'ou scannez le code QR ci-dessus pour utiliser la version web.'
   }
 };
 

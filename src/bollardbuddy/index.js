@@ -12,9 +12,15 @@ import { auth } from '@shared/services/firebase.js';
 import { mountAuthUI } from './mount-auth.jsx';
 import { mountAssets } from './mount-assets.js';
 import { mountAppSwitcher } from './mount-app-switcher.jsx';
+import { localizePage } from './localize-page.js';
 
 // Expose auth for compatibility with vanilla JS
 window.firebaseAuth = auth;
+
+// Localize the static AR page markup right away. This bundle is the last
+// element in <body>, so the DOM is fully parsed and we can translate before
+// paint instead of waiting for DOMContentLoaded (avoids a flash of English).
+localizePage();
 
 // Initialize on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {

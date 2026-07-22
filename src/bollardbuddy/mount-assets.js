@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { Assets, assetsService } from '@shared/assets';
 import { signInWithGoogle } from '@shared/auth/api/auth';
 import { auth } from '@shared/services/firebase';
+import { formatSharedMessage } from '@shared/i18n/sharedMessages';
 
 /**
  * Convert Blob to data URI
@@ -88,11 +89,11 @@ const saveToGallery = async (blob) => {
       user.uid
     );
 
-    showNotification('Photo saved to gallery!', 'success');
+    showNotification(formatSharedMessage('bbPhotoSaved'), 'success');
     console.log('Photo saved to gallery');
   } catch (error) {
     console.error('Failed to save to gallery:', error);
-    showNotification('Failed to save photo', 'error');
+    showNotification(formatSharedMessage('bbPhotoSaveFailed'), 'error');
   }
 };
 
@@ -132,7 +133,7 @@ const openInGenerator = async (item, tabName) => {
     window.location.href = `/generator/#${tabName}`;
   } catch (error) {
     console.error('Failed to open generator with item:', error);
-    showNotification('Failed to send photo to the AI generator', 'error');
+    showNotification(formatSharedMessage('bbGeneratorSendFailed'), 'error');
   }
 };
 
