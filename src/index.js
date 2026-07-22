@@ -1,4 +1,5 @@
 /* global AFRAME, XMLHttpRequest, VERSION */
+import posthog from 'posthog-js';
 import useStore from './store.js';
 import * as streetUtils from './street-utils.js';
 require('./json-utils_1.1.js'); // this defines STREET.utils
@@ -171,6 +172,22 @@ AFRAME.registerComponent('street', {
   }
 });
 
+// Streetmix-import telemetry (#1874). Fires only when the loader was created
+// with a known `importSource` ('url_fragment' or 'dialog'), so in-app template
+// presets that also spin up a streetmix-loader don't count as imports. Before
+// this, `streetmix_import_completed` fired only from the manual dialog path,
+// missing the URL-fragment auto-import (`/#https://streetmix.net/...`) that is
+// how the large majority of Streetmix users actually arrive.
+function captureStreetmixImport(event, data, extra) {
+  if (!data.importSource) return;
+  posthog.capture(event, {
+    source: data.importSource,
+    streetmix_url: data.streetmixStreetURL,
+    scene_id: window.STREET?.utils?.getCurrentSceneId?.(),
+    ...extra
+  });
+}
+
 AFRAME.registerComponent('streetmix-loader', {
   dependencies: ['street'],
   schema: {
@@ -178,7 +195,12 @@ AFRAME.registerComponent('streetmix-loader', {
     streetmixAPIURL: { type: 'string' },
     showBuildings: { default: true },
     name: { default: '' },
-    synchronize: { default: true }
+    synchronize: { default: true },
+    // Import-telemetry source (#1874). Set to 'url_fragment' or 'dialog' by the
+    // paths we want to measure; left empty for in-app template/preset adds so
+    // those don't inflate the Streetmix-import funnel. When set, this component
+    // fires `streetmix_import_completed` / `streetmix_import_failed`.
+    importSource: { type: 'string', default: '' }
   },
   update: function (oldData) {
     // fired at start and at each subsequent change of any schema value
@@ -272,12 +294,17 @@ AFRAME.registerComponent('streetmix-loader', {
         el.emit('streetmix-loader-street-loaded');
         // the streetmix data has been loaded, set the synchronize flag to false
         el.setAttribute('streetmix-loader', 'synchronize', false);
+        captureStreetmixImport('streetmix_import_completed', data);
       } else {
         // We reached our target server, but it returned an error
         console.log(
           '[streetmix-loader]',
           'Loading Error: We reached the target server, but it returned an error'
         );
+        el.emit('streetmix-loader-street-load-error', { status: this.status });
+        captureStreetmixImport('streetmix_import_failed', data, {
+          status: this.status
+        });
       }
     };
     request.onerror = function () {
@@ -286,6 +313,8 @@ AFRAME.registerComponent('streetmix-loader', {
         '[streetmix-loader]',
         'Loading Error: There was a connection error of some sort'
       );
+      el.emit('streetmix-loader-street-load-error', { status: 0 });
+      captureStreetmixImport('streetmix_import_failed', data, { status: 0 });
     };
     request.send();
   }

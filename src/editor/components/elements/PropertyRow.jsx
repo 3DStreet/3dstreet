@@ -29,6 +29,7 @@ export default class PropertyRow extends React.Component {
     schema: PropTypes.object.isRequired,
     noSelectEntity: PropTypes.bool,
     onEntityUpdate: PropTypes.func,
+    onValueChange: PropTypes.func,
     rightElement: PropTypes.node
   };
 
@@ -70,6 +71,12 @@ export default class PropertyRow extends React.Component {
       : props.data;
 
     const updateProperty = (name, value) => {
+      // Notify the parent of the raw user-initiated value change (used for
+      // telemetry at the call site). Fired here rather than via onEntityUpdate
+      // so it reflects a genuine widget interaction once, and does NOT re-fire
+      // on undo/redo (which don't route through this handler).
+      props.onValueChange?.(name, value);
+
       // Auto-switch to custom variant for building segments when modifying certain properties
       const shouldSwitchToCustom =
         // Surface changes on street-segment

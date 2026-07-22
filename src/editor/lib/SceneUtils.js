@@ -33,10 +33,6 @@ export function inputStreetmix() {
     // setTimeout very important here, otherwise all entities are positionned at 0,0,0 when reloading the scene
     setTimeout(() => {
       AFRAME.scenes[0].emit('newScene');
-      posthog.capture('streetmix_import_completed', {
-        streetmix_url: streetmixURL,
-        scene_id: STREET.utils.getCurrentSceneId()
-      });
     });
   });
 
@@ -45,7 +41,11 @@ export function inputStreetmix() {
     components: {
       'streetmix-loader': {
         streetmixStreetURL: streetmixURL,
-        synchronize: true
+        synchronize: true,
+        // The streetmix-loader now fires streetmix_import_completed/_failed
+        // itself (source 'dialog') so success AND failure are both measurable
+        // from one place — see captureStreetmixImport in index.js (#1874).
+        importSource: 'dialog'
       }
     }
   });
