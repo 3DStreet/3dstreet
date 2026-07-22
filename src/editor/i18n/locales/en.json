@@ -2084,6 +2084,12 @@
   "trafficReplay.createStreet": {
     "defaultMessage": "Create a street to replay onto"
   },
+  "trafficReplay.hiddenModesBody": {
+    "defaultMessage": "The linked street has vehicles hidden, so these recorded modes will not appear during play: {modes}."
+  },
+  "trafficReplay.hiddenModesHeading": {
+    "defaultMessage": "⚠️ Some modes will be hidden"
+  },
   "trafficReplay.hideSynthetic": {
     "defaultMessage": "Hide synthetic traffic"
   },
@@ -2116,6 +2122,9 @@
   },
   "trafficReplay.replaceManifest": {
     "defaultMessage": "Replace manifest…"
+  },
+  "trafficReplay.showVehiclesOnStreet": {
+    "defaultMessage": "Show vehicles on linked street"
   },
   "trafficReplay.streetUsers": {
     "defaultMessage": "{count} street users"
