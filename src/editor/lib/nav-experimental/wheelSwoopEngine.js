@@ -8,6 +8,7 @@ import {
   WHEEL_ACCUM_EPS_TICKS,
   WHEEL_ANCHOR_DENOM_EPS_METRES,
   WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF,
+  WHEEL_ZOOM_OUT_MIN_ANCHOR_DIST_METRES,
   WHEEL_GROUND_REACH_CEILING_METRES,
   FALLBACK_FORWARD_DIST,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
@@ -396,7 +397,7 @@ export class WheelSwoopEngine {
       );
       if (hit == null) return t; // near-vertical at sky → consume, no move
     }
-    this._dollyAlongRay(dollyFactorForTicks(t, ZOOM_PER_WHEEL_TICK), hit);
+    this._dollyAlongRay(dollyFactorForTicks(t, ZOOM_PER_WHEEL_TICK), hit, t);
     return t;
   }
 
@@ -494,7 +495,7 @@ export class WheelSwoopEngine {
         // per-tick path: apply the full step, then post-step y-clamp exactly
         // as `_applyPhase1WheelTick` does, and consume the whole `t`.
         if (Math.abs(denom) <= WHEEL_ANCHOR_DENOM_EPS_METRES) {
-          this._dollyAlongRay(fullFactor, hit);
+          this._dollyAlongRay(fullFactor, hit, t);
           if (camera.position.y - groundY < yEntry) {
             camera.position.y = targetY;
             this._zoomUndo = nextZoomUndo(this._zoomUndo, {
@@ -515,7 +516,7 @@ export class WheelSwoopEngine {
         if (factorStar > 0 && factorStar < 1) {
           const alpha = ZOOM_PER_WHEEL_TICK;
           const tStar = -Math.log(factorStar) / Math.log(1 - alpha);
-          this._dollyAlongRay(factorStar, hit);
+          this._dollyAlongRay(factorStar, hit, tStar);
           camera.position.y = targetY; // exact y-clamp at the entry boundary
           this._zoomUndo = nextZoomUndo(this._zoomUndo, {
             type: 'wheel-in-crossing',
@@ -526,7 +527,7 @@ export class WheelSwoopEngine {
           return tStar; // remainder (t − tStar) re-dispatches to the swoop
         }
         // Degenerate factor* — fall back to the full step + post-step clamp.
-        this._dollyAlongRay(fullFactor, hit);
+        this._dollyAlongRay(fullFactor, hit, t);
         if (camera.position.y - groundY < yEntry) {
           camera.position.y = targetY;
           this._zoomUndo = nextZoomUndo(this._zoomUndo, {
@@ -542,7 +543,7 @@ export class WheelSwoopEngine {
 
     // Interior step (no boundary crossing, or free descent with no ground):
     // apply the full continuous dolly and consume the whole `t`.
-    this._dollyAlongRay(dollyFactorForTicks(t, ZOOM_PER_WHEEL_TICK), hit);
+    this._dollyAlongRay(dollyFactorForTicks(t, ZOOM_PER_WHEEL_TICK), hit, t);
     return t;
   }
 
@@ -557,22 +558,38 @@ export class WheelSwoopEngine {
   // camera. The cap scales with height — max(lowerBound,
   // 0.1×AGL) — bounding the lurch proportionally; falls to the lower bound on
   // the no-AGL path (Ctrl+wheel / out of bounds, where AGL is non-finite).
-  _dollyAlongRay(factor, hit) {
+  //
+  // `ticks` is the signed nominal-tick count this step applies. The lurch cap
+  // is PER TICK (KD-15), but the continuous drain (KD-09) merges every tick
+  // accumulated since the last frame into ONE call — so the cap budget must
+  // scale with |ticks| or the zoom rate becomes proportional to frame rate
+  // (glacial on low-fps scenes: each frame carries many ticks yet moves at
+  // most one flat cap; the surplus input is consumed and discarded). Floored
+  // at one tick's budget so the sub-tick steps a high-fps frame carries keep
+  // the exact pre-KD-09 per-tick behaviour rather than a proportionally
+  // shrunken cap.
+  _dollyAlongRay(factor, hit, ticks = 1) {
     const camera = this._ctx.camera;
     const yAgl = this._frameGroundHit
       ? camera.position.y - this._frameGroundY
       : NaN;
-    const cap = lateralCap(
-      yAgl,
-      this._ctx.wheelZoomLateralCapLowerBound,
-      WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF
-    );
+    const cap =
+      lateralCap(
+        yAgl,
+        this._ctx.wheelZoomLateralCapLowerBound,
+        WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF
+      ) * Math.max(1, Math.abs(ticks));
     const newPos = cappedDollyStep(
       {
         camPos: camera.position,
         hit,
         factor,
-        lateralCapMetres: cap
+        lateralCapMetres: cap,
+        // Zoom-out escape floor (TH-80, #1865): with the camera parked on
+        // its anchor (focus on an empty-bbox entity lands 0.25 m away), a
+        // pure %-of-distance step is ~zero and the wheel reads as dead.
+        // cappedDollyStep applies this on zoom-out (factor > 1) only.
+        minAnchorDistMetres: WHEEL_ZOOM_OUT_MIN_ANCHOR_DIST_METRES
       },
       this._dollyScratch
     );
@@ -617,7 +634,11 @@ export class WheelSwoopEngine {
       );
       if (hit == null) return; // near-vertical at sky → no move
     }
-    this._dollyAlongRay(dollyFactorForTicks(sign, ZOOM_PER_WHEEL_TICK), hit);
+    this._dollyAlongRay(
+      dollyFactorForTicks(sign, ZOOM_PER_WHEEL_TICK),
+      hit,
+      sign
+    );
 
     // Solid-geometry guard: no ground below → no Phase-2 boundary.
     if (!this._frameGroundHit) return;

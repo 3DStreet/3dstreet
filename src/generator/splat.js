@@ -32,6 +32,11 @@ import { httpsCallable } from 'firebase/functions';
 import { functions, auth, storage } from '@shared/services/firebase.js';
 import { ref as storageRef, uploadBytesResumable } from 'firebase/storage';
 import posthog from 'posthog-js';
+import { syncJobNotifyEmail } from './job-notify.js';
+import {
+  pollGenerationJob,
+  forceJobNotifyEmail
+} from '@shared/utils/generationJobs.js';
 
 // Shared notice for all vid2scene tiers.
 const VID2SCENE_NOTICE =
@@ -120,8 +125,8 @@ const SplatTab = {
   currentSplatUrl: '',
   timerInterval: null,
   startTime: null,
-  pollTimeout: null, // setTimeout handle for the status poll loop
-  pollDeadline: 0, // wall-clock ms after which we stop polling
+  activePoll: null, // { promise, cancel } from pollGenerationJob
+  activeJobId: null, // in-flight job — target of the email toggle
 
   init() {
     const container = document.getElementById('splat-tab');
@@ -256,13 +261,16 @@ const SplatTab = {
             <span id="splat-generate-text">Generate Splat</span>
           </button>
 
-          <!-- Email when done. Default on: splats take minutes, so most users
-               navigate away. The email is suppressed server-side if the tab is
-               still open when it finishes (see generation-job-reconcile.js). -->
-          <label class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
+          <!-- Email when done. Hidden until a job is in flight — mid-render
+               it's the "you can close this tab" affordance; toggling writes
+               through to the job doc (setGenerationJobNotify). Default on:
+               splats take minutes, so most users navigate away. The email is
+               suppressed server-side if the tab is still open when it
+               finishes (see generation-job-reconcile.js). -->
+          <label id="splat-notify-email-row" class="hidden flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
             <input id="splat-notify-email" type="checkbox" checked
               class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-            Email me when my splat is ready
+            Email me when my splat is ready (you can close this tab)
           </label>
 
           <!-- Research preview / license notice (model-aware) -->
@@ -355,6 +363,7 @@ const SplatTab = {
       generateSpinner: byId('splat-generate-spinner'),
       generateText: byId('splat-generate-text'),
       notifyEmail: byId('splat-notify-email'),
+      notifyEmailRow: byId('splat-notify-email-row'),
       previewContainer: byId('splat-preview-container'),
       placeholder: byId('splat-placeholder'),
       placeholderText: byId('splat-placeholder-text'),
@@ -414,6 +423,11 @@ const SplatTab = {
     });
 
     els.generateBtn.addEventListener('click', () => this.generateSplat());
+
+    // Mid-render email opt-in writes through to the in-flight job doc
+    els.notifyEmail?.addEventListener('change', () => {
+      syncJobNotifyEmail(this.activeJobId, els.notifyEmail);
+    });
 
     els.downloadBtn.addEventListener('click', () => {
       if (this.currentSplatUrl) this.downloadSplat();
@@ -580,6 +594,10 @@ const SplatTab = {
       // actually submitted.
       this.setLoadingPhase('uploading');
     } else {
+      // Terminal (or reset): the email toggle only applies to an in-flight
+      // job, so it leaves with the loading state.
+      this.activeJobId = null;
+      els.notifyEmailRow?.classList.add('hidden');
       els.loadingIndicator.classList.add('hidden');
       this.stopTimer();
       this.updateGenerateLabel();
@@ -632,10 +650,9 @@ const SplatTab = {
     }
   },
 
-  // Poll cadence and overall ceiling for the status loop. Cold boots + video
-  // reconstruction can run several minutes; 20 min is generous headroom before
-  // we give up locally (the job still finishes server-side regardless).
-  POLL_INTERVAL_MS: 3000,
+  // Overall ceiling for the status loop. Cold boots + video reconstruction
+  // can run several minutes; 20 min is generous headroom before we give up
+  // locally (the job still finishes server-side regardless).
   POLL_MAX_MS: 20 * 60 * 1000,
 
   // Upload the chosen video straight to Firebase Storage (resumable, with a
@@ -721,10 +738,14 @@ const SplatTab = {
       // the user they can close the tab, and to start the generation timer.
       this.setLoadingPhase('processing');
 
+      // Also the moment the email opt-in becomes meaningful (check it, close
+      // the tab, get the result by email).
+      this.activeJobId = result.data.jobId;
+      this.elements.notifyEmailRow?.classList.remove('hidden');
+
       // The job now shows as a pending card in the assets gallery, driven by a
       // live Firestore listener on the job doc (written before this returns) —
       // so it persists across reloads and tabs without any client state here.
-      this.pollDeadline = Date.now() + this.POLL_MAX_MS;
       this.pollSplatStatus(result.data.jobId);
     } catch (error) {
       console.error('Error starting splat generation:', error);
@@ -732,19 +753,20 @@ const SplatTab = {
     }
   },
 
-  // Poll getGenerationJobStatus until the job is terminal. Re-schedules itself
-  // with setTimeout (not setInterval) so a slow request can't overlap the next
-  // tick. Any non-terminal status (queued|running|saving) just keeps polling.
-  async pollSplatStatus(jobId) {
-    const getGenerationJobStatus = httpsCallable(
-      functions,
-      'getGenerationJobStatus'
-    );
+  // Drive the live UI off the shared getGenerationJobStatus poll until the
+  // job is terminal. Any non-terminal status (queued|running|saving) just
+  // keeps polling; the gallery's pending card reflects the live status from
+  // Firestore either way.
+  pollSplatStatus(jobId) {
+    this.stopPolling();
+    this.activePoll = pollGenerationJob(jobId, {
+      resultField: 'splat_url',
+      maxMs: this.POLL_MAX_MS
+    });
+    this.activePoll.promise
+      .then((data) => {
+        if (!data) return; // cancelled — a newer submit or teardown took over
 
-    try {
-      const { data } = await getGenerationJobStatus({ jobId });
-
-      if (data.status === 'succeeded' && data.splat_url) {
         // The splat was saved to the gallery server-side (works even if this
         // tab had been closed). Just reflect it in the UI and refresh the
         // gallery island so the new asset shows up. The pending-job card clears
@@ -756,50 +778,37 @@ const SplatTab = {
         window.dispatchEvent(new Event('assets:refresh'));
         FluxUI.showNotification('Splat generated!', 'success');
         posthog.capture('splat_generated', { model: this.currentModelId });
-        return;
-      }
-
-      if (data.status === 'failed' || data.status === 'canceled') {
-        // The server refunds on failure; refresh the displayed balance.
+      })
+      .catch(async (error) => {
+        if (error.timedOut) {
+          // The job outlived the poll window — unusual enough that the user
+          // shouldn't have to babysit the tab: force the completion email on.
+          const forced = await forceJobNotifyEmail(jobId);
+          if (this.elements.notifyEmail) {
+            this.elements.notifyEmail.checked = true;
+          }
+          this.failGeneration(
+            forced
+              ? "Splat generation is taking longer than expected. We'll email you when it's ready — it will also appear in your gallery."
+              : 'Splat generation is taking longer than expected. Check your gallery shortly.',
+            forced ? 'warning' : 'error'
+          );
+          return;
+        }
+        // failed/canceled — the server refunds on failure; refresh the balance.
         window.dispatchEvent(new CustomEvent('tokenCountChanged'));
         this.failGeneration(
-          data.error
-            ? `Splat generation failed: ${data.error}`
+          error.jobError
+            ? `Splat generation failed: ${error.jobError}`
             : 'Splat generation failed. Your tokens were refunded.'
         );
-        return;
-      }
-
-      // Still queued/running/saving — the gallery's pending card reflects the
-      // live status from Firestore; just keep polling until the deadline.
-      if (Date.now() > this.pollDeadline) {
-        this.failGeneration(
-          'Splat generation is taking longer than expected. Check your gallery shortly.'
-        );
-        return;
-      }
-      this.pollTimeout = setTimeout(
-        () => this.pollSplatStatus(jobId),
-        this.POLL_INTERVAL_MS
-      );
-    } catch (error) {
-      console.error('Error polling splat status:', error);
-      // Transient poll error — retry until the deadline rather than failing hard.
-      if (Date.now() > this.pollDeadline) {
-        this.failGeneration(this.errorMessage(error));
-        return;
-      }
-      this.pollTimeout = setTimeout(
-        () => this.pollSplatStatus(jobId),
-        this.POLL_INTERVAL_MS
-      );
-    }
+      });
   },
 
   stopPolling() {
-    if (this.pollTimeout) {
-      clearTimeout(this.pollTimeout);
-      this.pollTimeout = null;
+    if (this.activePoll) {
+      this.activePoll.cancel();
+      this.activePoll = null;
     }
   },
 
@@ -807,11 +816,11 @@ const SplatTab = {
   // gallery's pending-job card clears on its own when the job doc reaches a
   // terminal state (server marks failed + refunds); a local poll timeout just
   // stops our polling — the job may still finish server-side and surface later.
-  failGeneration(message) {
+  failGeneration(message, type = 'error') {
     this.stopPolling();
     this.toggleLoading(false);
     this.elements.placeholder.classList.remove('hidden');
-    FluxUI.showNotification(message, 'error');
+    FluxUI.showNotification(message, type);
   },
 
   errorMessage(error) {

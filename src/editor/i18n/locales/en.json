@@ -1226,15 +1226,6 @@
   "geoSidebar.background": {
     "defaultMessage": "Background"
   },
-  "geoSidebar.blendMode": {
-    "defaultMessage": "Blend Mode"
-  },
-  "geoSidebar.blending": {
-    "defaultMessage": "Blending"
-  },
-  "geoSidebar.blendingFlattening": {
-    "defaultMessage": "Blending & Flattening"
-  },
   "geoSidebar.centerpointTooltip": {
     "defaultMessage": "This scene's centerpoint is {latitude}, {longitude}"
   },
@@ -1283,6 +1274,9 @@
   "geoSidebar.mapNotLoaded": {
     "defaultMessage": "Map not loaded yet"
   },
+  "geoSidebar.mapOpacity": {
+    "defaultMessage": "Map Opacity (%)"
+  },
   "geoSidebar.mapOsm3d": {
     "defaultMessage": "Open Street Map 2.5D Buildings"
   },
@@ -1297,6 +1291,9 @@
   },
   "geoSidebar.noShapesFound": {
     "defaultMessage": "No shapes found in scene."
+  },
+  "geoSidebar.opacityFlattening": {
+    "defaultMessage": "Opacity & Flattening"
   },
   "geoSidebar.outOfTokens": {
     "defaultMessage": "You're out of free geo tokens."
@@ -1838,17 +1835,23 @@
   "screenshotModal.aiRenderSuccess": {
     "defaultMessage": "AI render generated successfully! ({modelName})"
   },
+  "screenshotModal.aiRenderTimeoutEmail": {
+    "defaultMessage": "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery."
+  },
   "screenshotModal.compareAB": {
     "defaultMessage": "Compare A/B"
   },
   "screenshotModal.confirmClose": {
-    "defaultMessage": "Rendering in progress. Are you sure you want to close? The render will be cancelled."
+    "defaultMessage": "Rendering in progress. Close anyway? The render will finish in the background and be saved to your gallery."
   },
   "screenshotModal.download": {
     "defaultMessage": "Download"
   },
   "screenshotModal.downloadImage": {
     "defaultMessage": "Download image"
+  },
+  "screenshotModal.emailWhenDone": {
+    "defaultMessage": "Email me when it's ready (you can close this window)"
   },
   "screenshotModal.empty": {
     "defaultMessage": "Empty"
@@ -2081,6 +2084,12 @@
   "trafficReplay.createStreet": {
     "defaultMessage": "Create a street to replay onto"
   },
+  "trafficReplay.hiddenModesBody": {
+    "defaultMessage": "The linked street has vehicles hidden, so these recorded modes will not appear during play: {modes}."
+  },
+  "trafficReplay.hiddenModesHeading": {
+    "defaultMessage": "⚠️ Some modes will be hidden"
+  },
   "trafficReplay.hideSynthetic": {
     "defaultMessage": "Hide synthetic traffic"
   },
@@ -2113,6 +2122,9 @@
   },
   "trafficReplay.replaceManifest": {
     "defaultMessage": "Replace manifest…"
+  },
+  "trafficReplay.showVehiclesOnStreet": {
+    "defaultMessage": "Show vehicles on linked street"
   },
   "trafficReplay.streetUsers": {
     "defaultMessage": "{count} street users"

@@ -44,6 +44,7 @@ import { isStreetLevelNav, isWasdNav } from './flag.js';
 import { ModifierState } from './modifierState.js';
 import { GestureLatch } from './gestureLatch.js';
 import { SceneBounds } from './sceneBounds.js';
+import { ProbeTargets } from './probeTargets.js';
 import { CursorAnchor } from './cursorAnchor.js';
 import { TickAnimator } from './tickAnimator.js';
 import { CollisionProbe } from './collisionProbe.js';
@@ -63,7 +64,8 @@ import {
   TILT_THRESHOLD_DEFAULT_DEGREES,
   MAP_PIVOT_BOUNDS_RADIUS_METRES,
   MAP_PIVOT_FAR_ACCEPT_GAIN,
-  WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES
+  WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES,
+  FOCUS_EMPTY_BBOX_DISTANCE_METRES
 } from './constants.js';
 import { captureNavDiscovery } from '../navAnalytics.js';
 // Frozen import path: the Compass widget imports `needleScreenAngle` from this
@@ -121,6 +123,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._modifiers = new ModifierState(domElement);
     this._latch = new GestureLatch();
     this._bounds = new SceneBounds(this._sceneEl);
+    // Curated raycast-target list for the floor/enclosure probes — the
+    // whole scene minus `[data-ignore-raycaster]` subtrees (excepting the
+    // Google 3D Tiles subtree, an accepted collision floor). See
+    // probeTargets.js for the exclusion contract (#1853).
+    this._probeTargets = new ProbeTargets(this._sceneEl);
     this._cursorAnchor = new CursorAnchor({
       camera,
       sceneEl: this._sceneEl,
@@ -159,6 +166,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       },
       get bounds() {
         return self._bounds;
+      },
+      get probeTargets() {
+        return self._probeTargets;
       },
       get disabledByOrtho() {
         return self._disabledByOrtho;
@@ -456,8 +466,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       distance = box.getBoundingSphere(new THREE.Sphere()).radius;
       localCenterY = (box.max.y - box.min.y) / 2;
     } else {
+      // No measurable geometry (a light, an empty wrapper, a geojson data
+      // layer whose meshes aren't under the entity's object3D): frame the
+      // entity origin from a usable standoff. Legacy's 0.1 parked the camera
+      // 0.25 m from the origin — at street level over a collision floor that
+      // strands the wheel in the Phase-3 FOV regime where zoom-out visibly
+      // does nothing (#1865).
       targetCenter.setFromMatrixPosition(target.matrixWorld);
-      distance = 0.1;
+      distance = FOCUS_EMPTY_BBOX_DISTANCE_METRES;
       localCenterY = target.position.y;
     }
     this.center.copy(targetCenter);
@@ -797,6 +813,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     if (this._unsubscribeTick) this._unsubscribeTick();
     this._modifiers.dispose();
     this._bounds.dispose();
+    this._probeTargets.dispose();
     if (this._cursorAnchor) this._cursorAnchor.dispose();
     if (this._drag) this._drag.dispose();
     if (this._tick) this._tick.dispose();

@@ -9,8 +9,13 @@
 //   2. Else intersect the ray with the y=0 ground plane. If the
 //      intersection is in front of the camera and within the reach ceiling
 //      (`opts.maxGroundDist`, default MAX_GROUND_DIST = 2000 m), return that.
-//   3. Else fall back to a fixed 30 m forward along the camera's view
-//      direction.
+//   3. Else fall back to a fixed 30 m along the CURSOR ray (not the camera's
+//      centre-forward). The fallback must still be a "point under the
+//      cursor": the LB-pan gestures anchor their drag plane on it and
+//      compute per-move deltas as `anchor − pointUnderCursorNow`, so a
+//      centre-forward fallback puts a spurious cursor↔screen-centre offset
+//      into the first move — grabbing sky above the horizon lurched the
+//      camera down by half a screen and cancelled the pan (#1867).
 //
 // `source` on the returned object is one of 'mesh', 'ground', 'fallback'
 // for debugging.
@@ -369,16 +374,14 @@ export class CursorAnchor {
       }
     }
 
-    // Step 3: fixed forward fallback. Reuses _tmpForward: the Step-2 value it
-    // held was reduced to the scalar `forward` (a .dot()) and is never read
-    // again once the ground branch falls through, so the slot is dead here.
-    // (If a future edit needs the Step-2 direction past that gate, give it a
-    // distinct scratch — do not read _tmpForward after this point.)
-    const fwd = this._tmpForward;
-    camera.getWorldDirection(fwd);
+    // Step 3: fixed fallback along the CURSOR ray (see the fallback-chain
+    // doc above — a centre-forward fallback broke sky-grab panning, #1867).
+    // The raycaster was set from the cursor NDC at the top of this call, so
+    // its ray is the cursor ray and its origin is the camera position.
+    const ray = this._raycaster.ray;
     const fp = this._tmpFallbackPoint
-      .copy(camera.position)
-      .addScaledVector(fwd, FALLBACK_FORWARD_DIST);
+      .copy(ray.origin)
+      .addScaledVector(ray.direction, FALLBACK_FORWARD_DIST);
     return {
       x: fp.x,
       y: fp.y,

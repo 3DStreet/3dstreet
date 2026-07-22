@@ -6,6 +6,11 @@ import Events from '../../lib/Events';
 import { Button, Dropdown } from '../elements';
 import { createUniqueId } from '../../lib/entity';
 import * as defaultStreetObjects from './AddLayerPanel/defaultStreets.js';
+import {
+  encodeManifest,
+  decodeManifest
+} from '../../../aframe-components/play/manifest-codec.js';
+import { VEHICLE_DISPLAY_MODES } from '../../../aframe-components/play/street-traffic-replay.js';
 
 const fieldLabels = defineMessages({
   timeScale: {
@@ -47,14 +52,7 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
     return () => Events.off('entityupdate', onEntityUpdate);
   }, [entity]);
 
-  const manifest = useMemo(() => {
-    if (!manifestData) return null;
-    try {
-      return JSON.parse(manifestData);
-    } catch {
-      return null;
-    }
-  }, [manifestData]);
+  const manifest = useMemo(() => decodeManifest(manifestData), [manifestData]);
 
   if (!component || !component.schema || !component.data) return null;
 
@@ -97,7 +95,7 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
         );
         return;
       }
-      setProp('manifestData', JSON.stringify(parsed));
+      setProp('manifestData', encodeManifest(parsed));
     };
     input.click();
   };
@@ -169,6 +167,40 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
 
   const counts = manifest?.meta?.countsByMode;
   const windowLabel = manifest?.meta?.window?.label;
+
+  // Warn when the linked street has vehicles hidden. Replay agents for
+  // vehicle/cyclist modes render from mixin categories the managed-street
+  // `showVehicles` toggle governs, so with vehicles hidden they're suppressed
+  // along with the street's static cast and never appear during play (#1876).
+  // resolveStreet here mirrors the component: the chosen target if it's a
+  // managed street, otherwise the first managed street in the scene.
+  const targetEl = component.data.target
+    ? document.getElementById(component.data.target)
+    : null;
+  const linkedStreetEl =
+    targetEl && targetEl.components?.['managed-street']
+      ? targetEl
+      : document.querySelector('[managed-street]');
+  const linkedHidesVehicles =
+    linkedStreetEl?.components?.['managed-street']?.data?.showVehicles === false;
+  const manifestModes = new Set(
+    Array.isArray(manifest?.agents) ? manifest.agents.map((a) => a.mode) : []
+  );
+  const suppressedModes = linkedHidesVehicles
+    ? VEHICLE_DISPLAY_MODES.filter((m) => manifestModes.has(m))
+    : [];
+
+  const showVehiclesOnLinkedStreet = () => {
+    if (!linkedStreetEl) return;
+    AFRAME.INSPECTOR.execute('entityupdate', {
+      entity: linkedStreetEl,
+      component: 'managed-street',
+      property: 'showVehicles',
+      value: true,
+      noSelectEntity: true
+    });
+    setTick((p) => p + 1);
+  };
 
   return (
     <div className="street-traffic-replay-sidebar">
@@ -252,6 +284,35 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
             />
           </Button>
         </div>
+
+        {/* Hidden-modes warning: the linked street has vehicles turned off */}
+        {suppressedModes.length > 0 && (
+          <div className="propertyRow">
+            <div className="w-full rounded bg-yellow-50 p-2 text-gray-700">
+              <div className="mb-1 font-semibold uppercase">
+                <FormattedMessage
+                  id="trafficReplay.hiddenModesHeading"
+                  defaultMessage="⚠️ Some modes will be hidden"
+                />
+              </div>
+              <div className="text-xs">
+                <FormattedMessage
+                  id="trafficReplay.hiddenModesBody"
+                  defaultMessage="The linked street has vehicles hidden, so these recorded modes will not appear during play: {modes}."
+                  values={{ modes: suppressedModes.join(', ') }}
+                />
+              </div>
+              <div className="mt-2">
+                <Button variant="toolbtn" onClick={showVehiclesOnLinkedStreet}>
+                  <FormattedMessage
+                    id="trafficReplay.showVehiclesOnStreet"
+                    defaultMessage="Show vehicles on linked street"
+                  />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Playback fields */}
         {PRIMARY_FIELDS.map((f) =>

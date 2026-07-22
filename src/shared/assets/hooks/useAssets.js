@@ -12,6 +12,7 @@ import {
 } from '../constants.js';
 import { AuthContext } from '@shared/contexts';
 import { auth, db } from '@shared/services/firebase.js';
+import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 // Normalized non-terminal job statuses (see normalizeReplicateStatus on the
@@ -66,14 +67,26 @@ export const assetToDisplayItem = (asset) => {
  * @returns {Object} Assets state and methods
  */
 const useAssets = () => {
-  // Try to use AuthContext first (editor), fall back to window.authState (generator)
-  // useContext will return default value if not in a provider
+  // Two auth sources, merged without ever letting one clobber the other:
+  //   - AuthContext (editor) — enriched user from AuthProvider.
+  //   - The Firebase SDK itself (generator) — the generator mounts this hook
+  //     outside any AuthProvider, so useContext returns the DEFAULT context
+  //     value whose currentUser is null. The old implementation synced state
+  //     from that default (`setCurrentUser(contextUser)`), which reset the
+  //     generator's real user back to null on every render — so the
+  //     generationJobs listener below never subscribed and pending job cards
+  //     never appeared in the generator's assets sidebar (issue #1834).
   const authContext = useContext(AuthContext);
   const contextUser = authContext?.currentUser;
 
-  const [currentUser, setCurrentUser] = useState(
-    contextUser || window.authState?.currentUser
+  const [firebaseUser, setFirebaseUser] = useState(
+    () => auth.currentUser || window.authState?.currentUser || null
   );
+  useEffect(() => onAuthStateChanged(auth, setFirebaseUser), []);
+
+  // Prefer the provider's user when one exists (editor); otherwise fall back
+  // to the SDK's (generator). Both go null on sign-out.
+  const currentUser = contextUser || firebaseUser;
   const [items, setItems] = useState([]);
   const [pendingJobs, setPendingJobs] = useState([]);
   // Asset ids with an in-flight RAD/LOD optimization (splat-rad job). Drives the
@@ -100,25 +113,6 @@ const useAssets = () => {
   useEffect(() => {
     userIdRef.current = userId;
   }, [userId]);
-
-  // Listen for auth state changes from both AuthContext (editor) and window.authState (generator)
-  useEffect(() => {
-    // For generator: listen to window event
-    const handleAuthChange = (event) => {
-      setCurrentUser(event.detail.user);
-    };
-
-    window.addEventListener('authStateChanged', handleAuthChange);
-
-    // For editor: update when contextUser changes
-    if (contextUser !== currentUser) {
-      setCurrentUser(contextUser);
-    }
-
-    return () => {
-      window.removeEventListener('authStateChanged', handleAuthChange);
-    };
-  }, [contextUser, currentUser]);
 
   /**
    * Reload items from Firestore (reset cursor, fetch first page)

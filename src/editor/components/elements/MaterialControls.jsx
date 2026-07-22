@@ -4,6 +4,7 @@ import Collapsible from '../Collapsible';
 import PropertyRow from './PropertyRow';
 import Events from '../../lib/Events';
 import { Button } from '../elements';
+import OpacitySliderRow from '../widgets/OpacitySliderRow';
 
 // First-class material editing surfaced at the top of the properties sidebar.
 //
@@ -135,29 +136,16 @@ const MaterialControls = ({ entity }) => {
               entity={entity}
             />
           )}
-          <div className="propertyRow opacity-row">
-            <label
-              className="text"
-              htmlFor="material-opacity"
-              style={{ textTransform: 'none' }}
-            >
-              Opacity
-            </label>
-            <div className="opacity-slider">
-              <input
-                id="material-opacity"
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={opacity}
-                onChange={(e) => setOpacity(parseFloat(e.target.value))}
-              />
-              <span className="opacity-value">
-                {Math.round(opacity * 100)}%
-              </span>
-            </div>
-          </div>
+          <OpacitySliderRow
+            id="material-opacity"
+            label="Opacity"
+            min={0}
+            max={1}
+            step={0.01}
+            value={opacity}
+            onCommit={setOpacity}
+            formatValue={(v) => `${Math.round(v * 100)}%`}
+          />
           {schema.roughness && (
             <PropertyRow
               name="roughness"
