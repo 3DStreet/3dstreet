@@ -14,6 +14,9 @@
 export {
   DEFAULT_LOCALE,
   SUPPORTED_LOCALE_CODES,
+  // The labeled locale list now lives in @shared so the shared profile-menu
+  // switcher (generator + Bollard Buddy) and this editor switcher stay in sync.
+  SUPPORTED_LOCALES,
   detectBrowserLocale
 } from '@shared/i18n/locales';
 
@@ -22,17 +25,6 @@ import {
   detectBrowserLocale as detectBrowserLocaleInternal
 } from '@shared/i18n/locales';
 import { notifyLocaleChanged } from '@shared/i18n/sharedMessages';
-
-/**
- * Locales we ship message catalogs for, with their endonym labels for the
- * language switcher. Codes must match SUPPORTED_LOCALE_CODES.
- */
-export const SUPPORTED_LOCALES = [
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Español' },
-  { code: 'pt-BR', label: 'Português (Brasil)' },
-  { code: 'fr', label: 'Français' }
-];
 
 const LOCALE_STORAGE_KEY = 'locale';
 

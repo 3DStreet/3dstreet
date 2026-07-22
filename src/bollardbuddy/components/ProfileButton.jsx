@@ -1,6 +1,7 @@
 /**
- * Bollard Buddy ProfileButton - wraps shared ProfileButton with sign in modal
- * Click to sign in if not logged in, hover card shows profile if logged in
+ * Bollard Buddy ProfileButton - wraps the shared ProfileButton + sign-in modal.
+ * The profile icon opens the shared menu (profile/log out when signed in;
+ * sign-in + language when signed out); onSignIn opens this app's SignInModal.
  */
 import { useState } from 'react';
 import {
@@ -16,16 +17,6 @@ const ProfileButton = () => {
   const [showSignIn, setShowSignIn] = useState(false);
   const t = useSharedMessages();
 
-  const onClick = () => {
-    if (isLoading) return;
-
-    // If not logged in, open sign in modal
-    if (!currentUser) {
-      setShowSignIn(true);
-    }
-    // If logged in, the hover card will handle the interaction
-  };
-
   const handleAnalytics = (eventName, properties) => {
     console.log('Analytics:', eventName, properties);
   };
@@ -35,9 +26,9 @@ const ProfileButton = () => {
       <SharedProfileButton
         currentUser={currentUser}
         isLoading={isLoading}
-        onClick={onClick}
         tooltipSide="bottom"
         showHoverCard={true}
+        onSignIn={() => setShowSignIn(true)}
       />
 
       <SignInModal

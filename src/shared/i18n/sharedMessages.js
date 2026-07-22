@@ -41,6 +41,44 @@ const SHARED_MESSAGES = {
     fr: 'facturé annuellement, {total}{period}'
   },
 
+  // Profile menu (shared dropdown used in the generator + Bollard Buddy)
+  manageAccount: {
+    en: 'Manage Account',
+    es: 'Administrar cuenta',
+    'pt-BR': 'Gerenciar conta',
+    fr: 'Gérer le compte'
+  },
+  logOut: {
+    en: 'Log Out',
+    es: 'Cerrar sesión',
+    'pt-BR': 'Sair',
+    fr: 'Se déconnecter'
+  },
+  loadingUsername: {
+    en: 'Loading username…',
+    es: 'Cargando nombre de usuario…',
+    'pt-BR': 'Carregando nome de usuário…',
+    fr: "Chargement du nom d'utilisateur…"
+  },
+  notSignedIn: {
+    en: 'Not signed in',
+    es: 'Sesión no iniciada',
+    'pt-BR': 'Não conectado',
+    fr: 'Non connecté'
+  },
+  signInOrCreateAccount: {
+    en: 'Sign in or create account',
+    es: 'Inicia sesión o crea una cuenta',
+    'pt-BR': 'Entrar ou criar conta',
+    fr: 'Se connecter ou créer un compte'
+  },
+  language: {
+    en: 'Language',
+    es: 'Idioma',
+    'pt-BR': 'Idioma',
+    fr: 'Langue'
+  },
+
   // ProfileButton tooltips
   openProfile: {
     en: 'Open profile',

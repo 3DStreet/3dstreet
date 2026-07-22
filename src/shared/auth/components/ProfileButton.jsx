@@ -203,7 +203,8 @@ export const renderProfileIcon = (currentUser, isLoading) => {
  * @param {string} [props.tooltipSide] - Tooltip position (default: 'bottom')
  * @param {string} [props.signedInText] - Tooltip text when signed in (default: localized 'Open profile')
  * @param {string} [props.signedOutText] - Tooltip text when signed out (default: localized 'Sign in')
- * @param {boolean} [props.showHoverCard] - Show detailed hover card instead of tooltip (default: false)
+ * @param {boolean} [props.showHoverCard] - Show the click-toggle profile menu instead of a plain tooltip (default: false)
+ * @param {Function} [props.onSignIn] - Called when a signed-out user picks "Sign in" from the menu (only used with showHoverCard)
  * @returns {JSX.Element}
  */
 export const ProfileButton = ({
@@ -214,7 +215,8 @@ export const ProfileButton = ({
   tooltipSide = 'bottom',
   signedInText,
   signedOutText,
-  showHoverCard = false
+  showHoverCard = false,
+  onSignIn
 }) => {
   const t = useSharedMessages();
   const tooltipContent = currentUser
@@ -242,10 +244,13 @@ export const ProfileButton = ({
     </div>
   );
 
-  // If hover card is enabled and user is signed in, use ProfileHoverCard
-  if (showHoverCard && currentUser && !isLoading) {
+  // If the menu is enabled, use ProfileHoverCard for BOTH signed-in and
+  // signed-out users (the menu offers sign-in + language when signed out).
+  if (showHoverCard && !isLoading) {
     return (
-      <ProfileHoverCard showDetails={true}>{buttonElement}</ProfileHoverCard>
+      <ProfileHoverCard showDetails onSignIn={onSignIn}>
+        {buttonElement}
+      </ProfileHoverCard>
     );
   }
 
