@@ -21,6 +21,8 @@ const { checkAssetUsageHealth, triggerCheckAssetUsageHealth } = require('./sched
 const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./scheduled/asset-orphan-cleanup.js');
 const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
 const { onSplatAssetCreated } = require('./rad-dispatch.js');
+const { processAssetOnWrite } = require('./asset-processing.js');
+const { reapAssetProcessing, triggerReapAssetProcessing } = require('./scheduled/asset-processing-reaper.js');
 const { generateEditorChat } = require('./ai-chat-proxy.js');
 
 // Re-export the getGeoidHeight function
@@ -90,6 +92,14 @@ exports.triggerReconcileGenerationJobs = triggerReconcileGenerationJobs;
 
 // --- RAD conversion (splat optimized variant) -----------------------------
 exports.onSplatAssetCreated = onSplatAssetCreated;
+
+// Asset processing pipeline — thumbnails + optimized variants (#1643).
+// Phase 1: images (sharp WebP thumb + optimized display variant). Firestore
+// trigger is the primary path; the reaper re-takes stuck/missed docs.
+// See docs/asset-processing-pipeline.md.
+exports.processAssetOnWrite = processAssetOnWrite;
+exports.reapAssetProcessing = reapAssetProcessing;
+exports.triggerReapAssetProcessing = triggerReapAssetProcessing;
 
 // Editor AI Assistant — server-side gate for the Vertex/Gemini chat. The client
 // no longer calls Firebase AI Logic directly (model selection was abusable); all
