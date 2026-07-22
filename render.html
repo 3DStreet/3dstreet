@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <!-- Headless render page for the renderStreet Cloud Function: loads a
+       managed-street JSON payload and produces a labeled beauty shot.
+       Driven by puppeteer via the window.__STREET_RENDER__ contract defined
+       in src/render/street-render-harness.js. Also usable directly for
+       debugging: /render.html#managed-street-json:<uri-encoded JSON> -->
+  <!-- aframe: keep in lockstep with index.html -->
+  <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
+  <!-- 3dstreet render bundle (lean: no editor) -->
+  <script src="/dist/street-render.js"></script>
+
+  <title>3DStreet Render</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #1b1b1b;
+    }
+  </style>
+</head>
+
+<body>
+  <a-scene
+    renderer="anisotropy: 16; logarithmicDepthBuffer: true; antialias: true;"
+    loading-screen="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    xr-mode-ui="enabled: false"
+    vr-mode-ui="enabled: false"
+    street-render-harness>
+    <a-assets timeout="20000"></a-assets>
+    <a-entity id="environment" data-layer-name="Environment" street-environment="preset: day;"></a-entity>
+    <a-entity id="renderCamera" camera="fov: 20; near: 0.5; far: 5000" position="40 30 60"></a-entity>
+  </a-scene>
+</body>
+
+</html>

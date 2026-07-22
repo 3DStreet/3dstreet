@@ -12,10 +12,37 @@
       "firestore.indexes.json",
       "*.log"
     ],
+    "headers": [
+      {
+        "source": "/openapi/**",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/yaml; charset=utf-8"
+          },
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=300"
+          }
+        ]
+      }
+    ],
     "rewrites": [
       {
         "source": "scenes/*.json",
         "function": "getScene"
+      },
+      {
+        "source": "render-street",
+        "function": "renderStreet"
+      },
+      {
+        "source": "render/img/**",
+        "function": "serveRenderImage"
       },
       {
         "source": "**",

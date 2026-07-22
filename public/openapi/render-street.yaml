@@ -1,0 +1,608 @@
+openapi: 3.1.0
+info:
+  title: 3DStreet Render Street API
+  version: 1.0.0
+  description: >
+    Turn a **managed-street JSON** description of a street cross-section into a
+    rendered "beauty shot" image — an angled, near-orthographic view with a
+    labeled cross-section bar, produced by the same A-Frame component stack the
+    3DStreet editor uses.
+
+
+    Built for LLM / agent callers. The intended flow is:
+
+
+      1. Translate the user's natural-language street request (lanes,
+         sidewalks, bike lanes, medians, buildings, etc.) into a managed-street
+         JSON blob using the `Segment` schema below.
+      2. POST it to `/render-street` with `?format=json` to get back a stable
+         hosted `imageUrl` and an `openInEditorUrl`.
+      3. Show the user the `imageUrl` inline, and ALWAYS surface the
+         `openInEditorUrl` as an "Open in the 3DStreet editor to keep editing"
+         link — opening it recreates the exact street in the full editor
+         (add Google 3D Tiles maps, AI rendering, save, and share).
+
+
+    No authentication is required. Abuse is bounded by per-instance concurrency
+    and payload limits.
+  contact:
+    name: 3DStreet
+    url: https://3dstreet.com
+  license:
+    name: AGPL-3.0
+    url: https://www.gnu.org/licenses/agpl-3.0.html
+servers:
+  - url: https://3dstreet.app
+paths:
+  /render-street:
+    post:
+      operationId: renderStreet
+      summary: Render a managed-street JSON cross-section to an image
+      description: >
+        Accepts a managed-street JSON blob plus render options and returns a
+        rendered street image.
+
+
+        **Always call this with `?format=json`** so the response is small,
+        structured JSON containing a stable hosted `imageUrl` and the
+        `openInEditorUrl` deep link. Without `format=json` the endpoint returns
+        raw image bytes, which are not usable here.
+
+
+        The response deliberately does NOT include the inline base64 data URL of
+        the image (it is large); use the returned `imageUrl` to display the
+        render.
+
+
+        Cold renders can take 30–90 seconds (a browser is launched
+        server-side); warm renders are much faster. Identical requests return
+        the same cached `imageUrl`.
+      parameters:
+        - $ref: '#/components/parameters/Format'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenderStreetRequest'
+            examples:
+              suburbanArterial:
+                summary: Suburban arterial — sidewalks, 3 drive lanes, no bike lane
+                value:
+                  street:
+                    name: Suburban Arterial
+                    length: 60
+                    segments:
+                      - name: Sidewalk
+                        type: sidewalk
+                        surface: sidewalk
+                        color: '#cccccc'
+                        elevation: 0.15
+                        width: 3
+                        direction: none
+                        generated:
+                          pedestrians:
+                            - density: normal
+                      - name: Inbound Drive Lane
+                        type: drive-lane
+                        surface: asphalt
+                        color: '#888888'
+                        elevation: 0
+                        width: 3.3
+                        direction: inbound
+                        generated:
+                          clones:
+                            - mode: random
+                              modelsArray: sedan-rig, suv-rig, box-truck-rig
+                              spacing: 20
+                              count: 2
+                      - name: Outbound Drive Lane 1
+                        type: drive-lane
+                        surface: asphalt
+                        color: '#888888'
+                        elevation: 0
+                        width: 3.3
+                        direction: outbound
+                        generated:
+                          clones:
+                            - mode: random
+                              modelsArray: sedan-rig, suv-rig
+                              spacing: 20
+                              count: 2
+                      - name: Outbound Drive Lane 2
+                        type: drive-lane
+                        surface: asphalt
+                        color: '#888888'
+                        elevation: 0
+                        width: 3.3
+                        direction: outbound
+                        generated:
+                          clones:
+                            - mode: random
+                              modelsArray: sedan-rig, suv-rig
+                              spacing: 25
+                              count: 2
+                      - name: Sidewalk
+                        type: sidewalk
+                        surface: sidewalk
+                        color: '#cccccc'
+                        elevation: 0.15
+                        width: 3
+                        direction: none
+                        generated:
+                          pedestrians:
+                            - density: normal
+                  options:
+                    width: 1280
+                    height: 800
+                    environment: day
+                    units: imperial
+      responses:
+        '200':
+          description: >
+            Rendered image metadata. When called with `?format=json`, the body
+            is the JSON object described here.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RenderStreetResponse'
+            image/png:
+              schema:
+                type: string
+                format: binary
+              example: (raw PNG bytes when format is not json)
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid payload (bad JSON, missing segments, over limits).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: The render failed to produce an image.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      operationId: renderStreetLink
+      summary: Render via a base64url GET link
+      description: >
+        Convenience GET form of the render endpoint, handy for building shareable
+        links. Pass the same managed-street JSON as a base64url-encoded string in
+        `data`, and request JSON with `format=json`. Flat query params (for
+        example `width`, `height`, `environment`, `type`) are merged as options
+        and override any options baked into `data`.
+
+
+        Prefer the POST form for programmatic use — it avoids URL length limits
+        and is easier to construct.
+      parameters:
+        - name: data
+          in: query
+          required: true
+          description: >
+            Base64url encoding of the managed-street JSON (either a bare street
+            object `{ name, length, segments }` or the full
+            `{ street, options }` request body).
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Format'
+        - name: width
+          in: query
+          required: false
+          description: Image width in px (320–2560). Overrides options in `data`.
+          schema:
+            type: integer
+            minimum: 320
+            maximum: 2560
+        - name: height
+          in: query
+          required: false
+          description: Image height in px (320–2560). Overrides options in `data`.
+          schema:
+            type: integer
+            minimum: 320
+            maximum: 2560
+        - name: environment
+          in: query
+          required: false
+          description: street-environment preset. Overrides options in `data`.
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: false
+          description: Image format. Overrides options in `data`.
+          schema:
+            type: string
+            enum: [png, jpg]
+      responses:
+        '200':
+          description: >
+            Rendered image metadata (with `format=json`) or raw image bytes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RenderStreetResponse'
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  parameters:
+    Format:
+      name: format
+      in: query
+      required: true
+      description: >
+        Set to `json` to receive the structured JSON response (stable
+        `imageUrl` + `openInEditorUrl`). Agents should ALWAYS pass `json`.
+        Omitting it returns raw image bytes instead.
+      schema:
+        type: string
+        enum: [json]
+        default: json
+  schemas:
+    RenderStreetRequest:
+      type: object
+      description: >
+        A managed-street description plus optional render options. You may also
+        POST a bare street object (just `{ name, length, segments }`) as the
+        whole body, but sending `{ street, options }` is preferred.
+      properties:
+        street:
+          $ref: '#/components/schemas/ManagedStreet'
+        options:
+          $ref: '#/components/schemas/RenderOptions'
+      required:
+        - street
+    ManagedStreet:
+      type: object
+      description: >
+        A managed-street "Format-2" blob: an ordered list of cross-section
+        segments from one edge of the street to the other. Order in the array is
+        left-to-right (or one curb to the other) across the street.
+      properties:
+        name:
+          type: string
+          description: Display name / title of the street.
+        length:
+          type: number
+          description: Street length along the direction of travel, in meters. Default 27.
+          default: 60
+        width:
+          type: number
+          description: >
+            Total cross-section width in meters. Optional — normally computed as
+            the sum of segment widths; you can omit it.
+        segments:
+          type: array
+          description: >
+            Ordered cross-section segments, from one edge of the street to the
+            other. At least one is required.
+          minItems: 1
+          maxItems: 64
+          items:
+            $ref: '#/components/schemas/Segment'
+      required:
+        - segments
+    Segment:
+      type: object
+      description: >
+        One cross-section slice of the street — a lane, sidewalk, median,
+        boundary, etc. Reuses the managed-street segment schema from the
+        3DStreet editor.
+      properties:
+        name:
+          type: string
+          description: Display name of the segment.
+        type:
+          type: string
+          description: >
+            Type of segment. Valid values: "drive-lane", "bike-lane",
+            "sidewalk", "parking-lane", "divider", "grass", "rail", "bus-lane",
+            "boundary". Use "boundary" with `variant` + `side` for flanking land
+            use (buildings, waterfront, fences) — it renders outside the
+            travelled way at the street edge and auto-tiles models edge-to-edge
+            with no need to supply `generated`.
+        surface:
+          type: string
+          description: >
+            Surface material (e.g., "asphalt", "concrete", "grass", "sidewalk",
+            "gravel", "sand", "hatched", "planting-strip", "none", "solid").
+            Optional for building segments — the variant supplies a sensible
+            default.
+        color:
+          type: string
+          description: Hex color code (e.g., "#ffffff").
+        elevation:
+          type: number
+          description: >
+            Vertical offset in meters (0 = road level, 0.15 = curb/sidewalk
+            height). Negative values are not supported.
+        width:
+          type: number
+          description: Width in meters.
+        direction:
+          type: string
+          description: Traffic direction ("none", "inbound", "outbound").
+        variant:
+          type: string
+          description: >
+            Variant preset for `type: "boundary"` segments. Valid values:
+            "brownstone" (urban mixed-use blocks), "suburban" (detached
+            single-family houses), "arcade" (arched street-front buildings),
+            "water" (seawall), "grass" (fenced grass strip), "parking" (fenced
+            parking lot), "sp-mixeduse", "sp-residential", "sp-big-box",
+            "custom" (preserve existing settings). Setting variant on a boundary
+            segment auto-fits the model array; do NOT pass `generated.clones` for
+            boundaries unless you want full control. Only meaningful when
+            `type: "boundary"`.
+        side:
+          type: string
+          description: >
+            Side of the street the segment sits on. Required for
+            `type: "boundary"` (controls placement outside the travelled way
+            edge and which way the models face).
+          enum: [left, right]
+        floors:
+          type: number
+          description: Number of building floors, for boundary building variants.
+        generated:
+          $ref: '#/components/schemas/Generated'
+      required:
+        - type
+        - surface
+        - color
+        - elevation
+        - width
+        - direction
+    Generated:
+      type: object
+      description: >
+        Optional procedural content placed along the segment (vehicles,
+        pedestrians, road markings, striping).
+      properties:
+        clones:
+          type: array
+          description: Repeated 3D models (e.g. vehicles in a lane, trees on a verge).
+          items:
+            type: object
+            properties:
+              mode:
+                type: string
+                description: Clone mode ("random", "fixed", "single").
+              modelsArray:
+                type: string
+                description: >
+                  Comma-separated list of model ids from the 3DStreet asset
+                  catalog. Common vehicles: "sedan-rig", "suv-rig",
+                  "box-truck-rig", "bus", "fire-truck-rig". Common cyclists:
+                  "cyclist-cargo", "bike-only-cargo".
+              spacing:
+                type: number
+                description: Distance between models in meters.
+              count:
+                type: number
+                description: Number of models (for random mode).
+              facing:
+                type: number
+                description: Rotation in degrees.
+              randomFacing:
+                type: boolean
+                description: Random rotation.
+              cycleOffset:
+                type: number
+                description: Offset in the repeating pattern (0–1).
+            required:
+              - mode
+              - modelsArray
+              - spacing
+        stencil:
+          type: array
+          description: Painted road-surface markings (arrows, "SHARED", crosswalks).
+          items:
+            type: object
+            properties:
+              modelsArray:
+                type: string
+                description: Stencil model names.
+              spacing:
+                type: number
+                description: Distance between stencils.
+              padding:
+                type: number
+                description: Edge padding.
+              cycleOffset:
+                type: number
+                description: Pattern offset (0–1).
+              direction:
+                type: string
+                description: Stencil orientation.
+              stencilHeight:
+                type: number
+                description: Height of stencil.
+            required:
+              - modelsArray
+              - spacing
+        pedestrians:
+          type: array
+          description: Pedestrians walking on a sidewalk segment.
+          items:
+            type: object
+            properties:
+              density:
+                type: string
+                description: Pedestrian density ("normal", "dense").
+            required:
+              - density
+        striping:
+          type: array
+          description: Lane-edge line markings.
+          items:
+            type: object
+            properties:
+              striping:
+                type: string
+                description: Stripe pattern type.
+              side:
+                type: string
+                description: Side of segment ("left", "right").
+            required:
+              - striping
+    RenderOptions:
+      type: object
+      description: Render / camera / annotation options. All fields are optional.
+      properties:
+        width:
+          type: integer
+          description: Image width in px (320–2560).
+          minimum: 320
+          maximum: 2560
+          default: 1280
+        height:
+          type: integer
+          description: Image height in px (320–2560).
+          minimum: 320
+          maximum: 2560
+          default: 800
+        fov:
+          type: number
+          description: Camera field of view in degrees; smaller = more orthographic.
+          default: 20
+        azimuth:
+          type: number
+          description: Camera angle around the street in degrees; sign selects the side.
+          default: 20
+        elevation:
+          type: number
+          description: Camera height angle above the horizon, in degrees.
+          default: 30
+        margin:
+          type: number
+          description: Fit margin around the street bounding box.
+          default: 1.12
+        environment:
+          type: string
+          description: >
+            street-environment preset ("day", "night", "sunset", …).
+          default: day
+        labels:
+          type: boolean
+          description: Show the cross-section label bar.
+          default: true
+        vehicles:
+          type: boolean
+          description: Show generated vehicle clones.
+          default: true
+        ground:
+          type: boolean
+          description: Show the dirt ground slab.
+          default: true
+        boundaries:
+          type: boolean
+          description: Show boundary segments (buildings, fences, …).
+          default: true
+        units:
+          type: string
+          description: Label units.
+          enum: [metric, imperial]
+          default: metric
+        title:
+          type: string
+          description: Title annotation. Defaults to the street name; pass "" to hide.
+        branding:
+          type: boolean
+          description: '"Made with 3DStreet" annotation.'
+          default: true
+        type:
+          type: string
+          description: Image format.
+          enum: [png, jpg]
+          default: png
+        quality:
+          type: number
+          description: JPEG quality (0–1), only used when type is "jpg".
+          minimum: 0
+          maximum: 1
+    RenderStreetResponse:
+      type: object
+      description: >
+        Structured render result (returned when `format=json`). Use `imageUrl`
+        to display the render and ALWAYS surface `openInEditorUrl` to the user.
+      properties:
+        imageUrl:
+          type: string
+          description: >
+            Stable, durable hosted URL of the rendered image, safe to embed in
+            chats and docs. May be null if the cache write failed (the render
+            itself still succeeded).
+          format: uri
+          examples:
+            - https://3dstreet.app/render/img/v1/8f2a9c4d1e0b7a3f5c6d.png
+        openInEditorUrl:
+          type: string
+          description: >
+            Deep link that opens the exact same street in the full 3DStreet
+            editor (uses the `#managed-street-json:` hash scheme). ALWAYS show
+            this to the user as an "Open in the 3DStreet editor to keep editing"
+            link — it is the point of the endpoint.
+          format: uri
+          examples:
+            - 'https://3dstreet.app/#managed-street-json:%7B...%7D'
+        meta:
+          type: object
+          description: Small summary of the rendered street.
+          properties:
+            name:
+              type: string
+              description: Street name.
+            width:
+              type: number
+              description: Total cross-section width in meters.
+            length:
+              type: number
+              description: Street length in meters.
+            segments:
+              type: integer
+              description: Number of segments rendered.
+            timedOut:
+              type: boolean
+              description: >
+                True if some assets did not finish loading before the readiness
+                timeout; the image still rendered.
+          required:
+            - name
+            - segments
+      required:
+        - imageUrl
+        - openInEditorUrl
+    ErrorResponse:
+      type: object
+      description: Error payload.
+      properties:
+        error:
+          type: string
+          description: Human-readable error message.
+      required:
+        - error
