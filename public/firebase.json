@@ -45,6 +45,14 @@
         "function": "serveRenderImage"
       },
       {
+        "source": "render-street-glb",
+        "function": "renderStreetGlb"
+      },
+      {
+        "source": "render/glb/**",
+        "function": "serveRenderGlbAsset"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       },

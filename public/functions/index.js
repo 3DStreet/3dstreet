@@ -23,6 +23,10 @@ const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./s
 const { onSplatAssetCreated } = require('./rad-dispatch.js');
 const { generateEditorChat } = require('./ai-chat-proxy.js');
 const { renderStreet, serveRenderImage } = require('./render-street.js');
+const {
+  renderStreetGlb,
+  serveRenderGlbAsset
+} = require('./render-street-glb.js');
 
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;
@@ -104,6 +108,10 @@ exports.generateEditorChat = generateEditorChat;
 // docs/street-render-endpoint.md.
 exports.renderStreet = renderStreet;
 exports.serveRenderImage = serveRenderImage;
+// GLB pipeline sibling (Blender Cycles): same contract, returns imageUrl+glbUrl.
+// Intended for a Blender-capable Cloud Run image; prod deploy deferred.
+exports.renderStreetGlb = renderStreetGlb;
+exports.serveRenderGlbAsset = serveRenderGlbAsset;
 
 exports.getScene = functions
   .https

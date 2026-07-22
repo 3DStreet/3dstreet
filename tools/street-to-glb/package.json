@@ -1,0 +1,20 @@
+{
+  "name": "street-to-glb",
+  "version": "0.1.0",
+  "description": "DOM-free Node assembler that turns managed-street JSON into a GLB, plus a Blender Cycles render step.",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "street-to-glb": "cli.js"
+  },
+  "scripts": {
+    "test": "node --test test/golden.test.mjs"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "^4.3.0",
+    "@gltf-transform/extensions": "^4.3.0",
+    "@napi-rs/canvas": "^0.1.60",
+    "draco3dgltf": "^1.5.7",
+    "three": "0.184.0"
+  }
+}

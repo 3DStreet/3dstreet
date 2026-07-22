@@ -1,0 +1,20 @@
+{
+  "street": {
+    "name": "Avenue with Boundaries",
+    "length": 60,
+    "segments": [
+      { "name": "Brownstones (left)", "type": "boundary", "surface": "cracked-asphalt", "color": "#ffffff", "elevation": 0.15, "width": 12, "direction": "outbound", "variant": "brownstone", "side": "left" },
+      { "name": "Sidewalk", "type": "sidewalk", "surface": "sidewalk", "color": "#cccccc", "elevation": 0.15, "width": 3.6, "direction": "none",
+        "generated": { "pedestrians": [{ "density": "normal", "seed": 301 }] } },
+      { "name": "Inbound Drive Lane", "type": "drive-lane", "surface": "asphalt", "color": "#888888", "elevation": 0, "width": 3.3, "direction": "inbound",
+        "generated": { "clones": [{ "mode": "random", "modelsArray": "sedan-rig, suv-rig", "spacing": 22, "count": 2, "seed": 311 }] } },
+      { "name": "Median", "type": "divider", "surface": "hatched", "color": "#dddddd", "elevation": 0, "width": 1.2, "direction": "none" },
+      { "name": "Outbound Drive Lane", "type": "drive-lane", "surface": "asphalt", "color": "#888888", "elevation": 0, "width": 3.3, "direction": "outbound",
+        "generated": { "clones": [{ "mode": "random", "modelsArray": "sedan-rig, box-truck-rig", "spacing": 22, "count": 2, "seed": 312 }] } },
+      { "name": "Sidewalk", "type": "sidewalk", "surface": "sidewalk", "color": "#cccccc", "elevation": 0.15, "width": 3.6, "direction": "none",
+        "generated": { "pedestrians": [{ "density": "normal", "seed": 302 }] } },
+      { "name": "Brownstones (right)", "type": "boundary", "surface": "cracked-asphalt", "color": "#ffffff", "elevation": 0.15, "width": 12, "direction": "outbound", "variant": "brownstone", "side": "right" }
+    ]
+  },
+  "options": { "width": 1280, "height": 800, "environment": "day", "units": "metric" }
+}

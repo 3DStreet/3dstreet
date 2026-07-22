@@ -1,0 +1,19 @@
+{
+  "street": {
+    "name": "Suburban Arterial",
+    "length": 60,
+    "segments": [
+      { "name": "Sidewalk", "type": "sidewalk", "surface": "sidewalk", "color": "#cccccc", "elevation": 0.15, "width": 3, "direction": "none",
+        "generated": { "pedestrians": [{ "density": "normal", "seed": 101 }] } },
+      { "name": "Inbound Drive Lane", "type": "drive-lane", "surface": "asphalt", "color": "#888888", "elevation": 0, "width": 3.3, "direction": "inbound",
+        "generated": { "clones": [{ "mode": "random", "modelsArray": "sedan-rig, suv-rig, box-truck-rig", "spacing": 20, "count": 2, "seed": 201 }] } },
+      { "name": "Outbound Drive Lane 1", "type": "drive-lane", "surface": "asphalt", "color": "#888888", "elevation": 0, "width": 3.3, "direction": "outbound",
+        "generated": { "clones": [{ "mode": "random", "modelsArray": "sedan-rig, suv-rig", "spacing": 20, "count": 2, "seed": 202 }] } },
+      { "name": "Outbound Drive Lane 2", "type": "drive-lane", "surface": "asphalt", "color": "#888888", "elevation": 0, "width": 3.3, "direction": "outbound",
+        "generated": { "clones": [{ "mode": "random", "modelsArray": "sedan-rig, suv-rig", "spacing": 25, "count": 2, "seed": 203 }] } },
+      { "name": "Sidewalk", "type": "sidewalk", "surface": "sidewalk", "color": "#cccccc", "elevation": 0.15, "width": 3, "direction": "none",
+        "generated": { "pedestrians": [{ "density": "normal", "seed": 102 }] } }
+    ]
+  },
+  "options": { "width": 1280, "height": 800, "environment": "day", "units": "imperial" }
+}
