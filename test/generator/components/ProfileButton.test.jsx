@@ -6,6 +6,7 @@
  * - Integrates with posthog analytics
  * - Uses the store for modal state
  */
+/* eslint-disable react/prop-types -- inline test-double components, not production */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -13,14 +14,24 @@ import posthog from 'posthog-js';
 import ProfileButton from '../../../src/generator/components/ProfileButton';
 import useImageGenStore from '../../../src/generator/store';
 import { AuthContext } from '@shared/contexts';
-import { createMockUser, createMockTokenProfile } from '../test-utils';
+import { createMockUser } from '../test-utils';
 
-// Mock the shared auth components
+// Mock the shared auth components.
+//
+// The real shared ProfileButton (with showHoverCard) always fires `onClick`
+// for analytics, and — when signed out — offers a "Sign in" entry in its menu
+// that fires `onSignIn`. The generator wrapper wires sign-in through
+// `onSignIn`, so the mock reproduces both paths: clicking always calls
+// `onClick`, and a signed-out click also invokes `onSignIn` (standing in for
+// picking "Sign in" from the menu).
 vi.mock('@shared/auth/components', () => ({
-  ProfileButton: ({ currentUser, isLoading, onClick }) => (
+  ProfileButton: ({ currentUser, isLoading, onClick, onSignIn }) => (
     <button
       data-testid="shared-profile-button"
-      onClick={onClick}
+      onClick={() => {
+        onClick?.();
+        if (!currentUser) onSignIn?.();
+      }}
       disabled={isLoading}
     >
       {isLoading ? 'Loading...' : currentUser ? 'Profile' : 'Sign In'}

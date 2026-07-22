@@ -52,7 +52,7 @@
     <div id="app-loading-screen">
         <div class="loading-content">
             <div class="loading-spinner"></div>
-            <div class="loading-text">Loading...</div>
+            <div class="loading-text" data-i18n="nav.loadingApp">Loading...</div>
         </div>
     </div>
     <header class="bg-white shadow-sm">
@@ -61,8 +61,8 @@
                 <!-- AppSwitcher Mount Point -->
                 <div id="app-switcher-root"></div>
                 <h1 class="text-2xl font-bold text-gray-500 flex items-center gap-2">
-                    <img src="/ui_assets/easel-generation.svg" alt="AI Generator" width="30" height="30" />
-                    AI Generator
+                    <img src="/ui_assets/easel-generation.svg" data-i18n-attr="alt:nav.appTitle" alt="AI Generator" width="30" height="30" />
+                    <span data-i18n="nav.appTitle">AI Generator</span>
                 </h1>
             </div>
             <!-- Right side: Token Display and Profile Button -->
@@ -82,13 +82,13 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    Image
+                    <span data-i18n="nav.tabImage">Image</span>
                 </button>
                 <button class="tab-button" data-tab="video-tab">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                    Video
+                    <span data-i18n="nav.tabVideo">Video</span>
                 </button>
                 <button class="tab-button" data-tab="splat-tab">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="currentColor" viewBox="0 0 24 24">
@@ -97,14 +97,14 @@
                         <circle cx="15" cy="15" r="1.5" /><circle cx="6" cy="17" r="1.2" />
                         <circle cx="12" cy="18" r="1.7" /><circle cx="18" cy="17" r="1.1" />
                     </svg>
-                    Splat
+                    <span data-i18n="nav.tabSplat">Splat</span>
                 </button>
                 <button class="tab-button" data-tab="model3d-tab">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
                     </svg>
-                    3D Model
+                    <span data-i18n="nav.tab3dModel">3D Model</span>
                 </button>
                 <!-- More tabs will be added here -->
             </div>

@@ -29,6 +29,7 @@ import {
   pollGenerationJob,
   forceJobNotifyEmail
 } from '@shared/utils/generationJobs.js';
+import { t } from './i18n/messages.js';
 
 // Selectable image -> mesh models (both GLB output via fal). tokenCost mirrors
 // the backend source of truth (public/functions/replicate-models.js); the
@@ -36,13 +37,13 @@ import {
 const MODEL3D_MODELS = [
   {
     id: 'hunyuan-3d',
-    name: 'Hunyuan3D v2 (faster)',
+    name: t('model3d.modelHunyuanName'),
     tokenCost: 3,
     estimatedTime: 30
   },
   {
     id: 'trellis',
-    name: 'TRELLIS 2 (best quality)',
+    name: t('model3d.modelTrellisName'),
     tokenCost: 6,
     estimatedTime: 60
   }
@@ -90,16 +91,14 @@ const Model3DTab = {
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Parameters Column -->
         <div class="lg:col-span-1 bg-white rounded-lg shadow p-6">
-          <h2 class="text-lg font-medium mb-1">3D Model Settings</h2>
+          <h2 class="text-lg font-medium mb-1">${t('model3d.settingsHeading')}</h2>
           <p class="text-sm text-gray-500 mb-4">
-            Generate a 3D mesh (GLB) from a reference image. Best for placemaking
-            objects and props: shelters, kiosks, benches, bollards, wayfinding,
-            vehicles.
+            ${t('model3d.settingsDescription')}
           </p>
 
           <!-- Model Selection -->
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="model3d-model-select">Model</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1" for="model3d-model-select">${t('model3d.modelLabel')}</label>
             <select id="model3d-model-select" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
               ${modelOptions}
             </select>
@@ -108,26 +107,26 @@ const Model3DTab = {
           <!-- Reference Image (required; these endpoints are image-to-3D) -->
           <div class="mb-4 param-group">
             <label class="block text-sm font-medium text-gray-700 mb-1">
-              Reference Image <span class="text-red-500" title="Required">*</span>
+              ${t('model3d.referenceImageLabel')} <span class="text-red-500" title="${t('model3d.requiredTooltip')}">*</span>
             </label>
             <div class="flex flex-col space-y-2">
               <label id="model3d-image-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
                 <div class="flex flex-col items-center">
-                  <p class="text-sm text-gray-500">Click to upload an image</p>
-                  <p id="model3d-image-name" class="text-xs text-gray-400 mt-1">No file selected</p>
+                  <p class="text-sm text-gray-500">${t('model3d.clickToUpload')}</p>
+                  <p id="model3d-image-name" class="text-xs text-gray-400 mt-1">${t('model3d.noFileSelected')}</p>
                 </div>
                 <input id="model3d-image-input" type="file" class="hidden" accept="image/png, image/jpeg, image/jpg" />
               </label>
               <div id="model3d-image-preview-container" class="hidden relative">
-                <img id="model3d-image-preview" class="w-full rounded-lg border border-gray-300" alt="Reference image">
-                <button id="model3d-image-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="Clear image">
+                <img id="model3d-image-preview" class="w-full rounded-lg border border-gray-300" alt="${t('model3d.referenceImageAlt')}">
+                <button id="model3d-image-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="${t('model3d.clearImageTooltip')}">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 hover:text-red-600 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
               <p class="text-xs text-gray-500">
-                Required: these models generate a 3D mesh from a reference image.
+                ${t('model3d.referenceImageHelp')}
               </p>
             </div>
           </div>
@@ -138,9 +137,9 @@ const Model3DTab = {
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span id="model3d-generate-text">Generate 3D Model</span>
+            <span id="model3d-generate-text">${t('model3d.generateButton')}</span>
             <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 4px;">
-              <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
+              <img src="/ui_assets/token-image.png" alt="${t('model3d.tokenAlt')}" class="w-5 h-5" />
               <span id="model3d-token-cost" class="text-sm font-medium">3</span>
             </span>
           </button>
@@ -154,14 +153,14 @@ const Model3DTab = {
           <label id="model3d-notify-email-row" class="hidden flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
             <input id="model3d-notify-email" type="checkbox" checked
               class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-            Email me when my 3D model is ready (you can close this tab)
+            ${t('model3d.notifyEmailLabel')}
           </label>
         </div>
 
         <!-- Preview Column -->
         <div class="lg:col-span-2 bg-white rounded-lg shadow">
           <div class="p-6 border-b border-gray-200">
-            <h2 class="text-lg font-medium">Preview</h2>
+            <h2 class="text-lg font-medium">${t('model3d.previewHeading')}</h2>
           </div>
           <div class="p-6 flex flex-col items-center justify-center min-h-[500px]" id="model3d-preview-container">
             <div id="model3d-placeholder" class="text-center text-gray-400">
@@ -169,7 +168,7 @@ const Model3DTab = {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
               </svg>
-              <p>Your generated 3D model (GLB) will appear here</p>
+              <p>${t('model3d.placeholderText')}</p>
             </div>
             <div id="model3d-loading" class="hidden flex flex-col items-center w-full max-w-md">
               <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
@@ -178,27 +177,26 @@ const Model3DTab = {
                   <div class="generator-progress-bar" id="model3d-progress-bar" style="width: 0%;"></div>
                   <div class="generator-progress-stripes"></div>
                 </div>
-                <span class="generator-progress-text" id="model3d-loading-text">Generating your 3D model...</span>
+                <span class="generator-progress-text" id="model3d-loading-text">${t('model3d.loadingText')}</span>
               </div>
             </div>
             <div id="model3d-result" class="hidden w-full">
               <iframe id="model3d-viewer-frame"
                 class="w-full rounded-lg border border-gray-200 bg-gray-800"
                 style="height: max(360px, 55vh);"
-                title="3D model preview"
+                title="${t('model3d.viewerFrameTitle')}"
                 allow="fullscreen"></iframe>
               <p class="text-xs text-gray-500 mt-2 mb-3 text-center">
-                Drag to orbit · scroll to zoom. Saved to your gallery; open it in
-                the editor and drag it into a scene.
+                ${t('model3d.resultHelp')}
               </p>
               <div class="flex items-center justify-center gap-3">
                 <a id="model3d-open-btn" href="#" target="_blank" rel="noopener"
                   class="inline-flex items-center px-3 py-2 text-sm rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
-                  Open in 3DStreet
+                  ${t('model3d.openInEditor')}
                 </a>
                 <button id="model3d-download-btn"
                   class="inline-flex items-center px-3 py-2 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">
-                  Download
+                  ${t('model3d.downloadButton')}
                 </button>
               </div>
             </div>
@@ -302,7 +300,7 @@ const Model3DTab = {
   clearImage() {
     this.imageData = null;
     this.elements.imageInput.value = '';
-    this.elements.imageName.textContent = 'No file selected';
+    this.elements.imageName.textContent = t('model3d.noFileSelected');
     this.elements.imagePreview.src = '';
     this.elements.imagePreviewContainer.classList.add('hidden');
     this.elements.imageUploadLabel.classList.remove('hidden');
@@ -336,10 +334,7 @@ const Model3DTab = {
 
     // These endpoints are image-to-3D only.
     if (!this.imageData) {
-      FluxUI.showNotification(
-        'Add a reference image to generate a 3D model with this model.',
-        'warning'
-      );
+      FluxUI.showNotification(t('model3d.addReferenceImageWarning'), 'warning');
       return false;
     }
 
@@ -369,7 +364,7 @@ const Model3DTab = {
       });
 
       if (!result.data || !result.data.success || !result.data.jobId) {
-        throw new Error('Could not start 3D generation');
+        throw new Error(t('model3d.couldNotStart'));
       }
 
       // The token was charged on submit; reflect that immediately. The job now
@@ -417,7 +412,7 @@ const Model3DTab = {
         this.toggleLoading(false);
         this.showResult(data.mesh_url, data.assetId);
         window.dispatchEvent(new Event('assets:refresh'));
-        FluxUI.showNotification('3D model generated!', 'success');
+        FluxUI.showNotification(t('model3d.generatedSuccess'), 'success');
       })
       .catch(async (error) => {
         this.stopTimer();
@@ -430,8 +425,8 @@ const Model3DTab = {
           }
           this.failGeneration(
             forced
-              ? "3D generation is taking longer than expected. We'll email you when it's ready — it will also appear in your gallery."
-              : '3D generation is taking longer than expected. Check your gallery shortly.',
+              ? t('model3d.timeoutForcedEmail')
+              : t('model3d.timeoutCheckGallery'),
             forced ? 'warning' : 'error'
           );
           return;
@@ -440,8 +435,10 @@ const Model3DTab = {
         window.dispatchEvent(new CustomEvent('tokenCountChanged'));
         this.failGeneration(
           error.jobError
-            ? `3D generation failed: ${error.jobError}`
-            : '3D generation failed. Your tokens were refunded.'
+            ? t('model3d.generationFailedWithReason', {
+                jobError: error.jobError
+              })
+            : t('model3d.generationFailedRefunded')
         );
       });
   },
@@ -466,15 +463,15 @@ const Model3DTab = {
 
   errorMessage(error) {
     if (error.code === 'unauthenticated') {
-      return 'Please sign in to generate 3D models';
+      return t('model3d.errorSignIn');
     }
     if (error.code === 'resource-exhausted') {
-      return 'No tokens available. Please purchase more tokens or upgrade to Pro.';
+      return t('model3d.errorNoTokens');
     }
     if (error.message) {
-      return `Failed to generate 3D model: ${error.message}`;
+      return t('model3d.errorFailedWithReason', { message: error.message });
     }
-    return 'Failed to generate 3D model';
+    return t('model3d.errorFailed');
   },
 
   showResult(meshUrl, assetId) {
@@ -530,7 +527,7 @@ const Model3DTab = {
         'cursor-not-allowed'
       );
       this.elements.generateSpinner.classList.remove('hidden');
-      this.elements.generateText.textContent = 'Generating...';
+      this.elements.generateText.textContent = t('model3d.generatingButton');
     } else {
       // Terminal (or reset): the email toggle only applies to an in-flight
       // job, so it leaves with the loading state.
@@ -543,7 +540,7 @@ const Model3DTab = {
         'cursor-not-allowed'
       );
       this.elements.generateSpinner.classList.add('hidden');
-      this.elements.generateText.textContent = 'Generate 3D Model';
+      this.elements.generateText.textContent = t('model3d.generateButton');
     }
   },
 
@@ -556,7 +553,10 @@ const Model3DTab = {
       if (this.elements.progressBar) {
         this.elements.progressBar.style.width = `${progress}%`;
       }
-      this.elements.loadingText.textContent = `${elapsed}s/${estimated}s`;
+      this.elements.loadingText.textContent = t('model3d.timerProgress', {
+        elapsed,
+        estimated
+      });
     }, 1000);
   },
 
