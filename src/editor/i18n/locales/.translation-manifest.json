@@ -744,7 +744,10 @@
     "screenshotModal.aiRenderTimeoutEmail": "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery.",
     "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)",
     "geoSidebar.mapOpacity": "Map Opacity (%)",
-    "geoSidebar.opacityFlattening": "Opacity & Flattening"
+    "geoSidebar.opacityFlattening": "Opacity & Flattening",
+    "trafficReplay.hiddenModesBody": "The linked street has vehicles hidden, so these recorded modes will not appear during play: {modes}.",
+    "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
+    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1491,7 +1494,10 @@
     "screenshotModal.aiRenderTimeoutEmail": "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery.",
     "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)",
     "geoSidebar.mapOpacity": "Map Opacity (%)",
-    "geoSidebar.opacityFlattening": "Opacity & Flattening"
+    "geoSidebar.opacityFlattening": "Opacity & Flattening",
+    "trafficReplay.hiddenModesBody": "The linked street has vehicles hidden, so these recorded modes will not appear during play: {modes}.",
+    "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
+    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2238,6 +2244,9 @@
     "screenshotModal.aiRenderTimeoutEmail": "This render is taking longer than expected. We'll email you when it's ready — it will also be saved to your gallery.",
     "screenshotModal.emailWhenDone": "Email me when it's ready (you can close this window)",
     "geoSidebar.mapOpacity": "Map Opacity (%)",
-    "geoSidebar.opacityFlattening": "Opacity & Flattening"
+    "geoSidebar.opacityFlattening": "Opacity & Flattening",
+    "trafficReplay.hiddenModesBody": "The linked street has vehicles hidden, so these recorded modes will not appear during play: {modes}.",
+    "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
+    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street"
   }
 }

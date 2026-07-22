@@ -118,6 +118,21 @@ const REPLAYABLE_LANE_TYPES = new Set(
   Object.values(MODE_RULES).flatMap((rule) => rule.lanes)
 );
 
+// Modes whose models are drawn from mixin categories that the managed-street
+// `showVehicles` toggle governs (cyclists / vehicles-rigged / vehicles-transit
+// — see getVehicleEntities in street-entity-utils.js). When a target street has
+// vehicles hidden, replay agents of these modes are hidden along with the
+// street's own static cast, so none of them appear during play. person/dog use
+// character mixins (not a vehicle category) and are unaffected. Exported so the
+// Traffic Replay sidebar can warn when a linked street would suppress modes the
+// manifest contains (#1876), keeping that check in sync with MODE_RULES here.
+export const VEHICLE_DISPLAY_MODES = Object.freeze([
+  'bicycle',
+  'car',
+  'motorcycle',
+  'bus'
+]);
+
 const MPH_TO_MS = 0.44704;
 const EXIT_MARGIN = 1.5; // metres past the lane end before we despawn
 
