@@ -96,7 +96,11 @@ export function createManagedStreetFromStreetmixURLPrompt(
           showBoundaries: !hideBuildings,
           showVehicles: true,
           showStriping: true,
-          synchronize: true
+          synchronize: true,
+          // Tag the in-app "Managed Streetmix" import dialog so the loader
+          // fires streetmix_import_completed/_failed with source 'dialog'
+          // (#1874).
+          importSource: 'dialog'
         }
       }
     };

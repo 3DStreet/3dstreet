@@ -1,6 +1,6 @@
 /* global AFRAME, XMLHttpRequest, VERSION */
-import posthog from 'posthog-js';
 import useStore from './store.js';
+import { captureStreetmixImport } from './streetmixAnalytics.js';
 import * as streetUtils from './street-utils.js';
 require('./json-utils_1.1.js'); // this defines STREET.utils
 STREET.utils.newScene = streetUtils.newScene;
@@ -172,22 +172,6 @@ AFRAME.registerComponent('street', {
   }
 });
 
-// Streetmix-import telemetry (#1874). Fires only when the loader was created
-// with a known `importSource` ('url_fragment' or 'dialog'), so in-app template
-// presets that also spin up a streetmix-loader don't count as imports. Before
-// this, `streetmix_import_completed` fired only from the manual dialog path,
-// missing the URL-fragment auto-import (`/#https://streetmix.net/...`) that is
-// how the large majority of Streetmix users actually arrive.
-function captureStreetmixImport(event, data, extra) {
-  if (!data.importSource) return;
-  posthog.capture(event, {
-    source: data.importSource,
-    streetmix_url: data.streetmixStreetURL,
-    scene_id: window.STREET?.utils?.getCurrentSceneId?.(),
-    ...extra
-  });
-}
-
 AFRAME.registerComponent('streetmix-loader', {
   dependencies: ['street'],
   schema: {
@@ -294,7 +278,11 @@ AFRAME.registerComponent('streetmix-loader', {
         el.emit('streetmix-loader-street-loaded');
         // the streetmix data has been loaded, set the synchronize flag to false
         el.setAttribute('streetmix-loader', 'synchronize', false);
-        captureStreetmixImport('streetmix_import_completed', data);
+        captureStreetmixImport(
+          'streetmix_import_completed',
+          data.importSource,
+          data.streetmixStreetURL
+        );
       } else {
         // We reached our target server, but it returned an error
         console.log(
@@ -302,9 +290,12 @@ AFRAME.registerComponent('streetmix-loader', {
           'Loading Error: We reached the target server, but it returned an error'
         );
         el.emit('streetmix-loader-street-load-error', { status: this.status });
-        captureStreetmixImport('streetmix_import_failed', data, {
-          status: this.status
-        });
+        captureStreetmixImport(
+          'streetmix_import_failed',
+          data.importSource,
+          data.streetmixStreetURL,
+          { status: this.status }
+        );
       }
     };
     request.onerror = function () {
@@ -314,7 +305,12 @@ AFRAME.registerComponent('streetmix-loader', {
         'Loading Error: There was a connection error of some sort'
       );
       el.emit('streetmix-loader-street-load-error', { status: 0 });
-      captureStreetmixImport('streetmix_import_failed', data, { status: 0 });
+      captureStreetmixImport(
+        'streetmix_import_failed',
+        data.importSource,
+        data.streetmixStreetURL,
+        { status: 0 }
+      );
     };
     request.send();
   }
