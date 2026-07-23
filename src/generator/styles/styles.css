@@ -54,6 +54,16 @@
   }
 }
 
+/* The header's two rows use Tailwind's `space-x-4`, but that utility is never
+   emitted: Tailwind's content globs scan `src/**` + root `index.html`, not the
+   generator's static `public/generator/index.html`, and `space-x-4` appears
+   nowhere in the scanned sources. Without it the token pill sits flush against
+   the profile button (0px gap). Restore the intended horizontal spacing with
+   explicit CSS scoped to the header rows. */
+header .container > .flex.items-center.space-x-4 {
+  gap: 1rem;
+}
+
 body {
   font-family: 'Inter', sans-serif;
   background-color: #f9fafb;
