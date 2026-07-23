@@ -45,6 +45,9 @@ describe('lifecycle email templates (localization)', function () {
   });
 
   for (const [name, template] of Object.entries(TEMPLATES)) {
+    // TEMPLATES also exports the defineTemplate factory (for the fallback
+    // tests below); it isn't a lifecycle template, so skip it here.
+    if (typeof template?.getSubject !== 'function') continue;
     describe(name, function () {
       for (const locale of EMAIL_LOCALES) {
         it(`renders complete, correctly-localized output in ${locale}`, function () {
@@ -145,6 +148,56 @@ describe('lifecycle email templates (localization)', function () {
         assert.ok(pro.includes('Pro'), 'Pro in subject');
       });
     }
+  });
+
+  describe('defineTemplate fallback behavior', function () {
+    const { defineTemplate } = TEMPLATES;
+
+    it('fills a missing key from English rather than emitting "undefined"', function () {
+      const tmpl = defineTemplate({
+        en: {
+          subject: 'EN subject',
+          bodyHtml: '<p>EN body</p>',
+          bodyText: 'EN body',
+          ctaLabel: 'EN cta',
+          footnote: null
+        },
+        // Partial es entry: subject/html translated, bodyText/ctaLabel omitted.
+        es: {
+          subject: 'ES subject',
+          bodyHtml: '<p>ES body</p>',
+          footnote: null
+        }
+      });
+
+      const html = tmpl.getHtmlBody('Kieran', {}, 'es');
+      const text = tmpl.getTextBody('Kieran', {}, 'es');
+      for (const body of [html, text]) {
+        assert.ok(!body.includes('undefined'), 'no "undefined" leaked');
+      }
+      assert.ok(html.includes('ES body'), 'present key stays translated');
+      assert.ok(text.includes('EN body'), 'missing bodyText falls back to en');
+      assert.strictEqual(
+        tmpl.getSubject('Kieran', {}, 'es'),
+        'ES subject',
+        'present subject stays translated'
+      );
+    });
+
+    it('labels a fallback render with the resolved lang, not the raw tag', function () {
+      const tmpl = defineTemplate({
+        en: {
+          subject: 's',
+          bodyHtml: '<p>b</p>',
+          bodyText: 'b',
+          ctaLabel: 'c',
+          footnote: null
+        }
+      });
+      const html = tmpl.getHtmlBody('Kieran', {}, 'tlh');
+      assert.ok(html.includes('lang="en"'), 'unknown locale labeled lang="en"');
+      assert.ok(!html.includes('lang="tlh"'), 'raw tag not used as lang');
+    });
   });
 
   it('keeps the sweep template-selection markers in the en subjects', function () {

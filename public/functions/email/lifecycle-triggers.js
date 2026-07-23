@@ -24,14 +24,17 @@ const TEMPLATES = require('./templates.js');
  * client's detectedLocale write to socialProfile by a few seconds — and a
  * wrong-language welcome is the most visible miss localization can make. So
  * this trigger (alone) briefly polls for the locale signal before sending;
- * `localeWait` exists so tests can shrink the poll to a single read.
+ * `localeWait` exists so tests can shrink the poll to a single read. The poll
+ * is handed to sendLifecycleEmail as `resolveLocale` rather than run here, so
+ * it fires only after the account is confirmed to have an email — an
+ * emailless account (e.g. anonymous auth) resolves to 'no-email' immediately
+ * instead of waiting out the full ~9s poll for a signal it will never use.
  */
 const sendWelcomeEmailForUser = async (
   db,
   uid,
   { dryRun = false, localeWait = undefined } = {}
 ) => {
-  const locale = await waitForEmailLocale(db, uid, localeWait);
   return sendLifecycleEmail({
     db,
     uid,
@@ -40,7 +43,7 @@ const sendWelcomeEmailForUser = async (
     stream: 'outbound',
     template: TEMPLATES.welcome,
     rules: { onceEver: true },
-    locale,
+    resolveLocale: (d, u) => waitForEmailLocale(d, u, localeWait),
     dryRun
   });
 };

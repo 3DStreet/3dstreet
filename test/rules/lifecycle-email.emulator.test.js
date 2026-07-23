@@ -553,6 +553,27 @@ describe('sendLifecycleEmail (emulator)', () => {
       const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
       expect(payload.Subject).toBe('Pon tu calle en un mapa real');
     });
+
+    it('skips the locale resolver entirely for an account with no email', async () => {
+      // Emailless account (e.g. anonymous auth): no email → no send, and the
+      // caller's resolver (the welcome trigger's ~9s poll) must not run.
+      const uid = `lifecycle-noemail-${++uidCounter}`;
+      await admin.auth().createUser({ uid }); // deliberately no email
+      const resolveLocale = vi.fn(async () => 'es');
+
+      const result = await sendLifecycleEmail({
+        db,
+        uid,
+        emailId: 'geoNotUsed',
+        category: 'lifecycle',
+        stream: 'lifecycle',
+        template: TEMPLATES.geoNotUsed,
+        resolveLocale
+      });
+
+      expect(result.action).toBe('no-email');
+      expect(resolveLocale).not.toHaveBeenCalled();
+    });
   });
 
   describe('hourly lifecycle sweep (abandoned checkout, pricing nudge, geo not used)', () => {

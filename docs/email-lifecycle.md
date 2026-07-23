@@ -113,13 +113,21 @@ editor UI ships (`en` / `es` / `pt-BR` / `fr`, see
   matching mirroring `matchSupportedLocale`) and passes it as the third
   argument to `getSubject/getHtmlBody/getTextBody`. Templates in
   `templates.js` hold per-locale copy (hand-written, reviewed in-repo);
-  a missing locale entry falls back to English for the whole template, so a
-  partial translation can never ship a mixed-language email. The broadcast
-  unsubscribe footer and the "Hi there" greeting fallback localize too.
+  a whole missing locale entry falls back to the full English entry, and a
+  locale entry that omits a single key inherits just that key from English —
+  so an incomplete translation degrades one field to English rather than
+  interpolating a literal `undefined`. `defineTemplate` also normalizes the
+  locale before rendering, so an unknown tag renders English *and* is labeled
+  `lang="en"`. The broadcast unsubscribe footer and the "Hi there" greeting
+  fallback localize too.
 - **Welcome race:** Auth `onCreate` can fire before the client's
   `detectedLocale` write lands, so the welcome trigger (alone) briefly polls
-  for the signal (`waitForEmailLocale`, ~9s max) before sending. Every other
-  email fires hours-to-days after signup and just reads the profile.
+  for the signal (`waitForEmailLocale`, ~9s max) before sending. The poll is
+  passed to `sendLifecycleEmail` as `resolveLocale`, which runs it only after
+  confirming the account has an email — an emailless account (e.g. anonymous
+  auth) resolves to `no-email` immediately instead of waiting out the poll.
+  Every other email fires hours-to-days after signup and just reads the
+  profile.
 - Callers may pass an explicit `locale` to `sendLifecycleEmail` to bypass
   resolution; the audit record stores the locale each send actually used.
 

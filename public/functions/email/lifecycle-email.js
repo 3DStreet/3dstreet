@@ -116,6 +116,11 @@ const UNSUBSCRIBE = {
  * @param {string} [p.dedupeKey] - once-per-key guard (invoice id, session id)
  * @param {string} [p.locale] - explicit send locale; omit to resolve from the
  *   recipient's profile (locale.js), falling back to 'en'
+ * @param {(db, uid) => Promise<string>} [p.resolveLocale] - custom locale
+ *   resolver, used instead of the default profile lookup when no explicit
+ *   `locale` is given. Runs only after the account is confirmed to have an
+ *   email, so a caller can attach an expensive resolver (e.g. the welcome
+ *   trigger's ~9s signup-race poll) without spending it on emailless accounts.
  * @param {boolean} [p.dryRun] - evaluate everything, claim and send nothing
  * @returns {Promise<{action: 'sent'|'would-send'|'skipped'|'no-email'|'error', reason?: string, messageId?: string, to?: string, subject?: string}>}
  */
@@ -130,6 +135,7 @@ const sendLifecycleEmail = async ({
   rules = {},
   dedupeKey = null,
   locale = null,
+  resolveLocale = null,
   dryRun = false
 }) => {
   const isBroadcast = stream !== TRANSACTIONAL_STREAM;
@@ -158,12 +164,17 @@ const sendLifecycleEmail = async ({
 
   const summaryRef = db.collection('emailLog').doc(uid);
 
-  // Locale: explicit param wins (normalized); otherwise resolved from the
-  // recipient's socialProfile (explicit UI pick > detected browser locale >
-  // 'en'). Templates receive it as their third argument.
+  // Locale: explicit param wins (normalized); else a caller-supplied resolver
+  // (e.g. the welcome trigger's signup-race poll); else the recipient's
+  // socialProfile (explicit UI pick > detected browser locale > 'en'). This
+  // sits after the no-email early return above, so a slow resolver is never
+  // spent on an account that can't be emailed. Templates receive it as their
+  // third argument.
   const sendLocale = locale
     ? normalizeEmailLocale(locale)
-    : await resolveEmailLocale(db, uid);
+    : resolveLocale
+      ? await resolveLocale(db, uid)
+      : await resolveEmailLocale(db, uid);
 
   const subject = template.getSubject(userInfo.displayName, data, sendLocale);
   let htmlBody = template.getHtmlBody(userInfo.displayName, data, sendLocale);

@@ -9,16 +9,18 @@
  * locale (public/functions/email/locale.js) and passes it as the third
  * argument; unknown locales fall back to English. Translations are
  * hand-written and live here in-repo so they're reviewable and versioned —
- * when editing copy, edit ALL locales of that template (a missing key falls
- * back to English for that whole template, so partial edits can't ship a
- * mixed-language email).
+ * when editing copy, edit ALL locales of that template. A missing key falls
+ * back to English for just that key (see defineTemplate), so an incomplete
+ * translation degrades one field to English rather than interpolating a
+ * literal `undefined` into a live email — but still fill in every locale so
+ * recipients get fully translated copy.
  *
  * Broadcast-stream templates must NOT include their own unsubscribe link —
  * the send service appends the Postmark `{{{ pm:unsubscribe_url }}}` footer
  * (localized) to everything sent on a broadcast stream.
  */
 
-const { DEFAULT_EMAIL_LOCALE } = require('./locale.js');
+const { DEFAULT_EMAIL_LOCALE, normalizeEmailLocale } = require('./locale.js');
 
 const APP_BASE = 'https://3dstreet.app';
 
@@ -115,23 +117,36 @@ https://3dstreet.com${footnote ? `\n\n---\n${footnote.replace(/<[^>]+>/g, '')}` 
  * utm_content value ('cta_button' for HTML, 'cta_link' for text).
  */
 const defineTemplate = (copy, { ctaUrl = null } = {}) => {
-  const pick = (locale) => copy[locale] || copy[DEFAULT_EMAIL_LOCALE];
+  const fallback = copy[DEFAULT_EMAIL_LOCALE];
+  // Per-key English fallback: a locale entry that omits a key (an incomplete
+  // translation) inherits just that key from English, so a partial edit can
+  // never interpolate a literal `undefined` into a live email. A whole
+  // missing locale still resolves to the full English entry.
+  const pick = (locale) => {
+    const entry = copy[locale];
+    return entry && entry !== fallback ? { ...fallback, ...entry } : fallback;
+  };
   const resolve = (value, data) =>
     typeof value === 'function' ? value(data) : value;
   return {
     getSubject: (userName, data = {}, locale) =>
-      resolve(pick(locale).subject, data),
+      resolve(pick(normalizeEmailLocale(locale)).subject, data),
+    // Normalize the locale up front so the copy, the chrome, and the `lang`
+    // attribute all agree: an unknown-but-truthy tag (e.g. 'tlh') renders in
+    // English AND is labeled lang="en", never lang="tlh".
     getHtmlBody: (userName, data = {}, locale) => {
-      const c = pick(locale);
-      return htmlLayout(locale, userName, resolve(c.bodyHtml, data), {
+      const loc = normalizeEmailLocale(locale);
+      const c = pick(loc);
+      return htmlLayout(loc, userName, resolve(c.bodyHtml, data), {
         ctaUrl: ctaUrl ? ctaUrl('cta_button') : null,
         ctaLabel: resolve(c.ctaLabel, data),
         footnote: resolve(c.footnote, data)
       });
     },
     getTextBody: (userName, data = {}, locale) => {
-      const c = pick(locale);
-      return textLayout(locale, userName, resolve(c.bodyText, data), {
+      const loc = normalizeEmailLocale(locale);
+      const c = pick(loc);
+      return textLayout(loc, userName, resolve(c.bodyText, data), {
         ctaUrl: ctaUrl ? ctaUrl('cta_link') : null,
         ctaLabel: resolve(c.ctaLabel, data),
         footnote: resolve(c.footnoteText ?? c.footnote, data)
@@ -924,5 +939,8 @@ module.exports = {
   pricingPageNudge,
   geoNotUsed,
   geoTokenExhaustion,
-  genTokenExhaustion
+  genTokenExhaustion,
+  // Exported for unit tests only (per-key fallback + lang normalization); not
+  // a lifecycle template, so callers that enumerate templates must skip it.
+  defineTemplate
 };
