@@ -45,10 +45,12 @@ AFRAME.registerSystem('shape', {
 AFRAME.registerComponent('shape', {
   schema: {
     lineColor: { type: 'color', default: '#ffe600' },
-    lineWidth: { type: 'number', default: 0.15 },
-    // When set, the shape re-derives on this event instead of the per-frame
-    // dirty-check; whatever moves a vertex is then responsible for firing it.
-    updateEvent: { type: 'string', default: '' }
+    lineWidth: { type: 'number', default: 0.15 }
+    // Note: an event-driven opt-out of the system dirty-check (a shape could
+    // re-derive on a named event instead of being polled) is intentionally not
+    // exposed as a schema property here — the system tick covers everything at
+    // this stage. The hooks below already honour `this.data.updateEvent`, so it
+    // can be reintroduced as a schema prop when the editing UI wants it.
   },
 
   init: function () {
@@ -80,11 +82,30 @@ AFRAME.registerComponent('shape', {
     // serialized, so it is re-applied on every load here.
     this.el.setAttribute('data-no-pause', '');
 
+    // Suppress the whole-entity transform gizmo. It attaches to the shape's
+    // object3D, which sits at the shape origin (the first vertex), not the
+    // centroid — a confusing affordance. Whole-shape move is a deliberate,
+    // correctly-placed affordance for a later phase.
+    this.el.setAttribute('data-no-transform', '');
+
     if (this.data.updateEvent) {
       this.el.addEventListener(this.data.updateEvent, this.requestRederive);
     }
 
     this.requestRederive();
+
+    // The entity-create command pauses the new entity immediately after init;
+    // play it once loaded so a child `animation` runs right away rather than
+    // only after a reload (the editor re-plays [data-no-pause] elements on
+    // open, which covers the reload path). Re-derivation itself never depends
+    // on this — the system tick observes positions regardless of pause.
+    this.el.addEventListener(
+      'loaded',
+      () => {
+        if (!this.destroyed) this.el.play();
+      },
+      { once: true }
+    );
   },
 
   update: function (oldData) {
@@ -207,6 +228,10 @@ AFRAME.registerComponent('shape', {
         this.material
       );
       sphere.position.copy(pos);
+      // The inspector raycaster maps a hit to an entity via the hit object's
+      // own `.el` (it does not walk up parents), so each leaf mesh needs the
+      // back-pointer or clicking the line would not select the shape.
+      sphere.el = this.el;
       this.vertexGroup.add(sphere);
     }
 
@@ -230,6 +255,7 @@ AFRAME.registerComponent('shape', {
       );
       this.tmpQuaternion.setFromUnitVectors(UP, this.direction.normalize());
       mesh.setRotationFromQuaternion(this.tmpQuaternion);
+      mesh.el = this.el;
       this.lineGroup.add(mesh);
     }
   },
