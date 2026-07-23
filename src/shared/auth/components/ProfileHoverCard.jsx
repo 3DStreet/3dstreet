@@ -67,27 +67,36 @@ const ProfileHoverCard = ({
   const [isLoadingUsername, setIsLoadingUsername] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Load username when the menu is opened for a signed-in user
+  // Load username when the menu is opened for a signed-in user. Keyed on
+  // currentUser?.uid so switching accounts (or signing out) clears the previous
+  // user's username instead of briefly showing it under the new identity.
+  const currentUid = currentUser?.uid;
   useEffect(() => {
+    // Reset on any identity change; the fetch below repopulates if signed in.
+    setUsername(null);
+    setIsLoadingUsername(false);
+
+    if (!showDetails || !currentUid || !isOpen) return;
+
+    let cancelled = false;
     const loadUsername = async () => {
-      if (currentUser?.uid) {
-        setIsLoadingUsername(true);
-        try {
-          const userProfile = await getUserProfile(currentUser.uid);
-          if (userProfile?.username) {
-            setUsername(userProfile.username);
-          }
-        } catch (error) {
-          console.error('Error loading username:', error);
+      setIsLoadingUsername(true);
+      try {
+        const userProfile = await getUserProfile(currentUid);
+        if (!cancelled && userProfile?.username) {
+          setUsername(userProfile.username);
         }
-        setIsLoadingUsername(false);
+      } catch (error) {
+        console.error('Error loading username:', error);
       }
+      if (!cancelled) setIsLoadingUsername(false);
     };
 
-    if (showDetails && currentUser && isOpen) {
-      loadUsername();
-    }
-  }, [currentUser, showDetails, isOpen]);
+    loadUsername();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUid, showDetails, isOpen]);
 
   // If the menu is disabled, just render the trigger untouched.
   if (!showDetails) {
