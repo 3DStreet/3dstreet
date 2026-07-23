@@ -23,7 +23,7 @@ import { notifyLocaleChanged } from './sharedMessages';
 
 const LOCALE_STORAGE_KEY = 'locale';
 
-export function changeLocale(code, { uid } = {}) {
+export async function changeLocale(code, { uid } = {}) {
   if (!SUPPORTED_LOCALE_CODES.includes(code)) return;
 
   try {
@@ -33,9 +33,6 @@ export function changeLocale(code, { uid } = {}) {
     // still updates the current page for this session.
   }
 
-  // Re-render shared components subscribed via useSharedLocale/useSharedMessages.
-  notifyLocaleChanged();
-
   try {
     posthog.capture('locale_changed', { locale: code });
     posthog.register({ locale: code });
@@ -43,11 +40,24 @@ export function changeLocale(code, { uid } = {}) {
     // PostHog may not be initialized in every island — non-fatal.
   }
 
+  // Mirror onto the profile BEFORE broadcasting. notifyLocaleChanged() can
+  // trigger a synchronous page reload (the generator reloads to rebuild its
+  // vanilla DOM in the new locale); if we fired the Firestore write after that,
+  // the navigation could cancel it and the cross-device preference would
+  // silently not save. Awaiting here keeps the write off the reload's critical
+  // path. localStorage is already set, so getActiveLocale() is correct
+  // immediately regardless of this round-trip.
   if (uid) {
-    saveUserProfile(uid, { locale: code }).catch((error) =>
-      console.error('Error saving locale to profile:', error)
-    );
+    try {
+      await saveUserProfile(uid, { locale: code });
+    } catch (error) {
+      console.error('Error saving locale to profile:', error);
+    }
   }
+
+  // Re-render shared components subscribed via useSharedLocale/useSharedMessages
+  // (and, in the generator, reload the page to rebuild its vanilla DOM).
+  notifyLocaleChanged();
 }
 
 export default changeLocale;
