@@ -11,8 +11,22 @@
 export const DEFAULT_LOCALE = 'en';
 
 // Locale codes we ship message catalogs for. Keep in sync with SUPPORTED_LOCALES
-// (labels) in the editor's i18n/config.js and the catalogs in i18n/locales/.
+// (labels) below and the catalogs in the editor's i18n/locales/.
 export const SUPPORTED_LOCALE_CODES = ['en', 'es', 'pt-BR', 'fr'];
+
+/**
+ * The supported locales with their endonym labels (each language's name in its
+ * own language), for rendering a language switcher. Lives in @shared so the
+ * editor's AppMenu switcher and the shared profile-menu switcher (generator +
+ * Bollard Buddy) render the exact same list. Codes must match
+ * SUPPORTED_LOCALE_CODES; endonyms are intentionally NOT translated.
+ */
+export const SUPPORTED_LOCALES = [
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Español' },
+  { code: 'pt-BR', label: 'Português (Brasil)' },
+  { code: 'fr', label: 'Français' }
+];
 
 /**
  * Maps a raw BCP-47 tag (e.g. from navigator.language or localStorage) to one

@@ -17,14 +17,9 @@ const ProfileButton = () => {
 
   const onClick = () => {
     if (isLoading) return;
-
+    // The profile menu (open/close, sign-in, language) is handled by the shared
+    // component; this click just records the interaction.
     posthog.capture('profile_button_clicked', { is_logged_in: !!currentUser });
-
-    // If not logged in, open sign in modal
-    if (!currentUser) {
-      setModal('signin');
-    }
-    // If logged in, the hover card will handle the interaction
   };
 
   const handleAnalytics = (eventName, properties) => {
@@ -39,6 +34,7 @@ const ProfileButton = () => {
         onClick={onClick}
         tooltipSide="bottom"
         showHoverCard={true}
+        onSignIn={() => setModal('signin')}
       />
 
       <SignInModal

@@ -10,6 +10,7 @@
  */
 
 import GeneratorTabBase from './generator-tab-base.js';
+import { t } from './i18n/messages.js';
 
 const ImageTab = new GeneratorTabBase({
   tabId: 'image',
@@ -17,9 +18,8 @@ const ImageTab = new GeneratorTabBase({
   requiresSourceImage: false,
   showImagePromptUI: true,
   optionalSourceImage: true,
-  title: 'Image Settings',
-  description:
-    'Generate an image from a text prompt, optionally guided by a reference image.'
+  title: t('image.settingsTitle'),
+  description: t('image.settingsDescription')
 });
 
 export default ImageTab;

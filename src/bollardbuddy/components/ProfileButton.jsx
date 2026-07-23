@@ -1,6 +1,7 @@
 /**
- * Bollard Buddy ProfileButton - wraps shared ProfileButton with sign in modal
- * Click to sign in if not logged in, hover card shows profile if logged in
+ * Bollard Buddy ProfileButton - wraps the shared ProfileButton + sign-in modal.
+ * The profile icon opens the shared menu (profile/log out when signed in;
+ * sign-in + language when signed out); onSignIn opens this app's SignInModal.
  */
 import { useState } from 'react';
 import {
@@ -9,20 +10,12 @@ import {
 } from '@shared/auth/components';
 import { useAuthContext } from '../../editor/contexts';
 import { auth } from '@shared/services/firebase';
+import { useSharedMessages } from '@shared/i18n/sharedMessages';
 
 const ProfileButton = () => {
   const { currentUser, isLoading } = useAuthContext();
   const [showSignIn, setShowSignIn] = useState(false);
-
-  const onClick = () => {
-    if (isLoading) return;
-
-    // If not logged in, open sign in modal
-    if (!currentUser) {
-      setShowSignIn(true);
-    }
-    // If logged in, the hover card will handle the interaction
-  };
+  const t = useSharedMessages();
 
   const handleAnalytics = (eventName, properties) => {
     console.log('Analytics:', eventName, properties);
@@ -33,15 +26,15 @@ const ProfileButton = () => {
       <SharedProfileButton
         currentUser={currentUser}
         isLoading={isLoading}
-        onClick={onClick}
         tooltipSide="bottom"
         showHoverCard={true}
+        onSignIn={() => setShowSignIn(true)}
       />
 
       <SignInModal
         isOpen={showSignIn}
         onClose={() => setShowSignIn(false)}
-        message="Sign in to save your scenes and access your gallery."
+        message={t('bbSignInMessage')}
         firebaseAuth={auth}
         onAnalytics={handleAnalytics}
       />

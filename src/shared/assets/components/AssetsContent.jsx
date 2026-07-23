@@ -14,6 +14,7 @@ import PendingUploadCard from './PendingUploadCard.jsx';
 import PendingJobCard from './PendingJobCard.jsx';
 import useCurrentUploadStore from '../state/currentUploadStore.js';
 import { ASSET_TYPES } from '../constants.js';
+import { useSharedMessages } from '../../i18n/sharedMessages';
 import styles from './Assets.module.scss';
 
 // Stable empty fallback so a gallery without optimizingAssetIds doesn't allocate
@@ -52,6 +53,7 @@ const AssetsContent = ({
   } = gallery;
 
   const [selectedItem, setSelectedItem] = useState(null);
+  const t = useSharedMessages();
 
   const handleDelete = async (id) => {
     try {
@@ -93,11 +95,13 @@ const AssetsContent = ({
         color: '#6b7280'
       }}
     >
-      Loading gallery...
+      {t('loadingGallery')}
     </div>
   );
 
-  const defaultEmpty = <div className={styles.emptyState}>No assets yet</div>;
+  const defaultEmpty = (
+    <div className={styles.emptyState}>{t('noAssetsYet')}</div>
+  );
 
   const hasPendingUpload = useCurrentUploadStore((s) => !!s.upload);
   const hasPendingJob = pendingJobs.length > 0;

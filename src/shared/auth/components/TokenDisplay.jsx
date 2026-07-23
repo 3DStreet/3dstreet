@@ -4,6 +4,7 @@
  */
 import { AuthProvider, useAuthContext } from '../../contexts';
 import TokenDetailsCard from './TokenDetailsCard';
+import { useSharedMessages } from '../../i18n/sharedMessages';
 import styles from './TokenDisplay.module.scss';
 
 /**
@@ -21,6 +22,8 @@ export const TokenDisplayBase = ({
   iconSrc = null,
   className = ''
 }) => {
+  const t = useSharedMessages();
+
   // Don't render if no token count available
   if (count === null || count === undefined) {
     return null;
@@ -32,7 +35,8 @@ export const TokenDisplayBase = ({
       ? '/ui_assets/token-geo.png'
       : '/ui_assets/token-image.png');
   const tokenLabel =
-    label || (tokenType === 'geoToken' ? 'Geo Tokens' : 'AI Generation Tokens');
+    label ||
+    (tokenType === 'geoToken' ? t('geoTokens') : t('aiGenerationTokens'));
 
   const displayClassName = [
     styles.tokenDisplay,

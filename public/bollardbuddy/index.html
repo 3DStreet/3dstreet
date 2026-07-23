@@ -280,39 +280,39 @@
   <div id="object-picker">
     <button class="picker-toggle" id="picker-toggle">
       <span id="picker-icon">🚧</span>
-      <span id="picker-label">Bollard</span>
+      <span id="picker-label" data-i18n="bbObjectBollard">Bollard</span>
       <span class="picker-arrow">▼</span>
     </button>
     <div class="picker-menu" id="picker-menu">
       <button class="picker-item selected" data-model="bollard" data-icon="🚧" data-label="Bollard">
-        <span>🚧</span> Bollard
+        <span>🚧</span> <span data-i18n="bbObjectBollard">Bollard</span>
       </button>
       <button class="picker-item" data-model="cone" data-icon="🔶" data-label="Cone">
-        <span>🔶</span> Cone
+        <span>🔶</span> <span data-i18n="bbObjectCone">Cone</span>
       </button>
       <button class="picker-item" data-model="safehit" data-icon="🛡️" data-label="SafeHit">
         <span>🛡️</span> SafeHit
       </button>
     </div>
   </div>
-  <div class="picker-hint" id="picker-hint">Tap on ground to place</div>
+  <div class="picker-hint" id="picker-hint" data-i18n="bbTapToPlace">Tap on ground to place</div>
 
   <!-- App Switcher Mount Point (upper-left) -->
   <div id="app-switcher-root"></div>
-  <div id="beta-pill">WebXR Beta</div>
+  <div id="beta-pill" data-i18n="bbWebxrBeta">WebXR Beta</div>
 
   <!-- iOS app CTA (iPhone/iPad only; best experience is the native app).
        Links straight to the App Store, not the marketing landing page. -->
   <a id="ios-cta" href="https://apps.apple.com/us/app/bollard-buddy/id6756771127" target="_blank" rel="noopener">
-    <span>📱 <strong>Best on iOS:</strong> Get the app</span>
-    <button class="dismiss" id="ios-cta-dismiss" aria-label="Dismiss">✕</button>
+    <span>📱 <strong data-i18n="bbIosBest">Best on iOS:</strong> <span data-i18n="bbIosGetApp">Get the app</span></span>
+    <button class="dismiss" id="ios-cta-dismiss" data-i18n-aria-label="bbDismiss" aria-label="Dismiss">✕</button>
   </a>
 
   <!-- Desktop strip layered above the landing page QR fallback -->
   <div id="desktop-ios-strip">
-    <span>📱 Bollard Buddy is best on iPhone.</span>
-    <a href="https://apps.apple.com/us/app/bollard-buddy/id6756771127" target="_blank" rel="noopener">get the iOS app</a>
-    <span>or scan the QR code above to use the web version.</span>
+    <span>📱 <span data-i18n="bbDesktopBestOniPhone">Bollard Buddy is best on iPhone.</span></span>
+    <a href="https://apps.apple.com/us/app/bollard-buddy/id6756771127" target="_blank" rel="noopener" data-i18n="bbGetIosApp">get the iOS app</a>
+    <span data-i18n="bbScanQr">or scan the QR code above to use the web version.</span>
   </div>
 
   <!-- React Auth Island Mount Point -->
@@ -355,7 +355,9 @@
         if (window.selectedModel === model) {
           window.selectedModel = null;
           pickerIcon.textContent = '+';
-          pickerLabel.textContent = 'Select Object';
+          // Localized by the bundle (window.BOLLARD_I18N); English fallback if
+          // the bundle hasn't loaded yet.
+          pickerLabel.textContent = window.BOLLARD_I18N?.selectObject || 'Select Object';
           pickerHint.classList.remove('visible');
           pickerItems.forEach(i => i.classList.remove('selected'));
         } else {

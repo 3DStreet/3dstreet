@@ -25,6 +25,7 @@ import {
   pollGenerationJob,
   forceJobNotifyEmail
 } from '@shared/utils/generationJobs.js';
+import { t } from './i18n/messages.js';
 
 // Video tab module
 const VideoTab = {
@@ -119,7 +120,7 @@ const VideoTab = {
         ) {
           this.setInputImage(
             pendingItem.imageDataUrl,
-            `Gallery Item ${pendingItem.id}`
+            t('video.galleryItem', { id: pendingItem.id })
           );
         }
 
@@ -270,29 +271,29 @@ const VideoTab = {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Parameters Column -->
                 <div class="lg:col-span-1 bg-white rounded-lg shadow p-6">
-                    <h2 class="text-lg font-medium mb-1">Video Generation Settings</h2>
-                    <p class="text-sm text-gray-500 mb-4">Create animated videos from a source image with motion and camera control parameters.</p>
+                    <h2 class="text-lg font-medium mb-1">${t('video.videoGenerationSettings')}</h2>
+                    <p class="text-sm text-gray-500 mb-4">${t('video.videoGenerationSettingsDescription')}</p>
 
                     <!-- Model Selection -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">${t('video.model')}</label>
                         <div id="video-model-selector-container"></div>
                     </div>
 
                     <!-- Image Upload (Required) -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Source Image <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">${t('video.sourceImage')} <span class="text-red-500">*</span></label>
                         <div class="flex flex-col space-y-2">
                             <label id="video-image-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
                                 <div class="flex flex-col items-center">
-                                    <p class="text-sm text-gray-500">Click to upload an image</p>
-                                    <p id="video-image-name" class="text-xs text-gray-400 mt-1">No file selected</p>
+                                    <p class="text-sm text-gray-500">${t('video.clickToUploadImage')}</p>
+                                    <p id="video-image-name" class="text-xs text-gray-400 mt-1">${t('video.noFileSelected')}</p>
                                 </div>
                                 <input id="video-image-input" type="file" class="hidden" accept="image/png, image/jpeg, image/jpg" />
                             </label>
                             <div id="video-image-preview-container" class="hidden relative">
-                                <img id="video-image-preview" class="w-full rounded-lg border border-gray-300" alt="Selected image">
-                                <button id="video-image-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="Clear image">
+                                <img id="video-image-preview" class="w-full rounded-lg border border-gray-300" alt="${t('video.selectedImageAlt')}">
+                                <button id="video-image-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="${t('video.clearImage')}">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 hover:text-red-600 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
@@ -303,18 +304,18 @@ const VideoTab = {
 
                     <!-- Prompt (Optional) -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Prompt (Optional)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">${t('video.promptOptional')}</label>
                         <textarea id="video-prompt-input" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                   placeholder="${getDefaultInstructions('video')}"></textarea>
                     </div>
 
                     <!-- Aspect Ratio -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Aspect Ratio</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">${t('video.aspectRatio')}</label>
                         <select id="video-aspect-ratio-selector" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="16:9" selected>16:9 (Landscape)</option>
-                            <option value="9:16">9:16 (Portrait)</option>
-                            <option value="1:1">1:1 (Square)</option>
+                            <option value="16:9" selected>${t('video.aspectRatio169Landscape')}</option>
+                            <option value="9:16">${t('video.aspectRatio916Portrait')}</option>
+                            <option value="1:1">${t('video.aspectRatio11Square')}</option>
                             <option value="4:3">4:3</option>
                             <option value="3:4">3:4</option>
                         </select>
@@ -322,15 +323,15 @@ const VideoTab = {
 
                     <!-- Duration -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Duration</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">${t('video.duration')}</label>
                         <div class="space-y-2">
                             <div class="flex items-center">
                                 <input type="radio" id="video-duration-5s" name="video-duration" value="5" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
-                                <label for="video-duration-5s" class="ml-2 block text-sm text-gray-700">5 seconds (10 tokens)</label>
+                                <label for="video-duration-5s" class="ml-2 block text-sm text-gray-700">${t('video.duration5Seconds10Tokens')}</label>
                             </div>
                             <div class="flex items-center">
                                 <input type="radio" id="video-duration-10s" name="video-duration" value="10" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
-                                <label for="video-duration-10s" class="ml-2 block text-sm text-gray-700">10 seconds (20 tokens)</label>
+                                <label for="video-duration-10s" class="ml-2 block text-sm text-gray-700">${t('video.duration10Seconds20Tokens')}</label>
                             </div>
                         </div>
                     </div>
@@ -367,9 +368,9 @@ const VideoTab = {
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <span id="video-generate-text">Generate Video</span>
+                        <span id="video-generate-text">${t('video.generateVideo')}</span>
                         <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 4px;">
-                            <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
+                            <img src="/ui_assets/token-image.png" alt="${t('video.tokenAlt')}" class="w-5 h-5" />
                             <span id="video-token-cost" class="text-sm font-medium">10</span>
                         </span>
                     </button>
@@ -384,21 +385,21 @@ const VideoTab = {
                     <label id="video-notify-email-row" class="hidden flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
                         <input id="video-notify-email" type="checkbox" checked
                             class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                        Email me when my video is ready (you can close this tab)
+                        ${t('video.emailWhenReady')}
                     </label>
                 </div>
 
                 <!-- Preview Column -->
                 <div class="lg:col-span-2 bg-white rounded-lg shadow">
                     <div class="p-6 border-b border-gray-200">
-                        <h2 class="text-lg font-medium">Preview</h2>
+                        <h2 class="text-lg font-medium">${t('video.preview')}</h2>
                     </div>
                     <div class="p-6 flex flex-col items-center justify-center min-h-[500px]" id="video-preview-container">
                         <div id="video-generation-placeholder" class="text-center text-gray-400">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                             </svg>
-                            <p>Your generated video will appear here</p>
+                            <p>${t('video.generatedVideoWillAppearHere')}</p>
                         </div>
                         <video id="video-preview-video" class="max-w-full max-h-[500px] hidden rounded-lg shadow-lg" controls></video>
                         <div id="video-loading-indicator" class="hidden flex flex-col items-center w-full max-w-md">
@@ -409,23 +410,23 @@ const VideoTab = {
                                     <div class="video-progress-stripes"></div>
                                 </div>
                                 <span class="video-progress-text" id="video-loading-text">0s/40s</span>
-                                <span class="video-progress-text hidden" id="video-overtime-text" style="margin-top: 4px; color: #fbbf24;">Generation taking longer than expected.</span>
+                                <span class="video-progress-text hidden" id="video-overtime-text" style="margin-top: 4px; color: #fbbf24;">${t('video.generationTakingLonger')}</span>
                             </div>
                         </div>
                     </div>
                     <div class="px-6 pb-6">
                         <div class="flex flex-wrap justify-center gap-2 mt-4" id="video-action-buttons">
                             <button id="video-copy-params-btn" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
-                                Copy Parameters
+                                ${t('video.copyParameters')}
                             </button>
                             <button id="video-open-video-btn" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
-                                Open Video
+                                ${t('video.openVideo')}
                             </button>
                             <button id="video-download-video-btn" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
-                                Download Video
+                                ${t('video.downloadVideo')}
                             </button>
                             <button id="video-copy-video-url-btn" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
-                                Copy Video URL
+                                ${t('video.copyVideoUrl')}
                             </button>
                         </div>
                     </div>
@@ -577,13 +578,23 @@ const VideoTab = {
     const isVeo =
       this.selectedModel === 'google/veo-3.1' ||
       this.selectedModel === 'google/veo-3.1-fast';
-    const shortLabel = isVeo ? '4 seconds' : '5 seconds';
-    const longLabel = isVeo ? '8 seconds' : '10 seconds';
+    const shortLabel = isVeo
+      ? t('video.duration4Seconds')
+      : t('video.duration5Seconds');
+    const longLabel = isVeo
+      ? t('video.duration8Seconds')
+      : t('video.duration10Seconds');
     if (label5s) {
-      label5s.textContent = `${shortLabel} (${cost5s} tokens)`;
+      label5s.textContent = t('video.durationTokensLabel', {
+        duration: shortLabel,
+        cost: cost5s
+      });
     }
     if (label10s) {
-      label10s.textContent = `${longLabel} (${cost10s} tokens)`;
+      label10s.textContent = t('video.durationTokensLabel', {
+        duration: longLabel,
+        cost: cost10s
+      });
     }
   },
 
@@ -647,7 +658,7 @@ const VideoTab = {
       .then((result) => {
         if (!result.data || !result.data.success || !result.data.jobId) {
           throw new Error(
-            result.data?.message || 'Could not start video generation'
+            result.data?.message || t('video.couldNotStartGeneration')
           );
         }
 
@@ -666,17 +677,16 @@ const VideoTab = {
       })
       .catch((error) => {
         console.error('Video generation error:', error);
-        let message = 'Failed to generate video';
+        let message = t('video.failedToGenerate');
 
         if (error.code === 'unauthenticated') {
-          message = 'Please sign in to generate videos';
+          message = t('video.pleaseSignIn');
         } else if (error.code === 'resource-exhausted') {
-          message = 'Insufficient tokens. Please purchase more tokens.';
+          message = t('video.insufficientTokens');
         } else if (error.code === 'permission-denied') {
-          message = 'You do not have permission to generate videos';
+          message = t('video.noPermission');
         } else if (error.code === 'unavailable') {
-          message =
-            'Video generation service is temporarily unavailable. Please try again later.';
+          message = t('video.serviceUnavailable');
         } else if (error.message) {
           message = error.message;
         }
@@ -706,10 +716,7 @@ const VideoTab = {
         this.toggleLoading(false);
         window.dispatchEvent(new Event('assets:refresh'));
         window.dispatchEvent(new CustomEvent('tokenCountChanged'));
-        FluxUI.showNotification(
-          'Video generated and saved to your gallery!',
-          'success'
-        );
+        FluxUI.showNotification(t('video.generatedAndSaved'), 'success');
       })
       .catch(async (error) => {
         if (error.timedOut) {
@@ -722,8 +729,8 @@ const VideoTab = {
           this.toggleLoading(false);
           FluxUI.showNotification(
             forced
-              ? "Video generation is taking longer than expected. We'll email you when it's ready — it will also appear in your gallery."
-              : 'Video generation is taking longer than expected. Check your gallery shortly — it will appear there when finished.',
+              ? t('video.takingLongerEmailForced')
+              : t('video.takingLongerCheckGallery'),
             forced ? 'warning' : 'error'
           );
           return;
@@ -733,8 +740,8 @@ const VideoTab = {
         this.toggleLoading(false);
         FluxUI.showNotification(
           error.jobError
-            ? `Video generation failed: ${error.jobError}`
-            : 'Video generation failed. Your tokens were refunded.',
+            ? t('video.generationFailedWithError', { error: error.jobError })
+            : t('video.generationFailedRefunded'),
           'error'
         );
       });
@@ -756,7 +763,7 @@ const VideoTab = {
 
     // Check if image is uploaded (required)
     if (!this.imageData) {
-      FluxUI.showNotification('Please upload a reference image', 'error');
+      FluxUI.showNotification(t('video.pleaseUploadImage'), 'error');
       return null;
     }
     params.input_image = this.imageData;
@@ -894,7 +901,7 @@ const VideoTab = {
         this.elements.generateSpinner.classList.remove('hidden');
       }
       if (this.elements.generateText) {
-        this.elements.generateText.textContent = 'Generating...';
+        this.elements.generateText.textContent = t('video.generating');
       }
 
       // Hide action buttons
@@ -923,7 +930,7 @@ const VideoTab = {
         this.elements.generateSpinner.classList.add('hidden');
       }
       if (this.elements.generateText) {
-        this.elements.generateText.textContent = 'Generate Video';
+        this.elements.generateText.textContent = t('video.generateVideo');
       }
 
       // Stop the timer
@@ -934,17 +941,17 @@ const VideoTab = {
   // Open the video in a new tab
   openVideo: function () {
     if (!this.currentVideoUrl) {
-      FluxUI.showNotification('No video to open', 'error');
+      FluxUI.showNotification(t('video.noVideoToOpen'), 'error');
       return;
     }
     window.open(this.currentVideoUrl, '_blank');
-    FluxUI.showNotification('Video opened in new tab!', 'success');
+    FluxUI.showNotification(t('video.videoOpened'), 'success');
   },
 
   // Download the video
   downloadVideo: function () {
     if (!this.currentVideoUrl) {
-      FluxUI.showNotification('No video to download', 'error');
+      FluxUI.showNotification(t('video.noVideoToDownload'), 'error');
       return;
     }
 
@@ -969,29 +976,32 @@ const VideoTab = {
       document.body.removeChild(downloadLink);
     }, 100);
 
-    FluxUI.showNotification('Video download started!', 'success');
+    FluxUI.showNotification(t('video.videoDownloadStarted'), 'success');
   },
 
   // Copy the video URL to clipboard
   copyVideoUrl: function () {
     if (!this.currentVideoUrl) {
-      FluxUI.showNotification('No video URL to copy', 'error');
+      FluxUI.showNotification(t('video.noVideoUrlToCopy'), 'error');
       return;
     }
     navigator.clipboard
       .writeText(this.currentVideoUrl)
       .then(() => {
-        FluxUI.showNotification('Video URL copied to clipboard!', 'success');
+        FluxUI.showNotification(t('video.videoUrlCopied'), 'success');
       })
       .catch((err) => {
-        FluxUI.showNotification('Failed to copy URL: ' + err.message, 'error');
+        FluxUI.showNotification(
+          t('video.failedToCopyUrl', { error: err.message }),
+          'error'
+        );
       });
   },
 
   // Copy parameters to clipboard
   copyParams: function () {
     if (Object.keys(this.currentParams).length === 0) {
-      FluxUI.showNotification('No parameters to copy', 'error');
+      FluxUI.showNotification(t('video.noParametersToCopy'), 'error');
       return;
     }
 
@@ -1000,11 +1010,11 @@ const VideoTab = {
     navigator.clipboard
       .writeText(paramsString)
       .then(() => {
-        FluxUI.showNotification('Parameters copied to clipboard!', 'success');
+        FluxUI.showNotification(t('video.parametersCopied'), 'success');
       })
       .catch((err) => {
         FluxUI.showNotification(
-          'Failed to copy parameters: ' + err.message,
+          t('video.failedToCopyParameters', { error: err.message }),
           'error'
         );
       });
@@ -1044,7 +1054,7 @@ const VideoTab = {
   },
 
   // Set input image from gallery or other source
-  setInputImage: function (imageDataUrl, imageName = 'From Gallery') {
+  setInputImage: function (imageDataUrl, imageName = t('video.fromGallery')) {
     this.imageData = imageDataUrl.split(',')[1];
     this.elements.imageName.textContent = imageName;
 
@@ -1055,7 +1065,7 @@ const VideoTab = {
   // Clear image
   clearImage: function () {
     this.imageData = null;
-    this.elements.imageName.textContent = 'No file selected';
+    this.elements.imageName.textContent = t('video.noFileSelected');
     this.elements.imagePreview.src = '';
     this.elements.imagePreviewContainer.classList.add('hidden');
     this.elements.imageUploadLabel.classList.remove('hidden');

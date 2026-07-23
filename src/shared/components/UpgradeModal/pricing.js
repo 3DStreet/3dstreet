@@ -18,6 +18,7 @@
  */
 
 import { formatCurrency, getPeriodSuffix } from '@shared/utils/format';
+import { formatSharedMessage } from '@shared/i18n/sharedMessages';
 
 // Local so cycleDetail and the exposed yearlyTotal fields can't drift.
 const PRO_YEARLY_TOTAL = 84;
@@ -28,17 +29,22 @@ export const PRICING = {
     monthly: {
       pricePerMonth: 10,
       tokens: 100,
-      cycleDetail: 'billed monthly'
+      // Getters so the copy/price/period reflect the CURRENT locale each
+      // render, not whatever locale happened to be active when this module
+      // first loaded (which is before the user could switch languages).
+      get cycleDetail() {
+        return formatSharedMessage('billedMonthly');
+      }
     },
     yearly: {
       pricePerMonth: 7,
       yearlyTotal: PRO_YEARLY_TOTAL,
       tokens: 100,
-      // Getter so the price/period reflect the CURRENT locale each render,
-      // not whatever locale happened to be active when this module first
-      // loaded (which is before the user could switch languages).
       get cycleDetail() {
-        return `billed yearly, ${formatCurrency(PRO_YEARLY_TOTAL)}${getPeriodSuffix('year')}`;
+        return formatSharedMessage('billedYearly', {
+          total: formatCurrency(PRO_YEARLY_TOTAL),
+          period: getPeriodSuffix('year')
+        });
       }
     }
   },
@@ -46,14 +52,19 @@ export const PRICING = {
     monthly: {
       pricePerMonth: 50,
       tokens: 500,
-      cycleDetail: 'billed monthly'
+      get cycleDetail() {
+        return formatSharedMessage('billedMonthly');
+      }
     },
     yearly: {
       pricePerMonth: 35,
       yearlyTotal: MAX_YEARLY_TOTAL,
       tokens: 500,
       get cycleDetail() {
-        return `billed yearly, ${formatCurrency(MAX_YEARLY_TOTAL)}${getPeriodSuffix('year')}`;
+        return formatSharedMessage('billedYearly', {
+          total: formatCurrency(MAX_YEARLY_TOTAL),
+          period: getPeriodSuffix('year')
+        });
       }
     }
   }

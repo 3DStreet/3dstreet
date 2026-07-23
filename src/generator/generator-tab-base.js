@@ -22,6 +22,7 @@ import {
 } from '@shared/utils/generationJobs.js';
 import { mountStyleSelector } from './mount-style-selector.js';
 import promptFieldStyles from '@shared/styles/promptFields.module.scss';
+import { t } from './i18n/messages.js';
 import posthog from 'posthog-js';
 
 /**
@@ -338,13 +339,13 @@ class GeneratorTabBase {
     if (!this.config.showImagePromptUI) return '';
 
     const labelText = this.config.optionalSourceImage
-      ? 'Reference Image'
-      : 'Source Image';
+      ? t('image.referenceImage')
+      : t('image.sourceImage');
     const required = this.sourceImageRequired();
     const indicator = `<span id="source-image-indicator" style="color: ${
       required ? '#ef4444' : '#F5A623'
     };" title="${
-      required ? 'Required for this model' : 'Recommended for better results'
+      required ? t('image.requiredForModel') : t('image.recommendedForResults')
     }">*</span>`;
 
     return `
@@ -354,21 +355,21 @@ class GeneratorTabBase {
                         <div class="flex flex-col space-y-2">
                             <label id="source-image-upload-label" class="flex items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
                                 <div class="flex flex-col items-center">
-                                    <p class="text-sm text-gray-500">Click to upload an image</p>
-                                    <p id="source-image-name" class="text-xs text-gray-400 mt-1">No file selected</p>
+                                    <p class="text-sm text-gray-500">${t('image.clickToUpload')}</p>
+                                    <p id="source-image-name" class="text-xs text-gray-400 mt-1">${t('image.noFileSelected')}</p>
                                 </div>
                                 <input id="source-image-input" type="file" class="hidden" accept="image/png, image/jpeg, image/jpg" />
                             </label>
                             <div id="source-image-preview-container" class="hidden relative">
                                 <img id="source-image-preview" class="w-full rounded-lg border border-gray-300" alt="Selected image">
-                                <button id="source-image-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="Clear image">
+                                <button id="source-image-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="${t('image.clearImage')}">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 hover:text-red-600 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
                             </div>
                             <div class="hidden" id="source-image-strength-container">
-                                <label class="block text-xs font-medium text-gray-700 mb-1">Image Strength: <span id="source-image-strength-value">0.3</span></label>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">${t('image.imageStrength')} <span id="source-image-strength-value">0.3</span></label>
                                 <input type="range" id="source-image-strength" min="0" max="1" step="0.05" value="0.3" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                             </div>
                         </div>
@@ -381,7 +382,7 @@ class GeneratorTabBase {
    * (validateGeneration), so the required marker is unconditional.
    */
   getPromptLabel() {
-    return 'Prompt <span class="text-red-500">*</span>';
+    return `${t('image.promptLabel')} <span class="text-red-500">*</span>`;
   }
 
   /**
@@ -390,9 +391,9 @@ class GeneratorTabBase {
    */
   getPromptPlaceholder() {
     if (this.config.tabType === 'create') {
-      return 'Describe what to generate';
+      return t('image.placeholderCreate');
     }
-    return 'Describe what to generate or how to change the source image';
+    return t('image.placeholderModify');
   }
 
   /**
@@ -514,7 +515,7 @@ class GeneratorTabBase {
 
                     <!-- Model Selection -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">${t('image.model')}</label>
                         <div id="${getId('model-selector-container')}"></div>
                     </div>
 
@@ -526,24 +527,24 @@ class GeneratorTabBase {
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">${this.getPromptLabel()}</label>
                         <div class="${promptFieldStyles.fieldGroup}">
-                            <label for="${getId('prompt-input')}" class="${promptFieldStyles.fieldLabel}">Instructions</label>
+                            <label for="${getId('prompt-input')}" class="${promptFieldStyles.fieldLabel}">${t('image.instructions')}</label>
                             <textarea id="${getId('prompt-input')}" rows="3" class="${promptFieldStyles.textarea}"
                                       placeholder="${this.getPromptPlaceholder()}"></textarea>
-                            <label for="${getId('style-input')}" class="${promptFieldStyles.fieldLabel}">Style</label>
+                            <label for="${getId('style-input')}" class="${promptFieldStyles.fieldLabel}">${t('image.style')}</label>
                             <div id="${getId('style-selector-container')}"></div>
                             <textarea id="${getId('style-input')}" rows="2" class="${promptFieldStyles.textarea}"
-                                      placeholder="No style change, use instructions only"></textarea>
+                                      placeholder="${t('image.stylePlaceholder')}"></textarea>
                         </div>
                     </div>
 
                     <!-- Image Dimensions -->
                     <div id="${getId('dimensions-group')}" class="mb-4 param-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Dimensions</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">${t('image.dimensions')}</label>
                         <!-- Orientation Selection -->
                         <div id="${getId('orientation-buttons')}" class="flex space-x-2 mb-3">
-                            <button type="button" data-orientation="square" class="orientation-button flex-1 px-3 py-1 border border-gray-300 bg-white text-gray-700 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">Square</button>
-                            <button type="button" data-orientation="landscape" class="orientation-button flex-1 px-3 py-1 border border-gray-300 bg-white text-gray-700 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">Landscape</button>
-                            <button type="button" data-orientation="portrait" class="orientation-button flex-1 px-3 py-1 border border-indigo-500 bg-indigo-50 text-indigo-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 selected-orientation">Portrait</button>
+                            <button type="button" data-orientation="square" class="orientation-button flex-1 px-3 py-1 border border-gray-300 bg-white text-gray-700 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">${t('image.orientationSquare')}</button>
+                            <button type="button" data-orientation="landscape" class="orientation-button flex-1 px-3 py-1 border border-gray-300 bg-white text-gray-700 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">${t('image.orientationLandscape')}</button>
+                            <button type="button" data-orientation="portrait" class="orientation-button flex-1 px-3 py-1 border border-indigo-500 bg-indigo-50 text-indigo-700 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 selected-orientation">${t('image.orientationPortrait')}</button>
                         </div>
                         <!-- Dimension Grid (Populated Dynamically) -->
                         <div id="${getId('dimensions-grid')}" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -553,12 +554,12 @@ class GeneratorTabBase {
 
                     <!-- Aspect Ratio (for Ultra model) -->
                     <div id="${getId('aspect-ratio-group')}" class="mb-4 param-group hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Aspect Ratio</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">${t('image.aspectRatio')}</label>
                         <select id="${getId('aspect-ratio-selector')}" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="1:1">1:1 (Square)</option>
+                            <option value="1:1">${t('image.aspectSquareOption')}</option>
                             <option value="4:3">4:3</option>
                             <option value="16:9" selected>16:9</option>
-                            <option value="21:9">21:9 (Ultra-wide)</option>
+                            <option value="21:9">${t('image.aspectUltrawideOption')}</option>
                             <option value="3:4">3:4</option>
                             <option value="9:16">9:16</option>
                             <option value="9:21">9:21</option>
@@ -571,7 +572,7 @@ class GeneratorTabBase {
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <span id="${getId('generate-text')}">Generate Image</span>
+                        <span id="${getId('generate-text')}">${t('image.generateImage')}</span>
                         <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 4px;">
                             <img src="/ui_assets/token-image.png" alt="Token" class="w-5 h-5" />
                             <span id="${getId('token-cost')}" class="text-sm font-medium">1</span>
@@ -583,14 +584,14 @@ class GeneratorTabBase {
                 <!-- Preview Column -->
                 <div class="lg:col-span-2 bg-white rounded-lg shadow">
                     <div class="p-6 border-b border-gray-200">
-                        <h2 class="text-lg font-medium">Preview</h2>
+                        <h2 class="text-lg font-medium">${t('image.preview')}</h2>
                     </div>
                     <div class="p-6 flex flex-col items-center justify-center min-h-[500px]" id="${getId('preview-container')}">
                         <div id="${getId('generation-placeholder')}" class="text-center text-gray-400">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            <p>Your generated image will appear here</p>
+                            <p>${t('image.previewPlaceholder')}</p>
                         </div>
                         <img id="${getId('preview-image')}" class="max-w-full max-h-[500px] hidden rounded-lg shadow-lg" alt="Generated image">
                         <div id="${getId('loading-indicator')}" class="hidden flex flex-col items-center w-full max-w-md">
@@ -600,8 +601,8 @@ class GeneratorTabBase {
                                     <div class="generator-progress-bar" id="${getId('generator-progress-bar')}" style="width: 0%;"></div>
                                     <div class="generator-progress-stripes"></div>
                                 </div>
-                                <span class="generator-progress-text" id="${getId('loading-text')}">Generating your image...</span>
-                                <span class="generator-progress-text hidden" id="${getId('generator-overtime-text')}" style="margin-top: 4px; color: #fbbf24;">Generation taking longer than expected.</span>
+                                <span class="generator-progress-text" id="${getId('loading-text')}">${t('image.generatingImage')}</span>
+                                <span class="generator-progress-text hidden" id="${getId('generator-overtime-text')}" style="margin-top: 4px; color: #fbbf24;">${t('image.overtime')}</span>
                             </div>
                             <!-- Email when done. Hidden until the submit
                                  returns a jobId — mid-render it's the "you
@@ -613,23 +614,23 @@ class GeneratorTabBase {
                             <label id="${getId('notify-email-row')}" class="hidden flex items-center gap-2 mt-4 text-sm text-gray-600 cursor-pointer select-none">
                                 <input id="${getId('notify-email')}" type="checkbox" checked
                                     class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                                Email me when my image is ready (you can close this tab)
+                                ${t('image.emailWhenReady')}
                             </label>
                         </div>
                     </div>
                     <div class="px-6 pb-6">
                         <div class="flex flex-wrap justify-center gap-2 mt-4" id="${getId('action-buttons')}">
                             <button id="${getId('copy-params-btn')}" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
-                                Copy Parameters
+                                ${t('image.copyParameters')}
                             </button>
                             <button id="${getId('open-image-btn')}" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
-                                Open Image
+                                ${t('image.openImage')}
                             </button>
                             <button id="${getId('download-image-btn')}" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
-                                Download Image
+                                ${t('image.downloadImage')}
                             </button>
                             <button id="${getId('copy-image-url-btn')}" class="px-3 py-1.5 border border-gray-300 bg-white text-gray-600 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 hidden">
-                                Copy Image URL
+                                ${t('image.copyImageUrl')}
                             </button>
                         </div>
                     </div>
@@ -1046,7 +1047,7 @@ class GeneratorTabBase {
       this.elements.imagePromptPreview.src = '';
     }
     if (this.elements.imagePromptName) {
-      this.elements.imagePromptName.textContent = 'No file selected';
+      this.elements.imagePromptName.textContent = t('image.noFileSelected');
     }
     if (this.elements.imagePromptInput) {
       this.elements.imagePromptInput.value = '';
@@ -1093,10 +1094,7 @@ class GeneratorTabBase {
       style: this.elements.styleInput.value
     });
     if (!prompt) {
-      FluxUI.showNotification(
-        'Add instructions or pick a style to generate an image.',
-        'error'
-      );
+      FluxUI.showNotification(t('image.addInstructionsOrStyle'), 'error');
       return false;
     }
 
@@ -1104,10 +1102,7 @@ class GeneratorTabBase {
     // model-level). Some models cannot run without a source image, so deny
     // hard at the client; there is no "generate anyway" bypass for these.
     if (this.sourceImageRequired() && !this.imagePromptData) {
-      FluxUI.showNotification(
-        'This model requires a source image. Please upload one to continue.',
-        'error'
-      );
+      FluxUI.showNotification(t('image.modelRequiresSource'), 'error');
       this.showReferenceImageArrow();
       return false;
     }
@@ -1151,7 +1146,7 @@ class GeneratorTabBase {
       return;
     }
 
-    FluxUI.showNotification('Invalid model selected', 'error');
+    FluxUI.showNotification(t('image.invalidModel'), 'error');
   }
 
   /**
@@ -1167,16 +1162,16 @@ class GeneratorTabBase {
     modal.className = 'modal';
     modal.innerHTML = `
       <div class="modal-content" style="max-width: 440px; padding: 1.5rem;">
-        <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">Add a reference image for better results</h3>
+        <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">${t('image.nudgeTitle')}</h3>
         <p style="font-size: 0.875rem; line-height: 1.55; color: #9ca3af; margin-bottom: 1.5rem;">
-          A photo or reference image gives the AI real-world structure to match, producing far more accurate, usable results. Text-only generation works, but results are rougher and best for quick concepts.
+          ${t('image.nudgeBody')}
         </p>
         <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
           <button id="image-nudge-generate" style="padding: 0.5rem 1rem; border: 1px solid #4b5563; background: transparent; color: #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer;">
-            Generate anyway
+            ${t('image.generateAnyway')}
           </button>
           <button id="image-nudge-goback" style="padding: 0.5rem 1rem; border: none; background: #4f46e5; color: #fff; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer;">
-            Go back
+            ${t('image.goBack')}
           </button>
         </div>
       </div>
@@ -1239,7 +1234,7 @@ class GeneratorTabBase {
       <svg width="30" height="20" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
         <path d="M29 10H3M3 10L11 3M3 10L11 17" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <span>Add image here</span>
+      <span>${t('image.addImageHere')}</span>
     `;
     group.appendChild(arrow);
 
@@ -1332,16 +1327,13 @@ class GeneratorTabBase {
   async generateReplicateImage(model) {
     const modelConfig = REPLICATE_MODELS[model];
     if (!modelConfig) {
-      FluxUI.showNotification('Invalid model selected', 'error');
+      FluxUI.showNotification(t('image.invalidModel'), 'error');
       return;
     }
 
     // Tab-level source-image requirement (legacy tabs)
     if (this.config.requiresSourceImage && !this.imagePromptData) {
-      FluxUI.showNotification(
-        'Source image is required for this model',
-        'error'
-      );
+      FluxUI.showNotification(t('image.sourceImageRequired'), 'error');
       return;
     }
 
@@ -1400,16 +1392,13 @@ class GeneratorTabBase {
   async generateFalImage(model) {
     const modelConfig = REPLICATE_MODELS[model];
     if (!modelConfig) {
-      FluxUI.showNotification('Invalid model selected', 'error');
+      FluxUI.showNotification(t('image.invalidModel'), 'error');
       return;
     }
 
     // Tab-level source-image requirement (legacy tabs)
     if (this.config.requiresSourceImage && !this.imagePromptData) {
-      FluxUI.showNotification(
-        'Source image is required for this model',
-        'error'
-      );
+      FluxUI.showNotification(t('image.sourceImageRequired'), 'error');
       return;
     }
 
@@ -1535,8 +1524,11 @@ class GeneratorTabBase {
         const remaining = this.lastRemainingTokens;
         FluxUI.showNotification(
           remaining !== undefined
-            ? `Image generated and saved to your gallery! ${remaining} gen tokens remaining. (${modelConfig.name})`
-            : `Image generated and saved to your gallery! (${modelConfig.name})`,
+            ? t('image.imageGeneratedRemaining', {
+                remaining,
+                model: modelConfig.name
+              })
+            : t('image.imageGenerated', { model: modelConfig.name }),
           'success'
         );
       })
@@ -1552,8 +1544,8 @@ class GeneratorTabBase {
           this.toggleLoading(false);
           FluxUI.showNotification(
             forced
-              ? "Image generation is taking longer than expected. We'll email you when it's ready — it will also appear in your gallery."
-              : 'Image generation is taking longer than expected. Check your gallery shortly — it will appear there when finished.',
+              ? t('image.takingLongerEmail')
+              : t('image.takingLongerGallery'),
             forced ? 'warning' : 'error'
           );
           return;
@@ -1563,8 +1555,8 @@ class GeneratorTabBase {
         this.toggleLoading(false);
         FluxUI.showNotification(
           error.jobError
-            ? `Image generation failed: ${error.jobError}`
-            : 'Image generation failed. Your tokens were refunded.',
+            ? t('image.generationFailedReason', { reason: error.jobError })
+            : t('image.generationFailedRefunded'),
           'error'
         );
       });
@@ -1587,12 +1579,11 @@ class GeneratorTabBase {
   handleGenerationError(error) {
     this.stopTimer();
 
-    let errorMessage = 'Failed to generate image';
+    let errorMessage = t('image.failedToGenerate');
     if (error.code === 'unauthenticated') {
-      errorMessage = 'Please sign in to use image generation';
+      errorMessage = t('image.signInToGenerate');
     } else if (error.code === 'resource-exhausted') {
-      errorMessage =
-        'No tokens available. Please purchase more tokens or upgrade to Pro.';
+      errorMessage = t('image.noTokensUpgrade');
     } else if (error.message) {
       errorMessage = error.message;
     }
@@ -1645,9 +1636,9 @@ class GeneratorTabBase {
       const fallbackButton = document.createElement('div');
       fallbackButton.className = 'text-center mt-4';
       fallbackButton.innerHTML = `
-                <p class="mb-2 text-sm text-gray-600">Unable to display image directly:</p>
+                <p class="mb-2 text-sm text-gray-600">${t('image.unableToDisplay')}</p>
                 <a href="${this.currentImageUrl}" target="_blank" class="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">
-                    Open Image in New Tab
+                    ${t('image.openInNewTab')}
                 </a>
             `;
 
@@ -1681,7 +1672,7 @@ class GeneratorTabBase {
         this.elements.generateSpinner.classList.remove('hidden');
       }
       if (this.elements.generateText) {
-        this.elements.generateText.textContent = 'Generating...';
+        this.elements.generateText.textContent = t('image.generating');
       }
 
       this.elements.copyParamsBtn.classList.add('hidden');
@@ -1710,7 +1701,7 @@ class GeneratorTabBase {
         this.elements.generateSpinner.classList.add('hidden');
       }
       if (this.elements.generateText) {
-        this.elements.generateText.textContent = 'Generate Image';
+        this.elements.generateText.textContent = t('image.generateImage');
       }
     }
   }
@@ -1720,11 +1711,11 @@ class GeneratorTabBase {
    */
   openImage() {
     if (!this.currentImageUrl) {
-      FluxUI.showNotification('No image to open', 'error');
+      FluxUI.showNotification(t('image.noImageToOpen'), 'error');
       return;
     }
     window.open(this.currentImageUrl, '_blank');
-    FluxUI.showNotification('Image opened in new tab!', 'success');
+    FluxUI.showNotification(t('image.imageOpened'), 'success');
   }
 
   /**
@@ -1732,7 +1723,7 @@ class GeneratorTabBase {
    */
   downloadImage() {
     if (!this.currentImageUrl) {
-      FluxUI.showNotification('No image to download', 'error');
+      FluxUI.showNotification(t('image.noImageToDownload'), 'error');
       return;
     }
 
@@ -1760,12 +1751,12 @@ class GeneratorTabBase {
           URL.revokeObjectURL(blobUrl);
         }, 100);
 
-        FluxUI.showNotification('Image download started!', 'success');
+        FluxUI.showNotification(t('image.imageDownloadStarted'), 'success');
       })
       .catch((error) => {
         console.error('Error downloading image:', error);
         FluxUI.showNotification(
-          'Failed to download image: ' + error.message,
+          t('image.failedToDownload', { error: error.message }),
           'error'
         );
       });
@@ -1776,16 +1767,19 @@ class GeneratorTabBase {
    */
   copyImageUrl() {
     if (!this.currentImageUrl) {
-      FluxUI.showNotification('No image URL to copy', 'error');
+      FluxUI.showNotification(t('image.noImageUrlToCopy'), 'error');
       return;
     }
     navigator.clipboard
       .writeText(this.currentImageUrl)
       .then(() => {
-        FluxUI.showNotification('Image URL copied to clipboard!', 'success');
+        FluxUI.showNotification(t('image.imageUrlCopied'), 'success');
       })
       .catch((err) => {
-        FluxUI.showNotification('Failed to copy URL: ' + err.message, 'error');
+        FluxUI.showNotification(
+          t('image.failedToCopyUrl', { error: err.message }),
+          'error'
+        );
       });
   }
 
@@ -1794,7 +1788,7 @@ class GeneratorTabBase {
    */
   copyParams() {
     if (Object.keys(this.currentParams).length === 0) {
-      FluxUI.showNotification('No parameters to copy', 'error');
+      FluxUI.showNotification(t('image.noParamsToCopy'), 'error');
       return;
     }
 
@@ -1805,11 +1799,11 @@ class GeneratorTabBase {
     navigator.clipboard
       .writeText(paramsString)
       .then(() => {
-        FluxUI.showNotification('Parameters copied to clipboard!', 'success');
+        FluxUI.showNotification(t('image.paramsCopied'), 'success');
       })
       .catch((err) => {
         FluxUI.showNotification(
-          'Failed to copy parameters: ' + err.message,
+          t('image.failedToCopyParams', { error: err.message }),
           'error'
         );
       });

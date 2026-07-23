@@ -10,6 +10,7 @@
 import * as Tooltip from '@radix-ui/react-tooltip';
 import MsftProfileImg from '../../../../ui_assets/profile-microsoft.png';
 import ProfileHoverCard from './ProfileHoverCard';
+import { useSharedMessages } from '../../i18n/sharedMessages';
 import styles from './ProfileButton.module.scss';
 
 // Profile icon SVG (default when not using Google/Microsoft)
@@ -200,9 +201,10 @@ export const renderProfileIcon = (currentUser, isLoading) => {
  * @param {Function} props.onClick - Click handler
  * @param {string} [props.className] - CSS class name
  * @param {string} [props.tooltipSide] - Tooltip position (default: 'bottom')
- * @param {string} [props.signedInText] - Tooltip text when signed in (default: 'Open profile')
- * @param {string} [props.signedOutText] - Tooltip text when signed out (default: 'Sign in')
- * @param {boolean} [props.showHoverCard] - Show detailed hover card instead of tooltip (default: false)
+ * @param {string} [props.signedInText] - Tooltip text when signed in (default: localized 'Open profile')
+ * @param {string} [props.signedOutText] - Tooltip text when signed out (default: localized 'Sign in')
+ * @param {boolean} [props.showHoverCard] - Show the click-toggle profile menu instead of a plain tooltip (default: false)
+ * @param {Function} [props.onSignIn] - Called when a signed-out user picks "Sign in" from the menu (only used with showHoverCard)
  * @returns {JSX.Element}
  */
 export const ProfileButton = ({
@@ -211,12 +213,16 @@ export const ProfileButton = ({
   onClick,
   className = '',
   tooltipSide = 'bottom',
-  signedInText = 'Open profile',
-  signedOutText = 'Sign in',
-  showHoverCard = false
+  signedInText,
+  signedOutText,
+  showHoverCard = false,
+  onSignIn
 }) => {
-  const tooltipContent = currentUser ? signedInText : signedOutText;
-  const ariaLabel = currentUser ? signedInText : signedOutText;
+  const t = useSharedMessages();
+  const tooltipContent = currentUser
+    ? (signedInText ?? t('openProfile'))
+    : (signedOutText ?? t('signIn'));
+  const ariaLabel = tooltipContent;
 
   const buttonElement = (
     <div role="button" aria-label={ariaLabel}>
@@ -238,10 +244,13 @@ export const ProfileButton = ({
     </div>
   );
 
-  // If hover card is enabled and user is signed in, use ProfileHoverCard
-  if (showHoverCard && currentUser && !isLoading) {
+  // If the menu is enabled, use ProfileHoverCard for BOTH signed-in and
+  // signed-out users (the menu offers sign-in + language when signed out).
+  if (showHoverCard && !isLoading) {
     return (
-      <ProfileHoverCard showDetails={true}>{buttonElement}</ProfileHoverCard>
+      <ProfileHoverCard showDetails onSignIn={onSignIn}>
+        {buttonElement}
+      </ProfileHoverCard>
     );
   }
 

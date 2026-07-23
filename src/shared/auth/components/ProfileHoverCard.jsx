@@ -1,13 +1,24 @@
 /**
- * ProfileHoverCard - Hover card overlay showing user profile information
- * Uses Radix UI HoverCard for profile button interactions
+ * ProfileHoverCard - click-toggle profile menu shown from the profile button.
+ *
+ * Uses Radix Popover (not HoverCard) so the trigger reliably TOGGLES: clicking
+ * the profile icon while the menu is open closes it, instead of the old
+ * HoverCard behaviour where a hover re-open fought the click and re-faded the
+ * card back in. Renders for BOTH signed-in and signed-out users:
+ *   - signed in: profile summary + Manage Account + Log Out + language picker
+ *   - signed out: a sign-in / create-account action + language picker
+ * so language can be changed from any app without an account. All copy is
+ * localized via the framework-free shared message table (this menu renders in
+ * the generator + Bollard Buddy, which don't mount react-intl).
  */
 import { useState, useEffect } from 'react';
-import * as HoverCard from '@radix-ui/react-hover-card';
+import * as Popover from '@radix-ui/react-popover';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../services/firebase';
 import { useAuthContext } from '../../contexts';
 import { getUserProfile } from '../../utils/username';
+import { useSharedMessages } from '../../i18n/sharedMessages';
+import LanguageSelector from './LanguageSelector';
 import posthog from 'posthog-js';
 import styles from './ProfileHoverCard.module.scss';
 
@@ -47,55 +58,50 @@ const ExternalLinkIcon = () => (
 
 const ProfileHoverCard = ({
   children,
-  showDetails = true, // Control whether to show the hover card
-  onClickTrigger = null // Optional click handler to pass through
+  showDetails = true, // When false, render the trigger with no menu at all.
+  onSignIn = null // Called when a signed-out user chooses to sign in.
 }) => {
   const { currentUser, tokenProfile, setCurrentUser } = useAuthContext();
+  const t = useSharedMessages();
   const [username, setUsername] = useState(null);
   const [isLoadingUsername, setIsLoadingUsername] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Load username when hover card is opened
+  // Load username when the menu is opened for a signed-in user. Keyed on
+  // currentUser?.uid so switching accounts (or signing out) clears the previous
+  // user's username instead of briefly showing it under the new identity.
+  const currentUid = currentUser?.uid;
   useEffect(() => {
+    // Reset on any identity change; the fetch below repopulates if signed in.
+    setUsername(null);
+    setIsLoadingUsername(false);
+
+    if (!showDetails || !currentUid || !isOpen) return;
+
+    let cancelled = false;
     const loadUsername = async () => {
-      if (currentUser?.uid) {
-        setIsLoadingUsername(true);
-        try {
-          const userProfile = await getUserProfile(currentUser.uid);
-          if (userProfile?.username) {
-            setUsername(userProfile.username);
-          }
-        } catch (error) {
-          console.error('Error loading username:', error);
+      setIsLoadingUsername(true);
+      try {
+        const userProfile = await getUserProfile(currentUid);
+        if (!cancelled && userProfile?.username) {
+          setUsername(userProfile.username);
         }
-        setIsLoadingUsername(false);
+      } catch (error) {
+        console.error('Error loading username:', error);
       }
+      if (!cancelled) setIsLoadingUsername(false);
     };
 
-    if (showDetails && currentUser && isOpen) {
-      loadUsername();
-    }
-  }, [currentUser, showDetails, isOpen]);
+    loadUsername();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUid, showDetails, isOpen]);
 
-  // Handle click on trigger
-  const handleTriggerClick = (e) => {
-    e.stopPropagation();
-    setIsOpen(!isOpen);
-    if (onClickTrigger) {
-      onClickTrigger(e);
-    }
-  };
-
-  // If showDetails is false, just render the children without hover card
-  if (!showDetails || !currentUser) {
+  // If the menu is disabled, just render the trigger untouched.
+  if (!showDetails) {
     return children;
   }
-
-  // User profile info
-  const userEmail = currentUser?.email || 'Not available';
-  const userDisplayName = currentUser?.displayName || userEmail.split('@')[0];
-  const userPhotoURL = currentUser?.photoURL || null;
-  const isPro = tokenProfile?.plan === 'PRO';
 
   // Logout handler
   const handleLogout = async (e) => {
@@ -104,88 +110,126 @@ const ProfileHoverCard = ({
     await signOut(auth);
     posthog.reset();
     setCurrentUser(null);
+    setIsOpen(false);
   };
 
-  // Open full profile in 3DStreet editor
+  // Open full profile in the 3DStreet editor
   const handleOpenFullProfile = (e) => {
     e.stopPropagation();
     posthog.capture('open_full_profile_from_hover_card');
     const editorUrl = `${window.location.origin}/#/modal/profile`;
     window.open(editorUrl, '_blank');
+    setIsOpen(false);
   };
 
-  return (
-    <HoverCard.Root open={isOpen} onOpenChange={setIsOpen} openDelay={200}>
-      <HoverCard.Trigger asChild>
-        <div onClick={handleTriggerClick}>{children}</div>
-      </HoverCard.Trigger>
+  // Sign in / create account (signed-out state)
+  const handleSignIn = (e) => {
+    e.stopPropagation();
+    setIsOpen(false);
+    if (onSignIn) onSignIn();
+  };
 
-      <HoverCard.Portal>
-        <HoverCard.Content
+  // Signed-in user info
+  const userEmail = currentUser?.email || '';
+  const userDisplayName =
+    currentUser?.displayName || userEmail.split('@')[0] || '';
+  const userPhotoURL = currentUser?.photoURL || null;
+  const isPro = tokenProfile?.plan === 'PRO';
+
+  return (
+    <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
+      <Popover.Trigger asChild>{children}</Popover.Trigger>
+
+      <Popover.Portal>
+        <Popover.Content
           className={styles.hoverCardContent}
           sideOffset={5}
           align="end"
-          onInteractOutside={() => setIsOpen(false)}
+          collisionPadding={8}
         >
-          {/* User Profile Section */}
-          <div className={styles.profileSection}>
-            <div className={styles.profileHeader}>
-              {userPhotoURL ? (
-                <img
-                  src={userPhotoURL}
-                  alt={userDisplayName}
-                  className={styles.userAvatar}
-                />
-              ) : (
-                <div className={styles.userAvatarPlaceholder}>
-                  {userDisplayName.charAt(0).toUpperCase()}
+          {currentUser ? (
+            <>
+              {/* Signed-in profile summary */}
+              <div className={styles.profileSection}>
+                <div className={styles.profileHeader}>
+                  {userPhotoURL ? (
+                    <img
+                      src={userPhotoURL}
+                      alt={userDisplayName}
+                      className={styles.userAvatar}
+                    />
+                  ) : (
+                    <div className={styles.userAvatarPlaceholder}>
+                      {(userDisplayName.charAt(0) || '?').toUpperCase()}
+                    </div>
+                  )}
+                  <div className={styles.userDetails}>
+                    <div className={styles.userName}>{userDisplayName}</div>
+                    <div className={styles.userEmail}>{userEmail}</div>
+                    {username && (
+                      <div className={styles.publicUsername}>@{username}</div>
+                    )}
+                    {isLoadingUsername && !username && (
+                      <div className={styles.publicUsername}>
+                        {t('loadingUsername')}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-              <div className={styles.userDetails}>
-                <div className={styles.userName}>{userDisplayName}</div>
-                <div className={styles.userEmail}>{userEmail}</div>
-                {username && (
-                  <div className={styles.publicUsername}>@{username}</div>
-                )}
-                {isLoadingUsername && !username && (
-                  <div className={styles.publicUsername}>
-                    Loading username&hellip;
+
+                {isPro && (
+                  <div className={styles.planBadge}>
+                    <span className={styles.proBadge}>PRO</span>
                   </div>
                 )}
               </div>
-            </div>
 
-            {isPro && (
-              <div className={styles.planBadge}>
-                <span className={styles.proBadge}>PRO</span>
+              <div className={styles.divider} />
+
+              <div className={styles.actionsSection}>
+                <button
+                  className={`${styles.actionButton} ${styles.editProfileButton}`}
+                  onClick={handleOpenFullProfile}
+                >
+                  {t('manageAccount')}
+                  <ExternalLinkIcon />
+                </button>
+
+                <button
+                  className={`${styles.actionButton} ${styles.logoutButton}`}
+                  onClick={handleLogout}
+                >
+                  {t('logOut')}
+                </button>
               </div>
-            )}
-          </div>
+            </>
+          ) : (
+            <>
+              {/* Signed-out state */}
+              <div className={styles.signedOutHeader}>
+                <div className={styles.userAvatarPlaceholder}>?</div>
+                <div className={styles.signedOutText}>{t('notSignedIn')}</div>
+              </div>
+
+              <div className={styles.actionsSection}>
+                <button
+                  className={`${styles.actionButton} ${styles.editProfileButton}`}
+                  onClick={handleSignIn}
+                >
+                  {t('signInOrCreateAccount')}
+                </button>
+              </div>
+            </>
+          )}
 
           <div className={styles.divider} />
 
-          {/* Quick Actions */}
-          <div className={styles.actionsSection}>
-            <button
-              className={`${styles.actionButton} ${styles.editProfileButton}`}
-              onClick={handleOpenFullProfile}
-            >
-              Manage Account
-              <ExternalLinkIcon />
-            </button>
+          <LanguageSelector />
 
-            <button
-              className={`${styles.actionButton} ${styles.logoutButton}`}
-              onClick={handleLogout}
-            >
-              Log Out
-            </button>
-          </div>
-
-          <HoverCard.Arrow className={styles.hoverCardArrow} />
-        </HoverCard.Content>
-      </HoverCard.Portal>
-    </HoverCard.Root>
+          <Popover.Arrow className={styles.hoverCardArrow} />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 };
 
