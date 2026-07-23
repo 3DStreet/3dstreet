@@ -78,3 +78,59 @@ describe('rotation — live-Shift truck↔rotate mid-drag switch (Tier 2)', () =
     expect(seq[seq.length - 1]).toBe(null); // gesture end
   });
 });
+
+describe('rotation — sky grab pivots on the ground centre, not the cursor-ray fallback (KD-38 asymmetry)', () => {
+  // The pan/rotate degenerate-cursor asymmetry: both gestures consume the same
+  // worldPointAt anchor, but on a sky grab (source==='fallback') PAN uses the
+  // fallback POINT directly (why it must lie on the cursor ray — #1867) while
+  // ROTATE branches on source and orbits the screen-centre GROUND pivot,
+  // ignoring the fallback point entirely. A degenerate-cursor test that
+  // exercises only one gesture says nothing about the other, so this guards
+  // the rotate side (LB pan's sky path is covered in ExperimentalControls.lbPan).
+  it('Shift+LB over sky orbits fallbackCentre (y≈0), never the cursor-ray fallback point', () => {
+    const scene = H.groundPlaneScene({ y: 0 });
+    // Map mode (tilt 38° > T=25) but with a wide 90° FOV so the TOP of the
+    // viewport looks ABOVE the horizon (sky) while the screen centre still
+    // meets the ground — so worldPointAt's centre pivot is a real ground point
+    // and the top-of-screen cursor grab misses everything → Step-3 fallback.
+    const cam = H.makePerspectiveCam({ pos: [0, 40, 51], lookAt: [0, 0, 0], fov: 90 });
+    const dom = H.makeDomElement(); // 1280x720 at (37,19) → centre client (677,379)
+    const c = H.makeControls({ camera: cam, dom, scene, streetLevel: true });
+    expect(H.tilt(cam)).toBeGreaterThan(25); // Map regime → orbit
+    expect(H.tilt(cam)).toBeLessThan(45); // shallow enough that the top is sky
+
+    // Cursor high in the viewport (client y=40, well above the horizon line):
+    // its ray points above horizontal → misses all geometry → fallback.
+    const SKY = { clientX: 677, clientY: 40 };
+    const anchor = c._cursorAnchor.worldPointAt(SKY.clientX, SKY.clientY);
+    expect(anchor.source).toBe('fallback'); // genuinely a sky grab
+    // The fallback POINT sits UP on the cursor ray, above the ground — exactly
+    // the point rotate must NOT pivot on (this is what pan uses, deliberately).
+    expect(anchor.y).toBeGreaterThan(1);
+
+    H.mouseDown(c, {
+      clientX: SKY.clientX,
+      clientY: SKY.clientY,
+      button: 0,
+      shiftKey: true
+    });
+    const pivot = c._latch.get('center').clone();
+
+    // Regression guard: rotate orbits the screen-centre GROUND pivot
+    // (_mapModePivot's fallbackCentre, y≈0), NOT the cursor-ray fallback point
+    // (anchor.y>1). If a refactor made rotate consume the fallback point, pivot.y
+    // would jump to ~anchor.y and this reds.
+    expect(pivot.y).toBeLessThan(0.5);
+    expect(Math.abs(pivot.y - anchor.y)).toBeGreaterThan(0.5);
+
+    // And the orbit still produces motion — a dead gesture is also lurch-free,
+    // so assert it actually rotates the camera about the ground pivot.
+    const before = H.pose(cam);
+    for (let i = 0; i < 8; i++) {
+      H.mouseMove(c, { clientX: SKY.clientX + i * 8, clientY: SKY.clientY });
+    }
+    H.mouseUp(c);
+    expect(Number.isFinite(cam.position.x)).toBe(true);
+    expect(cam.position.distanceTo(before.pos)).toBeGreaterThan(1e-3);
+  });
+});
