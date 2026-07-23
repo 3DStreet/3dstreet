@@ -1,0 +1,246 @@
+/* global AFRAME, THREE */
+
+// `shape` renders a polyline through its `shape-vertex` child entities. The
+// ordered child positions are the sole source of truth; the line/vertex meshes
+// are derived and set via setObject3D (never serialized). See DESIGN-NOTES for
+// the data model.
+//
+// Re-derivation has three triggers:
+//   - structural (a vertex attaches/detaches) — the child calls requestRederive
+//   - position change — observed by the `shape` SYSTEM tick below (a system
+//     tick runs while the scene is playing, independent of entity pause, so it
+//     works in the paused editor where an entity tick would not)
+//   - an explicit `updateEvent`, if the shape opts into event-driven updates
+//     instead of the per-frame dirty-check
+
+const UP = new THREE.Vector3(0, 1, 0);
+const MIN_SEGMENT_LENGTH = 1e-6;
+
+// The system owns the per-frame position observation for every shape, so it
+// keeps running even when the shapes' entities are paused (as they are in the
+// editor). Shapes that set `updateEvent` opt out and re-derive on their event.
+AFRAME.registerSystem('shape', {
+  init: function () {
+    this.shapes = new Set();
+  },
+
+  register: function (shape) {
+    this.shapes.add(shape);
+  },
+
+  unregister: function (shape) {
+    this.shapes.delete(shape);
+  },
+
+  tick: function () {
+    this.shapes.forEach((shape) => {
+      if (shape.data.updateEvent) return;
+      if (shape.positionsChanged()) {
+        shape.rederive();
+      }
+    });
+  }
+});
+
+AFRAME.registerComponent('shape', {
+  schema: {
+    lineColor: { type: 'color', default: '#ffe600' },
+    lineWidth: { type: 'number', default: 0.15 },
+    // When set, the shape re-derives on this event instead of the per-frame
+    // dirty-check; whatever moves a vertex is then responsible for firing it.
+    updateEvent: { type: 'string', default: '' }
+  },
+
+  init: function () {
+    this.destroyed = false;
+    this.rafId = null;
+    this.positionCache = new Map();
+    this.direction = new THREE.Vector3();
+    this.tmpQuaternion = new THREE.Quaternion();
+
+    this.requestRederive = this.requestRederive.bind(this);
+
+    this.lineGroup = new THREE.Group();
+    this.vertexGroup = new THREE.Group();
+    this.el.setObject3D('shapeLine', this.lineGroup);
+    this.el.setObject3D('shapeVertices', this.vertexGroup);
+
+    this.material = new THREE.MeshStandardMaterial({
+      color: this.data.lineColor,
+      roughness: 0.8,
+      metalness: 0.0
+    });
+
+    this.el.sceneEl.systems.shape.register(this);
+
+    // Play this shape (and its vertex children) so an `animation` on a vertex
+    // runs. Honoured by the editor at open()/reload; a freshly created shape is
+    // paused by the create command, so the animation begins after a reopen —
+    // re-derivation itself is pause-independent (the system tick). Not
+    // serialized, so it is re-applied on every load here.
+    this.el.setAttribute('data-no-pause', '');
+
+    if (this.data.updateEvent) {
+      this.el.addEventListener(this.data.updateEvent, this.requestRederive);
+    }
+
+    this.requestRederive();
+  },
+
+  update: function (oldData) {
+    if (
+      oldData.lineColor !== undefined &&
+      oldData.lineColor !== this.data.lineColor
+    ) {
+      this.material.color.set(this.data.lineColor);
+    }
+
+    if (oldData.updateEvent !== this.data.updateEvent) {
+      if (oldData.updateEvent) {
+        this.el.removeEventListener(oldData.updateEvent, this.requestRederive);
+      }
+      if (this.data.updateEvent) {
+        this.el.addEventListener(this.data.updateEvent, this.requestRederive);
+      }
+    }
+
+    if (
+      oldData.lineWidth !== undefined &&
+      oldData.lineWidth !== this.data.lineWidth
+    ) {
+      this.requestRederive();
+    }
+  },
+
+  remove: function () {
+    this.destroyed = true;
+    if (this.el.sceneEl && this.el.sceneEl.systems.shape) {
+      this.el.sceneEl.systems.shape.unregister(this);
+    }
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    if (this.data.updateEvent) {
+      this.el.removeEventListener(this.data.updateEvent, this.requestRederive);
+    }
+    this.clearGroup(this.lineGroup);
+    this.clearGroup(this.vertexGroup);
+    this.material.dispose();
+    if (this.el.getObject3D('shapeLine')) this.el.removeObject3D('shapeLine');
+    if (this.el.getObject3D('shapeVertices')) {
+      this.el.removeObject3D('shapeVertices');
+    }
+  },
+
+  // Child entities in DOM order that carry the shape-vertex marker. Guarded
+  // against text/non-entity nodes.
+  getVertexEls: function () {
+    const result = [];
+    const children = this.el.children;
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.components && child.components['shape-vertex']) {
+        result.push(child);
+      }
+    }
+    return result;
+  },
+
+  // True when any vertex has moved, been added, or been removed since the last
+  // check. Seeds the cache for new vertices (a missing entry counts as changed
+  // rather than dereferencing undefined) and prunes removed ones.
+  positionsChanged: function () {
+    const verts = this.getVertexEls();
+    let changed = false;
+    const seen = new Set();
+
+    for (let i = 0; i < verts.length; i++) {
+      const el = verts[i];
+      seen.add(el);
+      const pos = el.object3D.position;
+      const cached = this.positionCache.get(el);
+      if (!cached) {
+        this.positionCache.set(el, pos.clone());
+        changed = true;
+      } else if (!cached.equals(pos)) {
+        cached.copy(pos);
+        changed = true;
+      }
+    }
+
+    if (this.positionCache.size !== seen.size) {
+      this.positionCache.forEach((_value, el) => {
+        if (!seen.has(el)) {
+          this.positionCache.delete(el);
+          changed = true;
+        }
+      });
+    }
+
+    return changed;
+  },
+
+  requestRederive: function () {
+    if (this.destroyed || this.rafId !== null) return;
+    this.rafId = requestAnimationFrame(() => {
+      this.rafId = null;
+      if (this.destroyed) return;
+      this.rederive();
+    });
+  },
+
+  rederive: function () {
+    if (this.destroyed) return;
+
+    const verts = this.getVertexEls();
+    const radius = this.data.lineWidth;
+
+    this.clearGroup(this.lineGroup);
+    this.clearGroup(this.vertexGroup);
+
+    // Sphere caps at each vertex — also smooth the joints between segments.
+    for (let i = 0; i < verts.length; i++) {
+      const pos = verts[i].object3D.position;
+      const sphere = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 12, 12),
+        this.material
+      );
+      sphere.position.copy(pos);
+      this.vertexGroup.add(sphere);
+    }
+
+    // One cylinder per segment, oriented from the default +Y to the segment
+    // direction. Zero-length segments are skipped to avoid a NaN quaternion.
+    for (let i = 0; i < verts.length - 1; i++) {
+      const start = verts[i].object3D.position;
+      const end = verts[i + 1].object3D.position;
+      this.direction.subVectors(end, start);
+      const length = this.direction.length();
+      if (length < MIN_SEGMENT_LENGTH) continue;
+
+      const mesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius, radius, length, 8),
+        this.material
+      );
+      mesh.position.set(
+        (start.x + end.x) / 2,
+        (start.y + end.y) / 2,
+        (start.z + end.z) / 2
+      );
+      this.tmpQuaternion.setFromUnitVectors(UP, this.direction.normalize());
+      mesh.setRotationFromQuaternion(this.tmpQuaternion);
+      this.lineGroup.add(mesh);
+    }
+  },
+
+  // Dispose and detach every mesh in a group (the shared material is not
+  // disposed here — remove() owns it).
+  clearGroup: function (group) {
+    for (let i = group.children.length - 1; i >= 0; i--) {
+      const child = group.children[i];
+      if (child.geometry) child.geometry.dispose();
+      group.remove(child);
+    }
+  }
+});

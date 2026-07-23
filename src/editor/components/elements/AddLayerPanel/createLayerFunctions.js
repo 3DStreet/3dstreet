@@ -75,6 +75,33 @@ export function createSvgExtrudedEntity(position) {
   }
 }
 
+export function createShapeEntity(position) {
+  // An editable polyline: a `shape` parent whose `shape-vertex` children carry
+  // the point positions (the sole geometry truth). Created with its vertices in
+  // one atomic, undoable command. Vertices are hidden from the scene graph and
+  // hold no mesh of their own; the `shape` component derives the line.
+  const base =
+    position && typeof position.x === 'number'
+      ? position
+      : { x: 0, y: 0, z: 0 };
+  const vertex = (dx, dz) => ({
+    element: 'a-entity',
+    class: 'hideFromSceneGraph',
+    components: {
+      'shape-vertex': '',
+      position: `${base.x + dx} ${base.y} ${base.z + dz}`
+    }
+  });
+  AFRAME.INSPECTOR.execute('entitycreate', {
+    element: 'a-entity',
+    components: {
+      shape: '',
+      'data-layer-name': 'Shape • Polyline'
+    },
+    children: [vertex(0, 0), vertex(4, 0), vertex(4, 4)]
+  });
+}
+
 export function createManagedStreetFromStreetmixURLPrompt(
   position,
   hideBuildings

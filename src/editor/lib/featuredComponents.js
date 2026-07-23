@@ -17,7 +17,7 @@ export const GENERATOR_COMPONENT_PREFIXES = ['street-generated-'];
 // Prefix matching here would over-promote unrelated future components whose
 // names merely start with these strings (e.g. the A-Frame community
 // `geometry-merger`, or a hypothetical `materialLibrary`).
-export const FEATURED_COMPONENT_NAMES = ['geometry', 'material'];
+export const FEATURED_COMPONENT_NAMES = ['geometry', 'material', 'shape'];
 
 export function isFeaturedComponent(name) {
   return (
