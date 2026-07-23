@@ -197,10 +197,47 @@
   margin-bottom: 8px;
 }
 
+// Collapsed "Language" row: label on the left, current language + chevron on
+// the right. Clicking toggles the options list (mirrors the editor's
+// Help → Language submenu; options aren't shown at all times).
+.languageTrigger {
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+}
+
+.languageTriggerLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.languageTriggerValue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6d51e5;
+}
+
 .languageOptions {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  margin-top: 2px;
 }
 
 .languageOption {
@@ -293,6 +330,18 @@
 
   .languageLabel {
     color: #777;
+  }
+
+  .languageTrigger:hover {
+    background: #2a2a2a;
+  }
+
+  .languageTriggerLabel {
+    color: #f0f0f0;
+  }
+
+  .languageTriggerValue {
+    color: #b7a5f5;
   }
 
   .languageOption {
