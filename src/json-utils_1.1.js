@@ -945,7 +945,11 @@ AFRAME.registerComponent('set-loader-from-hash', {
           components: {
             'streetmix-loader': {
               streetmixStreetURL: streetURL,
-              synchronize: true
+              synchronize: true,
+              // Tag as the URL-fragment auto-import path so the loader fires
+              // streetmix_import_completed/_failed with source 'url_fragment'
+              // (#1874) — the path most Streetmix users actually arrive on.
+              importSource: 'url_fragment'
             }
           }
         };

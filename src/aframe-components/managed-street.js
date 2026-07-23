@@ -9,6 +9,7 @@ import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 import { levelToElevation } from '../tested/street-segment-utils';
 import { isBoundarySegment } from './street-layout-utils';
 import * as streetmixUtils from '../tested/streetmix-utils';
+import { captureStreetmixImport } from '../streetmixAnalytics.js';
 
 // segments-variants.js and aframe-streetmix-parsers-tested.js are CommonJS
 // (shared with the mocha suite, which require()s them), and Vite — which runs
@@ -286,6 +287,14 @@ AFRAME.registerComponent('managed-street', {
     synchronize: {
       type: 'boolean',
       default: false
+    },
+    // Import-telemetry source (#1874). Set to 'dialog' (etc.) by the paths we
+    // want to measure; left empty for template/preset streets so those don't
+    // inflate the Streetmix-import funnel. When set, loadAndParseStreetmixURL
+    // fires streetmix_import_completed/_failed with this as the `source`.
+    importSource: {
+      type: 'string',
+      default: ''
     },
     // Opt-in flag for the traffic animation feature. When true and the
     // user presses Play, street-traffic spawns animated
@@ -936,11 +945,25 @@ AFRAME.registerComponent('managed-street', {
         }
         // Success Message
         STREET.notify.successMessage('Loaded from Streetmix: ' + streetmixName);
+        // Streetmix-import telemetry (#1874). loadAndParseStreetmixURL only
+        // runs on a genuine import (synchronize=true), not on saved-scene
+        // reloads, so this fires once per real import — not on every load.
+        captureStreetmixImport(
+          'streetmix_import_completed',
+          data.importSource,
+          streetmixURL
+        );
       });
     } catch (error) {
       console.error('[managed-street] loader', 'Loading Error:', error);
       STREET.notify.warningMessage(
         'Error loading Streetmix data: ' + error.message
+      );
+      captureStreetmixImport(
+        'streetmix_import_failed',
+        data.importSource,
+        streetmixURL,
+        { error: error.message }
       );
     }
   },

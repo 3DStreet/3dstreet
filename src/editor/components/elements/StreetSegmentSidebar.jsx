@@ -22,6 +22,7 @@ import { Button } from '../elements';
 import Events from '../../lib/Events';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { isGeneratorComponent } from '../../lib/featuredComponents';
+import { captureSegmentEdit, SEGMENT_OPS } from '../../lib/segmentAnalytics';
 
 const StreetSegmentSidebar = ({ entity }) => {
   const intl = useIntl();
@@ -86,14 +87,24 @@ const StreetSegmentSidebar = ({ entity }) => {
                   </Button>
                   <Button
                     variant={'toolbtn'}
-                    onClick={() => cloneEntity(entity)}
+                    onClick={() => {
+                      captureSegmentEdit(SEGMENT_OPS.DUPLICATED, {
+                        segment_type: component.data['type']
+                      });
+                      cloneEntity(entity);
+                    }}
                     leadingIcon={<Copy32Icon />}
                   >
                     <FormattedMessage {...commonMessages.duplicate} />
                   </Button>
                   <Button
                     variant={'toolbtn'}
-                    onClick={() => removeSelectedEntity()}
+                    onClick={() => {
+                      captureSegmentEdit(SEGMENT_OPS.REMOVED, {
+                        segment_type: component.data['type']
+                      });
+                      removeSelectedEntity();
+                    }}
                     leadingIcon={<TrashIcon />}
                   >
                     <FormattedMessage {...commonMessages.delete} />
@@ -138,6 +149,11 @@ const StreetSegmentSidebar = ({ entity }) => {
                 componentname={componentName}
                 isSingle={false}
                 entity={entity}
+                onValueChange={(name, value) =>
+                  captureSegmentEdit(SEGMENT_OPS.TYPE_CHANGED, {
+                    segment_type: value
+                  })
+                }
               />
               {component.data['type'] === 'boundary' && (
                 <>
@@ -153,6 +169,11 @@ const StreetSegmentSidebar = ({ entity }) => {
                     componentname={componentName}
                     isSingle={false}
                     entity={entity}
+                    onValueChange={(name, value) =>
+                      captureSegmentEdit(SEGMENT_OPS.VARIANT_CHANGED, {
+                        variant: value
+                      })
+                    }
                   />
                   <PropertyRow
                     key="side"
