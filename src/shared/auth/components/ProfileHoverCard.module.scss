@@ -169,6 +169,106 @@
   }
 }
 
+// Signed-out header
+.signedOutHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.signedOutText {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+}
+
+// Language selector
+.languageSection {
+  margin-top: 12px;
+}
+
+.languageLabel {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+// Collapsed "Language" row: label on the left, current language + chevron on
+// the right. Clicking toggles the options list (mirrors the editor's
+// Help → Language submenu; options aren't shown at all times).
+.languageTrigger {
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+}
+
+.languageTriggerLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.languageTriggerValue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6d51e5;
+}
+
+.languageOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.languageOption {
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  color: #1a1a1a;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+}
+
+.languageOptionActive {
+  color: #6d51e5;
+
+  svg {
+    color: #6d51e5;
+  }
+}
+
 // Dark mode support (if needed in the future)
 @media (prefers-color-scheme: dark) {
   .hoverCardContent {
@@ -221,6 +321,42 @@
       background: #2a1515;
       border-color: #7f1d1d;
       color: #fca5a5;
+    }
+  }
+
+  .signedOutText {
+    color: #999;
+  }
+
+  .languageLabel {
+    color: #777;
+  }
+
+  .languageTrigger:hover {
+    background: #2a2a2a;
+  }
+
+  .languageTriggerLabel {
+    color: #f0f0f0;
+  }
+
+  .languageTriggerValue {
+    color: #b7a5f5;
+  }
+
+  .languageOption {
+    color: #f0f0f0;
+
+    &:hover {
+      background: #2a2a2a;
+    }
+  }
+
+  .languageOptionActive {
+    color: #b7a5f5;
+
+    svg {
+      color: #b7a5f5;
     }
   }
 }

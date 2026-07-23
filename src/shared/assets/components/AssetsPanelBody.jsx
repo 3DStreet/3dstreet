@@ -24,15 +24,41 @@ import {
   uploadAsset as sharedUploadAsset,
   FILE_PICKER_ACCEPT
 } from '@shared/asset-upload';
+import { useSharedMessages } from '@shared/i18n/sharedMessages';
 import styles from './AssetsPanelBody.module.scss';
 
 const FILTERS = [
-  { key: 'all', label: 'All', match: () => true },
-  { key: 'mesh', label: 'Meshes', match: (item) => item.type === 'mesh' },
-  { key: 'splat', label: 'Splats', match: (item) => item.type === 'splat' },
-  { key: 'image', label: 'Images', match: (item) => item.type === 'image' },
-  { key: 'video', label: 'Video', match: (item) => item.type === 'video' }
+  { key: 'all', labelId: 'filterAll', match: () => true },
+  {
+    key: 'mesh',
+    labelId: 'filterMeshes',
+    match: (item) => item.type === 'mesh'
+  },
+  {
+    key: 'splat',
+    labelId: 'filterSplats',
+    match: (item) => item.type === 'splat'
+  },
+  {
+    key: 'image',
+    labelId: 'filterImages',
+    match: (item) => item.type === 'image'
+  },
+  {
+    key: 'video',
+    labelId: 'filterVideo',
+    match: (item) => item.type === 'video'
+  }
 ];
+
+// Empty-state message per active filter tab.
+const EMPTY_MESSAGE_BY_FILTER = {
+  all: 'noAssetsYetUploadHint',
+  mesh: 'noMeshAssetsYet',
+  splat: 'noSplatAssetsYet',
+  image: 'noImageAssetsYet',
+  video: 'noVideoAssetsYet'
+};
 
 const AssetsPanelBody = ({
   // Editor opts in to drag-from-card + place-in-scene CTA in the mesh modal.
@@ -65,6 +91,7 @@ const AssetsPanelBody = ({
   const assetsState = useAssets();
   const { items, isLoggedIn, isLoadingMore, hasMore, reloadItems, loadMore } =
     assetsState;
+  const t = useSharedMessages();
 
   const sentinelRef = useRef(null);
   const [filter, setFilter] = useState('all');
@@ -169,10 +196,10 @@ const AssetsPanelBody = ({
     return (
       <div className={styles.body}>
         <div className={styles.signInPrompt}>
-          <p>Sign in to view your assets.</p>
+          <p>{t('signInToViewAssets')}</p>
           {onSignIn && (
             <button className={styles.signInButton} onClick={() => onSignIn()}>
-              Sign in
+              {t('signIn')}
             </button>
           )}
         </div>
@@ -204,7 +231,8 @@ const AssetsPanelBody = ({
       <div className={styles.toolbar}>
         <span className={styles.count}>
           {filteredItems.length}
-          {hasMore ? '+' : ''} {filteredItems.length === 1 ? 'item' : 'items'}
+          {hasMore ? '+' : ''}{' '}
+          {filteredItems.length === 1 ? t('itemSingular') : t('itemPlural')}
         </span>
         <div className={styles.toolbarActions}>
           <button
@@ -212,20 +240,16 @@ const AssetsPanelBody = ({
             className={styles.uploadButton}
             onClick={triggerUploadPicker}
             disabled={isUploading}
-            title={
-              isUploading
-                ? 'An upload is already in progress'
-                : 'Upload an asset'
-            }
+            title={isUploading ? t('uploadInProgress') : t('uploadAnAsset')}
           >
-            {isUploading ? 'Uploading…' : 'Upload'}
+            {isUploading ? t('uploading') : t('upload')}
           </button>
           <button
             type="button"
             className={styles.refreshButton}
             onClick={() => reloadItems()}
-            aria-label="Refresh assets"
-            title="Refresh assets"
+            aria-label={t('refreshAssets')}
+            title={t('refreshAssets')}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -253,7 +277,7 @@ const AssetsPanelBody = ({
             className={`${styles.filterTab} ${filter === f.key ? styles.active : ''}`}
             onClick={() => setFilter(f.key)}
           >
-            {f.label}
+            {t(f.labelId)}
           </button>
         ))}
       </div>
@@ -341,9 +365,7 @@ const AssetsPanelBody = ({
           }
           emptyState={
             <div className={styles.empty}>
-              {filter === 'all'
-                ? 'No assets yet. Drag GLB or image files in, or click Upload.'
-                : `No ${filter} assets yet.`}
+              {t(EMPTY_MESSAGE_BY_FILTER[filter] || 'noAssetsYet')}
             </div>
           }
           onUseForGenerator={onUseForGenerator}

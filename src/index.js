@@ -1,5 +1,6 @@
 /* global AFRAME, XMLHttpRequest, VERSION */
 import useStore from './store.js';
+import { captureStreetmixImport } from './streetmixAnalytics.js';
 import * as streetUtils from './street-utils.js';
 require('./json-utils_1.1.js'); // this defines STREET.utils
 STREET.utils.newScene = streetUtils.newScene;
@@ -39,7 +40,6 @@ require('./aframe-components/polygon-offset.js');
 require('./aframe-components/street-align.js');
 require('./aframe-components/street-ground.js');
 require('./aframe-components/street-label.js');
-require('./aframe-components/blending-opacity.js');
 require('./aframe-components/measure-line.js');
 require('./aframe-components/css2d-renderer.js');
 require('./aframe-components/google-maps-aerial.js');
@@ -179,7 +179,12 @@ AFRAME.registerComponent('streetmix-loader', {
     streetmixAPIURL: { type: 'string' },
     showBuildings: { default: true },
     name: { default: '' },
-    synchronize: { default: true }
+    synchronize: { default: true },
+    // Import-telemetry source (#1874). Set to 'url_fragment' or 'dialog' by the
+    // paths we want to measure; left empty for in-app template/preset adds so
+    // those don't inflate the Streetmix-import funnel. When set, this component
+    // fires `streetmix_import_completed` / `streetmix_import_failed`.
+    importSource: { type: 'string', default: '' }
   },
   update: function (oldData) {
     // fired at start and at each subsequent change of any schema value
@@ -273,11 +278,23 @@ AFRAME.registerComponent('streetmix-loader', {
         el.emit('streetmix-loader-street-loaded');
         // the streetmix data has been loaded, set the synchronize flag to false
         el.setAttribute('streetmix-loader', 'synchronize', false);
+        captureStreetmixImport(
+          'streetmix_import_completed',
+          data.importSource,
+          data.streetmixStreetURL
+        );
       } else {
         // We reached our target server, but it returned an error
         console.log(
           '[streetmix-loader]',
           'Loading Error: We reached the target server, but it returned an error'
+        );
+        el.emit('streetmix-loader-street-load-error', { status: this.status });
+        captureStreetmixImport(
+          'streetmix_import_failed',
+          data.importSource,
+          data.streetmixStreetURL,
+          { status: this.status }
         );
       }
     };
@@ -286,6 +303,13 @@ AFRAME.registerComponent('streetmix-loader', {
       console.log(
         '[streetmix-loader]',
         'Loading Error: There was a connection error of some sort'
+      );
+      el.emit('streetmix-loader-street-load-error', { status: 0 });
+      captureStreetmixImport(
+        'streetmix_import_failed',
+        data.importSource,
+        data.streetmixStreetURL,
+        { status: 0 }
       );
     };
     request.send();

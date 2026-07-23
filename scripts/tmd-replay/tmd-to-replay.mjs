@@ -196,8 +196,8 @@ const manifest = {
     source: dbPath.split('/').pop(),
     description:
       'Anonymized street-user replay manifest. Each agent carries only mode, ' +
-      'direction, speed and duration; timestamps are relative to the window ' +
-      'start. No identifiers, images, scores, or absolute per-user times.',
+      'direction, speed and duration, and timestamps are relative to the ' +
+      'window start. No identifiers, images, scores, or absolute per-user times.',
     deployment,
     speedUnit: 'mph',
     window: {

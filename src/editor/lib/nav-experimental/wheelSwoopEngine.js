@@ -8,6 +8,7 @@ import {
   WHEEL_ACCUM_EPS_TICKS,
   WHEEL_ANCHOR_DENOM_EPS_METRES,
   WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF,
+  WHEEL_ZOOM_OUT_MIN_ANCHOR_DIST_METRES,
   WHEEL_GROUND_REACH_CEILING_METRES,
   FALLBACK_FORWARD_DIST,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
@@ -583,7 +584,12 @@ export class WheelSwoopEngine {
         camPos: camera.position,
         hit,
         factor,
-        lateralCapMetres: cap
+        lateralCapMetres: cap,
+        // Zoom-out escape floor (TH-80, #1865): with the camera parked on
+        // its anchor (focus on an empty-bbox entity lands 0.25 m away), a
+        // pure %-of-distance step is ~zero and the wheel reads as dead.
+        // cappedDollyStep applies this on zoom-out (factor > 1) only.
+        minAnchorDistMetres: WHEEL_ZOOM_OUT_MIN_ANCHOR_DIST_METRES
       },
       this._dollyScratch
     );

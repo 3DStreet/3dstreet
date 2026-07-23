@@ -14,6 +14,9 @@
 export {
   DEFAULT_LOCALE,
   SUPPORTED_LOCALE_CODES,
+  // The labeled locale list now lives in @shared so the shared profile-menu
+  // switcher (generator + Bollard Buddy) and this editor switcher stay in sync.
+  SUPPORTED_LOCALES,
   detectBrowserLocale
 } from '@shared/i18n/locales';
 
@@ -21,17 +24,7 @@ import {
   SUPPORTED_LOCALE_CODES as SUPPORTED_LOCALE_CODES_INTERNAL,
   detectBrowserLocale as detectBrowserLocaleInternal
 } from '@shared/i18n/locales';
-
-/**
- * Locales we ship message catalogs for, with their endonym labels for the
- * language switcher. Codes must match SUPPORTED_LOCALE_CODES.
- */
-export const SUPPORTED_LOCALES = [
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Español' },
-  { code: 'pt-BR', label: 'Português (Brasil)' },
-  { code: 'fr', label: 'Français' }
-];
+import { notifyLocaleChanged } from '@shared/i18n/sharedMessages';
 
 const LOCALE_STORAGE_KEY = 'locale';
 
@@ -57,4 +50,7 @@ export function persistLocale(code) {
   } catch {
     // ignore storage errors (private mode, etc.)
   }
+  // Shared components (@shared/*) resolve their strings outside react-intl —
+  // let them know the language changed so they re-render (see sharedMessages).
+  notifyLocaleChanged();
 }

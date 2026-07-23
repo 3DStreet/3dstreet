@@ -1,6 +1,7 @@
 import Events from '../Events.js';
 import { Command } from '../command.js';
 import { createUniqueId } from '../entity.js';
+import { captureSegmentEdit, SEGMENT_OPS } from '../segmentAnalytics.js';
 
 /**
  * Inserts a new street-segment into a managed-street at a given index.
@@ -27,6 +28,8 @@ export class SegmentAddCommand extends Command {
     this.segmentIndex = payload.segmentIndex;
     // Pre-allocate the id so undo/redo can find the same logical entity.
     this.entityId = createUniqueId();
+    // Telemetry fires only on the first execute, not on redo (see execute).
+    this.telemetryCaptured = false;
   }
 
   execute(nextCommandCallback) {
@@ -36,6 +39,13 @@ export class SegmentAddCommand extends Command {
       return;
     }
     const segment = this.segment;
+
+    // Street-editing telemetry (#1873). Fire once for the user's action, not
+    // on every redo of the same command.
+    if (!this.telemetryCaptured) {
+      this.telemetryCaptured = true;
+      captureSegmentEdit(SEGMENT_OPS.ADDED, { segment_type: segment?.type });
+    }
 
     const segmentEntities = Array.from(streetEl.children).filter((child) =>
       child.hasAttribute('street-segment')

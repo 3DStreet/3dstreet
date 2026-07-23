@@ -18,6 +18,10 @@ import { initPostHog } from '@shared/analytics/posthog';
 // Import Firebase auth
 import { auth } from '@shared/services/firebase.js';
 
+// Import i18n helpers (framework-free — the generator has no IntlProvider)
+import { applyStaticTranslations } from './i18n/static-i18n.js';
+import { installLocaleReload } from './i18n/locale-reload.js';
+
 // Import auth mount function
 import { mountAuthUI, mountTokenDisplay } from './mount-auth.jsx';
 import { mountAppSwitcher } from './mount-app-switcher.jsx';
@@ -37,8 +41,16 @@ initPostHog();
 // Expose auth for compatibility
 window.firebaseAuth = auth;
 
+// Reload the page when the language changes (from the shared profile-menu
+// switcher). The generator's vanilla DOM is built once at load, so a full
+// reload is the simplest correct way to re-render everything in the new locale.
+installLocaleReload();
+
 // Initialize on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {
+  // Translate the static header/tab markup before anything is shown.
+  applyStaticTranslations();
+
   // Mount AppSwitcher
   mountAppSwitcher();
 
