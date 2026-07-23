@@ -78,6 +78,28 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Idioma',
     fr: 'Langue'
   },
+  // Shown in the confirm-before-reload dialog when switching language in an app
+  // that reloads to apply it (the generator). {from}/{to} are language endonyms
+  // and are never translated. The dialog renders this in BOTH the current and
+  // the requested language.
+  reloadLanguageConfirm: {
+    en: 'Reload to switch language from {from} to {to}?',
+    es: '¿Recargar para cambiar el idioma de {from} a {to}?',
+    'pt-BR': 'Recarregar para mudar o idioma de {from} para {to}?',
+    fr: 'Recharger pour changer la langue de {from} à {to} ?'
+  },
+  cancel: {
+    en: 'Cancel',
+    es: 'Cancelar',
+    'pt-BR': 'Cancelar',
+    fr: 'Annuler'
+  },
+  reload: {
+    en: 'Reload',
+    es: 'Recargar',
+    'pt-BR': 'Recarregar',
+    fr: 'Recharger'
+  },
 
   // ProfileButton tooltips
   openProfile: {

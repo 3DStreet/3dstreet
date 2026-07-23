@@ -14,7 +14,8 @@ import { useState } from 'react';
 import { useAuthContext } from '../../contexts';
 import { SUPPORTED_LOCALES } from '../../i18n/locales';
 import { useSharedLocale, useSharedMessages } from '../../i18n/sharedMessages';
-import { changeLocale } from '../../i18n/changeLocale';
+import { changeLocale, changeLocaleReloads } from '../../i18n/changeLocale';
+import { confirmLocaleReload } from '../../i18n/confirmLocaleReload';
 import styles from './ProfileHoverCard.module.scss';
 
 const CheckIcon = () => (
@@ -69,6 +70,21 @@ const LanguageSelector = () => {
   const activeLabel =
     SUPPORTED_LOCALES.find(({ code }) => code === locale)?.label ?? '';
 
+  // In apps that reload to apply a language change (the generator), confirm
+  // first so the user doesn't lose an in-progress prompt or uploaded assets.
+  // Apps that re-localize in place (Bollard Buddy) switch instantly.
+  const handleSelect = async (code) => {
+    if (code === locale) return;
+    if (changeLocaleReloads()) {
+      const confirmed = await confirmLocaleReload({
+        fromLocale: locale,
+        toLocale: code
+      });
+      if (!confirmed) return;
+    }
+    changeLocale(code, { uid: currentUser?.uid });
+  };
+
   return (
     <div className={styles.languageSection}>
       <button
@@ -101,7 +117,7 @@ const LanguageSelector = () => {
                 className={`${styles.languageOption} ${
                   active ? styles.languageOptionActive : ''
                 }`}
-                onClick={() => changeLocale(code, { uid: currentUser?.uid })}
+                onClick={() => handleSelect(code)}
               >
                 {/* Endonyms are shown in their own language, never translated. */}
                 <span>{label}</span>

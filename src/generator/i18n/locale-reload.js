@@ -15,8 +15,13 @@
 
 import { getActiveLocale } from '@shared/utils/format';
 import { LOCALE_CHANGED_EVENT } from '@shared/i18n/sharedMessages';
+import { setChangeLocaleReloads } from '@shared/i18n/changeLocale';
 
 export function installLocaleReload() {
+  // Tell the shared LanguageSelector that switching language reloads here, so it
+  // confirms before applying (a reload discards the user's in-progress work).
+  setChangeLocaleReloads(true);
+
   let renderedLocale = getActiveLocale();
 
   const reloadIfChanged = () => {

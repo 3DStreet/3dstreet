@@ -23,6 +23,20 @@ import { notifyLocaleChanged } from './sharedMessages';
 
 const LOCALE_STORAGE_KEY = 'locale';
 
+// Whether applying a locale change reloads the page in the current app. Only the
+// generator reloads (to rebuild its vanilla DOM in the new language); Bollard
+// Buddy re-localizes in place. The shared LanguageSelector reads this to decide
+// whether to confirm before switching (a reload discards in-progress work).
+let reloadsOnChange = false;
+
+export function setChangeLocaleReloads(reloads) {
+  reloadsOnChange = !!reloads;
+}
+
+export function changeLocaleReloads() {
+  return reloadsOnChange;
+}
+
 export async function changeLocale(code, { uid } = {}) {
   if (!SUPPORTED_LOCALE_CODES.includes(code)) return;
 
