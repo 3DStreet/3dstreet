@@ -69,17 +69,19 @@ const sendPostmarkEmail = async (
 
 /**
  * Get user info from Firebase Auth. displayName feeds the "Hi ${name}," email
- * greeting: Auth displayName when present (Google sign-ins), otherwise the
- * neutral "there" — NOT the raw email local-part ("Hi kieran.farr," reads
- * like a mail merge gone wrong) and NOT the socialProfile username (those
- * are auto-generated handles like "streetcreator_x4f2").
+ * greeting: Auth displayName when present (Google sign-ins), otherwise null so
+ * localized templates can pick their own neutral greeting ("Hi there," /
+ * "¡Hola!" — see CHROME in email/templates.js). Never fall back to the raw
+ * email local-part ("Hi kieran.farr," reads like a mail merge gone wrong) or
+ * the socialProfile username (those are auto-generated handles like
+ * "streetcreator_x4f2").
  */
 const getUserInfo = async (userId) => {
   try {
     const userRecord = await getAuth().getUser(userId);
     return {
       email: userRecord.email,
-      displayName: userRecord.displayName || 'there'
+      displayName: userRecord.displayName || null
     };
   } catch (error) {
     console.error(`Failed to get user info for ${userId}:`, error);
