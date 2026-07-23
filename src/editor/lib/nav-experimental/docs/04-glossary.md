@@ -25,6 +25,13 @@ LB drag in Map mode (horizontal-plane translation); "truck/pedestal" = LB
 drag in Street mode (horizontal + vertical translation); "pan/tilt" =
 Shift+LB rotation.
 
+⚠ These LB-drag "pan" gestures are **cursor-anchored**, not
+cursor-independent screen slides: they grab the world point under the
+cursor and keep it there, so their rate and their handling of degenerate
+cursor positions (sky / void / empty-bbox) depend on the cursor — and pan
+degenerates *differently* from Shift+LB rotate at the same spot. See
+**KD-38** (`02-key-decisions.md`).
+
 ## Angles & heights
 
 **Tilt (as an angle).** ⚠ *Distinct from the "tilt" camera-move above.*

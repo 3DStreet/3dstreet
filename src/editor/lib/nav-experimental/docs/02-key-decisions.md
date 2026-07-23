@@ -214,6 +214,43 @@ also *why* a single drag can wander the camera into a building (the
 recovery in KD-17 handles that), and why collision prevention can't rely
 on the gesture type being fixed.
 
+### KD-38 — LB pan is cursor-anchored, so its behaviour depends on cursor position
+
+LB pan (all three sub-modes — screen / truck / pedestal) is
+**cursor-anchored**: at mouse-down it grabs the world point under the
+cursor (`worldPointAt`) and keeps *that* point under the cursor for the
+whole drag. This is a deliberate change from legacy `EditorControls`,
+whose pan rate was cursor-*independent* (`max(minSpeedFactor,
+distToCentre) × panSpeed`). Because pan is derived from what sits under
+the cursor, two things follow — and both were the root of shipped
+regressions:
+
+- **Rate scales with the grabbed anchor's depth.** World-per-pixel is
+  proportional to how far the anchor is, so a shallow near-horizon grab
+  can latch a very distant anchor and "catapult" the camera — bounded by
+  the pan-anchor reach cap (`TH-81`).
+- **Pan needs a valid anchor *on the cursor ray*.** When the grab ray
+  misses all geometry (sky / void), `worldPointAt` returns a synthetic
+  Step-3 fallback that must lie on the **cursor ray** (`TH-21`), not the
+  camera's centre-forward — a centre-forward fallback injects the
+  cursor↔screen-centre offset into the first move and lurches the camera
+  (#1867). And an anchor grabbed ~0 m away (focusing an empty-bounding-box
+  entity parks the camera almost on it) makes the multiplicative dolly/pan
+  step degenerate, which is why zoom-out needs a floor (`TH-80`).
+
+**Asymmetry with rotate — a degenerate cursor position must be checked
+against *both* gestures.** Shift+LB rotation consumes the *same*
+`worldPointAt` anchor, but **branches on `source === 'fallback'`**: a sky
+grab orbits the screen-centre *ground* pivot (`_mapModePivot`'s
+`fallbackCentre`, on `y = 0`) and never touches the fallback point. So pan
+and rotate degenerate *differently* at the same cursor position — pan uses
+the fallback point, rotate discards it. Any change to degenerate-cursor
+handling (grab over sky, empty-bbox target, far-horizon grazing ray) must
+be verified for pan **and** rotate; a fix or test that exercises only one
+says nothing about the other. (This is the characterisation of the
+cursor-anchored-pan model that the original controls carried implicitly —
+see `06-changes-from-proposal.md`.)
+
 ### KD-29 — Map-orbit underground guard caps the input tilt, reversibly
 
 Because the orbit is decoupled (KD-03), the tilt clamp limits where you
