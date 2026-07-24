@@ -45,12 +45,14 @@ AFRAME.registerSystem('shape', {
 AFRAME.registerComponent('shape', {
   schema: {
     lineColor: { type: 'color', default: '#ffe600' },
-    lineWidth: { type: 'number', default: 0.15 }
-    // Note: an event-driven opt-out of the system dirty-check (a shape could
-    // re-derive on a named event instead of being polled) is intentionally not
-    // exposed as a schema property here — the system tick covers everything at
-    // this stage. The hooks below already honour `this.data.updateEvent`, so it
-    // can be reintroduced as a schema prop when the editing UI wants it.
+    lineWidth: { type: 'number', default: 0.15 },
+    // Event-driven opt-out of the system dirty-check: set to an event name and
+    // the shape re-derives on that event instead of being polled every frame
+    // (the hooks below honour it). Empty by default → the system tick polls,
+    // which covers the editor at this stage. It's an internal wiring prop, not
+    // a user setting, so `hidden` keeps it out of the properties panel while
+    // still being settable programmatically via setAttribute.
+    updateEvent: { type: 'string', default: '', hidden: true }
   },
 
   init: function () {
