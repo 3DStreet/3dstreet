@@ -12,6 +12,7 @@ import {
   formatAngle,
   formatArea
 } from '../../lib/shapeMeasure';
+import { polygonAreaXZ } from '../../../aframe-components/polygonMath.js';
 
 const MAX_LABELLED_VERTICES = 12;
 
@@ -55,15 +56,7 @@ const ShapeSidebar = ({ entity }) => {
       if (detail.entity === entity) setTick((n) => n + 1);
     };
     Events.on('entityupdate', onEntityUpdate);
-    // The Area row reads shape.area, which the component fills on its
-    // RAF-coalesced re-derive — so on a freshly committed/selected shape it can
-    // be 0 at first render. Bump once next frame (after that re-derive) so the
-    // row shows the real area without waiting for an entityupdate.
-    const raf = requestAnimationFrame(() => setTick((n) => n + 1));
-    return () => {
-      Events.off('entityupdate', onEntityUpdate);
-      cancelAnimationFrame(raf);
-    };
+    return () => Events.off('entityupdate', onEntityUpdate);
   }, [entity]);
 
   // On-canvas readouts live exactly as long as this shape is selected (the
@@ -177,12 +170,13 @@ const ShapeSidebar = ({ entity }) => {
       angles.push({ label: `@${i + 1}`, value: formatAngle(deg) });
     }
   }
-  // Enclosed area comes from the shape component (computed on every re-derive);
-  // read the value rather than recomputing. Static per React render — refreshes
-  // on entityupdate/reselect, like the length rows (the on-canvas label is the
-  // live one under animation).
+  // Compute the enclosed area from the vertices directly (same shoelace the
+  // component uses for its on-canvas label — identical value, no dependency on
+  // the component's async re-derive having run yet). Static per React render —
+  // refreshes on entityupdate/reselect, like the length rows (the on-canvas
+  // label is the live one under animation).
   const areaValue = closed
-    ? formatArea(entity?.components?.shape?.area || 0, unitsPreference)
+    ? formatArea(polygonAreaXZ(vertices), unitsPreference)
     : null;
 
   return (

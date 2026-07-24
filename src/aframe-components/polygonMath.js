@@ -47,7 +47,23 @@ export function polygonCentroidXZ(points) {
   signedArea *= 0.5;
   if (Math.abs(signedArea) < EPS_AREA) return meanXZ(points);
   const k = 1 / (6 * signedArea);
-  return { x: cx * k, z: cz * k };
+  // Clamp to the vertices' x/z bounding box. For a near-degenerate (but
+  // above-threshold) sliver, k blows up and the raw centroid can land far off
+  // the shape; clamping keeps the area label on/near the polygon for any pose.
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.z < minZ) minZ = p.z;
+    if (p.z > maxZ) maxZ = p.z;
+  }
+  return {
+    x: Math.max(minX, Math.min(maxX, cx * k)),
+    z: Math.max(minZ, Math.min(maxZ, cz * k))
+  };
 }
 
 function meanXZ(points) {

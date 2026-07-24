@@ -314,6 +314,15 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     // Tests the new segment (last→point) and, in Polygon mode, the live closing
     // edge (point→first) against the committed edges. A triangle can never
     // cross (all candidate edges are adjacent), so this only fires from n≥3.
+    //
+    // KNOWN LIMITATION (Polygon mode): because the *provisional* closing edge is
+    // tested at every intermediate placement, a simple polygon whose vertex
+    // order makes an intermediate closing edge cross (some comb / star / C
+    // shapes) cannot be built in that order — the click is rejected (with the
+    // red preview as the cue). This keeps every prefix-closed ring simple, but
+    // does over-constrain vs. "any simple final polygon". It is the approved
+    // spec's Decision D ("both new edges are checked in Polygon mode"); flagged
+    // for the live test in case the closing-edge check should move to finish.
     const placementCrosses = (point) => {
       const verts = verticesRef.current;
       const n = verts.length;
@@ -465,6 +474,11 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
         removeLastVertex();
+        // Clear any red/armed preview state — the removed vertex changed the
+        // candidate-edge set; the next pointermove recomputes it.
+        setInvalid(false);
+        updateHighlight(false);
+        closingArmedRef.current = false;
         refreshReadouts(null);
       } else if (
         (e.ctrlKey || e.metaKey) &&
@@ -476,6 +490,11 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         e.preventDefault();
         e.stopPropagation();
         removeLastVertex();
+        // Clear any red/armed preview state — the removed vertex changed the
+        // candidate-edge set; the next pointermove recomputes it.
+        setInvalid(false);
+        updateHighlight(false);
+        closingArmedRef.current = false;
         refreshReadouts(null);
       } else if (
         (e.ctrlKey || e.metaKey) &&
@@ -565,14 +584,19 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     }
 
     // forceClosed === true → commit closed (the Open-mode close gesture);
-    // undefined → derive from the current mode (Polygon commits closed, Open
-    // commits open). Either way a shape with < 3 vertices commits open (a line).
+    // undefined → derive from the current mode: Polygon commits closed, Open
+    // commits closed only if the close gesture is armed over the first vertex
+    // (and the closing edge doesn't cross) — so Enter/double-click while the
+    // preview shows a closed ring commits closed, not a contradicting open one.
+    // Either way a shape with < 3 vertices commits open (a line).
     function finish(forceClosed) {
       if (committingRef.current) return;
       committingRef.current = true;
       const verts = verticesRef.current;
       const wantClosed =
-        forceClosed === true || (forceClosed === undefined && isPolygon());
+        forceClosed === true ||
+        (forceClosed === undefined &&
+          (isPolygon() || (closingArmedRef.current && !closeCrosses())));
       const commitClosed = wantClosed && verts.length >= 3;
       if (verts.length >= 2) commitShape(commitClosed);
       teardown();

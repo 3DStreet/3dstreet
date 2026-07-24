@@ -28,14 +28,7 @@ describe('polygonAreaXZ', () => {
 
   it('computes a concave L-shape as its true area, not the convex hull', () => {
     // 10×10 square with a 5×5 bite out of the top-right corner → 75, not 100.
-    const L = [
-      p(0, 0),
-      p(10, 0),
-      p(10, 5),
-      p(5, 5),
-      p(5, 10),
-      p(0, 10)
-    ];
+    const L = [p(0, 0), p(10, 0), p(10, 5), p(5, 5), p(5, 10), p(0, 10)];
     expect(polygonAreaXZ(L)).toBeCloseTo(75, 6);
   });
 
@@ -65,6 +58,18 @@ describe('polygonCentroidXZ', () => {
     expect(c.x).toBeCloseTo(6, 6);
     expect(c.z).toBeCloseTo(0, 6);
     expect(Number.isNaN(c.x)).toBe(false);
+  });
+
+  it('clamps a near-degenerate sliver centroid to the vertex bounding box', () => {
+    // A very thin sliver: signed area is tiny but above the mean-fallback
+    // threshold, so the raw area-weighted centroid can shoot far outside. The
+    // clamp must keep it within the x/z bounding box.
+    const sliver = [p(0, 0), p(100, 1e-4), p(100, 2e-4), p(0, 1e-4)];
+    const c = polygonCentroidXZ(sliver);
+    expect(c.x).toBeGreaterThanOrEqual(0);
+    expect(c.x).toBeLessThanOrEqual(100);
+    expect(c.z).toBeGreaterThanOrEqual(0);
+    expect(c.z).toBeLessThanOrEqual(2e-4);
   });
 });
 
