@@ -14,12 +14,22 @@
 import { useEffect, useRef } from 'react';
 import useStore from '@/store';
 import ShapeReadouts from '../../../lib/ShapeReadouts';
-import { isSolidFloorHit } from '../../../lib/nav-experimental/cursorAnchor.js';
+import {
+  isSolidFloorHit,
+  worldHitNormal
+} from '../../../lib/nav-experimental/cursorAnchor.js';
 import { ProbeTargets } from '../../../lib/nav-experimental/probeTargets.js';
+import { BLOCK_SLOPE_MIN_DEGREES } from '../../../lib/nav-experimental/constants.js';
 
 const CLICK_MOVE_THRESHOLD = 4; // px — a larger press→release move is a drag
 const MIN_VERTEX_SPACING = 0.05; // m — reject a click ~on the previous vertex
 let shapeLayerCounter = 1; // distinguishes drawn shapes in the SceneGraph
+
+// A hit steeper than this reads as a wall / façade / cliff — not a drawable
+// floor. Same threshold (TH-47) the WASD controls use to decide walkable floor
+// vs a blocking wall, so "where you can draw" matches "where you can walk":
+// sloping roads / textured terrain draw fine, vertical building faces don't.
+const WALL_SLOPE_RAD = (BLOCK_SLOPE_MIN_DEGREES * Math.PI) / 180;
 
 // Surface pick: cast the cursor ray at the real scene geometry and return the
 // nearest SOLID-FLOOR hit — reusing the nav floor-probe machinery rather than
@@ -54,9 +64,20 @@ function pickSurfaceOrNull(clientX, clientY, probeTargets) {
   const targets = probeTargets ? probeTargets.targets() : [sceneObj];
   const hits = pickRaycaster.intersectObjects(targets, true);
   for (let i = 0; i < hits.length; i++) {
-    if (isSolidFloorHit(hits[i])) return hits[i].point.clone();
+    const hit = hits[i];
+    if (!isSolidFloorHit(hit)) continue; // scatter / editor chrome
+    // Reject walls (near-vertical façades/cliffs) the same way WASD does, and
+    // KEEP WALKING the ray past them: pointing at a building wall falls
+    // through to the ground behind it rather than snapping to the wall or
+    // refusing. Roofs and sloping roads (slope < 45°) stay drawable. This also
+    // guarantees every vertex sits on a nearly-flat surface, so the x/z
+    // plan-view area (KD-12) is always faithful — no wall-drawn degenerate area.
+    const ny = worldHitNormal(hit).y;
+    const slopeRad = Math.acos(Math.max(-1, Math.min(1, ny)));
+    if (slopeRad >= WALL_SLOPE_RAD) continue; // wall — fall through to the floor behind
+    return hit.point.clone();
   }
-  // No solid surface under the cursor — fall back to the y=0 ground plane
+  // No drawable floor under the cursor — fall back to the y=0 ground plane
   // (empty ground / the environment sit at y=0), or null on a full miss (the
   // ray points at/above the horizon).
   const hit = new THREE.Vector3();
