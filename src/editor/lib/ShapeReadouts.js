@@ -39,6 +39,7 @@ export default class ShapeReadouts {
     this.arcMaterial = new THREE.MeshBasicMaterial({
       color: ARC_COLOR,
       depthTest: false,
+      depthWrite: false, // always-on-top readout must not occlude the gizmo etc.
       transparent: true,
       opacity: 0.9
     });

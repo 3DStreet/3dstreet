@@ -92,7 +92,8 @@ AFRAME.registerComponent('shape', {
       color: this.data.lineColor,
       transparent: true,
       opacity: OVERLAY_OPACITY,
-      depthTest: false
+      depthTest: false,
+      depthWrite: false // always-on-top overlay must not occlude the gizmo etc.
     });
 
     this.el.sceneEl.systems.shape.register(this);

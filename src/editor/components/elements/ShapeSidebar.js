@@ -14,6 +14,13 @@ import {
 
 const MAX_LABELLED_VERTICES = 12;
 
+// Reused scratch for the hover pick (hoisted off the per-pointermove path).
+const hoverRaycaster = new THREE.Raycaster();
+const hoverNdc = new THREE.Vector2();
+const hoverPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const hoverWorld = new THREE.Vector3();
+const shapeWorldPos = new THREE.Vector3();
+
 // Ordered vertex world positions (local to the shape entity) as THREE.Vector3.
 function getShapeVertices(entity) {
   const shape = entity?.components?.shape;
@@ -81,24 +88,21 @@ const ShapeSidebar = ({ entity }) => {
       const camera = AFRAME.INSPECTOR?.camera;
       if (!camera) return;
       const rect = canvas.getBoundingClientRect();
-      const ndc = new THREE.Vector2(
+      hoverNdc.set(
         (2 * (e.clientX - rect.left)) / rect.width - 1,
         -((2 * (e.clientY - rect.top)) / rect.height - 1)
       );
-      const ray = new THREE.Raycaster();
-      ray.setFromCamera(ndc, camera);
-      const world = new THREE.Vector3();
-      if (
-        !ray.ray.intersectPlane(
-          new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
-          world
-        )
-      ) {
-        return;
-      }
-      entity.object3D.worldToLocal(world);
-      lastHoverRef.current = world;
-      render(world);
+      hoverRaycaster.setFromCamera(hoverNdc, camera);
+      // Intersect the plane at the SHAPE's height (its world y), not y=0: a
+      // shape sits at height k, so a y=0 pick would x/z-parallax off it under a
+      // tilted camera and pick the wrong nearest segment.
+      entity.object3D.getWorldPosition(shapeWorldPos);
+      hoverPlane.constant = -shapeWorldPos.y;
+      if (!hoverRaycaster.ray.intersectPlane(hoverPlane, hoverWorld)) return;
+      const local = hoverWorld.clone();
+      entity.object3D.worldToLocal(local);
+      lastHoverRef.current = local;
+      render(local);
     };
     if (useHover) canvas.addEventListener('pointermove', onMove);
 
