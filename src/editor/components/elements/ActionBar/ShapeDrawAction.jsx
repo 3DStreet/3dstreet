@@ -14,33 +14,33 @@
 import { useEffect, useRef } from 'react';
 import useStore from '@/store';
 import ShapeReadouts from '../../../lib/ShapeReadouts';
+import { isSolidFloorHit } from '../../../lib/nav-experimental/cursorAnchor.js';
+import { ProbeTargets } from '../../../lib/nav-experimental/probeTargets.js';
 
 const CLICK_MOVE_THRESHOLD = 4; // px — a larger press→release move is a drag
 const MIN_VERTEX_SPACING = 0.05; // m — reject a click ~on the previous vertex
 let shapeLayerCounter = 1; // distinguishes drawn shapes in the SceneGraph
 
-// Surface pick: raycast the real scene geometry under the cursor and return
-// the nearest hit point, falling back to the y=0 plane where the ray hits no
-// geometry (e.g. empty ground beyond the street), or null on a full miss
-// (horizon). Placing vertices on the true surface — not the y=0 plane — is
+// Surface pick: cast the cursor ray at the real scene geometry and return the
+// nearest SOLID-FLOOR hit — reusing the nav floor-probe machinery rather than
+// rolling our own. Placing vertices on the true surface (not the y=0 plane) is
 // what makes the line visible: 3DStreet road/sidewalk surfaces sit 0.1–0.2 m
-// above y=0, so a y=0 vertex is buried under the surface and the normal-depth
-// line is occluded. Surface picking also composes with per-vertex height and
-// (later) sloped streets / 3D tiles — the floor is never assumed flat.
+// above y=0, so a y=0 vertex is buried under them and the normal-depth line is
+// occluded.
+//
+// `isSolidFloorHit` (cursorAnchor.js) accepts a street-segment / building /
+// tiles surface and rejects **scatter** (trees, signs, people, vehicles,
+// fences) AND **editor chrome** (camera, gizmos, grid, the inspector cursor —
+// they carry no owning `.el`, so they reject for free). That chrome rejection
+// is the fix for the regression where a naive whole-scene raycast planted the
+// vertex at the camera. `ProbeTargets` is the curated, cached target list
+// (the #1855 perf work — excludes map layers, keeps Google tiles). Same
+// classification the nav floor probe and double-click teleport use.
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const pickRaycaster = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 
-function isDescendantOf(obj, root) {
-  let p = obj;
-  while (p) {
-    if (p === root) return true;
-    p = p.parent;
-  }
-  return false;
-}
-
-function pickSurfaceOrNull(clientX, clientY, excludeEl) {
+function pickSurfaceOrNull(clientX, clientY, probeTargets) {
   const canvas = AFRAME.scenes[0]?.canvas;
   const camera = AFRAME.INSPECTOR?.camera;
   const sceneObj = AFRAME.scenes[0]?.object3D;
@@ -51,23 +51,14 @@ function pickSurfaceOrNull(clientX, clientY, excludeEl) {
     -((2 * (clientY - rect.top)) / rect.height - 1)
   );
   pickRaycaster.setFromCamera(ndc, camera);
-  const excludeObj = excludeEl && excludeEl.object3D;
-  const hits = pickRaycaster.intersectObject(sceneObj, true);
+  const targets = probeTargets ? probeTargets.targets() : [sceneObj];
+  const hits = pickRaycaster.intersectObjects(targets, true);
   for (let i = 0; i < hits.length; i++) {
-    const obj = hits[i].object;
-    if (excludeObj && isDescendantOf(obj, excludeObj)) continue; // our preview
-    const el = obj.el;
-    if (
-      el &&
-      el.getAttribute &&
-      el.getAttribute('data-ignore-raycaster') !== null
-    ) {
-      continue;
-    }
-    return hits[i].point.clone();
+    if (isSolidFloorHit(hits[i])) return hits[i].point.clone();
   }
-  // No geometry under the cursor — fall back to the y=0 ground plane, or null
-  // if the ray misses even that (pointing at/above the horizon).
+  // No solid surface under the cursor — fall back to the y=0 ground plane
+  // (empty ground / the environment sit at y=0), or null on a full miss (the
+  // ray points at/above the horizon).
   const hit = new THREE.Vector3();
   return pickRaycaster.ray.intersectPlane(groundPlane, hit) ? hit : null;
 }
@@ -114,6 +105,10 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     if (AFRAME.INSPECTOR?.selectedEntity) {
       AFRAME.INSPECTOR.selectEntity(null);
     }
+
+    // Curated + cached raycast target list (excludes map layers; keeps tiles).
+    // Reused from the nav floor probes; recomputes only on scene-graph change.
+    const probeTargets = new ProbeTargets(scene);
 
     const style = useStore.getState().lastShapeStyle;
     const previewEl = document.createElement('a-entity');
@@ -195,7 +190,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
 
     const onPointerMove = (e) => {
       if (committingRef.current) return;
-      const point = pickSurfaceOrNull(e.clientX, e.clientY, previewEl);
+      const point = pickSurfaceOrNull(e.clientX, e.clientY, probeTargets);
       if (!point) {
         collapseTrailing();
         readoutsRef.current && readoutsRef.current.clear();
@@ -214,7 +209,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
         if (moved > CLICK_MOVE_THRESHOLD) return; // a drag (orbit/pan)
       }
-      const point = pickSurfaceOrNull(e.clientX, e.clientY, previewEl);
+      const point = pickSurfaceOrNull(e.clientX, e.clientY, probeTargets);
       if (!point) return; // horizon click — no-op
       const verts = verticesRef.current;
       if (verts.length) {
@@ -374,6 +369,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         if (verticesRef.current.length >= 2) commitShape();
         teardown();
       }
+      probeTargets.dispose();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
