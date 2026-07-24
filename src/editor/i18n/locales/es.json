@@ -43,6 +43,8 @@
   "addLayer.card.panoramaSphere.name": "Esfera panorámica 360°",
   "addLayer.card.raceTarget.desc": "Una puerta de meta. Atravesarla con el vehículo del jugador durante la reproducción termina la carrera, pausa la simulación y fija el tiempo final en la barra de herramientas.",
   "addLayer.card.raceTarget.name": "Meta de carrera",
+  "addLayer.card.shapePolyline.desc": "Agrega una forma de polilínea editable. Sus puntos son entidades hijas que puedes reposicionar; la línea los sigue. Un punto de partida para medir, delinear y (más adelante) crear formas rellenas y extruidas.",
+  "addLayer.card.shapePolyline.name": "Forma",
   "addLayer.card.streetmixStreet.desc": "Crea una calle de Streetmix adicional en tu escena de 3DStreet sin reemplazar ninguna calle existente.",
   "addLayer.card.streetmixStreet.name": "Calle desde URL de Streetmix",
   "addLayer.card.svgExtruded.desc": "Crea una entidad con el componente svg-extruder, que acepta un svgString y crea una nueva entidad con geometría extruida a partir del svg y aplica el material de mixin predeterminado grass.",

@@ -41,6 +41,8 @@ require('./aframe-components/street-align.js');
 require('./aframe-components/street-ground.js');
 require('./aframe-components/street-label.js');
 require('./aframe-components/measure-line.js');
+require('./aframe-components/shape-vertex.js');
+require('./aframe-components/shape.js');
 require('./aframe-components/css2d-renderer.js');
 require('./aframe-components/google-maps-aerial.js');
 require('./aframe-components/mode-manager.js');

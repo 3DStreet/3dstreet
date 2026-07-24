@@ -747,7 +747,9 @@
     "geoSidebar.opacityFlattening": "Opacity & Flattening",
     "trafficReplay.hiddenModesBody": "The linked street has vehicles hidden, so these recorded modes will not appear during play: {modes}.",
     "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
-    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street"
+    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
+    "addLayer.card.shapePolyline.name": "Shape",
+    "addLayer.card.shapePolyline.desc": "Add an editable polyline shape. Its points are child entities you can reposition; the line follows them. A starting point for measuring, outlining, and (later) filled and extruded shapes."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1497,7 +1499,9 @@
     "geoSidebar.opacityFlattening": "Opacity & Flattening",
     "trafficReplay.hiddenModesBody": "The linked street has vehicles hidden, so these recorded modes will not appear during play: {modes}.",
     "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
-    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street"
+    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
+    "addLayer.card.shapePolyline.name": "Shape",
+    "addLayer.card.shapePolyline.desc": "Add an editable polyline shape. Its points are child entities you can reposition; the line follows them. A starting point for measuring, outlining, and (later) filled and extruded shapes."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2247,6 +2251,8 @@
     "geoSidebar.opacityFlattening": "Opacity & Flattening",
     "trafficReplay.hiddenModesBody": "The linked street has vehicles hidden, so these recorded modes will not appear during play: {modes}.",
     "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
-    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street"
+    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
+    "addLayer.card.shapePolyline.name": "Shape",
+    "addLayer.card.shapePolyline.desc": "Add an editable polyline shape. Its points are child entities you can reposition; the line follows them. A starting point for measuring, outlining, and (later) filled and extruded shapes."
   }
 }

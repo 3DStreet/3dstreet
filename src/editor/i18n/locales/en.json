@@ -131,6 +131,12 @@
   "addLayer.card.raceTarget.name": {
     "defaultMessage": "Race Target"
   },
+  "addLayer.card.shapePolyline.desc": {
+    "defaultMessage": "Add an editable polyline shape. Its points are child entities you can reposition; the line follows them. A starting point for measuring, outlining, and (later) filled and extruded shapes."
+  },
+  "addLayer.card.shapePolyline.name": {
+    "defaultMessage": "Shape"
+  },
   "addLayer.card.streetmixStreet.desc": {
     "defaultMessage": "Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets."
   },
