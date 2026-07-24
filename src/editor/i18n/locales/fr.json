@@ -43,6 +43,8 @@
   "addLayer.card.panoramaSphere.name": "Sphère panoramique 360°",
   "addLayer.card.raceTarget.desc": "Un portique d'arrivée. Le franchir avec le véhicule du joueur pendant la lecture termine la course, met la simulation en pause et fige le temps final dans la barre d'outils.",
   "addLayer.card.raceTarget.name": "Ligne d'arrivée",
+  "addLayer.card.shapePolyline.desc": "Ajoutez une forme polyligne modifiable. Ses points sont des entités enfants que vous pouvez repositionner ; la ligne les suit. Un point de départ pour mesurer, tracer des contours et (plus tard) créer des formes remplies et extrudées.",
+  "addLayer.card.shapePolyline.name": "Forme",
   "addLayer.card.streetmixStreet.desc": "Créez une rue Streetmix supplémentaire dans votre scène 3DStreet sans remplacer les rues existantes.",
   "addLayer.card.streetmixStreet.name": "Rue depuis une URL Streetmix",
   "addLayer.card.svgExtruded.desc": "Créez une entité avec le composant svg-extruder, qui accepte un svgString et crée une nouvelle entité avec une géométrie extrudée à partir du svg et applique le matériau de mixin par défaut grass.",
