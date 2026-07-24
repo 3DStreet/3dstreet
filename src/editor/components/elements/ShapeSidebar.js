@@ -9,10 +9,16 @@ import {
   segmentLength,
   includedAngleDeg,
   formatLength,
-  formatAngle
+  formatAngle,
+  formatArea
 } from '../../lib/shapeMeasure';
 
 const MAX_LABELLED_VERTICES = 12;
+
+// Whether this shape entity is a closed polygon (≥ 3 vertices + closed prop).
+function isClosedShape(entity, vertexCount) {
+  return !!entity?.components?.shape?.data?.closed && vertexCount >= 3;
+}
 
 // Reused scratch for the hover pick (hoisted off the per-pointermove path).
 const hoverRaycaster = new THREE.Raycaster();
@@ -49,7 +55,15 @@ const ShapeSidebar = ({ entity }) => {
       if (detail.entity === entity) setTick((n) => n + 1);
     };
     Events.on('entityupdate', onEntityUpdate);
-    return () => Events.off('entityupdate', onEntityUpdate);
+    // The Area row reads shape.area, which the component fills on its
+    // RAF-coalesced re-derive — so on a freshly committed/selected shape it can
+    // be 0 at first render. Bump once next frame (after that re-derive) so the
+    // row shows the real area without waiting for an entityupdate.
+    const raf = requestAnimationFrame(() => setTick((n) => n + 1));
+    return () => {
+      Events.off('entityupdate', onEntityUpdate);
+      cancelAnimationFrame(raf);
+    };
   }, [entity]);
 
   // On-canvas readouts live exactly as long as this shape is selected (the
@@ -61,10 +75,12 @@ const ShapeSidebar = ({ entity }) => {
     readoutsRef.current = readouts;
 
     const render = (hoverPoint) => {
+      const verts = getShapeVertices(entity);
       readouts.renderAll(
-        getShapeVertices(entity),
+        verts,
         MAX_LABELLED_VERTICES,
-        hoverPoint
+        hoverPoint,
+        isClosedShape(entity, verts.length)
       );
     };
     lastHoverRef.current = null;
@@ -121,36 +137,67 @@ const ShapeSidebar = ({ entity }) => {
     const r = readoutsRef.current;
     if (!r) return;
     r.setUnits(unitsPreference);
+    const verts = getShapeVertices(entity);
     r.renderAll(
-      getShapeVertices(entity),
+      verts,
       MAX_LABELLED_VERTICES,
-      lastHoverRef.current
+      lastHoverRef.current,
+      isClosedShape(entity, verts.length)
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitsPreference]);
 
   const vertices = getShapeVertices(entity);
+  const n = vertices.length;
+  const closed = isClosedShape(entity, n);
+  // A closed ring has a wrap segment (n→1) and a corner at every vertex; an open
+  // polyline has n-1 segments and n-2 interior corners.
+  const segCount = closed ? n : n - 1;
   const segments = [];
-  for (let i = 0; i < vertices.length - 1; i++) {
+  for (let i = 0; i < segCount; i++) {
+    const j = (i + 1) % n;
     segments.push({
-      label: `${i + 1}→${i + 2}`,
+      label: `${i + 1}→${j + 1}`,
       value: formatLength(
-        segmentLength(vertices[i], vertices[i + 1]),
+        segmentLength(vertices[i], vertices[j]),
         unitsPreference
       )
     });
   }
   const angles = [];
-  for (let i = 1; i < vertices.length - 1; i++) {
-    const deg = includedAngleDeg(vertices[i - 1], vertices[i], vertices[i + 1]);
+  const cornerStart = closed ? 0 : 1;
+  const cornerEnd = closed ? n : n - 1; // exclusive
+  for (let i = cornerStart; i < cornerEnd; i++) {
+    const deg = includedAngleDeg(
+      vertices[(i + n - 1) % n],
+      vertices[i],
+      vertices[(i + 1) % n]
+    );
     if (deg !== null) {
       angles.push({ label: `@${i + 1}`, value: formatAngle(deg) });
     }
   }
+  // Enclosed area comes from the shape component (computed on every re-derive);
+  // read the value rather than recomputing. Static per React render — refreshes
+  // on entityupdate/reselect, like the length rows (the on-canvas label is the
+  // live one under animation).
+  const areaValue = closed
+    ? formatArea(entity?.components?.shape?.area || 0, unitsPreference)
+    : null;
 
   return (
     <div className="shape-sidebar">
       <div className="details">
+        {closed && (
+          <div className="propertyRow">
+            <div className="fakePropertyRowLabel">Area</div>
+            <div className="fakePropertyRowValue">
+              <span className="text-lg font-bold text-green-600">
+                {areaValue}
+              </span>
+            </div>
+          </div>
+        )}
         <div className="propertyRow">
           <div className="fakePropertyRowLabel">Segments</div>
           <div className="fakePropertyRowValue">
@@ -177,6 +224,7 @@ const ShapeSidebar = ({ entity }) => {
             <ul className="space-y-1">
               <li>• Lengths and angles measure the vertex centreline</li>
               <li>• Angles are measured in the ground (x-z) plane</li>
+              {closed && <li>• Area is the enclosed ground (x-z) footprint</li>}
               <li>• Edit colour and width below</li>
             </ul>
           </div>
@@ -190,21 +238,64 @@ ShapeSidebar.propTypes = {
   entity: PropTypes.object.isRequired
 };
 
-// Instructions shown in the right panel while the shape draw tool is active
-// (mirrors how the ruler surfaces guidance). Self-gates on the store so it can
-// be rendered unconditionally by the Sidebar.
+// Instructions + draw-mode switch shown in the right panel while the shape draw
+// tool is active (mirrors how the ruler surfaces guidance). Self-gates on the
+// store so it can be rendered unconditionally by the Sidebar. Strings are
+// hardcoded English, matching this block's existing copy (the draw feature does
+// not use the i18n catalog — a single mode switch does not warrant introducing
+// it here).
 export const ShapeDrawInstructions = () => {
   const active = useStore((s) => s.shapeDrawActive);
+  const mode = useStore((s) => s.shapeDrawMode);
+  const setMode = useStore((s) => s.setShapeDrawMode);
   if (!active) return null;
+  const polygon = mode !== 'open';
   return (
     <div className="sidepanelContent">
       <div className="rounded bg-blue-50 p-2 text-gray-600">
         <div className="mb-1 font-semibold uppercase">✏️ Draw a shape</div>
+        <div className="mb-2">
+          <div className="mb-1 font-semibold">Mode</div>
+          <label className="flex items-center gap-1">
+            <input
+              type="radio"
+              name="shapeDrawMode"
+              checked={polygon}
+              onChange={() => setMode('polygon')}
+            />
+            <span>
+              Polygon — clicks form a closed shape; its area is shown.
+            </span>
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="radio"
+              name="shapeDrawMode"
+              checked={!polygon}
+              onChange={() => setMode('open')}
+            />
+            <span>
+              Open polyline — clicks form an open line; click the first point to
+              close it.
+            </span>
+          </label>
+        </div>
         <ul className="space-y-1">
-          <li>• Click on the ground to place points</li>
-          <li>• Enter or double-click to finish</li>
-          <li>• Backspace removes the last point</li>
-          <li>• Esc cancels the shape</li>
+          {polygon ? (
+            <>
+              <li>• Click to add corners</li>
+              <li>• Enter or double-click to finish</li>
+              <li>• Backspace removes the last corner</li>
+              <li>• Esc cancels the shape</li>
+            </>
+          ) : (
+            <>
+              <li>• Click to add points</li>
+              <li>• Click the first point to close the shape</li>
+              <li>• Enter or double-click to finish (open)</li>
+              <li>• Backspace removes the last point; Esc cancels</li>
+            </>
+          )}
         </ul>
       </div>
     </div>

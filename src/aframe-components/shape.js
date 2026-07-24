@@ -5,6 +5,11 @@
 // are derived and set via setObject3D (never serialized). See DESIGN-NOTES for
 // the data model.
 //
+// A shape can be `closed` (a polygon): the derive adds one wrap segment back to
+// the first vertex, and the component computes and shows the enclosed x/z area
+// on an always-on DOM label. Area machinery is selection-independent, so it is
+// owned here (not by the editor's on-select readout layer).
+//
 // Re-derivation has three triggers:
 //   - structural (a vertex attaches/detaches) — the child calls requestRederive
 //   - position change — observed by the `shape` SYSTEM tick below (a system
@@ -13,8 +18,17 @@
 //   - an explicit `updateEvent`, if the shape opts into event-driven updates
 //     instead of the per-frame dirty-check
 
+import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import useStore from '../store.js';
+import { polygonAreaXZ, polygonCentroidXZ } from './polygonMath.js';
+
 const UP = new THREE.Vector3(0, 1, 0);
 const MIN_SEGMENT_LENGTH = 1e-6;
+
+// 1 m² in ft² (3.28084²). Inlined here rather than importing the editor's
+// formatArea (aframe-components must not depend on editor/lib) — the same
+// pattern measure-line uses for its own length formatting.
+const FT2_PER_M2 = 10.7639;
 
 // X-ray overlay: a second copy of the line drawn semi-transparent and always
 // on top (depthTest off), so the line stays visible where scene geometry — a
@@ -52,6 +66,11 @@ AFRAME.registerComponent('shape', {
   schema: {
     lineColor: { type: 'color', default: '#ffe600' },
     lineWidth: { type: 'number', default: 0.15 },
+    // A closed shape is a polygon: the derive adds a wrap segment (last→first)
+    // and the area label shows. Default false so every existing/open shape
+    // stays open; a non-default `true` serializes and round-trips (default is
+    // stripped on save, so an open shape carries no `closed` key).
+    closed: { type: 'boolean', default: false },
     // Event-driven opt-out of the system dirty-check: set to an event name and
     // the shape re-derives on that event instead of being polled every frame
     // (the hooks below honour it). Empty by default → the system tick polls,
@@ -97,6 +116,38 @@ AFRAME.registerComponent('shape', {
       depthTest: false,
       depthWrite: false // always-on-top overlay must not occlude the gizmo etc.
     });
+
+    // --- always-on area label (closed shapes only) ----------------------
+    // The enclosed-area readout must show whenever the shape is closed, whether
+    // or not it is selected — so it lives here, not in the editor's on-select
+    // ShapeReadouts layer. Created once, mutated in place: it lives in its OWN
+    // object3D slot, never the per-frame-cleared line/vertex/overlay groups (a
+    // CSS2DObject has no geometry and would be orphaned by clearGroup).
+    this.area = 0; // enclosed x/z area in m² (0 when open / < 3 vertices)
+    this.units = useStore.getState().unitsPreference;
+    this.areaLabelDiv = document.createElement('div');
+    this.areaLabelDiv.className = 'label shape-area-label';
+    this.areaLabelDiv.style.color = '#fff';
+    this.areaLabelDiv.style.fontFamily = 'sans-serif';
+    this.areaLabelDiv.style.fontSize = '12px';
+    this.areaLabelDiv.style.padding = '2px 4px';
+    this.areaLabelDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+    this.areaLabelDiv.style.borderRadius = '3px';
+    this.areaLabelDiv.style.pointerEvents = 'none';
+    this.areaLabelObject = new CSS2DObject(this.areaLabelDiv);
+    this.areaLabelObject.visible = false;
+    this.areaLabelGroup = new THREE.Group();
+    this.areaLabelGroup.add(this.areaLabelObject);
+    this.el.setObject3D('shapeAreaLabel', this.areaLabelGroup);
+    // Selector-subscribe (the store is wrapped in subscribeWithSelector): fires
+    // only when unitsPreference changes, and just re-formats the existing area.
+    this._unsubUnits = useStore.subscribe(
+      (s) => s.unitsPreference,
+      (units) => {
+        this.units = units;
+        this._updateAreaLabelText();
+      }
+    );
 
     this.el.sceneEl.systems.shape.register(this);
 
@@ -164,6 +215,10 @@ AFRAME.registerComponent('shape', {
     ) {
       this.requestRederive();
     }
+
+    if (oldData.closed !== undefined && oldData.closed !== this.data.closed) {
+      this.requestRederive();
+    }
   },
 
   remove: function () {
@@ -178,6 +233,19 @@ AFRAME.registerComponent('shape', {
     if (this.data.updateEvent) {
       this.el.removeEventListener(this.data.updateEvent, this.requestRederive);
     }
+    // Tear down the area label + its store subscription (measure-line leaks
+    // exactly this subscription — do not repeat that here).
+    if (this._unsubUnits) {
+      this._unsubUnits();
+      this._unsubUnits = null;
+    }
+    if (this.areaLabelObject) {
+      this.areaLabelGroup.remove(this.areaLabelObject);
+      if (this.areaLabelDiv && this.areaLabelDiv.parentNode) {
+        this.areaLabelDiv.parentNode.removeChild(this.areaLabelDiv);
+      }
+      this.areaLabelObject = null;
+    }
     this.clearGroup(this.lineGroup);
     this.clearGroup(this.vertexGroup);
     this.clearGroup(this.overlayGroup);
@@ -189,6 +257,9 @@ AFRAME.registerComponent('shape', {
     }
     if (this.el.getObject3D('shapeLineOverlay')) {
       this.el.removeObject3D('shapeLineOverlay');
+    }
+    if (this.el.getObject3D('shapeAreaLabel')) {
+      this.el.removeObject3D('shapeAreaLabel');
     }
   },
 
@@ -278,27 +349,84 @@ AFRAME.registerComponent('shape', {
     // One cylinder per segment, oriented from the default +Y to the segment
     // direction. Zero-length segments are skipped to avoid a NaN quaternion.
     for (let i = 0; i < verts.length - 1; i++) {
-      const start = verts[i].object3D.position;
-      const end = verts[i + 1].object3D.position;
-      this.direction.subVectors(end, start);
-      const length = this.direction.length();
-      if (length < MIN_SEGMENT_LENGTH) continue;
-
-      const mesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(radius, radius, length, 8),
-        this.material
+      this._addSegment(
+        verts[i].object3D.position,
+        verts[i + 1].object3D.position,
+        radius
       );
-      mesh.position.set(
-        (start.x + end.x) / 2,
-        (start.y + end.y) / 2,
-        (start.z + end.z) / 2
-      );
-      this.tmpQuaternion.setFromUnitVectors(UP, this.direction.normalize());
-      mesh.setRotationFromQuaternion(this.tmpQuaternion);
-      mesh.el = this.el;
-      this.lineGroup.add(mesh);
-      this._addOverlayMesh(mesh);
     }
+
+    // Closed polygon: one wrap segment back to the first vertex (same style,
+    // same joints). Only meaningful with ≥ 3 vertices — a 2-vertex "closed"
+    // shape renders as an open line (the wrap would coincide with the segment).
+    const closed = this.data.closed && verts.length >= 3;
+    if (closed) {
+      this._addSegment(
+        verts[verts.length - 1].object3D.position,
+        verts[0].object3D.position,
+        radius
+      );
+    }
+
+    this._updateArea(verts, closed);
+  },
+
+  // Build one segment cylinder (start→end) plus its x-ray overlay twin, oriented
+  // from +Y to the segment direction. Skips a zero-length segment (NaN guard).
+  _addSegment: function (start, end, radius) {
+    this.direction.subVectors(end, start);
+    const length = this.direction.length();
+    if (length < MIN_SEGMENT_LENGTH) return;
+
+    const mesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(radius, radius, length, 8),
+      this.material
+    );
+    mesh.position.set(
+      (start.x + end.x) / 2,
+      (start.y + end.y) / 2,
+      (start.z + end.z) / 2
+    );
+    this.tmpQuaternion.setFromUnitVectors(UP, this.direction.normalize());
+    mesh.setRotationFromQuaternion(this.tmpQuaternion);
+    mesh.el = this.el;
+    this.lineGroup.add(mesh);
+    this._addOverlayMesh(mesh);
+  },
+
+  // Recompute the enclosed area + reposition the area label. Runs on every
+  // re-derive so area tracks a vertex moving/added/removed (and an animation).
+  _updateArea: function (verts, closed) {
+    if (!closed) {
+      this.area = 0;
+      if (this.areaLabelObject) this.areaLabelObject.visible = false;
+      return;
+    }
+    // Vertices are read in the entity's local frame — the same frame the meshes
+    // and the label object live in — so the area (translation-invariant) and
+    // the centroid position are consistent with the geometry with no world/
+    // local offset. Read y from an actual vertex (0 for a committed centred
+    // shape, but k for the preview entity sitting at the scene origin).
+    const pts = verts.map((v) => v.object3D.position);
+    this.area = polygonAreaXZ(pts);
+    if (this.areaLabelObject) {
+      const c = polygonCentroidXZ(pts);
+      this.areaLabelObject.position.set(c.x, pts[0].y, c.z);
+      this.areaLabelObject.visible = true;
+      this._updateAreaLabelText();
+    }
+  },
+
+  // Format `this.area` into the label per the units preference. Uses a literal
+  // ² (renders natively in the DOM label). Inlined rather than importing the
+  // editor's formatArea (core must not depend on editor/lib).
+  _updateAreaLabelText: function () {
+    if (!this.areaLabelObject) return;
+    const text =
+      this.units === 'imperial'
+        ? `${(this.area * FT2_PER_M2).toFixed(2)}ft²`
+        : `${this.area.toFixed(2)}m²`;
+    this.areaLabelDiv.textContent = text;
   },
 
   // Add a translucent, always-on-top twin of `mesh` to the overlay group, so

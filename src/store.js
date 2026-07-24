@@ -162,6 +162,11 @@ const useStore = create(
         // right-panel instructions block.
         shapeDrawActive: false,
         setShapeDrawActive: (active) => set({ shapeDrawActive: active }),
+        // Shape draw mode: 'polygon' (auto-closing — the default, since street
+        // shapes are almost always closed) or 'open' (open polyline; close by
+        // clicking the first vertex). A session default; not persisted.
+        shapeDrawMode: 'polygon',
+        setShapeDrawMode: (mode) => set({ shapeDrawMode: mode }),
         // UI language for the localization experiment (#656). Auto-detected
         // from the browser on first load, then overridden by the user's stored
         // choice (persisted to localStorage via the View > Language menu).

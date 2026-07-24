@@ -66,17 +66,30 @@ export default class ShapeReadouts {
   }
 
   // Select mode: all segments/corners up to maxVertices, else the segment
-  // nearest hoverPoint (a THREE.Vector3 in el-local space) only.
-  renderAll(vertices, maxVertices, hoverPoint) {
+  // nearest hoverPoint (a THREE.Vector3 in el-local space) only. When `closed`,
+  // the ring has a wrap segment (last→first) and a corner at EVERY vertex
+  // (indices 0 and n-1 gain a second adjacent segment), so all indexing wraps
+  // mod n.
+  renderAll(vertices, maxVertices, hoverPoint, closed = false) {
     this.clear();
     const n = vertices.length;
     if (n < 2) return;
+    const ring = closed && n >= 3;
+    // Number of segments and corners: a closed ring has n of each; an open
+    // polyline has n-1 segments and n-2 interior corners.
+    const segCount = ring ? n : n - 1;
     if (n <= maxVertices) {
-      for (let i = 0; i < n - 1; i++) {
-        this._addLengthLabel(vertices[i], vertices[i + 1]);
+      for (let i = 0; i < segCount; i++) {
+        this._addLengthLabel(vertices[i], vertices[(i + 1) % n]);
       }
-      for (let i = 1; i < n - 1; i++) {
-        this._addAngle(vertices[i - 1], vertices[i], vertices[i + 1]);
+      const cornerStart = ring ? 0 : 1;
+      const cornerEnd = ring ? n : n - 1; // exclusive
+      for (let i = cornerStart; i < cornerEnd; i++) {
+        this._addAngle(
+          vertices[(i + n - 1) % n],
+          vertices[i],
+          vertices[(i + 1) % n]
+        );
       }
       return;
     }
@@ -84,15 +97,17 @@ export default class ShapeReadouts {
     // point yet, show nothing rather than dumping all ~2N labels — that dump
     // is the exact jank the cap exists to prevent.
     if (!hoverPoint) return;
-    // hover: nearest segment + the angle at its nearer endpoint
+    // hover: nearest segment + the angle at its nearer endpoint. Search wraps
+    // over the wrap segment too when closed (best can be n-1, whose end is
+    // vertices[0] via mod n — never vertices[n]).
     let best = -1;
     let bestDist = Infinity;
     let bestT = 0;
-    for (let i = 0; i < n - 1; i++) {
+    for (let i = 0; i < segCount; i++) {
       const { distance, t } = distanceToSegmentXZ(
         hoverPoint,
         vertices[i],
-        vertices[i + 1]
+        vertices[(i + 1) % n]
       );
       if (distance < bestDist) {
         bestDist = distance;
@@ -101,13 +116,15 @@ export default class ShapeReadouts {
       }
     }
     if (best < 0) return;
-    this._addLengthLabel(vertices[best], vertices[best + 1]);
-    const corner = bestT < 0.5 ? best : best + 1;
-    if (corner > 0 && corner < n - 1) {
+    this._addLengthLabel(vertices[best], vertices[(best + 1) % n]);
+    const corner = bestT < 0.5 ? best : (best + 1) % n;
+    // On a closed ring every corner is valid; on an open line skip the two
+    // endpoints (no interior angle there).
+    if (ring || (corner > 0 && corner < n - 1)) {
       this._addAngle(
-        vertices[corner - 1],
+        vertices[(corner + n - 1) % n],
         vertices[corner],
-        vertices[corner + 1]
+        vertices[(corner + 1) % n]
       );
     }
   }

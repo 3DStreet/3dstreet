@@ -14,6 +14,7 @@
 import { useEffect, useRef } from 'react';
 import useStore from '@/store';
 import ShapeReadouts from '../../../lib/ShapeReadouts';
+import { segmentsIntersectXZ } from '../../../lib/shapeMeasure';
 import {
   isSolidFloorHit,
   worldHitNormal
@@ -23,6 +24,10 @@ import { BLOCK_SLOPE_MIN_DEGREES } from '../../../lib/nav-experimental/constants
 
 const CLICK_MOVE_THRESHOLD = 4; // px — a larger press→release move is a drag
 const MIN_VERTEX_SPACING = 0.05; // m — reject a click ~on the previous vertex
+const CLOSE_PX_TOLERANCE = 12; // px — cursor this close to the first vertex arms
+// the close gesture (Open mode). Screen-space, not world metres, so it is
+// scale-invariant — matches the ruler/draw click-vs-drag pixel basis.
+const INVALID_COLOR = '#ff3b30'; // preview recolour when a placement would cross
 let shapeLayerCounter = 1; // distinguishes drawn shapes in the SceneGraph
 
 // A hit steeper than this reads as a wall / façade / cliff — not a drawable
@@ -107,6 +112,24 @@ function pickKPlaneOrNull(clientX, clientY, k) {
   return pickRaycaster.ray.intersectPlane(kPlane, hit) ? hit : null;
 }
 
+// Project a world point to client (screen) px via the inspector camera + canvas
+// rect — the inverse of the ndc math above. Returns {x,y} or null if the point
+// is behind the camera. Used to measure cursor-to-first-vertex distance in
+// screen space for the close gesture.
+const projVec = new THREE.Vector3();
+function worldToScreen(worldPoint) {
+  const canvas = AFRAME.scenes[0]?.canvas;
+  const camera = AFRAME.INSPECTOR?.camera;
+  if (!canvas || !camera) return null;
+  projVec.set(worldPoint.x, worldPoint.y, worldPoint.z).project(camera);
+  if (projVec.z > 1) return null; // behind the camera / beyond the far plane
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: rect.left + ((projVec.x + 1) / 2) * rect.width,
+    y: rect.top + ((1 - projVec.y) / 2) * rect.height
+  };
+}
+
 function isTextFieldFocused() {
   const el = document.activeElement;
   if (!el) return false;
@@ -128,6 +151,9 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
   const downXYRef = useRef(null);
   const placedLastRef = useRef(false);
   const committingRef = useRef(false);
+  const invalidRef = useRef(false); // preview currently recoloured invalid (red)
+  const closingArmedRef = useRef(false); // cursor is over the first vertex (Open)
+  const highlightRef = useRef(null); // first-vertex close-target marker
   const setLastShapeStyle = useStore.getState().setLastShapeStyle;
   const setShapeDrawActive = useStore.getState().setShapeDrawActive;
 
@@ -142,6 +168,10 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     verticesRef.current = [];
     committedElsRef.current = [];
     placedLastRef.current = false;
+    invalidRef.current = false;
+    closingArmedRef.current = false;
+    // Polygon (auto-closing) is the default draw mode; Open polyline is opt-in.
+    const isPolygon = () => useStore.getState().shapeDrawMode !== 'open';
     setShapeDrawActive(true);
     // Deselect on entry: nothing should stay selected while drawing (its
     // on-select readouts would linger over the new shape, and a stray
@@ -160,10 +190,36 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     previewEl.classList.add('hideFromSceneGraph');
     previewEl.setAttribute('shape', {
       lineColor: style.lineColor,
-      lineWidth: style.lineWidth
+      lineWidth: style.lineWidth,
+      // Polygon mode previews the closed ring (+ live area) through the cursor;
+      // Open mode previews an open polyline. The cursor is a real trailing
+      // vertex, so with `closed` the preview is a (committed+1)-gon and area
+      // shows from the 2nd committed vertex on (the cursor being the 3rd).
+      closed: isPolygon()
     });
     scene.appendChild(previewEl);
     previewElRef.current = previewEl;
+
+    // First-vertex close-target marker (Open mode): a flat ring highlighted when
+    // the cursor is within CLOSE_PX_TOLERANCE of the first vertex. Tool-owned,
+    // created once, hidden by default, disposed on cleanup.
+    const highlightGeo = new THREE.TorusGeometry(0.5, 0.06, 8, 24);
+    const highlightMat = new THREE.MeshBasicMaterial({
+      color: 0x00ffcc,
+      depthTest: false,
+      transparent: true,
+      opacity: 0.9
+    });
+    const highlightMesh = new THREE.Mesh(highlightGeo, highlightMat);
+    highlightMesh.rotation.x = Math.PI / 2; // lie flat in the x/z plane
+    highlightMesh.renderOrder = 1000;
+    highlightMesh.visible = false;
+    scene.object3D.add(highlightMesh);
+    highlightRef.current = {
+      mesh: highlightMesh,
+      geo: highlightGeo,
+      mat: highlightMat
+    };
 
     const trailingEl = document.createElement('a-entity');
     trailingEl.setAttribute('shape-vertex', '');
@@ -207,6 +263,75 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       r.renderActive(active);
     };
 
+    // Recolour the preview red on an invalid (self-intersecting) placement, and
+    // back to the style colour when valid. Idempotent — only touches the
+    // attribute on a real flip — so every path (move, miss, close, mode switch)
+    // can call it freely without churning setAttribute or leaving it stuck red.
+    const setInvalid = (bad) => {
+      if (invalidRef.current === bad) return;
+      invalidRef.current = bad;
+      const pEl = previewElRef.current;
+      if (!pEl) return;
+      pEl.setAttribute(
+        'shape',
+        'lineColor',
+        bad ? INVALID_COLOR : style.lineColor
+      );
+    };
+
+    // Show/hide the first-vertex close marker, positioning it on the first
+    // committed vertex when shown.
+    const updateHighlight = (show) => {
+      const h = highlightRef.current;
+      if (!h) return;
+      if (show) {
+        const v0 = verticesRef.current[0];
+        if (v0) h.mesh.position.set(v0.x, v0.y, v0.z);
+      }
+      h.mesh.visible = show;
+    };
+
+    // Committed non-closing ring edges [v_i, v_{i+1}] for i = 0..n-2.
+    const committedEdges = () => {
+      const verts = verticesRef.current;
+      const edges = [];
+      for (let i = 0; i < verts.length - 1; i++) {
+        edges.push([verts[i], verts[i + 1]]);
+      }
+      return edges;
+    };
+
+    // Does segment a→b cross any of `edges`? segmentsIntersectXZ returns false
+    // for a shared endpoint, so adjacent edges are excluded automatically.
+    const edgesCross = (a, b, edges) => {
+      for (const [c, d] of edges) {
+        if (segmentsIntersectXZ(a, b, c, d)) return true;
+      }
+      return false;
+    };
+
+    // Would placing `point` as the next vertex create a self-intersection?
+    // Tests the new segment (last→point) and, in Polygon mode, the live closing
+    // edge (point→first) against the committed edges. A triangle can never
+    // cross (all candidate edges are adjacent), so this only fires from n≥3.
+    const placementCrosses = (point) => {
+      const verts = verticesRef.current;
+      const n = verts.length;
+      if (n < 3) return false;
+      const edges = committedEdges();
+      if (edgesCross(verts[n - 1], point, edges)) return true;
+      if (isPolygon() && edgesCross(point, verts[0], edges)) return true;
+      return false;
+    };
+
+    // Would closing the current open ring (last→first) create a crossing?
+    const closeCrosses = () => {
+      const verts = verticesRef.current;
+      const n = verts.length;
+      if (n < 3) return false;
+      return edgesCross(verts[n - 1], verts[0], committedEdges());
+    };
+
     const addCommittedVertex = (point) => {
       verticesRef.current.push({ x: point.x, y: point.y, z: point.z });
       const el = document.createElement('a-entity');
@@ -244,14 +369,45 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       return pickKPlaneOrNull(clientX, clientY, verts[0].y);
     };
 
+    // Arm the Open-mode close gesture when the cursor is within
+    // CLOSE_PX_TOLERANCE px of the first vertex (≥3 committed so a close is
+    // meaningful). Snaps the trailing vertex onto the first so the preview draws
+    // the closing edge, and highlights the target. Returns true when armed.
+    const tryArmClose = (clientX, clientY) => {
+      if (isPolygon()) return false;
+      const verts = verticesRef.current;
+      if (verts.length < 3) return false;
+      const scr = worldToScreen(verts[0]);
+      if (!scr) return false;
+      if (Math.hypot(clientX - scr.x, clientY - scr.y) > CLOSE_PX_TOLERANCE) {
+        return false;
+      }
+      return true;
+    };
+
     const onPointerMove = (e) => {
       if (committingRef.current) return;
       const point = pickForNextVertex(e.clientX, e.clientY);
       if (!point) {
         collapseTrailing();
         readoutsRef.current && readoutsRef.current.clear();
+        setInvalid(false); // never leave the preview stuck red on a miss
+        updateHighlight(false);
+        closingArmedRef.current = false;
         return;
       }
+      // Open-mode close-gesture arming.
+      if (tryArmClose(e.clientX, e.clientY)) {
+        closingArmedRef.current = true;
+        updateHighlight(true);
+        setTrailing(verticesRef.current[0]); // preview the closing edge
+        setInvalid(closeCrosses());
+        refreshReadouts(verticesRef.current[0]);
+        return;
+      }
+      closingArmedRef.current = false;
+      updateHighlight(false);
+      setInvalid(placementCrosses(point));
       setTrailing(point);
       refreshReadouts(point);
     };
@@ -265,8 +421,16 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
         if (moved > CLICK_MOVE_THRESHOLD) return; // a drag (orbit/pan)
       }
+      // Open-mode close: commit the committed ring as a polygon (do not add the
+      // duplicate first vertex). Rejected if the closing edge would cross.
+      if (!isPolygon() && closingArmedRef.current) {
+        if (closeCrosses()) return;
+        finish(true);
+        return;
+      }
       const point = pickForNextVertex(e.clientX, e.clientY);
       if (!point) return; // horizon click — no-op
+      if (placementCrosses(point)) return; // reject a self-intersecting placement
       const verts = verticesRef.current;
       if (verts.length) {
         const last = verts[verts.length - 1];
@@ -279,6 +443,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       }
       addCommittedVertex(point);
       placedLastRef.current = true;
+      setInvalid(false);
       setTrailing(point);
       refreshReadouts(point);
     };
@@ -340,7 +505,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       verticesRef.current = [];
     }
 
-    function commitShape() {
+    function commitShape(closed) {
       const verts = verticesRef.current;
       const style = useStore.getState().lastShapeStyle;
       // Vertices are picked in world space, but entitycreate parents the shape
@@ -373,12 +538,22 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
           position: `${p.x - centroid.x} ${p.y - centroid.y} ${p.z - centroid.z}`
         }
       }));
+      // `closed` is written only when true, so an open shape's saved JSON keeps
+      // no `closed` key (the serializer strips schema defaults).
+      const shapeComponent = closed
+        ? {
+            lineColor: style.lineColor,
+            lineWidth: style.lineWidth,
+            closed: true
+          }
+        : { lineColor: style.lineColor, lineWidth: style.lineWidth };
+      const layerNoun = closed ? 'Polygon' : 'Polyline';
       AFRAME.INSPECTOR.execute('entitycreate', {
         element: 'a-entity',
         components: {
-          shape: { lineColor: style.lineColor, lineWidth: style.lineWidth },
+          shape: shapeComponent,
           position: `${centroid.x} ${centroid.y} ${centroid.z}`,
-          'data-layer-name': `Shape • Polyline ${shapeLayerCounter++}`
+          'data-layer-name': `Shape • ${layerNoun} ${shapeLayerCounter++}`
         },
         children
       });
@@ -389,11 +564,17 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       });
     }
 
-    function finish() {
+    // forceClosed === true → commit closed (the Open-mode close gesture);
+    // undefined → derive from the current mode (Polygon commits closed, Open
+    // commits open). Either way a shape with < 3 vertices commits open (a line).
+    function finish(forceClosed) {
       if (committingRef.current) return;
       committingRef.current = true;
-      const enough = verticesRef.current.length >= 2;
-      if (enough) commitShape();
+      const verts = verticesRef.current;
+      const wantClosed =
+        forceClosed === true || (forceClosed === undefined && isPolygon());
+      const commitClosed = wantClosed && verts.length >= 3;
+      if (verts.length >= 2) commitShape(commitClosed);
       teardown();
       // Returns to the translate tool; this emits transformmodechange which
       // flips newToolMode to 'off' and re-runs this effect's cleanup — the
@@ -410,6 +591,23 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       changeTransformMode('translate');
     }
 
+    // React to a mid-draw mode switch: re-point the preview's `closed`, and
+    // reset the close-arm / highlight / invalid state (the candidate-edge set
+    // differs between modes). Guarded on `readoutsRef.current` — set in
+    // onPreviewLoaded — so it never touches a pre-`loaded` or torn-down preview.
+    const unsubMode = useStore.subscribe(
+      (s) => s.shapeDrawMode,
+      () => {
+        const pEl = previewElRef.current;
+        if (pEl && readoutsRef.current) {
+          pEl.setAttribute('shape', 'closed', isPolygon());
+        }
+        closingArmedRef.current = false;
+        updateHighlight(false);
+        setInvalid(false);
+      }
+    );
+
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerup', onPointerUp);
@@ -424,14 +622,26 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       canvas.removeEventListener('dblclick', onDblClick);
       window.removeEventListener('keydown', onKeyDown, true);
       previewEl.removeEventListener('loaded', onPreviewLoaded);
+      unsubMode();
       canvas.style.cursor = null;
       setShapeDrawActive(false);
-      // Auto-finish anything still in progress: commit if ≥2 vertices, else
-      // discard. Guarded against the finish()-triggered re-entry above.
+      // Auto-finish anything still in progress: commit if ≥2 vertices (closed
+      // when Polygon mode + ≥3), else discard. Guarded against the
+      // finish()-triggered re-entry above.
       if (!committingRef.current) {
         committingRef.current = true;
-        if (verticesRef.current.length >= 2) commitShape();
+        if (verticesRef.current.length >= 2) {
+          commitShape(isPolygon() && verticesRef.current.length >= 3);
+        }
         teardown();
+      }
+      // Dispose the close-target marker.
+      const h = highlightRef.current;
+      if (h) {
+        scene.object3D.remove(h.mesh);
+        h.geo.dispose();
+        h.mat.dispose();
+        highlightRef.current = null;
       }
       probeTargets.dispose();
     };
