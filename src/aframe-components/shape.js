@@ -108,9 +108,15 @@ AFRAME.registerComponent('shape', {
     // Whole-shape transform: the standard gizmo is enabled and behaves like any
     // other scene element, because the draw tool places the shape entity at its
     // vertices' centroid (vertices stored relative), so the gizmo attaches on
-    // the shape and rotates/scales about its centre. (Vertices are hidden +
-    // non-selectable, so there is no per-point gizmo — intended.) A richer
-    // "move shape" affordance can refine this later.
+    // the shape and translates/rotates about its centre. (Vertices are hidden +
+    // non-selectable, so there is no per-point gizmo — intended.)
+    //
+    // SCALE is disabled (`data-transform-no-scale`): scaling desyncs the
+    // length/area readouts, which read the shape's intrinsic (unscaled) local
+    // geometry. Translate and the editor's Y-only rotation both preserve the
+    // readouts, so they stay enabled. A richer "move shape" affordance could
+    // re-enable scale later (with readouts that fold in world scale).
+    this.el.setAttribute('data-transform-no-scale', '');
 
     if (this.data.updateEvent) {
       this.el.addEventListener(this.data.updateEvent, this.requestRederive);

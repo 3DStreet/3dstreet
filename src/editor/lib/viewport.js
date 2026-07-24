@@ -525,6 +525,15 @@ export function Viewport(inspector) {
   });
 
   Events.on('transformmodechange', (mode) => {
+    // Some entities opt out of scale (`data-transform-no-scale`) — e.g. shapes,
+    // whose length/area readouts read intrinsic (unscaled) geometry, so a
+    // gizmo scale would desync them. Fall back to translate for those.
+    if (
+      mode === 'scale' &&
+      inspector.selectedEntity?.hasAttribute?.('data-transform-no-scale')
+    ) {
+      mode = 'translate';
+    }
     transformControls.setMode(mode);
     // Restrict rotation to the Y axis only.
     if (mode === 'rotate') {
@@ -602,6 +611,17 @@ export function Viewport(inspector) {
           measureLineControls.attach(object.el);
         } else {
           transformControls.attach(object);
+          // Selecting a no-scale entity while in scale mode: fall back to
+          // translate so the gizmo never scales it.
+          if (
+            transformControls.mode === 'scale' &&
+            object.el.hasAttribute('data-transform-no-scale')
+          ) {
+            transformControls.setMode('translate');
+            transformControls.showX = true;
+            transformControls.showY = true;
+            transformControls.showZ = true;
+          }
         }
       }
     }
