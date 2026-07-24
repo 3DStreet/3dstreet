@@ -12,6 +12,7 @@ import {
   Rotate24Icon,
   Translate24Icon,
   Ruler24Icon,
+  ShapeDraw24Icon,
   ZoomIn24Icon,
   ZoomOut24Icon,
   CameraReset24Icon
@@ -21,6 +22,7 @@ import {
   fadeOutRulerCursorEntity,
   useRulerTool
 } from './RulerAction.jsx';
+import { useShapeDrawTool } from './ShapeDrawAction.jsx';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const ActionBar = ({ selectedEntity }) => {
@@ -41,6 +43,10 @@ const ActionBar = ({ selectedEntity }) => {
       measureLineCounter,
       setMeasureLineCounter
     );
+
+  // The shape draw tool owns its own canvas listeners + preview via this hook,
+  // active whenever the 'shape' tool is selected.
+  useShapeDrawTool(changeTransformMode, newToolMode === 'shape');
 
   const handleNewToolClick = (tool) => {
     Events.emit('hidecursor');
@@ -155,6 +161,20 @@ const ActionBar = ({ selectedEntity }) => {
         })}
       >
         <Ruler24Icon />
+      </Button>
+      <Button
+        variant="toolbtn"
+        className={classNames({
+          [styles.active]: newToolMode === 'shape'
+        })}
+        onClick={handleNewToolClick.bind(null, 'shape')}
+        title={intl.formatMessage({
+          id: 'actionBar.shapeTool',
+          defaultMessage:
+            'Shape Tool - Draw a polyline; click to place points, Enter or double-click to finish, Esc to cancel, Backspace to undo the last point'
+        })}
+      >
+        <ShapeDraw24Icon />
       </Button>
       <UnitsPreference />
       <div className={styles.divider} />

@@ -1,3 +1,26 @@
+export const ShapeDraw24Icon = () => (
+  <svg
+    width="28"
+    height="28"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M4 20L10 6L15 15L20 9"
+      stroke="white"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
+    <circle cx="4" cy="20" r="1.8" fill="white" />
+    <circle cx="10" cy="6" r="1.8" fill="white" />
+    <circle cx="15" cy="15" r="1.8" fill="white" />
+    <circle cx="20" cy="9" r="1.8" fill="white" />
+  </svg>
+);
+
 export const Ruler24Icon = () => (
   <svg
     width="28"
