@@ -31,6 +31,14 @@ let shapeLayerCounter = 1; // distinguishes drawn shapes in the SceneGraph
 // sloping roads / textured terrain draw fine, vertical building faces don't.
 const WALL_SLOPE_RAD = (BLOCK_SLOPE_MIN_DEGREES * Math.PI) / 180;
 
+// Slope of the segment a→b from horizontal (radians). A near-vertical segment
+// (e.g. floor point → roof point directly above) approaches 90°.
+function segmentSlopeRad(a, b) {
+  const dy = Math.abs(a.y - b.y);
+  const horizontal = Math.hypot(a.x - b.x, a.z - b.z);
+  return Math.atan2(dy, horizontal);
+}
+
 // Surface pick: cast the cursor ray at the real scene geometry and return the
 // nearest SOLID-FLOOR hit — reusing the nav floor-probe machinery rather than
 // rolling our own. Placing vertices on the true surface (not the y=0 plane) is
@@ -209,16 +217,31 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       downXYRef.current = { x: e.clientX, y: e.clientY };
     };
 
+    // True if placing `point` next would make the segment from the last
+    // committed vertex too steep (a floor→roof jump). No previous vertex → the
+    // first point is unconstrained.
+    const wouldBeTooSteep = (point) => {
+      const verts = verticesRef.current;
+      if (!verts.length) return false;
+      return segmentSlopeRad(verts[verts.length - 1], point) >= WALL_SLOPE_RAD;
+    };
+
     const onPointerMove = (e) => {
       if (committingRef.current) return;
       const point = pickSurfaceOrNull(e.clientX, e.clientY, probeTargets);
       if (!point) {
         collapseTrailing();
         readoutsRef.current && readoutsRef.current.clear();
+        canvas.style.cursor = 'crosshair';
         return;
       }
       setTrailing(point);
       refreshReadouts(point);
+      // Signal that the pending segment is too steep to place (the rubber band
+      // still shows where you're pointing, but a click there is a no-op).
+      canvas.style.cursor = wouldBeTooSteep(point)
+        ? 'not-allowed'
+        : 'crosshair';
     };
 
     const onPointerUp = (e) => {
@@ -242,6 +265,10 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         );
         if (d < MIN_VERTEX_SPACING) return; // reject zero-length segment
       }
+      // Reject a link steeper than the wall threshold (a floor→roof jump): the
+      // polyline's own segments must be walkable-slope too, not just its points
+      // (Diarmid). Keeps a shape's segments consistent with the x/z area basis.
+      if (wouldBeTooSteep(point)) return;
       addCommittedVertex(point);
       placedLastRef.current = true;
       setTrailing(point);
