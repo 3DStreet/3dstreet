@@ -66,6 +66,11 @@ export const Shortcuts = {
       Events.emit('toolchange', 'hand');
     }
 
+    // p: shape (polyline draw)
+    if (keyCode === 80) {
+      Events.emit('toolchange', 'shape');
+    }
+
     // l: scale (was 's' until 2026-05-09; remapped for nav controls).
     // 's' still scales while the WASD kit is gated off.
     if (keyCode === 76 || (!wasdNav && keyCode === 83)) {
