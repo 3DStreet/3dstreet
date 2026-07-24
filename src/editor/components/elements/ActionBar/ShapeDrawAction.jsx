@@ -74,6 +74,12 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     committedElsRef.current = [];
     placedLastRef.current = false;
     setShapeDrawActive(true);
+    // Deselect on entry: nothing should stay selected while drawing (its
+    // on-select readouts would linger over the new shape, and a stray
+    // Backspace could otherwise target it).
+    if (AFRAME.INSPECTOR?.selectedEntity) {
+      AFRAME.INSPECTOR.selectEntity(null);
+    }
 
     const style = useStore.getState().lastShapeStyle;
     const previewEl = document.createElement('a-entity');
@@ -93,6 +99,9 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     trailingElRef.current = trailingEl;
 
     const onPreviewLoaded = () => {
+      // Guard against a draw that finished before 'loaded' fired — teardown
+      // has already nulled the ref and detached the element.
+      if (previewElRef.current !== previewEl) return;
       readoutsRef.current = new ShapeReadouts(previewEl);
       readoutsRef.current.setUnits(useStore.getState().unitsPreference);
     };
@@ -145,10 +154,12 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     };
 
     const onPointerDown = (e) => {
+      if (committingRef.current) return;
       downXYRef.current = { x: e.clientX, y: e.clientY };
     };
 
     const onPointerMove = (e) => {
+      if (committingRef.current) return;
       const point = pickGroundOrNull(e.clientX, e.clientY);
       if (!point) {
         collapseTrailing();
@@ -160,6 +171,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     };
 
     const onPointerUp = (e) => {
+      if (committingRef.current) return;
       const down = downXYRef.current;
       downXYRef.current = null;
       placedLastRef.current = false;
@@ -186,6 +198,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     };
 
     const onDblClick = () => {
+      if (committingRef.current) return;
       // The first release of a native double-click already placed a vertex if
       // it passed the spacing guard; retract only that one, then finish.
       if (placedLastRef.current) removeLastVertex();
@@ -215,6 +228,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     // --- finish / cancel --------------------------------------------------
     function teardown() {
       const pEl = previewElRef.current;
+      previewEl.removeEventListener('loaded', onPreviewLoaded);
       if (readoutsRef.current) {
         readoutsRef.current.dispose();
         readoutsRef.current = null;
@@ -229,14 +243,29 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     function commitShape() {
       const verts = verticesRef.current;
       const style = useStore.getState().lastShapeStyle;
-      const children = verts.map((v) => ({
-        element: 'a-entity',
-        class: 'hideFromSceneGraph',
-        components: {
-          'shape-vertex': '',
-          position: `${v.x} ${v.y} ${v.z}`
-        }
-      }));
+      // Vertices are picked in world space, but entitycreate parents the shape
+      // to the editor's default parent (#street-container) and treats child
+      // positions as LOCAL to it. Convert so the committed shape lands exactly
+      // where the world-space preview showed it, even if that parent is offset
+      // (e.g. a geospatial scene).
+      const parentEl = document.getElementById('street-container');
+      const parentObj = parentEl && parentEl.object3D;
+      if (parentObj) parentObj.updateMatrixWorld();
+      const toLocal = (v) => {
+        const w = new THREE.Vector3(v.x, v.y, v.z);
+        return parentObj ? parentObj.worldToLocal(w) : w;
+      };
+      const children = verts.map((v) => {
+        const p = toLocal(v);
+        return {
+          element: 'a-entity',
+          class: 'hideFromSceneGraph',
+          components: {
+            'shape-vertex': '',
+            position: `${p.x} ${p.y} ${p.z}`
+          }
+        };
+      });
       AFRAME.INSPECTOR.execute('entitycreate', {
         element: 'a-entity',
         components: {

@@ -66,11 +66,6 @@ export const Shortcuts = {
       Events.emit('toolchange', 'hand');
     }
 
-    // p: shape (polyline draw)
-    if (keyCode === 80) {
-      Events.emit('toolchange', 'shape');
-    }
-
     // l: scale (was 's' until 2026-05-09; remapped for nav controls).
     // 's' still scales while the WASD kit is gated off.
     if (keyCode === 76 || (!wasdNav && keyCode === 83)) {
@@ -88,8 +83,14 @@ export const Shortcuts = {
       setIsGridVisible(!isGridVisible);
     }
 
-    // backspace & delete: remove selected entity
-    if (keyCode === 8 || keyCode === 46) {
+    // backspace & delete: remove selected entity. Suppressed while the shape
+    // draw tool is active — there Backspace/Delete steps back the pending
+    // vertex (handled on keydown in ShapeDrawAction), and this keyup must not
+    // also delete whatever entity happened to be selected when drawing began.
+    if (
+      (keyCode === 8 || keyCode === 46) &&
+      !useStore.getState().shapeDrawActive
+    ) {
       removeSelectedEntity();
     }
 
