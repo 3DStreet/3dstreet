@@ -31,14 +31,6 @@ let shapeLayerCounter = 1; // distinguishes drawn shapes in the SceneGraph
 // sloping roads / textured terrain draw fine, vertical building faces don't.
 const WALL_SLOPE_RAD = (BLOCK_SLOPE_MIN_DEGREES * Math.PI) / 180;
 
-// Slope of the segment a→b from horizontal (radians). A near-vertical segment
-// (e.g. floor point → roof point directly above) approaches 90°.
-function segmentSlopeRad(a, b) {
-  const dy = Math.abs(a.y - b.y);
-  const horizontal = Math.hypot(a.x - b.x, a.z - b.z);
-  return Math.atan2(dy, horizontal);
-}
-
 // Surface pick: cast the cursor ray at the real scene geometry and return the
 // nearest SOLID-FLOOR hit — reusing the nav floor-probe machinery rather than
 // rolling our own. Placing vertices on the true surface (not the y=0 plane) is
@@ -90,6 +82,29 @@ function pickSurfaceOrNull(clientX, clientY, probeTargets) {
   // ray points at/above the horizon).
   const hit = new THREE.Vector3();
   return pickRaycaster.ray.intersectPlane(groundPlane, hit) ? hit : null;
+}
+
+// Pick against a horizontal plane at height `k`. The FIRST vertex is placed on
+// the real surface (pickSurfaceOrNull), establishing k; every subsequent
+// vertex plots on the y = k plane. So the whole shape is flat at the height of
+// its first point — it sits at the real surface height (works where y=0 is
+// nowhere near the ground, e.g. geospatial scenes), yet is planar, so the x/z
+// plan-view area is exact. (An option to follow the surface for every vertex
+// instead is a later, per-shape choice — TASK-103.)
+const kPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+function pickKPlaneOrNull(clientX, clientY, k) {
+  const canvas = AFRAME.scenes[0]?.canvas;
+  const camera = AFRAME.INSPECTOR?.camera;
+  if (!canvas || !camera) return null;
+  const rect = canvas.getBoundingClientRect();
+  ndc.set(
+    (2 * (clientX - rect.left)) / rect.width - 1,
+    -((2 * (clientY - rect.top)) / rect.height - 1)
+  );
+  pickRaycaster.setFromCamera(ndc, camera);
+  kPlane.constant = -k; // plane y + constant = 0  →  constant = -k
+  const hit = new THREE.Vector3();
+  return pickRaycaster.ray.intersectPlane(kPlane, hit) ? hit : null;
 }
 
 function isTextFieldFocused() {
@@ -217,31 +232,28 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       downXYRef.current = { x: e.clientX, y: e.clientY };
     };
 
-    // True if placing `point` next would make the segment from the last
-    // committed vertex too steep (a floor→roof jump). No previous vertex → the
-    // first point is unconstrained.
-    const wouldBeTooSteep = (point) => {
+    // The FIRST vertex is picked off the real surface (establishing the shape's
+    // height k); every later vertex is picked on the y = k plane, so the shape
+    // is planar at k. Flat by construction → no floor→roof jump possible and
+    // the x/z area is exact.
+    const pickForNextVertex = (clientX, clientY) => {
       const verts = verticesRef.current;
-      if (!verts.length) return false;
-      return segmentSlopeRad(verts[verts.length - 1], point) >= WALL_SLOPE_RAD;
+      if (!verts.length) {
+        return pickSurfaceOrNull(clientX, clientY, probeTargets);
+      }
+      return pickKPlaneOrNull(clientX, clientY, verts[0].y);
     };
 
     const onPointerMove = (e) => {
       if (committingRef.current) return;
-      const point = pickSurfaceOrNull(e.clientX, e.clientY, probeTargets);
+      const point = pickForNextVertex(e.clientX, e.clientY);
       if (!point) {
         collapseTrailing();
         readoutsRef.current && readoutsRef.current.clear();
-        canvas.style.cursor = 'crosshair';
         return;
       }
       setTrailing(point);
       refreshReadouts(point);
-      // Signal that the pending segment is too steep to place (the rubber band
-      // still shows where you're pointing, but a click there is a no-op).
-      canvas.style.cursor = wouldBeTooSteep(point)
-        ? 'not-allowed'
-        : 'crosshair';
     };
 
     const onPointerUp = (e) => {
@@ -253,7 +265,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
         if (moved > CLICK_MOVE_THRESHOLD) return; // a drag (orbit/pan)
       }
-      const point = pickSurfaceOrNull(e.clientX, e.clientY, probeTargets);
+      const point = pickForNextVertex(e.clientX, e.clientY);
       if (!point) return; // horizon click — no-op
       const verts = verticesRef.current;
       if (verts.length) {
@@ -265,10 +277,6 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         );
         if (d < MIN_VERTEX_SPACING) return; // reject zero-length segment
       }
-      // Reject a link steeper than the wall threshold (a floor→roof jump): the
-      // polyline's own segments must be walkable-slope too, not just its points
-      // (Diarmid). Keeps a shape's segments consistent with the x/z area basis.
-      if (wouldBeTooSteep(point)) return;
       addCommittedVertex(point);
       placedLastRef.current = true;
       setTrailing(point);
