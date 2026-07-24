@@ -34,6 +34,7 @@ const ShapeSidebar = ({ entity }) => {
   const [, setTick] = useState(0);
   const { unitsPreference } = useStore();
   const readoutsRef = useRef(null);
+  const lastHoverRef = useRef(null);
 
   // Re-render the panel list when this shape changes (appearance edits).
   useEffect(() => {
@@ -59,7 +60,18 @@ const ShapeSidebar = ({ entity }) => {
         hoverPoint
       );
     };
+    lastHoverRef.current = null;
     render(null);
+    // Belt for a post-commit child-init race: re-read positions next frame in
+    // case a shape-vertex hadn't positioned yet at mount.
+    const raf = requestAnimationFrame(() => render(lastHoverRef.current));
+
+    // Re-derive when this shape changes (a late child init, or vertex editing
+    // once TASK-104 lands) — otherwise the on-canvas readouts go stale.
+    const onEntityUpdate = (detail) => {
+      if (detail.entity === entity) render(lastHoverRef.current);
+    };
+    Events.on('entityupdate', onEntityUpdate);
 
     // Hover mode only matters above the label cap.
     const canvas = AFRAME.scenes[0]?.canvas;
@@ -85,11 +97,14 @@ const ShapeSidebar = ({ entity }) => {
         return;
       }
       entity.object3D.worldToLocal(world);
+      lastHoverRef.current = world;
       render(world);
     };
     if (useHover) canvas.addEventListener('pointermove', onMove);
 
     return () => {
+      cancelAnimationFrame(raf);
+      Events.off('entityupdate', onEntityUpdate);
       if (useHover && canvas) canvas.removeEventListener('pointermove', onMove);
       readouts.dispose();
       readoutsRef.current = null;
@@ -102,7 +117,11 @@ const ShapeSidebar = ({ entity }) => {
     const r = readoutsRef.current;
     if (!r) return;
     r.setUnits(unitsPreference);
-    r.renderAll(getShapeVertices(entity), MAX_LABELLED_VERTICES, null);
+    r.renderAll(
+      getShapeVertices(entity),
+      MAX_LABELLED_VERTICES,
+      lastHoverRef.current
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitsPreference]);
 

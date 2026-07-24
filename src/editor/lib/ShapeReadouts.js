@@ -70,7 +70,7 @@ export default class ShapeReadouts {
     this.clear();
     const n = vertices.length;
     if (n < 2) return;
-    if (n <= maxVertices || !hoverPoint) {
+    if (n <= maxVertices) {
       for (let i = 0; i < n - 1; i++) {
         this._addLengthLabel(vertices[i], vertices[i + 1]);
       }
@@ -79,6 +79,10 @@ export default class ShapeReadouts {
       }
       return;
     }
+    // Above the label cap it is hover-only (spec Decision A): with no hover
+    // point yet, show nothing rather than dumping all ~2N labels — that dump
+    // is the exact jank the cap exists to prevent.
+    if (!hoverPoint) return;
     // hover: nearest segment + the angle at its nearer endpoint
     let best = -1;
     let bestDist = Infinity;
@@ -123,13 +127,20 @@ export default class ShapeReadouts {
   _addAngle(u, v, w) {
     const deg = includedAngleDeg(u, v, w);
     if (deg === null) return; // degenerate corner — suppressed, never NaN
-    this._makeArc(u, v, w);
+    // Scale the arc to the shorter adjacent segment so it never overshoots the
+    // corner it annotates (fixed 0.6 m arcs overlap / cross the neighbour on
+    // small shapes or a zoomed-in draw).
+    const la = Math.hypot(u.x - v.x, u.z - v.z);
+    const lb = Math.hypot(w.x - v.x, w.z - v.z);
+    const radius = Math.min(ARC_RADIUS, 0.4 * Math.min(la, lb));
+    if (radius >= 0.03) this._makeArc(u, v, w, radius);
     const dir = angleLabelDir(u, v, w);
-    const pos = v.clone().addScaledVector(dir, ARC_RADIUS * LABEL_OFFSET);
+    const labelR = Math.max(radius, 0.15); // keep the number clear of the corner
+    const pos = v.clone().addScaledVector(dir, labelR * LABEL_OFFSET);
     this._makeLabel(formatAngle(deg), pos);
   }
 
-  _makeArc(u, v, w) {
+  _makeArc(u, v, w, radius) {
     const a = new THREE.Vector3(u.x - v.x, 0, u.z - v.z);
     const b = new THREE.Vector3(w.x - v.x, 0, w.z - v.z);
     if (a.lengthSq() < EPS || b.lengthSq() < EPS) return;
@@ -143,7 +154,7 @@ export default class ShapeReadouts {
     const q = new THREE.Quaternion();
     for (let i = 0; i <= ARC_STEPS; i++) {
       q.setFromAxisAngle(axis, (theta * i) / ARC_STEPS);
-      pts.push(a.clone().applyQuaternion(q).multiplyScalar(ARC_RADIUS).add(v));
+      pts.push(a.clone().applyQuaternion(q).multiplyScalar(radius).add(v));
     }
     const curve = new THREE.CatmullRomCurve3(pts);
     const geometry = new THREE.TubeGeometry(

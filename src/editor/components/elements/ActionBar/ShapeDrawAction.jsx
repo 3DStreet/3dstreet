@@ -17,23 +17,57 @@ import ShapeReadouts from '../../../lib/ShapeReadouts';
 
 const CLICK_MOVE_THRESHOLD = 4; // px — a larger press→release move is a drag
 const MIN_VERTEX_SPACING = 0.05; // m — reject a click ~on the previous vertex
+let shapeLayerCounter = 1; // distinguishes drawn shapes in the SceneGraph
 
-// Ground-plane pick that signals a miss as null (the shared
-// pickPointOnGroundPlane collapses a miss to the world origin, which is
-// ambiguous with a genuine origin click).
+// Surface pick: raycast the real scene geometry under the cursor and return
+// the nearest hit point, falling back to the y=0 plane where the ray hits no
+// geometry (e.g. empty ground beyond the street), or null on a full miss
+// (horizon). Placing vertices on the true surface — not the y=0 plane — is
+// what makes the line visible: 3DStreet road/sidewalk surfaces sit 0.1–0.2 m
+// above y=0, so a y=0 vertex is buried under the surface and the normal-depth
+// line is occluded. Surface picking also composes with per-vertex height and
+// (later) sloped streets / 3D tiles — the floor is never assumed flat.
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const pickRaycaster = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
-function pickGroundOrNull(clientX, clientY) {
+
+function isDescendantOf(obj, root) {
+  let p = obj;
+  while (p) {
+    if (p === root) return true;
+    p = p.parent;
+  }
+  return false;
+}
+
+function pickSurfaceOrNull(clientX, clientY, excludeEl) {
   const canvas = AFRAME.scenes[0]?.canvas;
   const camera = AFRAME.INSPECTOR?.camera;
-  if (!canvas || !camera) return null;
+  const sceneObj = AFRAME.scenes[0]?.object3D;
+  if (!canvas || !camera || !sceneObj) return null;
   const rect = canvas.getBoundingClientRect();
   ndc.set(
     (2 * (clientX - rect.left)) / rect.width - 1,
     -((2 * (clientY - rect.top)) / rect.height - 1)
   );
   pickRaycaster.setFromCamera(ndc, camera);
+  const excludeObj = excludeEl && excludeEl.object3D;
+  const hits = pickRaycaster.intersectObject(sceneObj, true);
+  for (let i = 0; i < hits.length; i++) {
+    const obj = hits[i].object;
+    if (excludeObj && isDescendantOf(obj, excludeObj)) continue; // our preview
+    const el = obj.el;
+    if (
+      el &&
+      el.getAttribute &&
+      el.getAttribute('data-ignore-raycaster') !== null
+    ) {
+      continue;
+    }
+    return hits[i].point.clone();
+  }
+  // No geometry under the cursor — fall back to the y=0 ground plane, or null
+  // if the ray misses even that (pointing at/above the horizon).
   const hit = new THREE.Vector3();
   return pickRaycaster.ray.intersectPlane(groundPlane, hit) ? hit : null;
 }
@@ -126,6 +160,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     const refreshReadouts = (cursor) => {
       const r = readoutsRef.current;
       if (!r) return;
+      r.setUnits(useStore.getState().unitsPreference); // track live unit toggles
       const active = verticesRef.current.map(
         (v) => new THREE.Vector3(v.x, v.y, v.z)
       );
@@ -160,7 +195,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
 
     const onPointerMove = (e) => {
       if (committingRef.current) return;
-      const point = pickGroundOrNull(e.clientX, e.clientY);
+      const point = pickSurfaceOrNull(e.clientX, e.clientY, previewEl);
       if (!point) {
         collapseTrailing();
         readoutsRef.current && readoutsRef.current.clear();
@@ -179,7 +214,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
         if (moved > CLICK_MOVE_THRESHOLD) return; // a drag (orbit/pan)
       }
-      const point = pickGroundOrNull(e.clientX, e.clientY);
+      const point = pickSurfaceOrNull(e.clientX, e.clientY, previewEl);
       if (!point) return; // horizon click — no-op
       const verts = verticesRef.current;
       if (verts.length) {
@@ -215,13 +250,27 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         e.preventDefault();
         removeLastVertex();
         refreshReadouts(null);
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.shiftKey &&
+        (e.key === 'z' || e.key === 'Z')
+      ) {
         // Mid-draw undo steps back a pending vertex; it must not reach the
         // editor undo stack (which would pop an unrelated entity).
         e.preventDefault();
         e.stopPropagation();
         removeLastVertex();
         refreshReadouts(null);
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        ((e.shiftKey && (e.key === 'z' || e.key === 'Z')) ||
+          e.key === 'y' ||
+          e.key === 'Y')
+      ) {
+        // Mid-draw redo (Ctrl+Shift+Z / Ctrl+Y): swallow so it can't redo an
+        // unrelated previously-undone editor command while drawing. No-op.
+        e.preventDefault();
+        e.stopPropagation();
       }
     };
 
@@ -270,7 +319,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         element: 'a-entity',
         components: {
           shape: { lineColor: style.lineColor, lineWidth: style.lineWidth },
-          'data-layer-name': 'Shape • Polyline'
+          'data-layer-name': `Shape • Polyline ${shapeLayerCounter++}`
         },
         children
       });
