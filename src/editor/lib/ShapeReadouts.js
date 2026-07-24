@@ -172,6 +172,30 @@ export default class ShapeReadouts {
     mesh.el = this.el;
     this.group.add(mesh);
     this.arcs.push(mesh);
+
+    // Two radii from the vertex out to the arc, drawn on top of the line — a
+    // protractor look that pins exactly where the vertex is and which angle is
+    // being read.
+    this._addRadius(v, a, radius);
+    this._addRadius(v, b, radius);
+  }
+
+  // A thin always-on-top tube from vertex `v` outward along unit dir `dir` for
+  // `length` (one arm of the angle protractor).
+  _addRadius(v, dir, length) {
+    const geometry = new THREE.CylinderGeometry(
+      ARC_TUBE_RADIUS,
+      ARC_TUBE_RADIUS,
+      length,
+      6
+    );
+    const mesh = new THREE.Mesh(geometry, this.arcMaterial);
+    mesh.position.copy(v).addScaledVector(dir, length / 2);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    mesh.renderOrder = 999;
+    mesh.el = this.el;
+    this.group.add(mesh);
+    this.arcs.push(mesh); // disposed with the arcs in clear()
   }
 
   _makeLabel(text, pos) {

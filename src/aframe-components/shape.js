@@ -71,7 +71,13 @@ AFRAME.registerComponent('shape', {
     this.lineGroup = new THREE.Group();
     this.vertexGroup = new THREE.Group();
     this.overlayGroup = new THREE.Group();
-    this.el.setObject3D('shapeLine', this.lineGroup);
+    // Name the line group the conventional `mesh` slot: the editor's selection
+    // box helper (OrientedBoxHelper) expands the box to include the entity's
+    // ORIGIN for any entity that has no `mesh` object3D — which, for a shape
+    // whose vertices sit far from its local origin, blows the box out to (0,0,0)
+    // (spuriously spanning y=0 and stretching in x/z). Having a `mesh` slot
+    // makes the helper bound the actual geometry instead.
+    this.el.setObject3D('mesh', this.lineGroup);
     this.el.setObject3D('shapeVertices', this.vertexGroup);
     this.el.setObject3D('shapeLineOverlay', this.overlayGroup);
 
@@ -167,7 +173,7 @@ AFRAME.registerComponent('shape', {
     this.clearGroup(this.overlayGroup);
     this.material.dispose();
     this.overlayMaterial.dispose();
-    if (this.el.getObject3D('shapeLine')) this.el.removeObject3D('shapeLine');
+    if (this.el.getObject3D('mesh')) this.el.removeObject3D('mesh');
     if (this.el.getObject3D('shapeVertices')) {
       this.el.removeObject3D('shapeVertices');
     }
