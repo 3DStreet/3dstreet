@@ -84,21 +84,33 @@ export function createShapeEntity(position) {
     position && typeof position.x === 'number'
       ? position
       : { x: 0, y: 0, z: 0 };
+  // Place the shape entity at the vertices' centroid, vertices relative to it,
+  // so the entity origin sits on the shape — the transform gizmo then attaches
+  // on it and rotates/scales about its centre (matches the draw tool + other
+  // scene elements).
+  const offsets = [
+    [0, 0],
+    [4, 0],
+    [4, 4]
+  ];
+  const cx = offsets.reduce((s, o) => s + o[0], 0) / offsets.length;
+  const cz = offsets.reduce((s, o) => s + o[1], 0) / offsets.length;
   const vertex = (dx, dz) => ({
     element: 'a-entity',
     class: 'hideFromSceneGraph',
     components: {
       'shape-vertex': '',
-      position: `${base.x + dx} ${base.y} ${base.z + dz}`
+      position: `${dx - cx} 0 ${dz - cz}`
     }
   });
   AFRAME.INSPECTOR.execute('entitycreate', {
     element: 'a-entity',
     components: {
       shape: '',
+      position: `${base.x + cx} ${base.y} ${base.z + cz}`,
       'data-layer-name': 'Shape • Polyline'
     },
-    children: [vertex(0, 0), vertex(4, 0), vertex(4, 4)]
+    children: offsets.map((o) => vertex(o[0], o[1]))
   });
 }
 

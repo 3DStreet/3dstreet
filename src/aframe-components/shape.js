@@ -104,11 +104,12 @@ AFRAME.registerComponent('shape', {
     // serialized, so it is re-applied on every load here.
     this.el.setAttribute('data-no-pause', '');
 
-    // Suppress the whole-entity transform gizmo. It attaches to the shape's
-    // object3D, which sits at the shape origin (the first vertex), not the
-    // centroid — a confusing affordance. Whole-shape move is a deliberate,
-    // correctly-placed affordance for a later phase.
-    this.el.setAttribute('data-no-transform', '');
+    // Whole-shape transform: the standard gizmo is enabled and behaves like any
+    // other scene element, because the draw tool places the shape entity at its
+    // vertices' centroid (vertices stored relative), so the gizmo attaches on
+    // the shape and rotates/scales about its centre. (Vertices are hidden +
+    // non-selectable, so there is no per-point gizmo — intended.) A richer
+    // "move shape" affordance can refine this later.
 
     if (this.data.updateEvent) {
       this.el.addEventListener(this.data.updateEvent, this.requestRederive);

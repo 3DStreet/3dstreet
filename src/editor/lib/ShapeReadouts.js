@@ -173,19 +173,21 @@ export default class ShapeReadouts {
     this.group.add(mesh);
     this.arcs.push(mesh);
 
-    // Two radii from the vertex out to the arc, drawn on top of the line — a
+    // Two radii from the vertex out THROUGH the arc (10% past it) — a
     // protractor look that pins exactly where the vertex is and which angle is
-    // being read.
-    this._addRadius(v, a, radius);
-    this._addRadius(v, b, radius);
+    // being read. Overshooting the arc (rather than meeting it) keeps it from
+    // reading as a filled triangle.
+    this._addRadius(v, a, radius * 1.2);
+    this._addRadius(v, b, radius * 1.2);
   }
 
   // A thin always-on-top tube from vertex `v` outward along unit dir `dir` for
-  // `length` (one arm of the angle protractor).
+  // `length` (one arm of the angle protractor). Thinner than the arc so the
+  // two together don't read as a solid triangle.
   _addRadius(v, dir, length) {
     const geometry = new THREE.CylinderGeometry(
-      ARC_TUBE_RADIUS,
-      ARC_TUBE_RADIUS,
+      ARC_TUBE_RADIUS * 0.5,
+      ARC_TUBE_RADIUS * 0.5,
       length,
       6
     );

@@ -355,21 +355,29 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         const w = new THREE.Vector3(v.x, v.y, v.z);
         return parentObj ? parentObj.worldToLocal(w) : w;
       };
-      const children = verts.map((v) => {
-        const p = toLocal(v);
-        return {
-          element: 'a-entity',
-          class: 'hideFromSceneGraph',
-          components: {
-            'shape-vertex': '',
-            position: `${p.x} ${p.y} ${p.z}`
-          }
-        };
-      });
+      const localVerts = verts.map(toLocal);
+      // Place the shape entity at the vertices' centroid and store each vertex
+      // RELATIVE to it — so the entity's origin sits on the shape (its centre),
+      // not at the parent origin far away. That makes the standard transform
+      // gizmo attach on the shape and rotate/scale about its centre, consistent
+      // with other scene elements. (Whole-shape move is a deliberate later
+      // refinement; basic transform controls are fine now.)
+      const centroid = new THREE.Vector3();
+      localVerts.forEach((p) => centroid.add(p));
+      centroid.multiplyScalar(1 / Math.max(1, localVerts.length));
+      const children = localVerts.map((p) => ({
+        element: 'a-entity',
+        class: 'hideFromSceneGraph',
+        components: {
+          'shape-vertex': '',
+          position: `${p.x - centroid.x} ${p.y - centroid.y} ${p.z - centroid.z}`
+        }
+      }));
       AFRAME.INSPECTOR.execute('entitycreate', {
         element: 'a-entity',
         components: {
           shape: { lineColor: style.lineColor, lineWidth: style.lineWidth },
+          position: `${centroid.x} ${centroid.y} ${centroid.z}`,
           'data-layer-name': `Shape • Polyline ${shapeLayerCounter++}`
         },
         children
