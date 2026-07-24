@@ -16,6 +16,12 @@
 const UP = new THREE.Vector3(0, 1, 0);
 const MIN_SEGMENT_LENGTH = 1e-6;
 
+// X-ray overlay: a second copy of the line drawn semi-transparent and always
+// on top (depthTest off), so the line stays visible where scene geometry — a
+// building wall — occludes the solid line behind it.
+const OVERLAY_OPACITY = 0.3;
+const OVERLAY_RENDER_ORDER = 999;
+
 // The system owns the per-frame position observation for every shape, so it
 // keeps running even when the shapes' entities are paused (as they are in the
 // editor). Shapes that set `updateEvent` opt out and re-derive on their event.
@@ -64,13 +70,23 @@ AFRAME.registerComponent('shape', {
 
     this.lineGroup = new THREE.Group();
     this.vertexGroup = new THREE.Group();
+    this.overlayGroup = new THREE.Group();
     this.el.setObject3D('shapeLine', this.lineGroup);
     this.el.setObject3D('shapeVertices', this.vertexGroup);
+    this.el.setObject3D('shapeLineOverlay', this.overlayGroup);
 
     this.material = new THREE.MeshStandardMaterial({
       color: this.data.lineColor,
       roughness: 0.8,
       metalness: 0.0
+    });
+
+    // Unlit, translucent, always-on-top material for the x-ray overlay copy.
+    this.overlayMaterial = new THREE.MeshBasicMaterial({
+      color: this.data.lineColor,
+      transparent: true,
+      opacity: OVERLAY_OPACITY,
+      depthTest: false
     });
 
     this.el.sceneEl.systems.shape.register(this);
@@ -114,6 +130,7 @@ AFRAME.registerComponent('shape', {
       oldData.lineColor !== this.data.lineColor
     ) {
       this.material.color.set(this.data.lineColor);
+      this.overlayMaterial.color.set(this.data.lineColor);
     }
 
     if (oldData.updateEvent !== this.data.updateEvent) {
@@ -147,10 +164,15 @@ AFRAME.registerComponent('shape', {
     }
     this.clearGroup(this.lineGroup);
     this.clearGroup(this.vertexGroup);
+    this.clearGroup(this.overlayGroup);
     this.material.dispose();
+    this.overlayMaterial.dispose();
     if (this.el.getObject3D('shapeLine')) this.el.removeObject3D('shapeLine');
     if (this.el.getObject3D('shapeVertices')) {
       this.el.removeObject3D('shapeVertices');
+    }
+    if (this.el.getObject3D('shapeLineOverlay')) {
+      this.el.removeObject3D('shapeLineOverlay');
     }
   },
 
@@ -219,6 +241,7 @@ AFRAME.registerComponent('shape', {
 
     this.clearGroup(this.lineGroup);
     this.clearGroup(this.vertexGroup);
+    this.clearGroup(this.overlayGroup);
 
     // Sphere caps at each vertex — also smooth the joints between segments.
     for (let i = 0; i < verts.length; i++) {
@@ -233,6 +256,7 @@ AFRAME.registerComponent('shape', {
       // back-pointer or clicking the line would not select the shape.
       sphere.el = this.el;
       this.vertexGroup.add(sphere);
+      this._addOverlayMesh(sphere);
     }
 
     // One cylinder per segment, oriented from the default +Y to the segment
@@ -257,7 +281,20 @@ AFRAME.registerComponent('shape', {
       mesh.setRotationFromQuaternion(this.tmpQuaternion);
       mesh.el = this.el;
       this.lineGroup.add(mesh);
+      this._addOverlayMesh(mesh);
     }
+  },
+
+  // Add a translucent, always-on-top twin of `mesh` to the overlay group, so
+  // the line reads through occluding geometry (a building wall). Own geometry
+  // (not shared) so the group's clearGroup can dispose it uniformly.
+  _addOverlayMesh: function (mesh) {
+    const twin = new THREE.Mesh(mesh.geometry.clone(), this.overlayMaterial);
+    twin.position.copy(mesh.position);
+    twin.quaternion.copy(mesh.quaternion);
+    twin.renderOrder = OVERLAY_RENDER_ORDER;
+    twin.el = this.el; // coincident with the solid mesh — keep it selectable
+    this.overlayGroup.add(twin);
   },
 
   // Dispose and detach every mesh in a group (the shared material is not
