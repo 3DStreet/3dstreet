@@ -47,15 +47,17 @@ Sends ONE email per user, ever, when they exhaust either token type.
 
 ### 1. Add Template to `EMAIL_TEMPLATES`
 
+Templates implement the lifecycle interface `{ getSubject(name, data,
+locale), getHtmlBody(name, data, locale), getTextBody(name, data, locale) }`.
+Build them with `defineTemplate` in `../email/templates.js` (per-locale copy
+for en / es / pt-BR / fr — see the Localization section of
+`docs/email-lifecycle.md`) and reference them here, like the token-exhaustion
+entries:
+
 ```js
 const EMAIL_TEMPLATES = {
   // ... existing templates ...
-
-  welcome: {
-    subject: "Welcome to 3DStreet!",
-    getTextBody: (userName) => `Hi ${userName}, ...`,
-    getHtmlBody: (userName) => `<!DOCTYPE html>...`
-  }
+  myNewEmail: TEMPLATES.myNewEmail
 };
 ```
 

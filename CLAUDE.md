@@ -112,7 +112,7 @@ Unified Viewer presentation with a Start/Stop play lifecycle. Playing is present
 
 **Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated
 
-**Lifecycle emails:** one send path (`sendLifecycleEmail` in `public/functions/email/`) with per-stream Postmark routing, `emailPrefs` unsubscribe suppression, and transactional stop-rules on `emailLog`. Triggers: Auth onCreate (welcome), `stripeWebhook` (post-upgrade; failed-payment handler dormant — Stripe hosted dunning instead), hourly sweep (abandoned checkout, pricing nudge, geo-not-used), daily sweep (token exhaustion). Docs: `docs/email-lifecycle.md`.
+**Lifecycle emails:** one send path (`sendLifecycleEmail` in `public/functions/email/`) with per-stream Postmark routing, `emailPrefs` unsubscribe suppression, and transactional stop-rules on `emailLog`. Triggers: Auth onCreate (welcome), `stripeWebhook` (post-upgrade; failed-payment handler dormant — Stripe hosted dunning instead), hourly sweep (abandoned checkout, pricing nudge, geo-not-used), daily sweep (token exhaustion). Localized (en/es/pt-BR/fr, hand-written copy per locale in `templates.js`): recipient locale resolved from `socialProfile/{uid}` (`locale` explicit pick > `detectedLocale` captured at sign-in > en) via `email/locale.js`. Docs: `docs/email-lifecycle.md`.
 
 ## User Asset Upload
 

@@ -1,8 +1,10 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { auth } from '@shared/services/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '@shared/services/firebase';
 import PropTypes from 'prop-types';
 import { isUserPro } from '@shared/auth/api/user';
 import { getTokenProfile, checkAndRefillProTokens } from '@shared/utils/tokens';
+import { detectBrowserLocale } from '@shared/i18n/locales';
 import posthog from 'posthog-js';
 
 const AuthContext = createContext({
@@ -40,6 +42,34 @@ const setCachedProStatus = (uid, status) => {
     );
   } catch {
     // Ignore storage errors
+  }
+};
+
+const DETECTED_LOCALE_SYNC_KEY = 'detectedLocaleSynced';
+
+// Capture the browser's detected locale onto the user's socialProfile so
+// lifecycle emails send in the user's language (#1841,
+// public/functions/email/locale.js). `detectedLocale` is the weak automatic
+// signal; an explicit View > Language pick writes `locale` (store.js
+// setLocale / useProfileLocaleSync) and wins server-side. Fire-and-forget —
+// a lost write just means an English email — and localStorage-guarded to one
+// write per uid+locale so repeat sign-ins cost nothing.
+const syncDetectedLocale = (uid) => {
+  try {
+    const locale = detectBrowserLocale();
+    const marker = `${uid}:${locale}`;
+    if (localStorage.getItem(DETECTED_LOCALE_SYNC_KEY) === marker) return;
+    setDoc(
+      doc(db, 'socialProfile', uid),
+      { userId: uid, detectedLocale: locale },
+      { merge: true }
+    )
+      .then(() => localStorage.setItem(DETECTED_LOCALE_SYNC_KEY, marker))
+      .catch((error) =>
+        console.error('Error saving detected locale to profile:', error)
+      );
+  } catch (error) {
+    console.error('Error saving detected locale to profile:', error);
   }
 };
 
@@ -107,6 +137,10 @@ const AuthProvider = ({ children }) => {
         plan: cachedProStatus?.plan ?? null
       });
       setIsLoading(false);
+
+      // As early as possible after auth: the welcome email trigger polls
+      // briefly for this signal on brand-new accounts (email/locale.js).
+      syncDetectedLocale(user.uid);
 
       // Phase 2: Enrich in background - run operations in parallel.
       // Pro status check (cloud function), ID token fetch, and token profile
