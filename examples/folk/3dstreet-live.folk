@@ -1,0 +1,26 @@
+# 3dstreet-live.folk — a 3DStreet scene on the table, refreshed every few seconds.
+#
+# Run capture-3dstreet.mjs (see README.md) on a laptop on the same network,
+# serving its shots/ folder with `python3 -m http.server 8000`, then set
+# $server below to that laptop's IP.
+#
+# Why the loop: Folk caches images by exact path/URL, so a fixed URL only
+# ever loads once. We re-claim a URL with a fresh ?t= cache-buster on an
+# interval, using the same long-running-loop + Hold! pattern as Folk's own
+# builtin-programs/fswatch.folk.
+
+set server "http://YOUR-LAPTOP-IP:8000"
+
+When the 3dstreet frame is /url/ {
+    Wish $this displays image $url
+}
+
+while true {
+    Hold! -key {3dstreet frame} \
+        Claim the 3dstreet frame is "$server/3dstreet.png?t=[clock seconds]"
+    exec sleep 5
+}
+
+# Housekeeping: each refresh leaves one cached copy in /tmp on the Folk
+# machine (~200 KB every 5 s ≈ 150 MB/hour). Clear with:
+#   rm /tmp/http*3dstreet*

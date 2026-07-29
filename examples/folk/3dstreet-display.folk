@@ -1,0 +1,12 @@
+# 3dstreet-display.folk — minimum viable: put a 3DStreet render on the table.
+#
+# Folk's builtin image loader (builtin-programs/draw/image.folk) accepts an
+# http(s) URL directly — it curls the file to /tmp and displays it on this
+# program's page region. Point it at any PNG render of a 3DStreet scene:
+# one served by capture-3dstreet.mjs + `python3 -m http.server` on a laptop,
+# or any static snapshot on the web.
+
+Wish $this displays image "http://YOUR-LAPTOP-IP:8000/3dstreet.png"
+
+# Local-file variant — copy the PNG to ~/folk-images/ on the Folk machine:
+# Wish $this displays image "3dstreet.png"
