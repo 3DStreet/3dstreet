@@ -4,29 +4,32 @@ The code for [SPEC-folkville.md](../SPEC-folkville.md): a tabletop SimCity
 where LEGO vehicles carrying printed Folk cards bulldoze, pave, and build on
 a projected meadow.
 
+Everything ships as `.folk` programs — there is no out-of-band Tcl library
+to install. `folkville.folk` is self-contained: its engine owns all game
+logic and publishes a **render-ready scene claim** (merged road runs, tree
+cells, house anchors, stats — data, not code), so the renderer and any other
+consumer is a plain loop over lists.
+
 ## Files
 
 | File | What it is |
 | --- | --- |
-| `folkville-core.tcl` | All game rules as pure Tcl (terrain string, brushes, strokes, houses, snapshots). No Folk dependencies. |
-| `folkville.folk` | The one Folk program: renderer + tool auras + crane dwell ring (`When` handlers), then the 20 Hz engine loop (single writer of the world claim). |
-| `folkville-bulldozer.folk` `-paver.folk` `-crane.folk` `-reset.folk` | Tool cards. Each is a complete Folk program — print one per card, stick it flat on the vehicle's roof. |
-| `test-folkville.tcl` | 42 unit tests for the core. `tclsh test-folkville.tcl` |
-| `test-folkville-engine.tcl` | Drives the **real** `folkville.folk` engine loop in tclsh with stubbed Folk primitives and a simulated clock: a scripted paver paints a road, a crane dwells and builds one house, a bulldozer clears its spot, the reset card regrows the meadow. 12 assertions. |
+| `folkville.folk` | The whole game: game-logic procs, renderer `When` (fires only on scene-rev change), live tool auras, crane dwell ring, then the 20 Hz engine loop — single writer of the scene claim, `fswatch.folk`-style. |
+| `folkville-bulldozer.folk` `-paver.folk` `-crane.folk` `-reset.folk` | Tool cards. Each is a complete Folk program — print one per card, stick it flat on the vehicle's roof. Tools are discovered by claim, not tag id, so cards are swappable and spares are free. |
+| `test-folkville.tcl` | 42 unit tests for the game logic. Loads `folkville.folk` directly with Folk primitives stubbed. `tclsh test-folkville.tcl` |
+| `test-folkville-engine.tcl` | Drives the **real** engine loop in tclsh with stubbed Folk primitives and a simulated clock: a scripted paver paints a road, a crane dwells and builds one house, a bulldozer clears its spot, the reset card regrows the meadow. 14 assertions. |
 
-Both test suites pass (Tcl 8.6). The Folk-facing surface (`When`/`Wish`
-patterns, `Query!` joins, drawing wishes) is written against current
-FolkComputer/folk `main` builtins but has not yet run on a real table.
+Both suites pass (Tcl 8.6). The Folk-facing surface (`When`/`Wish` patterns,
+`Query!` joins, drawing wishes) is written against current FolkComputer/folk
+`main` builtins but has not yet run on a real table.
 
 ## Install on the Folk machine
 
-1. `mkdir -p ~/folkville && cp folkville-core.tcl ~/folkville/`
-   (also honored: `~/folk-live/` or `~/`)
-2. Add `folkville.folk` as a program (virtual via the editor, or print it —
+1. Add `folkville.folk` as a program (virtual via the editor, or print it —
    the page can live at the table's edge; its position doesn't matter).
-3. Print the four tool cards. Mount the first three flat on LEGO vehicles;
+2. Print the four tool cards. Mount the first three flat on LEGO vehicles;
    keep the reset card in your pocket.
-4. Drive.
+3. Drive.
 
 World state survives restarts via `~/folkville-world.snapshot` (written every
 10 s). Delete the file (or use the reset card) for a fresh meadow.

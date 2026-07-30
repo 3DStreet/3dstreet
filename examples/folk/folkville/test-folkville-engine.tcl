@@ -3,16 +3,15 @@
 # simulating the clock and tag sightings. Run: tclsh test-folkville-engine.tcl
 #
 # Scenario: a paver drives across the table, a crane dwells and builds a
-# house, a bulldozer clears part of the road, the reset card regrows the
-# meadow. Asserts on the world claims the engine holds.
+# house, a bulldozer clears its spot, the reset card regrows the meadow.
+# Asserts on the render-ready scene claims the engine holds.
 
 set here [file dirname [info script]]
 
-# --- fake HOME so core loading + snapshots stay inside a sandbox -------------
+# --- fake HOME so the snapshot file stays inside a sandbox -------------------
 set sandbox [file join [expr {[info exists ::env(TMPDIR)] ? $::env(TMPDIR) : "/tmp"}] folkville-engine-test]
 file delete -force $sandbox
-file mkdir [file join $sandbox folkville]
-file copy [file join $here folkville-core.tcl] [file join $sandbox folkville folkville-core.tcl]
+file mkdir $sandbox
 set ::env(HOME) $sandbox
 
 # --- dict getdef shim for Tcl 8.6 (Folk ships a newer Tcl that has it) -------
@@ -39,7 +38,7 @@ proc clock {cmd args} {
 # --- Folk primitive stubs ----------------------------------------------------
 set this "folkville.folk"
 set whenCount 0
-set heldWorlds {}
+set heldScenes {}
 set dwellClaims 0
 
 proc When {args} { incr ::whenCount }   ;# bodies not executed (renderer is visual)
@@ -56,28 +55,21 @@ proc Hold! {args} {
         break
     }
     set stmt [lrange $args $i end]
-    if {[lrange $stmt 0 4] eq {Claim the folkville world is}} {
-        lappend ::heldWorlds [lrange $stmt 1 end]
-    } elseif {[lrange $stmt 0 4] eq {Claim the folkville crane dwell}} {
+    if {[lrange $stmt 0 4] eq {Claim the folkville scene is}} {
+        lappend ::heldScenes [lrange $stmt 1 end]
+    } elseif {[lrange $stmt 0 3] eq {Claim the folkville crane}} {
         incr ::dwellClaims
     }
 }
 
-# quad helper: 80x80 px axis-aligned quad centered on a pixel point,
-# optionally rotated so the card "faces" +x (up = right)
-proc quadAt {x y {facing up}} {
+# quad helper: 80x80 px axis-aligned quad centered on a pixel point, card
+# facing screen-up
+proc quadAt {x y} {
     set h 40.0
-    if {$facing eq "up"} {
-        set tl [list [expr {$x-$h}] [expr {$y-$h}] 0]
-        set tr [list [expr {$x+$h}] [expr {$y-$h}] 0]
-        set br [list [expr {$x+$h}] [expr {$y+$h}] 0]
-        set bl [list [expr {$x-$h}] [expr {$y+$h}] 0]
-    } else {  ;# facing right: top edge on the +x side
-        set tl [list [expr {$x+$h}] [expr {$y-$h}] 0]
-        set tr [list [expr {$x+$h}] [expr {$y+$h}] 0]
-        set br [list [expr {$x-$h}] [expr {$y+$h}] 0]
-        set bl [list [expr {$x-$h}] [expr {$y-$h}] 0]
-    }
+    set tl [list [expr {$x-$h}] [expr {$y-$h}] 0]
+    set tr [list [expr {$x+$h}] [expr {$y-$h}] 0]
+    set br [list [expr {$x+$h}] [expr {$y+$h}] 0]
+    set bl [list [expr {$x-$h}] [expr {$y+$h}] 0]
     list "display 1" [list $tl $tr $br $bl]
 }
 
@@ -97,7 +89,7 @@ for {set i 0} {$i < 10} {incr i} { lappend scenario {} }
 # ticks 50-95: crane dwells at cell (30,20), facing up -> house site ~(29,16)
 lassign [cellPx 30 20] cxp cyp
 for {set i 0} {$i < 46} {incr i} {
-    lappend scenario [list [list p crane-page kind crane q [quadAt $cxp $cyp up]]]
+    lappend scenario [list [list p crane-page kind crane q [quadAt $cxp $cyp]]]
 }
 # ticks 96-105: bulldozer parks on the road at cell (20,10)
 lassign [cellPx 20 10] bx by
@@ -156,67 +148,73 @@ proc check {name cond} {
     }
 }
 
-proc worldField {world name} {
-    # world claim tail: the folkville world is T with houses H cols C rows R origin O cell L rev V
-    set i [lsearch -exact $world $name]
-    lindex $world [expr {$i + 1}]
+# scene claim tail: the folkville scene is rev V with roads RR trees TT
+#                   houses HH grid {C R} origin {X Y} cell L stats S
+proc sceneField {scene name} {
+    set i [lsearch -exact $scene $name]
+    lindex $scene [expr {$i + 1}]
 }
-proc terrainOf {world} { lindex $world 4 }
+proc roadCellCount {scene} {
+    set n 0
+    foreach run [sceneField $scene roads] {
+        lassign $run r c0 c1
+        incr n [expr {$c1 - $c0 + 1}]
+    }
+    return $n
+}
+proc row10Coverage {scene} {
+    # {cells covering col 20?} and total road cells on row 10
+    set total 0
+    set covers20 0
+    foreach run [sceneField $scene roads] {
+        lassign $run r c0 c1
+        if {$r != 10} { continue }
+        incr total [expr {$c1 - $c0 + 1}]
+        if {20 >= $c0 && 20 <= $c1} { set covers20 1 }
+    }
+    list $covers20 $total
+}
 
 check "When handlers registered" {$::whenCount == 3}
-check "world held at least 4 times" {[llength $::heldWorlds] >= 4}
+check "scene held at least 4 times" {[llength $::heldScenes] >= 4}
 
-set initial [lindex $heldWorlds 0]
-set cols [worldField $initial cols]
-set rows [worldField $initial rows]
-check "grid 60x36" {$::cols == 60 && $::rows == 36}
-check "initial world has no road" {[string first R [terrainOf $::initial]] < 0}
+set initial [lindex $heldScenes 0]
+check "grid 60x36" {[sceneField $::initial grid] eq {60 36}}
+check "initial scene has no road" {[sceneField $::initial roads] eq {}}
+set initialTrees [llength [sceneField $initial trees]]
+check "initial tree scatter present" {$::initialTrees > 50 && $::initialTrees < 500}
 
-# find the last world before the reset fired (reset starts at tick 106;
-# use the world claims in order: find max road coverage)
-source [file join $here folkville-core.tcl]
 set bestRoad 0
-set afterCrane {}
-foreach w $heldWorlds {
-    set t [terrainOf $w]
-    set road [llength [::folkville::cellsOf $t R $cols $rows]]
-    if {$road >= $bestRoad} { set bestRoad $road; set afterCrane $w }
+foreach s $heldScenes {
+    set n [roadCellCount $s]
+    if {$n > $bestRoad} { set bestRoad $n }
 }
 check "paver painted a road (>= 30 cells)" {$::bestRoad >= 30}
 
-# road runs along row 10 — verify a merged run exists on that row
-set runs [::folkville::runsOf [terrainOf $afterCrane] R $cols 36]
-set row10 0
-foreach run $runs { if {[lindex $run 0] == 10} { incr row10 } }
-check "road lies on row 10" {$::row10 >= 1}
+set row10Seen 0
+set clearedSeen 0
+foreach s $heldScenes {
+    lassign [row10Coverage $s] covers20 total
+    if {$total >= 5} { set row10Seen 1 }
+    if {!$covers20 && $total >= 5} { set clearedSeen 1 }
+}
+check "road lies on row 10" {$::row10Seen == 1}
+check "bulldozer cleared its spot but not the far road" {$::clearedSeen == 1}
 
 set housesMax 0
-foreach w $heldWorlds {
-    set n [llength [worldField $w houses]]
+foreach s $heldScenes {
+    set n [llength [sceneField $s houses]]
     if {$n > $housesMax} { set housesMax $n }
 }
 check "crane built exactly one house (spent latch)" {$::housesMax == 1}
 check "dwell progress claims emitted" {$::dwellClaims >= 5}
 
-# bulldozer cleared road cells around (20,10) in some later world
-set clearedSeen 0
-foreach w $heldWorlds {
-    set t [terrainOf $w]
-    set rowRoad 0
-    foreach run [::folkville::runsOf $t R $cols $rows] {
-        lassign $run rr c0 c1
-        if {$rr == 10} { incr rowRoad [expr {$c1 - $c0 + 1}] }
-    }
-    if {[::folkville::cellAt $t 20 10 $cols] eq "G" && $rowRoad >= 5} {
-        set clearedSeen 1
-    }
-}
-check "bulldozer cleared its spot but not the far road" {$::clearedSeen == 1}
-
-# reset: the final world matches a fresh initTerrain and has no houses
-set final [lindex $heldWorlds end]
-check "reset regrew the meadow" {[terrainOf $::final] eq [::folkville::initTerrain $::cols $::rows]}
-check "reset removed houses" {[llength [worldField $::final houses]] == 0}
+# reset: final scene is a fresh meadow (procs are defined by folkville.folk)
+set final [lindex $heldScenes end]
+set freshTrees [llength [::folkville::cellsOf [::folkville::initTerrain 60 36] T 60 36]]
+check "reset regrew the meadow" {[llength [sceneField $::final trees]] == $::freshTrees}
+check "reset cleared roads" {[sceneField $::final roads] eq {}}
+check "reset removed houses" {[sceneField $::final houses] eq {}}
 
 # snapshot file written in the sandbox
 check "snapshot persisted" {[file exists [file join $::sandbox folkville-world.snapshot]]}

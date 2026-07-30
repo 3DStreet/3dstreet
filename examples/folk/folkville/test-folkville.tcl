@@ -1,5 +1,26 @@
-# test-folkville.tcl — unit tests for folkville-core.tcl. Run: tclsh test-folkville.tcl
-source [file join [file dirname [info script]] folkville-core.tcl]
+# test-folkville.tcl — unit tests for the game logic inside folkville.folk.
+# Run: tclsh test-folkville.tcl
+#
+# folkville.folk is self-contained, so we load it directly with the Folk
+# primitives stubbed out; the engine loop aborts at its display wait (the
+# stubbed Query! never reports a display), leaving the procs defined.
+
+set this "unit-test"
+proc When {args} {}
+proc Wish {args} {}
+proc Claim {args} {}
+proc Hold! {args} {}
+proc Query! {args} { return {} }
+rename exec _realExec
+proc exec {args} {
+    if {[lindex $args 0] eq "sleep"} { return -code error FVSTOP }
+    tailcall _realExec {*}$args
+}
+set rc [catch {source [file join [file dirname [info script]] folkville.folk]} err]
+if {$rc && $err ne "FVSTOP"} {
+    puts "LOAD ERROR: $err"
+    exit 1
+}
 
 set pass 0
 set fail 0

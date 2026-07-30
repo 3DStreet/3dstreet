@@ -90,17 +90,24 @@ re-run at any time, so regeneration must be stable):
 if {((($col * 73856093) ^ ($row * 19349663)) % 15) == 0} { set c T }
 ```
 
-### 3.4 State claim
+### 3.4 Scene claim
 
-The engine (§4.2) is the single writer:
+The engine (§4.2) is the single writer. It publishes **render-ready data**
+(merged road runs, tree cells, house anchors, HUD stats), not the raw
+terrain string:
 
 ```tcl
-Hold! -key {folkville world} \
-    Claim the folkville world is $terrain with houses $houses rev $rev
+Hold! -key {folkville scene} \
+    Claim the folkville scene is rev $rev with roads $roadRuns trees $treeCells \
+        houses $houses grid [list $cols $rows] origin [list $ox $oy] \
+        cell $CELL stats $stats
 ```
 
-`rev` increments only on actual edits, so the renderer's `When` refires only
-when something changed — idle tables cost nothing.
+Two consequences: `rev` increments only on actual edits, so the renderer's
+`When` refires only when something changed — idle tables cost nothing. And
+because the claim carries plain lists rather than state that needs game code
+to interpret, consumers need no shared library — everything ships as `.folk`
+programs, with no out-of-band Tcl files.
 
 ## 4. Program architecture
 
@@ -111,8 +118,8 @@ Three kinds of `.folk` programs, one printed page each:
 │ tool cards (×4) │ ─────────────────────────────────────▶ │ folkville.folk    │
 │ (on vehicles)   │        tag quads (from Folk core)      │  engine: while-   │
 └─────────────────┘ ─────────────────────────────────────▶ │  loop @ 20 Hz     │
-                                                           │  Hold! world      │
-┌─────────────────┐     the folkville world is /…/         │                   │
+                                                           │  Hold! scene      │
+┌─────────────────┐   the folkville scene is rev /…/       │                   │
 │ renderer When   │ ◀───────────────────────────────────── │  (same page,      │
 │ (same page)     │ ──▶ Wish to draw … onto $disp          │   loop runs last) │
 └─────────────────┘                                        └──────────────────┘
@@ -141,23 +148,24 @@ precedent). Loop body each tick (~50 ms):
    (`::quad::centroid`, converted to display space if needed, then to
    `{col row}`).
 2. Apply mechanics (§5) to local `terrain`/`houses` variables.
-3. If anything changed: `incr rev` and re-`Hold!` the world claim.
+3. If anything changed: `incr rev` and re-`Hold!` the scene claim
+   (recomputing road runs / tree cells / stats — cheap at this grid size).
 4. `exec sleep 0.05`.
 
 The engine never draws; the renderer never mutates. All game rules live in
 step 2 as plain Tcl on plain strings — trivially unit-testable off-table with
 `tclsh`.
 
-### 4.3 Renderer — pure function of the world claim
+### 4.3 Renderer — pure function of the scene claim
 
 ```tcl
-When the folkville world is /terrain/ with houses /houses/ rev /rev/ &
+When the folkville scene is rev /rev/ with roads /roads/ trees /trees/ houses /houses/ grid /grid/ origin /origin/ cell /cellPx/ stats /stats/ &
      display /disp/ has width /dw/ height /dh/ {
     # 1. grass: one full-viewport polygon (or grass.png stretched)
-    # 2. roads: merge horizontal runs of R into rects → one polygon per run
-    # 3. trees:  image tree.png per T cell (fallback: dark-green circle)
+    # 2. roads: one rect per merged run in /roads/ — already merged by the engine
+    # 3. trees:  image tree.png per cell in /trees/ (fallback: dark-green circle)
     # 4. houses: image house.png per anchor (fallback: brown rect + roof tri)
-    # 5. border + HUD text ("🌳 142   🏠 7   road 320 m")
+    # 5. border + HUD text from /stats/
 }
 ```
 
@@ -165,7 +173,7 @@ Run-merging keeps wish count sane: worst-case checkerboard roads ≈ 1,100
 polygons, but a realistic road network is 50–300 runs. Trees ~150, houses
 ~20. Total ≤ 500 draw wishes, re-emitted only on `rev` change. Vehicle
 auras (§5.5) live in a separate `When … tag quad …` block so they track at
-full frame rate without touching the world claim.
+full frame rate without touching the scene claim.
 
 ## 5. Mechanics
 
@@ -213,7 +221,7 @@ plus keeping the card in a pocket makes accidents near-impossible.
 ### 5.7 Persistence across reloads
 
 Editing any program re-runs it; a Folk reboot drops held claims. Every 10 s
-(and on reset) the engine writes `~/folk-live/folkville-world.txt`
+(and on reset) the engine writes `~/folkville-world.snapshot`
 (`terrain`, `houses`, `rev`); on start it restores from that file if present.
 Also try `Hold! -save` (exists in `prelude.tcl`) once on hardware.
 
