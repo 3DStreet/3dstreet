@@ -49,7 +49,14 @@ AFRAME.registerComponent('google-maps-aerial', {
 
     // Register plugins
     this.tiles.registerPlugin(
-      new GoogleCloudAuthPlugin({ apiToken: this.data.apiToken })
+      new GoogleCloudAuthPlugin({
+        apiToken: this.data.apiToken,
+        // Google's 3D Tiles session token expires after a few hours; without
+        // this, a tab resumed after sleep/long inactivity gets 4xx on every
+        // tile request and needs a reload. With it, the plugin re-fetches
+        // root.json for a fresh session and retries the request (#1882).
+        autoRefreshToken: true
+      })
     );
     this.tiles.registerPlugin(new TileCompressionPlugin());
     this.tiles.registerPlugin(new TilesFadePlugin());
@@ -113,6 +120,18 @@ AFRAME.registerComponent('google-maps-aerial', {
       // emit play event to start load tiles in aframe-inspector
       this.play();
     }
+
+    // Tiles whose fetch failed while the tab was hidden (system sleep drops
+    // the network mid-request, or the session expired before autoRefreshToken
+    // could kick in) are marked FAILED and never retried, leaving permanent
+    // holes in the map. Clear the failed state when the tab becomes visible
+    // again so the next update() re-queues them (#1882).
+    this.onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && this.tiles) {
+        this.tiles.resetFailedTiles();
+      }
+    };
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
   },
 
   // Set opacity on every material under `object`, once — tiles keep their
@@ -269,6 +288,10 @@ AFRAME.registerComponent('google-maps-aerial', {
   },
 
   remove: function () {
+    if (this.onVisibilityChange) {
+      document.removeEventListener('visibilitychange', this.onVisibilityChange);
+      this.onVisibilityChange = null;
+    }
     if (this.tiles) {
       // Clean up flattening shape
       if (this.flatteningPlugin && this.flatteningShape) {
