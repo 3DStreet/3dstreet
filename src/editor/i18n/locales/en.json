@@ -1163,6 +1163,9 @@
   "geoModal.locationSearchNotFound": {
     "defaultMessage": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location."
   },
+  "geoModal.locationSearchUnavailable": {
+    "defaultMessage": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location."
+  },
   "geoModal.locationSetSuccess": {
     "defaultMessage": "Location Set Successfully!"
   },

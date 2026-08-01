@@ -206,10 +206,12 @@ const GeoModal = () => {
   }, []);
 
   // Resolve a free-typed search string to coordinates. Returns
-  // { lat, lng } or null when nothing matched / the API is unavailable.
+  // { status: 'ok', lat, lng }, { status: 'notFound' } when the text didn't
+  // match anything, or { status: 'unavailable' } when the Geocoder itself
+  // is missing or failing (API not loaded, quota, network).
   const geocodeSearchQuery = useCallback(async (query) => {
     if (!window.google?.maps?.Geocoder) {
-      return null;
+      return { status: 'unavailable' };
     }
     if (!geocoderRef.current) {
       geocoderRef.current = new window.google.maps.Geocoder();
@@ -217,10 +219,15 @@ const GeoModal = () => {
     try {
       const { results } = await geocoderRef.current.geocode({ address: query });
       const location = results?.[0]?.geometry?.location;
-      return location ? { lat: location.lat(), lng: location.lng() } : null;
+      return location
+        ? { status: 'ok', lat: location.lat(), lng: location.lng() }
+        : { status: 'notFound' };
     } catch (error) {
-      // The Geocoder rejects on ZERO_RESULTS and friends — treat as not found.
-      return null;
+      // The Geocoder rejects on any non-OK status; only ZERO_RESULTS means
+      // the query itself found nothing.
+      return error?.code === 'ZERO_RESULTS'
+        ? { status: 'notFound' }
+        : { status: 'unavailable' };
     }
   }, []);
 
@@ -243,7 +250,7 @@ const GeoModal = () => {
           return;
         }
         const geocoded = await geocodeSearchQuery(query);
-        if (geocoded) {
+        if (geocoded.status === 'ok') {
           pendingSearchQueryRef.current = '';
           setMarkerPositionAndElevation(geocoded.lat, geocoded.lng);
         }
@@ -286,7 +293,7 @@ const GeoModal = () => {
     const pendingQuery = pendingSearchQueryRef.current.trim();
     if (pendingQuery && !wasOpenedFromGeojson) {
       const geocoded = await geocodeSearchQuery(pendingQuery);
-      if (geocoded) {
+      if (geocoded.status === 'ok') {
         pendingSearchQueryRef.current = '';
         userChangedLocationRef.current = true;
         latitude = roundCoord(geocoded.lat);
@@ -294,15 +301,28 @@ const GeoModal = () => {
         setMarkerPosition({ lat: latitude, lng: longitude });
       } else {
         setIsWorking(false);
+        posthog.capture('geo_location_search_failed', {
+          query: pendingQuery,
+          reason: geocoded.status,
+          is_pro_user: currentUser?.isPro || false,
+          tokens_available: tokenProfile?.geoToken || 0,
+          scene_id: STREET.utils.getCurrentSceneId()
+        });
         STREET.notify.errorMessage(
-          intl.formatMessage(
-            {
-              id: 'geoModal.locationSearchNotFound',
-              defaultMessage:
-                'Could not find "{query}". Please select a suggestion from the search dropdown or click the map to set the location.'
-            },
-            { query: pendingQuery }
-          )
+          geocoded.status === 'unavailable'
+            ? intl.formatMessage({
+                id: 'geoModal.locationSearchUnavailable',
+                defaultMessage:
+                  'Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.'
+              })
+            : intl.formatMessage(
+                {
+                  id: 'geoModal.locationSearchNotFound',
+                  defaultMessage:
+                    'Could not find "{query}". Please select a suggestion from the search dropdown or click the map to set the location.'
+                },
+                { query: pendingQuery }
+              )
         );
         return;
       }
