@@ -323,6 +323,13 @@ AFRAME.registerComponent('managed-street', {
     if (!this.el.hasAttribute('street-label')) {
       this.el.setAttribute('street-label', '');
     }
+    // Streets flatten geospatial terrain under their footprint by default
+    // (#1476): attach the geo-flatten volume component unless the scene
+    // already carries one (which preserves a saved enabled:false opt-out).
+    // Inert until a google3d layer with the flattening master switch exists.
+    if (!this.el.hasAttribute('geo-flatten')) {
+      this.el.setAttribute('geo-flatten', 'mode: auto');
+    }
 
     // segment-changed bubbles, so a single listener on managed-street
     // catches every descendant segment without per-segment bookkeeping.

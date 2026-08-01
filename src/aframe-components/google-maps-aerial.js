@@ -21,6 +21,13 @@ const Matrix4 = AFRAME.THREE.Matrix4;
 
 const _relativeMatrix = new Matrix4();
 
+// Minimum interval between flattening-shape updates while a shape is being
+// dragged. Every TileFlatteningPlugin shape update forces a CPU re-flatten
+// (per-vertex raycasts) of all active tiles, so during a transform drag we
+// batch matrix changes and apply at most one re-flatten per interval; the
+// trailing update always lands once the drag settles.
+const FLATTEN_UPDATE_THROTTLE_MS = 150;
+
 if (typeof AFRAME === 'undefined') {
   throw new Error(
     'Component attempted to register before AFRAME was available.'
@@ -37,7 +44,6 @@ AFRAME.registerComponent('google-maps-aerial', {
     ellipsoidalHeight: { type: 'number', default: 0 },
     copyrightEl: { type: 'selector' },
     enableFlattening: { type: 'boolean', default: false },
-    flatteningShape: { type: 'string', default: '' },
     opacity: { type: 'number', default: 1, min: 0, max: 1 }
   },
 
@@ -63,6 +69,21 @@ AFRAME.registerComponent('google-maps-aerial', {
     this.flatteningPlugin = new TileFlatteningPlugin();
     this.tiles.registerPlugin(this.flatteningPlugin);
 
+    // Flattening volumes come from the geo-flatten registry (#1476): one
+    // entry per active [geo-flatten] entity, keyed by its component. Synced
+    // lazily in tick — the dirty flag flips on any registry change and on
+    // enableFlattening toggles.
+    this.flattenEntries = new Map();
+    this.flattenRegistryDirty = true;
+    this.lastFlattenApplyTime = -Infinity;
+    this.onFlattenRegistryChanged = () => {
+      this.flattenRegistryDirty = true;
+    };
+    this.el.sceneEl.addEventListener(
+      'geo-flatten-registry-changed',
+      this.onFlattenRegistryChanged
+    );
+
     // Set location (replaces the setLatLonToYUp() API removed in 0.5.0)
     this.reorientationPlugin = new ReorientationPlugin({
       lat: this.data.latitude * MathUtils.DEG2RAD,
@@ -82,15 +103,6 @@ AFRAME.registerComponent('google-maps-aerial', {
       if (this.data.copyrightEl) {
         this.data.copyrightEl.innerHTML =
           this.tiles.getAttributions()[0]?.value || '';
-      }
-
-      // Add flattening shape after tiles are loaded
-      if (
-        this.data.enableFlattening &&
-        this.data.flatteningShape &&
-        !this.flatteningShape
-      ) {
-        this.addFlatteningShape(this.data.flatteningShape);
       }
     });
 
@@ -146,22 +158,18 @@ AFRAME.registerComponent('google-maps-aerial', {
     });
   },
 
-  addFlatteningShape: function (shapeSelector) {
-    if (!this.flatteningPlugin || !shapeSelector) return;
-
-    const testMeshEl = document.querySelector(shapeSelector);
-    if (!testMeshEl) return;
-
-    const testMesh = testMeshEl.object3D.children[0];
-    if (!testMesh) return;
+  // Register one geo-flatten component's mesh with the flattening plugin.
+  addFlattenEntry: function (component) {
+    const sourceMesh = component.getFlattenMesh();
+    if (!sourceMesh) return;
 
     // Ensure world transforms are up to date
     this.tiles.group.updateMatrixWorld();
-    testMesh.updateMatrixWorld(true);
 
     // Transform the shape into the local frame of the tile set
-    const relativeShape = testMesh.clone();
+    const relativeShape = sourceMesh.clone();
     relativeShape.matrixWorld
+      .copy(sourceMesh.matrixWorld)
       .premultiply(this.tiles.group.matrixWorldInverse)
       .decompose(
         relativeShape.position,
@@ -178,19 +186,126 @@ AFRAME.registerComponent('google-maps-aerial', {
       .getPositionToNormal(direction, direction)
       .multiplyScalar(-1);
 
-    // Add the transformed plane as a flattening shape
+    // Add the transformed shape as a flattening shape
     this.flatteningPlugin.addShape(relativeShape, direction, {
       threshold: Infinity
     });
 
-    // Store references for cleanup and updates
-    this.flatteningShape = relativeShape;
-    this.flatteningShapeEl = testMeshEl;
-    this.originalFlatteningMesh = testMesh;
-    this.lastFlatteningMatrix = new Matrix4().copy(relativeShape.matrixWorld);
+    this.flattenEntries.set(component, {
+      sourceMesh,
+      sourceGeometry: sourceMesh.geometry,
+      relativeShape,
+      lastMatrix: new Matrix4().copy(relativeShape.matrixWorld),
+      pendingUpdate: false
+    });
   },
 
-  tick: function () {
+  removeFlattenEntry: function (component, entry) {
+    this.flatteningPlugin.deleteShape(entry.relativeShape);
+    this.flattenEntries.delete(component);
+  },
+
+  clearFlattenEntries: function () {
+    this.flattenEntries.forEach((entry) => {
+      this.flatteningPlugin.deleteShape(entry.relativeShape);
+    });
+    this.flattenEntries.clear();
+  },
+
+  // Called every tick: reconcile the entry map against the geo-flatten
+  // registry when dirty, then track per-entry transform/geometry changes.
+  syncFlattening: function (time) {
+    // Wait for the root tileset: before it loads the ReorientationPlugin has
+    // not positioned tiles.group, so shape-relative transforms (and the
+    // ellipsoid flatten direction derived from them) would be garbage.
+    if (!this.flatteningPlugin || !this.tiles || !this.tiles.root) return;
+
+    if (this.flattenRegistryDirty) {
+      this.flattenRegistryDirty = false;
+      const system = this.el.sceneEl.systems['geo-flatten'];
+      const active = new Set(
+        this.data.enableFlattening && system ? system.getActiveComponents() : []
+      );
+      this.flattenEntries.forEach((entry, component) => {
+        if (!active.has(component)) {
+          this.removeFlattenEntry(component, entry);
+        }
+      });
+      active.forEach((component) => {
+        if (!this.flattenEntries.has(component)) {
+          this.addFlattenEntry(component);
+        }
+      });
+    }
+
+    if (this.flattenEntries.size === 0) return;
+
+    this.tiles.group.updateMatrixWorld();
+    const canApply =
+      time - this.lastFlattenApplyTime >= FLATTEN_UPDATE_THROTTLE_MS;
+    let appliedAny = false;
+
+    for (const [component, entry] of this.flattenEntries) {
+      const sourceMesh = component.getFlattenMesh();
+
+      if (!sourceMesh) {
+        // Mesh vanished (e.g. model still loading after a rebuild). Drop the
+        // entry and leave the registry dirty so we retry next tick.
+        this.removeFlattenEntry(component, entry);
+        this.flattenRegistryDirty = true;
+        continue;
+      }
+
+      // The plugin shape was cloned from the source mesh, sharing geometry by
+      // reference. Editing the host's geometry (e.g. box width/depth/height)
+      // replaces that geometry instance, so the clone goes stale — detect the
+      // swap and rebuild the entry.
+      if (
+        sourceMesh !== entry.sourceMesh ||
+        sourceMesh.geometry !== entry.sourceGeometry
+      ) {
+        // Geometry edits can also arrive continuously (click-drag on a
+        // geometry number input), so rebuilds respect the same throttle.
+        if (canApply) {
+          this.removeFlattenEntry(component, entry);
+          this.addFlattenEntry(component);
+          appliedAny = true;
+        }
+        continue;
+      }
+
+      // Update the shape only when its transform relative to the tile set
+      // actually changed — updateShape() forces a full CPU re-flatten
+      // (per-vertex raycasts) of every active tile.
+      _relativeMatrix
+        .copy(sourceMesh.matrixWorld)
+        .premultiply(this.tiles.group.matrixWorldInverse);
+
+      if (!_relativeMatrix.equals(entry.lastMatrix)) {
+        entry.pendingUpdate = true;
+      }
+
+      if (entry.pendingUpdate && canApply) {
+        entry.pendingUpdate = false;
+        entry.lastMatrix.copy(_relativeMatrix);
+        entry.relativeShape.matrixWorld
+          .copy(_relativeMatrix)
+          .decompose(
+            entry.relativeShape.position,
+            entry.relativeShape.quaternion,
+            entry.relativeShape.scale
+          );
+        this.flatteningPlugin.updateShape(entry.relativeShape);
+        appliedAny = true;
+      }
+    }
+
+    if (appliedAny) {
+      this.lastFlattenApplyTime = time;
+    }
+  },
+
+  tick: function (time) {
     // At opacity 0 the layer is fully hidden (street-geo sets visible:false
     // on this entity), so skip tiles.update() entirely — otherwise the
     // tileset keeps frustum-testing and downloading metered Google 3D Tiles
@@ -214,67 +329,21 @@ AFRAME.registerComponent('google-maps-aerial', {
       }
       this.tiles.setResolutionFromRenderer(camera, this.renderer);
 
-      // Update flattening shape only when its transform relative to the
-      // tile set actually changed — updateShape() forces a full CPU
-      // re-flatten (per-vertex raycasts) of every active tile.
-      if (
-        this.flatteningPlugin &&
-        this.flatteningShape &&
-        this.originalFlatteningMesh
-      ) {
-        // The shape was cloned from the host mesh, sharing its geometry by
-        // reference. Editing the host's geometry (e.g. box width/depth/height
-        // in the geometry controls) replaces that geometry instance, so the
-        // clone goes stale — detect the swap and rebuild the shape.
-        const currentMesh = this.flatteningShapeEl?.object3D.children[0];
-        if (
-          currentMesh &&
-          (currentMesh !== this.originalFlatteningMesh ||
-            currentMesh.geometry !== this.flatteningShape.geometry)
-        ) {
-          this.flatteningPlugin.deleteShape(this.flatteningShape);
-          this.flatteningShape = null;
-          this.originalFlatteningMesh = null;
-          this.addFlatteningShape(this.data.flatteningShape);
-          this.tiles.update();
-          return;
-        }
-
-        // Update world transforms
-        this.tiles.group.updateMatrixWorld();
-        this.originalFlatteningMesh.updateMatrixWorld(true);
-
-        _relativeMatrix
-          .copy(this.originalFlatteningMesh.matrixWorld)
-          .premultiply(this.tiles.group.matrixWorldInverse);
-
-        if (!_relativeMatrix.equals(this.lastFlatteningMatrix)) {
-          this.lastFlatteningMatrix.copy(_relativeMatrix);
-
-          // Re-transform the shape into the local frame of the tile set
-          this.flatteningShape.matrixWorld
-            .copy(_relativeMatrix)
-            .decompose(
-              this.flatteningShape.position,
-              this.flatteningShape.quaternion,
-              this.flatteningShape.scale
-            );
-
-          this.flatteningPlugin.updateShape(this.flatteningShape);
-        }
-      }
+      this.syncFlattening(time);
 
       this.tiles.update();
     }
   },
 
   remove: function () {
+    this.el.sceneEl.removeEventListener(
+      'geo-flatten-registry-changed',
+      this.onFlattenRegistryChanged
+    );
     if (this.tiles) {
-      // Clean up flattening shape
-      if (this.flatteningPlugin && this.flatteningShape) {
-        this.flatteningPlugin.deleteShape(this.flatteningShape);
-        this.flatteningShape = null;
-        this.originalFlatteningMesh = null;
+      // Clean up flattening shapes
+      if (this.flatteningPlugin) {
+        this.clearFlattenEntries();
       }
 
       if (this.offsetEl) {
@@ -324,23 +393,10 @@ AFRAME.registerComponent('google-maps-aerial', {
       this.applyOpacityToLoadedTiles();
     }
 
-    // Handle flattening changes
-    const flatteningChanged =
-      oldData.enableFlattening !== this.data.enableFlattening;
-    const shapeChanged = oldData.flatteningShape !== this.data.flatteningShape;
-
-    if (flatteningChanged || shapeChanged) {
-      // Remove old shape if it exists
-      if (this.flatteningShape) {
-        this.flatteningPlugin.deleteShape(this.flatteningShape);
-        this.flatteningShape = null;
-        this.originalFlatteningMesh = null;
-      }
-
-      // Add new shape if flattening is enabled and we have a shape
-      if (this.data.enableFlattening && this.data.flatteningShape) {
-        this.addFlatteningShape(this.data.flatteningShape);
-      }
+    // Master flattening switch: entries reconcile against the registry on
+    // the next tick (an empty active set clears every shape).
+    if (oldData.enableFlattening !== this.data.enableFlattening) {
+      this.flattenRegistryDirty = true;
     }
   }
 });

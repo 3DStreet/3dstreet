@@ -40,149 +40,124 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   );
 };
 
-const FlatteningShapeSelector = ({
-  entity,
-  componentName,
-  shapeEntities,
-  currentValue
-}) => {
-  const intl = useIntl();
-  const handleShapeChange = (event) => {
-    const value = event.target.value;
-    // Use AFRAME inspector to properly update the entity and trigger re-renders
-    if (window.AFRAME && window.AFRAME.INSPECTOR) {
-      AFRAME.INSPECTOR.execute('entityupdate', {
-        entity: entity,
-        component: componentName,
-        property: 'flatteningShape',
-        value: value,
-        noSelectEntity: true
-      });
-    }
+// Lists every entity contributing a terrain-flattening volume (any entity
+// carrying geo-flatten, #1476) and creates additional flattening boxes. Any
+// number of volumes can be active at once; each row's checkbox toggles that
+// entity's contribution and clicking its name selects the entity.
+const FlatteningContributors = () => {
+  const [, forceUpdate] = useState({});
+
+  useEffect(() => {
+    const sceneEl = AFRAME.scenes[0];
+    if (!sceneEl) return;
+    const handleRegistryChange = () => forceUpdate({});
+    sceneEl.addEventListener(
+      'geo-flatten-registry-changed',
+      handleRegistryChange
+    );
+    // enabled toggles re-render via the registry event; entity renames etc.
+    // via the generic entityupdate stream.
+    const handleEntityUpdate = () => forceUpdate({});
+    Events.on('entityupdate', handleEntityUpdate);
+    return () => {
+      sceneEl.removeEventListener(
+        'geo-flatten-registry-changed',
+        handleRegistryChange
+      );
+      Events.off('entityupdate', handleEntityUpdate);
+    };
+  }, []);
+
+  const contributors = Array.from(
+    document.querySelectorAll('[geo-flatten]')
+  ).filter((el) => el.isConnected && el.components?.['geo-flatten']);
+
+  const displayName = (el) =>
+    el.getAttribute('data-layer-name') || el.id || el.tagName.toLowerCase();
+
+  const toggleEnabled = (el) => {
+    AFRAME.INSPECTOR.execute('entityupdate', {
+      entity: el,
+      component: 'geo-flatten',
+      property: 'enabled',
+      value: !el.components['geo-flatten'].data.enabled,
+      noSelectEntity: true
+    });
   };
 
   const handleCreateShape = () => {
-    // Check if a flattening shape already exists
-    const existingShape = document.querySelector(
-      '[data-layer-name="Geo Flattening Shape"]'
-    );
-    if (existingShape) {
-      console.log(
-        'Flattening shape already exists, using existing shape:',
-        existingShape.id
-      );
-      // Select the existing shape and update component
-      if (AFRAME.INSPECTOR) {
-        AFRAME.INSPECTOR.selectEntity(existingShape);
-      }
-      if (window.AFRAME && window.AFRAME.INSPECTOR) {
-        AFRAME.INSPECTOR.execute('entityupdate', {
-          entity: entity,
-          component: componentName,
-          property: 'flatteningShape',
-          value: existingShape.id,
-          noSelectEntity: true
-        });
-      }
-      return;
-    }
-
-    // Generate a unique ID
+    // Unique id so several boxes can coexist (#1476 — the old UI refused to
+    // create a second shape).
     const shapeId = 'flattening-shape-' + Date.now();
-
-    // Create the default flattening shape using inspector command
-    const definition = {
+    AFRAME.INSPECTOR.execute('entitycreate', {
       id: shapeId,
       element: 'a-box',
       'data-layer-name': 'Geo Flattening Shape',
-      class: 'flattening shape',
       components: {
         scale: '20 5 40',
-        material: 'transparent: true; opacity: 0.3; color: purple'
+        material: 'transparent: true; opacity: 0.3; color: purple',
+        'geo-flatten': 'mode: mesh'
       }
-    };
-
-    // Use inspector's entitycreate command which handles selection automatically
-    AFRAME.INSPECTOR.execute('entitycreate', definition);
-
-    // Wait for the DOM element to be created before setting the property
-    setTimeout(() => {
-      if (window.AFRAME && window.AFRAME.INSPECTOR) {
-        AFRAME.INSPECTOR.execute('entityupdate', {
-          entity: entity,
-          component: componentName,
-          property: 'flatteningShape',
-          value: shapeId,
-          noSelectEntity: true
-        });
-      }
-    }, 100);
+    });
   };
 
   return (
     <>
-      <div className="propertyRow">
-        <div className="fakePropertyRowLabel">
-          <FormattedMessage
-            id="geoSidebar.flatteningShape"
-            defaultMessage="Flattening Shape"
-          />
-        </div>
-        <div className="fakePropertyRowValue">
-          {shapeEntities.length > 0 ? (
-            <select
-              value={currentValue || ''}
-              onChange={handleShapeChange}
-              className="input-style"
-              style={{
-                width: '100%',
-                color: currentValue ? 'white' : 'inherit'
-              }}
-            >
-              <option value="">
-                {intl.formatMessage({
-                  id: 'geoSidebar.selectShape',
-                  defaultMessage: 'Select a shape...'
-                })}
-              </option>
-              {shapeEntities.map((entity) => (
-                <option key={entity.id} value={entity.id}>
-                  {entity.name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div className="text-center text-sm">
-              <FormattedMessage
-                id="geoSidebar.noShapesFound"
-                defaultMessage="No shapes found in scene."
-              />
-            </div>
-          )}
-        </div>
-      </div>
-      {shapeEntities.length === 0 && (
+      {contributors.length > 0 && (
         <div className="propertyRow">
-          <div className="fakePropertyRowLabel"></div>
+          <div className="fakePropertyRowLabel">
+            <FormattedMessage
+              id="geoSidebar.flatteningObjects"
+              defaultMessage="Flattening Objects"
+            />
+          </div>
           <div className="fakePropertyRowValue">
-            <Button variant="toolbtn" onClick={handleCreateShape}>
-              <FormattedMessage
-                id="geoSidebar.createFlatteningShape"
-                defaultMessage="Create Flattening Shape"
-              />
-            </Button>
+            {contributors.map((el, index) => (
+              <div
+                key={el.id || `${displayName(el)}-${index}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  marginBottom: '2px'
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={!!el.components['geo-flatten'].data.enabled}
+                  onChange={() => toggleEnabled(el)}
+                  title="Toggle flattening contribution"
+                />
+                <span
+                  style={{
+                    cursor: 'pointer',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onClick={() => AFRAME.INSPECTOR.selectEntity(el)}
+                  title={displayName(el)}
+                >
+                  {displayName(el)}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
+      <div className="propertyRow">
+        <div className="fakePropertyRowLabel"></div>
+        <div className="fakePropertyRowValue">
+          <Button variant="toolbtn" onClick={handleCreateShape}>
+            <FormattedMessage
+              id="geoSidebar.createFlatteningShape"
+              defaultMessage="Create Flattening Shape"
+            />
+          </Button>
+        </div>
+      </div>
     </>
   );
-};
-
-FlatteningShapeSelector.propTypes = {
-  entity: PropTypes.object.isRequired,
-  componentName: PropTypes.string.isRequired,
-  shapeEntities: PropTypes.array.isRequired,
-  currentValue: PropTypes.string
 };
 
 // Slider + number input for street-geo opacity (#1738). The slider gives
@@ -473,17 +448,6 @@ const GeoSidebar = ({ entity }) => {
       Events.off('entityupdate', handleEntityUpdate);
     };
   }, [entity]);
-
-  const getShapeEntities = () => {
-    const entities = Array.from(document.querySelectorAll('[class*="shape"]'));
-    return entities.map((entity) => ({
-      id: entity.id || `shape-${entities.indexOf(entity)}`,
-      name:
-        entity.getAttribute('data-layer-name') ||
-        entity.id ||
-        `Shape ${entities.indexOf(entity) + 1}`
-    }));
-  };
 
   const openGeoModal = () => {
     posthog.capture('openGeoModalFromSidebar');
@@ -940,12 +904,7 @@ const GeoSidebar = ({ entity }) => {
                               noSelectEntity={true}
                             />
                             {component.data['enableFlattening'] && (
-                              <FlatteningShapeSelector
-                                entity={entity}
-                                componentName="street-geo"
-                                shapeEntities={getShapeEntities()}
-                                currentValue={component.data['flatteningShape']}
-                              />
+                              <FlatteningContributors />
                             )}
                           </>
                         )}

@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Events from '../../lib/Events';
 import MixinMetadata from './MixinMetadata';
+import { Button } from './Button';
 
 export default class ComponentsContainer extends React.Component {
   static propTypes = {
@@ -28,6 +29,32 @@ export default class ComponentsContainer extends React.Component {
     Events.off('entityupdate', this.onEntityUpdate);
   }
 
+  // Entities that can meaningfully contribute a terrain-flattening volume
+  // (#1476): anything with renderable content the user placed themselves.
+  canFlattenTerrain = () => {
+    const { entity } = this.props;
+    return !!(
+      entity.components &&
+      (entity.components.geometry ||
+        entity.components['gltf-model'] ||
+        entity.mixinEls?.length)
+    );
+  };
+
+  addGeoFlatten = () => {
+    const { entity } = this.props;
+    // Primitives raycast cheaply against their own mesh (and keep the legacy
+    // flatten-onto-the-box semantics); models get a footprint proxy plane
+    // instead of per-triangle raycasts against the model.
+    const mode = entity.components?.geometry ? 'mode: mesh' : 'mode: auto';
+    AFRAME.INSPECTOR.execute('componentadd', {
+      entity,
+      component: 'geo-flatten',
+      value: mode
+    });
+    this.forceUpdate();
+  };
+
   render() {
     const { entity } = this.props;
 
@@ -48,26 +75,35 @@ export default class ComponentsContainer extends React.Component {
             <MixinMetadata entity={entity} />
           </div>
         )}
-        {entity.classList.contains('flattening') && (
+        {entity.components?.['geo-flatten'] && (
           <div className="details">
             <div className="propertyRow" style={{ paddingRight: '10px' }}>
               <div className="rounded bg-blue-50 p-2 text-gray-600">
                 <div className="mb-1 font-semibold uppercase">
-                  💡 Flattening Shape Tips
+                  💡 Terrain Flattening Tips
                 </div>
                 <ul className="space-y-1">
-                  <li>• This shape defines terrain flattening area</li>
+                  <li>• This object flattens geospatial 3D tiles under it</li>
                   <li>
-                    • Position this flattening shape below target area to make
-                    room for your design
+                    • Position it below the target area to make room for your
+                    design
                   </li>
                   <li>• Hide visibility by unchecking in Layers panel</li>
                   <li>
-                    • Enable flattening in Geospatial sidebar and choose this
-                    shape to flatten
+                    • The flattening master switch is in the Geospatial sidebar;
+                    duplicate this object to flatten more area
                   </li>
                 </ul>
               </div>
+            </div>
+          </div>
+        )}
+        {!entity.components?.['geo-flatten'] && this.canFlattenTerrain() && (
+          <div className="details">
+            <div className="propertyRow">
+              <Button variant="toolbtn" onClick={this.addGeoFlatten}>
+                Flatten Terrain Under Object
+              </Button>
             </div>
           </div>
         )}

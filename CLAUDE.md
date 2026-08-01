@@ -57,7 +57,9 @@ public/
 
 **Procedural:** `street-generated-*` (striping, stencil, pedestrians, rail, clones)
 
-**Geospatial:** `street-geo`, `google-maps-aerial`, `geojson`
+**Geospatial:** `street-geo`, `google-maps-aerial`, `geojson`, `geo-flatten`
+
+**Terrain flattening (#1476):** any number of entities may carry `geo-flatten` (`mode: mesh` = flatten onto the entity's own mesh, for simple primitives; `mode: auto` = invisible footprint proxy plane at local y=0, for complex subtrees). A scene-level `geo-flatten` registry system feeds `google-maps-aerial`, which reconciles shapes in tick with per-entry matrix-change detection and a 150ms throttle (every shape update re-flattens all active tiles on CPU). Managed streets auto-attach `geo-flatten` (mode: auto) in init — same pattern as `street-align`/`street-ground` — so streets flatten terrain under their footprint by default. `street-geo.enableFlattening` (default true) is the master gate; the legacy single-shape `street-geo.flatteningShape` reference is migrated to a `geo-flatten` component at load (`migrateLegacyFlatteningShape` in `json-utils_1.1.js`). Never raycast a street's real meshes for flattening — slow, and terrain would snap to the tops of vehicles/trees.
 
 **Environment:** `street-environment`, `viewer-mode`, `ocean`
 
