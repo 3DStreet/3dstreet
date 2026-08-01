@@ -386,6 +386,8 @@
   "geoModal.geospatialTips": "Consejos geoespaciales",
   "geoModal.latLong": "Lat, Long",
   "geoModal.locationLabel": "Ubicación:",
+  "geoModal.locationSearchNotFound": "No se pudo encontrar \"{query}\". Selecciona una sugerencia de la lista de búsqueda o haz clic en el mapa para establecer la ubicación.",
+  "geoModal.locationSearchUnavailable": "La búsqueda de ubicaciones no está disponible temporalmente. Haz clic en el mapa o introduce las coordenadas directamente para establecer la ubicación.",
   "geoModal.locationSetSuccess": "¡Ubicación establecida correctamente!",
   "geoModal.nearestIntersectionLabel": "Intersección más cercana:",
   "geoModal.none": "Ninguna",
