@@ -41,5 +41,12 @@
       color: variables.$white;
       border: none;
     }
+
+    // The current selection can't be transformed (data-no-transform): the
+    // mode buttons stay clickable — mode is tool state, not per-object
+    // state — but dim to show they won't act on this selection (#1898).
+    &.inapplicable {
+      opacity: 0.5;
+    }
   }
 }

@@ -72,6 +72,13 @@ const GeoModal = () => {
   // existing location. Drives provenance: a deliberate change stamps source
   // 'manual', while just activating the prefilled location keeps its origin.
   const userChangedLocationRef = useRef(false);
+  // Search text typed since the last applied autocomplete/geocode result.
+  // Google Places Autocomplete only yields coordinates when a suggestion is
+  // explicitly selected — typing an address and clicking Set Location without
+  // selecting one would otherwise commit stale marker coordinates (#1897).
+  // Non-empty means the marker does NOT yet reflect the typed text.
+  const pendingSearchQueryRef = useRef('');
+  const geocoderRef = useRef(null);
   const returnToPreviousModal = useStore(
     (state) => state.returnToPreviousModal
   );
@@ -111,6 +118,7 @@ const GeoModal = () => {
       // Fresh open: nothing the user touched yet, so the prefill below isn't a
       // "change". Marker interactions flip this back to true.
       userChangedLocationRef.current = false;
+      pendingSearchQueryRef.current = '';
       // Check if we have GeoJSON import data first (takes priority)
       if (geojsonImportData && geojsonImportData.lat && geojsonImportData.lon) {
         const lat = roundCoord(geojsonImportData.lat);
@@ -169,7 +177,10 @@ const GeoModal = () => {
   const setMarkerPositionAndElevation = useCallback((lat, lng) => {
     if (!isNaN(lat) && !isNaN(lng)) {
       // A user-driven pick (map click, search, manual coords) — provenance
-      // becomes 'manual' on save.
+      // becomes 'manual' on save. It also supersedes any typed-but-unresolved
+      // search text: the last explicit location choice wins, so a map click
+      // after an abandoned search commits the click, not the stale text.
+      pendingSearchQueryRef.current = '';
       userChangedLocationRef.current = true;
       setMarkerPosition({
         lat: roundCoord(lat),
@@ -194,19 +205,60 @@ const GeoModal = () => {
     setAutocomplete(autocompleteInstance);
   }, []);
 
-  const onPlaceChanged = useCallback(() => {
+  // Resolve a free-typed search string to coordinates. Returns
+  // { status: 'ok', lat, lng }, { status: 'notFound' } when the text didn't
+  // match anything, or { status: 'unavailable' } when the Geocoder itself
+  // is missing or failing (API not loaded, quota, network).
+  const geocodeSearchQuery = useCallback(async (query) => {
+    if (!window.google?.maps?.Geocoder) {
+      return { status: 'unavailable' };
+    }
+    if (!geocoderRef.current) {
+      geocoderRef.current = new window.google.maps.Geocoder();
+    }
+    try {
+      const { results } = await geocoderRef.current.geocode({ address: query });
+      const location = results?.[0]?.geometry?.location;
+      return location
+        ? { status: 'ok', lat: location.lat(), lng: location.lng() }
+        : { status: 'notFound' };
+    } catch (error) {
+      // The Geocoder rejects on any non-OK status; only ZERO_RESULTS means
+      // the query itself found nothing.
+      return error?.code === 'ZERO_RESULTS'
+        ? { status: 'notFound' }
+        : { status: 'unavailable' };
+    }
+  }, []);
+
+  const onPlaceChanged = useCallback(async () => {
     if (autocomplete !== null) {
       const place = autocomplete.getPlace();
       if (place && place.geometry) {
+        // A suggestion was explicitly selected — coordinates come with it.
+        pendingSearchQueryRef.current = '';
         setMarkerPositionAndElevation(
           place.geometry.location.lat(),
           place.geometry.location.lng()
         );
+      } else {
+        // Enter pressed without selecting a suggestion: the place only
+        // carries the raw text, no geometry. Geocode it so typed addresses
+        // still move the marker (#1897).
+        const query = (place?.name || pendingSearchQueryRef.current).trim();
+        if (!query) {
+          return;
+        }
+        const geocoded = await geocodeSearchQuery(query);
+        if (geocoded.status === 'ok') {
+          pendingSearchQueryRef.current = '';
+          setMarkerPositionAndElevation(geocoded.lat, geocoded.lng);
+        }
       }
     } else {
       console.log('Autocomplete is not loaded yet!');
     }
-  }, [autocomplete]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autocomplete, geocodeSearchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onCloseCheck = (evt) => {
     // do not close geoModal when clicking on a list with suggestions for
@@ -231,8 +283,50 @@ const GeoModal = () => {
     }
 
     setIsWorking(true);
-    const latitude = markerPosition.lat;
-    const longitude = markerPosition.lng;
+    let latitude = markerPosition.lat;
+    let longitude = markerPosition.lng;
+
+    // The user may have typed an address without selecting an autocomplete
+    // suggestion, in which case the marker still holds stale coordinates.
+    // Resolve the typed text now so Set Location commits what they typed
+    // instead of silently using the previous location (#1897).
+    const pendingQuery = pendingSearchQueryRef.current.trim();
+    if (pendingQuery && !wasOpenedFromGeojson) {
+      const geocoded = await geocodeSearchQuery(pendingQuery);
+      if (geocoded.status === 'ok') {
+        pendingSearchQueryRef.current = '';
+        userChangedLocationRef.current = true;
+        latitude = roundCoord(geocoded.lat);
+        longitude = roundCoord(geocoded.lng);
+        setMarkerPosition({ lat: latitude, lng: longitude });
+      } else {
+        setIsWorking(false);
+        posthog.capture('geo_location_search_failed', {
+          query: pendingQuery,
+          reason: geocoded.status,
+          is_pro_user: currentUser?.isPro || false,
+          tokens_available: tokenProfile?.geoToken || 0,
+          scene_id: STREET.utils.getCurrentSceneId()
+        });
+        STREET.notify.errorMessage(
+          geocoded.status === 'unavailable'
+            ? intl.formatMessage({
+                id: 'geoModal.locationSearchUnavailable',
+                defaultMessage:
+                  'Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.'
+              })
+            : intl.formatMessage(
+                {
+                  id: 'geoModal.locationSearchNotFound',
+                  defaultMessage:
+                    'Could not find "{query}". Please select a suggestion from the search dropdown or click the map to set the location.'
+                },
+                { query: pendingQuery }
+              )
+        );
+        return;
+      }
+    }
 
     // Track geo location setting attempt
     posthog.capture('geo_location_set_attempt', {
@@ -399,7 +493,13 @@ const GeoModal = () => {
                     defaultMessage: 'Search for a location'
                   })
                 }
-                onChange={(value) => {}}
+                onChange={(value) => {
+                  // Track typed text so Set Location can geocode it if no
+                  // autocomplete suggestion gets selected. Selecting a
+                  // suggestion sets the input programmatically (no onChange)
+                  // and clears this in onPlaceChanged.
+                  pendingSearchQueryRef.current = value;
+                }}
               />
             </Autocomplete>
           )}
