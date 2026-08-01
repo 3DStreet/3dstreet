@@ -35,6 +35,15 @@ const ActionBar = ({ selectedEntity }) => {
     posthog.capture('transform_mode_changed', { mode: mode });
   };
 
+  // Mode is TOOL state, not per-object state: selecting a data-no-transform
+  // entity must neither repaint nor lock the toolbar (#1898). The mode
+  // buttons stay clickable so the user can still switch translate/rotate
+  // with such an entity selected — the gizmo layer independently refuses to
+  // attach to no-transform entities — and render dimmed (not disabled) to
+  // signal the CURRENT SELECTION can't be transformed.
+  const selectionNotTransformable =
+    !!selectedEntity?.hasAttribute('data-no-transform');
+
   const { handleRulerMouseUp, handleRulerMouseMove, handleEscapeKey } =
     useRulerTool(
       changeTransformMode,
@@ -101,7 +110,7 @@ const ActionBar = ({ selectedEntity }) => {
           // Active only when the hand tool is genuinely engaged. Selecting a
           // data-no-transform entity (e.g. an autocreated clone) used to also
           // light this button, which reads as "the hand tool is stuck on" —
-          // the translate/rotate buttons below stay disabled to signal that
+          // the translate/rotate buttons below dim instead to signal that
           // the current selection can't be transformed (#1898).
           [styles.active]: newToolMode === 'hand'
         })}
@@ -117,12 +126,10 @@ const ActionBar = ({ selectedEntity }) => {
       <Button
         variant="toolbtn"
         className={classNames({
-          [styles.active]:
-            transformMode === 'translate' &&
-            !selectedEntity?.hasAttribute('data-no-transform')
+          [styles.active]: transformMode === 'translate',
+          [styles.inapplicable]: selectionNotTransformable
         })}
         onClick={() => changeTransformMode('translate')}
-        disabled={selectedEntity?.hasAttribute('data-no-transform')}
         title={intl.formatMessage({
           id: 'actionBar.translateTool',
           defaultMessage: 'Translate Tool (w) - Select and move objects'
@@ -133,12 +140,10 @@ const ActionBar = ({ selectedEntity }) => {
       <Button
         variant="toolbtn"
         className={classNames({
-          [styles.active]:
-            transformMode === 'rotate' &&
-            !selectedEntity?.hasAttribute('data-no-transform')
+          [styles.active]: transformMode === 'rotate',
+          [styles.inapplicable]: selectionNotTransformable
         })}
         onClick={() => changeTransformMode('rotate')}
-        disabled={selectedEntity?.hasAttribute('data-no-transform')}
         title={intl.formatMessage({
           id: 'actionBar.rotateTool',
           defaultMessage: 'Rotate Tool (e) - Select and rotate objects'
