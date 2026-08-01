@@ -25,6 +25,7 @@ const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 
+const Csrf = require('csrf');
 const express = require('express');
 const admin = require('firebase-admin');
 
@@ -147,7 +148,8 @@ async function convert({ uid, assetId, plyPath }, perf = {}) {
   //    NOTE: /tmp on Cloud Run is tmpfs (counts against memory). For multi-GB
   //    splats, mount a GCS FUSE volume and point WORKDIR there instead.
   const workDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'rad-'));
-  const srcExt = (path.extname(plyPath) || '.ply').toLowerCase();
+  const rawExt = path.extname(path.basename(plyPath));
+  const srcExt = (/^\.[a-z0-9]+$/i.test(rawExt) ? rawExt : '.ply').toLowerCase();
   const localSrc = path.join(workDir, `${assetId}${srcExt}`);
 
   perf.phaseMs = perf.phaseMs || {};
@@ -269,6 +271,22 @@ async function writeJobStatus(uid, jobId, fields) {
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
+
+// CSRF protection via the `csrf` package. This endpoint is consumed by
+// Cloud Tasks (server-to-server), so we use a stateless shared-secret token
+// approach: the caller obtains a CSRF secret from env and sends it in the
+// X-CSRF-Token header; we verify it on every mutating request.
+const tokens = new Csrf();
+const CSRF_SECRET = process.env.CSRF_SECRET || tokens.secretSync();
+app.use((req, res, next) => {
+  if (req.method !== 'GET') {
+    const token = req.headers['x-csrf-token'];
+    if (!token || !tokens.verify(CSRF_SECRET, token)) {
+      return res.status(403).json({ ok: false, error: 'Invalid CSRF token' });
+    }
+  }
+  next();
+});
 
 app.get('/', (_req, res) => res.status(200).send('rad-converter ok'));
 

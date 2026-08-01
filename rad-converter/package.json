@@ -12,6 +12,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "csrf": "^3.1.0",
     "express": "^5.2.1",
     "firebase-admin": "^14.0.0"
   }
