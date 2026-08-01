@@ -1,4 +1,5 @@
 import { GEO_SOURCES } from '@shared/constants/geoSources.js';
+import { formatLocationString } from '../../utils.js';
 
 export function equal(var1, var2) {
   var keys1;
@@ -136,7 +137,7 @@ export async function setSceneLocation(latitude, longitude, options = {}) {
         ellipsoidalHeight: data.ellipsoidalHeight,
         orthometricHeight: data.orthometricHeight,
         geoidHeight: data.geoidHeight,
-        locationString: data.location?.locationString || '',
+        locationString: formatLocationString(data.location?.locationString),
         intersectionString: data.nearestIntersection?.intersectionString || '',
         source
       };

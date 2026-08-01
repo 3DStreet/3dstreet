@@ -13,7 +13,7 @@ import {
   Autocomplete
 } from '@react-google-maps/api';
 import GeoImg from '../../../../../ui_assets/geo.png';
-import { roundCoord } from '../../../../../src/utils.js';
+import { roundCoord, formatLocationString } from '../../../../../src/utils.js';
 import { setSceneLocation } from '../../../lib/utils.js';
 import useStore from '@/store.js';
 import { useAuthContext } from '../../../contexts/index.js';
@@ -63,6 +63,7 @@ const GeoModal = () => {
   });
   const [autocomplete, setAutocomplete] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [successData, setSuccessData] = useState(null);
   const [wasOpenedFromGeojson, setWasOpenedFromGeojson] = useState(false);
@@ -156,7 +157,9 @@ const GeoModal = () => {
 
           // Set the current location string if available
           if (streetGeo.locationString) {
-            setCurrentLocationString(streetGeo.locationString);
+            setCurrentLocationString(
+              formatLocationString(streetGeo.locationString)
+            );
           }
         }
       }
@@ -192,6 +195,40 @@ const GeoModal = () => {
   const onMapClick = useCallback((event) => {
     setMarkerPositionAndElevation(event.latLng.lat(), event.latLng.lng());
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The Google Maps JS API has no built-in "my location" control (that's a
+  // mobile-SDK feature), so ask the browser for the position and move the
+  // marker — the map recenters automatically since `center` is controlled.
+  const onUseMyLocation = useCallback(() => {
+    const showLocationError = () => {
+      STREET.notify.errorMessage(
+        intl.formatMessage({
+          id: 'geoModal.currentLocationUnavailable',
+          defaultMessage:
+            'Could not get your current location. Please allow location access for this site, or click the map to set the location.'
+        })
+      );
+    };
+    if (!navigator.geolocation) {
+      showLocationError();
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setIsLocating(false);
+        setMarkerPositionAndElevation(
+          position.coords.latitude,
+          position.coords.longitude
+        );
+      },
+      () => {
+        setIsLocating(false);
+        showLocationError();
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [intl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCoordinateChange = (value) => {
     const [newLat, newLng] = value
@@ -432,6 +469,12 @@ const GeoModal = () => {
     }
   };
 
+  // Strip empty ", ," segments left by missing address parts — present in
+  // strings from older scenes and from the geoid function before its fix.
+  const successLocationString = formatLocationString(
+    successData?.location?.locationString
+  );
+
   return (
     <Tooltip.Provider>
       <Modal
@@ -527,6 +570,27 @@ const GeoModal = () => {
                 })}
                 onChange={handleCoordinateChange}
               ></Input>
+              <Button
+                variant="ghost"
+                onClick={onUseMyLocation}
+                disabled={isLocating}
+                className={styles.myLocationButton}
+              >
+                {isLocating ? (
+                  <FormattedMessage
+                    id="geoModal.locating"
+                    defaultMessage="Locating…"
+                  />
+                ) : (
+                  <>
+                    📍{' '}
+                    <FormattedMessage
+                      id="geoModal.useMyLocation"
+                      defaultMessage="Use My Location"
+                    />
+                  </>
+                )}
+              </Button>
             </div>
           </div>
 
@@ -794,7 +858,7 @@ const GeoModal = () => {
             </div>
 
             <div className={styles.valueDemo}>
-              {successData.location?.locationString && (
+              {successLocationString && (
                 <div className={styles.dataItem}>
                   <span className={styles.icon}>📍</span>
                   <div className={styles.dataContent}>
@@ -805,7 +869,7 @@ const GeoModal = () => {
                       />
                     </span>
                     <span className={styles.value}>
-                      {successData.location.locationString}
+                      {successLocationString}
                     </span>
                   </div>
                 </div>
