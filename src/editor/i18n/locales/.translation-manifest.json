@@ -747,7 +747,8 @@
     "geoSidebar.opacityFlattening": "Opacity & Flattening",
     "trafficReplay.hiddenModesBody": "The linked street has vehicles hidden, so these recorded modes will not appear during play: {modes}.",
     "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
-    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street"
+    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
+    "geoModal.locationSearchNotFound": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1497,7 +1498,8 @@
     "geoSidebar.opacityFlattening": "Opacity & Flattening",
     "trafficReplay.hiddenModesBody": "The linked street has vehicles hidden, so these recorded modes will not appear during play: {modes}.",
     "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
-    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street"
+    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
+    "geoModal.locationSearchNotFound": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2247,6 +2249,7 @@
     "geoSidebar.opacityFlattening": "Opacity & Flattening",
     "trafficReplay.hiddenModesBody": "The linked street has vehicles hidden, so these recorded modes will not appear during play: {modes}.",
     "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
-    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street"
+    "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
+    "geoModal.locationSearchNotFound": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location."
   }
 }
