@@ -98,9 +98,12 @@ const ActionBar = ({ selectedEntity }) => {
       <Button
         variant="toolbtn"
         className={classNames({
-          [styles.active]:
-            newToolMode === 'hand' ||
-            selectedEntity?.hasAttribute('data-no-transform')
+          // Active only when the hand tool is genuinely engaged. Selecting a
+          // data-no-transform entity (e.g. an autocreated clone) used to also
+          // light this button, which reads as "the hand tool is stuck on" —
+          // the translate/rotate buttons below stay disabled to signal that
+          // the current selection can't be transformed (#1898).
+          [styles.active]: newToolMode === 'hand'
         })}
         onClick={handleNewToolClick.bind(null, 'hand')}
         title={intl.formatMessage({

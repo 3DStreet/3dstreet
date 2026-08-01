@@ -537,10 +537,16 @@ export function Viewport(inspector) {
       transformControls.showZ = true;
     }
 
-    // If there's a selected entity, reattach the appropriate controls
+    // If there's a selected entity, reattach the appropriate controls.
+    // No `inspector.cursor.isPlaying` gate here: entering a transform mode
+    // always implies leaving the hand/ruler tool, but when the mode change
+    // comes from a keyboard shortcut this handler runs BEFORE the ActionBar
+    // listener that re-emits 'showcursor', so the cursor still reads as
+    // paused and the gizmo silently failed to attach — leaving the toolbar
+    // showing translate/rotate with no gizmo until a different entity was
+    // selected (#1898).
     if (
       inspector.selectedEntity &&
-      inspector.cursor.isPlaying &&
       !inspector.selectedEntity.hasAttribute('data-no-transform')
     ) {
       if (inspector.selectedEntity.components['measure-line']) {
