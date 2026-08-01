@@ -177,7 +177,10 @@ const GeoModal = () => {
   const setMarkerPositionAndElevation = useCallback((lat, lng) => {
     if (!isNaN(lat) && !isNaN(lng)) {
       // A user-driven pick (map click, search, manual coords) — provenance
-      // becomes 'manual' on save.
+      // becomes 'manual' on save. It also supersedes any typed-but-unresolved
+      // search text: the last explicit location choice wins, so a map click
+      // after an abandoned search commits the click, not the stale text.
+      pendingSearchQueryRef.current = '';
       userChangedLocationRef.current = true;
       setMarkerPosition({
         lat: roundCoord(lat),
