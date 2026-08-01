@@ -47,17 +47,12 @@ export const Shortcuts = {
     // t: translate (was 'w' until 2026-05-09; remapped because the
     // experimental nav controls bind w/a/s/d for camera movement).
     // 'w' still translates while the WASD kit is gated off.
-    // 'showcursor' precedes 'transformmodechange' on every keyboard path,
-    // matching the ActionBar buttons — the viewport's mode-change handler
-    // must never observe a still-paused cursor (#1898).
     if (keyCode === 84 || (!wasdNav && keyCode === 87)) {
-      Events.emit('showcursor');
       Events.emit('transformmodechange', 'translate');
     }
 
     // e: rotate
     if (keyCode === 69) {
-      Events.emit('showcursor');
       Events.emit('transformmodechange', 'rotate');
     }
 
@@ -74,7 +69,6 @@ export const Shortcuts = {
     // l: scale (was 's' until 2026-05-09; remapped for nav controls).
     // 's' still scales while the WASD kit is gated off.
     if (keyCode === 76 || (!wasdNav && keyCode === 83)) {
-      Events.emit('showcursor');
       Events.emit('transformmodechange', 'scale');
     }
 

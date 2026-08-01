@@ -85,23 +85,15 @@ class OrientedBoxHelper extends THREE.BoxHelper {
 
       // Batched entities have their original mesh tree stripped at batch time, so
       // setFromObject finds no geometry under them. batch-models stashes a per-entity-local
-      // AABB on EVERY member — union in the cached box of the tracked object AND of every
-      // descendant. Checking only this.object._batchLocalBbox left containers of batched
-      // members (a managed street, a buildings container) with a box built solely from
-      // whatever unstripped geometry remained — shrinking, or emptying outright, as
-      // late repacking strips more meshes over a session (#1898). setFromObject above
-      // already refreshed each descendant's matrixWorld under the zeroed-rotation frame,
-      // so the cached boxes can be applied directly.
-      let hasCachedBbox = false;
-      this.object.traverse((node) => {
-        const cachedBbox = node._batchLocalBbox;
-        if (!cachedBbox) return;
-        hasCachedBbox = true;
-        auxLocalBbox.copy(cachedBbox).applyMatrix4(node.matrixWorld);
+      // AABB — apply the entity's now-zeroed-rotation matrixWorld and union it in.
+      const cachedBbox = this.object._batchLocalBbox;
+      if (cachedBbox) {
+        this.object.updateWorldMatrix(false, false);
+        auxLocalBbox.copy(cachedBbox).applyMatrix4(this.object.matrixWorld);
         tempBox3.union(auxLocalBbox);
-      });
+      }
 
-      if (!this.object.el?.getObject3D('mesh') && !hasCachedBbox) {
+      if (!this.object.el?.getObject3D('mesh') && !cachedBbox) {
         // For a group of several models to include the group origin.
         tempBox3.expandByPoint(this.object.position);
       }
@@ -124,19 +116,7 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       }
     }
 
-    if (tempBox3.isEmpty()) {
-      // No measurable bounds (e.g. a detached object). The old code returned
-      // here WITHOUT touching the vertex buffer, so the helper — repositioned
-      // below to the new object's world transform and shown by the caller —
-      // painted the PREVIOUS selection's box at the new object's location: a
-      // wrong-size, wrong-place selection box in the canvas (#1898). Collapse
-      // the box to a degenerate point at the helper origin instead so a
-      // stale outline can never render.
-      const position = this.geometry.attributes.position;
-      position.array.fill(0);
-      position.needsUpdate = true;
-      this.geometry.computeBoundingSphere();
-    } else {
+    if (!tempBox3.isEmpty()) {
       const min = tempBox3.min;
       const max = tempBox3.max;
 
@@ -557,16 +537,10 @@ export function Viewport(inspector) {
       transformControls.showZ = true;
     }
 
-    // If there's a selected entity, reattach the appropriate controls.
-    // No `inspector.cursor.isPlaying` gate here: entering a transform mode
-    // always implies leaving the hand/ruler tool, but when the mode change
-    // comes from a keyboard shortcut this handler runs BEFORE the ActionBar
-    // listener that re-emits 'showcursor', so the cursor still reads as
-    // paused and the gizmo silently failed to attach — leaving the toolbar
-    // showing translate/rotate with no gizmo until a different entity was
-    // selected (#1898).
+    // If there's a selected entity, reattach the appropriate controls
     if (
       inspector.selectedEntity &&
+      inspector.cursor.isPlaying &&
       !inspector.selectedEntity.hasAttribute('data-no-transform')
     ) {
       if (inspector.selectedEntity.components['measure-line']) {
@@ -610,10 +584,6 @@ export function Viewport(inspector) {
           // Some models have a wrong bounding box if we don't wait a bit
           setTimeout(() => {
             if (object.parent === null) return; // entity was detached before timeout fired
-            // Selection may have moved on (or been cleared) while the model
-            // loaded — painting anyway showed a selection box around an
-            // entity that is no longer selected (#1898).
-            if (inspector.selected !== object) return;
             selectionBox.setFromObject(object);
             selectionBox.visible = true;
           }, 20);

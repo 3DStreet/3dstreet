@@ -90,20 +90,6 @@ export function initRaycaster(inspector) {
     }
   };
 
-  // 'raycastermouseleave' is only emitted from the checkIntersections wrapper
-  // above, which stops running the moment the raycaster is disabled (hand
-  // tool 'hidecursor', viewer mode). Whatever hover state was live at that
-  // instant then stays painted in the canvas — a frozen hover box over an
-  // entity the mouse long left (#1898). Clear it whenever the raycaster is
-  // switched off, whichever code path flips the attribute.
-  mouseCursor.addEventListener('componentchanged', (evt) => {
-    if (evt.detail.name !== 'raycaster') return;
-    if (!mouseCursor.getAttribute('raycaster').enabled && lastHoveredEl) {
-      Events.emit('raycastermouseleave', lastHoveredEl);
-      lastHoveredEl = null;
-    }
-  });
-
   mouseCursor.addEventListener('click', handleClick);
   inspector.container.addEventListener('mousedown', onMouseDown);
   inspector.container.addEventListener('mouseup', onMouseUp);

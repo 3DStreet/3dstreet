@@ -169,23 +169,11 @@ Inspector.prototype = {
   },
 
   selectEntity: function (entity, emit) {
-    // select() dedupes on the same object3D and skips 'objectselect', so a
-    // click on the already-selected entity normally re-syncs nothing. If an
-    // earlier 'objectselect' ran while the gizmo couldn't attach (e.g. the
-    // cursor was paused by the hand tool), the selection is then wedged with
-    // no transform controls until a DIFFERENT entity is selected — the
-    // "click any other object to reset" workaround from #1898. Re-emit on
-    // reselect so choosing the same entity again always rebuilds the
-    // selection box + transform controls state.
-    const isReselect = !!entity && this.selected === entity.object3D;
     this.selectedEntity = entity;
     if (entity) {
       this.select(entity.object3D);
     } else {
       this.select(null);
-    }
-    if (isReselect) {
-      Events.emit('objectselect', entity.object3D);
     }
 
     if (emit === undefined) {
