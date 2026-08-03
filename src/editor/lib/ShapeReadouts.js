@@ -93,7 +93,7 @@ export default class ShapeReadouts {
       }
       return;
     }
-    // Above the label cap it is hover-only (spec Decision A): with no hover
+    // Above the label cap it is hover-only: with no hover
     // point yet, show nothing rather than dumping all ~2N labels — that dump
     // is the exact jank the cap exists to prevent.
     if (!hoverPoint) return;
@@ -185,7 +185,7 @@ export default class ShapeReadouts {
     const mesh = new THREE.Mesh(geometry, this.arcMaterial);
     mesh.renderOrder = 999;
     // The inspector raycaster maps a hit to its entity via hit.object.el with
-    // no parent walk (TASK-101 learning). Without this, clicking the arc would
+    // no parent walk. Without this, clicking the arc would
     // silently fail to select the shape.
     mesh.el = this.el;
     this.group.add(mesh);

@@ -2,7 +2,7 @@
 
 // Pure measurement helpers shared by the shape draw tool, the on-canvas
 // readout layer, and the shape sidebar. All angle work is done on the x/z
-// plan-view projection of the vertices (the shape roadmap's KD-12 basis), so
+// plan-view projection of the vertices, so
 // results stay correct if per-vertex height is added later. No THREE objects
 // are retained between calls beyond short-lived scratch vectors.
 

@@ -109,6 +109,12 @@ AFRAME.registerComponent('shape', {
     // become a real, visible fill later by swapping the material alone.
     this.fillGroup = new THREE.Group();
     this.el.setObject3D('shapeFill', this.fillGroup);
+    // Both of these are editor affordances, not part of the model: the fill is
+    // an invisible click target and the overlay is the see-through-walls twin.
+    // The GLB exporter hides objects marked this way, so neither ends up as
+    // dead weight (or an invisible occluder) in an exported or AR-Ready scene.
+    this.fillGroup.userData.source = 'INSPECTOR';
+    this.overlayGroup.userData.source = 'INSPECTOR';
 
     this.material = new THREE.MeshStandardMaterial({
       color: this.data.lineColor,
@@ -404,7 +410,7 @@ AFRAME.registerComponent('shape', {
     // (the editor's selection box) needs to know when that happened, and on
     // every later re-derive too. Non-bubbling: a shape's vertex children must
     // not look like their parent re-deriving.
-    this.el.emit('shape-rederived', null, false);
+    this.el.emit('shape-geometry-changed', null, false);
   },
 
   // Build one segment cylinder (start→end) plus its x-ray overlay twin, oriented
@@ -435,11 +441,15 @@ AFRAME.registerComponent('shape', {
   // fillMaterial) but fully raycastable, so a click anywhere inside the polygon
   // selects it rather than requiring a hit on the outline.
   //
-  // Rings are guaranteed simple — the draw tool rejects any placement whose edge
-  // would cross an existing one — so the triangulation is well defined; concave
-  // rings are handled. Callers gate on `closed`: an open polyline has no defined
-  // interior, and filling one would let a click in empty space between its
-  // endpoints select it while the sidebar reports zero area.
+  // Callers gate on `closed`: an open polyline has no defined interior, and
+  // filling one would let a click in empty space between its endpoints select it
+  // while the sidebar reports zero area.
+  //
+  // Assumes a simple (non-self-intersecting), planar ring — what the draw tool
+  // produces. `closed` is also a properties-panel checkbox and vertices can be
+  // animated, so neither holds absolutely: a self-crossing ring triangulates
+  // arbitrarily, and a non-planar one gets its cap at the first vertex's height.
+  // Both degrade this pick surface only — the outline still renders correctly.
   _addFill: function (verts) {
     // THREE.Shape is a 2D (x, y) construct. Map the ring's x/z plan-view onto it
     // with z negated so the shape's winding survives the rotation below, then
@@ -460,6 +470,11 @@ AFRAME.registerComponent('shape', {
     // Same reason as the sphere/cylinder leaves: the inspector raycaster reads
     // the hit object's own `.el` and does not walk up parents.
     mesh.el = this.el;
+    // This cap exists only so the shape can be clicked; it is not a surface in
+    // the scene. Consumers that resolve "what is physically under the cursor" —
+    // double-click-to-navigate especially — must see through it to the ground
+    // beneath, or a polygon drawn over a road would swallow the whole footprint.
+    mesh.userData.selectionOnly = true;
     this.fillGroup.add(mesh);
     // Deliberately no x-ray overlay twin — an always-on-top interior surface
     // would wash out everything drawn inside the shape's footprint.

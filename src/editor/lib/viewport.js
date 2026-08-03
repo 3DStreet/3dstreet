@@ -590,6 +590,9 @@ export function Viewport(inspector) {
     }
 
     if (object && object.el) {
+      // Must precede the getObject3D('mesh') branch: a shape HAS a `mesh` slot,
+      // so it would otherwise take the generic immediate-sizing path — which is
+      // wrong while that slot is still empty.
       if (object.el.components && object.el.components.shape) {
         // A shape installs its (empty) mesh group at init and fills it a frame
         // later, so sizing the box now measures nothing — and an empty Box3
@@ -605,11 +608,18 @@ export function Viewport(inspector) {
           selectionBox.setFromObject(object);
           selectionBox.visible = true;
         };
-        el.addEventListener('shape-rederived', onRederived);
+        el.addEventListener('shape-geometry-changed', onRederived);
         detachShapeRederiveListener = () =>
-          el.removeEventListener('shape-rederived', onRederived);
-        selectionBox.setFromObject(object);
-        selectionBox.visible = true;
+          el.removeEventListener('shape-geometry-changed', onRederived);
+        // Size now only if there IS geometry. On a freshly-created shape there
+        // isn't, and sizing from an empty Box3 would leave the helper showing
+        // the previous selection's box at this shape's transform for a frame —
+        // the exact artefact this branch exists to prevent. The event covers it.
+        const meshGroup = el.getObject3D('mesh');
+        if (meshGroup && meshGroup.children.length > 0) {
+          selectionBox.setFromObject(object);
+          selectionBox.visible = true;
+        }
       } else if (object.el.getObject3D('mesh') || isBatched(object.el)) {
         // Batched entities have no mesh tree but OrientedBoxHelper falls back to the
         // cached _batchLocalBbox, so we can size the selection immediately.

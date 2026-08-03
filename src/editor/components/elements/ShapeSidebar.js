@@ -82,8 +82,8 @@ const ShapeSidebar = ({ entity }) => {
     // case a shape-vertex hadn't positioned yet at mount.
     const raf = requestAnimationFrame(() => render(lastHoverRef.current));
 
-    // Re-derive when this shape changes (a late child init, or vertex editing
-    // once TASK-104 lands) — otherwise the on-canvas readouts go stale.
+    // Re-derive when this shape changes (a late child init, or future on-canvas
+    // vertex editing) — otherwise the on-canvas readouts go stale.
     const onEntityUpdate = (detail) => {
       if (detail.entity === entity) render(lastHoverRef.current);
     };

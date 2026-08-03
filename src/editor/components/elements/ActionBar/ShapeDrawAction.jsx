@@ -15,9 +15,15 @@
 // auto-close treats the ring as closed by default and drops to open when
 // closure would self-cross, while manual close stays open until the first
 // vertex is clicked. Either can therefore produce an open or a closed shape.
-// The preview always shows exactly what committing now would produce, which is
-// what lets the tool close shapes without ever refusing a click or drawing a
-// self-crossing ring. Explicit gestures are refused, defaults degrade.
+// Letting a ring stay open is what allows a click to never be refused merely
+// because closure would cross — which in turn is what makes stars, combs and
+// deep concavities near the first vertex drawable in their natural order.
+//
+// The preview draws the committed vertices PLUS the trailing cursor vertex, so
+// it is always one vertex longer than what a commit would create, and its
+// closedness is judged on that longer ring. Commit judges its own. The two can
+// therefore disagree near a crossing — the preview is a live hint, not a
+// contract.
 //
 // Draw state lives in refs, never useState: the deactivation auto-finish runs
 // from the effect cleanup, a closure over the last render — a useState vertex
@@ -38,7 +44,7 @@ import { BLOCK_SLOPE_MIN_DEGREES } from '../../../lib/nav-experimental/constants
 const CLICK_MOVE_THRESHOLD = 4; // px — a larger press→release move is a drag
 const MIN_VERTEX_SPACING = 0.05; // m — reject a click ~on the previous vertex
 const CLOSE_PX_TOLERANCE = 12; // px — cursor this close to the first vertex arms
-// the close gesture (Open mode). Screen-space, not world metres, so it is
+// the close gesture (manual-close mode). Screen-space, not world metres, so it is
 // scale-invariant — matches the ruler/draw click-vs-drag pixel basis.
 const INVALID_COLOR = '#ff3b30'; // preview recolour when a placement would cross
 let shapeLayerCounter = 1; // distinguishes drawn shapes in the SceneGraph
@@ -89,7 +95,7 @@ function pickSurfaceOrNull(clientX, clientY, probeTargets) {
     // through to the ground behind it rather than snapping to the wall or
     // refusing. Roofs and sloping roads (slope < 45°) stay drawable. This also
     // guarantees every vertex sits on a nearly-flat surface, so the x/z
-    // plan-view area (KD-12) is always faithful — no wall-drawn degenerate area.
+    // plan-view area is always faithful — no wall-drawn degenerate area.
     const ny = worldHitNormal(hit).y;
     const slopeRad = Math.acos(Math.max(-1, Math.min(1, ny)));
     if (slopeRad >= WALL_SLOPE_RAD) continue; // wall — fall through to the floor behind
@@ -107,8 +113,8 @@ function pickSurfaceOrNull(clientX, clientY, probeTargets) {
 // vertex plots on the y = k plane. So the whole shape is flat at the height of
 // its first point — it sits at the real surface height (works where y=0 is
 // nowhere near the ground, e.g. geospatial scenes), yet is planar, so the x/z
-// plan-view area is exact. (An option to follow the surface for every vertex
-// instead is a later, per-shape choice — TASK-103.)
+// plan-view area is exact. (Following the surface per-vertex instead, rather
+// than staying planar, is a possible later per-shape option.)
 const kPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 function pickKPlaneOrNull(clientX, clientY, k) {
   const canvas = AFRAME.scenes[0]?.canvas;
@@ -185,7 +191,9 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     placedLastRef.current = false;
     invalidRef.current = false;
     closingArmedRef.current = false;
-    // Polygon (auto-closing) is the default draw mode; Open polyline is opt-in.
+    previewClosedRef.current = false; // matches the preview's initial `closed`
+    lastPointRef.current = null;
+    // Auto-close is the default draw mode; manual close is opt-in.
     const isAutoClose = () => useStore.getState().shapeDrawMode !== 'manual';
     setShapeDrawActive(true);
     // Deselect on entry: nothing should stay selected while drawing (its
@@ -216,7 +224,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     scene.appendChild(previewEl);
     previewElRef.current = previewEl;
 
-    // First-vertex close-target marker (Open mode): a flat ring highlighted when
+    // First-vertex close-target marker (manual-close mode): a flat ring shown when
     // the cursor is within CLOSE_PX_TOLERANCE of the first vertex. Tool-owned,
     // created once, hidden by default, disposed on cleanup.
     const highlightGeo = new THREE.TorusGeometry(0.5, 0.06, 8, 24);
@@ -349,31 +357,49 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     // Would closing the current committed ring (last→first) create a crossing?
     const closeCrosses = () => {
       const verts = verticesRef.current;
-      const n = verts.length;
-      if (n < 3) return false;
-      return edgesCross(verts[n - 1], verts[0], committedEdges());
+      return verts.length >= 3 && closureCrossesFrom(verts[verts.length - 1]);
     };
 
-    // Could the ring close cleanly if the trailing vertex sat at `point`? Needs
-    // ≥2 committed vertices, since the trailing vertex makes the third.
-    const closureLegalAt = (point) => {
+    // Would a closing edge from `point` back to the first vertex cross a
+    // committed edge? Adjacent edges share an endpoint and are excluded by
+    // segmentsIntersectXZ.
+    const closureCrossesFrom = (point) =>
+      edgesCross(point, verticesRef.current[0], committedEdges());
+
+    // Should the PREVIEWED ring be drawn closed? The preview is the committed
+    // vertices plus the trailing cursor vertex, so 2 committed already make a
+    // 3-corner ring. Both of the ring's new edges must be clean — the one out
+    // to the cursor and the one closing back — or the preview would draw a ring
+    // that crosses itself, and the fill and area label would be computed from a
+    // self-intersecting contour.
+    const previewClosesAt = (point) =>
+      verticesRef.current.length >= 2 &&
+      !placementCrosses(point) &&
+      !closureCrossesFrom(point);
+
+    // Should the COMMITTED ring be drawn closed? Used when there is no cursor
+    // (the pointer has left the ground), where the preview's trailing vertex has
+    // collapsed onto the last committed one.
+    const committedRingCloses = () => {
       const verts = verticesRef.current;
-      if (verts.length < 2) return false;
-      return !edgesCross(point, verts[0], committedEdges());
+      return verts.length >= 3 && !closureCrossesFrom(verts[verts.length - 1]);
     };
 
-    // Keep the preview closed exactly while closure is legal, so what is on
-    // screen is always what committing right now would produce — no rejected
-    // clicks, and no self-crossing ring ever drawn or committed. Only writes on
-    // a change: setAttribute re-derives the shape.
+    // Drive the preview's closedness. Note this tracks the ring the user can
+    // SEE — committed vertices plus the cursor — while commitsClosed() judges
+    // the ring that will actually be created, which is one vertex shorter. The
+    // two therefore answer slightly different questions and can disagree near a
+    // crossing; the preview is a live hint, not a contract. Only writes on a
+    // change: setAttribute re-derives the shape.
     const syncPreviewClosed = (point) => {
-      const closed = isAutoClose() && point ? closureLegalAt(point) : false;
+      const closed =
+        isAutoClose() &&
+        (point ? previewClosesAt(point) : committedRingCloses());
       if (closed === previewClosedRef.current) return;
-      previewClosedRef.current = closed;
       const pEl = previewElRef.current;
-      if (pEl && pEl.components && pEl.components.shape) {
-        pEl.setAttribute('shape', 'closed', closed);
-      }
+      if (!pEl || !pEl.components || !pEl.components.shape) return;
+      pEl.setAttribute('shape', 'closed', closed);
+      previewClosedRef.current = closed;
     };
 
     const addCommittedVertex = (point) => {
@@ -444,11 +470,11 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         // The trailing vertex has collapsed onto the last committed one, so the
         // ring the preview shows is the committed ring.
         lastPointRef.current = null;
-        syncPreviewClosed(verticesRef.current[verticesRef.current.length - 1]);
+        syncPreviewClosed(null);
         return;
       }
       lastPointRef.current = point;
-      // Open-mode close-gesture arming.
+      // Manual-close gesture arming.
       if (tryArmClose(e.clientX, e.clientY)) {
         closingArmedRef.current = true;
         updateHighlight(true);
@@ -481,7 +507,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // question than the one the click asked.
       if (!isAutoClose() && closingArmedRef.current) {
         if (closeCrosses()) return;
-        finish(true);
+        finish();
         return;
       }
       const point = pickForNextVertex(e.clientX, e.clientY);
@@ -517,13 +543,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
 
     const onKeyDown = (e) => {
       if (isTextFieldFocused()) return;
-      if (e.key === 'Enter' || e.key === 'Escape') {
-        // Escape means "back out of what I'm doing" everywhere else in the
-        // editor (deselect, close a modal, revert a rename) — never "destroy
-        // my work". Here it finishes the shape exactly as Enter does; the way
-        // back is Ctrl+Z on the committed entity, or Backspace before
-        // finishing. Switching tools already committed, so routing both keys
-        // through finish() also stops the two exits doing opposite things.
+      if (e.key === 'Enter') {
         finish();
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
@@ -561,6 +581,25 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         e.preventDefault();
         e.stopPropagation();
       }
+    };
+
+    // Escape finishes, like Enter — but it has to be taken on keyUP, in the
+    // capture phase, and stopped there. The editor's global shortcut deselects
+    // the selected entity on Escape keyup; finishing on keydown would create
+    // and select the shape and then have that keyup immediately deselect it,
+    // so Esc and Enter would leave the editor in different states.
+    //
+    // Esc committing rather than discarding is a deliberate departure from the
+    // rest of the editor, where Escape backs out (the Ruler drops its pending
+    // point; an inline rename reverts). A ruler holds one click and is
+    // transient; a polyline can hold twenty, with no mid-draw undo beyond
+    // Backspace, so discarding on a keystroke that sits next to Enter is a
+    // bad trade.
+    const onKeyUp = (e) => {
+      if (e.key !== 'Escape') return;
+      if (isTextFieldFocused()) return;
+      e.stopPropagation();
+      finish();
     };
 
     // --- finish -----------------------------------------------------------
@@ -638,21 +677,21 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     }
 
     // Does the shape commit as a closed ring? Never if the ring would cross
-    // itself — auto-close mode then commits the open polyline the preview was
-    // already showing, rather than refusing to finish. Given a legal closure:
-    // `forceClosed` (the manual close gesture) and auto-close mode both close;
-    // otherwise the shape stays open. Under 3 vertices there is no ring.
-    const commitsClosed = (forceClosed) => {
+    // itself — auto-close mode then commits an open polyline rather than
+    // refusing to finish. Given a legal closure, auto-close closes by default
+    // and manual close closes only via the first-vertex gesture. Under 3
+    // vertices there is no ring.
+    const commitsClosed = () => {
       if (verticesRef.current.length < 3) return false;
       if (closeCrosses()) return false;
-      return forceClosed === true || isAutoClose() || closingArmedRef.current;
+      return isAutoClose() || closingArmedRef.current;
     };
 
-    function finish(forceClosed) {
+    function finish() {
       if (committingRef.current) return;
       committingRef.current = true;
       const verts = verticesRef.current;
-      const commitClosed = commitsClosed(forceClosed);
+      const commitClosed = commitsClosed();
       if (verts.length >= 2) commitShape(commitClosed);
       teardown();
       // Returns to the translate tool; this emits transformmodechange which
@@ -665,14 +704,11 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
 
     // React to a mid-draw mode switch: re-evaluate the preview's `closed` from
     // the cursor's last position under the new mode, and reset the close-arm /
-    // highlight / invalid state. Guarded on `readoutsRef.current` — set in
-    // onPreviewLoaded — so it never touches a pre-`loaded` or torn-down preview.
+    // highlight / invalid state.
     const unsubMode = useStore.subscribe(
       (s) => s.shapeDrawMode,
       () => {
-        if (previewElRef.current && readoutsRef.current) {
-          syncPreviewClosed(lastPointRef.current);
-        }
+        syncPreviewClosed(lastPointRef.current);
         closingArmedRef.current = false;
         updateHighlight(false);
         setInvalid(false);
@@ -684,6 +720,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     canvas.addEventListener('pointerup', onPointerUp);
     canvas.addEventListener('dblclick', onDblClick);
     window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('keyup', onKeyUp, true);
 
     // --- deactivate (cleanup) --------------------------------------------
     return () => {
@@ -692,6 +729,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       canvas.removeEventListener('pointerup', onPointerUp);
       canvas.removeEventListener('dblclick', onDblClick);
       window.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('keyup', onKeyUp, true);
       previewEl.removeEventListener('loaded', onPreviewLoaded);
       unsubMode();
       canvas.style.cursor = null;
@@ -702,7 +740,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       if (!committingRef.current) {
         committingRef.current = true;
         if (verticesRef.current.length >= 2) {
-          commitShape(commitsClosed(undefined));
+          commitShape(commitsClosed());
         }
         teardown();
       }
