@@ -243,7 +243,7 @@ export const ShapeDrawInstructions = () => {
   const mode = useStore((s) => s.shapeDrawMode);
   const setMode = useStore((s) => s.setShapeDrawMode);
   if (!active) return null;
-  const polygon = mode !== 'open';
+  const autoClose = mode !== 'manual';
   return (
     <div className="sidepanelContent">
       <div className="rounded bg-blue-50 p-2 text-gray-600">
@@ -254,28 +254,30 @@ export const ShapeDrawInstructions = () => {
             <input
               type="radio"
               name="shapeDrawMode"
-              checked={polygon}
-              onChange={() => setMode('polygon')}
+              checked={autoClose}
+              onChange={() => setMode('auto')}
             />
             <span className="text-gray-600">
-              Polygon — clicks form a closed shape; its area is shown.
+              Auto-close — closes as you draw, so the closing edge and the
+              enclosed area update live. Stays open if the shape can&rsquo;t
+              close without crossing itself.
             </span>
           </label>
           <label className="flex items-center gap-1">
             <input
               type="radio"
               name="shapeDrawMode"
-              checked={!polygon}
-              onChange={() => setMode('open')}
+              checked={!autoClose}
+              onChange={() => setMode('manual')}
             />
             <span className="text-gray-600">
-              Open polyline — clicks form an open line; click the first point to
-              close it.
+              Close manually — draws an open line. Click the first point when
+              you want to close it.
             </span>
           </label>
         </div>
         <ul className="space-y-1">
-          {polygon ? (
+          {autoClose ? (
             <>
               <li>• Click to add corners</li>
               <li>• Enter, Esc or double-click to finish</li>

@@ -11,6 +11,14 @@
 // finishing and Ctrl+Z (EntityCreateCommand) after, so no keystroke can destroy
 // an arbitrary amount of unrecoverable work.
 //
+// The two draw modes select how closure HAPPENS, not what the shape ends up as:
+// auto-close treats the ring as closed by default and drops to open when
+// closure would self-cross, while manual close stays open until the first
+// vertex is clicked. Either can therefore produce an open or a closed shape.
+// The preview always shows exactly what committing now would produce, which is
+// what lets the tool close shapes without ever refusing a click or drawing a
+// self-crossing ring. Explicit gestures are refused, defaults degrade.
+//
 // Draw state lives in refs, never useState: the deactivation auto-finish runs
 // from the effect cleanup, a closure over the last render — a useState vertex
 // array would be read stale there. The listener effect is keyed only on
@@ -157,8 +165,10 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
   const placedLastRef = useRef(false);
   const committingRef = useRef(false);
   const invalidRef = useRef(false); // preview currently recoloured invalid (red)
-  const closingArmedRef = useRef(false); // cursor is over the first vertex (Open)
+  const closingArmedRef = useRef(false); // cursor is over the first vertex
   const highlightRef = useRef(null); // first-vertex close-target marker
+  const previewClosedRef = useRef(false); // preview currently drawn as a ring
+  const lastPointRef = useRef(null); // last valid cursor point, for re-syncing
   const setLastShapeStyle = useStore.getState().setLastShapeStyle;
   const setShapeDrawActive = useStore.getState().setShapeDrawActive;
 
@@ -176,7 +186,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     invalidRef.current = false;
     closingArmedRef.current = false;
     // Polygon (auto-closing) is the default draw mode; Open polyline is opt-in.
-    const isPolygon = () => useStore.getState().shapeDrawMode !== 'open';
+    const isAutoClose = () => useStore.getState().shapeDrawMode !== 'manual';
     setShapeDrawActive(true);
     // Deselect on entry: nothing should stay selected while drawing (its
     // on-select readouts would linger over the new shape, and a stray
@@ -196,11 +206,12 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     previewEl.setAttribute('shape', {
       lineColor: style.lineColor,
       lineWidth: style.lineWidth,
-      // Polygon mode previews the closed ring (+ live area) through the cursor;
-      // Open mode previews an open polyline. The cursor is a real trailing
-      // vertex, so with `closed` the preview is a (committed+1)-gon and area
-      // shows from the 2nd committed vertex on (the cursor being the 3rd).
-      closed: isPolygon()
+      // Starts open — with no vertices there is nothing to close. The preview's
+      // closedness is then driven per cursor-move by syncPreviewClosed, which
+      // keeps it showing exactly what committing right now would produce. The
+      // cursor is a real trailing vertex, so when closed the preview is a
+      // (committed+1)-gon and area shows from the 2nd committed vertex on.
+      closed: false
     });
     scene.appendChild(previewEl);
     previewElRef.current = previewEl;
@@ -316,34 +327,53 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     };
 
     // Would placing `point` as the next vertex create a self-intersection?
-    // Tests the new segment (last→point) and, in Polygon mode, the live closing
-    // edge (point→first) against the committed edges. A triangle can never
+    // Only the new segment (last→point) is tested — it is a permanent edge, so
+    // a crossing there can never be undone by drawing on. A triangle can never
     // cross (all candidate edges are adjacent), so this only fires from n≥3.
     //
-    // KNOWN LIMITATION (Polygon mode): because the *provisional* closing edge is
-    // tested at every intermediate placement, a simple polygon whose vertex
-    // order makes an intermediate closing edge cross (some comb / star / C
-    // shapes) cannot be built in that order — the click is rejected (with the
-    // red preview as the cue). This keeps every prefix-closed ring simple, but
-    // does over-constrain vs. "any simple final polygon". It is the approved
-    // spec's Decision D ("both new edges are checked in Polygon mode"); flagged
-    // for the live test in case the closing-edge check should move to finish.
+    // The provisional closing edge is deliberately NOT tested here. It is
+    // discarded the moment another vertex is placed, so rejecting a click over
+    // it would enforce "every intermediate ring is simple" — far stronger than
+    // the "the finished ring is simple" that fill and extrusion need, and it
+    // makes whole families of perfectly simple polygons (stars, combs, deep
+    // concavities near the first vertex) impossible to draw in their natural
+    // vertex order. Closure is handled by letting the shape be open instead:
+    // see closureLegalAt / syncPreviewClosed.
     const placementCrosses = (point) => {
       const verts = verticesRef.current;
       const n = verts.length;
       if (n < 3) return false;
-      const edges = committedEdges();
-      if (edgesCross(verts[n - 1], point, edges)) return true;
-      if (isPolygon() && edgesCross(point, verts[0], edges)) return true;
-      return false;
+      return edgesCross(verts[n - 1], point, committedEdges());
     };
 
-    // Would closing the current open ring (last→first) create a crossing?
+    // Would closing the current committed ring (last→first) create a crossing?
     const closeCrosses = () => {
       const verts = verticesRef.current;
       const n = verts.length;
       if (n < 3) return false;
       return edgesCross(verts[n - 1], verts[0], committedEdges());
+    };
+
+    // Could the ring close cleanly if the trailing vertex sat at `point`? Needs
+    // ≥2 committed vertices, since the trailing vertex makes the third.
+    const closureLegalAt = (point) => {
+      const verts = verticesRef.current;
+      if (verts.length < 2) return false;
+      return !edgesCross(point, verts[0], committedEdges());
+    };
+
+    // Keep the preview closed exactly while closure is legal, so what is on
+    // screen is always what committing right now would produce — no rejected
+    // clicks, and no self-crossing ring ever drawn or committed. Only writes on
+    // a change: setAttribute re-derives the shape.
+    const syncPreviewClosed = (point) => {
+      const closed = isAutoClose() && point ? closureLegalAt(point) : false;
+      if (closed === previewClosedRef.current) return;
+      previewClosedRef.current = closed;
+      const pEl = previewElRef.current;
+      if (pEl && pEl.components && pEl.components.shape) {
+        pEl.setAttribute('shape', 'closed', closed);
+      }
     };
 
     const addCommittedVertex = (point) => {
@@ -364,6 +394,8 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       verts.pop();
       const el = committedElsRef.current.pop();
       if (el && el.parentNode) el.parentNode.removeChild(el);
+      // Dropping an edge can make a previously illegal closure legal again.
+      syncPreviewClosed(lastPointRef.current);
     };
 
     const onPointerDown = (e) => {
@@ -383,12 +415,13 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       return pickKPlaneOrNull(clientX, clientY, verts[0].y);
     };
 
-    // Arm the Open-mode close gesture when the cursor is within
-    // CLOSE_PX_TOLERANCE px of the first vertex (≥3 committed so a close is
-    // meaningful). Snaps the trailing vertex onto the first so the preview draws
-    // the closing edge, and highlights the target. Returns true when armed.
+    // Arm the manual close gesture when the cursor is within CLOSE_PX_TOLERANCE
+    // px of the first vertex (≥3 committed so a close is meaningful). Snaps the
+    // trailing vertex onto the first so the preview draws the closing edge, and
+    // highlights the target. Returns true when armed. Auto-close mode has no
+    // such gesture — closure there is already the default.
     const tryArmClose = (clientX, clientY) => {
-      if (isPolygon()) return false;
+      if (isAutoClose()) return false;
       const verts = verticesRef.current;
       if (verts.length < 3) return false;
       const scr = worldToScreen(verts[0]);
@@ -408,8 +441,13 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         setInvalid(false); // never leave the preview stuck red on a miss
         updateHighlight(false);
         closingArmedRef.current = false;
+        // The trailing vertex has collapsed onto the last committed one, so the
+        // ring the preview shows is the committed ring.
+        lastPointRef.current = null;
+        syncPreviewClosed(verticesRef.current[verticesRef.current.length - 1]);
         return;
       }
+      lastPointRef.current = point;
       // Open-mode close-gesture arming.
       if (tryArmClose(e.clientX, e.clientY)) {
         closingArmedRef.current = true;
@@ -422,6 +460,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       closingArmedRef.current = false;
       updateHighlight(false);
       setInvalid(placementCrosses(point));
+      syncPreviewClosed(point);
       setTrailing(point);
       refreshReadouts(point);
     };
@@ -435,9 +474,12 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
         if (moved > CLICK_MOVE_THRESHOLD) return; // a drag (orbit/pan)
       }
-      // Open-mode close: commit the committed ring as a polygon (do not add the
-      // duplicate first vertex). Rejected if the closing edge would cross.
-      if (!isPolygon() && closingArmedRef.current) {
+      // Manual close: commit the committed ring as a polygon (do not add the
+      // duplicate first vertex). Refused outright if the closing edge would
+      // cross — closure was asked for explicitly here, so quietly handing back
+      // an open shape (what auto-close mode does) would answer a different
+      // question than the one the click asked.
+      if (!isAutoClose() && closingArmedRef.current) {
         if (closeCrosses()) return;
         finish(true);
         return;
@@ -458,6 +500,9 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       addCommittedVertex(point);
       placedLastRef.current = true;
       setInvalid(false);
+      // The committed edge set just grew, so closure legality may have flipped;
+      // resync now rather than waiting for the next cursor move.
+      syncPreviewClosed(point);
       setTrailing(point);
       refreshReadouts(point);
     };
@@ -592,21 +637,22 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       });
     }
 
-    // forceClosed === true → commit closed (the Open-mode close gesture);
-    // undefined → derive from the current mode: Polygon commits closed, Open
-    // commits closed only if the close gesture is armed over the first vertex
-    // (and the closing edge doesn't cross) — so Enter/double-click while the
-    // preview shows a closed ring commits closed, not a contradicting open one.
-    // Either way a shape with < 3 vertices commits open (a line).
+    // Does the shape commit as a closed ring? Never if the ring would cross
+    // itself — auto-close mode then commits the open polyline the preview was
+    // already showing, rather than refusing to finish. Given a legal closure:
+    // `forceClosed` (the manual close gesture) and auto-close mode both close;
+    // otherwise the shape stays open. Under 3 vertices there is no ring.
+    const commitsClosed = (forceClosed) => {
+      if (verticesRef.current.length < 3) return false;
+      if (closeCrosses()) return false;
+      return forceClosed === true || isAutoClose() || closingArmedRef.current;
+    };
+
     function finish(forceClosed) {
       if (committingRef.current) return;
       committingRef.current = true;
       const verts = verticesRef.current;
-      const wantClosed =
-        forceClosed === true ||
-        (forceClosed === undefined &&
-          (isPolygon() || (closingArmedRef.current && !closeCrosses())));
-      const commitClosed = wantClosed && verts.length >= 3;
+      const commitClosed = commitsClosed(forceClosed);
       if (verts.length >= 2) commitShape(commitClosed);
       teardown();
       // Returns to the translate tool; this emits transformmodechange which
@@ -617,16 +663,15 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // readouts (ShapeSidebar) light up with no extra wiring.
     }
 
-    // React to a mid-draw mode switch: re-point the preview's `closed`, and
-    // reset the close-arm / highlight / invalid state (the candidate-edge set
-    // differs between modes). Guarded on `readoutsRef.current` — set in
+    // React to a mid-draw mode switch: re-evaluate the preview's `closed` from
+    // the cursor's last position under the new mode, and reset the close-arm /
+    // highlight / invalid state. Guarded on `readoutsRef.current` — set in
     // onPreviewLoaded — so it never touches a pre-`loaded` or torn-down preview.
     const unsubMode = useStore.subscribe(
       (s) => s.shapeDrawMode,
       () => {
-        const pEl = previewElRef.current;
-        if (pEl && readoutsRef.current) {
-          pEl.setAttribute('shape', 'closed', isPolygon());
+        if (previewElRef.current && readoutsRef.current) {
+          syncPreviewClosed(lastPointRef.current);
         }
         closingArmedRef.current = false;
         updateHighlight(false);
@@ -651,13 +696,13 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       unsubMode();
       canvas.style.cursor = null;
       setShapeDrawActive(false);
-      // Auto-finish anything still in progress: commit if ≥2 vertices (closed
-      // when Polygon mode + ≥3), else discard. Guarded against the
-      // finish()-triggered re-entry above.
+      // Auto-finish anything still in progress: commit if ≥2 vertices, on the
+      // same terms as finish(). Guarded against the finish()-triggered re-entry
+      // above.
       if (!committingRef.current) {
         committingRef.current = true;
         if (verticesRef.current.length >= 2) {
-          commitShape(isPolygon() && verticesRef.current.length >= 3);
+          commitShape(commitsClosed(undefined));
         }
         teardown();
       }
