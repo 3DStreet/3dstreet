@@ -500,6 +500,11 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         setTrailing(verticesRef.current[0]); // preview the closing edge
         setInvalid(closeCrosses());
         refreshReadouts(verticesRef.current[0]);
+        // While armed there is no pending corner: the trailing vertex is
+        // snapped onto the first one, so the preview shows closure, not a new
+        // corner. Clearing this keeps Enter honest — it closes the ring like
+        // the click would, instead of dropping a stray vertex beside vertex 0.
+        lastPointRef.current = null;
         return;
       }
       closingArmedRef.current = false;
