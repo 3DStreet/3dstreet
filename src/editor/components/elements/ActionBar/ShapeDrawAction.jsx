@@ -6,10 +6,12 @@
 // fixed points to an N-vertex open polyline, and adds the readout layer
 // (ShapeReadouts).
 //
-// There is deliberately no discard path: every exit — Enter, Esc, double-click,
-// switching tools — commits through finish(). Recovery is Backspace before
-// finishing and Ctrl+Z (EntityCreateCommand) after, so no keystroke can destroy
-// an arbitrary amount of unrecoverable work.
+// No exit discards placed work: Enter, Esc, double-click and switching tools
+// all commit through finish(). Recovery is Backspace before finishing and
+// Ctrl+Z (EntityCreateCommand) after, so no keystroke can destroy an arbitrary
+// amount of unrecoverable work. Esc and Enter differ only over the un-clicked
+// trailing cursor point — Enter takes it, Esc drops it — which is the same
+// "back out one level" Esc means everywhere else in the editor.
 //
 // The two draw modes select how closure HAPPENS, not what the shape ends up as:
 // auto-close treats the ring as closed by default and drops to open when
@@ -19,11 +21,12 @@
 // because closure would cross — which in turn is what makes stars, combs and
 // deep concavities near the first vertex drawable in their natural order.
 //
-// The preview draws the committed vertices PLUS the trailing cursor vertex, so
-// it is always one vertex longer than what a commit would create, and its
-// closedness is judged on that longer ring. Commit judges its own. The two can
-// therefore disagree near a crossing — the preview is a live hint, not a
-// contract.
+// The preview draws the committed vertices PLUS the trailing cursor vertex, and
+// judges its closedness on that ring. Enter commits that same ring, cursor
+// vertex included, so what is on screen is what you get. Esc drops the cursor
+// vertex, so it commits a ring one shorter — which may therefore differ in
+// closedness from the preview. That difference is the point of the key, not a
+// discrepancy: Esc means "without the point I haven't clicked".
 //
 // Draw state lives in refs, never useState: the deactivation auto-finish runs
 // from the effect cleanup, a closure over the last render — a useState vertex
@@ -354,6 +357,22 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       return edgesCross(verts[n - 1], point, committedEdges());
     };
 
+    // Would a click at `point` be accepted as the next vertex? Used both by the
+    // click path and by Enter, which takes the pending cursor point — Enter must
+    // never create a vertex a click could not.
+    const canPlace = (point) => {
+      if (placementCrosses(point)) return false;
+      const verts = verticesRef.current;
+      if (!verts.length) return true;
+      const last = verts[verts.length - 1];
+      const d = Math.hypot(
+        point.x - last.x,
+        point.y - last.y,
+        point.z - last.z
+      );
+      return d >= MIN_VERTEX_SPACING;
+    };
+
     // Would closing the current committed ring (last→first) create a crossing?
     const closeCrosses = () => {
       const verts = verticesRef.current;
@@ -491,6 +510,21 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       refreshReadouts(point);
     };
 
+    // Cursor off the canvas: there is no pending point any more, so drop it and
+    // collapse the preview to the committed ring — the same state a pick-miss
+    // leaves. Without this, reaching for a toolbar button and then pressing
+    // Enter would commit a vertex at wherever the mouse last crossed the edge.
+    const onPointerLeave = () => {
+      if (committingRef.current) return;
+      lastPointRef.current = null;
+      collapseTrailing();
+      readoutsRef.current && readoutsRef.current.clear();
+      setInvalid(false);
+      updateHighlight(false);
+      closingArmedRef.current = false;
+      syncPreviewClosed(null);
+    };
+
     const onPointerUp = (e) => {
       if (committingRef.current) return;
       const down = downXYRef.current;
@@ -507,22 +541,12 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // question than the one the click asked.
       if (!isAutoClose() && closingArmedRef.current) {
         if (closeCrosses()) return;
-        finish();
+        finish(false); // closing onto the first vertex, not onto the cursor
         return;
       }
       const point = pickForNextVertex(e.clientX, e.clientY);
       if (!point) return; // horizon click — no-op
-      if (placementCrosses(point)) return; // reject a self-intersecting placement
-      const verts = verticesRef.current;
-      if (verts.length) {
-        const last = verts[verts.length - 1];
-        const d = Math.hypot(
-          point.x - last.x,
-          point.y - last.y,
-          point.z - last.z
-        );
-        if (d < MIN_VERTEX_SPACING) return; // reject zero-length segment
-      }
+      if (!canPlace(point)) return; // crossing, or on top of the previous vertex
       addCommittedVertex(point);
       placedLastRef.current = true;
       setInvalid(false);
@@ -535,16 +559,19 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
 
     const onDblClick = () => {
       if (committingRef.current) return;
-      // The first release of a native double-click already placed a vertex if
-      // it passed the spacing guard; retract only that one, then finish.
+      // Usually a no-op: the double-click's second release lands within
+      // MIN_VERTEX_SPACING of the vertex the first one placed, so it is rejected
+      // and there is nothing to retract. It only bites zoomed far enough out
+      // that a few pixels of jitter exceed that spacing in world units — then
+      // the second release really did place a vertex, and this removes it.
       if (placedLastRef.current) removeLastVertex();
-      finish();
+      finish(false);
     };
 
     const onKeyDown = (e) => {
       if (isTextFieldFocused()) return;
       if (e.key === 'Enter') {
-        finish();
+        finish(true); // commit the shape as previewed, cursor vertex included
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
         removeLastVertex();
@@ -599,7 +626,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       if (e.key !== 'Escape') return;
       if (isTextFieldFocused()) return;
       e.stopPropagation();
-      finish();
+      finish(false);
     };
 
     // --- finish -----------------------------------------------------------
@@ -687,9 +714,25 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       return isAutoClose() || closingArmedRef.current;
     };
 
-    function finish() {
+    // `takePending` decides what happens to the trailing cursor vertex — the one
+    // the preview draws but no click has placed.
+    //
+    // Enter takes it. The preview IS committed-vertices-plus-cursor, so taking
+    // it makes Enter commit exactly the shape on screen: same corners, same
+    // closedness, same area. Only if a click there would have been accepted —
+    // Enter must not create a vertex the mouse could not.
+    //
+    // Esc, double-click and switching tools drop it, which is what makes Esc an
+    // ordinary "back out one level" rather than a departure: it discards the
+    // un-clicked point and keeps every placed one, exactly as the Ruler discards
+    // its pending point. No placed work is ever lost either way.
+    function finish(takePending) {
       if (committingRef.current) return;
       committingRef.current = true;
+      if (takePending) {
+        const pending = lastPointRef.current;
+        if (pending && canPlace(pending)) addCommittedVertex(pending);
+      }
       const verts = verticesRef.current;
       const commitClosed = commitsClosed();
       if (verts.length >= 2) commitShape(commitClosed);
@@ -717,6 +760,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
 
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerleave', onPointerLeave);
     canvas.addEventListener('pointerup', onPointerUp);
     canvas.addEventListener('dblclick', onDblClick);
     window.addEventListener('keydown', onKeyDown, true);
@@ -726,6 +770,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     return () => {
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerleave', onPointerLeave);
       canvas.removeEventListener('pointerup', onPointerUp);
       canvas.removeEventListener('dblclick', onDblClick);
       window.removeEventListener('keydown', onKeyDown, true);

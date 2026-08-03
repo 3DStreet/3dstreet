@@ -73,6 +73,12 @@ AFRAME.registerComponent('shape', {
     // stays open; a non-default `true` serializes and round-trips (default is
     // stripped on save, so an open shape carries no `closed` key).
     closed: { type: 'boolean', default: false },
+    // Whether clicking inside a closed shape selects it. On by default, since
+    // the outline alone is impractically thin to hit. Turning it off is the
+    // escape valve for a shape big enough that its interior would swallow
+    // clicks meant for whatever it covers — the outline still selects it.
+    // Only meaningful when `closed`; an open polyline has no interior.
+    selectInside: { type: 'boolean', default: true },
     // Event-driven opt-out of the system dirty-check: set to an event name and
     // the shape re-derives on that event instead of being polled every frame
     // (the hooks below honour it). Empty by default → the system tick polls,
@@ -245,6 +251,13 @@ AFRAME.registerComponent('shape', {
     if (oldData.closed !== undefined && oldData.closed !== this.data.closed) {
       this.requestRederive();
     }
+
+    if (
+      oldData.selectInside !== undefined &&
+      oldData.selectInside !== this.data.selectInside
+    ) {
+      this.requestRederive();
+    }
   },
 
   remove: function () {
@@ -400,7 +413,7 @@ AFRAME.registerComponent('shape', {
         verts[0].object3D.position,
         radius
       );
-      this._addFill(verts);
+      if (this.data.selectInside) this._addFill(verts);
     }
 
     this._updateArea(verts, closed);

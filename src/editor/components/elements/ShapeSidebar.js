@@ -280,7 +280,8 @@ export const ShapeDrawInstructions = () => {
           {autoClose ? (
             <>
               <li>• Click to add corners</li>
-              <li>• Enter, Esc or double-click to finish</li>
+              <li>• Enter finishes, including the corner under the cursor</li>
+              <li>• Esc or double-click finishes without it</li>
               <li>• Backspace removes the last corner</li>
               <li>• Ctrl+Z undoes the finished shape</li>
             </>
@@ -288,7 +289,8 @@ export const ShapeDrawInstructions = () => {
             <>
               <li>• Click to add points</li>
               <li>• Click the first point to close the shape</li>
-              <li>• Enter, Esc or double-click to finish (open)</li>
+              <li>• Enter finishes, including the point under the cursor</li>
+              <li>• Esc or double-click finishes without it</li>
               <li>• Backspace removes the last point</li>
               <li>• Ctrl+Z undoes the finished shape</li>
             </>
