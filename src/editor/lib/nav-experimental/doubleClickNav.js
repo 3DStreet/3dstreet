@@ -18,6 +18,13 @@ import {
 
 const RAD2DEG = 180 / Math.PI;
 
+// True for an intersection against a mesh that exists only to make its entity
+// click-selectable (see `shape.js`'s interior cap). Such a mesh is invisible and
+// occupies space no real surface occupies, so navigation must look past it.
+function isSelectionOnlyHit(hit) {
+  return !!(hit && hit.object && hit.object.userData.selectionOnly);
+}
+
 // The double-click navigation controller. Classifies what is under the cursor
 // from the inbound `nav-experimental:doubleclick` payload, computes a predictable
 // "good view" desired pose (navMath, pure), resolves it onto a clear non-buried
@@ -68,6 +75,19 @@ export class DoubleClickNav {
       // the owning entity.
       if (!hit && Array.isArray(raycasterComp.intersections)) {
         hit = raycasterComp.intersections[0] || null;
+      }
+      // Some pick targets exist only so an entity can be click-selected — a
+      // shape's invisible interior cap. They are not scene surfaces, so a
+      // double-click over one has to resolve against whatever is really
+      // underneath; otherwise a polygon drawn over a road turns its whole
+      // footprint into object-framing instead of a landing.
+      if (
+        isSelectionOnlyHit(hit) &&
+        Array.isArray(raycasterComp.intersections)
+      ) {
+        hit =
+          raycasterComp.intersections.find((i) => !isSelectionOnlyHit(i)) ||
+          null;
       }
     }
 

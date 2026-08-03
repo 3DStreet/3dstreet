@@ -7,17 +7,25 @@ export const ShapeDraw24Icon = () => (
     xmlns="http://www.w3.org/2000/svg"
   >
     <path
-      d="M4 20L10 6L15 15L20 9"
+      d="M4 18L9 5L19 8L20 18"
       stroke="white"
       strokeWidth="1.6"
       strokeLinecap="round"
       strokeLinejoin="round"
       fill="none"
     />
-    <circle cx="4" cy="20" r="1.8" fill="white" />
-    <circle cx="10" cy="6" r="1.8" fill="white" />
-    <circle cx="15" cy="15" r="1.8" fill="white" />
-    <circle cx="20" cy="9" r="1.8" fill="white" />
+    <path
+      d="M20 18L4 18"
+      stroke="white"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeDasharray="3 4"
+      fill="none"
+    />
+    <circle cx="4" cy="18" r="1.8" fill="white" />
+    <circle cx="9" cy="5" r="1.8" fill="white" />
+    <circle cx="19" cy="8" r="1.8" fill="white" />
+    <circle cx="20" cy="18" r="1.8" fill="white" />
   </svg>
 );
 
