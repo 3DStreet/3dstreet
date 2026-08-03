@@ -1,10 +1,15 @@
 /* global AFRAME, THREE */
 
 // Shape draw tool: click to lay down polyline vertices on the ground plane
-// with live length + angle readouts, finish with Enter / double-click, cancel
-// with Esc, step back with Backspace. Generalises the Ruler (RulerAction.jsx)
-// from two fixed points to an N-vertex open polyline, and adds the readout
-// layer (ShapeReadouts).
+// with live length + angle readouts, finish with Enter / Esc / double-click,
+// step back with Backspace. Generalises the Ruler (RulerAction.jsx) from two
+// fixed points to an N-vertex open polyline, and adds the readout layer
+// (ShapeReadouts).
+//
+// There is deliberately no discard path: every exit — Enter, Esc, double-click,
+// switching tools — commits through finish(). Recovery is Backspace before
+// finishing and Ctrl+Z (EntityCreateCommand) after, so no keystroke can destroy
+// an arbitrary amount of unrecoverable work.
 //
 // Draw state lives in refs, never useState: the deactivation auto-finish runs
 // from the effect cleanup, a closure over the last render — a useState vertex
@@ -467,10 +472,14 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
 
     const onKeyDown = (e) => {
       if (isTextFieldFocused()) return;
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' || e.key === 'Escape') {
+        // Escape means "back out of what I'm doing" everywhere else in the
+        // editor (deselect, close a modal, revert a rename) — never "destroy
+        // my work". Here it finishes the shape exactly as Enter does; the way
+        // back is Ctrl+Z on the committed entity, or Backspace before
+        // finishing. Switching tools already committed, so routing both keys
+        // through finish() also stops the two exits doing opposite things.
         finish();
-      } else if (e.key === 'Escape') {
-        cancel();
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
         removeLastVertex();
@@ -509,7 +518,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       }
     };
 
-    // --- finish / cancel --------------------------------------------------
+    // --- finish -----------------------------------------------------------
     function teardown() {
       const pEl = previewElRef.current;
       previewEl.removeEventListener('loaded', onPreviewLoaded);
@@ -606,13 +615,6 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       changeTransformMode('translate');
       // EntityCreateCommand selects the created parent, so the on-select
       // readouts (ShapeSidebar) light up with no extra wiring.
-    }
-
-    function cancel() {
-      if (committingRef.current) return;
-      committingRef.current = true;
-      teardown();
-      changeTransformMode('translate');
     }
 
     // React to a mid-draw mode switch: re-point the preview's `closed`, and

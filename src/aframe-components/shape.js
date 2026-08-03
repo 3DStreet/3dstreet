@@ -101,11 +101,29 @@ AFRAME.registerComponent('shape', {
     this.el.setObject3D('mesh', this.lineGroup);
     this.el.setObject3D('shapeVertices', this.vertexGroup);
     this.el.setObject3D('shapeLineOverlay', this.overlayGroup);
+    // Interior pick surface for closed shapes. Without it a polygon is
+    // selectable only by its thin outline tubes, which is impractical to hit.
+    // Kept in its own slot rather than folded into `mesh` so the fill can
+    // become a real, visible fill later by swapping the material alone.
+    this.fillGroup = new THREE.Group();
+    this.el.setObject3D('shapeFill', this.fillGroup);
 
     this.material = new THREE.MeshStandardMaterial({
       color: this.data.lineColor,
       roughness: 0.8,
       metalness: 0.0
+    });
+
+    // Invisible-but-raycastable fill. `colorWrite: false` draws nothing while
+    // leaving the mesh in the render list and — importantly — in the raycaster,
+    // which skips meshes only via `visible`, never via material. DoubleSide so
+    // ring winding and camera side can't make the pick fail.
+    this.fillMaterial = new THREE.MeshBasicMaterial({
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      colorWrite: false
     });
 
     // Unlit, translucent, always-on-top material for the x-ray overlay copy.
@@ -249,14 +267,19 @@ AFRAME.registerComponent('shape', {
     this.clearGroup(this.lineGroup);
     this.clearGroup(this.vertexGroup);
     this.clearGroup(this.overlayGroup);
+    this.clearGroup(this.fillGroup);
     this.material.dispose();
     this.overlayMaterial.dispose();
+    this.fillMaterial.dispose();
     if (this.el.getObject3D('mesh')) this.el.removeObject3D('mesh');
     if (this.el.getObject3D('shapeVertices')) {
       this.el.removeObject3D('shapeVertices');
     }
     if (this.el.getObject3D('shapeLineOverlay')) {
       this.el.removeObject3D('shapeLineOverlay');
+    }
+    if (this.el.getObject3D('shapeFill')) {
+      this.el.removeObject3D('shapeFill');
     }
     if (this.el.getObject3D('shapeAreaLabel')) {
       this.el.removeObject3D('shapeAreaLabel');
@@ -329,6 +352,7 @@ AFRAME.registerComponent('shape', {
     this.clearGroup(this.lineGroup);
     this.clearGroup(this.vertexGroup);
     this.clearGroup(this.overlayGroup);
+    this.clearGroup(this.fillGroup);
 
     // Sphere caps at each vertex — also smooth the joints between segments.
     for (let i = 0; i < verts.length; i++) {
@@ -366,6 +390,7 @@ AFRAME.registerComponent('shape', {
         verts[0].object3D.position,
         radius
       );
+      this._addFill(verts);
     }
 
     this._updateArea(verts, closed);
@@ -392,6 +417,41 @@ AFRAME.registerComponent('shape', {
     mesh.el = this.el;
     this.lineGroup.add(mesh);
     this._addOverlayMesh(mesh);
+  },
+
+  // Build the interior pick surface for a closed ring: a triangulated cap in the
+  // x/z plane, matching the area the shape reports. Drawn invisibly (see
+  // fillMaterial) but fully raycastable, so a click anywhere inside the polygon
+  // selects it rather than requiring a hit on the outline.
+  //
+  // Rings are guaranteed simple — the draw tool rejects any placement whose edge
+  // would cross an existing one — so the triangulation is well defined; concave
+  // rings are handled. Callers gate on `closed`: an open polyline has no defined
+  // interior, and filling one would let a click in empty space between its
+  // endpoints select it while the sidebar reports zero area.
+  _addFill: function (verts) {
+    // THREE.Shape is a 2D (x, y) construct. Map the ring's x/z plan-view onto it
+    // with z negated so the shape's winding survives the rotation below, then
+    // lay the resulting geometry flat by rotating +Z up to +Y.
+    const points = [];
+    for (let i = 0; i < verts.length; i++) {
+      const pos = verts[i].object3D.position;
+      points.push(new THREE.Vector2(pos.x, -pos.z));
+    }
+
+    const geometry = new THREE.ShapeGeometry(new THREE.Shape(points));
+    geometry.rotateX(-Math.PI / 2);
+
+    const mesh = new THREE.Mesh(geometry, this.fillMaterial);
+    // All vertices share one height (the draw tool picks later vertices on the
+    // plane of the first), so the cap sits at that height.
+    mesh.position.y = verts[0].object3D.position.y;
+    // Same reason as the sphere/cylinder leaves: the inspector raycaster reads
+    // the hit object's own `.el` and does not walk up parents.
+    mesh.el = this.el;
+    this.fillGroup.add(mesh);
+    // Deliberately no x-ray overlay twin — an always-on-top interior surface
+    // would wash out everything drawn inside the shape's footprint.
   },
 
   // Recompute the enclosed area + reposition the area label. Runs on every

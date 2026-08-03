@@ -257,7 +257,7 @@ export const ShapeDrawInstructions = () => {
               checked={polygon}
               onChange={() => setMode('polygon')}
             />
-            <span>
+            <span className="text-gray-600">
               Polygon — clicks form a closed shape; its area is shown.
             </span>
           </label>
@@ -268,7 +268,7 @@ export const ShapeDrawInstructions = () => {
               checked={!polygon}
               onChange={() => setMode('open')}
             />
-            <span>
+            <span className="text-gray-600">
               Open polyline — clicks form an open line; click the first point to
               close it.
             </span>
@@ -278,16 +278,17 @@ export const ShapeDrawInstructions = () => {
           {polygon ? (
             <>
               <li>• Click to add corners</li>
-              <li>• Enter or double-click to finish</li>
+              <li>• Enter, Esc or double-click to finish</li>
               <li>• Backspace removes the last corner</li>
-              <li>• Esc cancels the shape</li>
+              <li>• Ctrl+Z undoes the finished shape</li>
             </>
           ) : (
             <>
               <li>• Click to add points</li>
               <li>• Click the first point to close the shape</li>
-              <li>• Enter or double-click to finish (open)</li>
-              <li>• Backspace removes the last point; Esc cancels</li>
+              <li>• Enter, Esc or double-click to finish (open)</li>
+              <li>• Backspace removes the last point</li>
+              <li>• Ctrl+Z undoes the finished shape</li>
             </>
           )}
         </ul>

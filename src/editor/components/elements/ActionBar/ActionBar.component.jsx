@@ -171,7 +171,7 @@ const ActionBar = ({ selectedEntity }) => {
         title={intl.formatMessage({
           id: 'actionBar.shapeTool',
           defaultMessage:
-            'Shape Tool - Draw a polyline; click to place points, Enter or double-click to finish, Esc to cancel, Backspace to undo the last point'
+            'Shape Tool - Draw a polygon or open polyline; click to place points, Enter or double-click to finish, Backspace to remove the last point'
         })}
       >
         <ShapeDraw24Icon />
