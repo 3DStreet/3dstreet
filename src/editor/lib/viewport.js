@@ -574,14 +574,43 @@ export function Viewport(inspector) {
     transformControls.setSpace(space);
   });
 
+  // Torn down and re-armed on every selection change, so the listener never
+  // outlives the selection that installed it or doubles up on reselect.
+  let detachShapeRederiveListener = null;
+
   Events.on('objectselect', (object) => {
     hoverBox.visible = false;
     selectionBox.visible = false;
     transformControls.detach();
     measureLineControls.detach();
 
+    if (detachShapeRederiveListener) {
+      detachShapeRederiveListener();
+      detachShapeRederiveListener = null;
+    }
+
     if (object && object.el) {
-      if (object.el.getObject3D('mesh') || isBatched(object.el)) {
+      if (object.el.components && object.el.components.shape) {
+        // A shape installs its (empty) mesh group at init and fills it a frame
+        // later, so sizing the box now measures nothing — and an empty Box3
+        // leaves OrientedBoxHelper holding its previous geometry, i.e. the last
+        // selection's box parked at this shape's position. Re-size on the
+        // shape's own re-derive instead, the same shape of fix as the
+        // async-glTF branch below. Staying subscribed for the life of the
+        // selection (rather than one-shot) also keeps the box honest when a
+        // vertex moves underneath it.
+        const el = object.el;
+        const onRederived = () => {
+          if (object.parent === null) return; // detached before the frame landed
+          selectionBox.setFromObject(object);
+          selectionBox.visible = true;
+        };
+        el.addEventListener('shape-rederived', onRederived);
+        detachShapeRederiveListener = () =>
+          el.removeEventListener('shape-rederived', onRederived);
+        selectionBox.setFromObject(object);
+        selectionBox.visible = true;
+      } else if (object.el.getObject3D('mesh') || isBatched(object.el)) {
         // Batched entities have no mesh tree but OrientedBoxHelper falls back to the
         // cached _batchLocalBbox, so we can size the selection immediately.
         selectionBox.setFromObject(object);

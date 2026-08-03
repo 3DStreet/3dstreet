@@ -65,7 +65,9 @@ AFRAME.registerSystem('shape', {
 AFRAME.registerComponent('shape', {
   schema: {
     lineColor: { type: 'color', default: '#ffe600' },
-    lineWidth: { type: 'number', default: 0.15 },
+    // min: 0 — the properties panel clamps to it, and a negative radius would
+    // build inside-out spheres with no cylinders between them.
+    lineWidth: { type: 'number', default: 0.15, min: 0 },
     // A closed shape is a polygon: the derive adds a wrap segment (last→first)
     // and the area label shows. Default false so every existing/open shape
     // stays open; a non-default `true` serializes and round-trips (default is
@@ -347,7 +349,9 @@ AFRAME.registerComponent('shape', {
     if (this.destroyed) return;
 
     const verts = this.getVertexEls();
-    const radius = this.data.lineWidth;
+    // The schema's min only binds the properties panel; a negative width can
+    // still arrive by setAttribute or from a hand-edited scene.
+    const radius = Math.max(0, this.data.lineWidth);
 
     this.clearGroup(this.lineGroup);
     this.clearGroup(this.vertexGroup);
@@ -394,6 +398,13 @@ AFRAME.registerComponent('shape', {
     }
 
     this._updateArea(verts, closed);
+
+    // The geometry only exists from here — init installs empty groups and the
+    // first derive lands a frame later. Anything sizing itself to this shape
+    // (the editor's selection box) needs to know when that happened, and on
+    // every later re-derive too. Non-bubbling: a shape's vertex children must
+    // not look like their parent re-deriving.
+    this.el.emit('shape-rederived', null, false);
   },
 
   // Build one segment cylinder (start→end) plus its x-ray overlay twin, oriented
