@@ -159,9 +159,11 @@ AFRAME.registerComponent('google-maps-aerial', {
   },
 
   // Register one geo-flatten component's mesh with the flattening plugin.
+  // Returns false when the component has no mesh yet (e.g. a street whose
+  // models are still loading) so the caller can retry.
   addFlattenEntry: function (component) {
     const sourceMesh = component.getFlattenMesh();
-    if (!sourceMesh) return;
+    if (!sourceMesh) return false;
 
     // Ensure world transforms are up to date
     this.tiles.group.updateMatrixWorld();
@@ -198,6 +200,7 @@ AFRAME.registerComponent('google-maps-aerial', {
       lastMatrix: new Matrix4().copy(relativeShape.matrixWorld),
       pendingUpdate: false
     });
+    return true;
   },
 
   removeFlattenEntry: function (component, entry) {
@@ -233,7 +236,11 @@ AFRAME.registerComponent('google-maps-aerial', {
       });
       active.forEach((component) => {
         if (!this.flattenEntries.has(component)) {
-          this.addFlattenEntry(component);
+          if (!this.addFlattenEntry(component)) {
+            // No mesh yet — stay dirty so the next tick retries; geo-flatten
+            // resolves its mesh lazily once the subtree has content.
+            this.flattenRegistryDirty = true;
+          }
         }
       });
     }

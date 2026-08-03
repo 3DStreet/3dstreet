@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import { useIntl } from 'react-intl';
 import posthog from 'posthog-js';
 import PropertyRow from './PropertyRow';
+import BooleanWidget from '../widgets/BooleanWidget';
 import { Button } from './Button';
 import { saveString } from '@/editor/lib/utils';
 import useStore from '@/store.js';
@@ -177,7 +178,7 @@ const ManagedStreetSidebar = ({ entity }) => {
                   isSingle={false}
                   entity={entity}
                 />
-                {geoFlattenComponent && (
+                {geoFlattenComponent ? (
                   <PropertyRow
                     key="flattenTerrain"
                     name="enabled"
@@ -188,6 +189,31 @@ const ManagedStreetSidebar = ({ entity }) => {
                     isSingle={false}
                     entity={entity}
                   />
+                ) : (
+                  // The component was removed (e.g. via Advanced Components);
+                  // keep the toggle so flattening never dead-ends — checking
+                  // it re-adds the default street footprint volume.
+                  <div className="propertyRow" key="flattenTerrain">
+                    <label
+                      htmlFor="geo-flatten:add"
+                      className="text"
+                      style={{ textTransform: 'none' }}
+                    >
+                      Flatten Terrain
+                    </label>
+                    <BooleanWidget
+                      id="geo-flatten:add"
+                      name="enabled"
+                      value={false}
+                      onChange={() =>
+                        AFRAME.INSPECTOR.execute('componentadd', {
+                          entity,
+                          component: 'geo-flatten',
+                          value: 'mode: auto'
+                        })
+                      }
+                    />
+                  </div>
                 )}
                 <PropertyRow
                   key="playable"

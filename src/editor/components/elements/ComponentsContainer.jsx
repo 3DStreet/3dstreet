@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Events from '../../lib/Events';
 import MixinMetadata from './MixinMetadata';
-import { Button } from './Button';
+import AddGeneratorComponent from './AddGeneratorComponent';
 
 export default class ComponentsContainer extends React.Component {
   static propTypes = {
@@ -41,18 +41,27 @@ export default class ComponentsContainer extends React.Component {
     );
   };
 
-  addGeoFlatten = () => {
+  // Approved add-on components for generic objects, mirroring the segment
+  // panel's Add Generator Component dropdown. Singleton behavior (an option
+  // disappears once present) is enforced by AddGeneratorComponent.
+  getApprovedComponents = () => {
     const { entity } = this.props;
-    // Primitives raycast cheaply against their own mesh (and keep the legacy
-    // flatten-onto-the-box semantics); models get a footprint proxy plane
-    // instead of per-triangle raycasts against the model.
-    const mode = entity.components?.geometry ? 'mode: mesh' : 'mode: auto';
-    AFRAME.INSPECTOR.execute('componentadd', {
-      entity,
-      component: 'geo-flatten',
-      value: mode
-    });
-    this.forceUpdate();
+    const approved = [];
+    // Grass scatters over the host's own geometry primitive.
+    if (entity.components?.geometry) {
+      approved.push({ value: 'street-generated-grass', label: 'Grass' });
+    }
+    if (this.canFlattenTerrain()) {
+      approved.push({
+        value: 'geo-flatten',
+        label: 'Flatten Terrain',
+        // Primitives raycast cheaply against their own mesh (and keep the
+        // legacy flatten-onto-the-box semantics); models get a footprint
+        // proxy plane instead of per-triangle raycasts against the model.
+        attrValue: entity.components?.geometry ? 'mode: mesh' : 'mode: auto'
+      });
+    }
+    return approved;
   };
 
   render() {
@@ -98,19 +107,16 @@ export default class ComponentsContainer extends React.Component {
             </div>
           </div>
         )}
-        {!entity.components?.['geo-flatten'] && this.canFlattenTerrain() && (
-          <div className="details">
-            <div className="propertyRow">
-              <Button variant="toolbtn" onClick={this.addGeoFlatten}>
-                Flatten Terrain Under Object
-              </Button>
-            </div>
-          </div>
-        )}
         <FeaturedComponents entity={entity} />
         <div className="advancedComponentsContainer">
           <AdvancedComponents entity={entity} />
         </div>
+        {this.getApprovedComponents().length > 0 && (
+          <AddGeneratorComponent
+            entity={entity}
+            components={this.getApprovedComponents()}
+          />
+        )}
       </div>
     );
   }
