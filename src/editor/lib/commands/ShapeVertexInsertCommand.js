@@ -15,6 +15,16 @@ import { createUniqueId } from '../entity.js';
  * lookup misses, so a replacement node would make an earlier move-undo do
  * nothing at all. Do not "fix" this into a clone.
  *
+ * The cost, named rather than left for the next reader to discover: A-Frame's
+ * disconnectedCallback removes every component and nulls `object3D.el`, and
+ * connectedCallback restores neither — only the constructor ever sets that
+ * back-reference, so a re-attached instance carries `object3D.el === null` for
+ * good. Harmless for a shape-vertex, whose object3D holds no mesh and is never
+ * a pick target (the inspector's raycaster resolves an entity through
+ * `hit.object.el`), and whose two attributes are re-read on reconnect. It would
+ * not be harmless for an entity with geometry, which is one more reason this
+ * treatment stays scoped to the vertex pair rather than being generalised.
+ *
  * Never touches selection: the shape stays selected throughout, which is what
  * keeps its editing affordances on screen.
  *

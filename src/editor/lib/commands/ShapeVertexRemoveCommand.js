@@ -14,7 +14,9 @@ import { Command } from '../command.js';
  * the vertex's id and any earlier position command valid across undo/redo.
  * Both this command and ShapeVertexInsertCommand re-insert the SAME element
  * instance; neither ever constructs a replacement. Do not "fix" this into a
- * clone.
+ * clone. See ShapeVertexInsertCommand for the cost that treatment carries —
+ * A-Frame never restores `object3D.el` after a disconnect — and why it is
+ * harmless for a vertex specifically.
  *
  * No confirm() either — a vertex is a small, immediately undoable edit, unlike
  * removing a whole entity from the scene.

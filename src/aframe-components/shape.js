@@ -111,6 +111,7 @@ AFRAME.registerComponent('shape', {
     this._editGesture = false;
     this._invalidSignal = false;
     this.positionCache = new Map();
+    this.ringPtsScratch = [];
     this.direction = new THREE.Vector3();
     this.tmpQuaternion = new THREE.Quaternion();
 
@@ -391,8 +392,9 @@ AFRAME.registerComponent('shape', {
     // loaded from a saved scene, or one whose `closed` checkbox is ticked on a
     // polyline that already crosses, exactly as it does for a live edit.
     const closed = this.data.closed && verts.length >= 3;
-    const selfIntersecting =
-      closed && ringSelfIntersects(verts.map((v) => v.object3D.position));
+    // Filled into a reused array rather than mapped: this runs on every
+    // re-derive, which for a shape under a drag is every frame.
+    const selfIntersecting = closed && ringSelfIntersects(this._ringPts(verts));
     // While an edit gesture is in flight, a crossing ring HOLDS its last valid
     // fill and area instead of dropping them: the interior stays clickable and
     // the area label freezes at its last meaningful value rather than flicking
@@ -453,6 +455,15 @@ AFRAME.registerComponent('shape', {
     this.el.emit('shape-geometry-changed', null, false);
   },
 
+  // The vertex positions as a plain array, in a buffer reused across
+  // re-derives. Read-only to the caller and valid only until the next call.
+  _ringPts: function (verts) {
+    const pts = this.ringPtsScratch;
+    pts.length = verts.length;
+    for (let i = 0; i < verts.length; i++) pts[i] = verts[i].object3D.position;
+    return pts;
+  },
+
   // Build one segment cylinder (start→end) plus its x-ray overlay twin, oriented
   // from +Y to the segment direction. Skips a zero-length segment (NaN guard).
   _addSegment: function (start, end, radius) {
@@ -485,11 +496,12 @@ AFRAME.registerComponent('shape', {
   // filling one would let a click in empty space between its endpoints select it
   // while the sidebar reports zero area.
   //
-  // Assumes a simple (non-self-intersecting), planar ring — what the draw tool
-  // produces. `closed` is also a properties-panel checkbox and vertices can be
-  // animated, so neither holds absolutely: a self-crossing ring triangulates
-  // arbitrarily, and a non-planar one gets its cap at the first vertex's height.
-  // Both degrade this pick surface only — the outline still renders correctly.
+  // Assumes a simple (non-self-intersecting), planar ring. Simplicity is
+  // guaranteed by the caller, which tests the ring and skips the fill entirely
+  // when it crosses — including for a `closed` checkbox ticked on a polyline
+  // that already crosses. Planarity is not guaranteed: a shape whose vertices
+  // sit at different heights gets its cap at the first vertex's height, which
+  // degrades this pick surface only — the outline still renders correctly.
   _addFill: function (verts) {
     // THREE.Shape is a 2D (x, y) construct. Map the ring's x/z plan-view onto it
     // with z negated so the shape's winding survives the rotation below, then

@@ -90,6 +90,25 @@ Unified Viewer presentation with a Start/Stop play lifecycle. Playing is present
 
 **Commands:** `src/editor/lib/commands/` - undo/redo pattern (AddEntity, SetComponent, EntityReparent, etc.)
 
+**`Inspector.execute` can now refuse.** It returns the `TRANSFORM_REFUSED`
+symbol (`src/editor/lib/transformGuard.js`) instead of running a command that
+would violate a transform-capability marker on the target entity — test for the
+symbol, not for a falsy return, since the success path returns `undefined`. The
+markers are `data-transform-no-scale`, `data-transform-yaw-only` and
+`data-transform-no-reparent`; an entity opts in by carrying the attribute and
+the guard is otherwise entity-type-agnostic. They are **not** the same thing as
+the far more common `data-no-transform`, which is a UI gate only (it hides the
+properties-panel transform rows and the gizmo) and is enforced nowhere at the
+command layer. Coverage is every command route — properties panel, AI chat,
+gizmo, layers-panel reparent — but not a direct `setAttribute` from scene load
+or component code.
+
+Shape vertex editing adds three commands to the family:
+`shapevertexinsert` / `shapevertexremove` / `shapevertexmove`. They exist rather
+than reusing `EntityRemoveCommand` / `EntityUpdateCommand` because those steal
+selection, clone the entity on the reverse leg, and coalesce consecutive updates
+into one undo step — see each file's docblock.
+
 **Layer Reordering:** Drag-and-drop reordering of layers within the same parent in the SceneGraph. Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
 
 ## Asset System
