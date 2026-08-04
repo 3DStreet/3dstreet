@@ -752,7 +752,8 @@
     "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
     "geoModal.currentLocationUnavailable": "Could not get your current location. Please allow location access for this site, or click the map to set the location.",
     "geoModal.locating": "Locating…",
-    "geoModal.useMyLocation": "Use My Location"
+    "geoModal.useMyLocation": "Use My Location",
+    "geoSidebar.flatteningObjects": "Flattening Objects"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1507,7 +1508,8 @@
     "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
     "geoModal.currentLocationUnavailable": "Could not get your current location. Please allow location access for this site, or click the map to set the location.",
     "geoModal.locating": "Locating…",
-    "geoModal.useMyLocation": "Use My Location"
+    "geoModal.useMyLocation": "Use My Location",
+    "geoSidebar.flatteningObjects": "Flattening Objects"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2262,6 +2264,7 @@
     "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
     "geoModal.currentLocationUnavailable": "Could not get your current location. Please allow location access for this site, or click the map to set the location.",
     "geoModal.locating": "Locating…",
-    "geoModal.useMyLocation": "Use My Location"
+    "geoModal.useMyLocation": "Use My Location",
+    "geoSidebar.flatteningObjects": "Flattening Objects"
   }
 }

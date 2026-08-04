@@ -18,7 +18,17 @@ AFRAME.registerComponent('street-geo', {
       default: 'google3d',
       oneOf: ['google3d', 'mapbox2d', 'osm3d', 'none']
     },
-    enableFlattening: { type: 'boolean', default: false },
+    // Master switch for terrain flattening (#1476). Default on: any entity
+    // carrying a geo-flatten component (managed streets attach one
+    // automatically, mode: auto) flattens the google3d tiles under it as soon
+    // as the geo layer renders. Volumes are managed per-entity by geo-flatten;
+    // this only gates whether they take effect.
+    enableFlattening: { type: 'boolean', default: true },
+    // Deprecated (#1476): the single flattening shape reference, replaced by
+    // per-entity geo-flatten components. Kept in the schema only so stray
+    // legacy attribute strings parse without warnings. Saved scenes are
+    // migrated at load time (createEntities in json-utils_1.1.js) and this is
+    // never written by the UI.
     flatteningShape: {
       type: 'string'
     },
@@ -135,7 +145,6 @@ AFRAME.registerComponent('street-geo', {
           updatedData.latitude !== undefined ||
           updatedData.ellipsoidalHeight !== undefined ||
           updatedData.enableFlattening !== undefined ||
-          updatedData.flatteningShape !== undefined ||
           updatedData.opacity !== undefined)
       ) {
         // call update map function with name: <mapType>Update
@@ -203,7 +212,6 @@ AFRAME.registerComponent('street-geo', {
       latitude: data.latitude,
       ellipsoidalHeight: data.ellipsoidalHeight,
       enableFlattening: data.enableFlattening,
-      flatteningShape: data.flatteningShape ? '#' + data.flatteningShape : '',
       opacity: this.opacityFraction(),
       apiToken: firebaseConfig.apiKey,
       copyrightEl: '#map-copyright'
@@ -240,10 +248,6 @@ AFRAME.registerComponent('street-geo', {
       longitude: data.longitude,
       ellipsoidalHeight: data.ellipsoidalHeight,
       enableFlattening: data.enableFlattening,
-      flatteningShape:
-        data.flatteningShape && data.flatteningShape !== 'create-default'
-          ? '#' + data.flatteningShape
-          : '',
       opacity: this.opacityFraction()
     });
     this.google3d.setAttribute('visible', data.opacity > 0);
