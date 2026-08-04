@@ -528,6 +528,7 @@ const GeoModal = () => {
               onPlaceChanged={onPlaceChanged}
             >
               <Input
+                className={styles.compactInput}
                 leadingIcon={<Magnifier20Icon />}
                 placeholder={
                   currentLocationString ||
@@ -555,6 +556,7 @@ const GeoModal = () => {
                 />
               </p>
               <Input
+                className={styles.compactInput}
                 leadingIcon={
                   <p className={styles.iconGeo}>
                     <FormattedMessage
