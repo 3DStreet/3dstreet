@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   polygonAreaXZ,
-  polygonCentroidXZ
+  polygonCentroidXZ,
+  segmentsIntersectXZ as segmentsIntersectXZCore
 } from '../../src/aframe-components/polygonMath.js';
 import { segmentsIntersectXZ } from '../../src/editor/lib/shapeMeasure.js';
 
@@ -74,6 +75,12 @@ describe('polygonCentroidXZ', () => {
 });
 
 describe('segmentsIntersectXZ', () => {
+  it('is still reachable from shapeMeasure after moving to the core layer', () => {
+    // The predicate now lives in polygonMath so the `shape` component can use
+    // it; shapeMeasure re-exports it so editor callers are unaffected.
+    expect(segmentsIntersectXZ).toBe(segmentsIntersectXZCore);
+  });
+
   it('detects a proper crossing', () => {
     expect(segmentsIntersectXZ(p(0, 0), p(10, 10), p(0, 10), p(10, 0))).toBe(
       true

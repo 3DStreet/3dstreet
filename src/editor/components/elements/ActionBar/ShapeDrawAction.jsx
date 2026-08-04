@@ -37,6 +37,7 @@ import { useEffect, useRef } from 'react';
 import useStore from '@/store';
 import ShapeReadouts from '../../../lib/ShapeReadouts';
 import { segmentsIntersectXZ } from '../../../lib/shapeMeasure';
+import { intersectPlaneOrNull } from '../../../lib/intersectPlaneOrNull.js';
 import {
   isSolidFloorHit,
   worldHitNormal
@@ -45,7 +46,11 @@ import { ProbeTargets } from '../../../lib/nav-experimental/probeTargets.js';
 import { BLOCK_SLOPE_MIN_DEGREES } from '../../../lib/nav-experimental/constants.js';
 
 const CLICK_MOVE_THRESHOLD = 4; // px — a larger press→release move is a drag
-const MIN_VERTEX_SPACING = 0.05; // m — reject a click ~on the previous vertex
+// m — reject a click ~on the PREVIOUS vertex. Distinct from the editor's
+// MIN_EDIT_VERTEX_SEPARATION (shapeEditRules.js), which holds the same number
+// but measures against every vertex; the two are separate constants so tuning
+// one does not silently retune the other.
+const MIN_DRAW_VERTEX_SPACING = 0.05;
 const CLOSE_PX_TOLERANCE = 12; // px — cursor this close to the first vertex arms
 // the close gesture (manual-close mode). Screen-space, not world metres, so it is
 // scale-invariant — matches the ruler/draw click-vs-drag pixel basis.
@@ -120,18 +125,8 @@ function pickSurfaceOrNull(clientX, clientY, probeTargets) {
 // than staying planar, is a possible later per-shape option.)
 const kPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 function pickKPlaneOrNull(clientX, clientY, k) {
-  const canvas = AFRAME.scenes[0]?.canvas;
-  const camera = AFRAME.INSPECTOR?.camera;
-  if (!canvas || !camera) return null;
-  const rect = canvas.getBoundingClientRect();
-  ndc.set(
-    (2 * (clientX - rect.left)) / rect.width - 1,
-    -((2 * (clientY - rect.top)) / rect.height - 1)
-  );
-  pickRaycaster.setFromCamera(ndc, camera);
   kPlane.constant = -k; // plane y + constant = 0  →  constant = -k
-  const hit = new THREE.Vector3();
-  return pickRaycaster.ray.intersectPlane(kPlane, hit) ? hit : null;
+  return intersectPlaneOrNull(clientX, clientY, kPlane);
 }
 
 // Project a world point to client (screen) px via the inspector camera + canvas
@@ -370,7 +365,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         point.y - last.y,
         point.z - last.z
       );
-      return d >= MIN_VERTEX_SPACING;
+      return d >= MIN_DRAW_VERTEX_SPACING;
     };
 
     // Would closing the current committed ring (last→first) create a crossing?
@@ -565,7 +560,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     const onDblClick = () => {
       if (committingRef.current) return;
       // Usually a no-op: the double-click's second release lands within
-      // MIN_VERTEX_SPACING of the vertex the first one placed, so it is rejected
+      // MIN_DRAW_VERTEX_SPACING of the vertex the first one placed, so it is rejected
       // and there is nothing to retract. It only bites zoomed far enough out
       // that a few pixels of jitter exceed that spacing in world units — then
       // the second release really did place a vertex, and this removes it.

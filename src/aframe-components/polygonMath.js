@@ -66,6 +66,103 @@ export function polygonCentroidXZ(points) {
   };
 }
 
+// Orientation of the ordered triple (a, b, c) in the x/z plane: >0 CCW, <0 CW,
+// 0 collinear.
+function orientationXZ(a, b, c) {
+  return (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);
+}
+
+// True iff point q lies on segment p-r (assuming the three are collinear).
+function onSegmentXZ(p, q, r) {
+  return (
+    Math.min(p.x, r.x) <= q.x &&
+    q.x <= Math.max(p.x, r.x) &&
+    Math.min(p.z, r.z) <= q.z &&
+    q.z <= Math.max(p.z, r.z)
+  );
+}
+
+// Do segments p1-p2 and p3-p4 cross, in the x/z plane? A PROPER crossing
+// (interiors intersect) OR a collinear overlap counts as true; segments that
+// merely share an endpoint do NOT (callers commonly test only NON-adjacent
+// edges, but this keeps the primitive robust when they do not).
+export function segmentsIntersectXZ(p1, p2, p3, p4) {
+  const d1 = orientationXZ(p3, p4, p1);
+  const d2 = orientationXZ(p3, p4, p2);
+  const d3 = orientationXZ(p1, p2, p3);
+  const d4 = orientationXZ(p1, p2, p4);
+
+  // General case: each segment straddles the line through the other.
+  if (
+    ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+    ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+  ) {
+    // A shared endpoint is a touch, not a crossing — exclude it so adjacent
+    // ring edges never read as intersecting.
+    if (sharesEndpoint(p1, p2, p3, p4)) return false;
+    return true;
+  }
+
+  // Collinear overlap (a degenerate self-touch) — reject too, unless it is only
+  // the shared-endpoint touch of adjacent edges.
+  if (d1 === 0 && onSegmentXZ(p3, p1, p4) && !sharesEndpoint(p1, p2, p3, p4)) {
+    return true;
+  }
+  if (d2 === 0 && onSegmentXZ(p3, p2, p4) && !sharesEndpoint(p1, p2, p3, p4)) {
+    return true;
+  }
+  if (d3 === 0 && onSegmentXZ(p1, p3, p2) && !sharesEndpoint(p1, p2, p3, p4)) {
+    return true;
+  }
+  if (d4 === 0 && onSegmentXZ(p1, p4, p2) && !sharesEndpoint(p1, p2, p3, p4)) {
+    return true;
+  }
+  return false;
+}
+
+const ENDPOINT_EPS = 1e-6;
+function samePointXZ(a, b) {
+  return (
+    Math.abs(a.x - b.x) < ENDPOINT_EPS && Math.abs(a.z - b.z) < ENDPOINT_EPS
+  );
+}
+function sharesEndpoint(p1, p2, p3, p4) {
+  return (
+    samePointXZ(p1, p3) ||
+    samePointXZ(p1, p4) ||
+    samePointXZ(p2, p3) ||
+    samePointXZ(p2, p4)
+  );
+}
+
+// Is the closed ring through `points` (in order, wrapping last→first) NOT
+// simple — i.e. does any pair of NON-ADJACENT edges cross or overlap? Adjacent
+// edges always share an endpoint, which segmentsIntersectXZ excludes anyway;
+// skipping them keeps the intent explicit. The wrap edge (n-1 → 0) is adjacent
+// to both edge 0 and edge n-2.
+//
+// O(n²), run inside the shape's re-derive: a self-crossing ring has no
+// well-defined interior, so the triangulated fill and the shoelace area are
+// both meaningless and the component suppresses them. Fewer than 4 vertices
+// cannot self-intersect (every edge pair is adjacent) → false.
+export function ringSelfIntersects(points) {
+  const n = points.length;
+  if (n < 4) return false;
+  for (let i = 0; i < n; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % n];
+    // Start at i+2 (skip the adjacent next edge); stop before the edge that
+    // wraps round to i, which is adjacent on the other side.
+    for (let j = i + 2; j < n; j++) {
+      if (i === 0 && j === n - 1) continue; // wrap edge is adjacent to edge 0
+      const c = points[j];
+      const d = points[(j + 1) % n];
+      if (segmentsIntersectXZ(a, b, c, d)) return true;
+    }
+  }
+  return false;
+}
+
 function meanXZ(points) {
   let x = 0;
   let z = 0;
