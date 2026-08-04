@@ -63,6 +63,20 @@ import {
  * undo(), with no discriminator, so a handler that aborted on it would revert
  * every commit the moment it was made.
  *
+ * WHY EVERY PRESS LISTENER IS A WINDOW CAPTURE LISTENER. A press on the canvas
+ * arrives as three independently dispatched families — pointer, mouse and touch
+ * — and stopping one does nothing to the others, so a handle press has to be
+ * suppressed in all three. Registering on the canvas would not do it either: a
+ * listener added later on the SAME element does not get priority over an
+ * earlier one, even with capture, and the selection raycaster and camera
+ * controls are already bound there. Only an ancestor capture listener runs
+ * first, so window capture is forced rather than chosen. Deciding a press from
+ * hover state instead would collapse the whole thing — but there is no hover on
+ * touch, which is also why `transformControls.axis` is NOT consulted to find out
+ * whether the gizmo wants the press: it is a hover cache, so it is null at press
+ * time on touch and stale on a mouse that moved fast. Nothing here reads it; the
+ * gizmo runs its own hit test when we decline the press.
+ *
  * STATE AND LIFETIMES. Every field below is bounded by attach()/detach().
  * `AFRAME.INSPECTOR.opened` is NOT a lifetime — it gates the handlers that ARM
  * something (press, hover, delete) and never the handlers that TEAR DOWN, since
@@ -83,6 +97,40 @@ import {
  *   pressGeneration     bumped on EVERY pointerdown the window capture sees
  *   lastRecordedPressId stamped only on a press we actually recorded; the two
  *                       differ exactly when the last press was not ours
+ *   pressX / pressY     the press baseline for the click-vs-drag test; written
+ *                       for a recorded press only, overwritten by the next one,
+ *                       never cleared
+ *   pressWasHandle      the RESULT of the press-time hit test, so it is written
+ *                       after the press record, not with it; + the hit itself
+ *   _gesture            mode, drag plane, grab offset, pre-drag and last-valid
+ *                       positions, the transient inserted element. abortGesture()
+ *                       is its single clear, reached from pointerup, pointercancel,
+ *                       canvas-leave, window blur, Esc, a handler throw, detach()
+ *                       and the per-frame hook's editor-closed edge
+ *   hoveredHandle       from the persistent pointermove; cleared when the cursor
+ *                       leaves every handle and on a structural change that
+ *                       removed the hovered vertex — a resize must PRESERVE hover
+ *                       on the handles whose vertex survived
+ *   lastCursorX/Y,      canvas-relative cursor and a deliberately sticky pointer
+ *   lastPointerType     type; the clutter rule keys on both, and the type is what
+ *                       decides whether midpoint insert is reachable on touch
+ *   activeVertexEl      one setter, setActiveVertex(); cleared by a successful
+ *                       delete, a click elsewhere, the first Esc, any structural
+ *                       edit, a whole-shape gizmo move (seen via the matrix
+ *                       compare) and detach(). Undo of a MOVE deliberately leaves
+ *                       it active
+ *   invalid signal      two channels, colour and overlay pulse, both owned by the
+ *                       shape component; setInvalidSignal(false) is the single
+ *                       restore owner for both, called from abortGesture(), from
+ *                       one tracked flash timeout, and from detach()
+ *   edit-gesture flag   begin/endEditGesture on the shape, so a crossing ring
+ *                       holds its last valid fill mid-drag; cleared with the
+ *                       gesture
+ *   store flag          `shapeVertexEditActive` tracks ATTACHMENT, not activation
+ *                       — it is what keeps the global Delete inert after the
+ *                       active vertex has already been deleted
+ *   trash button        outer CSS2D element + inner offset wrapper, built at
+ *                       attach, shown by setActiveVertex, removed at detach
  *   _prevMatrixWorld    seeded at attach, so the first frame does not read a
  *                       spurious whole-shape move against an identity matrix
  */
@@ -377,6 +425,10 @@ export class ShapeVertexControls extends THREE.Object3D {
       this._invalidateVertexCache();
     }
 
+    // Read fresh every frame, never cached: toggling between perspective and
+    // orthographic swaps the inspector's camera for a DIFFERENT object, so a
+    // reference held from attach() would go on sizing handles against a camera
+    // that is no longer rendering.
     const camera = AFRAME.INSPECTOR?.camera;
     const canvas = this._canvas();
     if (camera && canvas) {
