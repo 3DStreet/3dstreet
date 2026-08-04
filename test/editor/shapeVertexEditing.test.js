@@ -1,3 +1,5 @@
+/* global THREE */
+
 import { describe, expect, it, vi } from 'vitest';
 import { ringSelfIntersects } from '../../src/aframe-components/polygonMath.js';
 
@@ -17,6 +19,17 @@ import { ShapeVertexInsertCommand } from '../../src/editor/lib/commands/ShapeVer
 import { ShapeVertexMoveCommand } from '../../src/editor/lib/commands/ShapeVertexMoveCommand.js';
 import { ShapeVertexRemoveCommand } from '../../src/editor/lib/commands/ShapeVertexRemoveCommand.js';
 import { refuseGuardedTransform } from '../../src/editor/lib/transformGuard.js';
+import {
+  HANDLE_MAX_M,
+  HANDLE_MIN_M,
+  HANDLE_TARGET_PX,
+  HIT_SLOP_PX,
+  MIDPOINT_RADIUS_RATIO,
+  clampHandleRadius,
+  decidePress,
+  hitTestHandles,
+  metresPerPixel
+} from '../../src/editor/lib/shapeEditRules.js';
 
 // Helper: build x/z points (y is irrelevant to the plan-view math).
 const p = (x, z) => ({ x, z });
@@ -237,5 +250,163 @@ describe('ringSelfIntersects', () => {
     expect(ringSelfIntersects([])).toBe(false);
     expect(ringSelfIntersects([p(0, 0)])).toBe(false);
     expect(ringSelfIntersects([p(0, 0), p(1, 0)])).toBe(false);
+  });
+});
+
+describe('handle sizing', () => {
+  // A 50° vertical fov over a 900 px viewport: one pixel spans roughly a
+  // thousandth of the viewing distance.
+  const perspective = () => {
+    const c = new THREE.PerspectiveCamera(50, 1, 0.1, 5000);
+    return c;
+  };
+
+  it('scales metres-per-pixel linearly with distance on a perspective camera', () => {
+    const c = perspective();
+    const near = metresPerPixel(c, 10, 900);
+    const far = metresPerPixel(c, 100, 900);
+    expect(far / near).toBeCloseTo(10, 6);
+  });
+
+  it('is distance-independent on an orthographic camera', () => {
+    const c = new THREE.OrthographicCamera(-50, 50, 45, -45, 0.1, 5000);
+    expect(metresPerPixel(c, 10, 900)).toBeCloseTo(90 / 900, 9);
+    expect(metresPerPixel(c, 1000, 900)).toBeCloseTo(90 / 900, 9);
+  });
+
+  it('divides by camera.zoom in both branches', () => {
+    const p = perspective();
+    const unzoomed = metresPerPixel(p, 50, 900);
+    p.zoom = 2;
+    expect(metresPerPixel(p, 50, 900)).toBeCloseTo(unzoomed / 2, 9);
+
+    const o = new THREE.OrthographicCamera(-50, 50, 45, -45, 0.1, 5000);
+    const oUnzoomed = metresPerPixel(o, 50, 900);
+    o.zoom = 3;
+    expect(metresPerPixel(o, 50, 900)).toBeCloseTo(oUnzoomed / 3, 9);
+  });
+
+  it('hits the target pixel radius between the clamps', () => {
+    const c = perspective();
+    const mpp = metresPerPixel(c, 50, 900);
+    expect(clampHandleRadius(mpp)).toBeCloseTo(HANDLE_TARGET_PX * mpp, 9);
+  });
+
+  it('floors on a tiny shape and ceils on a distant one', () => {
+    // Zoomed right in: the target radius falls below the floor, so the handle
+    // stops shrinking and reads larger on screen.
+    expect(clampHandleRadius(1e-6)).toBe(HANDLE_MIN_M);
+    // Zoomed far out: the handle stops growing in world terms, so it shrinks
+    // on screen toward sub-pixel — accepted, and recovered by zooming in.
+    expect(clampHandleRadius(1)).toBe(HANDLE_MAX_M);
+  });
+
+  it('keeps the floor below the minimum vertex separation', () => {
+    // Otherwise the separation rule would be self-defeating: two legally
+    // separated vertices would still draw as one merged blob.
+    expect(HANDLE_MIN_M).toBeLessThan(0.05);
+  });
+});
+
+describe('hitTestHandles', () => {
+  // A camera looking down -Z from the origin, so a point at (x, y, -d)
+  // projects predictably.
+  const camera = () => {
+    const c = new THREE.PerspectiveCamera(50, 1, 0.1, 5000);
+    c.position.set(0, 0, 0);
+    c.updateMatrixWorld(true);
+    return c;
+  };
+  const rect = { left: 0, top: 0, width: 900, height: 900 };
+
+  // Screen position of a handle, so the tests can aim at it exactly.
+  const screenOf = (camera, world) => {
+    const p = world.clone().project(camera);
+    return {
+      x: (p.x * 0.5 + 0.5) * rect.width + rect.left,
+      y: (-p.y * 0.5 + 0.5) * rect.height + rect.top
+    };
+  };
+
+  const handle = (world, screenRadiusPx) => ({ world, screenRadiusPx });
+
+  it('hits at the centre, at the slop edge, and misses just past it', () => {
+    const c = camera();
+    const world = new THREE.Vector3(0, 0, -50);
+    const h = [handle(world, 7)];
+    const s = screenOf(c, world);
+    expect(hitTestHandles(h, c, rect, s.x, s.y)).toBe(0);
+    expect(hitTestHandles(h, c, rect, s.x + 7 + HIT_SLOP_PX - 1, s.y)).toBe(0);
+    expect(hitTestHandles(h, c, rect, s.x + 7 + HIT_SLOP_PX + 1, s.y)).toBe(-1);
+  });
+
+  it('resolves an overlap by list order, so a vertex beats a coincident midpoint', () => {
+    const c = camera();
+    const world = new THREE.Vector3(0, 0, -50);
+    const s = screenOf(c, world);
+    const handles = [
+      handle(world.clone(), 7),
+      handle(world.clone(), 7 * MIDPOINT_RADIUS_RATIO)
+    ];
+    expect(hitTestHandles(handles, c, rect, s.x, s.y)).toBe(0);
+    // Reverse the order and the other one wins: order IS the rule.
+    expect(hitTestHandles([handles[1], handles[0]], c, rect, s.x, s.y)).toBe(0);
+  });
+
+  it('never hits a handle behind the camera', () => {
+    const c = camera();
+    // Behind the camera, but projecting to the same screen point as a handle
+    // in front would — which is exactly the case a naive projection test gets
+    // wrong.
+    const behind = new THREE.Vector3(0, 0, 50);
+    const s = screenOf(c, new THREE.Vector3(0, 0, -50));
+    expect(hitTestHandles([handle(behind, 7)], c, rect, s.x, s.y)).toBe(-1);
+  });
+
+  it('honours the canvas offset, so a hit is measured against client coords', () => {
+    const c = camera();
+    const world = new THREE.Vector3(0, 0, -50);
+    const offset = { left: 300, top: 80, width: 900, height: 900 };
+    const p = world.clone().project(c);
+    const sx = (p.x * 0.5 + 0.5) * offset.width + offset.left;
+    const sy = (-p.y * 0.5 + 0.5) * offset.height + offset.top;
+    expect(hitTestHandles([handle(world, 7)], c, offset, sx, sy)).toBe(0);
+    expect(
+      hitTestHandles([handle(world, 7)], c, offset, sx - 300, sy - 80)
+    ).toBe(-1);
+  });
+});
+
+describe('decidePress', () => {
+  const press = (over) =>
+    decidePress({
+      inspectorOpen: true,
+      targetIsCanvas: true,
+      isPrimaryButton: true,
+      handleHit: true,
+      pressPickOk: true,
+      ...over
+    });
+
+  it('ignores a press the layer has no business in', () => {
+    expect(press({ inspectorOpen: false })).toBe('ignore');
+    expect(press({ targetIsCanvas: false })).toBe('ignore');
+    expect(press({ isPrimaryButton: false })).toBe('ignore');
+  });
+
+  it('tracks but never claims a press with no handle under it', () => {
+    // Claiming here would kill selection and orbit for every canvas press for
+    // as long as a shape is selected.
+    expect(press({ handleHit: false })).toBe('trackOnly');
+  });
+
+  it('tracks but does not claim a press whose plane pick is unusable', () => {
+    // No usable grab anchor: the press behaves as an ordinary canvas press
+    // rather than starting a drag with an undefined offset.
+    expect(press({ pressPickOk: false })).toBe('trackOnly');
+  });
+
+  it('claims a primary press on a handle with a usable pick', () => {
+    expect(press({})).toBe('claim');
   });
 });

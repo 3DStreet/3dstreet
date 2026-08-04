@@ -2,6 +2,7 @@ import { TransformControls } from './TransformControls.js';
 // eslint-disable-next-line no-unused-vars
 import EditorControls from './EditorControls.js';
 import { MeasureLineControls } from './MeasureLineControls.js';
+import { ShapeVertexControls } from './ShapeVertexControls.js';
 import InfiniteGridHelper from './InfiniteGridHelper.js';
 import {
   ExperimentalControls,
@@ -322,6 +323,11 @@ export function Viewport(inspector) {
   measureLineControls.visible = false;
   measureLineControls.enabled = true;
 
+  // A third helper, alongside the two above: vertex handles for the selected
+  // shape. It reads the inspector camera fresh each frame rather than being
+  // handed one, so it needs no entry in the cameratoggle handler below.
+  const shapeVertexControls = new ShapeVertexControls();
+
   // Pose snapshot taken on the gizmo's mouseDown, BEFORE TransformControls
   // mutates the object. The undo command can't capture this itself:
   // getAttribute('position') returns the live object3D values, which are
@@ -420,6 +426,14 @@ export function Viewport(inspector) {
     controls.enabled = true;
   });
 
+  shapeVertexControls.addEventListener('mouseDown', () => {
+    controls.enabled = false;
+  });
+
+  shapeVertexControls.addEventListener('mouseUp', () => {
+    controls.enabled = true;
+  });
+
   measureLineControls.addEventListener('objectChange', (evt) => {
     if (!measureLineControls.object) return;
 
@@ -444,6 +458,9 @@ export function Viewport(inspector) {
 
   sceneHelpers.add(transformControls.getHelper());
   sceneHelpers.add(measureLineControls);
+  // Added once, here — attach()/detach() only arm and disarm it, they do not
+  // re-add it.
+  sceneHelpers.add(shapeVertexControls);
 
   Events.on('entityupdate', (detail) => {
     const object = detail.entity.object3D;
@@ -583,6 +600,7 @@ export function Viewport(inspector) {
     selectionBox.visible = false;
     transformControls.detach();
     measureLineControls.detach();
+    shapeVertexControls.detach();
 
     if (detachShapeRederiveListener) {
       detachShapeRederiveListener();
@@ -594,6 +612,7 @@ export function Viewport(inspector) {
       // so it would otherwise take the generic immediate-sizing path — which is
       // wrong while that slot is still empty.
       if (object.el.components && object.el.components.shape) {
+        shapeVertexControls.attach(object.el);
         // A shape installs its (empty) mesh group at init and fills it a frame
         // later, so sizing the box now measures nothing — and an empty Box3
         // leaves OrientedBoxHelper holding its previous geometry, i.e. the last
