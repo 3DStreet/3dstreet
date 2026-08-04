@@ -1,5 +1,7 @@
 /* global AFRAME, THREE */
 
+import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import useStore from '@/store';
 import Events from './Events';
 import { intersectPlaneOrNull } from './intersectPlaneOrNull.js';
 import { rayFromClientXY } from './rayFromClientXY.js';
@@ -13,6 +15,8 @@ import {
   preExistingClosePairs,
   rayPlaneHitIsUsable,
   resolveDragRelease,
+  trashButtonOffset,
+  validateVertexDelete,
   validateVertexEdit
 } from './shapeEditRules.js';
 
@@ -89,7 +93,16 @@ const HANDLE_RENDER_ORDER = 1000;
 
 const COLOR_NORMAL = '#1faaf2'; // the selection-box blue: reads as "editor affordance"
 const COLOR_HOVER = '#7fd4ff';
+const COLOR_ACTIVE = '#ffffff';
 const MIDPOINT_OPACITY = 0.45;
+// The active handle is a white core inside a blue rim, so "which vertex is
+// active" and "the shape is invalid" read independently of each other.
+const ACTIVE_RIM_RATIO = 1.25;
+
+// ms — how long the shape stays red after a refused delete. A blocked delete
+// comes from a button click or a keypress, neither of which is a gesture, so
+// none of the gesture exits would ever clear it: it needs an owner of its own.
+const INVALID_FLASH_MS = 900;
 
 // The invalid signal's second channel: the x-ray overlay's opacity oscillates,
 // so the state reads by MOTION and survives on a shape whose own colour is
@@ -132,6 +145,8 @@ export class ShapeVertexControls extends THREE.Object3D {
 
     this._invalidSignalOn = false;
     this._invalidFlashTimer = null;
+    this._trashObject = null;
+    this._trashInner = null;
     this._wasOpen = false;
     this._lastChildCount = -1;
     this._prevMatrixWorld = new THREE.Matrix4();
@@ -155,6 +170,10 @@ export class ShapeVertexControls extends THREE.Object3D {
       color: COLOR_HOVER,
       depthTest: false
     });
+    this._matActive = new THREE.MeshBasicMaterial({
+      color: COLOR_ACTIVE,
+      depthTest: false
+    });
     this._matMidpoint = new THREE.MeshBasicMaterial({
       color: COLOR_NORMAL,
       depthTest: false,
@@ -165,6 +184,13 @@ export class ShapeVertexControls extends THREE.Object3D {
     this.handleGroup = new THREE.Group();
     this.add(this.handleGroup);
 
+    // The rim behind the active handle's white core. One mesh, moved onto
+    // whichever handle is active, rather than a second mesh per handle.
+    this._activeRim = new THREE.Mesh(this._sphere, this._matNormal);
+    this._activeRim.renderOrder = HANDLE_RENDER_ORDER;
+    this._activeRim.visible = false;
+    this.handleGroup.add(this._activeRim);
+
     this._onPointerDown = this._onPointerDown.bind(this);
     this._onPointerMove = this._onPointerMove.bind(this);
     this._onPointerUp = this._onPointerUp.bind(this);
@@ -173,6 +199,8 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._onSuppressLatched = this._onSuppressLatched.bind(this);
     this._onBlur = this._onBlur.bind(this);
     this._onGestureLost = this._onGestureLost.bind(this);
+    this._onKeyUp = this._onKeyUp.bind(this);
+    this._onTrashClick = this._onTrashClick.bind(this);
     this._onStructuralChange = this._onStructuralChange.bind(this);
   }
 
@@ -194,8 +222,10 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._prevMatrixWorld.copy(shapeEl.object3D.matrixWorld);
     this._lastChildCount = shapeEl.children.length;
 
+    this._buildTrashButton();
     this._addListeners();
     Events.on('shapevertexstructurechanged', this._onStructuralChange);
+    useStore.getState().setShapeVertexEditActive(true);
 
     this._wasOpen = !!AFRAME.INSPECTOR?.opened;
     // Last, because writing it is what arms the per-frame hook.
@@ -221,6 +251,8 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._pressWasClaimed = false;
     this._lastChildCount = -1;
     this.hoveredHandle = null;
+    useStore.getState().setShapeVertexEditActive(false);
+    this._teardownTrashButton();
     this._teardownPool();
     this.vertexEls.length = 0;
 
@@ -240,6 +272,7 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._sphere.dispose();
     this._matNormal.dispose();
     this._matHover.dispose();
+    this._matActive.dispose();
     this._matMidpoint.dispose();
   }
 
@@ -354,6 +387,8 @@ export class ShapeVertexControls extends THREE.Object3D {
         );
         mesh.scale.setScalar(clampHandleRadius(mpp));
       }
+      this._updateActiveRim();
+      this._updateTrashButton(camera, canvas);
     }
 
     if (this._invalidSignalOn) {
@@ -453,9 +488,19 @@ export class ShapeVertexControls extends THREE.Object3D {
   }
 
   _applyStyles() {
-    for (const mesh of this.vertexHandles) {
-      mesh.material =
-        mesh === this.hoveredHandle ? this._matHover : this._matNormal;
+    for (let i = 0; i < this.vertexHandles.length; i++) {
+      const mesh = this.vertexHandles[i];
+      const isActive =
+        this.activeVertexEl && this.vertexEls[i] === this.activeVertexEl;
+      mesh.material = isActive
+        ? this._matActive
+        : mesh === this.hoveredHandle
+          ? this._matHover
+          : this._matNormal;
+      // The active core draws inside its own rim.
+      mesh.renderOrder = isActive
+        ? HANDLE_RENDER_ORDER + 1
+        : HANDLE_RENDER_ORDER;
     }
   }
 
@@ -465,7 +510,153 @@ export class ShapeVertexControls extends THREE.Object3D {
   setActiveVertex(el) {
     if (this.activeVertexEl === el) return;
     this.activeVertexEl = el;
+    if (!el && this._trashObject) this._trashObject.visible = false;
     this._applyStyles();
+  }
+
+  // --- the delete button -------------------------------------------------
+
+  // A DOM button rendered through the CSS2D layer rather than a mesh in the
+  // scene. Three things fall out of that and all of them are wanted: it is
+  // never a raycast target, so it cannot compete with the handles for a press;
+  // a press on it does not reach the canvas at all, so it cannot turn into a
+  // vertex drag on a touch screen where drift is near-certain; and native click
+  // semantics already give "commits on release inside, cancels outside".
+  _buildTrashButton() {
+    // TWO elements, and the split is mandatory rather than tidy: CSS2DRenderer
+    // assigns style.transform on the OUTER element every render pass, so
+    // anything we wrote there would be erased each frame. The offset lives on
+    // an inner wrapper the renderer never touches.
+    const outer = document.createElement('div');
+    outer.style.pointerEvents = 'none';
+
+    const inner = document.createElement('button');
+    inner.type = 'button';
+    inner.title = 'Delete vertex';
+    inner.setAttribute('aria-label', 'Delete vertex');
+    // The CSS2D container is pointer-events:none, so this is the only live
+    // element in it.
+    inner.style.pointerEvents = 'auto';
+    inner.style.cssText +=
+      ';display:flex;align-items:center;justify-content:center;' +
+      'width:24px;height:24px;padding:0;border:none;border-radius:4px;' +
+      'cursor:pointer;background:rgba(0,0,0,0.7);color:#fff;';
+    inner.innerHTML =
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" ' +
+      'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+      'stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>' +
+      '<path d="M10 11v6M14 11v6"/></svg>';
+    inner.addEventListener('click', this._onTrashClick);
+    outer.appendChild(inner);
+
+    this._trashInner = inner;
+    this._trashObject = new CSS2DObject(outer);
+    this._trashObject.visible = false;
+    this.add(this._trashObject);
+  }
+
+  _teardownTrashButton() {
+    if (!this._trashObject) return;
+    this._trashInner.removeEventListener('click', this._onTrashClick);
+    const element = this._trashObject.element;
+    if (element.parentNode) element.parentNode.removeChild(element);
+    this.remove(this._trashObject);
+    this._trashObject = null;
+    this._trashInner = null;
+  }
+
+  _updateTrashButton(camera, canvas) {
+    if (!this._trashObject) return;
+    const mesh = this._activeHandle();
+    if (!mesh) {
+      this._trashObject.visible = false;
+      return;
+    }
+    this._trashObject.position.copy(mesh.position);
+
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    this._tmpV.copy(mesh.position).applyMatrix4(this.matrix);
+    const radiusPx = this._screenRadiusPx(
+      mesh.scale.x,
+      this._tmpV,
+      camera,
+      height
+    );
+    this._tmpV.project(camera);
+    const offset = trashButtonOffset(
+      radiusPx,
+      (this._tmpV.x * 0.5 + 0.5) * width,
+      (-this._tmpV.y * 0.5 + 0.5) * height,
+      width,
+      height
+    );
+    if (!offset) {
+      this._trashObject.visible = false;
+      return;
+    }
+    this._trashObject.visible = true;
+    this._trashInner.style.transform = `translate(${offset.dx}px, ${offset.dy}px)`;
+  }
+
+  _updateActiveRim() {
+    const mesh = this._activeHandle();
+    if (!mesh) {
+      this._activeRim.visible = false;
+      return;
+    }
+    this._activeRim.visible = true;
+    this._activeRim.position.copy(mesh.position);
+    this._activeRim.scale.setScalar(mesh.scale.x * ACTIVE_RIM_RATIO);
+  }
+
+  _activeHandle() {
+    if (!this.activeVertexEl) return null;
+    const i = this.vertexEls.indexOf(this.activeVertexEl);
+    return i === -1 ? null : this.vertexHandles[i];
+  }
+
+  _onTrashClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this._deleteActiveVertex();
+  }
+
+  // --- delete ------------------------------------------------------------
+
+  _deleteActiveVertex() {
+    const vertexEl = this.activeVertexEl;
+    if (!vertexEl) return;
+    const index = this.vertexEls.indexOf(vertexEl);
+    if (index === -1) {
+      this.setActiveVertex(null);
+      return;
+    }
+
+    if (!validateVertexDelete(this._localPoints(), this._isClosed(), index)) {
+      // Both refusals — a delete that would make the ring cross itself, and one
+      // that would leave fewer than two vertices — say so the same way. They
+      // are the same button, the same click and the same outcome, and a silent
+      // no-op on one of them reads as a broken button rather than a refusal.
+      // The vertex stays, and stays active.
+      this._flashRefusal();
+      return;
+    }
+
+    this.setActiveVertex(null);
+    try {
+      AFRAME.INSPECTOR.execute('shapevertexremove', { vertexEl });
+    } catch (error) {
+      console.error('Shape vertex delete failed', error);
+    }
+  }
+
+  _flashRefusal() {
+    this._setInvalidSignal(true); // also cancels any flash already running
+    this._invalidFlashTimer = setTimeout(() => {
+      this._invalidFlashTimer = null;
+      this._setInvalidSignal(false);
+    }, INVALID_FLASH_MS);
   }
 
   // --- listeners ---------------------------------------------------------
@@ -494,6 +685,7 @@ export class ShapeVertexControls extends THREE.Object3D {
     // view away mid-edit.
     window.addEventListener('click', this._onSuppressLatched, true);
     window.addEventListener('dblclick', this._onSuppressLatched, true);
+    window.addEventListener('keyup', this._onKeyUp, true);
     window.addEventListener('blur', this._onBlur);
   }
 
@@ -508,6 +700,7 @@ export class ShapeVertexControls extends THREE.Object3D {
     window.removeEventListener('touchend', this._onSuppressClaimed, true);
     window.removeEventListener('click', this._onSuppressLatched, true);
     window.removeEventListener('dblclick', this._onSuppressLatched, true);
+    window.removeEventListener('keyup', this._onKeyUp, true);
     window.removeEventListener('blur', this._onBlur);
   }
 
@@ -701,6 +894,14 @@ export class ShapeVertexControls extends THREE.Object3D {
   // component only on a change, so a drag spent inside an invalid stretch is
   // not re-setting the same colour every frame.
   _setInvalidSignal(on) {
+    // Whoever sets the signal next takes ownership of clearing it, so a drag
+    // begun during a refused-delete flash does not have the flash's timeout
+    // clear it out from under the drag — and a second refused delete restarts
+    // the flash rather than stacking a second timer on it.
+    if (this._invalidFlashTimer) {
+      clearTimeout(this._invalidFlashTimer);
+      this._invalidFlashTimer = null;
+    }
     if (this._invalidSignalOn === !!on) return;
     this._invalidSignalOn = !!on;
     const shape = this.shapeEl?.components?.shape;
@@ -773,10 +974,80 @@ export class ShapeVertexControls extends THREE.Object3D {
   // Teardown, so it is NOT gated on the inspector being open — a gesture in
   // flight when the editor closes has to end, and closing is exactly when no
   // event arrives to end it.
-  _onPointerUp() {
+  _onPointerUp(event) {
     if (this.claimed) {
       this._guard(() => this._releaseGesture());
       return;
+    }
+
+    // Clicking empty space clears the active vertex. This branch is a
+    // BEHAVIOUR rather than teardown, so unlike the rest of this handler it
+    // does check that the editor is open — otherwise an ordinary click in the
+    // viewer would clear the sub-selection behind the user's back, and it would
+    // be gone when they came back.
+    if (!AFRAME.INSPECTOR?.opened) return;
+    if (!this.activeVertexEl) return;
+    if (event.target !== this._canvas()) return;
+    // The listener is on the window, so it fires for a release anywhere in the
+    // document — the sidebar, the layers panel, the delete button itself. Those
+    // presses never reach the press record, so without this the release would
+    // be judged against the PREVIOUS canvas press. That matters: pointerup is
+    // dispatched before click, so a spurious clear here would hide the delete
+    // button before its own click fired — silently swallowing the delete the
+    // user just asked for.
+    if (this.pressGeneration !== this.lastRecordedPressId) return;
+    if (this.pressWasHandle) return;
+    const moved = Math.hypot(
+      event.clientX - this.pressX,
+      event.clientY - this.pressY
+    );
+    if (moved > CLICK_MOVE_THRESHOLD) return; // a drag: an orbit, not a click
+    this.setActiveVertex(null);
+  }
+
+  // Esc and Delete on window CAPTURE, which is the codebase's own way of
+  // getting ahead of the global shortcuts — they listen on the window's bubble
+  // phase, and a listener added later on the same target does not win.
+  _onKeyUp(event) {
+    if (isTextFieldFocused()) return;
+
+    if (event.key === 'Escape' || event.keyCode === 27) {
+      // Arm 1 — cancel a drag in flight. Teardown, so it is not gated on the
+      // editor being open. The vertex goes back to where the drag started and
+      // nothing commits: Esc means cancel, and cancel means it did not happen.
+      // The active vertex is deliberately NOT also cleared — one Esc, one
+      // effect, and a second Esc then clears it.
+      if (this.claimed) {
+        this.abortGesture();
+        event.stopPropagation();
+        return;
+      }
+      // Arms 2 and 3 ARE gated. With the editor shut the layer is still
+      // attached, so an ungated arm 2 would clear the active vertex from a
+      // press in the viewer — and stopPropagation at window capture swallows
+      // Esc app-wide, where modals and dialogs are listening for it.
+      if (!AFRAME.INSPECTOR?.opened) return;
+      // Arm 2 — clear the active vertex.
+      if (this.activeVertexEl) {
+        this.setActiveVertex(null);
+        event.stopPropagation();
+        return;
+      }
+      // Arm 3 — nothing of ours left; fall through and let Esc deselect.
+      return;
+    }
+
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      if (!AFRAME.INSPECTOR?.opened) return;
+      // Swallowed whenever the handles are up, whether or not a vertex is
+      // active. Gating on "a vertex is active" would let the SECOND Delete —
+      // after the first one cleared the active vertex — reach the editor's
+      // whole-shape delete and its confirm dialog, one reflexive Enter from
+      // losing the shape. With no active vertex this is a deliberate, silent
+      // no-op.
+      event.preventDefault();
+      event.stopPropagation();
+      if (this.activeVertexEl) this._guard(() => this._deleteActiveVertex());
     }
   }
 
@@ -786,7 +1057,11 @@ export class ShapeVertexControls extends THREE.Object3D {
   _releaseGesture() {
     const g = this._gesture;
     if (!g || !g.isDrag) {
+      // A click rather than a drag: the vertex becomes the active one, which is
+      // what puts the delete button on screen and points the Delete key at it.
+      const vertexEl = g?.vertexEl ?? null;
       this.abortGesture();
+      if (vertexEl) this.setActiveVertex(vertexEl);
       return;
     }
 
@@ -905,6 +1180,20 @@ export class ShapeVertexControls extends THREE.Object3D {
       }
     }
   }
+}
+
+// Keys typed into a text field belong to the field, not to the canvas. Same
+// test the draw tool applies before acting on Esc.
+function isTextFieldFocused() {
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = el.tagName;
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    tag === 'SELECT' ||
+    el.isContentEditable
+  );
 }
 
 // A-Frame's position attribute takes an "x y z" string; the command family

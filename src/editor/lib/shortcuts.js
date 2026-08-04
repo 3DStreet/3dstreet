@@ -87,9 +87,14 @@ export const Shortcuts = {
     // draw tool is active — there Backspace/Delete steps back the pending
     // vertex (handled on keydown in ShapeDrawAction), and this keyup must not
     // also delete whatever entity happened to be selected when drawing began.
+    // Suppressed too while a selected shape has its vertex handles up, where
+    // the key means "delete the active vertex" and is handled there; this is
+    // the fail-safe for that interception missing, and it degrades to doing
+    // nothing rather than to deleting the whole shape.
     if (
       (keyCode === 8 || keyCode === 46) &&
-      !useStore.getState().shapeDrawActive
+      !useStore.getState().shapeDrawActive &&
+      !useStore.getState().shapeVertexEditActive
     ) {
       removeSelectedEntity();
     }

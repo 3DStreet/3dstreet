@@ -27,6 +27,9 @@ import {
   MIDPOINT_RADIUS_RATIO,
   GRAZING_MIN_DOT,
   MIN_EDIT_VERTEX_SEPARATION,
+  OFFSET_MARGIN_PX,
+  BUTTON_PX,
+  TRASH_MIN_HANDLE_PX,
   clampHandleRadius,
   decidePress,
   hitTestHandles,
@@ -34,6 +37,8 @@ import {
   preExistingClosePairs,
   rayPlaneHitIsUsable,
   resolveDragRelease,
+  trashButtonOffset,
+  validateVertexDelete,
   validateVertexEdit
 } from '../../src/editor/lib/shapeEditRules.js';
 
@@ -583,5 +588,91 @@ describe('resolveDragRelease', () => {
       final: v(5, 0)
     });
     expect(r.action).toBe('rawRevert');
+  });
+});
+
+describe('validateVertexDelete', () => {
+  it('refuses to take a shape below two vertices', () => {
+    expect(validateVertexDelete([p(0, 0), p(1, 0)], false, 0)).toBe(false);
+    // Including on an OPEN polyline, which is otherwise unconstrained.
+    expect(validateVertexDelete([p(0, 0), p(1, 0)], false, 1)).toBe(false);
+  });
+
+  it('allows an ordinary corner to go', () => {
+    expect(
+      validateVertexDelete([p(0, 0), p(10, 0), p(10, 10), p(0, 10)], true, 1)
+    ).toBe(true);
+  });
+
+  it('refuses a delete whose merged edge would cross the ring', () => {
+    // A spiral: removing a vertex on the outer turn merges two edges into one
+    // that cuts back across the inner turn, where neither original edge did.
+    const spiral = [
+      p(0, 0),
+      p(10, 0),
+      p(10, 10),
+      p(2, 10),
+      p(2, 2),
+      p(6, 2),
+      p(6, 6)
+    ];
+    // Losing (2,10) merges its two edges into (10,10)->(2,2), which cuts
+    // straight across the inner arm of the spiral.
+    expect(validateVertexDelete(spiral, true, 3)).toBe(false);
+    expect(validateVertexDelete(spiral, true, 0)).toBe(true);
+  });
+
+  it('leaves an open polyline free to cross after a delete', () => {
+    const spiral = [
+      p(0, 0),
+      p(10, 0),
+      p(10, 10),
+      p(2, 10),
+      p(2, 2),
+      p(6, 2),
+      p(6, 6)
+    ];
+    expect(validateVertexDelete(spiral, false, 3)).toBe(true);
+  });
+});
+
+describe('trashButtonOffset', () => {
+  const W = 1200;
+  const H = 800;
+  const middle = (r) => trashButtonOffset(r, W / 2, H / 2, W, H);
+
+  it('is hidden below the minimum handle radius', () => {
+    expect(middle(TRASH_MIN_HANDLE_PX - 0.01)).toBeNull();
+    expect(middle(TRASH_MIN_HANDLE_PX)).not.toBeNull();
+  });
+
+  it('clears the handle by the margin on both axes at every radius', () => {
+    // The property the pixel FLOOR exists for. A purely proportional offset
+    // fails this at small radii, where the fixed-size button ends up covering
+    // the handle it belongs to and its neighbours.
+    for (let r = TRASH_MIN_HANDLE_PX; r <= 200; r += 0.5) {
+      const o = middle(r);
+      const gapX = Math.abs(o.dx) - BUTTON_PX / 2 - r;
+      const gapY = Math.abs(o.dy) - BUTTON_PX / 2 - r;
+      expect(gapX).toBeGreaterThanOrEqual(OFFSET_MARGIN_PX - 1e-9);
+      expect(gapY).toBeGreaterThanOrEqual(OFFSET_MARGIN_PX - 1e-9);
+    }
+  });
+
+  it('goes up and to the right when there is room', () => {
+    const o = middle(7);
+    expect(o.dx).toBeGreaterThan(0);
+    expect(o.dy).toBeLessThan(0);
+  });
+
+  it('flips per axis rather than leaving the viewport', () => {
+    const topRight = trashButtonOffset(7, W - 2, 2, W, H);
+    expect(topRight.dx).toBeLessThan(0);
+    expect(topRight.dy).toBeGreaterThan(0);
+    // One axis at a time: a handle at the right edge but vertically central
+    // flips only in x.
+    const rightEdge = trashButtonOffset(7, W - 2, H / 2, W, H);
+    expect(rightEdge.dx).toBeLessThan(0);
+    expect(rightEdge.dy).toBeLessThan(0);
   });
 });

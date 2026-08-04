@@ -229,3 +229,63 @@ export function resolveDragRelease({ preDrag, lastValid, finalValid, final }) {
   }
   return { action: 'commit', value: candidate };
 }
+
+// Whether the shape survives losing vertex `index`.
+export function validateVertexDelete(points, closed, index) {
+  // A shape needs two vertices to be a shape at all.
+  if (points.length <= 2) return false;
+  const remaining = points.filter((_, i) => i !== index);
+  // Removing a vertex merges its two edges into one, and the merged edge can
+  // cross the rest of the ring where neither original did.
+  if (closed && ringSelfIntersects(remaining)) return false;
+  return true;
+}
+
+// --- The delete button's placement -------------------------------------
+
+export const BUTTON_PX = 24; // the app's small-icon-button size
+const BUTTON_HALF = BUTTON_PX / 2;
+export const OFFSET_MARGIN_PX = 4;
+// Below this handle radius the button is not shown at all.
+export const TRASH_MIN_HANDLE_PX = 5;
+
+// Where to put the delete button relative to the handle it belongs to, in
+// screen pixels, or null when it should be hidden.
+//
+// OFFSET, not ON the handle. A press on a DOM control never reaches the canvas,
+// so a button sitting on the handle makes that handle undraggable — and since
+// clicking a handle is the only way to reach delete, a vertex you had clicked
+// could no longer be moved.
+//
+// The offset has a PIXEL floor rather than being a pure multiple of the radius.
+// A radius-proportional offset with a fixed-size button move in opposite
+// directions as you zoom out: past the size clamp the offset shrinks toward a
+// couple of pixels while the button still spans ±12, so the button covers the
+// handle and its neighbours — turning a press near them into a delete. The
+// floor makes "disjoint at every zoom" true by construction: at any radius the
+// nearest button edge clears the handle edge by OFFSET_MARGIN_PX on each axis.
+//
+// Hidden below TRASH_MIN_HANDLE_PX because past the size clamp handles go
+// sub-pixel, and a full-size DESTRUCTIVE control must not be the one thing
+// still easily hittable where nothing else is. Delete stays reachable by
+// keyboard, and by zooming in.
+export function trashButtonOffset(
+  handleRadiusPx,
+  handleX,
+  handleY,
+  viewportWidth,
+  viewportHeight
+) {
+  if (handleRadiusPx < TRASH_MIN_HANDLE_PX) return null;
+  const d = Math.max(
+    1.75 * handleRadiusPx,
+    handleRadiusPx + BUTTON_HALF + OFFSET_MARGIN_PX
+  );
+  // Up and to the right by default; flipped per axis when the button would
+  // otherwise land off the edge of the canvas or under the panel chrome.
+  let dx = d;
+  let dy = -d;
+  if (handleX + dx > viewportWidth - BUTTON_PX) dx = -d;
+  if (handleY + dy < BUTTON_PX) dy = d;
+  return { dx, dy };
+}
