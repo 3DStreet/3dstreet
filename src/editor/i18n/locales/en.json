@@ -1250,8 +1250,8 @@
   "geoSidebar.environment": {
     "defaultMessage": "Environment"
   },
-  "geoSidebar.flatteningShape": {
-    "defaultMessage": "Flattening Shape"
+  "geoSidebar.flatteningObjects": {
+    "defaultMessage": "Flattening Objects"
   },
   "geoSidebar.geoTokenAlt": {
     "defaultMessage": "Geo Token"
@@ -1295,9 +1295,6 @@
   "geoSidebar.nearestIntersection": {
     "defaultMessage": "Nearest<br></br> Intersection"
   },
-  "geoSidebar.noShapesFound": {
-    "defaultMessage": "No shapes found in scene."
-  },
   "geoSidebar.opacityFlattening": {
     "defaultMessage": "Opacity & Flattening"
   },
@@ -1312,9 +1309,6 @@
   },
   "geoSidebar.savedLocationWithSource": {
     "defaultMessage": "This scene has a saved location {sourcePhrase}. Add the geo layer to load 3D buildings, terrain, and satellite imagery."
-  },
-  "geoSidebar.selectShape": {
-    "defaultMessage": "Select a shape..."
   },
   "geoSidebar.terrainFlattening": {
     "defaultMessage": "Terrain Flattening"

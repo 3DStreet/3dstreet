@@ -425,9 +425,56 @@ function getModifiedProperty(entity, componentName) {
   return diff;
 }
 
+// Legacy flattening migration (#1476): street-geo used to reference a single
+// flattening shape entity by id (`flatteningShape`); flattening volumes are
+// now declared per-entity via geo-flatten components. Move the reference onto
+// the target entity as a mesh-mode geo-flatten (preserving the legacy
+// flatten-onto-the-box behavior) and drop the deprecated property so a
+// re-save writes only the new form. Runs as a pre-pass because the street-geo
+// entity (reference-layers) and the shape live in different subtrees.
+function migrateLegacyFlatteningShape(entitiesData) {
+  let targetId = null;
+  for (const entityData of entitiesData) {
+    const components = entityData?.components;
+    const geoVal = components?.['street-geo'];
+    if (!geoVal) continue;
+    const isString = typeof geoVal === 'string';
+    const parsed = isString ? AFRAME.utils.styleParser.parse(geoVal) : geoVal;
+    if (!parsed || typeof parsed !== 'object') continue;
+    // 'create-default' was a transient sentinel the old UI could leave behind.
+    if (parsed.flatteningShape && parsed.flatteningShape !== 'create-default') {
+      targetId = parsed.flatteningShape;
+    }
+    delete parsed.flatteningShape;
+    if (isString) {
+      components['street-geo'] = AFRAME.utils.styleParser.stringify(parsed);
+    }
+  }
+  if (!targetId) return;
+
+  const attachToTarget = (nodes) => {
+    for (const node of nodes) {
+      if (!node || typeof node !== 'object') continue;
+      if (node.id === targetId) {
+        node.components = node.components || {};
+        if (!node.components['geo-flatten']) {
+          node.components['geo-flatten'] = 'mode: mesh';
+        }
+        return true;
+      }
+      if (Array.isArray(node.children) && attachToTarget(node.children)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  attachToTarget(entitiesData);
+}
+
 function createEntities(entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
   const removeEntities = ['environment', 'reference-layers'];
+  migrateLegacyFlatteningShape(entitiesData);
   // Arm batching before any entity is minted below; batchModels runs on the "newScene"
   // event emitted after this createEntities pass. See beginBatching for the state model.
   if (BATCHING_ENABLED) {

@@ -749,7 +749,8 @@
     "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
     "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
     "geoModal.locationSearchNotFound": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location.",
-    "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location."
+    "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
+    "geoSidebar.flatteningObjects": "Flattening Objects"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1501,7 +1502,8 @@
     "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
     "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
     "geoModal.locationSearchNotFound": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location.",
-    "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location."
+    "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
+    "geoSidebar.flatteningObjects": "Flattening Objects"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2253,6 +2255,7 @@
     "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
     "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
     "geoModal.locationSearchNotFound": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location.",
-    "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location."
+    "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
+    "geoSidebar.flatteningObjects": "Flattening Objects"
   }
 }
