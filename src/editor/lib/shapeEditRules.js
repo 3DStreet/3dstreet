@@ -289,3 +289,32 @@ export function trashButtonOffset(
   if (handleY + dy < BUTTON_PX) dy = d;
   return { dx, dy };
 }
+
+// --- Midpoint (insert) handle clutter ----------------------------------
+
+// Above this many vertices the ghost handles start to crowd each other, so
+// only the ones near the cursor are shown. Matches the vertex count at which
+// the shape's own corner readouts stop labelling every corner.
+export const MAX_CLUTTER_FREE_VERTICES = 12;
+export const MIDPOINT_NEAR_CURSOR_PX = 120;
+// A segment shorter than this on screen has no room for a ghost handle between
+// its two vertex handles. Measured in SCREEN pixels against the raw projection
+// rather than against the clamped world radius, so zooming out can never
+// suppress every midpoint and leave insert unreachable — zooming back in
+// restores them.
+export const MIN_MIDPOINT_SEGMENT_PX = 4 * HANDLE_TARGET_PX;
+
+export function midpointHandleIsVisible({
+  segmentLengthPx,
+  vertexCount,
+  distanceToCursorPx,
+  hoverCapable
+}) {
+  if (segmentLengthPx < MIN_MIDPOINT_SEGMENT_PX) return false;
+  if (vertexCount <= MAX_CLUTTER_FREE_VERTICES) return true;
+  // Touch has no hover, so there is no cursor to be near. Applying the filter
+  // there would make insert unreachable altogether on a big shape; showing all
+  // of them accepts the clutter in exchange for the feature existing.
+  if (!hoverCapable) return true;
+  return distanceToCursorPx <= MIDPOINT_NEAR_CURSOR_PX;
+}

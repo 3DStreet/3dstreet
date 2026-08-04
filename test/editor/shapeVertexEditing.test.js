@@ -27,6 +27,9 @@ import {
   MIDPOINT_RADIUS_RATIO,
   GRAZING_MIN_DOT,
   MIN_EDIT_VERTEX_SEPARATION,
+  MAX_CLUTTER_FREE_VERTICES,
+  MIDPOINT_NEAR_CURSOR_PX,
+  MIN_MIDPOINT_SEGMENT_PX,
   OFFSET_MARGIN_PX,
   BUTTON_PX,
   TRASH_MIN_HANDLE_PX,
@@ -34,6 +37,7 @@ import {
   decidePress,
   hitTestHandles,
   metresPerPixel,
+  midpointHandleIsVisible,
   preExistingClosePairs,
   rayPlaneHitIsUsable,
   resolveDragRelease,
@@ -674,5 +678,62 @@ describe('trashButtonOffset', () => {
     const rightEdge = trashButtonOffset(7, W - 2, H / 2, W, H);
     expect(rightEdge.dx).toBeLessThan(0);
     expect(rightEdge.dy).toBeLessThan(0);
+  });
+});
+
+describe('midpointHandleIsVisible', () => {
+  const ghost = (over) =>
+    midpointHandleIsVisible({
+      segmentLengthPx: 200,
+      vertexCount: 4,
+      distanceToCursorPx: 0,
+      hoverCapable: true,
+      ...over
+    });
+
+  it('hides a ghost on a segment with no room for it', () => {
+    expect(ghost({ segmentLengthPx: MIN_MIDPOINT_SEGMENT_PX - 1 })).toBe(false);
+    expect(ghost({ segmentLengthPx: MIN_MIDPOINT_SEGMENT_PX })).toBe(true);
+  });
+
+  it('shows every ghost on a shape with few enough vertices', () => {
+    expect(
+      ghost({
+        vertexCount: MAX_CLUTTER_FREE_VERTICES,
+        distanceToCursorPx: 10000
+      })
+    ).toBe(true);
+  });
+
+  it('shows only the ones near the cursor once a shape gets busy', () => {
+    const busy = { vertexCount: MAX_CLUTTER_FREE_VERTICES + 1 };
+    expect(
+      ghost({ ...busy, distanceToCursorPx: MIDPOINT_NEAR_CURSOR_PX - 1 })
+    ).toBe(true);
+    expect(
+      ghost({ ...busy, distanceToCursorPx: MIDPOINT_NEAR_CURSOR_PX + 1 })
+    ).toBe(false);
+  });
+
+  it('shows all of them with no hover-capable pointer, however busy', () => {
+    // Touch has no cursor to be near, so the near-cursor filter would make
+    // insert unreachable on a big shape rather than merely tidier.
+    expect(
+      ghost({
+        vertexCount: 40,
+        distanceToCursorPx: 10000,
+        hoverCapable: false
+      })
+    ).toBe(true);
+  });
+
+  it('still hides a ghost with no room, even without hover', () => {
+    expect(
+      ghost({
+        vertexCount: 40,
+        hoverCapable: false,
+        segmentLengthPx: MIN_MIDPOINT_SEGMENT_PX - 1
+      })
+    ).toBe(false);
   });
 });

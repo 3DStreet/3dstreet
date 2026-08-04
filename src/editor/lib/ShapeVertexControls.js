@@ -9,6 +9,7 @@ import {
   CLICK_MOVE_THRESHOLD,
   MIDPOINT_RADIUS_RATIO,
   clampHandleRadius,
+  midpointHandleIsVisible,
   decidePress,
   hitTestHandles,
   metresPerPixel,
@@ -23,9 +24,10 @@ import {
 /**
  * ShapeVertexControls — direct manipulation handles for a shape's vertices.
  *
- * WHAT IT IS. One handle per vertex of the selected shape, plus (later) a ghost
- * handle on each edge midpoint. Handles are screen-constant, live in
- * `sceneHelpers`, and are attached and detached from the editor's selection.
+ * WHAT IT IS. One handle per vertex of the selected shape, plus a ghost handle
+ * on each edge midpoint that inserts a vertex there. Handles are
+ * screen-constant, live in `sceneHelpers`, and are attached and detached from
+ * the editor's selection.
  *
  * WHY IT IS AN Object3D. Two things come from the base class and neither has a
  * good substitute. First, `viewport.js` freezes the camera by subscribing to
@@ -138,6 +140,8 @@ export class ShapeVertexControls extends THREE.Object3D {
     this.pressHit = null;
     this._gesture = null;
     this._pendingGesture = null;
+    // Canvas-relative, because that is the space the on-screen distances the
+    // clutter rule measures are computed in.
     this.lastCursorX = 0;
     this.lastCursorY = 0;
     this.lastPointerType = null;
@@ -157,6 +161,7 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._tmpNormal = new THREE.Vector3();
     this._tmpPoints = [];
     this._hitList = [];
+    this._vertexScreen = [];
 
     // One unit sphere and three materials shared by every handle: a handle's
     // size is a per-frame scale and its state is a material swap, so there is
@@ -283,7 +288,10 @@ export class ShapeVertexControls extends THREE.Object3D {
     const children = shapeEl.children;
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
-      if (child.components && child.components['shape-vertex']) {
+      // The ATTRIBUTE, not the initialised component: a vertex inserted this
+      // frame — the transient one a midpoint drag creates — has to be in this
+      // list immediately, and its component may not have run yet.
+      if (child.hasAttribute && child.hasAttribute('shape-vertex')) {
         this.vertexEls.push(child);
       }
     }
@@ -373,6 +381,7 @@ export class ShapeVertexControls extends THREE.Object3D {
     const canvas = this._canvas();
     if (camera && canvas) {
       camera.getWorldPosition(this._tmpCamPos);
+      const viewportW = canvas.clientWidth;
       const viewportH = canvas.clientHeight;
       for (let i = 0; i < this.vertexHandles.length; i++) {
         const el = this.vertexEls[i];
@@ -386,7 +395,15 @@ export class ShapeVertexControls extends THREE.Object3D {
           viewportH
         );
         mesh.scale.setScalar(clampHandleRadius(mpp));
+        // Cached rather than recomputed: the midpoint pass below needs each
+        // segment's on-screen length, which is these same projections.
+        const screen = this._vertexScreen[i] ?? (this._vertexScreen[i] = {});
+        this._tmpV.project(camera);
+        screen.x = (this._tmpV.x * 0.5 + 0.5) * viewportW;
+        screen.y = (-this._tmpV.y * 0.5 + 0.5) * viewportH;
+        screen.behind = this._tmpV.z > 1;
       }
+      this._updateMidpointHandles(viewportW, viewportH);
       this._updateActiveRim();
       this._updateTrashButton(camera, canvas);
     }
@@ -443,7 +460,8 @@ export class ShapeVertexControls extends THREE.Object3D {
       n,
       this.midpointHandles,
       'midpoint',
-      MIDPOINT_RADIUS_RATIO,
+      // The ghost's rendered scale already carries the ratio.
+      1,
       camera,
       viewportH
     );
@@ -597,6 +615,65 @@ export class ShapeVertexControls extends THREE.Object3D {
     }
     this._trashObject.visible = true;
     this._trashInner.style.transform = `translate(${offset.dx}px, ${offset.dy}px)`;
+  }
+
+  // --- midpoint (insert) handles -----------------------------------------
+
+  // One ghost per segment, plus the closing edge on a closed shape. The pool is
+  // resized here rather than only on a structural change, because `closed` is a
+  // checkbox the user can flip without adding or removing a vertex.
+  _updateMidpointHandles(viewportW, viewportH) {
+    const n = this.vertexEls.length;
+    const wanted = n < 2 ? 0 : this._isClosed() ? n : n - 1;
+    while (this.midpointHandles.length < wanted) {
+      this.midpointHandles.push(this._makeHandle(this._matMidpoint));
+    }
+    while (this.midpointHandles.length > wanted) {
+      this.handleGroup.remove(this.midpointHandles.pop());
+    }
+    if (!wanted) return;
+
+    // Whether the near-cursor filter can be applied at all. Sticky for the life
+    // of the attach: it is a statement about the input device, and one stray
+    // touch event should not permanently disable hover-driven filtering.
+    const hoverCapable =
+      this.lastPointerType === 'mouse' || this.lastPointerType === 'pen';
+
+    for (let i = 0; i < wanted; i++) {
+      const mesh = this.midpointHandles[i];
+      const a = this.vertexEls[i].object3D.position;
+      const b = this.vertexEls[(i + 1) % n].object3D.position;
+      mesh.position.lerpVectors(a, b, 0.5);
+      // Sized from the neighbouring vertex handle rather than re-projected: the
+      // midpoint is between the two, so either one's scale is right to within
+      // far less than a pixel.
+      mesh.scale.setScalar(
+        this.vertexHandles[i].scale.x * MIDPOINT_RADIUS_RATIO
+      );
+
+      const sa = this._vertexScreen[i];
+      const sb = this._vertexScreen[(i + 1) % n];
+      if (!sa || !sb || sa.behind || sb.behind) {
+        mesh.visible = false;
+        continue;
+      }
+      const mx = (sa.x + sb.x) / 2;
+      const my = (sa.y + sb.y) / 2;
+      mesh.visible = midpointHandleIsVisible({
+        segmentLengthPx: Math.hypot(sb.x - sa.x, sb.y - sa.y),
+        vertexCount: n,
+        distanceToCursorPx: Math.hypot(
+          this.lastCursorX - mx,
+          this.lastCursorY - my
+        ),
+        hoverCapable
+      });
+      // A ghost within its own viewport is not a reason to show one that has
+      // scrolled off the canvas.
+      if (mx < 0 || my < 0 || mx > viewportW || my > viewportH) {
+        mesh.visible = false;
+      }
+    }
   }
 
   _updateActiveRim() {
@@ -771,12 +848,16 @@ export class ShapeVertexControls extends THREE.Object3D {
   _preparePress(event, hit) {
     this._pendingGesture = null;
     if (!hit) return true; // nothing to prepare; the reducer decides on the hit
-    if (hit.kind !== 'vertex') return true;
 
-    const vertexEl = this.vertexEls[hit.index];
-    if (!vertexEl) return false;
     const shapeObj = this.shapeEl.object3D;
-    const local = vertexEl.object3D.position;
+    const isMidpoint = hit.kind === 'midpoint';
+    // A midpoint press drags a vertex that does not exist yet, from where the
+    // ghost sits.
+    const vertexEl = isMidpoint ? null : this.vertexEls[hit.index];
+    if (!isMidpoint && !vertexEl) return false;
+    const local = isMidpoint
+      ? this.midpointHandles[hit.index].position.clone()
+      : vertexEl.object3D.position;
 
     // The drag plane is the shape's own horizontal plane at this vertex's
     // height, so a vertex slides within the shape rather than off it.
@@ -798,11 +879,13 @@ export class ShapeVertexControls extends THREE.Object3D {
     );
     if (!hitWorld) return false;
 
-    const points = this._localPoints();
     this._pendingGesture = {
-      mode: 'vertex',
+      mode: isMidpoint ? 'midpoint' : 'vertex',
       vertexEl,
-      index: hit.index,
+      // For a midpoint on segment i, the new vertex goes after vertex i. On the
+      // closing edge that index is the child count, and inserting there appends.
+      insertIndex: isMidpoint ? hit.index + 1 : -1,
+      index: isMidpoint ? -1 : hit.index,
       plane,
       planeNormal: this._tmpNormal.clone(),
       // Where in the vertex the user grabbed, so it does not jump to the
@@ -810,11 +893,32 @@ export class ShapeVertexControls extends THREE.Object3D {
       grabOffset: local.clone().sub(shapeObj.worldToLocal(hitWorld)),
       preDragLocalPos: local.clone(),
       lastValidLocalPos: null,
-      exemptPairs: preExistingClosePairs(points),
+      exemptPairs: null, // taken at claim time, when the indices are settled
       isDrag: false,
       transientEl: null
     };
     return true;
+  }
+
+  // Insert a real, uncommitted vertex where the ghost was and drag that.
+  //
+  // A real element rather than bespoke preview geometry: the shape derives
+  // itself from its DOM children, so this gives live tube, angle and area
+  // feedback for nothing. It goes in with a plain insertBefore, so no history
+  // entry exists until the release — and abortGesture owns taking it back out
+  // again on every path that is not a release.
+  _materialiseTransientVertex(g) {
+    const el = document.createElement('a-entity');
+    el.setAttribute('class', 'hideFromSceneGraph');
+    el.setAttribute('shape-vertex', '');
+    el.setAttribute('position', vecToString(g.preDragLocalPos));
+    const reference = this.shapeEl.children[g.insertIndex] ?? null;
+    this.shapeEl.insertBefore(el, reference);
+    el.object3D.position.copy(g.preDragLocalPos);
+    g.transientEl = el;
+    g.vertexEl = el;
+    this._invalidateVertexCache();
+    g.index = this.vertexEls.indexOf(el);
   }
 
   // The cursor ray's meeting point with `plane`, or null when there is no
@@ -909,8 +1013,15 @@ export class ShapeVertexControls extends THREE.Object3D {
   }
 
   _claimPress(event, hit) {
-    this._gesture = this._pendingGesture;
+    const g = this._pendingGesture;
+    this._gesture = g;
     this._pendingGesture = null;
+    if (g) {
+      if (g.mode === 'midpoint') this._materialiseTransientVertex(g);
+      // Taken here, after any transient insert, so the pair indices match the
+      // vertex list the drag will actually validate against.
+      g.exemptPairs = preExistingClosePairs(this._localPoints());
+    }
     this.claimed = true;
     this._pressWasClaimed = true;
     event.preventDefault();
@@ -964,8 +1075,10 @@ export class ShapeVertexControls extends THREE.Object3D {
     }
     if (!AFRAME.INSPECTOR?.opened) return;
     if (event.target !== this._canvas()) return;
-    this.lastCursorX = event.clientX;
-    this.lastCursorY = event.clientY;
+    // offsetX/offsetY are relative to the canvas, which is the space the
+    // midpoint clutter rule works in.
+    this.lastCursorX = event.offsetX ?? event.clientX;
+    this.lastCursorY = event.offsetY ?? event.clientY;
     this.lastPointerType = event.pointerType || null;
     const hit = this._hitTest(event.clientX, event.clientY);
     this._setHovered(hit && hit.kind === 'vertex' ? hit.mesh : null);
@@ -1056,10 +1169,43 @@ export class ShapeVertexControls extends THREE.Object3D {
   // executes no command at all.
   _releaseGesture() {
     const g = this._gesture;
-    if (!g || !g.isDrag) {
+    if (!g) {
+      this.abortGesture();
+      return;
+    }
+
+    // A midpoint gesture inserts on release whether it was a click (at the
+    // midpoint) or a drag (wherever it ended). An invalid release commits
+    // nothing at all — unlike a moved vertex there is no earlier position to
+    // fall back to.
+    if (g.mode === 'midpoint') {
+      const valid = validateVertexEdit(
+        this._localPoints(),
+        this._isClosed(),
+        g.index,
+        g.exemptPairs
+      );
+      const shapeEl = this.shapeEl;
+      const index = g.insertIndex;
+      const position = vecToString(g.vertexEl.object3D.position);
+      this.abortGesture(); // takes the transient element back out
+      if (!valid) return;
+      try {
+        AFRAME.INSPECTOR.execute('shapevertexinsert', {
+          shapeEl,
+          index,
+          position
+        });
+      } catch (error) {
+        console.error('Shape vertex insert failed', error);
+      }
+      return;
+    }
+
+    if (!g.isDrag) {
       // A click rather than a drag: the vertex becomes the active one, which is
       // what puts the delete button on screen and points the Delete key at it.
-      const vertexEl = g?.vertexEl ?? null;
+      const vertexEl = g.vertexEl;
       this.abortGesture();
       if (vertexEl) this.setActiveVertex(vertexEl);
       return;
@@ -1148,6 +1294,7 @@ export class ShapeVertexControls extends THREE.Object3D {
       if (g.transientEl) {
         // Nothing was ever committed for an insert that did not land.
         g.transientEl.remove();
+        if (this.shapeEl) this._invalidateVertexCache();
       } else if (g.isDrag) {
         g.vertexEl.object3D.position.copy(g.preDragLocalPos);
       }
