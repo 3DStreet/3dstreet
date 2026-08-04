@@ -396,6 +396,79 @@ const chargeGenerationTokens = async (db, { userId, jobRef, tokenCost, source, r
   return { tokensBefore, remainingTokens };
 };
 
+// One-time gen-token pack purchase (#1374): credit the pack's tokens and write
+// the `tokenLog` purchase row for the audit trail / margin analysis. Called by
+// the Stripe checkout webhook (stripe.js). The log doc id is keyed on the
+// Stripe session so webhook retries can't double-grant: the transaction
+// re-reads it and no-ops when the row already exists. Never touches plan
+// claims — packs are a top-up, not a subscription change.
+const grantPurchasedTokens = async ({ checkoutSession, pack, quantity }) => {
+  const userId = checkoutSession.metadata?.userId;
+  if (!userId) {
+    console.error(`token pack purchase without metadata.userId: session=${checkoutSession.id}`);
+    return;
+  }
+
+  const tokensPurchased = pack.tokens * quantity;
+  const db = admin.firestore();
+  const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+  const logRef = db.collection('tokenLog').doc(`purchase-${checkoutSession.id}`);
+
+  await db.runTransaction(async (transaction) => {
+    const [logDoc, tokenDoc] = await Promise.all([
+      transaction.get(logRef),
+      transaction.get(tokenProfileRef)
+    ]);
+    if (logDoc.exists) {
+      console.log(`token pack already granted (webhook retry): session=${checkoutSession.id}`);
+      return;
+    }
+
+    const tokensBefore = tokenDoc.exists ? tokenDoc.data().genToken || 0 : 0;
+    const tokensAfter = tokensBefore + tokensPurchased;
+
+    if (tokenDoc.exists) {
+      transaction.update(tokenProfileRef, {
+        genToken: tokensAfter,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    } else {
+      // A paid subscriber should always have a profile by now, but if not,
+      // create one rather than dropping tokens the user just paid for.
+      transaction.set(tokenProfileRef, {
+        userId,
+        geoToken: 3,
+        genToken: tokensAfter,
+        lastMonthlyRefill: null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    transaction.set(logRef, {
+      userId,
+      type: 'purchase',
+      tokensBefore,
+      tokensAfter,
+      tokenCost: null,
+      source: `token-pack-${pack.id}`,
+      relatedModel: null,
+      // Purchase-specific audit fields (margin analysis):
+      packId: pack.id,
+      packTokens: pack.tokens,
+      quantity,
+      amountTotal: checkoutSession.amount_total ?? null, // smallest currency unit (e.g. cents)
+      currency: checkoutSession.currency ?? null,
+      stripeSessionId: checkoutSession.id,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  });
+
+  console.log(
+    `token pack granted: user=${userId} pack=${pack.id} x${quantity} tokens=${tokensPurchased} session=${checkoutSession.id}`
+  );
+};
+
 // Internal helper function to check if user is pro (for other functions to use)
 const isUserProInternal = async (userId) => {
   try {
@@ -413,6 +486,7 @@ module.exports = {
   checkAndRefillImageTokens,
   checkAndRefillImageTokensInternal,
   chargeGenerationTokens,
+  grantPurchasedTokens,
   validateUserDomain,
   checkUserProStatus,
   isUserProInternal
