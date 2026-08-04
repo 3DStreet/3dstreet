@@ -37,6 +37,7 @@ import {
   COMPASS_NORTH_TOLERANCE_DEGREES
 } from '@/editor/lib/nav-experimental/index.js';
 import { captureNavDiscovery } from '@/editor/lib/navAnalytics.js';
+import { GIZMO_PROTOTYPES } from '@/editor/lib/gizmos/constants.js';
 
 // Keyboard hints shown in the Edit menu's right slot.
 const isMac = getOS() === 'macos';
@@ -97,7 +98,9 @@ const AppMenu = ({ currentUser }) => {
     setGeojsonImportData,
     setRightPanelTab,
     locale,
-    setLocale
+    setLocale,
+    gizmoPrototype,
+    setGizmoPrototype
   } = useStore();
   const [undoDisabled, setUndoDisabled] = useState(
     !AFRAME.INSPECTOR?.history || AFRAME.INSPECTOR.history.undos.length === 0
@@ -742,6 +745,47 @@ const AppMenu = ({ currentUser }) => {
                         defaultMessage="Experimental"
                       />
                     </Menubar.RadioItem>
+                  </Menubar.RadioGroup>
+                </Menubar.SubContent>
+              </Menubar.Portal>
+            </Menubar.Sub>
+            <Menubar.Sub>
+              <Menubar.SubTrigger className="MenubarItem">
+                <FormattedMessage
+                  id="appMenu.view.gizmoPrototypes"
+                  defaultMessage="Gizmo Prototypes (Lab)"
+                />
+                <div className="RightSlot">
+                  <AwesomeIcon icon={faChevronRight} size={12} />
+                </div>
+              </Menubar.SubTrigger>
+              <Menubar.Portal>
+                <Menubar.SubContent className="MenubarContent">
+                  <Menubar.RadioGroup
+                    value={gizmoPrototype}
+                    onValueChange={(prototype) => {
+                      if (prototype === gizmoPrototype) return;
+                      posthog.capture('gizmo_prototype_changed', {
+                        prototype
+                      });
+                      // Takes effect immediately — viewport.js re-routes the
+                      // attached controls on this store change, no reload.
+                      setGizmoPrototype(prototype);
+                    }}
+                  >
+                    {GIZMO_PROTOTYPES.map((proto) => (
+                      <Menubar.RadioItem
+                        key={proto.id}
+                        className="MenubarRadioItem"
+                        value={proto.id}
+                        title={proto.description}
+                      >
+                        <Menubar.ItemIndicator className="MenubarItemIndicator">
+                          <AwesomeIcon icon={faCircle} size={8} />
+                        </Menubar.ItemIndicator>
+                        {proto.label}
+                      </Menubar.RadioItem>
+                    ))}
                   </Menubar.RadioGroup>
                 </Menubar.SubContent>
               </Menubar.Portal>

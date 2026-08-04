@@ -2,6 +2,9 @@ import { TransformControls } from './TransformControls.js';
 // eslint-disable-next-line no-unused-vars
 import EditorControls from './EditorControls.js';
 import { MeasureLineControls } from './MeasureLineControls.js';
+import { SimpleTransformControls } from './gizmos/SimpleTransformControls.js';
+import { StreetNodeControls } from './gizmos/StreetNodeControls.js';
+import { SegmentWidthControls } from './gizmos/SegmentWidthControls.js';
 import InfiniteGridHelper from './InfiniteGridHelper.js';
 import {
   ExperimentalControls,
@@ -322,6 +325,25 @@ export function Viewport(inspector) {
   measureLineControls.visible = false;
   measureLineControls.enabled = true;
 
+  // --- Gizmo prototype lab (#1674 #1446 #1096 #1218 #1806) --------------
+  // Experimental alternative controls, selected via the persisted
+  // store.gizmoPrototype preference (View → Gizmo Prototypes (Lab)).
+  // attachControlsForSelection() below is the single routing table deciding
+  // which controls attach to the current selection.
+  const simpleGizmoControls = new SimpleTransformControls(
+    camera,
+    inspector.container
+  );
+  simpleGizmoControls.groundRaycastRoot = inspector.sceneEl.object3D;
+  const streetNodeControls = new StreetNodeControls(
+    camera,
+    inspector.container
+  );
+  const segmentWidthControls = new SegmentWidthControls(
+    camera,
+    inspector.container
+  );
+
   // Pose snapshot taken on the gizmo's mouseDown, BEFORE TransformControls
   // mutates the object. The undo command can't capture this itself:
   // getAttribute('position') returns the live object3D values, which are
@@ -442,8 +464,91 @@ export function Viewport(inspector) {
     });
   });
 
+  simpleGizmoControls.addEventListener('mouseDown', () => {
+    const object = simpleGizmoControls.object;
+    if (object) {
+      const d = THREE.MathUtils.radToDeg;
+      transformPreDragValues = {
+        position: `${object.position.x} ${object.position.y} ${object.position.z}`,
+        rotation: `${d(object.rotation.x)} ${d(object.rotation.y)} ${d(
+          object.rotation.z
+        )}`
+      };
+    }
+    controls.enabled = false;
+    hoverBox.visible = false;
+  });
+
+  simpleGizmoControls.addEventListener('mouseUp', () => {
+    controls.enabled = true;
+  });
+
+  simpleGizmoControls.addEventListener('objectChange', (evt) => {
+    const object = simpleGizmoControls.object;
+    if (object === undefined) return;
+
+    syncBatchedSubtree(object.el);
+    selectionBox.setFromObject(object);
+    updateHelpers(object);
+
+    let component;
+    let value;
+    if (evt.mode === 'rotate') {
+      component = 'rotation';
+      const d = THREE.MathUtils.radToDeg;
+      value = `${d(object.rotation.x)} ${d(object.rotation.y)} ${d(
+        object.rotation.z
+      )}`;
+    } else {
+      component = 'position';
+      value = `${object.position.x} ${object.position.y} ${object.position.z}`;
+    }
+
+    inspector.execute('entityupdate', {
+      component: component,
+      entity: object.el,
+      value: value,
+      oldValue: transformPreDragValues?.[component]
+    });
+  });
+
+  // The street gizmos mutate attributes live during the drag (so the normal
+  // managed-street re-layout cascade runs) and report the whole drag once on
+  // mouseUp via 'commitDrag' — turned into a single undo step here.
+  [streetNodeControls, segmentWidthControls].forEach((streetControls) => {
+    streetControls.addEventListener('mouseDown', () => {
+      controls.enabled = false;
+      hoverBox.visible = false;
+    });
+    streetControls.addEventListener('mouseUp', () => {
+      controls.enabled = true;
+    });
+    streetControls.addEventListener('objectChange', () => {
+      const object = streetControls.object;
+      if (!object) return;
+      selectionBox.setFromObject(object);
+      updateHelpers(object);
+    });
+    streetControls.addEventListener('commitDrag', (evt) => {
+      const changed = evt.changes.filter((c) => c.value !== c.oldValue);
+      if (changed.length === 0) return;
+      const commands = changed.map((c) => [
+        'entityupdate',
+        { entity: evt.entity, ...c }
+      ]);
+      if (commands.length === 1) {
+        inspector.execute('entityupdate', commands[0][1]);
+      } else {
+        inspector.execute('multi', commands);
+      }
+    });
+  });
+
   sceneHelpers.add(transformControls.getHelper());
   sceneHelpers.add(measureLineControls);
+  sceneHelpers.add(simpleGizmoControls);
+  sceneHelpers.add(streetNodeControls);
+  sceneHelpers.add(segmentWidthControls);
 
   Events.on('entityupdate', (detail) => {
     const object = detail.entity.object3D;
@@ -501,6 +606,9 @@ export function Viewport(inspector) {
         inspector.camera = perspective;
         transformControls.camera = perspective;
         measureLineControls.camera = perspective;
+        simpleGizmoControls.camera = perspective;
+        streetNodeControls.camera = perspective;
+        segmentWidthControls.camera = perspective;
         controls.setCamera(perspective);
         updateAspectRatio();
         controls.handlePlanViewRequest();
@@ -510,12 +618,18 @@ export function Viewport(inspector) {
     controls.setCamera(data.camera);
     transformControls.camera = data.camera;
     measureLineControls.camera = data.camera;
+    simpleGizmoControls.camera = data.camera;
+    streetNodeControls.camera = data.camera;
+    segmentWidthControls.camera = data.camera;
     updateAspectRatio();
   });
 
   function enableControls() {
     mouseCursor.enable();
     transformControls.enabled = true;
+    simpleGizmoControls.enabled = true;
+    streetNodeControls.enabled = true;
+    segmentWidthControls.enabled = true;
     controls.enabled = true;
   }
   enableControls();
@@ -524,7 +638,62 @@ export function Viewport(inspector) {
     controls.center.set(0, 0, 0);
   });
 
+  let currentTransformMode = 'translate';
+
+  function detachAllTransformControls() {
+    transformControls.detach();
+    measureLineControls.detach();
+    simpleGizmoControls.detach();
+    streetNodeControls.detach();
+    segmentWidthControls.detach();
+  }
+
+  // Routing table for the gizmo prototype lab: decides which controls
+  // attach to the current selection, based on the active prototype
+  // (store.gizmoPrototype) and what is selected. 'legacy' reproduces the
+  // pre-lab behavior exactly.
+  function attachControlsForSelection() {
+    detachAllTransformControls();
+    const el = inspector.selectedEntity;
+    if (
+      !el ||
+      !inspector.cursor.isPlaying ||
+      el.hasAttribute('data-no-transform')
+    ) {
+      return;
+    }
+    if (el.components['measure-line']) {
+      measureLineControls.attach(el);
+      return;
+    }
+    const proto = useStore.getState().gizmoPrototype;
+    if (proto === 'legacy' || currentTransformMode === 'scale') {
+      // Scale has no simplified equivalent — the stock gizmo stays the
+      // advanced escape hatch under every prototype.
+      transformControls.attach(el.object3D);
+      return;
+    }
+    const isSegment =
+      el.components['street-segment'] &&
+      el.parentElement?.components?.['managed-street'];
+    if (isSegment) {
+      // street-align owns segment transforms (#1806): never show a
+      // move/rotate gizmo on a segment. Width handles only, when active.
+      if (proto === 'segment-width') {
+        segmentWidthControls.attach(el);
+      }
+      return;
+    }
+    if (proto === 'street-nodes' && el.components['managed-street']) {
+      streetNodeControls.attach(el);
+      return;
+    }
+    simpleGizmoControls.clampToGround = proto === 'ground-clamp';
+    simpleGizmoControls.attach(el.object3D);
+  }
+
   Events.on('transformmodechange', (mode) => {
+    currentTransformMode = mode;
     transformControls.setMode(mode);
     // Restrict rotation to the Y axis only.
     if (mode === 'rotate') {
@@ -538,20 +707,19 @@ export function Viewport(inspector) {
     }
 
     // If there's a selected entity, reattach the appropriate controls
-    if (
-      inspector.selectedEntity &&
-      inspector.cursor.isPlaying &&
-      !inspector.selectedEntity.hasAttribute('data-no-transform')
-    ) {
-      if (inspector.selectedEntity.components['measure-line']) {
-        transformControls.detach();
-        measureLineControls.attach(inspector.selectedEntity);
-      } else {
-        measureLineControls.detach();
-        transformControls.attach(inspector.selectedEntity.object3D);
-      }
+    if (inspector.selectedEntity) {
+      attachControlsForSelection();
     }
   });
+
+  // Re-route the attached controls when the user switches prototypes in
+  // View → Gizmo Prototypes (Lab).
+  useStore.subscribe(
+    (state) => state.gizmoPrototype,
+    () => {
+      attachControlsForSelection();
+    }
+  );
 
   Events.on('translationsnapchanged', (dist) => {
     transformControls.setTranslationSnap(dist);
@@ -568,8 +736,7 @@ export function Viewport(inspector) {
   Events.on('objectselect', (object) => {
     hoverBox.visible = false;
     selectionBox.visible = false;
-    transformControls.detach();
-    measureLineControls.detach();
+    detachAllTransformControls();
 
     if (object && object.el) {
       if (object.el.getObject3D('mesh') || isBatched(object.el)) {
@@ -594,16 +761,7 @@ export function Viewport(inspector) {
         selectionBox.visible = true;
       }
 
-      if (
-        inspector.cursor.isPlaying &&
-        !object.el.hasAttribute('data-no-transform')
-      ) {
-        if (object.el.components['measure-line']) {
-          measureLineControls.attach(object.el);
-        } else {
-          transformControls.attach(object);
-        }
-      }
+      attachControlsForSelection();
     }
   });
 
@@ -707,6 +865,9 @@ export function Viewport(inspector) {
         // borrow the rig via mode-manager and give it back.
         mouseCursor.disable();
         transformControls.enabled = false;
+        simpleGizmoControls.enabled = false;
+        streetNodeControls.enabled = false;
+        segmentWidthControls.enabled = false;
         controls.enabled = true;
         // The Viewer is always perspective — leave an ortho editing view.
         if (inspector.camera.isOrthographicCamera) {

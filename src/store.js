@@ -133,6 +133,15 @@ const useStore = create(
           localStorage.setItem('unitsPreference', newUnitsPreference);
           set({ unitsPreference: newUnitsPreference });
         },
+        // Gizmo prototype lab (#1674 #1446 #1096 #1218 #1806): which
+        // experimental viewport gizmo behavior is active. Persisted like
+        // unitsPreference; viewport.js subscribes and re-routes controls.
+        // Valid ids live in editor/lib/gizmos/constants.js.
+        gizmoPrototype: localStorage.getItem('gizmoPrototype') || 'legacy',
+        setGizmoPrototype: (newGizmoPrototype) => {
+          localStorage.setItem('gizmoPrototype', newGizmoPrototype);
+          set({ gizmoPrototype: newGizmoPrototype });
+        },
         // UI language for the localization experiment (#656). Auto-detected
         // from the browser on first load, then overridden by the user's stored
         // choice (persisted to localStorage via the View > Language menu).
