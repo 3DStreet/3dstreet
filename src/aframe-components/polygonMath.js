@@ -28,7 +28,7 @@ export function polygonAreaXZ(points) {
 // degenerate ring (< 3 vertices, or |signed area| below EPS — collinear /
 // zero-area) it falls back to the arithmetic mean of the vertices, which never
 // divides by zero. May fall OUTSIDE a strongly concave ring — that is accepted
-// (spec §E; robust in-polygon placement is deferred).
+// (robust in-polygon placement is deferred).
 export function polygonCentroidXZ(points) {
   const n = points.length;
   if (n === 0) return { x: 0, z: 0 };

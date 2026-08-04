@@ -394,9 +394,9 @@ export class ShapeVertexControls extends THREE.Object3D {
   }
 
   // Clearing the active vertex here is unconditional, and both halves of that
-  // matter. It is what Decision D asks for — any structural edit ends the
-  // sub-selection, because the indices the user was reasoning about have moved
-  // under them. And it is what keeps the styling coherent: handle meshes are
+  // matter. Any structural edit ends the sub-selection, because the indices the
+  // user was reasoning about have moved under them. And it is what keeps the
+  // styling coherent: handle meshes are
   // index-mapped to `vertexEls`, so an insert on a low segment slides every
   // higher vertex onto its neighbour's mesh. The rim and the trash button
   // follow the ACTIVE ELEMENT to its new index while the white active material

@@ -98,7 +98,7 @@ describe('segmentsIntersectXZ', () => {
     expect(segmentsIntersectXZ(p(0, 0), p(1, 0), p(5, 5), p(6, 6))).toBe(false);
   });
 
-  it('flags the bow-tie closing edge from the spec §5 example', () => {
+  it('flags a bow-tie created by the closing edge', () => {
     // Triangle 0,0 / 4,0 / 0,4; a new vertex near (4,4) makes the closing edge
     // (4,4)->(0,0) cross the edge (4,0)->(0,4).
     expect(segmentsIntersectXZ(p(4, 4), p(0, 0), p(4, 0), p(0, 4))).toBe(true);
