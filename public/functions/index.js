@@ -4,7 +4,8 @@ admin.initializeApp();
 const { getAuth } = require('firebase-admin/auth');
 const { getGeoidHeight } = require('./geoid-height.js');
 const { generateReplicateImage, generateReplicateVideo, generateReplicateSplat, getGenerationJobStatus, setGenerationJobNotify, replicateJobWebhook, modalJobWebhook, falJobWebhook } = require('./replicate.js');
-const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
+const { checkAndRefillImageTokens, checkUserProStatus, isUserProInternal } = require('./token-management.js');
+const { TOKEN_PACK_PRICE_SECRETS, findTokenPackByPriceIds } = require('./token-packs.js');
 const { generateFalImage } = require('./fal-proxy.js');
 const { generateFalMesh } = require('./fal-3d.js');
 const { assertAppCheck } = require('./app-check.js');
@@ -130,7 +131,7 @@ exports.getScene = functions
   });
 
 exports.createStripeSession = functions
-  .runWith({ secrets: ['STRIPE_SECRET_KEY'] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'ALLOWED_PRO_TEAM_DOMAINS', ...TOKEN_PACK_PRICE_SECRETS] })
   .https
   .onCall(async (data, context) => {
     const Stripe = require('stripe');
@@ -149,6 +150,26 @@ exports.createStripeSession = functions
     const userRecord = await getAuth().getUser(userId);
     const userEmail = userRecord.email;
 
+    // One-time gen-token pack checkout (#1374). Packs are an upsell for paid
+    // plans only — free users are routed to the Pro upgrade by the client, and
+    // this server-side gate makes sure a hand-crafted call can't sidestep that.
+    // Domain-team Pro (no plan claim) counts as paid, same as everywhere else.
+    const requestedPriceIds = (Array.isArray(data.line_items) ? data.line_items : [])
+      .map((item) => item && item.price)
+      .filter(Boolean);
+    const requestedTokenPack = findTokenPackByPriceIds(requestedPriceIds);
+    if (requestedTokenPack) {
+      const isPaidUser = await isUserProInternal(userId);
+      if (!isPaidUser) {
+        throw new functions.https.HttpsError(
+          'permission-denied',
+          'Token packs require a Pro or Max plan. Upgrade to purchase additional tokens.'
+        );
+      }
+      // Packs are one-time purchases — never let a client open one as a subscription.
+      data.mode = 'payment';
+    }
+
     // Check if customer already exists in our records
     const collectionRef = admin.firestore().collection('userProfile');
     const querySnapshot = await collectionRef.where('userId', '==', userId).get();
@@ -158,8 +179,10 @@ exports.createStripeSession = functions
       return; // only need the first one
     });
 
-    // Check if customer already has active subscriptions (prevent duplicates)
-    if (stripeCustomerId) {
+    // Check if customer already has active subscriptions (prevent duplicates).
+    // Skipped for one-time payments: token pack buyers are usually active
+    // subscribers, and an existing subscription is no reason to block a pack.
+    if (stripeCustomerId && data.mode !== 'payment') {
       try {
         const subscriptions = await stripe.subscriptions.list({
           customer: stripeCustomerId,
@@ -399,6 +422,78 @@ const markCheckoutSessionStatus = async (sessionId, status) => {
   }
 };
 
+// One-time gen-token pack purchase (#1374): credit the pack's tokens and write
+// the `tokenLog` purchase row for the audit trail / margin analysis. The log
+// doc id is keyed on the Stripe session so webhook retries can't double-grant:
+// the transaction re-reads it and no-ops when the row already exists. Never
+// touches plan claims — packs are a top-up, not a subscription change.
+const grantPurchasedTokens = async ({ checkoutSession, pack, quantity }) => {
+  const userId = checkoutSession.metadata?.userId;
+  if (!userId) {
+    console.error(`token pack purchase without metadata.userId: session=${checkoutSession.id}`);
+    return;
+  }
+
+  const tokensPurchased = pack.tokens * quantity;
+  const db = admin.firestore();
+  const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+  const logRef = db.collection('tokenLog').doc(`purchase-${checkoutSession.id}`);
+
+  await db.runTransaction(async (transaction) => {
+    const [logDoc, tokenDoc] = await Promise.all([
+      transaction.get(logRef),
+      transaction.get(tokenProfileRef)
+    ]);
+    if (logDoc.exists) {
+      console.log(`token pack already granted (webhook retry): session=${checkoutSession.id}`);
+      return;
+    }
+
+    const tokensBefore = tokenDoc.exists ? tokenDoc.data().genToken || 0 : 0;
+    const tokensAfter = tokensBefore + tokensPurchased;
+
+    if (tokenDoc.exists) {
+      transaction.update(tokenProfileRef, {
+        genToken: tokensAfter,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    } else {
+      // A paid subscriber should always have a profile by now, but if not,
+      // create one rather than dropping tokens the user just paid for.
+      transaction.set(tokenProfileRef, {
+        userId,
+        geoToken: 3,
+        genToken: tokensAfter,
+        lastMonthlyRefill: null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    transaction.set(logRef, {
+      userId,
+      type: 'purchase',
+      tokensBefore,
+      tokensAfter,
+      tokenCost: null,
+      source: `token-pack-${pack.id}`,
+      relatedModel: null,
+      // Purchase-specific audit fields (margin analysis):
+      packId: pack.id,
+      packTokens: pack.tokens,
+      quantity,
+      amountTotal: checkoutSession.amount_total ?? null, // smallest currency unit (e.g. cents)
+      currency: checkoutSession.currency ?? null,
+      stripeSessionId: checkoutSession.id,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  });
+
+  console.log(
+    `token pack granted: user=${userId} pack=${pack.id} x${quantity} tokens=${tokensPurchased} session=${checkoutSession.id}`
+  );
+};
+
 // invoice.payment_failed → Failed Payment email, once per invoice (Stripe
 // fires this event again on each retry attempt; the dedupeKey absorbs them).
 // DORMANT: dunning uses Stripe's hosted failed-payment emails instead, so
@@ -447,7 +542,7 @@ const handleInvoicePaymentFailed = async (invoice) => {
 // see the dormant note on handleInvoicePaymentFailed.)
 // Unrecognized events are acked and ignored, so enabling extra events is safe.
 exports.stripeWebhook = functions
-  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_CHECKOUT', 'STRIPE_YEARLY_PRICE_ID', 'STRIPE_MONTHLY_PRICE_ID', 'STRIPE_MAX_YEARLY_PRICE_ID', 'STRIPE_MAX_MONTHLY_PRICE_ID', 'POSTMARK_API_KEY'] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_CHECKOUT', 'STRIPE_YEARLY_PRICE_ID', 'STRIPE_MONTHLY_PRICE_ID', 'STRIPE_MAX_YEARLY_PRICE_ID', 'STRIPE_MAX_MONTHLY_PRICE_ID', 'POSTMARK_API_KEY', ...TOKEN_PACK_PRICE_SECRETS] })
   .https
   .onRequest(async (req, res) => {
     const Stripe = require('stripe');
@@ -490,6 +585,23 @@ exports.stripeWebhook = functions
       }
     );
 
+    // One-time token pack purchase? Grant tokens + audit row and stop — none
+    // of the subscription plan-claim / welcome-email logic below applies.
+    const lineItems = sessionWithLineItems.line_items?.data || [];
+    const packLineItem = lineItems.find((item) =>
+      findTokenPackByPriceIds([item.price?.id].filter(Boolean))
+    );
+    if (packLineItem) {
+      const pack = findTokenPackByPriceIds([packLineItem.price.id]);
+      await grantPurchasedTokens({
+        checkoutSession,
+        pack,
+        quantity: packLineItem.quantity || 1
+      });
+      await markCheckoutSessionStatus(checkoutSession.id, 'complete');
+      return res.sendStatus(200);
+    }
+
     // Resolve which tier (PRO / MAX) and billing cycle (annual / monthly) was
     // purchased by matching the checkout's line-item price IDs against the four
     // configured price-ID secrets. MAX is a superset of PRO; both unlock all
@@ -500,7 +612,7 @@ exports.stripeWebhook = functions
     // ~30% annual discount is the only annual sweetener — there is no up-front
     // lump-sum bonus on annual. This seed just covers the first month; the monthly
     // top-up-to-floor in token-management.js handles every cycle thereafter. (Bulk
-    // token purchasing is reserved for the upcoming one-time token packs.)
+    // token purchasing is the one-time token packs, handled above — token-packs.js.)
     const PRICE_CONFIG = [
       { tier: 'MAX', cycle: 'annual', priceId: process.env.STRIPE_MAX_YEARLY_PRICE_ID, tokens: 500 },
       { tier: 'MAX', cycle: 'monthly', priceId: process.env.STRIPE_MAX_MONTHLY_PRICE_ID, tokens: 500 },

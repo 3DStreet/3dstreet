@@ -2,6 +2,7 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
+const { computeMonthlyRefill } = require('./token-packs.js');
 
 const PRO_MONTHLY_ALLOWANCE = 100;
 const MAX_MONTHLY_ALLOWANCE = 500;
@@ -153,9 +154,10 @@ const checkAndRefillImageTokens = functions
       const needsRefill = !tokenData.lastMonthlyRefill || tokenData.lastMonthlyRefill !== currentMonthKey;
       
       if (needsRefill) {
-        // Top up to monthly allowance (don't reset if they have more from purchases)
+        // Top up to monthly allowance (don't reset if they have more from
+        // purchased token packs — see computeMonthlyRefill in token-packs.js)
         const tokensBefore = tokenData.genToken || 0;
-        const newImageTokens = Math.max(tokensBefore, monthlyAllowance);
+        const newImageTokens = computeMonthlyRefill(tokensBefore, monthlyAllowance);
 
         await tokenProfileRef.update({
           genToken: newImageTokens,
@@ -266,7 +268,10 @@ const checkAndRefillImageTokensInternal = async (userId) => {
     
     if (needsRefill) {
       const internalTokensBefore = tokenData.genToken || 0;
-      const newImageTokens = Math.max(internalTokensBefore, monthlyAllowance);
+      const newImageTokens = computeMonthlyRefill(
+        internalTokensBefore,
+        monthlyAllowance
+      );
 
       await tokenProfileRef.update({
         genToken: newImageTokens,

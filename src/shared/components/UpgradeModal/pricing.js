@@ -74,3 +74,16 @@ export const PRICING = {
 // Pro monthly figure (the baseline both paid tiers include); the tier-specific
 // monthly token floor is communicated on the price display row.
 export const TOKEN_FEATURE_LINE = `${PRICING.pro.monthly.tokens} AI generation tokens / month`;
+
+// One-time gen-token packs (#1374) — paid plans only, shown in BuyTokensModal.
+// Pricing (v1): flat $0.10/token, no volume discount — matches the
+// subscription per-token price exactly (PRO $10/100, MAX $50/500). Mirrors the
+// server copy in public/functions/token-packs.js (separate deployment, can't
+// share imports); test/shared/pricing-sync.test.js guards the two against
+// drifting and enforces the flat rate. Purchased tokens stack on the balance
+// and survive the monthly refill (top-up-to-floor, never down).
+export const TOKEN_PACKS = [
+  { id: 'starter', name: 'Starter', tokens: 100, price: 10 },
+  { id: 'standard', name: 'Standard', tokens: 250, price: 25 },
+  { id: 'power', name: 'Power', tokens: 500, price: 50 }
+];
