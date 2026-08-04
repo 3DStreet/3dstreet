@@ -372,7 +372,7 @@ const segmentSchema = {
     surface: {
       type: 'string',
       description:
-        'Surface material (e.g., "asphalt", "concrete", "grass", "sidewalk", "gravel", "sand", "hatched", "planting-strip", "none", "solid"). Optional for building segments — the variant supplies a sensible default.'
+        'Surface material (e.g., "asphalt", "concrete", "grass", "sidewalk", "gravel", "sand", "planting-strip", "none", "solid"). Optional for building segments — the variant supplies a sensible default. For hatched dividers use `generated.striping` with `striping: "hatched"` instead of a surface.'
     },
     color: { type: 'string', description: 'Hex color code (e.g., "#ffffff")' },
     elevation: {

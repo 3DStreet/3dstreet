@@ -21,7 +21,8 @@ AFRAME.registerComponent('street-generated-striping', {
         'solid-doubleyellow',
         'solid-dashed',
         'solid-dashed-yellow',
-        'solid-dashed-yellow-mirror'
+        'solid-dashed-yellow-mirror',
+        'hatched'
       ]
     },
     side: {
@@ -81,9 +82,14 @@ AFRAME.registerComponent('street-generated-striping', {
       return;
     }
     const clone = document.createElement('a-entity');
-    const { stripingTextureId, repeatY, color, stripingWidth } =
-      this.calculateStripingMaterial(data.striping, this.length);
-    const positionX = ((data.side === 'left' ? -1 : 1) * this.width) / 2;
+    const { stripingTextureId, repeatX, repeatY, color, stripingWidth } =
+      this.calculateStripingMaterial(data.striping, this.length, this.width);
+    // Edge stripes sit on the segment's left/right edge; the full-width
+    // hatched treatment is centered on the segment instead.
+    const positionX =
+      data.striping === 'hatched'
+        ? 0
+        : ((data.side === 'left' ? -1 : 1) * this.width) / 2;
     clone.setAttribute('position', {
       x: positionX,
       y: data.positionY,
@@ -96,7 +102,7 @@ AFRAME.registerComponent('street-generated-striping', {
     });
     clone.setAttribute(
       'material',
-      `src: #${stripingTextureId}; alphaTest: 0; transparent:true; repeat:1 ${repeatY}; color: ${color}`
+      `src: #${stripingTextureId}; alphaTest: 0; transparent:true; repeat:${repeatX} ${repeatY}; color: ${color}`
     );
     clone.setAttribute(
       'geometry',
@@ -114,9 +120,10 @@ AFRAME.registerComponent('street-generated-striping', {
     this.el.appendChild(clone);
     this.createdEntities.push(clone);
   },
-  calculateStripingMaterial: function (stripingName, length) {
+  calculateStripingMaterial: function (stripingName, length, width) {
     // calculate the repeatCount for the material
     let stripingTextureId = 'striping-solid-stripe'; // drive-lane, bus-lane, bike-lane
+    let repeatX = 1;
     let repeatY = length / 6;
     let color = '#ffffff';
     let stripingWidth = 0.2;
@@ -149,7 +156,17 @@ AFRAME.registerComponent('street-generated-striping', {
       stripingTextureId = 'striping-solid-dashed-mirror';
       color = STRIPE_YELLOW;
       stripingWidth = 0.4;
+    } else if (stripingName === 'hatched') {
+      // Full-width hatch treatment (#1728): the plane spans the segment width
+      // and the square seamless texture tiles at a fixed 4m period in both
+      // axes, so the diagonal bars keep their natural angle and density and
+      // crop to the segment width instead of stretching across it (the old
+      // `surface: hatched` behavior).
+      stripingTextureId = 'hatched-base';
+      stripingWidth = width;
+      repeatX = width / 4;
+      repeatY = length / 4;
     }
-    return { stripingTextureId, repeatY, color, stripingWidth };
+    return { stripingTextureId, repeatX, repeatY, color, stripingWidth };
   }
 });

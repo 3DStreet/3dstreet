@@ -6,6 +6,7 @@ import JSONCrush from 'jsoncrush';
 import {
   migrateSegmentLevelToElevation,
   migrateSegmentBuildingType,
+  migrateSegmentHatchedSurface,
   migrateShowBuildingsFlag
 } from './tested/street-segment-utils';
 
@@ -703,10 +704,14 @@ function createEntityFromObj(entityData, parentEl, beforeEl) {
   //   and raised segments (e.g. sidewalks) would load flush with the road.
   // - `type: building` was renamed to `type: boundary` (and the managed-street
   //   `showBuildings` toggle to `showBoundaries`).
+  // - `surface: hatched` became a street-generated-striping treatment (#1728);
+  //   the migration touches the whole components object because it also adds
+  //   the striping component.
   if (entityData.components?.['street-segment']) {
     entityData.components['street-segment'] = migrateSegmentBuildingType(
       migrateSegmentLevelToElevation(entityData.components['street-segment'])
     );
+    migrateSegmentHatchedSurface(entityData.components);
   }
   if (entityData.components?.['managed-street']) {
     entityData.components['managed-street'] = migrateShowBuildingsFlag(

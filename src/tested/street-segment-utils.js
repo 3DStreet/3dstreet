@@ -98,6 +98,59 @@ function migrateSegmentBuildingType(componentValue) {
   return componentValue;
 }
 
+// Migrate a saved entity carrying the deprecated `surface: hatched`
+// street-segment value (#1728): hatching is now a full-width
+// street-generated-striping treatment that crops to the segment width instead
+// of stretching a surface texture across it. The migration spans two
+// components — the surface becomes asphalt and a striping instance with
+// `striping: hatched` is added in the first free slot — so it operates on the
+// entity's whole serialized components object (mutated in place and
+// returned). Handles the prop-string and parsed-object forms of the
+// street-segment value, like the other segment migrations.
+function migrateSegmentHatchedSurface(components) {
+  const segmentValue = components?.['street-segment'];
+  if (!segmentValue) {
+    return components;
+  }
+  let migrated = false;
+  if (typeof segmentValue === 'string') {
+    if (/(^|;)\s*surface\s*:\s*hatched\s*(;|$)/.test(segmentValue)) {
+      components['street-segment'] = segmentValue.replace(
+        /(^|;)(\s*)surface\s*:\s*hatched(\s*)(;|$)/,
+        '$1$2surface: asphalt$3$4'
+      );
+      migrated = true;
+    }
+  } else if (
+    typeof segmentValue === 'object' &&
+    segmentValue.surface === 'hatched'
+  ) {
+    components['street-segment'] = { ...segmentValue, surface: 'asphalt' };
+    migrated = true;
+  }
+  if (migrated) {
+    components[findFreeStripingKey(components)] = 'striping: hatched';
+  }
+  return components;
+}
+
+// First unused street-generated-striping key in a serialized components
+// object. First instance is __1; a bare unsuffixed instance occupies the same
+// export index as __1 (see managed-street's GENERATED_RE), so it blocks __1.
+function findFreeStripingKey(components) {
+  if (
+    !('street-generated-striping' in components) &&
+    !('street-generated-striping__1' in components)
+  ) {
+    return 'street-generated-striping__1';
+  }
+  let n = 2;
+  while (`street-generated-striping__${n}` in components) {
+    n++;
+  }
+  return `street-generated-striping__${n}`;
+}
+
 // Migrate a saved managed-street component value from the short-lived
 // `showBuildings` property name to `showBoundaries` (renamed with the
 // building -> boundary segment type).
@@ -128,6 +181,7 @@ export {
   levelToElevation,
   migrateSegmentLevelToElevation,
   migrateSegmentBuildingType,
+  migrateSegmentHatchedSurface,
   migrateShowBuildingsFlag,
   CURB_HEIGHT,
   BASE_SURFACE_DEPTH
