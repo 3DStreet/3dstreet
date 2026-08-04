@@ -16,9 +16,154 @@ import { EntityUpdateCommand } from '../../src/editor/lib/commands/EntityUpdateC
 import { ShapeVertexInsertCommand } from '../../src/editor/lib/commands/ShapeVertexInsertCommand.js';
 import { ShapeVertexMoveCommand } from '../../src/editor/lib/commands/ShapeVertexMoveCommand.js';
 import { ShapeVertexRemoveCommand } from '../../src/editor/lib/commands/ShapeVertexRemoveCommand.js';
+import { refuseGuardedTransform } from '../../src/editor/lib/transformGuard.js';
 
 // Helper: build x/z points (y is irrelevant to the plan-view math).
 const p = (x, z) => ({ x, z });
+
+// Helper: a stand-in entity carrying the given marker attributes, optionally
+// under a parent with an id.
+const entityWith = (markers, parentId) => {
+  const el = document.createElement('div');
+  markers.forEach((m) => el.setAttribute(m, ''));
+  if (parentId !== undefined) {
+    const parent = document.createElement('div');
+    parent.id = parentId;
+    parent.appendChild(el);
+  }
+  return el;
+};
+
+describe('refuseGuardedTransform', () => {
+  const noScale = () => entityWith(['data-transform-no-scale']);
+  const yawOnly = () => entityWith(['data-transform-yaw-only']);
+
+  it('lets an unmarked entity through for every command type', () => {
+    const plain = entityWith([], 'street');
+    for (const type of [
+      'entityupdate',
+      'entityreparent',
+      'entitycreate',
+      'entityremove'
+    ]) {
+      expect(
+        refuseGuardedTransform(type, {
+          entity: plain,
+          component: 'scale',
+          value: '2 2 2',
+          parentEl: 'elsewhere'
+        })
+      ).toBeNull();
+    }
+  });
+
+  it('refuses a non-unit scale in all three value forms', () => {
+    const forms = [
+      { value: '2 1 1' },
+      { value: { x: 1, y: 1, z: 0.5 } },
+      { property: 'y', value: '3' }
+    ];
+    for (const form of forms) {
+      expect(
+        refuseGuardedTransform('entityupdate', {
+          entity: noScale(),
+          component: 'scale',
+          ...form
+        })
+      ).toBeTruthy();
+    }
+  });
+
+  it('allows a unit scale in all three value forms', () => {
+    const forms = [
+      { value: '1 1 1' },
+      { value: { x: 1, y: 1, z: 1 } },
+      { property: 'z', value: '1' }
+    ];
+    for (const form of forms) {
+      expect(
+        refuseGuardedTransform('entityupdate', {
+          entity: noScale(),
+          component: 'scale',
+          ...form
+        })
+      ).toBeNull();
+    }
+  });
+
+  it('refuses an off-vertical rotation but allows yaw, in all three forms', () => {
+    const refused = [
+      { value: '30 0 0' },
+      { value: { x: 0, y: 0, z: -15 } },
+      { property: 'x', value: '5' }
+    ];
+    for (const form of refused) {
+      expect(
+        refuseGuardedTransform('entityupdate', {
+          entity: yawOnly(),
+          component: 'rotation',
+          ...form
+        })
+      ).toBeTruthy();
+    }
+    const allowed = [
+      { value: '0 90 0' },
+      { value: { x: 0, y: 45, z: 0 } },
+      { property: 'y', value: '180' }
+    ];
+    for (const form of allowed) {
+      expect(
+        refuseGuardedTransform('entityupdate', {
+          entity: yawOnly(),
+          component: 'rotation',
+          ...form
+        })
+      ).toBeNull();
+    }
+  });
+
+  it('leaves other components on a marked entity alone', () => {
+    const marked = entityWith([
+      'data-transform-no-scale',
+      'data-transform-yaw-only'
+    ]);
+    for (const component of ['position', 'shape', 'visible', 'class']) {
+      expect(
+        refuseGuardedTransform('entityupdate', {
+          entity: marked,
+          component,
+          value: '5 5 5'
+        })
+      ).toBeNull();
+    }
+  });
+
+  it('refuses a reparent to a different parent but allows a same-parent reorder', () => {
+    const el = entityWith(['data-transform-no-reparent'], 'street');
+    expect(
+      refuseGuardedTransform('entityreparent', {
+        entity: el,
+        parentEl: 'somewhere-else'
+      })
+    ).toBeTruthy();
+    expect(
+      refuseGuardedTransform('entityreparent', {
+        entity: el,
+        parentEl: 'street',
+        indexInParent: 3
+      })
+    ).toBeNull();
+  });
+
+  it('does not touch entitycreate, which carries no entity to read a marker from', () => {
+    expect(
+      refuseGuardedTransform('entitycreate', {
+        element: 'a-entity',
+        components: { scale: '4 4 4' }
+      })
+    ).toBeNull();
+  });
+});
 
 describe('shape vertex commands stay off the LLM tool surface', () => {
   // The command registry reads CommandClass.llmTool — an INHERITED read — and

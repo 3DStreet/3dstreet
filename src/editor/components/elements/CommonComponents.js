@@ -41,6 +41,15 @@ export default class CommonComponents extends React.Component {
       if (componentName === 'scale' && entity.components['managed-street']) {
         return null;
       }
+      // Same for anything that opts out of scaling: the command layer refuses
+      // the write anyway, so showing the row would only offer an edit that
+      // bounces back.
+      if (
+        componentName === 'scale' &&
+        entity.hasAttribute('data-transform-no-scale')
+      ) {
+        return null;
+      }
       const schema = AFRAME.components[componentName].schema;
       var data = entity.object3D[componentName];
       if (componentName === 'rotation') {
