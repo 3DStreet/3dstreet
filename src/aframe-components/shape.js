@@ -17,6 +17,12 @@
 //     works in the paused editor where an entity tick would not)
 //   - an explicit `updateEvent`, if the shape opts into event-driven updates
 //     instead of the per-frame dirty-check
+//
+// The shape is NOT kept playing while the inspector is open. Re-derivation does
+// not need it (the system tick above is what observes positions), and an
+// entity whose vertices are being animated cannot also be edited by hand — the
+// animation would fight the drag. So a vertex `animation` runs in the published
+// scene and is inert in the editor, which is the behaviour direct editing wants.
 
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import useStore from '../store.js';
@@ -183,13 +189,6 @@ AFRAME.registerComponent('shape', {
 
     this.el.sceneEl.systems.shape.register(this);
 
-    // Play this shape (and its vertex children) so an `animation` on a vertex
-    // runs. Honoured by the editor at open()/reload; a freshly created shape is
-    // paused by the create command, so the animation begins after a reopen —
-    // re-derivation itself is pause-independent (the system tick). Not
-    // serialized, so it is re-applied on every load here.
-    this.el.setAttribute('data-no-pause', '');
-
     // Whole-shape transform: the standard gizmo is enabled and behaves like any
     // other scene element, because the draw tool places the shape entity at its
     // vertices' centroid (vertices stored relative), so the gizmo attaches on
@@ -208,19 +207,6 @@ AFRAME.registerComponent('shape', {
     }
 
     this.requestRederive();
-
-    // The entity-create command pauses the new entity immediately after init;
-    // play it once loaded so a child `animation` runs right away rather than
-    // only after a reload (the editor re-plays [data-no-pause] elements on
-    // open, which covers the reload path). Re-derivation itself never depends
-    // on this — the system tick observes positions regardless of pause.
-    this.el.addEventListener(
-      'loaded',
-      () => {
-        if (!this.destroyed) this.el.play();
-      },
-      { once: true }
-    );
   },
 
   update: function (oldData) {
