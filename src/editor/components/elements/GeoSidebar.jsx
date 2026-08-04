@@ -3,6 +3,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import { Button } from '../elements';
 import { useAuthContext } from '@/editor/contexts/index.js';
 import PropertyRow from './PropertyRow';
+import BooleanWidget from '../widgets/BooleanWidget';
 import OpacitySliderRow from '../widgets/OpacitySliderRow';
 import { Magnifier20Icon, SunIcon } from '@shared/icons';
 import { geoSourcePhrase } from '@shared/constants/geoSources.js';
@@ -89,61 +90,73 @@ const FlatteningContributors = () => {
     // Unique id so several boxes can coexist (#1476 — the old UI refused to
     // create a second shape).
     const shapeId = 'flattening-shape-' + Date.now();
-    AFRAME.INSPECTOR.execute('entitycreate', {
-      id: shapeId,
-      element: 'a-box',
-      'data-layer-name': 'Geo Flattening Shape',
-      components: {
-        scale: '20 5 40',
-        material: 'transparent: true; opacity: 0.3; color: purple',
-        'geo-flatten': 'mode: mesh'
-      }
-    });
+    AFRAME.INSPECTOR.execute(
+      'entitycreate',
+      {
+        id: shapeId,
+        element: 'a-box',
+        'data-layer-name': 'Geo Flattening Shape',
+        components: {
+          scale: '20 5 40',
+          material: 'transparent: true; opacity: 0.3; color: purple',
+          'geo-flatten': 'mode: mesh'
+        }
+      },
+      undefined,
+      // The box spawns at the origin, which is often off-screen; fly the
+      // camera to it so creation has visible feedback (selection alone
+      // isn't enough — the command already selects the new entity).
+      (entity) => Events.emit('objectfocus', entity.object3D)
+    );
   };
 
   return (
     <>
       {contributors.length > 0 && (
-        <div className="propertyRow">
-          <div className="fakePropertyRowLabel">
-            <FormattedMessage
-              id="geoSidebar.flatteningObjects"
-              defaultMessage="Flattening Objects"
-            />
+        <>
+          <div className="propertyRow">
+            <div className="fakePropertyRowLabel">
+              <FormattedMessage
+                id="geoSidebar.flatteningObjects"
+                defaultMessage="Flattening Objects"
+              />
+            </div>
           </div>
-          <div className="fakePropertyRowValue">
-            {contributors.map((el, index) => (
-              <div
-                key={el.id || `${displayName(el)}-${index}`}
+          {/* One full-width row per contributor: nesting them inside the
+              two-column fakePropertyRowValue (a horizontal flex box) crushed
+              every row into a sliver. */}
+          {contributors.map((el, index) => (
+            <div
+              className="propertyRow"
+              key={el.id || `${displayName(el)}-${index}`}
+              style={{ paddingLeft: '24px', marginBottom: '2px' }}
+            >
+              {/* BooleanWidget, not a bare <input type=checkbox>: the editor
+                  stylesheet hides raw checkboxes inside .propertyRow (they're
+                  normally paired with BooleanWidget's styled label). */}
+              <BooleanWidget
+                id={`flatten-contributor-${el.id || index}`}
+                name="enabled"
+                value={!!el.components['geo-flatten'].data.enabled}
+                onChange={() => toggleEnabled(el)}
+              />
+              <span
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  marginBottom: '2px'
+                  cursor: 'pointer',
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
                 }}
+                onClick={() => AFRAME.INSPECTOR.selectEntity(el)}
+                title={displayName(el)}
               >
-                <input
-                  type="checkbox"
-                  checked={!!el.components['geo-flatten'].data.enabled}
-                  onChange={() => toggleEnabled(el)}
-                  title="Toggle flattening contribution"
-                />
-                <span
-                  style={{
-                    cursor: 'pointer',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}
-                  onClick={() => AFRAME.INSPECTOR.selectEntity(el)}
-                  title={displayName(el)}
-                >
-                  {displayName(el)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+                {displayName(el)}
+              </span>
+            </div>
+          ))}
+        </>
       )}
       <div className="propertyRow">
         <div className="fakePropertyRowLabel"></div>
