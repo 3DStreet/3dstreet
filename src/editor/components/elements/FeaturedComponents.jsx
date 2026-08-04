@@ -16,6 +16,20 @@ function getHiddenGeometryProps(component) {
   );
 }
 
+function getHiddenProps(name, component) {
+  if (name === 'geometry') {
+    return getHiddenGeometryProps(component);
+  }
+  // geo-flatten's mode (own mesh vs auto footprint proxy) is picked correctly
+  // by whatever attaches the component (mesh for primitives, auto for models
+  // and streets); exposing it invites switching a street to mesh, which
+  // raycasts every model triangle and snaps terrain to vehicle/tree tops.
+  if (name === 'geo-flatten') {
+    return ['mode'];
+  }
+  return undefined;
+}
+
 // Renders the first-class "featured" controls (geometry, material, and any
 // street-generated-* generator) expanded at the top of the properties sidebar,
 // above Advanced Components. Geometry and generators reuse the generic
@@ -41,11 +55,7 @@ const FeaturedComponents = ({ entity }) => {
               component={components[name]}
               entity={entity}
               name={name}
-              hideProperties={
-                name === 'geometry'
-                  ? getHiddenGeometryProps(components[name])
-                  : undefined
-              }
+              hideProperties={getHiddenProps(name, components[name])}
             />
           </div>
         );

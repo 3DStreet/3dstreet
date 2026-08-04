@@ -43,7 +43,16 @@ export function getFeaturedComponentNames(entity) {
     if (name === 'material') return 1;
     return 2;
   };
-  return Object.keys(entity.components)
-    .filter(isFeaturedComponent)
-    .sort((a, b) => order(a) - order(b) || (a < b ? -1 : 1));
+  return (
+    Object.keys(entity.components)
+      .filter(isFeaturedComponent)
+      // Managed streets already expose geo-flatten's enabled toggle as the
+      // sidebar's Flatten Terrain row (ManagedStreetSidebar); a featured card
+      // would duplicate it. Other carriers (shapes, models) keep the card.
+      .filter(
+        (name) =>
+          !(name === 'geo-flatten' && entity.components['managed-street'])
+      )
+      .sort((a, b) => order(a) - order(b) || (a < b ? -1 : 1))
+  );
 }
