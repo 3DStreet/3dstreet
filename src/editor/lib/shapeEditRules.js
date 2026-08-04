@@ -114,18 +114,27 @@ export function hitTestHandles(handles, camera, rect, clientX, clientY) {
 // as long as a shape is selected. The press record is still wanted there,
 // because clearing the active vertex on a click in empty space is driven from
 // presses that are deliberately never claimed.
+//
+// `pressViable` asks only whether the press resolves to a live target — a
+// vertex handle whose element still exists, or any midpoint ghost. It is
+// deliberately NOT "can this press drag": a press on a handle does not need a
+// drag plane to be worth claiming, because two of the three things a handle
+// press can do (sub-select a vertex, insert at a midpoint) are clicks that
+// never touch one. Gating the whole press on the plane pick made a vertex
+// impossible to make active at a near-horizontal camera — no active vertex, no
+// delete button, no way to delete — and let the declined press fall through to
+// the selection ray, which usually misses the thin tube and deselects the
+// shape. The drag plane is checked where the drag actually starts instead.
 export function decidePress({
   inspectorOpen,
   targetIsCanvas,
   isPrimaryButton,
   handleHit,
-  pressPickOk
+  pressViable
 }) {
   if (!inspectorOpen || !targetIsCanvas || !isPrimaryButton) return 'ignore';
   if (!handleHit) return 'trackOnly';
-  // A press whose plane pick missed or grazed has no usable grab anchor, so it
-  // is declined and behaves as an ordinary canvas press.
-  if (!pressPickOk) return 'trackOnly';
+  if (!pressViable) return 'trackOnly';
   return 'claim';
 }
 
@@ -182,10 +191,19 @@ const tooClose = (a, b) => {
 // the vertex could never be dragged OUT of the state — the app would read as
 // broken. Exempting the offending pairs lets a drag always escape a
 // pre-existing violation while still refusing to create a new one.
-export function preExistingClosePairs(points) {
+//
+// `excludeIndex` names a vertex that is NOT pre-existing — the uncommitted one
+// a midpoint gesture has just materialised. Its violations are the tool's own
+// and must not be exempted: on a segment shorter than twice the minimum
+// separation the new vertex sits inside the threshold of both its neighbours,
+// so exempting those pairs would let a plain click commit the exact
+// two-handles-at-one-screen-point state this rule exists to prevent.
+export function preExistingClosePairs(points, excludeIndex = -1) {
   const pairs = new Set();
   for (let i = 0; i < points.length; i++) {
+    if (i === excludeIndex) continue;
     for (let j = i + 1; j < points.length; j++) {
+      if (j === excludeIndex) continue;
       if (tooClose(points[i], points[j])) pairs.add(pairKey(i, j));
     }
   }

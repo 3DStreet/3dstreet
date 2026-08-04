@@ -86,7 +86,9 @@ import {
  *   this.shapeEl        the arm switch for the per-frame hook; last thing
  *                       attach() sets, first thing detach() clears
  *   handle pool         built at attach, torn down at detach, resized in place
- *                       on a structural change so hover/active styling survives
+ *                       on a structural change, with styles re-applied after —
+ *                       the meshes are index-mapped to `vertexEls`, so a resize
+ *                       that leaves styles alone strands them on the wrong vertex
  *   vertexEls           the ordered vertex elements; re-read on a STRUCTURAL
  *                       change only — never on `shape-geometry-changed`, which
  *                       fires on every frame of a drag
@@ -101,7 +103,11 @@ import {
  *                       for a recorded press only, overwritten by the next one,
  *                       never cleared
  *   pressWasHandle      the RESULT of the press-time hit test, so it is written
- *                       after the press record, not with it; + the hit itself
+ *                       after the press record, not with it. The hit object
+ *                       itself is deliberately NOT retained: it is an entry in
+ *                       the reused hit-list scratch, so a stored reference goes
+ *                       stale on the next hit test rather than describing the
+ *                       press
  *   _gesture            mode, drag plane, grab offset, pre-drag and last-valid
  *                       positions, the transient inserted element. abortGesture()
  *                       is its single clear, reached from pointerup, pointercancel,
@@ -111,8 +117,9 @@ import {
  *                       leaves every handle and on a structural change that
  *                       removed the hovered vertex — a resize must PRESERVE hover
  *                       on the handles whose vertex survived
- *   lastCursorX/Y,      canvas-relative cursor and a deliberately sticky pointer
- *   lastPointerType     type; the clutter rule keys on both, and the type is what
+ *   lastCursorX/Y,      canvas-relative cursor and the type of the last pointer
+ *   lastPointerType     seen — both overwritten by every move, neither latched.
+ *                       The clutter rule keys on both, and the type is what
  *                       decides whether midpoint insert is reachable on touch
  *   activeVertexEl      one setter, setActiveVertex(); cleared by a successful
  *                       delete, a click elsewhere, the first Esc, any structural
@@ -185,7 +192,6 @@ export class ShapeVertexControls extends THREE.Object3D {
     this.pressX = 0;
     this.pressY = 0;
     this.pressWasHandle = false;
-    this.pressHit = null;
     this._gesture = null;
     this._pendingGesture = null;
     // Canvas-relative, because that is the space the on-screen distances the
@@ -207,6 +213,7 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._tmpV = new THREE.Vector3();
     this._tmpCamPos = new THREE.Vector3();
     this._tmpNormal = new THREE.Vector3();
+    this._tmpQuat = new THREE.Quaternion();
     this._tmpPoints = [];
     this._hitList = [];
     this._vertexScreen = [];
@@ -372,6 +379,9 @@ export class ShapeVertexControls extends THREE.Object3D {
     for (const mesh of this.midpointHandles) this.handleGroup.remove(mesh);
     this.vertexHandles.length = 0;
     this.midpointHandles.length = 0;
+    // The rim is a permanent member of the group rather than a pooled handle,
+    // so nothing above takes it out of the scene.
+    this._activeRim.visible = false;
   }
 
   // A structural change is an insert or a remove — never a position change.
@@ -383,13 +393,22 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._invalidateVertexCache();
   }
 
+  // Clearing the active vertex here is unconditional, and both halves of that
+  // matter. It is what Decision D asks for — any structural edit ends the
+  // sub-selection, because the indices the user was reasoning about have moved
+  // under them. And it is what keeps the styling coherent: handle meshes are
+  // index-mapped to `vertexEls`, so an insert on a low segment slides every
+  // higher vertex onto its neighbour's mesh. The rim and the trash button
+  // follow the ACTIVE ELEMENT to its new index while the white active material
+  // sits on the mesh at the old one — the highlight on one handle and the rim
+  // on another. Re-applying styles after the resize covers the same class of
+  // desync for hover.
   _invalidateVertexCache() {
     this._readVertexEls(this.shapeEl);
     this._syncPool();
     this._lastChildCount = this.shapeEl.children.length;
-    if (this.activeVertexEl && !this.vertexEls.includes(this.activeVertexEl)) {
-      this.setActiveVertex(null);
-    }
+    this.setActiveVertex(null);
+    this._applyStyles();
   }
 
   // --- per-frame ---------------------------------------------------------
@@ -580,7 +599,15 @@ export class ShapeVertexControls extends THREE.Object3D {
   setActiveVertex(el) {
     if (this.activeVertexEl === el) return;
     this.activeVertexEl = el;
-    if (!el && this._trashObject) this._trashObject.visible = false;
+    if (!el) {
+      if (this._trashObject) this._trashObject.visible = false;
+      // Hidden HERE and not only in the per-frame hook, which needs `shapeEl`
+      // and so stops running the moment the shape is deselected. The rim keeps
+      // `matrixAutoUpdate = false`'s stale matrix, so left visible it goes on
+      // drawing a stray sphere at the last active vertex until some other shape
+      // is selected.
+      this._activeRim.visible = false;
+    }
     this._applyStyles();
   }
 
@@ -685,9 +712,13 @@ export class ShapeVertexControls extends THREE.Object3D {
     }
     if (!wanted) return;
 
-    // Whether the near-cursor filter can be applied at all. Sticky for the life
-    // of the attach: it is a statement about the input device, and one stray
-    // touch event should not permanently disable hover-driven filtering.
+    // Whether the near-cursor filter can be applied at all. Reads the LAST
+    // pointer seen — `lastPointerType` is overwritten by every move, not
+    // latched — so on a hybrid device the filter follows whichever device the
+    // user is currently holding, and a touch simply shows all the ghosts until
+    // the mouse moves again. Before any move at all it is null, which also
+    // reads as not hover-capable: showing every ghost is the safe default,
+    // since the alternative hides them all with no cursor to be near.
     const hoverCapable =
       this.lastPointerType === 'mouse' || this.lastPointerType === 'pen';
 
@@ -803,10 +834,21 @@ export class ShapeVertexControls extends THREE.Object3D {
     // cursor, the raycaster and both camera-control classes all listen on
     // mousedown/touchstart, and stopping a pointerdown does nothing to a
     // separately-dispatched mousedown.
+    //
+    // The DOWN half only. `pointerup` runs before the compatibility `mouseup`
+    // and before `touchend`, and it has already cleared `claimed` by the time
+    // either arrives — so suppressing them was suppressing nothing.
+    //
+    // `touchstart` needs the options form. On window it is PASSIVE by default,
+    // where preventDefault() does nothing and logs an error on every touch of a
+    // claimed drag; the third positional argument sets capture, not passive.
+    // Every other touch listener in the repo binds the canvas, where the
+    // passive default does not apply.
     window.addEventListener('mousedown', this._onSuppressClaimed, true);
-    window.addEventListener('touchstart', this._onSuppressClaimed, true);
-    window.addEventListener('mouseup', this._onSuppressClaimed, true);
-    window.addEventListener('touchend', this._onSuppressClaimed, true);
+    window.addEventListener('touchstart', this._onSuppressClaimed, {
+      capture: true,
+      passive: false
+    });
     // click and dblclick read the LATCH, not `claimed`: the release path clears
     // `claimed` three events before click arrives. Suppressing them matters
     // because a double-click on the canvas teleports the camera even when it
@@ -824,9 +866,9 @@ export class ShapeVertexControls extends THREE.Object3D {
     window.removeEventListener('pointerup', this._onPointerUp, true);
     window.removeEventListener('pointercancel', this._onPointerCancel, true);
     window.removeEventListener('mousedown', this._onSuppressClaimed, true);
+    // Removal keys on the capture flag alone, so `true` matches the options
+    // form the add side uses.
     window.removeEventListener('touchstart', this._onSuppressClaimed, true);
-    window.removeEventListener('mouseup', this._onSuppressClaimed, true);
-    window.removeEventListener('touchend', this._onSuppressClaimed, true);
     window.removeEventListener('click', this._onSuppressLatched, true);
     window.removeEventListener('dblclick', this._onSuppressLatched, true);
     window.removeEventListener('keyup', this._onKeyUp, true);
@@ -847,6 +889,12 @@ export class ShapeVertexControls extends THREE.Object3D {
   _onSuppressLatched(event) {
     if (!AFRAME.INSPECTOR?.opened) return;
     if (!this._pressWasClaimed) return;
+    // The latch is only cleared by the NEXT pointerdown, so a click that had no
+    // pointerdown at all — Enter or Space on a focused button, the trash button
+    // included — would otherwise be swallowed by a drag that ended minutes ago.
+    // A click the latch is meant to suppress always targets the canvas, which
+    // is the same condition the press side gates on.
+    if (event.target !== this._canvas()) return;
     event.preventDefault();
     event.stopPropagation();
   }
@@ -877,7 +925,6 @@ export class ShapeVertexControls extends THREE.Object3D {
     this.lastRecordedPressId = this.pressGeneration;
 
     const hit = this._hitTest(event.clientX, event.clientY);
-    this.pressHit = hit;
     this.pressWasHandle = !!hit;
 
     const decision = decidePress({
@@ -885,18 +932,24 @@ export class ShapeVertexControls extends THREE.Object3D {
       targetIsCanvas,
       isPrimaryButton,
       handleHit: !!hit,
-      pressPickOk: this._preparePress(event, hit)
+      pressViable: this._preparePress(event, hit)
     });
     if (decision !== 'claim') return; // selection and orbit proceed as normal
 
-    this._claimPress(event, hit);
+    this._claimPress(event);
   }
 
   // --- the drag ----------------------------------------------------------
 
-  // Build the gesture a claimed press would run, and report whether it is
-  // viable. A gesture with no usable grab anchor must never be entered: the
-  // offset would be undefined and the first move would fling the vertex.
+  // Build the gesture a claimed press would run, and report whether the press
+  // resolves to a live target at all.
+  //
+  // A press whose plane pick misses or grazes is still VIABLE — it just cannot
+  // drag. Both of the click outcomes (sub-select a vertex, insert at a
+  // midpoint) need no plane, so the gesture is built with `plane: null` and the
+  // drag branch declines to start. Declining the whole press instead made a
+  // vertex unable to be made active at a near-horizontal camera, which is the
+  // ordinary street-level view over a horizontal shape.
   _preparePress(event, hit) {
     this._pendingGesture = null;
     if (!hit) return true; // nothing to prepare; the reducer decides on the hit
@@ -912,11 +965,13 @@ export class ShapeVertexControls extends THREE.Object3D {
       : vertexEl.object3D.position;
 
     // The drag plane is the shape's own horizontal plane at this vertex's
-    // height, so a vertex slides within the shape rather than off it.
-    this._tmpNormal
-      .set(0, 1, 0)
-      .applyQuaternion(shapeObj.quaternion)
-      .normalize();
+    // height, so a vertex slides within the shape rather than off it. The
+    // normal comes from the WORLD quaternion, matching the world matrix the
+    // coplanar point below is derived from: the local quaternion agrees with it
+    // only while no ancestor is rotated, and a rotated ancestor is exactly the
+    // case the world-matrix derivation is kept for.
+    shapeObj.getWorldQuaternion(this._tmpQuat);
+    this._tmpNormal.set(0, 1, 0).applyQuaternion(this._tmpQuat).normalize();
     this._tmpV.set(0, local.y, 0).applyMatrix4(this.matrix);
     const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
       this._tmpNormal,
@@ -929,20 +984,26 @@ export class ShapeVertexControls extends THREE.Object3D {
       plane,
       this._tmpNormal
     );
-    if (!hitWorld) return false;
 
     this._pendingGesture = {
       mode: isMidpoint ? 'midpoint' : 'vertex',
       vertexEl,
-      // For a midpoint on segment i, the new vertex goes after vertex i. On the
-      // closing edge that index is the child count, and inserting there appends.
-      insertIndex: isMidpoint ? hit.index + 1 : -1,
+      // Where the new vertex goes, in DOM-CHILD space — the space insertBefore
+      // and the insert command both index. The midpoint of segment i inserts
+      // after vertex i; on the closing edge that is past the last vertex, which
+      // appends. Resolved through the vertex list rather than assumed equal to
+      // it, since a shape's children need not all be vertices.
+      insertIndex: isMidpoint ? this._domIndexAfterVertex(hit.index) : -1,
       index: isMidpoint ? -1 : hit.index,
-      plane,
-      planeNormal: this._tmpNormal.clone(),
+      // Null when the cursor ray is edge-on to the plane: claimed as a click,
+      // never entered as a drag.
+      plane: hitWorld ? plane : null,
+      planeNormal: hitWorld ? this._tmpNormal.clone() : null,
       // Where in the vertex the user grabbed, so it does not jump to the
       // cursor on the first move.
-      grabOffset: local.clone().sub(shapeObj.worldToLocal(hitWorld)),
+      grabOffset: hitWorld
+        ? local.clone().sub(shapeObj.worldToLocal(hitWorld))
+        : null,
       preDragLocalPos: local.clone(),
       lastValidLocalPos: null,
       exemptPairs: null, // taken at claim time, when the indices are settled
@@ -950,6 +1011,13 @@ export class ShapeVertexControls extends THREE.Object3D {
       transientEl: null
     };
     return true;
+  }
+
+  // The DOM-child index a new vertex inserted after vertex `i` should take.
+  _domIndexAfterVertex(i) {
+    const after = this.vertexEls[i];
+    const at = Array.prototype.indexOf.call(this.shapeEl.children, after);
+    return at === -1 ? this.shapeEl.children.length : at + 1;
   }
 
   // Insert a real, uncommitted vertex where the ghost was and drag that.
@@ -1005,6 +1073,12 @@ export class ShapeVertexControls extends THREE.Object3D {
     const g = this._gesture;
     const shape = this.shapeEl?.components?.shape;
     if (!g || !shape) return;
+    // No usable drag plane — the cursor ray was edge-on to it at press time, so
+    // there is no grab anchor and a move would have to invent one. The press
+    // stays claimed and stays a click: releasing still sub-selects the vertex,
+    // or inserts at the midpoint. Returning BEFORE the click-vs-drag threshold
+    // is what keeps it a click however far the pointer wanders.
+    if (!g.plane) return;
 
     if (!g.isDrag) {
       const moved = Math.hypot(
@@ -1064,15 +1138,21 @@ export class ShapeVertexControls extends THREE.Object3D {
     if (shape && !shape.destroyed) shape.setInvalidSignal(!!on);
   }
 
-  _claimPress(event, hit) {
+  _claimPress(event) {
     const g = this._pendingGesture;
     this._gesture = g;
     this._pendingGesture = null;
     if (g) {
       if (g.mode === 'midpoint') this._materialiseTransientVertex(g);
       // Taken here, after any transient insert, so the pair indices match the
-      // vertex list the drag will actually validate against.
-      g.exemptPairs = preExistingClosePairs(this._localPoints());
+      // vertex list the drag will actually validate against — but with the
+      // transient itself excluded, since its own violations are not
+      // pre-existing and exempting them would let a click commit a
+      // zero-separation pair.
+      g.exemptPairs = preExistingClosePairs(
+        this._localPoints(),
+        g.transientEl ? g.index : -1
+      );
     }
     this.claimed = true;
     this._pressWasClaimed = true;
@@ -1097,11 +1177,17 @@ export class ShapeVertexControls extends THREE.Object3D {
   // monitor — delivers no pointerup at all, which would leave the shape red,
   // the camera frozen and the vertex snapping to the cursor on re-entry. The
   // pointer capture makes that rare and these make it survivable.
+  //
+  // Both are BACKSTOPS behind the capture rather than the primary defence, and
+  // the mouse one only fires when the capture itself failed — a captured
+  // pointer suppresses `mouseleave` on the canvas by design. There is no touch
+  // equivalent (`touchleave` was removed from the spec and fires nowhere), so
+  // the touch story rests on `pointercancel`, `touchcancel` and the window
+  // blur, all of which are subscribed.
   _addGestureListeners() {
     const canvas = this._canvas();
     if (!canvas) return;
     canvas.addEventListener('mouseleave', this._onGestureLost);
-    canvas.addEventListener('touchleave', this._onGestureLost);
     canvas.addEventListener('touchcancel', this._onGestureLost);
   }
 
@@ -1109,7 +1195,6 @@ export class ShapeVertexControls extends THREE.Object3D {
     const canvas = this._canvas();
     if (!canvas) return;
     canvas.removeEventListener('mouseleave', this._onGestureLost);
-    canvas.removeEventListener('touchleave', this._onGestureLost);
     canvas.removeEventListener('touchcancel', this._onGestureLost);
   }
 
@@ -1239,9 +1324,16 @@ export class ShapeVertexControls extends THREE.Object3D {
       );
       const shapeEl = this.shapeEl;
       const index = g.insertIndex;
-      const position = vecToString(g.vertexEl.object3D.position);
+      const position = vecToCommitString(g.vertexEl.object3D.position);
       this.abortGesture(); // takes the transient element back out
-      if (!valid) return;
+      if (!valid) {
+        // Same refusal signal a blocked delete gives. Without it a midpoint
+        // click that lands too close to an existing vertex commits nothing and
+        // shows nothing — the ghost simply vanishes, which reads as the insert
+        // silently failing rather than as being refused.
+        this._flashRefusal();
+        return;
+      }
       try {
         AFRAME.INSPECTOR.execute('shapevertexinsert', {
           shapeEl,
@@ -1278,7 +1370,7 @@ export class ShapeVertexControls extends THREE.Object3D {
     });
     const vertexEl = g.vertexEl;
     const oldValue = vecToString(g.preDragLocalPos);
-    const value = vecToString(release.value);
+    const value = vecToCommitString(release.value);
     const action = release.action;
 
     // Tear everything down BEFORE the command runs. History emits
@@ -1360,7 +1452,6 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._invalidSignalOn = false;
 
     this.claimed = false;
-    this.pressHit = null;
     this._gesture = null;
     this._pendingGesture = null;
     this._removeGestureListeners();
@@ -1396,9 +1487,24 @@ function isTextFieldFocused() {
 }
 
 // A-Frame's position attribute takes an "x y z" string; the command family
-// stores exactly what it is handed, so this is also what undo restores.
+// stores exactly what it is handed, so this is also what undo restores. Full
+// precision, deliberately: this form produces the `oldValue` an undo lands on,
+// and rounding that would move the vertex by up to half a millimetre on a leg
+// the user asked to be exact.
 function vecToString(v) {
   return `${v.x} ${v.y} ${v.z}`;
+}
+
+// The same, for a value being COMMITTED. Trimmed to millimetres to match what
+// the gizmo writes (viewport.js rounds a dragged transform to 3 dp), so an
+// edited shape's saved markup is not a wall of float noise next to every other
+// position in the scene.
+function vecToCommitString(v) {
+  return `${round3(v.x)} ${round3(v.y)} ${round3(v.z)}`;
+}
+
+function round3(n) {
+  return parseFloat(n.toFixed(3));
 }
 
 // A raised cosine between PULSE_MIN and PULSE_MAX, read from a clock so that

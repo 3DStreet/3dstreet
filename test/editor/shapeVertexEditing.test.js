@@ -399,7 +399,7 @@ describe('decidePress', () => {
       targetIsCanvas: true,
       isPrimaryButton: true,
       handleHit: true,
-      pressPickOk: true,
+      pressViable: true,
       ...over
     });
 
@@ -415,13 +415,12 @@ describe('decidePress', () => {
     expect(press({ handleHit: false })).toBe('trackOnly');
   });
 
-  it('tracks but does not claim a press whose plane pick is unusable', () => {
-    // No usable grab anchor: the press behaves as an ordinary canvas press
-    // rather than starting a drag with an undefined offset.
-    expect(press({ pressPickOk: false })).toBe('trackOnly');
+  it('tracks but does not claim a press on a handle with no live target', () => {
+    // The vertex the handle stood for is gone; there is nothing to act on.
+    expect(press({ pressViable: false })).toBe('trackOnly');
   });
 
-  it('claims a primary press on a handle with a usable pick', () => {
+  it('claims a primary press on a live handle', () => {
     expect(press({})).toBe('claim');
   });
 });
@@ -543,6 +542,20 @@ describe('the pre-existing-violation exemption', () => {
     const exempt = preExistingClosePairs(pts);
     pts[3] = p(10.01, 0); // brought onto vertex 1, which was never exempt
     expect(validateVertexEdit(pts, false, 3, exempt)).toBe(false);
+  });
+
+  it('never exempts the gesture’s own freshly inserted vertex', () => {
+    // A midpoint insert on a segment shorter than twice the minimum separation:
+    // the new vertex at index 1 is inside the threshold of BOTH neighbours the
+    // instant it exists. Exempting those pairs would let a plain click commit
+    // the two-handles-at-one-point state the rule exists to prevent.
+    const pts = [p(0, 0), p(0.02, 0), p(0.04, 0), p(5, 5)];
+    const exempt = preExistingClosePairs(pts, 1);
+    expect(exempt.has('0:1')).toBe(false);
+    expect(exempt.has('1:2')).toBe(false);
+    // The pre-existing 0–2 violation the insert did not create is still exempt.
+    expect(exempt.has('0:2')).toBe(true);
+    expect(validateVertexEdit(pts, false, 1, exempt)).toBe(false);
   });
 });
 
