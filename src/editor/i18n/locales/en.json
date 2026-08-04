@@ -1880,9 +1880,6 @@
   "screenshotModal.generateRenders": {
     "defaultMessage": "Generate Renders"
   },
-  "screenshotModal.insufficientTokens4x": {
-    "defaultMessage": "You need at least {totalTokenCost} tokens for 4x render"
-  },
   "screenshotModal.loginPrompt": {
     "defaultMessage": "Please log in to use AI rendering"
   },

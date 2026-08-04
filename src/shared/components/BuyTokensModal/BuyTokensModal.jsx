@@ -21,6 +21,7 @@ import { useAuthContext } from '@shared/contexts';
 import EmbeddedCheckout from '@shared/components/EmbeddedCheckout';
 import { getTokenProfile } from '@shared/utils/tokens';
 import { formatCurrency } from '@shared/utils/format';
+import { useSharedMessages } from '@shared/i18n/sharedMessages';
 import { TOKEN_PACKS } from '../UpgradeModal/pricing';
 import styles from '../UpgradeModal/UpgradeModal.module.scss';
 
@@ -59,6 +60,7 @@ const BuyTokensModal = ({
   onSuccess
 }) => {
   const { currentUser } = useAuthContext();
+  const t = useSharedMessages();
   const [modalState, setModalState] = useState('packs');
   // 'packs' | 'checkout'
   const [selectedPack, setSelectedPack] = useState(null);
@@ -139,15 +141,13 @@ const BuyTokensModal = ({
     <>
       <div className={styles.pricingHeader}>
         <div className={styles.pricingTitleBlock}>
-          <h2 className={styles.pricingTitle}>Buy More Tokens</h2>
-          <p className={styles.pricingSubtitle}>
-            One-time token packs for your AI generations.
-          </p>
+          <h2 className={styles.pricingTitle}>{t('buyTokensTitle')}</h2>
+          <p className={styles.pricingSubtitle}>{t('buyTokensSubtitle')}</p>
         </div>
         <button
           className={styles.closeButton}
           onClick={handleClose}
-          aria-label="Close"
+          aria-label={t('close')}
         >
           <CloseIcon />
         </button>
@@ -157,25 +157,22 @@ const BuyTokensModal = ({
 
       {!currentUser ? (
         <div className={styles.signInPrompt}>
-          <p className={styles.signInCopy}>Sign in to purchase tokens.</p>
+          <p className={styles.signInCopy}>{t('buyTokensSignInPrompt')}</p>
           <button type="button" className={styles.ctaButton} onClick={onSignIn}>
-            Sign in to 3DStreet Cloud
+            {t('signInToCloud')}
           </button>
         </div>
       ) : !isPaidUser ? (
         // Token packs are a paid-plan upsell — free users upgrade instead
         // (the server enforces this too; see createStripeSession).
         <div className={styles.signInPrompt}>
-          <p className={styles.signInCopy}>
-            Token packs are available on Pro and Max plans. Upgrade to get a
-            monthly token allowance plus the option to buy more anytime.
-          </p>
+          <p className={styles.signInCopy}>{t('buyTokensPaidPlanOnly')}</p>
           <button
             type="button"
             className={styles.ctaButton}
             onClick={onUpgradeInstead}
           >
-            Upgrade to Pro
+            {t('upgradeToPro')}
           </button>
         </div>
       ) : (
@@ -189,10 +186,12 @@ const BuyTokensModal = ({
                     {formatCurrency(pack.price)}
                   </span>
                 </div>
-                <div className={styles.planCycleDetail}>one-time</div>
+                <div className={styles.planCycleDetail}>
+                  {t('buyTokensOneTime')}
+                </div>
                 <ul className={styles.planPerks}>
-                  <li>{pack.tokens} AI tokens</li>
-                  <li>Never expire</li>
+                  <li>{t('buyTokensPackTokens', { tokens: pack.tokens })}</li>
+                  <li>{t('buyTokensNeverExpire')}</li>
                 </ul>
                 <button
                   type="button"
@@ -200,14 +199,12 @@ const BuyTokensModal = ({
                   disabled={!PACK_PRICE_IDS[pack.id]}
                   onClick={() => handleBuyPack(pack)}
                 >
-                  Buy {pack.name}
+                  {t('buyTokensBuyCta', { name: pack.name })}
                 </button>
               </div>
             ))}
           </div>
-          <p className={styles.footerNote}>
-            Purchased tokens stack with your monthly plan allowance.
-          </p>
+          <p className={styles.footerNote}>{t('buyTokensStackNote')}</p>
         </>
       )}
     </>
@@ -224,14 +221,14 @@ const BuyTokensModal = ({
               setSelectedPack(null);
             }}
           >
-            ← Back
+            ← {t('back')}
           </button>
         )}
-        <h2 className={styles.modalTitle}>Complete your purchase</h2>
+        <h2 className={styles.modalTitle}>{t('buyTokensCheckoutTitle')}</h2>
         <button
           className={styles.closeButton}
           onClick={handleClose}
-          aria-label="Close"
+          aria-label={t('close')}
         >
           <CloseIcon />
         </button>
@@ -246,9 +243,11 @@ const BuyTokensModal = ({
         onSuccess={onSuccess}
         onClose={handleClose}
         onPaymentSubmitted={handlePaymentSubmitted}
-        successTitle="Tokens Added!"
-        successMessage={`${selectedPack.tokens} tokens are now on your account.`}
-        successCta="Done"
+        successTitle={t('buyTokensSuccessTitle')}
+        successMessage={t('buyTokensSuccessMessage', {
+          tokens: selectedPack.tokens
+        })}
+        successCta={t('done')}
       />
     </>
   );

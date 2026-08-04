@@ -626,7 +626,6 @@
   "screenshotModal.generate4xTooltip": "Gerar 4 renderizações simultaneamente (usa {tokens} tokens)",
   "screenshotModal.generateRender": "Gerar Renderização",
   "screenshotModal.generateRenders": "Gerar Renderizações",
-  "screenshotModal.insufficientTokens4x": "Você precisa de pelo menos {totalTokenCost} tokens para a renderização 4x",
   "screenshotModal.loginPrompt": "Faça login para usar a renderização com IA",
   "screenshotModal.mixedModels": "Modelos Mistos",
   "screenshotModal.noImageToDownload": "Nenhuma imagem disponível para baixar",

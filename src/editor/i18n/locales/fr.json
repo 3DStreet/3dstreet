@@ -626,7 +626,6 @@
   "screenshotModal.generate4xTooltip": "Générer 4 rendus simultanément (utilise {tokens} jetons)",
   "screenshotModal.generateRender": "Générer le rendu",
   "screenshotModal.generateRenders": "Générer les rendus",
-  "screenshotModal.insufficientTokens4x": "Il vous faut au moins {totalTokenCost} jetons pour un rendu 4x",
   "screenshotModal.loginPrompt": "Veuillez vous connecter pour utiliser le rendu IA",
   "screenshotModal.mixedModels": "Modèles mixtes",
   "screenshotModal.noImageToDownload": "Aucune image disponible à télécharger",

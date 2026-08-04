@@ -202,6 +202,113 @@ const SHARED_MESSAGES = {
     fr: 'Les fonctions géospatiales nécessitent des jetons'
   },
 
+  // BuyTokensModal — one-time token pack purchases (#1374). Pack names
+  // (Starter/Standard/Power) are deliberately untranslated, same as the
+  // Pro/Max tier names.
+  buyTokensTitle: {
+    en: 'Buy More Tokens',
+    es: 'Comprar más tokens',
+    'pt-BR': 'Comprar mais tokens',
+    fr: 'Acheter plus de jetons'
+  },
+  buyTokensSubtitle: {
+    en: 'One-time token packs for your AI generations.',
+    es: 'Paquetes de tokens de pago único para tus generaciones con IA.',
+    'pt-BR': 'Pacotes de tokens de compra única para suas gerações com IA.',
+    fr: 'Des packs de jetons à achat unique pour vos générations IA.'
+  },
+  buyTokensSignInPrompt: {
+    en: 'Sign in to purchase tokens.',
+    es: 'Inicia sesión para comprar tokens.',
+    'pt-BR': 'Faça login para comprar tokens.',
+    fr: 'Connectez-vous pour acheter des jetons.'
+  },
+  signInToCloud: {
+    en: 'Sign in to 3DStreet Cloud',
+    es: 'Iniciar sesión en 3DStreet Cloud',
+    'pt-BR': 'Entrar no 3DStreet Cloud',
+    fr: 'Se connecter à 3DStreet Cloud'
+  },
+  buyTokensPaidPlanOnly: {
+    en: 'Token packs are available on Pro and Max plans. Upgrade to get a monthly token allowance plus the option to buy more anytime.',
+    es: 'Los paquetes de tokens están disponibles en los planes Pro y Max. Mejora tu plan para obtener una asignación mensual de tokens y la opción de comprar más en cualquier momento.',
+    'pt-BR':
+      'Os pacotes de tokens estão disponíveis nos planos Pro e Max. Faça upgrade para receber uma cota mensal de tokens e a opção de comprar mais a qualquer momento.',
+    fr: "Les packs de jetons sont disponibles avec les forfaits Pro et Max. Passez à un forfait supérieur pour obtenir une allocation mensuelle de jetons et la possibilité d'en acheter davantage à tout moment."
+  },
+  upgradeToPro: {
+    en: 'Upgrade to Pro',
+    es: 'Mejorar a Pro',
+    'pt-BR': 'Fazer upgrade para o Pro',
+    fr: 'Passer à Pro'
+  },
+  buyTokensOneTime: {
+    en: 'one-time',
+    es: 'pago único',
+    'pt-BR': 'pagamento único',
+    fr: 'paiement unique'
+  },
+  buyTokensPackTokens: {
+    en: '{tokens} AI tokens',
+    es: '{tokens} tokens de IA',
+    'pt-BR': '{tokens} tokens de IA',
+    fr: '{tokens} jetons IA'
+  },
+  buyTokensNeverExpire: {
+    en: 'Never expire',
+    es: 'Nunca caducan',
+    'pt-BR': 'Nunca expiram',
+    fr: "N'expirent jamais"
+  },
+  buyTokensBuyCta: {
+    en: 'Buy {name}',
+    es: 'Comprar {name}',
+    'pt-BR': 'Comprar {name}',
+    fr: 'Acheter {name}'
+  },
+  buyTokensStackNote: {
+    en: 'Purchased tokens stack with your monthly plan allowance.',
+    es: 'Los tokens comprados se suman a la asignación mensual de tu plan.',
+    'pt-BR': 'Os tokens comprados se somam à cota mensal do seu plano.',
+    fr: "Les jetons achetés s'ajoutent à l'allocation mensuelle de votre forfait."
+  },
+  buyTokensCheckoutTitle: {
+    en: 'Complete your purchase',
+    es: 'Completa tu compra',
+    'pt-BR': 'Conclua sua compra',
+    fr: 'Finalisez votre achat'
+  },
+  buyTokensSuccessTitle: {
+    en: 'Tokens Added!',
+    es: '¡Tokens añadidos!',
+    'pt-BR': 'Tokens adicionados!',
+    fr: 'Jetons ajoutés !'
+  },
+  buyTokensSuccessMessage: {
+    en: '{tokens} tokens are now on your account.',
+    es: '{tokens} tokens ya están en tu cuenta.',
+    'pt-BR': '{tokens} tokens já estão na sua conta.',
+    fr: '{tokens} jetons ont été ajoutés à votre compte.'
+  },
+  back: {
+    en: 'Back',
+    es: 'Atrás',
+    'pt-BR': 'Voltar',
+    fr: 'Retour'
+  },
+  close: {
+    en: 'Close',
+    es: 'Cerrar',
+    'pt-BR': 'Fechar',
+    fr: 'Fermer'
+  },
+  done: {
+    en: 'Done',
+    es: 'Listo',
+    'pt-BR': 'Concluído',
+    fr: 'Terminé'
+  },
+
   // Assets panel filter tabs
   filterAll: { en: 'All', es: 'Todos', 'pt-BR': 'Todos', fr: 'Tous' },
   filterMeshes: {
