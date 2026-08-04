@@ -45,6 +45,7 @@ const EditorUpgradeModal = () => {
   const setPendingPostCheckoutAction = useStore(
     (state) => state.setPendingPostCheckoutAction
   );
+  const startBuyTokens = useStore((state) => state.startBuyTokens);
 
   // Capture the activation deep link once at mount (app load). Consumed on
   // close/success so it can't reapply to a later in-app paywall (geo, watermark)
@@ -126,6 +127,15 @@ const EditorUpgradeModal = () => {
   // the modal and toast a hint to retry. Match the close routing so a
   // previous modal (geo, screenshot) is restored if there was one.
   const onAlreadyPro = () => {
+    // Exception: the token-shortfall surface. A paid user reaching the
+    // 'image' paywall (e.g. signed in mid-flow and turned out to be Pro/Max)
+    // is out of tokens, not un-upgraded — route to the one-time token pack
+    // purchase (#1374). startBuyTokens keeps the paywall's previousModal
+    // snapshot (e.g. the screenshot modal) as the return target.
+    if (postCheckout === 'image') {
+      startBuyTokens('image_paywall_already_pro');
+      return;
+    }
     STREET.notify.successMessage(
       intl.formatMessage({
         id: 'editorUpgradeModal.alreadyPro',

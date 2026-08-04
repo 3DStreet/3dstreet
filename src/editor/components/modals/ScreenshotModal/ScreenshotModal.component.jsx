@@ -52,6 +52,7 @@ function ScreenshotModal() {
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const startCheckout = useStore((state) => state.startCheckout);
+  const startBuyTokens = useStore((state) => state.startBuyTokens);
   const watermarkUpsellShown = useStore((state) => state.watermarkUpsellShown);
   const setWatermarkUpsellShown = useStore(
     (state) => state.setWatermarkUpsellShown
@@ -731,6 +732,17 @@ function ScreenshotModal() {
         );
         return;
       }
+      // Charge-at-submit rejected the job: out of tokens. Non-Pro users are
+      // gated up front, so landing here means a paid user's balance ran short
+      // (mid-month exhaustion, stale profile, spent in another tab) — offer
+      // the one-time token pack purchase (#1374) instead of a failure toast.
+      // startBuyTokens is idempotent, so a 4x batch rejecting several jobs
+      // opens the modal once; `finally` still resets this model's state.
+      if (error?.code === 'resource-exhausted') {
+        setRenderErrors((prev) => ({ ...prev, [targetModel]: true }));
+        startBuyTokens('image_render');
+        return;
+      }
       console.error('Error generating AI image:', error);
       const baseModelKey = AI_MODELS[targetModel]
         ? targetModel
@@ -813,23 +825,14 @@ function ScreenshotModal() {
       : getTokenCost(selectedModel) * 4;
 
     // Check if user has enough tokens for 4x render. Non-Pro users see the
-    // paywall (custom 'image' surface communicates the gap); Pro/ProTeam users
-    // who've exhausted their monthly allowance get a toast since there's no
-    // further upsell to offer.
+    // paywall (custom 'image' surface communicates the gap); Pro/ProTeam
+    // users who've exhausted their monthly allowance get the one-time token
+    // pack purchase (#1374) instead of a dead-end toast.
     if (!tokenProfile || tokenProfile.genToken < totalTokenCost) {
       if (!isPro) {
         startCheckout('image');
       } else {
-        STREET.notify.errorMessage(
-          intl.formatMessage(
-            {
-              id: 'screenshotModal.insufficientTokens4x',
-              defaultMessage:
-                'You need at least {totalTokenCost} tokens for 4x render'
-            },
-            { totalTokenCost }
-          )
-        );
+        startBuyTokens('image_render_4x');
       }
       return;
     }
