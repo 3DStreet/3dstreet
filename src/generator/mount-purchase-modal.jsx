@@ -9,11 +9,13 @@ import { AuthProvider, useAuthContext } from '../editor/contexts';
 import UpgradeModal from '@shared/components/UpgradeModal';
 import BuyTokensModal from '@shared/components/BuyTokensModal';
 import { getTokenProfile } from '@shared/utils/tokens';
+import { useSharedMessages } from '@shared/i18n/sharedMessages';
 import useImageGenStore from './store.js';
 
 const GeneratorUpgradeModal = () => {
   const { modal, setModal } = useImageGenStore();
   const { currentUser, tokenProfile } = useAuthContext();
+  const t = useSharedMessages();
   // Snapshot of genToken at the moment the user clicked subscribe; the
   // webhook will bump this once payment lands, which is what we poll for.
   const initialTokenCount = useRef(0);
@@ -54,9 +56,9 @@ const GeneratorUpgradeModal = () => {
       // back in the upgrade modal where they started.
       onSignIn={() => setModal('signin', true)}
       verifyPurchase={verifyPurchase}
-      successTitle="Welcome to Pro!"
-      successMessage="Your tokens are ready — happy generating."
-      successCta="Start Generating"
+      successTitle={t('welcomeToPro')}
+      successMessage={t('genTokensReady')}
+      successCta={t('startGenerating')}
     />
   );
 };

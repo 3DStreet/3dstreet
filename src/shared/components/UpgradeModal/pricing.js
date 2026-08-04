@@ -70,10 +70,11 @@ export const PRICING = {
   }
 };
 
-// Feature-list copy used across the modal and surface registry. Uses the
-// Pro monthly figure (the baseline both paid tiers include); the tier-specific
-// monthly token floor is communicated on the price display row.
-export const TOKEN_FEATURE_LINE = `${PRICING.pro.monthly.tokens} AI generation tokens / month`;
+// sharedMessages id for the monthly-token feature line, used across the modal
+// and surface registry feature lists. Exported as a constant so UpgradeModal
+// can identify (and filter) the token line in any surface's featureIds — the
+// tier-specific monthly floor is communicated on the price display row instead.
+export const TOKEN_FEATURE_KEY = 'featTokensMonthly';
 
 // One-time gen-token packs (#1374) — paid plans only, shown in BuyTokensModal.
 // Pricing (v1): flat $0.10/token, no volume discount — matches the
