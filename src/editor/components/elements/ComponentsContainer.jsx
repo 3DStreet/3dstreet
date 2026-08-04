@@ -84,39 +84,16 @@ export default class ComponentsContainer extends React.Component {
             <MixinMetadata entity={entity} />
           </div>
         )}
-        {entity.components?.['geo-flatten'] && (
-          <div className="details">
-            <div className="propertyRow" style={{ paddingRight: '10px' }}>
-              <div className="rounded bg-blue-50 p-2 text-gray-600">
-                <div className="mb-1 font-semibold uppercase">
-                  💡 Terrain Flattening Tips
-                </div>
-                <ul className="space-y-1">
-                  <li>• This object flattens geospatial 3D tiles under it</li>
-                  <li>
-                    • Position it below the target area to make room for your
-                    design
-                  </li>
-                  <li>• Hide visibility by unchecking in Layers panel</li>
-                  <li>
-                    • The flattening master switch is in the Geospatial sidebar;
-                    duplicate this object to flatten more area
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        )}
         <FeaturedComponents entity={entity} />
-        <div className="advancedComponentsContainer">
-          <AdvancedComponents entity={entity} />
-        </div>
         {this.getApprovedComponents().length > 0 && (
           <AddGeneratorComponent
             entity={entity}
             components={this.getApprovedComponents()}
           />
         )}
+        <div className="advancedComponentsContainer">
+          <AdvancedComponents entity={entity} />
+        </div>
       </div>
     );
   }
