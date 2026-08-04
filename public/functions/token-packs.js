@@ -17,6 +17,15 @@
 // is whatever the Stripe price object says. The price IDs live in Secret
 // Manager (one secret per pack, resolved at call time via `priceIdEnv`) so the
 // webhook and createStripeSession can both match line items against them.
+//
+// DEPLOY REQUIREMENT: the three secrets below are declared in the runWith()
+// of createStripeSession and stripeWebhook (stripe.js), so `firebase deploy`
+// FAILS until they exist in Secret Manager. Create them (empty values are
+// fine before the Stripe prices exist) with:
+//   firebase functions:secrets:set STRIPE_TOKENS_STARTER_PRICE_ID
+//   firebase functions:secrets:set STRIPE_TOKENS_STANDARD_PRICE_ID
+//   firebase functions:secrets:set STRIPE_TOKENS_POWER_PRICE_ID
+// The client-side price IDs live separately in config/.env.* (dotenv-webpack).
 const TOKEN_PACKS = [
   {
     id: 'starter',

@@ -4,12 +4,15 @@
  * Paid plans (Pro/Max) only: this is an upsell for subscribers who've burned
  * through their monthly allowance, not a subscription alternative. Free users
  * see an "Upgrade to Pro" prompt that the caller routes to UpgradeModal via
- * onUpgradeInstead. Purchased tokens stack on the current balance and survive
- * the monthly refill (the refill tops up to the plan floor, never down).
+ * onUpgradeInstead. Purchased tokens are added to the current balance and are
+ * never clawed back by the monthly refill (top-up-to-floor) — but they do NOT
+ * stack on top of it: a balance above the plan floor absorbs the refill until
+ * it's spent back down, so the UI copy deliberately makes no stacking or
+ * expiry claims.
  *
  * Pack definitions live in pricing.js (TOKEN_PACKS — flat $0.10/token, v1);
  * the server mirror + webhook grant live in public/functions/token-packs.js
- * and index.js.
+ * and stripe.js.
  *
  * Reuses UpgradeModal's stylesheet so the two purchase surfaces stay visually
  * identical — new class names belong there, not in a fork of it.
@@ -59,7 +62,7 @@ const BuyTokensModal = ({
   onUpgradeInstead,
   onSuccess
 }) => {
-  const { currentUser } = useAuthContext();
+  const { currentUser, tokenProfile } = useAuthContext();
   const t = useSharedMessages();
   const [modalState, setModalState] = useState('packs');
   // 'packs' | 'checkout'
@@ -76,27 +79,41 @@ const BuyTokensModal = ({
 
   const handleClose = useCallback(() => {
     onClose();
+  }, [onClose]);
+
+  // Reset internal state whenever the modal closes, regardless of the path
+  // out (close button, escape, or the caller routing away after a successful
+  // purchase via onSuccess). Without this, reopening after a purchase would
+  // land on the stale checkout view instead of the pack list — the component
+  // stays mounted and only returns null while closed.
+  useEffect(() => {
+    if (isOpen) return;
     setModalState('packs');
     setSelectedPack(null);
     setPaymentSubmitted(false);
-  }, [onClose]);
+  }, [isOpen]);
 
   const handleBuyPack = useCallback(
     async (pack) => {
+      // Snapshot the freshest balance we can get. On a failed fetch, fall
+      // back to the auth context's cached profile rather than 0 — a zero
+      // snapshot would make verifyPurchase trivially pass on any pre-existing
+      // balance and show premature success before the webhook grant lands.
       try {
         const profile = currentUser?.uid
           ? await getTokenProfile(currentUser.uid)
           : null;
-        balanceAtCheckout.current = profile?.genToken || 0;
+        balanceAtCheckout.current =
+          profile?.genToken ?? tokenProfile?.genToken ?? 0;
       } catch (error) {
         console.error('Error snapshotting token balance:', error);
-        balanceAtCheckout.current = 0;
+        balanceAtCheckout.current = tokenProfile?.genToken ?? 0;
       }
       setSelectedPack(pack);
       setModalState('checkout');
       posthog.capture('token_pack_checkout_started', { pack: pack.id, source });
     },
-    [currentUser, source]
+    [currentUser, tokenProfile, source]
   );
 
   const verifyPurchase = useCallback(async () => {
@@ -175,37 +192,39 @@ const BuyTokensModal = ({
             {t('upgradeToPro')}
           </button>
         </div>
+      ) : !TOKEN_PACKS.some((pack) => PACK_PRICE_IDS[pack.id]) ? (
+        // No pack has a configured Stripe price (env not set for this
+        // deployment) — say so instead of rendering three dead buttons.
+        <div className={styles.signInPrompt}>
+          <p className={styles.signInCopy}>{t('buyTokensUnavailable')}</p>
+        </div>
       ) : (
-        <>
-          <div className={styles.planCards}>
-            {TOKEN_PACKS.map((pack) => (
-              <div key={pack.id} className={styles.planCard}>
-                <div className={styles.planName}>{pack.name}</div>
-                <div className={styles.planPriceRow}>
-                  <span className={styles.planPriceLarge}>
-                    {formatCurrency(pack.price)}
-                  </span>
-                </div>
-                <div className={styles.planCycleDetail}>
-                  {t('buyTokensOneTime')}
-                </div>
-                <ul className={styles.planPerks}>
-                  <li>{t('buyTokensPackTokens', { tokens: pack.tokens })}</li>
-                  <li>{t('buyTokensNeverExpire')}</li>
-                </ul>
-                <button
-                  type="button"
-                  className={styles.planCta}
-                  disabled={!PACK_PRICE_IDS[pack.id]}
-                  onClick={() => handleBuyPack(pack)}
-                >
-                  {t('buyTokensBuyCta', { name: pack.name })}
-                </button>
+        <div className={styles.planCards}>
+          {TOKEN_PACKS.map((pack) => (
+            <div key={pack.id} className={styles.planCard}>
+              <div className={styles.planName}>{pack.name}</div>
+              <div className={styles.planPriceRow}>
+                <span className={styles.planPriceLarge}>
+                  {formatCurrency(pack.price)}
+                </span>
               </div>
-            ))}
-          </div>
-          <p className={styles.footerNote}>{t('buyTokensStackNote')}</p>
-        </>
+              <div className={styles.planCycleDetail}>
+                {t('buyTokensOneTime')}
+              </div>
+              <ul className={styles.planPerks}>
+                <li>{t('buyTokensPackTokens', { tokens: pack.tokens })}</li>
+              </ul>
+              <button
+                type="button"
+                className={styles.planCta}
+                disabled={!PACK_PRICE_IDS[pack.id]}
+                onClick={() => handleBuyPack(pack)}
+              >
+                {t('buyTokensBuyCta', { name: pack.name })}
+              </button>
+            </div>
+          ))}
+        </div>
       )}
     </>
   );

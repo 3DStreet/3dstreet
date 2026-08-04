@@ -396,20 +396,33 @@ const chargeGenerationTokens = async (db, { userId, jobRef, tokenCost, source, r
   return { tokensBefore, remainingTokens };
 };
 
-// One-time gen-token pack purchase (#1374): credit the pack's tokens and write
-// the `tokenLog` purchase row for the audit trail / margin analysis. Called by
-// the Stripe checkout webhook (stripe.js). The log doc id is keyed on the
-// Stripe session so webhook retries can't double-grant: the transaction
-// re-reads it and no-ops when the row already exists. Never touches plan
-// claims — packs are a top-up, not a subscription change.
-const grantPurchasedTokens = async ({ checkoutSession, pack, quantity }) => {
+// One-time gen-token pack purchase (#1374): credit the purchased tokens and
+// write the `tokenLog` purchase row for the audit trail / margin analysis.
+// Called by the Stripe checkout webhook (stripe.js) with EVERY pack line item
+// on the session — a session with multiple pack line items grants their sum,
+// never just the first match. The log doc id is keyed on the Stripe session
+// so webhook retries can't double-grant: the transaction re-reads it and
+// no-ops when the row already exists. Never touches plan claims — packs are
+// a top-up, not a subscription change.
+// Returns true when the grant is durably recorded (including the
+// already-granted retry case); false when it could not be applied — the
+// webhook maps false to a non-2xx so Stripe retries instead of dropping a
+// paid-for grant on the floor.
+const grantPurchasedTokens = async ({ checkoutSession, items }) => {
   const userId = checkoutSession.metadata?.userId;
   if (!userId) {
     console.error(`token pack purchase without metadata.userId: session=${checkoutSession.id}`);
-    return;
+    return false;
+  }
+  if (!Array.isArray(items) || items.length === 0) {
+    console.error(`token pack purchase with no pack items: session=${checkoutSession.id}`);
+    return false;
   }
 
-  const tokensPurchased = pack.tokens * quantity;
+  const tokensPurchased = items.reduce(
+    (sum, { pack, quantity }) => sum + pack.tokens * quantity,
+    0
+  );
   const db = admin.firestore();
   const tokenProfileRef = db.collection('tokenProfile').doc(userId);
   const logRef = db.collection('tokenLog').doc(`purchase-${checkoutSession.id}`);
@@ -451,12 +464,15 @@ const grantPurchasedTokens = async ({ checkoutSession, pack, quantity }) => {
       tokensBefore,
       tokensAfter,
       tokenCost: null,
-      source: `token-pack-${pack.id}`,
+      source: `token-pack-${items.map(({ pack }) => pack.id).join('+')}`,
       relatedModel: null,
       // Purchase-specific audit fields (margin analysis):
-      packId: pack.id,
-      packTokens: pack.tokens,
-      quantity,
+      packs: items.map(({ pack, quantity }) => ({
+        packId: pack.id,
+        packTokens: pack.tokens,
+        quantity
+      })),
+      tokensPurchased,
       amountTotal: checkoutSession.amount_total ?? null, // smallest currency unit (e.g. cents)
       currency: checkoutSession.currency ?? null,
       stripeSessionId: checkoutSession.id,
@@ -465,8 +481,11 @@ const grantPurchasedTokens = async ({ checkoutSession, pack, quantity }) => {
   });
 
   console.log(
-    `token pack granted: user=${userId} pack=${pack.id} x${quantity} tokens=${tokensPurchased} session=${checkoutSession.id}`
+    `token pack granted: user=${userId} tokens=${tokensPurchased} ` +
+    `packs=${items.map(({ pack, quantity }) => `${pack.id}x${quantity}`).join(',')} ` +
+    `session=${checkoutSession.id}`
   );
+  return true;
 };
 
 // Internal helper function to check if user is pro (for other functions to use)

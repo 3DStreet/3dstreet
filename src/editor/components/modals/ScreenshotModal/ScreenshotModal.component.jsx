@@ -19,7 +19,10 @@ import { useAuthContext } from '../../../contexts';
 import { httpsCallable } from 'firebase/functions';
 import { ImgComparisonSlider } from '@img-comparison-slider/react';
 import 'img-comparison-slider/dist/styles.css';
-import { canUseImageFeature } from '@shared/utils/tokens';
+import {
+  canUseImageFeature,
+  isTokenExhaustedError
+} from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import {
@@ -738,7 +741,7 @@ function ScreenshotModal() {
       // the one-time token pack purchase (#1374) instead of a failure toast.
       // startBuyTokens is idempotent, so a 4x batch rejecting several jobs
       // opens the modal once; `finally` still resets this model's state.
-      if (error?.code === 'resource-exhausted') {
+      if (isTokenExhaustedError(error)) {
         setRenderErrors((prev) => ({ ...prev, [targetModel]: true }));
         startBuyTokens('image_render');
         return;
@@ -831,10 +834,16 @@ function ScreenshotModal() {
     if (!tokenProfile || tokenProfile.genToken < totalTokenCost) {
       if (!isPro) {
         startCheckout('image');
-      } else {
-        startBuyTokens('image_render_4x');
+        return;
       }
-      return;
+      // Pro: only gate on a LOADED profile that's actually short. A not-yet-
+      // loaded profile is no evidence of a shortfall — fall through and let
+      // charge-at-submit decide (the isTokenExhaustedError catch below routes
+      // to the pack modal if they're truly out).
+      if (tokenProfile) {
+        startBuyTokens('image_render_4x');
+        return;
+      }
     }
 
     // Clear previous render states before starting new batch

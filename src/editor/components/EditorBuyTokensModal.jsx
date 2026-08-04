@@ -8,16 +8,42 @@
  * tokenCountChanged broadcast, which AuthProvider listens to) lives in the
  * shared modal; this adapter only wires the editor's modal store.
  */
+import { useEffect } from 'react';
 import BuyTokensModal from '@shared/components/BuyTokensModal';
+import { useAuthContext } from '../contexts/index.js';
 import useStore from '@/store';
 
 const EditorBuyTokensModal = () => {
+  const { currentUser } = useAuthContext();
   const modal = useStore((state) => state.modal);
   const setModal = useStore((state) => state.setModal);
   const buyTokensSource = useStore((state) => state.buyTokensSource);
+  const startBuyTokens = useStore((state) => state.startBuyTokens);
+  const startCheckout = useStore((state) => state.startCheckout);
   const returnToPreviousModal = useStore(
     (state) => state.returnToPreviousModal
   );
+
+  // The shared TokenDetailsCard's "Get More Tokens" button dispatches
+  // openPurchaseModal; the generator listens in mount-purchase-modal, but the
+  // editor had no listener at all — the button was a silent no-op here. Route
+  // by token type and plan: gen-token shortfalls for paid users go to the
+  // pack modal, everything else to the appropriate upgrade paywall surface.
+  useEffect(() => {
+    const handleOpenPurchase = (e) => {
+      const tokenType = e?.detail?.tokenType;
+      if (tokenType === 'geoToken') {
+        startCheckout('geo');
+      } else if (currentUser?.isPro) {
+        startBuyTokens('token_details_card');
+      } else {
+        startCheckout('image');
+      }
+    };
+    window.addEventListener('openPurchaseModal', handleOpenPurchase);
+    return () =>
+      window.removeEventListener('openPurchaseModal', handleOpenPurchase);
+  }, [currentUser?.isPro, startBuyTokens, startCheckout]);
 
   return (
     <BuyTokensModal

@@ -38,6 +38,7 @@ import {
   forceJobNotifyEmail
 } from '@shared/utils/generationJobs.js';
 import { t } from './i18n/messages.js';
+import { isTokenExhaustedError } from '@shared/utils/tokens.js';
 
 // Shared notice for all vid2scene tiers.
 const VID2SCENE_NOTICE = t('splat.vid2sceneNotice');
@@ -841,7 +842,7 @@ const SplatTab = {
     if (error.code === 'unauthenticated') {
       return t('splat.errorSignIn');
     }
-    if (error.code === 'resource-exhausted') {
+    if (isTokenExhaustedError(error)) {
       return t('splat.errorNoTokens');
     }
     if (error.message) {

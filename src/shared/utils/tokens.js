@@ -35,6 +35,16 @@ export const getTokenProfile = async (userId) => {
   }
 };
 
+// True when a callable rejected with the charge-at-submit "out of tokens"
+// error (chargeGenerationTokens throws HttpsError 'resource-exhausted').
+// The modular Firebase SDK surfaces FunctionsError codes prefixed with the
+// service — 'functions/resource-exhausted' — so a bare comparison against
+// 'resource-exhausted' never matches; accept both forms here and use this
+// helper everywhere instead of comparing error.code directly.
+export const isTokenExhaustedError = (error) =>
+  error?.code === 'functions/resource-exhausted' ||
+  error?.code === 'resource-exhausted';
+
 // Call the Cloud Function to check and refill tokens for Pro users
 export const checkAndRefillProTokens = async () => {
   try {

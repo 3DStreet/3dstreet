@@ -254,23 +254,18 @@ const SHARED_MESSAGES = {
     'pt-BR': '{tokens} tokens de IA',
     fr: '{tokens} jetons IA'
   },
-  buyTokensNeverExpire: {
-    en: 'Never expire',
-    es: 'Nunca caducan',
-    'pt-BR': 'Nunca expiram',
-    fr: "N'expirent jamais"
-  },
   buyTokensBuyCta: {
     en: 'Buy {name}',
     es: 'Comprar {name}',
     'pt-BR': 'Comprar {name}',
     fr: 'Acheter {name}'
   },
-  buyTokensStackNote: {
-    en: 'Purchased tokens stack with your monthly plan allowance.',
-    es: 'Los tokens comprados se suman a la asignación mensual de tu plan.',
-    'pt-BR': 'Os tokens comprados se somam à cota mensal do seu plano.',
-    fr: "Les jetons achetés s'ajoutent à l'allocation mensuelle de votre forfait."
+  buyTokensUnavailable: {
+    en: 'Token packs are not available yet on this deployment. Please check back soon.',
+    es: 'Los paquetes de tokens aún no están disponibles en esta versión. Vuelve pronto.',
+    'pt-BR':
+      'Os pacotes de tokens ainda não estão disponíveis nesta versão. Volte em breve.',
+    fr: 'Les packs de jetons ne sont pas encore disponibles sur ce déploiement. Revenez bientôt.'
   },
   buyTokensCheckoutTitle: {
     en: 'Complete your purchase',
