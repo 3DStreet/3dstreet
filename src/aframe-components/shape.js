@@ -26,7 +26,11 @@
 
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import useStore from '../store.js';
-import { polygonAreaXZ, polygonCentroidXZ } from './polygonMath.js';
+import {
+  polygonAreaXZ,
+  polygonCentroidXZ,
+  ringSelfIntersects
+} from './polygonMath.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const MIN_SEGMENT_LENGTH = 1e-6;
@@ -41,6 +45,12 @@ const FT2_PER_M2 = 10.7639;
 // building wall — occludes the solid line behind it.
 const OVERLAY_OPACITY = 0.3;
 const OVERLAY_RENDER_ORDER = 999;
+
+// The colour a shape takes while an editing tool is signalling that what the
+// user is doing would produce an invalid shape. Applied straight to the
+// materials, never through setAttribute, so it cannot be saved into a scene —
+// see setInvalidSignal below.
+const INVALID_COLOR = '#ff3b30';
 
 // The system owns the per-frame position observation for every shape, so it
 // keeps running even when the shapes' entities are paused (as they are in the
@@ -97,6 +107,9 @@ AFRAME.registerComponent('shape', {
   init: function () {
     this.destroyed = false;
     this.rafId = null;
+    // Both belong to the editor-facing API at the bottom of this file.
+    this._editGesture = false;
+    this._invalidSignal = false;
     this.positionCache = new Map();
     this.direction = new THREE.Vector3();
     this.tmpQuaternion = new THREE.Quaternion();
@@ -358,10 +371,31 @@ AFRAME.registerComponent('shape', {
     // still arrive by setAttribute or from a hand-edited scene.
     const radius = Math.max(0, this.data.lineWidth);
 
+    // Closedness and ring simplicity are decided BEFORE the groups are cleared,
+    // because holding the fill means not clearing it: clearGroup disposes the
+    // geometry, so deciding later and merely skipping the rebuild would leave
+    // the fill gone rather than held.
+    //
+    // A self-crossing ring has no well-defined interior: the triangulated cap
+    // comes out arbitrary and the shoelace area is meaningless. So a crossing
+    // ring gets no fill and reports zero area, with the label hidden. That is
+    // core behaviour, not an editor affordance — it must hold for a shape
+    // loaded from a saved scene, or one whose `closed` checkbox is ticked on a
+    // polyline that already crosses, exactly as it does for a live edit.
+    const closed = this.data.closed && verts.length >= 3;
+    const selfIntersecting =
+      closed && ringSelfIntersects(verts.map((v) => v.object3D.position));
+    // While an edit gesture is in flight, a crossing ring HOLDS its last valid
+    // fill and area instead of dropping them: the interior stays clickable and
+    // the area label freezes at its last meaningful value rather than flicking
+    // to zero for the few frames a drag spends across an edge. The outline
+    // still tracks the drag — only these two are frozen.
+    const holdFill = this._editGesture && selfIntersecting;
+
     this.clearGroup(this.lineGroup);
     this.clearGroup(this.vertexGroup);
     this.clearGroup(this.overlayGroup);
-    this.clearGroup(this.fillGroup);
+    if (!holdFill) this.clearGroup(this.fillGroup);
 
     // Sphere caps at each vertex — also smooth the joints between segments.
     for (let i = 0; i < verts.length; i++) {
@@ -392,17 +426,16 @@ AFRAME.registerComponent('shape', {
     // Closed polygon: one wrap segment back to the first vertex (same style,
     // same joints). Only meaningful with ≥ 3 vertices — a 2-vertex "closed"
     // shape renders as an open line (the wrap would coincide with the segment).
-    const closed = this.data.closed && verts.length >= 3;
     if (closed) {
       this._addSegment(
         verts[verts.length - 1].object3D.position,
         verts[0].object3D.position,
         radius
       );
-      if (this.data.selectInside) this._addFill(verts);
+      if (this.data.selectInside && !selfIntersecting) this._addFill(verts);
     }
 
-    this._updateArea(verts, closed);
+    if (!holdFill) this._updateArea(verts, closed && !selfIntersecting);
 
     // The geometry only exists from here — init installs empty groups and the
     // first derive lands a frame later. Anything sizing itself to this shape
@@ -525,6 +558,65 @@ AFRAME.registerComponent('shape', {
     twin.el = this.el; // coincident with the solid mesh — keep it selectable
     this.overlayGroup.add(twin);
   },
+
+  // --- Editor-facing API — not model state -----------------------------
+  //
+  // The four methods below exist for the editor's drawing and vertex-editing
+  // tools; nothing in the component or in a published scene calls them, and
+  // none of them touches the schema, so none of their effects can be saved.
+  // They live here rather than in the editor because the alternative is the
+  // editor reaching into `el.components.shape.material` from outside, and
+  // because keeping the writes on this side is what lets ONE method
+  // (setInvalidSignal(false)) own restoring every channel they touch.
+  //
+  // A maintainer reading these cold should not mistake them for part of the
+  // data model: they are transient presentation, and the shape is fully
+  // described without them.
+
+  // Enter/leave an editing gesture (one pointer drag). While one is in flight,
+  // a ring that has gone self-crossing holds its last valid fill and area
+  // rather than dropping them every frame — see rederive(). Leaving asks for a
+  // re-derive so committed state settles immediately rather than on the next
+  // vertex move.
+  beginEditGesture: function () {
+    this._editGesture = true;
+  },
+
+  endEditGesture: function () {
+    this._editGesture = false;
+    this.requestRederive();
+  },
+
+  // Turn the whole shape the invalid colour, or restore it. Clearing is the
+  // SINGLE restore owner for both channels the signal touches — the line colour
+  // and the x-ray overlay's opacity, which setInvalidPulse drives while the
+  // signal is on. Restores from `this.data.lineColor`, read at clear time, so
+  // the user's own colour comes back however it changed meanwhile and no
+  // snapshot can go stale or leak across an abandoned gesture.
+  setInvalidSignal: function (invalid) {
+    this._invalidSignal = !!invalid;
+    if (invalid) {
+      this.material.color.set(INVALID_COLOR);
+      this.overlayMaterial.color.set(INVALID_COLOR);
+    } else {
+      this.material.color.set(this.data.lineColor);
+      this.overlayMaterial.color.set(this.data.lineColor);
+      this.overlayMaterial.opacity = OVERLAY_OPACITY;
+    }
+  },
+
+  // Second channel of the invalid signal: the overlay's opacity, so the state
+  // reads by MOTION and stays unmistakable on a shape whose own colour is
+  // already the invalid red. `phase` is the opacity to show, in 0..1 — the
+  // caller owns the frequency, the easing and the band it oscillates between,
+  // and this is only the write. A no-op unless the signal is set, so a stale
+  // call can never strand the overlay at an arbitrary opacity.
+  setInvalidPulse: function (phase) {
+    if (!this._invalidSignal) return;
+    this.overlayMaterial.opacity = phase;
+  },
+
+  // --- end editor-facing API -------------------------------------------
 
   // Dispose and detach every mesh in a group (the shared material is not
   // disposed here — remove() owns it).

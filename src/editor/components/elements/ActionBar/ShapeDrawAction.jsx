@@ -54,7 +54,6 @@ const MIN_DRAW_VERTEX_SPACING = 0.05;
 const CLOSE_PX_TOLERANCE = 12; // px — cursor this close to the first vertex arms
 // the close gesture (manual-close mode). Screen-space, not world metres, so it is
 // scale-invariant — matches the ruler/draw click-vs-drag pixel basis.
-const INVALID_COLOR = '#ff3b30'; // preview recolour when a placement would cross
 let shapeLayerCounter = 1; // distinguishes drawn shapes in the SceneGraph
 
 // A hit steeper than this reads as a wall / façade / cliff — not a drawable
@@ -286,19 +285,22 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     };
 
     // Recolour the preview red on an invalid (self-intersecting) placement, and
-    // back to the style colour when valid. Idempotent — only touches the
-    // attribute on a real flip — so every path (move, miss, close, mode switch)
-    // can call it freely without churning setAttribute or leaving it stuck red.
+    // back to the style colour when valid. Idempotent — only acts on a real
+    // flip — so every path (move, miss, close, mode switch) can call it freely
+    // without leaving the preview stuck red.
+    //
+    // Goes through the shape's own invalid signal rather than writing
+    // `lineColor`: that property serializes, so a save mid-draw would have
+    // baked the red in, and the restore would have used the draw tool's own
+    // colour rather than the shape's. Unlike setAttribute, a direct method call
+    // is not queued until the component inits, so this no-ops before then —
+    // leaving the flag unrecorded so the first call after init still lands.
     const setInvalid = (bad) => {
       if (invalidRef.current === bad) return;
+      const shape = previewElRef.current?.components?.shape;
+      if (!shape) return;
       invalidRef.current = bad;
-      const pEl = previewElRef.current;
-      if (!pEl) return;
-      pEl.setAttribute(
-        'shape',
-        'lineColor',
-        bad ? INVALID_COLOR : style.lineColor
-      );
+      shape.setInvalidSignal(bad);
     };
 
     // Show/hide the first-vertex close marker, positioning it on the first
