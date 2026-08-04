@@ -38,6 +38,9 @@ import useStore from '@/store';
 import ShapeReadouts from '../../../lib/ShapeReadouts';
 import { segmentsIntersectXZ } from '../../../lib/shapeMeasure';
 import { intersectPlaneOrNull } from '../../../lib/intersectPlaneOrNull.js';
+// px — a larger press→release move is a drag. Shared with the vertex-editing
+// tool: it is one rule in both places, so the two must not drift apart.
+import { CLICK_MOVE_THRESHOLD } from '../../../lib/shapeEditRules.js';
 import {
   isSolidFloorHit,
   worldHitNormal
@@ -45,7 +48,6 @@ import {
 import { ProbeTargets } from '../../../lib/nav-experimental/probeTargets.js';
 import { BLOCK_SLOPE_MIN_DEGREES } from '../../../lib/nav-experimental/constants.js';
 
-const CLICK_MOVE_THRESHOLD = 4; // px — a larger press→release move is a drag
 // m — reject a click ~on the PREVIOUS vertex. Distinct from the editor's
 // MIN_EDIT_VERTEX_SEPARATION (shapeEditRules.js), which holds the same number
 // but measures against every vertex; the two are separate constants so tuning

@@ -25,10 +25,16 @@ import {
   HANDLE_TARGET_PX,
   HIT_SLOP_PX,
   MIDPOINT_RADIUS_RATIO,
+  GRAZING_MIN_DOT,
+  MIN_EDIT_VERTEX_SEPARATION,
   clampHandleRadius,
   decidePress,
   hitTestHandles,
-  metresPerPixel
+  metresPerPixel,
+  preExistingClosePairs,
+  rayPlaneHitIsUsable,
+  resolveDragRelease,
+  validateVertexEdit
 } from '../../src/editor/lib/shapeEditRules.js';
 
 // Helper: build x/z points (y is irrelevant to the plan-view math).
@@ -408,5 +414,174 @@ describe('decidePress', () => {
 
   it('claims a primary press on a handle with a usable pick', () => {
     expect(press({})).toBe('claim');
+  });
+});
+
+describe('rayPlaneHitIsUsable', () => {
+  const up = new THREE.Vector3(0, 1, 0);
+  // A ray `deg` degrees off a horizontal plane.
+  const rayAt = (deg) => {
+    const a = THREE.MathUtils.degToRad(deg);
+    return new THREE.Vector3(Math.cos(a), -Math.sin(a), 0).normalize();
+  };
+
+  it('rejects a near-edge-on ray that intersectPlane would happily answer', () => {
+    // 1° off the plane: intersectPlane returns a point, and that point is
+    // hundreds of metres from the cursor.
+    expect(rayPlaneHitIsUsable(rayAt(1), up)).toBe(false);
+  });
+
+  it('accepts an ordinary viewing angle', () => {
+    expect(rayPlaneHitIsUsable(rayAt(30), up)).toBe(true);
+    expect(rayPlaneHitIsUsable(rayAt(90), up)).toBe(true);
+  });
+
+  it('accepts a ray exactly at the threshold', () => {
+    const grazing = new THREE.Vector3(
+      Math.sqrt(1 - GRAZING_MIN_DOT * GRAZING_MIN_DOT),
+      -GRAZING_MIN_DOT,
+      0
+    );
+    expect(rayPlaneHitIsUsable(grazing, up)).toBe(true);
+  });
+
+  it('does not care which side of the plane the ray comes from', () => {
+    expect(rayPlaneHitIsUsable(rayAt(-30), up)).toBe(true);
+  });
+});
+
+describe('validateVertexEdit', () => {
+  const square = () => [p(0, 0), p(10, 0), p(10, 10), p(0, 10)];
+  const near = MIN_EDIT_VERTEX_SEPARATION / 2;
+
+  it('accepts a well-separated move on a closed shape', () => {
+    const pts = square();
+    pts[0] = p(-5, -5);
+    expect(validateVertexEdit(pts, true, 0)).toBe(true);
+  });
+
+  it('refuses a move onto a ring NEIGHBOUR', () => {
+    const pts = square();
+    pts[0] = p(10 - near, 0);
+    expect(validateVertexEdit(pts, true, 0)).toBe(false);
+  });
+
+  it('refuses a move onto a NON-adjacent vertex too', () => {
+    // The trap this rule exists for — one handle hidden under another, never
+    // grabbable again — does not care about ring adjacency.
+    const pts = square();
+    pts[0] = p(10, 10 - near);
+    expect(validateVertexEdit(pts, true, 0)).toBe(false);
+  });
+
+  it('applies separation to open polylines, where crossing is legal', () => {
+    const pts = square();
+    pts[0] = p(10, 10 - near);
+    expect(validateVertexEdit(pts, false, 0)).toBe(false);
+  });
+
+  it('is exact about the threshold', () => {
+    const just = (d) => {
+      const pts = [p(0, 0), p(d, 0), p(10, 10), p(0, 10)];
+      return validateVertexEdit(pts, true, 0);
+    };
+    expect(just(MIN_EDIT_VERTEX_SEPARATION * 1.01)).toBe(true);
+    expect(just(MIN_EDIT_VERTEX_SEPARATION * 0.99)).toBe(false);
+  });
+
+  it('refuses an edit that makes a closed ring cross itself', () => {
+    // Drag corner 2 through the ring to produce a bow-tie.
+    const pts = [p(0, 0), p(10, 0), p(0, 10), p(10, 10)];
+    expect(validateVertexEdit(pts, true, 2)).toBe(false);
+    // The same points as an OPEN polyline are unconstrained.
+    expect(validateVertexEdit(pts, false, 2)).toBe(true);
+  });
+});
+
+describe('the pre-existing-violation exemption', () => {
+  // A shape the DRAW tool can legally produce: its spacing rule measures a
+  // candidate against the previous vertex only, so vertices 0 and 2 here are
+  // inside the edit rule's threshold from the moment the shape exists.
+  const drawn = () => [p(0, 0), p(10, 0), p(0.02, 0), p(0, 10)];
+
+  it('leaves an unrelated vertex free to move', () => {
+    // The separation rule is scoped to the vertex being moved, so an untouched
+    // violating pair elsewhere is not this drag's problem either way.
+    const pts = drawn();
+    const exempt = preExistingClosePairs(pts);
+    pts[3] = p(-5, 12);
+    expect(validateVertexEdit(pts, false, 3, exempt)).toBe(true);
+  });
+
+  it('lets the offending pair be dragged apart, starting from the violation', () => {
+    const pts = drawn();
+    const exempt = preExistingClosePairs(pts);
+    // The first frame of the drag, still well inside the threshold. Without
+    // the exemption the shape would go red the instant the handle was grabbed
+    // and could never be dragged OUT of the state — the app would read as
+    // broken on a shape the draw tool legally produced.
+    pts[2] = p(0.021, 0);
+    expect(validateVertexEdit(pts, false, 2, exempt)).toBe(true);
+    expect(validateVertexEdit(pts, false, 2)).toBe(false);
+    // And once genuinely clear it is valid on either reading.
+    pts[2] = p(5, 5);
+    expect(validateVertexEdit(pts, false, 2, exempt)).toBe(true);
+    expect(validateVertexEdit(pts, false, 2)).toBe(true);
+  });
+
+  it('still refuses a NEW violation created during the gesture', () => {
+    const pts = drawn();
+    const exempt = preExistingClosePairs(pts);
+    pts[3] = p(10.01, 0); // brought onto vertex 1, which was never exempt
+    expect(validateVertexEdit(pts, false, 3, exempt)).toBe(false);
+  });
+});
+
+describe('resolveDragRelease', () => {
+  const v = (x, z) => new THREE.Vector3(x, 0, z);
+
+  it('commits the final pose when the release is valid', () => {
+    const r = resolveDragRelease({
+      preDrag: v(0, 0),
+      lastValid: v(3, 0),
+      finalValid: true,
+      final: v(5, 0)
+    });
+    expect(r.action).toBe('commit');
+    expect(r.value.x).toBe(5);
+  });
+
+  it('commits the LAST VALID pose when the release is invalid', () => {
+    // valid → valid → invalid → release: the drag lands on the second position,
+    // not back where it started, so ten metres of the user's work survives.
+    const r = resolveDragRelease({
+      preDrag: v(0, 0),
+      lastValid: v(3, 0),
+      finalValid: false,
+      final: v(5, 0)
+    });
+    expect(r.action).toBe('commit');
+    expect(r.value.x).toBe(3);
+  });
+
+  it('reverts without a command when no frame was ever valid', () => {
+    const r = resolveDragRelease({
+      preDrag: v(0, 0),
+      lastValid: null,
+      finalValid: false,
+      final: v(5, 0)
+    });
+    expect(r.action).toBe('rawRevert');
+    expect(r.value.x).toBe(0);
+  });
+
+  it('writes nothing when the release nets out to no movement', () => {
+    const r = resolveDragRelease({
+      preDrag: v(0, 0),
+      lastValid: v(0, 0),
+      finalValid: false,
+      final: v(5, 0)
+    });
+    expect(r.action).toBe('rawRevert');
   });
 });

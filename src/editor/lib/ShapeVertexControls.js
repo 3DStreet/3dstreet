@@ -1,12 +1,19 @@
 /* global AFRAME, THREE */
 
 import Events from './Events';
+import { intersectPlaneOrNull } from './intersectPlaneOrNull.js';
+import { rayFromClientXY } from './rayFromClientXY.js';
 import {
+  CLICK_MOVE_THRESHOLD,
   MIDPOINT_RADIUS_RATIO,
   clampHandleRadius,
   decidePress,
   hitTestHandles,
-  metresPerPixel
+  metresPerPixel,
+  preExistingClosePairs,
+  rayPlaneHitIsUsable,
+  resolveDragRelease,
+  validateVertexEdit
 } from './shapeEditRules.js';
 
 /**
@@ -116,6 +123,8 @@ export class ShapeVertexControls extends THREE.Object3D {
     this.pressY = 0;
     this.pressWasHandle = false;
     this.pressHit = null;
+    this._gesture = null;
+    this._pendingGesture = null;
     this.lastCursorX = 0;
     this.lastCursorY = 0;
     this.lastPointerType = null;
@@ -130,6 +139,8 @@ export class ShapeVertexControls extends THREE.Object3D {
     // Per-frame scratch, hoisted so the hook allocates nothing.
     this._tmpV = new THREE.Vector3();
     this._tmpCamPos = new THREE.Vector3();
+    this._tmpNormal = new THREE.Vector3();
+    this._tmpPoints = [];
     this._hitList = [];
 
     // One unit sphere and three materials shared by every handle: a handle's
@@ -161,6 +172,7 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._onSuppressClaimed = this._onSuppressClaimed.bind(this);
     this._onSuppressLatched = this._onSuppressLatched.bind(this);
     this._onBlur = this._onBlur.bind(this);
+    this._onGestureLost = this._onGestureLost.bind(this);
     this._onStructuralChange = this._onStructuralChange.bind(this);
   }
 
@@ -551,20 +563,153 @@ export class ShapeVertexControls extends THREE.Object3D {
       targetIsCanvas,
       isPrimaryButton,
       handleHit: !!hit,
-      pressPickOk: this._pressPickOk(event, hit)
+      pressPickOk: this._preparePress(event, hit)
     });
     if (decision !== 'claim') return; // selection and orbit proceed as normal
 
     this._claimPress(event, hit);
   }
 
-  // Whether the press has a usable anchor to drag from. There is no plane to
-  // pick against until dragging exists, so every handle press qualifies.
-  _pressPickOk() {
+  // --- the drag ----------------------------------------------------------
+
+  // Build the gesture a claimed press would run, and report whether it is
+  // viable. A gesture with no usable grab anchor must never be entered: the
+  // offset would be undefined and the first move would fling the vertex.
+  _preparePress(event, hit) {
+    this._pendingGesture = null;
+    if (!hit) return true; // nothing to prepare; the reducer decides on the hit
+    if (hit.kind !== 'vertex') return true;
+
+    const vertexEl = this.vertexEls[hit.index];
+    if (!vertexEl) return false;
+    const shapeObj = this.shapeEl.object3D;
+    const local = vertexEl.object3D.position;
+
+    // The drag plane is the shape's own horizontal plane at this vertex's
+    // height, so a vertex slides within the shape rather than off it.
+    this._tmpNormal
+      .set(0, 1, 0)
+      .applyQuaternion(shapeObj.quaternion)
+      .normalize();
+    this._tmpV.set(0, local.y, 0).applyMatrix4(this.matrix);
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+      this._tmpNormal,
+      this._tmpV
+    );
+
+    const hitWorld = this._pickOnPlane(
+      event.clientX,
+      event.clientY,
+      plane,
+      this._tmpNormal
+    );
+    if (!hitWorld) return false;
+
+    const points = this._localPoints();
+    this._pendingGesture = {
+      mode: 'vertex',
+      vertexEl,
+      index: hit.index,
+      plane,
+      planeNormal: this._tmpNormal.clone(),
+      // Where in the vertex the user grabbed, so it does not jump to the
+      // cursor on the first move.
+      grabOffset: local.clone().sub(shapeObj.worldToLocal(hitWorld)),
+      preDragLocalPos: local.clone(),
+      lastValidLocalPos: null,
+      exemptPairs: preExistingClosePairs(points),
+      isDrag: false,
+      transientEl: null
+    };
     return true;
   }
 
+  // The cursor ray's meeting point with `plane`, or null when there is no
+  // usable one. A grazing ray is treated as a MISS rather than as its own case:
+  // intersectPlane happily returns a point kilometres away when the camera is
+  // nearly edge-on to the plane, and holding still is the right response to
+  // both.
+  _pickOnPlane(clientX, clientY, plane, planeNormal) {
+    const ray = rayFromClientXY(clientX, clientY);
+    if (!ray) return null;
+    if (!rayPlaneHitIsUsable(ray.direction, planeNormal)) return null;
+    return intersectPlaneOrNull(clientX, clientY, plane);
+  }
+
+  // The shape's vertex positions in its own frame — the array the pure rules
+  // take. Reused rather than rebuilt, since this runs on every drag frame.
+  _localPoints() {
+    const pts = this._tmpPoints;
+    pts.length = this.vertexEls.length;
+    for (let i = 0; i < this.vertexEls.length; i++) {
+      pts[i] = this.vertexEls[i].object3D.position;
+    }
+    return pts;
+  }
+
+  _isClosed() {
+    const shape = this.shapeEl?.components?.shape;
+    return !!shape && shape.data.closed && this.vertexEls.length >= 3;
+  }
+
+  _dragMove(event) {
+    const g = this._gesture;
+    const shape = this.shapeEl?.components?.shape;
+    if (!g || !shape) return;
+
+    if (!g.isDrag) {
+      const moved = Math.hypot(
+        event.clientX - this.pressX,
+        event.clientY - this.pressY
+      );
+      if (moved <= CLICK_MOVE_THRESHOLD) return;
+      g.isDrag = true;
+      shape.beginEditGesture();
+    }
+
+    const hitWorld = this._pickOnPlane(
+      event.clientX,
+      event.clientY,
+      g.plane,
+      g.planeNormal
+    );
+    if (!hitWorld) return; // hold where it is; never snap to the scene origin
+
+    const local = this.shapeEl.object3D
+      .worldToLocal(hitWorld)
+      .add(g.grabOffset);
+    // A raw object3D write rather than setAttribute: the shape's own system
+    // polls vertex positions every tick, so the tube, the angle readouts, the
+    // area label and the sidebar rows all track the drag for free. The
+    // COMMITTED value goes through a command on release.
+    g.vertexEl.object3D.position.copy(local);
+
+    const valid = validateVertexEdit(
+      this._localPoints(),
+      this._isClosed(),
+      g.index,
+      g.exemptPairs
+    );
+    if (valid) {
+      if (g.lastValidLocalPos) g.lastValidLocalPos.copy(local);
+      else g.lastValidLocalPos = local.clone();
+    }
+    this._setInvalidSignal(!valid);
+  }
+
+  // The single owner of the invalid signal on this side. Writes through to the
+  // component only on a change, so a drag spent inside an invalid stretch is
+  // not re-setting the same colour every frame.
+  _setInvalidSignal(on) {
+    if (this._invalidSignalOn === !!on) return;
+    this._invalidSignalOn = !!on;
+    const shape = this.shapeEl?.components?.shape;
+    if (shape && !shape.destroyed) shape.setInvalidSignal(!!on);
+  }
+
   _claimPress(event, hit) {
+    this._gesture = this._pendingGesture;
+    this._pendingGesture = null;
     this.claimed = true;
     this._pressWasClaimed = true;
     event.preventDefault();
@@ -578,18 +723,49 @@ export class ShapeVertexControls extends THREE.Object3D {
         this._capturedPointerId = null;
       }
     }
+    this._addGestureListeners();
     // Freezes the camera controls. On touch this is the only orbit defence
     // there is — the touch path is gated solely on that flag.
     this.dispatchEvent({ type: 'mouseDown' });
   }
 
+  // A release over the browser's own chrome — the URL bar, devtools, a second
+  // monitor — delivers no pointerup at all, which would leave the shape red,
+  // the camera frozen and the vertex snapping to the cursor on re-entry. The
+  // pointer capture makes that rare and these make it survivable.
+  _addGestureListeners() {
+    const canvas = this._canvas();
+    if (!canvas) return;
+    canvas.addEventListener('mouseleave', this._onGestureLost);
+    canvas.addEventListener('touchleave', this._onGestureLost);
+    canvas.addEventListener('touchcancel', this._onGestureLost);
+  }
+
+  _removeGestureListeners() {
+    const canvas = this._canvas();
+    if (!canvas) return;
+    canvas.removeEventListener('mouseleave', this._onGestureLost);
+    canvas.removeEventListener('touchleave', this._onGestureLost);
+    canvas.removeEventListener('touchcancel', this._onGestureLost);
+  }
+
+  _onGestureLost() {
+    this.abortGesture();
+  }
+
   _onPointerMove(event) {
+    // The drag branch runs first and is ungated: it only exists while a gesture
+    // the user genuinely started is in flight, which is a narrower bound than
+    // the editor being open.
+    if (this.claimed) {
+      this._guard(() => this._dragMove(event));
+      return;
+    }
     if (!AFRAME.INSPECTOR?.opened) return;
     if (event.target !== this._canvas()) return;
     this.lastCursorX = event.clientX;
     this.lastCursorY = event.clientY;
     this.lastPointerType = event.pointerType || null;
-    if (this.claimed) return;
     const hit = this._hitTest(event.clientX, event.clientY);
     this._setHovered(hit && hit.kind === 'vertex' ? hit.mesh : null);
   }
@@ -599,6 +775,68 @@ export class ShapeVertexControls extends THREE.Object3D {
   // event arrives to end it.
   _onPointerUp() {
     if (this.claimed) {
+      this._guard(() => this._releaseGesture());
+      return;
+    }
+  }
+
+  // The one place a vertex edit reaches history. Everything else — cancel,
+  // blur, Esc, detach, the editor closing — goes through abortGesture(), which
+  // executes no command at all.
+  _releaseGesture() {
+    const g = this._gesture;
+    if (!g || !g.isDrag) {
+      this.abortGesture();
+      return;
+    }
+
+    const final = g.vertexEl.object3D.position.clone();
+    const finalValid = validateVertexEdit(
+      this._localPoints(),
+      this._isClosed(),
+      g.index,
+      g.exemptPairs
+    );
+    const release = resolveDragRelease({
+      preDrag: g.preDragLocalPos,
+      lastValid: g.lastValidLocalPos,
+      finalValid,
+      final
+    });
+    const vertexEl = g.vertexEl;
+    const oldValue = vecToString(g.preDragLocalPos);
+    const value = vecToString(release.value);
+    const action = release.action;
+
+    // Tear everything down BEFORE the command runs. History emits
+    // `historychanged` synchronously from execute(), so any consumer reacting
+    // to it runs inside our own execute() call — clearing first is what stops a
+    // commit being undone by its own side effects. The raw revert abortGesture
+    // performs is not wasted work either: it is what makes the pre-command
+    // state exactly `oldValue`, so undo lands where it should.
+    this.abortGesture();
+
+    if (action !== 'commit') return;
+    try {
+      AFRAME.INSPECTOR.execute('shapevertexmove', {
+        entity: vertexEl,
+        component: 'position',
+        value,
+        oldValue,
+        noSelectEntity: true
+      });
+    } catch (error) {
+      console.error('Shape vertex move failed', error);
+    }
+  }
+
+  // A handler that throws must not strand a claimed gesture: the shape would
+  // stay red, the camera dead and every later press consumed.
+  _guard(fn) {
+    try {
+      fn();
+    } catch (error) {
+      console.error('Shape vertex gesture failed', error);
       this.abortGesture();
     }
   }
@@ -630,6 +868,16 @@ export class ShapeVertexControls extends THREE.Object3D {
   abortGesture() {
     if (!this.claimed) return;
 
+    const g = this._gesture;
+    if (g) {
+      if (g.transientEl) {
+        // Nothing was ever committed for an insert that did not land.
+        g.transientEl.remove();
+      } else if (g.isDrag) {
+        g.vertexEl.object3D.position.copy(g.preDragLocalPos);
+      }
+    }
+
     const shape = this.shapeEl?.components?.shape;
     if (shape && !shape.destroyed) {
       shape.setInvalidSignal(false);
@@ -639,6 +887,9 @@ export class ShapeVertexControls extends THREE.Object3D {
 
     this.claimed = false;
     this.pressHit = null;
+    this._gesture = null;
+    this._pendingGesture = null;
+    this._removeGestureListeners();
 
     this.dispatchEvent({ type: 'mouseUp' });
 
@@ -654,6 +905,12 @@ export class ShapeVertexControls extends THREE.Object3D {
       }
     }
   }
+}
+
+// A-Frame's position attribute takes an "x y z" string; the command family
+// stores exactly what it is handed, so this is also what undo restores.
+function vecToString(v) {
+  return `${v.x} ${v.y} ${v.z}`;
 }
 
 // A raised cosine between PULSE_MIN and PULSE_MAX, read from a clock so that

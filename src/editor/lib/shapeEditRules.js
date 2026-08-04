@@ -1,5 +1,7 @@
 /* global THREE */
 
+import { ringSelfIntersects } from '../../aframe-components/polygonMath.js';
+
 // Editor policy for editing an existing shape's vertices: what separations and
 // ring shapes an edit is allowed to produce, when a plane pick is usable, how
 // big a handle should be, which handle a press lands on, and what a press is
@@ -125,4 +127,105 @@ export function decidePress({
   // is declined and behaves as an ordinary canvas press.
   if (!pressPickOk) return 'trackOnly';
   return 'claim';
+}
+
+// --- Click versus drag -------------------------------------------------
+
+// px — a press that travels further than this before release is a drag, not a
+// click. Genuinely ONE rule shared with the draw tool ("did the pointer move
+// enough to be a drag"), unlike the spacing constants above, which hold the
+// same number for two different rules and are therefore kept apart.
+export const CLICK_MOVE_THRESHOLD = 4;
+
+// --- Plane picking -----------------------------------------------------
+
+// |dot(ray, plane normal)| below this — about 3° off the plane — is treated as
+// a miss.
+export const GRAZING_MIN_DOT = 0.05;
+
+// Ray.intersectPlane returns null only when the ray is exactly parallel to the
+// plane or points away from it. At a NEAR-edge-on camera it happily returns a
+// point hundreds of metres to kilometres from the cursor, and nothing
+// downstream rejects it — separation passes, and one far-flung vertex on a
+// convex ring usually does not self-cross, so it commits, taking the selection
+// box, the area readout and the handle sizing with it. That camera is not
+// exotic: street-level navigation is a near-horizontal view over a horizontal
+// shape plane.
+//
+// Both arguments must be normalised.
+export function rayPlaneHitIsUsable(
+  rayDirection,
+  planeNormal,
+  minDot = GRAZING_MIN_DOT
+) {
+  return Math.abs(rayDirection.dot(planeNormal)) >= minDot;
+}
+
+// --- Edit validity -----------------------------------------------------
+
+const pairKey = (i, j) => (i < j ? `${i}:${j}` : `${j}:${i}`);
+
+const tooClose = (a, b) => {
+  const dx = a.x - b.x;
+  const dz = a.z - b.z;
+  return Math.hypot(dx, dz) < MIN_EDIT_VERTEX_SEPARATION;
+};
+
+// The pairs of vertices that are ALREADY closer than the minimum separation.
+// Snapshot this when a gesture starts and hand it back to validateVertexEdit
+// for the life of that gesture.
+//
+// The draw tool's spacing rule measures a candidate against the PREVIOUS vertex
+// only, so a legally drawn shape can already contain a non-adjacent pair inside
+// the threshold. Without the exemption, grabbing any handle on such a shape
+// would show the invalid signal from the first frame with no user action, and
+// the vertex could never be dragged OUT of the state — the app would read as
+// broken. Exempting the offending pairs lets a drag always escape a
+// pre-existing violation while still refusing to create a new one.
+export function preExistingClosePairs(points) {
+  const pairs = new Set();
+  for (let i = 0; i < points.length; i++) {
+    for (let j = i + 1; j < points.length; j++) {
+      if (tooClose(points[i], points[j])) pairs.add(pairKey(i, j));
+    }
+  }
+  return pairs;
+}
+
+// Whether the shape would be legal with vertex `index` where `points` now has
+// it. Two rules:
+//
+//   Separation — the moved vertex must clear EVERY other vertex, not just its
+//   two ring neighbours. Two handles at one screen point means whichever loses
+//   the hit test can never be grabbed again, and that trap does not care about
+//   ring adjacency. Applies to open polylines too.
+//
+//   Ring simplicity — a closed shape must not cross itself, because a crossing
+//   ring has no interior to fill or measure. Open polylines are unconstrained.
+export function validateVertexEdit(points, closed, index, exemptPairs) {
+  for (let j = 0; j < points.length; j++) {
+    if (j === index) continue;
+    if (exemptPairs && exemptPairs.has(pairKey(index, j))) continue;
+    if (tooClose(points[index], points[j])) return false;
+  }
+  if (closed && ringSelfIntersects(points)) return false;
+  return true;
+}
+
+// What a released drag should do. Kept as a pure function of the gesture's
+// endpoints because the ordering around it is delicate: the raw revert and the
+// command have to happen in that order, and the decision has to be taken before
+// any of the gesture state is cleared.
+//
+// An invalid release still COMMITS, to the last position that was valid — drag
+// a corner ten metres to a good spot, carry on across an edge and release, and
+// it lands on the good spot rather than throwing the ten metres away. That is a
+// real geometry change, so it goes through history like any other; only a
+// release that nets out to no movement writes nothing.
+export function resolveDragRelease({ preDrag, lastValid, finalValid, final }) {
+  const candidate = finalValid ? final : lastValid;
+  if (!candidate || candidate.equals(preDrag)) {
+    return { action: 'rawRevert', value: preDrag };
+  }
+  return { action: 'commit', value: candidate };
 }
