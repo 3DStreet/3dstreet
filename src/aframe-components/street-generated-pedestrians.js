@@ -115,13 +115,18 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       const variantNumber = this.getRandomIntInclusive(1, 16);
       pedestrian.setAttribute('mixin', `char${variantNumber}`);
 
-      // Set rotation based on direction and seeded random
+      // Set rotation based on direction and seeded random. Rotation follows
+      // the street-generated-clones convention: inbound = 0, outbound = 180
+      // (#1282 — inbound was previously the implicit fallthrough, relying on
+      // the entity's default rotation of 0).
       if (data.direction === 'none') {
         if (this.rng() < 0.5) {
           pedestrian.setAttribute('rotation', '0 180 0');
         }
       } else if (data.direction === 'outbound') {
         pedestrian.setAttribute('rotation', '0 180 0');
+      } else if (data.direction === 'inbound') {
+        pedestrian.setAttribute('rotation', '0 0 0');
       }
 
       // Add metadata
