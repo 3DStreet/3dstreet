@@ -119,7 +119,11 @@ exports.getGeoidHeight = functions
           const locality = addressComponents.find(c => c.types.includes('locality'))?.long_name || '';
           const state = addressComponents.find(c => c.types.includes('administrative_area_level_1'))?.long_name || '';
           const country = addressComponents.find(c => c.types.includes('country'))?.long_name || '';
-          const locationString = `${streetName}, ${locality}, ${state}, ${country}`;
+          // Join only the parts that exist so a missing street or locality
+          // doesn't produce leading/doubled commas like ", , New York, USA"
+          const locationString = [streetName, locality, state, country]
+            .filter(Boolean)
+            .join(', ');
 
           return {
             streetName,

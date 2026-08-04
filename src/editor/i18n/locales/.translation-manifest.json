@@ -750,6 +750,9 @@
     "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
     "geoModal.locationSearchNotFound": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location.",
     "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
+    "geoModal.currentLocationUnavailable": "Could not get your current location. Please allow location access for this site, or click the map to set the location.",
+    "geoModal.locating": "Locating…",
+    "geoModal.useMyLocation": "Use My Location",
     "geoSidebar.flatteningObjects": "Flattening Objects"
   },
   "fr": {
@@ -1503,6 +1506,9 @@
     "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
     "geoModal.locationSearchNotFound": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location.",
     "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
+    "geoModal.currentLocationUnavailable": "Could not get your current location. Please allow location access for this site, or click the map to set the location.",
+    "geoModal.locating": "Locating…",
+    "geoModal.useMyLocation": "Use My Location",
     "geoSidebar.flatteningObjects": "Flattening Objects"
   },
   "pt-BR": {
@@ -2256,6 +2262,9 @@
     "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
     "geoModal.locationSearchNotFound": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location.",
     "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
+    "geoModal.currentLocationUnavailable": "Could not get your current location. Please allow location access for this site, or click the map to set the location.",
+    "geoModal.locating": "Locating…",
+    "geoModal.useMyLocation": "Use My Location",
     "geoSidebar.flatteningObjects": "Flattening Objects"
   }
 }

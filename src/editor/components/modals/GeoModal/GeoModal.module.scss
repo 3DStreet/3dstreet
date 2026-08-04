@@ -50,6 +50,22 @@
       margin-left: 8px;
     }
 
+    // The shared Input's 32px leading-icon well plus 8px vertical padding
+    // makes it ~50px tall; shrink the well to 24px so the search and lat/lon
+    // inputs land at ~42px, the property-panel input height. The container
+    // div inside the Input wrapper is only reachable by its role attribute
+    // (its class lives in Input.module.scss). Its default width is
+    // calc(100% - 30px) content-box, which leaves it short of the modal's
+    // right edge, so fill the wrapper instead.
+    .compactInput div[role='button'] {
+      width: 100%;
+      box-sizing: border-box;
+
+      > div:first-child {
+        min-height: 24px;
+      }
+    }
+
     .sceneGeo {
       display: flex;
       flex-direction: column;
@@ -74,6 +90,29 @@
 
         & > p {
           width: 250px;
+        }
+      }
+
+      // Same quiet secondary look as the modal's Cancel button (which sets
+      // these inline): visible but not competing with Set Location.
+      .myLocationButton {
+        margin-left: 8px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        align-self: stretch;
+        background: transparent;
+        color: #9ca3af;
+        border: 1px solid #404040;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+
+        &:hover:not(:disabled) {
+          background: #404040;
+          color: #fff;
+        }
+
+        &:disabled {
+          color: rgba(156, 163, 175, 0.5);
         }
       }
     }

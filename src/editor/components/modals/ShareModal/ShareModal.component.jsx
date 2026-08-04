@@ -14,6 +14,7 @@ import ScenePlaceholder from '../../../../../ui_assets/ScenePlaceholder.svg';
 import { getUserProfile } from '@shared/utils/username';
 import { Tooltip } from 'radix-ui';
 import { commonMessages } from '@/editor/i18n/commonMessages';
+import { formatLocationString } from '../../../../utils.js';
 
 const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   return (
@@ -97,8 +98,9 @@ function ShareModal() {
       const geoLayer = document.getElementById('reference-layers');
       if (geoLayer && geoLayer.hasAttribute('street-geo')) {
         const geoData = geoLayer.getAttribute('street-geo');
-        if (geoData.locationString) {
-          setLocationString(geoData.locationString);
+        const cleanedLocation = formatLocationString(geoData.locationString);
+        if (cleanedLocation) {
+          setLocationString(cleanedLocation);
         }
       } else {
         setLocationString(null);

@@ -1124,6 +1124,9 @@
   "geoModal.centerpoint": {
     "defaultMessage": "Centerpoint"
   },
+  "geoModal.currentLocationUnavailable": {
+    "defaultMessage": "Could not get your current location. Please allow location access for this site, or click the map to set the location."
+  },
   "geoModal.elevationLabel": {
     "defaultMessage": "Elevation:"
   },
@@ -1156,6 +1159,9 @@
   },
   "geoModal.latLong": {
     "defaultMessage": "Lat, Long"
+  },
+  "geoModal.locating": {
+    "defaultMessage": "Locating…"
   },
   "geoModal.locationLabel": {
     "defaultMessage": "Location:"
@@ -1219,6 +1225,9 @@
   },
   "geoModal.upgradeUnlimitedAccess": {
     "defaultMessage": "Upgrade to Pro for unlimited access"
+  },
+  "geoModal.useMyLocation": {
+    "defaultMessage": "Use My Location"
   },
   "geoModal.working": {
     "defaultMessage": "Working"

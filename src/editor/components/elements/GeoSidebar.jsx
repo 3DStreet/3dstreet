@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 import Events from '../../lib/Events';
 import { Tooltip } from 'radix-ui';
 import { commonMessages } from '@/editor/i18n/commonMessages';
+import { formatLocationString } from '../../../utils.js';
 
 const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   return (
@@ -817,7 +818,7 @@ const GeoSidebar = ({ entity }) => {
             {isActivated &&
               component &&
               component.data &&
-              component.data.locationString && (
+              formatLocationString(component.data.locationString) && (
                 <>
                   <div className="propertyRow">
                     <div className="fakePropertyRowLabel">
@@ -830,7 +831,7 @@ const GeoSidebar = ({ entity }) => {
                       className="fakePropertyRowValue"
                       style={{ fontSize: '12px', color: '#ccc' }}
                     >
-                      {component.data.locationString}
+                      {formatLocationString(component.data.locationString)}
                     </div>
                   </div>
 
