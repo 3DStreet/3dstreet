@@ -327,6 +327,13 @@ export function Viewport(inspector) {
   // shape. It reads the inspector camera fresh each frame rather than being
   // handed one, so it needs no entry in the cameratoggle handler below.
   const shapeVertexControls = new ShapeVertexControls();
+  // Hung on the inspector for the same reason `inspector.controls` is (see the
+  // assignment further down this file): a second editor surface — the shape
+  // properties panel — needs to know which vertex is sub-selected, so that it
+  // can keep that vertex's two length captions on screen. It READS the live
+  // value; this object remains its only writer, so there is no copy to keep in
+  // step and nothing to invalidate.
+  inspector.shapeVertexControls = shapeVertexControls;
 
   // Pose snapshot taken on the gizmo's mouseDown, BEFORE TransformControls
   // mutates the object. The undo command can't capture this itself:

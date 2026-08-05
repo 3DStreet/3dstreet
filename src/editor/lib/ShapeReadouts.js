@@ -70,7 +70,16 @@ export default class ShapeReadouts {
   // the ring has a wrap segment (last→first) and a corner at EVERY vertex
   // (indices 0 and n-1 gain a second adjacent segment), so all indexing wraps
   // mod n.
-  renderAll(vertices, maxVertices, hoverPoint, closed = false) {
+  //
+  // `pinnedSegments` names segments that must be labelled whatever the cap
+  // says.
+  renderAll(
+    vertices,
+    maxVertices,
+    hoverPoint,
+    closed = false,
+    pinnedSegments = null
+  ) {
     this.clear();
     const n = vertices.length;
     if (n < 2) return;
@@ -78,8 +87,24 @@ export default class ShapeReadouts {
     // Number of segments and corners: a closed ring has n of each; an open
     // polyline has n-1 segments and n-2 interior corners.
     const segCount = ring ? n : n - 1;
+
+    // Pinned segments are labelled unconditionally, and FIRST. An on-canvas
+    // control stands beside these captions, so they cannot inherit an early
+    // exit that the rest of the label set legitimately takes. The in-range
+    // filter keeps this method total for any caller.
+    const pinned = new Set();
+    if (pinnedSegments) {
+      for (const i of pinnedSegments) {
+        if (i >= 0 && i < segCount) pinned.add(i);
+      }
+    }
+    for (const i of pinned) {
+      this._addLengthLabel(vertices[i], vertices[(i + 1) % n]);
+    }
+
     if (n <= maxVertices) {
       for (let i = 0; i < segCount; i++) {
+        if (pinned.has(i)) continue; // already drawn above
         this._addLengthLabel(vertices[i], vertices[(i + 1) % n]);
       }
       const cornerStart = ring ? 0 : 1;
@@ -94,8 +119,8 @@ export default class ShapeReadouts {
       return;
     }
     // Above the label cap it is hover-only: with no hover
-    // point yet, show nothing rather than dumping all ~2N labels — that dump
-    // is the exact jank the cap exists to prevent.
+    // point yet, show nothing beyond the pins rather than dumping all ~2N
+    // labels — that dump is the exact jank the cap exists to prevent.
     if (!hoverPoint) return;
     // hover: nearest segment + the angle at its nearer endpoint. Search wraps
     // over the wrap segment too when closed (best can be n-1, whose end is
@@ -116,7 +141,9 @@ export default class ShapeReadouts {
       }
     }
     if (best < 0) return;
-    this._addLengthLabel(vertices[best], vertices[(best + 1) % n]);
+    if (!pinned.has(best)) {
+      this._addLengthLabel(vertices[best], vertices[(best + 1) % n]);
+    }
     const corner = bestT < 0.5 ? best : (best + 1) % n;
     // On a closed ring every corner is valid; on an open line skip the two
     // endpoints (no interior angle there).
