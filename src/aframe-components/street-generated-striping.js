@@ -3,6 +3,8 @@
 // a-frame component to generate cloned models along a street
 // this moves logic from aframe-streetmix-parsers into this component
 
+import { MARKING_SURFACE_OFFSET } from '../tested/street-segment-utils';
+
 // lane-marking yellow shared by every *-yellow striping variant
 const STRIPE_YELLOW = '#f7d117';
 
@@ -34,7 +36,7 @@ AFRAME.registerComponent('street-generated-striping', {
     },
     positionY: {
       // y position of clones along the length
-      default: 0.05, // this is too high, instead this should component should respect elevation to follow street segment
+      default: MARKING_SURFACE_OFFSET,
       type: 'number'
     }
   },
