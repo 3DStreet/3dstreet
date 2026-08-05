@@ -36,7 +36,10 @@
 import { useEffect, useRef } from 'react';
 import useStore from '@/store';
 import ShapeReadouts from '../../../lib/ShapeReadouts';
-import { segmentsIntersectXZ } from '../../../lib/shapeMeasure';
+import {
+  ringEnclosesArea,
+  segmentsIntersectXZ
+} from '../../../lib/shapeMeasure';
 import { intersectPlaneOrNull } from '../../../lib/intersectPlaneOrNull.js';
 // px — a larger press→release move is a drag. Shared with the vertex-editing
 // tool: it is one rule in both places, so the two must not drift apart.
@@ -372,10 +375,21 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       return d >= MIN_DRAW_VERTEX_SPACING;
     };
 
-    // Would closing the current committed ring (last→first) create a crossing?
-    const closeCrosses = () => {
+    // Would closing the current committed ring (last→first) be refused?
+    //
+    // Two questions, not one. The closing edge must not cross a committed edge,
+    // AND the ring it completes must enclose a region — a ring of exactly zero
+    // area (three collinear points, say) crosses nothing and still has no
+    // interior to fill, measure or extrude. Closure is gated on this and
+    // PLACEMENT deliberately is not: an open polyline has no interior to
+    // require, and refusing a click collinear with the two before it would make
+    // whole families of legal shapes undrawable.
+    const closureRefused = () => {
       const verts = verticesRef.current;
-      return verts.length >= 3 && closureCrossesFrom(verts[verts.length - 1]);
+      if (verts.length < 3) return false;
+      return (
+        closureCrossesFrom(verts[verts.length - 1]) || !ringEnclosesArea(verts)
+      );
     };
 
     // Would a closing edge from `point` back to the first vertex cross a
@@ -390,17 +404,25 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     // to the cursor and the one closing back — or the preview would draw a ring
     // that crosses itself, and the fill and area label would be computed from a
     // self-intersecting contour.
+    // The enclosure test takes the committed vertices PLUS the cursor point,
+    // because that is the ring the preview draws; judging the committed array
+    // instead would make the preview's closedness lag the cursor by a vertex.
     const previewClosesAt = (point) =>
       verticesRef.current.length >= 2 &&
       !placementCrosses(point) &&
-      !closureCrossesFrom(point);
+      !closureCrossesFrom(point) &&
+      ringEnclosesArea([...verticesRef.current, point]);
 
     // Should the COMMITTED ring be drawn closed? Used when there is no cursor
     // (the pointer has left the ground), where the preview's trailing vertex has
     // collapsed onto the last committed one.
     const committedRingCloses = () => {
       const verts = verticesRef.current;
-      return verts.length >= 3 && !closureCrossesFrom(verts[verts.length - 1]);
+      return (
+        verts.length >= 3 &&
+        !closureCrossesFrom(verts[verts.length - 1]) &&
+        ringEnclosesArea(verts)
+      );
     };
 
     // Drive the preview's closedness. Note this tracks the ring the user can
@@ -497,7 +519,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         closingArmedRef.current = true;
         updateHighlight(true);
         setTrailing(verticesRef.current[0]); // preview the closing edge
-        setInvalid(closeCrosses());
+        setInvalid(closureRefused());
         refreshReadouts(verticesRef.current[0]);
         // While armed there is no pending corner: the trailing vertex is
         // snapped onto the first one, so the preview shows closure, not a new
@@ -539,12 +561,12 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         if (moved > CLICK_MOVE_THRESHOLD) return; // a drag (orbit/pan)
       }
       // Manual close: commit the committed ring as a polygon (do not add the
-      // duplicate first vertex). Refused outright if the closing edge would
-      // cross — closure was asked for explicitly here, so quietly handing back
+      // duplicate first vertex). Refused outright if the ring would not be a
+      // legal one — closure was asked for explicitly here, so quietly handing back
       // an open shape (what auto-close mode does) would answer a different
       // question than the one the click asked.
       if (!isAutoClose() && closingArmedRef.current) {
-        if (closeCrosses()) return;
+        if (closureRefused()) return;
         finish(false); // closing onto the first vertex, not onto the cursor
         return;
       }
@@ -708,13 +730,13 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     }
 
     // Does the shape commit as a closed ring? Never if the ring would cross
-    // itself — auto-close mode then commits an open polyline rather than
-    // refusing to finish. Given a legal closure, auto-close closes by default
+    // itself or enclose nothing — auto-close mode then commits an open polyline
+    // rather than refusing to finish. Given a legal closure, auto-close closes by default
     // and manual close closes only via the first-vertex gesture. Under 3
     // vertices there is no ring.
     const commitsClosed = () => {
       if (verticesRef.current.length < 3) return false;
-      if (closeCrosses()) return false;
+      if (closureRefused()) return false;
       return isAutoClose() || closingArmedRef.current;
     };
 
