@@ -33,9 +33,13 @@ import {
   OFFSET_MARGIN_PX,
   BUTTON_PX,
   TRASH_MIN_HANDLE_PX,
+  adjacentSegments,
   clampHandleRadius,
   decidePress,
   hitTestHandles,
+  insertButtonTransform,
+  insertCandidate,
+  insertCandidateOffer,
   metresPerPixel,
   preExistingClosePairs,
   rayPlaneHitIsUsable,
@@ -44,7 +48,8 @@ import {
   deleteKeyTargetsVertex,
   trashButtonOffset,
   validateVertexDelete,
-  validateVertexEdit
+  validateVertexEdit,
+  vertexSeparationOk
 } from '../../src/editor/lib/shapeEditRules.js';
 
 // Helper: build x/z points (y is irrelevant to the plan-view math).
@@ -654,6 +659,282 @@ describe('the pre-existing-violation exemption', () => {
     // The pre-existing 0–2 violation the insert did not create is still exempt.
     expect(exempt.has('0:2')).toBe(true);
     expect(validateVertexEdit(pts, false, 1, exempt)).toBe(false);
+  });
+});
+
+describe('vertexSeparationOk', () => {
+  // The extraction is sold as no behaviour change, so these are fixed verdicts
+  // written from what validateVertexEdit did BEFORE the split — not a
+  // re-expression of either function's body. Asserting that
+  // validateVertexEdit === vertexSeparationOk && ring clauses would move both
+  // sides together under a wrong extraction (a dropped exemption skip, an
+  // off-by-one loop bound) and stay green while every vertex drag in the
+  // product silently changed.
+  const square = () => [p(0, 0), p(10, 0), p(10, 10), p(0, 10)];
+
+  it.each([
+    ['a well-separated vertex', square(), 0, undefined, true],
+    [
+      'one moved onto a ring neighbour',
+      [p(10, 0.02), p(10, 0), p(10, 10), p(0, 10)],
+      0,
+      undefined,
+      false
+    ],
+    [
+      'one moved onto a NON-adjacent vertex',
+      [p(10, 9.98), p(10, 0), p(10, 10), p(0, 10)],
+      0,
+      undefined,
+      false
+    ],
+    [
+      'an untouched close pair elsewhere',
+      [p(0, 0), p(10, 0), p(10.02, 0), p(0, 10)],
+      0,
+      undefined,
+      true
+    ]
+  ])('%s', (_name, points, index, exempt, expected) => {
+    expect(vertexSeparationOk(points, index, exempt)).toBe(expected);
+  });
+
+  it('honours the exemption set, and only for the pairs in it', () => {
+    const pts = [p(0, 0), p(0.02, 0), p(10, 10), p(0, 10)];
+    const exempt = preExistingClosePairs(pts);
+    expect(vertexSeparationOk(pts, 0, exempt)).toBe(true);
+    expect(vertexSeparationOk(pts, 0, undefined)).toBe(false);
+  });
+
+  it('is separation ALONE — a crossing ring passes it and fails the full rule', () => {
+    // The asymmetry the split exists for: one clause is a property of a single
+    // vertex, the other of the whole ring.
+    const bowTie = [p(0, 0), p(10, 0), p(0, 10), p(10, 10)];
+    expect(vertexSeparationOk(bowTie, 2, undefined)).toBe(true);
+    expect(validateVertexEdit(bowTie, true, 2)).toBe(false);
+  });
+});
+
+describe('adjacentSegments', () => {
+  it('gives a ring vertex both its segments, wrapping at index 0', () => {
+    expect(adjacentSegments(2, 5, true)).toEqual([1, 2]);
+    // The assertion that fails if the derivation is written for an array
+    // rather than a ring: vertex 0's incoming segment is the closing edge.
+    expect(adjacentSegments(0, 5, true)).toEqual([4, 0]);
+  });
+
+  it('gives an open polyline endpoint exactly one', () => {
+    expect(adjacentSegments(0, 4, false)).toEqual([0]);
+    expect(adjacentSegments(3, 4, false)).toEqual([2]);
+    expect(adjacentSegments(1, 4, false)).toEqual([0, 1]);
+  });
+
+  it('gives one segment on a two-vertex shape', () => {
+    expect(adjacentSegments(0, 2, false)).toEqual([0]);
+    expect(adjacentSegments(1, 2, false)).toEqual([0]);
+  });
+
+  it('gives nothing for a degenerate count or an index outside the ring', () => {
+    expect(adjacentSegments(0, 1, false)).toEqual([]);
+    expect(adjacentSegments(-1, 4, true)).toEqual([]);
+    expect(adjacentSegments(4, 4, true)).toEqual([]);
+  });
+});
+
+describe('insertCandidateOffer', () => {
+  const square = () => [p(0, 0), p(10, 0), p(10, 10), p(0, 10)];
+
+  it('offers a long edge', () => {
+    expect(insertCandidateOffer(square(), 0)).toBe(true);
+  });
+
+  it('withholds an edge too short to hold a legal midpoint', () => {
+    // A 3 cm edge: the midpoint is 1.5 cm from each end, inside the 5 cm rule.
+    const pts = [p(0, 0), p(0.03, 0), p(10, 10), p(0, 10)];
+    expect(insertCandidateOffer(pts, 0)).toBe(false);
+  });
+
+  it('is exclusive at the boundary, and 0.10 m is deliberately not asserted', () => {
+    // tooClose is a STRICT <, so on a 0.10 m edge the midpoint sits at exactly
+    // 0.05 from each end and IS offered. Writing "0.10 m is withheld" here is
+    // the natural mistake, and the natural repair on seeing it fail would be to
+    // loosen a rule that governs vertex DRAG as well as insert. Exactly 0.100
+    // is left out because the comparison at the constant itself is
+    // float-representation-dependent.
+    const edge = (len) => [p(0, 0), p(len, 0), p(10, 10), p(0, 10)];
+    expect(insertCandidateOffer(edge(0.099), 0)).toBe(false);
+    expect(insertCandidateOffer(edge(0.101), 0)).toBe(true);
+  });
+
+  it('withholds a long edge whose midpoint lands near a DISTANT vertex', () => {
+    // The case an edge-length rule gets wrong: the edge is 4 m long and the
+    // vertex that kills it is nowhere near either of its ends.
+    const pts = [p(0, 0), p(4, 0), p(2, 0.04), p(0, 1)];
+    expect(insertCandidateOffer(pts, 0)).toBe(false);
+  });
+
+  it('still offers a button on a shape with a pre-existing close pair', () => {
+    // A shape the draw tool can legally produce — its spacing rule measures
+    // against the previous vertex only. The offending pair is between two
+    // EXISTING vertices, so the loop never tests it.
+    //
+    // Failure mode: a gate written as validateVertexEdit(candidate, …), which
+    // tests the whole candidate array and makes every button on such a shape
+    // disappear.
+    const pts = [p(0, 0), p(10, 0), p(0.02, 0), p(0, 10)];
+    expect(insertCandidateOffer(pts, 0)).toBe(true);
+  });
+
+  it('still offers every button on an already-crossing ring', () => {
+    // The other direction the same rewrite fails in: the ring clause would hide
+    // every affordance on the shape for a crossing nowhere near any of them.
+    // The buttons stay; the press is what refuses.
+    const bowTie = [p(0, 0), p(10, 0), p(0, 10), p(10, 10)];
+    expect(ringSelfIntersects(bowTie)).toBe(true);
+    for (let seg = 0; seg < bowTie.length; seg++) {
+      expect(insertCandidateOffer(bowTie, seg)).toBe(true);
+    }
+    const { cand, k } = insertCandidate(bowTie, 0);
+    expect(validateVertexEdit(cand, true, k, null)).toBe(false);
+  });
+});
+
+describe('insertCandidate', () => {
+  // Rings that ENCLOSE A REGION, which is the property the verdict-preservation
+  // claim below is stated over. The crossing members have to enclose too, or
+  // they fail that precondition: the bow-tie quad is the obvious choice here
+  // and is the WRONG one, because its two lobes wind oppositely and cancel in
+  // the shoelace sum, scoring exactly zero.
+  const pentagram = () => {
+    const circle = [];
+    for (let k = 0; k < 5; k++) {
+      const a = (2 * Math.PI * k) / 5;
+      circle.push(p(Math.cos(a), Math.sin(a)));
+    }
+    return [circle[0], circle[2], circle[4], circle[1], circle[3]];
+  };
+  const battery = () => [
+    [p(0, 0), p(10, 0), p(10, 10), p(0, 10)], // convex
+    [p(0, 0), p(10, 0), p(10, 5), p(5, 5), p(5, 10), p(0, 10)], // concave
+    pentagram(), // crossing, and encloses
+    [p(0, 0), p(10, 0), p(10, 10), p(5, 0)] // pinched: crossing, and encloses
+  ];
+
+  it('puts the new vertex BETWEEN the two ends of the segment it splits', () => {
+    // The two neighbour assertions are what make this catch anything. Without
+    // them the block is invariant under the defect it names: with k = segment
+    // instead of segment + 1, splice still places mid at index k, so both "the
+    // rest of the array is unchanged in order" and "mid is the mean" hold, and
+    // an interior-segment off-by-one goes uncaught.
+    for (const ring of battery()) {
+      const n = ring.length;
+      for (let seg = 0; seg < n; seg++) {
+        const { cand, k, mid } = insertCandidate(ring, seg);
+        expect(cand.length).toBe(n + 1);
+        expect(cand.filter((_, i) => i !== k)).toEqual(ring);
+        const a = ring[seg];
+        const b = ring[(seg + 1) % n];
+        expect(mid.x).toBeCloseTo((a.x + b.x) / 2, 12);
+        expect(mid.z).toBeCloseTo((a.z + b.z) / 2, 12);
+        expect(cand[k - 1]).toBe(a);
+        expect(cand[(k + 1) % (n + 1)]).toBe(b);
+      }
+    }
+  });
+
+  it('appends on the wrap edge', () => {
+    const ring = [p(0, 0), p(10, 0), p(10, 10), p(0, 10)];
+    const { cand, k } = insertCandidate(ring, ring.length - 1);
+    expect(k).toBe(ring.length);
+    expect(cand.slice(0, ring.length)).toEqual(ring);
+  });
+
+  it('preserves the crossing verdict for every insert that can actually happen', () => {
+    for (const ring of battery()) {
+      // Asserted rather than assumed: without this the battery could quietly
+      // acquire a degenerate member and the property would start failing for a
+      // reason nobody could read off the failure.
+      expect(ringEnclosesArea(ring)).toBe(true);
+      const before = ringSelfIntersects(ring);
+      for (let seg = 0; seg < ring.length; seg++) {
+        // Restricted to OFFERED segments, which is the set of inserts the
+        // product can perform at all — see the test below for the one segment
+        // in this battery that is withheld, and why the restriction is not the
+        // property being weakened to fit.
+        if (!insertCandidateOffer(ring, seg)) continue;
+        const { cand } = insertCandidate(ring, seg);
+        expect(ringSelfIntersects(cand)).toBe(before);
+      }
+    }
+  });
+
+  it('and the withheld segment, where a midpoint lands ON an existing vertex', () => {
+    // The pinched quad's edge A→B is bisected exactly by the pinch vertex D,
+    // so the candidate midpoint and D are the same point. The crossing test
+    // excludes segments that share an endpoint, so a coincident pair masks the
+    // very crossing D was causing and the candidate reads clean.
+    //
+    // It is not reachable: coincidence is precisely what the separation rule
+    // forbids, so the gate withholds the button and the press would refuse it.
+    // Asserting BOTH halves here is what keeps that true — if the gate ever
+    // stopped withholding this segment, the sweep above would silently start
+    // skipping nothing while this test went red.
+    const pinched = [p(0, 0), p(10, 0), p(10, 10), p(5, 0)];
+    expect(ringSelfIntersects(pinched)).toBe(true);
+    expect(insertCandidateOffer(pinched, 0)).toBe(false);
+    const { cand, k } = insertCandidate(pinched, 0);
+    expect(ringSelfIntersects(cand)).toBe(false);
+    expect(validateVertexEdit(cand, true, k, null)).toBe(false);
+  });
+
+  it('and the ring where it does NOT, which is why the property is qualified', () => {
+    // A collinear triangle reads false at n = 3 — every edge pair is adjacent —
+    // and its midpoint-insert candidate reads true at n = 4. The qualifier
+    // costs nothing only because ringEnclosesArea refuses this ring outright,
+    // so no legal shape has an insert that changes its crossing verdict. Drop
+    // the enclosure clause and this becomes a real hole.
+    const collinear = [p(0, 0), p(10, 0), p(4, 0)];
+    expect(ringEnclosesArea(collinear)).toBe(false);
+    expect(ringSelfIntersects(collinear)).toBe(false);
+    expect(ringSelfIntersects(insertCandidate(collinear, 0).cand)).toBe(true);
+  });
+});
+
+describe('insertButtonTransform', () => {
+  // The LITERAL strings, because the defect this catches is in the string. The
+  // CSS2D renderer already centres the outer element on the anchor, so a
+  // percentage on the inner — translate(-50%, …) or calc(-100% - 14px) —
+  // double-counts and lands the button 12 px left of and above where it
+  // belongs. It looks nearly right, and an assertion written against the
+  // percentage form would pass on the defect rather than catch it.
+  it('sits above the anchor by default', () => {
+    expect(insertButtonTransform(7, 400)).toBe('translate(0px, -26px)');
+  });
+
+  it('flips below when above would leave the top of the viewport', () => {
+    expect(insertButtonTransform(7, 40)).toBe('translate(0px, 26px)');
+  });
+
+  it('never emits a percentage or a calc', () => {
+    for (const anchorY of [0, 25, 49, 50, 400, 2000]) {
+      const t = insertButtonTransform(7, anchorY);
+      expect(t).toMatch(/^translate\(0px, -?26px\)$/);
+    }
+  });
+
+  // Stated as a PAIR, because the claim is that the two controls share one
+  // threshold and neither half carries it alone: the trashButtonOffset
+  // assertion on its own passes whether the insert button reads the constant or
+  // hardcodes a 5 of its own. A later retune has to move both or fail here.
+  it('hides below the same handle-radius floor the delete button uses', () => {
+    expect(insertButtonTransform(TRASH_MIN_HANDLE_PX - 0.1, 400)).toBeNull();
+    expect(insertButtonTransform(TRASH_MIN_HANDLE_PX + 0.1, 400)).toBeTruthy();
+    expect(
+      trashButtonOffset(TRASH_MIN_HANDLE_PX - 0.1, 500, 500, 1000, 1000)
+    ).toBeNull();
+    expect(
+      trashButtonOffset(TRASH_MIN_HANDLE_PX + 0.1, 500, 500, 1000, 1000)
+    ).toBeTruthy();
   });
 });
 

@@ -61,3 +61,47 @@ describe('ShapeReadouts.renderAll — the label cap', () => {
     expect(readouts.labels.length).toBe(24);
   });
 });
+
+describe('ShapeReadouts.renderAll — pinned segments', () => {
+  let readouts;
+
+  beforeEach(() => {
+    readouts = new ShapeReadouts(stubEntity());
+  });
+
+  // The requirement in one assertion: a pin must be applied BEFORE the cap
+  // logic, not inside its cursor-dependent branch. Written the wrong way round
+  // it inherits the early return above and the pinned captions — which have an
+  // on-canvas control standing beside them — go with it.
+  it('draws exactly the pinned lengths above the cap with no cursor', () => {
+    readouts.renderAll(polygon(13), 12, null, true, [0, 5]);
+    expect(readouts.labels.length).toBe(2);
+  });
+
+  it('adds nothing below the cap, where every segment is drawn anyway', () => {
+    readouts.renderAll(polygon(6), 12, null, true);
+    const withoutPin = readouts.labels.length;
+    readouts.renderAll(polygon(6), 12, null, true, [0, 5]);
+    expect(readouts.labels.length).toBe(withoutPin);
+  });
+
+  it('does not double-label the nearest segment when it is also pinned', () => {
+    // The cursor sits on segment 0, which is pinned. Without the skip that
+    // segment gets two identical captions stacked on one point.
+    readouts.renderAll(polygon(13), 12, p(10, 0), true, [0]);
+    const pinnedAndHovered = readouts.labels.length;
+    readouts.renderAll(polygon(13), 12, p(10, 0), true, [6]);
+    expect(pinnedAndHovered).toBe(readouts.labels.length - 1);
+  });
+
+  it('ignores out-of-range and negative indices rather than throwing', () => {
+    readouts.renderAll(polygon(5), 12, null, true, [-1, 99, 2]);
+    // The one valid index is already covered by the below-cap pass, so the
+    // assertion that matters is simply that nothing threw and no stray label
+    // was produced for an index with no segment.
+    readouts.renderAll(polygon(5), 12, null, true);
+    const unpinned = readouts.labels.length;
+    readouts.renderAll(polygon(5), 12, null, true, [-1, 99, 2]);
+    expect(readouts.labels.length).toBe(unpinned);
+  });
+});
