@@ -88,8 +88,8 @@ describe('fillLiftForArea', () => {
   });
 
   it('separates a stated area ratio by at least the derived minimum', () => {
-    // The headline pair from the spec: 100 m² over 400 m², derived separation
-    // exactly 1.5e-4 m. The bound is the honest floor, not the derived figure.
+    // 100 m² over 400 m² separates by exactly 1.5e-4 m by derivation; the bound
+    // asserted is the honest floor rather than the derived figure.
     expect(fillLiftForArea(100) - fillLiftForArea(400)).toBeGreaterThanOrEqual(
       1.4e-4
     );
@@ -111,10 +111,12 @@ describe('fillLiftForArea', () => {
     }
   });
 
-  it('gives two shapes of equal area equal lift', () => {
-    // Documented as intended: equal-area shapes are the accepted case where no
-    // stacking order is promised.
-    expect(fillLiftForArea(250)).toBe(fillLiftForArea(250));
+  it('gives two near-equal areas the same lift, and separates them once they part', () => {
+    // Areas are quantised, so shapes within a step of each other tie — the
+    // accepted case where no stacking order is promised. The second assertion
+    // gives the first a direction: the tie is quantisation, not a constant.
+    expect(fillLiftForArea(250)).toBe(fillLiftForArea(260));
+    expect(fillLiftForArea(250)).toBeGreaterThan(fillLiftForArea(400));
   });
 
   it('clears the marking layer, and follows it if it moves', () => {
@@ -123,6 +125,5 @@ describe('fillLiftForArea', () => {
     // that constant is meant to be lowerable, and pinning it would defeat the
     // whole exercise.
     expect(FILL_LIFT_M).toBe(MARKING_SURFACE_OFFSET + 0.01);
-    expect(FILL_LIFT_M).toBeGreaterThan(MARKING_SURFACE_OFFSET);
   });
 });

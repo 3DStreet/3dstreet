@@ -1,6 +1,10 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import { elFactory } from './helpers.js';
+import {
+  FILL_RENDER_ORDER,
+  fillLiftForArea
+} from '../../src/aframe-components/shapeFillLift.js';
 
 // shape.js statically imports the app store, which pulls in the Firebase/PostHog
 // dependency chain at module scope. managed-street.js dodges the same hazard with
@@ -30,9 +34,9 @@ beforeAll(async () => {
 const nextFrame = () => new Promise(requestAnimationFrame);
 
 // Stands in for the exporter's own filterHelpers, which is declared const and
-// never exported. The contract this file owns is "the INSPECTOR marker tracks
-// paintedness"; how the exporter acts on `visible` is its own concern and is
-// already covered by hidden-member-export.test.js.
+// never exported, so a test cannot reach it. The contract asserted here is only
+// that the INSPECTOR marker tracks paintedness — the exporter's own handling of
+// that marker is not exercised by this file or any other.
 const hideHelpers = (root, visible) =>
   root.traverse((o) => {
     if (o.userData.source === 'INSPECTOR') o.visible = visible;
@@ -94,7 +98,7 @@ describe('shape fill — the build gate', () => {
     );
     expect(fillMeshes(first)).toHaveLength(1);
 
-    // Clickable but unpainted — the pre-105 behaviour, still a click target.
+    // Clickable but unpainted — the original behaviour, still a click target.
     let el = await addShapeToSceneOf(
       first,
       'closed: true; selectInside: true; fillOpacity: 0'
@@ -134,14 +138,36 @@ describe('shape fill — the build gate', () => {
   it('takes an unclickable fill out of the raycast without clearing its entity', async () => {
     // Clearing `.el` would resolve the hit to "nothing" and, because only the
     // CLOSEST intersection is considered, block selection of what is behind.
-    const el = await makeShape(
+    const THREE = window.THREE;
+    // Straight down through (7, 3), which is inside the ring. A default-built
+    // Raycaster would miss the cap entirely and make the negative assertion
+    // below unfalsifiable, so the clickable cap is asserted as a positive
+    // control on the very same ray.
+    const castAt = (mesh) => {
+      mesh.updateMatrixWorld(true);
+      const hits = [];
+      mesh.raycast(
+        new THREE.Raycaster(
+          new THREE.Vector3(7, 10, 3),
+          new THREE.Vector3(0, -1, 0)
+        ),
+        hits
+      );
+      return hits;
+    };
+
+    const clickable = await makeShape(
+      'closed: true; selectInside: true; fillOpacity: 40'
+    );
+    const unclickable = await addShapeToSceneOf(
+      clickable,
       'closed: true; selectInside: false; fillOpacity: 40'
     );
-    const mesh = fillMeshes(el)[0];
-    const hits = [];
-    mesh.raycast(new window.THREE.Raycaster(), hits);
-    expect(hits).toHaveLength(0);
-    expect(mesh.el).toBe(el);
+    expect(castAt(fillMeshes(clickable)[0])).toHaveLength(1);
+
+    const mesh = fillMeshes(unclickable)[0];
+    expect(castAt(mesh)).toHaveLength(0);
+    expect(mesh.el).toBe(unclickable);
   });
 });
 
@@ -170,6 +196,20 @@ describe('shape fill — material state', () => {
       false,
       false
     ]);
+  });
+
+  it('carries colour, lift and draw order onto the built mesh', async () => {
+    // The pure module is well covered on its own; this is the wiring, where a
+    // dropped argument or a sign error would otherwise pass every other test.
+    const el = await makeShape(
+      'closed: true; fillColor: #ff0000; fillOpacity: 40'
+    );
+    const comp = el.components.shape;
+    const mesh = fillMeshes(el)[0];
+    expect(comp.fillMaterial.color.getHexString()).toBe('ff0000');
+    expect(comp.area).toBeCloseTo(50, 5);
+    expect(mesh.position.y).toBeCloseTo(fillLiftForArea(comp.area), 12);
+    expect(mesh.renderOrder).toBe(FILL_RENDER_ORDER);
   });
 
   it('clamps an out-of-range opacity to fully opaque', async () => {

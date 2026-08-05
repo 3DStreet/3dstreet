@@ -274,7 +274,7 @@ const ShapeSidebar = ({ entity }) => {
               {closed && (
                 <li>• Fill opacity 0% hides the fill; the outline still shows</li>
               )}
-              <li>• Edit line and fill colors below</li>
+              <li>• Edit line color, width and fill below</li>
             </ul>
           </div>
         </div>

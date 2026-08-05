@@ -188,32 +188,23 @@ AFRAME.registerComponent('shape', {
       metalness: SHAPE_METALNESS
     });
 
-    // The interior surface of a closed shape - the pick surface, now paintable.
-    // Scene-lit and a SEPARATE instance from the line's material (they are
-    // independent properties, and the fill needs transparency and depth
-    // behaviour the line must not have). MeshStandard with the line's roughness
-    // and metalness so a filled shape is one object under one light, not a lit
-    // tube around an unlit panel.
+    // A SEPARATE instance from the line's material — the fill needs
+    // transparency and depth behaviour the line must not have — but the same
+    // roughness and metalness, so a filled shape reads as one object under one
+    // light rather than a lit tube around an unlit panel.
     //
-    // DoubleSide is load-bearing twice over: it is what makes the pick work from
-    // either side, and - now that the fill is lit - what makes ring winding
-    // invisible, since three flips the shading normal for back faces so both
-    // sides light by their own outward normal.
+    // DoubleSide is load-bearing twice over: it makes the pick work from either
+    // side, and it makes ring winding invisible, since three flips the shading
+    // normal for back faces so both sides light by their own outward normal.
     //
-    // depthTest stays ON (the default). The outline tube has radius lineWidth
-    // about the shape's plane and the fill sits a few centimetres above it, so
-    // over most of the tube the fill is BEHIND it and its fragments are
-    // depth-rejected rather than tinting it. Near the tube's inner silhouette,
-    // where the tube has dropped below the lift, the fill covers it: about a
-    // centimetre of a default-width outline, tinted at partial opacity. Below a
-    // line width narrower than the lift the fill covers the tube outright -
-    // accepted, and stated wherever the lift is.
+    // depthTest stays on. The fill sits a few centimetres above the shape's
+    // plane, so it is behind most of the outline tube and depth-rejected there
+    // rather than tinting it; it tints roughly the innermost centimetre of a
+    // default-width outline, and covers the tube outright below a line width
+    // narrower than the lift.
     //
-    // The four state-dependent fields (color, opacity, colorWrite, transparent /
-    // depthWrite) are owned by _syncFillMaterial - see there for why each.
-    // castShadow / receiveShadow are left at THREE's false defaults: a thin
-    // marking casting a shadow is wrong, and receiving one would double the
-    // shading already on the road beneath.
+    // The state-dependent fields (color, opacity, colorWrite, transparent,
+    // depthWrite) are owned by _syncFillMaterial.
     this.fillMaterial = new THREE.MeshStandardMaterial({
       side: THREE.DoubleSide,
       roughness: SHAPE_ROUGHNESS,
@@ -686,12 +677,10 @@ AFRAME.registerComponent('shape', {
     geometry.rotateX(-Math.PI / 2);
 
     const mesh = new THREE.Mesh(geometry, this.fillMaterial);
-    // All vertices share one height (the draw tool places every vertex after
-    // the first on the plane of the first, and the yaw-only / no-scale
-    // transform markers keep the whole shape's plane horizontal), so the cap
-    // sits at that height plus a physical lift. See shapeFillLift.js for why a
-    // real height difference rather than a depth bias, why the lift is measured
-    // from the street's marking layer, and why smaller sits higher.
+    // Cap height is the first vertex's y plus a physical lift. See
+    // shapeFillLift.js for why a real height difference rather than a depth
+    // bias, why the lift is measured from the street's marking layer, and why
+    // a smaller shape sits higher.
     mesh.position.y = verts[0].object3D.position.y + fillLiftForArea(area);
     // One value for every fill: paint it after the large transparent ground
     // plane the map layer draws on, which is sorted by its centre and can
@@ -717,7 +706,8 @@ AFRAME.registerComponent('shape', {
     // would wash out everything drawn inside the shape's footprint.
   },
 
-  // Recompute the enclosed area + reposition the area label. Runs on every
+  // Store the enclosed area (computed once per derive, shared with the fill)
+  // and reposition the area label. Runs on every
   // re-derive so area tracks a vertex moving/added/removed (and an animation).
   _updateArea: function (verts, closed, area) {
     if (!closed) {
@@ -792,7 +782,7 @@ AFRAME.registerComponent('shape', {
     this.requestRederive();
   },
 
-  // Turn the whole shape the invalid colour, or restore it. Clearing is the
+  // Turn the shape's outline the invalid colour, or restore it. Clearing is the
   // SINGLE restore owner for both channels the signal touches — the line colour
   // and the x-ray overlay's opacity, which setInvalidPulse drives while the
   // signal is on. Restores from `this.data.lineColor`, read at clear time, so

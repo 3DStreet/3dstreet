@@ -11,26 +11,18 @@ import { MARKING_SURFACE_OFFSET } from '../tested/street-segment-utils';
 // difference and cannot carry a polygonOffset - so a biased fill would look
 // right here and shimmer in whatever viewer opened the exported scene.
 //
-// ON DEPTH-PRECISION GROUNDS ALONE, ~1 MM WOULD DO, and that is the figure to
-// return to: the scene runs a logarithmic depth buffer, which holds roughly
-// constant RELATIVE precision, so 1 mm resolves comfortably from walking
-// distance out to a block-scale overview, and 1 mm at street scale is below
-// what reads as a float even at a grazing angle.
-//
-// The lift is far higher than that for an unrelated reason: the street's lane
-// markings and stencils are transparent quads authored with no alpha cut-off,
-// so each one writes depth across its WHOLE quad including the empty margin
-// around the paint, discarding anything translucent drawn lower. A fill at
-// 1 mm is punched full of holes wherever a marking crosses it. So the fill
-// clears the marking layer instead - a deliberate fudge, at the cost of
-// visibly floating at grazing angles and exporting that way. Giving the
-// marking materials an alpha cut-off (or stopping them writing depth) undoes
-// the fudge and lets this return to ~1 mm.
+// Depth precision alone would want about a millimetre. The lift is far higher
+// for an unrelated reason: the lane markings and stencils are transparent
+// quads authored with no alpha cut-off, so each writes depth across its whole
+// quad including the empty margin, discarding anything translucent drawn
+// lower — a 1 mm fill is punched full of holes wherever a marking crosses it.
+// So the fill clears the marking layer instead, at the cost of visibly
+// floating at grazing angles and exporting that way. Giving the marking
+// materials an alpha cut-off undoes the fudge and lets this come back down.
 //
 // Expressed in terms of the markings' own offset rather than as a bare number,
-// so if that offset is ever lowered - its own note beside it says it should be
-// - the fill follows it down instead of being left floating at a figure whose
-// reason has been forgotten.
+// so if that offset is lowered — the note beside it says it should be — the
+// fill follows it down rather than floating at a figure nobody can justify.
 export const FILL_LIFT_M = MARKING_SURFACE_OFFSET + 0.01;
 
 // On top of the marking clearance, each fill is nudged by an amount derived
@@ -51,23 +43,17 @@ const DECADES = 4; // log10(AREA_MAX_M2 / AREA_MIN_M2)
 // and 25 micrometres of lift.
 const AREA_STEPS = 10 * DECADES;
 
-// Where a fill is painted in the transparent queue. ONE JOB: put the fill
-// after the large transparent ground plane the satellite map layer draws on,
-// so paint laid over that plane is composited OVER it rather than under it.
-// Three's renderOrder defaults to 0, so all ordinary scene content - including
-// that plane - is implicitly at 0, and the transparent queue then falls back
-// to a per-object distance comparison taken at each object's ORIGIN. The map
-// plane is hundreds of metres across but is sorted by its centre, so for a
-// fill drawn away from that centre the comparison can put the plane last and
-// paint it over the fill. The transparent queue draws in ASCENDING
-// renderOrder, where drawn-first means composited underneath, so a positive
-// value settles it; 1 is the smallest one, which keeps it far below every
-// numbered editor overlay (100 and up).
+// Where a fill is painted in the transparent queue. One job: put it after the
+// large transparent ground plane the satellite map layer draws on. That plane
+// is hundreds of metres across but, like all ordinary content, sits at the
+// default renderOrder 0, where the queue falls back to comparing each object's
+// ORIGIN — so for a fill drawn away from the map's centre the plane can sort
+// last and paint over it. 1 is the smallest value that settles this, and stays
+// far below every numbered editor overlay (100 and up).
 //
-// It takes NO view on which of two fills is upper: every fill gets this same
-// value. Two overlapping translucent fills blend in whatever order the queue's
-// distance comparison puts them, and that is the documented behaviour, not an
-// oversight. Height decides the stack once both are opaque.
+// It takes no view on which of two fills is upper: every fill gets this same
+// value, and two overlapping translucent fills blend in whatever order the
+// queue puts them. Height decides the stack once both are opaque.
 export const FILL_RENDER_ORDER = 1;
 
 // A degenerate or unknown area is treated as the LARGEST, so such a fill sits
@@ -83,7 +69,7 @@ function clampArea(area) {
 
 // The single quantised rank: 0 for the smallest shape, AREA_STEPS for the
 // largest.
-export function areaBucket(area) {
+function areaBucket(area) {
   return Math.round(
     (AREA_STEPS * Math.log10(clampArea(area) / AREA_MIN_M2)) / DECADES
   );

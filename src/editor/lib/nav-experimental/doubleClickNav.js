@@ -78,11 +78,10 @@ export class DoubleClickNav {
       if (!hit && Array.isArray(raycasterComp.intersections)) {
         hit = raycasterComp.intersections[0] || null;
       }
-      // Some pick targets exist only so an entity can be click-selected — a
-      // shape's invisible interior cap. They are not scene surfaces, so a
-      // double-click over one has to resolve against whatever is really
-      // underneath; otherwise a polygon drawn over a road turns its whole
-      // footprint into object-framing instead of a landing.
+      // A hit on an interior cap (see isSelectionOnlyHit) has to resolve
+      // against whatever is really underneath; otherwise a polygon drawn over
+      // a road turns its whole footprint into object-framing instead of a
+      // landing.
       if (
         isSelectionOnlyHit(hit) &&
         Array.isArray(raycasterComp.intersections)
