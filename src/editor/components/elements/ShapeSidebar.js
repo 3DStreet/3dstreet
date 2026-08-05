@@ -125,11 +125,25 @@ const ShapeSidebar = ({ entity }) => {
     };
     entity.addEventListener('shape-geometry-changed', onGeometryChanged);
 
-    // Hover mode only matters above the label cap.
+    // Hover mode only matters above the label cap — but WHICH side of the cap
+    // a shape is on changes while it is selected, now that vertices can be
+    // inserted and deleted on canvas. So the listener is bound for the life of
+    // the selection and asks the question per event, rather than being bound
+    // once on the answer at selection time.
+    //
+    // Binding it once was a trap with no recovery: a shape selected at or below
+    // the cap got no listener, so `lastHoverRef` stayed null forever; growing
+    // past the cap then put `renderAll` on its hover branch, which clears the
+    // labels and returns early when there is no hover point. Every caption on
+    // the shape vanished and did not come back until it was deselected and
+    // reselected.
     const canvas = AFRAME.scenes[0]?.canvas;
-    const useHover =
-      getShapeVertices(entity).length > MAX_LABELLED_VERTICES && canvas;
     const onMove = (e) => {
+      // Below the cap every segment is labelled regardless of the cursor, so
+      // there is nothing to track and no reason to pay for a raycast per
+      // pointermove — the early return, not the missing listener, is what keeps
+      // the common case cheap.
+      if (getShapeVertices(entity).length <= MAX_LABELLED_VERTICES) return;
       const camera = AFRAME.INSPECTOR?.camera;
       if (!camera) return;
       const rect = canvas.getBoundingClientRect();
@@ -149,14 +163,14 @@ const ShapeSidebar = ({ entity }) => {
       lastHoverRef.current = local;
       render(local);
     };
-    if (useHover) canvas.addEventListener('pointermove', onMove);
+    if (canvas) canvas.addEventListener('pointermove', onMove);
 
     return () => {
       cancelAnimationFrame(raf);
       if (rowRaf !== null) cancelAnimationFrame(rowRaf);
       Events.off('entityupdate', onEntityUpdate);
       entity.removeEventListener('shape-geometry-changed', onGeometryChanged);
-      if (useHover && canvas) canvas.removeEventListener('pointermove', onMove);
+      if (canvas) canvas.removeEventListener('pointermove', onMove);
       readouts.dispose();
       readoutsRef.current = null;
     };
