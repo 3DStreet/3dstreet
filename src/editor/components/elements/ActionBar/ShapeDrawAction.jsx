@@ -13,20 +13,29 @@
 // trailing cursor point — Enter takes it, Esc drops it — which is the same
 // "back out one level" Esc means everywhere else in the editor.
 //
+// Closure is refused on TWO questions, not one: the closing edge must not cross
+// a committed edge, AND the ring it completes must enclose a region — a ring of
+// exactly zero area (three collinear points, say) crosses nothing and still has
+// no interior to fill, measure or extrude. Both live in closureRefused, which
+// every closedness decision in this file goes through.
+//
 // The two draw modes select how closure HAPPENS, not what the shape ends up as:
-// auto-close treats the ring as closed by default and drops to open when
-// closure would self-cross, while manual close stays open until the first
-// vertex is clicked. Either can therefore produce an open or a closed shape.
-// Letting a ring stay open is what allows a click to never be refused merely
-// because closure would cross — which in turn is what makes stars, combs and
-// deep concavities near the first vertex drawable in their natural order.
+// auto-close treats the ring as closed by default and drops to open whenever
+// closure is refused, while manual close stays open until the first vertex is
+// clicked. Either can therefore produce an open or a closed shape. Letting a
+// ring stay open is what allows a click to never be refused merely because
+// closure would be — which in turn is what makes stars, combs and deep
+// concavities near the first vertex drawable in their natural order.
 //
 // The preview draws the committed vertices PLUS the trailing cursor vertex, and
 // judges its closedness on that ring. Enter commits that same ring, cursor
-// vertex included, so what is on screen is what you get. Esc drops the cursor
-// vertex, so it commits a ring one shorter — which may therefore differ in
-// closedness from the preview. That difference is the point of the key, not a
-// discrepancy: Esc means "without the point I haven't clicked".
+// vertex included, so what is on screen is what you get — with the one
+// documented exception that the preview additionally requires the edge OUT to
+// the cursor to be clean, so preview and commit can disagree about closedness
+// right at a crossing (see syncPreviewClosed). Esc drops the cursor vertex, so
+// it commits a ring one shorter — which may therefore differ in closedness from
+// the preview. That difference is the point of the key, not a discrepancy: Esc
+// means "without the point I haven't clicked".
 //
 // Draw state lives in refs, never useState: the deactivation auto-finish runs
 // from the effect cleanup, a closure over the last render — a useState vertex
@@ -416,14 +425,13 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     // Should the COMMITTED ring be drawn closed? Used when there is no cursor
     // (the pointer has left the ground), where the preview's trailing vertex has
     // collapsed onto the last committed one.
-    const committedRingCloses = () => {
-      const verts = verticesRef.current;
-      return (
-        verts.length >= 3 &&
-        !closureCrossesFrom(verts[verts.length - 1]) &&
-        ringEnclosesArea(verts)
-      );
-    };
+    //
+    // Literally the negation of closureRefused, and written that way rather
+    // than as its own conjunction: both names are wanted at their call sites,
+    // but the RULE has one home, so a third closure condition cannot be added
+    // to one and missed on the other.
+    const committedRingCloses = () =>
+      verticesRef.current.length >= 3 && !closureRefused();
 
     // Drive the preview's closedness. Note this tracks the ring the user can
     // SEE — committed vertices plus the cursor — while commitsClosed() judges
