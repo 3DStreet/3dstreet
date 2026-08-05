@@ -51,8 +51,11 @@ import {
   validateVertexEdit
 } from '../../src/editor/lib/shapeEditRules.js';
 
-// Helper: build x/z points (y is irrelevant to the plan-view math).
-const p = (x, z) => ({ x, z });
+// Helper: build x/z points. The plan-view math reads x and z only, but y is
+// carried as 0 rather than omitted: insertCandidate averages its two endpoints
+// into a THREE.Vector3, and an absent y would make that midpoint's y NaN — sound
+// today, since nothing reads it, and a trap for the first rule that does.
+const p = (x, z) => ({ x, y: 0, z });
 
 // Helper: a stand-in entity carrying the given marker attributes, optionally
 // under a parent with an id.
