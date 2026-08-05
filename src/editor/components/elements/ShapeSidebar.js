@@ -272,7 +272,9 @@ const ShapeSidebar = ({ entity }) => {
               <li>• Angles are measured in the ground (x-z) plane</li>
               {closed && <li>• Area is the enclosed ground (x-z) footprint</li>}
               {closed && (
-                <li>• Fill opacity 0% hides the fill; the outline still shows</li>
+                <li>
+                  • Fill opacity 0% hides the fill; the outline still shows
+                </li>
               )}
               <li>• Edit line color, width and fill below</li>
             </ul>

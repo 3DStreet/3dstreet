@@ -72,6 +72,12 @@ async function addShapeToSceneOf(el, attrs) {
   return addShape(sibling, attrs);
 }
 
+// Vertices sit at a non-zero height deliberately: the cap's y is the first
+// vertex's y PLUS the lift, and a fixture on the ground plane would assert only
+// the second term — so dropping the base would stay green while flattening
+// every mid-draw preview fill onto y=0 regardless of street elevation.
+const FIXTURE_Y = 2;
+
 async function addShape(el, attrs) {
   el.setAttribute('shape', attrs);
   for (const [x, z] of [
@@ -81,7 +87,7 @@ async function addShape(el, attrs) {
   ]) {
     const v = document.createElement('a-entity');
     v.setAttribute('shape-vertex', '');
-    v.setAttribute('position', { x, y: 0, z });
+    v.setAttribute('position', { x, y: FIXTURE_Y, z });
     el.appendChild(v);
   }
   await nextFrame();
@@ -208,7 +214,10 @@ describe('shape fill — material state', () => {
     const mesh = fillMeshes(el)[0];
     expect(comp.fillMaterial.color.getHexString()).toBe('ff0000');
     expect(comp.area).toBeCloseTo(50, 5);
-    expect(mesh.position.y).toBeCloseTo(fillLiftForArea(comp.area), 12);
+    expect(mesh.position.y).toBeCloseTo(
+      FIXTURE_Y + fillLiftForArea(comp.area),
+      12
+    );
     expect(mesh.renderOrder).toBe(FILL_RENDER_ORDER);
   });
 

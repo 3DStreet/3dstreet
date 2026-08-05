@@ -204,7 +204,10 @@ AFRAME.registerComponent('shape', {
     // narrower than the lift.
     //
     // The state-dependent fields (color, opacity, colorWrite, transparent,
-    // depthWrite) are owned by _syncFillMaterial.
+    // depthWrite) are owned by _syncFillMaterial. castShadow / receiveShadow
+    // are deliberately left at THREE's false defaults: a thin marking casting a
+    // shadow is wrong, and receiving one would double the shading already on
+    // the road beneath.
     this.fillMaterial = new THREE.MeshStandardMaterial({
       side: THREE.DoubleSide,
       roughness: SHAPE_ROUGHNESS,
