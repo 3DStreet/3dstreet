@@ -31,6 +31,11 @@ import {
   polygonCentroidXZ,
   ringSelfIntersects
 } from './polygonMath.js';
+import {
+  FILL_RENDER_ORDER,
+  fillLiftForArea,
+  fillRenderState
+} from './shapeFillLift.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const MIN_SEGMENT_LENGTH = 1e-6;
@@ -51,6 +56,19 @@ const OVERLAY_RENDER_ORDER = 999;
 // materials, never through setAttribute, so it cannot be saved into a scene —
 // see setInvalidSignal below.
 const INVALID_COLOR = '#ff3b30';
+
+// One lighting response for every surface a shape owns - the outline tube and
+// the fill - so a filled shape reads as one object under one light. Named
+// constants rather than three copies of the literals, because the fill's
+// appearance is the seam an extruded volume's top cap reuses and a drift
+// between the copies is exactly how that seam breaks.
+const SHAPE_ROUGHNESS = 0.8;
+const SHAPE_METALNESS = 0.0;
+
+// Assigned onto a fill mesh that must not be picked. Module-level so a
+// re-derive - which can run every frame under a vertex drag - does not
+// allocate a closure per fill.
+function noFillRaycast() {}
 
 // The system owns the per-frame position observation for every shape, so it
 // keeps running even when the shapes' entities are paused (as they are in the
@@ -95,6 +113,24 @@ AFRAME.registerComponent('shape', {
     // clicks meant for whatever it covers — the outline still selects it.
     // Only meaningful when `closed`; an open polyline has no interior.
     selectInside: { type: 'boolean', default: true },
+    // Fill appearance for a closed shape. `fillOpacity` is the on/off control:
+    // 0% is off (no separate boolean, so there is no state that looks off but
+    // still exports a surface). Clickability is `selectInside`, deliberately
+    // separate — the biggest, most visible fills are the ones most likely to
+    // need to stop swallowing clicks.
+    //
+    // Stored as INTEGER PERCENT (0-100) rather than a 0..1 fraction: it is the
+    // unit the panel shows, so the generic number widget needs no display
+    // transform, and `type: 'int'` gives the field precision 0 — it reads "40",
+    // not "40.000". min/max clamp the panel field; the component clamps again
+    // because the schema bounds do not bind setAttribute.
+    //
+    // The default colour is the SAME LITERAL as lineColor's, so an unconfigured
+    // shape - including one from an older saved scene or from Add Layer - reads
+    // as one object rather than two unrelated colours. They are independent
+    // thereafter: changing one never changes the other.
+    fillColor: { type: 'color', default: '#ffe600' },
+    fillOpacity: { type: 'int', default: 40, min: 0, max: 100 },
     // Event-driven opt-out of the system dirty-check: set to an event name and
     // the shape re-derives on that event instead of being polled every frame
     // (the hooks below honour it). Empty by default → the system tick polls,
@@ -129,36 +165,65 @@ AFRAME.registerComponent('shape', {
     this.el.setObject3D('mesh', this.lineGroup);
     this.el.setObject3D('shapeVertices', this.vertexGroup);
     this.el.setObject3D('shapeLineOverlay', this.overlayGroup);
-    // Interior pick surface for closed shapes. Without it a polygon is
-    // selectable only by its thin outline tubes, which is impractical to hit.
-    // Kept in its own slot rather than folded into `mesh` so the fill can
-    // become a real, visible fill later by swapping the material alone.
+    // The interior surface of a closed shape. It does two jobs: it is the click
+    // target that makes a polygon selectable by more than its thin outline
+    // tubes, and it is the paintable fill. Kept in its own slot rather than
+    // folded into `mesh` because the two jobs are independently switchable and
+    // the slot is cleared and rebuilt on its own schedule.
     this.fillGroup = new THREE.Group();
     this.el.setObject3D('shapeFill', this.fillGroup);
-    // Both of these are editor affordances, not part of the model: the fill is
-    // an invisible click target and the overlay is the see-through-walls twin.
-    // The GLB exporter hides objects marked this way, so neither ends up as
-    // dead weight (or an invisible occluder) in an exported or AR-Ready scene.
+    // The overlay is always an editor affordance — the see-through-walls twin
+    // — so it is permanently marked, and the GLB exporter hides objects marked
+    // this way rather than shipping dead weight. The fill's marker is
+    // conditional and owned by _syncFillMaterial: a painted fill is content the
+    // user drew and belongs in the file, an unpainted one would be an invisible
+    // occluder. Seeded here as "not painted"; _syncFillMaterial then confirms
+    // or clears it.
     this.fillGroup.userData.source = 'INSPECTOR';
     this.overlayGroup.userData.source = 'INSPECTOR';
 
     this.material = new THREE.MeshStandardMaterial({
       color: this.data.lineColor,
-      roughness: 0.8,
-      metalness: 0.0
+      roughness: SHAPE_ROUGHNESS,
+      metalness: SHAPE_METALNESS
     });
 
-    // Invisible-but-raycastable fill. `colorWrite: false` draws nothing while
-    // leaving the mesh in the render list and — importantly — in the raycaster,
-    // which skips meshes only via `visible`, never via material. DoubleSide so
-    // ring winding and camera side can't make the pick fail.
-    this.fillMaterial = new THREE.MeshBasicMaterial({
+    // The interior surface of a closed shape - the pick surface, now paintable.
+    // Scene-lit and a SEPARATE instance from the line's material (they are
+    // independent properties, and the fill needs transparency and depth
+    // behaviour the line must not have). MeshStandard with the line's roughness
+    // and metalness so a filled shape is one object under one light, not a lit
+    // tube around an unlit panel.
+    //
+    // DoubleSide is load-bearing twice over: it is what makes the pick work from
+    // either side, and - now that the fill is lit - what makes ring winding
+    // invisible, since three flips the shading normal for back faces so both
+    // sides light by their own outward normal.
+    //
+    // depthTest stays ON (the default). The outline tube has radius lineWidth
+    // about the shape's plane and the fill sits a few centimetres above it, so
+    // over most of the tube the fill is BEHIND it and its fragments are
+    // depth-rejected rather than tinting it. Near the tube's inner silhouette,
+    // where the tube has dropped below the lift, the fill covers it: about a
+    // centimetre of a default-width outline, tinted at partial opacity. Below a
+    // line width narrower than the lift the fill covers the tube outright -
+    // accepted, and stated wherever the lift is.
+    //
+    // The four state-dependent fields (color, opacity, colorWrite, transparent /
+    // depthWrite) are owned by _syncFillMaterial - see there for why each.
+    // castShadow / receiveShadow are left at THREE's false defaults: a thin
+    // marking casting a shadow is wrong, and receiving one would double the
+    // shading already on the road beneath.
+    this.fillMaterial = new THREE.MeshStandardMaterial({
       side: THREE.DoubleSide,
+      roughness: SHAPE_ROUGHNESS,
+      metalness: SHAPE_METALNESS,
       transparent: true,
       opacity: 0,
       depthWrite: false,
       colorWrite: false
     });
+    this._syncFillMaterial();
 
     // Unlit, translucent, always-on-top material for the x-ray overlay copy.
     this.overlayMaterial = new THREE.MeshBasicMaterial({
@@ -265,6 +330,27 @@ AFRAME.registerComponent('shape', {
       oldData.selectInside !== this.data.selectInside
     ) {
       this.requestRederive();
+    }
+
+    if (
+      oldData.fillColor !== undefined &&
+      oldData.fillColor !== this.data.fillColor
+    ) {
+      this._syncFillMaterial();
+    }
+
+    if (
+      oldData.fillOpacity !== undefined &&
+      oldData.fillOpacity !== this.data.fillOpacity
+    ) {
+      this._syncFillMaterial();
+      // Crossing zero builds or tears down the cap itself, because a shape can
+      // be painted without being clickable and vice versa. Within the painted
+      // range the material mutation is the whole change - no rebuild, so an
+      // opacity scrub costs no geometry.
+      const wasBuilt = oldData.fillOpacity > 0;
+      const isBuilt = this.data.fillOpacity > 0;
+      if (wasBuilt !== isBuilt) this.requestRederive();
     }
   },
 
@@ -395,6 +481,12 @@ AFRAME.registerComponent('shape', {
     // Filled into a reused array rather than mapped: this runs on every
     // re-derive, which for a shape under a drag is every frame.
     const selfIntersecting = closed && ringSelfIntersects(this._ringPts(verts));
+    // The enclosed area is needed twice per derive - by the fill, whose lift is
+    // derived from it, and by the area label. Compute it once so the two are
+    // guaranteed to be reading the SAME figure. Zero when there is no
+    // well-defined interior, matching what the label reports.
+    const ringArea =
+      closed && !selfIntersecting ? polygonAreaXZ(this._ringPts(verts)) : 0;
     // While an edit gesture is in flight, a crossing ring HOLDS its last valid
     // fill and area instead of dropping them: the interior stays clickable and
     // the area label freezes at its last meaningful value rather than flicking
@@ -442,10 +534,28 @@ AFRAME.registerComponent('shape', {
         verts[0].object3D.position,
         radius
       );
-      if (this.data.selectInside && !selfIntersecting) this._addFill(verts);
+      // The cap is built when it is needed for EITHER job - painting or
+      // clicking. The two are independent properties, so all four combinations
+      // are reachable: a visible fill whose clicks pass through (a backdrop
+      // polygon that must not swallow clicks meant for the street it covers),
+      // and an invisible one that is still an easy click target.
+      //
+      // Reads the schema value directly rather than going through the
+      // render-state helper: this line runs on every re-derive, which is every
+      // frame while a vertex is being dragged, and the helper returns a fresh
+      // object. A negative out-of-range value is not painted, which is what the
+      // helper's clamp would also say.
+      if (
+        !selfIntersecting &&
+        (this.data.selectInside || this.data.fillOpacity > 0)
+      ) {
+        this._addFill(verts, ringArea);
+      }
     }
 
-    if (!holdFill) this._updateArea(verts, closed && !selfIntersecting);
+    if (!holdFill) {
+      this._updateArea(verts, closed && !selfIntersecting, ringArea);
+    }
 
     // The geometry only exists from here — init installs empty groups and the
     // first derive lands a frame later. Anything sizing itself to this shape
@@ -487,10 +597,70 @@ AFRAME.registerComponent('shape', {
     this._addOverlayMesh(mesh);
   },
 
-  // Build the interior pick surface for a closed ring: a triangulated cap in the
-  // x/z plane, matching the area the shape reports. Drawn invisibly (see
-  // fillMaterial) but fully raycastable, so a click anywhere inside the polygon
-  // selects it rather than requiring a hit on the outline.
+  // Fill opacity as a 0..1 fraction. Named to match the percent->fraction
+  // boundary the map layers already use.
+  fillOpacityFraction: function () {
+    return fillRenderState(this.data.fillOpacity).opacity;
+  },
+
+  // The fill's APPEARANCE - colour and lighting response only. A future
+  // extruded volume's top cap applies the same call to its own material; the
+  // flat cap's render state (side / depthWrite / colorWrite / lift / draw
+  // order) is deliberately NOT part of it, because a closed volume wants
+  // FrontSide and sorts its own faces differently.
+  _applyFillAppearance: function (material) {
+    material.color.set(this.data.fillColor);
+    material.opacity = this.fillOpacityFraction();
+    material.roughness = SHAPE_ROUGHNESS;
+    material.metalness = SHAPE_METALNESS;
+  },
+
+  // Push appearance and flat-cap render state onto the shared fill material,
+  // and set whether the fill is exported. THE SINGLE OWNER of all of it,
+  // called from init and from update - so there is one place where "painted"
+  // is defined and nothing can drift out of step with it.
+  //
+  // Not painted is colorWrite: false, NEVER visible: false. Two systems key
+  // off `visible` and both break: the editor raycaster drops any object with
+  // an invisible ancestor from its pick list, which would kill the interior
+  // click target that survives at 0% opacity by design; and the exporter's
+  // hide-and-restore pass sets visible back to TRUE unconditionally, so an
+  // unpainted fill would come back painted after any export.
+  //
+  // Export follows visibility: the exporter hides objects marked INSPECTOR for
+  // the duration of the export, re-reading the marker by traversal at export
+  // time. A visible fill is content the user drew and must be in the file; an
+  // invisible one would be a silent occluder.
+  _syncFillMaterial: function () {
+    const { painted, opaque } = fillRenderState(this.data.fillOpacity);
+    const m = this.fillMaterial;
+    this._applyFillAppearance(m);
+    m.colorWrite = painted;
+    // A fully opaque fill renders as GENUINELY opaque - depth-writing, not a
+    // transparent surface at 100% - so that height, not draw order, decides
+    // which of two overlapping fills covers the other.
+    m.depthWrite = opaque;
+    const wantTransparent = !opaque;
+    if (m.transparent !== wantTransparent) {
+      m.transparent = wantTransparent;
+      // `transparent` changes the render pass the mesh sorts into, so this is
+      // a program rebuild - only pay it on a real flip, never per step of an
+      // opacity scrub.
+      m.needsUpdate = true;
+    }
+    if (painted) {
+      delete this.fillGroup.userData.source;
+    } else {
+      this.fillGroup.userData.source = 'INSPECTOR';
+    }
+  },
+
+  // Build the interior surface for a closed ring: a triangulated cap in the x/z
+  // plane, matching the area the shape reports. It is painted when
+  // `fillOpacity` is above zero and picked when `selectInside` is set, and the
+  // caller builds it when either is true — so a click anywhere inside the
+  // polygon can select it rather than requiring a hit on the outline, and a
+  // filled region reads as a region.
   //
   // Callers gate on `closed`: an open polyline has no defined interior, and
   // filling one would let a click in empty space between its endpoints select it
@@ -501,8 +671,8 @@ AFRAME.registerComponent('shape', {
   // when it crosses — including for a `closed` checkbox ticked on a polyline
   // that already crosses. Planarity is not guaranteed: a shape whose vertices
   // sit at different heights gets its cap at the first vertex's height, which
-  // degrades this pick surface only — the outline still renders correctly.
-  _addFill: function (verts) {
+  // leaves the cap out of the plane of the ring it belongs to.
+  _addFill: function (verts, area) {
     // THREE.Shape is a 2D (x, y) construct. Map the ring's x/z plan-view onto it
     // with z negated so the shape's winding survives the rotation below, then
     // lay the resulting geometry flat by rotating +Z up to +Y.
@@ -516,17 +686,32 @@ AFRAME.registerComponent('shape', {
     geometry.rotateX(-Math.PI / 2);
 
     const mesh = new THREE.Mesh(geometry, this.fillMaterial);
-    // All vertices share one height (the draw tool picks later vertices on the
-    // plane of the first), so the cap sits at that height.
-    mesh.position.y = verts[0].object3D.position.y;
+    // All vertices share one height (the draw tool places every vertex after
+    // the first on the plane of the first, and the yaw-only / no-scale
+    // transform markers keep the whole shape's plane horizontal), so the cap
+    // sits at that height plus a physical lift. See shapeFillLift.js for why a
+    // real height difference rather than a depth bias, why the lift is measured
+    // from the street's marking layer, and why smaller sits higher.
+    mesh.position.y = verts[0].object3D.position.y + fillLiftForArea(area);
+    // One value for every fill: paint it after the large transparent ground
+    // plane the map layer draws on, which is sorted by its centre and can
+    // otherwise be painted over a fill drawn away from that centre. It says
+    // nothing about which of two fills is upper - see shapeFillLift.js.
+    mesh.renderOrder = FILL_RENDER_ORDER;
     // Same reason as the sphere/cylinder leaves: the inspector raycaster reads
     // the hit object's own `.el` and does not walk up parents.
     mesh.el = this.el;
-    // This cap exists only so the shape can be clicked; it is not a surface in
-    // the scene. Consumers that resolve "what is physically under the cursor" —
+    // This cap marks the shape's interior; it is not a surface in the scene,
+    // even when painted — it sits a few centimetres above the surface it was
+    // drawn on. Consumers that resolve "what is physically under the cursor" —
     // double-click-to-navigate especially — must see through it to the ground
     // beneath, or a polygon drawn over a road would swallow the whole footprint.
     mesh.userData.selectionOnly = true;
+    // Visible but not clickable: take the mesh out of EVERY raycast rather than
+    // clearing its `.el`. A hit with no entity would resolve to "nothing" and,
+    // because the raycaster only ever considers the CLOSEST intersection, would
+    // block selection of whatever is behind instead of passing through it.
+    if (!this.data.selectInside) mesh.raycast = noFillRaycast;
     this.fillGroup.add(mesh);
     // Deliberately no x-ray overlay twin — an always-on-top interior surface
     // would wash out everything drawn inside the shape's footprint.
@@ -534,7 +719,7 @@ AFRAME.registerComponent('shape', {
 
   // Recompute the enclosed area + reposition the area label. Runs on every
   // re-derive so area tracks a vertex moving/added/removed (and an animation).
-  _updateArea: function (verts, closed) {
+  _updateArea: function (verts, closed, area) {
     if (!closed) {
       this.area = 0;
       if (this.areaLabelObject) this.areaLabelObject.visible = false;
@@ -546,7 +731,7 @@ AFRAME.registerComponent('shape', {
     // local offset. Read y from an actual vertex (0 for a committed centred
     // shape, but k for the preview entity sitting at the scene origin).
     const pts = verts.map((v) => v.object3D.position);
-    this.area = polygonAreaXZ(pts);
+    this.area = area;
     if (this.areaLabelObject) {
       const c = polygonCentroidXZ(pts);
       this.areaLabelObject.position.set(c.x, pts[0].y, c.z);
@@ -613,6 +798,10 @@ AFRAME.registerComponent('shape', {
   // signal is on. Restores from `this.data.lineColor`, read at clear time, so
   // the user's own colour comes back however it changed meanwhile and no
   // snapshot can go stale or leak across an abandoned gesture.
+  //
+  // The fill is deliberately excluded: flooding a whole region with the invalid
+  // colour on cursor movement is a far bigger visual event than one bad segment
+  // warrants.
   setInvalidSignal: function (invalid) {
     this._invalidSignal = !!invalid;
     if (invalid) {

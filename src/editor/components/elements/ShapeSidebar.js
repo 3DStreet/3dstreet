@@ -271,7 +271,10 @@ const ShapeSidebar = ({ entity }) => {
               <li>• Lengths and angles measure the vertex centreline</li>
               <li>• Angles are measured in the ground (x-z) plane</li>
               {closed && <li>• Area is the enclosed ground (x-z) footprint</li>}
-              <li>• Edit colour and width below</li>
+              {closed && (
+                <li>• Fill opacity 0% hides the fill; the outline still shows</li>
+              )}
+              <li>• Edit line and fill colors below</li>
             </ul>
           </div>
         </div>
