@@ -17,10 +17,20 @@
 //     works in the paused editor where an entity tick would not)
 //   - an explicit `updateEvent`, if the shape opts into event-driven updates
 //     instead of the per-frame dirty-check
+//
+// The shape is NOT kept playing while the inspector is open. Re-derivation does
+// not need it (the system tick above is what observes positions), and an
+// entity whose vertices are being animated cannot also be edited by hand — the
+// animation would fight the drag. So a vertex `animation` runs in the published
+// scene and is inert in the editor, which is the behaviour direct editing wants.
 
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import useStore from '../store.js';
-import { polygonAreaXZ, polygonCentroidXZ } from './polygonMath.js';
+import {
+  polygonAreaXZ,
+  polygonCentroidXZ,
+  ringSelfIntersects
+} from './polygonMath.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const MIN_SEGMENT_LENGTH = 1e-6;
@@ -35,6 +45,12 @@ const FT2_PER_M2 = 10.7639;
 // building wall — occludes the solid line behind it.
 const OVERLAY_OPACITY = 0.3;
 const OVERLAY_RENDER_ORDER = 999;
+
+// The colour a shape takes while an editing tool is signalling that what the
+// user is doing would produce an invalid shape. Applied straight to the
+// materials, never through setAttribute, so it cannot be saved into a scene —
+// see setInvalidSignal below.
+const INVALID_COLOR = '#ff3b30';
 
 // The system owns the per-frame position observation for every shape, so it
 // keeps running even when the shapes' entities are paused (as they are in the
@@ -91,7 +107,11 @@ AFRAME.registerComponent('shape', {
   init: function () {
     this.destroyed = false;
     this.rafId = null;
+    // Both belong to the editor-facing API at the bottom of this file.
+    this._editGesture = false;
+    this._invalidSignal = false;
     this.positionCache = new Map();
+    this.ringPtsScratch = [];
     this.direction = new THREE.Vector3();
     this.tmpQuaternion = new THREE.Quaternion();
 
@@ -183,13 +203,6 @@ AFRAME.registerComponent('shape', {
 
     this.el.sceneEl.systems.shape.register(this);
 
-    // Play this shape (and its vertex children) so an `animation` on a vertex
-    // runs. Honoured by the editor at open()/reload; a freshly created shape is
-    // paused by the create command, so the animation begins after a reopen —
-    // re-derivation itself is pause-independent (the system tick). Not
-    // serialized, so it is re-applied on every load here.
-    this.el.setAttribute('data-no-pause', '');
-
     // Whole-shape transform: the standard gizmo is enabled and behaves like any
     // other scene element, because the draw tool places the shape entity at its
     // vertices' centroid (vertices stored relative), so the gizmo attaches on
@@ -202,25 +215,20 @@ AFRAME.registerComponent('shape', {
     // readouts, so they stay enabled. A richer "move shape" affordance could
     // re-enable scale later (with readouts that fold in world scale).
     this.el.setAttribute('data-transform-no-scale', '');
+    // Tilting out of the horizontal would make the plan-view area a projection
+    // of the shape rather than its footprint, and editing a vertex assumes a
+    // horizontal plane to drag on. The gizmo already restricts rotation to Y;
+    // the marker is what makes that hold for the properties panel and the AI
+    // chat too. Reparenting is blocked for the same reason: vertex positions
+    // are stored in the shape's own frame, and a new parent moves that frame.
+    this.el.setAttribute('data-transform-yaw-only', '');
+    this.el.setAttribute('data-transform-no-reparent', '');
 
     if (this.data.updateEvent) {
       this.el.addEventListener(this.data.updateEvent, this.requestRederive);
     }
 
     this.requestRederive();
-
-    // The entity-create command pauses the new entity immediately after init;
-    // play it once loaded so a child `animation` runs right away rather than
-    // only after a reload (the editor re-plays [data-no-pause] elements on
-    // open, which covers the reload path). Re-derivation itself never depends
-    // on this — the system tick observes positions regardless of pause.
-    this.el.addEventListener(
-      'loaded',
-      () => {
-        if (!this.destroyed) this.el.play();
-      },
-      { once: true }
-    );
   },
 
   update: function (oldData) {
@@ -372,10 +380,32 @@ AFRAME.registerComponent('shape', {
     // still arrive by setAttribute or from a hand-edited scene.
     const radius = Math.max(0, this.data.lineWidth);
 
+    // Closedness and ring simplicity are decided BEFORE the groups are cleared,
+    // because holding the fill means not clearing it: clearGroup disposes the
+    // geometry, so deciding later and merely skipping the rebuild would leave
+    // the fill gone rather than held.
+    //
+    // A self-crossing ring has no well-defined interior: the triangulated cap
+    // comes out arbitrary and the shoelace area is meaningless. So a crossing
+    // ring gets no fill and reports zero area, with the label hidden. That is
+    // core behaviour, not an editor affordance — it must hold for a shape
+    // loaded from a saved scene, or one whose `closed` checkbox is ticked on a
+    // polyline that already crosses, exactly as it does for a live edit.
+    const closed = this.data.closed && verts.length >= 3;
+    // Filled into a reused array rather than mapped: this runs on every
+    // re-derive, which for a shape under a drag is every frame.
+    const selfIntersecting = closed && ringSelfIntersects(this._ringPts(verts));
+    // While an edit gesture is in flight, a crossing ring HOLDS its last valid
+    // fill and area instead of dropping them: the interior stays clickable and
+    // the area label freezes at its last meaningful value rather than flicking
+    // to zero for the few frames a drag spends across an edge. The outline
+    // still tracks the drag — only these two are frozen.
+    const holdFill = this._editGesture && selfIntersecting;
+
     this.clearGroup(this.lineGroup);
     this.clearGroup(this.vertexGroup);
     this.clearGroup(this.overlayGroup);
-    this.clearGroup(this.fillGroup);
+    if (!holdFill) this.clearGroup(this.fillGroup);
 
     // Sphere caps at each vertex — also smooth the joints between segments.
     for (let i = 0; i < verts.length; i++) {
@@ -406,17 +436,16 @@ AFRAME.registerComponent('shape', {
     // Closed polygon: one wrap segment back to the first vertex (same style,
     // same joints). Only meaningful with ≥ 3 vertices — a 2-vertex "closed"
     // shape renders as an open line (the wrap would coincide with the segment).
-    const closed = this.data.closed && verts.length >= 3;
     if (closed) {
       this._addSegment(
         verts[verts.length - 1].object3D.position,
         verts[0].object3D.position,
         radius
       );
-      if (this.data.selectInside) this._addFill(verts);
+      if (this.data.selectInside && !selfIntersecting) this._addFill(verts);
     }
 
-    this._updateArea(verts, closed);
+    if (!holdFill) this._updateArea(verts, closed && !selfIntersecting);
 
     // The geometry only exists from here — init installs empty groups and the
     // first derive lands a frame later. Anything sizing itself to this shape
@@ -424,6 +453,15 @@ AFRAME.registerComponent('shape', {
     // every later re-derive too. Non-bubbling: a shape's vertex children must
     // not look like their parent re-deriving.
     this.el.emit('shape-geometry-changed', null, false);
+  },
+
+  // The vertex positions as a plain array, in a buffer reused across
+  // re-derives. Read-only to the caller and valid only until the next call.
+  _ringPts: function (verts) {
+    const pts = this.ringPtsScratch;
+    pts.length = verts.length;
+    for (let i = 0; i < verts.length; i++) pts[i] = verts[i].object3D.position;
+    return pts;
   },
 
   // Build one segment cylinder (start→end) plus its x-ray overlay twin, oriented
@@ -458,11 +496,12 @@ AFRAME.registerComponent('shape', {
   // filling one would let a click in empty space between its endpoints select it
   // while the sidebar reports zero area.
   //
-  // Assumes a simple (non-self-intersecting), planar ring — what the draw tool
-  // produces. `closed` is also a properties-panel checkbox and vertices can be
-  // animated, so neither holds absolutely: a self-crossing ring triangulates
-  // arbitrarily, and a non-planar one gets its cap at the first vertex's height.
-  // Both degrade this pick surface only — the outline still renders correctly.
+  // Assumes a simple (non-self-intersecting), planar ring. Simplicity is
+  // guaranteed by the caller, which tests the ring and skips the fill entirely
+  // when it crosses — including for a `closed` checkbox ticked on a polyline
+  // that already crosses. Planarity is not guaranteed: a shape whose vertices
+  // sit at different heights gets its cap at the first vertex's height, which
+  // degrades this pick surface only — the outline still renders correctly.
   _addFill: function (verts) {
     // THREE.Shape is a 2D (x, y) construct. Map the ring's x/z plan-view onto it
     // with z negated so the shape's winding survives the rotation below, then
@@ -539,6 +578,65 @@ AFRAME.registerComponent('shape', {
     twin.el = this.el; // coincident with the solid mesh — keep it selectable
     this.overlayGroup.add(twin);
   },
+
+  // --- Editor-facing API — not model state -----------------------------
+  //
+  // The four methods below exist for the editor's drawing and vertex-editing
+  // tools; nothing in the component or in a published scene calls them, and
+  // none of them touches the schema, so none of their effects can be saved.
+  // They live here rather than in the editor because the alternative is the
+  // editor reaching into `el.components.shape.material` from outside, and
+  // because keeping the writes on this side is what lets ONE method
+  // (setInvalidSignal(false)) own restoring every channel they touch.
+  //
+  // A maintainer reading these cold should not mistake them for part of the
+  // data model: they are transient presentation, and the shape is fully
+  // described without them.
+
+  // Enter/leave an editing gesture (one pointer drag). While one is in flight,
+  // a ring that has gone self-crossing holds its last valid fill and area
+  // rather than dropping them every frame — see rederive(). Leaving asks for a
+  // re-derive so committed state settles immediately rather than on the next
+  // vertex move.
+  beginEditGesture: function () {
+    this._editGesture = true;
+  },
+
+  endEditGesture: function () {
+    this._editGesture = false;
+    this.requestRederive();
+  },
+
+  // Turn the whole shape the invalid colour, or restore it. Clearing is the
+  // SINGLE restore owner for both channels the signal touches — the line colour
+  // and the x-ray overlay's opacity, which setInvalidPulse drives while the
+  // signal is on. Restores from `this.data.lineColor`, read at clear time, so
+  // the user's own colour comes back however it changed meanwhile and no
+  // snapshot can go stale or leak across an abandoned gesture.
+  setInvalidSignal: function (invalid) {
+    this._invalidSignal = !!invalid;
+    if (invalid) {
+      this.material.color.set(INVALID_COLOR);
+      this.overlayMaterial.color.set(INVALID_COLOR);
+    } else {
+      this.material.color.set(this.data.lineColor);
+      this.overlayMaterial.color.set(this.data.lineColor);
+      this.overlayMaterial.opacity = OVERLAY_OPACITY;
+    }
+  },
+
+  // Second channel of the invalid signal: the overlay's opacity, so the state
+  // reads by MOTION and stays unmistakable on a shape whose own colour is
+  // already the invalid red. `phase` is the opacity to show, in 0..1 — the
+  // caller owns the frequency, the easing and the band it oscillates between,
+  // and this is only the write. A no-op unless the signal is set, so a stale
+  // call can never strand the overlay at an arbitrary opacity.
+  setInvalidPulse: function (phase) {
+    if (!this._invalidSignal) return;
+    this.overlayMaterial.opacity = phase;
+  },
+
+  // --- end editor-facing API -------------------------------------------
 
   // Dispose and detach every mesh in a group (the shared material is not
   // disposed here — remove() owns it).

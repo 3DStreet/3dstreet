@@ -98,72 +98,9 @@ export function formatArea(m2, unitsPreference) {
   return `${m2.toFixed(2)}m²`;
 }
 
-// Orientation of the ordered triple (a, b, c) in the x/z plane: >0 CCW, <0 CW,
-// 0 collinear.
-function orientationXZ(a, b, c) {
-  return (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);
-}
-
-// True iff point q lies on segment p-r (assuming the three are collinear).
-function onSegmentXZ(p, q, r) {
-  return (
-    Math.min(p.x, r.x) <= q.x &&
-    q.x <= Math.max(p.x, r.x) &&
-    Math.min(p.z, r.z) <= q.z &&
-    q.z <= Math.max(p.z, r.z)
-  );
-}
-
-// Do segments p1-p2 and p3-p4 cross, in the x/z plane? A PROPER crossing
-// (interiors intersect) OR a collinear overlap counts as true; segments that
-// merely share an endpoint do NOT (the draw tool tests only NON-adjacent
-// edges, but this keeps the primitive robust when it does not). Used to reject
-// a self-intersecting placement at draw time so every committed ring is simple.
-export function segmentsIntersectXZ(p1, p2, p3, p4) {
-  const d1 = orientationXZ(p3, p4, p1);
-  const d2 = orientationXZ(p3, p4, p2);
-  const d3 = orientationXZ(p1, p2, p3);
-  const d4 = orientationXZ(p1, p2, p4);
-
-  // General case: each segment straddles the line through the other.
-  if (
-    ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
-    ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
-  ) {
-    // A shared endpoint is a touch, not a crossing — exclude it so adjacent
-    // ring edges never read as intersecting.
-    if (sharesEndpoint(p1, p2, p3, p4)) return false;
-    return true;
-  }
-
-  // Collinear overlap (a degenerate self-touch) — reject too, unless it is only
-  // the shared-endpoint touch of adjacent edges.
-  if (d1 === 0 && onSegmentXZ(p3, p1, p4) && !sharesEndpoint(p1, p2, p3, p4)) {
-    return true;
-  }
-  if (d2 === 0 && onSegmentXZ(p3, p2, p4) && !sharesEndpoint(p1, p2, p3, p4)) {
-    return true;
-  }
-  if (d3 === 0 && onSegmentXZ(p1, p3, p2) && !sharesEndpoint(p1, p2, p3, p4)) {
-    return true;
-  }
-  if (d4 === 0 && onSegmentXZ(p1, p4, p2) && !sharesEndpoint(p1, p2, p3, p4)) {
-    return true;
-  }
-  return false;
-}
-
-const ENDPOINT_EPS = 1e-6;
-function samePointXZ(a, b) {
-  return (
-    Math.abs(a.x - b.x) < ENDPOINT_EPS && Math.abs(a.z - b.z) < ENDPOINT_EPS
-  );
-}
-function sharesEndpoint(p1, p2, p3, p4) {
-  return (
-    samePointXZ(p1, p3) ||
-    samePointXZ(p1, p4) ||
-    samePointXZ(p2, p3) ||
-    samePointXZ(p2, p4)
-  );
-}
+// The segment-crossing primitive now lives in the core layer
+// (aframe-components/polygonMath.js), because the `shape` component itself
+// needs it to decide whether a ring is simple — and a component may not import
+// from editor/lib. Re-exported here so the draw tool and the readout layer keep
+// one import site for all their x/z measurement helpers.
+export { segmentsIntersectXZ } from '../../aframe-components/polygonMath.js';

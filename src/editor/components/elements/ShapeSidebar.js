@@ -16,6 +16,18 @@ import { polygonAreaXZ } from '../../../aframe-components/polygonMath.js';
 
 const MAX_LABELLED_VERTICES = 12;
 
+// ms — floor on how often the React row list re-renders off geometry changes.
+// A shape emits one of those per re-derive, and a re-derive can happen every
+// frame while a vertex is being dragged; a full reconciliation of the row tree
+// at that cadence is the one genuinely new per-frame cost this subscription
+// adds. Applied unconditionally rather than only during a drag: outside one the
+// event fires once per edit, where a ~66 ms delay before a number settles is
+// not perceptible, and a "during a drag" condition would need a signal from the
+// canvas tooling that a React component has no business knowing about. The
+// on-canvas readouts stay at full rate — those are live feedback the user
+// watches, where the rows are numbers the user reads.
+const ROW_REFRESH_MIN_INTERVAL_MS = 66;
+
 // Whether this shape entity is a closed polygon (≥ 3 vertices + closed prop).
 function isClosedShape(entity, vertexCount) {
   return !!entity?.components?.shape?.data?.closed && vertexCount >= 3;
@@ -89,11 +101,49 @@ const ShapeSidebar = ({ entity }) => {
     };
     Events.on('entityupdate', onEntityUpdate);
 
-    // Hover mode only matters above the label cap.
+    // The shape announces every re-derive, including the ones driven by a
+    // vertex moving directly rather than through a command — which
+    // `entityupdate` never sees. Without this, dragging a vertex would leave
+    // both the canvas readouts and the sidebar rows frozen until release.
+    let rowRaf = null;
+    let lastRowsAt = 0;
+    const refreshRows = () => {
+      // Trailing-edge throttle: too soon means wait another frame, never means
+      // drop, so the last change of a drag always reaches the rows.
+      if (performance.now() - lastRowsAt < ROW_REFRESH_MIN_INTERVAL_MS) {
+        rowRaf = requestAnimationFrame(refreshRows);
+        return;
+      }
+      rowRaf = null;
+      lastRowsAt = performance.now();
+      setTick((n) => n + 1);
+    };
+    const onGeometryChanged = () => {
+      render(lastHoverRef.current);
+      // The rAF also keeps the React update off the synchronous event path.
+      if (rowRaf === null) rowRaf = requestAnimationFrame(refreshRows);
+    };
+    entity.addEventListener('shape-geometry-changed', onGeometryChanged);
+
+    // Hover mode only matters above the label cap — but WHICH side of the cap
+    // a shape is on changes while it is selected, now that vertices can be
+    // inserted and deleted on canvas. So the listener is bound for the life of
+    // the selection and asks the question per event, rather than being bound
+    // once on the answer at selection time.
+    //
+    // Binding it once was a trap with no recovery: a shape selected at or below
+    // the cap got no listener, so `lastHoverRef` stayed null forever; growing
+    // past the cap then put `renderAll` on its hover branch, which clears the
+    // labels and returns early when there is no hover point. Every caption on
+    // the shape vanished and did not come back until it was deselected and
+    // reselected.
     const canvas = AFRAME.scenes[0]?.canvas;
-    const useHover =
-      getShapeVertices(entity).length > MAX_LABELLED_VERTICES && canvas;
     const onMove = (e) => {
+      // Below the cap every segment is labelled regardless of the cursor, so
+      // there is nothing to track and no reason to pay for a raycast per
+      // pointermove — the early return, not the missing listener, is what keeps
+      // the common case cheap.
+      if (getShapeVertices(entity).length <= MAX_LABELLED_VERTICES) return;
       const camera = AFRAME.INSPECTOR?.camera;
       if (!camera) return;
       const rect = canvas.getBoundingClientRect();
@@ -113,12 +163,14 @@ const ShapeSidebar = ({ entity }) => {
       lastHoverRef.current = local;
       render(local);
     };
-    if (useHover) canvas.addEventListener('pointermove', onMove);
+    if (canvas) canvas.addEventListener('pointermove', onMove);
 
     return () => {
       cancelAnimationFrame(raf);
+      if (rowRaf !== null) cancelAnimationFrame(rowRaf);
       Events.off('entityupdate', onEntityUpdate);
-      if (useHover && canvas) canvas.removeEventListener('pointermove', onMove);
+      entity.removeEventListener('shape-geometry-changed', onGeometryChanged);
+      if (canvas) canvas.removeEventListener('pointermove', onMove);
       readouts.dispose();
       readoutsRef.current = null;
     };

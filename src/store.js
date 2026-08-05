@@ -162,6 +162,18 @@ const useStore = create(
         // right-panel instructions block.
         shapeDrawActive: false,
         setShapeDrawActive: (active) => set({ shapeDrawActive: active }),
+        // Whether a single vertex of the selected shape is currently
+        // sub-selected. Read by the global Delete/Backspace shortcut, which
+        // must be a no-op while one is: Delete there means "remove the active
+        // vertex", and the vertex tool intercepts the key itself. This flag is
+        // the fail-safe for that interception missing.
+        //
+        // It tracks the ACTIVE VERTEX, not the handles being up, and that is
+        // load-bearing: with no vertex sub-selected the shortcut is live, which
+        // is what keeps a selected shape deletable from the keyboard.
+        shapeVertexSelected: false,
+        setShapeVertexSelected: (selected) =>
+          set({ shapeVertexSelected: selected }),
         // Shape draw mode: 'auto' (closure is the default — the initial mode,
         // since street shapes are almost always closed) or 'manual' (stays open
         // until you click the first vertex to close it). This selects how
