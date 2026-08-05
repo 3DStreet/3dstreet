@@ -652,7 +652,7 @@ describe('the pre-existing-violation exemption', () => {
     expect(validateVertexEdit(pts, false, 3, exempt)).toBe(false);
   });
 
-  it('never exempts the gesture’s own freshly inserted vertex', () => {
+  it('exempts the pairs an insert created, once a snapshot is taken after it', () => {
     // A midpoint insert on a segment shorter than twice the minimum separation:
     // the new vertex at index 1 is inside the threshold of BOTH neighbours the
     // instant it exists. The insert path passes NO exemption set for exactly

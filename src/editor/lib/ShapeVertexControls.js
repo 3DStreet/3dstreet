@@ -727,6 +727,11 @@ export class ShapeVertexControls extends THREE.Object3D {
     // as a glitch rather than as a mode. During a drag the pointer is captured
     // on the canvas, so a button that stayed up could not usefully be pressed
     // and would only follow the handle about.
+    //
+    // Presentation, not enforcement: unlike the insert path, delete has no
+    // in-flight guard of its own, so hiding is all that narrows the window in
+    // which a second pointer could reach it. It narrows rather than opens one —
+    // the button was reachable for the whole drag before.
     if (!mesh || this.claimed) {
       this._trashObject.visible = false;
       return;
