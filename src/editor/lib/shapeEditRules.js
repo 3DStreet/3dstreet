@@ -41,7 +41,6 @@ export const MIN_EDIT_VERTEX_SEPARATION = 0.05;
 export const HANDLE_TARGET_PX = 7; // ≈14 px across — the app's small-control size
 export const HANDLE_MIN_M = 0.02;
 export const HANDLE_MAX_M = 1.5;
-export const MIDPOINT_RADIUS_RATIO = 0.6;
 // Forgiveness margin on the hit test. Below the 4 px click-vs-drag threshold,
 // so it can never make two handles ambiguous where the separation rule says
 // they are not.
@@ -85,9 +84,8 @@ const _hitScratch = new THREE.Vector3();
 // would return the nearest in WORLD space rather than the nearest to the
 // cursor, and would additionally pick up the shape's own fill, x-ray overlay
 // and readout arcs — all of which are pick targets sitting exactly where the
-// handles are. This test also expresses the priority rule directly: `handles`
-// arrives in priority order (vertex handles before midpoint ghosts) and the
-// first match wins, so an overlap needs no tie-break.
+// handles are. Where two handles overlap the FIRST match in the list wins,
+// with no tie-break — so the caller's ordering is the whole of the rule.
 //
 // handles: [{ world: Vector3, screenRadiusPx: number }]. Returns the index of
 // the hit, or -1.
@@ -119,11 +117,11 @@ export function hitTestHandles(handles, camera, rect, clientX, clientY) {
 // presses that are deliberately never claimed.
 //
 // `pressViable` asks only whether the press resolves to a live target — a
-// vertex handle whose element still exists, or any midpoint ghost. It is
-// deliberately NOT "can this press drag": a press on a handle does not need a
-// drag plane to be worth claiming, because two of the three things a handle
-// press can do (sub-select a vertex, insert at a midpoint) are clicks that
-// never touch one. Gating the whole press on the plane pick made a vertex
+// vertex handle whose element still exists. It is deliberately NOT "can this
+// press drag": a press on a handle does not need a drag plane to be worth
+// claiming, because one of the two things a handle press can do — sub-selecting
+// the vertex — is a click that never touches one. Gating the whole press on the
+// plane pick made a vertex
 // impossible to make active at a near-horizontal camera — no active vertex, no
 // delete button, no way to delete — and let the declined press fall through to
 // the selection ray, which usually misses the thin tube and deselects the
@@ -195,12 +193,13 @@ const tooClose = (a, b) => {
 // broken. Exempting the offending pairs lets a drag always escape a
 // pre-existing violation while still refusing to create a new one.
 //
-// `excludeIndex` names a vertex that is NOT pre-existing — the uncommitted one
-// a midpoint gesture has just materialised. Its violations are the tool's own
-// and must not be exempted: on a segment shorter than twice the minimum
-// separation the new vertex sits inside the threshold of both its neighbours,
-// so exempting those pairs would let a plain click commit the exact
-// two-handles-at-one-screen-point state this rule exists to prevent.
+// `excludeIndex` leaves a vertex out of the snapshot, so that its own
+// violations are not exempted. It currently has no caller, and the reason is
+// worth writing down at the definition rather than being rediscovered at a new
+// one: excluding the same index you later hand to validateVertexEdit makes the
+// whole set INERT, because that function only ever consults pairs involving the
+// index it is validating. A snapshot that skips those pairs is a set of
+// exemptions nothing looks up.
 export function preExistingClosePairs(points, excludeIndex = -1) {
   const pairs = new Set();
   for (let i = 0; i < points.length; i++) {
@@ -455,33 +454,4 @@ export function insertButtonTransform(handleRadiusPx, anchorY) {
   const below = anchorY - INSERT_OFFSET_PX < BUTTON_PX;
   const dy = below ? INSERT_OFFSET_PX : -INSERT_OFFSET_PX;
   return `translate(0px, ${dy}px)`;
-}
-
-// --- Midpoint (insert) handle clutter ----------------------------------
-
-// Above this many vertices the ghost handles start to crowd each other, so
-// only the ones near the cursor are shown. Matches the vertex count at which
-// the shape's own corner readouts stop labelling every corner.
-export const MAX_CLUTTER_FREE_VERTICES = 12;
-export const MIDPOINT_NEAR_CURSOR_PX = 120;
-// A segment shorter than this on screen has no room for a ghost handle between
-// its two vertex handles. Measured in SCREEN pixels against the raw projection
-// rather than against the clamped world radius, so zooming out can never
-// suppress every midpoint and leave insert unreachable — zooming back in
-// restores them.
-export const MIN_MIDPOINT_SEGMENT_PX = 4 * HANDLE_TARGET_PX;
-
-export function midpointHandleIsVisible({
-  segmentLengthPx,
-  vertexCount,
-  distanceToCursorPx,
-  hoverCapable
-}) {
-  if (segmentLengthPx < MIN_MIDPOINT_SEGMENT_PX) return false;
-  if (vertexCount <= MAX_CLUTTER_FREE_VERTICES) return true;
-  // Touch has no hover, so there is no cursor to be near. Applying the filter
-  // there would make insert unreachable altogether on a big shape; showing all
-  // of them accepts the clutter in exchange for the feature existing.
-  if (!hoverCapable) return true;
-  return distanceToCursorPx <= MIDPOINT_NEAR_CURSOR_PX;
 }

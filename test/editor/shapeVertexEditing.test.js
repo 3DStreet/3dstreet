@@ -28,12 +28,8 @@ import {
   HANDLE_MIN_M,
   HANDLE_TARGET_PX,
   HIT_SLOP_PX,
-  MIDPOINT_RADIUS_RATIO,
   GRAZING_MIN_DOT,
   MIN_EDIT_VERTEX_SEPARATION,
-  MAX_CLUTTER_FREE_VERTICES,
-  MIDPOINT_NEAR_CURSOR_PX,
-  MIN_MIDPOINT_SEGMENT_PX,
   OFFSET_MARGIN_PX,
   BUTTON_PX,
   TRASH_MIN_HANDLE_PX,
@@ -41,7 +37,6 @@ import {
   decidePress,
   hitTestHandles,
   metresPerPixel,
-  midpointHandleIsVisible,
   preExistingClosePairs,
   rayPlaneHitIsUsable,
   resolveDragRelease,
@@ -445,14 +440,13 @@ describe('hitTestHandles', () => {
     expect(hitTestHandles(h, c, rect, s.x + 7 + HIT_SLOP_PX + 1, s.y)).toBe(-1);
   });
 
-  it('resolves an overlap by list order, so a vertex beats a coincident midpoint', () => {
+  it('resolves an overlap by list order, with no tie-break', () => {
     const c = camera();
     const world = new THREE.Vector3(0, 0, -50);
     const s = screenOf(c, world);
-    const handles = [
-      handle(world.clone(), 7),
-      handle(world.clone(), 7 * MIDPOINT_RADIUS_RATIO)
-    ];
+    // Two coincident handles of different radii: the first in the list wins
+    // whichever it is, so the ORDER is the whole of the rule.
+    const handles = [handle(world.clone(), 7), handle(world.clone(), 4)];
     expect(hitTestHandles(handles, c, rect, s.x, s.y)).toBe(0);
     // Reverse the order and the other one wins: order IS the rule.
     expect(hitTestHandles([handles[1], handles[0]], c, rect, s.x, s.y)).toBe(0);
@@ -854,62 +848,5 @@ describe('trashButtonOffset', () => {
     const rightEdge = trashButtonOffset(7, W - 2, H / 2, W, H);
     expect(rightEdge.dx).toBeLessThan(0);
     expect(rightEdge.dy).toBeLessThan(0);
-  });
-});
-
-describe('midpointHandleIsVisible', () => {
-  const ghost = (over) =>
-    midpointHandleIsVisible({
-      segmentLengthPx: 200,
-      vertexCount: 4,
-      distanceToCursorPx: 0,
-      hoverCapable: true,
-      ...over
-    });
-
-  it('hides a ghost on a segment with no room for it', () => {
-    expect(ghost({ segmentLengthPx: MIN_MIDPOINT_SEGMENT_PX - 1 })).toBe(false);
-    expect(ghost({ segmentLengthPx: MIN_MIDPOINT_SEGMENT_PX })).toBe(true);
-  });
-
-  it('shows every ghost on a shape with few enough vertices', () => {
-    expect(
-      ghost({
-        vertexCount: MAX_CLUTTER_FREE_VERTICES,
-        distanceToCursorPx: 10000
-      })
-    ).toBe(true);
-  });
-
-  it('shows only the ones near the cursor once a shape gets busy', () => {
-    const busy = { vertexCount: MAX_CLUTTER_FREE_VERTICES + 1 };
-    expect(
-      ghost({ ...busy, distanceToCursorPx: MIDPOINT_NEAR_CURSOR_PX - 1 })
-    ).toBe(true);
-    expect(
-      ghost({ ...busy, distanceToCursorPx: MIDPOINT_NEAR_CURSOR_PX + 1 })
-    ).toBe(false);
-  });
-
-  it('shows all of them with no hover-capable pointer, however busy', () => {
-    // Touch has no cursor to be near, so the near-cursor filter would make
-    // insert unreachable on a big shape rather than merely tidier.
-    expect(
-      ghost({
-        vertexCount: 40,
-        distanceToCursorPx: 10000,
-        hoverCapable: false
-      })
-    ).toBe(true);
-  });
-
-  it('still hides a ghost with no room, even without hover', () => {
-    expect(
-      ghost({
-        vertexCount: 40,
-        hoverCapable: false,
-        segmentLengthPx: MIN_MIDPOINT_SEGMENT_PX - 1
-      })
-    ).toBe(false);
   });
 });
