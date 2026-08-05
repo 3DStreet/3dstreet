@@ -330,9 +330,11 @@ export function Viewport(inspector) {
   // Hung on the inspector for the same reason `inspector.controls` is (see the
   // assignment further down this file): a second editor surface — the shape
   // properties panel — needs to know which vertex is sub-selected, so that it
-  // can keep that vertex's two length captions on screen. It READS the live
-  // value; this object remains its only writer, so there is no copy to keep in
-  // step and nothing to invalidate.
+  // can keep that vertex's two length captions on screen. It reads the live
+  // value through getActiveVertex(), and only through it, the way
+  // `inspector.controls` is consumed through methods rather than fields; this
+  // object remains the only writer, so there is no copy to keep in step and
+  // nothing to invalidate.
   inspector.shapeVertexControls = shapeVertexControls;
 
   // Pose snapshot taken on the gizmo's mouseDown, BEFORE TransformControls

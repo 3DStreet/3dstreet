@@ -245,6 +245,12 @@ export default class ShapeReadouts {
     this.arcs.push(mesh); // disposed with the arcs in clear()
   }
 
+  // The chip's rendered HEIGHT is depended on elsewhere: shapeEditRules'
+  // CAPTION_HALF_PX is half of it, and is what stands an insert button clear of
+  // the caption it is anchored to. Changing the font size, the line-height or
+  // the vertical padding below therefore has to be carried across to that
+  // constant — nothing here will fail if it is not, the button simply drifts
+  // into or away from the label.
   _makeLabel(text, pos) {
     const div = document.createElement('div');
     div.className = 'label shape-readout-label';

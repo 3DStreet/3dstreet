@@ -68,7 +68,10 @@ function getShapeVertices(entity) {
 // computed at render cannot go stale, so there is nothing to invalidate,
 // nothing to publish and nothing to keep in sync.
 function pinnedSegments(entity, n, closed) {
-  const active = AFRAME.INSPECTOR?.shapeVertexControls?.activeVertexEl;
+  // Through the accessor, never the field behind it: a rename of private state
+  // in the controls layer would otherwise make this read `undefined`, and the
+  // pin would just stop with no error anywhere.
+  const active = AFRAME.INSPECTOR?.shapeVertexControls?.getActiveVertex();
   if (!active) return null;
   // Deliberately the SAME enumeration the positions came from, not the one the
   // controls layer uses. The two differ: this one tests the initialised
@@ -305,8 +308,8 @@ const ShapeSidebar = ({ entity }) => {
             <div className="mb-1 font-semibold uppercase">💡 Shape Tips</div>
             <ul className="space-y-1">
               <li>
-                • Click a vertex to move it, delete it, or add a point on either
-                side
+                • Click a vertex to move it, delete it, or add a vertex on
+                either side
               </li>
               <li>• Lengths and angles measure the vertex centreline</li>
               <li>• Angles are measured in the ground (x-z) plane</li>
