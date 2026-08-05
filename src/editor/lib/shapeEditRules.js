@@ -84,8 +84,9 @@ const _hitScratch = new THREE.Vector3();
 // would return the nearest in WORLD space rather than the nearest to the
 // cursor, and would additionally pick up the shape's own fill, x-ray overlay
 // and readout arcs — all of which are pick targets sitting exactly where the
-// handles are. Where two handles overlap the FIRST match in the list wins,
-// with no tie-break — so the caller's ordering is the whole of the rule.
+// handles are. Where two handles overlap the FIRST match in the list wins, with
+// no distance tie-break; the sole caller passes the shape's vertices in ring
+// order, so an overlap resolves to the lower vertex index.
 //
 // handles: [{ world: Vector3, screenRadiusPx: number }]. Returns the index of
 // the hit, or -1.
@@ -121,11 +122,11 @@ export function hitTestHandles(handles, camera, rect, clientX, clientY) {
 // press drag": a press on a handle does not need a drag plane to be worth
 // claiming, because one of the two things a handle press can do — sub-selecting
 // the vertex — is a click that never touches one. Gating the whole press on the
-// plane pick made a vertex
-// impossible to make active at a near-horizontal camera — no active vertex, no
-// delete button, no way to delete — and let the declined press fall through to
-// the selection ray, which usually misses the thin tube and deselects the
-// shape. The drag plane is checked where the drag actually starts instead.
+// plane pick made a vertex impossible to make active at a near-horizontal
+// camera — no active vertex, no delete button, no way to delete — and let the
+// declined press fall through to the selection ray, which usually misses the
+// thin tube and deselects the shape. The drag plane is checked where the drag
+// actually starts instead.
 export function decidePress({
   inspectorOpen,
   targetIsCanvas,
@@ -192,20 +193,10 @@ const tooClose = (a, b) => {
 // the vertex could never be dragged OUT of the state — the app would read as
 // broken. Exempting the offending pairs lets a drag always escape a
 // pre-existing violation while still refusing to create a new one.
-//
-// `excludeIndex` leaves a vertex out of the snapshot, so that its own
-// violations are not exempted. It currently has no caller, and the reason is
-// worth writing down at the definition rather than being rediscovered at a new
-// one: excluding the same index you later hand to validateVertexEdit makes the
-// whole set INERT, because that function only ever consults pairs involving the
-// index it is validating. A snapshot that skips those pairs is a set of
-// exemptions nothing looks up.
-export function preExistingClosePairs(points, excludeIndex = -1) {
+export function preExistingClosePairs(points) {
   const pairs = new Set();
   for (let i = 0; i < points.length; i++) {
-    if (i === excludeIndex) continue;
     for (let j = i + 1; j < points.length; j++) {
-      if (j === excludeIndex) continue;
       if (tooClose(points[i], points[j])) pairs.add(pairKey(i, j));
     }
   }
@@ -228,6 +219,13 @@ export function preExistingClosePairs(points, excludeIndex = -1) {
 //   crosses itself — so neither predicate can stand in for the other, and a
 //   closed shape must satisfy both. Open polylines are unconstrained by either:
 //   they have no interior to begin with.
+//
+// `exemptPairs` is only ever consulted for pairs INVOLVING `index`, which is
+// what a caller has to know to hand it the right set. A snapshot built with
+// `index` left out of it is therefore inert — every pair it skipped is exactly
+// a pair this function would have looked up — so a path that wants the moved or
+// inserted vertex held to the rule passes no set at all rather than a filtered
+// one. The insert path does exactly that.
 export function validateVertexEdit(points, closed, index, exemptPairs) {
   if (!vertexSeparationOk(points, index, exemptPairs)) return false;
   if (closed && ringSelfIntersects(points)) return false;
@@ -235,12 +233,15 @@ export function validateVertexEdit(points, closed, index, exemptPairs) {
   return true;
 }
 
-// The separation half of validateVertexEdit, on its own. Split out because the
-// two halves are surfaced differently: separation is a property of ONE vertex,
-// so a control for that vertex can be hidden when it fails, while ring validity
-// is a property of the WHOLE ring and hiding on it would make every control on
-// the shape vanish for a cause nowhere near any of them.
-export function vertexSeparationOk(points, index, exemptPairs) {
+// The separation half of validateVertexEdit, named so the two clauses read as
+// the two different questions they are: separation is a property of ONE vertex,
+// ring validity a property of the WHOLE ring.
+//
+// Module-private, because there is no second caller and no reason to invite
+// one. In particular it is NOT the gate the insert buttons hide on — that is
+// canOfferInsert, which tests separation against a point not yet in the
+// array and so cannot be expressed through this signature (see its own note).
+function vertexSeparationOk(points, index, exemptPairs) {
   for (let j = 0; j < points.length; j++) {
     if (j === index) continue;
     if (exemptPairs && exemptPairs.has(pairKey(index, j))) continue;
@@ -286,7 +287,7 @@ const segmentMidpoint = (points, segment) => {
 // (its spacing rule measures against the previous vertex only, so such a pair is
 // ordinary). Both fall out of this loop's shape: it tests only pairs involving
 // the new point, so a pair it should not judge is never judged at all.
-export function insertCandidateOffer(points, segment) {
+export function canOfferInsert(points, segment) {
   const mid = segmentMidpoint(points, segment);
   for (let j = 0; j < points.length; j++) {
     if (tooClose(mid, points[j])) return false;
@@ -295,16 +296,15 @@ export function insertCandidateOffer(points, segment) {
 }
 
 // The vertex array a midpoint insert into `segment` would produce, plus that
-// vertex's index and position. `k === n` on the wrap edge, where splice appends.
-// Used by the press path only — once per click, not twice per frame — so `cand`
-// is an array of THREE.Vector3 with one plain {x, y, z} in it. Safe and
-// surprising, hence the note: validateVertexEdit and the ring predicates read
-// .x/.z, and Vector3.copy accepts a duck-typed point.
+// vertex's index and position. `vertexIndex === n` on the wrap edge, where
+// splice appends. The midpoint is a THREE.Vector3 like every other member, so
+// `cand` stays homogeneous and a consumer may call Vector3 methods on `mid`.
 export function insertCandidate(points, segment) {
-  const k = segment + 1;
+  const vertexIndex = segment + 1;
   const cand = points.slice();
-  cand.splice(k, 0, segmentMidpoint(points, segment));
-  return { cand, k, mid: cand[k] };
+  const m = segmentMidpoint(points, segment);
+  cand.splice(vertexIndex, 0, new THREE.Vector3(m.x, m.y, m.z));
+  return { cand, vertexIndex, mid: cand[vertexIndex] };
 }
 
 // What a released drag should do. Kept as a pure function of the gesture's
@@ -416,10 +416,14 @@ export function trashButtonOffset(
 
 // --- The insert button's placement -------------------------------------
 
-// Half a caption chip's height (12 px text at normal line-height, 2 px padding
-// each side). Owned by the readout layer; if the caption styling changes this
-// drifts, and the only symptom is the button sitting a little closer to or
-// further from the label it belongs to.
+// Half a caption chip's height. The chip is 12 px text with `line-height:
+// normal` and 2 px padding top and bottom, so its box is 16 + 2 + 2 = 20 px and
+// half of that is 10 — where the 16 is the ASSUMPTION in this number, since
+// `normal` resolves per font (≈1.2–1.35 × font-size) rather than to anything
+// stated. Owned by the readout layer (ShapeReadouts._makeLabel, which carries
+// the matching pointer back here); if the caption styling changes this drifts,
+// and the only symptom is the button sitting a little closer to or further from
+// the label it belongs to.
 const CAPTION_HALF_PX = 10;
 // Anchor centre to button centre. The anchor IS the caption's own point, so the
 // gap is measured from the caption's edge outward.
