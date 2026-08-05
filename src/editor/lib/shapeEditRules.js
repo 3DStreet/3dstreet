@@ -230,14 +230,82 @@ export function preExistingClosePairs(points, excludeIndex = -1) {
 //   closed shape must satisfy both. Open polylines are unconstrained by either:
 //   they have no interior to begin with.
 export function validateVertexEdit(points, closed, index, exemptPairs) {
+  if (!vertexSeparationOk(points, index, exemptPairs)) return false;
+  if (closed && ringSelfIntersects(points)) return false;
+  if (closed && !ringEnclosesArea(points)) return false;
+  return true;
+}
+
+// The separation half of validateVertexEdit, on its own. Split out because the
+// two halves are surfaced differently: separation is a property of ONE vertex,
+// so a control for that vertex can be hidden when it fails, while ring validity
+// is a property of the WHOLE ring and hiding on it would make every control on
+// the shape vanish for a cause nowhere near any of them.
+export function vertexSeparationOk(points, index, exemptPairs) {
   for (let j = 0; j < points.length; j++) {
     if (j === index) continue;
     if (exemptPairs && exemptPairs.has(pairKey(index, j))) continue;
     if (tooClose(points[index], points[j])) return false;
   }
-  if (closed && ringSelfIntersects(points)) return false;
-  if (closed && !ringEnclosesArea(points)) return false;
   return true;
+}
+
+// --- Inserting a vertex at a segment midpoint --------------------------
+
+// The segment indices adjacent to vertex `index` on a shape of `n` vertices.
+// ONE home, because two layers need the identical answer: the properties panel
+// pins these segments' captions and the controls layer offers an insert button
+// beside each of them. A ring gives two; an endpoint of an open polyline gives
+// one. Segment s runs from vertex s to vertex (s + 1) % n.
+export function adjacentSegments(index, n, closed) {
+  if (n < 2 || index < 0 || index >= n) return [];
+  if (closed) return [(index - 1 + n) % n, index];
+  const out = [];
+  if (index > 0) out.push(index - 1);
+  if (index < n - 1) out.push(index);
+  return out;
+}
+
+// The midpoint a segment insert would produce. Module-private; both functions
+// below use it, so the formula exists once.
+const segmentMidpoint = (points, segment) => {
+  const a = points[segment];
+  const b = points[(segment + 1) % points.length];
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 };
+};
+
+// Would a midpoint insert into `segment` produce a vertex that clears every
+// existing vertex by the minimum separation? O(n), no allocation beyond the
+// midpoint itself.
+//
+// Deliberately NOT written as validateVertexEdit(candidate, …). That version is
+// wrong in two directions at once. It would apply the ring clauses, hiding every
+// insert affordance on an already-crossing shape — where the whole point is that
+// they stay, and refuse on the press, because the crossing is nowhere near any
+// of them. And it would fail the candidate on close pairs between two EXISTING
+// vertices, hiding every affordance on a shape the draw tool legally produced
+// (its spacing rule measures against the previous vertex only, so such a pair is
+// ordinary). Both fall out of this loop's shape: it tests only pairs involving
+// the new point, so a pair it should not judge is never judged at all.
+export function insertCandidateOffer(points, segment) {
+  const mid = segmentMidpoint(points, segment);
+  for (let j = 0; j < points.length; j++) {
+    if (tooClose(mid, points[j])) return false;
+  }
+  return true;
+}
+
+// The vertex array a midpoint insert into `segment` would produce, plus that
+// vertex's index and position. `k === n` on the wrap edge, where splice appends.
+// Used by the press path only — once per click, not twice per frame — so `cand`
+// is an array of THREE.Vector3 with one plain {x, y, z} in it. Safe and
+// surprising, hence the note: validateVertexEdit and the ring predicates read
+// .x/.z, and Vector3.copy accepts a duck-typed point.
+export function insertCandidate(points, segment) {
+  const k = segment + 1;
+  const cand = points.slice();
+  cand.splice(k, 0, segmentMidpoint(points, segment));
+  return { cand, k, mid: cand[k] };
 }
 
 // What a released drag should do. Kept as a pure function of the gesture's
@@ -345,6 +413,48 @@ export function trashButtonOffset(
   if (handleX + dx > viewportWidth - BUTTON_PX) dx = -d;
   if (handleY + dy < BUTTON_PX) dy = d;
   return { dx, dy };
+}
+
+// --- The insert button's placement -------------------------------------
+
+// Half a caption chip's height (12 px text at normal line-height, 2 px padding
+// each side). Owned by the readout layer; if the caption styling changes this
+// drifts, and the only symptom is the button sitting a little closer to or
+// further from the label it belongs to.
+const CAPTION_HALF_PX = 10;
+// Anchor centre to button centre. The anchor IS the caption's own point, so the
+// gap is measured from the caption's edge outward.
+const INSERT_OFFSET_PX = CAPTION_HALF_PX + OFFSET_MARGIN_PX + BUTTON_PX / 2;
+
+// Where to put an insert button relative to the segment midpoint it is anchored
+// to, as the literal transform string for its inner wrapper — or null when it
+// should be hidden.
+//
+// PIXELS ONLY, centre to centre, exactly as trashButtonOffset returns them.
+// CSS2DRenderer writes `translate(-50%,-50%) translate(Xpx, Ypx)` on the OUTER
+// element every pass, and the outer shrink-wraps the button, so the outer is
+// already centred on the anchor. A percentage written here would resolve
+// against the inner's own box and centre it a second time.
+//
+// Above by default; below when above would put the button off the top of the
+// viewport, which a street-level camera does routinely — the shape's captions
+// end up high on screen, and a control off the top is unreachable rather than
+// merely awkward. The flip fires while the button's top edge is still inside
+// the viewport, and on deliberately the same comparison trashButtonOffset makes
+// on its own vertical flip, so the two controls turn over at one height rather
+// than at two that happen to be close.
+//
+// Hidden below the same handle-radius floor the delete button uses. Past the
+// size clamp handles go sub-pixel while a full-size control still spans ±12 px,
+// so ANY 24 px control at that zoom covers the handle it belongs to and its
+// neighbours — and clicking a handle is the only route to this button. The
+// floor is shared rather than duplicated so the three controls appear and
+// disappear as one set.
+export function insertButtonTransform(handleRadiusPx, anchorY) {
+  if (handleRadiusPx < TRASH_MIN_HANDLE_PX) return null;
+  const below = anchorY - INSERT_OFFSET_PX < BUTTON_PX;
+  const dy = below ? INSERT_OFFSET_PX : -INSERT_OFFSET_PX;
+  return `translate(0px, ${dy}px)`;
 }
 
 // --- Midpoint (insert) handle clutter ----------------------------------
