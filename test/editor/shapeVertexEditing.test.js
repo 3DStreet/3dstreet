@@ -1,7 +1,11 @@
 /* global THREE */
 
 import { describe, expect, it, vi } from 'vitest';
-import { ringSelfIntersects } from '../../src/aframe-components/polygonMath.js';
+import {
+  polygonAreaXZ,
+  ringEnclosesArea,
+  ringSelfIntersects
+} from '../../src/aframe-components/polygonMath.js';
 
 // entity.js contains JSX inside a .js file, which this test setup cannot
 // transform. A mock FACTORY means the module is never loaded or transformed at
@@ -270,6 +274,90 @@ describe('ringSelfIntersects', () => {
   });
 });
 
+describe('ringEnclosesArea', () => {
+  // The ratio a ring scores: enclosed area over perimeter squared. Recomputed
+  // here rather than exported, so the scale assertions below compare two
+  // independently-derived numbers.
+  const ratio = (pts) => {
+    let perimeter = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % pts.length];
+      perimeter += Math.hypot(b.x - a.x, b.z - a.z);
+    }
+    return polygonAreaXZ(pts) / (perimeter * perimeter);
+  };
+
+  it('refuses a collinear triangle', () => {
+    // ringSelfIntersects says FALSE here — correctly, since at n = 3 every edge
+    // pair is adjacent — so a predicate that delegated to it, or that keyed on
+    // vertex count, would pass this ring straight through to the triangulator.
+    const collinear = [p(0, 0), p(10, 0), p(4, 0)];
+    expect(ringSelfIntersects(collinear)).toBe(false);
+    expect(ringEnclosesArea(collinear)).toBe(false);
+  });
+
+  it('refuses a collinear quad', () => {
+    expect(ringEnclosesArea([p(0, 0), p(10, 0), p(8, 0), p(2, 0)])).toBe(false);
+  });
+
+  it('accepts ordinary rings', () => {
+    expect(ringEnclosesArea([p(0, 0), p(10, 0), p(5, 10)])).toBe(true);
+    expect(ringEnclosesArea([p(0, 0), p(10, 0), p(10, 10), p(0, 10)])).toBe(
+      true
+    );
+  });
+
+  it('is false below 3 vertices', () => {
+    expect(ringEnclosesArea([])).toBe(false);
+    expect(ringEnclosesArea([p(0, 0)])).toBe(false);
+    expect(ringEnclosesArea([p(0, 0), p(1, 0)])).toBe(false);
+  });
+
+  it('accepts a pinched ring, which the crossing test is what refuses', () => {
+    // D sits on the non-adjacent edge A→B. The ring encloses a perfectly good
+    // 25 m² region, so this predicate passes it; it is invalid all the same,
+    // and ringSelfIntersects is what says so. The two carry different halves of
+    // validity, and this is the ring where they disagree — so any
+    // "simplification" that folds one into the other fails here.
+    const pinched = [p(0, 0), p(10, 0), p(10, 10), p(5, 0)];
+    expect(ringEnclosesArea(pinched)).toBe(true);
+    expect(ringSelfIntersects(pinched)).toBe(true);
+  });
+
+  it('refuses a bow-tie — but not for the reason it looks like', () => {
+    // Not "it has no region": it has two of them. They wind oppositely and
+    // cancel in the shoelace sum, giving exactly zero. A coincidence, not
+    // evidence that this predicate detects self-crossing — ringSelfIntersects
+    // is what refuses this ring for the right reason, and it already does.
+    const bowTie = [p(0, 0), p(10, 0), p(0, 10), p(10, 10)];
+    expect(ringEnclosesArea(bowTie)).toBe(false);
+    expect(ringSelfIntersects(bowTie)).toBe(true);
+  });
+
+  it('gives the same verdict for the same shape at two scales', () => {
+    // The row a raw area threshold fails. The 10 m form encloses 5e-6 m² and
+    // the 5 cm form 1.25e-10 m² — a factor of 40,000 for one shape — so
+    // `area > 1e-9` would accept the first and refuse the second. Asserting the
+    // two RATIOS are equal as well as the two verdicts is what closes the door
+    // on a raw threshold at some other constant passing this test anyway.
+    const big = [p(0, 0), p(10, 0), p(5, 1e-6)];
+    const small = big.map((q) => p(q.x * 0.005, q.z * 0.005));
+    expect(ringEnclosesArea(big)).toBe(true);
+    expect(ringEnclosesArea(small)).toBe(true);
+    expect(ratio(small)).toBeCloseTo(ratio(big), 12);
+  });
+
+  it('still refuses a degenerate ring far from the origin', () => {
+    // The shoelace sum loses precision as coordinates grow, so a threshold set
+    // near the float noise floor would start reading a flat ring as enclosing.
+    const far = [p(0, 0), p(10, 0), p(4, 0)].map((q) =>
+      p(q.x + 1234.5, q.z + 1234.5)
+    );
+    expect(ringEnclosesArea(far)).toBe(false);
+  });
+});
+
 describe('handle sizing', () => {
   // A 50° vertical fov over a 900 px viewport: one pixel spans roughly a
   // thousandth of the viewing distance.
@@ -505,6 +593,20 @@ describe('validateVertexEdit', () => {
     expect(validateVertexEdit(pts, true, 2)).toBe(false);
     // The same points as an OPEN polyline are unconstrained.
     expect(validateVertexEdit(pts, false, 2)).toBe(true);
+  });
+
+  it('refuses an edit that leaves a closed ring enclosing nothing', () => {
+    // Corner 3 dragged onto the line of the opposite edge: the ring never
+    // crosses itself, and it has no interior either.
+    const pts = [p(0, 0), p(10, 0), p(6, 0), p(2, 0)];
+    expect(ringSelfIntersects(pts)).toBe(true);
+    const flatTriangle = [p(0, 0), p(10, 0), p(4, 0)];
+    expect(ringSelfIntersects(flatTriangle)).toBe(false);
+    expect(validateVertexEdit(flatTriangle, true, 2)).toBe(false);
+    // Open polylines have no interior to require, so the clause must sit inside
+    // the `closed` guard — outside it, every flat polyline in the product
+    // becomes un-draggable.
+    expect(validateVertexEdit(flatTriangle, false, 2)).toBe(true);
   });
 });
 

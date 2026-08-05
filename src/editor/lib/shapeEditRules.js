@@ -1,6 +1,9 @@
 /* global THREE */
 
-import { ringSelfIntersects } from '../../aframe-components/polygonMath.js';
+import {
+  ringEnclosesArea,
+  ringSelfIntersects
+} from '../../aframe-components/polygonMath.js';
 
 // Editor policy for editing an existing shape's vertices: what separations and
 // ring shapes an edit is allowed to produce, when a plane pick is usable, how
@@ -218,8 +221,14 @@ export function preExistingClosePairs(points, excludeIndex = -1) {
 //   the hit test can never be grabbed again, and that trap does not care about
 //   ring adjacency. Applies to open polylines too.
 //
-//   Ring simplicity — a closed shape must not cross itself, because a crossing
-//   ring has no interior to fill or measure. Open polylines are unconstrained.
+//   Ring validity — TWO questions, not one, and conflating them is what leaves
+//   a gap. `ringSelfIntersects` asks whether the boundary CROSSES itself;
+//   `ringEnclosesArea` asks whether it bounds anything at all. A collinear ring
+//   answers "no" to the first and still has no interior to fill, measure or
+//   extrude, while a ring pinched onto its own edge encloses a real region and
+//   crosses itself — so neither predicate can stand in for the other, and a
+//   closed shape must satisfy both. Open polylines are unconstrained by either:
+//   they have no interior to begin with.
 export function validateVertexEdit(points, closed, index, exemptPairs) {
   for (let j = 0; j < points.length; j++) {
     if (j === index) continue;
@@ -227,6 +236,7 @@ export function validateVertexEdit(points, closed, index, exemptPairs) {
     if (tooClose(points[index], points[j])) return false;
   }
   if (closed && ringSelfIntersects(points)) return false;
+  if (closed && !ringEnclosesArea(points)) return false;
   return true;
 }
 
