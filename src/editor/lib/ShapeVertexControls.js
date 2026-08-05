@@ -5,13 +5,18 @@ import useStore from '@/store';
 import Events from './Events';
 import { intersectPlaneOrNull } from './intersectPlaneOrNull.js';
 import { rayFromClientXY } from './rayFromClientXY.js';
+import { notifyActiveVertexChanged } from './notifyActiveVertexChanged.js';
 import {
   CLICK_MOVE_THRESHOLD,
+  adjacentSegments,
   anyVertexIsDeletable,
   clampHandleRadius,
   deleteKeyTargetsVertex,
   decidePress,
   hitTestHandles,
+  insertButtonTransform,
+  insertCandidate,
+  insertCandidateOffer,
   metresPerPixel,
   preExistingClosePairs,
   rayPlaneHitIsUsable,
@@ -149,10 +154,10 @@ import {
  *                       attach, shown by setActiveVertex, removed at detach
  *   _insertSlots        two records of the same shape, one per adjacent edge,
  *                       holding PRESENTATION state only — CSS2D object, inner
- *                       wrapper, anchor, and the last transform and label
- *                       written. No segment index any caller reads back: the
- *                       press derives its segment live, since a slot drawn a
- *                       frame ago names a pre-insert segment
+ *                       wrapper, click listener, and the last transform and
+ *                       label written. No segment index any caller reads back:
+ *                       the press derives its segment live, since a slot drawn
+ *                       a frame ago names a pre-insert segment
  *   _prevMatrixWorld    seeded at attach, so the first frame does not read a
  *                       spurious whole-shape move against an identity matrix
  */
@@ -162,6 +167,17 @@ import {
 // be drawn above it, so in the small region where a handle and a gizmo arrow
 // overlap the arrow is drawn on top of the handle that would win the press).
 const HANDLE_RENDER_ORDER = 1000;
+
+// The CSS2D layer has its own ordering, unrelated to the scene's: the renderer
+// sorts by renderOrder first and camera distance second, and every measurement
+// caption sits at 0. Lifting the controls above them is what keeps a label from
+// being drawn over a button — the one thing accepting overlap depends on.
+const CONTROL_RENDER_ORDER = 1;
+
+// One per edge of the sub-selected vertex. A ring vertex always has two; an
+// endpoint of an open polyline has one, and its second slot never resolves to a
+// segment.
+const INSERT_SLOT_COUNT = 2;
 
 const COLOR_NORMAL = '#1faaf2'; // the selection-box blue: reads as "editor affordance"
 const COLOR_HOVER = '#7fd4ff';
@@ -213,6 +229,7 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._invalidFlashTimer = null;
     this._trashObject = null;
     this._trashInner = null;
+    this._insertSlots = [];
     this._wasOpen = false;
     this._lastChildCount = -1;
     this._prevMatrixWorld = new THREE.Matrix4();
@@ -283,6 +300,7 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._lastChildCount = shapeEl.children.length;
 
     this._buildTrashButton();
+    this._buildInsertButtons();
     this._addListeners();
     Events.on('shapevertexstructurechanged', this._onStructuralChange);
     // Nothing is sub-selected on a fresh attach. Written rather than assumed:
@@ -316,6 +334,7 @@ export class ShapeVertexControls extends THREE.Object3D {
     this.hoveredHandle = null;
     useStore.getState().setShapeVertexSelected(false);
     this._teardownTrashButton();
+    this._teardownInsertButtons();
     this._teardownPool();
     this.vertexEls.length = 0;
 
@@ -394,16 +413,19 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._invalidateVertexCache();
   }
 
-  // Clearing the active vertex here is unconditional, and both halves of that
-  // matter. Any structural edit ends the sub-selection, because the indices the
-  // user was reasoning about have moved under them. And it is what keeps the
-  // styling coherent: handle meshes are
-  // index-mapped to `vertexEls`, so an insert on a low segment slides every
-  // higher vertex onto its neighbour's mesh. The rim and the trash button
-  // follow the ACTIVE ELEMENT to its new index while the white active material
-  // sits on the mesh at the old one — the highlight on one handle and the rim
-  // on another. Re-applying styles after the resize covers the same class of
-  // desync for hover.
+  // Clearing the active vertex here is unconditional, and stays that way. The
+  // reason is semantic rather than mechanical: a structural edit moves the
+  // indices the user was reasoning about, so the sub-selection no longer means
+  // what it did.
+  //
+  // It is worth being precise about what the clear is NOT doing, because the
+  // insert path deliberately re-activates the vertex it just created. Handle
+  // meshes are index-mapped to `vertexEls`, so an insert on a low segment
+  // slides every higher vertex onto its neighbour's mesh — but what repairs
+  // that is the style re-apply below, which keys on element IDENTITY and not on
+  // index, as do the rim and the trash button. So for any element still present
+  // in `vertexEls`, styling is coherent once this method has run through, and a
+  // caller may safely re-activate afterwards.
   _invalidateVertexCache() {
     this._readVertexEls(this.shapeEl);
     this._syncPool();
@@ -469,6 +491,7 @@ export class ShapeVertexControls extends THREE.Object3D {
       }
       this._updateActiveRim();
       this._updateTrashButton(camera, canvas);
+      this._updateInsertButtons(camera, canvas);
     }
 
     if (this._invalidSignalOn) {
@@ -580,9 +603,11 @@ export class ShapeVertexControls extends THREE.Object3D {
     // means the shape. Mirroring the wrong one would swallow the key before it
     // could escalate.
     //
-    // Safe to settle here rather than per keystroke: any structural change
-    // clears the active vertex, so the vertex count cannot move underneath a
-    // sub-selection.
+    // Safe to settle here rather than per keystroke, because the vertex count
+    // this reads is settled by the time it is read. A structural change clears
+    // the sub-selection from inside the cache refresh that re-counted the
+    // vertices — and the one thing that re-activates afterwards, the insert
+    // path, does so only once that refresh has fully run.
     useStore
       .getState()
       .setShapeVertexSelected(
@@ -590,6 +615,7 @@ export class ShapeVertexControls extends THREE.Object3D {
       );
     if (!el) {
       if (this._trashObject) this._trashObject.visible = false;
+      for (const slot of this._insertSlots) slot.object.visible = false;
       // Hidden HERE and not only in the per-frame hook, which needs `shapeEl`
       // and so stops running the moment the shape is deselected. The rim keeps
       // `matrixAutoUpdate = false`'s stale matrix, so left visible it goes on
@@ -598,6 +624,9 @@ export class ShapeVertexControls extends THREE.Object3D {
       this._activeRim.visible = false;
     }
     this._applyStyles();
+    // Selecting a different vertex changes no geometry, so nothing else would
+    // tell the properties panel to re-derive which captions to keep on screen.
+    notifyActiveVertexChanged();
   }
 
   // --- the delete button -------------------------------------------------
@@ -651,6 +680,21 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._trashInner = null;
   }
 
+  // The active handle's rendered radius in screen pixels — the number both
+  // button placement rules take. Derived once here so the two controls cannot
+  // end up hiding at two thresholds that merely look like one.
+  _activeHandleRadiusPx(camera, canvas) {
+    const mesh = this._activeHandle();
+    if (!mesh) return 0;
+    this._tmpV.copy(mesh.position).applyMatrix4(this.matrix);
+    return this._screenRadiusPx(
+      mesh.scale.x,
+      this._tmpV,
+      camera,
+      canvas.clientHeight
+    );
+  }
+
   _updateTrashButton(camera, canvas) {
     if (!this._trashObject) return;
     const mesh = this._activeHandle();
@@ -670,14 +714,8 @@ export class ShapeVertexControls extends THREE.Object3D {
 
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
-    this._tmpV.copy(mesh.position).applyMatrix4(this.matrix);
-    const radiusPx = this._screenRadiusPx(
-      mesh.scale.x,
-      this._tmpV,
-      camera,
-      height
-    );
-    this._tmpV.project(camera);
+    const radiusPx = this._activeHandleRadiusPx(camera, canvas);
+    this._tmpV.copy(mesh.position).applyMatrix4(this.matrix).project(camera);
     const offset = trashButtonOffset(
       radiusPx,
       (this._tmpV.x * 0.5 + 0.5) * width,
@@ -691,6 +729,244 @@ export class ShapeVertexControls extends THREE.Object3D {
     }
     this._trashObject.visible = true;
     this._trashInner.style.transform = `translate(${offset.dx}px, ${offset.dy}px)`;
+  }
+
+  // --- the insert buttons ------------------------------------------------
+
+  // Two, one per edge of the sub-selected vertex, so which side the new vertex
+  // goes on is something the user says by pressing one rather than the other.
+  // An endpoint of an open polyline has one edge, and its second slot simply
+  // never resolves to a segment.
+  _buildInsertButtons() {
+    for (let slot = 0; slot < INSERT_SLOT_COUNT; slot++) {
+      // TWO elements, for the reason the delete button needs them: CSS2DRenderer
+      // rewrites style.transform on the OUTER element every pass, so the pixel
+      // offset has to live on an inner wrapper it never touches.
+      const outer = document.createElement('div');
+      outer.style.pointerEvents = 'none';
+
+      const inner = document.createElement('button');
+      inner.type = 'button';
+      inner.className = 'shape-insert-button';
+      inner.textContent = '+';
+      // The CSS2D container is pointer-events:none, so this is the only live
+      // element in it — which is also what stops a press here reaching the
+      // canvas and turning into a camera or vertex drag.
+      inner.style.pointerEvents = 'auto';
+      // STRUCTURE only. Every colour lives in the stylesheet, because an inline
+      // declaration beats a stylesheet rule whatever its selector, so a colour
+      // set here would silently kill the hover and focus states.
+      inner.style.cssText +=
+        ';display:flex;align-items:center;justify-content:center;' +
+        // border-box, or the 1 px border makes a 26 px box while the offset is
+        // computed for 24 and the button overlaps the caption it belongs to.
+        'box-sizing:border-box;width:24px;height:24px;padding:0;' +
+        'border-radius:4px;cursor:pointer;font:600 17px/1 sans-serif;';
+      const onClick = (event) => this._onInsertClick(slot, event);
+      inner.addEventListener('click', onClick);
+      outer.appendChild(inner);
+
+      const object = new CSS2DObject(outer);
+      object.visible = false;
+      // Draw in front of the measurements. CSS2DRenderer assigns
+      // element.style.zIndex itself on every pass, from renderOrder first and
+      // camera distance second, so a CSS z-index written here would be erased
+      // each frame; renderOrder is the control that works. Every caption sits
+      // at 0.
+      object.renderOrder = CONTROL_RENDER_ORDER;
+      this.add(object);
+      this._insertSlots.push({
+        object,
+        inner,
+        onClick,
+        lastTransform: null,
+        lastLabel: null
+      });
+    }
+    // The delete button is a control too. Lifting only the new ones would leave
+    // captions drawing over IT — the same defect — and would make a "+" beat it
+    // deterministically wherever they overlap, where today camera distance
+    // decides. Tied at the same order, the nearer one wins, which is the
+    // tie-break this layer uses everywhere else.
+    if (this._trashObject) this._trashObject.renderOrder = CONTROL_RENDER_ORDER;
+  }
+
+  _teardownInsertButtons() {
+    for (const slot of this._insertSlots) {
+      slot.inner.removeEventListener('click', slot.onClick);
+      const element = slot.object.element;
+      if (element.parentNode) element.parentNode.removeChild(element);
+      this.remove(slot.object);
+    }
+    this._insertSlots.length = 0;
+  }
+
+  // Everything here derives from live state every frame — no dirty flag, no
+  // cached answer — so nothing can go stale. The gate is O(n) over the vertices
+  // and runs beside a projection the pass does anyway; there is nothing to
+  // ration.
+  _updateInsertButtons(camera, canvas) {
+    const hideAll = () => {
+      for (const slot of this._insertSlots) slot.object.visible = false;
+    };
+    const i = this.activeVertexEl
+      ? this.vertexEls.indexOf(this.activeVertexEl)
+      : -1;
+    // No sub-selection, or a gesture in flight: during a drag the pointer is
+    // captured on the canvas, so a button that stayed up could not usefully be
+    // pressed and would only jump about. (This hide is presentation; what
+    // actually stops an insert mid-gesture is the guard in _insertAtSegment,
+    // because the hide lags the claim by up to one render pass.)
+    if (i < 0 || this.claimed) {
+      hideAll();
+      return;
+    }
+
+    const n = this.vertexEls.length;
+    const segments = adjacentSegments(i, n, this._isClosed());
+    const points = this._localPoints();
+    const radiusPx = this._activeHandleRadiusPx(camera, canvas);
+    const height = canvas.clientHeight;
+
+    for (let k = 0; k < this._insertSlots.length; k++) {
+      const slot = this._insertSlots[k];
+      const segment = segments[k];
+      // No such edge, or the vertex this would create would sit on top of an
+      // existing one. Hidden rather than shown-and-refused: nothing the user
+      // could do to THIS button would make it work, and moving a neighbour
+      // brings it back.
+      if (segment === undefined || !insertCandidateOffer(points, segment)) {
+        slot.object.visible = false;
+        continue;
+      }
+
+      // The anchor is the caption's own point, by the same expression on the
+      // same two vectors — so there is no second placement rule that could
+      // disagree with the first.
+      const a = this.vertexEls[segment].object3D.position;
+      const b = this.vertexEls[(segment + 1) % n].object3D.position;
+      slot.object.position.lerpVectors(a, b, 0.5);
+
+      this._tmpV
+        .copy(slot.object.position)
+        .applyMatrix4(this.matrix)
+        .project(camera);
+      const transform = insertButtonTransform(
+        radiusPx,
+        (-this._tmpV.y * 0.5 + 0.5) * height
+      );
+      if (transform === null) {
+        // Past the size clamp the handles go sub-pixel, and a full-size control
+        // there covers the handle that is the only route to it.
+        slot.object.visible = false;
+        continue;
+      }
+      slot.object.visible = true;
+      // Written only when the answer changes: this pass runs up to twice per
+      // rendered frame.
+      if (transform !== slot.lastTransform) {
+        slot.lastTransform = transform;
+        slot.inner.style.transform = transform;
+      }
+      // Two buttons need two labels, or the one moment which-is-which matters
+      // most is the moment they read alike. Same segment vocabulary as the
+      // properties panel's own length rows. Recomputed every frame but WRITTEN
+      // only on a change — mutating a live aria-label on a focused element
+      // re-announces it in some screen readers.
+      const label = `Insert vertex in segment ${segment + 1}→${((segment + 1) % n) + 1}`;
+      if (label !== slot.lastLabel) {
+        slot.lastLabel = label;
+        slot.inner.title = label;
+        slot.inner.setAttribute('aria-label', label);
+      }
+    }
+  }
+
+  _onInsertClick(slot, event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this._guard(() => this._insertAtSegment(this._slotSegment(slot)));
+  }
+
+  // The segment a slot currently stands for, DERIVED from live state rather
+  // than read back from what the per-frame pass drew. A slot drawn a frame ago
+  // names a pre-insert segment, and every index at or above the new vertex has
+  // shifted — while holding Enter on a focused button repeats the click at
+  // ~30 ms, faster than a frame on a heavy scene. A stale mapping would pass
+  // the bounds check and split the wrong edge, silently.
+  //
+  // Returns undefined when the slot has no segment (an endpoint of an open
+  // polyline) or nothing is active; _insertAtSegment refuses both.
+  _slotSegment(slot) {
+    const i = this.vertexEls.indexOf(this.activeVertexEl);
+    if (i < 0) return undefined;
+    return adjacentSegments(i, this.vertexEls.length, this._isClosed())[slot];
+  }
+
+  _insertAtSegment(s) {
+    // Not "impossible while claimed" but ENFORCED. The buttons are hidden
+    // during a claimed gesture, but the hide is applied by the next render pass
+    // while `claimed` is set inside pointerdown — so a second pointer, or a
+    // keyboard activation, can reach a still-visible button inside that window.
+    // An insert there would refresh the vertex cache mid-gesture, staling the
+    // dragged index and the exempt pairs, and the release would commit a move
+    // against the wrong vertex.
+    if (this.claimed) return;
+    if (s === undefined || !this.shapeEl) return;
+    const pts = this._localPoints();
+    const n = pts.length;
+    if (n < 2 || s < 0 || s >= (this._isClosed() ? n : n - 1)) return;
+
+    // The SAME construction the visibility gate used, not a second one. Cloned
+    // because _localPoints returns live object3D.position references and this
+    // array outlives the frame.
+    const { cand, k, mid } = insertCandidate(
+      pts.map((q) => q.clone()),
+      s
+    );
+    // Re-validated at press time rather than trusting the frame's answer: the
+    // visibility answer is up to a frame old, and a press is exactly when being
+    // right matters. The separation clause already passed — the button is
+    // visible — so the only way to reach the flash is a ring that was ALREADY
+    // invalid before the press, which is the case the button is kept for
+    // instead of hidden. No exempt pairs: a set built for the index being
+    // validated is never consulted, so passing one would read as meaning.
+    if (!validateVertexEdit(cand, this._isClosed(), k, null)) {
+      this._flashRefusal();
+      return;
+    }
+
+    const before = new Set(this.vertexEls);
+    const shapeEl = this.shapeEl;
+    const index = this._domIndexAfterVertex(s);
+    const position = vecToCommitString(mid);
+    try {
+      AFRAME.INSPECTOR.execute('shapevertexinsert', {
+        shapeEl,
+        index,
+        position
+      });
+    } catch (error) {
+      console.error('Shape vertex insert failed', error);
+      return;
+    }
+    // execute() emitted the structural change synchronously, so the vertex
+    // cache is already refreshed, the handle pool resized and the styles
+    // re-applied — and the sub-selection cleared, unconditionally, as it is for
+    // every structural change. Re-activating AFTER all of that is what makes
+    // the transfer safe: the clear is not weakened, and the styling coherence
+    // it used to be credited with is really the identity-keyed re-apply that
+    // runs alongside it.
+    const inserted = this.vertexEls.find((el) => !before.has(el));
+    if (!inserted) return;
+    // The ELEMENT is settled; its POSITION is not. insertBefore triggers
+    // A-Frame's connectedCallback, whose component init resolves on a
+    // microtask, so the position attribute the command wrote has not reached
+    // object3D.position yet — it is still the origin. Everything downstream
+    // this frame reads object3D.position, so without this the vertex would be
+    // drawn, measured and validated at the shape's origin for a frame.
+    inserted.object3D.position.copy(mid);
+    this.setActiveVertex(inserted);
   }
 
   _updateActiveRim() {
