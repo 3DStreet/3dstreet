@@ -41,6 +41,7 @@ import {
   preExistingClosePairs,
   rayPlaneHitIsUsable,
   resolveDragRelease,
+  anyVertexIsDeletable,
   trashButtonOffset,
   validateVertexDelete,
   validateVertexEdit
@@ -650,6 +651,33 @@ describe('validateVertexDelete', () => {
       p(6, 6)
     ];
     expect(validateVertexDelete(spiral, false, 3)).toBe(true);
+  });
+});
+
+describe('anyVertexIsDeletable', () => {
+  it('is false at or below the two-vertex floor', () => {
+    expect(anyVertexIsDeletable(0)).toBe(false);
+    expect(anyVertexIsDeletable(1)).toBe(false);
+    expect(anyVertexIsDeletable(2)).toBe(false);
+  });
+
+  it('is true once there is a vertex to spare', () => {
+    expect(anyVertexIsDeletable(3)).toBe(true);
+    expect(anyVertexIsDeletable(50)).toBe(true);
+  });
+
+  // The delete button is hidden on this predicate while the click it would
+  // have fired is validated by validateVertexDelete. If the two could ever
+  // disagree in this direction, hiding the button would be hiding a delete the
+  // user was entitled to.
+  it('never hides a delete that validateVertexDelete would have allowed', () => {
+    const twoVertex = [p(0, 0), p(1, 0)];
+    expect(anyVertexIsDeletable(twoVertex.length)).toBe(false);
+    for (let i = 0; i < twoVertex.length; i++) {
+      for (const closed of [false, true]) {
+        expect(validateVertexDelete(twoVertex, closed, i)).toBe(false);
+      }
+    }
   });
 });
 

@@ -248,10 +248,23 @@ export function resolveDragRelease({ preDrag, lastValid, finalValid, final }) {
   return { action: 'commit', value: candidate };
 }
 
+// A shape needs two vertices to be a shape at all, so on a two-vertex shape no
+// vertex is deletable — not this one, not the other one, not after moving
+// anything. That is a STRUCTURAL refusal, unlike the self-intersection one
+// below, and the difference is why the two are surfaced differently: the delete
+// button is hidden here (there is nothing the user could do to make it work,
+// and the route to disposing of a two-vertex shape is to delete the shape),
+// while a self-intersection refusal keeps the button and flashes, because
+// nudging a neighbouring vertex makes the very same delete legal.
+export const MIN_SHAPE_VERTICES = 2;
+
+export function anyVertexIsDeletable(vertexCount) {
+  return vertexCount > MIN_SHAPE_VERTICES;
+}
+
 // Whether the shape survives losing vertex `index`.
 export function validateVertexDelete(points, closed, index) {
-  // A shape needs two vertices to be a shape at all.
-  if (points.length <= 2) return false;
+  if (!anyVertexIsDeletable(points.length)) return false;
   const remaining = points.filter((_, i) => i !== index);
   // Removing a vertex merges its two edges into one, and the merged edge can
   // cross the rest of the ring where neither original did.

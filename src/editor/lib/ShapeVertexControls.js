@@ -8,6 +8,7 @@ import { rayFromClientXY } from './rayFromClientXY.js';
 import {
   CLICK_MOVE_THRESHOLD,
   MIDPOINT_RADIUS_RATIO,
+  anyVertexIsDeletable,
   clampHandleRadius,
   midpointHandleIsVisible,
   decidePress,
@@ -133,9 +134,11 @@ import {
  *   edit-gesture flag   begin/endEditGesture on the shape, so a crossing ring
  *                       holds its last valid fill mid-drag; cleared with the
  *                       gesture
- *   store flag          `shapeVertexEditActive` tracks ATTACHMENT, not activation
- *                       — it is what keeps the global Delete inert after the
- *                       active vertex has already been deleted
+ *   store flag          `shapeVertexSelected` mirrors `activeVertexEl`, so the
+ *                       global Delete shortcut is inert exactly while Delete
+ *                       here means "remove the active vertex" — and live again
+ *                       once nothing is sub-selected, which is what leaves a
+ *                       selected shape deletable from the keyboard
  *   trash button        outer CSS2D element + inner offset wrapper, built at
  *                       attach, shown by setActiveVertex, removed at detach
  *   _prevMatrixWorld    seeded at attach, so the first frame does not read a
@@ -285,7 +288,10 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._buildTrashButton();
     this._addListeners();
     Events.on('shapevertexstructurechanged', this._onStructuralChange);
-    useStore.getState().setShapeVertexEditActive(true);
+    // Nothing is sub-selected on a fresh attach. Written rather than assumed:
+    // a detach that failed to run would otherwise leave the global Delete
+    // inert for a shape with no active vertex.
+    useStore.getState().setShapeVertexSelected(false);
 
     this._wasOpen = !!AFRAME.INSPECTOR?.opened;
     // Last, because writing it is what arms the per-frame hook.
@@ -311,7 +317,7 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._pressWasClaimed = false;
     this._lastChildCount = -1;
     this.hoveredHandle = null;
-    useStore.getState().setShapeVertexEditActive(false);
+    useStore.getState().setShapeVertexSelected(false);
     this._teardownTrashButton();
     this._teardownPool();
     this.vertexEls.length = 0;
@@ -599,6 +605,10 @@ export class ShapeVertexControls extends THREE.Object3D {
   setActiveVertex(el) {
     if (this.activeVertexEl === el) return;
     this.activeVertexEl = el;
+    // The store flag mirrors THIS, so the global Delete shortcut and the
+    // interception above are gated on one condition rather than two that can
+    // disagree.
+    useStore.getState().setShapeVertexSelected(!!el);
     if (!el) {
       if (this._trashObject) this._trashObject.visible = false;
       // Hidden HERE and not only in the per-frame hook, which needs `shapeEl`
@@ -666,6 +676,14 @@ export class ShapeVertexControls extends THREE.Object3D {
     if (!this._trashObject) return;
     const mesh = this._activeHandle();
     if (!mesh) {
+      this._trashObject.visible = false;
+      return;
+    }
+    // On a two-vertex shape no vertex can be deleted, so offering the button
+    // and then refusing the click reads as a broken button rather than as a
+    // rule. Hidden rather than disabled: there is no user action that would
+    // make it work, and deleting the whole shape is the route out.
+    if (!anyVertexIsDeletable(this.vertexEls.length)) {
       this._trashObject.visible = false;
       return;
     }
@@ -795,10 +813,11 @@ export class ShapeVertexControls extends THREE.Object3D {
 
     if (!validateVertexDelete(this._localPoints(), this._isClosed(), index)) {
       // Both refusals — a delete that would make the ring cross itself, and one
-      // that would leave fewer than two vertices — say so the same way. They
-      // are the same button, the same click and the same outcome, and a silent
-      // no-op on one of them reads as a broken button rather than a refusal.
-      // The vertex stays, and stays active.
+      // that would leave fewer than two vertices — say so the same way here.
+      // The button is hidden for the second of them, so only the Delete key
+      // reaches it, and a key has no affordance to hide: the refusal still has
+      // to be visible, and the flash is the vocabulary already established for
+      // it. The vertex stays, and stays active.
       this._flashRefusal();
       return;
     }
@@ -1289,15 +1308,16 @@ export class ShapeVertexControls extends THREE.Object3D {
 
     if (event.key === 'Delete' || event.key === 'Backspace') {
       if (!AFRAME.INSPECTOR?.opened) return;
-      // Swallowed whenever the handles are up, whether or not a vertex is
-      // active. Gating on "a vertex is active" would let the SECOND Delete —
-      // after the first one cleared the active vertex — reach the editor's
-      // whole-shape delete and its confirm dialog, one reflexive Enter from
-      // losing the shape. With no active vertex this is a deliberate, silent
-      // no-op.
+      // Swallowed only while a vertex is sub-selected, where Delete means
+      // "remove that vertex". With none active the key is left alone and
+      // reaches the editor's whole-shape delete, so a selected shape can still
+      // be deleted from the keyboard — deleting the last vertex therefore arms
+      // the whole-shape delete for the NEXT press, which the confirm dialog on
+      // that path is what stands behind.
+      if (!this.activeVertexEl) return;
       event.preventDefault();
       event.stopPropagation();
-      if (this.activeVertexEl) this._guard(() => this._deleteActiveVertex());
+      this._guard(() => this._deleteActiveVertex());
     }
   }
 
