@@ -10,6 +10,7 @@ import {
   MIDPOINT_RADIUS_RATIO,
   anyVertexIsDeletable,
   clampHandleRadius,
+  deleteKeyTargetsVertex,
   midpointHandleIsVisible,
   decidePress,
   hitTestHandles,
@@ -134,11 +135,12 @@ import {
  *   edit-gesture flag   begin/endEditGesture on the shape, so a crossing ring
  *                       holds its last valid fill mid-drag; cleared with the
  *                       gesture
- *   store flag          `shapeVertexSelected` mirrors `activeVertexEl`, so the
- *                       global Delete shortcut is inert exactly while Delete
- *                       here means "remove the active vertex" — and live again
- *                       once nothing is sub-selected, which is what leaves a
- *                       selected shape deletable from the keyboard
+ *   store flag          `shapeVertexSelected` mirrors `deleteKeyTargetsVertex`,
+ *                       so the global Delete shortcut is inert exactly while
+ *                       Delete here means "remove the active vertex" — and live
+ *                       again both when nothing is sub-selected and when the
+ *                       shape is at its two-vertex floor, which is what leaves
+ *                       a selected shape deletable from the keyboard
  *   trash button        outer CSS2D element + inner offset wrapper, built at
  *                       attach, shown by setActiveVertex, removed at detach
  *   _prevMatrixWorld    seeded at attach, so the first frame does not read a
@@ -605,10 +607,20 @@ export class ShapeVertexControls extends THREE.Object3D {
   setActiveVertex(el) {
     if (this.activeVertexEl === el) return;
     this.activeVertexEl = el;
-    // The store flag mirrors THIS, so the global Delete shortcut and the
-    // interception above are gated on one condition rather than two that can
-    // disagree.
-    useStore.getState().setShapeVertexSelected(!!el);
+    // The store flag mirrors the SAME predicate the key handler uses — "does
+    // Delete mean the vertex here" — rather than "is a vertex selected". On a
+    // two-vertex shape those differ: a vertex is selected, and Delete still
+    // means the shape. Mirroring the wrong one would swallow the key before it
+    // could escalate.
+    //
+    // Safe to settle here rather than per keystroke: any structural change
+    // clears the active vertex, so the vertex count cannot move underneath a
+    // sub-selection.
+    useStore
+      .getState()
+      .setShapeVertexSelected(
+        deleteKeyTargetsVertex(el, this.vertexEls.length)
+      );
     if (!el) {
       if (this._trashObject) this._trashObject.visible = false;
       // Hidden HERE and not only in the per-frame hook, which needs `shapeEl`
@@ -812,12 +824,15 @@ export class ShapeVertexControls extends THREE.Object3D {
     }
 
     if (!validateVertexDelete(this._localPoints(), this._isClosed(), index)) {
-      // Both refusals — a delete that would make the ring cross itself, and one
-      // that would leave fewer than two vertices — say so the same way here.
-      // The button is hidden for the second of them, so only the Delete key
-      // reaches it, and a key has no affordance to hide: the refusal still has
-      // to be visible, and the flash is the vocabulary already established for
-      // it. The vertex stays, and stays active.
+      // In practice this is the crossing-ring refusal: a delete the shape
+      // cannot survive geometrically, where nudging a neighbour makes the very
+      // same delete legal — so it flashes rather than hiding, and the vertex
+      // stays, and stays active.
+      //
+      // The other refusal validateVertexDelete knows about, the two-vertex
+      // floor, no longer arrives here at all: the button is hidden there and
+      // the key escalates to the whole shape. The check stays as the rule's
+      // single home rather than being split across callers.
       this._flashRefusal();
       return;
     }
@@ -1308,13 +1323,16 @@ export class ShapeVertexControls extends THREE.Object3D {
 
     if (event.key === 'Delete' || event.key === 'Backspace') {
       if (!AFRAME.INSPECTOR?.opened) return;
-      // Swallowed only while a vertex is sub-selected, where Delete means
-      // "remove that vertex". With none active the key is left alone and
-      // reaches the editor's whole-shape delete, so a selected shape can still
-      // be deleted from the keyboard — deleting the last vertex therefore arms
-      // the whole-shape delete for the NEXT press, which the confirm dialog on
-      // that path is what stands behind.
-      if (!this.activeVertexEl) return;
+      // Swallowed only while Delete means "remove the active vertex".
+      // Otherwise the key is left alone and reaches the editor's whole-shape
+      // delete — which covers both no sub-selection at all and a sub-selection
+      // on a shape at the two-vertex floor, where the vertex cannot go and the
+      // shape is the only thing the press can sensibly mean. Deleting the last
+      // deletable vertex therefore arms the whole-shape delete for the NEXT
+      // press; the confirm dialog on that path is what stands behind it.
+      if (!deleteKeyTargetsVertex(this.activeVertexEl, this.vertexEls.length)) {
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       this._guard(() => this._deleteActiveVertex());

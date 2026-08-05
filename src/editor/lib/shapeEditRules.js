@@ -262,6 +262,22 @@ export function anyVertexIsDeletable(vertexCount) {
   return vertexCount > MIN_SHAPE_VERTICES;
 }
 
+// Whether the Delete key means "remove the sub-selected vertex" — the single
+// source for that question, read both by the key handler and by the store flag
+// that keeps the global whole-shape Delete inert. One rule, two readers, so
+// they cannot drift into disagreeing about which layer owns the key.
+//
+// When this is false the key is left alone and reaches the editor's ordinary
+// whole-shape delete. That covers two states, and treating them the same is the
+// point rather than a shortcut: nothing sub-selected (Delete plainly means the
+// shape), and a sub-selected vertex on a shape already at the two-vertex floor,
+// where removing the vertex is impossible and deleting the shape is the only
+// thing the user can be reaching for. The whole-shape path asks for
+// confirmation, so the escalation is never silent.
+export function deleteKeyTargetsVertex(hasActiveVertex, vertexCount) {
+  return !!hasActiveVertex && anyVertexIsDeletable(vertexCount);
+}
+
 // Whether the shape survives losing vertex `index`.
 export function validateVertexDelete(points, closed, index) {
   if (!anyVertexIsDeletable(points.length)) return false;

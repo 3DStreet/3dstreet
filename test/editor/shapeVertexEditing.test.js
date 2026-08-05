@@ -42,6 +42,7 @@ import {
   rayPlaneHitIsUsable,
   resolveDragRelease,
   anyVertexIsDeletable,
+  deleteKeyTargetsVertex,
   trashButtonOffset,
   validateVertexDelete,
   validateVertexEdit
@@ -676,6 +677,38 @@ describe('anyVertexIsDeletable', () => {
     for (let i = 0; i < twoVertex.length; i++) {
       for (const closed of [false, true]) {
         expect(validateVertexDelete(twoVertex, closed, i)).toBe(false);
+      }
+    }
+  });
+});
+
+describe('deleteKeyTargetsVertex', () => {
+  it('takes the key when a deletable vertex is sub-selected', () => {
+    expect(deleteKeyTargetsVertex({}, 3)).toBe(true);
+    expect(deleteKeyTargetsVertex({}, 40)).toBe(true);
+  });
+
+  it('leaves the key alone when nothing is sub-selected', () => {
+    expect(deleteKeyTargetsVertex(null, 40)).toBe(false);
+    expect(deleteKeyTargetsVertex(undefined, 3)).toBe(false);
+  });
+
+  // The escalation: a vertex IS sub-selected, but on a shape at the floor there
+  // is no vertex-level outcome, so the key falls through to the whole-shape
+  // delete (behind its confirm) rather than refusing.
+  it('leaves the key alone at the two-vertex floor even with a vertex active', () => {
+    expect(deleteKeyTargetsVertex({}, 2)).toBe(false);
+    expect(deleteKeyTargetsVertex({}, 1)).toBe(false);
+  });
+
+  // The store flag that keeps the global shortcut inert reads this same
+  // predicate. If it could be true where no vertex delete can happen, the key
+  // would be swallowed by a layer that then does nothing — the dead-key state
+  // this whole rule exists to avoid.
+  it('is never true where no vertex is deletable', () => {
+    for (let count = 0; count <= 6; count++) {
+      if (deleteKeyTargetsVertex({}, count)) {
+        expect(anyVertexIsDeletable(count)).toBe(true);
       }
     }
   });
