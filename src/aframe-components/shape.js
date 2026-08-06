@@ -119,11 +119,12 @@ AFRAME.registerComponent('shape', {
     // separate — the biggest, most visible fills are the ones most likely to
     // need to stop swallowing clicks.
     //
-    // Stored as INTEGER PERCENT (0-100) rather than a 0..1 fraction: it is the
-    // unit the panel shows, so the generic number widget needs no display
-    // transform, and `type: 'int'` gives the field precision 0 — it reads "40",
-    // not "40.000". min/max clamp the panel field; the component clamps again
-    // because the schema bounds do not bind setAttribute.
+    // Stored as INTEGER PERCENT (0-100) rather than a 0..1 fraction, matching
+    // the map layer's opacity: percent is the unit the panel labels and shows,
+    // so nothing between here and the slider needs a display transform, and
+    // `type: 'int'` gives the field precision 0 — it reads "40", not "40.000".
+    // min/max clamp the panel field; the component clamps again because the
+    // schema bounds do not bind setAttribute.
     //
     // The default colour is the SAME LITERAL as lineColor's, so an unconfigured
     // shape - including one from an older saved scene or from Add Layer - reads
