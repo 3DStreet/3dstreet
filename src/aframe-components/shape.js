@@ -93,7 +93,8 @@ AFRAME.registerSystem('shape', {
       // rather than on its vertices, so neither the dirty-check below nor an
       // opted-in update event can observe it changing. Dragging a whole shape
       // upward with the transform gizmo moves no vertex and fires no shape
-      // event. Cheap enough to run every frame - see syncFillOrder.
+      // event. Two reads and a compare on the unchanged path - see
+      // syncFillOrder, which deliberately allocates nothing.
       shape.syncFillOrder();
       if (shape.data.updateEvent) return;
       if (shape.positionsChanged()) {
@@ -433,15 +434,25 @@ AFRAME.registerComponent('shape', {
   // True when any vertex has moved, been added, or been removed since the last
   // check. Seeds the cache for new vertices (a missing entry counts as changed
   // rather than dereferencing undefined) and prunes removed ones.
-  // The height of the fill's plane, in the shape's PARENT frame: the entity's
-  // own y plus the first vertex's. A committed shape carries its centroid on
-  // the entity and its vertices relative to it, so neither term alone is the
-  // height. Parent-frame rather than world is deliberate and sufficient - every
-  // shape shares one parent and shapes cannot be reparented, so a transform on
-  // that parent shifts all of them equally and cancels out of the comparison.
-  _planeYFrom: function (verts) {
-    const base = this.el.object3D.position.y;
-    return verts.length ? base + verts[0].object3D.position.y : base;
+  // The height of the cap's plane, in the shape's PARENT frame: the entity's
+  // own y plus the cap's, less the lift the cap carries above that plane. A
+  // committed shape holds its centroid on the entity and its vertices relative
+  // to it, so neither term alone is the height.
+  //
+  // Read off the CAP rather than off vertex 0 so that the build and the
+  // per-frame refresh compute the identical expression - two routes to the same
+  // quantity differ in their last bits, and the refresh would then rewrite the
+  // draw order on the first tick after every rebuild. It is also what keeps a
+  // held cap's order describing where that cap actually is.
+  //
+  // Parent-frame rather than world is deliberate and sufficient: every shape
+  // shares one parent and shapes cannot be reparented, so a transform on that
+  // parent shifts all of them equally and cancels out of the comparison.
+  _planeYOf: function (mesh) {
+    const raw = this.el.object3D.position.y + mesh.position.y - FILL_LIFT_M;
+    // Normalised so a NaN entity position settles instead of defeating the
+    // cache below forever (NaN !== NaN).
+    return Number.isFinite(raw) ? raw : 0;
   },
 
   // Refresh the fill's draw order if the shape's plane has moved in y. Called
@@ -451,13 +462,19 @@ AFRAME.registerComponent('shape', {
   // Deliberately NOT a re-derive: the cap's geometry is entity-local, so a
   // translation does not change a single vertex of it, and rebuilding it every
   // frame of a gizmo drag would be pure waste. The draw order is the only thing
-  // that moves. The formula still lives in one place - _addFill sets the same
-  // two fields when it builds the mesh, and this reads the area that derive
-  // stored.
+  // that moves.
+  //
+  // The plane is read back off the CAP, not off the live vertices, for three
+  // reasons. It allocates nothing and touches no DOM, which matters because
+  // this runs for every shape every frame. It stays correct during an edit
+  // gesture that holds a stale cap: the held mesh keeps its own plane, so its
+  // order keeps describing where it actually is rather than where its vertices
+  // have since gone. And it cannot see a half-built vertex list, which the DOM
+  // can briefly present on an insert or at scene load.
   syncFillOrder: function () {
     const mesh = this.fillGroup.children[0];
     if (!mesh) return;
-    const planeY = this._planeYFrom(this.getVertexEls());
+    const planeY = this._planeYOf(mesh);
     if (planeY === this._fillPlaneY) return;
     this._fillPlaneY = planeY;
     mesh.renderOrder = fillPaintOrder(planeY, this.area);
@@ -737,7 +754,7 @@ AFRAME.registerComponent('shape', {
     // The plane's height is the entity's own y plus the vertex's, both in the
     // parent frame: a committed shape carries its centroid on the entity and
     // its vertices relative to it, so neither term alone is the height.
-    this._fillPlaneY = this._planeYFrom(verts);
+    this._fillPlaneY = this._planeYOf(mesh);
     mesh.renderOrder = fillPaintOrder(this._fillPlaneY, area);
     // Same reason as the sphere/cylinder leaves: the inspector raycaster reads
     // the hit object's own `.el` and does not walk up parents.

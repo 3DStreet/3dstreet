@@ -257,19 +257,26 @@ export class ShapeVertexControls extends THREE.Object3D {
     // this a handle inside the polygon is erased by it. Together with
     // depthTest: false, this is what "always on top" actually requires.
     this._sphere = new THREE.SphereGeometry(1, 12, 12);
+    // depthWrite off for the same reason as the shape's own x-ray overlay: an
+    // always-on-top affordance must not leave depth behind for whatever is
+    // drawn after it. Inert while everything above these sets depthTest: false,
+    // and wrong the moment something above them does not.
     this._matNormal = new THREE.MeshBasicMaterial({
       color: COLOR_NORMAL,
       depthTest: false,
+      depthWrite: false,
       transparent: true
     });
     this._matHover = new THREE.MeshBasicMaterial({
       color: COLOR_HOVER,
       depthTest: false,
+      depthWrite: false,
       transparent: true
     });
     this._matActive = new THREE.MeshBasicMaterial({
       color: COLOR_ACTIVE,
       depthTest: false,
+      depthWrite: false,
       transparent: true
     });
     this.handleGroup = new THREE.Group();

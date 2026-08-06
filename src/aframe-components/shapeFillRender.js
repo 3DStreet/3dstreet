@@ -7,10 +7,11 @@ import { MARKING_SURFACE_OFFSET } from '../tested/street-segment-utils';
 // TWO OVERLAPPING FILLS ARE ORDERED BY PAINT ORDER, NOT BY DEPTH. The material
 // is transparent and non-depth-writing at every opacity (see shape.js), so the
 // depth buffer never arbitrates between two fills - which is deliberate, and is
-// what fillPaintOrder replaces. Ordering by height instead was tried and does
-// not work: a height difference carrying an ordering has to be large enough for
-// the depth buffer to resolve at the distance you are viewing from, and small
-// enough not to read as floating, and at street scale those do not both fit.
+// what fillPaintOrder carries. Height still DECIDES the order - see below - but
+// paint order is what carries the decision. Letting the DEPTH BUFFER carry it
+// was tried and does not work: a height difference the buffer can resolve at
+// the distance you are viewing from is a height difference that reads as
+// floating, and at street scale those two demands do not both fit.
 //
 // WHAT THAT COSTS, so it is a priced trade and not an oversight:
 //
@@ -38,10 +39,22 @@ export const FILL_ORDER_BASE = 1;
 // below it, whatever their sizes, because that is what "above" means to anyone
 // looking at it.
 //
-// The crossover between the two keys is HEIGHT_TIE_M: a height difference
-// larger than that decides on its own, and below it area decides. It is a
-// centimetre, which is far above the float noise two probes of the same
-// surface can differ by and far below any real step - a kerb is 150 mm.
+// HEIGHT_TIE_M is the WORST-CASE crossover: a height difference above it beats
+// even the largest area gap there is (an infinitesimal shape against an
+// infinite one). For any real pair the crossover is far smaller, because the
+// area term SPANS this budget rather than each pair using all of it - 16 m2
+// against 17 m2 is separated by only about 33 micrometres of equivalent height,
+// and 1000 against 1001 by ten nanometres. So in practice: two shapes at
+// measurably different heights order by height; area decides only between
+// shapes at the SAME height.
+//
+// That is the right behaviour and it is safe, but not for the reason a
+// centimetre of slack suggests. It is safe because two shapes drawn on one flat
+// surface get BIT-IDENTICAL plane heights - the draw tool derives each vertex
+// from the same surface and commitShape's centroid arithmetic cancels, leaving
+// a residue around 1e-16 m - so "the same height" is exact rather than
+// approximate, and the tolerance is never called upon. A shape on a surface
+// 0.1 mm higher genuinely is higher, and ordering it above is not a bug.
 const HEIGHT_TIE_M = 0.01;
 
 // The height key is linear over this range and pins outside it, which is the
@@ -65,10 +78,15 @@ function clamp(v, lo, hi) {
 // Ordering by area within one height. Monotone decreasing over every positive
 // area, and EXACT rather than banded into steps - which matters, because the
 // areas that overlap in practice are often close (16 m2 against 17 m2) and any
-// banding ties exactly those pairs. Double precision keeps a 1 m2 difference
-// resolvable past 10^7 m2, far beyond any street shape; beyond about 4.6e15 m2
-// the term collapses to zero, which is unreachable and harmless because the
-// height key still separates such fills from anything at another height.
+// banding ties exactly those pairs.
+//
+// Its resolution is finite and worth stating honestly, because the term is
+// small: two areas 1 m2 apart stop being distinguishable above about 105,000 m2
+// at street level (a 325 m square), falling to about 71,000 m2 at the top of
+// the height range, since the larger sum has the larger ULP. Above roughly
+// 1.8e10 m2 the term vanishes into the sum entirely. Both are far beyond a
+// street shape, and a pair that ties this way is still separated by the height
+// key if it sits at any other height.
 //
 // A degenerate or unknown area contributes NOTHING, so it sorts below every
 // real fill at the same height and can never hide one.
@@ -91,9 +109,15 @@ function areaTerm(area) {
 //
 // `planeY` is read in the shape's PARENT frame rather than in world space. All
 // shapes share one parent and shapes cannot be reparented, so a transform on
-// that parent shifts every fill equally and cancels out of the comparison. A
-// shape nested somewhere else - which no in-app route creates - would order
-// against the others by the wrong number.
+// that parent shifts every fill equally and cancels out of the comparison.
+//
+// Two things sit outside that guarantee. A scene file can nest a shape under a
+// translated group - no in-app route does, but scene JSON is not a route, and
+// such a shape orders against the others by the wrong number. And the draw
+// tool's live preview is parented to the scene rather than to the shared
+// parent, so while you are drawing, the preview's number is in a different
+// frame; harmless while that parent sits at the origin, which is every scene
+// today.
 export function fillPaintOrder(planeY, area) {
   const y = Number.isFinite(planeY) ? planeY : 0;
   const heightTerm =

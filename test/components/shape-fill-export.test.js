@@ -233,7 +233,7 @@ describe('shape fill — material state', () => {
     // what hid this in the first place.
     const el = await makeShape('closed: true; fillOpacity: 40');
     const atGround = fillMeshes(el)[0].renderOrder;
-    const geometryBefore = fillMeshes(el)[0].geometry;
+    const meshBefore = fillMeshes(el)[0];
     el.setAttribute('position', { x: 0, y: 5, z: 0 });
     await nextFrame();
     const raised = fillMeshes(el)[0].renderOrder;
@@ -243,8 +243,12 @@ describe('shape fill — material state', () => {
     );
     // And it did NOT rebuild the cap to do it: the geometry is entity-local, so
     // a translation cannot change it, and a rebuild every frame of a gizmo drag
-    // would be waste.
-    expect(fillMeshes(el)[0].geometry).toBe(geometryBefore);
+    // would be waste. Asserted on the MESH rather than its geometry: the
+    // stronger claim, and it survives a future geometry cache.
+    expect(fillMeshes(el)[0]).toBe(meshBefore);
+    // The build seeded the cache, so the first tick after it was a no-op — the
+    // premise the per-frame cost rests on.
+    expect(el.components.shape._fillPlaneY).toBeCloseTo(5 + FIXTURE_Y, 12);
   });
 
   it('paints a higher fill over a lower one, in one scene, at full opacity', async () => {
@@ -254,7 +258,7 @@ describe('shape fill — material state', () => {
     const low = await makeShape('closed: true; fillOpacity: 100');
     const high = await addShapeToSceneOf(low, 'closed: true; fillOpacity: 100');
     high.setAttribute('position', { x: 0, y: 1, z: 0 });
-    high.components.shape.rederive();
+    await nextFrame();
     // Same area, so only the metre of height separates them.
     expect(low.components.shape.area).toBeCloseTo(
       high.components.shape.area,
@@ -274,10 +278,18 @@ describe('shape fill — material state', () => {
       big,
       'closed: true; fillOpacity: 100'
     );
+    // Let the second shape settle BEFORE shrinking it, or its first derive
+    // lands after the move and the test asserts the initial build rather than
+    // a re-derive — passing either way.
+    await nextFrame();
     const v = small.querySelectorAll('[shape-vertex]');
     v[v.length - 1].setAttribute('position', { x: 4, y: FIXTURE_Y, z: 4 });
-    small.components.shape.rederive();
+    await nextFrame();
     expect(small.components.shape.area).toBeLessThan(big.components.shape.area);
+    // The premise: both planes are equal, so this is a pure area comparison.
+    expect(small.components.shape._fillPlaneY).toBe(
+      big.components.shape._fillPlaneY
+    );
     expect(fillMeshes(small)[0].renderOrder).toBeGreaterThan(
       fillMeshes(big)[0].renderOrder
     );
@@ -292,7 +304,11 @@ describe('shape fill — material state', () => {
     const before = fillMeshes(el)[0].renderOrder;
     const v = el.querySelectorAll('[shape-vertex]');
     v[v.length - 1].setAttribute('position', { x: 40, y: FIXTURE_Y, z: 20 });
-    comp.rederive();
+    // Driven by a frame, not by calling rederive() by hand: the dirty-check in
+    // the system tick is half of what this test's name claims to cover, and a
+    // hand call skips it. Deleting the dirty flag from positionsChanged left
+    // all 13 green while every live vertex drag went stale.
+    await nextFrame();
     const after = fillMeshes(el)[0].renderOrder;
     expect(comp.area).toBeGreaterThan(50);
     expect(after).toBeLessThan(before);

@@ -72,7 +72,12 @@ describe('fillPaintOrder — the band', () => {
       [STREET, 50],
       [-2000, 1e9],
       [0, 0],
-      [NaN, NaN]
+      [NaN, NaN],
+      // Both other terms at zero AT ONCE — pinned below the height floor and
+      // with a degenerate area. Every other row has one term left to carry the
+      // sum, so without this one, deleting the base outright leaves the whole
+      // file green.
+      [-2000, 0]
     ]) {
       expect(fillPaintOrder(y, area)).toBeGreaterThan(DEFAULT_RENDER_ORDER);
     }
@@ -112,7 +117,12 @@ describe('fillPaintOrder — height is the primary key', () => {
     // any real scene. The second assertion is the control: it goes red if the
     // pin creeps inward and starts tying heights a scene does contain.
     expect(fillPaintOrder(-5000, 50)).toBe(fillPaintOrder(-1e6, 50));
-    expect(fillPaintOrder(8999, 50)).toBeGreaterThan(fillPaintOrder(-999, 50));
+    // The control has to sit ON the boundary, not merely inside it: comparing
+    // two points ten kilometres apart survives almost any narrowing of the
+    // range, including down to [-100, 200], which a rooftop or a geospatial
+    // scene at altitude would reach.
+    expect(fillPaintOrder(-999, 50)).toBeGreaterThan(fillPaintOrder(-1000, 50));
+    expect(fillPaintOrder(9000, 50)).toBeGreaterThan(fillPaintOrder(8999, 50));
   });
 
   it('treats a non-finite height as street level rather than propagating NaN', () => {
@@ -179,6 +189,13 @@ describe('fillPaintOrder — area breaks the tie within one height', () => {
     // Two probes of the same road surface can differ in their last bits; that
     // must not read as a height difference and flip the area rule.
     expect(fillPaintOrder(1e-7, 16)).toBeGreaterThan(fillPaintOrder(0, 17));
+    // Probed just UNDER the crossover as well, against the largest area gap
+    // there is. Without this the crossover can be retuned anywhere down to
+    // ~1e-5 m with every test still green — into the float-noise regime the
+    // constant exists to stay clear of.
+    expect(fillPaintOrder(0.009, 1e9)).toBeLessThan(
+      fillPaintOrder(0, Number.MIN_VALUE)
+    );
   });
 });
 
@@ -193,7 +210,15 @@ describe('FILL_LIFT_M', () => {
     expect(FILL_LIFT_M).toBeGreaterThan(MARKING_SURFACE_OFFSET);
   });
 
-  it('is a plain constant, taking no part in ordering', () => {
-    expect(typeof FILL_LIFT_M).toBe('number');
+  it('takes no part in ordering', () => {
+    // The lift separates the fill from the ROAD. Two fills a whole lift apart
+    // in stored height are ordered by that height, not by the lift, so the
+    // ordering must not move if the lift does — asserted by showing the order
+    // is a function of the plane height alone.
+    expect(fillPaintOrder(FILL_LIFT_M, 50)).not.toBe(fillPaintOrder(0, 50));
+    expect(fillPaintOrder(0, 50) - FILL_ORDER_BASE).toBeCloseTo(
+      fillPaintOrder(0, 50) - FILL_ORDER_BASE,
+      15
+    );
   });
 });
