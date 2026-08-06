@@ -317,6 +317,30 @@ describe('getShapeStyle / setShapeStyle', () => {
     expect(storage.setItem).toHaveBeenCalledTimes(1);
   });
 
+  // Every other write test also moves lineColor, so a guard comparing only
+  // lineColor — or any three of the four keys — would pass them all. This one
+  // moves ONLY fillOpacity, so a partial guard swallows the write and fails it.
+  it('writes when only fillOpacity changes', async () => {
+    const storage = makeStorage();
+    installStorage(storage);
+    const { getShapeStyle, setShapeStyle } = await import(MODULE_PATH);
+    setShapeStyle({
+      lineColor: '#00ff00',
+      lineWidth: 0.3,
+      fillColor: '#0000ff',
+      fillOpacity: 25
+    });
+    setShapeStyle({
+      lineColor: '#00ff00',
+      lineWidth: 0.3,
+      fillColor: '#0000ff',
+      fillOpacity: 70
+    });
+    expect(storage.setItem).toHaveBeenCalledTimes(2);
+    expect(getShapeStyle().fillOpacity).toBe(70);
+    expect(JSON.parse(storage.data[STORAGE_KEY]).fillOpacity).toBe(70);
+  });
+
   // The point of caching in module scope: with storage unavailable the
   // preference still works for the rest of the session, degrading to "does not
   // survive a reload" rather than to "does nothing".
@@ -345,11 +369,14 @@ describe('shapeStyleSeedFromUpdate', () => {
     getAttribute: (name) => (name === 'shape' ? data : null)
   });
 
+  // Every numeric here is deliberately NON-default (defaults are 0.15 / 40), so
+  // a build that returned the entity's colours but cold-start numbers fails
+  // rather than passing on two values that could not move.
   const fullData = {
     lineColor: '#ff0000',
-    lineWidth: 0.15,
+    lineWidth: 0.4,
     fillColor: '#0000ff',
-    fillOpacity: 40,
+    fillOpacity: 25,
     closed: true,
     selectInside: true,
     updateEvent: ''
@@ -366,9 +393,9 @@ describe('shapeStyleSeedFromUpdate', () => {
     expect(seed.lineColor).toBe('#ff0000');
     expect(seed).toEqual({
       lineColor: '#ff0000',
-      lineWidth: 0.15,
+      lineWidth: 0.4,
       fillColor: '#0000ff',
-      fillOpacity: 40
+      fillOpacity: 25
     });
   });
 
@@ -392,9 +419,9 @@ describe('shapeStyleSeedFromUpdate', () => {
   // also pass against `undefined` or a partial object.
   const fullSeed = {
     lineColor: '#ff0000',
-    lineWidth: 0.15,
+    lineWidth: 0.4,
     fillColor: '#0000ff',
-    fillOpacity: 40
+    fillOpacity: 25
   };
 
   it('seeds on each of the four appearance properties', () => {

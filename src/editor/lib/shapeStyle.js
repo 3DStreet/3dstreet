@@ -12,9 +12,11 @@
 
 // Retained deliberately despite reading like "last shape drawn" — which is NOT
 // the rule (see the doc). The key is the identity of every user's already-
-// persisted value; renaming it would silently discard all of them, which is
-// exactly what the per-key merge in `normaliseShapeStyle` exists to carry
-// forward. Fix the name only with a read-old-key migration alongside.
+// persisted value; renaming it would silently discard all of them. The per-key
+// merge in `normaliseShapeStyle` is no help here — it carries forward a change
+// in the stored VALUE's shape (one holding only `lineColor`/`lineWidth`, say),
+// and can do nothing about a change of KEY NAME, because the old key is simply
+// never read. Fix the name only with a read-old-key migration alongside.
 const STORAGE_KEY = 'lastShapeStyle';
 
 // The single definition of "a shape's appearance". Everything else in this file

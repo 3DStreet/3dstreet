@@ -18,12 +18,19 @@ Properties of the rule, each of which is load-bearing somewhere:
   never changes the sticky style** — a shape drawn from the default does not
   re-persist that default.
 - **It over-triggers, deliberately.** The write site is a listener on the global
-  `Events` bus, filtered only by `detail.entity === entity` and
-  `detail.component === 'shape'`, and the seed function accepts an absent or
-  empty `property`. So the writer is not really "the properties panel" — it is
-  _any emitter_ that writes the selected shape's `shape` component, including an
-  AI chat instruction to close the shape, where no appearance key changes at
-  all. Such a write reseats the default to the shape's current appearance. That
+  `Events` bus, filtered by `detail.entity === entity` and
+  `detail.component === 'shape'` — and then by a third filter in the seed
+  function, which rejects a _named_ non-appearance property (`closed`,
+  `selectInside`, `updateEvent`). So a single-property edit only ever reseats the
+  default when the property named is one of the four. What gets through
+  unconditionally is a **whole-component write**: one whose `property` is absent
+  or empty (`EntityUpdateCommand` sets `this.property = payload.property ?? ''`,
+  and its LLM tool schema lists only `entityId` and `component` as required).
+  That is accepted whether or not any appearance key actually moved. So the
+  writer is not really "the properties panel" — it is _any emitter_ that writes
+  the selected shape's `shape` component as a whole, e.g. an AI chat edit
+  dispatched with no `property` at all. Such a write reseats the default to the
+  shape's current appearance. That
   is accepted rather than fixed: the reseat is to the values the selected shape
   already has and the user can see, so the worst case is a no-op or a default
   the user would have got by editing that shape anyway.
