@@ -247,18 +247,37 @@ export class ShapeVertexControls extends THREE.Object3D {
     // One unit sphere and three materials shared by every handle: a handle's
     // size is a per-frame scale and its state is a material swap, so there is
     // nothing per-handle to build or dispose.
+    //
+    // `transparent` with no reduced opacity looks redundant and is not: it is
+    // what puts the handles in the TRANSPARENT render list. renderOrder only
+    // sorts within a list, and three draws the whole opaque list first, so an
+    // opaque handle at renderOrder 1000 is still painted before - and so
+    // under - any transparent surface, however low that surface's renderOrder.
+    // A closed shape's fill is one such surface at every opacity, so without
+    // this a handle inside the polygon is erased by it. Together with
+    // depthTest: false, this is what "always on top" actually requires.
     this._sphere = new THREE.SphereGeometry(1, 12, 12);
+    // depthWrite off for the same reason as the shape's own x-ray overlay: an
+    // always-on-top affordance must not leave depth behind for whatever is
+    // drawn after it. Inert while everything above these sets depthTest: false,
+    // and wrong the moment something above them does not.
     this._matNormal = new THREE.MeshBasicMaterial({
       color: COLOR_NORMAL,
-      depthTest: false
+      depthTest: false,
+      depthWrite: false,
+      transparent: true
     });
     this._matHover = new THREE.MeshBasicMaterial({
       color: COLOR_HOVER,
-      depthTest: false
+      depthTest: false,
+      depthWrite: false,
+      transparent: true
     });
     this._matActive = new THREE.MeshBasicMaterial({
       color: COLOR_ACTIVE,
-      depthTest: false
+      depthTest: false,
+      depthWrite: false,
+      transparent: true
     });
     this.handleGroup = new THREE.Group();
     this.add(this.handleGroup);

@@ -1,6 +1,7 @@
 /* global AFRAME */
 
 import { BATCHING_ENABLED } from '../batch-models';
+import { MARKING_SURFACE_OFFSET } from '../tested/street-segment-utils';
 
 // generate cloned stencils on a street surface
 AFRAME.registerComponent('street-generated-stencil', {
@@ -53,7 +54,7 @@ AFRAME.registerComponent('street-generated-stencil', {
     },
     positionY: {
       // y position of clones along the length
-      default: 0.05,
+      default: MARKING_SURFACE_OFFSET,
       type: 'number'
     },
     cycleOffset: {

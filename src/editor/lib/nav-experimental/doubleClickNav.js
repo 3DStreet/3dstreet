@@ -18,9 +18,11 @@ import {
 
 const RAD2DEG = 180 / Math.PI;
 
-// True for an intersection against a mesh that exists only to make its entity
-// click-selectable (see `shape.js`'s interior cap). Such a mesh is invisible and
-// occupies space no real surface occupies, so navigation must look past it.
+// True for an intersection against a mesh that marks out its entity's interior
+// rather than being a real surface (see `shape.js`'s interior cap). It may well
+// be visible — a filled shape is paint the user can see — but it sits just
+// above the surface it was drawn on, so navigation must land on that surface
+// and not on the paint.
 function isSelectionOnlyHit(hit) {
   return !!(hit && hit.object && hit.object.userData.selectionOnly);
 }
@@ -76,11 +78,10 @@ export class DoubleClickNav {
       if (!hit && Array.isArray(raycasterComp.intersections)) {
         hit = raycasterComp.intersections[0] || null;
       }
-      // Some pick targets exist only so an entity can be click-selected — a
-      // shape's invisible interior cap. They are not scene surfaces, so a
-      // double-click over one has to resolve against whatever is really
-      // underneath; otherwise a polygon drawn over a road turns its whole
-      // footprint into object-framing instead of a landing.
+      // A hit on an interior cap (see isSelectionOnlyHit) has to resolve
+      // against whatever is really underneath; otherwise a polygon drawn over
+      // a road turns its whole footprint into object-framing instead of a
+      // landing.
       if (
         isSelectionOnlyHit(hit) &&
         Array.isArray(raycasterComp.intersections)
