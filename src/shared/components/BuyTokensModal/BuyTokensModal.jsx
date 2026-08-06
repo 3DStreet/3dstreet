@@ -199,29 +199,34 @@ const BuyTokensModal = ({
           <p className={styles.signInCopy}>{t('buyTokensUnavailable')}</p>
         </div>
       ) : (
-        <div className={styles.planCards}>
+        <div className={styles.packList}>
           {TOKEN_PACKS.map((pack) => (
-            <div key={pack.id} className={styles.planCard}>
-              <div className={styles.planName}>{pack.name}</div>
-              <div className={styles.planPriceRow}>
-                <span className={styles.planPriceLarge}>
-                  {formatCurrency(pack.price)}
-                </span>
+            <div key={pack.id} className={styles.packRow}>
+              <div className={styles.packInfo}>
+                <div className={styles.packName}>{pack.name}</div>
+                <div className={styles.packTokens}>
+                  {t('buyTokensPackTokens', { tokens: pack.tokens })}
+                </div>
               </div>
-              <div className={styles.planCycleDetail}>
-                {t('buyTokensOneTime')}
+              <div className={styles.packBuy}>
+                <div className={styles.packPriceBlock}>
+                  <span className={styles.packPrice}>
+                    {formatCurrency(pack.price)}
+                  </span>
+                  <span className={styles.packOneTime}>
+                    {t('buyTokensOneTime')}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.packCta}
+                  disabled={!PACK_PRICE_IDS[pack.id]}
+                  onClick={() => handleBuyPack(pack)}
+                  aria-label={t('buyTokensBuyCta', { name: pack.name })}
+                >
+                  {t('buy')}
+                </button>
               </div>
-              <ul className={styles.planPerks}>
-                <li>{t('buyTokensPackTokens', { tokens: pack.tokens })}</li>
-              </ul>
-              <button
-                type="button"
-                className={styles.planCta}
-                disabled={!PACK_PRICE_IDS[pack.id]}
-                onClick={() => handleBuyPack(pack)}
-              >
-                {t('buyTokensBuyCta', { name: pack.name })}
-              </button>
             </div>
           ))}
         </div>

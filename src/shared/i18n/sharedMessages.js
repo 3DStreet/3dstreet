@@ -260,6 +260,12 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Comprar {name}',
     fr: 'Acheter {name}'
   },
+  buy: {
+    en: 'Buy',
+    es: 'Comprar',
+    'pt-BR': 'Comprar',
+    fr: 'Acheter'
+  },
   buyTokensUnavailable: {
     en: 'Token packs are not available yet on this deployment. Please check back soon.',
     es: 'Los paquetes de tokens aún no están disponibles en esta versión. Vuelve pronto.',

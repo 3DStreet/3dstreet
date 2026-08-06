@@ -25,10 +25,12 @@ const EditorBuyTokensModal = () => {
   );
 
   // The shared TokenDetailsCard's "Get More Tokens" button dispatches
-  // openPurchaseModal; the generator listens in mount-purchase-modal, but the
-  // editor had no listener at all — the button was a silent no-op here. Route
-  // by token type and plan: gen-token shortfalls for paid users go to the
-  // pack modal, everything else to the appropriate upgrade paywall surface.
+  // openPurchaseModal. Today only the generator renders that card (the
+  // editor's TokenDisplayInner usages don't pass showDetails), so this
+  // listener is defensive: it makes the shared card safe to enable in the
+  // editor later instead of being a silent no-op. Route by token type and
+  // plan: gen-token shortfalls for paid users go to the pack modal,
+  // everything else to the appropriate upgrade paywall surface.
   useEffect(() => {
     const handleOpenPurchase = (e) => {
       const tokenType = e?.detail?.tokenType;
