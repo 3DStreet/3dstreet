@@ -318,28 +318,33 @@ describe('getShapeStyle / setShapeStyle', () => {
   });
 
   // Every other write test also moves lineColor, so a guard comparing only
-  // lineColor — or any three of the four keys — would pass them all. This one
-  // moves ONLY fillOpacity, so a partial guard swallows the write and fails it.
-  it('writes when only fillOpacity changes', async () => {
-    const storage = makeStorage();
-    installStorage(storage);
-    const { getShapeStyle, setShapeStyle } = await import(MODULE_PATH);
-    setShapeStyle({
-      lineColor: '#00ff00',
-      lineWidth: 0.3,
-      fillColor: '#0000ff',
-      fillOpacity: 25
+  // lineColor would pass them all. One key at a time here, so a guard that
+  // omits ANY of the four swallows that key's write and fails this.
+  const BASE_STYLE = {
+    lineColor: '#00ff00',
+    lineWidth: 0.3,
+    fillColor: '#0000ff',
+    fillOpacity: 25
+  };
+  const CHANGED = {
+    lineColor: '#ff0000',
+    lineWidth: 0.7,
+    fillColor: '#00ffff',
+    fillOpacity: 70
+  };
+
+  for (const key of Object.keys(BASE_STYLE)) {
+    it(`writes when only ${key} changes`, async () => {
+      const storage = makeStorage();
+      installStorage(storage);
+      const { getShapeStyle, setShapeStyle } = await import(MODULE_PATH);
+      setShapeStyle(BASE_STYLE);
+      setShapeStyle({ ...BASE_STYLE, [key]: CHANGED[key] });
+      expect(storage.setItem).toHaveBeenCalledTimes(2);
+      expect(getShapeStyle()[key]).toBe(CHANGED[key]);
+      expect(JSON.parse(storage.data[STORAGE_KEY])[key]).toBe(CHANGED[key]);
     });
-    setShapeStyle({
-      lineColor: '#00ff00',
-      lineWidth: 0.3,
-      fillColor: '#0000ff',
-      fillOpacity: 70
-    });
-    expect(storage.setItem).toHaveBeenCalledTimes(2);
-    expect(getShapeStyle().fillOpacity).toBe(70);
-    expect(JSON.parse(storage.data[STORAGE_KEY]).fillOpacity).toBe(70);
-  });
+  }
 
   // The point of caching in module scope: with storage unavailable the
   // preference still works for the rest of the session, degrading to "does not
