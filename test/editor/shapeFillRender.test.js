@@ -1,16 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import {
   FILL_LIFT_M,
-  FILL_RENDER_ORDER,
+  FILL_ORDER_BASE,
   fillPaintOrder,
   fillRenderState
-} from '../../src/aframe-components/shapeFillLift.js';
+} from '../../src/aframe-components/shapeFillRender.js';
 import { MARKING_SURFACE_OFFSET } from '../../src/tested/street-segment-utils.js';
 
-// The lowest renderOrder any editor overlay uses (MeasureLineControls' drag
-// handles). The fill band must stay clear of it, so it is asserted rather than
-// left as a comment.
-const LOWEST_EDITOR_OVERLAY = 100;
+// Three's default for everything that does not set one. The fill band exists to
+// be above this, so it is the number the band is asserted against — NOT against
+// the band's own base, which would make the assertions self-referential and let
+// the base be moved to 0 with every test still green.
+const DEFAULT_RENDER_ORDER = 0;
+
+// The lowest renderOrder used by an editor overlay IN THE WEBGL QUEUE
+// (MeasureLineControls' drag handles). The CSS2D layer numbers independently on
+// a separate renderer and does not compete with the fill mesh, so its own use
+// of 1 is not a collision.
+const LOWEST_WEBGL_OVERLAY = 100;
+
+const STREET = 0;
 
 describe('fillRenderState', () => {
   it('reports 0% as unpainted', () => {
@@ -27,8 +36,9 @@ describe('fillRenderState', () => {
     // The material is transparent and non-depth-writing at every opacity, which
     // is what stops two fills depth-fighting. A reader reintroducing an
     // `opaque` flag should find this red rather than a silently unused field.
+    // Probed at 100%, which is the only opacity the flag ever described.
     expect(fillRenderState(100)).not.toHaveProperty('opaque');
-    expect(Object.keys(fillRenderState(40)).sort()).toEqual([
+    expect(Object.keys(fillRenderState(100)).sort()).toEqual([
       'opacity',
       'painted'
     ]);
@@ -50,57 +60,125 @@ describe('fillRenderState', () => {
   });
 });
 
-describe('fillPaintOrder', () => {
-  it('lands every real area strictly inside the band', () => {
-    for (const area of [1e-6, 1, 16, 100, 1e4, 1e9]) {
-      const order = fillPaintOrder(area);
-      expect(order).toBeGreaterThan(FILL_RENDER_ORDER);
-      expect(order).toBeLessThanOrEqual(FILL_RENDER_ORDER + 1);
+describe('fillPaintOrder — the band', () => {
+  it('puts every fill ABOVE ordinary scene content', () => {
+    // The band's one non-negotiable job, and the reason it has a positive base
+    // at all: ordinary content sits at three's implicit 0, and a fill at or
+    // below that can be painted over by the satellite map layer's ground plane.
+    // Asserted against the absolute 0 rather than against FILL_ORDER_BASE —
+    // a relative assertion passes with the base itself moved to 0 or negative.
+    expect(FILL_ORDER_BASE).toBeGreaterThan(DEFAULT_RENDER_ORDER);
+    for (const [y, area] of [
+      [STREET, 50],
+      [-2000, 1e9],
+      [0, 0],
+      [NaN, NaN]
+    ]) {
+      expect(fillPaintOrder(y, area)).toBeGreaterThan(DEFAULT_RENDER_ORDER);
     }
   });
 
+  it('keeps every fill BELOW the lowest WebGL editor overlay', () => {
+    for (const [y, area] of [
+      [1e9, Number.MIN_VALUE],
+      [9000, 1e-9],
+      [STREET, 1]
+    ]) {
+      expect(fillPaintOrder(y, area)).toBeLessThan(LOWEST_WEBGL_OVERLAY);
+    }
+  });
+});
+
+describe('fillPaintOrder — height is the primary key', () => {
+  it('paints a higher fill over a lower one whatever their areas', () => {
+    // The case a purely area-derived order gets wrong: a large shape a metre up
+    // must cover a small one at street level, not the other way round.
+    expect(fillPaintOrder(1, 400)).toBeGreaterThan(fillPaintOrder(STREET, 1));
+    expect(fillPaintOrder(0.15, 10000)).toBeGreaterThan(
+      fillPaintOrder(STREET, 0.5)
+    );
+  });
+
+  it('rises monotonically with height at a fixed area', () => {
+    const ys = [-500, -1, 0, 0.15, 1, 3, 100, 5000];
+    const orders = ys.map((y) => fillPaintOrder(y, 50));
+    for (let i = 1; i < orders.length; i++) {
+      expect(orders[i]).toBeGreaterThan(orders[i - 1]);
+    }
+  });
+
+  it('pins outside its range, and only there', () => {
+    // Two fills further apart than the range tie — accepted, and unreachable in
+    // any real scene. The second assertion is the control: it goes red if the
+    // pin creeps inward and starts tying heights a scene does contain.
+    expect(fillPaintOrder(-5000, 50)).toBe(fillPaintOrder(-1e6, 50));
+    expect(fillPaintOrder(8999, 50)).toBeGreaterThan(fillPaintOrder(-999, 50));
+  });
+
+  it('treats a non-finite height as street level rather than propagating NaN', () => {
+    // A NaN renderOrder compares false against everything and would drop the
+    // fill at an arbitrary point in the queue.
+    for (const y of [NaN, Infinity, -Infinity, undefined, null]) {
+      expect(Number.isFinite(fillPaintOrder(y, 50))).toBe(true);
+    }
+    expect(fillPaintOrder(NaN, 50)).toBe(fillPaintOrder(0, 50));
+  });
+});
+
+describe('fillPaintOrder — area breaks the tie within one height', () => {
   it('paints a smaller shape after a larger one, at every scale', () => {
-    // Asserted pairwise rather than on the endpoints: a mapping that is
-    // monotone overall but flat somewhere in the middle is exactly how the
-    // previous bucketed design failed, and endpoints would not have caught it.
+    // Pairwise rather than on the endpoints: a mapping that is monotone overall
+    // but flat somewhere in the middle is how a banded design fails, and
+    // endpoints would not catch it.
     const areas = [1e-6, 1, 2, 16, 17, 18, 100, 400, 1e4, 1e9];
-    const orders = areas.map(fillPaintOrder);
+    const orders = areas.map((a) => fillPaintOrder(STREET, a));
     for (let i = 1; i < orders.length; i++) {
       expect(orders[i]).toBeLessThan(orders[i - 1]);
     }
   });
 
   it('separates 16 m² from 17 m² from 18 m²', () => {
-    // The pair that failed the first live test: under the bucketed design 16
-    // and 17 shared a bucket, so their separation was exactly zero and the
-    // overlap z-fought unconditionally.
-    expect(fillPaintOrder(16) - fillPaintOrder(17)).toBeGreaterThan(1e-6);
-    expect(fillPaintOrder(17) - fillPaintOrder(18)).toBeGreaterThan(1e-6);
+    // The realistic near-miss: under a log-bucketed design 16 and 17 shared a
+    // bucket, so their separation was exactly zero and the overlap z-fought
+    // unconditionally.
+    expect(
+      fillPaintOrder(STREET, 16) - fillPaintOrder(STREET, 17)
+    ).toBeGreaterThan(0);
+    expect(
+      fillPaintOrder(STREET, 17) - fillPaintOrder(STREET, 18)
+    ).toBeGreaterThan(0);
   });
 
   it('quantises nothing: areas a part in a thousand apart still order', () => {
-    const orders = [100, 100.1, 100.2].map(fillPaintOrder);
+    const orders = [100, 100.1, 100.2].map((a) => fillPaintOrder(STREET, a));
     for (let i = 1; i < orders.length; i++) {
       expect(orders[i - 1] - orders[i]).toBeGreaterThan(0);
     }
   });
 
-  it('sorts a degenerate or unknown area LOWEST, never highest', () => {
+  it('sorts a degenerate or unknown area LOWEST at its own height', () => {
     // Area 0 is the trap: it is "small", and a mapping that treated it as the
-    // smallest real shape would paint it over everything — the exact inversion
-    // this rule exists to prevent. This goes red if that branch regresses.
-    for (const area of [NaN, Infinity, 0, -1, '', null, undefined]) {
-      expect(fillPaintOrder(area)).toBe(FILL_RENDER_ORDER);
+    // smallest real shape would paint it over everything at its height.
+    const floor = fillPaintOrder(STREET, 0);
+    for (const area of [NaN, Infinity, -1, '', null, undefined]) {
+      expect(fillPaintOrder(STREET, area)).toBe(floor);
     }
-    expect(FILL_RENDER_ORDER).toBeLessThan(fillPaintOrder(1e9));
+    expect(floor).toBeLessThan(fillPaintOrder(STREET, 1e9));
   });
 
-  it('keeps the whole band clear of the editor overlays', () => {
-    // The band's ceiling is what a future change to the mapping would silently
-    // blow through, taking fills over the editor's own chrome.
-    const supremum = fillPaintOrder(Number.MIN_VALUE);
-    expect(supremum).toBeLessThanOrEqual(FILL_RENDER_ORDER + 1);
-    expect(supremum).toBeLessThan(LOWEST_EDITOR_OVERLAY);
+  it('never lets an area difference outrank a real height difference', () => {
+    // The whole point of a two-key order. The largest area contribution there
+    // is, against the smallest height step the design promises to honour.
+    const biggestAreaTermAtStreet = fillPaintOrder(STREET, Number.MIN_VALUE);
+    expect(fillPaintOrder(0.01, 1e9)).toBeGreaterThan(biggestAreaTermAtStreet);
+    // And at a kerb step, which is the realistic case.
+    expect(fillPaintOrder(0.15, 1e9)).toBeGreaterThan(biggestAreaTermAtStreet);
+  });
+
+  it('lets area decide below the height crossover', () => {
+    // Two probes of the same road surface can differ in their last bits; that
+    // must not read as a height difference and flip the area rule.
+    expect(fillPaintOrder(1e-7, 16)).toBeGreaterThan(fillPaintOrder(0, 17));
   });
 });
 
@@ -109,8 +187,13 @@ describe('FILL_LIFT_M', () => {
     // The coupling is real, not documentary: this fails if someone re-hardcodes
     // the lift. Deliberately does NOT assert MARKING_SURFACE_OFFSET === 0.05 —
     // that constant is meant to be lowerable, and pinning it would defeat the
-    // whole exercise.
-    expect(FILL_LIFT_M).toBe(MARKING_SURFACE_OFFSET + 0.01);
+    // whole exercise. Asserted as a delta rather than as a sum, so it does not
+    // rely on the sum happening to be unrepresentable in binary.
+    expect(FILL_LIFT_M - MARKING_SURFACE_OFFSET).toBeCloseTo(0.01, 12);
     expect(FILL_LIFT_M).toBeGreaterThan(MARKING_SURFACE_OFFSET);
+  });
+
+  it('is a plain constant, taking no part in ordering', () => {
+    expect(typeof FILL_LIFT_M).toBe('number');
   });
 });
