@@ -2,8 +2,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import { elFactory } from './helpers.js';
 import {
-  FILL_RENDER_ORDER,
-  fillLiftForArea
+  FILL_LIFT_M,
+  fillPaintOrder
 } from '../../src/aframe-components/shapeFillLift.js';
 
 // shape.js statically imports the app store, which pulls in the Firebase/PostHog
@@ -180,28 +180,21 @@ describe('shape fill — the build gate', () => {
 describe('shape fill — material state', () => {
   // _syncFillMaterial runs synchronously from update(), so these are read
   // immediately and deliberately — no frame needed.
-  it('tracks transparent and depthWrite in both directions', async () => {
+  it('holds transparent and depthWrite constant across the whole range', async () => {
+    // Including at 100%. Two fills must never depth-compare against each other:
+    // the depth buffer cannot resolve two coplanar caps, and it is what an
+    // earlier design leaned on and had to abandon. A regression here would
+    // reintroduce the z-fighting the paint-order rule replaced, and it would
+    // show up only where two fills overlap at full opacity.
     const el = await makeShape('closed: true; fillOpacity: 0');
     const m = el.components.shape.fillMaterial;
     const seen = [];
-    for (const pct of [0, 40, 100, 40, 0]) {
+    for (const pct of [0, 40, 99, 100, 40, 0]) {
       el.setAttribute('shape', 'fillOpacity', pct);
       seen.push({ transparent: m.transparent, depthWrite: m.depthWrite });
     }
-    expect(seen.map((s) => s.transparent)).toEqual([
-      true,
-      true,
-      false,
-      true,
-      true
-    ]);
-    expect(seen.map((s) => s.depthWrite)).toEqual([
-      false,
-      false,
-      true,
-      false,
-      false
-    ]);
+    expect(seen.map((s) => s.transparent)).toEqual(seen.map(() => true));
+    expect(seen.map((s) => s.depthWrite)).toEqual(seen.map(() => false));
   });
 
   it('carries colour, lift and draw order onto the built mesh', async () => {
@@ -214,11 +207,24 @@ describe('shape fill — material state', () => {
     const mesh = fillMeshes(el)[0];
     expect(comp.fillMaterial.color.getHexString()).toBe('ff0000');
     expect(comp.area).toBeCloseTo(50, 5);
-    expect(mesh.position.y).toBeCloseTo(
-      FIXTURE_Y + fillLiftForArea(comp.area),
-      12
-    );
-    expect(mesh.renderOrder).toBe(FILL_RENDER_ORDER);
+    expect(mesh.position.y).toBeCloseTo(FIXTURE_Y + FILL_LIFT_M, 12);
+    expect(mesh.renderOrder).toBe(fillPaintOrder(comp.area));
+  });
+
+  it('re-derives the draw order when the shape changes size', async () => {
+    // The wiring that makes "smaller on top" follow an edit. The paint order is
+    // set in _addFill from the area computed in the same derive, so a stale
+    // order here would mean the two had come apart.
+    const el = await makeShape('closed: true; fillOpacity: 40');
+    const comp = el.components.shape;
+    const before = fillMeshes(el)[0].renderOrder;
+    const v = el.querySelectorAll('[shape-vertex]');
+    v[v.length - 1].setAttribute('position', { x: 40, y: FIXTURE_Y, z: 20 });
+    comp.rederive();
+    const after = fillMeshes(el)[0].renderOrder;
+    expect(comp.area).toBeGreaterThan(50);
+    expect(after).toBeLessThan(before);
+    expect(after).toBe(fillPaintOrder(comp.area));
   });
 
   it('clamps an out-of-range opacity to fully opaque', async () => {
@@ -226,7 +232,8 @@ describe('shape fill — material state', () => {
     el.setAttribute('shape', 'fillOpacity', 170);
     const m = el.components.shape.fillMaterial;
     expect(m.opacity).toBe(1);
-    expect(m.transparent).toBe(false);
+    // Fully opaque in colour, still a transparent-queue surface — see above.
+    expect(m.transparent).toBe(true);
   });
 
   it('draws nothing at zero opacity without ever hiding the mesh', async () => {

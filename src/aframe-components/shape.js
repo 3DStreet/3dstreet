@@ -32,8 +32,8 @@ import {
   ringSelfIntersects
 } from './polygonMath.js';
 import {
-  FILL_RENDER_ORDER,
-  fillLiftForArea,
+  FILL_LIFT_M,
+  fillPaintOrder,
   fillRenderState
 } from './shapeFillLift.js';
 
@@ -204,8 +204,14 @@ AFRAME.registerComponent('shape', {
     // default-width outline, and covers the tube outright below a line width
     // narrower than the lift.
     //
-    // The state-dependent fields (color, opacity, colorWrite, transparent,
-    // depthWrite) are owned by _syncFillMaterial. castShadow / receiveShadow
+    // transparent and depthWrite are set here and never change: the fill is a
+    // translucent, non-depth-writing surface at every opacity, including 100%.
+    // That is what stops two overlapping fills depth-fighting, and what lets
+    // one paint order rule them at every opacity rather than only at the top of
+    // the range. See shapeFillLift.js.
+    //
+    // The state-dependent fields (color, opacity, colorWrite) are owned by
+    // _syncFillMaterial. castShadow / receiveShadow
     // are deliberately left at THREE's false defaults: a thin marking casting a
     // shadow is wrong, and receiving one would double the shading already on
     // the road beneath.
@@ -476,9 +482,9 @@ AFRAME.registerComponent('shape', {
     // Filled into a reused array rather than mapped: this runs on every
     // re-derive, which for a shape under a drag is every frame.
     const selfIntersecting = closed && ringSelfIntersects(this._ringPts(verts));
-    // The enclosed area is needed twice per derive - by the fill, whose lift is
-    // derived from it, and by the area label. Compute it once so the two are
-    // guaranteed to be reading the SAME figure. Zero when there is no
+    // The enclosed area is needed twice per derive - by the fill, whose paint
+    // order is derived from it, and by the area label. Compute it once so the
+    // two are guaranteed to be reading the SAME figure. Zero when there is no
     // well-defined interior, matching what the label reports.
     const ringArea =
       closed && !selfIntersecting ? polygonAreaXZ(this._ringPts(verts)) : 0;
@@ -627,22 +633,14 @@ AFRAME.registerComponent('shape', {
   // time. A visible fill is content the user drew and must be in the file; an
   // invisible one would be a silent occluder.
   _syncFillMaterial: function () {
-    const { painted, opaque } = fillRenderState(this.data.fillOpacity);
+    const { painted } = fillRenderState(this.data.fillOpacity);
     const m = this.fillMaterial;
     this._applyFillAppearance(m);
     m.colorWrite = painted;
-    // A fully opaque fill renders as GENUINELY opaque - depth-writing, not a
-    // transparent surface at 100% - so that height, not draw order, decides
-    // which of two overlapping fills covers the other.
-    m.depthWrite = opaque;
-    const wantTransparent = !opaque;
-    if (m.transparent !== wantTransparent) {
-      m.transparent = wantTransparent;
-      // `transparent` changes the render pass the mesh sorts into, so this is
-      // a program rebuild - only pay it on a real flip, never per step of an
-      // opacity scrub.
-      m.needsUpdate = true;
-    }
+    // Note what is NOT here: transparent and depthWrite are constructor state
+    // and never move. An opacity change is a uniform update - no render pass
+    // change, so no needsUpdate, so no program rebuild on any step of an
+    // opacity scrub, and no discontinuity between 99% and 100%.
     if (painted) {
       delete this.fillGroup.userData.source;
     } else {
@@ -681,16 +679,16 @@ AFRAME.registerComponent('shape', {
     geometry.rotateX(-Math.PI / 2);
 
     const mesh = new THREE.Mesh(geometry, this.fillMaterial);
-    // Cap height is the first vertex's y plus a physical lift. See
-    // shapeFillLift.js for why a real height difference rather than a depth
-    // bias, why the lift is measured from the street's marking layer, and why
-    // a smaller shape sits higher.
-    mesh.position.y = verts[0].object3D.position.y + fillLiftForArea(area);
-    // One value for every fill: paint it after the large transparent ground
-    // plane the map layer draws on, which is sorted by its centre and can
-    // otherwise be painted over a fill drawn away from that centre. It says
-    // nothing about which of two fills is upper - see shapeFillLift.js.
-    mesh.renderOrder = FILL_RENDER_ORDER;
+    // Cap height is the first vertex's y plus a physical lift - the same lift
+    // for every fill. See shapeFillLift.js for why a real height difference
+    // rather than a depth bias, and why it is measured from the street's
+    // marking layer.
+    mesh.position.y = verts[0].object3D.position.y + FILL_LIFT_M;
+    // Paint the fill after the large transparent ground plane the map layer
+    // draws on (which is sorted by its centre and can otherwise be painted over
+    // a fill drawn away from that centre), and after any LARGER fill, so a
+    // small marking inside a big zone lands on top. See shapeFillLift.js.
+    mesh.renderOrder = fillPaintOrder(area);
     // Same reason as the sphere/cylinder leaves: the inspector raycaster reads
     // the hit object's own `.el` and does not walk up parents.
     mesh.el = this.el;

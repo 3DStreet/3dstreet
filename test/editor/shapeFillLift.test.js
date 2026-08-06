@@ -1,129 +1,116 @@
 import { describe, expect, it } from 'vitest';
 import {
   FILL_LIFT_M,
-  FILL_STACK_SPAN_M,
-  fillLiftForArea,
+  FILL_RENDER_ORDER,
+  fillPaintOrder,
   fillRenderState
 } from '../../src/aframe-components/shapeFillLift.js';
 import { MARKING_SURFACE_OFFSET } from '../../src/tested/street-segment-utils.js';
 
+// The lowest renderOrder any editor overlay uses (MeasureLineControls' drag
+// handles). The fill band must stay clear of it, so it is asserted rather than
+// left as a comment.
+const LOWEST_EDITOR_OVERLAY = 100;
+
 describe('fillRenderState', () => {
-  it('reports 0% as unpainted and not opaque', () => {
-    expect(fillRenderState(0)).toEqual({
-      opacity: 0,
-      painted: false,
-      opaque: false
-    });
+  it('reports 0% as unpainted', () => {
+    expect(fillRenderState(0)).toEqual({ opacity: 0, painted: false });
   });
 
-  it('reports anything above 0 and below 100 as painted but translucent', () => {
-    expect(fillRenderState(0.5)).toMatchObject({
-      painted: true,
-      opaque: false
-    });
-    expect(fillRenderState(99)).toMatchObject({ painted: true, opaque: false });
+  it('reports anything above 0 as painted', () => {
+    expect(fillRenderState(0.5)).toMatchObject({ painted: true });
+    expect(fillRenderState(99)).toEqual({ opacity: 0.99, painted: true });
+    expect(fillRenderState(100)).toEqual({ opacity: 1, painted: true });
   });
 
-  it('reports 100% as opaque', () => {
-    expect(fillRenderState(100)).toEqual({
-      opacity: 1,
-      painted: true,
-      opaque: true
-    });
+  it('has no `opaque` flag: 100% is not a distinct render state', () => {
+    // The material is transparent and non-depth-writing at every opacity, which
+    // is what stops two fills depth-fighting. A reader reintroducing an
+    // `opaque` flag should find this red rather than a silently unused field.
+    expect(fillRenderState(100)).not.toHaveProperty('opaque');
+    expect(Object.keys(fillRenderState(40)).sort()).toEqual([
+      'opacity',
+      'painted'
+    ]);
   });
 
   it('clamps an out-of-range value rather than trusting the schema bounds', () => {
     // The schema min/max bind the properties panel only; setAttribute and a
     // hand-edited scene can both deliver anything.
-    expect(fillRenderState(170)).toEqual({
-      opacity: 1,
-      painted: true,
-      opaque: true
-    });
-    expect(fillRenderState(-20)).toEqual({
-      opacity: 0,
-      painted: false,
-      opaque: false
-    });
+    expect(fillRenderState(170)).toEqual({ opacity: 1, painted: true });
+    expect(fillRenderState(-20)).toEqual({ opacity: 0, painted: false });
   });
 
   it('treats a non-numeric value as unpainted', () => {
-    expect(fillRenderState(NaN)).toEqual({
-      opacity: 0,
-      painted: false,
-      opaque: false
-    });
+    expect(fillRenderState(NaN)).toEqual({ opacity: 0, painted: false });
   });
 
   it('accepts the string a hand-edited scene delivers', () => {
-    expect(fillRenderState('40')).toEqual({
-      opacity: 0.4,
-      painted: true,
-      opaque: false
-    });
+    expect(fillRenderState('40')).toEqual({ opacity: 0.4, painted: true });
   });
 });
 
-describe('fillLiftForArea', () => {
-  it('stays within the clearance band for every input, sane or not', () => {
-    const areas = [0, 1e-6, 1, 100, 1e4, 1e9, NaN, Infinity, -1];
-    for (const area of areas) {
-      const lift = fillLiftForArea(area);
-      expect(lift).toBeGreaterThanOrEqual(FILL_LIFT_M);
-      expect(lift).toBeLessThanOrEqual(FILL_LIFT_M + FILL_STACK_SPAN_M);
+describe('fillPaintOrder', () => {
+  it('lands every real area strictly inside the band', () => {
+    for (const area of [1e-6, 1, 16, 100, 1e4, 1e9]) {
+      const order = fillPaintOrder(area);
+      expect(order).toBeGreaterThan(FILL_RENDER_ORDER);
+      expect(order).toBeLessThanOrEqual(FILL_RENDER_ORDER + 1);
     }
   });
 
-  it('sits a smaller shape strictly higher than a larger one', () => {
-    const lifts = [1, 10, 100, 1000, 10000].map(fillLiftForArea);
-    for (let i = 1; i < lifts.length; i++) {
-      expect(lifts[i]).toBeLessThan(lifts[i - 1]);
+  it('paints a smaller shape after a larger one, at every scale', () => {
+    // Asserted pairwise rather than on the endpoints: a mapping that is
+    // monotone overall but flat somewhere in the middle is exactly how the
+    // previous bucketed design failed, and endpoints would not have caught it.
+    const areas = [1e-6, 1, 2, 16, 17, 18, 100, 400, 1e4, 1e9];
+    const orders = areas.map(fillPaintOrder);
+    for (let i = 1; i < orders.length; i++) {
+      expect(orders[i]).toBeLessThan(orders[i - 1]);
     }
   });
 
-  it('gives equal area ratios equal steps', () => {
-    const decadeLow = fillLiftForArea(1) - fillLiftForArea(10);
-    const decadeHigh = fillLiftForArea(100) - fillLiftForArea(1000);
-    expect(Math.abs(decadeLow - decadeHigh)).toBeLessThan(1e-12);
+  it('separates 16 m² from 17 m² from 18 m²', () => {
+    // The pair that failed the first live test: under the bucketed design 16
+    // and 17 shared a bucket, so their separation was exactly zero and the
+    // overlap z-fought unconditionally.
+    expect(fillPaintOrder(16) - fillPaintOrder(17)).toBeGreaterThan(1e-6);
+    expect(fillPaintOrder(17) - fillPaintOrder(18)).toBeGreaterThan(1e-6);
   });
 
-  it('separates a stated area ratio by at least the derived minimum', () => {
-    // 100 m² over 400 m² separates by exactly 1.5e-4 m by derivation; the bound
-    // asserted is the honest floor rather than the derived figure.
-    expect(fillLiftForArea(100) - fillLiftForArea(400)).toBeGreaterThanOrEqual(
-      1.4e-4
-    );
-    // A 10x ratio: derived exactly 2.5e-4 m.
-    expect(fillLiftForArea(100) - fillLiftForArea(1000)).toBeGreaterThanOrEqual(
-      2.4e-4
-    );
-  });
-
-  it('sits a degenerate or unknown area LOWEST, never highest', () => {
-    // Area 0 also satisfies the "at or below the minimum" test, and pinning it
-    // to the smallest bucket would give it the MAXIMUM lift — the inversion
-    // this ordering rule exists to prevent. This assertion goes red if that
-    // branch order regresses.
-    const largest = fillLiftForArea(1e4);
-    expect(largest).toBe(FILL_LIFT_M);
-    for (const area of [NaN, Infinity, 1e9, 0, -1]) {
-      expect(fillLiftForArea(area)).toBe(largest);
+  it('quantises nothing: areas a part in a thousand apart still order', () => {
+    const orders = [100, 100.1, 100.2].map(fillPaintOrder);
+    for (let i = 1; i < orders.length; i++) {
+      expect(orders[i - 1] - orders[i]).toBeGreaterThan(0);
     }
   });
 
-  it('gives two near-equal areas the same lift, and separates them once they part', () => {
-    // Areas are quantised, so shapes within a step of each other tie — the
-    // accepted case where no stacking order is promised. The second assertion
-    // gives the first a direction: the tie is quantisation, not a constant.
-    expect(fillLiftForArea(250)).toBe(fillLiftForArea(260));
-    expect(fillLiftForArea(250)).toBeGreaterThan(fillLiftForArea(400));
+  it('sorts a degenerate or unknown area LOWEST, never highest', () => {
+    // Area 0 is the trap: it is "small", and a mapping that treated it as the
+    // smallest real shape would paint it over everything — the exact inversion
+    // this rule exists to prevent. This goes red if that branch regresses.
+    for (const area of [NaN, Infinity, 0, -1, '', null, undefined]) {
+      expect(fillPaintOrder(area)).toBe(FILL_RENDER_ORDER);
+    }
+    expect(FILL_RENDER_ORDER).toBeLessThan(fillPaintOrder(1e9));
   });
 
+  it('keeps the whole band clear of the editor overlays', () => {
+    // The band's ceiling is what a future change to the mapping would silently
+    // blow through, taking fills over the editor's own chrome.
+    const supremum = fillPaintOrder(Number.MIN_VALUE);
+    expect(supremum).toBeLessThanOrEqual(FILL_RENDER_ORDER + 1);
+    expect(supremum).toBeLessThan(LOWEST_EDITOR_OVERLAY);
+  });
+});
+
+describe('FILL_LIFT_M', () => {
   it('clears the marking layer, and follows it if it moves', () => {
     // The coupling is real, not documentary: this fails if someone re-hardcodes
     // the lift. Deliberately does NOT assert MARKING_SURFACE_OFFSET === 0.05 —
     // that constant is meant to be lowerable, and pinning it would defeat the
     // whole exercise.
     expect(FILL_LIFT_M).toBe(MARKING_SURFACE_OFFSET + 0.01);
+    expect(FILL_LIFT_M).toBeGreaterThan(MARKING_SURFACE_OFFSET);
   });
 });
