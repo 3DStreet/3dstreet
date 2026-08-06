@@ -133,31 +133,6 @@ const useStore = create(
           localStorage.setItem('unitsPreference', newUnitsPreference);
           set({ unitsPreference: newUnitsPreference });
         },
-        // Sticky style for the shape draw tool: a newly drawn shape inherits
-        // the previous *drawn* shape's line colour + width so consecutive
-        // shapes match by default. Persisted (like unitsPreference) so it
-        // survives reloads. Written only when the draw tool commits a shape —
-        // recolouring an existing shape via the panel does not reseat it.
-        lastShapeStyle: (() => {
-          try {
-            const raw = localStorage.getItem('lastShapeStyle');
-            const parsed = raw ? JSON.parse(raw) : null;
-            if (
-              parsed &&
-              typeof parsed.lineColor === 'string' &&
-              typeof parsed.lineWidth === 'number'
-            ) {
-              return parsed;
-            }
-          } catch (e) {
-            // corrupt value — fall through to the default
-          }
-          return { lineColor: '#ffe600', lineWidth: 0.15 };
-        })(),
-        setLastShapeStyle: (style) => {
-          localStorage.setItem('lastShapeStyle', JSON.stringify(style));
-          set({ lastShapeStyle: style });
-        },
         // Whether the shape draw tool is currently active — drives the
         // right-panel instructions block.
         shapeDrawActive: false,

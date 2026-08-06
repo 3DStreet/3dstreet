@@ -14,6 +14,10 @@ import {
 } from '../../lib/shapeMeasure';
 import { polygonAreaXZ } from '../../../aframe-components/polygonMath.js';
 import { adjacentSegments } from '../../lib/shapeEditRules.js';
+import {
+  shapeStyleSeedFromUpdate,
+  setShapeStyle
+} from '../../lib/shapeStyle.js';
 
 const MAX_LABELLED_VERTICES = 12;
 
@@ -106,10 +110,26 @@ const ShapeSidebar = ({ entity }) => {
   const readoutsRef = useRef(null);
   const lastHoverRef = useRef(null);
 
-  // Re-render the panel list when this shape changes (appearance edits).
+  // Re-render the panel list when this shape changes (appearance edits) — and
+  // make this shape's appearance the default for the next shape drawn.
+  //
+  // Scope: the requirement is "restyled in the properties panel", and this
+  // effect's lifetime is exactly "this shape is selected" (Sidebar mounts
+  // ShapeSidebar iff the entity carries a `shape` component), so selection is
+  // the gate and no extra condition is needed. What is stored is a SNAPSHOT
+  // taken while the shape is selected, not a live link to it: once the shape is
+  // deselected the default keeps the value it last took.
+  //
+  // The default is a preference, deliberately outside the undo history (same
+  // class as unitsPreference) — an undo can move it, but only by changing a
+  // selected shape's appearance. The draw tool is a reader only; drawing never
+  // reseats it. See docs/shape-sticky-style.md.
   useEffect(() => {
     const onEntityUpdate = (detail) => {
-      if (detail.entity === entity) setTick((n) => n + 1);
+      if (detail.entity !== entity) return;
+      setTick((n) => n + 1);
+      const seed = shapeStyleSeedFromUpdate(detail, entity);
+      if (seed) setShapeStyle(seed);
     };
     Events.on('entityupdate', onEntityUpdate);
     return () => Events.off('entityupdate', onEntityUpdate);
@@ -320,6 +340,18 @@ const ShapeSidebar = ({ entity }) => {
                 </li>
               )}
               <li>• Edit line color, width and fill below</li>
+              {/* Unconditional, unlike the two bullets above: the rule applies
+                  to open polylines exactly as it does to closed shapes, and the
+                  invisible state is worse for an open one (no interior cap, so
+                  it cannot be re-selected from the viewport at all). */}
+              <li>
+                • Changing a shape&rsquo;s line or fill style makes it the
+                default for new shapes
+              </li>
+              <li>
+                • Line width 0 hides the outline — with fill opacity 0% (or on
+                an open line) the shape is invisible
+              </li>
             </ul>
           </div>
         </div>

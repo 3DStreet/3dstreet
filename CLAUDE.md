@@ -109,6 +109,9 @@ than reusing `EntityRemoveCommand` / `EntityUpdateCommand` because those steal
 selection, clone the entity on the reverse leg, and coalesce consecutive updates
 into one undo step — see each file's docblock.
 
+Restyling a shape in the properties panel makes its appearance the default for
+the next shape drawn — see `docs/shape-sticky-style.md`.
+
 **Layer Reordering:** Drag-and-drop reordering of layers within the same parent in the SceneGraph. Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
 
 ## Asset System

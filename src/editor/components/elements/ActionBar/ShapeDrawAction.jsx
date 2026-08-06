@@ -59,6 +59,7 @@ import {
 } from '../../../lib/nav-experimental/cursorAnchor.js';
 import { ProbeTargets } from '../../../lib/nav-experimental/probeTargets.js';
 import { BLOCK_SLOPE_MIN_DEGREES } from '../../../lib/nav-experimental/constants.js';
+import { getShapeStyle } from '../../../lib/shapeStyle.js';
 
 // m — reject a click ~on the PREVIOUS vertex. Distinct from the editor's
 // MIN_EDIT_VERTEX_SEPARATION (shapeEditRules.js), which holds the same number
@@ -186,7 +187,6 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
   const highlightRef = useRef(null); // first-vertex close-target marker
   const previewClosedRef = useRef(false); // preview currently drawn as a ring
   const lastPointRef = useRef(null); // last valid cursor point, for re-syncing
-  const setLastShapeStyle = useStore.getState().setLastShapeStyle;
   const setShapeDrawActive = useStore.getState().setShapeDrawActive;
 
   useEffect(() => {
@@ -218,13 +218,23 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     // Reused from the nav floor probes; recomputes only on scene-graph change.
     const probeTargets = new ProbeTargets(scene);
 
-    const style = useStore.getState().lastShapeStyle;
+    // Read once per activation, and shared with commitShape below, so the
+    // committed shape always matches the preview it was drawn as.
+    const style = getShapeStyle();
     const previewEl = document.createElement('a-entity');
     previewEl.id = 'shapeDrawPreview';
     previewEl.classList.add('hideFromSceneGraph');
     previewEl.setAttribute('shape', {
       lineColor: style.lineColor,
       lineWidth: style.lineWidth,
+      // The preview carries the sticky fill too, so what is previewed is what
+      // commits — a sticky opacity of 0 previews unfilled. A fill only shows
+      // once the preview is closed with 3+ vertices, and the cursor counts as
+      // one of them (see below), so it appears from the 2nd committed corner.
+      // setInvalidSignal deliberately leaves the fill alone, so the invalid-red
+      // signal never overwrites these and nothing needs restoring.
+      fillColor: style.fillColor,
+      fillOpacity: style.fillOpacity,
       // Starts open — with no vertices there is nothing to close. The preview's
       // closedness is then driven per cursor-move by syncPreviewClosed, which
       // keeps it showing exactly what committing right now would produce. The
@@ -680,7 +690,12 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
 
     function commitShape(closed) {
       const verts = verticesRef.current;
-      const style = useStore.getState().lastShapeStyle;
+      // `style` is the activation-time read above — one read per activation, so
+      // the committed shape always matches its preview. Safe because every
+      // commit path either IS a deactivation or is immediately followed by one
+      // (this effect is keyed on isActive), so the effect re-runs and re-reads
+      // before another shape can be drawn.
+      //
       // Vertices are picked in world space, but entitycreate parents the shape
       // to the editor's default parent (#street-container) and treats child
       // positions as LOCAL to it. Convert so the committed shape lands exactly
@@ -711,15 +726,22 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
           position: `${p.x - centroid.x} ${p.y - centroid.y} ${p.z - centroid.z}`
         }
       }));
+      // All four appearance props are written whether or not the shape closes:
+      // an open polyline has no interior today, but `closed` is togglable in
+      // the panel, and omitting the fill props would make closing it later
+      // reveal a schema-default fill instead of the one it was drawn with.
+      // Writing default-valued props costs nothing in the saved file — the
+      // serializer diffs the live component data against the schema defaults.
+      //
       // `closed` is written only when true, so an open shape's saved JSON keeps
       // no `closed` key (the serializer strips schema defaults).
-      const shapeComponent = closed
-        ? {
-            lineColor: style.lineColor,
-            lineWidth: style.lineWidth,
-            closed: true
-          }
-        : { lineColor: style.lineColor, lineWidth: style.lineWidth };
+      const shapeComponent = {
+        lineColor: style.lineColor,
+        lineWidth: style.lineWidth,
+        fillColor: style.fillColor,
+        fillOpacity: style.fillOpacity,
+        ...(closed ? { closed: true } : {})
+      };
       const layerNoun = closed ? 'Polygon' : 'Polyline';
       AFRAME.INSPECTOR.execute('entitycreate', {
         element: 'a-entity',
@@ -729,11 +751,6 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
           'data-layer-name': `Shape • ${layerNoun} ${shapeLayerCounter++}`
         },
         children
-      });
-      // Persist the sticky style (last-*drawn*) so the next shape matches.
-      setLastShapeStyle({
-        lineColor: style.lineColor,
-        lineWidth: style.lineWidth
       });
     }
 
