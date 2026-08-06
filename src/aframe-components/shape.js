@@ -35,7 +35,7 @@ import {
   FILL_LIFT_M,
   fillPaintOrder,
   fillRenderState
-} from './shapeFillLift.js';
+} from './shapeFillRender.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const MIN_SEGMENT_LENGTH = 1e-6;
@@ -88,6 +88,13 @@ AFRAME.registerSystem('shape', {
 
   tick: function () {
     this.shapes.forEach((shape) => {
+      // Unconditional, and NOT gated on updateEvent: the fill's draw order is
+      // the one derived property that depends on the entity's own transform
+      // rather than on its vertices, so neither the dirty-check below nor an
+      // opted-in update event can observe it changing. Dragging a whole shape
+      // upward with the transform gizmo moves no vertex and fires no shape
+      // event. Cheap enough to run every frame - see syncFillOrder.
+      shape.syncFillOrder();
       if (shape.data.updateEvent) return;
       if (shape.positionsChanged()) {
         shape.rederive();
@@ -204,11 +211,14 @@ AFRAME.registerComponent('shape', {
     // default-width outline, and covers the tube outright below a line width
     // narrower than the lift.
     //
-    // transparent and depthWrite are set here and never change: the fill is a
+    // transparent and depthWrite are set here and NEVER CHANGE - the fill is a
     // translucent, non-depth-writing surface at every opacity, including 100%.
     // That is what stops two overlapping fills depth-fighting, and what lets
-    // one paint order rule them at every opacity rather than only at the top of
-    // the range. See shapeFillLift.js.
+    // one draw order rule them at every opacity rather than only at the top of
+    // the range. Its cost, so this reads as a priced trade and not an
+    // oversight: a fill at 100% occludes nothing in the depth buffer, so an
+    // overlay drawn in the earlier opaque pass can be painted over by it. See
+    // shapeFillRender.js.
     //
     // The state-dependent fields (color, opacity, colorWrite) are owned by
     // _syncFillMaterial. castShadow / receiveShadow
@@ -242,6 +252,10 @@ AFRAME.registerComponent('shape', {
     // object3D slot, never the per-frame-cleared line/vertex/overlay groups (a
     // CSS2DObject has no geometry and would be orphaned by clearGroup).
     this.area = 0; // enclosed x/z area in m² (0 when open / < 3 vertices)
+    // Last plane height the fill's draw order was computed for. Undefined until
+    // a cap exists, which is what makes the first syncFillOrder after a build a
+    // no-op rather than a redundant recompute.
+    this._fillPlaneY = undefined;
     this.units = useStore.getState().unitsPreference;
     this.areaLabelDiv = document.createElement('div');
     this.areaLabelDiv.className = 'label shape-area-label';
@@ -419,6 +433,36 @@ AFRAME.registerComponent('shape', {
   // True when any vertex has moved, been added, or been removed since the last
   // check. Seeds the cache for new vertices (a missing entry counts as changed
   // rather than dereferencing undefined) and prunes removed ones.
+  // The height of the fill's plane, in the shape's PARENT frame: the entity's
+  // own y plus the first vertex's. A committed shape carries its centroid on
+  // the entity and its vertices relative to it, so neither term alone is the
+  // height. Parent-frame rather than world is deliberate and sufficient - every
+  // shape shares one parent and shapes cannot be reparented, so a transform on
+  // that parent shifts all of them equally and cancels out of the comparison.
+  _planeYFrom: function (verts) {
+    const base = this.el.object3D.position.y;
+    return verts.length ? base + verts[0].object3D.position.y : base;
+  },
+
+  // Refresh the fill's draw order if the shape's plane has moved in y. Called
+  // every frame by the system, because moving the whole entity is invisible to
+  // the vertex dirty-check.
+  //
+  // Deliberately NOT a re-derive: the cap's geometry is entity-local, so a
+  // translation does not change a single vertex of it, and rebuilding it every
+  // frame of a gizmo drag would be pure waste. The draw order is the only thing
+  // that moves. The formula still lives in one place - _addFill sets the same
+  // two fields when it builds the mesh, and this reads the area that derive
+  // stored.
+  syncFillOrder: function () {
+    const mesh = this.fillGroup.children[0];
+    if (!mesh) return;
+    const planeY = this._planeYFrom(this.getVertexEls());
+    if (planeY === this._fillPlaneY) return;
+    this._fillPlaneY = planeY;
+    mesh.renderOrder = fillPaintOrder(planeY, this.area);
+  },
+
   positionsChanged: function () {
     const verts = this.getVertexEls();
     let changed = false;
@@ -616,10 +660,12 @@ AFRAME.registerComponent('shape', {
     material.metalness = SHAPE_METALNESS;
   },
 
-  // Push appearance and flat-cap render state onto the shared fill material,
-  // and set whether the fill is exported. THE SINGLE OWNER of all of it,
-  // called from init and from update - so there is one place where "painted"
-  // is defined and nothing can drift out of step with it.
+  // Push appearance and paintedness onto the shared fill material, and set
+  // whether the fill is exported. THE SINGLE OWNER of the OPACITY-DEPENDENT
+  // state, called from init and from update, so there is one place where
+  // "painted" is defined and nothing can drift out of step with it. The
+  // opacity-INdependent render state (transparent, depthWrite, side) is
+  // constructor state - see there.
   //
   // Not painted is colorWrite: false, NEVER visible: false. Two systems key
   // off `visible` and both break: the editor raycaster drops any object with
@@ -680,15 +726,19 @@ AFRAME.registerComponent('shape', {
 
     const mesh = new THREE.Mesh(geometry, this.fillMaterial);
     // Cap height is the first vertex's y plus a physical lift - the same lift
-    // for every fill. See shapeFillLift.js for why a real height difference
+    // for every fill. See shapeFillRender.js for why a real height difference
     // rather than a depth bias, and why it is measured from the street's
     // marking layer.
     mesh.position.y = verts[0].object3D.position.y + FILL_LIFT_M;
-    // Paint the fill after the large transparent ground plane the map layer
-    // draws on (which is sorted by its centre and can otherwise be painted over
-    // a fill drawn away from that centre), and after any LARGER fill, so a
-    // small marking inside a big zone lands on top. See shapeFillLift.js.
-    mesh.renderOrder = fillPaintOrder(area);
+    // Above the map layer's ground plane; then above any fill on a LOWER
+    // plane, and among fills on the same plane above any LARGER one, so a small
+    // marking inside a big zone lands on top. See shapeFillRender.js.
+    //
+    // The plane's height is the entity's own y plus the vertex's, both in the
+    // parent frame: a committed shape carries its centroid on the entity and
+    // its vertices relative to it, so neither term alone is the height.
+    this._fillPlaneY = this._planeYFrom(verts);
+    mesh.renderOrder = fillPaintOrder(this._fillPlaneY, area);
     // Same reason as the sphere/cylinder leaves: the inspector raycaster reads
     // the hit object's own `.el` and does not walk up parents.
     mesh.el = this.el;

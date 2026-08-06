@@ -4,7 +4,7 @@ import { elFactory } from './helpers.js';
 import {
   FILL_LIFT_M,
   fillPaintOrder
-} from '../../src/aframe-components/shapeFillLift.js';
+} from '../../src/aframe-components/shapeFillRender.js';
 
 // shape.js statically imports the app store, which pulls in the Firebase/PostHog
 // dependency chain at module scope. managed-street.js dodges the same hazard with
@@ -193,8 +193,18 @@ describe('shape fill — material state', () => {
       el.setAttribute('shape', 'fillOpacity', pct);
       seen.push({ transparent: m.transparent, depthWrite: m.depthWrite });
     }
-    expect(seen.map((s) => s.transparent)).toEqual(seen.map(() => true));
-    expect(seen.map((s) => s.depthWrite)).toEqual(seen.map(() => false));
+    expect(seen).toHaveLength(6);
+    expect(seen.map((s) => s.transparent)).toEqual(Array(6).fill(true));
+    expect(seen.map((s) => s.depthWrite)).toEqual(Array(6).fill(false));
+    // And no program rebuild anywhere in that scrub. `needsUpdate` is
+    // set-only in three, so the readable counter behind it is what proves it:
+    // `version` increments on every needsUpdate = true, and a shader recompile
+    // per scrub step is a stutter on a heavy scene.
+    const versionBefore = m.version;
+    for (const pct of [40, 99, 100, 40, 0]) {
+      el.setAttribute('shape', 'fillOpacity', pct);
+    }
+    expect(m.version).toBe(versionBefore);
   });
 
   it('carries colour, lift and draw order onto the built mesh', async () => {
@@ -208,7 +218,69 @@ describe('shape fill — material state', () => {
     expect(comp.fillMaterial.color.getHexString()).toBe('ff0000');
     expect(comp.area).toBeCloseTo(50, 5);
     expect(mesh.position.y).toBeCloseTo(FIXTURE_Y + FILL_LIFT_M, 12);
-    expect(mesh.renderOrder).toBe(fillPaintOrder(comp.area));
+    expect(mesh.renderOrder).toBe(fillPaintOrder(FIXTURE_Y, comp.area));
+  });
+
+  it('reads the plane height from the entity AND the vertex, not either alone', async () => {
+    // A committed shape carries its centroid on the entity and its vertices
+    // relative to it, so a paint order taken from either term alone is wrong
+    // for every shape the draw tool produces. Moving the entity up must raise
+    // the order even though no vertex moved.
+    // It also goes through the real trigger: moving the whole entity moves no
+    // vertex, so the vertex dirty-check cannot see it and the system tick's
+    // unconditional syncFillOrder is what has to catch it. Driven by a frame,
+    // not by calling rederive() by hand, because calling it by hand is exactly
+    // what hid this in the first place.
+    const el = await makeShape('closed: true; fillOpacity: 40');
+    const atGround = fillMeshes(el)[0].renderOrder;
+    const geometryBefore = fillMeshes(el)[0].geometry;
+    el.setAttribute('position', { x: 0, y: 5, z: 0 });
+    await nextFrame();
+    const raised = fillMeshes(el)[0].renderOrder;
+    expect(raised).toBeGreaterThan(atGround);
+    expect(raised).toBe(
+      fillPaintOrder(5 + FIXTURE_Y, el.components.shape.area)
+    );
+    // And it did NOT rebuild the cap to do it: the geometry is entity-local, so
+    // a translation cannot change it, and a rebuild every frame of a gizmo drag
+    // would be waste.
+    expect(fillMeshes(el)[0].geometry).toBe(geometryBefore);
+  });
+
+  it('paints a higher fill over a lower one, in one scene, at full opacity', async () => {
+    // The composed claim end to end: the pure function is covered separately,
+    // this is that two real shapes come out in the right order. At 100%, which
+    // is where a depth-ordered design failed.
+    const low = await makeShape('closed: true; fillOpacity: 100');
+    const high = await addShapeToSceneOf(low, 'closed: true; fillOpacity: 100');
+    high.setAttribute('position', { x: 0, y: 1, z: 0 });
+    high.components.shape.rederive();
+    // Same area, so only the metre of height separates them.
+    expect(low.components.shape.area).toBeCloseTo(
+      high.components.shape.area,
+      9
+    );
+    expect(fillMeshes(high)[0].renderOrder).toBeGreaterThan(
+      fillMeshes(low)[0].renderOrder
+    );
+    // And neither writes depth, so nothing can fight whatever the order says.
+    expect(low.components.shape.fillMaterial.depthWrite).toBe(false);
+    expect(high.components.shape.fillMaterial.depthWrite).toBe(false);
+  });
+
+  it('paints a smaller fill over a larger one at the same height, at full opacity', async () => {
+    const big = await makeShape('closed: true; fillOpacity: 100');
+    const small = await addShapeToSceneOf(
+      big,
+      'closed: true; fillOpacity: 100'
+    );
+    const v = small.querySelectorAll('[shape-vertex]');
+    v[v.length - 1].setAttribute('position', { x: 4, y: FIXTURE_Y, z: 4 });
+    small.components.shape.rederive();
+    expect(small.components.shape.area).toBeLessThan(big.components.shape.area);
+    expect(fillMeshes(small)[0].renderOrder).toBeGreaterThan(
+      fillMeshes(big)[0].renderOrder
+    );
   });
 
   it('re-derives the draw order when the shape changes size', async () => {
@@ -224,10 +296,10 @@ describe('shape fill — material state', () => {
     const after = fillMeshes(el)[0].renderOrder;
     expect(comp.area).toBeGreaterThan(50);
     expect(after).toBeLessThan(before);
-    expect(after).toBe(fillPaintOrder(comp.area));
+    expect(after).toBe(fillPaintOrder(FIXTURE_Y, comp.area));
   });
 
-  it('clamps an out-of-range opacity to fully opaque', async () => {
+  it('clamps an out-of-range opacity to full colour, still transparent-queued', async () => {
     const el = await makeShape('closed: true; fillOpacity: 40');
     el.setAttribute('shape', 'fillOpacity', 170);
     const m = el.components.shape.fillMaterial;
