@@ -1640,8 +1640,8 @@
   "profileModal.managingSubscription": {
     "defaultMessage": "Managing subscription"
   },
-  "profileModal.monthlyProRefill": {
-    "defaultMessage": "Monthly Pro refill: {date}"
+  "profileModal.nextMonthlyRefill": {
+    "defaultMessage": "Next monthly refill: {date}"
   },
   "profileModal.planFree": {
     "defaultMessage": "Plan: Free"
@@ -1879,9 +1879,6 @@
   },
   "screenshotModal.generateRenders": {
     "defaultMessage": "Generate Renders"
-  },
-  "screenshotModal.insufficientTokens4x": {
-    "defaultMessage": "You need at least {totalTokenCost} tokens for 4x render"
   },
   "screenshotModal.loginPrompt": {
     "defaultMessage": "Please log in to use AI rendering"

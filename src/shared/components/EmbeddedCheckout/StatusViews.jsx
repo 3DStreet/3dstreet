@@ -4,6 +4,7 @@
  * without driving the full Stripe state machine.
  */
 import PropTypes from 'prop-types';
+import { useSharedMessages } from '@shared/i18n/sharedMessages';
 import styles from './EmbeddedCheckout.module.scss';
 
 const SuccessIcon = () => (
@@ -43,13 +44,16 @@ const ErrorIcon = () => (
   </div>
 );
 
-export const LoadingView = () => (
-  <div className={styles.statusContainer}>
-    <div className={styles.spinner}></div>
-    <p>Processing your payment...</p>
-    <p className={styles.subtext}>This usually takes just a few seconds</p>
-  </div>
-);
+export const LoadingView = () => {
+  const t = useSharedMessages();
+  return (
+    <div className={styles.statusContainer}>
+      <div className={styles.spinner}></div>
+      <p>{t('processingPayment')}</p>
+      <p className={styles.subtext}>{t('processingPaymentHint')}</p>
+    </div>
+  );
+};
 
 export const SuccessView = ({ title, message, ctaLabel, onCta }) => (
   <div className={styles.statusContainer}>
@@ -74,63 +78,62 @@ SuccessView.propTypes = {
 
 // Webhook didn't land within the polling window. Don't claim success — say
 // the payment is being finalized so the user knows to expect the email.
-export const PendingView = ({ onClose }) => (
-  <div className={styles.statusContainer}>
-    <SuccessIcon />
-    <h3>Almost there!</h3>
-    <p>
-      Your payment went through and we&apos;re finalizing your account. A
-      confirmation email is on the way. Refresh in a minute to see your updated
-      balance.
-    </p>
-    <button className={styles.actionButton} onClick={onClose}>
-      Close
-    </button>
-  </div>
-);
+export const PendingView = ({ onClose }) => {
+  const t = useSharedMessages();
+  return (
+    <div className={styles.statusContainer}>
+      <SuccessIcon />
+      <h3>{t('almostThere')}</h3>
+      <p>{t('paymentFinalizing')}</p>
+      <button className={styles.actionButton} onClick={onClose}>
+        {t('close')}
+      </button>
+    </div>
+  );
+};
 
 PendingView.propTypes = {
   onClose: PropTypes.func
 };
 
-export const ErrorView = ({ message, onClose }) => (
-  <div className={styles.statusContainer}>
-    <ErrorIcon />
-    <h3>Payment Issue</h3>
-    <p>
-      {message ||
-        'Something went wrong with your payment. Please try again or contact support.'}
-    </p>
-    <button className={styles.actionButton} onClick={onClose}>
-      Close
-    </button>
-  </div>
-);
+export const ErrorView = ({ message, onClose }) => {
+  const t = useSharedMessages();
+  return (
+    <div className={styles.statusContainer}>
+      <ErrorIcon />
+      <h3>{t('paymentIssue')}</h3>
+      <p>{message || t('paymentErrorFallback')}</p>
+      <button className={styles.actionButton} onClick={onClose}>
+        {t('close')}
+      </button>
+    </div>
+  );
+};
 
 ErrorView.propTypes = {
   message: PropTypes.string,
   onClose: PropTypes.func
 };
 
-export const HasSubscriptionView = ({ onManage, onClose }) => (
-  <div className={styles.statusContainer}>
-    <SuccessIcon />
-    <h3>You Already Have an Active Subscription</h3>
-    <p>
-      To add more tokens, manage your subscription, or upgrade/downgrade, please
-      visit the billing portal.
-    </p>
-    <button
-      className={`${styles.actionButton} ${styles.primary}`}
-      onClick={onManage}
-    >
-      Manage Subscription
-    </button>
-    <button className={styles.actionButton} onClick={onClose}>
-      Close
-    </button>
-  </div>
-);
+export const HasSubscriptionView = ({ onManage, onClose }) => {
+  const t = useSharedMessages();
+  return (
+    <div className={styles.statusContainer}>
+      <SuccessIcon />
+      <h3>{t('hasActiveSubscriptionHeading')}</h3>
+      <p>{t('billingPortalHint')}</p>
+      <button
+        className={`${styles.actionButton} ${styles.primary}`}
+        onClick={onManage}
+      >
+        {t('manageSubscription')}
+      </button>
+      <button className={styles.actionButton} onClick={onClose}>
+        {t('close')}
+      </button>
+    </div>
+  );
+};
 
 HasSubscriptionView.propTypes = {
   onManage: PropTypes.func,
