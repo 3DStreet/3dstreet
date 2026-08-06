@@ -106,6 +106,11 @@ AFRAME.registerSystem('shape', {
 
 AFRAME.registerComponent('shape', {
   schema: {
+    // The four appearance defaults below deliberately DUPLICATE
+    // `DEFAULT_SHAPE_STYLE` (src/editor/lib/shapeStyle.js) rather than importing
+    // it, so this schema still carries literals where a reader expects them. Do
+    // not DRY them into an import: a test compares the two and would become a
+    // tautology that passes whatever either side does.
     lineColor: { type: 'color', default: '#ffe600' },
     // min: 0 — the properties panel clamps to it, and a negative radius would
     // build inside-out spheres with no cylinders between them.

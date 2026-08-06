@@ -11,12 +11,25 @@ whenever that appearance changes.** Restyle a shape's line colour, line width,
 fill colour or fill opacity in the properties panel, and the next shape you draw
 comes out looking like that one.
 
-Three properties of the rule, each of which is load-bearing somewhere:
+Properties of the rule, each of which is load-bearing somewhere:
 
-- **One writer, one reader.** The shape properties panel writes the sticky style
-  (from its `entityupdate` effect); the draw tool only reads it. **Drawing a
-  shape never changes the sticky style** — a shape drawn from the default does
-  not re-persist that default.
+- **One write site, one read site.** The write happens in the shape properties
+  panel's `entityupdate` effect; the draw tool only reads. **Drawing a shape
+  never changes the sticky style** — a shape drawn from the default does not
+  re-persist that default.
+- **It over-triggers, deliberately.** The write site is a listener on the global
+  `Events` bus, filtered only by `detail.entity === entity` and
+  `detail.component === 'shape'`, and the seed function accepts an absent or
+  empty `property`. So the writer is not really "the properties panel" — it is
+  _any emitter_ that writes the selected shape's `shape` component, including an
+  AI chat instruction to close the shape, where no appearance key changes at
+  all. Such a write reseats the default to the shape's current appearance. That
+  is accepted rather than fixed: the reseat is to the values the selected shape
+  already has and the user can see, so the worst case is a no-op or a default
+  the user would have got by editing that shape anyway.
+- **Read once per draw-tool activation.** The draw tool reads the style when it
+  activates and holds that value for the whole drawing gesture, so the preview
+  and the committed shape cannot disagree — even if the style changes mid-draw.
 - **The snapshot is of the whole shape, not the edit.** Changing one property
   captures all four, read back off the entity after the update rather than from
   the event payload. So restyling a yellow-lined shape's fill makes the next

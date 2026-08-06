@@ -32,9 +32,11 @@ describe('shape schema defaults vs DEFAULT_SHAPE_STYLE', () => {
     expect(schema.fillOpacity.default).toBe(DEFAULT_SHAPE_STYLE.fillOpacity);
   });
 
-  // normaliseShapeStyle clamps to these bounds, so they are part of the same
-  // contract as the defaults.
-  it('agrees on the bounds the normaliser clamps to', () => {
+  // Unlike the test above this compares nothing: the spec's min/max are not
+  // exported, so these are literals restated here. It pins the SCHEMA's bounds
+  // against silent drift; that `normaliseShapeStyle` clamps to the same numbers
+  // is covered by the unit suite (test/editor/shapeStyle.test.js).
+  it('declares the expected schema bounds on the numeric properties', () => {
     const schema = AFRAME.components.shape.schema;
     expect(schema.lineWidth.min).toBe(0);
     expect(schema.fillOpacity.min).toBe(0);

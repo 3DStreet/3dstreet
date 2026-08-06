@@ -691,10 +691,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     function commitShape(closed) {
       const verts = verticesRef.current;
       // `style` is the activation-time read above — one read per activation, so
-      // the committed shape always matches its preview. Safe because every
-      // commit path either IS a deactivation or is immediately followed by one
-      // (this effect is keyed on isActive), so the effect re-runs and re-reads
-      // before another shape can be drawn.
+      // preview and commit cannot disagree. See docs/shape-sticky-style.md.
       //
       // Vertices are picked in world space, but entitycreate parents the shape
       // to the editor's default parent (#street-container) and treats child

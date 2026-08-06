@@ -126,7 +126,10 @@ const ShapeSidebar = ({ entity }) => {
   // reseats it. See docs/shape-sticky-style.md.
   useEffect(() => {
     const onEntityUpdate = (detail) => {
-      if (detail.entity !== entity) return;
+      // Guard the payload here rather than assuming it: `shapeStyleSeedFromUpdate`
+      // is total by contract, and this handler should not be the one place that
+      // throws on a malformed emit.
+      if (!detail || detail.entity !== entity) return;
       setTick((n) => n + 1);
       const seed = shapeStyleSeedFromUpdate(detail, entity);
       if (seed) setShapeStyle(seed);
@@ -346,7 +349,7 @@ const ShapeSidebar = ({ entity }) => {
                   it cannot be re-selected from the viewport at all). */}
               <li>
                 • Changing a shape&rsquo;s line or fill style makes it the
-                default for new shapes
+                default for new shapes — in every scene, in this browser
               </li>
               <li>
                 • Line width 0 hides the outline — with fill opacity 0% (or on

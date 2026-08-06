@@ -1,13 +1,20 @@
 // The "sticky style" for shapes: the appearance a newly drawn shape inherits.
 //
-// One writer (the shape properties panel, via `entityupdate`) and one reader
-// (the draw tool). Drawing a shape never changes the sticky style. See
-// `docs/shape-sticky-style.md` for the rule and why it is shaped this way.
+// Written when the SELECTED shape's `shape` component is written (whoever
+// writes it — the properties panel is the usual emitter, but not the only one);
+// read by the draw tool. Drawing a shape never changes the sticky style. See
+// `docs/shape-sticky-style.md` for the rule, its over-trigger and why it is
+// shaped this way.
 //
 // This module imports NOTHING — no store, no Events, no THREE. That is what
 // keeps it unit-testable with no stubbing, and what makes an import cycle
 // structurally impossible now that it owns state.
 
+// Retained deliberately despite reading like "last shape drawn" — which is NOT
+// the rule (see the doc). The key is the identity of every user's already-
+// persisted value; renaming it would silently discard all of them, which is
+// exactly what the per-key merge in `normaliseShapeStyle` exists to carry
+// forward. Fix the name only with a read-old-key migration alongside.
 const STORAGE_KEY = 'lastShapeStyle';
 
 // The single definition of "a shape's appearance". Everything else in this file
@@ -49,12 +56,9 @@ export const DEFAULT_SHAPE_STYLE = Object.freeze(
   )
 );
 
-// Is `value` usable as a number, judged BEFORE any coercion? The ordering is
-// load-bearing: `Number(null)`, `Number('')`, `Number([])` and `Number(false)`
-// are all 0, so a coerce-then-check-finite recipe would turn four wrong-type
-// stored values into a legitimate-looking zero — and a stored
-// `{"lineWidth":null,"fillOpacity":null}` into an invisible shape. The string
-// arm trims first because `Number(' ')` is also 0 while `' '` is non-empty.
+// Is `value` usable as a number, judged BEFORE any coercion? Never coerce first
+// and check `Number.isFinite` after — see `docs/shape-sticky-style.md`
+// (Validation, in one rule) for why that ordering is load-bearing.
 function toUsableNumber(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   if (typeof value === 'string') {
@@ -74,10 +78,9 @@ function toUsableNumber(value) {
  * makes this the migration as well as the validator: a value persisted with
  * only `lineColor`/`lineWidth` keeps both and picks up default fill.
  *
- * Colours accept any non-empty string, not just hex. The colour field commits
- * whatever is typed into it verbatim, and A-Frame stores it as given, so `red`
- * and `rgb(1,2,3)` are real live values; rejecting them would silently discard
- * a user's own working colour.
+ * Colours accept any non-empty string, not just hex — `red` and `rgb(1,2,3)`
+ * are real live values. See `docs/shape-sticky-style.md` for why a hex test
+ * would be wrong.
  *
  * Total: tolerates null/undefined/non-object input and never throws. Always
  * returns a FRESH object — callers keep the result, and `getAttribute` on a
@@ -108,9 +111,12 @@ export function normaliseShapeStyle(raw) {
 }
 
 /**
- * Read and normalise the persisted style. Takes the storage KEY, not a raw
- * string, so the `getItem` itself is inside the guard — storage access can
- * throw outright on disabled storage or in a blocked third-party context.
+ * Read and normalise the persisted style.
+ *
+ * Exported and taking the key as an argument so tests can exercise it directly,
+ * without going through `getShapeStyle` and its module-level cache. The
+ * `getItem` is deliberately INSIDE the try — storage access can throw outright
+ * on disabled storage or in a blocked third-party context.
  *
  * On any failure returns a fresh defaults object (not the frozen
  * `DEFAULT_SHAPE_STYLE` singleton, so every path has one contract).
@@ -126,26 +132,21 @@ export function readStoredShapeStyle(storageKey) {
 
 // The sticky style itself. Read lazily on first use, then cached for the
 // session — see getShapeStyle.
-let current = null;
+let cachedStyle = null;
 
 /**
  * The current sticky style. Reads `localStorage` on the first call and caches
- * in module scope for the rest of the session, so an external edit to the
- * stored value does not take effect until a reload.
- *
- * The cache is why the feature keeps working for a whole session when storage
- * is unavailable: the first read fails safely into defaults, and every later
- * `setShapeStyle` updates the in-memory value even when its write throws — so
- * the preference degrades to "does not survive a reload" rather than to
- * "does nothing".
+ * in module scope for the rest of the session — so the in-memory value, not
+ * storage, is the source of truth after that. See
+ * `docs/shape-sticky-style.md` for what that buys and costs.
  *
  * Returns the live cached object by reference. TREAT IT AS READ-ONLY: mutating
  * it would disable `setShapeStyle`'s equality guard and leave memory
  * disagreeing with storage.
  */
 export function getShapeStyle() {
-  if (current === null) current = readStoredShapeStyle(STORAGE_KEY);
-  return current;
+  if (cachedStyle === null) cachedStyle = readStoredShapeStyle(STORAGE_KEY);
+  return cachedStyle;
 }
 
 /**
@@ -158,7 +159,7 @@ export function setShapeStyle(raw) {
   const next = normaliseShapeStyle(raw);
   const previous = getShapeStyle();
   if (SHAPE_STYLE_KEYS.every((key) => previous[key] === next[key])) return;
-  current = next;
+  cachedStyle = next;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
@@ -170,26 +171,18 @@ function isShapeAppearanceProperty(property) {
   return Object.prototype.hasOwnProperty.call(SHAPE_STYLE_SPEC, property);
 }
 
-// The snapshot, in one function: given a live `shape` component's data, the
-// four appearance values as a fresh object. Null for falsy data.
-function shapeStyleFromData(data) {
-  if (!data) return null;
-  return normaliseShapeStyle(data);
-}
-
 /**
  * Given an `entityupdate` payload and the entity it landed on, the style to
  * seed — or null for "do not seed".
  *
- * THE SNAPSHOT IS READ FROM THE ENTITY, NOT FROM `detail.value`. That single
- * choice is what makes the drawing default the appearance of the WHOLE shape
- * rather than just the property that was edited: recolouring one shape's fill
- * carries its line style along too. Do not "simplify" this to `detail.value`.
+ * THE SNAPSHOT IS READ FROM THE ENTITY, NOT FROM `detail.value` — so the seed
+ * is the whole shape rather than the one property that was edited. Do not
+ * "simplify" this to `detail.value`; see `docs/shape-sticky-style.md`.
  *
  * Note the payload contract is looser than it looks: `property` and `value` may
  * be absent entirely (some emitters dispatch `entityupdate` directly with only
  * `entity` and `component`), and a whole-component write leaves `property` as
- * an empty string — which is a genuine appearance change and is accepted.
+ * an empty string — which is accepted, and is the over-trigger the doc names.
  */
 export function shapeStyleSeedFromUpdate(detail, entity) {
   if (detail?.component !== 'shape') return null;
@@ -197,10 +190,14 @@ export function shapeStyleSeedFromUpdate(detail, entity) {
     return null;
   }
   // A component REMOVAL emits a whole-component payload with a null value and
-  // then has no attribute left to read. Without this bail, undoing an
-  // AI-added `shape` component would either throw inside a live event handler
-  // or silently reset the user's preference to the cold-start defaults.
+  // then has no attribute left to read; without this bail, undoing an AI-added
+  // `shape` component would reset the preference. The `typeof` half matters
+  // separately:
+  // `AEntity.getAttribute` falls through to `HTMLElement.getAttribute` before
+  // the component has initialised and hands back the raw attribute STRING,
+  // which `normaliseShapeStyle` would read as an empty source and answer with
+  // full cold-start defaults — silently resetting the user's preference.
   const data = entity?.getAttribute('shape');
-  if (!data) return null;
-  return shapeStyleFromData(data);
+  if (!data || typeof data !== 'object') return null;
+  return normaliseShapeStyle(data);
 }

@@ -387,6 +387,16 @@ describe('shapeStyleSeedFromUpdate', () => {
     expect(seed).not.toBe(data);
   });
 
+  // The four appearance values of `fullData`, i.e. what any seeding call on it
+  // must return. Spelled out rather than asserted as "not null", which would
+  // also pass against `undefined` or a partial object.
+  const fullSeed = {
+    lineColor: '#ff0000',
+    lineWidth: 0.15,
+    fillColor: '#0000ff',
+    fillOpacity: 40
+  };
+
   it('seeds on each of the four appearance properties', () => {
     for (const property of [
       'lineColor',
@@ -399,7 +409,7 @@ describe('shapeStyleSeedFromUpdate', () => {
           { component: 'shape', property },
           entityWith(fullData)
         )
-      ).not.toBeNull();
+      ).toEqual(fullSeed);
     }
   });
 
@@ -411,10 +421,23 @@ describe('shapeStyleSeedFromUpdate', () => {
         { component: 'shape', property: '', value: fullData },
         entityWith(fullData)
       )
-    ).not.toBeNull();
+    ).toEqual(fullSeed);
     expect(
       shapeStyleSeedFromUpdate({ component: 'shape' }, entityWith(fullData))
-    ).not.toBeNull();
+    ).toEqual(fullSeed);
+  });
+
+  // `AEntity.getAttribute` falls through to `HTMLElement.getAttribute` before
+  // the component initialises and returns the raw attribute STRING. Seeding
+  // from that would hand back full cold-start defaults, silently wiping the
+  // user's preference.
+  it('does not seed from a raw attribute string', () => {
+    expect(
+      shapeStyleSeedFromUpdate(
+        { component: 'shape', property: 'lineColor' },
+        entityWith('lineColor: #ff0000; fillOpacity: 40')
+      )
+    ).toBeNull();
   });
 
   it('does not seed on non-appearance properties of shape', () => {
