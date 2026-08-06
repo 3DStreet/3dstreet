@@ -1,6 +1,9 @@
 /* global THREE */
 
-import { ringSelfIntersects } from '../../aframe-components/polygonMath.js';
+import {
+  ringEnclosesArea,
+  ringSelfIntersects
+} from '../../aframe-components/polygonMath.js';
 
 // Editor policy for editing an existing shape's vertices: what separations and
 // ring shapes an edit is allowed to produce, when a plane pick is usable, how
@@ -38,7 +41,6 @@ export const MIN_EDIT_VERTEX_SEPARATION = 0.05;
 export const HANDLE_TARGET_PX = 7; // ≈14 px across — the app's small-control size
 export const HANDLE_MIN_M = 0.02;
 export const HANDLE_MAX_M = 1.5;
-export const MIDPOINT_RADIUS_RATIO = 0.6;
 // Forgiveness margin on the hit test. Below the 4 px click-vs-drag threshold,
 // so it can never make two handles ambiguous where the separation rule says
 // they are not.
@@ -82,9 +84,9 @@ const _hitScratch = new THREE.Vector3();
 // would return the nearest in WORLD space rather than the nearest to the
 // cursor, and would additionally pick up the shape's own fill, x-ray overlay
 // and readout arcs — all of which are pick targets sitting exactly where the
-// handles are. This test also expresses the priority rule directly: `handles`
-// arrives in priority order (vertex handles before midpoint ghosts) and the
-// first match wins, so an overlap needs no tie-break.
+// handles are. Where two handles overlap the FIRST match in the list wins, with
+// no distance tie-break; the sole caller passes the shape's vertices in ring
+// order, so an overlap resolves to the lower vertex index.
 //
 // handles: [{ world: Vector3, screenRadiusPx: number }]. Returns the index of
 // the hit, or -1.
@@ -116,15 +118,15 @@ export function hitTestHandles(handles, camera, rect, clientX, clientY) {
 // presses that are deliberately never claimed.
 //
 // `pressViable` asks only whether the press resolves to a live target — a
-// vertex handle whose element still exists, or any midpoint ghost. It is
-// deliberately NOT "can this press drag": a press on a handle does not need a
-// drag plane to be worth claiming, because two of the three things a handle
-// press can do (sub-select a vertex, insert at a midpoint) are clicks that
-// never touch one. Gating the whole press on the plane pick made a vertex
-// impossible to make active at a near-horizontal camera — no active vertex, no
-// delete button, no way to delete — and let the declined press fall through to
-// the selection ray, which usually misses the thin tube and deselects the
-// shape. The drag plane is checked where the drag actually starts instead.
+// vertex handle whose element still exists. It is deliberately NOT "can this
+// press drag": a press on a handle does not need a drag plane to be worth
+// claiming, because one of the two things a handle press can do — sub-selecting
+// the vertex — is a click that never touches one. Gating the whole press on the
+// plane pick made a vertex impossible to make active at a near-horizontal
+// camera — no active vertex, no delete button, no way to delete — and let the
+// declined press fall through to the selection ray, which usually misses the
+// thin tube and deselects the shape. The drag plane is checked where the drag
+// actually starts instead.
 export function decidePress({
   inspectorOpen,
   targetIsCanvas,
@@ -191,19 +193,10 @@ const tooClose = (a, b) => {
 // the vertex could never be dragged OUT of the state — the app would read as
 // broken. Exempting the offending pairs lets a drag always escape a
 // pre-existing violation while still refusing to create a new one.
-//
-// `excludeIndex` names a vertex that is NOT pre-existing — the uncommitted one
-// a midpoint gesture has just materialised. Its violations are the tool's own
-// and must not be exempted: on a segment shorter than twice the minimum
-// separation the new vertex sits inside the threshold of both its neighbours,
-// so exempting those pairs would let a plain click commit the exact
-// two-handles-at-one-screen-point state this rule exists to prevent.
-export function preExistingClosePairs(points, excludeIndex = -1) {
+export function preExistingClosePairs(points) {
   const pairs = new Set();
   for (let i = 0; i < points.length; i++) {
-    if (i === excludeIndex) continue;
     for (let j = i + 1; j < points.length; j++) {
-      if (j === excludeIndex) continue;
       if (tooClose(points[i], points[j])) pairs.add(pairKey(i, j));
     }
   }
@@ -218,16 +211,100 @@ export function preExistingClosePairs(points, excludeIndex = -1) {
 //   the hit test can never be grabbed again, and that trap does not care about
 //   ring adjacency. Applies to open polylines too.
 //
-//   Ring simplicity — a closed shape must not cross itself, because a crossing
-//   ring has no interior to fill or measure. Open polylines are unconstrained.
+//   Ring validity — TWO questions, not one, and conflating them is what leaves
+//   a gap. `ringSelfIntersects` asks whether the boundary CROSSES itself;
+//   `ringEnclosesArea` asks whether it bounds anything at all. A collinear ring
+//   answers "no" to the first and still has no interior to fill, measure or
+//   extrude, while a ring pinched onto its own edge encloses a real region and
+//   crosses itself — so neither predicate can stand in for the other, and a
+//   closed shape must satisfy both. Open polylines are unconstrained by either:
+//   they have no interior to begin with.
+//
+// `exemptPairs` is only ever consulted for pairs INVOLVING `index`, which is
+// what a caller has to know to hand it the right set. A snapshot built with
+// `index` left out of it is therefore inert — every pair it skipped is exactly
+// a pair this function would have looked up — so a path that wants the moved or
+// inserted vertex held to the rule passes no set at all rather than a filtered
+// one. The insert path does exactly that.
 export function validateVertexEdit(points, closed, index, exemptPairs) {
+  if (!vertexSeparationOk(points, index, exemptPairs)) return false;
+  if (closed && ringSelfIntersects(points)) return false;
+  if (closed && !ringEnclosesArea(points)) return false;
+  return true;
+}
+
+// The separation half of validateVertexEdit, named so the two clauses read as
+// the two different questions they are: separation is a property of ONE vertex,
+// ring validity a property of the WHOLE ring.
+//
+// Module-private, because there is no second caller and no reason to invite
+// one. In particular it is NOT the gate the insert buttons hide on — that is
+// canOfferInsert, which tests separation against a point not yet in the
+// array and so cannot be expressed through this signature (see its own note).
+function vertexSeparationOk(points, index, exemptPairs) {
   for (let j = 0; j < points.length; j++) {
     if (j === index) continue;
     if (exemptPairs && exemptPairs.has(pairKey(index, j))) continue;
     if (tooClose(points[index], points[j])) return false;
   }
-  if (closed && ringSelfIntersects(points)) return false;
   return true;
+}
+
+// --- Inserting a vertex at a segment midpoint --------------------------
+
+// The segment indices adjacent to vertex `index` on a shape of `n` vertices.
+// ONE home, because two layers need the identical answer: the properties panel
+// pins these segments' captions and the controls layer offers an insert button
+// beside each of them. A ring gives two; an endpoint of an open polyline gives
+// one. Segment s runs from vertex s to vertex (s + 1) % n.
+export function adjacentSegments(index, n, closed) {
+  if (n < 2 || index < 0 || index >= n) return [];
+  if (closed) return [(index - 1 + n) % n, index];
+  const out = [];
+  if (index > 0) out.push(index - 1);
+  if (index < n - 1) out.push(index);
+  return out;
+}
+
+// The midpoint a segment insert would produce. Module-private; both functions
+// below use it, so the formula exists once.
+const segmentMidpoint = (points, segment) => {
+  const a = points[segment];
+  const b = points[(segment + 1) % points.length];
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 };
+};
+
+// Would a midpoint insert into `segment` produce a vertex that clears every
+// existing vertex by the minimum separation? O(n), no allocation beyond the
+// midpoint itself.
+//
+// Deliberately NOT written as validateVertexEdit(candidate, …). That version is
+// wrong in two directions at once. It would apply the ring clauses, hiding every
+// insert affordance on an already-crossing shape — where the whole point is that
+// they stay, and refuse on the press, because the crossing is nowhere near any
+// of them. And it would fail the candidate on close pairs between two EXISTING
+// vertices, hiding every affordance on a shape the draw tool legally produced
+// (its spacing rule measures against the previous vertex only, so such a pair is
+// ordinary). Both fall out of this loop's shape: it tests only pairs involving
+// the new point, so a pair it should not judge is never judged at all.
+export function canOfferInsert(points, segment) {
+  const mid = segmentMidpoint(points, segment);
+  for (let j = 0; j < points.length; j++) {
+    if (tooClose(mid, points[j])) return false;
+  }
+  return true;
+}
+
+// The vertex array a midpoint insert into `segment` would produce, plus that
+// vertex's index and position. `vertexIndex === n` on the wrap edge, where
+// splice appends. The midpoint is a THREE.Vector3 like every other member, so
+// `cand` stays homogeneous and a consumer may call Vector3 methods on `mid`.
+export function insertCandidate(points, segment) {
+  const vertexIndex = segment + 1;
+  const cand = points.slice();
+  const m = segmentMidpoint(points, segment);
+  cand.splice(vertexIndex, 0, new THREE.Vector3(m.x, m.y, m.z));
+  return { cand, vertexIndex, mid: cand[vertexIndex] };
 }
 
 // What a released drag should do. Kept as a pure function of the gesture's
@@ -337,31 +414,48 @@ export function trashButtonOffset(
   return { dx, dy };
 }
 
-// --- Midpoint (insert) handle clutter ----------------------------------
+// --- The insert button's placement -------------------------------------
 
-// Above this many vertices the ghost handles start to crowd each other, so
-// only the ones near the cursor are shown. Matches the vertex count at which
-// the shape's own corner readouts stop labelling every corner.
-export const MAX_CLUTTER_FREE_VERTICES = 12;
-export const MIDPOINT_NEAR_CURSOR_PX = 120;
-// A segment shorter than this on screen has no room for a ghost handle between
-// its two vertex handles. Measured in SCREEN pixels against the raw projection
-// rather than against the clamped world radius, so zooming out can never
-// suppress every midpoint and leave insert unreachable — zooming back in
-// restores them.
-export const MIN_MIDPOINT_SEGMENT_PX = 4 * HANDLE_TARGET_PX;
+// Half a caption chip's height. The chip is 12 px text with `line-height:
+// normal` and 2 px padding top and bottom, so its box is 16 + 2 + 2 = 20 px and
+// half of that is 10 — where the 16 is the ASSUMPTION in this number, since
+// `normal` resolves per font (≈1.2–1.35 × font-size) rather than to anything
+// stated. Owned by the readout layer (ShapeReadouts._makeLabel, which carries
+// the matching pointer back here); if the caption styling changes this drifts,
+// and the only symptom is the button sitting a little closer to or further from
+// the label it belongs to.
+const CAPTION_HALF_PX = 10;
+// Anchor centre to button centre. The anchor IS the caption's own point, so the
+// gap is measured from the caption's edge outward.
+const INSERT_OFFSET_PX = CAPTION_HALF_PX + OFFSET_MARGIN_PX + BUTTON_PX / 2;
 
-export function midpointHandleIsVisible({
-  segmentLengthPx,
-  vertexCount,
-  distanceToCursorPx,
-  hoverCapable
-}) {
-  if (segmentLengthPx < MIN_MIDPOINT_SEGMENT_PX) return false;
-  if (vertexCount <= MAX_CLUTTER_FREE_VERTICES) return true;
-  // Touch has no hover, so there is no cursor to be near. Applying the filter
-  // there would make insert unreachable altogether on a big shape; showing all
-  // of them accepts the clutter in exchange for the feature existing.
-  if (!hoverCapable) return true;
-  return distanceToCursorPx <= MIDPOINT_NEAR_CURSOR_PX;
+// Where to put an insert button relative to the segment midpoint it is anchored
+// to, as the literal transform string for its inner wrapper — or null when it
+// should be hidden.
+//
+// PIXELS ONLY, centre to centre, exactly as trashButtonOffset returns them.
+// CSS2DRenderer writes `translate(-50%,-50%) translate(Xpx, Ypx)` on the OUTER
+// element every pass, and the outer shrink-wraps the button, so the outer is
+// already centred on the anchor. A percentage written here would resolve
+// against the inner's own box and centre it a second time.
+//
+// Above by default; below when above would put the button off the top of the
+// viewport, which a street-level camera does routinely — the shape's captions
+// end up high on screen, and a control off the top is unreachable rather than
+// merely awkward. The flip fires while the button's top edge is still inside
+// the viewport, and on deliberately the same comparison trashButtonOffset makes
+// on its own vertical flip, so the two controls turn over at one height rather
+// than at two that happen to be close.
+//
+// Hidden below the same handle-radius floor the delete button uses. Past the
+// size clamp handles go sub-pixel while a full-size control still spans ±12 px,
+// so ANY 24 px control at that zoom covers the handle it belongs to and its
+// neighbours — and clicking a handle is the only route to this button. The
+// floor is shared rather than duplicated so the three controls appear and
+// disappear as one set.
+export function insertButtonTransform(handleRadiusPx, anchorY) {
+  if (handleRadiusPx < TRASH_MIN_HANDLE_PX) return null;
+  const below = anchorY - INSERT_OFFSET_PX < BUTTON_PX;
+  const dy = below ? INSERT_OFFSET_PX : -INSERT_OFFSET_PX;
+  return `translate(0px, ${dy}px)`;
 }

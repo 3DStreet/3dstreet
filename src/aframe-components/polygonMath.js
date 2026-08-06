@@ -66,6 +66,55 @@ export function polygonCentroidXZ(points) {
   };
 }
 
+// Dimensionless. See ringEnclosesArea for where the value comes from.
+const MIN_ENCLOSED_AREA_RATIO = 1e-9;
+
+// Does this ring enclose a region at all, as opposed to being a line, a spur or
+// a boundary that folds back exactly onto itself?
+//
+// NOT the same question as ringSelfIntersects, which asks whether the boundary
+// CROSSES itself. A collinear ring crosses itself nowhere and encloses nothing;
+// a ring pinched to a point — say A(0,0) B(10,0) C(10,10) D(5,0), where D sits
+// on the non-adjacent edge A→B — encloses a perfectly good 25 m² region and
+// still crosses itself. Both are invalid, for different reasons, and one
+// predicate cannot answer for both. (A bow-tie happens to score zero here too,
+// because its two lobes have opposite winding and cancel in the shoelace sum —
+// a coincidence, not a reason to think one test covers the other.)
+//
+// Fill, area and extrusion need this one. THREE's triangulator does not throw
+// and does not produce NaN on a ring with no interior: it silently returns
+// FEWER cap triangles than the ring has regions — one for the pinched quad
+// above, zero for a fully collinear ring — so an extruded degenerate shape gets
+// complete side walls around nothing, with no error anywhere downstream to
+// trace it by. The precondition has to be checked here because nothing further
+// on will notice it was violated.
+//
+// The threshold is a RATIO, not an area. Area scales as length squared, so a
+// fixed epsilon means something different on a 10 m shape than on a 5 cm one:
+// the same relative degeneracy passes at one scale and fails at the other.
+// Normalising by the ring's own perimeter squared makes the test dimensionless
+// and therefore scale-free. (Bounding-box area is the other obvious normaliser
+// and is rejected: a collinear ring has a ZERO-area bounding box, so the ratio
+// is 0/0 exactly on the family the predicate exists to catch.)
+//
+// 1e-9 sits far below anything drawable — about 80 nm of height on a 10 m ring
+// — and comfortably above the shoelace sum's own float noise on an exactly
+// collinear ring. That margin assumes SHAPE-LOCAL coordinates, which is what
+// the shape's own vertices are: the noise grows with distance from the origin,
+// so a caller handing this world coordinates hundreds of kilometres out would
+// erode it until degenerate rings started passing.
+export function ringEnclosesArea(points) {
+  if (points.length < 3) return false;
+  let perimeter = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    perimeter += Math.hypot(b.x - a.x, b.z - a.z);
+  }
+  if (perimeter === 0) return false;
+  return polygonAreaXZ(points) > MIN_ENCLOSED_AREA_RATIO * perimeter * perimeter;
+}
+
 // Orientation of the ordered triple (a, b, c) in the x/z plane: >0 CCW, <0 CW,
 // 0 collinear.
 function orientationXZ(a, b, c) {
