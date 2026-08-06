@@ -23,6 +23,16 @@ const TokenDetailsCard = ({
     setIsOpen(!isOpen);
   };
 
+  // Routed by the host app: generator opens UpgradeModal (packs for paid
+  // users via onAlreadyPro), editor routes by token type and plan.
+  const openPurchaseModal = () => {
+    window.dispatchEvent(
+      new CustomEvent('openPurchaseModal', {
+        detail: { tokenType }
+      })
+    );
+  };
+
   // If showDetails is false, just render the children without hover card
   if (!showDetails || !currentUser) {
     return children;
@@ -75,9 +85,10 @@ const TokenDetailsCard = ({
 
             <p className={styles.tokenDescription}>{tokenDescription}</p>
 
-            {/* Actions Section */}
+            {/* Actions Section — the purchase button is always available;
+                only the warning treatment is threshold-gated. */}
             <div className={styles.actionsSection}>
-              {tokenCount < 10 && (
+              {tokenCount < 10 ? (
                 <div
                   className={
                     tokenCount < 1 ? styles.outOfTokens : styles.lowTokenWarning
@@ -90,17 +101,18 @@ const TokenDetailsCard = ({
                   </p>
                   <button
                     className={styles.purchaseButton}
-                    onClick={() => {
-                      window.dispatchEvent(
-                        new CustomEvent('openPurchaseModal', {
-                          detail: { tokenType }
-                        })
-                      );
-                    }}
+                    onClick={openPurchaseModal}
                   >
                     {t('getMoreTokens')}
                   </button>
                 </div>
+              ) : (
+                <button
+                  className={styles.purchaseButtonQuiet}
+                  onClick={openPurchaseModal}
+                >
+                  {t('getMoreTokens')}
+                </button>
               )}
             </div>
 
