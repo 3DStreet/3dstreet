@@ -13,6 +13,7 @@ import {
   formatArea
 } from '../../lib/shapeMeasure';
 import { polygonAreaXZ } from '../../../aframe-components/polygonMath.js';
+import { adjacentSegments } from '../../lib/shapeEditRules.js';
 
 const MAX_LABELLED_VERTICES = 12;
 
@@ -40,20 +41,63 @@ const hoverPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const hoverWorld = new THREE.Vector3();
 const shapeWorldPos = new THREE.Vector3();
 
-// Ordered vertex world positions (local to the shape entity) as THREE.Vector3.
-function getShapeVertices(entity) {
+// The shape's ordered vertex elements.
+function getShapeVertexEls(entity) {
   const shape = entity?.components?.shape;
-  let els;
   if (shape && typeof shape.getVertexEls === 'function') {
-    els = shape.getVertexEls();
-  } else if (entity) {
-    els = Array.from(entity.children).filter(
+    return shape.getVertexEls();
+  }
+  if (entity) {
+    return Array.from(entity.children).filter(
       (c) => c.components && c.components['shape-vertex']
     );
-  } else {
-    els = [];
   }
-  return els.map((el) => el.object3D.position.clone());
+  return [];
+}
+
+// Ordered vertex world positions (local to the shape entity) as THREE.Vector3.
+function getShapeVertices(entity) {
+  return getShapeVertexEls(entity).map((el) => el.object3D.position.clone());
+}
+
+// The segments adjacent to the sub-selected vertex, if there is one. An insert
+// button stands beside each of these captions, so they must be labelled whether
+// or not the shape is above the label cap.
+//
+// DERIVED here, at render time, from the sub-selection's single owner — a value
+// computed at render cannot go stale, so there is nothing to invalidate,
+// nothing to publish and nothing to keep in sync.
+function pinnedSegments(entity, n, closed) {
+  // Through the accessor, never the field behind it: a rename of private state
+  // in the controls layer would otherwise make this read `undefined`, and the
+  // pin would just stop with no error anywhere.
+  const active = AFRAME.INSPECTOR?.shapeVertexControls?.getActiveVertex();
+  if (!active) return null;
+  // Deliberately the SAME enumeration the positions came from, not the one the
+  // controls layer uses. The two differ: this one tests the initialised
+  // `shape-vertex` component, the controls layer tests the attribute. So for one
+  // microtask after an insert the new element is active but not yet in this
+  // list, and the pin resolves to null for that render — invisible below the
+  // cap, and above it the insert's own re-derive re-renders within the frame.
+  // Filtering on the attribute instead would trade that for a visible wrong
+  // answer: the element would be found, with its position still at the origin.
+  const i = getShapeVertexEls(entity).indexOf(active);
+  if (i < 0) return null;
+  return adjacentSegments(i, n, closed);
+}
+
+// The ONLY place renderAll is called, so there is no second argument list to
+// keep in step with this one.
+function renderReadouts(readouts, entity, hoverPoint) {
+  const verts = getShapeVertices(entity);
+  const closed = isClosedShape(entity, verts.length);
+  readouts.renderAll(
+    verts,
+    MAX_LABELLED_VERTICES,
+    hoverPoint,
+    closed,
+    pinnedSegments(entity, verts.length, closed)
+  );
 }
 
 const ShapeSidebar = ({ entity }) => {
@@ -79,15 +123,7 @@ const ShapeSidebar = ({ entity }) => {
     readouts.setUnits(unitsPreference);
     readoutsRef.current = readouts;
 
-    const render = (hoverPoint) => {
-      const verts = getShapeVertices(entity);
-      readouts.renderAll(
-        verts,
-        MAX_LABELLED_VERTICES,
-        hoverPoint,
-        isClosedShape(entity, verts.length)
-      );
-    };
+    const render = (hoverPoint) => renderReadouts(readouts, entity, hoverPoint);
     lastHoverRef.current = null;
     render(null);
     // Belt for a post-commit child-init race: re-read positions next frame in
@@ -100,6 +136,14 @@ const ShapeSidebar = ({ entity }) => {
       if (detail.entity === entity) render(lastHoverRef.current);
     };
     Events.on('entityupdate', onEntityUpdate);
+
+    // Sub-selecting a different vertex changes no geometry — it emits no
+    // entityupdate, no shape-geometry-changed, and moves nothing — so without
+    // this nothing would tell the panel to re-derive which captions are pinned.
+    // The notification carries no payload: the pin is read from its owner at
+    // render time.
+    const onActiveVertexChanged = () => render(lastHoverRef.current);
+    Events.on('shapevertexactivechanged', onActiveVertexChanged);
 
     // The shape announces every re-derive, including the ones driven by a
     // vertex moving directly rather than through a command — which
@@ -169,6 +213,7 @@ const ShapeSidebar = ({ entity }) => {
       cancelAnimationFrame(raf);
       if (rowRaf !== null) cancelAnimationFrame(rowRaf);
       Events.off('entityupdate', onEntityUpdate);
+      Events.off('shapevertexactivechanged', onActiveVertexChanged);
       entity.removeEventListener('shape-geometry-changed', onGeometryChanged);
       if (canvas) canvas.removeEventListener('pointermove', onMove);
       readouts.dispose();
@@ -182,13 +227,7 @@ const ShapeSidebar = ({ entity }) => {
     const r = readoutsRef.current;
     if (!r) return;
     r.setUnits(unitsPreference);
-    const verts = getShapeVertices(entity);
-    r.renderAll(
-      verts,
-      MAX_LABELLED_VERTICES,
-      lastHoverRef.current,
-      isClosedShape(entity, verts.length)
-    );
+    renderReadouts(r, entity, lastHoverRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitsPreference]);
 
@@ -268,6 +307,10 @@ const ShapeSidebar = ({ entity }) => {
           <div className="rounded bg-blue-50 p-2 text-gray-600">
             <div className="mb-1 font-semibold uppercase">💡 Shape Tips</div>
             <ul className="space-y-1">
+              <li>
+                • Click a vertex to move it, delete it, or add a vertex on
+                either side
+              </li>
               <li>• Lengths and angles measure the vertex centreline</li>
               <li>• Angles are measured in the ground (x-z) plane</li>
               {closed && <li>• Area is the enclosed ground (x-z) footprint</li>}

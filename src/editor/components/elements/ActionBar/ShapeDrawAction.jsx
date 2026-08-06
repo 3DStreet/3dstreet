@@ -13,20 +13,29 @@
 // trailing cursor point — Enter takes it, Esc drops it — which is the same
 // "back out one level" Esc means everywhere else in the editor.
 //
+// Closure is refused on TWO questions, not one: the closing edge must not cross
+// a committed edge, AND the ring it completes must enclose a region — a ring of
+// exactly zero area (three collinear points, say) crosses nothing and still has
+// no interior to fill, measure or extrude. Both live in closureRefused, which
+// every closedness decision in this file goes through.
+//
 // The two draw modes select how closure HAPPENS, not what the shape ends up as:
-// auto-close treats the ring as closed by default and drops to open when
-// closure would self-cross, while manual close stays open until the first
-// vertex is clicked. Either can therefore produce an open or a closed shape.
-// Letting a ring stay open is what allows a click to never be refused merely
-// because closure would cross — which in turn is what makes stars, combs and
-// deep concavities near the first vertex drawable in their natural order.
+// auto-close treats the ring as closed by default and drops to open whenever
+// closure is refused, while manual close stays open until the first vertex is
+// clicked. Either can therefore produce an open or a closed shape. Letting a
+// ring stay open is what allows a click to never be refused merely because
+// closure would be — which in turn is what makes stars, combs and deep
+// concavities near the first vertex drawable in their natural order.
 //
 // The preview draws the committed vertices PLUS the trailing cursor vertex, and
 // judges its closedness on that ring. Enter commits that same ring, cursor
-// vertex included, so what is on screen is what you get. Esc drops the cursor
-// vertex, so it commits a ring one shorter — which may therefore differ in
-// closedness from the preview. That difference is the point of the key, not a
-// discrepancy: Esc means "without the point I haven't clicked".
+// vertex included, so what is on screen is what you get — with the one
+// documented exception that the preview additionally requires the edge OUT to
+// the cursor to be clean, so preview and commit can disagree about closedness
+// right at a crossing (see syncPreviewClosed). Esc drops the cursor vertex, so
+// it commits a ring one shorter — which may therefore differ in closedness from
+// the preview. That difference is the point of the key, not a discrepancy: Esc
+// means "without the point I haven't clicked".
 //
 // Draw state lives in refs, never useState: the deactivation auto-finish runs
 // from the effect cleanup, a closure over the last render — a useState vertex
@@ -36,7 +45,10 @@
 import { useEffect, useRef } from 'react';
 import useStore from '@/store';
 import ShapeReadouts from '../../../lib/ShapeReadouts';
-import { segmentsIntersectXZ } from '../../../lib/shapeMeasure';
+import {
+  ringEnclosesArea,
+  segmentsIntersectXZ
+} from '../../../lib/shapeMeasure';
 import { intersectPlaneOrNull } from '../../../lib/intersectPlaneOrNull.js';
 // px — a larger press→release move is a drag. Shared with the vertex-editing
 // tool: it is one rule in both places, so the two must not drift apart.
@@ -372,10 +384,21 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       return d >= MIN_DRAW_VERTEX_SPACING;
     };
 
-    // Would closing the current committed ring (last→first) create a crossing?
-    const closeCrosses = () => {
+    // Would closing the current committed ring (last→first) be refused?
+    //
+    // Two questions, not one. The closing edge must not cross a committed edge,
+    // AND the ring it completes must enclose a region — a ring of exactly zero
+    // area (three collinear points, say) crosses nothing and still has no
+    // interior to fill, measure or extrude. Closure is gated on this and
+    // PLACEMENT deliberately is not: an open polyline has no interior to
+    // require, and refusing a click collinear with the two before it would make
+    // whole families of legal shapes undrawable.
+    const closureRefused = () => {
       const verts = verticesRef.current;
-      return verts.length >= 3 && closureCrossesFrom(verts[verts.length - 1]);
+      if (verts.length < 3) return false;
+      return (
+        closureCrossesFrom(verts[verts.length - 1]) || !ringEnclosesArea(verts)
+      );
     };
 
     // Would a closing edge from `point` back to the first vertex cross a
@@ -390,18 +413,25 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     // to the cursor and the one closing back — or the preview would draw a ring
     // that crosses itself, and the fill and area label would be computed from a
     // self-intersecting contour.
+    // The enclosure test takes the committed vertices PLUS the cursor point,
+    // because that is the ring the preview draws; judging the committed array
+    // instead would make the preview's closedness lag the cursor by a vertex.
     const previewClosesAt = (point) =>
       verticesRef.current.length >= 2 &&
       !placementCrosses(point) &&
-      !closureCrossesFrom(point);
+      !closureCrossesFrom(point) &&
+      ringEnclosesArea([...verticesRef.current, point]);
 
     // Should the COMMITTED ring be drawn closed? Used when there is no cursor
     // (the pointer has left the ground), where the preview's trailing vertex has
     // collapsed onto the last committed one.
-    const committedRingCloses = () => {
-      const verts = verticesRef.current;
-      return verts.length >= 3 && !closureCrossesFrom(verts[verts.length - 1]);
-    };
+    //
+    // Literally the negation of closureRefused, and written that way rather
+    // than as its own conjunction: both names are wanted at their call sites,
+    // but the RULE has one home, so a third closure condition cannot be added
+    // to one and missed on the other.
+    const committedRingCloses = () =>
+      verticesRef.current.length >= 3 && !closureRefused();
 
     // Drive the preview's closedness. Note this tracks the ring the user can
     // SEE — committed vertices plus the cursor — while commitsClosed() judges
@@ -497,7 +527,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         closingArmedRef.current = true;
         updateHighlight(true);
         setTrailing(verticesRef.current[0]); // preview the closing edge
-        setInvalid(closeCrosses());
+        setInvalid(closureRefused());
         refreshReadouts(verticesRef.current[0]);
         // While armed there is no pending corner: the trailing vertex is
         // snapped onto the first one, so the preview shows closure, not a new
@@ -539,12 +569,12 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         if (moved > CLICK_MOVE_THRESHOLD) return; // a drag (orbit/pan)
       }
       // Manual close: commit the committed ring as a polygon (do not add the
-      // duplicate first vertex). Refused outright if the closing edge would
-      // cross — closure was asked for explicitly here, so quietly handing back
+      // duplicate first vertex). Refused outright if the ring would not be a
+      // legal one — closure was asked for explicitly here, so quietly handing back
       // an open shape (what auto-close mode does) would answer a different
       // question than the one the click asked.
       if (!isAutoClose() && closingArmedRef.current) {
-        if (closeCrosses()) return;
+        if (closureRefused()) return;
         finish(false); // closing onto the first vertex, not onto the cursor
         return;
       }
@@ -708,13 +738,13 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     }
 
     // Does the shape commit as a closed ring? Never if the ring would cross
-    // itself — auto-close mode then commits an open polyline rather than
-    // refusing to finish. Given a legal closure, auto-close closes by default
+    // itself or enclose nothing — auto-close mode then commits an open polyline
+    // rather than refusing to finish. Given a legal closure, auto-close closes by default
     // and manual close closes only via the first-vertex gesture. Under 3
     // vertices there is no ring.
     const commitsClosed = () => {
       if (verticesRef.current.length < 3) return false;
-      if (closeCrosses()) return false;
+      if (closureRefused()) return false;
       return isAutoClose() || closingArmedRef.current;
     };
 

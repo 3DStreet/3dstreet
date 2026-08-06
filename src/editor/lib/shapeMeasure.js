@@ -98,9 +98,18 @@ export function formatArea(m2, unitsPreference) {
   return `${m2.toFixed(2)}m²`;
 }
 
-// The segment-crossing primitive now lives in the core layer
-// (aframe-components/polygonMath.js), because the `shape` component itself
-// needs it to decide whether a ring is simple — and a component may not import
-// from editor/lib. Re-exported here so the draw tool and the readout layer keep
-// one import site for all their x/z measurement helpers.
-export { segmentsIntersectXZ } from '../../aframe-components/polygonMath.js';
+// Both ring predicates live in the core layer
+// (aframe-components/polygonMath.js), for two different reasons.
+// segmentsIntersectXZ has to: the `shape` component itself reads it to decide
+// whether a ring is simple, and a component may not import from editor/lib.
+// ringEnclosesArea has no core consumer at all today — it is there because it
+// is a shoelace-area test that calls polygonAreaXZ, so it belongs beside the
+// function it is built on rather than in the editor layer that happens to be
+// its only caller.
+//
+// Re-exported here so the draw tool and the readout layer keep one import site
+// for all their x/z measurement helpers.
+export {
+  ringEnclosesArea,
+  segmentsIntersectXZ
+} from '../../aframe-components/polygonMath.js';

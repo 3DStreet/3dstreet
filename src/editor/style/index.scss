@@ -517,6 +517,46 @@ body.aframe-inspector-opened {
   }
 }
 
+// The shape editor's on-canvas "insert a vertex here" button.
+//
+// TOP LEVEL, outside the #aframeInspector block above, and that is load-bearing
+// rather than stylistic: this control is rendered through the CSS2D layer,
+// whose container is a direct child of document.body and so a SIBLING of
+// #aframeInspector — a rule nested in that block cannot reach it. For the same
+// reason nothing here may be set inline on the element: an inline declaration
+// beats a stylesheet rule whatever its selector, so a colour written in JS
+// would win over the states below and they would silently never fire.
+.shape-insert-button {
+  // The selection blue the whole vertex-editing feature already speaks in —
+  // the handles, the active rim and the shape's own selection box. A control in
+  // that colour reads as part of this tool; the delete button's black chip,
+  // sitting a couple of dozen pixels from an equally black caption, would read
+  // as a second line of the caption.
+  background: #1faaf2;
+  color: #fff;
+  // What separates the button from the caption at a glance when the two stack,
+  // whatever is behind them in the 3D scene.
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+
+  &:hover {
+    background: #7fd4ff;
+  }
+
+  // Colour only. This element carries its pixel offset from the anchor as an
+  // inline `transform`, which no stylesheet rule can override, so a press-down
+  // nudge is not available here — the darker fill is the whole of the pressed
+  // state.
+  &:active {
+    background: #0d84c4;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 1px;
+  }
+}
+
 // Right-side properties panel rendered inside RightPanel's content area.
 .properties-panel {
   color: variables.$lightgray-100;
