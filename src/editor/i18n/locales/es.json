@@ -546,7 +546,7 @@
   "profileModal.logOut": "Cerrar sesión",
   "profileModal.manageSubscription": "Administrar suscripción",
   "profileModal.managingSubscription": "Administrando suscripción",
-  "profileModal.monthlyProRefill": "Recarga mensual de Pro: {date}",
+  "profileModal.nextMonthlyRefill": "Próxima recarga mensual: {date}",
   "profileModal.planFree": "Plan: Free",
   "profileModal.planMax": "Plan: Max",
   "profileModal.planPro": "Plan: Pro",

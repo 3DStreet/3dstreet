@@ -1640,8 +1640,8 @@
   "profileModal.managingSubscription": {
     "defaultMessage": "Managing subscription"
   },
-  "profileModal.monthlyProRefill": {
-    "defaultMessage": "Monthly Pro refill: {date}"
+  "profileModal.nextMonthlyRefill": {
+    "defaultMessage": "Next monthly refill: {date}"
   },
   "profileModal.planFree": {
     "defaultMessage": "Plan: Free"

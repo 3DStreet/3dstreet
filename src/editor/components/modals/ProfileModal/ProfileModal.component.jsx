@@ -334,8 +334,8 @@ const ProfileModal = () => {
                         <TokenDisplayInner showLabel={true} />
                         <span style={{ fontSize: '13px', color: '#9ca3af' }}>
                           <FormattedMessage
-                            id="profileModal.monthlyProRefill"
-                            defaultMessage="Monthly Pro refill: {date}"
+                            id="profileModal.nextMonthlyRefill"
+                            defaultMessage="Next monthly refill: {date}"
                             values={{
                               // Format in the active locale (react-intl reads
                               // the IntlProvider locale) so non-US users don't
