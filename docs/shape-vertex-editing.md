@@ -54,6 +54,24 @@ there for a real device:
   and a hovering stylus, or a click this layer saw no press for at all, takes
   the destructive branch.
 
+### The dwell survives a rebuild, and that is not obvious
+
+The 200 ms dwell is a `transition-delay`, so it belongs to the chip element —
+and chips are destroyed and rebuilt on every geometry change. The obvious worry
+is that a rebuild under a stationary pointer restarts the delay, or drops the
+hover entirely, so the "+" flickers back to a number while the user is aiming at
+it.
+
+It does not. Verified on the branch: with the pointer resting on a morphed chip
+and never moved, an undo, a redo and a second undo each destroy and rebuild every
+chip, and the "+" stays throughout. The browser re-runs hit-testing after the
+mutation and the replacement element is `:hover` immediately, with the delay
+already elapsed.
+
+Worth stating because the alternative — owning the dwell in JavaScript, keyed to
+the side rather than the element — is the design this one was chosen over, and
+the whole argument for it was this hazard.
+
 `@media (hover: hover)` is _not_ a touch-only exclusion: a touch-only Windows
 tablet reports `hover: hover`, because Windows always exposes a virtual mouse.
 The pointer-type test is what actually keeps a finger out.
