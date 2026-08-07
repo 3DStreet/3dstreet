@@ -718,13 +718,13 @@ export class ShapeVertexControls extends THREE.Object3D {
   }
 
   // Reveal the insert button on the side running between these two vertex
-  // elements. The reveal-only half of the pair of inbound setters: a press on a
-  // measurement goes to activateSide(), which calls this when the press record
-  // says the input has no hover. Nothing outside this class calls it directly.
+  // elements. The internal reveal-only entry: a press on a measurement arrives
+  // at activateSide(), which delegates here when the press record says the input
+  // has no hover. Nothing outside this class calls it.
   //
   // It VALIDATES against this layer's own vertex list and refuses a pair that
-  // does not resolve, rather than storing it. That refusal is what makes an
-  // inbound setter safe here: the state can never be one this layer would then
+  // does not resolve, rather than storing it. That refusal is what makes the
+  // entry safe here: the state can never be one this layer would then
   // have to defend, and a pair resolved a moment ago against a list that has
   // since changed structurally is rejected rather than acted on.
   revealSide(elA, elB) {

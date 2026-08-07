@@ -91,9 +91,10 @@ pair of vertex elements, because it is the layer that built the caption.
 
 Three rules keep that split safe:
 
-- **Both inbound setters validate.** `revealSide()` opens a button on a side;
-  `activateSide()` is what a press on a measurement actually calls, and decides
-  from the press record whether that press reveals or inserts. Each refuses a
+- **Both setters validate.** `activateSide()` is the one inbound entry — what a
+  press on a measurement actually calls — and it decides from the press record
+  whether that press reveals or inserts; `revealSide()` is the internal
+  reveal-only entry it delegates to. Each refuses a
   pair this layer cannot resolve rather than storing it, so the state can never
   be one the layer would then have to defend — in particular a pair resolved a
   moment ago against a list that has since changed structurally. The branch
