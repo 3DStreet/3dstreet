@@ -1,7 +1,10 @@
 /* global THREE */
 import { describe, it, expect, beforeEach } from 'vitest';
 import ShapeReadouts from '../../src/editor/lib/ShapeReadouts.js';
-import { MIN_TAP_TARGET_PX } from '../../src/editor/lib/shapeEditRules.js';
+import {
+  MIN_TAP_TARGET_PX,
+  READOUT_RENDER_ORDER
+} from '../../src/editor/lib/shapeEditRules.js';
 
 // SCOPE NOTE for everything below. jsdom evaluates no stylesheet, and vitest
 // never sees the SCSS at all, so nothing here may assert a computed colour,
@@ -84,8 +87,9 @@ describe('ShapeReadouts.renderAll — pinned segments', () => {
 
   // The requirement in one assertion: a pin must be applied BEFORE the cap
   // logic, not inside its cursor-dependent branch. Written the wrong way round
-  // it inherits the early return above and the pinned captions — which have an
-  // on-canvas control standing beside them — go with it.
+  // it inherits the early return above, and a pinned caption — which is itself
+  // the thing the user clicks, and has to stay put while they reach for the
+  // button it opened — goes with it.
   it('draws exactly the pinned lengths above the cap with no cursor', () => {
     readouts.renderAll(polygon(13), 12, null, true, [0, 5]);
     expect(readouts.labels.length).toBe(2);
@@ -136,7 +140,7 @@ describe('ShapeReadouts — the label DOM contract', () => {
 
   const outers = () => readouts.labels.map((l) => l.outer);
   const interactive = () =>
-    outers().filter((o) => o.classList.contains('shape-readout--interactive'));
+    outers().filter((o) => o.classList.contains('shape-readout--insertable'));
 
   it('builds an outer/inner pair, with the visible chip on the inner', () => {
     readouts.renderAll(polygon(4), 12, null, true);
@@ -164,7 +168,7 @@ describe('ShapeReadouts — the label DOM contract', () => {
       expect(outer.style.pointerEvents).toBe('none');
       expect(outer.dataset.shapeSegment).toBeUndefined();
       expect(outer.style.minHeight).toBe('');
-      expect(outer.classList.contains('shape-readout--interactive')).toBe(false);
+      expect(outer.classList.contains('shape-readout--insertable')).toBe(false);
       expect(outer.classList.contains('shape-readout--muted')).toBe(false);
     }
   });
@@ -175,7 +179,7 @@ describe('ShapeReadouts — the label DOM contract', () => {
     for (const outer of outers()) {
       expect(outer.style.pointerEvents).toBe('none');
       expect(outer.dataset.shapeSegment).toBeUndefined();
-      expect(outer.classList.contains('shape-readout--interactive')).toBe(false);
+      expect(outer.classList.contains('shape-readout--insertable')).toBe(false);
       expect(outer.classList.contains('shape-readout--muted')).toBe(false);
     }
   });
@@ -202,7 +206,7 @@ describe('ShapeReadouts — the label DOM contract', () => {
   it('never marks an angle label, even under an interaction', () => {
     readouts.renderAll(polygon(5), 12, null, true, null, allInsertable());
     const angles = outers().filter(
-      (o) => !o.classList.contains('shape-readout--interactive')
+      (o) => !o.classList.contains('shape-readout--insertable')
     );
     expect(angles.length).toBe(5);
     for (const outer of angles) {
@@ -226,7 +230,7 @@ describe('ShapeReadouts — the label DOM contract', () => {
     expect(muted.length).toBe(1);
     expect(muted[0].style.pointerEvents).toBe('none');
     expect(muted[0].dataset.shapeSegment).toBeUndefined();
-    expect(muted[0].classList.contains('shape-readout--interactive')).toBe(
+    expect(muted[0].classList.contains('shape-readout--insertable')).toBe(
       false
     );
     expect(interactive().length).toBe(4);
@@ -242,10 +246,12 @@ describe('ShapeReadouts — the label DOM contract', () => {
     );
     expect(revealed.length).toBe(1);
     expect(Number(revealed[0].outer.dataset.shapeSegment)).toBe(2);
-    expect(revealed[0].obj.renderOrder).toBe(1);
+    expect(revealed[0].obj.renderOrder).toBe(
+      READOUT_RENDER_ORDER.revealedCaption
+    );
     for (const { obj, outer } of readouts.labels) {
       if (outer.classList.contains('shape-readout--revealed')) continue;
-      expect(obj.renderOrder).toBe(0);
+      expect(obj.renderOrder).toBe(READOUT_RENDER_ORDER.caption);
     }
   });
 

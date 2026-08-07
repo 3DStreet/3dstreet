@@ -591,14 +591,14 @@ body.aframe-inspector-opened {
 // A side length that can take a new point. The cursor is the only idle signal
 // there is; the height that makes it a finger-sized target is written inline
 // from a constant.
-.shape-readout--interactive {
+.shape-readout--insertable {
   cursor: pointer;
 }
 
 // Hover matches across the whole padded hit area: :hover applies to every
 // element in the hit-test ancestor chain, so the outer being the hit target
 // still lights the inner.
-.shape-readout--interactive:hover .shape-readout-label {
+.shape-readout--insertable:hover .shape-readout-label {
   background: #1faaf2;
 }
 
@@ -624,10 +624,19 @@ body.aframe-inspector-opened {
 //
 // The mute is on the chip's CHROME, not on its text: dimming the element dims
 // the number the readout exists to show, and on a shape with one short side
-// that number is precisely the one the user is squinting at. So the background
+// that number is precisely the one the user is squinting at. So the backing
 // recedes and the digits stay at full strength.
+//
+// Two halves, and both have to hold. The backing stays lighter than an ordinary
+// chip's, or the mark says nothing beside an insertable neighbour. But a thin
+// backing over bright asphalt or sky is the worst case for white 12 px digits,
+// so the text carries its own contrast rather than relying on the fill behind
+// it — which is what lets the fill recede this far at all.
 .shape-readout--muted .shape-readout-label {
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.5);
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.9),
+    0 1px 1px rgba(0, 0, 0, 0.9);
 }
 
 // Note: the shape component's own area label hand-builds an identical-looking

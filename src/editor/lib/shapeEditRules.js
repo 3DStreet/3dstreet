@@ -433,6 +433,31 @@ export function validateVertexDelete(points, closed, index) {
   return true;
 }
 
+// --- CSS2D draw order --------------------------------------------------
+
+// The CSS2D layer has an ordering of its own, unrelated to the scene's: the
+// renderer sorts by renderOrder first and camera distance second, and writes
+// element.style.zIndex itself on every pass — so a CSS z-index set anywhere else
+// is erased each frame and renderOrder is the only control that works. These
+// numbers share a property name with the scene's renderOrder and nothing else:
+// the CSS2D sort sees only CSS2DObjects, so a mesh's renderOrder is invisible to
+// it.
+//
+// Three bands, each boundary earning its place. `control` on top is what keeps a
+// caption from being drawn over a button, which is the one thing accepting
+// overlap depends on. `revealedCaption` in the middle keeps a neighbouring
+// caption from covering the number the user has to click and keep sight of while
+// reaching for the button beside it.
+//
+// ONE home for all three, in the module both layers that write them already
+// share. The bands are only meaningful relative to each other, so a copy per
+// layer is two halves of one rule that can drift with nothing to detect it.
+export const READOUT_RENDER_ORDER = {
+  caption: 0,
+  revealedCaption: 1,
+  control: 2
+};
+
 // --- The delete button's placement -------------------------------------
 
 export const BUTTON_PX = 24; // the app's small-icon-button size
@@ -524,15 +549,12 @@ const INSERT_OFFSET_PX = CAPTION_HALF_PX + OFFSET_MARGIN_PX + BUTTON_PX / 2;
 // on its own vertical flip, so the two turn over at one height rather than at
 // two that happen to be close.
 //
-// NO handle-radius floor, unlike trashButtonOffset. This control used to carry
-// one, on the reasoning that a full-size control at a zoom where handles have
-// gone sub-pixel covers the handle it belongs to — sound while clicking a
-// handle was the only route to it. It is not the route any more: the button is
-// reached by clicking the side's measurement, which is drawn at a fixed screen
-// size at every zoom. Kept, the floor would mean a user clicks a measurement,
-// successfully, and no button appears — a dead end with nothing on screen to
-// explain it. The delete button keeps its floor, which is why the constant
-// stays.
+// NO handle-radius floor, unlike trashButtonOffset. This button is reached by
+// clicking a side's measurement, which is drawn at a fixed screen size at every
+// zoom — so a floor would mean a click that worked and no button, a dead end
+// with nothing on screen to explain it. The delete button is reached from a
+// handle, so its floor still says something a user can act on, which is why
+// TRASH_MIN_HANDLE_PX remains.
 export function insertButtonTransform(anchorY) {
   const below = anchorY - INSERT_OFFSET_PX < BUTTON_PX;
   const dy = below ? INSERT_OFFSET_PX : -INSERT_OFFSET_PX;

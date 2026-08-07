@@ -21,14 +21,13 @@ import {
   formatLength,
   formatAngle
 } from './shapeMeasure';
-import { MIN_TAP_TARGET_PX } from './shapeEditRules';
+import { MIN_TAP_TARGET_PX, READOUT_RENDER_ORDER } from './shapeEditRules';
 
-// The CSS2D layer sorts by renderOrder first and camera distance second. A
-// caption the user has clicked has an on-canvas button 26 px above it and has
-// to stay in sight while they reach for it, so it is lifted one band out of the
-// ordinary caption band. Three bands in total, spanning this file and the
-// controls layer: ordinary caption 0 < revealed caption 1 < on-canvas control 2.
-const REVEALED_RENDER_ORDER = 1;
+// Distinguishes chips built by THIS renderer from any other instance's. The
+// panel's click handler is delegated on `document` and cannot be scoped to a
+// container — every CSS2D element in the scene shares one renderer container —
+// so the marker has to travel on the chip. See docs/shape-vertex-editing.md.
+let nextInstanceId = 1;
 
 const ARC_RADIUS = 0.6; // metres — fixed world radius of the angle arc
 const ARC_TUBE_RADIUS = 0.03;
@@ -40,6 +39,7 @@ const EPS = 1e-4;
 export default class ShapeReadouts {
   constructor(el) {
     this.el = el;
+    this.instanceId = String(nextInstanceId++);
     this.units = 'metric';
     this.group = new THREE.Group();
     this.group.name = 'shapeReadouts';
@@ -86,16 +86,12 @@ export default class ShapeReadouts {
   // `interaction`, when supplied, turns the LENGTH labels into controls:
   // `{ isInsertable(segment) → boolean, revealedSegment: number | null }`. It is
   // a parameter of this method and of no other, which is what scopes
-  // interactivity to a SELECTED shape: renderActive — the live draw preview —
-  // has no parameter to pass, so a chip there can never take a press. That
-  // matters more than it sounds: the draw tool places points on canvas
-  // pointerup and clears its preview on canvas pointerleave, and a live chip
-  // sitting at the rubber band's midpoint would swallow the first and oscillate
-  // the second.
+  // interactivity to a SELECTED shape structurally rather than by a condition —
+  // a live chip on the draw path would break the draw tool. See
+  // docs/shape-vertex-editing.md.
   //
-  // The callback form is deliberate. It is what keeps this file free of any
-  // knowledge of the edit rules — the caller supplies the answer, this layer
-  // never asks the question.
+  // The callback form is what keeps this file free of any knowledge of the edit
+  // rules: the caller supplies the answer, this layer never asks the question.
   renderAll(
     vertices,
     maxVertices,
@@ -205,11 +201,11 @@ export default class ShapeReadouts {
       // and pins plus one above it.
       options = interaction.isInsertable(segment)
         ? {
-            interactive: true,
+            insertable: true,
             segment,
             revealed: interaction.revealedSegment === segment
           }
-        : { interactive: false };
+        : { insertable: false };
     }
     this._makeLabel(formatLength(len, this.units), mid, options);
   }
@@ -290,32 +286,18 @@ export default class ShapeReadouts {
     this.arcs.push(mesh); // disposed with the arcs in clear()
   }
 
-  // TWO elements, built the same way for every label whether it is a control or
-  // not, so there is one DOM shape to reason about and one element that is "the
-  // chip". The OUTER is what CSS2DRenderer positions (and whose style.transform
-  // it rewrites every pass, so nothing of ours may go there); the INNER is the
-  // visible chip. Where a label is a control the hit area is grown on the outer
-  // only, which leaves the visible chip centred on its anchor exactly as before.
-  //
-  // The INNER's rendered HEIGHT is depended on elsewhere: shapeEditRules'
-  // CAPTION_HALF_PX is half of it, and is what stands an insert button clear of
-  // the caption it is anchored to. Changing the font size, the line-height or
-  // the vertical padding below therefore has to be carried across to that
-  // constant — nothing here will fail if it is not, the button simply drifts
-  // into or away from the label. The outer's taller hit box does NOT feed that
-  // number and must not be confused with it.
-  //
-  // `background` is the one visual property that lives in the stylesheet rather
-  // than here, because it is the one with state variants (hover, revealed,
-  // muted) and an inline declaration beats any stylesheet rule.
+  // TWO elements: the OUTER is what CSS2DRenderer positions and whose
+  // style.transform it rewrites every pass, so nothing of ours may go there;
+  // the INNER is the visible chip, and its rendered HEIGHT is what
+  // shapeEditRules' CAPTION_HALF_PX is half of — restyle the font size,
+  // line-height or vertical padding below and that constant has to follow.
+  // Rationale for the split, and for which properties live here rather than in
+  // the stylesheet: docs/shape-vertex-editing.md.
   _makeLabel(text, pos, options) {
     const outer = document.createElement('div');
     outer.className = 'shape-readout';
-    // Inline and unconditional, NOT in the stylesheet. It has no state variant
-    // — the branch is known here, at build time — and its failure mode is the
-    // worst in this file: a chip that takes presses on the draw path swallows
-    // point placement and oscillates the preview. Written here it is directly
-    // assertable in a test environment that evaluates no stylesheet at all.
+    // Inline and unconditional, NOT in the stylesheet: no state variant, and a
+    // chip that took presses on the draw path would break the draw tool.
     outer.style.pointerEvents = 'none';
 
     const inner = document.createElement('div');
@@ -333,25 +315,31 @@ export default class ShapeReadouts {
 
     const obj = new CSS2DObject(outer);
     obj.position.copy(pos);
+    // The bottom of the three CSS2D bands — see READOUT_RENDER_ORDER.
+    obj.renderOrder = READOUT_RENDER_ORDER.caption;
 
-    if (options && options.interactive) {
-      outer.classList.add('shape-readout--interactive');
+    if (options && options.insertable) {
+      outer.classList.add('shape-readout--insertable');
       outer.style.pointerEvents = 'auto';
       // Written from the constant rather than typed into the stylesheet, so the
       // hit box and the app's small-control size stay mechanically linked
       // instead of merely commented across a language boundary.
       outer.style.minHeight = `${MIN_TAP_TARGET_PX}px`;
-      // The only thing scoping the panel's delegated click handler, so it is
-      // load-bearing rather than decorative.
+      // The two halves of the channel the panel's delegated click handler
+      // resolves through: WHICH side this chip is, and WHOSE enumeration
+      // stamped it. Both load-bearing rather than decorative.
       outer.dataset.shapeSegment = String(options.segment);
+      outer.dataset.shapeReadouts = this.instanceId;
       if (options.revealed) {
         outer.classList.add('shape-readout--revealed');
-        obj.renderOrder = REVEALED_RENDER_ORDER;
+        // Lifted a band so a neighbouring caption cannot cover the number the
+        // user has to keep sight of while reaching for the button beside it.
+        obj.renderOrder = READOUT_RENDER_ORDER.revealedCaption;
       }
     } else if (options) {
       // A side that cannot take a point is marked, and the ones that can are
       // not. On the overwhelmingly common shape every side can, so marking the
-      // controls would put a mark on everything and carry no information; the
+      // insertable ones would mark everything and carry no information; the
       // mark appears exactly when there is something to say. It is also the only
       // signal that exists on touch, where there is no hover and no cursor.
       outer.classList.add('shape-readout--muted');

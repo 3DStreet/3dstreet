@@ -302,6 +302,9 @@ THREE.EditorControls = function (_object, domElement) {
     // for that release, and without this the camera stays latched to the next
     // bare mouse move. Same defence the experimental controls carry.
     window.addEventListener('blur', onMouseUp, false);
+    // No `dblclick` teardown here, deliberately: the first mouseup of a
+    // double-click has already run onMouseUp and removed the whole set, so a
+    // dblclick listener registered for this drag could never fire during it.
   }
 
   function onMouseMove(event) {

@@ -977,21 +977,23 @@ describe('segmentForVertexPair', () => {
     expect(segmentForVertexPair(v, v[0], v[4], true)).toBe(4);
   });
 
-  it('refuses a wrap pair on a ring of two, where there is no wrap side', () => {
+  // Three is the smallest ring, and the boundary of the `n >= 3` clause: one
+  // vertex fewer and there is no wrap side to name.
+  it('names the wrap side on the smallest closed ring', () => {
     const v = els(3);
-    // A "closed" triangle keeps its wrap side; the same pair on a 2-vertex
-    // shape is the ONE side, not a wrap.
     expect(segmentForVertexPair(v, v[2], v[0], true)).toBe(2);
     expect(segmentForVertexPair(v, v[2], v[0], false)).toBe(-1);
   });
 
   // Both orderings satisfy adjacency modulo 2 and there is exactly one side, so
-  // the answer must not depend on which clause is tested first.
+  // the answer must not depend on which clause is tested first. `closed` cannot
+  // change that: a 2-vertex shape has one side, never a wrap side as well.
   it('answers 0 for either ordering on a two-vertex shape', () => {
     const v = els(2);
     expect(segmentForVertexPair(v, v[0], v[1], false)).toBe(0);
     expect(segmentForVertexPair(v, v[1], v[0], false)).toBe(0);
     expect(segmentForVertexPair(v, v[0], v[1], true)).toBe(0);
+    expect(segmentForVertexPair(v, v[1], v[0], true)).toBe(0);
   });
 
   it('refuses non-adjacent, identical and absent arguments', () => {

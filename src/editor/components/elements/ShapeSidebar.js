@@ -90,10 +90,11 @@ function revealedSegment(closed, els) {
 // The reason for the first is that clicking a vertex is the deliberate way to
 // bring a chosen side's measurement up on a shape too dense to label in full —
 // on touch it is the only reliable way. The reason for the second is that the
-// caption IS the click target: without the pin, the ~4 px of bare canvas
-// between a chip and the button above it fires a pointermove that rebuilds
-// every label, and the number the user just clicked vanishes while they are
-// reaching for the button beside it.
+// caption IS the click target: the sliver of bare canvas between a chip's hit
+// box and the button above it — OFFSET_MARGIN_PX, less the overhang the
+// MIN_TAP_TARGET_PX-tall hit box already covers — fires a pointermove that
+// rebuilds every label, and without the pin the number the user just clicked
+// vanishes while they are reaching for the button beside it.
 //
 // Same derived-at-render-time argument as above.
 function pinnedSegments(n, closed, revealed, els) {
@@ -241,9 +242,18 @@ const ShapeSidebar = ({ entity }) => {
     // this would make chips unresponsive to any slightly imprecise press. A
     // press and release on two DIFFERENT chips retargets to their common
     // ancestor, which carries no marker, so it is dropped without a gate.
+    // Bound on `document`, so it sees every chip in the page and not only this
+    // panel's — the listener cannot be scoped to a container, because every
+    // CSS2D element in the scene shares one renderer container. The chip
+    // therefore carries WHOSE enumeration stamped it, and a chip from any other
+    // renderer instance is dropped here. Nothing else stamps one today; this is
+    // what stops that staying true only by accident, since resolving a foreign
+    // chip's index against this panel's array is exactly the mismatch
+    // lastRenderElsRef exists to prevent.
     const onLabelClick = (e) => {
       const outer = e.target?.closest?.('[data-shape-segment]');
       if (!outer) return;
+      if (outer.dataset.shapeReadouts !== readouts.instanceId) return;
       const els = lastRenderElsRef.current;
       if (!els || els.length < 2) return;
       const n = els.length;
