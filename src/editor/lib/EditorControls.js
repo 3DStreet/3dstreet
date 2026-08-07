@@ -288,13 +288,36 @@ THREE.EditorControls = function (_object, domElement) {
 
     pointerOld.set(event.clientX, event.clientY);
 
-    domElement.addEventListener('mousemove', onMouseMove, false);
-    domElement.addEventListener('mouseup', onMouseUp, false);
-    domElement.addEventListener('mouseout', onMouseUp, false);
-    domElement.addEventListener('dblclick', onMouseUp, false);
+    // WINDOW, not the canvas, so the gesture follows the cursor wherever it
+    // goes — including over a DOM overlay drawn on top of the canvas. Bound on
+    // the canvas, the drag died the moment the pointer entered such an overlay,
+    // because `mouseout` fired on the canvas and tore it down. The editor now
+    // draws on-canvas controls that are real hit targets, so that is an
+    // ordinary thing for a pointer to cross mid-orbit rather than an edge case.
+    // This is the pattern the experimental controls already use.
+    window.addEventListener('mousemove', onMouseMove, false);
+    window.addEventListener('mouseup', onMouseUp, false);
+    // Focus loss ends the latch immediately: alt-tab away mid-drag, release the
+    // button in another application, come back. No mouseup is ever delivered
+    // for that release, and without this the camera stays latched to the next
+    // bare mouse move. Same defence the experimental controls carry.
+    window.addEventListener('blur', onMouseUp, false);
   }
 
   function onMouseMove(event) {
+    // The second half of the teardown `mouseout` used to cover, and the half
+    // `blur` does not: a release OUTSIDE the browser window with focus retained
+    // delivers no mouseup and fires no blur, so the latch would survive and the
+    // next bare move would drive the camera. FIRST statement, ahead of the
+    // enabled guard — `enabled` is false exactly while the transform gizmo, the
+    // measure line or a shape-vertex press owns the pointer, which is when a
+    // stuck latch is most likely, so a recovery placed below the guard would be
+    // inert precisely there. onMouseUp has no enabled guard of its own, so
+    // calling it from here is safe.
+    if (event.buttons === 0) {
+      onMouseUp();
+      return;
+    }
     if (scope.enabled === false) return;
 
     if (event.buttons === 1) {
@@ -330,11 +353,10 @@ THREE.EditorControls = function (_object, domElement) {
     pointerOld.set(event.clientX, event.clientY);
   }
 
-  function onMouseUp(event) {
-    domElement.removeEventListener('mousemove', onMouseMove, false);
-    domElement.removeEventListener('mouseup', onMouseUp, false);
-    domElement.removeEventListener('mouseout', onMouseUp, false);
-    domElement.removeEventListener('dblclick', onMouseUp, false);
+  function onMouseUp() {
+    window.removeEventListener('mousemove', onMouseMove, false);
+    window.removeEventListener('mouseup', onMouseUp, false);
+    window.removeEventListener('blur', onMouseUp, false);
 
     state = STATE.NONE;
   }
@@ -356,10 +378,9 @@ THREE.EditorControls = function (_object, domElement) {
     domElement.removeEventListener('mousedown', onMouseDown, false);
     domElement.removeEventListener('wheel', onMouseWheel, false);
 
-    domElement.removeEventListener('mousemove', onMouseMove, false);
-    domElement.removeEventListener('mouseup', onMouseUp, false);
-    domElement.removeEventListener('mouseout', onMouseUp, false);
-    domElement.removeEventListener('dblclick', onMouseUp, false);
+    window.removeEventListener('mousemove', onMouseMove, false);
+    window.removeEventListener('mouseup', onMouseUp, false);
+    window.removeEventListener('blur', onMouseUp, false);
 
     domElement.removeEventListener('touchstart', touchStart, false);
     domElement.removeEventListener('touchmove', touchMove, false);

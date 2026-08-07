@@ -33,10 +33,14 @@ import {
   OFFSET_MARGIN_PX,
   BUTTON_PX,
   TRASH_MIN_HANDLE_PX,
+  TOUCH_CLICK_MOVE_THRESHOLD,
+  CLICK_MOVE_THRESHOLD,
   adjacentSegments,
   canOfferInsert,
   clampHandleRadius,
+  clickMoveThreshold,
   decidePress,
+  segmentForVertexPair,
   hitTestHandles,
   insertButtonTransform,
   insertCandidate,
@@ -924,6 +928,102 @@ describe('insertCandidate', () => {
   });
 });
 
+describe('segmentForVertexPair', () => {
+  // Bare objects: the rule only ever calls indexOf on these, treating them as
+  // identity tokens, which is the whole argument for it living in this module.
+  const els = (n) => Array.from({ length: n }, (_, i) => ({ id: i }));
+
+  it('names the segment between two adjacent vertices', () => {
+    const v = els(5);
+    expect(segmentForVertexPair(v, v[2], v[3], true)).toBe(2);
+    expect(segmentForVertexPair(v, v[3], v[2], true)).toBe(2);
+  });
+
+  // The failure this rule exists to prevent, in one assertion. Deleting a
+  // vertex BEFORE the side renumbers every side after it, so a control keyed on
+  // the segment number would silently move to a neighbour; keyed on the two
+  // endpoint elements it stays put, and the number it now answers with is the
+  // new number of the SAME side.
+  it('follows the side, not its place in the running order', () => {
+    const v = els(6);
+    expect(segmentForVertexPair(v, v[4], v[5], true)).toBe(4);
+    const afterDelete = v.filter((_, i) => i !== 1);
+    expect(segmentForVertexPair(afterDelete, v[4], v[5], true)).toBe(3);
+  });
+
+  it('refuses when a vertex has been inserted BETWEEN the pair', () => {
+    const v = els(5);
+    const withNew = [v[0], v[1], v[2], { id: 'new' }, v[3], v[4]];
+    // Both endpoints survive, so identity passes and only adjacency fails.
+    expect(withNew.indexOf(v[2])).toBeGreaterThanOrEqual(0);
+    expect(withNew.indexOf(v[3])).toBeGreaterThanOrEqual(0);
+    expect(segmentForVertexPair(withNew, v[2], v[3], true)).toBe(-1);
+  });
+
+  it('refuses when either endpoint has left the shape', () => {
+    const v = els(5);
+    const without = v.filter((_, i) => i !== 3);
+    expect(segmentForVertexPair(without, v[2], v[3], true)).toBe(-1);
+    expect(segmentForVertexPair(without, v[3], v[4], true)).toBe(-1);
+  });
+
+  // The wrap pair is a side only on a closed ring, so opening or closing the
+  // shape adds or removes a side without touching any vertex — and there is no
+  // event for it, which is why the rule has to carry the clause.
+  it('treats the wrap pair as a side only when the shape is closed', () => {
+    const v = els(5);
+    expect(segmentForVertexPair(v, v[4], v[0], true)).toBe(4);
+    expect(segmentForVertexPair(v, v[4], v[0], false)).toBe(-1);
+    expect(segmentForVertexPair(v, v[0], v[4], true)).toBe(4);
+  });
+
+  it('refuses a wrap pair on a ring of two, where there is no wrap side', () => {
+    const v = els(3);
+    // A "closed" triangle keeps its wrap side; the same pair on a 2-vertex
+    // shape is the ONE side, not a wrap.
+    expect(segmentForVertexPair(v, v[2], v[0], true)).toBe(2);
+    expect(segmentForVertexPair(v, v[2], v[0], false)).toBe(-1);
+  });
+
+  // Both orderings satisfy adjacency modulo 2 and there is exactly one side, so
+  // the answer must not depend on which clause is tested first.
+  it('answers 0 for either ordering on a two-vertex shape', () => {
+    const v = els(2);
+    expect(segmentForVertexPair(v, v[0], v[1], false)).toBe(0);
+    expect(segmentForVertexPair(v, v[1], v[0], false)).toBe(0);
+    expect(segmentForVertexPair(v, v[0], v[1], true)).toBe(0);
+  });
+
+  it('refuses non-adjacent, identical and absent arguments', () => {
+    const v = els(5);
+    expect(segmentForVertexPair(v, v[0], v[2], true)).toBe(-1);
+    expect(segmentForVertexPair(v, v[1], v[1], true)).toBe(-1);
+    expect(segmentForVertexPair(v, v[0], null, true)).toBe(-1);
+    expect(segmentForVertexPair([v[0]], v[0], v[0], true)).toBe(-1);
+  });
+});
+
+describe('clickMoveThreshold', () => {
+  // Small, but it is the guard on the whole touch argument, and the only part
+  // of that change reachable from a unit test at all.
+  it('gives a finger more room than a mouse', () => {
+    expect(clickMoveThreshold('touch')).toBe(TOUCH_CLICK_MOVE_THRESHOLD);
+    expect(TOUCH_CLICK_MOVE_THRESHOLD).toBeGreaterThan(CLICK_MOVE_THRESHOLD);
+  });
+
+  // The touch number is the handle's own hit radius, not a taste number: the
+  // rule reads "a press that never left the handle it started on is a tap".
+  it('sets the touch threshold to the handle hit radius', () => {
+    expect(TOUCH_CLICK_MOVE_THRESHOLD).toBe(HANDLE_TARGET_PX + HIT_SLOP_PX);
+  });
+
+  it('leaves every other pointer type on the mouse threshold', () => {
+    expect(clickMoveThreshold('mouse')).toBe(CLICK_MOVE_THRESHOLD);
+    expect(clickMoveThreshold('pen')).toBe(CLICK_MOVE_THRESHOLD);
+    expect(clickMoveThreshold(undefined)).toBe(CLICK_MOVE_THRESHOLD);
+  });
+});
+
 describe('insertButtonTransform', () => {
   // The LITERAL strings, because the defect this catches is in the string. The
   // CSS2D renderer already centres the outer element on the anchor, so a
@@ -932,33 +1032,29 @@ describe('insertButtonTransform', () => {
   // belongs. It looks nearly right, and an assertion written against the
   // percentage form would pass on the defect rather than catch it.
   it('sits above the anchor by default', () => {
-    expect(insertButtonTransform(7, 400)).toBe('translate(0px, -26px)');
+    expect(insertButtonTransform(400)).toBe('translate(0px, -26px)');
   });
 
   it('flips below when above would leave the top of the viewport', () => {
-    expect(insertButtonTransform(7, 40)).toBe('translate(0px, 26px)');
+    expect(insertButtonTransform(40)).toBe('translate(0px, 26px)');
   });
 
   it('never emits a percentage or a calc', () => {
     for (const anchorY of [0, 25, 49, 50, 400, 2000]) {
-      const t = insertButtonTransform(7, anchorY);
+      const t = insertButtonTransform(anchorY);
       expect(t).toMatch(/^translate\(0px, -?26px\)$/);
     }
   });
 
-  // Stated as a PAIR, because the claim is that the two controls share one
-  // threshold and neither half carries it alone: the trashButtonOffset
-  // assertion on its own passes whether the insert button reads the constant or
-  // hardcodes a 5 of its own. A later retune has to move both or fail here.
-  it('hides below the same handle-radius floor the delete button uses', () => {
-    expect(insertButtonTransform(TRASH_MIN_HANDLE_PX - 0.1, 400)).toBeNull();
-    expect(insertButtonTransform(TRASH_MIN_HANDLE_PX + 0.1, 400)).toBeTruthy();
-    expect(
-      trashButtonOffset(TRASH_MIN_HANDLE_PX - 0.1, 500, 500, 1000, 1000)
-    ).toBeNull();
-    expect(
-      trashButtonOffset(TRASH_MIN_HANDLE_PX + 0.1, 500, 500, 1000, 1000)
-    ).toBeTruthy();
+  // TOTAL, at every anchor height. The button is reached by clicking a
+  // measurement, which is drawn at a fixed screen size at any zoom — so a
+  // hidden answer would mean a click that worked and a button that never
+  // appeared, with nothing on screen to explain it. The delete button's own
+  // floor is unaffected and is asserted with trashButtonOffset.
+  it('never hides, at any anchor height', () => {
+    for (const anchorY of [-500, 0, 25, 400, 5000]) {
+      expect(insertButtonTransform(anchorY)).toBeTruthy();
+    }
   });
 });
 

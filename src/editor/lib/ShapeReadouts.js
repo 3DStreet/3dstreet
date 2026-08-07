@@ -21,6 +21,14 @@ import {
   formatLength,
   formatAngle
 } from './shapeMeasure';
+import { MIN_TAP_TARGET_PX } from './shapeEditRules';
+
+// The CSS2D layer sorts by renderOrder first and camera distance second. A
+// caption the user has clicked has an on-canvas button 26 px above it and has
+// to stay in sight while they reach for it, so it is lifted one band out of the
+// ordinary caption band. Three bands in total, spanning this file and the
+// controls layer: ordinary caption 0 < revealed caption 1 < on-canvas control 2.
+const REVEALED_RENDER_ORDER = 1;
 
 const ARC_RADIUS = 0.6; // metres — fixed world radius of the angle arc
 const ARC_TUBE_RADIUS = 0.03;
@@ -43,7 +51,8 @@ export default class ShapeReadouts {
       transparent: true,
       opacity: 0.9
     });
-    this.labels = []; // { obj: CSS2DObject, div: HTMLElement }
+    // { obj: CSS2DObject, outer: HTMLElement, inner: HTMLElement }
+    this.labels = [];
     this.arcs = []; // THREE.Mesh
   }
 
@@ -73,12 +82,27 @@ export default class ShapeReadouts {
   //
   // `pinnedSegments` names segments that must be labelled whatever the cap
   // says.
+  //
+  // `interaction`, when supplied, turns the LENGTH labels into controls:
+  // `{ isInsertable(segment) → boolean, revealedSegment: number | null }`. It is
+  // a parameter of this method and of no other, which is what scopes
+  // interactivity to a SELECTED shape: renderActive — the live draw preview —
+  // has no parameter to pass, so a chip there can never take a press. That
+  // matters more than it sounds: the draw tool places points on canvas
+  // pointerup and clears its preview on canvas pointerleave, and a live chip
+  // sitting at the rubber band's midpoint would swallow the first and oscillate
+  // the second.
+  //
+  // The callback form is deliberate. It is what keeps this file free of any
+  // knowledge of the edit rules — the caller supplies the answer, this layer
+  // never asks the question.
   renderAll(
     vertices,
     maxVertices,
     hoverPoint,
     closed = false,
-    pinnedSegments = null
+    pinnedSegments = null,
+    interaction = null
   ) {
     this.clear();
     const n = vertices.length;
@@ -88,10 +112,11 @@ export default class ShapeReadouts {
     // polyline has n-1 segments and n-2 interior corners.
     const segCount = ring ? n : n - 1;
 
-    // Pinned segments are labelled unconditionally, and FIRST. An on-canvas
-    // control stands beside these captions, so they cannot inherit an early
-    // exit that the rest of the label set legitimately takes. The in-range
-    // filter keeps this method total for any caller.
+    // Pinned segments are labelled unconditionally, and FIRST. These captions
+    // are the click target itself — a side is reached by clicking its number —
+    // so they cannot inherit an early exit that the rest of the label set
+    // legitimately takes. The in-range filter keeps this method total for any
+    // caller.
     const pinned = new Set();
     if (pinnedSegments) {
       for (const i of pinnedSegments) {
@@ -99,13 +124,13 @@ export default class ShapeReadouts {
       }
     }
     for (const i of pinned) {
-      this._addLengthLabel(vertices[i], vertices[(i + 1) % n]);
+      this._addLengthLabel(vertices[i], vertices[(i + 1) % n], i, interaction);
     }
 
     if (n <= maxVertices) {
       for (let i = 0; i < segCount; i++) {
         if (pinned.has(i)) continue; // already drawn above
-        this._addLengthLabel(vertices[i], vertices[(i + 1) % n]);
+        this._addLengthLabel(vertices[i], vertices[(i + 1) % n], i, interaction);
       }
       const cornerStart = ring ? 0 : 1;
       const cornerEnd = ring ? n : n - 1; // exclusive
@@ -142,7 +167,12 @@ export default class ShapeReadouts {
     }
     if (best < 0) return;
     if (!pinned.has(best)) {
-      this._addLengthLabel(vertices[best], vertices[(best + 1) % n]);
+      this._addLengthLabel(
+        vertices[best],
+        vertices[(best + 1) % n],
+        best,
+        interaction
+      );
     }
     const corner = bestT < 0.5 ? best : (best + 1) % n;
     // On a closed ring every corner is valid; on an open line skip the two
@@ -158,7 +188,9 @@ export default class ShapeReadouts {
 
   // --- internals ----------------------------------------------------------
 
-  _addLengthLabel(a, b) {
+  // `segment` and `interaction` are both absent on the draw-preview path, which
+  // has no segment index and must not gain one.
+  _addLengthLabel(a, b, segment, interaction) {
     const len = segmentLength(a, b);
     if (len < EPS) return; // zero-length segment carries no readout
     const mid = new THREE.Vector3(
@@ -166,7 +198,20 @@ export default class ShapeReadouts {
       (a.y + b.y) / 2,
       (a.z + b.z) / 2
     );
-    this._makeLabel(formatLength(len, this.units), mid);
+    let options = null;
+    if (interaction && segment !== undefined) {
+      // Asked only for segments about to be labelled, so the cost is
+      // O(labelled) rather than O(segments): at most the cap's worth below it,
+      // and pins plus one above it.
+      options = interaction.isInsertable(segment)
+        ? {
+            interactive: true,
+            segment,
+            revealed: interaction.revealedSegment === segment
+          }
+        : { interactive: false };
+    }
+    this._makeLabel(formatLength(len, this.units), mid, options);
   }
 
   _addAngle(u, v, w) {
@@ -245,34 +290,83 @@ export default class ShapeReadouts {
     this.arcs.push(mesh); // disposed with the arcs in clear()
   }
 
-  // The chip's rendered HEIGHT is depended on elsewhere: shapeEditRules'
+  // TWO elements, built the same way for every label whether it is a control or
+  // not, so there is one DOM shape to reason about and one element that is "the
+  // chip". The OUTER is what CSS2DRenderer positions (and whose style.transform
+  // it rewrites every pass, so nothing of ours may go there); the INNER is the
+  // visible chip. Where a label is a control the hit area is grown on the outer
+  // only, which leaves the visible chip centred on its anchor exactly as before.
+  //
+  // The INNER's rendered HEIGHT is depended on elsewhere: shapeEditRules'
   // CAPTION_HALF_PX is half of it, and is what stands an insert button clear of
   // the caption it is anchored to. Changing the font size, the line-height or
   // the vertical padding below therefore has to be carried across to that
   // constant — nothing here will fail if it is not, the button simply drifts
-  // into or away from the label.
-  _makeLabel(text, pos) {
-    const div = document.createElement('div');
-    div.className = 'label shape-readout-label';
-    div.style.color = '#fff';
-    div.style.fontFamily = 'sans-serif';
-    div.style.fontSize = '12px';
-    div.style.padding = '2px 4px';
-    div.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
-    div.style.borderRadius = '3px';
-    div.style.pointerEvents = 'none';
-    div.textContent = text;
-    const obj = new CSS2DObject(div);
+  // into or away from the label. The outer's taller hit box does NOT feed that
+  // number and must not be confused with it.
+  //
+  // `background` is the one visual property that lives in the stylesheet rather
+  // than here, because it is the one with state variants (hover, revealed,
+  // muted) and an inline declaration beats any stylesheet rule.
+  _makeLabel(text, pos, options) {
+    const outer = document.createElement('div');
+    outer.className = 'shape-readout';
+    // Inline and unconditional, NOT in the stylesheet. It has no state variant
+    // — the branch is known here, at build time — and its failure mode is the
+    // worst in this file: a chip that takes presses on the draw path swallows
+    // point placement and oscillates the preview. Written here it is directly
+    // assertable in a test environment that evaluates no stylesheet at all.
+    outer.style.pointerEvents = 'none';
+
+    const inner = document.createElement('div');
+    inner.className = 'label shape-readout-label';
+    inner.style.color = '#fff';
+    inner.style.fontFamily = 'sans-serif';
+    inner.style.fontSize = '12px';
+    inner.style.padding = '2px 4px';
+    inner.style.borderRadius = '3px';
+    // The hit target is the outer, so the inner stays transparent: that way a
+    // press reports the outer as its target and carries the segment marker.
+    inner.style.pointerEvents = 'none';
+    inner.textContent = text;
+    outer.appendChild(inner);
+
+    const obj = new CSS2DObject(outer);
     obj.position.copy(pos);
+
+    if (options && options.interactive) {
+      outer.classList.add('shape-readout--interactive');
+      outer.style.pointerEvents = 'auto';
+      // Written from the constant rather than typed into the stylesheet, so the
+      // hit box and the app's small-control size stay mechanically linked
+      // instead of merely commented across a language boundary.
+      outer.style.minHeight = `${MIN_TAP_TARGET_PX}px`;
+      // The only thing scoping the panel's delegated click handler, so it is
+      // load-bearing rather than decorative.
+      outer.dataset.shapeSegment = String(options.segment);
+      if (options.revealed) {
+        outer.classList.add('shape-readout--revealed');
+        obj.renderOrder = REVEALED_RENDER_ORDER;
+      }
+    } else if (options) {
+      // A side that cannot take a point is marked, and the ones that can are
+      // not. On the overwhelmingly common shape every side can, so marking the
+      // controls would put a mark on everything and carry no information; the
+      // mark appears exactly when there is something to say. It is also the only
+      // signal that exists on touch, where there is no hover and no cursor.
+      outer.classList.add('shape-readout--muted');
+    }
+
     this.group.add(obj);
-    this.labels.push({ obj, div });
+    this.labels.push({ obj, outer, inner });
   }
 
   // Remove all rendered labels/arcs but keep the group + material for reuse.
   clear() {
-    for (const { obj, div } of this.labels) {
+    for (const { obj, outer } of this.labels) {
       this.group.remove(obj);
-      if (div && div.parentNode) div.parentNode.removeChild(div);
+      // Removing the outer takes its inner with it.
+      if (outer && outer.parentNode) outer.parentNode.removeChild(outer);
     }
     this.labels.length = 0;
     for (const mesh of this.arcs) {

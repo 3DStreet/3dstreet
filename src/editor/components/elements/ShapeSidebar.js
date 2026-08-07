@@ -13,7 +13,11 @@ import {
   formatArea
 } from '../../lib/shapeMeasure';
 import { polygonAreaXZ } from '../../../aframe-components/polygonMath.js';
-import { adjacentSegments } from '../../lib/shapeEditRules.js';
+import {
+  adjacentSegments,
+  canOfferInsert,
+  segmentForVertexPair
+} from '../../lib/shapeEditRules.js';
 
 const MAX_LABELLED_VERTICES = 12;
 
@@ -60,19 +64,40 @@ function getShapeVertices(entity) {
   return getShapeVertexEls(entity).map((el) => el.object3D.position.clone());
 }
 
-// The segments adjacent to the sub-selected vertex, if there is one. An insert
-// button stands beside each of these captions, so they must be labelled whether
-// or not the shape is above the label cap.
+// Which segment, if any, currently has an insert button open on it.
 //
-// DERIVED here, at render time, from the sub-selection's single owner — a value
+// DERIVED here, at render time, from the reveal's single owner — a value
 // computed at render cannot go stale, so there is nothing to invalidate,
 // nothing to publish and nothing to keep in sync.
-function pinnedSegments(entity, n, closed) {
+//
+// `els` is passed in rather than read again: the resolution has to happen in
+// the SAME enumeration that produced the chips, and one read is what makes that
+// provable rather than argued.
+function revealedSegment(closed, els) {
   // Through the accessor, never the field behind it: a rename of private state
   // in the controls layer would otherwise make this read `undefined`, and the
-  // pin would just stop with no error anywhere.
+  // reveal would just stop with no error anywhere.
+  const side = AFRAME.INSPECTOR?.shapeVertexControls?.getRevealedSide();
+  if (!side) return null;
+  const seg = segmentForVertexPair(els, side.a, side.b, closed);
+  return seg < 0 ? null : seg;
+}
+
+// The segments that must be labelled whether or not the shape is above the
+// label cap: those adjacent to the sub-selected vertex, and the one with a
+// button open on it.
+//
+// The reason for the first is that clicking a vertex is the deliberate way to
+// bring a chosen side's measurement up on a shape too dense to label in full —
+// on touch it is the only reliable way. The reason for the second is that the
+// caption IS the click target: without the pin, the ~4 px of bare canvas
+// between a chip and the button above it fires a pointermove that rebuilds
+// every label, and the number the user just clicked vanishes while they are
+// reaching for the button beside it.
+//
+// Same derived-at-render-time argument as above.
+function pinnedSegments(n, closed, revealed, els) {
   const active = AFRAME.INSPECTOR?.shapeVertexControls?.getActiveVertex();
-  if (!active) return null;
   // Deliberately the SAME enumeration the positions came from, not the one the
   // controls layer uses. The two differ: this one tests the initialised
   // `shape-vertex` component, the controls layer tests the attribute. So for one
@@ -81,22 +106,38 @@ function pinnedSegments(entity, n, closed) {
   // cap, and above it the insert's own re-derive re-renders within the frame.
   // Filtering on the attribute instead would trade that for a visible wrong
   // answer: the element would be found, with its position still at the origin.
-  const i = getShapeVertexEls(entity).indexOf(active);
-  if (i < 0) return null;
-  return adjacentSegments(i, n, closed);
+  const i = active ? els.indexOf(active) : -1;
+  const adjacent = i < 0 ? [] : adjacentSegments(i, n, closed);
+  if (revealed === null) return adjacent.length ? adjacent : null;
+  return adjacent.includes(revealed) ? adjacent : [...adjacent, revealed];
 }
 
 // The ONLY place renderAll is called, so there is no second argument list to
 // keep in step with this one.
-function renderReadouts(readouts, entity, hoverPoint) {
-  const verts = getShapeVertices(entity);
+//
+// The vertex element list is read ONCE here and threaded through everything
+// that needs it. Beyond saving two child-list walks per frame during a drag,
+// that is what makes it provable rather than argued that all three resolutions
+// — a chip's segment index, the revealed segment, and the pin set — address the
+// same array. Three independent reads of a live child list can each return a
+// different one; one read cannot. `lastRenderElsRef` then literally holds the
+// array the chips were stamped against.
+function renderReadouts(readouts, entity, hoverPoint, lastRenderElsRef) {
+  const els = getShapeVertexEls(entity);
+  const verts = els.map((el) => el.object3D.position.clone());
   const closed = isClosedShape(entity, verts.length);
+  const revealed = revealedSegment(closed, els);
+  if (lastRenderElsRef) lastRenderElsRef.current = els;
   readouts.renderAll(
     verts,
     MAX_LABELLED_VERTICES,
     hoverPoint,
     closed,
-    pinnedSegments(entity, verts.length, closed)
+    pinnedSegments(verts.length, closed, revealed, els),
+    {
+      isInsertable: (i) => canOfferInsert(verts, i),
+      revealedSegment: revealed
+    }
   );
 }
 
@@ -105,6 +146,8 @@ const ShapeSidebar = ({ entity }) => {
   const { unitsPreference } = useStore();
   const readoutsRef = useRef(null);
   const lastHoverRef = useRef(null);
+  // The vertex element array the last render's chips were stamped against.
+  const lastRenderElsRef = useRef(null);
 
   // Re-render the panel list when this shape changes (appearance edits).
   useEffect(() => {
@@ -123,8 +166,32 @@ const ShapeSidebar = ({ entity }) => {
     readouts.setUnits(unitsPreference);
     readoutsRef.current = readouts;
 
-    const render = (hoverPoint) => renderReadouts(readouts, entity, hoverPoint);
+    const render = (hoverPoint) =>
+      renderReadouts(readouts, entity, hoverPoint, lastRenderElsRef);
     lastHoverRef.current = null;
+
+    // Coalesce the sub-selection renders. Pressing the insert button changes
+    // both the active vertex and the revealed side in one turn, and each would
+    // otherwise drive its own full clear() + rebuild of every label and every
+    // arc. Only these two go through here: the geometry and hover paths are
+    // streams where the latest state matters and a per-frame rebuild is the
+    // intended behaviour, so deferring them would change their timing for no
+    // gain.
+    let renderQueued = false;
+    let disposed = false;
+    const scheduleRender = () => {
+      if (renderQueued) return;
+      renderQueued = true;
+      queueMicrotask(() => {
+        renderQueued = false;
+        // Required rather than defensive: the cleanup below disposes the
+        // renderer, and a microtask queued before a deselect would otherwise
+        // render against a disposed one.
+        if (disposed) return;
+        render(lastHoverRef.current);
+      });
+    };
+
     render(null);
     // Belt for a post-commit child-init race: re-read positions next frame in
     // case a shape-vertex hadn't positioned yet at mount.
@@ -142,8 +209,51 @@ const ShapeSidebar = ({ entity }) => {
     // this nothing would tell the panel to re-derive which captions are pinned.
     // The notification carries no payload: the pin is read from its owner at
     // render time.
-    const onActiveVertexChanged = () => render(lastHoverRef.current);
+    const onActiveVertexChanged = () => scheduleRender();
     Events.on('shapevertexactivechanged', onActiveVertexChanged);
+
+    // Same shape, for which side has an insert button open on it: it changes no
+    // geometry and moves nothing, so nothing else would tell the panel to
+    // re-derive which caption is pinned and which is marked as revealed.
+    const onRevealChanged = () => scheduleRender();
+    Events.on('shapevertexrevealchanged', onRevealChanged);
+
+    // ONE delegated listener rather than one per chip. A label is rebuilt on
+    // every geometry change — every frame of a vertex drag — so per-chip
+    // binding would mean binding and discarding a couple of dozen listeners a
+    // frame. (It is NOT a defence against a rebuild landing mid-click: if the
+    // chip is gone between press and release the retargeted click lands on an
+    // ancestor and is simply dropped, delegated or not. Accepted — a static
+    // press generates no pointermove, so the rebuild that would do it does not
+    // fire.)
+    //
+    // Resolved against the array THIS render stamped, not a fresh read. A chip
+    // carries a segment index; pairing that index with a list read at click
+    // time can name a different-but-still-adjacent side after a structural edit
+    // in between — which is exactly the "adds a point to a side the user never
+    // chose" failure the element-pair naming exists to prevent, reintroduced at
+    // the resolution step. If the edit removed one of the two elements,
+    // revealSide's own validation refuses. Fail-safe either way.
+    //
+    // No drag gate here, unlike the handler that CLOSES the button, and the
+    // asymmetry is deliberate: a press that drifts a few pixels within one chip
+    // is still a click on that chip — on touch, most presses are — and gating
+    // this would make chips unresponsive to any slightly imprecise press. A
+    // press and release on two DIFFERENT chips retargets to their common
+    // ancestor, which carries no marker, so it is dropped without a gate.
+    const onLabelClick = (e) => {
+      const outer = e.target?.closest?.('[data-shape-segment]');
+      if (!outer) return;
+      const els = lastRenderElsRef.current;
+      if (!els || els.length < 2) return;
+      const n = els.length;
+      const seg = Number(outer.dataset.shapeSegment);
+      const a = els[seg];
+      const b = els[(seg + 1) % n];
+      if (!a || !b || a.parentNode !== entity || b.parentNode !== entity) return;
+      AFRAME.INSPECTOR?.shapeVertexControls?.revealSide(a, b);
+    };
+    document.addEventListener('click', onLabelClick);
 
     // The shape announces every re-derive, including the ones driven by a
     // vertex moving directly rather than through a command — which
@@ -210,14 +320,18 @@ const ShapeSidebar = ({ entity }) => {
     if (canvas) canvas.addEventListener('pointermove', onMove);
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
       if (rowRaf !== null) cancelAnimationFrame(rowRaf);
       Events.off('entityupdate', onEntityUpdate);
       Events.off('shapevertexactivechanged', onActiveVertexChanged);
+      Events.off('shapevertexrevealchanged', onRevealChanged);
       entity.removeEventListener('shape-geometry-changed', onGeometryChanged);
+      document.removeEventListener('click', onLabelClick);
       if (canvas) canvas.removeEventListener('pointermove', onMove);
       readouts.dispose();
       readoutsRef.current = null;
+      lastRenderElsRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity]);
@@ -227,7 +341,7 @@ const ShapeSidebar = ({ entity }) => {
     const r = readoutsRef.current;
     if (!r) return;
     r.setUnits(unitsPreference);
-    renderReadouts(r, entity, lastHoverRef.current);
+    renderReadouts(r, entity, lastHoverRef.current, lastRenderElsRef);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitsPreference]);
 
@@ -307,9 +421,9 @@ const ShapeSidebar = ({ entity }) => {
           <div className="rounded bg-blue-50 p-2 text-gray-600">
             <div className="mb-1 font-semibold uppercase">💡 Shape Tips</div>
             <ul className="space-y-1">
+              <li>• Click a vertex to move it or delete it</li>
               <li>
-                • Click a vertex to move it, delete it, or add a vertex on
-                either side
+                • Click a side&rsquo;s length to add a vertex to that side
               </li>
               <li>• Lengths and angles measure the vertex centreline</li>
               <li>• Angles are measured in the ground (x-z) plane</li>

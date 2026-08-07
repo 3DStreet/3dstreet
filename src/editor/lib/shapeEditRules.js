@@ -143,10 +143,33 @@ export function decidePress({
 // --- Click versus drag -------------------------------------------------
 
 // px — a press that travels further than this before release is a drag, not a
-// click. Genuinely ONE rule shared with the draw tool ("did the pointer move
-// enough to be a drag"), unlike the spacing constants above, which hold the
-// same number for two different rules and are therefore kept apart.
+// click.
+//
+// The QUESTION is genuinely one rule shared with the draw tool ("did the
+// pointer move enough to be a drag"), unlike the spacing constants above, which
+// hold the same number for two different rules and are therefore kept apart.
+// The MOUSE answer is shared too. The TOUCH answer is not, currently: the
+// vertex-editing controls ask through clickMoveThreshold() below, which gives a
+// finger more room, while the draw tool (ShapeDrawAction) still compares
+// against this constant directly on every pointer type. Naming that site is the
+// point — a reader who takes "one rule shared with the draw tool" at face value
+// while the two paths disagree on touch is exactly the drift this note exists
+// to prevent.
 export const CLICK_MOVE_THRESHOLD = 4;
+
+// The same question, answered for a finger. A fingertip rolls several pixels
+// during a deliberate tap, so 4 px classifies ordinary taps as drags. 10 px is
+// not a taste number: it is HANDLE_TARGET_PX + HIT_SLOP_PX, the handle's own
+// hit radius, so the rule reads "a press that never left the handle it started
+// on is a tap". Unlike MIN_TAP_TARGET_PX further down, that equality is
+// structural rather than coincidental.
+export const TOUCH_CLICK_MOVE_THRESHOLD = HANDLE_TARGET_PX + HIT_SLOP_PX;
+
+export function clickMoveThreshold(pointerType) {
+  return pointerType === 'touch'
+    ? TOUCH_CLICK_MOVE_THRESHOLD
+    : CLICK_MOVE_THRESHOLD;
+}
 
 // --- Plane picking -----------------------------------------------------
 
@@ -238,7 +261,7 @@ export function validateVertexEdit(points, closed, index, exemptPairs) {
 // ring validity a property of the WHOLE ring.
 //
 // Module-private, because there is no second caller and no reason to invite
-// one. In particular it is NOT the gate the insert buttons hide on — that is
+// one. In particular it is NOT the gate the insert button hides on — that is
 // canOfferInsert, which tests separation against a point not yet in the
 // array and so cannot be expressed through this signature (see its own note).
 function vertexSeparationOk(points, index, exemptPairs) {
@@ -253,10 +276,10 @@ function vertexSeparationOk(points, index, exemptPairs) {
 // --- Inserting a vertex at a segment midpoint --------------------------
 
 // The segment indices adjacent to vertex `index` on a shape of `n` vertices.
-// ONE home, because two layers need the identical answer: the properties panel
-// pins these segments' captions and the controls layer offers an insert button
-// beside each of them. A ring gives two; an endpoint of an open polyline gives
-// one. Segment s runs from vertex s to vertex (s + 1) % n.
+// The properties panel pins these segments' captions when a vertex is
+// sub-selected, which is what brings a chosen side's measurement up on a shape
+// too dense to label in full. A ring gives two; an endpoint of an open polyline
+// gives one. Segment s runs from vertex s to vertex (s + 1) % n.
 export function adjacentSegments(index, n, closed) {
   if (n < 2 || index < 0 || index >= n) return [];
   if (closed) return [(index - 1 + n) % n, index];
@@ -264,6 +287,51 @@ export function adjacentSegments(index, n, closed) {
   if (index > 0) out.push(index - 1);
   if (index < n - 1) out.push(index);
   return out;
+}
+
+// Which segment, if any, the ordered pair of vertex ELEMENTS (a, b) still names
+// — or -1. ONE home, because two layers need the identical answer.
+//
+// A revealed control belongs to a side, and a side is not its position in the
+// running order: deleting or inserting a vertex elsewhere renumbers every
+// segment after it, so a control that tracked the number would silently move to
+// a neighbour and act on a side the user never chose. Naming the side by its two
+// endpoint elements is what survives renumbering. Three clauses, and all three
+// are needed:
+//
+//   1. Both elements are still vertices of the shape. One of them may have been
+//      deleted, or an undo may have removed it.
+//   2. They are still ADJACENT. This is the clause that catches an insert
+//      BETWEEN the pair: both endpoints survive, so clause 1 passes and only
+//      this one fails.
+//   3. That adjacency is still a side of the shape AS IT NOW IS. The ordered
+//      pair (n-1, 0) is a side only on a closed ring of three or more, so
+//      toggling `closed` adds or removes a side without touching any element.
+//
+// Elements are treated as opaque identity tokens — the only thing done to them
+// is indexOf — which is what keeps this module's "no globals, no scene lookups"
+// contract true even though it is the first function here typed in element
+// identities rather than in points and indices. Note the consequence: ADJACENCY
+// IS A PROPERTY OF THE LIST PASSED IN, so two callers holding two differently
+// filtered vertex lists can legitimately get two answers.
+export function segmentForVertexPair(vertexEls, a, b, closed) {
+  if (!vertexEls || !a || !b || a === b) return -1;
+  const n = vertexEls.length;
+  if (n < 2) return -1;
+  const i = vertexEls.indexOf(a);
+  const j = vertexEls.indexOf(b);
+  if (i < 0 || j < 0) return -1;
+  const ring = !!closed && n >= 3;
+  // Two vertices are one side, and both orderings name it. Handled explicitly
+  // because "j is i+1 mod n" and "i is j+1 mod n" are both true at n = 2 and
+  // would otherwise pick whichever clause was tested first.
+  if (n === 2) return 0;
+  // Segment s runs s → s+1, so the lower index of an adjacent pair names it,
+  // except on the wrap pair (n-1, 0), which is segment n-1 and only exists on a
+  // ring.
+  if (j === (i + 1) % n) return i === n - 1 ? (ring ? n - 1 : -1) : i;
+  if (i === (j + 1) % n) return j === n - 1 ? (ring ? n - 1 : -1) : j;
+  return -1;
 }
 
 // The midpoint a segment insert would produce. Module-private; both functions
@@ -373,6 +441,13 @@ export const OFFSET_MARGIN_PX = 4;
 // Below this handle radius the button is not shown at all.
 export const TRASH_MIN_HANDLE_PX = 5;
 
+// The smallest a thing you tap should be, in CSS px. Equal to BUTTON_PX today
+// and deliberately so — it is the app's small-control size — but it is a
+// DIFFERENT quantity: that one is a button's diameter, this one is a minimum
+// height for a text chip that has become a click target. Aliased rather than
+// reused raw so that retuning the button cannot silently move a hit box.
+export const MIN_TAP_TARGET_PX = BUTTON_PX;
+
 // Where to put the delete button relative to the handle it belongs to, in
 // screen pixels, or null when it should be hidden.
 //
@@ -416,22 +491,24 @@ export function trashButtonOffset(
 
 // --- The insert button's placement -------------------------------------
 
-// Half a caption chip's height. The chip is 12 px text with `line-height:
-// normal` and 2 px padding top and bottom, so its box is 16 + 2 + 2 = 20 px and
-// half of that is 10 — where the 16 is the ASSUMPTION in this number, since
-// `normal` resolves per font (≈1.2–1.35 × font-size) rather than to anything
-// stated. Owned by the readout layer (ShapeReadouts._makeLabel, which carries
-// the matching pointer back here); if the caption styling changes this drifts,
-// and the only symptom is the button sitting a little closer to or further from
-// the label it belongs to.
+// Half a caption chip's height — the VISIBLE chip, which is the inner element
+// of the readout's outer/inner pair, not the outer (whose hit box is taller).
+// The chip is 12 px text with `line-height: normal` and 2 px padding top and
+// bottom, so its box is 16 + 2 + 2 = 20 px and half of that is 10 — where the
+// 16 is the ASSUMPTION in this number, since `normal` resolves per font
+// (≈1.2–1.35 × font-size) rather than to anything stated. Those three inputs
+// are owned by the readout layer (ShapeReadouts._makeLabel, which carries the
+// matching pointer back here); if the caption styling changes this drifts, and
+// the only symptom is the button sitting a little closer to or further from the
+// label it belongs to.
 const CAPTION_HALF_PX = 10;
 // Anchor centre to button centre. The anchor IS the caption's own point, so the
 // gap is measured from the caption's edge outward.
 const INSERT_OFFSET_PX = CAPTION_HALF_PX + OFFSET_MARGIN_PX + BUTTON_PX / 2;
 
 // Where to put an insert button relative to the segment midpoint it is anchored
-// to, as the literal transform string for its inner wrapper — or null when it
-// should be hidden.
+// to, as the literal transform string for its inner wrapper. TOTAL — there is
+// no hidden answer, so callers never test for null.
 //
 // PIXELS ONLY, centre to centre, exactly as trashButtonOffset returns them.
 // CSS2DRenderer writes `translate(-50%,-50%) translate(Xpx, Ypx)` on the OUTER
@@ -444,17 +521,19 @@ const INSERT_OFFSET_PX = CAPTION_HALF_PX + OFFSET_MARGIN_PX + BUTTON_PX / 2;
 // end up high on screen, and a control off the top is unreachable rather than
 // merely awkward. The flip fires while the button's top edge is still inside
 // the viewport, and on deliberately the same comparison trashButtonOffset makes
-// on its own vertical flip, so the two controls turn over at one height rather
-// than at two that happen to be close.
+// on its own vertical flip, so the two turn over at one height rather than at
+// two that happen to be close.
 //
-// Hidden below the same handle-radius floor the delete button uses. Past the
-// size clamp handles go sub-pixel while a full-size control still spans ±12 px,
-// so ANY 24 px control at that zoom covers the handle it belongs to and its
-// neighbours — and clicking a handle is the only route to this button. The
-// floor is shared rather than duplicated so the three controls appear and
-// disappear as one set.
-export function insertButtonTransform(handleRadiusPx, anchorY) {
-  if (handleRadiusPx < TRASH_MIN_HANDLE_PX) return null;
+// NO handle-radius floor, unlike trashButtonOffset. This control used to carry
+// one, on the reasoning that a full-size control at a zoom where handles have
+// gone sub-pixel covers the handle it belongs to — sound while clicking a
+// handle was the only route to it. It is not the route any more: the button is
+// reached by clicking the side's measurement, which is drawn at a fixed screen
+// size at every zoom. Kept, the floor would mean a user clicks a measurement,
+// successfully, and no button appears — a dead end with nothing on screen to
+// explain it. The delete button keeps its floor, which is why the constant
+// stays.
+export function insertButtonTransform(anchorY) {
   const below = anchorY - INSERT_OFFSET_PX < BUTTON_PX;
   const dy = below ? INSERT_OFFSET_PX : -INSERT_OFFSET_PX;
   return `translate(0px, ${dy}px)`;
