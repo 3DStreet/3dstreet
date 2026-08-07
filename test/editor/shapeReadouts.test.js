@@ -367,7 +367,16 @@ describe('ShapeReadouts — the label DOM contract', () => {
     // Scoped to the morph block. Matching every `.shape-readout-value` rule in
     // the file would sweep in the base rules too, and a legitimate `display`
     // there would then fail a correct build.
-    const morph = scss.match(/@media \(hover: hover\)[\s\S]*?\n\}/)?.[0];
+    //
+    // Anchored on the morph's own SELECTOR and not on the query alone, so that
+    // a second `@media (hover: hover)` added to this file later cannot be
+    // matched instead — which would fail a correct build naming the wrong rule.
+    // `(?:(?!\n\})[\s\S])*?` is what makes that work: it cannot cross a
+    // block-closing brace at the start of a line, so a query that does not hold
+    // this selector is skipped rather than run into the next block.
+    const morph = scss.match(
+      /@media \(hover: hover\) \{(?:(?!\n\})[\s\S])*?\.shape-readout--insertable:not\(\.shape-readout--revealed\):hover[\s\S]*?\n\}/
+    )?.[0];
     // The did-not-run guard: without it, a renamed selector makes every
     // assertion below vacuous and the test goes green having checked nothing.
     expect(morph).toBeTruthy();
@@ -380,6 +389,22 @@ describe('ShapeReadouts — the label DOM contract', () => {
     // The hybrid-device guard, and nothing else anywhere checks the CSS half of
     // it: a side with a "+" button already open must not ALSO morph.
     expect(morph).toContain(':not(.shape-readout--revealed)');
+  });
+
+  // The base state, which lives OUTSIDE the media-query block checked above and
+  // is therefore reached by no assertion in it: without `visibility: hidden`
+  // there the "+" is laid over the number permanently, at rest, on every chip
+  // and every device. `position: absolute` is the other half — in flow the plus
+  // would widen the box and unpin the footprint.
+  it('hides the plus and takes it out of flow in its base state', () => {
+    const scss = readFileSync(
+      path.resolve(here, '../../src/editor/style/index.scss'),
+      'utf8'
+    );
+    const plusBase = scss.match(/\.shape-readout-plus \{[\s\S]*?\n\}/)?.[0];
+    expect(plusBase).toBeTruthy();
+    expect(plusBase).toContain('visibility: hidden');
+    expect(plusBase).toContain('position: absolute');
   });
 
   // Matching on the @media wrapper above is load-bearing rather than incidental:
@@ -404,5 +429,20 @@ describe('ShapeReadouts — the label DOM contract', () => {
     expect(stamped.length).toBeGreaterThan(0);
     expect(stamped.length).toBeLessThan(13);
     expect([...asked].sort()).toEqual([...stamped].sort());
+  });
+});
+
+// Read from the constant on one side only. Every other assertion about draw
+// order in this file compares a rendered renderOrder against the same key it was
+// written from, so collapsing two bands onto one number is invisible to all of
+// them. The bands mean nothing except relative to each other, and this is the
+// only check on that.
+describe('READOUT_RENDER_ORDER', () => {
+  it('keeps the four CSS2D bands distinct and in order', () => {
+    const { caption, insertableCaption, revealedCaption, control } =
+      READOUT_RENDER_ORDER;
+    expect(caption).toBeLessThan(insertableCaption);
+    expect(insertableCaption).toBeLessThan(revealedCaption);
+    expect(revealedCaption).toBeLessThan(control);
   });
 });
