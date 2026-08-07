@@ -103,11 +103,10 @@ command layer. Coverage is every command route — properties panel, AI chat,
 gizmo, layers-panel reparent — but not a direct `setAttribute` from scene load
 or component code.
 
-Shape vertex editing adds three commands to the family:
-`shapevertexinsert` / `shapevertexremove` / `shapevertexmove`. They exist rather
-than reusing `EntityRemoveCommand` / `EntityUpdateCommand` because those steal
-selection, clone the entity on the reverse leg, and coalesce consecutive updates
-into one undo step — see each file's docblock.
+**Shapes:** editor-drawn 2D polylines with an optional filled interior. The code
+spans `aframe-components/`, `editor/components/elements/`, `editor/lib/` and
+`editor/lib/commands/`; `docs/shapes.md` is the entry point and carries the file
+map, the vertex-editing commands and the sticky-style rule.
 
 **Layer Reordering:** Drag-and-drop reordering of layers within the same parent in the SceneGraph. Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
 
