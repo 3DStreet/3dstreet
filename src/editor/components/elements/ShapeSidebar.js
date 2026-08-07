@@ -234,14 +234,16 @@ const ShapeSidebar = ({ entity }) => {
     // in between — which is exactly the "adds a point to a side the user never
     // chose" failure the element-pair naming exists to prevent, reintroduced at
     // the resolution step. If the edit removed one of the two elements,
-    // revealSide's own validation refuses. Fail-safe either way.
+    // activateSide's own validation refuses. Fail-safe either way.
     //
-    // No drag gate here, unlike the handler that CLOSES the button, and the
-    // asymmetry is deliberate: a press that drifts a few pixels within one chip
-    // is still a click on that chip — on touch, most presses are — and gating
-    // this would make chips unresponsive to any slightly imprecise press. A
-    // press and release on two DIFFERENT chips retargets to their common
-    // ancestor, which carries no marker, so it is dropped without a gate.
+    // No drag gate HERE, and that is not the same as no drag gate: there is one
+    // a call deep, on the branch of activateSide that inserts. The asymmetry is
+    // deliberate. A press that drifts a few pixels within one chip is still a
+    // click on that chip — on touch, most presses are — so gating at this level
+    // would make chips unresponsive to any slightly imprecise tap, on the path
+    // where a tap only opens a button. A press and release on two DIFFERENT
+    // chips retargets to their common ancestor, which carries no marker, so it
+    // is dropped without a gate anyway.
     // Bound on `document`, so it sees every chip in the page and not only this
     // panel's — the listener cannot be scoped to a container, because every
     // CSS2D element in the scene shares one renderer container. The chip
@@ -260,8 +262,10 @@ const ShapeSidebar = ({ entity }) => {
       const seg = Number(outer.dataset.shapeSegment);
       const a = els[seg];
       const b = els[(seg + 1) % n];
-      if (!a || !b || a.parentNode !== entity || b.parentNode !== entity) return;
-      AFRAME.INSPECTOR?.shapeVertexControls?.revealSide(a, b);
+      if (!a || !b || a.parentNode !== entity || b.parentNode !== entity) {
+        return;
+      }
+      AFRAME.INSPECTOR?.shapeVertexControls?.activateSide(a, b);
     };
     document.addEventListener('click', onLabelClick);
 

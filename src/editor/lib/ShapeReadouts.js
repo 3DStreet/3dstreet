@@ -22,6 +22,7 @@ import {
   formatAngle
 } from './shapeMeasure';
 import { MIN_TAP_TARGET_PX, READOUT_RENDER_ORDER } from './shapeEditRules';
+import { forwardWheelToCanvas } from './forwardWheelToCanvas.js';
 
 // Distinguishes chips built by THIS renderer from any other instance's. The
 // panel's click handler is delegated on `document` and cannot be scoped to a
@@ -35,6 +36,11 @@ const ARC_STEPS = 20;
 const LABEL_OFFSET = 1.35; // angle label sits just outside the arc
 const ARC_COLOR = 0x4c8dff;
 const EPS = 1e-4;
+
+// Names the action for anyone unsure what a chip that has turned into a "+" is
+// about to do. "vertex" rather than "point" or "corner": that is the word the
+// controls beside this one already use.
+const INSERT_HINT = 'Add a vertex to this side';
 
 export default class ShapeReadouts {
   constructor(el) {
@@ -126,7 +132,12 @@ export default class ShapeReadouts {
     if (n <= maxVertices) {
       for (let i = 0; i < segCount; i++) {
         if (pinned.has(i)) continue; // already drawn above
-        this._addLengthLabel(vertices[i], vertices[(i + 1) % n], i, interaction);
+        this._addLengthLabel(
+          vertices[i],
+          vertices[(i + 1) % n],
+          i,
+          interaction
+        );
       }
       const cornerStart = ring ? 0 : 1;
       const cornerEnd = ring ? n : n - 1; // exclusive
@@ -286,14 +297,25 @@ export default class ShapeReadouts {
     this.arcs.push(mesh); // disposed with the arcs in clear()
   }
 
-  // TWO elements: the OUTER is what CSS2DRenderer positions and whose
+  // TWO elements always: the OUTER is what CSS2DRenderer positions and whose
   // style.transform it rewrites every pass, so nothing of ours may go there;
   // the INNER is the visible chip, and its rendered HEIGHT is what
   // shapeEditRules' CAPTION_HALF_PX is half of — restyle the font size,
   // line-height or vertical padding below and that constant has to follow.
+  //
+  // What the inner CONTAINS is where the two branches part. A plain caption is
+  // one text node. An insertable one holds two spans, because on a hovering
+  // pointer its number is replaced in place by a "+" — and swapping the text of
+  // a content-sized chip would shrink the box under the cursor, drop the cursor
+  // outside it, un-hover it and start a flicker loop. Only the value span
+  // occupies layout, so the box is always the number's box, pinned by
+  // construction rather than by an explicit width a later reader would tidy
+  // away. See docs/shape-vertex-editing.md.
+  //
   // Rationale for the split, and for which properties live here rather than in
   // the stylesheet: docs/shape-vertex-editing.md.
   _makeLabel(text, pos, options) {
+    const insertable = !!(options && options.insertable);
     const outer = document.createElement('div');
     outer.className = 'shape-readout';
     // Inline and unconditional, NOT in the stylesheet: no state variant, and a
@@ -310,17 +332,50 @@ export default class ShapeReadouts {
     // The hit target is the outer, so the inner stays transparent: that way a
     // press reports the outer as its target and carries the segment marker.
     inner.style.pointerEvents = 'none';
-    inner.textContent = text;
+    if (insertable) {
+      // The value span is the only child that occupies layout — the plus is out
+      // of flow — so the inner's RENDERED HEIGHT is unchanged by this branch and
+      // CAPTION_HALF_PX stays true of both. That is the whole of the claim: WHERE
+      // the glyph lands inside the box is the stylesheet's job, not this one's.
+      const value = document.createElement('span');
+      value.className = 'shape-readout-value';
+      value.textContent = text;
+      const plus = document.createElement('span');
+      plus.className = 'shape-readout-plus';
+      plus.textContent = '+';
+      // A decoration of the number, not a second thing to read out: the chip's
+      // accessible name has to stay the measurement, which is what the panel
+      // exists to show.
+      plus.setAttribute('aria-hidden', 'true');
+      inner.appendChild(value);
+      inner.appendChild(plus);
+    } else {
+      inner.textContent = text;
+    }
     outer.appendChild(inner);
 
     const obj = new CSS2DObject(outer);
     obj.position.copy(pos);
-    // The bottom of the three CSS2D bands — see READOUT_RENDER_ORDER.
+    // The bottom of the four CSS2D bands — see READOUT_RENDER_ORDER.
     obj.renderOrder = READOUT_RENDER_ORDER.caption;
 
-    if (options && options.insertable) {
+    if (insertable) {
       outer.classList.add('shape-readout--insertable');
       outer.style.pointerEvents = 'auto';
+      // Taking the pointer takes the wheel too, and the zoom handlers are on the
+      // canvas, which is not one of this element's ancestors. Bound on this
+      // branch alone: it is the only one that receives a wheel at all, since the
+      // rest stay transparent to the pointer.
+      outer.addEventListener('wheel', forwardWheelToCanvas, { passive: false });
+      // Named in words for anyone unsure what a chip that has become a "+" will
+      // do. A `title` rather than a widget role or an aria-label: the chip cannot
+      // take focus, so a role would announce a control that cannot be operated,
+      // and an aria-label overrides element content unconditionally — which would
+      // delete the measurement from the accessible name even at rest.
+      outer.title = INSERT_HINT;
+      // Lifted clear of the captions that are NOT controls, so an ordinary
+      // neighbour cannot cover the affordance a hovering pointer summons here.
+      obj.renderOrder = READOUT_RENDER_ORDER.insertableCaption;
       // Written from the constant rather than typed into the stylesheet, so the
       // hit box and the app's small-control size stay mechanically linked
       // instead of merely commented across a language boundary.
@@ -353,6 +408,11 @@ export default class ShapeReadouts {
   clear() {
     for (const { obj, outer } of this.labels) {
       this.group.remove(obj);
+      // Not a leak fix — the handler is module-scope, so detaching the element
+      // would already be enough to collect it. It is written so the listener's
+      // life is stated at both ends rather than only at the one that adds it. A
+      // no-op on the chips that never took one.
+      if (outer) outer.removeEventListener('wheel', forwardWheelToCanvas);
       // Removing the outer takes its inner with it.
       if (outer && outer.parentNode) outer.parentNode.removeChild(outer);
     }

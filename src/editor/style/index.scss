@@ -534,9 +534,10 @@ body.aframe-inspector-opened {
 // the constant it comes from rather than merely commented (the chip's minimum
 // tap height), and a property whose failure mode is severe stays assertable in
 // a test environment that evaluates no stylesheet at all (the chip's
-// pointer-events). Both of those are written in JS deliberately. The one
-// property that does have variants — the chip's background — moves the other
-// way, out of JS and into the rules below.
+// pointer-events). Both of those are written in JS deliberately. The properties
+// that DO have variants move the other way, out of JS and into the rules below:
+// the chip's background, the visibility of its two spans, and the delete
+// button's background.
 .shape-insert-button {
   // The selection blue the whole vertex-editing feature already speaks in —
   // the handles, the active rim and the shape's own selection box. A control in
@@ -581,25 +582,84 @@ body.aframe-inspector-opened {
   justify-content: center;
 }
 
-// The visible chip. `background` lives here rather than inline because it is
-// the one property with state variants, and an inline declaration would beat
-// every rule below it.
+// The visible chip. `background` lives here rather than inline because it has
+// state variants, and an inline declaration would beat every rule below it; so
+// does the visibility of the two spans an insertable chip is built from.
+//
+// `position: relative` makes this the containing block for the "+" — which is
+// the element that must NOT contribute to this box's size.
 .shape-readout-label {
   background: rgba(0, 0, 0, 0.6);
+  position: relative;
 }
 
-// A side length that can take a new point. The cursor is the only idle signal
+// A side length that can take a new vertex. The cursor is the only idle signal
 // there is; the height that makes it a finger-sized target is written inline
 // from a constant.
 .shape-readout--insertable {
   cursor: pointer;
 }
 
+// The "+" an insertable chip shows in place of its number while the pointer
+// rests on it. Its BASE state is hidden — without that it would sit over the
+// number permanently.
+//
+// Out of flow, so it can never feed back into the chip's box: the box stays the
+// number's box at every moment, which is what stops a chip shrinking under the
+// cursor, dropping the cursor outside itself and flickering.
+//
+// `inset: 0` fixes the BOX, not the glyph — on its own it lays a line-height:1
+// glyph at the box's top-left, a few pixels up and to the left of where the
+// digits were. The flex centring below is what actually puts the "+" where the
+// number was. Heavier and larger than the 12 px number so it stays legible with
+// a cursor sitting on it, which it can afford to be precisely because it is out
+// of flow.
+.shape-readout-plus {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 15px/1 sans-serif;
+  visibility: hidden;
+}
+
 // Hover matches across the whole padded hit area: :hover applies to every
 // element in the hit-test ancestor chain, so the outer being the hit target
-// still lights the inner.
+// still lights the inner. No delay — the fill is the immediate "this is a
+// control" signal, and the morph below is the slower one that says what kind.
 .shape-readout--insertable:hover .shape-readout-label {
   background: #1faaf2;
+}
+
+// THE MORPH: on a device with a hovering pointer, resting on a side's
+// measurement replaces the number with a "+", in place and at the same size.
+//
+// Gated on `(hover: hover)` because on touch there is no gesture that undoes it
+// — a stray tap would replace the number and leave it replaced. Note the query
+// is NOT a reliable touch-only exclusion: a touch-only Windows tablet reports
+// `hover: hover`, since Windows always exposes a virtual mouse. What actually
+// keeps a finger from acting on a chip is the pointer-type gate in the controls
+// layer, which reads THIS query back so that the visual and the action can never
+// disagree about which devices are in.
+@media (hover: hover) {
+  // NOT while a "+" button is already open on this side. Both paths are
+  // reachable in one session on a device with a finger and a mouse, and without
+  // this the same side would show a floating "+" AND a "+" in place of its
+  // number.
+  .shape-readout--insertable:not(.shape-readout--revealed):hover {
+    // Delay in, none out: the chip commits slowly, so a pointer sweeping across
+    // a shape flips nothing, and reverts instantly the moment it leaves.
+    .shape-readout-value {
+      visibility: hidden;
+      transition: visibility 0s variables.$shape-hover-morph-dwell;
+    }
+
+    .shape-readout-plus {
+      visibility: visible;
+      transition: visibility 0s variables.$shape-hover-morph-dwell;
+    }
+  }
 }
 
 // The side a button is currently open on. A white hairline on the chip's
@@ -637,6 +697,40 @@ body.aframe-inspector-opened {
   text-shadow:
     0 0 2px rgba(0, 0, 0, 0.9),
     0 1px 1px rgba(0, 0, 0, 0.9);
+}
+
+// The vertex delete button. Before this it answered a pointer not at all, which
+// read as inert beside a measurement chip that lights up under one — an
+// inconsistency this feature created, since there was no hover language here at
+// all before it. (The insert "+" needs nothing: it already has the treatment,
+// above.)
+//
+// Deliberately NOT the measurement's blue: that is `.shape-insert-button`'s
+// resting fill, and a destructive control that becomes pixel-identical to the
+// constructive one on hover is worse than an inert one. The two were kept apart
+// on purpose — see the note in the insert-button block. What carries "this is a
+// control" here is instead the white hairline the paired controls share, plus a
+// lift in the chip.
+//
+// `box-shadow` rather than `border`: the button's width and height come from
+// BUTTON_PX and the offset arithmetic that clears it of the handle is computed
+// from that same number, so a border would grow the box out from under it.
+.shape-delete-button {
+  background: rgba(0, 0, 0, 0.7);
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.9);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);
+  }
+
+  &:active {
+    background: rgba(0, 0, 0, 1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 1px;
+  }
 }
 
 // Note: the shape component's own area label hand-builds an identical-looking
