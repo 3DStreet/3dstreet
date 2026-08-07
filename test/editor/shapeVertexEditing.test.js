@@ -1,6 +1,6 @@
 /* global THREE */
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   polygonAreaXZ,
   ringEnclosesArea,
@@ -18,6 +18,7 @@ vi.mock('../../src/editor/lib/entity.js', () => ({
   updateEntity: () => {}
 }));
 
+import { ShapeVertexControls } from '../../src/editor/lib/ShapeVertexControls.js';
 import { EntityUpdateCommand } from '../../src/editor/lib/commands/EntityUpdateCommand.js';
 import { ShapeVertexInsertCommand } from '../../src/editor/lib/commands/ShapeVertexInsertCommand.js';
 import { ShapeVertexMoveCommand } from '../../src/editor/lib/commands/ShapeVertexMoveCommand.js';
@@ -1019,10 +1020,15 @@ describe('clickMoveThreshold', () => {
     expect(TOUCH_CLICK_MOVE_THRESHOLD).toBe(HANDLE_TARGET_PX + HIT_SLOP_PX);
   });
 
-  it('leaves every other pointer type on the mouse threshold', () => {
+  // The mouse is the exception rather than touch the special case, and the
+  // asymmetry is the whole rule: the tight threshold is only safe where the
+  // input is known to be precise. A stylus wobbles about as much as a fingertip,
+  // and an unknown pointer type is exactly the case where precision cannot be
+  // assumed — so both land on the forgiving side.
+  it('reserves the tight threshold for the mouse alone', () => {
     expect(clickMoveThreshold('mouse')).toBe(CLICK_MOVE_THRESHOLD);
-    expect(clickMoveThreshold('pen')).toBe(CLICK_MOVE_THRESHOLD);
-    expect(clickMoveThreshold(undefined)).toBe(CLICK_MOVE_THRESHOLD);
+    expect(clickMoveThreshold('pen')).toBe(TOUCH_CLICK_MOVE_THRESHOLD);
+    expect(clickMoveThreshold(undefined)).toBe(TOUCH_CLICK_MOVE_THRESHOLD);
   });
 });
 
@@ -1251,5 +1257,147 @@ describe('trashButtonOffset', () => {
     const rightEdge = trashButtonOffset(7, W - 2, H / 2, W, H);
     expect(rightEdge.dx).toBeLessThan(0);
     expect(rightEdge.dy).toBeLessThan(0);
+  });
+});
+
+// The branch that decides what a press on a side's length measurement DOES.
+// It is the one place in this feature where the same gesture is destructive on
+// one input type and merely reveals a button on another, so each pointer type
+// gets its own case rather than being covered by a blacklist.
+//
+// These share ONE module instance deliberately — no vi.resetModules() — because
+// the media query is read at CALL time. Re-importing per test would let a build
+// that read it once at module scope pass this whole block.
+describe('ShapeVertexControls.activateSide', () => {
+  let execute;
+  let savedAframe;
+  let savedMatchMedia;
+
+  // Four vertices of a large square, so every midpoint insert clears the
+  // minimum separation and the ring stays simple. The stub carries only what
+  // this path reads: positions, the closed flag, and a DOM child order.
+  const square = () =>
+    [
+      [-10, -10],
+      [10, -10],
+      [10, 10],
+      [-10, 10]
+    ].map(([x, z]) => ({ object3D: { position: new THREE.Vector3(x, 0, z) } }));
+
+  // hoverIsReal + a recorded press, both overridable. Written as one factory so
+  // that a case which produces "nothing happened" can be compared against a
+  // sibling that differs in exactly one field.
+  const controls = ({
+    hover = true,
+    press = { pointerType: 'mouse' }
+  } = {}) => {
+    window.matchMedia = vi.fn(() => ({ matches: hover }));
+    const c = new ShapeVertexControls();
+    const vertexEls = square();
+    c.vertexEls = vertexEls;
+    c.shapeEl = {
+      components: { shape: { data: { closed: true } } },
+      children: vertexEls
+    };
+    c._windowPress = press && { x: 0, y: 0, wasDrag: false, ...press };
+    return c;
+  };
+
+  beforeEach(() => {
+    execute = vi.fn();
+    savedAframe = globalThis.AFRAME;
+    savedMatchMedia = window.matchMedia;
+    globalThis.AFRAME = { INSPECTOR: { execute } };
+  });
+
+  afterEach(() => {
+    globalThis.AFRAME = savedAframe;
+    window.matchMedia = savedMatchMedia;
+  });
+
+  // The positive control travels WITH the assertion it protects: "execute was
+  // not called" is also what a fixture that was never wired up produces, so the
+  // same fixture is made to insert by flipping the one field under test.
+  it('refuses while a gesture is claimed — and the same fixture inserts when it is not', () => {
+    const c = controls();
+    const v = c.vertexEls;
+    c.claimed = true;
+    c.activateSide(v[0], v[1]);
+    expect(execute).not.toHaveBeenCalled();
+    c.claimed = false;
+    c.activateSide(v[0], v[1]);
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('inserts on a mouse press that did not travel', () => {
+    const c = controls();
+    const v = c.vertexEls;
+    c.activateSide(v[0], v[1]);
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(execute.mock.calls[0][0]).toBe('shapevertexinsert');
+    expect(c.getRevealedSide()).toBe(null);
+  });
+
+  // Touch keeps the two-step model: the tap opens a button, and the button is
+  // what commits. Nothing about this path may become destructive.
+  it('reveals rather than inserts on touch', () => {
+    const c = controls({ press: { pointerType: 'touch' } });
+    const v = c.vertexEls;
+    c.activateSide(v[0], v[1]);
+    expect(execute).not.toHaveBeenCalled();
+    expect(c.getRevealedSide()).toEqual({ a: v[0], b: v[1] });
+  });
+
+  // The three cases the gate exists for. Without them a blacklist on 'touch'
+  // passes everything else — including a hovering stylus, a mouse on a
+  // touch-primary tablet where no morph is ever shown, and a click this layer
+  // saw no press for at all.
+  it('inserts for a hovering stylus, which the stylesheet morphs for', () => {
+    const c = controls({ press: { pointerType: 'pen' } });
+    const v = c.vertexEls;
+    c.activateSide(v[0], v[1]);
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['mouse', 'pen'])(
+    'reveals for a %s where the device reports no hover',
+    (pointerType) => {
+      const c = controls({ hover: false, press: { pointerType } });
+      const v = c.vertexEls;
+      c.activateSide(v[0], v[1]);
+      expect(execute).not.toHaveBeenCalled();
+      expect(c.getRevealedSide()).toEqual({ a: v[0], b: v[1] });
+    }
+  );
+
+  it('reveals when there is no press record to judge', () => {
+    const c = controls({ press: null });
+    const v = c.vertexEls;
+    c.activateSide(v[0], v[1]);
+    expect(execute).not.toHaveBeenCalled();
+    expect(c.getRevealedSide()).toEqual({ a: v[0], b: v[1] });
+  });
+
+  // A failed orbit that started on the chip. Ungated it commits a vertex, and
+  // the natural response to a camera that did not move is to try again.
+  it('does nothing at all when the press became a drag', () => {
+    const c = controls({ press: { pointerType: 'mouse', wasDrag: true } });
+    const v = c.vertexEls;
+    c.activateSide(v[0], v[1]);
+    expect(execute).not.toHaveBeenCalled();
+    expect(c.getRevealedSide()).toBe(null);
+  });
+
+  // A finger opened the button; now a mouse comes back to the same chip. The
+  // morph is suppressed while a button is open there, so inserting would act
+  // with no affordance ever shown — close it instead and let hover take over.
+  it('closes an open button rather than inserting under it', () => {
+    const c = controls();
+    const v = c.vertexEls;
+    c.revealSide(v[0], v[1]);
+    expect(c.getRevealedSide()).not.toBe(null);
+    c.activateSide(v[0], v[1]);
+    expect(execute).not.toHaveBeenCalled();
+    expect(c.getRevealedSide()).toBe(null);
   });
 });

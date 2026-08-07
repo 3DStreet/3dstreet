@@ -1,10 +1,15 @@
 /* global THREE */
 import { describe, it, expect, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import ShapeReadouts from '../../src/editor/lib/ShapeReadouts.js';
 import {
   MIN_TAP_TARGET_PX,
   READOUT_RENDER_ORDER
 } from '../../src/editor/lib/shapeEditRules.js';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
 
 // SCOPE NOTE for everything below. jsdom evaluates no stylesheet, and vitest
 // never sees the SCSS at all, so nothing here may assert a computed colour,
@@ -249,11 +254,139 @@ describe('ShapeReadouts — the label DOM contract', () => {
     expect(revealed[0].obj.renderOrder).toBe(
       READOUT_RENDER_ORDER.revealedCaption
     );
+    // Everything else falls into one of two bands, not one: an insertable side
+    // is itself a control and is lifted clear of the captions that are not.
     for (const { obj, outer } of readouts.labels) {
       if (outer.classList.contains('shape-readout--revealed')) continue;
-      expect(obj.renderOrder).toBe(READOUT_RENDER_ORDER.caption);
+      expect(obj.renderOrder).toBe(
+        outer.classList.contains('shape-readout--insertable')
+          ? READOUT_RENDER_ORDER.insertableCaption
+          : READOUT_RENDER_ORDER.caption
+      );
     }
   });
+
+  // An insertable chip is built differently from every other chip, and the
+  // difference is what pins its footprint: the number sits in its own span so
+  // that the "+" which replaces it on hover can be taken out of flow. Only the
+  // value span occupies layout, so the box never changes size.
+  it('gives an insertable chip a value span and an out-of-band plus', () => {
+    readouts.renderAll(polygon(5), 12, null, true, null, allInsertable());
+    const live = interactive();
+    expect(live.length).toBe(5);
+    for (const outer of live) {
+      const inner = outer.firstElementChild;
+      expect(inner.children.length).toBe(2);
+      const [value, plus] = inner.children;
+      expect(value.className).toBe('shape-readout-value');
+      expect(plus.className).toBe('shape-readout-plus');
+      // The number lives on the span, and NOWHERE else: assigning the inner's
+      // textContent as well would ship a chip reading "4.20 m4.20 m", which a
+      // child count cannot see because it counts elements and not text nodes.
+      expect(value.textContent).toBe(inner.textContent.replace('+', ''));
+      expect(value.textContent.length).toBeGreaterThan(0);
+      expect(plus.textContent).toBe('+');
+      expect(plus.getAttribute('aria-hidden')).toBe('true');
+      // Named in words, once. A widget role would announce a control that cannot
+      // take focus, and an aria-label would override the element's content
+      // unconditionally — deleting the measurement from the accessible name even
+      // at rest, when no "+" is showing at all.
+      expect(outer.title).toBe('Add a vertex to this side');
+      expect(outer.getAttribute('role')).toBe(null);
+      expect(outer.getAttribute('aria-label')).toBe(null);
+    }
+  });
+
+  // The other half of that contract, and the one that catches the spans or the
+  // title being written unconditionally: everything that is NOT a control keeps
+  // today's single text node and gets no tooltip. The draw preview is called out
+  // separately because it reaches _makeLabel by a different entry point, and it
+  // is the path where a stray tooltip would be invisible to a manual test — the
+  // chip is transparent to the pointer, so the browser never offers one.
+  it.each([
+    ['a non-insertable side', (r) => r.renderAll(polygon(5), 12, null, true)],
+    ['a draw-preview chip', (r) => r.renderActive([p(0, 0), p(3, 0), p(3, 4)])]
+  ])('leaves %s as a single text node with no hint', (_label, render) => {
+    render(readouts);
+    expect(readouts.labels.length).toBeGreaterThan(0);
+    for (const { outer, inner } of readouts.labels) {
+      expect(inner.children.length).toBe(0);
+      expect(inner.textContent.length).toBeGreaterThan(0);
+      expect(inner.querySelector('.shape-readout-value')).toBe(null);
+      expect(inner.querySelector('.shape-readout-plus')).toBe(null);
+      expect(outer.title).toBe('');
+    }
+  });
+
+  // Three bands are reachable from this layer, and the boundaries only mean
+  // anything relative to each other. Segment 0 is deliberately one of the
+  // revealed cases: a truthiness guard on the segment index passes at 3 and
+  // fails at 0, and segment 0 exists on every shape.
+  it.each([0, 3])(
+    'sorts captions into caption / insertableCaption / revealedCaption (revealed %i)',
+    (revealedSegment) => {
+      readouts.renderAll(polygon(5), 12, null, true, null, {
+        isInsertable: (i) => i !== 1,
+        revealedSegment
+      });
+      for (const { obj, outer } of readouts.labels) {
+        const classes = outer.classList;
+        if (classes.contains('shape-readout--revealed')) {
+          expect(obj.renderOrder).toBe(READOUT_RENDER_ORDER.revealedCaption);
+        } else if (classes.contains('shape-readout--insertable')) {
+          expect(obj.renderOrder).toBe(READOUT_RENDER_ORDER.insertableCaption);
+        } else {
+          // Angles and the muted side alike.
+          expect(obj.renderOrder).toBe(READOUT_RENDER_ORDER.caption);
+        }
+      }
+      const revealed = readouts.labels.filter((l) =>
+        l.outer.classList.contains('shape-readout--revealed')
+      );
+      expect(revealed.length).toBe(1);
+      expect(Number(revealed[0].outer.dataset.shapeSegment)).toBe(
+        revealedSegment
+      );
+    }
+  );
+
+  // The one mechanical check on the morph the harness can perform. jsdom
+  // evaluates no stylesheet and has no layout, so this reads the SCSS as text.
+  //
+  // What it does NOT cover, and what is therefore manual: that the plus is out
+  // of flow, that it is centred inside the chip rather than jammed into a
+  // corner, and that the chip's rendered box is unchanged by the morph.
+  it('morphs on visibility inside a hover-capable media query, never on display', () => {
+    // Resolved from this file's own location: a cwd-relative path breaks under
+    // `vitest --root` or an invocation from a subdirectory, and would then read
+    // as a rule that did not match rather than as a file that was not found.
+    const scss = readFileSync(
+      path.resolve(here, '../../src/editor/style/index.scss'),
+      'utf8'
+    );
+    // Scoped to the morph block. Matching every `.shape-readout-value` rule in
+    // the file would sweep in the base rules too, and a legitimate `display`
+    // there would then fail a correct build.
+    const morph = scss.match(/@media \(hover: hover\)[\s\S]*?\n\}/)?.[0];
+    // The did-not-run guard: without it, a renamed selector makes every
+    // assertion below vacuous and the test goes green having checked nothing.
+    expect(morph).toBeTruthy();
+    expect(morph).toContain('.shape-readout-value');
+    expect(morph).toContain('visibility: hidden');
+    expect(morph).toContain('visibility: visible');
+    // `display: none` would collapse the chip's box and bring back the very
+    // oscillation the two-span construction exists to prevent.
+    expect(morph).not.toMatch(/^\s*display:/m);
+    // The hybrid-device guard, and nothing else anywhere checks the CSS half of
+    // it: a side with a "+" button already open must not ALSO morph.
+    expect(morph).toContain(':not(.shape-readout--revealed)');
+  });
+
+  // Matching on the @media wrapper above is load-bearing rather than incidental:
+  // it is the only check that the morph is inside a hover-capable query at all,
+  // and a regex scoped to the inner rule would match identically with the query
+  // deleted — which would hand the morph to touch devices, where there is no
+  // gesture that undoes it.
 
   // The cost argument for the callback: it is asked only about the sides
   // actually being labelled, so above the cap that is the pins plus the hovered

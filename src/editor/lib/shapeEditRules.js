@@ -157,7 +157,8 @@ export function decidePress({
 // to prevent.
 export const CLICK_MOVE_THRESHOLD = 4;
 
-// The same question, answered for a finger. A fingertip rolls several pixels
+// The same question, answered for a pointer that cannot be aimed to the pixel —
+// a fingertip, and equally a stylus. A fingertip rolls several pixels
 // during a deliberate tap, so 4 px classifies ordinary taps as drags. 10 px is
 // not a taste number: it is HANDLE_TARGET_PX + HIT_SLOP_PX, the handle's own
 // hit radius, so the rule reads "a press that never left the handle it started
@@ -165,10 +166,18 @@ export const CLICK_MOVE_THRESHOLD = 4;
 // structural rather than coincidental.
 export const TOUCH_CLICK_MOVE_THRESHOLD = HANDLE_TARGET_PX + HIT_SLOP_PX;
 
+// The mouse is the exception, not touch the special case, and the direction
+// matters: TOUCH_CLICK_MOVE_THRESHOLD is about IMPRECISE POINTING, which
+// describes a digitizer as well as a fingertip. A stylus press wobbles about as
+// much as a tap, so holding a pen to the mouse's 4 px means a user who aims at
+// a control, presses it and drifts 5 px gets nothing at all — no action, and
+// nothing on screen to say why. An unknown pointer type lands on the forgiving
+// side for the same reason: the tight threshold is only safe where the input is
+// known to be precise.
 export function clickMoveThreshold(pointerType) {
-  return pointerType === 'touch'
-    ? TOUCH_CLICK_MOVE_THRESHOLD
-    : CLICK_MOVE_THRESHOLD;
+  return pointerType === 'mouse'
+    ? CLICK_MOVE_THRESHOLD
+    : TOUCH_CLICK_MOVE_THRESHOLD;
 }
 
 // --- Plane picking -----------------------------------------------------
@@ -443,19 +452,36 @@ export function validateVertexDelete(points, closed, index) {
 // the CSS2D sort sees only CSS2DObjects, so a mesh's renderOrder is invisible to
 // it.
 //
-// Three bands, each boundary earning its place. `control` on top is what keeps a
+// Four bands, each boundary earning its place. `control` on top is what keeps a
 // caption from being drawn over a button, which is the one thing accepting
-// overlap depends on. `revealedCaption` in the middle keeps a neighbouring
-// caption from covering the number the user has to click and keep sight of while
-// reaching for the button beside it.
+// overlap depends on. `revealedCaption` below it keeps a neighbouring caption
+// from covering the number the user has to click and keep sight of while
+// reaching for the button beside it. `insertableCaption` lifts a side length
+// that IS a control clear of one that is not, so an ordinary caption cannot
+// cover the affordance a hovering pointer summons in place of the number.
 //
-// ONE home for all three, in the module both layers that write them already
+// What `insertableCaption` does NOT fix, said plainly because the band is not
+// free: two insertable chips against each other. On the overwhelmingly common
+// shape every side can take a vertex, so chip-on-chip crowding is largely
+// outside what this boundary reaches.
+//
+// And what it COSTS, which crosses a feature boundary. An insertable length chip
+// now draws over an angle caption and a muted caption regardless of camera
+// distance, where the three were previously distance-sorted against each other.
+// Beyond this feature: the shape's own area label and every measure-line label
+// are CSS2DObjects with no renderOrder at all — band 0 — so a length chip draws
+// over those too, and the area label is anchored at the centroid, the most
+// crowded spot on a small shape. Accepted: a control the user is reaching for
+// beats a caption they are not.
+//
+// ONE home for all four, in the module both layers that write them already
 // share. The bands are only meaningful relative to each other, so a copy per
 // layer is two halves of one rule that can drift with nothing to detect it.
 export const READOUT_RENDER_ORDER = {
   caption: 0,
-  revealedCaption: 1,
-  control: 2
+  insertableCaption: 1,
+  revealedCaption: 2,
+  control: 3
 };
 
 // --- The delete button's placement -------------------------------------
