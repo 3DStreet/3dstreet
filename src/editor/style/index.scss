@@ -583,8 +583,8 @@ body.aframe-inspector-opened {
 }
 
 // The visible chip. `background` lives here rather than inline because it has
-// state variants, and an inline declaration would beat every rule below it; so
-// does the visibility of the two spans an insertable chip is built from.
+// state variants — see the header note above — and so does the visibility of
+// the two spans an insertable chip is built from.
 //
 // `position: relative` makes this the containing block for the "+" — which is
 // the element that must NOT contribute to this box's size.
@@ -601,19 +601,13 @@ body.aframe-inspector-opened {
 }
 
 // The "+" an insertable chip shows in place of its number while the pointer
-// rests on it. Its BASE state is hidden — without that it would sit over the
-// number permanently.
+// rests on it. Its BASE state is hidden — without that it sits over the number
+// permanently — and it is out of flow, which is the footprint lock
+// (docs/shape-vertex-editing.md).
 //
-// Out of flow, so it can never feed back into the chip's box: the box stays the
-// number's box at every moment, which is what stops a chip shrinking under the
-// cursor, dropping the cursor outside itself and flickering.
-//
-// `inset: 0` fixes the BOX, not the glyph — on its own it lays a line-height:1
-// glyph at the box's top-left, a few pixels up and to the left of where the
-// digits were. The flex centring below is what actually puts the "+" where the
-// number was. Heavier and larger than the 12 px number so it stays legible with
-// a cursor sitting on it, which it can afford to be precisely because it is out
-// of flow.
+// `inset: 0` fixes the BOX, not the glyph: on its own it lays a line-height:1
+// glyph at the box's top-left, a few pixels up and left of where the digits
+// were. The flex centring is what actually puts the "+" where the number was.
 .shape-readout-plus {
   position: absolute;
   inset: 0;
@@ -636,12 +630,10 @@ body.aframe-inspector-opened {
 // measurement replaces the number with a "+", in place and at the same size.
 //
 // Gated on `(hover: hover)` because on touch there is no gesture that undoes it
-// — a stray tap would replace the number and leave it replaced. Note the query
-// is NOT a reliable touch-only exclusion: a touch-only Windows tablet reports
-// `hover: hover`, since Windows always exposes a virtual mouse. What actually
-// keeps a finger from acting on a chip is the pointer-type gate in the controls
-// layer, which reads THIS query back so that the visual and the action can never
-// disagree about which devices are in.
+// — a stray tap would replace the number and leave it replaced. The query is
+// NOT a reliable touch-only exclusion on its own; what keeps a finger out is the
+// pointer-type gate in the controls layer, which reads THIS query back so the
+// visual and the action cannot disagree. See docs/shape-vertex-editing.md.
 @media (hover: hover) {
   // NOT while a "+" button is already open on this side. Both paths are
   // reachable in one session on a device with a finger and a mouse, and without
@@ -699,22 +691,18 @@ body.aframe-inspector-opened {
     0 1px 1px rgba(0, 0, 0, 0.9);
 }
 
-// The vertex delete button. Before this it answered a pointer not at all, which
-// read as inert beside a measurement chip that lights up under one — an
-// inconsistency this feature created, since there was no hover language here at
-// all before it. (The insert "+" needs nothing: it already has the treatment,
-// above.)
+// The vertex delete button, which until now answered a pointer not at all —
+// inert beside a measurement chip that lights up under one. (The insert "+"
+// already has the treatment, above.)
 //
-// Deliberately NOT the measurement's blue: that is `.shape-insert-button`'s
-// resting fill, and a destructive control that becomes pixel-identical to the
-// constructive one on hover is worse than an inert one. The two were kept apart
-// on purpose — see the note in the insert-button block. What carries "this is a
-// control" here is instead the white hairline the paired controls share, plus a
-// lift in the chip.
+// Deliberately NOT the measurement's blue: a destructive control that becomes
+// pixel-identical to the constructive one on hover is worse than an inert one,
+// which is why the two were kept apart to begin with. The white hairline the
+// paired controls share carries "this is a control" instead.
 //
-// `box-shadow` rather than `border`: the button's width and height come from
-// BUTTON_PX and the offset arithmetic that clears it of the handle is computed
-// from that same number, so a border would grow the box out from under it.
+// `box-shadow` rather than `border`: the button's size comes from BUTTON_PX and
+// so does the offset that clears it of the handle, and a border would grow the
+// box out from under both.
 .shape-delete-button {
   background: rgba(0, 0, 0, 0.7);
 

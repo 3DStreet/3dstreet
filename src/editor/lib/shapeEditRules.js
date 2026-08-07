@@ -452,31 +452,13 @@ export function validateVertexDelete(points, closed, index) {
 // the CSS2D sort sees only CSS2DObjects, so a mesh's renderOrder is invisible to
 // it.
 //
-// Four bands, each boundary earning its place. `control` on top is what keeps a
-// caption from being drawn over a button, which is the one thing accepting
-// overlap depends on. `revealedCaption` below it keeps a neighbouring caption
-// from covering the number the user has to click and keep sight of while
-// reaching for the button beside it. `insertableCaption` lifts a side length
-// that IS a control clear of one that is not, so an ordinary caption cannot
-// cover the affordance a hovering pointer summons in place of the number.
+// Four bands, ordered so that a control always draws over a caption that is
+// not one. ONE home for all four, in the module both layers that write them
+// already share: the bands are only meaningful relative to each other, so a
+// copy per layer is two halves of one rule that can drift undetected.
 //
-// What `insertableCaption` does NOT fix, said plainly because the band is not
-// free: two insertable chips against each other. On the overwhelmingly common
-// shape every side can take a vertex, so chip-on-chip crowding is largely
-// outside what this boundary reaches.
-//
-// And what it COSTS, which crosses a feature boundary. An insertable length chip
-// now draws over an angle caption and a muted caption regardless of camera
-// distance, where the three were previously distance-sorted against each other.
-// Beyond this feature: the shape's own area label and every measure-line label
-// are CSS2DObjects with no renderOrder at all — band 0 — so a length chip draws
-// over those too, and the area label is anchored at the centroid, the most
-// crowded spot on a small shape. Accepted: a control the user is reaching for
-// beats a caption they are not.
-//
-// ONE home for all four, in the module both layers that write them already
-// share. The bands are only meaningful relative to each other, so a copy per
-// layer is two halves of one rule that can drift with nothing to detect it.
+// What each boundary buys, what `insertableCaption` does NOT fix, and what it
+// costs elsewhere in the scene: docs/shape-vertex-editing.md.
 export const READOUT_RENDER_ORDER = {
   caption: 0,
   insertableCaption: 1,

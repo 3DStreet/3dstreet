@@ -303,17 +303,10 @@ export default class ShapeReadouts {
   // shapeEditRules' CAPTION_HALF_PX is half of — restyle the font size,
   // line-height or vertical padding below and that constant has to follow.
   //
-  // What the inner CONTAINS is where the two branches part. A plain caption is
-  // one text node. An insertable one holds two spans, because on a hovering
-  // pointer its number is replaced in place by a "+" — and swapping the text of
-  // a content-sized chip would shrink the box under the cursor, drop the cursor
-  // outside it, un-hover it and start a flicker loop. Only the value span
-  // occupies layout, so the box is always the number's box, pinned by
-  // construction rather than by an explicit width a later reader would tidy
-  // away. See docs/shape-vertex-editing.md.
-  //
-  // Rationale for the split, and for which properties live here rather than in
-  // the stylesheet: docs/shape-vertex-editing.md.
+  // A plain caption's inner is one text node; an insertable one's is two spans,
+  // and that asymmetry is the footprint lock rather than styling. Why, and which
+  // properties belong here rather than in the stylesheet:
+  // docs/shape-vertex-editing.md.
   _makeLabel(text, pos, options) {
     const insertable = !!(options && options.insertable);
     const outer = document.createElement('div');
@@ -334,9 +327,9 @@ export default class ShapeReadouts {
     inner.style.pointerEvents = 'none';
     if (insertable) {
       // The value span is the only child that occupies layout — the plus is out
-      // of flow — so the inner's RENDERED HEIGHT is unchanged by this branch and
-      // CAPTION_HALF_PX stays true of both. That is the whole of the claim: WHERE
-      // the glyph lands inside the box is the stylesheet's job, not this one's.
+      // of flow — so the inner's RENDERED HEIGHT is unchanged and
+      // CAPTION_HALF_PX stays true of both branches. WHERE the glyph lands
+      // inside the box is the stylesheet's job, not this one's.
       const value = document.createElement('span');
       value.className = 'shape-readout-value';
       value.textContent = text;
@@ -362,16 +355,13 @@ export default class ShapeReadouts {
     if (insertable) {
       outer.classList.add('shape-readout--insertable');
       outer.style.pointerEvents = 'auto';
-      // Taking the pointer takes the wheel too, and the zoom handlers are on the
-      // canvas, which is not one of this element's ancestors. Bound on this
-      // branch alone: it is the only one that receives a wheel at all, since the
-      // rest stay transparent to the pointer.
+      // Taking the pointer takes the wheel — see forwardWheelToCanvas. Bound on
+      // this branch alone, the only one that can receive a wheel at all.
       outer.addEventListener('wheel', forwardWheelToCanvas, { passive: false });
-      // Named in words for anyone unsure what a chip that has become a "+" will
-      // do. A `title` rather than a widget role or an aria-label: the chip cannot
-      // take focus, so a role would announce a control that cannot be operated,
-      // and an aria-label overrides element content unconditionally — which would
-      // delete the measurement from the accessible name even at rest.
+      // A `title` and not a widget role (the chip cannot take focus, so a role
+      // would announce a control that cannot be operated) nor an aria-label
+      // (which overrides element content unconditionally, deleting the
+      // measurement from the accessible name even at rest).
       outer.title = INSERT_HINT;
       // Lifted clear of the captions that are NOT controls, so an ordinary
       // neighbour cannot cover the affordance a hovering pointer summons here.
@@ -408,10 +398,8 @@ export default class ShapeReadouts {
   clear() {
     for (const { obj, outer } of this.labels) {
       this.group.remove(obj);
-      // Not a leak fix — the handler is module-scope, so detaching the element
-      // would already be enough to collect it. It is written so the listener's
-      // life is stated at both ends rather than only at the one that adds it. A
-      // no-op on the chips that never took one.
+      // Not a leak fix (the handler is module-scope) — the listener's life is
+      // stated at both ends. A no-op on the chips that never took one.
       if (outer) outer.removeEventListener('wheel', forwardWheelToCanvas);
       // Removing the outer takes its inner with it.
       if (outer && outer.parentNode) outer.parentNode.removeChild(outer);

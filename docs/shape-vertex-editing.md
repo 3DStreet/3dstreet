@@ -7,7 +7,7 @@ every side and corner. How a side takes a new vertex depends on the input:
 an input with no hover a separate insert ("+") button appears above the
 measurement that was tapped. The next section says why the two differ.
 
-Five modules cooperate, and the split is by _who can answer the question_:
+Six modules cooperate, and the split is by _who can answer the question_:
 
 | Module                                           | Owns                                                                               |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------- |
@@ -15,6 +15,7 @@ Five modules cooperate, and the split is by _who can answer the question_:
 | `src/editor/components/elements/ShapeSidebar.js` | the properties panel, and the render of the measurements                           |
 | `src/editor/lib/ShapeReadouts.js`                | building measurement chips as CSS2D DOM billboards                                 |
 | `src/editor/lib/shapeEditRules.js`               | the pure rules all of the above agree on                                           |
+| `src/editor/lib/forwardWheelToCanvas.js`         | handing the wheel back to the camera from every control that took the pointer      |
 | `src/editor/style/index.scss`                    | the chips' and buttons' state variants — including the hover morph itself          |
 
 ## Why mouse and touch differ
@@ -211,11 +212,38 @@ preview's entry point (`renderActive`) has no parameter to pass.
 
 ## CSS2D draw order
 
+The CSS2D layer has an ordering of its own, unrelated to the scene's: the
+renderer sorts by `renderOrder` first and camera distance second, and writes
+`element.style.zIndex` itself on every pass — so a CSS `z-index` set anywhere
+else is erased each frame and `renderOrder` is the only control that works.
+These numbers share a property name with the scene's `renderOrder` and nothing
+else: the CSS2D sort sees only `CSS2DObject`s, so a mesh's `renderOrder` is
+invisible to it.
+
 `READOUT_RENDER_ORDER` in `shapeEditRules.js` is the single home for the four
-bands — ordinary caption, insertable caption, revealed caption, on-canvas
-control — and its docblock states why each boundary exists, and what the
-insertable band costs elsewhere in the scene. Both layers import it; neither
-defines a band of its own.
+bands. Both layers import it; neither defines a band of its own.
+
+Each boundary earns its place. `control` on top is what keeps a caption from
+being drawn over a button, which is the one thing accepting overlap depends on.
+`revealedCaption` below it keeps a neighbouring caption from covering the number
+the user has to click and keep sight of while reaching for the button beside it.
+`insertableCaption` lifts a side length that _is_ a control clear of one that is
+not, so an ordinary caption cannot cover the affordance a hovering pointer
+summons in place of the number.
+
+What `insertableCaption` does **not** fix, said plainly because the band is not
+free: two insertable chips against each other. On the overwhelmingly common
+shape every side can take a vertex, so chip-on-chip crowding is largely outside
+what this boundary reaches.
+
+And what it **costs**, which crosses a feature boundary. An insertable length
+chip now draws over an angle caption and a muted caption regardless of camera
+distance, where the three were previously distance-sorted against each other.
+Beyond this feature: the shape's own area label and every measure-line label are
+`CSS2DObject`s with no `renderOrder` at all — band 0 — so a length chip draws
+over those too, and the area label is anchored at the centroid, the most crowded
+spot on a small shape. Accepted: a control the user is reaching for beats a
+caption they are not.
 
 ## Why the on-canvas controls forward the wheel
 
@@ -269,3 +297,11 @@ fingertip rolls several pixels during a deliberate tap and a stylus wobbles abou
 as much, so both — and an unknown pointer type — get
 `TOUCH_CLICK_MOVE_THRESHOLD`, which is the handle's own hit radius. The rule then
 reads "a press that never left the handle it started on is a tap".
+
+Widening that answer beyond touch moves one unrelated behaviour with it: the
+release-on-bare-canvas test that clears the sub-selection asks the same
+question, so a pen press on empty canvas that wobbles 5–10 px now clears the
+active vertex where before it was judged a drag and left it alone. That is the
+same direction touch already took, and it is what "a press that never left the
+handle it started on is a tap" says for every imprecise pointer — consistency
+with the rule rather than a carve-out for one route.

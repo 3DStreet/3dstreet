@@ -237,13 +237,8 @@ const ShapeSidebar = ({ entity }) => {
     // activateSide's own validation refuses. Fail-safe either way.
     //
     // No drag gate HERE, and that is not the same as no drag gate: there is one
-    // a call deep, on the branch of activateSide that inserts. The asymmetry is
-    // deliberate. A press that drifts a few pixels within one chip is still a
-    // click on that chip — on touch, most presses are — so gating at this level
-    // would make chips unresponsive to any slightly imprecise tap, on the path
-    // where a tap only opens a button. A press and release on two DIFFERENT
-    // chips retargets to their common ancestor, which carries no marker, so it
-    // is dropped without a gate anyway.
+    // a call deep, on the branch of activateSide that inserts. Why it belongs
+    // there and not here: docs/shape-vertex-editing.md, "Click versus drag".
     // Bound on `document`, so it sees every chip in the page and not only this
     // panel's — the listener cannot be scoped to a container, because every
     // CSS2D element in the scene shares one renderer container. The chip

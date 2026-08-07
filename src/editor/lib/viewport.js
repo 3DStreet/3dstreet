@@ -336,12 +336,13 @@ export function Viewport(inspector) {
   // `inspector.controls` is consumed through methods rather than fields.
   //
   // Ownership, stated exactly: this object is the only owner of both, and the
-  // only writer of the active vertex. The revealed side has one INBOUND setter,
-  // revealSide(), because only the panel can resolve a clicked caption back to
-  // the two vertices it runs between — it built the caption. That setter
-  // validates against this layer's own vertex list and refuses a pair it cannot
-  // resolve, so there is still no state here that this layer would have to
-  // defend, no copy to keep in step and nothing to invalidate.
+  // only writer of the active vertex. The revealed side is written from outside
+  // through activateSide(), which the panel calls because only it can resolve a
+  // clicked caption back to the two vertices it runs between — it built the
+  // caption — and revealSide(), the reveal-only entry activateSide() delegates
+  // to. Both validate against this layer's own vertex list and refuse a pair
+  // they cannot resolve, so there is still no state here that this layer would
+  // have to defend, no copy to keep in step and nothing to invalidate.
   inspector.shapeVertexControls = shapeVertexControls;
 
   // Pose snapshot taken on the gizmo's mouseDown, BEFORE TransformControls

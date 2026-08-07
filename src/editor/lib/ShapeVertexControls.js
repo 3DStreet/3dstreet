@@ -718,10 +718,9 @@ export class ShapeVertexControls extends THREE.Object3D {
   }
 
   // Reveal the insert button on the side running between these two vertex
-  // elements. The one setter written from OUTSIDE this class — the properties
-  // panel calls it, because it is the layer that built the caption the user
-  // clicked and so the only one that can resolve a caption back to a pair of
-  // vertices.
+  // elements. The reveal-only half of the pair of inbound setters: a press on a
+  // measurement goes to activateSide(), which calls this when the press record
+  // says the input has no hover. Nothing outside this class calls it directly.
   //
   // It VALIDATES against this layer's own vertex list and refuses a pair that
   // does not resolve, rather than storing it. That refusal is what makes an
@@ -744,11 +743,12 @@ export class ShapeVertexControls extends THREE.Object3D {
       : null;
   }
 
-  // A press landed on a side's length measurement. WHICH gesture that was decides
-  // what it does, and the press record that answers it lives in this layer — so
-  // the branch is here rather than in the properties panel, and there is one
-  // press baseline rather than two agreeing by luck. The second inbound setter
-  // alongside revealSide(), and like it, it validates before acting.
+  // A press landed on a side's length measurement, and this MAY COMMIT A VERTEX
+  // INSERT — on a hovering pointer that is exactly what it does; otherwise it
+  // reveals the "+" button. WHICH gesture the press was is what decides, and the
+  // press record that answers it lives in this layer — so the branch is here
+  // rather than in the properties panel, and there is one press baseline rather
+  // than two agreeing by luck. Like revealSide(), it validates before acting.
   //
   // The pair is re-resolved against THIS layer's vertex list. The panel's
   // enumeration and this one can legitimately disagree — adjacency is a property
@@ -763,15 +763,10 @@ export class ShapeVertexControls extends THREE.Object3D {
     );
     if (segment < 0) return;
 
-    // Pressing the caption once IS pressing the button, and that is only sound
-    // where the "+" was shown first. So the condition has to be the SAME
-    // condition the stylesheet morphs on: it gates on `(hover: hover)` and on
-    // nothing else, and this reads that back rather than asserting a second,
-    // different answer. Two real devices break if it does not — a mouse on a
-    // touch-primary tablet (the query is false, so no morph is ever shown, yet a
-    // click would insert) and a hovering stylus (the morph IS shown, yet a press
-    // would open a second "+" a couple of dozen pixels above the one just
-    // pressed).
+    // Pressing the caption once IS pressing the button, so this must insert only
+    // where the "+" was shown first. Both terms are load-bearing, and the media
+    // query is READ BACK from the stylesheet rather than asserted a second time
+    // here — which device each term is there for: docs/shape-vertex-editing.md.
     const hoverIsReal =
       typeof window !== 'undefined' &&
       window.matchMedia?.('(hover: hover)')?.matches;
@@ -825,11 +820,8 @@ export class ShapeVertexControls extends THREE.Object3D {
     // element in it.
     inner.style.pointerEvents = 'auto';
     // `background` moved to the stylesheet when this button gained hover and
-    // pressed states — an inline declaration beats any rule however specific, so
-    // left here it would silently kill them. `color` deliberately did NOT move:
-    // it has no state variant, and the icon is stroke="currentColor", so a class
-    // that failed to match would leave a black icon on a dark scene — invisible,
-    // and undetectable by a suite that evaluates no stylesheet.
+    // pressed states; `color` deliberately stays inline. Why the two go
+    // different ways: docs/shape-vertex-editing.md.
     inner.style.cssText +=
       ';display:flex;align-items:center;justify-content:center;' +
       // The size the placement rules compute their offsets from — taken from
@@ -844,10 +836,7 @@ export class ShapeVertexControls extends THREE.Object3D {
       'stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>' +
       '<path d="M10 11v6M14 11v6"/></svg>';
     inner.addEventListener('click', this._onTrashClick);
-    // Taking the pointer takes the wheel too, and the zoom handlers are bound on
-    // the canvas, which is not one of this element's ancestors — so without this
-    // there is a dead zone for scroll-zoom wherever this button is drawn, and it
-    // is drawn on the mouse path whenever a vertex is sub-selected.
+    // Taking the pointer takes the wheel — see forwardWheelToCanvas.
     inner.addEventListener('wheel', forwardWheelToCanvas, { passive: false });
     outer.appendChild(inner);
 
@@ -968,9 +957,7 @@ export class ShapeVertexControls extends THREE.Object3D {
       'padding:0;' +
       'border-radius:4px;cursor:pointer;font:600 17px/1 sans-serif;';
     inner.addEventListener('click', this._onInsertClick);
-    // Same reason as the delete button's: this element takes the pointer, so it
-    // takes the wheel, and the zoom handlers are on the canvas rather than on
-    // any ancestor of it.
+    // Taking the pointer takes the wheel — see forwardWheelToCanvas.
     inner.addEventListener('wheel', forwardWheelToCanvas, { passive: false });
     outer.appendChild(inner);
 
