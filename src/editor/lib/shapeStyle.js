@@ -30,7 +30,11 @@ const STORAGE_KEY = 'lastShapeStyle';
 // a drawing preference.
 const SHAPE_STYLE_SPEC = {
   lineColor: { kind: 'color', default: '#ffe600' },
-  lineWidth: { kind: 'number', default: 0.15, min: 0 },
+  // `min` is a floor on the DEFAULT, not on the property: zero is a legal line
+  // width (a fill-only shape) and a shape set to it stays there, but remembering
+  // zero as the drawing default makes the next shape invisible until its third
+  // vertex closes the ring and the fill appears.
+  lineWidth: { kind: 'number', default: 0.15, min: 0.05 },
   fillColor: { kind: 'color', default: '#ffe600' },
   fillOpacity: { kind: 'int', default: 40, min: 0, max: 100 }
 };

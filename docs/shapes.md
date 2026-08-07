@@ -110,11 +110,14 @@ field commits whatever is typed into it verbatim and A-Frame stores it as given,
 so `red` and `rgb(1,2,3)` are real live values; a hex test would reject a user's
 own working colour and reset it on the next reload.
 
-**Zero is a real value on both numeric keys.** A zero fill opacity is a
-fill-off; a zero line width is an outline-off, i.e. a fill-only shape. Both
-stick, with no carve-out. Setting both leaves the draw tool committing shapes
-with no line and no fill — the tips block in the shape panel names this state,
-and any non-zero line width recovers from it.
+**Zero is a real value on both numeric keys, but only one of them sticks.** A
+zero fill opacity is a fill-off and is remembered as such; a zero line width is
+an outline-off, i.e. a fill-only shape, and stays that way on the shape itself —
+but the remembered default is floored at 0.05 m. Zero is a legal width and a
+useless default: a shape drawn with it shows nothing at all until its third
+vertex closes the ring and the fill appears, which reads as a broken tool rather
+than a style. Turning the fill off as well is still reachable and still named by
+the tips block in the shape panel.
 
 Cold start — nothing persisted, nothing restyled — is the `shape` component's
 own schema defaults, so the first shape a user ever draws is identical to what
