@@ -3,7 +3,7 @@
 // Written when the SELECTED shape's `shape` component is written (whoever
 // writes it — the properties panel is the usual emitter, but not the only one);
 // read by the draw tool. Drawing a shape never changes the sticky style. See
-// `docs/shape-sticky-style.md` for the rule, its over-trigger and why it is
+// `docs/shapes.md#sticky-style` for the rule, its over-trigger and why it is
 // shaped this way.
 //
 // This module imports NOTHING — no store, no Events, no THREE. That is what
@@ -59,7 +59,7 @@ export const DEFAULT_SHAPE_STYLE = Object.freeze(
 );
 
 // Is `value` usable as a number, judged BEFORE any coercion? Never coerce first
-// and check `Number.isFinite` after — see `docs/shape-sticky-style.md`
+// and check `Number.isFinite` after — see `docs/shapes.md#sticky-style`
 // (Validation, in one rule) for why that ordering is load-bearing.
 function toUsableNumber(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -81,7 +81,7 @@ function toUsableNumber(value) {
  * only `lineColor`/`lineWidth` keeps both and picks up default fill.
  *
  * Colours accept any non-empty string, not just hex — `red` and `rgb(1,2,3)`
- * are real live values. See `docs/shape-sticky-style.md` for why a hex test
+ * are real live values. See `docs/shapes.md#sticky-style` for why a hex test
  * would be wrong.
  *
  * Total: tolerates null/undefined/non-object input and never throws. Always
@@ -140,7 +140,7 @@ let cachedStyle = null;
  * The current sticky style. Reads `localStorage` on the first call and caches
  * in module scope for the rest of the session — so the in-memory value, not
  * storage, is the source of truth after that. See
- * `docs/shape-sticky-style.md` for what that buys and costs.
+ * `docs/shapes.md#sticky-style` for what that buys and costs.
  *
  * Returns the live cached object by reference. TREAT IT AS READ-ONLY: mutating
  * it would disable `setShapeStyle`'s equality guard and leave memory
@@ -179,7 +179,7 @@ function isShapeAppearanceProperty(property) {
  *
  * THE SNAPSHOT IS READ FROM THE ENTITY, NOT FROM `detail.value` — so the seed
  * is the whole shape rather than the one property that was edited. Do not
- * "simplify" this to `detail.value`; see `docs/shape-sticky-style.md`.
+ * "simplify" this to `detail.value`; see `docs/shapes.md#sticky-style`.
  *
  * Note the payload contract is looser than it looks: `property` and `value` may
  * be absent entirely (some emitters dispatch `entityupdate` directly with only

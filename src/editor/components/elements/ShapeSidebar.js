@@ -123,7 +123,7 @@ const ShapeSidebar = ({ entity }) => {
   // The default is a preference, deliberately outside the undo history (same
   // class as unitsPreference) — an undo can move it, but only by changing a
   // selected shape's appearance. The draw tool is a reader only; drawing never
-  // reseats it. See docs/shape-sticky-style.md.
+  // reseats it. See docs/shapes.md#sticky-style.
   useEffect(() => {
     const onEntityUpdate = (detail) => {
       // Guard the payload here rather than assuming it: `shapeStyleSeedFromUpdate`

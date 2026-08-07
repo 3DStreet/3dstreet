@@ -1,10 +1,37 @@
-# Shape sticky style
+# Shapes
+
+Editor-drawn 2D shapes: a closed or open polyline with an optional filled
+interior, drawn with the shape tool in the Action Bar and edited from the
+properties panel.
+
+The code is spread across five directories, so this file is the entry point:
+
+| Where                             | What                                                                                                                        |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `src/aframe-components/`          | `shape.js` (the component and its schema), `shape-vertex.js`, `shapeFillRender.js`                                          |
+| `src/editor/components/elements/` | `ShapeSidebar.js` (properties panel), `ActionBar/ShapeDrawAction.jsx` (the draw tool)                                       |
+| `src/editor/lib/`                 | `shapeStyle.js`, `shapeEditRules.js`, `shapeMeasure.js`, `ShapeReadouts.js`, `ShapeVertexControls.js`, `convertToShapes.js` |
+| `src/editor/lib/commands/`        | `ShapeVertex{Insert,Move,Remove}Command.js`, `StreetConvertToShapesCommand.js`                                              |
+| `test/`                           | `editor/shape*.test.js`, `components/shape-*.test.js`                                                                       |
+
+## Vertex editing commands
+
+Vertex editing adds three commands to the undo/redo family:
+`shapevertexinsert` / `shapevertexremove` / `shapevertexmove`.
+
+They exist rather than reusing `EntityRemoveCommand` / `EntityUpdateCommand`
+because those steal selection, clone the entity on the reverse leg, and coalesce
+consecutive updates into one undo step — none of which is wanted when the thing
+being edited is one vertex of a still-selected shape. See each file's docblock
+for the specifics.
+
+## Sticky style
 
 The **sticky style** is the appearance a newly drawn shape inherits: the
 four-tuple `lineColor`, `lineWidth`, `fillColor`, `fillOpacity`. It lives in
 `src/editor/lib/shapeStyle.js`.
 
-## The rule
+### The rule
 
 **The drawing default follows the appearance of the shape you have selected,
 whenever that appearance changes.** Restyle a shape's line colour, line width,
@@ -59,7 +86,7 @@ There is also no swatch showing the current default and no reset control. The
 escape route from any style, including an invisible one, is to select a shape
 (a newly drawn one arrives selected) and set a visible value.
 
-## Validation, in one rule
+### Validation, in one rule
 
 Both the stored value and every live write go through `normaliseShapeStyle`,
 which applies the same rule to each key independently — never all-or-nothing,
@@ -96,7 +123,7 @@ Layer. `DEFAULT_SHAPE_STYLE` mirrors those schema literals rather than reading
 them, so that an A-Frame schema still carries a literal default; a test in the
 components suite compares the two and fails if either moves.
 
-## Scope: per browser, and it reaches the export
+### Scope: per browser, and it reaches the export
 
 The value is persisted in `localStorage`, so it is **per browser profile, not
 per scene**. A style set while editing one project applies to the first shape
@@ -112,7 +139,7 @@ shape's fill off, subsequently drawn shapes export with outlines and no interior
 faces. That marker follows a shape's _current_ opacity, so zeroing an
 already-drawn shape's fill removes its interior from the file too.
 
-## Why the value is not in the zustand store
+### Why the value is not in the zustand store
 
 `shapeStyle.js` owns the value outright — a module-level current value, a lazy
 first read from `localStorage`, a best-effort write.

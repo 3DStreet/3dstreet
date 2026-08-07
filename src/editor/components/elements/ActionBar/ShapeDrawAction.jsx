@@ -691,7 +691,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     function commitShape(closed) {
       const verts = verticesRef.current;
       // `style` is the activation-time read above — one read per activation, so
-      // preview and commit cannot disagree. See docs/shape-sticky-style.md.
+      // preview and commit cannot disagree. See docs/shapes.md#sticky-style.
       //
       // It cannot go stale for a SECOND shape either: every commit path is a
       // deactivation or is immediately followed by one (finish() returns to the
