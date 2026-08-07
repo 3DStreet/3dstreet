@@ -1307,12 +1307,14 @@ export class ShapeVertexControls extends THREE.Object3D {
     // drag" verdict it reads has to be measured from anywhere too. Hence above
     // the canvas and button checks below.
     //
-    // The PRIMARY pointer only, though. A second pointer going down mid-gesture
-    // would otherwise re-baseline the verdict, and the first pointer's release
-    // would then measure its travel from the second pointer's start — a short
-    // distance, so an orbit ending under two fingers, or with the right button
-    // pressed during it, would read as a click and close the button.
-    if (event.isPrimary !== false) {
+    // The primary pointer's primary button only, though — two separate ways the
+    // same re-baselining goes wrong. A second finger going down mid-gesture is a
+    // non-primary pointer; a second mouse button pressed during a drag is the
+    // same pointer pressed again, always primary, so `isPrimary` does not screen
+    // it. Either way the first release would measure its travel from the later
+    // press's start — a short distance — and an orbit would read as a click and
+    // close the button.
+    if (event.isPrimary !== false && event.button === 0) {
       this._windowPress = {
         x: event.clientX,
         y: event.clientY,

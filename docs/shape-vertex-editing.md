@@ -4,7 +4,7 @@ A selected `shape` gets an editing overlay: a draggable handle per vertex, a
 delete button on the sub-selected vertex, length and angle measurements on every
 side and corner, and an insert ("+") button on the one side the user has picked.
 
-Three modules cooperate, and the split is by _who can answer the question_:
+Four modules cooperate, and the split is by _who can answer the question_:
 
 | Module                                           | Owns                                                                               |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------- |
@@ -153,7 +153,7 @@ orbit would close the insert button — and changing the camera angle is exactly
 what a user is told to do when the measurement they want is behind a nearer one.
 
 The threshold itself is asked per pointer type (`clickMoveThreshold`). A
-fingertip rolls several pixels during a deliberate tap, so the mouse's 4 px
+fingertip rolls several pixels during a deliberate tap, so `CLICK_MOVE_THRESHOLD`
 classifies ordinary taps as drags; on touch the threshold is the handle's own
 hit radius, so the rule reads "a press that never left the handle it started on
 is a tap".
