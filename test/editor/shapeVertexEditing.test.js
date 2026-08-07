@@ -1,6 +1,6 @@
 /* global THREE */
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   polygonAreaXZ,
   ringEnclosesArea,
@@ -18,6 +18,7 @@ vi.mock('../../src/editor/lib/entity.js', () => ({
   updateEntity: () => {}
 }));
 
+import { ShapeVertexControls } from '../../src/editor/lib/ShapeVertexControls.js';
 import { EntityUpdateCommand } from '../../src/editor/lib/commands/EntityUpdateCommand.js';
 import { ShapeVertexInsertCommand } from '../../src/editor/lib/commands/ShapeVertexInsertCommand.js';
 import { ShapeVertexMoveCommand } from '../../src/editor/lib/commands/ShapeVertexMoveCommand.js';
@@ -33,10 +34,14 @@ import {
   OFFSET_MARGIN_PX,
   BUTTON_PX,
   TRASH_MIN_HANDLE_PX,
+  TOUCH_CLICK_MOVE_THRESHOLD,
+  CLICK_MOVE_THRESHOLD,
   adjacentSegments,
   canOfferInsert,
   clampHandleRadius,
+  clickMoveThreshold,
   decidePress,
+  segmentForVertexPair,
   hitTestHandles,
   insertButtonTransform,
   insertCandidate,
@@ -924,6 +929,109 @@ describe('insertCandidate', () => {
   });
 });
 
+describe('segmentForVertexPair', () => {
+  // Bare objects: the rule only ever calls indexOf on these, treating them as
+  // identity tokens, which is the whole argument for it living in this module.
+  const els = (n) => Array.from({ length: n }, (_, i) => ({ id: i }));
+
+  it('names the segment between two adjacent vertices', () => {
+    const v = els(5);
+    expect(segmentForVertexPair(v, v[2], v[3], true)).toBe(2);
+    expect(segmentForVertexPair(v, v[3], v[2], true)).toBe(2);
+  });
+
+  // The failure this rule exists to prevent, in one assertion. Deleting a
+  // vertex BEFORE the side renumbers every side after it, so a control keyed on
+  // the segment number would silently move to a neighbour; keyed on the two
+  // endpoint elements it stays put, and the number it now answers with is the
+  // new number of the SAME side.
+  it('follows the side, not its place in the running order', () => {
+    const v = els(6);
+    expect(segmentForVertexPair(v, v[4], v[5], true)).toBe(4);
+    const afterDelete = v.filter((_, i) => i !== 1);
+    expect(segmentForVertexPair(afterDelete, v[4], v[5], true)).toBe(3);
+  });
+
+  it('refuses when a vertex has been inserted BETWEEN the pair', () => {
+    const v = els(5);
+    const withNew = [v[0], v[1], v[2], { id: 'new' }, v[3], v[4]];
+    // Both endpoints survive, so identity passes and only adjacency fails.
+    expect(withNew.indexOf(v[2])).toBeGreaterThanOrEqual(0);
+    expect(withNew.indexOf(v[3])).toBeGreaterThanOrEqual(0);
+    expect(segmentForVertexPair(withNew, v[2], v[3], true)).toBe(-1);
+  });
+
+  it('refuses when either endpoint has left the shape', () => {
+    const v = els(5);
+    const without = v.filter((_, i) => i !== 3);
+    expect(segmentForVertexPair(without, v[2], v[3], true)).toBe(-1);
+    expect(segmentForVertexPair(without, v[3], v[4], true)).toBe(-1);
+  });
+
+  // The wrap pair is a side only on a closed ring, so opening or closing the
+  // shape adds or removes a side without touching any vertex — and there is no
+  // event for it, which is why the rule has to carry the clause.
+  it('treats the wrap pair as a side only when the shape is closed', () => {
+    const v = els(5);
+    expect(segmentForVertexPair(v, v[4], v[0], true)).toBe(4);
+    expect(segmentForVertexPair(v, v[4], v[0], false)).toBe(-1);
+    expect(segmentForVertexPair(v, v[0], v[4], true)).toBe(4);
+  });
+
+  // Three is the smallest ring, and the boundary of the `n >= 3` clause: one
+  // vertex fewer and there is no wrap side to name.
+  it('names the wrap side on the smallest closed ring', () => {
+    const v = els(3);
+    expect(segmentForVertexPair(v, v[2], v[0], true)).toBe(2);
+    expect(segmentForVertexPair(v, v[2], v[0], false)).toBe(-1);
+  });
+
+  // Both orderings satisfy adjacency modulo 2 and there is exactly one side, so
+  // the answer must not depend on which clause is tested first. `closed` cannot
+  // change that: a 2-vertex shape has one side, never a wrap side as well.
+  it('answers 0 for either ordering on a two-vertex shape', () => {
+    const v = els(2);
+    expect(segmentForVertexPair(v, v[0], v[1], false)).toBe(0);
+    expect(segmentForVertexPair(v, v[1], v[0], false)).toBe(0);
+    expect(segmentForVertexPair(v, v[0], v[1], true)).toBe(0);
+    expect(segmentForVertexPair(v, v[1], v[0], true)).toBe(0);
+  });
+
+  it('refuses non-adjacent, identical and absent arguments', () => {
+    const v = els(5);
+    expect(segmentForVertexPair(v, v[0], v[2], true)).toBe(-1);
+    expect(segmentForVertexPair(v, v[1], v[1], true)).toBe(-1);
+    expect(segmentForVertexPair(v, v[0], null, true)).toBe(-1);
+    expect(segmentForVertexPair([v[0]], v[0], v[0], true)).toBe(-1);
+  });
+});
+
+describe('clickMoveThreshold', () => {
+  // Small, but it is the guard on the whole touch argument, and the only part
+  // of that change reachable from a unit test at all.
+  it('gives a finger more room than a mouse', () => {
+    expect(clickMoveThreshold('touch')).toBe(TOUCH_CLICK_MOVE_THRESHOLD);
+    expect(TOUCH_CLICK_MOVE_THRESHOLD).toBeGreaterThan(CLICK_MOVE_THRESHOLD);
+  });
+
+  // The touch number is the handle's own hit radius, not a taste number: the
+  // rule reads "a press that never left the handle it started on is a tap".
+  it('sets the touch threshold to the handle hit radius', () => {
+    expect(TOUCH_CLICK_MOVE_THRESHOLD).toBe(HANDLE_TARGET_PX + HIT_SLOP_PX);
+  });
+
+  // The mouse is the exception rather than touch the special case, and the
+  // asymmetry is the whole rule: the tight threshold is only safe where the
+  // input is known to be precise. A stylus wobbles about as much as a fingertip,
+  // and an unknown pointer type is exactly the case where precision cannot be
+  // assumed — so both land on the forgiving side.
+  it('reserves the tight threshold for the mouse alone', () => {
+    expect(clickMoveThreshold('mouse')).toBe(CLICK_MOVE_THRESHOLD);
+    expect(clickMoveThreshold('pen')).toBe(TOUCH_CLICK_MOVE_THRESHOLD);
+    expect(clickMoveThreshold(undefined)).toBe(TOUCH_CLICK_MOVE_THRESHOLD);
+  });
+});
+
 describe('insertButtonTransform', () => {
   // The LITERAL strings, because the defect this catches is in the string. The
   // CSS2D renderer already centres the outer element on the anchor, so a
@@ -932,33 +1040,29 @@ describe('insertButtonTransform', () => {
   // belongs. It looks nearly right, and an assertion written against the
   // percentage form would pass on the defect rather than catch it.
   it('sits above the anchor by default', () => {
-    expect(insertButtonTransform(7, 400)).toBe('translate(0px, -26px)');
+    expect(insertButtonTransform(400)).toBe('translate(0px, -26px)');
   });
 
   it('flips below when above would leave the top of the viewport', () => {
-    expect(insertButtonTransform(7, 40)).toBe('translate(0px, 26px)');
+    expect(insertButtonTransform(40)).toBe('translate(0px, 26px)');
   });
 
   it('never emits a percentage or a calc', () => {
     for (const anchorY of [0, 25, 49, 50, 400, 2000]) {
-      const t = insertButtonTransform(7, anchorY);
+      const t = insertButtonTransform(anchorY);
       expect(t).toMatch(/^translate\(0px, -?26px\)$/);
     }
   });
 
-  // Stated as a PAIR, because the claim is that the two controls share one
-  // threshold and neither half carries it alone: the trashButtonOffset
-  // assertion on its own passes whether the insert button reads the constant or
-  // hardcodes a 5 of its own. A later retune has to move both or fail here.
-  it('hides below the same handle-radius floor the delete button uses', () => {
-    expect(insertButtonTransform(TRASH_MIN_HANDLE_PX - 0.1, 400)).toBeNull();
-    expect(insertButtonTransform(TRASH_MIN_HANDLE_PX + 0.1, 400)).toBeTruthy();
-    expect(
-      trashButtonOffset(TRASH_MIN_HANDLE_PX - 0.1, 500, 500, 1000, 1000)
-    ).toBeNull();
-    expect(
-      trashButtonOffset(TRASH_MIN_HANDLE_PX + 0.1, 500, 500, 1000, 1000)
-    ).toBeTruthy();
+  // TOTAL, at every anchor height. The button is reached by clicking a
+  // measurement, which is drawn at a fixed screen size at any zoom — so a
+  // hidden answer would mean a click that worked and a button that never
+  // appeared, with nothing on screen to explain it. The delete button's own
+  // floor is unaffected and is asserted with trashButtonOffset.
+  it('never hides, at any anchor height', () => {
+    for (const anchorY of [-500, 0, 25, 400, 5000]) {
+      expect(insertButtonTransform(anchorY)).toBeTruthy();
+    }
   });
 });
 
@@ -1153,5 +1257,147 @@ describe('trashButtonOffset', () => {
     const rightEdge = trashButtonOffset(7, W - 2, H / 2, W, H);
     expect(rightEdge.dx).toBeLessThan(0);
     expect(rightEdge.dy).toBeLessThan(0);
+  });
+});
+
+// The branch that decides what a press on a side's length measurement DOES.
+// It is the one place in this feature where the same gesture is destructive on
+// one input type and merely reveals a button on another, so each pointer type
+// gets its own case rather than being covered by a blacklist.
+//
+// These share ONE module instance deliberately — no vi.resetModules() — because
+// the media query is read at CALL time. Re-importing per test would let a build
+// that read it once at module scope pass this whole block.
+describe('ShapeVertexControls.activateSide', () => {
+  let execute;
+  let savedAframe;
+  let savedMatchMedia;
+
+  // Four vertices of a large square, so every midpoint insert clears the
+  // minimum separation and the ring stays simple. The stub carries only what
+  // this path reads: positions, the closed flag, and a DOM child order.
+  const square = () =>
+    [
+      [-10, -10],
+      [10, -10],
+      [10, 10],
+      [-10, 10]
+    ].map(([x, z]) => ({ object3D: { position: new THREE.Vector3(x, 0, z) } }));
+
+  // hoverIsReal + a recorded press, both overridable. Written as one factory so
+  // that a case which produces "nothing happened" can be compared against a
+  // sibling that differs in exactly one field.
+  const controls = ({
+    hover = true,
+    press = { pointerType: 'mouse' }
+  } = {}) => {
+    window.matchMedia = vi.fn(() => ({ matches: hover }));
+    const c = new ShapeVertexControls();
+    const vertexEls = square();
+    c.vertexEls = vertexEls;
+    c.shapeEl = {
+      components: { shape: { data: { closed: true } } },
+      children: vertexEls
+    };
+    c._windowPress = press && { x: 0, y: 0, wasDrag: false, ...press };
+    return c;
+  };
+
+  beforeEach(() => {
+    execute = vi.fn();
+    savedAframe = globalThis.AFRAME;
+    savedMatchMedia = window.matchMedia;
+    globalThis.AFRAME = { INSPECTOR: { execute } };
+  });
+
+  afterEach(() => {
+    globalThis.AFRAME = savedAframe;
+    window.matchMedia = savedMatchMedia;
+  });
+
+  // The positive control travels WITH the assertion it protects: "execute was
+  // not called" is also what a fixture that was never wired up produces, so the
+  // same fixture is made to insert by flipping the one field under test.
+  it('refuses while a gesture is claimed — and the same fixture inserts when it is not', () => {
+    const c = controls();
+    const v = c.vertexEls;
+    c.claimed = true;
+    c.activateSide(v[0], v[1]);
+    expect(execute).not.toHaveBeenCalled();
+    c.claimed = false;
+    c.activateSide(v[0], v[1]);
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('inserts on a mouse press that did not travel', () => {
+    const c = controls();
+    const v = c.vertexEls;
+    c.activateSide(v[0], v[1]);
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(execute.mock.calls[0][0]).toBe('shapevertexinsert');
+    expect(c.getRevealedSide()).toBe(null);
+  });
+
+  // Touch keeps the two-step model: the tap opens a button, and the button is
+  // what commits. Nothing about this path may become destructive.
+  it('reveals rather than inserts on touch', () => {
+    const c = controls({ press: { pointerType: 'touch' } });
+    const v = c.vertexEls;
+    c.activateSide(v[0], v[1]);
+    expect(execute).not.toHaveBeenCalled();
+    expect(c.getRevealedSide()).toEqual({ a: v[0], b: v[1] });
+  });
+
+  // The three cases the gate exists for. Without them a blacklist on 'touch'
+  // passes everything else — including a hovering stylus, a mouse on a
+  // touch-primary tablet where no morph is ever shown, and a click this layer
+  // saw no press for at all.
+  it('inserts for a hovering stylus, which the stylesheet morphs for', () => {
+    const c = controls({ press: { pointerType: 'pen' } });
+    const v = c.vertexEls;
+    c.activateSide(v[0], v[1]);
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['mouse', 'pen'])(
+    'reveals for a %s where the device reports no hover',
+    (pointerType) => {
+      const c = controls({ hover: false, press: { pointerType } });
+      const v = c.vertexEls;
+      c.activateSide(v[0], v[1]);
+      expect(execute).not.toHaveBeenCalled();
+      expect(c.getRevealedSide()).toEqual({ a: v[0], b: v[1] });
+    }
+  );
+
+  it('reveals when there is no press record to judge', () => {
+    const c = controls({ press: null });
+    const v = c.vertexEls;
+    c.activateSide(v[0], v[1]);
+    expect(execute).not.toHaveBeenCalled();
+    expect(c.getRevealedSide()).toEqual({ a: v[0], b: v[1] });
+  });
+
+  // A failed orbit that started on the chip. Ungated it commits a vertex, and
+  // the natural response to a camera that did not move is to try again.
+  it('does nothing at all when the press became a drag', () => {
+    const c = controls({ press: { pointerType: 'mouse', wasDrag: true } });
+    const v = c.vertexEls;
+    c.activateSide(v[0], v[1]);
+    expect(execute).not.toHaveBeenCalled();
+    expect(c.getRevealedSide()).toBe(null);
+  });
+
+  // A finger opened the button; now a mouse comes back to the same chip. The
+  // morph is suppressed while a button is open there, so inserting would act
+  // with no affordance ever shown — close it instead and let hover take over.
+  it('closes an open button rather than inserting under it', () => {
+    const c = controls();
+    const v = c.vertexEls;
+    c.revealSide(v[0], v[1]);
+    expect(c.getRevealedSide()).not.toBe(null);
+    c.activateSide(v[0], v[1]);
+    expect(execute).not.toHaveBeenCalled();
+    expect(c.getRevealedSide()).toBe(null);
   });
 });

@@ -13,6 +13,7 @@ The code is spread across five directories, so this file is the entry point:
 | `src/editor/lib/`                 | `shapeStyle.js`, `shapeEditRules.js`, `shapeMeasure.js`, `ShapeReadouts.js`, `ShapeVertexControls.js`, `convertToShapes.js` |
 | `src/editor/lib/commands/`        | `ShapeVertex{Insert,Move,Remove}Command.js`, `StreetConvertToShapesCommand.js`                                              |
 | `test/`                           | `editor/shape*.test.js`, `components/shape-*.test.js`                                                                       |
+| `docs/`                           | `shape-vertex-editing.md` — how the on-canvas vertex handles, the measurement chips and the two buttons divide the work between them, and why |
 
 ## Vertex editing commands
 
@@ -24,6 +25,10 @@ because those steal selection, clone the entity on the reverse leg, and coalesce
 consecutive updates into one undo step — none of which is wanted when the thing
 being edited is one vertex of a still-selected shape. See each file's docblock
 for the specifics.
+
+The layer above them — the on-canvas handles, the measurement chips that double
+as controls, and which module owns which gesture — is
+`docs/shape-vertex-editing.md`.
 
 ## Sticky style
 

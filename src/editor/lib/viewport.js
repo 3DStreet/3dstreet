@@ -329,11 +329,20 @@ export function Viewport(inspector) {
   const shapeVertexControls = new ShapeVertexControls();
   // Hung on the inspector for the same reason `inspector.controls` is (see the
   // assignment further down this file): a second editor surface — the shape
-  // properties panel — needs to know which vertex is sub-selected, so that it
-  // can keep that vertex's two length captions on screen. It reads the live
-  // value through getActiveVertex(), and only through it, the way
-  // `inspector.controls` is consumed through methods rather than fields; this
-  // object remains the only writer, so there is no copy to keep in step and
+  // properties panel — needs to know which vertex is sub-selected and which
+  // side has an insert button open, so that it can keep the right length
+  // captions on screen and mark the right one. It reads the live values through
+  // getActiveVertex() and getRevealedSide(), and only through them, the way
+  // `inspector.controls` is consumed through methods rather than fields.
+  //
+  // Ownership, stated exactly: this object is the only owner of both, and the
+  // only writer of the active vertex. The revealed side is written from outside
+  // through exactly one entry, activateSide(), which the panel calls because
+  // only it can resolve a clicked caption back to the two vertices it runs
+  // between — it built the caption. It delegates internally to revealSide() when
+  // the press has no hover behind it. Both validate against this layer's own
+  // vertex list and refuse a pair they cannot resolve, so there is still no
+  // state here that this layer would have to defend, no copy to keep in step and
   // nothing to invalidate.
   inspector.shapeVertexControls = shapeVertexControls;
 
