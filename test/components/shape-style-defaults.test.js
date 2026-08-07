@@ -34,8 +34,10 @@ describe('shape schema defaults vs DEFAULT_SHAPE_STYLE', () => {
 
   // Unlike the test above this compares nothing: the spec's min/max are not
   // exported, so these are literals restated here. It pins the SCHEMA's bounds
-  // against silent drift; that `normaliseShapeStyle` clamps to the same numbers
-  // is covered by the unit suite (test/editor/shapeStyle.test.js).
+  // against silent drift. They are not required to match the sticky store's
+  // clamps — the store floors `lineWidth` above zero because zero is a poor
+  // DEFAULT, while zero remains a legal width on the component. What the store
+  // clamps to is covered by the unit suite (test/editor/shapeStyle.test.js).
   it('declares the expected schema bounds on the numeric properties', () => {
     const schema = AFRAME.components.shape.schema;
     expect(schema.lineWidth.min).toBe(0);

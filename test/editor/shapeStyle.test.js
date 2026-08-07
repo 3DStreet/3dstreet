@@ -133,7 +133,7 @@ describe('normaliseShapeStyle', () => {
   });
 
   it('clamps to the schema range rather than defaulting', () => {
-    expect(normaliseShapeStyle({ lineWidth: -2 }).lineWidth).toBe(0);
+    expect(normaliseShapeStyle({ lineWidth: -2 }).lineWidth).toBe(0.05);
     expect(normaliseShapeStyle({ fillOpacity: 170 }).fillOpacity).toBe(100);
     expect(normaliseShapeStyle({ fillOpacity: -5 }).fillOpacity).toBe(0);
   });
@@ -144,10 +144,11 @@ describe('normaliseShapeStyle', () => {
     expect(normaliseShapeStyle({ fillOpacity: 0 }).fillOpacity).toBe(0);
   });
 
-  // The same zero, on the other numeric key: a zero line width is a fill-only
-  // shape, a style the user can legitimately express.
-  it('keeps an explicit lineWidth of 0', () => {
-    expect(normaliseShapeStyle({ lineWidth: 0 }).lineWidth).toBe(0);
+  // The other numeric key does NOT keep its zero: a zero-width line is legal on
+  // a shape but useless as the default the next shape is drawn with, so the
+  // remembered value is floored rather than falling back to the 0.15 default.
+  it('floors a stored lineWidth of 0 rather than defaulting it', () => {
+    expect(normaliseShapeStyle({ lineWidth: 0 }).lineWidth).toBe(0.05);
   });
 
   it('returns exactly the four appearance keys, dropping everything else', () => {
