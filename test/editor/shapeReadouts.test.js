@@ -401,7 +401,11 @@ describe('ShapeReadouts — the label DOM contract', () => {
       path.resolve(here, '../../src/editor/style/index.scss'),
       'utf8'
     );
-    const plusBase = scss.match(/\.shape-readout-plus \{[\s\S]*?\n\}/)?.[0];
+    // Anchored at column 0 so the INDENTED `.shape-readout-plus` inside the
+    // morph block cannot be matched instead — that one carries
+    // `visibility: visible`, so an unanchored pattern fails a correct build
+    // the moment the base rule moves below the media query.
+    const plusBase = scss.match(/^\.shape-readout-plus \{[\s\S]*?\n\}/m)?.[0];
     expect(plusBase).toBeTruthy();
     expect(plusBase).toContain('visibility: hidden');
     expect(plusBase).toContain('position: absolute');
@@ -412,6 +416,29 @@ describe('ShapeReadouts — the label DOM contract', () => {
   // and a regex scoped to the inner rule would match identically with the query
   // deleted — which would hand the morph to touch devices, where there is no
   // gesture that undoes it.
+
+  // The forwarding is only worth anything if it is BOUND: an insertable chip
+  // is `pointer-events: auto`, so it swallows the wheel, and the camera's zoom
+  // handlers sit on the canvas, which is not one of its ancestors. Unbound,
+  // scroll-zoom is dead over every measurement — and the unit tests on
+  // forwardWheelToCanvas cannot see that, because nothing in them renders a chip.
+  it('binds the wheel forwarder to an insertable chip', () => {
+    const canvas = document.createElement('canvas');
+    const savedAframe = globalThis.AFRAME;
+    globalThis.AFRAME = { scenes: [{ canvas }] };
+    try {
+      const seen = [];
+      canvas.addEventListener('wheel', (e) => seen.push(e.deltaY));
+      readouts.renderAll(polygon(5), 12, null, true, null, allInsertable());
+      const [outer] = interactive();
+      const ev = new WheelEvent('wheel', { deltaY: 120, cancelable: true });
+      outer.dispatchEvent(ev);
+      expect(seen).toEqual([120]);
+      expect(ev.defaultPrevented).toBe(true);
+    } finally {
+      globalThis.AFRAME = savedAframe;
+    }
+  });
 
   // The cost argument for the callback: it is asked only about the sides
   // actually being labelled, so above the cap that is the pins plus the hovered
