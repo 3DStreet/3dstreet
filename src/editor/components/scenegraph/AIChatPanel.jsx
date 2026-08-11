@@ -31,7 +31,7 @@ import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 import Events from '../../lib/Events';
 import { useMCPClient } from '../../lib/mcp/useMCPClient.js';
 
-const AI_MODEL_ID = 'gemini-3-flash-preview';
+const AI_MODEL_ID = 'gemini-3.6-flash';
 let AI_CONVERSATION_ID = uuidv4();
 
 // Cap pill list growth so a multi-hour session doesn't accumulate thousands

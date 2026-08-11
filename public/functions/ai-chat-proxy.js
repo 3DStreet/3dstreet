@@ -22,10 +22,10 @@
  * the browser (it mutates the live A-Frame scene); this only proxies the model
  * round-trip.
  *
- * SDK: @google/genai with the Vertex backend. gemini-3 preview models are only
- * served on the `global` location (regional endpoints 404); the Gen AI SDK
- * targets it natively. (The older @google-cloud/vertexai SDK is deprecated and
- * scheduled for removal 2026-06-24.)
+ * SDK: @google/genai with the Vertex backend, pointed at the `global` location
+ * (works for GA Gemini models and avoids regional 404s on new releases). (The
+ * older @google-cloud/vertexai SDK is deprecated and was scheduled for removal
+ * 2026-06-24.)
  */
 
 const functions = require('firebase-functions/v1');
@@ -35,8 +35,9 @@ const { GoogleGenAI } = require('@google/genai');
 
 // Locked server-side. The Editor only ever needs text generation; the image
 // model is deliberately unreachable from here.
-const MODEL_ID = 'gemini-3-flash-preview';
-// gemini-3 preview is served on the global endpoint only.
+// GA model (launched 2026-07-21) — previous `gemini-3-flash-preview` was a
+// preview id that will be retired like the Gemini 2.5 line (issue #1890).
+const MODEL_ID = 'gemini-3.6-flash';
 const LOCATION = 'global';
 
 const MAX_OUTPUT_TOKENS = 4096;
