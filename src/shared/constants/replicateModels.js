@@ -65,6 +65,17 @@ export const REPLICATE_MODELS = {
     includeIn4x: true,
     tokenCost: 2
   },
+  'fal-seedream-5-lite-edit': {
+    name: 'Seedream 5.0 Lite',
+    type: 'fal',
+    group: 'high-quality',
+    logo: '/ui_assets/model-bytedance.png',
+    endpoint: 'fal-ai/bytedance/seedream/v5/lite/edit',
+    estimatedTime: 20,
+    includeIn4x: false,
+    tokenCost: 1,
+    requiresSourceImage: true
+  },
   'fal-flux-2-pro-edit': {
     name: 'Flux 2 Pro',
     type: 'fal',

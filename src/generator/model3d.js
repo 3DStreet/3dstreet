@@ -39,7 +39,7 @@ const MODEL3D_MODELS = [
   {
     id: 'hunyuan-3d',
     name: t('model3d.modelHunyuanName'),
-    tokenCost: 3,
+    tokenCost: 5,
     estimatedTime: 30
   },
   {

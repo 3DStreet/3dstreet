@@ -28,6 +28,12 @@ const REPLICATE_MODELS = {
     endpoint: 'fal-ai/flux-2/edit',
     tokenCost: 2
   },
+  'fal-seedream-5-lite-edit': {
+    name: 'Seedream 5.0 Lite',
+    type: 'fal',
+    endpoint: 'fal-ai/bytedance/seedream/v5/lite/edit',
+    tokenCost: 1
+  },
   'fal-flux-2-lora-sfmta': {
     name: 'Flux 2 SFMTA Striping',
     type: 'fal',
@@ -174,24 +180,24 @@ const REPLICATE_MODELS = {
   // provider: 'fal'); the client poll + reconciler finalize via
   // fetchFalPrediction. NOT used by the image generator. `imageField` names the
   // model's input-image key (they differ); `params` are model-specific extras.
-  // Token cost ≈ fal $ / $0.10 base × 2 margin (Hunyuan $0.16→3, TRELLIS 1024
-  // texture $0.30→6).
+  // Token cost ≈ fal $ / $0.10 base × 2 margin (Hunyuan 3.1 rapid $0.225→5,
+  // TRELLIS 1024 texture $0.30→6).
   'hunyuan-3d': {
     name: 'Hunyuan3D',
     type: 'fal-3d',
-    endpoint: 'fal-ai/hunyuan3d/v2',
+    endpoint: 'fal-ai/hunyuan-3d/v3.1/rapid/image-to-3d',
     imageField: 'input_image_url',
-    // textured_mesh bakes a texture (fal charges 3× the white-mesh price, which
-    // the token cost below already accounts for).
-    params: { textured_mesh: true },
+    // v3.1 outputs a textured mesh by default (geometry-only and PBR are the
+    // opt-in knobs: enable_geometry / enable_pbr, PBR bills +$0.15).
+    params: {},
     assetSlug: 'hunyuan3d-model',
     assetLabel: 'Hunyuan3D Model',
     attribution: {
-      model: 'tencent/hunyuan3d-2',
-      modelName: 'Hunyuan3D v2',
+      model: 'tencent/hunyuan-3d-3.1',
+      modelName: 'Hunyuan3D 3.1 Rapid',
       sourceType: 'image'
     },
-    tokenCost: 3
+    tokenCost: 5
   },
   trellis: {
     name: 'TRELLIS',

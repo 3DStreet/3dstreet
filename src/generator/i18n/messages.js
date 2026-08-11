@@ -1250,10 +1250,10 @@ const MESSAGES = {
   // Brand model names (Hunyuan3D, TRELLIS) stay; only the parenthetical
   // qualifier is translated.
   'model3d.modelHunyuanName': {
-    en: 'Hunyuan3D v2 (faster)',
-    es: 'Hunyuan3D v2 (más rápido)',
-    'pt-BR': 'Hunyuan3D v2 (mais rápido)',
-    fr: 'Hunyuan3D v2 (plus rapide)'
+    en: 'Hunyuan3D 3.1 (faster)',
+    es: 'Hunyuan3D 3.1 (más rápido)',
+    'pt-BR': 'Hunyuan3D 3.1 (mais rápido)',
+    fr: 'Hunyuan3D 3.1 (plus rapide)'
   },
   'model3d.modelTrellisName': {
     en: 'TRELLIS 2 (best quality)',
