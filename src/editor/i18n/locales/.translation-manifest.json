@@ -749,7 +749,14 @@
     "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
     "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
     "addLayer.card.shapePolyline.name": "Shape",
-    "addLayer.card.shapePolyline.desc": "Add an editable polyline shape. Its points are child entities you can reposition; the line follows them. A starting point for measuring, outlining, and (later) filled and extruded shapes."
+    "addLayer.card.shapePolyline.desc": "Add an editable polyline shape. Its points are child entities you can reposition; the line follows them. A starting point for measuring, outlining, and (later) filled and extruded shapes.",
+    "geoModal.currentLocationUnavailable": "Could not get your current location. Please allow location access for this site, or click the map to set the location.",
+    "geoModal.locating": "Locating…",
+    "geoModal.locationSearchNotFound": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location.",
+    "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
+    "geoModal.useMyLocation": "Use My Location",
+    "geoSidebar.flatteningObjects": "Flattening Objects",
+    "profileModal.nextMonthlyRefill": "Next monthly refill: {date}"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1501,7 +1508,14 @@
     "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
     "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
     "addLayer.card.shapePolyline.name": "Shape",
-    "addLayer.card.shapePolyline.desc": "Add an editable polyline shape. Its points are child entities you can reposition; the line follows them. A starting point for measuring, outlining, and (later) filled and extruded shapes."
+    "addLayer.card.shapePolyline.desc": "Add an editable polyline shape. Its points are child entities you can reposition; the line follows them. A starting point for measuring, outlining, and (later) filled and extruded shapes.",
+    "geoModal.currentLocationUnavailable": "Could not get your current location. Please allow location access for this site, or click the map to set the location.",
+    "geoModal.locating": "Locating…",
+    "geoModal.locationSearchNotFound": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location.",
+    "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
+    "geoModal.useMyLocation": "Use My Location",
+    "geoSidebar.flatteningObjects": "Flattening Objects",
+    "profileModal.nextMonthlyRefill": "Next monthly refill: {date}"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2253,6 +2267,13 @@
     "trafficReplay.hiddenModesHeading": "⚠️ Some modes will be hidden",
     "trafficReplay.showVehiclesOnStreet": "Show vehicles on linked street",
     "addLayer.card.shapePolyline.name": "Shape",
-    "addLayer.card.shapePolyline.desc": "Add an editable polyline shape. Its points are child entities you can reposition; the line follows them. A starting point for measuring, outlining, and (later) filled and extruded shapes."
+    "addLayer.card.shapePolyline.desc": "Add an editable polyline shape. Its points are child entities you can reposition; the line follows them. A starting point for measuring, outlining, and (later) filled and extruded shapes.",
+    "geoModal.currentLocationUnavailable": "Could not get your current location. Please allow location access for this site, or click the map to set the location.",
+    "geoModal.locating": "Locating…",
+    "geoModal.locationSearchNotFound": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location.",
+    "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
+    "geoModal.useMyLocation": "Use My Location",
+    "geoSidebar.flatteningObjects": "Flattening Objects",
+    "profileModal.nextMonthlyRefill": "Next monthly refill: {date}"
   }
 }

@@ -196,6 +196,29 @@ AFRAME.registerSystem('play-mode-physics', {
   },
 
   /**
+   * Add a static convex-hull collider from a flat Float32Array of local-frame
+   * vertex coords ([x0,y0,z0, x1,y1,z1, ...]). Used for sloped street
+   * segments, whose top face is sheared (tilted top, vertical side walls) —
+   * a shape a plain cuboid can't represent. Returns the body, or null if
+   * Rapier rejects the point set as degenerate.
+   */
+  addStaticConvexHull: function (pos, quat, vertices, tag) {
+    if (!this.world) return null;
+    const colliderDesc = RAPIER.ColliderDesc.convexHull(vertices);
+    if (!colliderDesc) return null; // degenerate hull; caller falls back
+    const desc = RAPIER.RigidBodyDesc.fixed().setTranslation(
+      pos.x,
+      pos.y,
+      pos.z
+    );
+    if (quat) desc.setRotation(quat);
+    const body = this.world.createRigidBody(desc);
+    const collider = this.world.createCollider(colliderDesc, body);
+    if (tag) this.colliderTags.set(collider.handle, tag);
+    return body;
+  },
+
+  /**
    * Add a kinematic-position-based cuboid. Caller drives the body
    * each tick via setNextKinematicTranslation/Rotation; the solver
    * computes correct velocity so dynamic bodies (player chassis)
@@ -1467,6 +1490,18 @@ AFRAME.registerComponent('drive-mode', {
    * automatically from the slab side faces. Slabs are 0.5m deep so
    * the curb walls extend well below the visible bottom and the
    * chassis can't wedge into a gap.
+   *
+   * Sloped segments (`street-segment` `slope: true`): the visible mesh
+   * (`below-box`) shears its top face across the segment's local x (width)
+   * axis — top vertices are displaced in Y by `slopeDeltas.start` at the
+   * -x edge and `slopeDeltas.end` at the +x edge (relative to the entity
+   * origin, the mean height) while their X is left untouched, so the side
+   * walls stay vertical. A plain cuboid can't represent that, and a rotated
+   * cuboid would slant the curb walls (misaligning the step-down face to a
+   * lower neighbor). So we mirror the mesh exactly with an 8-vertex convex
+   * hull: sheared top, flat bottom, vertical sides. A flat average-height
+   * slab (the earlier behavior) left the drive surface level and the car
+   * ignored the ramp.
    */
   addSegmentColliders: function (sceneEl) {
     const physics = sceneEl.systems['play-mode-physics'];
@@ -1486,30 +1521,91 @@ AFRAME.registerComponent('drive-mode', {
     const wp = new THREE.Vector3();
     const wq = new THREE.Quaternion();
     let count = 0;
+    let slopedCount = 0;
     sceneEl
       .querySelectorAll('[managed-street] > [street-segment]')
       .forEach((segEl) => {
-        const seg = segEl.components?.['street-segment']?.data;
+        const comp = segEl.components?.['street-segment'];
+        const seg = comp?.data;
         if (!seg || !COLLIDABLE_LANE_TYPES.has(seg.type)) return;
         const length = seg.length || 60;
         const width = seg.width || 1.5;
         segEl.object3D.updateMatrixWorld();
         segEl.object3D.getWorldPosition(wp);
         segEl.object3D.getWorldQuaternion(wq);
-        // Visible top = segment world Y. Place slab so its TOP face
-        // is exactly there: center the cuboid halfY below segWorldY.
-        physics.addStaticCuboid(
-          { x: wp.x, y: wp.y - halfY, z: wp.z },
-          { x: width / 2, y: halfY, z: length / 2 },
-          { x: wq.x, y: wq.y, z: wq.z, w: wq.w },
-          'segment'
-        );
+
+        // slopeDeltas is set by street-segment when slope is on; the top
+        // face runs from `.start` (local -x edge) to `.end` (local +x edge).
+        const deltas = comp.slopeDeltas;
+        let seeded = false;
+        if (deltas && (deltas.start !== 0 || deltas.end !== 0)) {
+          // 8 vertices in the segment's local frame (origin at the
+          // mean-height entity origin). Top edges carry the slope deltas;
+          // X is preserved top-to-bottom, so the side walls stay vertical
+          // and match the below-box shear. The flat bottom sits SLAB_DEPTH
+          // below the *lower* top edge so the prism is always well-formed
+          // (never zero-thickness or inverted, however steep the slope)
+          // and every curb wall extends well below its neighbor's surface.
+          const hw = width / 2;
+          const hl = length / 2;
+          const floorY = Math.min(deltas.start, deltas.end) - SLAB_DEPTH;
+          const verts = new Float32Array([
+            -hw,
+            deltas.start,
+            -hl,
+            -hw,
+            deltas.start,
+            hl,
+            hw,
+            deltas.end,
+            -hl,
+            hw,
+            deltas.end,
+            hl,
+            -hw,
+            floorY,
+            -hl,
+            -hw,
+            floorY,
+            hl,
+            hw,
+            floorY,
+            -hl,
+            hw,
+            floorY,
+            hl
+          ]);
+          const body = physics.addStaticConvexHull(
+            { x: wp.x, y: wp.y, z: wp.z },
+            { x: wq.x, y: wq.y, z: wq.z, w: wq.w },
+            verts,
+            'segment'
+          );
+          if (body) {
+            slopedCount++;
+            seeded = true;
+          }
+          // else: degenerate hull — drop to the flat-slab fallback below.
+        }
+        if (!seeded) {
+          // Flat segment (or hull fallback): visible top = segment world Y.
+          // Place slab so its TOP face is exactly there: center the cuboid
+          // halfY below segY.
+          physics.addStaticCuboid(
+            { x: wp.x, y: wp.y - halfY, z: wp.z },
+            { x: width / 2, y: halfY, z: length / 2 },
+            { x: wq.x, y: wq.y, z: wq.z, w: wq.w },
+            'segment'
+          );
+        }
         count++;
       });
     console.log(
       '[drive-mode] seeded',
       count,
-      'per-segment slabs (tops at each segment world Y; curbs emerge from level differences)'
+      'per-segment slabs (' +
+        slopedCount +
+        ' sheared for slope; curbs emerge from level differences)'
     );
   },
 

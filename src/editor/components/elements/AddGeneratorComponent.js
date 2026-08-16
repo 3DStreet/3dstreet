@@ -4,7 +4,14 @@ import Select from 'react-select';
 
 export default class AddGeneratorComponent extends React.Component {
   static propTypes = {
-    entity: PropTypes.object
+    entity: PropTypes.object,
+    // Optional approved-list mode: [{ value, label, attrValue? }]. When set,
+    // the dropdown offers exactly these components (attrValue seeds the
+    // component's initial attribute string) instead of scanning for
+    // street-generated-*. Both modes share the singleton rule: a component
+    // without `multiple: true` disappears from the list once present.
+    components: PropTypes.array,
+    placeholder: PropTypes.string
   };
 
   constructor(props) {
@@ -43,7 +50,7 @@ export default class AddGeneratorComponent extends React.Component {
     AFRAME.INSPECTOR.execute('componentadd', {
       entity,
       component: componentName,
-      value: ''
+      value: value.attrValue || ''
     });
   };
 
@@ -60,12 +67,22 @@ export default class AddGeneratorComponent extends React.Component {
     };
 
     const usedComponents = Object.keys(this.props.entity.components);
+    const isAddable = function (componentName) {
+      return (
+        AFRAME.components[componentName].multiple ||
+        usedComponents.indexOf(componentName) === -1
+      );
+    };
+
+    if (this.props.components) {
+      return this.props.components.filter((option) => isAddable(option.value));
+    }
+
     return Object.keys(AFRAME.components)
       .filter(function (componentName) {
         return (
           componentName.startsWith('street-generated-') && // Added filter for street-generated- prefix
-          (AFRAME.components[componentName].multiple ||
-            usedComponents.indexOf(componentName) === -1)
+          isAddable(componentName)
         );
       })
       .map(function (value) {
@@ -99,7 +116,7 @@ export default class AddGeneratorComponent extends React.Component {
           options={options}
           isClearable={false}
           isSearchable
-          placeholder="Add Generator Component..."
+          placeholder={this.props.placeholder || 'Add Component...'}
           noOptionsMessage={() => 'No components found'}
           onChange={this.addComponent}
           value={this.state.value}

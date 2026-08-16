@@ -348,8 +348,11 @@ class SceneGraph extends React.Component {
 
   expandToRoot = (x) => {
     // Expand element all the way to the scene element
+    // `curr` is null (not undefined) for a detached entity — e.g. a street
+    // segment that was removed between the delete and this update — so a
+    // truthiness check is required, not `!== undefined`.
     let curr = x.parentNode;
-    while (curr !== undefined && curr.isEntity) {
+    while (curr && curr.isEntity) {
       this.state.expandedElements.set(curr, true);
       curr = curr.parentNode;
     }

@@ -13,7 +13,9 @@ import { SUPPORTED_LOCALE_CODES } from './config';
  *     while anonymous), persist that up to the profile.
  *
  * The profile field lives on `socialProfile/{uid}.locale`, which the backend
- * can also read (Admin SDK) to localize transactional emails.
+ * reads (Admin SDK) to localize lifecycle emails — it wins over the
+ * auto-captured `detectedLocale` written by the shared Auth context (see
+ * public/functions/email/locale.js).
  */
 export function useProfileLocaleSync() {
   const { currentUser } = useAuthContext();

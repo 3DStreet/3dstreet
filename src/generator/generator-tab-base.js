@@ -24,6 +24,7 @@ import { mountStyleSelector } from './mount-style-selector.js';
 import promptFieldStyles from '@shared/styles/promptFields.module.scss';
 import { t } from './i18n/messages.js';
 import posthog from 'posthog-js';
+import { isTokenExhaustedError } from '@shared/utils/tokens.js';
 
 /**
  * Build estimated times object from all models
@@ -1582,7 +1583,7 @@ class GeneratorTabBase {
     let errorMessage = t('image.failedToGenerate');
     if (error.code === 'unauthenticated') {
       errorMessage = t('image.signInToGenerate');
-    } else if (error.code === 'resource-exhausted') {
+    } else if (isTokenExhaustedError(error)) {
       errorMessage = t('image.noTokensUpgrade');
     } else if (error.message) {
       errorMessage = error.message;

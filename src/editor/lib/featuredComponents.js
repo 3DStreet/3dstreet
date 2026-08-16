@@ -17,7 +17,14 @@ export const GENERATOR_COMPONENT_PREFIXES = ['street-generated-'];
 // Prefix matching here would over-promote unrelated future components whose
 // names merely start with these strings (e.g. the A-Frame community
 // `geometry-merger`, or a hypothetical `materialLibrary`).
-export const FEATURED_COMPONENT_NAMES = ['geometry', 'material', 'shape'];
+// geo-flatten (#1476) is featured so a flattening volume's enabled/mode
+// controls are first-class on the shapes that carry it.
+export const FEATURED_COMPONENT_NAMES = [
+  'geometry',
+  'material',
+  'shape',
+  'geo-flatten'
+];
 
 export function isFeaturedComponent(name) {
   return (
@@ -41,7 +48,16 @@ export function getFeaturedComponentNames(entity) {
     if (name === 'material') return 1;
     return 2;
   };
-  return Object.keys(entity.components)
-    .filter(isFeaturedComponent)
-    .sort((a, b) => order(a) - order(b) || (a < b ? -1 : 1));
+  return (
+    Object.keys(entity.components)
+      .filter(isFeaturedComponent)
+      // Managed streets already expose geo-flatten's enabled toggle as the
+      // sidebar's Flatten Terrain row (ManagedStreetSidebar); a featured card
+      // would duplicate it. Other carriers (shapes, models) keep the card.
+      .filter(
+        (name) =>
+          !(name === 'geo-flatten' && entity.components['managed-street'])
+      )
+      .sort((a, b) => order(a) - order(b) || (a < b ? -1 : 1))
+  );
 }

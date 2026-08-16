@@ -30,6 +30,7 @@ import {
   forceJobNotifyEmail
 } from '@shared/utils/generationJobs.js';
 import { t } from './i18n/messages.js';
+import { isTokenExhaustedError } from '@shared/utils/tokens.js';
 
 // Selectable image -> mesh models (both GLB output via fal). tokenCost mirrors
 // the backend source of truth (public/functions/replicate-models.js); the
@@ -465,7 +466,7 @@ const Model3DTab = {
     if (error.code === 'unauthenticated') {
       return t('model3d.errorSignIn');
     }
-    if (error.code === 'resource-exhausted') {
+    if (isTokenExhaustedError(error)) {
       return t('model3d.errorNoTokens');
     }
     if (error.message) {

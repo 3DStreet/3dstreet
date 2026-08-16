@@ -22,6 +22,7 @@ import { httpsCallable } from 'firebase/functions';
 import posthog from 'posthog-js';
 import { functions } from '@shared/services/firebase';
 import { openBillingPortal } from '@shared/utils/billing';
+import { useSharedMessages } from '@shared/i18n/sharedMessages';
 import {
   LoadingView,
   SuccessView,
@@ -54,10 +55,13 @@ const EmbeddedCheckout = ({
   onSuccess,
   onClose,
   onPaymentSubmitted,
-  successTitle = 'Payment Successful!',
-  successMessage = 'Thanks for your purchase. Your account is ready to go.',
-  successCta = 'Done'
+  successTitle,
+  successMessage,
+  successCta
 }) => {
+  // Callers (UpgradeModal, BuyTokensModal) pass localized success copy;
+  // these defaults only cover a caller that omits the props.
+  const t = useSharedMessages();
   const [state, setState] = useState('checkout');
   // 'checkout' | 'loading' | 'success' | 'pending' | 'error' | 'has-subscription'
   const [errorMessage, setErrorMessage] = useState(null);
@@ -213,9 +217,9 @@ const EmbeddedCheckout = ({
   if (state === 'success') {
     return (
       <SuccessView
-        title={successTitle}
-        message={successMessage}
-        ctaLabel={successCta}
+        title={successTitle || t('paymentSuccessTitle')}
+        message={successMessage || t('paymentSuccessMessage')}
+        ctaLabel={successCta || t('done')}
         onCta={handleSuccessClick}
       />
     );

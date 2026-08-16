@@ -1130,6 +1130,9 @@
   "geoModal.centerpoint": {
     "defaultMessage": "Centerpoint"
   },
+  "geoModal.currentLocationUnavailable": {
+    "defaultMessage": "Could not get your current location. Please allow location access for this site, or click the map to set the location."
+  },
   "geoModal.elevationLabel": {
     "defaultMessage": "Elevation:"
   },
@@ -1163,8 +1166,17 @@
   "geoModal.latLong": {
     "defaultMessage": "Lat, Long"
   },
+  "geoModal.locating": {
+    "defaultMessage": "Locating…"
+  },
   "geoModal.locationLabel": {
     "defaultMessage": "Location:"
+  },
+  "geoModal.locationSearchNotFound": {
+    "defaultMessage": "Could not find \"{query}\". Please select a suggestion from the search dropdown or click the map to set the location."
+  },
+  "geoModal.locationSearchUnavailable": {
+    "defaultMessage": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location."
   },
   "geoModal.locationSetSuccess": {
     "defaultMessage": "Location Set Successfully!"
@@ -1220,6 +1232,9 @@
   "geoModal.upgradeUnlimitedAccess": {
     "defaultMessage": "Upgrade to Pro for unlimited access"
   },
+  "geoModal.useMyLocation": {
+    "defaultMessage": "Use My Location"
+  },
   "geoModal.working": {
     "defaultMessage": "Working"
   },
@@ -1250,8 +1265,8 @@
   "geoSidebar.environment": {
     "defaultMessage": "Environment"
   },
-  "geoSidebar.flatteningShape": {
-    "defaultMessage": "Flattening Shape"
+  "geoSidebar.flatteningObjects": {
+    "defaultMessage": "Flattening Objects"
   },
   "geoSidebar.geoTokenAlt": {
     "defaultMessage": "Geo Token"
@@ -1295,9 +1310,6 @@
   "geoSidebar.nearestIntersection": {
     "defaultMessage": "Nearest<br></br> Intersection"
   },
-  "geoSidebar.noShapesFound": {
-    "defaultMessage": "No shapes found in scene."
-  },
   "geoSidebar.opacityFlattening": {
     "defaultMessage": "Opacity & Flattening"
   },
@@ -1312,9 +1324,6 @@
   },
   "geoSidebar.savedLocationWithSource": {
     "defaultMessage": "This scene has a saved location {sourcePhrase}. Add the geo layer to load 3D buildings, terrain, and satellite imagery."
-  },
-  "geoSidebar.selectShape": {
-    "defaultMessage": "Select a shape..."
   },
   "geoSidebar.terrainFlattening": {
     "defaultMessage": "Terrain Flattening"
@@ -1637,8 +1646,8 @@
   "profileModal.managingSubscription": {
     "defaultMessage": "Managing subscription"
   },
-  "profileModal.monthlyProRefill": {
-    "defaultMessage": "Monthly Pro refill: {date}"
+  "profileModal.nextMonthlyRefill": {
+    "defaultMessage": "Next monthly refill: {date}"
   },
   "profileModal.planFree": {
     "defaultMessage": "Plan: Free"
@@ -1876,9 +1885,6 @@
   },
   "screenshotModal.generateRenders": {
     "defaultMessage": "Generate Renders"
-  },
-  "screenshotModal.insufficientTokens4x": {
-    "defaultMessage": "You need at least {totalTokenCost} tokens for 4x render"
   },
   "screenshotModal.loginPrompt": {
     "defaultMessage": "Please log in to use AI rendering"

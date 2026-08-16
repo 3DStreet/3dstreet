@@ -226,6 +226,37 @@ const useStore = create(
           });
         },
         postCheckout: null,
+        // One-time gen-token pack purchase modal (#1374) — the paid-user
+        // counterpart to startCheckout. Opened when a Pro/Max user hits a
+        // token shortfall (e.g. capture & render); free users keep going
+        // through startCheckout's upgrade paywall instead.
+        buyTokensSource: null,
+        startBuyTokens: (source) => {
+          const currentModal = useStore.getState().modal;
+          // Idempotent: a 4x render can reject several jobs in parallel —
+          // only the first opens the modal (a re-run would also clobber
+          // previousModal with 'buy-tokens' itself).
+          if (currentModal === 'buy-tokens') return;
+          posthog.capture('modal_opened', {
+            modal: 'buy-tokens',
+            source
+          });
+          // Same return-target snapshot as startCheckout, with one exception:
+          // when routed here FROM the payment modal (an already-paid user hit
+          // a token paywall — see EditorUpgradeModal.onAlreadyPro), keep the
+          // previousModal the paywall already snapshotted (e.g. screenshot)
+          // instead of returning the user to the payment modal, which would
+          // just bounce them back here.
+          if (currentModal === 'payment') {
+            set({ modal: 'buy-tokens', buyTokensSource: source });
+          } else {
+            set({
+              modal: 'buy-tokens',
+              buyTokensSource: source,
+              previousModal: currentModal
+            });
+          }
+        },
         // In-memory session flag — true after the watermark paywall has been
         // shown once this page load. Resets on reload. Throttles the
         // download-time upsell so non-Pro users only see it once per sitting.

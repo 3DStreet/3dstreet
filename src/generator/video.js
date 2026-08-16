@@ -26,6 +26,7 @@ import {
   forceJobNotifyEmail
 } from '@shared/utils/generationJobs.js';
 import { t } from './i18n/messages.js';
+import { isTokenExhaustedError } from '@shared/utils/tokens.js';
 
 // Video tab module
 const VideoTab = {
@@ -681,7 +682,7 @@ const VideoTab = {
 
         if (error.code === 'unauthenticated') {
           message = t('video.pleaseSignIn');
-        } else if (error.code === 'resource-exhausted') {
+        } else if (isTokenExhaustedError(error)) {
           message = t('video.insufficientTokens');
         } else if (error.code === 'permission-denied') {
           message = t('video.noPermission');
