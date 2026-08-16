@@ -23,6 +23,9 @@
 // - loose geometry shapes: any other entity carrying an A-Frame geometry
 //   component (shape layers, "Street Shapes" scenes) gets a best-effort
 //   parametric footprint, layered by its data-layer-name type prefix.
+// - drawn shapes: editor-drawn polyline shapes (the `shape` component) as
+//   open or closed polylines on an annotation layer, from their live
+//   shape-vertex children.
 // - clones (opt-in, includeClones): generated/baked striping, stencil, and
 //   flat model clones as footprints on the markings layer.
 // Parametric striping and blocks for trees/furniture remain out of scope —
@@ -100,6 +103,10 @@ const FALLBACK_LAYER = { name: 'C-ROAD', color: ACI.DARK_GREY };
 const MARKING_LAYER = { name: 'C-ROAD-MRKG', color: ACI.WHITE };
 // Loose geometry shapes whose data-layer-name doesn't map to a segment type.
 const SHAPE_LAYER = { name: 'C-SITE', color: ACI.CYAN };
+// Editor-drawn polyline shapes (the `shape` component). NCS annotation
+// sibling of the C-* families above; magenta is unused by the other layers,
+// so hand-drawn linework stays distinguishable from generated footprints.
+const DRAWN_SHAPE_LAYER = { name: 'C-ANNO', color: ACI.MAGENTA };
 const METERS_TO_FEET = 3.28083989501312;
 
 // Streetmix segment types (legacy street component) that don't exist in the
@@ -143,7 +150,8 @@ export const DEFAULT_PLAN_EXPORT_OPTIONS = {
   // Export modal.
   includeSegments: true, // managed + legacy street segments (and curbs)
   includeIntersections: true,
-  includeShapes: true, // loose geometry primitives (shape layers)
+  // Loose geometry primitives (shape layers) + editor-drawn polyline shapes.
+  includeShapes: true,
   // Generated/baked striping, stencil, and model clones, drawn as best-effort
   // footprints on the markings layer. Off by default — dozens of tiny stencil
   // rects bury the lane linework.
@@ -209,7 +217,7 @@ function needsCurbBetween(typeA, typeB) {
 //     streetCount,        // managed + legacy streets
 //     segmentCount,       // segments across all streets
 //     intersectionCount,
-//     shapeCount,         // loose geometry-primitive footprints
+//     shapeCount,         // loose geometry footprints + drawn polyline shapes
 //     cloneCount          // generated/baked clone footprints (opt-in)
 //   }
 export function buildStreetPlanModel(options = {}) {
@@ -281,6 +289,9 @@ export function buildStreetPlanModel(options = {}) {
   }
   if (opts.includeShapes || opts.includeClones) {
     collectGeometryShapes(ctx);
+  }
+  if (opts.includeShapes) {
+    collectDrawnShapes(ctx);
   }
 
   const isEmpty = polylines.length === 0 && lines.length === 0;
@@ -774,5 +785,46 @@ function collectGeometryShapes(ctx) {
     } else {
       ctx.shapeCount++;
     }
+  }
+}
+
+// --- drawn shapes pass ------------------------------------------------------
+// Editor-drawn polyline shapes (the `shape` component). The ordered
+// shape-vertex children are the sole source of truth for the geometry (the
+// line/fill meshes are derived, never serialized — and batching may have
+// stripped them anyway), so the pass reads the child positions through the
+// component and runs them through the shape entity's world matrix, which is
+// what preserves a whole-shape translation/yaw. A closed shape emits a closed
+// polyline; its fill is out of scope like hatching generally — the outline is
+// the plan linework.
+function collectDrawnShapes(ctx) {
+  for (const el of Array.from(document.querySelectorAll('[shape]'))) {
+    // Entities only — attribute selectors also match <a-mixin> definitions.
+    if (!el.isEntity || !el.object3D) continue;
+    if (entityIsHidden(el)) continue;
+    const shape = el.components?.shape;
+    if (!shape) continue;
+
+    const verts = shape.getVertexEls();
+    if (verts.length < 2) continue;
+
+    el.object3D.updateWorldMatrix(true, false);
+    const points = ctx.localPointsToPlan(
+      el,
+      verts.map((v) => {
+        const p = v.object3D.position;
+        return [p.x, p.y, p.z];
+      })
+    );
+
+    const layerName = ctx.resolveAndAddLayer(DRAWN_SHAPE_LAYER);
+    ctx.polylines.push({
+      layer: layerName,
+      points,
+      // Matches the component's own rule: a 2-vertex "closed" shape renders
+      // (and exports) as an open line.
+      closed: shape.data.closed && verts.length >= 3
+    });
+    ctx.shapeCount++;
   }
 }
