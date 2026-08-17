@@ -2,6 +2,7 @@
   "actionBar.handTool": "Herramienta mano (h): desplaza y rota la vista sin seleccionar objetos",
   "actionBar.rotateTool": "Herramienta rotar (e): selecciona y rota objetos",
   "actionBar.rulerTool": "Herramienta regla (r): mide distancias entre puntos",
+  "actionBar.shapeTool": "Herramienta forma: dibuja un polígono o una polilínea abierta; haz clic para colocar puntos, Enter o doble clic para terminar, Retroceso para eliminar el último punto",
   "actionBar.translateTool": "Herramienta mover (w): selecciona y mueve objetos",
   "actionBar.zoomIn": "Acercar",
   "actionBar.zoomOut": "Alejar",
