@@ -35,6 +35,16 @@ async function managedStreetCreateHandler(args) {
       direction: segment.direction || 'none',
       color: segment.color || '#888888',
       surface: segment.surface || 'asphalt',
+      ...(segment.variant ? { variant: segment.variant } : {}),
+      ...(segment.side ? { side: segment.side } : {}),
+      ...(typeof segment.floors === 'number' ? { floors: segment.floors } : {}),
+      ...(segment.slope
+        ? {
+            slope: true,
+            slopeStart: segment.slopeStart,
+            slopeEnd: segment.slopeEnd
+          }
+        : {}),
       ...(segment.generated ? { generated: segment.generated } : {})
     }));
   }
@@ -372,7 +382,7 @@ const segmentSchema = {
     surface: {
       type: 'string',
       description:
-        'Surface material (e.g., "asphalt", "concrete", "grass", "sidewalk", "gravel", "sand", "hatched", "planting-strip", "none", "solid"). Optional for building segments — the variant supplies a sensible default.'
+        'Surface material (e.g., "asphalt", "concrete", "grass", "sidewalk", "gravel", "sand", "cracked-asphalt", "parking-lot", "water", "hatched", "none", "solid"). Optional for building segments — the variant supplies a sensible default.'
     },
     color: { type: 'string', description: 'Hex color code (e.g., "#ffffff")' },
     elevation: {
@@ -396,6 +406,26 @@ const segmentSchema = {
         'Side of the street the segment sits on. Required for `type: "boundary"` (controls placement outside the travelled way edge and which direction the models face). Valid values: "left", "right".',
       enum: ['left', 'right']
     },
+    floors: {
+      type: 'number',
+      description:
+        'Building height in floors for `type: "boundary"` segments (metadata only; does not yet drive rendered model height). 0 = unspecified.'
+    },
+    slope: {
+      type: 'boolean',
+      description:
+        'Tilt the segment surface across its width from `slopeStart` to `slopeEnd` (e.g. beach or seawall approach). When true, `elevation` is ignored.'
+    },
+    slopeStart: {
+      type: 'number',
+      description:
+        'Elevation in meters at the segment start edge (toward the previous segment) when `slope` is true. Negative values unsupported.'
+    },
+    slopeEnd: {
+      type: 'number',
+      description:
+        'Elevation in meters at the segment end edge when `slope` is true. Negative values unsupported.'
+    },
     generated: {
       type: 'object',
       description: 'Optional generated content',
@@ -408,7 +438,9 @@ const segmentSchema = {
             properties: {
               mode: {
                 type: 'string',
-                description: 'Clone mode ("random", "fixed", "single")'
+                description:
+                  'Clone mode ("fixed", "random", "single", "fit" — "fit" tiles models edge-to-edge along the segment, used by boundary variants)',
+                enum: ['fixed', 'random', 'single', 'fit']
               },
               modelsArray: {
                 type: 'string',
@@ -471,7 +503,9 @@ const segmentSchema = {
             properties: {
               density: {
                 type: 'string',
-                description: 'Pedestrian density ("normal", "dense")'
+                description:
+                  'Pedestrian density ("empty", "sparse", "normal", "dense")',
+                enum: ['empty', 'sparse', 'normal', 'dense']
               }
             },
             required: ['density']
@@ -483,13 +517,45 @@ const segmentSchema = {
           items: {
             type: 'object',
             properties: {
-              striping: { type: 'string', description: 'Stripe pattern type' },
+              striping: {
+                type: 'string',
+                description: 'Stripe pattern type',
+                enum: [
+                  'none',
+                  'solid-stripe',
+                  'solid-stripe-yellow',
+                  'dashed-stripe',
+                  'short-dashed-stripe',
+                  'short-dashed-stripe-yellow',
+                  'solid-doubleyellow',
+                  'solid-dashed',
+                  'solid-dashed-yellow',
+                  'solid-dashed-yellow-mirror'
+                ]
+              },
               side: {
                 type: 'string',
                 description: 'Side of segment ("left", "right")'
               }
             },
             required: ['striping']
+          }
+        },
+        rail: {
+          type: 'array',
+          description:
+            'Rail track configuration (for rail/tram segments). Renders tracks along the segment.',
+          items: {
+            type: 'object',
+            properties: {
+              gauge: {
+                type: 'number',
+                description:
+                  'Track gauge in millimeters: 1435 (standard) or 1067 (narrow)',
+                enum: [1435, 1067]
+              }
+            },
+            required: ['gauge']
           }
         }
       }

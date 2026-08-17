@@ -1092,7 +1092,7 @@ export const stroad150ftROW = {
     {
       name: 'Planted Median',
       type: 'divider',
-      surface: 'planting-strip',
+      surface: 'grass',
       color: '#338833',
       elevation: 0.15,
       width: 0.61, // Original 2ft
