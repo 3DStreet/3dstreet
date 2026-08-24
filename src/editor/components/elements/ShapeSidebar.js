@@ -451,6 +451,22 @@ const ShapeSidebar = ({ entity }) => {
     setFillTick((t) => t + 1);
   };
 
+  // Street path curve controls (curved streets): the controls live on the
+  // PATH — this shape — and appear once a managed street follows it
+  // (assignment auto-attaches the street-path component). Values are read
+  // straight off the component; the tick only forces a re-render.
+  const [, setPathTick] = useState(0);
+  const streetPath = entity.components?.['street-path'];
+  const setStreetPathProperty = (property, value) => {
+    AFRAME.INSPECTOR.execute('entityupdate', {
+      entity,
+      component: 'street-path',
+      property,
+      value
+    });
+    setPathTick((t) => t + 1);
+  };
+
   const vertices = getShapeVertices(entity);
   const n = vertices.length;
   const closed = isClosedShape(entity, n);
@@ -545,6 +561,42 @@ const ShapeSidebar = ({ entity }) => {
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+        )}
+        {streetPath && (
+          <div className="propertyRow">
+            <div className="fakePropertyRowLabel">Curve Style</div>
+            <div className="fakePropertyRowValue">
+              <select
+                value={streetPath.data.curveType}
+                onChange={(e) =>
+                  setStreetPathProperty('curveType', e.target.value)
+                }
+              >
+                <option value="smooth">Smooth (spline)</option>
+                <option value="arc">Arcs (corner radius)</option>
+                <option value="linear">Linear (hard corners)</option>
+              </select>
+            </div>
+          </div>
+        )}
+        {streetPath && streetPath.data.curveType === 'arc' && (
+          <div className="propertyRow">
+            <div className="fakePropertyRowLabel">Corner Radius</div>
+            <div className="fakePropertyRowValue">
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={streetPath.data.filletRadius}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  if (Number.isFinite(v)) {
+                    setStreetPathProperty('filletRadius', Math.max(0, v));
+                  }
+                }}
+              />
             </div>
           </div>
         )}

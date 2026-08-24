@@ -100,6 +100,10 @@ class StreetNodeControls extends GizmoPointerControls {
 
   attach(el) {
     if (!el || !el.components || !el.components['managed-street']) return this;
+    // A street following a path has no straight endpoints to drag — its
+    // length and heading come from the path shape (edit that instead), so
+    // the endpoint/width handles stay off.
+    if (el.components['managed-street'].data?.path) return this;
     this.el = el;
     this.object = el.object3D;
     this.visible = true;

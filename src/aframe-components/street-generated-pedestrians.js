@@ -1,5 +1,6 @@
 /* global AFRAME */
 import { createRNG } from '../lib/rng';
+import { getCurvedPlacement } from './street-path.js';
 
 AFRAME.registerComponent('street-generated-pedestrians', {
   multiple: true,
@@ -103,12 +104,22 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       const pedestrian = document.createElement('a-entity');
       this.el.appendChild(pedestrian);
 
-      // Set seeded random position within bounds
+      // Set seeded random position within bounds (bent onto the street's
+      // path curve when one is active; RNG call order is unchanged so a
+      // given seed lays out identically straight or curved)
       const position = {
         x: this.getRandomArbitrary(xRange.min, xRange.max),
         y: data.positionY,
         z: zPositions[i]
       };
+      let curveYaw = 0;
+      const bent = getCurvedPlacement(this.el, position.x, position.z);
+      if (bent) {
+        position.x = bent.x;
+        position.y += bent.y;
+        position.z = bent.z;
+        curveYaw = bent.yawDeg;
+      }
       pedestrian.setAttribute('position', position);
 
       // Set model variant using seeded random
@@ -116,12 +127,16 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       pedestrian.setAttribute('mixin', `char${variantNumber}`);
 
       // Set rotation based on direction and seeded random
+      let rotationY = 0;
       if (data.direction === 'none') {
         if (this.rng() < 0.5) {
-          pedestrian.setAttribute('rotation', '0 180 0');
+          rotationY = 180;
         }
       } else if (data.direction === 'outbound') {
-        pedestrian.setAttribute('rotation', '0 180 0');
+        rotationY = 180;
+      }
+      if (rotationY !== 0 || curveYaw !== 0) {
+        pedestrian.setAttribute('rotation', `0 ${rotationY + curveYaw} 0`);
       }
 
       // Add metadata

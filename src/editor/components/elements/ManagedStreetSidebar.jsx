@@ -1,12 +1,22 @@
 import PropTypes from 'prop-types';
+import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import posthog from 'posthog-js';
 import PropertyRow from './PropertyRow';
 import BooleanWidget from '../widgets/BooleanWidget';
 import { Button } from './Button';
 import { saveString } from '@/editor/lib/utils';
+import { createUniqueId } from '@/editor/lib/entity.js';
 import useStore from '@/store.js';
 import { StreetToShapesGraphic } from '@/editor/components/modals/ConfirmModal/StreetToShapesGraphic';
+
+// Shapes usable as a street path: any drawn polyline with at least 2
+// vertices. A plain DOM query per render — fresh enough for a picker (same
+// approach as the shape sidebar's street-fill dropdown).
+const getPathableShapes = () =>
+  Array.from(document.querySelectorAll('a-entity[shape]')).filter(
+    (el) => (el.components?.shape?.getVertexEls?.() || []).length >= 2
+  );
 
 const sourceLabels = {
   'streetmix-url': 'Streetmix',
@@ -26,6 +36,38 @@ const ManagedStreetSidebar = ({ entity }) => {
   // flattening master switch is on. The row toggles the contribution.
   const geoFlattenComponent = entity?.components?.['geo-flatten'];
   const sourceLabel = sourceLabels[component?.data?.sourceType];
+
+  // Follow Path (curved streets): assign a drawn polyline as this street's
+  // centerline. The selected value derives from the component itself so the
+  // dropdown always shows what is actually assigned (incl. after undo/redo);
+  // the tick only forces a re-render after a change.
+  const [, setPathTick] = useState(0);
+  const pathableShapes = getPathableShapes();
+  const pathValue = component?.data?.path || '';
+  const currentPathIndex = pathableShapes.findIndex(
+    (el) => el.id && `#${el.id}` === pathValue
+  );
+  const onFollowPathChange = (e) => {
+    const index = parseInt(e.target.value, 10);
+    // re-query instead of closing over the render-time list: the DOM is the
+    // source of truth, and assigning a missing id mutates the scene, not
+    // React state
+    const shapeEl = getPathableShapes()[index] || null;
+    let value = '';
+    if (shapeEl) {
+      if (!shapeEl.id) {
+        shapeEl.id = createUniqueId();
+      }
+      value = `#${shapeEl.id}`;
+    }
+    AFRAME.INSPECTOR.execute('entityupdate', {
+      entity,
+      component: componentName,
+      property: 'path',
+      value
+    });
+    setPathTick((t) => t + 1);
+  };
 
   const downloadStreetJSON = () => {
     // Serializes the live DOM state (not the possibly-stale sourceValue blob)
@@ -128,6 +170,42 @@ const ManagedStreetSidebar = ({ entity }) => {
                   isSingle={false}
                   entity={entity}
                 />
+                {(pathableShapes.length > 0 || pathValue) && (
+                  <div className="propertyRow" key="followPath">
+                    <div className="fakePropertyRowLabel">Follow Path</div>
+                    <div className="fakePropertyRowValue">
+                      <select
+                        value={currentPathIndex}
+                        onChange={onFollowPathChange}
+                      >
+                        <option value={-1}>
+                          {intl.formatMessage({
+                            id: 'managedStreetSidebar.followPathNone',
+                            defaultMessage: 'None (straight)'
+                          })}
+                        </option>
+                        {pathableShapes.map((el, i) => (
+                          <option key={el.id || i} value={i}>
+                            {el.getAttribute('data-layer-name') ||
+                              el.id ||
+                              `Shape ${i + 1}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+                {pathValue && (
+                  <div className="propertyRow" key="followPathHint">
+                    <div className="rounded bg-blue-50 p-2 text-gray-600">
+                      {intl.formatMessage({
+                        id: 'managedStreetSidebar.followPathHint',
+                        defaultMessage:
+                          'This street follows a path — length tracks the path, and curve style (smooth / arc / linear) is set on the path shape.'
+                      })}
+                    </div>
+                  </div>
+                )}
                 <PropertyRow
                   key="showBoundaries"
                   name="showBoundaries"
