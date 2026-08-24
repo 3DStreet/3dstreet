@@ -32,6 +32,7 @@ import {
   optimizeGlb
 } from '@shared/asset-upload';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
+import { autoScaleModelEntity } from './autoScaleModel.js';
 
 export { FILE_PICKER_ACCEPT, isAcceptedAssetFile };
 
@@ -231,7 +232,11 @@ export function placeCloudAsset(asset, position) {
       }
     };
   }
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  AFRAME.INSPECTOR.execute('entitycreate', definition, undefined, (entity) => {
+    // Assets uploaded before auto-scale existed (and any whose stored file is
+    // genuinely mis-unitted) get the same correction on every placement.
+    if (isMesh) autoScaleModelEntity(entity, { source: 'gallery' });
+  });
 }
 
 async function preflightQuota(proposedBytes) {
@@ -308,6 +313,11 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       useAssetUploadStore.getState().uploads[entity.id]?.blobUrl || null;
   } else {
     ({ entity, blobUrl } = await createPlaceholderEntity(file, position, kind));
+    if (kind === 'glb') {
+      // Fire-and-forget: corrects a unit-mismatched model once the local blob
+      // preview loads, well before the cloud swap. Never blocks the upload.
+      autoScaleModelEntity(entity, { source: 'upload' });
+    }
   }
   const entityId = entity.id;
   const { setUpload, clearUpload } = useAssetUploadStore.getState();
