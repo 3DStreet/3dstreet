@@ -3,6 +3,8 @@ import { TransformControls } from './TransformControls.js';
 import EditorControls from './EditorControls.js';
 import { MeasureLineControls } from './MeasureLineControls.js';
 import { ShapeVertexControls } from './ShapeVertexControls.js';
+import { StreetNodeControls } from './gizmos/StreetNodeControls.js';
+import { SegmentWidthControls } from './gizmos/SegmentWidthControls.js';
 import InfiniteGridHelper from './InfiniteGridHelper.js';
 import {
   ExperimentalControls,
@@ -346,6 +348,19 @@ export function Viewport(inspector) {
   // nothing to invalidate.
   inspector.shapeVertexControls = shapeVertexControls;
 
+  // --- Street gizmos (#1096 #1218) --------------------------------------
+  // Additive handles for managed streets and their segments, always on.
+  // attachControlsForSelection() below is the single routing table deciding
+  // which controls attach to the current selection.
+  const streetNodeControls = new StreetNodeControls(
+    camera,
+    inspector.container
+  );
+  const segmentWidthControls = new SegmentWidthControls(
+    camera,
+    inspector.container
+  );
+
   // Pose snapshot taken on the gizmo's mouseDown, BEFORE TransformControls
   // mutates the object. The undo command can't capture this itself:
   // getAttribute('position') returns the live object3D values, which are
@@ -474,11 +489,45 @@ export function Viewport(inspector) {
     });
   });
 
+  // The street gizmos mutate attributes live during the drag (so the normal
+  // managed-street re-layout cascade runs) and report the whole drag once on
+  // mouseUp via 'commitDrag' — turned into a single undo step here.
+  [streetNodeControls, segmentWidthControls].forEach((streetControls) => {
+    streetControls.addEventListener('mouseDown', () => {
+      controls.enabled = false;
+      hoverBox.visible = false;
+    });
+    streetControls.addEventListener('mouseUp', () => {
+      controls.enabled = true;
+    });
+    streetControls.addEventListener('objectChange', () => {
+      const object = streetControls.object;
+      if (!object) return;
+      selectionBox.setFromObject(object);
+      updateHelpers(object);
+    });
+    streetControls.addEventListener('commitDrag', (evt) => {
+      const changed = evt.changes.filter((c) => c.value !== c.oldValue);
+      if (changed.length === 0) return;
+      const commands = changed.map((c) => [
+        'entityupdate',
+        { entity: evt.entity, ...c }
+      ]);
+      if (commands.length === 1) {
+        inspector.execute('entityupdate', commands[0][1]);
+      } else {
+        inspector.execute('multi', commands);
+      }
+    });
+  });
+
   sceneHelpers.add(transformControls.getHelper());
   sceneHelpers.add(measureLineControls);
   // Added once, here — attach()/detach() only arm and disarm it, they do not
   // re-add it.
   sceneHelpers.add(shapeVertexControls);
+  sceneHelpers.add(streetNodeControls);
+  sceneHelpers.add(segmentWidthControls);
 
   Events.on('entityupdate', (detail) => {
     const object = detail.entity.object3D;
@@ -536,6 +585,8 @@ export function Viewport(inspector) {
         inspector.camera = perspective;
         transformControls.camera = perspective;
         measureLineControls.camera = perspective;
+        streetNodeControls.camera = perspective;
+        segmentWidthControls.camera = perspective;
         controls.setCamera(perspective);
         updateAspectRatio();
         controls.handlePlanViewRequest();
@@ -545,12 +596,16 @@ export function Viewport(inspector) {
     controls.setCamera(data.camera);
     transformControls.camera = data.camera;
     measureLineControls.camera = data.camera;
+    streetNodeControls.camera = data.camera;
+    segmentWidthControls.camera = data.camera;
     updateAspectRatio();
   });
 
   function enableControls() {
     mouseCursor.enable();
     transformControls.enabled = true;
+    streetNodeControls.enabled = true;
+    segmentWidthControls.enabled = true;
     controls.enabled = true;
   }
   enableControls();
@@ -558,6 +613,58 @@ export function Viewport(inspector) {
   Events.on('inspectorcleared', () => {
     controls.center.set(0, 0, 0);
   });
+
+  function detachAllTransformControls() {
+    transformControls.detach();
+    measureLineControls.detach();
+    streetNodeControls.detach();
+    segmentWidthControls.detach();
+  }
+
+  function attachStockGizmo(el) {
+    transformControls.attach(el.object3D);
+    // Selecting a no-scale entity while in scale mode: fall back to
+    // translate so the gizmo never scales it.
+    if (
+      transformControls.mode === 'scale' &&
+      el.hasAttribute('data-transform-no-scale')
+    ) {
+      transformControls.setMode('translate');
+      transformControls.showX = true;
+      transformControls.showY = true;
+      transformControls.showZ = true;
+    }
+  }
+
+  // Single routing table for which controls attach to the current selection.
+  // The stock TransformControls gizmo attaches to every transformable entity
+  // exactly as before; the street gizmos (#1096 #1218) are ADDITIVE handles
+  // layered on top for managed streets and their segments — never a
+  // replacement for the standard move/rotate gizmo.
+  function attachControlsForSelection() {
+    detachAllTransformControls();
+    const el = inspector.selectedEntity;
+    if (
+      !el ||
+      !inspector.cursor.isPlaying ||
+      el.hasAttribute('data-no-transform')
+    ) {
+      return;
+    }
+    if (el.components['measure-line']) {
+      measureLineControls.attach(el);
+      return;
+    }
+    attachStockGizmo(el);
+    if (el.components['managed-street']) {
+      streetNodeControls.attach(el);
+    } else if (
+      el.components['street-segment'] &&
+      el.parentElement?.components?.['managed-street']
+    ) {
+      segmentWidthControls.attach(el);
+    }
+  }
 
   Events.on('transformmodechange', (mode) => {
     // Some entities opt out of scale (`data-transform-no-scale`) — e.g. shapes,
@@ -582,18 +689,8 @@ export function Viewport(inspector) {
     }
 
     // If there's a selected entity, reattach the appropriate controls
-    if (
-      inspector.selectedEntity &&
-      inspector.cursor.isPlaying &&
-      !inspector.selectedEntity.hasAttribute('data-no-transform')
-    ) {
-      if (inspector.selectedEntity.components['measure-line']) {
-        transformControls.detach();
-        measureLineControls.attach(inspector.selectedEntity);
-      } else {
-        measureLineControls.detach();
-        transformControls.attach(inspector.selectedEntity.object3D);
-      }
+    if (inspector.selectedEntity) {
+      attachControlsForSelection();
     }
   });
 
@@ -616,8 +713,10 @@ export function Viewport(inspector) {
   Events.on('objectselect', (object) => {
     hoverBox.visible = false;
     selectionBox.visible = false;
-    transformControls.detach();
-    measureLineControls.detach();
+    detachAllTransformControls();
+    // Not part of detachAllTransformControls(): the router calls that at the
+    // top of attachControlsForSelection(), which runs AFTER the shape branch
+    // below has armed the vertex handles — folding this in would disarm them.
     shapeVertexControls.detach();
 
     if (detachShapeRederiveListener) {
@@ -679,27 +778,7 @@ export function Viewport(inspector) {
         selectionBox.visible = true;
       }
 
-      if (
-        inspector.cursor.isPlaying &&
-        !object.el.hasAttribute('data-no-transform')
-      ) {
-        if (object.el.components['measure-line']) {
-          measureLineControls.attach(object.el);
-        } else {
-          transformControls.attach(object);
-          // Selecting a no-scale entity while in scale mode: fall back to
-          // translate so the gizmo never scales it.
-          if (
-            transformControls.mode === 'scale' &&
-            object.el.hasAttribute('data-transform-no-scale')
-          ) {
-            transformControls.setMode('translate');
-            transformControls.showX = true;
-            transformControls.showY = true;
-            transformControls.showZ = true;
-          }
-        }
-      }
+      attachControlsForSelection();
     }
   });
 
@@ -803,6 +882,8 @@ export function Viewport(inspector) {
         // borrow the rig via mode-manager and give it back.
         mouseCursor.disable();
         transformControls.enabled = false;
+        streetNodeControls.enabled = false;
+        segmentWidthControls.enabled = false;
         controls.enabled = true;
         // The Viewer is always perspective — leave an ortho editing view.
         if (inspector.camera.isOrthographicCamera) {

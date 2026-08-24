@@ -140,7 +140,8 @@ export function createManagedStreetFromStreetmixURLPrompt(
           // fires streetmix_import_completed/_failed with source 'dialog'
           // (#1874).
           importSource: 'dialog'
-        }
+        },
+        'street-align': { length: 'middle' }
       }
     };
 
@@ -166,7 +167,8 @@ export function createManagedStreetFromStreetplanURLPrompt(position) {
           showVehicles: true,
           showStriping: true,
           synchronize: true
-        }
+        },
+        'street-align': { length: 'middle' }
       }
     };
 
@@ -187,7 +189,10 @@ export function createManagedStreetFromStreetObject(position, streetObject) {
           showVehicles: true,
           showStriping: true,
           synchronize: true
-        }
+        },
+        // New streets center on their creation point. Explicit (not a schema
+        // default) so saved scenes that relied on 'start' stay put on load.
+        'street-align': { length: 'middle' }
       }
     };
 
