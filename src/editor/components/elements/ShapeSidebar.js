@@ -1,4 +1,4 @@
-/* global THREE */
+/* global AFRAME, THREE, STREET */
 
 import PropTypes from 'prop-types';
 import { useEffect, useRef, useState } from 'react';
@@ -22,6 +22,12 @@ import {
   shapeStyleSeedFromUpdate,
   setShapeStyle
 } from '../../lib/shapeStyle.js';
+import {
+  setShapeFill,
+  getFillableStreets,
+  getShapeFillSourceId
+} from '../../lib/streetFill.js';
+import { Button } from './Button';
 
 const MAX_LABELLED_VERTICES = 12;
 
@@ -48,6 +54,33 @@ const hoverNdc = new THREE.Vector2();
 const hoverPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const hoverWorld = new THREE.Vector3();
 const shapeWorldPos = new THREE.Vector3();
+
+// Reverse the shape's direction: vertex k takes the position of vertex
+// n-1-k, so segment 1↔N numbering flips and anything that follows the
+// drawing order (street fill clones, measurement labels) runs the other
+// way. Implemented as position swaps rather than DOM reordering — the
+// existing shapevertexmove command handles each leg, and a 'multi' makes
+// the whole reversal one undo step.
+function reverseShapeDirection(entity) {
+  const els = getShapeVertexEls(entity);
+  if (els.length < 2) return false;
+  const positions = els.map((el) => {
+    const p = el.getAttribute('position');
+    return { x: p.x, y: p.y, z: p.z };
+  });
+  const commands = els.map((el, i) => [
+    'shapevertexmove',
+    {
+      entity: el,
+      component: 'position',
+      value: positions[els.length - 1 - i],
+      oldValue: positions[i],
+      noSelectEntity: true
+    }
+  ]);
+  AFRAME.INSPECTOR.execute('multi', commands);
+  return true;
+}
 
 // The shape's ordered vertex elements.
 function getShapeVertexEls(entity) {
@@ -377,6 +410,47 @@ const ShapeSidebar = ({ entity }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitsPreference]);
 
+  // Street fill (naive v1, see lib/streetFill.js): the dropdown IS the
+  // control — 'None' (the default) clears the fill, picking a street
+  // (re)fills the polyline with clones of it. The selected value is read
+  // back off the fill wrapper in the scene rather than held in React state,
+  // so the dropdown always shows what actually exists (including after
+  // undo/redo); the tick state only forces a re-render after a change. The
+  // street list is a plain DOM query per render — fresh enough for a picker.
+  const [, setFillTick] = useState(0);
+  const fillableStreets = getFillableStreets();
+  const fillSourceId = getShapeFillSourceId(entity);
+  const onStreetFillChange = (e) => {
+    const streetEl = fillableStreets.find((el) => el.id === e.target.value);
+    try {
+      const count = setShapeFill(entity, streetEl || null);
+      STREET.notify.successMessage(
+        streetEl
+          ? `Filled ${count} segment${count === 1 ? '' : 's'} with street`
+          : 'Street fill removed'
+      );
+    } catch (error) {
+      STREET.notify.errorMessage(`Street fill failed: ${error.message}`);
+      console.error(error);
+    }
+    setFillTick((t) => t + 1);
+  };
+  // Reverse the drawing order. A live street fill follows the direction, so
+  // re-apply it afterwards (its own undo steps, same as picking it again).
+  const onReverseDirection = () => {
+    if (!reverseShapeDirection(entity)) return;
+    const sourceEl = fillableStreets.find((el) => el.id === fillSourceId);
+    if (sourceEl) {
+      try {
+        setShapeFill(entity, sourceEl);
+      } catch (error) {
+        STREET.notify.errorMessage(`Street re-fill failed: ${error.message}`);
+        console.error(error);
+      }
+    }
+    setFillTick((t) => t + 1);
+  };
+
   const vertices = getShapeVertices(entity);
   const n = vertices.length;
   const closed = isClosedShape(entity, n);
@@ -449,6 +523,31 @@ const ShapeSidebar = ({ entity }) => {
             <div className="fakePropertyRowValue">{a.value}</div>
           </div>
         ))}
+        {n >= 2 && (
+          <div className="propertyRow">
+            <div className="fakePropertyRowLabel">Direction</div>
+            <div className="fakePropertyRowValue">
+              <Button variant="toolbtn" onClick={onReverseDirection}>
+                Reverse
+              </Button>
+            </div>
+          </div>
+        )}
+        {n >= 2 && fillableStreets.length > 0 && (
+          <div className="propertyRow">
+            <div className="fakePropertyRowLabel">Street Fill</div>
+            <div className="fakePropertyRowValue">
+              <select value={fillSourceId} onChange={onStreetFillChange}>
+                <option value="">None</option>
+                {fillableStreets.map((el) => (
+                  <option key={el.id} value={el.id}>
+                    {el.getAttribute('data-layer-name') || el.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
         <div className="propertyRow">
           <div className="rounded bg-blue-50 p-2 text-gray-600">
             <div className="mb-1 font-semibold uppercase">💡 Shape Tips</div>
