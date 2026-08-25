@@ -446,6 +446,11 @@ export function mapStraightPoint(sampler, zStart, x, z) {
  * `origin` is subtracted from every vertex (x/z), so the geometry can live on
  * an entity that street-align has already translated in straight space.
  * height 0 builds the top face only (striping planes).
+ *
+ * `slopeLeftDelta` / `slopeRightDelta` tilt the TOP face across the ribbon's
+ * width (left = lateral min / straight -x edge, right = lateral max /
+ * straight +x edge), matching below-box's slopeStartDelta/slopeEndDelta:
+ * side-wall top edges follow the tilt, the bottom stays flat.
  */
 export function buildRibbonGeometry(sampler, options = {}) {
   const {
@@ -457,7 +462,9 @@ export function buildRibbonGeometry(sampler, options = {}) {
     origin = { x: 0, z: 0 },
     closedLoop = false,
     maxSpacing = 6,
-    yTop = 0
+    yTop = 0,
+    slopeLeftDelta = 0,
+    slopeRightDelta = 0
   } = options;
 
   const stations = sampler.getRingStations(sStart, sEnd, { maxSpacing });
@@ -486,7 +493,8 @@ export function buildRibbonGeometry(sampler, options = {}) {
         x: st.position.x + st.right.x * latRight - origin.x,
         z: st.position.z + st.right.z * latRight - origin.z
       },
-      topY,
+      leftTopY: topY + slopeLeftDelta,
+      rightTopY: topY + slopeRightDelta,
       bottomY: topY - height
     };
   });
@@ -506,8 +514,9 @@ export function buildRibbonGeometry(sampler, options = {}) {
     return base;
   };
 
-  // top: left/right at topY — triangles (A, D, B), (A, C, D) face +y
-  const topBase = addStrip('left', 'right', 'topY', 'topY', (r) => [
+  // top: left/right at their (possibly slope-tilted) top heights —
+  // triangles (A, D, B), (A, C, D) face +y
+  const topBase = addStrip('left', 'right', 'leftTopY', 'rightTopY', (r) => [
     [0, r.v],
     [1, r.v]
   ]);
@@ -533,10 +542,16 @@ export function buildRibbonGeometry(sampler, options = {}) {
       indices.push(a, b, d, a, d, c);
     }
     // right wall (faces outward +lateral): verts TR, BR per ring
-    const rightBase = addStrip('right', 'right', 'topY', 'bottomY', (r) => [
-      [r.v, 1],
-      [r.v, 0]
-    ]);
+    const rightBase = addStrip(
+      'right',
+      'right',
+      'rightTopY',
+      'bottomY',
+      (r) => [
+        [r.v, 1],
+        [r.v, 0]
+      ]
+    );
     for (let i = 0; i < ringCount - 1; i++) {
       const tr = rightBase + 2 * i;
       const br = tr + 1;
@@ -545,7 +560,7 @@ export function buildRibbonGeometry(sampler, options = {}) {
       indices.push(tr, trN, brN, tr, brN, br);
     }
     // left wall (faces outward -lateral): verts TL, BL per ring
-    const leftBase = addStrip('left', 'left', 'topY', 'bottomY', (r) => [
+    const leftBase = addStrip('left', 'left', 'leftTopY', 'bottomY', (r) => [
       [r.v, 1],
       [r.v, 0]
     ]);
@@ -562,10 +577,10 @@ export function buildRibbonGeometry(sampler, options = {}) {
         const base = positions.length / 3;
         positions.push(
           ring.left.x,
-          ring.topY,
+          ring.leftTopY,
           ring.left.z,
           ring.right.x,
-          ring.topY,
+          ring.rightTopY,
           ring.right.z,
           ring.left.x,
           ring.bottomY,

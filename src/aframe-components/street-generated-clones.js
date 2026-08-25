@@ -292,6 +292,11 @@ AFRAME.registerComponent('street-generated-clones', {
     let curveYaw = 0;
     const bent = getCurvedPlacement(this.el, x, z);
     if (bent) {
+      // stamp the straight-space pose so consumers that animate along the
+      // lane (street-traffic) can advance in straight space and re-bend
+      clone.dataset.straightX = x;
+      clone.dataset.straightY = y;
+      clone.dataset.straightZ = z;
       x = bent.x;
       y += bent.y;
       z = bent.z;
@@ -311,6 +316,9 @@ AFRAME.registerComponent('street-generated-clones', {
     }
     if (data.randomFacing) {
       rotationY = this.rng() * 360 + baseRotation;
+    }
+    if (bent) {
+      clone.dataset.straightRotY = rotationY;
     }
     clone.setAttribute('rotation', `0 ${rotationY + curveYaw} 0`);
 

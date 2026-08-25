@@ -580,6 +580,7 @@ AFRAME.registerComponent('managed-street', {
 
   clearStreetCurve: function () {
     if (!this.streetCurve) return;
+
     this.streetCurve = null;
     // one notification so segments/ground re-mesh straight
     this.scheduleCurveChanged();
@@ -703,7 +704,12 @@ AFRAME.registerComponent('managed-street', {
       if (this.streetCurve) {
         this.streetCurve.zStart = this.computeZStart(this.data.length);
       }
-      this.el.emit('street-curve-changed', null, false);
+      // Bubbles: segments and street-ground/label listen on this entity, and
+      // the editor viewport listens at the scene level to refresh hover/
+      // selection helpers whose tracked entity just re-meshed under the
+      // cursor (a hover only re-snapshots on mouseenter, so without this a
+      // bend/straighten leaves a stale highlight box).
+      this.el.emit('street-curve-changed', null, true);
     }, 0);
   },
   // Apply the showStriping / showVehicles toggles to generated content.

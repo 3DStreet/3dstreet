@@ -41,13 +41,13 @@ alignment) converts any straight-space point to a curve frame — position +
 tangent + horizontal right vector — so lateral offsets rotate with the
 curve.
 
-| Piece | Where | Role |
-| --- | --- | --- |
-| Curve math | `src/tested/street-path-utils.js` | Pure three.js, unit-tested: `buildCenterlinePoints` (smooth/arc/linear, open+closed), `PathSampler` (arc-length frames, miter frames, curvature-adaptive ring stations, extrapolation past open ends), `mapStraightPoint`, `buildRibbonGeometry` |
-| Path component + geometry | `src/aframe-components/street-path.js` | `street-path` component (curve controls, emits throttled `street-path-changed` on vertex/transform/setting changes; a system watches transforms since editor entities are paused), the registered `street-ribbon` A-Frame geometry, and the `getCurvedPlacement` / `getRibbonGeometryAttr` helpers |
-| Street wiring | `managed-street.js` | `path` property (selector, serialized), resolves the path (with retries for load ordering), builds the street-local curve (`this.streetCurve = { sampler, zStart, closed, rev }`), drives `length`, emits `street-curve-changed` after layout settles |
-| Surfaces | `street-segment.js`, `street-generated-striping.js`, `street-generated-rail.js`, `street-ground.js` | Swap their box/plane for `street-ribbon` geometry when a curve is active (same material/texture pipeline — ribbon UVs match box conventions so repeat math is untouched) |
-| Placements | `street-generated-clones.js` (incl. fit-mode boundary buildings), `street-generated-stencil.js`, `street-generated-pedestrians.js` | Remap each computed straight placement through `getCurvedPlacement` and add the tangent yaw. RNG call order is unchanged, so a seed lays out identically straight or curved |
+| Piece                     | Where                                                                                                                              | Role                                                                                                                                                                                                                                                                                               |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Curve math                | `src/tested/street-path-utils.js`                                                                                                  | Pure three.js, unit-tested: `buildCenterlinePoints` (smooth/arc/linear, open+closed), `PathSampler` (arc-length frames, miter frames, curvature-adaptive ring stations, extrapolation past open ends), `mapStraightPoint`, `buildRibbonGeometry`                                                   |
+| Path component + geometry | `src/aframe-components/street-path.js`                                                                                             | `street-path` component (curve controls, emits throttled `street-path-changed` on vertex/transform/setting changes; a system watches transforms since editor entities are paused), the registered `street-ribbon` A-Frame geometry, and the `getCurvedPlacement` / `getRibbonGeometryAttr` helpers |
+| Street wiring             | `managed-street.js`                                                                                                                | `path` property (selector, serialized), resolves the path (with retries for load ordering), builds the street-local curve (`this.streetCurve = { sampler, zStart, closed, rev }`), drives `length`, emits `street-curve-changed` after layout settles                                              |
+| Surfaces                  | `street-segment.js`, `street-generated-striping.js`, `street-generated-rail.js`, `street-ground.js`                                | Swap their box/plane for `street-ribbon` geometry when a curve is active (same material/texture pipeline — ribbon UVs match box conventions so repeat math is untouched)                                                                                                                           |
+| Placements                | `street-generated-clones.js` (incl. fit-mode boundary buildings), `street-generated-stencil.js`, `street-generated-pedestrians.js` | Remap each computed straight placement through `getCurvedPlacement` and add the tangent yaw. RNG call order is unchanged, so a seed lays out identically straight or curved                                                                                                                        |
 
 ### Event flow
 
@@ -83,17 +83,35 @@ Saved scenes serialize segments' `street-ribbon` geometry attribute
 harmlessly: on load it builds empty (no curve yet), then the street resolves
 its path and the `street-curve-changed` cascade re-meshes everything.
 
-## Known limitations (prototype)
+## Curve-aware editor & play behaviors
 
-- **Slope segments** flatten on curves (elevation works; the per-segment
-  cross-slope tilt doesn't). Path vertex elevation IS followed.
-- **Play/traffic, drive mode** animate in straight space — a curved street's
-  `playable` traffic won't follow the curve yet.
+- **Hover/selection highlight** conforms to the curved lane: when the
+  hovered/selected entity carries `street-ribbon` geometry (or is a
+  path-following street, whose segments do), the editor's box helper swaps
+  its AABB for translucent overlays of the actual ribbon meshes
+  (`OrientedBoxHelper.updateConformingHighlight` in `viewport.js`).
+  Raycast hit areas were always mesh-accurate. Straight entities keep the
+  box unchanged.
+- **Slope segments** tilt on curves exactly as straight: the ribbon's top
+  face tilts across its width (`slopeLeftDelta`/`slopeRightDelta`, the
+  below-box equivalents). Path vertex elevation is also followed.
+- **Play traffic** follows the curve: the generators stamp each bent
+  clone's straight-space pose (`data-straight-*`), street-traffic advances
+  that pose in straight lane space (same pure function of sim-time) and
+  re-bends it through the live curve every tick — position and tangent yaw.
+  Determinism and the mirrored-cast contract are unchanged.
+- **street-label** places the cross-section ruler at the curve's end frame,
+  yawed to the exit tangent.
 - **Endpoint/width gizmos** are suppressed on pathed streets (no straight
   endpoints to drag — edit the path shape instead). Suppression applies on
   next selection.
-- **street-label** still renders in straight space (toggle it off on
-  heavily curved streets).
+
+## Known limitations (prototype)
+
+- **Boundary segments (buildings)** bend like other clones but are
+  otherwise untested/unsupported on curves for now.
+- **Drive mode** is unaffected in principle (raycast wheels ride the real
+  curved meshes) but untested on curves.
 - **geo-flatten** uses the mesh bounding footprint, so terrain flattening
   covers the curve's bounding area rather than the exact ribbon.
 - Manual `length` edits on a pathed street extend/trim along the path

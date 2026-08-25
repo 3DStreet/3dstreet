@@ -677,12 +677,15 @@ AFRAME.registerComponent('street-segment', {
   generateMesh: function (data) {
     // Curved street: extrude the surface along the parent street's path
     // curve at this segment's lateral offset instead of the straight
-    // below-box. Slope tilting is not supported on curves (elevation is).
+    // below-box. Slope segments tilt the ribbon's top face across its width
+    // exactly like below-box tilts between its -x and +x edges.
     const ribbonAttr = getRibbonGeometryAttr(this.el, {
       lateralOffset: 0,
       width: data.width,
       height: this.height,
-      sEnd: data.length
+      sEnd: data.length,
+      slopeLeftDelta: this.slopeDeltas?.start ?? 0,
+      slopeRightDelta: this.slopeDeltas?.end ?? 0
     });
     if (ribbonAttr) {
       this.el.setAttribute('geometry', ribbonAttr);

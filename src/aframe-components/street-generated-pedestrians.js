@@ -115,6 +115,10 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       let curveYaw = 0;
       const bent = getCurvedPlacement(this.el, position.x, position.z);
       if (bent) {
+        // straight-space pose stamp for lane animators (street-traffic)
+        pedestrian.dataset.straightX = position.x;
+        pedestrian.dataset.straightY = position.y;
+        pedestrian.dataset.straightZ = position.z;
         position.x = bent.x;
         position.y += bent.y;
         position.z = bent.z;
@@ -134,6 +138,9 @@ AFRAME.registerComponent('street-generated-pedestrians', {
         }
       } else if (data.direction === 'outbound') {
         rotationY = 180;
+      }
+      if (bent) {
+        pedestrian.dataset.straightRotY = rotationY;
       }
       if (rotationY !== 0 || curveYaw !== 0) {
         pedestrian.setAttribute('rotation', `0 ${rotationY + curveYaw} 0`);

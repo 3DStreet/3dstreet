@@ -211,6 +211,8 @@ export function getRibbonGeometryAttr(segmentEl, opts = {}) {
     yTop: opts.yTop ?? 0,
     sStart: opts.sStart ?? 0,
     sEnd,
+    slopeLeftDelta: opts.slopeLeftDelta ?? 0,
+    slopeRightDelta: opts.slopeRightDelta ?? 0,
     closedLoop: !!curve.closed
   };
 }
@@ -235,6 +237,10 @@ AFRAME.registerGeometry('street-ribbon', {
     originZ: { default: 0 },
     sStart: { default: 0 },
     sEnd: { default: 1 },
+    // cross-slope tilt of the top face (see buildRibbonGeometry): left =
+    // lateral min (straight -x) edge, right = lateral max (straight +x)
+    slopeLeftDelta: { default: 0 },
+    slopeRightDelta: { default: 0 },
     closedLoop: { default: false }
   },
 
@@ -254,6 +260,8 @@ AFRAME.registerGeometry('street-ribbon', {
       yTop: data.yTop,
       sStart: data.sStart,
       sEnd: data.sEnd,
+      slopeLeftDelta: data.slopeLeftDelta,
+      slopeRightDelta: data.slopeRightDelta,
       origin: { x: data.originX, z: data.originZ },
       closedLoop: data.closedLoop
     });

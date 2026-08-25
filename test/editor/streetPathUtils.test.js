@@ -169,6 +169,39 @@ describe('buildRibbonGeometry', () => {
     expect(geom.boundingBox.min.y).toBeCloseTo(0);
   });
 
+  it('tilts the top face across the width for slope segments', () => {
+    const sampler = new PathSampler([v(0, 0, 0), v(0, 0, 10)], false);
+    const geom = buildRibbonGeometry(sampler, {
+      lateralCenter: 0,
+      width: 2,
+      height: 1,
+      sStart: 0,
+      sEnd: 10,
+      slopeLeftDelta: -0.3,
+      slopeRightDelta: 0.3
+    });
+    const pos = geom.getAttribute('position');
+    // top-face verts sit at x=-1 (left, tilted down) and x=+1 (right, up);
+    // the bottom stays flat at -height
+    let leftTopSeen = false;
+    let rightTopSeen = false;
+    let minY = Infinity;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      minY = Math.min(minY, y);
+      if (Math.abs(x + 1) < 1e-6 && Math.abs(y + 0.3) < 1e-6) {
+        leftTopSeen = true;
+      }
+      if (Math.abs(x - 1) < 1e-6 && Math.abs(y - 0.3) < 1e-6) {
+        rightTopSeen = true;
+      }
+    }
+    expect(leftTopSeen).toBe(true);
+    expect(rightTopSeen).toBe(true);
+    expect(minY).toBeCloseTo(-1); // flat bottom, unaffected by slope
+  });
+
   it('bends around a corner (vertices appear on both legs)', () => {
     const sampler = new PathSampler(
       [v(0, 0, 0), v(0, 0, 10), v(10, 0, 10)],
