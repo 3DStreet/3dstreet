@@ -146,6 +146,25 @@ AFRAME.registerComponent('shape', {
     // thereafter: changing one never changes the other.
     fillColor: { type: 'color', default: '#ffe600' },
     fillOpacity: { type: 'int', default: 40, min: 0, max: 100 },
+    // How the polyline's corners render — and, when a managed street follows
+    // this shape as its path, how its centerline bends (one setting, both
+    // consumers; the street-path role component reads it from here):
+    //   linear — hard corners at the vertices (the default: drawn shapes
+    //            start straight; assigning one to a street bumps it to
+    //            smooth once, see ManagedStreetSidebar)
+    //   smooth — centripetal Catmull-Rom through every vertex
+    //   arc    — straight legs joined by circular fillets (road-engineering
+    //            style); radius set by filletRadius
+    curveType: {
+      type: 'string',
+      default: 'linear',
+      oneOf: ['linear', 'smooth', 'arc']
+    },
+    // corner radius in meters for curveType: arc (clamped per-corner so
+    // adjacent fillets never overlap). 20m is a visible, road-scale rounding
+    // — at 6m the cut is ~2.5m on a right angle, invisible under a street's
+    // own width; short legs auto-clamp the radius down, so big is safe.
+    filletRadius: { type: 'number', default: 20, min: 0 },
     // Event-driven opt-out of the system dirty-check: set to an event name and
     // the shape re-derives on that event instead of being polled every frame
     // (the hooks below honour it). Empty by default → the system tick polls,
@@ -344,6 +363,17 @@ AFRAME.registerComponent('shape', {
     }
 
     if (oldData.closed !== undefined && oldData.closed !== this.data.closed) {
+      this.requestRederive();
+    }
+
+    // A curve-setting change redraws the outline; the derive's
+    // shape-geometry-changed emit then reaches any following street through
+    // street-path, so the street rebends without extra wiring here.
+    if (
+      oldData.curveType !== undefined &&
+      (oldData.curveType !== this.data.curveType ||
+        oldData.filletRadius !== this.data.filletRadius)
+    ) {
       this.requestRederive();
     }
 
@@ -552,12 +582,12 @@ AFRAME.registerComponent('shape', {
     // line is curved: it's the cheap O(n²) guard, and a curve through a
     // simple control ring is simple in all but pathological cases.
     const selfIntersecting = closed && ringSelfIntersects(this._ringPts(verts));
-    // Curve styling (street-path on this shape — the same component and the
-    // SAME buildCenterlinePoints call a following street uses, so the drawn
-    // line IS the centerline the street bends along): when present and not
-    // linear, the outline (and a closed shape's fill ring) renders through
-    // the sampled curve instead of straight vertex-to-vertex segments. The
-    // vertices stay the editable control points.
+    // Curve styling (this shape's own curveType — the SAME
+    // buildCenterlinePoints call a following street uses, so the drawn line
+    // IS the centerline the street bends along): when not linear, the
+    // outline (and a closed shape's fill ring) renders through the sampled
+    // curve instead of straight vertex-to-vertex segments. The vertices stay
+    // the editable control points.
     const curvedPts = this._curvedRenderPoints(verts, closed);
     // The enclosed area is needed twice per derive - by the fill, whose paint
     // order is derived from it, and by the area label. Compute it once so the
@@ -674,21 +704,18 @@ AFRAME.registerComponent('shape', {
   },
 
   // The sampled curve the outline should render through, or null for classic
-  // straight vertex-to-vertex rendering. Present exactly when this shape
-  // carries the street-path component (auto-attached when a street follows
-  // it, or added directly via the Curve Style control) with a non-linear
-  // style. The build call and its defaults are IDENTICAL to the one
-  // managed-street runs on this shape's vertices, so a selected path and its
-  // street visibly trace the same curve.
+  // straight vertex-to-vertex rendering. Driven by this component's own
+  // curveType/filletRadius props. The build call and its defaults are
+  // IDENTICAL to the one managed-street runs on this shape's vertices, so a
+  // selected path and its street visibly trace the same curve.
   _curvedRenderPoints: function (verts, closed) {
-    const streetPath = this.el.components['street-path'];
-    if (!streetPath || verts.length < 3) return null;
-    if (streetPath.data.curveType === 'linear') return null;
+    if (verts.length < 3) return null;
+    if (this.data.curveType === 'linear') return null;
     return buildCenterlinePoints(
       verts.map((v) => v.object3D.position),
       {
-        curveType: streetPath.data.curveType,
-        filletRadius: streetPath.data.filletRadius,
+        curveType: this.data.curveType,
+        filletRadius: this.data.filletRadius,
         closed
       }
     );

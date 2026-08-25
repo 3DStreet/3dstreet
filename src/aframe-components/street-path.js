@@ -2,14 +2,17 @@
 
 /**
  * street-path: makes a drawn polyline (shape) usable as the centerline path
- * of a managed street, and owns the curve controls — the PATH decides how
- * corners become curves (algorithm + radius), the street just follows it.
+ * of a managed street. The curve controls (curveType/filletRadius) live on
+ * the `shape` component itself — a curve is a property of the drawing, street
+ * or no street — and this schema-less role component reads them from there
+ * (getCurveOptions) for its followers.
  *
  * Assignment lives on the street side (`managed-street.path` = '#shapeId');
  * assigning auto-attaches this component to the shape when missing. The
  * component re-emits `street-path-changed` (throttled) whenever the path's
- * vertices, its curve settings, or its transform change; following streets
- * listen and rebuild their curved layout.
+ * vertices, its curve settings, or its transform change (curve-setting edits
+ * arrive as shape-geometry-changed, via the shape's re-derive); following
+ * streets listen and rebuild their curved layout.
  *
  * This file also registers the `street-ribbon` A-Frame geometry — the curved
  * equivalent of the straight below-box — and the placement helpers the
@@ -67,47 +70,20 @@ function matrixWorldChanged(comp) {
 }
 
 AFRAME.registerComponent('street-path', {
-  schema: {
-    // How the polyline's corners become a centerline:
-    //   smooth — centripetal Catmull-Rom through every vertex
-    //   arc    — straight legs joined by circular fillets (road-engineering
-    //            style); radius set by filletRadius
-    //   linear — hard corners at the vertices
-    curveType: {
-      type: 'string',
-      default: 'smooth',
-      oneOf: ['smooth', 'arc', 'linear']
-    },
-    // corner radius in meters for curveType: arc (clamped per-corner so
-    // adjacent fillets never overlap)
-    filletRadius: { type: 'number', default: 6, min: 0 }
-  },
-
   init: function () {
     this.emitChanged = this.emitChanged.bind(this);
     this._pendingEmit = null;
     this._lastEmit = 0;
-    // shape re-derives (and emits) on every vertex edit
+    // shape re-derives (and emits) on every vertex or curve-setting edit
     this.el.addEventListener('shape-geometry-changed', this.emitChanged);
     this.system.registerPath(this);
-  },
-
-  update: function (oldData) {
-    // curve settings changed → following streets rebuild
-    if (oldData.curveType !== undefined) this.emitChanged();
-    // ...and the shape's own outline renders through this curve (see
-    // shape.js _curvedRenderPoints), so re-derive it on attach and on every
-    // setting change. rAF-coalesced, so calling on first update is free.
-    this.el.components.shape?.requestRederive?.();
   },
 
   remove: function () {
     this.el.removeEventListener('shape-geometry-changed', this.emitChanged);
     this.system.unregisterPath(this);
     if (this._pendingEmit) clearTimeout(this._pendingEmit);
-    // one final notification so followers straighten out / re-resolve —
-    // including the shape's own outline, which straightens back
-    this.el.components.shape?.requestRederive?.();
+    // one final notification so followers straighten out / re-resolve
     this.el.emit('street-path-changed', null, false);
   },
 
@@ -144,6 +120,17 @@ AFRAME.registerComponent('street-path', {
 
   isClosed: function () {
     return !!this.el.components.shape?.data?.closed;
+  },
+
+  // The shape's curve settings, in the option shape buildCenterlinePoints
+  // takes. Fallbacks match the shape schema defaults, for the window before
+  // the shape component has initialized.
+  getCurveOptions: function () {
+    const d = this.el.components.shape?.data;
+    return {
+      curveType: d?.curveType ?? 'linear',
+      filletRadius: d?.filletRadius ?? 20
+    };
   }
 });
 

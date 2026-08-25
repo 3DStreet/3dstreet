@@ -105,7 +105,7 @@ describe('plan model: curved managed street', () => {
 });
 
 describe('plan model: curve-styled drawn shape', () => {
-  const makeShapeEl = (streetPathData) => {
+  const makeShapeEl = (curveData) => {
     const vertEls = L_PATH_POINTS.map((p) => {
       const v = { object3D: { position: p.clone() } };
       return v;
@@ -113,12 +113,11 @@ describe('plan model: curve-styled drawn shape', () => {
     const components = {
       shape: {
         getVertexEls: () => vertEls,
-        data: { closed: false }
+        // curveType/filletRadius are shape props (they moved off the
+        // street-path component); linear is the schema default
+        data: { closed: false, curveType: 'linear', ...(curveData || {}) }
       }
     };
-    if (streetPathData) {
-      components['street-path'] = { data: streetPathData };
-    }
     return makeEntity('a-entity', { shape: {} }, components);
   };
 

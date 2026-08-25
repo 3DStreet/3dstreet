@@ -57,7 +57,7 @@ public/
 
 **Procedural:** `street-generated-*` (striping, stencil, pedestrians, rail, clones)
 
-**Curved streets (prototype):** assign a drawn polyline (shape) to a street via `managed-street.path` and the whole street bends along it — the PATH owns the curve controls (`street-path` component: smooth catmull-rom / arc fillets / linear). One shared straight→curved mapping (`src/tested/street-path-utils.js`, unit-tested) bends surfaces (as `street-ribbon` geometry: segment, striping, rail, ground) and placements (clones/stencils/pedestrians remapped + tangent yaw); street-align lateral offsets and all straight-space layout code stay untouched. Entry point: `docs/curved-street-path.md`.
+**Curved streets (prototype):** assign a drawn polyline (shape) to a street via `managed-street.path` and the whole street bends along it — the PATH owns the curve controls (`shape.curveType`: linear default / smooth catmull-rom / arc fillets; the schema-less `street-path` role component reads them off the shape). One shared straight→curved mapping (`src/tested/street-path-utils.js`, unit-tested) bends surfaces (as `street-ribbon` geometry: segment, striping, rail, ground) and placements (clones/stencils/pedestrians remapped + tangent yaw); street-align lateral offsets and all straight-space layout code stay untouched. Entry point: `docs/curved-street-path.md`.
 
 **Geospatial:** `street-geo`, `google-maps-aerial`, `geojson`, `geo-flatten`
 

@@ -658,8 +658,7 @@ AFRAME.registerComponent('managed-street', {
     const localPts = worldPts.map((p) => p.applyMatrix4(inv));
     const closed = sp.isClosed() && localPts.length >= 3;
     const centerline = buildCenterlinePoints(localPts, {
-      curveType: sp.data.curveType,
-      filletRadius: sp.data.filletRadius,
+      ...sp.getCurveOptions(),
       closed
     });
     if (centerline.length < 2) {

@@ -23,15 +23,21 @@ the street, and curve-setting changes all re-lay the street live
 
 ## The path owns the curve
 
-Curve controls live on the PATH, not the street (`street-path` component,
-auto-attached to the shape on first assignment; its controls appear in the
-shape's properties panel once a street follows it):
+Curve controls live on the PATH, not the street — as props of the `shape`
+component itself (a curve is a property of the drawing, street or no
+street; the schema-less `street-path` role component, auto-attached on
+first assignment, reads them from there via `getCurveOptions()`):
 
-- **curveType** — `smooth` (centripetal Catmull-Rom through every vertex),
-  `arc` (straight legs joined by circular fillets, the road-engineering
-  centerline style), `linear` (hard corners).
-- **filletRadius** — corner radius in meters for `arc`, clamped per-corner
-  so adjacent fillets never overlap.
+- **shape.curveType** — `linear` (hard corners, the default: shapes draw
+  straight; assigning one to a street bumps it to smooth once, at the
+  assignment gesture in ManagedStreetSidebar, never on scene load),
+  `smooth` (centripetal Catmull-Rom through every vertex), `arc` (straight
+  legs joined by circular fillets, the road-engineering centerline style).
+- **shape.filletRadius** — corner radius in meters for `arc`, clamped
+  per-corner so adjacent fillets never overlap.
+
+(The props briefly lived on `street-path` during prototyping; there is no
+load-time migration — pre-move scenes were never released and load straight.)
 
 One path can be followed by several streets, and closed shapes make loop
 streets (the ribbon runs the full circumference, no end caps).
@@ -42,8 +48,8 @@ the same `buildCenterlinePoints` call the street runs — so a selected path
 and its street visibly trace the identical centerline; the vertices stay
 the straight-line editable control points (measurement chips keep
 measuring the control polygon). This also works standalone: the shape
-sidebar's **Curve Style** select is available on any ≥3-vertex shape and
-attaches the `street-path` component on demand, no street required.
+sidebar's **Curve Style** select is available on any ≥3-vertex shape, no
+street required.
 
 ## Architecture
 
@@ -56,20 +62,20 @@ alignment) converts any straight-space point to a curve frame — position +
 tangent + horizontal right vector — so lateral offsets rotate with the
 curve.
 
-| Piece                     | Where                                                                                                                              | Role                                                                                                                                                                                                                                                                                               |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Curve math                | `src/tested/street-path-utils.js`                                                                                                  | Pure three.js, unit-tested: `buildCenterlinePoints` (smooth/arc/linear, open+closed), `PathSampler` (arc-length frames, miter frames, curvature-adaptive ring stations, extrapolation past open ends), `mapStraightPoint`, `buildRibbonGeometry`                                                   |
-| Path component + geometry | `src/aframe-components/street-path.js`                                                                                             | `street-path` component (curve controls, emits throttled `street-path-changed` on vertex/transform/setting changes; a system watches transforms since editor entities are paused), the registered `street-ribbon` A-Frame geometry, and the `getCurvedPlacement` / `getRibbonGeometryAttr` helpers |
-| Street wiring             | `managed-street.js`                                                                                                                | `path` property (selector, serialized), resolves the path (with retries for load ordering), builds the street-local curve (`this.streetCurve = { sampler, zStart, closed, rev }`), drives `length`, emits `street-curve-changed` after layout settles                                              |
-| Surfaces                  | `street-segment.js`, `street-generated-striping.js`, `street-generated-rail.js`, `street-ground.js`                                | Swap their box/plane for `street-ribbon` geometry when a curve is active (same material/texture pipeline — ribbon UVs match box conventions so repeat math is untouched)                                                                                                                           |
-| Placements                | `street-generated-clones.js` (incl. fit-mode boundary buildings), `street-generated-stencil.js`, `street-generated-pedestrians.js` | Remap each computed straight placement through `getCurvedPlacement` and add the tangent yaw. RNG call order is unchanged, so a seed lays out identically straight or curved                                                                                                                        |
+| Piece                     | Where                                                                                                                              | Role                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Curve math                | `src/tested/street-path-utils.js`                                                                                                  | Pure three.js, unit-tested: `buildCenterlinePoints` (smooth/arc/linear, open+closed), `PathSampler` (arc-length frames, miter frames, curvature-adaptive ring stations, extrapolation past open ends), `mapStraightPoint`, `buildRibbonGeometry`                                                                                                          |
+| Path component + geometry | `src/aframe-components/street-path.js`                                                                                             | `street-path` role component (schema-less; reads the shape's curve props via `getCurveOptions`, emits throttled `street-path-changed` on vertex/transform/setting changes; a system watches transforms since editor entities are paused), the registered `street-ribbon` A-Frame geometry, and the `getCurvedPlacement` / `getRibbonGeometryAttr` helpers |
+| Street wiring             | `managed-street.js`                                                                                                                | `path` property (selector, serialized), resolves the path (with retries for load ordering), builds the street-local curve (`this.streetCurve = { sampler, zStart, closed, rev }`), drives `length`, emits `street-curve-changed` after layout settles                                                                                                     |
+| Surfaces                  | `street-segment.js`, `street-generated-striping.js`, `street-generated-rail.js`, `street-ground.js`                                | Swap their box/plane for `street-ribbon` geometry when a curve is active (same material/texture pipeline — ribbon UVs match box conventions so repeat math is untouched)                                                                                                                                                                                  |
+| Placements                | `street-generated-clones.js` (incl. fit-mode boundary buildings), `street-generated-stencil.js`, `street-generated-pedestrians.js` | Remap each computed straight placement through `getCurvedPlacement` and add the tangent yaw. RNG call order is unchanged, so a seed lays out identically straight or curved                                                                                                                                                                               |
 
 ### Event flow
 
 ```
-shape vertex edit ──► shape-geometry-changed ──► street-path-changed (throttled)
-shape/street dragged ─► street-path system (matrixWorld watch) ─┘
-curve settings edit ──► street-path update ─────┘
+shape vertex edit ────► shape-geometry-changed ──► street-path-changed (throttled)
+curve settings edit ──► shape re-derive ──────┘                 │
+shape/street dragged ─► street-path system (matrixWorld watch) ─┤
                                    │
                      managed-street.rebuildPathCurve()
                      (world verts → street-local → centerline → sampler;

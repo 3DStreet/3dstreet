@@ -65,6 +65,19 @@ const ManagedStreetSidebar = ({ entity }) => {
       property: 'path',
       value
     });
+    // Shapes draw with hard corners (shape.curveType defaults to linear), but
+    // a street centerline nearly always wants a curve — bump the shape to
+    // smooth on assignment. Only HERE, at the user gesture: scene load
+    // re-resolves paths too, and must never override a deliberate linear
+    // choice. Undoable, and flipping it back in the shape panel sticks.
+    if (shapeEl && shapeEl.components?.shape?.data?.curveType === 'linear') {
+      AFRAME.INSPECTOR.execute('entityupdate', {
+        entity: shapeEl,
+        component: 'shape',
+        property: 'curveType',
+        value: 'smooth'
+      });
+    }
     setPathTick((t) => t + 1);
   };
 

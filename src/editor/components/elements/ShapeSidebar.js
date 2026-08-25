@@ -412,20 +412,20 @@ const ShapeSidebar = ({ entity }) => {
     reverseShapeDirection(entity);
   };
 
-  // Street path curve controls (curved streets): the controls live on the
-  // PATH — this shape — and appear once a managed street follows it
-  // (assignment auto-attaches the street-path component). Values are read
-  // straight off the component; the tick only forces a re-render.
-  const [, setPathTick] = useState(0);
-  const streetPath = entity.components?.['street-path'];
-  const setStreetPathProperty = (property, value) => {
+  // Curve style controls: curveType/filletRadius are shape props (a curve is
+  // a property of the drawing, street or no street — any street following
+  // this shape reads them from here). Values are read straight off the
+  // component; the tick only forces a re-render.
+  const [, setCurveTick] = useState(0);
+  const shapeData = entity.components?.shape?.data;
+  const setShapeCurveProperty = (property, value) => {
     AFRAME.INSPECTOR.execute('entityupdate', {
       entity,
-      component: 'street-path',
+      component: 'shape',
       property,
       value
     });
-    setPathTick((t) => t + 1);
+    setCurveTick((t) => t + 1);
   };
 
   const vertices = getShapeVertices(entity);
@@ -515,23 +515,9 @@ const ShapeSidebar = ({ entity }) => {
             <div className="fakePropertyRowLabel">Curve Style</div>
             <div className="fakePropertyRowValue">
               <select
-                value={streetPath ? streetPath.data.curveType : 'linear'}
+                value={shapeData?.curveType ?? 'linear'}
                 onChange={(e) => {
-                  const value = e.target.value;
-                  if (!streetPath) {
-                    // straight shapes carry no street-path; picking a curve
-                    // style attaches it (the same component a street
-                    // assignment auto-attaches — one curve, both consumers)
-                    if (value === 'linear') return;
-                    AFRAME.INSPECTOR.execute('componentadd', {
-                      entity,
-                      component: 'street-path',
-                      value: `curveType: ${value}`
-                    });
-                    setPathTick((t) => t + 1);
-                    return;
-                  }
-                  setStreetPathProperty('curveType', value);
+                  setShapeCurveProperty('curveType', e.target.value);
                 }}
               >
                 <option value="linear">Straight / hard corners</option>
@@ -541,7 +527,7 @@ const ShapeSidebar = ({ entity }) => {
             </div>
           </div>
         )}
-        {streetPath && streetPath.data.curveType === 'arc' && (
+        {shapeData?.curveType === 'arc' && (
           <div className="propertyRow">
             <div className="fakePropertyRowLabel">Corner Radius</div>
             <div className="fakePropertyRowValue">
@@ -549,11 +535,11 @@ const ShapeSidebar = ({ entity }) => {
                 type="number"
                 min="0"
                 step="1"
-                value={streetPath.data.filletRadius}
+                value={shapeData.filletRadius}
                 onChange={(e) => {
                   const v = parseFloat(e.target.value);
                   if (Number.isFinite(v)) {
-                    setStreetPathProperty('filletRadius', Math.max(0, v));
+                    setShapeCurveProperty('filletRadius', Math.max(0, v));
                   }
                 }}
               />

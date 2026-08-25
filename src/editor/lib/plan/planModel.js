@@ -879,23 +879,18 @@ function collectDrawnShapes(ctx) {
     // (and exports) as an open line.
     const closed = shape.data.closed && verts.length >= 3;
 
-    // Curve-styled shape (street-path component — the curved streets
+    // Curve-styled shape (the shape's own curveType — the curved streets
     // prototype): export the sampled curve, not the control polygon. The
     // build call and its defaults are identical to the shape's own outline
     // renderer and to the street centerline, so the plan linework matches
     // both the drawn line and any street following this path.
-    const streetPath = el.components['street-path'];
     let localPoints;
-    if (
-      streetPath &&
-      streetPath.data.curveType !== 'linear' &&
-      verts.length >= 3
-    ) {
+    if (shape.data.curveType !== 'linear' && verts.length >= 3) {
       localPoints = buildCenterlinePoints(
         verts.map((v) => v.object3D.position),
         {
-          curveType: streetPath.data.curveType,
-          filletRadius: streetPath.data.filletRadius,
+          curveType: shape.data.curveType,
+          filletRadius: shape.data.filletRadius,
           closed
         }
       ).map((p) => [p.x, p.y, p.z]);
