@@ -2,10 +2,11 @@
 
 // On-canvas length + angle readouts for a shape. One renderer drives both the
 // live draw preview (a single active segment/corner) and a selected shape (all
-// segments/corners, or a hovered one on large shapes). Labels are CSS2D DOM
-// billboards (so the degree glyph renders); the angle "arc" is thin in-scene
-// tube geometry lying in the x/z plane, so it reads at any camera angle and
-// shows which corner is being measured.
+// segments/corners, or a hovered one on large shapes). Length labels are CSS2D
+// DOM billboards; corners are annotated by the in-scene protractor arc ONLY —
+// thin tube geometry lying in the x/z plane, readable at any camera angle.
+// There is deliberately no angle DOM chip: it rendered on top of the vertex
+// drag handle and hid the knob (the values are the sidebar's Angle rows).
 //
 // Everything is attached under the shape entity's object3D and torn down in
 // dispose() — CSS2DObjects detached, arc geometries disposed, the group
@@ -16,10 +17,8 @@ import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import {
   segmentLength,
   includedAngleDeg,
-  angleLabelDir,
   distanceToSegmentXZ,
-  formatLength,
-  formatAngle
+  formatLength
 } from './shapeMeasure';
 import { MIN_TAP_TARGET_PX, READOUT_RENDER_ORDER } from './shapeEditRules';
 import { forwardWheelToCanvas } from './forwardWheelToCanvas.js';
@@ -33,7 +32,6 @@ let nextInstanceId = 1;
 const ARC_RADIUS = 0.6; // metres — fixed world radius of the angle arc
 const ARC_TUBE_RADIUS = 0.03;
 const ARC_STEPS = 20;
-const LABEL_OFFSET = 1.35; // angle label sits just outside the arc
 const ARC_COLOR = 0x4c8dff;
 const EPS = 1e-4;
 
@@ -221,6 +219,11 @@ export default class ShapeReadouts {
     this._makeLabel(formatLength(len, this.units), mid, options);
   }
 
+  // Arc-only: the on-canvas degree chip was removed deliberately. It rendered
+  // a DOM billboard right next to (and at most zooms visually on top of) the
+  // vertex drag handle, hiding the knob the user is trying to grab. The value
+  // still lives in the sidebar's Angle rows; the in-scene protractor arc keeps
+  // marking which corner each of those rows reads.
   _addAngle(u, v, w) {
     const deg = includedAngleDeg(u, v, w);
     if (deg === null) return; // degenerate corner — suppressed, never NaN
@@ -231,10 +234,6 @@ export default class ShapeReadouts {
     const lb = Math.hypot(w.x - v.x, w.z - v.z);
     const radius = Math.min(ARC_RADIUS, 0.4 * Math.min(la, lb));
     if (radius >= 0.03) this._makeArc(u, v, w, radius);
-    const dir = angleLabelDir(u, v, w);
-    const labelR = Math.max(radius, 0.15); // keep the number clear of the corner
-    const pos = v.clone().addScaledVector(dir, labelR * LABEL_OFFSET);
-    this._makeLabel(formatAngle(deg), pos);
   }
 
   _makeArc(u, v, w, radius) {

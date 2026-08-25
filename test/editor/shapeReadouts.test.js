@@ -51,8 +51,10 @@ describe('ShapeReadouts.renderAll — the label cap', () => {
 
   it('labels every segment at or below the cap, cursor or no cursor', () => {
     readouts.renderAll(polygon(12), 12, null, true);
-    // One length label per segment plus one angle label per corner.
-    expect(readouts.labels.length).toBe(24);
+    // One length label per segment. (Angle values are sidebar rows only —
+    // the on-canvas degree chip was removed for covering the vertex handle;
+    // corners keep their label-less protractor arcs.)
+    expect(readouts.labels.length).toBe(12);
   });
 
   // The mechanism that made the once-only listener binding fatal rather than
@@ -68,8 +70,8 @@ describe('ShapeReadouts.renderAll — the label cap', () => {
 
   it('labels the segment nearest the cursor above the cap', () => {
     readouts.renderAll(polygon(13), 12, p(10, 0), true);
-    // One length label for the nearest segment, one angle at its nearer end.
-    expect(readouts.labels.length).toBe(2);
+    // One length label for the nearest segment (its corner gets an arc only).
+    expect(readouts.labels.length).toBe(1);
   });
 
   // Crossing the cap is the transition that matters, and it is reversible:
@@ -77,9 +79,9 @@ describe('ShapeReadouts.renderAll — the label cap', () => {
   // set without needing the shape to be reselected.
   it('restores the full set when the shape drops back below the cap', () => {
     readouts.renderAll(polygon(13), 12, p(10, 0), true);
-    expect(readouts.labels.length).toBe(2);
+    expect(readouts.labels.length).toBe(1);
     readouts.renderAll(polygon(12), 12, p(10, 0), true);
-    expect(readouts.labels.length).toBe(24);
+    expect(readouts.labels.length).toBe(12);
   });
 });
 
@@ -192,9 +194,9 @@ describe('ShapeReadouts — the label DOM contract', () => {
   it('marks insertable length labels as controls and stamps their segment', () => {
     readouts.renderAll(polygon(5), 12, null, true, null, allInsertable());
     const live = interactive();
-    // A closed 5-gon has five sides and five corners.
+    // A closed 5-gon has five sides (corners carry arcs, not labels).
     expect(live.length).toBe(5);
-    expect(readouts.labels.length).toBe(10);
+    expect(readouts.labels.length).toBe(5);
     expect(live.map((o) => Number(o.dataset.shapeSegment)).sort()).toEqual([
       0, 1, 2, 3, 4
     ]);
@@ -206,19 +208,15 @@ describe('ShapeReadouts — the label DOM contract', () => {
     }
   });
 
-  // Angle captions and the corners they annotate are never controls, whatever
-  // the caller passed.
-  it('never marks an angle label, even under an interaction', () => {
+  // The on-canvas angle chip is gone for good: it rendered on top of the
+  // vertex drag handle. Corners annotate with arcs only; the values are
+  // sidebar rows.
+  it('renders no angle captions at all', () => {
     readouts.renderAll(polygon(5), 12, null, true, null, allInsertable());
-    const angles = outers().filter(
+    const nonInsertable = outers().filter(
       (o) => !o.classList.contains('shape-readout--insertable')
     );
-    expect(angles.length).toBe(5);
-    for (const outer of angles) {
-      expect(outer.style.pointerEvents).toBe('none');
-      expect(outer.dataset.shapeSegment).toBeUndefined();
-      expect(outer.classList.contains('shape-readout--muted')).toBe(false);
-    }
+    expect(nonInsertable.length).toBe(0);
   });
 
   // A side too short to take a point is marked and stays transparent — it does
@@ -336,7 +334,7 @@ describe('ShapeReadouts — the label DOM contract', () => {
         } else if (classes.contains('shape-readout--insertable')) {
           expect(obj.renderOrder).toBe(READOUT_RENDER_ORDER.insertableCaption);
         } else {
-          // Angles and the muted side alike.
+          // The muted side.
           expect(obj.renderOrder).toBe(READOUT_RENDER_ORDER.caption);
         }
       }
