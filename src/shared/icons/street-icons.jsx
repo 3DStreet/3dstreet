@@ -29,6 +29,41 @@ export const ShapeDraw24Icon = () => (
   </svg>
 );
 
+// Entity icon for editor-drawn shapes (scene graph rows + properties panel
+// header, via getEntityIcon). Same glyph as the ShapeDraw24Icon toolbar
+// button, recolored to the managed-street icon language: cyan identity
+// strokes, white detail (the dashed side).
+export const ShapeIcon = () => (
+  <svg
+    width="25"
+    height="25"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M4 18L9 5L19 8L20 18"
+      stroke="#00FFFF"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
+    <path
+      d="M20 18L4 18"
+      stroke="white"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeDasharray="3 4"
+      fill="none"
+    />
+    <circle cx="4" cy="18" r="1.8" fill="#00FFFF" />
+    <circle cx="9" cy="5" r="1.8" fill="#00FFFF" />
+    <circle cx="19" cy="8" r="1.8" fill="#00FFFF" />
+    <circle cx="20" cy="18" r="1.8" fill="#00FFFF" />
+  </svg>
+);
+
 export const Ruler24Icon = () => (
   <svg
     width="28"
