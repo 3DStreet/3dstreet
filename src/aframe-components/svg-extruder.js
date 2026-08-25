@@ -1,5 +1,16 @@
 /* global AFRAME */
-const { SVGLoader } = require('../lib/SVGLoader.js');
+
+// The vendored SVGLoader (~70 KiB source) loads on first use of this
+// component rather than riding in the core bundle — svg-extruder only runs
+// when a user adds an SVG layer, and the core entrypoint has a 4 MiB
+// performance budget (webpack.prod.config.js).
+let svgLoaderModulePromise;
+function loadSVGLoader() {
+  if (!svgLoaderModulePromise) {
+    svgLoaderModulePromise = import('../lib/SVGLoader.js');
+  }
+  return svgLoaderModulePromise;
+}
 
 AFRAME.registerComponent('svg-extruder', {
   schema: {
@@ -19,10 +30,17 @@ AFRAME.registerComponent('svg-extruder', {
   },
   init: function () {
     const el = this.el;
-    this.loader = new SVGLoader();
+    this.loaderReady = loadSVGLoader().then(({ SVGLoader }) => {
+      this.SVGLoader = SVGLoader;
+      this.loader = new SVGLoader();
+    });
 
     el.removeAttribute('material');
     el.setAttribute('shadow', 'cast: true; receive: true');
+  },
+
+  remove: function () {
+    this.removed = true;
   },
   createTopEntity: function (topGeometryArray) {
     const data = this.data;
@@ -107,7 +125,7 @@ AFRAME.registerComponent('svg-extruder', {
     const topGeometryArray = [];
 
     svgData.paths.forEach((path) => {
-      const shapes = SVGLoader.createShapes(path);
+      const shapes = this.SVGLoader.createShapes(path);
 
       shapes.forEach((shape) => {
         const topGeometry = new THREE.ExtrudeGeometry(shape, {
@@ -160,6 +178,12 @@ AFRAME.registerComponent('svg-extruder', {
     // if (Object.keys(oldData).length === 0) { return; }
 
     const svgString = this.data.svgString;
-    if (svgString) this.extrudeFromSVG(svgString);
+    if (!svgString) return;
+    // Extrude once the lazily-loaded SVGLoader is in. Re-check the current
+    // svgString on arrival so rapid updates only extrude the latest value.
+    this.loaderReady.then(() => {
+      if (this.removed || this.data.svgString !== svgString) return;
+      this.extrudeFromSVG(svgString);
+    });
   }
 });
