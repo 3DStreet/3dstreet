@@ -52,8 +52,8 @@ describe('ShapeReadouts.renderAll — the label cap', () => {
   it('labels every segment at or below the cap, cursor or no cursor', () => {
     readouts.renderAll(polygon(12), 12, null, true);
     // One length label per segment. (Angle values are sidebar rows only —
-    // the on-canvas degree chip was removed for covering the vertex handle;
-    // corners keep their label-less protractor arcs.)
+    // all on-canvas angle annotation was removed: the degree chip covered
+    // the vertex handle, and the protractor arc went with it.)
     expect(readouts.labels.length).toBe(12);
   });
 
@@ -70,7 +70,7 @@ describe('ShapeReadouts.renderAll — the label cap', () => {
 
   it('labels the segment nearest the cursor above the cap', () => {
     readouts.renderAll(polygon(13), 12, p(10, 0), true);
-    // One length label for the nearest segment (its corner gets an arc only).
+    // One length label for the nearest segment; corners draw nothing.
     expect(readouts.labels.length).toBe(1);
   });
 
@@ -194,7 +194,7 @@ describe('ShapeReadouts — the label DOM contract', () => {
   it('marks insertable length labels as controls and stamps their segment', () => {
     readouts.renderAll(polygon(5), 12, null, true, null, allInsertable());
     const live = interactive();
-    // A closed 5-gon has five sides (corners carry arcs, not labels).
+    // A closed 5-gon has five sides; corners draw nothing.
     expect(live.length).toBe(5);
     expect(readouts.labels.length).toBe(5);
     expect(live.map((o) => Number(o.dataset.shapeSegment)).sort()).toEqual([
@@ -208,9 +208,8 @@ describe('ShapeReadouts — the label DOM contract', () => {
     }
   });
 
-  // The on-canvas angle chip is gone for good: it rendered on top of the
-  // vertex drag handle. Corners annotate with arcs only; the values are
-  // sidebar rows.
+  // On-canvas angle annotation is gone for good (the degree chip rendered on
+  // top of the vertex drag handle); the values are sidebar rows.
   it('renders no angle captions at all', () => {
     readouts.renderAll(polygon(5), 12, null, true, null, allInsertable());
     const nonInsertable = outers().filter(
