@@ -36,6 +36,7 @@ import {
   fillPaintOrder,
   fillRenderState
 } from './shapeFillRender.js';
+import { buildCenterlinePoints } from '../tested/street-path-utils.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const MIN_SEGMENT_LENGTH = 1e-6;
@@ -145,6 +146,25 @@ AFRAME.registerComponent('shape', {
     // thereafter: changing one never changes the other.
     fillColor: { type: 'color', default: '#ffe600' },
     fillOpacity: { type: 'int', default: 40, min: 0, max: 100 },
+    // How the polyline's corners render — and, when a managed street follows
+    // this shape as its path, how its centerline bends (one setting, both
+    // consumers; the street-path role component reads it from here):
+    //   linear — hard corners at the vertices (the default: drawn shapes
+    //            start straight; assigning one to a street bumps it to
+    //            smooth once, see ManagedStreetSidebar)
+    //   smooth — centripetal Catmull-Rom through every vertex
+    //   arc    — straight legs joined by circular fillets (road-engineering
+    //            style); radius set by filletRadius
+    curveType: {
+      type: 'string',
+      default: 'linear',
+      oneOf: ['linear', 'smooth', 'arc']
+    },
+    // corner radius in meters for curveType: arc (clamped per-corner so
+    // adjacent fillets never overlap). 20m is a visible, road-scale rounding
+    // — at 6m the cut is ~2.5m on a right angle, invisible under a street's
+    // own width; short legs auto-clamp the radius down, so big is safe.
+    filletRadius: { type: 'number', default: 20, min: 0 },
     // Event-driven opt-out of the system dirty-check: set to an event name and
     // the shape re-derives on that event instead of being polled every frame
     // (the hooks below honour it). Empty by default → the system tick polls,
@@ -343,6 +363,17 @@ AFRAME.registerComponent('shape', {
     }
 
     if (oldData.closed !== undefined && oldData.closed !== this.data.closed) {
+      this.requestRederive();
+    }
+
+    // A curve-setting change redraws the outline; the derive's
+    // shape-geometry-changed emit then reaches any following street through
+    // street-path, so the street rebends without extra wiring here.
+    if (
+      oldData.curveType !== undefined &&
+      (oldData.curveType !== this.data.curveType ||
+        oldData.filletRadius !== this.data.filletRadius)
+    ) {
       this.requestRederive();
     }
 
@@ -547,13 +578,26 @@ AFRAME.registerComponent('shape', {
     const closed = this.data.closed && verts.length >= 3;
     // Filled into a reused array rather than mapped: this runs on every
     // re-derive, which for a shape under a drag is every frame.
+    // Self-intersection stays a test of the CONTROL ring even when the drawn
+    // line is curved: it's the cheap O(n²) guard, and a curve through a
+    // simple control ring is simple in all but pathological cases.
     const selfIntersecting = closed && ringSelfIntersects(this._ringPts(verts));
+    // Curve styling (this shape's own curveType — the SAME
+    // buildCenterlinePoints call a following street uses, so the drawn line
+    // IS the centerline the street bends along): when not linear, the
+    // outline (and a closed shape's fill ring) renders through the sampled
+    // curve instead of straight vertex-to-vertex segments. The vertices stay
+    // the editable control points.
+    const curvedPts = this._curvedRenderPoints(verts, closed);
     // The enclosed area is needed twice per derive - by the fill, whose paint
     // order is derived from it, and by the area label. Compute it once so the
     // two are guaranteed to be reading the SAME figure. Zero when there is no
-    // well-defined interior, matching what the label reports.
+    // well-defined interior, matching what the label reports. A curved ring
+    // measures the curved region, not the control polygon.
     const ringArea =
-      closed && !selfIntersecting ? polygonAreaXZ(this._ringPts(verts)) : 0;
+      closed && !selfIntersecting
+        ? polygonAreaXZ(curvedPts || this._ringPts(verts))
+        : 0;
     // While an edit gesture is in flight, a crossing ring HOLDS its last valid
     // fill and area instead of dropping them: the interior stays clickable and
     // the area label freezes at its last meaningful value rather than flicking
@@ -584,23 +628,37 @@ AFRAME.registerComponent('shape', {
 
     // One cylinder per segment, oriented from the default +Y to the segment
     // direction. Zero-length segments are skipped to avoid a NaN quaternion.
-    for (let i = 0; i < verts.length - 1; i++) {
-      this._addSegment(
-        verts[i].object3D.position,
-        verts[i + 1].object3D.position,
-        radius
-      );
+    // A curve-styled shape draws through the sampled centerline instead —
+    // the samples are dense enough (≤1m, curvature-adaptive) that the joints
+    // need no smoothing spheres.
+    const linePts = curvedPts || null;
+    if (linePts) {
+      for (let i = 0; i < linePts.length - 1; i++) {
+        this._addSegment(linePts[i], linePts[i + 1], radius);
+      }
+    } else {
+      for (let i = 0; i < verts.length - 1; i++) {
+        this._addSegment(
+          verts[i].object3D.position,
+          verts[i + 1].object3D.position,
+          radius
+        );
+      }
     }
 
     // Closed polygon: one wrap segment back to the first vertex (same style,
     // same joints). Only meaningful with ≥ 3 vertices — a 2-vertex "closed"
     // shape renders as an open line (the wrap would coincide with the segment).
     if (closed) {
-      this._addSegment(
-        verts[verts.length - 1].object3D.position,
-        verts[0].object3D.position,
-        radius
-      );
+      if (linePts) {
+        this._addSegment(linePts[linePts.length - 1], linePts[0], radius);
+      } else {
+        this._addSegment(
+          verts[verts.length - 1].object3D.position,
+          verts[0].object3D.position,
+          radius
+        );
+      }
       // The cap is built when it is needed for EITHER job - painting or
       // clicking. The two are independent properties, so all four combinations
       // are reachable: a visible fill whose clicks pass through (a backdrop
@@ -616,12 +674,16 @@ AFRAME.registerComponent('shape', {
         !selfIntersecting &&
         (this.data.selectInside || this.data.fillOpacity > 0)
       ) {
-        this._addFill(verts, ringArea);
+        this._addFill(linePts || this._ringPts(verts), ringArea);
       }
     }
 
     if (!holdFill) {
-      this._updateArea(verts, closed && !selfIntersecting, ringArea);
+      this._updateArea(
+        linePts || this._ringPts(verts),
+        closed && !selfIntersecting,
+        ringArea
+      );
     }
 
     // The geometry only exists from here — init installs empty groups and the
@@ -639,6 +701,24 @@ AFRAME.registerComponent('shape', {
     pts.length = verts.length;
     for (let i = 0; i < verts.length; i++) pts[i] = verts[i].object3D.position;
     return pts;
+  },
+
+  // The sampled curve the outline should render through, or null for classic
+  // straight vertex-to-vertex rendering. Driven by this component's own
+  // curveType/filletRadius props. The build call and its defaults are
+  // IDENTICAL to the one managed-street runs on this shape's vertices, so a
+  // selected path and its street visibly trace the same curve.
+  _curvedRenderPoints: function (verts, closed) {
+    if (verts.length < 3) return null;
+    if (this.data.curveType === 'linear') return null;
+    return buildCenterlinePoints(
+      verts.map((v) => v.object3D.position),
+      {
+        curveType: this.data.curveType,
+        filletRadius: this.data.filletRadius,
+        closed
+      }
+    );
   },
 
   // Build one segment cylinder (start→end) plus its x-ray overlay twin, oriented
@@ -733,14 +813,16 @@ AFRAME.registerComponent('shape', {
   // that already crosses. Planarity is not guaranteed: a shape whose vertices
   // sit at different heights gets its cap at the first vertex's height, which
   // leaves the cap out of the plane of the ring it belongs to.
-  _addFill: function (verts, area) {
+  // `ringPts` is the ring as plain positions (the control vertices, or the
+  // sampled curve when the shape is curve-styled — the fill follows the same
+  // ring the outline draws).
+  _addFill: function (ringPts, area) {
     // THREE.Shape is a 2D (x, y) construct. Map the ring's x/z plan-view onto it
     // with z negated so the shape's winding survives the rotation below, then
     // lay the resulting geometry flat by rotating +Z up to +Y.
     const points = [];
-    for (let i = 0; i < verts.length; i++) {
-      const pos = verts[i].object3D.position;
-      points.push(new THREE.Vector2(pos.x, -pos.z));
+    for (let i = 0; i < ringPts.length; i++) {
+      points.push(new THREE.Vector2(ringPts[i].x, -ringPts[i].z));
     }
 
     const geometry = new THREE.ShapeGeometry(new THREE.Shape(points));
@@ -751,7 +833,7 @@ AFRAME.registerComponent('shape', {
     // for every fill. See shapeFillRender.js for why a real height difference
     // rather than a depth bias, and why it is measured from the street's
     // marking layer.
-    mesh.position.y = verts[0].object3D.position.y + FILL_LIFT_M;
+    mesh.position.y = ringPts[0].y + FILL_LIFT_M;
     // Above the map layer's ground plane; then above any fill on a LOWER
     // plane, and among fills on the same plane above any LARGER one, so a small
     // marking inside a big zone lands on top. See shapeFillRender.js.
@@ -783,18 +865,17 @@ AFRAME.registerComponent('shape', {
   // Store the enclosed area (computed once per derive, shared with the fill)
   // and reposition the area label. Runs on every
   // re-derive so area tracks a vertex moving/added/removed (and an animation).
-  _updateArea: function (verts, closed, area) {
+  // `pts` is the ring as plain positions in the entity's local frame — the
+  // same frame the meshes and the label object live in — so the area
+  // (translation-invariant) and the centroid position are consistent with
+  // the geometry with no world/local offset. For a curve-styled shape this
+  // is the sampled ring, so the label sits at the curved region's centroid.
+  _updateArea: function (pts, closed, area) {
     if (!closed) {
       this.area = 0;
       if (this.areaLabelObject) this.areaLabelObject.visible = false;
       return;
     }
-    // Vertices are read in the entity's local frame — the same frame the meshes
-    // and the label object live in — so the area (translation-invariant) and
-    // the centroid position are consistent with the geometry with no world/
-    // local offset. Read y from an actual vertex (0 for a committed centred
-    // shape, but k for the preview entity sitting at the scene origin).
-    const pts = verts.map((v) => v.object3D.position);
     this.area = area;
     if (this.areaLabelObject) {
       const c = polygonCentroidXZ(pts);

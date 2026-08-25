@@ -1,6 +1,7 @@
 /* global AFRAME */
 import useStore from '../store.js';
 import { getTravelledWaySegments } from './street-layout-utils';
+import { mapStraightPoint } from '../tested/street-path-utils.js';
 
 AFRAME.registerComponent('street-label', {
   dependencies: ['managed-street', 'street-align'],
@@ -37,6 +38,9 @@ AFRAME.registerComponent('street-label', {
     this.updateLabels = this.updateLabels.bind(this);
     this.el.addEventListener('segments-changed', this.updateLabels);
     this.el.addEventListener('alignment-changed', this.updateLabels);
+    // Curved streets: re-place the label at the curve's end frame whenever
+    // the street's path curve is (re)built or cleared
+    this.el.addEventListener('street-curve-changed', this.updateLabels);
 
     // Handle loading from saved scene
     setTimeout(() => {
@@ -264,13 +268,27 @@ AFRAME.registerComponent('street-label', {
       zPosition = streetLength + this.data.zOffset;
     }
 
-    plane.setAttribute(
-      'position',
-      `${xPosition} ${this.data.heightOffset} ${zPosition}`
-    );
+    // Curved street: the straight-space end maps to the curve's end frame —
+    // place the label there and yaw it to face along the exit tangent, so
+    // the cross-section ruler stays perpendicular to the roadway.
+    const curve = this.el.components['managed-street']?.streetCurve;
+    let yaw = 0;
+    let position = `${xPosition} ${this.data.heightOffset} ${zPosition}`;
+    if (curve) {
+      const mapped = mapStraightPoint(
+        curve.sampler,
+        curve.zStart,
+        xPosition,
+        zPosition
+      );
+      position = `${mapped.x} ${this.data.heightOffset + mapped.y} ${mapped.z}`;
+      yaw = mapped.yawDeg;
+    }
+
+    plane.setAttribute('position', position);
     plane.setAttribute(
       'rotation',
-      `${this.data.rotation.x} ${this.data.rotation.y} ${this.data.rotation.z}`
+      `${this.data.rotation.x} ${this.data.rotation.y + yaw} ${this.data.rotation.z}`
     );
     plane.setAttribute('data-layer-name', 'Segment Labels');
     plane.classList.add('autocreated');
@@ -303,5 +321,6 @@ AFRAME.registerComponent('street-label', {
     // Remove event listener
     this.el.removeEventListener('segments-changed', this.updateLabels);
     this.el.removeEventListener('alignment-changed', this.updateLabels);
+    this.el.removeEventListener('street-curve-changed', this.updateLabels);
   }
 });

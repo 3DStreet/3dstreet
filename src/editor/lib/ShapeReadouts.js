@@ -1,25 +1,23 @@
 /* global THREE */
 
-// On-canvas length + angle readouts for a shape. One renderer drives both the
-// live draw preview (a single active segment/corner) and a selected shape (all
-// segments/corners, or a hovered one on large shapes). Labels are CSS2D DOM
-// billboards (so the degree glyph renders); the angle "arc" is thin in-scene
-// tube geometry lying in the x/z plane, so it reads at any camera angle and
-// shows which corner is being measured.
+// On-canvas length readouts for a shape. One renderer drives both the live
+// draw preview (the single active segment) and a selected shape (all
+// segments, or the hovered one on large shapes). Length labels are CSS2D DOM
+// billboards. There is deliberately NO on-canvas angle annotation — neither
+// the degree chip (it rendered on top of the vertex drag handle and hid the
+// knob) nor the protractor arc that used to mark corners: angle values live
+// in the shape sidebar's Angle rows.
 //
 // Everything is attached under the shape entity's object3D and torn down in
-// dispose() — CSS2DObjects detached, arc geometries disposed, the group
-// removed. (measure-line famously leaks its store subscription and never
-// detaches its CSS2DObject; this renderer must not repeat that.)
+// dispose() — CSS2DObjects detached, the group removed. (measure-line famously
+// leaks its store subscription and never detaches its CSS2DObject; this
+// renderer must not repeat that.)
 
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import {
   segmentLength,
-  includedAngleDeg,
-  angleLabelDir,
   distanceToSegmentXZ,
-  formatLength,
-  formatAngle
+  formatLength
 } from './shapeMeasure';
 import { MIN_TAP_TARGET_PX, READOUT_RENDER_ORDER } from './shapeEditRules';
 import { forwardWheelToCanvas } from './forwardWheelToCanvas.js';
@@ -30,11 +28,6 @@ import { forwardWheelToCanvas } from './forwardWheelToCanvas.js';
 // so the marker has to travel on the chip. See docs/shape-vertex-editing.md.
 let nextInstanceId = 1;
 
-const ARC_RADIUS = 0.6; // metres — fixed world radius of the angle arc
-const ARC_TUBE_RADIUS = 0.03;
-const ARC_STEPS = 20;
-const LABEL_OFFSET = 1.35; // angle label sits just outside the arc
-const ARC_COLOR = 0x4c8dff;
 const EPS = 1e-4;
 
 // Names the action for anyone unsure what a chip that has turned into a "+" is
@@ -50,16 +43,8 @@ export default class ShapeReadouts {
     this.group = new THREE.Group();
     this.group.name = 'shapeReadouts';
     if (el.object3D) el.object3D.add(this.group);
-    this.arcMaterial = new THREE.MeshBasicMaterial({
-      color: ARC_COLOR,
-      depthTest: false,
-      depthWrite: false, // always-on-top readout must not occlude the gizmo etc.
-      transparent: true,
-      opacity: 0.9
-    });
     // { obj: CSS2DObject, outer: HTMLElement, inner: HTMLElement }
     this.labels = [];
-    this.arcs = []; // THREE.Mesh
   }
 
   setUnits(units) {
@@ -68,23 +53,18 @@ export default class ShapeReadouts {
 
   // --- public render entry points -----------------------------------------
 
-  // Draw mode: label only the active segment (prevIdx -> idx) and, if a corner
-  // exists, the angle at prevIdx. `vertices` are THREE.Vector3 local to el.
+  // Draw mode: label only the active segment (prevIdx -> idx). `vertices` are
+  // THREE.Vector3 local to el.
   renderActive(vertices) {
     this.clear();
     const n = vertices.length;
     if (n < 2) return;
-    const b = vertices[n - 1];
-    const a = vertices[n - 2];
-    this._addLengthLabel(a, b);
-    if (n >= 3) this._addAngle(vertices[n - 3], a, b);
+    this._addLengthLabel(vertices[n - 2], vertices[n - 1]);
   }
 
-  // Select mode: all segments/corners up to maxVertices, else the segment
-  // nearest hoverPoint (a THREE.Vector3 in el-local space) only. When `closed`,
-  // the ring has a wrap segment (last→first) and a corner at EVERY vertex
-  // (indices 0 and n-1 gain a second adjacent segment), so all indexing wraps
-  // mod n.
+  // Select mode: all segments up to maxVertices, else the segment nearest
+  // hoverPoint (a THREE.Vector3 in el-local space) only. When `closed`, the
+  // ring has a wrap segment (last→first), so all indexing wraps mod n.
   //
   // `pinnedSegments` names segments that must be labelled whatever the cap
   // says.
@@ -139,29 +119,19 @@ export default class ShapeReadouts {
           interaction
         );
       }
-      const cornerStart = ring ? 0 : 1;
-      const cornerEnd = ring ? n : n - 1; // exclusive
-      for (let i = cornerStart; i < cornerEnd; i++) {
-        this._addAngle(
-          vertices[(i + n - 1) % n],
-          vertices[i],
-          vertices[(i + 1) % n]
-        );
-      }
       return;
     }
     // Above the label cap it is hover-only: with no hover
     // point yet, show nothing beyond the pins rather than dumping all ~2N
     // labels — that dump is the exact jank the cap exists to prevent.
     if (!hoverPoint) return;
-    // hover: nearest segment + the angle at its nearer endpoint. Search wraps
-    // over the wrap segment too when closed (best can be n-1, whose end is
-    // vertices[0] via mod n — never vertices[n]).
+    // hover: nearest segment only. Search wraps over the wrap segment too when
+    // closed (best can be n-1, whose end is vertices[0] via mod n — never
+    // vertices[n]).
     let best = -1;
     let bestDist = Infinity;
-    let bestT = 0;
     for (let i = 0; i < segCount; i++) {
-      const { distance, t } = distanceToSegmentXZ(
+      const { distance } = distanceToSegmentXZ(
         hoverPoint,
         vertices[i],
         vertices[(i + 1) % n]
@@ -169,7 +139,6 @@ export default class ShapeReadouts {
       if (distance < bestDist) {
         bestDist = distance;
         best = i;
-        bestT = t;
       }
     }
     if (best < 0) return;
@@ -179,16 +148,6 @@ export default class ShapeReadouts {
         vertices[(best + 1) % n],
         best,
         interaction
-      );
-    }
-    const corner = bestT < 0.5 ? best : (best + 1) % n;
-    // On a closed ring every corner is valid; on an open line skip the two
-    // endpoints (no interior angle there).
-    if (ring || (corner > 0 && corner < n - 1)) {
-      this._addAngle(
-        vertices[(corner + n - 1) % n],
-        vertices[corner],
-        vertices[(corner + 1) % n]
       );
     }
   }
@@ -219,82 +178,6 @@ export default class ShapeReadouts {
         : { insertable: false };
     }
     this._makeLabel(formatLength(len, this.units), mid, options);
-  }
-
-  _addAngle(u, v, w) {
-    const deg = includedAngleDeg(u, v, w);
-    if (deg === null) return; // degenerate corner — suppressed, never NaN
-    // Scale the arc to the shorter adjacent segment so it never overshoots the
-    // corner it annotates (fixed 0.6 m arcs overlap / cross the neighbour on
-    // small shapes or a zoomed-in draw).
-    const la = Math.hypot(u.x - v.x, u.z - v.z);
-    const lb = Math.hypot(w.x - v.x, w.z - v.z);
-    const radius = Math.min(ARC_RADIUS, 0.4 * Math.min(la, lb));
-    if (radius >= 0.03) this._makeArc(u, v, w, radius);
-    const dir = angleLabelDir(u, v, w);
-    const labelR = Math.max(radius, 0.15); // keep the number clear of the corner
-    const pos = v.clone().addScaledVector(dir, labelR * LABEL_OFFSET);
-    this._makeLabel(formatAngle(deg), pos);
-  }
-
-  _makeArc(u, v, w, radius) {
-    const a = new THREE.Vector3(u.x - v.x, 0, u.z - v.z);
-    const b = new THREE.Vector3(w.x - v.x, 0, w.z - v.z);
-    if (a.lengthSq() < EPS || b.lengthSq() < EPS) return;
-    a.normalize();
-    b.normalize();
-    const axis = a.clone().cross(b);
-    if (axis.lengthSq() < 1e-8) return; // straight/collinear — no arc drawn
-    axis.normalize();
-    const theta = Math.acos(Math.max(-1, Math.min(1, a.dot(b))));
-    const pts = [];
-    const q = new THREE.Quaternion();
-    for (let i = 0; i <= ARC_STEPS; i++) {
-      q.setFromAxisAngle(axis, (theta * i) / ARC_STEPS);
-      pts.push(a.clone().applyQuaternion(q).multiplyScalar(radius).add(v));
-    }
-    const curve = new THREE.CatmullRomCurve3(pts);
-    const geometry = new THREE.TubeGeometry(
-      curve,
-      ARC_STEPS,
-      ARC_TUBE_RADIUS,
-      6,
-      false
-    );
-    const mesh = new THREE.Mesh(geometry, this.arcMaterial);
-    mesh.renderOrder = 999;
-    // The inspector raycaster maps a hit to its entity via hit.object.el with
-    // no parent walk. Without this, clicking the arc would
-    // silently fail to select the shape.
-    mesh.el = this.el;
-    this.group.add(mesh);
-    this.arcs.push(mesh);
-
-    // Two radii from the vertex out THROUGH the arc (10% past it) — a
-    // protractor look that pins exactly where the vertex is and which angle is
-    // being read. Overshooting the arc (rather than meeting it) keeps it from
-    // reading as a filled triangle.
-    this._addRadius(v, a, radius * 1.2);
-    this._addRadius(v, b, radius * 1.2);
-  }
-
-  // A thin always-on-top tube from vertex `v` outward along unit dir `dir` for
-  // `length` (one arm of the angle protractor). Thinner than the arc so the
-  // two together don't read as a solid triangle.
-  _addRadius(v, dir, length) {
-    const geometry = new THREE.CylinderGeometry(
-      ARC_TUBE_RADIUS * 0.5,
-      ARC_TUBE_RADIUS * 0.5,
-      length,
-      6
-    );
-    const mesh = new THREE.Mesh(geometry, this.arcMaterial);
-    mesh.position.copy(v).addScaledVector(dir, length / 2);
-    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-    mesh.renderOrder = 999;
-    mesh.el = this.el;
-    this.group.add(mesh);
-    this.arcs.push(mesh); // disposed with the arcs in clear()
   }
 
   // TWO elements always: the OUTER is what CSS2DRenderer positions and whose
@@ -394,7 +277,7 @@ export default class ShapeReadouts {
     this.labels.push({ obj, outer, inner });
   }
 
-  // Remove all rendered labels/arcs but keep the group + material for reuse.
+  // Remove all rendered labels but keep the group for reuse.
   clear() {
     for (const { obj, outer } of this.labels) {
       this.group.remove(obj);
@@ -405,11 +288,6 @@ export default class ShapeReadouts {
       if (outer && outer.parentNode) outer.parentNode.removeChild(outer);
     }
     this.labels.length = 0;
-    for (const mesh of this.arcs) {
-      this.group.remove(mesh);
-      mesh.geometry.dispose();
-    }
-    this.arcs.length = 0;
   }
 
   // Full teardown — call on deselect / tool exit / entity removal.
@@ -418,7 +296,6 @@ export default class ShapeReadouts {
     if (this.el && this.el.object3D && this.group.parent) {
       this.el.object3D.remove(this.group);
     }
-    this.arcMaterial.dispose();
     this.el = null;
   }
 }

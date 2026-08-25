@@ -149,12 +149,13 @@ const useStore = create(
         shapeVertexSelected: false,
         setShapeVertexSelected: (selected) =>
           set({ shapeVertexSelected: selected }),
-        // Shape draw mode: 'auto' (closure is the default — the initial mode,
-        // since street shapes are almost always closed) or 'manual' (stays open
-        // until you click the first vertex to close it). This selects how
-        // closure HAPPENS, not what the shape ends up as: either mode can yield
-        // an open or a closed shape. A session default; not persisted.
-        shapeDrawMode: 'auto',
+        // Shape draw mode: 'manual' (the initial mode — shapes start as open
+        // polylines and close only when you click the first vertex, the common
+        // case now that open paths drive curved streets) or 'auto' (closure is
+        // the default while drawing). This selects how closure HAPPENS, not
+        // what the shape ends up as: either mode can yield an open or a closed
+        // shape. A session default; not persisted.
+        shapeDrawMode: 'manual',
         setShapeDrawMode: (mode) => set({ shapeDrawMode: mode }),
         // UI language for the localization experiment (#656). Auto-detected
         // from the browser on first load, then overridden by the user's stored

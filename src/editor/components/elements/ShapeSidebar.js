@@ -1,4 +1,4 @@
-/* global AFRAME, THREE, STREET */
+/* global AFRAME, THREE */
 
 import PropTypes from 'prop-types';
 import { useEffect, useRef, useState } from 'react';
@@ -22,11 +22,6 @@ import {
   shapeStyleSeedFromUpdate,
   setShapeStyle
 } from '../../lib/shapeStyle.js';
-import {
-  setShapeFill,
-  getFillableStreets,
-  getShapeFillSourceId
-} from '../../lib/streetFill.js';
 import { Button } from './Button';
 
 const MAX_LABELLED_VERTICES = 12;
@@ -410,45 +405,27 @@ const ShapeSidebar = ({ entity }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitsPreference]);
 
-  // Street fill (naive v1, see lib/streetFill.js): the dropdown IS the
-  // control — 'None' (the default) clears the fill, picking a street
-  // (re)fills the polyline with clones of it. The selected value is read
-  // back off the fill wrapper in the scene rather than held in React state,
-  // so the dropdown always shows what actually exists (including after
-  // undo/redo); the tick state only forces a re-render after a change. The
-  // street list is a plain DOM query per render — fresh enough for a picker.
-  const [, setFillTick] = useState(0);
-  const fillableStreets = getFillableStreets();
-  const fillSourceId = getShapeFillSourceId(entity);
-  const onStreetFillChange = (e) => {
-    const streetEl = fillableStreets.find((el) => el.id === e.target.value);
-    try {
-      const count = setShapeFill(entity, streetEl || null);
-      STREET.notify.successMessage(
-        streetEl
-          ? `Filled ${count} segment${count === 1 ? '' : 's'} with street`
-          : 'Street fill removed'
-      );
-    } catch (error) {
-      STREET.notify.errorMessage(`Street fill failed: ${error.message}`);
-      console.error(error);
-    }
-    setFillTick((t) => t + 1);
-  };
-  // Reverse the drawing order. A live street fill follows the direction, so
-  // re-apply it afterwards (its own undo steps, same as picking it again).
+  // Reverse the drawing order. Any street following this shape as its path
+  // re-lays itself automatically (the vertex rewrite re-derives the shape,
+  // which emits street-path-changed).
   const onReverseDirection = () => {
-    if (!reverseShapeDirection(entity)) return;
-    const sourceEl = fillableStreets.find((el) => el.id === fillSourceId);
-    if (sourceEl) {
-      try {
-        setShapeFill(entity, sourceEl);
-      } catch (error) {
-        STREET.notify.errorMessage(`Street re-fill failed: ${error.message}`);
-        console.error(error);
-      }
-    }
-    setFillTick((t) => t + 1);
+    reverseShapeDirection(entity);
+  };
+
+  // Curve style controls: curveType/filletRadius are shape props (a curve is
+  // a property of the drawing, street or no street — any street following
+  // this shape reads them from here). Values are read straight off the
+  // component; the tick only forces a re-render.
+  const [, setCurveTick] = useState(0);
+  const shapeData = entity.components?.shape?.data;
+  const setShapeCurveProperty = (property, value) => {
+    AFRAME.INSPECTOR.execute('entityupdate', {
+      entity,
+      component: 'shape',
+      property,
+      value
+    });
+    setCurveTick((t) => t + 1);
   };
 
   const vertices = getShapeVertices(entity);
@@ -533,18 +510,39 @@ const ShapeSidebar = ({ entity }) => {
             </div>
           </div>
         )}
-        {n >= 2 && fillableStreets.length > 0 && (
+        {n >= 3 && (
           <div className="propertyRow">
-            <div className="fakePropertyRowLabel">Street Fill</div>
+            <div className="fakePropertyRowLabel">Curve Style</div>
             <div className="fakePropertyRowValue">
-              <select value={fillSourceId} onChange={onStreetFillChange}>
-                <option value="">None</option>
-                {fillableStreets.map((el) => (
-                  <option key={el.id} value={el.id}>
-                    {el.getAttribute('data-layer-name') || el.id}
-                  </option>
-                ))}
+              <select
+                value={shapeData?.curveType ?? 'linear'}
+                onChange={(e) => {
+                  setShapeCurveProperty('curveType', e.target.value);
+                }}
+              >
+                <option value="linear">Straight / hard corners</option>
+                <option value="smooth">Smooth (spline)</option>
+                <option value="arc">Arcs (corner radius)</option>
               </select>
+            </div>
+          </div>
+        )}
+        {shapeData?.curveType === 'arc' && (
+          <div className="propertyRow">
+            <div className="fakePropertyRowLabel">Corner Radius</div>
+            <div className="fakePropertyRowValue">
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={shapeData.filletRadius}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  if (Number.isFinite(v)) {
+                    setShapeCurveProperty('filletRadius', Math.max(0, v));
+                  }
+                }}
+              />
             </div>
           </div>
         )}
@@ -553,6 +551,10 @@ const ShapeSidebar = ({ entity }) => {
             <div className="mb-1 font-semibold uppercase">💡 Shape Tips</div>
             <ul className="space-y-1">
               <li>• Click a vertex to move it or delete it</li>
+              <li>
+                • Hold Shift while dragging a vertex to raise or lower it — a
+                street following this path ramps with it
+              </li>
               <li>
                 • Click a side&rsquo;s length to add a vertex to that side
               </li>
@@ -611,6 +613,18 @@ export const ShapeDrawInstructions = () => {
             <input
               type="radio"
               name="shapeDrawMode"
+              checked={!autoClose}
+              onChange={() => setMode('manual')}
+            />
+            <span className="text-gray-600">
+              Close manually — draws an open line. Click the first point when
+              you want to close it.
+            </span>
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="radio"
+              name="shapeDrawMode"
               checked={autoClose}
               onChange={() => setMode('auto')}
             />
@@ -618,18 +632,6 @@ export const ShapeDrawInstructions = () => {
               Auto-close — closes as you draw, so the closing edge and the
               enclosed area update live. Stays open if the shape can&rsquo;t
               close without crossing itself.
-            </span>
-          </label>
-          <label className="flex items-center gap-1">
-            <input
-              type="radio"
-              name="shapeDrawMode"
-              checked={!autoClose}
-              onChange={() => setMode('manual')}
-            />
-            <span className="text-gray-600">
-              Close manually — draws an open line. Click the first point when
-              you want to close it.
             </span>
           </label>
         </div>

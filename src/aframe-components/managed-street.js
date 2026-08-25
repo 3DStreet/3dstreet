@@ -1,5 +1,9 @@
-/* global AFRAME */
+/* global AFRAME, THREE */
 // Orientation - default model orientation is "outbound" (away from camera)
+import {
+  buildCenterlinePoints,
+  PathSampler
+} from '../tested/street-path-utils.js';
 import {
   STREETPLAN_MATERIAL_MAPPING,
   STREETPLAN_OBJECT_TO_GENERATED_CLONES_MAPPING
@@ -304,6 +308,17 @@ AFRAME.registerComponent('managed-street', {
     playable: {
       type: 'boolean',
       default: false
+    },
+    // Selector ('#id') of a path entity (a drawn shape polyline carrying —
+    // or auto-fitted with — the street-path component) this street follows.
+    // When set, the street's centerline bends along the path's curve: every
+    // segment surface, striping/rail run, and generated clone is laid out on
+    // the curve, and `length` is driven by the path's arc length. The path
+    // entity owns the curve controls (algorithm, fillet radius). Empty =
+    // classic straight street.
+    path: {
+      type: 'string',
+      default: ''
     }
   },
   init: function () {
@@ -313,6 +328,23 @@ AFRAME.registerComponent('managed-street', {
     // Bind the method to preserve context
     this.refreshFromSource = this.refreshFromSource.bind(this);
     this.onSegmentChanged = this.onSegmentChanged.bind(this);
+
+    // Path following (curved streets). streetCurve is null for straight
+    // streets; when a path is assigned it holds { sampler, zStart, closed,
+    // rev } — the shared curve every segment / generator bends through (see
+    // street-path.js). Layout changes move segments' lateral offsets, so the
+    // curve consumers re-run after street-align has realigned (setTimeout(0)
+    // in scheduleCurveChanged runs after all synchronous listeners).
+    this.streetCurve = null;
+    this.pathEl = null;
+    this._pathSelector = undefined;
+    this.rebuildPathCurve = this.rebuildPathCurve.bind(this);
+    this.requestPathRebuild = this.requestPathRebuild.bind(this);
+    this.onLayoutChangedForCurve = () => {
+      if (this.streetCurve) this.scheduleCurveChanged();
+    };
+    this.el.addEventListener('segments-changed', this.onLayoutChangedForCurve);
+    this.el.addEventListener('alignment-changed', this.onLayoutChangedForCurve);
 
     if (!this.el.hasAttribute('street-align')) {
       this.el.setAttribute('street-align', '');
@@ -506,6 +538,178 @@ AFRAME.registerComponent('managed-street', {
         newValue: data.showGround
       });
     }
+
+    if (dataDiffKeys.includes('path')) {
+      this.updatePathFollowing();
+    }
+  },
+
+  // --- Path following (curved streets) ---------------------------------
+
+  updatePathFollowing: function () {
+    const selector = this.data.path;
+    if (this._pathSelector === selector) return;
+    this._pathSelector = selector;
+    this.teardownPath();
+    if (!selector) {
+      this.clearStreetCurve();
+      return;
+    }
+    this._resolveAttempts = 0;
+    this.resolvePathEntity(selector);
+  },
+
+  teardownPath: function () {
+    if (this.pathEl && this.onPathChanged) {
+      this.pathEl.removeEventListener(
+        'street-path-changed',
+        this.onPathChanged
+      );
+    }
+    this.pathEl = null;
+    if (this._resolveTimer) {
+      clearTimeout(this._resolveTimer);
+      this._resolveTimer = null;
+    }
+    if (this._rebuildTimer) {
+      clearTimeout(this._rebuildTimer);
+      this._rebuildTimer = null;
+    }
+    this.el.sceneEl?.systems['street-path']?.unregisterFollower(this);
+  },
+
+  clearStreetCurve: function () {
+    if (!this.streetCurve) return;
+
+    this.streetCurve = null;
+    // one notification so segments/ground re-mesh straight
+    this.scheduleCurveChanged();
+  },
+
+  // Saved scenes can load the street before its path shape exists (or before
+  // the shape has loaded), so resolution retries briefly instead of failing.
+  resolvePathEntity: function (selector) {
+    if (this.data.path !== selector) return; // reassigned meanwhile
+    let pathEl = null;
+    try {
+      pathEl = document.querySelector(selector);
+    } catch (e) {
+      console.warn('[managed-street] invalid path selector:', selector);
+      return;
+    }
+    if (!pathEl) {
+      if (this._resolveAttempts++ < 20) {
+        this._resolveTimer = setTimeout(
+          () => this.resolvePathEntity(selector),
+          300
+        );
+      } else {
+        console.warn('[managed-street] path entity not found:', selector);
+      }
+      return;
+    }
+    if (!pathEl.hasLoaded) {
+      pathEl.addEventListener(
+        'loaded',
+        () => this.resolvePathEntity(selector),
+        { once: true }
+      );
+      return;
+    }
+    // the PATH owns the curve controls; fit it with them if missing
+    if (!pathEl.components['street-path']) {
+      pathEl.setAttribute('street-path', '');
+    }
+    this.pathEl = pathEl;
+    this.onPathChanged = this.onPathChanged || this.requestPathRebuild;
+    pathEl.addEventListener('street-path-changed', this.onPathChanged);
+    // the street-path system watches both transforms and calls back into
+    // requestPathRebuild when either the path or this street is moved
+    this.el.sceneEl?.systems['street-path']?.registerFollower(this);
+    // street-ribbon geometries resolve the curve through the street's id
+    if (!this.el.id) {
+      this.el.id = 'street-' + Math.random().toString(36).slice(2, 10);
+    }
+    this.rebuildPathCurve();
+  },
+
+  // Trailing throttle: transform drags and vertex edits can request rebuilds
+  // per frame; rebuilding relays the entire street, so cap the rate.
+  requestPathRebuild: function () {
+    if (this._rebuildTimer) return;
+    this._rebuildTimer = setTimeout(() => {
+      this._rebuildTimer = null;
+      this.rebuildPathCurve();
+    }, 250);
+  },
+
+  rebuildPathCurve: function () {
+    const sp = this.pathEl?.components?.['street-path'];
+    if (!sp || !this.data.path) return;
+    const worldPts = sp.getWorldPathPoints();
+    if (worldPts.length < 2) {
+      this.clearStreetCurve();
+      return;
+    }
+    // the curve lives in this street's local space, so lateral offsets from
+    // street-align combine with it directly
+    this.el.object3D.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(this.el.object3D.matrixWorld).invert();
+    const localPts = worldPts.map((p) => p.applyMatrix4(inv));
+    const closed = sp.isClosed() && localPts.length >= 3;
+    const centerline = buildCenterlinePoints(localPts, {
+      ...sp.getCurveOptions(),
+      closed
+    });
+    if (centerline.length < 2) {
+      this.clearStreetCurve();
+      return;
+    }
+    const sampler = new PathSampler(centerline, closed);
+    const length = Math.round(sampler.totalLength * 100) / 100;
+    if (length < 1) {
+      this.clearStreetCurve();
+      return;
+    }
+    this.streetCurve = {
+      sampler,
+      closed: sampler.closed,
+      zStart: this.computeZStart(length),
+      rev: (this.streetCurve?.rev || 0) + 1
+    };
+    // follow the path's arc length. The length change cascades through
+    // applyLength/segments-changed (which realigns and regenerates); the
+    // scheduled emit below covers shape-only changes at identical length.
+    if (Math.abs(this.data.length - length) > 0.01) {
+      this.el.setAttribute('managed-street', 'length', length);
+    }
+    this.scheduleCurveChanged();
+  },
+
+  // straight-space z of the street's start (s = z - zStart), from the length
+  // alignment: segments centered at zPosition span zPosition ± length/2
+  computeZStart: function (length) {
+    const align = this.el.getAttribute('street-align')?.length || 'start';
+    if (align === 'middle') return -length / 2;
+    if (align === 'start') return -length;
+    return 0; // 'end'
+  },
+
+  scheduleCurveChanged: function () {
+    if (this._curveEmitPending) return;
+    this._curveEmitPending = true;
+    setTimeout(() => {
+      this._curveEmitPending = false;
+      if (this.streetCurve) {
+        this.streetCurve.zStart = this.computeZStart(this.data.length);
+      }
+      // Bubbles: segments and street-ground/label listen on this entity, and
+      // the editor viewport listens at the scene level to refresh hover/
+      // selection helpers whose tracked entity just re-meshed under the
+      // cursor (a hover only re-snapshots on mouseenter, so without this a
+      // bend/straighten leaves a stale highlight box).
+      this.el.emit('street-curve-changed', null, true);
+    }, 0);
   },
   // Apply the showStriping / showVehicles toggles to generated content.
   // Runs when a toggle changes and — via the content observer in init —
@@ -1000,6 +1204,15 @@ AFRAME.registerComponent('managed-street', {
       this.contentObserver.disconnect();
     }
     this.el.removeEventListener('segment-changed', this.onSegmentChanged);
+    this.el.removeEventListener(
+      'segments-changed',
+      this.onLayoutChangedForCurve
+    );
+    this.el.removeEventListener(
+      'alignment-changed',
+      this.onLayoutChangedForCurve
+    );
+    this.teardownPath();
     this.clearManagedEntities();
   }
 });

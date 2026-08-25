@@ -36,6 +36,7 @@ class OrientedBoxHelper extends THREE.BoxHelper {
   constructor(object, color = 0xffff00, fill = false) {
     super(object, color);
     this.material.linewidth = 3;
+    this.helperColor = color;
     if (fill) {
       // Mesh with BoxGeometry and Semi-transparent Material
       const boxFillGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -49,6 +50,80 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       this.boxFill = boxFill;
       this.add(boxFill);
     }
+  }
+
+  // --- Curved-lane conforming highlight -------------------------------
+  // A curved street segment's AABB covers the whole sweep of the curve, so
+  // the box hover/selection highlight reads as a giant unrelated rectangle.
+  // When the tracked entity carries a `street-ribbon` geometry (a curved
+  // lane surface) — or is a path-following managed street, whose segments
+  // do — render translucent overlays of the actual ribbon meshes instead of
+  // the box. Straight entities keep the box exactly as before.
+
+  getConformingSourceMeshes() {
+    const el = this.object?.el;
+    if (!el || typeof el.getAttribute !== 'function') return null;
+    if (el.getAttribute('geometry')?.primitive === 'street-ribbon') {
+      const mesh = el.getObject3D('mesh');
+      return mesh ? [mesh] : null;
+    }
+    if (el.components?.['managed-street']?.streetCurve) {
+      const meshes = [];
+      el.querySelectorAll(':scope > [street-segment]').forEach((segEl) => {
+        if (segEl.getAttribute('geometry')?.primitive === 'street-ribbon') {
+          const mesh = segEl.getObject3D('mesh');
+          if (mesh) meshes.push(mesh);
+        }
+      });
+      return meshes.length > 0 ? meshes : null;
+    }
+    return null;
+  }
+
+  updateConformingHighlight() {
+    const sources = this.getConformingSourceMeshes();
+    const showBox = !sources;
+    this.material.visible = showBox;
+    if (this.boxFill) this.boxFill.visible = showBox;
+    if (!sources) {
+      if (this.conformGroup) this.conformGroup.visible = false;
+      return;
+    }
+    if (!this.conformGroup) {
+      this.conformGroup = new THREE.Group();
+      this.add(this.conformGroup);
+      this.conformMaterial = new THREE.MeshBasicMaterial({
+        color: this.helperColor,
+        transparent: true,
+        // the selection helper draws lines only (no fill); keep its
+        // conforming overlay lighter so a selected lane isn't a solid slab
+        opacity: this.boxFill ? 0.3 : 0.2,
+        depthTest: false
+      });
+      this.conformInverse = new THREE.Matrix4();
+    }
+    this.conformGroup.visible = true;
+    while (this.conformGroup.children.length < sources.length) {
+      const overlay = new THREE.Mesh(undefined, this.conformMaterial);
+      overlay.matrixAutoUpdate = false;
+      overlay.raycast = function () {}; // never pickable
+      this.conformGroup.add(overlay);
+    }
+    while (this.conformGroup.children.length > sources.length) {
+      this.conformGroup.remove(
+        this.conformGroup.children[this.conformGroup.children.length - 1]
+      );
+    }
+    // The helper's own matrix was just set to the tracked object's world
+    // pose (see update()); overlays borrow each source mesh's geometry and
+    // compensate so they land exactly on the mesh in world space.
+    this.conformInverse.copy(this.matrix).invert();
+    sources.forEach((source, i) => {
+      const overlay = this.conformGroup.children[i];
+      overlay.geometry = source.geometry;
+      source.updateWorldMatrix(true, false);
+      overlay.matrix.multiplyMatrices(this.conformInverse, source.matrixWorld);
+    });
   }
 
   update() {
@@ -173,6 +248,10 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       this.object.getWorldPosition(this.position);
       this.updateMatrix();
     }
+
+    // After the box (and this helper's own world pose) are settled, swap in
+    // the conforming overlay for curved street surfaces.
+    this.updateConformingHighlight();
   }
 
   dispose() {
@@ -180,6 +259,11 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     if (this.boxFill) {
       this.boxFill.geometry.dispose();
       this.boxFill.material.dispose();
+    }
+    if (this.conformMaterial) {
+      // overlay geometries are borrowed from the live meshes — only the
+      // shared material is ours to dispose
+      this.conformMaterial.dispose();
     }
   }
 }
@@ -261,6 +345,15 @@ export function Viewport(inspector) {
   hoverBox.material.transparent = true;
   hoverBox.visible = false;
   sceneHelpers.add(hoverBox);
+
+  // A street bending along / straightening off its path re-meshes segments
+  // in place — no mouseenter or entityupdate fires, so a helper snapshotted
+  // before the change keeps showing the stale (box vs conforming) highlight.
+  // The event bubbles from the street; refresh whichever helpers are live.
+  sceneEl.addEventListener('street-curve-changed', () => {
+    if (hoverBox.visible && hoverBox.object) hoverBox.update();
+    if (selectionBox.visible && selectionBox.object) selectionBox.update();
+  });
 
   Events.on('raycastermouseenter', (el) => {
     // update hoverBox to match el.object3D bounding box

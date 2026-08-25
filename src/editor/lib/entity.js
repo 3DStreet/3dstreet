@@ -12,7 +12,8 @@ import {
   VideoCameraIcon,
   LayersIcon,
   Object24IconCyan,
-  Ruler24Icon
+  Ruler24Icon,
+  ShapeIcon
 } from '@shared/icons';
 
 /**
@@ -655,6 +656,9 @@ export function getEntityIcon(entity) {
   }
   if (entity.getAttribute('street-segment')) {
     return <SegmentIcon />;
+  }
+  if (entity.getAttribute('shape')) {
+    return <ShapeIcon />;
   }
   if (entity.getAttribute('measure-line')) {
     return (

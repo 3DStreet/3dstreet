@@ -1,4 +1,5 @@
 /* global AFRAME */
+import { getRibbonGeometryAttr } from './street-path.js';
 
 AFRAME.registerComponent('street-generated-rail', {
   multiple: true,
@@ -46,7 +47,10 @@ AFRAME.registerComponent('street-generated-rail', {
 
     const clone = document.createElement('a-entity');
     clone.setAttribute('data-layer-name', 'Cloned Railroad Tracks');
-    clone.setAttribute('position', '0 -0.2 0');
+    // curved streets bake the rail elevation into the ribbon (yTop), so the
+    // wrapper stays at the segment origin there
+    this.curved = !!getRibbonGeometryAttr(this.el, {});
+    clone.setAttribute('position', this.curved ? '0 0 0' : '0 -0.2 0');
     const railsPosX = this.data.gauge / 2 / 1000;
     clone.append(this.createRailsElement(this.length, railsPosX));
     clone.append(this.createRailsElement(this.length, -railsPosX));
@@ -74,12 +78,23 @@ AFRAME.registerComponent('street-generated-rail', {
       emissiveIntensity: 0.2,
       roughness: 0.1
     };
-    placedObjectEl.setAttribute('geometry', railsGeometry);
+    // each rail becomes its own ribbon along the path curve when active
+    const ribbonAttr = getRibbonGeometryAttr(this.el, {
+      lateralOffset: railsPosX,
+      width: 0.1,
+      height: 0.2,
+      yTop: 0.1, // rail top sits 0.1 above the segment surface, as straight
+      sEnd: length
+    });
+    placedObjectEl.setAttribute('geometry', ribbonAttr || railsGeometry);
     placedObjectEl.setAttribute('material', railsMaterial);
     placedObjectEl.setAttribute('data-layer-name', 'Rail');
     placedObjectEl.setAttribute('data-no-transform', '');
     placedObjectEl.setAttribute('data-ignore-raycaster', '');
-    placedObjectEl.setAttribute('position', railsPosX + ' 0.2 0'); // position="1.043 0.100 -3.463"
+    placedObjectEl.setAttribute(
+      'position',
+      ribbonAttr ? '0 0 0' : railsPosX + ' 0.2 0'
+    ); // position="1.043 0.100 -3.463"
     placedObjectEl.classList.add('autocreated');
 
     return placedObjectEl;

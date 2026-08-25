@@ -3,6 +3,13 @@
 **Branch:** `shapes` (PR #1920) · **Written:** 2026-08-24 · **Status:** all
 work committed locally, not pushed at time of writing
 
+> **2026-08-25 update — curved streets landed, street fill removed.** The
+> Phase D.3 "curves" item below (and much around it) is superseded by the
+> `claude/curved-street-path-prototype-7e5sqj` branch, intended to PR into
+> `shapes`. See the **Curved street path session** section at the bottom;
+> the original text is kept for history but read it through that lens —
+> in particular, Street Fill (commit `e1f0b2ee`) has been REMOVED.
+
 Purpose: enough context for a fresh session (human + Claude) to continue QA
 and prototyping against real-world use cases without re-deriving anything.
 
@@ -20,11 +27,11 @@ the real corridor. Findings so far are in that doc's table.
 
 ## What was built this session (all on `shapes`)
 
-| Commit | What |
-| --- | --- |
-| `d20c00a2` | Street gizmos ported from the lab branch (`claude/gizmo-prototypes-3d-ui-2w5szw`), reworked additive + always-on: **endpoint nodes** on managed streets (#1096) and **segment width handles** (#1218). Standard TransformControls gizmo kept for everything. New managed streets now created with `street-align: length: middle` (explicit at creation sites, NOT a schema default — old scenes serialize `street-align: ""` and would shift by half their length if the default changed). Docs: `docs/gizmo-prototypes.md`. |
+| Commit     | What                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `d20c00a2` | Street gizmos ported from the lab branch (`claude/gizmo-prototypes-3d-ui-2w5szw`), reworked additive + always-on: **endpoint nodes** on managed streets (#1096) and **segment width handles** (#1218). Standard TransformControls gizmo kept for everything. New managed streets now created with `street-align: length: middle` (explicit at creation sites, NOT a schema default — old scenes serialize `street-align: ""` and would shift by half their length if the default changed). Docs: `docs/gizmo-prototypes.md`.                                                         |
 | `e1f0b2ee` | **Street Fill v1 (naive)** + **Direction • Reverse**. `src/editor/lib/streetFill.js` + a dropdown in `ShapeSidebar.js`: assign a managed street to a polyline; one clone per segment, start endpoint on the vertex (via `street-align length: end`), no elbow/miter geometry. 'None' clears; state derives from the wrapper's `data-street-fill`/`data-street-fill-source` attributes, nothing persisted in the shape schema. Reverse swaps vertex order (one `multi` undo step) and auto re-fills — fixes the mirrored-cross-section problem when a line was drawn the "wrong" way. |
-| `c4fa9a82` | The user story / QA findings doc. |
+| `c4fa9a82` | The user story / QA findings doc.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 Human-verified in-browser on the Laguna Honda corridor: measure → street →
 duplicate → fill along path → reverse all work. Naive joints on curves look
@@ -63,7 +70,7 @@ acceptable from typical viewing distance — the prototype's key surprise.
    `7'2"`.
 6. **LATER bucket**: extend a street path before/after in shapes mode;
    roundabout/traffic circle at Clarendon; plan-view PDF/DXF export of the
-   proposal (shapes already export — the *proposal streets* pass is untested).
+   proposal (shapes already export — the _proposal streets_ pass is untested).
 
 ## Suggested next-session QA scripts
 
@@ -92,3 +99,57 @@ acceptable from typical viewing distance — the prototype's key surprise.
 - The lab branch (`claude/gizmo-prototypes-3d-ui-2w5szw`) still holds the
   unported prototypes (#1674 simplified gizmo, #1446 ground clamp) and the
   #1806 segment-gizmo suppression.
+
+## Curved street path session (2026-08-25)
+
+**Branch:** `claude/curved-street-path-prototype-7e5sqj` (based on the
+`shapes` tip above; assume it PRs into `shapes` and work continues there).
+**Entry point:** [`docs/curved-street-path.md`](../curved-street-path.md)
+carries the architecture, event flow, and known limitations — this section
+is just the QA-facing delta.
+
+### What changed, in order
+
+| Commit    | What                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `4ef01ce` | **Path following (Phase D.3, inverted).** A managed street gains `managed-street.path` → a drawn shape; the whole street bends along it as ONE continuous street (surfaces, striping, rails, ground, clones, stencils, pedestrians). The PATH owns the curve controls (`street-path` component: smooth centripetal Catmull-Rom / arc fillets with clamped radius / linear). Length tracks arc length; live re-lay on vertex edits and drags of either entity; closed shapes = loop streets. Endpoint/width gizmos suppressed on pathed streets. |
+| `75993a4` | **Curve-aware editor & play.** Hover/selection highlight conforms to the curved lane meshes (was the AABB); `street-curve-changed` bubbles so live helpers refresh; slope segments tilt on curves (ribbon cross-tilt, below-box parity); play traffic follows the curve (straight-pose stamps + per-tick re-bend, determinism preserved); street-label sits at the curve end, yawed to the exit tangent.                                                                                                                                        |
+| `e2f60cc` | **The shape draws (and exports) its curve.** The polyline outline — and a closed shape's fill/area — renders through the SAME `buildCenterlinePoints` the street uses, so path and street visibly trace one centerline. Curve Style is a standalone shape-sidebar control (attaches `street-path` on demand, no street needed). Plan DXF/PDF/SVG exports curves: shapes as sampled centerlines, curved streets as ribbon-edge outlines with polyline curbs, loops as annulus rings.                                                             |
+| `1cf1897` | **Street Fill removed** (`lib/streetFill.js` + sidebar dropdown). Superseded by path following; `linear` curve style reproduces the hard-cornered look as one street. Direction • Reverse stays (now flips path direction; following streets re-lay automatically). Old scenes with fills still load (wrappers were plain entities).                                                                                                                                                                                                            |
+
+### How to try it
+
+`npm start`, then: build any managed street → draw a polyline with the
+shape tool → select the street → **Follow Path** → pick the shape. Curve
+style/radius live on the SHAPE's sidebar. **Shift-drag a vertex handle to
+raise/lower it** — the path (and any street following it) ramps along the
+vertical profile; note cross-sections stay level (no banking) and clones
+get no pitch, so keep grades gentle. Everything is covered by
+headless end-to-end verification (see the commit messages for what each
+round asserted) plus unit suites: vitest 1008 / mocha 196 / browser
+components 74, all green.
+
+### Next-session QA scripts (updated)
+
+- **Re-run the Laguna Honda archetype with path following**: measure the
+  corridor with the polyline, build the street, Follow Path onto the
+  measurement line — the flow street fill was standing in for. Log
+  findings in the user story doc's table.
+- **Human-driven passes on what's only machine-verified**: vertex-drag
+  responsiveness on long streets (rebuilds are throttled ~250ms), undo/redo
+  ordering (assign → restyle → reverse → undo ×3), save/reload a curved
+  scene (path resolves by id with retries — untested against slow loads),
+  drive mode on a curved street (wheels ride the real meshes; untested).
+- **Boundary segments on curves** are explicitly unsupported/untested.
+- **DXF arc entities deferred by decision**: arc-mode fillets export as
+  tessellated polylines. Emitting true ARC/bulge output is queued behind
+  SME-provided acceptance criteria + iterative testing against a real
+  AutoCAD session (MCP-driven) — don't start it without that harness.
+
+### Open architecture question for the next session
+
+Should a managed street BE a path, rather than follow one? The endpoint
+gizmos already treat a straight street as a 2-vertex path; an intrinsic
+centerline (street-owned vertices, insert-vertex-to-bend, external shapes
+becoming an import/link) is the natural convergence — see the discussion
+in the PR / session notes before starting Phase 2 work.

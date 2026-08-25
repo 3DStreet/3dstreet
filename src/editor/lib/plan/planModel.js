@@ -33,6 +33,10 @@
 
 import { CROSSWALKS_REV } from '../../../aframe-components/intersection';
 import { isSidewalk } from '../../../tested/aframe-streetmix-parsers-tested';
+import {
+  buildCenterlinePoints,
+  computeRibbonOutline
+} from '../../../tested/street-path-utils.js';
 
 // AutoCAD Color Index — 1-based palette baked into every AutoCAD install.
 // Using ACI (not true RGB) keeps the DXF the smallest possible and lets users
@@ -321,6 +325,14 @@ function collectManagedStreets(ctx) {
       streetEl.querySelectorAll('[street-segment]')
     );
 
+    // A street following a path (curved street prototype) lays its segments
+    // along the shared curve; export each segment as its curved ribbon
+    // outline instead of the straight rectangle. The outline points come
+    // from the SAME sampler + miter math the 3D surface uses, in
+    // street-local space (segments' own transforms only carry straight-
+    // space offsets that the ribbon math already folds in).
+    const streetCurve = streetEl.components?.['managed-street']?.streetCurve;
+
     // Sort by lateral position within the street so curb detection walks
     // neighbors in the on-screen order. querySelectorAll returns DOM order,
     // which matches lateral order for managed-street's builder today but
@@ -345,33 +357,86 @@ function collectManagedStreets(ctx) {
       // doesn't ship a matrix from before the segment was positioned.
       segEl.object3D.updateWorldMatrix(true, false);
 
-      const planPoints = ctx.localPointsToPlan(
-        segEl,
-        segmentLocalCorners(width, length)
-      );
-
       const layerName = ctx.resolveAndAddLayer(
         SEGMENT_TYPE_TO_LAYER[segData.type] || FALLBACK_LAYER
       );
-      ctx.polylines.push({
-        layer: layerName,
-        points: planPoints,
-        closed: true
-      });
-      ctx.segmentCount++;
+
+      let leftEdgePlan = null; // curved left edge, for the curb pass below
+
+      if (streetCurve) {
+        streetEl.object3D.updateWorldMatrix(true, false);
+        const outline = computeRibbonOutline(streetCurve.sampler, {
+          lateralCenter: segEl.object3D.position.x,
+          width,
+          sStart: 0,
+          sEnd: length
+        });
+        const toLocal = (v) => [v.x, v.y, v.z];
+        leftEdgePlan = ctx.localPointsToPlan(
+          streetEl,
+          outline.left.map(toLocal)
+        );
+        const rightEdgePlan = ctx.localPointsToPlan(
+          streetEl,
+          outline.right.map(toLocal)
+        );
+        if (streetCurve.closed) {
+          // loop street: each edge is its own closed ring (an annulus)
+          ctx.polylines.push({
+            layer: layerName,
+            points: leftEdgePlan,
+            closed: true
+          });
+          ctx.polylines.push({
+            layer: layerName,
+            points: rightEdgePlan,
+            closed: true
+          });
+        } else {
+          ctx.polylines.push({
+            layer: layerName,
+            points: leftEdgePlan.concat(rightEdgePlan.slice().reverse()),
+            closed: true
+          });
+        }
+        ctx.segmentCount++;
+      } else {
+        const planPoints = ctx.localPointsToPlan(
+          segEl,
+          segmentLocalCorners(width, length)
+        );
+        ctx.polylines.push({
+          layer: layerName,
+          points: planPoints,
+          closed: true
+        });
+        ctx.segmentCount++;
+
+        // straight curb uses the rectangle's -x edge corners
+        leftEdgePlan = [planPoints[0], planPoints[3]];
+      }
 
       // Curb between this segment and its left neighbor, spanning this
-      // segment's own -x edge (the neighbor's +x edge is co-located).
+      // segment's own -x edge (the neighbor's +x edge is co-located). On a
+      // curved street the shared edge is a polyline along the curve.
       if (
         previousSegmentType &&
         needsCurbBetween(previousSegmentType, segData.type)
       ) {
         const curbLayerName = ctx.resolveAndAddLayer(CURB_LAYER);
-        ctx.lines.push({
-          layer: curbLayerName,
-          p1: planPoints[0],
-          p2: planPoints[3]
-        });
+        if (streetCurve) {
+          ctx.polylines.push({
+            layer: curbLayerName,
+            points: leftEdgePlan,
+            closed: !!streetCurve.closed
+          });
+        } else {
+          ctx.lines.push({
+            layer: curbLayerName,
+            p1: leftEdgePlan[0],
+            p2: leftEdgePlan[1]
+          });
+        }
       }
 
       previousSegmentType = segData.type;
@@ -809,21 +874,40 @@ function collectDrawnShapes(ctx) {
     if (verts.length < 2) continue;
 
     el.object3D.updateWorldMatrix(true, false);
-    const points = ctx.localPointsToPlan(
-      el,
-      verts.map((v) => {
+
+    // Matches the component's own rule: a 2-vertex "closed" shape renders
+    // (and exports) as an open line.
+    const closed = shape.data.closed && verts.length >= 3;
+
+    // Curve-styled shape (the shape's own curveType — the curved streets
+    // prototype): export the sampled curve, not the control polygon. The
+    // build call and its defaults are identical to the shape's own outline
+    // renderer and to the street centerline, so the plan linework matches
+    // both the drawn line and any street following this path.
+    let localPoints;
+    if (shape.data.curveType !== 'linear' && verts.length >= 3) {
+      localPoints = buildCenterlinePoints(
+        verts.map((v) => v.object3D.position),
+        {
+          curveType: shape.data.curveType,
+          filletRadius: shape.data.filletRadius,
+          closed
+        }
+      ).map((p) => [p.x, p.y, p.z]);
+    } else {
+      localPoints = verts.map((v) => {
         const p = v.object3D.position;
         return [p.x, p.y, p.z];
-      })
-    );
+      });
+    }
+
+    const points = ctx.localPointsToPlan(el, localPoints);
 
     const layerName = ctx.resolveAndAddLayer(DRAWN_SHAPE_LAYER);
     ctx.polylines.push({
       layer: layerName,
       points,
-      // Matches the component's own rule: a 2-vertex "closed" shape renders
-      // (and exports) as an open line.
-      closed: shape.data.closed && verts.length >= 3
+      closed
     });
     ctx.shapeCount++;
   }
