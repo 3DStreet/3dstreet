@@ -72,7 +72,7 @@ AFRAME.registerComponent('street-path', {
     //   smooth — centripetal Catmull-Rom through every vertex
     //   arc    — straight legs joined by circular fillets (road-engineering
     //            style); radius set by filletRadius
-    //   linear — hard corners (the naive street-fill look, single street)
+    //   linear — hard corners at the vertices
     curveType: {
       type: 'string',
       default: 'smooth',

@@ -1,4 +1,4 @@
-/* global AFRAME, THREE, STREET */
+/* global AFRAME, THREE */
 
 import PropTypes from 'prop-types';
 import { useEffect, useRef, useState } from 'react';
@@ -22,11 +22,6 @@ import {
   shapeStyleSeedFromUpdate,
   setShapeStyle
 } from '../../lib/shapeStyle.js';
-import {
-  setShapeFill,
-  getFillableStreets,
-  getShapeFillSourceId
-} from '../../lib/streetFill.js';
 import { Button } from './Button';
 
 const MAX_LABELLED_VERTICES = 12;
@@ -410,45 +405,11 @@ const ShapeSidebar = ({ entity }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitsPreference]);
 
-  // Street fill (naive v1, see lib/streetFill.js): the dropdown IS the
-  // control — 'None' (the default) clears the fill, picking a street
-  // (re)fills the polyline with clones of it. The selected value is read
-  // back off the fill wrapper in the scene rather than held in React state,
-  // so the dropdown always shows what actually exists (including after
-  // undo/redo); the tick state only forces a re-render after a change. The
-  // street list is a plain DOM query per render — fresh enough for a picker.
-  const [, setFillTick] = useState(0);
-  const fillableStreets = getFillableStreets();
-  const fillSourceId = getShapeFillSourceId(entity);
-  const onStreetFillChange = (e) => {
-    const streetEl = fillableStreets.find((el) => el.id === e.target.value);
-    try {
-      const count = setShapeFill(entity, streetEl || null);
-      STREET.notify.successMessage(
-        streetEl
-          ? `Filled ${count} segment${count === 1 ? '' : 's'} with street`
-          : 'Street fill removed'
-      );
-    } catch (error) {
-      STREET.notify.errorMessage(`Street fill failed: ${error.message}`);
-      console.error(error);
-    }
-    setFillTick((t) => t + 1);
-  };
-  // Reverse the drawing order. A live street fill follows the direction, so
-  // re-apply it afterwards (its own undo steps, same as picking it again).
+  // Reverse the drawing order. Any street following this shape as its path
+  // re-lays itself automatically (the vertex rewrite re-derives the shape,
+  // which emits street-path-changed).
   const onReverseDirection = () => {
-    if (!reverseShapeDirection(entity)) return;
-    const sourceEl = fillableStreets.find((el) => el.id === fillSourceId);
-    if (sourceEl) {
-      try {
-        setShapeFill(entity, sourceEl);
-      } catch (error) {
-        STREET.notify.errorMessage(`Street re-fill failed: ${error.message}`);
-        console.error(error);
-      }
-    }
-    setFillTick((t) => t + 1);
+    reverseShapeDirection(entity);
   };
 
   // Street path curve controls (curved streets): the controls live on the
@@ -546,21 +507,6 @@ const ShapeSidebar = ({ entity }) => {
               <Button variant="toolbtn" onClick={onReverseDirection}>
                 Reverse
               </Button>
-            </div>
-          </div>
-        )}
-        {n >= 2 && fillableStreets.length > 0 && (
-          <div className="propertyRow">
-            <div className="fakePropertyRowLabel">Street Fill</div>
-            <div className="fakePropertyRowValue">
-              <select value={fillSourceId} onChange={onStreetFillChange}>
-                <option value="">None</option>
-                {fillableStreets.map((el) => (
-                  <option key={el.id} value={el.id}>
-                    {el.getAttribute('data-layer-name') || el.id}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
         )}

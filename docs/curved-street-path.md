@@ -2,8 +2,14 @@
 
 Phase D.3 of the shapes/street-fill work
 ([handoff](./qa/shapes-qa-handoff.md)) — and an inversion of the street-fill
-model. Street fill starts from a polyline and stamps street clones along it;
-this feature starts from a **street** and assigns a **path** to it:
+model. Street fill started from a polyline and stamped street clones along
+it; this feature starts from a **street** and assigns a **path** to it.
+**Street fill is removed** (`lib/streetFill.js` and the shape sidebar
+dropdown are gone) — path following supersedes it, and its `linear` curve
+style reproduces the hard-cornered look as one continuous street. Scenes
+saved with fills keep working: fill wrappers and their cloned streets were
+always plain entities (only the inert `data-street-fill*` markers remain
+on them).
 
 1. Build a managed street (import, template, or measure-and-convert).
 2. Draw a polyline with the shape tool along the corridor.
@@ -136,3 +142,9 @@ its path and the `street-curve-changed` cascade re-meshes everything.
 - Sharp hairpins tighter than a segment's half-width self-intersect
   (offset curves have no untangling pass) — use `arc` with a radius at
   least half the street width for clean results.
+- **DXF exports tessellated polylines, not true arc entities.** Arc-mode
+  fillets could emit LWPOLYLINE bulge factors / ARC entities so CAD users
+  get real radii (the fillet math already computes center/radius/sweep) —
+  deliberately deferred: correctness there is a CAD-interop question, best
+  driven by iterative testing against a real AutoCAD session with
+  SME-provided acceptance criteria rather than guessed at here.

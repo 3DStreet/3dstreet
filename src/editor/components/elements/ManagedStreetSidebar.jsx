@@ -11,8 +11,7 @@ import useStore from '@/store.js';
 import { StreetToShapesGraphic } from '@/editor/components/modals/ConfirmModal/StreetToShapesGraphic';
 
 // Shapes usable as a street path: any drawn polyline with at least 2
-// vertices. A plain DOM query per render — fresh enough for a picker (same
-// approach as the shape sidebar's street-fill dropdown).
+// vertices. A plain DOM query per render — fresh enough for a picker.
 const getPathableShapes = () =>
   Array.from(document.querySelectorAll('a-entity[shape]')).filter(
     (el) => (el.components?.shape?.getVertexEls?.() || []).length >= 2
