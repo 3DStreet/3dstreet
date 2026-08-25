@@ -7,7 +7,8 @@ import {
   filletPolyline,
   PathSampler,
   mapStraightPoint,
-  buildRibbonGeometry
+  buildRibbonGeometry,
+  computeRibbonOutline
 } from '@/tested/street-path-utils.js';
 
 const v = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -217,5 +218,41 @@ describe('buildRibbonGeometry', () => {
     geom.computeBoundingBox();
     expect(geom.boundingBox.max.x).toBeGreaterThan(9);
     expect(geom.boundingBox.max.z).toBeGreaterThan(10.5); // corner miter widens
+  });
+});
+
+describe('computeRibbonOutline', () => {
+  it('emits two parallel edges for a straight run', () => {
+    const sampler = new PathSampler([v(0, 0, 0), v(0, 0, 10)], false);
+    const { left, right } = computeRibbonOutline(sampler, {
+      lateralCenter: 1,
+      width: 2,
+      sStart: 0,
+      sEnd: 10
+    });
+    expect(left.length).toBe(right.length);
+    expect(left[0].x).toBeCloseTo(0); // lateral 1 - width/2
+    expect(right[0].x).toBeCloseTo(2); // lateral 1 + width/2
+    expect(left[left.length - 1].z).toBeCloseTo(10);
+  });
+
+  it('follows the curve around a corner', () => {
+    const sampler = new PathSampler(
+      [v(0, 0, 0), v(0, 0, 10), v(10, 0, 10)],
+      false
+    );
+    const { left, right } = computeRibbonOutline(sampler, {
+      lateralCenter: 0,
+      width: 2,
+      sStart: 0,
+      sEnd: sampler.totalLength
+    });
+    // both edges end on the second leg near (10, 10), offset laterally
+    // (right of the +x tangent is -z)
+    const lastLeft = left[left.length - 1];
+    const lastRight = right[right.length - 1];
+    expect(lastLeft.x).toBeCloseTo(10);
+    expect(lastLeft.z).toBeCloseTo(11);
+    expect(lastRight.z).toBeCloseTo(9);
   });
 });

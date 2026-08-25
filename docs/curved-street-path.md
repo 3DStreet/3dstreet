@@ -30,6 +30,15 @@ shape's properties panel once a street follows it):
 One path can be followed by several streets, and closed shapes make loop
 streets (the ribbon runs the full circumference, no end caps).
 
+**The shape draws its own curve too.** A curve-styled shape renders its
+outline (and a closed shape's fill and area) through the sampled curve —
+the same `buildCenterlinePoints` call the street runs — so a selected path
+and its street visibly trace the identical centerline; the vertices stay
+the straight-line editable control points (measurement chips keep
+measuring the control polygon). This also works standalone: the shape
+sidebar's **Curve Style** select is available on any ≥3-vertex shape and
+attaches the `street-path` component on demand, no street required.
+
 ## Architecture
 
 The design principle: **the street keeps its straight-space layout, and one
@@ -105,6 +114,12 @@ its path and the `street-curve-changed` cascade re-meshes everything.
 - **Endpoint/width gizmos** are suppressed on pathed streets (no straight
   endpoints to drag — edit the path shape instead). Suppression applies on
   next selection.
+- **Plan DXF/PDF/SVG export** (`editor/lib/plan/planModel.js`) emits curves:
+  a curved street's segments export as their ribbon-edge outlines (same
+  sampler + miter math as the 3D surface, via `computeRibbonOutline`), curbs
+  become polylines along the shared edge, loop streets export as annulus
+  rings, and curve-styled drawn shapes export their sampled centerline
+  instead of the control polygon.
 
 ## Known limitations (prototype)
 

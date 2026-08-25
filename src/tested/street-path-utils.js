@@ -432,6 +432,47 @@ export function mapStraightPoint(sampler, zStart, x, z) {
   };
 }
 
+/**
+ * The two lateral edges of a ribbon (a segment surface) along the curve, in
+ * street-local space — the same stations, miter frames and lateral math the
+ * 3D ribbon geometry uses, so a plan-view export of the outline matches the
+ * rendered surface exactly. Returns { left, right }: arrays of Vector3 from
+ * sStart to sEnd (left = lateral min / straight -x edge).
+ */
+export function computeRibbonOutline(sampler, options = {}) {
+  const {
+    lateralCenter = 0,
+    width = 1,
+    sStart = 0,
+    sEnd = sampler.totalLength,
+    maxSpacing = 6
+  } = options;
+  const stations = sampler.getRingStations(sStart, sEnd, { maxSpacing });
+  const halfWidth = width / 2;
+  const left = [];
+  const right = [];
+  for (const st of stations) {
+    const scale = st.miterScale || 1;
+    const latLeft = (lateralCenter - halfWidth) * scale;
+    const latRight = (lateralCenter + halfWidth) * scale;
+    left.push(
+      new THREE.Vector3(
+        st.position.x + st.right.x * latLeft,
+        st.position.y,
+        st.position.z + st.right.z * latLeft
+      )
+    );
+    right.push(
+      new THREE.Vector3(
+        st.position.x + st.right.x * latRight,
+        st.position.y,
+        st.position.z + st.right.z * latRight
+      )
+    );
+  }
+  return { left, right };
+}
+
 // ---------------------------------------------------------------------------
 // Ribbon geometry — the curved equivalent of the straight below-box
 // ---------------------------------------------------------------------------

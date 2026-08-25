@@ -564,19 +564,33 @@ const ShapeSidebar = ({ entity }) => {
             </div>
           </div>
         )}
-        {streetPath && (
+        {n >= 3 && (
           <div className="propertyRow">
             <div className="fakePropertyRowLabel">Curve Style</div>
             <div className="fakePropertyRowValue">
               <select
-                value={streetPath.data.curveType}
-                onChange={(e) =>
-                  setStreetPathProperty('curveType', e.target.value)
-                }
+                value={streetPath ? streetPath.data.curveType : 'linear'}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (!streetPath) {
+                    // straight shapes carry no street-path; picking a curve
+                    // style attaches it (the same component a street
+                    // assignment auto-attaches — one curve, both consumers)
+                    if (value === 'linear') return;
+                    AFRAME.INSPECTOR.execute('componentadd', {
+                      entity,
+                      component: 'street-path',
+                      value: `curveType: ${value}`
+                    });
+                    setPathTick((t) => t + 1);
+                    return;
+                  }
+                  setStreetPathProperty('curveType', value);
+                }}
               >
+                <option value="linear">Straight / hard corners</option>
                 <option value="smooth">Smooth (spline)</option>
                 <option value="arc">Arcs (corner radius)</option>
-                <option value="linear">Linear (hard corners)</option>
               </select>
             </div>
           </div>

@@ -95,13 +95,19 @@ AFRAME.registerComponent('street-path', {
   update: function (oldData) {
     // curve settings changed → following streets rebuild
     if (oldData.curveType !== undefined) this.emitChanged();
+    // ...and the shape's own outline renders through this curve (see
+    // shape.js _curvedRenderPoints), so re-derive it on attach and on every
+    // setting change. rAF-coalesced, so calling on first update is free.
+    this.el.components.shape?.requestRederive?.();
   },
 
   remove: function () {
     this.el.removeEventListener('shape-geometry-changed', this.emitChanged);
     this.system.unregisterPath(this);
     if (this._pendingEmit) clearTimeout(this._pendingEmit);
-    // one final notification so followers straighten out / re-resolve
+    // one final notification so followers straighten out / re-resolve —
+    // including the shape's own outline, which straightens back
+    this.el.components.shape?.requestRederive?.();
     this.el.emit('street-path-changed', null, false);
   },
 
