@@ -627,6 +627,18 @@ export const ShapeDrawInstructions = () => {
             <input
               type="radio"
               name="shapeDrawMode"
+              checked={!autoClose}
+              onChange={() => setMode('manual')}
+            />
+            <span className="text-gray-600">
+              Close manually — draws an open line. Click the first point when
+              you want to close it.
+            </span>
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="radio"
+              name="shapeDrawMode"
               checked={autoClose}
               onChange={() => setMode('auto')}
             />
@@ -634,18 +646,6 @@ export const ShapeDrawInstructions = () => {
               Auto-close — closes as you draw, so the closing edge and the
               enclosed area update live. Stays open if the shape can&rsquo;t
               close without crossing itself.
-            </span>
-          </label>
-          <label className="flex items-center gap-1">
-            <input
-              type="radio"
-              name="shapeDrawMode"
-              checked={!autoClose}
-              onChange={() => setMode('manual')}
-            />
-            <span className="text-gray-600">
-              Close manually — draws an open line. Click the first point when
-              you want to close it.
             </span>
           </label>
         </div>
