@@ -566,6 +566,10 @@ const ShapeSidebar = ({ entity }) => {
             <ul className="space-y-1">
               <li>• Click a vertex to move it or delete it</li>
               <li>
+                • Hold Shift while dragging a vertex to raise or lower it — a
+                street following this path ramps with it
+              </li>
+              <li>
                 • Click a side&rsquo;s length to add a vertex to that side
               </li>
               <li>• Lengths and angles measure the vertex centreline</li>

@@ -1478,8 +1478,60 @@ export class ShapeVertexControls extends THREE.Object3D {
       preDragLocalPos: local.clone(),
       lastValidLocalPos: null,
       exemptPairs: null, // taken at claim time, when the indices are settled
-      isDrag: false
+      isDrag: false,
+      // Shift-drag raises/lowers the vertex instead of sliding it in plane
+      // (see _dragMove); presses always start planar and can flip mid-drag.
+      vertical: false
     };
+    return true;
+  }
+
+  // Swap the active drag between planar (slide in the shape's plane) and
+  // vertical (raise/lower) mid-gesture. The new plane is built through the
+  // vertex's CURRENT world position with a fresh grab offset, so the vertex
+  // never jumps on a mode flip. Vertical mode drags on a camera-facing
+  // vertical plane ("billboard"), whose horizontal normal comes from the
+  // cursor ray itself — looking straight down leaves no usable normal, and
+  // returning false then keeps the previous mode for this frame (you cannot
+  // judge height from a top-down view anyway).
+  _rebuildDragPlane(g, event, vertical) {
+    const shapeObj = this.shapeEl.object3D;
+    shapeObj.updateMatrixWorld();
+    const vertexWorld = g.vertexEl.object3D.getWorldPosition(this._tmpV);
+
+    if (vertical) {
+      const ray = rayFromClientXY(event.clientX, event.clientY);
+      if (!ray) return false;
+      this._tmpNormal.set(-ray.direction.x, 0, -ray.direction.z).normalize();
+      if (
+        !Number.isFinite(this._tmpNormal.x) ||
+        this._tmpNormal.lengthSq() < 0.5
+      ) {
+        return false;
+      }
+    } else {
+      shapeObj.getWorldQuaternion(this._tmpQuat);
+      this._tmpNormal.set(0, 1, 0).applyQuaternion(this._tmpQuat).normalize();
+    }
+
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+      this._tmpNormal,
+      vertexWorld
+    );
+    const hitWorld = this._pickOnPlane(
+      event.clientX,
+      event.clientY,
+      plane,
+      this._tmpNormal
+    );
+    if (!hitWorld) return false;
+
+    g.plane = plane;
+    g.planeNormal = this._tmpNormal.clone();
+    g.grabOffset = g.vertexEl.object3D.position
+      .clone()
+      .sub(shapeObj.worldToLocal(hitWorld));
+    g.vertical = vertical;
     return true;
   }
 
@@ -1547,6 +1599,14 @@ export class ShapeVertexControls extends THREE.Object3D {
       shape.beginEditGesture();
     }
 
+    // Shift toggles vertical mode (raise/lower) — checked per move so the
+    // modifier can be pressed or released mid-drag. Failing to build the new
+    // plane (top-down camera, grazing ray) keeps the current mode.
+    const wantVertical = !!event.shiftKey;
+    if (wantVertical !== g.vertical) {
+      if (!this._rebuildDragPlane(g, event, wantVertical)) return;
+    }
+
     const hitWorld = this._pickOnPlane(
       event.clientX,
       event.clientY,
@@ -1562,7 +1622,13 @@ export class ShapeVertexControls extends THREE.Object3D {
     // polls vertex positions every tick, so the tube, the angle readouts, the
     // area label and the sidebar rows all track the drag for free. The
     // COMMITTED value goes through a command on release.
-    g.vertexEl.object3D.position.copy(local);
+    if (g.vertical) {
+      // height only — sideways cursor motion must not drift the vertex in
+      // plan while the user is eyeballing an elevation
+      g.vertexEl.object3D.position.y = local.y;
+    } else {
+      g.vertexEl.object3D.position.copy(local);
+    }
 
     const valid = validateVertexEdit(
       this._localPoints(),

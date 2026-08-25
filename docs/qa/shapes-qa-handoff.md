@@ -121,7 +121,10 @@ is just the QA-facing delta.
 
 `npm start`, then: build any managed street → draw a polyline with the
 shape tool → select the street → **Follow Path** → pick the shape. Curve
-style/radius live on the SHAPE's sidebar. Everything is covered by
+style/radius live on the SHAPE's sidebar. **Shift-drag a vertex handle to
+raise/lower it** — the path (and any street following it) ramps along the
+vertical profile; note cross-sections stay level (no banking) and clones
+get no pitch, so keep grades gentle. Everything is covered by
 headless end-to-end verification (see the commit messages for what each
 round asserted) plus unit suites: vitest 1008 / mocha 196 / browser
 components 74, all green.

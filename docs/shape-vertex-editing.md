@@ -280,6 +280,25 @@ own event come back. It is bound per element rather than once on `document`
 because `{ passive: false }` there would opt the whole app out of the compositor
 scroll fast path for the life of every shape selection.
 
+## Vertical drag (Shift)
+
+A vertex drag is planar by default — the drag plane is the shape's own
+horizontal plane at the vertex's height, so a vertex slides within the shape
+rather than off it. **Holding Shift flips the drag to vertical**: the plane
+becomes a camera-facing vertical plane through the vertex (its horizontal
+normal is derived from the cursor ray, so no camera plumbing), and only the
+vertex's `y` moves — sideways cursor motion cannot drift it in plan. The
+modifier is read per move, so it can be pressed or released mid-drag; each
+flip rebuilds the plane through the vertex's _current_ position with a fresh
+grab offset, which is what keeps the vertex from jumping at the transition.
+From a straight-down camera the vertical plane is edge-on and unbuildable;
+the drag then simply stays in its previous mode (you cannot judge height
+from a top-down view anyway). Touch has no modifier, so vertical editing is
+a mouse/keyboard affordance for now.
+
+The elevation matters beyond the shape itself: a street following the shape
+as its path ramps along the vertex heights (`docs/curved-street-path.md`).
+
 ## Click versus drag
 
 Two independent press baselines, and the distinction is the **scope of
