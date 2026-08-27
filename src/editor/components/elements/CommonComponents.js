@@ -37,13 +37,9 @@ export default class CommonComponents extends React.Component {
     const entity = this.props.entity;
     // return ['position', 'rotation', 'scale', 'visible']
     return ['position', 'rotation', 'scale'].map((componentName) => {
-      // if entity has managed-street component, then don't show scale
-      if (componentName === 'scale' && entity.components['managed-street']) {
-        return null;
-      }
-      // Same for anything that opts out of scaling: the command layer refuses
-      // the write anyway, so showing the row would only offer an edit that
-      // bounces back.
+      // Anything that opts out of scaling (managed streets, shapes) hides the
+      // row: the command layer refuses the write anyway, so showing it would
+      // only offer an edit that bounces back.
       if (
         componentName === 'scale' &&
         entity.hasAttribute('data-transform-no-scale')

@@ -356,6 +356,14 @@ AFRAME.registerComponent('managed-street', {
       this.el.setAttribute('street-label', '');
     }
     // Streets flatten geospatial terrain under their footprint by default
+    // Scale is blocked at the command layer: a street's size IS its segment
+    // widths and its length property, and an object3D scale would desync
+    // striping spacing, clone placement, labels and exports from all of them.
+    // The properties panel already hid its scale row for managed streets;
+    // the marker extends that to the gizmo ('s'/'l' falls back to translate),
+    // the AI chat, and every other command route (see transformGuard.js).
+    this.el.setAttribute('data-transform-no-scale', '');
+
     // (#1476): attach the geo-flatten volume component unless the scene
     // already carries one (which preserves a saved enabled:false opt-out).
     // Inert until a google3d layer with the flattening master switch exists.

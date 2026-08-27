@@ -760,9 +760,9 @@ export function Viewport(inspector) {
   }
 
   Events.on('transformmodechange', (mode) => {
-    // Some entities opt out of scale (`data-transform-no-scale`) — e.g. shapes,
-    // whose length/area readouts read intrinsic (unscaled) geometry, so a
-    // gizmo scale would desync them. Fall back to translate for those.
+    // Some entities opt out of scale (`data-transform-no-scale`) — shapes and
+    // managed streets, whose size is owned by their own editing affordances
+    // (vertex handles; segment widths). Fall back to translate for those.
     if (
       mode === 'scale' &&
       inspector.selectedEntity?.hasAttribute?.('data-transform-no-scale')
