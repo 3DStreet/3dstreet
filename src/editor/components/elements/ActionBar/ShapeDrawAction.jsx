@@ -2,7 +2,7 @@
 
 // Shape draw tool: click to lay down polyline vertices on the ground plane
 // with live length + angle readouts, finish with Enter / Esc / double-click,
-// step back with Backspace. Generalises the Ruler (RulerAction.jsx) from two
+// step back with Backspace. Generalises the removed Ruler tool from two
 // fixed points to an N-vertex open polyline, and adds the readout layer
 // (ShapeReadouts).
 //

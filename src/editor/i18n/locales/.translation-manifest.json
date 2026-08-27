@@ -2,8 +2,7 @@
   "es": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
     "actionBar.rotateTool": "Rotate Tool (e) - Select and rotate objects",
-    "actionBar.rulerTool": "Ruler Tool (r) - Measure distances between points",
-    "actionBar.shapeTool": "Shape Tool - Draw a polygon or open polyline; click to place points, Enter or double-click to finish, Backspace to remove the last point",
+    "actionBar.shapeTool": "Shape Tool (r) - Measure and draw; click to place points, Enter or double-click to finish, Backspace to remove the last point",
     "actionBar.translateTool": "Translate Tool (w) - Select and move objects",
     "actionBar.zoomIn": "Zoom In",
     "actionBar.zoomOut": "Zoom Out",
@@ -764,8 +763,7 @@
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
     "actionBar.rotateTool": "Rotate Tool (e) - Select and rotate objects",
-    "actionBar.rulerTool": "Ruler Tool (r) - Measure distances between points",
-    "actionBar.shapeTool": "Shape Tool - Draw a polygon or open polyline; click to place points, Enter or double-click to finish, Backspace to remove the last point",
+    "actionBar.shapeTool": "Shape Tool (r) - Measure and draw; click to place points, Enter or double-click to finish, Backspace to remove the last point",
     "actionBar.translateTool": "Translate Tool (w) - Select and move objects",
     "actionBar.zoomIn": "Zoom In",
     "actionBar.zoomOut": "Zoom Out",
@@ -1526,8 +1524,7 @@
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
     "actionBar.rotateTool": "Rotate Tool (e) - Select and rotate objects",
-    "actionBar.rulerTool": "Ruler Tool (r) - Measure distances between points",
-    "actionBar.shapeTool": "Shape Tool - Draw a polygon or open polyline; click to place points, Enter or double-click to finish, Backspace to remove the last point",
+    "actionBar.shapeTool": "Shape Tool (r) - Measure and draw; click to place points, Enter or double-click to finish, Backspace to remove the last point",
     "actionBar.translateTool": "Translate Tool (w) - Select and move objects",
     "actionBar.zoomIn": "Zoom In",
     "actionBar.zoomOut": "Zoom Out",

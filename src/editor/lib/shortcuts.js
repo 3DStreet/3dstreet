@@ -56,9 +56,9 @@ export const Shortcuts = {
       Events.emit('transformmodechange', 'rotate');
     }
 
-    // r: ruler
+    // r: shape draw tool (was the ruler until 2026-08; shapes measure now)
     if (keyCode === 82) {
-      Events.emit('toolchange', 'ruler');
+      Events.emit('toolchange', 'shape');
     }
 
     // h: hand

@@ -11,23 +11,16 @@ import posthog from 'posthog-js';
 import {
   Rotate24Icon,
   Translate24Icon,
-  Ruler24Icon,
   ShapeDraw24Icon,
   ZoomIn24Icon,
   ZoomOut24Icon,
   CameraReset24Icon
 } from '@shared/icons';
-import {
-  fadeInRulerCursorEntity,
-  fadeOutRulerCursorEntity,
-  useRulerTool
-} from './RulerAction.jsx';
 import { useShapeDrawTool } from './ShapeDrawAction.jsx';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const ActionBar = ({ selectedEntity }) => {
   const intl = useIntl();
-  const [measureLineCounter, setMeasureLineCounter] = useState(1);
   const [transformMode, setTransformMode] = useState('translate');
   const [newToolMode, setNewToolMode] = useState('off');
 
@@ -46,13 +39,6 @@ const ActionBar = ({ selectedEntity }) => {
   const selectionNotTransformable =
     !!selectedEntity?.hasAttribute('data-no-transform');
 
-  const { handleRulerMouseUp, handleRulerMouseMove, handleEscapeKey } =
-    useRulerTool(
-      changeTransformMode,
-      measureLineCounter,
-      setMeasureLineCounter
-    );
-
   // The shape draw tool owns its own canvas listeners + preview via this hook,
   // active whenever the 'shape' tool is selected.
   useShapeDrawTool(changeTransformMode, newToolMode === 'shape');
@@ -62,36 +48,14 @@ const ActionBar = ({ selectedEntity }) => {
     posthog.capture(`${tool}_clicked`);
     setTransformMode('off');
     setNewToolMode(tool);
-
-    if (tool === 'ruler') {
-      AFRAME.scenes[0].canvas.style.cursor = 'pointer';
-      fadeInRulerCursorEntity();
-    } else {
-      fadeOutRulerCursorEntity();
-      AFRAME.scenes[0].canvas.style.cursor = 'grab';
-    }
+    AFRAME.scenes[0].canvas.style.cursor = 'grab';
   };
-
-  useEffect(() => {
-    const canvas = AFRAME.scenes[0].canvas;
-    if (newToolMode === 'ruler') {
-      canvas.addEventListener('mousemove', handleRulerMouseMove);
-      canvas.addEventListener('mouseup', handleRulerMouseUp);
-      window.addEventListener('keydown', handleEscapeKey);
-    }
-    return () => {
-      canvas.removeEventListener('mousemove', handleRulerMouseMove);
-      canvas.removeEventListener('mouseup', handleRulerMouseUp);
-      window.removeEventListener('keydown', handleEscapeKey);
-    };
-  }, [newToolMode, handleRulerMouseMove, handleRulerMouseUp, handleEscapeKey]);
 
   useEffect(() => {
     const onTransformModeChange = (mode) => {
       setTransformMode(mode);
       setNewToolMode('off');
       AFRAME.scenes[0].canvas.style.cursor = null;
-      fadeOutRulerCursorEntity();
       Events.emit('showcursor');
     };
 
@@ -160,26 +124,13 @@ const ActionBar = ({ selectedEntity }) => {
       <Button
         variant="toolbtn"
         className={classNames({
-          [styles.active]: newToolMode === 'ruler'
-        })}
-        onClick={handleNewToolClick.bind(null, 'ruler')}
-        title={intl.formatMessage({
-          id: 'actionBar.rulerTool',
-          defaultMessage: 'Ruler Tool (r) - Measure distances between points'
-        })}
-      >
-        <Ruler24Icon />
-      </Button>
-      <Button
-        variant="toolbtn"
-        className={classNames({
           [styles.active]: newToolMode === 'shape'
         })}
         onClick={handleNewToolClick.bind(null, 'shape')}
         title={intl.formatMessage({
           id: 'actionBar.shapeTool',
           defaultMessage:
-            'Shape Tool - Draw a polygon or open polyline; click to place points, Enter or double-click to finish, Backspace to remove the last point'
+            'Shape Tool (r) - Measure and draw; click to place points, Enter or double-click to finish, Backspace to remove the last point'
         })}
       >
         <ShapeDraw24Icon />

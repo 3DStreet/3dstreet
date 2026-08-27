@@ -1,8 +1,7 @@
 {
   "actionBar.handTool": "Ferramenta Mão (h) - mova e gire a visualização sem selecionar objetos",
   "actionBar.rotateTool": "Ferramenta Girar (e) - Selecione e gire objetos",
-  "actionBar.rulerTool": "Ferramenta Régua (r) - Meça distâncias entre pontos",
-  "actionBar.shapeTool": "Ferramenta Forma - Desenhe um polígono ou uma polilinha aberta; clique para colocar pontos, Enter ou clique duplo para finalizar, Backspace para remover o último ponto",
+  "actionBar.shapeTool": "Ferramenta Forma (r) - Meça e desenhe; clique para colocar pontos, Enter ou clique duplo para finalizar, Backspace para remover o último ponto",
   "actionBar.translateTool": "Ferramenta Mover (w) - Selecione e mova objetos",
   "actionBar.zoomIn": "Aproximar",
   "actionBar.zoomOut": "Afastar",

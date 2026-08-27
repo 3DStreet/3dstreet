@@ -5,11 +5,8 @@
   "actionBar.rotateTool": {
     "defaultMessage": "Rotate Tool (e) - Select and rotate objects"
   },
-  "actionBar.rulerTool": {
-    "defaultMessage": "Ruler Tool (r) - Measure distances between points"
-  },
   "actionBar.shapeTool": {
-    "defaultMessage": "Shape Tool - Draw a polygon or open polyline; click to place points, Enter or double-click to finish, Backspace to remove the last point"
+    "defaultMessage": "Shape Tool (r) - Measure and draw; click to place points, Enter or double-click to finish, Backspace to remove the last point"
   },
   "actionBar.translateTool": {
     "defaultMessage": "Translate Tool (w) - Select and move objects"

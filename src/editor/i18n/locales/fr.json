@@ -1,8 +1,7 @@
 {
   "actionBar.handTool": "Outil Main (h) - déplacer et pivoter la vue sans sélectionner d'objets",
   "actionBar.rotateTool": "Outil Rotation (e) - Sélectionner et pivoter des objets",
-  "actionBar.rulerTool": "Outil Règle (r) - Mesurer les distances entre les points",
-  "actionBar.shapeTool": "Outil Forme - Dessiner un polygone ou une polyligne ouverte ; cliquer pour placer des points, Entrée ou double-clic pour terminer, Retour arrière pour supprimer le dernier point",
+  "actionBar.shapeTool": "Outil Forme (r) - Mesurer et dessiner ; cliquer pour placer des points, Entrée ou double-clic pour terminer, Retour arrière pour supprimer le dernier point",
   "actionBar.translateTool": "Outil Déplacement (w) - Sélectionner et déplacer des objets",
   "actionBar.zoomIn": "Zoom avant",
   "actionBar.zoomOut": "Zoom arrière",
