@@ -1499,6 +1499,12 @@
   "managedStreetSidebar.downloadJSON": {
     "defaultMessage": "Download Street JSON"
   },
+  "managedStreetSidebar.followPathHint": {
+    "defaultMessage": "This street follows a path — length tracks the path, and curve style (smooth / arc / linear) is set on the path shape."
+  },
+  "managedStreetSidebar.followPathNone": {
+    "defaultMessage": "None (straight)"
+  },
   "managedStreetSidebar.reloadConfirm": {
     "defaultMessage": "Reload this street from {source}? Local segment edits will be lost."
   },

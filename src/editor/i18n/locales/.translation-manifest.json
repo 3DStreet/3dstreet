@@ -757,7 +757,9 @@
     "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
     "geoModal.useMyLocation": "Use My Location",
     "geoSidebar.flatteningObjects": "Flattening Objects",
-    "profileModal.nextMonthlyRefill": "Next monthly refill: {date}"
+    "profileModal.nextMonthlyRefill": "Next monthly refill: {date}",
+    "managedStreetSidebar.followPathHint": "This street follows a path — length tracks the path, and curve style (smooth / arc / linear) is set on the path shape.",
+    "managedStreetSidebar.followPathNone": "None (straight)"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1517,7 +1519,9 @@
     "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
     "geoModal.useMyLocation": "Use My Location",
     "geoSidebar.flatteningObjects": "Flattening Objects",
-    "profileModal.nextMonthlyRefill": "Next monthly refill: {date}"
+    "profileModal.nextMonthlyRefill": "Next monthly refill: {date}",
+    "managedStreetSidebar.followPathHint": "This street follows a path — length tracks the path, and curve style (smooth / arc / linear) is set on the path shape.",
+    "managedStreetSidebar.followPathNone": "None (straight)"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2277,6 +2281,8 @@
     "geoModal.locationSearchUnavailable": "Location search is temporarily unavailable. Please click the map or enter coordinates directly to set the location.",
     "geoModal.useMyLocation": "Use My Location",
     "geoSidebar.flatteningObjects": "Flattening Objects",
-    "profileModal.nextMonthlyRefill": "Next monthly refill: {date}"
+    "profileModal.nextMonthlyRefill": "Next monthly refill: {date}",
+    "managedStreetSidebar.followPathHint": "This street follows a path — length tracks the path, and curve style (smooth / arc / linear) is set on the path shape.",
+    "managedStreetSidebar.followPathNone": "None (straight)"
   }
 }
