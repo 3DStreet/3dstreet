@@ -10,6 +10,12 @@ work committed locally, not pushed at time of writing
 > the original text is kept for history but read it through that lens —
 > in particular, Street Fill (commit `e1f0b2ee`) has been REMOVED.
 
+> **2026-08-26 update — merged; beta-prep underway on `shapes`.** The
+> curved-street branch merged into `shapes` via PR #1924 and is defunct
+> (reset to its merged tip; remote deleted). All work continues on
+> `shapes` directly. See the **Beta-prep session** section at the very
+> bottom for what shipped since the merge and the remaining beta list.
+
 Purpose: enough context for a fresh session (human + Claude) to continue QA
 and prototyping against real-world use cases without re-deriving anything.
 
@@ -153,3 +159,70 @@ gizmos already treat a straight street as a 2-vertex path; an intrinsic
 centerline (street-owned vertices, insert-vertex-to-bend, external shapes
 becoming an import/link) is the natural convergence — see the discussion
 in the PR / session notes before starting Phase 2 work.
+
+## Beta-prep session (2026-08-25/26)
+
+**Branch:** `shapes` — PR #1924 merged the curved-street branch in; that
+branch is now defunct (reset to its merged tip, remote already deleted).
+Goal of this pass: the "must have to ship a beta (behind a menu)" list.
+
+### Landed via the merge tail (last commits of the old branch)
+
+| Commit     | What                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `1317df54` | Shape entities get a custom icon in the scene graph + properties panel: `ShapeIcon` in `street-icons.jsx` (toolbar glyph recolored cyan/white to the managed-street icon language) wired via `getEntityIcon` in `editor/lib/entity.js`. One branch covers both surfaces (both render through `EntityLabel`).                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `e364bbcb` | Draw tool starts unclosed: `shapeDrawMode` store default flipped `'auto'` → `'manual'` (session-only, not persisted); sidebar radio order matches.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `2dc907b1` | **The shape owns its curve.** `curveType`/`filletRadius` moved off `street-path` onto the `shape` schema; `street-path` is now a schema-less role component (eventing + system registration + ribbon helpers, reads curve props via `getCurveOptions()`). `curveType` defaults to `linear`; assigning a shape via Follow Path bumps it to `smooth` ONCE, at the gesture in `ManagedStreetSidebar` — never on scene load, so a deliberate linear choice survives reload (side effect: fully undoing an assignment is two Ctrl+Z). `filletRadius` default 6 → 20 (6m rounds ~2.5m off a right angle — invisible at street scale). **No migration for pre-move scenes by decision** (never released; they load straight with console warnings). |
+
+### Landed on `shapes` since the merge
+
+| Commit     | What                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `a26095b6` | Core bundle back under its 4.0 MiB CI budget (was 4.02): svg-extruder lazy-loads the vendored SVGLoader; six illustration-grade icon SVGs (~107 KiB of `@shared/icons`, `GeospatialIcon` alone 41.6 KiB) moved to `ui_assets/icons/` as `<img>`-backed components (same export names, no call-site changes; the unused `GeospatialIconWhite` deleted). Core now 3.90 MiB. Dead end documented in the commit: `sideEffects` tree-shaking of icons recovers nothing. |
+| `8214350c` | Load crash on curved-street scenes fixed: batching's BVH pass read `attributes.position.count` on an empty BufferGeometry — which `street-ribbon` legitimately builds when a segment initializes before its street's curve resolves. Now skipped. Verified against the failing cloud scene (`31ed37d0…`).                                                                                                                                                          |
+| `f730af6b` | i18n CI failure fixed: the workflow re-extracts `en.json` before its drift check, so the two `managedStreetSidebar.followPath*` strings (path-following hint + "None (straight)" option) failed PR #1920's `Check / refresh translations` job. Re-extracted, translated by hand for es/pt-BR/fr (no local API key), manifest updated. `npm run i18n:extract && npm run i18n:check` is the local repro for any future string additions.                             |
+
+### Beta must-have list — status
+
+- ~~Shape icon in scene graph + props panel~~ DONE (`1317df54`)
+- ~~Start unclosed by default~~ DONE (`e364bbcb`)
+- **Help tip edit — KF** (copy lives in `ShapeDrawInstructions` /
+  `ShapeSidebar.js`; the ActionBar button tooltip too)
+- **Hide transform gizmo on shape selection** — agreed approach: skip
+  `attachStockGizmo()` for entities with a `shape` component in
+  `attachControlsForSelection()` (`viewport.js` ~751), KEEPING the numeric
+  transform rows (the gizmo is currently the only whole-shape move, so
+  the panel rows are the interim mover; whole-shape drag is the eventual
+  replacement). Not yet implemented.
+- **Beta gate** — agreed shape: "Shapes (Beta)" checkbox in the View menu
+  writing a persisted pref + `?shapes=on` URL override (nav-scheme
+  pattern in `nav-experimental/flag.js`, but no reload needed if the
+  ActionBar reads the store); hide the shape tool button when off. Not
+  yet implemented.
+- **Backward compat**: the saved contract is `shape` props (incl.
+  curveType/filletRadius), `shape-vertex` children, schema-less
+  `street-path`, and `managed-street.path` (`#id` selector). Policy:
+  post-beta changes to these ship a load-time migration
+  (`migrateLegacyFlatteningShape` in `json-utils_1.1.js` is the
+  precedent), never a silent break.
+
+### Decided against (don't re-open without new evidence)
+
+- **Ruler/measure-line → shape migration**: shapes can represent every
+  ruler (2-vertex open polyline), but always-visible length labels were
+  judged an antifeature ("too busy with a lot of lines") — and without
+  them a migration adds nothing users need now. Rulers stay as-is.
+- **Pre-release street-path curve-prop migration**: written, verified,
+  then removed — pre-move scenes were never public.
+- **Icon tree-shaking via `sideEffects`**: recovers ~nothing; the six
+  big files were the problem, now moved out.
+
+### Verification notes
+
+Every change above was verified in-browser against the live dev server
+(headless Playwright driving localhost:3333): the curve-props move ran a
+16-check pass (draw default, smooth bump, arc-length tracking, linear
+persistence, serialization defaults-stripping), and the batching fix was
+confirmed against the exact crashing cloud scene. The check scripts lived
+in the session scratchpad (gone with the session); the commit messages
+record what each pass asserted.
