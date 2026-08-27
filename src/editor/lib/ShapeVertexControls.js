@@ -270,6 +270,12 @@ export class ShapeVertexControls extends THREE.Object3D {
     this._tmpCamPos = new THREE.Vector3();
     this._tmpNormal = new THREE.Vector3();
     this._tmpQuat = new THREE.Quaternion();
+    // The shape's world scale, refreshed each frame from `this.matrix`. The
+    // handle group inherits the shape's full world matrix, so a shape inside
+    // a scaled group would render its handles scaled too; sizing divides this
+    // out (per axis, so a non-uniform scale doesn't squash the spheres) and
+    // hit-testing multiplies it back to get the true rendered radius.
+    this._worldScale = new THREE.Vector3(1, 1, 1);
     this._tmpPoints = [];
     this._hitList = [];
 
@@ -534,6 +540,12 @@ export class ShapeVertexControls extends THREE.Object3D {
     if (camera && canvas) {
       camera.getWorldPosition(this._tmpCamPos);
       const viewportH = canvas.clientHeight;
+      const ws = this._worldScale.setFromMatrixScale(this.matrix);
+      // A degenerate axis (scale 0) would divide the handles to Infinity;
+      // fall back to uncompensated on that axis.
+      if (!(ws.x > 1e-6)) ws.x = 1;
+      if (!(ws.y > 1e-6)) ws.y = 1;
+      if (!(ws.z > 1e-6)) ws.z = 1;
       for (let i = 0; i < this.vertexHandles.length; i++) {
         const el = this.vertexEls[i];
         const mesh = this.vertexHandles[i];
@@ -545,7 +557,8 @@ export class ShapeVertexControls extends THREE.Object3D {
           this._tmpV.distanceTo(this._tmpCamPos),
           viewportH
         );
-        mesh.scale.setScalar(clampHandleRadius(mpp));
+        const r = clampHandleRadius(mpp);
+        mesh.scale.set(r / ws.x, r / ws.y, r / ws.z);
       }
       this._updateActiveRim();
       this._updateTrashButton(camera, canvas);
@@ -614,7 +627,9 @@ export class ShapeVertexControls extends THREE.Object3D {
       entry.index = i;
       entry.mesh = mesh;
       entry.screenRadiusPx = this._screenRadiusPx(
-        mesh.scale.x,
+        // mesh.scale divides the shape's world scale out (see _perFrame);
+        // multiply it back to get the radius the handle actually renders at.
+        mesh.scale.x * this._worldScale.x,
         entry.world,
         camera,
         viewportH
@@ -871,7 +886,7 @@ export class ShapeVertexControls extends THREE.Object3D {
     if (!mesh) return 0;
     this._tmpV.copy(mesh.position).applyMatrix4(this.matrix);
     return this._screenRadiusPx(
-      mesh.scale.x,
+      mesh.scale.x * this._worldScale.x,
       this._tmpV,
       camera,
       canvas.clientHeight
@@ -1187,7 +1202,9 @@ export class ShapeVertexControls extends THREE.Object3D {
     }
     this._activeRim.visible = true;
     this._activeRim.position.copy(mesh.position);
-    this._activeRim.scale.setScalar(mesh.scale.x * ACTIVE_RIM_RATIO);
+    // copy, not setScalar: the handle's scale is per-axis under a non-uniform
+    // parent scale, and the rim must stay concentric with it.
+    this._activeRim.scale.copy(mesh.scale).multiplyScalar(ACTIVE_RIM_RATIO);
   }
 
   _activeHandle() {

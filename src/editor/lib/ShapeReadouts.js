@@ -45,6 +45,9 @@ export default class ShapeReadouts {
     if (el.object3D) el.object3D.add(this.group);
     // { obj: CSS2DObject, outer: HTMLElement, inner: HTMLElement }
     this.labels = [];
+    // Scratch for world-frame measurement in _addLengthLabel.
+    this._worldA = new THREE.Vector3();
+    this._worldB = new THREE.Vector3();
   }
 
   setUnits(units) {
@@ -156,8 +159,18 @@ export default class ShapeReadouts {
 
   // `segment` and `interaction` are both absent on the draw-preview path, which
   // has no segment index and must not gain one.
+  //
+  // The LENGTH is measured in the world frame — a shape nested inside a scaled
+  // group must read the size it renders at (and the size a street following it
+  // lays at). The label's position stays local: the group is a child of the
+  // shape's object3D, so placement inherits the transform for free.
   _addLengthLabel(a, b, segment, interaction) {
-    const len = segmentLength(a, b);
+    const obj3D = this.el.object3D;
+    obj3D.updateWorldMatrix(true, false);
+    const len = segmentLength(
+      this._worldA.copy(a).applyMatrix4(obj3D.matrixWorld),
+      this._worldB.copy(b).applyMatrix4(obj3D.matrixWorld)
+    );
     if (len < EPS) return; // zero-length segment carries no readout
     const mid = new THREE.Vector3(
       (a.x + b.x) / 2,

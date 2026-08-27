@@ -470,3 +470,29 @@ describe('READOUT_RENDER_ORDER', () => {
     expect(revealedCaption).toBeLessThan(control);
   });
 });
+
+// The measured NUMBER is world-frame; the label's position stays local (the
+// group is a child of the shape's object3D). A shape nested inside a scaled
+// group renders bigger than its local coordinates say — the chip must report
+// the rendered size, which is also the size a street following the shape as
+// its path lays at. Regression guard for the scaled-parent-group scenario.
+describe('ShapeReadouts — world-frame measurement', () => {
+  it('reads the rendered length, not the local one, under a scaled shape', () => {
+    const el = stubEntity();
+    el.object3D.scale.set(2, 1, 2);
+    const readouts = new ShapeReadouts(el);
+    readouts.renderAll([p(0, 0), p(10, 0)], 12, null, false);
+    expect(readouts.labels.length).toBe(1);
+    expect(readouts.labels[0].inner.textContent).toBe('20.00m');
+  });
+
+  it('is unchanged by rotation and translation alone', () => {
+    const el = stubEntity();
+    el.object3D.position.set(5, 0, -3);
+    el.object3D.rotation.y = Math.PI / 3;
+    const readouts = new ShapeReadouts(el);
+    readouts.renderAll([p(0, 0), p(10, 0)], 12, null, false);
+    expect(readouts.labels.length).toBe(1);
+    expect(readouts.labels[0].inner.textContent).toBe('10.00m');
+  });
+});

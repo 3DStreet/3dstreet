@@ -26,11 +26,7 @@
 
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import useStore from '../store.js';
-import {
-  polygonAreaXZ,
-  polygonCentroidXZ,
-  ringSelfIntersects
-} from './polygonMath.js';
+import { polygonCentroidXZ, ringSelfIntersects } from './polygonMath.js';
 import {
   FILL_LIFT_M,
   fillPaintOrder,
@@ -97,6 +93,7 @@ AFRAME.registerSystem('shape', {
       // event. Two reads and a compare on the unchanged path - see
       // syncFillOrder, which deliberately allocates nothing.
       shape.syncFillOrder();
+      shape.syncWorldMeasure();
       if (shape.data.updateEvent) return;
       if (shape.positionsChanged()) {
         shape.rederive();
@@ -184,6 +181,10 @@ AFRAME.registerComponent('shape', {
     this.ringPtsScratch = [];
     this.direction = new THREE.Vector3();
     this.tmpQuaternion = new THREE.Quaternion();
+    this.worldAreaScratchA = new THREE.Vector3();
+    this.worldAreaScratchB = new THREE.Vector3();
+    this.worldMatrixCache = null;
+    this._areaPts = null;
 
     this.requestRederive = this.requestRederive.bind(this);
 
@@ -315,11 +316,13 @@ AFRAME.registerComponent('shape', {
     // the shape and translates/rotates about its centre. (Vertices are hidden +
     // non-selectable, so there is no per-point gizmo — intended.)
     //
-    // SCALE is disabled (`data-transform-no-scale`): scaling desyncs the
-    // length/area readouts, which read the shape's intrinsic (unscaled) local
-    // geometry. Translate and the editor's Y-only rotation both preserve the
-    // readouts, so they stay enabled. A richer "move shape" affordance could
-    // re-enable scale later (with readouts that fold in world scale).
+    // SCALE is disabled (`data-transform-no-scale`) by decision: resizing a
+    // drawing is the vertex handles' job, and a scale gizmo on a measuring
+    // tool is an affordance nobody needs. Note the measurement surfaces
+    // (readout chips, sidebar rows, this component's area label) measure in
+    // the WORLD frame regardless, so a shape nested inside a scaled GROUP
+    // still reports the size it renders at — the marker withholds the direct
+    // affordance, it is not what keeps the numbers honest.
     this.el.setAttribute('data-transform-no-scale', '');
     // Tilting out of the horizontal would make the plan-view area a projection
     // of the shape rather than its footprint, and editing a vertex assumes a
@@ -593,10 +596,12 @@ AFRAME.registerComponent('shape', {
     // order is derived from it, and by the area label. Compute it once so the
     // two are guaranteed to be reading the SAME figure. Zero when there is no
     // well-defined interior, matching what the label reports. A curved ring
-    // measures the curved region, not the control polygon.
+    // measures the curved region, not the control polygon. Measured in the
+    // WORLD frame: a shape nested inside a scaled group must report (and
+    // paint-order by) the footprint it renders at, not its local coordinates.
     const ringArea =
       closed && !selfIntersecting
-        ? polygonAreaXZ(curvedPts || this._ringPts(verts))
+        ? this._worldAreaXZ(curvedPts || this._ringPts(verts))
         : 0;
     // While an edit gesture is in flight, a crossing ring HOLDS its last valid
     // fill and area instead of dropping them: the interior stays clickable and
@@ -692,6 +697,43 @@ AFRAME.registerComponent('shape', {
     // every later re-derive too. Non-bubbling: a shape's vertex children must
     // not look like their parent re-deriving.
     this.el.emit('shape-geometry-changed', null, false);
+  },
+
+  // Shoelace area of `pts` (positions in the entity's local frame) after
+  // transforming them into the WORLD frame, projected onto the world ground
+  // plane. Scratch vectors, no allocation: this runs on every re-derive.
+  _worldAreaXZ: function (pts) {
+    const n = pts.length;
+    if (n < 3) return 0;
+    this.el.object3D.updateWorldMatrix(true, false);
+    const m = this.el.object3D.matrixWorld;
+    const a = this.worldAreaScratchA;
+    const b = this.worldAreaScratchB;
+    let sum = 0;
+    b.copy(pts[n - 1]).applyMatrix4(m);
+    for (let i = 0; i < n; i++) {
+      a.copy(pts[i]).applyMatrix4(m);
+      sum += b.x * a.z - a.x * b.z;
+      b.copy(a);
+    }
+    return Math.abs(sum) * 0.5;
+  },
+
+  // Runs from the system tick, beside syncFillOrder, and for the same reason:
+  // the area figure depends on the entity's WORLD transform (scaling a parent
+  // group changes the footprint the shape renders at) while the vertices — the
+  // only thing the dirty-check watches — never move. Compare-and-bail keeps
+  // the unchanged path allocation-free; the recompute reads the same ring the
+  // last derive measured, whose entries are live vertex positions.
+  syncWorldMeasure: function () {
+    if (!this._areaPts) return;
+    this.el.object3D.updateWorldMatrix(true, false);
+    const m = this.el.object3D.matrixWorld;
+    if (this.worldMatrixCache && this.worldMatrixCache.equals(m)) return;
+    if (!this.worldMatrixCache) this.worldMatrixCache = new THREE.Matrix4();
+    this.worldMatrixCache.copy(m);
+    this.area = this._worldAreaXZ(this._areaPts);
+    this._updateAreaLabelText();
   },
 
   // The vertex positions as a plain array, in a buffer reused across
@@ -866,17 +908,22 @@ AFRAME.registerComponent('shape', {
   // and reposition the area label. Runs on every
   // re-derive so area tracks a vertex moving/added/removed (and an animation).
   // `pts` is the ring as plain positions in the entity's local frame — the
-  // same frame the meshes and the label object live in — so the area
-  // (translation-invariant) and the centroid position are consistent with
-  // the geometry with no world/local offset. For a curve-styled shape this
+  // same frame the meshes and the label object live in — so the centroid
+  // position is consistent with the geometry with no world/local offset.
+  // The `area` VALUE arrives world-measured (see the derive), since the
+  // label reports the rendered footprint. For a curve-styled shape this
   // is the sampled ring, so the label sits at the curved region's centroid.
   _updateArea: function (pts, closed, area) {
     if (!closed) {
       this.area = 0;
+      this._areaPts = null;
       if (this.areaLabelObject) this.areaLabelObject.visible = false;
       return;
     }
     this.area = area;
+    // Kept for syncWorldMeasure, which re-measures this same ring when the
+    // world transform changes between derives.
+    this._areaPts = pts;
     if (this.areaLabelObject) {
       const c = polygonCentroidXZ(pts);
       this.areaLabelObject.position.set(c.x, pts[0].y, c.z);

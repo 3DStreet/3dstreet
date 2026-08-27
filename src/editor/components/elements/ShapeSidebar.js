@@ -91,7 +91,7 @@ function getShapeVertexEls(entity) {
   return [];
 }
 
-// Ordered vertex world positions (local to the shape entity) as THREE.Vector3.
+// Ordered vertex positions (local to the shape entity) as THREE.Vector3.
 function getShapeVertices(entity) {
   return getShapeVertexEls(entity).map((el) => el.object3D.position.clone());
 }
@@ -429,6 +429,12 @@ const ShapeSidebar = ({ entity }) => {
   };
 
   const vertices = getShapeVertices(entity);
+  // Measure in the WORLD frame: a shape nested inside a scaled (or rotated)
+  // group must report the size it renders at, matching the on-canvas readouts
+  // and the component's area label. getShapeVertices clones, so transforming
+  // in place is safe — placement code elsewhere stays local.
+  entity.object3D.updateWorldMatrix(true, false);
+  for (const v of vertices) v.applyMatrix4(entity.object3D.matrixWorld);
   const n = vertices.length;
   const closed = isClosedShape(entity, n);
   // A closed ring has a wrap segment (n→1) and a corner at every vertex; an open
