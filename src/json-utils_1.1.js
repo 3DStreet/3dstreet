@@ -8,6 +8,7 @@ import {
   migrateSegmentBuildingType,
   migrateShowBuildingsFlag
 } from './tested/street-segment-utils';
+import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
 
 /* global AFRAME, Node */
 // Components removed alongside the legacy viewer mode. Stripped from
@@ -475,6 +476,7 @@ function createEntities(entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
   const removeEntities = ['environment', 'reference-layers'];
   migrateLegacyFlatteningShape(entitiesData);
+  migrateMeasureLinesToShapes(entitiesData);
   // Arm batching before any entity is minted below; batchModels runs on the "newScene"
   // event emitted after this createEntities pass. See beginBatching for the state model.
   if (BATCHING_ENABLED) {
