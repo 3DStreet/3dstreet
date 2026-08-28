@@ -2,6 +2,7 @@
 
 import PropTypes from 'prop-types';
 import { useEffect, useRef, useState } from 'react';
+import { useIntl } from 'react-intl';
 import useStore from '@/store';
 import Events from '../../lib/Events';
 import ShapeReadouts from '../../lib/ShapeReadouts';
@@ -175,6 +176,7 @@ function renderReadouts(readouts, entity, hoverPoint, lastRenderElsRef) {
 }
 
 const ShapeSidebar = ({ entity }) => {
+  const intl = useIntl();
   const [, setTick] = useState(0);
   const { unitsPreference } = useStore();
   const readoutsRef = useRef(null);
@@ -478,7 +480,12 @@ const ShapeSidebar = ({ entity }) => {
       <div className="details">
         {closed && (
           <div className="propertyRow">
-            <div className="fakePropertyRowLabel">Area</div>
+            <div className="fakePropertyRowLabel">
+              {intl.formatMessage({
+                id: 'shapeSidebar.area',
+                defaultMessage: 'Area'
+              })}
+            </div>
             <div className="fakePropertyRowValue">
               <span className="text-lg font-bold text-green-600">
                 {areaValue}
@@ -487,7 +494,12 @@ const ShapeSidebar = ({ entity }) => {
           </div>
         )}
         <div className="propertyRow">
-          <div className="fakePropertyRowLabel">Segments</div>
+          <div className="fakePropertyRowLabel">
+            {intl.formatMessage({
+              id: 'shapeSidebar.segments',
+              defaultMessage: 'Segments'
+            })}
+          </div>
           <div className="fakePropertyRowValue">
             <span className="text-lg font-bold text-green-600">
               {segments.length}
@@ -496,29 +508,58 @@ const ShapeSidebar = ({ entity }) => {
         </div>
         {segments.map((s) => (
           <div className="propertyRow" key={`seg-${s.label}`}>
-            <div className="fakePropertyRowLabel">Length {s.label}</div>
+            <div className="fakePropertyRowLabel">
+              {intl.formatMessage(
+                {
+                  id: 'shapeSidebar.length',
+                  defaultMessage: 'Length {label}'
+                },
+                { label: s.label }
+              )}
+            </div>
             <div className="fakePropertyRowValue">{s.value}</div>
           </div>
         ))}
         {angles.map((a) => (
           <div className="propertyRow" key={`ang-${a.label}`}>
-            <div className="fakePropertyRowLabel">Angle {a.label}</div>
+            <div className="fakePropertyRowLabel">
+              {intl.formatMessage(
+                {
+                  id: 'shapeSidebar.angle',
+                  defaultMessage: 'Angle {label}'
+                },
+                { label: a.label }
+              )}
+            </div>
             <div className="fakePropertyRowValue">{a.value}</div>
           </div>
         ))}
         {n >= 2 && (
           <div className="propertyRow">
-            <div className="fakePropertyRowLabel">Direction</div>
+            <div className="fakePropertyRowLabel">
+              {intl.formatMessage({
+                id: 'shapeSidebar.direction',
+                defaultMessage: 'Direction'
+              })}
+            </div>
             <div className="fakePropertyRowValue">
               <Button variant="toolbtn" onClick={onReverseDirection}>
-                Reverse
+                {intl.formatMessage({
+                  id: 'shapeSidebar.reverse',
+                  defaultMessage: 'Reverse'
+                })}
               </Button>
             </div>
           </div>
         )}
         {n >= 3 && (
           <div className="propertyRow">
-            <div className="fakePropertyRowLabel">Curve Style</div>
+            <div className="fakePropertyRowLabel">
+              {intl.formatMessage({
+                id: 'shapeSidebar.curveStyle',
+                defaultMessage: 'Curve Style'
+              })}
+            </div>
             <div className="fakePropertyRowValue">
               <select
                 value={shapeData?.curveType ?? 'linear'}
@@ -526,16 +567,36 @@ const ShapeSidebar = ({ entity }) => {
                   setShapeCurveProperty('curveType', e.target.value);
                 }}
               >
-                <option value="linear">Straight / hard corners</option>
-                <option value="smooth">Smooth (spline)</option>
-                <option value="arc">Arcs (corner radius)</option>
+                <option value="linear">
+                  {intl.formatMessage({
+                    id: 'shapeSidebar.curveLinear',
+                    defaultMessage: 'Straight / hard corners'
+                  })}
+                </option>
+                <option value="smooth">
+                  {intl.formatMessage({
+                    id: 'shapeSidebar.curveSmooth',
+                    defaultMessage: 'Smooth (spline)'
+                  })}
+                </option>
+                <option value="arc">
+                  {intl.formatMessage({
+                    id: 'shapeSidebar.curveArc',
+                    defaultMessage: 'Arcs (corner radius)'
+                  })}
+                </option>
               </select>
             </div>
           </div>
         )}
         {shapeData?.curveType === 'arc' && (
           <div className="propertyRow">
-            <div className="fakePropertyRowLabel">Corner Radius</div>
+            <div className="fakePropertyRowLabel">
+              {intl.formatMessage({
+                id: 'shapeSidebar.cornerRadius',
+                defaultMessage: 'Corner Radius'
+              })}
+            </div>
             <div className="fakePropertyRowValue">
               <input
                 type="number"
@@ -555,15 +616,44 @@ const ShapeSidebar = ({ entity }) => {
         <div className="propertyRow">
           <div className="rounded bg-blue-50 p-2 text-gray-600">
             <div className="mb-1 font-semibold uppercase">
-              💡 Shape Drawing Tips
+              💡{' '}
+              {intl.formatMessage({
+                id: 'shapeSidebar.tipsTitle',
+                defaultMessage: 'Shape Drawing Tips'
+              })}
             </div>
             <ul className="space-y-1">
-              <li>• Click a blue vertex dot to move it or delete it</li>
-              <li>• Hold Shift while dragging a vertex to raise or lower it</li>
               <li>
-                • Click a side&rsquo;s length to add a vertex to that side
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeSidebar.tipVertex',
+                  defaultMessage:
+                    'Click a blue vertex dot to move it or delete it'
+                })}
               </li>
-              <li>• Edit line color, width and fill below</li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeSidebar.tipShift',
+                  defaultMessage:
+                    'Hold Shift while dragging a vertex to raise or lower it'
+                })}
+              </li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeSidebar.tipInsert',
+                  defaultMessage:
+                    "Click a side's length to add a vertex to that side"
+                })}
+              </li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeSidebar.tipStyle',
+                  defaultMessage: 'Edit line color, width and fill below'
+                })}
+              </li>
             </ul>
           </div>
         </div>
@@ -577,12 +667,11 @@ ShapeSidebar.propTypes = {
 };
 
 // Instructions + draw-mode switch shown in the right panel while the shape draw
-// tool is active (mirrors how the ruler surfaces guidance). Self-gates on the
-// store so it can be rendered unconditionally by the Sidebar. Strings are
-// hardcoded English, matching this block's existing copy (the draw feature does
-// not use the i18n catalog — a single mode switch does not warrant introducing
-// it here).
+// tool is active (mirrors how the ruler surfaced guidance). Self-gates on the
+// store so it can be rendered unconditionally by the Sidebar. Strings live in
+// the i18n catalog (shapeDraw.*), like the rest of the editor chrome.
 export const ShapeDrawInstructions = () => {
+  const intl = useIntl();
   const active = useStore((s) => s.shapeDrawActive);
   const mode = useStore((s) => s.shapeDrawMode);
   const setMode = useStore((s) => s.setShapeDrawMode);
@@ -591,9 +680,20 @@ export const ShapeDrawInstructions = () => {
   return (
     <div className="sidepanelContent">
       <div className="rounded bg-blue-50 p-2 text-gray-600">
-        <div className="mb-1 font-semibold uppercase">✏️ Draw a shape</div>
+        <div className="mb-1 font-semibold uppercase">
+          ✏️{' '}
+          {intl.formatMessage({
+            id: 'shapeDraw.title',
+            defaultMessage: 'Draw a shape'
+          })}
+        </div>
         <div className="mb-2">
-          <div className="mb-1 font-semibold">Mode</div>
+          <div className="mb-1 font-semibold">
+            {intl.formatMessage({
+              id: 'shapeDraw.mode',
+              defaultMessage: 'Mode'
+            })}
+          </div>
           <label className="flex items-center gap-1">
             <input
               type="radio"
@@ -602,8 +702,11 @@ export const ShapeDrawInstructions = () => {
               onChange={() => setMode('manual')}
             />
             <span className="text-gray-600">
-              Close manually — draws an open line. Click the first point when
-              you want to close it.
+              {intl.formatMessage({
+                id: 'shapeDraw.closeManually',
+                defaultMessage:
+                  'Close manually — draws an open line. Click the first point when you want to close it.'
+              })}
             </span>
           </label>
           <label className="flex items-center gap-1">
@@ -614,29 +717,99 @@ export const ShapeDrawInstructions = () => {
               onChange={() => setMode('auto')}
             />
             <span className="text-gray-600">
-              Auto-close — closes as you draw, so the closing edge and the
-              enclosed area update live. Stays open if the shape can&rsquo;t
-              close without crossing itself.
+              {intl.formatMessage({
+                id: 'shapeDraw.autoClose',
+                defaultMessage:
+                  "Auto-close — closes as you draw, so the closing edge and the enclosed area update live. Stays open if the shape can't close without crossing itself."
+              })}
             </span>
           </label>
         </div>
         <ul className="space-y-1">
           {autoClose ? (
             <>
-              <li>• Click to add corners</li>
-              <li>• Enter finishes, including the corner under the cursor</li>
-              <li>• Esc or double-click finishes without it</li>
-              <li>• Backspace removes the last corner</li>
-              <li>• Ctrl+Z undoes the finished shape</li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeDraw.addCorners',
+                  defaultMessage: 'Click to add corners'
+                })}
+              </li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeDraw.finishEnterCorner',
+                  defaultMessage:
+                    'Enter finishes, including the corner under the cursor'
+                })}
+              </li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeDraw.finishWithout',
+                  defaultMessage: 'Esc or double-click finishes without it'
+                })}
+              </li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeDraw.backspaceCorner',
+                  defaultMessage: 'Backspace removes the last corner'
+                })}
+              </li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeDraw.undo',
+                  defaultMessage: 'Ctrl+Z undoes the finished shape'
+                })}
+              </li>
             </>
           ) : (
             <>
-              <li>• Click to add points</li>
-              <li>• Click the first point to close the shape</li>
-              <li>• Enter finishes, including the point under the cursor</li>
-              <li>• Esc or double-click finishes without it</li>
-              <li>• Backspace removes the last point</li>
-              <li>• Ctrl+Z undoes the finished shape</li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeDraw.addPoints',
+                  defaultMessage: 'Click to add points'
+                })}
+              </li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeDraw.closeFirstPoint',
+                  defaultMessage: 'Click the first point to close the shape'
+                })}
+              </li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeDraw.finishEnterPoint',
+                  defaultMessage:
+                    'Enter finishes, including the point under the cursor'
+                })}
+              </li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeDraw.finishWithout',
+                  defaultMessage: 'Esc or double-click finishes without it'
+                })}
+              </li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeDraw.backspacePoint',
+                  defaultMessage: 'Backspace removes the last point'
+                })}
+              </li>
+              <li>
+                •{' '}
+                {intl.formatMessage({
+                  id: 'shapeDraw.undo',
+                  defaultMessage: 'Ctrl+Z undoes the finished shape'
+                })}
+              </li>
             </>
           )}
         </ul>
