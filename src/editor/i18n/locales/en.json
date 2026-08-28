@@ -2057,11 +2057,11 @@
   "shapeReadouts.insertHint": {
     "defaultMessage": "Add a vertex to this side"
   },
-  "shapeSidebar.angle": {
-    "defaultMessage": "Angle {label}"
-  },
   "shapeSidebar.area": {
     "defaultMessage": "Area"
+  },
+  "shapeSidebar.cornerAngle": {
+    "defaultMessage": "∠ {value}"
   },
   "shapeSidebar.cornerRadius": {
     "defaultMessage": "Corner Radius"
@@ -2089,6 +2089,12 @@
   },
   "shapeSidebar.segments": {
     "defaultMessage": "Segments"
+  },
+  "shapeSidebar.showAllSegments": {
+    "defaultMessage": "Show all {count} segments"
+  },
+  "shapeSidebar.showFewerSegments": {
+    "defaultMessage": "Show fewer segments"
   },
   "shapeSidebar.tipInsert": {
     "defaultMessage": "Click a side's length to add a vertex to that side"

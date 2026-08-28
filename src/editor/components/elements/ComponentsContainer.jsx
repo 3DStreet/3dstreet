@@ -66,9 +66,15 @@ export default class ComponentsContainer extends React.Component {
 
   render() {
     const { entity } = this.props;
+    // A shape's featured section (direction, curve style, fill/line) is the
+    // main thing being edited, so it leads and the transform rows follow;
+    // everything else keeps transform first.
+    const featuredFirst = !!entity.getAttribute('shape');
+    const featured = <FeaturedComponents entity={entity} />;
 
     return (
       <div className="components">
+        {featuredFirst && featured}
         {entity.hasAttribute('data-no-transform') ? (
           <div className="sidepanelContent">
             <br />
@@ -84,7 +90,7 @@ export default class ComponentsContainer extends React.Component {
             <MixinMetadata entity={entity} />
           </div>
         )}
-        <FeaturedComponents entity={entity} />
+        {!featuredFirst && featured}
         {this.getApprovedComponents().length > 0 && (
           <AddGeneratorComponent
             entity={entity}

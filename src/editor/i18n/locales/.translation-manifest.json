@@ -772,7 +772,6 @@
     "shapeDraw.mode": "Mode",
     "shapeDraw.title": "Draw a shape",
     "shapeDraw.undo": "Ctrl+Z undoes the finished shape",
-    "shapeSidebar.angle": "Angle {label}",
     "shapeSidebar.area": "Area",
     "shapeSidebar.cornerRadius": "Corner Radius",
     "shapeSidebar.curveArc": "Arcs (corner radius)",
@@ -788,7 +787,10 @@
     "shapeSidebar.tipStyle": "Edit line color, width and fill below",
     "shapeSidebar.tipVertex": "Click a blue vertex dot to move it or delete it",
     "shapeSidebar.tipsTitle": "Shape Drawing Tips",
-    "shapeReadouts.insertHint": "Add a vertex to this side"
+    "shapeReadouts.insertHint": "Add a vertex to this side",
+    "shapeSidebar.cornerAngle": "∠ {value}",
+    "shapeSidebar.showAllSegments": "Show all {count} segments",
+    "shapeSidebar.showFewerSegments": "Show fewer segments"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1563,7 +1565,6 @@
     "shapeDraw.mode": "Mode",
     "shapeDraw.title": "Draw a shape",
     "shapeDraw.undo": "Ctrl+Z undoes the finished shape",
-    "shapeSidebar.angle": "Angle {label}",
     "shapeSidebar.area": "Area",
     "shapeSidebar.cornerRadius": "Corner Radius",
     "shapeSidebar.curveArc": "Arcs (corner radius)",
@@ -1579,7 +1580,10 @@
     "shapeSidebar.tipStyle": "Edit line color, width and fill below",
     "shapeSidebar.tipVertex": "Click a blue vertex dot to move it or delete it",
     "shapeSidebar.tipsTitle": "Shape Drawing Tips",
-    "shapeReadouts.insertHint": "Add a vertex to this side"
+    "shapeReadouts.insertHint": "Add a vertex to this side",
+    "shapeSidebar.cornerAngle": "∠ {value}",
+    "shapeSidebar.showAllSegments": "Show all {count} segments",
+    "shapeSidebar.showFewerSegments": "Show fewer segments"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2354,7 +2358,6 @@
     "shapeDraw.mode": "Mode",
     "shapeDraw.title": "Draw a shape",
     "shapeDraw.undo": "Ctrl+Z undoes the finished shape",
-    "shapeSidebar.angle": "Angle {label}",
     "shapeSidebar.area": "Area",
     "shapeSidebar.cornerRadius": "Corner Radius",
     "shapeSidebar.curveArc": "Arcs (corner radius)",
@@ -2370,6 +2373,9 @@
     "shapeSidebar.tipStyle": "Edit line color, width and fill below",
     "shapeSidebar.tipVertex": "Click a blue vertex dot to move it or delete it",
     "shapeSidebar.tipsTitle": "Shape Drawing Tips",
-    "shapeReadouts.insertHint": "Add a vertex to this side"
+    "shapeReadouts.insertHint": "Add a vertex to this side",
+    "shapeSidebar.cornerAngle": "∠ {value}",
+    "shapeSidebar.showAllSegments": "Show all {count} segments",
+    "shapeSidebar.showFewerSegments": "Show fewer segments"
   }
 }

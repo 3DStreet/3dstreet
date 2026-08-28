@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import Component from './Component';
 import MaterialControls from './MaterialControls';
 import OpacitySliderRow from '../widgets/OpacitySliderRow';
+import { ShapeSectionControls } from './ShapeSidebar';
 import { getFeaturedComponentNames } from '../../lib/featuredComponents';
 
 // Low-level geometry props that are too advanced for the first-class section.
@@ -57,6 +58,14 @@ function getHiddenProps(name, component) {
   if (name === 'geo-flatten') {
     return ['mode'];
   }
+  // The shape section's first-class rows are closed + fill/line appearance
+  // (which the alphabetical row sort already orders as closed, fillColor,
+  // fillOpacity, lineColor, lineWidth). curveType/filletRadius are replaced by
+  // the curated ShapeSectionControls at the top of the section; selectInside is
+  // an escape valve. All stay reachable under Advanced Components.
+  if (name === 'shape') {
+    return ['selectInside', 'curveType', 'filletRadius'];
+  }
   return undefined;
 }
 
@@ -89,7 +98,11 @@ const FeaturedComponents = ({ entity }) => {
               propertyRenderers={
                 name === 'shape' ? SHAPE_PROPERTY_RENDERERS : undefined
               }
-            />
+            >
+              {name === 'shape' ? (
+                <ShapeSectionControls entity={entity} />
+              ) : undefined}
+            </Component>
           </div>
         );
       })}

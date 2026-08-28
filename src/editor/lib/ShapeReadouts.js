@@ -6,7 +6,7 @@
 // billboards. There is deliberately NO on-canvas angle annotation — neither
 // the degree chip (it rendered on top of the vertex drag handle and hid the
 // knob) nor the protractor arc that used to mark corners: angle values live
-// in the shape sidebar's Angle rows.
+// in the shape sidebar, as small subscripts on the segment-length rows.
 //
 // Everything is attached under the shape entity's object3D and torn down in
 // dispose() — CSS2DObjects detached, the group removed. (measure-line famously

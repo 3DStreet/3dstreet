@@ -43,7 +43,11 @@ export default class Component extends React.Component {
     // while leaving its position in the schema order — and every other property
     // — untouched, so a schema that grows later still surfaces the new props.
     // Receives ({ name, schema, value, componentname, entity }).
-    propertyRenderers: PropTypes.object
+    propertyRenderers: PropTypes.object,
+    // Optional curated rows rendered inside the section, above the
+    // schema-driven property rows (e.g. the shape section's direction and
+    // curve-style controls).
+    children: PropTypes.node
   };
 
   constructor(props) {
@@ -181,7 +185,10 @@ export default class Component extends React.Component {
             </a>
           </div>
         </div>
-        <div className="collapsible-content">{this.renderPropertyRows()}</div>
+        <div className="collapsible-content">
+          {this.props.children}
+          {this.renderPropertyRows()}
+        </div>
       </Collapsible>
     );
   }

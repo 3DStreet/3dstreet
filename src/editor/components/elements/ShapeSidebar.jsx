@@ -24,8 +24,14 @@ import {
   setShapeStyle
 } from '../../lib/shapeStyle.js';
 import { Button } from './Button';
+import { Chevron24Down } from '@shared/icons';
 
 const MAX_LABELLED_VERTICES = 12;
+
+// Segment-length rows shown before the list collapses behind "Show all" — the
+// styling controls below the list must stay reachable without scrolling past a
+// long shape's every side.
+const SEGMENT_ROWS_COLLAPSED = 5;
 
 // ms — floor on how often the React row list re-renders off geometry changes.
 // A shape emits one of those per re-derive, and a re-derive can happen every
@@ -178,7 +184,13 @@ function renderReadouts(readouts, entity, hoverPoint, lastRenderElsRef) {
 const ShapeSidebar = ({ entity }) => {
   const intl = useIntl();
   const [, setTick] = useState(0);
+  const [showAllSegments, setShowAllSegments] = useState(false);
   const { unitsPreference } = useStore();
+
+  // A freshly selected shape starts with the segment list collapsed.
+  useEffect(() => {
+    setShowAllSegments(false);
+  }, [entity]);
   const readoutsRef = useRef(null);
   const lastHoverRef = useRef(null);
   // The vertex element array the last render's chips were stamped against.
@@ -417,29 +429,6 @@ const ShapeSidebar = ({ entity }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitsPreference]);
 
-  // Reverse the drawing order. Any street following this shape as its path
-  // re-lays itself automatically (the vertex rewrite re-derives the shape,
-  // which emits street-path-changed).
-  const onReverseDirection = () => {
-    reverseShapeDirection(entity);
-  };
-
-  // Curve style controls: curveType/filletRadius are shape props (a curve is
-  // a property of the drawing, street or no street — any street following
-  // this shape reads them from here). Values are read straight off the
-  // component; the tick only forces a re-render.
-  const [, setCurveTick] = useState(0);
-  const shapeData = entity.components?.shape?.data;
-  const setShapeCurveProperty = (property, value) => {
-    AFRAME.INSPECTOR.execute('entityupdate', {
-      entity,
-      component: 'shape',
-      property,
-      value
-    });
-    setCurveTick((t) => t + 1);
-  };
-
   const vertices = getShapeVertices(entity);
   // Measure in the WORLD frame: a shape nested inside a scaled (or rotated)
   // group must report the size it renders at, matching the on-canvas readouts
@@ -455,27 +444,28 @@ const ShapeSidebar = ({ entity }) => {
   const segments = [];
   for (let i = 0; i < segCount; i++) {
     const j = (i + 1) % n;
+    // The corner reached at this segment's far end, folded into the row as a
+    // small subscript rather than a row of its own: a ring has a corner at
+    // every vertex, an open line only at interior ones (so its last segment,
+    // which ends at the line's endpoint, carries none).
+    const hasCorner = closed || j < n - 1;
+    const deg = hasCorner
+      ? includedAngleDeg(vertices[i], vertices[j], vertices[(j + 1) % n])
+      : null;
     segments.push({
       label: `${i + 1}→${j + 1}`,
       value: formatLength(
         segmentLength(vertices[i], vertices[j]),
         unitsPreference
-      )
+      ),
+      angle: deg === null ? null : formatAngle(deg)
     });
   }
-  const angles = [];
-  const cornerStart = closed ? 0 : 1;
-  const cornerEnd = closed ? n : n - 1; // exclusive
-  for (let i = cornerStart; i < cornerEnd; i++) {
-    const deg = includedAngleDeg(
-      vertices[(i + n - 1) % n],
-      vertices[i],
-      vertices[(i + 1) % n]
-    );
-    if (deg !== null) {
-      angles.push({ label: `@${i + 1}`, value: formatAngle(deg) });
-    }
-  }
+  const segmentsCollapsed =
+    segments.length > SEGMENT_ROWS_COLLAPSED && !showAllSegments;
+  const visibleSegments = segmentsCollapsed
+    ? segments.slice(0, SEGMENT_ROWS_COLLAPSED)
+    : segments;
   // Compute the enclosed area from the vertices directly (same shoelace the
   // component uses for its on-canvas label — identical value, no dependency on
   // the component's async re-derive having run yet). Static per React render —
@@ -516,113 +506,63 @@ const ShapeSidebar = ({ entity }) => {
             </span>
           </div>
         </div>
-        {segments.map((s) => (
-          <div className="propertyRow" key={`seg-${s.label}`}>
-            <div className="fakePropertyRowLabel">
-              {intl.formatMessage(
-                {
-                  id: 'shapeSidebar.length',
-                  defaultMessage: 'Length {label}'
-                },
-                { label: s.label }
-              )}
+        <div className={`segmentRows${segmentsCollapsed ? ' collapsed' : ''}`}>
+          {visibleSegments.map((s) => (
+            <div className="propertyRow segmentRow" key={`seg-${s.label}`}>
+              <div className="fakePropertyRowLabel">
+                {intl.formatMessage(
+                  {
+                    id: 'shapeSidebar.length',
+                    defaultMessage: 'Length {label}'
+                  },
+                  { label: s.label }
+                )}
+              </div>
+              <div className="fakePropertyRowValue">
+                <div>
+                  <div>{s.value}</div>
+                  {s.angle && (
+                    <div className="segmentAngle">
+                      {intl.formatMessage(
+                        {
+                          id: 'shapeSidebar.cornerAngle',
+                          defaultMessage: '∠ {value}'
+                        },
+                        { value: s.angle }
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="fakePropertyRowValue">{s.value}</div>
-          </div>
-        ))}
-        {angles.map((a) => (
-          <div className="propertyRow" key={`ang-${a.label}`}>
-            <div className="fakePropertyRowLabel">
-              {intl.formatMessage(
-                {
-                  id: 'shapeSidebar.angle',
-                  defaultMessage: 'Angle {label}'
-                },
-                { label: a.label }
-              )}
-            </div>
-            <div className="fakePropertyRowValue">{a.value}</div>
-          </div>
-        ))}
-        {n >= 2 && (
-          <div className="propertyRow">
-            <div className="fakePropertyRowLabel">
-              {intl.formatMessage({
-                id: 'shapeSidebar.direction',
-                defaultMessage: 'Direction'
-              })}
-            </div>
-            <div className="fakePropertyRowValue">
-              <Button variant="toolbtn" onClick={onReverseDirection}>
-                {intl.formatMessage({
-                  id: 'shapeSidebar.reverse',
-                  defaultMessage: 'Reverse'
-                })}
+          ))}
+          {segments.length > SEGMENT_ROWS_COLLAPSED && (
+            // Inside segmentRows so the collapsed state can overlay it on the
+            // fade (position: absolute anchors to the row container).
+            <div
+              className={`segmentRowsToggle${segmentsCollapsed ? '' : ' expanded'}`}
+            >
+              <Button
+                variant="toolbtn"
+                onClick={() => setShowAllSegments((v) => !v)}
+              >
+                {segmentsCollapsed
+                  ? intl.formatMessage(
+                      {
+                        id: 'shapeSidebar.showAllSegments',
+                        defaultMessage: 'Show all {count} segments'
+                      },
+                      { count: segments.length }
+                    )
+                  : intl.formatMessage({
+                      id: 'shapeSidebar.showFewerSegments',
+                      defaultMessage: 'Show fewer segments'
+                    })}
+                <Chevron24Down />
               </Button>
             </div>
-          </div>
-        )}
-        {n >= 3 && (
-          <div className="propertyRow">
-            <div className="fakePropertyRowLabel">
-              {intl.formatMessage({
-                id: 'shapeSidebar.curveStyle',
-                defaultMessage: 'Curve Style'
-              })}
-            </div>
-            <div className="fakePropertyRowValue">
-              <select
-                value={shapeData?.curveType ?? 'linear'}
-                onChange={(e) => {
-                  setShapeCurveProperty('curveType', e.target.value);
-                }}
-              >
-                <option value="linear">
-                  {intl.formatMessage({
-                    id: 'shapeSidebar.curveLinear',
-                    defaultMessage: 'Straight / hard corners'
-                  })}
-                </option>
-                <option value="smooth">
-                  {intl.formatMessage({
-                    id: 'shapeSidebar.curveSmooth',
-                    defaultMessage: 'Smooth (spline)'
-                  })}
-                </option>
-                <option value="arc">
-                  {intl.formatMessage({
-                    id: 'shapeSidebar.curveArc',
-                    defaultMessage: 'Arcs (corner radius)'
-                  })}
-                </option>
-              </select>
-            </div>
-          </div>
-        )}
-        {shapeData?.curveType === 'arc' && (
-          <div className="propertyRow">
-            <div className="fakePropertyRowLabel">
-              {intl.formatMessage({
-                id: 'shapeSidebar.cornerRadius',
-                defaultMessage: 'Corner Radius'
-              })}
-            </div>
-            <div className="fakePropertyRowValue">
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={shapeData.filletRadius}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  if (Number.isFinite(v)) {
-                    setShapeCurveProperty('filletRadius', Math.max(0, v));
-                  }
-                }}
-              />
-            </div>
-          </div>
-        )}
+          )}
+        </div>
         <div className="propertyRow">
           <div className="rounded bg-blue-50 p-2 text-gray-600">
             <div className="mb-1 font-semibold uppercase">
@@ -673,6 +613,125 @@ const ShapeSidebar = ({ entity }) => {
 };
 
 ShapeSidebar.propTypes = {
+  entity: PropTypes.object.isRequired
+};
+
+// Curated rows shown at the top of the featured "shape" component section
+// (FeaturedComponents passes this as the section's lead-in, above the
+// schema-driven closed/fill/line rows): Reverse direction, plus curve style
+// and — for arcs — corner radius. curveType/filletRadius are shape props (a
+// curve is a property of the drawing, street or no street — any street
+// following this shape as its path reads them from here); their raw fields are
+// hidden from the schema rows in favour of these controls. Values are read
+// straight off the component; the tick only forces a re-render.
+export const ShapeSectionControls = ({ entity }) => {
+  const intl = useIntl();
+  const [, setCurveTick] = useState(0);
+  const shapeData = entity.components?.shape?.data;
+  const setShapeCurveProperty = (property, value) => {
+    AFRAME.INSPECTOR.execute('entityupdate', {
+      entity,
+      component: 'shape',
+      property,
+      value
+    });
+    setCurveTick((t) => t + 1);
+  };
+
+  // Reverse the drawing order. Any street following this shape as its path
+  // re-lays itself automatically (the vertex rewrite re-derives the shape,
+  // which emits street-path-changed).
+  const onReverseDirection = () => {
+    reverseShapeDirection(entity);
+  };
+
+  const n = getShapeVertexEls(entity).length;
+  return (
+    <>
+      {n >= 2 && (
+        <div className="propertyRow">
+          <div className="fakePropertyRowLabel">
+            {intl.formatMessage({
+              id: 'shapeSidebar.direction',
+              defaultMessage: 'Direction'
+            })}
+          </div>
+          <div className="fakePropertyRowValue">
+            <Button variant="toolbtn" onClick={onReverseDirection}>
+              {intl.formatMessage({
+                id: 'shapeSidebar.reverse',
+                defaultMessage: 'Reverse'
+              })}
+            </Button>
+          </div>
+        </div>
+      )}
+      {n >= 3 && (
+        <div className="propertyRow">
+          <div className="fakePropertyRowLabel">
+            {intl.formatMessage({
+              id: 'shapeSidebar.curveStyle',
+              defaultMessage: 'Curve Style'
+            })}
+          </div>
+          <div className="fakePropertyRowValue">
+            <select
+              value={shapeData?.curveType ?? 'linear'}
+              onChange={(e) => {
+                setShapeCurveProperty('curveType', e.target.value);
+              }}
+            >
+              <option value="linear">
+                {intl.formatMessage({
+                  id: 'shapeSidebar.curveLinear',
+                  defaultMessage: 'Straight / hard corners'
+                })}
+              </option>
+              <option value="smooth">
+                {intl.formatMessage({
+                  id: 'shapeSidebar.curveSmooth',
+                  defaultMessage: 'Smooth (spline)'
+                })}
+              </option>
+              <option value="arc">
+                {intl.formatMessage({
+                  id: 'shapeSidebar.curveArc',
+                  defaultMessage: 'Arcs (corner radius)'
+                })}
+              </option>
+            </select>
+          </div>
+        </div>
+      )}
+      {shapeData?.curveType === 'arc' && (
+        <div className="propertyRow">
+          <div className="fakePropertyRowLabel">
+            {intl.formatMessage({
+              id: 'shapeSidebar.cornerRadius',
+              defaultMessage: 'Corner Radius'
+            })}
+          </div>
+          <div className="fakePropertyRowValue">
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={shapeData.filletRadius}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                if (Number.isFinite(v)) {
+                  setShapeCurveProperty('filletRadius', Math.max(0, v));
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+ShapeSectionControls.propTypes = {
   entity: PropTypes.object.isRequired
 };
 
