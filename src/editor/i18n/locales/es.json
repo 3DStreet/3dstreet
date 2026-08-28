@@ -684,6 +684,7 @@
   "shapeDraw.mode": "Modo",
   "shapeDraw.title": "Dibujar una forma",
   "shapeDraw.undo": "Ctrl+Z deshace la forma terminada",
+  "shapeReadouts.insertHint": "Añadir un vértice a este lado",
   "shapeSidebar.angle": "Ángulo {label}",
   "shapeSidebar.area": "Área",
   "shapeSidebar.cornerRadius": "Radio de esquina",

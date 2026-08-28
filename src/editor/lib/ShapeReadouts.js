@@ -32,12 +32,16 @@ const EPS = 1e-4;
 
 // Names the action for anyone unsure what a chip that has turned into a "+" is
 // about to do. "vertex" rather than "point" or "corner": that is the word the
-// controls beside this one already use.
+// controls beside this one already use. The English fallback for callers that
+// pass no translation — the sidebar passes the catalog string
+// (shapeReadouts.insertHint) in, since this layer sits outside React and has
+// no intl context of its own.
 const INSERT_HINT = 'Add a vertex to this side';
 
 export default class ShapeReadouts {
-  constructor(el) {
+  constructor(el, insertHint) {
     this.el = el;
+    this.insertHint = insertHint || INSERT_HINT;
     this.instanceId = String(nextInstanceId++);
     this.units = 'metric';
     this.group = new THREE.Group();
@@ -258,7 +262,7 @@ export default class ShapeReadouts {
       // would announce a control that cannot be operated) nor an aria-label
       // (which overrides element content unconditionally, deleting the
       // measurement from the accessible name even at rest).
-      outer.title = INSERT_HINT;
+      outer.title = this.insertHint;
       // Lifted clear of the captions that are NOT controls, so an ordinary
       // neighbour cannot cover the affordance a hovering pointer summons here.
       obj.renderOrder = READOUT_RENDER_ORDER.insertableCaption;

@@ -684,6 +684,7 @@
   "shapeDraw.mode": "Mode",
   "shapeDraw.title": "Dessiner une forme",
   "shapeDraw.undo": "Ctrl+Z annule la forme terminée",
+  "shapeReadouts.insertHint": "Ajouter un sommet à ce côté",
   "shapeSidebar.angle": "Angle {label}",
   "shapeSidebar.area": "Surface",
   "shapeSidebar.cornerRadius": "Rayon de coin",

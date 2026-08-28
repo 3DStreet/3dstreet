@@ -787,7 +787,8 @@
     "shapeSidebar.tipShift": "Hold Shift while dragging a vertex to raise or lower it",
     "shapeSidebar.tipStyle": "Edit line color, width and fill below",
     "shapeSidebar.tipVertex": "Click a blue vertex dot to move it or delete it",
-    "shapeSidebar.tipsTitle": "Shape Drawing Tips"
+    "shapeSidebar.tipsTitle": "Shape Drawing Tips",
+    "shapeReadouts.insertHint": "Add a vertex to this side"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1577,7 +1578,8 @@
     "shapeSidebar.tipShift": "Hold Shift while dragging a vertex to raise or lower it",
     "shapeSidebar.tipStyle": "Edit line color, width and fill below",
     "shapeSidebar.tipVertex": "Click a blue vertex dot to move it or delete it",
-    "shapeSidebar.tipsTitle": "Shape Drawing Tips"
+    "shapeSidebar.tipsTitle": "Shape Drawing Tips",
+    "shapeReadouts.insertHint": "Add a vertex to this side"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2367,6 +2369,7 @@
     "shapeSidebar.tipShift": "Hold Shift while dragging a vertex to raise or lower it",
     "shapeSidebar.tipStyle": "Edit line color, width and fill below",
     "shapeSidebar.tipVertex": "Click a blue vertex dot to move it or delete it",
-    "shapeSidebar.tipsTitle": "Shape Drawing Tips"
+    "shapeSidebar.tipsTitle": "Shape Drawing Tips",
+    "shapeReadouts.insertHint": "Add a vertex to this side"
   }
 }

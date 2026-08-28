@@ -2054,6 +2054,9 @@
   "shapeDraw.undo": {
     "defaultMessage": "Ctrl+Z undoes the finished shape"
   },
+  "shapeReadouts.insertHint": {
+    "defaultMessage": "Add a vertex to this side"
+  },
   "shapeSidebar.angle": {
     "defaultMessage": "Angle {label}"
   },

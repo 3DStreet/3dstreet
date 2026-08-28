@@ -216,7 +216,17 @@ const ShapeSidebar = ({ entity }) => {
   // sidebar is mounted). Rebuild on units change; drive hover on large shapes.
   useEffect(() => {
     if (!entity || !entity.object3D) return undefined;
-    const readouts = new ShapeReadouts(entity);
+    // The insert-hint tooltip is passed in because the readout layer (CSS2D,
+    // outside React) has no intl context of its own. intl.locale is in the
+    // dep list for exactly that reason: View > Language switches the locale
+    // live, and the renderer must be remounted to re-capture the string.
+    const readouts = new ShapeReadouts(
+      entity,
+      intl.formatMessage({
+        id: 'shapeReadouts.insertHint',
+        defaultMessage: 'Add a vertex to this side'
+      })
+    );
     readouts.setUnits(unitsPreference);
     readoutsRef.current = readouts;
 
@@ -396,7 +406,7 @@ const ShapeSidebar = ({ entity }) => {
       lastRenderElsRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entity]);
+  }, [entity, intl.locale]);
 
   // Keep the on-canvas labels' units in sync without remounting the renderer.
   useEffect(() => {
