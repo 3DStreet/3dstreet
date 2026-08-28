@@ -554,37 +554,16 @@ const ShapeSidebar = ({ entity }) => {
         )}
         <div className="propertyRow">
           <div className="rounded bg-blue-50 p-2 text-gray-600">
-            <div className="mb-1 font-semibold uppercase">💡 Shape Tips</div>
+            <div className="mb-1 font-semibold uppercase">
+              💡 Shape Drawing Tips
+            </div>
             <ul className="space-y-1">
-              <li>• Click a vertex to move it or delete it</li>
-              <li>
-                • Hold Shift while dragging a vertex to raise or lower it — a
-                street following this path ramps with it
-              </li>
+              <li>• Click a blue vertex dot to move it or delete it</li>
+              <li>• Hold Shift while dragging a vertex to raise or lower it</li>
               <li>
                 • Click a side&rsquo;s length to add a vertex to that side
               </li>
-              <li>• Lengths and angles measure the vertex centreline</li>
-              <li>• Angles are measured in the ground (x-z) plane</li>
-              {closed && <li>• Area is the enclosed ground (x-z) footprint</li>}
-              {closed && (
-                <li>
-                  • Fill opacity 0% hides the fill; the outline still shows
-                </li>
-              )}
               <li>• Edit line color, width and fill below</li>
-              {/* Unconditional, unlike the two bullets above: the rule applies
-                  to open polylines exactly as it does to closed shapes, and the
-                  invisible state is worse for an open one (no interior cap, so
-                  it cannot be re-selected from the viewport at all). */}
-              <li>
-                • Changing a shape&rsquo;s line or fill style makes it the
-                default for new shapes — in every scene, in this browser
-              </li>
-              <li>
-                • Line width 0 hides the outline — with fill opacity 0% (or on
-                an open line) the shape is invisible
-              </li>
             </ul>
           </div>
         </div>
