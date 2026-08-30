@@ -62,6 +62,15 @@ export const layerCardMessages = defineMessages({
     id: 'addLayer.card.createIntersection.desc',
     defaultMessage: 'Create 90º intersection entity.'
   },
+  managedIntersectionName: {
+    id: 'addLayer.card.managedIntersection.name',
+    defaultMessage: '(Beta) Managed Intersection'
+  },
+  managedIntersectionDesc: {
+    id: 'addLayer.card.managedIntersection.desc',
+    defaultMessage:
+      'Auto-generate intersection geometry from nearby managed street ends.'
+  },
   streetmixStreetName: {
     id: 'addLayer.card.streetmixStreet.name',
     defaultMessage: 'Street from Streetmix URL'
