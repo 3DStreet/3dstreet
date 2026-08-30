@@ -12,7 +12,6 @@ import {
   VideoCameraIcon,
   LayersIcon,
   Object24IconCyan,
-  Ruler24Icon,
   ShapeIcon
 } from '@shared/icons';
 
@@ -659,13 +658,6 @@ export function getEntityIcon(entity) {
   }
   if (entity.getAttribute('shape')) {
     return <ShapeIcon />;
-  }
-  if (entity.getAttribute('measure-line')) {
-    return (
-      <div style={{ color: '#00FFFF' }}>
-        <Ruler24Icon />
-      </div>
-    );
   }
 
   // Check for class-based icons

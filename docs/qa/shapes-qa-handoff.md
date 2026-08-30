@@ -206,12 +206,18 @@ Goal of this pass: the "must have to ship a beta (behind a menu)" list.
   (`migrateLegacyFlatteningShape` in `json-utils_1.1.js` is the
   precedent), never a silent break.
 
+- ~~Ruler/measure-line → shape migration~~ DONE (`9dfa9f79`): every
+  saved `measure-line` becomes a 2-vertex open shape at load
+  (`src/tested/migrate-measure-lines.js`, beside
+  `migrateLegacyFlatteningShape`). The ruler tool, its sidebar, its
+  gizmo and the component itself are deleted; shapes replace it outright,
+  no beta gate.
+
 ### Decided against (don't re-open without new evidence)
 
-- **Ruler/measure-line → shape migration**: shapes can represent every
-  ruler (2-vertex open polyline), but always-visible length labels were
-  judged an antifeature ("too busy with a lot of lines") — and without
-  them a migration adds nothing users need now. Rulers stay as-is.
+- **Beta gate for shapes**: shapes strictly supersede the ruler they
+  replace, so they ship to everyone; future changes to the saved contract
+  get a load-time migration rather than a flag.
 - **Pre-release street-path curve-prop migration**: written, verified,
   then removed — pre-move scenes were never public.
 - **Icon tree-shaking via `sideEffects`**: recovers ~nothing; the six

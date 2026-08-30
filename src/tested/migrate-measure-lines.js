@@ -11,9 +11,8 @@
 // is exactly the frame shape-vertex children live in. Style is the shape
 // schema's defaults: the ruler had no styling of its own to carry over.
 //
-// The measure-line component stays registered as a fallback for any load
-// path that bypasses this pass (a direct setAttribute, a hand-authored
-// scene); nothing creates new ones.
+// The measure-line component itself is gone: this pass is the only thing
+// that still understands the old form, and nothing creates new ones.
 
 // '1 2 3' or {x, y, z} → {x, y, z} with non-finite axes coerced to 0, the
 // same forgiveness A-Frame's own vec3 parse applies.

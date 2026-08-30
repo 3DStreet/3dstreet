@@ -1,7 +1,6 @@
 import { TransformControls } from './TransformControls.js';
 // eslint-disable-next-line no-unused-vars
 import EditorControls from './EditorControls.js';
-import { MeasureLineControls } from './MeasureLineControls.js';
 import { ShapeVertexControls } from './ShapeVertexControls.js';
 import { StreetNodeControls } from './gizmos/StreetNodeControls.js';
 import { SegmentWidthControls } from './gizmos/SegmentWidthControls.js';
@@ -394,31 +393,13 @@ export function Viewport(inspector) {
         inspector.helpers[node.uuid].update();
       }
     });
-
-    // Force an update of the measure line controls -- needed after undo/redo to update control points
-    if (
-      object.el &&
-      object.el.components &&
-      object.el.components['measure-line']
-    ) {
-      if (measureLineControls.object === object.el) {
-        measureLineControls.update();
-      }
-    }
   }
 
   const camera = inspector.camera;
   const transformControls = new TransformControls(camera, inspector.container);
   transformControls.size = 0.75;
 
-  const measureLineControls = new MeasureLineControls(
-    camera,
-    inspector.container
-  );
-  measureLineControls.visible = false;
-  measureLineControls.enabled = true;
-
-  // A third helper, alongside the two above: vertex handles for the selected
+  // A second helper, alongside the transform controls: vertex handles for the selected
   // shape. It reads the inspector camera fresh each frame rather than being
   // handed one, so it needs no entry in the cameratoggle handler below.
   const shapeVertexControls = new ShapeVertexControls();
@@ -544,42 +525,12 @@ export function Viewport(inspector) {
     controls.enabled = true;
   });
 
-  measureLineControls.addEventListener('mouseDown', () => {
-    controls.enabled = false;
-  });
-
-  measureLineControls.addEventListener('mouseUp', () => {
-    controls.enabled = true;
-  });
-
   shapeVertexControls.addEventListener('mouseDown', () => {
     controls.enabled = false;
   });
 
   shapeVertexControls.addEventListener('mouseUp', () => {
     controls.enabled = true;
-  });
-
-  measureLineControls.addEventListener('objectChange', (evt) => {
-    if (!measureLineControls.object) return;
-
-    const entity = measureLineControls.object;
-    const measureLine = entity.components['measure-line'];
-    if (!measureLine) return;
-
-    // Update the measure-line component data
-    const startPoint = measureLineControls.handles.start.position;
-    const endPoint = measureLineControls.handles.end.position;
-
-    // Instead of sending two separate updates, send a single update with both properties
-    inspector.execute('entityupdate', {
-      component: 'measure-line',
-      entity: entity,
-      value: {
-        start: `${startPoint.x} ${startPoint.y} ${startPoint.z}`,
-        end: `${endPoint.x} ${endPoint.y} ${endPoint.z}`
-      }
-    });
   });
 
   // The street gizmos mutate attributes live during the drag (so the normal
@@ -615,7 +566,6 @@ export function Viewport(inspector) {
   });
 
   sceneHelpers.add(transformControls.getHelper());
-  sceneHelpers.add(measureLineControls);
   // Added once, here — attach()/detach() only arm and disarm it, they do not
   // re-add it.
   sceneHelpers.add(shapeVertexControls);
@@ -677,7 +627,6 @@ export function Viewport(inspector) {
         sceneEl.camera = perspective;
         inspector.camera = perspective;
         transformControls.camera = perspective;
-        measureLineControls.camera = perspective;
         streetNodeControls.camera = perspective;
         segmentWidthControls.camera = perspective;
         controls.setCamera(perspective);
@@ -688,7 +637,6 @@ export function Viewport(inspector) {
     }
     controls.setCamera(data.camera);
     transformControls.camera = data.camera;
-    measureLineControls.camera = data.camera;
     streetNodeControls.camera = data.camera;
     segmentWidthControls.camera = data.camera;
     updateAspectRatio();
@@ -709,7 +657,6 @@ export function Viewport(inspector) {
 
   function detachAllTransformControls() {
     transformControls.detach();
-    measureLineControls.detach();
     streetNodeControls.detach();
     segmentWidthControls.detach();
   }
@@ -742,10 +689,6 @@ export function Viewport(inspector) {
       !inspector.cursor.isPlaying ||
       el.hasAttribute('data-no-transform')
     ) {
-      return;
-    }
-    if (el.components['measure-line']) {
-      measureLineControls.attach(el);
       return;
     }
     attachStockGizmo(el);
