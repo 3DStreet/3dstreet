@@ -1,5 +1,6 @@
 import Events from '../Events';
 import { Command } from '../command.js';
+import { createUniqueId } from '../entity.js';
 
 /**
  * Remove one vertex from a shape.
@@ -16,7 +17,10 @@ import { Command } from '../command.js';
  * instance; neither ever constructs a replacement. Do not "fix" this into a
  * clone. See ShapeVertexInsertCommand for the cost that treatment carries —
  * A-Frame never restores `object3D.el` after a disconnect — and why it is
- * harmless for a vertex specifically.
+ * harmless for a vertex specifically. As there, the shape and the vertex are
+ * resolved by id at run time (falling back to the retained instance) so the
+ * command still targets the live tree after a whole-shape delete + undo has
+ * replaced the shape with a same-id clone.
  *
  * No confirm() either — a vertex is a small, immediately undoable edit, unlike
  * removing a whole entity from the scene.
@@ -33,18 +37,33 @@ export class ShapeVertexRemoveCommand extends Command {
     this.updatable = false;
 
     this.el = payload.vertexEl;
+    if (!this.el.id) this.el.id = createUniqueId();
     this.shapeEl = this.el.parentNode;
+    if (!this.shapeEl.id) this.shapeEl.id = createUniqueId();
+    this.shapeId = this.shapeEl.id;
     this.index = Array.from(this.shapeEl.children).indexOf(this.el);
   }
 
+  _shape() {
+    return document.getElementById(this.shapeId) ?? this.shapeEl;
+  }
+
+  _vertex() {
+    return document.getElementById(this.el.id) ?? this.el;
+  }
+
   execute() {
-    this.el.remove();
-    Events.emit('shapevertexstructurechanged', this.shapeEl);
+    this._vertex().remove();
+    Events.emit('shapevertexstructurechanged', this._shape());
   }
 
   undo() {
-    const reference = this.shapeEl.children[this.index] ?? null;
-    this.shapeEl.insertBefore(this.el, reference);
-    Events.emit('shapevertexstructurechanged', this.shapeEl);
+    const shapeEl = this._shape();
+    const el = this._vertex();
+    if (!shapeEl.contains(el)) {
+      const reference = shapeEl.children[this.index] ?? null;
+      shapeEl.insertBefore(el, reference);
+    }
+    Events.emit('shapevertexstructurechanged', shapeEl);
   }
 }

@@ -606,6 +606,11 @@ AFRAME.registerComponent('managed-street', {
       return;
     }
     if (!pathEl) {
+      // Straighten now rather than after the retry window: a deleted path
+      // must not leave the street bent from a stale curve (the saved scene
+      // would reload straight). The retries still re-curve it if the shape
+      // comes back (undo of the delete).
+      this.clearStreetCurve();
       if (this._resolveAttempts++ < 20) {
         this._resolveTimer = setTimeout(
           () => this.resolvePathEntity(selector),
@@ -663,8 +668,14 @@ AFRAME.registerComponent('managed-street', {
       this.updatePathFollowing();
       return;
     }
+    if (!this.data.path) return;
     const sp = this.pathEl?.components?.['street-path'];
-    if (!sp || !this.data.path) return;
+    if (!sp) {
+      // the shape lost its street-path role (component removed by hand):
+      // nothing can feed the curve any more, so stop following
+      this.clearStreetCurve();
+      return;
+    }
     const worldPts = sp.getWorldPathPoints();
     if (worldPts.length < 2) {
       this.clearStreetCurve();

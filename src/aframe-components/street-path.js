@@ -52,8 +52,10 @@ AFRAME.registerSystem('street-path', {
     this.paths.forEach((comp) => {
       if (matrixWorldChanged(comp)) comp.emitChanged();
     });
+    // Throttled: a gizmo drag changes the matrix every frame, and a rebuild
+    // relays the whole street (every segment and clone regenerates).
     this.followers.forEach((comp) => {
-      if (matrixWorldChanged(comp)) comp.rebuildPathCurve();
+      if (matrixWorldChanged(comp)) comp.requestPathRebuild();
     });
   }
 });

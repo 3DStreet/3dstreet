@@ -491,6 +491,12 @@ export class ShapeVertexControls extends THREE.Object3D {
   // in `vertexEls`, styling is coherent once this method has run through, and a
   // caller may safely re-activate afterwards.
   _invalidateVertexCache() {
+    // A structural edit under a live press (Ctrl+Z on a keyboard shortcut
+    // while the button is held, an external insert/remove) shifts the index
+    // and may detach the element the gesture holds; releasing it later would
+    // validate and commit against the wrong vertex. Abort first — the press
+    // becomes a no-op rather than a bogus history entry.
+    if (this.claimed) this.abortGesture();
     this._readVertexEls(this.shapeEl);
     this._syncPool();
     this._lastChildCount = this.shapeEl.children.length;
@@ -1848,6 +1854,13 @@ export class ShapeVertexControls extends THREE.Object3D {
 
     if (event.key === 'Delete' || event.key === 'Backspace') {
       if (!AFRAME.INSPECTOR?.opened) return;
+      // Swallowed while a press is held: a delete mid-drag would either yank
+      // the dragged vertex or reach the editor's whole-shape delete.
+      if (this.claimed) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       // Swallowed only while Delete means "remove the active vertex".
       // Otherwise the key is left alone and reaches the editor's whole-shape
       // delete — which covers both no sub-selection at all and a sub-selection

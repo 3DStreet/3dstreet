@@ -25,6 +25,12 @@ import { createUniqueId } from '../entity.js';
  * not be harmless for an entity with geometry, which is one more reason this
  * treatment stays scoped to the vertex pair rather than being generalised.
  *
+ * Both the shape and the vertex are nonetheless RESOLVED BY ID at run time,
+ * falling back to the retained instance: a whole-shape delete + undo
+ * (EntityRemoveCommand) replaces the shape subtree with a clone under the same
+ * ids, and a command that only held the original references would then edit a
+ * detached tree while the visible clone stayed put.
+ *
  * Never touches selection: the shape stays selected throughout, which is what
  * keeps its editing affordances on screen.
  *
@@ -40,9 +46,19 @@ export class ShapeVertexInsertCommand extends Command {
     this.updatable = false;
 
     this.shapeEl = payload.shapeEl;
+    if (!this.shapeEl.id) this.shapeEl.id = createUniqueId();
+    this.shapeId = this.shapeEl.id;
     this.index = payload.index;
     this.position = payload.position;
     this.el = null;
+  }
+
+  _shape() {
+    return document.getElementById(this.shapeId) ?? this.shapeEl;
+  }
+
+  _vertex() {
+    return (this.el && document.getElementById(this.el.id)) ?? this.el;
   }
 
   execute() {
@@ -58,14 +74,18 @@ export class ShapeVertexInsertCommand extends Command {
       el.setAttribute('position', this.position);
       this.el = el;
     }
-    // index === child count appends, which is the wrap-edge case.
-    const reference = this.shapeEl.children[this.index] ?? null;
-    this.shapeEl.insertBefore(this.el, reference);
-    Events.emit('shapevertexstructurechanged', this.shapeEl);
+    const shapeEl = this._shape();
+    const el = this._vertex();
+    if (!shapeEl.contains(el)) {
+      // index === child count appends, which is the wrap-edge case.
+      const reference = shapeEl.children[this.index] ?? null;
+      shapeEl.insertBefore(el, reference);
+    }
+    Events.emit('shapevertexstructurechanged', shapeEl);
   }
 
   undo() {
-    this.el.remove();
-    Events.emit('shapevertexstructurechanged', this.shapeEl);
+    this._vertex().remove();
+    Events.emit('shapevertexstructurechanged', this._shape());
   }
 }
