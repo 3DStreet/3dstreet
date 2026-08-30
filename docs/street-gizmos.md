@@ -1,9 +1,7 @@
 # Street Gizmos
 
 Direct-manipulation handles for managed streets in the editor viewport,
-ported from the gizmo prototype lab branch
-(`claude/gizmo-prototypes-3d-ui-2w5szw`) and always on — there is no user
-toggle. They are **additive**: every entity keeps the standard
+always on — there is no user toggle. They are **additive**: every entity keeps the standard
 TransformControls gizmo (move/rotate/scale per the active action tool);
 the street handles appear alongside it.
 

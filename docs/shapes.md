@@ -6,13 +6,13 @@ properties panel.
 
 The code is spread across five directories, so this file is the entry point:
 
-| Where                             | What                                                                                                                        |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `src/aframe-components/`          | `shape.js` (the component and its schema), `shape-vertex.js`, `shapeFillRender.js`                                          |
-| `src/editor/components/elements/` | `ShapeSidebar.js` (properties panel), `ActionBar/ShapeDrawAction.jsx` (the draw tool)                                       |
-| `src/editor/lib/`                 | `shapeStyle.js`, `shapeEditRules.js`, `shapeMeasure.js`, `ShapeReadouts.js`, `ShapeVertexControls.js`, `convertToShapes.js` |
-| `src/editor/lib/commands/`        | `ShapeVertex{Insert,Move,Remove}Command.js`, `StreetConvertToShapesCommand.js`                                              |
-| `test/`                           | `editor/shape*.test.js`, `components/shape-*.test.js`                                                                       |
+| Where                             | What                                                                                                                                          |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/aframe-components/`          | `shape.js` (the component and its schema), `shape-vertex.js`, `shapeFillRender.js`                                                            |
+| `src/editor/components/elements/` | `ShapeSidebar.jsx` (properties panel), `ActionBar/ShapeDrawAction.jsx` (the draw tool)                                                        |
+| `src/editor/lib/`                 | `shapeStyle.js`, `shapeEditRules.js`, `shapeMeasure.js`, `ShapeReadouts.js`, `ShapeVertexControls.js`, `convertToShapes.js`                   |
+| `src/editor/lib/commands/`        | `ShapeVertex{Insert,Move,Remove}Command.js`, `StreetConvertToShapesCommand.js`                                                                |
+| `test/`                           | `editor/shape*.test.js`, `components/shape-*.test.js`                                                                                         |
 | `docs/`                           | `shape-vertex-editing.md` — how the on-canvas vertex handles, the measurement chips and the two buttons divide the work between them, and why |
 
 ## Vertex editing commands

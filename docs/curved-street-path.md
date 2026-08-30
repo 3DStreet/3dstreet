@@ -1,8 +1,7 @@
 # Curved streets: follow a path (prototype)
 
-Phase D.3 of the shapes/street-fill work
-([handoff](./qa/shapes-qa-handoff.md)) — and an inversion of the street-fill
-model. Street fill started from a polyline and stamped street clones along
+Part of the shapes work (PR #1920, see `docs/shapes.md`) — and an inversion
+of the earlier street-fill model. Street fill started from a polyline and stamped street clones along
 it; this feature starts from a **street** and assigns a **path** to it.
 **Street fill is removed** (`lib/streetFill.js` and the shape sidebar
 dropdown are gone) — path following supersedes it, and its `linear` curve

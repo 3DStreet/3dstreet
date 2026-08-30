@@ -112,6 +112,11 @@ spans `aframe-components/`, `editor/components/elements/`, `editor/lib/` and
 `editor/lib/commands/`; `docs/shapes.md` is the entry point and carries the file
 map, the vertex-editing commands and the sticky-style rule.
 
+**Street gizmos:** always-on viewport handles for managed streets (endpoint
+nodes that rewrite position/rotation/length, segment width bars), additive to
+the standard TransformControls gizmo. Code in `src/editor/lib/gizmos/`; doc is
+`docs/street-gizmos.md`.
+
 **Layer Reordering:** Drag-and-drop reordering of layers within the same parent in the SceneGraph. Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
 
 ## Asset System

@@ -41,6 +41,5 @@ Resolved 2026-08-30 (see git log for the commit):
 - `querySelector('#' + id)` throws for non-CSS-identifier ids
   (`managed-street.js` ~600).
 - json-utils drops `material` for segments (`json-utils_1.1.js` ~176).
-- Hygiene: camelCase `polygonMath.js` / `shapeFillRender.js`;
-  `docs/shapes.md` says `ShapeSidebar.js` (file is `.jsx`); the two
-  session-scoped `docs/qa/*.md` files are committed as durable docs.
+- Hygiene: camelCase `polygonMath.js` / `shapeFillRender.js` (A-Frame
+  files are kebab-case elsewhere).
