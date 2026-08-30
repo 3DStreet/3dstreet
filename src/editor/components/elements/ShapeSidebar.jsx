@@ -2,7 +2,7 @@
 
 import PropTypes from 'prop-types';
 import { useEffect, useRef, useState } from 'react';
-import { useIntl } from 'react-intl';
+import { defineMessages, useIntl } from 'react-intl';
 import useStore from '@/store';
 import Events from '../../lib/Events';
 import ShapeReadouts from '../../lib/ShapeReadouts';
@@ -733,6 +733,61 @@ export const ShapeSectionControls = ({ entity }) => {
 
 ShapeSectionControls.propTypes = {
   entity: PropTypes.object.isRequired
+};
+
+// Instructions shown in the right panel while the shape draw tool is active
+// (mirrors how the ruler surfaced guidance). Self-gates on the store so it
+// can be rendered unconditionally by the Sidebar. Strings live in the i18n
+// catalog (shapeDraw.*), like the rest of the editor chrome.
+const drawInstructionMessages = defineMessages({
+  addPoints: {
+    id: 'shapeDraw.addPoints',
+    defaultMessage: 'Click to add points'
+  },
+  closeFirstPoint: {
+    id: 'shapeDraw.closeFirstPoint',
+    defaultMessage: 'Click the first point to close the shape'
+  },
+  finishEnterEsc: {
+    id: 'shapeDraw.finishEnterEsc',
+    defaultMessage: 'Enter or Esc finishes the shape'
+  },
+  finishDoubleClick: {
+    id: 'shapeDraw.finishDoubleClick',
+    defaultMessage: 'Double-click places a last point and finishes'
+  },
+  backspacePoint: {
+    id: 'shapeDraw.backspacePoint',
+    defaultMessage: 'Backspace removes the last point'
+  },
+  undo: {
+    id: 'shapeDraw.undo',
+    defaultMessage: 'Ctrl+Z undoes the finished shape'
+  }
+});
+
+export const ShapeDrawInstructions = () => {
+  const intl = useIntl();
+  const active = useStore((s) => s.shapeDrawActive);
+  if (!active) return null;
+  return (
+    <div className="sidepanelContent">
+      <div className="rounded bg-blue-50 p-2 text-gray-600">
+        <div className="mb-1 font-semibold uppercase">
+          ✏️{' '}
+          {intl.formatMessage({
+            id: 'shapeDraw.title',
+            defaultMessage: 'Draw a shape'
+          })}
+        </div>
+        <ul className="space-y-1">
+          {Object.values(drawInstructionMessages).map((message) => (
+            <li key={message.id}>• {intl.formatMessage(message)}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
 };
 
 export default ShapeSidebar;

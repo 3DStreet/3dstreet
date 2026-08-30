@@ -2018,6 +2018,27 @@
   "segmentSidebar.width": {
     "defaultMessage": "Width"
   },
+  "shapeDraw.addPoints": {
+    "defaultMessage": "Click to add points"
+  },
+  "shapeDraw.backspacePoint": {
+    "defaultMessage": "Backspace removes the last point"
+  },
+  "shapeDraw.closeFirstPoint": {
+    "defaultMessage": "Click the first point to close the shape"
+  },
+  "shapeDraw.finishDoubleClick": {
+    "defaultMessage": "Double-click places a last point and finishes"
+  },
+  "shapeDraw.finishEnterEsc": {
+    "defaultMessage": "Enter or Esc finishes the shape"
+  },
+  "shapeDraw.title": {
+    "defaultMessage": "Draw a shape"
+  },
+  "shapeDraw.undo": {
+    "defaultMessage": "Ctrl+Z undoes the finished shape"
+  },
   "shapeReadouts.insertHint": {
     "defaultMessage": "Add a vertex to this side"
   },
