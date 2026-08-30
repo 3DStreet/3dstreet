@@ -250,6 +250,15 @@ export const layerCardMessages = defineMessages({
     defaultMessage:
       'A full-size sedan with real-car physics (~Camry-sized). Mounts standard curbs with momentum, hits real-world speeds. Switch presets from the drive-controls properties panel.'
   },
+  flyableHelicopterName: {
+    id: 'addLayer.card.flyableHelicopter.name',
+    defaultMessage: 'Flyable Helicopter'
+  },
+  flyableHelicopterDesc: {
+    id: 'addLayer.card.flyableHelicopter.desc',
+    defaultMessage:
+      'A flyable helicopter with arcade physics (GTA/Battlefield style). Press Play, then W/S collective, A/D yaw, arrow-key cyclic, Space to auto-hover. Placeholder basic-geometry mesh.'
+  },
   raceTargetName: {
     id: 'addLayer.card.raceTarget.name',
     defaultMessage: 'Race Target'

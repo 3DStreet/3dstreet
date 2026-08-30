@@ -27,7 +27,7 @@ import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
 import { Compass } from './elements/Compass';
 import { ContextViewButton } from './elements/ContextViewButton';
-import { PlayModeControls } from './elements/PlayModeControls';
+import { PlayModeControls, FlyModeControls } from './elements/PlayModeControls';
 import { RaceFinishBanner } from './elements/RaceFinishBanner';
 import useStore from '@/store';
 import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
@@ -164,6 +164,7 @@ export default function Main() {
       <UnofficialDeploymentBanner />
       <ToolbarWrapper />
       {!isInspectorEnabled && <PlayModeControls />}
+      {!isInspectorEnabled && <FlyModeControls />}
       {!isInspectorEnabled && <RaceFinishBanner />}
       {isInspectorEnabled && (
         <div>

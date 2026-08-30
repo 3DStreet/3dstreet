@@ -315,7 +315,10 @@ AFRAME.registerSystem('play-mode', {
     if (edge(3)) this.reset();
     const car = document.getElementById('play-mode-player-car');
     const pmv = car && car.components && car.components['play-mode-vehicle'];
-    if (edge(2) && pmv) pmv.cycleCameraMode();
+    const heli = document.getElementById('play-mode-player-heli');
+    const pmh =
+      heli && heli.components && heli.components['play-mode-helicopter'];
+    if (edge(2) && (pmv || pmh)) (pmv || pmh).cycleCameraMode();
     if (pmv && pmv.input) {
       // 6=LT, 7=RT (analog, value 0..1). Combined into a signed throttle
       // so the existing keyboard fallback can be left intact when both
@@ -341,6 +344,35 @@ AFRAME.registerSystem('play-mode', {
         if (Math.abs(ry) > 0.15) {
           const factor = Math.exp(ry * 0.03);
           pmv.chaseZoom = THREE.MathUtils.clamp(pmv.chaseZoom * factor, 0.4, 4);
+        }
+      }
+    } else if (pmh && pmh.input) {
+      // Helicopter mapping. RT/LT = collective lever (signed rate),
+      // left stick = cyclic (stick up -> nose down -> fly forward),
+      // LB/RB = yaw pedals, B = hover assist. Right stick keeps its
+      // chase-cam orbit/zoom role from drive mode.
+      const rt = pad.buttons[7] ? pad.buttons[7].value || 0 : 0;
+      const lt = pad.buttons[6] ? pad.buttons[6].value || 0 : 0;
+      const col = rt - lt;
+      pmh.input.collectiveAxis = Math.abs(col) > 0.05 ? col : 0;
+      const sx = pad.axes[0] || 0;
+      const sy = pad.axes[1] || 0;
+      pmh.input.rollAxis = Math.abs(sx) > 0.1 ? sx : 0;
+      // Stick up reads negative on the standard mapping; pitchAxis +1
+      // means nose down (forward), so negate.
+      pmh.input.pitchAxis = Math.abs(sy) > 0.1 ? -sy : 0;
+      // 4 = LB (yaw left), 5 = RB (yaw right); +1 = nose left.
+      const lb = !!(pad.buttons[4] && pad.buttons[4].pressed);
+      const rb = !!(pad.buttons[5] && pad.buttons[5].pressed);
+      pmh.input.yawAxis = (lb ? 1 : 0) - (rb ? 1 : 0);
+      pmh.input.padAssist = !!(pad.buttons[1] && pad.buttons[1].pressed);
+      if (pmh.data.cameraMode === 'chase') {
+        const rx = pad.axes[2] || 0;
+        const ry = pad.axes[3] || 0;
+        if (Math.abs(rx) > 0.15) pmh.chaseYaw += rx * 0.04;
+        if (Math.abs(ry) > 0.15) {
+          const factor = Math.exp(ry * 0.03);
+          pmh.chaseZoom = THREE.MathUtils.clamp(pmh.chaseZoom * factor, 0.4, 4);
         }
       }
     }

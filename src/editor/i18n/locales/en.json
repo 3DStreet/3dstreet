@@ -65,6 +65,12 @@
   "addLayer.card.driveableTukTuk.name": {
     "defaultMessage": "Driveable Tuk-tuk"
   },
+  "addLayer.card.flyableHelicopter.desc": {
+    "defaultMessage": "A flyable helicopter with arcade physics (GTA/Battlefield style). Press Play, then W/S collective, A/D yaw, arrow-key cyclic, Space to auto-hover. Placeholder basic-geometry mesh."
+  },
+  "addLayer.card.flyableHelicopter.name": {
+    "defaultMessage": "Flyable Helicopter"
+  },
   "addLayer.card.grassBox.desc": {
     "defaultMessage": "Add a large green ground slab with animated instanced grass. The box dimensions, color, and grass options (density, blade height) are all editable in the properties panel."
   },
@@ -1120,6 +1126,60 @@
   },
   "exportModal.unitsMeters": {
     "defaultMessage": "Meters"
+  },
+  "flyControls.agility": {
+    "defaultMessage": "Cyclic Agility"
+  },
+  "flyControls.liftPower": {
+    "defaultMessage": "Rotor Power (× gravity)"
+  },
+  "flyControls.stability": {
+    "defaultMessage": "Stability Assist"
+  },
+  "flyControls.tipKeys": {
+    "defaultMessage": "W/S collective · A/D yaw · arrows tilt · Space auto-hover"
+  },
+  "flyControls.tipMisc": {
+    "defaultMessage": "R = reset · C = camera · tilt forward to build speed"
+  },
+  "flyControls.tipStart": {
+    "defaultMessage": "Press Start, hold W to spool up and climb"
+  },
+  "flyControls.tipsHeading": {
+    "defaultMessage": "🚁 Flight tips"
+  },
+  "flyControls.yawRate": {
+    "defaultMessage": "Yaw Rate"
+  },
+  "flyModeControls.agility": {
+    "defaultMessage": "Cyclic agility"
+  },
+  "flyModeControls.altitude": {
+    "defaultMessage": "Altitude"
+  },
+  "flyModeControls.collective": {
+    "defaultMessage": "Collective"
+  },
+  "flyModeControls.gamepadHint": {
+    "defaultMessage": "Gamepad: RT/LT collective · stick tilt · LB/RB yaw · B hover · Y reset · X camera"
+  },
+  "flyModeControls.keyboardHint": {
+    "defaultMessage": "W/S collective · A/D yaw · arrows tilt · Space hover · R reset · C camera"
+  },
+  "flyModeControls.liftPower": {
+    "defaultMessage": "Rotor power"
+  },
+  "flyModeControls.speed": {
+    "defaultMessage": "Speed"
+  },
+  "flyModeControls.stability": {
+    "defaultMessage": "Stability"
+  },
+  "flyModeControls.title": {
+    "defaultMessage": "Flight controls"
+  },
+  "flyModeControls.yawRate": {
+    "defaultMessage": "Yaw rate"
   },
   "geoModal.centerpoint": {
     "defaultMessage": "Centerpoint"
