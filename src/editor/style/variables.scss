@@ -79,6 +79,14 @@ $blue-600: #346392;
 $blue-700: #27496d;
 $blue-800: #193047;
 
+// timings
+
+// How long the pointer must rest on a shape side's length measurement before
+// that chip turns into a "+". It exists so a pointer SWEEPING across a shape
+// does not flip every chip it passes; it is NOT an accident guard, because
+// clicking the measurement inserts whether or not the morph has completed.
+$shape-hover-morph-dwell: 200ms;
+
 // fonts
 
 $mainFont: 'Lato', sans-serif;

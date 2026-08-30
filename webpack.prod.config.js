@@ -23,7 +23,10 @@ module.exports = {
   performance: {
     // 4.0 MiB — raised from 3.8 MiB for the experimental nav-controls system
     // (src/editor/lib/nav-experimental), which ships in the core bundle.
-    // Candidate for code-splitting under the bundle-size effort (#1624/#1628).
+    // When the budget trips, look for illustration-grade SVGs inlined in JS
+    // first (the ~100 KiB icon move to ui_assets, and the lazy SVGLoader in
+    // svg-extruder, bought the current headroom); the durable fix is
+    // code-splitting the editor app + Firebase — tracked in #1624/#1628.
     maxAssetSize: 4194304, // 4.0 MiB
     maxEntrypointSize: 4194304, // 4.0 MiB
     hints: 'error',

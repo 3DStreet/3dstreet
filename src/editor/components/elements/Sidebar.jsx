@@ -20,7 +20,7 @@ import {
 import IntersectionSidebar from './IntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
-import MeasureLineSidebar from './MeasureLineSidebar';
+import ShapeSidebar from './ShapeSidebar';
 import DriveControlsSidebar from './DriveControlsSidebar';
 import StreetTrafficReplaySidebar from './StreetTrafficReplaySidebar';
 import UserLayersSidebar from './UserLayersSidebar';
@@ -211,14 +211,6 @@ export default class Sidebar extends React.Component {
               {entity.getAttribute('managed-street') && (
                 <ManagedStreetSidebar entity={entity} />
               )}
-              {entity.getAttribute('measure-line') && (
-                <>
-                  <MeasureLineSidebar entity={entity} />
-                  <div className="propertyRow">
-                    <AdvancedComponents entity={entity} />
-                  </div>
-                </>
-              )}
               {entity.getAttribute('drive-controls') && (
                 <>
                   <DriveControlsSidebar entity={entity} />
@@ -235,8 +227,8 @@ export default class Sidebar extends React.Component {
                   </div>
                 </>
               )}
-              {!entity.getAttribute('measure-line') &&
-                !entity.getAttribute('drive-controls') &&
+              {entity.getAttribute('shape') && <ShapeSidebar entity={entity} />}
+              {!entity.getAttribute('drive-controls') &&
                 !entity.getAttribute('street-traffic-replay') && (
                   <ComponentsContainer entity={entity} />
                 )}

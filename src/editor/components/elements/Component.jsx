@@ -37,7 +37,17 @@ export default class Component extends React.Component {
     // Property names to omit from the rendered rows (e.g. advanced geometry
     // props promoted into the featured section but too low-level to surface
     // there — they remain available under Advanced Components).
-    hideProperties: PropTypes.array
+    hideProperties: PropTypes.array,
+    // Optional per-property render overrides, keyed by property name. A match
+    // replaces that property's generic widget row with a purpose-built control
+    // while leaving its position in the schema order — and every other property
+    // — untouched, so a schema that grows later still surfaces the new props.
+    // Receives ({ name, schema, value, componentname, entity }).
+    propertyRenderers: PropTypes.object,
+    // Optional curated rows rendered inside the section, above the
+    // schema-driven property rows (e.g. the shape section's direction and
+    // curve-style controls).
+    children: PropTypes.node
   };
 
   constructor(props) {
@@ -115,6 +125,7 @@ export default class Component extends React.Component {
     }
 
     const hideProperties = this.props.hideProperties || [];
+    const propertyRenderers = this.props.propertyRenderers || {};
     return (
       Object.keys(componentData.schema)
         // `primitive` is the discriminator that decides which other fields apply
@@ -132,14 +143,24 @@ export default class Component extends React.Component {
         })
         .map((propertyName) => (
           <div className="detailed" key={propertyName}>
-            <PropertyRow
-              name={propertyName}
-              schema={componentData.schema[propertyName]}
-              data={componentData.data[propertyName]}
-              componentname={this.props.name}
-              isSingle={false}
-              entity={this.props.entity}
-            />
+            {propertyRenderers[propertyName] ? (
+              propertyRenderers[propertyName]({
+                name: propertyName,
+                schema: componentData.schema[propertyName],
+                value: componentData.data[propertyName],
+                componentname: this.props.name,
+                entity: this.props.entity
+              })
+            ) : (
+              <PropertyRow
+                name={propertyName}
+                schema={componentData.schema[propertyName]}
+                data={componentData.data[propertyName]}
+                componentname={this.props.name}
+                isSingle={false}
+                entity={this.props.entity}
+              />
+            )}
           </div>
         ))
     );
@@ -164,7 +185,10 @@ export default class Component extends React.Component {
             </a>
           </div>
         </div>
-        <div className="collapsible-content">{this.renderPropertyRows()}</div>
+        <div className="collapsible-content">
+          {this.props.children}
+          {this.renderPropertyRows()}
+        </div>
       </Collapsible>
     );
   }

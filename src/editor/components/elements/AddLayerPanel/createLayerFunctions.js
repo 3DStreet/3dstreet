@@ -75,6 +75,45 @@ export function createSvgExtrudedEntity(position) {
   }
 }
 
+export function createShapeEntity(position) {
+  // An editable polyline: a `shape` parent whose `shape-vertex` children carry
+  // the point positions (the sole geometry truth). Created with its vertices in
+  // one atomic, undoable command. Vertices are hidden from the scene graph and
+  // hold no mesh of their own; the `shape` component derives the line.
+  const base =
+    position && typeof position.x === 'number'
+      ? position
+      : { x: 0, y: 0, z: 0 };
+  // Place the shape entity at the vertices' centroid, vertices relative to it,
+  // so the entity origin sits on the shape — the transform gizmo then attaches
+  // on it and rotates/scales about its centre (matches the draw tool + other
+  // scene elements).
+  const offsets = [
+    [0, 0],
+    [4, 0],
+    [4, 4]
+  ];
+  const cx = offsets.reduce((s, o) => s + o[0], 0) / offsets.length;
+  const cz = offsets.reduce((s, o) => s + o[1], 0) / offsets.length;
+  const vertex = (dx, dz) => ({
+    element: 'a-entity',
+    class: 'hideFromSceneGraph',
+    components: {
+      'shape-vertex': '',
+      position: `${dx - cx} 0 ${dz - cz}`
+    }
+  });
+  AFRAME.INSPECTOR.execute('entitycreate', {
+    element: 'a-entity',
+    components: {
+      shape: '',
+      position: `${base.x + cx} ${base.y} ${base.z + cz}`,
+      'data-layer-name': 'Shape • Polyline'
+    },
+    children: offsets.map((o) => vertex(o[0], o[1]))
+  });
+}
+
 export function createManagedStreetFromStreetmixURLPrompt(
   position,
   hideBuildings
@@ -101,7 +140,8 @@ export function createManagedStreetFromStreetmixURLPrompt(
           // fires streetmix_import_completed/_failed with source 'dialog'
           // (#1874).
           importSource: 'dialog'
-        }
+        },
+        'street-align': { length: 'middle' }
       }
     };
 
@@ -127,7 +167,8 @@ export function createManagedStreetFromStreetplanURLPrompt(position) {
           showVehicles: true,
           showStriping: true,
           synchronize: true
-        }
+        },
+        'street-align': { length: 'middle' }
       }
     };
 
@@ -148,7 +189,10 @@ export function createManagedStreetFromStreetObject(position, streetObject) {
           showVehicles: true,
           showStriping: true,
           synchronize: true
-        }
+        },
+        // New streets center on their creation point. Explicit (not a schema
+        // default) so saved scenes that relied on 'start' stay put on load.
+        'street-align': { length: 'middle' }
       }
     };
 
