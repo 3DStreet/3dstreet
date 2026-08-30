@@ -496,6 +496,7 @@
   "loadingSceneModal.dismiss": "Ignorer",
   "managedStreetSidebar.convertToShapes": "Convertir en formes",
   "managedStreetSidebar.convertToShapesConfirm": "Cela transforme la rue en formes 3D simples que vous pouvez déplacer, dupliquer et supprimer individuellement. Après avoir enregistré et rechargé cette scène, vous ne pourrez pas annuler cette action. Astuce : dupliquez d'abord la rue si vous souhaitez conserver une copie de cette rue gérée.",
+  "managedStreetSidebar.convertToShapesCurvedUnsupported": "Convertir en formes n’est pas encore disponible pour une rue qui suit un tracé. Retirez d’abord le tracé de la rue ou conservez-la comme rue gérée.",
   "managedStreetSidebar.convertToShapesTitle": "Convertir la rue en formes ?",
   "managedStreetSidebar.downloadJSON": "Télécharger le JSON de la rue",
   "managedStreetSidebar.followPathHint": "Cette rue suit un tracé : la longueur suit le tracé et le style de courbe (lisse / arc / linéaire) se définit sur la forme du tracé.",
