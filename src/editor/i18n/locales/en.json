@@ -2015,45 +2015,6 @@
   "segmentSidebar.width": {
     "defaultMessage": "Width"
   },
-  "shapeDraw.addCorners": {
-    "defaultMessage": "Click to add corners"
-  },
-  "shapeDraw.addPoints": {
-    "defaultMessage": "Click to add points"
-  },
-  "shapeDraw.autoClose": {
-    "defaultMessage": "Auto-close — closes as you draw, so the closing edge and the enclosed area update live. Stays open if the shape can't close without crossing itself."
-  },
-  "shapeDraw.backspaceCorner": {
-    "defaultMessage": "Backspace removes the last corner"
-  },
-  "shapeDraw.backspacePoint": {
-    "defaultMessage": "Backspace removes the last point"
-  },
-  "shapeDraw.closeFirstPoint": {
-    "defaultMessage": "Click the first point to close the shape"
-  },
-  "shapeDraw.closeManually": {
-    "defaultMessage": "Close manually — draws an open line. Click the first point when you want to close it."
-  },
-  "shapeDraw.finishEnterCorner": {
-    "defaultMessage": "Enter finishes, including the corner under the cursor"
-  },
-  "shapeDraw.finishEnterPoint": {
-    "defaultMessage": "Enter finishes, including the point under the cursor"
-  },
-  "shapeDraw.finishWithout": {
-    "defaultMessage": "Esc or double-click finishes without it"
-  },
-  "shapeDraw.mode": {
-    "defaultMessage": "Mode"
-  },
-  "shapeDraw.title": {
-    "defaultMessage": "Draw a shape"
-  },
-  "shapeDraw.undo": {
-    "defaultMessage": "Ctrl+Z undoes the finished shape"
-  },
   "shapeReadouts.insertHint": {
     "defaultMessage": "Add a vertex to this side"
   },

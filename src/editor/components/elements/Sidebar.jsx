@@ -20,7 +20,7 @@ import {
 import IntersectionSidebar from './IntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
-import ShapeSidebar, { ShapeDrawInstructions } from './ShapeSidebar';
+import ShapeSidebar from './ShapeSidebar';
 import DriveControlsSidebar from './DriveControlsSidebar';
 import StreetTrafficReplaySidebar from './StreetTrafficReplaySidebar';
 import UserLayersSidebar from './UserLayersSidebar';
@@ -93,7 +93,6 @@ export default class Sidebar extends React.Component {
     if (!entity) {
       return (
         <div className="properties-empty-state">
-          <ShapeDrawInstructions />
           <FormattedMessage
             id="sidebar.selectObject"
             defaultMessage="Select an object to edit properties."
@@ -112,7 +111,6 @@ export default class Sidebar extends React.Component {
 
     return (
       <div className="properties-panel" tabIndex="0">
-        <ShapeDrawInstructions />
         <div id="layers-title">
           <div className="layersBlock">
             <EntityLabel entity={entity} editable={canRename} />
