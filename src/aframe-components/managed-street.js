@@ -652,6 +652,17 @@ AFRAME.registerComponent('managed-street', {
   },
 
   rebuildPathCurve: function () {
+    if (this.pathEl && !this.pathEl.isConnected) {
+      // The path entity was destroyed (a layer reorder, undo/redo, or any
+      // other serialize-and-recreate) — typically recreated under the same
+      // id, which the selector comparison in updatePathFollowing cannot
+      // see. Drop the dead reference and resolve the selector again; the
+      // resolver's retry loop covers the recreated entity not existing or
+      // not having loaded yet.
+      this._pathSelector = undefined;
+      this.updatePathFollowing();
+      return;
+    }
     const sp = this.pathEl?.components?.['street-path'];
     if (!sp || !this.data.path) return;
     const worldPts = sp.getWorldPathPoints();
