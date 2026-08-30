@@ -10,6 +10,7 @@ const {
   seedSegmentColliders,
   seedObstacleColliders
 } = require('./scene-colliders.js');
+const { attachTilesColliders } = require('./tiles-colliders.js');
 
 /**
  * play-mode-vehicle
@@ -224,6 +225,36 @@ AFRAME.registerSystem('play-mode-physics', {
     const collider = this.world.createCollider(colliderDesc, body);
     if (tag) this.colliderTags.set(collider.handle, tag);
     return body;
+  },
+
+  /**
+   * Add a static triangle-mesh collider from world-space vertex coords
+   * ([x0,y0,z0, ...], Float32Array) + triangle indices (Uint32Array).
+   * Used for Google 3D Tiles terrain/buildings (tiles-colliders.js) —
+   * arbitrary photogrammetry that no primitive shape approximates.
+   * Body sits at the origin since the vertices are already world-space.
+   * Returns the body, or null if the mesh is empty/degenerate.
+   */
+  addStaticTrimesh: function (vertices, indices, tag) {
+    if (!this.world) return null;
+    if (!vertices || !indices || vertices.length < 9 || indices.length < 3) {
+      return null;
+    }
+    const colliderDesc = RAPIER.ColliderDesc.trimesh(vertices, indices);
+    if (!colliderDesc) return null;
+    const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+    const collider = this.world.createCollider(colliderDesc, body);
+    if (tag) this.colliderTags.set(collider.handle, tag);
+    return body;
+  },
+
+  /**
+   * Remove a static/kinematic body added by one of the seeders. Safe to
+   * call after deactivate() (world already freed) — it just no-ops.
+   */
+  removeBody: function (body) {
+    if (!this.world || !body) return;
+    this.world.removeRigidBody(body);
   },
 
   /**
@@ -1438,10 +1469,17 @@ AFRAME.registerComponent('drive-mode', {
     const myToken = (this._activationToken = {});
     physics.activate().then(() => {
       if (this._activationToken !== myToken) return;
+      // Google 3D Tiles get real trimesh colliders (terrain +
+      // photogrammetry buildings) so the car can't drive through
+      // them. With a tileset present, the flat ground pad would sit
+      // ABOVE tile terrain that dips below y=0 — drop it to a deep
+      // safety net that only catches falls through tile holes.
+      this._tilesColliders = attachTilesColliders(sceneEl);
+      const padY = this._tilesColliders ? -250 : -0.05;
       // Flat ground plane — catches the player when off-street or in
       // an empty scene with just a driveable vehicle.
       physics.addStaticCuboid(
-        { x: 0, y: -0.05, z: 0 },
+        { x: 0, y: padY, z: 0 },
         { x: 200, y: 0.05, z: 200 },
         undefined,
         'ground'
@@ -1462,6 +1500,10 @@ AFRAME.registerComponent('drive-mode', {
           el2.removeEventListener('model-loaded', fn);
         }
         this._vehicleColliderListeners = null;
+      }
+      if (this._tilesColliders) {
+        this._tilesColliders.dispose();
+        this._tilesColliders = null;
       }
       physics.deactivate();
     };

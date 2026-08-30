@@ -8,6 +8,7 @@ const {
   seedSegmentColliders,
   seedObstacleColliders
 } = require('./scene-colliders.js');
+const { attachTilesColliders } = require('./tiles-colliders.js');
 
 /**
  * play-mode-helicopter
@@ -308,10 +309,11 @@ AFRAME.registerComponent('play-mode-helicopter', {
         data.spawnPosition.z
       )
       .setRotation(spawnQuat)
-      // Arcade aerodynamics: linear damping caps top speed / fall rate,
-      // angular damping steadies rotation (the flight model adds its
-      // own tilt-rate damper on top).
-      .setLinearDamping(0.35)
+      // Linear drag lives in the flight model (split horizontal /
+      // vertical so descents stay heavy) — keep Rapier's isotropic
+      // damping OFF. Angular damping steadies rotation (the flight
+      // model adds its own tilt-rate damper on top).
+      .setLinearDamping(0)
       .setAngularDamping(2.0)
       .setCanSleep(false);
     const chassisBody = world.createRigidBody(bodyDesc);
@@ -430,10 +432,13 @@ AFRAME.registerComponent('play-mode-helicopter', {
     const meshEl = this.el.querySelector('[helicopter-mesh]');
     const meshComp = meshEl && meshEl.components['helicopter-mesh'];
     if (meshComp) {
+      // abs: negative collective (powered descent) is blade pitch, not
+      // rotor slowdown — keep the disc spinning hard either way.
       meshComp.rotorSpeed =
         this.state.spool *
         (ROTOR_VISUAL_IDLE +
-          this.state.collective * (ROTOR_VISUAL_MAX - ROTOR_VISUAL_IDLE));
+          Math.abs(this.state.collective) *
+            (ROTOR_VISUAL_MAX - ROTOR_VISUAL_IDLE));
     }
 
     if (this.cameraEl) this.updateCamera();
@@ -703,10 +708,17 @@ AFRAME.registerComponent('fly-mode', {
     const myToken = (this._activationToken = {});
     physics.activate().then(() => {
       if (this._activationToken !== myToken) return;
+      // Google 3D Tiles get real trimesh colliders (terrain +
+      // photogrammetry buildings). When a tileset is present the flat
+      // ground pad would sit ABOVE tile terrain that dips below y=0,
+      // so it drops to a deep safety net that only catches falls
+      // through tile holes.
+      this._tilesColliders = attachTilesColliders(sceneEl);
+      const padY = this._tilesColliders ? -250 : -0.05;
       // Big flat ground plane — helicopters outrun the car's 200m pad
       // quickly, so give the sky sandbox a wider floor.
       physics.addStaticCuboid(
-        { x: 0, y: -0.05, z: 0 },
+        { x: 0, y: padY, z: 0 },
         { x: 1000, y: 0.05, z: 1000 },
         undefined,
         'ground'
@@ -727,6 +739,10 @@ AFRAME.registerComponent('fly-mode', {
           el2.removeEventListener('model-loaded', fn);
         }
         this._obstacleListeners = null;
+      }
+      if (this._tilesColliders) {
+        this._tilesColliders.dispose();
+        this._tilesColliders = null;
       }
       physics.deactivate();
     };

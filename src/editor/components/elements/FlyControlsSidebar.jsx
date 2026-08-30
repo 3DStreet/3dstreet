@@ -83,7 +83,7 @@ const FlyControlsSidebar = ({ entity }) => {
                 •{' '}
                 <FormattedMessage
                   id="flyControls.tipKeys"
-                  defaultMessage="W/S collective · A/D yaw · arrows tilt · Space auto-hover"
+                  defaultMessage="W/S collective (S past zero dives) · A/D yaw · arrows tilt · Space auto-hover"
                 />
               </li>
               <li>

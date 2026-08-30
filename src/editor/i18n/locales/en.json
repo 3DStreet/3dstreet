@@ -1137,7 +1137,7 @@
     "defaultMessage": "Stability Assist"
   },
   "flyControls.tipKeys": {
-    "defaultMessage": "W/S collective · A/D yaw · arrows tilt · Space auto-hover"
+    "defaultMessage": "W/S collective (S past zero dives) · A/D yaw · arrows tilt · Space auto-hover"
   },
   "flyControls.tipMisc": {
     "defaultMessage": "R = reset · C = camera · tilt forward to build speed"
@@ -1164,7 +1164,7 @@
     "defaultMessage": "Gamepad: RT/LT collective · stick tilt · LB/RB yaw · B hover · Y reset · X camera"
   },
   "flyModeControls.keyboardHint": {
-    "defaultMessage": "W/S collective · A/D yaw · arrows tilt · Space hover · R reset · C camera"
+    "defaultMessage": "W/S collective (S past zero dives) · A/D yaw · arrows tilt · Space hover · R reset · C camera"
   },
   "flyModeControls.liftPower": {
     "defaultMessage": "Rotor power"

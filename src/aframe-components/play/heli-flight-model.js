@@ -11,11 +11,20 @@
  * Design target is "GTA / Battlefield medium complexity": more than a
  * toy up/down translator, far less than a real sim. The pieces:
  *
- *   - Collective (throttle lever): a 0..1 value ramped by held input.
- *     Rotor thrust = mass * g * liftPower * collective, applied along
- *     BODY-UP — so tilting the helicopter vectors its thrust and
- *     pitch/roll naturally translate into horizontal flight, exactly
- *     like the games. Hover sits at collective = 1/liftPower.
+ *   - Collective (throttle lever): a MIN_COLLECTIVE..1 value ramped by
+ *     held input. Rotor thrust = mass * g * liftPower * collective,
+ *     applied along BODY-UP — so tilting the helicopter vectors its
+ *     thrust and pitch/roll naturally translate into horizontal
+ *     flight, exactly like the games. Hover sits at collective =
+ *     1/liftPower. Holding the lever below zero is ACTIVE DOWN-THRUST
+ *     (GTA descend key): the playtest complaint was that cutting lift
+ *     and waiting on gravity made returning to the ground feel like a
+ *     balloon, so S keeps ramping past 0 into a powered dive.
+ *   - Drag is split by axis: horizontal drag caps cruise speed, but
+ *     vertical drag is ~4x weaker so climbs and especially descents
+ *     read as heavy, not floaty. (An earlier build used Rapier's
+ *     isotropic linearDamping, which braked falls as hard as cruise —
+ *     the "gravity feels light" playtest note.)
  *   - Rotor spool: thrust fades in over `spoolTime` seconds after
  *     start so takeoff has a wind-up instead of an instant jump.
  *   - Cyclic (pitch/roll): ATTITUDE-COMMAND, the way the games do it —
@@ -45,9 +54,12 @@ const GRAVITY = 9.81;
 
 // Tunables that are NOT user-facing levers (the user-facing ones —
 // liftPower / agility / yawRate / stability — arrive via params).
-const COLLECTIVE_RATE = 0.8; // full collective travel per second of held W/S
+const COLLECTIVE_RATE = 1.1; // collective travel per second of held W/S
+const MIN_COLLECTIVE = -0.4; // lever floor: powered-descent down-thrust
 const SPOOL_TIME = 1.6; // seconds from Play to full available thrust
 const ASSIST_COLLECTIVE_EASE = 4; // 1/s — how fast assist trims to hover
+const HORIZ_DRAG = 0.35; // 1/s — caps cruise speed
+const VERT_DRAG = 0.08; // 1/s — falls and climbs stay heavy
 const MAX_TILT = 0.55; // rad (~31°) — commanded tilt at full stick
 const K_CMD = 14; // mass-scaled spring toward the commanded attitude
 const K_LEVEL = 12; // mass-scaled spring back to level (no input)
@@ -55,7 +67,9 @@ const K_YAW = 5; // mass-scaled pedal yaw torque
 const K_TILT_DAMP = 1.6; // mass-scaled tilt-rate damper
 const ASSIST_LEVEL_BOOST = 2.5; // leveling multiplier while assist held
 const ASSIST_HORIZ_BRAKE = 1.2; // 1/s — horizontal velocity brake under assist
-const ASSIST_VERT_BRAKE = 0.9; // 1/s — vertical velocity brake under assist
+// Strong: assist is the panic button, and powered dives now reach
+// ~30 m/s — it should visibly arrest one within a couple of seconds.
+const ASSIST_VERT_BRAKE = 1.6; // 1/s — vertical velocity brake under assist
 
 const DEFAULT_PARAMS = {
   liftPower: 2.2, // thrust at full collective, in multiples of gravity
@@ -103,7 +117,7 @@ function stepHeliState(state, input, dt, params) {
   state.spool = Math.min(1, state.spool + dt / SPOOL_TIME);
   state.collective = clamp(
     state.collective + (input.collective || 0) * COLLECTIVE_RATE * dt,
-    0,
+    MIN_COLLECTIVE,
     1
   );
   // Assist trims toward exact hover thrust — but only once the player
@@ -210,9 +224,17 @@ function computeHeliForces(state, input, body, params) {
   torque.y += -(av.y - up.y * avDotUp) * kd;
   torque.z += -(av.z - up.z * avDotUp) * kd;
 
+  // --- Aerodynamic drag, split by axis (see header): strong enough
+  //     horizontally to cap cruise speed, weak vertically so descents
+  //     and climbs feel heavy. Replaces Rapier's isotropic
+  //     linearDamping (the rig sets that to 0). ---
+  const lv = body.linvel;
+  force.x += -lv.x * m * HORIZ_DRAG;
+  force.z += -lv.z * m * HORIZ_DRAG;
+  force.y += -lv.y * m * VERT_DRAG;
+
   // --- Hover assist: brake horizontal + vertical drift. ---
   if (input.assist) {
-    const lv = body.linvel;
     force.x += -lv.x * m * ASSIST_HORIZ_BRAKE;
     force.z += -lv.z * m * ASSIST_HORIZ_BRAKE;
     force.y += -lv.y * m * ASSIST_VERT_BRAKE;
@@ -224,7 +246,10 @@ function computeHeliForces(state, input, body, params) {
 module.exports = {
   GRAVITY,
   COLLECTIVE_RATE,
+  MIN_COLLECTIVE,
   SPOOL_TIME,
+  HORIZ_DRAG,
+  VERT_DRAG,
   DEFAULT_PARAMS,
   createHeliState,
   stepHeliState,

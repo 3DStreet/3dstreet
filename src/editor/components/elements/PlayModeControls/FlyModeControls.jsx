@@ -173,7 +173,7 @@ export const FlyModeControls = () => {
           <p className={styles.hint}>
             <FormattedMessage
               id="flyModeControls.keyboardHint"
-              defaultMessage="W/S collective · A/D yaw · arrows tilt · Space hover · R reset · C camera"
+              defaultMessage="W/S collective (S past zero dives) · A/D yaw · arrows tilt · Space hover · R reset · C camera"
             />
           </p>
           <p className={styles.hint}>

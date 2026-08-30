@@ -15,6 +15,9 @@ const assert = require('assert');
 const {
   GRAVITY,
   SPOOL_TIME,
+  MIN_COLLECTIVE,
+  HORIZ_DRAG,
+  VERT_DRAG,
   DEFAULT_PARAMS,
   createHeliState,
   stepHeliState,
@@ -50,17 +53,19 @@ describe('heli-flight-model', () => {
   });
 
   describe('stepHeliState', () => {
-    it('ramps and clamps collective to [0, 1]', () => {
+    it('ramps and clamps collective to [MIN_COLLECTIVE, 1]', () => {
       const s = createHeliState();
       // Hold full-up for 10 seconds of substeps.
       for (let i = 0; i < 600; i++) {
         stepHeliState(s, { collective: 1 }, 1 / 60, DEFAULT_PARAMS);
       }
       assert.strictEqual(s.collective, 1);
+      // Holding down ramps PAST zero into the powered-descent range.
       for (let i = 0; i < 600; i++) {
         stepHeliState(s, { collective: -1 }, 1 / 60, DEFAULT_PARAMS);
       }
-      assert.strictEqual(s.collective, 0);
+      assert.strictEqual(s.collective, MIN_COLLECTIVE);
+      assert.ok(MIN_COLLECTIVE < 0);
     });
 
     it('spools the rotor up over SPOOL_TIME and caps at 1', () => {
@@ -103,6 +108,41 @@ describe('heli-flight-model', () => {
       assert.strictEqual(torque.x, 0);
       assert.strictEqual(torque.y, 0);
       assert.strictEqual(torque.z, 0);
+    });
+
+    it('negative collective is active down-thrust (powered descent)', () => {
+      const s = createHeliState();
+      s.spool = 1;
+      s.collective = MIN_COLLECTIVE;
+      const body = levelBody();
+      const { force } = computeHeliForces(s, NO_INPUT, body, DEFAULT_PARAMS);
+      // Down-thrust ON TOP of gravity (which the world adds separately).
+      assert.ok(force.y < -1);
+      assert.ok(
+        Math.abs(
+          force.y -
+            body.mass * GRAVITY * DEFAULT_PARAMS.liftPower * MIN_COLLECTIVE
+        ) < 1e-9
+      );
+    });
+
+    it('vertical drag is much weaker than horizontal drag (heavy falls)', () => {
+      assert.ok(VERT_DRAG < HORIZ_DRAG / 3);
+      const s = createHeliState(); // no thrust
+      const falling = computeHeliForces(
+        s,
+        NO_INPUT,
+        levelBody({ linvel: { x: 0, y: -10, z: 0 } }),
+        DEFAULT_PARAMS
+      );
+      const cruising = computeHeliForces(
+        s,
+        NO_INPUT,
+        levelBody({ linvel: { x: 10, y: 0, z: 0 } }),
+        DEFAULT_PARAMS
+      );
+      assert.ok(falling.force.y > 0); // drag opposes the fall...
+      assert.ok(falling.force.y < -cruising.force.x / 3); // ...but gently
     });
 
     it('produces no thrust before the rotor spools', () => {
