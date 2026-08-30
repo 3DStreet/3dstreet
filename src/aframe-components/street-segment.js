@@ -355,7 +355,7 @@ AFRAME.registerComponent('street-segment', {
     // surfaces and placements bend through the current curve. The listener
     // lives on the parent and deliberately survives this.remove(), which
     // doubles as the type-change reset; it self-detaches once the segment
-    // leaves the DOM.
+    // leaves the DOM or that parent (see regenerateForCurve).
     this.curveEventTarget = this.el.parentElement;
     this.onStreetCurveChanged = () => this.regenerateForCurve();
     this.curveEventTarget?.addEventListener(
@@ -364,7 +364,14 @@ AFRAME.registerComponent('street-segment', {
     );
   },
   regenerateForCurve: function () {
-    if (!this.el.isConnected) {
+    // Gone from the DOM, or moved under a different parent (a direct
+    // appendChild reparent keeps this component instance alive): the old
+    // street's curve no longer applies, and the listener would otherwise
+    // outlive it.
+    if (
+      !this.el.isConnected ||
+      this.el.parentElement !== this.curveEventTarget
+    ) {
       this.curveEventTarget?.removeEventListener(
         'street-curve-changed',
         this.onStreetCurveChanged

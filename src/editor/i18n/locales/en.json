@@ -1490,6 +1490,9 @@
   "managedStreetSidebar.convertToShapesConfirm": {
     "defaultMessage": "This turns the street into plain 3D shapes you can move, duplicate, and delete individually. After you save and reload this scene you cannot undo this action. Tip: duplicate the street first if you want to keep a copy of this managed street."
   },
+  "managedStreetSidebar.convertToShapesCurvedUnsupported": {
+    "defaultMessage": "Convert to Shapes is not available for a street that follows a path yet. Clear the street’s path first, or keep it as a managed street."
+  },
   "managedStreetSidebar.convertToShapesTitle": {
     "defaultMessage": "Convert Street to Shapes?"
   },

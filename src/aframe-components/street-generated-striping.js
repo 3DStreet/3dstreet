@@ -96,6 +96,13 @@ AFRAME.registerComponent('street-generated-striping', {
       height: 0,
       sEnd: this.length
     });
+    // `facing: 180` on the straight plane is a half-turn about Y, which
+    // mirrors the texture across the stripe (solid/dashed sides swap; that is
+    // how managed-street orients striping-solid-dashed). The ribbon's u
+    // always runs left→right along the path, so mirror the texture instead.
+    const mirrored = Math.abs((((data.facing % 360) + 360) % 360) - 180) < 1e-6;
+    const repeatX = ribbonAttr && mirrored ? -1 : 1;
+    const offset = ribbonAttr && mirrored ? 'offset: 1 0; ' : '';
     if (ribbonAttr) {
       clone.setAttribute('position', { x: 0, y: data.positionY, z: 0 });
     } else {
@@ -112,7 +119,7 @@ AFRAME.registerComponent('street-generated-striping', {
     }
     clone.setAttribute(
       'material',
-      `src: #${stripingTextureId}; alphaTest: 0; transparent:true; repeat:1 ${repeatY}; color: ${color}`
+      `src: #${stripingTextureId}; alphaTest: 0; transparent:true; ${offset}repeat:${repeatX} ${repeatY}; color: ${color}`
     );
     clone.setAttribute(
       'geometry',

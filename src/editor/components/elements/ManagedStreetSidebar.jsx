@@ -115,6 +115,22 @@ const ManagedStreetSidebar = ({ entity }) => {
   };
 
   const convertToShapes = () => {
+    // A street following a path renders every surface as street-ribbon
+    // geometry that resolves its curve from the live managed-street at build
+    // time. Baked shapes have no managed-street to resolve against, so the
+    // converted layer would be invisible (and stay invisible on reload).
+    // Refuse rather than bake a broken layer; curve-preserving conversion is
+    // tracked in #1720.
+    if (entity.components['managed-street']?.streetCurve) {
+      STREET.notify.warningMessage(
+        intl.formatMessage({
+          id: 'managedStreetSidebar.convertToShapesCurvedUnsupported',
+          defaultMessage:
+            'Convert to Shapes is not available for a street that follows a path yet. Clear the street\u2019s path first, or keep it as a managed street.'
+        })
+      );
+      return;
+    }
     // One-way workflow (undoable in-session): bakes the street into plain
     // entities and strips all managed components, so a saved scene keeps the
     // shapes, not the managed-street JSON.

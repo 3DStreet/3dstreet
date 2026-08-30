@@ -1401,3 +1401,36 @@ describe('ShapeVertexControls.activateSide', () => {
     expect(c.getRevealedSide()).toBe(null);
   });
 });
+
+describe('refuseGuardedTransform on multi payloads', () => {
+  it('refuses the batch when any member command would be refused', () => {
+    const plain = entityWith([], 'street');
+    const noScale = entityWith(['data-transform-no-scale']);
+    expect(
+      refuseGuardedTransform('multi', [
+        ['entityupdate', { entity: plain, component: 'scale', value: '2 2 2' }],
+        [
+          'entityupdate',
+          { entity: noScale, component: 'scale', value: '2 2 2' }
+        ]
+      ])
+    ).toBeTruthy();
+  });
+
+  it('lets a batch of allowed commands through, and a malformed payload', () => {
+    const noScale = entityWith(['data-transform-no-scale']);
+    expect(
+      refuseGuardedTransform('multi', [
+        [
+          'entityupdate',
+          { entity: noScale, component: 'scale', value: '1 1 1' }
+        ],
+        [
+          'entityupdate',
+          { entity: noScale, component: 'position', value: '1 2 3' }
+        ]
+      ])
+    ).toBeNull();
+    expect(refuseGuardedTransform('multi', undefined)).toBeNull();
+  });
+});

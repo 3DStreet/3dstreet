@@ -74,6 +74,18 @@ function departsFrom(axes, target, names) {
  * the editor executes, including the one a gizmo drag emits per frame.
  */
 export function refuseGuardedTransform(commandType, payload) {
+  // A multi command's payload is the list of [type, payload] tuples it will
+  // run; refuse the whole batch if any member would be refused on its own,
+  // since History pushes the batch as one entry.
+  if (commandType === 'multi') {
+    if (!Array.isArray(payload)) return null;
+    for (const tuple of payload) {
+      const reason = refuseGuardedTransform(tuple?.[0], tuple?.[1]);
+      if (reason) return reason;
+    }
+    return null;
+  }
+
   const entity = payload?.entity;
   if (!entity || !entity.hasAttribute) return null;
 
