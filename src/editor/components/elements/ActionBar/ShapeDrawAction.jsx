@@ -368,9 +368,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       return edgesCross(verts[n - 1], point, committedEdges());
     };
 
-    // Would a click at `point` be accepted as the next vertex? Used both by the
-    // click path and by Enter, which takes the pending cursor point — Enter must
-    // never create a vertex a click could not.
+    // Would a click at `point` be accepted as the next vertex?
     const canPlace = (point) => {
       if (placementCrosses(point)) return false;
       const verts = verticesRef.current;
