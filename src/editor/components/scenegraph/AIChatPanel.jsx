@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useIntl } from 'react-intl';
 import { Tooltip } from 'radix-ui';
 import { createProxyChat } from '../../services/aiChatProxy.js';
+import { captureViewportScreenshot } from '../../lib/viewportScreenshot.js';
 import {
   Copy32Icon,
   DownloadIcon,
@@ -31,7 +32,7 @@ import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 import Events from '../../lib/Events';
 import { useMCPClient } from '../../lib/mcp/useMCPClient.js';
 
-const AI_MODEL_ID = 'gemini-3.6-flash';
+const AI_MODEL_ID = 'gemini-3.7-flash';
 let AI_CONVERSATION_ID = uuidv4();
 
 // Cap pill list growth so a multi-hour session doesn't accumulate thousands
@@ -1021,10 +1022,15 @@ function AIChatPanel() {
           content: msg.content
         }));
 
+      // Attach what the user currently sees; null (capture failure) degrades
+      // to a text-only request.
+      const screenshot = captureViewportScreenshot();
+
       // Send message and get response with the full history
       const result = await modelRef.current.sendMessage(prompt, {
         history: historyMessages,
-        systemPrompt: enhancedSystemPrompt // Use the enhanced system prompt with mixin information
+        systemPrompt: enhancedSystemPrompt, // Use the enhanced system prompt with mixin information
+        screenshot
       });
       console.log('Raw result:', result);
 
