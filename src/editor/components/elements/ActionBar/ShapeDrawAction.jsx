@@ -1,17 +1,18 @@
 /* global AFRAME, THREE */
 
 // Shape draw tool: click to lay down polyline vertices on the ground plane
-// with live length + angle readouts, finish with Enter / Esc / double-click,
-// step back with Backspace. Generalises the removed Ruler tool from two
+// with live length + angle readouts, finish with Enter / Esc (or double-click
+// to place a last point and finish), step back with Backspace. Generalises the removed Ruler tool from two
 // fixed points to an N-vertex open polyline, and adds the readout layer
 // (ShapeReadouts).
 //
 // No exit discards placed work: Enter, Esc, double-click and switching tools
 // all commit through finish(). Recovery is Backspace before finishing and
 // Ctrl+Z (EntityCreateCommand) after, so no keystroke can destroy an arbitrary
-// amount of unrecoverable work. Esc and Enter differ only over the un-clicked
-// trailing cursor point — Enter takes it, Esc drops it — which is the same
-// "back out one level" Esc means everywhere else in the editor.
+// amount of unrecoverable work. Enter and Esc are the same key: both finish
+// WITHOUT the un-clicked trailing cursor point, as in every other polyline
+// tool (pen tools, CAD polylines). Placing a final point and finishing in one
+// gesture is the double-click.
 //
 // Closure is refused on TWO questions, not one: the closing edge must not cross
 // a committed edge, AND the ring it completes must enclose a region — a ring of
@@ -27,11 +28,9 @@
 // closure would be — which in turn is what makes stars, combs and deep
 // concavities near the first vertex drawable in their natural order.
 //
-// The preview draws the committed vertices PLUS the trailing cursor vertex.
-// Enter commits that same ring, cursor vertex included, so what is on screen
-// is what you get. Esc drops the cursor vertex, so it commits a ring one
-// shorter. That difference is the point of the key, not a discrepancy: Esc
-// means "without the point I haven't clicked".
+// The preview draws the committed vertices PLUS the trailing cursor vertex;
+// finishing drops the cursor vertex, so the committed shape is the preview
+// minus the rubber-band point.
 //
 // Shapes always draw OPEN; the only way to close one is the first-vertex
 // gesture (tryArmClose). There is no auto-close mode.
@@ -184,7 +183,6 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
   const invalidRef = useRef(false); // preview currently recoloured invalid (red)
   const closingArmedRef = useRef(false); // cursor is over the first vertex
   const highlightRef = useRef(null); // first-vertex close-target marker
-  const lastPointRef = useRef(null); // pending cursor point, taken by Enter
   const setShapeDrawActive = useStore.getState().setShapeDrawActive;
 
   useEffect(() => {
@@ -200,7 +198,6 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     placedLastRef.current = false;
     invalidRef.current = false;
     closingArmedRef.current = false;
-    lastPointRef.current = null;
     setShapeDrawActive(true);
     // Deselect on entry: nothing should stay selected while drawing (its
     // on-select readouts would linger over the new shape, and a stray
@@ -371,9 +368,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       return edgesCross(verts[n - 1], point, committedEdges());
     };
 
-    // Would a click at `point` be accepted as the next vertex? Used both by the
-    // click path and by Enter, which takes the pending cursor point — Enter must
-    // never create a vertex a click could not.
+    // Would a click at `point` be accepted as the next vertex?
     const canPlace = (point) => {
       if (placementCrosses(point)) return false;
       const verts = verticesRef.current;
@@ -471,10 +466,8 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         setInvalid(false); // never leave the preview stuck red on a miss
         updateHighlight(false);
         closingArmedRef.current = false;
-        lastPointRef.current = null;
         return;
       }
-      lastPointRef.current = point;
       // Close-gesture arming.
       if (tryArmClose(e.clientX, e.clientY)) {
         closingArmedRef.current = true;
@@ -482,11 +475,6 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         setTrailing(verticesRef.current[0]); // preview the closing edge
         setInvalid(closureRefused());
         refreshReadouts(verticesRef.current[0]);
-        // While armed there is no pending corner: the trailing vertex is
-        // snapped onto the first one, so the preview shows closure, not a new
-        // corner. Clearing this keeps Enter honest — it closes the ring like
-        // the click would, instead of dropping a stray vertex beside vertex 0.
-        lastPointRef.current = null;
         return;
       }
       closingArmedRef.current = false;
@@ -496,13 +484,10 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       refreshReadouts(point);
     };
 
-    // Cursor off the canvas: there is no pending point any more, so drop it and
-    // collapse the preview to the committed ring — the same state a pick-miss
-    // leaves. Without this, reaching for a toolbar button and then pressing
-    // Enter would commit a vertex at wherever the mouse last crossed the edge.
+    // Cursor off the canvas: collapse the preview to the committed ring — the
+    // same state a pick-miss leaves.
     const onPointerLeave = () => {
       if (committingRef.current) return;
-      lastPointRef.current = null;
       collapseTrailing();
       readoutsRef.current && readoutsRef.current.clear();
       setInvalid(false);
@@ -526,7 +511,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // click asked.
       if (closingArmedRef.current) {
         if (closureRefused()) return;
-        finish(false); // closing onto the first vertex, not onto the cursor
+        finish(); // closing onto the first vertex
         return;
       }
       const point = pickForNextVertex(e.clientX, e.clientY);
@@ -547,13 +532,13 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // that a few pixels of jitter exceed that spacing in world units — then
       // the second release really did place a vertex, and this removes it.
       if (placedLastRef.current) removeLastVertex();
-      finish(false);
+      finish();
     };
 
     const onKeyDown = (e) => {
       if (isTextFieldFocused()) return;
       if (e.key === 'Enter') {
-        finish(true); // commit the shape as previewed, cursor vertex included
+        finish();
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
         removeLastVertex();
@@ -608,7 +593,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       if (e.key !== 'Escape') return;
       if (isTextFieldFocused()) return;
       e.stopPropagation();
-      finish(false);
+      finish();
     };
 
     // --- finish -----------------------------------------------------------
@@ -705,25 +690,12 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       return closingArmedRef.current;
     };
 
-    // `takePending` decides what happens to the trailing cursor vertex — the one
-    // the preview draws but no click has placed.
-    //
-    // Enter takes it. The preview IS committed-vertices-plus-cursor, so taking
-    // it makes Enter commit exactly the shape on screen: same corners, same
-    // closedness, same area. Only if a click there would have been accepted —
-    // Enter must not create a vertex the mouse could not.
-    //
-    // Esc, double-click and switching tools drop it, which is what makes Esc an
-    // ordinary "back out one level" rather than a departure: it discards the
-    // un-clicked point and keeps every placed one, exactly as the Ruler discards
-    // its pending point. No placed work is ever lost either way.
-    function finish(takePending) {
+    // Every exit (Enter, Esc, double-click, switching tools) drops the
+    // un-clicked trailing cursor vertex and keeps every placed one, exactly as
+    // the Ruler discarded its pending point. No placed work is ever lost.
+    function finish() {
       if (committingRef.current) return;
       committingRef.current = true;
-      if (takePending) {
-        const pending = lastPointRef.current;
-        if (pending && canPlace(pending)) addCommittedVertex(pending);
-      }
       const verts = verticesRef.current;
       const commitClosed = commitsClosed();
       if (verts.length >= 2) commitShape(commitClosed);
