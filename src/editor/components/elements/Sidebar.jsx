@@ -18,6 +18,7 @@ import {
   ArrowsPointingInwardIcon
 } from '@shared/icons';
 import IntersectionSidebar from './IntersectionSidebar';
+import ManagedIntersectionSidebar from './ManagedIntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
 import ShapeSidebar, { ShapeDrawInstructions } from './ShapeSidebar';
@@ -209,6 +210,9 @@ export default class Sidebar extends React.Component {
 
               {entity.getAttribute('intersection') && (
                 <IntersectionSidebar entity={entity} />
+              )}
+              {entity.getAttribute('managed-intersection') && (
+                <ManagedIntersectionSidebar entity={entity} />
               )}
               {entity.getAttribute('managed-street') && (
                 <ManagedStreetSidebar entity={entity} />

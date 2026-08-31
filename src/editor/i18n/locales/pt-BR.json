@@ -496,6 +496,8 @@
   "jobHealthModal.recentRuns": "Execuções recentes",
   "jobHealthModal.title": "Integridade do Sistema",
   "loadingSceneModal.dismiss": "Dispensar",
+  "managedIntersectionSidebar.awaitingStreets": "Nenhuma rua conectada ainda — mova as extremidades das ruas gerenciadas para dentro do raio de encaixe.",
+  "managedIntersectionSidebar.connectedStreets": "{count,plural,one{# rua conectada} other{# ruas conectadas}}",
   "managedStreetSidebar.convertToShapes": "Converter em formas",
   "managedStreetSidebar.convertToShapesConfirm": "Isso transforma a rua em formas 3D simples que você pode mover, duplicar e excluir individualmente. Depois de salvar e recarregar esta cena, você não poderá desfazer esta ação. Dica: duplique a rua primeiro se quiser manter uma cópia desta rua gerenciada.",
   "managedStreetSidebar.convertToShapesCurvedUnsupported": "Converter em formas ainda não está disponível para uma rua que segue um traçado. Remova primeiro o traçado da rua ou mantenha-a como rua gerenciada.",

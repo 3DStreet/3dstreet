@@ -1490,6 +1490,12 @@
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
   },
+  "managedIntersectionSidebar.awaitingStreets": {
+    "defaultMessage": "No streets connected yet — move managed street ends within the snap radius."
+  },
+  "managedIntersectionSidebar.connectedStreets": {
+    "defaultMessage": "{count,plural,one{# connected street} other{# connected streets}}"
+  },
   "managedStreetSidebar.convertToShapes": {
     "defaultMessage": "Convert to Shapes"
   },
