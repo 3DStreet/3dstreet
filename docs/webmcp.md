@@ -20,7 +20,7 @@ one implementation:
 ```
                          ┌── ws://127.0.0.1:51735 ── 3dstreet-mcp relay ── Claude (stdio MCP)
 registry.js ─ dispatch.js┤
- (17 tools)              └── document.modelContext ── browser-embedded agent (WebMCP)
+ (22 tools)              └── document.modelContext ── browser-embedded agent (WebMCP)
 ```
 
 - `src/editor/lib/commands/registry.js` — single source of truth for tool
@@ -56,17 +56,18 @@ the agent can read the error and self-correct.
 WebMCP is **not in production browsers** — it's a Chrome origin trial
 (Chrome 149–156, ends no later than Nov 16, 2026).
 
-- **`3dstreet.app` (+ subdomains) in stock Chrome 149+:** works with no flag —
-  `index.html` script-injects our
-  [origin-trial token](https://developer.chrome.com/origintrials/#/view_trial/4163014905550602241)
-  (registered third-party + match-subdomains; the token is public by design,
-  and must be injected via script rather than a static meta tag per the
+- **`3dstreet.app` or `dev-3dstreet.web.app` (+ subdomains) in stock Chrome
+  149+:** works with no flag — `index.html` script-injects our
+  [origin-trial tokens](https://developer.chrome.com/origintrials/#/view_trial/4163014905550602241),
+  one per origin (registered third-party + match-subdomains; tokens are public
+  by design, and must be injected via script rather than a static meta tag per
+  the
   [third-party token docs](https://developer.chrome.com/docs/web-platform/third-party-origin-trials)).
-  When the trial expires or the token needs rotating, update the token in
+  When the trial expires or a token needs rotating, update the list in
   `index.html`.
-- **Any other origin (localhost dev, `dev-3dstreet.web.app`) in Chrome 149+:**
-  enable `chrome://flags/#enable-webmcp-testing` and restart — the token only
-  covers `3dstreet.app`. The Console tab's status bar shows **WebMCP active
+- **Any other origin (e.g. localhost dev) in Chrome 149+:** enable
+  `chrome://flags/#enable-webmcp-testing` and restart — the tokens are
+  origin-bound. The Console tab's status bar shows **WebMCP active
   (N tools)**. Use a WebMCP-capable agent or extension (e.g. Chrome's
   WebMCP DevTools tooling) to list and call tools.
 - **ChatGPT desktop browser:** open the editor and ask the agent to, e.g.,
