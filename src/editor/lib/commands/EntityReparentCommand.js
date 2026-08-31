@@ -2,58 +2,11 @@
 import Events from '../Events.js';
 import { Command } from '../command.js';
 import { createUniqueId } from '../entity.js';
-import { getEditableEntity } from './llmToolGuards.js';
-
 export class EntityReparentCommand extends Command {
-  static llmTool = {
-    name: 'entityReparent',
-    description:
-      'Move an entity under a different parent entity, preserving its world position. Also reorders within the same parent when newParentId is the current parent.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        entityId: {
-          type: 'string',
-          description: 'The ID of the entity to move'
-        },
-        newParentId: {
-          type: 'string',
-          description: 'The ID of the entity to become the new parent'
-        },
-        index: {
-          type: 'number',
-          description:
-            'Child index (0-based) to insert at in the new parent; appends when omitted'
-        }
-      },
-      required: ['entityId', 'newParentId']
-    }
-  };
-
-  // Reshape LLM args into the {entity, parentEl (id string), indexInParent}
-  // payload the constructor expects. parentEl stays an id — the registry's
-  // adapter only resolves `entityId`/`parentId` keys, and both the command
-  // and the transform guard (`data-transform-no-reparent`) want the id.
-  static transformLLMArgs(args) {
-    const entity = getEditableEntity(args.entityId);
-    const parent = getEditableEntity(args.newParentId, {
-      allowRoot: true,
-      role: 'newParent'
-    });
-    if (entity === parent || entity.contains(parent)) {
-      throw new Error(
-        'Cannot reparent an entity into itself or its own descendant'
-      );
-    }
-    const indexInParent =
-      typeof args.index === 'number' ? args.index : parent.children.length;
-    return {
-      entityId: args.entityId,
-      parentEl: args.newParentId,
-      indexInParent
-    };
-  }
-
+  // Deliberately NOT exposed as an LLM tool (no `static llmTool`): arbitrary
+  // reparenting is not an officially supported user-facing feature yet, and
+  // agent-driven reparents can produce unexpected scene structure. Revisit
+  // once grouping ships as a user-facing feature.
   constructor(editor, payload = null) {
     super(editor);
 

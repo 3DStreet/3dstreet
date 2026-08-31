@@ -20,7 +20,7 @@ one implementation:
 ```
                          ┌── ws://127.0.0.1:51735 ── 3dstreet-mcp relay ── Claude (stdio MCP)
 registry.js ─ dispatch.js┤
- (22 tools)              └── document.modelContext ── browser-embedded agent (WebMCP)
+ (21 tools)              └── document.modelContext ── browser-embedded agent (WebMCP)
 ```
 
 - `src/editor/lib/commands/registry.js` — single source of truth for tool
