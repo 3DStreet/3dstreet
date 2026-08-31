@@ -84,6 +84,14 @@ at rotation `0 0 0`. Properties are edited through the generic component
 panel; there is no bespoke sidebar yet (the legacy `IntersectionSidebar`
 stays tied to the old component).
 
+**CAD/PDF plan export**: the shared plan model
+(`src/editor/lib/plan/planModel.js`) has a managed-intersection pass that
+redraws the component's `lastGeometry` — roadway surface polygon on `C-ROAD`,
+sidewalk corner wedges on `C-WALK`, crosswalk bands on `C-ROAD-MRKG` — so the
+DXF, PDF, and Export-modal previews match the rendered meshes
+(`test/editor/planModelManagedIntersection.test.js`). Signals/stop signs are
+point objects, out of scope like street furniture.
+
 ## Known limitations (prototype scope)
 
 - **No street trimming.** Streets are never modified: an untrimmed street

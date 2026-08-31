@@ -65,14 +65,19 @@ function isCurbsideType(type) {
 
 // Flat crosswalk mixins reused from the legacy intersection (the raised GLB
 // variant is not supported by the prototype). Image crosswalks are wider
-// planes, matching the legacy per-mixin transforms.
-const CROSSWALK_MIXINS = {
+// planes, matching the legacy per-mixin transforms. The mixin plane is 2m
+// wide, so a band's plan width is 2 * widthScale. Exported for the plan
+// (DXF/PDF) exporter, which redraws the same bands as linework.
+export const CROSSWALK_MIXINS = {
   'crosswalk-zebra': { widthScale: 1 },
   'crosswalk-rainbow': { widthScale: 1.5 },
   'crosswalk-double': { widthScale: 1.5 },
   'crosswalk-mural': { widthScale: 1.5 },
   'crosswalk-piano': { widthScale: 1.5 }
 };
+// How far the crosswalk band's center sits inside each mouth (meters along
+// the arm toward the intersection center). Shared with the plan exporter.
+export const CROSSWALK_INSET = 1.6;
 
 AFRAME.registerComponent('managed-intersection', {
   schema: {
@@ -325,6 +330,11 @@ AFRAME.registerComponent('managed-intersection', {
       this.buildPlaceholder();
     }
 
+    // Latest computed geometry (null while the placeholder pad shows), read
+    // by the plan exporter (planModel.js) so DXF/PDF linework always matches
+    // the rendered intersection.
+    this.lastGeometry = geometry;
+
     this.lastSignature = this.computeSignature();
     this.el.emit('intersection-refreshed', { armCount: arms.length }, false);
   },
@@ -468,8 +478,8 @@ AFRAME.registerComponent('managed-intersection', {
     // is 2×12m in local XY; the -90° X pitch lays it flat with its 12m axis
     // along local -Z, so the wrapper's yaw points -Z along the mouth line.
     const center = {
-      x: mouth.center.x - mouth.dir.x * 1.6,
-      z: mouth.center.z - mouth.dir.z * 1.6
+      x: mouth.center.x - mouth.dir.x * CROSSWALK_INSET,
+      z: mouth.center.z - mouth.dir.z * CROSSWALK_INSET
     };
     const yaw = THREE.MathUtils.radToDeg(
       Math.atan2(-mouth.normal.x, -mouth.normal.z)
