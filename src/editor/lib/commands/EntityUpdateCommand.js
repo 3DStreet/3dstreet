@@ -57,7 +57,64 @@ export class EntityUpdateCommand extends Command {
     if (out.value === undefined) {
       throw new Error('Either value or expressionForValue must be provided');
     }
+    EntityUpdateCommand.validateLLMTarget(out);
     return out;
+  }
+
+  // LLM-path-only schema check. A hallucinated component or property would
+  // otherwise be silently ignored by A-Frame's setAttribute while the tool
+  // still reports "executed" — the model then tells the user it succeeded
+  // (and the verification step rubber-stamps it, having no error to see).
+  // Editor UI callers construct the command directly and skip this.
+  static validateLLMTarget(args) {
+    const entity = args.entityId && document.getElementById(args.entityId);
+    if (!entity) return; // missing entity throws later in the registry
+
+    const componentName = args.component;
+    if (['position', 'rotation', 'scale'].includes(componentName)) {
+      if (args.property && !['x', 'y', 'z'].includes(args.property)) {
+        throw new Error(
+          `'${componentName}' only has properties x, y, z — got '${args.property}'`
+        );
+      }
+      return;
+    }
+    // Plain attributes, and attributes the entity already carries (covers
+    // primitive mappings like src on <a-image>).
+    if (
+      ['id', 'class', 'mixin'].includes(componentName) ||
+      componentName.startsWith('data-') ||
+      entity.hasAttribute(componentName)
+    ) {
+      const component =
+        entity.components?.[componentName] ?? AFRAME.components[componentName];
+      if (!component) return;
+      EntityUpdateCommand.validateProperty(componentName, component, args);
+      return;
+    }
+    const component =
+      entity.components?.[componentName] ?? AFRAME.components[componentName];
+    if (!component) {
+      throw new Error(
+        `Unknown component '${componentName}' — A-Frame would silently ignore this write. Check the entity's actual components in the scene state and use one of those (or the correct tool) instead.`
+      );
+    }
+    EntityUpdateCommand.validateProperty(componentName, component, args);
+  }
+
+  static validateProperty(componentName, component, args) {
+    if (!args.property) return;
+    if (component.isSingleProperty) {
+      throw new Error(
+        `Component '${componentName}' is single-property — omit 'property' and set 'value' directly`
+      );
+    }
+    if (!component.schema?.[args.property]) {
+      const valid = Object.keys(component.schema || {});
+      throw new Error(
+        `Component '${componentName}' has no property '${args.property}'. Valid properties: ${valid.slice(0, 40).join(', ') || '(none)'}`
+      );
+    }
   }
 
   constructor(editor, payload) {

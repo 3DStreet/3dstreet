@@ -1264,7 +1264,7 @@ function AIChatPanel() {
 
       Original user request: ${messageText}
 
-      Evaluate whether the request was fully accomplished, using the updated scene state and the attached screenshot of the current viewport. Reply briefly: start with "✅" if it was accomplished, or "⚠️" if something failed, looks wrong, or is incomplete, followed by one or two sentences. If not fully accomplished, end with one concrete next step the user can ask you to take. Do not call any tools.
+      Evaluate whether the request was fully accomplished. Be skeptical: a tool result saying "executed" does not mean the intended change actually happened. Verify the specific change is PRESENT in the updated scene state above (the exact component/property/value you intended) and consistent with the attached screenshot of the current viewport. If you cannot positively confirm it in the scene state, or any tool reported an error, the verdict is not success. Reply briefly: start with "✅" only if you confirmed it, or "⚠️" if anything failed, is absent from the scene state, looks wrong, or is incomplete, followed by one or two sentences. If not fully accomplished, end with one concrete next step the user can ask you to take. Do not call any tools.
       `;
 
             const verifyResult = await modelRef.current.sendMessage(
