@@ -262,6 +262,23 @@ describe('computeIntersectionGeometry', () => {
     expect(after.mouths[1].t).toBeCloseTo(0);
   });
 
+  it('caps mouth setback for sliver-angle arm pairs (trim safety)', () => {
+    // ~12° between the first two arms: their corner lands ~47m down the
+    // edges (still under maxCornerDistance), which without the cap would put
+    // the mouths — and any street trim chasing them — ~50m out.
+    const sliverDir = { x: Math.sin(0.21), z: Math.cos(0.21) };
+    const g = computeIntersectionGeometry(
+      [arm(O, N, 5, 8), arm(O, sliverDir, 5, 8), arm(O, S, 5, 8)],
+      { curbRadius: 2, maxSetback: 15 }
+    );
+    expect(g).not.toBeNull();
+    g.mouths.forEach((m) => {
+      // Symmetric arms with nodes at the origin: mouth center distance from
+      // the origin equals the setback.
+      expect(Math.hypot(m.center.x, m.center.z)).toBeLessThanOrEqual(15.01);
+    });
+  });
+
   it('keeps arms in caller order in mouths[]', () => {
     const g = computeIntersectionGeometry(
       [arm(O, W, 5), arm(O, E, 5), arm(O, N, 5)],

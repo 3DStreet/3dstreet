@@ -52,6 +52,9 @@ const SIGNATURE_PRECISION = 3;
 // is what stops the trim pass from chasing float noise across rebuilds.
 const TRIM_EPSILON = 0.05;
 const MIN_TRIMMED_STREET_LENGTH = 4;
+// Trims wait until the signature watch has seen this many quiet intervals,
+// so they never chase transient mid-drag geometry (see init).
+const SETTLE_TICKS = 2;
 const UP_AXIS = new THREE.Vector3(0, 1, 0);
 
 // Same "counts as sidewalk" list as the streetmix parsers (kept local so this
@@ -144,11 +147,25 @@ AFRAME.registerComponent('managed-intersection', {
     // runs on an interval rather than tick because the editor keeps A-Frame
     // ticks paused while the inspector is open — exactly when streets are
     // being dragged around.
+    //
+    // Visual rebuilds run on every change; street TRIMS only run after the
+    // scene has been quiet for SETTLE_TICKS. Mid-drag geometry is transient
+    // — a street swept past a near-parallel angle produces momentary huge
+    // mouths, and since trims never extend, trimming against those would
+    // ratchet the other streets shorter and shorter (in the worst case out
+    // of snapRadius, disconnecting them). Settled geometry is the only
+    // geometry worth trimming to.
+    this.pendingTrim = false;
+    this.quietTicks = 0;
     this.watchInterval = setInterval(() => {
       if (!this.el.isConnected) return;
       const signature = this.computeSignature();
       if (signature !== this.lastSignature) {
+        this.quietTicks = 0;
         this.refresh();
+      } else if (this.pendingTrim && ++this.quietTicks >= SETTLE_TICKS) {
+        this.pendingTrim = false;
+        this.refresh({ trim: true });
       }
     }, 400);
 
@@ -333,7 +350,7 @@ AFRAME.registerComponent('managed-intersection', {
     return arms;
   },
 
-  refresh: function () {
+  refresh: function (options) {
     this.clearGenerated();
 
     const arms = this.collectArms();
@@ -345,14 +362,25 @@ AFRAME.registerComponent('managed-intersection', {
         // With crosswalks on, push the mouths out so the ~2m band lands on
         // straight edge past the fillet tangents.
         minSetback: crosswalkOn ? 3.2 : 1,
-        mouthMargin: crosswalkOn ? 3.0 : 0.3
+        mouthMargin: crosswalkOn ? 3.0 : 0.3,
+        // Keep every mouth — and therefore every trim — safely inside the
+        // detection radius, so a trim can never disconnect its own street.
+        maxSetback: Math.max(6, this.data.snapRadius - 2)
       });
     }
 
     if (geometry) {
       this.buildSurfaces(geometry);
       this.buildTreatments(geometry, arms);
-      this.applyStreetTrims(geometry, arms);
+      if (this.data.trimStreets) {
+        if (options?.trim) {
+          this.applyStreetTrims(geometry, arms);
+        } else {
+          // Queue for the settle pass in the watch loop — never trim
+          // against possibly-transient geometry.
+          this.pendingTrim = true;
+        }
+      }
     } else {
       this.buildPlaceholder();
     }

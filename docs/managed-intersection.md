@@ -95,6 +95,24 @@ node sitting on the mouth recomputes `mouth.t ≈ 0` and the pass no-ops
 (regression-tested in `managedIntersectionUtils.test.js`). Trims are also
 epsilon-guarded (5cm) and never shorten a street below 4m.
 
+Two more guards keep trims from acting on garbage:
+
+- **Trims wait for the scene to settle.** Visual rebuilds run on every watch
+  tick, but the trim pass only fires after the signature has been quiet for
+  ~800ms. Mid-drag geometry is transient — a street swept past a
+  near-parallel angle momentarily computes huge mouths, and since trims
+  never extend, trimming against those would ratchet the _other_ connected
+  streets shorter on every tick (in the worst case right out of
+  `snapRadius`, disconnecting them — the "plug in a third street and the
+  first two fall off" bug). Settled geometry is the only geometry trimmed
+  to. This also means half-parsed streets on scene load are never trimmed
+  from incomplete segment lists.
+- **Mouths are capped at `snapRadius - 2` from the origin** (the
+  `maxSetback` option of `computeIntersectionGeometry`), so even a settled
+  sliver-angle pair — whose corner can legitimately sit tens of meters down
+  the arms — can never demand a trim that pushes a node out of its own
+  detection radius.
+
 Rules of the road:
 
 - **Trim only, never extend.** A street stopping short keeps its gap, and

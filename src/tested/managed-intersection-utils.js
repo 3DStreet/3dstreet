@@ -102,9 +102,10 @@ function filletCorner(apex, dirA, dirB, radius, arcSegments = 8) {
 const DEFAULT_OPTIONS = {
   curbRadius: 3,
   arcSegments: 8,
-  minSetback: 1, // mouth never closer to the endpoint than this
+  minSetback: 1, // mouth floor, measured from the intersection origin
   mouthMargin: 0.3, // extra clearance past the corner tangents
-  maxCornerDistance: 60 // clamp runaway corners of near-parallel arms
+  maxCornerDistance: 60, // clamp runaway corners of near-parallel arms
+  maxSetback: 25 // mouth ceiling from the origin (see the cap note below)
 };
 
 /**
@@ -204,9 +205,8 @@ function computeIntersectionGeometry(arms, options = {}) {
   // mouthT stays node-relative (t along dir from arm.point) for callers.
   const projT = (arm, p) =>
     dot2({ x: p.x - arm.point.x, z: p.z - arm.point.z }, arm.dir);
-  const mouthT = sorted.map(
-    (arm) => opts.minSetback - dot2(arm.point, arm.dir)
-  );
+  const tOrigins = sorted.map((arm) => -dot2(arm.point, arm.dir));
+  const mouthT = tOrigins.map((tOrigin) => tOrigin + opts.minSetback);
   corners.forEach((corner, i) => {
     const { armA, armB, road, arc } = corner;
     if (road.fallback) return;
@@ -217,6 +217,16 @@ function computeIntersectionGeometry(arms, options = {}) {
     mouthT[iA] = Math.max(mouthT[iA], projT(armA, pA) + opts.mouthMargin);
     mouthT[iB] = Math.max(mouthT[iB], projT(armB, pB) + opts.mouthMargin);
   });
+  // Cap every mouth at maxSetback from the intersection origin. Sliver-angle
+  // arm pairs put their corner (accepted out to maxCornerDistance) far down
+  // the arms; without a cap that mouth would legitimately compute tens of
+  // meters out — and the component's trim pass would shorten the streets
+  // that far, potentially right out of its own snapRadius. The extreme-angle
+  // geometry degrades a little instead (the crosswalk band may touch the
+  // fillet arc); the connection survives.
+  for (let i = 0; i < N; i++) {
+    mouthT[i] = Math.min(mouthT[i], tOrigins[i] + opts.maxSetback);
+  }
 
   // --- roadway surface polygon --------------------------------------------
   // CCW traversal. Per arm: enter on the min edge at the previous corner,
