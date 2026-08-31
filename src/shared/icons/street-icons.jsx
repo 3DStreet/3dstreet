@@ -223,18 +223,12 @@ export const ManagedIntersectionIcon = () => (
       strokeWidth="2"
       strokeLinejoin="round"
     />
-    <path
-      d="M12.5 3L12.5 22"
-      stroke="white"
-      strokeLinecap="round"
-      strokeDasharray="3 4"
-    />
-    <path
-      d="M3 12.5L22 12.5"
-      stroke="white"
-      strokeLinecap="round"
-      strokeDasharray="3 4"
-    />
+    {/* Approach centerlines only — the intersection box itself carries no
+        markings, so the four stubs stop short of the middle. */}
+    <path d="M12.5 3L12.5 7.5" stroke="white" strokeLinecap="round" />
+    <path d="M12.5 17.5L12.5 22" stroke="white" strokeLinecap="round" />
+    <path d="M3 12.5L7.5 12.5" stroke="white" strokeLinecap="round" />
+    <path d="M17.5 12.5L22 12.5" stroke="white" strokeLinecap="round" />
   </svg>
 );
 
