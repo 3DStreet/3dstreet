@@ -26,7 +26,8 @@ import {
   faRotateRight,
   faPlug,
   faLock,
-  faLockOpen
+  faLockOpen,
+  faWandMagicSparkles
 } from '@fortawesome/free-solid-svg-icons';
 import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 import Events from '../../lib/Events';
@@ -1266,6 +1267,14 @@ function AIChatPanel() {
               }
             );
             const verifyText = verifyResult.response.text();
+            // Leading emoji is the model's own pass/fail judgment — captured
+            // as a continuous quality metric for the assistant.
+            const trimmedVerdict = (verifyText || '').trim();
+            const verdict = trimmedVerdict.startsWith('✅')
+              ? 'success'
+              : trimmedVerdict.startsWith('⚠️')
+                ? 'incomplete'
+                : 'unknown';
 
             posthog.capture('$ai_generation', {
               $ai_model: AI_MODEL_ID,
@@ -1277,7 +1286,8 @@ function AIChatPanel() {
               $ai_output_choices: [{ role: 'assistant', content: verifyText }],
               $ai_output_tokens:
                 verifyResult.response.usageMetadata?.candidatesTokenCount,
-              ai_step: 'verification'
+              ai_step: 'verification',
+              ai_verification_verdict: verdict
             });
 
             if (verifyText && verifyText.trim()) {
@@ -1287,6 +1297,8 @@ function AIChatPanel() {
                   role: 'assistant',
                   content: verifyText,
                   responseId: responseId,
+                  isVerification: true,
+                  verdict: verdict,
                   timestamp: new Date()
                 }
               ]);
@@ -1735,6 +1747,27 @@ function AIChatPanel() {
                     content={message.content}
                     isAssistant={message.role === 'assistant'}
                   />
+                  {message.isVerification &&
+                    message.verdict === 'incomplete' &&
+                    message.responseId === latestResponseId &&
+                    !isLoading && (
+                      <button
+                        onClick={() => {
+                          posthog.capture('ai_verification_continue_clicked', {
+                            $ai_trace_id: AI_CONVERSATION_ID,
+                            ai_response_id: message.responseId
+                          });
+                          processMessage(
+                            'Yes, please do the suggested next step.'
+                          );
+                        }}
+                        className={styles.inlineResetButton}
+                        title="Ask the assistant to take its suggested next step"
+                      >
+                        <AwesomeIcon icon={faWandMagicSparkles} />
+                        <span>Do it</span>
+                      </button>
+                    )}
                   {message.isRecoverable && (
                     <button
                       onClick={resetConversation}
