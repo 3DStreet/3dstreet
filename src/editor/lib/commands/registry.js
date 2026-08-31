@@ -23,6 +23,7 @@
 
 import { commandsByType } from './index.js';
 import { nonCommandTools } from './nonCommandTools.js';
+import { TRANSFORM_REFUSED } from '../transformGuard.js';
 
 // class → command type string. Built once from commandsByType.
 const commandTypeByClass = new Map();
@@ -114,7 +115,14 @@ export async function dispatchToolCall(toolName, args, currentUser) {
     payload = entry.transformLLMArgs(payload);
   }
   payload = resolveIdRefs(payload);
-  AFRAME.INSPECTOR.execute(entry.commandType, payload);
+  const result = AFRAME.INSPECTOR.execute(entry.commandType, payload);
+  if (result === TRANSFORM_REFUSED) {
+    // This function reports success unconditionally, so a refusal has to be
+    // raised here or the model would tell the user it made an edit it did not.
+    throw new Error(
+      `${entry.commandType} refused: the target does not permit this transform`
+    );
+  }
   return `${entry.commandType} executed`;
 }
 

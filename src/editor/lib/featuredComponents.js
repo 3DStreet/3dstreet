@@ -19,7 +19,12 @@ export const GENERATOR_COMPONENT_PREFIXES = ['street-generated-'];
 // `geometry-merger`, or a hypothetical `materialLibrary`).
 // geo-flatten (#1476) is featured so a flattening volume's enabled/mode
 // controls are first-class on the shapes that carry it.
-export const FEATURED_COMPONENT_NAMES = ['geometry', 'material', 'geo-flatten'];
+export const FEATURED_COMPONENT_NAMES = [
+  'geometry',
+  'material',
+  'shape',
+  'geo-flatten'
+];
 
 export function isFeaturedComponent(name) {
   return (

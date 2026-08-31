@@ -57,6 +57,8 @@ public/
 
 **Procedural:** `street-generated-*` (striping, stencil, pedestrians, rail, clones)
 
+**Curved streets (prototype):** assign a drawn polyline (shape) to a street via `managed-street.path` and the whole street bends along it — the PATH owns the curve controls (`shape.curveType`: linear default / smooth catmull-rom / arc fillets; the schema-less `street-path` role component reads them off the shape). One shared straight→curved mapping (`src/tested/street-path-utils.js`, unit-tested) bends surfaces (as `street-ribbon` geometry: segment, striping, rail, ground) and placements (clones/stencils/pedestrians remapped + tangent yaw); street-align lateral offsets and all straight-space layout code stay untouched. Entry point: `docs/curved-street-path.md`.
+
 **Geospatial:** `street-geo`, `google-maps-aerial`, `geojson`, `geo-flatten`
 
 **Terrain flattening (#1476):** any number of entities may carry `geo-flatten` (`mode: mesh` = flatten onto the entity's own mesh, for simple primitives; `mode: auto` = invisible footprint proxy plane at local y=0, for complex subtrees). A scene-level `geo-flatten` registry system feeds `google-maps-aerial`, which reconciles shapes in tick with per-entry matrix-change detection and a 150ms throttle (every shape update re-flattens all active tiles on CPU). Managed streets auto-attach `geo-flatten` (mode: auto) in init — same pattern as `street-align`/`street-ground` — so streets flatten terrain under their footprint by default. `street-geo.enableFlattening` (default true) is the master gate; the legacy single-shape `street-geo.flatteningShape` reference is migrated to a `geo-flatten` component at load (`migrateLegacyFlatteningShape` in `json-utils_1.1.js`). Never raycast a street's real meshes for flattening — slow, and terrain would snap to the tops of vehicles/trees.
@@ -92,6 +94,29 @@ Unified Viewer presentation with a Start/Stop play lifecycle. Playing is present
 **State:** `src/store.js` (Zustand) - scene metadata, modal state, save state, preferences
 
 **Commands:** `src/editor/lib/commands/` - undo/redo pattern (AddEntity, SetComponent, EntityReparent, etc.)
+
+**`Inspector.execute` can now refuse.** It returns the `TRANSFORM_REFUSED`
+symbol (`src/editor/lib/transformGuard.js`) instead of running a command that
+would violate a transform-capability marker on the target entity — test for the
+symbol, not for a falsy return, since the success path returns `undefined`. The
+markers are `data-transform-no-scale`, `data-transform-yaw-only` and
+`data-transform-no-reparent`; an entity opts in by carrying the attribute and
+the guard is otherwise entity-type-agnostic. They are **not** the same thing as
+the far more common `data-no-transform`, which is a UI gate only (it hides the
+properties-panel transform rows and the gizmo) and is enforced nowhere at the
+command layer. Coverage is every command route — properties panel, AI chat,
+gizmo, layers-panel reparent — but not a direct `setAttribute` from scene load
+or component code.
+
+**Shapes:** editor-drawn 2D polylines with an optional filled interior. The code
+spans `aframe-components/`, `editor/components/elements/`, `editor/lib/` and
+`editor/lib/commands/`; `docs/shapes.md` is the entry point and carries the file
+map, the vertex-editing commands and the sticky-style rule.
+
+**Street gizmos:** always-on viewport handles for managed streets (endpoint
+nodes that rewrite position/rotation/length, segment width bars), additive to
+the standard TransformControls gizmo. Code in `src/editor/lib/gizmos/`; doc is
+`docs/street-gizmos.md`.
 
 **Layer Reordering:** Drag-and-drop reordering of layers within the same parent in the SceneGraph. Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
 

@@ -12,7 +12,7 @@ import {
   VideoCameraIcon,
   LayersIcon,
   Object24IconCyan,
-  Ruler24Icon
+  ShapeIcon
 } from '@shared/icons';
 
 /**
@@ -656,12 +656,8 @@ export function getEntityIcon(entity) {
   if (entity.getAttribute('street-segment')) {
     return <SegmentIcon />;
   }
-  if (entity.getAttribute('measure-line')) {
-    return (
-      <div style={{ color: '#00FFFF' }}>
-        <Ruler24Icon />
-      </div>
-    );
+  if (entity.getAttribute('shape')) {
+    return <ShapeIcon />;
   }
 
   // Check for class-based icons

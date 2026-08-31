@@ -237,6 +237,11 @@ export function areVectorsEqual(v1, v2) {
  * @returns {boolean} Whether the property should be shown
  */
 export function shouldShowProperty(propertyName, component) {
+  // `hidden: true` marks an internal wiring prop that should never appear in
+  // the panel, even though it is a real schema property (settable in code).
+  if (component.schema[propertyName].hidden) {
+    return false;
+  }
   if (!component.schema[propertyName].if) {
     return true;
   }

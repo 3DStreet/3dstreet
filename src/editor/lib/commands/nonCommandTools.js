@@ -58,6 +58,9 @@ async function managedStreetCreateHandler(args) {
         showStriping: true,
         synchronize: true
       },
+      // New streets center on their creation point. Explicit (not a schema
+      // default) so saved scenes that relied on 'start' stay put on load.
+      'street-align': { length: 'middle' },
       'data-layer-name': streetData.name || 'New Managed Street'
     }
   };
@@ -352,11 +355,23 @@ async function setLatLonHandler(args, currentUser) {
     source: GEO_SOURCES.AI_ASSISTANT
   });
 
-  if (result.success) {
-    const data = result.data;
-    return `Successfully set location to latitude: ${data.latitude}, longitude: ${data.longitude} with elevation data: ellipsoidal height ${data.ellipsoidalHeight}m, orthometric height ${data.orthometricHeight}m`;
+  if (!result.success) {
+    // setSceneLocation reports failures as { success: false, message } for its
+    // modal callers; the tool layer must throw so the call is marked an error
+    // (UI status, executedCalls, verification verdict) instead of "Completed"
+    // with an error string as its result.
+    throw new Error(result.message || 'Failed to set location');
   }
-  return result.message;
+  // The success payload is the getGeoidHeight response: coordinates are
+  // lat/lon (not latitude/longitude) and the heights are null when the
+  // elevation lookup times out — word it so the verification model doesn't
+  // read a partial answer as a failed one.
+  const data = result.data;
+  const elevation =
+    data.ellipsoidalHeight != null
+      ? `ellipsoidal height ${data.ellipsoidalHeight}m, orthometric height ${data.orthometricHeight}m`
+      : 'elevation lookup unavailable (location still set)';
+  return `Successfully set location to latitude: ${data.lat}, longitude: ${data.lon} — ${elevation}`;
 }
 
 const segmentSchema = {

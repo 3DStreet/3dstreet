@@ -9,6 +9,7 @@ import {
   varyLaneSpeed,
   directionFromFacing
 } from '../../tested/street-traffic-utils';
+import { mapStraightPoint } from '../../tested/street-path-utils';
 
 /**
  * street-traffic
@@ -289,10 +290,24 @@ AFRAME.registerComponent('street-traffic', {
             // facing +Z rather than throwing mid-walk, which would strand
             // already-hidden clones in the registry with no holder.
             const rotation = el.getAttribute('rotation');
+            // Curved street: the clone's live pose is BENT; the generator
+            // stamped the straight-space pose so we can advance along the
+            // lane in straight space and re-bend per tick (see tick()).
+            const ds = el.dataset || {};
+            const straight =
+              ds.straightZ !== undefined
+                ? {
+                    x: parseFloat(ds.straightX) || 0,
+                    y: parseFloat(ds.straightY) || 0,
+                    z: parseFloat(ds.straightZ) || 0,
+                    rotY: parseFloat(ds.straightRotY) || 0
+                  }
+                : null;
             cast.push({
               mixin: el.getAttribute('mixin') || '',
               position: { x: position.x, y: position.y, z: position.z },
               rotationY: rotation?.y || 0,
+              straight,
               isPedestrian: compName.startsWith('street-generated-pedestrians')
             });
           })
@@ -318,7 +333,14 @@ AFRAME.registerComponent('street-traffic', {
         let dir;
         if (seg.direction === 'inbound') dir = 1;
         else if (seg.direction === 'outbound') dir = -1;
-        else dir = directionFromFacing(member.rotationY);
+        else {
+          // 'none' (sidewalks): infer from the clone's facing — its
+          // STRAIGHT facing on a curved street, where the live rotation
+          // carries the tangent yaw on top.
+          dir = directionFromFacing(
+            member.straight ? member.straight.rotY : member.rotationY
+          );
+        }
         const speed = member.isPedestrian
           ? SEGMENT_TRAFFIC_DEFAULTS.sidewalk.speed * (0.7 + 0.6 * rng())
           : laneSpeed;
@@ -331,6 +353,7 @@ AFRAME.registerComponent('street-traffic', {
           mixin: member.mixin,
           position: member.position,
           rotationY: member.rotationY,
+          straight: member.straight,
           dir,
           speed,
           halfLen,
@@ -369,8 +392,10 @@ AFRAME.registerComponent('street-traffic', {
     this.records.push({
       el: entity,
       segmentEl: segEl,
+      streetEl: segEl.parentElement,
       speed: opts.speed,
       startZ: opts.position.z,
+      straight: opts.straight || null,
       halfLen: opts.halfLen,
       length: opts.length,
       dir: opts.dir,
@@ -399,12 +424,37 @@ AFRAME.registerComponent('street-traffic', {
     const posOut = this._posOut || (this._posOut = { x: 0, y: 0, z: 0 });
     const rotOut = this._rotOut || (this._rotOut = { x: 0, y: 0, z: 0, w: 1 });
     for (const r of this.records) {
-      // Pure function: z(t) = wrap(startZ + dir * speed * t, [-half, +half])
+      // Pure function: z(t) = wrap(startZ + dir * speed * t, [-half, +half]),
+      // advanced in STRAIGHT lane space. On a curved street the straight
+      // pose (stamped by the generator) is what advances, and the result is
+      // re-bent through the live curve each tick — position and tangent yaw.
       const span = r.length;
-      let z = r.startZ + r.dir * r.speed * t;
-      // Wrap into [-half, +half] regardless of sign.
-      z = ((((z + r.halfLen) % span) + span) % span) - r.halfLen;
-      r.el.object3D.position.z = z;
+      const curve = r.streetEl?.components?.['managed-street']?.streetCurve;
+      if (curve && r.straight) {
+        let z = r.straight.z + r.dir * r.speed * t;
+        z = ((((z + r.halfLen) % span) + span) % span) - r.halfLen;
+        const segPos = r.segmentEl.object3D.position;
+        const mapped = mapStraightPoint(
+          curve.sampler,
+          curve.zStart,
+          segPos.x + r.straight.x,
+          segPos.z + z
+        );
+        const obj = r.el.object3D;
+        obj.position.set(
+          mapped.x - segPos.x,
+          r.straight.y + mapped.y,
+          mapped.z - segPos.z
+        );
+        obj.rotation.y = THREE.MathUtils.degToRad(
+          r.straight.rotY + mapped.yawDeg
+        );
+      } else {
+        let z = r.startZ + r.dir * r.speed * t;
+        // Wrap into [-half, +half] regardless of sign.
+        z = ((((z + r.halfLen) % span) + span) % span) - r.halfLen;
+        r.el.object3D.position.z = z;
+      }
 
       // Kinematic body sync (only if drive-mode is active and the
       // body has been created). setNext* gives Rapier the future

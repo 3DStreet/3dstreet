@@ -1,4 +1,5 @@
 /* global THREE */
+const { mapStraightPoint } = require('../../tested/street-path-utils');
 
 /**
  * scene-colliders
@@ -6,9 +7,11 @@
  *
  * Static-collider seeding shared by the play-mode bootstraps
  * (`drive-mode` in play-mode-vehicle.js, `fly-mode` in
- * play-mode-helicopter.js). Extracted verbatim from drive-mode so both
- * features seed identical physics for streets and obstacles; see each
- * function's doc for the geometry rationale.
+ * play-mode-helicopter.js). Extracted from drive-mode so both features
+ * seed identical physics for streets and obstacles — including curved
+ * streets (`managed-street.streetCurve`), which seed a chain of short
+ * tangent-yawed slabs along the curve; see each function's doc for the
+ * geometry rationale.
  */
 
 /**
@@ -80,68 +83,121 @@ function seedSegmentColliders(sceneEl) {
       // slopeDeltas is set by street-segment when slope is on; the top
       // face runs from `.start` (local -x edge) to `.end` (local +x edge).
       const deltas = comp.slopeDeltas;
-      let seeded = false;
-      if (deltas && (deltas.start !== 0 || deltas.end !== 0)) {
-        // 8 vertices in the segment's local frame (origin at the
-        // mean-height entity origin). Top edges carry the slope deltas;
-        // X is preserved top-to-bottom, so the side walls stay vertical
-        // and match the below-box shear. The flat bottom sits SLAB_DEPTH
-        // below the *lower* top edge so the prism is always well-formed
-        // (never zero-thickness or inverted, however steep the slope)
-        // and every curb wall extends well below its neighbor's surface.
-        const hw = width / 2;
-        const hl = length / 2;
-        const floorY = Math.min(deltas.start, deltas.end) - SLAB_DEPTH;
-        const verts = new Float32Array([
-          -hw,
-          deltas.start,
-          -hl,
-          -hw,
-          deltas.start,
-          hl,
-          hw,
-          deltas.end,
-          -hl,
-          hw,
-          deltas.end,
-          hl,
-          -hw,
-          floorY,
-          -hl,
-          -hw,
-          floorY,
-          hl,
-          hw,
-          floorY,
-          -hl,
-          hw,
-          floorY,
-          hl
-        ]);
-        const body = physics.addStaticConvexHull(
-          { x: wp.x, y: wp.y, z: wp.z },
-          { x: wq.x, y: wq.y, z: wq.z, w: wq.w },
-          verts,
-          'segment'
-        );
-        if (body) {
-          slopedCount++;
-          seeded = true;
+
+      // One slab (or sheared hull) of the given run length at a world
+      // pose. Straight segments seed one; curved ones seed a chain.
+      const seedSlab = (pos, quat, slabLength) => {
+        if (deltas && (deltas.start !== 0 || deltas.end !== 0)) {
+          // 8 vertices in the segment's local frame (origin at the
+          // mean-height entity origin). Top edges carry the slope deltas;
+          // X is preserved top-to-bottom, so the side walls stay vertical
+          // and match the below-box shear. The flat bottom sits SLAB_DEPTH
+          // below the *lower* top edge so the prism is always well-formed
+          // (never zero-thickness or inverted, however steep the slope)
+          // and every curb wall extends well below its neighbor's surface.
+          const hw = width / 2;
+          const hl = slabLength / 2;
+          const floorY = Math.min(deltas.start, deltas.end) - SLAB_DEPTH;
+          const verts = new Float32Array([
+            -hw,
+            deltas.start,
+            -hl,
+            -hw,
+            deltas.start,
+            hl,
+            hw,
+            deltas.end,
+            -hl,
+            hw,
+            deltas.end,
+            hl,
+            -hw,
+            floorY,
+            -hl,
+            -hw,
+            floorY,
+            hl,
+            hw,
+            floorY,
+            -hl,
+            hw,
+            floorY,
+            hl
+          ]);
+          const body = physics.addStaticConvexHull(
+            { x: pos.x, y: pos.y, z: pos.z },
+            { x: quat.x, y: quat.y, z: quat.z, w: quat.w },
+            verts,
+            'segment'
+          );
+          if (body) {
+            slopedCount++;
+            return;
+          }
+          // else: degenerate hull — drop to the flat-slab fallback below.
         }
-        // else: degenerate hull — drop to the flat-slab fallback below.
-      }
-      if (!seeded) {
         // Flat segment (or hull fallback): visible top = segment world Y.
         // Place slab so its TOP face is exactly there: center the cuboid
         // halfY below segY.
         physics.addStaticCuboid(
-          { x: wp.x, y: wp.y - halfY, z: wp.z },
-          { x: width / 2, y: halfY, z: length / 2 },
-          { x: wq.x, y: wq.y, z: wq.z, w: wq.w },
+          { x: pos.x, y: pos.y - halfY, z: pos.z },
+          { x: width / 2, y: halfY, z: slabLength / 2 },
+          { x: quat.x, y: quat.y, z: quat.z, w: quat.w },
           'segment'
         );
+      };
+
+      const streetEl = segEl.parentNode;
+      const curve = streetEl.components?.['managed-street']?.streetCurve;
+      if (!curve) {
+        seedSlab(wp, wq, length);
+        count++;
+        return;
       }
-      count++;
+
+      // Curved street: the visible lane is a street-ribbon along the
+      // street's curve, so approximate it with a chain of short slabs,
+      // one per ring-station interval (the same stations the ribbon
+      // uses, dense on bends and sparse on straights), each yawed to the
+      // curve tangent at its midpoint. Segment-local straight space maps
+      // through mapStraightPoint exactly as the rendered content does.
+      streetEl.object3D.updateMatrixWorld();
+      const streetQuat = streetEl.object3D.getWorldQuaternion(
+        new THREE.Quaternion()
+      );
+      const segPos = segEl.object3D.position;
+      const sStart = segPos.z - length / 2 - curve.zStart;
+      const stations = curve.sampler.getRingStations(sStart, sStart + length, {
+        maxSpacing: 4
+      });
+      const yawQuat = new THREE.Quaternion();
+      const up = new THREE.Vector3(0, 1, 0);
+      const local = new THREE.Vector3();
+      for (let i = 0; i + 1 < stations.length; i++) {
+        const s0 = stations[i].s;
+        const s1 = stations[i + 1].s;
+        if (s1 - s0 < 0.01) continue;
+        const mapped = mapStraightPoint(
+          curve.sampler,
+          curve.zStart,
+          segPos.x,
+          (s0 + s1) / 2 + curve.zStart
+        );
+        // Straight slabs leave a wedge gap on the outer edge of every
+        // bend between neighbours; extend each end by the overlap the
+        // turn there needs (half width × tan of half the turn angle).
+        const t0 = stations[i].tangent;
+        const t1 = stations[i + 1].tangent;
+        const turn = Math.abs(Math.atan2(t0.x, t0.z) - Math.atan2(t1.x, t1.z));
+        const wrapped = turn > Math.PI ? 2 * Math.PI - turn : turn;
+        const ext = (width / 2) * Math.tan(Math.min(wrapped, Math.PI / 3) / 2);
+        local.set(mapped.x, segPos.y + mapped.y, mapped.z);
+        streetEl.object3D.localToWorld(local);
+        yawQuat.setFromAxisAngle(up, THREE.MathUtils.degToRad(mapped.yawDeg));
+        const quat = streetQuat.clone().multiply(yawQuat);
+        seedSlab(local, quat, s1 - s0 + 2 * ext);
+        count++;
+      }
     });
   console.log(
     '[play-colliders] seeded',

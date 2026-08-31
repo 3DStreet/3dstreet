@@ -106,6 +106,12 @@ export const shapeLayersData = [
     icon: '',
     requiresPro: false,
     handlerFunction: createFunctions.createHighlightRing
+  }),
+  card(m.shapePolylineName, m.shapePolylineDesc, {
+    img: '',
+    icon: '',
+    requiresPro: false,
+    handlerFunction: createFunctions.createShapeEntity
   })
 ].map((layer, index) => ({ ...layer, id: index + 1 }));
 

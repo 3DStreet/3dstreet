@@ -517,6 +517,215 @@ body.aframe-inspector-opened {
   }
 }
 
+// The shape editor's on-canvas "insert a vertex here" button, and the
+// measurement chips it is opened from.
+//
+// TOP LEVEL, outside the #aframeInspector block above, and that is load-bearing
+// rather than stylistic: these are rendered through the CSS2D layer, whose
+// container is a direct child of document.body and so a SIBLING of
+// #aframeInspector — a rule nested in that block cannot reach it.
+//
+// Nothing WITH A STATE VARIANT may be set inline on these elements: an inline
+// declaration beats a stylesheet rule whatever its selector, so a colour
+// written in JS would win over the states below and they would silently never
+// fire. A property with no :hover, :active or modifier form cannot be
+// overridden that way, so writing it in JS costs nothing and buys two things
+// the stylesheet cannot give: a cross-layer number stays mechanically linked to
+// the constant it comes from rather than merely commented (the chip's minimum
+// tap height), and a property whose failure mode is severe stays assertable in
+// a test environment that evaluates no stylesheet at all (the chip's
+// pointer-events). Both of those are written in JS deliberately. The properties
+// that DO have variants move the other way, out of JS and into the rules below:
+// the chip's background, the visibility of its two spans, and the delete
+// button's background.
+.shape-insert-button {
+  // The selection blue the whole vertex-editing feature already speaks in —
+  // the handles, the active rim and the shape's own selection box. A control in
+  // that colour reads as part of this tool; the delete button's black chip,
+  // sitting a couple of dozen pixels from an equally black caption, would read
+  // as a second line of the caption.
+  background: #1faaf2;
+  color: #fff;
+  // What separates the button from the caption at a glance when the two stack,
+  // whatever is behind them in the 3D scene.
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+
+  &:hover {
+    background: #7fd4ff;
+  }
+
+  // Colour only. This element carries its pixel offset from the anchor as an
+  // inline `transform`, which no stylesheet rule can override, so a press-down
+  // nudge is not available here — the darker fill is the whole of the pressed
+  // state.
+  &:active {
+    background: #0d84c4;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 1px;
+  }
+}
+
+// A shape's on-canvas measurement chip. Two elements: this outer, which the
+// CSS2D renderer positions, and an inner that is the visible chip. Where the
+// chip is a control the outer's hit area is grown taller than the inner, and
+// the centring below is what keeps the visible chip on its anchor regardless.
+//
+// `pointer-events` is deliberately NOT here — see the header note above. It is
+// written inline in ShapeReadouts, on both branches.
+.shape-readout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// The visible chip. `background` lives here rather than inline because it has
+// state variants — see the header note above — and so does the visibility of
+// the two spans an insertable chip is built from.
+//
+// `position: relative` makes this the containing block for the "+" — which is
+// the element that must NOT contribute to this box's size.
+.shape-readout-label {
+  background: rgba(0, 0, 0, 0.6);
+  position: relative;
+}
+
+// A side length that can take a new vertex. The cursor is the only idle signal
+// there is; the height that makes it a finger-sized target is written inline
+// from a constant.
+.shape-readout--insertable {
+  cursor: pointer;
+}
+
+// The "+" an insertable chip shows in place of its number while the pointer
+// rests on it. Its BASE state is hidden — without that it sits over the number
+// permanently — and it is out of flow, which is the footprint lock
+// (docs/shape-vertex-editing.md).
+//
+// `inset: 0` fixes the BOX, not the glyph: on its own it lays a line-height:1
+// glyph at the box's top-left, a few pixels up and left of where the digits
+// were. The flex centring is what actually puts the "+" where the number was.
+.shape-readout-plus {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 15px/1 sans-serif;
+  visibility: hidden;
+}
+
+// Hover matches across the whole padded hit area: :hover applies to every
+// element in the hit-test ancestor chain, so the outer being the hit target
+// still lights the inner. No delay — the fill is the immediate "this is a
+// control" signal, and the morph below is the slower one that says what kind.
+.shape-readout--insertable:hover .shape-readout-label {
+  background: #1faaf2;
+}
+
+// THE MORPH: on a device with a hovering pointer, resting on a side's
+// measurement replaces the number with a "+", in place and at the same size.
+//
+// Gated on `(hover: hover)` because on touch there is no gesture that undoes it
+// — a stray tap would replace the number and leave it replaced. The query is
+// NOT a reliable touch-only exclusion on its own; what keeps a finger out is the
+// pointer-type gate in the controls layer, which reads THIS query back so the
+// visual and the action cannot disagree. See docs/shape-vertex-editing.md.
+@media (hover: hover) {
+  // NOT while a "+" button is already open on this side. Both paths are
+  // reachable in one session on a device with a finger and a mouse, and without
+  // this the same side would show a floating "+" AND a "+" in place of its
+  // number.
+  .shape-readout--insertable:not(.shape-readout--revealed):hover {
+    // Delay in, none out: the chip commits slowly, so a pointer sweeping across
+    // a shape flips nothing, and reverts instantly the moment it leaves.
+    .shape-readout-value {
+      visibility: hidden;
+      transition: visibility 0s variables.$shape-hover-morph-dwell;
+    }
+
+    .shape-readout-plus {
+      visibility: visible;
+      transition: visibility 0s variables.$shape-hover-morph-dwell;
+    }
+  }
+}
+
+// The side a button is currently open on. A white hairline on the chip's
+// ordinary dark fill — the same hairline the button itself carries, so the two
+// read as one paired object while the user reaches from one to the other.
+//
+// Deliberately NOT the selection blue: that is the app's selection colour, and
+// this feature does not make a side a selected object. The blue is kept for
+// hover, where it is transient and means "this is a control".
+//
+// `outline` rather than `border` is arithmetic, not a synonym. The chip sets no
+// box-sizing, so a 1 px border would grow it by 2 px and move its top edge a
+// pixel further from the anchor — falsifying the gap the insert button's offset
+// is computed against. An outline does not participate in layout.
+.shape-readout--revealed .shape-readout-label {
+  outline: 1px solid rgba(255, 255, 255, 0.85);
+}
+
+// A side too short to take a new point. Marked so that the sides which ARE
+// controls are recognisable without a mark of their own — see the note in
+// ShapeReadouts for why that direction round.
+//
+// The mute is on the chip's CHROME, not on its text: dimming the element dims
+// the number the readout exists to show, and on a shape with one short side
+// that number is precisely the one the user is squinting at. So the backing
+// recedes and the digits stay at full strength.
+//
+// Two halves, and both have to hold. The backing stays lighter than an ordinary
+// chip's, or the mark says nothing beside an insertable neighbour. But a thin
+// backing over bright asphalt or sky is the worst case for white 12 px digits,
+// so the text carries its own contrast rather than relying on the fill behind
+// it — which is what lets the fill recede this far at all.
+.shape-readout--muted .shape-readout-label {
+  background: rgba(0, 0, 0, 0.5);
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.9),
+    0 1px 1px rgba(0, 0, 0, 0.9);
+}
+
+// The vertex delete button, which until now answered a pointer not at all —
+// inert beside a measurement chip that lights up under one. (The insert "+"
+// already has the treatment, above.)
+//
+// Deliberately NOT the measurement's blue: a destructive control that becomes
+// pixel-identical to the constructive one on hover is worse than an inert one,
+// which is why the two were kept apart to begin with. The white hairline the
+// paired controls share carries "this is a control" instead.
+//
+// `box-shadow` rather than `border`: the button's size comes from BUTTON_PX and
+// so does the offset that clears it of the handle, and a border would grow the
+// box out from under both.
+.shape-delete-button {
+  background: rgba(0, 0, 0, 0.7);
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.9);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);
+  }
+
+  &:active {
+    background: rgba(0, 0, 0, 1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 1px;
+  }
+}
+
+// Note: the shape component's own area label hand-builds an identical-looking
+// chip with inline styles of its own (see shape.js). That duplication is known
+// and left alone — the area readout is not a control and never will be one, and
+// unifying it means editing an A-Frame component for no behavioural gain.
+
 // Right-side properties panel rendered inside RightPanel's content area.
 .properties-panel {
   color: variables.$lightgray-100;
