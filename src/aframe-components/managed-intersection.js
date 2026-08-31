@@ -19,9 +19,13 @@
 // streets on every change: the THREE meshes hang off setObject3D (never
 // serialized) and the treatment entities carry the `autocreated` class (
 // skipped on save, same as the legacy component and street generators).
-// Streets are never modified — the intersection reads their nodes, it does
-// not move or trim them (trimming needs the persistent node graph, see
-// docs/managed-intersection.md).
+// The ONE way streets are modified: with trimStreets on (default), an
+// overlapping street is shortened so its node sits at the mouth — otherwise
+// the street's sidewalks and everything cloned along them (trees, lamps,
+// pedestrians) run through the junction. Trim only, never extend, and the
+// mouth is a fixed point in space for a node sliding along its centerline,
+// so the pass converges instead of creeping (see
+// docs/managed-intersection.md and managed-intersection-utils.js).
 //
 // Geometry math lives in src/tested/managed-intersection-utils.js
 // (unit-tested, DOM-free).
@@ -30,19 +34,25 @@ import { computeIntersectionGeometry } from '../tested/managed-intersection-util
 import { getTravelledWaySegments } from './street-layout-utils';
 import {
   BASE_SURFACE_DEPTH,
-  CURB_HEIGHT,
-  MARKING_SURFACE_OFFSET
+  CURB_HEIGHT
 } from '../tested/street-segment-utils';
 
-// Roadway slab: just above the street segments' generated lane markings so an
-// untrimmed street sliding under the intersection doesn't bleed its center
-// stripes (or z-fight its surface) through the intersection. The cost is a
-// small lip where a trimmed street meets the mouth — acceptable until street
-// trimming exists (see docs/managed-intersection.md).
-const SURFACE_TOP = BASE_SURFACE_DEPTH + MARKING_SURFACE_OFFSET + 0.01;
-// Sidewalk corner wedges: one curb step above the roadway slab.
-const WEDGE_TOP = SURFACE_TOP + CURB_HEIGHT;
+// Roadway slab: 1cm above the street segments' top surface. With trimStreets
+// on (the default) connecting streets stop flush at the mouth, so this is a
+// near-invisible lip; with trimming off an overlapping street's surface stays
+// hidden but its lane markings (MARKING_SURFACE_OFFSET above the segment
+// surface) will poke through — see docs/managed-intersection.md.
+const SURFACE_TOP = BASE_SURFACE_DEPTH + 0.01;
+// Sidewalk corner wedges: same top as the streets' own sidewalk segments
+// (elevation one curb step), so trimmed sidewalks continue seamlessly into
+// the corner.
+const WEDGE_TOP = BASE_SURFACE_DEPTH + CURB_HEIGHT;
 const SIGNATURE_PRECISION = 3;
+// Trim tolerance: node-to-mouth gaps smaller than this are left alone, which
+// is what stops the trim pass from chasing float noise across rebuilds.
+const TRIM_EPSILON = 0.05;
+const MIN_TRIMMED_STREET_LENGTH = 4;
+const UP_AXIS = new THREE.Vector3(0, 1, 0);
 
 // Same "counts as sidewalk" list as the streetmix parsers (kept local so this
 // ESM component never touches the CJS parser bundle): contiguous runs of
@@ -98,6 +108,16 @@ AFRAME.registerComponent('managed-intersection', {
       oneOf: ['none', 'stop', 'signal']
     },
     showSidewalkCorners: { type: 'boolean', default: true },
+    // Shorten connecting streets so their nodes sit exactly at the mouth:
+    // the street body (surface, sidewalks, AND everything generated along
+    // them — trees, lamps, pedestrians) stops at the intersection edge
+    // instead of running underneath it. Trim only — a street stopping short
+    // of the intersection is never extended. The mouth geometry is anchored
+    // in space (see managed-intersection-utils.js), so trimming converges
+    // instead of creeping. Note: trimming edits the street's
+    // position/length for real; deleting the intersection later does not
+    // grow the streets back (drag their endpoint nodes to reconnect).
+    trimStreets: { type: 'boolean', default: true },
     // Radius of the placeholder pad shown while fewer than 2 streets connect.
     placeholderRadius: { type: 'number', default: 6 }
   },
@@ -301,7 +321,13 @@ AFRAME.registerComponent('managed-intersection', {
         point: best.point,
         dir,
         road,
-        full
+        full,
+        // Trim-pass metadata: which endpoint this arm is, and the street's
+        // node math inputs (see applyStreetTrims).
+        endKey: best.key,
+        length,
+        lengthAlign,
+        centerX
       });
     });
     return arms;
@@ -326,6 +352,7 @@ AFRAME.registerComponent('managed-intersection', {
     if (geometry) {
       this.buildSurfaces(geometry);
       this.buildTreatments(geometry, arms);
+      this.applyStreetTrims(geometry, arms);
     } else {
       this.buildPlaceholder();
     }
@@ -337,6 +364,65 @@ AFRAME.registerComponent('managed-intersection', {
 
     this.lastSignature = this.computeSignature();
     this.el.emit('intersection-refreshed', { armCount: arms.length }, false);
+  },
+
+  // --- street trimming ------------------------------------------------------
+
+  /**
+   * Shorten every overlapping connected street so its node lands exactly on
+   * the mouth, keeping its FAR endpoint (and rotation) fixed — the same
+   * origin-rebuild math as the street endpoint gizmo, but sliding the node
+   * along the existing centerline. mouth.t is the node→mouth distance along
+   * the arm, so it is exactly the overlap depth; ≤ 0 means the street stops
+   * short (a gap), which is deliberately left alone — trim never extends,
+   * so dragging a street away from an intersection doesn't fight the watch.
+   *
+   * Stability: the mouth is a fixed point in space for a node sliding along
+   * its centerline (see managed-intersection-utils.js), so after one trim
+   * the next rebuild computes mouth.t ≈ 0 and the pass no-ops.
+   */
+  applyStreetTrims: function (geometry, arms) {
+    if (!this.data.trimStreets) return;
+    geometry.mouths.forEach((mouth) => {
+      const arm = arms[mouth.arm];
+      const delta = mouth.t;
+      if (!(delta > TRIM_EPSILON)) return;
+      const street = arm.el;
+      const newLength = Math.round((arm.length - delta) * 1000) / 1000;
+      if (newLength < MIN_TRIMMED_STREET_LENGTH) return;
+
+      // New node point: slid `delta` along the arm, in street-parent space.
+      this._vec.set(
+        arm.point.x + arm.dir.x * delta,
+        0,
+        arm.point.z + arm.dir.z * delta
+      );
+      this.el.object3D.localToWorld(this._vec);
+      street.object3D.parent.worldToLocal(this._vec);
+
+      // Rebuild the street origin so this node lands at its endpoint slot
+      // for the new length (assumes an upright street in its parent, like
+      // the endpoint gizmo does).
+      const zByKey =
+        arm.lengthAlign === 'middle'
+          ? { start: -newLength / 2, end: newLength / 2 }
+          : arm.lengthAlign === 'end'
+            ? { start: 0, end: newLength }
+            : { start: -newLength, end: 0 };
+      this._dir.set(arm.centerX, 0, zByKey[arm.endKey]);
+      const rotY = THREE.MathUtils.degToRad(
+        street.getAttribute('rotation')?.y || 0
+      );
+      this._dir.applyAxisAngle(UP_AXIS, rotY);
+
+      const pos = street.getAttribute('position');
+      street.setAttribute('position', {
+        x: Math.round((this._vec.x - this._dir.x) * 1000) / 1000,
+        y: pos.y,
+        z: Math.round((this._vec.z - this._dir.z) * 1000) / 1000
+      });
+      street.setAttribute('managed-street', 'length', newLength);
+    });
   },
 
   // --- materials (created lazily once, reused across refreshes) -----------

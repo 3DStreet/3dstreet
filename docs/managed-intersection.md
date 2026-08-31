@@ -57,6 +57,7 @@ and 5+ arm intersections all come out of the same edge-intersection walk.
 | `crosswalk`           | `crosswalk-zebra` | `none` or one of the flat crosswalk mixins                   |
 | `trafficControl`      | `none`            | `none` / `stop` / `signal`, applied per arm                  |
 | `showSidewalkCorners` | `true`            | corner wedge visibility                                      |
+| `trimStreets`         | `true`            | shorten overlapping streets so they stop at the mouth        |
 | `placeholderRadius`   | `6`               | pad radius while <2 streets connect                          |
 
 ## Live updates & persistence
@@ -76,6 +77,37 @@ and 5+ arm intersections all come out of the same edge-intersection walk.
 - The entity carries `data-transform-no-scale` (its size IS the connected
   streets' geometry).
 
+## Street trimming (`trimStreets`, default on)
+
+An untrimmed street runs underneath the intersection — its sidewalks and
+everything cloned along them (trees, lamps, pedestrians) march straight
+through the junction. So by default the refresh pass **trims** every
+overlapping street: its node is slid along its own centerline out to the
+mouth (position + `managed-street.length` rewritten, far endpoint and
+rotation kept fixed — the endpoint-gizmo origin-rebuild math), and the whole
+re-layout cascade regenerates the clones to the new extent.
+
+Why this doesn't feed back on itself: the mouth is anchored in **space**, not
+to the node — corner clearances are projections of fixed edge-line
+intersections, the `minSetback` floor is measured from the intersection
+origin's projection, and node-baseline fallback corners are excluded — so a
+node sitting on the mouth recomputes `mouth.t ≈ 0` and the pass no-ops
+(regression-tested in `managedIntersectionUtils.test.js`). Trims are also
+epsilon-guarded (5cm) and never shorten a street below 4m.
+
+Rules of the road:
+
+- **Trim only, never extend.** A street stopping short keeps its gap, and
+  dragging an endpoint node _away_ from the intersection never fights the
+  watch. Dragging a node _into_ the intersection gets it snapped back to the
+  mouth on the next watch tick.
+- Trimming edits the street for real (no undo step — it's a component-level
+  write). Deleting or moving the intersection later does **not** grow
+  streets back; drag their endpoint nodes to reconnect. Restoring pre-trim
+  lengths automatically is the persistent-node-graph future.
+- `trimStreets: false` restores the old non-destructive overlap behavior
+  (with the poke-through artifacts that implies).
+
 ## Editor
 
 "(Beta) Managed Intersection" card in the Add Layer panel's Streets tab
@@ -94,14 +126,11 @@ point objects, out of scope like street furniture.
 
 ## Known limitations (prototype scope)
 
-- **No street trimming.** Streets are never modified: an untrimmed street
-  runs underneath the intersection (the surface slab sits just above the
-  street's lane markings to mask it). Auto-trimming a street's node to the
-  mouth would feed back into the arm math on the next refresh — doing that
-  properly needs persistent node identity (a node graph shared by streets and
-  intersections), which is also the path to [#138](https://github.com/3DStreet/3dstreet/issues/138)-style
-  OSM import. Until then, drag the street's endpoint node to the mouth for a
-  clean seam.
+- **Trims are one-way** (see above): no undo step, and no automatic restore
+  when the intersection is deleted or moved away. Remembering pre-trim nodes
+  properly needs persistent node identity (a node graph shared by streets
+  and intersections), which is also the path to
+  [#138](https://github.com/3DStreet/3dstreet/issues/138)-style OSM import.
 - Treatments are global (one crosswalk/traffic-control choice for all arms);
   per-arm overrides need stable arm identity (street ids) plus UI.
 - Curved (path-following) streets are skipped — their nodes live on the path

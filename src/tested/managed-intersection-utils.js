@@ -189,11 +189,27 @@ function computeIntersectionGeometry(arms, options = {}) {
   // --- mouth setback per sorted arm ---------------------------------------
   // The mouth must clear both adjacent corners (their fillet tangent points
   // when rounded) so the crosswalk band sits on straight edge, not on an arc.
-  const mouthT = new Array(N).fill(opts.minSetback);
+  //
+  // The mouth is anchored in SPACE, not to the node: sliding a node along its
+  // own centerline must not move the mouth, because the component trims a
+  // connecting street back to the mouth and the next rebuild sees the node
+  // there — a node-relative mouth would drift outward on every rebuild.
+  // Hence:
+  //   - the minSetback floor is measured from the intersection origin's
+  //     projection onto the arm centerline (not from the node),
+  //   - corner clearances are projections of fixed spatial points (edge-line
+  //     intersections / fillet tangents), which never move with the node,
+  //   - fallback seam corners sit on the nodes' own baselines (they DO move
+  //     with the node), so they contribute no clearance.
+  // mouthT stays node-relative (t along dir from arm.point) for callers.
   const projT = (arm, p) =>
     dot2({ x: p.x - arm.point.x, z: p.z - arm.point.z }, arm.dir);
+  const mouthT = sorted.map(
+    (arm) => opts.minSetback - dot2(arm.point, arm.dir)
+  );
   corners.forEach((corner, i) => {
     const { armA, armB, road, arc } = corner;
+    if (road.fallback) return;
     const iA = i;
     const iB = (i + 1) % N;
     const pA = arc ? arc.tangentA : road.apex;

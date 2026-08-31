@@ -200,6 +200,68 @@ describe('computeIntersectionGeometry', () => {
     expect(g.mouths[0].id).toBe('east');
   });
 
+  // Trim contract: the component moves a street's node onto the mouth, and
+  // the next rebuild sees the node there. The mouth must be a fixed point in
+  // space for a node sliding along its own centerline, or trimming would
+  // drift the intersection outward on every rebuild.
+  it('keeps mouth points fixed when a node slides along its centerline', () => {
+    const opts = { curbRadius: 2, mouthMargin: 0.5 };
+    const before = computeIntersectionGeometry(
+      [arm(O, N, 5, 8), arm(O, S, 5, 8), arm(O, E, 5, 8), arm(O, W, 5, 8)],
+      opts
+    );
+    // Slide the north node out to its own mouth (t along dir from the node).
+    const northMouth = before.mouths[0];
+    const after = computeIntersectionGeometry(
+      [
+        arm({ x: 0, z: northMouth.t }, N, 5, 8),
+        arm(O, S, 5, 8),
+        arm(O, E, 5, 8),
+        arm(O, W, 5, 8)
+      ],
+      opts
+    );
+    // Same mouth point in space; node now sits on it (t ≈ 0), so a second
+    // trim would be a no-op.
+    closeTo(after.mouths[0].center, northMouth.center.x, northMouth.center.z);
+    expect(after.mouths[0].t).toBeCloseTo(0);
+    // The other arms' mouths are untouched.
+    for (let i = 1; i < 4; i++) {
+      closeTo(
+        after.mouths[i].center,
+        before.mouths[i].center.x,
+        before.mouths[i].center.z
+      );
+    }
+  });
+
+  it('keeps seam mouths fixed for collinear pairs too', () => {
+    const opts = { minSetback: 2 };
+    const before = computeIntersectionGeometry(
+      [arm({ x: 0, z: 1 }, N, 5, 8), arm({ x: 0, z: -1 }, S, 5, 8)],
+      opts
+    );
+    const after = computeIntersectionGeometry(
+      [
+        arm({ x: 0, z: 1 + before.mouths[0].t }, N, 5, 8),
+        arm({ x: 0, z: -1 - before.mouths[1].t }, S, 5, 8)
+      ],
+      opts
+    );
+    closeTo(
+      after.mouths[0].center,
+      before.mouths[0].center.x,
+      before.mouths[0].center.z
+    );
+    closeTo(
+      after.mouths[1].center,
+      before.mouths[1].center.x,
+      before.mouths[1].center.z
+    );
+    expect(after.mouths[0].t).toBeCloseTo(0);
+    expect(after.mouths[1].t).toBeCloseTo(0);
+  });
+
   it('keeps arms in caller order in mouths[]', () => {
     const g = computeIntersectionGeometry(
       [arm(O, W, 5), arm(O, E, 5), arm(O, N, 5)],
