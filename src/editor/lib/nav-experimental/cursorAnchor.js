@@ -73,7 +73,10 @@ const EXCLUDE_NAME_SUBSTRINGS = [
   // The rotation-centre ring billboard (KD-30 / KD-03). depthTest is off
   // so it would otherwise be a tempting raycast hit; never let it become
   // a pivot/anchor target.
-  'navRotationIndicator'
+  'navRotationIndicator',
+  // Gizmo prototype lab controls (editor/lib/gizmos/) — every root and
+  // named child carries this prefix.
+  'gizmoPrototype'
 ];
 
 // Class-attribute / component substrings on the entity element.

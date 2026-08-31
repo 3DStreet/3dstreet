@@ -26,7 +26,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@shared': path.resolve(__dirname, './src/shared')
+      // Mirror webpack's aliases so editor modules importing '@/…' are testable.
+      '@shared': path.resolve(__dirname, './src/shared'),
+      '@': path.resolve(__dirname, './src')
     }
   }
 });

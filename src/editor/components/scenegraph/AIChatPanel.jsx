@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useIntl } from 'react-intl';
 import { Tooltip } from 'radix-ui';
 import { createProxyChat } from '../../services/aiChatProxy.js';
+import { captureViewportScreenshot } from '../../lib/viewportScreenshot.js';
 import {
   Copy32Icon,
   DownloadIcon,
@@ -25,13 +26,14 @@ import {
   faRotateRight,
   faPlug,
   faLock,
-  faLockOpen
+  faLockOpen,
+  faWandMagicSparkles
 } from '@fortawesome/free-solid-svg-icons';
 import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 import Events from '../../lib/Events';
 import { useMCPClient } from '../../lib/mcp/useMCPClient.js';
 
-const AI_MODEL_ID = 'gemini-3-flash-preview';
+const AI_MODEL_ID = 'gemini-3.7-flash';
 let AI_CONVERSATION_ID = uuidv4();
 
 // Cap pill list growth so a multi-hour session doesn't accumulate thousands
@@ -960,8 +962,38 @@ function AIChatPanel() {
     };
   }, []);
 
+  // A blank console is a dead end for discovery — seed the /help card whenever
+  // the chat holds no conversation (first open, and again after a reset or new
+  // scene). Command pills survive resetConversation by design, so "empty"
+  // means no non-pill messages, and the functional update re-checks so a
+  // concurrent append is never clobbered.
+  useEffect(() => {
+    if (messages.some((m) => m.type !== 'commandPill')) return;
+    setMessages((prev) =>
+      prev.some((m) => m.type !== 'commandPill')
+        ? prev
+        : [
+            ...prev,
+            {
+              type: 'help',
+              id: `help_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+              timestamp: new Date(),
+              examples: HELP_EXAMPLES,
+              commands: HELP_COMMANDS
+            }
+          ]
+    );
+  }, [messages]);
+
   const processMessage = async (messageText) => {
     if (!messageText.trim() || !modelRef.current) return;
+    // One turn at a time: tool execution + verification are awaited below, so
+    // a second send mid-turn would interleave transcripts and histories.
+    if (isLoading) return;
+
+    // Staleness token: a reset/new-scene mid-turn rotates AI_CONVERSATION_ID;
+    // late verification/rating appends must not land in the fresh console.
+    const conversationId = AI_CONVERSATION_ID;
 
     setIsLoading(true);
     const userMessage = {
@@ -1000,7 +1032,7 @@ function AIChatPanel() {
 
       const prompt = `
       The current scene has the following state:
-      ${JSON.stringify(sceneJSON, null, 2)}
+      ${JSON.stringify(sceneJSON)}
 
       Scene Title: ${sceneTitle || 'Untitled'}
 
@@ -1021,10 +1053,15 @@ function AIChatPanel() {
           content: msg.content
         }));
 
+      // Attach what the user currently sees; null (capture failure) degrades
+      // to a text-only request.
+      const screenshot = captureViewportScreenshot();
+
       // Send message and get response with the full history
       const result = await modelRef.current.sendMessage(prompt, {
         history: historyMessages,
-        systemPrompt: enhancedSystemPrompt // Use the enhanced system prompt with mixin information
+        systemPrompt: enhancedSystemPrompt, // Use the enhanced system prompt with mixin information
+        screenshot
       });
       console.log('Raw result:', result);
 
@@ -1063,6 +1100,8 @@ function AIChatPanel() {
 
       // Then process all function calls
       if (functionCalls && functionCalls.length > 0) {
+        // Collected for the post-execution verification round trip.
+        const executedCalls = [];
         // Process function calls sequentially using async/await
         const processFunctionCalls = async () => {
           for (const call of functionCalls) {
@@ -1142,6 +1181,13 @@ function AIChatPanel() {
                 ai_user_prompt: messageText
               });
 
+              executedCalls.push({
+                name: call.name,
+                args: call.args || {},
+                status: 'success',
+                result: resultStr.slice(0, 2000)
+              });
+
               // Update function call status to success
               setMessages((prev) =>
                 prev.map((msg) =>
@@ -1175,6 +1221,13 @@ function AIChatPanel() {
                 ai_user_prompt: messageText
               });
 
+              executedCalls.push({
+                name: call.name,
+                args: call.args || {},
+                status: 'error',
+                result: String(error?.message ?? error).slice(0, 2000)
+              });
+
               // Update function call status to error
               setMessages((prev) =>
                 prev.map((msg) =>
@@ -1191,9 +1244,110 @@ function AIChatPanel() {
           }
         };
 
-        // Start processing function calls and add rating message when done
-        processFunctionCalls().then(() => {
-          // Now add the rating message after all function calls are processed
+        // ONE evaluation round trip after tool execution, by design: the model
+        // checks its own work against the updated scene + a fresh screenshot.
+        // Sent with includeTools: false so it cannot return function calls —
+        // the loop is structurally impossible, not just prompted against. If
+        // we ever want agentic iterate-until-success, this is where the loop,
+        // its cap, and its stop conditions get built (likely behind a user
+        // preference — watch ai_verification_verdict in PostHog first).
+        // Non-fatal: a successful command never surfaces an error because
+        // verification hiccuped (it just costs one extra rate-limit slot).
+        const runVerification = async () => {
+          // Skipped when only read-only takeSnapshot calls ran.
+          if (executedCalls.every((c) => c.name === 'takeSnapshot')) return;
+
+          try {
+            const entity = document.getElementById('street-container');
+            const updatedScene = JSON.parse(
+              STREET.utils.filterJSONstreet(
+                STREET.utils.convertDOMElToObject(entity)
+              )
+            ).data;
+
+            const verificationPrompt = `
+      The tool calls for the user's request have now been executed. Results:
+      ${JSON.stringify(executedCalls)}
+
+      Updated scene state:
+      ${JSON.stringify(updatedScene)}
+
+      Original user request: ${messageText}
+
+      Evaluate whether the request was fully accomplished. Be skeptical: a tool result saying "executed" does not mean the intended change actually happened. Verify the specific change is PRESENT in the updated scene state above (the exact component/property/value you intended) and consistent with the attached screenshot of the current viewport. If you cannot positively confirm it in the scene state, or any tool reported an error, the verdict is not success. Reply briefly: start with "✅" only if you confirmed it, or "⚠️" if anything failed, is absent from the scene state, looks wrong, or is incomplete, followed by one or two sentences. If not fully accomplished, end with one concrete next step the user can ask you to take. Do not call any tools.
+      `;
+
+            const verifyResult = await modelRef.current.sendMessage(
+              verificationPrompt,
+              {
+                history: [
+                  ...historyMessages,
+                  { role: 'user', content: messageText },
+                  ...(responseText && responseText.trim()
+                    ? [{ role: 'assistant', content: responseText }]
+                    : [])
+                ],
+                systemPrompt: enhancedSystemPrompt,
+                screenshot: captureViewportScreenshot(),
+                includeTools: false
+              }
+            );
+            // The conversation was reset while the call was in flight — drop
+            // the result entirely rather than appending into a fresh console.
+            if (conversationId !== AI_CONVERSATION_ID) return;
+
+            const verifyText = verifyResult.response.text();
+            // Leading emoji is the model's own pass/fail judgment — captured
+            // as a continuous quality metric for the assistant. Search the
+            // first few chars rather than strict startsWith: models emit the
+            // warning sign with or without U+FE0F and sometimes wrap it in
+            // markdown ('⚠' is a prefix of '⚠️', so includes matches both).
+            const head = (verifyText || '').trim().slice(0, 8);
+            const verdict = head.includes('✅')
+              ? 'success'
+              : head.includes('⚠')
+                ? 'incomplete'
+                : 'unknown';
+
+            posthog.capture('$ai_generation', {
+              $ai_model: AI_MODEL_ID,
+              $ai_provider: 'vertexai',
+              $ai_trace_id: AI_CONVERSATION_ID,
+              $ai_input: [{ role: 'user', content: '[verification step]' }],
+              $ai_input_tokens:
+                verifyResult.response.usageMetadata?.promptTokenCount,
+              $ai_output_choices: [{ role: 'assistant', content: verifyText }],
+              $ai_output_tokens:
+                verifyResult.response.usageMetadata?.candidatesTokenCount,
+              ai_step: 'verification',
+              ai_verification_verdict: verdict
+            });
+
+            if (verifyText && verifyText.trim()) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: 'assistant',
+                  content: verifyText,
+                  responseId: responseId,
+                  isVerification: true,
+                  verdict: verdict,
+                  timestamp: new Date()
+                }
+              ]);
+            }
+          } catch (error) {
+            console.warn('AI verification step failed (non-fatal):', error);
+          }
+        };
+
+        // Awaited (not fire-and-forget): keeps isLoading true through
+        // verification so the transcript can't interleave with a next send,
+        // and a throw lands in processMessage's catch instead of an
+        // unhandled rejection. runVerification catches its own errors.
+        await processFunctionCalls();
+        await runVerification();
+        if (conversationId === AI_CONVERSATION_ID) {
           const ratingMessage = {
             type: 'rating',
             id: Date.now() + Math.random().toString(16).slice(2),
@@ -1202,7 +1356,7 @@ function AIChatPanel() {
             timestamp: new Date()
           };
           setMessages((prev) => [...prev, ratingMessage]);
-        });
+        }
       }
 
       // For text-only responses (no function calls), add the rating immediately
@@ -1242,9 +1396,6 @@ function AIChatPanel() {
         };
         setMessages((prev) => [...prev, ratingMessage]);
       }
-
-      // We'll add the rating message after all function calls are processed
-      // This will happen in the processFunctionCalls().then() callback
     } catch (error) {
       console.error('Error generating response:', error);
       // Errors now come from our own generateEditorChat callable, which only
@@ -1517,6 +1668,9 @@ function AIChatPanel() {
                       </div>
                     </>
                   )}
+                  <div className={styles.helpModelInfo}>
+                    Model: {AI_MODEL_ID}
+                  </div>
                 </div>
               );
             } else if (message.type === 'commandPill') {
@@ -1629,6 +1783,27 @@ function AIChatPanel() {
                     content={message.content}
                     isAssistant={message.role === 'assistant'}
                   />
+                  {message.isVerification &&
+                    message.verdict === 'incomplete' &&
+                    message.responseId === latestResponseId &&
+                    !isLoading && (
+                      <button
+                        onClick={() => {
+                          posthog.capture('ai_verification_continue_clicked', {
+                            $ai_trace_id: AI_CONVERSATION_ID,
+                            ai_response_id: message.responseId
+                          });
+                          processMessage(
+                            'Yes, please do the suggested next step.'
+                          );
+                        }}
+                        className={styles.inlineResetButton}
+                        title="Ask the assistant to take its suggested next step"
+                      >
+                        <AwesomeIcon icon={faWandMagicSparkles} />
+                        <span>Do it</span>
+                      </button>
+                    )}
                   {message.isRecoverable && (
                     <button
                       onClick={resetConversation}

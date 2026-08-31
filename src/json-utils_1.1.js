@@ -8,6 +8,7 @@ import {
   migrateSegmentBuildingType,
   migrateShowBuildingsFlag
 } from './tested/street-segment-utils';
+import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
 
 /* global AFRAME, Node */
 // Components removed alongside the legacy viewer mode. Stripped from
@@ -112,7 +113,7 @@ function getElementData(entity, options = {}) {
   }
   // node id's that should save without child nodes
   const skipChildrenNodes = ['environment', 'reference-layers'];
-  const elementTree = getAttributes(entity);
+  const elementTree = getAttributes(entity, options);
   const children = entity.childNodes;
   if (children.length && !skipChildrenNodes.includes(elementTree.id)) {
     const savedChildren = [];
@@ -128,7 +129,7 @@ function getElementData(entity, options = {}) {
 }
 STREET.utils.getElementData = getElementData;
 
-function getAttributes(entity) {
+function getAttributes(entity, options = {}) {
   const elemObj = {};
 
   const tagName = entity.tagName.toLowerCase();
@@ -163,13 +164,28 @@ function getAttributes(entity) {
   const entityComponents = entity.components;
 
   if (entityComponents) {
-    const geometryAttr = entity.getAttribute('geometry');
+    // A street-segment's geometry and material are derived output: the
+    // component regenerates both from its own data on every init/update, and
+    // a pathed street's segments carry the `street-ribbon` primitive, which
+    // only exists in builds that register it. Persisting them would freeze a
+    // recomputed schema into the saved contract and make any bundle without
+    // the ribbon geometry throw at load (A-Frame's geometry component throws
+    // on an unknown primitive). Skip them on save: the segment rebuilds
+    // either way. Convert-to-shapes is the one caller that wants the rendered
+    // surface itself, and it already asks for that via includeAutocreated.
+    const ownsMesh =
+      Boolean(entityComponents['street-segment']) &&
+      !options.includeAutocreated;
+    const skipComponents = ownsMesh ? ['geometry', 'material'] : [];
+
+    const geometryAttr = !ownsMesh && entity.getAttribute('geometry');
     if (geometryAttr && geometryAttr.primitive) {
       elemObj['primitive'] = geometryAttr.primitive;
     }
 
     elemObj['components'] = {};
     for (const componentName in entityComponents) {
+      if (skipComponents.includes(componentName)) continue;
       const modifiedProperty = getModifiedProperty(entity, componentName);
       if (modifiedProperty !== null) {
         if (isEmptyObject(modifiedProperty)) {
@@ -475,6 +491,7 @@ function createEntities(entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
   const removeEntities = ['environment', 'reference-layers'];
   migrateLegacyFlatteningShape(entitiesData);
+  migrateMeasureLinesToShapes(entitiesData);
   // Arm batching before any entity is minted below; batchModels runs on the "newScene"
   // event emitted after this createEntities pass. See beginBatching for the state model.
   if (BATCHING_ENABLED) {

@@ -25,12 +25,27 @@ export function createProxyChat({ tools } = {}) {
   const generateEditorChat = httpsCallable(functions, 'generateEditorChat');
 
   return {
-    async sendMessage(message, { history = [], systemPrompt = '' } = {}) {
+    async sendMessage(
+      message,
+      {
+        history = [],
+        systemPrompt = '',
+        screenshot = null,
+        includeTools = true
+      } = {}
+    ) {
+      // screenshot: optional { mimeType, data } (bare base64) of the current
+      // viewport, attached to this turn only — history stays text-only.
+      // includeTools: false omits the tool declarations entirely, so the model
+      // structurally cannot return function calls (used by the verification
+      // step to make an agentic loop impossible rather than merely prompted
+      // against).
       const { data } = await generateEditorChat({
         message,
         history,
         systemInstruction: systemPrompt,
-        tools
+        ...(includeTools ? { tools } : {}),
+        ...(screenshot ? { screenshot } : {})
       });
 
       const text = data?.text || '';

@@ -93,7 +93,11 @@ describe('rotation — sky grab pivots on the ground centre, not the cursor-ray 
     // viewport looks ABOVE the horizon (sky) while the screen centre still
     // meets the ground — so worldPointAt's centre pivot is a real ground point
     // and the top-of-screen cursor grab misses everything → Step-3 fallback.
-    const cam = H.makePerspectiveCam({ pos: [0, 40, 51], lookAt: [0, 0, 0], fov: 90 });
+    const cam = H.makePerspectiveCam({
+      pos: [0, 40, 51],
+      lookAt: [0, 0, 0],
+      fov: 90
+    });
     const dom = H.makeDomElement(); // 1280x720 at (37,19) → centre client (677,379)
     const c = H.makeControls({ camera: cam, dom, scene, streetLevel: true });
     expect(H.tilt(cam)).toBeGreaterThan(25); // Map regime → orbit

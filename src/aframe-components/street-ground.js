@@ -1,4 +1,5 @@
 import { getTravelledWaySegments } from './street-layout-utils';
+import { getRibbonGeometryAttr } from './street-path.js';
 
 AFRAME.registerComponent('street-ground', {
   dependencies: ['managed-street', 'street-align'],
@@ -11,6 +12,12 @@ AFRAME.registerComponent('street-ground', {
 
     // Listen for alignment changes
     this.el.addEventListener('alignment-changed', this.createOrUpdateDirtbox);
+
+    // Re-shape the slab when the street's path curve is (re)built or cleared
+    this.el.addEventListener(
+      'street-curve-changed',
+      this.createOrUpdateDirtbox
+    );
 
     // Create initial dirtbox
     setTimeout(() => {
@@ -52,11 +59,6 @@ AFRAME.registerComponent('street-ground', {
     }, 0);
     const streetLength = this.el.getAttribute('managed-street')?.length || 0;
 
-    // Update dirtbox dimensions
-    this.dirtbox.setAttribute('height', 2);
-    this.dirtbox.setAttribute('width', totalWidth);
-    this.dirtbox.setAttribute('depth', streetLength - 0.2);
-
     // Get alignment from street-align component
     const streetAlign = this.el.components['street-align'];
     const alignWidth = streetAlign?.data.width || 'center';
@@ -79,7 +81,38 @@ AFRAME.registerComponent('street-ground', {
       zPosition = streetLength / 2;
     }
 
-    this.dirtbox.setAttribute('position', `${xPosition} -1 ${zPosition}`);
+    // Curved street: the slab is a full-width ribbon along the path (top at
+    // y=0, 2m deep, same end inset as the straight box; a closed loop runs
+    // the full circumference with no caps). Straight: the classic box.
+    const curve = this.el.components['managed-street']?.streetCurve;
+    const ribbonAttr =
+      curve &&
+      getRibbonGeometryAttr(this.el, {
+        origin: { x: 0, z: 0 },
+        lateralOffset: xPosition,
+        width: totalWidth,
+        height: 2,
+        sStart: curve.closed ? 0 : 0.1,
+        sEnd: curve.closed ? streetLength : streetLength - 0.1
+      });
+    // setAttribute merges into existing geometry data, so clear the attribute
+    // when the primitive flips (box ↔ street-ribbon) to avoid stale keys
+    const targetPrimitive = ribbonAttr ? 'street-ribbon' : 'box';
+    if (this.dirtbox.getAttribute('geometry')?.primitive !== targetPrimitive) {
+      this.dirtbox.removeAttribute('geometry');
+    }
+    if (ribbonAttr) {
+      this.dirtbox.setAttribute('geometry', ribbonAttr);
+      this.dirtbox.setAttribute('position', '0 0 0');
+    } else {
+      this.dirtbox.setAttribute('geometry', {
+        primitive: 'box',
+        width: totalWidth,
+        height: 2,
+        depth: streetLength - 0.2
+      });
+      this.dirtbox.setAttribute('position', `${xPosition} -1 ${zPosition}`);
+    }
 
     // honor the managed-street showGround toggle (managed-street emits
     // segments-changed when it flips, which re-runs this method)
@@ -97,6 +130,10 @@ AFRAME.registerComponent('street-ground', {
     this.el.removeEventListener('segments-changed', this.createOrUpdateDirtbox);
     this.el.removeEventListener(
       'alignment-changed',
+      this.createOrUpdateDirtbox
+    );
+    this.el.removeEventListener(
+      'street-curve-changed',
       this.createOrUpdateDirtbox
     );
   }

@@ -15,6 +15,11 @@ import { Viewport } from './lib/viewport';
 import './style/index.scss';
 import { initPostHog } from '@shared/analytics/posthog';
 import { commandsByType } from './lib/commands/index.js';
+import {
+  TRANSFORM_REFUSED,
+  notifyRefusal,
+  refuseGuardedTransform
+} from './lib/transformGuard.js';
 import { LocaleProvider } from './i18n/LocaleProvider';
 import useStore from '@/store';
 import { initializeLocationSync } from './lib/location-sync';
@@ -242,6 +247,15 @@ Inspector.prototype = {
     if (!Cmd) {
       console.error(`Command ${cmdName} not found`);
       return;
+    }
+    // Transform-capability markers are enforced here rather than inside a
+    // command, because History pushes a command onto the undo stack BEFORE
+    // running it — a command that no-oped itself would leave a dead entry that
+    // undo walks through silently.
+    const refusal = refuseGuardedTransform(cmdName, payload);
+    if (refusal) {
+      notifyRefusal(payload?.entity, refusal);
+      return TRANSFORM_REFUSED;
     }
     return this.history.execute(new Cmd(this, payload, callback), optionalName);
   },
