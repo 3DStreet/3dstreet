@@ -34,11 +34,6 @@ import Events from '../../lib/Events';
 import { useMCPClient } from '../../lib/mcp/useMCPClient.js';
 
 const AI_MODEL_ID = 'gemini-3.7-flash';
-// After executing tool calls, post back once so the model can check its own
-// work against the updated scene + a fresh screenshot. 1 = a single
-// evaluation round trip (no tools offered on that turn, so it cannot chain);
-// raising this someday is the path to agentic iterate-until-success.
-const AI_VERIFICATION_STEPS = 1;
 let AI_CONVERSATION_ID = uuidv4();
 
 // Cap pill list growth so a multi-hour session doesn't accumulate thousands
@@ -1037,7 +1032,7 @@ function AIChatPanel() {
 
       const prompt = `
       The current scene has the following state:
-      ${JSON.stringify(sceneJSON, null, 2)}
+      ${JSON.stringify(sceneJSON)}
 
       Scene Title: ${sceneTitle || 'Untitled'}
 
@@ -1249,17 +1244,18 @@ function AIChatPanel() {
           }
         };
 
-        // One evaluation round trip after tool execution: the model checks its
-        // own work against the updated scene + a fresh screenshot. Sent with
-        // includeTools: false so it cannot return function calls — the loop is
-        // structurally impossible, not just prompted against. Non-fatal: a
-        // successful command never surfaces an error because verification
-        // hiccuped (it just costs one extra rate-limit slot).
+        // ONE evaluation round trip after tool execution, by design: the model
+        // checks its own work against the updated scene + a fresh screenshot.
+        // Sent with includeTools: false so it cannot return function calls —
+        // the loop is structurally impossible, not just prompted against. If
+        // we ever want agentic iterate-until-success, this is where the loop,
+        // its cap, and its stop conditions get built (likely behind a user
+        // preference — watch ai_verification_verdict in PostHog first).
+        // Non-fatal: a successful command never surfaces an error because
+        // verification hiccuped (it just costs one extra rate-limit slot).
         const runVerification = async () => {
-          const mutatingCalls = executedCalls.filter(
-            (c) => c.name !== 'takeSnapshot'
-          );
-          if (AI_VERIFICATION_STEPS < 1 || mutatingCalls.length === 0) return;
+          // Skipped when only read-only takeSnapshot calls ran.
+          if (executedCalls.every((c) => c.name === 'takeSnapshot')) return;
 
           try {
             const entity = document.getElementById('street-container');
@@ -1271,10 +1267,10 @@ function AIChatPanel() {
 
             const verificationPrompt = `
       The tool calls for the user's request have now been executed. Results:
-      ${JSON.stringify(executedCalls, null, 2)}
+      ${JSON.stringify(executedCalls)}
 
       Updated scene state:
-      ${JSON.stringify(updatedScene, null, 2)}
+      ${JSON.stringify(updatedScene)}
 
       Original user request: ${messageText}
 
