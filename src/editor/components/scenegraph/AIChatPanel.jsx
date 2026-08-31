@@ -968,23 +968,37 @@ function AIChatPanel() {
   }, []);
 
   // A blank console is a dead end for discovery — seed the /help card whenever
-  // the chat is empty (first open, and again after a reset or new scene).
+  // the chat holds no conversation (first open, and again after a reset or new
+  // scene). Command pills survive resetConversation by design, so "empty"
+  // means no non-pill messages, and the functional update re-checks so a
+  // concurrent append is never clobbered.
   useEffect(() => {
-    if (messages.length === 0) {
-      setMessages([
-        {
-          type: 'help',
-          id: `help_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-          timestamp: new Date(),
-          examples: HELP_EXAMPLES,
-          commands: HELP_COMMANDS
-        }
-      ]);
-    }
-  }, [messages.length]);
+    if (messages.some((m) => m.type !== 'commandPill')) return;
+    setMessages((prev) =>
+      prev.some((m) => m.type !== 'commandPill')
+        ? prev
+        : [
+            ...prev,
+            {
+              type: 'help',
+              id: `help_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+              timestamp: new Date(),
+              examples: HELP_EXAMPLES,
+              commands: HELP_COMMANDS
+            }
+          ]
+    );
+  }, [messages]);
 
   const processMessage = async (messageText) => {
     if (!messageText.trim() || !modelRef.current) return;
+    // One turn at a time: tool execution + verification are awaited below, so
+    // a second send mid-turn would interleave transcripts and histories.
+    if (isLoading) return;
+
+    // Staleness token: a reset/new-scene mid-turn rotates AI_CONVERSATION_ID;
+    // late verification/rating appends must not land in the fresh console.
+    const conversationId = AI_CONVERSATION_ID;
 
     setIsLoading(true);
     const userMessage = {
@@ -1282,13 +1296,20 @@ function AIChatPanel() {
                 includeTools: false
               }
             );
+            // The conversation was reset while the call was in flight — drop
+            // the result entirely rather than appending into a fresh console.
+            if (conversationId !== AI_CONVERSATION_ID) return;
+
             const verifyText = verifyResult.response.text();
             // Leading emoji is the model's own pass/fail judgment — captured
-            // as a continuous quality metric for the assistant.
-            const trimmedVerdict = (verifyText || '').trim();
-            const verdict = trimmedVerdict.startsWith('✅')
+            // as a continuous quality metric for the assistant. Search the
+            // first few chars rather than strict startsWith: models emit the
+            // warning sign with or without U+FE0F and sometimes wrap it in
+            // markdown ('⚠' is a prefix of '⚠️', so includes matches both).
+            const head = (verifyText || '').trim().slice(0, 8);
+            const verdict = head.includes('✅')
               ? 'success'
-              : trimmedVerdict.startsWith('⚠️')
+              : head.includes('⚠')
                 ? 'incomplete'
                 : 'unknown';
 
@@ -1324,19 +1345,22 @@ function AIChatPanel() {
           }
         };
 
-        // Start processing function calls, verify, then add the rating message
-        processFunctionCalls()
-          .then(runVerification)
-          .then(() => {
-            const ratingMessage = {
-              type: 'rating',
-              id: Date.now() + Math.random().toString(16).slice(2),
-              responseId: responseId,
-              isRated: false,
-              timestamp: new Date()
-            };
-            setMessages((prev) => [...prev, ratingMessage]);
-          });
+        // Awaited (not fire-and-forget): keeps isLoading true through
+        // verification so the transcript can't interleave with a next send,
+        // and a throw lands in processMessage's catch instead of an
+        // unhandled rejection. runVerification catches its own errors.
+        await processFunctionCalls();
+        await runVerification();
+        if (conversationId === AI_CONVERSATION_ID) {
+          const ratingMessage = {
+            type: 'rating',
+            id: Date.now() + Math.random().toString(16).slice(2),
+            responseId: responseId,
+            isRated: false,
+            timestamp: new Date()
+          };
+          setMessages((prev) => [...prev, ratingMessage]);
+        }
       }
 
       // For text-only responses (no function calls), add the rating immediately
@@ -1376,9 +1400,6 @@ function AIChatPanel() {
         };
         setMessages((prev) => [...prev, ratingMessage]);
       }
-
-      // We'll add the rating message after all function calls are processed
-      // This will happen in the processFunctionCalls().then() callback
     } catch (error) {
       console.error('Error generating response:', error);
       // Errors now come from our own generateEditorChat callable, which only

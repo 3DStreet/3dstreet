@@ -45,14 +45,17 @@ const MAX_OUTPUT_TOKENS = 4096;
 // (scene JSON + mixin catalog + history) is well under this; it only bounds abuse.
 const MAX_INPUT_CHARS = 300000;
 
-// Optional viewport screenshot attached to the current turn. The client sends a
-// downscaled JPEG (~50–150KB base64); this cap only bounds abuse (~1MB decoded).
+// Optional viewport screenshot attached to the current turn. The client sends
+// a downscaled JPEG (~50–150KB base64), so 400k chars (~300KB decoded) leaves
+// headroom while keeping the image a bounded budget alongside MAX_INPUT_CHARS
+// (an oversized image is dropped, not fatal — the request degrades to
+// text-only, so this can't reject a legitimate message).
 const ALLOWED_IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
   'image/png',
   'image/webp'
 ]);
-const MAX_IMAGE_CHARS = 1500000;
+const MAX_IMAGE_CHARS = 400000;
 
 // Per-uid sliding-window caps. The Editor chat is interactive — a human sends a
 // handful of messages a minute — so these are generous for real use while

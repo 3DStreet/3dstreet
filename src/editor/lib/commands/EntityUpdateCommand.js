@@ -67,10 +67,13 @@ export class EntityUpdateCommand extends Command {
   // (and the verification step rubber-stamps it, having no error to see).
   // Editor UI callers construct the command directly and skip this.
   static validateLLMTarget(args) {
+    const componentName = args.component;
+    if (typeof componentName !== 'string' || !componentName) {
+      throw new Error("'component' is required and must be a string");
+    }
     const entity = args.entityId && document.getElementById(args.entityId);
     if (!entity) return; // missing entity throws later in the registry
 
-    const componentName = args.component;
     if (['position', 'rotation', 'scale'].includes(componentName)) {
       if (args.property && !['x', 'y', 'z'].includes(args.property)) {
         throw new Error(
@@ -79,27 +82,31 @@ export class EntityUpdateCommand extends Command {
       }
       return;
     }
-    // Plain attributes, and attributes the entity already carries (covers
-    // primitive mappings like src on <a-image>).
-    if (
-      ['id', 'class', 'mixin'].includes(componentName) ||
-      componentName.startsWith('data-') ||
-      entity.hasAttribute(componentName)
-    ) {
-      const component =
-        entity.components?.[componentName] ?? AFRAME.components[componentName];
-      if (!component) return;
-      EntityUpdateCommand.validateProperty(componentName, component, args);
-      return;
-    }
+
+    // Multi-instance names (animation__spin, sound__horn) validate against
+    // the base component's definition — the instance need not exist yet.
+    const baseName = componentName.split('__')[0];
     const component =
-      entity.components?.[componentName] ?? AFRAME.components[componentName];
-    if (!component) {
+      entity.components?.[componentName] ??
+      AFRAME.components[componentName] ??
+      AFRAME.components[baseName];
+
+    // Plain attributes, attributes the entity already carries, and primitive
+    // attribute mappings (color on <a-box>, src on <a-image>) pass through.
+    if (
+      !component &&
+      !['id', 'class', 'mixin'].includes(componentName) &&
+      !componentName.startsWith('data-') &&
+      !entity.hasAttribute(componentName) &&
+      !(entity.mappings && componentName in entity.mappings)
+    ) {
       throw new Error(
         `Unknown component '${componentName}' — A-Frame would silently ignore this write. Check the entity's actual components in the scene state and use one of those (or the correct tool) instead.`
       );
     }
-    EntityUpdateCommand.validateProperty(componentName, component, args);
+    if (component) {
+      EntityUpdateCommand.validateProperty(componentName, component, args);
+    }
   }
 
   static validateProperty(componentName, component, args) {

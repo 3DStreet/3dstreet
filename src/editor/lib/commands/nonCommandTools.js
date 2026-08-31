@@ -362,8 +362,16 @@ async function setLatLonHandler(args, currentUser) {
     // with an error string as its result.
     throw new Error(result.message || 'Failed to set location');
   }
+  // The success payload is the getGeoidHeight response: coordinates are
+  // lat/lon (not latitude/longitude) and the heights are null when the
+  // elevation lookup times out — word it so the verification model doesn't
+  // read a partial answer as a failed one.
   const data = result.data;
-  return `Successfully set location to latitude: ${data.latitude}, longitude: ${data.longitude} with elevation data: ellipsoidal height ${data.ellipsoidalHeight}m, orthometric height ${data.orthometricHeight}m`;
+  const elevation =
+    data.ellipsoidalHeight != null
+      ? `ellipsoidal height ${data.ellipsoidalHeight}m, orthometric height ${data.orthometricHeight}m`
+      : 'elevation lookup unavailable (location still set)';
+  return `Successfully set location to latitude: ${data.lat}, longitude: ${data.lon} — ${elevation}`;
 }
 
 const segmentSchema = {

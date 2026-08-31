@@ -108,6 +108,40 @@ describe('EntityUpdateCommand.transformLLMArgs schema validation', () => {
     ).not.toThrow();
   });
 
+  it('allows multi-instance component names via the base definition', () => {
+    globalThis.AFRAME.components.animation = {
+      schema: { property: {}, to: {}, loop: {} }
+    };
+    expect(() =>
+      EntityUpdateCommand.transformLLMArgs(
+        args({ component: 'animation__spin' })
+      )
+    ).not.toThrow();
+    expect(() =>
+      EntityUpdateCommand.transformLLMArgs(
+        args({ component: 'animation__spin', property: 'to' })
+      )
+    ).not.toThrow();
+    expect(() =>
+      EntityUpdateCommand.transformLLMArgs(
+        args({ component: 'animation__spin', property: 'nope' })
+      )
+    ).toThrow(/no property 'nope'/);
+  });
+
+  it('allows primitive attribute mappings not yet set on the entity', () => {
+    el.mappings = { color: 'material.color' };
+    expect(() =>
+      EntityUpdateCommand.transformLLMArgs(args({ component: 'color' }))
+    ).not.toThrow();
+  });
+
+  it('rejects a missing component arg with a readable error', () => {
+    expect(() => EntityUpdateCommand.transformLLMArgs(args({}))).toThrow(
+      /'component' is required/
+    );
+  });
+
   it('skips validation when the entity does not exist (registry throws later)', () => {
     expect(() =>
       EntityUpdateCommand.transformLLMArgs(
