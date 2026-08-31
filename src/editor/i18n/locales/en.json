@@ -5,8 +5,8 @@
   "actionBar.rotateTool": {
     "defaultMessage": "Rotate Tool (e) - Select and rotate objects"
   },
-  "actionBar.rulerTool": {
-    "defaultMessage": "Ruler Tool (r) - Measure distances between points"
+  "actionBar.shapeTool": {
+    "defaultMessage": "Shape Tool (r) - Measure and draw; click to place points, Enter or double-click to finish, Backspace to remove the last point"
   },
   "actionBar.translateTool": {
     "defaultMessage": "Translate Tool (w) - Select and move objects"
@@ -130,6 +130,12 @@
   },
   "addLayer.card.raceTarget.name": {
     "defaultMessage": "Race Target"
+  },
+  "addLayer.card.shapePolyline.desc": {
+    "defaultMessage": "Add an editable polyline shape. Its points are child entities you can reposition; the line follows them. A starting point for measuring, outlining, and (later) filled and extruded shapes."
+  },
+  "addLayer.card.shapePolyline.name": {
+    "defaultMessage": "Shape"
   },
   "addLayer.card.streetmixStreet.desc": {
     "defaultMessage": "Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets."
@@ -1484,11 +1490,20 @@
   "managedStreetSidebar.convertToShapesConfirm": {
     "defaultMessage": "This turns the street into plain 3D shapes you can move, duplicate, and delete individually. After you save and reload this scene you cannot undo this action. Tip: duplicate the street first if you want to keep a copy of this managed street."
   },
+  "managedStreetSidebar.convertToShapesCurvedUnsupported": {
+    "defaultMessage": "Convert to Shapes is not available for a street that follows a path yet. Clear the street’s path first, or keep it as a managed street."
+  },
   "managedStreetSidebar.convertToShapesTitle": {
     "defaultMessage": "Convert Street to Shapes?"
   },
   "managedStreetSidebar.downloadJSON": {
     "defaultMessage": "Download Street JSON"
+  },
+  "managedStreetSidebar.followPathHint": {
+    "defaultMessage": "This street follows a path — length tracks the path, and curve style (smooth / arc / linear) is set on the path shape."
+  },
+  "managedStreetSidebar.followPathNone": {
+    "defaultMessage": "None (straight)"
   },
   "managedStreetSidebar.reloadConfirm": {
     "defaultMessage": "Reload this street from {source}? Local segment edits will be lost."
@@ -2002,6 +2017,84 @@
   },
   "segmentSidebar.width": {
     "defaultMessage": "Width"
+  },
+  "shapeDraw.addPoints": {
+    "defaultMessage": "Click to add points"
+  },
+  "shapeDraw.backspacePoint": {
+    "defaultMessage": "Backspace removes the last point"
+  },
+  "shapeDraw.closeFirstPoint": {
+    "defaultMessage": "Click the first point to close the shape"
+  },
+  "shapeDraw.finishDoubleClick": {
+    "defaultMessage": "Double-click places a last point and finishes"
+  },
+  "shapeDraw.finishEnterEsc": {
+    "defaultMessage": "Enter or Esc finishes the shape"
+  },
+  "shapeDraw.title": {
+    "defaultMessage": "Draw a shape"
+  },
+  "shapeDraw.undo": {
+    "defaultMessage": "Ctrl+Z undoes the finished shape"
+  },
+  "shapeReadouts.insertHint": {
+    "defaultMessage": "Add a vertex to this side"
+  },
+  "shapeSidebar.area": {
+    "defaultMessage": "Area"
+  },
+  "shapeSidebar.cornerAngle": {
+    "defaultMessage": "∠ {value}"
+  },
+  "shapeSidebar.cornerRadius": {
+    "defaultMessage": "Corner Radius"
+  },
+  "shapeSidebar.curveArc": {
+    "defaultMessage": "Arcs (corner radius)"
+  },
+  "shapeSidebar.curveLinear": {
+    "defaultMessage": "Straight / hard corners"
+  },
+  "shapeSidebar.curveSmooth": {
+    "defaultMessage": "Smooth (spline)"
+  },
+  "shapeSidebar.curveStyle": {
+    "defaultMessage": "Curve Style"
+  },
+  "shapeSidebar.direction": {
+    "defaultMessage": "Direction"
+  },
+  "shapeSidebar.length": {
+    "defaultMessage": "Length {label}"
+  },
+  "shapeSidebar.reverse": {
+    "defaultMessage": "Reverse"
+  },
+  "shapeSidebar.segments": {
+    "defaultMessage": "Segments"
+  },
+  "shapeSidebar.showAllSegments": {
+    "defaultMessage": "Show all {count} segments"
+  },
+  "shapeSidebar.showFewerSegments": {
+    "defaultMessage": "Show fewer segments"
+  },
+  "shapeSidebar.tipInsert": {
+    "defaultMessage": "Click a side's length to add a vertex to that side"
+  },
+  "shapeSidebar.tipShift": {
+    "defaultMessage": "Hold Shift while dragging a vertex to raise or lower it"
+  },
+  "shapeSidebar.tipStyle": {
+    "defaultMessage": "Edit line color, width and fill below"
+  },
+  "shapeSidebar.tipVertex": {
+    "defaultMessage": "Click a blue vertex dot to move it or delete it"
+  },
+  "shapeSidebar.tipsTitle": {
+    "defaultMessage": "Shape Drawing Tips"
   },
   "shareModal.anonymous": {
     "defaultMessage": "anonymous"

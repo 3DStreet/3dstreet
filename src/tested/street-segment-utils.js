@@ -4,6 +4,17 @@
 const CURB_HEIGHT = 0.15;
 const BASE_SURFACE_DEPTH = 0.15; // Minimum material depth above dirt layer
 
+// How far above a segment's top surface the generated lane markings and
+// stencils sit. Their clones are children of the segment entity, whose origin
+// IS the top surface, so this is a surface-relative offset at any elevation.
+//
+// Known to be too high: it should follow the segment surface rather than float
+// a fixed distance above it, and what it was originally working around is no
+// longer recorded. It lives here as one value because anything that has to sit
+// clear of the markings must move with it rather than be pinned to a number
+// nobody can justify.
+const MARKING_SURFACE_OFFSET = 0.05;
+
 // Calculate the Y position and below-box geometry height for a given elevation
 // in meters. The below-box primitive places its top face at the entity's local
 // origin, so using the same value for both entity Y and box height means the
@@ -130,5 +141,6 @@ export {
   migrateSegmentBuildingType,
   migrateShowBuildingsFlag,
   CURB_HEIGHT,
-  BASE_SURFACE_DEPTH
+  BASE_SURFACE_DEPTH,
+  MARKING_SURFACE_OFFSET
 };

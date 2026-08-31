@@ -1,6 +1,8 @@
 /* global AFRAME */
 
 import { BATCHING_ENABLED } from '../batch-models';
+import { MARKING_SURFACE_OFFSET } from '../tested/street-segment-utils';
+import { getCurvedPlacement } from './street-path.js';
 
 // generate cloned stencils on a street surface
 AFRAME.registerComponent('street-generated-stencil', {
@@ -53,7 +55,7 @@ AFRAME.registerComponent('street-generated-stencil', {
     },
     positionY: {
       // y position of clones along the length
-      default: 0.05,
+      default: MARKING_SURFACE_OFFSET,
       type: 'number'
     },
     cycleOffset: {
@@ -142,12 +144,21 @@ AFRAME.registerComponent('street-generated-stencil', {
         const stencilOffset =
           (stencilIndex - (stencilsToUse.length - 1) / 2) * data.padding;
 
-        // Set position with group position and stencil offset
-        clone.setAttribute('position', {
-          x: data.positionX,
-          y: data.positionY,
-          z: groupPosition + stencilOffset
-        });
+        // straight segment-local placement, bent onto the street's path
+        // curve when one is active (yaw applies first in A-Frame's YXZ
+        // order, so adding it to the y rotation turns the flat stencil)
+        let x = data.positionX;
+        let y = data.positionY;
+        let z = groupPosition + stencilOffset;
+        let curveYaw = 0;
+        const bent = getCurvedPlacement(this.el, x, z);
+        if (bent) {
+          x = bent.x;
+          y += bent.y;
+          z = bent.z;
+          curveYaw = bent.yawDeg;
+        }
+        clone.setAttribute('position', { x, y, z });
 
         // Handle stencil height if specified
         if (data.stencilHeight > 0) {
@@ -163,7 +174,7 @@ AFRAME.registerComponent('street-generated-stencil', {
         if (data.direction === 'outbound') {
           rotationY = 0 - data.facing;
         }
-        clone.setAttribute('rotation', `-90 ${rotationY} 0`);
+        clone.setAttribute('rotation', `-90 ${rotationY + curveYaw} 0`);
 
         // Add metadata
         clone.classList.add('autocreated');

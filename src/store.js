@@ -133,6 +133,22 @@ const useStore = create(
           localStorage.setItem('unitsPreference', newUnitsPreference);
           set({ unitsPreference: newUnitsPreference });
         },
+        // Whether the shape draw tool is currently active — drives the
+        // right-panel instructions block.
+        shapeDrawActive: false,
+        setShapeDrawActive: (active) => set({ shapeDrawActive: active }),
+        // Whether a single vertex of the selected shape is currently
+        // sub-selected. Read by the global Delete/Backspace shortcut, which
+        // must be a no-op while one is: Delete there means "remove the active
+        // vertex", and the vertex tool intercepts the key itself. This flag is
+        // the fail-safe for that interception missing.
+        //
+        // It tracks the ACTIVE VERTEX, not the handles being up, and that is
+        // load-bearing: with no vertex sub-selected the shortcut is live, which
+        // is what keeps a selected shape deletable from the keyboard.
+        shapeVertexSelected: false,
+        setShapeVertexSelected: (selected) =>
+          set({ shapeVertexSelected: selected }),
         // UI language for the localization experiment (#656). Auto-detected
         // from the browser on first load, then overridden by the user's stored
         // choice (persisted to localStorage via the View > Language menu).

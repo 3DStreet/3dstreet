@@ -678,3 +678,79 @@ a.help-linkhover {
     }
   }
 }
+
+.shape-sidebar {
+  // Tighter than the default propertyRow rhythm: these are read-only readouts,
+  // and a long shape produces a lot of them. Top-aligned rather than centered
+  // so the label lines up with the length value; the corner-angle subscript
+  // then hangs below the length, visually between the rows.
+  .segmentRow {
+    margin-top: 2px;
+    margin-bottom: 2px;
+    min-height: 24px;
+    align-items: flex-start;
+  }
+
+  .segmentAngle {
+    font-size: 12px;
+    line-height: 1.3;
+    color: variables.$lightgray-700;
+  }
+
+  .segmentRows {
+    position: relative;
+
+    &.collapsed {
+      // Room for the overlaid toggle button below the last visible row.
+      padding-bottom: 34px;
+
+      // Fade the last visible rows into the panel background ($darkgray-200,
+      // the RightPanel content color) so it reads as "there is more here"
+      // rather than as the end of the list.
+      &::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 72px;
+        pointer-events: none;
+        background: linear-gradient(
+          to bottom,
+          rgba(29, 29, 29, 0),
+          variables.$darkgray-200
+        );
+      }
+    }
+  }
+
+  .segmentRowsToggle {
+    display: flex;
+    justify-content: center;
+    margin: 4px 0 8px;
+
+    button {
+      display: inline-flex;
+      align-items: center;
+
+      svg {
+        margin-left: 2px;
+      }
+    }
+
+    // Expanded state's "Show fewer": chevron points back up.
+    &.expanded button svg {
+      transform: rotate(180deg);
+    }
+  }
+
+  // Collapsed: the toggle overlays the fade rather than pushing content down.
+  .segmentRows.collapsed .segmentRowsToggle {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    z-index: 1;
+  }
+}
