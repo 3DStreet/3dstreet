@@ -355,11 +355,15 @@ async function setLatLonHandler(args, currentUser) {
     source: GEO_SOURCES.AI_ASSISTANT
   });
 
-  if (result.success) {
-    const data = result.data;
-    return `Successfully set location to latitude: ${data.latitude}, longitude: ${data.longitude} with elevation data: ellipsoidal height ${data.ellipsoidalHeight}m, orthometric height ${data.orthometricHeight}m`;
+  if (!result.success) {
+    // setSceneLocation reports failures as { success: false, message } for its
+    // modal callers; the tool layer must throw so the call is marked an error
+    // (UI status, executedCalls, verification verdict) instead of "Completed"
+    // with an error string as its result.
+    throw new Error(result.message || 'Failed to set location');
   }
-  return result.message;
+  const data = result.data;
+  return `Successfully set location to latitude: ${data.latitude}, longitude: ${data.longitude} with elevation data: ellipsoidal height ${data.ellipsoidalHeight}m, orthometric height ${data.orthometricHeight}m`;
 }
 
 const segmentSchema = {
