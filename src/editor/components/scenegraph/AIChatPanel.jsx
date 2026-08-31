@@ -967,6 +967,22 @@ function AIChatPanel() {
     };
   }, []);
 
+  // A blank console is a dead end for discovery — seed the /help card whenever
+  // the chat is empty (first open, and again after a reset or new scene).
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([
+        {
+          type: 'help',
+          id: `help_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+          timestamp: new Date(),
+          examples: HELP_EXAMPLES,
+          commands: HELP_COMMANDS
+        }
+      ]);
+    }
+  }, [messages.length]);
+
   const processMessage = async (messageText) => {
     if (!messageText.trim() || !modelRef.current) return;
 
@@ -1635,6 +1651,9 @@ function AIChatPanel() {
                       </div>
                     </>
                   )}
+                  <div className={styles.helpModelInfo}>
+                    Model: {AI_MODEL_ID}
+                  </div>
                 </div>
               );
             } else if (message.type === 'commandPill') {

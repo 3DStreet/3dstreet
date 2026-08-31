@@ -260,6 +260,11 @@
         border-color: rgba(119, 77, 238, 0.7);
       }
     }
+
+    .helpModelInfo {
+      font-size: 11px;
+      color: variables.$gray-400;
+    }
   }
 
   .chatMessage {
