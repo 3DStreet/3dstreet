@@ -96,8 +96,13 @@ stays tied to the old component).
   clean seam.
 - Treatments are global (one crosswalk/traffic-control choice for all arms);
   per-arm overrides need stable arm identity (street ids) plus UI.
-- Curved (path-following) streets are skipped — their ends aren't straight
-  nodes yet.
+- Curved (path-following) streets are skipped — their nodes live on the path
+  shape, not in the straight endpoint math. Their end frames are obtainable
+  today (`PathSampler.frameAtS` at 0 / totalLength), and the geometry core is
+  direction-agnostic, so wiring them in is a known increment — **deliberately
+  deferred** until the straight-node system has had more testing, so curved
+  connections can ride the same persistent-node-graph design instead of
+  becoming a second special case.
 - No traffic-circle interior ([#1322](https://github.com/3DStreet/3dstreet/issues/1322));
   the polygon walk could grow an island later.
 - Signal/stop-sign placement is right-hand-traffic and heuristic; the raised
