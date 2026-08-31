@@ -210,7 +210,7 @@ describe('heli-flight-model', () => {
       // input faded the leveling spring and the helicopter somersaulted.
       // Attitude command means: nose-down 80° with full forward stick
       // still produces a RESTORING (nose-up) torque back toward the
-      // ~31° commanded tilt.
+      // ~57° commanded pitch.
       const s = createHeliState();
       const body = levelBody({ rotation: quatX(-(80 * Math.PI) / 180) });
       const { torque } = computeHeliForces(

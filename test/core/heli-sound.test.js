@@ -64,7 +64,7 @@ describe('heliSoundParams', () => {
     const fast = heliSoundParams({ rotorSpeed: 20, speed: 25 });
     const insane = heliSoundParams({ rotorSpeed: 20, speed: 500 });
     assert.strictEqual(still.windGain, 0);
-    assert.ok(fast.windGain > 0.1);
-    assert.ok(insane.windGain <= 0.3);
+    assert.ok(fast.windGain > 0.04);
+    assert.ok(insane.windGain <= 0.1);
   });
 });

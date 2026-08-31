@@ -55,7 +55,7 @@ function heliSoundParams(s) {
     chopFilterHz: 240 + 260 * rotorAmount,
     turbineHz: 70 + 300 * rotorAmount + 120 * work,
     turbineGain: 0.05 + 0.07 * rotorAmount * (0.4 + 0.6 * work),
-    windGain: Math.min(0.3, (s.speed || 0) * 0.008),
+    windGain: Math.min(0.1, (s.speed || 0) * 0.0025),
     master: s.paused ? 0 : rotorAmount > 0.005 ? MASTER_VOLUME : 0
   };
 }

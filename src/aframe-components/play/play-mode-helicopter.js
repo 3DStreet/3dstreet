@@ -365,10 +365,6 @@ AFRAME.registerComponent('play-mode-helicopter', {
     this.system.onAfterStep(this._afterStep);
 
     this.cameraEl = document.querySelector(this.data.cameraSelector) || null;
-    // Remember the render camera's stock FOV so the speed kick can be
-    // fully undone on teardown.
-    const camObj3D = this.cameraEl && this.cameraEl.getObject3D('camera');
-    this._baseFov = camObj3D ? camObj3D.fov : null;
 
     // Procedural rotor audio (see heli-sound.js). Created here rather
     // than init so a Stop during the Rapier load never leaks a context.
@@ -634,7 +630,7 @@ AFRAME.registerComponent('play-mode-helicopter', {
       }
     }
 
-    // --- Game feel: camera shake + speed FOV kick -----------------
+    // --- Game feel: camera shake ----------------------------------
     // Ambient rumble scales with rotor work; impacts add a decaying
     // impulse (this._shake). Top-down stays steady — it reads as a
     // map, not a cockpit.
@@ -648,24 +644,6 @@ AFRAME.registerComponent('play-mode-helicopter', {
         camWorld.z += (Math.random() - 0.5) * 2 * mag;
       }
     }
-    const cam3D = this.cameraEl.getObject3D('camera');
-    if (cam3D && this._baseFov != null) {
-      const v = this.chassisBody.linvel();
-      const speed = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-      const kick =
-        mode === 'top-down'
-          ? 0
-          : Math.min(15, speed * (mode === 'fpv' ? 0.5 : 0.35));
-      const targetFov = this._baseFov + kick;
-      const dt = Math.min((this._lastDeltaMs || 16) / 1000, 0.1);
-      const next =
-        cam3D.fov + (targetFov - cam3D.fov) * (1 - Math.exp(-5 * dt));
-      if (Math.abs(next - cam3D.fov) > 0.01) {
-        cam3D.fov = next;
-        cam3D.updateProjectionMatrix();
-      }
-    }
-
     // World -> camera-parent-local conversion (rig may be moved) — see
     // play-mode-vehicle.updateCamera for the full rationale.
     if (camObj.parent) camObj.parent.updateMatrixWorld();
@@ -718,12 +696,6 @@ AFRAME.registerComponent('play-mode-helicopter', {
     if (this.sound) {
       this.sound.dispose();
       this.sound = null;
-    }
-    // Undo the speed FOV kick — the editor camera assumes stock FOV.
-    const cam3D = this.cameraEl && this.cameraEl.getObject3D('camera');
-    if (cam3D && this._baseFov != null && cam3D.fov !== this._baseFov) {
-      cam3D.fov = this._baseFov;
-      cam3D.updateProjectionMatrix();
     }
   }
 });

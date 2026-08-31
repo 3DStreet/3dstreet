@@ -28,7 +28,8 @@
  *   - Rotor spool: thrust fades in over `spoolTime` seconds after
  *     start so takeoff has a wind-up instead of an instant jump.
  *   - Cyclic (pitch/roll): ATTITUDE-COMMAND, the way the games do it —
- *     stick deflection commands a target tilt (up to MAX_TILT), and a
+ *     stick deflection commands a target tilt (up to MAX_PITCH_TILT /
+ *     MAX_ROLL_TILT), and a
  *     spring torque drives body-up toward that commanded attitude.
  *     Full deflection therefore settles at a bounded bank instead of
  *     tumbling end-over-end (which is what raw torque + faded leveling
@@ -60,7 +61,11 @@ const SPOOL_TIME = 1.6; // seconds from Play to full available thrust
 const ASSIST_COLLECTIVE_EASE = 4; // 1/s — how fast assist trims to hover
 const HORIZ_DRAG = 0.35; // 1/s — caps cruise speed
 const VERT_DRAG = 0.08; // 1/s — falls and climbs stay heavy
-const MAX_TILT = 0.55; // rad (~31°) — commanded tilt at full stick
+const MAX_ROLL_TILT = 0.55; // rad (~31°) — commanded roll at full stick
+// Pitch commands much deeper than roll: at ~57° nose-down the thrust
+// vector is mostly horizontal, so full forward stick trades the climb
+// for real forward speed instead of riding ever higher.
+const MAX_PITCH_TILT = 1.0; // rad (~57°) — commanded pitch at full stick
 const K_CMD = 14; // mass-scaled spring toward the commanded attitude
 const K_LEVEL = 12; // mass-scaled spring back to level (no input)
 const K_YAW = 5; // mass-scaled pedal yaw torque
@@ -162,11 +167,12 @@ function computeHeliForces(state, input, body, params) {
 
   // --- Attitude command: build the commanded up-vector by tilting
   //     world-up toward the horizontal heading (pitch) and toward the
-  //     right vector (roll), each capped at MAX_TILT; then spring
+  //     right vector (roll), capped at MAX_PITCH_TILT / MAX_ROLL_TILT;
+  //     then spring
   //     body-up toward it along (up x desiredUp). With zero input
   //     desiredUp == worldUp and this IS the auto-level. Because the
   //     command is a bounded attitude (not a raw torque), a held stick
-  //     settles at MAX_TILT bank instead of tumbling. ---
+  //     settles at the commanded max bank instead of tumbling. ---
   // Horizontal heading (nose = body -Z projected onto XZ).
   const fwd = applyQuat(q, { x: 0, y: 0, z: -1 });
   let hx = fwd.x;
@@ -190,8 +196,8 @@ function computeHeliForces(state, input, body, params) {
   // right = heading x worldUp (horizontal, unit).
   const rx = -hz;
   const rz = hx;
-  const pitchTilt = Math.tan(pitch * MAX_TILT);
-  const rollTilt = Math.tan(roll * MAX_TILT);
+  const pitchTilt = Math.tan(pitch * MAX_PITCH_TILT);
+  const rollTilt = Math.tan(roll * MAX_ROLL_TILT);
   let dux = hx * pitchTilt + rx * rollTilt;
   let duy = 1;
   let duz = hz * pitchTilt + rz * rollTilt;
