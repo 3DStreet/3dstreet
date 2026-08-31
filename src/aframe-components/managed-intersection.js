@@ -19,12 +19,12 @@
 // streets on every change: the THREE meshes hang off setObject3D (never
 // serialized) and the treatment entities carry the `autocreated` class (
 // skipped on save, same as the legacy component and street generators).
-// The ONE way streets are modified: with trimStreets on (default), an
-// overlapping street is shortened so its node sits at the mouth — otherwise
-// the street's sidewalks and everything cloned along them (trees, lamps,
-// pedestrians) run through the junction. Trim only, never extend, and the
-// mouth is a fixed point in space for a node sliding along its centerline,
-// so the pass converges instead of creeping (see
+// The ONE way streets are modified: with snapStreets on (default), every
+// connected street is snapped so its node sits exactly at the mouth after
+// each settle — trimming an overlap (whose sidewalks and cloned content
+// would otherwise run through the junction) or extending a gap. The mouth
+// is a fixed point in space for a node sliding along its centerline, so the
+// pass converges on every edit instead of ratcheting (see
 // docs/managed-intersection.md and managed-intersection-utils.js).
 //
 // Geometry math lives in src/tested/managed-intersection-utils.js
@@ -37,7 +37,7 @@ import {
   CURB_HEIGHT
 } from '../tested/street-segment-utils';
 
-// Roadway slab: 1cm above the street segments' top surface. With trimStreets
+// Roadway slab: 1cm above the street segments' top surface. With snapStreets
 // on (the default) connecting streets stop flush at the mouth, so this is a
 // near-invisible lip; with trimming off an overlapping street's surface stays
 // hidden but its lane markings (MARKING_SURFACE_OFFSET above the segment
@@ -48,11 +48,11 @@ const SURFACE_TOP = BASE_SURFACE_DEPTH + 0.01;
 // the corner.
 const WEDGE_TOP = BASE_SURFACE_DEPTH + CURB_HEIGHT;
 const SIGNATURE_PRECISION = 3;
-// Trim tolerance: node-to-mouth gaps smaller than this are left alone, which
-// is what stops the trim pass from chasing float noise across rebuilds.
-const TRIM_EPSILON = 0.05;
-const MIN_TRIMMED_STREET_LENGTH = 4;
-// Trims wait until the signature watch has seen this many quiet intervals,
+// Snap tolerance: node-to-mouth offsets smaller than this are left alone,
+// which is what stops the snap pass from chasing float noise across rebuilds.
+const SNAP_EPSILON = 0.05;
+const MIN_SNAPPED_STREET_LENGTH = 4;
+// Snaps wait until the signature watch has seen this many quiet intervals,
 // so they never chase transient mid-drag geometry (see init).
 const SETTLE_TICKS = 2;
 const UP_AXIS = new THREE.Vector3(0, 1, 0);
@@ -111,16 +111,16 @@ AFRAME.registerComponent('managed-intersection', {
       oneOf: ['none', 'stop', 'signal']
     },
     showSidewalkCorners: { type: 'boolean', default: true },
-    // Shorten connecting streets so their nodes sit exactly at the mouth:
-    // the street body (surface, sidewalks, AND everything generated along
-    // them — trees, lamps, pedestrians) stops at the intersection edge
-    // instead of running underneath it. Trim only — a street stopping short
-    // of the intersection is never extended. The mouth geometry is anchored
-    // in space (see managed-intersection-utils.js), so trimming converges
-    // instead of creeping. Note: trimming edits the street's
-    // position/length for real; deleting the intersection later does not
-    // grow the streets back (drag their endpoint nodes to reconnect).
-    trimStreets: { type: 'boolean', default: true },
+    // Keep connected streets snapped flush to the mouth: after every settle,
+    // a street whose node is within snapRadius gets its node placed exactly
+    // at the mouth — trimming an overlapping street or extending one that
+    // stops short — so the street body (surface, sidewalks, and everything
+    // generated along them) always meets the intersection edge. While
+    // connected, street length is owned by the intersection; to disconnect
+    // a street, drag its node past snapRadius. Note: snapping edits the
+    // street's position/length for real; deleting the intersection later
+    // leaves streets at their last snapped extent.
+    snapStreets: { type: 'boolean', default: true },
     // Radius of the placeholder pad shown while fewer than 2 streets connect.
     placeholderRadius: { type: 'number', default: 6 }
   },
@@ -148,14 +148,13 @@ AFRAME.registerComponent('managed-intersection', {
     // ticks paused while the inspector is open — exactly when streets are
     // being dragged around.
     //
-    // Visual rebuilds run on every change; street TRIMS only run after the
+    // Visual rebuilds run on every change; street SNAPS only run after the
     // scene has been quiet for SETTLE_TICKS. Mid-drag geometry is transient
     // — a street swept past a near-parallel angle produces momentary huge
-    // mouths, and since trims never extend, trimming against those would
-    // ratchet the other streets shorter and shorter (in the worst case out
-    // of snapRadius, disconnecting them). Settled geometry is the only
-    // geometry worth trimming to.
-    this.pendingTrim = false;
+    // mouths — so snapping waits for the user to let go. Snaps are
+    // bidirectional (trim or extend to the mouth), so even a snap taken
+    // against briefly-odd geometry self-corrects on the next settle.
+    this.pendingSnap = false;
     this.quietTicks = 0;
     this.watchInterval = setInterval(() => {
       if (!this.el.isConnected) return;
@@ -163,9 +162,9 @@ AFRAME.registerComponent('managed-intersection', {
       if (signature !== this.lastSignature) {
         this.quietTicks = 0;
         this.refresh();
-      } else if (this.pendingTrim && ++this.quietTicks >= SETTLE_TICKS) {
-        this.pendingTrim = false;
-        this.refresh({ trim: true });
+      } else if (this.pendingSnap && ++this.quietTicks >= SETTLE_TICKS) {
+        this.pendingSnap = false;
+        this.refresh({ snap: true });
       }
     }, 400);
 
@@ -339,8 +338,8 @@ AFRAME.registerComponent('managed-intersection', {
         dir,
         road,
         full,
-        // Trim-pass metadata: which endpoint this arm is, and the street's
-        // node math inputs (see applyStreetTrims).
+        // Snap-pass metadata: which endpoint this arm is, and the street's
+        // node math inputs (see applyStreetSnaps).
         endKey: best.key,
         length,
         lengthAlign,
@@ -363,8 +362,8 @@ AFRAME.registerComponent('managed-intersection', {
         // straight edge past the fillet tangents.
         minSetback: crosswalkOn ? 3.2 : 1,
         mouthMargin: crosswalkOn ? 3.0 : 0.3,
-        // Keep every mouth — and therefore every trim — safely inside the
-        // detection radius, so a trim can never disconnect its own street.
+        // Keep every mouth — and therefore every snap — safely inside the
+        // detection radius, so a snap can never disconnect its own street.
         maxSetback: Math.max(6, this.data.snapRadius - 2)
       });
     }
@@ -372,13 +371,13 @@ AFRAME.registerComponent('managed-intersection', {
     if (geometry) {
       this.buildSurfaces(geometry);
       this.buildTreatments(geometry, arms);
-      if (this.data.trimStreets) {
-        if (options?.trim) {
-          this.applyStreetTrims(geometry, arms);
+      if (this.data.snapStreets) {
+        if (options?.snap) {
+          this.applyStreetSnaps(geometry, arms);
         } else {
-          // Queue for the settle pass in the watch loop — never trim
+          // Queue for the settle pass in the watch loop — never snap
           // against possibly-transient geometry.
-          this.pendingTrim = true;
+          this.pendingSnap = true;
         }
       }
     } else {
@@ -394,30 +393,78 @@ AFRAME.registerComponent('managed-intersection', {
     this.el.emit('intersection-refreshed', { armCount: arms.length }, false);
   },
 
-  // --- street trimming ------------------------------------------------------
+  // --- street snapping ------------------------------------------------------
 
   /**
-   * Shorten every overlapping connected street so its node lands exactly on
-   * the mouth, keeping its FAR endpoint (and rotation) fixed — the same
-   * origin-rebuild math as the street endpoint gizmo, but sliding the node
-   * along the existing centerline. mouth.t is the node→mouth distance along
-   * the arm, so it is exactly the overlap depth; ≤ 0 means the street stops
-   * short (a gap), which is deliberately left alone — trim never extends,
-   * so dragging a street away from an intersection doesn't fight the watch.
+   * True when this intersection is the nearest one to the given node (in the
+   * shared world XZ plane). Ownership rule for streets parked between two
+   * intersections: only the nearest may snap (or claim) a node — otherwise
+   * both would pull the same node to their own mouth every settle and
+   * ping-pong forever. Ties break by document order.
+   */
+  ownsNode: function (nodeWorld) {
+    const myDist = this.distanceToNode(nodeWorld, this.el);
+    const others = this.el.sceneEl.querySelectorAll(
+      'a-entity[managed-intersection]'
+    );
+    for (const other of others) {
+      if (other === this.el || !other.components?.['managed-intersection']) {
+        continue;
+      }
+      const otherDist = this.distanceToNode(nodeWorld, other);
+      if (
+        otherDist < myDist - 1e-6 ||
+        (Math.abs(otherDist - myDist) <= 1e-6 &&
+          other.compareDocumentPosition(this.el) &
+            Node.DOCUMENT_POSITION_FOLLOWING)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  },
+
+  distanceToNode: function (nodeWorld, intersectionEl) {
+    intersectionEl.object3D.getWorldPosition(this._dir);
+    return Math.hypot(nodeWorld.x - this._dir.x, nodeWorld.z - this._dir.z);
+  },
+
+  /**
+   * Snap every connected street so its node lands exactly on the mouth —
+   * shortening an overlapping street OR growing one that stops short — with
+   * the FAR endpoint (and rotation) fixed: the same origin-rebuild math as
+   * the street endpoint gizmo, sliding the node along its own centerline.
+   * mouth.t is the signed node→mouth distance along the arm (positive =
+   * overlap, negative = gap).
+   *
+   * Bidirectional on purpose: this is what makes the intersection CONVERGE
+   * under ordinary back-and-forth editing instead of ratcheting streets
+   * shorter (trim-only) or leaving gaps. The editing contract is: a node
+   * within snapRadius belongs to the intersection and sits at the mouth
+   * after every settle; to disconnect a street, drag its node past
+   * snapRadius. While connected, street length is owned by the
+   * intersection.
    *
    * Stability: the mouth is a fixed point in space for a node sliding along
-   * its centerline (see managed-intersection-utils.js), so after one trim
-   * the next rebuild computes mouth.t ≈ 0 and the pass no-ops.
+   * its centerline (see managed-intersection-utils.js), so after one snap
+   * the next rebuild computes mouth.t ≈ 0 and the pass no-ops — and any
+   * transient over-trim self-heals by extending back on the next settle.
    */
-  applyStreetTrims: function (geometry, arms) {
-    if (!this.data.trimStreets) return;
+  applyStreetSnaps: function (geometry, arms) {
+    if (!this.data.snapStreets) return;
     geometry.mouths.forEach((mouth) => {
       const arm = arms[mouth.arm];
       const delta = mouth.t;
-      if (!(delta > TRIM_EPSILON)) return;
+      if (!(Math.abs(delta) > SNAP_EPSILON)) return;
       const street = arm.el;
       const newLength = Math.round((arm.length - delta) * 1000) / 1000;
-      if (newLength < MIN_TRIMMED_STREET_LENGTH) return;
+      if (newLength < MIN_SNAPPED_STREET_LENGTH) return;
+
+      // Node ownership: a street between two intersections gets each end
+      // snapped by its own nearest intersection only.
+      this._vec.set(arm.point.x, 0, arm.point.z);
+      this.el.object3D.localToWorld(this._vec);
+      if (!this.ownsNode({ x: this._vec.x, z: this._vec.z })) return;
 
       // New node point: slid `delta` along the arm, in street-parent space.
       this._vec.set(

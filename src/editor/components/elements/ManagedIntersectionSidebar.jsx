@@ -77,7 +77,7 @@ const ManagedIntersectionSidebar = ({ entity }) => {
         {row('trafficControl', 'Traffic Control')}
         {row('curbRadius', 'Curb Radius')}
         {row('showSidewalkCorners', 'Sidewalk Corners')}
-        {row('trimStreets', 'Trim Streets')}
+        {row('snapStreets', 'Snap Streets')}
         {row('snapRadius', 'Snap Radius')}
         {geoFlattenComponent ? (
           <PropertyRow

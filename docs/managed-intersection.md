@@ -57,7 +57,7 @@ and 5+ arm intersections all come out of the same edge-intersection walk.
 | `crosswalk`           | `crosswalk-zebra` | `none` or one of the flat crosswalk mixins                   |
 | `trafficControl`      | `none`            | `none` / `stop` / `signal`, applied per arm                  |
 | `showSidewalkCorners` | `true`            | corner wedge visibility                                      |
-| `trimStreets`         | `true`            | shorten overlapping streets so they stop at the mouth        |
+| `snapStreets`         | `true`            | keep connected streets snapped flush to the mouth            |
 | `placeholderRadius`   | `6`               | pad radius while <2 streets connect                          |
 
 ## Live updates & persistence
@@ -77,53 +77,55 @@ and 5+ arm intersections all come out of the same edge-intersection walk.
 - The entity carries `data-transform-no-scale` (its size IS the connected
   streets' geometry).
 
-## Street trimming (`trimStreets`, default on)
+## Street snapping (`snapStreets`, default on)
 
-An untrimmed street runs underneath the intersection — its sidewalks and
-everything cloned along them (trees, lamps, pedestrians) march straight
-through the junction. So by default the refresh pass **trims** every
-overlapping street: its node is slid along its own centerline out to the
-mouth (position + `managed-street.length` rewritten, far endpoint and
-rotation kept fixed — the endpoint-gizmo origin-rebuild math), and the whole
-re-layout cascade regenerates the clones to the new extent.
+The editing contract: **a street whose node is within `snapRadius` is
+connected, and after every settle its node sits exactly at the mouth.** The
+snap is bidirectional — an overlapping street is trimmed (otherwise its
+sidewalks and everything cloned along them march through the junction) and a
+street stopping short is extended to close the gap. The node is slid along
+its own centerline (position + `managed-street.length` rewritten, far
+endpoint and rotation kept fixed — the endpoint-gizmo origin-rebuild math),
+and the re-layout cascade regenerates clones to the new extent.
 
-Why this doesn't feed back on itself: the mouth is anchored in **space**, not
-to the node — corner clearances are projections of fixed edge-line
+Bidirectionality is what makes the intersection **converge** under ordinary
+back-and-forth editing instead of ratcheting: nudge the intersection, rotate
+a street, widen then narrow a cross street — every settle re-lands all nodes
+on the fresh mouths. Even a snap taken against briefly-odd geometry
+self-corrects on the next settle. To disconnect a street, drag its node past
+`snapRadius`; while connected, street length is owned by the intersection.
+
+Why the pass doesn't feed back on itself: the mouth is anchored in **space**,
+not to the node — corner clearances are projections of fixed edge-line
 intersections, the `minSetback` floor is measured from the intersection
 origin's projection, and node-baseline fallback corners are excluded — so a
 node sitting on the mouth recomputes `mouth.t ≈ 0` and the pass no-ops
-(regression-tested in `managedIntersectionUtils.test.js`). Trims are also
+(regression-tested in `managedIntersectionUtils.test.js`). Snaps are
 epsilon-guarded (5cm) and never shorten a street below 4m.
 
-Two more guards keep trims from acting on garbage:
+Additional guards:
 
-- **Trims wait for the scene to settle.** Visual rebuilds run on every watch
-  tick, but the trim pass only fires after the signature has been quiet for
-  ~800ms. Mid-drag geometry is transient — a street swept past a
-  near-parallel angle momentarily computes huge mouths, and since trims
-  never extend, trimming against those would ratchet the _other_ connected
-  streets shorter on every tick (in the worst case right out of
-  `snapRadius`, disconnecting them — the "plug in a third street and the
-  first two fall off" bug). Settled geometry is the only geometry trimmed
-  to. This also means half-parsed streets on scene load are never trimmed
-  from incomplete segment lists.
+- **Snaps wait for the scene to settle.** Visual rebuilds run on every watch
+  tick, but the snap pass only fires after the signature has been quiet for
+  ~800ms — mid-drag geometry is transient (a street swept past a
+  near-parallel angle momentarily computes huge mouths). This also means
+  half-parsed streets on scene load are never snapped from incomplete
+  segment lists.
 - **Mouths are capped at `snapRadius - 2` from the origin** (the
   `maxSetback` option of `computeIntersectionGeometry`), so even a settled
-  sliver-angle pair — whose corner can legitimately sit tens of meters down
-  the arms — can never demand a trim that pushes a node out of its own
-  detection radius.
+  sliver-angle pair can never demand a snap that pushes a node out of its
+  own detection radius.
+- **Nearest-intersection ownership.** A node claimed by two intersections is
+  snapped only by the nearer one (ties break by document order), so a street
+  parked between two intersections never gets tug-of-warred.
 
-Rules of the road:
+Caveats:
 
-- **Trim only, never extend.** A street stopping short keeps its gap, and
-  dragging an endpoint node _away_ from the intersection never fights the
-  watch. Dragging a node _into_ the intersection gets it snapped back to the
-  mouth on the next watch tick.
-- Trimming edits the street for real (no undo step — it's a component-level
-  write). Deleting or moving the intersection later does **not** grow
-  streets back; drag their endpoint nodes to reconnect. Restoring pre-trim
-  lengths automatically is the persistent-node-graph future.
-- `trimStreets: false` restores the old non-destructive overlap behavior
+- Snapping edits the street for real (no undo step — it's a component-level
+  write). Deleting the intersection leaves streets at their last snapped
+  extent; the immutable-street-data version of this (render-time insets on a
+  persistent node graph) is the planned architecture pass.
+- `snapStreets: false` restores the fully non-destructive overlap behavior
   (with the poke-through artifacts that implies).
 
 ## Editor
@@ -144,10 +146,10 @@ point objects, out of scope like street furniture.
 
 ## Known limitations (prototype scope)
 
-- **Trims are one-way** (see above): no undo step, and no automatic restore
-  when the intersection is deleted or moved away. Remembering pre-trim nodes
-  properly needs persistent node identity (a node graph shared by streets
-  and intersections), which is also the path to
+- **Snaps mutate street data** (see above): no undo step, and no automatic
+  restore when the intersection is deleted. Making street geometry immutable
+  (render-time insets) needs persistent node identity (a node graph shared
+  by streets and intersections), which is also the path to
   [#138](https://github.com/3DStreet/3dstreet/issues/138)-style OSM import.
 - Treatments are global (one crosswalk/traffic-control choice for all arms);
   per-arm overrides need stable arm identity (street ids) plus UI.
