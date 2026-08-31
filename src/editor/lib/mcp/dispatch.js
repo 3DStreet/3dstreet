@@ -95,6 +95,20 @@ function toMCPContent(toolName, value) {
   return [{ type: 'text', text: JSON.stringify(value, null, 2) }];
 }
 
+/**
+ * Execute one tool and wrap its return as an MCP content array. Shared by
+ * the WebSocket relay path (`handleFrame` below) and the in-browser WebMCP
+ * path (`useWebMCP`), so both transports stay behavior-identical —
+ * including the read-only gate. Throws on unknown tool, read-only block,
+ * or handler failure; the caller owns the transport-specific error shape.
+ */
+export async function callToolAsMCPContent(toolName, args, ctx = {}) {
+  const value = await callTool(toolName, args, ctx.currentUser, {
+    readOnly: !!ctx.readOnly
+  });
+  return toMCPContent(toolName, value);
+}
+
 async function callTool(toolName, args, currentUser, options = {}) {
   const entry = ensureIndex().get(toolName);
   if (!entry) {
@@ -164,14 +178,13 @@ export async function handleFrame(frame, ctx = {}) {
         if (!params || typeof params.name !== 'string') {
           return fail(-32602, 'tools/call requires params.name');
         }
-        const value = await callTool(
+        const content = await callToolAsMCPContent(
           params.name,
           params.arguments,
-          ctx.currentUser,
-          { readOnly: !!ctx.readOnly }
+          { currentUser: ctx.currentUser, readOnly: ctx.readOnly }
         );
         if (isNotification) return null;
-        return reply({ content: toMCPContent(params.name, value) });
+        return reply({ content });
       }
       default: {
         if (isNotification) return null;

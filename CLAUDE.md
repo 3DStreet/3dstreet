@@ -117,6 +117,8 @@ nodes that rewrite position/rotation/length, segment width bars), additive to
 the standard TransformControls gizmo. Code in `src/editor/lib/gizmos/`; doc is
 `docs/street-gizmos.md`.
 
+**AI tool surface (MCP + WebMCP):** one registry (`src/editor/lib/commands/registry.js`) feeds three consumers: the in-editor Gemini chat, the MCP relay (tab = MCP server, external `3dstreet-mcp` npm relay bridges stdio↔localhost WS; design in #1582), and WebMCP (`src/editor/lib/mcp/useWebMCP.js` registers the same tools with `document.modelContext` so a browser-embedded agent — Chrome 149+ origin trial / ChatGPT desktop browser — calls them in-process, no relay). Shared executor `callToolAsMCPContent` in `src/editor/lib/mcp/dispatch.js`; entry point: `docs/webmcp.md`.
+
 **Layer Reordering:** Drag-and-drop reordering of layers within the same parent in the SceneGraph. Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
 
 ## Asset System
