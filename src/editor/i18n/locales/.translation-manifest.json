@@ -793,7 +793,9 @@
     "shapeSidebar.cornerAngle": "∠ {value}",
     "shapeSidebar.showAllSegments": "Show all {count} segments",
     "shapeSidebar.showFewerSegments": "Show fewer segments",
-    "managedStreetSidebar.convertToShapesCurvedUnsupported": "Convert to Shapes is not available for a street that follows a path yet. Clear the street’s path first, or keep it as a managed street."
+    "managedStreetSidebar.convertToShapesCurvedUnsupported": "Convert to Shapes is not available for a street that follows a path yet. Clear the street’s path first, or keep it as a managed street.",
+    "shapeDraw.finishDoubleClick": "Double-click places a last point and finishes",
+    "shapeDraw.finishEnterEsc": "Enter or Esc finishes the shape"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1589,7 +1591,9 @@
     "shapeSidebar.cornerAngle": "∠ {value}",
     "shapeSidebar.showAllSegments": "Show all {count} segments",
     "shapeSidebar.showFewerSegments": "Show fewer segments",
-    "managedStreetSidebar.convertToShapesCurvedUnsupported": "Convert to Shapes is not available for a street that follows a path yet. Clear the street’s path first, or keep it as a managed street."
+    "managedStreetSidebar.convertToShapesCurvedUnsupported": "Convert to Shapes is not available for a street that follows a path yet. Clear the street’s path first, or keep it as a managed street.",
+    "shapeDraw.finishDoubleClick": "Double-click places a last point and finishes",
+    "shapeDraw.finishEnterEsc": "Enter or Esc finishes the shape"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2385,6 +2389,8 @@
     "shapeSidebar.cornerAngle": "∠ {value}",
     "shapeSidebar.showAllSegments": "Show all {count} segments",
     "shapeSidebar.showFewerSegments": "Show fewer segments",
-    "managedStreetSidebar.convertToShapesCurvedUnsupported": "Convert to Shapes is not available for a street that follows a path yet. Clear the street’s path first, or keep it as a managed street."
+    "managedStreetSidebar.convertToShapesCurvedUnsupported": "Convert to Shapes is not available for a street that follows a path yet. Clear the street’s path first, or keep it as a managed street.",
+    "shapeDraw.finishDoubleClick": "Double-click places a last point and finishes",
+    "shapeDraw.finishEnterEsc": "Enter or Esc finishes the shape"
   }
 }
