@@ -33,6 +33,11 @@ import Events from '../../lib/Events';
 import { useMCPClient } from '../../lib/mcp/useMCPClient.js';
 
 const AI_MODEL_ID = 'gemini-3.7-flash';
+// After executing tool calls, post back once so the model can check its own
+// work against the updated scene + a fresh screenshot. 1 = a single
+// evaluation round trip (no tools offered on that turn, so it cannot chain);
+// raising this someday is the path to agentic iterate-until-success.
+const AI_VERIFICATION_STEPS = 1;
 let AI_CONVERSATION_ID = uuidv4();
 
 // Cap pill list growth so a multi-hour session doesn't accumulate thousands
@@ -1069,6 +1074,8 @@ function AIChatPanel() {
 
       // Then process all function calls
       if (functionCalls && functionCalls.length > 0) {
+        // Collected for the post-execution verification round trip.
+        const executedCalls = [];
         // Process function calls sequentially using async/await
         const processFunctionCalls = async () => {
           for (const call of functionCalls) {
@@ -1148,6 +1155,13 @@ function AIChatPanel() {
                 ai_user_prompt: messageText
               });
 
+              executedCalls.push({
+                name: call.name,
+                args: call.args || {},
+                status: 'success',
+                result: resultStr.slice(0, 2000)
+              });
+
               // Update function call status to success
               setMessages((prev) =>
                 prev.map((msg) =>
@@ -1181,6 +1195,13 @@ function AIChatPanel() {
                 ai_user_prompt: messageText
               });
 
+              executedCalls.push({
+                name: call.name,
+                args: call.args || {},
+                status: 'error',
+                result: String(error?.message ?? error).slice(0, 2000)
+              });
+
               // Update function call status to error
               setMessages((prev) =>
                 prev.map((msg) =>
@@ -1197,18 +1218,97 @@ function AIChatPanel() {
           }
         };
 
-        // Start processing function calls and add rating message when done
-        processFunctionCalls().then(() => {
-          // Now add the rating message after all function calls are processed
-          const ratingMessage = {
-            type: 'rating',
-            id: Date.now() + Math.random().toString(16).slice(2),
-            responseId: responseId,
-            isRated: false,
-            timestamp: new Date()
-          };
-          setMessages((prev) => [...prev, ratingMessage]);
-        });
+        // One evaluation round trip after tool execution: the model checks its
+        // own work against the updated scene + a fresh screenshot. Sent with
+        // includeTools: false so it cannot return function calls — the loop is
+        // structurally impossible, not just prompted against. Non-fatal: a
+        // successful command never surfaces an error because verification
+        // hiccuped (it just costs one extra rate-limit slot).
+        const runVerification = async () => {
+          const mutatingCalls = executedCalls.filter(
+            (c) => c.name !== 'takeSnapshot'
+          );
+          if (AI_VERIFICATION_STEPS < 1 || mutatingCalls.length === 0) return;
+
+          try {
+            const entity = document.getElementById('street-container');
+            const updatedScene = JSON.parse(
+              STREET.utils.filterJSONstreet(
+                STREET.utils.convertDOMElToObject(entity)
+              )
+            ).data;
+
+            const verificationPrompt = `
+      The tool calls for the user's request have now been executed. Results:
+      ${JSON.stringify(executedCalls, null, 2)}
+
+      Updated scene state:
+      ${JSON.stringify(updatedScene, null, 2)}
+
+      Original user request: ${messageText}
+
+      Evaluate whether the request was fully accomplished, using the updated scene state and the attached screenshot of the current viewport. Reply briefly: start with "✅" if it was accomplished, or "⚠️" if something failed, looks wrong, or is incomplete, followed by one or two sentences. If not fully accomplished, end with one concrete next step the user can ask you to take. Do not call any tools.
+      `;
+
+            const verifyResult = await modelRef.current.sendMessage(
+              verificationPrompt,
+              {
+                history: [
+                  ...historyMessages,
+                  { role: 'user', content: messageText },
+                  ...(responseText && responseText.trim()
+                    ? [{ role: 'assistant', content: responseText }]
+                    : [])
+                ],
+                systemPrompt: enhancedSystemPrompt,
+                screenshot: captureViewportScreenshot(),
+                includeTools: false
+              }
+            );
+            const verifyText = verifyResult.response.text();
+
+            posthog.capture('$ai_generation', {
+              $ai_model: AI_MODEL_ID,
+              $ai_provider: 'vertexai',
+              $ai_trace_id: AI_CONVERSATION_ID,
+              $ai_input: [{ role: 'user', content: '[verification step]' }],
+              $ai_input_tokens:
+                verifyResult.response.usageMetadata?.promptTokenCount,
+              $ai_output_choices: [{ role: 'assistant', content: verifyText }],
+              $ai_output_tokens:
+                verifyResult.response.usageMetadata?.candidatesTokenCount,
+              ai_step: 'verification'
+            });
+
+            if (verifyText && verifyText.trim()) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: 'assistant',
+                  content: verifyText,
+                  responseId: responseId,
+                  timestamp: new Date()
+                }
+              ]);
+            }
+          } catch (error) {
+            console.warn('AI verification step failed (non-fatal):', error);
+          }
+        };
+
+        // Start processing function calls, verify, then add the rating message
+        processFunctionCalls()
+          .then(runVerification)
+          .then(() => {
+            const ratingMessage = {
+              type: 'rating',
+              id: Date.now() + Math.random().toString(16).slice(2),
+              responseId: responseId,
+              isRated: false,
+              timestamp: new Date()
+            };
+            setMessages((prev) => [...prev, ratingMessage]);
+          });
       }
 
       // For text-only responses (no function calls), add the rating immediately
