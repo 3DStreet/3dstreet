@@ -124,7 +124,8 @@ Caveats:
 - Snapping edits the street for real (no undo step — it's a component-level
   write). Deleting the intersection leaves streets at their last snapped
   extent; the immutable-street-data version of this (render-time insets on a
-  persistent node graph) is the planned architecture pass.
+  persistent node graph) is the planned architecture pass —
+  [#1930](https://github.com/3DStreet/3dstreet/issues/1930).
 - `snapStreets: false` restores the fully non-destructive overlap behavior
   (with the poke-through artifacts that implies).
 
@@ -150,7 +151,9 @@ point objects, out of scope like street furniture.
   restore when the intersection is deleted. Making street geometry immutable
   (render-time insets) needs persistent node identity (a node graph shared
   by streets and intersections), which is also the path to
-  [#138](https://github.com/3DStreet/3dstreet/issues/138)-style OSM import.
+  [#138](https://github.com/3DStreet/3dstreet/issues/138)-style OSM import
+  with LOD hydration — the umbrella ticket is
+  [#1930](https://github.com/3DStreet/3dstreet/issues/1930).
 - Treatments are global (one crosswalk/traffic-control choice for all arms);
   per-arm overrides need stable arm identity (street ids) plus UI.
 - Curved (path-following) streets are skipped — their nodes live on the path
