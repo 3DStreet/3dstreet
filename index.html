@@ -2,6 +2,20 @@
 <html>
 
 <head>
+  <!-- WebMCP origin trial (https://developer.chrome.com/origintrials/#/view_trial/4163014905550602241):
+       enables document.modelContext on 3dstreet.app (+subdomains) in stock
+       Chrome 149-156 without the chrome://flags toggle. Third-party tokens
+       must be injected via script, not a static meta tag. Registered as
+       third-party + match-subdomains; expires with the trial (<= Nov 16, 2026).
+       The token is public by design. See docs/webmcp.md. -->
+  <script>
+    (function () {
+      var otMeta = document.createElement('meta');
+      otMeta.httpEquiv = 'origin-trial';
+      otMeta.content = 'A9+JhgceM7462UljgPlsJjVWixgI3q/hSzJ/S6SOjNEcsHJAFKRBEcXucWW5rcl37/8KCwRhByYmmrXrK38KrwkAAABzeyJvcmlnaW4iOiJodHRwczovLzNkc3RyZWV0LmFwcDo0NDMiLCJmZWF0dXJlIjoiV2ViTUNQIiwiZXhwaXJ5IjoxNzk0ODczNjAwLCJpc1N1YmRvbWFpbiI6dHJ1ZSwiaXNUaGlyZFBhcnR5Ijp0cnVlfQ==';
+      document.head.append(otMeta);
+    })();
+  </script>
   <!-- aframe: this release ships super-three 0.184.0. The npm `three` version in
        package.json must match, so upgrade A-Frame and npm `three` together. -->
   <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
