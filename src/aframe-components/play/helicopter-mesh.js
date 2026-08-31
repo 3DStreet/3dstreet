@@ -45,6 +45,10 @@ AFRAME.registerComponent('helicopter-mesh', {
     this._spawned = [];
     // rad/s, poked by play-mode-helicopter while flying.
     this.rotorSpeed = 0;
+    // Small cyclic-input disc tilt (radians), also poked while flying —
+    // the blade-flapping look that makes stick input read on the frame.
+    this.rotorTiltX = 0;
+    this.rotorTiltZ = 0;
     this._mainAngle = 0;
     this._tailAngle = 0;
     this._blurVisible = false;
@@ -325,7 +329,14 @@ AFRAME.registerComponent('helicopter-mesh', {
     this._mainAngle += speed * dt;
     this._tailAngle += speed * TAIL_ROTOR_RATIO * dt;
     if (this._mainRotor) {
-      this._mainRotor.object3D.rotation.set(0, this._mainAngle, 0);
+      // YXZ: spin around the mast first, then apply the small cyclic
+      // tilt so the whole disc leans rather than wobbling per-blade.
+      this._mainRotor.object3D.rotation.order = 'YXZ';
+      this._mainRotor.object3D.rotation.set(
+        this.rotorTiltX || 0,
+        this._mainAngle,
+        this.rotorTiltZ || 0
+      );
     }
     if (this._tailRotor) {
       this._tailRotor.object3D.rotation.set(this._tailAngle, 0, 0);

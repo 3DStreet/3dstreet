@@ -1161,10 +1161,10 @@
     "defaultMessage": "Collective"
   },
   "flyModeControls.gamepadHint": {
-    "defaultMessage": "Gamepad: RT/LT collective · stick tilt · LB/RB yaw · B hover · Y reset · X camera"
+    "defaultMessage": "Gamepad: RT/LT collective · left stick tilt · LB/RB yaw · B hover · right stick camera/look · Y reset · X camera"
   },
   "flyModeControls.keyboardHint": {
-    "defaultMessage": "W/S collective (S past zero dives) · A/D yaw · arrows tilt · Space hover · R reset · C camera"
+    "defaultMessage": "W/S collective (S past zero dives) · A/D yaw · arrows tilt · Space hover · drag = orbit/look · R reset · C camera"
   },
   "flyModeControls.liftPower": {
     "defaultMessage": "Rotor power"

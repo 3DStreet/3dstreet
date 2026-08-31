@@ -366,13 +366,24 @@ AFRAME.registerSystem('play-mode', {
       const rb = !!(pad.buttons[5] && pad.buttons[5].pressed);
       pmh.input.yawAxis = (lb ? 1 : 0) - (rb ? 1 : 0);
       pmh.input.padAssist = !!(pad.buttons[1] && pad.buttons[1].pressed);
+      const rx = pad.axes[2] || 0;
+      const ry = pad.axes[3] || 0;
       if (pmh.data.cameraMode === 'chase') {
-        const rx = pad.axes[2] || 0;
-        const ry = pad.axes[3] || 0;
         if (Math.abs(rx) > 0.15) pmh.chaseYaw += rx * 0.04;
         if (Math.abs(ry) > 0.15) {
           const factor = Math.exp(ry * 0.03);
           pmh.chaseZoom = THREE.MathUtils.clamp(pmh.chaseZoom * factor, 0.4, 4);
+        }
+      } else if (pmh.data.cameraMode === 'fpv') {
+        // FPV free-look: right stick pans the cockpit view (stick up =
+        // look up). Mirrors the mouse-drag look in play-mode-helicopter.
+        if (Math.abs(rx) > 0.15) pmh.fpvYaw += rx * 0.05;
+        if (Math.abs(ry) > 0.15) {
+          pmh.fpvPitch = THREE.MathUtils.clamp(
+            pmh.fpvPitch - ry * 0.04,
+            -1.2,
+            1.2
+          );
         }
       }
     }

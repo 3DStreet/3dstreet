@@ -9,6 +9,7 @@ const {
   seedObstacleColliders
 } = require('./scene-colliders.js');
 const { attachTilesColliders } = require('./tiles-colliders.js');
+const { HeliSound } = require('./heli-sound.js');
 
 /**
  * play-mode-helicopter
@@ -177,6 +178,9 @@ AFRAME.registerComponent('play-mode-helicopter', {
       Space: 'assist'
     };
     this.onKeyDown = (e) => {
+      // Real keydowns are trusted gestures — unblock the AudioContext
+      // (created outside the Start-click gesture; see heli-sound.js).
+      if (this.sound) this.sound.resume();
       if (this.keymap[e.code]) {
         this.input[this.keymap[e.code]] = true;
         e.preventDefault();
@@ -194,11 +198,16 @@ AFRAME.registerComponent('play-mode-helicopter', {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
 
-    // Chase-cam zoom (wheel) + orbit (left-drag on canvas) — same
-    // interaction scheme as play-mode-vehicle so switching between
-    // driving and flying feels consistent.
+    // Camera-look interaction: wheel = chase zoom, left-drag on the
+    // canvas = chase orbit OR free-look in FPV (yaw + pitch offsets on
+    // top of the flight heading). Same interaction scheme as
+    // play-mode-vehicle so switching between driving and flying feels
+    // consistent.
     this.chaseZoom = 1;
     this.chaseYaw = 0;
+    // FPV free-look offsets (radians). +yaw = look right, +pitch = up.
+    this.fpvYaw = 0;
+    this.fpvPitch = 0;
     this._chaseDragging = false;
     this.onChaseWheel = (e) => {
       if (this.data.cameraMode !== 'chase') return;
@@ -207,12 +216,15 @@ AFRAME.registerComponent('play-mode-helicopter', {
       e.preventDefault();
     };
     this.onChasePointerDown = (e) => {
+      if (this.sound) this.sound.resume();
       if (e.button !== 0) return;
-      if (this.data.cameraMode !== 'chase') return;
+      const mode = this.data.cameraMode;
+      if (mode !== 'chase' && mode !== 'fpv') return;
       const canvas = this.el.sceneEl && this.el.sceneEl.canvas;
       if (!canvas || e.target !== canvas) return;
       this._chaseDragging = true;
       this._chaseDragLastX = e.clientX;
+      this._chaseDragLastY = e.clientY;
       if (canvas.setPointerCapture && e.pointerId !== undefined) {
         try {
           canvas.setPointerCapture(e.pointerId);
@@ -224,8 +236,20 @@ AFRAME.registerComponent('play-mode-helicopter', {
     this.onChasePointerMove = (e) => {
       if (!this._chaseDragging) return;
       const dx = e.clientX - this._chaseDragLastX;
+      const dy = e.clientY - this._chaseDragLastY;
       this._chaseDragLastX = e.clientX;
-      this.chaseYaw += dx * 0.005;
+      this._chaseDragLastY = e.clientY;
+      if (this.data.cameraMode === 'fpv') {
+        this.fpvYaw += dx * 0.004;
+        // Drag up = look up.
+        this.fpvPitch = THREE.MathUtils.clamp(
+          this.fpvPitch - dy * 0.004,
+          -1.2,
+          1.2
+        );
+      } else {
+        this.chaseYaw += dx * 0.005;
+      }
     };
     this.onChasePointerUp = (e) => {
       if (!this._chaseDragging) return;
@@ -259,6 +283,9 @@ AFRAME.registerComponent('play-mode-helicopter', {
     this.onPlayModeReset = () => {
       this.chaseZoom = 1;
       this.chaseYaw = 0;
+      this.fpvYaw = 0;
+      this.fpvPitch = 0;
+      this._shake = 0;
       this._lastCollisionAt = null;
       this.state.collective = 0;
       if (!this.chassisBody) return;
@@ -338,9 +365,41 @@ AFRAME.registerComponent('play-mode-helicopter', {
     this.system.onAfterStep(this._afterStep);
 
     this.cameraEl = document.querySelector(this.data.cameraSelector) || null;
+    // Remember the render camera's stock FOV so the speed kick can be
+    // fully undone on teardown.
+    const camObj3D = this.cameraEl && this.cameraEl.getObject3D('camera');
+    this._baseFov = camObj3D ? camObj3D.fov : null;
+
+    // Procedural rotor audio (see heli-sound.js). Created here rather
+    // than init so a Stop during the Rapier load never leaks a context.
+    this.sound = new HeliSound();
+    // Impact/ambient camera-shake impulse, decayed in tick.
+    this._shake = 0;
+
+    this._applyMeshVisibility();
 
     // Let listeners (FlyModeControls panel) know the helicopter exists.
     this.el.emit('heli-built', {}, true);
+  },
+
+  update: function (oldData) {
+    if (!oldData || oldData.cameraMode === this.data.cameraMode) return;
+    // Camera mode changed via key, gamepad, or the levers panel: hide
+    // the fuselage in FPV (it fills the screen from the cockpit) and
+    // start FPV free-look centered.
+    this.fpvYaw = 0;
+    this.fpvPitch = 0;
+    this._applyMeshVisibility();
+  },
+
+  /** FPV hides the helicopter mesh — from inside, it's just occlusion. */
+  _applyMeshVisibility: function () {
+    const meshEl = this.el.querySelector('[helicopter-mesh]');
+    if (!meshEl) return;
+    meshEl.setAttribute(
+      'visible',
+      this.data.cameraMode === 'fpv' ? 'false' : 'true'
+    );
   },
 
   /** Collapse keyboard booleans + analog overrides into -1..1 axes. */
@@ -413,6 +472,9 @@ AFRAME.registerComponent('play-mode-helicopter', {
       if (dtMs < 1000 && distSq < 1.5 * 1.5) return;
     }
     this._lastCollisionAt = { simMs, x: t.x, y: t.y, z: t.z };
+    // Game feel: kick the camera and thump the audio on real impacts.
+    this._shake = Math.min(1, (this._shake || 0) + 0.6);
+    if (this.sound) this.sound.impact(1);
     sceneEl.emit(
       'play-mode-collision',
       {
@@ -427,18 +489,43 @@ AFRAME.registerComponent('play-mode-helicopter', {
   tick: function (time, deltaMs) {
     if (!this.chassisBody) return;
     this._lastDeltaMs = deltaMs;
+    const dt = Math.min((deltaMs || 16) / 1000, 0.1);
 
     // Spin the rotors on the child mesh: idle + collective-proportional.
     const meshEl = this.el.querySelector('[helicopter-mesh]');
     const meshComp = meshEl && meshEl.components['helicopter-mesh'];
+    const rotorSpeed =
+      this.state.spool *
+      (ROTOR_VISUAL_IDLE +
+        Math.abs(this.state.collective) *
+          (ROTOR_VISUAL_MAX - ROTOR_VISUAL_IDLE));
     if (meshComp) {
       // abs: negative collective (powered descent) is blade pitch, not
       // rotor slowdown — keep the disc spinning hard either way.
-      meshComp.rotorSpeed =
-        this.state.spool *
-        (ROTOR_VISUAL_IDLE +
-          Math.abs(this.state.collective) *
-            (ROTOR_VISUAL_MAX - ROTOR_VISUAL_IDLE));
+      meshComp.rotorSpeed = rotorSpeed;
+      // Cyclic input tilts the rotor disc slightly (blade-flapping
+      // look) so control inputs read on the airframe.
+      const axes = this.readInputAxes();
+      meshComp.rotorTiltX = -axes.pitch * 0.14;
+      meshComp.rotorTiltZ = -axes.roll * 0.14;
+    }
+
+    // Procedural audio: chop/turbine/wind follow the flight state.
+    if (this.sound) {
+      const v = this.chassisBody.linvel();
+      this.sound.update({
+        rotorSpeed,
+        collective: this.state.collective,
+        speed: Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z),
+        paused: !!this.el.sceneEl.systems['play-mode']?.isPaused
+      });
+    }
+
+    // Impact shake decays exponentially.
+    if (this._shake > 0.001) {
+      this._shake *= Math.exp(-3.5 * dt);
+    } else {
+      this._shake = 0;
     }
 
     if (this.cameraEl) this.updateCamera();
@@ -451,6 +538,8 @@ AFRAME.registerComponent('play-mode-helicopter', {
     this._cameraSmoothed = false;
     this.chaseZoom = 1;
     this.chaseYaw = 0;
+    // fpvYaw/fpvPitch + mesh visibility handled in update() — it fires
+    // for every cameraMode change, including panel-driven ones.
     this.el.setAttribute('play-mode-helicopter', 'cameraMode', next);
   },
 
@@ -519,18 +608,61 @@ AFRAME.registerComponent('play-mode-helicopter', {
         camWorld.copy(sCam);
         lookAt.copy(sLook);
       } else {
-        // fpv: cockpit — just behind the nose glass at eye height,
-        // looking ahead along the horizontal heading.
+        // fpv: cockpit — just behind the nose glass at eye height.
+        // Free-look offsets (mouse drag / gamepad right stick) rotate
+        // the view around the flight heading: fpvYaw around world-up
+        // (+ = right), fpvPitch tilts toward world-up (+ = up).
         camWorld.set(
           heliPos.x + headingH.x * 0.9,
           heliPos.y + 0.35,
           heliPos.z + headingH.z * 0.9
         );
+        const yaw = this.fpvYaw || 0;
+        const pitch = THREE.MathUtils.clamp(this.fpvPitch || 0, -1.2, 1.2);
+        const yc = Math.cos(yaw);
+        const ys = Math.sin(yaw);
+        // Rotation by -yaw around Y so +fpvYaw looks right.
+        const lx = headingH.x * yc - headingH.z * ys;
+        const lz = headingH.x * ys + headingH.z * yc;
+        const pc = Math.cos(pitch);
+        const ps = Math.sin(pitch);
         lookAt.set(
-          heliPos.x + headingH.x * 12,
-          heliPos.y + 0.35,
-          heliPos.z + headingH.z * 12
+          camWorld.x + lx * pc * 12,
+          camWorld.y + ps * 12,
+          camWorld.z + lz * pc * 12
         );
+      }
+    }
+
+    // --- Game feel: camera shake + speed FOV kick -----------------
+    // Ambient rumble scales with rotor work; impacts add a decaying
+    // impulse (this._shake). Top-down stays steady — it reads as a
+    // map, not a cockpit.
+    if (mode !== 'top-down') {
+      const ambient =
+        0.02 * this.state.spool * (0.35 + Math.abs(this.state.collective));
+      const mag = ambient + (this._shake || 0) * 0.35;
+      if (mag > 0.001) {
+        camWorld.x += (Math.random() - 0.5) * 2 * mag;
+        camWorld.y += (Math.random() - 0.5) * 2 * mag;
+        camWorld.z += (Math.random() - 0.5) * 2 * mag;
+      }
+    }
+    const cam3D = this.cameraEl.getObject3D('camera');
+    if (cam3D && this._baseFov != null) {
+      const v = this.chassisBody.linvel();
+      const speed = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+      const kick =
+        mode === 'top-down'
+          ? 0
+          : Math.min(15, speed * (mode === 'fpv' ? 0.5 : 0.35));
+      const targetFov = this._baseFov + kick;
+      const dt = Math.min((this._lastDeltaMs || 16) / 1000, 0.1);
+      const next =
+        cam3D.fov + (targetFov - cam3D.fov) * (1 - Math.exp(-5 * dt));
+      if (Math.abs(next - cam3D.fov) > 0.01) {
+        cam3D.fov = next;
+        cam3D.updateProjectionMatrix();
       }
     }
 
@@ -582,6 +714,16 @@ AFRAME.registerComponent('play-mode-helicopter', {
         this.system.world.removeRigidBody(this.chassisBody);
       }
       this.chassisBody = null;
+    }
+    if (this.sound) {
+      this.sound.dispose();
+      this.sound = null;
+    }
+    // Undo the speed FOV kick — the editor camera assumes stock FOV.
+    const cam3D = this.cameraEl && this.cameraEl.getObject3D('camera');
+    if (cam3D && this._baseFov != null && cam3D.fov !== this._baseFov) {
+      cam3D.fov = this._baseFov;
+      cam3D.updateProjectionMatrix();
     }
   }
 });
