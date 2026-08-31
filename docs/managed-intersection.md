@@ -121,11 +121,15 @@ Additional guards:
 
 Caveats:
 
-- Snapping edits the street for real (no undo step — it's a component-level
-  write). Deleting the intersection leaves streets at their last snapped
-  extent; the immutable-street-data version of this (render-time insets on a
-  persistent node graph) is the planned architecture pass —
-  [#1930](https://github.com/3DStreet/3dstreet/issues/1930).
+- Snapping edits the street for real, but through the editor's command
+  stack: each settle-snap is ONE undoable `multi` step (raw `setAttribute`
+  fallback in the viewer, which has no undo). Undoing a snap sticks — the
+  watch recognizes the restored pre-snap state (`signatureBeforeLastSnap`)
+  and stands down until the next edit, instead of re-applying what undo
+  just removed. Deleting the intersection still leaves streets at their
+  last snapped extent; the immutable-street-data version of this
+  (render-time insets on a persistent node graph) is the planned
+  architecture pass — [#1930](https://github.com/3DStreet/3dstreet/issues/1930).
 - `snapStreets: false` restores the fully non-destructive overlap behavior
   (with the poke-through artifacts that implies).
 
@@ -147,10 +151,10 @@ point objects, out of scope like street furniture.
 
 ## Known limitations (prototype scope)
 
-- **Snaps mutate street data** (see above): no undo step, and no automatic
-  restore when the intersection is deleted. Making street geometry immutable
-  (render-time insets) needs persistent node identity (a node graph shared
-  by streets and intersections), which is also the path to
+- **Snaps mutate street data** (undoably, see above), and there is no
+  automatic restore when the intersection is deleted. Making street geometry
+  immutable (render-time insets) needs persistent node identity (a node
+  graph shared by streets and intersections), which is also the path to
   [#138](https://github.com/3DStreet/3dstreet/issues/138)-style OSM import
   with LOD hydration — the umbrella ticket is
   [#1930](https://github.com/3DStreet/3dstreet/issues/1930).

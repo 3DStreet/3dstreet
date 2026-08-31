@@ -154,8 +154,17 @@ AFRAME.registerComponent('managed-intersection', {
     // mouths — so snapping waits for the user to let go. Snaps are
     // bidirectional (trim or extend to the mouth), so even a snap taken
     // against briefly-odd geometry self-corrects on the next settle.
+    //
+    // Snaps go through the editor's command stack (one 'multi' per settle),
+    // so users can undo them. An undone snap must STAY undone — a reactive
+    // pass that immediately re-applies what undo removed makes undo useless
+    // — so the snap records the signature it acted from
+    // (signatureBeforeLastSnap): when a settle lands back on exactly that
+    // state, that's our own snap being undone, and the pass stands down
+    // until the user edits something new.
     this.pendingSnap = false;
     this.quietTicks = 0;
+    this.signatureBeforeLastSnap = null;
     this.watchInterval = setInterval(() => {
       if (!this.el.isConnected) return;
       const signature = this.computeSignature();
@@ -164,7 +173,9 @@ AFRAME.registerComponent('managed-intersection', {
         this.refresh();
       } else if (this.pendingSnap && ++this.quietTicks >= SETTLE_TICKS) {
         this.pendingSnap = false;
-        this.refresh({ snap: true });
+        if (signature !== this.signatureBeforeLastSnap) {
+          this.refresh({ snap: true });
+        }
       }
     }, 400);
 
@@ -452,6 +463,7 @@ AFRAME.registerComponent('managed-intersection', {
    */
   applyStreetSnaps: function (geometry, arms) {
     if (!this.data.snapStreets) return;
+    const updates = [];
     geometry.mouths.forEach((mouth) => {
       const arm = arms[mouth.arm];
       const delta = mouth.t;
@@ -491,13 +503,56 @@ AFRAME.registerComponent('managed-intersection', {
       this._dir.applyAxisAngle(UP_AXIS, rotY);
 
       const pos = street.getAttribute('position');
-      street.setAttribute('position', {
-        x: Math.round((this._vec.x - this._dir.x) * 1000) / 1000,
-        y: pos.y,
-        z: Math.round((this._vec.z - this._dir.z) * 1000) / 1000
+      updates.push({
+        street,
+        position: {
+          x: Math.round((this._vec.x - this._dir.x) * 1000) / 1000,
+          y: pos.y,
+          z: Math.round((this._vec.z - this._dir.z) * 1000) / 1000
+        },
+        length: newLength
       });
-      street.setAttribute('managed-street', 'length', newLength);
     });
+    if (updates.length === 0) return;
+
+    // Apply through the editor's command stack when available so the whole
+    // settle-snap is ONE undoable step (see this.signatureBeforeLastSnap in
+    // init for how an undone snap stays undone). noSelectEntity keeps the
+    // automatic write from stealing the user's selection. In the viewer
+    // (no inspector, no undo stack) apply directly.
+    this.signatureBeforeLastSnap = this.computeSignature();
+    const inspector = window.AFRAME?.INSPECTOR;
+    if (inspector?.execute) {
+      inspector.execute(
+        'multi',
+        updates.flatMap(({ street, position, length }) => [
+          [
+            'entityupdate',
+            {
+              entity: street,
+              component: 'position',
+              value: position,
+              noSelectEntity: true
+            }
+          ],
+          [
+            'entityupdate',
+            {
+              entity: street,
+              component: 'managed-street',
+              property: 'length',
+              value: length,
+              noSelectEntity: true
+            }
+          ]
+        ])
+      );
+    } else {
+      updates.forEach(({ street, position, length }) => {
+        street.setAttribute('position', position);
+        street.setAttribute('managed-street', 'length', length);
+      });
+    }
   },
 
   // --- materials (created lazily once, reused across refreshes) -----------
