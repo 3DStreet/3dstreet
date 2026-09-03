@@ -168,6 +168,34 @@ in a geo design; the agent should behave the same way):
   Typing `/help` still shows it. The "3 snapshots from different angles"
   example is now a plan snapshot.
 
+## Persistence: saveScene / loadScene
+
+Nothing on the tool surface could save, so agent-built scenes vanished on
+reload. `src/editor/lib/mcp/sceneTools.js` adds two MCP-only tools (flagged
+`mutating: true`, so the read-only gate blocks them; `undo`/`redo` now carry
+the same flag):
+
+- **`saveScene`** (optional `title`) runs the toolbar's save path
+  (`saveSceneWithScreenshot`) and returns `sceneId` + `sceneUrl`
+  (`…#/scenes/<id>`). After the first save the editor's own autosave persists
+  every later edit by the author, so one call per new scene is enough.
+  Signed out, it opens the sign-in modal and errors with instructions — the
+  human signs in, the agent retries. On someone else's scene it saves a copy.
+- **`loadScene`** (`sceneId` or a URL containing one) fetches
+  `/scenes/<id>.json` like the hash loader and rebuilds the scene in-tab
+  (no page reload, so the WebMCP registration survives). This is the v1
+  "resume my scene" path: the agent remembers the id across its own
+  sessions and reopens it on request.
+- **Nudge.** Every mutating tool result (except save/load/undo/redo) gets a
+  trailing `nextStep:` line while edits are not being persisted (no cloud
+  scene, signed out, or not the author). `getSessionInfo` reports
+  `saved`, `isAuthor` and `sceneUrl` so an agent can check cheaply.
+
+Open question for a later round: reopening the last scene automatically on
+a bare URL (localStorage last-scene toast). Hash vs path in the URL makes no
+difference to a browser agent — the gap is whether its platform remembers
+the URL between chats.
+
 ## Notes / future
 
 - The relay is the fallback for headless or out-of-browser clients (Claude

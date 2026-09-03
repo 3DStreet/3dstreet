@@ -20,6 +20,7 @@
 
 import { getToolDefinitions, dispatchToolCall } from '../commands/registry.js';
 import { mcpReadTools } from './readTools.js';
+import { mcpSceneTools, saveNudge } from './sceneTools.js';
 import useStore from '@/store';
 
 // Modals that merely greet the user and would hide what an agent is doing.
@@ -61,7 +62,7 @@ function buildToolIndex() {
   for (const tool of getToolDefinitions()) {
     index.set(tool.name, { source: 'registry', definition: tool });
   }
-  for (const tool of mcpReadTools) {
+  for (const tool of [...mcpReadTools, ...mcpSceneTools]) {
     if (index.has(tool.name)) {
       throw new Error(
         `MCP read tool name collides with registry tool: ${tool.name}`
@@ -69,6 +70,9 @@ function buildToolIndex() {
     }
     index.set(tool.name, {
       source: 'read',
+      // Read-list entries default to non-mutating; undo/redo and the scene
+      // persistence tools opt in so the read-only gate blocks them.
+      mutating: !!tool.mutating,
       definition: {
         name: tool.name,
         description: tool.description,
@@ -139,12 +143,24 @@ function toMCPContent(toolName, value) {
  * including the read-only gate. Throws on unknown tool, read-only block,
  * or handler failure; the caller owns the transport-specific error shape.
  */
+const NO_SAVE_NUDGE = new Set(['saveScene', 'loadScene', 'undo', 'redo']);
+
 export async function callToolAsMCPContent(toolName, args, ctx = {}) {
   revealAgentActivity();
   const value = await callTool(toolName, args, ctx.currentUser, {
     readOnly: !!ctx.readOnly
   });
-  return toMCPContent(toolName, value);
+  const content = toMCPContent(toolName, value);
+  // Unsaved-edits nudge: a mutation that is not itself persistence gets one
+  // trailing line pointing at saveScene while nothing is being autosaved.
+  // Agents otherwise built whole streets that vanished on reload.
+  const entry = ensureIndex().get(toolName);
+  const isMutating = entry.source === 'registry' || entry.mutating;
+  if (isMutating && !NO_SAVE_NUDGE.has(toolName)) {
+    const nudge = saveNudge(ctx.currentUser);
+    if (nudge) content.push({ type: 'text', text: nudge });
+  }
+  return content;
 }
 
 async function callTool(toolName, args, currentUser, options = {}) {
@@ -155,12 +171,9 @@ async function callTool(toolName, args, currentUser, options = {}) {
     throw err;
   }
   if (options.readOnly) {
-    const isMutating =
-      entry.source === 'registry' &&
-      // The registry contains only mutating tools today (every llmTool is a
-      // command). Read tools are MCP-only. If/when the registry grows pure
-      // reads, mark them and check here instead.
-      true;
+    // The registry contains only mutating tools today (every llmTool is a
+    // command). Read-list entries are non-mutating unless flagged.
+    const isMutating = entry.source === 'registry' || entry.mutating;
     if (isMutating) {
       const err = new Error(`Read-only mode: ${toolName} blocked`);
       err.code = -32000;

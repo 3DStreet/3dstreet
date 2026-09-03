@@ -26,6 +26,7 @@ import {
 } from '../geo/geoFrame.js';
 import { describeCamera, orientPlanView } from '../geo/cameraState.js';
 import { summarizePresets } from '../commands/segmentPresets.js';
+import { describeSaveState } from './sceneTools.js';
 
 // Guard for entity-id args: the relay forwards arbitrary strings from
 // Claude. Resolve to an A-Frame entity or throw a clean error so the
@@ -133,9 +134,15 @@ async function getSessionInfoHandler(args, currentUser) {
     }
     user = { uid: currentUser.uid, username };
   }
+  const { sceneId, sceneUrl, saved, isAuthor } = describeSaveState(currentUser);
   return {
     user,
-    sceneId: STREET.utils.getCurrentSceneId?.() || null,
+    sceneId,
+    sceneUrl,
+    // saved = a cloud scene exists and this user is its author, so autosave
+    // is persisting edits. Otherwise call saveScene.
+    saved,
+    isAuthor,
     sceneTitle: STREET.store?.getState?.()?.sceneTitle || null,
     viewport: canvas ? { width: canvas.width, height: canvas.height } : null
   };
@@ -295,7 +302,7 @@ export const mcpReadTools = [
   {
     name: 'getSessionInfo',
     description:
-      'Return signed-in user, current scene id/title, and viewport size for the connected browser tab.',
+      'Return signed-in user, current scene id/url/title, whether edits are being persisted (`saved`: cloud scene exists and the user is its author, so autosave is on — otherwise call saveScene), and viewport size.',
     inputSchema: { type: 'object', properties: {}, required: [] },
     handler: getSessionInfoHandler
   },
@@ -317,12 +324,14 @@ export const mcpReadTools = [
   },
   {
     name: 'undo',
+    mutating: true,
     description: 'Step the editor history back by one command.',
     inputSchema: { type: 'object', properties: {}, required: [] },
     handler: undoHandler
   },
   {
     name: 'redo',
+    mutating: true,
     description: 'Step the editor history forward by one command.',
     inputSchema: { type: 'object', properties: {}, required: [] },
     handler: redoHandler
