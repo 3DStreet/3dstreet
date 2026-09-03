@@ -194,9 +194,20 @@ function Toolbar() {
     };
     resolveByline(); // catch a scene already loaded before this effect ran
     sceneEl.addEventListener('newScene', resolveByline);
+    // Re-resolve after a save completes: the post-sign-in fork (SignInModal's
+    // onSuccess) reassigns the scene to the newly signed-in user by rewriting
+    // metadata + URL hash without a newScene event, so authorship must be
+    // re-read or Edit keeps treating the new owner as a visitor (#1949).
+    const unsubscribeSave = useStore.subscribe(
+      (state) => state.isSavingScene,
+      (isSavingScene) => {
+        if (!isSavingScene) resolveByline();
+      }
+    );
     return () => {
       cancelled = true;
       sceneEl.removeEventListener('newScene', resolveByline);
+      unsubscribeSave();
     };
   }, [currentUser]);
 
@@ -225,7 +236,16 @@ function Toolbar() {
       return;
     }
     setIsInspectorEnabled(true);
-    if (!isAuthor) {
+    // Authorship is re-read at click time rather than from the memoized
+    // state: signing in via "Sign in to Edit" forks the scene to the new
+    // user's account (SignInModal onSuccess), and the stale state would
+    // flag the fork's owner as a visitor (#1949). A save still in flight
+    // is that same fork completing — the user is about to own the copy,
+    // so the "unsaved copy" warning would be wrong there too.
+    const freshAuthorId = STREET.utils.getAuthorId() || null;
+    const freshIsAuthor =
+      !freshAuthorId || (currentUser && currentUser.uid === freshAuthorId);
+    if (!freshIsAuthor && !useStore.getState().isSavingScene) {
       STREET.notify.warningMessage(
         intl.formatMessage({
           id: 'viewer.editingCopyWarning',
@@ -237,7 +257,7 @@ function Toolbar() {
   }, [
     authPending,
     needsAuthToEdit,
-    isAuthor,
+    currentUser,
     setModal,
     setIsInspectorEnabled,
     intl
