@@ -376,6 +376,20 @@ const UpgradeModal = ({
     </div>
   );
 
+  // Soft-decline CTA (e.g. "Download now with watermark"). Rendered in both
+  // the signed-in and signed-out branches: the free path must not require
+  // an account (#1943 — signed-out users saw only sign-in/upgrade and could
+  // not download at all).
+  const secondaryCta = surface?.secondaryCtaLabelId && onSecondaryCta && (
+    <button
+      type="button"
+      className={styles.ctaButtonSecondary}
+      onClick={onSecondaryCta}
+    >
+      {t(surface.secondaryCtaLabelId)}
+    </button>
+  );
+
   const renderPricing = () => (
     <>
       {surface ? (
@@ -466,15 +480,7 @@ const UpgradeModal = ({
             {renderPlanCard('max', maxPlan, [t('planStorage', { gb: 25 })])}
           </div>
 
-          {surface?.secondaryCtaLabelId && onSecondaryCta && (
-            <button
-              type="button"
-              className={styles.ctaButtonSecondary}
-              onClick={onSecondaryCta}
-            >
-              {t(surface.secondaryCtaLabelId)}
-            </button>
-          )}
+          {secondaryCta}
 
           <p className={styles.footerNote}>{t('cancelAnytime')}</p>
         </>
@@ -484,6 +490,7 @@ const UpgradeModal = ({
           <button type="button" className={styles.ctaButton} onClick={onSignIn}>
             {t('signInToCloud')}
           </button>
+          {secondaryCta}
         </div>
       )}
     </>
