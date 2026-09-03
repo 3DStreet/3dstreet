@@ -18,7 +18,62 @@ import {
   readSegmentEnums,
   validateSegments
 } from './managedStreetValidation.js';
+import { applySegmentPreset } from './segmentPresets.js';
 import { GEO_SOURCES } from '@shared/constants/geoSources.js';
+import { TRANSFORM_REFUSED } from '../transformGuard.js';
+
+/**
+ * Wait for a freshly created managed street to settle — segments mounted
+ * and generated children (clones, stencils) no longer changing — then
+ * report what actually exists, so "created" is backed by evidence. Bounded;
+ * models may still be streaming in after this returns.
+ */
+async function readBackStreet(entityId, expectedSegments, timeoutMs = 4000) {
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const t0 = Date.now();
+  let lastCount = -1;
+  let stableTicks = 0;
+  let el = null;
+  while (Date.now() - t0 < timeoutMs) {
+    el = document.getElementById(entityId);
+    const segments = el
+      ? Array.from(el.children).filter((c) => c.hasAttribute('street-segment'))
+      : [];
+    const descendants = el ? el.querySelectorAll('*').length : 0;
+    if (segments.length >= expectedSegments && descendants === lastCount) {
+      stableTicks++;
+      if (stableTicks >= 3) break;
+    } else {
+      stableTicks = 0;
+    }
+    lastCount = descendants;
+    await sleep(150);
+  }
+  if (!el) return { settled: false, segmentCount: 0, segments: [] };
+  const segments = Array.from(el.children)
+    .filter((c) => c.hasAttribute('street-segment'))
+    .map((segEl, index) => {
+      const data = segEl.getAttribute('street-segment') || {};
+      const generators = Object.keys(segEl.components || {}).filter((n) =>
+        n.startsWith('street-generated-')
+      );
+      return {
+        index,
+        type: data.type,
+        width: data.width,
+        direction: data.direction,
+        generators,
+        placedModels: segEl.querySelectorAll(
+          '[data-layer-name^="Cloned Model"]'
+        ).length
+      };
+    });
+  return {
+    settled: stableTicks >= 3,
+    segmentCount: segments.length,
+    segments
+  };
+}
 
 /**
  * Compose a managed-street entity from a flat segments array and create it
@@ -31,25 +86,37 @@ async function managedStreetCreateHandler(args) {
     length: parseFloat(args.length || '60'),
     segments: []
   };
+  const presetsApplied = [];
 
   if (args.segments && Array.isArray(args.segments)) {
-    streetData.segments = args.segments.map((segment) => ({
-      name: segment.name || `${segment.type || 'segment'} • default`,
-      type: segment.type || 'drive-lane',
-      width: typeof segment.width === 'number' ? segment.width : 3,
-      elevation: typeof segment.elevation === 'number' ? segment.elevation : 0,
-      direction: segment.direction || 'none',
-      color: segment.color || '#888888',
-      surface: segment.surface || 'asphalt',
-      // Boundary land-use presets; parseStreetObject reads both keys.
-      ...(segment.type === 'boundary' && segment.variant
-        ? { variant: segment.variant }
-        : {}),
-      ...(segment.type === 'boundary' && segment.side
-        ? { side: segment.side }
-        : {}),
-      ...(segment.generated ? { generated: segment.generated } : {})
-    }));
+    streetData.segments = args.segments.map((input, index) => {
+      // Same preset table the sidebar applies when a user picks a type:
+      // omitted surface/color/elevation/direction/generated come from it.
+      const { segment, applied } = applySegmentPreset(
+        { ...input, type: input.type || 'drive-lane' },
+        window.STREET?.types
+      );
+      if (applied.length) presetsApplied.push({ index, fields: applied });
+      return {
+        name: segment.name || `${segment.type} • default`,
+        type: segment.type,
+        width: typeof segment.width === 'number' ? segment.width : 3,
+        elevation:
+          typeof segment.elevation === 'number' ? segment.elevation : 0,
+        direction: segment.direction || 'none',
+        color: segment.color || '#888888',
+        surface: segment.surface || 'asphalt',
+        // Boundary land-use presets; parseStreetObject reads both keys.
+        ...(segment.type === 'boundary' && segment.variant
+          ? { variant: segment.variant }
+          : {}),
+        ...(segment.type === 'boundary' && segment.side
+          ? { side: segment.side }
+          : {}),
+        ...(segment.variants ? { variants: segment.variants } : {}),
+        ...(segment.generated ? { generated: segment.generated } : {})
+      };
+    });
   }
 
   streetData.width = streetData.segments.reduce(
@@ -78,13 +145,23 @@ async function managedStreetCreateHandler(args) {
     }
   };
 
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  const created = AFRAME.INSPECTOR.execute('entitycreate', definition);
+  if (created === TRANSFORM_REFUSED) {
+    throw new Error('entitycreate refused: the target does not permit it');
+  }
+  if (!document.getElementById(uniqueId)) {
+    throw new Error('Managed street entity was not created');
+  }
+  const readBack = await readBackStreet(uniqueId, streetData.segments.length);
   return {
-    message: 'Managed street created successfully',
+    message: readBack.settled
+      ? 'Managed street created and settled'
+      : 'Managed street created; content may still be loading',
     entityId: uniqueId,
-    segmentCount: streetData.segments.length,
     width: streetData.width,
-    ...(warnings.length ? { warnings } : {})
+    ...(presetsApplied.length ? { presetsApplied } : {}),
+    ...(warnings.length ? { warnings } : {}),
+    readBack
   };
 }
 
@@ -115,6 +192,10 @@ async function managedStreetUpdateHandler(args) {
     ) {
       throw new Error(`Invalid segmentIndex: ${segmentIndex}`);
     }
+    const { segment: presetSegment, applied } = applySegmentPreset(
+      segment,
+      window.STREET?.types
+    );
     const label = segment.name || `${segment.type} • default`;
     // segmentadd takes streetId (string), not the resolved element, because
     // its execute() runs on redo too — the parent DOM may have been recreated
@@ -122,10 +203,12 @@ async function managedStreetUpdateHandler(args) {
     // already hold the segment element and don't need that.
     AFRAME.INSPECTOR.execute(
       'segmentadd',
-      { streetId: entityId, segment, segmentIndex },
+      { streetId: entityId, segment: presetSegment, segmentIndex },
       `Add ${label}`
     );
-    return `Added segment: ${label}`;
+    return applied.length
+      ? `Added segment: ${label} (preset supplied ${applied.join(', ')})`
+      : `Added segment: ${label}`;
   }
 
   if (operation === 'update-segment') {
@@ -407,7 +490,7 @@ async function setLatLonHandler(args, currentUser) {
 
   if (!currentUser && !isAnonGeoDemoAllowed(latitude, longitude)) {
     throw new Error(
-      'Setting this location requires a signed-in 3DStreet account. Without sign-in, only locations within California work (demo period). Either pick California coordinates (e.g. 37.7749, -122.4194 for San Francisco), or ask the user to sign in using the 3DStreet page UI — note that sign-in may not work inside agent-embedded browsers.'
+      'Setting this location requires a signed-in 3DStreet account. Without sign-in, only locations within California work (demo period). Either pick California coordinates (e.g. 37.7749, -122.4194 for San Francisco), or ask the user to sign in using the 3DStreet page UI.'
     );
   }
 
@@ -469,12 +552,13 @@ const segmentSchema = {
     side: {
       type: 'string',
       description:
-        'Side of the street the segment sits on. Required for `type: "boundary"` (controls placement outside the travelled way edge and which direction the models face). Valid values: "left", "right".',
+        'Side of the street the segment sits on. Required for `type: "boundary"` (controls placement outside the travelled way edge and which direction the models face). Valid values: "left", "right". Frame of reference is the street\'s own cross-section, not the camera: "left" is the inbound side and "right" the outbound side (right-hand-drive convention; swap for left-hand-drive countries). segments[0] sits at the first edge; getGeoContext reports the compass bearing of each edge.',
       enum: ['left', 'right']
     },
     generated: {
       type: 'object',
-      description: 'Optional generated content',
+      description:
+        'Optional generated content — omit to receive the type preset. Two different systems: `clones` places 3D models (vehicles, cyclists, trees, lamps, furniture — any listMixins id with generator "clones"); `stencil` paints flat road markings (arrows, sharrows, words like BUS ONLY — only ids with generator "stencil"). Never put a vehicle in `stencil` or a marking in `clones`.',
       properties: {
         clones: {
           type: 'array',
@@ -488,7 +572,8 @@ const segmentSchema = {
               },
               modelsArray: {
                 type: 'string',
-                description: 'Comma-separated list of model names'
+                description:
+                  'Comma-separated 3D model ids from listMixins (generator "clones"), e.g. "sedan-rig, box-truck-rig" or "bus". Unknown ids are rejected.'
               },
               spacing: {
                 type: 'number',
@@ -516,7 +601,8 @@ const segmentSchema = {
             properties: {
               modelsArray: {
                 type: 'string',
-                description: 'Stencil model names'
+                description:
+                  'Comma-separated painted-marking ids (generator "stencil"), e.g. "bike-arrow", "sharrow", "word-bus, word-only". Unknown ids are rejected — use listMixins.'
               },
               spacing: {
                 type: 'number',
@@ -586,7 +672,7 @@ export const nonCommandTools = [
   {
     name: 'managedStreetCreate',
     description:
-      'Create a new managed street with specified segments and properties',
+      "Create a new managed street from a cross-section (array of segments, listed from one edge to the other). For each segment, omit surface/color/elevation/direction/generated to receive the type's preset — the same content a user gets by picking that type in the sidebar (e.g. bike-lane → green asphalt, bike-arrow stencils, cyclists; bus-lane → BUS ONLY stencil, buses; sidewalk → pedestrians). Call listSegmentPresets to see them. Only supply `generated` to override a preset. Returns entityId, width, presetsApplied, warnings and a readBack of what actually mounted.",
     inputSchema: {
       type: 'object',
       properties: {
