@@ -13,6 +13,11 @@
 
 import * as THREE from 'three';
 import Events from '../Events.js';
+import { describeCamera, orientPlanView } from '../geo/cameraState.js';
+import {
+  readSegmentEnums,
+  validateSegments
+} from './managedStreetValidation.js';
 import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 
 /**
@@ -20,6 +25,7 @@ import { GEO_SOURCES } from '@shared/constants/geoSources.js';
  * via a single entitycreate command.
  */
 async function managedStreetCreateHandler(args) {
+  const warnings = validateSegments(args.segments, readSegmentEnums());
   const streetData = {
     name: args.name || 'New Managed Street',
     length: parseFloat(args.length || '60'),
@@ -35,6 +41,13 @@ async function managedStreetCreateHandler(args) {
       direction: segment.direction || 'none',
       color: segment.color || '#888888',
       surface: segment.surface || 'asphalt',
+      // Boundary land-use presets; parseStreetObject reads both keys.
+      ...(segment.type === 'boundary' && segment.variant
+        ? { variant: segment.variant }
+        : {}),
+      ...(segment.type === 'boundary' && segment.side
+        ? { side: segment.side }
+        : {}),
       ...(segment.generated ? { generated: segment.generated } : {})
     }));
   }
@@ -66,7 +79,13 @@ async function managedStreetCreateHandler(args) {
   };
 
   AFRAME.INSPECTOR.execute('entitycreate', definition);
-  return 'Managed street created successfully';
+  return {
+    message: 'Managed street created successfully',
+    entityId: uniqueId,
+    segmentCount: streetData.segments.length,
+    width: streetData.width,
+    ...(warnings.length ? { warnings } : {})
+  };
 }
 
 /**
@@ -89,6 +108,7 @@ async function managedStreetUpdateHandler(args) {
     if (!segment || !segment.type) {
       throw new Error('Segment must have at least a type property');
     }
+    validateSegments([segment], readSegmentEnums());
     if (
       segmentIndex !== undefined &&
       (segmentIndex < 0 || segmentIndex > segmentEntities.length)
@@ -117,6 +137,7 @@ async function managedStreetUpdateHandler(args) {
     if (segmentIndex < 0 || segmentIndex >= segmentEntities.length) {
       throw new Error(`Invalid segmentIndex: ${segmentIndex}`);
     }
+    validateSegments([segment], readSegmentEnums());
     const segmentEl = segmentEntities[segmentIndex];
     const label =
       segment.name ||
@@ -177,7 +198,10 @@ async function takeSnapshotHandler(args) {
     throw new Error('Camera element not found');
   }
 
-  if (snapshotType !== 'focus') {
+  if (snapshotType === 'plan') {
+    // Deterministic top-down north-up view via the compass action.
+    await orientPlanView();
+  } else if (snapshotType !== 'focus') {
     const streetEntity = document.querySelector('[managed-street]');
     if (!streetEntity) {
       throw new Error('Street entity not found. Cannot position camera.');
@@ -329,7 +353,15 @@ async function takeSnapshotHandler(args) {
           inspector.sceneHelpers.visible = true;
         }
 
-        resolve({ caption, imageData });
+        // Machine-readable pose so the picture is not the only evidence:
+        // tilt, north-up state, screen-up bearing, and lat/lon when geo is on.
+        let metadata;
+        try {
+          metadata = { type: snapshotType, camera: describeCamera() };
+        } catch (e) {
+          metadata = { type: snapshotType, cameraError: e.message };
+        }
+        resolve({ caption, imageData, metadata });
       } catch (error) {
         reject(error);
       }
@@ -631,8 +663,8 @@ export const nonCommandTools = [
         type: {
           type: 'string',
           description:
-            'Optional type of snapshot view: "focus" (default), "birdseye", "straightOn", or "closeup"',
-          enum: ['focus', 'birdseye', 'straightOn', 'closeup']
+            'Optional type of snapshot view: "focus" (default, current view or focusEntityId), "plan" (top-down, north-up, whole scene — the only view suitable for judging orientation/alignment), "birdseye", "straightOn", or "closeup". Every snapshot returns `metadata.camera` (tilt, isTopDown, isNorthUp, screenUpBearingDeg, lat/lon) alongside the image.',
+          enum: ['focus', 'plan', 'birdseye', 'straightOn', 'closeup']
         }
       },
       required: []

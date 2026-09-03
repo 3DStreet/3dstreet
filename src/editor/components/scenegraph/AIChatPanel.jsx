@@ -1237,7 +1237,7 @@ function AIChatPanel() {
               const resultStr =
                 typeof result === 'object'
                   ? call.name === 'takeSnapshot'
-                    ? 'Snapshot taken successfully'
+                    ? `Snapshot taken successfully ${safeStringify(result.metadata || {})}`
                     : safeStringify(result)
                   : String(result ?? '');
 

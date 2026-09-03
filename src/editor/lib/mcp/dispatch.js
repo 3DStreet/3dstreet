@@ -84,6 +84,12 @@ function toMCPContent(toolName, value) {
     } else {
       content.push({ type: 'text', text: '[snapshot data unavailable]' });
     }
+    if (value.metadata) {
+      content.push({
+        type: 'text',
+        text: JSON.stringify(value.metadata, null, 2)
+      });
+    }
     return content;
   }
   if (value === undefined || value === null) {
