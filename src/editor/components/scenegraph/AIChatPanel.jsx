@@ -73,13 +73,15 @@ const HELP_COMMANDS = [
   {
     command: '/mcp',
     description:
-      'Connect an AI agent: Claude via the MCP relay, or WebMCP in agentic browsers (alpha)'
+      'Connect an AI agent: WebMCP in agentic browsers (primary), or the MCP relay for Claude Desktop/Code (fallback)'
   }
 ];
 
-const MCP_HELP_MARKDOWN = `**MCP integration** (alpha)
+const MCP_HELP_MARKDOWN = `**AI agent integration** (alpha)
 
-Drive this scene from Claude Desktop or Claude Code. The status bar above will turn green once the relay pairs.
+**WebMCP** (primary, nothing to install): in an agentic browser — ChatGPT's desktop browser, Gemini in Chrome, or Chrome 149+ with \`chrome://flags/#enable-webmcp-testing\` — this page registers its tools with the browser automatically and the status bar shows **WebMCP active**. Just ask the browser's agent to edit the scene; its tool calls appear in this feed.
+
+**MCP relay** (fallback for clients without WebMCP): drive this scene from Claude Desktop or Claude Code. The status bar above will turn green once the relay pairs.
 
 **Claude Code:**
 
@@ -97,9 +99,7 @@ claude mcp add 3dstreet -- npx -y 3dstreet-mcp
 }
 \`\`\`
 
-Then click **Reconnect** above. Once paired, the relay forwards Claude's tool calls to this tab. Toggle **Read-only** to block scene mutations. Source and docs: [github.com/3DStreet/3dstreet-mcp](https://github.com/3DStreet/3dstreet-mcp).
-
-**WebMCP** (no relay needed): in an agentic browser — ChatGPT's desktop browser, or Chrome 149+ with \`chrome://flags/#enable-webmcp-testing\` — this page registers its tools with the browser automatically and the status bar shows **WebMCP active**. Just ask the browser's agent to edit the scene; its tool calls appear in this feed.`;
+Then click **Reconnect** above. Once paired, the relay forwards Claude's tool calls to this tab. Toggle **Read-only** to block scene mutations (applies to both transports). Source and docs: [github.com/3DStreet/3dstreet-mcp](https://github.com/3DStreet/3dstreet-mcp).`;
 
 const MCP_PAIR_SUCCESS_MARKDOWN =
   '**MCP relay paired.** Tool calls from your MCP client are now wired through this tab. Return to **Claude** (or whichever MCP client you launched the relay from) to continue your workflow. Keep this tab open in the background.';
