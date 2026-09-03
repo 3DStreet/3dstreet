@@ -25,6 +25,7 @@ import {
   worldToLatLon
 } from '../geo/geoFrame.js';
 import { describeCamera, orientPlanView } from '../geo/cameraState.js';
+import { summarizePresets } from '../commands/segmentPresets.js';
 
 // Guard for entity-id args: the relay forwards arbitrary strings from
 // Claude. Resolve to an A-Frame entity or throw a clean error so the
@@ -74,18 +75,38 @@ async function selectEntityHandler(args) {
 }
 
 async function listMixinsHandler(args) {
-  const groups = getGroupedMixinOptions(true);
-  const requested = args?.category;
-  const filtered = requested
-    ? groups.filter((g) => g.label === requested)
-    : groups;
-  return filtered.map((g) => ({
+  const stencilIds = new Set(
+    AFRAME.components['street-generated-stencil']?.schema?.modelsArray?.oneOf ||
+      []
+  );
+  const groups = getGroupedMixinOptions(true).map((g) => ({
     category: g.label,
     mixins: g.options.map((o) => ({
       id: o.value,
-      label: o.label
+      label: o.label,
+      // Which managed-street generator accepts this id: 3D models go in
+      // `generated.clones`, flat painted markings in `generated.stencil`.
+      generator: stencilIds.has(o.value) ? 'stencil' : 'clones'
     }))
   }));
+  const seen = new Set(groups.flatMap((g) => g.mixins.map((m) => m.id)));
+  const missingStencils = [...stencilIds].filter((id) => !seen.has(id));
+  if (missingStencils.length) {
+    groups.push({
+      category: 'Road markings (stencils)',
+      mixins: missingStencils.map((id) => ({
+        id,
+        label: id,
+        generator: 'stencil'
+      }))
+    });
+  }
+  const requested = args?.category;
+  return requested ? groups.filter((g) => g.category === requested) : groups;
+}
+
+async function listSegmentPresetsHandler() {
+  return summarizePresets(window.STREET?.types);
 }
 
 async function getSessionInfoHandler(args, currentUser) {
@@ -256,6 +277,13 @@ export const mcpReadTools = [
       required: []
     },
     handler: listMixinsHandler
+  },
+  {
+    name: 'listSegmentPresets',
+    description:
+      'List the per-type segment presets (surface, color, elevation, default direction, and the generated stencils/clones/pedestrians) that managedStreetCreate and managedStreetUpdate apply when a segment omits those fields — identical to picking the type in the editor sidebar. Read this before composing a cross-section so you only override what you need.',
+    inputSchema: { type: 'object', properties: {}, required: [] },
+    handler: listSegmentPresetsHandler
   },
   {
     name: 'getSessionInfo',

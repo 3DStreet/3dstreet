@@ -117,6 +117,22 @@ read-tool list, so they work under the read-only gate):
   picture is never the only evidence. `focusCamera`'s description warns that
   it reframes and is not an orientation reference.
 
+**Segment presets and the catalog.** `managedStreetCreate` /
+`managedStreetUpdate` apply the same `STREET.types` preset the sidebar applies
+when a user picks a segment type (surface, color, elevation, default
+direction, stencils, clones, pedestrians) to every field the model omits
+(`src/editor/lib/commands/segmentPresets.js`), and report `presetsApplied`.
+`listSegmentPresets` shows the table. `listMixins` tags every id with the
+generator that accepts it (`clones` for 3D models, `stencil` for painted
+markings) and appends the stencil ids that are not catalog mixins, and the
+`generated` schema copy says which system is for what — the agent no longer
+guesses `bus` as a stencil. `managedStreetCreate` also waits for the street
+to settle (segments mounted, generated children stable, bounded at ~4 s) and
+returns a `readBack` with per-segment generators and placed-model counts.
+`getGeoContext` reports `crossSection` edge bearings (segments[0] at the
+local -X edge; boundary `side: left` = inbound side, `right` = outbound,
+right-hand-drive convention).
+
 `managedStreetCreate` / `managedStreetUpdate` validate segment `type`,
 `surface`, `direction`, boundary `variant`/`side`, stencil names and clone
 model ids against the live component schemas
