@@ -79,6 +79,13 @@ async function listMixinsHandler(args) {
     AFRAME.components['street-generated-stencil']?.schema?.modelsArray?.oneOf ||
       []
   );
+  if (stencilIds.size === 0) {
+    // Every id would be tagged 'clones' — the silent misclassification the
+    // tag exists to prevent. Loud, so a registration-order regression shows.
+    console.warn(
+      '[mcp] street-generated-stencil schema unavailable; generator tags may be wrong'
+    );
+  }
   const groups = getGroupedMixinOptions(true).map((g) => ({
     category: g.label,
     mixins: g.options.map((o) => ({

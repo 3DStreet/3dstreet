@@ -34,9 +34,11 @@ export function applySegmentPreset(segment, types) {
     applied.push('generated');
   }
   // Boundary presets carry per-variant model overrides that the segment
-  // component reads off the same object it generates from.
+  // component reads off the same object it generates from. Deep-cloned so a
+  // downstream mutation can't leak back into STREET.types.
   if (out.variants === undefined && preset.variants) {
-    out.variants = preset.variants;
+    out.variants = JSON.parse(JSON.stringify(preset.variants));
+    applied.push('variants');
   }
   return { segment: out, applied };
 }

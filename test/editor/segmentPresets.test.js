@@ -65,7 +65,8 @@ describe('applySegmentPreset', () => {
       { type: 'boundary', variant: 'brownstone', side: 'left' },
       types
     );
-    expect(segment.variants).toBe(types.boundary.variants);
+    expect(segment.variants).toEqual(types.boundary.variants);
+    expect(segment.variants).not.toBe(types.boundary.variants);
     expect(segment.variant).toBe('brownstone');
   });
 

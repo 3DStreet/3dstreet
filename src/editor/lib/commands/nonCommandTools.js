@@ -19,6 +19,8 @@ import {
   validateSegments
 } from './managedStreetValidation.js';
 import { applySegmentPreset } from './segmentPresets.js';
+import { GEO_SOURCES } from '@shared/constants/geoSources.js';
+import { TRANSFORM_REFUSED } from '../transformGuard.js';
 
 /**
  * Wait for a freshly created managed street to settle — segments mounted
@@ -47,7 +49,7 @@ async function readBackStreet(entityId, expectedSegments, timeoutMs = 4000) {
     lastCount = descendants;
     await sleep(150);
   }
-  if (!el) return { settled: false, segments: [] };
+  if (!el) return { settled: false, segmentCount: 0, segments: [] };
   const segments = Array.from(el.children)
     .filter((c) => c.hasAttribute('street-segment'))
     .map((segEl, index) => {
@@ -72,7 +74,6 @@ async function readBackStreet(entityId, expectedSegments, timeoutMs = 4000) {
     segments
   };
 }
-import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 
 /**
  * Compose a managed-street entity from a flat segments array and create it
@@ -144,7 +145,13 @@ async function managedStreetCreateHandler(args) {
     }
   };
 
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  const created = AFRAME.INSPECTOR.execute('entitycreate', definition);
+  if (created === TRANSFORM_REFUSED) {
+    throw new Error('entitycreate refused: the target does not permit it');
+  }
+  if (!document.getElementById(uniqueId)) {
+    throw new Error('Managed street entity was not created');
+  }
   const readBack = await readBackStreet(uniqueId, streetData.segments.length);
   return {
     message: readBack.settled
