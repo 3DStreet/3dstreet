@@ -83,12 +83,6 @@ export function useWebMCP({ currentUser, readOnly }) {
     // Every call funnels through the same executor the WS relay uses, and
     // lands in the panel transcript so the user watches the agent work.
     const makeExecute = (toolName) => async (args) => {
-      // Mark this session as actively agent-driven. Mere presence of
-      // `modelContext` doesn't mean an agent is here — the origin trial
-      // gives every stock Chrome 149+ user the API — but a tool call does.
-      // SignInModal reads this to show its agent-browser sign-in caveat
-      // only where it applies.
-      window.__webmcpAgentActive = true;
       const id = `webmcp_${Date.now()}_${Math.random().toString(16).slice(2)}`;
       appendTranscript({
         id,

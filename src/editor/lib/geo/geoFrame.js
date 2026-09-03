@@ -43,6 +43,18 @@ function round(v, places = 7) {
  * missing. Returns { ellipsoid, groupMatrixWorld, groupMatrixWorldInverse,
  * origin: { latitude, longitude, ellipsoidalHeight } }.
  */
+/**
+ * Cheap check for "is the Google 3D Tiles context on" — no tiles-loaded
+ * requirement, so tool copy and defaults can branch on it before
+ * getGeoFrame() would succeed.
+ */
+export function isGeospatialActive(doc = globalThis.document) {
+  const geo = doc
+    ?.querySelector?.('#reference-layers[street-geo]')
+    ?.getAttribute?.('street-geo');
+  return !!geo && geo.maps === 'google3d';
+}
+
 export function getGeoFrame() {
   const geoEl = document.querySelector('#reference-layers[street-geo]');
   const geo = geoEl?.getAttribute('street-geo');
@@ -194,7 +206,21 @@ export function describeEntityGeo(el, frame = getGeoFrame()) {
     const end = toWorld(zStart + length);
     const axis = new THREE.Vector3().subVectors(end, start).normalize();
     const bearing = bearingOfWorldDirection(start, axis, frame);
+    // Cross-section frame: street-align lays segments[0] at the local -X
+    // edge and the last segment at +X. Report both edge bearings so
+    // "left"/"right"/"north side" questions have a numeric answer.
+    const toEdge = (sign) =>
+      bearingOfWorldDirection(
+        worldPos,
+        new THREE.Vector3(sign, 0, 0).transformDirection(obj.matrixWorld),
+        frame
+      );
     out.managedStreet = {
+      crossSection: {
+        firstSegmentEdgeBearingDeg: toEdge(-1),
+        lastSegmentEdgeBearingDeg: toEdge(1),
+        note: 'segments[0] lies toward firstSegmentEdgeBearingDeg from the centerline; the last segment toward lastSegmentEdgeBearingDeg.'
+      },
       length,
       width: street.data.width,
       // A road axis is undirected: both bearings describe the same line.

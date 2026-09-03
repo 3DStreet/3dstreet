@@ -1,3 +1,4 @@
+/* global VERSION */
 /**
  * MCP-only read and meta tools.
  *
@@ -24,7 +25,9 @@ import {
   sceneAxisBearings,
   worldToLatLon
 } from '../geo/geoFrame.js';
-import { describeCamera, orientPlanView } from '../geo/cameraState.js';
+import { describeCamera, orientPlanViewZoomed } from '../geo/cameraState.js';
+import { summarizePresets } from '../commands/segmentPresets.js';
+import { describeSaveState } from './sceneTools.js';
 
 // Guard for entity-id args: the relay forwards arbitrary strings from
 // Claude. Resolve to an A-Frame entity or throw a clean error so the
@@ -74,18 +77,45 @@ async function selectEntityHandler(args) {
 }
 
 async function listMixinsHandler(args) {
-  const groups = getGroupedMixinOptions(true);
-  const requested = args?.category;
-  const filtered = requested
-    ? groups.filter((g) => g.label === requested)
-    : groups;
-  return filtered.map((g) => ({
+  const stencilIds = new Set(
+    AFRAME.components['street-generated-stencil']?.schema?.modelsArray?.oneOf ||
+      []
+  );
+  if (stencilIds.size === 0) {
+    // Every id would be tagged 'clones' — the silent misclassification the
+    // tag exists to prevent. Loud, so a registration-order regression shows.
+    console.warn(
+      '[mcp] street-generated-stencil schema unavailable; generator tags may be wrong'
+    );
+  }
+  const groups = getGroupedMixinOptions(true).map((g) => ({
     category: g.label,
     mixins: g.options.map((o) => ({
       id: o.value,
-      label: o.label
+      label: o.label,
+      // Which managed-street generator accepts this id: 3D models go in
+      // `generated.clones`, flat painted markings in `generated.stencil`.
+      generator: stencilIds.has(o.value) ? 'stencil' : 'clones'
     }))
   }));
+  const seen = new Set(groups.flatMap((g) => g.mixins.map((m) => m.id)));
+  const missingStencils = [...stencilIds].filter((id) => !seen.has(id));
+  if (missingStencils.length) {
+    groups.push({
+      category: 'Road markings (stencils)',
+      mixins: missingStencils.map((id) => ({
+        id,
+        label: id,
+        generator: 'stencil'
+      }))
+    });
+  }
+  const requested = args?.category;
+  return requested ? groups.filter((g) => g.category === requested) : groups;
+}
+
+async function listSegmentPresetsHandler() {
+  return summarizePresets(window.STREET?.types);
 }
 
 async function getSessionInfoHandler(args, currentUser) {
@@ -105,9 +135,18 @@ async function getSessionInfoHandler(args, currentUser) {
     }
     user = { uid: currentUser.uid, username };
   }
+  const { sceneId, sceneUrl, saved, isAuthor } = describeSaveState(currentUser);
   return {
+    // package version + git sha of the running bundle (webpack DefinePlugin),
+    // so an agent can tell whether a tab is on a stale deploy.
+    build: typeof VERSION !== 'undefined' ? VERSION : null,
     user,
-    sceneId: STREET.utils.getCurrentSceneId?.() || null,
+    sceneId,
+    sceneUrl,
+    // saved = a cloud scene exists and this user is its author, so autosave
+    // is persisting edits. Otherwise call saveScene.
+    saved,
+    isAuthor,
     sceneTitle: STREET.store?.getState?.()?.sceneTitle || null,
     viewport: canvas ? { width: canvas.width, height: canvas.height } : null
   };
@@ -184,8 +223,11 @@ async function getGeoContextHandler(args) {
   return out;
 }
 
-async function orientPlanViewHandler() {
-  return orientPlanView();
+async function orientPlanViewHandler(args) {
+  const zoomOut = Number.isFinite(Number(args?.zoomOut))
+    ? Math.max(1, Number(args.zoomOut))
+    : 1;
+  return orientPlanViewZoomed({ zoomOut });
 }
 
 async function focusCameraHandler(args) {
@@ -258,9 +300,16 @@ export const mcpReadTools = [
     handler: listMixinsHandler
   },
   {
+    name: 'listSegmentPresets',
+    description:
+      'List the per-type segment presets (surface, color, elevation, default direction, and the generated stencils/clones/pedestrians) that managedStreetCreate and managedStreetUpdate apply when a segment omits those fields — identical to picking the type in the editor sidebar. Read this before composing a cross-section so you only override what you need.',
+    inputSchema: { type: 'object', properties: {}, required: [] },
+    handler: listSegmentPresetsHandler
+  },
+  {
     name: 'getSessionInfo',
     description:
-      'Return signed-in user, current scene id/title, and viewport size for the connected browser tab.',
+      'Return the running build version, signed-in user, current scene id/url/title, whether edits are being persisted (`saved`: cloud scene exists and the user is its author, so autosave is on — otherwise call saveScene), and viewport size.',
     inputSchema: { type: 'object', properties: {}, required: [] },
     handler: getSessionInfoHandler
   },
@@ -282,12 +331,14 @@ export const mcpReadTools = [
   },
   {
     name: 'undo',
+    mutating: true,
     description: 'Step the editor history back by one command.',
     inputSchema: { type: 'object', properties: {}, required: [] },
     handler: undoHandler
   },
   {
     name: 'redo',
+    mutating: true,
     description: 'Step the editor history forward by one command.',
     inputSchema: { type: 'object', properties: {}, required: [] },
     handler: redoHandler
@@ -322,8 +373,18 @@ export const mcpReadTools = [
   {
     name: 'orientPlanView',
     description:
-      'Move the editor camera to a top-down, north-up plan view using the same compass action a user clicks (perspective camera, framing the whole scene). Returns the resulting camera state (tilt, needle angle, isTopDown, isNorthUp, lat/lon). Use before takeSnapshot when judging alignment or orientation; focusCamera reframes around one entity and is NOT a reliable orientation reference.',
-    inputSchema: { type: 'object', properties: {}, required: [] },
+      'Move the editor camera to a top-down, north-up plan view using the same compass action a user clicks (perspective camera, framing the whole scene), optionally pulled back by `zoomOut`. Returns the resulting camera state (tilt, needle angle, isTopDown, isNorthUp, lat/lon, groundExtent in metres). Use before takeSnapshot when judging alignment or orientation; focusCamera reframes around one entity and is NOT a reliable orientation reference. takeSnapshot type "plan" does this for you.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        zoomOut: {
+          type: 'number',
+          description:
+            'Altitude multiplier after the fit: 1 = scene fills the frame, 2 = twice the ground extent (see surrounding real roads), 3-4 = wide context.'
+        }
+      },
+      required: []
+    },
     handler: orientPlanViewHandler
   },
   {
