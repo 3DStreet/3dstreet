@@ -1,15 +1,5 @@
 import { GizmoPointerControls } from './GizmoPointerControls';
 import { getTravelledWaySegments } from '../../../aframe-components/street-layout-utils';
-import GeoReadout from '../geo/GeoReadout.js';
-import { endpointReadoutText } from '../geo/geoLabel.js';
-import {
-  GeoFrameError,
-  bearingOfWorldDirection,
-  getGeoFrame,
-  worldToLatLon
-} from '../geo/geoFrame.js';
-import { formatLength } from '../shapeMeasure';
-import useStore from '@/store';
 
 /**
  * StreetNodeControls — "Street Endpoint Nodes" prototype (#1096).
@@ -124,7 +114,6 @@ class StreetNodeControls extends GizmoPointerControls {
   }
 
   detach() {
-    this.disposeReadout();
     if (this.el) {
       this.el.removeEventListener('segments-changed', this.refreshLayoutCache);
       this.el.removeEventListener('alignment-changed', this.refreshLayoutCache);
@@ -209,61 +198,6 @@ class StreetNodeControls extends GizmoPointerControls {
     };
     this.pendingLength = null;
     this.lastLengthApply = 0;
-
-    // Live readout chip on the dragged endpoint: scene x/z, and lat/lon +
-    // centerline bearing when the geo layer is live. The frame is resolved
-    // once per drag (a matrix invert), never per move.
-    this.geoFrame = null;
-    try {
-      this.geoFrame = getGeoFrame();
-    } catch (err) {
-      if (!(err instanceof GeoFrameError)) throw err;
-    }
-    this.readout = new GeoReadout(handle);
-    this.updateReadout();
-  }
-
-  updateReadout() {
-    if (!this.readout || !this.el) return;
-    const handle = this.handles[this.axis];
-    const rotY = this.el.object3D.rotation.y;
-    const info = {
-      x: handle.position.x,
-      z: handle.position.z,
-      // Y rotation as a scene heading (bearing from local +Z, clockwise from
-      // +X north) — replaced by the true bearing when geo is live.
-      headingDeg: (((90 - THREE.MathUtils.radToDeg(rotY)) % 360) + 360) % 360,
-      lengthText: formatLength(
-        this.getStreetLength(),
-        useStore.getState().unitsPreference
-      )
-    };
-    if (this.geoFrame) {
-      try {
-        const geo = worldToLatLon(handle.position, this.geoFrame);
-        info.latitude = geo.latitude;
-        info.longitude = geo.longitude;
-        const forward = new THREE.Vector3(0, 0, 1).transformDirection(
-          this.el.object3D.matrixWorld
-        );
-        info.headingDeg = bearingOfWorldDirection(
-          handle.position,
-          forward,
-          this.geoFrame
-        );
-      } catch (err) {
-        if (!(err instanceof GeoFrameError)) throw err;
-      }
-    }
-    this.readout.setText(endpointReadoutText(info));
-  }
-
-  disposeReadout() {
-    if (this.readout) {
-      this.readout.dispose();
-      this.readout = null;
-    }
-    this.geoFrame = null;
   }
 
   moveDrag(event) {
@@ -322,12 +256,9 @@ class StreetNodeControls extends GizmoPointerControls {
 
     this.dispatchEvent(this.changeEvent);
     this.dispatchEvent(this.objectChangeEvent);
-    // Handles are re-placed by the change listeners above; read after.
-    this.updateReadout();
   }
 
   endDrag(event) {
-    this.disposeReadout();
     const snap = this.dragStartSnapshot;
     if (!snap || !this.el) return;
 

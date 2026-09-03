@@ -23,32 +23,3 @@ export function formatGeoLoc(latitude, longitude, bearingDeg) {
     ? `${base}, ${formatBearing(bearingDeg)}`
     : base;
 }
-
-/**
- * Two-line chip text for a dragged street endpoint.
- *   line 1: lat/lon (when geo is live) else scene x/z
- *   line 2: heading + length (heading is the street's centerline bearing when
- *           geo is live, else the entity's Y rotation)
- */
-export function endpointReadoutText({
-  x,
-  z,
-  latitude,
-  longitude,
-  headingDeg,
-  lengthText
-}) {
-  const hasGeo = Number.isFinite(latitude) && Number.isFinite(longitude);
-  const line1 = hasGeo
-    ? formatLatLon(latitude, longitude)
-    : `x ${x.toFixed(2)}  z ${z.toFixed(2)}`;
-  const parts = [];
-  if (Number.isFinite(headingDeg)) {
-    // Without geo the heading is a scene-frame angle, not a true bearing.
-    parts.push(
-      hasGeo ? formatBearing(headingDeg) : `${Math.round(headingDeg)}°`
-    );
-  }
-  if (lengthText) parts.push(lengthText);
-  return parts.length ? `${line1}\n${parts.join(' · ')}` : line1;
-}
