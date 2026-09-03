@@ -111,7 +111,13 @@ read-tool list, so they work under the read-only gate):
   (`cameraTiltDegrees`, `needleScreenAngle`, shared tolerances). Perspective
   camera, whole-scene framing; unavailable under `nav=classic` or an
   orthographic camera.
-- **`takeSnapshot` `type: "plan"`** runs `orientPlanView` first. Every
+- **`takeSnapshot` `type: "plan"`** runs `orientPlanView` first, then pulls
+  the camera straight up by `zoomOut` (default 2 in geo scenes, 1 otherwise;
+  the compass fit alone frames the scene bounds with a 30% margin and crops
+  the real roads the agent needs for alignment). The zoom goes through the
+  controls' own `focusCameraState` glide so the navigation sensor treats the
+  pose as legit. `metadata.groundExtent` reports the visible metres across
+  the viewport. Every
   snapshot now also returns `metadata.camera` (tilt, `isTopDown`,
   `isNorthUp`, `screenUpBearingDeg`, lat/lon) as a text content block so a
   picture is never the only evidence. `focusCamera`'s description warns that
@@ -167,6 +173,49 @@ in a geo design; the agent should behave the same way):
   relay is paired, and removed if the relay pairs after it was seeded.
   Typing `/help` still shows it. The "3 snapshots from different angles"
   example is now a plan snapshot.
+
+## Snapshot encoding
+
+`takeSnapshot` returns a JPEG downscaled to at most 1280 px wide (quality
+0.85, `SNAPSHOT_MAX_WIDTH` / `SNAPSHOT_JPEG_QUALITY` in
+`nonCommandTools.js`) instead of the full-resolution PNG: a round-3 snapshot
+was ~2.5 MB / 3.4 M base64 characters, heavy on tokens and past some hosts'
+content-block limits. `metadata.image` reports the encoded size. Whether a
+host lets downstream tools (e.g. an image editor) reuse an MCP image block
+is the host's concern — ChatGPT's did not, and a URL or asset id from our
+side would not change that; a fetchable link for the human is a possible
+follow-up (upload via the snapshot gallery once the scene is saved).
+
+## Persistence: saveScene / loadScene
+
+Nothing on the tool surface could save, so agent-built scenes vanished on
+reload. `src/editor/lib/mcp/sceneTools.js` adds two MCP-only tools (flagged
+`mutating: true`, so the read-only gate blocks them; `undo`/`redo` now carry
+the same flag):
+
+- **`saveScene`** (optional `title`) runs the toolbar's save path
+  (`saveSceneWithScreenshot`) and returns `sceneId` + `sceneUrl`
+  (`…#/scenes/<id>`). After the first save the editor's own autosave persists
+  every later edit by the author, so one call per new scene is enough.
+  Signed out, it opens the sign-in modal and errors with instructions — the
+  human signs in, the agent retries. On someone else's scene it saves a copy.
+- **`loadScene`** (`sceneId` or a URL containing one) fetches
+  `/scenes/<id>.json` like the hash loader and rebuilds the scene in-tab
+  (no page reload, so the WebMCP registration survives). This is the v1
+  "resume my scene" path: the agent remembers the id across its own
+  sessions and reopens it on request.
+- **Build version.** `getSessionInfo.build` is the bundle's
+  `package.json` version + git sha (webpack `VERSION` define). Round 3 was
+  run against a stale `3dstreet.app` deploy; the agent could not tell.
+- **Nudge.** Every mutating tool result (except save/load/undo/redo) gets a
+  trailing `nextStep:` line while edits are not being persisted (no cloud
+  scene, signed out, or not the author). `getSessionInfo` reports
+  `saved`, `isAuthor` and `sceneUrl` so an agent can check cheaply.
+
+Open question for a later round: reopening the last scene automatically on
+a bare URL (localStorage last-scene toast). Hash vs path in the URL makes no
+difference to a browser agent — the gap is whether its platform remembers
+the URL between chats.
 
 ## Notes / future
 

@@ -304,7 +304,7 @@ const SnapshotMessage = ({ snapshot }) => {
     // Create a temporary anchor element to trigger download
     const link = document.createElement('a');
     link.href = imageData;
-    link.download = `${caption || 'snapshot'}.png`;
+    link.download = `${caption || 'snapshot'}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
