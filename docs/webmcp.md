@@ -1,19 +1,28 @@
-# WebMCP integration
+# AI agent integration: WebMCP (primary) + MCP relay (fallback)
 
 3DStreet's editor exposes its AI tool surface over two transports that share
-one implementation:
+one implementation. **WebMCP is the primary interface**; the WebSocket relay is
+kept only for clients that cannot use WebMCP.
 
-1. **MCP relay** (existing, [#1582](https://github.com/3DStreet/3dstreet/issues/1582)):
-   the browser tab is the MCP server; the external
+1. **WebMCP** (primary, this doc): the page registers its tools directly with
+   the _browser_ via [`document.modelContext`](https://github.com/webmachinelearning/webmcp),
+   and an agent driving that browser (ChatGPT's desktop browser, Chrome 149+
+   with the origin trial or flag, Gemini in Chrome) calls them in-process. No
+   relay, no pairing, no port, nothing to install — the agent operates the
+   user's own signed-in tab. **If your agent runs inside a browser, just open
+   3dstreet.app.**
+2. **MCP relay** (fallback, [#1582](https://github.com/3DStreet/3dstreet/issues/1582)):
+   for MCP clients that have no browser of their own or don't read
+   `document.modelContext` — Claude Desktop, Claude Code, Cursor, headless
+   scripts. The browser tab is the MCP server; the external
    [`3dstreet-mcp`](https://github.com/3DStreet/3dstreet-mcp) npm relay bridges
-   a stdio MCP client (Claude Desktop / Claude Code) to the tab over
-   `ws://127.0.0.1:51735`.
-2. **WebMCP** (this doc): the page registers the same tools directly with the
-   _browser_ via [`document.modelContext`](https://github.com/webmachinelearning/webmcp),
-   and an agent driving that browser (ChatGPT's desktop browser, Chrome with
-   the WebMCP flag, eventually Gemini in Chrome) calls them in-process. No
-   relay, no pairing, no port — the agent operates the user's own signed-in
-   tab, so there is nothing to install and no server-side rendering.
+   a stdio MCP client to the tab over `ws://127.0.0.1:51735`. Same tools,
+   same executor, same read-only gate; the only difference is the hop.
+
+Retirement trigger for the relay: when Claude Desktop / Claude in Chrome (or
+whichever out-of-browser clients we care about) read WebMCP tools natively,
+delete `useMCPClient.js`, the `#mcp` pairing UI, and deprecate the npm package.
+Until then it is a thin pipe over the shared registry and costs little.
 
 ## How it works
 
@@ -81,9 +90,10 @@ WebMCP is **not in production browsers** — it's a Chrome origin trial
 
 ## Notes / future
 
-- The relay remains the path for headless or out-of-browser clients (Claude
-  Desktop/Code); WebMCP covers attended, in-browser agents. Both can be
-  live at once — they don't conflict.
+- The relay is the fallback for headless or out-of-browser clients (Claude
+  Desktop/Code, Cursor); WebMCP is the primary path for in-browser agents.
+  Both can be live at once — they don't conflict. See the retirement
+  trigger at the top of this doc.
 - The read-only gate currently blocks `takeSnapshot` too (registry tools are
   all treated as mutating); pre-existing, tracked in `dispatch.js`.
 - Growing the tool surface = adding `static llmTool` to a command class or an
