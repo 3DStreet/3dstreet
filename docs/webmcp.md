@@ -174,6 +174,18 @@ in a geo design; the agent should behave the same way):
   Typing `/help` still shows it. The "3 snapshots from different angles"
   example is now a plan snapshot.
 
+## Snapshot encoding
+
+`takeSnapshot` returns a JPEG downscaled to at most 1280 px wide (quality
+0.85, `SNAPSHOT_MAX_WIDTH` / `SNAPSHOT_JPEG_QUALITY` in
+`nonCommandTools.js`) instead of the full-resolution PNG: a round-3 snapshot
+was ~2.5 MB / 3.4 M base64 characters, heavy on tokens and past some hosts'
+content-block limits. `metadata.image` reports the encoded size. Whether a
+host lets downstream tools (e.g. an image editor) reuse an MCP image block
+is the host's concern — ChatGPT's did not, and a URL or asset id from our
+side would not change that; a fetchable link for the human is a possible
+follow-up (upload via the snapshot gallery once the scene is saved).
+
 ## Persistence: saveScene / loadScene
 
 Nothing on the tool surface could save, so agent-built scenes vanished on
