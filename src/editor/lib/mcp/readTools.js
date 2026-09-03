@@ -17,6 +17,14 @@ import { getGroupedMixinOptions } from '../mixinUtils.js';
 import Events from '../Events.js';
 import { resolveEntityId } from '../commands/llmToolGuards.js';
 import { getUserProfile } from '@shared/utils/username';
+import {
+  describeEntityGeo,
+  getGeoFrame,
+  latLonToWorld,
+  sceneAxisBearings,
+  worldToLatLon
+} from '../geo/geoFrame.js';
+import { describeCamera, orientPlanView } from '../geo/cameraState.js';
 
 // Guard for entity-id args: the relay forwards arbitrary strings from
 // Claude. Resolve to an A-Frame entity or throw a clean error so the
@@ -133,6 +141,53 @@ async function redoHandler() {
   return { redone: true, command: top.name || top.type || null };
 }
 
+/**
+ * Local ↔ geographic correspondence. Throws a GeoFrameError (with a reason
+ * the agent can act on) while the geo layer is off or still loading.
+ */
+async function getGeoContextHandler(args) {
+  const frame = getGeoFrame();
+  const out = {
+    origin: {
+      ...frame.origin,
+      note: 'Scene world origin (0, 0, 0) sits at this latitude/longitude on the ground plane (y = 0).'
+    },
+    axes: {
+      ...sceneAxisBearings(frame),
+      up: '+y',
+      note: 'Bearings (degrees clockwise from true north) of the scene +X and +Z axes at the origin. A managed street runs along its local +Z; segments are laid out across local X. 1 scene unit = 1 meter.'
+    },
+    camera: describeCamera()
+  };
+  if (args?.entityId) {
+    out.entity = describeEntityGeo(resolveEntity(args.entityId), frame);
+  }
+  if (args?.latitude !== undefined || args?.longitude !== undefined) {
+    const lat = parseFloat(args.latitude);
+    const lon = parseFloat(args.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      throw new Error('latitude and longitude must both be finite numbers');
+    }
+    const world = latLonToWorld(lat, lon, null, frame);
+    out.point = {
+      latitude: lat,
+      longitude: lon,
+      worldPosition: {
+        x: Math.round(world.x * 1000) / 1000,
+        y: Math.round(world.y * 1000) / 1000,
+        z: Math.round(world.z * 1000) / 1000
+      },
+      // Round-trip so the agent can see the conversion is self-consistent.
+      roundTrip: worldToLatLon(world, frame)
+    };
+  }
+  return out;
+}
+
+async function orientPlanViewHandler() {
+  return orientPlanView();
+}
+
 async function focusCameraHandler(args) {
   const el = resolveEntity(args?.entityId);
   Events.emit('objectfocus', el.object3D);
@@ -238,9 +293,43 @@ export const mcpReadTools = [
     handler: redoHandler
   },
   {
+    name: 'getGeoContext',
+    description:
+      'Return the exact relationship between scene coordinates and geographic coordinates: the lat/lon at the scene origin, the compass bearing of the scene axes, the camera pose (tilt, north-up state, lat/lon), and optionally one entity converted to lat/lon + compass heading (for a managed street: centerline bearing and both endpoint coordinates), and/or a lat/lon converted to a scene world position. Conversions use the live Google 3D Tiles WGS84 frame, so they match where the map renders. Errors with a reason when the geo layer is off or still loading — call setLatLon or retry.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entityId: {
+          type: 'string',
+          description:
+            'Optional entity to describe geographically (position → lat/lon, heading → compass bearing; managed streets also get endpoint coordinates).'
+        },
+        latitude: {
+          type: 'number',
+          description:
+            'Optional latitude to convert to a scene world position (pair with longitude).'
+        },
+        longitude: {
+          type: 'number',
+          description:
+            'Optional longitude to convert to a scene world position (pair with latitude).'
+        }
+      },
+      required: []
+    },
+    handler: getGeoContextHandler
+  },
+  {
+    name: 'orientPlanView',
+    description:
+      'Move the editor camera to a top-down, north-up plan view using the same compass action a user clicks (perspective camera, framing the whole scene). Returns the resulting camera state (tilt, needle angle, isTopDown, isNorthUp, lat/lon). Use before takeSnapshot when judging alignment or orientation; focusCamera reframes around one entity and is NOT a reliable orientation reference.',
+    inputSchema: { type: 'object', properties: {}, required: [] },
+    handler: orientPlanViewHandler
+  },
+  {
     name: 'focusCamera',
     description:
-      'Frame an entity in the viewport (same effect as double-clicking it in the scene graph).',
+      'Frame an entity in the viewport (same effect as double-clicking it in the scene graph). This reframes and rotates the view around that entity, so the result is NOT a north-up or alignment reference — use orientPlanView + takeSnapshot for that.',
     inputSchema: {
       type: 'object',
       properties: {

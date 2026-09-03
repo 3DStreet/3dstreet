@@ -88,6 +88,43 @@ WebMCP is **not in production browsers** — it's a Chrome origin trial
 
 `/mcp` in the chat console prints setup help for both transports.
 
+## Geospatial alignment tools
+
+An agent aligning a generated street with the real road under the Google 3D
+Tiles layer needs a machine-readable link between scene units and the map,
+and a camera view it can trust. Three additions cover that (all in the MCP
+read-tool list, so they work under the read-only gate):
+
+- **`getGeoContext`** (`src/editor/lib/geo/geoFrame.js`) — the scene origin's
+  lat/lon, the compass bearing of the scene +X/+Z axes, the camera pose, and
+  optionally one entity converted to lat/lon + heading (managed streets also
+  get both centerline endpoints) and/or a lat/lon converted to a scene world
+  position. Conversions go through the live `google-maps-aerial`
+  `TilesRenderer` (WGS84 `ellipsoid` + `tiles.group.matrixWorld`), the same
+  transform terrain flattening uses, so results match where tiles render.
+  Throws a `GeoFrameError` with a `reason` (`no-location`, `not-google3d`,
+  `not-activated`, `no-tiles`, `tiles-loading`) rather than guessing.
+- **`orientPlanView`** (`src/editor/lib/geo/cameraState.js`) — drives the
+  editor camera to top-down + north-up by calling the exact compass-body
+  action a user clicks (`controls.handleCompassBodyClick`, staged, tweened)
+  and judging "done" with the compass widget's own predicates
+  (`cameraTiltDegrees`, `needleScreenAngle`, shared tolerances). Perspective
+  camera, whole-scene framing; unavailable under `nav=classic` or an
+  orthographic camera.
+- **`takeSnapshot` `type: "plan"`** runs `orientPlanView` first. Every
+  snapshot now also returns `metadata.camera` (tilt, `isTopDown`,
+  `isNorthUp`, `screenUpBearingDeg`, lat/lon) as a text content block so a
+  picture is never the only evidence. `focusCamera`'s description warns that
+  it reframes and is not an orientation reference.
+
+`managedStreetCreate` / `managedStreetUpdate` validate segment `type`,
+`surface`, `direction`, boundary `variant`/`side`, stencil names and clone
+model ids against the live component schemas
+(`src/editor/lib/commands/managedStreetValidation.js`) and throw listing the
+valid values, so "created" means the content can actually render. Create
+also passes boundary `variant`/`side` through (previously dropped) and
+returns `{ entityId, segmentCount, width, warnings? }`.
+
 ## Notes / future
 
 - The relay is the fallback for headless or out-of-browser clients (Claude
