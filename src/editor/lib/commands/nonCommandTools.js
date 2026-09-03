@@ -339,6 +339,33 @@ async function takeSnapshotHandler(args) {
   });
 }
 
+// WebMCP hackathon demo carve-out (PR #1931): signed-out sessions may set
+// locations within California until the demo window closes — third-party
+// sign-in is unreliable inside agent-embedded browsers, so browser agents
+// get a real geospatial demo without an account. This mirror exists only for
+// a good pre-flight error message; the server (getGeoidHeight in
+// public/functions/geoid-height.js, ANON_GEO_DEMO) enforces the same bbox +
+// expiry from lat/lon alone and trusts no client flag. Keep in sync; remove
+// both after the window closes.
+const ANON_GEO_DEMO = {
+  until: Date.parse('2026-10-01T00:00:00Z'),
+  // California bounding box
+  bbox: { latMin: 32.5, latMax: 42.05, lonMin: -124.45, lonMax: -114.13 }
+};
+
+function isAnonGeoDemoAllowed(lat, lon) {
+  const { until, bbox } = ANON_GEO_DEMO;
+  return (
+    Date.now() < until &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    lat >= bbox.latMin &&
+    lat <= bbox.latMax &&
+    lon >= bbox.lonMin &&
+    lon <= bbox.lonMax
+  );
+}
+
 // NOT routed through INSPECTOR.execute by design. Wrapping this as a command
 // would require capturing pre/post lat/lon/elevation, and undo would fire two
 // extra elevation HTTP roundtrips per toggle. Leave uninstrumented until we
@@ -346,8 +373,10 @@ async function takeSnapshotHandler(args) {
 async function setLatLonHandler(args, currentUser) {
   const { latitude, longitude } = args;
 
-  if (!currentUser) {
-    throw new Error('You need to sign in to set location');
+  if (!currentUser && !isAnonGeoDemoAllowed(latitude, longitude)) {
+    throw new Error(
+      'Setting this location requires a signed-in 3DStreet account. Without sign-in, only locations within California work (demo period). Either pick California coordinates (e.g. 37.7749, -122.4194 for San Francisco), or ask the user to sign in using the 3DStreet page UI — note that sign-in may not work inside agent-embedded browsers.'
+    );
   }
 
   const { setSceneLocation } = await import('../utils.js');
@@ -613,7 +642,7 @@ export const nonCommandTools = [
   {
     name: 'setLatLon',
     description:
-      'Set the latitude and longitude for the scene, which will trigger elevation calculation',
+      'Set the latitude and longitude for the scene, which triggers elevation lookup and activates the Google 3D Tiles map layer. Signed-in users can set any location; signed-out sessions are limited to locations within California (demo).',
     inputSchema: {
       type: 'object',
       properties: {

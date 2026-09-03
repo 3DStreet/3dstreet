@@ -44,10 +44,11 @@ registry.js ─ dispatch.js┤
   browser exposes the API, and shares the **Read-only** toggle between both
   transports.
 
-Registration prefers bulk `provideContext({ tools })` when the browser
-implements it (replacing the whole set is idempotent across re-mounts) and
-falls back to per-tool `registerTool(tool, { signal })` per the current
-explainer. Tool handler failures return
+Registration uses per-tool
+`document.modelContext.registerTool({ name, description, inputSchema, execute })`
+(the current explainer's API, lifetime scoped to an AbortSignal), falling back
+to bulk `provideContext({ tools })` on older builds. Tool handler failures
+return
 `{ content: [{type:'text', text}], isError: true }` rather than throwing, so
 the agent can read the error and self-correct.
 

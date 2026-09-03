@@ -16,11 +16,11 @@
  * API status (Chrome origin trial, Chrome 149–156, or
  * chrome://flags/#enable-webmcp-testing): the getter moved from
  * `navigator.modelContext` to `document.modelContext` in Chrome 150 with
- * the old name kept as an alias. Registration surface is `registerTool`
- * per tool (current explainer) with bulk `provideContext({ tools })` as
- * the earlier form; when both exist we prefer `provideContext` because
- * replacing the whole set is idempotent across re-mounts. On browsers
- * without WebMCP the hook is a no-op reporting `available: false`.
+ * the old name kept as an alias. Registration is `registerTool` per tool
+ * (the current explainer's API, lifetime scoped to an AbortSignal), with
+ * bulk `provideContext({ tools })` kept as a fallback for older builds
+ * that predate registerTool. On browsers without WebMCP the hook is a
+ * no-op reporting `available: false`.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -83,6 +83,12 @@ export function useWebMCP({ currentUser, readOnly }) {
     // Every call funnels through the same executor the WS relay uses, and
     // lands in the panel transcript so the user watches the agent work.
     const makeExecute = (toolName) => async (args) => {
+      // Mark this session as actively agent-driven. Mere presence of
+      // `modelContext` doesn't mean an agent is here — the origin trial
+      // gives every stock Chrome 149+ user the API — but a tool call does.
+      // SignInModal reads this to show its agent-browser sign-in caveat
+      // only where it applies.
+      window.__webmcpAgentActive = true;
       const id = `webmcp_${Date.now()}_${Math.random().toString(16).slice(2)}`;
       appendTranscript({
         id,
@@ -121,20 +127,23 @@ export function useWebMCP({ currentUser, readOnly }) {
 
     (async () => {
       try {
-        if (typeof mc.provideContext === 'function') {
-          usedProvideContext = true;
-          await mc.provideContext({ tools });
-        } else if (typeof mc.registerTool === 'function') {
+        if (typeof mc.registerTool === 'function') {
+          // Primary path per the current explainer: one registerTool per
+          // tool, lifetime scoped to the AbortSignal. (Older builds ignore
+          // the options bag; extra args are harmless.)
           for (const tool of tools) {
-            // Older builds ignore the options bag; extra args are harmless.
             await mc.registerTool(
               tool,
               controller ? { signal: controller.signal } : undefined
             );
           }
+        } else if (typeof mc.provideContext === 'function') {
+          // Legacy bulk surface from earlier Chrome builds.
+          usedProvideContext = true;
+          await mc.provideContext({ tools });
         } else {
           throw new Error(
-            'modelContext exposes neither provideContext nor registerTool'
+            'modelContext exposes neither registerTool nor provideContext'
           );
         }
         if (!cancelled) {

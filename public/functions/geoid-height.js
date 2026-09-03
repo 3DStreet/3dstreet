@@ -5,6 +5,31 @@ const { Client: GoogleMapsClient } = require('@googlemaps/google-maps-services-j
 const { isUserProInternal } = require('./token-management.js');
 const { assertAppCheck } = require('./app-check.js');
 
+// WebMCP hackathon demo carve-out (PR #1931): anonymous location lookups are
+// allowed within California until the demo window closes, so browser agents
+// (ChatGPT desktop browser, Chrome 149+ origin trial) can demo geospatial
+// without an account — third-party sign-in flows are unreliable inside
+// agent-embedded browsers. Cost exposure stays bounded by the bbox + expiry
+// (+ App Check once enforced). Client-side mirror of these constants (for
+// pre-flight error messages): ANON_GEO_DEMO in
+// src/editor/lib/commands/nonCommandTools.js — keep them in sync.
+// Remove both after the window closes.
+const ANON_GEO_DEMO = {
+  until: Date.parse('2026-10-01T00:00:00Z'),
+  // California bounding box
+  bbox: { latMin: 32.5, latMax: 42.05, lonMin: -124.45, lonMax: -114.13 }
+};
+
+function isAnonGeoDemoAllowed (lat, lon) {
+  const { until, bbox } = ANON_GEO_DEMO;
+  return (
+    Date.now() < until &&
+    Number.isFinite(lat) && Number.isFinite(lon) &&
+    lat >= bbox.latMin && lat <= bbox.latMax &&
+    lon >= bbox.lonMin && lon <= bbox.lonMax
+  );
+}
+
 // Function to get geoid height and location information
 exports.getGeoidHeight = functions
   .runWith({ secrets: ['GOOGLE_MAPS_ELEVATION_API_KEY', 'ALLOWED_PRO_TEAM_DOMAINS'] })
@@ -19,21 +44,29 @@ exports.getGeoidHeight = functions
     // No-op until APP_CHECK_ENFORCE is enabled (see app-check.js).
     assertAppCheck(context);
 
+    const lat = parseFloat(data.lat);
+    const lon = parseFloat(data.lon);
+
+    // Anonymous is allowed for the WebMCP demo carve-out (in-bbox, in-window)
+    // — the server decides from lat/lon alone, no client flag to trust.
+    const anonDemoAllowed = !context.auth && isAnonGeoDemoAllowed(lat, lon);
+
     // Check if user is authenticated (skip for GeoJSON imports during beta)
-    if (!context.auth && !fromGeojsonImport) {
+    if (!context.auth && !fromGeojsonImport && !anonDemoAllowed) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const userId = context.auth ? context.auth.uid : 'anonymous-geojson-import';
-    const lat = parseFloat(data.lat);
-    const lon = parseFloat(data.lon);
+    const userId = context.auth
+      ? context.auth.uid
+      : (fromGeojsonImport ? 'anonymous-geojson-import' : 'anonymous-webmcp-demo');
 
     // Check if user is Pro or has tokens
     const db = admin.firestore();
     const isProUser = context.auth ? await isUserProInternal(userId) : false;
 
-    // Skip token checks for GeoJSON imports (free during beta)
-    let canProceed = fromGeojsonImport || isProUser;
+    // Skip token checks for GeoJSON imports (free during beta) and the
+    // anonymous WebMCP demo carve-out
+    let canProceed = fromGeojsonImport || anonDemoAllowed || isProUser;
 
     // If not Pro and not from GeoJSON import, check tokens
     if (!canProceed) {
@@ -169,7 +202,7 @@ exports.getGeoidHeight = functions
     // it to skip anyone who has already tried the feature. Stamped for Pro
     // users too (below), since they skip the decrement.
     let remainingTokens = null;
-    if (!isProUser && !fromGeojsonImport) {
+    if (!isProUser && !fromGeojsonImport && !anonDemoAllowed) {
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
       const tokenDoc = await tokenProfileRef.get();
 
