@@ -2171,14 +2171,11 @@
   "sidebar.editCloneSettings": {
     "defaultMessage": "Edit Clone Settings"
   },
-  "sidebar.geoHeading": {
-    "defaultMessage": "heading"
+  "sidebar.geoloc": {
+    "defaultMessage": "GeoLoc"
   },
-  "sidebar.geoLocation": {
-    "defaultMessage": "location"
-  },
-  "sidebar.geoLocationTitle": {
-    "defaultMessage": "Latitude, longitude of this entity and the compass bearing of its local +Z axis (a managed street runs along +Z). Computed from the Google 3D Tiles frame; edit position/rotation to change it."
+  "sidebar.geolocTitle": {
+    "defaultMessage": "Latitude, longitude, true bearing (degrees clockwise from true north, “T”). Read-only: edit position and rotation to change it."
   },
   "sidebar.managedBy": {
     "defaultMessage": "Managed by"
