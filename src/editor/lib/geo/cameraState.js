@@ -82,7 +82,60 @@ async function waitForCompass(controls, timeoutMs) {
  * click, repeating until both predicates hold (at most two stages plus a
  * safety margin). Resolves with `describeCamera()` of the final pose.
  */
-export async function orientPlanView({ timeoutMs = 6000 } = {}) {
+/**
+ * Ground footprint the camera sees when looking straight down from its
+ * current altitude: width/height in metres across the viewport. Lets an
+ * agent reason about scale ("the street is 140 m, the view is 300 m wide").
+ */
+export function planViewGroundExtent(camera = inspectorCamera()) {
+  const pos = new THREE.Vector3();
+  camera.getWorldPosition(pos);
+  const halfV = ((camera.fov || 60) * Math.PI) / 360;
+  const height = 2 * pos.y * Math.tan(halfV);
+  return {
+    widthMeters: round(height * (camera.aspect || 1), 1),
+    heightMeters: round(height, 1)
+  };
+}
+
+async function waitForAltitude(camera, targetY, timeoutMs) {
+  const t0 = Date.now();
+  while (Math.abs(camera.position.y - targetY) > 0.05) {
+    if (Date.now() - t0 > timeoutMs) {
+      throw new Error('Timed out waiting for the plan view to zoom out');
+    }
+    await wait(50);
+  }
+  await wait(50);
+}
+
+/**
+ * Raise a settled top-down camera straight up by `factor` (2 = twice the
+ * altitude, so roughly twice the ground extent on each axis). Goes through
+ * the controls' own committed-motion glide (`focusCameraState`) so the
+ * pose is legit to the navigation sensor and nothing eases it back.
+ */
+async function zoomOutPlanView(controls, camera, factor, timeoutMs) {
+  const targetY = camera.position.y * factor;
+  if (typeof controls.focusCameraState === 'function') {
+    controls.focusCameraState({
+      position: { x: camera.position.x, y: targetY, z: camera.position.z },
+      rotation: {
+        x: camera.rotation.x,
+        y: camera.rotation.y,
+        z: camera.rotation.z
+      },
+      zoom: camera.fov
+    });
+    await waitForAltitude(camera, targetY, timeoutMs);
+  } else {
+    camera.position.y = targetY;
+    camera.updateMatrixWorld(true);
+    await wait(50);
+  }
+}
+
+export async function orientPlanView({ timeoutMs = 6000, zoomOut = 1 } = {}) {
   const controls = AFRAME.INSPECTOR?.controls;
   if (
     !controls ||
@@ -113,4 +166,25 @@ export async function orientPlanView({ timeoutMs = 6000 } = {}) {
     );
   }
   return final;
+}
+
+/**
+ * Plan view plus an optional altitude multiplier. The compass plan view
+ * frames the scene bounds with a 30% margin, which fills the frame with the
+ * street and crops the real roads around it — useless for judging
+ * alignment against the map. `zoomOut: 2` shows roughly twice the extent.
+ */
+export async function orientPlanViewZoomed({
+  timeoutMs = 6000,
+  zoomOut = 1
+} = {}) {
+  await orientPlanView({ timeoutMs });
+  const factor = Number(zoomOut);
+  if (Number.isFinite(factor) && factor > 1.01) {
+    const controls = AFRAME.INSPECTOR?.controls;
+    await zoomOutPlanView(controls, inspectorCamera(), factor, timeoutMs);
+  }
+  const state = describeCamera();
+  state.groundExtent = planViewGroundExtent();
+  return state;
 }

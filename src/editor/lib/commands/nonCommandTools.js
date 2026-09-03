@@ -13,7 +13,11 @@
 
 import * as THREE from 'three';
 import Events from '../Events.js';
-import { describeCamera, orientPlanView } from '../geo/cameraState.js';
+import {
+  describeCamera,
+  orientPlanViewZoomed,
+  planViewGroundExtent
+} from '../geo/cameraState.js';
 import { isGeospatialActive } from '../geo/geoFrame.js';
 import {
   readSegmentEnums,
@@ -270,6 +274,10 @@ async function managedStreetUpdateHandler(args) {
   throw new Error(`Unknown operation: ${operation}`);
 }
 
+// Snapshot encode bounds (see the encode comment in the handler).
+const SNAPSHOT_MAX_WIDTH = 1280;
+const SNAPSHOT_JPEG_QUALITY = 0.85;
+
 async function takeSnapshotHandler(args) {
   const caption = args.caption || 'Snapshot of the current view';
   const focusEntityId = args.focusEntityId;
@@ -301,9 +309,17 @@ async function takeSnapshotHandler(args) {
     throw new Error('Camera element not found');
   }
 
+  let zoomOut = 1;
   if (snapshotType === 'plan') {
-    // Deterministic top-down north-up view via the compass action.
-    await orientPlanView();
+    // Deterministic top-down north-up view via the compass action, then
+    // pull back so the surrounding real roads are in frame (geo scenes
+    // default to 2x; the compass fit alone crops them).
+    zoomOut = Number.isFinite(Number(args.zoomOut))
+      ? Math.max(1, Number(args.zoomOut))
+      : isGeospatialActive()
+        ? 2
+        : 1;
+    await orientPlanViewZoomed({ zoomOut });
   } else if (snapshotType !== 'focus') {
     const streetEntity = document.querySelector('[managed-street]');
     if (!streetEntity) {
@@ -450,7 +466,26 @@ async function takeSnapshotHandler(args) {
           ctx.drawImage(logoImg, 0, 0, 135, 43, 40, 30, 270, 86);
         }
 
-        const imageData = screenshotCanvas.toDataURL('image/png');
+        // Agent-facing encode: a full-res PNG was ~2.5 MB / 3.4 M base64
+        // chars per snapshot — heavy on tokens and past some hosts' block
+        // limits. Downscale to a bounded width and use JPEG; the overlay
+        // (title, logo) is already on the canvas so it scales with it.
+        const scale = Math.min(1, SNAPSHOT_MAX_WIDTH / screenshotCanvas.width);
+        const outWidth = Math.round(screenshotCanvas.width * scale);
+        const outHeight = Math.round(screenshotCanvas.height * scale);
+        let outCanvas = screenshotCanvas;
+        if (scale < 1) {
+          outCanvas = document.createElement('canvas');
+          outCanvas.width = outWidth;
+          outCanvas.height = outHeight;
+          outCanvas
+            .getContext('2d')
+            .drawImage(screenshotCanvas, 0, 0, outWidth, outHeight);
+        }
+        const imageData = outCanvas.toDataURL(
+          'image/jpeg',
+          SNAPSHOT_JPEG_QUALITY
+        );
 
         if (inspector && inspector.opened) {
           inspector.sceneHelpers.visible = true;
@@ -465,6 +500,20 @@ async function takeSnapshotHandler(args) {
           metadata = { type: snapshotType, cameraError: e.message };
         }
         if (typeDefaulted) metadata.typeDefaulted = true;
+        metadata.image = {
+          mimeType: 'image/jpeg',
+          width: outWidth,
+          height: outHeight,
+          approxBytes: Math.round((imageData.length - 23) * 0.75)
+        };
+        if (snapshotType === 'plan') {
+          metadata.zoomOut = zoomOut;
+          try {
+            metadata.groundExtent = planViewGroundExtent();
+          } catch (e) {
+            /* camera unavailable; extent is optional */
+          }
+        }
         resolve({ caption, imageData, metadata });
       } catch (error) {
         reject(error);
@@ -754,7 +803,7 @@ export const nonCommandTools = [
   {
     name: 'takeSnapshot',
     description:
-      'Render a snapshot of the scene and return it as an image plus `metadata.camera` (tilt, isTopDown, isNorthUp, screenUpBearingDeg, lat/lon). To VERIFY placement or alignment use type "plan": top-down, north-up, whole scene — the only view with absolute orientation. One plan snapshot beats several angled ones; do not take multiple perspective shots to check position. In a geospatial scene "plan" is the default when type is omitted.',
+      'Render a snapshot of the scene and return it as a JPEG image (max 1280 px wide) plus `metadata.camera` (tilt, isTopDown, isNorthUp, screenUpBearingDeg, lat/lon). To VERIFY placement or alignment use type "plan": top-down, north-up, whole scene — the only view with absolute orientation. One plan snapshot beats several angled ones; do not take multiple perspective shots to check position. In a geospatial scene "plan" is the default when type is omitted.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -772,6 +821,11 @@ export const nonCommandTools = [
           description:
             'View to render. "plan": top-down, north-up, whole scene — use this to judge orientation and alignment (default in geospatial scenes). "focus": current view, or framed on focusEntityId (default otherwise). "birdseye", "straightOn", "closeup": presentation shots of the first managed street — not orientation references; use them only when the user asks for a picture, not to verify.',
           enum: ['focus', 'plan', 'birdseye', 'straightOn', 'closeup']
+        },
+        zoomOut: {
+          type: 'number',
+          description:
+            'Plan view only: altitude multiplier applied after the top-down fit. 1 = street fills the frame; 2 (default in geospatial scenes) shows about twice the ground extent so the real roads around the street are visible; use 3-4 for a wider context check. The result reports `metadata.groundExtent` (visible metres across the viewport).'
         }
       },
       required: []
