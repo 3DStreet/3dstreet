@@ -79,6 +79,17 @@ const SignInModal = ({
           <div className={styles.content}>
             <p className={styles.p1}>{message}</p>
           </div>
+          {typeof window !== 'undefined' && window.__webmcpAgentActive && (
+            <div className={styles.agentBrowserNote}>
+              ⚠️ Sign-in may not work inside AI agent browsers (WebMCP clients),
+              which often block third-party sign-in popups. This is a limitation
+              of the embedded browser that 3DStreet cannot fix — please report
+              it to the browser&apos;s developer. You can keep using 3DStreet
+              without an account; premium features stay locked, and scene
+              locations within California work without sign-in during the WebMCP
+              preview.
+            </div>
+          )}
           <div
             onClick={() => onSignInClick('google')}
             onKeyDown={(e) => e.key === 'Enter' && onSignInClick('google')}

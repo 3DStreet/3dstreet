@@ -32,8 +32,9 @@ import {
 import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 import Events from '../../lib/Events';
 import { useMCPClient } from '../../lib/mcp/useMCPClient.js';
+import { useWebMCP } from '../../lib/mcp/useWebMCP.js';
 
-const AI_MODEL_ID = 'gemini-3.7-flash';
+const AI_MODEL_ID = 'gemini-3.8-flash';
 let AI_CONVERSATION_ID = uuidv4();
 
 // Cap pill list growth so a multi-hour session doesn't accumulate thousands
@@ -72,7 +73,7 @@ const HELP_COMMANDS = [
   {
     command: '/mcp',
     description:
-      'Connect Claude Desktop or Claude Code over the MCP relay (alpha)'
+      'Connect an AI agent: Claude via the MCP relay, or WebMCP in agentic browsers (alpha)'
   }
 ];
 
@@ -96,7 +97,9 @@ claude mcp add 3dstreet -- npx -y 3dstreet-mcp
 }
 \`\`\`
 
-Then click **Reconnect** above. Once paired, the relay forwards Claude's tool calls to this tab. Toggle **Read-only** to block scene mutations. Source and docs: [github.com/3DStreet/3dstreet-mcp](https://github.com/3DStreet/3dstreet-mcp).`;
+Then click **Reconnect** above. Once paired, the relay forwards Claude's tool calls to this tab. Toggle **Read-only** to block scene mutations. Source and docs: [github.com/3DStreet/3dstreet-mcp](https://github.com/3DStreet/3dstreet-mcp).
+
+**WebMCP** (no relay needed): in an agentic browser — ChatGPT's desktop browser, or Chrome 149+ with \`chrome://flags/#enable-webmcp-testing\` — this page registers its tools with the browser automatically and the status bar shows **WebMCP active**. Just ask the browser's agent to edit the scene; its tool calls appear in this feed.`;
 
 const MCP_PAIR_SUCCESS_MARKDOWN =
   '**MCP relay paired.** Tool calls from your MCP client are now wired through this tab. Return to **Claude** (or whichever MCP client you launched the relay from) to continue your workflow. Keep this tab open in the background.';
@@ -340,12 +343,13 @@ const SnapshotMessage = ({ snapshot }) => {
 
 // Inline transcript entry for an incoming MCP frame. Mirrors
 // FunctionCallMessage so users can recognize "the LLM is calling a tool"
-// regardless of whether it came from the in-editor Gemini path or from
-// Claude over the MCP relay.
+// regardless of whether it came from the in-editor Gemini path, from
+// Claude over the MCP relay, or from a browser agent via WebMCP.
 const MCPFrameMessage = ({ frame }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { method, name, args, status, result } = frame;
+  const { method, name, args, status, result, channel } = frame;
   const label = name || method;
+  const channelLabel = channel === 'webmcp' ? 'webmcp' : 'mcp';
 
   return (
     <div
@@ -356,7 +360,10 @@ const MCPFrameMessage = ({ frame }) => {
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <span className={`${styles.statusIndicator} ${styles[status]}`}></span>
-        <strong>mcp · {label}</strong>:{' '}
+        <strong>
+          {channelLabel} · {label}
+        </strong>
+        :{' '}
         {status === 'pending'
           ? 'Executing…'
           : status === 'success'
@@ -453,6 +460,60 @@ const MCPStatusBar = ({
             readOnly
               ? 'Read-only mode on: mutating tools rejected'
               : 'Toggle read-only mode (block scene mutations from the MCP)'
+          }
+        >
+          <AwesomeIcon icon={readOnly ? faLock : faLockOpen} />
+          <span>{readOnly ? 'Read-only' : 'Allow edits'}</span>
+        </button>
+      )}
+    </div>
+  );
+};
+
+const WEBMCP_STATUS_LABEL = {
+  registering: 'WebMCP: registering tools…',
+  registered: 'WebMCP active',
+  error: 'WebMCP registration failed'
+};
+
+// Map WebMCP hook statuses onto the existing MCP dot styles so the two
+// bars read as one system: green = an agent can call us right now.
+const WEBMCP_DOT_STYLE = {
+  registering: 'mcpStatus_connecting',
+  registered: 'mcpStatus_connected',
+  error: 'mcpStatus_paired-elsewhere'
+};
+
+// Shown only when the browser exposes `modelContext` (agentic browser or
+// Chrome with the WebMCP flag) — everyone else never sees WebMCP UI.
+const WebMCPStatusBar = ({ status, toolCount, readOnly, onToggleReadOnly }) => {
+  const label =
+    status === 'registered'
+      ? `${WEBMCP_STATUS_LABEL[status]} (${toolCount} tools)`
+      : WEBMCP_STATUS_LABEL[status] || status;
+  const tooltip =
+    status === 'registered'
+      ? 'This browser exposes WebMCP; the scene tools are registered. Ask the browser’s AI agent to edit the scene.'
+      : status === 'error'
+        ? 'The browser exposes WebMCP but tool registration failed — see console.'
+        : 'Registering tools with the browser’s model context…';
+  return (
+    <div className={styles.mcpStatusBar} title={tooltip}>
+      <span
+        className={`${styles.mcpStatusDot} ${styles[WEBMCP_DOT_STYLE[status]] || ''}`}
+      />
+      <span className={styles.mcpStatusLabel}>{label}</span>
+      {status === 'registered' && (
+        <button
+          type="button"
+          className={`${styles.mcpStatusButton} ${
+            readOnly ? styles.mcpReadOnlyOn : ''
+          }`}
+          onClick={onToggleReadOnly}
+          title={
+            readOnly
+              ? 'Read-only mode on: mutating tools rejected'
+              : 'Toggle read-only mode (block scene mutations from agents)'
           }
         >
           <AwesomeIcon icon={readOnly ? faLock : faLockOpen} />
@@ -726,6 +787,15 @@ function AIChatPanel() {
     persistRetries: mcpVisible
   });
 
+  // WebMCP: when the browser itself exposes `modelContext` (agentic
+  // browser, or Chrome with the WebMCP flag), register the same tool
+  // surface directly — no relay, no pairing. Shares the read-only toggle
+  // with the relay path.
+  const webmcp = useWebMCP({
+    currentUser,
+    readOnly: mcpReadOnly
+  });
+
   const postPairSuccess = () => {
     setMessages((prev) => [
       ...prev,
@@ -808,23 +878,24 @@ function AIChatPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Interleave Gemini chat messages with incoming MCP frames so a single
-  // chronological feed shows both LLM channels. Both arrays already carry
-  // Date timestamps; sort once per render.
+  // Interleave Gemini chat messages with incoming MCP/WebMCP frames so a
+  // single chronological feed shows every LLM channel. All arrays already
+  // carry Date timestamps; sort once per render.
   const renderedMessages = useMemo(() => {
-    if (mcp.transcript.length === 0) return messages;
-    const mcpEntries = mcp.transcript.map((t) => ({
-      ...t,
-      type: 'mcpFrame'
-    }));
-    const merged = messages.concat(mcpEntries);
+    if (mcp.transcript.length === 0 && webmcp.transcript.length === 0) {
+      return messages;
+    }
+    const frameEntries = mcp.transcript
+      .concat(webmcp.transcript)
+      .map((t) => ({ ...t, type: 'mcpFrame' }));
+    const merged = messages.concat(frameEntries);
     merged.sort((a, b) => {
       const at = a.timestamp ? a.timestamp.getTime() : 0;
       const bt = b.timestamp ? b.timestamp.getTime() : 0;
       return at - bt;
     });
     return merged;
-  }, [messages, mcp.transcript]);
+  }, [messages, mcp.transcript, webmcp.transcript]);
 
   // Focus the textarea when the console tab becomes active so Enter sends the
   // command instead of re-clicking the tab button that was just focused.
@@ -1491,7 +1562,7 @@ function AIChatPanel() {
       chatContainerRef.current.scrollTop =
         chatContainerRef.current.scrollHeight;
     }
-  }, [messages, mcp.transcript]);
+  }, [messages, mcp.transcript, webmcp.transcript]);
 
   const resetConversation = () => {
     // Preserve command history pills — the underlying A-Frame undo stack
@@ -1596,6 +1667,14 @@ function AIChatPanel() {
   return (
     <div className={`${styles.chatContainer} ai-chat-panel-container`}>
       <div className={styles.proFeaturesWrapper}>
+        {webmcp.available && (
+          <WebMCPStatusBar
+            status={webmcp.status}
+            toolCount={webmcp.toolCount}
+            readOnly={mcpReadOnly}
+            onToggleReadOnly={() => setMcpReadOnly((v) => !v)}
+          />
+        )}
         {mcpVisible && (
           <MCPStatusBar
             status={mcp.status}

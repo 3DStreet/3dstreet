@@ -15,20 +15,13 @@
 
 import { getGroupedMixinOptions } from '../mixinUtils.js';
 import Events from '../Events.js';
+import { resolveEntityId } from '../commands/llmToolGuards.js';
 import { getUserProfile } from '@shared/utils/username';
 
 // Guard for entity-id args: the relay forwards arbitrary strings from
 // Claude. Resolve to an A-Frame entity or throw a clean error so the
 // JSON-RPC reply carries it back instead of crashing the inspector.
-function resolveEntity(entityId) {
-  if (!entityId) throw new Error('entityId is required');
-  const el = document.getElementById(entityId);
-  if (!el) throw new Error(`Entity with ID ${entityId} not found`);
-  if (!el.isEntity) {
-    throw new Error(`DOM id ${entityId} is not an A-Frame entity`);
-  }
-  return el;
-}
+const resolveEntity = resolveEntityId;
 
 async function getSceneHandler() {
   const root = document.getElementById('street-container');
