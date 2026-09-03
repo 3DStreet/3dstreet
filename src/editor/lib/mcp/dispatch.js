@@ -20,6 +20,37 @@
 
 import { getToolDefinitions, dispatchToolCall } from '../commands/registry.js';
 import { mcpReadTools } from './readTools.js';
+import useStore from '@/store';
+
+// Modals that merely greet the user and would hide what an agent is doing.
+// Anything else (payment, profile, share…) is deliberate and stays open.
+const GREETING_MODALS = ['new', 'intro'];
+let revealedAgentActivity = false;
+
+/**
+ * First remote tool call of the session: dismiss a greeting modal (the
+ * "Create a New Scene" dialog shown on a bare load) and switch the right
+ * panel to the Console tab so the user can watch the agent's calls stream
+ * in. Once per page load — after that the user owns the UI.
+ */
+function revealAgentActivity() {
+  if (revealedAgentActivity) return;
+  revealedAgentActivity = true;
+  try {
+    const {
+      modal,
+      setModal,
+      setRightPanelTab,
+      panelsVisible,
+      setPanelsVisible
+    } = useStore.getState();
+    if (GREETING_MODALS.includes(modal)) setModal(null);
+    if (!panelsVisible) setPanelsVisible(true);
+    setRightPanelTab('console');
+  } catch (err) {
+    console.warn('[mcp] could not reveal agent activity:', err);
+  }
+}
 
 // name → { source: 'registry' | 'read', handler? }. Built lazily on first
 // frame so the registry has finished initializing.
@@ -109,6 +140,7 @@ function toMCPContent(toolName, value) {
  * or handler failure; the caller owns the transport-specific error shape.
  */
 export async function callToolAsMCPContent(toolName, args, ctx = {}) {
+  revealAgentActivity();
   const value = await callTool(toolName, args, ctx.currentUser, {
     readOnly: !!ctx.readOnly
   });
