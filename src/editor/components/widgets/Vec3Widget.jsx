@@ -79,7 +79,7 @@ export default class Vec3Widget extends React.Component {
             aria-pressed={linked}
             data-testid="vec3-link"
           >
-            <AwesomeIcon icon={linked ? faLink : faLinkSlash} />
+            <AwesomeIcon icon={linked ? faLink : faLinkSlash} size={13} />
           </button>
         )}
       </div>

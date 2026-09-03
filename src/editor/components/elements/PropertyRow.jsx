@@ -239,7 +239,7 @@ class PropertyRow extends React.Component {
         })}
         data-testid="vec3-reset"
       >
-        <AwesomeIcon icon={faArrowRotateLeft} />
+        <AwesomeIcon icon={faArrowRotateLeft} size={13} />
       </button>
     );
   }
