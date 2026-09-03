@@ -5,10 +5,10 @@ always on — there is no user toggle. They are **additive**: every entity keeps
 TransformControls gizmo (move/rotate/scale per the active action tool);
 the street handles appear alongside it.
 
-| Gizmo                             | What it adds                                                                                                                                                                                                                                                                                          |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Street Endpoint Nodes** (#1096) | Selecting a **managed street** shows a draggable circle at each end of the street. Dragging a circle keeps the other end fixed and rewrites the street's position, Y rotation, and `managed-street.length` so the two circles always define the street's ends. One undo step per drag (MultiCommand). |
-| **Segment Width Handles** (#1218) | Selecting a **street segment** shows a bar along each long edge; dragging a bar changes `street-segment.width` live, with the normal managed-street re-layout cascade running during the drag. Shift snaps to 0.5 m.                                                                                  |
+| Gizmo                             | What it adds                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Street Endpoint Nodes** (#1096) | Selecting a **managed street** shows a draggable circle at each end of the street. Dragging a circle keeps the other end fixed; an outline previews the new footprint during the drag, and on release the street's position, Y rotation, and `managed-street.length` are rewritten so the two circles always define the street's ends. One undo step per drag (MultiCommand). |
+| **Segment Width Handles** (#1218) | Selecting a **street segment** shows a bar along each long edge; dragging a bar changes `street-segment.width` live, with the normal managed-street re-layout cascade running during the drag. Shift snaps to 0.5 m.                                                                                                                                                          |
 
 Managed streets only: neither gizmo attaches to legacy
 `street` + `streetmix-loader` scenes.
@@ -37,9 +37,12 @@ src/editor/lib/gizmos/
   table: the stock gizmo attaches to every transformable entity exactly as
   before, then a managed street additionally gets endpoint nodes and a
   street segment additionally gets width bars.
-- The street gizmos mutate attributes live during the drag (so the street's
-  re-layout cascade runs) and commit one undo step on mouse-up via
-  `commitDrag` → `entityupdate`/`multi`.
+- Segment width bars mutate `street-segment.width` live during the drag (so
+  the street's re-layout cascade runs). Endpoint nodes do not touch the
+  entity until mouse-up (#1942): the dragged circle follows the cursor and a
+  yellow footprint outline previews the resulting street, then position,
+  rotation and length are applied once on release. Both commit one undo step
+  on mouse-up via `commitDrag` → `entityupdate`/`multi`.
 - Gizmo objects are named with the `gizmoPrototype` prefix, which is on
   the nav-experimental cursor-anchor exclusion list.
 
@@ -48,9 +51,8 @@ src/editor/lib/gizmos/
 - Segment width drag with `street-align` width `center` grows the segment
   symmetrically, so the dragged edge moves at ~half cursor speed; anchoring
   the opposite edge would need a coordinated street-position change.
-- Endpoint node drags throttle `managed-street.length` writes to 10 Hz
-  during the drag (the length cascade re-lays-out every segment); the final
-  value always lands on mouse-up.
+- Endpoint node drags show only an outline preview until release, so
+  clones, striping and terrain flattening do not follow the cursor live.
 - The simplified move/rotate and ground-clamp prototypes (#1674/#1446) from
   the original lab, and #1806's segment-gizmo suppression, were not ported —
   segments keep the stock gizmo here even though `street-align` owns segment
