@@ -43,6 +43,18 @@ function round(v, places = 7) {
  * missing. Returns { ellipsoid, groupMatrixWorld, groupMatrixWorldInverse,
  * origin: { latitude, longitude, ellipsoidalHeight } }.
  */
+/**
+ * Cheap check for "is the Google 3D Tiles context on" — no tiles-loaded
+ * requirement, so tool copy and defaults can branch on it before
+ * getGeoFrame() would succeed.
+ */
+export function isGeospatialActive(doc = globalThis.document) {
+  const geo = doc
+    ?.querySelector?.('#reference-layers[street-geo]')
+    ?.getAttribute?.('street-geo');
+  return !!geo && geo.maps === 'google3d';
+}
+
 export function getGeoFrame() {
   const geoEl = document.querySelector('#reference-layers[street-geo]');
   const geo = geoEl?.getAttribute('street-geo');

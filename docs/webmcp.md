@@ -141,17 +141,22 @@ valid values, so "created" means the content can actually render. Create
 also passes boundary `variant`/`side` through (previously dropped) and
 returns `{ entityId, segmentCount, width, warnings? }`.
 
-## Geospatial guardrails (round 3)
+## Geospatial guidance (round 3)
 
-Third ChatGPT-desktop test surfaced three habits worth fixing at the tool
-layer rather than in prose the agent may skip
-(`src/editor/lib/commands/geoBuildingGuard.js`):
+Third ChatGPT-desktop test: the agent inferred `sp-mixeduse` boundaries from
+"street scene" and put them over the real Google 3D Tiles buildings, then
+verified with street-level and "three angles" snapshots instead of the plan
+view. Asked why, it pointed at the tool copy: it explained how to add
+buildings and never said a lat/lon context makes them undesirable. Fixes are
+guidance and defaults, not enforcement (a user simply doesn't add buildings
+in a geo design; the agent should behave the same way):
 
-- **No synthetic buildings over real ones.** When `street-geo.maps` is
-  `google3d`, `managedStreetCreate` drops building boundary variants
-  (brownstone, suburban, arcade, sp-\*) with a warning, `managedStreetUpdate`
-  refuses them, and `entityCreate` refuses catalog `buildings` mixins. Fences,
-  grass, parking and water boundaries still pass. Sidebar unaffected.
+- **Tool copy leads with the geo rule.** `managedStreetCreate`'s first
+  sentences say that with geographic context the tiles supply the
+  surroundings, do not add boundaries/buildings unless the user asks for
+  synthetic surroundings, and the cross-section normally starts and ends
+  with sidewalks. `type: "boundary"` and `variant` are labelled synthetic
+  land use for non-geo scenes.
 - **Plan view is the verification view.** `takeSnapshot` defaults to
   `type: "plan"` in geospatial scenes (`metadata.typeDefaulted: true` says
   so) and its description demotes `birdseye` / `straightOn` / `closeup` to
@@ -161,7 +166,7 @@ layer rather than in prose the agent may skip
   card (example prompts, model id) is skipped while WebMCP is present or the
   relay is paired, and removed if the relay pairs after it was seeded.
   Typing `/help` still shows it. The "3 snapshots from different angles"
-  example is gone; the example is now a plan snapshot.
+  example is now a plan snapshot.
 
 ## Notes / future
 

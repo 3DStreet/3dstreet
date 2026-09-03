@@ -1,11 +1,6 @@
 import Events from '../Events';
 import { Command } from '../command.js';
 import { createEntity, createUniqueId } from '../entity.js';
-import {
-  GEO_BUILDINGS_REASON,
-  isBuildingMixin,
-  isGeospatialActive
-} from './geoBuildingGuard.js';
 
 /**
  * @param editor Editor
@@ -18,7 +13,7 @@ export class EntityCreateCommand extends Command {
   static llmTool = {
     name: 'entityCreate',
     description:
-      'Create a new entity in the A-Frame scene with specified components and transforms. Building mixins (catalog category "buildings") are refused in geospatial scenes — Google 3D Tiles already shows the real buildings.',
+      'Create a new entity in the A-Frame scene with specified components and transforms',
     inputSchema: {
       type: 'object',
       properties: {
@@ -51,13 +46,6 @@ export class EntityCreateCommand extends Command {
   // command constructor expects. The command itself doesn't care about the
   // LLM-facing flat shape; this lives here so commands stay pure.
   static transformLLMArgs(args) {
-    // Agent-only gate (the sidebar is untouched): synthetic buildings collide
-    // with the real ones in a Google 3D Tiles scene.
-    if (args.mixin && isGeospatialActive() && isBuildingMixin(args.mixin)) {
-      throw new Error(
-        `Refused building mixin '${args.mixin}'. ${GEO_BUILDINGS_REASON}`
-      );
-    }
     const payload = {
       components: {
         position: args.position || '0 0 0',

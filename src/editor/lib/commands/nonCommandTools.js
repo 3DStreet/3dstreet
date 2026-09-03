@@ -14,18 +14,12 @@
 import * as THREE from 'three';
 import Events from '../Events.js';
 import { describeCamera, orientPlanView } from '../geo/cameraState.js';
+import { isGeospatialActive } from '../geo/geoFrame.js';
 import {
   readSegmentEnums,
   validateSegments
 } from './managedStreetValidation.js';
 import { applySegmentPreset } from './segmentPresets.js';
-import {
-  GEO_BUILDINGS_REASON,
-  describeDroppedBoundaries,
-  isBuildingBoundary,
-  isGeospatialActive,
-  partitionBuildingBoundaries
-} from './geoBuildingGuard.js';
 import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 import { TRANSFORM_REFUSED } from '../transformGuard.js';
 
@@ -94,15 +88,8 @@ const PLAN_VERIFY_HINT =
  */
 async function managedStreetCreateHandler(args) {
   const geospatial = isGeospatialActive();
-  let inputSegments = Array.isArray(args.segments) ? args.segments : [];
+  const inputSegments = Array.isArray(args.segments) ? args.segments : [];
   const warnings = validateSegments(inputSegments, readSegmentEnums());
-  if (geospatial) {
-    const { kept, dropped } = partitionBuildingBoundaries(inputSegments);
-    if (dropped.length) {
-      warnings.push(describeDroppedBoundaries(dropped));
-      inputSegments = kept;
-    }
-  }
   const streetData = {
     name: args.name || 'New Managed Street',
     length: parseFloat(args.length || '60'),
@@ -206,11 +193,6 @@ async function managedStreetUpdateHandler(args) {
   const geospatial = isGeospatialActive();
   const withHint = (text) =>
     geospatial ? `${text}. ${PLAN_VERIFY_HINT}` : text;
-  if (geospatial && isBuildingBoundary(segment)) {
-    throw new Error(
-      `Refused boundary variant '${segment.variant}'. ${GEO_BUILDINGS_REASON}`
-    );
-  }
 
   if (operation === 'add-segment') {
     if (!segment || !segment.type) {
@@ -565,7 +547,7 @@ const segmentSchema = {
     type: {
       type: 'string',
       description:
-        'Type of segment. Valid values: "drive-lane", "bike-lane", "sidewalk", "parking-lane", "divider", "grass", "rail", "bus-lane", "boundary". Use "boundary" with `variant` + `side` for flanking land use (buildings, waterfront, fences) — it renders outside the travelled way at the street edge and auto-tiles models edge-to-edge with no need to supply `generated`.'
+        'Type of segment. Valid values: "drive-lane", "bike-lane", "sidewalk", "parking-lane", "divider", "grass", "rail", "bus-lane", "boundary". "boundary" is SYNTHETIC flanking land use (buildings, waterfront, fences) for scenes without geographic context — it renders outside the travelled way at the street edge and auto-tiles models edge-to-edge (`variant` + `side`, no `generated` needed). Do not add boundaries when the scene has a location: the Google 3D Tiles already show the real surroundings and synthetic buildings would overlap them.'
     },
     surface: {
       type: 'string',
@@ -586,7 +568,7 @@ const segmentSchema = {
     variant: {
       type: 'string',
       description:
-        'Variant preset for `type: "boundary"` segments. Valid values: "brownstone" (urban mixed-use SM3D blocks), "suburban" (detached single-family houses), "arcade" (arched street-front buildings), "water" (seawall), "grass" (fenced grass strip), "parking" (fenced parking lot), "sp-mixeduse" (StreetPlan mixed-use), "sp-residential" (StreetPlan single-family/townhouse), "sp-big-box" (StreetPlan big-box stores), "custom" (preserve existing settings). Setting variant on a boundary segment auto-fits the model array; do NOT pass `generated.clones` for boundaries unless you want full control. Only meaningful when `type: "boundary"`. Building variants (brownstone, suburban, arcade, sp-*) are refused in geospatial scenes — Google 3D Tiles already shows the real buildings.'
+        'Variant preset for `type: "boundary"` segments. Valid values: "brownstone" (urban mixed-use SM3D blocks), "suburban" (detached single-family houses), "arcade" (arched street-front buildings), "water" (seawall), "grass" (fenced grass strip), "parking" (fenced parking lot), "sp-mixeduse" (StreetPlan mixed-use), "sp-residential" (StreetPlan single-family/townhouse), "sp-big-box" (StreetPlan big-box stores), "custom" (preserve existing settings). Setting variant on a boundary segment auto-fits the model array; do NOT pass `generated.clones` for boundaries unless you want full control. Only meaningful when `type: "boundary"`, and only for scenes without geographic context (see `type`).'
     },
     side: {
       type: 'string',
@@ -711,7 +693,7 @@ export const nonCommandTools = [
   {
     name: 'managedStreetCreate',
     description:
-      'Create a new managed street from a cross-section (array of segments, listed from one edge to the other). For each segment, omit surface/color/elevation/direction/generated to receive the type\'s preset — the same content a user gets by picking that type in the sidebar (e.g. bike-lane → green asphalt, bike-arrow stencils, cyclists; bus-lane → BUS ONLY stencil, buses; sidewalk → pedestrians). Call listSegmentPresets to see them. Only supply `generated` to override a preset. Returns entityId, width, presetsApplied, warnings and a readBack of what actually mounted. In a geospatial scene (Google 3D Tiles on) do not add building boundaries — the real buildings are already there; building variants are dropped with a warning — and verify with takeSnapshot type "plan" afterwards.',
+      "Create a new managed street from a cross-section (array of segments, listed from one edge to the other). If the scene has geographic context (setLatLon / Google 3D Tiles), the tiles already supply the surroundings: do NOT add boundary segments, buildings or other land-use models unless the user explicitly asks for synthetic surroundings — the cross-section should normally begin and end with sidewalks. For each segment, omit surface/color/elevation/direction/generated to receive the type's preset — the same content a user gets by picking that type in the sidebar (e.g. bike-lane → green asphalt, bike-arrow stencils, cyclists; bus-lane → BUS ONLY stencil, buses; sidewalk → pedestrians). Call listSegmentPresets to see them. Only supply `generated` to override a preset. Returns entityId, width, presetsApplied, warnings and a readBack of what actually mounted.",
     inputSchema: {
       type: 'object',
       properties: {
