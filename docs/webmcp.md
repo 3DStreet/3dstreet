@@ -111,7 +111,13 @@ read-tool list, so they work under the read-only gate):
   (`cameraTiltDegrees`, `needleScreenAngle`, shared tolerances). Perspective
   camera, whole-scene framing; unavailable under `nav=classic` or an
   orthographic camera.
-- **`takeSnapshot` `type: "plan"`** runs `orientPlanView` first. Every
+- **`takeSnapshot` `type: "plan"`** runs `orientPlanView` first, then pulls
+  the camera straight up by `zoomOut` (default 2 in geo scenes, 1 otherwise;
+  the compass fit alone frames the scene bounds with a 30% margin and crops
+  the real roads the agent needs for alignment). The zoom goes through the
+  controls' own `focusCameraState` glide so the navigation sensor treats the
+  pose as legit. `metadata.groundExtent` reports the visible metres across
+  the viewport. Every
   snapshot now also returns `metadata.camera` (tilt, `isTopDown`,
   `isNorthUp`, `screenUpBearingDeg`, lat/lon) as a text content block so a
   picture is never the only evidence. `focusCamera`'s description warns that
@@ -186,6 +192,9 @@ the same flag):
   (no page reload, so the WebMCP registration survives). This is the v1
   "resume my scene" path: the agent remembers the id across its own
   sessions and reopens it on request.
+- **Build version.** `getSessionInfo.build` is the bundle's
+  `package.json` version + git sha (webpack `VERSION` define). Round 3 was
+  run against a stale `3dstreet.app` deploy; the agent could not tell.
 - **Nudge.** Every mutating tool result (except save/load/undo/redo) gets a
   trailing `nextStep:` line while edits are not being persisted (no cloud
   scene, signed out, or not the author). `getSessionInfo` reports

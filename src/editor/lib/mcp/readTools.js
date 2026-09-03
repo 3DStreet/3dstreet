@@ -1,3 +1,4 @@
+/* global VERSION */
 /**
  * MCP-only read and meta tools.
  *
@@ -24,7 +25,7 @@ import {
   sceneAxisBearings,
   worldToLatLon
 } from '../geo/geoFrame.js';
-import { describeCamera, orientPlanView } from '../geo/cameraState.js';
+import { describeCamera, orientPlanViewZoomed } from '../geo/cameraState.js';
 import { summarizePresets } from '../commands/segmentPresets.js';
 import { describeSaveState } from './sceneTools.js';
 
@@ -136,6 +137,9 @@ async function getSessionInfoHandler(args, currentUser) {
   }
   const { sceneId, sceneUrl, saved, isAuthor } = describeSaveState(currentUser);
   return {
+    // package version + git sha of the running bundle (webpack DefinePlugin),
+    // so an agent can tell whether a tab is on a stale deploy.
+    build: typeof VERSION !== 'undefined' ? VERSION : null,
     user,
     sceneId,
     sceneUrl,
@@ -219,8 +223,11 @@ async function getGeoContextHandler(args) {
   return out;
 }
 
-async function orientPlanViewHandler() {
-  return orientPlanView();
+async function orientPlanViewHandler(args) {
+  const zoomOut = Number.isFinite(Number(args?.zoomOut))
+    ? Math.max(1, Number(args.zoomOut))
+    : 1;
+  return orientPlanViewZoomed({ zoomOut });
 }
 
 async function focusCameraHandler(args) {
@@ -302,7 +309,7 @@ export const mcpReadTools = [
   {
     name: 'getSessionInfo',
     description:
-      'Return signed-in user, current scene id/url/title, whether edits are being persisted (`saved`: cloud scene exists and the user is its author, so autosave is on — otherwise call saveScene), and viewport size.',
+      'Return the running build version, signed-in user, current scene id/url/title, whether edits are being persisted (`saved`: cloud scene exists and the user is its author, so autosave is on — otherwise call saveScene), and viewport size.',
     inputSchema: { type: 'object', properties: {}, required: [] },
     handler: getSessionInfoHandler
   },
@@ -366,8 +373,18 @@ export const mcpReadTools = [
   {
     name: 'orientPlanView',
     description:
-      'Move the editor camera to a top-down, north-up plan view using the same compass action a user clicks (perspective camera, framing the whole scene). Returns the resulting camera state (tilt, needle angle, isTopDown, isNorthUp, lat/lon). Use before takeSnapshot when judging alignment or orientation; focusCamera reframes around one entity and is NOT a reliable orientation reference.',
-    inputSchema: { type: 'object', properties: {}, required: [] },
+      'Move the editor camera to a top-down, north-up plan view using the same compass action a user clicks (perspective camera, framing the whole scene), optionally pulled back by `zoomOut`. Returns the resulting camera state (tilt, needle angle, isTopDown, isNorthUp, lat/lon, groundExtent in metres). Use before takeSnapshot when judging alignment or orientation; focusCamera reframes around one entity and is NOT a reliable orientation reference. takeSnapshot type "plan" does this for you.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        zoomOut: {
+          type: 'number',
+          description:
+            'Altitude multiplier after the fit: 1 = scene fills the frame, 2 = twice the ground extent (see surrounding real roads), 3-4 = wide context.'
+        }
+      },
+      required: []
+    },
     handler: orientPlanViewHandler
   },
   {

@@ -13,7 +13,11 @@
 
 import * as THREE from 'three';
 import Events from '../Events.js';
-import { describeCamera, orientPlanView } from '../geo/cameraState.js';
+import {
+  describeCamera,
+  orientPlanViewZoomed,
+  planViewGroundExtent
+} from '../geo/cameraState.js';
 import { isGeospatialActive } from '../geo/geoFrame.js';
 import {
   readSegmentEnums,
@@ -301,9 +305,17 @@ async function takeSnapshotHandler(args) {
     throw new Error('Camera element not found');
   }
 
+  let zoomOut = 1;
   if (snapshotType === 'plan') {
-    // Deterministic top-down north-up view via the compass action.
-    await orientPlanView();
+    // Deterministic top-down north-up view via the compass action, then
+    // pull back so the surrounding real roads are in frame (geo scenes
+    // default to 2x; the compass fit alone crops them).
+    zoomOut = Number.isFinite(Number(args.zoomOut))
+      ? Math.max(1, Number(args.zoomOut))
+      : isGeospatialActive()
+        ? 2
+        : 1;
+    await orientPlanViewZoomed({ zoomOut });
   } else if (snapshotType !== 'focus') {
     const streetEntity = document.querySelector('[managed-street]');
     if (!streetEntity) {
@@ -465,6 +477,14 @@ async function takeSnapshotHandler(args) {
           metadata = { type: snapshotType, cameraError: e.message };
         }
         if (typeDefaulted) metadata.typeDefaulted = true;
+        if (snapshotType === 'plan') {
+          metadata.zoomOut = zoomOut;
+          try {
+            metadata.groundExtent = planViewGroundExtent();
+          } catch (e) {
+            /* camera unavailable; extent is optional */
+          }
+        }
         resolve({ caption, imageData, metadata });
       } catch (error) {
         reject(error);
@@ -772,6 +792,11 @@ export const nonCommandTools = [
           description:
             'View to render. "plan": top-down, north-up, whole scene — use this to judge orientation and alignment (default in geospatial scenes). "focus": current view, or framed on focusEntityId (default otherwise). "birdseye", "straightOn", "closeup": presentation shots of the first managed street — not orientation references; use them only when the user asks for a picture, not to verify.',
           enum: ['focus', 'plan', 'birdseye', 'straightOn', 'closeup']
+        },
+        zoomOut: {
+          type: 'number',
+          description:
+            'Plan view only: altitude multiplier applied after the top-down fit. 1 = street fills the frame; 2 (default in geospatial scenes) shows about twice the ground extent so the real roads around the street are visible; use 3-4 for a wider context check. The result reports `metadata.groundExtent` (visible metres across the viewport).'
         }
       },
       required: []
