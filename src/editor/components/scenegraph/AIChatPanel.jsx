@@ -34,7 +34,7 @@ import Events from '../../lib/Events';
 import { useMCPClient } from '../../lib/mcp/useMCPClient.js';
 import { useWebMCP } from '../../lib/mcp/useWebMCP.js';
 
-const AI_MODEL_ID = 'gemini-3.7-flash';
+const AI_MODEL_ID = 'gemini-3.8-flash';
 let AI_CONVERSATION_ID = uuidv4();
 
 // Cap pill list growth so a multi-hour session doesn't accumulate thousands
