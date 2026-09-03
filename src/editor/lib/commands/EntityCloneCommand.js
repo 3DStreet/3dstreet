@@ -1,7 +1,6 @@
 import Events from '../Events.js';
 import { Command } from '../command.js';
 import { cloneEntityImpl, createUniqueId, insertAfter } from '../entity.js';
-import { getEditableEntity } from './llmToolGuards.js';
 
 export class EntityCloneCommand extends Command {
   static llmTool = {
@@ -19,11 +18,6 @@ export class EntityCloneCommand extends Command {
       required: ['entityId']
     }
   };
-
-  static transformLLMArgs(args) {
-    getEditableEntity(args.entityId);
-    return args;
-  }
 
   // Editor callers pass the entity directly; the LLM registry passes the
   // `{entity}` payload its id-resolution produces. Accept both.

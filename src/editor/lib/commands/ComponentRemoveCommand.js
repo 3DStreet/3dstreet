@@ -1,7 +1,6 @@
 import Events from '../Events.js';
 import { Command } from '../command.js';
 import { createUniqueId } from '../entity.js';
-import { getEditableEntity } from './llmToolGuards.js';
 
 export class ComponentRemoveCommand extends Command {
   static llmTool = {
@@ -28,8 +27,9 @@ export class ComponentRemoveCommand extends Command {
   // The constructor snapshots the current value via the component instance,
   // so only a live component can be removed — a plain attribute (data-*,
   // class) would crash it. Validate here so the model gets a clean error.
-  static transformLLMArgs(args) {
-    const entity = getEditableEntity(args.entityId, { allowRoot: true });
+  static llmAllowRootTarget = true;
+
+  static transformLLMArgs(args, { entity } = {}) {
     const name = args.component;
     if (typeof name !== 'string' || !name) {
       throw new Error("'component' is required and must be a string");

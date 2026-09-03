@@ -1,7 +1,6 @@
 import Events from '../Events.js';
 import { Command } from '../command.js';
 import { createUniqueId } from '../entity.js';
-import { getEditableEntity } from './llmToolGuards.js';
 
 export class ComponentAddCommand extends Command {
   static llmTool = {
@@ -34,8 +33,10 @@ export class ComponentAddCommand extends Command {
   // attribute while the tool still reports "executed" — validate against
   // A-Frame's component registry (base name, so multi-instance suffixes
   // validate against their base component).
-  static transformLLMArgs(args) {
-    const entity = getEditableEntity(args.entityId, { allowRoot: true });
+  // Components may be added to the scene roots themselves (e.g. #environment).
+  static llmAllowRootTarget = true;
+
+  static transformLLMArgs(args, { entity } = {}) {
     const name = args.component;
     if (typeof name !== 'string' || !name) {
       throw new Error("'component' is required and must be a string");

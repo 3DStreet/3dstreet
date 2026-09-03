@@ -1,7 +1,6 @@
 import Events from '../Events';
 import { Command } from '../command.js';
 import { findClosestEntity, prepareForSerialization } from '../entity.js';
-import { getEditableEntity } from './llmToolGuards.js';
 
 export class EntityRemoveCommand extends Command {
   static llmTool = {
@@ -18,13 +17,6 @@ export class EntityRemoveCommand extends Command {
       required: ['entityId']
     }
   };
-
-  // Validation only — the registry's generic adapter resolves entityId to
-  // the live element afterwards.
-  static transformLLMArgs(args) {
-    getEditableEntity(args.entityId);
-    return args;
-  }
 
   // Editor callers pass the entity directly; the LLM registry passes the
   // `{entity}` payload its id-resolution produces. Accept both.
