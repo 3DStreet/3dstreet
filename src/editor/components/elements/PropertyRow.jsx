@@ -11,9 +11,33 @@ import TextureWidget from '../widgets/TextureWidget';
 import Vec4Widget from '../widgets/Vec4Widget';
 import Vec3Widget from '../widgets/Vec3Widget';
 import Vec2Widget from '../widgets/Vec2Widget';
+import { defineMessages, injectIntl } from 'react-intl';
+import { AwesomeIcon } from './AwesomeIcon';
+import { faArrowRotateLeft } from '@fortawesome/free-solid-svg-icons';
+import { areVectorsEqual } from '../../lib/utils.js';
 
-export default class PropertyRow extends React.Component {
+const messages = defineMessages({
+  resetToDefault: {
+    id: 'propertyRow.resetToDefault',
+    defaultMessage: 'Reset to default ({value})'
+  },
+  linkAxes: {
+    id: 'propertyRow.linkAxes',
+    defaultMessage:
+      'Link axes: editing one axis scales the others proportionally'
+  },
+  unlinkAxes: {
+    id: 'propertyRow.unlinkAxes',
+    defaultMessage: 'Unlink axes: edit each axis independently'
+  }
+});
+
+const formatVec = (v) =>
+  v && typeof v === 'object' ? `${v.x} ${v.y} ${v.z}` : String(v);
+
+class PropertyRow extends React.Component {
   static propTypes = {
+    intl: PropTypes.object.isRequired,
     componentname: PropTypes.string.isRequired,
     data: PropTypes.oneOfType([
       PropTypes.array.isRequired,
@@ -112,6 +136,8 @@ export default class PropertyRow extends React.Component {
         onEntityUpdate: props.onEntityUpdate
       });
     };
+    // The reset button in render() commits through the same path.
+    this.updateProperty = updateProperty;
 
     // For selector and selectorAll types, commit on blur only (not on each
     // keystroke): a partial selector is rarely valid and querying the DOM on
@@ -155,7 +181,17 @@ export default class PropertyRow extends React.Component {
         return <Vec2Widget {...widgetProps} />;
       }
       case 'vec3': {
-        return <Vec3Widget {...widgetProps} />;
+        // Scale axes are linked by default (proportional editing); every
+        // other vec3 keeps independent axes.
+        const linkable = props.componentname === 'scale' && props.isSingle;
+        return (
+          <Vec3Widget
+            {...widgetProps}
+            linkable={linkable}
+            linkTitle={props.intl.formatMessage(messages.linkAxes)}
+            unlinkTitle={props.intl.formatMessage(messages.unlinkAxes)}
+          />
+        );
       }
       case 'vec4': {
         return <Vec4Widget {...widgetProps} />;
@@ -182,6 +218,32 @@ export default class PropertyRow extends React.Component {
     }
   }
 
+  // Circle-arrow reset beside vec3 inputs: restores the schema default
+  // (position/rotation 0 0 0, scale 1 1 1, …) as one undoable update.
+  // Disabled — not hidden — at the default so the row keeps its width.
+  renderReset() {
+    const props = this.props;
+    const def = props.schema?.default;
+    if (props.schema?.type !== 'vec3' || !def || typeof def !== 'object') {
+      return null;
+    }
+    const atDefault = areVectorsEqual(props.data, def);
+    return (
+      <button
+        type="button"
+        className="vec3-tool vec3-reset"
+        disabled={atDefault}
+        onClick={() => this.updateProperty(props.name, { ...def })}
+        title={props.intl.formatMessage(messages.resetToDefault, {
+          value: formatVec(def)
+        })}
+        data-testid="vec3-reset"
+      >
+        <AwesomeIcon icon={faArrowRotateLeft} />
+      </button>
+    );
+  }
+
   render() {
     const props = this.props;
     const value =
@@ -202,6 +264,7 @@ export default class PropertyRow extends React.Component {
           {props.label || props.name}
         </label>
         {this.getWidget()}
+        {this.renderReset()}
         {props.rightElement && (
           <div className="property-row-right-element">{props.rightElement}</div>
         )}
@@ -209,3 +272,5 @@ export default class PropertyRow extends React.Component {
     );
   }
 }
+
+export default injectIntl(PropertyRow);

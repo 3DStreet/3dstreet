@@ -1685,6 +1685,15 @@
   "profileModal.unlimitedGeoTokens": {
     "defaultMessage": "Unlimited Geo Tokens"
   },
+  "propertyRow.linkAxes": {
+    "defaultMessage": "Link axes: editing one axis scales the others proportionally"
+  },
+  "propertyRow.resetToDefault": {
+    "defaultMessage": "Reset to default ({value})"
+  },
+  "propertyRow.unlinkAxes": {
+    "defaultMessage": "Unlink axes: edit each axis independently"
+  },
   "raceFinish.collisionsSuffix": {
     "defaultMessage": "{collisions,plural,one{# collision} other{# collisions}}"
   },
@@ -2161,6 +2170,15 @@
   },
   "sidebar.editCloneSettings": {
     "defaultMessage": "Edit Clone Settings"
+  },
+  "sidebar.geoHeading": {
+    "defaultMessage": "heading"
+  },
+  "sidebar.geoLocation": {
+    "defaultMessage": "location"
+  },
+  "sidebar.geoLocationTitle": {
+    "defaultMessage": "Latitude, longitude of this entity and the compass bearing of its local +Z axis (a managed street runs along +Z). Computed from the Google 3D Tiles frame; edit position/rotation to change it."
   },
   "sidebar.managedBy": {
     "defaultMessage": "Managed by"
