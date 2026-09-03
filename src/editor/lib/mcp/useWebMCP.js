@@ -131,7 +131,23 @@ export function useWebMCP({ currentUser, readOnly }) {
           // Primary path per the current explainer: one registerTool per
           // tool, lifetime scoped to the AbortSignal. (Older builds ignore
           // the options bag; extra args are harmless.)
+          //
+          // This effect re-runs whenever the panel remounts (Play/Stop
+          // toggles the inspector). On builds that ignore the abort signal
+          // the previous registrations survive, so a bare registerTool
+          // would throw on the duplicate name and wedge the bar in
+          // 'error' for the session — unregister first, and the stale
+          // execute closure (old hook instance's refs) goes with it.
+          const canUnregister = typeof mc.unregisterTool === 'function';
           for (const tool of tools) {
+            if (cancelled) return;
+            if (canUnregister) {
+              try {
+                mc.unregisterTool(tool.name);
+              } catch (_) {
+                // Not registered — fine.
+              }
+            }
             await mc.registerTool(
               tool,
               controller ? { signal: controller.signal } : undefined
@@ -160,7 +176,11 @@ export function useWebMCP({ currentUser, readOnly }) {
       cancelled = true;
       try {
         if (controller) controller.abort();
-        if (usedProvideContext) mc.provideContext({ tools: [] });
+        if (usedProvideContext) {
+          mc.provideContext({ tools: [] });
+        } else if (typeof mc.unregisterTool === 'function') {
+          for (const tool of tools) mc.unregisterTool(tool.name);
+        }
       } catch (err) {
         console.warn('[webmcp] cleanup failed:', err);
       }
