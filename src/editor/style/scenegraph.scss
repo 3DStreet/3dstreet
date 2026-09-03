@@ -274,6 +274,24 @@
     margin-left: 2px;
   }
 
+  // Inline rename input (context menu → Rename): swaps in for .entityName,
+  // matching its 14px type inside the row. Twin of the properties-panel
+  // title input in index.scss, sized down for the scene graph row.
+  .entity .entityNameInput {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-left: 4px;
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 14px;
+    color: variables.$white;
+    background-color: variables.$black-300;
+    border: 1px solid variables.$blue-100;
+    border-radius: 4px;
+    padding: 2px 4px;
+    outline: none;
+  }
+
   .entityActions {
     display: none;
     margin: 0 14px;

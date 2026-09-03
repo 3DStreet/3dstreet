@@ -50,7 +50,9 @@ class SceneGraph extends React.Component {
       // Drag and drop state
       draggedEntity: null,
       hoveredDropTarget: null,
-      insertionInfo: null
+      insertionInfo: null,
+      // Row whose label is in inline-rename mode (context menu Rename)
+      renamingEntity: null
     };
 
     this.rebuildEntityOptions = debounce(
@@ -208,6 +210,10 @@ class SceneGraph extends React.Component {
 
   setInsertionInfo = (info) => {
     this.setState({ insertionInfo: info });
+  };
+
+  setRenamingEntity = (entity) => {
+    this.setState({ renamingEntity: entity });
   };
 
   onReparentEntity = (draggedEntity, targetEntity, insertionMode = 'child') => {
@@ -441,6 +447,9 @@ class SceneGraph extends React.Component {
           onReparentEntity={this.onReparentEntity}
           canBeDragged={this.canBeDragged}
           canBeDropTarget={this.canBeDropTarget}
+          // Context menu rename state
+          renamingEntity={this.state.renamingEntity}
+          setRenamingEntity={this.setRenamingEntity}
         />
       );
       children.push(renderedEntity);

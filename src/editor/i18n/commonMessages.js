@@ -17,6 +17,9 @@ import { defineMessages } from 'react-intl';
 export const commonMessages = defineMessages({
   cancel: { id: 'common.cancel', defaultMessage: 'Cancel' },
   retry: { id: 'common.retry', defaultMessage: 'Retry' },
+  cut: { id: 'common.cut', defaultMessage: 'Cut' },
+  copy: { id: 'common.copy', defaultMessage: 'Copy' },
+  paste: { id: 'common.paste', defaultMessage: 'Paste' },
   delete: { id: 'common.delete', defaultMessage: 'Delete' },
   duplicate: { id: 'common.duplicate', defaultMessage: 'Duplicate' },
   focus: { id: 'common.focus', defaultMessage: 'Focus' },

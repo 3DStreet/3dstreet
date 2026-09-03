@@ -22,7 +22,7 @@ import {
   pasteFromClipboard
 } from '../../lib/clipboard.js';
 import { cloneSelectedEntity, removeSelectedEntity } from '../../lib/entity.js';
-import { getOS } from '../../lib/utils.js';
+import { editShortcuts } from '../../lib/editShortcuts.js';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { SUPPORTED_LOCALES } from '@/editor/i18n/config';
 import {
@@ -37,20 +37,6 @@ import {
   COMPASS_NORTH_TOLERANCE_DEGREES
 } from '@/editor/lib/nav-experimental/index.js';
 import { captureNavDiscovery } from '@/editor/lib/navAnalytics.js';
-
-// Keyboard hints shown in the Edit menu's right slot.
-const isMac = getOS() === 'macos';
-const editShortcuts = {
-  undo: isMac ? '⌘Z' : 'Ctrl+Z',
-  redo: isMac ? '⇧⌘Z' : 'Ctrl+Shift+Z',
-  cut: isMac ? '⌘X' : 'Ctrl+X',
-  copy: isMac ? '⌘C' : 'Ctrl+C',
-  paste: isMac ? '⌘V' : 'Ctrl+V',
-  duplicate: 'D',
-  delete: isMac ? '⌫' : 'Del',
-  deselect: 'Esc',
-  zoomToSelection: 'F'
-};
 
 // Menu twin of the compass body: "Plan View" when the camera is not
 // top-down, "Point North" once it is, disabled when both top-down and
@@ -562,7 +548,7 @@ const AppMenu = ({ currentUser }) => {
                 posthog.capture('cut_clicked');
               }}
             >
-              <FormattedMessage id="appMenu.edit.cut" defaultMessage="Cut" />
+              <FormattedMessage {...commonMessages.cut} />
               <div className="RightSlot">{editShortcuts.cut}</div>
             </Menubar.Item>
             <Menubar.Item
@@ -573,7 +559,7 @@ const AppMenu = ({ currentUser }) => {
                 posthog.capture('copy_clicked');
               }}
             >
-              <FormattedMessage id="appMenu.edit.copy" defaultMessage="Copy" />
+              <FormattedMessage {...commonMessages.copy} />
               <div className="RightSlot">{editShortcuts.copy}</div>
             </Menubar.Item>
             <Menubar.Item
@@ -583,10 +569,7 @@ const AppMenu = ({ currentUser }) => {
                 posthog.capture('paste_clicked');
               }}
             >
-              <FormattedMessage
-                id="appMenu.edit.paste"
-                defaultMessage="Paste"
-              />
+              <FormattedMessage {...commonMessages.paste} />
               <div className="RightSlot">{editShortcuts.paste}</div>
             </Menubar.Item>
             <Menubar.Separator className="MenubarSeparator" />
@@ -598,10 +581,7 @@ const AppMenu = ({ currentUser }) => {
                 posthog.capture('duplicate_clicked');
               }}
             >
-              <FormattedMessage
-                id="appMenu.edit.duplicate"
-                defaultMessage="Duplicate"
-              />
+              <FormattedMessage {...commonMessages.duplicate} />
               <div className="RightSlot">{editShortcuts.duplicate}</div>
             </Menubar.Item>
             <Menubar.Item
@@ -613,10 +593,7 @@ const AppMenu = ({ currentUser }) => {
                 posthog.capture('delete_clicked');
               }}
             >
-              <FormattedMessage
-                id="appMenu.edit.delete"
-                defaultMessage="Delete"
-              />
+              <FormattedMessage {...commonMessages.delete} />
               <div className="RightSlot">{editShortcuts.delete}</div>
             </Menubar.Item>
             <Menubar.Separator className="MenubarSeparator" />
@@ -758,10 +735,10 @@ const AppMenu = ({ currentUser }) => {
               }}
             >
               <FormattedMessage
-                id="appMenu.view.zoomToSelection"
-                defaultMessage="Zoom to Selection"
+                id="appMenu.view.focusOnSelection"
+                defaultMessage="Focus on Selection"
               />
-              <div className="RightSlot">{editShortcuts.zoomToSelection}</div>
+              <div className="RightSlot">{editShortcuts.focus}</div>
             </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"
