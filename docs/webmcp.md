@@ -141,6 +141,28 @@ valid values, so "created" means the content can actually render. Create
 also passes boundary `variant`/`side` through (previously dropped) and
 returns `{ entityId, segmentCount, width, warnings? }`.
 
+## Geospatial guardrails (round 3)
+
+Third ChatGPT-desktop test surfaced three habits worth fixing at the tool
+layer rather than in prose the agent may skip
+(`src/editor/lib/commands/geoBuildingGuard.js`):
+
+- **No synthetic buildings over real ones.** When `street-geo.maps` is
+  `google3d`, `managedStreetCreate` drops building boundary variants
+  (brownstone, suburban, arcade, sp-\*) with a warning, `managedStreetUpdate`
+  refuses them, and `entityCreate` refuses catalog `buildings` mixins. Fences,
+  grass, parking and water boundaries still pass. Sidebar unaffected.
+- **Plan view is the verification view.** `takeSnapshot` defaults to
+  `type: "plan"` in geospatial scenes (`metadata.typeDefaulted: true` says
+  so) and its description demotes `birdseye` / `straightOn` / `closeup` to
+  presentation shots. Every mutating street tool result in a geo scene ends
+  with a `nextStep` nudge to take a plan snapshot before reporting done.
+- **No human help card in an agent-driven console.** The auto-seeded `/help`
+  card (example prompts, model id) is skipped while WebMCP is present or the
+  relay is paired, and removed if the relay pairs after it was seeded.
+  Typing `/help` still shows it. The "3 snapshots from different angles"
+  example is gone; the example is now a plan snapshot.
+
 ## Notes / future
 
 - The relay is the fallback for headless or out-of-browser clients (Claude

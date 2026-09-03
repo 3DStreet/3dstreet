@@ -19,6 +19,13 @@ import {
   validateSegments
 } from './managedStreetValidation.js';
 import { applySegmentPreset } from './segmentPresets.js';
+import {
+  GEO_BUILDINGS_REASON,
+  describeDroppedBoundaries,
+  isBuildingBoundary,
+  isGeospatialActive,
+  partitionBuildingBoundaries
+} from './geoBuildingGuard.js';
 import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 import { TRANSFORM_REFUSED } from '../transformGuard.js';
 
@@ -75,12 +82,27 @@ async function readBackStreet(entityId, expectedSegments, timeoutMs = 4000) {
   };
 }
 
+// Appended to mutation results in geospatial scenes: the plan snapshot is
+// the only view with absolute orientation, and agents reached for street-level
+// shots instead when left to choose (WebMCP round 3).
+const PLAN_VERIFY_HINT =
+  'Scene is geospatial: verify placement against the real road with takeSnapshot { type: "plan" } (top-down, north-up) before reporting done.';
+
 /**
  * Compose a managed-street entity from a flat segments array and create it
  * via a single entitycreate command.
  */
 async function managedStreetCreateHandler(args) {
-  const warnings = validateSegments(args.segments, readSegmentEnums());
+  const geospatial = isGeospatialActive();
+  let inputSegments = Array.isArray(args.segments) ? args.segments : [];
+  const warnings = validateSegments(inputSegments, readSegmentEnums());
+  if (geospatial) {
+    const { kept, dropped } = partitionBuildingBoundaries(inputSegments);
+    if (dropped.length) {
+      warnings.push(describeDroppedBoundaries(dropped));
+      inputSegments = kept;
+    }
+  }
   const streetData = {
     name: args.name || 'New Managed Street',
     length: parseFloat(args.length || '60'),
@@ -88,8 +110,8 @@ async function managedStreetCreateHandler(args) {
   };
   const presetsApplied = [];
 
-  if (args.segments && Array.isArray(args.segments)) {
-    streetData.segments = args.segments.map((input, index) => {
+  if (inputSegments.length) {
+    streetData.segments = inputSegments.map((input, index) => {
       // Same preset table the sidebar applies when a user picks a type:
       // omitted surface/color/elevation/direction/generated come from it.
       const { segment, applied } = applySegmentPreset(
@@ -161,7 +183,8 @@ async function managedStreetCreateHandler(args) {
     width: streetData.width,
     ...(presetsApplied.length ? { presetsApplied } : {}),
     ...(warnings.length ? { warnings } : {}),
-    readBack
+    readBack,
+    ...(geospatial ? { nextStep: PLAN_VERIFY_HINT } : {})
   };
 }
 
@@ -180,6 +203,14 @@ async function managedStreetUpdateHandler(args) {
   const segmentEntities = Array.from(entity.children).filter((child) =>
     child.hasAttribute('street-segment')
   );
+  const geospatial = isGeospatialActive();
+  const withHint = (text) =>
+    geospatial ? `${text}. ${PLAN_VERIFY_HINT}` : text;
+  if (geospatial && isBuildingBoundary(segment)) {
+    throw new Error(
+      `Refused boundary variant '${segment.variant}'. ${GEO_BUILDINGS_REASON}`
+    );
+  }
 
   if (operation === 'add-segment') {
     if (!segment || !segment.type) {
@@ -206,9 +237,11 @@ async function managedStreetUpdateHandler(args) {
       { streetId: entityId, segment: presetSegment, segmentIndex },
       `Add ${label}`
     );
-    return applied.length
-      ? `Added segment: ${label} (preset supplied ${applied.join(', ')})`
-      : `Added segment: ${label}`;
+    return withHint(
+      applied.length
+        ? `Added segment: ${label} (preset supplied ${applied.join(', ')})`
+        : `Added segment: ${label}`
+    );
   }
 
   if (operation === 'update-segment') {
@@ -231,7 +264,7 @@ async function managedStreetUpdateHandler(args) {
       { entity: segmentEl, segment },
       `Update ${label}`
     );
-    return `Updated segment: ${label}`;
+    return withHint(`Updated segment: ${label}`);
   }
 
   if (operation === 'remove-segment') {
@@ -249,7 +282,7 @@ async function managedStreetUpdateHandler(args) {
       { entity: segmentEl },
       `Remove ${label}`
     );
-    return `Removed segment: ${label}`;
+    return withHint(`Removed segment: ${label}`);
   }
 
   throw new Error(`Unknown operation: ${operation}`);
@@ -258,7 +291,12 @@ async function managedStreetUpdateHandler(args) {
 async function takeSnapshotHandler(args) {
   const caption = args.caption || 'Snapshot of the current view';
   const focusEntityId = args.focusEntityId;
-  const snapshotType = args.type || 'focus';
+  // In a geospatial scene the plan view is the only one with absolute
+  // orientation, so it is the default there; agents left to choose took
+  // street-level shots that could not show misalignment.
+  const defaultType = isGeospatialActive() ? 'plan' : 'focus';
+  const snapshotType = args.type || defaultType;
+  const typeDefaulted = !args.type;
 
   const screenshotEl = document.getElementById('screenshot');
   if (!screenshotEl) {
@@ -444,6 +482,7 @@ async function takeSnapshotHandler(args) {
         } catch (e) {
           metadata = { type: snapshotType, cameraError: e.message };
         }
+        if (typeDefaulted) metadata.typeDefaulted = true;
         resolve({ caption, imageData, metadata });
       } catch (error) {
         reject(error);
@@ -547,7 +586,7 @@ const segmentSchema = {
     variant: {
       type: 'string',
       description:
-        'Variant preset for `type: "boundary"` segments. Valid values: "brownstone" (urban mixed-use SM3D blocks), "suburban" (detached single-family houses), "arcade" (arched street-front buildings), "water" (seawall), "grass" (fenced grass strip), "parking" (fenced parking lot), "sp-mixeduse" (StreetPlan mixed-use), "sp-residential" (StreetPlan single-family/townhouse), "sp-big-box" (StreetPlan big-box stores), "custom" (preserve existing settings). Setting variant on a boundary segment auto-fits the model array; do NOT pass `generated.clones` for boundaries unless you want full control. Only meaningful when `type: "boundary"`.'
+        'Variant preset for `type: "boundary"` segments. Valid values: "brownstone" (urban mixed-use SM3D blocks), "suburban" (detached single-family houses), "arcade" (arched street-front buildings), "water" (seawall), "grass" (fenced grass strip), "parking" (fenced parking lot), "sp-mixeduse" (StreetPlan mixed-use), "sp-residential" (StreetPlan single-family/townhouse), "sp-big-box" (StreetPlan big-box stores), "custom" (preserve existing settings). Setting variant on a boundary segment auto-fits the model array; do NOT pass `generated.clones` for boundaries unless you want full control. Only meaningful when `type: "boundary"`. Building variants (brownstone, suburban, arcade, sp-*) are refused in geospatial scenes — Google 3D Tiles already shows the real buildings.'
     },
     side: {
       type: 'string',
@@ -672,7 +711,7 @@ export const nonCommandTools = [
   {
     name: 'managedStreetCreate',
     description:
-      "Create a new managed street from a cross-section (array of segments, listed from one edge to the other). For each segment, omit surface/color/elevation/direction/generated to receive the type's preset — the same content a user gets by picking that type in the sidebar (e.g. bike-lane → green asphalt, bike-arrow stencils, cyclists; bus-lane → BUS ONLY stencil, buses; sidewalk → pedestrians). Call listSegmentPresets to see them. Only supply `generated` to override a preset. Returns entityId, width, presetsApplied, warnings and a readBack of what actually mounted.",
+      'Create a new managed street from a cross-section (array of segments, listed from one edge to the other). For each segment, omit surface/color/elevation/direction/generated to receive the type\'s preset — the same content a user gets by picking that type in the sidebar (e.g. bike-lane → green asphalt, bike-arrow stencils, cyclists; bus-lane → BUS ONLY stencil, buses; sidewalk → pedestrians). Call listSegmentPresets to see them. Only supply `generated` to override a preset. Returns entityId, width, presetsApplied, warnings and a readBack of what actually mounted. In a geospatial scene (Google 3D Tiles on) do not add building boundaries — the real buildings are already there; building variants are dropped with a warning — and verify with takeSnapshot type "plan" afterwards.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -733,7 +772,7 @@ export const nonCommandTools = [
   {
     name: 'takeSnapshot',
     description:
-      'Take a snapshot of the current camera view and include it in the chat',
+      'Render a snapshot of the scene and return it as an image plus `metadata.camera` (tilt, isTopDown, isNorthUp, screenUpBearingDeg, lat/lon). To VERIFY placement or alignment use type "plan": top-down, north-up, whole scene — the only view with absolute orientation. One plan snapshot beats several angled ones; do not take multiple perspective shots to check position. In a geospatial scene "plan" is the default when type is omitted.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -749,7 +788,7 @@ export const nonCommandTools = [
         type: {
           type: 'string',
           description:
-            'Optional type of snapshot view: "focus" (default, current view or focusEntityId), "plan" (top-down, north-up, whole scene — the only view suitable for judging orientation/alignment), "birdseye", "straightOn", or "closeup". Every snapshot returns `metadata.camera` (tilt, isTopDown, isNorthUp, screenUpBearingDeg, lat/lon) alongside the image.',
+            'View to render. "plan": top-down, north-up, whole scene — use this to judge orientation and alignment (default in geospatial scenes). "focus": current view, or framed on focusEntityId (default otherwise). "birdseye", "straightOn", "closeup": presentation shots of the first managed street — not orientation references; use them only when the user asks for a picture, not to verify.',
           enum: ['focus', 'plan', 'birdseye', 'straightOn', 'closeup']
         }
       },

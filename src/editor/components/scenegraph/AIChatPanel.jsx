@@ -64,7 +64,7 @@ const HELP_EXAMPLES = [
   'Make a basic street with 2 drive lanes, 2 sidewalks, and 2 bike lanes',
   'Add a row of pedestrians to the sidewalk',
   'Replace the trees with palm trees',
-  'Take 3 snapshots from different angles',
+  'Take a top-down plan snapshot',
   'Set the location to 37.7749, -122.4194',
   'Rename the scene to "Market Street redesign"'
 ];
@@ -1037,8 +1037,13 @@ function AIChatPanel() {
   // the chat holds no conversation (first open, and again after a reset or new
   // scene). Command pills survive resetConversation by design, so "empty"
   // means no non-pill messages, and the functional update re-checks so a
-  // concurrent append is never clobbered.
+  // concurrent append is never clobbered. Skipped while an external agent
+  // drives the tab (WebMCP present, or the MCP relay paired): the examples
+  // are prompts for a human typing here, and only clutter the tool-call feed.
+  // Typing /help still works.
+  const agentDriven = webmcp.available || mcp.status === 'connected';
   useEffect(() => {
+    if (agentDriven) return;
     if (messages.some((m) => m.type !== 'commandPill')) return;
     setMessages((prev) =>
       prev.some((m) => m.type !== 'commandPill')
@@ -1047,6 +1052,7 @@ function AIChatPanel() {
             ...prev,
             {
               type: 'help',
+              auto: true,
               id: `help_${Date.now()}_${Math.random().toString(16).slice(2)}`,
               timestamp: new Date(),
               examples: HELP_EXAMPLES,
@@ -1054,7 +1060,18 @@ function AIChatPanel() {
             }
           ]
     );
-  }, [messages]);
+  }, [messages, agentDriven]);
+
+  // The relay pairs after mount, so an auto-seeded card may already be
+  // showing when the agent takes over — drop it (explicit /help cards stay).
+  useEffect(() => {
+    if (!agentDriven) return;
+    setMessages((prev) =>
+      prev.some((m) => m.type === 'help' && m.auto)
+        ? prev.filter((m) => !(m.type === 'help' && m.auto))
+        : prev
+    );
+  }, [agentDriven]);
 
   const processMessage = async (messageText) => {
     if (!messageText.trim() || !modelRef.current) return;
