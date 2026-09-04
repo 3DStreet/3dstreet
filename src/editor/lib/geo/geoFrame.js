@@ -91,7 +91,9 @@ export function getGeoFrame() {
       'Google 3D Tiles root has not loaded yet, so the tileset is not positioned. Retry shortly.'
     );
   }
-  tiles.group.updateMatrixWorld(true);
+  // Only the group's own world matrix is needed; walking every loaded tile
+  // (updateMatrixWorld(true)) is O(tiles) and this runs during drags.
+  tiles.group.updateWorldMatrix(true, false);
   const groupMatrixWorld = tiles.group.matrixWorld.clone();
   return {
     ellipsoid: tiles.ellipsoid,
@@ -180,7 +182,7 @@ export function sceneAxisBearings(frame = getGeoFrame()) {
  */
 export function describeEntityGeo(el, frame = getGeoFrame()) {
   const obj = el.object3D;
-  obj.updateMatrixWorld(true);
+  obj.updateWorldMatrix(true, false);
   const worldPos = new THREE.Vector3();
   obj.getWorldPosition(worldPos);
   const forward = new THREE.Vector3(0, 0, 1).transformDirection(

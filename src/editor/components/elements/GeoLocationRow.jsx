@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { defineMessages, useIntl } from 'react-intl';
 import Events from '../../lib/Events';
-import { GeoFrameError, describeEntityGeo } from '../../lib/geo/geoFrame.js';
+import {
+  GeoFrameError,
+  describeEntityGeo,
+  isGeospatialActive
+} from '../../lib/geo/geoFrame.js';
 import { formatGeoLoc } from '../../lib/geo/geoLabel.js';
 
 const messages = defineMessages({
@@ -19,6 +23,9 @@ const messages = defineMessages({
 
 // Returns null (no geo layer, or still loading) or the entity's geo readout.
 function readGeo(entity) {
+  // Cheap attribute check first: on non-geo scenes this runs per entityupdate
+  // (every frame of a gizmo drag) for a row that never renders.
+  if (!isGeospatialActive()) return null;
   try {
     return describeEntityGeo(entity);
   } catch (err) {
@@ -38,15 +45,28 @@ export default function GeoLocationRow({ entity }) {
   const [geo, setGeo] = useState(() => readGeo(entity));
 
   useEffect(() => {
-    setGeo(readGeo(entity));
+    // entityupdate fires per frame during a gizmo drag and per mousemove
+    // during a number scrub; coalesce to one geo conversion per frame.
+    let raf = 0;
+    const schedule = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        setGeo(readGeo(entity));
+      });
+    };
+    schedule();
     const onEntityUpdate = (detail) => {
       // This entity moved, or the geo layer (#reference-layers) changed.
       if (detail.entity === entity || detail.component === 'street-geo') {
-        setGeo(readGeo(entity));
+        schedule();
       }
     };
     Events.on('entityupdate', onEntityUpdate);
-    return () => Events.off('entityupdate', onEntityUpdate);
+    return () => {
+      Events.off('entityupdate', onEntityUpdate);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [entity]);
 
   if (!geo) return null;
