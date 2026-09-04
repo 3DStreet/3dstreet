@@ -1,4 +1,5 @@
 import {
+  canRenameEntity,
   cloneEntity,
   removeSelectedEntity,
   setFocusCameraPose
@@ -102,13 +103,9 @@ export default class Sidebar extends React.Component {
       );
     }
 
-    // The fixed pseudo-layers (environment, reference layers, user layers)
-    // and no-transform entities never had a rename affordance; everything
-    // else gets the inline rename on the title label.
-    const canRename =
-      !['reference-layers', 'environment', 'street-container'].includes(
-        entity.id
-      ) && !entity.hasAttribute('data-no-transform');
+    // Everything except the fixed pseudo-layers and no-transform entities
+    // gets the inline rename on the title label (see canRenameEntity).
+    const canRename = canRenameEntity(entity);
 
     return (
       <div className="properties-panel" tabIndex="0">

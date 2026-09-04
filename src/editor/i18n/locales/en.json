@@ -224,23 +224,8 @@
   "appMenu.edit": {
     "defaultMessage": "Edit"
   },
-  "appMenu.edit.copy": {
-    "defaultMessage": "Copy"
-  },
-  "appMenu.edit.cut": {
-    "defaultMessage": "Cut"
-  },
-  "appMenu.edit.delete": {
-    "defaultMessage": "Delete"
-  },
   "appMenu.edit.deselect": {
     "defaultMessage": "Deselect"
-  },
-  "appMenu.edit.duplicate": {
-    "defaultMessage": "Duplicate"
-  },
-  "appMenu.edit.paste": {
-    "defaultMessage": "Paste"
   },
   "appMenu.export.dxfEmpty": {
     "defaultMessage": "No street or intersection elements found to export as DXF."
@@ -332,6 +317,9 @@
   "appMenu.view": {
     "defaultMessage": "View"
   },
+  "appMenu.view.focusOnSelection": {
+    "defaultMessage": "Focus on Selection"
+  },
   "appMenu.view.navigationControls": {
     "defaultMessage": "Navigation Controls"
   },
@@ -352,9 +340,6 @@
   },
   "appMenu.view.snapshotRender": {
     "defaultMessage": "Capture & Render..."
-  },
-  "appMenu.view.zoomToSelection": {
-    "defaultMessage": "Zoom to Selection"
   },
   "assetInfo.assetSource": {
     "defaultMessage": "Asset source: {ownership} · {assetIdShort}…"
@@ -914,6 +899,12 @@
   "common.cancel": {
     "defaultMessage": "Cancel"
   },
+  "common.copy": {
+    "defaultMessage": "Copy"
+  },
+  "common.cut": {
+    "defaultMessage": "Cut"
+  },
   "common.delete": {
     "defaultMessage": "Delete"
   },
@@ -934,6 +925,9 @@
   },
   "common.keyboardShortcuts": {
     "defaultMessage": "Keyboard Shortcuts"
+  },
+  "common.paste": {
+    "defaultMessage": "Paste"
   },
   "common.planView": {
     "defaultMessage": "Plan View"
