@@ -61,7 +61,7 @@
   // Bevel-style highlight line set 1px inside the fill edge (macOS-like);
   // an outline follows the border radius and ignores the scroll container.
   // !important: Radix writes `style="outline: none"` inline on the content.
-  outline: 1px solid rgba(255, 255, 255, 0.66) !important;
+  outline: 1px solid rgba(255, 255, 255, 0.33) !important;
   outline-offset: -2px;
   animation-duration: 0ms;
   will-change: transform, opacity;
