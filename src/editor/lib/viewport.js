@@ -533,9 +533,10 @@ export function Viewport(inspector) {
     controls.enabled = true;
   });
 
-  // The street gizmos mutate attributes live during the drag (so the normal
-  // managed-street re-layout cascade runs) and report the whole drag once on
-  // mouseUp via 'commitDrag' — turned into a single undo step here.
+  // The street gizmos report the whole drag once on mouseUp via 'commitDrag'
+  // — turned into a single undo step here. Width bars mutate attributes live
+  // during the drag; endpoint nodes preview with an outline and apply on
+  // release (#1942).
   [streetNodeControls, segmentWidthControls].forEach((streetControls) => {
     streetControls.addEventListener('mouseDown', () => {
       controls.enabled = false;

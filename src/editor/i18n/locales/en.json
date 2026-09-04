@@ -1679,6 +1679,18 @@
   "profileModal.unlimitedGeoTokens": {
     "defaultMessage": "Unlimited Geo Tokens"
   },
+  "propertyRow.linkAxes": {
+    "defaultMessage": "Link axes: editing one axis sets all three"
+  },
+  "propertyRow.linkUnavailable": {
+    "defaultMessage": "Axes differ: reset scale to re-enable linking"
+  },
+  "propertyRow.resetToDefault": {
+    "defaultMessage": "Reset to default ({value})"
+  },
+  "propertyRow.unlinkAxes": {
+    "defaultMessage": "Unlink axes: edit each axis independently"
+  },
   "raceFinish.collisionsSuffix": {
     "defaultMessage": "{collisions,plural,one{# collision} other{# collisions}}"
   },
@@ -2155,6 +2167,12 @@
   },
   "sidebar.editCloneSettings": {
     "defaultMessage": "Edit Clone Settings"
+  },
+  "sidebar.geoloc": {
+    "defaultMessage": "GeoLoc"
+  },
+  "sidebar.geolocTitle": {
+    "defaultMessage": "Latitude, longitude, true bearing (degrees clockwise from true north, “T”). Read-only: edit position and rotation to change it."
   },
   "sidebar.managedBy": {
     "defaultMessage": "Managed by"
