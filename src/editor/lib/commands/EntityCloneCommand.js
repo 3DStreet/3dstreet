@@ -3,12 +3,33 @@ import { Command } from '../command.js';
 import { cloneEntityImpl, createUniqueId, insertAfter } from '../entity.js';
 
 export class EntityCloneCommand extends Command {
-  constructor(editor, entity) {
+  static llmTool = {
+    name: 'entityClone',
+    description:
+      'Clone an entity (including its children) and insert the copy as its next sibling. Returns with the clone selected; read getSelectedEntity for the new id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entityId: {
+          type: 'string',
+          description: 'The ID of the entity to clone'
+        }
+      },
+      required: ['entityId']
+    }
+  };
+
+  // Editor callers pass the entity directly; the LLM registry passes the
+  // `{entity}` payload its id-resolution produces. Accept both.
+  constructor(editor, entityOrPayload) {
     super(editor);
 
     this.type = 'entityclone';
     this.name = 'Clone Entity';
     this.updatable = false;
+    const entity = entityOrPayload.isEntity
+      ? entityOrPayload
+      : entityOrPayload.entity;
     if (!entity.id) {
       entity.id = createUniqueId();
     }

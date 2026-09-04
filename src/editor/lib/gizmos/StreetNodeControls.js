@@ -18,11 +18,17 @@ import { getTravelledWaySegments } from '../../../aframe-components/street-layou
  *   length 'middle' -> [-L/2, +L/2]
  *   length 'end'    -> [0, +L]
  *   width 'center'|'left'|'right' -> centerline x offset 0 | +W/2 | -W/2
+ *
+ * Nothing is written to the entity while the pointer is down (#1942): the
+ * dragged circle follows the cursor and a footprint outline previews the
+ * resulting street; position, rotation and length are applied once on
+ * release. On a heavy scene the per-frame re-layout cascade (segments,
+ * clones, terrain flattening, batching) used to freeze the UI mid-drag.
  */
 
 const MIN_LENGTH = 1;
-const LENGTH_APPLY_THROTTLE_MS = 100;
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
+const PREVIEW_LIFT = 0.15;
 
 class StreetNodeControls extends GizmoPointerControls {
   constructor(camera, domElement) {
@@ -40,11 +46,35 @@ class StreetNodeControls extends GizmoPointerControls {
     this.originParent = new THREE.Vector3();
     this.tmpDir = new THREE.Vector3();
     this.tmpLocal = new THREE.Vector3();
-    this.lastLengthApply = 0;
-    this.pendingLength = null;
+    this.tmpCorner = new THREE.Vector3();
+    this.xExtent = { min: 0, max: 0 };
+    // Set while dragging: the pose the street will take on release, in the
+    // parent's space. Null when idle.
+    this.pendingPose = null;
     this.dragStartSnapshot = null;
 
     this.buildHandles();
+    this.buildPreview();
+  }
+
+  buildPreview() {
+    this.previewMaterial = new THREE.LineBasicMaterial({
+      color: 0xffd633,
+      depthTest: false,
+      transparent: true,
+      opacity: 0.9
+    });
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute(
+      'position',
+      new THREE.BufferAttribute(new Float32Array(4 * 3), 3)
+    );
+    this.preview = new THREE.LineLoop(geom, this.previewMaterial);
+    this.preview.name = 'gizmoPrototypeStreetNode-preview';
+    this.preview.renderOrder = 99;
+    this.preview.frustumCulled = false;
+    this.preview.visible = false;
+    this.add(this.preview);
   }
 
   buildHandles() {
@@ -122,22 +152,44 @@ class StreetNodeControls extends GizmoPointerControls {
     this.object = undefined;
     this.visible = false;
     this.axis = null;
+    this.clearDragState();
     return this;
   }
 
-  /** Cached travelled-way centerline offset (recomputed on layout changes). */
+  /**
+   * Cached travelled-way centerline offset and the local x extent of every
+   * segment (the footprint the drag preview outlines). Recomputed on layout
+   * changes.
+   */
   refreshLayoutCache() {
     if (!this.el) return;
     const widthAlign = this.el.components['street-align']?.data?.width;
     if (widthAlign === 'center' || widthAlign === undefined) {
       this.centerlineX = 0;
-      return;
+    } else {
+      const totalWidth = getTravelledWaySegments(this.el).reduce(
+        (sum, seg) => sum + (seg.getAttribute('street-segment')?.width || 0),
+        0
+      );
+      this.centerlineX =
+        widthAlign === 'left' ? totalWidth / 2 : -totalWidth / 2;
     }
-    const totalWidth = getTravelledWaySegments(this.el).reduce(
-      (sum, seg) => sum + (seg.getAttribute('street-segment')?.width || 0),
-      0
-    );
-    this.centerlineX = widthAlign === 'left' ? totalWidth / 2 : -totalWidth / 2;
+    this.refreshXExtent();
+  }
+
+  refreshXExtent() {
+    let min = Infinity;
+    let max = -Infinity;
+    this.el.querySelectorAll('[street-segment]').forEach((seg) => {
+      const width = seg.getAttribute('street-segment')?.width || 0;
+      const x = seg.getAttribute('position')?.x || 0;
+      min = Math.min(min, x - width / 2);
+      max = Math.max(max, x + width / 2);
+    });
+    if (min === Infinity) {
+      min = max = this.centerlineX;
+    }
+    this.xExtent = { min, max };
   }
 
   getStreetLength() {
@@ -165,11 +217,19 @@ class StreetNodeControls extends GizmoPointerControls {
       this.object.updateWorldMatrix(true, false);
       const length = this.getStreetLength();
       const align = this.getLengthAlign();
+      const pose = this.pendingPose;
       ['start', 'end'].forEach((key) => {
         const handle = this.handles[key];
-        handle.position.copy(this.endpointLocal(key, length, align));
-        this.object.localToWorld(handle.position);
-        handle.position.y += 0.2;
+        if (pose && key === this.axis) {
+          // Mid-drag: the circle previews where the endpoint will land.
+          this.endpointLocal(key, pose.length, align);
+          this.pendingToWorld(this.tmpLocal, handle.position);
+          handle.position.y = this.fixedWorld.y;
+        } else {
+          handle.position.copy(this.endpointLocal(key, length, align));
+          this.object.localToWorld(handle.position);
+          handle.position.y += 0.2;
+        }
         // Mild distance scaling so handles stay usable when zoomed out.
         const dist = handle.position.distanceTo(this.camera.position);
         const s = THREE.MathUtils.clamp(dist * 0.015, 1, 6);
@@ -184,6 +244,10 @@ class StreetNodeControls extends GizmoPointerControls {
     this.dragPlane.set(Y_AXIS, -handle.position.y);
     if (!this.intersectPlane(this.dragPlane, this.tempVec)) return false;
 
+    // street-align emits 'alignment-changed' before it repositions the
+    // segments, so the cached x extent can be stale; once per drag is cheap.
+    this.refreshLayoutCache();
+
     const other = axis === 'start' ? 'end' : 'start';
     this.fixedWorld.copy(this.handles[other].position);
 
@@ -196,8 +260,40 @@ class StreetNodeControls extends GizmoPointerControls {
       positionY: pos.y,
       length: this.getStreetLength()
     };
-    this.pendingLength = null;
-    this.lastLengthApply = 0;
+    this.pendingPose = null;
+  }
+
+  /** Street-local point -> world, under the pending (not yet applied) pose. */
+  pendingToWorld(local, out) {
+    const pose = this.pendingPose;
+    out.copy(local).applyAxisAngle(Y_AXIS, pose.rotY).add(pose.origin);
+    out.y = pose.origin.y;
+    return this.object.parent.localToWorld(out);
+  }
+
+  updatePreview() {
+    const pose = this.pendingPose;
+    const z = this.endpointLocalZ(pose.length, this.getLengthAlign());
+    const { min, max } = this.xExtent;
+    const corners = [
+      [min, z.start],
+      [max, z.start],
+      [max, z.end],
+      [min, z.end]
+    ];
+    const attr = this.preview.geometry.getAttribute('position');
+    corners.forEach(([x, cz], i) => {
+      this.tmpCorner.set(x, 0, cz);
+      this.pendingToWorld(this.tmpCorner, this.tmpCorner);
+      attr.setXYZ(
+        i,
+        this.tmpCorner.x,
+        this.fixedWorld.y - PREVIEW_LIFT,
+        this.tmpCorner.z
+      );
+    });
+    attr.needsUpdate = true;
+    this.preview.visible = true;
   }
 
   moveDrag(event) {
@@ -234,40 +330,50 @@ class StreetNodeControls extends GizmoPointerControls {
     this.originParent.copy(this.fixedParent).sub(fixedLocal);
 
     const snap = this.dragStartSnapshot;
-    this.el.setAttribute('position', {
-      x: parseFloat(this.originParent.x.toFixed(3)),
-      y: snap.positionY,
-      z: parseFloat(this.originParent.z.toFixed(3))
-    });
-    this.el.setAttribute('rotation', {
-      x: snap.rotationXZ.x,
-      y: parseFloat(THREE.MathUtils.radToDeg(rotY).toFixed(2)),
-      z: snap.rotationXZ.z
-    });
-
-    // Length re-layout cascades to every segment — throttle it during the
-    // drag, and always flush the final value in endDrag().
-    this.pendingLength = newLength;
-    const now = performance.now();
-    if (now - this.lastLengthApply > LENGTH_APPLY_THROTTLE_MS) {
-      this.lastLengthApply = now;
-      this.el.setAttribute('managed-street', 'length', newLength);
-    }
+    this.pendingPose = this.pendingPose || {
+      origin: new THREE.Vector3(),
+      rotY: 0,
+      length: 0
+    };
+    this.pendingPose.origin.set(
+      parseFloat(this.originParent.x.toFixed(3)),
+      snap.positionY,
+      parseFloat(this.originParent.z.toFixed(3))
+    );
+    this.pendingPose.rotY = rotY;
+    this.pendingPose.length = newLength;
+    this.updatePreview();
 
     this.dispatchEvent(this.changeEvent);
-    this.dispatchEvent(this.objectChangeEvent);
+  }
+
+  clearDragState() {
+    this.pendingPose = null;
+    this.dragStartSnapshot = null;
+    this.preview.visible = false;
   }
 
   endDrag(event) {
     const snap = this.dragStartSnapshot;
-    if (!snap || !this.el) return;
+    const pose = this.pendingPose;
+    this.clearDragState();
+    // A mid-drag detach (Escape deselects) leaves no target to commit to.
+    if (!snap || !pose || !this.el) return;
 
-    if (
-      this.pendingLength !== null &&
-      this.pendingLength !== this.getStreetLength()
-    ) {
-      this.el.setAttribute('managed-street', 'length', this.pendingLength);
+    this.el.setAttribute('position', {
+      x: pose.origin.x,
+      y: snap.positionY,
+      z: pose.origin.z
+    });
+    this.el.setAttribute('rotation', {
+      x: snap.rotationXZ.x,
+      y: parseFloat(THREE.MathUtils.radToDeg(pose.rotY).toFixed(2)),
+      z: snap.rotationXZ.z
+    });
+    if (pose.length !== this.getStreetLength()) {
+      this.el.setAttribute('managed-street', 'length', pose.length);
     }
+    this.dispatchEvent(this.objectChangeEvent);
 
     const pos = this.el.getAttribute('position');
     const rot = this.el.getAttribute('rotation');
@@ -293,8 +399,6 @@ class StreetNodeControls extends GizmoPointerControls {
         }
       ]
     });
-    this.dragStartSnapshot = null;
-    this.pendingLength = null;
   }
 }
 

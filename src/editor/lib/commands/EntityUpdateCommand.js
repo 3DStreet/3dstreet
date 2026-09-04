@@ -42,9 +42,13 @@ export class EntityUpdateCommand extends Command {
     }
   };
 
+  // Scene roots are legitimate update targets (#environment presets, the
+  // #reference-layers street-geo, #street-container transforms).
+  static llmAllowRootTarget = true;
+
   // Resolve expressionForValue → numeric value before dispatch. The id→DOM
-  // resolution for entityId is handled by the registry's generic adapter.
-  static transformLLMArgs(args) {
+  // resolution (and the editable-subtree guard) is handled by the registry.
+  static transformLLMArgs(args, { entity } = {}) {
     const out = { ...args };
     if (out.expressionForValue) {
       const expr = String(out.expressionForValue).trim();
@@ -57,7 +61,7 @@ export class EntityUpdateCommand extends Command {
     if (out.value === undefined) {
       throw new Error('Either value or expressionForValue must be provided');
     }
-    EntityUpdateCommand.validateLLMTarget(out);
+    EntityUpdateCommand.validateLLMTarget(out, entity);
     return out;
   }
 
@@ -66,13 +70,12 @@ export class EntityUpdateCommand extends Command {
   // still reports "executed" — the model then tells the user it succeeded
   // (and the verification step rubber-stamps it, having no error to see).
   // Editor UI callers construct the command directly and skip this.
-  static validateLLMTarget(args) {
+  static validateLLMTarget(args, entity) {
     const componentName = args.component;
     if (typeof componentName !== 'string' || !componentName) {
       throw new Error("'component' is required and must be a string");
     }
-    const entity = args.entityId && document.getElementById(args.entityId);
-    if (!entity) return; // missing entity throws later in the registry
+    if (!entity) return; // missing entity throws in the registry
 
     if (['position', 'rotation', 'scale'].includes(componentName)) {
       if (args.property && !['x', 'y', 'z'].includes(args.property)) {

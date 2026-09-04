@@ -1,3 +1,4 @@
+/* global VERSION */
 /**
  * MCP-only read and meta tools.
  *
@@ -15,20 +16,23 @@
 
 import { getGroupedMixinOptions } from '../mixinUtils.js';
 import Events from '../Events.js';
+import { resolveEntityId } from '../commands/llmToolGuards.js';
 import { getUserProfile } from '@shared/utils/username';
+import {
+  describeEntityGeo,
+  getGeoFrame,
+  latLonToWorld,
+  sceneAxisBearings,
+  worldToLatLon
+} from '../geo/geoFrame.js';
+import { describeCamera, orientPlanViewZoomed } from '../geo/cameraState.js';
+import { summarizePresets } from '../commands/segmentPresets.js';
+import { describeSaveState } from './sceneTools.js';
 
 // Guard for entity-id args: the relay forwards arbitrary strings from
 // Claude. Resolve to an A-Frame entity or throw a clean error so the
 // JSON-RPC reply carries it back instead of crashing the inspector.
-function resolveEntity(entityId) {
-  if (!entityId) throw new Error('entityId is required');
-  const el = document.getElementById(entityId);
-  if (!el) throw new Error(`Entity with ID ${entityId} not found`);
-  if (!el.isEntity) {
-    throw new Error(`DOM id ${entityId} is not an A-Frame entity`);
-  }
-  return el;
-}
+const resolveEntity = resolveEntityId;
 
 async function getSceneHandler() {
   const root = document.getElementById('street-container');
@@ -73,18 +77,45 @@ async function selectEntityHandler(args) {
 }
 
 async function listMixinsHandler(args) {
-  const groups = getGroupedMixinOptions(true);
-  const requested = args?.category;
-  const filtered = requested
-    ? groups.filter((g) => g.label === requested)
-    : groups;
-  return filtered.map((g) => ({
+  const stencilIds = new Set(
+    AFRAME.components['street-generated-stencil']?.schema?.modelsArray?.oneOf ||
+      []
+  );
+  if (stencilIds.size === 0) {
+    // Every id would be tagged 'clones' — the silent misclassification the
+    // tag exists to prevent. Loud, so a registration-order regression shows.
+    console.warn(
+      '[mcp] street-generated-stencil schema unavailable; generator tags may be wrong'
+    );
+  }
+  const groups = getGroupedMixinOptions(true).map((g) => ({
     category: g.label,
     mixins: g.options.map((o) => ({
       id: o.value,
-      label: o.label
+      label: o.label,
+      // Which managed-street generator accepts this id: 3D models go in
+      // `generated.clones`, flat painted markings in `generated.stencil`.
+      generator: stencilIds.has(o.value) ? 'stencil' : 'clones'
     }))
   }));
+  const seen = new Set(groups.flatMap((g) => g.mixins.map((m) => m.id)));
+  const missingStencils = [...stencilIds].filter((id) => !seen.has(id));
+  if (missingStencils.length) {
+    groups.push({
+      category: 'Road markings (stencils)',
+      mixins: missingStencils.map((id) => ({
+        id,
+        label: id,
+        generator: 'stencil'
+      }))
+    });
+  }
+  const requested = args?.category;
+  return requested ? groups.filter((g) => g.category === requested) : groups;
+}
+
+async function listSegmentPresetsHandler() {
+  return summarizePresets(window.STREET?.types);
 }
 
 async function getSessionInfoHandler(args, currentUser) {
@@ -104,9 +135,18 @@ async function getSessionInfoHandler(args, currentUser) {
     }
     user = { uid: currentUser.uid, username };
   }
+  const { sceneId, sceneUrl, saved, isAuthor } = describeSaveState(currentUser);
   return {
+    // package version + git sha of the running bundle (webpack DefinePlugin),
+    // so an agent can tell whether a tab is on a stale deploy.
+    build: typeof VERSION !== 'undefined' ? VERSION : null,
     user,
-    sceneId: STREET.utils.getCurrentSceneId?.() || null,
+    sceneId,
+    sceneUrl,
+    // saved = a cloud scene exists and this user is its author, so autosave
+    // is persisting edits. Otherwise call saveScene.
+    saved,
+    isAuthor,
     sceneTitle: STREET.store?.getState?.()?.sceneTitle || null,
     viewport: canvas ? { width: canvas.width, height: canvas.height } : null
   };
@@ -138,6 +178,56 @@ async function redoHandler() {
   const top = inspector.history.redos[inspector.history.redos.length - 1];
   inspector.redo();
   return { redone: true, command: top.name || top.type || null };
+}
+
+/**
+ * Local ↔ geographic correspondence. Throws a GeoFrameError (with a reason
+ * the agent can act on) while the geo layer is off or still loading.
+ */
+async function getGeoContextHandler(args) {
+  const frame = getGeoFrame();
+  const out = {
+    origin: {
+      ...frame.origin,
+      note: 'Scene world origin (0, 0, 0) sits at this latitude/longitude on the ground plane (y = 0).'
+    },
+    axes: {
+      ...sceneAxisBearings(frame),
+      up: '+y',
+      note: 'Bearings (degrees clockwise from true north) of the scene +X and +Z axes at the origin. A managed street runs along its local +Z; segments are laid out across local X. 1 scene unit = 1 meter.'
+    },
+    camera: describeCamera()
+  };
+  if (args?.entityId) {
+    out.entity = describeEntityGeo(resolveEntity(args.entityId), frame);
+  }
+  if (args?.latitude !== undefined || args?.longitude !== undefined) {
+    const lat = parseFloat(args.latitude);
+    const lon = parseFloat(args.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      throw new Error('latitude and longitude must both be finite numbers');
+    }
+    const world = latLonToWorld(lat, lon, null, frame);
+    out.point = {
+      latitude: lat,
+      longitude: lon,
+      worldPosition: {
+        x: Math.round(world.x * 1000) / 1000,
+        y: Math.round(world.y * 1000) / 1000,
+        z: Math.round(world.z * 1000) / 1000
+      },
+      // Round-trip so the agent can see the conversion is self-consistent.
+      roundTrip: worldToLatLon(world, frame)
+    };
+  }
+  return out;
+}
+
+async function orientPlanViewHandler(args) {
+  const zoomOut = Number.isFinite(Number(args?.zoomOut))
+    ? Math.max(1, Number(args.zoomOut))
+    : 1;
+  return orientPlanViewZoomed({ zoomOut });
 }
 
 async function focusCameraHandler(args) {
@@ -210,9 +300,16 @@ export const mcpReadTools = [
     handler: listMixinsHandler
   },
   {
+    name: 'listSegmentPresets',
+    description:
+      'List the per-type segment presets (surface, color, elevation, default direction, and the generated stencils/clones/pedestrians) that managedStreetCreate and managedStreetUpdate apply when a segment omits those fields — identical to picking the type in the editor sidebar. Read this before composing a cross-section so you only override what you need.',
+    inputSchema: { type: 'object', properties: {}, required: [] },
+    handler: listSegmentPresetsHandler
+  },
+  {
     name: 'getSessionInfo',
     description:
-      'Return signed-in user, current scene id/title, and viewport size for the connected browser tab.',
+      'Return the running build version, signed-in user, current scene id/url/title, whether edits are being persisted (`saved`: cloud scene exists and the user is its author, so autosave is on — otherwise call saveScene), and viewport size.',
     inputSchema: { type: 'object', properties: {}, required: [] },
     handler: getSessionInfoHandler
   },
@@ -234,20 +331,66 @@ export const mcpReadTools = [
   },
   {
     name: 'undo',
+    mutating: true,
     description: 'Step the editor history back by one command.',
     inputSchema: { type: 'object', properties: {}, required: [] },
     handler: undoHandler
   },
   {
     name: 'redo',
+    mutating: true,
     description: 'Step the editor history forward by one command.',
     inputSchema: { type: 'object', properties: {}, required: [] },
     handler: redoHandler
   },
   {
+    name: 'getGeoContext',
+    description:
+      'Return the exact relationship between scene coordinates and geographic coordinates: the lat/lon at the scene origin, the compass bearing of the scene axes, the camera pose (tilt, north-up state, lat/lon), and optionally one entity converted to lat/lon + compass heading (for a managed street: centerline bearing and both endpoint coordinates), and/or a lat/lon converted to a scene world position. Conversions use the live Google 3D Tiles WGS84 frame, so they match where the map renders. Errors with a reason when the geo layer is off or still loading — call setLatLon or retry.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entityId: {
+          type: 'string',
+          description:
+            'Optional entity to describe geographically (position → lat/lon, heading → compass bearing; managed streets also get endpoint coordinates).'
+        },
+        latitude: {
+          type: 'number',
+          description:
+            'Optional latitude to convert to a scene world position (pair with longitude).'
+        },
+        longitude: {
+          type: 'number',
+          description:
+            'Optional longitude to convert to a scene world position (pair with latitude).'
+        }
+      },
+      required: []
+    },
+    handler: getGeoContextHandler
+  },
+  {
+    name: 'orientPlanView',
+    description:
+      'Move the editor camera to a top-down, north-up plan view using the same compass action a user clicks (perspective camera, framing the whole scene), optionally pulled back by `zoomOut`. Returns the resulting camera state (tilt, needle angle, isTopDown, isNorthUp, lat/lon, groundExtent in metres). Use before takeSnapshot when judging alignment or orientation; focusCamera reframes around one entity and is NOT a reliable orientation reference. takeSnapshot type "plan" does this for you.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        zoomOut: {
+          type: 'number',
+          description:
+            'Altitude multiplier after the fit: 1 = scene fills the frame, 2 = twice the ground extent (see surrounding real roads), 3-4 = wide context.'
+        }
+      },
+      required: []
+    },
+    handler: orientPlanViewHandler
+  },
+  {
     name: 'focusCamera',
     description:
-      'Frame an entity in the viewport (same effect as double-clicking it in the scene graph).',
+      'Frame an entity in the viewport (same effect as double-clicking it in the scene graph). This reframes and rotates the view around that entity, so the result is NOT a north-up or alignment reference — use orientPlanView + takeSnapshot for that.',
     inputSchema: {
       type: 'object',
       properties: {

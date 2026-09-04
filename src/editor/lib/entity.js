@@ -627,6 +627,22 @@ export function getComponentClipboardRepresentation(entity, componentName) {
   return `${componentName}="${properties}"`;
 }
 
+/**
+ * Whether an entity's display name can be renamed by the user. The fixed
+ * pseudo-layers (environment, reference layers, user layers) and no-transform
+ * entities never had a rename affordance. Shared by the properties panel
+ * title label and the scene graph's right-click context menu.
+ * @param {Element} entity
+ * @returns {boolean}
+ */
+export function canRenameEntity(entity) {
+  return (
+    !['reference-layers', 'environment', 'street-container'].includes(
+      entity.id
+    ) && !entity.hasAttribute('data-no-transform')
+  );
+}
+
 export function getEntityDisplayName(entity) {
   // User-set display name wins.
   const layerName = entity.getAttribute('data-layer-name');

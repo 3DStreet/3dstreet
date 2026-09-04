@@ -230,23 +230,8 @@
   "appMenu.edit": {
     "defaultMessage": "Edit"
   },
-  "appMenu.edit.copy": {
-    "defaultMessage": "Copy"
-  },
-  "appMenu.edit.cut": {
-    "defaultMessage": "Cut"
-  },
-  "appMenu.edit.delete": {
-    "defaultMessage": "Delete"
-  },
   "appMenu.edit.deselect": {
     "defaultMessage": "Deselect"
-  },
-  "appMenu.edit.duplicate": {
-    "defaultMessage": "Duplicate"
-  },
-  "appMenu.edit.paste": {
-    "defaultMessage": "Paste"
   },
   "appMenu.export.dxfEmpty": {
     "defaultMessage": "No street or intersection elements found to export as DXF."
@@ -338,6 +323,9 @@
   "appMenu.view": {
     "defaultMessage": "View"
   },
+  "appMenu.view.focusOnSelection": {
+    "defaultMessage": "Focus on Selection"
+  },
   "appMenu.view.navigationControls": {
     "defaultMessage": "Navigation Controls"
   },
@@ -358,9 +346,6 @@
   },
   "appMenu.view.snapshotRender": {
     "defaultMessage": "Capture & Render..."
-  },
-  "appMenu.view.zoomToSelection": {
-    "defaultMessage": "Zoom to Selection"
   },
   "assetInfo.assetSource": {
     "defaultMessage": "Asset source: {ownership} · {assetIdShort}…"
@@ -920,6 +905,12 @@
   "common.cancel": {
     "defaultMessage": "Cancel"
   },
+  "common.copy": {
+    "defaultMessage": "Copy"
+  },
+  "common.cut": {
+    "defaultMessage": "Cut"
+  },
   "common.delete": {
     "defaultMessage": "Delete"
   },
@@ -940,6 +931,9 @@
   },
   "common.keyboardShortcuts": {
     "defaultMessage": "Keyboard Shortcuts"
+  },
+  "common.paste": {
+    "defaultMessage": "Paste"
   },
   "common.planView": {
     "defaultMessage": "Plan View"
@@ -1745,6 +1739,18 @@
   "profileModal.unlimitedGeoTokens": {
     "defaultMessage": "Unlimited Geo Tokens"
   },
+  "propertyRow.linkAxes": {
+    "defaultMessage": "Link axes: editing one axis sets all three"
+  },
+  "propertyRow.linkUnavailable": {
+    "defaultMessage": "Axes differ: reset scale to re-enable linking"
+  },
+  "propertyRow.resetToDefault": {
+    "defaultMessage": "Reset to default ({value})"
+  },
+  "propertyRow.unlinkAxes": {
+    "defaultMessage": "Unlink axes: edit each axis independently"
+  },
   "raceFinish.collisionsSuffix": {
     "defaultMessage": "{collisions,plural,one{# collision} other{# collisions}}"
   },
@@ -2221,6 +2227,12 @@
   },
   "sidebar.editCloneSettings": {
     "defaultMessage": "Edit Clone Settings"
+  },
+  "sidebar.geoloc": {
+    "defaultMessage": "GeoLoc"
+  },
+  "sidebar.geolocTitle": {
+    "defaultMessage": "Latitude, longitude, true bearing (degrees clockwise from true north, “T”). Read-only: edit position and rotation to change it."
   },
   "sidebar.managedBy": {
     "defaultMessage": "Managed by"

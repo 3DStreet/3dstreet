@@ -13,6 +13,10 @@
   align-items: center;
   row-gap: 28px;
   padding: 0px 14px 28px 4px;
+  // The modal surface is always dark (.modal-content), but the inherited
+  // text color depends on context — the editor sets a white body color via
+  // body.aframe-inspector-opened, the viewer doesn't (#1948). Be explicit.
+  color: variables.$white;
 
   .title {
     position: absolute;

@@ -1116,7 +1116,7 @@ function ScreenshotModal() {
                     }`}
                     disabled={isAnyRendering}
                     rows={4}
-                    maxLength={500}
+                    maxLength={2000}
                   />
                   <label
                     htmlFor="prompt-style"
@@ -1150,7 +1150,7 @@ function ScreenshotModal() {
                     }`}
                     disabled={isAnyRendering}
                     rows={3}
-                    maxLength={500}
+                    maxLength={2000}
                   />
                 </div>
               </div>

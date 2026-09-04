@@ -1,6 +1,11 @@
 /**
  * React hook owning the MCP WebSocket lifecycle.
  *
+ * FALLBACK transport. WebMCP (useWebMCP.js) is the primary agent interface;
+ * this relay exists only for MCP clients that cannot read
+ * `document.modelContext` (Claude Desktop / Claude Code, Cursor, headless).
+ * Retire it once those clients support WebMCP natively — see docs/webmcp.md.
+ *
  * Auto-connects to ws://127.0.0.1:51735 (or `?mcp=PORT`) and feeds every
  * incoming JSON-RPC frame into `handleFrame`, writing the reply back over
  * the same socket.

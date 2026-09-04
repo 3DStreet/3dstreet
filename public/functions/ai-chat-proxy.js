@@ -35,9 +35,8 @@ const { GoogleGenAI } = require('@google/genai');
 
 // Locked server-side. The Editor only ever needs text generation; the image
 // model is deliberately unreachable from here.
-// GA model (launched 2026-08-13) — previous `gemini-3-flash-preview` was a
-// preview id that will be retired like the Gemini 2.5 line (issue #1890).
-const MODEL_ID = 'gemini-3.7-flash';
+// GA model (3.8 Flash stable, Sept 2026)
+const MODEL_ID = 'gemini-3.8-flash';
 const LOCATION = 'global';
 
 const MAX_OUTPUT_TOKENS = 4096;

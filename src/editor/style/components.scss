@@ -754,3 +754,75 @@ a.help-linkhover {
     z-index: 1;
   }
 }
+
+// Read-only geographic readout under the position row (GeoLocationRow).
+.propertyRow .geoReadoutValue {
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #c8c8c8;
+  user-select: all;
+}
+
+// Small icon buttons beside vec3 inputs: reset-to-default (PropertyRow) and
+// the scale link toggle (Vec3Widget).
+.vec3-tool {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #9a9a9a;
+  font-size: 11px;
+  line-height: 22px;
+  cursor: pointer;
+  &:hover:not(:disabled) {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  &:disabled {
+    color: #4a4a4a;
+    cursor: default;
+  }
+}
+.vec3-link--on {
+  color: #a78bfa;
+}
+
+// Vec3 rows (position/rotation/scale …) live under .sidepanelContent, not
+// .details: let the three inputs share the remaining row width instead of a
+// fixed 108px each, so the reset / link buttons beside them stay inside the
+// panel at any width and the numbers stay readable.
+.sidepanelContent .propertyRow:has(> .vec3) {
+  padding-right: 6px;
+}
+.sidepanelContent .propertyRow .vec3 {
+  display: flex;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+  gap: 4px;
+}
+.sidepanelContent .propertyRow .vec3 .inputBlock {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto !important;
+  margin-right: 0;
+  padding-left: 6px !important;
+  padding-right: 4px !important;
+}
+.sidepanelContent .propertyRow .vec3 .inputBlock .axes {
+  margin-right: 2px;
+}
+.sidepanelContent .propertyRow .vec3 .inputBlock input.number {
+  width: 100% !important;
+  min-width: 0;
+  padding-left: 2px !important;
+}
+.sidepanelContent .propertyRow .vec3-tool {
+  width: 20px;
+  margin-left: 0;
+}

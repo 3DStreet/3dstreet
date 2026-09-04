@@ -42,25 +42,26 @@ describe('EntityUpdateCommand.transformLLMArgs schema validation', () => {
     ...overrides
   });
 
+  // The registry pre-resolves entityId (through the editable-subtree guard)
+  // and hands the live element to the transform.
+  const transform = (a) =>
+    EntityUpdateCommand.transformLLMArgs(a, { entity: el });
+
   it('rejects a hallucinated property on a known component', () => {
     expect(() =>
-      EntityUpdateCommand.transformLLMArgs(
-        args({ component: 'managed-street', property: 'curve' })
-      )
+      transform(args({ component: 'managed-street', property: 'curve' }))
     ).toThrow(/no property 'curve'.*length, width, sourceType/);
   });
 
   it('rejects a hallucinated component', () => {
-    expect(() =>
-      EntityUpdateCommand.transformLLMArgs(args({ component: 'curve' }))
-    ).toThrow(/Unknown component 'curve'/);
+    expect(() => transform(args({ component: 'curve' }))).toThrow(
+      /Unknown component 'curve'/
+    );
   });
 
   it('accepts a valid property on a known component', () => {
     expect(() =>
-      EntityUpdateCommand.transformLLMArgs(
-        args({ component: 'managed-street', property: 'length' })
-      )
+      transform(args({ component: 'managed-street', property: 'length' }))
     ).not.toThrow();
   });
 
@@ -69,43 +70,31 @@ describe('EntityUpdateCommand.transformLLMArgs schema validation', () => {
       'managed-street': { schema: { length: {}, dynamicProp: {} } }
     };
     expect(() =>
-      EntityUpdateCommand.transformLLMArgs(
-        args({ component: 'managed-street', property: 'dynamicProp' })
-      )
+      transform(args({ component: 'managed-street', property: 'dynamicProp' }))
     ).not.toThrow();
   });
 
   it('allows x/y/z on position and rejects other properties', () => {
     expect(() =>
-      EntityUpdateCommand.transformLLMArgs(
-        args({ component: 'position', property: 'y' })
-      )
+      transform(args({ component: 'position', property: 'y' }))
     ).not.toThrow();
     expect(() =>
-      EntityUpdateCommand.transformLLMArgs(
-        args({ component: 'position', property: 'w' })
-      )
+      transform(args({ component: 'position', property: 'w' }))
     ).toThrow(/only has properties x, y, z/);
   });
 
   it('rejects a property arg on a single-property component', () => {
     expect(() =>
-      EntityUpdateCommand.transformLLMArgs(
-        args({ component: 'visible', property: 'value' })
-      )
+      transform(args({ component: 'visible', property: 'value' }))
     ).toThrow(/single-property/);
   });
 
   it('allows plain attributes and attributes the entity already carries', () => {
     for (const component of ['mixin', 'id', 'class', 'data-some-flag']) {
-      expect(() =>
-        EntityUpdateCommand.transformLLMArgs(args({ component }))
-      ).not.toThrow();
+      expect(() => transform(args({ component }))).not.toThrow();
     }
     el.setAttribute('src', '#old');
-    expect(() =>
-      EntityUpdateCommand.transformLLMArgs(args({ component: 'src' }))
-    ).not.toThrow();
+    expect(() => transform(args({ component: 'src' }))).not.toThrow();
   });
 
   it('allows multi-instance component names via the base definition', () => {
@@ -113,39 +102,30 @@ describe('EntityUpdateCommand.transformLLMArgs schema validation', () => {
       schema: { property: {}, to: {}, loop: {} }
     };
     expect(() =>
-      EntityUpdateCommand.transformLLMArgs(
-        args({ component: 'animation__spin' })
-      )
+      transform(args({ component: 'animation__spin' }))
     ).not.toThrow();
     expect(() =>
-      EntityUpdateCommand.transformLLMArgs(
-        args({ component: 'animation__spin', property: 'to' })
-      )
+      transform(args({ component: 'animation__spin', property: 'to' }))
     ).not.toThrow();
     expect(() =>
-      EntityUpdateCommand.transformLLMArgs(
-        args({ component: 'animation__spin', property: 'nope' })
-      )
+      transform(args({ component: 'animation__spin', property: 'nope' }))
     ).toThrow(/no property 'nope'/);
   });
 
   it('allows primitive attribute mappings not yet set on the entity', () => {
     el.mappings = { color: 'material.color' };
-    expect(() =>
-      EntityUpdateCommand.transformLLMArgs(args({ component: 'color' }))
-    ).not.toThrow();
+    expect(() => transform(args({ component: 'color' }))).not.toThrow();
   });
 
   it('rejects a missing component arg with a readable error', () => {
-    expect(() => EntityUpdateCommand.transformLLMArgs(args({}))).toThrow(
-      /'component' is required/
-    );
+    expect(() => transform(args({}))).toThrow(/'component' is required/);
   });
 
-  it('skips validation when the entity does not exist (registry throws later)', () => {
+  it('skips validation when no entity is supplied (registry throws first)', () => {
     expect(() =>
       EntityUpdateCommand.transformLLMArgs(
-        args({ entityId: 'nope', component: 'curve' })
+        args({ entityId: 'nope', component: 'curve' }),
+        { entity: null }
       )
     ).not.toThrow();
   });
