@@ -152,6 +152,7 @@ class StreetNodeControls extends GizmoPointerControls {
     this.object = undefined;
     this.visible = false;
     this.axis = null;
+    this.clearDragState();
     return this;
   }
 
@@ -242,6 +243,10 @@ class StreetNodeControls extends GizmoPointerControls {
     const handle = this.handles[axis];
     this.dragPlane.set(Y_AXIS, -handle.position.y);
     if (!this.intersectPlane(this.dragPlane, this.tempVec)) return false;
+
+    // street-align emits 'alignment-changed' before it repositions the
+    // segments, so the cached x extent can be stale; once per drag is cheap.
+    this.refreshLayoutCache();
 
     const other = axis === 'start' ? 'end' : 'start';
     this.fixedWorld.copy(this.handles[other].position);
@@ -342,17 +347,18 @@ class StreetNodeControls extends GizmoPointerControls {
     this.dispatchEvent(this.changeEvent);
   }
 
+  clearDragState() {
+    this.pendingPose = null;
+    this.dragStartSnapshot = null;
+    this.preview.visible = false;
+  }
+
   endDrag(event) {
     const snap = this.dragStartSnapshot;
-    this.preview.visible = false;
-    if (!snap || !this.el) return;
-
     const pose = this.pendingPose;
-    this.pendingPose = null;
-    if (!pose) {
-      this.dragStartSnapshot = null;
-      return;
-    }
+    this.clearDragState();
+    // A mid-drag detach (Escape deselects) leaves no target to commit to.
+    if (!snap || !pose || !this.el) return;
 
     this.el.setAttribute('position', {
       x: pose.origin.x,
@@ -393,7 +399,6 @@ class StreetNodeControls extends GizmoPointerControls {
         }
       ]
     });
-    this.dragStartSnapshot = null;
   }
 }
 
