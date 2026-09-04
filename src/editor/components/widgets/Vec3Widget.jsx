@@ -5,6 +5,7 @@ import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { faLink, faLinkSlash } from '@fortawesome/free-solid-svg-icons';
 import { areVectorsEqual } from '../../lib/utils.js';
 import {
+  isUniformScale,
   linkedScaleUpdate,
   readScaleLinked,
   writeScaleLinked
@@ -14,12 +15,15 @@ export default class Vec3Widget extends React.Component {
   static propTypes = {
     onChange: PropTypes.func,
     value: PropTypes.object.isRequired,
-    // Show a link toggle; while linked, editing one axis scales the others
-    // proportionally (scale rows). Off by default so position/rotation and
-    // other vec3 props keep independent axes.
+    // Show a link toggle; while linked (and the axes are already equal),
+    // editing one axis writes the same value to all three (scale rows). Off
+    // by default so position/rotation and other vec3 props keep independent
+    // axes.
     linkable: PropTypes.bool,
     linkTitle: PropTypes.string,
-    unlinkTitle: PropTypes.string
+    unlinkTitle: PropTypes.string,
+    // Tooltip while the link is unavailable because the axes differ.
+    linkUnavailableTitle: PropTypes.string
   };
 
   constructor(props) {
@@ -32,11 +36,19 @@ export default class Vec3Widget extends React.Component {
     };
   }
 
+  // Linking only applies to a uniform scale; a non-uniform one (e.g. after
+  // unlinked edits) keeps independent axes until reset makes it uniform.
+  isLinkActive() {
+    return (
+      this.props.linkable && this.state.linked && isUniformScale(this.state)
+    );
+  }
+
   onChange = (name, value) => {
-    const next =
-      this.props.linkable && this.state.linked
-        ? linkedScaleUpdate(this.state, name, parseFloat(value.toFixed(5)))
-        : { [name]: parseFloat(value.toFixed(5)) };
+    const rounded = parseFloat(value.toFixed(5));
+    const next = this.isLinkActive()
+      ? linkedScaleUpdate(rounded)
+      : { [name]: rounded };
     this.setState(next, () => {
       if (this.props.onChange) {
         const { x, y, z } = this.state;
@@ -63,8 +75,10 @@ export default class Vec3Widget extends React.Component {
   }
 
   render() {
-    const { linkable, linkTitle, unlinkTitle } = this.props;
+    const { linkable, linkTitle, unlinkTitle, linkUnavailableTitle } =
+      this.props;
     const { linked } = this.state;
+    const uniform = isUniformScale(this.state);
     return (
       <div className="vec3">
         <NumberWidget name="x" value={this.state.x} onChange={this.onChange} />
@@ -73,10 +87,15 @@ export default class Vec3Widget extends React.Component {
         {linkable && (
           <button
             type="button"
-            className={`vec3-tool vec3-link${linked ? ' vec3-link--on' : ''}`}
+            className={`vec3-tool vec3-link${
+              linked && uniform ? ' vec3-link--on' : ''
+            }`}
             onClick={this.toggleLinked}
-            title={linked ? unlinkTitle : linkTitle}
-            aria-pressed={linked}
+            disabled={!uniform}
+            title={
+              !uniform ? linkUnavailableTitle : linked ? unlinkTitle : linkTitle
+            }
+            aria-pressed={linked && uniform}
             data-testid="vec3-link"
           >
             <AwesomeIcon icon={linked ? faLink : faLinkSlash} size={13} />

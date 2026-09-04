@@ -23,12 +23,15 @@ const messages = defineMessages({
   },
   linkAxes: {
     id: 'propertyRow.linkAxes',
-    defaultMessage:
-      'Link axes: editing one axis scales the others proportionally'
+    defaultMessage: 'Link axes: editing one axis sets all three'
   },
   unlinkAxes: {
     id: 'propertyRow.unlinkAxes',
     defaultMessage: 'Unlink axes: edit each axis independently'
+  },
+  linkUnavailable: {
+    id: 'propertyRow.linkUnavailable',
+    defaultMessage: 'Axes differ: reset scale to re-enable linking'
   }
 });
 
@@ -190,6 +193,9 @@ class PropertyRow extends React.Component {
             linkable={linkable}
             linkTitle={props.intl.formatMessage(messages.linkAxes)}
             unlinkTitle={props.intl.formatMessage(messages.unlinkAxes)}
+            linkUnavailableTitle={props.intl.formatMessage(
+              messages.linkUnavailable
+            )}
           />
         );
       }
