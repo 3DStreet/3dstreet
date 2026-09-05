@@ -1,0 +1,717 @@
+/* global AFRAME, THREE */
+const {
+  createHeliState,
+  stepHeliState,
+  computeHeliForces
+} = require('./heli-flight-model.js');
+const { HeliSound } = require('./heli-sound.js');
+
+/**
+ * play-mode-helicopter
+ * ====================
+ *
+ * The flying player rig for play mode: a dynamic cuboid chassis body on
+ * the same Rapier infrastructure as drive mode (`play-mode-physics`
+ * system in play-mode-vehicle.js) that, each physics sub-step, applies
+ * the forces from the pure flight model in `heli-flight-model.js`
+ * (rotor thrust along body-up, cyclic / yaw torques, auto-level, hover
+ * assist). Renders via the procedural `helicopter-mesh`.
+ *
+ * This file is a LAZY CHUNK: `fly-mode.js` (the scene bootstrap, which
+ * owns the `fly-controls` marker and the 'fly' control mode) imports it
+ * on the first Play with a helicopter in the scene, alongside the
+ * Rapier WASM. Together with `heli-sound.js` and `heli-flight-model.js`
+ * that keeps ~23 KB of flight-only code out of the core bundle, which
+ * sits right at its 4 MiB budget (webpack.prod.config.js). Nothing
+ * else may require this file eagerly.
+ *
+ * Controls (keyboard):
+ *   W / S            climb / descend (vertical-speed command: holding
+ *                    sets a target rate, releasing settles back toward
+ *                    hover with a gentle sink — see heli-flight-model)
+ *   A / D            yaw left / right
+ *   Arrow keys       cyclic — Up = nose down (fly forward), Down =
+ *                    nose up, Left / Right = roll
+ *   Space            hover assist (levels out + brakes drift + trims
+ *                    collective to hover)
+ *   C                camera mode (chase / fpv / top-down)
+ *   R                reset run
+ * Gamepad (standard mapping, wired in play-mode.pollGamepad):
+ *   RT / LT collective · left stick cyclic · LB / RB yaw · B assist ·
+ *   right stick chase-cam orbit/zoom · Y reset · X camera ·
+ *   Start pause · Back stop
+ */
+
+// Chassis-frame collider half-extents. Sized to the helicopter-mesh
+// (MH-65 Dolphin class, real scale: wheels at local y≈-1.8, nose tip
+// z≈-4.6, tail boom to z≈+7; rotor hub at +2.1). The box is pushed
+// aft (COLLIDER_OFFSET_Z) so it covers nose-to-boom without a
+// matching 4.6 m of empty box ahead of the nose; the rotor disc and
+// the fenestron shroud are deliberately NOT part of the collider —
+// an invisible 12 m collision disc feels unfair when threading
+// buildings.
+const COLLIDER_HALF = { x: 1.05, y: 1.75, z: 5.7 };
+const COLLIDER_OFFSET_Z = 1.1;
+// Mass properties are pinned to a fixed reference box rather than
+// derived from the (visual-sized) collider: the flight model's torques
+// are mass-scaled and were tuned against this box's moments of
+// inertia, so handling stays identical no matter how big the mesh
+// gets (a density-derived inertia for the 12 m hull would make pitch
+// and roll ~6x more sluggish). Rapier's default density is 1.
+const HANDLING_HALF = { x: 0.7, y: 0.95, z: 2.2 };
+const HANDLING_MASS = 8 * HANDLING_HALF.x * HANDLING_HALF.y * HANDLING_HALF.z;
+const HANDLING_INERTIA = {
+  x: (HANDLING_MASS / 3) * (HANDLING_HALF.y ** 2 + HANDLING_HALF.z ** 2),
+  y: (HANDLING_MASS / 3) * (HANDLING_HALF.x ** 2 + HANDLING_HALF.z ** 2),
+  z: (HANDLING_MASS / 3) * (HANDLING_HALF.x ** 2 + HANDLING_HALF.y ** 2)
+};
+// How high above the fly-controls entity's origin the body spawns so
+// the wheels (collider bottom) start on, not in, the ground.
+const SPAWN_LIFT = COLLIDER_HALF.y + 0.1;
+// Visual rotor speed, rad/s: a spooled rotor turns at (near) constant
+// RPM whatever the collective is doing — thrust comes from blade
+// pitch, not speed — so the visual is a fixed run speed plus a small
+// work-proportional kick. (It used to be idle + collective * range,
+// which stopped the blades in a powered descent because the thrust
+// fraction is ~0 there — playtest bug.)
+const ROTOR_VISUAL_RUN = 32;
+const ROTOR_VISUAL_WORK = 8;
+// Downward ground probe for the approach taper + radar-altitude HUD.
+const GROUND_PROBE_RANGE = 400; // m
+
+// ---------------------------------------------------------------------
+// Component: the flying player rig. Attach to an entity and it becomes
+// a flyable helicopter (once the play-mode-physics system is active).
+// ---------------------------------------------------------------------
+AFRAME.registerComponent('play-mode-helicopter', {
+  schema: {
+    spawnPosition: { type: 'vec3', default: { x: 0, y: 1, z: 0 } },
+    spawnYaw: { type: 'number', default: 0 }, // degrees around world Y
+    liftPower: { type: 'number', default: 2.2 },
+    agility: { type: 'number', default: 1 },
+    yawRate: { type: 'number', default: 1 },
+    stability: { type: 'number', default: 1 },
+    cameraSelector: { type: 'string', default: '#camera' },
+    cameraHeight: { type: 'number', default: 30 }, // top-down mode
+    cameraMode: {
+      type: 'string',
+      default: 'chase',
+      oneOf: ['chase', 'fpv', 'top-down']
+    }
+  },
+
+  init: async function () {
+    this.system = this.el.sceneEl.systems['play-mode-physics'];
+    if (!this.system) {
+      console.error('play-mode-helicopter: play-mode-physics system missing');
+      return;
+    }
+    this.state = createHeliState();
+    this.input = {
+      collUp: false,
+      collDown: false,
+      yawLeft: false,
+      yawRight: false,
+      pitchFwd: false,
+      pitchBack: false,
+      rollLeft: false,
+      rollRight: false,
+      assist: false,
+      // Analog gamepad overrides (set by play-mode.pollGamepad). When
+      // non-zero they preempt the boolean keys above.
+      collectiveAxis: 0,
+      pitchAxis: 0,
+      rollAxis: 0,
+      yawAxis: 0,
+      padAssist: false
+    };
+    this.keymap = {
+      KeyW: 'collUp',
+      KeyS: 'collDown',
+      KeyA: 'yawLeft',
+      KeyD: 'yawRight',
+      ArrowUp: 'pitchFwd',
+      ArrowDown: 'pitchBack',
+      ArrowLeft: 'rollLeft',
+      ArrowRight: 'rollRight',
+      Space: 'assist'
+    };
+    this.onKeyDown = (e) => {
+      // Real keydowns are trusted gestures — unblock the AudioContext
+      // (created outside the Start-click gesture; see heli-sound.js).
+      if (this.sound) this.sound.resume();
+      // Leave browser/OS chords alone: Cmd/Ctrl+R must reload the page,
+      // Cmd+C copy, etc. — the bare-key matches below would otherwise
+      // swallow them (and reset the run on Cmd+R). Review finding on
+      // PR #1955.
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (this.keymap[e.code]) {
+        this.input[this.keymap[e.code]] = true;
+        e.preventDefault();
+      } else if (e.code === 'KeyC') {
+        this.cycleCameraMode();
+        e.preventDefault();
+      } else if (e.code === 'KeyR') {
+        this.el.sceneEl.systems['play-mode']?.reset();
+        e.preventDefault();
+      }
+    };
+    this.onKeyUp = (e) => {
+      if (this.keymap[e.code]) this.input[this.keymap[e.code]] = false;
+    };
+    window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('keyup', this.onKeyUp);
+
+    // Camera-look interaction: wheel = chase zoom, left-drag on the
+    // canvas = chase orbit OR free-look in FPV (yaw + pitch offsets on
+    // top of the flight heading). Same interaction scheme as
+    // play-mode-vehicle so switching between driving and flying feels
+    // consistent.
+    this.chaseZoom = 1;
+    this.chaseYaw = 0;
+    // FPV free-look offsets (radians). +yaw = look right, +pitch = up.
+    this.fpvYaw = 0;
+    this.fpvPitch = 0;
+    this._chaseDragging = false;
+    this.onChaseWheel = (e) => {
+      if (this.data.cameraMode !== 'chase') return;
+      const factor = Math.exp(e.deltaY * 0.001);
+      this.chaseZoom = THREE.MathUtils.clamp(this.chaseZoom * factor, 0.4, 4);
+      e.preventDefault();
+    };
+    this.onChasePointerDown = (e) => {
+      if (this.sound) this.sound.resume();
+      if (e.button !== 0) return;
+      const mode = this.data.cameraMode;
+      if (mode !== 'chase' && mode !== 'fpv') return;
+      const canvas = this.el.sceneEl && this.el.sceneEl.canvas;
+      if (!canvas || e.target !== canvas) return;
+      this._chaseDragging = true;
+      this._chaseDragLastX = e.clientX;
+      this._chaseDragLastY = e.clientY;
+      if (canvas.setPointerCapture && e.pointerId !== undefined) {
+        try {
+          canvas.setPointerCapture(e.pointerId);
+          this._chasePointerId = e.pointerId;
+        } catch (_) {}
+      }
+      e.preventDefault();
+    };
+    this.onChasePointerMove = (e) => {
+      if (!this._chaseDragging) return;
+      const dx = e.clientX - this._chaseDragLastX;
+      const dy = e.clientY - this._chaseDragLastY;
+      this._chaseDragLastX = e.clientX;
+      this._chaseDragLastY = e.clientY;
+      if (this.data.cameraMode === 'fpv') {
+        this.fpvYaw += dx * 0.004;
+        // Drag up = look up.
+        this.fpvPitch = THREE.MathUtils.clamp(
+          this.fpvPitch - dy * 0.004,
+          -1.2,
+          1.2
+        );
+      } else {
+        this.chaseYaw += dx * 0.005;
+      }
+    };
+    this.onChasePointerUp = (e) => {
+      if (!this._chaseDragging) return;
+      this._chaseDragging = false;
+      const canvas = this.el.sceneEl && this.el.sceneEl.canvas;
+      if (
+        canvas &&
+        canvas.releasePointerCapture &&
+        this._chasePointerId !== undefined
+      ) {
+        try {
+          canvas.releasePointerCapture(this._chasePointerId);
+        } catch (_) {}
+        this._chasePointerId = undefined;
+      }
+    };
+    // Non-passive wheel listener scoped to the scene canvas (see the
+    // rationale in play-mode-vehicle.init).
+    this._wheelTarget = this.el.sceneEl.canvas || window;
+    this._wheelTarget.addEventListener('wheel', this.onChaseWheel, {
+      passive: false
+    });
+    window.addEventListener('pointerdown', this.onChasePointerDown);
+    window.addEventListener('pointermove', this.onChasePointerMove);
+    window.addEventListener('pointerup', this.onChasePointerUp);
+    window.addEventListener('pointercancel', this.onChasePointerUp);
+
+    // Toolbar Reset / R key / gamepad Y: snap back to spawn with the
+    // rotor still spooled but the collective dropped, and forget the
+    // pre-reset crash record (see play-mode-vehicle.onPlayModeReset).
+    this.onPlayModeReset = () => {
+      this.chaseZoom = 1;
+      this.chaseYaw = 0;
+      this.fpvYaw = 0;
+      this.fpvPitch = 0;
+      this._shake = 0;
+      this._lastCollisionAt = null;
+      this.state.collective = 0;
+      if (!this.chassisBody) return;
+      this.chassisBody.setTranslation(this.data.spawnPosition, true);
+      this.chassisBody.setRotation(this.spawnQuat, true);
+      this.chassisBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      this.chassisBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      const obj = this.el.object3D;
+      obj.position.set(
+        this.data.spawnPosition.x,
+        this.data.spawnPosition.y,
+        this.data.spawnPosition.z
+      );
+      obj.quaternion.set(
+        this.spawnQuat.x,
+        this.spawnQuat.y,
+        this.spawnQuat.z,
+        this.spawnQuat.w
+      );
+    };
+    this.el.sceneEl.addEventListener('play-mode-reset', this.onPlayModeReset);
+
+    // Boot physics, then build. Stop can land while the Rapier WASM is
+    // still loading — bail instead of building a ghost body.
+    await this.system.activate();
+    if (!this.el.isConnected || !this.system.active) return;
+    this.buildHelicopter();
+  },
+
+  buildHelicopter: function () {
+    const data = this.data;
+    const world = this.system.world;
+    // The Rapier module instance the physics system loaded (exposed by
+    // play-mode-physics.activate) — no second import of the WASM chunk.
+    const R = this.system.RAPIER;
+
+    // Spawn orientation: entity -Z (nose) faces world yaw direction.
+    const yawRad = (data.spawnYaw * Math.PI) / 180;
+    const spawnQuat = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(0, yawRad, 0)
+    );
+    this.spawnQuat = spawnQuat;
+
+    const bodyDesc = R.RigidBodyDesc.dynamic()
+      .setTranslation(
+        data.spawnPosition.x,
+        data.spawnPosition.y,
+        data.spawnPosition.z
+      )
+      .setRotation(spawnQuat)
+      // Linear drag lives in the flight model (split horizontal /
+      // vertical so descents stay heavy) — keep Rapier's isotropic
+      // damping OFF. Angular damping steadies rotation (the flight
+      // model adds its own tilt-rate damper on top).
+      .setLinearDamping(0)
+      .setAngularDamping(2.0)
+      // Continuous collision detection: powered dives pass 30 m/s
+      // (0.5 m per 60 Hz sub-step), enough to tunnel through the
+      // paper-thin 3D-tiles trimeshes without swept checks.
+      .setCcdEnabled(true)
+      .setCanSleep(false);
+    const chassisBody = world.createRigidBody(bodyDesc);
+    const chassisCollider = world.createCollider(
+      R.ColliderDesc.cuboid(COLLIDER_HALF.x, COLLIDER_HALF.y, COLLIDER_HALF.z)
+        .setTranslation(0, 0, COLLIDER_OFFSET_Z)
+        .setMassProperties(
+          HANDLING_MASS,
+          { x: 0, y: 0, z: 0 },
+          HANDLING_INERTIA,
+          { x: 0, y: 0, z: 0, w: 1 }
+        )
+        .setActiveEvents(R.ActiveEvents.COLLISION_EVENTS),
+      chassisBody
+    );
+    this.chassisBody = chassisBody;
+    this.system.colliderTags.set(chassisCollider.handle, 'chassis');
+    this.system.registerSync(chassisBody, this.el);
+    this.system.setChassisContactListener(chassisCollider.handle, (info) =>
+      this.onChassisContact(info)
+    );
+
+    // Fly the model inside the physics after-step hook so forces land
+    // deterministically once per sub-step.
+    this._afterStep = (dt) => this.flightStep(dt);
+    this.system.onAfterStep(this._afterStep);
+
+    this.cameraEl = document.querySelector(this.data.cameraSelector) || null;
+
+    // Procedural rotor audio (see heli-sound.js). Created here rather
+    // than init so a Stop during the Rapier load never leaks a context.
+    this.sound = new HeliSound();
+    // Impact/ambient camera-shake impulse, decayed in tick.
+    this._shake = 0;
+
+    this._applyMeshVisibility();
+
+    // Let listeners (FlyModeControls panel) know the helicopter exists.
+    this.el.emit('heli-built', {}, true);
+  },
+
+  update: function (oldData) {
+    if (!oldData || oldData.cameraMode === this.data.cameraMode) return;
+    // Camera mode changed via key, gamepad, or the levers panel: hide
+    // the fuselage in FPV (it fills the screen from the cockpit) and
+    // start FPV free-look centered.
+    this.fpvYaw = 0;
+    this.fpvPitch = 0;
+    this._applyMeshVisibility();
+  },
+
+  /** FPV hides the helicopter mesh — from inside, it's just occlusion. */
+  _applyMeshVisibility: function () {
+    const meshEl = this.el.querySelector('[helicopter-mesh]');
+    if (!meshEl) return;
+    meshEl.setAttribute(
+      'visible',
+      this.data.cameraMode === 'fpv' ? 'false' : 'true'
+    );
+  },
+
+  /** Collapse keyboard booleans + analog overrides into -1..1 axes. */
+  readInputAxes: function () {
+    const i = this.input;
+    return {
+      collective:
+        i.collectiveAxis !== 0
+          ? i.collectiveAxis
+          : (i.collUp ? 1 : 0) - (i.collDown ? 1 : 0),
+      pitch:
+        i.pitchAxis !== 0
+          ? i.pitchAxis
+          : (i.pitchFwd ? 1 : 0) - (i.pitchBack ? 1 : 0),
+      roll:
+        i.rollAxis !== 0
+          ? i.rollAxis
+          : (i.rollRight ? 1 : 0) - (i.rollLeft ? 1 : 0),
+      yaw:
+        i.yawAxis !== 0
+          ? i.yawAxis
+          : (i.yawLeft ? 1 : 0) - (i.yawRight ? 1 : 0),
+      assist: i.assist || i.padAssist
+    };
+  },
+
+  /**
+   * Height of the wheels above the nearest STATIC surface straight
+   * below (street, obstacles, 3D tiles). Kinematic traffic twins and
+   * other dynamic bodies are excluded — a bus passing underneath must
+   * not brake a descent. Infinity when nothing is within range.
+   */
+  probeHeightAboveGround: function () {
+    const R = this.system.RAPIER;
+    const world = this.system.world;
+    const body = this.chassisBody;
+    if (!R || !world || !body) return Infinity;
+    const t = body.translation();
+    const ray =
+      this._groundRay ||
+      (this._groundRay = new R.Ray(
+        { x: 0, y: 0, z: 0 },
+        { x: 0, y: -1, z: 0 }
+      ));
+    ray.origin.x = t.x;
+    ray.origin.y = t.y;
+    ray.origin.z = t.z;
+    const hit = world.castRay(
+      ray,
+      GROUND_PROBE_RANGE,
+      true,
+      R.QueryFilterFlags.EXCLUDE_DYNAMIC | R.QueryFilterFlags.EXCLUDE_KINEMATIC,
+      undefined,
+      undefined,
+      body
+    );
+    if (!hit) return Infinity;
+    return Math.max(0, hit.timeOfImpact - COLLIDER_HALF.y);
+  },
+
+  flightStep: function (dt) {
+    const body = this.chassisBody;
+    if (!body) return;
+    const axes = this.readInputAxes();
+    axes.heightAboveGround = this.heightAboveGround =
+      this.probeHeightAboveGround();
+    const params = {
+      liftPower: this.data.liftPower,
+      agility: this.data.agility,
+      yawRate: this.data.yawRate,
+      stability: this.data.stability
+    };
+    stepHeliState(this.state, axes, dt, params);
+    const { force, torque, thrustFrac, descentScale } = computeHeliForces(
+      this.state,
+      axes,
+      {
+        mass: body.mass(),
+        rotation: body.rotation(),
+        angvel: body.angvel(),
+        linvel: body.linvel()
+      },
+      params
+    );
+    // Approach taper in effect (HUD reads it).
+    this.descentScale = descentScale;
+    // Smoothed rotor-work fraction for visuals/audio/telemetry.
+    this.state.collective +=
+      (thrustFrac - this.state.collective) * Math.min(1, 8 * dt);
+    body.resetForces(true);
+    body.addForce(force, true);
+    body.resetTorques(true);
+    body.addTorque(torque, true);
+  },
+
+  /**
+   * Chassis-impact handler — identical de-dupe scheme to
+   * play-mode-vehicle.onChassisContact (one marker per incident).
+   */
+  onChassisContact: function (info) {
+    if (!this.chassisBody) return;
+    const sceneEl = this.el.sceneEl;
+    const timer = sceneEl.components['scene-timer'];
+    const simMs = timer ? timer.simulationTime || 0 : 0;
+    const t = this.chassisBody.translation();
+    if (this._lastCollisionAt != null) {
+      const dtMs = Math.abs(simMs - this._lastCollisionAt.simMs);
+      const dx = t.x - this._lastCollisionAt.x;
+      const dz = t.z - this._lastCollisionAt.z;
+      const distSq = dx * dx + dz * dz;
+      if (dtMs < 1000 && distSq < 1.5 * 1.5) return;
+    }
+    this._lastCollisionAt = { simMs, x: t.x, y: t.y, z: t.z };
+    // Game feel: kick the camera and thump the audio on real impacts.
+    this._shake = Math.min(1, (this._shake || 0) + 0.6);
+    if (this.sound) this.sound.impact(1);
+    sceneEl.emit(
+      'play-mode-collision',
+      {
+        simulationTime: simMs,
+        position: { x: t.x, y: t.y, z: t.z },
+        otherTag: info.otherTag
+      },
+      false
+    );
+  },
+
+  tick: function (time, deltaMs) {
+    if (!this.chassisBody) return;
+    this._lastDeltaMs = deltaMs;
+    const dt = Math.min((deltaMs || 16) / 1000, 0.1);
+
+    // Spin the rotors on the child mesh: idle + collective-proportional.
+    const meshEl = this.el.querySelector('[helicopter-mesh]');
+    const meshComp = meshEl && meshEl.components['helicopter-mesh'];
+    const rotorSpeed =
+      this.state.spool *
+      (ROTOR_VISUAL_RUN + this.state.collective * ROTOR_VISUAL_WORK);
+    if (meshComp) {
+      meshComp.rotorSpeed = rotorSpeed;
+      // Cyclic input tilts the rotor disc slightly (blade-flapping
+      // look) so control inputs read on the airframe.
+      const axes = this.readInputAxes();
+      meshComp.rotorTiltX = -axes.pitch * 0.14;
+      meshComp.rotorTiltZ = -axes.roll * 0.14;
+    }
+
+    // Procedural audio: chop/turbine/wind follow the flight state.
+    if (this.sound) {
+      const v = this.chassisBody.linvel();
+      this.sound.update({
+        rotorSpeed,
+        collective: this.state.collective,
+        speed: Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z),
+        paused: !!this.el.sceneEl.systems['play-mode']?.isPaused
+      });
+    }
+
+    // Impact shake decays exponentially.
+    if (this._shake > 0.001) {
+      this._shake *= Math.exp(-3.5 * dt);
+    } else {
+      this._shake = 0;
+    }
+
+    if (this.cameraEl) this.updateCamera();
+  },
+
+  cycleCameraMode: function () {
+    const order = ['chase', 'fpv', 'top-down'];
+    const i = order.indexOf(this.data.cameraMode);
+    const next = order[(i + 1) % order.length];
+    this._cameraSmoothed = false;
+    this.chaseZoom = 1;
+    this.chaseYaw = 0;
+    // fpvYaw/fpvPitch + mesh visibility handled in update() — it fires
+    // for every cameraMode change, including panel-driven ones.
+    this.el.setAttribute('play-mode-helicopter', 'cameraMode', next);
+  },
+
+  updateCamera: function () {
+    const t = this.chassisBody.translation();
+    const r = this.chassisBody.rotation();
+    const camObj = this.cameraEl.object3D;
+    const mode = this.data.cameraMode;
+
+    const heliPos = this._heliPos || (this._heliPos = new THREE.Vector3());
+    const camWorld = this._camWorld || (this._camWorld = new THREE.Vector3());
+    const lookAt = this._lookAt || (this._lookAt = new THREE.Vector3());
+    const worldUp =
+      this._worldUp || (this._worldUp = new THREE.Vector3(0, 1, 0));
+    heliPos.set(t.x, t.y, t.z);
+
+    if (mode !== 'chase') this._cameraSmoothed = false;
+
+    if (mode === 'top-down') {
+      camWorld.set(t.x, t.y + this.data.cameraHeight, t.z);
+      lookAt.copy(heliPos);
+    } else {
+      // Horizontal heading = body -Z (the nose) projected onto the
+      // world XZ plane so body pitch/roll doesn't tilt the camera.
+      const q = this._quat || (this._quat = new THREE.Quaternion());
+      q.set(r.x, r.y, r.z, r.w);
+      const headingH = this._headingH || (this._headingH = new THREE.Vector3());
+      headingH.set(0, 0, -1).applyQuaternion(q);
+      headingH.y = 0;
+      if (headingH.lengthSq() < 1e-4) {
+        headingH.set(0, 0, -1);
+      } else {
+        headingH.normalize();
+      }
+
+      if (mode === 'chase') {
+        // Longer leash than the car: a 12 m airframe covering a lot
+        // of sky needs to sit well back to stay framed.
+        const distance = 24 * this.chaseZoom;
+        const height = 8 * this.chaseZoom;
+        const yawCos = Math.cos(this.chaseYaw);
+        const yawSin = Math.sin(this.chaseYaw);
+        const ox = headingH.x * yawCos - headingH.z * yawSin;
+        const oz = headingH.x * yawSin + headingH.z * yawCos;
+        camWorld.set(
+          heliPos.x - ox * distance,
+          heliPos.y + height,
+          heliPos.z - oz * distance
+        );
+        lookAt.set(heliPos.x, heliPos.y + 1.5, heliPos.z);
+
+        const sCam =
+          this._smoothedCamPos || (this._smoothedCamPos = new THREE.Vector3());
+        const sLook =
+          this._smoothedLookAt || (this._smoothedLookAt = new THREE.Vector3());
+        if (!this._cameraSmoothed) {
+          sCam.copy(camWorld);
+          sLook.copy(lookAt);
+          this._cameraSmoothed = true;
+        } else {
+          const dt = Math.min((this._lastDeltaMs || 16) / 1000, 0.1);
+          const tPos = 1 - Math.exp(-3 * dt);
+          const tLook = 1 - Math.exp(-6 * dt);
+          sCam.lerp(camWorld, tPos);
+          sLook.lerp(lookAt, tLook);
+        }
+        camWorld.copy(sCam);
+        lookAt.copy(sLook);
+      } else {
+        // fpv: cockpit — just behind the nose glass at eye height.
+        // Free-look offsets (mouse drag / gamepad right stick) rotate
+        // the view around the flight heading: fpvYaw around world-up
+        // (+ = right), fpvPitch tilts toward world-up (+ = up).
+        camWorld.set(
+          heliPos.x + headingH.x * 3.0,
+          heliPos.y + 0.55,
+          heliPos.z + headingH.z * 3.0
+        );
+        const yaw = this.fpvYaw || 0;
+        const pitch = THREE.MathUtils.clamp(this.fpvPitch || 0, -1.2, 1.2);
+        const yc = Math.cos(yaw);
+        const ys = Math.sin(yaw);
+        // Rotation by -yaw around Y so +fpvYaw looks right.
+        const lx = headingH.x * yc - headingH.z * ys;
+        const lz = headingH.x * ys + headingH.z * yc;
+        const pc = Math.cos(pitch);
+        const ps = Math.sin(pitch);
+        lookAt.set(
+          camWorld.x + lx * pc * 12,
+          camWorld.y + ps * 12,
+          camWorld.z + lz * pc * 12
+        );
+      }
+    }
+
+    // --- Game feel: camera shake ----------------------------------
+    // Ambient rumble scales with rotor work; impacts add a decaying
+    // impulse (this._shake). Top-down stays steady — it reads as a
+    // map, not a cockpit.
+    if (mode !== 'top-down') {
+      const ambient =
+        0.02 * this.state.spool * (0.35 + Math.abs(this.state.collective));
+      const mag = ambient + (this._shake || 0) * 0.35;
+      if (mag > 0.001) {
+        camWorld.x += (Math.random() - 0.5) * 2 * mag;
+        camWorld.y += (Math.random() - 0.5) * 2 * mag;
+        camWorld.z += (Math.random() - 0.5) * 2 * mag;
+      }
+    }
+    // World -> camera-parent-local conversion (rig may be moved) — see
+    // play-mode-vehicle.updateCamera for the full rationale.
+    if (camObj.parent) camObj.parent.updateMatrixWorld();
+    const localPos = this._localPos || (this._localPos = new THREE.Vector3());
+    localPos.copy(camWorld);
+    if (camObj.parent) camObj.parent.worldToLocal(localPos);
+    camObj.position.copy(localPos);
+
+    const m = this._tmpMat || (this._tmpMat = new THREE.Matrix4());
+    m.lookAt(camWorld, lookAt, worldUp);
+    const worldQuat = this._tmpQuat || (this._tmpQuat = new THREE.Quaternion());
+    worldQuat.setFromRotationMatrix(m);
+    if (camObj.parent) {
+      const pq = this._parQuat || (this._parQuat = new THREE.Quaternion());
+      camObj.parent.getWorldQuaternion(pq);
+      pq.invert();
+      worldQuat.premultiply(pq);
+    }
+    camObj.quaternion.copy(worldQuat);
+  },
+
+  remove: function () {
+    window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('keyup', this.onKeyUp);
+    if (this._wheelTarget) {
+      this._wheelTarget.removeEventListener('wheel', this.onChaseWheel);
+    }
+    window.removeEventListener('pointerdown', this.onChasePointerDown);
+    window.removeEventListener('pointermove', this.onChasePointerMove);
+    window.removeEventListener('pointerup', this.onChasePointerUp);
+    window.removeEventListener('pointercancel', this.onChasePointerUp);
+    if (this.onPlayModeReset) {
+      this.el.sceneEl.removeEventListener(
+        'play-mode-reset',
+        this.onPlayModeReset
+      );
+    }
+    if (this.system && this._afterStep) {
+      this.system.offAfterStep(this._afterStep);
+      this._afterStep = null;
+    }
+    if (this.system) this.system.clearChassisContactListener();
+    if (this.system && this.chassisBody) {
+      this.system.unregisterSync(this.chassisBody);
+      if (this.system.world) {
+        this.system.world.removeRigidBody(this.chassisBody);
+      }
+      this.chassisBody = null;
+    }
+    if (this.sound) {
+      this.sound.dispose();
+      this.sound = null;
+    }
+  }
+});
+
+module.exports = {
+  // fly-mode.js spawns the body this high above the marker entity.
+  SPAWN_LIFT,
+  COLLIDER_HALF
+};

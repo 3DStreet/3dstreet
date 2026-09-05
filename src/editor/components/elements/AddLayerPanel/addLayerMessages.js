@@ -259,6 +259,15 @@ export const layerCardMessages = defineMessages({
     defaultMessage:
       'A full-size sedan with real-car physics (~Camry-sized). Mounts standard curbs with momentum, hits real-world speeds. Switch presets from the drive-controls properties panel.'
   },
+  flyableHelicopterName: {
+    id: 'addLayer.card.flyableHelicopter.name',
+    defaultMessage: 'Flyable Helicopter'
+  },
+  flyableHelicopterDesc: {
+    id: 'addLayer.card.flyableHelicopter.desc',
+    defaultMessage:
+      'A flyable helicopter with arcade physics (GTA/Battlefield style), styled after a Coast Guard MH-65 Dolphin. Press Play, then W/S climb/descend, A/D yaw, arrow-key cyclic, Space to auto-hover.'
+  },
   raceTargetName: {
     id: 'addLayer.card.raceTarget.name',
     defaultMessage: 'Race Target'

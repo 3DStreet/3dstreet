@@ -74,3 +74,18 @@
 .valueWarn {
   color: #ffd54a;
 }
+
+// Fly-mode "approach mode" chip: shown next to vertical speed while the
+// ground-proximity descent taper is easing the commanded sink.
+.approachChip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: #ffd54a;
+  color: #1a1a1a;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}

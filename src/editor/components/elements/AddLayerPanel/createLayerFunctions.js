@@ -429,6 +429,29 @@ export function createHighlightRing(position) {
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
+/**
+ * Spawn a flyable-helicopter entity (see play-mode-helicopter.js).
+ * The visual is the procedural `helicopter-mesh` (MH-65 Dolphin-class
+ * silhouette, real scale); `fly-controls` carries
+ * the flight tunables and marks the entity as the play-mode spawn
+ * point. The transparent box keeps the entity clickable in the editor
+ * viewport, matching the driveable-vehicle pattern.
+ */
+export function createFlyableHelicopter(position) {
+  const definition = {
+    'data-layer-name': 'Flyable Helicopter',
+    components: {
+      position: position ?? '0 1 0',
+      'fly-controls': '',
+      'helicopter-mesh': '',
+      geometry: 'primitive: box; width: 2.2; height: 3.6; depth: 12',
+      material: 'color: #f4551f; opacity: 0.0; transparent: true',
+      shadow: 'cast: false; receive: false'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
 export function createRaceTarget(position) {
   const definition = {
     'data-layer-name': 'Race Target',

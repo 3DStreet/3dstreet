@@ -112,7 +112,9 @@ export function ringEnclosesArea(points) {
     perimeter += Math.hypot(b.x - a.x, b.z - a.z);
   }
   if (perimeter === 0) return false;
-  return polygonAreaXZ(points) > MIN_ENCLOSED_AREA_RATIO * perimeter * perimeter;
+  return (
+    polygonAreaXZ(points) > MIN_ENCLOSED_AREA_RATIO * perimeter * perimeter
+  );
 }
 
 // Orientation of the ordered triple (a, b, c) in the x/z plane: >0 CCW, <0 CW,

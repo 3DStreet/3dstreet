@@ -1,3 +1,4 @@
+/* global AFRAME */
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SHAPE_STYLE } from '../../src/editor/lib/shapeStyle.js';
 

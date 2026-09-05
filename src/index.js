@@ -52,6 +52,8 @@ require('./aframe-components/play/play-mode-vehicle.js');
 require('./aframe-components/play/race-target.js');
 require('./aframe-components/play/collision-marker.js');
 require('./aframe-components/play/delivery-bot-mesh.js');
+require('./aframe-components/play/helicopter-mesh.js');
+require('./aframe-components/play/fly-mode.js');
 require('./aframe-components/play/street-traffic.js');
 require('./aframe-components/play/street-traffic-replay.js');
 if (process.env.NODE_ENV === 'development') {
