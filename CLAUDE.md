@@ -158,6 +158,8 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 
 **All other metadata** (`size`, `originalFilename`, etc.) lives in Firestore and is fetched on demand — never saved in the scene JSON.
 
+**Unit auto-scale (#1923):** glTF has no unit field, and CAD/FBX/SketchUp exports routinely arrive in mm or cm — 100–1000x oversized, which reads as _invisible_ because the camera ends up inside the geometry. `autoScaleModel.js` measures the loaded bounding box at placement time (drop-upload and drag-from-gallery alike) and, when the extent falls outside a plausible band, reinterprets it against the short list of units these files are actually authored in (km/m/cm/mm/µm — never decimeters). The correction is an ordinary `scale` on the entity, applied as one named undoable command with a toast, so a wrong guess costs one Ctrl+Z. Splats are not covered.
+
 **Cloud Functions:**
 
 - `onAssetWritten` — Firestore trigger, maintains `users/{uid}/meta/usage.bytesUsed` via transaction. Only `size` (original) counts toward quota; `optimizedSourceSize` is excluded (platform cost).
