@@ -137,7 +137,8 @@ AFRAME.registerComponent('helicopter-mesh', {
         'primitive: sphere; radius: 0.5; segmentsWidth: 24; segmentsHeight: 16',
       material: `color: #101010; metalness: 0.4; roughness: 0.3`,
       position: '0 -0.2 -3.95',
-      scale: '1.25 1.0 1.5'
+      scale: '1.25 1.0 1.5',
+      shadow: false
     });
 
     // Cockpit canopy: a glass bubble over the front-top of the body.
@@ -193,7 +194,8 @@ AFRAME.registerComponent('helicopter-mesh', {
           'primitive: cylinder; radius: 0.2; height: 0.6; segmentsRadial: 14',
         material: this._dark(),
         position: `${side * 0.42} 1.05 2.35`,
-        rotation: '90 0 0'
+        rotation: '90 0 0',
+        shadow: false
       });
     }
     // Sensor turret under the nose (port side).
@@ -201,7 +203,8 @@ AFRAME.registerComponent('helicopter-mesh', {
       geometry:
         'primitive: sphere; radius: 0.22; segmentsWidth: 14; segmentsHeight: 10',
       material: this._dark(),
-      position: '-0.45 -0.78 -3.05'
+      position: '-0.45 -0.78 -3.05',
+      shadow: false
     });
   },
 

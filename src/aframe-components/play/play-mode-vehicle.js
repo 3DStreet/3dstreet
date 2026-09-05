@@ -623,6 +623,11 @@ AFRAME.registerComponent('play-mode-vehicle', {
       Space: 'brake'
     };
     this.onKeyDown = (e) => {
+      // Leave browser/OS chords alone: Cmd/Ctrl+R must reload the page,
+      // Cmd+C copy, etc. — the bare-key matches below would otherwise
+      // swallow them (and reset the run on Cmd+R). Review finding on
+      // PR #1955.
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (this.keymap[e.code]) {
         this.input[this.keymap[e.code]] = true;
         e.preventDefault();

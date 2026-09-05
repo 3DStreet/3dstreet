@@ -20,8 +20,11 @@ gap, and no CCD — see the revised section 2. Sections 1, 3, 5, 7 and the
 GLB swap (4) remain open.
 
 Code map: flight math `src/aframe-components/play/heli-flight-model.js`
-(pure, tests in `test/core/heli-flight-model.test.js`); rig/camera/audio
-driver `play-mode-helicopter.js`; procedural audio `heli-sound.js`; gamepad
+(pure, tests in `test/core/heli-flight-model.test.js`); eager bootstrap
+(`fly-controls` marker + `fly-mode` scene component) `fly-mode.js`;
+rig/camera/audio driver `play-mode-helicopter.js` (LAZY webpack chunk
+`fly-mode-rig`, imported by fly-mode on first Play — the core bundle is
+at its 4 MiB budget, this split is what keeps CI green); procedural audio `heli-sound.js`; gamepad
 mapping `play-mode.js` `pollGamepad` (heli branch ~line 349); colliders
 `scene-colliders.js` + `tiles-colliders.js`; physics stepping
 `play-mode-vehicle.js` (`play-mode-physics` system, ~line 284).

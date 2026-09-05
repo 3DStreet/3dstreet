@@ -15,6 +15,7 @@ const assert = require('assert');
 
 let collectWorldGeometry;
 let TilesColliderSet;
+let MAX_RETIRED_TILES;
 
 describe('tiles-colliders collectWorldGeometry', () => {
   before(() => {
@@ -112,7 +113,8 @@ describe('tiles-colliders TilesColliderSet bookkeeping', () => {
   before(() => {
     global.THREE = require('three');
     ({
-      TilesColliderSet
+      TilesColliderSet,
+      MAX_RETIRED_TILES
     } = require('../../src/aframe-components/play/tiles-colliders.js'));
   });
 
@@ -189,6 +191,34 @@ describe('tiles-colliders TilesColliderSet bookkeeping', () => {
     assert.strictEqual(physics.added.length, 2);
     assert.strictEqual(physics.removed.length, 1);
     assert.strictEqual(set.totalTriangles, 12);
+    set.dispose();
+  });
+
+  it('REGRESSION: retired bodies are capped while the queue never empties', () => {
+    // Review finding (PR #1955): retired tiles were only freed once the
+    // build queue was completely empty; a fast flight over dense tiles
+    // keeps the queue fed, so stale bodies (and their triangle budget)
+    // accumulated without bound.
+    const physics = stubPhysics();
+    const set = makeSet(physics);
+    const live = [];
+    for (let i = 0; i < MAX_RETIRED_TILES + 5; i++) {
+      const t = makeTile();
+      set.enqueue(t);
+      live.push(t);
+    }
+    while (set.queue.size > 0) set.drainQueue();
+    const builtTriangles = set.totalTriangles;
+    // Keep the queue permanently non-empty with a tile that never
+    // builds (drainQueue isn't called again), then retire everything.
+    set.enqueue(makeTile());
+    for (const t of live) set.onVisibilityChange({ tile: t, visible: false });
+    assert.strictEqual(set.retired.size, MAX_RETIRED_TILES);
+    assert.strictEqual(physics.removed.length, 5);
+    // The oldest were the ones freed; the newest retirements survive.
+    assert.ok(set.retired.has(live[live.length - 1]));
+    assert.ok(!set.retired.has(live[0]));
+    assert.ok(set.totalTriangles < builtTriangles);
     set.dispose();
   });
 

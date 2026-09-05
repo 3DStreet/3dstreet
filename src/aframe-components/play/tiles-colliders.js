@@ -36,7 +36,8 @@
  *     queue is empty (see `retired` below) — freeing it immediately on
  *     an LOD swap opened a collider-free window before the replacement
  *     tiles' trimeshes were built, one of the "fell through the
- *     ground" playtest reports.
+ *     ground" playtest reports. Bounded by MAX_RETIRED_TILES so a
+ *     never-empty queue can't turn that into a leak.
  *   - Per-tile and total triangle budgets guard against pathological
  *     tilesets; over-budget tiles are skipped with a console warning
  *     (the player falls back to the deep safety-net ground pad).
@@ -53,6 +54,15 @@
 const QUEUE_INTERVAL_MS = 120; // drain cadence
 const TILES_PER_PASS = 3; // trimesh builds per drain
 const MAX_TILE_VERTICES = 200000; // skip absurd single tiles
+// Soft cap on tiles parked in `retired` (bodies kept alive across an
+// LOD swap until the queue drains). A fast flight over dense
+// photogrammetry can keep the queue fed indefinitely (3 builds per
+// drain), so without a cap stale trimeshes — and their share of the
+// triangle budget — pile up until seeding silently stops: the same
+// "fell through the ground far from spawn" failure as the budget
+// leak. Past the cap the OLDEST retired bodies are freed first; the
+// most recent swaps (the ones under the player) keep their cover.
+const MAX_RETIRED_TILES = 40;
 const MAX_TOTAL_TRIANGLES = 2000000; // stop seeding past this budget
 
 /**
@@ -163,6 +173,12 @@ class TilesColliderSet {
     if (entry) {
       this.bodies.delete(tile);
       this.retired.set(tile, entry);
+      // Map preserves insertion order — oldest first.
+      while (this.retired.size > MAX_RETIRED_TILES) {
+        const [oldTile, oldEntry] = this.retired.entries().next().value;
+        this.retired.delete(oldTile);
+        this._freeEntry(oldEntry);
+      }
     }
   }
 
@@ -266,6 +282,7 @@ function attachTilesColliders(sceneEl) {
 module.exports = {
   attachTilesColliders,
   collectWorldGeometry,
+  MAX_RETIRED_TILES,
   // Exported for unit tests (budget/retirement bookkeeping).
   TilesColliderSet
 };
