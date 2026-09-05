@@ -266,7 +266,7 @@ export const layerCardMessages = defineMessages({
   flyableHelicopterDesc: {
     id: 'addLayer.card.flyableHelicopter.desc',
     defaultMessage:
-      'A flyable helicopter with arcade physics (GTA/Battlefield style). Press Play, then W/S collective, A/D yaw, arrow-key cyclic, Space to auto-hover. Placeholder basic-geometry mesh.'
+      'A flyable helicopter with arcade physics (GTA/Battlefield style), styled after a Coast Guard MH-65 Dolphin. Press Play, then W/S climb/descend, A/D yaw, arrow-key cyclic, Space to auto-hover.'
   },
   raceTargetName: {
     id: 'addLayer.card.raceTarget.name',
