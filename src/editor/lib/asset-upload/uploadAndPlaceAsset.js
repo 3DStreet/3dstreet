@@ -2,10 +2,12 @@
  * Inline drop / upload.
  *
  * Flow:
- *   1. Validate file type & per-file size cap (50MB GLB / 10MB image)
+ *   1. Validate file type & per-file size cap (50MB GLB / 10MB image);
+ *      .gltf JSON is sniffed and rejected when it references sibling files
  *   2. Pre-flight quota check via callable Cloud Function
- *   3. Create entity at drop position with local blob URL
- *   4. (GLB only) optimize via gltf-transform
+ *   3. Create entity at drop position with local blob URL; a GLB that fails
+ *      to load locally (model-error) is kept as local_error, never uploaded
+ *   4. (GLB only) optimize via gltf-transform (also converts .gltf → GLB)
  *   5. Upload via assetsService.addAsset
  *   6. On success: write data-asset-id + data-asset-owner-uid (the only
  *      persistent identity attrs), swap blob URL for cloud URL, revoke blob.
@@ -29,7 +31,10 @@ import {
   isAcceptedAssetFile,
   extractGlbAttribution,
   buildStoredAttribution,
-  optimizeGlb
+  optimizeGlb,
+  isGltfJsonFile,
+  analyzeGltfFile,
+  gltfRejectionMessage
 } from '@shared/asset-upload';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 
@@ -273,6 +278,28 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     return { entity: null, assetId: null, kind: null };
   }
 
+  // A .gltf that references sibling files (scene.bin, textures/) can never
+  // render from a single-file drop — the browser only hands us this one File.
+  // Reject before creating a placeholder or spending quota, with conversion
+  // instructions (#1951). Self-contained .gltf (embedded data: URIs) proceeds
+  // and the optimize worker converts it to GLB when it can.
+  if (kind === 'glb' && isGltfJsonFile(file)) {
+    const analysis = await analyzeGltfFile(file);
+    if (analysis.status === 'external-refs' || analysis.status === 'invalid') {
+      captureUploadBlockedEvent(
+        kind,
+        `gltf_${analysis.status.replace('-', '_')}`,
+        {
+          file_size: file.size,
+          filename: file.name,
+          external_ref_count: analysis.externalRefs.length
+        }
+      );
+      notifyError(gltfRejectionMessage(file.name, analysis));
+      return { entity: null, assetId: null, kind: null };
+    }
+  }
+
   // Enforce one-at-a-time across all upload surfaces. The gallery's pending
   // card is the single source of truth for "an upload is happening" — drops
   // and Upload-button clicks are blocked until it clears.
@@ -309,6 +336,10 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   } else {
     ({ entity, blobUrl } = await createPlaceholderEntity(file, position, kind));
   }
+  // Start watching the local preview's load outcome immediately — before any
+  // awaits — so a fast model-error can't slip past. Consumed below (after the
+  // quota check) to refuse uploading a model that can't even render locally.
+  const modelLoadGate = kind === 'glb' ? watchModelLoad(entity) : null;
   const entityId = entity.id;
   const { setUpload, clearUpload } = useAssetUploadStore.getState();
 
@@ -425,6 +456,30 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     }
     currentUploadStore.clear();
     return { entity, assetId: null, kind };
+  }
+
+  // Refuse to upload a model the local preview couldn't load (#1951): if the
+  // blob URL fired model-error, the cloud copy would be just as broken — a
+  // permanently dead asset that still counts against quota. A load timeout
+  // passes (benefit of the doubt for huge meshes); a real error blocks.
+  if (modelLoadGate) {
+    const loadResult = await modelLoadGate;
+    if (!loadResult.loaded) {
+      captureUploadBlockedEvent(kind, 'model_load_failed', {
+        file_size: file.size,
+        filename: file.name
+      });
+      notifyError(
+        `${file.name} couldn't be loaded as a 3D model, so it wasn't uploaded. The file may be invalid or incomplete.`
+      );
+      setUpload(entityId, {
+        status: 'local_error',
+        reason: 'load_failed',
+        progress: 0
+      });
+      currentUploadStore.clear();
+      return { entity, assetId: null, kind };
+    }
   }
 
   const uploadStartTime = Date.now();
@@ -664,6 +719,43 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     // indicators retain their failed/local_error status.
     currentUploadStore.clear();
   }
+}
+
+// How long the pre-upload gate waits for the local preview to finish loading
+// before giving the file the benefit of the doubt. Heavy photogrammetry GLBs
+// can legitimately parse for a long time; only an explicit model-error blocks.
+const MODEL_LOAD_GATE_TIMEOUT_MS = 30000;
+
+/**
+ * Resolve with the placeholder entity's local load outcome:
+ * `{ loaded: true }` on model-loaded (or an already-present mesh, e.g. the
+ * retry path), `{ loaded: false }` on model-error, `{ loaded: true }` on
+ * timeout so a slow parse never blocks an upload.
+ */
+function watchModelLoad(entity, timeoutMs = MODEL_LOAD_GATE_TIMEOUT_MS) {
+  return new Promise((resolve) => {
+    if (entity.getObject3D('mesh')) {
+      resolve({ loaded: true });
+      return;
+    }
+    let done = false;
+    const finish = (result) => {
+      if (done) return;
+      done = true;
+      entity.removeEventListener('model-loaded', onLoaded);
+      entity.removeEventListener('model-error', onError);
+      clearTimeout(timer);
+      resolve(result);
+    };
+    const onLoaded = () => finish({ loaded: true });
+    const onError = () => finish({ loaded: false });
+    entity.addEventListener('model-loaded', onLoaded);
+    entity.addEventListener('model-error', onError);
+    const timer = setTimeout(
+      () => finish({ loaded: true, timedOut: true }),
+      timeoutMs
+    );
+  });
 }
 
 /**

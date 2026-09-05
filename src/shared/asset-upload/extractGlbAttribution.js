@@ -38,9 +38,13 @@ const CHUNK_JSON = 0x4e4f534a; // 'JSON' little-endian
 
 function readGlbJsonChunk(buffer) {
   const view = new DataView(buffer);
+  const magic = view.byteLength >= 4 ? view.getUint32(0, true) : 0;
+  if (magic !== GLB_MAGIC) {
+    // Not GLB binary — self-contained .gltf uploads pass their JSON straight
+    // through here. Throws on non-JSON input, caught by the caller.
+    return JSON.parse(new TextDecoder().decode(buffer));
+  }
   if (view.byteLength < 20) throw new Error('GLB too short');
-  const magic = view.getUint32(0, true);
-  if (magic !== GLB_MAGIC) throw new Error('Not a GLB file');
 
   const jsonChunkLen = view.getUint32(12, true);
   const jsonChunkType = view.getUint32(16, true);
