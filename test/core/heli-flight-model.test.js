@@ -303,9 +303,12 @@ describe('heli-flight-model', () => {
         if (at20 === null && -body.linvel.z >= 20) at20 = i * dt;
       }
       const cruise = -body.linvel.z;
-      assert.ok(cruise > 25, `cruise ${cruise} m/s too slow`); // > 90 km/h
-      assert.ok(cruise < 45, `cruise ${cruise} m/s implausibly fast`);
-      assert.ok(at20 !== null && at20 < 6, `0->20 m/s took ${at20}s`);
+      // Second playtest round: "max forward speed is still kinda
+      // slow" at ~33 m/s — retuned for an MH-65-class airframe to
+      // ~55 m/s (~200 km/h; the real aircraft cruises ~75 m/s).
+      assert.ok(cruise > 45, `cruise ${cruise} m/s too slow`); // > 160 km/h
+      assert.ok(cruise < 70, `cruise ${cruise} m/s implausibly fast`);
+      assert.ok(at20 !== null && at20 < 4.5, `0->20 m/s took ${at20}s`);
     });
 
     it('yaw-left input = +Y torque; roll-right = -Z torque', () => {

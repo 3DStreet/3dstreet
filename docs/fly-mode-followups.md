@@ -87,17 +87,31 @@ Suspects:
   heli doesn't, look at chassis collider size vs mesh (the visual is much
   larger than the collider disc note at line ~64).
 
-## 4. Replace DIY mesh with a real GLB
+## 4. Replace DIY mesh with a real GLB — PARTLY ADDRESSED 2026-09-04
 
-`helicopter-mesh.js` (procedural basic-geometry) should be swapped for a
-downloaded GLB. Requirements: license compatible with CC BY-NC 4.0 asset
-policy, nose facing -Z (rig convention), separate rotor node(s) so
-`play-mode-helicopter` can keep spinning them (`rotorSpeed`, and the
-rotor-tilt feedback `rotorTiltX/Z` at ~line 505 — can be dropped if the GLB
-doesn't split the hub). Distribution: via 3dstreet-assets-dist + a
-`catalog.json` entry, like other vehicles; the `[fly-controls]` source
-entity and the spawned play twin both need it. Keep the procedural mesh as
-fallback or delete it — decide with Kieran.
+Kieran's second-round feedback: "too blocky, not even low poly", and
+the aircraft should represent a specific type — the Eurocopter MH-65
+Dolphin (USCG SAR helicopter; reference model
+https://sketchfab.com/3d-models/mh-65-dolphin-7e35835b0f434755993232e615d4f768).
+`helicopter-mesh.js` was rebuilt as an MH-65-class silhouette at real
+scale (~12 m fuselage, 4-blade ~12 m rotor, fenestron tail fan in a
+swept fin, tricycle wheeled gear, SAR orange with white boom band and
+dark radome) using spheres / cones / tori instead of boxes. Still
+procedural — a real GLB remains the end state, with the same
+requirements as before: license compatible with CC BY-NC 4.0 (check the
+Sketchfab model's license before using it), nose facing -Z, separate
+main-rotor and fan nodes so `play-mode-helicopter` can keep spinning
+them via `rotorSpeed` / `rotorTiltX/Z`, distributed via
+3dstreet-assets-dist + a `catalog.json` entry.
+
+Knock-on changes from the size jump (all in `play-mode-helicopter.js`):
+`COLLIDER_HALF` is now the real hull, offset aft by `COLLIDER_OFFSET_Z`;
+mass/inertia are pinned to the OLD reference box via
+`setMassProperties` (`HANDLING_*`) so the mass-scaled flight-model
+torques keep the same feel — swapping in a GLB must keep that; chase
+cam leash 24 m / 8 m; FPV seat 3 m ahead of the origin; the layer
+panel's invisible click box is 2.2 x 3.6 x 12 m. `heli-sound` blade-pass
+now assumes 4 blades.
 
 ## 5. Right stick isn't intuitive — expected steering
 
@@ -117,7 +131,7 @@ convention:
 Talk through with Kieran before implementing (design-approach-first
 preference), but the core ask is clear: right stick X must turn the nose.
 
-## 6. Left stick forward ≠ enough forward speed — SUPERSEDED 2026-09-05
+## 6. Left stick forward ≠ enough forward speed — RETUNED AGAIN 2026-09-04
 
 Resolved by the vertical-control rework rather than any of the proposals
 below: W/RT now commands a climb RATE (not thrust), so holding it while
@@ -127,6 +141,18 @@ plus a cyclic drive force at a modest 24° commanded pitch (~115 km/h at
 full stick, reaching 20 m/s in ~4.5 s). If "holding RT as gas" still reads
 wrong in a feel test, the auto-trim-vs-pitch idea (scale climb command
 down with commanded pitch) remains the right next lever.
+
+Second round: "max forward speed is still kinda slow" at ~33 m/s.
+Retuned for the MH-65-class airframe in `heli-flight-model.js`:
+`HORIZ_DRAG` 0.22 → 0.145, `K_CYCLIC_DRIVE` 3.0 → 3.6 (roll gets half
+of it via `ROLL_DRIVE_FRAC` so a sideways slide no longer outruns
+forward cruise), `VERT_DRAG` 0.08 → 0.06. Full stick now cruises ~55 m/s
+(~200 km/h; the real aircraft does ~75 m/s) and reaches 20 m/s in ~3 s
+at the same 24° visual pitch. If that still reads slow, the next levers
+are `HORIZ_DRAG` down to ~0.12 (~65 m/s) or nudging `MAX_PITCH_TILT`.
+Vertical rates were then raised to match ("like a snail compared to
+forward"): `MAX_CLIMB_RATE` 9 → 20 m/s, `MAX_DESCENT_RATE` 9 → 22 m/s,
+both reachable in ~2 s at the default `liftPower` 2.2.
 
 Still worth verifying on real hardware: the pad's `pitchAxis` isn't scaled
 down anywhere between `pollGamepad` and `readInputAxes`.

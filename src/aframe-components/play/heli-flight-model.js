@@ -50,7 +50,9 @@
  *     Conventions (A-Frame body frame, forward = -Z):
  *       pitch +1 = nose down (fly forward), roll +1 = roll right.
  *   - Drag is split by axis: horizontal drag caps cruise speed
- *     (~33 m/s at full forward stick), vertical drag is weak — falls
+ *     (~55 m/s ≈ 200 km/h at full forward stick — a medium twin like
+ *     the MH-65 Dolphin cruises ~75 m/s for real; the arcade cap keeps
+ *     street-scale scenes readable), vertical drag is weak — falls
  *     with a dead rotor stay heavy; powered vertical motion is
  *     governed by the velocity servo, not drag.
  *   - Pedals (yaw): rate-command torque about body-up;
@@ -69,8 +71,12 @@ const GRAVITY = 9.81;
 
 // Tunables that are NOT user-facing levers (the user-facing ones —
 // liftPower / agility / yawRate / stability — arrive via params).
-const MAX_CLIMB_RATE = 9; // m/s commanded at full up collective
-const MAX_DESCENT_RATE = 9; // m/s commanded at full down collective
+// Vertical rates are arcade-scaled to match the ~55 m/s cruise —
+// playtest: "vertical speed is like a snail compared to forward".
+// Reachable within ~2 s: liftPower 2.2 leaves ~12 m/s^2 of climb
+// headroom above hover, and a zero-thrust descent pulls a full g.
+const MAX_CLIMB_RATE = 20; // m/s commanded at full up collective
+const MAX_DESCENT_RATE = 22; // m/s commanded at full down collective
 // Commanded sink with the lever released: big enough to settle onto
 // the ground (and to read as "heavier than air"), small enough that a
 // hover only drifts down a couple of meters while you look around.
@@ -80,14 +86,17 @@ const K_VY = 2.2; // 1/s — vertical-speed servo gain (first-order, no overshoo
 // banks up to ~60° hold altitude; past that you trade lift for turn.
 const MIN_TILT_COMP_Y = 0.5;
 const SPOOL_TIME = 1.6; // seconds from Play to full available thrust
-const HORIZ_DRAG = 0.22; // 1/s — caps cruise speed (~33 m/s full stick)
-const VERT_DRAG = 0.08; // 1/s — dead-rotor falls stay heavy
+const HORIZ_DRAG = 0.145; // 1/s — caps cruise speed (~55 m/s full stick)
+const VERT_DRAG = 0.06; // 1/s — dead-rotor falls stay heavy
 const MAX_ROLL_TILT = 0.55; // rad (~31°) — commanded roll at full stick
 const MAX_PITCH_TILT = 0.42; // rad (~24°) — commanded pitch at full stick
 // Horizontal accel the rotor adds along the commanded tilt direction,
 // m/s^2 at full stick — on top of the tilted-thrust component, so full
-// forward pulls ~7.4 m/s^2 without needing a nose-down caricature.
-const K_CYCLIC_DRIVE = 3.0;
+// forward pulls ~8 m/s^2 without needing a nose-down caricature.
+// Sideways (roll) gets half of it: the airframe is built to go
+// forward, so a full-roll slide shouldn't outrun a full-pitch cruise.
+const K_CYCLIC_DRIVE = 3.6;
+const ROLL_DRIVE_FRAC = 0.5;
 const K_CMD = 14; // mass-scaled spring toward the commanded attitude
 const K_LEVEL = 12; // mass-scaled spring back to level (no input)
 const K_YAW = 5; // mass-scaled pedal yaw torque
@@ -256,8 +265,9 @@ function computeHeliForces(state, input, body, params) {
   //     Gated on an upright, spooled rotor. ---
   if (up.y > 0.1) {
     const driveK = m * K_CYCLIC_DRIVE * spoolEase;
-    force.x += (hx * pitch + rx * roll) * driveK;
-    force.z += (hz * pitch + rz * roll) * driveK;
+    const rollDrive = roll * ROLL_DRIVE_FRAC;
+    force.x += (hx * pitch + rx * rollDrive) * driveK;
+    force.z += (hz * pitch + rz * rollDrive) * driveK;
   }
 
   // --- Tilt-rate damper: bleed angular velocity that is NOT around

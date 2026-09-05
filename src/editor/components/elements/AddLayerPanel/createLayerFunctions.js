@@ -431,8 +431,8 @@ export function createHighlightRing(position) {
 
 /**
  * Spawn a flyable-helicopter entity (see play-mode-helicopter.js).
- * The visual is the procedural `helicopter-mesh` (basic geometry —
- * placeholder until real catalog meshes exist); `fly-controls` carries
+ * The visual is the procedural `helicopter-mesh` (MH-65 Dolphin-class
+ * silhouette, real scale); `fly-controls` carries
  * the flight tunables and marks the entity as the play-mode spawn
  * point. The transparent box keeps the entity clickable in the editor
  * viewport, matching the driveable-vehicle pattern.
@@ -444,8 +444,8 @@ export function createFlyableHelicopter(position) {
       position: position ?? '0 1 0',
       'fly-controls': '',
       'helicopter-mesh': '',
-      geometry: 'primitive: box; width: 1.4; height: 2; depth: 4.6',
-      material: 'color: #2e6f9e; opacity: 0.0; transparent: true',
+      geometry: 'primitive: box; width: 2.2; height: 3.6; depth: 12',
+      material: 'color: #f4551f; opacity: 0.0; transparent: true',
       shadow: 'cast: false; receive: false'
     }
   };

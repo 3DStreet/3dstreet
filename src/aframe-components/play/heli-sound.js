@@ -8,7 +8,7 @@
  *
  *   1. Blade slap ("chop"): looped white noise through a low-pass,
  *      amplitude-modulated by an LFO running at the blade-pass
- *      frequency (rotor rad/s -> rev/s x 2 blades). At idle it's a
+ *      frequency (rotor rad/s -> rev/s x 4 blades). At idle it's a
  *      slow whump-whump; at full collective it's the classic 13 Hz
  *      helicopter thrum.
  *   2. Turbine whine: a quiet sawtooth through a resonant band-pass,
@@ -48,8 +48,8 @@ function heliSoundParams(s) {
   );
   const work = Math.abs(s.collective || 0); // down-thrust works too
   return {
-    // rad/s -> rev/s, two blades per rev.
-    bladePassHz: Math.max(0.1, ((s.rotorSpeed || 0) / (2 * Math.PI)) * 2),
+    // rad/s -> rev/s, four blades per rev (MH-65-class rotor).
+    bladePassHz: Math.max(0.1, ((s.rotorSpeed || 0) / (2 * Math.PI)) * 4),
     chopBase: 0.55 * rotorAmount,
     chopDepth: 0.5 * rotorAmount,
     chopFilterHz: 240 + 260 * rotorAmount,

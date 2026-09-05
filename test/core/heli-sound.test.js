@@ -36,11 +36,11 @@ describe('heliSoundParams', () => {
     assert.strictEqual(p.master, 0);
   });
 
-  it('blade-pass frequency = rev/s x 2 blades', () => {
+  it('blade-pass frequency = rev/s x 4 blades', () => {
     // 40 rad/s = 6.37 rev/s -> 12.7 Hz chop.
     const p = heliSoundParams({ rotorSpeed: ROTOR_FULL, collective: 1 });
     assert.ok(
-      Math.abs(p.bladePassHz - (ROTOR_FULL / (2 * Math.PI)) * 2) < 1e-9
+      Math.abs(p.bladePassHz - (ROTOR_FULL / (2 * Math.PI)) * 4) < 1e-9
     );
   });
 

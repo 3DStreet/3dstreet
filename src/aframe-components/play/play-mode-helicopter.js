@@ -61,12 +61,30 @@ const { HeliSound } = require('./heli-sound.js');
  */
 
 // Chassis-frame collider half-extents. Sized to the helicopter-mesh
-// fuselage + skids (skids at local y=-0.9, rotor hub at +1.0; the
-// rotor disc itself is deliberately NOT part of the collider — an
-// invisible 5m collision disc feels unfair when threading buildings).
-const COLLIDER_HALF = { x: 0.7, y: 0.95, z: 2.2 };
+// (MH-65 Dolphin class, real scale: wheels at local y≈-1.8, nose tip
+// z≈-4.6, tail boom to z≈+7; rotor hub at +2.1). The box is pushed
+// aft (COLLIDER_OFFSET_Z) so it covers nose-to-boom without a
+// matching 4.6 m of empty box ahead of the nose; the rotor disc and
+// the fenestron shroud are deliberately NOT part of the collider —
+// an invisible 12 m collision disc feels unfair when threading
+// buildings.
+const COLLIDER_HALF = { x: 1.05, y: 1.75, z: 5.7 };
+const COLLIDER_OFFSET_Z = 1.1;
+// Mass properties are pinned to a fixed reference box rather than
+// derived from the (visual-sized) collider: the flight model's torques
+// are mass-scaled and were tuned against this box's moments of
+// inertia, so handling stays identical no matter how big the mesh
+// gets (a density-derived inertia for the 12 m hull would make pitch
+// and roll ~6x more sluggish). Rapier's default density is 1.
+const HANDLING_HALF = { x: 0.7, y: 0.95, z: 2.2 };
+const HANDLING_MASS = 8 * HANDLING_HALF.x * HANDLING_HALF.y * HANDLING_HALF.z;
+const HANDLING_INERTIA = {
+  x: (HANDLING_MASS / 3) * (HANDLING_HALF.y ** 2 + HANDLING_HALF.z ** 2),
+  y: (HANDLING_MASS / 3) * (HANDLING_HALF.x ** 2 + HANDLING_HALF.z ** 2),
+  z: (HANDLING_MASS / 3) * (HANDLING_HALF.x ** 2 + HANDLING_HALF.y ** 2)
+};
 // How high above the fly-controls entity's origin the body spawns so
-// the skids (collider bottom) start on, not in, the ground.
+// the wheels (collider bottom) start on, not in, the ground.
 const SPAWN_LIFT = COLLIDER_HALF.y + 0.1;
 // Visual rotor speed at full collective, rad/s.
 const ROTOR_VISUAL_MAX = 40;
@@ -352,11 +370,15 @@ AFRAME.registerComponent('play-mode-helicopter', {
       .setCanSleep(false);
     const chassisBody = world.createRigidBody(bodyDesc);
     const chassisCollider = world.createCollider(
-      R.ColliderDesc.cuboid(
-        COLLIDER_HALF.x,
-        COLLIDER_HALF.y,
-        COLLIDER_HALF.z
-      ).setActiveEvents(R.ActiveEvents.COLLISION_EVENTS),
+      R.ColliderDesc.cuboid(COLLIDER_HALF.x, COLLIDER_HALF.y, COLLIDER_HALF.z)
+        .setTranslation(0, 0, COLLIDER_OFFSET_Z)
+        .setMassProperties(
+          HANDLING_MASS,
+          { x: 0, y: 0, z: 0 },
+          HANDLING_INERTIA,
+          { x: 0, y: 0, z: 0, w: 1 }
+        )
+        .setActiveEvents(R.ActiveEvents.COLLISION_EVENTS),
       chassisBody
     );
     this.chassisBody = chassisBody;
@@ -579,9 +601,10 @@ AFRAME.registerComponent('play-mode-helicopter', {
       }
 
       if (mode === 'chase') {
-        // Longer leash than the car: helicopters cover more sky.
-        const distance = 11 * this.chaseZoom;
-        const height = 4 * this.chaseZoom;
+        // Longer leash than the car: a 12 m airframe covering a lot
+        // of sky needs to sit well back to stay framed.
+        const distance = 24 * this.chaseZoom;
+        const height = 8 * this.chaseZoom;
         const yawCos = Math.cos(this.chaseYaw);
         const yawSin = Math.sin(this.chaseYaw);
         const ox = headingH.x * yawCos - headingH.z * yawSin;
@@ -591,7 +614,7 @@ AFRAME.registerComponent('play-mode-helicopter', {
           heliPos.y + height,
           heliPos.z - oz * distance
         );
-        lookAt.set(heliPos.x, heliPos.y + 1.2, heliPos.z);
+        lookAt.set(heliPos.x, heliPos.y + 1.5, heliPos.z);
 
         const sCam =
           this._smoothedCamPos || (this._smoothedCamPos = new THREE.Vector3());
@@ -616,9 +639,9 @@ AFRAME.registerComponent('play-mode-helicopter', {
         // the view around the flight heading: fpvYaw around world-up
         // (+ = right), fpvPitch tilts toward world-up (+ = up).
         camWorld.set(
-          heliPos.x + headingH.x * 0.9,
-          heliPos.y + 0.35,
-          heliPos.z + headingH.z * 0.9
+          heliPos.x + headingH.x * 3.0,
+          heliPos.y + 0.55,
+          heliPos.z + headingH.z * 3.0
         );
         const yaw = this.fpvYaw || 0;
         const pitch = THREE.MathUtils.clamp(this.fpvPitch || 0, -1.2, 1.2);
