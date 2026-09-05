@@ -940,6 +940,22 @@ const SHARED_MESSAGES = {
     es: 'o escanea el código QR de arriba para usar la versión web.',
     'pt-BR': 'ou escaneie o QR code acima para usar a versão web.',
     fr: 'ou scannez le code QR ci-dessus pour utiliser la version web.'
+  },
+
+  // .gltf upload rejection (shared/asset-upload/analyzeGltf.js, #1951)
+  gltfExternalRefs: {
+    en: "{filename} references separate files that can't be uploaded together. Export a single .glb file instead, convert at https://gltf.report.",
+    es: '{filename} hace referencia a archivos separados que no se pueden subir juntos. Exporta un solo archivo .glb en su lugar, o conviértelo en https://gltf.report.',
+    'pt-BR':
+      '{filename} faz referência a arquivos separados que não podem ser enviados juntos. Em vez disso, exporte um único arquivo .glb ou converta em https://gltf.report.',
+    fr: '{filename} fait référence à des fichiers séparés qui ne peuvent pas être téléversés ensemble. Exportez plutôt un seul fichier .glb, ou convertissez-le sur https://gltf.report.'
+  },
+  gltfInvalid: {
+    en: '{filename} is not a valid glTF file. Export a single .glb file and try again.',
+    es: '{filename} no es un archivo glTF válido. Exporta un solo archivo .glb e inténtalo de nuevo.',
+    'pt-BR':
+      '{filename} não é um arquivo glTF válido. Exporte um único arquivo .glb e tente novamente.',
+    fr: "{filename} n'est pas un fichier glTF valide. Exportez un seul fichier .glb et réessayez."
   }
 };
 

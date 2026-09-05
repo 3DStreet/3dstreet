@@ -11,6 +11,12 @@ export {
 } from './captureThumbnail.js';
 export { optimizeGlb } from './optimizeGlb.js';
 export {
+  isGltfJsonFile,
+  analyzeGltfFile,
+  analyzeGltfJson,
+  gltfRejectionMessage
+} from './analyzeGltf.js';
+export {
   extractGlbAttribution,
   composeAttributionString,
   normalizeAttributionFromGltfJson,

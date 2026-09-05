@@ -25,6 +25,8 @@ export const REASON_TEXT = {
     "Larger than your plan's per-file limit: upgrade to sync this model.",
   not_signed_in: 'Sign in to save this model to your cloud.',
   upload_blocked: 'Cloud upload was blocked.',
+  load_failed:
+    "Couldn't be loaded as a 3D model, so it wasn't uploaded. The file may be invalid or incomplete.",
   asset_deleted:
     'Marked for deletion: will be permanently purged on the next cleanup pass.',
   asset_not_found:

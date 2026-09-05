@@ -20,6 +20,14 @@
  * applies to worker bundles too.
  */
 
+const GLB_MAGIC = 0x46546c67; // 'glTF' little-endian
+
+function isGlbBytes(bytes) {
+  if (bytes.byteLength < 4) return false;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return view.getUint32(0, true) === GLB_MAGIC;
+}
+
 let depsPromise = null;
 
 async function loadDeps() {
@@ -80,7 +88,18 @@ async function optimize(originalBytes) {
       'draco3d.encoder': encoderModule
     });
 
-  const document = await io.readBinary(originalBytes);
+  // Input is either GLB binary or self-contained .gltf JSON (external-ref
+  // .gltf is rejected at intake; see analyzeGltf.js). readJSON inlines
+  // data: URIs itself, and writeBinary below emits GLB either way — so a
+  // .gltf that survives this pipeline uploads as a real GLB.
+  let document;
+  const wasJson = !isGlbBytes(originalBytes);
+  if (wasJson) {
+    const json = JSON.parse(new TextDecoder().decode(originalBytes));
+    document = await io.readJSON({ json, resources: {} });
+  } else {
+    document = await io.readBinary(originalBytes);
+  }
 
   const extensionsUsed = document
     .getRoot()
@@ -88,7 +107,10 @@ async function optimize(originalBytes) {
     .map((e) => e.extensionName);
   const hasDraco = extensionsUsed.includes('KHR_draco_mesh_compression');
   const hasWebP = extensionsUsed.includes('EXT_texture_webp');
-  if (hasDraco && hasWebP) {
+  // The skip paths hand the ORIGINAL bytes back to the caller, which is only
+  // acceptable when the original is already a GLB. A .gltf JSON input must
+  // always come out as converted GLB bytes, so it never takes them.
+  if (hasDraco && hasWebP && !wasJson) {
     return {
       skipped: true,
       reason: 'already_optimized',
@@ -119,7 +141,7 @@ async function optimize(originalBytes) {
   const output = await io.writeBinary(document);
   const outputBytes = output.byteLength;
 
-  if (outputBytes >= inputBytes) {
+  if (outputBytes >= inputBytes && !wasJson) {
     return {
       skipped: true,
       reason: 'not_smaller',
