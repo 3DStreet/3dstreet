@@ -20,6 +20,38 @@
 
 import { getToolDefinitions, dispatchToolCall } from '../commands/registry.js';
 import { mcpReadTools } from './readTools.js';
+import { mcpSceneTools, saveNudge } from './sceneTools.js';
+import useStore from '@/store';
+
+// Modals that merely greet the user and would hide what an agent is doing.
+// Anything else (payment, profile, share…) is deliberate and stays open.
+const GREETING_MODALS = ['new', 'intro'];
+let revealedAgentActivity = false;
+
+/**
+ * First remote tool call of the session: dismiss a greeting modal (the
+ * "Create a New Scene" dialog shown on a bare load) and switch the right
+ * panel to the Console tab so the user can watch the agent's calls stream
+ * in. Once per page load — after that the user owns the UI.
+ */
+function revealAgentActivity() {
+  if (revealedAgentActivity) return;
+  revealedAgentActivity = true;
+  try {
+    const {
+      modal,
+      setModal,
+      setRightPanelTab,
+      panelsVisible,
+      setPanelsVisible
+    } = useStore.getState();
+    if (GREETING_MODALS.includes(modal)) setModal(null);
+    if (!panelsVisible) setPanelsVisible(true);
+    setRightPanelTab('console');
+  } catch (err) {
+    console.warn('[mcp] could not reveal agent activity:', err);
+  }
+}
 
 // name → { source: 'registry' | 'read', handler? }. Built lazily on first
 // frame so the registry has finished initializing.
@@ -30,7 +62,7 @@ function buildToolIndex() {
   for (const tool of getToolDefinitions()) {
     index.set(tool.name, { source: 'registry', definition: tool });
   }
-  for (const tool of mcpReadTools) {
+  for (const tool of [...mcpReadTools, ...mcpSceneTools]) {
     if (index.has(tool.name)) {
       throw new Error(
         `MCP read tool name collides with registry tool: ${tool.name}`
@@ -38,6 +70,9 @@ function buildToolIndex() {
     }
     index.set(tool.name, {
       source: 'read',
+      // Read-list entries default to non-mutating; undo/redo and the scene
+      // persistence tools opt in so the read-only gate blocks them.
+      mutating: !!tool.mutating,
       definition: {
         name: tool.name,
         description: tool.description,
@@ -84,6 +119,12 @@ function toMCPContent(toolName, value) {
     } else {
       content.push({ type: 'text', text: '[snapshot data unavailable]' });
     }
+    if (value.metadata) {
+      content.push({
+        type: 'text',
+        text: JSON.stringify(value.metadata, null, 2)
+      });
+    }
     return content;
   }
   if (value === undefined || value === null) {
@@ -95,6 +136,33 @@ function toMCPContent(toolName, value) {
   return [{ type: 'text', text: JSON.stringify(value, null, 2) }];
 }
 
+/**
+ * Execute one tool and wrap its return as an MCP content array. Shared by
+ * the WebSocket relay path (`handleFrame` below) and the in-browser WebMCP
+ * path (`useWebMCP`), so both transports stay behavior-identical —
+ * including the read-only gate. Throws on unknown tool, read-only block,
+ * or handler failure; the caller owns the transport-specific error shape.
+ */
+const NO_SAVE_NUDGE = new Set(['saveScene', 'loadScene', 'undo', 'redo']);
+
+export async function callToolAsMCPContent(toolName, args, ctx = {}) {
+  revealAgentActivity();
+  const value = await callTool(toolName, args, ctx.currentUser, {
+    readOnly: !!ctx.readOnly
+  });
+  const content = toMCPContent(toolName, value);
+  // Unsaved-edits nudge: a mutation that is not itself persistence gets one
+  // trailing line pointing at saveScene while nothing is being autosaved.
+  // Agents otherwise built whole streets that vanished on reload.
+  const entry = ensureIndex().get(toolName);
+  const isMutating = entry.source === 'registry' || entry.mutating;
+  if (isMutating && !NO_SAVE_NUDGE.has(toolName)) {
+    const nudge = saveNudge(ctx.currentUser);
+    if (nudge) content.push({ type: 'text', text: nudge });
+  }
+  return content;
+}
+
 async function callTool(toolName, args, currentUser, options = {}) {
   const entry = ensureIndex().get(toolName);
   if (!entry) {
@@ -103,12 +171,9 @@ async function callTool(toolName, args, currentUser, options = {}) {
     throw err;
   }
   if (options.readOnly) {
-    const isMutating =
-      entry.source === 'registry' &&
-      // The registry contains only mutating tools today (every llmTool is a
-      // command). Read tools are MCP-only. If/when the registry grows pure
-      // reads, mark them and check here instead.
-      true;
+    // The registry contains only mutating tools today (every llmTool is a
+    // command). Read-list entries are non-mutating unless flagged.
+    const isMutating = entry.source === 'registry' || entry.mutating;
     if (isMutating) {
       const err = new Error(`Read-only mode: ${toolName} blocked`);
       err.code = -32000;
@@ -164,14 +229,13 @@ export async function handleFrame(frame, ctx = {}) {
         if (!params || typeof params.name !== 'string') {
           return fail(-32602, 'tools/call requires params.name');
         }
-        const value = await callTool(
+        const content = await callToolAsMCPContent(
           params.name,
           params.arguments,
-          ctx.currentUser,
-          { readOnly: !!ctx.readOnly }
+          { currentUser: ctx.currentUser, readOnly: ctx.readOnly }
         );
         if (isNotification) return null;
-        return reply({ content: toMCPContent(params.name, value) });
+        return reply({ content });
       }
       default: {
         if (isNotification) return null;

@@ -1,0 +1,2054 @@
+/* global AFRAME, THREE */
+
+import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import useStore from '@/store';
+import Events from './Events';
+import { intersectPlaneOrNull } from './intersectPlaneOrNull.js';
+import { rayFromClientXY } from './rayFromClientXY.js';
+import { notifyActiveVertexChanged } from './notifyActiveVertexChanged.js';
+import { notifyRevealedSideChanged } from './notifyRevealedSideChanged.js';
+import { forwardWheelToCanvas } from './forwardWheelToCanvas.js';
+import {
+  BUTTON_PX,
+  READOUT_RENDER_ORDER,
+  anyVertexIsDeletable,
+  canOfferInsert,
+  clampHandleRadius,
+  clickMoveThreshold,
+  deleteKeyTargetsVertex,
+  decidePress,
+  hitTestHandles,
+  insertButtonTransform,
+  insertCandidate,
+  metresPerPixel,
+  preExistingClosePairs,
+  rayPlaneHitIsUsable,
+  resolveDragRelease,
+  segmentForVertexPair,
+  trashButtonOffset,
+  validateVertexDelete,
+  validateVertexEdit
+} from './shapeEditRules.js';
+
+/**
+ * ShapeVertexControls — direct manipulation handles for a shape's vertices.
+ *
+ * WHAT IT IS. One handle per vertex of the selected shape, plus a delete button
+ * for the sub-selected vertex and a single insert button on whichever side has
+ * been revealed. Handles are screen-constant, live in `sceneHelpers`, and are
+ * attached and detached from the editor's selection.
+ *
+ * WHERE THE INSERT BUTTON SITS, AND WHY IT IS NOT THE OBVIOUS COUPLING. It is
+ * anchored to its side's midpoint — the same point that side's length caption
+ * sits at, computed by the same expression — so the pairing is legible and
+ * there is no second placement rule to disagree with the first. It shares the
+ * caption's PLACE and not its LIFE: the captions are owned by the shape
+ * properties panel and torn down and rebuilt on every geometry change, i.e.
+ * every frame of a drag, so a button parented to one would lose an in-flight
+ * press. It is a CSS2DObject of this layer, built at attach and torn down at
+ * detach, exactly like the delete button.
+ *
+ * WHICH SIDE IS REVEALED — a second piece of sub-selection state this object
+ * owns, alongside the active vertex. SET from outside through two entry points —
+ * revealSide(), and activateSide(), which decides from the press record whether
+ * a press on a measurement reveals or inserts — both of which validate and
+ * refuse a pair this layer cannot resolve; CLEARED from in here, because every
+ * clearing route is local. On a hovering pointer this state is never entered at
+ * all: there the chip itself becomes the button. Why the split falls that way,
+ * and what the panel owns instead: docs/shape-vertex-editing.md.
+ *
+ * The side is named by its two VERTEX ELEMENTS, never by a segment index.
+ * Inserting or deleting a vertex elsewhere renumbers every side after it, so a
+ * revealed control that tracked the number would silently move to a neighbour
+ * and add a point to a side the user never chose — with nothing on screen to
+ * say it had moved.
+ *
+ * WHY IT IS AN Object3D. Two things come from the base class and neither has a
+ * good substitute. First, `viewport.js` freezes the camera by subscribing to
+ * `mouseDown`/`mouseUp` on a controls INSTANCE — these are EventDispatcher
+ * events, not DOM events, so a plain class dispatching on the canvas would
+ * reach zero listeners and the camera would orbit under a claimed drag (on
+ * touch that flip is the only orbit defence there is). Second,
+ * `updateMatrixWorld(force)` is the codebase's own per-frame hook for a
+ * screen-constant helper — the transform gizmo sizes itself there — and using
+ * it deletes a standalone animation loop along with the frame-ordering bug such
+ * a loop has against the render traversal. MeasureLineControls is the in-repo
+ * precedent for both.
+ *
+ * FRAME BINDING. The object carries the shape's world matrix rather than being
+ * parented to the shape entity. Handle positions are then literally the vertex
+ * data, in the shape's own frame; and the selection box — which is sized from
+ * the shape's whole subtree — is not blown out by screen-constant handles that
+ * grow as you zoom away.
+ *
+ * INVARIANTS. Two, and both have cost real defects when they were broken:
+ *
+ *   1. `abortGesture()` NEVER executes a history command. It is called from
+ *      every cancel path, including from inside a selection change fired by
+ *      another command's execute(), so a command here re-enters History from
+ *      within History. The commit lives on the pointerup release path alone.
+ *   2. ALL gesture state is cleared BEFORE any command runs. History emits
+ *      `historychanged` synchronously from execute(), so any consumer reacting
+ *      to it runs inside our own execute() call; clearing first is what makes a
+ *      commit unable to be undone by its own side effects.
+ *
+ * And one non-subscription that is load-bearing: this layer subscribes to NO
+ * history event. `historychanged` fires on execute() exactly as it does on
+ * undo(), with no discriminator, so a handler that aborted on it would revert
+ * every commit the moment it was made.
+ *
+ * WHY EVERY PRESS LISTENER IS A WINDOW CAPTURE LISTENER. A press on the canvas
+ * arrives as three independently dispatched families — pointer, mouse and touch
+ * — and stopping one does nothing to the others, so a handle press has to be
+ * suppressed in all three. Registering on the canvas would not do it either: a
+ * listener added later on the SAME element does not get priority over an
+ * earlier one, even with capture, and the selection raycaster and camera
+ * controls are already bound there. Only an ancestor capture listener runs
+ * first, so window capture is forced rather than chosen. Deciding a press from
+ * hover state instead would collapse the whole thing — but there is no hover on
+ * touch, which is also why `transformControls.axis` is NOT consulted to find out
+ * whether the gizmo wants the press: it is a hover cache, so it is null at press
+ * time on touch and stale on a mouse that moved fast. Nothing here reads it; the
+ * gizmo runs its own hit test when we decline the press.
+ *
+ * STATE AND LIFETIMES. Every field below is bounded by attach()/detach().
+ * `AFRAME.INSPECTOR.opened` is NOT a lifetime — it gates the handlers that ARM
+ * something (press, hover, delete) and never the handlers that TEAR DOWN, since
+ * closing the editor emits nothing and deselects nothing, so a gated teardown
+ * handler would strand a gesture in flight rather than end it.
+ *
+ *   this.shapeEl        the arm switch for the per-frame hook; last thing
+ *                       attach() sets, first thing detach() clears
+ *   handle pool         built at attach, torn down at detach, resized in place
+ *                       on a structural change, with styles re-applied after —
+ *                       the meshes are index-mapped to `vertexEls`, so a resize
+ *                       that leaves styles alone strands them on the wrong vertex
+ *   vertexEls           the ordered vertex elements; re-read on a STRUCTURAL
+ *                       change only — never on `shape-geometry-changed`, which
+ *                       fires on every frame of a drag
+ *   claimed             set when a press is taken; abortGesture() is its only
+ *                       clear
+ *   _pressWasClaimed    a latch outliving `claimed` across the up-sequence,
+ *                       read by the click/dblclick suppression and nothing else
+ *   pressGeneration     bumped on EVERY pointerdown the window capture sees
+ *   lastRecordedPressId stamped only on a press we actually recorded; the two
+ *                       differ exactly when the last press was not ours
+ *   canvasPressX/Y      one of TWO press baselines, and they are told apart by
+ *                       SCOPE OF CAPTURE. This pair is written for a press on
+ *                       the CANVAS only — overwritten by the next one, never
+ *                       cleared — and is read by the empty-canvas clear
+ *   _windowPress        the other: { x, y, pointerType, wasDrag } for a primary
+ *                       press wherever it landed, because the click that closes
+ *                       the insert button can arrive from anywhere. Null until
+ *                       a press is seen, so a release this layer saw no press
+ *                       for cannot be judged a drag against (0,0)
+ *   pressWasHandle      the RESULT of the press-time hit test, so it is written
+ *                       after the press record, not with it. The hit object
+ *                       itself is deliberately NOT retained: it is an entry in
+ *                       the reused hit-list scratch, so a stored reference goes
+ *                       stale on the next hit test rather than describing the
+ *                       press
+ *   _gesture            drag plane, grab offset, pre-drag and last-valid
+ *                       positions. abortGesture()
+ *                       is its single clear, reached from pointerup, pointercancel,
+ *                       canvas-leave, window blur, Esc, a handler throw, detach()
+ *                       and the per-frame hook's editor-closed edge
+ *   hoveredHandle       from the persistent pointermove; cleared when the cursor
+ *                       leaves every handle and on a structural change that
+ *                       removed the hovered vertex — a resize must PRESERVE hover
+ *                       on the handles whose vertex survived
+ *   activeVertexEl      one setter, setActiveVertex(), and one reader from
+ *                       outside, getActiveVertex(); cleared by a successful
+ *                       delete, a click elsewhere, the first Esc, any structural
+ *                       edit, a whole-shape gizmo move (seen via the matrix
+ *                       compare) and detach(). Undo of a MOVE deliberately leaves
+ *                       it active
+ *   invalid signal      two channels, colour and overlay pulse, both owned by the
+ *                       shape component; setInvalidSignal(false) is the single
+ *                       restore owner for both, called from abortGesture(), from
+ *                       one tracked flash timeout, and from detach()
+ *   edit-gesture flag   begin/endEditGesture on the shape, so a crossing ring
+ *                       holds its last valid fill mid-drag; cleared with the
+ *                       gesture
+ *   store flag          `shapeVertexSelected` mirrors `deleteKeyTargetsVertex`,
+ *                       so the global Delete shortcut is inert exactly while
+ *                       Delete here means "remove the active vertex" — and live
+ *                       again both when nothing is sub-selected and when the
+ *                       shape is at its two-vertex floor, which is what leaves
+ *                       a selected shape deletable from the keyboard
+ *   trash button        outer CSS2D element + inner offset wrapper, built at
+ *                       attach, shown by setActiveVertex, removed at detach
+ *   insert button       the same two-element shape, built at attach, shown and
+ *                       placed by the per-frame hook, removed at detach. It
+ *                       holds PRESENTATION state only — the last transform and
+ *                       label written. No segment index any caller reads back:
+ *                       the press derives its segment live from the element
+ *                       pair, since what was drawn a frame ago names a
+ *                       pre-insert segment
+ *   _revealedA/_revealedB  the two vertex elements naming the revealed side;
+ *                       one setter, one public reader
+ *   _windowPress.wasDrag  the verdict on the most recent primary press, so a
+ *                       click dispatched at the end of an orbit neither closes
+ *                       the button nor inserts a vertex
+ *   _prevMatrixWorld    seeded at attach, so the first frame does not read a
+ *                       spurious whole-shape move against an identity matrix
+ */
+
+// Handles draw above the shape's x-ray overlay and its readout arcs (both 999)
+// and below the transform gizmo (Infinity, which is the ceiling — nothing can
+// be drawn above it, so in the small region where a handle and a gizmo arrow
+// overlap the arrow is drawn on top of the handle that would win the press).
+const HANDLE_RENDER_ORDER = 1000;
+
+const COLOR_NORMAL = '#1faaf2'; // the selection-box blue: reads as "editor affordance"
+const COLOR_HOVER = '#7fd4ff';
+const COLOR_ACTIVE = '#ffffff';
+// The active handle is a white core inside a blue rim, so "which vertex is
+// active" and "the shape is invalid" read independently of each other.
+const ACTIVE_RIM_RATIO = 1.25;
+
+// ms — how long the shape stays red after a refused delete. A blocked delete
+// comes from a button click or a keypress, neither of which is a gesture, so
+// none of the gesture exits would ever clear it: it needs an owner of its own.
+const INVALID_FLASH_MS = 900;
+
+// The invalid signal's second channel: the x-ray overlay's opacity oscillates,
+// so the state reads by MOTION and survives on a shape whose own colour is
+// already the invalid red. Eased rather than square and well short of full
+// amplitude — a fast full-amplitude flash on an always-on-top line covering a
+// large part of the viewport sits on the general flash threshold.
+const PULSE_HZ = 1.6;
+const PULSE_MIN = 0.3;
+const PULSE_MAX = 0.7;
+
+export class ShapeVertexControls extends THREE.Object3D {
+  constructor() {
+    super();
+
+    // The matrix is written from the shape every frame, never derived from
+    // position/rotation/scale.
+    this.matrixAutoUpdate = false;
+
+    this.shapeEl = null;
+    this.vertexEls = [];
+    this.vertexHandles = [];
+    this.hoveredHandle = null;
+    this.activeVertexEl = null;
+    // The two endpoints of the side whose insert button is showing.
+    this._revealedA = null;
+    this._revealedB = null;
+
+    this.claimed = false;
+    this._pressWasClaimed = false;
+    this.pressGeneration = 0;
+    this.lastRecordedPressId = -1;
+    this.canvasPressX = 0;
+    this.canvasPressY = 0;
+    this.pressWasHandle = false;
+    this._gesture = null;
+    this._pendingGesture = null;
+    this._capturedPointerId = null;
+
+    this._invalidSignalOn = false;
+    this._invalidFlashTimer = null;
+    this._trashObject = null;
+    this._trashInner = null;
+    this._insertObject = null;
+    this._insertInner = null;
+    this._insertLastTransform = null;
+    this._insertLastLabel = null;
+    // { x, y, pointerType, wasDrag } for the most recent primary press anywhere
+    // in the document, or null while none has been seen. A SECOND baseline from
+    // canvasPressX/Y, which are canvas-only by design and must stay that way.
+    this._windowPress = null;
+    this._wasOpen = false;
+    this._lastChildCount = -1;
+    this._prevMatrixWorld = new THREE.Matrix4();
+
+    // Per-frame scratch, hoisted so the hook allocates nothing.
+    this._tmpV = new THREE.Vector3();
+    this._tmpCamPos = new THREE.Vector3();
+    this._tmpNormal = new THREE.Vector3();
+    this._tmpQuat = new THREE.Quaternion();
+    // The shape's world scale, refreshed each frame from `this.matrix`. The
+    // handle group inherits the shape's full world matrix, so a shape inside
+    // a scaled group would render its handles scaled too; sizing divides this
+    // out (per axis, so a non-uniform scale doesn't squash the spheres) and
+    // hit-testing multiplies it back to get the true rendered radius.
+    this._worldScale = new THREE.Vector3(1, 1, 1);
+    this._tmpPoints = [];
+    this._hitList = [];
+
+    // One unit sphere and three materials shared by every handle: a handle's
+    // size is a per-frame scale and its state is a material swap, so there is
+    // nothing per-handle to build or dispose.
+    //
+    // `transparent` with no reduced opacity looks redundant and is not: it is
+    // what puts the handles in the TRANSPARENT render list. renderOrder only
+    // sorts within a list, and three draws the whole opaque list first, so an
+    // opaque handle at renderOrder 1000 is still painted before - and so
+    // under - any transparent surface, however low that surface's renderOrder.
+    // A closed shape's fill is one such surface at every opacity, so without
+    // this a handle inside the polygon is erased by it. Together with
+    // depthTest: false, this is what "always on top" actually requires.
+    this._sphere = new THREE.SphereGeometry(1, 12, 12);
+    // depthWrite off for the same reason as the shape's own x-ray overlay: an
+    // always-on-top affordance must not leave depth behind for whatever is
+    // drawn after it. Inert while everything above these sets depthTest: false,
+    // and wrong the moment something above them does not.
+    this._matNormal = new THREE.MeshBasicMaterial({
+      color: COLOR_NORMAL,
+      depthTest: false,
+      depthWrite: false,
+      transparent: true
+    });
+    this._matHover = new THREE.MeshBasicMaterial({
+      color: COLOR_HOVER,
+      depthTest: false,
+      depthWrite: false,
+      transparent: true
+    });
+    this._matActive = new THREE.MeshBasicMaterial({
+      color: COLOR_ACTIVE,
+      depthTest: false,
+      depthWrite: false,
+      transparent: true
+    });
+    this.handleGroup = new THREE.Group();
+    this.add(this.handleGroup);
+
+    // The rim behind the active handle's white core. One mesh, moved onto
+    // whichever handle is active, rather than a second mesh per handle.
+    this._activeRim = new THREE.Mesh(this._sphere, this._matNormal);
+    this._activeRim.renderOrder = HANDLE_RENDER_ORDER;
+    this._activeRim.visible = false;
+    this.handleGroup.add(this._activeRim);
+
+    this._onPointerDown = this._onPointerDown.bind(this);
+    this._onPointerMove = this._onPointerMove.bind(this);
+    this._onPointerUp = this._onPointerUp.bind(this);
+    this._onPointerCancel = this._onPointerCancel.bind(this);
+    this._onSuppressClaimed = this._onSuppressClaimed.bind(this);
+    this._onSuppressLatched = this._onSuppressLatched.bind(this);
+    this._onBlur = this._onBlur.bind(this);
+    this._onGestureLost = this._onGestureLost.bind(this);
+    this._onKeyUp = this._onKeyUp.bind(this);
+    this._onTrashClick = this._onTrashClick.bind(this);
+    this._onInsertClick = this._onInsertClick.bind(this);
+    this._onClickClearReveal = this._onClickClearReveal.bind(this);
+    this._onStructuralChange = this._onStructuralChange.bind(this);
+  }
+
+  // --- lifecycle ---------------------------------------------------------
+
+  attach(shapeEl) {
+    if (this.shapeEl === shapeEl) return;
+    if (this.shapeEl) this.detach();
+    if (!shapeEl || !shapeEl.components || !shapeEl.components.shape) return;
+
+    this._readVertexEls(shapeEl);
+    this._syncPool();
+
+    // Seed the previous-frame matrix from the shape as it is NOW. Without the
+    // seed the first frame compares a live matrix against an identity one and
+    // reports a whole-shape move that never happened — on every attach, for any
+    // shape not sitting at the world origin.
+    shapeEl.object3D.updateWorldMatrix(true, false);
+    this._prevMatrixWorld.copy(shapeEl.object3D.matrixWorld);
+    this._lastChildCount = shapeEl.children.length;
+
+    this._buildTrashButton();
+    this._buildInsertButton();
+    this._addListeners();
+    Events.on('shapevertexstructurechanged', this._onStructuralChange);
+    // Nothing is sub-selected on a fresh attach. Written rather than assumed:
+    // a detach that failed to run would otherwise leave the global Delete
+    // inert for a shape with no active vertex.
+    useStore.getState().setShapeVertexSelected(false);
+
+    this._wasOpen = !!AFRAME.INSPECTOR?.opened;
+    // Last, because writing it is what arms the per-frame hook.
+    this.shapeEl = shapeEl;
+  }
+
+  detach() {
+    if (!this.shapeEl) return;
+    this.abortGesture();
+    this.setActiveVertex(null);
+    this.clearRevealedSide();
+    if (this._invalidFlashTimer) {
+      clearTimeout(this._invalidFlashTimer);
+      this._invalidFlashTimer = null;
+    }
+    this._removeListeners();
+    Events.removeListener(
+      'shapevertexstructurechanged',
+      this._onStructuralChange
+    );
+
+    const shapeEl = this.shapeEl;
+    this.shapeEl = null; // disarms the per-frame hook
+    this._pressWasClaimed = false;
+    // The press record must not outlive the attachment. A `click` with no
+    // preceding `pointerdown` — a synthetic el.click(), an automation, an
+    // extension — would otherwise reach activateSide's mouse branch on a
+    // previous gesture's verdict and insert a vertex nobody pressed for.
+    this._windowPress = null;
+    this._lastChildCount = -1;
+    this.hoveredHandle = null;
+    useStore.getState().setShapeVertexSelected(false);
+    this._teardownTrashButton();
+    this._teardownInsertButton();
+    this._teardownPool();
+    this.vertexEls.length = 0;
+
+    // The commonest reason for a detach is a selection change, and one route to
+    // that is the shape itself being deleted — by which point the component has
+    // disposed its materials. Resolve fresh and skip if it is gone.
+    const shape = shapeEl?.components?.shape;
+    if (shape && !shape.destroyed) {
+      shape.setInvalidSignal(false);
+      shape.endEditGesture();
+    }
+    this._invalidSignalOn = false;
+  }
+
+  dispose() {
+    this.detach();
+    this._sphere.dispose();
+    this._matNormal.dispose();
+    this._matHover.dispose();
+    this._matActive.dispose();
+  }
+
+  // --- handle pool -------------------------------------------------------
+
+  _readVertexEls(shapeEl) {
+    this.vertexEls.length = 0;
+    const children = shapeEl.children;
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      // The ATTRIBUTE, not the initialised component: a vertex inserted this
+      // frame has to be in this list immediately, and A-Frame resolves a new
+      // element's component init on a microtask — so the component is not there
+      // yet when an insert re-reads this list synchronously.
+      if (child.hasAttribute && child.hasAttribute('shape-vertex')) {
+        this.vertexEls.push(child);
+      }
+    }
+  }
+
+  _makeHandle(material) {
+    const mesh = new THREE.Mesh(this._sphere, material);
+    mesh.renderOrder = HANDLE_RENDER_ORDER;
+    this.handleGroup.add(mesh);
+    return mesh;
+  }
+
+  // Grow or shrink the pool IN PLACE. The mesh objects survive, which is what
+  // keeps hover and active styling from being destroyed by a structural edit
+  // that did not touch the handle in question.
+  _syncPool() {
+    const n = this.vertexEls.length;
+    while (this.vertexHandles.length < n) {
+      this.vertexHandles.push(this._makeHandle(this._matNormal));
+    }
+    while (this.vertexHandles.length > n) {
+      const mesh = this.vertexHandles.pop();
+      if (mesh === this.hoveredHandle) this.hoveredHandle = null;
+      this.handleGroup.remove(mesh);
+    }
+  }
+
+  _teardownPool() {
+    for (const mesh of this.vertexHandles) this.handleGroup.remove(mesh);
+    this.vertexHandles.length = 0;
+    // The rim is a permanent member of the group rather than a pooled handle,
+    // so nothing above takes it out of the scene.
+    this._activeRim.visible = false;
+  }
+
+  // A structural change is an insert or a remove — never a position change.
+  // It arrives two ways because neither is sufficient alone: the child-count
+  // compare catches edits made from outside this layer, and the notification
+  // catches the insert/remove round-trip a count compare cannot see.
+  _onStructuralChange(shapeEl) {
+    if (shapeEl !== this.shapeEl) return;
+    this._invalidateVertexCache();
+  }
+
+  // Clearing the active vertex here is unconditional, and stays that way. The
+  // reason is semantic rather than mechanical: a structural edit moves the
+  // indices the user was reasoning about, so the sub-selection no longer means
+  // what it did.
+  //
+  // It is worth being precise about what the clear is NOT doing, because the
+  // insert path deliberately re-activates the vertex it just created. Handle
+  // meshes are index-mapped to `vertexEls`, so an insert on a low segment
+  // slides every higher vertex onto its neighbour's mesh — but what repairs
+  // that is the style re-apply below, which keys on element IDENTITY and not on
+  // index, as do the rim and the trash button. So for any element still present
+  // in `vertexEls`, styling is coherent once this method has run through, and a
+  // caller may safely re-activate afterwards.
+  _invalidateVertexCache() {
+    // A structural edit under a live press (Ctrl+Z on a keyboard shortcut
+    // while the button is held, an external insert/remove) shifts the index
+    // and may detach the element the gesture holds; releasing it later would
+    // validate and commit against the wrong vertex. Abort first — the press
+    // becomes a no-op rather than a bogus history entry.
+    if (this.claimed) this.abortGesture();
+    this._readVertexEls(this.shapeEl);
+    this._syncPool();
+    this._lastChildCount = this.shapeEl.children.length;
+    this.setActiveVertex(null);
+    this._applyStyles();
+  }
+
+  // --- per-frame ---------------------------------------------------------
+
+  updateMatrixWorld(force) {
+    if (this.shapeEl) {
+      const open = !!AFRAME.INSPECTOR?.opened;
+      // Closing the inspector emits nothing and deselects nothing, so detach()
+      // never runs — this hook is the ONLY thing still running that can notice.
+      // That is why it is armed on shapeEl alone and tests `opened` inside.
+      if (this._wasOpen && !open) this.abortGesture();
+      this._wasOpen = open;
+      if (open) {
+        // Refresh the source explicitly rather than relying on this object
+        // being traversed after the shape's own subtree, which is only true
+        // because of the order helpers happen to be added to the scene.
+        this.shapeEl.object3D.updateWorldMatrix(true, false);
+        this.matrix.copy(this.shapeEl.object3D.matrixWorld);
+        this._perFrame();
+      }
+    }
+    super.updateMatrixWorld(force);
+  }
+
+  // Runs up to twice per rendered frame — `sceneHelpers` is traversed by the
+  // WebGL renderer and again by the CSS2D one — so every step here has to be
+  // idempotent. Recomputes are naturally so; the pulse reads a clock rather
+  // than advancing a counter; the matrix compare stores what it just read.
+  _perFrame() {
+    const shapeObj = this.shapeEl.object3D;
+
+    if (this.shapeEl.children.length !== this._lastChildCount) {
+      this._invalidateVertexCache();
+    }
+
+    // Read fresh every frame, never cached: toggling between perspective and
+    // orthographic swaps the inspector's camera for a DIFFERENT object, so a
+    // reference held from attach() would go on sizing handles against a camera
+    // that is no longer rendering.
+    const camera = AFRAME.INSPECTOR?.camera;
+    const canvas = this._canvas();
+    if (camera && canvas) {
+      camera.getWorldPosition(this._tmpCamPos);
+      const viewportH = canvas.clientHeight;
+      const ws = this._worldScale.setFromMatrixScale(this.matrix);
+      // A degenerate axis (scale 0) would divide the handles to Infinity;
+      // fall back to uncompensated on that axis.
+      if (!(ws.x > 1e-6)) ws.x = 1;
+      if (!(ws.y > 1e-6)) ws.y = 1;
+      if (!(ws.z > 1e-6)) ws.z = 1;
+      for (let i = 0; i < this.vertexHandles.length; i++) {
+        const el = this.vertexEls[i];
+        const mesh = this.vertexHandles[i];
+        if (!el) continue;
+        mesh.position.copy(el.object3D.position);
+        this._tmpV.copy(mesh.position).applyMatrix4(this.matrix);
+        const mpp = metresPerPixel(
+          camera,
+          this._tmpV.distanceTo(this._tmpCamPos),
+          viewportH
+        );
+        const r = clampHandleRadius(mpp);
+        mesh.scale.set(r / ws.x, r / ws.y, r / ws.z);
+      }
+      this._updateActiveRim();
+      this._updateTrashButton(camera, canvas);
+      this._updateInsertButton(camera, canvas);
+    }
+
+    if (this._invalidSignalOn) {
+      const shape = this.shapeEl.components?.shape;
+      if (shape) shape.setInvalidPulse(pulseOpacity(performance.now()));
+    }
+
+    if (!this._prevMatrixWorld.equals(shapeObj.matrixWorld)) {
+      this._prevMatrixWorld.copy(shapeObj.matrixWorld);
+      // The shape moved as a whole — by the gizmo, by a parent layer, or by an
+      // undo of either. Whichever it was, the sub-selection no longer means
+      // what it did.
+      this.setActiveVertex(null);
+    }
+  }
+
+  // The world-space radius a handle is currently drawn at, back-converted to
+  // screen pixels. The hit radius has to match what the user can SEE, so it is
+  // the rendered (clamped) radius rather than the unclamped target.
+  _screenRadiusPx(worldRadius, worldPosition, camera, viewportH) {
+    const mpp = metresPerPixel(
+      camera,
+      worldPosition.distanceTo(this._tmpCamPos),
+      viewportH
+    );
+    return mpp > 0 ? worldRadius / mpp : 0;
+  }
+
+  _hitTest(clientX, clientY) {
+    const camera = AFRAME.INSPECTOR?.camera;
+    const canvas = this._canvas();
+    if (!camera || !canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const viewportH = canvas.clientHeight;
+    camera.getWorldPosition(this._tmpCamPos);
+
+    const list = this._hitList;
+    list.length = this._pushHitEntries(
+      list,
+      this.vertexHandles,
+      camera,
+      viewportH
+    );
+
+    const hit = hitTestHandles(list, camera, rect, clientX, clientY);
+    return hit === -1 ? null : list[hit];
+  }
+
+  // Fills the shared hit list without allocating: the entry objects and their
+  // world vectors are reused across calls, which matters because this runs on
+  // every pointermove over the canvas.
+  _pushHitEntries(list, meshes, camera, viewportH) {
+    let at = 0;
+    for (let i = 0; i < meshes.length; i++) {
+      const mesh = meshes[i];
+      if (!mesh.visible) continue;
+      let entry = list[at];
+      if (!entry) {
+        entry = list[at] = { world: new THREE.Vector3() };
+      }
+      mesh.getWorldPosition(entry.world);
+      entry.index = i;
+      entry.mesh = mesh;
+      entry.screenRadiusPx = this._screenRadiusPx(
+        // mesh.scale divides the shape's world scale out (see _perFrame);
+        // multiply it back to get the radius the handle actually renders at.
+        mesh.scale.x * this._worldScale.x,
+        entry.world,
+        camera,
+        viewportH
+      );
+      at++;
+    }
+    return at;
+  }
+
+  // --- styling -----------------------------------------------------------
+
+  _setHovered(mesh) {
+    if (this.hoveredHandle === mesh) return;
+    this.hoveredHandle = mesh;
+    this._applyStyles();
+  }
+
+  _applyStyles() {
+    for (let i = 0; i < this.vertexHandles.length; i++) {
+      const mesh = this.vertexHandles[i];
+      const isActive =
+        this.activeVertexEl && this.vertexEls[i] === this.activeVertexEl;
+      mesh.material = isActive
+        ? this._matActive
+        : mesh === this.hoveredHandle
+          ? this._matHover
+          : this._matNormal;
+      // The active core draws inside its own rim.
+      mesh.renderOrder = isActive
+        ? HANDLE_RENDER_ORDER + 1
+        : HANDLE_RENDER_ORDER;
+    }
+  }
+
+  // The active vertex has one setter and nothing else writes it. The sub-object
+  // selection it represents does not survive a whole-shape move, a structural
+  // edit, or a detach.
+  setActiveVertex(el) {
+    if (this.activeVertexEl === el) return;
+    this.activeVertexEl = el;
+    // The store flag mirrors the SAME predicate the key handler uses — "does
+    // Delete mean the vertex here" — rather than "is a vertex selected". On a
+    // two-vertex shape those differ: a vertex is selected, and Delete still
+    // means the shape. Mirroring the wrong one would swallow the key before it
+    // could escalate.
+    //
+    // Safe to settle here rather than per keystroke, because the vertex count
+    // this reads is settled by the time it is read. A structural change clears
+    // the sub-selection from inside the cache refresh that re-counted the
+    // vertices — and the one thing that re-activates afterwards, the insert
+    // path, does so only once that refresh has fully run.
+    useStore
+      .getState()
+      .setShapeVertexSelected(
+        deleteKeyTargetsVertex(el, this.vertexEls.length)
+      );
+    if (!el) {
+      if (this._trashObject) this._trashObject.visible = false;
+      // The insert button is deliberately NOT hidden here: it belongs to the
+      // revealed side, not to the sub-selected vertex, and no vertex need be
+      // active for it to be showing. Hiding it here would take it down on every
+      // clear of the sub-selection — including the ones a structural edit and a
+      // whole-shape move fire — until the next frame put it back.
+      //
+      // Hidden HERE and not only in the per-frame hook, which needs `shapeEl`
+      // and so stops running the moment the shape is deselected. The rim keeps
+      // `matrixAutoUpdate = false`'s stale matrix, so left visible it goes on
+      // drawing a stray sphere at the last active vertex until some other shape
+      // is selected.
+      this._activeRim.visible = false;
+    }
+    this._applyStyles();
+    // Selecting a different vertex changes no geometry, so nothing else would
+    // tell the properties panel to re-derive which captions to keep on screen.
+    notifyActiveVertexChanged();
+  }
+
+  // The sub-selected vertex element, or null. The read half of the pair above,
+  // and the ONLY supported way in from outside this class — the properties
+  // panel reaches it through the inspector singleton to decide which captions
+  // to pin, and a field read there would turn renaming private state into a
+  // silent break of the pin.
+  getActiveVertex() {
+    return this.activeVertexEl;
+  }
+
+  // --- the revealed side -------------------------------------------------
+
+  _setRevealedSide(a, b) {
+    if (this._revealedA === a && this._revealedB === b) return;
+    this._revealedA = a;
+    this._revealedB = b;
+    notifyRevealedSideChanged();
+  }
+
+  // Close whatever side is revealed. Its own verb rather than a set-to-null, so
+  // the several places that close the button say what they do and grep as one
+  // thing.
+  clearRevealedSide() {
+    this._setRevealedSide(null, null);
+  }
+
+  // Reveal the insert button on the side running between these two vertex
+  // elements. The internal reveal-only entry: a press on a measurement arrives
+  // at activateSide(), which delegates here when the press record says the input
+  // has no hover. Nothing outside this class calls it.
+  //
+  // It VALIDATES against this layer's own vertex list and refuses a pair that
+  // does not resolve, rather than storing it. That refusal is what makes the
+  // entry safe here: the state can never be one this layer would then
+  // have to defend, and a pair resolved a moment ago against a list that has
+  // since changed structurally is rejected rather than acted on.
+  revealSide(elA, elB) {
+    if (segmentForVertexPair(this.vertexEls, elA, elB, this._isClosed()) < 0) {
+      return;
+    }
+    this._setRevealedSide(elA, elB);
+  }
+
+  // The revealed side's two endpoints, or null. The read half of the pair
+  // above, and the ONLY supported way in from outside — a field read there
+  // would turn renaming private state into a silent break.
+  getRevealedSide() {
+    return this._revealedA && this._revealedB
+      ? { a: this._revealedA, b: this._revealedB }
+      : null;
+  }
+
+  // A press landed on a side's length measurement, and this MAY COMMIT A VERTEX
+  // INSERT — on a hovering pointer that is exactly what it does; otherwise it
+  // reveals the "+" button. WHICH gesture the press was is what decides, and the
+  // press record that answers it lives in this layer — so the branch is here
+  // rather than in the properties panel, and there is one press baseline rather
+  // than two agreeing by luck. Like revealSide(), it validates before acting.
+  //
+  // The pair is re-resolved against THIS layer's vertex list. The panel's
+  // enumeration and this one can legitimately disagree — adjacency is a property
+  // of the list you ask about — and a divergence therefore yields -1 and a silent
+  // no-op here, never an edit to a side the user did not choose.
+  activateSide(elA, elB) {
+    const segment = segmentForVertexPair(
+      this.vertexEls,
+      elA,
+      elB,
+      this._isClosed()
+    );
+    if (segment < 0) return;
+
+    // Pressing the caption once IS pressing the button, so this must insert only
+    // where the "+" was shown first. Both terms are load-bearing, and the media
+    // query is READ BACK from the stylesheet rather than asserted a second time
+    // here — which device each term is there for: docs/shape-vertex-editing.md.
+    const hoverIsReal =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(hover: hover)')?.matches;
+    const pointerType = this._windowPress?.pointerType;
+    if (!hoverIsReal || (pointerType !== 'mouse' && pointerType !== 'pen')) {
+      this.revealSide(elA, elB);
+      return;
+    }
+
+    // A button is already open on this side — a finger opened it, and this is a
+    // mouse coming back to the same chip. The morph is suppressed there by
+    // design (see the stylesheet), so inserting here would act with no
+    // affordance ever having been shown. Put the chip back to an ordinary one
+    // and let hover do its job.
+    if (this._revealedSegment() === segment) {
+      this.clearRevealedSide();
+      return;
+    }
+
+    // A press that travelled was an attempt to drag, not a click. Ungated it
+    // commits a vertex — and the natural response to a camera that did not move
+    // is to try again, which commits another. The non-hovering branch above stays
+    // ungated deliberately: a press that drifts a few pixels within one chip is
+    // still a tap on it, and there it only opens a button.
+    if (this._windowPress.wasDrag) return;
+    this._guard(() => this._insertAtSegment(segment));
+  }
+
+  // --- the delete button -------------------------------------------------
+
+  // A DOM button rendered through the CSS2D layer rather than a mesh in the
+  // scene. Three things fall out of that and all of them are wanted: it is
+  // never a raycast target, so it cannot compete with the handles for a press;
+  // a press on it does not reach the canvas at all, so it cannot turn into a
+  // vertex drag on a touch screen where drift is near-certain; and native click
+  // semantics already give "commits on release inside, cancels outside".
+  _buildTrashButton() {
+    // TWO elements, and the split is mandatory rather than tidy: CSS2DRenderer
+    // assigns style.transform on the OUTER element every render pass, so
+    // anything we wrote there would be erased each frame. The offset lives on
+    // an inner wrapper the renderer never touches.
+    const outer = document.createElement('div');
+    outer.style.pointerEvents = 'none';
+
+    const inner = document.createElement('button');
+    inner.type = 'button';
+    inner.className = 'shape-delete-button';
+    inner.title = 'Delete vertex';
+    inner.setAttribute('aria-label', 'Delete vertex');
+    // The CSS2D container is pointer-events:none, so this is the only live
+    // element in it.
+    inner.style.pointerEvents = 'auto';
+    // `background` moved to the stylesheet when this button gained hover and
+    // pressed states; `color` deliberately stays inline. Why the two go
+    // different ways: docs/shape-vertex-editing.md.
+    inner.style.cssText +=
+      ';display:flex;align-items:center;justify-content:center;' +
+      // The size the placement rules compute their offsets from — taken from
+      // the same constant rather than written again, so restyling the button
+      // cannot silently disagree with the offset that clears it of the handle.
+      `width:${BUTTON_PX}px;height:${BUTTON_PX}px;padding:0;border:none;` +
+      'border-radius:4px;' +
+      'cursor:pointer;color:#fff;';
+    inner.innerHTML =
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" ' +
+      'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+      'stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>' +
+      '<path d="M10 11v6M14 11v6"/></svg>';
+    inner.addEventListener('click', this._onTrashClick);
+    // Taking the pointer takes the wheel — see forwardWheelToCanvas.
+    inner.addEventListener('wheel', forwardWheelToCanvas, { passive: false });
+    outer.appendChild(inner);
+
+    this._trashInner = inner;
+    this._trashObject = new CSS2DObject(outer);
+    this._trashObject.visible = false;
+    // The top of the four CSS2D bands — see READOUT_RENDER_ORDER — so no
+    // measurement can draw over the button. Set where the object is created:
+    // owned by its own builder rather than by whichever control is built next.
+    this._trashObject.renderOrder = READOUT_RENDER_ORDER.control;
+    this.add(this._trashObject);
+  }
+
+  _teardownTrashButton() {
+    if (!this._trashObject) return;
+    this._trashInner.removeEventListener('click', this._onTrashClick);
+    this._trashInner.removeEventListener('wheel', forwardWheelToCanvas);
+    const element = this._trashObject.element;
+    if (element.parentNode) element.parentNode.removeChild(element);
+    this.remove(this._trashObject);
+    this._trashObject = null;
+    this._trashInner = null;
+  }
+
+  // The active handle's rendered radius in screen pixels — what the delete
+  // button's placement rule is computed from, and its size floor tested
+  // against. Read by that button alone: the insert button belongs to a side
+  // rather than to a handle, so nothing about a handle's size can tell it where
+  // to sit or whether to appear.
+  _activeHandleRadiusPx(camera, canvas) {
+    const mesh = this._activeHandle();
+    if (!mesh) return 0;
+    this._tmpV.copy(mesh.position).applyMatrix4(this.matrix);
+    return this._screenRadiusPx(
+      mesh.scale.x * this._worldScale.x,
+      this._tmpV,
+      camera,
+      canvas.clientHeight
+    );
+  }
+
+  _updateTrashButton(camera, canvas) {
+    if (!this._trashObject) return;
+    const mesh = this._activeHandle();
+    // No sub-selection, or a gesture in flight. The gesture gate is the same
+    // one the insert button uses, deliberately: on-canvas controls that
+    // half-vanish on a drag read as a glitch rather than as a mode. During a
+    // drag the pointer is captured on the canvas, so a button that stayed up
+    // could not usefully be pressed and would only follow the handle about.
+    //
+    // Presentation, not enforcement: unlike the insert path, delete has no
+    // in-flight guard of its own, so hiding is all that narrows the window in
+    // which a second pointer could reach it. It narrows rather than opens one —
+    // the button was reachable for the whole drag before.
+    if (!mesh || this.claimed) {
+      this._trashObject.visible = false;
+      return;
+    }
+    // On a two-vertex shape no vertex can be deleted, so offering the button
+    // and then refusing the click reads as a broken button rather than as a
+    // rule. Hidden rather than disabled: there is no user action that would
+    // make it work, and deleting the whole shape is the route out.
+    if (!anyVertexIsDeletable(this.vertexEls.length)) {
+      this._trashObject.visible = false;
+      return;
+    }
+    this._trashObject.position.copy(mesh.position);
+
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    const radiusPx = this._activeHandleRadiusPx(camera, canvas);
+    this._tmpV.copy(mesh.position).applyMatrix4(this.matrix).project(camera);
+    const offset = trashButtonOffset(
+      radiusPx,
+      (this._tmpV.x * 0.5 + 0.5) * width,
+      (-this._tmpV.y * 0.5 + 0.5) * height,
+      width,
+      height
+    );
+    if (!offset) {
+      this._trashObject.visible = false;
+      return;
+    }
+    this._trashObject.visible = true;
+    this._trashInner.style.transform = `translate(${offset.dx}px, ${offset.dy}px)`;
+  }
+
+  // --- the insert button -------------------------------------------------
+
+  // One, on the side whose measurement the user clicked. With the side named by
+  // the click there is nothing left for a second button to disambiguate.
+  _buildInsertButton() {
+    // TWO elements, for the reason the delete button needs them: CSS2DRenderer
+    // rewrites style.transform on the OUTER element every pass, so the pixel
+    // offset has to live on an inner wrapper it never touches.
+    const outer = document.createElement('div');
+    outer.style.pointerEvents = 'none';
+
+    const inner = document.createElement('button');
+    inner.type = 'button';
+    inner.className = 'shape-insert-button';
+    inner.textContent = '+';
+    // The CSS2D container is pointer-events:none, so this is the only live
+    // element in it — which is also what stops a press here reaching the
+    // canvas and turning into a camera or vertex drag.
+    inner.style.pointerEvents = 'auto';
+    // STRUCTURE only. Every colour lives in the stylesheet, because an inline
+    // declaration beats a stylesheet rule whatever its selector, so a colour
+    // set here would silently kill the hover and focus states.
+    inner.style.cssText +=
+      ';display:flex;align-items:center;justify-content:center;' +
+      // border-box, or the 1 px border makes the box 2 px larger than
+      // BUTTON_PX while the offset is computed for BUTTON_PX, and the button
+      // overlaps the caption it belongs to. The size itself comes from that
+      // same constant, so restyling here cannot silently disagree with the
+      // offset arithmetic derived from it.
+      `box-sizing:border-box;width:${BUTTON_PX}px;height:${BUTTON_PX}px;` +
+      'padding:0;' +
+      'border-radius:4px;cursor:pointer;font:600 17px/1 sans-serif;';
+    inner.addEventListener('click', this._onInsertClick);
+    // Taking the pointer takes the wheel — see forwardWheelToCanvas.
+    inner.addEventListener('wheel', forwardWheelToCanvas, { passive: false });
+    outer.appendChild(inner);
+
+    const object = new CSS2DObject(outer);
+    object.visible = false;
+    // The top of the four CSS2D bands — see READOUT_RENDER_ORDER — so it draws
+    // in front of every caption, including the one lifted a band for being the
+    // side this button is open on.
+    object.renderOrder = READOUT_RENDER_ORDER.control;
+    this.add(object);
+    this._insertObject = object;
+    this._insertInner = inner;
+    this._insertLastTransform = null;
+    this._insertLastLabel = null;
+  }
+
+  _teardownInsertButton() {
+    if (!this._insertObject) return;
+    this._insertInner.removeEventListener('click', this._onInsertClick);
+    this._insertInner.removeEventListener('wheel', forwardWheelToCanvas);
+    const element = this._insertObject.element;
+    if (element.parentNode) element.parentNode.removeChild(element);
+    this.remove(this._insertObject);
+    this._insertObject = null;
+    this._insertInner = null;
+    this._insertLastTransform = null;
+    this._insertLastLabel = null;
+  }
+
+  // Everything here derives from live state every frame — no dirty flag, no
+  // cached answer — so nothing can go stale. That is what makes three of the
+  // clearing routes free rather than needing an owner each. The gate is O(n)
+  // over the vertices and runs beside a projection the pass does anyway; there
+  // is nothing to ration.
+  _updateInsertButton(camera, canvas) {
+    if (!this._insertObject) return;
+    if (!this._revealedA) {
+      this._insertObject.visible = false;
+      return;
+    }
+    // A gesture in flight: during a drag the pointer is captured on the canvas,
+    // so a button that stayed up could not usefully be pressed and would only
+    // jump about. (This hide is presentation; what actually stops an insert
+    // mid-gesture is the guard in _insertAtSegment, because the hide lags the
+    // claim by up to one render pass.)
+    //
+    // Returning BEFORE the derivation below is deliberate. A drag's intermediate
+    // positions are uncommitted, and a release can commit an EARLIER valid
+    // position — so clearing the reveal because the side dipped below the
+    // separation threshold somewhere mid-drag would be acting on geometry the
+    // shape may never end up with. The frame after the release runs it.
+    if (this.claimed) {
+      this._insertObject.visible = false;
+      return;
+    }
+
+    const n = this.vertexEls.length;
+    const segment = segmentForVertexPair(
+      this.vertexEls,
+      this._revealedA,
+      this._revealedB,
+      this._isClosed()
+    );
+    // The side no longer exists as a side: the insert itself, a neighbouring
+    // vertex deleted, an undo or redo that removed it, or the shape being
+    // opened or closed — which emits nothing and so could be caught no other
+    // way.
+    if (segment < 0) {
+      this.clearRevealedSide();
+      this._insertObject.visible = false;
+      return;
+    }
+    // The side can no longer take a point — a neighbour has been dragged close
+    // enough to make it too short. Cleared rather than left pressable: the
+    // press would refuse and flash the whole outline red with nothing saying
+    // which side or why. This is the same predicate the properties panel uses
+    // to decide whether the caption is a control at all, so the two layers
+    // agree on what a control is.
+    const points = this._localPoints();
+    if (!canOfferInsert(points, segment)) {
+      this.clearRevealedSide();
+      this._insertObject.visible = false;
+      return;
+    }
+
+    // The anchor is the caption's own point, by the same expression on the
+    // same two vectors — so there is no second placement rule that could
+    // disagree with the first.
+    const a = this.vertexEls[segment].object3D.position;
+    const b = this.vertexEls[(segment + 1) % n].object3D.position;
+    this._insertObject.position.lerpVectors(a, b, 0.5);
+
+    this._tmpV
+      .copy(this._insertObject.position)
+      .applyMatrix4(this.matrix)
+      .project(camera);
+    const transform = insertButtonTransform(
+      (-this._tmpV.y * 0.5 + 0.5) * canvas.clientHeight
+    );
+    this._insertObject.visible = true;
+    // Written only when the answer changes: this pass runs up to twice per
+    // rendered frame.
+    if (transform !== this._insertLastTransform) {
+      this._insertLastTransform = transform;
+      this._insertInner.style.transform = transform;
+    }
+    // Names the side to a screen reader, which cannot see which caption the
+    // button is sitting on. Same segment vocabulary as the properties panel's
+    // own length rows. Recomputed every frame but WRITTEN only on a change —
+    // mutating a live aria-label on a focused element re-announces it in some
+    // screen readers.
+    const label = `Insert vertex in segment ${segment + 1}→${((segment + 1) % n) + 1}`;
+    if (label !== this._insertLastLabel) {
+      this._insertLastLabel = label;
+      this._insertInner.title = label;
+      this._insertInner.setAttribute('aria-label', label);
+    }
+  }
+
+  _onInsertClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this._guard(() => this._insertAtSegment(this._revealedSegment()));
+  }
+
+  // The segment the revealed side currently is, DERIVED from live state rather
+  // than read back from what the per-frame pass drew. What was drawn a frame
+  // ago names a pre-insert segment, and every index at or above a new vertex
+  // has shifted — while holding Enter on a focused button repeats the click at
+  // ~30 ms, faster than a frame on a heavy scene. A stale mapping would pass
+  // the bounds check and split the wrong edge, silently.
+  //
+  // Returns undefined when nothing is revealed or the side no longer resolves;
+  // _insertAtSegment refuses both.
+  _revealedSegment() {
+    if (!this._revealedA) return undefined;
+    const segment = segmentForVertexPair(
+      this.vertexEls,
+      this._revealedA,
+      this._revealedB,
+      this._isClosed()
+    );
+    return segment < 0 ? undefined : segment;
+  }
+
+  // Three index spaces meet in this method and each is named for the one it is
+  // in: `segment` indexes edges, `vertexIndex` indexes the shape's vertices
+  // after the insert, and `domIndex` indexes the shape element's DOM children.
+  _insertAtSegment(segment) {
+    // Not "impossible while claimed" but ENFORCED. The buttons are hidden
+    // during a claimed gesture, but the hide is applied by the next render pass
+    // while `claimed` is set inside pointerdown — so a second pointer, or a
+    // keyboard activation, can reach a still-visible button inside that window.
+    // An insert there would refresh the vertex cache mid-gesture, staling the
+    // dragged index and the exempt pairs, and the release would commit a move
+    // against the wrong vertex.
+    if (this.claimed) return;
+    if (segment === undefined || !this.shapeEl) return;
+    const pts = this._localPoints();
+    const n = pts.length;
+    if (n < 2 || segment < 0 || segment >= (this._isClosed() ? n : n - 1)) {
+      return;
+    }
+
+    // The SAME construction the visibility gate used, not a second one. Cloned
+    // because _localPoints returns live object3D.position references and this
+    // array outlives the frame.
+    const { cand, vertexIndex, mid } = insertCandidate(
+      pts.map((q) => q.clone()),
+      segment
+    );
+    // Re-validated at press time rather than trusting the frame's answer: the
+    // visibility answer is up to a frame old, and a press is exactly when being
+    // right matters. The separation clause already passed — the button is
+    // visible — so the only way to reach the flash is a ring that was ALREADY
+    // invalid before the press, which is the case the button is kept for
+    // instead of hidden. No exempt pairs: a set built for the index being
+    // validated is never consulted, so passing one would read as meaning.
+    if (!validateVertexEdit(cand, this._isClosed(), vertexIndex, null)) {
+      this._flashRefusal();
+      return;
+    }
+
+    const before = new Set(this.vertexEls);
+    const shapeEl = this.shapeEl;
+    const domIndex = this._domIndexAfterVertex(segment);
+    const position = vecToCommitString(mid);
+    try {
+      AFRAME.INSPECTOR.execute('shapevertexinsert', {
+        shapeEl,
+        index: domIndex,
+        position
+      });
+    } catch (error) {
+      console.error('Shape vertex insert failed', error);
+      return;
+    }
+    // execute() emitted the structural change synchronously, so the vertex
+    // cache is already refreshed, the handle pool resized and the styles
+    // re-applied — and the sub-selection cleared, unconditionally, as it is for
+    // every structural change. Re-activating AFTER all of that is what makes
+    // the transfer safe: the clear is not weakened, and the styling coherence
+    // it used to be credited with is really the identity-keyed re-apply that
+    // runs alongside it.
+    const inserted = this.vertexEls.find((el) => !before.has(el));
+    if (!inserted) return;
+    // The ELEMENT is settled; its POSITION is not. insertBefore triggers
+    // A-Frame's connectedCallback, whose component init resolves on a
+    // microtask, so the position attribute the command wrote has not reached
+    // object3D.position yet — it is still the origin. Everything downstream
+    // this frame reads object3D.position, so without this the vertex would be
+    // drawn, measured and validated at the shape's origin for a frame.
+    inserted.object3D.position.copy(mid);
+    this.setActiveVertex(inserted);
+    // The side the button was opened on no longer exists — the new vertex sits
+    // between its two endpoints, so they are no longer adjacent. The per-frame
+    // derivation would reach the same conclusion a frame later; clearing here
+    // means the state is already right for anything else reading it this turn.
+    this.clearRevealedSide();
+  }
+
+  _updateActiveRim() {
+    const mesh = this._activeHandle();
+    if (!mesh) {
+      this._activeRim.visible = false;
+      return;
+    }
+    this._activeRim.visible = true;
+    this._activeRim.position.copy(mesh.position);
+    // copy, not setScalar: the handle's scale is per-axis under a non-uniform
+    // parent scale, and the rim must stay concentric with it.
+    this._activeRim.scale.copy(mesh.scale).multiplyScalar(ACTIVE_RIM_RATIO);
+  }
+
+  _activeHandle() {
+    if (!this.activeVertexEl) return null;
+    const i = this.vertexEls.indexOf(this.activeVertexEl);
+    return i === -1 ? null : this.vertexHandles[i];
+  }
+
+  _onTrashClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this._deleteActiveVertex();
+  }
+
+  // --- delete ------------------------------------------------------------
+
+  _deleteActiveVertex() {
+    const vertexEl = this.activeVertexEl;
+    if (!vertexEl) return;
+    const index = this.vertexEls.indexOf(vertexEl);
+    if (index === -1) {
+      this.setActiveVertex(null);
+      return;
+    }
+
+    if (!validateVertexDelete(this._localPoints(), this._isClosed(), index)) {
+      // In practice this is the crossing-ring refusal: a delete the shape
+      // cannot survive geometrically, where nudging a neighbour makes the very
+      // same delete legal — so it flashes rather than hiding, and the vertex
+      // stays, and stays active.
+      //
+      // The other refusal validateVertexDelete knows about, the two-vertex
+      // floor, no longer arrives here at all: the button is hidden there and
+      // the key escalates to the whole shape. The check stays as the rule's
+      // single home rather than being split across callers.
+      this._flashRefusal();
+      return;
+    }
+
+    this.setActiveVertex(null);
+    try {
+      AFRAME.INSPECTOR.execute('shapevertexremove', { vertexEl });
+    } catch (error) {
+      console.error('Shape vertex delete failed', error);
+    }
+  }
+
+  _flashRefusal() {
+    this._setInvalidSignal(true); // also cancels any flash already running
+    this._invalidFlashTimer = setTimeout(() => {
+      this._invalidFlashTimer = null;
+      this._setInvalidSignal(false);
+    }, INVALID_FLASH_MS);
+  }
+
+  // --- listeners ---------------------------------------------------------
+
+  _addListeners() {
+    // Window CAPTURE throughout: a listener added later on the same element
+    // does not get priority over an earlier one even with capture:true, so only
+    // an ancestor capture listener can pre-empt the canvas listeners of the
+    // A-Frame cursor, the transform gizmo and the camera controls.
+    window.addEventListener('pointerdown', this._onPointerDown, true);
+    window.addEventListener('pointermove', this._onPointerMove, true);
+    window.addEventListener('pointerup', this._onPointerUp, true);
+    window.addEventListener('pointercancel', this._onPointerCancel, true);
+    // The mouse and touch families, not just pointer events: the A-Frame
+    // cursor, the raycaster and both camera-control classes all listen on
+    // mousedown/touchstart, and stopping a pointerdown does nothing to a
+    // separately-dispatched mousedown.
+    //
+    // The DOWN half only. `pointerup` runs before the compatibility `mouseup`
+    // and before `touchend`, and it has already cleared `claimed` by the time
+    // either arrives — so suppressing them was suppressing nothing.
+    //
+    // `touchstart` needs the options form. On window it is PASSIVE by default,
+    // where preventDefault() does nothing and logs an error on every touch of a
+    // claimed drag; the third positional argument sets capture, not passive.
+    // Every other touch listener in the repo binds the canvas, where the
+    // passive default does not apply.
+    window.addEventListener('mousedown', this._onSuppressClaimed, true);
+    window.addEventListener('touchstart', this._onSuppressClaimed, {
+      capture: true,
+      passive: false
+    });
+    // click and dblclick read the LATCH, not `claimed`: the release path clears
+    // `claimed` three events before click arrives. Suppressing them matters
+    // because a double-click on the canvas teleports the camera even when it
+    // hits nothing — so clicking an already-active handle twice would fly the
+    // view away mid-edit.
+    // Ahead of the suppressor, so the two are visibly independent rather than
+    // dependent on which stop-variant the neighbour happens to use.
+    window.addEventListener('click', this._onClickClearReveal, true);
+    window.addEventListener('click', this._onSuppressLatched, true);
+    window.addEventListener('dblclick', this._onSuppressLatched, true);
+    window.addEventListener('keyup', this._onKeyUp, true);
+    window.addEventListener('blur', this._onBlur);
+  }
+
+  _removeListeners() {
+    window.removeEventListener('pointerdown', this._onPointerDown, true);
+    window.removeEventListener('pointermove', this._onPointerMove, true);
+    window.removeEventListener('pointerup', this._onPointerUp, true);
+    window.removeEventListener('pointercancel', this._onPointerCancel, true);
+    window.removeEventListener('mousedown', this._onSuppressClaimed, true);
+    // Removal keys on the capture flag alone, so `true` matches the options
+    // form the add side uses.
+    window.removeEventListener('touchstart', this._onSuppressClaimed, true);
+    window.removeEventListener('click', this._onClickClearReveal, true);
+    window.removeEventListener('click', this._onSuppressLatched, true);
+    window.removeEventListener('dblclick', this._onSuppressLatched, true);
+    window.removeEventListener('keyup', this._onKeyUp, true);
+    window.removeEventListener('blur', this._onBlur);
+  }
+
+  _canvas() {
+    return AFRAME.INSPECTOR?.container ?? AFRAME.scenes?.[0]?.canvas ?? null;
+  }
+
+  _onSuppressClaimed(event) {
+    if (!AFRAME.INSPECTOR?.opened) return;
+    if (!this.claimed) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  _onSuppressLatched(event) {
+    if (!AFRAME.INSPECTOR?.opened) return;
+    if (!this._pressWasClaimed) return;
+    // The latch is only cleared by the NEXT pointerdown, so a click that had no
+    // pointerdown at all — Enter or Space on a focused button, the trash button
+    // included — would otherwise be swallowed by a drag that ended minutes ago.
+    // A click the latch is meant to suppress always targets the canvas, which
+    // is the same condition the press side gates on.
+    if (event.target !== this._canvas()) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  // Any click or tap closes the revealed side's button — on a vertex handle, on
+  // the panel, on empty canvas, on a measurement that is not a control. Two
+  // carve-outs, each with its own job to do.
+  //
+  // A DRAG is not a click, and the gate on that is required rather than
+  // defensive: a press that becomes a drag DOES dispatch a DOM click (the
+  // latched-click suppressor above exists because of it), so without the gate
+  // every orbit would close the button — and changing the camera angle is
+  // exactly what a user is told to do when the measurement they want is behind
+  // a nearer one. The button would vanish on the one gesture prescribed for
+  // reaching it.
+  //
+  // The button's carve-out tests the OUTER element, not the button itself: a
+  // click inside the outer but outside the inner would otherwise close it. The
+  // outer shrink-wraps the button today, so this may currently be unreachable —
+  // but it is correct either way and cheap.
+  //
+  // A CHIP is carved out because this handler runs at window capture and the
+  // panel's handler runs at document bubble, with a microtask checkpoint between
+  // them: clearing here would destroy and rebuild every chip before the panel
+  // set the new reveal, correctly but at two full rebuilds on the commonest
+  // gesture in the feature. Leaving it to the panel makes clicking a chip ONE
+  // transition on the non-hovering path — to a different chip, or to the same
+  // one, which the setter sees as no change at all. On a hovering pointer there
+  // is no reveal to transition between; the press inserts.
+  _onClickClearReveal(event) {
+    if (!AFRAME.INSPECTOR?.opened) return;
+    if (!this._revealedA) return;
+    if (this._windowPress?.wasDrag) return;
+    if (this._insertObject?.element?.contains(event.target)) return;
+    if (event.target?.closest?.('[data-shape-segment]')) return;
+    this.clearRevealedSide();
+  }
+
+  _onPointerDown(event) {
+    // Both of these describe "the most recent pointerdown this listener saw",
+    // so neither may survive a press that was not recorded — which is why they
+    // are ahead of every return, the `opened` gate included. If the counter
+    // stopped advancing with the editor shut, an ordinary canvas click in the
+    // viewer would still satisfy the release-side equality and clear the active
+    // vertex behind the user's back.
+    this.pressGeneration++;
+    this._pressWasClaimed = false;
+    // A second press baseline, recorded wherever the press lands — unlike
+    // canvasPressX/Y, which are canvas-only by design. The click that closes a
+    // revealed button can arrive from anywhere, so the "was that a click or a
+    // drag" verdict it reads has to be measured from anywhere too. Hence above
+    // the canvas and button checks below.
+    //
+    // The primary pointer's primary button only, though — two separate ways the
+    // same re-baselining goes wrong. A second finger going down mid-gesture is a
+    // non-primary pointer; a second mouse button pressed during a drag is the
+    // same pointer pressed again, always primary, so `isPrimary` does not screen
+    // it. Either way the first release would measure its travel from the later
+    // press's start — a short distance — and an orbit would read as a click and
+    // close the button.
+    if (event.isPrimary !== false && event.button === 0) {
+      this._windowPress = {
+        x: event.clientX,
+        y: event.clientY,
+        pointerType: event.pointerType,
+        wasDrag: false
+      };
+    }
+
+    const inspectorOpen = !!AFRAME.INSPECTOR?.opened;
+    const targetIsCanvas = event.target === this._canvas();
+    const isPrimaryButton = event.button === 0 && event.isPrimary !== false;
+    // The reducer's 'ignore' branch, short-circuited here so the hit test below
+    // never runs for a press on the sidebar or the layers panel. Leaving the
+    // trash button and every other DOM control to work untouched is the same
+    // condition.
+    if (!inspectorOpen || !targetIsCanvas || !isPrimaryButton) return;
+
+    // Recorded before any decision to claim: the empty-canvas clear reads these
+    // coordinates on presses that are deliberately never claimed.
+    this.canvasPressX = event.clientX;
+    this.canvasPressY = event.clientY;
+    this.lastRecordedPressId = this.pressGeneration;
+
+    const hit = this._hitTest(event.clientX, event.clientY);
+    this.pressWasHandle = !!hit;
+
+    const decision = decidePress({
+      inspectorOpen,
+      targetIsCanvas,
+      isPrimaryButton,
+      handleHit: !!hit,
+      pressViable: this._preparePress(event, hit)
+    });
+    if (decision !== 'claim') return; // selection and orbit proceed as normal
+
+    this._claimPress(event);
+  }
+
+  // --- the drag ----------------------------------------------------------
+
+  // Build the gesture a claimed press would run, and report whether the press
+  // resolves to a live target at all.
+  //
+  // A press whose plane pick misses or grazes is still VIABLE — it just cannot
+  // drag. The click outcome — sub-selecting the vertex — needs no plane, so the
+  // gesture is built with `plane: null` and the drag branch declines to start.
+  // Declining the whole press instead made a vertex unable to be made active at
+  // a near-horizontal camera, which is the ordinary street-level view over a
+  // horizontal shape.
+  _preparePress(event, hit) {
+    this._pendingGesture = null;
+    if (!hit) return true; // nothing to prepare; the reducer decides on the hit
+
+    const shapeObj = this.shapeEl.object3D;
+    const vertexEl = this.vertexEls[hit.index];
+    if (!vertexEl) return false;
+    const local = vertexEl.object3D.position;
+
+    // The drag plane is the shape's own horizontal plane at this vertex's
+    // height, so a vertex slides within the shape rather than off it. The
+    // normal comes from the WORLD quaternion, matching the world matrix the
+    // coplanar point below is derived from: the local quaternion agrees with it
+    // only while no ancestor is rotated, and a rotated ancestor is exactly the
+    // case the world-matrix derivation is kept for.
+    shapeObj.getWorldQuaternion(this._tmpQuat);
+    this._tmpNormal.set(0, 1, 0).applyQuaternion(this._tmpQuat).normalize();
+    this._tmpV.set(0, local.y, 0).applyMatrix4(this.matrix);
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+      this._tmpNormal,
+      this._tmpV
+    );
+
+    const hitWorld = this._pickOnPlane(
+      event.clientX,
+      event.clientY,
+      plane,
+      this._tmpNormal
+    );
+
+    this._pendingGesture = {
+      vertexEl,
+      index: hit.index,
+      // Null when the cursor ray is edge-on to the plane: claimed as a click,
+      // never entered as a drag.
+      plane: hitWorld ? plane : null,
+      planeNormal: hitWorld ? this._tmpNormal.clone() : null,
+      // Where in the vertex the user grabbed, so it does not jump to the
+      // cursor on the first move.
+      grabOffset: hitWorld
+        ? local.clone().sub(shapeObj.worldToLocal(hitWorld))
+        : null,
+      preDragLocalPos: local.clone(),
+      lastValidLocalPos: null,
+      exemptPairs: null, // taken at claim time, when the indices are settled
+      isDrag: false,
+      // Shift-drag raises/lowers the vertex instead of sliding it in plane
+      // (see _dragMove); presses always start planar and can flip mid-drag.
+      vertical: false
+    };
+    return true;
+  }
+
+  // Swap the active drag between planar (slide in the shape's plane) and
+  // vertical (raise/lower) mid-gesture. The new plane is built through the
+  // vertex's CURRENT world position with a fresh grab offset, so the vertex
+  // never jumps on a mode flip. Vertical mode drags on a camera-facing
+  // vertical plane ("billboard"), whose horizontal normal comes from the
+  // cursor ray itself — looking straight down leaves no usable normal, and
+  // returning false then keeps the previous mode for this frame (you cannot
+  // judge height from a top-down view anyway).
+  _rebuildDragPlane(g, event, vertical) {
+    const shapeObj = this.shapeEl.object3D;
+    shapeObj.updateMatrixWorld();
+    const vertexWorld = g.vertexEl.object3D.getWorldPosition(this._tmpV);
+
+    if (vertical) {
+      const ray = rayFromClientXY(event.clientX, event.clientY);
+      if (!ray) return false;
+      this._tmpNormal.set(-ray.direction.x, 0, -ray.direction.z).normalize();
+      if (
+        !Number.isFinite(this._tmpNormal.x) ||
+        this._tmpNormal.lengthSq() < 0.5
+      ) {
+        return false;
+      }
+    } else {
+      shapeObj.getWorldQuaternion(this._tmpQuat);
+      this._tmpNormal.set(0, 1, 0).applyQuaternion(this._tmpQuat).normalize();
+    }
+
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+      this._tmpNormal,
+      vertexWorld
+    );
+    const hitWorld = this._pickOnPlane(
+      event.clientX,
+      event.clientY,
+      plane,
+      this._tmpNormal
+    );
+    if (!hitWorld) return false;
+
+    g.plane = plane;
+    g.planeNormal = this._tmpNormal.clone();
+    g.grabOffset = g.vertexEl.object3D.position
+      .clone()
+      .sub(shapeObj.worldToLocal(hitWorld));
+    g.vertical = vertical;
+    return true;
+  }
+
+  // The DOM-child index a new vertex inserted after vertex `i` should take.
+  _domIndexAfterVertex(i) {
+    const after = this.vertexEls[i];
+    const at = Array.prototype.indexOf.call(this.shapeEl.children, after);
+    return at === -1 ? this.shapeEl.children.length : at + 1;
+  }
+
+  // The cursor ray's meeting point with `plane`, or null when there is no
+  // usable one. A grazing ray is treated as a MISS rather than as its own case:
+  // intersectPlane happily returns a point kilometres away when the camera is
+  // nearly edge-on to the plane, and holding still is the right response to
+  // both.
+  _pickOnPlane(clientX, clientY, plane, planeNormal) {
+    const ray = rayFromClientXY(clientX, clientY);
+    if (!ray) return null;
+    if (!rayPlaneHitIsUsable(ray.direction, planeNormal)) return null;
+    return intersectPlaneOrNull(clientX, clientY, plane);
+  }
+
+  // The shape's vertex positions in its own frame — the array the pure rules
+  // take. Reused rather than rebuilt, since this runs on every drag frame.
+  _localPoints() {
+    const pts = this._tmpPoints;
+    pts.length = this.vertexEls.length;
+    for (let i = 0; i < this.vertexEls.length; i++) {
+      pts[i] = this.vertexEls[i].object3D.position;
+    }
+    return pts;
+  }
+
+  _isClosed() {
+    const shape = this.shapeEl?.components?.shape;
+    return !!shape && shape.data.closed && this.vertexEls.length >= 3;
+  }
+
+  _dragMove(event) {
+    const g = this._gesture;
+    const shape = this.shapeEl?.components?.shape;
+    if (!g || !shape) return;
+    // No usable drag plane — the cursor ray was edge-on to it at press time, so
+    // there is no grab anchor and a move would have to invent one. The press
+    // stays claimed and stays a click: releasing still sub-selects the vertex.
+    // Returning BEFORE the click-vs-drag threshold is what keeps it a click
+    // however far the pointer wanders.
+    if (!g.plane) return;
+
+    if (!g.isDrag) {
+      const moved = Math.hypot(
+        event.clientX - this.canvasPressX,
+        event.clientY - this.canvasPressY
+      );
+      // Asked per pointer type. A fingertip rolls several pixels during a
+      // deliberate tap, so the mouse threshold classifies ordinary taps as
+      // drags — and a drag release commits a move and sub-selects nothing, so
+      // tapping a vertex to bring up its two measurements instead nudged the
+      // shape and produced no measurements. On touch the threshold is the
+      // handle's own hit radius: a press that never left the handle it started
+      // on is a tap. The cost is that a deliberate touch drag shorter than that
+      // sub-selects instead of moving; drag further and it moves.
+      if (moved <= clickMoveThreshold(event.pointerType)) return;
+      g.isDrag = true;
+      shape.beginEditGesture();
+    }
+
+    // Shift toggles vertical mode (raise/lower) — checked per move so the
+    // modifier can be pressed or released mid-drag. Failing to build the new
+    // plane (top-down camera, grazing ray) keeps the current mode.
+    const wantVertical = !!event.shiftKey;
+    if (wantVertical !== g.vertical) {
+      if (!this._rebuildDragPlane(g, event, wantVertical)) return;
+    }
+
+    const hitWorld = this._pickOnPlane(
+      event.clientX,
+      event.clientY,
+      g.plane,
+      g.planeNormal
+    );
+    if (!hitWorld) return; // hold where it is; never snap to the scene origin
+
+    const local = this.shapeEl.object3D
+      .worldToLocal(hitWorld)
+      .add(g.grabOffset);
+    // A raw object3D write rather than setAttribute: the shape's own system
+    // polls vertex positions every tick, so the tube, the angle readouts, the
+    // area label and the sidebar rows all track the drag for free. The
+    // COMMITTED value goes through a command on release.
+    if (g.vertical) {
+      // height only — sideways cursor motion must not drift the vertex in
+      // plan while the user is eyeballing an elevation
+      g.vertexEl.object3D.position.y = local.y;
+    } else {
+      g.vertexEl.object3D.position.copy(local);
+    }
+
+    const valid = validateVertexEdit(
+      this._localPoints(),
+      this._isClosed(),
+      g.index,
+      g.exemptPairs
+    );
+    if (valid) {
+      if (g.lastValidLocalPos) g.lastValidLocalPos.copy(local);
+      else g.lastValidLocalPos = local.clone();
+    }
+    this._setInvalidSignal(!valid);
+  }
+
+  // The single owner of the invalid signal on this side. Writes through to the
+  // component only on a change, so a drag spent inside an invalid stretch is
+  // not re-setting the same colour every frame.
+  _setInvalidSignal(on) {
+    // Whoever sets the signal next takes ownership of clearing it, so a drag
+    // begun during a refused-delete flash does not have the flash's timeout
+    // clear it out from under the drag — and a second refused delete restarts
+    // the flash rather than stacking a second timer on it.
+    if (this._invalidFlashTimer) {
+      clearTimeout(this._invalidFlashTimer);
+      this._invalidFlashTimer = null;
+    }
+    if (this._invalidSignalOn === !!on) return;
+    this._invalidSignalOn = !!on;
+    const shape = this.shapeEl?.components?.shape;
+    if (shape && !shape.destroyed) shape.setInvalidSignal(!!on);
+  }
+
+  _claimPress(event) {
+    const g = this._pendingGesture;
+    this._gesture = g;
+    this._pendingGesture = null;
+    if (g) {
+      // Taken here rather than when the gesture was prepared, so the pair
+      // indices match the vertex list the drag will actually validate against.
+      // Nothing is excluded: the drag validates the index it is moving, and
+      // that index's pairs are exactly the ones this set exists to exempt.
+      g.exemptPairs = preExistingClosePairs(this._localPoints());
+    }
+    this.claimed = true;
+    this._pressWasClaimed = true;
+    event.preventDefault();
+    event.stopPropagation();
+    const canvas = this._canvas();
+    if (canvas && event.pointerId !== undefined) {
+      try {
+        canvas.setPointerCapture(event.pointerId);
+        this._capturedPointerId = event.pointerId;
+      } catch {
+        this._capturedPointerId = null;
+      }
+    }
+    this._addGestureListeners();
+    // Freezes the camera controls. On touch this is the only orbit defence
+    // there is — the touch path is gated solely on that flag.
+    this.dispatchEvent({ type: 'mouseDown' });
+  }
+
+  // A release over the browser's own chrome — the URL bar, devtools, a second
+  // monitor — delivers no pointerup at all, which would leave the shape red,
+  // the camera frozen and the vertex snapping to the cursor on re-entry. The
+  // pointer capture makes that rare and these make it survivable.
+  //
+  // Both are BACKSTOPS behind the capture rather than the primary defence, and
+  // the mouse one only fires when the capture itself failed — a captured
+  // pointer suppresses `mouseleave` on the canvas by design. There is no touch
+  // equivalent (`touchleave` was removed from the spec and fires nowhere), so
+  // the touch story rests on `pointercancel`, `touchcancel` and the window
+  // blur, all of which are subscribed.
+  _addGestureListeners() {
+    const canvas = this._canvas();
+    if (!canvas) return;
+    canvas.addEventListener('mouseleave', this._onGestureLost);
+    canvas.addEventListener('touchcancel', this._onGestureLost);
+  }
+
+  _removeGestureListeners() {
+    const canvas = this._canvas();
+    if (!canvas) return;
+    canvas.removeEventListener('mouseleave', this._onGestureLost);
+    canvas.removeEventListener('touchcancel', this._onGestureLost);
+  }
+
+  _onGestureLost() {
+    // A cancelled press must not leave a stale click-or-drag verdict behind for
+    // the next click to read.
+    if (this._windowPress) this._windowPress.wasDrag = false;
+    this.abortGesture();
+  }
+
+  _onPointerMove(event) {
+    // The drag branch runs first and is ungated: it only exists while a gesture
+    // the user genuinely started is in flight, which is a narrower bound than
+    // the editor being open.
+    if (this.claimed) {
+      this._guard(() => this._dragMove(event));
+      return;
+    }
+    if (!AFRAME.INSPECTOR?.opened) return;
+    if (event.target !== this._canvas()) return;
+    const hit = this._hitTest(event.clientX, event.clientY);
+    this._setHovered(hit ? hit.mesh : null);
+  }
+
+  // Teardown, so it is NOT gated on the inspector being open — a gesture in
+  // flight when the editor closes has to end, and closing is exactly when no
+  // event arrives to end it.
+  _onPointerUp(event) {
+    // FIRST, ahead of the claimed branch: a claimed vertex drag is precisely a
+    // gesture whose verdict has to be recorded, and that branch returns early.
+    //
+    // A release this layer saw no press for — attached mid-press — leaves the
+    // record null and so leaves no verdict behind, which lands on the same side
+    // as the cancel paths below: the next click closes the button rather than
+    // being swallowed by a drag that was never measured.
+    if (this._windowPress) {
+      this._windowPress.wasDrag =
+        Math.hypot(
+          event.clientX - this._windowPress.x,
+          event.clientY - this._windowPress.y
+        ) > clickMoveThreshold(this._windowPress.pointerType);
+    }
+
+    if (this.claimed) {
+      this._guard(() => this._releaseGesture());
+      return;
+    }
+
+    // Clicking empty space clears the active vertex. This branch is a
+    // BEHAVIOUR rather than teardown, so unlike the rest of this handler it
+    // does check that the editor is open — otherwise an ordinary click in the
+    // viewer would clear the sub-selection behind the user's back, and it would
+    // be gone when they came back.
+    if (!AFRAME.INSPECTOR?.opened) return;
+    if (!this.activeVertexEl) return;
+    if (event.target !== this._canvas()) return;
+    // The listener is on the window, so it fires for a release anywhere in the
+    // document — the sidebar, the layers panel, the delete button itself. Those
+    // presses never reach the press record, so without this the release would
+    // be judged against the PREVIOUS canvas press. That matters: pointerup is
+    // dispatched before click, so a spurious clear here would hide the delete
+    // button before its own click fired — silently swallowing the delete the
+    // user just asked for.
+    if (this.pressGeneration !== this.lastRecordedPressId) return;
+    if (this.pressWasHandle) return;
+    const moved = Math.hypot(
+      event.clientX - this.canvasPressX,
+      event.clientY - this.canvasPressY
+    );
+    // A drag: an orbit, not a click. Asked per pointer type, so a fingertip
+    // rolling a few pixels during a deliberate tap still reads as a tap.
+    if (moved > clickMoveThreshold(event.pointerType)) return;
+    this.setActiveVertex(null);
+  }
+
+  // Esc and Delete on window CAPTURE, which is the codebase's own way of
+  // getting ahead of the global shortcuts — they listen on the window's bubble
+  // phase, and a listener added later on the same target does not win.
+  _onKeyUp(event) {
+    if (isTextFieldFocused()) return;
+
+    if (event.key === 'Escape' || event.keyCode === 27) {
+      // Arm 1 — cancel a drag in flight. Teardown, so it is not gated on the
+      // editor being open. The vertex goes back to where the drag started and
+      // nothing commits: Esc means cancel, and cancel means it did not happen.
+      // The active vertex is deliberately NOT also cleared — one Esc, one
+      // effect, and a second Esc then clears it.
+      if (this.claimed) {
+        this.abortGesture();
+        event.stopPropagation();
+        return;
+      }
+      // Arms 2, 3 and 4 ARE gated. With the editor shut the layer is still
+      // attached, so an ungated arm would clear state from a press in the
+      // viewer — and stopPropagation at window capture swallows Esc app-wide,
+      // where modals and dialogs are listening for it.
+      if (!AFRAME.INSPECTOR?.opened) return;
+      // Arm 2 — close the revealed side's insert button. Ahead of the active
+      // vertex, and below the cancel above it: both states are reachable at
+      // once by the plainest route (click a measurement, then start dragging a
+      // vertex), and cancel has to mean the drag did not happen.
+      if (this._revealedA) {
+        this.clearRevealedSide();
+        event.stopPropagation();
+        return;
+      }
+      // Arm 3 — clear the active vertex.
+      if (this.activeVertexEl) {
+        this.setActiveVertex(null);
+        event.stopPropagation();
+        return;
+      }
+      // Arm 4 — nothing of ours left; fall through and let Esc deselect.
+      return;
+    }
+
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      if (!AFRAME.INSPECTOR?.opened) return;
+      // Swallowed while a press is held: a delete mid-drag would either yank
+      // the dragged vertex or reach the editor's whole-shape delete.
+      if (this.claimed) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      // Swallowed only while Delete means "remove the active vertex".
+      // Otherwise the key is left alone and reaches the editor's whole-shape
+      // delete — which covers both no sub-selection at all and a sub-selection
+      // on a shape at the two-vertex floor, where the vertex cannot go and the
+      // shape is the only thing the press can sensibly mean. Deleting the last
+      // deletable vertex therefore arms the whole-shape delete for the NEXT
+      // press; the confirm dialog on that path is what stands behind it.
+      if (!deleteKeyTargetsVertex(this.activeVertexEl, this.vertexEls.length)) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      this._guard(() => this._deleteActiveVertex());
+    }
+  }
+
+  // The one place a vertex edit reaches history. Everything else — cancel,
+  // blur, Esc, detach, the editor closing — goes through abortGesture(), which
+  // executes no command at all.
+  _releaseGesture() {
+    const g = this._gesture;
+    if (!g) {
+      this.abortGesture();
+      return;
+    }
+
+    if (!g.isDrag) {
+      // A click rather than a drag: the vertex becomes the active one, which is
+      // what puts the delete button on screen and points the Delete key at it.
+      const vertexEl = g.vertexEl;
+      this.abortGesture();
+      if (vertexEl) this.setActiveVertex(vertexEl);
+      return;
+    }
+
+    const final = g.vertexEl.object3D.position.clone();
+    const finalValid = validateVertexEdit(
+      this._localPoints(),
+      this._isClosed(),
+      g.index,
+      g.exemptPairs
+    );
+    const release = resolveDragRelease({
+      preDrag: g.preDragLocalPos,
+      lastValid: g.lastValidLocalPos,
+      finalValid,
+      final
+    });
+    const vertexEl = g.vertexEl;
+    const oldValue = vecToString(g.preDragLocalPos);
+    const value = vecToCommitString(release.value);
+    const action = release.action;
+
+    // Tear everything down BEFORE the command runs. History emits
+    // `historychanged` synchronously from execute(), so any consumer reacting
+    // to it runs inside our own execute() call — clearing first is what stops a
+    // commit being undone by its own side effects. The raw revert abortGesture
+    // performs is not wasted work either: it is what makes the pre-command
+    // state exactly `oldValue`, so undo lands where it should.
+    this.abortGesture();
+
+    if (action !== 'commit') return;
+    try {
+      AFRAME.INSPECTOR.execute('shapevertexmove', {
+        entity: vertexEl,
+        component: 'position',
+        value,
+        oldValue,
+        noSelectEntity: true
+      });
+    } catch (error) {
+      console.error('Shape vertex move failed', error);
+    }
+  }
+
+  // A handler that throws must not strand a claimed gesture: the shape would
+  // stay red, the camera dead and every later press consumed.
+  _guard(fn) {
+    try {
+      fn();
+    } catch (error) {
+      console.error('Shape vertex gesture failed', error);
+      this.abortGesture();
+    }
+  }
+
+  _onPointerCancel() {
+    if (this._windowPress) this._windowPress.wasDrag = false;
+    this.abortGesture();
+  }
+
+  _onBlur() {
+    this.abortGesture();
+  }
+
+  // --- gesture teardown --------------------------------------------------
+
+  /**
+   * End whatever gesture is in flight and leave nothing behind — no red shape,
+   * no frozen camera, no held pointer capture, no orphaned listener.
+   *
+   * Executes NO history command, ever. Seven of its callers are not a release
+   * (cancel, canvas-leave, blur, Esc, detach, dispose, the per-frame hook's
+   * editor-closed edge), and one of those runs from inside another command's
+   * execute(). The commit lives on the release path alone.
+   *
+   * State is cleared ABOVE the pointer-capture release, because releasing a
+   * capture throws when the pointer is already gone — which is precisely the
+   * lost-pointer case the capture exists for, and a throw there would strand
+   * the state this function is the sole owner of.
+   */
+  abortGesture() {
+    if (!this.claimed) return;
+
+    const g = this._gesture;
+    if (g && g.isDrag) {
+      g.vertexEl.object3D.position.copy(g.preDragLocalPos);
+    }
+
+    const shape = this.shapeEl?.components?.shape;
+    if (shape && !shape.destroyed) {
+      shape.setInvalidSignal(false);
+      shape.endEditGesture();
+    }
+    this._invalidSignalOn = false;
+
+    this.claimed = false;
+    this._gesture = null;
+    this._pendingGesture = null;
+    this._removeGestureListeners();
+
+    this.dispatchEvent({ type: 'mouseUp' });
+
+    // Last, so a throw here can strand nothing.
+    const id = this._capturedPointerId;
+    this._capturedPointerId = null;
+    if (id !== null) {
+      const canvas = this._canvas();
+      try {
+        if (canvas?.hasPointerCapture(id)) canvas.releasePointerCapture(id);
+      } catch {
+        // The pointer is already gone; the capture went with it.
+      }
+    }
+  }
+}
+
+// Keys typed into a text field belong to the field, not to the canvas. Same
+// test the draw tool applies before acting on Esc.
+function isTextFieldFocused() {
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = el.tagName;
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    tag === 'SELECT' ||
+    el.isContentEditable
+  );
+}
+
+// A-Frame's position attribute takes an "x y z" string; the command family
+// stores exactly what it is handed, so this is also what undo restores. Full
+// precision, deliberately: this form produces the `oldValue` an undo lands on,
+// and rounding that would move the vertex by up to half a millimetre on a leg
+// the user asked to be exact.
+function vecToString(v) {
+  return `${v.x} ${v.y} ${v.z}`;
+}
+
+// The same, for a value being COMMITTED. Trimmed to millimetres to match what
+// the gizmo writes (viewport.js rounds a dragged transform to 3 dp), so an
+// edited shape's saved markup is not a wall of float noise next to every other
+// position in the scene.
+function vecToCommitString(v) {
+  return `${round3(v.x)} ${round3(v.y)} ${round3(v.z)}`;
+}
+
+function round3(n) {
+  return parseFloat(n.toFixed(3));
+}
+
+// A raised cosine between PULSE_MIN and PULSE_MAX, read from a clock so that
+// calling it twice in one frame gives the same answer.
+export function pulseOpacity(nowMs) {
+  const t = nowMs / 1000;
+  const eased = 0.5 * (1 - Math.cos(2 * Math.PI * PULSE_HZ * t));
+  return PULSE_MIN + (PULSE_MAX - PULSE_MIN) * eased;
+}
+
+export default ShapeVertexControls;

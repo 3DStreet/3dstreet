@@ -1,5 +1,6 @@
 /* global AFRAME */
 import { createRNG } from '../lib/rng';
+import { getCurvedPlacement } from './street-path.js';
 
 AFRAME.registerComponent('street-generated-pedestrians', {
   multiple: true,
@@ -103,12 +104,26 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       const pedestrian = document.createElement('a-entity');
       this.el.appendChild(pedestrian);
 
-      // Set seeded random position within bounds
+      // Set seeded random position within bounds (bent onto the street's
+      // path curve when one is active; RNG call order is unchanged so a
+      // given seed lays out identically straight or curved)
       const position = {
         x: this.getRandomArbitrary(xRange.min, xRange.max),
         y: data.positionY,
         z: zPositions[i]
       };
+      let curveYaw = 0;
+      const bent = getCurvedPlacement(this.el, position.x, position.z);
+      if (bent) {
+        // straight-space pose stamp for lane animators (street-traffic)
+        pedestrian.dataset.straightX = position.x;
+        pedestrian.dataset.straightY = position.y;
+        pedestrian.dataset.straightZ = position.z;
+        position.x = bent.x;
+        position.y += bent.y;
+        position.z = bent.z;
+        curveYaw = bent.yawDeg;
+      }
       pedestrian.setAttribute('position', position);
 
       // Set model variant using seeded random
@@ -119,14 +134,21 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       // the street-generated-clones convention: inbound = 0, outbound = 180
       // (#1282 — inbound was previously the implicit fallthrough, relying on
       // the entity's default rotation of 0).
+      let rotationY = 0;
       if (data.direction === 'none') {
         if (this.rng() < 0.5) {
-          pedestrian.setAttribute('rotation', '0 180 0');
+          rotationY = 180;
         }
       } else if (data.direction === 'outbound') {
-        pedestrian.setAttribute('rotation', '0 180 0');
+        rotationY = 180;
       } else if (data.direction === 'inbound') {
-        pedestrian.setAttribute('rotation', '0 0 0');
+        rotationY = 0;
+      }
+      if (bent) {
+        pedestrian.dataset.straightRotY = rotationY;
+      }
+      if (rotationY !== 0 || curveYaw !== 0) {
+        pedestrian.setAttribute('rotation', `0 ${rotationY + curveYaw} 0`);
       }
 
       // Add metadata

@@ -22,6 +22,11 @@ import {
   buildStoredAttribution
 } from './extractGlbAttribution.js';
 import { optimizeGlb } from './optimizeGlb.js';
+import {
+  isGltfJsonFile,
+  analyzeGltfFile,
+  gltfRejectionMessage
+} from './analyzeGltf.js';
 
 // Absolute client-side per-file ceiling = the top plan's per-file cap (MAX,
 // 5 GB). Type-agnostic; this is only the fast synchronous "obviously too big"
@@ -78,6 +83,18 @@ async function preflightQuota(proposedBytes) {
 export async function uploadAsset(file, { onStatus, onProgress } = {}) {
   const kind = getAssetKind(file);
   if (!kind) return { ok: false, error: `Unsupported file type: ${file.name}` };
+
+  // A .gltf that references sibling files (scene.bin, textures/) can never
+  // render from a single-file upload — reject it up front with conversion
+  // instructions instead of storing a broken asset (#1951). Self-contained
+  // .gltf (embedded data: URIs) proceeds; the optimize worker converts it
+  // to GLB when it can.
+  if (kind === 'glb' && isGltfJsonFile(file)) {
+    const analysis = await analyzeGltfFile(file);
+    if (analysis.status === 'external-refs' || analysis.status === 'invalid') {
+      return { ok: false, error: gltfRejectionMessage(file.name, analysis) };
+    }
+  }
 
   // Enforce one-at-a-time across all upload surfaces (editor + generator).
   const uploadStore = useCurrentUploadStore.getState();

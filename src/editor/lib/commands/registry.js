@@ -23,6 +23,8 @@
 
 import { commandsByType } from './index.js';
 import { nonCommandTools } from './nonCommandTools.js';
+import { TRANSFORM_REFUSED } from '../transformGuard.js';
+import { getEditableEntity } from './llmToolGuards.js';
 
 // class → command type string. Built once from commandsByType.
 const commandTypeByClass = new Map();
@@ -43,7 +45,8 @@ for (const CommandClass of commandTypeByClass.keys()) {
     source: 'command',
     definition: llmTool,
     commandType: commandTypeByClass.get(CommandClass),
-    transformLLMArgs: CommandClass.transformLLMArgs
+    transformLLMArgs: CommandClass.transformLLMArgs,
+    allowRootTarget: !!CommandClass.llmAllowRootTarget
   });
 }
 
@@ -76,22 +79,24 @@ export function getToolDefinitions() {
 /**
  * Resolve string ids in LLM args to live DOM elements before handing the
  * payload to a command. Convention: any `entityId` becomes `entity`, any
- * `parentId` becomes `parentEl`. Throws if a referenced id is missing.
+ * `parentId` becomes `parentEl`. Every lookup goes through
+ * `getEditableEntity`, so a command-backed tool can never target editor
+ * chrome regardless of transport; a command opts into targeting a scene root
+ * itself with `static llmAllowRootTarget = true`.
  *
  * Applied centrally so individual commands don't each repeat the lookup.
  */
-function resolveIdRefs(args) {
+function resolveIdRefs(args, { allowRoot = false } = {}) {
   const out = { ...args };
   if ('entityId' in out) {
-    const el = document.getElementById(out.entityId);
-    if (!el) throw new Error(`Entity with ID ${out.entityId} not found`);
-    out.entity = el;
+    out.entity = getEditableEntity(out.entityId, { allowRoot });
     delete out.entityId;
   }
   if ('parentId' in out) {
-    const el = document.getElementById(out.parentId);
-    if (!el) throw new Error(`Parent with ID ${out.parentId} not found`);
-    out.parentEl = el;
+    out.parentEl = getEditableEntity(out.parentId, {
+      allowRoot: true,
+      role: 'parent'
+    });
     delete out.parentId;
   }
   return out;
@@ -110,11 +115,25 @@ export async function dispatchToolCall(toolName, args, currentUser) {
   }
 
   let payload = args || {};
+  const targetOptions = { allowRoot: entry.allowRootTarget };
   if (entry.transformLLMArgs) {
-    payload = entry.transformLLMArgs(payload);
+    // Pre-resolve the target (same guard as resolveIdRefs) so transforms that
+    // inspect the live entity don't repeat the lookup.
+    const entity =
+      'entityId' in payload
+        ? getEditableEntity(payload.entityId, targetOptions)
+        : null;
+    payload = entry.transformLLMArgs(payload, { entity });
   }
-  payload = resolveIdRefs(payload);
-  AFRAME.INSPECTOR.execute(entry.commandType, payload);
+  payload = resolveIdRefs(payload, targetOptions);
+  const result = AFRAME.INSPECTOR.execute(entry.commandType, payload);
+  if (result === TRANSFORM_REFUSED) {
+    // This function reports success unconditionally, so a refusal has to be
+    // raised here or the model would tell the user it made an edit it did not.
+    throw new Error(
+      `${entry.commandType} refused: the target does not permit this transform`
+    );
+  }
   return `${entry.commandType} executed`;
 }
 

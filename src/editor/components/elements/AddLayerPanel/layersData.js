@@ -106,6 +106,12 @@ export const shapeLayersData = [
     icon: '',
     requiresPro: false,
     handlerFunction: createFunctions.createHighlightRing
+  }),
+  card(m.shapePolylineName, m.shapePolylineDesc, {
+    img: '',
+    icon: '',
+    requiresPro: false,
+    handlerFunction: createFunctions.createShapeEntity
   })
 ].map((layer, index) => ({ ...layer, id: index + 1 }));
 
@@ -137,6 +143,12 @@ export const customLayersData = [
   // Driveable Taxi card intentionally not surfaced yet (model/handling
   // not ready) — the 'taxi' preset, createDriveableTaxi handler, and
   // i18n messages all exist, so restoring it is one card() entry here.
+  card(m.flyableHelicopterName, m.flyableHelicopterDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createFlyableHelicopter
+  }),
   card(m.raceTargetName, m.raceTargetDesc, {
     img: '',
     requiresPro: false,

@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import DEFAULT_COMPONENTS from './DefaultComponents';
 import PropertyRow from './PropertyRow';
+import GeoLocationRow from './GeoLocationRow';
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
 import { expandBatchedMeshesForExport } from '../../../batch-models';
@@ -37,8 +38,13 @@ export default class CommonComponents extends React.Component {
     const entity = this.props.entity;
     // return ['position', 'rotation', 'scale', 'visible']
     return ['position', 'rotation', 'scale'].map((componentName) => {
-      // if entity has managed-street component, then don't show scale
-      if (componentName === 'scale' && entity.components['managed-street']) {
+      // Anything that opts out of scaling (managed streets, shapes) hides the
+      // row: the command layer refuses the write anyway, so showing it would
+      // only offer an edit that bounces back.
+      if (
+        componentName === 'scale' &&
+        entity.hasAttribute('data-transform-no-scale')
+      ) {
         return null;
       }
       const schema = AFRAME.components[componentName].schema;
@@ -50,7 +56,7 @@ export default class CommonComponents extends React.Component {
           z: THREE.MathUtils.radToDeg(entity.object3D.rotation.z)
         };
       }
-      return (
+      const row = (
         <PropertyRow
           key={componentName}
           name={componentName}
@@ -61,6 +67,10 @@ export default class CommonComponents extends React.Component {
           entity={entity}
         />
       );
+      if (componentName !== 'position') return row;
+      // Read-only geographic readout under the position row whenever the
+      // geo layer is live (renders nothing otherwise).
+      return [row, <GeoLocationRow key="geo-location" entity={entity} />];
     });
   }
 

@@ -4,7 +4,7 @@
  * The tier/cycle/token mapping is duplicated across the frontend bundle and the
  * Cloud Functions deployment, which can't share imports:
  *   - PRICING                (src/shared/components/UpgradeModal/pricing.js) — UI
- *   - PRICE_CONFIG           (public/functions/index.js)        — Stripe webhook grant
+ *   - PRICE_CONFIG           (public/functions/stripe.js)       — Stripe webhook grant
  *   - *_MONTHLY_ALLOWANCE    (public/functions/token-management.js) — monthly refill
  *
  * Nothing fails at build time if one drifts from the others; the user just sees
@@ -16,7 +16,7 @@
 import { readFileSync } from 'fs';
 import path from 'path';
 import { describe, it, expect } from 'vitest';
-import { PRICING } from '@shared/components/UpgradeModal/pricing';
+import { PRICING, TOKEN_PACKS } from '@shared/components/UpgradeModal/pricing';
 
 const read = (rel) => readFileSync(path.join(process.cwd(), rel), 'utf8');
 
@@ -41,7 +41,7 @@ describe('plan token amounts stay in sync across deployments', () => {
   });
 
   it('Stripe webhook PRICE_CONFIG grants match PRICING for every tier', () => {
-    const src = read('public/functions/index.js');
+    const src = read('public/functions/stripe.js');
     // Pull each { tier: 'PRO'|'MAX', ... tokens: N } entry from PRICE_CONFIG.
     const entries = [
       ...src.matchAll(/tier:\s*'(PRO|MAX)'[^}]*?tokens:\s*(\d+)/g)
@@ -56,6 +56,32 @@ describe('plan token amounts stay in sync across deployments', () => {
     };
     for (const { tier, tokens } of entries) {
       expect(tokens).toBe(expected[tier]);
+    }
+  });
+});
+
+describe('one-time token packs stay in sync across deployments (#1374)', () => {
+  // Parse the server-side TOKEN_PACKS entries out of token-packs.js as text —
+  // same approach as above, since the functions deployment can't be imported.
+  const serverPacks = [
+    ...read('public/functions/token-packs.js').matchAll(
+      /id:\s*'([\w-]+)'[^}]*?tokens:\s*(\d+)[^}]*?priceUsd:\s*(\d+)/gs
+    )
+  ].map((m) => ({ id: m[1], tokens: Number(m[2]), priceUsd: Number(m[3]) }));
+
+  it('client TOKEN_PACKS matches the webhook grant amounts', () => {
+    expect(serverPacks.length).toBe(TOKEN_PACKS.length);
+    for (const pack of TOKEN_PACKS) {
+      const server = serverPacks.find((p) => p.id === pack.id);
+      expect(server, `server pack '${pack.id}' missing`).toBeTruthy();
+      expect(server.tokens).toBe(pack.tokens);
+      expect(server.priceUsd).toBe(pack.price);
+    }
+  });
+
+  it('every pack is flat $0.10/token — no volume discount (v1)', () => {
+    for (const pack of TOKEN_PACKS) {
+      expect(pack.price).toBe(pack.tokens * 0.1);
     }
   });
 });

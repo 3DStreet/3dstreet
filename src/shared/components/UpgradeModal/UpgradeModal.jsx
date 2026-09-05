@@ -26,8 +26,9 @@ import { useAuthContext } from '@shared/contexts';
 import EmbeddedCheckout from '@shared/components/EmbeddedCheckout';
 import { openBillingPortal } from '@shared/utils/billing';
 import { getPaywallSurface } from './paywallSurfaces';
-import { PRICING, TOKEN_FEATURE_LINE } from './pricing';
+import { PRICING, TOKEN_FEATURE_KEY } from './pricing';
 import { formatCurrency, getPeriodSuffix } from '@shared/utils/format';
+import { useSharedMessages } from '@shared/i18n/sharedMessages';
 import styles from './UpgradeModal.module.scss';
 
 // Stripe price IDs by tier + billing cycle. Injected at build time by
@@ -45,13 +46,14 @@ const PRICE_IDS = {
   }
 };
 
-// Single source of truth for the Pro feature list — shown once, no duplication.
-const PLAN_FEATURES = [
-  'Download JPEG snapshots without watermark',
-  'Unlimited geospatial maps & location changes',
-  'HD renders, AR-ready glTF & video export',
-  'Import custom 3D models & SVG / glTF files',
-  TOKEN_FEATURE_LINE
+// Single source of truth for the Pro feature list — shown once, no
+// duplication. sharedMessages ids, resolved with the live locale at render.
+const DEFAULT_FEATURE_IDS = [
+  'featWatermark',
+  'featGeoUnlimited',
+  'featHdRenders',
+  'featCustomModels',
+  TOKEN_FEATURE_KEY
 ];
 
 const StarIcon = () => (
@@ -107,9 +109,11 @@ const UpgradeModal = ({
   onAlreadyPro,
   verifyPurchase,
   onSuccess,
-  successTitle = 'Welcome to Pro!',
-  successMessage = 'Pro features are unlocked on your account.',
-  successCta = 'Continue',
+  // Success copy: callers may pass their own (e.g. the generator); when
+  // omitted, localized defaults are resolved in render below.
+  successTitle,
+  successMessage,
+  successCta,
   // Deep-link activation (e.g. docs pricing "Go Max" → #payment-max-annual):
   // preselect the billing cycle and auto-advance straight to that tier's
   // checkout, honoring the choice the user already made on the pricing page.
@@ -119,8 +123,9 @@ const UpgradeModal = ({
   initialCycle = 'monthly'
 }) => {
   const surface = getPaywallSurface(surfaceKey);
-  const features = surface?.features || PLAN_FEATURES;
+  const featureIds = surface?.featureIds || DEFAULT_FEATURE_IDS;
   const { currentUser } = useAuthContext();
+  const t = useSharedMessages();
   const [modalState, setModalState] = useState('pricing');
   // 'pricing' | 'checkout' | 'has-subscription'
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -324,7 +329,7 @@ const UpgradeModal = ({
   // Shared Pro feature list shown once above the tier cards. Each card carries
   // its own token count + storage (Pro vs Max), so drop the generic token line
   // here to avoid repeating it.
-  const sharedFeatures = features.filter((f) => f !== TOKEN_FEATURE_LINE);
+  const sharedFeatureIds = featureIds.filter((id) => id !== TOKEN_FEATURE_KEY);
   const proPlan = PRICING.pro[billingCycle];
   const maxPlan = PRICING.max[billingCycle];
 
@@ -332,11 +337,14 @@ const UpgradeModal = ({
   // Pro keeps the caller-supplied copy (e.g. the generator's custom strings);
   // Max — which no caller passes copy for — gets its own title + message.
   const checkoutSuccessTitle =
-    selectedTier === 'max' ? 'Welcome to Max!' : successTitle;
+    selectedTier === 'max'
+      ? t('welcomeToMax')
+      : successTitle || t('welcomeToPro');
   const checkoutSuccessMessage =
     selectedTier === 'max'
-      ? 'Max features are unlocked on your account.'
-      : successMessage;
+      ? t('maxUnlocked')
+      : successMessage || t('proUnlocked');
+  const checkoutSuccessCta = successCta || t('continueCta');
 
   // One tier card: price, billing-cycle detail, perks, and a tier-specific CTA.
   // Billing cycle is the single toggle above; the card just reprices off it.
@@ -353,7 +361,7 @@ const UpgradeModal = ({
       </div>
       <div className={styles.planCycleDetail}>{planData.cycleDetail}</div>
       <ul className={styles.planPerks}>
-        <li>{planData.tokens} AI tokens / month</li>
+        <li>{t('planTokensPerMonth', { tokens: planData.tokens })}</li>
         {perks.map((p) => (
           <li key={p}>{p}</li>
         ))}
@@ -363,9 +371,23 @@ const UpgradeModal = ({
         className={styles.planCta}
         onClick={() => handleGoPro(tier)}
       >
-        Go {tier === 'max' ? 'Max' : 'Pro'}
+        {t('goTier', { tier: tier === 'max' ? 'Max' : 'Pro' })}
       </button>
     </div>
+  );
+
+  // Soft-decline CTA (e.g. "Download now with watermark"). Rendered in both
+  // the signed-in and signed-out branches: the free path must not require
+  // an account (#1943 — signed-out users saw only sign-in/upgrade and could
+  // not download at all).
+  const secondaryCta = surface?.secondaryCtaLabelId && onSecondaryCta && (
+    <button
+      type="button"
+      className={styles.ctaButtonSecondary}
+      onClick={onSecondaryCta}
+    >
+      {t(surface.secondaryCtaLabelId)}
+    </button>
   );
 
   const renderPricing = () => (
@@ -376,22 +398,24 @@ const UpgradeModal = ({
             <div className={styles.surfaceCard}>
               <div className={styles.surfaceIcon}>{surface.icon}</div>
               <div className={styles.surfaceText}>
-                <div className={styles.surfaceTitle}>{surface.title}</div>
-                <div className={styles.surfaceSubtitle}>{surface.subtitle}</div>
+                <div className={styles.surfaceTitle}>{t(surface.titleId)}</div>
+                <div className={styles.surfaceSubtitle}>
+                  {t(surface.subtitleId)}
+                </div>
               </div>
             </div>
             <button
               className={styles.closeButton}
               onClick={handleClose}
-              aria-label="Close"
+              aria-label={t('close')}
             >
               <CloseIcon />
             </button>
           </div>
 
           <div className={styles.pricingTitleBlock}>
-            <h2 className={styles.pricingTitle}>{surface.headline}</h2>
-            <p className={styles.pricingSubtitle}>{surface.description}</p>
+            <h2 className={styles.pricingTitle}>{t(surface.headlineId)}</h2>
+            <p className={styles.pricingSubtitle}>{t(surface.descriptionId)}</p>
           </div>
         </>
       ) : (
@@ -403,17 +427,15 @@ const UpgradeModal = ({
             <button
               className={styles.closeButton}
               onClick={handleClose}
-              aria-label="Close"
+              aria-label={t('close')}
             >
               <CloseIcon />
             </button>
           </div>
 
           <div className={styles.pricingTitleBlock}>
-            <h2 className={styles.pricingTitle}>Upgrade to Pro</h2>
-            <p className={styles.pricingSubtitle}>
-              Unlock the full 3DStreet toolkit.
-            </p>
+            <h2 className={styles.pricingTitle}>{t('upgradeToPro')}</h2>
+            <p className={styles.pricingSubtitle}>{t('unlockToolkit')}</p>
           </div>
         </>
       )}
@@ -421,10 +443,10 @@ const UpgradeModal = ({
       <div className={styles.divider} />
 
       <ul className={styles.featureList}>
-        {sharedFeatures.map((f) => (
-          <li key={f}>
+        {sharedFeatureIds.map((id) => (
+          <li key={id}>
             <CheckIcon />
-            <span>{f}</span>
+            <span>{t(id)}</span>
           </li>
         ))}
       </ul>
@@ -439,7 +461,7 @@ const UpgradeModal = ({
               className={`${styles.toggleButton} ${billingCycle === 'monthly' ? styles.toggleActive : ''}`}
               onClick={() => setBillingCycle('monthly')}
             >
-              Monthly
+              {t('billingMonthly')}
             </button>
             <button
               type="button"
@@ -448,33 +470,27 @@ const UpgradeModal = ({
               className={`${styles.toggleButton} ${billingCycle === 'yearly' ? styles.toggleActive : ''}`}
               onClick={() => setBillingCycle('yearly')}
             >
-              Yearly <span className={styles.savePill}>Save 30%</span>
+              {t('billingYearly')}{' '}
+              <span className={styles.savePill}>{t('savePill')}</span>
             </button>
           </div>
 
           <div className={styles.planCards}>
-            {renderPlanCard('pro', proPlan, ['5 GB asset storage'])}
-            {renderPlanCard('max', maxPlan, ['25 GB asset storage'])}
+            {renderPlanCard('pro', proPlan, [t('planStorage', { gb: 5 })])}
+            {renderPlanCard('max', maxPlan, [t('planStorage', { gb: 25 })])}
           </div>
 
-          {surface?.secondaryCtaLabel && onSecondaryCta && (
-            <button
-              type="button"
-              className={styles.ctaButtonSecondary}
-              onClick={onSecondaryCta}
-            >
-              {surface.secondaryCtaLabel}
-            </button>
-          )}
+          {secondaryCta}
 
-          <p className={styles.footerNote}>Cancel anytime</p>
+          <p className={styles.footerNote}>{t('cancelAnytime')}</p>
         </>
       ) : (
         <div className={styles.signInPrompt}>
-          <p className={styles.signInCopy}>Sign in to upgrade or access Pro.</p>
+          <p className={styles.signInCopy}>{t('signInToUpgrade')}</p>
           <button type="button" className={styles.ctaButton} onClick={onSignIn}>
-            Sign in to 3DStreet Cloud
+            {t('signInToCloud')}
           </button>
+          {secondaryCta}
         </div>
       )}
     </>
@@ -485,14 +501,14 @@ const UpgradeModal = ({
       <div className={styles.modalHeader}>
         {!paymentSubmitted && (
           <button className={styles.backButton} onClick={handleBackToPricing}>
-            ← Back
+            ← {t('back')}
           </button>
         )}
-        <h2 className={styles.modalTitle}>Complete your upgrade</h2>
+        <h2 className={styles.modalTitle}>{t('checkoutTitleUpgrade')}</h2>
         <button
           className={styles.closeButton}
           onClick={handleClose}
-          aria-label="Close"
+          aria-label={t('close')}
         >
           <CloseIcon />
         </button>
@@ -509,7 +525,7 @@ const UpgradeModal = ({
         onPaymentSubmitted={handlePaymentSubmitted}
         successTitle={checkoutSuccessTitle}
         successMessage={checkoutSuccessMessage}
-        successCta={successCta}
+        successCta={checkoutSuccessCta}
       />
     </>
   );
@@ -517,11 +533,11 @@ const UpgradeModal = ({
   const renderHasSubscription = () => (
     <>
       <div className={styles.modalHeader}>
-        <h2 className={styles.modalTitle}>Active Subscription</h2>
+        <h2 className={styles.modalTitle}>{t('activeSubscriptionTitle')}</h2>
         <button
           className={styles.closeButton}
           onClick={handleClose}
-          aria-label="Close"
+          aria-label={t('close')}
         >
           <CloseIcon />
         </button>
@@ -543,29 +559,26 @@ const UpgradeModal = ({
             <polyline points="22 4 12 14.01 9 11.01"></polyline>
           </svg>
         </div>
-        <h3>You Already Have an Active Subscription</h3>
+        <h3>{t('hasActiveSubscriptionHeading')}</h3>
         <p>
-          You currently have {subscriptionInfo?.subscriptionCount || 1} active
-          subscription{subscriptionInfo?.subscriptionCount > 1 ? 's' : ''}.
+          {subscriptionInfo?.subscriptionCount > 1
+            ? t('subscriptionCountMultiple', {
+                count: subscriptionInfo.subscriptionCount
+              })
+            : t('subscriptionCountSingle')}
         </p>
         {subscriptionInfo?.subscriptionCount > 1 && (
-          <p className={styles.subtext}>
-            Note: You have multiple subscriptions. Please manage them through
-            the billing portal.
-          </p>
+          <p className={styles.subtext}>{t('multipleSubscriptionsNote')}</p>
         )}
-        <p className={styles.subtext}>
-          To add more tokens, manage your subscription, or upgrade/downgrade,
-          please visit the billing portal.
-        </p>
+        <p className={styles.subtext}>{t('billingPortalHint')}</p>
         <button
           className={styles.ctaButton}
           onClick={() => openBillingPortal()}
         >
-          Manage Subscription
+          {t('manageSubscription')}
         </button>
         <button className={styles.ctaButtonSecondary} onClick={handleClose}>
-          Close
+          {t('close')}
         </button>
       </div>
     </>

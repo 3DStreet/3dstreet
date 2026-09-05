@@ -3,6 +3,9 @@
 // a-frame component to generate cloned models along a street
 // this moves logic from aframe-streetmix-parsers into this component
 
+import { MARKING_SURFACE_OFFSET } from '../tested/street-segment-utils';
+import { getRibbonGeometryAttr } from './street-path.js';
+
 // lane-marking yellow shared by every *-yellow striping variant
 const STRIPE_YELLOW = '#f7d117';
 
@@ -35,7 +38,7 @@ AFRAME.registerComponent('street-generated-striping', {
     },
     positionY: {
       // y position of clones along the length
-      default: 0.05, // this is too high, instead this should component should respect elevation to follow street segment
+      default: MARKING_SURFACE_OFFSET,
       type: 'number'
     }
   },
@@ -90,23 +93,44 @@ AFRAME.registerComponent('street-generated-striping', {
       data.striping === 'hatched'
         ? 0
         : ((data.side === 'left' ? -1 : 1) * this.width) / 2;
-    clone.setAttribute('position', {
-      x: positionX,
-      y: data.positionY,
-      z: 0
+    // On a curved street the stripe is a flat ribbon following the path at
+    // this segment's edge (top face only, UV v along the run so the same
+    // repeat math applies); straight streets keep the rotated plane.
+    const ribbonAttr = getRibbonGeometryAttr(this.el, {
+      lateralOffset: positionX,
+      width: stripingWidth,
+      height: 0,
+      sEnd: this.length
     });
-    clone.setAttribute('rotation', {
-      x: -90,
-      y: data.facing,
-      z: 0
-    });
+    // `facing: 180` on the straight plane is a half-turn about Y, which
+    // mirrors the texture across the stripe (solid/dashed sides swap; that is
+    // how managed-street orients striping-solid-dashed). The ribbon's u
+    // always runs left→right along the path, so mirror the texture instead.
+    const mirrored = Math.abs((((data.facing % 360) + 360) % 360) - 180) < 1e-6;
+    const repeatXFinal = ribbonAttr && mirrored ? -repeatX : repeatX;
+    const offset = ribbonAttr && mirrored ? 'offset: 1 0; ' : '';
+    if (ribbonAttr) {
+      clone.setAttribute('position', { x: 0, y: data.positionY, z: 0 });
+    } else {
+      clone.setAttribute('position', {
+        x: positionX,
+        y: data.positionY,
+        z: 0
+      });
+      clone.setAttribute('rotation', {
+        x: -90,
+        y: data.facing,
+        z: 0
+      });
+    }
     clone.setAttribute(
       'material',
-      `src: #${stripingTextureId}; alphaTest: 0; transparent:true; repeat:${repeatX} ${repeatY}; color: ${color}`
+      `src: #${stripingTextureId}; alphaTest: 0; transparent:true; ${offset}repeat:${repeatXFinal} ${repeatY}; color: ${color}`
     );
     clone.setAttribute(
       'geometry',
-      `primitive: plane; width: ${stripingWidth}; height: ${this.length}; skipCache: true;`
+      ribbonAttr ||
+        `primitive: plane; width: ${stripingWidth}; height: ${this.length}; skipCache: true;`
     );
     clone.classList.add('autocreated');
     // clone.setAttribute('data-ignore-raycaster', ''); // i still like clicking to zoom to individual clones, but instead this should show the generated-fixed clone settings

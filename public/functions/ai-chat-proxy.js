@@ -22,10 +22,10 @@
  * the browser (it mutates the live A-Frame scene); this only proxies the model
  * round-trip.
  *
- * SDK: @google/genai with the Vertex backend. gemini-3 preview models are only
- * served on the `global` location (regional endpoints 404); the Gen AI SDK
- * targets it natively. (The older @google-cloud/vertexai SDK is deprecated and
- * scheduled for removal 2026-06-24.)
+ * SDK: @google/genai with the Vertex backend, pointed at the `global` location
+ * (works for GA Gemini models and avoids regional 404s on new releases). (The
+ * older @google-cloud/vertexai SDK is deprecated and was scheduled for removal
+ * 2026-06-24.)
  */
 
 const functions = require('firebase-functions/v1');
@@ -35,14 +35,26 @@ const { GoogleGenAI } = require('@google/genai');
 
 // Locked server-side. The Editor only ever needs text generation; the image
 // model is deliberately unreachable from here.
-const MODEL_ID = 'gemini-3-flash-preview';
-// gemini-3 preview is served on the global endpoint only.
+// GA model (3.8 Flash stable, Sept 2026)
+const MODEL_ID = 'gemini-3.8-flash';
 const LOCATION = 'global';
 
 const MAX_OUTPUT_TOKENS = 4096;
 // Guard against a single giant prompt running up input tokens. The legit prompt
 // (scene JSON + mixin catalog + history) is well under this; it only bounds abuse.
 const MAX_INPUT_CHARS = 300000;
+
+// Optional viewport screenshot attached to the current turn. The client sends
+// a downscaled JPEG (~50–150KB base64), so 400k chars (~300KB decoded) leaves
+// headroom while keeping the image a bounded budget alongside MAX_INPUT_CHARS
+// (an oversized image is dropped, not fatal — the request degrades to
+// text-only, so this can't reject a legitimate message).
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp'
+]);
+const MAX_IMAGE_CHARS = 400000;
 
 // Per-uid sliding-window caps. The Editor chat is interactive — a human sends a
 // handful of messages a minute — so these are generous for real use while
@@ -219,6 +231,27 @@ function sanitizeSchema(schema) {
   return out;
 }
 
+// Validate the optional { mimeType, data } screenshot. Invalid or oversized
+// input is dropped (logged server-side), never fatal — the request degrades to
+// text-only rather than failing the user's message.
+function sanitizeScreenshot(screenshot, uid) {
+  if (!screenshot || typeof screenshot !== 'object') return null;
+  const { mimeType, data } = screenshot;
+  if (
+    !ALLOWED_IMAGE_MIME_TYPES.has(mimeType) ||
+    typeof data !== 'string' ||
+    !data ||
+    data.length > MAX_IMAGE_CHARS ||
+    !/^[A-Za-z0-9+/]+={0,2}$/.test(data)
+  ) {
+    console.warn(
+      `[ai-chat-proxy] dropped invalid screenshot uid=${uid} mime=${mimeType} chars=${typeof data === 'string' ? data.length : 'n/a'}`
+    );
+    return null;
+  }
+  return { mimeType, data };
+}
+
 function sanitizeTools(tools) {
   if (!Array.isArray(tools)) return undefined;
   return tools.map((tool) => ({
@@ -258,6 +291,7 @@ const generateEditorChat = functions
     // the OpenAPI subset the Vertex API accepts. Execution happens in the browser.
     const tools = sanitizeTools(data?.tools);
     const history = data?.history;
+    const screenshot = sanitizeScreenshot(data?.screenshot, uid);
 
     // Cheap input ceiling before we spend a model call.
     const approxChars =
@@ -273,9 +307,19 @@ const generateEditorChat = functions
 
     await enforceRateLimit(uid);
 
+    // Screenshot (when present) rides on the current user turn only — history
+    // stays text-only so payload growth stays bounded across a conversation.
+    const userParts = [];
+    if (screenshot) {
+      userParts.push({
+        inlineData: { mimeType: screenshot.mimeType, data: screenshot.data }
+      });
+    }
+    userParts.push({ text: message });
+
     const contents = [
       ...historyToContents(history),
-      { role: 'user', parts: [{ text: message }] }
+      { role: 'user', parts: userParts }
     ];
 
     const config = { maxOutputTokens: MAX_OUTPUT_TOKENS };

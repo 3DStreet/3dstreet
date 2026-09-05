@@ -2,6 +2,28 @@
 <html>
 
 <head>
+  <!-- WebMCP origin trial (https://developer.chrome.com/origintrials/#/view_trial/4163014905550602241):
+       enables document.modelContext on 3dstreet.app and dev-3dstreet.web.app
+       (+subdomains) in stock Chrome 149-156 without the chrome://flags toggle.
+       Third-party tokens must be injected via script, not a static meta tag.
+       Registered third-party + match-subdomains; tokens are origin-bound (one
+       per origin), public by design, and expire with the trial
+       (<= Nov 16, 2026). See docs/webmcp.md. -->
+  <script>
+    (function () {
+      [
+        // https://3dstreet.app
+        'A9+JhgceM7462UljgPlsJjVWixgI3q/hSzJ/S6SOjNEcsHJAFKRBEcXucWW5rcl37/8KCwRhByYmmrXrK38KrwkAAABzeyJvcmlnaW4iOiJodHRwczovLzNkc3RyZWV0LmFwcDo0NDMiLCJmZWF0dXJlIjoiV2ViTUNQIiwiZXhwaXJ5IjoxNzk0ODczNjAwLCJpc1N1YmRvbWFpbiI6dHJ1ZSwiaXNUaGlyZFBhcnR5Ijp0cnVlfQ==',
+        // https://dev-3dstreet.web.app
+        'A7TVEak5256jDv8jC+fCuwH1jhxAZuruXNasmCKFQsBEoGFZ7NPC/ntGN3v+tEy/wJn/MTNWXW2e31SKw2SnaAkAAAB7eyJvcmlnaW4iOiJodHRwczovL2Rldi0zZHN0cmVldC53ZWIuYXBwOjQ0MyIsImZlYXR1cmUiOiJXZWJNQ1AiLCJleHBpcnkiOjE3OTQ4NzM2MDAsImlzU3ViZG9tYWluIjp0cnVlLCJpc1RoaXJkUGFydHkiOnRydWV9'
+      ].forEach(function (token) {
+        var otMeta = document.createElement('meta');
+        otMeta.httpEquiv = 'origin-trial';
+        otMeta.content = token;
+        document.head.append(otMeta);
+      });
+    })();
+  </script>
   <!-- aframe: this release ships super-three 0.184.0. The npm `three` version in
        package.json must match, so upgrade A-Frame and npm `three` together. -->
   <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
@@ -51,7 +73,7 @@
     reflection device-orientation-permission-ui="enabled: false"
     xr-mode-ui="enabled: false"
     css2d-renderer scene-timer="autoStart: false; format: mm:ss:ff"
-    drive-mode street-traffic>
+    drive-mode fly-mode street-traffic>
     <a-assets>
       <!-- TODO: Add this to repo documentation  -->
       <!-- you can specify a custom asset path using below syntax  -->

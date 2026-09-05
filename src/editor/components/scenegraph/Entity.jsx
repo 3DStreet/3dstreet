@@ -6,6 +6,7 @@ import Events from '../../lib/Events';
 import { removeEntity, cloneEntity } from '../../lib/entity';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import AssetUploadDot from '../elements/AssetUploadDot';
+import EntityContextMenu from './EntityContextMenu';
 import EntityLabel from './EntityLabel';
 import {
   faCaretDown,
@@ -43,10 +44,21 @@ class Entity extends React.Component {
     setInsertionInfo: PropTypes.func,
     onReparentEntity: PropTypes.func,
     canBeDragged: PropTypes.func,
-    canBeDropTarget: PropTypes.func
+    canBeDropTarget: PropTypes.func,
+    // Context menu rename state (owned by SceneGraph)
+    renamingEntity: PropTypes.object,
+    setRenamingEntity: PropTypes.func
   };
 
   onClick = () => this.props.selectEntity(this.props.entity);
+
+  // Select the row being right-clicked before the context menu opens, so the
+  // menu's selection-based actions (cut/copy/paste target) apply to it.
+  onContextMenu = () => {
+    if (!this.props.isSelected) {
+      this.props.selectEntity(this.props.entity);
+    }
+  };
 
   onDoubleClick = () => Events.emit('objectfocus', this.props.entity.object3D);
 
@@ -175,8 +187,10 @@ class Entity extends React.Component {
         ? this.props.insertionInfo.position
         : null;
 
-    // Check if entity can be dragged
-    const canBeDragged = this.props.canBeDragged(entity);
+    // Check if entity can be dragged. Suspended while the row's label is in
+    // inline-rename mode so drag-start can't swallow text selection there.
+    const isRenaming = this.props.renamingEntity === entity;
+    const canBeDragged = this.props.canBeDragged(entity) && !isRenaming;
 
     // Clone and remove buttons if not a-scene.
     const cloneButton =
@@ -266,35 +280,45 @@ class Entity extends React.Component {
     });
 
     return (
-      <div
-        className={className}
-        onClick={this.onClick}
-        onDoubleClick={this.onDoubleClick}
-        id={this.props.id}
-        draggable={canBeDragged}
-        onDragStart={this.onDragStart}
-        onDragEnd={this.onDragEnd}
-        onDragOver={this.onDragOver}
-        onDragLeave={this.onDragLeave}
-        onDrop={this.onDrop}
+      <EntityContextMenu
+        entity={entity}
+        onSelectEntity={this.onContextMenu}
+        onRename={() => this.props.setRenamingEntity(entity)}
       >
-        <span>
-          <span
-            style={{
-              width: `${30 * (this.props.depth - 1)}px`
-            }}
-          />
-          {dragHandle}
-          {visibilityButton}
-          <EntityLabel entity={entity} />
-          <AssetUploadDot entity={entity} />
-          {collapse}
-        </span>
-        <span className="entityActions">
-          {cloneButton}
-          {removeButton}
-        </span>
-      </div>
+        <div
+          className={className}
+          onClick={this.onClick}
+          onDoubleClick={this.onDoubleClick}
+          id={this.props.id}
+          draggable={canBeDragged}
+          onDragStart={this.onDragStart}
+          onDragEnd={this.onDragEnd}
+          onDragOver={this.onDragOver}
+          onDragLeave={this.onDragLeave}
+          onDrop={this.onDrop}
+        >
+          <span>
+            <span
+              style={{
+                width: `${30 * (this.props.depth - 1)}px`
+              }}
+            />
+            {dragHandle}
+            {visibilityButton}
+            <EntityLabel
+              entity={entity}
+              forceEditing={isRenaming}
+              onEditingEnd={() => this.props.setRenamingEntity(null)}
+            />
+            <AssetUploadDot entity={entity} />
+            {collapse}
+          </span>
+          <span className="entityActions">
+            {cloneButton}
+            {removeButton}
+          </span>
+        </div>
+      </EntityContextMenu>
     );
   }
 }

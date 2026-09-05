@@ -1,4 +1,5 @@
 import {
+  canRenameEntity,
   cloneEntity,
   removeSelectedEntity,
   setFocusCameraPose
@@ -20,8 +21,9 @@ import {
 import IntersectionSidebar from './IntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
-import MeasureLineSidebar from './MeasureLineSidebar';
+import ShapeSidebar, { ShapeDrawInstructions } from './ShapeSidebar';
 import DriveControlsSidebar from './DriveControlsSidebar';
+import FlyControlsSidebar from './FlyControlsSidebar';
 import StreetTrafficReplaySidebar from './StreetTrafficReplaySidebar';
 import UserLayersSidebar from './UserLayersSidebar';
 import AdvancedComponents from './AdvancedComponents';
@@ -93,6 +95,7 @@ export default class Sidebar extends React.Component {
     if (!entity) {
       return (
         <div className="properties-empty-state">
+          <ShapeDrawInstructions />
           <FormattedMessage
             id="sidebar.selectObject"
             defaultMessage="Select an object to edit properties."
@@ -101,16 +104,13 @@ export default class Sidebar extends React.Component {
       );
     }
 
-    // The fixed pseudo-layers (environment, reference layers, user layers)
-    // and no-transform entities never had a rename affordance; everything
-    // else gets the inline rename on the title label.
-    const canRename =
-      !['reference-layers', 'environment', 'street-container'].includes(
-        entity.id
-      ) && !entity.hasAttribute('data-no-transform');
+    // Everything except the fixed pseudo-layers and no-transform entities
+    // gets the inline rename on the title label (see canRenameEntity).
+    const canRename = canRenameEntity(entity);
 
     return (
       <div className="properties-panel" tabIndex="0">
+        <ShapeDrawInstructions />
         <div id="layers-title">
           <div className="layersBlock">
             <EntityLabel entity={entity} editable={canRename} />
@@ -211,17 +211,17 @@ export default class Sidebar extends React.Component {
               {entity.getAttribute('managed-street') && (
                 <ManagedStreetSidebar entity={entity} />
               )}
-              {entity.getAttribute('measure-line') && (
+              {entity.getAttribute('drive-controls') && (
                 <>
-                  <MeasureLineSidebar entity={entity} />
+                  <DriveControlsSidebar entity={entity} />
                   <div className="propertyRow">
                     <AdvancedComponents entity={entity} />
                   </div>
                 </>
               )}
-              {entity.getAttribute('drive-controls') && (
+              {entity.getAttribute('fly-controls') && (
                 <>
-                  <DriveControlsSidebar entity={entity} />
+                  <FlyControlsSidebar entity={entity} />
                   <div className="propertyRow">
                     <AdvancedComponents entity={entity} />
                   </div>
@@ -235,8 +235,9 @@ export default class Sidebar extends React.Component {
                   </div>
                 </>
               )}
-              {!entity.getAttribute('measure-line') &&
-                !entity.getAttribute('drive-controls') &&
+              {entity.getAttribute('shape') && <ShapeSidebar entity={entity} />}
+              {!entity.getAttribute('drive-controls') &&
+                !entity.getAttribute('fly-controls') &&
                 !entity.getAttribute('street-traffic-replay') && (
                   <ComponentsContainer entity={entity} />
                 )}

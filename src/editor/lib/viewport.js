@@ -1,7 +1,9 @@
 import { TransformControls } from './TransformControls.js';
 // eslint-disable-next-line no-unused-vars
 import EditorControls from './EditorControls.js';
-import { MeasureLineControls } from './MeasureLineControls.js';
+import { ShapeVertexControls } from './ShapeVertexControls.js';
+import { StreetNodeControls } from './gizmos/StreetNodeControls.js';
+import { SegmentWidthControls } from './gizmos/SegmentWidthControls.js';
 import InfiniteGridHelper from './InfiniteGridHelper.js';
 import {
   ExperimentalControls,
@@ -33,6 +35,7 @@ class OrientedBoxHelper extends THREE.BoxHelper {
   constructor(object, color = 0xffff00, fill = false) {
     super(object, color);
     this.material.linewidth = 3;
+    this.helperColor = color;
     if (fill) {
       // Mesh with BoxGeometry and Semi-transparent Material
       const boxFillGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -46,6 +49,80 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       this.boxFill = boxFill;
       this.add(boxFill);
     }
+  }
+
+  // --- Curved-lane conforming highlight -------------------------------
+  // A curved street segment's AABB covers the whole sweep of the curve, so
+  // the box hover/selection highlight reads as a giant unrelated rectangle.
+  // When the tracked entity carries a `street-ribbon` geometry (a curved
+  // lane surface) — or is a path-following managed street, whose segments
+  // do — render translucent overlays of the actual ribbon meshes instead of
+  // the box. Straight entities keep the box exactly as before.
+
+  getConformingSourceMeshes() {
+    const el = this.object?.el;
+    if (!el || typeof el.getAttribute !== 'function') return null;
+    if (el.getAttribute('geometry')?.primitive === 'street-ribbon') {
+      const mesh = el.getObject3D('mesh');
+      return mesh ? [mesh] : null;
+    }
+    if (el.components?.['managed-street']?.streetCurve) {
+      const meshes = [];
+      el.querySelectorAll(':scope > [street-segment]').forEach((segEl) => {
+        if (segEl.getAttribute('geometry')?.primitive === 'street-ribbon') {
+          const mesh = segEl.getObject3D('mesh');
+          if (mesh) meshes.push(mesh);
+        }
+      });
+      return meshes.length > 0 ? meshes : null;
+    }
+    return null;
+  }
+
+  updateConformingHighlight() {
+    const sources = this.getConformingSourceMeshes();
+    const showBox = !sources;
+    this.material.visible = showBox;
+    if (this.boxFill) this.boxFill.visible = showBox;
+    if (!sources) {
+      if (this.conformGroup) this.conformGroup.visible = false;
+      return;
+    }
+    if (!this.conformGroup) {
+      this.conformGroup = new THREE.Group();
+      this.add(this.conformGroup);
+      this.conformMaterial = new THREE.MeshBasicMaterial({
+        color: this.helperColor,
+        transparent: true,
+        // the selection helper draws lines only (no fill); keep its
+        // conforming overlay lighter so a selected lane isn't a solid slab
+        opacity: this.boxFill ? 0.3 : 0.2,
+        depthTest: false
+      });
+      this.conformInverse = new THREE.Matrix4();
+    }
+    this.conformGroup.visible = true;
+    while (this.conformGroup.children.length < sources.length) {
+      const overlay = new THREE.Mesh(undefined, this.conformMaterial);
+      overlay.matrixAutoUpdate = false;
+      overlay.raycast = function () {}; // never pickable
+      this.conformGroup.add(overlay);
+    }
+    while (this.conformGroup.children.length > sources.length) {
+      this.conformGroup.remove(
+        this.conformGroup.children[this.conformGroup.children.length - 1]
+      );
+    }
+    // The helper's own matrix was just set to the tracked object's world
+    // pose (see update()); overlays borrow each source mesh's geometry and
+    // compensate so they land exactly on the mesh in world space.
+    this.conformInverse.copy(this.matrix).invert();
+    sources.forEach((source, i) => {
+      const overlay = this.conformGroup.children[i];
+      overlay.geometry = source.geometry;
+      source.updateWorldMatrix(true, false);
+      overlay.matrix.multiplyMatrices(this.conformInverse, source.matrixWorld);
+    });
   }
 
   update() {
@@ -170,6 +247,10 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       this.object.getWorldPosition(this.position);
       this.updateMatrix();
     }
+
+    // After the box (and this helper's own world pose) are settled, swap in
+    // the conforming overlay for curved street surfaces.
+    this.updateConformingHighlight();
   }
 
   dispose() {
@@ -177,6 +258,11 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     if (this.boxFill) {
       this.boxFill.geometry.dispose();
       this.boxFill.material.dispose();
+    }
+    if (this.conformMaterial) {
+      // overlay geometries are borrowed from the live meshes — only the
+      // shared material is ours to dispose
+      this.conformMaterial.dispose();
     }
   }
 }
@@ -259,6 +345,15 @@ export function Viewport(inspector) {
   hoverBox.visible = false;
   sceneHelpers.add(hoverBox);
 
+  // A street bending along / straightening off its path re-meshes segments
+  // in place — no mouseenter or entityupdate fires, so a helper snapshotted
+  // before the change keeps showing the stale (box vs conforming) highlight.
+  // The event bubbles from the street; refresh whichever helpers are live.
+  sceneEl.addEventListener('street-curve-changed', () => {
+    if (hoverBox.visible && hoverBox.object) hoverBox.update();
+    if (selectionBox.visible && selectionBox.object) selectionBox.update();
+  });
+
   Events.on('raycastermouseenter', (el) => {
     // update hoverBox to match el.object3D bounding box
     //
@@ -298,29 +393,47 @@ export function Viewport(inspector) {
         inspector.helpers[node.uuid].update();
       }
     });
-
-    // Force an update of the measure line controls -- needed after undo/redo to update control points
-    if (
-      object.el &&
-      object.el.components &&
-      object.el.components['measure-line']
-    ) {
-      if (measureLineControls.object === object.el) {
-        measureLineControls.update();
-      }
-    }
   }
 
   const camera = inspector.camera;
   const transformControls = new TransformControls(camera, inspector.container);
   transformControls.size = 0.75;
 
-  const measureLineControls = new MeasureLineControls(
+  // A second helper, alongside the transform controls: vertex handles for the selected
+  // shape. It reads the inspector camera fresh each frame rather than being
+  // handed one, so it needs no entry in the cameratoggle handler below.
+  const shapeVertexControls = new ShapeVertexControls();
+  // Hung on the inspector for the same reason `inspector.controls` is (see the
+  // assignment further down this file): a second editor surface — the shape
+  // properties panel — needs to know which vertex is sub-selected and which
+  // side has an insert button open, so that it can keep the right length
+  // captions on screen and mark the right one. It reads the live values through
+  // getActiveVertex() and getRevealedSide(), and only through them, the way
+  // `inspector.controls` is consumed through methods rather than fields.
+  //
+  // Ownership, stated exactly: this object is the only owner of both, and the
+  // only writer of the active vertex. The revealed side is written from outside
+  // through exactly one entry, activateSide(), which the panel calls because
+  // only it can resolve a clicked caption back to the two vertices it runs
+  // between — it built the caption. It delegates internally to revealSide() when
+  // the press has no hover behind it. Both validate against this layer's own
+  // vertex list and refuse a pair they cannot resolve, so there is still no
+  // state here that this layer would have to defend, no copy to keep in step and
+  // nothing to invalidate.
+  inspector.shapeVertexControls = shapeVertexControls;
+
+  // --- Street gizmos (#1096 #1218) --------------------------------------
+  // Additive handles for managed streets and their segments, always on.
+  // attachControlsForSelection() below is the single routing table deciding
+  // which controls attach to the current selection.
+  const streetNodeControls = new StreetNodeControls(
     camera,
     inspector.container
   );
-  measureLineControls.visible = false;
-  measureLineControls.enabled = true;
+  const segmentWidthControls = new SegmentWidthControls(
+    camera,
+    inspector.container
+  );
 
   // Pose snapshot taken on the gizmo's mouseDown, BEFORE TransformControls
   // mutates the object. The undo command can't capture this itself:
@@ -412,38 +525,53 @@ export function Viewport(inspector) {
     controls.enabled = true;
   });
 
-  measureLineControls.addEventListener('mouseDown', () => {
+  shapeVertexControls.addEventListener('mouseDown', () => {
     controls.enabled = false;
   });
 
-  measureLineControls.addEventListener('mouseUp', () => {
+  shapeVertexControls.addEventListener('mouseUp', () => {
     controls.enabled = true;
   });
 
-  measureLineControls.addEventListener('objectChange', (evt) => {
-    if (!measureLineControls.object) return;
-
-    const entity = measureLineControls.object;
-    const measureLine = entity.components['measure-line'];
-    if (!measureLine) return;
-
-    // Update the measure-line component data
-    const startPoint = measureLineControls.handles.start.position;
-    const endPoint = measureLineControls.handles.end.position;
-
-    // Instead of sending two separate updates, send a single update with both properties
-    inspector.execute('entityupdate', {
-      component: 'measure-line',
-      entity: entity,
-      value: {
-        start: `${startPoint.x} ${startPoint.y} ${startPoint.z}`,
-        end: `${endPoint.x} ${endPoint.y} ${endPoint.z}`
+  // The street gizmos report the whole drag once on mouseUp via 'commitDrag'
+  // — turned into a single undo step here. Width bars mutate attributes live
+  // during the drag; endpoint nodes preview with an outline and apply on
+  // release (#1942).
+  [streetNodeControls, segmentWidthControls].forEach((streetControls) => {
+    streetControls.addEventListener('mouseDown', () => {
+      controls.enabled = false;
+      hoverBox.visible = false;
+    });
+    streetControls.addEventListener('mouseUp', () => {
+      controls.enabled = true;
+    });
+    streetControls.addEventListener('objectChange', () => {
+      const object = streetControls.object;
+      if (!object) return;
+      selectionBox.setFromObject(object);
+      updateHelpers(object);
+    });
+    streetControls.addEventListener('commitDrag', (evt) => {
+      const changed = evt.changes.filter((c) => c.value !== c.oldValue);
+      if (changed.length === 0) return;
+      const commands = changed.map((c) => [
+        'entityupdate',
+        { entity: evt.entity, ...c }
+      ]);
+      if (commands.length === 1) {
+        inspector.execute('entityupdate', commands[0][1]);
+      } else {
+        inspector.execute('multi', commands);
       }
     });
   });
 
   sceneHelpers.add(transformControls.getHelper());
-  sceneHelpers.add(measureLineControls);
+  // Added once, here — attach()/detach() only arm and disarm it, they do not
+  // re-add it.
+  sceneHelpers.add(shapeVertexControls);
+  sceneHelpers.add(streetNodeControls);
+  sceneHelpers.add(segmentWidthControls);
 
   Events.on('entityupdate', (detail) => {
     const object = detail.entity.object3D;
@@ -500,7 +628,8 @@ export function Viewport(inspector) {
         sceneEl.camera = perspective;
         inspector.camera = perspective;
         transformControls.camera = perspective;
-        measureLineControls.camera = perspective;
+        streetNodeControls.camera = perspective;
+        segmentWidthControls.camera = perspective;
         controls.setCamera(perspective);
         updateAspectRatio();
         controls.handlePlanViewRequest();
@@ -509,13 +638,16 @@ export function Viewport(inspector) {
     }
     controls.setCamera(data.camera);
     transformControls.camera = data.camera;
-    measureLineControls.camera = data.camera;
+    streetNodeControls.camera = data.camera;
+    segmentWidthControls.camera = data.camera;
     updateAspectRatio();
   });
 
   function enableControls() {
     mouseCursor.enable();
     transformControls.enabled = true;
+    streetNodeControls.enabled = true;
+    segmentWidthControls.enabled = true;
     controls.enabled = true;
   }
   enableControls();
@@ -524,7 +656,63 @@ export function Viewport(inspector) {
     controls.center.set(0, 0, 0);
   });
 
+  function detachAllTransformControls() {
+    transformControls.detach();
+    streetNodeControls.detach();
+    segmentWidthControls.detach();
+  }
+
+  function attachStockGizmo(el) {
+    transformControls.attach(el.object3D);
+    // Selecting a no-scale entity while in scale mode: fall back to
+    // translate so the gizmo never scales it.
+    if (
+      transformControls.mode === 'scale' &&
+      el.hasAttribute('data-transform-no-scale')
+    ) {
+      transformControls.setMode('translate');
+      transformControls.showX = true;
+      transformControls.showY = true;
+      transformControls.showZ = true;
+    }
+  }
+
+  // Single routing table for which controls attach to the current selection.
+  // The stock TransformControls gizmo attaches to every transformable entity
+  // exactly as before; the street gizmos (#1096 #1218) are ADDITIVE handles
+  // layered on top for managed streets and their segments — never a
+  // replacement for the standard move/rotate gizmo.
+  function attachControlsForSelection() {
+    detachAllTransformControls();
+    const el = inspector.selectedEntity;
+    if (
+      !el ||
+      !inspector.cursor.isPlaying ||
+      el.hasAttribute('data-no-transform')
+    ) {
+      return;
+    }
+    attachStockGizmo(el);
+    if (el.components['managed-street']) {
+      streetNodeControls.attach(el);
+    } else if (
+      el.components['street-segment'] &&
+      el.parentElement?.components?.['managed-street']
+    ) {
+      segmentWidthControls.attach(el);
+    }
+  }
+
   Events.on('transformmodechange', (mode) => {
+    // Some entities opt out of scale (`data-transform-no-scale`) — shapes and
+    // managed streets, whose size is owned by their own editing affordances
+    // (vertex handles; segment widths). Fall back to translate for those.
+    if (
+      mode === 'scale' &&
+      inspector.selectedEntity?.hasAttribute?.('data-transform-no-scale')
+    ) {
+      mode = 'translate';
+    }
     transformControls.setMode(mode);
     // Restrict rotation to the Y axis only.
     if (mode === 'rotate') {
@@ -538,18 +726,8 @@ export function Viewport(inspector) {
     }
 
     // If there's a selected entity, reattach the appropriate controls
-    if (
-      inspector.selectedEntity &&
-      inspector.cursor.isPlaying &&
-      !inspector.selectedEntity.hasAttribute('data-no-transform')
-    ) {
-      if (inspector.selectedEntity.components['measure-line']) {
-        transformControls.detach();
-        measureLineControls.attach(inspector.selectedEntity);
-      } else {
-        measureLineControls.detach();
-        transformControls.attach(inspector.selectedEntity.object3D);
-      }
+    if (inspector.selectedEntity) {
+      attachControlsForSelection();
     }
   });
 
@@ -565,14 +743,57 @@ export function Viewport(inspector) {
     transformControls.setSpace(space);
   });
 
+  // Torn down and re-armed on every selection change, so the listener never
+  // outlives the selection that installed it or doubles up on reselect.
+  let detachShapeRederiveListener = null;
+
   Events.on('objectselect', (object) => {
     hoverBox.visible = false;
     selectionBox.visible = false;
-    transformControls.detach();
-    measureLineControls.detach();
+    detachAllTransformControls();
+    // Not part of detachAllTransformControls(): the router calls that at the
+    // top of attachControlsForSelection(), which runs AFTER the shape branch
+    // below has armed the vertex handles — folding this in would disarm them.
+    shapeVertexControls.detach();
+
+    if (detachShapeRederiveListener) {
+      detachShapeRederiveListener();
+      detachShapeRederiveListener = null;
+    }
 
     if (object && object.el) {
-      if (object.el.getObject3D('mesh') || isBatched(object.el)) {
+      // Must precede the getObject3D('mesh') branch: a shape HAS a `mesh` slot,
+      // so it would otherwise take the generic immediate-sizing path — which is
+      // wrong while that slot is still empty.
+      if (object.el.components && object.el.components.shape) {
+        shapeVertexControls.attach(object.el);
+        // A shape installs its (empty) mesh group at init and fills it a frame
+        // later, so sizing the box now measures nothing — and an empty Box3
+        // leaves OrientedBoxHelper holding its previous geometry, i.e. the last
+        // selection's box parked at this shape's position. Re-size on the
+        // shape's own re-derive instead, the same shape of fix as the
+        // async-glTF branch below. Staying subscribed for the life of the
+        // selection (rather than one-shot) also keeps the box honest when a
+        // vertex moves underneath it.
+        const el = object.el;
+        const onRederived = () => {
+          if (object.parent === null) return; // detached before the frame landed
+          selectionBox.setFromObject(object);
+          selectionBox.visible = true;
+        };
+        el.addEventListener('shape-geometry-changed', onRederived);
+        detachShapeRederiveListener = () =>
+          el.removeEventListener('shape-geometry-changed', onRederived);
+        // Size now only if there IS geometry. On a freshly-created shape there
+        // isn't, and sizing from an empty Box3 would leave the helper showing
+        // the previous selection's box at this shape's transform for a frame —
+        // the exact artefact this branch exists to prevent. The event covers it.
+        const meshGroup = el.getObject3D('mesh');
+        if (meshGroup && meshGroup.children.length > 0) {
+          selectionBox.setFromObject(object);
+          selectionBox.visible = true;
+        }
+      } else if (object.el.getObject3D('mesh') || isBatched(object.el)) {
         // Batched entities have no mesh tree but OrientedBoxHelper falls back to the
         // cached _batchLocalBbox, so we can size the selection immediately.
         selectionBox.setFromObject(object);
@@ -594,16 +815,7 @@ export function Viewport(inspector) {
         selectionBox.visible = true;
       }
 
-      if (
-        inspector.cursor.isPlaying &&
-        !object.el.hasAttribute('data-no-transform')
-      ) {
-        if (object.el.components['measure-line']) {
-          measureLineControls.attach(object.el);
-        } else {
-          transformControls.attach(object);
-        }
-      }
+      attachControlsForSelection();
     }
   });
 
@@ -707,6 +919,8 @@ export function Viewport(inspector) {
         // borrow the rig via mode-manager and give it back.
         mouseCursor.disable();
         transformControls.enabled = false;
+        streetNodeControls.enabled = false;
+        segmentWidthControls.enabled = false;
         controls.enabled = true;
         // The Viewer is always perspective — leave an ortho editing view.
         if (inspector.camera.isOrthographicCamera) {

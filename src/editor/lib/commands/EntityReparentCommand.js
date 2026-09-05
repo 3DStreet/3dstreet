@@ -2,8 +2,11 @@
 import Events from '../Events.js';
 import { Command } from '../command.js';
 import { createUniqueId } from '../entity.js';
-
 export class EntityReparentCommand extends Command {
+  // Deliberately NOT exposed as an LLM tool (no `static llmTool`): arbitrary
+  // reparenting is not an officially supported user-facing feature yet, and
+  // agent-driven reparents can produce unexpected scene structure. Revisit
+  // once grouping ships as a user-facing feature.
   constructor(editor, payload = null) {
     super(editor);
 

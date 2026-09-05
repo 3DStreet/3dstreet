@@ -1025,6 +1025,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     return this._compass.handleCompassRotate(sign);
   }
 
+  // True while a compass-initiated tween (plan view / align north / ±90°)
+  // is in flight. Lets callers (LLM orientPlanView tool) await the pose.
+  isCompassAnimating() {
+    return this._compass.isCompassAnimating();
+  }
+
   // Mouse gesture entry points. These stay named on the orchestrator (the
   // window listeners bind their identity) but are thin routers over the drag
   // controller: the orchestrator owns only the passive-input guard, the

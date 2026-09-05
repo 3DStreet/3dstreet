@@ -1,5 +1,6 @@
 /* global AFRAME, STREET */
 import { createRNG } from '../lib/rng';
+import { getCurvedPlacement } from './street-path.js';
 
 // Helper function to get base rotation from catalog
 function getBaseRotationFromCatalog(mixinId) {
@@ -283,11 +284,25 @@ AFRAME.registerComponent('street-generated-clones', {
     const clone = document.createElement('a-entity');
 
     clone.setAttribute('mixin', mixinId);
-    clone.setAttribute('position', {
-      x: positionX !== undefined ? positionX : data.positionX,
-      y: data.positionY,
-      z: positionZ
-    });
+    // straight segment-local placement, bent onto the parent street's path
+    // curve when one is active (position remapped, yaw follows the tangent)
+    let x = positionX !== undefined ? positionX : data.positionX;
+    let y = data.positionY;
+    let z = positionZ;
+    let curveYaw = 0;
+    const bent = getCurvedPlacement(this.el, x, z);
+    if (bent) {
+      // stamp the straight-space pose so consumers that animate along the
+      // lane (street-traffic) can advance in straight space and re-bend
+      clone.dataset.straightX = x;
+      clone.dataset.straightY = y;
+      clone.dataset.straightZ = z;
+      x = bent.x;
+      y += bent.y;
+      z = bent.z;
+      curveYaw = bent.yawDeg;
+    }
+    clone.setAttribute('position', { x, y, z });
 
     // Get base rotation from catalog
     const baseRotation = getBaseRotationFromCatalog(mixinId);
@@ -302,7 +317,10 @@ AFRAME.registerComponent('street-generated-clones', {
     if (data.randomFacing) {
       rotationY = this.rng() * 360 + baseRotation;
     }
-    clone.setAttribute('rotation', `0 ${rotationY} 0`);
+    if (bent) {
+      clone.dataset.straightRotY = rotationY;
+    }
+    clone.setAttribute('rotation', `0 ${rotationY + curveYaw} 0`);
 
     // Add common attributes
     clone.classList.add('autocreated');

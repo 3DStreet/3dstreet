@@ -3,6 +3,7 @@ import {
   calculateHeight,
   calculateSlopedHeights
 } from '../tested/street-segment-utils';
+import { getRibbonGeometryAttr } from './street-path.js';
 
 /*
 <a-entity street-way="source: xyz">
@@ -361,6 +362,42 @@ AFRAME.registerComponent('street-segment', {
     this.height = 0.2; // default height of segment surface box
     this.generatedComponents = [];
     this.types = TYPES; // default segment types
+
+    // Curved streets: the parent managed-street emits street-curve-changed
+    // (after street-align has realigned) whenever its path curve is built,
+    // rebuilt, or cleared — re-mesh and regenerate content each time so
+    // surfaces and placements bend through the current curve. The listener
+    // lives on the parent and deliberately survives this.remove(), which
+    // doubles as the type-change reset; it self-detaches once the segment
+    // leaves the DOM or that parent (see regenerateForCurve).
+    this.curveEventTarget = this.el.parentElement;
+    this.onStreetCurveChanged = () => this.regenerateForCurve();
+    this.curveEventTarget?.addEventListener(
+      'street-curve-changed',
+      this.onStreetCurveChanged
+    );
+  },
+  regenerateForCurve: function () {
+    // Gone from the DOM, or moved under a different parent (a direct
+    // appendChild reparent keeps this component instance alive): the old
+    // street's curve no longer applies, and the listener would otherwise
+    // outlive it.
+    if (
+      !this.el.isConnected ||
+      this.el.parentElement !== this.curveEventTarget
+    ) {
+      this.curveEventTarget?.removeEventListener(
+        'street-curve-changed',
+        this.onStreetCurveChanged
+      );
+      return;
+    }
+    this.clearMesh();
+    this.generateMesh(this.data);
+    this.updateGeneratedComponentsList();
+    this.generatedComponents.forEach((componentName) => {
+      this.el.components[componentName]?.update();
+    });
   },
   generateComponentsFromSegmentObject: function (segmentObject) {
     // use global preset data to create the generated components for a given segment type
@@ -670,17 +707,33 @@ AFRAME.registerComponent('street-segment', {
     this.generatedComponents.length = 0;
   },
   generateMesh: function (data) {
-    // create geometry; slope deltas tilt the top face between the segment's
-    // start (-x) and end (+x) edges
-    this.el.setAttribute(
-      'geometry',
-      `primitive: below-box;
+    // Curved street: extrude the surface along the parent street's path
+    // curve at this segment's lateral offset instead of the straight
+    // below-box. Slope segments tilt the ribbon's top face across its width
+    // exactly like below-box tilts between its -x and +x edges.
+    const ribbonAttr = getRibbonGeometryAttr(this.el, {
+      lateralOffset: 0,
+      width: data.width,
+      height: this.height,
+      sEnd: data.length,
+      slopeLeftDelta: this.slopeDeltas?.start ?? 0,
+      slopeRightDelta: this.slopeDeltas?.end ?? 0
+    });
+    if (ribbonAttr) {
+      this.el.setAttribute('geometry', ribbonAttr);
+    } else {
+      // create geometry; slope deltas tilt the top face between the segment's
+      // start (-x) and end (+x) edges
+      this.el.setAttribute(
+        'geometry',
+        `primitive: below-box;
           height: ${this.height};
           depth: ${data.length};
           width: ${data.width};
           slopeStartDelta: ${this.slopeDeltas?.start ?? 0};
           slopeEndDelta: ${this.slopeDeltas?.end ?? 0};`
-    );
+      );
+    }
 
     // create a lookup table to convert UI shortname into A-Frame img id's
     const textureMaps = {

@@ -19,7 +19,10 @@ import { useAuthContext } from '../../../contexts';
 import { httpsCallable } from 'firebase/functions';
 import { ImgComparisonSlider } from '@img-comparison-slider/react';
 import 'img-comparison-slider/dist/styles.css';
-import { canUseImageFeature } from '@shared/utils/tokens';
+import {
+  canUseImageFeature,
+  isTokenExhaustedError
+} from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import {
@@ -52,6 +55,7 @@ function ScreenshotModal() {
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const startCheckout = useStore((state) => state.startCheckout);
+  const startBuyTokens = useStore((state) => state.startBuyTokens);
   const watermarkUpsellShown = useStore((state) => state.watermarkUpsellShown);
   const setWatermarkUpsellShown = useStore(
     (state) => state.setWatermarkUpsellShown
@@ -731,6 +735,17 @@ function ScreenshotModal() {
         );
         return;
       }
+      // Charge-at-submit rejected the job: out of tokens. Non-Pro users are
+      // gated up front, so landing here means a paid user's balance ran short
+      // (mid-month exhaustion, stale profile, spent in another tab) — offer
+      // the one-time token pack purchase (#1374) instead of a failure toast.
+      // startBuyTokens is idempotent, so a 4x batch rejecting several jobs
+      // opens the modal once; `finally` still resets this model's state.
+      if (isTokenExhaustedError(error)) {
+        setRenderErrors((prev) => ({ ...prev, [targetModel]: true }));
+        startBuyTokens('image_render');
+        return;
+      }
       console.error('Error generating AI image:', error);
       const baseModelKey = AI_MODELS[targetModel]
         ? targetModel
@@ -813,25 +828,22 @@ function ScreenshotModal() {
       : getTokenCost(selectedModel) * 4;
 
     // Check if user has enough tokens for 4x render. Non-Pro users see the
-    // paywall (custom 'image' surface communicates the gap); Pro/ProTeam users
-    // who've exhausted their monthly allowance get a toast since there's no
-    // further upsell to offer.
+    // paywall (custom 'image' surface communicates the gap); Pro/ProTeam
+    // users who've exhausted their monthly allowance get the one-time token
+    // pack purchase (#1374) instead of a dead-end toast.
     if (!tokenProfile || tokenProfile.genToken < totalTokenCost) {
       if (!isPro) {
         startCheckout('image');
-      } else {
-        STREET.notify.errorMessage(
-          intl.formatMessage(
-            {
-              id: 'screenshotModal.insufficientTokens4x',
-              defaultMessage:
-                'You need at least {totalTokenCost} tokens for 4x render'
-            },
-            { totalTokenCost }
-          )
-        );
+        return;
       }
-      return;
+      // Pro: only gate on a LOADED profile that's actually short. A not-yet-
+      // loaded profile is no evidence of a shortfall — fall through and let
+      // charge-at-submit decide (the isTokenExhaustedError catch below routes
+      // to the pack modal if they're truly out).
+      if (tokenProfile) {
+        startBuyTokens('image_render_4x');
+        return;
+      }
     }
 
     // Clear previous render states before starting new batch
@@ -1104,7 +1116,7 @@ function ScreenshotModal() {
                     }`}
                     disabled={isAnyRendering}
                     rows={4}
-                    maxLength={500}
+                    maxLength={2000}
                   />
                   <label
                     htmlFor="prompt-style"
@@ -1138,7 +1150,7 @@ function ScreenshotModal() {
                     }`}
                     disabled={isAnyRendering}
                     rows={3}
-                    maxLength={500}
+                    maxLength={2000}
                   />
                 </div>
               </div>

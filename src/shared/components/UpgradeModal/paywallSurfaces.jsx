@@ -4,12 +4,17 @@
  * matches, the modal renders a surface card header + custom headline /
  * description in place of the generic "Upgrade to Pro" treatment.
  *
+ * All copy fields (`titleId`, `subtitleId`, `headlineId`, `descriptionId`,
+ * `featureIds`, `secondaryCtaLabelId`) are sharedMessages ids — UpgradeModal
+ * resolves them with the live locale at render. Hand-maintained translations
+ * live in @shared/i18n/sharedMessages.
+ *
  * Adding a new surface: add an entry whose key matches the postCheckout
  * string used at the trigger site (see startCheckout calls in editor).
  * Omit entries to keep generic copy.
  */
 
-import { TOKEN_FEATURE_LINE } from './pricing';
+import { TOKEN_FEATURE_KEY } from './pricing';
 
 const CubeIcon = () => (
   <svg
@@ -138,17 +143,16 @@ export const PAYWALL_SURFACES = {
   // AR-Ready is on a deprecation path, so a single shared surface is fine.
   export: {
     icon: <CubeIcon />,
-    title: 'GLB glTF',
-    subtitle: '.glb · 3D model export',
-    headline: 'Export requires Pro',
-    description:
-      'GLB glTF export lets you use your 3D scene in any compatible tool, game engine, or AR platform.',
-    features: [
-      'GLB glTF & AR Ready GLB export',
-      'Download JPEG snapshots without watermark',
-      'Unlimited geospatial maps & location changes',
-      'Import custom 3D models & SVG / glTF files',
-      TOKEN_FEATURE_LINE
+    titleId: 'surfaceExportTitle',
+    subtitleId: 'surfaceExportSubtitle',
+    headlineId: 'exportRequiresPro',
+    descriptionId: 'surfaceExportDesc',
+    featureIds: [
+      'featGlbExport',
+      'featWatermark',
+      'featGeoUnlimited',
+      'featCustomModels',
+      TOKEN_FEATURE_KEY
     ]
   },
 
@@ -157,17 +161,16 @@ export const PAYWALL_SURFACES = {
   // tell the two export paywalls apart.
   'export-dxf': {
     icon: <DraftingCompassIcon />,
-    title: 'DXF Plan View',
-    subtitle: '.dxf · 2D CAD export',
-    headline: 'Export requires Pro',
-    description:
-      'DXF plan view export brings your street design into AutoCAD and other CAD tools as clean, layered 2D linework.',
-    features: [
-      'DXF plan view export for AutoCAD & CAD tools',
-      'GLB glTF & AR Ready GLB export',
-      'Download JPEG snapshots without watermark',
-      'Unlimited geospatial maps & location changes',
-      TOKEN_FEATURE_LINE
+    titleId: 'surfaceDxfTitle',
+    subtitleId: 'surfaceDxfSubtitle',
+    headlineId: 'exportRequiresPro',
+    descriptionId: 'surfaceDxfDesc',
+    featureIds: [
+      'featDxfExport',
+      'featGlbExport',
+      'featWatermark',
+      'featGeoUnlimited',
+      TOKEN_FEATURE_KEY
     ]
   },
 
@@ -175,17 +178,16 @@ export const PAYWALL_SURFACES = {
   // rationale as export-dxf: format-true copy + distinguishable analytics.
   'export-pdf': {
     icon: <FileTextIcon />,
-    title: 'PDF Plan View',
-    subtitle: '.pdf · 2D plan export',
-    headline: 'Export requires Pro',
-    description:
-      'PDF plan view export turns your street design into a print-ready vector plan you can publish and share anywhere.',
-    features: [
-      'PDF & DXF plan view export',
-      'GLB glTF & AR Ready GLB export',
-      'Download JPEG snapshots without watermark',
-      'Unlimited geospatial maps & location changes',
-      TOKEN_FEATURE_LINE
+    titleId: 'surfacePdfTitle',
+    subtitleId: 'surfacePdfSubtitle',
+    headlineId: 'exportRequiresPro',
+    descriptionId: 'surfacePdfDesc',
+    featureIds: [
+      'featPdfDxfExport',
+      'featGlbExport',
+      'featWatermark',
+      'featGeoUnlimited',
+      TOKEN_FEATURE_KEY
     ]
   },
 
@@ -198,17 +200,16 @@ export const PAYWALL_SURFACES = {
   // billing toggle row in UpgradeModal — it tracks the user's plan choice.
   image: {
     icon: <SparklesIcon />,
-    title: 'AI Render',
-    subtitle: 'Generation tokens · AI image rendering',
-    headline: 'More AI generation tokens',
-    description:
-      'AI renders use generation tokens. A paid plan refreshes your token balance every month so you can keep generating across every available AI model.',
-    features: [
-      TOKEN_FEATURE_LINE,
-      'Download JPEG snapshots without watermark',
-      'GLB glTF & AR Ready GLB export',
-      'Unlimited geospatial maps & location changes',
-      'Import custom 3D models & SVG / glTF files'
+    titleId: 'surfaceImageTitle',
+    subtitleId: 'surfaceImageSubtitle',
+    headlineId: 'surfaceImageHeadline',
+    descriptionId: 'surfaceImageDesc',
+    featureIds: [
+      TOKEN_FEATURE_KEY,
+      'featWatermark',
+      'featGlbExport',
+      'featGeoUnlimited',
+      'featCustomModels'
     ]
   },
 
@@ -220,17 +221,16 @@ export const PAYWALL_SURFACES = {
   // trigger sites read the same way.
   geo: {
     icon: <MapPinIcon />,
-    title: 'Geospatial',
-    subtitle: 'Real-world location · 3D map context',
-    headline: 'Unlimited geospatial lookups',
-    description:
-      'Place your scene on a real-world map with 3D context of the surrounding environment. Pro unlocks unlimited location changes.',
-    features: [
-      'Unlimited geospatial maps & location changes',
-      'Download JPEG snapshots without watermark',
-      'GLB glTF & AR Ready GLB export',
-      'Import custom 3D models & SVG / glTF files',
-      TOKEN_FEATURE_LINE
+    titleId: 'surfaceGeoTitle',
+    subtitleId: 'surfaceGeoSubtitle',
+    headlineId: 'surfaceGeoHeadline',
+    descriptionId: 'surfaceGeoDesc',
+    featureIds: [
+      'featGeoUnlimited',
+      'featWatermark',
+      'featGlbExport',
+      'featCustomModels',
+      TOKEN_FEATURE_KEY
     ]
   },
 
@@ -240,17 +240,16 @@ export const PAYWALL_SURFACES = {
   // FREE 100 MB → PRO 5 GB is the 50× claim.
   storage: {
     icon: <DatabaseIcon />,
-    title: 'Cloud Storage',
-    subtitle: 'Custom models & textures',
-    headline: '50× more space for custom models',
-    description:
-      'Your work is safe. The Free plan includes 100 MB of asset storage; Pro gives you 5 GB to grow into for custom models, textures, and splats.',
-    features: [
-      '5 GB custom model & asset storage',
-      'Import custom 3D models & SVG / glTF files',
-      'Download JPEG snapshots without watermark',
-      'Unlimited geospatial maps & location changes',
-      TOKEN_FEATURE_LINE
+    titleId: 'surfaceStorageTitle',
+    subtitleId: 'surfaceStorageSubtitle',
+    headlineId: 'surfaceStorageHeadline',
+    descriptionId: 'surfaceStorageDesc',
+    featureIds: [
+      'featStorage5gb',
+      'featCustomModels',
+      'featWatermark',
+      'featGeoUnlimited',
+      TOKEN_FEATURE_KEY
     ]
   },
 
@@ -258,23 +257,22 @@ export const PAYWALL_SURFACES = {
   // first-of-session download interceptor in ScreenshotModal.
   watermark: {
     icon: <ImageIcon />,
-    title: 'Snapshot',
-    subtitle: '.jpg / .png · 2D image export',
-    headline: 'Remove the watermark',
-    description:
-      'Share polished snapshots in client presentations, planning reports, and social posts.',
-    features: [
-      'Download JPEG snapshots without watermark',
-      'GLB glTF & AR Ready GLB export',
-      'Unlimited geospatial maps & location changes',
-      'Import custom 3D models & SVG / glTF files',
-      TOKEN_FEATURE_LINE
+    titleId: 'surfaceWatermarkTitle',
+    subtitleId: 'surfaceWatermarkSubtitle',
+    headlineId: 'surfaceWatermarkHeadline',
+    descriptionId: 'surfaceWatermarkDesc',
+    featureIds: [
+      'featWatermark',
+      'featGlbExport',
+      'featGeoUnlimited',
+      'featCustomModels',
+      TOKEN_FEATURE_KEY
     ],
     // Soft-decline path. Picking this dismisses the paywall and runs the
     // pending action (the watermarked download) without leaving Pro friction.
     // Imperative label pairs with the primary "Go Pro" CTA — "free" is
     // implied by the watermark mention so we don't repeat it.
-    secondaryCtaLabel: 'Download now with watermark'
+    secondaryCtaLabelId: 'watermarkSecondaryCta'
   }
 };
 

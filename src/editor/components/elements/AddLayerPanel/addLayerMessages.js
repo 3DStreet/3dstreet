@@ -194,6 +194,15 @@ export const layerCardMessages = defineMessages({
     defaultMessage:
       'Add a bright red ring, big enough to circle and highlight a real-world element like a vehicle, tree, or part of a lane.'
   },
+  shapePolylineName: {
+    id: 'addLayer.card.shapePolyline.name',
+    defaultMessage: 'Shape'
+  },
+  shapePolylineDesc: {
+    id: 'addLayer.card.shapePolyline.desc',
+    defaultMessage:
+      'Add an editable polyline shape. Its points are child entities you can reposition; the line follows them. A starting point for measuring, outlining, and (later) filled and extruded shapes.'
+  },
 
   // --- Custom Layers ---
   uploadImageName: {
@@ -249,6 +258,15 @@ export const layerCardMessages = defineMessages({
     id: 'addLayer.card.driveableTaxi.desc',
     defaultMessage:
       'A full-size sedan with real-car physics (~Camry-sized). Mounts standard curbs with momentum, hits real-world speeds. Switch presets from the drive-controls properties panel.'
+  },
+  flyableHelicopterName: {
+    id: 'addLayer.card.flyableHelicopter.name',
+    defaultMessage: 'Flyable Helicopter'
+  },
+  flyableHelicopterDesc: {
+    id: 'addLayer.card.flyableHelicopter.desc',
+    defaultMessage:
+      'A flyable helicopter with arcade physics (GTA/Battlefield style), styled after a Coast Guard MH-65 Dolphin. Press Play, then W/S climb/descend, A/D yaw, arrow-key cyclic, Space to auto-hover.'
   },
   raceTargetName: {
     id: 'addLayer.card.raceTarget.name',

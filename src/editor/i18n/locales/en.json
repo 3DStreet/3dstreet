@@ -5,8 +5,8 @@
   "actionBar.rotateTool": {
     "defaultMessage": "Rotate Tool (e) - Select and rotate objects"
   },
-  "actionBar.rulerTool": {
-    "defaultMessage": "Ruler Tool (r) - Measure distances between points"
+  "actionBar.shapeTool": {
+    "defaultMessage": "Shape Tool (r) - Measure and draw; click to place points, Enter or double-click to finish, Backspace to remove the last point"
   },
   "actionBar.translateTool": {
     "defaultMessage": "Translate Tool (w) - Select and move objects"
@@ -64,6 +64,12 @@
   },
   "addLayer.card.driveableTukTuk.name": {
     "defaultMessage": "Driveable Tuk-tuk"
+  },
+  "addLayer.card.flyableHelicopter.desc": {
+    "defaultMessage": "A flyable helicopter with arcade physics (GTA/Battlefield style), styled after a Coast Guard MH-65 Dolphin. Press Play, then W/S climb/descend, A/D yaw, arrow-key cyclic, Space to auto-hover."
+  },
+  "addLayer.card.flyableHelicopter.name": {
+    "defaultMessage": "Flyable Helicopter"
   },
   "addLayer.card.grassBox.desc": {
     "defaultMessage": "Add a large green ground slab with animated instanced grass. The box dimensions, color, and grass options (density, blade height) are all editable in the properties panel."
@@ -130,6 +136,12 @@
   },
   "addLayer.card.raceTarget.name": {
     "defaultMessage": "Race Target"
+  },
+  "addLayer.card.shapePolyline.desc": {
+    "defaultMessage": "Add an editable polyline shape. Its points are child entities you can reposition; the line follows them. A starting point for measuring, outlining, and (later) filled and extruded shapes."
+  },
+  "addLayer.card.shapePolyline.name": {
+    "defaultMessage": "Shape"
   },
   "addLayer.card.streetmixStreet.desc": {
     "defaultMessage": "Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets."
@@ -218,23 +230,8 @@
   "appMenu.edit": {
     "defaultMessage": "Edit"
   },
-  "appMenu.edit.copy": {
-    "defaultMessage": "Copy"
-  },
-  "appMenu.edit.cut": {
-    "defaultMessage": "Cut"
-  },
-  "appMenu.edit.delete": {
-    "defaultMessage": "Delete"
-  },
   "appMenu.edit.deselect": {
     "defaultMessage": "Deselect"
-  },
-  "appMenu.edit.duplicate": {
-    "defaultMessage": "Duplicate"
-  },
-  "appMenu.edit.paste": {
-    "defaultMessage": "Paste"
   },
   "appMenu.export.dxfEmpty": {
     "defaultMessage": "No street or intersection elements found to export as DXF."
@@ -326,6 +323,9 @@
   "appMenu.view": {
     "defaultMessage": "View"
   },
+  "appMenu.view.focusOnSelection": {
+    "defaultMessage": "Focus on Selection"
+  },
   "appMenu.view.navigationControls": {
     "defaultMessage": "Navigation Controls"
   },
@@ -346,9 +346,6 @@
   },
   "appMenu.view.snapshotRender": {
     "defaultMessage": "Capture & Render..."
-  },
-  "appMenu.view.zoomToSelection": {
-    "defaultMessage": "Zoom to Selection"
   },
   "assetInfo.assetSource": {
     "defaultMessage": "Asset source: {ownership} · {assetIdShort}…"
@@ -908,6 +905,12 @@
   "common.cancel": {
     "defaultMessage": "Cancel"
   },
+  "common.copy": {
+    "defaultMessage": "Copy"
+  },
+  "common.cut": {
+    "defaultMessage": "Cut"
+  },
   "common.delete": {
     "defaultMessage": "Delete"
   },
@@ -928,6 +931,9 @@
   },
   "common.keyboardShortcuts": {
     "defaultMessage": "Keyboard Shortcuts"
+  },
+  "common.paste": {
+    "defaultMessage": "Paste"
   },
   "common.planView": {
     "defaultMessage": "Plan View"
@@ -1120,6 +1126,66 @@
   },
   "exportModal.unitsMeters": {
     "defaultMessage": "Meters"
+  },
+  "flyControls.agility": {
+    "defaultMessage": "Cyclic Agility"
+  },
+  "flyControls.liftPower": {
+    "defaultMessage": "Rotor Power (× gravity)"
+  },
+  "flyControls.stability": {
+    "defaultMessage": "Stability Assist"
+  },
+  "flyControls.tipKeys": {
+    "defaultMessage": "W/S climb/descend · A/D yaw · arrows tilt · Space auto-hover"
+  },
+  "flyControls.tipMisc": {
+    "defaultMessage": "R = reset · C = camera · tilt forward to build speed"
+  },
+  "flyControls.tipStart": {
+    "defaultMessage": "Press Start, hold W to spool up and climb — release to hover"
+  },
+  "flyControls.tipsHeading": {
+    "defaultMessage": "🚁 Flight tips"
+  },
+  "flyControls.yawRate": {
+    "defaultMessage": "Yaw Rate"
+  },
+  "flyModeControls.agility": {
+    "defaultMessage": "Cyclic agility"
+  },
+  "flyModeControls.altitude": {
+    "defaultMessage": "Altitude"
+  },
+  "flyModeControls.approach": {
+    "defaultMessage": "APPROACH"
+  },
+  "flyModeControls.collective": {
+    "defaultMessage": "Collective"
+  },
+  "flyModeControls.gamepadHint": {
+    "defaultMessage": "Gamepad: RT/LT climb/descend · left stick tilt · LB/RB yaw · B hover · right stick camera/look · Y reset · X camera"
+  },
+  "flyModeControls.keyboardHint": {
+    "defaultMessage": "W/S climb/descend (release to hover) · A/D yaw · arrows tilt · Space hover hold · drag = orbit/look · R reset · C camera"
+  },
+  "flyModeControls.liftPower": {
+    "defaultMessage": "Rotor power"
+  },
+  "flyModeControls.speed": {
+    "defaultMessage": "Speed"
+  },
+  "flyModeControls.stability": {
+    "defaultMessage": "Stability"
+  },
+  "flyModeControls.title": {
+    "defaultMessage": "Flight controls"
+  },
+  "flyModeControls.verticalSpeed": {
+    "defaultMessage": "Vertical"
+  },
+  "flyModeControls.yawRate": {
+    "defaultMessage": "Yaw rate"
   },
   "geoModal.centerpoint": {
     "defaultMessage": "Centerpoint"
@@ -1484,11 +1550,20 @@
   "managedStreetSidebar.convertToShapesConfirm": {
     "defaultMessage": "This turns the street into plain 3D shapes you can move, duplicate, and delete individually. After you save and reload this scene you cannot undo this action. Tip: duplicate the street first if you want to keep a copy of this managed street."
   },
+  "managedStreetSidebar.convertToShapesCurvedUnsupported": {
+    "defaultMessage": "Convert to Shapes is not available for a street that follows a path yet. Clear the street’s path first, or keep it as a managed street."
+  },
   "managedStreetSidebar.convertToShapesTitle": {
     "defaultMessage": "Convert Street to Shapes?"
   },
   "managedStreetSidebar.downloadJSON": {
     "defaultMessage": "Download Street JSON"
+  },
+  "managedStreetSidebar.followPathHint": {
+    "defaultMessage": "This street follows a path — length tracks the path, and curve style (smooth / arc / linear) is set on the path shape."
+  },
+  "managedStreetSidebar.followPathNone": {
+    "defaultMessage": "None (straight)"
   },
   "managedStreetSidebar.reloadConfirm": {
     "defaultMessage": "Reload this street from {source}? Local segment edits will be lost."
@@ -1640,8 +1715,8 @@
   "profileModal.managingSubscription": {
     "defaultMessage": "Managing subscription"
   },
-  "profileModal.monthlyProRefill": {
-    "defaultMessage": "Monthly Pro refill: {date}"
+  "profileModal.nextMonthlyRefill": {
+    "defaultMessage": "Next monthly refill: {date}"
   },
   "profileModal.planFree": {
     "defaultMessage": "Plan: Free"
@@ -1669,6 +1744,18 @@
   },
   "profileModal.unlimitedGeoTokens": {
     "defaultMessage": "Unlimited Geo Tokens"
+  },
+  "propertyRow.linkAxes": {
+    "defaultMessage": "Link axes: editing one axis sets all three"
+  },
+  "propertyRow.linkUnavailable": {
+    "defaultMessage": "Axes differ: reset scale to re-enable linking"
+  },
+  "propertyRow.resetToDefault": {
+    "defaultMessage": "Reset to default ({value})"
+  },
+  "propertyRow.unlinkAxes": {
+    "defaultMessage": "Unlink axes: edit each axis independently"
   },
   "raceFinish.collisionsSuffix": {
     "defaultMessage": "{collisions,plural,one{# collision} other{# collisions}}"
@@ -1880,9 +1967,6 @@
   "screenshotModal.generateRenders": {
     "defaultMessage": "Generate Renders"
   },
-  "screenshotModal.insufficientTokens4x": {
-    "defaultMessage": "You need at least {totalTokenCost} tokens for 4x render"
-  },
   "screenshotModal.loginPrompt": {
     "defaultMessage": "Please log in to use AI rendering"
   },
@@ -2006,6 +2090,84 @@
   "segmentSidebar.width": {
     "defaultMessage": "Width"
   },
+  "shapeDraw.addPoints": {
+    "defaultMessage": "Click to add points"
+  },
+  "shapeDraw.backspacePoint": {
+    "defaultMessage": "Backspace removes the last point"
+  },
+  "shapeDraw.closeFirstPoint": {
+    "defaultMessage": "Click the first point to close the shape"
+  },
+  "shapeDraw.finishDoubleClick": {
+    "defaultMessage": "Double-click places a last point and finishes"
+  },
+  "shapeDraw.finishEnterEsc": {
+    "defaultMessage": "Enter or Esc finishes the shape"
+  },
+  "shapeDraw.title": {
+    "defaultMessage": "Draw a shape"
+  },
+  "shapeDraw.undo": {
+    "defaultMessage": "Ctrl+Z undoes the finished shape"
+  },
+  "shapeReadouts.insertHint": {
+    "defaultMessage": "Add a vertex to this side"
+  },
+  "shapeSidebar.area": {
+    "defaultMessage": "Area"
+  },
+  "shapeSidebar.cornerAngle": {
+    "defaultMessage": "∠ {value}"
+  },
+  "shapeSidebar.cornerRadius": {
+    "defaultMessage": "Corner Radius"
+  },
+  "shapeSidebar.curveArc": {
+    "defaultMessage": "Arcs (corner radius)"
+  },
+  "shapeSidebar.curveLinear": {
+    "defaultMessage": "Straight / hard corners"
+  },
+  "shapeSidebar.curveSmooth": {
+    "defaultMessage": "Smooth (spline)"
+  },
+  "shapeSidebar.curveStyle": {
+    "defaultMessage": "Curve Style"
+  },
+  "shapeSidebar.direction": {
+    "defaultMessage": "Direction"
+  },
+  "shapeSidebar.length": {
+    "defaultMessage": "Length {label}"
+  },
+  "shapeSidebar.reverse": {
+    "defaultMessage": "Reverse"
+  },
+  "shapeSidebar.segments": {
+    "defaultMessage": "Segments"
+  },
+  "shapeSidebar.showAllSegments": {
+    "defaultMessage": "Show all {count} segments"
+  },
+  "shapeSidebar.showFewerSegments": {
+    "defaultMessage": "Show fewer segments"
+  },
+  "shapeSidebar.tipInsert": {
+    "defaultMessage": "Click a side's length to add a vertex to that side"
+  },
+  "shapeSidebar.tipShift": {
+    "defaultMessage": "Hold Shift while dragging a vertex to raise or lower it"
+  },
+  "shapeSidebar.tipStyle": {
+    "defaultMessage": "Edit line color, width and fill below"
+  },
+  "shapeSidebar.tipVertex": {
+    "defaultMessage": "Click a blue vertex dot to move it or delete it"
+  },
+  "shapeSidebar.tipsTitle": {
+    "defaultMessage": "Shape Drawing Tips"
+  },
   "shareModal.anonymous": {
     "defaultMessage": "anonymous"
   },
@@ -2071,6 +2233,12 @@
   },
   "sidebar.editCloneSettings": {
     "defaultMessage": "Edit Clone Settings"
+  },
+  "sidebar.geoloc": {
+    "defaultMessage": "GeoLoc"
+  },
+  "sidebar.geolocTitle": {
+    "defaultMessage": "Latitude, longitude, true bearing (degrees clockwise from true north, “T”). Read-only: edit position and rotation to change it."
   },
   "sidebar.managedBy": {
     "defaultMessage": "Managed by"

@@ -369,4 +369,5 @@ export async function saveSceneWithScreenshot(
       }
     }
   }
+  return currentSceneId;
 }

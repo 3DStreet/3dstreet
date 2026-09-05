@@ -127,6 +127,25 @@
   }
 }
 
+// Healthy-balance variant: same button, no alarm styling — purchasing is
+// always available, the red/amber treatment is reserved for low balances.
+.purchaseButtonQuiet {
+  width: 100%;
+  padding: 8px 16px;
+  background: transparent;
+  color: #374151;
+  border: 1px solid #d4d4d4;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #f5f5f5;
+  }
+}
+
 .lowTokenWarning {
   padding: 10px;
   background: #fffbeb;
@@ -230,6 +249,15 @@
   .lowTokenWarning {
     background: #2a2515;
     border-color: #713f12;
+  }
+
+  .purchaseButtonQuiet {
+    color: #e5e5e5;
+    border-color: #404040;
+
+    &:hover {
+      background: #262626;
+    }
   }
 
   .optionLabel {

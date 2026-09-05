@@ -14,6 +14,7 @@ import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
 import EditorUpgradeModal from './EditorUpgradeModal.jsx';
+import EditorBuyTokensModal from './EditorBuyTokensModal.jsx';
 import { AddLayerPanel } from './elements/AddLayerPanel';
 import { NewModal } from './modals/NewModal';
 import { LoadingSceneModal } from './modals/LoadingSceneModal';
@@ -26,7 +27,7 @@ import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
 import { Compass } from './elements/Compass';
 import { ContextViewButton } from './elements/ContextViewButton';
-import { PlayModeControls } from './elements/PlayModeControls';
+import { PlayModeControls, FlyModeControls } from './elements/PlayModeControls';
 import { RaceFinishBanner } from './elements/RaceFinishBanner';
 import useStore from '@/store';
 import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
@@ -163,6 +164,7 @@ export default function Main() {
       <UnofficialDeploymentBanner />
       <ToolbarWrapper />
       {!isInspectorEnabled && <PlayModeControls />}
+      {!isInspectorEnabled && <FlyModeControls />}
       {!isInspectorEnabled && <RaceFinishBanner />}
       {isInspectorEnabled && (
         <div>
@@ -201,6 +203,7 @@ export default function Main() {
       <ExportModal />
       <SignInModal />
       <EditorUpgradeModal />
+      <EditorBuyTokensModal />
       <ScenesModal />
       <ProfileModal />
       <NewModal />

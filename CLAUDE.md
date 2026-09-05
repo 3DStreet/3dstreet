@@ -57,6 +57,8 @@ public/
 
 **Procedural:** `street-generated-*` (striping, stencil, pedestrians, rail, clones)
 
+**Curved streets (prototype):** assign a drawn polyline (shape) to a street via `managed-street.path` and the whole street bends along it — the PATH owns the curve controls (`shape.curveType`: linear default / smooth catmull-rom / arc fillets; the schema-less `street-path` role component reads them off the shape). One shared straight→curved mapping (`src/tested/street-path-utils.js`, unit-tested) bends surfaces (as `street-ribbon` geometry: segment, striping, rail, ground) and placements (clones/stencils/pedestrians remapped + tangent yaw); street-align lateral offsets and all straight-space layout code stay untouched. Entry point: `docs/curved-street-path.md`.
+
 **Geospatial:** `street-geo`, `google-maps-aerial`, `geojson`, `geo-flatten`
 
 **Terrain flattening (#1476):** any number of entities may carry `geo-flatten` (`mode: mesh` = flatten onto the entity's own mesh, for simple primitives; `mode: auto` = invisible footprint proxy plane at local y=0, for complex subtrees). A scene-level `geo-flatten` registry system feeds `google-maps-aerial`, which reconciles shapes in tick with per-entry matrix-change detection and a 150ms throttle (every shape update re-flattens all active tiles on CPU). Managed streets auto-attach `geo-flatten` (mode: auto) in init — same pattern as `street-align`/`street-ground` — so streets flatten terrain under their footprint by default. `street-geo.enableFlattening` (default true) is the master gate; the legacy single-shape `street-geo.flatteningShape` reference is migrated to a `geo-flatten` component at load (`migrateLegacyFlatteningShape` in `json-utils_1.1.js`). Never raycast a street's real meshes for flattening — slow, and terrain would snap to the tops of vehicles/trees.
@@ -76,6 +78,7 @@ Unified Viewer presentation with a Start/Stop play lifecycle. Playing is present
 **Features (all play-mode subscribers, unaware of each other):**
 
 - `drive-mode` + `play-mode-vehicle` / `play-mode-physics` — Rapier raycast-wheel driving sim (WASM lazy-loaded on first Play); spawns the player car from a `[drive-controls]` entity; keyboard + gamepad input
+- `fly-mode` + `play-mode-helicopter` — GTA-style arcade helicopter (`fly-mode.js` is the eager bootstrap; the rig + flight model + audio are a lazy webpack chunk loaded on first Play to keep the core bundle under its 4 MiB budget; attitude-command cyclic + velocity-command vertical flight model in `heli-flight-model.js`, pure + unit-tested; releasing the climb key settles toward hover); spawns from a `[fly-controls]` entity (procedural `helicopter-mesh` visual); shares the Rapier world and the street/obstacle collider seeding (`scene-colliders.js`) with drive-mode; if both a drive and a fly entity exist, drive wins the session. Google 3D Tiles get trimesh colliders during play for both car and heli (`tiles-colliders.js`, tracks the tileset's LOD selection via `tile-visibility-change`)
 - `street-traffic` — animates the edit-time cast on `[managed-street][playable]` lanes (each static clone gets an animated twin; a lane with no clones plays empty by design), pure function of sim-time
 - `street-traffic-replay` — replays anonymized roadside-sensor manifests as agents on a linked managed-street; suppresses synthetic traffic on its target street
 - `race-target`, `collision-marker`, `best-times` — race finish gate, crash markers (session-only, stripped on stop/reset), localStorage best times
@@ -91,6 +94,31 @@ Unified Viewer presentation with a Start/Stop play lifecycle. Playing is present
 **State:** `src/store.js` (Zustand) - scene metadata, modal state, save state, preferences
 
 **Commands:** `src/editor/lib/commands/` - undo/redo pattern (AddEntity, SetComponent, EntityReparent, etc.)
+
+**`Inspector.execute` can now refuse.** It returns the `TRANSFORM_REFUSED`
+symbol (`src/editor/lib/transformGuard.js`) instead of running a command that
+would violate a transform-capability marker on the target entity — test for the
+symbol, not for a falsy return, since the success path returns `undefined`. The
+markers are `data-transform-no-scale`, `data-transform-yaw-only` and
+`data-transform-no-reparent`; an entity opts in by carrying the attribute and
+the guard is otherwise entity-type-agnostic. They are **not** the same thing as
+the far more common `data-no-transform`, which is a UI gate only (it hides the
+properties-panel transform rows and the gizmo) and is enforced nowhere at the
+command layer. Coverage is every command route — properties panel, AI chat,
+gizmo, layers-panel reparent — but not a direct `setAttribute` from scene load
+or component code.
+
+**Shapes:** editor-drawn 2D polylines with an optional filled interior. The code
+spans `aframe-components/`, `editor/components/elements/`, `editor/lib/` and
+`editor/lib/commands/`; `docs/shapes.md` is the entry point and carries the file
+map, the vertex-editing commands and the sticky-style rule.
+
+**Street gizmos:** always-on viewport handles for managed streets (endpoint
+nodes that rewrite position/rotation/length, segment width bars), additive to
+the standard TransformControls gizmo. Code in `src/editor/lib/gizmos/`; doc is
+`docs/street-gizmos.md`.
+
+**AI tool surface (WebMCP primary, MCP relay fallback):** one registry (`src/editor/lib/commands/registry.js`) feeds three consumers: the in-editor Gemini chat, WebMCP (`src/editor/lib/mcp/useWebMCP.js` registers the same tools with `document.modelContext` so a browser-embedded agent — Chrome 149+ origin trial / ChatGPT desktop browser — calls them in-process, no relay; this is the primary agent interface), and the MCP relay (fallback for clients without WebMCP such as Claude Desktop/Code: tab = MCP server, external `3dstreet-mcp` npm relay bridges stdio↔localhost WS; design in #1582; retire once those clients read WebMCP natively). Shared executor `callToolAsMCPContent` in `src/editor/lib/mcp/dispatch.js`; entry point: `docs/webmcp.md`.
 
 **Layer Reordering:** Drag-and-drop reordering of layers within the same parent in the SceneGraph. Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
 
@@ -152,7 +180,7 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 
 **Workflow:** User prompt → token check → Firebase Cloud Function (fal.ai or Replicate) submits an async job → jobId → client polls; result saved to gallery server-side
 
-**Token system:** TokenSync syncs Firestore → Zustand, PurchaseModal for Stripe checkout
+**Token system:** TokenSync syncs Firestore → Zustand, PurchaseModal for Stripe checkout. One-time gen-token packs (#1374, paid plans only, flat $0.10/token): `BuyTokensModal` (shared) → `createStripeSession` (mode `payment`, server-gated to Pro/Max) → `stripeWebhook` grants via idempotent transaction + `tokenLog` `type: 'purchase'` row; pack definitions mirrored in `public/functions/token-packs.js` + `pricing.js` (drift-guarded by `test/shared/pricing-sync.test.js`); purchased tokens survive the monthly top-up-to-floor refill (regression test: `test/core/token-packs.test.js`). Entry points: generator via `UpgradeModal.onAlreadyPro`; editor via `useStore.startBuyTokens()` (ScreenshotModal 4x pre-flight + `resource-exhausted` submit rejection, `EditorBuyTokensModal` adapter)
 
 **Async job queue:** All user-initiated AI generations use `users/{uid}/generationJobs/{jobId}` (provider-agnostic, survives a closed browser). Providers today: `replicate` (image→splat via SHARP, image→video via Veo/Kling/LTX, image→image via nano-banana/seedream/kontext — converge on one idempotent processor via webhook + poll + reconciler; results saved to the gallery server-side), `fal` (image→3D mesh via Hunyuan3D/TRELLIS and image→image via flux-2 edit — same convergent shape via `fal_webhook` → `falJobWebhook` + the shared `fetchFalPrediction` adapter), and `cloudrun` (`.ply`→RAD/LOD conversion via the `rad-converter` Cloud Run service; worker-writeback, `tokenCost: 0`, triggered by `onSplatAssetCreated`). A scheduled reconciler backstops all of them. Outcome emails (success and failure — "didn't finish, tokens refunded") send from the webhook in real time (after a ~10s open-tab ack grace so a watching tab suppresses them); the opt-in checkbox appears only while a job is rendering, defaults checked for every kind, and writes through post-submit via `setGenerationJobNotify`. Design: `docs/generation-job-queue.md`; RAD pipeline: `docs/rad-cloud-run-pipeline.md`.
 

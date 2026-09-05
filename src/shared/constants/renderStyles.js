@@ -26,7 +26,7 @@
  */
 const DEFAULT_INSTRUCTIONS = {
   editor:
-    'Use the guidance of the geometry in the input image to re-render this street scene, keeping the same layout, composition and camera angle.',
+    'Use the guidance of the geometry in the input image to render this street scene, keeping the same layout, composition and camera angle.',
   generator:
     'Add trees, flowers, and other green things to the source image if provided.',
   video:

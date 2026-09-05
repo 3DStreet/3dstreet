@@ -3,13 +3,33 @@ import { Command } from '../command.js';
 import { findClosestEntity, prepareForSerialization } from '../entity.js';
 
 export class EntityRemoveCommand extends Command {
-  constructor(editor, entity) {
+  static llmTool = {
+    name: 'entityRemove',
+    description: 'Remove an entity from the scene. Undoable via the undo tool.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entityId: {
+          type: 'string',
+          description: 'The ID of the entity to remove'
+        }
+      },
+      required: ['entityId']
+    }
+  };
+
+  // Editor callers pass the entity directly; the LLM registry passes the
+  // `{entity}` payload its id-resolution produces. Accept both.
+  constructor(editor, entityOrPayload) {
     super(editor);
 
     this.type = 'entityremove';
     this.name = 'Remove Entity';
     this.updatable = false;
 
+    const entity = entityOrPayload.isEntity
+      ? entityOrPayload
+      : entityOrPayload.entity;
     this.entity = entity;
     // Store the parent element and index for precise reinsertion
     this.parentEl = entity.parentNode;

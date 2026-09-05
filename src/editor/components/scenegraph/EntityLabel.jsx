@@ -26,16 +26,26 @@ const ASSET_TYPE_PREFIX_MESSAGES = {
  * entityupdate command, Escape reverts. Cloud-asset entities are excluded —
  * their displayed name comes from the Firestore asset, so a data-layer-name
  * rename would not be reflected.
+ *
+ * `forceEditing` puts the label into edit mode from the outside (the scene
+ * graph's context menu Rename item) without the hover pencil affordance;
+ * `onEditingEnd` fires when that edit closes so the owner can clear its state.
  */
-const EntityLabel = ({ entity, editable = false }) => {
+const EntityLabel = ({
+  entity,
+  editable = false,
+  forceEditing = false,
+  onEditingEnd
+}) => {
   const intl = useIntl();
   const state = useAssetUploadStatus(entity);
   const [editing, setEditing] = useState(false);
 
-  // Leave edit mode when the selection changes mid-edit.
+  // Leave edit mode when the selection changes mid-edit; enter it when an
+  // external rename request comes in.
   useEffect(() => {
-    setEditing(false);
-  }, [entity]);
+    setEditing(forceEditing);
+  }, [entity, forceEditing]);
 
   if (!entity) return null;
 
@@ -49,7 +59,7 @@ const EntityLabel = ({ entity, editable = false }) => {
     override = prefix ? `${prefix} • ${state.name}` : state.name;
   }
   const displayName = override || getEntityDisplayName(entity);
-  const canEdit = editable && !override;
+  const canEdit = (editable || forceEditing) && !override;
 
   const commitRename = (value) => {
     const newName = value.trim();
@@ -70,7 +80,14 @@ const EntityLabel = ({ entity, editable = false }) => {
           className="entityNameInput"
           defaultValue={displayName}
           onCommit={commitRename}
-          onClose={() => setEditing(false)}
+          onClose={() => {
+            setEditing(false);
+            onEditingEnd?.();
+          }}
+          // In the scene graph the label sits inside a clickable row —
+          // keep clicks in the field from re-selecting / camera-focusing.
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
         />
       </span>
     );
@@ -104,7 +121,9 @@ const EntityLabel = ({ entity, editable = false }) => {
 
 EntityLabel.propTypes = {
   entity: PropTypes.object,
-  editable: PropTypes.bool
+  editable: PropTypes.bool,
+  forceEditing: PropTypes.bool,
+  onEditingEnd: PropTypes.func
 };
 
 export default EntityLabel;

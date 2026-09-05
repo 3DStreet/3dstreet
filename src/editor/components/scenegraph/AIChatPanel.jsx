@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useIntl } from 'react-intl';
 import { Tooltip } from 'radix-ui';
 import { createProxyChat } from '../../services/aiChatProxy.js';
+import { captureViewportScreenshot } from '../../lib/viewportScreenshot.js';
 import {
   Copy32Icon,
   DownloadIcon,
@@ -25,13 +26,15 @@ import {
   faRotateRight,
   faPlug,
   faLock,
-  faLockOpen
+  faLockOpen,
+  faWandMagicSparkles
 } from '@fortawesome/free-solid-svg-icons';
 import { getGroupedMixinOptions } from '../../lib/mixinUtils';
 import Events from '../../lib/Events';
 import { useMCPClient } from '../../lib/mcp/useMCPClient.js';
+import { useWebMCP } from '../../lib/mcp/useWebMCP.js';
 
-const AI_MODEL_ID = 'gemini-3-flash-preview';
+const AI_MODEL_ID = 'gemini-3.8-flash';
 let AI_CONVERSATION_ID = uuidv4();
 
 // Cap pill list growth so a multi-hour session doesn't accumulate thousands
@@ -61,7 +64,7 @@ const HELP_EXAMPLES = [
   'Make a basic street with 2 drive lanes, 2 sidewalks, and 2 bike lanes',
   'Add a row of pedestrians to the sidewalk',
   'Replace the trees with palm trees',
-  'Take 3 snapshots from different angles',
+  'Take a top-down plan snapshot',
   'Set the location to 37.7749, -122.4194',
   'Rename the scene to "Market Street redesign"'
 ];
@@ -70,13 +73,15 @@ const HELP_COMMANDS = [
   {
     command: '/mcp',
     description:
-      'Connect Claude Desktop or Claude Code over the MCP relay (alpha)'
+      'Connect an AI agent: WebMCP in agentic browsers (primary), or the MCP relay for Claude Desktop/Code (fallback)'
   }
 ];
 
-const MCP_HELP_MARKDOWN = `**MCP integration** (alpha)
+const MCP_HELP_MARKDOWN = `**AI agent integration** (alpha)
 
-Drive this scene from Claude Desktop or Claude Code. The status bar above will turn green once the relay pairs.
+**WebMCP** (primary, nothing to install): in an agentic browser — ChatGPT's desktop browser, Gemini in Chrome, or Chrome 149+ with \`chrome://flags/#enable-webmcp-testing\` — this page registers its tools with the browser automatically and the status bar shows **WebMCP active**. Just ask the browser's agent to edit the scene; its tool calls appear in this feed.
+
+**MCP relay** (fallback for clients without WebMCP): drive this scene from Claude Desktop or Claude Code. The status bar above will turn green once the relay pairs.
 
 **Claude Code:**
 
@@ -94,7 +99,7 @@ claude mcp add 3dstreet -- npx -y 3dstreet-mcp
 }
 \`\`\`
 
-Then click **Reconnect** above. Once paired, the relay forwards Claude's tool calls to this tab. Toggle **Read-only** to block scene mutations. Source and docs: [github.com/3DStreet/3dstreet-mcp](https://github.com/3DStreet/3dstreet-mcp).`;
+Then click **Reconnect** above. Once paired, the relay forwards Claude's tool calls to this tab. Toggle **Read-only** to block scene mutations (applies to both transports). Source and docs: [github.com/3DStreet/3dstreet-mcp](https://github.com/3DStreet/3dstreet-mcp).`;
 
 const MCP_PAIR_SUCCESS_MARKDOWN =
   '**MCP relay paired.** Tool calls from your MCP client are now wired through this tab. Return to **Claude** (or whichever MCP client you launched the relay from) to continue your workflow. Keep this tab open in the background.';
@@ -299,7 +304,7 @@ const SnapshotMessage = ({ snapshot }) => {
     // Create a temporary anchor element to trigger download
     const link = document.createElement('a');
     link.href = imageData;
-    link.download = `${caption || 'snapshot'}.png`;
+    link.download = `${caption || 'snapshot'}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -338,12 +343,13 @@ const SnapshotMessage = ({ snapshot }) => {
 
 // Inline transcript entry for an incoming MCP frame. Mirrors
 // FunctionCallMessage so users can recognize "the LLM is calling a tool"
-// regardless of whether it came from the in-editor Gemini path or from
-// Claude over the MCP relay.
+// regardless of whether it came from the in-editor Gemini path, from
+// Claude over the MCP relay, or from a browser agent via WebMCP.
 const MCPFrameMessage = ({ frame }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { method, name, args, status, result } = frame;
+  const { method, name, args, status, result, channel } = frame;
   const label = name || method;
+  const channelLabel = channel === 'webmcp' ? 'webmcp' : 'mcp';
 
   return (
     <div
@@ -354,7 +360,10 @@ const MCPFrameMessage = ({ frame }) => {
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <span className={`${styles.statusIndicator} ${styles[status]}`}></span>
-        <strong>mcp · {label}</strong>:{' '}
+        <strong>
+          {channelLabel} · {label}
+        </strong>
+        :{' '}
         {status === 'pending'
           ? 'Executing…'
           : status === 'success'
@@ -451,6 +460,60 @@ const MCPStatusBar = ({
             readOnly
               ? 'Read-only mode on: mutating tools rejected'
               : 'Toggle read-only mode (block scene mutations from the MCP)'
+          }
+        >
+          <AwesomeIcon icon={readOnly ? faLock : faLockOpen} />
+          <span>{readOnly ? 'Read-only' : 'Allow edits'}</span>
+        </button>
+      )}
+    </div>
+  );
+};
+
+const WEBMCP_STATUS_LABEL = {
+  registering: 'WebMCP: registering tools…',
+  registered: 'WebMCP active',
+  error: 'WebMCP registration failed'
+};
+
+// Map WebMCP hook statuses onto the existing MCP dot styles so the two
+// bars read as one system: green = an agent can call us right now.
+const WEBMCP_DOT_STYLE = {
+  registering: 'mcpStatus_connecting',
+  registered: 'mcpStatus_connected',
+  error: 'mcpStatus_paired-elsewhere'
+};
+
+// Shown only when the browser exposes `modelContext` (agentic browser or
+// Chrome with the WebMCP flag) — everyone else never sees WebMCP UI.
+const WebMCPStatusBar = ({ status, toolCount, readOnly, onToggleReadOnly }) => {
+  const label =
+    status === 'registered'
+      ? `${WEBMCP_STATUS_LABEL[status]} (${toolCount} tools)`
+      : WEBMCP_STATUS_LABEL[status] || status;
+  const tooltip =
+    status === 'registered'
+      ? 'This browser exposes WebMCP; the scene tools are registered. Ask the browser’s AI agent to edit the scene.'
+      : status === 'error'
+        ? 'The browser exposes WebMCP but tool registration failed — see console.'
+        : 'Registering tools with the browser’s model context…';
+  return (
+    <div className={styles.mcpStatusBar} title={tooltip}>
+      <span
+        className={`${styles.mcpStatusDot} ${styles[WEBMCP_DOT_STYLE[status]] || ''}`}
+      />
+      <span className={styles.mcpStatusLabel}>{label}</span>
+      {status === 'registered' && (
+        <button
+          type="button"
+          className={`${styles.mcpStatusButton} ${
+            readOnly ? styles.mcpReadOnlyOn : ''
+          }`}
+          onClick={onToggleReadOnly}
+          title={
+            readOnly
+              ? 'Read-only mode on: mutating tools rejected'
+              : 'Toggle read-only mode (block scene mutations from agents)'
           }
         >
           <AwesomeIcon icon={readOnly ? faLock : faLockOpen} />
@@ -724,6 +787,15 @@ function AIChatPanel() {
     persistRetries: mcpVisible
   });
 
+  // WebMCP: when the browser itself exposes `modelContext` (agentic
+  // browser, or Chrome with the WebMCP flag), register the same tool
+  // surface directly — no relay, no pairing. Shares the read-only toggle
+  // with the relay path.
+  const webmcp = useWebMCP({
+    currentUser,
+    readOnly: mcpReadOnly
+  });
+
   const postPairSuccess = () => {
     setMessages((prev) => [
       ...prev,
@@ -806,23 +878,24 @@ function AIChatPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Interleave Gemini chat messages with incoming MCP frames so a single
-  // chronological feed shows both LLM channels. Both arrays already carry
-  // Date timestamps; sort once per render.
+  // Interleave Gemini chat messages with incoming MCP/WebMCP frames so a
+  // single chronological feed shows every LLM channel. All arrays already
+  // carry Date timestamps; sort once per render.
   const renderedMessages = useMemo(() => {
-    if (mcp.transcript.length === 0) return messages;
-    const mcpEntries = mcp.transcript.map((t) => ({
-      ...t,
-      type: 'mcpFrame'
-    }));
-    const merged = messages.concat(mcpEntries);
+    if (mcp.transcript.length === 0 && webmcp.transcript.length === 0) {
+      return messages;
+    }
+    const frameEntries = mcp.transcript
+      .concat(webmcp.transcript)
+      .map((t) => ({ ...t, type: 'mcpFrame' }));
+    const merged = messages.concat(frameEntries);
     merged.sort((a, b) => {
       const at = a.timestamp ? a.timestamp.getTime() : 0;
       const bt = b.timestamp ? b.timestamp.getTime() : 0;
       return at - bt;
     });
     return merged;
-  }, [messages, mcp.transcript]);
+  }, [messages, mcp.transcript, webmcp.transcript]);
 
   // Focus the textarea when the console tab becomes active so Enter sends the
   // command instead of re-clicking the tab button that was just focused.
@@ -960,8 +1033,55 @@ function AIChatPanel() {
     };
   }, []);
 
+  // A blank console is a dead end for discovery — seed the /help card whenever
+  // the chat holds no conversation (first open, and again after a reset or new
+  // scene). Command pills survive resetConversation by design, so "empty"
+  // means no non-pill messages, and the functional update re-checks so a
+  // concurrent append is never clobbered. Skipped while an external agent
+  // drives the tab (WebMCP present, or the MCP relay paired): the examples
+  // are prompts for a human typing here, and only clutter the tool-call feed.
+  // Typing /help still works.
+  const agentDriven = webmcp.available || mcp.status === 'connected';
+  useEffect(() => {
+    if (agentDriven) return;
+    if (messages.some((m) => m.type !== 'commandPill')) return;
+    setMessages((prev) =>
+      prev.some((m) => m.type !== 'commandPill')
+        ? prev
+        : [
+            ...prev,
+            {
+              type: 'help',
+              auto: true,
+              id: `help_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+              timestamp: new Date(),
+              examples: HELP_EXAMPLES,
+              commands: HELP_COMMANDS
+            }
+          ]
+    );
+  }, [messages, agentDriven]);
+
+  // The relay pairs after mount, so an auto-seeded card may already be
+  // showing when the agent takes over — drop it (explicit /help cards stay).
+  useEffect(() => {
+    if (!agentDriven) return;
+    setMessages((prev) =>
+      prev.some((m) => m.type === 'help' && m.auto)
+        ? prev.filter((m) => !(m.type === 'help' && m.auto))
+        : prev
+    );
+  }, [agentDriven]);
+
   const processMessage = async (messageText) => {
     if (!messageText.trim() || !modelRef.current) return;
+    // One turn at a time: tool execution + verification are awaited below, so
+    // a second send mid-turn would interleave transcripts and histories.
+    if (isLoading) return;
+
+    // Staleness token: a reset/new-scene mid-turn rotates AI_CONVERSATION_ID;
+    // late verification/rating appends must not land in the fresh console.
+    const conversationId = AI_CONVERSATION_ID;
 
     setIsLoading(true);
     const userMessage = {
@@ -1000,7 +1120,7 @@ function AIChatPanel() {
 
       const prompt = `
       The current scene has the following state:
-      ${JSON.stringify(sceneJSON, null, 2)}
+      ${JSON.stringify(sceneJSON)}
 
       Scene Title: ${sceneTitle || 'Untitled'}
 
@@ -1021,10 +1141,15 @@ function AIChatPanel() {
           content: msg.content
         }));
 
+      // Attach what the user currently sees; null (capture failure) degrades
+      // to a text-only request.
+      const screenshot = captureViewportScreenshot();
+
       // Send message and get response with the full history
       const result = await modelRef.current.sendMessage(prompt, {
         history: historyMessages,
-        systemPrompt: enhancedSystemPrompt // Use the enhanced system prompt with mixin information
+        systemPrompt: enhancedSystemPrompt, // Use the enhanced system prompt with mixin information
+        screenshot
       });
       console.log('Raw result:', result);
 
@@ -1063,6 +1188,8 @@ function AIChatPanel() {
 
       // Then process all function calls
       if (functionCalls && functionCalls.length > 0) {
+        // Collected for the post-execution verification round trip.
+        const executedCalls = [];
         // Process function calls sequentially using async/await
         const processFunctionCalls = async () => {
           for (const call of functionCalls) {
@@ -1127,7 +1254,7 @@ function AIChatPanel() {
               const resultStr =
                 typeof result === 'object'
                   ? call.name === 'takeSnapshot'
-                    ? 'Snapshot taken successfully'
+                    ? `Snapshot taken successfully ${safeStringify(result.metadata || {})}`
                     : safeStringify(result)
                   : String(result ?? '');
 
@@ -1140,6 +1267,13 @@ function AIChatPanel() {
                 ai_function_result: resultStr.slice(0, 2000),
                 ai_response_id: responseId,
                 ai_user_prompt: messageText
+              });
+
+              executedCalls.push({
+                name: call.name,
+                args: call.args || {},
+                status: 'success',
+                result: resultStr.slice(0, 2000)
               });
 
               // Update function call status to success
@@ -1175,6 +1309,13 @@ function AIChatPanel() {
                 ai_user_prompt: messageText
               });
 
+              executedCalls.push({
+                name: call.name,
+                args: call.args || {},
+                status: 'error',
+                result: String(error?.message ?? error).slice(0, 2000)
+              });
+
               // Update function call status to error
               setMessages((prev) =>
                 prev.map((msg) =>
@@ -1191,9 +1332,110 @@ function AIChatPanel() {
           }
         };
 
-        // Start processing function calls and add rating message when done
-        processFunctionCalls().then(() => {
-          // Now add the rating message after all function calls are processed
+        // ONE evaluation round trip after tool execution, by design: the model
+        // checks its own work against the updated scene + a fresh screenshot.
+        // Sent with includeTools: false so it cannot return function calls —
+        // the loop is structurally impossible, not just prompted against. If
+        // we ever want agentic iterate-until-success, this is where the loop,
+        // its cap, and its stop conditions get built (likely behind a user
+        // preference — watch ai_verification_verdict in PostHog first).
+        // Non-fatal: a successful command never surfaces an error because
+        // verification hiccuped (it just costs one extra rate-limit slot).
+        const runVerification = async () => {
+          // Skipped when only read-only takeSnapshot calls ran.
+          if (executedCalls.every((c) => c.name === 'takeSnapshot')) return;
+
+          try {
+            const entity = document.getElementById('street-container');
+            const updatedScene = JSON.parse(
+              STREET.utils.filterJSONstreet(
+                STREET.utils.convertDOMElToObject(entity)
+              )
+            ).data;
+
+            const verificationPrompt = `
+      The tool calls for the user's request have now been executed. Results:
+      ${JSON.stringify(executedCalls)}
+
+      Updated scene state:
+      ${JSON.stringify(updatedScene)}
+
+      Original user request: ${messageText}
+
+      Evaluate whether the request was fully accomplished. Be skeptical: a tool result saying "executed" does not mean the intended change actually happened. Verify the specific change is PRESENT in the updated scene state above (the exact component/property/value you intended) and consistent with the attached screenshot of the current viewport. If you cannot positively confirm it in the scene state, or any tool reported an error, the verdict is not success. Reply briefly: start with "✅" only if you confirmed it, or "⚠️" if anything failed, is absent from the scene state, looks wrong, or is incomplete, followed by one or two sentences. If not fully accomplished, end with one concrete next step the user can ask you to take. Do not call any tools.
+      `;
+
+            const verifyResult = await modelRef.current.sendMessage(
+              verificationPrompt,
+              {
+                history: [
+                  ...historyMessages,
+                  { role: 'user', content: messageText },
+                  ...(responseText && responseText.trim()
+                    ? [{ role: 'assistant', content: responseText }]
+                    : [])
+                ],
+                systemPrompt: enhancedSystemPrompt,
+                screenshot: captureViewportScreenshot(),
+                includeTools: false
+              }
+            );
+            // The conversation was reset while the call was in flight — drop
+            // the result entirely rather than appending into a fresh console.
+            if (conversationId !== AI_CONVERSATION_ID) return;
+
+            const verifyText = verifyResult.response.text();
+            // Leading emoji is the model's own pass/fail judgment — captured
+            // as a continuous quality metric for the assistant. Search the
+            // first few chars rather than strict startsWith: models emit the
+            // warning sign with or without U+FE0F and sometimes wrap it in
+            // markdown ('⚠' is a prefix of '⚠️', so includes matches both).
+            const head = (verifyText || '').trim().slice(0, 8);
+            const verdict = head.includes('✅')
+              ? 'success'
+              : head.includes('⚠')
+                ? 'incomplete'
+                : 'unknown';
+
+            posthog.capture('$ai_generation', {
+              $ai_model: AI_MODEL_ID,
+              $ai_provider: 'vertexai',
+              $ai_trace_id: AI_CONVERSATION_ID,
+              $ai_input: [{ role: 'user', content: '[verification step]' }],
+              $ai_input_tokens:
+                verifyResult.response.usageMetadata?.promptTokenCount,
+              $ai_output_choices: [{ role: 'assistant', content: verifyText }],
+              $ai_output_tokens:
+                verifyResult.response.usageMetadata?.candidatesTokenCount,
+              ai_step: 'verification',
+              ai_verification_verdict: verdict
+            });
+
+            if (verifyText && verifyText.trim()) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: 'assistant',
+                  content: verifyText,
+                  responseId: responseId,
+                  isVerification: true,
+                  verdict: verdict,
+                  timestamp: new Date()
+                }
+              ]);
+            }
+          } catch (error) {
+            console.warn('AI verification step failed (non-fatal):', error);
+          }
+        };
+
+        // Awaited (not fire-and-forget): keeps isLoading true through
+        // verification so the transcript can't interleave with a next send,
+        // and a throw lands in processMessage's catch instead of an
+        // unhandled rejection. runVerification catches its own errors.
+        await processFunctionCalls();
+        await runVerification();
+        if (conversationId === AI_CONVERSATION_ID) {
           const ratingMessage = {
             type: 'rating',
             id: Date.now() + Math.random().toString(16).slice(2),
@@ -1202,7 +1444,7 @@ function AIChatPanel() {
             timestamp: new Date()
           };
           setMessages((prev) => [...prev, ratingMessage]);
-        });
+        }
       }
 
       // For text-only responses (no function calls), add the rating immediately
@@ -1242,9 +1484,6 @@ function AIChatPanel() {
         };
         setMessages((prev) => [...prev, ratingMessage]);
       }
-
-      // We'll add the rating message after all function calls are processed
-      // This will happen in the processFunctionCalls().then() callback
     } catch (error) {
       console.error('Error generating response:', error);
       // Errors now come from our own generateEditorChat callable, which only
@@ -1340,7 +1579,7 @@ function AIChatPanel() {
       chatContainerRef.current.scrollTop =
         chatContainerRef.current.scrollHeight;
     }
-  }, [messages, mcp.transcript]);
+  }, [messages, mcp.transcript, webmcp.transcript]);
 
   const resetConversation = () => {
     // Preserve command history pills — the underlying A-Frame undo stack
@@ -1445,6 +1684,14 @@ function AIChatPanel() {
   return (
     <div className={`${styles.chatContainer} ai-chat-panel-container`}>
       <div className={styles.proFeaturesWrapper}>
+        {webmcp.available && (
+          <WebMCPStatusBar
+            status={webmcp.status}
+            toolCount={webmcp.toolCount}
+            readOnly={mcpReadOnly}
+            onToggleReadOnly={() => setMcpReadOnly((v) => !v)}
+          />
+        )}
         {mcpVisible && (
           <MCPStatusBar
             status={mcp.status}
@@ -1517,6 +1764,9 @@ function AIChatPanel() {
                       </div>
                     </>
                   )}
+                  <div className={styles.helpModelInfo}>
+                    Model: {AI_MODEL_ID}
+                  </div>
                 </div>
               );
             } else if (message.type === 'commandPill') {
@@ -1629,6 +1879,27 @@ function AIChatPanel() {
                     content={message.content}
                     isAssistant={message.role === 'assistant'}
                   />
+                  {message.isVerification &&
+                    message.verdict === 'incomplete' &&
+                    message.responseId === latestResponseId &&
+                    !isLoading && (
+                      <button
+                        onClick={() => {
+                          posthog.capture('ai_verification_continue_clicked', {
+                            $ai_trace_id: AI_CONVERSATION_ID,
+                            ai_response_id: message.responseId
+                          });
+                          processMessage(
+                            'Yes, please do the suggested next step.'
+                          );
+                        }}
+                        className={styles.inlineResetButton}
+                        title="Ask the assistant to take its suggested next step"
+                      >
+                        <AwesomeIcon icon={faWandMagicSparkles} />
+                        <span>Do it</span>
+                      </button>
+                    )}
                   {message.isRecoverable && (
                     <button
                       onClick={resetConversation}

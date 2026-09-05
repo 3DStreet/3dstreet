@@ -478,8 +478,11 @@ function ensureOriginalBvh(el) {
   mesh.traverse((node) => {
     if (!node.isMesh || !node.geometry || node.geometry.boundsTree) return;
     const index = node.geometry.index;
-    const triCount =
-      (index ? index.count : node.geometry.attributes.position.count) / 3;
+    const position = node.geometry.attributes.position;
+    // An empty BufferGeometry has neither — e.g. a street-ribbon built
+    // before its street's curve resolved. Nothing to accelerate.
+    if (!index && !position) return;
+    const triCount = (index ? index.count : position.count) / 3;
     if (triCount < MIN_TRIANGLES_FOR_BVH) {
       skipped++;
       return;
