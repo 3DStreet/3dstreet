@@ -6,6 +6,7 @@ import posthog from 'posthog-js';
 import {
   GeospatialIcon,
   ManagedStreetIcon,
+  ManagedIntersectionIcon,
   SegmentIcon,
   AutoIcon,
   SunIcon,
@@ -668,6 +669,9 @@ export function getEntityIcon(entity) {
   // Check for component-based icons first
   if (entity.getAttribute('managed-street')) {
     return <ManagedStreetIcon />;
+  }
+  if (entity.getAttribute('managed-intersection')) {
+    return <ManagedIntersectionIcon />;
   }
   if (entity.getAttribute('street-segment')) {
     return <SegmentIcon />;

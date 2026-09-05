@@ -77,6 +77,12 @@
   "addLayer.card.highlightRing.name": {
     "defaultMessage": "Highlight Ring"
   },
+  "addLayer.card.managedIntersection.desc": {
+    "defaultMessage": "Auto-generate intersection geometry from nearby managed street ends."
+  },
+  "addLayer.card.managedIntersection.name": {
+    "defaultMessage": "(Beta) Managed Intersection"
+  },
   "addLayer.card.managedStreet150124.desc": {
     "defaultMessage": "Premade Street 150ft Right of Way / 124ft Roadway Width"
   },
@@ -1477,6 +1483,12 @@
   },
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
+  },
+  "managedIntersectionSidebar.awaitingStreets": {
+    "defaultMessage": "No streets connected yet — move managed street ends within the snap radius."
+  },
+  "managedIntersectionSidebar.connectedStreets": {
+    "defaultMessage": "{count,plural,one{# connected street} other{# connected streets}}"
   },
   "managedStreetSidebar.convertToShapes": {
     "defaultMessage": "Convert to Shapes"

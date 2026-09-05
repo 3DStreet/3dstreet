@@ -205,6 +205,33 @@ export const ManagedStreetIcon = () => (
   </svg>
 );
 
+// Entity icon for managed intersections (scene graph rows + properties panel
+// header, via getEntityIcon). Same icon language as ManagedStreetIcon: cyan
+// identity stroke (here the crossing roadways outline), white dashed
+// centerline detail.
+export const ManagedIntersectionIcon = () => (
+  <svg
+    width="25"
+    height="25"
+    viewBox="0 0 25 25"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M9 1H16V9H24V16H16V24H9V16H1V9H9V1Z"
+      stroke="#00FFFF"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+    {/* Approach centerlines only — the intersection box itself carries no
+        markings, so the four stubs stop short of the middle. */}
+    <path d="M12.5 3L12.5 7.5" stroke="white" strokeLinecap="round" />
+    <path d="M12.5 17.5L12.5 22" stroke="white" strokeLinecap="round" />
+    <path d="M3 12.5L7.5 12.5" stroke="white" strokeLinecap="round" />
+    <path d="M17.5 12.5L22 12.5" stroke="white" strokeLinecap="round" />
+  </svg>
+);
+
 export const SegmentIcon = () => (
   <svg
     width="24"

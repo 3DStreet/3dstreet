@@ -20,6 +20,9 @@
 // - intersection: asphalt footprint, sidewalks, corner curbs (with radius
 //   arcs), and crosswalk markings, reconstructed from the same parametric
 //   layout math as the intersection component's update().
+// - managed-intersection: roadway surface polygon, sidewalk corner wedges,
+//   and crosswalk bands, read from the component's last computed geometry
+//   (the same node-derived polygons the 3D meshes are built from).
 // - loose geometry shapes: any other entity carrying an A-Frame geometry
 //   component (shape layers, "Street Shapes" scenes) gets a best-effort
 //   parametric footprint, layered by its data-layer-name type prefix.
@@ -32,6 +35,10 @@
 // see the option stubs below for where they will hook in.
 
 import { CROSSWALKS_REV } from '../../../aframe-components/intersection';
+import {
+  CROSSWALK_MIXINS,
+  CROSSWALK_INSET
+} from '../../../aframe-components/managed-intersection';
 import { isSidewalk } from '../../../tested/aframe-streetmix-parsers-tested';
 import {
   buildCenterlinePoints,
@@ -290,6 +297,7 @@ export function buildStreetPlanModel(options = {}) {
   }
   if (opts.includeIntersections) {
     collectIntersections(ctx);
+    collectManagedIntersections(ctx);
   }
   if (opts.includeShapes || opts.includeClones) {
     collectGeometryShapes(ctx);
@@ -694,6 +702,84 @@ function collectIntersections(ctx) {
         ...rectFor(crosswalkBandWidth(mixinName))
       );
     });
+  }
+}
+
+// --- managed-intersection pass ----------------------------------------------
+// The managed intersection derives its polygons from the connecting street
+// nodes (src/tested/managed-intersection-utils.js) and stashes the latest
+// result on the component as `lastGeometry` — the plan reads that instead of
+// recomputing arms, so DXF/PDF linework is guaranteed to match the rendered
+// meshes. All points are in the entity's local XZ ground plane (the entity is
+// Y-up at rotation 0 0 0); the world matrix handles placement. Traffic
+// signals/stop signs are point objects — out of scope like street furniture.
+// An intersection still showing its placeholder pad (<2 connected streets)
+// has no lastGeometry and contributes nothing.
+function collectManagedIntersections(ctx) {
+  const els = Array.from(document.querySelectorAll('[managed-intersection]'));
+
+  for (const el of els) {
+    const component = el.components?.['managed-intersection'];
+    const geometry = component?.lastGeometry;
+    if (!geometry || !el.object3D) continue;
+    if (entityIsHidden(el)) continue;
+
+    ctx.intersectionCount++;
+    el.object3D.updateWorldMatrix(true, false);
+
+    const emitLocalXZ = (layerSpec, xzPoints) => {
+      const layerName = ctx.resolveAndAddLayer(layerSpec);
+      ctx.polylines.push({
+        layer: layerName,
+        points: ctx.localPointsToPlan(
+          el,
+          xzPoints.map((p) => [p.x, 0, p.z])
+        ),
+        closed: true
+      });
+    };
+
+    // Roadway surface polygon (fillet arcs already tessellated).
+    emitLocalXZ(FALLBACK_LAYER, geometry.surface);
+
+    // Sidewalk corner wedges.
+    for (const corner of geometry.corners) {
+      if (corner.wedge) {
+        emitLocalXZ(SEGMENT_TYPE_TO_LAYER.sidewalk, corner.wedge);
+      }
+    }
+
+    // Crosswalk bands: one rect per mouth, same inset/width as the rendered
+    // planes (band plan width = 2m mixin plane * widthScale).
+    const crosswalkDef = CROSSWALK_MIXINS[component.data?.crosswalk];
+    if (crosswalkDef) {
+      const halfBand = crosswalkDef.widthScale * 1;
+      for (const mouth of geometry.mouths) {
+        const cx = mouth.center.x - mouth.dir.x * CROSSWALK_INSET;
+        const cz = mouth.center.z - mouth.dir.z * CROSSWALK_INSET;
+        const halfW = mouth.width / 2;
+        const n = mouth.normal;
+        const d = mouth.dir;
+        emitLocalXZ(MARKING_LAYER, [
+          {
+            x: cx - n.x * halfW - d.x * halfBand,
+            z: cz - n.z * halfW - d.z * halfBand
+          },
+          {
+            x: cx + n.x * halfW - d.x * halfBand,
+            z: cz + n.z * halfW - d.z * halfBand
+          },
+          {
+            x: cx + n.x * halfW + d.x * halfBand,
+            z: cz + n.z * halfW + d.z * halfBand
+          },
+          {
+            x: cx - n.x * halfW + d.x * halfBand,
+            z: cz - n.z * halfW + d.z * halfBand
+          }
+        ]);
+      }
+    }
   }
 }
 

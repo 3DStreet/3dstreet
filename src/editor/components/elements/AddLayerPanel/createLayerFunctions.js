@@ -559,6 +559,19 @@ export function createIntersection(position) {
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
+export function createManagedIntersection(position) {
+  // Y-up prototype (#1029): instantiates at rotation 0 0 0 and derives its
+  // geometry from the managed-street endpoint nodes within its snap radius.
+  const definition = {
+    'data-layer-name': 'Managed Intersection',
+    components: {
+      position: position ?? '0 0 0',
+      'managed-intersection': ''
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
 export function createSplatObject(position) {
   // Upload a Gaussian Splat (.splat, .ply, .spz, .rad) from the user's device.
   // The upload pipeline renders it locally and stores it in the user's asset

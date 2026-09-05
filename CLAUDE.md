@@ -53,7 +53,8 @@ public/
 - `managed-street` - **Preferred**: Manages `street-segment` children, loads from `streetmix-url`, `streetplan-url`, or `json-blob`
 - `street` + `streetmix-loader` - **Legacy**: Being phased out
 - `street-segment` - Individual lane/segment (drive-lane, bike-lane, sidewalk, etc.)
-- `intersection` - 4-way intersections (no managed equivalent yet)
+- `intersection` - Legacy 4-way intersections (rotated `-90 -90 0` frame)
+- `managed-intersection` - **Prototype**: Y-up (rotation `0 0 0`), auto-generates surface/curb-wedges/crosswalks/signals from the managed-street endpoint nodes within `snapRadius`; rebuilds live via an interval signature watch (editor pauses ticks); keeps connected streets snapped flush to the mouth (`snapStreets`, bidirectional trim/extend after settle + space-anchored mouths + nearest-intersection node ownership, so editing converges). Geometry math is pure/unit-tested in `src/tested/managed-intersection-utils.js`; entry point `docs/managed-intersection.md`
 
 **Procedural:** `street-generated-*` (striping, stencil, pedestrians, rail, clones)
 
