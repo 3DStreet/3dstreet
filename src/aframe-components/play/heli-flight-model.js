@@ -77,6 +77,23 @@ const GRAVITY = 9.81;
 // headroom above hover, and a zero-thrust descent pulls a full g.
 const MAX_CLIMB_RATE = 20; // m/s commanded at full up collective
 const MAX_DESCENT_RATE = 22; // m/s commanded at full down collective
+// Expo curve on the collective stick: rate = sign(c) * |c|^EXPO * max.
+// Squared, so half trigger asks for a quarter of the rate (~5 m/s
+// down) — playtest: the fast rates are right for crossing the map but
+// a pad landing needs a gentle sink, and analog users want the fine
+// end of the trigger to be fine. Keyboard (always ±1) is unaffected.
+const COLLECTIVE_EXPO = 2;
+// Ground-proximity descent taper ("approach mode"): the commanded
+// DESCENT rate is scaled by height above whatever is below (the rig
+// raycasts against static colliders — street, obstacles, 3D tiles —
+// and passes `input.heightAboveGround`). Full rate at/above
+// APPROACH_TOP, easing (quadratically, so the last meters are the
+// slowest) to APPROACH_MIN_SINK at the surface. This is what makes a
+// keyboard landing survivable now that full-stick descent is 22 m/s:
+// hold S from altitude and the helicopter flares itself as the ground
+// comes up. Climb, idle sink and hover assist are never tapered.
+const APPROACH_TOP = 30; // m — above this, no taper
+const APPROACH_MIN_SINK = 4; // m/s commanded at full stick on the surface
 // Commanded sink with the lever released: big enough to settle onto
 // the ground (and to read as "heavier than air"), small enough that a
 // hover only drifts down a couple of meters while you look around.
@@ -164,15 +181,37 @@ function stepHeliState(state, input, dt, params) {
  *
  * @param {Object} state — { spool }
  * @param {Object} input — { collective, pitch, roll, yaw: -1..1,
- *   assist: bool } (collective +1 = climb, pitch +1 = nose down,
- *   roll +1 = right, yaw +1 = nose left)
+ *   assist: bool, heightAboveGround?: m } (collective +1 = climb,
+ *   pitch +1 = nose down, roll +1 = right, yaw +1 = nose left;
+ *   heightAboveGround drives the descent taper, omit for none)
  * @param {Object} body — snapshot { mass, rotation: {x,y,z,w},
  *   angvel: {x,y,z}, linvel: {x,y,z} }
  * @param {Object} params — { liftPower, agility, yawRate, stability }
- * @returns {{ force: {x,y,z}, torque: {x,y,z}, thrustFrac: number }}
- *   world-frame; thrustFrac is the 0..1 fraction of max thrust in use
- *   (for rotor visuals / audio).
+ * @returns {{ force: {x,y,z}, torque: {x,y,z}, thrustFrac: number,
+ *   descentScale: number }} world-frame; thrustFrac is the 0..1
+ *   fraction of max thrust in use (for rotor visuals / audio),
+ *   descentScale the 0..1 approach taper applied to a descent command
+ *   (1 = none; for the HUD).
  */
+/**
+ * Descent-command scale (0..1) for a given height above ground.
+ * 1 at/above APPROACH_TOP; APPROACH_MIN_SINK / MAX_DESCENT_RATE on the
+ * surface; quadratic in between. Non-finite / undefined height (no
+ * surface below within range) means no taper.
+ */
+function descentScale(heightAboveGround) {
+  if (
+    heightAboveGround === undefined ||
+    heightAboveGround === null ||
+    !Number.isFinite(heightAboveGround)
+  ) {
+    return 1;
+  }
+  const f = clamp(heightAboveGround / APPROACH_TOP, 0, 1);
+  const minScale = APPROACH_MIN_SINK / MAX_DESCENT_RATE;
+  return minScale + (1 - minScale) * f * f;
+}
+
 function computeHeliForces(state, input, body, params) {
   const p = { ...DEFAULT_PARAMS, ...params };
   const m = body.mass;
@@ -184,7 +223,12 @@ function computeHeliForces(state, input, body, params) {
 
   // --- Vertical-speed servo -> rotor thrust along body-up. ---
   const collIn = clamp(input.collective || 0, -1, 1);
-  let vyCmd = collIn >= 0 ? collIn * MAX_CLIMB_RATE : collIn * MAX_DESCENT_RATE;
+  const collExpo = Math.sign(collIn) * Math.abs(collIn) ** COLLECTIVE_EXPO;
+  const approach = descentScale(input.heightAboveGround);
+  let vyCmd =
+    collIn >= 0
+      ? collExpo * MAX_CLIMB_RATE
+      : collExpo * MAX_DESCENT_RATE * approach;
   if (collIn === 0 && !input.assist) vyCmd = -IDLE_SINK_RATE;
   const maxAccel = GRAVITY * p.liftPower;
   let thrustAccel = 0;
@@ -295,13 +339,16 @@ function computeHeliForces(state, input, body, params) {
     force.y += -lv.y * m * ASSIST_VERT_BRAKE;
   }
 
-  return { force, torque, thrustFrac };
+  return { force, torque, thrustFrac, descentScale: approach };
 }
 
 module.exports = {
   GRAVITY,
   MAX_CLIMB_RATE,
   MAX_DESCENT_RATE,
+  COLLECTIVE_EXPO,
+  APPROACH_TOP,
+  APPROACH_MIN_SINK,
   IDLE_SINK_RATE,
   K_VY,
   SPOOL_TIME,
@@ -314,5 +361,6 @@ module.exports = {
   createHeliState,
   stepHeliState,
   computeHeliForces,
+  descentScale,
   applyQuat
 };

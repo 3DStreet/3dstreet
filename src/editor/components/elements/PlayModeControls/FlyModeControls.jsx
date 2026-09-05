@@ -37,7 +37,9 @@ export const FlyModeControls = () => {
   const [telemetry, setTelemetry] = useState({
     collective: 0,
     altitude: 0,
-    speed: 0
+    verticalSpeed: 0,
+    speed: 0,
+    approach: false
   });
   const rafRef = useRef(null);
 
@@ -67,7 +69,9 @@ export const FlyModeControls = () => {
     return () => sceneEl.removeEventListener('heli-built', sync);
   }, [isPlaying]);
 
-  // Telemetry loop (10 Hz): collective %, altitude, horizontal speed.
+  // Telemetry loop (10 Hz): collective %, height above ground (radar
+  // altitude — falls back to world Y when nothing is below), vertical
+  // speed, horizontal speed, approach-taper flag.
   useEffect(() => {
     if (!isPlaying || !data) return undefined;
     let lastUpdate = 0;
@@ -80,10 +84,13 @@ export const FlyModeControls = () => {
       if (!pmh || !pmh.chassisBody) return;
       const t = pmh.chassisBody.translation();
       const v = pmh.chassisBody.linvel();
+      const hag = pmh.heightAboveGround;
       setTelemetry({
         collective: pmh.state.collective,
-        altitude: t.y,
-        speed: Math.sqrt(v.x * v.x + v.z * v.z)
+        altitude: Number.isFinite(hag) ? hag : t.y,
+        verticalSpeed: v.y,
+        speed: Math.sqrt(v.x * v.x + v.z * v.z),
+        approach: (pmh.descentScale ?? 1) < 0.98
       });
     };
     rafRef.current = requestAnimationFrame(loop);
@@ -155,6 +162,26 @@ export const FlyModeControls = () => {
             />
           </span>
           <span className={styles.value}>{telemetry.altitude.toFixed(1)}m</span>
+        </div>
+        <div className={styles.timerRow}>
+          <span className={styles.name}>
+            <FormattedMessage
+              id="flyModeControls.verticalSpeed"
+              defaultMessage="Vertical"
+            />
+          </span>
+          <span className={styles.value}>
+            {telemetry.verticalSpeed >= 0 ? '+' : ''}
+            {telemetry.verticalSpeed.toFixed(1)} m/s
+            {telemetry.approach ? (
+              <span className={styles.approachChip}>
+                <FormattedMessage
+                  id="flyModeControls.approach"
+                  defaultMessage="APPROACH"
+                />
+              </span>
+            ) : null}
+          </span>
         </div>
         <div className={styles.timerRow}>
           <span className={styles.name}>

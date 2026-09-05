@@ -1157,6 +1157,9 @@
   "flyModeControls.altitude": {
     "defaultMessage": "Altitude"
   },
+  "flyModeControls.approach": {
+    "defaultMessage": "APPROACH"
+  },
   "flyModeControls.collective": {
     "defaultMessage": "Collective"
   },
@@ -1177,6 +1180,9 @@
   },
   "flyModeControls.title": {
     "defaultMessage": "Flight controls"
+  },
+  "flyModeControls.verticalSpeed": {
+    "defaultMessage": "Vertical"
   },
   "flyModeControls.yawRate": {
     "defaultMessage": "Yaw rate"

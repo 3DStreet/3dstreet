@@ -21,6 +21,9 @@ const {
   GRAVITY,
   MAX_CLIMB_RATE,
   MAX_DESCENT_RATE,
+  APPROACH_TOP,
+  APPROACH_MIN_SINK,
+  descentScale,
   IDLE_SINK_RATE,
   SPOOL_TIME,
   HORIZ_DRAG,
@@ -217,6 +220,67 @@ describe('heli-flight-model', () => {
       );
       const sink = down[down.length - 1].vy;
       assert.ok(Math.abs(sink + MAX_DESCENT_RATE) < 1.5);
+    });
+
+    it('expo collective: half trigger commands a quarter of the rate', () => {
+      // Playtest: full-rate descents are right for crossing the map
+      // but a helipad landing needs a gentle sink on the fine end of
+      // the trigger. Keyboard (always ±1) must still hit the max.
+      const half = simulateVertical(
+        spooledState(),
+        [{ input: { ...NO_INPUT, collective: -0.5 }, seconds: 8 }],
+        levelBody()
+      );
+      const sink = half[half.length - 1].vy;
+      assert.ok(
+        Math.abs(sink + MAX_DESCENT_RATE / 4) < 1,
+        `half-trigger sink ${sink} m/s`
+      );
+      const halfUp = simulateVertical(
+        spooledState(),
+        [{ input: { ...NO_INPUT, collective: 0.5 }, seconds: 8 }],
+        levelBody()
+      );
+      const climb = halfUp[halfUp.length - 1].vy;
+      assert.ok(Math.abs(climb - MAX_CLIMB_RATE / 4) < 1);
+    });
+
+    it('approach taper: full-stick descent eases to a landing sink near the ground', () => {
+      // Playtest: 22 m/s onto a helipad is a crash landing, and the
+      // keyboard can't ask for less than full stick. The rig passes
+      // height-above-ground; the model scales the DESCENT command.
+      assert.strictEqual(descentScale(undefined), 1);
+      assert.strictEqual(descentScale(Infinity), 1);
+      assert.strictEqual(descentScale(APPROACH_TOP + 50), 1);
+      assert.ok(descentScale(APPROACH_TOP / 2) < 0.5);
+      assert.ok(descentScale(APPROACH_TOP / 2) > 0.2);
+      const onPad = simulateVertical(
+        spooledState(),
+        [
+          {
+            input: { ...NO_INPUT, collective: -1, heightAboveGround: 0.5 },
+            seconds: 8
+          }
+        ],
+        levelBody()
+      );
+      const sink = onPad[onPad.length - 1].vy;
+      assert.ok(Math.abs(sink + APPROACH_MIN_SINK) < 1, `pad sink ${sink}`);
+      // Climb is never tapered, nor is the hover-assist hold.
+      const up = computeHeliForces(
+        spooledState(),
+        { ...NO_INPUT, collective: 1, heightAboveGround: 0.5 },
+        levelBody(),
+        DEFAULT_PARAMS
+      );
+      assert.strictEqual(up.descentScale < 1, true); // reported...
+      const upFree = computeHeliForces(
+        spooledState(),
+        { ...NO_INPUT, collective: 1 },
+        levelBody(),
+        DEFAULT_PARAMS
+      );
+      assert.ok(Math.abs(up.force.y - upFree.force.y) < 1e-9); // ...not applied
     });
 
     it('bank-compensates: vertical lift holds through a forward tilt', () => {

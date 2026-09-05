@@ -152,7 +152,23 @@ at the same 24° visual pitch. If that still reads slow, the next levers
 are `HORIZ_DRAG` down to ~0.12 (~65 m/s) or nudging `MAX_PITCH_TILT`.
 Vertical rates were then raised to match ("like a snail compared to
 forward"): `MAX_CLIMB_RATE` 9 → 20 m/s, `MAX_DESCENT_RATE` 9 → 22 m/s,
-both reachable in ~2 s at the default `liftPower` 2.2.
+both reachable in ~2 s at the default `liftPower` 2.2. Then, because a
+22 m/s sink onto a helipad is a crash landing, the collective got a
+squared expo curve (`COLLECTIVE_EXPO`): half trigger = a quarter of the
+rate (~5 m/s). Keyboard is unaffected (always ±1); the follow-up for
+keyboard landings, built the same day: a ground-proximity descent taper
+("approach mode"). `probeHeightAboveGround` in `play-mode-helicopter`
+raycasts straight down against STATIC colliders only (street, obstacles,
+tiles; kinematic traffic twins excluded so a bus underneath can't brake
+you) and passes `heightAboveGround` into the model, where
+`descentScale()` eases a full-stick descent quadratically from 22 m/s
+above `APPROACH_TOP` (30 m) to `APPROACH_MIN_SINK` (4 m/s) on the
+surface. Climb, idle sink and assist are never tapered. The fly-mode
+readout row now shows height above ground instead of world Y (falls
+back to Y with nothing below), a signed vertical speed, and an
+"APPROACH" chip while the taper is active. Also fixed: the rotor visual
+stopped in a powered descent (it tracked thrust fraction; now a
+constant run speed + small work kick, `ROTOR_VISUAL_RUN/WORK`).
 
 Still worth verifying on real hardware: the pad's `pitchAxis` isn't scaled
 down anywhere between `pollGamepad` and `readInputAxes`.

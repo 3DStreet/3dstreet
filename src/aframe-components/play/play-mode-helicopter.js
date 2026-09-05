@@ -86,9 +86,16 @@ const HANDLING_INERTIA = {
 // How high above the fly-controls entity's origin the body spawns so
 // the wheels (collider bottom) start on, not in, the ground.
 const SPAWN_LIFT = COLLIDER_HALF.y + 0.1;
-// Visual rotor speed at full collective, rad/s.
-const ROTOR_VISUAL_MAX = 40;
-const ROTOR_VISUAL_IDLE = 6;
+// Visual rotor speed, rad/s: a spooled rotor turns at (near) constant
+// RPM whatever the collective is doing — thrust comes from blade
+// pitch, not speed — so the visual is a fixed run speed plus a small
+// work-proportional kick. (It used to be idle + collective * range,
+// which stopped the blades in a powered descent because the thrust
+// fraction is ~0 there — playtest bug.)
+const ROTOR_VISUAL_RUN = 32;
+const ROTOR_VISUAL_WORK = 8;
+// Downward ground probe for the approach taper + radar-altitude HUD.
+const GROUND_PROBE_RANGE = 400; // m
 
 // ---------------------------------------------------------------------
 // Component: fly-controls (editor-time marker)
@@ -451,10 +458,46 @@ AFRAME.registerComponent('play-mode-helicopter', {
     };
   },
 
+  /**
+   * Height of the wheels above the nearest STATIC surface straight
+   * below (street, obstacles, 3D tiles). Kinematic traffic twins and
+   * other dynamic bodies are excluded — a bus passing underneath must
+   * not brake a descent. Infinity when nothing is within range.
+   */
+  probeHeightAboveGround: function () {
+    const R = this.system.RAPIER;
+    const world = this.system.world;
+    const body = this.chassisBody;
+    if (!R || !world || !body) return Infinity;
+    const t = body.translation();
+    const ray =
+      this._groundRay ||
+      (this._groundRay = new R.Ray(
+        { x: 0, y: 0, z: 0 },
+        { x: 0, y: -1, z: 0 }
+      ));
+    ray.origin.x = t.x;
+    ray.origin.y = t.y;
+    ray.origin.z = t.z;
+    const hit = world.castRay(
+      ray,
+      GROUND_PROBE_RANGE,
+      true,
+      R.QueryFilterFlags.EXCLUDE_DYNAMIC | R.QueryFilterFlags.EXCLUDE_KINEMATIC,
+      undefined,
+      undefined,
+      body
+    );
+    if (!hit) return Infinity;
+    return Math.max(0, hit.timeOfImpact - COLLIDER_HALF.y);
+  },
+
   flightStep: function (dt) {
     const body = this.chassisBody;
     if (!body) return;
     const axes = this.readInputAxes();
+    axes.heightAboveGround = this.heightAboveGround =
+      this.probeHeightAboveGround();
     const params = {
       liftPower: this.data.liftPower,
       agility: this.data.agility,
@@ -462,7 +505,7 @@ AFRAME.registerComponent('play-mode-helicopter', {
       stability: this.data.stability
     };
     stepHeliState(this.state, axes, dt, params);
-    const { force, torque, thrustFrac } = computeHeliForces(
+    const { force, torque, thrustFrac, descentScale } = computeHeliForces(
       this.state,
       axes,
       {
@@ -473,6 +516,8 @@ AFRAME.registerComponent('play-mode-helicopter', {
       },
       params
     );
+    // Approach taper in effect (HUD reads it).
+    this.descentScale = descentScale;
     // Smoothed rotor-work fraction for visuals/audio/telemetry.
     this.state.collective +=
       (thrustFrac - this.state.collective) * Math.min(1, 8 * dt);
@@ -524,8 +569,7 @@ AFRAME.registerComponent('play-mode-helicopter', {
     const meshComp = meshEl && meshEl.components['helicopter-mesh'];
     const rotorSpeed =
       this.state.spool *
-      (ROTOR_VISUAL_IDLE +
-        this.state.collective * (ROTOR_VISUAL_MAX - ROTOR_VISUAL_IDLE));
+      (ROTOR_VISUAL_RUN + this.state.collective * ROTOR_VISUAL_WORK);
     if (meshComp) {
       meshComp.rotorSpeed = rotorSpeed;
       // Cyclic input tilts the rotor disc slightly (blade-flapping
