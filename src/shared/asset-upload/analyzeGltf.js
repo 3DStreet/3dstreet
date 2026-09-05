@@ -14,12 +14,14 @@
  *                      packed in a bufferView. Safe to upload; the optimize
  *                      worker converts it to GLB when it can.
  *   'external-refs'  — references sibling files. Rejected with conversion
- *                      instructions (the listed refs go into the message).
+ *                      instructions.
  *   'binary'         — GLB bytes with a `.gltf` name. Treated as a GLB.
  *   'invalid'        — not parseable as glTF JSON or GLB.
  *
  * `.glb` files never come through here — callers gate on isGltfJsonFile().
  */
+
+import { formatSharedMessage } from '../i18n/sharedMessages';
 
 const GLB_MAGIC = 0x46546c67; // 'glTF' little-endian
 
@@ -91,19 +93,11 @@ export async function analyzeGltfFile(file) {
 /**
  * User-facing rejection message for a `.gltf` that can't be uploaded.
  * Shared by the editor drop flow and the scene-free upload flow so both
- * surfaces give the same conversion instructions.
+ * surfaces give the same conversion instructions. Localized via the
+ * hand-maintained shared message table (no react-intl context here).
  */
 export function gltfRejectionMessage(filename, analysis) {
-  if (analysis?.status === 'external-refs') {
-    const refs = analysis.externalRefs.slice(0, 3).join(', ');
-    const more =
-      analysis.externalRefs.length > 3
-        ? ` +${analysis.externalRefs.length - 3} more`
-        : '';
-    return (
-      `${filename} references separate files (${refs}${more}) that can't be uploaded together. ` +
-      `Export a single .glb file instead — in Blender: File → Export → glTF 2.0, format "glTF Binary" — or convert at gltf.report.`
-    );
-  }
-  return `${filename} is not a valid glTF file. Export a single .glb file and try again.`;
+  const id =
+    analysis?.status === 'external-refs' ? 'gltfExternalRefs' : 'gltfInvalid';
+  return formatSharedMessage(id, { filename });
 }

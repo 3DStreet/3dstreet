@@ -5,6 +5,7 @@ import {
   analyzeGltfFile,
   gltfRejectionMessage
 } from '../../../src/shared/asset-upload/analyzeGltf.js';
+import { formatSharedMessage } from '../../../src/shared/i18n/sharedMessages';
 
 const encode = (obj) => new TextEncoder().encode(JSON.stringify(obj)).buffer;
 const asFile = (buffer) => ({ arrayBuffer: async () => buffer });
@@ -103,23 +104,14 @@ describe('analyzeGltfFile', () => {
 });
 
 describe('gltfRejectionMessage', () => {
-  it('names the file and the missing sibling files', () => {
+  it('names the file and points to a .glb export', () => {
     const msg = gltfRejectionMessage('scene.gltf', {
       status: 'external-refs',
       externalRefs: ['scene.bin', 'textures/a.png']
     });
     expect(msg).toContain('scene.gltf');
-    expect(msg).toContain('scene.bin');
     expect(msg).toContain('.glb');
-  });
-
-  it('truncates long ref lists', () => {
-    const msg = gltfRejectionMessage('scene.gltf', {
-      status: 'external-refs',
-      externalRefs: ['a.bin', 'b.png', 'c.png', 'd.png', 'e.png']
-    });
-    expect(msg).toContain('+2 more');
-    expect(msg).not.toContain('d.png');
+    expect(msg).toContain('gltf.report');
   });
 
   it('falls back to an invalid-file message', () => {
@@ -127,6 +119,17 @@ describe('gltfRejectionMessage', () => {
       status: 'invalid',
       externalRefs: []
     });
+    expect(msg).toContain('scene.gltf');
     expect(msg).toContain('not a valid glTF');
+  });
+
+  it('localizes via the shared message table', () => {
+    const msg = formatSharedMessage(
+      'gltfInvalid',
+      { filename: 'scene.gltf' },
+      { locale: 'es' }
+    );
+    expect(msg).toContain('scene.gltf');
+    expect(msg).toContain('glTF válido');
   });
 });
