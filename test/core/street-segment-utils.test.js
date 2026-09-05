@@ -7,6 +7,7 @@ import {
   levelToElevation,
   migrateSegmentLevelToElevation,
   migrateSegmentBuildingType,
+  migrateSegmentHatchedSurface,
   migrateShowBuildingsFlag,
   CURB_HEIGHT,
   BASE_SURFACE_DEPTH
@@ -175,6 +176,86 @@ describe('StreetSegmentUtils', function () {
         migrateSegmentBuildingType({ type: 'building', width: 10 }),
         { type: 'boundary', width: 10 }
       );
+    });
+  });
+
+  describe('#migrateSegmentHatchedSurface()', function () {
+    it('should convert a hatched surface prop string to asphalt plus a striping component', function () {
+      const components = {
+        'street-segment': 'type: divider; surface: hatched; width: 1'
+      };
+      migrateSegmentHatchedSurface(components);
+      assert.strictEqual(
+        components['street-segment'],
+        'type: divider; surface: asphalt; width: 1'
+      );
+      assert.strictEqual(
+        components['street-generated-striping__1'],
+        'striping: hatched'
+      );
+    });
+    it('should handle surface at the end of a prop string', function () {
+      const components = {
+        'street-segment': 'type: divider; surface: hatched'
+      };
+      migrateSegmentHatchedSurface(components);
+      assert.strictEqual(
+        components['street-segment'],
+        'type: divider; surface: asphalt'
+      );
+      assert.strictEqual(
+        components['street-generated-striping__1'],
+        'striping: hatched'
+      );
+    });
+    it('should convert an object value', function () {
+      const components = {
+        'street-segment': { type: 'divider', surface: 'hatched', width: 1 }
+      };
+      migrateSegmentHatchedSurface(components);
+      assert.deepStrictEqual(components['street-segment'], {
+        type: 'divider',
+        surface: 'asphalt',
+        width: 1
+      });
+      assert.strictEqual(
+        components['street-generated-striping__1'],
+        'striping: hatched'
+      );
+    });
+    it('should pick the first free striping slot when others exist', function () {
+      const components = {
+        'street-segment': 'surface: hatched',
+        'street-generated-striping': 'striping: solid-stripe; side: left',
+        'street-generated-striping__2': 'striping: dashed-stripe; side: right'
+      };
+      migrateSegmentHatchedSurface(components);
+      // bare instance exports at the same index as __1, so __1 is blocked
+      assert.strictEqual(
+        components['street-generated-striping__3'],
+        'striping: hatched'
+      );
+    });
+    it('should leave non-hatched values untouched', function () {
+      const stringComponents = {
+        'street-segment': 'type: drive-lane; surface: asphalt'
+      };
+      migrateSegmentHatchedSurface(stringComponents);
+      assert.deepStrictEqual(stringComponents, {
+        'street-segment': 'type: drive-lane; surface: asphalt'
+      });
+      const objectComponents = {
+        'street-segment': { type: 'grass', surface: 'grass' }
+      };
+      migrateSegmentHatchedSurface(objectComponents);
+      assert.deepStrictEqual(objectComponents, {
+        'street-segment': { type: 'grass', surface: 'grass' }
+      });
+    });
+    it('should pass through entities without a street-segment component', function () {
+      const components = { material: 'color: red' };
+      assert.strictEqual(migrateSegmentHatchedSurface(components), components);
+      assert.deepStrictEqual(components, { material: 'color: red' });
     });
   });
 

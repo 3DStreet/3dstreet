@@ -67,6 +67,18 @@ function getStripingFromSegments(previousSegment, currentSegment) {
     'parking-lane'
   ];
 
+  // Divider handling mirrors the streetmix importer's getSeparatorMixinId:
+  // a divider gets an edge stripe against a lane, but two adjacent dividers
+  // (e.g. a multi-segment median) get no stripe between them.
+  if (previousSegment.type === 'divider' || currentSegment.type === 'divider') {
+    if (previousSegment.type === currentSegment.type) {
+      return null;
+    }
+    const other =
+      previousSegment.type === 'divider' ? currentSegment : previousSegment;
+    return validLaneTypes.includes(other.type) ? 'solid-stripe' : null;
+  }
+
   // Only add striping between valid lane types
   if (
     !validLaneTypes.includes(previousSegment.type) ||
@@ -486,7 +498,16 @@ AFRAME.registerComponent('managed-street', {
     return segmentEl;
   },
   onSegmentChanged: function (event) {
-    const { widthChanged, typeChanged, sideChanged } = event.detail;
+    const { widthChanged, typeChanged, sideChanged, directionChanged } =
+      event.detail;
+    // A type or direction change can invalidate the separator stripes on the
+    // segment's shared edges (e.g. two drive lanes need a double yellow once
+    // their directions oppose) — recompute them (#1720 auto-striping). This
+    // runs after street-segment's own update, so a type change has already
+    // regenerated the segment's preset content.
+    if (typeChanged || directionChanged) {
+      this.updateAutoStriping(event.target);
+    }
     // type and side changes re-layout too: type alters travelled-way
     // membership (boundary vs not), side moves a boundary to the other edge
     if (!widthChanged && !typeChanged && !sideChanged) {
@@ -500,6 +521,69 @@ AFRAME.registerComponent('managed-street', {
       newValue: event.detail.newWidth
     });
     this.refreshManagedEntities();
+  },
+  // Recompute the auto separator stripes on the two edges adjacent to a
+  // segment whose type or direction changed. The separator between segments
+  // i-1 and i lives on segment i (side: left); full-width treatments
+  // (striping: hatched) and right-side stripes are never touched.
+  updateAutoStriping: function (changedEl) {
+    this.refreshManagedEntities();
+    const segments = this.managedEntities.filter(
+      (el) => !isBoundarySegment(el)
+    );
+    const index = segments.indexOf(changedEl);
+    if (index === -1) {
+      return;
+    }
+    [index, index + 1].forEach((i) => {
+      if (i <= 0 || i >= segments.length) {
+        return;
+      }
+      this.applyAutoStripingBetween(segments[i - 1], segments[i]);
+    });
+  },
+  applyAutoStripingBetween: function (previousEl, currentEl) {
+    const variant = getStripingFromSegments(
+      previousEl.getAttribute('street-segment'),
+      currentEl.getAttribute('street-segment')
+    );
+    // The separator slot is the first left-side striping component on the
+    // current segment that isn't a full-width hatched treatment.
+    const separatorSlot = Object.keys(currentEl.components).find((name) => {
+      if (!name.startsWith('street-generated-striping')) {
+        return false;
+      }
+      const value = currentEl.getAttribute(name);
+      return value && value.striping !== 'hatched' && value.side === 'left';
+    });
+    if (variant) {
+      if (separatorSlot) {
+        currentEl.setAttribute(separatorSlot, 'striping', variant);
+      } else {
+        currentEl.setAttribute(
+          this.findFreeStripingSlot(currentEl),
+          `striping: ${variant}`
+        );
+      }
+    } else if (separatorSlot) {
+      currentEl.removeAttribute(separatorSlot);
+    }
+  },
+  // First unused street-generated-striping slot on the entity, following the
+  // import convention (first instance is __1). A bare unsuffixed instance
+  // exports at the same index as __1 (see GENERATED_RE), so it blocks __1.
+  findFreeStripingSlot: function (el) {
+    if (
+      !el.components['street-generated-striping'] &&
+      !el.components['street-generated-striping__1']
+    ) {
+      return 'street-generated-striping__1';
+    }
+    let n = 2;
+    while (el.components[`street-generated-striping__${n}`]) {
+      n++;
+    }
+    return `street-generated-striping__${n}`;
   },
   update: function (oldData) {
     const data = this.data;
@@ -826,6 +910,18 @@ AFRAME.registerComponent('managed-street', {
       // 'building' is the deprecated pre-rename value for boundary segments
       const segmentType =
         segment.type === 'building' ? 'boundary' : segment.type;
+
+      // Migrate the deprecated `surface: hatched` (#1728): hatching is now a
+      // full-width street-generated-striping treatment that crops to the
+      // segment width instead of stretching a surface texture across it.
+      if (segment.surface === 'hatched') {
+        segment.surface = 'asphalt';
+        segment.generated = segment.generated || {};
+        segment.generated.striping = [
+          ...(segment.generated.striping || []),
+          { striping: 'hatched' }
+        ];
+      }
       segmentEl.setAttribute('street-segment', {
         type: segmentType, // this is the base type, it won't load its defaults since we are changing more than just the type value
         width: segment.width,
@@ -2000,6 +2096,16 @@ function parseStreetmixSegments(segments, length) {
       color: segmentColor ?? window.STREET.types[segmentPreset]?.color, // find default color for segmentPreset
       surface: window.STREET.types[segmentPreset]?.surface // find default surface type for segmentPreset
     });
+
+    // Divider-preset segments render their hatching as a generated full-width
+    // striping treatment (#1728). __2 keeps clear of the bare separator stripe
+    // below, which exports at the same index as __1.
+    if (segmentPreset === 'divider') {
+      segmentParentEl.setAttribute(
+        'street-generated-striping__2',
+        'striping: hatched'
+      );
+    }
 
     let currentSegment = segments[i];
     let previousSegment = segments[i - 1];
