@@ -38,8 +38,8 @@ const MASTER_VOLUME = 0.5;
 /**
  * Map flight state to synth parameters. Pure — unit-tested.
  *
- * @param {Object} s — { rotorSpeed (rad/s), collective (-0.4..1),
- *   speed (m/s, magnitude of velocity), paused (bool) }
+ * @param {Object} s — { rotorSpeed (rad/s), collective (0..1 rotor
+ *   work fraction), speed (m/s, magnitude of velocity), paused (bool) }
  */
 function heliSoundParams(s) {
   const rotorAmount = Math.max(

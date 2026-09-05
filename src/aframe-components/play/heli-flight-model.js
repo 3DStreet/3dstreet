@@ -11,39 +11,53 @@
  * Design target is "GTA / Battlefield medium complexity": more than a
  * toy up/down translator, far less than a real sim. The pieces:
  *
- *   - Collective (throttle lever): a MIN_COLLECTIVE..1 value ramped by
- *     held input. Rotor thrust = mass * g * liftPower * collective,
- *     applied along BODY-UP — so tilting the helicopter vectors its
- *     thrust and pitch/roll naturally translate into horizontal
- *     flight, exactly like the games. Hover sits at collective =
- *     1/liftPower. Holding the lever below zero is ACTIVE DOWN-THRUST
- *     (GTA descend key): the playtest complaint was that cutting lift
- *     and waiting on gravity made returning to the ground feel like a
- *     balloon, so S keeps ramping past 0 into a powered dive.
- *   - Drag is split by axis: horizontal drag caps cruise speed, but
- *     vertical drag is ~4x weaker so climbs and especially descents
- *     read as heavy, not floaty. (An earlier build used Rapier's
- *     isotropic linearDamping, which braked falls as hard as cruise —
- *     the "gravity feels light" playtest note.)
+ *   - Vertical: VELOCITY-COMMAND, not a thrust lever. Held W/S commands
+ *     a target climb/descent rate (MAX_CLIMB_RATE / MAX_DESCENT_RATE)
+ *     and a first-order servo picks the rotor thrust that tracks it;
+ *     release the key and the command returns to a whisper of sink
+ *     (IDLE_SINK_RATE), so the helicopter settles toward hover on its
+ *     own instead of continuing whatever the lever last said. This
+ *     replaces the original latching collective lever — playtesting
+ *     (with kids) showed releasing W after a climb left the lever
+ *     pinned at 100% and the helicopter accelerating skyward forever,
+ *     and the only way to hold altitude was to hand-fly the lever,
+ *     which produced constant overshoot oscillation. The gentle idle
+ *     sink (instead of a perfect hold) doubles as ground handling: at
+ *     rest the servo asks for slightly less than gravity, so the
+ *     helicopter stays planted on its skids rather than turning
+ *     weightless. Hover assist (Space) commands an EXACT zero-sink
+ *     hold on top of its braking/leveling boosts.
+ *     Thrust is applied along BODY-UP — tilting vectors it, so
+ *     pitch/roll translate into horizontal flight like the games — and
+ *     is bank-compensated (divided by up·Y, clamped) so cruising at
+ *     full forward tilt doesn't cost altitude. Max thrust is
+ *     mass * g * liftPower; an (almost) inverted rotor produces none.
  *   - Rotor spool: thrust fades in over `spoolTime` seconds after
  *     start so takeoff has a wind-up instead of an instant jump.
  *   - Cyclic (pitch/roll): ATTITUDE-COMMAND, the way the games do it —
  *     stick deflection commands a target tilt (up to MAX_PITCH_TILT /
- *     MAX_ROLL_TILT), and a
- *     spring torque drives body-up toward that commanded attitude.
- *     Full deflection therefore settles at a bounded bank instead of
- *     tumbling end-over-end (which is what raw torque + faded leveling
- *     produced). With zero input the commanded attitude is level, so
- *     the same spring IS the auto-level; `stability` scales the
- *     return-to-level strength, `agility` the command-tracking
- *     strength. Conventions (A-Frame body frame, forward = -Z):
+ *     MAX_ROLL_TILT), and a spring torque drives body-up toward that
+ *     commanded attitude. Full deflection therefore settles at a
+ *     bounded bank instead of tumbling end-over-end. With zero input
+ *     the commanded attitude is level, so the same spring IS the
+ *     auto-level; `stability` scales the return-to-level strength,
+ *     `agility` the command-tracking strength. The commanded tilt is
+ *     deliberately modest (~24° pitch — a real helicopter's brisk
+ *     cruise, not a 57° cartoon dive); forward SPEED comes from the
+ *     bank-compensated thrust vector plus a cyclic drive force
+ *     (K_CYCLIC_DRIVE, the rotor "pulling" the airframe where the
+ *     stick points) against a lowered horizontal drag.
+ *     Conventions (A-Frame body frame, forward = -Z):
  *       pitch +1 = nose down (fly forward), roll +1 = roll right.
+ *   - Drag is split by axis: horizontal drag caps cruise speed
+ *     (~33 m/s at full forward stick), vertical drag is weak — falls
+ *     with a dead rotor stay heavy; powered vertical motion is
+ *     governed by the velocity servo, not drag.
  *   - Pedals (yaw): rate-command torque about body-up;
  *     yaw +1 = nose left = +Y torque when level.
- *   - Hover assist (Space / gamepad B): temporarily boosts leveling,
- *     brakes horizontal + vertical velocity, and eases the collective
- *     toward the exact hover value — a panic button that parks the
- *     helicopter in a stable hover.
+ *   - Hover assist (Space / gamepad B): boosts leveling, brakes
+ *     horizontal + vertical velocity, and commands a zero-sink hover —
+ *     a panic button that parks the helicopter in a stable hover.
  *
  * All torque constants are mass-scaled (torque = mass * K * input);
  * with the fixed collider proportions used by play-mode-helicopter the
@@ -55,29 +69,37 @@ const GRAVITY = 9.81;
 
 // Tunables that are NOT user-facing levers (the user-facing ones —
 // liftPower / agility / yawRate / stability — arrive via params).
-const COLLECTIVE_RATE = 1.1; // collective travel per second of held W/S
-const MIN_COLLECTIVE = -0.4; // lever floor: powered-descent down-thrust
+const MAX_CLIMB_RATE = 9; // m/s commanded at full up collective
+const MAX_DESCENT_RATE = 9; // m/s commanded at full down collective
+// Commanded sink with the lever released: big enough to settle onto
+// the ground (and to read as "heavier than air"), small enough that a
+// hover only drifts down a couple of meters while you look around.
+const IDLE_SINK_RATE = 0.4; // m/s
+const K_VY = 2.2; // 1/s — vertical-speed servo gain (first-order, no overshoot)
+// Bank compensation floor: thrust is divided by up·Y down to this, so
+// banks up to ~60° hold altitude; past that you trade lift for turn.
+const MIN_TILT_COMP_Y = 0.5;
 const SPOOL_TIME = 1.6; // seconds from Play to full available thrust
-const ASSIST_COLLECTIVE_EASE = 4; // 1/s — how fast assist trims to hover
-const HORIZ_DRAG = 0.35; // 1/s — caps cruise speed
-const VERT_DRAG = 0.08; // 1/s — falls and climbs stay heavy
+const HORIZ_DRAG = 0.22; // 1/s — caps cruise speed (~33 m/s full stick)
+const VERT_DRAG = 0.08; // 1/s — dead-rotor falls stay heavy
 const MAX_ROLL_TILT = 0.55; // rad (~31°) — commanded roll at full stick
-// Pitch commands much deeper than roll: at ~57° nose-down the thrust
-// vector is mostly horizontal, so full forward stick trades the climb
-// for real forward speed instead of riding ever higher.
-const MAX_PITCH_TILT = 1.0; // rad (~57°) — commanded pitch at full stick
+const MAX_PITCH_TILT = 0.42; // rad (~24°) — commanded pitch at full stick
+// Horizontal accel the rotor adds along the commanded tilt direction,
+// m/s^2 at full stick — on top of the tilted-thrust component, so full
+// forward pulls ~7.4 m/s^2 without needing a nose-down caricature.
+const K_CYCLIC_DRIVE = 3.0;
 const K_CMD = 14; // mass-scaled spring toward the commanded attitude
 const K_LEVEL = 12; // mass-scaled spring back to level (no input)
 const K_YAW = 5; // mass-scaled pedal yaw torque
 const K_TILT_DAMP = 1.6; // mass-scaled tilt-rate damper
 const ASSIST_LEVEL_BOOST = 2.5; // leveling multiplier while assist held
 const ASSIST_HORIZ_BRAKE = 1.2; // 1/s — horizontal velocity brake under assist
-// Strong: assist is the panic button, and powered dives now reach
-// ~30 m/s — it should visibly arrest one within a couple of seconds.
+// Extra vertical brake on top of the servo: assist is the panic
+// button — it should visibly arrest a dive within a couple of seconds.
 const ASSIST_VERT_BRAKE = 1.6; // 1/s — vertical velocity brake under assist
 
 const DEFAULT_PARAMS = {
-  liftPower: 2.2, // thrust at full collective, in multiples of gravity
+  liftPower: 2.2, // max rotor thrust, in multiples of gravity
   agility: 1, // scales cyclic (pitch/roll) torques
   yawRate: 1, // scales yaw torque
   stability: 1 // scales the auto-level spring
@@ -104,34 +126,26 @@ function applyQuat(q, v) {
 /** Fresh mutable flight state for one play session. */
 function createHeliState() {
   return {
-    collective: 0, // 0..1 rotor thrust lever
+    // Smoothed 0..1 rotor-work fraction, for visuals/audio/telemetry
+    // only (play-mode-helicopter feeds it from thrustFrac each step —
+    // the force math never reads it).
+    collective: 0,
     spool: 0 // 0..1 rotor wind-up since Play started
   };
 }
 
 /**
- * Advance collective + spool by one physics sub-step.
+ * Advance the rotor spool by one physics sub-step. (The old collective
+ * lever ramp lived here; vertical control is now a velocity command
+ * resolved directly in computeHeliForces.)
  *
  * @param {Object} state — from createHeliState(), mutated in place
- * @param {Object} input — { collective: -1..1 (rate), assist: bool }
+ * @param {Object} input — unused (kept for call-site symmetry)
  * @param {number} dt — sub-step seconds
- * @param {Object} params — { liftPower } (others ignored here)
+ * @param {Object} params — unused
  */
 function stepHeliState(state, input, dt, params) {
-  const p = params || DEFAULT_PARAMS;
   state.spool = Math.min(1, state.spool + dt / SPOOL_TIME);
-  state.collective = clamp(
-    state.collective + (input.collective || 0) * COLLECTIVE_RATE * dt,
-    MIN_COLLECTIVE,
-    1
-  );
-  // Assist trims toward exact hover thrust — but only once the player
-  // has stopped commanding the lever, so held W under assist still climbs.
-  if (input.assist && !input.collective) {
-    const hover = 1 / (p.liftPower || DEFAULT_PARAMS.liftPower);
-    const t = Math.min(1, ASSIST_COLLECTIVE_EASE * dt);
-    state.collective += (clamp(hover, 0, 1) - state.collective) * t;
-  }
   return state;
 }
 
@@ -139,23 +153,38 @@ function stepHeliState(state, input, dt, params) {
  * Compute the world-frame force + torque to apply for this sub-step.
  * Gravity is NOT included — the physics world applies it.
  *
- * @param {Object} state — { collective, spool }
- * @param {Object} input — { pitch, roll, yaw: -1..1, assist: bool }
- *   (pitch +1 = nose down, roll +1 = right, yaw +1 = nose left)
+ * @param {Object} state — { spool }
+ * @param {Object} input — { collective, pitch, roll, yaw: -1..1,
+ *   assist: bool } (collective +1 = climb, pitch +1 = nose down,
+ *   roll +1 = right, yaw +1 = nose left)
  * @param {Object} body — snapshot { mass, rotation: {x,y,z,w},
  *   angvel: {x,y,z}, linvel: {x,y,z} }
  * @param {Object} params — { liftPower, agility, yawRate, stability }
- * @returns {{ force: {x,y,z}, torque: {x,y,z} }} world-frame
+ * @returns {{ force: {x,y,z}, torque: {x,y,z}, thrustFrac: number }}
+ *   world-frame; thrustFrac is the 0..1 fraction of max thrust in use
+ *   (for rotor visuals / audio).
  */
 function computeHeliForces(state, input, body, params) {
   const p = { ...DEFAULT_PARAMS, ...params };
   const m = body.mass;
   const q = body.rotation;
+  const lv = body.linvel;
 
-  // --- Rotor thrust along body-up. Squared spool for a soft wind-up. ---
   const up = applyQuat(q, { x: 0, y: 1, z: 0 });
   const spoolEase = state.spool * state.spool;
-  const thrust = m * GRAVITY * p.liftPower * state.collective * spoolEase;
+
+  // --- Vertical-speed servo -> rotor thrust along body-up. ---
+  const collIn = clamp(input.collective || 0, -1, 1);
+  let vyCmd = collIn >= 0 ? collIn * MAX_CLIMB_RATE : collIn * MAX_DESCENT_RATE;
+  if (collIn === 0 && !input.assist) vyCmd = -IDLE_SINK_RATE;
+  const maxAccel = GRAVITY * p.liftPower;
+  let thrustAccel = 0;
+  if (up.y > 0.05) {
+    const comp = 1 / Math.max(up.y, MIN_TILT_COMP_Y);
+    thrustAccel = clamp((GRAVITY + K_VY * (vyCmd - lv.y)) * comp, 0, maxAccel);
+  }
+  const thrustFrac = (thrustAccel / maxAccel) * spoolEase;
+  const thrust = m * thrustAccel * spoolEase;
   const force = { x: up.x * thrust, y: up.y * thrust, z: up.z * thrust };
 
   // --- Yaw: rate-command torque about body-up (world frame). ---
@@ -221,6 +250,16 @@ function computeHeliForces(state, input, body, params) {
     torque.z += (up.x * duy - up.y * dux) * springK;
   }
 
+  // --- Cyclic drive: the rotor pulls the airframe along the stick's
+  //     horizontal direction (on top of the tilted-thrust component)
+  //     so full forward reaches real speed at a modest visual pitch.
+  //     Gated on an upright, spooled rotor. ---
+  if (up.y > 0.1) {
+    const driveK = m * K_CYCLIC_DRIVE * spoolEase;
+    force.x += (hx * pitch + rx * roll) * driveK;
+    force.z += (hz * pitch + rz * roll) * driveK;
+  }
+
   // --- Tilt-rate damper: bleed angular velocity that is NOT around
   //     body-up (leave commanded yaw rotation alone). ---
   const av = body.angvel;
@@ -231,10 +270,10 @@ function computeHeliForces(state, input, body, params) {
   torque.z += -(av.z - up.z * avDotUp) * kd;
 
   // --- Aerodynamic drag, split by axis (see header): strong enough
-  //     horizontally to cap cruise speed, weak vertically so descents
-  //     and climbs feel heavy. Replaces Rapier's isotropic
-  //     linearDamping (the rig sets that to 0). ---
-  const lv = body.linvel;
+  //     horizontally to cap cruise speed, weak vertically so
+  //     dead-rotor falls stay heavy (powered vertical motion is the
+  //     servo's job). Replaces Rapier's isotropic linearDamping (the
+  //     rig sets that to 0). ---
   force.x += -lv.x * m * HORIZ_DRAG;
   force.z += -lv.z * m * HORIZ_DRAG;
   force.y += -lv.y * m * VERT_DRAG;
@@ -246,16 +285,21 @@ function computeHeliForces(state, input, body, params) {
     force.y += -lv.y * m * ASSIST_VERT_BRAKE;
   }
 
-  return { force, torque };
+  return { force, torque, thrustFrac };
 }
 
 module.exports = {
   GRAVITY,
-  COLLECTIVE_RATE,
-  MIN_COLLECTIVE,
+  MAX_CLIMB_RATE,
+  MAX_DESCENT_RATE,
+  IDLE_SINK_RATE,
+  K_VY,
   SPOOL_TIME,
   HORIZ_DRAG,
   VERT_DRAG,
+  MAX_PITCH_TILT,
+  MAX_ROLL_TILT,
+  K_CYCLIC_DRIVE,
   DEFAULT_PARAMS,
   createHeliState,
   stepHeliState,

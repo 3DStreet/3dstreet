@@ -32,9 +32,18 @@
  *     "crash" vs "landing" — tiles stop the player physically but
  *     never fire collision markers. Catalog buildings/obstacles keep
  *     their own crash-tagged cuboids.
+ *   - A tile leaving the selection keeps its body until the build
+ *     queue is empty (see `retired` below) — freeing it immediately on
+ *     an LOD swap opened a collider-free window before the replacement
+ *     tiles' trimeshes were built, one of the "fell through the
+ *     ground" playtest reports.
  *   - Per-tile and total triangle budgets guard against pathological
  *     tilesets; over-budget tiles are skipped with a console warning
  *     (the player falls back to the deep safety-net ground pad).
+ *     Freed tiles RETURN their triangles to the budget — an earlier
+ *     build only ever added, so a long flight exhausted the budget and
+ *     silently stopped seeding colliders far from the spawn point (the
+ *     other "fell through the ground far away" report).
  *
  * Lifecycle: `attachTilesColliders(sceneEl)` after the physics world is
  * active; call `.dispose()` in the play session's cleanup (before
@@ -105,8 +114,16 @@ class TilesColliderSet {
   constructor(physics, tiles) {
     this.physics = physics;
     this.tiles = tiles;
-    this.bodies = new Map(); // tile -> rapier body
+    this.bodies = new Map(); // tile -> { body, triangles }
     this.queue = new Set(); // tiles awaiting a trimesh build
+    // Tiles that left the LOD selection keep their body here until the
+    // build queue is empty: an LOD swap retires the parent tile and
+    // enqueues its children in the same event batch, and freeing the
+    // parent's trimesh before the children's are built leaves a
+    // collider-free window a fast helicopter falls straight through.
+    // The stale mesh is near-coincident with its replacement, so
+    // physics against it is fine for the few passes it lingers.
+    this.retired = new Map(); // tile -> { body, triangles }
     this.totalTriangles = 0;
     this.warnedBudget = false;
 
@@ -129,16 +146,30 @@ class TilesColliderSet {
 
   enqueue(tile) {
     if (this.bodies.has(tile)) return;
+    // Back in the selection before its retired body was freed — just
+    // restore it, no rebuild.
+    const kept = this.retired.get(tile);
+    if (kept) {
+      this.retired.delete(tile);
+      this.bodies.set(tile, kept);
+      return;
+    }
     this.queue.add(tile);
   }
 
   removeTile(tile) {
     this.queue.delete(tile);
-    const body = this.bodies.get(tile);
-    if (body) {
+    const entry = this.bodies.get(tile);
+    if (entry) {
       this.bodies.delete(tile);
-      this.physics.removeBody(body);
+      this.retired.set(tile, entry);
     }
+  }
+
+  /** Free one bookkept body and return its triangles to the budget. */
+  _freeEntry(entry) {
+    this.physics.removeBody(entry.body);
+    this.totalTriangles -= entry.triangles;
   }
 
   drainQueue() {
@@ -178,10 +209,17 @@ class TilesColliderSet {
         'ground'
       );
       if (body) {
-        this.bodies.set(tile, body);
-        this.totalTriangles += geo.indices.length / 3;
+        const triangles = geo.indices.length / 3;
+        this.bodies.set(tile, { body, triangles });
+        this.totalTriangles += triangles;
         built++;
       }
+    }
+    // Only once every pending replacement is built do the retired
+    // bodies (and their triangle budget) go away — see the field note.
+    if (this.queue.size === 0 && this.retired.size > 0) {
+      for (const entry of this.retired.values()) this._freeEntry(entry);
+      this.retired.clear();
     }
   }
 
@@ -191,10 +229,10 @@ class TilesColliderSet {
       'tile-visibility-change',
       this.onVisibilityChange
     );
-    for (const body of this.bodies.values()) {
-      this.physics.removeBody(body);
-    }
+    for (const entry of this.bodies.values()) this._freeEntry(entry);
+    for (const entry of this.retired.values()) this._freeEntry(entry);
     this.bodies.clear();
+    this.retired.clear();
     this.queue.clear();
   }
 }
@@ -225,4 +263,9 @@ function attachTilesColliders(sceneEl) {
   };
 }
 
-module.exports = { attachTilesColliders, collectWorldGeometry };
+module.exports = {
+  attachTilesColliders,
+  collectWorldGeometry,
+  // Exported for unit tests (budget/retirement bookkeeping).
+  TilesColliderSet
+};

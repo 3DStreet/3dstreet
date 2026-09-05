@@ -39,7 +39,9 @@ const { HeliSound } = require('./heli-sound.js');
  *      sidewalks and crash into buildings.
  *
  * Controls (keyboard):
- *   W / S            collective up / down (throttle lever)
+ *   W / S            climb / descend (vertical-speed command: holding
+ *                    sets a target rate, releasing settles back toward
+ *                    hover with a gentle sink — see heli-flight-model)
  *   A / D            yaw left / right
  *   Arrow keys       cyclic — Up = nose down (fly forward), Down =
  *                    nose up, Left / Right = roll
@@ -81,8 +83,9 @@ const ROTOR_VISUAL_IDLE = 6;
 // ---------------------------------------------------------------------
 AFRAME.registerComponent('fly-controls', {
   schema: {
-    // Rotor thrust at full collective, in multiples of gravity.
-    // 1.0 can only hover at full lever; 2.2 gives a brisk climb.
+    // Max rotor thrust, in multiples of gravity. The vertical-speed
+    // servo spends the headroom above 1.0 on climbing and on braking
+    // descents — below ~1.2 the helicopter gets sluggish to arrest.
     liftPower: { type: 'number', default: 2.2 },
     // Scales cyclic (pitch/roll) authority.
     agility: { type: 'number', default: 1 },
@@ -342,6 +345,10 @@ AFRAME.registerComponent('play-mode-helicopter', {
       // model adds its own tilt-rate damper on top).
       .setLinearDamping(0)
       .setAngularDamping(2.0)
+      // Continuous collision detection: powered dives pass 30 m/s
+      // (0.5 m per 60 Hz sub-step), enough to tunnel through the
+      // paper-thin 3D-tiles trimeshes without swept checks.
+      .setCcdEnabled(true)
       .setCanSleep(false);
     const chassisBody = world.createRigidBody(bodyDesc);
     const chassisCollider = world.createCollider(
@@ -433,7 +440,7 @@ AFRAME.registerComponent('play-mode-helicopter', {
       stability: this.data.stability
     };
     stepHeliState(this.state, axes, dt, params);
-    const { force, torque } = computeHeliForces(
+    const { force, torque, thrustFrac } = computeHeliForces(
       this.state,
       axes,
       {
@@ -444,6 +451,9 @@ AFRAME.registerComponent('play-mode-helicopter', {
       },
       params
     );
+    // Smoothed rotor-work fraction for visuals/audio/telemetry.
+    this.state.collective +=
+      (thrustFrac - this.state.collective) * Math.min(1, 8 * dt);
     body.resetForces(true);
     body.addForce(force, true);
     body.resetTorques(true);
@@ -493,11 +503,8 @@ AFRAME.registerComponent('play-mode-helicopter', {
     const rotorSpeed =
       this.state.spool *
       (ROTOR_VISUAL_IDLE +
-        Math.abs(this.state.collective) *
-          (ROTOR_VISUAL_MAX - ROTOR_VISUAL_IDLE));
+        this.state.collective * (ROTOR_VISUAL_MAX - ROTOR_VISUAL_IDLE));
     if (meshComp) {
-      // abs: negative collective (powered descent) is blade pitch, not
-      // rotor slowdown — keep the disc spinning hard either way.
       meshComp.rotorSpeed = rotorSpeed;
       // Cyclic input tilts the rotor disc slightly (blade-flapping
       // look) so control inputs read on the airframe.

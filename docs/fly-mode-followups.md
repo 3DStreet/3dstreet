@@ -8,6 +8,17 @@ commanded pitch cap split from roll (`MAX_PITCH_TILT` 1.0 rad ≈ 57° vs
 `MAX_ROLL_TILT` 0.55 rad ≈ 31°) in `heli-flight-model.js`. The issues below
 survived that pass.
 
+**Update 2026-09-05 (kids' playtest pass):** vertical control reworked to a
+velocity command — held W/S sets a climb/descent rate, release settles to a
+gentle sink near hover; the old latching collective lever (release W →
+climb forever, the throttle-oscillation complaint) is gone.
+`MAX_PITCH_TILT` cut to 0.42 rad ≈ 24° with bank-compensated thrust +
+`K_CYCLIC_DRIVE` and lower `HORIZ_DRAG` so full stick cruises ~115 km/h at
+a sane attitude (supersedes section 6's proposals). Tiles penetration
+(section 2) root-caused and fixed: triangle-budget leak, LOD-swap collider
+gap, and no CCD — see the revised section 2. Sections 1, 3, 5, 7 and the
+GLB swap (4) remain open.
+
 Code map: flight math `src/aframe-components/play/heli-flight-model.js`
 (pure, tests in `test/core/heli-flight-model.test.js`); rig/camera/audio
 driver `play-mode-helicopter.js`; procedural audio `heli-sound.js`; gamepad
@@ -34,30 +45,28 @@ effort:
 `heliSoundParams` is pure and unit-tested (`test/core/heli-sound.test.js`),
 so retune there first.
 
-## 2. Google 3D Tiles don't stop descent
+## 2. Google 3D Tiles don't stop descent — FIXED 2026-09-05
 
-Symptom: helicopter descends straight through tile terrain/buildings.
-`attachTilesColliders` IS wired for fly mode (`play-mode-helicopter.js`
-~line 830, inside the fly-mode bootstrap's `physics.activate().then`), so
-this is a "wired but not working" bug, not a missing feature. Suspects to
-check in-browser with a tileset scene:
+Basic tiles collision worked; what remained was intermittent penetration
+"at speed and/or far from the spawn point". Three concrete causes found in
+`tiles-colliders.js` / `play-mode-helicopter.js`, all fixed (with unit
+tests in `test/core/tiles-colliders.test.js`):
 
-- Seeding cadence/budget: trimeshes build through a queue (3 tiles per
-  120 ms pass, `MAX_TOTAL_TRIANGLES` 2M cap in `tiles-colliders.js`) —
-  over-budget tiles are skipped with a console warning and fast flight may
-  outrun the queue.
-- LOD tracking: colliders mirror the renderer's `visibleTiles` selection via
-  `tile-visibility-change`. If the event listener attaches after the initial
-  selection settled, the already-visible tiles may never get bodies (only
-  subsequent swaps would).
-- Transform: trimeshes are baked from `matrixWorld` at attach time; if
-  `street-geo` repositions the tileset root afterward the physics mesh is
-  stale.
-- Note the car reportedly works with tiles colliders (same module) — diff
-  the two bootstraps' ordering first.
+- Triangle-budget leak: `totalTriangles` was only ever incremented — tiles
+  freed on LOD/frustum changes never returned their triangles, so a long
+  flight exhausted the 2M budget and seeding silently stopped ("falls
+  through the ground far from spawn"). Budget is now returned on free.
+- LOD-swap collider gap: a tile leaving the selection freed its trimesh
+  immediately, while its replacements waited on the 120 ms build queue —
+  a collider-free window under a fast-moving player. Outgoing tiles are
+  now retired and their bodies freed only once the build queue is empty.
+- No CCD on the heli chassis: powered dives pass 30 m/s (0.5 m per 60 Hz
+  sub-step), enough to tunnel through the paper-thin tile trimeshes.
+  `setCcdEnabled(true)` on the chassis body.
 
-Debug: `[play-colliders]` console logs, and count `world.colliders` after
-seeding settles.
+Still worth a look if reports continue: stale `matrixWorld` if
+`street-geo` repositions the tileset root mid-session, and per-tile
+`MAX_TILE_VERTICES` skips (console-warned).
 
 ## 3. Helicopter doesn't collide with scene objects
 
@@ -108,27 +117,19 @@ convention:
 Talk through with Kieran before implementing (design-approach-first
 preference), but the core ask is clear: right stick X must turn the nose.
 
-## 6. Left stick forward ≠ enough forward speed
+## 6. Left stick forward ≠ enough forward speed — SUPERSEDED 2026-09-05
 
-"It just flies up when I accelerate and push forward." Mechanics: RT is
-collective (climb), left-stick-up is pitch. At full collective + full
-forward pitch (~57° after this session's change) vertical thrust is still
-~1.2g, so holding RT while pitched forward climbs. The deeper pitch cap
-helped top speed but not the instinct — players hold RT as "gas".
+Resolved by the vertical-control rework rather than any of the proposals
+below: W/RT now commands a climb RATE (not thrust), so holding it while
+pitched forward climbs at a bounded ~9 m/s instead of compounding, and
+releasing it levels off. Forward speed comes from bank-compensated thrust
+plus a cyclic drive force at a modest 24° commanded pitch (~115 km/h at
+full stick, reaching 20 m/s in ~4.5 s). If "holding RT as gas" still reads
+wrong in a feel test, the auto-trim-vs-pitch idea (scale climb command
+down with commanded pitch) remains the right next lever.
 
-Candidate fixes (pick after a feel test):
-
-- Collective auto-trim vs pitch: scale the effective climb command down as
-  commanded pitch increases (full stick forward + full RT ≈ level fast
-  flight; climb only when stick is centered). This matches the GTA feel and
-  is a small change in `computeHeliForces`/`stepHeliState`.
-- Or raise `MAX_PITCH_TILT` further (1.15 rad ≈ 66° makes full-collective
-  vertical component < 1g → pitching forward hard actually descends).
-- Or add forward-speed-dependent lift loss. (Probably overkill.)
-
-Also verify the analog path end-to-end: keyboard arrows give full ±1 pitch,
-but check the pad's `pitchAxis` isn't scaled down anywhere between
-`pollGamepad` and `readInputAxes`.
+Still worth verifying on real hardware: the pad's `pitchAxis` isn't scaled
+down anywhere between `pollGamepad` and `readInputAxes`.
 
 ## 7. Frame jumps at speed (heli AND cars)
 

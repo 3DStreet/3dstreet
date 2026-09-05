@@ -173,13 +173,13 @@ export const FlyModeControls = () => {
           <p className={styles.hint}>
             <FormattedMessage
               id="flyModeControls.keyboardHint"
-              defaultMessage="W/S collective (S past zero dives) · A/D yaw · arrows tilt · Space hover · drag = orbit/look · R reset · C camera"
+              defaultMessage="W/S climb/descend (release to hover) · A/D yaw · arrows tilt · Space hover hold · drag = orbit/look · R reset · C camera"
             />
           </p>
           <p className={styles.hint}>
             <FormattedMessage
               id="flyModeControls.gamepadHint"
-              defaultMessage="Gamepad: RT/LT collective · left stick tilt · LB/RB yaw · B hover · right stick camera/look · Y reset · X camera"
+              defaultMessage="Gamepad: RT/LT climb/descend · left stick tilt · LB/RB yaw · B hover · right stick camera/look · Y reset · X camera"
             />
           </p>
         </>

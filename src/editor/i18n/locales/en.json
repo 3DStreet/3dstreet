@@ -1137,13 +1137,13 @@
     "defaultMessage": "Stability Assist"
   },
   "flyControls.tipKeys": {
-    "defaultMessage": "W/S collective (S past zero dives) · A/D yaw · arrows tilt · Space auto-hover"
+    "defaultMessage": "W/S climb/descend · A/D yaw · arrows tilt · Space auto-hover"
   },
   "flyControls.tipMisc": {
     "defaultMessage": "R = reset · C = camera · tilt forward to build speed"
   },
   "flyControls.tipStart": {
-    "defaultMessage": "Press Start, hold W to spool up and climb"
+    "defaultMessage": "Press Start, hold W to spool up and climb — release to hover"
   },
   "flyControls.tipsHeading": {
     "defaultMessage": "🚁 Flight tips"
@@ -1161,10 +1161,10 @@
     "defaultMessage": "Collective"
   },
   "flyModeControls.gamepadHint": {
-    "defaultMessage": "Gamepad: RT/LT collective · left stick tilt · LB/RB yaw · B hover · right stick camera/look · Y reset · X camera"
+    "defaultMessage": "Gamepad: RT/LT climb/descend · left stick tilt · LB/RB yaw · B hover · right stick camera/look · Y reset · X camera"
   },
   "flyModeControls.keyboardHint": {
-    "defaultMessage": "W/S collective (S past zero dives) · A/D yaw · arrows tilt · Space hover · drag = orbit/look · R reset · C camera"
+    "defaultMessage": "W/S climb/descend (release to hover) · A/D yaw · arrows tilt · Space hover hold · drag = orbit/look · R reset · C camera"
   },
   "flyModeControls.liftPower": {
     "defaultMessage": "Rotor power"

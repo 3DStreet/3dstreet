@@ -76,14 +76,14 @@ const FlyControlsSidebar = ({ entity }) => {
                 •{' '}
                 <FormattedMessage
                   id="flyControls.tipStart"
-                  defaultMessage="Press Start, hold W to spool up and climb"
+                  defaultMessage="Press Start, hold W to spool up and climb — release to hover"
                 />
               </li>
               <li>
                 •{' '}
                 <FormattedMessage
                   id="flyControls.tipKeys"
-                  defaultMessage="W/S collective (S past zero dives) · A/D yaw · arrows tilt · Space auto-hover"
+                  defaultMessage="W/S climb/descend · A/D yaw · arrows tilt · Space auto-hover"
                 />
               </li>
               <li>

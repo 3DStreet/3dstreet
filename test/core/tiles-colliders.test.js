@@ -2,17 +2,19 @@
 
 /**
  * tiles-colliders — the world-space geometry baking that feeds Google
- * 3D Tiles into Rapier trimesh colliders. The manager class itself
- * needs a live TilesRenderer + physics world (covered by the browser
- * verify flow); these tests pin the pure mesh-extraction path:
- * world-transform baking, multi-mesh concatenation with index
- * rebasing, non-indexed geometry, normalized (quantized) attributes
- * like TileCompressionPlugin produces, and the vertex budget guard.
+ * 3D Tiles into Rapier trimesh colliders, plus the TilesColliderSet
+ * bookkeeping (build queue, LOD retirement, triangle budget). The live
+ * TilesRenderer + physics world path is covered by the browser verify
+ * flow; here we pin the pure mesh extraction and, with stub physics,
+ * the two "fell through the ground" regressions: the triangle budget
+ * must be RETURNED when a tile's collider is freed, and an LOD swap
+ * must keep the outgoing tile's collider until the replacement built.
  */
 
 const assert = require('assert');
 
 let collectWorldGeometry;
+let TilesColliderSet;
 
 describe('tiles-colliders collectWorldGeometry', () => {
   before(() => {
@@ -20,7 +22,8 @@ describe('tiles-colliders collectWorldGeometry', () => {
     // `three` imports to the A-Frame build); mirror that in Node.
     global.THREE = require('three');
     ({
-      collectWorldGeometry
+      collectWorldGeometry,
+      TilesColliderSet
     } = require('../../src/aframe-components/play/tiles-colliders.js'));
   });
 
@@ -102,5 +105,118 @@ describe('tiles-colliders collectWorldGeometry', () => {
     big.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1)));
     const out = collectWorldGeometry(big, 10); // budget below 24 verts
     assert.strictEqual(out.overBudget, true);
+  });
+});
+
+describe('tiles-colliders TilesColliderSet bookkeeping', () => {
+  before(() => {
+    global.THREE = require('three');
+    ({
+      TilesColliderSet
+    } = require('../../src/aframe-components/play/tiles-colliders.js'));
+  });
+
+  after(() => {
+    delete global.THREE;
+  });
+
+  function stubPhysics() {
+    let nextId = 1;
+    return {
+      active: true,
+      world: {},
+      added: [],
+      removed: [],
+      addStaticTrimesh(vertices, indices) {
+        const body = { id: nextId++, triangles: indices.length / 3 };
+        this.added.push(body);
+        return body;
+      },
+      removeBody(body) {
+        this.removed.push(body);
+      }
+    };
+  }
+
+  function stubTiles() {
+    return {
+      visibleTiles: null,
+      addEventListener() {},
+      removeEventListener() {}
+    };
+  }
+
+  function makeTile() {
+    const THREE = global.THREE;
+    const root = new THREE.Object3D();
+    root.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1))); // 12 tris
+    return { engineData: { scene: root } };
+  }
+
+  function makeSet(physics) {
+    const set = new TilesColliderSet(physics, stubTiles());
+    clearInterval(set.interval); // tests drain manually, deterministically
+    return set;
+  }
+
+  it('REGRESSION: freeing a tile returns its triangles to the budget', () => {
+    const physics = stubPhysics();
+    const set = makeSet(physics);
+    const tile = makeTile();
+    set.enqueue(tile);
+    set.drainQueue();
+    assert.strictEqual(set.totalTriangles, 12);
+    set.removeTile(tile);
+    set.drainQueue(); // queue empty -> retired body freed
+    assert.strictEqual(set.totalTriangles, 0);
+    assert.strictEqual(physics.removed.length, 1);
+    set.dispose();
+  });
+
+  it('REGRESSION: an LOD swap keeps the old collider until the replacement builds', () => {
+    const physics = stubPhysics();
+    const set = makeSet(physics);
+    const parent = makeTile();
+    set.enqueue(parent);
+    set.drainQueue();
+    // LOD swap: parent leaves the selection, child enters, same batch.
+    const child = makeTile();
+    set.onVisibilityChange({ tile: parent, visible: false });
+    set.onVisibilityChange({ tile: child, visible: true });
+    // Old body must still be alive while the child awaits its build.
+    assert.strictEqual(physics.removed.length, 0);
+    set.drainQueue(); // builds the child, THEN frees the retired parent
+    assert.strictEqual(physics.added.length, 2);
+    assert.strictEqual(physics.removed.length, 1);
+    assert.strictEqual(set.totalTriangles, 12);
+    set.dispose();
+  });
+
+  it('restores a retired tile that becomes visible again without rebuilding', () => {
+    const physics = stubPhysics();
+    const set = makeSet(physics);
+    const tile = makeTile();
+    set.enqueue(tile);
+    set.drainQueue();
+    set.removeTile(tile); // frustum-culled...
+    set.enqueue(tile); // ...and back before the next drain
+    set.drainQueue();
+    assert.strictEqual(physics.added.length, 1); // no rebuild
+    assert.strictEqual(physics.removed.length, 0);
+    assert.strictEqual(set.totalTriangles, 12);
+    set.dispose();
+  });
+
+  it('dispose frees live and retired bodies alike', () => {
+    const physics = stubPhysics();
+    const set = makeSet(physics);
+    const a = makeTile();
+    const b = makeTile();
+    set.enqueue(a);
+    set.enqueue(b);
+    set.drainQueue();
+    set.removeTile(b); // b retired, a live
+    set.dispose();
+    assert.strictEqual(physics.removed.length, 2);
   });
 });
