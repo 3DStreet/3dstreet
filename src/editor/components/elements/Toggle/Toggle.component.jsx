@@ -1,4 +1,4 @@
-import { bool, func, shape, string } from 'prop-types';
+import { bool, func, oneOf, shape, string } from 'prop-types';
 
 import classNames from 'classnames';
 import styles from './Toggle.module.scss';
@@ -78,7 +78,7 @@ Toggle.propTypes = {
   className: string,
   label: shape({
     text: string.isRequired,
-    position: 'left' || 'right'
+    position: oneOf(['left', 'right'])
   }),
   id: string
 };
