@@ -10,11 +10,6 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       default: 'normal',
       oneOf: ['empty', 'sparse', 'normal', 'dense']
     },
-    direction: {
-      type: 'string',
-      default: 'none',
-      oneOf: ['none', 'inbound', 'outbound']
-    },
     positionY: {
       type: 'number',
       default: 0
@@ -36,11 +31,16 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     this.onSegmentChanged = () => {
       const segment = this.el.components['street-segment']?.data;
       if (!segment) return;
-      // Pedestrians depend on length and width. Skip when both are unchanged
-      // since our last run: the segment's first-init emit during scene load
-      // carries the same dimensions we already generated with, so regenerating
-      // would tear every pedestrian down and recreate it identically (#1759).
-      if (segment.length === this.length && segment.width === this.width) {
+      // Pedestrians depend on length, width and the segment's travel
+      // direction. Skip when all are unchanged since our last run: the
+      // segment's first-init emit during scene load carries the same values
+      // we already generated with, so regenerating would tear every
+      // pedestrian down and recreate it identically (#1759).
+      if (
+        segment.length === this.length &&
+        segment.width === this.width &&
+        segment.direction === this.direction
+      ) {
         return;
       }
       this.update();
@@ -66,6 +66,10 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     }
     this.length = segment.length;
     this.width = segment.width;
+    // Walk direction is the segment's own direction (one source of truth):
+    // inbound/outbound face the crowd one way, none (the sidewalk default)
+    // mixes them.
+    this.direction = segment.direction;
     const data = this.data;
 
     // Handle seed initialization
@@ -130,19 +134,16 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       const variantNumber = this.getRandomIntInclusive(1, 16);
       pedestrian.setAttribute('mixin', `char${variantNumber}`);
 
-      // Set rotation based on direction and seeded random. Rotation follows
-      // the street-generated-clones convention: inbound = 0, outbound = 180
-      // (#1282 — inbound was previously the implicit fallthrough, relying on
-      // the entity's default rotation of 0).
+      // Set rotation based on the segment direction and seeded random.
+      // Rotation follows the street-generated-clones convention:
+      // inbound = 0, outbound = 180 (#1282).
       let rotationY = 0;
-      if (data.direction === 'none') {
+      if (this.direction === 'none') {
         if (this.rng() < 0.5) {
           rotationY = 180;
         }
-      } else if (data.direction === 'outbound') {
+      } else if (this.direction === 'outbound') {
         rotationY = 180;
-      } else if (data.direction === 'inbound') {
-        rotationY = 0;
       }
       if (bent) {
         pedestrian.dataset.straightRotY = rotationY;

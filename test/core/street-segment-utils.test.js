@@ -8,6 +8,7 @@ import {
   migrateSegmentLevelToElevation,
   migrateSegmentBuildingType,
   migrateSegmentHatchedSurface,
+  migratePedestriansDirection,
   migrateShowBuildingsFlag,
   CURB_HEIGHT,
   BASE_SURFACE_DEPTH
@@ -277,6 +278,44 @@ describe('StreetSegmentUtils', function () {
     it('should leave values without the flag untouched', function () {
       const value = 'sourceType: streetmix-url; showBoundaries: true';
       assert.strictEqual(migrateShowBuildingsFlag(value), value);
+    });
+  });
+
+  describe('#migratePedestriansDirection()', function () {
+    it('should strip direction from a prop-string pedestrians value', function () {
+      const components = {
+        'street-generated-pedestrians__1':
+          'density: normal; direction: inbound; seed: 42'
+      };
+      migratePedestriansDirection(components);
+      assert.strictEqual(
+        components['street-generated-pedestrians__1'],
+        'density: normal; seed: 42'
+      );
+    });
+    it('should strip direction from an object pedestrians value', function () {
+      const components = {
+        'street-generated-pedestrians': { density: 'dense', direction: 'none' }
+      };
+      migratePedestriansDirection(components);
+      assert.deepStrictEqual(components['street-generated-pedestrians'], {
+        density: 'dense'
+      });
+    });
+    it('should leave other components and direction-free values alone', function () {
+      const components = {
+        'street-segment': 'type: sidewalk; direction: none',
+        'street-generated-pedestrians__2': 'density: sparse'
+      };
+      migratePedestriansDirection(components);
+      assert.strictEqual(
+        components['street-segment'],
+        'type: sidewalk; direction: none'
+      );
+      assert.strictEqual(
+        components['street-generated-pedestrians__2'],
+        'density: sparse'
+      );
     });
   });
 });

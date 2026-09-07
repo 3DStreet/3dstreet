@@ -7,6 +7,7 @@ import {
   migrateSegmentLevelToElevation,
   migrateSegmentBuildingType,
   migrateSegmentHatchedSurface,
+  migratePedestriansDirection,
   migrateShowBuildingsFlag
 } from './tested/street-segment-utils';
 import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
@@ -729,6 +730,9 @@ function createEntityFromObj(entityData, parentEl, beforeEl) {
       migrateSegmentLevelToElevation(entityData.components['street-segment'])
     );
     migrateSegmentHatchedSurface(entityData.components);
+    // - street-generated-pedestrians lost its own `direction` (walks in the
+    //   segment direction instead).
+    migratePedestriansDirection(entityData.components);
   }
   if (entityData.components?.['managed-street']) {
     entityData.components['managed-street'] = migrateShowBuildingsFlag(

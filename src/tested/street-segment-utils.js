@@ -145,6 +145,33 @@ function migrateSegmentHatchedSurface(components) {
   return components;
 }
 
+// Strip the removed `direction` property from saved street-generated-pedestrians
+// values: pedestrians now walk in the segment's own direction (one source of
+// truth; the sidewalk default of `none` mixes them). Handles the prop-string
+// and parsed-object forms; mutates and returns the components object.
+function migratePedestriansDirection(components) {
+  if (!components) {
+    return components;
+  }
+  for (const key of Object.keys(components)) {
+    if (!key.startsWith('street-generated-pedestrians')) {
+      continue;
+    }
+    const value = components[key];
+    if (typeof value === 'string') {
+      components[key] = value
+        .split(';')
+        .filter((pair) => !/^\s*direction\s*:/.test(pair))
+        .join(';')
+        .trim();
+    } else if (value && typeof value === 'object' && 'direction' in value) {
+      const { direction, ...rest } = value;
+      components[key] = rest;
+    }
+  }
+  return components;
+}
+
 // First unused street-generated-striping key in a serialized components
 // object. First instance is __1; a bare unsuffixed instance occupies the same
 // export index as __1 (see managed-street's GENERATED_RE), so it blocks __1.
@@ -193,6 +220,7 @@ export {
   migrateSegmentLevelToElevation,
   migrateSegmentBuildingType,
   migrateSegmentHatchedSurface,
+  migratePedestriansDirection,
   migrateShowBuildingsFlag,
   CURB_HEIGHT,
   BASE_SURFACE_DEPTH,

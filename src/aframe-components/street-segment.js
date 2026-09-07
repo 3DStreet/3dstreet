@@ -525,9 +525,8 @@ AFRAME.registerComponent('street-segment', {
       componentsToGenerate.pedestrians.forEach((pedestrian, index) => {
         this.el.setAttribute(
           `street-generated-pedestrians__${index + 1}`,
-          buildGeneratedAttributes('street-generated-pedestrians', pedestrian, {
-            direction: pedestrian.direction ?? this.data.direction
-          })
+          // pedestrians read the segment direction themselves (no own field)
+          buildGeneratedAttributes('street-generated-pedestrians', pedestrian)
         );
       });
     }
@@ -605,7 +604,9 @@ AFRAME.registerComponent('street-segment', {
         // default) are absolutely oriented via `facing` — e.g. side-oriented
         // lamps/benches and sideways/angled parked cars — and must not flip.
         const current = this.el.getAttribute(componentName);
-        if (!current || current.direction === 'none') {
+        // Components without a direction property (pedestrians) read the
+        // segment direction directly and regenerate on segment-changed.
+        if (!current || !current.direction || current.direction === 'none') {
           continue;
         }
         this.el.setAttribute(componentName, 'direction', this.data.direction);
