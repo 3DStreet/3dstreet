@@ -89,10 +89,10 @@ AFRAME.registerComponent('street-generated-striping', {
       this.calculateStripingMaterial(data.striping, this.length, this.width);
     // Edge stripes sit on the segment's left/right edge; the full-width
     // hatched treatment is centered on the segment instead.
-    const positionX =
-      data.striping === 'hatched'
-        ? 0
-        : ((data.side === 'left' ? -1 : 1) * this.width) / 2;
+    const isHatched = data.striping === 'hatched';
+    const positionX = isHatched
+      ? 0
+      : ((data.side === 'left' ? -1 : 1) * this.width) / 2;
     // On a curved street the stripe is a flat ribbon following the path at
     // this segment's edge (top face only, UV v along the run so the same
     // repeat math applies); straight streets keep the rotated plane.
@@ -106,9 +106,16 @@ AFRAME.registerComponent('street-generated-striping', {
     // mirrors the texture across the stripe (solid/dashed sides swap; that is
     // how managed-street orients striping-solid-dashed). The ribbon's u
     // always runs left→right along the path, so mirror the texture instead.
-    const mirrored = Math.abs((((data.facing % 360) + 360) % 360) - 180) < 1e-6;
-    const repeatXFinal = ribbonAttr && mirrored ? -repeatX : repeatX;
-    const offset = ribbonAttr && mirrored ? 'offset: 1 0; ' : '';
+    const facingMirrored =
+      Math.abs((((data.facing % 360) + 360) % 360) - 180) < 1e-6;
+    // For the full-width hatch, `side` picks the bar angle: hatching on the
+    // two sides of a road conventionally slopes in opposite directions, so
+    // side: right mirrors the texture across the segment (the plane itself is
+    // already centered and full width).
+    const hatchMirrored = isHatched && data.side === 'right';
+    const mirrored = (ribbonAttr && facingMirrored) !== hatchMirrored;
+    const repeatXFinal = mirrored ? -repeatX : repeatX;
+    const offset = mirrored ? 'offset: 1 0; ' : '';
     if (ribbonAttr) {
       clone.setAttribute('position', { x: 0, y: data.positionY, z: 0 });
     } else {
@@ -139,7 +146,12 @@ AFRAME.registerComponent('street-generated-striping', {
       'data-layer-name',
       'Cloned Striping • ' + stripingTextureId
     );
-    clone.setAttribute('polygon-offset', { factor: -2, units: -2 });
+    // Hatch sits between the surface and the edge stripes (which overlap its
+    // outer half) so neither pair z-fights.
+    clone.setAttribute('polygon-offset', {
+      factor: isHatched ? -1 : -2,
+      units: isHatched ? -1 : -2
+    });
 
     this.el.appendChild(clone);
     this.createdEntities.push(clone);

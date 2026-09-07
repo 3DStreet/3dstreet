@@ -365,31 +365,11 @@ export default class Component extends React.Component {
             isSingle={false}
           />
           <PropertyRow
-            key="positionY"
-            name="positionY"
-            label="Position Y"
-            schema={schema['positionY']}
-            data={componentData.data['positionY']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          <PropertyRow
             key="side"
             name="side"
             label="Side"
             schema={schema['side']}
             data={componentData.data['side']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          <PropertyRow
-            key="facing"
-            name="facing"
-            label="Facing"
-            schema={schema['facing']}
-            data={componentData.data['facing']}
             componentname={componentName}
             entity={this.props.entity}
             isSingle={false}

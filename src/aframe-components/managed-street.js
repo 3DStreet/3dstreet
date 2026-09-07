@@ -491,8 +491,8 @@ AFRAME.registerComponent('managed-street', {
       }, 0);
       this.actualWidth = totalWidth;
 
-      // If we have a previous segment, check if we need to add stripe separators
-      // TODO: Check striping here in the future
+      // A new lane needs separator stripes against both neighbors.
+      this.updateAutoStriping(segmentEl);
     });
 
     return segmentEl;

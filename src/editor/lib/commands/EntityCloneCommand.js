@@ -54,6 +54,13 @@ export class EntityCloneCommand extends Command {
         'loaded',
         function () {
           clone.pause();
+          // A duplicated lane carries its source's separator stripe into its
+          // new position (e.g. the outer lane's solid edge line); let the
+          // street recompute the stripes on the clone's shared edges.
+          const street = clone.parentEl?.components?.['managed-street'];
+          if (street && clone.components['street-segment']) {
+            street.updateAutoStriping(clone);
+          }
           Events.emit('entityclone', clone);
           AFRAME.INSPECTOR.selectEntity(clone);
         },
