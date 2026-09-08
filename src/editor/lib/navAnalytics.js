@@ -14,7 +14,7 @@
 // controls that emit these.
 
 import posthog from 'posthog-js';
-import { isExperimentalNav } from './nav-experimental/flag.js';
+import { getNavScheme } from './nav-experimental/flag.js';
 
 // Stable list of the controls we track. Kept here so the funnel-builder
 // script and the call sites share one source of truth.
@@ -72,8 +72,12 @@ export function captureNavDiscovery(control, extra) {
   if (alreadyFired(control)) return;
   markFired(control);
   posthog.capture('nav_control_used', {
+    // The active control scheme: 'standard' or 'experimental'. Before #1956
+    // this was 'classic' (retired legacy controls) or 'experimental' (which
+    // then covered BOTH remaining schemes) — segment on it accordingly for
+    // events older than the legacy-nav removal.
+    nav_mode: getNavScheme(),
     control,
-    nav_mode: isExperimentalNav() ? 'experimental' : 'classic',
     ...extra
   });
 }

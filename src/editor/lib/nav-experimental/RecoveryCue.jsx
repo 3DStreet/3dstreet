@@ -1,4 +1,3 @@
-import { isExperimentalNav } from './flag.js';
 import { useRecoveryCue } from './useRecoveryCue.js';
 
 // Recovery cue (see docs/04-glossary.md "Recovery cue"): transient on-screen
@@ -33,7 +32,6 @@ const cueStyle = {
 
 export function RecoveryCue() {
   const { cueKind } = useRecoveryCue();
-  if (!isExperimentalNav()) return null;
   if (!cueKind || !MESSAGES[cueKind]) return null;
   return <div style={cueStyle}>{MESSAGES[cueKind]}</div>;
 }

@@ -1,14 +1,10 @@
 /* global AFRAME */
 import { useEffect, useState, useRef } from 'react';
 
-import { isExperimentalNav } from './flag.js';
-
 // Subscribes to `nav-experimental:modechange` events from the active
 // `ExperimentalControls` instance via the sceneEl event bus. Exposes
 // `isPedestalMode` so the toolbar can restyle when the next LB drag would be
 // a truck/pedestal gesture.
-//
-// Flag-off: returns `false` immediately and never subscribes.
 //
 // Tail-debounce (TH-79): the React state lags the underlying event by
 // ~100ms so a rapid mode toggle on the tilt-threshold (T, TH-03) boundary doesn't visibly
@@ -37,14 +33,12 @@ function modeFromControls() {
 }
 
 export function useNavMode() {
-  const [isPedestalMode, setIsPedestalMode] = useState(() => {
-    if (!isExperimentalNav()) return false;
-    return modeFromControls() === 'pan-pedestal';
-  });
+  const [isPedestalMode, setIsPedestalMode] = useState(
+    () => modeFromControls() === 'pan-pedestal'
+  );
   const debounceRef = useRef(null);
 
   useEffect(() => {
-    if (!isExperimentalNav()) return;
     const sceneEl = getSceneEl();
     if (!sceneEl) return;
 

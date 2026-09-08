@@ -109,8 +109,7 @@ read-tool list, so they work under the read-only gate):
   action a user clicks (`controls.handleCompassBodyClick`, staged, tweened)
   and judging "done" with the compass widget's own predicates
   (`cameraTiltDegrees`, `needleScreenAngle`, shared tolerances). Perspective
-  camera, whole-scene framing; unavailable under `nav=classic` or an
-  orthographic camera.
+  camera, whole-scene framing; unavailable under an orthographic camera.
 - **`takeSnapshot` `type: "plan"`** runs `orientPlanView` first, then pulls
   the camera straight up by `zoomOut` (default 2 in geo scenes, 1 otherwise;
   the compass fit alone frames the scene bounds with a 30% margin and crops

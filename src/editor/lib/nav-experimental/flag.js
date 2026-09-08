@@ -1,15 +1,18 @@
-// Feature flags for the experimental nav-controls system. All flags are
-// read once at startup: a URL parameter always wins (dev override), then
-// the user's persisted Control Scheme preference (View → Control Scheme),
-// then the default.
+// Feature flags for the nav-controls system. All flags are read once at
+// startup: a URL parameter always wins (dev override), then the user's
+// persisted Control Scheme preference (View → Control Scheme), then the
+// default.
 //
 // Schemes map to flags as:
-//   legacy       → experimental nav OFF (classic controls)
-//   standard     → experimental nav ON, street-level + WASD OFF (default)
-//   experimental → experimental nav ON, street-level + WASD ON
+//   standard     → street-level + WASD OFF (default)
+//   experimental → street-level + WASD ON
+//
+// The retired `legacy` scheme (classic THREE.EditorControls, `?nav=classic`)
+// was removed in #1956; a stored `legacy` preference falls through to the
+// default.
 
 export const NAV_SCHEME_STORAGE_KEY = 'navScheme';
-export const NAV_SCHEMES = ['legacy', 'standard', 'experimental'];
+export const NAV_SCHEMES = ['standard', 'experimental'];
 
 function storedNavScheme() {
   try {
@@ -26,7 +29,6 @@ function storedNavScheme() {
  * so the Control Scheme picker reflects URL overrides too.
  */
 export function getNavScheme() {
-  if (!isExperimentalNav()) return 'legacy';
   return isStreetLevelNav() || isWasdNav() ? 'experimental' : 'standard';
 }
 
@@ -44,22 +46,12 @@ export function applyNavScheme(scheme) {
   }
   try {
     const url = new URL(window.location.href);
-    ['nav', 'streetview', 'wasd'].forEach((p) => url.searchParams.delete(p));
+    ['streetview', 'wasd'].forEach((p) => url.searchParams.delete(p));
     window.history.replaceState(null, '', url);
   } catch {
     // ignore — worst case the URL override stays and wins over the pref
   }
   window.location.reload();
-}
-
-// Main flag. Default ON — ?nav=classic (or the legacy scheme) disables and
-// falls back to the legacy controls (KD-01).
-export function isExperimentalNav() {
-  if (typeof window === 'undefined' || !window.location) return true;
-  const params = new URLSearchParams(window.location.search);
-  const param = params.get('nav');
-  if (param !== null) return param !== 'classic';
-  return storedNavScheme() !== 'legacy';
 }
 
 // Sub-flag: the street-level navigation regime (the swoop descent, street
