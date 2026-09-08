@@ -81,6 +81,13 @@ export class SegmentUpdateCommand extends Command {
         updatedData[key] = segment[key];
       }
     });
+    // street-segment only regenerates its preset content (surface, clones,
+    // striping...) when `type` is the sole changed property, so a patch that
+    // changes type together with other fields must apply type on its own
+    // first; the remaining fields then override the preset defaults.
+    if (segment.type !== undefined && segment.type !== currentData.type) {
+      entity.setAttribute('street-segment', 'type', segment.type);
+    }
     entity.setAttribute('street-segment', updatedData);
 
     if (segment.name) {

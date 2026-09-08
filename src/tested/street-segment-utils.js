@@ -147,29 +147,70 @@ function migrateSegmentHatchedSurface(components) {
 
 // Strip the removed `direction` property from saved street-generated-pedestrians
 // values: pedestrians now walk in the segment's own direction (one source of
-// truth; the sidewalk default of `none` mixes them). Handles the prop-string
-// and parsed-object forms; mutates and returns the components object.
+// truth; the sidewalk default of `none` mixes them). The walk direction the
+// scene was saved with (explicit, else the old component default `none`) is
+// carried onto the street-segment so the crowd renders as before — without
+// this a Streetmix-derived sidewalk (segment direction `outbound`, pedestrians
+// `none`) would turn into a one-way crowd. Handles the prop-string and
+// parsed-object forms; mutates and returns the components object.
 function migratePedestriansDirection(components) {
   if (!components) {
     return components;
   }
+  let walkDirection;
   for (const key of Object.keys(components)) {
     if (!key.startsWith('street-generated-pedestrians')) {
       continue;
     }
     const value = components[key];
+    let direction = 'none';
     if (typeof value === 'string') {
+      const match = value.match(/(?:^|;)\s*direction\s*:\s*([^;\s]+)/);
+      if (match) {
+        direction = match[1];
+      }
       components[key] = value
         .split(';')
         .filter((pair) => !/^\s*direction\s*:/.test(pair))
         .join(';')
         .trim();
-    } else if (value && typeof value === 'object' && 'direction' in value) {
-      const { direction, ...rest } = value;
-      components[key] = rest;
+    } else if (value && typeof value === 'object') {
+      if ('direction' in value) {
+        const { direction: saved, ...rest } = value;
+        direction = saved || 'none';
+        components[key] = rest;
+      }
+    } else {
+      continue;
     }
+    // first pedestrians instance wins
+    walkDirection = walkDirection ?? direction;
+  }
+  if (walkDirection !== undefined) {
+    components['street-segment'] = setSegmentDirection(
+      components['street-segment'],
+      walkDirection
+    );
   }
   return components;
+}
+
+// Set `direction` on a serialized street-segment value (prop-string or
+// parsed-object form); a missing value is left alone.
+function setSegmentDirection(segmentValue, direction) {
+  if (typeof segmentValue === 'string') {
+    if (/(^|;)\s*direction\s*:/.test(segmentValue)) {
+      return segmentValue.replace(
+        /(^|;)(\s*)direction\s*:\s*[^;]*/,
+        `$1$2direction: ${direction}`
+      );
+    }
+    return `${segmentValue.replace(/;?\s*$/, '')}; direction: ${direction}`;
+  }
+  if (segmentValue && typeof segmentValue === 'object') {
+    return { ...segmentValue, direction };
+  }
+  return segmentValue;
 }
 
 // First unused street-generated-striping key in a serialized components

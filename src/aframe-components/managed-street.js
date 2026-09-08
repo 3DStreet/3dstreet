@@ -533,6 +533,21 @@ AFRAME.registerComponent('managed-street', {
     );
     const index = segments.indexOf(changedEl);
     if (index === -1) {
+      // The changed segment became a boundary: street-align skips it, so
+      // the lanes on either side are now adjacent and share a separator.
+      const position = this.managedEntities.indexOf(changedEl);
+      if (position === -1) {
+        return;
+      }
+      const previous = segments.findLast(
+        (el) => this.managedEntities.indexOf(el) < position
+      );
+      const next = segments.find(
+        (el) => this.managedEntities.indexOf(el) > position
+      );
+      if (previous && next) {
+        this.applyAutoStripingBetween(previous, next);
+      }
       return;
     }
     [index, index + 1].forEach((i) => {
@@ -914,6 +929,9 @@ AFRAME.registerComponent('managed-street', {
       // Migrate the deprecated `surface: hatched` (#1728): hatching is now a
       // full-width street-generated-striping treatment that crops to the
       // segment width instead of stretching a surface texture across it.
+      // A blob that authored no striping still gets the auto separator below;
+      // the hatched migration must not count as authored striping.
+      const hasAuthoredStriping = Boolean(segment.generated?.striping);
       if (segment.surface === 'hatched') {
         segment.surface = 'asphalt';
         segment.generated = segment.generated || {};
@@ -950,20 +968,21 @@ AFRAME.registerComponent('managed-street', {
       }
       // wait for street-segment to be loaded, then generate components from segment object
       segmentEl.addEventListener('loaded', () => {
-        if (!segment.generated?.striping) {
+        if (!hasAuthoredStriping) {
           const stripingVariant = this.getStripingFromSegments(
             previousSegment,
             segment
           );
           if (stripingVariant) {
-            // Only add striping if variant is not null
+            // Only add striping if variant is not null; the separator goes
+            // first so a migrated hatched treatment lands in __2 (matching
+            // the Streetmix divider layout).
             if (!segment.generated) {
               segment.generated = {};
             }
             segment.generated.striping = [
-              {
-                striping: stripingVariant
-              }
+              { striping: stripingVariant },
+              ...(segment.generated.striping || [])
             ];
           }
         }
@@ -1604,10 +1623,14 @@ function parseStreetmixSegments(segments, length) {
     // null for flat segments
     const slope = streetmixUtils.getSegmentSlope(segments[i]);
 
+    // Sidewalks are directionless: their pedestrians walk in the segment
+    // direction, and `none` mixes the crowd (the sidewalk preset default).
     const direction =
-      variantList[0] === 'inbound' || variantList[1] === 'inbound'
-        ? 'inbound'
-        : 'outbound';
+      segments[i].type === 'sidewalk'
+        ? 'none'
+        : variantList[0] === 'inbound' || variantList[1] === 'inbound'
+          ? 'inbound'
+          : 'outbound';
 
     // the A-Frame mixin ID is often identical to the corresponding streetmix segment "type" by design, let's start with that
     let segmentPreset = segments[i].type;

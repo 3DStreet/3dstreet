@@ -113,7 +113,8 @@ AFRAME.registerComponent('street-generated-striping', {
     // side: right mirrors the texture across the segment (the plane itself is
     // already centered and full width).
     const hatchMirrored = isHatched && data.side === 'right';
-    const mirrored = (ribbonAttr && facingMirrored) !== hatchMirrored;
+    // ribbonAttr is null on a straight street, so coerce before comparing.
+    const mirrored = Boolean(ribbonAttr && facingMirrored) !== hatchMirrored;
     const repeatXFinal = mirrored ? -repeatX : repeatX;
     const offset = mirrored ? 'offset: 1 0; ' : '';
     if (ribbonAttr) {

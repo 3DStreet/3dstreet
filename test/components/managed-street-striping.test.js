@@ -79,13 +79,18 @@ describe('hatched surface migration on json-blob import', () => {
         const divider = segmentByName(streetEl, 'Divider');
         expect(divider.getAttribute('street-segment').surface).toBe('asphalt');
         expect(
-          divider.components['street-generated-striping__1']
+          divider.components['street-generated-striping__2']
         ).toBeDefined();
       }
     );
 
     const divider = segmentByName(el, 'Divider');
-    const striping = divider.components['street-generated-striping__1'];
+    // the migration must not suppress the auto separator on the divider's
+    // left edge: separator in __1, the migrated hatch in __2
+    expect(
+      divider.components['street-generated-striping__1'].data.striping
+    ).toBe('solid-stripe');
+    const striping = divider.components['street-generated-striping__2'];
     expect(striping.data.striping).toBe('hatched');
 
     // the hatch plane spans the full segment width, centered on the segment
@@ -211,5 +216,88 @@ describe('auto-striping on segment edits', () => {
     );
     // sidewalk | drive-lane pairs get no separator
     expect(laneBStriping(el)).toBeUndefined();
+  });
+
+  it('recomputes the separator across a lane that becomes a boundary', async () => {
+    const el = await createManagedStreet(
+      {
+        name: 'Three Lanes',
+        length: 40,
+        segments: [
+          laneSegment('Lane A', 'inbound'),
+          laneSegment('Lane B', 'outbound'),
+          laneSegment('Lane C', 'outbound')
+        ]
+      },
+      (streetEl) => {
+        expect(
+          segmentByName(streetEl, 'Lane C').components[
+            'street-generated-striping__1'
+          ]
+        ).toBeDefined();
+      }
+    );
+    const laneC = segmentByName(el, 'Lane C');
+    expect(laneC.components['street-generated-striping__1'].data.striping).toBe(
+      'dashed-stripe'
+    );
+
+    segmentByName(el, 'Lane B').setAttribute(
+      'street-segment',
+      'type',
+      'boundary'
+    );
+    // A (inbound) and C (outbound) are now adjacent → double yellow
+    expect(laneC.components['street-generated-striping__1'].data.striping).toBe(
+      'solid-doubleyellow'
+    );
+  });
+
+  it('regenerates the preset when type changes alongside other fields (SegmentUpdateCommand order)', async () => {
+    const el = await createManagedStreet(
+      {
+        name: 'Divider Street',
+        length: 40,
+        segments: [
+          laneSegment('Lane A', 'inbound'),
+          {
+            name: 'Divider',
+            type: 'divider',
+            width: 1,
+            elevation: 0,
+            direction: 'none',
+            color: '#ffffff',
+            surface: 'hatched'
+          }
+        ]
+      },
+      (streetEl) => {
+        expect(
+          segmentByName(streetEl, 'Divider').components[
+            'street-generated-striping__2'
+          ]
+        ).toBeDefined();
+      }
+    );
+    const divider = segmentByName(el, 'Divider');
+    // SegmentUpdateCommand (the AI update-segment tool) applies `type` on its
+    // own before the merged patch, because street-segment only regenerates
+    // its preset content when type is the sole changed property
+    divider.setAttribute('street-segment', 'type', 'drive-lane');
+    divider.setAttribute('street-segment', {
+      ...divider.getAttribute('street-segment'),
+      direction: 'inbound',
+      color: '#cccccc'
+    });
+
+    const stripings = Object.keys(divider.components).filter((name) =>
+      name.startsWith('street-generated-striping')
+    );
+    // the stale hatch plane is gone; only the auto separator against Lane A
+    // remains (same type + direction → dashed)
+    expect(stripings).toHaveLength(1);
+    expect(divider.getAttribute(stripings[0]).striping).toBe('dashed-stripe');
+    expect(divider.getAttribute('street-segment').color).toBe('#cccccc');
+    expect(divider.getAttribute('street-segment').type).toBe('drive-lane');
   });
 });

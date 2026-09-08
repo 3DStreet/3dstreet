@@ -317,5 +317,33 @@ describe('StreetSegmentUtils', function () {
         'density: sparse'
       );
     });
+    it('should carry the saved walk direction onto the segment (Streetmix sidewalks were outbound with a mixed crowd)', function () {
+      const components = {
+        'street-segment': 'type: sidewalk; direction: outbound; width: 3',
+        'street-generated-pedestrians': 'density: normal; seed: 7'
+      };
+      migratePedestriansDirection(components);
+      assert.strictEqual(
+        components['street-segment'],
+        'type: sidewalk; direction: none; width: 3'
+      );
+    });
+    it('should carry an explicit pedestrians direction onto an object segment value', function () {
+      const components = {
+        'street-segment': { type: 'sidewalk', direction: 'none' },
+        'street-generated-pedestrians__1': {
+          density: 'dense',
+          direction: 'inbound'
+        }
+      };
+      migratePedestriansDirection(components);
+      assert.deepStrictEqual(components['street-segment'], {
+        type: 'sidewalk',
+        direction: 'inbound'
+      });
+      assert.deepStrictEqual(components['street-generated-pedestrians__1'], {
+        density: 'dense'
+      });
+    });
   });
 });
