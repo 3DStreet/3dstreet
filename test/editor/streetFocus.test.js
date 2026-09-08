@@ -39,11 +39,20 @@ describe('segmentFocusSpan', () => {
   };
   const { segmentFocusSpan } = focus;
 
+  it('frames a wide span at its true width', () => {
+    const frame = mk([6, 6, 6, 6, 6]);
+    expect(segmentFocusSpan(frame, frame.segments[2].el).width).toBeCloseTo(
+      3 + 6 + 6 + 6 + 3
+    );
+  });
+
   it('spans self + both neighbours + half of the next ones out', () => {
     const frame = mk([2, 2, 3, 4, 1, 2, 2]);
     const span = segmentFocusSpan(frame, frame.segments[3].el);
-    // half(2) + 3 + 4 + 1 + half(2)
-    expect(span.width).toBeCloseTo(1 + 3 + 4 + 1 + 1);
+    // half(2) + 3 + 4 + 1 + half(2), floored at the minimum span
+    expect(span.width).toBeCloseTo(
+      Math.max(1 + 3 + 4 + 1 + 1, focus.SEGMENT_FOCUS_MIN_WIDTH)
+    );
     // left edge: seg3 left (-8+2+2+3 = -1) - 3 - 1 = -5; right: 3 + 1 + 1 = 5
     expect(span.xCenter).toBeCloseTo(0);
   });
@@ -51,7 +60,9 @@ describe('segmentFocusSpan', () => {
   it('clips the context at the street edge', () => {
     const frame = mk([3, 2, 2]);
     const span = segmentFocusSpan(frame, frame.segments[0].el);
-    expect(span.width).toBeCloseTo(3 + 2 + 1);
+    expect(span.width).toBeCloseTo(
+      Math.max(3 + 2 + 1, focus.SEGMENT_FOCUS_MIN_WIDTH)
+    );
     expect(span.xCenter).toBeCloseTo(-3.5 + 3);
   });
 

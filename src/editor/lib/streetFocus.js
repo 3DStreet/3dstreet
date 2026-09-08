@@ -16,10 +16,15 @@ export const STREET_FOCUS_FILL = 0.9;
 // Elevation of the camera above the near-end center, measured from the
 // roadway plane; higher shows more of the street's length.
 export const STREET_FOCUS_PITCH_DEG = 27;
-// Where along the street (0 = near end, 1 = far end) the camera aims. Aiming
-// past the near end drops the cross-section into the lower third of the
-// frame and keeps the far end in view (the reference composition in #1213).
-export const STREET_FOCUS_AIM = 0.2;
+// Where the bottom of the cross-section (the width label hanging under the
+// dirt block, CROSS_SECTION_DROP below the roadway) sits in the frame, as a
+// fraction of the viewport height from the top. Pinning a screen position
+// rather than an aim distance keeps the composition the same for a whole
+// street and a narrow segment span: cross-section in the lower part of the
+// frame, label just clear of the bottom toolbar, road running up the frame.
+export const STREET_FOCUS_BOTTOM_Y = 0.88;
+// street-ground dirt block (2 m) + street-label plane (2.5 m centered at -2).
+export const CROSS_SECTION_DROP = 3.25;
 
 // Camera-independent core, unit-tested: how far back (depth, along the
 // view) a cross-section of `width` sits to span FILL of the view width.
@@ -78,6 +83,10 @@ export function travelledWayLocalFrame(streetEl) {
 // A segment focus shows the segment, its two neighbours in full and half of
 // the next ones out — enough context to place it without losing it.
 export const SEGMENT_FOCUS_CONTEXT = [1, 0.5];
+// Floor on the framed span: the cross-section block under the road is a
+// fixed CROSS_SECTION_DROP tall, so fitting a very narrow span would let it
+// swallow the frame. Below this the span is widened symmetrically.
+export const SEGMENT_FOCUS_MIN_WIDTH = 15;
 
 // Sub-span { width, xCenter } of the travelled way around `segmentEl`, or
 // null when it isn't in the street's travelled way (boundaries et al).
@@ -93,7 +102,10 @@ export function segmentFocusSpan(frame, segmentEl) {
     if (l) left -= l.width * share;
     if (r) right += r.width * share;
   });
-  return { width: right - left, xCenter: (left + right) / 2 };
+  return {
+    width: Math.max(right - left, SEGMENT_FOCUS_MIN_WIDTH),
+    xCenter: (left + right) / 2
+  };
 }
 
 // { position, lookAt } in the street's local frame for a span of `width`
@@ -103,27 +115,39 @@ function poseForSpan(frame, span, camera) {
   const depth = fitDepthForWidth(span.width, camera.fov, camera.aspect || 1);
   const pitch = THREE.MathUtils.degToRad(STREET_FOCUS_PITCH_DEG);
   const near = new THREE.Vector3(span.xCenter, 0, frame.zNear);
-  const lookAt = new THREE.Vector3(
+  const bottom = new THREE.Vector3(
     span.xCenter,
-    0,
-    frame.zNear - frame.length * STREET_FOCUS_AIM
+    -CROSS_SECTION_DROP,
+    frame.zNear
   );
-  // Camera sits behind and above the near end along `dir`. The width fit is
-  // defined at the near edge's view-space depth, which depends on the view
-  // direction (toward lookAt), which depends on where the camera is — a
-  // couple of fixed-point rounds converge to well under a centimetre.
+  // Angle below the view axis at which a point lands on screen row
+  // STREET_FOCUS_BOTTOM_Y (NDC y = 1 - 2·row; rows below center are negative).
+  const halfVFovTan = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+  const theta = Math.atan((2 * STREET_FOCUS_BOTTOM_Y - 1) * halfVFovTan);
+  // Camera sits behind and above the near end along `dir`; the view axis
+  // tilts down so `bottom` hits its screen row. The width fit is defined at
+  // the near edge's view-space depth, which depends on the tilt, which
+  // depends on where the camera is — a few fixed-point rounds converge to
+  // well under a centimetre.
   const dir = new THREE.Vector3(0, Math.sin(pitch), Math.cos(pitch));
   const position = new THREE.Vector3();
-  const view = new THREE.Vector3();
+  const axis = new THREE.Vector3();
+  const toBottom = new THREE.Vector3();
   let dist = depth;
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 6; i++) {
     position.copy(near).addScaledVector(dir, dist);
-    view.subVectors(lookAt, position).normalize();
-    // depth of `near` along the view = dist * (-dir · view)
-    dist = depth / Math.max(0.2, -dir.dot(view));
+    toBottom.subVectors(bottom, position);
+    const depression = Math.atan2(
+      -toBottom.y,
+      Math.hypot(toBottom.x, toBottom.z)
+    );
+    const tilt = depression - theta;
+    axis.set(0, -Math.sin(tilt), -Math.cos(tilt));
+    const depthNow = near.clone().sub(position).dot(axis);
+    dist *= depth / Math.max(depthNow, 1e-3);
   }
   position.copy(near).addScaledVector(dir, dist);
-  return { position, lookAt };
+  return { position, lookAt: position.clone().add(axis) };
 }
 
 // Street-local { position, lookAt, streetEl } for a managed street or one of
