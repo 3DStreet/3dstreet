@@ -127,7 +127,7 @@ THREE.EditorControls = function (_object, domElement) {
       const pose = streetFocusPose(targetEl, object);
       if (pose) {
         cameraPosition = pose.position;
-        center.copy(pose.lookAt);
+        center.copy(pose.center);
       }
     }
     // Fallback to default positioning if no pose relative position

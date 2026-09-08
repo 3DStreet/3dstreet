@@ -140,8 +140,7 @@ export function createManagedStreetFromStreetmixURLPrompt(
           // fires streetmix_import_completed/_failed with source 'dialog'
           // (#1874).
           importSource: 'dialog'
-        },
-        'street-align': { length: 'middle' }
+        }
       }
     };
 
@@ -167,8 +166,7 @@ export function createManagedStreetFromStreetplanURLPrompt(position) {
           showVehicles: true,
           showStriping: true,
           synchronize: true
-        },
-        'street-align': { length: 'middle' }
+        }
       }
     };
 
@@ -189,10 +187,7 @@ export function createManagedStreetFromStreetObject(position, streetObject) {
           showVehicles: true,
           showStriping: true,
           synchronize: true
-        },
-        // Same as the schema default; kept explicit so the definition reads
-        // as a complete description of the street it creates.
-        'street-align': { length: 'middle' }
+        }
       }
     };
 

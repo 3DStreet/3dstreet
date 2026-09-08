@@ -507,7 +507,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       const pose = streetFocusPose(targetEl, camera);
       if (pose) {
         cameraPosition = pose.position;
-        targetCenter.copy(pose.lookAt);
+        targetCenter.copy(pose.center);
         this.center.copy(targetCenter);
       }
     }

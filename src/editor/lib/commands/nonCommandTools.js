@@ -151,9 +151,6 @@ async function managedStreetCreateHandler(args) {
         showStriping: true,
         synchronize: true
       },
-      // Same as the schema default; kept explicit so the definition reads
-      // as a complete description of the street it creates.
-      'street-align': { length: 'middle' },
       'data-layer-name': streetData.name || 'New Managed Street'
     }
   };

@@ -23,8 +23,23 @@ export const STREET_FOCUS_PITCH_DEG = 27;
 // street and a narrow segment span: cross-section in the lower part of the
 // frame, label just clear of the bottom toolbar, road running up the frame.
 export const STREET_FOCUS_BOTTOM_Y = 0.88;
-// street-ground dirt block (2 m) + street-label plane (2.5 m centered at -2).
-export const CROSS_SECTION_DROP = 3.25;
+// Fallbacks matching street-label's schema defaults; the live values are
+// read off the component when the street has one.
+const LABEL_HEIGHT_OFFSET = -2;
+const LABEL_HEIGHT = 2.5;
+const LABEL_Z_OFFSET = 1;
+
+// The cross-section's bottom edge: the width label hangs under the dirt
+// block, zOffset nearer the camera than the street's end.
+function crossSectionBottom(streetEl) {
+  const d = streetEl.components?.['street-label']?.data || {};
+  const heightOffset = d.heightOffset ?? LABEL_HEIGHT_OFFSET;
+  const labelHeight = d.labelHeight ?? LABEL_HEIGHT;
+  return {
+    drop: -(heightOffset - labelHeight / 2),
+    zOffset: d.zOffset ?? LABEL_Z_OFFSET
+  };
+}
 
 // Camera-independent core, unit-tested: how far back (depth, along the
 // view) a cross-section of `width` sits to span FILL of the view width.
@@ -60,12 +75,7 @@ export function travelledWayLocalFrame(streetEl) {
       : align.width === 'right'
         ? -width / 2
         : 0;
-  const zStart =
-    align.length === 'start'
-      ? -length
-      : align.length === 'end'
-        ? 0
-        : -length / 2;
+  const zStart = street.computeZStart(length);
   return {
     width,
     length,
@@ -102,17 +112,17 @@ export function segmentFocusSpan(frame, segmentEl) {
   return { width: right - left, xCenter: (left + right) / 2 };
 }
 
-// { position, lookAt } in the street's local frame for a span of `width`
+// { position, center } in the street's local frame for a span of `width`
 // centered at `xCenter`, or null.
-function poseForSpan(frame, span, camera) {
+function poseForSpan(frame, span, camera, bottomSpec) {
   if (!camera?.isPerspectiveCamera || !(span.width > 0)) return null;
   const depth = fitDepthForWidth(span.width, camera.fov, camera.aspect || 1);
   const pitch = THREE.MathUtils.degToRad(STREET_FOCUS_PITCH_DEG);
   const near = new THREE.Vector3(span.xCenter, 0, frame.zNear);
   const bottom = new THREE.Vector3(
     span.xCenter,
-    -CROSS_SECTION_DROP,
-    frame.zNear
+    -bottomSpec.drop,
+    frame.zNear + bottomSpec.zOffset
   );
   // Angle below the view axis at which a point lands on screen row
   // STREET_FOCUS_BOTTOM_Y (NDC y = 1 - 2·row; rows below center are negative).
@@ -141,10 +151,13 @@ function poseForSpan(frame, span, camera) {
     dist *= depth / Math.max(depthNow, 1e-3);
   }
   position.copy(near).addScaledVector(dir, dist);
-  return { position, lookAt: position.clone().add(axis) };
+  // `center` is both the look-at target and the orbit pivot: on the view
+  // axis at the near edge's depth, so it sits on the street (an orbit pivot
+  // 1 m ahead of the camera turns rotate/zoom into a head-turn).
+  return { position, center: position.clone().addScaledVector(axis, depth) };
 }
 
-// Street-local { position, lookAt, streetEl } for a managed street or one of
+// Street-local { position, center, streetEl } for a managed street or one of
 // its travelled-way segments, or null for anything else.
 export function streetFocusPoseLocal(targetEl, camera) {
   if (!targetEl) return null;
@@ -161,7 +174,7 @@ export function streetFocusPoseLocal(targetEl, camera) {
     : { width: frame.width, xCenter: frame.xCenter };
   if (!span) return null;
   span.width = Math.max(span.width, FOCUS_MIN_WIDTH);
-  const pose = poseForSpan(frame, span, camera);
+  const pose = poseForSpan(frame, span, camera, crossSectionBottom(streetEl));
   if (!pose) return null;
   const curve = streetEl.components['managed-street'].streetCurve;
   if (curve) {
@@ -180,24 +193,21 @@ export function streetFocusPoseLocal(targetEl, camera) {
         .addScaledVector(along, p.z - frame.zNear)
         .setY(end.position.y + p.y);
     pose.position = remap(pose.position);
-    pose.lookAt = remap(pose.lookAt);
+    pose.center = remap(pose.center);
   }
   return { ...pose, streetEl };
 }
 
-// World-space { position, lookAt } for a managed street or one of its
-// segments, or null. The pose is expressed in the STREET's frame even for a
-// segment focus, so it's transformed by the street's matrixWorld here rather
-// than by whatever the caller decomposed for the focused entity.
+// World-space { position, center } for a managed street or one of
+// its segments, or null. The pose is expressed in the STREET's frame even
+// for a segment focus, so it goes through the street's full matrixWorld
+// (scale included — the local pose is in local metres).
 export function streetFocusPose(targetEl, camera) {
   const local = streetFocusPoseLocal(targetEl, camera);
   if (!local) return null;
-  const pos = new THREE.Vector3();
-  const quat = new THREE.Quaternion();
-  const scale = new THREE.Vector3();
-  local.streetEl.object3D.matrixWorld.decompose(pos, quat, scale);
+  const m = local.streetEl.object3D.matrixWorld;
   return {
-    position: local.position.applyQuaternion(quat).add(pos),
-    lookAt: local.lookAt.applyQuaternion(quat).add(pos)
+    position: local.position.applyMatrix4(m),
+    center: local.center.applyMatrix4(m)
   };
 }

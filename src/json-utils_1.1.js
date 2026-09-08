@@ -895,8 +895,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
               sourceType: 'streetmix-url',
               sourceValue: fixtureURL,
               synchronize: true
-            },
-            'street-align': 'width: center; length: middle'
+            }
           }
         };
         setTimeout(() => {
