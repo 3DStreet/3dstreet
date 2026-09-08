@@ -13,6 +13,7 @@ import {
 
 import { copyCameraPosition } from './cameras';
 import { initRaycaster } from './raycaster';
+import { isManagedStreetSegment } from './entity';
 import { captureNavDiscovery } from './navAnalytics.js';
 import Events from './Events';
 import { isBatched, syncBatchedSubtree } from '../../batch-models';
@@ -678,10 +679,11 @@ export function Viewport(inspector) {
   }
 
   // Single routing table for which controls attach to the current selection.
-  // The stock TransformControls gizmo attaches to every transformable entity
-  // exactly as before; the street gizmos (#1096 #1218) are ADDITIVE handles
-  // layered on top for managed streets and their segments — never a
-  // replacement for the standard move/rotate gizmo.
+  // The stock TransformControls gizmo attaches to every transformable entity,
+  // and the managed-street endpoint nodes (#1096) are ADDITIVE handles layered
+  // on top of it. The one exception is a managed street's segments (#1806):
+  // they get ONLY their width bars (#1218), no stock gizmo, because
+  // street-align owns segment transforms.
   function attachControlsForSelection() {
     detachAllTransformControls();
     const el = inspector.selectedEntity;
@@ -692,14 +694,18 @@ export function Viewport(inspector) {
     ) {
       return;
     }
+    // Segments of a managed street are the one selection that gets NO stock
+    // gizmo (#1806): street-align owns segment transforms, so any move/rotate
+    // applied here would be silently reset by the next street re-layout.
+    // Their handles are the width bars (plus sidebar width/elevation and the
+    // reorder buttons); the selection highlight box still shows.
+    if (isManagedStreetSegment(el)) {
+      segmentWidthControls.attach(el);
+      return;
+    }
     attachStockGizmo(el);
     if (el.components['managed-street']) {
       streetNodeControls.attach(el);
-    } else if (
-      el.components['street-segment'] &&
-      el.parentElement?.components?.['managed-street']
-    ) {
-      segmentWidthControls.attach(el);
     }
   }
 
