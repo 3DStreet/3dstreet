@@ -190,8 +190,8 @@ export function createManagedStreetFromStreetObject(position, streetObject) {
           showStriping: true,
           synchronize: true
         },
-        // New streets center on their creation point. Explicit (not a schema
-        // default) so saved scenes that relied on 'start' stay put on load.
+        // Same as the schema default; kept explicit so the definition reads
+        // as a complete description of the street it creates.
         'street-align': { length: 'middle' }
       }
     };

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import posthog from 'posthog-js';
 import PropertyRow from './PropertyRow';
+import LengthPropertyRow from './LengthPropertyRow';
 import BooleanWidget from '../widgets/BooleanWidget';
 import { Button } from './Button';
 import { saveString } from '@/editor/lib/utils';
@@ -188,14 +189,13 @@ const ManagedStreetSidebar = ({ entity }) => {
             labelComponent.schema &&
             labelComponent.data && (
               <>
-                <PropertyRow
+                <LengthPropertyRow
                   key="length"
                   name="length"
                   label="Street Length"
                   schema={component.schema.length}
                   data={component.data.length}
                   componentname={componentName}
-                  isSingle={false}
                   entity={entity}
                 />
                 {(pathableShapes.length > 0 || pathValue) && (

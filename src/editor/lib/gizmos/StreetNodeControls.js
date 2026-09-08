@@ -197,14 +197,14 @@ class StreetNodeControls extends GizmoPointerControls {
   }
 
   getLengthAlign() {
-    return this.el?.components['street-align']?.data?.length || 'start';
+    return this.el?.components['street-align']?.data?.length || 'middle';
   }
 
   /** Local-space z of both endpoints for a given length + alignment. */
   endpointLocalZ(length, align) {
     if (align === 'middle') return { start: -length / 2, end: length / 2 };
     if (align === 'end') return { start: 0, end: length };
-    return { start: -length, end: 0 }; // 'start' (default)
+    return { start: -length, end: 0 }; // 'start'
   }
 
   endpointLocal(key, length, align) {

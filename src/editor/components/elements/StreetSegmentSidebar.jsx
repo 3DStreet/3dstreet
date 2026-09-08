@@ -3,6 +3,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 // import Component from './Component';
 import Component from './StreetSegmentComponent';
 import PropertyRow from './PropertyRow';
+import LengthPropertyRow from './LengthPropertyRow';
 import {
   cloneEntity,
   removeSelectedEntity,
@@ -190,7 +191,7 @@ const StreetSegmentSidebar = ({ entity }) => {
                   />
                 </>
               )}
-              <PropertyRow
+              <LengthPropertyRow
                 key="width"
                 name="width"
                 label={intl.formatMessage({
@@ -200,7 +201,6 @@ const StreetSegmentSidebar = ({ entity }) => {
                 schema={component.schema['width']}
                 data={component.data['width']}
                 componentname={componentName}
-                isSingle={false}
                 entity={entity}
               />
               {component.data['type'] !== 'boundary' && (

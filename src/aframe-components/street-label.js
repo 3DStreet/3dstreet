@@ -245,7 +245,7 @@ AFRAME.registerComponent('street-label', {
     // Get alignment from street-align component
     const streetAlign = this.el.components['street-align'];
     const alignWidth = streetAlign?.data.width || 'center';
-    const alignLength = streetAlign?.data.length || 'start';
+    const alignLength = streetAlign?.data.length || 'middle';
 
     // Get street length from managed-street component
     const streetLength = this.el.getAttribute('managed-street')?.length || 0;
