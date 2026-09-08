@@ -83,10 +83,11 @@ export function travelledWayLocalFrame(streetEl) {
 // A segment focus shows the segment, its two neighbours in full and half of
 // the next ones out — enough context to place it without losing it.
 export const SEGMENT_FOCUS_CONTEXT = [1, 0.5];
-// Floor on the framed span: the cross-section block under the road is a
-// fixed CROSS_SECTION_DROP tall, so fitting a very narrow span would let it
-// swallow the frame. Below this the span is widened symmetrically.
-export const SEGMENT_FOCUS_MIN_WIDTH = 15;
+// Floor on the framed span (street or segment): the cross-section block
+// under the road is a fixed CROSS_SECTION_DROP tall, so fitting a narrow
+// span — a two-lane road, a divider — would let it swallow the frame. Below
+// this the span is widened symmetrically and the street sits further away.
+export const FOCUS_MIN_WIDTH = 15;
 
 // Sub-span { width, xCenter } of the travelled way around `segmentEl`, or
 // null when it isn't in the street's travelled way (boundaries et al).
@@ -102,10 +103,7 @@ export function segmentFocusSpan(frame, segmentEl) {
     if (l) left -= l.width * share;
     if (r) right += r.width * share;
   });
-  return {
-    width: Math.max(right - left, SEGMENT_FOCUS_MIN_WIDTH),
-    xCenter: (left + right) / 2
-  };
+  return { width: right - left, xCenter: (left + right) / 2 };
 }
 
 // { position, lookAt } in the street's local frame for a span of `width`
@@ -166,6 +164,7 @@ export function streetFocusPoseLocal(targetEl, camera) {
     ? segmentFocusSpan(frame, segmentEl)
     : { width: frame.width, xCenter: frame.xCenter };
   if (!span) return null;
+  span.width = Math.max(span.width, FOCUS_MIN_WIDTH);
   const pose = poseForSpan(frame, span, camera);
   return pose && { ...pose, streetEl };
 }
