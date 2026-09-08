@@ -45,10 +45,6 @@ export function fitDepthForWidth(
 export function travelledWayLocalFrame(streetEl) {
   const street = streetEl?.components?.['managed-street'];
   if (!street) return null;
-  // A path-following street is laid out along its curve in world space, not
-  // in this straight-space frame — the fit would aim at empty ground. Let
-  // the generic bounding-box framing handle it.
-  if (street.streetCurve) return null;
   const segments = getTravelledWaySegments(streetEl).map((el) => ({
     el,
     width: el.getAttribute('street-segment')?.width || 0,
@@ -166,7 +162,27 @@ export function streetFocusPoseLocal(targetEl, camera) {
   if (!span) return null;
   span.width = Math.max(span.width, FOCUS_MIN_WIDTH);
   const pose = poseForSpan(frame, span, camera);
-  return pose && { ...pose, streetEl };
+  if (!pose) return null;
+  const curve = streetEl.components['managed-street'].streetCurve;
+  if (curve) {
+    // A path-following street is laid out along its curve: the straight-space
+    // near end (z = zNear) is the path's end station (s = length), so
+    // re-express the pose in that station's frame — lateral along `right`,
+    // "behind the end" along the (horizontal) tangent.
+    const end = curve.sampler.frameAtS(frame.length);
+    const along = new THREE.Vector3(end.tangent.x, 0, end.tangent.z);
+    if (along.lengthSq() < 1e-6) along.set(0, 0, 1);
+    along.normalize();
+    const remap = (p) =>
+      new THREE.Vector3()
+        .copy(end.position)
+        .addScaledVector(end.right, p.x)
+        .addScaledVector(along, p.z - frame.zNear)
+        .setY(end.position.y + p.y);
+    pose.position = remap(pose.position);
+    pose.lookAt = remap(pose.lookAt);
+  }
+  return { ...pose, streetEl };
 }
 
 // World-space { position, lookAt } for a managed street or one of its
