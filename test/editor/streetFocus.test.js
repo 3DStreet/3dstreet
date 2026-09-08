@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fitDepthForWidth } from '../../src/editor/lib/streetFocus.js';
+import * as focus from '../../src/editor/lib/streetFocus.js';
+const { fitDepthForWidth } = focus;
 
 describe('fitDepthForWidth', () => {
   it('places a cross-section so it spans the fill fraction of view width', () => {
@@ -22,5 +23,39 @@ describe('fitDepthForWidth', () => {
     expect(fitDepthForWidth(20, 50, 2)).toBeLessThan(
       fitDepthForWidth(20, 50, 1.5)
     );
+  });
+});
+
+describe('segmentFocusSpan', () => {
+  const mk = (widths) => {
+    let x = -widths.reduce((a, b) => a + b, 0) / 2;
+    return {
+      segments: widths.map((width, i) => {
+        const seg = { el: { i }, width, x: x + width / 2 };
+        x += width;
+        return seg;
+      })
+    };
+  };
+  const { segmentFocusSpan } = focus;
+
+  it('spans self + both neighbours + half of the next ones out', () => {
+    const frame = mk([2, 2, 3, 4, 1, 2, 2]);
+    const span = segmentFocusSpan(frame, frame.segments[3].el);
+    // half(2) + 3 + 4 + 1 + half(2)
+    expect(span.width).toBeCloseTo(1 + 3 + 4 + 1 + 1);
+    // left edge: seg3 left (-8+2+2+3 = -1) - 3 - 1 = -5; right: 3 + 1 + 1 = 5
+    expect(span.xCenter).toBeCloseTo(0);
+  });
+
+  it('clips the context at the street edge', () => {
+    const frame = mk([3, 2, 2]);
+    const span = segmentFocusSpan(frame, frame.segments[0].el);
+    expect(span.width).toBeCloseTo(3 + 2 + 1);
+    expect(span.xCenter).toBeCloseTo(-3.5 + 3);
+  });
+
+  it('returns null for a segment outside the travelled way', () => {
+    expect(segmentFocusSpan(mk([2]), { i: 99 })).toBeNull();
   });
 });

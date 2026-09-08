@@ -121,14 +121,10 @@ THREE.EditorControls = function (_object, domElement) {
           .add(focusWorldPos);
       }
     }
-    // Managed street (#1213): fit the roadway's width to the viewport.
+    // Managed street or one of its segments (#1213): fit the roadway width
+    // (or the segment plus its neighbours) to the viewport.
     if (!cameraPosition && !this.isOrthographic) {
-      const pose = streetFocusPose(
-        targetEl,
-        object,
-        focusWorldPos,
-        focusWorldQuat
-      );
+      const pose = streetFocusPose(targetEl, object);
       if (pose) {
         cameraPosition = pose.position;
         center.copy(pose.lookAt);

@@ -35,7 +35,8 @@ export function fitDepthForWidth(
 
 // Local-frame layout of the travelled way, mirroring street-align's rules:
 // width alignment sets the x extent, length alignment the z extent (see
-// managed-street.computeZStart).
+// managed-street.computeZStart). `segments` are in cross-section order with
+// their x centers, so a segment focus can pick a sub-span.
 export function travelledWayLocalFrame(streetEl) {
   const street = streetEl?.components?.['managed-street'];
   if (!street) return null;
@@ -43,10 +44,12 @@ export function travelledWayLocalFrame(streetEl) {
   // in this straight-space frame — the fit would aim at empty ground. Let
   // the generic bounding-box framing handle it.
   if (street.streetCurve) return null;
-  const width = getTravelledWaySegments(streetEl).reduce(
-    (sum, seg) => sum + (seg.getAttribute('street-segment')?.width || 0),
-    0
-  );
+  const segments = getTravelledWaySegments(streetEl).map((el) => ({
+    el,
+    width: el.getAttribute('street-segment')?.width || 0,
+    x: el.getAttribute('position')?.x || 0
+  }));
+  const width = segments.reduce((sum, seg) => sum + seg.width, 0);
   if (!(width > 0)) return null;
   const length = street.data.length || 0;
   const align = streetEl.getAttribute('street-align') || {};
@@ -62,18 +65,46 @@ export function travelledWayLocalFrame(streetEl) {
       : align.length === 'end'
         ? 0
         : -length / 2;
-  return { width, length, xCenter, zStart, zNear: zStart + length };
+  return {
+    width,
+    length,
+    xCenter,
+    zStart,
+    zNear: zStart + length,
+    segments
+  };
 }
 
-// { position, lookAt } in the street's local frame, or null.
-export function streetFocusPoseLocal(streetEl, camera) {
-  const frame = travelledWayLocalFrame(streetEl);
-  if (!frame || !camera?.isPerspectiveCamera) return null;
-  const depth = fitDepthForWidth(frame.width, camera.fov, camera.aspect || 1);
+// A segment focus shows the segment, its two neighbours in full and half of
+// the next ones out — enough context to place it without losing it.
+export const SEGMENT_FOCUS_CONTEXT = [1, 0.5];
+
+// Sub-span { width, xCenter } of the travelled way around `segmentEl`, or
+// null when it isn't in the street's travelled way (boundaries et al).
+export function segmentFocusSpan(frame, segmentEl) {
+  const i = frame.segments.findIndex((s) => s.el === segmentEl);
+  if (i === -1) return null;
+  const own = frame.segments[i];
+  let left = own.x - own.width / 2;
+  let right = own.x + own.width / 2;
+  SEGMENT_FOCUS_CONTEXT.forEach((share, k) => {
+    const l = frame.segments[i - 1 - k];
+    const r = frame.segments[i + 1 + k];
+    if (l) left -= l.width * share;
+    if (r) right += r.width * share;
+  });
+  return { width: right - left, xCenter: (left + right) / 2 };
+}
+
+// { position, lookAt } in the street's local frame for a span of `width`
+// centered at `xCenter`, or null.
+function poseForSpan(frame, span, camera) {
+  if (!camera?.isPerspectiveCamera || !(span.width > 0)) return null;
+  const depth = fitDepthForWidth(span.width, camera.fov, camera.aspect || 1);
   const pitch = THREE.MathUtils.degToRad(STREET_FOCUS_PITCH_DEG);
-  const near = new THREE.Vector3(frame.xCenter, 0, frame.zNear);
+  const near = new THREE.Vector3(span.xCenter, 0, frame.zNear);
   const lookAt = new THREE.Vector3(
-    frame.xCenter,
+    span.xCenter,
     0,
     frame.zNear - frame.length * STREET_FOCUS_AIM
   );
@@ -95,12 +126,39 @@ export function streetFocusPoseLocal(streetEl, camera) {
   return { position, lookAt };
 }
 
-// World-space { position, lookAt } for a managed street, or null.
-export function streetFocusPose(streetEl, camera, worldPos, worldQuat) {
-  const local = streetFocusPoseLocal(streetEl, camera);
+// Street-local { position, lookAt, streetEl } for a managed street or one of
+// its travelled-way segments, or null for anything else.
+export function streetFocusPoseLocal(targetEl, camera) {
+  if (!targetEl) return null;
+  let streetEl = targetEl;
+  let segmentEl = null;
+  if (targetEl.components?.['street-segment']) {
+    segmentEl = targetEl;
+    streetEl = targetEl.parentEl;
+  }
+  const frame = travelledWayLocalFrame(streetEl);
+  if (!frame) return null;
+  const span = segmentEl
+    ? segmentFocusSpan(frame, segmentEl)
+    : { width: frame.width, xCenter: frame.xCenter };
+  if (!span) return null;
+  const pose = poseForSpan(frame, span, camera);
+  return pose && { ...pose, streetEl };
+}
+
+// World-space { position, lookAt } for a managed street or one of its
+// segments, or null. The pose is expressed in the STREET's frame even for a
+// segment focus, so it's transformed by the street's matrixWorld here rather
+// than by whatever the caller decomposed for the focused entity.
+export function streetFocusPose(targetEl, camera) {
+  const local = streetFocusPoseLocal(targetEl, camera);
   if (!local) return null;
+  const pos = new THREE.Vector3();
+  const quat = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
+  local.streetEl.object3D.matrixWorld.decompose(pos, quat, scale);
   return {
-    position: local.position.applyQuaternion(worldQuat).add(worldPos),
-    lookAt: local.lookAt.applyQuaternion(worldQuat).add(worldPos)
+    position: local.position.applyQuaternion(quat).add(pos),
+    lookAt: local.lookAt.applyQuaternion(quat).add(pos)
   };
 }

@@ -501,14 +501,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       }
     }
 
-    // Managed street (#1213): fit the roadway's width to the viewport.
+    // Managed street or one of its segments (#1213): fit the roadway width
+    // (or the segment plus its neighbours) to the viewport.
     if (!cameraPosition) {
-      const pose = streetFocusPose(
-        targetEl,
-        camera,
-        focusWorldPos,
-        focusWorldQuat
-      );
+      const pose = streetFocusPose(targetEl, camera);
       if (pose) {
         cameraPosition = pose.position;
         targetCenter.copy(pose.lookAt);
