@@ -13,7 +13,13 @@ import { getTravelledWaySegments } from '@/aframe-components/street-layout-utils
 // way. Callers transform into world space with the street's matrixWorld.
 
 export const STREET_FOCUS_FILL = 0.9;
-export const STREET_FOCUS_PITCH_DEG = 30;
+// Elevation of the camera above the near-end center, measured from the
+// roadway plane; higher shows more of the street's length.
+export const STREET_FOCUS_PITCH_DEG = 27;
+// Where along the street (0 = near end, 1 = far end) the camera aims. Aiming
+// past the near end drops the cross-section into the lower third of the
+// frame and keeps the far end in view (the reference composition in #1213).
+export const STREET_FOCUS_AIM = 0.2;
 
 // Camera-independent core, unit-tested: how far back (depth, along the
 // view) a cross-section of `width` sits to span FILL of the view width.
@@ -33,6 +39,10 @@ export function fitDepthForWidth(
 export function travelledWayLocalFrame(streetEl) {
   const street = streetEl?.components?.['managed-street'];
   if (!street) return null;
+  // A path-following street is laid out along its curve in world space, not
+  // in this straight-space frame — the fit would aim at empty ground. Let
+  // the generic bounding-box framing handle it.
+  if (street.streetCurve) return null;
   const width = getTravelledWaySegments(streetEl).reduce(
     (sum, seg) => sum + (seg.getAttribute('street-segment')?.width || 0),
     0
@@ -61,16 +71,28 @@ export function streetFocusPoseLocal(streetEl, camera) {
   if (!frame || !camera?.isPerspectiveCamera) return null;
   const depth = fitDepthForWidth(frame.width, camera.fov, camera.aspect || 1);
   const pitch = THREE.MathUtils.degToRad(STREET_FOCUS_PITCH_DEG);
-  return {
-    position: new THREE.Vector3(
-      frame.xCenter,
-      depth * Math.sin(pitch),
-      frame.zNear + depth * Math.cos(pitch)
-    ),
-    // Aim at the near-end center of the roadway (not the bbox center) so the
-    // cross-section sits mid-screen at the fitted depth.
-    lookAt: new THREE.Vector3(frame.xCenter, 0, frame.zNear)
-  };
+  const near = new THREE.Vector3(frame.xCenter, 0, frame.zNear);
+  const lookAt = new THREE.Vector3(
+    frame.xCenter,
+    0,
+    frame.zNear - frame.length * STREET_FOCUS_AIM
+  );
+  // Camera sits behind and above the near end along `dir`. The width fit is
+  // defined at the near edge's view-space depth, which depends on the view
+  // direction (toward lookAt), which depends on where the camera is — a
+  // couple of fixed-point rounds converge to well under a centimetre.
+  const dir = new THREE.Vector3(0, Math.sin(pitch), Math.cos(pitch));
+  const position = new THREE.Vector3();
+  const view = new THREE.Vector3();
+  let dist = depth;
+  for (let i = 0; i < 4; i++) {
+    position.copy(near).addScaledVector(dir, dist);
+    view.subVectors(lookAt, position).normalize();
+    // depth of `near` along the view = dist * (-dir · view)
+    dist = depth / Math.max(0.2, -dir.dot(view));
+  }
+  position.copy(near).addScaledVector(dir, dist);
+  return { position, lookAt };
 }
 
 // World-space { position, lookAt } for a managed street, or null.
