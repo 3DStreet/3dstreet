@@ -11,6 +11,7 @@ import {
   migrateShowBuildingsFlag
 } from './tested/street-segment-utils';
 import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
+import { migrateImplicitStreetAlign } from './tested/migrate-street-align';
 
 /* global AFRAME, Node */
 // Components removed alongside the legacy viewer mode. Stripped from
@@ -189,6 +190,19 @@ function getAttributes(entity, options = {}) {
     for (const componentName in entityComponents) {
       if (skipComponents.includes(componentName)) continue;
       const modifiedProperty = getModifiedProperty(entity, componentName);
+      if (
+        componentName === 'street-align' &&
+        entityComponents['managed-street']
+      ) {
+        // Always explicit (#1863): alignment decides where a street sits
+        // relative to its origin, and the length default has already changed
+        // once. Writing every value keeps the file self-describing, and lets
+        // migrateImplicitStreetAlign read "no length" as a pre-flip file.
+        elemObj['components'][componentName] = toPropString({
+          ...entityComponents[componentName].data
+        });
+        continue;
+      }
       if (modifiedProperty !== null) {
         if (isEmptyObject(modifiedProperty)) {
           elemObj['components'][componentName] = '';
@@ -494,6 +508,7 @@ function createEntities(entitiesData, parentEl) {
   const removeEntities = ['environment', 'reference-layers'];
   migrateLegacyFlatteningShape(entitiesData);
   migrateMeasureLinesToShapes(entitiesData);
+  migrateImplicitStreetAlign(entitiesData);
   // Arm batching before any entity is minted below; batchModels runs on the "newScene"
   // event emitted after this createEntities pass. See beginBatching for the state model.
   if (BATCHING_ENABLED) {
@@ -880,8 +895,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
               sourceType: 'streetmix-url',
               sourceValue: fixtureURL,
               synchronize: true
-            },
-            'street-align': 'width: center; length: middle'
+            }
           }
         };
         setTimeout(() => {

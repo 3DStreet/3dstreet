@@ -13,11 +13,14 @@ the street handles appear alongside it.
 Managed streets only: neither gizmo attaches to legacy
 `street` + `streetmix-loader` scenes.
 
-New managed streets are created with `street-align: length: middle` (set
-explicitly at each creation site, not as a schema default — saved scenes
-that relied on the `start` default must stay put on load), so a new street
-centers on its creation point and endpoint drags grow it symmetrically
-around where the user placed it.
+New managed streets default to `street-align: length: middle` (schema
+default since #1863), so a new street centers on its creation point and
+endpoint drags grow it symmetrically around where the user placed it. The
+serializer always writes `street-align` explicitly on managed streets;
+scenes saved before the flip omit the `street-align` length value (the
+alignment keyword, not the street's metre length) and are stamped `start` at load
+(`src/tested/migrate-street-align.js`), so they stay put and self-heal on
+their next save.
 
 ## Architecture
 

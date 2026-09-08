@@ -3,6 +3,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 // import Component from './Component';
 import Component from './StreetSegmentComponent';
 import PropertyRow from './PropertyRow';
+import LengthPropertyRow from './LengthPropertyRow';
 import {
   cloneEntity,
   removeSelectedEntity,
@@ -190,7 +191,7 @@ const StreetSegmentSidebar = ({ entity }) => {
                   />
                 </>
               )}
-              <PropertyRow
+              <LengthPropertyRow
                 key="width"
                 name="width"
                 label={intl.formatMessage({
@@ -200,7 +201,6 @@ const StreetSegmentSidebar = ({ entity }) => {
                 schema={component.schema['width']}
                 data={component.data['width']}
                 componentname={componentName}
-                isSingle={false}
                 entity={entity}
               />
               {component.data['type'] !== 'boundary' && (
@@ -276,45 +276,42 @@ const StreetSegmentSidebar = ({ entity }) => {
                         one set of controls or the other */}
                     {component.data['slope'] ? (
                       <>
-                        <PropertyRow
+                        <LengthPropertyRow
                           key="slopeStart"
                           name="slopeStart"
                           label={intl.formatMessage({
                             id: 'segmentSidebar.slopeStart',
-                            defaultMessage: 'Start Edge (m)'
+                            defaultMessage: 'Start Edge'
                           })}
                           schema={component.schema['slopeStart']}
                           data={component.data['slopeStart']}
                           componentname={componentName}
-                          isSingle={false}
                           entity={entity}
                         />
-                        <PropertyRow
+                        <LengthPropertyRow
                           key="slopeEnd"
                           name="slopeEnd"
                           label={intl.formatMessage({
                             id: 'segmentSidebar.slopeEnd',
-                            defaultMessage: 'End Edge (m)'
+                            defaultMessage: 'End Edge'
                           })}
                           schema={component.schema['slopeEnd']}
                           data={component.data['slopeEnd']}
                           componentname={componentName}
-                          isSingle={false}
                           entity={entity}
                         />
                       </>
                     ) : (
-                      <PropertyRow
+                      <LengthPropertyRow
                         key="elevation"
                         name="elevation"
                         label={intl.formatMessage({
                           id: 'segmentSidebar.elevation',
-                          defaultMessage: 'Elevation (m)'
+                          defaultMessage: 'Elevation'
                         })}
                         schema={component.schema['elevation']}
                         data={component.data['elevation']}
                         componentname={componentName}
-                        isSingle={false}
                         entity={entity}
                       />
                     )}

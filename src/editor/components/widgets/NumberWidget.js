@@ -10,6 +10,7 @@ export default class NumberWidget extends React.Component {
     onChange: PropTypes.func,
     precision: PropTypes.number,
     step: PropTypes.number,
+    unit: PropTypes.string,
     value: PropTypes.number
   };
 
@@ -164,8 +165,10 @@ export default class NumberWidget extends React.Component {
       ) : (
         ''
       );
+    // A unit suffix ("m", "ft") renders inside the box, the way the vec3
+    // axis letters do, so the field reads as one control.
     return (
-      <div className="inputBlock">
+      <div className={this.props.unit ? 'inputBlock has-unit' : 'inputBlock'}>
         {helpString}
         <input
           id={this.props.id}
@@ -178,6 +181,7 @@ export default class NumberWidget extends React.Component {
           onMouseDown={this.onMouseDown}
           onBlur={this.onBlur}
         />
+        {this.props.unit && <span className="unit">{this.props.unit}</span>}
       </div>
     );
   }

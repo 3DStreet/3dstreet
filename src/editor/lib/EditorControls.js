@@ -1,5 +1,6 @@
 import { currentOrthoDir } from './cameras';
 import { captureNavDiscovery } from './navAnalytics.js';
+import { streetFocusPose } from './streetFocus.js';
 
 /**
  * @author qiao / https://github.com/qiao
@@ -118,6 +119,15 @@ THREE.EditorControls = function (_object, domElement) {
         )
           .applyQuaternion(focusWorldQuat)
           .add(focusWorldPos);
+      }
+    }
+    // Managed street or one of its segments (#1213): fit the roadway width
+    // (or the segment plus its neighbours) to the viewport.
+    if (!cameraPosition && !this.isOrthographic) {
+      const pose = streetFocusPose(targetEl, object);
+      if (pose) {
+        cameraPosition = pose.position;
+        center.copy(pose.center);
       }
     }
     // Fallback to default positioning if no pose relative position

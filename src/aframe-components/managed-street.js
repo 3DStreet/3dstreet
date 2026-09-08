@@ -818,7 +818,7 @@ AFRAME.registerComponent('managed-street', {
   // straight-space z of the street's start (s = z - zStart), from the length
   // alignment: segments centered at zPosition span zPosition ± length/2
   computeZStart: function (length) {
-    const align = this.el.getAttribute('street-align')?.length || 'start';
+    const align = this.el.getAttribute('street-align')?.length || 'middle';
     if (align === 'middle') return -length / 2;
     if (align === 'start') return -length;
     return 0; // 'end'
