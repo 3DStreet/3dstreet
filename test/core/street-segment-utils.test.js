@@ -7,6 +7,8 @@ import {
   levelToElevation,
   migrateSegmentLevelToElevation,
   migrateSegmentBuildingType,
+  migrateSegmentHatchedSurface,
+  migratePedestriansDirection,
   migrateShowBuildingsFlag,
   CURB_HEIGHT,
   BASE_SURFACE_DEPTH
@@ -178,6 +180,86 @@ describe('StreetSegmentUtils', function () {
     });
   });
 
+  describe('#migrateSegmentHatchedSurface()', function () {
+    it('should convert a hatched surface prop string to asphalt plus a striping component', function () {
+      const components = {
+        'street-segment': 'type: divider; surface: hatched; width: 1'
+      };
+      migrateSegmentHatchedSurface(components);
+      assert.strictEqual(
+        components['street-segment'],
+        'type: divider; surface: asphalt; width: 1'
+      );
+      assert.strictEqual(
+        components['street-generated-striping__1'],
+        'striping: hatched'
+      );
+    });
+    it('should handle surface at the end of a prop string', function () {
+      const components = {
+        'street-segment': 'type: divider; surface: hatched'
+      };
+      migrateSegmentHatchedSurface(components);
+      assert.strictEqual(
+        components['street-segment'],
+        'type: divider; surface: asphalt'
+      );
+      assert.strictEqual(
+        components['street-generated-striping__1'],
+        'striping: hatched'
+      );
+    });
+    it('should convert an object value', function () {
+      const components = {
+        'street-segment': { type: 'divider', surface: 'hatched', width: 1 }
+      };
+      migrateSegmentHatchedSurface(components);
+      assert.deepStrictEqual(components['street-segment'], {
+        type: 'divider',
+        surface: 'asphalt',
+        width: 1
+      });
+      assert.strictEqual(
+        components['street-generated-striping__1'],
+        'striping: hatched'
+      );
+    });
+    it('should pick the first free striping slot when others exist', function () {
+      const components = {
+        'street-segment': 'surface: hatched',
+        'street-generated-striping': 'striping: solid-stripe; side: left',
+        'street-generated-striping__2': 'striping: dashed-stripe; side: right'
+      };
+      migrateSegmentHatchedSurface(components);
+      // bare instance exports at the same index as __1, so __1 is blocked
+      assert.strictEqual(
+        components['street-generated-striping__3'],
+        'striping: hatched'
+      );
+    });
+    it('should leave non-hatched values untouched', function () {
+      const stringComponents = {
+        'street-segment': 'type: drive-lane; surface: asphalt'
+      };
+      migrateSegmentHatchedSurface(stringComponents);
+      assert.deepStrictEqual(stringComponents, {
+        'street-segment': 'type: drive-lane; surface: asphalt'
+      });
+      const objectComponents = {
+        'street-segment': { type: 'grass', surface: 'grass' }
+      };
+      migrateSegmentHatchedSurface(objectComponents);
+      assert.deepStrictEqual(objectComponents, {
+        'street-segment': { type: 'grass', surface: 'grass' }
+      });
+    });
+    it('should pass through entities without a street-segment component', function () {
+      const components = { material: 'color: red' };
+      assert.strictEqual(migrateSegmentHatchedSurface(components), components);
+      assert.deepStrictEqual(components, { material: 'color: red' });
+    });
+  });
+
   describe('#migrateShowBuildingsFlag()', function () {
     it('should rename showBuildings to showBoundaries in a prop string', function () {
       assert.strictEqual(
@@ -196,6 +278,72 @@ describe('StreetSegmentUtils', function () {
     it('should leave values without the flag untouched', function () {
       const value = 'sourceType: streetmix-url; showBoundaries: true';
       assert.strictEqual(migrateShowBuildingsFlag(value), value);
+    });
+  });
+
+  describe('#migratePedestriansDirection()', function () {
+    it('should strip direction from a prop-string pedestrians value', function () {
+      const components = {
+        'street-generated-pedestrians__1':
+          'density: normal; direction: inbound; seed: 42'
+      };
+      migratePedestriansDirection(components);
+      assert.strictEqual(
+        components['street-generated-pedestrians__1'],
+        'density: normal; seed: 42'
+      );
+    });
+    it('should strip direction from an object pedestrians value', function () {
+      const components = {
+        'street-generated-pedestrians': { density: 'dense', direction: 'none' }
+      };
+      migratePedestriansDirection(components);
+      assert.deepStrictEqual(components['street-generated-pedestrians'], {
+        density: 'dense'
+      });
+    });
+    it('should leave other components and direction-free values alone', function () {
+      const components = {
+        'street-segment': 'type: sidewalk; direction: none',
+        'street-generated-pedestrians__2': 'density: sparse'
+      };
+      migratePedestriansDirection(components);
+      assert.strictEqual(
+        components['street-segment'],
+        'type: sidewalk; direction: none'
+      );
+      assert.strictEqual(
+        components['street-generated-pedestrians__2'],
+        'density: sparse'
+      );
+    });
+    it('should carry the saved walk direction onto the segment (Streetmix sidewalks were outbound with a mixed crowd)', function () {
+      const components = {
+        'street-segment': 'type: sidewalk; direction: outbound; width: 3',
+        'street-generated-pedestrians': 'density: normal; seed: 7'
+      };
+      migratePedestriansDirection(components);
+      assert.strictEqual(
+        components['street-segment'],
+        'type: sidewalk; direction: none; width: 3'
+      );
+    });
+    it('should carry an explicit pedestrians direction onto an object segment value', function () {
+      const components = {
+        'street-segment': { type: 'sidewalk', direction: 'none' },
+        'street-generated-pedestrians__1': {
+          density: 'dense',
+          direction: 'inbound'
+        }
+      };
+      migratePedestriansDirection(components);
+      assert.deepStrictEqual(components['street-segment'], {
+        type: 'sidewalk',
+        direction: 'inbound'
+      });
+      assert.deepStrictEqual(components['street-generated-pedestrians__1'], {
+        density: 'dense'
+      });
     });
   });
 });

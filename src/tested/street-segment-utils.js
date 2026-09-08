@@ -109,6 +109,127 @@ function migrateSegmentBuildingType(componentValue) {
   return componentValue;
 }
 
+// Migrate a saved entity carrying the deprecated `surface: hatched`
+// street-segment value (#1728): hatching is now a full-width
+// street-generated-striping treatment that crops to the segment width instead
+// of stretching a surface texture across it. The migration spans two
+// components — the surface becomes asphalt and a striping instance with
+// `striping: hatched` is added in the first free slot — so it operates on the
+// entity's whole serialized components object (mutated in place and
+// returned). Handles the prop-string and parsed-object forms of the
+// street-segment value, like the other segment migrations.
+function migrateSegmentHatchedSurface(components) {
+  const segmentValue = components?.['street-segment'];
+  if (!segmentValue) {
+    return components;
+  }
+  let migrated = false;
+  if (typeof segmentValue === 'string') {
+    if (/(^|;)\s*surface\s*:\s*hatched\s*(;|$)/.test(segmentValue)) {
+      components['street-segment'] = segmentValue.replace(
+        /(^|;)(\s*)surface\s*:\s*hatched(\s*)(;|$)/,
+        '$1$2surface: asphalt$3$4'
+      );
+      migrated = true;
+    }
+  } else if (
+    typeof segmentValue === 'object' &&
+    segmentValue.surface === 'hatched'
+  ) {
+    components['street-segment'] = { ...segmentValue, surface: 'asphalt' };
+    migrated = true;
+  }
+  if (migrated) {
+    components[findFreeStripingKey(components)] = 'striping: hatched';
+  }
+  return components;
+}
+
+// Strip the removed `direction` property from saved street-generated-pedestrians
+// values: pedestrians now walk in the segment's own direction (one source of
+// truth; the sidewalk default of `none` mixes them). The walk direction the
+// scene was saved with (explicit, else the old component default `none`) is
+// carried onto the street-segment so the crowd renders as before — without
+// this a Streetmix-derived sidewalk (segment direction `outbound`, pedestrians
+// `none`) would turn into a one-way crowd. Handles the prop-string and
+// parsed-object forms; mutates and returns the components object.
+function migratePedestriansDirection(components) {
+  if (!components) {
+    return components;
+  }
+  let walkDirection;
+  for (const key of Object.keys(components)) {
+    if (!key.startsWith('street-generated-pedestrians')) {
+      continue;
+    }
+    const value = components[key];
+    let direction = 'none';
+    if (typeof value === 'string') {
+      const match = value.match(/(?:^|;)\s*direction\s*:\s*([^;\s]+)/);
+      if (match) {
+        direction = match[1];
+      }
+      components[key] = value
+        .split(';')
+        .filter((pair) => !/^\s*direction\s*:/.test(pair))
+        .join(';')
+        .trim();
+    } else if (value && typeof value === 'object') {
+      if ('direction' in value) {
+        const { direction: saved, ...rest } = value;
+        direction = saved || 'none';
+        components[key] = rest;
+      }
+    } else {
+      continue;
+    }
+    // first pedestrians instance wins
+    walkDirection = walkDirection ?? direction;
+  }
+  if (walkDirection !== undefined) {
+    components['street-segment'] = setSegmentDirection(
+      components['street-segment'],
+      walkDirection
+    );
+  }
+  return components;
+}
+
+// Set `direction` on a serialized street-segment value (prop-string or
+// parsed-object form); a missing value is left alone.
+function setSegmentDirection(segmentValue, direction) {
+  if (typeof segmentValue === 'string') {
+    if (/(^|;)\s*direction\s*:/.test(segmentValue)) {
+      return segmentValue.replace(
+        /(^|;)(\s*)direction\s*:\s*[^;]*/,
+        `$1$2direction: ${direction}`
+      );
+    }
+    return `${segmentValue.replace(/;?\s*$/, '')}; direction: ${direction}`;
+  }
+  if (segmentValue && typeof segmentValue === 'object') {
+    return { ...segmentValue, direction };
+  }
+  return segmentValue;
+}
+
+// First unused street-generated-striping key in a serialized components
+// object. First instance is __1; a bare unsuffixed instance occupies the same
+// export index as __1 (see managed-street's GENERATED_RE), so it blocks __1.
+function findFreeStripingKey(components) {
+  if (
+    !('street-generated-striping' in components) &&
+    !('street-generated-striping__1' in components)
+  ) {
+    return 'street-generated-striping__1';
+  }
+  let n = 2;
+  while (`street-generated-striping__${n}` in components) {
+    n++;
+  }
+  return `street-generated-striping__${n}`;
+}
+
 // Migrate a saved managed-street component value from the short-lived
 // `showBuildings` property name to `showBoundaries` (renamed with the
 // building -> boundary segment type).
@@ -139,6 +260,8 @@ export {
   levelToElevation,
   migrateSegmentLevelToElevation,
   migrateSegmentBuildingType,
+  migrateSegmentHatchedSurface,
+  migratePedestriansDirection,
   migrateShowBuildingsFlag,
   CURB_HEIGHT,
   BASE_SURFACE_DEPTH,

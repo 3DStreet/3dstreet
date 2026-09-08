@@ -127,9 +127,19 @@ const TYPES = {
     }
   },
   divider: {
-    surface: 'hatched',
+    // Hatching is a generated full-width striping treatment (#1728), not a
+    // surface material — the plane crops/tiles to the segment width instead
+    // of stretching a texture across it.
+    surface: 'asphalt',
     color: COLORS.white,
-    elevation: 0
+    elevation: 0,
+    generated: {
+      striping: [
+        {
+          striping: 'hatched'
+        }
+      ]
+    }
   },
   grass: {
     surface: 'grass',
@@ -304,6 +314,11 @@ AFRAME.registerComponent('street-segment', {
     surface: {
       type: 'string',
       default: 'asphalt',
+      // 'hatched' is deprecated as a surface (#1728): hatching is now a
+      // street-generated-striping treatment (striping: hatched). The value is
+      // kept out of the pickable list but still renders (see textureMaps) so
+      // un-migrated content doesn't break; saved scenes and json-blob imports
+      // are migrated to the generator at load time.
       oneOf: [
         'asphalt',
         'concrete',
@@ -314,7 +329,6 @@ AFRAME.registerComponent('street-segment', {
         'cracked-asphalt',
         'parking-lot',
         'water',
-        'hatched',
         'none',
         'solid'
       ]
@@ -511,9 +525,8 @@ AFRAME.registerComponent('street-segment', {
       componentsToGenerate.pedestrians.forEach((pedestrian, index) => {
         this.el.setAttribute(
           `street-generated-pedestrians__${index + 1}`,
-          buildGeneratedAttributes('street-generated-pedestrians', pedestrian, {
-            direction: pedestrian.direction ?? this.data.direction
-          })
+          // pedestrians read the segment direction themselves (no own field)
+          buildGeneratedAttributes('street-generated-pedestrians', pedestrian)
         );
       });
     }
@@ -591,7 +604,9 @@ AFRAME.registerComponent('street-segment', {
         // default) are absolutely oriented via `facing` — e.g. side-oriented
         // lamps/benches and sideways/angled parked cars — and must not flip.
         const current = this.el.getAttribute(componentName);
-        if (!current || current.direction === 'none') {
+        // Components without a direction property (pedestrians) read the
+        // segment direction directly and regenerate on segment-changed.
+        if (!current || !current.direction || current.direction === 'none') {
           continue;
         }
         this.el.setAttribute(componentName, 'direction', this.data.direction);
@@ -646,6 +661,8 @@ AFRAME.registerComponent('street-segment', {
     // notify children and managed-street of layout-relevant changes in a
     // single event. type and side changes must also trigger a street re-layout
     // (they alter travelled-way membership / which edge a boundary flanks);
+    // direction changes only feed the managed-street auto-striping recompute
+    // (a double yellow between opposing lanes must follow a direction flip);
     // the generated-content listeners self-guard on width/length so the extra
     // emits don't cause spurious clone regeneration.
     const widthChanged = changedProps.includes('width');
@@ -654,12 +671,21 @@ AFRAME.registerComponent('street-segment', {
       oldData.type !== undefined && changedProps.includes('type');
     const sideChanged =
       oldData.side !== undefined && changedProps.includes('side');
-    if (widthChanged || lengthChanged || typeChanged || sideChanged) {
+    const directionChanged =
+      oldData.direction !== undefined && changedProps.includes('direction');
+    if (
+      widthChanged ||
+      lengthChanged ||
+      typeChanged ||
+      sideChanged ||
+      directionChanged
+    ) {
       this.el.emit('segment-changed', {
         widthChanged,
         lengthChanged,
         typeChanged,
         sideChanged,
+        directionChanged,
         oldWidth: oldData.width,
         newWidth: data.width,
         oldLength: oldData.length,
@@ -721,7 +747,7 @@ AFRAME.registerComponent('street-segment', {
       'cracked-asphalt': 'asphalt-texture',
       'parking-lot': 'parking-lot-texture',
       water: 'water-texture',
-      hatched: 'hatched-base',
+      hatched: 'hatched-base', // deprecated alias (#1728) — kept so un-migrated `surface: hatched` still renders
       none: 'none',
       solid: ''
     };
