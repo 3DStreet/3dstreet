@@ -11,7 +11,6 @@ import Mixins from '../widgets/Mixins';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { FormattedMessage } from 'react-intl';
-import AddGeneratorComponent from './AddGeneratorComponent';
 import {
   ArrowLeftHookIcon,
   TrashIcon,
@@ -108,14 +107,20 @@ export default class Sidebar extends React.Component {
     // gets the inline rename on the title label (see canRenameEntity).
     const canRename = canRenameEntity(entity);
 
+    // The condensed segment panel (#1753) carries the entity label inside
+    // its own header row, so the panel-level title would duplicate it.
+    const isStreetSegment = !!entity.getAttribute('street-segment');
+
     return (
       <div className="properties-panel" tabIndex="0">
         <ShapeDrawInstructions />
-        <div id="layers-title">
-          <div className="layersBlock">
-            <EntityLabel entity={entity} editable={canRename} />
+        {!isStreetSegment && (
+          <div id="layers-title">
+            <div className="layersBlock">
+              <EntityLabel entity={entity} editable={canRename} />
+            </div>
           </div>
-        </div>
+        )}
         <div className="scroll">
           {entity.id !== 'reference-layers' &&
           entity.id !== 'environment' &&
@@ -244,16 +249,10 @@ export default class Sidebar extends React.Component {
             </>
           ) : (
             <>
+              {/* The condensed segment panel (#1753) carries its own
+                  Add generator / Advanced footer. */}
               {entity.getAttribute('street-segment') && (
-                <>
-                  <StreetSegmentSidebar entity={entity} />
-                  <hr />
-                  <AddGeneratorComponent entity={entity} />
-                  <hr />
-                  <div className="advancedComponentsContainer">
-                    <AdvancedComponents entity={entity} />
-                  </div>
-                </>
+                <StreetSegmentSidebar entity={entity} />
               )}
               {entity.id === 'street-container' && (
                 <UserLayersSidebar entity={entity} />

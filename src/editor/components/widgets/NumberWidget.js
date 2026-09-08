@@ -9,6 +9,7 @@ export default class NumberWidget extends React.Component {
     name: PropTypes.string.isRequired,
     onChange: PropTypes.func,
     precision: PropTypes.number,
+    prefix: PropTypes.string,
     step: PropTypes.number,
     unit: PropTypes.string,
     value: PropTypes.number
@@ -166,10 +167,21 @@ export default class NumberWidget extends React.Component {
         ''
       );
     // A unit suffix ("m", "ft") renders inside the box, the way the vec3
-    // axis letters do, so the field reads as one control.
+    // axis letters do, so the field reads as one control. A short prefix
+    // ("W", "PAD", "X") does the same at the start of the box.
+    const blockClass = [
+      'inputBlock',
+      this.props.unit && 'has-unit',
+      this.props.prefix && 'has-prefix'
+    ]
+      .filter(Boolean)
+      .join(' ');
     return (
-      <div className={this.props.unit ? 'inputBlock has-unit' : 'inputBlock'}>
+      <div className={blockClass}>
         {helpString}
+        {this.props.prefix && (
+          <span className="prefix">{this.props.prefix}</span>
+        )}
         <input
           id={this.props.id}
           ref={this.input}

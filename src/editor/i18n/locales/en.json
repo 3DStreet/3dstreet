@@ -2054,17 +2054,29 @@
   "screenshotModal.upgradeToPro": {
     "defaultMessage": "Upgrade to Pro to hide 3DStreet Free watermark"
   },
-  "segmentSidebar.boundaryVariant": {
-    "defaultMessage": "Boundary Variant"
+  "segmentSidebar.addGenerator": {
+    "defaultMessage": "Add generator"
   },
-  "segmentSidebar.color": {
-    "defaultMessage": "Color"
+  "segmentSidebar.advanced": {
+    "defaultMessage": "Advanced"
   },
   "segmentSidebar.direction": {
     "defaultMessage": "Direction"
   },
+  "segmentSidebar.directionNone": {
+    "defaultMessage": "none"
+  },
+  "segmentSidebar.editStreet": {
+    "defaultMessage": "Edit street"
+  },
   "segmentSidebar.elevation": {
     "defaultMessage": "Elevation"
+  },
+  "segmentSidebar.inbound": {
+    "defaultMessage": "inbound"
+  },
+  "segmentSidebar.material": {
+    "defaultMessage": "Material"
   },
   "segmentSidebar.moveLeft": {
     "defaultMessage": "Move Left"
@@ -2072,8 +2084,11 @@
   "segmentSidebar.moveRight": {
     "defaultMessage": "Move Right"
   },
-  "segmentSidebar.segmentType": {
-    "defaultMessage": "Segment Type"
+  "segmentSidebar.outbound": {
+    "defaultMessage": "outbound"
+  },
+  "segmentSidebar.positionOf": {
+    "defaultMessage": "{index} of {count}"
   },
   "segmentSidebar.side": {
     "defaultMessage": "Side"
@@ -2081,11 +2096,14 @@
   "segmentSidebar.slope": {
     "defaultMessage": "Slope"
   },
-  "segmentSidebar.slopeEnd": {
-    "defaultMessage": "End Edge"
+  "segmentSidebar.stripSummary": {
+    "defaultMessage": "{count,plural,one{# segment} other{# segments}}"
   },
-  "segmentSidebar.slopeStart": {
-    "defaultMessage": "Start Edge"
+  "segmentSidebar.type": {
+    "defaultMessage": "Type"
+  },
+  "segmentSidebar.variant": {
+    "defaultMessage": "Variant"
   },
   "segmentSidebar.width": {
     "defaultMessage": "Width"

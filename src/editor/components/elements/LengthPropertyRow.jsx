@@ -9,8 +9,10 @@ import useStore from '@/store.js';
 
 const M_TO_FT = 3.28084;
 
-const toDisplay = (m, units) => (units === 'imperial' ? m * M_TO_FT : m);
-const toMetres = (v, units) => (units === 'imperial' ? v / M_TO_FT : v);
+// Exported for other length-editing controls (segment panel width/slope
+// fields) so every metre-backed field converts identically.
+export const toDisplay = (m, units) => (units === 'imperial' ? m * M_TO_FT : m);
+export const toMetres = (v, units) => (units === 'imperial' ? v / M_TO_FT : v);
 
 const LengthPropertyRow = ({
   entity,

@@ -850,3 +850,735 @@ a.help-linkhover {
   width: 20px;
   margin-left: 0;
 }
+
+/* ============================================================
+   Condensed street-segment sidebar (#1753, design option 2a).
+   Compact rows: 76px label column, 32px controls, radius 8px.
+   ============================================================ */
+
+.segment-panel {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 14px;
+
+  /* --- cross-section strip --- */
+  .cross-section {
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid variables.$black-800;
+  }
+  .cross-section-caption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .cross-section-summary {
+    font-size: 12px;
+    color: variables.$lightgray-700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .cross-section-edit-street {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: none;
+    font-size: 12px;
+    font-family: inherit;
+    color: variables.$white;
+    padding: 3px 8px;
+    border-radius: 7px;
+    border: 0;
+    background: variables.$bgalphadark;
+    cursor: pointer;
+    &:hover {
+      background: variables.$gray-200;
+    }
+  }
+  .cross-section-strip {
+    display: flex;
+    gap: 2px;
+    height: 52px;
+    align-items: flex-end;
+  }
+  .cross-section-bar {
+    flex-basis: 0;
+    min-width: 3px;
+    border-radius: 3px;
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 3px;
+    box-sizing: border-box;
+    transition: flex-grow 150ms ease;
+    &:hover {
+      filter: brightness(1.15);
+    }
+    &.is-selected {
+      outline: 2px solid variables.$cyan-100;
+      outline-offset: 1px;
+    }
+  }
+  .cross-section-glyph {
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 700;
+  }
+  .cross-section-pointer {
+    position: absolute;
+    left: 50%;
+    top: -9px;
+    width: 0;
+    height: 0;
+    border: 5px solid transparent;
+    border-top-color: variables.$cyan-100;
+    transform: translateX(-50%);
+  }
+
+  /* --- header row --- */
+  .segment-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid variables.$black-800;
+    > svg {
+      flex: none;
+      width: 24px;
+      height: 25px;
+    }
+  }
+  .segment-title {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 16px;
+    font-weight: 500;
+    color: variables.$white;
+  }
+  .segment-pos {
+    color: variables.$gray-400;
+    font-weight: 400;
+    font-size: 13px;
+  }
+  .segment-actions {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    flex: none;
+  }
+  .segment-actions-divider {
+    width: 1px;
+    background: variables.$gray-200;
+    margin: 4px 4px;
+  }
+  .segment-action-btn {
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px !important;
+    background: variables.$bgalphadark;
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+    &:hover:not(:disabled) {
+      background: variables.$gray-200;
+    }
+    &:disabled {
+      opacity: 0.35;
+    }
+  }
+
+  /* --- segment block / compact rows --- */
+  .segment-block {
+    padding: 10px 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .compact-row {
+    display: grid;
+    grid-template-columns: 76px;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    min-height: 32px;
+    min-width: 0;
+    &.has-color {
+      grid-template-columns: 76px minmax(0, 1fr) 88px;
+      grid-auto-flow: row;
+    }
+  }
+  .compact-label {
+    font-size: 13px;
+    color: variables.$lightgray-200;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  /* PropertyRow (Type, Variant, Side, stencil Models) in compact form */
+  .propertyRow {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    margin: 0;
+    min-height: 32px;
+    label.text,
+    span.text {
+      min-width: 0;
+      max-width: none;
+      margin-bottom: 0;
+      font-size: 13px !important;
+      font-weight: 400;
+      color: variables.$lightgray-200 !important;
+      text-transform: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .select-widget {
+      width: 100%;
+      margin-right: 0;
+    }
+    .select__control {
+      padding: 2px 8px !important;
+      min-height: 32px;
+      border-radius: 8px;
+    }
+    .mixinValue {
+      width: 100%;
+      min-width: 0;
+    }
+  }
+  .mixinOptions {
+    display: contents;
+    .propertyRow {
+      min-width: 0;
+    }
+  }
+
+  /* number fields: 32px bordered box with optional prefix/unit inside */
+  .inputBlock {
+    display: inline-flex;
+    align-items: center;
+    height: 32px;
+    margin: 0;
+    padding: 0 10px;
+    width: 100%;
+    min-width: 0;
+    background: variables.$bgalphadark;
+    border: 1px solid variables.$purple-400;
+    border-radius: 8px;
+    box-sizing: border-box;
+    input.number {
+      flex: 1 1 0;
+      min-width: 0;
+      width: 100% !important;
+      padding: 0 !important;
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      color: variables.$white;
+    }
+    .unit {
+      margin-left: 6px;
+      font-size: 11px;
+      color: variables.$lightgray-200;
+    }
+    .prefix {
+      margin-right: 6px;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: variables.$lightgray-200;
+    }
+  }
+
+  /* react-select (Material, Place mode, Striping…) at compact height */
+  .compact-row .select-widget {
+    width: 100%;
+    min-width: 0;
+    .select__control {
+      min-height: 32px;
+      background: variables.$bgalphadark;
+      border: 1px solid variables.$purple-400;
+      border-radius: 8px;
+      box-sizing: border-box;
+    }
+    .select__value-container {
+      height: 30px;
+      padding: 0 4px 0 10px;
+      font-size: 14px;
+      flex-wrap: nowrap;
+    }
+    .select__single-value {
+      color: variables.$white;
+    }
+    .select__indicator {
+      height: 30px;
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  /* stencil Models multi-select chips */
+  .propertyRow .select__value-container--is-multi {
+    min-height: 30px;
+    height: auto;
+    padding: 3px 6px;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .select__multi-value {
+    background: variables.$darkgray-100;
+    border-radius: 4px;
+    font-size: 12px;
+    margin: 0;
+  }
+  .select__multi-value__label {
+    color: variables.$white;
+    font-size: 12px;
+    padding: 2px 2px 2px 6px;
+  }
+
+  /* clones Models widget (grouped mixin select) */
+  .select-single__control {
+    padding: 3px 6px;
+    min-height: 32px;
+    max-width: none;
+    border-radius: 8px;
+    font-size: 12px;
+  }
+  .select-single__multi-value {
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  .chip-overflow {
+    background: variables.$darkgray-100;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 12px;
+    color: variables.$white;
+  }
+
+  /* segmented controls (width presets, direction) */
+  .segmented-group {
+    display: flex;
+    height: 32px;
+    box-sizing: border-box;
+    border: 1px solid variables.$purple-400;
+    border-radius: 8px;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .segmented-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 0 9px;
+    border: 0;
+    border-right: 1px solid #3a2c55;
+    background: variables.$bgalphadark;
+    color: variables.$lightgray-100;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    min-width: 0;
+    &:last-child {
+      border-right: 0;
+    }
+    &:hover {
+      background: variables.$gray-200;
+    }
+    &.is-selected {
+      background: variables.$purple-400;
+      color: variables.$white;
+    }
+  }
+  .width-controls {
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+    .inputBlock {
+      flex: 1 1 0;
+      width: auto;
+    }
+    .width-presets {
+      flex: none;
+    }
+  }
+  .direction-control {
+    width: 100%;
+    .segmented-option {
+      flex: 1;
+      font-size: 13px;
+    }
+    .direction-none {
+      flex: 0.7;
+    }
+  }
+
+  /* generator sections (Surface, Stencils, Clones, …) */
+  .generator-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+  .generator-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px solid variables.$black-800;
+    > svg,
+    > img {
+      flex: none;
+      width: 18px;
+      height: 18px;
+    }
+  }
+  .generator-title {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: variables.$white;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .more-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: none;
+    font-size: 11px;
+    font-family: inherit;
+    padding: 3px 7px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: variables.$lightgray-700;
+    cursor: pointer;
+    &:hover {
+      color: variables.$white;
+    }
+    &.is-open {
+      background: variables.$bgalphadark;
+      color: variables.$white;
+    }
+  }
+  .generator-remove {
+    display: flex;
+    flex: none;
+    cursor: pointer;
+    opacity: 0.55;
+    transition: opacity 0.2s ease;
+    svg {
+      width: 13px;
+      height: 13px;
+    }
+    &:hover {
+      opacity: 1;
+      svg path {
+        stroke: #ff4444;
+      }
+    }
+  }
+
+  /* "more" rare props: 2-col grid inset to the control column */
+  .more-inset {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px;
+    border-radius: 8px;
+    background: variables.$black-100;
+    border: 1px dashed #3a3a3a;
+    min-width: 0;
+    .inputBlock {
+      border-color: #3a3a3a;
+      input.number {
+        font-size: 13px;
+      }
+    }
+    .inline-toggle {
+      grid-column: 1 / -1;
+      padding-left: 2px;
+    }
+  }
+
+  /* label + 34x18 toggle sharing a cell (Slope, Random facing) */
+  .inline-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    height: 32px;
+    min-width: 0;
+    font-size: 13px;
+    color: variables.$lightgray-200;
+    label {
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .checkboxAnim {
+      position: relative;
+      display: inline-block;
+      flex: none;
+      width: 34px;
+      height: 18px;
+      margin: 0 4px 0 0;
+      border: 1px solid variables.$lightgray-400;
+      border-radius: 9px;
+      box-sizing: border-box;
+      cursor: pointer;
+      &.checked {
+        background: variables.$lightgray-400;
+      }
+      input {
+        display: none;
+      }
+      label {
+        display: block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        background: variables.$lightgray-400;
+      }
+      input[type='checkbox']:checked + label {
+        left: 18px;
+        background: variables.$darkgray-800;
+      }
+    }
+  }
+
+  /* surface color: 22px swatch + hex (shown without #) */
+  .color-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 6px 0 4px;
+    box-sizing: border-box;
+    background: variables.$bgalphadark;
+    border: 1px solid variables.$purple-400;
+    border-radius: 8px;
+    min-width: 0;
+    input[type='color'].color-field-swatch {
+      flex: none;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      cursor: pointer;
+    }
+    .color-field-hex {
+      flex: 1 1 0;
+      min-width: 0;
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: variables.$white;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+    }
+  }
+  .elevation-avg {
+    opacity: 0.5;
+    .avg-value {
+      flex: 1 1 0;
+      min-width: 0;
+      font-size: 14px;
+      color: variables.$white;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+  }
+  .slope-edges {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+    gap: 6px;
+    align-items: center;
+    min-width: 0;
+    svg {
+      justify-self: center;
+    }
+  }
+
+  /* footer */
+  .segment-footer {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 12px;
+    border-top: 1px solid variables.$black-800;
+  }
+  .add-generator-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px dashed variables.$purple-400;
+    background: transparent;
+    color: variables.$lightgray-100;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    &:hover {
+      border-style: solid;
+      color: variables.$white;
+    }
+    &.is-open {
+      background: variables.$bgalphadark;
+      color: variables.$white;
+    }
+  }
+  .advanced-btn {
+    flex: none;
+    height: 32px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 8px;
+    background: variables.$bgalphadark;
+    color: variables.$lightgray-100;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    &:hover {
+      color: variables.$white;
+      background: variables.$gray-200;
+    }
+    &.is-open {
+      background: variables.$purple-400;
+      color: variables.$white;
+    }
+  }
+  #addComponentContainer {
+    padding: 0;
+    #addComponent {
+      width: 100%;
+    }
+  }
+  .advancedComponentsContainer {
+    margin-top: 10px;
+    padding: 0 12px 14px;
+  }
+
+  /* EntityLabel inside the header (the panel-level title is hidden for
+     segments): 16px/500 name with the hover rename pencil. */
+  .segment-title {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .segment-title .entityPrint {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    font-size: 16px;
+    font-weight: 500;
+    color: variables.$white;
+
+    .entityIcons {
+      display: flex;
+      align-items: center;
+      margin-right: 4px;
+      svg {
+        width: 24px;
+        height: 25px;
+      }
+    }
+    .entityName {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    &.editable .entityName {
+      cursor: text;
+    }
+    .entityRenameButton {
+      visibility: hidden;
+      display: flex;
+      align-items: center;
+      background: none;
+      border: none;
+      padding: 0;
+      margin-left: 6px;
+      cursor: pointer;
+      color: variables.$lightgray-100;
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+      &:hover {
+        color: variables.$white;
+      }
+    }
+    &:hover .entityRenameButton {
+      visibility: visible;
+    }
+    .entityNameInput {
+      flex: 1 1 auto;
+      min-width: 0;
+      width: 100%;
+      font-weight: 500;
+      font-size: 16px;
+      color: variables.$white;
+      background-color: variables.$black-300;
+      border: 1px solid variables.$blue-100;
+      border-radius: 4px;
+      padding: 0 4px;
+      outline: none;
+    }
+  }
+
+  /* clones model chips wrap instead of clipping at the panel edge
+     (#mixinSelect carries a fixed 348px width for the legacy layout) */
+  #mixinSelect {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* tighter compact selects so short enum values ("random") fit 1fr cells */
+  .compact-row .select-widget .select__value-container {
+    padding: 0 2px 0 8px;
+    font-size: 13px;
+  }
+  .compact-row .select-widget .select__dropdown-indicator {
+    padding: 3px 4px;
+  }
+}
