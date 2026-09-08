@@ -135,11 +135,29 @@ div.vec4 {
   margin-right: 12px;
   width: 100%;
 }
-.details .propertyRow .length-units {
-  margin-right: 12px;
-  margin-left: -8px;
-  opacity: 0.6;
-  font-size: 12px;
+.details .propertyRow .inputBlock.has-unit {
+  // Border moves from the input to the block so the unit sits inside it
+  // (same construction as the vec3 axis boxes above).
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 10px;
+  background: rgba(50, 50, 50, 0.8);
+  border: 1px solid variables.$purple-400;
+  border-radius: 10px;
+  box-sizing: border-box;
+  > input.number {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 !important;
+    border: none;
+    background: transparent;
+  }
+  > .unit {
+    margin-left: 6px;
+    font-size: 11px;
+    color: variables.$lightgray-200;
+  }
 }
 .details .propertyRow .select-widget {
   width: 100%;

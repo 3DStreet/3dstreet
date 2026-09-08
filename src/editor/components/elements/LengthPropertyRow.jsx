@@ -58,9 +58,9 @@ const LengthPropertyRow = ({
         }
         max={schema.max !== undefined ? toDisplay(schema.max, units) : Infinity}
         precision={2}
+        unit={units === 'imperial' ? 'ft' : 'm'}
         onChange={onChange}
       />
-      <span className="length-units">{units === 'imperial' ? 'ft' : 'm'}</span>
     </div>
   );
 };

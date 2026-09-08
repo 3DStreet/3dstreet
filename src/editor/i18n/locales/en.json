@@ -2064,7 +2064,7 @@
     "defaultMessage": "Direction"
   },
   "segmentSidebar.elevation": {
-    "defaultMessage": "Elevation (m)"
+    "defaultMessage": "Elevation"
   },
   "segmentSidebar.moveLeft": {
     "defaultMessage": "Move Left"
@@ -2082,10 +2082,10 @@
     "defaultMessage": "Slope"
   },
   "segmentSidebar.slopeEnd": {
-    "defaultMessage": "End Edge (m)"
+    "defaultMessage": "End Edge"
   },
   "segmentSidebar.slopeStart": {
-    "defaultMessage": "Start Edge (m)"
+    "defaultMessage": "Start Edge"
   },
   "segmentSidebar.width": {
     "defaultMessage": "Width"
