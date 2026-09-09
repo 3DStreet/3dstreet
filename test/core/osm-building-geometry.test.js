@@ -4,8 +4,9 @@
  * Overpass → extruded building geometry (#1962 step F).
  *
  * Covers the height heuristics carried over from osm4vr, ring winding
- * (roof normals up, walls outward), multipolygon holes, centroid-based
- * tile ownership, and rejection of degenerate input.
+ * (roof normals up, walls outward), multipolygon holes, tile ownership by
+ * bbox clipping (border buildings render as abutting fragments with no
+ * wall on the clip line), and rejection of degenerate input.
  */
 
 import assert from 'assert';
@@ -200,7 +201,7 @@ describe('buildTileGeometry', () => {
     assert.strictEqual(buildingCount, 0);
   });
 
-  it('emits only buildings whose centroid lies inside the tile bbox', () => {
+  it('drops buildings wholly outside the tile bbox', () => {
     const d = 5e-5;
     const inside = squareWay({ building: 'yes', height: '10' });
     const outside = squareWay({ building: 'yes', height: '10' }, d, {
@@ -215,6 +216,95 @@ describe('buildTileGeometry', () => {
     };
     const { buildingCount } = build([inside, outside], tileBBox);
     assert.strictEqual(buildingCount, 1);
+  });
+
+  it('leaves a building fully inside the bbox untouched', () => {
+    const tileBBox = {
+      south: ORIGIN.originLat - 0.001,
+      north: ORIGIN.originLat + 0.001,
+      west: ORIGIN.originLon - 0.001,
+      east: ORIGIN.originLon + 0.001
+    };
+    const whole = build([squareWay({ building: 'yes', height: '10' })]);
+    const gated = build(
+      [squareWay({ building: 'yes', height: '10' })],
+      tileBBox
+    );
+    assert.deepStrictEqual([...gated.positions], [...whole.positions]);
+    assert.deepStrictEqual([...gated.indices], [...whole.indices]);
+  });
+
+  it('clips border buildings to abutting fragments with no clip wall', () => {
+    // Two tiles sharing the boundary meridian at the origin longitude; the
+    // square building straddles it. East meters map to position z.
+    const building = squareWay({ building: 'yes', height: '10' });
+    const west = {
+      south: ORIGIN.originLat - 0.001,
+      north: ORIGIN.originLat + 0.001,
+      west: ORIGIN.originLon - 0.001,
+      east: ORIGIN.originLon
+    };
+    const east = {
+      ...west,
+      west: ORIGIN.originLon,
+      east: ORIGIN.originLon + 0.001
+    };
+    const a = build([building], west);
+    const b = build([building], east);
+    assert.strictEqual(a.buildingCount, 1);
+    assert.strictEqual(b.buildingCount, 1);
+
+    const zs = (r) => {
+      const out = [];
+      for (let i = 2; i < r.positions.length; i += 3) out.push(r.positions[i]);
+      return out;
+    };
+    // Each fragment stays on its own side and they abut exactly at z = 0.
+    assert.ok(Math.max(...zs(a)) <= 0);
+    assert.ok(Math.min(...zs(b)) >= 0);
+    assert.strictEqual(Math.max(...zs(a)), 0);
+    assert.strictEqual(Math.min(...zs(b)), 0);
+
+    // No wall on the clip line: no triangle lies entirely in the z = 0
+    // plane. (Roof + 3 walls per fragment: 2 + 3 × 2 triangles.)
+    for (const r of [a, b]) {
+      assert.strictEqual(r.indices.length / 3, 8);
+      for (let t = 0; t < r.indices.length; t += 3) {
+        const onBoundary = [0, 1, 2].every(
+          (k) => r.positions[r.indices[t + k] * 3 + 2] === 0
+        );
+        assert.ok(!onBoundary, 'no wall emitted on the clip line');
+      }
+    }
+  });
+
+  it('gives clipped fragments the full footprint default height', () => {
+    // Tagless building (default height = min(6, perimeter / 5)) straddling
+    // the boundary: both fragments must use the WHOLE perimeter, so their
+    // roofs meet at the same height.
+    const building = squareWay({ building: 'yes' }); // ~11 m square
+    const west = {
+      south: ORIGIN.originLat - 0.001,
+      north: ORIGIN.originLat + 0.001,
+      west: ORIGIN.originLon - 0.001,
+      east: ORIGIN.originLon
+    };
+    const east = {
+      ...west,
+      west: ORIGIN.originLon,
+      east: ORIGIN.originLon + 0.001
+    };
+    const whole = build([building]);
+    const roofY = (r) => {
+      let max = -Infinity;
+      for (let i = 1; i < r.positions.length; i += 3) {
+        max = Math.max(max, r.positions[i]);
+      }
+      return max;
+    };
+    const expected = roofY(whole);
+    assert.strictEqual(roofY(build([building], west)), expected);
+    assert.strictEqual(roofY(build([building], east)), expected);
   });
 });
 

@@ -51,8 +51,11 @@ Step F is implemented — osm4vr is fully retired:
 - `src/tested/osm-tile-math.js` + `src/tested/osm-building-geometry.js` —
   pure, unit-tested: slippy tile math, and Overpass-shaped elements →
   extruded indexed geometry (earcut; osm4vr's height heuristics preserved;
-  multipolygon holes; centroid-based tile ownership so border buildings
-  render exactly once and unload cleanly).
+  multipolygon holes; tile ownership by clipping footprints to the tile
+  bbox — border buildings render as abutting per-tile fragments with no
+  wall on the clip line, so nothing overlaps and tiles unload cleanly;
+  this replaced centroid ownership, which double-rendered buffer-clipped
+  vector-tile fragments).
 - **Data source (2026-09-09 swap, #1964 testing):** the provider's vector
   tiles, not Overpass. The public Overpass mirrors rate-limit to two slots
   per IP and shed load with 504s (measured: 36–40 s to a "server too busy"

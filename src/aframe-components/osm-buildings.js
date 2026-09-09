@@ -1,9 +1,5 @@
 /* global AFRAME */
-import {
-  tilesWithinRadius,
-  EQUATOR_M,
-  POLES_M
-} from '../tested/osm-tile-math.js';
+import { tilesWithinRadius, EQUATOR_M } from '../tested/osm-tile-math.js';
 import { BuildingTileClient } from '../osm/building-tile-client.js';
 import { VECTOR_TILE_SOURCES } from '../tested/basemap-providers.js';
 
@@ -74,7 +70,12 @@ AFRAME.registerComponent('osm-buildings', {
       default: VECTOR_TILE_SOURCES.maptiler.minHeightKeys
     },
     // Parallel tile loads against a CDN-backed tileset.
-    maxConcurrent: { type: 'number', default: 4 }
+    maxConcurrent: { type: 'number', default: 4 },
+    // Layer opacity (street-geo passes its map opacity through so the
+    // buildings dim with the 2.5D ground). At 0 the host also hides the
+    // entity and tick() stops scanning, so no tile downloads while
+    // invisible — same contract as tiled-basemap.
+    opacity: { type: 'number', default: 1, min: 0, max: 1 }
   },
 
   init: function () {
@@ -101,6 +102,19 @@ AFRAME.registerComponent('osm-buildings', {
       // New origin, tiling or source invalidates every loaded tile.
       this.reset();
     }
+    this.applyOpacity();
+  },
+
+  // One shared material for every tile mesh, so opacity is a single write
+  // (same transparent-flag handling as tiled-basemap's materials).
+  applyOpacity: function () {
+    const opacity = this.data.opacity;
+    const transparent = opacity < 1;
+    if (this.material.transparent !== transparent) {
+      this.material.transparent = transparent;
+      this.material.needsUpdate = true;
+    }
+    this.material.opacity = opacity;
   },
 
   reset: function () {
@@ -158,19 +172,25 @@ AFRAME.registerComponent('osm-buildings', {
   },
 
   // Focus point → geographic position, via this entity's local frame
-  // (x = north meters, z = east meters at the configured origin).
+  // (x = north meters, z = east meters at the configured origin). The
+  // inverse of the buildings projection, so EQUATOR_M-based on both axes
+  // (Web Mercator local scale — see projectRing in osm-building-geometry).
   cameraLatLon: function () {
     const focus = this.focusPoint();
     if (!focus) return null;
     const northM = focus.x;
     const eastM = focus.z;
-    const lat = this.data.latitude + (northM / POLES_M) * 360;
+    const lat = this.data.latitude + (northM / EQUATOR_M) * 360;
     const cosLat = Math.cos((this.data.latitude * Math.PI) / 180);
     const lon = this.data.longitude + (eastM / (EQUATOR_M * cosLat)) * 360;
     return { lat, lon };
   },
 
   tick: function () {
+    // At opacity 0 the layer is fully hidden (street-geo sets visible:false
+    // on this entity), so stop scanning — no tile downloads while
+    // invisible. Resumes on the first tick after opacity returns.
+    if (this.data.opacity <= 0) return;
     const here = this.cameraLatLon();
     if (!here) return;
     const { radiusM, zoom } = this.data;

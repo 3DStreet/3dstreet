@@ -12,7 +12,7 @@
  * Rather than a second extrusion path, this module adapts decoded features
  * into the `out geom` element shape `buildTileGeometry` already consumes
  * ({ type: 'way' | 'relation', tags, geometry | members }), so the height
- * heuristics, winding fixes, hole handling and centroid tile ownership in
+ * heuristics, winding fixes, hole handling and tile-clip ownership in
  * osm-building-geometry.js apply unchanged.
  *
  * Pure module: no THREE, no DOM — runs in the buildings worker and under

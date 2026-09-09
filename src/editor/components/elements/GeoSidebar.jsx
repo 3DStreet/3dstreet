@@ -876,10 +876,10 @@ const GeoSidebar = ({ entity }) => {
 
             {isActivated && component && component.schema && component.data && (
               <>
-                {/* Opacity applies to google3d tiles and the tiles2d basemap
-                    (mapbox2d = legacy alias); flattening remains
-                    google3d-only. */}
-                {['google3d', 'mapbox2d', 'tiles2d'].includes(
+                {/* Opacity applies to google3d tiles, the tiles2d basemap
+                    (mapbox2d = legacy alias) and the osm3d ground +
+                    buildings; flattening remains google3d-only. */}
+                {['google3d', 'mapbox2d', 'tiles2d', 'osm3d'].includes(
                   component.data['maps']
                 ) && (
                   <div className="collapsible component">

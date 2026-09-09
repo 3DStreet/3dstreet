@@ -419,8 +419,12 @@ AFRAME.registerComponent('street-geo', {
       urlTemplate: buildingSource.urlTemplate,
       buildingLayer: buildingSource.buildingLayer,
       heightKeys: buildingSource.heightKeys,
-      minHeightKeys: buildingSource.minHeightKeys
+      minHeightKeys: buildingSource.minHeightKeys,
+      opacity: this.opacityFraction()
     });
+    // At opacity 0 hide the buildings outright — osm-buildings' tick also
+    // stops scanning so no vector tiles download while invisible.
+    osm3dBuildingElement.setAttribute('visible', data.opacity > 0);
     osm3dBuildingElement.setAttribute('data-no-pause', '');
     osm3dBuildingElement.classList.add('autocreated');
     osm3dBuildingElement.setAttribute('data-ignore-raycaster', '');
@@ -460,8 +464,10 @@ AFRAME.registerComponent('street-geo', {
     if (this.osm3dBuilding) {
       this.osm3dBuilding.setAttribute('osm-buildings', {
         latitude: data.latitude,
-        longitude: data.longitude
+        longitude: data.longitude,
+        opacity: this.opacityFraction()
       });
+      this.osm3dBuilding.setAttribute('visible', data.opacity > 0);
     }
   }
 });
