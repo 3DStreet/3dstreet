@@ -121,7 +121,12 @@ export default class Sidebar extends React.Component {
             </div>
           </div>
         )}
-        <div className="scroll">
+        {/* For segments the sticky strip+header must stick to the panel's
+            real scroll pane (RightPanel's tab pane), so this inner .scroll
+            wrapper must not be a scrollport of its own. */}
+        <div
+          className={isStreetSegment ? 'scroll scroll-passthrough' : 'scroll'}
+        >
           {entity.id !== 'reference-layers' &&
           entity.id !== 'environment' &&
           entity.id !== 'street-container' &&

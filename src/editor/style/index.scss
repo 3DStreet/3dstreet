@@ -832,6 +832,14 @@ body.aframe-inspector-opened {
     overflow-x: hidden;
     padding-bottom: 16px;
   }
+
+  // Segment panel: the sticky strip+header must stick against the panel's
+  // real scroll pane (RightPanel's tab pane). Any overflow value other than
+  // visible would make this wrapper the sticky reference instead — and it
+  // never scrolls itself, so the header would never pin.
+  .scroll.scroll-passthrough {
+    overflow: visible;
+  }
 }
 
 span {

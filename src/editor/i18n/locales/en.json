@@ -2054,9 +2054,6 @@
   "screenshotModal.upgradeToPro": {
     "defaultMessage": "Upgrade to Pro to hide 3DStreet Free watermark"
   },
-  "segmentSidebar.addGenerator": {
-    "defaultMessage": "Add generator"
-  },
   "segmentSidebar.advanced": {
     "defaultMessage": "Advanced"
   },
@@ -2086,9 +2083,6 @@
   },
   "segmentSidebar.outbound": {
     "defaultMessage": "outbound"
-  },
-  "segmentSidebar.positionOf": {
-    "defaultMessage": "{index} of {count}"
   },
   "segmentSidebar.side": {
     "defaultMessage": "Side"

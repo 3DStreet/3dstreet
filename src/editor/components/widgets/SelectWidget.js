@@ -9,6 +9,9 @@ export default class SelectWidget extends React.Component {
     name: PropTypes.string.isRequired,
     onChange: PropTypes.func,
     options: PropTypes.array.isRequired,
+    // Optional custom option renderer, passed straight to react-select —
+    // lets callers add swatches/icons next to values (segment Material).
+    formatOptionLabel: PropTypes.func,
     value: PropTypes.oneOfType([
       PropTypes.number,
       PropTypes.string,
@@ -76,6 +79,7 @@ export default class SelectWidget extends React.Component {
         placeholder=""
         value={this.state.value}
         noOptionsMessage={() => 'No value found'}
+        formatOptionLabel={this.props.formatOptionLabel}
         onChange={this.onChange}
         menuPosition="fixed"
         menuPlacement="auto"

@@ -34,7 +34,11 @@ import Events from '../../lib/Events';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { isGeneratorComponent } from '../../lib/featuredComponents';
 import { captureSegmentEdit, SEGMENT_OPS } from '../../lib/segmentAnalytics';
-import { executeSegmentUpdate, WIDTH_PRESETS } from '../../lib/segmentPanel';
+import {
+  executeSegmentUpdate,
+  WIDTH_PRESETS,
+  SURFACE_TEXTURE_IDS
+} from '../../lib/segmentPanel';
 
 // Condensed street-segment sidebar (#1753, design option 2a): cross-section
 // strip on top, icon-button header, compact Type/Width/Direction block,
@@ -68,12 +72,18 @@ IconButton.propTypes = {
 };
 
 // Width in metres with the user's units preference, plus per-type preset
-// pills. A typed value always wins; no pill highlights when off-preset.
+// pills. The pills are curated design values per unit system (see
+// WIDTH_PRESETS in lib/segmentPanel.js for the NACTO sources): imperial
+// shows the round foot values, metric the decimetre-rounded ones — not
+// conversions of each other. A typed value always wins; no pill highlights
+// when the width is off-preset.
 const WidthRow = ({ entity, data, schema }) => {
   const intl = useIntl();
   const units = useStore((s) => s.unitsPreference) || 'metric';
   const value = typeof data.width === 'number' ? data.width : 0;
-  const presets = WIDTH_PRESETS[data.type] || [];
+  const imperial = units === 'imperial';
+  const presets =
+    WIDTH_PRESETS[imperial ? 'imperial' : 'metric'][data.type] || [];
 
   const commitMetres = (metres) => {
     // Same click-and-blur guard as LengthPropertyRow: NumberWidget re-commits
@@ -81,6 +91,13 @@ const WidthRow = ({ entity, data, schema }) => {
     if (Math.abs(metres - value) < 1e-3) return;
     executeSegmentUpdate(entity, componentName, 'width', metres);
   };
+
+  // Presets are stored in display units (ft or m); compare in display units
+  // so a pill lights up for the exact width it commits.
+  const presetMetres = (preset) =>
+    parseFloat(toMetres(preset, units).toFixed(4));
+  const isPresetActive = (preset) =>
+    Math.abs(toDisplay(value, units) - preset) < 0.01;
 
   return (
     <div className="compact-row">
@@ -99,7 +116,7 @@ const WidthRow = ({ entity, data, schema }) => {
             schema.min !== undefined ? toDisplay(schema.min, units) : -Infinity
           }
           precision={2}
-          unit={units === 'imperial' ? 'ft' : 'm'}
+          unit={imperial ? 'ft' : 'm'}
           onChange={(_name, displayValue) =>
             commitMetres(parseFloat(toMetres(displayValue, units).toFixed(4)))
           }
@@ -112,14 +129,12 @@ const WidthRow = ({ entity, data, schema }) => {
                 key={preset}
                 className={
                   'segmented-option' +
-                  (Math.abs(value - preset) < 0.005 ? ' is-selected' : '')
+                  (isPresetActive(preset) ? ' is-selected' : '')
                 }
-                title={`${toDisplay(preset, units).toFixed(1)} ${
-                  units === 'imperial' ? 'ft' : 'm'
-                }`}
-                onClick={() => commitMetres(preset)}
+                title={`${preset} ${imperial ? 'ft' : 'm'}`}
+                onClick={() => commitMetres(presetMetres(preset))}
               >
-                {toDisplay(preset, units).toFixed(1)}
+                {imperial ? preset : preset.toFixed(1)}
               </button>
             ))}
           </div>
@@ -280,6 +295,28 @@ const SlopeGlyph = ({ startHigher }) => (
 
 SlopeGlyph.propTypes = { startHigher: PropTypes.bool };
 
+// Material dropdown option: texture swatch + name. The swatch reads the same
+// A-Frame <img> texture asset the segment mesh uses (SURFACE_TEXTURE_IDS),
+// so it always matches what renders; textureless surfaces (none, solid) get
+// a flat chip.
+const formatSurfaceOption = (option) => {
+  const surface = option.value;
+  const textureSrc = document.getElementById(SURFACE_TEXTURE_IDS[surface])?.src;
+  return (
+    <span className="surface-option">
+      {textureSrc ? (
+        <img className="surface-swatch" src={textureSrc} alt="" />
+      ) : (
+        <span
+          className="surface-swatch"
+          style={{ background: surface === 'solid' ? '#dddddd' : '#3a3a3a' }}
+        />
+      )}
+      {option.label}
+    </span>
+  );
+};
+
 // Surface section: Material | Color, Elevation | Slope toggle, and when slope
 // is on an L / glyph / R row that maps to slopeStart / slopeEnd. Toggling
 // slope off keeps the edge values, it only writes slope: false.
@@ -318,6 +355,7 @@ const SurfaceSection = ({ entity, component }) => {
           name="surface"
           value={data.surface}
           options={schema.surface.oneOf}
+          formatOptionLabel={formatSurfaceOption}
           onChange={(_name, value) =>
             executeSegmentUpdate(entity, componentName, 'surface', value)
           }
@@ -414,7 +452,6 @@ SurfaceSection.propTypes = {
 
 const StreetSegmentSidebar = ({ entity }) => {
   const intl = useIntl();
-  const [showAddGenerator, setShowAddGenerator] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const component = entity?.components?.[componentName];
   const components = entity ? entity.components : {};
@@ -463,82 +500,71 @@ const StreetSegmentSidebar = ({ entity }) => {
 
   return (
     <div className="segment-panel">
-      <StreetCrossSectionStrip entity={entity} />
-      <div className="segment-header">
-        {/* EntityLabel replaces the panel-level title (hidden for segments
+      {/* Strip + header stay pinned while the block below scrolls. */}
+      <div className="segment-sticky">
+        <StreetCrossSectionStrip entity={entity} />
+        <div className="segment-header">
+          {/* EntityLabel replaces the panel-level title (hidden for segments
             in Sidebar.jsx) and keeps the inline rename affordance. */}
-        <span className="segment-title" title={getEntityDisplayName(entity)}>
-          <EntityLabel entity={entity} editable={canRenameEntity(entity)} />
-          {segmentPos !== -1 && (
-            <span className="segment-pos">
-              {intl.formatMessage(
-                {
-                  id: 'segmentSidebar.positionOf',
-                  defaultMessage: '{index} of {count}'
-                },
-                {
-                  index: segmentPos + 1,
-                  count: travelledWaySiblings.length
-                }
-              )}
-            </span>
-          )}
-        </span>
-        <div className="segment-actions">
-          {segmentPos !== -1 && (
-            <>
-              <IconButton
-                title={intl.formatMessage({
-                  id: 'segmentSidebar.moveLeft',
-                  defaultMessage: 'Move Left'
-                })}
-                disabled={segmentPos === 0}
-                onClick={() => moveSegment(-1)}
-              >
-                <ArrowLeftIcon />
-              </IconButton>
-              <IconButton
-                title={intl.formatMessage({
-                  id: 'segmentSidebar.moveRight',
-                  defaultMessage: 'Move Right'
-                })}
-                disabled={segmentPos === travelledWaySiblings.length - 1}
-                onClick={() => moveSegment(1)}
-              >
-                <ArrowRightIcon />
-              </IconButton>
-              <div className="segment-actions-divider" />
-            </>
-          )}
-          <IconButton
-            title={intl.formatMessage(commonMessages.focus)}
-            onClick={() => Events.emit('objectfocus', entity.object3D)}
-            onLongPress={() => setFocusCameraPose(entity)}
-          >
-            <ArrowsPointingInwardIcon />
-          </IconButton>
-          <IconButton
-            title={intl.formatMessage(commonMessages.duplicate)}
-            onClick={() => {
-              captureSegmentEdit(SEGMENT_OPS.DUPLICATED, {
-                segment_type: data.type
-              });
-              cloneEntity(entity);
-            }}
-          >
-            <Copy32Icon />
-          </IconButton>
-          <IconButton
-            title={intl.formatMessage(commonMessages.delete)}
-            onClick={() => {
-              captureSegmentEdit(SEGMENT_OPS.REMOVED, {
-                segment_type: data.type
-              });
-              removeSelectedEntity();
-            }}
-          >
-            <TrashIcon />
-          </IconButton>
+          <span className="segment-title" title={getEntityDisplayName(entity)}>
+            <EntityLabel entity={entity} editable={canRenameEntity(entity)} />
+          </span>
+          <div className="segment-actions">
+            {segmentPos !== -1 && (
+              <>
+                <IconButton
+                  title={intl.formatMessage({
+                    id: 'segmentSidebar.moveLeft',
+                    defaultMessage: 'Move Left'
+                  })}
+                  disabled={segmentPos === 0}
+                  onClick={() => moveSegment(-1)}
+                >
+                  <ArrowLeftIcon />
+                </IconButton>
+                <IconButton
+                  title={intl.formatMessage({
+                    id: 'segmentSidebar.moveRight',
+                    defaultMessage: 'Move Right'
+                  })}
+                  disabled={segmentPos === travelledWaySiblings.length - 1}
+                  onClick={() => moveSegment(1)}
+                >
+                  <ArrowRightIcon />
+                </IconButton>
+                <div className="segment-actions-divider" />
+              </>
+            )}
+            <IconButton
+              title={intl.formatMessage(commonMessages.focus)}
+              onClick={() => Events.emit('objectfocus', entity.object3D)}
+              onLongPress={() => setFocusCameraPose(entity)}
+            >
+              <ArrowsPointingInwardIcon />
+            </IconButton>
+            <IconButton
+              title={intl.formatMessage(commonMessages.duplicate)}
+              onClick={() => {
+                captureSegmentEdit(SEGMENT_OPS.DUPLICATED, {
+                  segment_type: data.type
+                });
+                cloneEntity(entity);
+              }}
+            >
+              <Copy32Icon />
+            </IconButton>
+            <IconButton
+              title={intl.formatMessage(commonMessages.delete)}
+              onClick={() => {
+                captureSegmentEdit(SEGMENT_OPS.REMOVED, {
+                  segment_type: data.type
+                });
+                removeSelectedEntity();
+              }}
+            >
+              <TrashIcon />
+            </IconButton>
+          </div>
         </div>
       </div>
       <div className="segment-block">
@@ -614,19 +640,9 @@ const StreetSegmentSidebar = ({ entity }) => {
           />
         ))}
         <div className="segment-footer">
-          <button
-            type="button"
-            className={
-              'add-generator-btn' + (showAddGenerator ? ' is-open' : '')
-            }
-            onClick={() => setShowAddGenerator((v) => !v)}
-          >
-            +{' '}
-            {intl.formatMessage({
-              id: 'segmentSidebar.addGenerator',
-              defaultMessage: 'Add generator'
-            })}
-          </button>
+          {/* The Add Component select sits directly in the footer — one
+              click opens the component list, no intermediate button. */}
+          <AddGeneratorComponent entity={entity} />
           <button
             type="button"
             className={'advanced-btn' + (showAdvanced ? ' is-open' : '')}
@@ -638,7 +654,6 @@ const StreetSegmentSidebar = ({ entity }) => {
             })}
           </button>
         </div>
-        {showAddGenerator && <AddGeneratorComponent entity={entity} />}
       </div>
       {showAdvanced && (
         <div className="advancedComponentsContainer">

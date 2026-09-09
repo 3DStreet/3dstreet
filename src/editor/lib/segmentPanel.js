@@ -102,14 +102,72 @@ export function getBarInkColor(bgHex) {
   return luminance > 0.6 ? '#222' : '#fff';
 }
 
-// Per-type width presets in metres (Streetmix-style standards). Types not
-// listed (boundary, divider, grass, rail) get no pills.
+// Per-type width presets shown as pills next to the Width field, in the
+// user's active unit system. The two tables are curated design values, NOT
+// unit conversions of each other: imperial pills are the round foot values
+// US guides publish, metric pills are the "nice" decimetre-rounded values
+// international guides publish for the same lane role.
+//
+// Sources (also the basis for the future docs page on these controls):
+// - NACTO Urban Street Design Guide — Lane Width: 10 ft lanes recommended
+//   in urban areas, 11 ft for designated truck/bus routes, 12 ft historic
+//   highway-era default.
+//   https://nacto.org/publication/urban-street-design-guide/street-design-elements/lane-width/
+// - NACTO Urban Bikeway Design Guide — Bike Lanes: 5–6 ft ridable surface,
+//   7 ft where buffered/high-volume.
+//   https://nacto.org/publication/urban-bikeway-design-guide/bike-lanes/conventional-bike-lanes/
+// - NACTO Urban Street Design Guide — Sidewalks: ~5 ft minimum clear path
+//   (ADA), 6–8+ ft for comfortable two-abreast walking on commercial
+//   streets.
+//   https://nacto.org/publication/urban-street-design-guide/street-design-elements/sidewalks/
+// - NACTO — Parking lanes commonly 7–9 ft depending on vehicle mix.
+// - NACTO Transit Street Design Guide — transitways/rail 11–14 ft
+//   (12 ft typical dedicated lane, 14 ft shared/offset conditions).
+//   https://nacto.org/publication/transit-street-design-guide/
+// - Dividers/medians: 2 ft painted buffer minimum; 4 ft raised divider;
+//   8 ft accommodates planting (NACTO median/refuge guidance uses 6 ft
+//   minimum for pedestrian refuges).
+// Metric values follow the same roles rounded to the decimetre (e.g. 3.0 /
+// 3.3 / 3.6 m general lanes, 1.5–2.1 m bike, 1.5–2.4 m sidewalks), matching
+// the figures used in metric editions of these guides.
+//
+// Types not listed (boundary, grass) get no pills.
 export const WIDTH_PRESETS = {
-  'bike-lane': [1.5, 1.8, 2.4],
-  'drive-lane': [3.0, 3.3, 3.6],
-  'bus-lane': [3.0, 3.3, 3.6],
-  sidewalk: [1.8, 2.4, 3.6],
-  'parking-lane': [2.1, 2.4]
+  metric: {
+    'drive-lane': [3.0, 3.3, 3.6],
+    'bus-lane': [3.0, 3.3, 3.6],
+    'bike-lane': [1.5, 1.8, 2.1],
+    sidewalk: [1.5, 1.8, 2.4],
+    'parking-lane': [2.1, 2.4, 2.7],
+    divider: [0.6, 1.2, 2.4],
+    rail: [3.4, 3.7, 4.3]
+  },
+  // Values in feet; committed as their exact metre equivalent.
+  imperial: {
+    'drive-lane': [10, 11, 12],
+    'bus-lane': [10, 11, 12],
+    'bike-lane': [5, 6, 7],
+    sidewalk: [5, 6, 8],
+    'parking-lane': [7, 8, 9],
+    divider: [2, 4, 8],
+    rail: [11, 12, 14]
+  }
+};
+
+// UI copy of the surface → A-Frame texture <img> asset id table in
+// street-segment.js generateMesh() (keep in sync). Used to draw texture
+// swatches in the Material dropdown; entries with no texture fall back to a
+// flat chip.
+export const SURFACE_TEXTURE_IDS = {
+  asphalt: 'seamless-road',
+  concrete: 'seamless-bright-road',
+  grass: 'grass-texture',
+  sidewalk: 'seamless-sidewalk',
+  gravel: 'compacted-gravel-texture',
+  sand: 'sandy-asphalt-texture',
+  'cracked-asphalt': 'asphalt-texture',
+  'parking-lot': 'parking-lot-texture',
+  water: 'water-texture'
 };
 
 /**

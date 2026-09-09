@@ -118,7 +118,19 @@ export default class Component extends React.Component {
   };
 
   // A compact numeric cell (32px box, optional in-field prefix and unit).
-  numberCell = (property, { prefix, unit, precision = 2, schema } = {}) => {
+  numberCell = (
+    property,
+    {
+      prefix,
+      unit,
+      precision = 2,
+      schema,
+      title,
+      allowEmpty,
+      emptyValue,
+      placeholder
+    } = {}
+  ) => {
     const componentData = this.props.component;
     const propSchema =
       schema ||
@@ -138,6 +150,10 @@ export default class Component extends React.Component {
         max={propSchema.max !== undefined ? propSchema.max : Infinity}
         prefix={prefix}
         unit={unit}
+        title={title}
+        allowEmpty={allowEmpty}
+        emptyValue={emptyValue}
+        placeholder={placeholder}
         precision={precision}
         onChange={(name, value) => {
           // Guard against NumberWidget's blur re-commit of its rounded
@@ -265,16 +281,28 @@ export default class Component extends React.Component {
         />
         {this.row('Spacing', [
           this.numberCell('spacing', { unit: 'm' }),
-          this.numberCell('padding', { prefix: 'PAD' })
+          this.numberCell('padding', {
+            prefix: 'PAD',
+            title:
+              'Padding: distance between stencils within a group — only has an effect when more than one stencil model is selected'
+          })
         ])}
         {this.state.moreOpen &&
           this.moreInset(
             <>
               {this.numberCell('positionX', { prefix: 'X', unit: 'm' })}
               {this.numberCell('positionY', { prefix: 'Y', unit: 'm' })}
+              {/* stencilHeight overrides the stencil plane's length in
+                  metres; 0 is the schema sentinel for "use the model's own
+                  size" (street-generated-stencil only writes geometry when
+                  > 0), so the field reads "auto" until a value is set and
+                  clearing it restores auto. */}
               {this.numberCell('stencilHeight', {
                 prefix: 'HEIGHT',
-                unit: 'm'
+                allowEmpty: true,
+                placeholder: 'auto',
+                title:
+                  "Stencil height: overrides the stencil's printed length in meters. Leave on auto to keep each model's own size."
               })}
               {this.numberCell('cycleOffset', { prefix: 'OFFSET' })}
               {this.numberCell('facing', { prefix: 'FACING', unit: '°' })}

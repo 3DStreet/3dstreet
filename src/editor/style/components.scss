@@ -963,11 +963,6 @@ a.help-linkhover {
     font-weight: 500;
     color: variables.$white;
   }
-  .segment-pos {
-    color: variables.$gray-400;
-    font-weight: 400;
-    font-size: 13px;
-  }
   .segment-actions {
     display: flex;
     align-items: stretch;
@@ -1107,6 +1102,9 @@ a.help-linkhover {
       letter-spacing: 0.5px;
       text-transform: uppercase;
       color: variables.$lightgray-200;
+    }
+    input.number::placeholder {
+      color: variables.$gray-400;
     }
   }
 
@@ -1444,29 +1442,6 @@ a.help-linkhover {
     padding-top: 12px;
     border-top: 1px solid variables.$black-800;
   }
-  .add-generator-btn {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    height: 32px;
-    border-radius: 8px;
-    border: 1px dashed variables.$purple-400;
-    background: transparent;
-    color: variables.$lightgray-100;
-    font-size: 13px;
-    font-family: inherit;
-    cursor: pointer;
-    &:hover {
-      border-style: solid;
-      color: variables.$white;
-    }
-    &.is-open {
-      background: variables.$bgalphadark;
-      color: variables.$white;
-    }
-  }
   .advanced-btn {
     flex: none;
     height: 32px;
@@ -1487,15 +1462,69 @@ a.help-linkhover {
       color: variables.$white;
     }
   }
+  /* Add Component select lives directly in the footer, styled like the
+     dashed add affordance from the design at compact height. */
   #addComponentContainer {
+    flex: 1 1 0;
+    min-width: 0;
     padding: 0;
     #addComponent {
       width: 100%;
+      .select__control {
+        padding: 0 4px 0 10px !important;
+        min-height: 32px;
+        height: 32px;
+        border: 1px dashed variables.$purple-400;
+        border-radius: 8px;
+        background: transparent;
+        &:hover {
+          border-style: solid;
+        }
+      }
+      .select__placeholder {
+        color: variables.$lightgray-100;
+        font-size: 13px;
+      }
+      .select__value-container {
+        padding: 0;
+        height: 30px;
+        font-size: 13px;
+      }
+      .select__indicator {
+        height: 30px;
+        display: flex;
+        align-items: center;
+      }
     }
   }
   .advancedComponentsContainer {
     margin-top: 10px;
     padding: 0 12px 14px;
+  }
+
+  /* strip + header pinned while the segment block scrolls (the scroll
+     container is the panel's .scroll ancestor) */
+  .segment-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: variables.$darkgray-200;
+  }
+
+  /* Material dropdown: texture swatch next to each option */
+  .surface-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .surface-swatch {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    object-fit: cover;
+    display: inline-block;
   }
 
   /* EntityLabel inside the header (the panel-level title is hidden for
