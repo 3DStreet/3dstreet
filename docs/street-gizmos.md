@@ -3,12 +3,19 @@
 Direct-manipulation handles for managed streets in the editor viewport,
 always on — there is no user toggle. They are **additive**: every entity keeps the standard
 TransformControls gizmo (move/rotate/scale per the active action tool);
-the street handles appear alongside it.
+the street handles appear alongside it. The one exception is a managed
+street's **segments** (#1806): `street-align` owns segment transforms —
+any street re-layout rewrites segment positions, silently resetting manual
+edits — so a selected segment gets **only** its width bars, no stock
+move/rotate gizmo (the selection highlight box still shows, and the
+action-bar translate/rotate buttons dim, same as `data-no-transform`
+entities). Segment editing goes through the width bars, the segment
+sidebar (width/type/elevation) and the reorder buttons.
 
 | Gizmo                             | What it adds                                                                                                                                                                                                                                                                                                                                                                  |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Street Endpoint Nodes** (#1096) | Selecting a **managed street** shows a draggable circle at each end of the street. Dragging a circle keeps the other end fixed; an outline previews the new footprint during the drag, and on release the street's position, Y rotation, and `managed-street.length` are rewritten so the two circles always define the street's ends. One undo step per drag (MultiCommand). |
-| **Segment Width Handles** (#1218) | Selecting a **street segment** shows a bar along each long edge; dragging a bar changes `street-segment.width` live, with the normal managed-street re-layout cascade running during the drag. Shift snaps to 0.5 m.                                                                                                                                                          |
+| **Segment Width Handles** (#1218) | Selecting a **street segment** shows a bar along each long edge at the near end (the end focus frames from, next to the width label; on a curved street the bars follow the curve); dragging a bar changes `street-segment.width` live, with the normal managed-street re-layout cascade running during the drag. Shift snaps to 0.5 m.                                       |
 
 Managed streets only: neither gizmo attaches to legacy
 `street` + `streetmix-loader` scenes.
@@ -37,9 +44,11 @@ src/editor/lib/gizmos/
   (`mouseDown` / `objectChange` / `mouseUp`) that `viewport.js` wires to
   camera-control locking and undoable `entityupdate` commands.
 - `attachControlsForSelection()` in `viewport.js` is the single routing
-  table: the stock gizmo attaches to every transformable entity exactly as
-  before, then a managed street additionally gets endpoint nodes and a
-  street segment additionally gets width bars.
+  table: the stock gizmo attaches to every transformable entity, a managed
+  street additionally gets endpoint nodes, and a managed street's segment
+  gets width bars INSTEAD of the stock gizmo (#1806, see above;
+  `isManagedStreetSegment()` in `editor/lib/entity.js` is the shared
+  predicate).
 - Segment width bars mutate `street-segment.width` live during the drag (so
   the street's re-layout cascade runs). Endpoint nodes do not touch the
   entity until mouse-up (#1942): the dragged circle follows the cursor and a
@@ -57,6 +66,5 @@ src/editor/lib/gizmos/
 - Endpoint node drags show only an outline preview until release, so
   clones, striping and terrain flattening do not follow the cursor live.
 - The simplified move/rotate and ground-clamp prototypes (#1674/#1446) from
-  the original lab, and #1806's segment-gizmo suppression, were not ported —
-  segments keep the stock gizmo here even though `street-align` owns segment
-  transforms.
+  the original lab were not ported. (#1806's segment-gizmo suppression has
+  since landed — see above.)
