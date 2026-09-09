@@ -24,7 +24,24 @@ regardless, so the real protection is **origin restriction in the provider
 dashboard**). The legacy hardcoded Mapbox token moved from street-geo
 source to `MAPBOX_ACCESS_TOKEN` in env config. `street-geo` gained a
 `basemapStyle` property (hybrid/satellite/streets) that re-resolves the
-source on change. This documents the current
+source on change.
+
+Step C (replace mapbox2d) is implemented: saved scenes migrate at load
+(`maps: mapbox2d` → `tiles2d` in json-utils createEntities, opacity
+preserved), live values render via street-geo's `activeMapType()` alias,
+the GeoSidebar picker offers None / 3D / 2D Satellite / 2.5D, and the
+820 KB vendored `aframe-mapbox-component.min.js` is deleted along with its
+eager script tags and webpack copies. MAPTILER_API_KEY is provisioned in
+`config/.env.*`, origin-restricted to 3dstreet.app / dev-3dstreet.web.app
+(add `localhost` in the MapTiler dashboard for local dev tiles).
+
+Step D (2.5D ground rides the tiled basemap) is implemented: `osm3dCreate`
+now spawns a `tiled-basemap` ground pinned to the 'streets' style instead
+of osm4vr's fixed-zoom `osm-tiles` planes (which are no longer used
+anywhere), closing the OSMF-traffic and unbounded-tile-growth problems for
+2.5D. The extruded buildings remain osm4vr `osm-geojson` pending the
+step E decision; the osm4vr script now lazy-loads for buildings only, and
+the ground honors the opacity slider. This documents the current
 state of the non-Google map layers, why they underperform, and a ticket
 breakdown for replacing them on infrastructure we already ship. Ordering
 rationale: fix the 2D and 2.5D basemaps **before** the automatic

@@ -36,9 +36,10 @@ AFRAME.registerComponent('street-geo', {
       // tiles2d by activeMapType().
       oneOf: ['google3d', 'mapbox2d', 'osm3d', 'tiles2d', 'none']
     },
-    // Style for the tiles2d basemap (and the 2.5D ground once it rides the
-    // same component, #1962 step D): hybrid = satellite + street labels
-    // (the mapbox2d look), satellite = imagery only, streets = cartography.
+    // Style for the tiles2d basemap: hybrid = satellite + street labels
+    // (the legacy mapbox2d look), satellite = imagery only, streets =
+    // cartography. The 2.5D ground shares the tiled-basemap component but
+    // pins the 'streets' style (see osm3dCreate).
     basemapStyle: {
       type: 'string',
       default: DEFAULT_BASEMAP_STYLE,
@@ -181,12 +182,21 @@ AFRAME.registerComponent('street-geo', {
       ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update']();
-      } else if (this[mapType] && activeMap !== mapType) {
-        // remove element from DOM and from this object
-        this.el.removeChild(this[mapType]);
-        this[mapType] = null;
-        if (mapType === 'osm3d') {
-          this.el.removeChild(this['osm3dBuilding']);
+      } else if (
+        activeMap !== mapType &&
+        (this[mapType] || (mapType === 'osm3d' && this.osm3dBuilding))
+      ) {
+        // remove element(s) from DOM and from this object. osm3d is two
+        // elements (tiled ground + extruded buildings) that can exist
+        // independently: the ground is skipped without a provider key, and
+        // the buildings lag behind the lazy osm4vr script load.
+        if (this[mapType]) {
+          this.el.removeChild(this[mapType]);
+          this[mapType] = null;
+        }
+        if (mapType === 'osm3d' && this.osm3dBuilding) {
+          this.el.removeChild(this.osm3dBuilding);
+          this.osm3dBuilding = null;
         }
       }
     }
@@ -250,13 +260,13 @@ AFRAME.registerComponent('street-geo', {
     });
     this.google3d.setAttribute('visible', data.opacity > 0);
   },
-  // Resolve the tiles2d tile source from the provider registry. Dev builds
+  // Resolve a tiled raster source from the provider registry. Dev builds
   // without a provider key fall back to OSM dev tiles (with a console note);
   // production builds without a key render nothing rather than pointing
   // traffic at the OSMF server against its usage policy.
-  resolveTiles2dSource: function () {
+  resolveTiledSource: function (style) {
     const source = resolveBasemapSource({
-      style: this.data.basemapStyle,
+      style,
       keys: BASEMAP_KEYS,
       allowDevFallback: process.env.NODE_ENV === 'development'
     });
@@ -277,7 +287,7 @@ AFRAME.registerComponent('street-geo', {
     const data = this.data;
     const el = this.el;
 
-    const source = this.resolveTiles2dSource();
+    const source = this.resolveTiledSource(this.data.basemapStyle);
     if (!source) {
       return;
     }
@@ -321,7 +331,7 @@ AFRAME.registerComponent('street-geo', {
     const data = this.data;
     // Style switches resolve a new source; tiled-basemap rebuilds its
     // tileset when urlTemplate/maxLevel change and no-ops when they do not.
-    const source = this.resolveTiles2dSource();
+    const source = this.resolveTiledSource(this.data.basemapStyle);
     if (!source) {
       return;
     }
@@ -336,43 +346,65 @@ AFRAME.registerComponent('street-geo', {
     document.getElementById('map-copyright').textContent = source.attribution;
   },
   osm3dCreate: function () {
-    // loadScript has no dedupe and this.osm3d is only assigned in its async
-    // callback, so a second update() landing while the script is still
-    // loading would create a duplicate osm3d + osm3dBuilding pair (and
-    // orphan the first on the next map-type switch). Guard with an
-    // in-flight flag until the callback runs.
-    if (this.osm3dPending) {
-      return;
-    }
     const data = this.data;
     const el = this.el;
     const self = this;
 
-    const createOsm3dElement = () => {
-      const osm3dElement = document.createElement('a-entity');
-      osm3dElement.setAttribute('data-layer-name', 'OpenStreetMap 2D Tiles');
-      osm3dElement.setAttribute('osm-tiles', {
-        lon: data.longitude,
-        lat: data.latitude,
-        radius_m: 2000,
-        trackId: 'camera',
-        url: 'https://tile.openstreetmap.org/'
+    // Ground: the same tiled basemap as tiles2d (#1962 step D), replacing
+    // osm4vr's fixed-zoom `osm-tiles` planes (no LOD, unbounded tile growth,
+    // OSMF tile-server traffic — #787). Style is pinned to 'streets'
+    // cartography to keep the classic 2.5D look under the extruded
+    // buildings; `basemapStyle` remains the 2D satellite layer's choice.
+    const source = this.resolveTiledSource('streets');
+    if (source) {
+      const groundElement = document.createElement('a-entity');
+      groundElement.setAttribute('data-layer-name', '2.5D Ground Map Tiles');
+      // Same flat orientation as tiles2d (plane east → +Z, north → +X).
+      groundElement.setAttribute('rotation', '-90 -90 0');
+      groundElement.setAttribute('tiled-basemap', {
+        urlTemplate: source.urlTemplate,
+        maxLevel: source.maxLevel,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        opacity: this.opacityFraction()
       });
-      osm3dElement.setAttribute('rotation', '-90 -90 0');
-      osm3dElement.setAttribute('data-no-pause', '');
-      osm3dElement.classList.add('autocreated');
-      osm3dElement.setAttribute('data-ignore-raycaster', '');
-      osm3dElement.setAttribute('data-no-transform', '');
-      osm3dElement.setAttribute('bvh-geometry', '');
+      groundElement.setAttribute('visible', data.opacity > 0);
+      groundElement.setAttribute('data-no-pause', '');
+      groundElement.classList.add('autocreated');
+      groundElement.setAttribute('data-ignore-raycaster', '');
+      groundElement.setAttribute('data-no-transform', '');
+      if (AFRAME.INSPECTOR?.opened) {
+        groundElement.addEventListener(
+          'loaded',
+          () => {
+            // emit play event to start loading tiles in Editor mode
+            groundElement.play();
+          },
+          { once: true }
+        );
+      }
+      el.appendChild(groundElement);
+      this['osm3d'] = groundElement;
+      document.getElementById('map-copyright').textContent = source.attribution;
+    }
 
+    // Buildings: still osm4vr's Overpass-based `osm-geojson` extrusion —
+    // its replacement is the #1962 step E/F decision. loadScript has no
+    // dedupe and the element is only created in its async callback, so an
+    // in-flight flag guards double-loads, and the callback re-checks the
+    // active map type in case the user switched away mid-download.
+    const createBuildingsElement = () => {
+      if (self.activeMapType() !== 'osm3d' || self.osm3dBuilding) {
+        return;
+      }
       const osm3dBuildingElement = document.createElement('a-entity');
       osm3dBuildingElement.setAttribute(
         'data-layer-name',
         'OpenStreetMap 3D Buildings'
       );
       osm3dBuildingElement.setAttribute('osm-geojson', {
-        lon: data.longitude,
-        lat: data.latitude,
+        lon: self.data.longitude,
+        lat: self.data.latitude,
         radius_m: 1000,
         trackId: 'camera'
       });
@@ -385,17 +417,6 @@ AFRAME.registerComponent('street-geo', {
       // raycasts (cursor anchor, any probe reaching this subtree) stay
       // O(log n) instead of scanning every building triangle (#1853).
       osm3dBuildingElement.setAttribute('bvh-geometry', '');
-
-      if (AFRAME.INSPECTOR?.opened) {
-        osm3dElement.addEventListener(
-          'loaded',
-          () => {
-            // emit play event to start loading tiles in Editor mode
-            osm3dElement.play();
-          },
-          { once: true }
-        );
-      }
       if (AFRAME.INSPECTOR?.opened) {
         osm3dBuildingElement.addEventListener(
           'loaded',
@@ -406,34 +427,41 @@ AFRAME.registerComponent('street-geo', {
           { once: true }
         );
       }
-      el.appendChild(osm3dElement);
       el.appendChild(osm3dBuildingElement);
-
-      self['osm3d'] = osm3dElement;
       self['osm3dBuilding'] = osm3dBuildingElement;
-      document.getElementById('map-copyright').textContent = 'OpenStreetMap';
     };
 
-    // check whether the library has been imported. Download if not
-    if (AFRAME.components['osm-tiles']) {
-      createOsm3dElement();
-    } else {
+    if (AFRAME.components['osm-geojson']) {
+      createBuildingsElement();
+    } else if (!this.osm3dPending) {
       this.osm3dPending = true;
       loadScript(new URL('/src/lib/osm4vr.min.js', import.meta.url), () => {
         this.osm3dPending = false;
-        createOsm3dElement();
+        createBuildingsElement();
       });
     }
   },
   osm3dUpdate: function () {
     const data = this.data;
-    this.osm3d.setAttribute('osm-tiles', {
-      lon: data.longitude,
-      lat: data.latitude
-    });
-    this.osm3dBuilding.setAttribute('osm-geojson', {
-      lon: data.longitude,
-      lat: data.latitude
-    });
+    if (this.osm3d) {
+      const source = this.resolveTiledSource('streets');
+      if (source) {
+        this.osm3d.setAttribute('tiled-basemap', {
+          latitude: data.latitude,
+          longitude: data.longitude,
+          opacity: this.opacityFraction()
+        });
+        this.osm3d.setAttribute('visible', data.opacity > 0);
+        document.getElementById('map-copyright').textContent =
+          source.attribution;
+      }
+    }
+    // Buildings may still be loading (lazy osm4vr script).
+    if (this.osm3dBuilding) {
+      this.osm3dBuilding.setAttribute('osm-geojson', {
+        lon: data.longitude,
+        lat: data.latitude
+      });
+    }
   }
 });
