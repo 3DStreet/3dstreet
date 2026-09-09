@@ -43,6 +43,37 @@ export function executeSegmentUpdate(entity, componentName, property, value) {
   });
 }
 
+// Generators that orient through their own `direction` property, whose
+// schema default 'none' means "fixed absolute orientation via `facing`".
+// Every path that creates them for the user (Streetmix/StreetPlan import,
+// segment type change) seeds the segment's travel direction into the
+// component; segment direction propagation deliberately skips 'none'
+// (side-facing benches, angled parking must not flip with the lane).
+const DIRECTION_SEEDED_GENERATORS = [
+  'street-generated-stencil',
+  'street-generated-clones'
+];
+
+/**
+ * Seed the host lane's travel direction into a generator's initial attribute
+ * string, so a manually added stencil/clones component starts out following
+ * the lane like the import and type-change creation paths do (#1959).
+ * Returns `attrValue` unchanged for non-directional generators, lanes with
+ * no travel direction, or a seed value that already sets a direction.
+ */
+export function seedLaneDirection(componentName, attrValue, segmentDirection) {
+  const baseName = componentName.split('__')[0];
+  if (!DIRECTION_SEEDED_GENERATORS.includes(baseName)) return attrValue;
+  if (segmentDirection !== 'inbound' && segmentDirection !== 'outbound') {
+    return attrValue;
+  }
+  if (/(^|;)\s*direction\s*:/.test(attrValue)) return attrValue;
+  const trimmed = attrValue.trim().replace(/;+\s*$/, '');
+  return trimmed
+    ? `${trimmed}; direction: ${segmentDirection}`
+    : `direction: ${segmentDirection}`;
+}
+
 // Representative color per surface material for the cross-section strip.
 // These are display-only approximations of the textures, not scene colors.
 const SURFACE_COLORS = {

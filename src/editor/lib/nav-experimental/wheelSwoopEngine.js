@@ -9,6 +9,10 @@ import {
   WHEEL_ANCHOR_DENOM_EPS_METRES,
   WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF,
   WHEEL_ZOOM_OUT_MIN_ANCHOR_DIST_METRES,
+  WHEEL_ZOOM_BOOST_MAX,
+  WHEEL_ZOOM_BOOST_DEADBAND_TICKS,
+  WHEEL_ZOOM_BOOST_RAMP_TICKS,
+  WHEEL_ZOOM_BOOST_RESET_MS,
   WHEEL_GROUND_REACH_CEILING_METRES,
   FALLBACK_FORWARD_DIST,
   SWOOP_PHASE2_ENTRY_ELEVATION_METRES,
@@ -36,6 +40,8 @@ import {
   fovFactorForTicks,
   cappedDollyStep,
   levelForwardAnchor,
+  groundForwardAnchor,
+  zoomBoostTicks,
   lateralCap,
   classifySwoopTickTarget,
   reaimWeight,
@@ -92,6 +98,16 @@ export class WheelSwoopEngine {
     this._breakoutDollyDepth = 0;
     // Swoop-OUT ascent anchor {frac, tilt} | null.
     this._ascentAnchor = null;
+    // Sustained wheel-zoom streak (#1966, #1967): dolly ticks applied in the
+    // current direction (_streakSign: +1 out / -1 in / 0 none) since the
+    // last direction flip / non-wheel move / idle gap. Feeds zoomBoostTicks
+    // so a continuous scroll either way accelerates past the flat 5%/detent
+    // rate. Advanced per continuous dolly step (see _boostedTicks).
+    this._streakTicks = 0;
+    this._streakSign = 0;
+    // Milliseconds of drain passes with no pending wheel input; resets the
+    // streak once it exceeds WHEEL_ZOOM_BOOST_RESET_MS.
+    this._wheelIdleMs = 0;
     // Per-pass ground snapshot below the camera + whether the probe hit a real
     // surface (set at the top of each drain pass).
     this._frameGroundY = 0;
@@ -163,14 +179,24 @@ export class WheelSwoopEngine {
   // depends on (floor snapshot, recovery suppression, swoop rate-cap,
   // net-vertical un-ground/captureH bracket, active phase-boundary hand-offs)
   // all stay in this one method.
-  drain() {
+  drain(dtMs = 16) {
     // A recovery OR teleport tween owns the
     // camera — drop queued wheel.
     if (this._ctx.runner.ownsCamera()) {
       this._wheelAccum = 0;
       return;
     }
-    if (this._wheelAccum === 0) return;
+    if (this._wheelAccum === 0) {
+      // Idle frame: age the zoom streak so a resumed scroll after a pause
+      // starts back at the unboosted base rate (#1966).
+      this._wheelIdleMs += dtMs;
+      if (this._wheelIdleMs >= WHEEL_ZOOM_BOOST_RESET_MS) {
+        this._streakTicks = 0;
+        this._streakSign = 0;
+      }
+      return;
+    }
+    this._wheelIdleMs = 0;
     // Snapshot the collision floor once per pass. Every
     // step in the loop — including the recursive swoop ↔ high hand-offs —
     // reads this._frameGroundY so they see a single consistent ground for the
@@ -460,11 +486,22 @@ export class WheelSwoopEngine {
       maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES
     });
     if (hit.source !== 'mesh' && hit.source !== 'ground') {
-      hit = levelForwardAnchor(
-        camera,
-        FALLBACK_FORWARD_DIST,
-        this._levelAnchorScratch
-      );
+      // No real hit (open sky — mid-screen in a street-level view). Zoom-OUT
+      // anchors at ground height so it rises and accelerates as it recedes;
+      // zoom-in keeps the level anchor (forward at constant height) (#1966).
+      hit =
+        sign > 0 && this._frameGroundHit
+          ? groundForwardAnchor(
+              camera,
+              FALLBACK_FORWARD_DIST,
+              this._frameGroundY,
+              this._levelAnchorScratch
+            )
+          : levelForwardAnchor(
+              camera,
+              FALLBACK_FORWARD_DIST,
+              this._levelAnchorScratch
+            );
       if (hit == null) return t; // near-vertical at sky → consume, no move
     }
 
@@ -478,6 +515,13 @@ export class WheelSwoopEngine {
     // descend past AGL 20 without entering the swoop, so skip the boundary when
     // Ctrl is held. Street-level mode off: same bypass — there is no swoop to
     // hand off to, so the dolly descends freely.
+    // Sustained-scroll acceleration (#1966, #1967): a continuous scroll in
+    // either direction ramps the per-detent rate. `tApplied` is the boosted
+    // tick count actually dollied (it also feeds _dollyAlongRay so the
+    // lurch-cap budget scales with the ticks applied); return values stay in
+    // raw input ticks so the caller's accumulator bookkeeping is unaffected.
+    const tApplied = this._boostedTicks(sign, t);
+    const boost = tApplied / t;
     if (
       sign < 0 &&
       this._frameGroundHit &&
@@ -486,8 +530,8 @@ export class WheelSwoopEngine {
     ) {
       const denom = camera.position.y - hit.y;
       const targetY = groundY + yEntry;
-      // Would the full step land below the entry boundary?
-      const fullFactor = dollyFactorForTicks(t, ZOOM_PER_WHEEL_TICK);
+      // Would the full (boosted) step land below the entry boundary?
+      const fullFactor = dollyFactorForTicks(tApplied, ZOOM_PER_WHEEL_TICK);
       const fullY = hit.y + fullFactor * denom;
       if (fullY < targetY) {
         // Degenerate denominator (near-horizontal anchor ≈ camera height)
@@ -495,7 +539,7 @@ export class WheelSwoopEngine {
         // per-tick path: apply the full step, then post-step y-clamp exactly
         // as `_applyPhase1WheelTick` does, and consume the whole `t`.
         if (Math.abs(denom) <= WHEEL_ANCHOR_DENOM_EPS_METRES) {
-          this._dollyAlongRay(fullFactor, hit, t);
+          this._dollyAlongRay(fullFactor, hit, tApplied);
           if (camera.position.y - groundY < yEntry) {
             camera.position.y = targetY;
             this._zoomUndo = nextZoomUndo(this._zoomUndo, {
@@ -524,10 +568,15 @@ export class WheelSwoopEngine {
             fov: camera.fov
           });
           camera.updateMatrixWorld();
-          return tStar; // remainder (t − tStar) re-dispatches to the swoop
+          // tStar is in boosted (applied) ticks; report raw input ticks so the
+          // remainder re-dispatches to the swoop correctly. (Uses the step's
+          // mean boost — exact enough for this single crossing step.)
+          const tRaw = tStar / boost;
+          this._streakTicks -= Math.abs(t) - tRaw; // only tRaw of t applied
+          return tRaw;
         }
         // Degenerate factor* — fall back to the full step + post-step clamp.
-        this._dollyAlongRay(fullFactor, hit, t);
+        this._dollyAlongRay(fullFactor, hit, tApplied);
         if (camera.position.y - groundY < yEntry) {
           camera.position.y = targetY;
           this._zoomUndo = nextZoomUndo(this._zoomUndo, {
@@ -542,9 +591,38 @@ export class WheelSwoopEngine {
     }
 
     // Interior step (no boundary crossing, or free descent with no ground):
-    // apply the full continuous dolly and consume the whole `t`.
-    this._dollyAlongRay(dollyFactorForTicks(t, ZOOM_PER_WHEEL_TICK), hit, t);
+    // apply the full continuous (boosted) dolly and consume the whole `t`.
+    this._dollyAlongRay(
+      dollyFactorForTicks(tApplied, ZOOM_PER_WHEEL_TICK),
+      hit,
+      tApplied
+    );
     return t;
+  }
+
+  // Boosted dolly ticks for `t` raw ticks in direction `sign`, advancing the
+  // streak (#1966, #1967). A direction flip restarts the streak so the flip
+  // tick itself is unboosted. Integrated over the tick interval so batched
+  // low-fps frames match per-frame input (GH-1858).
+  _boostedTicks(sign, t) {
+    if (sign !== this._streakSign) {
+      this._streakSign = sign;
+      this._streakTicks = 0;
+    }
+    // `t` is signed (negative = zoom-in); the streak counts magnitudes.
+    const mag = Math.abs(t);
+    const start = this._streakTicks;
+    this._streakTicks = start + mag;
+    return (
+      sign *
+      zoomBoostTicks(
+        start,
+        mag,
+        WHEEL_ZOOM_BOOST_DEADBAND_TICKS,
+        WHEEL_ZOOM_BOOST_RAMP_TICKS,
+        WHEEL_ZOOM_BOOST_MAX
+      )
+    );
   }
 
   // Translate the camera along the camera→hit ray by the continuous `factor`
@@ -627,11 +705,21 @@ export class WheelSwoopEngine {
       maxGroundDist: WHEEL_GROUND_REACH_CEILING_METRES
     });
     if (hit.source !== 'mesh' && hit.source !== 'ground') {
-      hit = levelForwardAnchor(
-        camera,
-        FALLBACK_FORWARD_DIST,
-        this._levelAnchorScratch
-      );
+      // Same sky-fallback split as the continuous step (#1966): zoom-out
+      // anchors at ground height, zoom-in keeps the level anchor.
+      hit =
+        sign > 0 && this._frameGroundHit
+          ? groundForwardAnchor(
+              camera,
+              FALLBACK_FORWARD_DIST,
+              this._frameGroundY,
+              this._levelAnchorScratch
+            )
+          : levelForwardAnchor(
+              camera,
+              FALLBACK_FORWARD_DIST,
+              this._levelAnchorScratch
+            );
       if (hit == null) return; // near-vertical at sky → no move
     }
     this._dollyAlongRay(
@@ -962,6 +1050,10 @@ export class WheelSwoopEngine {
     // ascent tilt eases from, which the move has just invalidated. Dropping it
     // makes the next ascent re-capture from the live pose (no tilt snap).
     this._ascentAnchor = null;
+    // ...and the sustained wheel-zoom streak (#1966): a non-wheel move ends
+    // the gesture, so a later scroll restarts at the unboosted base rate.
+    this._streakTicks = 0;
+    this._streakSign = 0;
   }
 
   // Apply a tilt (in degrees from horizontal, positive = looking down)

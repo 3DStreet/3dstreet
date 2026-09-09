@@ -75,7 +75,13 @@ const PRE_BUDGET = 947;
 // 3 new dragGestureController constructor scratch (`_srsOutPos`/`_srsOutLook`/
 // `_srsOutR`, built under the swapped counting THREE) — the intended trade of a
 // one-time bump for a recurring win.
-const POST_BUDGET = 17;
+//
+// 17 → 20 (GH-1967): sustained-scroll boost now applies to zoom-IN, so the
+// 24-detent wheel phase descends into the swoop band, where the pre-existing
+// break-out classifier (`_classifyPhase2Target` → `cursorAnchor.worldPointAt`)
+// allocates one Vector3 per classified tick (3 ticks reach it). Nothing new
+// allocates; the drive now covers a path it previously never reached.
+const POST_BUDGET = 20;
 
 let Controls;
 beforeAll(async () => {
