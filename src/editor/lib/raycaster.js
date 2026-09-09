@@ -111,6 +111,14 @@ export function initRaycaster(inspector) {
     // be stale (the previous click's value). evt.detail.mouseEvent is
     // the originating mouseup; reading from it is order-independent.
     const upEvt = evt && evt.detail && evt.detail.mouseEvent;
+    // MouseEvent.detail is the browser's click count: 1 for a fresh click,
+    // 2+ for the later clicks of a double/triple-click. Only the first click
+    // cascades the selection one level; the second click of a dblclick is
+    // the user asking to focus what that first click selected, not to drill
+    // further (see onDoubleClick).
+    if (upEvt && upEvt.detail > 1) {
+      return;
+    }
     const up = upEvt
       ? new THREE.Vector2(upEvt.clientX, upEvt.clientY)
       : onUpPosition;
@@ -165,17 +173,16 @@ export function initRaycaster(inspector) {
       });
       return;
     }
-    const intersectedEl = getIntersectedEl();
-    if (!intersectedEl) {
+    // The first click of this dblclick already cascaded the selection one
+    // level (street → segment → child); the second click was ignored by
+    // handleClick. Focus the entity that first click selected, so a quick
+    // double-click on a street frames the street rather than drilling into
+    // whatever sits under the cursor.
+    const selected = inspector.selectedEntity;
+    if (!selected) {
       return;
     }
-    // The two click events of a dblclick have already cascaded the selection
-    // two steps down the chain (see getIntersectedEl); resolve once more so a
-    // double-click drills one extra level — Figma's double-click-enters-group
-    // — and select it, keeping the legacy invariant that the focused entity
-    // is the selected one.
-    inspector.selectEntity(intersectedEl);
-    Events.emit('objectfocus', intersectedEl.object3D);
+    Events.emit('objectfocus', selected.object3D);
   }
 
   return {
