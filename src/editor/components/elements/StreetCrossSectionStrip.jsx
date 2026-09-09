@@ -206,8 +206,12 @@ const StreetCrossSectionStrip = ({ entity, variant = 'segment' }) => {
             : (data.elevation || 0) > 0;
           const bg = getSegmentBarColor(data);
           const selected = el === entity;
+          // Boundaries carry a direction in data (their clones' yaw is
+          // derived from it) but it isn't a travel direction, and the
+          // sidebar hides the control for them; hide the arrow too.
           const hasArrow =
-            data.direction === 'inbound' || data.direction === 'outbound';
+            data.type !== 'boundary' &&
+            (data.direction === 'inbound' || data.direction === 'outbound');
           const turns = hasArrow ? getSegmentTurns(el) : null;
           return (
             <div
