@@ -84,6 +84,61 @@ export const BASEMAP_PROVIDERS = {
   }
 };
 
+/**
+ * Vector-tile sources carrying an OSM `building` layer with heights — the
+ * 2.5D buildings layer's data source (replaces the public Overpass mirrors,
+ * which shed load with 504s and rate-limit to 2 slots per IP). Both listed
+ * tilesets follow the OpenMapTiles/Mapbox Streets convention: polygon
+ * features in a `building` layer with `render_height`/`render_min_height`
+ * (MapTiler) or `height`/`min_height` (Mapbox) in meters, plus `hide_3d`
+ * on outlines whose building:parts are delivered separately.
+ */
+export const VECTOR_TILE_SOURCES = {
+  maptiler: {
+    urlTemplate: 'https://api.maptiler.com/tiles/v3/{z}/{x}/{y}.pbf?key={key}',
+    // MapTiler Planet vector tiles end at z14 (~1.9 km at mid-latitudes).
+    maxLevel: 14,
+    buildingLayer: 'building',
+    heightKeys: ['render_height', 'height'],
+    minHeightKeys: ['render_min_height', 'min_height']
+  },
+  mapbox: {
+    urlTemplate:
+      'https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/{z}/{x}/{y}.mvt?access_token={key}',
+    maxLevel: 16,
+    buildingLayer: 'building',
+    heightKeys: ['height'],
+    minHeightKeys: ['min_height']
+  }
+};
+
+/**
+ * Resolve the building vector-tile source for a provider (same key
+ * handling as resolveBasemapSource; no dev fallback exists — without a
+ * key there is no buildings source and the caller disables the layer).
+ *
+ * @returns {{ urlTemplate, maxLevel, buildingLayer, heightKeys,
+ *   minHeightKeys, attribution, providerName }|null}
+ */
+export function resolveVectorTileSource({
+  provider = DEFAULT_BASEMAP_PROVIDER,
+  keys = {}
+} = {}) {
+  const entry = BASEMAP_PROVIDERS[provider];
+  const source = VECTOR_TILE_SOURCES[provider];
+  const key = keys[provider];
+  if (!entry || !source || !key) return null;
+  return {
+    ...source,
+    urlTemplate: source.urlTemplate.replace(
+      /{\s*key\s*}/g,
+      encodeURIComponent(key)
+    ),
+    attribution: entry.attribution,
+    providerName: entry.name
+  };
+}
+
 export const DEFAULT_BASEMAP_PROVIDER = 'maptiler';
 export const DEFAULT_BASEMAP_STYLE = 'hybrid';
 export const BASEMAP_STYLES = ['hybrid', 'satellite', 'streets'];

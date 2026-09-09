@@ -3,6 +3,7 @@ import { firebaseConfig } from '@shared/services/firebase.js';
 import useStore from '../store.js';
 import {
   resolveBasemapSource,
+  resolveVectorTileSource,
   DEFAULT_BASEMAP_STYLE,
   BASEMAP_STYLES
 } from '../tested/basemap-providers.js';
@@ -281,6 +282,18 @@ AFRAME.registerComponent('street-geo', {
     }
     return source;
   },
+  // Buildings come from the basemap provider's vector tiles (no dev
+  // fallback: without a key the 2.5D layer renders ground only).
+  resolveBuildingSource: function () {
+    const source = resolveVectorTileSource({ keys: BASEMAP_KEYS });
+    if (!source) {
+      console.warn(
+        'street-geo: no basemap provider key configured ' +
+          '(set MAPTILER_API_KEY in config/.env.*) — 2.5D buildings disabled.'
+      );
+    }
+    return source;
+  },
   tiles2dCreate: function () {
     const data = this.data;
     const el = this.el;
@@ -386,10 +399,13 @@ AFRAME.registerComponent('street-geo', {
       document.getElementById('map-copyright').textContent = source.attribution;
     }
 
-    // Buildings: worker-driven Overpass extrusion (`osm-buildings`,
-    // #1962 step F) — replaces osm4vr's main-thread `osm-geojson`. The
-    // component generates geometry directly in the scene frame, so no
-    // element rotation, and it handles Overpass failures itself (#1861).
+    // Buildings: worker-driven extrusion of the provider's vector-tile
+    // building layer (`osm-buildings`, #1962 step F) — replaces osm4vr's
+    // main-thread `osm-geojson`. The component generates geometry directly
+    // in the scene frame, so no element rotation, and it handles tile
+    // failures itself (#1861).
+    const buildingSource = this.resolveBuildingSource();
+    if (!buildingSource) return;
     const osm3dBuildingElement = document.createElement('a-entity');
     osm3dBuildingElement.setAttribute(
       'data-layer-name',
@@ -398,7 +414,12 @@ AFRAME.registerComponent('street-geo', {
     osm3dBuildingElement.setAttribute('osm-buildings', {
       latitude: data.latitude,
       longitude: data.longitude,
-      radiusM: 1000
+      radiusM: 1000,
+      zoom: buildingSource.maxLevel,
+      urlTemplate: buildingSource.urlTemplate,
+      buildingLayer: buildingSource.buildingLayer,
+      heightKeys: buildingSource.heightKeys,
+      minHeightKeys: buildingSource.minHeightKeys
     });
     osm3dBuildingElement.setAttribute('data-no-pause', '');
     osm3dBuildingElement.classList.add('autocreated');

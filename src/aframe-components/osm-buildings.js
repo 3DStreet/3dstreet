@@ -5,17 +5,26 @@ import {
   POLES_M
 } from '../tested/osm-tile-math.js';
 import { BuildingTileClient } from '../osm/building-tile-client.js';
+import { VECTOR_TILE_SOURCES } from '../tested/basemap-providers.js';
 
 const THREE = AFRAME.THREE;
 
-// Camera-following scan cadence. Tiles are ~300 m at z17 — twice a second
+// Camera-following scan cadence. Tiles are ~2 km at z14 — twice a second
 // is plenty to stay ahead of any editor navigation.
 const SCAN_INTERVAL_MS = 500;
 
 // Per-tile retry backoff after a failed load, then a long-cycle retry so a
-// recovered Overpass eventually heals the scene without a reload (#1861).
+// recovered tile service eventually heals the scene without a reload
+// (#1861).
 const RETRY_DELAYS_MS = [5000, 20000, 60000];
 const LONG_RETRY_MS = 5 * 60 * 1000;
+
+// The load radius is centered on where the camera is LOOKING on the
+// ground, not the point beneath it: a high, tilted editor camera sits
+// kilometers from the street it frames, and centering on the nadir
+// unloaded the very neighborhood on screen. Beyond this ray distance (or
+// when looking at the sky) fall back to the nadir.
+const MAX_FOCUS_DISTANCE_M = 5000;
 
 // osm4vr's building color, kept for visual continuity.
 const BUILDING_COLOR = 0xaabbcc;
@@ -25,9 +34,10 @@ const BUILDING_COLOR = 0xaabbcc;
  * osm4vr's `osm-geojson`.
  *
  * A Web Worker (src/osm/building-tiles.worker.js) does the whole per-tile
- * pipeline off the main thread: IndexedDB-cached Overpass fetch with
- * endpoint rotation and backoff, footprint extraction, earcut
- * triangulation. This component only tracks the camera, decides which
+ * pipeline off the main thread: IndexedDB-cached vector-tile fetch from a
+ * commercial tileset (`urlTemplate`, resolved by street-geo from the
+ * basemap provider registry), protobuf decode, footprint extraction,
+ * earcut triangulation. This component only tracks the camera, decides which
  * tiles to want (nearest-first within `radiusM`, unloaded beyond 1.5×),
  * and wraps returned arrays into one merged mesh per tile via
  * setObject3D — which `bvh-geometry` on the same entity picks up for
@@ -46,10 +56,23 @@ AFRAME.registerComponent('osm-buildings', {
     latitude: { type: 'number', default: 0 },
     longitude: { type: 'number', default: 0 },
     radiusM: { type: 'number', default: 1000 },
-    zoom: { type: 'number', default: 17 },
-    // Parallel tile loads. Overpass rate-limits aggressively; two slots
-    // keeps a full neighborhood load polite but still pipelined.
-    maxConcurrent: { type: 'number', default: 2 }
+    // MapTiler Planet vector tiles end at z14 (~1.9 km at mid-latitudes):
+    // a 1 km radius is a handful of requests instead of ~55 at z17.
+    zoom: { type: 'number', default: 14 },
+    // Vector tile URL template ({z}/{x}/{y}, key already substituted) and
+    // the provider's building-layer conventions; see VECTOR_TILE_SOURCES.
+    urlTemplate: { type: 'string', default: '' },
+    buildingLayer: { type: 'string', default: 'building' },
+    heightKeys: {
+      type: 'array',
+      default: VECTOR_TILE_SOURCES.maptiler.heightKeys
+    },
+    minHeightKeys: {
+      type: 'array',
+      default: VECTOR_TILE_SOURCES.maptiler.minHeightKeys
+    },
+    // Parallel tile loads against a CDN-backed tileset.
+    maxConcurrent: { type: 'number', default: 4 }
   },
 
   init: function () {
@@ -60,6 +83,8 @@ AFRAME.registerComponent('osm-buildings', {
     this.notifiedFailure = false;
     this.material = new THREE.MeshBasicMaterial({ color: BUILDING_COLOR });
     this._camWorld = new THREE.Vector3();
+    this._camDir = new THREE.Vector3();
+    this._focus = new THREE.Vector3();
     this.tick = AFRAME.utils.throttleTick(this.tick, SCAN_INTERVAL_MS, this);
   },
 
@@ -68,9 +93,10 @@ AFRAME.registerComponent('osm-buildings', {
       oldData.latitude !== undefined &&
       (oldData.latitude !== this.data.latitude ||
         oldData.longitude !== this.data.longitude ||
-        oldData.zoom !== this.data.zoom)
+        oldData.zoom !== this.data.zoom ||
+        oldData.urlTemplate !== this.data.urlTemplate)
     ) {
-      // New origin (or tiling) invalidates every loaded tile's geometry.
+      // New origin, tiling or source invalidates every loaded tile.
       this.reset();
     }
   },
@@ -97,23 +123,45 @@ AFRAME.registerComponent('osm-buildings', {
 
   ensureClient: function () {
     if (!this.client) {
+      const { urlTemplate, buildingLayer, heightKeys, minHeightKeys } =
+        this.data;
       this.client = new BuildingTileClient({
         originLat: this.data.latitude,
-        originLon: this.data.longitude
+        originLon: this.data.longitude,
+        source: { urlTemplate, buildingLayer, heightKeys, minHeightKeys }
       });
     }
     return this.client;
   },
 
-  // Camera world position → geographic position, via this entity's local
-  // frame (x = north meters, z = east meters at the configured origin).
-  cameraLatLon: function () {
+  // Ground point the camera is looking at (its view ray hitting the
+  // entity-local y = 0 plane), or the point beneath it when the ray misses
+  // or lands beyond MAX_FOCUS_DISTANCE_M. Entity-local meters.
+  focusPoint: function () {
     const camera = this.el.sceneEl.camera;
     if (!camera) return null;
-    camera.getWorldPosition(this._camWorld);
-    this.el.object3D.worldToLocal(this._camWorld);
-    const northM = this._camWorld.x;
-    const eastM = this._camWorld.z;
+    const pos = camera.getWorldPosition(this._camWorld);
+    const dir = camera.getWorldDirection(this._camDir);
+    this._focus.copy(pos).add(dir);
+    // Transform both ray points into the entity frame, then re-derive the
+    // direction (worldToLocal handles the matrix inversion for us).
+    this.el.object3D.worldToLocal(pos);
+    this.el.object3D.worldToLocal(this._focus);
+    dir.copy(this._focus).sub(pos);
+    const t = dir.y < 0 ? -pos.y / dir.y : Infinity;
+    if (Number.isFinite(t) && t * dir.length() <= MAX_FOCUS_DISTANCE_M) {
+      return this._focus.copy(pos).addScaledVector(dir, t);
+    }
+    return this._focus.set(pos.x, 0, pos.z);
+  },
+
+  // Focus point → geographic position, via this entity's local frame
+  // (x = north meters, z = east meters at the configured origin).
+  cameraLatLon: function () {
+    const focus = this.focusPoint();
+    if (!focus) return null;
+    const northM = focus.x;
+    const eastM = focus.z;
     const lat = this.data.latitude + (northM / POLES_M) * 360;
     const cosLat = Math.cos((this.data.latitude * Math.PI) / 180);
     const lon = this.data.longitude + (eastM / (EQUATOR_M * cosLat)) * 360;
@@ -202,8 +250,8 @@ AFRAME.registerComponent('osm-buildings', {
       this.notifiedFailure = true;
       console.warn('osm-buildings: tile loads failing', key, err?.message);
       window.STREET?.notify?.warningMessage?.(
-        '3D buildings are unavailable right now (OpenStreetMap data service ' +
-          'timeout). The rest of the scene still works; buildings will ' +
+        '3D buildings are unavailable right now (building tile service ' +
+          'error). The rest of the scene still works; buildings will ' +
           'appear automatically if the service recovers.'
       );
     }

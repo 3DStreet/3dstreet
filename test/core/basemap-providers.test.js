@@ -16,7 +16,8 @@ import {
   BASEMAP_STYLES,
   DEFAULT_BASEMAP_PROVIDER,
   DEFAULT_BASEMAP_STYLE,
-  resolveBasemapSource
+  resolveBasemapSource,
+  resolveVectorTileSource
 } from '../../src/tested/basemap-providers.js';
 
 describe('resolveBasemapSource', () => {
@@ -89,5 +90,35 @@ describe('resolveBasemapSource', () => {
       BASEMAP_PROVIDERS[DEFAULT_BASEMAP_PROVIDER].styles[DEFAULT_BASEMAP_STYLE]
     );
     assert.ok(BASEMAP_STYLES.includes(DEFAULT_BASEMAP_STYLE));
+  });
+});
+
+describe('resolveVectorTileSource', () => {
+  it('resolves the MapTiler building tileset with the key substituted', () => {
+    const source = resolveVectorTileSource({ keys: { maptiler: 'a&b' } });
+    assert.ok(source);
+    assert.ok(source.urlTemplate.includes('key=a%26b'));
+    assert.ok(source.urlTemplate.includes('{z}/{x}/{y}.pbf'));
+    assert.strictEqual(source.maxLevel, 14);
+    assert.strictEqual(source.buildingLayer, 'building');
+    assert.deepStrictEqual(source.heightKeys, ['render_height', 'height']);
+    assert.strictEqual(source.providerName, 'MapTiler');
+  });
+
+  it('returns null without a key (no dev fallback for buildings)', () => {
+    assert.strictEqual(resolveVectorTileSource({ keys: {} }), null);
+    assert.strictEqual(
+      resolveVectorTileSource({ provider: 'nope', keys: { nope: 'k' } }),
+      null
+    );
+  });
+
+  it('resolves the Mapbox tileset with its own height keys', () => {
+    const source = resolveVectorTileSource({
+      provider: 'mapbox',
+      keys: { mapbox: 'tok' }
+    });
+    assert.ok(source.urlTemplate.includes('access_token=tok'));
+    assert.deepStrictEqual(source.heightKeys, ['height']);
   });
 });

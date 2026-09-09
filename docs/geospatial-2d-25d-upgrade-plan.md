@@ -49,27 +49,47 @@ paying for a second vendor (Cesium Ion) that only covers buildings.
 Step F is implemented — osm4vr is fully retired:
 
 - `src/tested/osm-tile-math.js` + `src/tested/osm-building-geometry.js` —
-  pure, unit-tested: slippy tile math, and Overpass `out geom` elements →
+  pure, unit-tested: slippy tile math, and Overpass-shaped elements →
   extruded indexed geometry (earcut; osm4vr's height heuristics preserved;
   multipolygon holes; centroid-based tile ownership so border buildings
   render exactly once and unload cleanly).
+- **Data source (2026-09-09 swap, #1964 testing):** the provider's vector
+  tiles, not Overpass. The public Overpass mirrors rate-limit to two slots
+  per IP and shed load with 504s (measured: 36–40 s to a "server too busy"
+  504 on kumi.systems, immediate refusal on overpass-api.de), so a 1 km
+  radius of ~55 z17 tiles took minutes and often never finished.
+  `VECTOR_TILE_SOURCES` + `resolveVectorTileSource` in
+  `src/tested/basemap-providers.js` map the MapTiler Planet (`tiles/v3`,
+  z14 max, ~1.9 km tiles, `render_height`/`render_min_height`) and Mapbox
+  Streets v8 building layers; `src/tested/vector-tile-buildings.js`
+  (pbf + @mapbox/vector-tile, unit-tested) decodes the `building` layer
+  into the same Overpass-shaped elements so the extrusion module is
+  unchanged. `hide_3d` outlines are skipped (their parts ship separately —
+  the MapLibre convention). Without a MapTiler key the 2.5D layer renders
+  ground only (no dev fallback for buildings).
 - `src/osm/overpass-fetch.js` — endpoint rotation (overpass-api.de +
-  kumi.systems) with timeout/backoff; query-agnostic, **the module #1930's
-  centerline import should reuse**.
+  kumi.systems) with timeout/backoff; query-agnostic. No longer used by
+  the buildings layer; kept for **#1930's centerline import**, which should
+  expect the same public-mirror flakiness.
 - `src/osm/overpass-cache.js` — IndexedDB tile cache (1-week TTL, worker-
   compatible, degrades to network-only when storage is unavailable);
-  shared store, per-feature key prefixes.
+  shared store, per-feature key prefixes (buildings cache decoded elements
+  under `buildings/v2/`, which also keeps MapTiler request billing down).
 - `src/osm/building-tiles.worker.js` + `building-tile-client.js` — the
-  whole per-tile pipeline (cached fetch, parse, triangulate) runs in a Web
+  whole per-tile pipeline (cached fetch, decode, triangulate) runs in a Web
   Worker; the main thread receives transferable arrays. NOTE: worker code
   must never import `three` (webpack externalizes it to the A-Frame page
   global, absent in workers) — geometry stays raw arrays until the
   component wraps it.
 - `src/aframe-components/osm-buildings.js` — camera-following tile manager
-  (nearest-first within radius, 1.5× unload hysteresis, 2 concurrent
+  (nearest-first within radius, 1.5× unload hysteresis, 4 concurrent
   loads), one merged mesh per tile via setObject3D (bvh-geometry picks it
   up), and the #1861 fix: failed tiles retry with backoff, surface one
   user-facing notice when exhausted, and keep retrying on a long cycle.
+  The radius is centered on the camera's **look-at ground point** (view
+  ray ∩ entity y=0, nadir fallback beyond 5 km or when looking up): a
+  high tilted editor camera sits kilometers from the street it frames,
+  and centering on the nadir unloaded the neighborhood on screen.
 
 Browser-verified with Overpass fixtures: buildings extrude correctly
 (including a multipolygon courtyard), neighbor tiles stay empty under

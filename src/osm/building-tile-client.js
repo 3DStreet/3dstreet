@@ -5,10 +5,18 @@
  */
 
 export class BuildingTileClient {
-  constructor({ originLat, originLon, endpoints } = {}) {
+  /**
+   * @param {Object} options
+   * @param {number} options.originLat scene geo anchor
+   * @param {number} options.originLon
+   * @param {Object} options.source resolved vector-tile source
+   *   ({ urlTemplate, buildingLayer, heightKeys, minHeightKeys } — see
+   *   resolveVectorTileSource in basemap-providers.js)
+   */
+  constructor({ originLat, originLon, source } = {}) {
     this.originLat = originLat;
     this.originLon = originLon;
-    this.endpoints = endpoints;
+    this.source = source || {};
     this.pending = new Map(); // key → { resolve, reject }
     this.worker = null;
   }
@@ -58,7 +66,10 @@ export class BuildingTileClient {
       y,
       originLat: this.originLat,
       originLon: this.originLon,
-      endpoints: this.endpoints
+      urlTemplate: this.source.urlTemplate,
+      buildingLayer: this.source.buildingLayer,
+      heightKeys: this.source.heightKeys,
+      minHeightKeys: this.source.minHeightKeys
     });
     return promise;
   }
