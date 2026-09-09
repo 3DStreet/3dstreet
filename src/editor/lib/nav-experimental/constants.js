@@ -267,8 +267,18 @@ export const FALLBACK_FORWARD_DIST = 30;
 // — it falls back to the lower bound). The lower bound is the live-tunable
 // knob (`wheelZoomLateralCapLowerBoundMetres`); the coefficient is a constant
 // re-tuned here.
+//
+// FEEL EXPERIMENT (#1941) — revert to 0.1 if zooming lurches at shallow tilt.
+// The cap binds when tan(tilt) < ZOOM_PER_WHEEL_TICK / COEFF, and once it
+// binds the effective zoom rate degrades from the flat 5%/detent to
+// (2 × COEFF)·tan(tilt) — at 0.1 that knee sat at ~27° tilt, so ordinary
+// angled views zoomed up to ~6× slower than plan view (the reported bug:
+// plan view fine, angled views variable/slow). 0.25 moves the knee down to
+// ~11°, keeping the flat 5% rate through normal working tilts while still
+// bounding the grazing-ray lurch the cap exists for. Regression coverage:
+// ExperimentalControls.wheelZoomTiltRate.test.js.
 export const WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES = 2; // 1–2; feel
-export const WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF = 0.1;
+export const WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF = 0.25;
 
 // Per-caller far-ground reach ceiling for the wheel-zoom path (TH-18).
 // Far above any real scene (1000 km) but well short of float overflow, so
