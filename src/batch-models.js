@@ -1367,7 +1367,7 @@ export async function batchModels(sceneEl) {
     await new Promise((resolve) => setTimeout(resolve));
   }
 
-  const gltfEntities = Array.from(rootEl.querySelectorAll(BATCHABLE_SELECTOR));
+  let gltfEntities = Array.from(rootEl.querySelectorAll(BATCHABLE_SELECTOR));
   markDeferredLoads(gltfEntities);
 
   // Grouping decided: release every held gltf-model. Non-deferred ones load now;
@@ -1434,6 +1434,22 @@ export async function batchModels(sceneEl) {
   // matrices we read below (for member world matrices and the reference model's
   // sub-mesh local matrices) are correct.
   sceneEl.object3D.updateWorldMatrix(true, true);
+
+  // Drop entities that left the DOM while we awaited the model loads. A managed-street
+  // re-layout during the pass — e.g. a path curve resolving late on a 2nd+ scene load — tears
+  // down and re-mints its generated clones. The snapshot's originals are then detached, often
+  // before they ever loaded, so no component remove() (and no removeMember) will ever run for
+  // them; grouping them anyway leaves ghost slots at their stale straight-space matrices that
+  // raycast to parentless entities (the sidebar crashes on `parentElement.getAttribute`). The
+  // replacements were minted after the grouping gate, so they load individually and the
+  // post-pass listeners pick them up.
+  const detachedCount = gltfEntities.length;
+  gltfEntities = gltfEntities.filter((el) => el.isConnected);
+  if (gltfEntities.length !== detachedCount) {
+    console.log(
+      `[batch-models] skipped ${detachedCount - gltfEntities.length} entit(y/ies) detached during the pass`
+    );
+  }
 
   // Group by key. Missing-key entities have no model to load — just log + status, no BVH.
   const groups = new Map();
