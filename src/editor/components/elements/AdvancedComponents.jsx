@@ -5,8 +5,12 @@ import DEFAULT_COMPONENTS from './DefaultComponents';
 import { isGeneratorComponent } from '../../lib/featuredComponents';
 import { Button } from '../elements';
 import posthog from 'posthog-js';
-const AdvancedComponents = ({ entity }) => {
+// `show` (with `hideButton`) lets a parent own the toggle — the segment
+// panel's footer "Advanced" button drives this list without the built-in
+// Show/Hide button. Uncontrolled default behavior is unchanged.
+const AdvancedComponents = ({ entity, show, hideButton }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const isOpen = show !== undefined ? show : showAdvanced;
 
   const components = entity ? entity.components : {};
   const definedComponents = Object.keys(components).filter((key) => {
@@ -24,14 +28,16 @@ const AdvancedComponents = ({ entity }) => {
 
   return (
     <div className="advanced-components">
-      <div className="details">
-        <div className="propertyRow">
-          <Button variant="toolbtn" onClick={toggleAdvanced}>
-            {showAdvanced ? 'Hide Advanced' : 'Show Advanced'}
-          </Button>
+      {!hideButton && (
+        <div className="details">
+          <div className="propertyRow">
+            <Button variant="toolbtn" onClick={toggleAdvanced}>
+              {showAdvanced ? 'Hide Advanced' : 'Show Advanced'}
+            </Button>
+          </div>
         </div>
-      </div>
-      {showAdvanced &&
+      )}
+      {isOpen &&
         definedComponents.sort().map((key) => (
           <div key={key} className={'details'}>
             <Component
@@ -47,7 +53,9 @@ const AdvancedComponents = ({ entity }) => {
 };
 
 AdvancedComponents.propTypes = {
-  entity: PropTypes.object
+  entity: PropTypes.object,
+  show: PropTypes.bool,
+  hideButton: PropTypes.bool
 };
 
 export default AdvancedComponents;

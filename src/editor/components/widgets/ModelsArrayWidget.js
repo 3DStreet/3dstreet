@@ -9,7 +9,11 @@ export default class ModelsArrayWidget extends React.Component {
   static propTypes = {
     entity: PropTypes.object.isRequired,
     componentname: PropTypes.string.isRequired,
-    modelsArray: PropTypes.array
+    modelsArray: PropTypes.array,
+    // Collapse selected-model chips beyond this count into one "+N" chip
+    // (opening the menu still lists and removes every model). Off by default.
+    maxChips: PropTypes.number,
+    label: PropTypes.string
   };
 
   constructor(props) {
@@ -95,6 +99,21 @@ export default class ModelsArrayWidget extends React.Component {
       }
     };
 
+    const maxChips = this.props.maxChips;
+    const CollapsedMultiValue = (props) => {
+      if (props.index < maxChips) {
+        return <components.MultiValue {...props} />;
+      }
+      if (props.index === maxChips) {
+        return (
+          <span className="chip-overflow">
+            +{props.getValue().length - maxChips}
+          </span>
+        );
+      }
+      return null;
+    };
+
     const CustomGroupHeading = (props) => {
       return (
         <div
@@ -109,7 +128,7 @@ export default class ModelsArrayWidget extends React.Component {
     return (
       <div className="mixinOptions">
         <div className="propertyRow">
-          <span className="text">Models</span>
+          <span className="text">{this.props.label || 'Models'}</span>
           <span className="mixinValue">
             <Select
               id="mixinSelect"
@@ -118,7 +137,8 @@ export default class ModelsArrayWidget extends React.Component {
               components={{
                 GroupHeading: CustomGroupHeading,
                 DropdownIndicator: DropdownArrowIcon,
-                IndicatorSeparator: () => null
+                IndicatorSeparator: () => null,
+                ...(maxChips ? { MultiValue: CollapsedMultiValue } : {})
               }}
               formatGroupLabel={formatGroupLabel}
               isMulti={true}

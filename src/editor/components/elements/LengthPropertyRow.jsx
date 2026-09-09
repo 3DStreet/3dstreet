@@ -9,8 +9,10 @@ import useStore from '@/store.js';
 
 const M_TO_FT = 3.28084;
 
-const toDisplay = (m, units) => (units === 'imperial' ? m * M_TO_FT : m);
-const toMetres = (v, units) => (units === 'imperial' ? v / M_TO_FT : v);
+// Exported for other length-editing controls (segment panel width/slope
+// fields) so every metre-backed field converts identically.
+export const toDisplay = (m, units) => (units === 'imperial' ? m * M_TO_FT : m);
+export const toMetres = (v, units) => (units === 'imperial' ? v / M_TO_FT : v);
 
 const LengthPropertyRow = ({
   entity,
@@ -28,9 +30,6 @@ const LengthPropertyRow = ({
   const onChange = (_name, displayValue) => {
     // Round after converting so a typed "10 ft" doesn't store 3.0480001.
     const metres = parseFloat(toMetres(displayValue, units).toFixed(4));
-    // NumberWidget commits its 2-decimal display on blur even when nothing
-    // was typed; don't let a click-and-blur round-trip rewrite the value.
-    if (Math.abs(metres - value) < 1e-3) return;
     onValueChange?.(name, metres);
     AFRAME.INSPECTOR.execute('entityupdate', {
       entity,
