@@ -12,7 +12,7 @@
  *                         time — users trickle in at the true pace)
  *   ?replay=<url.json> -> fetches that manifest URL
  *   &scale=N           -> playback speed (default 1× = real time; e.g. &scale=4)
- *   &maps=<type>       -> geo basemap (default google3d; mapbox2d|osm3d|none)
+ *   &maps=<type>       -> geo basemap (default google3d; tiles2d|osm3d|none)
  *
  * When present, it replaces the default scene's street with a managed-street
  * (a 60ft cross-section: sidewalks, bike lanes, drive lanes) that carries the
@@ -103,7 +103,7 @@ import { encodeManifest } from './manifest-codec.js';
     // Place the scene at the sensor's real-world location (from the manifest's
     // deployment metadata) so there's map context to align the street against.
     // Map imagery needs the same API key the app's normal Geo feature uses;
-    // override the layer with &maps=mapbox2d|osm3d|none (default google3d).
+    // override the layer with &maps=tiles2d|osm3d|none (default google3d).
     const dep = manifest?.meta?.deployment;
     if (dep && Number.isFinite(dep.lat) && Number.isFinite(dep.lon)) {
       const maps = params.get('maps') || 'google3d';

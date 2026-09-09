@@ -2,17 +2,15 @@
 
 ## Street-geo component
 
-The components accept longitude, latitude, elevation and an array of map types to indicate which child maps to spawn. Possible values for maps array: 'mapbox2d', 'google3d'.
+The component accepts longitude, latitude, elevation and a map type indicating which child map to spawn. Possible `maps` values: `google3d` (Google Photorealistic 3D Tiles via `google-maps-aerial`), `tiles2d` (tiled 2D basemap via `tiled-basemap` + the provider registry in `src/tested/basemap-providers.js`; style via `basemapStyle`), `osm3d` (2.5D: `tiled-basemap` streets ground + worker-driven Overpass extruded buildings via `osm-buildings`), `none`. `mapbox2d` is a deprecated alias for `tiles2d`: saved scenes migrate at load (json-utils_1.1.js) and live values render as tiles2d.
 
-The component assigns the class 'autocreated' to its child elements. All attribute values can be changed at runtime and the component will update the child elements (map entities) and their corresponding parameters. The 'elevation' attribute is only used for the 'google3d' tiles element for now.
+The component assigns the class 'autocreated' to its child elements. All attribute values can be changed at runtime and the component will update the child elements (map entities) and their corresponding parameters. The elevation (`ellipsoidalHeight`) is only used for the 'google3d' tiles element for now.
 
 To add support for a new map type, you need to take the following steps:
 
-- add map name to this.mapTypes variable
+- add map name to the `maps` schema `oneOf` list (this.mapTypes derives from it)
 - add creating function with name: `<mapName>Create`
 - add update function with name: `<mapName>Update`
-
-It is assumed that the appropriate libraries for all map types are loaded in advance.
 
 ## Managed Street — segment lifecycle and event flow
 
