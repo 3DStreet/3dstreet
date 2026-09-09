@@ -83,7 +83,9 @@ export default class SelectWidget extends React.Component {
         onChange={this.onChange}
         menuPosition="fixed"
         menuPlacement="auto"
-        minMenuHeight={300}
+        // Let the menu shrink (and scroll) in a short panel rather than
+        // refuse to fit either way and get clipped.
+        minMenuHeight={140}
         // The menu is fixed-positioned, so it can grow past the control:
         // let it size to its longest option (capped) instead of cramming
         // "dashed-yellow-double" into a 1fr compact-row cell.

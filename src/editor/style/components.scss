@@ -1524,7 +1524,11 @@ a.help-linkhover {
   .segment-sticky {
     position: sticky;
     top: 0;
-    z-index: 10;
+    /* 1, not 10: plain rows scrolling under it are z-index auto, so 1 is
+       enough to cover them, while react-select menus (z-index 1, later in
+       the DOM) still paint over the strip when they open upward. A higher
+       value here would sit on top of every dropdown in the panel. */
+    z-index: 1;
     background: variables.$darkgray-200;
   }
 
