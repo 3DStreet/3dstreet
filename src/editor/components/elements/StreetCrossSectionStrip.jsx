@@ -50,12 +50,18 @@ const streetDisplayName = (streetEl) => {
     : name;
 };
 
-const StreetCrossSectionStrip = ({ entity }) => {
+// `entity` may be a street-segment (segment panel: caption above with the
+// street name + "Edit street", selected bar highlighted) or the
+// managed-street itself (street panel, variant="street": no selection
+// highlight, caption below the strip instead).
+const StreetCrossSectionStrip = ({ entity, variant = 'segment' }) => {
   const intl = useIntl();
   const units = useStore((s) => s.unitsPreference) || 'metric';
   const [, forceRender] = useReducer((t) => t + 1, 0);
 
-  const streetEl = entity?.parentNode;
+  const streetEl = entity?.components?.['managed-street']
+    ? entity
+    : entity?.parentNode;
   const isManagedStreetChild = !!streetEl?.components?.['managed-street'];
 
   // The strip mirrors the whole street, so it must repaint on any segment
@@ -97,43 +103,45 @@ const StreetCrossSectionStrip = ({ entity }) => {
     if (el !== entity) AFRAME.INSPECTOR.selectEntity(el);
   };
 
+  const summary = intl.formatMessage(
+    {
+      id: 'segmentSidebar.stripSummary',
+      defaultMessage: '{count, plural, one {# segment} other {# segments}}'
+    },
+    { count: segments.length }
+  );
+
   return (
     <div className="cross-section">
-      <div className="cross-section-caption">
-        <span className="cross-section-summary">
-          {streetDisplayName(streetEl)} ·{' '}
-          {intl.formatMessage(
-            {
-              id: 'segmentSidebar.stripSummary',
-              defaultMessage:
-                '{count, plural, one {# segment} other {# segments}}'
-            },
-            { count: segments.length }
-          )}{' '}
-          · {formatLength(totalWidth)}
-        </span>
-        <button
-          type="button"
-          className="cross-section-edit-street"
-          onClick={() => AFRAME.INSPECTOR.selectEntity(streetEl)}
-        >
-          {intl.formatMessage({
-            id: 'segmentSidebar.editStreet',
-            defaultMessage: 'Edit street'
-          })}
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinecap="round"
+      {variant === 'segment' && (
+        <div className="cross-section-caption">
+          <span className="cross-section-summary">
+            {streetDisplayName(streetEl)} · {summary} ·{' '}
+            {formatLength(totalWidth)}
+          </span>
+          <button
+            type="button"
+            className="cross-section-edit-street"
+            onClick={() => AFRAME.INSPECTOR.selectEntity(streetEl)}
           >
-            <path d="M7 17L17 7M9 7h8v8" />
-          </svg>
-        </button>
-      </div>
+            {intl.formatMessage({
+              id: 'segmentSidebar.editStreet',
+              defaultMessage: 'Edit street'
+            })}
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+            >
+              <path d="M7 17L17 7M9 7h8v8" />
+            </svg>
+          </button>
+        </div>
+      )}
       <div className="cross-section-strip">
         {segments.map((el, i) => {
           const data = el.getAttribute('street-segment') || {};
@@ -170,12 +178,25 @@ const StreetCrossSectionStrip = ({ entity }) => {
           );
         })}
       </div>
+      {variant === 'street' && (
+        <div className="cross-section-footnote">
+          <span className="cross-section-footnote-stats">
+            {summary} · {formatLength(totalWidth)}
+          </span>{' '}
+          ·{' '}
+          {intl.formatMessage({
+            id: 'managedStreetSidebar.tapLane',
+            defaultMessage: 'Tap a lane to edit it'
+          })}
+        </div>
+      )}
     </div>
   );
 };
 
 StreetCrossSectionStrip.propTypes = {
-  entity: PropTypes.object.isRequired
+  entity: PropTypes.object.isRequired,
+  variant: PropTypes.oneOf(['segment', 'street'])
 };
 
 export default StreetCrossSectionStrip;

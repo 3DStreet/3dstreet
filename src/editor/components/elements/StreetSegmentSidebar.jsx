@@ -49,7 +49,15 @@ import {
 
 const componentName = 'street-segment';
 
-const IconButton = ({ title, disabled, onClick, onLongPress, children }) => (
+// 28px icon action button used in the segment and managed-street panel
+// headers (exported for ManagedStreetSidebar).
+export const IconButton = ({
+  title,
+  disabled,
+  onClick,
+  onLongPress,
+  children
+}) => (
   <Button
     variant="custom"
     className="segment-action-btn"

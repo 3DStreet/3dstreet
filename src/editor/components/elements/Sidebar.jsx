@@ -107,30 +107,32 @@ export default class Sidebar extends React.Component {
     // gets the inline rename on the title label (see canRenameEntity).
     const canRename = canRenameEntity(entity);
 
-    // The condensed segment panel (#1753) carries the entity label inside
-    // its own header row, so the panel-level title would duplicate it.
+    // The condensed segment and managed-street panels (#1753) carry the
+    // entity label inside their own sticky header rows, so the panel-level
+    // title would duplicate it.
     const isStreetSegment = !!entity.getAttribute('street-segment');
+    const hasOwnHeader =
+      isStreetSegment || !!entity.getAttribute('managed-street');
 
     return (
       <div className="properties-panel" tabIndex="0">
         <ShapeDrawInstructions />
-        {!isStreetSegment && (
+        {!hasOwnHeader && (
           <div id="layers-title">
             <div className="layersBlock">
               <EntityLabel entity={entity} editable={canRename} />
             </div>
           </div>
         )}
-        {/* For segments the sticky strip+header must stick to the panel's
-            real scroll pane (RightPanel's tab pane), so this inner .scroll
-            wrapper must not be a scrollport of its own. */}
-        <div
-          className={isStreetSegment ? 'scroll scroll-passthrough' : 'scroll'}
-        >
+        {/* Sticky panel headers (the entity title row, and the segment /
+            street panels' strip+header) must stick to the panel's real
+            scroll pane (RightPanel's tab pane), so this inner .scroll
+            wrapper must never be a scrollport of its own. */}
+        <div className="scroll scroll-passthrough">
           {entity.id !== 'reference-layers' &&
           entity.id !== 'environment' &&
           entity.id !== 'street-container' &&
-          !entity.getAttribute('street-segment') ? (
+          !hasOwnHeader ? (
             <>
               {entity.classList.contains('autocreated') && (
                 <div className="sidepanelContent">
@@ -218,9 +220,6 @@ export default class Sidebar extends React.Component {
               {entity.getAttribute('intersection') && (
                 <IntersectionSidebar entity={entity} />
               )}
-              {entity.getAttribute('managed-street') && (
-                <ManagedStreetSidebar entity={entity} />
-              )}
               {entity.getAttribute('drive-controls') && (
                 <>
                   <DriveControlsSidebar entity={entity} />
@@ -254,10 +253,13 @@ export default class Sidebar extends React.Component {
             </>
           ) : (
             <>
-              {/* The condensed segment panel (#1753) carries its own
-                  Add generator / Advanced footer. */}
+              {/* The condensed segment and managed-street panels (#1753)
+                  carry their own header, actions and Advanced footer. */}
               {entity.getAttribute('street-segment') && (
                 <StreetSegmentSidebar entity={entity} />
+              )}
+              {entity.getAttribute('managed-street') && (
+                <ManagedStreetSidebar entity={entity} />
               )}
               {entity.id === 'street-container' && (
                 <UserLayersSidebar entity={entity} />

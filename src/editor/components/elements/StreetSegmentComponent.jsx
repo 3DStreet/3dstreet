@@ -299,6 +299,7 @@ export default class Component extends React.Component {
                   clearing it restores auto. */}
               {this.numberCell('stencilHeight', {
                 prefix: 'HEIGHT',
+                unit: 'm',
                 allowEmpty: true,
                 placeholder: 'auto',
                 title:

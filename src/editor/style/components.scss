@@ -1611,3 +1611,302 @@ a.help-linkhover {
     padding: 3px 4px;
   }
 }
+
+/* ============================================================
+   Condensed managed-street sidebar (option 3a) — extends the
+   .segment-panel vocabulary (the root carries both classes).
+   ============================================================ */
+
+.street-panel {
+  /* strip caption below the bars: "n segments · width" then hint */
+  .cross-section-footnote {
+    margin-top: 6px;
+    font-size: 11px;
+    color: variables.$gray-400;
+  }
+  .cross-section-footnote-stats {
+    color: variables.$lightgray-200;
+  }
+
+  /* Shape: straight / follow path */
+  .shape-control {
+    width: 100%;
+    .segmented-option {
+      flex: 1;
+      font-size: 13px;
+    }
+    .shape-follow {
+      flex: 1.3;
+    }
+  }
+
+  /* Path picker inset */
+  .path-picker-row {
+    align-items: start;
+    .compact-label {
+      padding-top: 8px;
+    }
+  }
+  .path-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 8px;
+    background: variables.$black-100;
+    border: 1px dashed #3a3a3a;
+    min-width: 0;
+  }
+  .path-picker-shape {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    padding: 0 8px;
+    box-sizing: border-box;
+    border: 0;
+    border-radius: 7px;
+    background: variables.$bgalphadark;
+    color: variables.$lightgray-100;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    min-width: 0;
+    svg {
+      flex: none;
+    }
+    &:hover {
+      background: variables.$gray-200;
+    }
+    &.is-selected {
+      background: variables.$purple-400;
+      color: variables.$white;
+    }
+  }
+  .path-picker-name {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .path-picker-meta {
+    flex: none;
+    font-size: 11px;
+    color: variables.$lightgray-700;
+  }
+  .path-picker-draw {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 28px;
+    border-radius: 7px;
+    border: 1px dashed variables.$purple-400;
+    background: transparent;
+    color: variables.$lightgray-100;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    &:hover {
+      border-style: solid;
+      color: variables.$white;
+    }
+  }
+  .path-picker-hint {
+    font-size: 11px;
+    line-height: 1.4;
+    color: variables.$lightgray-700;
+  }
+
+  /* Show chips */
+  .show-chips-row {
+    align-items: start;
+    margin-top: 4px;
+    .compact-label {
+      padding-top: 8px;
+    }
+  }
+  .chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+  }
+  .show-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 10px 0 8px;
+    border: 0;
+    border-radius: 8px;
+    background: variables.$bgalphadark;
+    color: #8a8a8a;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    svg {
+      flex: none;
+    }
+    &:hover {
+      background: variables.$gray-200;
+    }
+    &.is-on {
+      background: variables.$purple-400;
+      color: variables.$white;
+      &:hover {
+        background: #6a4f99;
+      }
+    }
+  }
+
+  /* Flattening / Play sentence rows (inline-toggle supplies the 34×18
+     switch styling; this adds the full-width row treatment) */
+  .sentence-row {
+    width: 100%;
+    border: 0;
+    border-radius: 8px;
+    background: variables.$bgalphadark;
+    padding: 0 4px 0 10px;
+    font-family: inherit;
+    cursor: pointer;
+    &:hover {
+      background: variables.$gray-200;
+    }
+    svg {
+      flex: none;
+    }
+  }
+  .sentence-text {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    font-size: 13px;
+    color: variables.$lightgray-100;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* read-only Length while a path drives it */
+  .length-readonly {
+    opacity: 0.5;
+    .readonly-value {
+      flex: 1 1 0;
+      min-width: 0;
+      font-size: 14px;
+      color: variables.$white;
+    }
+  }
+
+  /* Source card + footer */
+  .source-section {
+    margin-top: 10px;
+    padding-top: 12px;
+    border-top: 1px solid variables.$black-800;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .source-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 8px 8px 10px;
+    border-radius: 8px;
+    background: variables.$black-100;
+    border: 1px solid variables.$black-800;
+  }
+  .source-logo {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    &.source-logo-streetmix {
+      background: #1f6e7a;
+      img {
+        width: 68%;
+        height: 68%;
+        object-fit: contain;
+      }
+    }
+    &.source-logo-streetplan {
+      background: #3a2812;
+      color: #ffb86b;
+    }
+    &.source-logo-3dstreet img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+  .source-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .source-line1 {
+    font-size: 13px;
+    color: variables.$white;
+  }
+  .source-verb {
+    color: variables.$lightgray-700;
+  }
+  .source-ref {
+    font-size: 11px;
+    color: variables.$lightgray-700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .street-footer {
+    display: flex;
+    gap: 8px;
+  }
+  .street-json-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 32px;
+    border: 0;
+    border-radius: 8px;
+    background: variables.$bgalphadark;
+    color: variables.$white;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    &:hover {
+      background: variables.$gray-200;
+    }
+  }
+  .to-shapes-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px dashed variables.$purple-400;
+    background: transparent;
+    color: variables.$lightgray-100;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    &:hover {
+      border-style: solid;
+      color: variables.$white;
+    }
+  }
+}
