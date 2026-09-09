@@ -84,6 +84,17 @@ export default class SelectWidget extends React.Component {
         menuPosition="fixed"
         menuPlacement="auto"
         minMenuHeight={300}
+        // The menu is fixed-positioned, so it can grow past the control:
+        // let it size to its longest option (capped) instead of cramming
+        // "dashed-yellow-double" into a 1fr compact-row cell.
+        styles={{
+          menu: (base) => ({
+            ...base,
+            width: 'max-content',
+            minWidth: '100%',
+            maxWidth: 320
+          })
+        }}
       />
     );
   }

@@ -1060,6 +1060,13 @@ a.help-linkhover {
       width: 100%;
       min-width: 0;
     }
+    /* vec3 rows (Advanced position/rotation/scale) carry a third child, the
+       reset button; give it its own column so it sits right of the inputs
+       instead of wrapping onto a new grid row. */
+    &:has(> .vec3) {
+      grid-template-columns: 76px minmax(0, 1fr) auto;
+      padding-right: 6px;
+    }
   }
   .mixinOptions {
     display: contents;
