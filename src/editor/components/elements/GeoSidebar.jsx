@@ -522,7 +522,7 @@ const GeoSidebar = ({ entity }) => {
                 <div
                   style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
                 >
-                  {['none', 'google3d', 'mapbox2d', 'osm3d'].map((mapType) => (
+                  {['none', 'google3d', 'tiles2d', 'osm3d'].map((mapType) => (
                     <TooltipWrapper
                       key={mapType}
                       content={
@@ -531,10 +531,10 @@ const GeoSidebar = ({ entity }) => {
                               id: 'geoSidebar.mapGoogle3d',
                               defaultMessage: 'Google 3D Map Tiles'
                             })
-                          : mapType === 'mapbox2d'
+                          : mapType === 'tiles2d'
                             ? intl.formatMessage({
-                                id: 'geoSidebar.mapMapbox2d',
-                                defaultMessage: 'Mapbox 2D Satellite'
+                                id: 'geoSidebar.mapTiles2d',
+                                defaultMessage: '2D Satellite Map Tiles'
                               })
                             : mapType === 'osm3d'
                               ? intl.formatMessage({
@@ -613,13 +613,13 @@ const GeoSidebar = ({ entity }) => {
                             </span>
                           </>
                         )}
-                        {mapType === 'mapbox2d' && (
+                        {mapType === 'tiles2d' && (
                           <>
                             <img
                               src="/ui_assets/map-icon2.jpg"
                               alt={intl.formatMessage({
-                                id: 'geoSidebar.mapMapbox2dAlt',
-                                defaultMessage: 'Mapbox 2D'
+                                id: 'geoSidebar.mapTiles2dAlt',
+                                defaultMessage: '2D Satellite'
                               })}
                               style={{
                                 width: '24px',
@@ -876,8 +876,9 @@ const GeoSidebar = ({ entity }) => {
 
             {isActivated && component && component.schema && component.data && (
               <>
-                {/* Opacity applies to google3d tiles and the mapbox2d plane;
-                    flattening remains google3d-only. */}
+                {/* Opacity applies to google3d tiles and the tiles2d basemap
+                    (mapbox2d = legacy alias); flattening remains
+                    google3d-only. */}
                 {['google3d', 'mapbox2d', 'tiles2d'].includes(
                   component.data['maps']
                 ) && (

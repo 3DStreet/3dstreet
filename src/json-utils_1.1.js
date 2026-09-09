@@ -555,6 +555,12 @@ function createEntities(entitiesData, parentEl) {
         }
         delete parsed.blendingEnabled;
         delete parsed.blendMode;
+        // The single-plane mapbox2d layer was replaced by the tiled 2D
+        // basemap (#1962 step C); scenes saved on it load (and re-save) as
+        // the equivalent tiles2d map type.
+        if (parsed.maps === 'mapbox2d') {
+          parsed.maps = 'tiles2d';
+        }
         if (isString) {
           components['street-geo'] = AFRAME.utils.styleParser.stringify(parsed);
         }

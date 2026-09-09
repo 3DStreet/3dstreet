@@ -1343,12 +1343,6 @@
   "geoSidebar.mapGoogle3dAlt": {
     "defaultMessage": "Google 3D"
   },
-  "geoSidebar.mapMapbox2d": {
-    "defaultMessage": "Mapbox 2D Satellite"
-  },
-  "geoSidebar.mapMapbox2dAlt": {
-    "defaultMessage": "Mapbox 2D"
-  },
   "geoSidebar.mapNone": {
     "defaultMessage": "No Map"
   },
@@ -1363,6 +1357,12 @@
   },
   "geoSidebar.mapOsm3dAlt": {
     "defaultMessage": "OSM 3D"
+  },
+  "geoSidebar.mapTiles2d": {
+    "defaultMessage": "2D Satellite Map Tiles"
+  },
+  "geoSidebar.mapTiles2dAlt": {
+    "defaultMessage": "2D Satellite"
   },
   "geoSidebar.mapType": {
     "defaultMessage": "Map Type"

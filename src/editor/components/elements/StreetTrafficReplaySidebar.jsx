@@ -148,7 +148,7 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
     geoLayer.setAttribute('street-geo', {
       latitude: dep.lat,
       longitude: dep.lon,
-      maps: 'mapbox2d'
+      maps: 'tiles2d'
     });
     Events.emit('entityupdate', {
       entity: geoLayer,
@@ -182,7 +182,8 @@ const StreetTrafficReplaySidebar = ({ entity }) => {
       ? targetEl
       : document.querySelector('[managed-street]');
   const linkedHidesVehicles =
-    linkedStreetEl?.components?.['managed-street']?.data?.showVehicles === false;
+    linkedStreetEl?.components?.['managed-street']?.data?.showVehicles ===
+    false;
   const manifestModes = new Set(
     Array.isArray(manifest?.agents) ? manifest.agents.map((a) => a.mode) : []
   );

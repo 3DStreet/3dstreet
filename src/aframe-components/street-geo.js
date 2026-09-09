@@ -19,10 +19,6 @@ const BASEMAP_KEYS = {
   mapbox: process.env.MAPBOX_ACCESS_TOKEN
 };
 
-// Legacy mapbox2d layer token (retired along with the layer in #1962 step
-// C; the registry's mapbox entry shares the same env var).
-const MAPBOX_ACCESS_TOKEN_VALUE = process.env.MAPBOX_ACCESS_TOKEN;
-
 AFRAME.registerComponent('street-geo', {
   schema: {
     longitude: { type: 'number', default: 0 },
@@ -33,9 +29,11 @@ AFRAME.registerComponent('street-geo', {
     maps: {
       type: 'string',
       default: 'google3d',
-      // tiles2d is the in-progress tiled replacement for mapbox2d (#1962);
-      // not yet offered in the GeoSidebar UI — set via the properties panel
-      // or console while it bakes.
+      // tiles2d replaced the legacy single-plane mapbox2d layer (#1962 step
+      // C). 'mapbox2d' stays in the list only so stray legacy values parse
+      // without warnings: saved scenes are migrated at load (createEntities
+      // in json-utils_1.1.js) and a live mapbox2d value is treated as
+      // tiles2d by activeMapType().
       oneOf: ['google3d', 'mapbox2d', 'osm3d', 'tiles2d', 'none']
     },
     // Style for the tiles2d basemap (and the 2.5D ground once it rides the
@@ -61,7 +59,7 @@ AFRAME.registerComponent('street-geo', {
       type: 'string'
     },
     // Map layer opacity in percent (0 = invisible, 100 = fully opaque).
-    // Applies to the active map layer (google3d tiles, mapbox2d plane).
+    // Applies to the active map layer (google3d tiles, tiles2d basemap).
     opacity: { type: 'number', default: 100, min: 0, max: 100 },
     // Deprecated (#1738/#1236/#1235): kept in the schema only so stray
     // legacy attribute strings parse without warnings. Saved scenes are
@@ -81,20 +79,24 @@ AFRAME.registerComponent('street-geo', {
   },
   init: function () {
     /*
-      Function names for the given function types must have the following format:
+      Every renderable map type has a pair of methods on this component:
       create function: <mapType>Create,
-      update function: <mapType>Update,
+      update function: <mapType>Update.
+      'mapbox2d' is a deprecated alias handled by activeMapType(), so it has
+      no create/update pair and is excluded from the dispatch list.
     */
-    this.mapTypes = this.el.components['street-geo'].schema.maps.oneOf;
+    this.mapTypes = this.el.components['street-geo'].schema.maps.oneOf.filter(
+      (mapType) => mapType !== 'mapbox2d'
+    );
 
     const urlParams = new URLSearchParams(window.location.search);
     this.isAR = urlParams.get('viewer') === 'ar';
-
-    for (const mapType of this.mapTypes) {
-      // initialize create and update functions
-      this[mapType + 'Create'].bind(this);
-      this[mapType + 'Update'].bind(this);
-    }
+  },
+  // The map type to render for the current data. Live 'mapbox2d' values
+  // (e.g. an old URL param or tool call setting the attribute directly,
+  // bypassing the load-time migration) render as the tiled 2D basemap.
+  activeMapType: function () {
+    return this.data.maps === 'mapbox2d' ? 'tiles2d' : this.data.maps;
   },
   remove: function () {
     document.getElementById('map-data-attribution').style.visibility = 'hidden';
@@ -140,9 +142,10 @@ AFRAME.registerComponent('street-geo', {
     this.el.sceneEl.emit('newGeo', data);
 
     const updatedData = AFRAME.utils.diff(oldData, data);
+    const activeMap = this.activeMapType();
 
     for (const mapType of this.mapTypes) {
-      if (data.maps === mapType && !this[mapType]) {
+      if (activeMap === mapType && !this[mapType]) {
         // Geospatial activation gate (editor only). A scene can carry a
         // suggested location (latitude/longitude) without geospatial ever
         // having been activated, e.g. scenes created by the mobile app from
@@ -168,7 +171,7 @@ AFRAME.registerComponent('street-geo', {
           this[mapType + 'Create']();
         }
       } else if (
-        data.maps === mapType &&
+        activeMap === mapType &&
         (updatedData.longitude !== undefined ||
           updatedData.latitude !== undefined ||
           updatedData.ellipsoidalHeight !== undefined ||
@@ -178,7 +181,7 @@ AFRAME.registerComponent('street-geo', {
       ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update']();
-      } else if (this[mapType] && data.maps !== mapType) {
+      } else if (this[mapType] && activeMap !== mapType) {
         // remove element from DOM and from this object
         this.el.removeChild(this[mapType]);
         this[mapType] = null;
@@ -191,40 +194,6 @@ AFRAME.registerComponent('street-geo', {
   noneCreate: function () {
     // do nothing
     document.getElementById('map-data-attribution').style.visibility = 'hidden';
-  },
-  mapbox2dCreate: function () {
-    const data = this.data;
-    const el = this.el;
-
-    const mapbox2dElement = document.createElement('a-entity');
-    mapbox2dElement.setAttribute('data-layer-name', 'Mapbox Satellite Streets');
-    mapbox2dElement.setAttribute(
-      'geometry',
-      'primitive: plane; width: 512; height: 512;'
-    );
-    mapbox2dElement.setAttribute(
-      'material',
-      `color: #ffffff; shader: flat; side: both; transparent: true; opacity: ${this.opacityFraction()};`
-    );
-    // At opacity 0 hide the layer outright so it costs no render time.
-    // setAttribute (not raw object3D.visible) per the mesh-batching rule.
-    mapbox2dElement.setAttribute('visible', data.opacity > 0);
-    mapbox2dElement.setAttribute('rotation', '-90 -90 0');
-    mapbox2dElement.setAttribute('anisotropy', '');
-    mapbox2dElement.setAttribute('mapbox', {
-      accessToken: MAPBOX_ACCESS_TOKEN_VALUE,
-      center: `${data.longitude}, ${data.latitude}`,
-      zoom: 18,
-      style: 'mapbox://styles/mapbox/satellite-streets-v11',
-      pxToWorldRatio: 4
-    });
-    mapbox2dElement.classList.add('autocreated');
-    mapbox2dElement.setAttribute('data-ignore-raycaster', '');
-    mapbox2dElement.setAttribute('data-no-transform', '');
-    mapbox2dElement.setAttribute('bvh-geometry', '');
-    el.appendChild(mapbox2dElement);
-    this['mapbox2d'] = mapbox2dElement;
-    document.getElementById('map-copyright').textContent = 'MapBox';
   },
   google3dCreate: function () {
     const data = this.data;
@@ -281,14 +250,6 @@ AFRAME.registerComponent('street-geo', {
     });
     this.google3d.setAttribute('visible', data.opacity > 0);
   },
-  mapbox2dUpdate: function () {
-    const data = this.data;
-    this.mapbox2d.setAttribute('mapbox', {
-      center: `${data.longitude}, ${data.latitude}`
-    });
-    this.mapbox2d.setAttribute('material', 'opacity', this.opacityFraction());
-    this.mapbox2d.setAttribute('visible', data.opacity > 0);
-  },
   // Resolve the tiles2d tile source from the provider registry. Dev builds
   // without a provider key fall back to OSM dev tiles (with a console note);
   // production builds without a key render nothing rather than pointing
@@ -322,7 +283,7 @@ AFRAME.registerComponent('street-geo', {
     }
 
     const tiles2dElement = document.createElement('a-entity');
-    tiles2dElement.setAttribute('data-layer-name', '2D Map Tiles (Beta)');
+    tiles2dElement.setAttribute('data-layer-name', '2D Satellite Map Tiles');
     // Lay the generated XY-plane surface flat: with A-Frame's YXZ rotation
     // order this maps plane east → +Z world and plane north → +X world,
     // matching google3d's legacy frame (same rotation as the other 2D maps).

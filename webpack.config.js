@@ -103,7 +103,6 @@ const config = {
     }),
     new CopyWebpackPlugin({
       patterns: [
-        { from: 'src/lib/aframe-mapbox-component.min.js' },
         { from: 'src/notyf.min.css' },
         { from: 'src/viewer-styles.css' },
         // Draco's Emscripten loader fetches its WASM relative to publicPath
