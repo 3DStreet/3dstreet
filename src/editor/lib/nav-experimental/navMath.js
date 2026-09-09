@@ -517,17 +517,34 @@ export function groundForwardAnchor(camera, dist, groundY, target) {
   return out;
 }
 
-// Sustained zoom-out acceleration factor (#1966). The dolly's 5%/detent
-// multiplicative step is a constant *fractional* rate, so street level →
-// a km-scale overview is ~11 doublings ≈ 150+ detents. Scrolling out
-// continuously ramps the rate up: 1 through the first `deadband` ticks of
-// a streak (precision detents unchanged), then linear to `max` over the
-// next `ramp` ticks. The caller multiplies the tick count by the returned
-// factor. Pure.
-export function zoomOutBoost(streakTicks, deadband, ramp, max) {
+// Sustained wheel-zoom acceleration (#1966, #1967). The dolly's 5%/detent
+// multiplicative step is a constant *fractional* rate, so street level ↔ a
+// km-scale overview is ~11 doublings ≈ 150+ detents either way. Scrolling
+// continuously in one direction ramps the rate up: factor 1 through the
+// first `deadband` ticks of a streak (precision detents unchanged), then
+// linear to `max` over the next `ramp` ticks. Direction-agnostic. Pure.
+export function zoomBoost(streakTicks, deadband, ramp, max) {
   if (!(streakTicks > deadband)) return 1;
   const frac = Math.min(1, (streakTicks - deadband) / ramp);
   return 1 + (max - 1) * frac;
+}
+
+// Boosted tick count for `t` raw ticks applied starting at streak position
+// `streakStart`: the integral of zoomBoost over [streakStart, streakStart+t].
+// Integrating (rather than sampling the factor once per drain pass) keeps
+// the zoom frame-rate independent (GH-1858): six ticks carried by one
+// low-fps frame accelerate exactly as much as six one-tick frames. Pure.
+export function zoomBoostTicks(streakStart, t, deadband, ramp, max) {
+  // Antiderivative of the ramp's excess over 1, i.e. of (zoomBoost − 1).
+  const excess = (x) => {
+    if (!(x > deadband)) return 0;
+    const past = x - deadband;
+    if (past <= ramp) return (past * past) / (2 * ramp);
+    return ramp / 2 + (past - ramp);
+  };
+  const a = Math.max(0, streakStart);
+  const b = a + t;
+  return t + (max - 1) * (excess(b) - excess(a));
 }
 
 // ---------------------------------------------------------------------------

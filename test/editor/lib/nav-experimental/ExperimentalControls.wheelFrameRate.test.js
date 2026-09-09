@@ -8,8 +8,12 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as H from './_harness.js';
 import {
   WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES,
-  WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF
+  WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF,
+  WHEEL_ZOOM_BOOST_MAX,
+  WHEEL_ZOOM_BOOST_DEADBAND_TICKS,
+  WHEEL_ZOOM_BOOST_RAMP_TICKS
 } from '../../../../src/editor/lib/nav-experimental/constants.js';
+import { zoomBoostTicks } from '../../../../src/editor/lib/nav-experimental/navMath.js';
 
 let Controls;
 beforeAll(async () => {
@@ -80,7 +84,15 @@ describe('wheel zoom — frame-rate independence (GH-1858)', () => {
     );
     // Strictly more than one flat cap…
     expect(horiz).toBeGreaterThan(capPerTick * 2);
-    // …but still bounded by the scaled budget (6 ticks × cap).
-    expect(horiz).toBeLessThanOrEqual(capPerTick * 6 + 1e-6);
+    // …but still bounded by the scaled budget: the ticks actually applied
+    // (6 raw ticks, sustained-scroll boosted per GH-1966/1967) × cap.
+    const appliedTicks = zoomBoostTicks(
+      0,
+      6,
+      WHEEL_ZOOM_BOOST_DEADBAND_TICKS,
+      WHEEL_ZOOM_BOOST_RAMP_TICKS,
+      WHEEL_ZOOM_BOOST_MAX
+    );
+    expect(horiz).toBeLessThanOrEqual(capPerTick * appliedTicks + 1e-6);
   });
 });
