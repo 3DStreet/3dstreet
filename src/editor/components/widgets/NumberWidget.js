@@ -8,8 +8,18 @@ export default class NumberWidget extends React.Component {
     min: PropTypes.number,
     name: PropTypes.string.isRequired,
     onChange: PropTypes.func,
+    // Sentinel-friendly mode: when the value equals `emptyValue` the field
+    // renders blank (with `placeholder`, e.g. "auto") instead of "0.00", and
+    // clearing the field commits `emptyValue`. For schema props where 0
+    // means "unset / use the model default" (street-generated-stencil's
+    // stencilHeight).
+    allowEmpty: PropTypes.bool,
+    emptyValue: PropTypes.number,
+    placeholder: PropTypes.string,
     precision: PropTypes.number,
+    prefix: PropTypes.string,
     step: PropTypes.number,
+    title: PropTypes.string,
     unit: PropTypes.string,
     value: PropTypes.number
   };
@@ -19,17 +29,22 @@ export default class NumberWidget extends React.Component {
     max: Infinity,
     value: 0,
     precision: 3,
-    step: 1
+    step: 1,
+    allowEmpty: false,
+    emptyValue: 0
   };
+
+  toDisplay(value) {
+    if (typeof value !== 'number') return '';
+    if (this.props.allowEmpty && value === this.props.emptyValue) return '';
+    return value.toFixed(this.props.precision);
+  }
 
   constructor(props) {
     super(props);
     this.state = {
       value: this.props.value,
-      displayValue:
-        typeof this.props.value === 'number'
-          ? this.props.value.toFixed(this.props.precision)
-          : ''
+      displayValue: this.toDisplay(this.props.value)
     };
     this.input = React.createRef();
   }
@@ -103,7 +118,7 @@ export default class NumberWidget extends React.Component {
 
       this.setState({
         value: value,
-        displayValue: value.toFixed(this.props.precision)
+        displayValue: this.toDisplay(value)
       });
 
       if (this.props.onChange) {
@@ -118,12 +133,28 @@ export default class NumberWidget extends React.Component {
     if (!Object.is(this.props.value, prevProps.value)) {
       this.setState({
         value: this.props.value,
-        displayValue: this.props.value.toFixed(this.props.precision)
+        displayValue: this.toDisplay(this.props.value)
       });
     }
   }
 
   onBlur = () => {
+    if (this.props.allowEmpty && this.input.current.value.trim() === '') {
+      // Cleared field → back to the sentinel ("auto").
+      if (this.state.value !== this.props.emptyValue) {
+        this.setState({
+          value: this.props.emptyValue,
+          displayValue: ''
+        });
+        this.props.onChange?.(this.props.name, this.props.emptyValue);
+      } else {
+        this.setState({ displayValue: '' });
+      }
+      return;
+    }
+    // Untouched field (still showing the rendered value): a click-and-blur
+    // must not re-commit the rounded display over the precise stored value.
+    if (this.input.current.value === this.toDisplay(this.props.value)) return;
     this.setValue(parseFloat(this.input.current.value));
   };
 
@@ -166,15 +197,27 @@ export default class NumberWidget extends React.Component {
         ''
       );
     // A unit suffix ("m", "ft") renders inside the box, the way the vec3
-    // axis letters do, so the field reads as one control.
+    // axis letters do, so the field reads as one control. A short prefix
+    // ("W", "PAD", "X") does the same at the start of the box.
+    const blockClass = [
+      'inputBlock',
+      this.props.unit && 'has-unit',
+      this.props.prefix && 'has-prefix'
+    ]
+      .filter(Boolean)
+      .join(' ');
     return (
-      <div className={this.props.unit ? 'inputBlock has-unit' : 'inputBlock'}>
+      <div className={blockClass} title={this.props.title}>
         {helpString}
+        {this.props.prefix && (
+          <span className="prefix">{this.props.prefix}</span>
+        )}
         <input
           id={this.props.id}
           ref={this.input}
           className="number"
           type="text"
+          placeholder={this.props.placeholder}
           value={this.state.displayValue}
           onKeyDown={this.onKeyDown}
           onChange={this.onChange}
