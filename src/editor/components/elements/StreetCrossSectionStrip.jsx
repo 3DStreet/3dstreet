@@ -7,7 +7,8 @@ import { getEntityDisplayName } from '../../lib/entity';
 import {
   getStripSegments,
   getSegmentBarColor,
-  getBarInkColor
+  getBarInkColor,
+  getSegmentTurns
 } from '../../lib/segmentPanel';
 import { toDisplay } from './LengthPropertyRow';
 
@@ -15,7 +16,11 @@ import { toDisplay } from './LengthPropertyRow';
 // per segment of the parent managed street, drawn from live data (flex width
 // = segment width, fill = surface/color, taller = raised, glyph = direction).
 // Clicking a bar selects that segment through the same code path as the scene
-// graph, keeping the panel mounted; "Edit street" selects the parent street.
+// graph, keeping the panel mounted; double-click frames it (same objectfocus
+// event as the scene graph / canvas); hovering a bar drives the viewport's
+// hover highlight through the same events the canvas raycaster emits, so the
+// strip and the 3D view read as one control. "Edit street" selects the
+// parent street.
 
 // Inline SVG arrows (not text glyphs) so the direction marker renders
 // identically regardless of the platform's emoji/arrow font coverage.
@@ -39,6 +44,56 @@ const BarArrow = ({ down, ink }) => (
 );
 
 BarArrow.propTypes = { down: PropTypes.bool, ink: PropTypes.string };
+
+// Turn-movement glyph mirroring the lane's arrow stencils: a stem with a
+// head per painted movement (straight / left / right). Drawn for a driver
+// heading up the strip (outbound, −z); inbound rotates it 180°, which also
+// puts the driver's left on the strip's right, matching the scene.
+const TurnArrow = ({ turns, down, ink }) => {
+  const head = (x, y, dx, dy) => {
+    // arrowhead at (x, y) pointing along (dx, dy); (−dy, dx) is its normal
+    const s = 3.5;
+    return (
+      <path
+        d={`M${x - dx * s - dy * s} ${y - dy * s + dx * s}L${x} ${y}L${x - dx * s + dy * s} ${y - dy * s - dx * s}`}
+      />
+    );
+  };
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={ink}
+      strokeWidth="2.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={down ? { transform: 'rotate(180deg)' } : undefined}
+    >
+      <path d={`M12 21V${turns.straight ? 4 : 12}`} />
+      {turns.straight && head(12, 4, 0, -1)}
+      {turns.left && (
+        <>
+          <path d="M12 12H4" />
+          {head(4, 12, -1, 0)}
+        </>
+      )}
+      {turns.right && (
+        <>
+          <path d="M12 12H20" />
+          {head(20, 12, 1, 0)}
+        </>
+      )}
+    </svg>
+  );
+};
+
+TurnArrow.propTypes = {
+  turns: PropTypes.object.isRequired,
+  down: PropTypes.bool,
+  ink: PropTypes.string
+};
 
 // The importers name streets "Managed Street • <name>"; the caption wants
 // just the name (same convention as managed-street.js's exporter).
@@ -153,6 +208,7 @@ const StreetCrossSectionStrip = ({ entity, variant = 'segment' }) => {
           const selected = el === entity;
           const hasArrow =
             data.direction === 'inbound' || data.direction === 'outbound';
+          const turns = hasArrow ? getSegmentTurns(el) : null;
           return (
             <div
               key={el.id || i}
@@ -164,13 +220,24 @@ const StreetCrossSectionStrip = ({ entity, variant = 'segment' }) => {
               }}
               title={`${getEntityDisplayName(el)} · ${formatLength(width)}`}
               onClick={() => selectSegment(el)}
+              onDoubleClick={() => Events.emit('objectfocus', el.object3D)}
+              onMouseEnter={() => Events.emit('raycastermouseenter', el)}
+              onMouseLeave={() => Events.emit('raycastermouseleave', el)}
             >
               {hasArrow && (
                 <span className="cross-section-glyph">
-                  <BarArrow
-                    down={data.direction === 'inbound'}
-                    ink={getBarInkColor(bg)}
-                  />
+                  {turns ? (
+                    <TurnArrow
+                      turns={turns}
+                      down={data.direction === 'inbound'}
+                      ink={getBarInkColor(bg)}
+                    />
+                  ) : (
+                    <BarArrow
+                      down={data.direction === 'inbound'}
+                      ink={getBarInkColor(bg)}
+                    />
+                  )}
                 </span>
               )}
               {selected && <div className="cross-section-pointer" />}

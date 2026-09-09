@@ -37,7 +37,8 @@ import { captureSegmentEdit, SEGMENT_OPS } from '../../lib/segmentAnalytics';
 import {
   executeSegmentUpdate,
   WIDTH_PRESETS,
-  SURFACE_TEXTURE_IDS
+  SURFACE_TEXTURE_IDS,
+  getFlatSwatchColor
 } from '../../lib/segmentPanel';
 
 // Condensed street-segment sidebar (#1753, design option 2a): cross-section
@@ -305,8 +306,8 @@ SlopeGlyph.propTypes = { startHigher: PropTypes.bool };
 
 // Material dropdown option: texture swatch + name. The swatch reads the same
 // A-Frame <img> texture asset the segment mesh uses (SURFACE_TEXTURE_IDS),
-// so it always matches what renders; textureless surfaces (none, solid) get
-// a flat chip.
+// so it always matches what renders; textureless surfaces (none, solid,
+// water) get a flat chip.
 const formatSurfaceOption = (option) => {
   const surface = option.value;
   const textureSrc = document.getElementById(SURFACE_TEXTURE_IDS[surface])?.src;
@@ -317,7 +318,7 @@ const formatSurfaceOption = (option) => {
       ) : (
         <span
           className="surface-swatch"
-          style={{ background: surface === 'solid' ? '#dddddd' : '#3a3a3a' }}
+          style={{ background: getFlatSwatchColor(surface) }}
         />
       )}
       {option.label}

@@ -166,9 +166,50 @@ export const SURFACE_TEXTURE_IDS = {
   gravel: 'compacted-gravel-texture',
   sand: 'sandy-asphalt-texture',
   'cracked-asphalt': 'asphalt-texture',
-  'parking-lot': 'parking-lot-texture',
-  water: 'water-texture'
+  'parking-lot': 'parking-lot-texture'
+  // water deliberately omitted: the scene builds its material from a normal
+  // map + animation, so the raw texture reads as a black tile; the dropdown
+  // shows a flat blue chip instead (getFlatSwatchColor).
 };
+
+/** Flat chip color for surfaces the Material dropdown can't show a texture for. */
+export function getFlatSwatchColor(surface) {
+  if (surface === 'solid') return '#dddddd';
+  return SURFACE_COLORS[surface] ?? SURFACE_COLORS.none;
+}
+
+// Stencil model → turn movements it paints. Only arrow stencils count;
+// words, hashes and sharrows contribute nothing.
+const STENCIL_TURNS = {
+  left: ['left'],
+  right: ['right'],
+  straight: ['straight'],
+  'left-straight': ['left', 'straight'],
+  'right-straight': ['right', 'straight'],
+  both: ['left', 'right'],
+  all: ['left', 'straight', 'right']
+};
+
+/**
+ * Union of turn movements painted on a segment by its stencil generators,
+ * as { left, straight, right } booleans, or null when no arrow stencil is
+ * present (the strip then falls back to the plain direction arrow).
+ */
+export function getSegmentTurns(segmentEl) {
+  const turns = { left: false, straight: false, right: false };
+  let any = false;
+  Object.keys(segmentEl.components || {}).forEach((name) => {
+    if (!name.startsWith('street-generated-stencil')) return;
+    const models = segmentEl.components[name]?.data?.modelsArray || [];
+    models.forEach((model) => {
+      (STENCIL_TURNS[model] || []).forEach((t) => {
+        turns[t] = true;
+        any = true;
+      });
+    });
+  });
+  return any ? turns : null;
+}
 
 /**
  * The strip's bars in left→right visual order (−x → +x), mirroring
