@@ -4,6 +4,7 @@ import EditorControls from './EditorControls.js';
 import { ShapeVertexControls } from './ShapeVertexControls.js';
 import { StreetNodeControls } from './gizmos/StreetNodeControls.js';
 import { SegmentWidthControls } from './gizmos/SegmentWidthControls.js';
+import { computeRibbonOutline } from '@/tested/street-path-utils.js';
 import InfiniteGridHelper from './InfiniteGridHelper.js';
 import {
   ExperimentalControls,
@@ -31,6 +32,11 @@ const tempBox3 = new THREE.Box3();
 const auxLocalBbox = new THREE.Box3();
 const tempVector3Size = new THREE.Vector3();
 const tempVector3Center = new THREE.Vector3();
+
+// Edge-angle threshold for a curved ribbon's selection outline: high enough
+// that the small bends between ring stations on the side walls don't draw as
+// tick marks, low enough that the top/side corners (90°) always do.
+const RIBBON_OUTLINE_THRESHOLD_DEG = 30;
 
 class OrientedBoxHelper extends THREE.BoxHelper {
   constructor(object, color = 0xffff00, fill = false) {
@@ -80,11 +86,92 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     return null;
   }
 
+  // A selected path-following street draws one silhouette of its outer
+  // edges along the curve — not every segment's outline (#1218 follow-up).
+  // Returns { street, sampler, lateralCenter, width, y, sEnd, closed, rev }
+  // or null when the tracked entity isn't a curved street.
+  getStreetOutlineSpec() {
+    const el = this.object?.el;
+    const street = el?.components?.['managed-street'];
+    const curve = street?.streetCurve;
+    if (!curve) return null;
+    let min = Infinity;
+    let max = -Infinity;
+    let y = 0;
+    el.querySelectorAll(':scope > [street-segment]').forEach((segEl) => {
+      const w = segEl.components['street-segment']?.data.width || 0;
+      const pos = segEl.object3D.position;
+      min = Math.min(min, pos.x - w / 2);
+      max = Math.max(max, pos.x + w / 2);
+      y = Math.max(y, pos.y);
+    });
+    if (!(max > min)) return null;
+    return {
+      sampler: curve.sampler,
+      lateralCenter: (min + max) / 2,
+      width: max - min,
+      y,
+      sEnd: street.data.length,
+      closed: !!curve.closed,
+      rev: curve.rev
+    };
+  }
+
+  updateStreetOutline(spec) {
+    if (!this.outlineLines) {
+      this.outlineLines = new THREE.LineSegments(
+        new THREE.BufferGeometry(),
+        this.material.clone()
+      );
+      this.outlineLines.material.visible = true; // see conformMaterial
+      this.outlineLines.raycast = function () {};
+      this.add(this.outlineLines);
+    }
+    this.outlineLines.visible = true;
+    const key = [spec.rev, spec.lateralCenter, spec.width, spec.y, spec.sEnd]
+      .map((v) => (typeof v === 'number' ? v.toFixed(3) : v))
+      .join('|');
+    if (this.outlineLines.userData.key === key) return;
+    this.outlineLines.userData.key = key;
+    const { left, right } = computeRibbonOutline(spec.sampler, {
+      lateralCenter: spec.lateralCenter,
+      width: spec.width,
+      sEnd: spec.sEnd
+    });
+    const pts = [];
+    const push = (a, b) =>
+      pts.push(a.x, a.y + spec.y, a.z, b.x, b.y + spec.y, b.z);
+    const n = left.length;
+    for (let i = 0; i + 1 < n; i++) {
+      push(left[i], left[i + 1]);
+      push(right[i], right[i + 1]);
+    }
+    if (spec.closed) {
+      push(left[n - 1], left[0]);
+      push(right[n - 1], right[0]);
+    } else {
+      push(left[0], right[0]);
+      push(left[n - 1], right[n - 1]);
+    }
+    this.outlineLines.geometry.dispose();
+    this.outlineLines.geometry = new THREE.BufferGeometry().setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(pts, 3)
+    );
+  }
+
   updateConformingHighlight() {
-    const sources = this.getConformingSourceMeshes();
-    const showBox = !sources;
+    const streetSpec = this.boxFill ? null : this.getStreetOutlineSpec();
+    const sources = streetSpec ? null : this.getConformingSourceMeshes();
+    const showBox = !sources && !streetSpec;
     this.material.visible = showBox;
     if (this.boxFill) this.boxFill.visible = showBox;
+    if (this.outlineLines) this.outlineLines.visible = false;
+    if (streetSpec) {
+      if (this.conformGroup) this.conformGroup.visible = false;
+      this.updateStreetOutline(streetSpec);
+      return;
+    }
     if (!sources) {
       if (this.conformGroup) this.conformGroup.visible = false;
       return;
@@ -92,27 +179,36 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     if (!this.conformGroup) {
       this.conformGroup = new THREE.Group();
       this.add(this.conformGroup);
-      this.conformMaterial = new THREE.MeshBasicMaterial({
-        color: this.helperColor,
-        transparent: true,
-        // the selection helper draws lines only (no fill); keep its
-        // conforming overlay lighter so a selected lane isn't a solid slab
-        opacity: this.boxFill ? 0.3 : 0.2,
-        depthTest: false
-      });
+      // The hover helper fills its box, so its conforming overlay is a
+      // translucent fill of the ribbon. The selection helper draws lines
+      // only, so its overlay is the ribbon's outline: a tinted fill reads as
+      // a surface-colour change rather than a selection.
+      this.conformMaterial = this.boxFill
+        ? new THREE.MeshBasicMaterial({
+            color: this.helperColor,
+            transparent: true,
+            opacity: 0.3,
+            depthTest: false
+          })
+        : this.material.clone();
+      // the box's own material is hidden while conforming (set just above),
+      // and the clone must not inherit that
+      this.conformMaterial.visible = true;
       this.conformInverse = new THREE.Matrix4();
     }
     this.conformGroup.visible = true;
     while (this.conformGroup.children.length < sources.length) {
-      const overlay = new THREE.Mesh(undefined, this.conformMaterial);
+      const overlay = this.boxFill
+        ? new THREE.Mesh(undefined, this.conformMaterial)
+        : new THREE.LineSegments(undefined, this.conformMaterial);
       overlay.matrixAutoUpdate = false;
       overlay.raycast = function () {}; // never pickable
       this.conformGroup.add(overlay);
     }
     while (this.conformGroup.children.length > sources.length) {
-      this.conformGroup.remove(
-        this.conformGroup.children[this.conformGroup.children.length - 1]
-      );
+      const overlay = this.conformGroup.children.pop();
+      this.conformGroup.remove(overlay);
+      if (overlay.isLineSegments) overlay.geometry?.dispose();
     }
     // The helper's own matrix was just set to the tracked object's world
     // pose (see update()); overlays borrow each source mesh's geometry and
@@ -120,7 +216,21 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     this.conformInverse.copy(this.matrix).invert();
     sources.forEach((source, i) => {
       const overlay = this.conformGroup.children[i];
-      overlay.geometry = source.geometry;
+      if (overlay.isLineSegments) {
+        // Outline edges are derived per source geometry and cached on the
+        // overlay; the ribbon re-meshes (new geometry object) on every
+        // curve/width change, which is what invalidates the cache.
+        if (overlay.userData.sourceGeometry !== source.geometry) {
+          overlay.geometry?.dispose();
+          overlay.geometry = new THREE.EdgesGeometry(
+            source.geometry,
+            RIBBON_OUTLINE_THRESHOLD_DEG
+          );
+          overlay.userData.sourceGeometry = source.geometry;
+        }
+      } else {
+        overlay.geometry = source.geometry;
+      }
       source.updateWorldMatrix(true, false);
       overlay.matrix.multiplyMatrices(this.conformInverse, source.matrixWorld);
     });
