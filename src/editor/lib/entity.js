@@ -212,8 +212,29 @@ export function cloneEntityImpl(entity) {
   const clone = prepareForSerialization(entity);
   if (clone !== null) {
     recursivelyRegenerateId(clone);
+    const nextName = getUniqueLayerName(clone.getAttribute('data-layer-name'));
+    if (nextName) clone.setAttribute('data-layer-name', nextName);
   }
   return clone;
+}
+
+/**
+ * Next free layer name for a duplicate: a trailing number is bumped past
+ * every name already in the scene ("Shape • Polyline 1" → "… 2"), matching
+ * what the draw tools do when creating another. Names without a trailing
+ * number get " 2" (then 3, …). Returns null when there is nothing to rename.
+ */
+export function getUniqueLayerName(name) {
+  if (!name) return null;
+  const match = name.match(/^(.*?)(\d+)$/);
+  const stem = match ? match[1] : `${name} `;
+  let n = match ? parseInt(match[2], 10) + 1 : 2;
+  const taken = new Set();
+  document
+    .querySelectorAll('a-scene [data-layer-name]')
+    .forEach((el) => taken.add(el.getAttribute('data-layer-name')));
+  while (taken.has(`${stem}${n}`)) n++;
+  return `${stem}${n}`;
 }
 
 /**
