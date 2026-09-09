@@ -1544,6 +1544,9 @@
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
   },
+  "managedStreetSidebar.changePath": {
+    "defaultMessage": "Change path…"
+  },
   "managedStreetSidebar.chipBoundaries": {
     "defaultMessage": "Boundaries"
   },

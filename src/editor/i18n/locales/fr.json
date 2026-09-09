@@ -514,6 +514,7 @@
   "jobHealthModal.recentRuns": "Exécutions récentes",
   "jobHealthModal.title": "État du système",
   "loadingSceneModal.dismiss": "Ignorer",
+  "managedStreetSidebar.changePath": "Changer de tracé…",
   "managedStreetSidebar.chipBoundaries": "Limites",
   "managedStreetSidebar.chipGround": "Sol",
   "managedStreetSidebar.chipLabels": "Étiquettes",

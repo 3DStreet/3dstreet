@@ -1676,7 +1676,17 @@ a.help-linkhover {
     border: 1px dashed #3a3a3a;
     min-width: 0;
   }
+  .path-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    /* ~5 rows, then scroll: a scene with many shapes shouldn't push the
+       rest of the panel off screen */
+    max-height: 174px;
+    overflow-y: auto;
+  }
   .path-picker-shape {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 8px;

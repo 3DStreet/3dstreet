@@ -289,6 +289,12 @@ const ManagedStreetSidebar = ({ entity }) => {
   const pathValue = component?.data?.path || '';
   const followPath = pathValue !== '' || pathPickerOpen;
   const pathableShapes = getPathableShapes();
+  // With a path assigned and the picker closed, list only the assigned
+  // shape; the picker opens the full list (see "Change path").
+  const listedShapes =
+    pathValue && !pathPickerOpen
+      ? pathableShapes.filter((el) => el.id && `#${el.id}` === pathValue)
+      : pathableShapes;
 
   const chooseStraight = () => {
     setPathPickerOpen(false);
@@ -653,41 +659,61 @@ const ManagedStreetSidebar = ({ entity }) => {
               })}
             </label>
             <div className="path-picker">
-              {pathableShapes.map((el, i) => {
-                const selected = el.id && `#${el.id}` === pathValue;
-                const vertexCount = (
-                  el.components?.shape?.getVertexEls?.() || []
-                ).length;
-                const curveType = el.components?.shape?.data?.curveType || '';
-                return (
-                  <button
-                    type="button"
-                    key={el.id || i}
-                    className={
-                      'path-picker-shape' + (selected ? ' is-selected' : '')
-                    }
-                    onClick={() => pickShape(el)}
-                  >
-                    {StreetPanelIcons.shapeRow}
-                    <span className="path-picker-name">
-                      {el.getAttribute('data-layer-name') ||
-                        el.id ||
-                        `Shape ${i + 1}`}
-                    </span>
-                    <span className="path-picker-meta">
-                      {intl.formatMessage(
-                        {
-                          id: 'managedStreetSidebar.pathPoints',
-                          defaultMessage:
-                            '{count, plural, one {# point} other {# points}}'
-                        },
-                        { count: vertexCount }
-                      )}
-                      {curveType ? ` · ${curveType}` : ''}
-                    </span>
-                  </button>
-                );
-              })}
+              {/* Assigned: one row for the current path + "Change" (the
+                  full list is comically long in a scene with many shapes).
+                  Picking: the whole list, capped to a scrolling height. */}
+              {listedShapes.length > 0 && (
+                <div className="path-picker-list">
+                  {listedShapes.map((el, i) => {
+                    const selected = el.id && `#${el.id}` === pathValue;
+                    const vertexCount = (
+                      el.components?.shape?.getVertexEls?.() || []
+                    ).length;
+                    const curveType =
+                      el.components?.shape?.data?.curveType || '';
+                    return (
+                      <button
+                        type="button"
+                        key={el.id || i}
+                        className={
+                          'path-picker-shape' + (selected ? ' is-selected' : '')
+                        }
+                        onClick={() => pickShape(el)}
+                      >
+                        {StreetPanelIcons.shapeRow}
+                        <span className="path-picker-name">
+                          {el.getAttribute('data-layer-name') ||
+                            el.id ||
+                            `Shape ${i + 1}`}
+                        </span>
+                        <span className="path-picker-meta">
+                          {intl.formatMessage(
+                            {
+                              id: 'managedStreetSidebar.pathPoints',
+                              defaultMessage:
+                                '{count, plural, one {# point} other {# points}}'
+                            },
+                            { count: vertexCount }
+                          )}
+                          {curveType ? ` · ${curveType}` : ''}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {pathValue && !pathPickerOpen && pathableShapes.length > 1 && (
+                <button
+                  type="button"
+                  className="path-picker-draw"
+                  onClick={() => setPathPickerOpen(true)}
+                >
+                  {intl.formatMessage({
+                    id: 'managedStreetSidebar.changePath',
+                    defaultMessage: 'Change path…'
+                  })}
+                </button>
+              )}
               <button
                 type="button"
                 className="path-picker-draw"
