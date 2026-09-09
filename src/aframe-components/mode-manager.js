@@ -15,7 +15,7 @@
  * Built-in modes:
  *   - `editor` — inspector open; selection + transform tools active.
  *   - `viewer` — presentation without the editor UI. The camera stays
- *                on the inspector's EditorControls camera so viewing
+ *                on the inspector's editor-controls camera so viewing
  *                feels identical to editing (#1848) — no scene-side
  *                input controls. Alternate control schemes will come
  *                back later behind an explicit input-scheme system.
@@ -45,7 +45,7 @@ AFRAME.registerSystem('mode-manager', {
       exit: () => {}
     });
     // Viewer idle needs no scene-side setup: the render camera simply
-    // stays on the editor's EditorControls camera (see viewport.js).
+    // stays on the editor-controls camera (see viewport.js).
     this.registerMode('viewer', {
       enter: () => {},
       exit: () => {}
@@ -119,7 +119,7 @@ AFRAME.registerSystem('mode-manager', {
   /* ---------------- render-camera ownership ----------------
    *
    * These two helpers are the seam between the shared editor/viewer
-   * camera (EditorControls on AFRAME.INSPECTOR.camera — how both edit
+   * camera (ExperimentalControls on AFRAME.INSPECTOR.camera — how both edit
    * and view render today, #1848) and a scene-driven camera on the
    * rig's #camera. Right now only drive mode borrows the rig.
    *
@@ -148,7 +148,7 @@ AFRAME.registerSystem('mode-manager', {
     // previous session — assert the render camera explicitly.
     const cam = cameraEl.getObject3D('camera');
     if (cam) this.sceneEl.camera = cam;
-    // While the scene camera renders, EditorControls must not move the
+    // While the scene camera renders, the editor controls must not move the
     // editor camera: its mouse/wheel listeners stay attached to the
     // always-visible canvas and would silently orbit/zoom the unrendered
     // camera, displacing the vantage the user returns to on Stop.
@@ -157,7 +157,7 @@ AFRAME.registerSystem('mode-manager', {
   },
 
   /**
-   * Give the render camera back to the editor/viewer EditorControls
+   * Give the render camera back to the editor/viewer editor-controls
    * camera (the same object edit mode renders through).
    */
   activateEditorCamera: function () {

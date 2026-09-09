@@ -1,8 +1,6 @@
 /* global AFRAME */
 import { useEffect, useRef, useState } from 'react';
 
-import { isExperimentalNav } from './flag.js';
-
 // Recovery cue (see docs/04-glossary.md "Recovery cue"): subscribes to
 // `nav-experimental:recovery-cue` events from the active
 // `ExperimentalControls` instance via the sceneEl event bus (mirroring
@@ -22,8 +20,6 @@ import { isExperimentalNav } from './flag.js';
 // then rising above 8 m again (flash once per stranding). The auto-hide is
 // expressed here as a timer, NOT in the sticky `cueState` (which can't
 // auto-hide-while-true).
-//
-// Flag-off: returns null and never subscribes.
 
 const CUE_FLASH_MS = 3000; // TH-75 — recovery-cue flash window (~3 s)
 
@@ -37,7 +33,6 @@ export function useRecoveryCue() {
   const timeoutRef = useRef(null);
 
   useEffect(() => {
-    if (!isExperimentalNav()) return;
     const sceneEl = getSceneEl();
     if (!sceneEl) return;
 

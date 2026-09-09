@@ -1374,7 +1374,7 @@ AFRAME.registerComponent('drive-mode', {
     const sceneEl = this.el;
     const driveEntity = sceneEl.querySelector('[drive-controls]');
     if (!driveEntity) return; // No driveable vehicle → nothing to do.
-    // Borrow the render camera from the viewer's EditorControls camera:
+    // Borrow the render camera from the viewer's editor-controls camera:
     // the chase/fpv cameras drive the rig's #camera. Returned on exit.
     sceneEl.systems['mode-manager'].activateSceneCamera();
     // Broadcast for drive-mode-scoped features (e.g. race-target) so

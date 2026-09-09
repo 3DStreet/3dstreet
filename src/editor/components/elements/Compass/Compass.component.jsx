@@ -10,8 +10,6 @@
 // re-render). Clicks are classified into body / left-arrow / right-arrow
 // and dispatched to the ExperimentalControls instance, which owns all the
 // camera-pose logic and the double-click queue.
-//
-// Mount-gated by isExperimentalNav() in Main.jsx.
 
 import { useEffect, useRef, useState } from 'react';
 import { defineMessages, useIntl } from 'react-intl';

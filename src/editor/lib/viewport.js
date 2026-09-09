@@ -1,6 +1,4 @@
 import { TransformControls } from './TransformControls.js';
-// eslint-disable-next-line no-unused-vars
-import EditorControls from './EditorControls.js';
 import { ShapeVertexControls } from './ShapeVertexControls.js';
 import { StreetNodeControls } from './gizmos/StreetNodeControls.js';
 import { SegmentWidthControls } from './gizmos/SegmentWidthControls.js';
@@ -11,7 +9,6 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import InfiniteGridHelper from './InfiniteGridHelper.js';
 import {
   ExperimentalControls,
-  isExperimentalNav,
   isStreetLevelNav
 } from './nav-experimental/index.js';
 
@@ -544,20 +541,20 @@ export function Viewport(inspector) {
   Events.on('raycastermouseenter', (el) => {
     // update hoverBox to match el.object3D bounding box
     //
-    // Hover-highlight parity (KD-27). Flag-OFF: the legacy hover box is driven
-    // from the same getIntersectedEl() result a single-click selects (the
-    // `el` payload), so hover already matches selection — there is NO
-    // divergence to fix, and we leave the audited legacy behaviour untouched.
-    // Flag-ON: "what a click does" IS navigate (teleport), so the hover box
-    // must preview the Phase-4 TELEPORT category — driven from the SAME raw
-    // cursor intersection navigateDoubleClick classifies off (NOT the
-    // segment-remapped getIntersectedEl). So hovering a car-in-lane shows the
-    // car (Category C) and a pixel aside shows the lane (Category A), matching
-    // WE-7 by construction. The teleport ships with ?streetview=on
+    // Hover-highlight parity (KD-27). Street-level OFF: the hover box is
+    // driven from the same getIntersectedEl() result a single-click selects
+    // (the `el` payload), so hover already matches selection — there is NO
+    // divergence to fix.
+    // Street-level ON: "what a click does" IS navigate (teleport), so the
+    // hover box must preview the Phase-4 TELEPORT category — driven from the
+    // SAME raw cursor intersection navigateDoubleClick classifies off (NOT
+    // the segment-remapped getIntersectedEl). So hovering a car-in-lane shows
+    // the car (Category C) and a pixel aside shows the lane (Category A),
+    // matching WE-7 by construction. The teleport ships with ?streetview=on
     // (raycaster.js gates the dblclick reroute the same way), so the preview
-    // follows the same flag — at parity, hover matches legacy selection.
+    // follows the same flag — at parity, hover matches plain selection.
     let target = el;
-    if (isExperimentalNav() && isStreetLevelNav()) {
+    if (isStreetLevelNav()) {
       const cursorComp =
         inspector.cursor && inspector.cursor.components
           ? inspector.cursor.components.cursor
@@ -769,20 +766,14 @@ export function Viewport(inspector) {
   });
 
   // Controls need to be added *after* main logic.
-  // The experimental nav-controls system is default-on; `?nav=classic` opts
-  // out to the legacy controls (KD-01). The two control classes are mutually
-  // exclusive at construction time.
-  const controls = isExperimentalNav()
-    ? new ExperimentalControls(camera, inspector.container)
-    : new THREE.EditorControls(camera, inspector.container);
+  // ExperimentalControls is the only viewport control class since the legacy
+  // THREE.EditorControls (`?nav=classic`) was retired in #1956.
+  const controls = new ExperimentalControls(camera, inspector.container);
   inspector.controls = controls; // used by ActionBar zoom/reset buttons
   // Attach the tilt-threshold tuning component (T = TH-03, exposed via the
   // nav-experimental-tuning A-Frame component — KD-32) so T is
-  // live-tweakable during feel-testing. No-op for legacy controls (they
-  // have no setTiltThreshold); only attach when experimental nav is on.
-  if (isExperimentalNav()) {
-    sceneEl.setAttribute('nav-experimental-tuning', '');
-  }
+  // live-tweakable during feel-testing.
+  sceneEl.setAttribute('nav-experimental-tuning', '');
   controls.center.set(0, 1.6, 0);
   controls.rotationSpeed = 0.0035;
   controls.zoomSpeed = 0.05;
@@ -806,7 +797,6 @@ export function Viewport(inspector) {
     // visual flicker. Other ortho-toggle paths (left/right/etc.) are
     // unaffected by the intercept.
     if (
-      isExperimentalNav() &&
       data.value === 'orthotop' &&
       typeof controls.handlePlanViewRequest === 'function'
     ) {
@@ -1018,8 +1008,8 @@ export function Viewport(inspector) {
     controls.focus(object);
   });
 
-  // Cursor-aware double-click navigation (KD-23; experimental nav
-  // only). Guarded by method presence so legacy EditorControls is unaffected.
+  // Cursor-aware double-click navigation (KD-23; street-level nav only —
+  // raycaster.js only emits this with the street-level flag on).
   Events.on('nav-experimental:doubleclick', (payload) => {
     if (controls.navigateDoubleClick) {
       controls.navigateDoubleClick(payload);
@@ -1112,7 +1102,7 @@ export function Viewport(inspector) {
           );
         }
       } else {
-        // The Viewer keeps the editor's camera and EditorControls so
+        // The Viewer keeps the editor's camera and controls so
         // viewing feels identical to editing (#1848) — same pose, same
         // pan/orbit/zoom. Only selection and transform tools turn off.
         // Features that need a scene-driven camera (drive mode, WebXR)

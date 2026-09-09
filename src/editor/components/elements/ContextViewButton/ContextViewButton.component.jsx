@@ -24,7 +24,7 @@
 //
 // Icons are SVG documents imported as data-URIs (webpack `asset/inline` rule)
 // and rendered as <img>, the AddLayerPanel pattern. Mount-gated by
-// isExperimentalNav() in Main.jsx.
+// isStreetLevelNav() in Main.jsx.
 
 import { useEffect, useState } from 'react';
 import daylightIcon from '../../../../../ui_assets/context-daylight.svg';
