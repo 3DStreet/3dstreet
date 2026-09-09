@@ -12,13 +12,16 @@ on them).
 
 1. Build a managed street (import, template, or measure-and-convert).
 2. Draw a polyline with the shape tool along the corridor.
-3. Select the street → properties panel → **Follow Path** → pick the shape.
+3. Select the street → street panel → **Path** row → **follow path** → pick
+   the shape from the list (or **Draw a new path** to sketch one there).
+   With a path assigned the row collapses to that shape; **Change path…**
+   reopens the list.
 
 The street's centerline bends along the path — one continuous street, no
 per-segment clones, no elbow joints. `managed-street.length` tracks the
 path's arc length. Vertex edits on the shape, dragging the shape, dragging
 the street, and curve-setting changes all re-lay the street live
-(throttled). Clearing **Follow Path** (or undo) straightens it back out.
+(throttled). Choosing **straight** (or undo) straightens it back out.
 
 ## The path owns the curve
 

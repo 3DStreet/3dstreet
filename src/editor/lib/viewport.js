@@ -2,6 +2,10 @@ import { TransformControls } from './TransformControls.js';
 import { ShapeVertexControls } from './ShapeVertexControls.js';
 import { StreetNodeControls } from './gizmos/StreetNodeControls.js';
 import { SegmentWidthControls } from './gizmos/SegmentWidthControls.js';
+import { computeRibbonOutline } from '@/tested/street-path-utils.js';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import InfiniteGridHelper from './InfiniteGridHelper.js';
 import {
   ExperimentalControls,
@@ -10,6 +14,7 @@ import {
 
 import { copyCameraPosition } from './cameras';
 import { initRaycaster } from './raycaster';
+import { isManagedStreetSegment } from './entity';
 import { captureNavDiscovery } from './navAnalytics.js';
 import Events from './Events';
 import { isBatched, syncBatchedSubtree } from '../../batch-models';
@@ -28,11 +33,85 @@ const auxLocalBbox = new THREE.Box3();
 const tempVector3Size = new THREE.Vector3();
 const tempVector3Center = new THREE.Vector3();
 
+// Selection / hover lines are drawn with three's screen-space "fat" lines:
+// WebGL ignores LineBasicMaterial.linewidth (always 1px), so the helper
+// keeps its stock 1px LineSegments only as the data source and renders a
+// LineSegments2 twin at HIGHLIGHT_LINE_PX. LineMaterial needs the viewport
+// size to convert pixels to clip space; every material is registered so
+// the resize handler can refresh them.
+const HIGHLIGHT_LINE_PX = 2;
+const fatLineMaterials = new Set();
+function createFatLineMaterial(color) {
+  const material = new LineMaterial({
+    color,
+    linewidth: HIGHLIGHT_LINE_PX,
+    transparent: true,
+    depthTest: false
+  });
+  fatLineMaterials.add(material);
+  return material;
+}
+// CSS pixels, deliberately: the renderer draws at devicePixelRatio, so
+// HIGHLIGHT_LINE_PX comes out as CSS pixels, not device pixels. Guarded
+// against a not-yet-laid-out container (0 would divide by zero in the
+// shader and hide the lines until the first resize).
+function setFatLineResolution(width, height) {
+  const w = Math.max(1, width || 0);
+  const h = Math.max(1, height || 0);
+  fatLineMaterials.forEach((m) => m.resolution.set(w, h));
+}
+// Set a LineSegments2's segments from flat xyz pairs. When the segment
+// count is unchanged the existing interleaved instance buffer is written in
+// place (the box case: 12 segments, updated on every drag frame); otherwise
+// the geometry is rebuilt.
+function setFatLinePositions(lines, positions) {
+  const buffer = lines.geometry.attributes.instanceStart?.data;
+  if (buffer && buffer.array.length === positions.length) {
+    buffer.array.set(positions);
+    buffer.needsUpdate = true;
+    lines.geometry.computeBoundingBox();
+    lines.geometry.computeBoundingSphere();
+    return;
+  }
+  lines.geometry.dispose();
+  lines.geometry = new LineSegmentsGeometry().setPositions(positions);
+}
+// Expand an indexed LineSegments geometry (BoxHelper's 8 verts / 12 edges)
+// into flat segment pairs, into `out` (sized idx.length * 3).
+function indexedLinePairs(geometry, out) {
+  const pos = geometry.attributes.position.array;
+  const idx = geometry.index.array;
+  for (let i = 0; i < idx.length; i++) {
+    out[i * 3] = pos[idx[i] * 3];
+    out[i * 3 + 1] = pos[idx[i] * 3 + 1];
+    out[i * 3 + 2] = pos[idx[i] * 3 + 2];
+  }
+  return out;
+}
+const boxPairsScratch = new Float32Array(24 * 3);
+
+// Edge-angle threshold for a curved ribbon's selection outline: high enough
+// that the small bends between ring stations on the side walls don't draw as
+// tick marks, low enough that the top/side corners (90°) always do.
+const RIBBON_OUTLINE_THRESHOLD_DEG = 30;
+
+// Note on structure: the inherited BoxHelper (a 1px LineSegments) is kept
+// purely as the box's DATA source — its constructor, setFromObject and
+// update() write the 8 corner positions we then copy into the fat-line
+// twin (`fatBox`) that actually renders. Its own material is invisible for
+// the helper's whole life; that is intentional, not a bug.
 class OrientedBoxHelper extends THREE.BoxHelper {
   constructor(object, color = 0xffff00, fill = false) {
     super(object, color);
-    this.material.linewidth = 3;
     this.helperColor = color;
+    this.material.visible = false;
+    this.fatMaterial = createFatLineMaterial(color);
+    this.fatBox = new LineSegments2(
+      new LineSegmentsGeometry(),
+      this.fatMaterial
+    );
+    this.fatBox.raycast = function () {};
+    this.add(this.fatBox);
     if (fill) {
       // Mesh with BoxGeometry and Semi-transparent Material
       const boxFillGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -76,11 +155,89 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     return null;
   }
 
+  // A selected path-following street draws one silhouette of its outer
+  // edges along the curve — not every segment's outline (#1218 follow-up).
+  // Returns { street, sampler, lateralCenter, width, y, sEnd, closed, rev }
+  // or null when the tracked entity isn't a curved street.
+  getStreetOutlineSpec() {
+    const el = this.object?.el;
+    const street = el?.components?.['managed-street'];
+    const curve = street?.streetCurve;
+    if (!curve) return null;
+    let min = Infinity;
+    let max = -Infinity;
+    let y = 0;
+    el.querySelectorAll(':scope > [street-segment]').forEach((segEl) => {
+      const w = segEl.components['street-segment']?.data.width || 0;
+      const pos = segEl.object3D.position;
+      min = Math.min(min, pos.x - w / 2);
+      max = Math.max(max, pos.x + w / 2);
+      y = Math.max(y, pos.y);
+    });
+    if (!(max > min)) return null;
+    return {
+      sampler: curve.sampler,
+      lateralCenter: (min + max) / 2,
+      width: max - min,
+      y,
+      sEnd: street.data.length,
+      closed: !!curve.closed,
+      rev: curve.rev
+    };
+  }
+
+  updateStreetOutline(spec) {
+    if (!this.outlineLines) {
+      this.outlineLines = new LineSegments2(
+        new LineSegmentsGeometry(),
+        this.fatMaterial
+      );
+      this.outlineLines.raycast = function () {};
+      this.add(this.outlineLines);
+    }
+    this.outlineLines.visible = true;
+    const key = [spec.rev, spec.lateralCenter, spec.width, spec.y, spec.sEnd]
+      .map((v) => (typeof v === 'number' ? v.toFixed(3) : v))
+      .join('|');
+    if (this.outlineLines.userData.key === key) return;
+    this.outlineLines.userData.key = key;
+    const { left, right } = computeRibbonOutline(spec.sampler, {
+      lateralCenter: spec.lateralCenter,
+      width: spec.width,
+      sEnd: spec.sEnd
+    });
+    const pts = [];
+    const push = (a, b) =>
+      pts.push(a.x, a.y + spec.y, a.z, b.x, b.y + spec.y, b.z);
+    const n = left.length;
+    for (let i = 0; i + 1 < n; i++) {
+      push(left[i], left[i + 1]);
+      push(right[i], right[i + 1]);
+    }
+    if (spec.closed) {
+      push(left[n - 1], left[0]);
+      push(right[n - 1], right[0]);
+    } else {
+      push(left[0], right[0]);
+      push(left[n - 1], right[n - 1]);
+    }
+    setFatLinePositions(this.outlineLines, pts);
+  }
+
   updateConformingHighlight() {
-    const sources = this.getConformingSourceMeshes();
-    const showBox = !sources;
-    this.material.visible = showBox;
+    const streetSpec = this.boxFill ? null : this.getStreetOutlineSpec();
+    const sources = streetSpec ? null : this.getConformingSourceMeshes();
+    const showBox = !sources && !streetSpec;
+    // BoxHelper's constructor runs update() before our fields exist
+    if (!this.fatBox) return;
+    this.fatBox.visible = showBox;
     if (this.boxFill) this.boxFill.visible = showBox;
+    if (this.outlineLines) this.outlineLines.visible = false;
+    if (streetSpec) {
+      if (this.conformGroup) this.conformGroup.visible = false;
+      this.updateStreetOutline(streetSpec);
+      return;
+    }
     if (!sources) {
       if (this.conformGroup) this.conformGroup.visible = false;
       return;
@@ -88,27 +245,33 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     if (!this.conformGroup) {
       this.conformGroup = new THREE.Group();
       this.add(this.conformGroup);
-      this.conformMaterial = new THREE.MeshBasicMaterial({
-        color: this.helperColor,
-        transparent: true,
-        // the selection helper draws lines only (no fill); keep its
-        // conforming overlay lighter so a selected lane isn't a solid slab
-        opacity: this.boxFill ? 0.3 : 0.2,
-        depthTest: false
-      });
+      // The hover helper fills its box, so its conforming overlay is a
+      // translucent fill of the ribbon. The selection helper draws lines
+      // only, so its overlay is the ribbon's outline: a tinted fill reads as
+      // a surface-colour change rather than a selection.
+      this.conformMaterial = this.boxFill
+        ? new THREE.MeshBasicMaterial({
+            color: this.helperColor,
+            transparent: true,
+            opacity: 0.3,
+            depthTest: false
+          })
+        : this.fatMaterial;
       this.conformInverse = new THREE.Matrix4();
     }
     this.conformGroup.visible = true;
     while (this.conformGroup.children.length < sources.length) {
-      const overlay = new THREE.Mesh(undefined, this.conformMaterial);
+      const overlay = this.boxFill
+        ? new THREE.Mesh(undefined, this.conformMaterial)
+        : new LineSegments2(new LineSegmentsGeometry(), this.conformMaterial);
       overlay.matrixAutoUpdate = false;
       overlay.raycast = function () {}; // never pickable
       this.conformGroup.add(overlay);
     }
     while (this.conformGroup.children.length > sources.length) {
-      this.conformGroup.remove(
-        this.conformGroup.children[this.conformGroup.children.length - 1]
-      );
+      const overlay = this.conformGroup.children.pop();
+      this.conformGroup.remove(overlay);
+      if (overlay.isLineSegments2) overlay.geometry?.dispose();
     }
     // The helper's own matrix was just set to the tracked object's world
     // pose (see update()); overlays borrow each source mesh's geometry and
@@ -116,7 +279,22 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     this.conformInverse.copy(this.matrix).invert();
     sources.forEach((source, i) => {
       const overlay = this.conformGroup.children[i];
-      overlay.geometry = source.geometry;
+      if (overlay.isLineSegments2) {
+        // Outline edges are derived per source geometry and cached on the
+        // overlay; the ribbon re-meshes (new geometry object) on every
+        // curve/width change, which is what invalidates the cache.
+        if (overlay.userData.sourceGeometry !== source.geometry) {
+          const edges = new THREE.EdgesGeometry(
+            source.geometry,
+            RIBBON_OUTLINE_THRESHOLD_DEG
+          );
+          setFatLinePositions(overlay, edges.attributes.position.array);
+          edges.dispose();
+          overlay.userData.sourceGeometry = source.geometry;
+        }
+      } else {
+        overlay.geometry = source.geometry;
+      }
       source.updateWorldMatrix(true, false);
       overlay.matrix.multiplyMatrices(this.conformInverse, source.matrixWorld);
     });
@@ -225,6 +403,12 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       position.needsUpdate = true;
 
       this.geometry.computeBoundingSphere();
+      if (this.fatBox) {
+        setFatLinePositions(
+          this.fatBox,
+          indexedLinePairs(this.geometry, boxPairsScratch)
+        );
+      }
     }
 
     // Restore rotations (skip for splat entities since we didn't modify them).
@@ -256,11 +440,18 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       this.boxFill.geometry.dispose();
       this.boxFill.material.dispose();
     }
-    if (this.conformMaterial) {
-      // overlay geometries are borrowed from the live meshes — only the
-      // shared material is ours to dispose
+    if (this.conformMaterial && this.conformMaterial !== this.fatMaterial) {
+      // hover overlay geometries are borrowed from the live meshes — only
+      // the shared material is ours to dispose
       this.conformMaterial.dispose();
     }
+    this.fatBox.geometry.dispose();
+    this.outlineLines?.geometry.dispose();
+    this.conformGroup?.children.forEach((o) => {
+      if (o.isLineSegments2) o.geometry.dispose();
+    });
+    fatLineMaterials.delete(this.fatMaterial);
+    this.fatMaterial.dispose();
   }
 }
 
@@ -330,15 +521,11 @@ export function Viewport(inspector) {
   sceneHelpers.add(originIndicator);
 
   const selectionBox = new OrientedBoxHelper(undefined, 0x1faaf2);
-  selectionBox.material.depthTest = false;
-  selectionBox.material.transparent = true;
   selectionBox.visible = false;
   sceneHelpers.add(selectionBox);
 
   // hoverBox BoxHelper version
   const hoverBox = new OrientedBoxHelper(undefined, 0xff0000, true);
-  hoverBox.material.depthTest = false;
-  hoverBox.material.transparent = true;
   hoverBox.visible = false;
   sceneHelpers.add(hoverBox);
 
@@ -668,10 +855,11 @@ export function Viewport(inspector) {
   }
 
   // Single routing table for which controls attach to the current selection.
-  // The stock TransformControls gizmo attaches to every transformable entity
-  // exactly as before; the street gizmos (#1096 #1218) are ADDITIVE handles
-  // layered on top for managed streets and their segments — never a
-  // replacement for the standard move/rotate gizmo.
+  // The stock TransformControls gizmo attaches to every transformable entity,
+  // and the managed-street endpoint nodes (#1096) are ADDITIVE handles layered
+  // on top of it. The one exception is a managed street's segments (#1806):
+  // they get ONLY their width bars (#1218), no stock gizmo, because
+  // street-align owns segment transforms.
   function attachControlsForSelection() {
     detachAllTransformControls();
     const el = inspector.selectedEntity;
@@ -682,14 +870,18 @@ export function Viewport(inspector) {
     ) {
       return;
     }
+    // Segments of a managed street are the one selection that gets NO stock
+    // gizmo (#1806): street-align owns segment transforms, so any move/rotate
+    // applied here would be silently reset by the next street re-layout.
+    // Their handles are the width bars (plus sidebar width/elevation and the
+    // reorder buttons); the selection highlight box still shows.
+    if (isManagedStreetSegment(el)) {
+      segmentWidthControls.attach(el);
+      return;
+    }
     attachStockGizmo(el);
     if (el.components['managed-street']) {
       streetNodeControls.attach(el);
-    } else if (
-      el.components['street-segment'] &&
-      el.parentElement?.components?.['managed-street']
-    ) {
-      segmentWidthControls.attach(el);
     }
   }
 
@@ -867,7 +1059,15 @@ export function Viewport(inspector) {
 
     const cameraHelper = inspector.helpers[camera.uuid];
     if (cameraHelper) cameraHelper.update();
+    setFatLineResolution(
+      inspector.container.offsetWidth,
+      inspector.container.offsetHeight
+    );
   }
+  setFatLineResolution(
+    inspector.container.offsetWidth,
+    inspector.container.offsetHeight
+  );
 
   inspector.sceneEl.addEventListener('rendererresize', updateAspectRatio);
 

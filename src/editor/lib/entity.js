@@ -212,8 +212,39 @@ export function cloneEntityImpl(entity) {
   const clone = prepareForSerialization(entity);
   if (clone !== null) {
     recursivelyRegenerateId(clone);
+    const nextName = getUniqueLayerName(clone.getAttribute('data-layer-name'));
+    if (nextName) clone.setAttribute('data-layer-name', nextName);
   }
   return clone;
+}
+
+/**
+ * Next free layer name for a duplicate. Names get " 2" (then 3, …). A
+ * trailing number is bumped instead ("Shape • Polyline 2" → "… 3") only when
+ * the scene already holds the series' stem or another member of it —
+ * otherwise the number is part of the name ("Street • Highway 101" →
+ * "… 101 2", not "… 102"). Returns null when there is nothing to rename.
+ */
+export function getUniqueLayerName(name) {
+  if (!name) return null;
+  const taken = new Set();
+  document
+    .querySelectorAll('a-scene [data-layer-name]')
+    .forEach((el) => taken.add(el.getAttribute('data-layer-name')));
+  const match = name.match(/^(.*?)(\d+)$/);
+  const isCounter =
+    match &&
+    (taken.has(match[1].trimEnd()) ||
+      [...taken].some(
+        (t) =>
+          t !== name &&
+          t.startsWith(match[1]) &&
+          /^\d+$/.test(t.slice(match[1].length))
+      ));
+  const stem = isCounter ? match[1] : `${name} `;
+  let n = isCounter ? parseInt(match[2], 10) + 1 : 2;
+  while (taken.has(`${stem}${n}`)) n++;
+  return `${stem}${n}`;
 }
 
 /**
@@ -640,6 +671,24 @@ export function canRenameEntity(entity) {
     !['reference-layers', 'environment', 'street-container'].includes(
       entity.id
     ) && !entity.hasAttribute('data-no-transform')
+  );
+}
+
+/**
+ * Whether the entity is a street-segment laid out by a managed street.
+ * `street-align` owns segment transforms — any re-layout (width, order,
+ * length change) rewrites segment positions, silently resetting manual
+ * edits — so these segments never get the stock translate/rotate/scale
+ * gizmo (#1806). Their editing affordances are the width bars, the segment
+ * sidebar and the reorder buttons. Shared by the viewport gizmo routing and
+ * the action-bar mode buttons.
+ * @param {Element} entity
+ * @returns {boolean}
+ */
+export function isManagedStreetSegment(entity) {
+  return !!(
+    entity?.components?.['street-segment'] &&
+    entity.parentElement?.components?.['managed-street']
   );
 }
 

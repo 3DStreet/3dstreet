@@ -832,6 +832,23 @@ body.aframe-inspector-opened {
     overflow-x: hidden;
     padding-bottom: 16px;
   }
+
+  // Sticky panel headers must stick against the panel's real scroll pane
+  // (RightPanel's tab pane). Any overflow value other than visible would
+  // make this wrapper the sticky reference instead — and it never scrolls
+  // itself, so the header would never pin.
+  .scroll.scroll-passthrough {
+    overflow: visible;
+  }
+
+  // The entity title row stays pinned while the properties below scroll
+  // (segment/street panels pin their own header via .segment-sticky).
+  #layers-title {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: variables.$darkgray-200;
+  }
 }
 
 span {

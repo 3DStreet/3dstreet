@@ -1,6 +1,7 @@
 import Events from './Events';
 import { isStreetLevelNav } from './nav-experimental/flag.js';
 import { captureNavDiscovery } from './navAnalytics.js';
+import { resolveClickSelection } from './cascadingSelection.js';
 
 export function initRaycaster(inspector) {
   // Use cursor="rayOrigin: mouse".
@@ -49,27 +50,15 @@ export function initRaycaster(inspector) {
 
   function getIntersectedEl() {
     const batched = getBatchedIntersectedEl();
-    let intersectedEl =
+    const intersectedEl =
       batched !== undefined
         ? batched
         : mouseCursor.components.cursor.intersectedEl;
-    // The user needs to click on the street-segment first to then select a car or pedestrian.
-    if (
-      intersectedEl !== null &&
-      intersectedEl.parentElement?.hasAttribute('street-segment')
-    ) {
-      // If the street-segment is already selected, return the intersected el.
-      // If a child of the same street-segment is already selected, return the intersected el.
-      if (
-        inspector.selectedEntity === intersectedEl.parentElement ||
-        inspector.selectedEntity?.parentElement === intersectedEl.parentElement
-      ) {
-        return intersectedEl;
-      }
-      // Otherwise, return the street-segment.
-      return intersectedEl.parentElement;
-    }
-    return intersectedEl;
+    // Figma-style cascading selection (epic #1720): resolve one step down
+    // the intersected entity's ancestor chain per click — street, then
+    // segment, then child — see cascadingSelection.js. Hover previews the
+    // same resolution, so the hover box always shows what a click selects.
+    return resolveClickSelection(intersectedEl, inspector.selectedEntity);
   }
 
   // Poll the raycaster's closest intersection each check and fire hover events when the
@@ -119,6 +108,14 @@ export function initRaycaster(inspector) {
     // be stale (the previous click's value). evt.detail.mouseEvent is
     // the originating mouseup; reading from it is order-independent.
     const upEvt = evt && evt.detail && evt.detail.mouseEvent;
+    // MouseEvent.detail is the browser's click count: 1 for a fresh click,
+    // 2+ for the later clicks of a double/triple-click. Only the first click
+    // cascades the selection one level; the second click of a dblclick is
+    // the user asking to focus what that first click selected, not to drill
+    // further (see onDoubleClick).
+    if (upEvt && upEvt.detail > 1) {
+      return;
+    }
     const up = upEvt
       ? new THREE.Vector2(upEvt.clientX, upEvt.clientY)
       : onUpPosition;
@@ -172,11 +169,16 @@ export function initRaycaster(inspector) {
       });
       return;
     }
-    const intersectedEl = getIntersectedEl();
-    if (!intersectedEl) {
+    // The first click of this dblclick already cascaded the selection one
+    // level (street → segment → child); the second click was ignored by
+    // handleClick. Focus the entity that first click selected, so a quick
+    // double-click on a street frames the street rather than drilling into
+    // whatever sits under the cursor.
+    const selected = inspector.selectedEntity;
+    if (!selected) {
       return;
     }
-    Events.emit('objectfocus', intersectedEl.object3D);
+    Events.emit('objectfocus', selected.object3D);
   }
 
   return {

@@ -40,6 +40,7 @@
 //   - dispose()
 
 import './navTuningComponent.js';
+import { streetFocusPose } from '../streetFocus.js';
 import { isStreetLevelNav, isWasdNav } from './flag.js';
 import { ModifierState } from './modifierState.js';
 import { GestureLatch } from './gestureLatch.js';
@@ -497,6 +498,17 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         cameraPosition = new THREE.Vector3(rel.x, rel.y, rel.z)
           .applyQuaternion(focusWorldQuat)
           .add(focusWorldPos);
+      }
+    }
+
+    // Managed street or one of its segments (#1213): fit the roadway width
+    // (or the segment plus its neighbours) to the viewport.
+    if (!cameraPosition) {
+      const pose = streetFocusPose(targetEl, camera);
+      if (pose) {
+        cameraPosition = pose.position;
+        targetCenter.copy(pose.center);
+        this.center.copy(targetCenter);
       }
     }
 

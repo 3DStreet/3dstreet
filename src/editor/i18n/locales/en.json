@@ -1541,6 +1541,24 @@
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
   },
+  "managedStreetSidebar.changePath": {
+    "defaultMessage": "Change path…"
+  },
+  "managedStreetSidebar.chipBoundaries": {
+    "defaultMessage": "Boundaries"
+  },
+  "managedStreetSidebar.chipGround": {
+    "defaultMessage": "Ground"
+  },
+  "managedStreetSidebar.chipLabels": {
+    "defaultMessage": "Labels"
+  },
+  "managedStreetSidebar.chipStriping": {
+    "defaultMessage": "Striping"
+  },
+  "managedStreetSidebar.chipVehicles": {
+    "defaultMessage": "Vehicles"
+  },
   "managedStreetSidebar.convertToShapes": {
     "defaultMessage": "Convert to Shapes"
   },
@@ -1553,20 +1571,74 @@
   "managedStreetSidebar.convertToShapesTitle": {
     "defaultMessage": "Convert Street to Shapes?"
   },
-  "managedStreetSidebar.downloadJSON": {
-    "defaultMessage": "Download Street JSON"
+  "managedStreetSidebar.createdIn": {
+    "defaultMessage": "Created in"
   },
-  "managedStreetSidebar.followPathHint": {
-    "defaultMessage": "This street follows a path — length tracks the path, and curve style (smooth / arc / linear) is set on the path shape."
+  "managedStreetSidebar.drawNewPath": {
+    "defaultMessage": "Draw a new path"
   },
-  "managedStreetSidebar.followPathNone": {
-    "defaultMessage": "None (straight)"
+  "managedStreetSidebar.flattenSentence": {
+    "defaultMessage": "Flatten terrain under street"
+  },
+  "managedStreetSidebar.flattening": {
+    "defaultMessage": "Flattening"
+  },
+  "managedStreetSidebar.importedFrom": {
+    "defaultMessage": "Imported from"
+  },
+  "managedStreetSidebar.length": {
+    "defaultMessage": "Length"
+  },
+  "managedStreetSidebar.openInSource": {
+    "defaultMessage": "Open in {source}"
+  },
+  "managedStreetSidebar.path": {
+    "defaultMessage": "Path"
+  },
+  "managedStreetSidebar.pathHintFollows": {
+    "defaultMessage": "Length follows the path. Curve style is set on the shape."
+  },
+  "managedStreetSidebar.pathHintPick": {
+    "defaultMessage": "Pick a drawn shape with 2+ points, or draw one."
+  },
+  "managedStreetSidebar.pathPoints": {
+    "defaultMessage": "{count,plural,one{# point} other{# points}}"
+  },
+  "managedStreetSidebar.play": {
+    "defaultMessage": "Play"
+  },
+  "managedStreetSidebar.playSentence": {
+    "defaultMessage": "Animate traffic in Play"
   },
   "managedStreetSidebar.reloadConfirm": {
     "defaultMessage": "Reload this street from {source}? Local segment edits will be lost."
   },
-  "managedStreetSidebar.reloadFromSource": {
-    "defaultMessage": "Reload from {source}"
+  "managedStreetSidebar.reloadFromSourceTitle": {
+    "defaultMessage": "Reload from {source} — replaces local edits"
+  },
+  "managedStreetSidebar.savedWithScene": {
+    "defaultMessage": "Saved with this scene"
+  },
+  "managedStreetSidebar.shape": {
+    "defaultMessage": "Shape"
+  },
+  "managedStreetSidebar.shapeFollowPath": {
+    "defaultMessage": "follow path"
+  },
+  "managedStreetSidebar.shapeStraight": {
+    "defaultMessage": "straight"
+  },
+  "managedStreetSidebar.show": {
+    "defaultMessage": "Show"
+  },
+  "managedStreetSidebar.streetJSON": {
+    "defaultMessage": "Street JSON"
+  },
+  "managedStreetSidebar.tapLane": {
+    "defaultMessage": "Tap a lane to edit it"
+  },
+  "managedStreetSidebar.toShapes": {
+    "defaultMessage": "To shapes…"
   },
   "modalTextures.back": {
     "defaultMessage": "BACK"
@@ -2051,17 +2123,32 @@
   "screenshotModal.upgradeToPro": {
     "defaultMessage": "Upgrade to Pro to hide 3DStreet Free watermark"
   },
-  "segmentSidebar.boundaryVariant": {
-    "defaultMessage": "Boundary Variant"
-  },
-  "segmentSidebar.color": {
-    "defaultMessage": "Color"
+  "segmentSidebar.advanced": {
+    "defaultMessage": "Advanced"
   },
   "segmentSidebar.direction": {
     "defaultMessage": "Direction"
   },
+  "segmentSidebar.directionNone": {
+    "defaultMessage": "none"
+  },
+  "segmentSidebar.editStreet": {
+    "defaultMessage": "Edit street"
+  },
   "segmentSidebar.elevation": {
-    "defaultMessage": "Elevation (m)"
+    "defaultMessage": "Elevation"
+  },
+  "segmentSidebar.elevationMean": {
+    "defaultMessage": "avg {value}"
+  },
+  "segmentSidebar.elevationMeanTitle": {
+    "defaultMessage": "Mean of the two slope edges"
+  },
+  "segmentSidebar.inbound": {
+    "defaultMessage": "inbound"
+  },
+  "segmentSidebar.material": {
+    "defaultMessage": "Material"
   },
   "segmentSidebar.moveLeft": {
     "defaultMessage": "Move Left"
@@ -2069,8 +2156,8 @@
   "segmentSidebar.moveRight": {
     "defaultMessage": "Move Right"
   },
-  "segmentSidebar.segmentType": {
-    "defaultMessage": "Segment Type"
+  "segmentSidebar.outbound": {
+    "defaultMessage": "outbound"
   },
   "segmentSidebar.side": {
     "defaultMessage": "Side"
@@ -2078,11 +2165,14 @@
   "segmentSidebar.slope": {
     "defaultMessage": "Slope"
   },
-  "segmentSidebar.slopeEnd": {
-    "defaultMessage": "End Edge (m)"
+  "segmentSidebar.stripSummary": {
+    "defaultMessage": "{count,plural,one{# segment} other{# segments}}"
   },
-  "segmentSidebar.slopeStart": {
-    "defaultMessage": "Start Edge (m)"
+  "segmentSidebar.type": {
+    "defaultMessage": "Type"
+  },
+  "segmentSidebar.variant": {
+    "defaultMessage": "Variant"
   },
   "segmentSidebar.width": {
     "defaultMessage": "Width"

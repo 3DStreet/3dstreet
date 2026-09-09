@@ -9,6 +9,9 @@ export default class SelectWidget extends React.Component {
     name: PropTypes.string.isRequired,
     onChange: PropTypes.func,
     options: PropTypes.array.isRequired,
+    // Optional custom option renderer, passed straight to react-select —
+    // lets callers add swatches/icons next to values (segment Material).
+    formatOptionLabel: PropTypes.func,
     value: PropTypes.oneOfType([
       PropTypes.number,
       PropTypes.string,
@@ -76,10 +79,24 @@ export default class SelectWidget extends React.Component {
         placeholder=""
         value={this.state.value}
         noOptionsMessage={() => 'No value found'}
+        formatOptionLabel={this.props.formatOptionLabel}
         onChange={this.onChange}
         menuPosition="fixed"
         menuPlacement="auto"
-        minMenuHeight={300}
+        // Let the menu shrink (and scroll) in a short panel rather than
+        // refuse to fit either way and get clipped.
+        minMenuHeight={140}
+        // The menu is fixed-positioned, so it can grow past the control:
+        // let it size to its longest option (capped) instead of cramming
+        // "dashed-yellow-double" into a 1fr compact-row cell.
+        styles={{
+          menu: (base) => ({
+            ...base,
+            width: 'max-content',
+            minWidth: '100%',
+            maxWidth: 320
+          })
+        }}
       />
     );
   }

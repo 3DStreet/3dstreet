@@ -151,9 +151,6 @@ async function managedStreetCreateHandler(args) {
         showStriping: true,
         synchronize: true
       },
-      // New streets center on their creation point. Explicit (not a schema
-      // default) so saved scenes that relied on 'start' stay put on load.
-      'street-align': { length: 'middle' },
       'data-layer-name': streetData.name || 'New Managed Street'
     }
   };

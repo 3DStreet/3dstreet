@@ -12,8 +12,13 @@ AFRAME.registerComponent('street-align', {
       type: 'string',
       oneOf: ['center', 'left', 'right']
     },
+    // 'middle' centers the street on its entity origin (#1863): origin-
+    // centered scene systems (shadow volume, fog, orbit defaults) see the
+    // whole street, and length edits grow it symmetrically in place. Saved
+    // scenes always carry the value explicitly (see getElementData /
+    // migrateImplicitStreetAlign), so this default only shapes new streets.
     length: {
-      default: 'start',
+      default: 'middle',
       type: 'string',
       oneOf: ['middle', 'start', 'end']
     }

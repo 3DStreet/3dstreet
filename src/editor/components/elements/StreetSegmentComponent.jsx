@@ -1,4 +1,3 @@
-import Collapsible from '../Collapsible';
 import Events from '../../lib/Events';
 import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
@@ -12,11 +11,43 @@ import {
   TrashIcon
 } from '@shared/icons';
 import ModelsArrayWidget from '../widgets/ModelsArrayWidget';
+import NumberWidget from '../widgets/NumberWidget';
+import SelectWidget from '../widgets/SelectWidget';
+import BooleanWidget from '../widgets/BooleanWidget';
+import {
+  executeSegmentUpdate,
+  isMoreOpen,
+  setMoreOpen
+} from '../../lib/segmentPanel';
 
 const isSingleProperty = AFRAME.schema.isSingleProperty;
 
+// Compact generator section for the condensed segment sidebar (#1753):
+// header carries the icon, an uppercase label, a per-generator "more"
+// disclosure for rare props, and the remove action; frequently-edited props
+// pair up on single rows. Every edit still flows through the inspector's
+// undoable entityupdate path (executeSegmentUpdate).
+
+const MoreChevron = ({ up }) => (
+  <svg
+    width="9"
+    height="6"
+    viewBox="0 0 12 7"
+    fill="none"
+    style={up ? { transform: 'rotate(180deg)' } : undefined}
+  >
+    <path
+      d="M10.17 1.5L6 5.67 1.83 1.5"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+MoreChevron.propTypes = { up: PropTypes.bool };
+
 /**
- * Single component.
+ * Single street-generated-* component rendered as a condensed section.
  */
 export default class Component extends React.Component {
   static propTypes = {
@@ -30,7 +61,8 @@ export default class Component extends React.Component {
     super(props);
     this.state = {
       entity: this.props.entity,
-      name: this.props.name
+      name: this.props.name,
+      moreOpen: isMoreOpen(this.props.name)
     };
   }
 
@@ -56,10 +88,17 @@ export default class Component extends React.Component {
       return { entity: props.entity };
     }
     if (state.name !== props.name) {
-      return { name: props.name };
+      // Re-read the session-remembered disclosure state for the new generator.
+      return { name: props.name, moreOpen: isMoreOpen(props.name) };
     }
     return null;
   }
+
+  toggleMore = () => {
+    const moreOpen = !this.state.moreOpen;
+    setMoreOpen(this.props.name, moreOpen);
+    this.setState({ moreOpen });
+  };
 
   removeComponent = (event) => {
     var componentName = this.props.name;
@@ -73,6 +112,212 @@ export default class Component extends React.Component {
       });
     }
   };
+
+  update = (property, value) => {
+    executeSegmentUpdate(this.props.entity, this.props.name, property, value);
+  };
+
+  // A compact numeric cell (32px box, optional in-field prefix and unit).
+  numberCell = (
+    property,
+    {
+      prefix,
+      unit,
+      precision = 2,
+      schema,
+      title,
+      allowEmpty,
+      emptyValue,
+      placeholder
+    } = {}
+  ) => {
+    const componentData = this.props.component;
+    const propSchema =
+      schema ||
+      AFRAME.components[this.props.name.split('__')[0]].schema[property] ||
+      {};
+    return (
+      <NumberWidget
+        key={property}
+        id={`${this.props.name}:${property}`}
+        name={property}
+        value={
+          typeof componentData.data[property] === 'number'
+            ? componentData.data[property]
+            : 0
+        }
+        min={propSchema.min !== undefined ? propSchema.min : -Infinity}
+        max={propSchema.max !== undefined ? propSchema.max : Infinity}
+        prefix={prefix}
+        unit={unit}
+        title={title}
+        allowEmpty={allowEmpty}
+        emptyValue={emptyValue}
+        placeholder={placeholder}
+        precision={precision}
+        onChange={(name, value) => this.update(name, value)}
+      />
+    );
+  };
+
+  selectCell = (property) => {
+    const componentData = this.props.component;
+    const schema =
+      AFRAME.components[this.props.name.split('__')[0]].schema[property];
+    return (
+      <SelectWidget
+        key={property}
+        id={`${this.props.name}:${property}`}
+        name={property}
+        value={componentData.data[property]}
+        options={schema.oneOf}
+        onChange={(name, value) => this.update(name, value)}
+      />
+    );
+  };
+
+  toggleCell = (property, label) => {
+    const componentData = this.props.component;
+    return (
+      <div className="inline-toggle" key={property}>
+        <label htmlFor={`${this.props.name}:${property}`}>{label}</label>
+        <BooleanWidget
+          id={`${this.props.name}:${property}`}
+          name={property}
+          value={!!componentData.data[property]}
+          onChange={(name, value) => this.update(name, value)}
+        />
+      </div>
+    );
+  };
+
+  row = (label, cells, extraClass = '') => (
+    <div className={`compact-row ${extraClass}`.trim()}>
+      <label className="compact-label">{label}</label>
+      {cells}
+    </div>
+  );
+
+  moreInset = (cells) => (
+    <div className="compact-row">
+      <label className="compact-label" />
+      <div className="more-inset">{cells}</div>
+    </div>
+  );
+
+  renderClones() {
+    const componentData = this.props.component;
+    const mode = componentData.data.mode;
+    const placeCells = [this.selectCell('mode')];
+    if (mode === 'fixed') {
+      placeCells.push(this.numberCell('spacing', { unit: 'm' }));
+    } else if (mode === 'random') {
+      placeCells.push(
+        this.numberCell('count', { prefix: 'N', precision: 0 }),
+        this.numberCell('spacing', { unit: 'm' })
+      );
+    } else if (mode === 'single') {
+      placeCells.push(
+        this.selectCell('justify'),
+        this.numberCell('padding', { prefix: 'PAD' })
+      );
+    } else if (mode === 'fit') {
+      placeCells.push(
+        this.numberCell('spacing', { unit: 'm' }),
+        this.selectCell('justifyWidth')
+      );
+    }
+
+    return (
+      <>
+        <ModelsArrayWidget
+          entity={this.props.entity}
+          componentname={this.props.name}
+          modelsArray={componentData.data['modelsArray']}
+          maxChips={3}
+        />
+        {this.row('Place', placeCells, 'place-row')}
+        {this.state.moreOpen &&
+          this.moreInset(
+            <>
+              {this.numberCell('positionX', { prefix: 'X', unit: 'm' })}
+              {this.numberCell('positionY', { prefix: 'Y', unit: 'm' })}
+              {this.numberCell('facing', { prefix: 'FACING', unit: '°' })}
+              {mode === 'fixed' &&
+                this.numberCell('cycleOffset', { prefix: 'OFFSET' })}
+              {this.toggleCell('randomFacing', 'Random facing')}
+            </>
+          )}
+      </>
+    );
+  }
+
+  renderStencil() {
+    const componentData = this.props.component;
+    const componentName = this.props.name;
+    const schema = AFRAME.components[componentName.split('__')[0]].schema;
+    return (
+      <>
+        <PropertyRow
+          key="modelsArray"
+          name="modelsArray"
+          label="Models"
+          schema={schema['modelsArray']}
+          data={componentData.data['modelsArray']}
+          componentname={componentName}
+          entity={this.props.entity}
+          isSingle={false}
+        />
+        {this.row('Spacing', [
+          this.numberCell('spacing', { unit: 'm' }),
+          this.numberCell('padding', {
+            prefix: 'PAD',
+            title:
+              'Padding: distance between stencils within a group — only has an effect when more than one stencil model is selected'
+          })
+        ])}
+        {this.state.moreOpen &&
+          this.moreInset(
+            <>
+              {this.numberCell('positionX', { prefix: 'X', unit: 'm' })}
+              {this.numberCell('positionY', { prefix: 'Y', unit: 'm' })}
+              {/* stencilHeight overrides the stencil plane's length in
+                  metres; 0 is the schema sentinel for "use the model's own
+                  size" (street-generated-stencil only writes geometry when
+                  > 0), so the field reads "auto" until a value is set and
+                  clearing it restores auto. */}
+              {this.numberCell('stencilHeight', {
+                prefix: 'HEIGHT',
+                unit: 'm',
+                allowEmpty: true,
+                placeholder: 'auto',
+                title:
+                  "Stencil height: overrides the stencil's printed length in meters. Leave on auto to keep each model's own size."
+              })}
+              {this.numberCell('cycleOffset', { prefix: 'OFFSET' })}
+              {this.numberCell('facing', { prefix: 'FACING', unit: '°' })}
+            </>
+          )}
+      </>
+    );
+  }
+
+  renderStriping() {
+    return this.row('Striping', [
+      this.selectCell('striping'),
+      this.selectCell('side')
+    ]);
+  }
+
+  renderPedestrians() {
+    return this.row('Density', [this.selectCell('density')]);
+  }
+
+  renderRail() {
+    return this.row('Gauge', [
+      this.numberCell('gauge', { unit: 'mm', precision: 0 })
+    ]);
+  }
 
   /**
    * Render propert(ies) of the component.
@@ -108,304 +353,15 @@ export default class Component extends React.Component {
     }
 
     if (componentName.startsWith('street-generated-clones')) {
-      // Custom rendering for clones
-      return (
-        <>
-          <ModelsArrayWidget
-            entity={this.props.entity}
-            componentname={componentName}
-            modelsArray={componentData.data['modelsArray']}
-          />
-          <PropertyRow
-            key="mode"
-            name="mode"
-            label="Mode"
-            schema={schema['mode']}
-            data={componentData.data['mode']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          {componentData.data && componentData.data.mode === 'fixed' && (
-            <>
-              <PropertyRow
-                key="spacing"
-                name="spacing"
-                label="Spacing"
-                schema={schema['spacing']}
-                data={componentData.data['spacing']}
-                componentname={componentName}
-                entity={this.props.entity}
-                isSingle={false}
-              />
-              <PropertyRow
-                key="cycleOffset"
-                name="cycleOffset"
-                label="Cycle Offset"
-                schema={schema['cycleOffset']}
-                data={componentData.data['cycleOffset']}
-                componentname={componentName}
-                entity={this.props.entity}
-                isSingle={false}
-              />
-            </>
-          )}
-          {componentData.data && componentData.data.mode === 'random' && (
-            <>
-              <PropertyRow
-                key="spacing"
-                name="spacing"
-                label="Spacing"
-                schema={schema['spacing']}
-                data={componentData.data['spacing']}
-                componentname={componentName}
-                entity={this.props.entity}
-                isSingle={false}
-              />
-              <PropertyRow
-                key="count"
-                name="count"
-                label="Count"
-                schema={schema['count']}
-                data={componentData.data['count']}
-                componentname={componentName}
-                entity={this.props.entity}
-                isSingle={false}
-              />
-            </>
-          )}
-          {componentData.data && componentData.data.mode === 'single' && (
-            <>
-              <PropertyRow
-                key="justify"
-                name="justify"
-                label="Justify"
-                schema={schema['justify']}
-                data={componentData.data['justify']}
-                componentname={componentName}
-                entity={this.props.entity}
-                isSingle={false}
-              />
-              <PropertyRow
-                key="padding"
-                name="padding"
-                label="Padding"
-                schema={schema['padding']}
-                data={componentData.data['padding']}
-                componentname={componentName}
-                entity={this.props.entity}
-                isSingle={false}
-              />
-            </>
-          )}
-          {componentData.data && componentData.data.mode === 'fit' && (
-            <>
-              <PropertyRow
-                key="spacing"
-                name="spacing"
-                label="Spacing"
-                schema={schema['spacing']}
-                data={componentData.data['spacing']}
-                componentname={componentName}
-                entity={this.props.entity}
-                isSingle={false}
-              />
-              <PropertyRow
-                key="justifyWidth"
-                name="justifyWidth"
-                label="Justify Width"
-                schema={schema['justifyWidth']}
-                data={componentData.data['justifyWidth']}
-                componentname={componentName}
-                entity={this.props.entity}
-                isSingle={false}
-              />
-            </>
-          )}
-          <hr></hr>
-          <PropertyRow
-            key="positionX"
-            name="positionX"
-            label="PositionX"
-            schema={schema['positionX']}
-            data={componentData.data['positionX']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          <PropertyRow
-            key="positionY"
-            name="positionY"
-            label="PositionY"
-            schema={schema['positionY']}
-            data={componentData.data['positionY']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          <PropertyRow
-            key="facing"
-            name="facing"
-            label="Facing"
-            schema={schema['facing']}
-            data={componentData.data['facing']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          <PropertyRow
-            key="randomFacing"
-            name="randomFacing"
-            label="Random Facing"
-            schema={schema['randomFacing']}
-            data={componentData.data['randomFacing']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-        </>
-      );
+      return this.renderClones();
     } else if (componentName.startsWith('street-generated-stencil')) {
-      return (
-        <>
-          <PropertyRow
-            key="modelsArray"
-            name="modelsArray"
-            label="Stencils"
-            schema={schema['modelsArray']}
-            data={componentData.data['modelsArray']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          <PropertyRow
-            key="spacing"
-            name="spacing"
-            label="Spacing"
-            schema={schema['spacing']}
-            data={componentData.data['spacing']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          <PropertyRow
-            key="padding"
-            name="padding"
-            label="Padding"
-            schema={schema['padding']}
-            data={componentData.data['padding']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          <PropertyRow
-            key="stencilHeight"
-            name="stencilHeight"
-            label="Stencil Height"
-            schema={schema['stencilHeight']}
-            data={componentData.data['stencilHeight']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          <hr></hr>
-          <PropertyRow
-            key="positionX"
-            name="positionX"
-            label="Position X"
-            schema={schema['positionX']}
-            data={componentData.data['positionX']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          <PropertyRow
-            key="positionY"
-            name="positionY"
-            label="Position Y"
-            schema={schema['positionY']}
-            data={componentData.data['positionY']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          <PropertyRow
-            key="cycleOffset"
-            name="cycleOffset"
-            label="Cycle Offset"
-            schema={schema['cycleOffset']}
-            data={componentData.data['cycleOffset']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          <PropertyRow
-            key="facing"
-            name="facing"
-            label="Facing"
-            schema={schema['facing']}
-            data={componentData.data['facing']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-        </>
-      );
+      return this.renderStencil();
     } else if (componentName.startsWith('street-generated-striping')) {
-      return (
-        <>
-          <PropertyRow
-            key="striping"
-            name="striping"
-            label="Striping"
-            schema={schema['striping']}
-            data={componentData.data['striping']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-          <PropertyRow
-            key="side"
-            name="side"
-            label="Side"
-            schema={schema['side']}
-            data={componentData.data['side']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-        </>
-      );
+      return this.renderStriping();
     } else if (componentName.startsWith('street-generated-pedestrians')) {
-      return (
-        <>
-          <PropertyRow
-            key="density"
-            name="density"
-            label="Density"
-            schema={schema['density']}
-            data={componentData.data['density']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-        </>
-      );
+      return this.renderPedestrians();
     } else if (componentName.startsWith('street-generated-rail')) {
-      return (
-        <>
-          <PropertyRow
-            key="gauge"
-            name="gauge"
-            label="Gauge"
-            schema={schema['gauge']}
-            data={componentData.data['gauge']}
-            componentname={componentName}
-            entity={this.props.entity}
-            isSingle={false}
-          />
-        </>
-      );
+      return this.renderRail();
     }
     if (isSingleProperty(schema)) {
       return (
@@ -436,6 +392,15 @@ export default class Component extends React.Component {
           />
         </div>
       ));
+  };
+
+  // Only generators with rarely-used props carry the "more" disclosure.
+  hasMoreProps = () => {
+    const componentName = this.props.name;
+    return (
+      componentName.startsWith('street-generated-clones') ||
+      componentName.startsWith('street-generated-stencil')
+    );
   };
 
   getIcon = () => {
@@ -483,26 +448,35 @@ export default class Component extends React.Component {
   render() {
     const componentName = this.props.name;
     const componentDisplayName = this.getDisplayName(componentName);
+    const moreOpen = this.state.moreOpen;
 
     return (
-      <Collapsible collapsed={this.props.isCollapsed}>
-        <div className="componentHeader collapsible-header">
-          <span className="componentTitle" title={componentDisplayName}>
-            {this.getIcon()}
-            <span>{componentDisplayName}</span>
+      <div className="generator-section">
+        <div className="generator-header">
+          {this.getIcon()}
+          <span className="generator-title" title={componentDisplayName}>
+            {componentDisplayName}
           </span>
-          <div className="componentHeaderActions">
-            <a
-              title="Remove component"
-              className="button remove-button"
-              onClick={this.removeComponent}
+          {this.hasMoreProps() && (
+            <button
+              type="button"
+              className={'more-toggle' + (moreOpen ? ' is-open' : '')}
+              onClick={this.toggleMore}
             >
-              <TrashIcon />
-            </a>
-          </div>
+              {moreOpen ? 'less' : 'more'}
+              <MoreChevron up={moreOpen} />
+            </button>
+          )}
+          <a
+            title="Remove component"
+            className="generator-remove"
+            onClick={this.removeComponent}
+          >
+            <TrashIcon />
+          </a>
         </div>
-        <div className="collapsible-content">{this.renderPropertyRows()}</div>
-      </Collapsible>
+        {this.renderPropertyRows()}
+      </div>
     );
   }
 }
