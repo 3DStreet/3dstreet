@@ -152,6 +152,9 @@ export default class NumberWidget extends React.Component {
       }
       return;
     }
+    // Untouched field (still showing the rendered value): a click-and-blur
+    // must not re-commit the rounded display over the precise stored value.
+    if (this.input.current.value === this.toDisplay(this.props.value)) return;
     this.setValue(parseFloat(this.input.current.value));
   };
 

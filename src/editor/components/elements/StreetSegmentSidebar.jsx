@@ -94,12 +94,8 @@ const WidthRow = ({ entity, data, schema }) => {
   const presets =
     WIDTH_PRESETS[imperial ? 'imperial' : 'metric'][data.type] || [];
 
-  const commitMetres = (metres) => {
-    // Same click-and-blur guard as LengthPropertyRow: NumberWidget re-commits
-    // its 2-decimal display on blur, don't let a round-trip rewrite the value.
-    if (Math.abs(metres - value) < 1e-3) return;
+  const commitMetres = (metres) =>
     executeSegmentUpdate(entity, componentName, 'width', metres);
-  };
 
   // Presets are stored in display units (ft or m); compare in display units
   // so a pill lights up for the exact width it commits.
@@ -251,6 +247,8 @@ const ColorField = ({ entity, value }) => {
     }
   })();
   const commit = (v) => {
+    // Nothing typed (click in, tab out): no command, no undo entry.
+    if (draft === null) return;
     setDraft(null);
     const cleaned = v.trim().replace(/^#/, '');
     if (/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(cleaned)) {
@@ -336,9 +334,8 @@ const SurfaceSection = ({ entity, component }) => {
   const schema = component.schema;
   const unit = units === 'imperial' ? 'ft' : 'm';
 
-  const commitLength = (property, current) => (_name, displayValue) => {
+  const commitLength = (property) => (_name, displayValue) => {
     const metres = parseFloat(toMetres(displayValue, units).toFixed(4));
-    if (Math.abs(metres - current) < 1e-3) return;
     executeSegmentUpdate(entity, componentName, property, metres);
   };
 
@@ -381,10 +378,19 @@ const SurfaceSection = ({ entity, component }) => {
         {data.slope ? (
           <div
             className="inputBlock has-unit elevation-avg"
-            title="Mean of the two slope edges"
+            title={intl.formatMessage({
+              id: 'segmentSidebar.elevationMeanTitle',
+              defaultMessage: 'Mean of the two slope edges'
+            })}
           >
             <span className="avg-value">
-              avg {toDisplay(slopeMean, units).toFixed(2)}
+              {intl.formatMessage(
+                {
+                  id: 'segmentSidebar.elevationMean',
+                  defaultMessage: 'avg {value}'
+                },
+                { value: toDisplay(slopeMean, units).toFixed(2) }
+              )}
             </span>
             <span className="unit">{unit}</span>
           </div>
@@ -400,7 +406,7 @@ const SurfaceSection = ({ entity, component }) => {
             }
             precision={2}
             unit={unit}
-            onChange={commitLength('elevation', data.elevation || 0)}
+            onChange={commitLength('elevation')}
           />
         )}
         <div className="inline-toggle">
@@ -432,7 +438,7 @@ const SurfaceSection = ({ entity, component }) => {
               min={0}
               precision={2}
               unit={unit}
-              onChange={commitLength('slopeStart', data.slopeStart || 0)}
+              onChange={commitLength('slopeStart')}
             />
             <SlopeGlyph
               startHigher={(data.slopeStart || 0) >= (data.slopeEnd || 0)}
@@ -445,7 +451,7 @@ const SurfaceSection = ({ entity, component }) => {
               min={0}
               precision={2}
               unit={unit}
-              onChange={commitLength('slopeEnd', data.slopeEnd || 0)}
+              onChange={commitLength('slopeEnd')}
             />
           </div>
         </div>

@@ -30,9 +30,6 @@ const LengthPropertyRow = ({
   const onChange = (_name, displayValue) => {
     // Round after converting so a typed "10 ft" doesn't store 3.0480001.
     const metres = parseFloat(toMetres(displayValue, units).toFixed(4));
-    // NumberWidget commits its 2-decimal display on blur even when nothing
-    // was typed; don't let a click-and-blur round-trip rewrite the value.
-    if (Math.abs(metres - value) < 1e-3) return;
     onValueChange?.(name, metres);
     AFRAME.INSPECTOR.execute('entityupdate', {
       entity,

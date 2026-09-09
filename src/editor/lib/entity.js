@@ -219,20 +219,30 @@ export function cloneEntityImpl(entity) {
 }
 
 /**
- * Next free layer name for a duplicate: a trailing number is bumped past
- * every name already in the scene ("Shape • Polyline 1" → "… 2"), matching
- * what the draw tools do when creating another. Names without a trailing
- * number get " 2" (then 3, …). Returns null when there is nothing to rename.
+ * Next free layer name for a duplicate. Names get " 2" (then 3, …). A
+ * trailing number is bumped instead ("Shape • Polyline 2" → "… 3") only when
+ * the scene already holds the series' stem or another member of it —
+ * otherwise the number is part of the name ("Street • Highway 101" →
+ * "… 101 2", not "… 102"). Returns null when there is nothing to rename.
  */
 export function getUniqueLayerName(name) {
   if (!name) return null;
-  const match = name.match(/^(.*?)(\d+)$/);
-  const stem = match ? match[1] : `${name} `;
-  let n = match ? parseInt(match[2], 10) + 1 : 2;
   const taken = new Set();
   document
     .querySelectorAll('a-scene [data-layer-name]')
     .forEach((el) => taken.add(el.getAttribute('data-layer-name')));
+  const match = name.match(/^(.*?)(\d+)$/);
+  const isCounter =
+    match &&
+    (taken.has(match[1].trimEnd()) ||
+      [...taken].some(
+        (t) =>
+          t !== name &&
+          t.startsWith(match[1]) &&
+          /^\d+$/.test(t.slice(match[1].length))
+      ));
+  const stem = isCounter ? match[1] : `${name} `;
+  let n = isCounter ? parseInt(match[2], 10) + 1 : 2;
   while (taken.has(`${stem}${n}`)) n++;
   return `${stem}${n}`;
 }

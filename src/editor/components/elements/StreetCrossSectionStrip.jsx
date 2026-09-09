@@ -95,15 +95,12 @@ TurnArrow.propTypes = {
   ink: PropTypes.string
 };
 
-// The importers name streets "Managed Street • <name>"; the caption wants
-// just the name (same convention as managed-street.js's exporter).
-const STREET_NAME_PREFIX = 'Managed Street • ';
-const streetDisplayName = (streetEl) => {
-  const name = getEntityDisplayName(streetEl);
-  return name.startsWith(STREET_NAME_PREFIX)
-    ? name.slice(STREET_NAME_PREFIX.length)
-    : name;
-};
+// The importers name streets "Managed Street • <name>" (StreetPlan/JSON) or
+// "Street • <name>" (Streetmix); the caption wants just the name (same
+// convention as managed-street.js's exporter).
+const STREET_NAME_PREFIX = /^(Managed )?Street • /;
+const streetDisplayName = (streetEl) =>
+  getEntityDisplayName(streetEl).replace(STREET_NAME_PREFIX, '');
 
 // `entity` may be a street-segment (segment panel: selected bar highlighted,
 // footnote with the street name + "Edit street") or the managed-street itself
@@ -197,7 +194,7 @@ const StreetCrossSectionStrip = ({ entity, variant = 'segment' }) => {
               onClick={() => selectSegment(el)}
               onDoubleClick={() => Events.emit('objectfocus', el.object3D)}
               onMouseEnter={() => Events.emit('raycastermouseenter', el)}
-              onMouseLeave={() => Events.emit('raycastermouseleave', el)}
+              onMouseLeave={() => Events.emit('raycastermouseleave', null)}
             >
               {hasArrow && (
                 <span className="cross-section-glyph">

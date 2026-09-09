@@ -2141,6 +2141,12 @@
   "segmentSidebar.elevation": {
     "defaultMessage": "Elevation"
   },
+  "segmentSidebar.elevationMean": {
+    "defaultMessage": "avg {value}"
+  },
+  "segmentSidebar.elevationMeanTitle": {
+    "defaultMessage": "Mean of the two slope edges"
+  },
   "segmentSidebar.inbound": {
     "defaultMessage": "inbound"
   },

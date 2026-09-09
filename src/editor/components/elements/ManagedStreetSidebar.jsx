@@ -703,18 +703,20 @@ const ManagedStreetSidebar = ({ entity }) => {
                 </div>
               )}
               <div className="path-picker-actions">
-                {pathValue && !pathPickerOpen && pathableShapes.length > 1 && (
-                  <button
-                    type="button"
-                    className="path-picker-draw"
-                    onClick={() => setPathPickerOpen(true)}
-                  >
-                    {intl.formatMessage({
-                      id: 'managedStreetSidebar.changePath',
-                      defaultMessage: 'Change path…'
-                    })}
-                  </button>
-                )}
+                {pathValue &&
+                  !pathPickerOpen &&
+                  pathableShapes.length > listedShapes.length && (
+                    <button
+                      type="button"
+                      className="path-picker-draw"
+                      onClick={() => setPathPickerOpen(true)}
+                    >
+                      {intl.formatMessage({
+                        id: 'managedStreetSidebar.changePath',
+                        defaultMessage: 'Change path…'
+                      })}
+                    </button>
+                  )}
                 <button
                   type="button"
                   className="path-picker-draw"

@@ -259,7 +259,10 @@ export default class Sidebar extends React.Component {
                 <StreetSegmentSidebar entity={entity} />
               )}
               {entity.getAttribute('managed-street') && (
-                <ManagedStreetSidebar entity={entity} />
+                <ManagedStreetSidebar
+                  key={entity.object3D.uuid}
+                  entity={entity}
+                />
               )}
               {entity.id === 'street-container' && (
                 <UserLayersSidebar entity={entity} />

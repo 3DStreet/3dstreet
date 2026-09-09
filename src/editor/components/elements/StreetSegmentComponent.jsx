@@ -155,18 +155,7 @@ export default class Component extends React.Component {
         emptyValue={emptyValue}
         placeholder={placeholder}
         precision={precision}
-        onChange={(name, value) => {
-          // Guard against NumberWidget's blur re-commit of its rounded
-          // display rewriting an untouched value (see LengthPropertyRow).
-          const current = this.props.component.data[name];
-          if (
-            typeof current === 'number' &&
-            Math.abs(value - current) < Math.pow(10, -precision) / 2
-          ) {
-            return;
-          }
-          this.update(name, value);
-        }}
+        onChange={(name, value) => this.update(name, value)}
       />
     );
   };
