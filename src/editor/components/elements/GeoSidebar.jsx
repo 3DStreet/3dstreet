@@ -878,7 +878,9 @@ const GeoSidebar = ({ entity }) => {
               <>
                 {/* Opacity applies to google3d tiles and the mapbox2d plane;
                     flattening remains google3d-only. */}
-                {['google3d', 'mapbox2d'].includes(component.data['maps']) && (
+                {['google3d', 'mapbox2d', 'tiles2d'].includes(
+                  component.data['maps']
+                ) && (
                   <div className="collapsible component">
                     <div className="static">
                       <div className="componentHeader collapsible-header">

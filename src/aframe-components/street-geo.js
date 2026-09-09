@@ -6,6 +6,12 @@ import useStore from '../store.js';
 const MAPBOX_ACCESS_TOKEN_VALUE =
   'pk.eyJ1Ijoia2llcmFuZmFyciIsImEiOiJjazB0NWh2YncwOW9rM25sd2p0YTlxemk2In0.mLl4sNGDFbz_QXk0GIK02Q';
 
+// Dev-only tile source for the tiles2d POC (#1962 step A). The OSMF server
+// must not ship as the production default (usage policy); step B replaces
+// this with the provider registry + env-configured API keys.
+const TILES2D_DEV_URL_TEMPLATE =
+  'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
 AFRAME.registerComponent('street-geo', {
   schema: {
     longitude: { type: 'number', default: 0 },
@@ -16,7 +22,10 @@ AFRAME.registerComponent('street-geo', {
     maps: {
       type: 'string',
       default: 'google3d',
-      oneOf: ['google3d', 'mapbox2d', 'osm3d', 'none']
+      // tiles2d is the in-progress tiled replacement for mapbox2d (#1962);
+      // not yet offered in the GeoSidebar UI — set via the properties panel
+      // or console while it bakes.
+      oneOf: ['google3d', 'mapbox2d', 'osm3d', 'tiles2d', 'none']
     },
     // Master switch for terrain flattening (#1476). Default on: any entity
     // carrying a geo-flatten component (managed streets attach one
@@ -259,6 +268,53 @@ AFRAME.registerComponent('street-geo', {
     });
     this.mapbox2d.setAttribute('material', 'opacity', this.opacityFraction());
     this.mapbox2d.setAttribute('visible', data.opacity > 0);
+  },
+  tiles2dCreate: function () {
+    const data = this.data;
+    const el = this.el;
+
+    const tiles2dElement = document.createElement('a-entity');
+    tiles2dElement.setAttribute('data-layer-name', '2D Map Tiles (Beta)');
+    // Lay the generated XY-plane surface flat: with A-Frame's YXZ rotation
+    // order this maps plane east → +Z world and plane north → +X world,
+    // matching google3d's legacy frame (same rotation as the other 2D maps).
+    tiles2dElement.setAttribute('rotation', '-90 -90 0');
+    tiles2dElement.setAttribute('tiled-basemap', {
+      urlTemplate: TILES2D_DEV_URL_TEMPLATE,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      opacity: this.opacityFraction()
+    });
+    // At opacity 0 hide the layer outright — tiled-basemap's tick also stops
+    // tile updates so nothing downloads while invisible.
+    tiles2dElement.setAttribute('visible', data.opacity > 0);
+    tiles2dElement.setAttribute('data-no-pause', '');
+    tiles2dElement.classList.add('autocreated');
+    tiles2dElement.setAttribute('data-ignore-raycaster', '');
+    tiles2dElement.setAttribute('data-no-transform', '');
+
+    if (AFRAME.INSPECTOR?.opened) {
+      tiles2dElement.addEventListener(
+        'loaded',
+        () => {
+          // emit play event to start loading tiles in Editor mode
+          tiles2dElement.play();
+        },
+        { once: true }
+      );
+    }
+    el.appendChild(tiles2dElement);
+    this['tiles2d'] = tiles2dElement;
+    document.getElementById('map-copyright').textContent = 'OpenStreetMap';
+  },
+  tiles2dUpdate: function () {
+    const data = this.data;
+    this.tiles2d.setAttribute('tiled-basemap', {
+      latitude: data.latitude,
+      longitude: data.longitude,
+      opacity: this.opacityFraction()
+    });
+    this.tiles2d.setAttribute('visible', data.opacity > 0);
   },
   osm3dCreate: function () {
     // loadScript has no dedupe and this.osm3d is only assigned in its async

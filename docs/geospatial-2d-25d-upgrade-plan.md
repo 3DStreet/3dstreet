@@ -1,6 +1,16 @@
 # Geospatial 2D / 2.5D basemap overhaul — research + epic plan
 
-Status: research/proposal (no code changes yet). This documents the current
+Status: tracked in epic issue
+[#1962](https://github.com/3DStreet/3dstreet/issues/1962) (steps A–G as one
+checklist). Step A (planar XYZ basemap POC) is implemented: see
+`src/aframe-components/tiled-basemap.js` and the dev-only `tiles2d` map type
+in `street-geo` (not yet in the GeoSidebar UI). Verified in-browser:
+1:1 meter scale at scene latitude (group scale = circumference × cos(lat)),
+scene origin lands exactly on the configured lat/lon, LOD refines levels
+0→19 with camera altitude, opacity propagates, and switching map types
+disposes cleanly. Gotcha for future plugin work: 3d-tiles-renderer 0.5.x
+renamed the tileset event to `load-root-tileset` (pre-0.5 `load-tile-set`
+never fires). This documents the current
 state of the non-Google map layers, why they underperform, and a ticket
 breakdown for replacing them on infrastructure we already ship. Ordering
 rationale: fix the 2D and 2.5D basemaps **before** the automatic
@@ -91,7 +101,7 @@ a full **raster / terrain / vector basemap suite** under
   `preprocessURL` (API-key injection), `opacity`, and `frame`.
 - **`GeneratedSurfacePlugin`** — generates tiled surface geometry from an
   overlay's tiling scheme with `shape: 'planar'` or `'ellipsoid'` and
-  `applyOverlayTexture: true`. This *is* a proper 2D tiled basemap: the
+  `applyOverlayTexture: true`. This _is_ a proper 2D tiled basemap: the
   TilesRenderer core drives camera-based refinement, the download queue,
   fade (TilesFadePlugin), unload (UnloadTilesPlugin), and error handling —
   the exact machinery google3d already uses.
@@ -104,7 +114,7 @@ a full **raster / terrain / vector basemap suite** under
 - MVT (Mapbox Vector Tiles) overlay + annotation plugins for vector
   street/label rendering, for later.
 
-So the upgrade is mostly *deleting* bespoke/vendored map code and
+So the upgrade is mostly _deleting_ bespoke/vendored map code and
 configuring plugins on the renderer we already maintain, keeping Google 3D
 as a deliberately separate vendor while the 2D/2.5D layers get their own
 (also separate) provider.
@@ -135,7 +145,7 @@ street-geo (unchanged orchestrator, same maps switch pattern)
   `preprocessURL`; optionally proxied through a Firebase function later if
   key-scraping becomes a problem. Preferred providers (both OSM-ecosystem,
   both vendor-separate from Google):
-  - **MapTiler** — satellite, OSM streets/hybrid, *and* terrain-rgb tiles
+  - **MapTiler** — satellite, OSM streets/hybrid, _and_ terrain-rgb tiles
     from one account/key (covers the 2.5D terrain ticket too).
   - **Mapbox Raster Tiles API** — account already exists; raster XYZ
     endpoint of any style, plus terrain-rgb.
@@ -161,7 +171,7 @@ street-geo (unchanged orchestrator, same maps switch pattern)
 > 3d-tiles-renderer we already ship for Google 3D, behind a paid
 > OSM-ecosystem provider that keeps 2D/2.5D vendor-separate from Google.
 
-### Ticket A — Spike: planar XYZ basemap POC on 3d-tiles-renderer *(S, 1–2 days)*
+### Ticket A — Spike: planar XYZ basemap POC on 3d-tiles-renderer _(S, 1–2 days)_
 
 New `tiled-basemap` component: TilesRenderer + `GeneratedSurfacePlugin
 ({ shape:'planar', applyOverlayTexture:true })` + `XYZTilesOverlay`, wired
@@ -170,10 +180,10 @@ scale at scene latitude, camera-driven LOD from street level to high
 altitude, fade, unload, opacity, attribution string. Confirms plugin
 maturity before committing (the plugin suite is new in 0.5.x; a version
 bump to latest 0.5.x may be part of this).
-*Exit criteria: side-by-side with mapbox2d at 3 test locations; frame time
-and memory over a 5-minute fly-around; decision note.*
+_Exit criteria: side-by-side with mapbox2d at 3 test locations; frame time
+and memory over a 5-minute fly-around; decision note._
 
-### Ticket B — Provider abstraction + key management *(S)*
+### Ticket B — Provider abstraction + key management _(S)_
 
 Provider registry (URL template, attribution, key env var, styles:
 satellite / streets / hybrid), `preprocessURL` key injection, env-based
@@ -183,7 +193,7 @@ license requirement, not a nicety). Choose and provision the paid provider
 config entry). Remove the hardcoded Mapbox token from source as part of
 this. Optional follow-up noted (not built now): Firebase proxy for keys.
 
-### Ticket C — Replace `mapbox2d` with the tiled 2D basemap *(M)*
+### Ticket C — Replace `mapbox2d` with the tiled 2D basemap _(M)_
 
 Swap `street-geo`'s `mapbox2dCreate/Update` to the new component; scene
 JSON migration/aliasing; GeoSidebar buttons + i18n (label becomes provider-
@@ -193,14 +203,14 @@ for every page load); update `src/aframe-components/README.md`, browser
 test page. Parity checklist: opacity slider, `bvh-geometry`/raycast
 behavior, `data-ignore-raycaster`, AR mode suppression, plan view (#1229).
 
-### Ticket D — 2.5D ground rides the same basemap *(S, after C)*
+### Ticket D — 2.5D ground rides the same basemap _(S, after C)_
 
 Replace `osm-tiles` (fixed-zoom planes) in the `osm3d` map type with a
 second `tiled-basemap` instance (OSM streets or satellite style). Kills the
 unbounded tile growth and the OSMF tile-server dependency (#787) with code
 that already exists after C. Opacity now works for 2.5D too.
 
-### Ticket E — Spike: 2.5D buildings source decision *(S spike → M/L impl)*
+### Ticket E — Spike: 2.5D buildings source decision _(S spike → M/L impl)_
 
 Compare, with POCs at the same 3 locations:
 
@@ -215,12 +225,12 @@ Compare, with POCs at the same 3 locations:
    Overpass endpoint (paid mirrors exist).
 
 Decision input: #1930 phases 4–5 need an Overpass/OSM-data fetch layer for
-*street centerlines* regardless; if (2) is chosen its fetch/cache module
+_street centerlines_ regardless; if (2) is chosen its fetch/cache module
 should be designed as that shared service. If (1) is chosen, (2)'s scope
 shrinks to centerlines-only later. Either way `osm-geojson` and the
 `osm4vr.min.js` vendored bundle are retired at the end.
 
-### Ticket F — Implement chosen buildings path + hardening *(M/L)*
+### Ticket F — Implement chosen buildings path + hardening _(M/L)_
 
 Whichever E picks: implement, wire into `osm3d` (now "2.5D") map type,
 retire `osm4vr.min.js`, cover the #1861 failure modes (explicit error
@@ -228,7 +238,7 @@ surface, retry, degraded-mode messaging), and parity items (BVH raycast,
 play-mode colliders if buildings should be drivable-into, flattening
 interaction documented).
 
-### Ticket G — Optional/stretch: terrain-elevation 2.5D ground *(M)*
+### Ticket G — Optional/stretch: terrain-elevation 2.5D ground _(M)_
 
 `TerrainRGBMeshPlugin` with the same provider key: real hillsides under
 scenes on sloped sites, imagery draped. Interactions to resolve:
