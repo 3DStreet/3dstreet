@@ -72,7 +72,8 @@ AFRAME.registerComponent('street-generated-stencil', {
       type: 'number'
     },
     direction: {
-      // specifying inbound/outbound directions will overwrite facing/randomFacing
+      // 'none' = fixed absolute orientation via `facing`; 'inbound'/'outbound'
+      // make the stencil follow the segment's travel direction (and its flips)
       type: 'string',
       default: 'none',
       oneOf: ['none', 'inbound', 'outbound']

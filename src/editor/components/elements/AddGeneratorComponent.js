@@ -1,6 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import Select from 'react-select';
+import { seedLaneDirection } from '../../lib/segmentPanel';
 
 export default class AddGeneratorComponent extends React.Component {
   static propTypes = {
@@ -30,6 +31,16 @@ export default class AddGeneratorComponent extends React.Component {
 
     const entity = this.props.entity;
 
+    // Match the import/type-change creation paths: a stencil/clones component
+    // added to a lane must start out following the lane's travel direction,
+    // or it renders outbound-facing on an inbound lane and — since direction
+    // propagation skips 'none' — never follows later flips (#1959).
+    const attrValue = seedLaneDirection(
+      componentName,
+      value.attrValue || '',
+      entity.components['street-segment']?.data?.direction
+    );
+
     if (AFRAME.components[componentName].multiple) {
       // Auto-assign the lowest unused numeric modifier instead of prompting
       // the user to invent a name before they've defined the component (#1752).
@@ -50,7 +61,7 @@ export default class AddGeneratorComponent extends React.Component {
     AFRAME.INSPECTOR.execute('componentadd', {
       entity,
       component: componentName,
-      value: value.attrValue || ''
+      value: attrValue
     });
   };
 
