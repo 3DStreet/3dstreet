@@ -1729,6 +1729,16 @@ a.help-linkhover {
     font-size: 11px;
     color: variables.$lightgray-700;
   }
+  /* Change path + Draw a new path share one row when both show */
+  .path-picker-actions {
+    display: flex;
+    gap: 6px;
+    > .path-picker-draw {
+      flex: 1 1 0;
+      min-width: 0;
+      white-space: nowrap;
+    }
+  }
   .path-picker-draw {
     display: flex;
     align-items: center;

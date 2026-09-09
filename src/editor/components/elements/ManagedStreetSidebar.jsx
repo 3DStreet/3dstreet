@@ -702,42 +702,40 @@ const ManagedStreetSidebar = ({ entity }) => {
                   })}
                 </div>
               )}
-              {pathValue && !pathPickerOpen && pathableShapes.length > 1 && (
+              <div className="path-picker-actions">
+                {pathValue && !pathPickerOpen && pathableShapes.length > 1 && (
+                  <button
+                    type="button"
+                    className="path-picker-draw"
+                    onClick={() => setPathPickerOpen(true)}
+                  >
+                    {intl.formatMessage({
+                      id: 'managedStreetSidebar.changePath',
+                      defaultMessage: 'Change path…'
+                    })}
+                  </button>
+                )}
                 <button
                   type="button"
                   className="path-picker-draw"
-                  onClick={() => setPathPickerOpen(true)}
+                  onClick={drawNewPath}
                 >
+                  {StreetPanelIcons.plus}
                   {intl.formatMessage({
-                    id: 'managedStreetSidebar.changePath',
-                    defaultMessage: 'Change path…'
+                    id: 'managedStreetSidebar.drawNewPath',
+                    defaultMessage: 'Draw a new path'
                   })}
                 </button>
-              )}
-              <button
-                type="button"
-                className="path-picker-draw"
-                onClick={drawNewPath}
-              >
-                {StreetPanelIcons.plus}
-                {intl.formatMessage({
-                  id: 'managedStreetSidebar.drawNewPath',
-                  defaultMessage: 'Draw a new path'
-                })}
-              </button>
-              <div className="path-picker-hint">
-                {pathValue
-                  ? intl.formatMessage({
-                      id: 'managedStreetSidebar.pathHintFollows',
-                      defaultMessage:
-                        'Length follows the path. Curve style is set on the shape.'
-                    })
-                  : intl.formatMessage({
-                      id: 'managedStreetSidebar.pathHintPick',
-                      defaultMessage:
-                        'Pick a drawn shape with 2+ points, or draw one.'
-                    })}
               </div>
+              {!pathValue && (
+                <div className="path-picker-hint">
+                  {intl.formatMessage({
+                    id: 'managedStreetSidebar.pathHintPick',
+                    defaultMessage:
+                      'Pick a drawn shape with 2+ points, or draw one.'
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
