@@ -10,7 +10,21 @@ scene origin lands exactly on the configured lat/lon, LOD refines levels
 0→19 with camera altitude, opacity propagates, and switching map types
 disposes cleanly. Gotcha for future plugin work: 3d-tiles-renderer 0.5.x
 renamed the tileset event to `load-root-tileset` (pre-0.5 `load-tile-set`
-never fires). This documents the current
+never fires).
+
+Step B (provider registry + key management) is implemented:
+`src/tested/basemap-providers.js` (unit-tested, pure) maps provider/style →
+keyed XYZ template + attribution. Decision: **MapTiler primary** (hybrid /
+satellite / streets styles), Mapbox secondary, OSM strictly a dev-only
+fallback — a missing `MAPTILER_API_KEY` falls back to OSM tiles in
+development builds and disables the tiles2d layer in production (OSMF usage
+policy). Keys live in the committed `config/.env.*` files (same convention
+as the Firebase client keys — client-side map keys are browser-visible
+regardless, so the real protection is **origin restriction in the provider
+dashboard**). The legacy hardcoded Mapbox token moved from street-geo
+source to `MAPBOX_ACCESS_TOKEN` in env config. `street-geo` gained a
+`basemapStyle` property (hybrid/satellite/streets) that re-resolves the
+source on change. This documents the current
 state of the non-Google map layers, why they underperform, and a ticket
 breakdown for replacing them on infrastructure we already ship. Ordering
 rationale: fix the 2D and 2.5D basemaps **before** the automatic

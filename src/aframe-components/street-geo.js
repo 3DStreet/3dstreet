@@ -2,15 +2,26 @@
 import { firebaseConfig } from '@shared/services/firebase.js';
 import { loadScript } from '../utils.js';
 import useStore from '../store.js';
+import {
+  resolveBasemapSource,
+  DEFAULT_BASEMAP_STYLE,
+  BASEMAP_STYLES
+} from '../tested/basemap-providers.js';
 
-const MAPBOX_ACCESS_TOKEN_VALUE =
-  'pk.eyJ1Ijoia2llcmFuZmFyciIsImEiOiJjazB0NWh2YncwOW9rM25sd2p0YTlxemk2In0.mLl4sNGDFbz_QXk0GIK02Q';
+// Basemap API keys come from the committed per-environment config
+// (config/.env.*, injected by dotenv-webpack — same convention as the
+// Firebase client keys) and must be origin-restricted in the provider
+// dashboard. Property accesses must stay literal: dotenv-webpack does
+// textual replacement, so a dynamic process.env[name] lookup would not be
+// substituted at build time.
+const BASEMAP_KEYS = {
+  maptiler: process.env.MAPTILER_API_KEY,
+  mapbox: process.env.MAPBOX_ACCESS_TOKEN
+};
 
-// Dev-only tile source for the tiles2d POC (#1962 step A). The OSMF server
-// must not ship as the production default (usage policy); step B replaces
-// this with the provider registry + env-configured API keys.
-const TILES2D_DEV_URL_TEMPLATE =
-  'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+// Legacy mapbox2d layer token (retired along with the layer in #1962 step
+// C; the registry's mapbox entry shares the same env var).
+const MAPBOX_ACCESS_TOKEN_VALUE = process.env.MAPBOX_ACCESS_TOKEN;
 
 AFRAME.registerComponent('street-geo', {
   schema: {
@@ -26,6 +37,14 @@ AFRAME.registerComponent('street-geo', {
       // not yet offered in the GeoSidebar UI — set via the properties panel
       // or console while it bakes.
       oneOf: ['google3d', 'mapbox2d', 'osm3d', 'tiles2d', 'none']
+    },
+    // Style for the tiles2d basemap (and the 2.5D ground once it rides the
+    // same component, #1962 step D): hybrid = satellite + street labels
+    // (the mapbox2d look), satellite = imagery only, streets = cartography.
+    basemapStyle: {
+      type: 'string',
+      default: DEFAULT_BASEMAP_STYLE,
+      oneOf: BASEMAP_STYLES
     },
     // Master switch for terrain flattening (#1476). Default on: any entity
     // carrying a geo-flatten component (managed streets attach one
@@ -154,7 +173,8 @@ AFRAME.registerComponent('street-geo', {
           updatedData.latitude !== undefined ||
           updatedData.ellipsoidalHeight !== undefined ||
           updatedData.enableFlattening !== undefined ||
-          updatedData.opacity !== undefined)
+          updatedData.opacity !== undefined ||
+          updatedData.basemapStyle !== undefined)
       ) {
         // call update map function with name: <mapType>Update
         this[mapType + 'Update']();
@@ -269,9 +289,37 @@ AFRAME.registerComponent('street-geo', {
     this.mapbox2d.setAttribute('material', 'opacity', this.opacityFraction());
     this.mapbox2d.setAttribute('visible', data.opacity > 0);
   },
+  // Resolve the tiles2d tile source from the provider registry. Dev builds
+  // without a provider key fall back to OSM dev tiles (with a console note);
+  // production builds without a key render nothing rather than pointing
+  // traffic at the OSMF server against its usage policy.
+  resolveTiles2dSource: function () {
+    const source = resolveBasemapSource({
+      style: this.data.basemapStyle,
+      keys: BASEMAP_KEYS,
+      allowDevFallback: process.env.NODE_ENV === 'development'
+    });
+    if (!source) {
+      console.warn(
+        'street-geo: no basemap provider key configured ' +
+          '(set MAPTILER_API_KEY in config/.env.*) — tiles2d layer disabled.'
+      );
+    } else if (source.isDevFallback) {
+      console.warn(
+        'street-geo: MAPTILER_API_KEY not set — using OSM dev-only tiles ' +
+          'for tiles2d (never shipped to production).'
+      );
+    }
+    return source;
+  },
   tiles2dCreate: function () {
     const data = this.data;
     const el = this.el;
+
+    const source = this.resolveTiles2dSource();
+    if (!source) {
+      return;
+    }
 
     const tiles2dElement = document.createElement('a-entity');
     tiles2dElement.setAttribute('data-layer-name', '2D Map Tiles (Beta)');
@@ -280,7 +328,8 @@ AFRAME.registerComponent('street-geo', {
     // matching google3d's legacy frame (same rotation as the other 2D maps).
     tiles2dElement.setAttribute('rotation', '-90 -90 0');
     tiles2dElement.setAttribute('tiled-basemap', {
-      urlTemplate: TILES2D_DEV_URL_TEMPLATE,
+      urlTemplate: source.urlTemplate,
+      maxLevel: source.maxLevel,
       latitude: data.latitude,
       longitude: data.longitude,
       opacity: this.opacityFraction()
@@ -305,16 +354,25 @@ AFRAME.registerComponent('street-geo', {
     }
     el.appendChild(tiles2dElement);
     this['tiles2d'] = tiles2dElement;
-    document.getElementById('map-copyright').textContent = 'OpenStreetMap';
+    document.getElementById('map-copyright').textContent = source.attribution;
   },
   tiles2dUpdate: function () {
     const data = this.data;
+    // Style switches resolve a new source; tiled-basemap rebuilds its
+    // tileset when urlTemplate/maxLevel change and no-ops when they do not.
+    const source = this.resolveTiles2dSource();
+    if (!source) {
+      return;
+    }
     this.tiles2d.setAttribute('tiled-basemap', {
+      urlTemplate: source.urlTemplate,
+      maxLevel: source.maxLevel,
       latitude: data.latitude,
       longitude: data.longitude,
       opacity: this.opacityFraction()
     });
     this.tiles2d.setAttribute('visible', data.opacity > 0);
+    document.getElementById('map-copyright').textContent = source.attribution;
   },
   osm3dCreate: function () {
     // loadScript has no dedupe and this.osm3d is only assigned in its async
