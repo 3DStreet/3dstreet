@@ -713,6 +713,8 @@
   "segmentSidebar.directionNone": "ninguna",
   "segmentSidebar.editStreet": "Editar calle",
   "segmentSidebar.elevation": "Elevación",
+  "segmentSidebar.elevationMean": "prom. {value}",
+  "segmentSidebar.elevationMeanTitle": "Media de los dos bordes de la pendiente",
   "segmentSidebar.inbound": "entrante",
   "segmentSidebar.material": "Material",
   "segmentSidebar.moveLeft": "Mover a la izquierda",

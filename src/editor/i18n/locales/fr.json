@@ -713,6 +713,8 @@
   "segmentSidebar.directionNone": "aucune",
   "segmentSidebar.editStreet": "Modifier la rue",
   "segmentSidebar.elevation": "Élévation",
+  "segmentSidebar.elevationMean": "moy. {value}",
+  "segmentSidebar.elevationMeanTitle": "Moyenne des deux bords de la pente",
   "segmentSidebar.inbound": "entrant",
   "segmentSidebar.material": "Matériau",
   "segmentSidebar.moveLeft": "Déplacer à gauche",

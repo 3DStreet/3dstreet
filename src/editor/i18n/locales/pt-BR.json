@@ -713,6 +713,8 @@
   "segmentSidebar.directionNone": "nenhuma",
   "segmentSidebar.editStreet": "Editar rua",
   "segmentSidebar.elevation": "Elevação",
+  "segmentSidebar.elevationMean": "méd. {value}",
+  "segmentSidebar.elevationMeanTitle": "Média das duas bordas da inclinação",
   "segmentSidebar.inbound": "entrada",
   "segmentSidebar.material": "Material",
   "segmentSidebar.moveLeft": "Mover para a esquerda",
