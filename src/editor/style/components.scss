@@ -866,15 +866,22 @@ a.help-linkhover {
     padding: 10px 12px 8px;
     border-bottom: 1px solid variables.$black-800;
   }
-  .cross-section-caption {
+  /* Footnote under the bars, shared by both panels (segment: street name +
+     "Edit street" pill; street: stats + tap-a-lane hint). Fixed height so
+     the content below sits at the same pixel whichever panel is showing. */
+  .cross-section-footnote {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-top: 6px;
+    height: 22px;
+    font-size: 12px;
+    line-height: 1.2;
+    color: variables.$gray-400;
+    white-space: nowrap;
   }
   .cross-section-summary {
-    font-size: 12px;
     color: variables.$lightgray-700;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -886,10 +893,13 @@ a.help-linkhover {
     align-items: center;
     gap: 4px;
     flex: none;
+    height: 22px;
+    box-sizing: border-box;
     font-size: 12px;
+    line-height: 1;
     font-family: inherit;
     color: variables.$white;
-    padding: 3px 8px;
+    padding: 0 8px;
     border-radius: 7px;
     border: 0;
     background: variables.$bgalphadark;
@@ -1625,11 +1635,13 @@ a.help-linkhover {
    ============================================================ */
 
 .street-panel {
-  /* strip caption below the bars: "n segments · width" then hint */
+  /* strip footnote: "n segments · width" then hint; box metrics are the
+     shared .segment-panel .cross-section-footnote rule */
   .cross-section-footnote {
-    margin-top: 6px;
-    font-size: 11px;
-    color: variables.$gray-400;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 22px;
   }
   .cross-section-footnote-stats {
     color: variables.$lightgray-200;

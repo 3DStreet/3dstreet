@@ -511,7 +511,6 @@ const StreetSegmentSidebar = ({ entity }) => {
     <div className="segment-panel">
       {/* Strip + header stay pinned while the block below scrolls. */}
       <div className="segment-sticky">
-        <StreetCrossSectionStrip entity={entity} />
         <div className="segment-header">
           {/* EntityLabel replaces the panel-level title (hidden for segments
             in Sidebar.jsx) and keeps the inline rename affordance. */}
@@ -575,6 +574,7 @@ const StreetSegmentSidebar = ({ entity }) => {
             </IconButton>
           </div>
         </div>
+        <StreetCrossSectionStrip entity={entity} />
       </div>
       <div className="segment-block">
         <PropertyRow

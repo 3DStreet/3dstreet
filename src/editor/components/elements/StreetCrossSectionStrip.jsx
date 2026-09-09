@@ -105,10 +105,10 @@ const streetDisplayName = (streetEl) => {
     : name;
 };
 
-// `entity` may be a street-segment (segment panel: caption above with the
-// street name + "Edit street", selected bar highlighted) or the
-// managed-street itself (street panel, variant="street": no selection
-// highlight, caption below the strip instead).
+// `entity` may be a street-segment (segment panel: selected bar highlighted,
+// footnote with the street name + "Edit street") or the managed-street itself
+// (street panel, variant="street": no selection highlight, footnote is the
+// "tap a lane" hint). Both panels put the strip below the entity header.
 const StreetCrossSectionStrip = ({ entity, variant = 'segment' }) => {
   const intl = useIntl();
   const units = useStore((s) => s.unitsPreference) || 'metric';
@@ -168,35 +168,6 @@ const StreetCrossSectionStrip = ({ entity, variant = 'segment' }) => {
 
   return (
     <div className="cross-section">
-      {variant === 'segment' && (
-        <div className="cross-section-caption">
-          <span className="cross-section-summary">
-            {streetDisplayName(streetEl)} · {summary} ·{' '}
-            {formatLength(totalWidth)}
-          </span>
-          <button
-            type="button"
-            className="cross-section-edit-street"
-            onClick={() => AFRAME.INSPECTOR.selectEntity(streetEl)}
-          >
-            {intl.formatMessage({
-              id: 'segmentSidebar.editStreet',
-              defaultMessage: 'Edit street'
-            })}
-            <svg
-              width="10"
-              height="10"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-            >
-              <path d="M7 17L17 7M9 7h8v8" />
-            </svg>
-          </button>
-        </div>
-      )}
       <div className="cross-section-strip">
         {segments.map((el, i) => {
           const data = el.getAttribute('street-segment') || {};
@@ -249,6 +220,35 @@ const StreetCrossSectionStrip = ({ entity, variant = 'segment' }) => {
           );
         })}
       </div>
+      {variant === 'segment' && (
+        <div className="cross-section-footnote">
+          <span className="cross-section-summary">
+            {streetDisplayName(streetEl)} · {summary} ·{' '}
+            {formatLength(totalWidth)}
+          </span>
+          <button
+            type="button"
+            className="cross-section-edit-street"
+            onClick={() => AFRAME.INSPECTOR.selectEntity(streetEl)}
+          >
+            {intl.formatMessage({
+              id: 'segmentSidebar.editStreet',
+              defaultMessage: 'Edit street'
+            })}
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+            >
+              <path d="M7 17L17 7M9 7h8v8" />
+            </svg>
+          </button>
+        </div>
+      )}
       {variant === 'street' && (
         <div className="cross-section-footnote">
           <span className="cross-section-footnote-stats">
