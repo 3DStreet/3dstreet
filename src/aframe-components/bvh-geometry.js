@@ -7,14 +7,14 @@
 // accelerated raycast, but the acceleration only applies to geometries that
 // have a computed `boundsTree` — without one it silently falls back to
 // three.js's linear scan of every triangle inside the bounding sphere. The
-// OSM 2.5D buildings layer (osm4vr's `osm-geojson`) merges each tile's
+// OSM 2.5D buildings layer (`osm-buildings`) merges each tile's
 // buildings into one large mesh, so every editor-nav probe and cursor
 // raycast was paying a full triangle scan per tile mesh. With a BVH the same
 // query is O(log n).
 //
 // How: listens for `object3dset` (fired by A-Frame's setObject3D on this
-// entity AND bubbled from descendants — osm4vr sets tile meshes as they
-// stream in), collects meshes whose geometry has enough triangles and no
+// entity AND bubbled from descendants — osm-buildings sets tile meshes as
+// they stream in), collects meshes whose geometry has enough triangles and no
 // boundsTree yet, and builds ONE bounds tree per idle callback so the
 // builds never stack into a single long frame. Geometries are tracked in a
 // WeakSet so replacements are picked up but nothing is ever built twice;

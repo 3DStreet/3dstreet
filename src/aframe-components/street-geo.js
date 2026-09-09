@@ -1,6 +1,5 @@
 /* global AFRAME */
 import { firebaseConfig } from '@shared/services/firebase.js';
-import { loadScript } from '../utils.js';
 import useStore from '../store.js';
 import {
   resolveBasemapSource,
@@ -188,8 +187,7 @@ AFRAME.registerComponent('street-geo', {
       ) {
         // remove element(s) from DOM and from this object. osm3d is two
         // elements (tiled ground + extruded buildings) that can exist
-        // independently: the ground is skipped without a provider key, and
-        // the buildings lag behind the lazy osm4vr script load.
+        // independently: the ground is skipped without a provider key.
         if (this[mapType]) {
           this.el.removeChild(this[mapType]);
           this[mapType] = null;
@@ -388,58 +386,40 @@ AFRAME.registerComponent('street-geo', {
       document.getElementById('map-copyright').textContent = source.attribution;
     }
 
-    // Buildings: still osm4vr's Overpass-based `osm-geojson` extrusion —
-    // its replacement is the #1962 step E/F decision. loadScript has no
-    // dedupe and the element is only created in its async callback, so an
-    // in-flight flag guards double-loads, and the callback re-checks the
-    // active map type in case the user switched away mid-download.
-    const createBuildingsElement = () => {
-      if (self.activeMapType() !== 'osm3d' || self.osm3dBuilding) {
-        return;
-      }
-      const osm3dBuildingElement = document.createElement('a-entity');
-      osm3dBuildingElement.setAttribute(
-        'data-layer-name',
-        'OpenStreetMap 3D Buildings'
+    // Buildings: worker-driven Overpass extrusion (`osm-buildings`,
+    // #1962 step F) — replaces osm4vr's main-thread `osm-geojson`. The
+    // component generates geometry directly in the scene frame, so no
+    // element rotation, and it handles Overpass failures itself (#1861).
+    const osm3dBuildingElement = document.createElement('a-entity');
+    osm3dBuildingElement.setAttribute(
+      'data-layer-name',
+      'OpenStreetMap 3D Buildings'
+    );
+    osm3dBuildingElement.setAttribute('osm-buildings', {
+      latitude: data.latitude,
+      longitude: data.longitude,
+      radiusM: 1000
+    });
+    osm3dBuildingElement.setAttribute('data-no-pause', '');
+    osm3dBuildingElement.classList.add('autocreated');
+    osm3dBuildingElement.setAttribute('data-ignore-raycaster', '');
+    osm3dBuildingElement.setAttribute('data-no-transform', '');
+    // BVH bounds trees for the merged per-tile building meshes so editor
+    // raycasts (cursor anchor, any probe reaching this subtree) stay
+    // O(log n) instead of scanning every building triangle (#1853).
+    osm3dBuildingElement.setAttribute('bvh-geometry', '');
+    if (AFRAME.INSPECTOR?.opened) {
+      osm3dBuildingElement.addEventListener(
+        'loaded',
+        () => {
+          // emit play event to start loading tiles in Editor mode
+          osm3dBuildingElement.play();
+        },
+        { once: true }
       );
-      osm3dBuildingElement.setAttribute('osm-geojson', {
-        lon: self.data.longitude,
-        lat: self.data.latitude,
-        radius_m: 1000,
-        trackId: 'camera'
-      });
-      osm3dBuildingElement.setAttribute('rotation', '0 -90 0');
-      osm3dBuildingElement.setAttribute('data-no-pause', '');
-      osm3dBuildingElement.classList.add('autocreated');
-      osm3dBuildingElement.setAttribute('data-ignore-raycaster', '');
-      osm3dBuildingElement.setAttribute('data-no-transform', '');
-      // BVH bounds trees for the merged per-tile building meshes so editor
-      // raycasts (cursor anchor, any probe reaching this subtree) stay
-      // O(log n) instead of scanning every building triangle (#1853).
-      osm3dBuildingElement.setAttribute('bvh-geometry', '');
-      if (AFRAME.INSPECTOR?.opened) {
-        osm3dBuildingElement.addEventListener(
-          'loaded',
-          () => {
-            // emit play event to start loading tiles in Editor mode
-            osm3dBuildingElement.play();
-          },
-          { once: true }
-        );
-      }
-      el.appendChild(osm3dBuildingElement);
-      self['osm3dBuilding'] = osm3dBuildingElement;
-    };
-
-    if (AFRAME.components['osm-geojson']) {
-      createBuildingsElement();
-    } else if (!this.osm3dPending) {
-      this.osm3dPending = true;
-      loadScript(new URL('/src/lib/osm4vr.min.js', import.meta.url), () => {
-        this.osm3dPending = false;
-        createBuildingsElement();
-      });
     }
+    el.appendChild(osm3dBuildingElement);
+    self['osm3dBuilding'] = osm3dBuildingElement;
   },
   osm3dUpdate: function () {
     const data = this.data;
@@ -456,11 +436,10 @@ AFRAME.registerComponent('street-geo', {
           source.attribution;
       }
     }
-    // Buildings may still be loading (lazy osm4vr script).
     if (this.osm3dBuilding) {
-      this.osm3dBuilding.setAttribute('osm-geojson', {
-        lon: data.longitude,
-        lat: data.latitude
+      this.osm3dBuilding.setAttribute('osm-buildings', {
+        latitude: data.latitude,
+        longitude: data.longitude
       });
     }
   }

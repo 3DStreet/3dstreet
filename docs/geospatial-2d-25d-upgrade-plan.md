@@ -39,9 +39,45 @@ Step D (2.5D ground rides the tiled basemap) is implemented: `osm3dCreate`
 now spawns a `tiled-basemap` ground pinned to the 'streets' style instead
 of osm4vr's fixed-zoom `osm-tiles` planes (which are no longer used
 anywhere), closing the OSMF-traffic and unbounded-tile-growth problems for
-2.5D. The extruded buildings remain osm4vr `osm-geojson` pending the
-step E decision; the osm4vr script now lazy-loads for buildings only, and
-the ground honors the opacity slider. This documents the current
+2.5D. The ground honors the opacity slider.
+
+Step E decision: **in-repo Overpass rework** (option 2) — chosen because
+#1930 phases 4–5 need an Overpass fetch layer for street centerlines
+regardless, so the fetch/cache modules are built to be shared rather than
+paying for a second vendor (Cesium Ion) that only covers buildings.
+
+Step F is implemented — osm4vr is fully retired:
+
+- `src/tested/osm-tile-math.js` + `src/tested/osm-building-geometry.js` —
+  pure, unit-tested: slippy tile math, and Overpass `out geom` elements →
+  extruded indexed geometry (earcut; osm4vr's height heuristics preserved;
+  multipolygon holes; centroid-based tile ownership so border buildings
+  render exactly once and unload cleanly).
+- `src/osm/overpass-fetch.js` — endpoint rotation (overpass-api.de +
+  kumi.systems) with timeout/backoff; query-agnostic, **the module #1930's
+  centerline import should reuse**.
+- `src/osm/overpass-cache.js` — IndexedDB tile cache (1-week TTL, worker-
+  compatible, degrades to network-only when storage is unavailable);
+  shared store, per-feature key prefixes.
+- `src/osm/building-tiles.worker.js` + `building-tile-client.js` — the
+  whole per-tile pipeline (cached fetch, parse, triangulate) runs in a Web
+  Worker; the main thread receives transferable arrays. NOTE: worker code
+  must never import `three` (webpack externalizes it to the A-Frame page
+  global, absent in workers) — geometry stays raw arrays until the
+  component wraps it.
+- `src/aframe-components/osm-buildings.js` — camera-following tile manager
+  (nearest-first within radius, 1.5× unload hysteresis, 2 concurrent
+  loads), one merged mesh per tile via setObject3D (bvh-geometry picks it
+  up), and the #1861 fix: failed tiles retry with backoff, surface one
+  user-facing notice when exhausted, and keep retrying on a long cycle.
+
+Browser-verified with Overpass fixtures: buildings extrude correctly
+(including a multipolygon courtyard), neighbor tiles stay empty under
+centroid ownership, and a forced-504 session produces zero page errors
+plus exactly one notice (previously: unhandled rejection and silent
+absence). Known scope cut: `building:part` is not rendered (outlines
+only) — parts need outline-suppression logic; revisit if fancy-roof
+fidelity matters. This documents the current
 state of the non-Google map layers, why they underperform, and a ticket
 breakdown for replacing them on infrastructure we already ship. Ordering
 rationale: fix the 2D and 2.5D basemaps **before** the automatic
