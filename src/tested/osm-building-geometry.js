@@ -205,17 +205,33 @@ function relationFootprints(element) {
  * Build indexed geometry for one tile.
  *
  * @param {Array} elements Overpass `out geom` elements (ways + relations).
- * @param {Object} options { originLat, originLon, tileBBox } — origin is the
- *   scene's geo anchor; tileBBox ({south, west, north, east}) gates
- *   centroid ownership. Pass tileBBox: null to keep every building.
- * @returns {{ positions: Float32Array, indices: Uint32Array,
- *   buildingCount: number }}
+ * @param {Object} options { originLat, originLon, tileBBox, roofColor,
+ *   wallColor } — origin is the scene's geo anchor; tileBBox ({south, west,
+ *   north, east}) gates centroid ownership (pass null to keep every
+ *   building); roofColor / wallColor ([r, g, b] in 0..1) fill the per-vertex
+ *   color attribute so roofs read lighter than walls from above.
+ * @returns {{ positions: Float32Array, normals: Float32Array,
+ *   colors: Float32Array, indices: Uint32Array, buildingCount: number }}
+ *   normals are flat per face (roof +y, walls outward) — every wall quad
+ *   owns its vertices and roof vertices only share within their plane, so
+ *   accumulating face normals yields flat shading without a lit-material
+ *   `computeVertexNormals` pass on the main thread.
  */
+export const DEFAULT_ROOF_COLOR = [0.6, 0.65, 0.7];
+export const DEFAULT_WALL_COLOR = [0.45, 0.5, 0.56];
+
 export function buildTileGeometry(
   elements,
-  { originLat, originLon, tileBBox }
+  {
+    originLat,
+    originLon,
+    tileBBox,
+    roofColor = DEFAULT_ROOF_COLOR,
+    wallColor = DEFAULT_WALL_COLOR
+  }
 ) {
   const positions = [];
+  const colors = [];
   const indices = [];
   let buildingCount = 0;
 
@@ -231,8 +247,9 @@ export function buildTileGeometry(
     : null;
 
   // (east, north, height) → scene frame (x = north, y = up, z = east).
-  const pushVertex = (e, n, y) => {
+  const pushVertex = (e, n, y, color) => {
     positions.push(n, y, e);
+    colors.push(color[0], color[1], color[2]);
     return positions.length / 3 - 1;
   };
 
@@ -301,7 +318,7 @@ export function buildTileGeometry(
       // Roof: one vertex per footprint point at `height`.
       const roofBase = positions.length / 3;
       for (let i = 0; i < flat.length; i += 2) {
-        pushVertex(flat[i], flat[i + 1], height);
+        pushVertex(flat[i], flat[i + 1], height, roofColor);
       }
       for (const idx of roofTriangles) indices.push(roofBase + idx);
 
@@ -313,19 +330,56 @@ export function buildTileGeometry(
         for (let i = 0; i < ring.length; i++) {
           const [e1, n1] = ring[i];
           const [e2, n2] = ring[(i + 1) % ring.length];
-          const a = pushVertex(e1, n1, minHeight);
-          const b = pushVertex(e2, n2, minHeight);
-          const c = pushVertex(e2, n2, height);
-          const d = pushVertex(e1, n1, height);
+          const a = pushVertex(e1, n1, minHeight, wallColor);
+          const b = pushVertex(e2, n2, minHeight, wallColor);
+          const c = pushVertex(e2, n2, height, wallColor);
+          const d = pushVertex(e1, n1, height, wallColor);
           indices.push(a, b, c, a, c, d);
         }
       }
     }
   }
 
+  const positionArray = new Float32Array(positions);
+  const indexArray = new Uint32Array(indices);
   return {
-    positions: new Float32Array(positions),
-    indices: new Uint32Array(indices),
+    positions: positionArray,
+    normals: computeFlatNormals(positionArray, indexArray),
+    colors: new Float32Array(colors),
+    indices: indexArray,
     buildingCount
   };
+}
+
+/** Accumulated face normals per vertex, normalized (see buildTileGeometry). */
+export function computeFlatNormals(positions, indices) {
+  const normals = new Float32Array(positions.length);
+  for (let i = 0; i < indices.length; i += 3) {
+    const a = indices[i] * 3;
+    const b = indices[i + 1] * 3;
+    const c = indices[i + 2] * 3;
+    const abx = positions[b] - positions[a];
+    const aby = positions[b + 1] - positions[a + 1];
+    const abz = positions[b + 2] - positions[a + 2];
+    const acx = positions[c] - positions[a];
+    const acy = positions[c + 1] - positions[a + 1];
+    const acz = positions[c + 2] - positions[a + 2];
+    const nx = aby * acz - abz * acy;
+    const ny = abz * acx - abx * acz;
+    const nz = abx * acy - aby * acx;
+    for (const v of [a, b, c]) {
+      normals[v] += nx;
+      normals[v + 1] += ny;
+      normals[v + 2] += nz;
+    }
+  }
+  for (let i = 0; i < normals.length; i += 3) {
+    const len = Math.hypot(normals[i], normals[i + 1], normals[i + 2]);
+    if (len > 0) {
+      normals[i] /= len;
+      normals[i + 1] /= len;
+      normals[i + 2] /= len;
+    }
+  }
+  return normals;
 }

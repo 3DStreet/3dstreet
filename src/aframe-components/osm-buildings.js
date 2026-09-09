@@ -26,8 +26,10 @@ const LONG_RETRY_MS = 5 * 60 * 1000;
 // when looking at the sky) fall back to the nadir.
 const MAX_FOCUS_DISTANCE_M = 5000;
 
-// osm4vr's building color, kept for visual continuity.
-const BUILDING_COLOR = 0xaabbcc;
+// Roof/wall colors ride in as vertex colors (set in the geometry module);
+// the material itself stays white so the scene's ambient + directional
+// lights (street-environment) do the shading. Lambert, not Standard: matte
+// massing, no env-map speculars, cheaper on 100k-triangle tiles.
 
 /**
  * OSM 2.5D extruded buildings (#1962 step F) — the in-repo replacement for
@@ -81,7 +83,7 @@ AFRAME.registerComponent('osm-buildings', {
     this.inFlight = new Set(); // keys
     this.failures = new Map(); // key → { attempts, nextRetryAt }
     this.notifiedFailure = false;
-    this.material = new THREE.MeshBasicMaterial({ color: BUILDING_COLOR });
+    this.material = new THREE.MeshLambertMaterial({ vertexColors: true });
     this._camWorld = new THREE.Vector3();
     this._camDir = new THREE.Vector3();
     this._focus = new THREE.Vector3();
@@ -220,7 +222,7 @@ AFRAME.registerComponent('osm-buildings', {
       });
   },
 
-  addTileMesh: function (key, { positions, indices }) {
+  addTileMesh: function (key, { positions, normals, colors, indices }) {
     if (positions.length === 0) {
       // Empty tile (water, park): remember it so we don't refetch.
       this.loadedTiles.set(key, { mesh: null });
@@ -228,9 +230,16 @@ AFRAME.registerComponent('osm-buildings', {
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.setIndex(new THREE.BufferAttribute(indices, 1));
     geometry.computeBoundingSphere();
     const mesh = new THREE.Mesh(geometry, this.material);
+    // The environment's directional light shadow frustum only spans the
+    // street area near the origin, so this is cheap and lands exactly
+    // where it matters: buildings shade the street and each other.
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     // setObject3D fires object3dset, which bvh-geometry listens for.
     this.el.setObject3D('tile-' + key, mesh);
     this.loadedTiles.set(key, { mesh });

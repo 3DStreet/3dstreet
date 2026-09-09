@@ -20,8 +20,8 @@
  * Messages in:  { type: 'load', key, zoom, x, y, originLat, originLon,
  *                 urlTemplate, buildingLayer?, heightKeys?, minHeightKeys?,
  *                 cacheTtlMs? }
- * Messages out: { type: 'tile', key, positions, indices, buildingCount,
- *                 fromCache }
+ * Messages out: { type: 'tile', key, positions, normals, colors, indices,
+ *                 buildingCount, fromCache }
  *               { type: 'error', key, message, status? }
  */
 
@@ -118,14 +118,20 @@ self.onmessage = async ({ data }) => {
       await cachePut(cacheKey, elements);
     }
     const tileBBox = tileToBBox(x, y, zoom);
-    const { positions, indices, buildingCount } = buildTileGeometry(elements, {
-      originLat,
-      originLon,
-      tileBBox
-    });
+    const { positions, normals, colors, indices, buildingCount } =
+      buildTileGeometry(elements, { originLat, originLon, tileBBox });
     self.postMessage(
-      { type: 'tile', key, positions, indices, buildingCount, fromCache },
-      [positions.buffer, indices.buffer]
+      {
+        type: 'tile',
+        key,
+        positions,
+        normals,
+        colors,
+        indices,
+        buildingCount,
+        fromCache
+      },
+      [positions.buffer, normals.buffer, colors.buffer, indices.buffer]
     );
   } catch (err) {
     self.postMessage({

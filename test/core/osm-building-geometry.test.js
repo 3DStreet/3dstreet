@@ -217,3 +217,38 @@ describe('buildTileGeometry', () => {
     assert.strictEqual(buildingCount, 1);
   });
 });
+
+describe('buildTileGeometry shading attributes', () => {
+  it('emits flat normals: roof +y, walls horizontal and outward', () => {
+    const { positions, normals, indices } = build([squareWay()]);
+    assert.strictEqual(normals.length, positions.length);
+    // Roof vertices come first (4 of them), all facing up.
+    for (let v = 0; v < 4; v++) {
+      assert.ok(Math.abs(normals[v * 3 + 1] - 1) < 1e-6, 'roof normal +y');
+    }
+    // Every wall vertex: no vertical component, unit length, pointing away
+    // from the footprint center (dot with position > 0).
+    for (let v = 4; v < positions.length / 3; v++) {
+      const nx = normals[v * 3];
+      const ny = normals[v * 3 + 1];
+      const nz = normals[v * 3 + 2];
+      assert.ok(Math.abs(ny) < 1e-6, 'wall normal horizontal');
+      assert.ok(Math.abs(Math.hypot(nx, ny, nz) - 1) < 1e-6, 'unit length');
+      const dot = nx * positions[v * 3] + nz * positions[v * 3 + 2];
+      assert.ok(dot > 0, 'wall normal points outward');
+    }
+    assert.ok(indices.length > 0);
+  });
+
+  it('emits roof and wall vertex colors from the options', () => {
+    const { colors } = buildTileGeometry([squareWay()], {
+      ...ORIGIN,
+      tileBBox: null,
+      roofColor: [1, 0, 0],
+      wallColor: [0, 0, 1]
+    });
+    assert.deepStrictEqual([...colors.slice(0, 3)], [1, 0, 0]);
+    assert.deepStrictEqual([...colors.slice(12, 15)], [0, 0, 1]);
+    assert.strictEqual(colors.length % 3, 0);
+  });
+});

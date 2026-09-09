@@ -86,6 +86,14 @@ Step F is implemented — osm4vr is fully retired:
   loads), one merged mesh per tile via setObject3D (bvh-geometry picks it
   up), and the #1861 fix: failed tiles retry with backoff, surface one
   user-facing notice when exhausted, and keep retrying on a long cycle.
+  Shading: `MeshLambertMaterial` with vertex colors and flat per-face
+  normals computed in the geometry module (roof/wall palette in
+  `DEFAULT_ROOF_COLOR` / `DEFAULT_WALL_COLOR`), so the environment's
+  ambient + directional lights separate lit walls, shaded walls and roofs
+  (the first cut was unlit `MeshBasicMaterial` — every face one gray).
+  Tiles cast and receive shadows within the street's shadow frustum. Edge
+  outlines are a possible follow-up if same-height row houses still merge
+  from above.
   The radius is centered on the camera's **look-at ground point** (view
   ray ∩ entity y=0, nadir fallback beyond 5 km or when looking up): a
   high tilted editor camera sits kilometers from the street it frames,

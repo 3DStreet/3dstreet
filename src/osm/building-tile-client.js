@@ -48,7 +48,7 @@ export class BuildingTileClient {
     return this.worker;
   }
 
-  /** → Promise<{ positions, indices, buildingCount, fromCache }> */
+  /** → Promise<{ positions, normals, colors, indices, buildingCount, fromCache }> */
   loadTile({ key, zoom, x, y }) {
     const existing = this.pending.get(key);
     if (existing) return existing.promise;
