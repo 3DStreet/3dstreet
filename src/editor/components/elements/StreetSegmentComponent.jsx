@@ -191,6 +191,37 @@ export default class Component extends React.Component {
     );
   };
 
+  // The generator's own travel-direction tri-state (#1959): inbound/outbound
+  // follow the lane (and track later segment direction flips); 'none' — shown
+  // as 'fixed' since that's what it means — keeps the absolute Facing angle.
+  // Exposed so users can see and repair a stencil stuck at 'none' from before
+  // manual adds seeded the lane direction.
+  directionRow = () => {
+    const componentData = this.props.component;
+    const schema =
+      AFRAME.components[this.props.name.split('__')[0]].schema.direction;
+    return (
+      <div className="compact-row">
+        <label
+          className="compact-label"
+          title="inbound/outbound follow the lane's travel direction; fixed keeps the absolute Facing angle"
+        >
+          Direction
+        </label>
+        <SelectWidget
+          id={`${this.props.name}:direction`}
+          name="direction"
+          value={componentData.data.direction}
+          options={schema.oneOf}
+          formatOptionLabel={(option) =>
+            option.value === 'none' ? 'fixed' : option.label
+          }
+          onChange={(name, value) => this.update(name, value)}
+        />
+      </div>
+    );
+  };
+
   row = (label, cells, extraClass = '') => (
     <div className={`compact-row ${extraClass}`.trim()}>
       <label className="compact-label">{label}</label>
@@ -237,6 +268,7 @@ export default class Component extends React.Component {
           maxChips={3}
         />
         {this.row('Place', placeCells, 'place-row')}
+        {this.directionRow()}
         {this.state.moreOpen &&
           this.moreInset(
             <>
@@ -276,6 +308,7 @@ export default class Component extends React.Component {
               'Padding: distance between stencils within a group — only has an effect when more than one stencil model is selected'
           })
         ])}
+        {this.directionRow()}
         {this.state.moreOpen &&
           this.moreInset(
             <>
