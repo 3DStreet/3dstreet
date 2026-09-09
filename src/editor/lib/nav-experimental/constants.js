@@ -164,6 +164,22 @@ export const ZOOM_PER_WHEEL_TICK = 0.05;
 // reversibility inside this radius for never getting stuck.
 export const WHEEL_ZOOM_OUT_MIN_ANCHOR_DIST_METRES = 16;
 
+// Sustained zoom-out acceleration (#1966). FEEL EXPERIMENT — set BOOST_MAX
+// back to 1 to disable entirely if accelerated zoom-out overshoots or feels
+// twitchy. At the flat 5%/detent rate, street level → a 4-sq-mi overview
+// (~2.5 km AGL) is ~150 detents of continuous scrolling. A continuous
+// out-scroll now ramps the per-detent rate: the first DEADBAND ticks of a
+// streak are unboosted (precision detents feel identical), then the factor
+// climbs linearly to BOOST_MAX over the next RAMP ticks (5% → ~15%/detent),
+// cutting that traversal to ~a third. The streak resets on a zoom-in tick,
+// on any non-wheel camera move, or after RESET_MS without wheel input, so a
+// resumed zoom-out always starts at the base rate. Zoom-in is never
+// boosted. See navMath.zoomOutBoost.
+export const WHEEL_ZOOM_OUT_BOOST_MAX = 3;
+export const WHEEL_ZOOM_OUT_BOOST_DEADBAND_TICKS = 5;
+export const WHEEL_ZOOM_OUT_BOOST_RAMP_TICKS = 15;
+export const WHEEL_ZOOM_OUT_BOOST_RESET_MS = 500;
+
 // Wheel zoom — street-level FOV step (TH-09). Fraction by which
 // the field of view shrinks (zoom-in) / grows (zoom-out) per nominal tick.
 // Split out from ZOOM_PER_WHEEL_TICK so FOV tunes independently of the dolly.

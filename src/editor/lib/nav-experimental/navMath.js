@@ -498,6 +498,38 @@ export const levelForwardAnchor = (() => {
   };
 })();
 
+// Ground-forward synthetic anchor for the no-real-hit zoom-OUT case
+// (#1966). Same yaw-forward construction as levelForwardAnchor, but the
+// anchor sits at the collision-floor height under the camera instead of the
+// camera's own height. Backing away from a level anchor rebuilt `dist`
+// ahead every step is a constant-rate horizontal slide that never gains
+// altitude — zoom-out with the cursor at/above the horizon (mid-screen in
+// any street-level view) went nowhere, forever. Against a ground-height
+// anchor the same multiplicative step rises as it recedes, and the growing
+// camera→anchor distance restores the exponential acceleration. Zoom-IN
+// keeps the level anchor (flying forward at constant height is correct
+// there). Returns `null` when the yaw heading is undefined, same as
+// levelForwardAnchor. Pure.
+export function groundForwardAnchor(camera, dist, groundY, target) {
+  const out = levelForwardAnchor(camera, dist, target);
+  if (out == null) return null;
+  out.y = groundY;
+  return out;
+}
+
+// Sustained zoom-out acceleration factor (#1966). The dolly's 5%/detent
+// multiplicative step is a constant *fractional* rate, so street level →
+// a km-scale overview is ~11 doublings ≈ 150+ detents. Scrolling out
+// continuously ramps the rate up: 1 through the first `deadband` ticks of
+// a streak (precision detents unchanged), then linear to `max` over the
+// next `ramp` ticks. The caller multiplies the tick count by the returned
+// factor. Pure.
+export function zoomOutBoost(streakTicks, deadband, ramp, max) {
+  if (!(streakTicks > deadband)) return 1;
+  const frac = Math.min(1, (streakTicks - deadband) / ramp);
+  return 1 + (max - 1) * frac;
+}
+
 // ---------------------------------------------------------------------------
 // Double-click navigation — pure pose math (KD-23). THREE in, THREE out; no
 // scene access (the controls do the raycasts and feed the results in). See

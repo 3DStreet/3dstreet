@@ -1243,7 +1243,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // itself runs as a separate TickAnimator subscription via animate().)
       return;
     }
-    this._wheel.drain();
+    this._wheel.drain(deltaMs);
     this._wasd.stepFlight(deltaMs);
     // Legit-pose snapshot + discoverability cue. Runs
     // after the drains so it captures the post-move pose. Suppressed while a
