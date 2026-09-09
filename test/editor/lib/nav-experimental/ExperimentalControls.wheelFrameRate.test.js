@@ -6,6 +6,10 @@
 // OFF): the wheel is always the plain cursor-anchored dolly.
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as H from './_harness.js';
+import {
+  WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES,
+  WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF
+} from '../../../../src/editor/lib/nav-experimental/constants.js';
 
 let Controls;
 beforeAll(async () => {
@@ -52,13 +56,20 @@ describe('wheel zoom — frame-rate independence (GH-1858)', () => {
 
   it('a multi-tick frame at shallow tilt gets a per-tick cap budget, not one flat cap', () => {
     // Shallow view (tilt ≈ 5.7°, anchor ~300 m out): every tick's step
-    // exceeds the lurch cap (max(2, 0.1×AGL) = 3 m at AGL 30), so the cap
-    // binds. A 6-tick frame must be allowed ~6 × 3 m of horizontal travel —
-    // pre-fix it was clamped to a single 3 m cap for the whole frame.
+    // (~5% × 300 m ≈ 15 m) exceeds the lurch cap (max(lowerBound,
+    // coeff×AGL) at AGL 30), so the cap binds. A 6-tick frame must be
+    // allowed ~6 caps of horizontal travel — pre-fix (GH-1858) it was
+    // clamped to a single cap for the whole frame. The cap is derived from
+    // the live constants so a coefficient retune (GH-1941) can't silently
+    // break this test's arithmetic.
     const scene = H.groundPlaneScene({ y: 0 });
     const cam = H.makePerspectiveCam({ pos: [0, 30, 0], lookAt: [0, 0, 300] });
     const c = H.makeControls({ camera: cam, scene });
     const start = cam.position.clone();
+    const capPerTick = Math.max(
+      WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES,
+      WHEEL_ZOOM_LATERAL_CAP_AGL_COEFF * 30
+    );
 
     for (let i = 0; i < 6; i++) H.wheel(c, { dy: -100 });
     H.tickInput(c, 100);
@@ -67,9 +78,9 @@ describe('wheel zoom — frame-rate independence (GH-1858)', () => {
       cam.position.x - start.x,
       cam.position.z - start.z
     );
-    // Strictly more than one flat cap (3 m)…
-    expect(horiz).toBeGreaterThan(6);
-    // …but still bounded by the scaled budget (6 ticks × 3 m).
-    expect(horiz).toBeLessThanOrEqual(18 + 1e-6);
+    // Strictly more than one flat cap…
+    expect(horiz).toBeGreaterThan(capPerTick * 2);
+    // …but still bounded by the scaled budget (6 ticks × cap).
+    expect(horiz).toBeLessThanOrEqual(capPerTick * 6 + 1e-6);
   });
 });

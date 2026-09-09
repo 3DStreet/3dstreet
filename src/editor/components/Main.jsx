@@ -33,10 +33,7 @@ import useStore from '@/store';
 import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
 import { useNavMode } from '../lib/nav-experimental/useNavMode';
 import { RecoveryCue } from '../lib/nav-experimental/RecoveryCue.jsx';
-import {
-  isExperimentalNav,
-  isStreetLevelNav
-} from '../lib/nav-experimental/index.js';
+import { isStreetLevelNav } from '../lib/nav-experimental/index.js';
 import { useProfileLocaleSync } from '../i18n/useProfileLocaleSync';
 import styles from './Main.module.scss';
 
@@ -108,7 +105,7 @@ export default function Main() {
   // ResizeObserver as the compass — no second observer (round-1 M4).
   const contextButtonDockRef = useRef(null);
   useEffect(() => {
-    if (!isInspectorEnabled || !isExperimentalNav()) return;
+    if (!isInspectorEnabled) return;
     const barDock = actionBarDockRef.current;
     const compassDock = compassDockRef.current;
     // The context dock only mounts with street-level nav on — the compass must
@@ -179,15 +176,13 @@ export default function Main() {
           >
             <ActionBar selectedEntity={state.entity} />
           </div>
-          {isExperimentalNav() && (
-            <div
-              ref={compassDockRef}
-              className={dockClass(`clickable ${styles.compassDock}`)}
-            >
-              <Compass />
-            </div>
-          )}
-          {isExperimentalNav() && isStreetLevelNav() && (
+          <div
+            ref={compassDockRef}
+            className={dockClass(`clickable ${styles.compassDock}`)}
+          >
+            <Compass />
+          </div>
+          {isStreetLevelNav() && (
             <div
               ref={contextButtonDockRef}
               className={dockClass(`clickable ${styles.contextButtonDock}`)}
@@ -195,7 +190,7 @@ export default function Main() {
               <ContextViewButton />
             </div>
           )}
-          {isExperimentalNav() && isStreetLevelNav() && <RecoveryCue />}
+          {isStreetLevelNav() && <RecoveryCue />}
         </div>
       )}
       <ScreenshotModal />

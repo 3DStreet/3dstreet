@@ -279,7 +279,7 @@ function seedObstacleColliders(sceneEl, excludeRoots) {
     // an empty box and the obstacle — a user-placed cone, bollard, jersey
     // barrier — would get no collider. batch-models stashes the entity-local
     // AABB on object3D for exactly this "no mesh tree" case (also used by the
-    // editor's selection box, EditorControls.js); transform it to world space.
+    // editor's selection box and controls); transform it to world space.
     if (box.isEmpty() && el.object3D._batchLocalBbox) {
       el.object3D.updateMatrixWorld();
       box

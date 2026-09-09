@@ -332,9 +332,6 @@
   "appMenu.view.navigationControls.experimental": {
     "defaultMessage": "Experimental"
   },
-  "appMenu.view.navigationControls.legacy": {
-    "defaultMessage": "Legacy"
-  },
   "appMenu.view.navigationControls.standard": {
     "defaultMessage": "Standard"
   },

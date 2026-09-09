@@ -13,7 +13,7 @@ AFRAME.registerComponent('focus-animation', {
 
   init() {
     this.camera = null;
-    // Those variables are set by EditorControls
+    // Those variables are set by the editor controls (ExperimentalControls)
     this.transitioning = false;
     this.transitionProgress = 0;
     this.transitionCamPosStart = new THREE.Vector3();
@@ -32,7 +32,7 @@ AFRAME.registerComponent('focus-animation', {
     }
   },
 
-  // Called by EditorControls initially
+  // Called by the editor controls initially
   setCamera(camera, changeEventCallback) {
     this.camera = camera;
     this.changeEventCallback = changeEventCallback;

@@ -143,7 +143,7 @@ export async function orientPlanView({ timeoutMs = 6000, zoomOut = 1 } = {}) {
     typeof controls.isCompassAnimating !== 'function'
   ) {
     throw new Error(
-      'Plan view is unavailable: the editor is using the classic navigation scheme (nav=classic) which has no compass.'
+      'Plan view is unavailable: the editor controls are not initialized.'
     );
   }
   const camera = inspectorCamera();

@@ -27,8 +27,7 @@ import { commonMessages } from '@/editor/i18n/commonMessages';
 import { SUPPORTED_LOCALES } from '@/editor/i18n/config';
 import {
   getNavScheme,
-  applyNavScheme,
-  isExperimentalNav
+  applyNavScheme
 } from '@/editor/lib/nav-experimental/flag';
 import {
   cameraTiltDegrees,
@@ -42,9 +41,7 @@ import { captureNavDiscovery } from '@/editor/lib/navAnalytics.js';
 // top-down, "Point North" once it is, disabled when both top-down and
 // north-up (a click would be a no-op) — the same pose tests as the compass
 // tooltip. Rendered as its own component so the pose is read fresh each
-// time the View menu opens (Radix unmounts closed menu content). Only
-// rendered under the experimental-nav schemes, whose ExperimentalControls
-// own handleCompassBodyClick.
+// time the View menu opens (Radix unmounts closed menu content).
 const PlanViewMenuItem = () => {
   const camera = AFRAME.INSPECTOR?.camera;
   const isTopDown =
@@ -685,18 +682,6 @@ const AppMenu = ({ currentUser }) => {
                   >
                     <Menubar.RadioItem
                       className="MenubarRadioItem"
-                      value="legacy"
-                    >
-                      <Menubar.ItemIndicator className="MenubarItemIndicator">
-                        <AwesomeIcon icon={faCircle} size={8} />
-                      </Menubar.ItemIndicator>
-                      <FormattedMessage
-                        id="appMenu.view.navigationControls.legacy"
-                        defaultMessage="Legacy"
-                      />
-                    </Menubar.RadioItem>
-                    <Menubar.RadioItem
-                      className="MenubarRadioItem"
                       value="standard"
                     >
                       <Menubar.ItemIndicator className="MenubarItemIndicator">
@@ -746,7 +731,7 @@ const AppMenu = ({ currentUser }) => {
             >
               <FormattedMessage {...commonMessages.resetCameraView} />
             </Menubar.Item>
-            {isExperimentalNav() && <PlanViewMenuItem />}
+            <PlanViewMenuItem />
             <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"

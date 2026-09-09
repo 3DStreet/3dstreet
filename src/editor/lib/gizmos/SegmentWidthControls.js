@@ -21,6 +21,12 @@ import { GizmoPointerControls } from './GizmoPointerControls';
 
 const MIN_WIDTH = 0.3;
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
+// Where along the segment the bars sit, as a fraction of its length
+// (0 = far end / path start, 1 = near end). The near end is where focus
+// (#1213) parks the camera looking outbound and where the street-label
+// cross-section hangs, so the bars land next to the width readout right
+// after a focus instead of far up a long street.
+const BAR_STATION = 1;
 
 class SegmentWidthControls extends GizmoPointerControls {
   constructor(camera, domElement) {
@@ -34,6 +40,13 @@ class SegmentWidthControls extends GizmoPointerControls {
     this.dragStartPointerX = 0;
     this.dragStartWidth = 0;
     this.dragSign = 1;
+    this.tempQuat = new THREE.Quaternion();
+    this.barYawWorld = null;
+    // Street-local lateral frame the drag is measured in: origin + unit
+    // `right` (straight: the street's x axis; curved: the curve frame at the
+    // bar's station).
+    this.lateralOrigin = new THREE.Vector3();
+    this.lateralRight = new THREE.Vector3(1, 0, 0);
 
     this.buildHandles();
   }
@@ -100,22 +113,64 @@ class SegmentWidthControls extends GizmoPointerControls {
     return this.el?.components['street-segment']?.data;
   }
 
+  // Street-local lateral frame at the bars' station. A path-following
+  // street keeps its segments' object3D at their straight-space position
+  // and bends only the ribbon geometry (street-path.js), so the bars must go
+  // through the same straight→curved mapping instead of the segment's own
+  // transform.
+  updateLateralFrame(data) {
+    const streetEl = this.el.parentElement;
+    const curve = streetEl?.components?.['managed-street']?.streetCurve;
+    const seg = this.object.position;
+    const length = data.length || 0;
+    this.barLen = Math.min(8, Math.max(2, length * 0.5));
+    // arc length of the bars' center, kept fully inboard of the segment
+    const s = THREE.MathUtils.clamp(
+      length * BAR_STATION,
+      this.barLen / 2,
+      Math.max(this.barLen / 2, length - this.barLen / 2)
+    );
+    if (!curve) {
+      // straight: segments are centered on their z, spanning ± length/2
+      this.lateralOrigin.set(seg.x, seg.y, seg.z + s - length / 2);
+      this.lateralRight.set(1, 0, 0);
+      this.barYawWorld = null;
+      return;
+    }
+    const frame = curve.sampler.frameAtS(s);
+    this.lateralOrigin.set(
+      frame.position.x + frame.right.x * seg.x,
+      frame.position.y + seg.y,
+      frame.position.z + frame.right.z * seg.x
+    );
+    this.lateralRight.copy(frame.right);
+    this.barYawWorld = THREE.MathUtils.degToRad(frame.yawDeg);
+  }
+
   updateMatrixWorld(force) {
     if (this.el && this.object) {
       const data = this.getSegmentData();
       if (data) {
-        this.object.updateWorldMatrix(true, false);
+        this.streetObject.updateWorldMatrix(true, false);
+        this.updateLateralFrame(data);
         const halfWidth = (data.width || 0) / 2;
-        const barLen = Math.min(8, Math.max(2, (data.length || 0) * 0.5));
         ['left', 'right'].forEach((key) => {
           const handle = this.handles[key];
           const sign = key === 'right' ? 1 : -1;
-          handle.position.set(sign * halfWidth, 0.3, 0);
-          this.object.localToWorld(handle.position);
-          this.object.getWorldQuaternion(handle.quaternion);
+          handle.position
+            .copy(this.lateralOrigin)
+            .addScaledVector(this.lateralRight, sign * halfWidth);
+          handle.position.y += 0.3;
+          this.streetObject.localToWorld(handle.position);
+          this.streetObject.getWorldQuaternion(handle.quaternion);
+          if (this.barYawWorld !== null) {
+            handle.quaternion.multiply(
+              this.tempQuat.setFromAxisAngle(Y_AXIS, this.barYawWorld)
+            );
+          }
           const dist = handle.position.distanceTo(this.camera.position);
           const s = THREE.MathUtils.clamp(dist * 0.02, 1, 5);
-          handle.scale.set(s, s, barLen);
+          handle.scale.set(s, s, this.barLen);
         });
       }
     }
@@ -127,19 +182,23 @@ class SegmentWidthControls extends GizmoPointerControls {
     this.dragPlane.set(Y_AXIS, -handle.position.y);
     if (!this.intersectPlane(this.dragPlane, this.tempVec)) return false;
 
-    this.dragLocal.copy(this.tempVec);
-    this.streetObject.worldToLocal(this.dragLocal);
-    this.dragStartPointerX = this.dragLocal.x;
+    this.dragStartPointerX = this.pointerLateral();
     this.dragStartWidth = this.getSegmentData()?.width || 0;
     this.dragSign = axis === 'right' ? 1 : -1;
   }
 
-  moveDrag(event) {
-    if (!this.intersectPlane(this.dragPlane, this.tempVec)) return;
+  // The plane hit (tempVec, world) as a lateral coordinate in the street's
+  // local frame, along the bars' `right` vector.
+  pointerLateral() {
     this.dragLocal.copy(this.tempVec);
     this.streetObject.worldToLocal(this.dragLocal);
+    return this.dragLocal.sub(this.lateralOrigin).dot(this.lateralRight);
+  }
 
-    const delta = (this.dragLocal.x - this.dragStartPointerX) * this.dragSign;
+  moveDrag(event) {
+    if (!this.intersectPlane(this.dragPlane, this.tempVec)) return;
+    const delta =
+      (this.pointerLateral() - this.dragStartPointerX) * this.dragSign;
     let newWidth = this.dragStartWidth + delta;
     if (event.shiftKey) {
       newWidth = Math.round(newWidth * 2) / 2; // 0.5m snap

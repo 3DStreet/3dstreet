@@ -1,7 +1,7 @@
 /* global THREE, AFRAME, STREET */
 
-// Sibling to THREE.EditorControls. Drives the editor camera by default;
-// `?nav=classic` opts out to the legacy controls (KD-01).
+// The editor's viewport controls — drives the editor camera. (Originally a
+// sibling to the legacy THREE.EditorControls, retired in #1956.)
 //
 // Core gesture mechanics (LB / Shift+LB / wheel / WASD / Plan View):
 //   - LB+drag        -> world-horizontal hit-anchored truck/dolly

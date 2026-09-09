@@ -674,6 +674,24 @@ export function canRenameEntity(entity) {
   );
 }
 
+/**
+ * Whether the entity is a street-segment laid out by a managed street.
+ * `street-align` owns segment transforms — any re-layout (width, order,
+ * length change) rewrites segment positions, silently resetting manual
+ * edits — so these segments never get the stock translate/rotate/scale
+ * gizmo (#1806). Their editing affordances are the width bars, the segment
+ * sidebar and the reorder buttons. Shared by the viewport gizmo routing and
+ * the action-bar mode buttons.
+ * @param {Element} entity
+ * @returns {boolean}
+ */
+export function isManagedStreetSegment(entity) {
+  return !!(
+    entity?.components?.['street-segment'] &&
+    entity.parentElement?.components?.['managed-street']
+  );
+}
+
 export function getEntityDisplayName(entity) {
   // User-set display name wins.
   const layerName = entity.getAttribute('data-layer-name');

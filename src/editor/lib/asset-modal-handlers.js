@@ -15,7 +15,7 @@ import { encodeCameraStateToParam } from './cameraUtils.js';
 /**
  * Take the user back to where a snapshot was captured (#1605). If the
  * snapshot belongs to the currently open scene, glide the camera to the
- * captured pose (event → EditorControls.focusCameraState, mirroring the
+ * captured pose (event → the controls' focusCameraState, mirroring the
  * focus-on-entity pattern). Otherwise open the scene in a new tab — same as
  * the plain scene link — with the pose as a `?camera=` hash param that
  * set-loader-from-hash applies as the load fly-in target.
