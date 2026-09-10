@@ -25,8 +25,12 @@ HyperCard-style click-through experiences.
 3. Frame the shot you want visitors to land on, press **Set Focus View**
    (writes `focus-camera-pose`, the same mechanism as the long-press
    Focus button). **Preview Focus** replays the glide.
-4. The scene's *start* camera is the existing saved-view machinery
+4. The scene's _start_ camera is the existing saved-view machinery
    (default snapshot > auto-saved `memory.cameraState`), nothing new.
+5. Press **Start** to try the visitor experience in place: an enabled
+   hotspot registers as a playable capability with mode-manager, so the
+   Play UI appears once the scene has at least one (no traffic or
+   vehicle needed). Stop returns to editing.
 
 **Visitor (viewer / embed):**
 
@@ -36,7 +40,7 @@ HyperCard-style click-through experiences.
   none was set), the info panel opens bottom-left with title,
   description and **Back to overview**.
 - Back / Escape returns the camera to wherever the visitor was before
-  their *first* hotspot click. Clicking another hotspot mid-focus
+  their _first_ hotspot click. Clicking another hotspot mid-focus
   switches directly. The panel's ✕ closes the text but leaves the
   camera in place.
 
@@ -49,17 +53,17 @@ composes with it for a link-time camera override.
 
 ## File map
 
-| Piece | File |
-| --- | --- |
-| Component + system (pointer, camera, state) | `src/aframe-components/focus-hotspot.js` |
-| Viewer info panel | `src/editor/components/elements/FocusHotspotPanel/` |
-| Authoring sidebar | `src/editor/components/elements/FocusHotspotSidebar.jsx` |
-| Store mirror (`focusedHotspot`, `isEmbedMode`) | `src/store.js` |
-| Add Layer card | `AddLayerPanel/{layersData,createLayerFunctions,addLayerMessages}.js` |
-| Add-component dropdown entry | `elements/ComponentsContainer.jsx` (`getApprovedComponents`) |
-| Embed param + viewer entry | `src/editor/index.jsx` |
-| Embed chrome gating + Escape laddering | `src/editor/components/scenegraph/Toolbar.jsx` |
-| Share modal iframe snippet | `modals/ShareModal/ShareModal.component.jsx` |
+| Piece                                          | File                                                                  |
+| ---------------------------------------------- | --------------------------------------------------------------------- |
+| Component + system (pointer, camera, state)    | `src/aframe-components/focus-hotspot.js`                              |
+| Viewer info panel                              | `src/editor/components/elements/FocusHotspotPanel/`                   |
+| Authoring sidebar                              | `src/editor/components/elements/FocusHotspotSidebar.jsx`              |
+| Store mirror (`focusedHotspot`, `isEmbedMode`) | `src/store.js`                                                        |
+| Add Layer card                                 | `AddLayerPanel/{layersData,createLayerFunctions,addLayerMessages}.js` |
+| Add-component dropdown entry                   | `elements/ComponentsContainer.jsx` (`getApprovedComponents`)          |
+| Embed param + viewer entry                     | `src/editor/index.jsx`                                                |
+| Embed chrome gating + Escape laddering         | `src/editor/components/scenegraph/Toolbar.jsx`                        |
+| Share modal iframe snippet                     | `modals/ShareModal/ShareModal.component.jsx`                          |
 
 ## Design notes
 
@@ -72,7 +76,9 @@ composes with it for a link-time camera override.
 - **Interaction gates on control mode `viewer`** (mode-manager): the
   editor keeps its selection semantics, drive/fly keep the camera.
   Play (traffic sim) stays in `viewer`, so hotspots remain clickable
-  during playback by design.
+  during playback by design. The system also registers a
+  `focus-hotspot` playable check (any hotspot with `enabled: true`) so
+  the Start button surfaces for hotspot-only scenes.
 - **All camera motion reuses the editor controls** (shared with the
   viewer since #1848): `controls.focus()` — which already honors
   `focus-camera-pose` — for the fly-in, `controls.focusCameraState()`
@@ -97,7 +103,7 @@ composes with it for a link-time camera override.
 - Hotspot-to-hotspot links ("go to" another hotspot from the panel) for
   full click-adventure graphs.
 - Rich text / image URLs in the info pane.
-- Per-hotspot camera *rotation* in `focus-camera-pose` (today: position
+- Per-hotspot camera _rotation_ in `focus-camera-pose` (today: position
   only; look-at is the hotspot's center).
 - An `?embed=…` allowlist / CORS review before advertising embeds
   broadly (#1315 tracks the productization: querystring scheme, Pro

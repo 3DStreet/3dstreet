@@ -182,6 +182,20 @@ AFRAME.registerSystem('focus-hotspot', {
     this.sceneEl.addEventListener('mode-changed', (evt) => {
       if (evt.detail.to !== 'viewer') this.clearFocus();
     });
+
+    // Playable capability: an enabled hotspot is something for Start to
+    // do (viewer presentation makes it clickable), so the Play UI lights
+    // up and the author can try the visitor experience without leaving
+    // the editor. Read off the DOM rather than this.hotspots so the
+    // editor's playable re-check (MutationObserver + entityupdate) sees
+    // toggles the moment they land.
+    this.sceneEl.systems['mode-manager']?.registerPlayableCheck(
+      'focus-hotspot',
+      () =>
+        Array.from(this.sceneEl.querySelectorAll('[focus-hotspot]')).some(
+          (el) => el.components?.['focus-hotspot']?.data?.enabled
+        )
+    );
   },
 
   _bindCanvas() {
