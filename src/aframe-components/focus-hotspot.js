@@ -188,14 +188,24 @@ AFRAME.registerSystem('focus-hotspot', {
     // up and the author can try the visitor experience without leaving
     // the editor. Read off the DOM rather than this.hotspots so the
     // editor's playable re-check (MutationObserver + entityupdate) sees
-    // toggles the moment they land.
-    this.sceneEl.systems['mode-manager']?.registerPlayableCheck(
-      'focus-hotspot',
-      () =>
-        Array.from(this.sceneEl.querySelectorAll('[focus-hotspot]')).some(
-          (el) => el.components?.['focus-hotspot']?.data?.enabled
-        )
-    );
+    // toggles the moment they land. Deferred to scene `loaded`: this
+    // system is registered before mode-manager, and A-Frame inits
+    // systems in registration order, so the registry doesn't exist yet
+    // at init time.
+    const registerPlayable = () => {
+      this.sceneEl.systems['mode-manager']?.registerPlayableCheck(
+        'focus-hotspot',
+        () =>
+          Array.from(this.sceneEl.querySelectorAll('[focus-hotspot]')).some(
+            (el) => el.components?.['focus-hotspot']?.data?.enabled
+          )
+      );
+    };
+    if (this.sceneEl.hasLoaded) {
+      registerPlayable();
+    } else {
+      this.sceneEl.addEventListener('loaded', registerPlayable, { once: true });
+    }
   },
 
   _bindCanvas() {
