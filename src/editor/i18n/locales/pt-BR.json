@@ -527,9 +527,11 @@
   "managedStreetSidebar.drawNewPath": "Desenhar um novo trajeto",
   "managedStreetSidebar.flattenSentence": "Aplanar o terreno sob a rua",
   "managedStreetSidebar.flattening": "Aplanamento",
+  "managedStreetSidebar.generatedFrom": "Gerado a partir de",
   "managedStreetSidebar.importedFrom": "Importado do",
   "managedStreetSidebar.length": "Comprimento",
   "managedStreetSidebar.openInSource": "Abrir no {source}",
+  "managedStreetSidebar.osmGeneratedRef": "Via {cls}, predefinição por classe via tiles do MapTiler",
   "managedStreetSidebar.path": "Trajeto",
   "managedStreetSidebar.pathHintFollows": "O comprimento segue o trajeto. O estilo de curva é definido na forma.",
   "managedStreetSidebar.pathHintPick": "Escolha uma forma desenhada com 2+ pontos, ou desenhe uma.",
@@ -834,7 +836,5 @@
   "viewer.snapshotSaved": "Salva na sua galeria — clique para baixar",
   "viewer.snapshotThumbAlt": "Captura realizada — clique para baixar",
   "viewer.snapshotTitle": "Capturar uma imagem desta vista",
-  "viewer.stop": "Parar",
-  "managedStreetSidebar.generatedFrom": "Gerado a partir de",
-  "managedStreetSidebar.osmGeneratedRef": "Via {cls}, predefinição por classe via tiles do MapTiler"
+  "viewer.stop": "Parar"
 }
