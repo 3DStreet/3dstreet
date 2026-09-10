@@ -15,11 +15,32 @@
   pointer-events: all;
 }
 
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  max-width: 360px;
+}
+
 .label {
   color: #9db8d8;
   font-size: 13px;
   text-transform: capitalize;
   white-space: nowrap;
+}
+
+.detail {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pending {
+  color: rgba(255, 255, 255, 0.45);
+  font-style: italic;
 }
 
 .generate {

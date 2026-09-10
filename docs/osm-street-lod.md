@@ -72,7 +72,24 @@ they serialize, edit, and persist — the explicit click IS the
 
 Data notes: OpenMapTiles `transportation` has `class`/`subclass`/
 `brunnel`/`oneway` but **no lane counts or widths** — the cross-section
-rules above are rules, not that street's data. Tunnels and ferries are
+rules above are rules, not that street's data.
+
+**Overpass hydration on generate (phase 6, first slice).** While the chip
+is up, `osm-streets.hydrateWayAt(worldPoint)` runs one small-bbox Overpass
+query (`way["highway"]` with `out tags geom`, `src/osm/overpass-fetch.js`,
+one attempt per endpoint, IndexedDB-cached per bbox, memoized per way id)
+and `pickOverpassWay` matches the way by geometry — the tiles don't carry
+OSM ids — preferring drivable ways so a footway hugging the road never
+shadows it. `crossSectionFromTags` (`src/tested/osm-way-tags.js`, pure +
+tested) builds the segments: `lanes` / `lanes:forward` / `lanes:backward`
+exact when tagged, `oneway` (motorways and roundabouts default one-way),
+`sidewalk`, `parking:lane:*` / `parking:*`, `cycleway:*` on the tagged
+side, `name`; every missing field falls back to the class rules, and
+`facts` records `osm` vs `default` per field so the chip can say
+"Market St · 4 lanes · sidewalks both sides" or "lanes not mapped (2
+assumed)". Generate waits up to 1.5 s for an in-flight answer, else uses
+the rules. Side convention: segments[0] is the way's forward-RIGHT side
+(managed-street lays segments out -x → +x and +z is forward). Tunnels and ferries are
 filtered. Real lane data arrives with the Overpass-backed hydrator
 (phase 6 below; `src/osm/overpass-fetch.js` is kept for exactly that).
 
@@ -126,12 +143,14 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
   curved-street exclusion. Key test: deleting an intersection restores
   insets to 0 — streets pop back intact. Then upgraded-street junctions
   get real intersections automatically.
-- **Phase 6 — full hydration + pinning.** Overpass-backed hydrator
-  (`fetchOverpass` + `overpass-cache`) with osm2lanes-style tag→segment
-  mapping (#826), falling back to the class-preset table so hydration
-  never visibly changes width; provenance `{source: 'osm', wayId}`
-  serialized per street; any user edit sets `pinned: true` and the
-  hydrator/LOD never touch pinned streets. Do NOT attach `geo-flatten`
+- **Phase 6 — full hydration + pinning.** The on-generate slice above
+  ships; remaining: osm2lanes-grade tag coverage (#826: `width`,
+  `turn:lanes`, `busway`, `shoulder`), hydrating ribbons ahead of the
+  click so the highlight shows real widths, provenance
+  `{source: 'osm', wayId}` serialized per street (today:
+  `data-osm-way-id` / `data-osm-source` / `data-osm-name` attributes); any
+  user edit sets `pinned: true` and the hydrator/LOD never touch pinned
+  streets. Do NOT attach `geo-flatten`
   per hydrated street at area scale (each shape update re-flattens all
   google3d tiles).
 - **Phase 7 — in-play predictive streaming + google3d mixing.** Auto

@@ -36,6 +36,14 @@ export function latLonToLocal(origin, pt) {
   };
 }
 
+/** Inverse of latLonToLocal. */
+export function localToLatLon(origin, pt) {
+  return {
+    lat: origin.lat + pt.x / NORTH_M_PER_DEG,
+    lon: origin.lon + pt.z / eastMPerDeg(origin.lat)
+  };
+}
+
 /** Convert a [{lat, lon}, ...] polyline to local [{x, z}, ...]. */
 export function localPolylineFromLatLon(origin, polyline) {
   return polyline.map((pt) => latLonToLocal(origin, pt));
@@ -305,7 +313,7 @@ const LANE_WIDTH_M = {
  * order and rotate by atan2(dx, dz)), and managed-street 'inbound' means
  * +z travel, so oneway 1 → every lane inbound, -1 → outbound.
  */
-function segmentsForWay({ class: cls, subclass, oneway }) {
+export function segmentsForWay({ class: cls, subclass, oneway }) {
   const oneWay =
     oneway === 1 || oneway === -1 || oneway === '1' || oneway === '-1';
   const flowDir = String(oneway) === '-1' ? 'outbound' : 'inbound';
@@ -377,6 +385,12 @@ function segmentsForWay({ class: cls, subclass, oneway }) {
   // service, track, raceway, unknown drivable: bare lanes.
   return lanes;
 }
+
+// Segment factories + lane tables, shared with the Overpass tag mapper
+// (osm-way-tags.js) so hydrated and rule-based streets look alike.
+export const segmentBuilders = { drive, sidewalk, parking, median, bike, bus };
+export const LANE_TABLES = { LANES_PER_DIRECTION, ONEWAY_LANES, LANE_WIDTH_M };
+export const DRIVABLE_CLASSES = new Set(Object.keys(LANE_WIDTH_M));
 
 /**
  * Managed-street Format-2 object (the `parseStreetObject` /

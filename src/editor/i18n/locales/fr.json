@@ -532,6 +532,7 @@
   "managedStreetSidebar.length": "Longueur",
   "managedStreetSidebar.openInSource": "Ouvrir dans {source}",
   "managedStreetSidebar.osmGeneratedRef": "Route {cls}, préréglage par classe via les tuiles MapTiler",
+  "managedStreetSidebar.osmHydratedRef": "{name}, profil en travers issu des tags OSM",
   "managedStreetSidebar.path": "Tracé",
   "managedStreetSidebar.pathHintFollows": "La longueur suit le tracé. Le style de courbe se règle sur la forme.",
   "managedStreetSidebar.pathHintPick": "Choisissez une forme dessinée avec 2+ points, ou dessinez-en une.",

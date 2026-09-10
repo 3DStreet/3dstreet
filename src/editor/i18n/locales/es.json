@@ -532,6 +532,7 @@
   "managedStreetSidebar.length": "Longitud",
   "managedStreetSidebar.openInSource": "Abrir en {source}",
   "managedStreetSidebar.osmGeneratedRef": "Vía {cls}, preajuste por clase vía teselas de MapTiler",
+  "managedStreetSidebar.osmHydratedRef": "{name}, sección transversal según etiquetas de OSM",
   "managedStreetSidebar.path": "Trazado",
   "managedStreetSidebar.pathHintFollows": "La longitud sigue el trazado. El estilo de curva se define en la forma.",
   "managedStreetSidebar.pathHintPick": "Elige una forma dibujada con 2+ puntos, o dibuja una.",

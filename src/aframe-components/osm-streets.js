@@ -2,6 +2,13 @@
 import { tilesWithinRadius, EQUATOR_M } from '../tested/osm-tile-math.js';
 import { decodeTransportation } from '../tested/vector-tile-buildings.js';
 import { cacheGet, cachePut } from '../osm/overpass-cache.js';
+import { fetchOverpass } from '../osm/overpass-fetch.js';
+import {
+  bboxAroundLocalPoints,
+  overpassStreetQuery,
+  pickOverpassWay,
+  streetJsonFromTags
+} from '../tested/osm-way-tags.js';
 import {
   localPolylineFromLatLon,
   nearestWay,
@@ -50,6 +57,15 @@ const HIGHLIGHT_WIDTH_PAD_M = 1.5;
 const UPGRADE_WINDOW_M = 200;
 const MAX_CHORDS_PER_UPGRADE = 6;
 
+// Overpass hydration (phase 6, first slice): one small bbox query per
+// clicked way, interactive budget — one attempt per endpoint, short
+// timeouts — the chip generates from the class rules if it hasn't
+// answered by the time the user clicks.
+const HYDRATE_CACHE_PREFIX = 'overpass-streets/v1/';
+const HYDRATE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const HYDRATE_TIMEOUT_MS = 8000;
+const HYDRATE_BBOX_PAD_M = 20;
+
 /**
  * OSM streets on the 2.5D ground + click-to-upgrade (#1930 demo path).
  *
@@ -93,6 +109,7 @@ AFRAME.registerComponent('osm-streets', {
     this.inFlight = new Set();
     this.failures = new Map();
     this.upgradedWayIds = new Set();
+    this.hydrated = new Map(); // wayId → Promise<{tags, facts}|null>
     this._camWorld = new THREE.Vector3();
     this._camDir = new THREE.Vector3();
     this._focus = new THREE.Vector3();
@@ -395,10 +412,61 @@ AFRAME.registerComponent('osm-streets', {
    *
    * @returns {number} how many street entities were created.
    */
-  upgradeWayAt: function (worldPoint, maxDistM = DEFAULT_PICK_DISTANCE_M) {
+  upgradeWayAt: function (
+    worldPoint,
+    { maxDistM = DEFAULT_PICK_DISTANCE_M, tags = null } = {}
+  ) {
     const hit = this.wayAtPoint(worldPoint, maxDistM);
     if (!hit || hit.alreadyUpgraded) return 0;
-    return this.upgradeWay(hit.way, this.toLocalGround(worldPoint));
+    return this.upgradeWay(hit.way, this.toLocalGround(worldPoint), tags);
+  },
+
+  /**
+   * Fetch the OSM tags of the way under `worldPoint` from Overpass
+   * (IndexedDB-cached per bbox, memoized per way id so the chip's preview
+   * and the later generate share one request). Resolves
+   * `{ tags, facts }` — `facts` from crossSectionFromTags, for the chip
+   * summary — or null when Overpass has no matching highway / failed.
+   */
+  hydrateWayAt: function (worldPoint, maxDistM = DEFAULT_PICK_DISTANCE_M) {
+    const hit = this.wayAtPoint(worldPoint, maxDistM);
+    if (!hit) return Promise.resolve(null);
+    const { way } = hit;
+    if (this.hydrated.has(way.wayId)) return this.hydrated.get(way.wayId);
+    const nearPoint = this.toLocalGround(worldPoint);
+    const promise = this.fetchTagsForWay(way, nearPoint).catch((err) => {
+      console.warn('osm-streets: hydration failed', err?.message);
+      this.hydrated.delete(way.wayId); // let a later click retry
+      return null;
+    });
+    this.hydrated.set(way.wayId, promise);
+    return promise;
+  },
+
+  fetchTagsForWay: async function (way, nearPoint) {
+    const origin = { lat: this.data.latitude, lon: this.data.longitude };
+    const chords = this.chordsToUpgrade(way, nearPoint);
+    const points = chords.flatMap((c) => [c.start, c.end]);
+    if (points.length === 0) return null;
+    const bbox = bboxAroundLocalPoints(origin, points, HYDRATE_BBOX_PAD_M);
+    const cacheKey =
+      HYDRATE_CACHE_PREFIX +
+      [bbox.south, bbox.west, bbox.north, bbox.east]
+        .map((v) => v.toFixed(5))
+        .join(',');
+    let elements = await cacheGet(cacheKey, HYDRATE_CACHE_TTL_MS);
+    if (!elements) {
+      const res = await fetchOverpass(overpassStreetQuery(bbox), {
+        timeoutMs: HYDRATE_TIMEOUT_MS,
+        attemptsPerEndpoint: 1
+      });
+      elements = res?.elements || [];
+      cachePut(cacheKey, elements);
+    }
+    const match = pickOverpassWay(elements, origin, nearPoint);
+    if (!match) return null;
+    const { facts } = streetJsonFromTags(match.tags, way, 1);
+    return { tags: match.tags, facts, osmId: match.id };
   },
 
   /**
@@ -409,13 +477,13 @@ AFRAME.registerComponent('osm-streets', {
    *   Creation through the editor command stack finishes on the entities'
    *   `loaded` events; the count is known synchronously.
    */
-  upgradeWay: function (way, nearPoint = null) {
+  upgradeWay: function (way, nearPoint = null, tags = null) {
     if (this.upgradedWayIds.has(way.wayId)) return 0;
     this.upgradedWayIds.add(way.wayId);
     this.clearHighlight();
     const chords = this.chordsToUpgrade(way, nearPoint);
     for (const chord of chords) {
-      this.createStreetForChord(way, chord);
+      this.createStreetForChord(way, chord, tags);
     }
     return chords.length;
   },
@@ -441,12 +509,13 @@ AFRAME.registerComponent('osm-streets', {
     return chords.slice(0, MAX_CHORDS_PER_UPGRADE);
   },
 
-  createStreetForChord: function (way, chord) {
-    const streetJson = streetJsonForWay(
-      way,
-      chord.length,
-      `OSM ${way.class || 'street'}`
-    );
+  // `tags` (OSM tags from hydrateWayAt) make the cross-section exact
+  // where OSM has data; without them the class rules apply.
+  createStreetForChord: function (way, chord, tags = null) {
+    const hydrated = tags ? streetJsonFromTags(tags, way, chord.length) : null;
+    const streetJson = hydrated
+      ? hydrated.json
+      : streetJsonForWay(way, chord.length, `OSM ${way.class || 'street'}`);
     const components = {
       position: `${chord.midpoint.x.toFixed(2)} ${UPGRADED_STREET_Y} ${chord.midpoint.z.toFixed(2)}`,
       rotation: `0 ${chord.bearingDeg.toFixed(2)} 0`,
@@ -464,6 +533,10 @@ AFRAME.registerComponent('osm-streets', {
       entity.setAttribute('data-osm-way-id', way.wayId);
       // Read by the sidebar's source card ("Generated from OpenStreetMap").
       entity.setAttribute('data-osm-class', way.class || 'street');
+      entity.setAttribute('data-osm-source', hydrated ? 'overpass' : 'tiles');
+      if (hydrated?.facts?.name) {
+        entity.setAttribute('data-osm-name', hydrated.facts.name);
+      }
     };
     const inspector = AFRAME.INSPECTOR;
     if (inspector && inspector.execute) {

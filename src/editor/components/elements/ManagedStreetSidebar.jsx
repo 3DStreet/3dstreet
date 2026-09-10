@@ -457,19 +457,29 @@ const ManagedStreetSidebar = ({ entity }) => {
     if (data.importSource === 'osm-upgrade') {
       // Generated from a streamed OpenStreetMap way (#1930); the JSON blob
       // is ours, so no open/reload-from-source actions.
-      const cls = entity.getAttribute('data-osm-class');
+      const cls = entity.getAttribute('data-osm-class') || 'street';
+      const osmName = entity.getAttribute('data-osm-name');
+      const fromTags = entity.getAttribute('data-osm-source') === 'overpass';
       return {
         kind: 'osm',
         name: 'OpenStreetMap',
         imported: false,
         generated: true,
-        ref: intl.formatMessage(
-          {
-            id: 'managedStreetSidebar.osmGeneratedRef',
-            defaultMessage: '{cls} road, class preset via MapTiler tiles'
-          },
-          { cls: cls || 'street' }
-        )
+        ref: fromTags
+          ? intl.formatMessage(
+              {
+                id: 'managedStreetSidebar.osmHydratedRef',
+                defaultMessage: '{name}, cross-section from OSM tags'
+              },
+              { name: osmName || `${cls} road` }
+            )
+          : intl.formatMessage(
+              {
+                id: 'managedStreetSidebar.osmGeneratedRef',
+                defaultMessage: '{cls} road, class preset via MapTiler tiles'
+              },
+              { cls }
+            )
       };
     }
     return {

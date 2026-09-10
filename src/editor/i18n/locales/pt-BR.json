@@ -532,6 +532,7 @@
   "managedStreetSidebar.length": "Comprimento",
   "managedStreetSidebar.openInSource": "Abrir no {source}",
   "managedStreetSidebar.osmGeneratedRef": "Via {cls}, predefinição por classe via tiles do MapTiler",
+  "managedStreetSidebar.osmHydratedRef": "{name}, seção transversal a partir das tags do OSM",
   "managedStreetSidebar.path": "Trajeto",
   "managedStreetSidebar.pathHintFollows": "O comprimento segue o trajeto. O estilo de curva é definido na forma.",
   "managedStreetSidebar.pathHintPick": "Escolha uma forma desenhada com 2+ pontos, ou desenhe uma.",
