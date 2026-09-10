@@ -450,6 +450,39 @@ AFRAME.registerComponent('street-geo', {
     }
     el.appendChild(osm3dBuildingElement);
     self['osm3dBuilding'] = osm3dBuildingElement;
+
+    // Streets DATA layer (#1930 click-to-upgrade): follows the camera and
+    // caches decoded transportation way records for the tiles near the
+    // focus point. The VISUAL street tint is the ground's MVT overlay
+    // (vectorUrlTemplate above); this layer answers "which street is
+    // here?" and mints managed streets on upgrade.
+    const osmStreetsElement = document.createElement('a-entity');
+    osmStreetsElement.setAttribute('data-layer-name', 'OpenStreetMap Streets');
+    osmStreetsElement.setAttribute('osm-streets', {
+      latitude: data.latitude,
+      longitude: data.longitude,
+      radiusM: 1000,
+      zoom: buildingSource.maxLevel,
+      urlTemplate: buildingSource.urlTemplate,
+      transportationLayer:
+        buildingSource.transportationLayer || 'transportation',
+      opacity: this.opacityFraction()
+    });
+    osmStreetsElement.setAttribute('data-no-pause', '');
+    osmStreetsElement.classList.add('autocreated');
+    osmStreetsElement.setAttribute('data-ignore-raycaster', '');
+    osmStreetsElement.setAttribute('data-no-transform', '');
+    if (AFRAME.INSPECTOR?.opened) {
+      osmStreetsElement.addEventListener(
+        'loaded',
+        () => {
+          osmStreetsElement.play();
+        },
+        { once: true }
+      );
+    }
+    el.appendChild(osmStreetsElement);
+    self['osm3dStreets'] = osmStreetsElement;
   },
   osm3dUpdate: function () {
     const data = this.data;
@@ -473,6 +506,13 @@ AFRAME.registerComponent('street-geo', {
         opacity: this.opacityFraction()
       });
       this.osm3dBuilding.setAttribute('visible', data.opacity > 0);
+    }
+    if (this.osm3dStreets) {
+      this.osm3dStreets.setAttribute('osm-streets', {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        opacity: this.opacityFraction()
+      });
     }
   }
 });
