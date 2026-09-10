@@ -71,6 +71,12 @@
   "addLayer.card.flyableHelicopter.name": {
     "defaultMessage": "Flyable Helicopter"
   },
+  "addLayer.card.focusHotspot.desc": {
+    "defaultMessage": "A semitransparent clickable block for view mode. Visitors click it to fly the camera in and read your title and description, then return to the overview."
+  },
+  "addLayer.card.focusHotspot.name": {
+    "defaultMessage": "Focus Hotspot"
+  },
   "addLayer.card.grassBox.desc": {
     "defaultMessage": "Add a large green ground slab with animated instanced grass. The box dimensions, color, and grass options (density, blade height) are all editable in the properties panel."
   },
@@ -1184,6 +1190,39 @@
   "flyModeControls.yawRate": {
     "defaultMessage": "Yaw rate"
   },
+  "focusHotspot.description": {
+    "defaultMessage": "Description"
+  },
+  "focusHotspot.descriptionPlaceholder": {
+    "defaultMessage": "Shown in the info panel when a visitor clicks…"
+  },
+  "focusHotspot.enabled": {
+    "defaultMessage": "Enabled"
+  },
+  "focusHotspot.hideOnFocus": {
+    "defaultMessage": "Hide When Focused"
+  },
+  "focusHotspot.previewFocus": {
+    "defaultMessage": "Preview Focus"
+  },
+  "focusHotspot.previewFocusTitle": {
+    "defaultMessage": "Fly the camera to this hotspot now"
+  },
+  "focusHotspot.pulse": {
+    "defaultMessage": "Pulse To Invite Click"
+  },
+  "focusHotspot.setFocusView": {
+    "defaultMessage": "Set Focus View"
+  },
+  "focusHotspot.setFocusViewTitle": {
+    "defaultMessage": "Save the current editor camera as the view visitors fly to when they click this hotspot"
+  },
+  "focusHotspot.tip": {
+    "defaultMessage": "💡 In view mode this becomes a clickable hotspot: visitors click it to fly in and read the info panel, then return to the overview."
+  },
+  "focusHotspot.title": {
+    "defaultMessage": "Title"
+  },
   "geoModal.centerpoint": {
     "defaultMessage": "Centerpoint"
   },
@@ -2261,6 +2300,9 @@
   "shareModal.changeThumbnail": {
     "defaultMessage": "Change Thumbnail"
   },
+  "shareModal.copyEmbed": {
+    "defaultMessage": "Copy Embed Code"
+  },
   "shareModal.copyUrl": {
     "defaultMessage": "Copy URL"
   },
@@ -2284,6 +2326,9 @@
   },
   "shareModal.emailTooltip": {
     "defaultMessage": "Share scene as a new email draft"
+  },
+  "shareModal.embedCopied": {
+    "defaultMessage": "Embed code copied to clipboard"
   },
   "shareModal.locationNotSet": {
     "defaultMessage": "Location not set"
@@ -2452,6 +2497,9 @@
   },
   "viewer.editingCopyWarning": {
     "defaultMessage": "This is an unsaved copy. Click Save to make your own copy."
+  },
+  "viewer.hotspotBackToOverview": {
+    "defaultMessage": "Back to overview"
   },
   "viewer.pause": {
     "defaultMessage": "Pause"
