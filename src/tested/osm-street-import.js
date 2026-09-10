@@ -216,29 +216,219 @@ export function stretchForWindow(
     s0 = s + Math.sqrt(distSq(line[hit.segmentIndex], hit.point));
   }
 
-  const cumulative = [0];
-  for (let i = 1; i < line.length; i++) {
-    cumulative.push(
-      cumulative[i - 1] + Math.sqrt(distSq(line[i - 1], line[i]))
-    );
-  }
+  const cumulative = cumulativeArcLengths(line);
   const total = cumulative[line.length - 1];
   const sStart = Math.max(0, s0 - windowM);
   const sEnd = Math.min(total, s0 + windowM);
   const lengthM = sEnd - sStart;
   if (lengthM < minLengthM) return null;
 
-  const clipped = [pointAtArcLength(line, cumulative, sStart)];
-  for (let i = 0; i < line.length; i++) {
-    if (cumulative[i] > sStart && cumulative[i] < sEnd) {
-      clipped.push(line[i]);
-    }
-  }
-  clipped.push(pointAtArcLength(line, cumulative, sEnd));
-
+  const clipped = slicePolylineByArc(line, cumulative, sStart, sEnd);
   const points = simplifyPolyline(clipped, maxDeviationM);
   if (points.length < 2) return null;
   return { points, lengthM: Math.round(lengthM * 100) / 100 };
+}
+
+/** Cumulative arc lengths for [{x, z}, ...], starting at 0. */
+function cumulativeArcLengths(points) {
+  const cumulative = [0];
+  for (let i = 1; i < points.length; i++) {
+    cumulative.push(
+      cumulative[i - 1] + Math.sqrt(distSq(points[i - 1], points[i]))
+    );
+  }
+  return cumulative;
+}
+
+/** The sub-polyline between arc lengths, with interpolated boundary points. */
+function slicePolylineByArc(points, cumulative, sStart, sEnd) {
+  const sliced = [pointAtArcLength(points, cumulative, sStart)];
+  for (let i = 0; i < points.length; i++) {
+    if (cumulative[i] > sStart && cumulative[i] < sEnd) {
+      sliced.push(points[i]);
+    }
+  }
+  sliced.push(pointAtArcLength(points, cumulative, sEnd));
+  return sliced;
+}
+
+/**
+ * Intersection point of segments a→b and c→d, or null. Touching counts
+ * (t/u clamped range inclusive) so a way whose node lies exactly ON the
+ * stretch — the OSM shared-node topology — registers as a junction.
+ */
+export function segmentIntersection(a, b, c, d) {
+  const rx = b.x - a.x;
+  const rz = b.z - a.z;
+  const sx = d.x - c.x;
+  const sz = d.z - c.z;
+  const denom = rx * sz - rz * sx;
+  if (Math.abs(denom) < 1e-12) return null; // parallel / degenerate
+  const t = ((c.x - a.x) * sz - (c.z - a.z) * sx) / denom;
+  const u = ((c.x - a.x) * rz - (c.z - a.z) * rx) / denom;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+  return { point: { x: a.x + rx * t, z: a.z + rz * t }, t };
+}
+
+/**
+ * Junction points where other ways meet a generated stretch: proper
+ * crossings (X junctions) plus other-way ENDPOINTS landing on the
+ * stretch within `toleranceM` (T junctions — MVT geometry is quantized,
+ * so shared OSM nodes coincide only approximately). Junctions closer
+ * than `minSeparationM` along the stretch merge into one (dual
+ * carriageways, slightly-offset tile geometry), keeping the widest
+ * crossing class.
+ *
+ * @param {Array<{x, z}>} stretchPoints the stretch centerline.
+ * @param {Array<{ class, polylines }>} otherWays candidate crossers
+ *   (local-meter polylines; the caller excludes the way itself and
+ *   grade-separated crossers like bridges).
+ * @returns {Array<{ s, point, crossWidthM }>} sorted by arc length `s`
+ *   along the stretch; `crossWidthM` is the widest crossing way's
+ *   imported street width (drives the split inset).
+ */
+export function junctionsAlongStretch(
+  stretchPoints,
+  otherWays,
+  { toleranceM = 2, minSeparationM = 12 } = {}
+) {
+  if (!stretchPoints || stretchPoints.length < 2) return [];
+  const cumulative = cumulativeArcLengths(stretchPoints);
+  const found = [];
+  const record = (s, point, cls) => {
+    found.push({ s, point, crossWidthM: importedWidthMeters(cls) });
+  };
+
+  for (const other of otherWays || []) {
+    for (const line of other.polylines || []) {
+      if (!line || line.length < 2) continue;
+      // Proper crossings, segment pair by segment pair.
+      for (let i = 0; i < stretchPoints.length - 1; i++) {
+        const a = stretchPoints[i];
+        const b = stretchPoints[i + 1];
+        for (let j = 0; j < line.length - 1; j++) {
+          const hit = segmentIntersection(a, b, line[j], line[j + 1]);
+          if (hit) {
+            const s = cumulative[i] + Math.sqrt(distSq(a, hit.point));
+            record(s, hit.point, other.class);
+          }
+        }
+      }
+      // Endpoint touches (T junctions terminating on the stretch).
+      for (const end of [line[0], line[line.length - 1]]) {
+        let bestS = null;
+        let bestPoint = null;
+        let bestDistSq = toleranceM * toleranceM;
+        for (let i = 0; i < stretchPoints.length - 1; i++) {
+          const hit = pointToSegment(
+            end,
+            stretchPoints[i],
+            stretchPoints[i + 1]
+          );
+          if (hit.distSq <= bestDistSq) {
+            bestDistSq = hit.distSq;
+            bestPoint = hit.point;
+            bestS =
+              cumulative[i] + Math.sqrt(distSq(stretchPoints[i], hit.point));
+          }
+        }
+        if (bestPoint) record(bestS, bestPoint, other.class);
+      }
+    }
+  }
+
+  found.sort((p, q) => p.s - q.s);
+  const junctions = [];
+  for (const j of found) {
+    const last = junctions[junctions.length - 1];
+    if (last && j.s - last.s < minSeparationM) {
+      last.crossWidthM = Math.max(last.crossWidthM, j.crossWidthM);
+    } else {
+      junctions.push({ ...j });
+    }
+  }
+  return junctions;
+}
+
+/**
+ * Split a stretch at its junctions into street-worthy pieces, each end
+ * adjacent to a junction inset by half the crossing width plus
+ * `insetPadM` (room for the intersection's curb returns) — the
+ * generation-time stand-in for the snap pass, which cannot slide a
+ * path-following street. Pieces shorter than `minLengthM` are dropped
+ * (the ground ribbons keep drawing beneath).
+ *
+ * @returns {{ pieces, junctions }} `pieces`: [{ points, lengthM }]
+ *   ready for street creation; `junctions`: the input junctions with
+ *   `adjacentPieces` — how many kept pieces border each junction's cut.
+ *   Callers mint an intersection only where ≥2 street ends actually
+ *   meet (a junction whose far side fell below minLength would
+ *   otherwise show a dangling placeholder pad).
+ */
+export function splitStretchAtJunctions(
+  stretchPoints,
+  junctions,
+  { insetPadM = 4, minLengthM = 20 } = {}
+) {
+  const cumulative = cumulativeArcLengths(stretchPoints);
+  const total = cumulative[cumulative.length - 1];
+  if (!junctions || junctions.length === 0) {
+    return {
+      pieces: [
+        {
+          points: stretchPoints.slice(),
+          lengthM: Math.round(total * 100) / 100
+        }
+      ],
+      junctions: []
+    };
+  }
+
+  // Cut ranges around each junction, merged where they overlap.
+  const cuts = junctions
+    .map((j) => {
+      const inset = j.crossWidthM / 2 + insetPadM;
+      return { from: j.s - inset, to: j.s + inset, junctions: [j] };
+    })
+    .sort((a, b) => a.from - b.from);
+  const merged = [cuts[0]];
+  for (let i = 1; i < cuts.length; i++) {
+    const last = merged[merged.length - 1];
+    if (cuts[i].from <= last.to) {
+      last.to = Math.max(last.to, cuts[i].to);
+      last.junctions.push(...cuts[i].junctions);
+    } else {
+      merged.push(cuts[i]);
+    }
+  }
+
+  // Keep runs between cuts; track which cut each kept piece borders.
+  const outJunctions = junctions.map((j) => ({ ...j, adjacentPieces: 0 }));
+  const junctionsOf = (cut) =>
+    outJunctions.filter((oj) => cut.junctions.some((j) => j.s === oj.s));
+  const pieces = [];
+  const keepRun = (sStart, sEnd, cutBefore, cutAfter) => {
+    if (sEnd - sStart < minLengthM) return;
+    const points = slicePolylineByArc(stretchPoints, cumulative, sStart, sEnd);
+    pieces.push({
+      points,
+      lengthM: Math.round((sEnd - sStart) * 100) / 100
+    });
+    if (cutBefore) junctionsOf(cutBefore).forEach((j) => j.adjacentPieces++);
+    if (cutAfter) junctionsOf(cutAfter).forEach((j) => j.adjacentPieces++);
+  };
+  keepRun(0, Math.max(0, merged[0].from), null, merged[0]);
+  for (let i = 0; i < merged.length - 1; i++) {
+    keepRun(merged[i].to, merged[i + 1].from, merged[i], merged[i + 1]);
+  }
+  keepRun(
+    Math.min(total, merged[merged.length - 1].to),
+    total,
+    merged[merged.length - 1],
+    null
+  );
+
+  return { pieces, junctions: outJunctions };
 }
 
 // --- class → managed-street Format-2 presets -------------------------------

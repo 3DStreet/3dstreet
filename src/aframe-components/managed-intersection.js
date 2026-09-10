@@ -205,7 +205,14 @@ AFRAME.registerComponent('managed-intersection', {
     ).filter((street) => {
       const ms = street.components['managed-street'];
       if (!ms) return false;
-      if (ms.data.path) return false; // curved streets have no straight nodes
+      if (ms.data.path) {
+        // Path-following streets contribute arms from their curve's end
+        // frames once the curve resolves (see collectArms); until then
+        // there is no endpoint to read, and a closed path is a loop with
+        // no endpoints at all.
+        const curve = ms.streetCurve;
+        if (!curve || curve.closed) return false;
+      }
       return explicit.length === 0 || explicit.includes(street.id);
     });
     return all;
@@ -217,7 +224,8 @@ AFRAME.registerComponent('managed-intersection', {
     parts.push(selfM.map((v) => v.toFixed(SIGNATURE_PRECISION)).join(','));
     this.getCandidateStreets().forEach((street) => {
       const m = street.object3D.matrixWorld.elements;
-      const ms = street.components['managed-street'].data;
+      const comp = street.components['managed-street'];
+      const ms = comp.data;
       const align = street.getAttribute('street-align') || {};
       const segs = getTravelledWaySegments(street)
         .map((seg) => {
@@ -230,6 +238,11 @@ AFRAME.registerComponent('managed-intersection', {
           street.id,
           m.map((v) => v.toFixed(SIGNATURE_PRECISION)).join(','),
           ms.length,
+          // Path-following streets: the curve rev bumps on every path
+          // rebuild (vertex edits, shape drags), so arm geometry follows
+          // path edits the matrix/length can't see.
+          ms.path || '',
+          comp.streetCurve?.rev || 0,
           align.width,
           align.length,
           segs
@@ -281,22 +294,63 @@ AFRAME.registerComponent('managed-intersection', {
 
       street.object3D.updateWorldMatrix(true, false);
 
-      // Nearest endpoint node in intersection-local space.
+      // Nearest endpoint node in intersection-local space. Every `best`
+      // carries the street-LOCAL outward direction and lateral (+X-like)
+      // axis at that node, so the world/intersection transforms below are
+      // shared between straight and path-following streets.
+      const curve = ms.streetCurve;
       let best = null;
-      ['start', 'end'].forEach((key) => {
-        this._vec.set(centerX, 0, zByKey[key]);
-        street.object3D.localToWorld(this._vec);
-        this._vec.applyMatrix4(this._inv);
-        const dist = Math.hypot(this._vec.x, this._vec.z);
-        if (!best || dist < best.dist) {
-          best = { key, dist, point: { x: this._vec.x, z: this._vec.z } };
-        }
-      });
+      if (curve && !curve.closed) {
+        // Path-following street: nodes are the curve's end frames
+        // (street-local, like the straight endpoint math). The node sits
+        // at centerX along the frame's right vector — `right` IS the
+        // curved analogue of street-local +X (a straight +Z street's
+        // frame has right = (1, 0, 0)).
+        const sampler = curve.sampler;
+        [
+          { key: 'start', s: 0, sign: -1 },
+          { key: 'end', s: sampler.totalLength, sign: 1 }
+        ].forEach(({ key, s, sign }) => {
+          const frame = sampler.frameAtS(s);
+          this._vec.copy(frame.position).addScaledVector(frame.right, centerX);
+          street.object3D.localToWorld(this._vec);
+          this._vec.applyMatrix4(this._inv);
+          const dist = Math.hypot(this._vec.x, this._vec.z);
+          if (!best || dist < best.dist) {
+            best = {
+              key,
+              dist,
+              point: { x: this._vec.x, z: this._vec.z },
+              // Outward = away from the street body: against the tangent
+              // at s=0, along it at s=L.
+              outwardLocal: frame.tangent.clone().multiplyScalar(sign),
+              lateralLocal: frame.right.clone()
+            };
+          }
+        });
+      } else {
+        ['start', 'end'].forEach((key) => {
+          this._vec.set(centerX, 0, zByKey[key]);
+          street.object3D.localToWorld(this._vec);
+          this._vec.applyMatrix4(this._inv);
+          const dist = Math.hypot(this._vec.x, this._vec.z);
+          if (!best || dist < best.dist) {
+            best = {
+              key,
+              dist,
+              point: { x: this._vec.x, z: this._vec.z },
+              // Street local +Z runs start→end, so the street extends
+              // along +Z from its start node and along -Z from its end.
+              outwardLocal: new THREE.Vector3(0, 0, key === 'start' ? 1 : -1),
+              lateralLocal: new THREE.Vector3(1, 0, 0)
+            };
+          }
+        });
+      }
       if (!best || best.dist > this.data.snapRadius) return;
 
-      // Outward direction: street local +Z runs start→end, so the street
-      // extends along +Z from its start node and along -Z from its end node.
-      this._dir.set(0, 0, best.key === 'start' ? 1 : -1);
+      // Outward direction in the intersection's ground plane.
+      this._dir.copy(best.outwardLocal);
       this._dir.transformDirection(street.object3D.matrixWorld);
       this._dir.transformDirection(this._inv);
       this._dir.y = 0;
@@ -331,9 +385,10 @@ AFRAME.registerComponent('managed-intersection', {
         roadMaxX = spans[hi].to;
       }
 
-      // Map street-local X onto the arm's normal: whether local +X points
-      // along +n or -n depends on which endpoint faces the intersection.
-      this._dir.set(1, 0, 0);
+      // Map the street's lateral axis onto the arm's normal: whether it
+      // points along +n or -n depends on which endpoint faces the
+      // intersection (and, on a curve, on the end tangent's heading).
+      this._dir.copy(best.lateralLocal);
       this._dir.transformDirection(street.object3D.matrixWorld);
       this._dir.transformDirection(this._inv);
       const flip = this._dir.x * n.x + this._dir.z * n.z < 0;
@@ -349,6 +404,9 @@ AFRAME.registerComponent('managed-intersection', {
         dir,
         road,
         full,
+        // A path-following arm contributes geometry only: its extent is
+        // owned by the path shape, so the snap pass skips it.
+        pathed: !!curve,
         // Snap-pass metadata: which endpoint this arm is, and the street's
         // node math inputs (see applyStreetSnaps).
         endKey: best.key,
@@ -466,6 +524,13 @@ AFRAME.registerComponent('managed-intersection', {
     const updates = [];
     geometry.mouths.forEach((mouth) => {
       const arm = arms[mouth.arm];
+      // A path-following street's extent is the shape's, not ours: no
+      // slide-along-centerline rewrite exists for it (the endpoint gizmo
+      // math this pass replicates is straight-street math). Its arm still
+      // shaped the surfaces above; overlap/gap at its mouth is accepted —
+      // generation-time insets (OSM upgrade) or hand-editing the path
+      // close it.
+      if (arm.pathed) return;
       const delta = mouth.t;
       if (!(Math.abs(delta) > SNAP_EPSILON)) return;
       const street = arm.el;

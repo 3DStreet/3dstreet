@@ -160,13 +160,18 @@ point objects, out of scope like street furniture.
   [#1930](https://github.com/3DStreet/3dstreet/issues/1930).
 - Treatments are global (one crosswalk/traffic-control choice for all arms);
   per-arm overrides need stable arm identity (street ids) plus UI.
-- Curved (path-following) streets are skipped — their nodes live on the path
-  shape, not in the straight endpoint math. Their end frames are obtainable
-  today (`PathSampler.frameAtS` at 0 / totalLength), and the geometry core is
-  direction-agnostic, so wiring them in is a known increment — **deliberately
-  deferred** until the straight-node system has had more testing, so curved
-  connections can ride the same persistent-node-graph design instead of
-  becoming a second special case.
+- Curved (path-following) streets connect as **geometry-only arms**: their
+  nodes come from the curve's end frames (`PathSampler.frameAtS` at
+  0 / totalLength — the frame's `right` vector plays street-local +X, so
+  `street-align` width offsets apply on curves too; closed-path loop
+  streets have no endpoints and are skipped). The **snap pass skips
+  pathed arms** — a pathed street's extent is owned by its shape, and the
+  slide-along-centerline rewrite is straight-street math — so overlap/gap
+  at a pathed mouth is accepted; the OSM generate closes it with
+  generation-time insets (`splitStretchAtJunctions`), and hand-drawn
+  paths close it by editing the shape. Sliding a pathed node along its
+  own curve is the eventual persistent-node-graph work
+  ([#1930](https://github.com/3DStreet/3dstreet/issues/1930)).
 - No traffic-circle interior ([#1322](https://github.com/3DStreet/3dstreet/issues/1322));
   the polygon walk could grow an island later.
 - Signal/stop-sign placement is right-hand-traffic and heuristic; the raised

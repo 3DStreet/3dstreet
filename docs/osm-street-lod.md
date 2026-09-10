@@ -56,13 +56,21 @@ tint. (UI copy says "generate", never "upgrade" — in this app "upgrade"
 means the paid plan; the code keeps the roadmap's LOD term.) The upgrade
 (`upgradeWayAt`) converts the clicked stretch — the centerline clipped by
 arc length to ±`UPGRADE_WINDOW_M` of the click; a single OSM way can run
-for kilometers — into ONE real managed street via the editor command
-stack (undoable): a **path-following street** whose editable path shape
-carries the way's Douglas–Peucker-simplified control points
-(`stretchForWindow` in `src/tested/osm-street-import.js`; the same
-curved-street mechanism as hand-drawn paths, `docs/curved-street-path.md`,
-`curveType: smooth`), degenerating to a plain straight street when the
-stretch simplifies to a single chord. Cross-section rules from
+for kilometers — into real managed streets via the editor command stack
+(one undoable step per generate): the stretch **splits at junctions**
+where other ways cross or terminate on it (`junctionsAlongStretch` /
+`splitStretchAtJunctions` in `src/tested/osm-street-import.js`, ends
+inset by half the crossing width plus curb-return room), each piece
+becomes ONE **path-following street** whose editable path shape carries
+the piece's Douglas–Peucker-simplified control points
+(`stretchForWindow`; the same curved-street mechanism as hand-drawn
+paths, `docs/curved-street-path.md`, `curveType: smooth`), degenerating
+to a plain straight street when a piece simplifies to a single chord,
+and a **`managed-intersection` is minted per junction** where ≥2
+generated street ends meet (proximity-deduped, so generating the
+crossing way later reuses it — its snap radius picks the new street
+ends up automatically; pathed streets connect as geometry-only arms,
+see `docs/managed-intersection.md`). Cross-section rules from
 class + subclass + oneway (`streetJsonForWay`: one-way streets put every
 lane in the way direction, residential gets parking and unclassified
 doesn't, living streets go narrow, cycleways become bike lanes, lane

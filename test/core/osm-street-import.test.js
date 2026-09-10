@@ -15,7 +15,9 @@ import {
   localPolylineFromLatLon,
   nearestWay,
   pointToSegment,
+  junctionsAlongStretch,
   simplifyPolyline,
+  splitStretchAtJunctions,
   splitWayIntoChords,
   stretchForWindow,
   streetJsonForClass,
@@ -243,6 +245,161 @@ describe('stretchForWindow', () => {
     assert.strictEqual(stretch.lengthM, 100);
     assert.deepStrictEqual(stretch.points[0], { x: 0, z: 450 });
     assert.deepStrictEqual(stretch.points[1], { x: 0, z: 550 });
+  });
+});
+
+describe('junctionsAlongStretch', () => {
+  // A straight +z stretch, 400 m.
+  const stretch = [
+    { x: 0, z: 0 },
+    { x: 0, z: 400 }
+  ];
+
+  it('finds a proper crossing (X junction)', () => {
+    const crosser = {
+      class: 'minor',
+      polylines: [
+        [
+          { x: -50, z: 200 },
+          { x: 50, z: 200 }
+        ]
+      ]
+    };
+    const junctions = junctionsAlongStretch(stretch, [crosser]);
+    assert.strictEqual(junctions.length, 1);
+    assert.strictEqual(junctions[0].s, 200);
+    assert.deepStrictEqual(junctions[0].point, { x: 0, z: 200 });
+    assert.ok(junctions[0].crossWidthM > 0);
+  });
+
+  it('finds an endpoint touch (T junction) within tolerance', () => {
+    const tee = {
+      class: 'service',
+      polylines: [
+        [
+          { x: 60, z: 300 },
+          { x: 1.5, z: 300 } // ends 1.5 m short of the stretch
+        ]
+      ]
+    };
+    const junctions = junctionsAlongStretch(stretch, [tee], {
+      toleranceM: 2
+    });
+    assert.strictEqual(junctions.length, 1);
+    assert.ok(Math.abs(junctions[0].s - 300) < 1e-9);
+  });
+
+  it('ignores a parallel way that never touches', () => {
+    const parallel = {
+      class: 'minor',
+      polylines: [
+        [
+          { x: 10, z: 0 },
+          { x: 10, z: 400 }
+        ]
+      ]
+    };
+    assert.deepStrictEqual(junctionsAlongStretch(stretch, [parallel]), []);
+  });
+
+  it('merges nearby duplicates, keeping the widest crossing', () => {
+    const wide = {
+      class: 'primary',
+      polylines: [
+        [
+          { x: -50, z: 200 },
+          { x: 50, z: 200 }
+        ]
+      ]
+    };
+    const narrowTwin = {
+      class: 'service',
+      polylines: [
+        [
+          { x: -50, z: 205 },
+          { x: 50, z: 205 }
+        ]
+      ]
+    };
+    const junctions = junctionsAlongStretch(stretch, [wide, narrowTwin]);
+    assert.strictEqual(junctions.length, 1);
+    assert.strictEqual(
+      junctions[0].crossWidthM,
+      junctionsAlongStretch(stretch, [wide])[0].crossWidthM
+    );
+  });
+
+  it('reports several separated junctions in arc-length order', () => {
+    const crossAt = (z) => ({
+      class: 'minor',
+      polylines: [
+        [
+          { x: -50, z },
+          { x: 50, z }
+        ]
+      ]
+    });
+    const junctions = junctionsAlongStretch(stretch, [
+      crossAt(300),
+      crossAt(100)
+    ]);
+    assert.deepStrictEqual(
+      junctions.map((j) => j.s),
+      [100, 300]
+    );
+  });
+});
+
+describe('splitStretchAtJunctions', () => {
+  const stretch = [
+    { x: 0, z: 0 },
+    { x: 0, z: 400 }
+  ];
+
+  it('keeps the whole stretch as one piece with no junctions', () => {
+    const { pieces, junctions } = splitStretchAtJunctions(stretch, []);
+    assert.strictEqual(pieces.length, 1);
+    assert.strictEqual(pieces[0].lengthM, 400);
+    assert.deepStrictEqual(junctions, []);
+  });
+
+  it('splits around a junction with a width-derived inset', () => {
+    const j = { s: 200, point: { x: 0, z: 200 }, crossWidthM: 10 };
+    const { pieces, junctions } = splitStretchAtJunctions(stretch, [j], {
+      insetPadM: 4
+    });
+    // Inset = 10/2 + 4 = 9 m each side of s=200.
+    assert.strictEqual(pieces.length, 2);
+    assert.deepStrictEqual(pieces[0].points[1], { x: 0, z: 191 });
+    assert.deepStrictEqual(pieces[1].points[0], { x: 0, z: 209 });
+    assert.strictEqual(pieces[0].lengthM, 191);
+    assert.strictEqual(pieces[1].lengthM, 191);
+    assert.strictEqual(junctions[0].adjacentPieces, 2);
+  });
+
+  it('drops slivers and reports fewer adjacent pieces', () => {
+    // Junction near the end: the far side is a 6 m sliver.
+    const j = { s: 385, point: { x: 0, z: 385 }, crossWidthM: 10 };
+    const { pieces, junctions } = splitStretchAtJunctions(stretch, [j], {
+      insetPadM: 4,
+      minLengthM: 20
+    });
+    assert.strictEqual(pieces.length, 1);
+    assert.strictEqual(junctions[0].adjacentPieces, 1);
+  });
+
+  it('merges overlapping cuts from close junctions', () => {
+    const jA = { s: 195, point: { x: 0, z: 195 }, crossWidthM: 10 };
+    const jB = { s: 208, point: { x: 0, z: 208 }, crossWidthM: 10 };
+    const { pieces, junctions } = splitStretchAtJunctions(stretch, [jA, jB], {
+      insetPadM: 4
+    });
+    assert.strictEqual(pieces.length, 2);
+    // One merged cut [186, 217]: both junctions border both pieces.
+    assert.strictEqual(junctions[0].adjacentPieces, 2);
+    assert.strictEqual(junctions[1].adjacentPieces, 2);
+    assert.deepStrictEqual(pieces[0].points[1], { x: 0, z: 186 });
+    assert.deepStrictEqual(pieces[1].points[0], { x: 0, z: 217 });
   });
 });
 

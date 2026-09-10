@@ -33,9 +33,14 @@ beforeAll(async () => {
   await import('../../src/aframe-components/street-generated-pedestrians.js');
   await import('../../src/aframe-components/street-generated-rail.js');
   await import('../../src/aframe-components/managed-street.js');
+  // Real streets carry street-align (managed-street attaches it in init);
+  // managed-intersection reads it for node placement, so it must be a
+  // registered component here, not an inert attribute.
+  await import('../../src/aframe-components/street-align.js');
   await import('../../src/aframe-components/shape.js');
   await import('../../src/aframe-components/shape-vertex.js');
   await import('../../src/aframe-components/street-path.js');
+  await import('../../src/aframe-components/managed-intersection.js');
   await import('../../src/aframe-components/osm-streets.js');
   window.AFRAME.emitReady();
 });
@@ -147,6 +152,60 @@ describe('osm-streets upgrade (viewer creation path)', () => {
     const rotation = streetEl.getAttribute('rotation');
     expect(rotation.y).toBeCloseTo(90, 0);
   });
+
+  it('splits at a crossing, mints one shared intersection, connects path arms', async () => {
+    const comp = await osmStreetsComponent();
+    const scene = comp.el.sceneEl;
+    // Way A runs +z with a bend past the crossing; way B crosses it at
+    // local (0, 100).
+    comp.addTileWays('t-net', [
+      rawWay('way-a', 'minor', [
+        { x: 0, z: 0 },
+        { x: 0, z: 200 },
+        { x: 40, z: 400 }
+      ]),
+      rawWay('way-b', 'minor', [
+        { x: -80, z: 100 },
+        { x: 80, z: 100 }
+      ])
+    ]);
+    const [wayA, wayB] = comp.allWays();
+
+    // Generate A: split at the crossing into two pieces + one intersection.
+    const createdA = comp.upgradeWay(wayA, { x: 0, z: 200 });
+    expect(createdA).toBe(2);
+    const intersections = scene.querySelectorAll('[managed-intersection]');
+    expect(intersections).toHaveLength(1);
+    const intersectionEl = intersections[0];
+    await vi.waitFor(() => {
+      const iPos = intersectionEl.getAttribute('position');
+      expect(iPos.x).toBeCloseTo(0, 0);
+      expect(iPos.z).toBeCloseTo(100, 0);
+    });
+    // Piece past the bend keeps its corner → one path shape; the piece
+    // before the crossing is straight.
+    expect(scene.querySelectorAll('[shape]')).toHaveLength(1);
+
+    // Generate B: two more pieces, NO second intersection (proximity
+    // reuse), and its street ends land inside the existing snap radius.
+    const createdB = comp.upgradeWay(wayB, { x: 0, z: 100 });
+    expect(createdB).toBe(2);
+    expect(scene.querySelectorAll('[managed-intersection]')).toHaveLength(1);
+    expect(scene.querySelectorAll('[managed-street]')).toHaveLength(4);
+
+    // The intersection's signature watch picks the streets up as arms —
+    // including the path-following piece (curve end frames) — and
+    // produces real geometry.
+    await vi.waitFor(
+      () => {
+        const mi = intersectionEl.components['managed-intersection'];
+        expect(mi).toBeTruthy();
+        expect(mi.lastGeometry).toBeTruthy();
+        expect(mi.lastGeometry.mouths.length).toBeGreaterThanOrEqual(3);
+      },
+      { timeout: 15000 }
+    );
+  }, 30000);
 
   it('returns 0 for a stretch below the generate minimum', async () => {
     const comp = await osmStreetsComponent();

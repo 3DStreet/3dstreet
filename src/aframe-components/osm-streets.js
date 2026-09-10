@@ -10,8 +10,10 @@ import {
   streetJsonFromTags
 } from '../tested/osm-way-tags.js';
 import {
+  junctionsAlongStretch,
   localPolylineFromLatLon,
   nearestWay,
+  splitStretchAtJunctions,
   stretchForWindow,
   streetJsonForWay
 } from '../tested/osm-street-import.js';
@@ -93,12 +95,16 @@ const HYDRATE_BBOX_PAD_M = 20;
  *
  * - `wayAtPoint(worldPoint)` — which street is under a clicked ground
  *   point (editor "Generate 3D street" affordance), and
- * - `upgradeWayAt(worldPoint)` — mint ONE real managed street for the
- *   clicked stretch of that way: a path-following street bent along the
- *   way's centerline (its path shape stays vertex-editable), straight
- *   when the stretch simplifies to a single chord; class-preset cross
- *   sections, `playable: true` so street-traffic animates it in play
- *   mode.
+ * - `upgradeWayAt(worldPoint)` — mint real managed streets for the
+ *   clicked stretch of that way: the stretch splits where other ways
+ *   cross or terminate on it, each piece becomes ONE path-following
+ *   street bent along the way's centerline (its path shape stays
+ *   vertex-editable; straight when the piece simplifies to a single
+ *   chord), and a `managed-intersection` is minted at each junction
+ *   where ≥2 generated street ends meet — later generates of crossing
+ *   ways connect to it automatically (proximity snap radius).
+ *   Class-preset cross sections, `playable: true` so street-traffic
+ *   animates them in play mode.
  *
  * Same tile fetch (browser cache + IndexedDB via overpass-cache) as the
  * buildings worker, but on the main thread: transportation decode is a
@@ -420,17 +426,19 @@ AFRAME.registerComponent('osm-streets', {
   },
 
   /**
-   * Upgrade the way nearest `worldPoint` into ONE real managed street —
-   * path-following along the clicked stretch of its centerline (straight
-   * when the stretch is a single chord), `playable: true` so
-   * street-traffic animates it in play mode. Idempotent per way id.
+   * Upgrade the way nearest `worldPoint` into real managed streets —
+   * the clicked stretch of its centerline, split at junctions with other
+   * ways, one path-following street per piece (straight when a piece is
+   * a single chord) plus a managed intersection per junction where two
+   * generated ends meet; `playable: true` so street-traffic animates
+   * them in play mode. Idempotent per way id.
    *
    * Only the stretch near the click upgrades: a single OSM way can run
    * for kilometers (an early bug upgraded one 8 km path into 419
    * entities), so the centerline is clipped to ±`UPGRADE_WINDOW_M` of the
    * click by arc length.
    *
-   * @returns {number} how many street entities were created (1 or 0).
+   * @returns {number} how many street entities were created.
    */
   upgradeWayAt: function (
     worldPoint,
@@ -499,8 +507,8 @@ AFRAME.registerComponent('osm-streets', {
    * @param {Object|null} tags OSM tags from hydrateWayAt — make the
    *   cross-section exact where OSM has data; without them the class
    *   rules apply.
-   * @returns {number} how many street entities were created (1, or 0 for
-   *   an already-upgraded way / a stretch too short to generate).
+   * @returns {number} how many street entities were created (0 for an
+   *   already-upgraded way / a stretch too short to generate).
    *   Creation through the editor command stack finishes on the entities'
    *   `loaded` events; the count is known synchronously.
    */
@@ -508,24 +516,78 @@ AFRAME.registerComponent('osm-streets', {
     if (this.upgradedWayIds.has(way.wayId)) return 0;
     const stretch = this.stretchToUpgrade(way, nearPoint);
     if (!stretch) return 0;
+    const { pieces, junctions } = this.planUpgrade(way, stretch);
+    if (pieces.length === 0) return 0; // all pieces below minimum
+
     this.upgradedWayIds.add(way.wayId);
     this.clearHighlight();
-    if (stretch.points.length === 2) {
-      // Degenerate straight stretch: a plain street, no path shape.
-      this.createStraightStreet(way, stretch, tags);
-    } else {
-      this.createPathStreet(way, stretch, tags);
+    const commands = [];
+    for (const piece of pieces) {
+      if (piece.points.length === 2) {
+        // Degenerate straight piece: a plain street, no path shape.
+        commands.push(this.straightStreetCommand(way, piece, tags));
+      } else {
+        commands.push(...this.pathStreetCommands(way, piece, tags));
+      }
     }
-    return 1;
+    for (const junction of junctions) {
+      // Mint only where ≥2 generated street ends actually meet, and
+      // reuse an intersection an earlier generate already placed there
+      // (its snap radius picks the new streets up by itself).
+      if (
+        junction.adjacentPieces >= 2 &&
+        !this.intersectionNear(junction.point)
+      ) {
+        commands.push(this.intersectionCommand(junction.point));
+      }
+    }
+    this.executeCommands(commands);
+    return pieces.length;
   },
 
   // The clipped, simplified centerline stretch `upgradeWay` would turn
-  // into a street for `way` anchored at `nearPoint` (see
+  // into streets for `way` anchored at `nearPoint` (see
   // stretchForWindow), or null.
   stretchToUpgrade: function (way, nearPoint = null) {
     return stretchForWindow(way.polylines, nearPoint, {
       windowM: UPGRADE_WINDOW_M
     });
+  },
+
+  /**
+   * Junction-split plan for a stretch: where other ways cross or
+   * terminate on it, split into inset pieces (one street each) and mark
+   * the junctions to mint intersections at. Other-way candidates come
+   * from every loaded tile (the same way appears clipped in several
+   * tiles — junction dedupe absorbs the doubles); bridges are
+   * grade-separated, not junctions.
+   */
+  planUpgrade: function (way, stretch) {
+    const others = this.allWays().filter(
+      (w) => w.wayId !== way.wayId && w.brunnel !== 'bridge'
+    );
+    const junctions = junctionsAlongStretch(stretch.points, others);
+    return splitStretchAtJunctions(stretch.points, junctions);
+  },
+
+  // Is a managed intersection already within `withinM` of this local
+  // ground point? (Proximity, not identity: the junction is shared by
+  // every way that crosses it.)
+  intersectionNear: function (point, withinM = 10) {
+    this._local.set(point.x, 0, point.z);
+    this.el.object3D.localToWorld(this._local);
+    const wx = this._local.x;
+    const wz = this._local.z;
+    const existing = this.el.sceneEl.querySelectorAll(
+      'a-entity[managed-intersection]'
+    );
+    for (const el of existing) {
+      el.object3D.getWorldPosition(this._local);
+      if (Math.hypot(this._local.x - wx, this._local.z - wz) <= withinM) {
+        return true;
+      }
+    }
+    return false;
   },
 
   // The managed-street component config + the `loaded` stamp callback
@@ -558,7 +620,13 @@ AFRAME.registerComponent('osm-streets', {
     return { managedStreet, stampWayId };
   },
 
-  createStraightStreet: function (way, stretch, tags = null) {
+  /**
+   * One ['entitycreate', definition, callback] tuple for a straight
+   * piece — the format MultiCommand takes, so a whole generate (streets
+   * + intersections) executes as ONE undoable step; the viewer fallback
+   * builds the same definitions directly (see executeCommands).
+   */
+  straightStreetCommand: function (way, stretch, tags = null) {
     const [start, end] = stretch.points;
     const midpoint = { x: (start.x + end.x) / 2, z: (start.z + end.z) / 2 };
     // A-Frame yaw pointing street-local +Z along the chord (same
@@ -575,22 +643,7 @@ AFRAME.registerComponent('osm-streets', {
       rotation: `0 ${bearingDeg.toFixed(2)} 0`,
       'managed-street': managedStreet
     };
-    const inspector = AFRAME.INSPECTOR;
-    if (inspector && inspector.execute) {
-      // Through the command stack so the upgrade is one undoable step;
-      // the callback fires on the entity's `loaded`.
-      inspector.execute('entitycreate', { components }, undefined, stampWayId);
-      return;
-    }
-    // Viewer (no inspector): plain entity creation.
-    const entity = document.createElement('a-entity');
-    entity.setAttribute('position', components.position);
-    entity.setAttribute('rotation', components.rotation);
-    entity.setAttribute('managed-street', components['managed-street']);
-    stampWayId(entity);
-    const container =
-      document.querySelector('#street-container') || this.el.sceneEl;
-    container.appendChild(entity);
+    return ['entitycreate', { components }, stampWayId];
   },
 
   /**
@@ -607,7 +660,7 @@ AFRAME.registerComponent('osm-streets', {
    * pathed street renders at the path's world position; path vertex
    * elevation is followed).
    */
-  createPathStreet: function (way, stretch, tags = null) {
+  pathStreetCommands: function (way, stretch, tags = null) {
     const points = stretch.points;
     const centroid = { x: 0, z: 0 };
     for (const p of points) {
@@ -654,39 +707,64 @@ AFRAME.registerComponent('osm-streets', {
       }
     };
 
+    // Shape first: the street create fires from its `loaded` callback in
+    // the multi, so the path resolves immediately; undo removes street
+    // then shape.
+    return [
+      ['entitycreate', shapeDefinition],
+      ['entitycreate', streetDefinition, stampWayId]
+    ];
+  },
+
+  // A managed intersection at a junction point (schema defaults: zebra
+  // crosswalks, snapRadius 20 — generated street ends land within it and
+  // auto-connect, including streets minted by LATER generates).
+  intersectionCommand: function (point) {
+    return [
+      'entitycreate',
+      {
+        components: {
+          position: `${point.x.toFixed(2)} ${UPGRADED_STREET_Y} ${point.z.toFixed(2)}`,
+          'managed-intersection': {},
+          'data-layer-name': 'OSM Intersection'
+        }
+      }
+    ];
+  },
+
+  /**
+   * Run ['entitycreate', definition, callback?] tuples: through the
+   * editor command stack as ONE undoable 'multi' step, or in the viewer
+   * (no inspector, no undo stack) by building the same definitions into
+   * DOM directly — managed-street retries path resolution, so creation
+   * order is not load-bearing there.
+   */
+  executeCommands: function (commands) {
+    if (commands.length === 0) return;
     const inspector = AFRAME.INSPECTOR;
     if (inspector && inspector.execute) {
-      // One undoable step for the pair: the multi runs the shape create
-      // first (the street create fires from its `loaded` callback, so the
-      // path resolves immediately), and undo removes street then shape.
-      inspector.execute('multi', [
-        ['entitycreate', shapeDefinition],
-        ['entitycreate', streetDefinition, stampWayId]
-      ]);
+      inspector.execute('multi', commands);
       return;
     }
-    // Viewer (no inspector): plain entity creation. managed-street
-    // retries path resolution, so creation order is not load-bearing.
     const container =
       document.querySelector('#street-container') || this.el.sceneEl;
-    const shapeEl = document.createElement('a-entity');
-    shapeEl.id = shapeId;
-    shapeEl.setAttribute('shape', shapeDefinition.components.shape);
-    shapeEl.setAttribute('position', shapeDefinition.components.position);
-    shapeEl.setAttribute('data-osm-way-id', way.wayId);
-    for (const child of shapeDefinition.children) {
-      const vertexEl = document.createElement('a-entity');
-      vertexEl.classList.add('hideFromSceneGraph');
-      vertexEl.setAttribute('shape-vertex', '');
-      vertexEl.setAttribute('position', child.components.position);
-      shapeEl.appendChild(vertexEl);
+    const build = (definition) => {
+      const el = document.createElement(definition.element || 'a-entity');
+      if (definition.id) el.id = definition.id;
+      if (definition.class) el.setAttribute('class', definition.class);
+      for (const name in definition.components || {}) {
+        el.setAttribute(name, definition.components[name]);
+      }
+      for (const child of definition.children || []) {
+        el.appendChild(build(child));
+      }
+      return el;
+    };
+    for (const [, definition, callback] of commands) {
+      const el = build(definition);
+      if (callback) callback(el);
+      container.appendChild(el);
     }
-    container.appendChild(shapeEl);
-    const streetEl = document.createElement('a-entity');
-    streetEl.setAttribute('position', streetDefinition.components.position);
-    streetEl.setAttribute('managed-street', managedStreet);
-    stampWayId(streetEl);
-    container.appendChild(streetEl);
   },
 
   /**
