@@ -367,6 +367,9 @@ AFRAME.registerComponent('street-geo', {
     // cartography to keep the classic 2.5D look under the extruded
     // buildings; `basemapStyle` remains the 2D satellite layer's choice.
     const source = this.resolveTiledSource('streets');
+    // The building vector source doubles as the ground's transportation
+    // overlay source (same tiles/v3 pbf tiles, different layer — #1930).
+    const vectorSource = this.resolveBuildingSource();
     if (source) {
       const groundElement = document.createElement('a-entity');
       groundElement.setAttribute('data-layer-name', '2.5D Ground Map Tiles');
@@ -377,7 +380,9 @@ AFRAME.registerComponent('street-geo', {
         maxLevel: source.maxLevel,
         latitude: data.latitude,
         longitude: data.longitude,
-        opacity: this.opacityFraction()
+        opacity: this.opacityFraction(),
+        vectorUrlTemplate: vectorSource ? vectorSource.urlTemplate : '',
+        vectorMaxLevel: vectorSource ? vectorSource.maxLevel : 14
       });
       groundElement.setAttribute('visible', data.opacity > 0);
       groundElement.setAttribute('data-no-pause', '');
@@ -404,7 +409,7 @@ AFRAME.registerComponent('street-geo', {
     // main-thread `osm-geojson`. The component generates geometry directly
     // in the scene frame, so no element rotation, and it handles tile
     // failures itself (#1861).
-    const buildingSource = this.resolveBuildingSource();
+    const buildingSource = vectorSource;
     if (!buildingSource) return;
     const osm3dBuildingElement = document.createElement('a-entity');
     osm3dBuildingElement.setAttribute(
