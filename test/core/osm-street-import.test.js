@@ -329,6 +329,33 @@ describe('junctionsAlongStretch', () => {
     );
   });
 
+  it('drops junctions within the end clearance (way-fragment continuations)', () => {
+    // A same-road fragment continues exactly at the stretch's end — its
+    // endpoint touch must not read as a T junction.
+    const continuation = {
+      class: 'secondary',
+      polylines: [
+        [
+          { x: 0, z: 400 },
+          { x: 0, z: 600 }
+        ]
+      ]
+    };
+    assert.deepStrictEqual(junctionsAlongStretch(stretch, [continuation]), []);
+    // A real crossing just inside the window edge is dropped too — its
+    // far-side piece could never survive the inset.
+    const edgeCross = {
+      class: 'minor',
+      polylines: [
+        [
+          { x: -50, z: 5 },
+          { x: 50, z: 5 }
+        ]
+      ]
+    };
+    assert.deepStrictEqual(junctionsAlongStretch(stretch, [edgeCross]), []);
+  });
+
   it('reports several separated junctions in arc-length order', () => {
     const crossAt = (z) => ({
       class: 'minor',
@@ -388,18 +415,23 @@ describe('splitStretchAtJunctions', () => {
     assert.strictEqual(junctions[0].adjacentPieces, 1);
   });
 
-  it('merges overlapping cuts from close junctions', () => {
+  it('merges overlapping cuts from close junctions into ONE junction', () => {
+    // An offset dual-carriageway crossing: two junction records 13 m
+    // apart must yield a single intersection, not two starved ones.
     const jA = { s: 195, point: { x: 0, z: 195 }, crossWidthM: 10 };
     const jB = { s: 208, point: { x: 0, z: 208 }, crossWidthM: 10 };
     const { pieces, junctions } = splitStretchAtJunctions(stretch, [jA, jB], {
       insetPadM: 4
     });
     assert.strictEqual(pieces.length, 2);
-    // One merged cut [186, 217]: both junctions border both pieces.
-    assert.strictEqual(junctions[0].adjacentPieces, 2);
-    assert.strictEqual(junctions[1].adjacentPieces, 2);
     assert.deepStrictEqual(pieces[0].points[1], { x: 0, z: 186 });
     assert.deepStrictEqual(pieces[1].points[0], { x: 0, z: 217 });
+    // One merged cut [186, 217] → one junction at its center, with a
+    // cut half-span the minted intersection's snap radius must cover.
+    assert.strictEqual(junctions.length, 1);
+    assert.strictEqual(junctions[0].adjacentPieces, 2);
+    assert.deepStrictEqual(junctions[0].point, { x: 0, z: 201.5 });
+    assert.strictEqual(junctions[0].cutHalfM, 15.5);
   });
 });
 

@@ -538,7 +538,7 @@ AFRAME.registerComponent('osm-streets', {
         junction.adjacentPieces >= 2 &&
         !this.intersectionNear(junction.point)
       ) {
-        commands.push(this.intersectionCommand(junction.point));
+        commands.push(this.intersectionCommand(junction));
       }
     }
     this.executeCommands(commands);
@@ -716,16 +716,21 @@ AFRAME.registerComponent('osm-streets', {
     ];
   },
 
-  // A managed intersection at a junction point (schema defaults: zebra
-  // crosswalks, snapRadius 20 — generated street ends land within it and
-  // auto-connect, including streets minted by LATER generates).
-  intersectionCommand: function (point) {
+  // A managed intersection at a junction (schema defaults: zebra
+  // crosswalks) — generated street ends land within its snap radius and
+  // auto-connect, including streets minted by LATER generates. A merged
+  // cut (offset crossings sharing one junction) can span wider than the
+  // default radius, so the radius grows to cover the cut's boundary
+  // nodes plus slack.
+  intersectionCommand: function (junction) {
+    const point = junction.point;
+    const snapRadius = Math.max(20, Math.ceil((junction.cutHalfM || 0) + 8));
     return [
       'entitycreate',
       {
         components: {
           position: `${point.x.toFixed(2)} ${UPGRADED_STREET_Y} ${point.z.toFixed(2)}`,
-          'managed-intersection': {},
+          'managed-intersection': snapRadius > 20 ? { snapRadius } : {},
           'data-layer-name': 'OSM Intersection'
         }
       }

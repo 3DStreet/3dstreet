@@ -279,6 +279,14 @@ export function segmentIntersection(a, b, c, d) {
  * carriageways, slightly-offset tile geometry), keeping the widest
  * crossing class.
  *
+ * Junctions within `endClearanceM` of either stretch end are DROPPED:
+ * vector-tile ways are fragmented (clipped per tile, split per source
+ * way), so an adjacent fragment of the SAME road touches exactly at the
+ * stretch's own endpoint — a continuation, not a junction — and a real
+ * crossing that close to the (arbitrary) generate-window edge couldn't
+ * yield a piece on its far side anyway; it gets its intersection when
+ * that area is generated.
+ *
  * @param {Array<{x, z}>} stretchPoints the stretch centerline.
  * @param {Array<{ class, polylines }>} otherWays candidate crossers
  *   (local-meter polylines; the caller excludes the way itself and
@@ -290,12 +298,14 @@ export function segmentIntersection(a, b, c, d) {
 export function junctionsAlongStretch(
   stretchPoints,
   otherWays,
-  { toleranceM = 2, minSeparationM = 12 } = {}
+  { toleranceM = 2, minSeparationM = 12, endClearanceM = 10 } = {}
 ) {
   if (!stretchPoints || stretchPoints.length < 2) return [];
   const cumulative = cumulativeArcLengths(stretchPoints);
+  const total = cumulative[cumulative.length - 1];
   const found = [];
   const record = (s, point, cls) => {
+    if (s < endClearanceM || s > total - endClearanceM) return;
     found.push({ s, point, crossWidthM: importedWidthMeters(cls) });
   };
 
@@ -359,11 +369,15 @@ export function junctionsAlongStretch(
  * (the ground ribbons keep drawing beneath).
  *
  * @returns {{ pieces, junctions }} `pieces`: [{ points, lengthM }]
- *   ready for street creation; `junctions`: the input junctions with
- *   `adjacentPieces` — how many kept pieces border each junction's cut.
- *   Callers mint an intersection only where ≥2 street ends actually
- *   meet (a junction whose far side fell below minLength would
- *   otherwise show a dangling placeholder pad).
+ *   ready for street creation; `junctions`: ONE entry per merged cut —
+ *   nearby input junctions (an offset dual-carriageway crossing, tile
+ *   double-geometry) share a single intersection — with `s`/`point` at
+ *   the cut's center on the stretch, `cutHalfM` (half the cut's arc
+ *   span; the minted intersection's snap radius must cover it so the
+ *   bordering street ends connect), and `adjacentPieces` — how many
+ *   kept pieces border the cut. Callers mint an intersection only where
+ *   ≥2 street ends actually meet (a junction whose far side fell below
+ *   minLength would otherwise show a dangling placeholder pad).
  */
 export function splitStretchAtJunctions(
   stretchPoints,
@@ -388,7 +402,12 @@ export function splitStretchAtJunctions(
   const cuts = junctions
     .map((j) => {
       const inset = j.crossWidthM / 2 + insetPadM;
-      return { from: j.s - inset, to: j.s + inset, junctions: [j] };
+      return {
+        from: j.s - inset,
+        to: j.s + inset,
+        crossWidthM: j.crossWidthM,
+        adjacentPieces: 0
+      };
     })
     .sort((a, b) => a.from - b.from);
   const merged = [cuts[0]];
@@ -396,16 +415,13 @@ export function splitStretchAtJunctions(
     const last = merged[merged.length - 1];
     if (cuts[i].from <= last.to) {
       last.to = Math.max(last.to, cuts[i].to);
-      last.junctions.push(...cuts[i].junctions);
+      last.crossWidthM = Math.max(last.crossWidthM, cuts[i].crossWidthM);
     } else {
       merged.push(cuts[i]);
     }
   }
 
-  // Keep runs between cuts; track which cut each kept piece borders.
-  const outJunctions = junctions.map((j) => ({ ...j, adjacentPieces: 0 }));
-  const junctionsOf = (cut) =>
-    outJunctions.filter((oj) => cut.junctions.some((j) => j.s === oj.s));
+  // Keep runs between cuts; count how many kept pieces border each cut.
   const pieces = [];
   const keepRun = (sStart, sEnd, cutBefore, cutAfter) => {
     if (sEnd - sStart < minLengthM) return;
@@ -414,8 +430,8 @@ export function splitStretchAtJunctions(
       points,
       lengthM: Math.round((sEnd - sStart) * 100) / 100
     });
-    if (cutBefore) junctionsOf(cutBefore).forEach((j) => j.adjacentPieces++);
-    if (cutAfter) junctionsOf(cutAfter).forEach((j) => j.adjacentPieces++);
+    if (cutBefore) cutBefore.adjacentPieces++;
+    if (cutAfter) cutAfter.adjacentPieces++;
   };
   keepRun(0, Math.max(0, merged[0].from), null, merged[0]);
   for (let i = 0; i < merged.length - 1; i++) {
@@ -428,6 +444,19 @@ export function splitStretchAtJunctions(
     null
   );
 
+  const outJunctions = merged.map((cut) => {
+    const sCenter = (Math.max(0, cut.from) + Math.min(total, cut.to)) / 2;
+    return {
+      s: sCenter,
+      point: pointAtArcLength(stretchPoints, cumulative, sCenter),
+      crossWidthM: cut.crossWidthM,
+      cutHalfM:
+        Math.round(
+          ((Math.min(total, cut.to) - Math.max(0, cut.from)) / 2) * 100
+        ) / 100,
+      adjacentPieces: cut.adjacentPieces
+    };
+  });
   return { pieces, junctions: outJunctions };
 }
 
