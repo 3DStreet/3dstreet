@@ -75,13 +75,14 @@ export class RibbonBatch {
   /**
    * @param {Object} way record with `class` and local `polylines`
    *   ([{x, z}, ...][]).
-   * @param {Object} [opts] `width` (m) and `y` override the class defaults.
+   * @param {Object} [opts] `width` (m), `y` and `color` ('#rrggbb')
+   *   override the class defaults.
    */
   addWay(way, opts = {}) {
     const style = ribbonStyleForClass(way.class);
     const width = opts.width ?? roadWidthMeters(way.class);
     const y = opts.y ?? this.baseY + style.order * CLASS_ORDER_STEP_M;
-    const rgb = hexToRgb(style.color);
+    const rgb = hexToRgb(opts.color ?? style.color);
     for (const line of way.polylines) {
       this.addPolyline(dedupe(line), width / 2, y, rgb);
     }
@@ -184,9 +185,9 @@ export class RibbonBatch {
  * @returns {{positions: Float32Array, colors: Float32Array,
  *   indices: Uint32Array}} — empty arrays when there is nothing to draw.
  */
-export function buildWayRibbons(ways, { baseY = 0 } = {}) {
+export function buildWayRibbons(ways, { baseY = 0, ...wayOpts } = {}) {
   const batch = new RibbonBatch({ baseY });
-  for (const way of ways) batch.addWay(way);
+  for (const way of ways) batch.addWay(way, wayOpts);
   return {
     positions: new Float32Array(batch.positions),
     colors: new Float32Array(batch.colors),

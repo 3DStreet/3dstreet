@@ -50,13 +50,20 @@ Click-to-upgrade: an empty-space viewport click probes
 `src/editor/lib/raycaster.js` — the probe rides the container mouseup
 because A-Frame's cursor never emits `click` without an intersected
 entity); a nearby way fills `store.osmWayCandidate` and the
-`OsmUpgradeChip` offers **Upgrade to 3DStreet street**. The upgrade
+`OsmUpgradeChip` offers **Generate 3D street** while `highlightWayAt`
+draws the exact stretch it will create in a bright ribbon above the class
+tint. (UI copy says "generate", never "upgrade" — in this app "upgrade"
+means the paid plan; the code keeps the roadmap's LOD term.) The upgrade
 (`upgradeWayAt`) converts the clicked stretch — chords within
 `UPGRADE_WINDOW_M`, max `MAX_CHORDS_PER_UPGRADE`; a single OSM way can
 run for kilometers — into real managed streets via the editor command
 stack (undoable): straight chords from Douglas–Peucker
-(`splitWayIntoChords`), class→cross-section presets
-(`streetJsonForClass`, both in `src/tested/osm-street-import.js`),
+(`splitWayIntoChords`), cross-section rules from
+class + subclass + oneway (`streetJsonForWay`, both in
+`src/tested/osm-street-import.js`: one-way streets put every lane in the
+way direction, residential gets parking and unclassified doesn't, living
+streets go narrow, cycleways become bike lanes, lane count per direction
+scales with class),
 `sourceType: json-blob`, `playable: true` so `street-traffic` animates
 them in play mode. `upgradeNearFocus(radius, cap)` is the console
 convenience for demos. Upgraded streets are ordinary scene entities:
@@ -64,8 +71,8 @@ they serialize, edit, and persist — the explicit click IS the
 "temporary → mine" promotion story for now.
 
 Data notes: OpenMapTiles `transportation` has `class`/`subclass`/
-`brunnel`/`oneway` but **no lane counts or widths** — hence the
-class-based width heuristic and presets. Tunnels and ferries are
+`brunnel`/`oneway` but **no lane counts or widths** — the cross-section
+rules above are rules, not that street's data. Tunnels and ferries are
 filtered. Real lane data arrives with the Overpass-backed hydrator
 (phase 6 below; `src/osm/overpass-fetch.js` is kept for exactly that).
 

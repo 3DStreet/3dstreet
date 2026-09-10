@@ -1583,6 +1583,9 @@
   "managedStreetSidebar.flattening": {
     "defaultMessage": "Flattening"
   },
+  "managedStreetSidebar.generatedFrom": {
+    "defaultMessage": "Generated from"
+  },
   "managedStreetSidebar.importedFrom": {
     "defaultMessage": "Imported from"
   },
@@ -1591,6 +1594,9 @@
   },
   "managedStreetSidebar.openInSource": {
     "defaultMessage": "Open in {source}"
+  },
+  "managedStreetSidebar.osmGeneratedRef": {
+    "defaultMessage": "{cls} road, class preset via MapTiler tiles"
   },
   "managedStreetSidebar.path": {
     "defaultMessage": "Path"

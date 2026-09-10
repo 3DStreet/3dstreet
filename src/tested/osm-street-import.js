@@ -208,78 +208,198 @@ const median = (width = 1.2) => ({
   surface: 'grass'
 });
 
-function residentialPreset() {
-  return [
-    sidewalk(1.8),
-    parking('inbound'),
-    drive('inbound'),
-    drive('outbound'),
-    parking('outbound'),
-    sidewalk(1.8)
-  ];
-}
+const bike = (direction, width = 1.5) => ({
+  name: direction === 'inbound' ? 'Bike In' : 'Bike Out',
+  type: 'bike-lane',
+  width,
+  elevation: 0,
+  direction,
+  color: '#ffffff',
+  surface: 'asphalt',
+  generated: {
+    clones: [
+      {
+        mode: 'random',
+        modelsArray: 'cyclist-cargo, cyclist1, cyclist2, cyclist3',
+        spacing: 12,
+        count: 2
+      }
+    ]
+  }
+});
 
-function arterialPreset() {
-  return [
-    sidewalk(),
-    drive('inbound', 3.3),
-    drive('inbound', 3.3),
-    median(),
-    drive('outbound', 3.3),
-    drive('outbound', 3.3),
-    sidewalk()
-  ];
-}
+const bus = (direction, width = 3.2) => ({
+  name: direction === 'inbound' ? 'Bus In' : 'Bus Out',
+  type: 'bus-lane',
+  width,
+  elevation: 0,
+  direction,
+  color: '#ffffff',
+  surface: 'asphalt',
+  generated: {
+    clones: [{ mode: 'random', modelsArray: 'bus', spacing: 30, count: 1 }]
+  }
+});
 
-function servicePreset() {
-  return [drive('inbound', 2.75), drive('outbound', 2.75)];
-}
+const plaza = (width = 5, density = 'dense') => ({
+  name: 'Pedestrian Way',
+  type: 'sidewalk',
+  width,
+  elevation: 0.15,
+  direction: 'none',
+  color: '#ffffff',
+  surface: 'sidewalk',
+  generated: { pedestrians: [{ density }] }
+});
 
-function pedestrianPreset() {
-  return [
-    {
-      name: 'Pedestrian Way',
-      type: 'sidewalk',
-      width: 5,
-      elevation: 0.15,
-      direction: 'none',
-      color: '#ffffff',
-      surface: 'sidewalk',
-      generated: { pedestrians: [{ density: 'dense' }] }
-    }
-  ];
-}
+// Per-direction drive lane count by class for a two-way street, and the
+// total for a one-way street. Rules, not data: OpenMapTiles carries no
+// lane count (that arrives with the Overpass hydrator, #1930 phase 6).
+const LANES_PER_DIRECTION = {
+  motorway: 3,
+  trunk: 3,
+  primary: 2,
+  secondary: 2,
+  tertiary: 1,
+  minor: 1,
+  service: 1,
+  track: 1,
+  raceway: 1
+};
+const ONEWAY_LANES = {
+  motorway: 3,
+  trunk: 3,
+  primary: 3,
+  secondary: 2,
+  tertiary: 2,
+  minor: 1,
+  service: 1,
+  track: 1,
+  raceway: 1
+};
+const NON_MOTOR_CLASSES = new Set([
+  'pedestrian',
+  'path',
+  'busway',
+  'bus_guideway'
+]);
 
-const PRESET_BY_CLASS = {
-  motorway: arterialPreset,
-  trunk: arterialPreset,
-  primary: arterialPreset,
-  secondary: arterialPreset,
-  tertiary: residentialPreset,
-  minor: residentialPreset,
-  busway: residentialPreset,
-  bus_guideway: residentialPreset,
-  service: servicePreset,
-  track: servicePreset,
-  raceway: servicePreset,
-  pedestrian: pedestrianPreset,
-  path: pedestrianPreset
+const LANE_WIDTH_M = {
+  motorway: 3.5,
+  trunk: 3.5,
+  primary: 3.3,
+  secondary: 3.2,
+  tertiary: 3,
+  minor: 3,
+  service: 2.75,
+  track: 2.5,
+  raceway: 4
 };
 
 /**
- * Managed-street Format-2 object (the `parseStreetObject` /
- * `sourceType: json-blob` input shape) for one chord of an OSM way.
+ * Cross-section rules from the fields the vector tiles do carry:
+ * `class`, `subclass` (the OSM highway value for minor/path/service) and
+ * `oneway` (1 with the way direction, -1 against, else two-way).
+ *
+ * Street-local +z is the way's start→end direction (chords keep polyline
+ * order and rotate by atan2(dx, dz)), and managed-street 'inbound' means
+ * +z travel, so oneway 1 → every lane inbound, -1 → outbound.
  */
-export function streetJsonForClass(cls, lengthM, label) {
-  const preset = PRESET_BY_CLASS[cls] || residentialPreset;
-  const segments = preset().map((segment) => ({ ...segment }));
+function segmentsForWay({ class: cls, subclass, oneway }) {
+  const oneWay =
+    oneway === 1 || oneway === -1 || oneway === '1' || oneway === '-1';
+  const flowDir = String(oneway) === '-1' ? 'outbound' : 'inbound';
+  const laneW = LANE_WIDTH_M[cls] ?? 3;
+
+  // Non-motor classes first.
+  if (cls === 'pedestrian') return [plaza()];
+  if (cls === 'path') {
+    if (subclass === 'cycleway') {
+      return oneWay ? [bike(flowDir, 2)] : [bike('inbound'), bike('outbound')];
+    }
+    if (subclass === 'bridleway') return [plaza(3, 'sparse')];
+    return [plaza(2.5, 'normal')];
+  }
+  if (cls === 'busway' || cls === 'bus_guideway') {
+    const lanes = oneWay ? [bus(flowDir)] : [bus('inbound'), bus('outbound')];
+    return [sidewalk(), ...lanes, sidewalk()];
+  }
+
+  // Drivable classes: lanes, then dress by class/subclass.
+  let lanes;
+  if (oneWay) {
+    const n = ONEWAY_LANES[cls] ?? 1;
+    lanes = Array.from({ length: n }, () => drive(flowDir, laneW));
+  } else {
+    const n = LANES_PER_DIRECTION[cls] ?? 1;
+    lanes = [
+      ...Array.from({ length: n }, () => drive('inbound', laneW)),
+      ...Array.from({ length: n }, () => drive('outbound', laneW))
+    ];
+    if ((cls === 'motorway' || cls === 'trunk' || cls === 'primary') && n > 1) {
+      lanes.splice(n, 0, median());
+    }
+  }
+
+  if (cls === 'motorway' || cls === 'trunk') return lanes;
+  if (cls === 'primary' || cls === 'secondary') {
+    return [sidewalk(2.5), ...lanes, sidewalk(2.5)];
+  }
+  if (cls === 'tertiary') {
+    return [
+      sidewalk(),
+      parking('inbound'),
+      ...lanes,
+      parking('outbound'),
+      sidewalk()
+    ];
+  }
+  if (cls === 'minor') {
+    if (subclass === 'living_street') {
+      return [
+        sidewalk(1.5),
+        ...lanes.map((l) => ({ ...l, width: 2.5 })),
+        sidewalk(1.5)
+      ];
+    }
+    if (subclass === 'unclassified') {
+      return [sidewalk(1.8), ...lanes, sidewalk(1.8)];
+    }
+    // residential (and anything else under minor): parked cars both sides.
+    return [
+      sidewalk(1.8),
+      parking('inbound'),
+      ...lanes,
+      parking('outbound'),
+      sidewalk(1.8)
+    ];
+  }
+  // service, track, raceway, unknown drivable: bare lanes.
+  return lanes;
+}
+
+/**
+ * Managed-street Format-2 object (the `parseStreetObject` /
+ * `sourceType: json-blob` input shape) for one chord of an OSM way record
+ * (`{ class, subclass, oneway }`; unknown class → residential rules).
+ */
+export function streetJsonForWay(way, lengthM, label) {
+  const known =
+    LANE_WIDTH_M[way.class] !== undefined || NON_MOTOR_CLASSES.has(way.class);
+  const cls = known ? way.class : 'minor';
+  const segments = segmentsForWay({ ...way, class: cls });
   const width = segments.reduce((sum, s) => sum + s.width, 0);
   return {
-    name: label || `OSM ${cls || 'street'}`,
+    name: label || `OSM ${way.class || 'street'}`,
     width,
     length: Math.round(lengthM * 100) / 100,
     segments
   };
+}
+
+/** Class-only convenience (two-way, no subclass). */
+export function streetJsonForClass(cls, lengthM, label) {
+  return streetJsonForWay({ class: cls }, lengthM, label);
 }
 
 /** Rough total width used for pre-import footprint hints. */

@@ -6,9 +6,12 @@ import {
   localPolylineFromLatLon,
   nearestWay,
   splitWayIntoChords,
-  streetJsonForClass
+  streetJsonForWay
 } from '../tested/osm-street-import.js';
-import { EXCLUDED_ROAD_CLASSES } from '../tested/osm-street-style.js';
+import {
+  EXCLUDED_ROAD_CLASSES,
+  roadWidthMeters
+} from '../tested/osm-street-style.js';
 import { buildWayRibbons } from '../tested/osm-street-ribbon.js';
 
 const THREE = AFRAME.THREE;
@@ -36,6 +39,12 @@ const RIBBON_BASE_Y = 0.3;
 // over by the street tint beneath them.
 const UPGRADED_STREET_Y = 0.5;
 
+// Highlight of the stretch about to be generated: above every class
+// ribbon, below the generated street.
+const HIGHLIGHT_Y = 0.46;
+const HIGHLIGHT_COLOR = '#ffd166';
+const HIGHLIGHT_WIDTH_PAD_M = 1.5;
+
 // A click upgrades only the stretch of the way near the click, not the
 // whole way — an OSM way can run for kilometers.
 const UPGRADE_WINDOW_M = 200;
@@ -52,7 +61,7 @@ const MAX_CHORDS_PER_UPGRADE = 6;
  * same record cache backs:
  *
  * - `wayAtPoint(worldPoint)` — which street is under a clicked ground
- *   point (editor "Upgrade to 3DStreet street" affordance), and
+ *   point (editor "Generate 3D street" affordance), and
  * - `upgradeWayAt(worldPoint)` — mint real managed streets for that way
  *   (straight chords, class-preset cross sections, `playable: true` so
  *   street-traffic animates them in play mode).
@@ -110,6 +119,7 @@ AFRAME.registerComponent('osm-streets', {
   },
 
   reset: function () {
+    this.clearHighlight();
     for (const [key, entry] of this.loadedTiles) {
       this.removeTileMesh(key, entry);
     }
@@ -123,6 +133,50 @@ AFRAME.registerComponent('osm-streets', {
     this.material.opacity = opacity;
     this.material.transparent = opacity < 1;
     this.material.needsUpdate = true;
+  },
+
+  /**
+   * Show which stretch of a way `upgradeWayAt(worldPoint)` would turn into
+   * streets — the exact chords, drawn as a bright ribbon above the class
+   * tint. `clearHighlight()` removes it. Null / unknown way clears too.
+   */
+  highlightWayAt: function (worldPoint, maxDistM = DEFAULT_PICK_DISTANCE_M) {
+    this.clearHighlight();
+    if (!worldPoint) return;
+    const hit = this.wayAtPoint(worldPoint, maxDistM);
+    if (!hit) return;
+    const chords = this.chordsToUpgrade(
+      hit.way,
+      this.toLocalGround(worldPoint)
+    );
+    if (chords.length === 0) return;
+    const { positions, colors, indices } = buildWayRibbons(
+      [
+        {
+          class: hit.way.class,
+          polylines: chords.map((c) => [c.start, c.end])
+        }
+      ],
+      {
+        y: HIGHLIGHT_Y,
+        color: HIGHLIGHT_COLOR,
+        width: roadWidthMeters(hit.way.class) + HIGHLIGHT_WIDTH_PAD_M
+      }
+    );
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+    geometry.computeBoundingSphere();
+    this.highlightMesh = new THREE.Mesh(geometry, this.material);
+    this.el.setObject3D('highlight', this.highlightMesh);
+  },
+
+  clearHighlight: function () {
+    if (!this.highlightMesh) return;
+    this.el.removeObject3D('highlight');
+    this.highlightMesh.geometry.dispose();
+    this.highlightMesh = null;
   },
 
   removeTileMesh: function (key, entry) {
@@ -358,6 +412,17 @@ AFRAME.registerComponent('osm-streets', {
   upgradeWay: function (way, nearPoint = null) {
     if (this.upgradedWayIds.has(way.wayId)) return 0;
     this.upgradedWayIds.add(way.wayId);
+    this.clearHighlight();
+    const chords = this.chordsToUpgrade(way, nearPoint);
+    for (const chord of chords) {
+      this.createStreetForChord(way, chord);
+    }
+    return chords.length;
+  },
+
+  // The chords `upgradeWay` would create for `way` anchored at `nearPoint`
+  // (the window + cap described above), nearest first.
+  chordsToUpgrade: function (way, nearPoint = null) {
     let chords = [];
     for (const line of way.polylines) {
       chords = chords.concat(splitWayIntoChords(line));
@@ -373,16 +438,12 @@ AFRAME.registerComponent('osm-streets', {
         .filter((c) => c._pickDist <= UPGRADE_WINDOW_M)
         .sort((a, b) => a._pickDist - b._pickDist);
     }
-    chords = chords.slice(0, MAX_CHORDS_PER_UPGRADE);
-    for (const chord of chords) {
-      this.createStreetForChord(way, chord);
-    }
-    return chords.length;
+    return chords.slice(0, MAX_CHORDS_PER_UPGRADE);
   },
 
   createStreetForChord: function (way, chord) {
-    const streetJson = streetJsonForClass(
-      way.class,
+    const streetJson = streetJsonForWay(
+      way,
       chord.length,
       `OSM ${way.class || 'street'}`
     );
@@ -399,8 +460,11 @@ AFRAME.registerComponent('osm-streets', {
         importSource: 'osm-upgrade'
       }
     };
-    const stampWayId = (entity) =>
+    const stampWayId = (entity) => {
       entity.setAttribute('data-osm-way-id', way.wayId);
+      // Read by the sidebar's source card ("Generated from OpenStreetMap").
+      entity.setAttribute('data-osm-class', way.class || 'street');
+    };
     const inspector = AFRAME.INSPECTOR;
     if (inspector && inspector.execute) {
       // Through the command stack so the upgrade is a single undoable step

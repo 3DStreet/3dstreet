@@ -1,12 +1,16 @@
-// OSM click-to-upgrade chip (#1930).
+// OSM "generate street" chip (#1930).
 //
 // Renders when an empty-space viewport click lands near a streamed OSM
 // street way in osm3d mode (see probeOsmWayAtCursor in lib/raycaster.js —
-// it fills `osmWayCandidate` in the store). One action: upgrade the
-// clicked stretch of the way into real, editable managed streets via the
-// osm-streets component (undoable — each chord is an entitycreate on the
-// command stack).
+// it fills `osmWayCandidate` in the store). While the chip is up the
+// osm-streets component highlights the exact stretch that the one action
+// generates: real, editable managed streets via `upgradeWayAt` (undoable —
+// each chord is an entitycreate on the command stack).
+//
+// Copy deliberately avoids "upgrade": in this app that word means the paid
+// plan. This is generation, not a purchase.
 
+import { useEffect } from 'react';
 import useStore from '@/store';
 import styles from './OsmUpgradeChip.module.scss';
 
@@ -16,29 +20,37 @@ const streetsComponent = () =>
 export const OsmUpgradeChip = () => {
   const candidate = useStore((state) => state.osmWayCandidate);
   const setOsmWayCandidate = useStore((state) => state.setOsmWayCandidate);
+
+  useEffect(() => {
+    const comp = streetsComponent();
+    if (!comp) return undefined;
+    comp.highlightWayAt(candidate ? candidate.worldPoint : null);
+    return () => comp.clearHighlight();
+  }, [candidate]);
+
   if (!candidate) return null;
 
   const label = candidate.class || 'street';
 
-  const upgrade = () => {
+  const generate = () => {
     const comp = streetsComponent();
     setOsmWayCandidate(null);
     if (!comp) return;
     const created = comp.upgradeWayAt(candidate.worldPoint);
     if (created > 0) {
       window.STREET?.notify?.successMessage?.(
-        `Upgraded OSM ${label} to ${created} editable 3DStreet ${
+        `Generated ${created} editable 3D ${
           created === 1 ? 'street' : 'streets'
-        }.`
+        } from OSM ${label}.`
       );
     }
   };
 
   return (
     <div className={`clickable ${styles.chip}`}>
-      <span className={styles.label}>OSM {label}</span>
-      <button className={styles.upgrade} onClick={upgrade}>
-        Upgrade to 3DStreet street
+      <span className={styles.label}>OSM {label} road</span>
+      <button className={styles.generate} onClick={generate}>
+        Generate 3D street
       </button>
       <button
         className={styles.dismiss}

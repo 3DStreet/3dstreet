@@ -18,6 +18,7 @@ import {
   simplifyPolyline,
   splitWayIntoChords,
   streetJsonForClass,
+  streetJsonForWay,
   NORTH_M_PER_DEG
 } from '../../src/tested/osm-street-import.js';
 
@@ -199,5 +200,53 @@ describe('streetJsonForClass', () => {
         assert.strictEqual(typeof seg.surface, 'string', cls);
       }
     }
+  });
+});
+
+describe('streetJsonForWay', () => {
+  const driveLanes = (j) => j.segments.filter((s) => s.type === 'drive-lane');
+  const types = (j) => j.segments.map((s) => s.type);
+
+  it('puts every lane in the way direction on a one-way street', () => {
+    const fwd = streetJsonForWay({ class: 'minor', oneway: 1 }, 60);
+    assert.ok(driveLanes(fwd).every((s) => s.direction === 'inbound'));
+    const back = streetJsonForWay({ class: 'primary', oneway: -1 }, 60);
+    assert.ok(driveLanes(back).length >= 2);
+    assert.ok(driveLanes(back).every((s) => s.direction === 'outbound'));
+    assert.ok(!types(back).includes('divider'));
+  });
+
+  it('scales lane count with class', () => {
+    const n = (cls) => driveLanes(streetJsonForWay({ class: cls }, 60)).length;
+    assert.ok(n('motorway') > n('primary'));
+    assert.ok(n('primary') > n('minor'));
+    assert.strictEqual(n('minor'), 2);
+  });
+
+  it('gives residential streets parking but not unclassified ones', () => {
+    const res = streetJsonForWay(
+      { class: 'minor', subclass: 'residential' },
+      60
+    );
+    const uncl = streetJsonForWay(
+      { class: 'minor', subclass: 'unclassified' },
+      60
+    );
+    assert.ok(types(res).includes('parking-lane'));
+    assert.ok(!types(uncl).includes('parking-lane'));
+    assert.ok(types(uncl).includes('sidewalk'));
+  });
+
+  it('maps cycleways to bike lanes and footways to sidewalks', () => {
+    const cycle = streetJsonForWay({ class: 'path', subclass: 'cycleway' }, 60);
+    assert.ok(types(cycle).every((t) => t === 'bike-lane'));
+    const foot = streetJsonForWay({ class: 'path', subclass: 'footway' }, 60);
+    assert.deepStrictEqual(types(foot), ['sidewalk']);
+  });
+
+  it('keeps motorways free of sidewalks and parking', () => {
+    const t = types(streetJsonForWay({ class: 'motorway' }, 60));
+    assert.ok(!t.includes('sidewalk') && !t.includes('parking-lane'));
+    assert.ok(t.includes('divider'));
   });
 });
