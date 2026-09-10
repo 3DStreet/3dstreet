@@ -7,6 +7,7 @@ import {
 } from '@/editor/api/scene';
 import { createUniqueId } from '@/editor/lib/entity.js';
 import { getCurrentCameraState } from '@/editor/lib/cameraUtils.js';
+import { scenePath } from '@/tested/scene-url-utils.js';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@shared/services/firebase';
 
@@ -341,8 +342,9 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
   AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
   AFRAME.scenes[0].setAttribute('metadata', 'authorId', currentUser.uid);
 
-  // Change the hash URL without reloading
-  window.location.hash = `#/scenes/${sceneId}`;
+  // Change the URL to the path form without reloading (#1970). The old
+  // #/scenes/ hash form still loads but is no longer written anywhere.
+  window.history.pushState(null, '', scenePath(sceneId));
   return sceneId;
 }
 

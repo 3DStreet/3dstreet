@@ -11,13 +11,14 @@
 import * as Sentry from '@sentry/react';
 import Events from './Events';
 import { encodeCameraStateToParam } from './cameraUtils.js';
+import { scenePath } from '@/tested/scene-url-utils.js';
 
 /**
  * Take the user back to where a snapshot was captured (#1605). If the
  * snapshot belongs to the currently open scene, glide the camera to the
  * captured pose (event → the controls' focusCameraState, mirroring the
  * focus-on-entity pattern). Otherwise open the scene in a new tab — same as
- * the plain scene link — with the pose as a `?camera=` hash param that
+ * the plain scene link — with the pose as a `?camera=` query param that
  * set-loader-from-hash applies as the load fly-in target.
  */
 export const focusSnapshotScene = (item) => {
@@ -34,7 +35,7 @@ export const focusSnapshotScene = (item) => {
   const cameraSuffix = cameraParam
     ? `?camera=${encodeURIComponent(cameraParam)}`
     : '';
-  window.open(`/#/scenes/${sceneId}${cameraSuffix}`, '_blank');
+  window.open(`${scenePath(sceneId)}${cameraSuffix}`, '_blank');
 };
 
 export const openInGenerator = async (item, tabName) => {
