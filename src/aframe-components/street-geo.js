@@ -367,8 +367,8 @@ AFRAME.registerComponent('street-geo', {
     // cartography to keep the classic 2.5D look under the extruded
     // buildings; `basemapStyle` remains the 2D satellite layer's choice.
     const source = this.resolveTiledSource('streets');
-    // The building vector source doubles as the ground's transportation
-    // overlay source (same tiles/v3 pbf tiles, different layer — #1930).
+    // The building vector source doubles as the streets layer's source
+    // (same tiles/v3 pbf tiles, different layer — #1930).
     const vectorSource = this.resolveBuildingSource();
     if (source) {
       const groundElement = document.createElement('a-entity');
@@ -380,9 +380,7 @@ AFRAME.registerComponent('street-geo', {
         maxLevel: source.maxLevel,
         latitude: data.latitude,
         longitude: data.longitude,
-        opacity: this.opacityFraction(),
-        vectorUrlTemplate: vectorSource ? vectorSource.urlTemplate : '',
-        vectorMaxLevel: vectorSource ? vectorSource.maxLevel : 14
+        opacity: this.opacityFraction()
       });
       groundElement.setAttribute('visible', data.opacity > 0);
       groundElement.setAttribute('data-no-pause', '');
@@ -451,11 +449,11 @@ AFRAME.registerComponent('street-geo', {
     el.appendChild(osm3dBuildingElement);
     self['osm3dBuilding'] = osm3dBuildingElement;
 
-    // Streets DATA layer (#1930 click-to-upgrade): follows the camera and
-    // caches decoded transportation way records for the tiles near the
-    // focus point. The VISUAL street tint is the ground's MVT overlay
-    // (vectorUrlTemplate above); this layer answers "which street is
-    // here?" and mints managed streets on upgrade.
+    // Streets layer (#1930): follows the camera, draws the transportation
+    // ways near the focus point as flat ribbons above the ground, answers
+    // "which street is here?" for the click-to-upgrade chip and mints
+    // managed streets on upgrade. data-ignore-raycaster keeps the ribbons
+    // from intercepting the empty-space click the chip relies on.
     const osmStreetsElement = document.createElement('a-entity');
     osmStreetsElement.setAttribute('data-layer-name', 'OpenStreetMap Streets');
     osmStreetsElement.setAttribute('osm-streets', {
@@ -513,6 +511,7 @@ AFRAME.registerComponent('street-geo', {
         longitude: data.longitude,
         opacity: this.opacityFraction()
       });
+      this.osm3dStreets.setAttribute('visible', data.opacity > 0);
     }
   }
 });

@@ -2,16 +2,9 @@
 import { TilesRenderer } from '3d-tiles-renderer';
 import {
   GeneratedSurfacePlugin,
-  MVTOverlay,
   TilesFadePlugin,
   XYZTilesOverlay
 } from '3d-tiles-renderer/plugins';
-import { getRoadOverlayStyle } from '../tested/osm-street-style.js';
-
-// Height of the transparent streets surface above the raster ground, in
-// meters. Big enough to clear z-fighting at streaming-camera distances,
-// small enough to read as "on the ground".
-const ROADS_SURFACE_LIFT_M = 0.4;
 
 // Web Mercator equatorial circumference in meters. GeneratedSurfacePlugin's
 // planar mode emits the whole world as a 1×1 normalized square centered at
@@ -61,14 +54,7 @@ AFRAME.registerComponent('tiled-basemap', {
     longitude: { type: 'number', default: 0 },
     // Deepest tile level to fetch. 20 ≈ 15 cm/px at mid latitudes.
     maxLevel: { type: 'number', default: 20 },
-    opacity: { type: 'number', default: 1, min: 0, max: 1 },
-    // Optional MVT vector-tile URL template ({z}/{x}/{y} + key already
-    // resolved). When set, the OpenMapTiles `transportation` layer is
-    // rasterized on top of the raster basemap via MVTOverlay — the
-    // "interactive streets" tint for the 2.5D OSM mode (#1930 demo path).
-    vectorUrlTemplate: { type: 'string', default: '' },
-    // Deepest vector tile level (MapTiler planet tiles end at z14).
-    vectorMaxLevel: { type: 'number', default: 14 }
+    opacity: { type: 'number', default: 1, min: 0, max: 1 }
   },
 
   init: function () {
@@ -83,24 +69,6 @@ AFRAME.registerComponent('tiled-basemap', {
       if (this.data.opacity < 1) {
         this.applyOpacityToObject(scene);
       }
-    };
-    this.onRoadsRootTileSet = () => {
-      this.roadsRootLoaded = true;
-      this.positionRoadsSurface();
-    };
-    this.onRoadsLoadModel = ({ scene }) => {
-      // The MVT canvas textures have a transparent background — the raster
-      // ground must show through wherever no street is drawn.
-      scene.traverse((obj) => {
-        if (obj.material) {
-          obj.material.transparent = true;
-          obj.material.depthWrite = false;
-          obj.material.needsUpdate = true;
-          if (this.data.opacity < 1) {
-            obj.material.opacity = this.data.opacity;
-          }
-        }
-      });
     };
 
     // Tiles whose fetch failed while the tab was hidden are marked FAILED
@@ -141,36 +109,6 @@ AFRAME.registerComponent('tiled-basemap', {
     this.tiles = new TilesRenderer();
     this.tiles.registerPlugin(this.surfacePlugin);
     this.tiles.registerPlugin(new TilesFadePlugin());
-
-    // Streets layer: a second generated planar surface textured from the
-    // MVT `transportation` layer (canvas-rasterized per tile, see
-    // osm-street-style.js), floated just above the raster ground. A second
-    // surface (rather than ImageOverlayPlugin compositing on the ground
-    // tiles) because ImageOverlayPlugin derives each tile's texture range
-    // cartographically from mesh positions on the WGS84 ellipsoid, which a
-    // planar generated surface breaks — GeneratedSurfacePlugin instead
-    // textures its own tiles by tile index, which works with any overlay.
-    if (data.vectorUrlTemplate) {
-      this.roadsOverlay = new MVTOverlay({
-        url: data.vectorUrlTemplate,
-        levels: data.vectorMaxLevel,
-        getStyle: getRoadOverlayStyle
-      });
-      this.roadsSurfacePlugin = new GeneratedSurfacePlugin({
-        overlay: this.roadsOverlay,
-        shape: 'planar',
-        applyOverlayTexture: true
-      });
-      this.roadTiles = new TilesRenderer();
-      this.roadTiles.registerPlugin(this.roadsSurfacePlugin);
-      this.roadTiles.registerPlugin(new TilesFadePlugin());
-      this.roadTiles.addEventListener(
-        'load-root-tileset',
-        this.onRoadsRootTileSet
-      );
-      this.roadTiles.addEventListener('load-model', this.onRoadsLoadModel);
-      this.el.object3D.add(this.roadTiles.group);
-    }
     this.tiles.addEventListener('load-root-tileset', this.onLoadRootTileSet);
     this.tiles.addEventListener('load-model', this.onLoadModel);
 
@@ -181,18 +119,8 @@ AFRAME.registerComponent('tiled-basemap', {
     if (this.activeCamera) {
       this.tiles.setCamera(this.activeCamera);
       this.tiles.setResolutionFromRenderer(this.activeCamera, this.renderer);
-      if (this.roadTiles) {
-        this.roadTiles.setCamera(this.activeCamera);
-        this.roadTiles.setResolutionFromRenderer(
-          this.activeCamera,
-          this.renderer
-        );
-      }
     }
     this.tiles.update();
-    if (this.roadTiles) {
-      this.roadTiles.update();
-    }
   },
 
   disposeTiles: function () {
@@ -207,19 +135,6 @@ AFRAME.registerComponent('tiled-basemap', {
     this.tiles = null;
     this.surfacePlugin = null;
     this.overlay = null;
-    if (this.roadTiles) {
-      this.roadsRootLoaded = false;
-      this.roadTiles.removeEventListener(
-        'load-root-tileset',
-        this.onRoadsRootTileSet
-      );
-      this.roadTiles.removeEventListener('load-model', this.onRoadsLoadModel);
-      this.el.object3D.remove(this.roadTiles.group);
-      this.roadTiles.dispose();
-      this.roadTiles = null;
-      this.roadsSurfacePlugin = null;
-      this.roadsOverlay = null;
-    }
     this.activeCamera = null;
   },
 
@@ -237,24 +152,6 @@ AFRAME.registerComponent('tiled-basemap', {
     this.surfacePlugin.getPositionFromCartographic(latRad, lonRad, _pos);
     this.tiles.group.scale.setScalar(scale);
     this.tiles.group.position.set(-_pos.x * scale, -_pos.y * scale, 0);
-  },
-
-  // Same placement for the streets surface, lifted slightly along the
-  // entity-local +Z (world up once the host lays the plane flat).
-  positionRoadsSurface: function () {
-    if (!this.roadTiles || !this.roadsSurfacePlugin || !this.roadsRootLoaded) {
-      return;
-    }
-    const latRad = this.data.latitude * MathUtils.DEG2RAD;
-    const lonRad = this.data.longitude * MathUtils.DEG2RAD;
-    const scale = WEB_MERCATOR_CIRCUMFERENCE_M * Math.cos(latRad);
-    this.roadsSurfacePlugin.getPositionFromCartographic(latRad, lonRad, _pos);
-    this.roadTiles.group.scale.setScalar(scale);
-    this.roadTiles.group.position.set(
-      -_pos.x * scale,
-      -_pos.y * scale,
-      ROADS_SURFACE_LIFT_M
-    );
   },
 
   // Set opacity on every material under `object`, once — tiles keep their
@@ -295,8 +192,7 @@ AFRAME.registerComponent('tiled-basemap', {
     if (
       oldData.urlTemplate !== undefined &&
       (oldData.urlTemplate !== data.urlTemplate ||
-        oldData.maxLevel !== data.maxLevel ||
-        oldData.vectorUrlTemplate !== data.vectorUrlTemplate)
+        oldData.maxLevel !== data.maxLevel)
     ) {
       this.disposeTiles();
       this.createTiles();
@@ -308,21 +204,10 @@ AFRAME.registerComponent('tiled-basemap', {
       oldData.longitude !== data.longitude
     ) {
       this.positionSurface();
-      this.positionRoadsSurface();
     }
 
     if (this.tiles && oldData.opacity !== data.opacity) {
       this.applyOpacityToLoadedTiles();
-      if (this.roadTiles) {
-        this.roadTiles.forEachLoadedModel((scene) => {
-          scene.traverse((obj) => {
-            if (obj.material) {
-              obj.material.opacity = data.opacity;
-              obj.material.needsUpdate = true;
-            }
-          });
-        });
-      }
     }
   },
 
@@ -340,22 +225,12 @@ AFRAME.registerComponent('tiled-basemap', {
       if (camera !== this.activeCamera) {
         if (this.activeCamera) {
           this.tiles.deleteCamera(this.activeCamera);
-          if (this.roadTiles) {
-            this.roadTiles.deleteCamera(this.activeCamera);
-          }
         }
         this.tiles.setCamera(camera);
-        if (this.roadTiles) {
-          this.roadTiles.setCamera(camera);
-        }
         this.activeCamera = camera;
       }
       this.tiles.setResolutionFromRenderer(camera, this.renderer);
       this.tiles.update();
-      if (this.roadTiles) {
-        this.roadTiles.setResolutionFromRenderer(camera, this.renderer);
-        this.roadTiles.update();
-      }
     }
   },
 

@@ -9,6 +9,7 @@ import {
   streetJsonForClass
 } from '../tested/osm-street-import.js';
 import { EXCLUDED_ROAD_CLASSES } from '../tested/osm-street-style.js';
+import { buildWayRibbons } from '../tested/osm-street-ribbon.js';
 
 const THREE = AFRAME.THREE;
 
@@ -26,9 +27,13 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // to count as "clicking that street".
 const DEFAULT_PICK_DISTANCE_M = 25;
 
-// Upgraded streets sit slightly above the ground street layer
-// (ROADS_SURFACE_LIFT_M in tiled-basemap) so their surfaces are not
-// painted over by the translucent street tint beneath them.
+// Ribbons float above the raster ground (clears z-fighting at
+// streaming-camera distances, still reads as "on the ground"); the class
+// order steps stack on top of this (see osm-street-ribbon.js).
+const RIBBON_BASE_Y = 0.3;
+
+// Upgraded streets sit above the ribbons so their surfaces are not painted
+// over by the street tint beneath them.
 const UPGRADED_STREET_Y = 0.5;
 
 // A click upgrades only the stretch of the way near the click, not the
@@ -37,13 +42,14 @@ const UPGRADE_WINDOW_M = 200;
 const MAX_CHORDS_PER_UPGRADE = 6;
 
 /**
- * OSM street data streaming + click-to-upgrade (#1930 demo path).
+ * OSM streets on the 2.5D ground + click-to-upgrade (#1930 demo path).
  *
- * The VISUAL street layer is the MVT ground overlay rendered by
- * `tiled-basemap` (vectorUrlTemplate); this component is the DATA half: it
- * follows the camera like `osm-buildings` and keeps the decoded
+ * Follows the camera like `osm-buildings` and keeps the decoded
  * `transportation` way records (class + centerline polylines, converted to
- * scene-local meters) for tiles near the focus point. That cache backs:
+ * scene-local meters) for tiles near the focus point. Each tile is drawn
+ * as one merged, vertex-colored ribbon mesh (`osm-street-ribbon.js`) —
+ * flat strips at class widths, floated just above the raster ground. The
+ * same record cache backs:
  *
  * - `wayAtPoint(worldPoint)` — which street is under a clicked ground
  *   point (editor "Upgrade to 3DStreet street" affordance), and
@@ -65,13 +71,16 @@ AFRAME.registerComponent('osm-streets', {
     transportationLayer: { type: 'string', default: 'transportation' },
     maxConcurrent: { type: 'number', default: 4 },
     // street-geo passes the layer opacity through; at 0 scanning stops
-    // (same contract as osm-buildings even though this layer draws
-    // nothing itself).
+    // (same contract as osm-buildings).
     opacity: { type: 'number', default: 1, min: 0, max: 1 }
   },
 
   init: function () {
-    this.loadedTiles = new Map(); // key → { ways }
+    this.loadedTiles = new Map(); // key → { ways, mesh | null }
+    // Unlit: the tint is flat cartography, not a lit surface. Depth writes
+    // stay on so the class-ordered heights resolve junctions.
+    this.material = new THREE.MeshBasicMaterial({ vertexColors: true });
+    this.applyOpacity();
     this.inFlight = new Set();
     this.failures = new Map();
     this.upgradedWayIds = new Set();
@@ -84,6 +93,12 @@ AFRAME.registerComponent('osm-streets', {
 
   update: function (oldData) {
     if (
+      oldData.opacity !== undefined &&
+      oldData.opacity !== this.data.opacity
+    ) {
+      this.applyOpacity();
+    }
+    if (
       oldData.latitude !== undefined &&
       (oldData.latitude !== this.data.latitude ||
         oldData.longitude !== this.data.longitude ||
@@ -95,9 +110,27 @@ AFRAME.registerComponent('osm-streets', {
   },
 
   reset: function () {
+    for (const [key, entry] of this.loadedTiles) {
+      this.removeTileMesh(key, entry);
+    }
     this.loadedTiles.clear();
     this.inFlight.clear();
     this.failures.clear();
+  },
+
+  applyOpacity: function () {
+    const opacity = this.data.opacity;
+    this.material.opacity = opacity;
+    this.material.transparent = opacity < 1;
+    this.material.needsUpdate = true;
+  },
+
+  removeTileMesh: function (key, entry) {
+    if (entry.mesh) {
+      this.el.removeObject3D('tile-' + key);
+      entry.mesh.geometry.dispose();
+      entry.mesh = null;
+    }
   },
 
   // Ground point the camera is looking at — same focus logic as
@@ -139,8 +172,11 @@ AFRAME.registerComponent('osm-streets', {
         (t) => t.key
       )
     );
-    for (const key of this.loadedTiles.keys()) {
-      if (!keepKeys.has(key)) this.loadedTiles.delete(key);
+    for (const [key, entry] of this.loadedTiles) {
+      if (!keepKeys.has(key)) {
+        this.removeTileMesh(key, entry);
+        this.loadedTiles.delete(key);
+      }
     }
 
     const now = Date.now();
@@ -223,7 +259,28 @@ AFRAME.registerComponent('osm-streets', {
         localPolylineFromLatLon(origin, line)
       )
     }));
-    this.loadedTiles.set(key, { ways });
+    const mesh = this.buildTileMesh(ways);
+    if (mesh) {
+      // setObject3D (rather than object3D.add) so the editor's mesh
+      // batching and scene-graph tooling see the tile.
+      this.el.setObject3D('tile-' + key, mesh);
+    }
+    this.loadedTiles.set(key, { ways, mesh });
+  },
+
+  // One merged ribbon mesh per tile: a single draw call regardless of way
+  // count, frustum-culled by its bounding sphere. Null for empty tiles.
+  buildTileMesh: function (ways) {
+    const { positions, colors, indices } = buildWayRibbons(ways, {
+      baseY: RIBBON_BASE_Y
+    });
+    if (positions.length === 0) return null;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+    geometry.computeBoundingSphere();
+    return new THREE.Mesh(geometry, this.material);
   },
 
   recordFailure: function (key, err) {
@@ -392,5 +449,6 @@ AFRAME.registerComponent('osm-streets', {
 
   remove: function () {
     this.reset();
+    this.material.dispose();
   }
 });

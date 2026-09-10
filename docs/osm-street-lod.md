@@ -10,23 +10,30 @@ high-fidelity and animated, streets in the distance cheap.
 
 ## What ships today (osm3d mode)
 
-Two halves, deliberately split by rendering vs data:
+One component, `osm-streets`, owns both the visual and the data half.
 
-**Visual: MVT road overlay on the 2.5D ground.** `tiled-basemap` takes an
-optional `vectorUrlTemplate`; when set (street-geo's `osm3dCreate` passes
-the same MapTiler `tiles/v3` source the buildings use), it builds a second
-transparent `GeneratedSurfacePlugin` surface textured by the
-3d-tiles-renderer `MVTOverlay` from the OpenMapTiles `transportation`
-layer, floated `ROADS_SURFACE_LIFT_M` above the raster ground. Per-class
-styling lives in `src/tested/osm-street-style.js` (`getRoadOverlayStyle`).
+**Visual: flat ribbons on the 2.5D ground.** Each streamed tile's
+`transportation` ways are swept into one merged, vertex-colored mesh
+(`src/tested/osm-street-ribbon.js`, pure + unit-tested): a mitered strip
+per polyline at the class width from `roadWidthMeters`, round caps at
+every polyline end (so meeting/crossing ways read as joined), floated
+`RIBBON_BASE_Y` above the raster ground with a small class-ordered height
+step so the higher class wins where two ribbons overlap. Unlit
+`MeshBasicMaterial`, one draw call per tile, frustum-culled by bounding
+sphere. Per-class tint + stacking order live in
+`src/tested/osm-street-style.js` (`ribbonStyleForClass`).
 
-Why a second generated surface instead of `ImageOverlayPlugin`
-compositing: `ImageOverlayPlugin` derives each tile's texture range
-cartographically from mesh positions on the WGS84 ellipsoid, which a
-*planar* generated surface breaks (only the z0 world texture ever
-loaded). `GeneratedSurfacePlugin` textures its own tiles by tile index,
-which works with any `ImageOverlay` source. `MVTAnnotationsPlugin`
-(street-name labels) is available in the same library when we want it.
+Why not the library's `MVTOverlay` (the first cut, reverted before merge):
+a canvas-rasterized tile texture went soft as soon as the camera got
+anywhere near street level and capped out at the z14 vector tiles, so it
+never looked like something a street sits on. Ribbons are crisp at any
+zoom, carry true widths in meters, and are the same straight→curved
+ribbon idea the curved-street work uses, so the mid-LOD ribbon and the
+upgraded managed street share a centerline. Known limits of the cheap
+junction treatment: ribbons only exist within the streaming radius
+(no world-scale far layer), and same-class ribbons meeting at very sharp
+angles show the miter clamp. A proper planar junction union is a later
+phase.
 
 **Data: `osm-streets` component + click-to-upgrade.**
 `src/aframe-components/osm-streets.js` follows the camera like

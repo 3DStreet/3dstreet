@@ -2,16 +2,15 @@
 
 /**
  * OSM street styling + width heuristics (#1930 demo path): the class→width
- * table feeding both the MVT ground overlay and the click-to-upgrade
- * importer, and the per-feature style callback's hide rules.
+ * table feeding both the ground ribbons and the click-to-upgrade importer,
+ * and the per-class ribbon style.
  */
 
 import assert from 'assert';
 import {
   DEFAULT_ROAD_WIDTH_M,
-  getRoadOverlayStyle,
-  roadWidthMeters,
-  strokeWidthPx
+  ribbonStyleForClass,
+  roadWidthMeters
 } from '../../src/tested/osm-street-style.js';
 
 describe('roadWidthMeters', () => {
@@ -27,50 +26,27 @@ describe('roadWidthMeters', () => {
   });
 });
 
-describe('strokeWidthPx', () => {
-  it('scales width by canvas resolution and clamps both ends', () => {
-    // z14 tile ≈ 1900 m on a 512px canvas ≈ 3.7 m/px.
-    const motorway = strokeWidthPx('motorway');
-    const path = strokeWidthPx('path');
-    assert.ok(motorway <= 8, `motorway clamped: ${motorway}`);
-    assert.ok(path >= 1.25, `path floor: ${path}`);
-    assert.ok(motorway > strokeWidthPx('minor'));
-    // Double resolution → double pixels for the same physical width.
-    const hiRes = strokeWidthPx('minor', { resolution: 1024 });
-    assert.ok(hiRes > strokeWidthPx('minor'));
-  });
-});
-
-describe('getRoadOverlayStyle', () => {
-  it('hides every non-transportation layer', () => {
-    assert.strictEqual(getRoadOverlayStyle('water', {}).visible, false);
-    assert.strictEqual(getRoadOverlayStyle('building', null).visible, false);
+describe('ribbonStyleForClass', () => {
+  it('gives every drawable class a color and a stacking order', () => {
+    for (const cls of ['motorway', 'primary', 'minor', 'service', 'path']) {
+      const style = ribbonStyleForClass(cls);
+      assert.ok(style.color.startsWith('#'), cls);
+      assert.ok(style.order > 0, cls);
+    }
   });
 
-  it('answers layer-order queries (null properties) with an order only', () => {
-    const style = getRoadOverlayStyle('transportation', null);
-    assert.strictEqual(typeof style.order, 'number');
-    assert.strictEqual(style.visible, undefined);
-  });
-
-  it('hides tunnels and non-street classes', () => {
-    assert.strictEqual(
-      getRoadOverlayStyle('transportation', {
-        class: 'minor',
-        brunnel: 'tunnel'
-      }).visible,
-      false
+  it('stacks higher classes above lower ones', () => {
+    assert.ok(
+      ribbonStyleForClass('motorway').order > ribbonStyleForClass('minor').order
     );
-    assert.strictEqual(
-      getRoadOverlayStyle('transportation', { class: 'ferry' }).visible,
-      false
+    assert.ok(
+      ribbonStyleForClass('minor').order > ribbonStyleForClass('path').order
     );
   });
 
-  it('strokes drawable classes with a width and order', () => {
-    const style = getRoadOverlayStyle('transportation', { class: 'primary' });
-    assert.ok(style.stroke.startsWith('#'));
-    assert.ok(style.strokeWidth > 0);
-    assert.ok(style.order > 0);
+  it('falls back to a low-order style for unknown classes', () => {
+    const style = ribbonStyleForClass('hoverlane');
+    assert.ok(style.color.startsWith('#'));
+    assert.strictEqual(style.order, 1);
   });
 });
