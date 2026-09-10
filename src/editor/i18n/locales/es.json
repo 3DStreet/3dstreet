@@ -834,5 +834,7 @@
   "viewer.snapshotSaved": "Guardada en tu galería — haz clic para descargar",
   "viewer.snapshotThumbAlt": "Captura realizada — haz clic para descargar",
   "viewer.snapshotTitle": "Captura una imagen de esta vista",
-  "viewer.stop": "Detener"
+  "viewer.stop": "Detener",
+  "managedStreetSidebar.generatedFrom": "Generado desde",
+  "managedStreetSidebar.osmGeneratedRef": "Vía {cls}, preajuste por clase vía teselas de MapTiler"
 }
