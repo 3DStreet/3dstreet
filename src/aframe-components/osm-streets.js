@@ -12,7 +12,7 @@ import {
 import {
   localPolylineFromLatLon,
   nearestWay,
-  splitWayIntoChords,
+  stretchForWindow,
   streetJsonForWay
 } from '../tested/osm-street-import.js';
 import {
@@ -53,9 +53,24 @@ const HIGHLIGHT_COLOR = '#ffd166';
 const HIGHLIGHT_WIDTH_PAD_M = 1.5;
 
 // A click upgrades only the stretch of the way near the click, not the
-// whole way — an OSM way can run for kilometers.
+// whole way — an OSM way can run for kilometers. The stretch is clipped
+// by arc length (±window around the click's projection), so a generated
+// street never exceeds 2×window.
 const UPGRADE_WINDOW_M = 200;
-const MAX_CHORDS_PER_UPGRADE = 6;
+
+// The generated street's path shape (the editable centerline polyline):
+// understated next to the drawn-shape default (#ffe600 / 0.15) — it is
+// scaffolding under a street, not a drawing of its own — but visible and
+// vertex-editable so users can refine the OSM geometry.
+const PATH_LINE_COLOR = '#7d8aa0';
+const PATH_LINE_WIDTH = 0.06;
+
+let pathIdCounter = 0;
+// Way ids can carry '/' and '#' (tile-key fallback ids), unusable in a
+// `path: #id` selector — mint clean ids instead.
+function uniquePathId() {
+  return `osm-path-${Date.now().toString(36)}-${pathIdCounter++}`;
+}
 
 // Overpass hydration (phase 6, first slice): one small bbox query per
 // clicked way, interactive budget — one attempt per endpoint, short
@@ -78,9 +93,12 @@ const HYDRATE_BBOX_PAD_M = 20;
  *
  * - `wayAtPoint(worldPoint)` — which street is under a clicked ground
  *   point (editor "Generate 3D street" affordance), and
- * - `upgradeWayAt(worldPoint)` — mint real managed streets for that way
- *   (straight chords, class-preset cross sections, `playable: true` so
- *   street-traffic animates them in play mode).
+ * - `upgradeWayAt(worldPoint)` — mint ONE real managed street for the
+ *   clicked stretch of that way: a path-following street bent along the
+ *   way's centerline (its path shape stays vertex-editable), straight
+ *   when the stretch simplifies to a single chord; class-preset cross
+ *   sections, `playable: true` so street-traffic animates it in play
+ *   mode.
  *
  * Same tile fetch (browser cache + IndexedDB via overpass-cache) as the
  * buildings worker, but on the main thread: transportation decode is a
@@ -153,25 +171,26 @@ AFRAME.registerComponent('osm-streets', {
   },
 
   /**
-   * Show which stretch of a way `upgradeWayAt(worldPoint)` would turn into
-   * streets — the exact chords, drawn as a bright ribbon above the class
-   * tint. `clearHighlight()` removes it. Null / unknown way clears too.
+   * Show which stretch of a way `upgradeWayAt(worldPoint)` would turn
+   * into a street — the exact clipped centerline, drawn as a bright
+   * ribbon above the class tint. `clearHighlight()` removes it. Null /
+   * unknown way clears too.
    */
   highlightWayAt: function (worldPoint, maxDistM = DEFAULT_PICK_DISTANCE_M) {
     this.clearHighlight();
     if (!worldPoint) return;
     const hit = this.wayAtPoint(worldPoint, maxDistM);
     if (!hit) return;
-    const chords = this.chordsToUpgrade(
+    const stretch = this.stretchToUpgrade(
       hit.way,
       this.toLocalGround(worldPoint)
     );
-    if (chords.length === 0) return;
+    if (!stretch) return;
     const { positions, colors, indices } = buildWayRibbons(
       [
         {
           class: hit.way.class,
-          polylines: chords.map((c) => [c.start, c.end])
+          polylines: [stretch.points]
         }
       ],
       {
@@ -401,16 +420,17 @@ AFRAME.registerComponent('osm-streets', {
   },
 
   /**
-   * Upgrade the way nearest `worldPoint` into real managed streets — one
-   * straight street per chord of its centerline, `playable: true` so
-   * street-traffic animates them in play mode. Idempotent per way id.
+   * Upgrade the way nearest `worldPoint` into ONE real managed street —
+   * path-following along the clicked stretch of its centerline (straight
+   * when the stretch is a single chord), `playable: true` so
+   * street-traffic animates it in play mode. Idempotent per way id.
    *
-   * Only the stretch near the click upgrades: a single OSM way can run for
-   * kilometers (an early bug upgraded one 8 km path into 419 entities), so
-   * chords are kept only within `UPGRADE_WINDOW_M` of the clicked point,
-   * capped at `MAX_CHORDS_PER_UPGRADE`.
+   * Only the stretch near the click upgrades: a single OSM way can run
+   * for kilometers (an early bug upgraded one 8 km path into 419
+   * entities), so the centerline is clipped to ±`UPGRADE_WINDOW_M` of the
+   * click by arc length.
    *
-   * @returns {number} how many street entities were created.
+   * @returns {number} how many street entities were created (1 or 0).
    */
   upgradeWayAt: function (
     worldPoint,
@@ -445,10 +465,13 @@ AFRAME.registerComponent('osm-streets', {
 
   fetchTagsForWay: async function (way, nearPoint) {
     const origin = { lat: this.data.latitude, lon: this.data.longitude };
-    const chords = this.chordsToUpgrade(way, nearPoint);
-    const points = chords.flatMap((c) => [c.start, c.end]);
-    if (points.length === 0) return null;
-    const bbox = bboxAroundLocalPoints(origin, points, HYDRATE_BBOX_PAD_M);
+    const stretch = this.stretchToUpgrade(way, nearPoint);
+    if (!stretch) return null;
+    const bbox = bboxAroundLocalPoints(
+      origin,
+      stretch.points,
+      HYDRATE_BBOX_PAD_M
+    );
     const cacheKey =
       HYDRATE_CACHE_PREFIX +
       [bbox.south, bbox.west, bbox.north, bbox.east]
@@ -473,61 +496,55 @@ AFRAME.registerComponent('osm-streets', {
    * @param {Object} way decoded way record (local polylines).
    * @param {Object|null} nearPoint local {x, z} the upgrade is anchored to;
    *   null upgrades from the way's start, still capped.
-   * @returns {number} how many street entities were created (chords).
+   * @param {Object|null} tags OSM tags from hydrateWayAt — make the
+   *   cross-section exact where OSM has data; without them the class
+   *   rules apply.
+   * @returns {number} how many street entities were created (1, or 0 for
+   *   an already-upgraded way / a stretch too short to generate).
    *   Creation through the editor command stack finishes on the entities'
    *   `loaded` events; the count is known synchronously.
    */
   upgradeWay: function (way, nearPoint = null, tags = null) {
     if (this.upgradedWayIds.has(way.wayId)) return 0;
+    const stretch = this.stretchToUpgrade(way, nearPoint);
+    if (!stretch) return 0;
     this.upgradedWayIds.add(way.wayId);
     this.clearHighlight();
-    const chords = this.chordsToUpgrade(way, nearPoint);
-    for (const chord of chords) {
-      this.createStreetForChord(way, chord, tags);
+    if (stretch.points.length === 2) {
+      // Degenerate straight stretch: a plain street, no path shape.
+      this.createStraightStreet(way, stretch, tags);
+    } else {
+      this.createPathStreet(way, stretch, tags);
     }
-    return chords.length;
+    return 1;
   },
 
-  // The chords `upgradeWay` would create for `way` anchored at `nearPoint`
-  // (the window + cap described above), nearest first.
-  chordsToUpgrade: function (way, nearPoint = null) {
-    let chords = [];
-    for (const line of way.polylines) {
-      chords = chords.concat(splitWayIntoChords(line));
-    }
-    if (nearPoint) {
-      for (const chord of chords) {
-        chord._pickDist = Math.sqrt(
-          (chord.midpoint.x - nearPoint.x) ** 2 +
-            (chord.midpoint.z - nearPoint.z) ** 2
-        );
-      }
-      chords = chords
-        .filter((c) => c._pickDist <= UPGRADE_WINDOW_M)
-        .sort((a, b) => a._pickDist - b._pickDist);
-    }
-    return chords.slice(0, MAX_CHORDS_PER_UPGRADE);
+  // The clipped, simplified centerline stretch `upgradeWay` would turn
+  // into a street for `way` anchored at `nearPoint` (see
+  // stretchForWindow), or null.
+  stretchToUpgrade: function (way, nearPoint = null) {
+    return stretchForWindow(way.polylines, nearPoint, {
+      windowM: UPGRADE_WINDOW_M
+    });
   },
 
-  // `tags` (OSM tags from hydrateWayAt) make the cross-section exact
-  // where OSM has data; without them the class rules apply.
-  createStreetForChord: function (way, chord, tags = null) {
-    const hydrated = tags ? streetJsonFromTags(tags, way, chord.length) : null;
+  // The managed-street component config + the `loaded` stamp callback
+  // shared by both creation shapes.
+  streetDefinitionFor: function (way, stretch, tags) {
+    const hydrated = tags
+      ? streetJsonFromTags(tags, way, stretch.lengthM)
+      : null;
     const streetJson = hydrated
       ? hydrated.json
-      : streetJsonForWay(way, chord.length, `OSM ${way.class || 'street'}`);
-    const components = {
-      position: `${chord.midpoint.x.toFixed(2)} ${UPGRADED_STREET_Y} ${chord.midpoint.z.toFixed(2)}`,
-      rotation: `0 ${chord.bearingDeg.toFixed(2)} 0`,
-      'managed-street': {
-        sourceType: 'json-blob',
-        sourceValue: JSON.stringify(streetJson),
-        showVehicles: true,
-        showStriping: true,
-        synchronize: true,
-        playable: true,
-        importSource: 'osm-upgrade'
-      }
+      : streetJsonForWay(way, stretch.lengthM, `OSM ${way.class || 'street'}`);
+    const managedStreet = {
+      sourceType: 'json-blob',
+      sourceValue: JSON.stringify(streetJson),
+      showVehicles: true,
+      showStriping: true,
+      synchronize: true,
+      playable: true,
+      importSource: 'osm-upgrade'
     };
     const stampWayId = (entity) => {
       entity.setAttribute('data-osm-way-id', way.wayId);
@@ -538,10 +555,30 @@ AFRAME.registerComponent('osm-streets', {
         entity.setAttribute('data-osm-name', hydrated.facts.name);
       }
     };
+    return { managedStreet, stampWayId };
+  },
+
+  createStraightStreet: function (way, stretch, tags = null) {
+    const [start, end] = stretch.points;
+    const midpoint = { x: (start.x + end.x) / 2, z: (start.z + end.z) / 2 };
+    // A-Frame yaw pointing street-local +Z along the chord (same
+    // convention as StreetNodeControls: atan2(dir.x, dir.z)).
+    const bearingDeg =
+      (Math.atan2(end.x - start.x, end.z - start.z) * 180) / Math.PI;
+    const { managedStreet, stampWayId } = this.streetDefinitionFor(
+      way,
+      stretch,
+      tags
+    );
+    const components = {
+      position: `${midpoint.x.toFixed(2)} ${UPGRADED_STREET_Y} ${midpoint.z.toFixed(2)}`,
+      rotation: `0 ${bearingDeg.toFixed(2)} 0`,
+      'managed-street': managedStreet
+    };
     const inspector = AFRAME.INSPECTOR;
     if (inspector && inspector.execute) {
-      // Through the command stack so the upgrade is a single undoable step
-      // per chord; the callback fires on the entity's `loaded`.
+      // Through the command stack so the upgrade is one undoable step;
+      // the callback fires on the entity's `loaded`.
       inspector.execute('entitycreate', { components }, undefined, stampWayId);
       return;
     }
@@ -554,6 +591,102 @@ AFRAME.registerComponent('osm-streets', {
     const container =
       document.querySelector('#street-container') || this.el.sceneEl;
     container.appendChild(entity);
+  },
+
+  /**
+   * One path-following street for a curved stretch: a `shape` polyline
+   * (control points at the stretch's simplified vertices, smooth
+   * catmull-rom — the same assignment-gesture bump the street sidebar
+   * applies) plus a managed street following it via `managed-street.path`.
+   * Same commit conventions as the editor's shape draw tool: entity at
+   * the vertices' centroid, vertices stored relative, `shape-vertex`
+   * children hidden from the scene graph — so the generated centerline is
+   * vertex-editable exactly like a hand-drawn path.
+   *
+   * The shape sits at the street's Y so the curve carries the height (a
+   * pathed street renders at the path's world position; path vertex
+   * elevation is followed).
+   */
+  createPathStreet: function (way, stretch, tags = null) {
+    const points = stretch.points;
+    const centroid = { x: 0, z: 0 };
+    for (const p of points) {
+      centroid.x += p.x;
+      centroid.z += p.z;
+    }
+    centroid.x /= points.length;
+    centroid.z /= points.length;
+
+    const shapeId = uniquePathId();
+    const shapeDefinition = {
+      id: shapeId,
+      element: 'a-entity',
+      components: {
+        shape: {
+          lineColor: PATH_LINE_COLOR,
+          lineWidth: PATH_LINE_WIDTH,
+          curveType: 'smooth'
+        },
+        position: `${centroid.x.toFixed(2)} ${UPGRADED_STREET_Y} ${centroid.z.toFixed(2)}`,
+        'data-layer-name': `Path • OSM ${way.class || 'street'}`,
+        'data-osm-way-id': way.wayId
+      },
+      children: points.map((p) => ({
+        element: 'a-entity',
+        class: 'hideFromSceneGraph',
+        components: {
+          'shape-vertex': '',
+          position: `${(p.x - centroid.x).toFixed(2)} 0 ${(p.z - centroid.z).toFixed(2)}`
+        }
+      }))
+    };
+
+    const { managedStreet, stampWayId } = this.streetDefinitionFor(
+      way,
+      stretch,
+      tags
+    );
+    managedStreet.path = `#${shapeId}`;
+    const streetDefinition = {
+      components: {
+        position: `${centroid.x.toFixed(2)} ${UPGRADED_STREET_Y} ${centroid.z.toFixed(2)}`,
+        'managed-street': managedStreet
+      }
+    };
+
+    const inspector = AFRAME.INSPECTOR;
+    if (inspector && inspector.execute) {
+      // One undoable step for the pair: the multi runs the shape create
+      // first (the street create fires from its `loaded` callback, so the
+      // path resolves immediately), and undo removes street then shape.
+      inspector.execute('multi', [
+        ['entitycreate', shapeDefinition],
+        ['entitycreate', streetDefinition, stampWayId]
+      ]);
+      return;
+    }
+    // Viewer (no inspector): plain entity creation. managed-street
+    // retries path resolution, so creation order is not load-bearing.
+    const container =
+      document.querySelector('#street-container') || this.el.sceneEl;
+    const shapeEl = document.createElement('a-entity');
+    shapeEl.id = shapeId;
+    shapeEl.setAttribute('shape', shapeDefinition.components.shape);
+    shapeEl.setAttribute('position', shapeDefinition.components.position);
+    shapeEl.setAttribute('data-osm-way-id', way.wayId);
+    for (const child of shapeDefinition.children) {
+      const vertexEl = document.createElement('a-entity');
+      vertexEl.classList.add('hideFromSceneGraph');
+      vertexEl.setAttribute('shape-vertex', '');
+      vertexEl.setAttribute('position', child.components.position);
+      shapeEl.appendChild(vertexEl);
+    }
+    container.appendChild(shapeEl);
+    const streetEl = document.createElement('a-entity');
+    streetEl.setAttribute('position', streetDefinition.components.position);
+    streetEl.setAttribute('managed-street', managedStreet);
+    stampWayId(streetEl);
+    container.appendChild(streetEl);
   },
 
   /**

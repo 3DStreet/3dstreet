@@ -54,21 +54,25 @@ entity); a nearby way fills `store.osmWayCandidate` and the
 draws the exact stretch it will create in a bright ribbon above the class
 tint. (UI copy says "generate", never "upgrade" — in this app "upgrade"
 means the paid plan; the code keeps the roadmap's LOD term.) The upgrade
-(`upgradeWayAt`) converts the clicked stretch — chords within
-`UPGRADE_WINDOW_M`, max `MAX_CHORDS_PER_UPGRADE`; a single OSM way can
-run for kilometers — into real managed streets via the editor command
-stack (undoable): straight chords from Douglas–Peucker
-(`splitWayIntoChords`), cross-section rules from
-class + subclass + oneway (`streetJsonForWay`, both in
-`src/tested/osm-street-import.js`: one-way streets put every lane in the
-way direction, residential gets parking and unclassified doesn't, living
-streets go narrow, cycleways become bike lanes, lane count per direction
-scales with class),
+(`upgradeWayAt`) converts the clicked stretch — the centerline clipped by
+arc length to ±`UPGRADE_WINDOW_M` of the click; a single OSM way can run
+for kilometers — into ONE real managed street via the editor command
+stack (undoable): a **path-following street** whose editable path shape
+carries the way's Douglas–Peucker-simplified control points
+(`stretchForWindow` in `src/tested/osm-street-import.js`; the same
+curved-street mechanism as hand-drawn paths, `docs/curved-street-path.md`,
+`curveType: smooth`), degenerating to a plain straight street when the
+stretch simplifies to a single chord. Cross-section rules from
+class + subclass + oneway (`streetJsonForWay`: one-way streets put every
+lane in the way direction, residential gets parking and unclassified
+doesn't, living streets go narrow, cycleways become bike lanes, lane
+count per direction scales with class),
 `sourceType: json-blob`, `playable: true` so `street-traffic` animates
 them in play mode. `upgradeNearFocus(radius, cap)` is the console
 convenience for demos. Upgraded streets are ordinary scene entities:
 they serialize, edit, and persist — the explicit click IS the
-"temporary → mine" promotion story for now.
+"temporary → mine" promotion story for now, and refining the generated
+geometry IS editing the path shape's vertices.
 
 Data notes: OpenMapTiles `transportation` has `class`/`subclass`/
 `brunnel`/`oneway` but **no lane counts or widths** — the cross-section
@@ -128,9 +132,10 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
   working); the `path` shape demotes to an authoring tool that copies
   sampled points in; load migration in `json-utils_1.1.js`; a derived
   `street-graph` scene system rebuilt from entity data (honoring the
-  managed-street JSON round-trip contract). The upgrade path stops
-  chord-splitting — one way = one curved street, and OSM node ids become
-  graph node ids shared across ways.
+  managed-street JSON round-trip contract). One way = one curved street
+  is already the demo-path behavior (via the path shape, see above);
+  this phase internalizes the points and makes OSM node ids graph node
+  ids shared across ways.
 - **Phase 4 — pillar 2: render-time insets.** Derived, non-serialized
   `insets {start, end}` + `setInset` API consumed via
   `getLongitudinalSpan`; curves get `sStart`/`sEnd` in

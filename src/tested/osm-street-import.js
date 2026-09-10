@@ -9,8 +9,12 @@
  *   EQUATOR_M projection as osm-building-geometry, so upgraded streets
  *   register exactly with the 2.5D ground and buildings),
  * - nearest-way lookup for a clicked ground point,
- * - polyline → straight chord splitting (managed streets are straight
- *   until #1930 phase 3 gives them owned centerlines),
+ * - stretch extraction (`stretchForWindow`): the arc-length-clipped,
+ *   Douglas–Peucker-simplified run of centerline the generate turns into
+ *   ONE path-following managed street (a 2-point stretch degenerates to
+ *   a plain straight street),
+ * - polyline → straight chord splitting (the pre-path scheme; kept for
+ *   the degenerate case math and existing callers),
  * - class → managed-street Format-2 JSON presets (`parseStreetObject`
  *   input shape; real lane data arrives with the Overpass-backed
  *   hydrator, #1930 phase 6).
@@ -157,6 +161,84 @@ export function splitWayIntoChords(
     });
   }
   return chords;
+}
+
+/** Point at arc-length `s` along [{x, z}, ...] (clamped to the ends). */
+function pointAtArcLength(points, cumulative, s) {
+  if (s <= 0) return { ...points[0] };
+  const total = cumulative[cumulative.length - 1];
+  if (s >= total) return { ...points[points.length - 1] };
+  let i = 1;
+  while (cumulative[i] < s) i++;
+  const segLen = cumulative[i] - cumulative[i - 1];
+  const t = segLen > 0 ? (s - cumulative[i - 1]) / segLen : 0;
+  const a = points[i - 1];
+  const b = points[i];
+  return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t };
+}
+
+/**
+ * The contiguous stretch of a way the generate acts on: project
+ * `nearPoint` onto the nearest of the way's polylines, clip that
+ * polyline to ±`windowM` of the projection BY ARC LENGTH (interpolated
+ * boundary points, so the stretch never exceeds 2×windowM even on a
+ * kilometers-long way), then Douglas–Peucker the clipped run down to
+ * control points for the street's path shape.
+ *
+ * `nearPoint: null` anchors the window at the first polyline's start
+ * (the console `upgradeNearFocus` convenience always passes a point).
+ *
+ * @param {Array<Array<{x, z}>>} polylines way centerlines, local meters.
+ * @returns {{ points, lengthM }|null} `points`: simplified control
+ *   points (≥2); `lengthM`: the clipped centerline's arc length (the
+ *   real curve re-derives it, this seeds the street JSON). Null when the
+ *   stretch is shorter than `minLengthM` — connector stubs stay ground
+ *   tint only, same rule chord splitting used.
+ */
+export function stretchForWindow(
+  polylines,
+  nearPoint,
+  { windowM = 200, maxDeviationM = 1.5, minLengthM = 20 } = {}
+) {
+  const lines = (polylines || []).filter((line) => line && line.length >= 2);
+  if (lines.length === 0) return null;
+
+  let line = lines[0];
+  let s0 = 0;
+  if (nearPoint) {
+    const hit = nearestWay([{ polylines: lines }], nearPoint, Infinity);
+    if (!hit) return null;
+    line = lines[hit.polylineIndex];
+    let s = 0;
+    for (let i = 0; i < hit.segmentIndex; i++) {
+      s += Math.sqrt(distSq(line[i], line[i + 1]));
+    }
+    s0 = s + Math.sqrt(distSq(line[hit.segmentIndex], hit.point));
+  }
+
+  const cumulative = [0];
+  for (let i = 1; i < line.length; i++) {
+    cumulative.push(
+      cumulative[i - 1] + Math.sqrt(distSq(line[i - 1], line[i]))
+    );
+  }
+  const total = cumulative[line.length - 1];
+  const sStart = Math.max(0, s0 - windowM);
+  const sEnd = Math.min(total, s0 + windowM);
+  const lengthM = sEnd - sStart;
+  if (lengthM < minLengthM) return null;
+
+  const clipped = [pointAtArcLength(line, cumulative, sStart)];
+  for (let i = 0; i < line.length; i++) {
+    if (cumulative[i] > sStart && cumulative[i] < sEnd) {
+      clipped.push(line[i]);
+    }
+  }
+  clipped.push(pointAtArcLength(line, cumulative, sEnd));
+
+  const points = simplifyPolyline(clipped, maxDeviationM);
+  if (points.length < 2) return null;
+  return { points, lengthM: Math.round(lengthM * 100) / 100 };
 }
 
 // --- class → managed-street Format-2 presets -------------------------------

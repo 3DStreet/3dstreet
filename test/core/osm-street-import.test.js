@@ -17,6 +17,7 @@ import {
   pointToSegment,
   simplifyPolyline,
   splitWayIntoChords,
+  stretchForWindow,
   streetJsonForClass,
   streetJsonForWay,
   NORTH_M_PER_DEG
@@ -163,6 +164,85 @@ describe('simplifyPolyline / splitWayIntoChords', () => {
     assert.deepStrictEqual(out[0], pts[0]);
     assert.deepStrictEqual(out[out.length - 1], pts[2]);
     assert.strictEqual(out.length, 2);
+  });
+});
+
+describe('stretchForWindow', () => {
+  // A straight +z line, 1000 m in 100 m hops.
+  const longLine = Array.from({ length: 11 }, (_, i) => ({
+    x: 0,
+    z: i * 100
+  }));
+
+  it('clips a long way to ±window around the click by arc length', () => {
+    const stretch = stretchForWindow([longLine], { x: 5, z: 500 });
+    assert.ok(stretch);
+    assert.strictEqual(stretch.lengthM, 400);
+    // Straight line → simplified to just the interpolated boundary points.
+    assert.strictEqual(stretch.points.length, 2);
+    assert.deepStrictEqual(stretch.points[0], { x: 0, z: 300 });
+    assert.deepStrictEqual(stretch.points[1], { x: 0, z: 700 });
+  });
+
+  it('keeps interior corner vertices as control points', () => {
+    const bend = [
+      { x: 0, z: 0 },
+      { x: 0, z: 100 },
+      { x: 100, z: 100 }
+    ];
+    const stretch = stretchForWindow([bend], { x: 0, z: 100 });
+    assert.ok(stretch);
+    assert.strictEqual(stretch.points.length, 3);
+    assert.deepStrictEqual(stretch.points[1], { x: 0, z: 100 });
+    assert.strictEqual(stretch.lengthM, 200);
+  });
+
+  it('clamps the window at the way ends', () => {
+    const stretch = stretchForWindow([longLine], { x: 0, z: 50 });
+    assert.ok(stretch);
+    assert.deepStrictEqual(stretch.points[0], { x: 0, z: 0 });
+    assert.deepStrictEqual(stretch.points[1], { x: 0, z: 250 });
+    assert.strictEqual(stretch.lengthM, 250);
+  });
+
+  it('null nearPoint anchors the window at the way start', () => {
+    const stretch = stretchForWindow([longLine], null);
+    assert.ok(stretch);
+    assert.deepStrictEqual(stretch.points[0], { x: 0, z: 0 });
+    assert.deepStrictEqual(stretch.points[1], { x: 0, z: 200 });
+  });
+
+  it('picks the polyline nearest the click on multi-line ways', () => {
+    const other = [
+      { x: 500, z: 0 },
+      { x: 500, z: 100 }
+    ];
+    const stretch = stretchForWindow([longLine, other], { x: 498, z: 50 });
+    assert.ok(stretch);
+    assert.strictEqual(stretch.points[0].x, 500);
+    assert.strictEqual(stretch.lengthM, 100);
+  });
+
+  it('returns null for stretches shorter than minLength', () => {
+    const stub = [
+      { x: 0, z: 0 },
+      { x: 0, z: 10 }
+    ];
+    assert.strictEqual(stretchForWindow([stub], { x: 0, z: 5 }), null);
+    assert.strictEqual(stretchForWindow([], { x: 0, z: 0 }), null);
+    assert.strictEqual(stretchForWindow(null, null), null);
+  });
+
+  it('honors custom window and deviation options', () => {
+    const stretch = stretchForWindow(
+      [longLine],
+      { x: 0, z: 500 },
+      { windowM: 50 }
+    );
+    assert.ok(stretch);
+    assert.strictEqual(stretch.lengthM, 100);
+    assert.deepStrictEqual(stretch.points[0], { x: 0, z: 450 });
+    assert.deepStrictEqual(stretch.points[1], { x: 0, z: 550 });
   });
 });
 
