@@ -31,12 +31,13 @@
   <script src="/dist/aframe-street-component.js"></script>
   <title>3DStreet</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/x-icon" href="ui_assets/favicon.ico">
+  <!-- Root-absolute so the document also works served at /scenes/UUID (#1970) -->
+  <link rel="icon" type="image/x-icon" href="/ui_assets/favicon.ico">
   <link rel="stylesheet" href="/dist/viewer-styles.css">
 </head>
 
 <body>
-  <img id="screenshot-img" src="ui_assets/3DStreet-Viewer-Start-Editor.svg" alt="Invisible Image" style="display:none;">
+  <img id="screenshot-img" src="/ui_assets/3DStreet-Viewer-Start-Editor.svg" alt="Invisible Image" style="display:none;">
   <!-- loading animation start -->
   <div class="loader__wrapper">
     <div class="loader">

@@ -45,6 +45,9 @@ const config = {
   devServer: {
     liveReload: false,
     allowedHosts: 'all',
+    // Serve index.html for path-form scene URLs (/scenes/UUID, #1970) —
+    // mirrors the `** → /index.html` rewrite in public/firebase.json.
+    historyApiFallback: true,
     static: [
       {
         directory: '.',

@@ -18,11 +18,13 @@ import {
   createElementsForScenesFromJSON,
   saveSceneWithScreenshot
 } from '../SceneUtils.js';
+import { scenePath } from '@/tested/scene-url-utils.js';
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 export function sceneUrlFor(sceneId) {
-  return `${window.location.origin}${window.location.pathname}#/scenes/${sceneId}`;
+  // Path form so the link is server-visible (social unfurls / OG tags, #1970)
+  return `${window.location.origin}${scenePath(sceneId)}`;
 }
 
 /**
@@ -88,11 +90,11 @@ async function loadSceneHandler(args) {
   const match = UUID_RE.exec(String(args?.sceneId || ''));
   if (!match) {
     throw new Error(
-      'sceneId must be a scene UUID (or a 3DStreet URL containing #/scenes/<uuid>)'
+      'sceneId must be a scene UUID (or a 3DStreet URL containing /scenes/<uuid>)'
     );
   }
   const sceneId = match[0].toLowerCase();
-  // Same endpoint the #/scenes/<id> hash loader fetches at startup
+  // Same endpoint the /scenes/<id> loader fetches at startup
   // (set-loader-from-hash in json-utils_1.1.js), including its localhost
   // rewrite to the dev deployment.
   const base = window.location.href.includes('localhost')
@@ -113,7 +115,7 @@ async function loadSceneHandler(args) {
   }
   useStore.getState().startLoadingScene('Loading scene from cloud...');
   createElementsForScenesFromJSON(json.data, json.memory);
-  window.location.hash = `#/scenes/${sceneId}`;
+  window.history.pushState(null, '', scenePath(sceneId));
   AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
   if (json.author) {
     AFRAME.scenes[0].setAttribute('metadata', 'authorId', json.author);
@@ -158,7 +160,7 @@ export const mcpSceneTools = [
         sceneId: {
           type: 'string',
           description:
-            'Scene UUID, or a 3DStreet URL containing #/scenes/<uuid>.'
+            'Scene UUID, or a 3DStreet URL containing /scenes/<uuid>.'
         }
       },
       required: ['sceneId']

@@ -221,7 +221,7 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 - React → A-Frame: `entity.setAttribute()` or `AFRAME.INSPECTOR.execute()`
 - A-Frame → React: `Events.emit()` or `useStore.setState()`
 
-**URL Hash Schemes:** Streetmix URL, StreetPlan URL, Cloud UUID (`#scenes/...`), Managed Street JSON
+**URL Schemes:** Cloud scenes use path URLs (`/scenes/UUID`, server-visible for unfurls/SEO — #1970; legacy `#/scenes/` hash links load forever and self-upgrade via `history.replaceState`; helpers in `src/tested/scene-url-utils.js`). App-state deep links stay hash-based: Streetmix URL, StreetPlan URL, Managed Street JSON, `#asset:`, `#mcp`
 
 **File Naming:** A-Frame: `kebab-case.js`, React: `PascalCase.js/jsx`, Styles: `.module.scss`
 

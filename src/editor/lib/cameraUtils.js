@@ -42,9 +42,9 @@ export function getCurrentCameraState() {
 }
 
 /**
- * Serialize a camera state into a compact URL-hash param value
+ * Serialize a camera state into a compact URL param value
  * (`px,py,pz,rx,ry,rz,fov`) for camera vantage deep links like
- * `#/scenes/UUID?camera=…`. Decoded by decodeCameraStateFromParam in
+ * `/scenes/UUID?camera=…`. Decoded by decodeCameraStateFromParam in
  * set-loader-from-hash. Rounded — cm position / ~0.006° rotation — to keep
  * the URL short; well beyond visual precision either way.
  * @param {Object} cameraState - Camera state with position, rotation, zoom

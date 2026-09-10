@@ -9,11 +9,14 @@ import { resolveInitialLocale, persistLocale } from './editor/i18n/config';
 
 const firstModal = () => {
   const hash = window.location.hash;
+  // A path-form scene URL (/scenes/UUID, #1970) is a deep link like the old
+  // hash form: the scene is loading, so no intro modal.
+  const isSceneDeepLink = window.location.pathname.startsWith('/scenes/');
   let modal = hash.includes('payment')
     ? 'payment'
     : hash.includes('profile') || hash.includes('/modal/profile')
       ? 'profile'
-      : !hash.length
+      : !hash.length && !isSceneDeepLink
         ? 'new'
         : null;
   const isStreetMix = hash.includes('streetmix');

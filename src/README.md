@@ -135,7 +135,9 @@ I learned a few things:
 | `streetplan-url`      | StreetPlan API URL                                              | `https://3dstreet.app/#https://streetplan.net/3dstreet/89241`              |
 | `managed-street-json` | Managed Street JSON Blob                                        | `https://3dstreet.app/#managed-street-json:{"data":"value"}`               |
 | `cloud-uuid-legacy`   | 3DStreet Scene JSON Format from Cloud UUID with .json Extension | `https://3dstreet.app/#scenes/bc72ab26-891d-417b-a50f-0cf84621a54c.json`   |
-| `cloud-uuid`          | 3DStreet Scene JSON Format from Cloud UUID                      | `https://3dstreet.app/#scenes/bc72ab26-891d-417b-a50f-0cf84621a54c`        |
+| `cloud-uuid`          | 3DStreet Scene JSON Format from Cloud UUID (legacy hash form)   | `https://3dstreet.app/#/scenes/bc72ab26-891d-417b-a50f-0cf84621a54c`       |
+
+Cloud scene links are now written in path form — `https://3dstreet.app/scenes/bc72ab26-891d-417b-a50f-0cf84621a54c` — so the server sees which scene a link points to (social unfurls, SEO; issue #1970). The hash forms above keep loading forever and self-upgrade to the path form on arrival. Query params (`?viewer=true`, `?embed=true`, `?camera=…`) compose normally with the path form.
 
 ### More Notes
 
