@@ -28,6 +28,7 @@ require('./aframe-components/street-geo.js');
 require('./aframe-components/geo-flatten.js');
 require('./aframe-components/street-environment.js');
 require('./aframe-components/intersection.js');
+require('./aframe-components/managed-intersection.js');
 require('./aframe-components/obb-clipping.js');
 require('./aframe-components/street-path.js');
 require('./aframe-components/street-segment.js');
