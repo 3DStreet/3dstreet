@@ -1088,3 +1088,35 @@ export const SignInAppleIconSVG = () => (
     </g>
   </svg>
 );
+
+// Layers-panel badge for entities carrying `focus-hotspot`: a bullseye
+// (concentric rings + dot), the "click here" target a visitor sees.
+export const HotspotIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="1.8" />
+    <circle cx="12" cy="12" r="5" stroke="white" strokeWidth="1.8" />
+    <circle cx="12" cy="12" r="1.6" fill="white" />
+  </svg>
+);
+
+// Layers-panel badge for the `viewer-start` entity: a ring like the hotspot
+// bullseye, but carrying a play triangle — the place a viewer session
+// starts from (hotspot tour, look-around, future spawn roles).
+export const ViewerStartIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="1.8" />
+    <path d="M9.5 8.2V15.8L15.5 12L9.5 8.2Z" fill="white" />
+  </svg>
+);

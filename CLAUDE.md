@@ -67,7 +67,7 @@ public/
 
 **Utilities:** `create-from-json`, `gltf-part`, `screentock`, `measure-line`
 
-**Focus hotspots + embed (#1315):** `focus-hotspot` marks any entity (typically a semitransparent block from the Add Layer card) as clickable in viewer mode — the system owns one pointer raycast, click glides the camera in via the editor controls (honoring an author-set `focus-camera-pose`), opens the `FocusHotspotPanel` info overlay (title/description authored in `FocusHotspotSidebar`), and "Back to overview"/Escape returns to the pre-click pose. `?embed=true` = viewer with app chrome stripped for iframes (snippet in ShareModal). Entry point: `docs/focus-hotspots.md`.
+**Focus hotspots + embed (#1315):** `focus-hotspot` marks any entity (typically a semitransparent block from the Add Layer card) as clickable in viewer mode — the system owns one pointer raycast, click glides the camera in via the editor controls (honoring an author-set `focus-camera-pose`), opens the `FocusHotspotPanel` info overlay (title/description authored in `FocusHotspotSidebar`), and "Back to overview"/Escape returns to the pre-click pose. `?embed=true` = viewer with app chrome stripped for iframes (snippet in ShareModal). An enabled hotspot registers a playable check so the editor's Start button appears for hotspot-only scenes. **Viewer Start** (`play/viewer-start.js`, Add Layer card) is a discrete entity whose transform is the pose Start glides to (editor-only marker; editor-origin Stop restores the prior pose; the scene thumbnail still governs load-time pose). Entry point: `docs/focus-hotspots.md`.
 
 ## Play Mode & Viewer
 

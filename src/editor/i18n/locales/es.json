@@ -63,6 +63,8 @@
   "addLayer.card.uploadModel.name": "Subir modelo 3D",
   "addLayer.card.uploadSplat.desc": "Sube un Gaussian Splat (.splat, .ply, .spz, .rad) desde tu dispositivo y colócalo en la escena.",
   "addLayer.card.uploadSplat.name": "Subir Gaussian Splat",
+  "addLayer.card.viewerStart.desc": "Dónde comienza un visitante al pulsar Iniciar. Colócalo, encuadra la vista que quieras y usa \"Fijar a la vista actual\" en su panel. Solo se muestra al editar.",
+  "addLayer.card.viewerStart.name": "Inicio del visor",
   "addLayer.onlyFirstFileAdded": "Solo se agregó el primer archivo. Suelta un archivo a la vez.",
   "addLayer.tab.bicycles": "🚲 Bicicletas",
   "addLayer.tab.buildings": "🏠 Edificios",
@@ -850,5 +852,11 @@
   "viewer.snapshotSaved": "Guardada en tu galería — haz clic para descargar",
   "viewer.snapshotThumbAlt": "Captura realizada — haz clic para descargar",
   "viewer.snapshotTitle": "Captura una imagen de esta vista",
-  "viewer.stop": "Detener"
+  "viewer.stop": "Detener",
+  "viewerStart.enabled": "Activado",
+  "viewerStart.preview": "Previsualizar inicio",
+  "viewerStart.previewTitle": "Llevar la cámara a este punto de inicio ahora",
+  "viewerStart.setToCurrentView": "Fijar a la vista actual",
+  "viewerStart.setToCurrentViewTitle": "Mover este punto de inicio a la posición y dirección actuales de la cámara del editor",
+  "viewerStart.tip": "💡 Al pulsar Iniciar, la cámara vuela aquí primero, así que los visitantes siempre empiezan desde esta vista. El marcador solo es visible al editar. La miniatura de la escena sigue definiendo dónde se abre la escena."
 }

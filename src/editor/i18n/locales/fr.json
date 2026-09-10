@@ -63,6 +63,8 @@
   "addLayer.card.uploadModel.name": "Téléverser un modèle 3D",
   "addLayer.card.uploadSplat.desc": "Téléversez un Gaussian Splat (.splat, .ply, .spz, .rad) depuis votre appareil et placez-le dans la scène.",
   "addLayer.card.uploadSplat.name": "Téléverser un Gaussian Splat",
+  "addLayer.card.viewerStart.desc": "Là où un visiteur commence en appuyant sur Démarrer. Placez-le, cadrez la vue souhaitée, puis utilisez « Définir sur la vue actuelle » dans son panneau. Visible uniquement en édition.",
+  "addLayer.card.viewerStart.name": "Point de départ du visiteur",
   "addLayer.onlyFirstFileAdded": "Seul le premier fichier a été ajouté. Déposez un fichier à la fois.",
   "addLayer.tab.bicycles": "🚲 Vélos",
   "addLayer.tab.buildings": "🏠 Bâtiments",
@@ -850,5 +852,11 @@
   "viewer.snapshotSaved": "Enregistrée dans votre galerie — cliquez pour télécharger",
   "viewer.snapshotThumbAlt": "Capture réalisée — cliquez pour télécharger",
   "viewer.snapshotTitle": "Capturer une image de cette vue",
-  "viewer.stop": "Arrêter"
+  "viewer.stop": "Arrêter",
+  "viewerStart.enabled": "Activé",
+  "viewerStart.preview": "Aperçu du départ",
+  "viewerStart.previewTitle": "Déplacer la caméra vers ce point de départ maintenant",
+  "viewerStart.setToCurrentView": "Définir sur la vue actuelle",
+  "viewerStart.setToCurrentViewTitle": "Déplacer ce point de départ à la position et l'orientation actuelles de la caméra de l'éditeur",
+  "viewerStart.tip": "💡 Appuyer sur Démarrer amène d'abord la caméra ici, donc les visiteurs commencent toujours par cette vue. Le repère n'est visible qu'en édition. La vignette de la scène définit toujours où la scène s'ouvre."
 }

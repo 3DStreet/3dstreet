@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import * as THREE from 'three';
 import capitalize from 'lodash-es/capitalize';
 import Events from './Events';
 import { equal } from './utils';
@@ -12,7 +13,9 @@ import {
   VideoCameraIcon,
   LayersIcon,
   Object24IconCyan,
-  ShapeIcon
+  ShapeIcon,
+  HotspotIcon,
+  ViewerStartIcon
 } from '@shared/icons';
 
 /**
@@ -724,6 +727,14 @@ export function getEntityIcon(entity) {
   if (entity.getAttribute('shape')) {
     return <ShapeIcon />;
   }
+  if (entity.getAttribute('viewer-start')) {
+    return <ViewerStartIcon />;
+  }
+  // Any mesh can be a hotspot (ghost block, splat, imported model), so the
+  // badge marks the role rather than the host geometry.
+  if (entity.getAttribute('focus-hotspot')) {
+    return <HotspotIcon />;
+  }
 
   // Check for class-based icons
   if (entity.classList.contains('autocreated')) {
@@ -920,6 +931,39 @@ export function exportEntityToObject(entity) {
   }
 
   return entityObj;
+}
+
+/**
+ * Write the current editor camera's world pose into a viewer-start entity's
+ * position/rotation (expressed in its parent's space), so "where I'm looking
+ * now" becomes where Start begins. Two entityupdate commands, both undoable.
+ */
+export function setViewerStartToCurrentView(entity) {
+  const camera = AFRAME.INSPECTOR.camera;
+  camera.updateMatrixWorld();
+  const parent = entity.object3D.parent;
+  parent.updateMatrixWorld(true);
+  const worldPos = new THREE.Vector3();
+  const worldQuat = new THREE.Quaternion();
+  camera.getWorldPosition(worldPos);
+  camera.getWorldQuaternion(worldQuat);
+  const localPos = parent.worldToLocal(worldPos.clone());
+  const parentQuat = new THREE.Quaternion();
+  parent.getWorldQuaternion(parentQuat);
+  const localQuat = parentQuat.invert().multiply(worldQuat);
+  const euler = new THREE.Euler().setFromQuaternion(localQuat, 'YXZ');
+  const deg = THREE.MathUtils.radToDeg;
+  AFRAME.INSPECTOR.execute('entityupdate', {
+    entity,
+    component: 'position',
+    value: { x: localPos.x, y: localPos.y, z: localPos.z }
+  });
+  AFRAME.INSPECTOR.execute('entityupdate', {
+    entity,
+    component: 'rotation',
+    value: { x: deg(euler.x), y: deg(euler.y), z: deg(euler.z) }
+  });
+  STREET.notify.successMessage('Viewer start set to current view');
 }
 
 export function setFocusCameraPose(entity) {

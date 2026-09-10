@@ -155,6 +155,12 @@ export const customLayersData = [
     icon: '',
     handlerFunction: createFunctions.createFocusHotspot
   }),
+  card(m.viewerStartName, m.viewerStartDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createViewerStart
+  }),
   card(m.raceTargetName, m.raceTargetDesc, {
     img: '',
     requiresPro: false,

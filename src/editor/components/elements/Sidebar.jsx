@@ -25,6 +25,7 @@ import DriveControlsSidebar from './DriveControlsSidebar';
 import FlyControlsSidebar from './FlyControlsSidebar';
 import StreetTrafficReplaySidebar from './StreetTrafficReplaySidebar';
 import FocusHotspotSidebar from './FocusHotspotSidebar';
+import ViewerStartSidebar from './ViewerStartSidebar';
 import UserLayersSidebar from './UserLayersSidebar';
 import AdvancedComponents from './AdvancedComponents';
 import AssetInfoPanel from './AssetInfoPanel';
@@ -237,6 +238,14 @@ export default class Sidebar extends React.Component {
                   </div>
                 </>
               )}
+              {entity.getAttribute('viewer-start') && (
+                <>
+                  <ViewerStartSidebar entity={entity} />
+                  <div className="propertyRow">
+                    <AdvancedComponents entity={entity} />
+                  </div>
+                </>
+              )}
               {entity.getAttribute('street-traffic-replay') && (
                 <>
                   <StreetTrafficReplaySidebar entity={entity} />
@@ -254,6 +263,7 @@ export default class Sidebar extends React.Component {
               )}
               {!entity.getAttribute('drive-controls') &&
                 !entity.getAttribute('fly-controls') &&
+                !entity.getAttribute('viewer-start') &&
                 !entity.getAttribute('street-traffic-replay') && (
                   <ComponentsContainer entity={entity} />
                 )}

@@ -277,6 +277,15 @@ export const layerCardMessages = defineMessages({
     defaultMessage:
       'A semitransparent clickable block for view mode. Visitors click it to fly the camera in and read your title and description, then return to the overview.'
   },
+  viewerStartName: {
+    id: 'addLayer.card.viewerStart.name',
+    defaultMessage: 'Viewer Start'
+  },
+  viewerStartDesc: {
+    id: 'addLayer.card.viewerStart.desc',
+    defaultMessage:
+      'Where a visitor begins when they press Start. Place it, frame the view you want, then use "Set To Current View" in its panel. Only shown while editing.'
+  },
   raceTargetName: {
     id: 'addLayer.card.raceTarget.name',
     defaultMessage: 'Race Target'

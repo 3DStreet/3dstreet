@@ -191,6 +191,12 @@
   "addLayer.card.uploadSplat.name": {
     "defaultMessage": "Upload Gaussian Splat"
   },
+  "addLayer.card.viewerStart.desc": {
+    "defaultMessage": "Where a visitor begins when they press Start. Place it, frame the view you want, then use \"Set To Current View\" in its panel. Only shown while editing."
+  },
+  "addLayer.card.viewerStart.name": {
+    "defaultMessage": "Viewer Start"
+  },
   "addLayer.onlyFirstFileAdded": {
     "defaultMessage": "Only the first file was added. Drop one file at a time."
   },
@@ -2554,5 +2560,23 @@
   },
   "viewer.stop": {
     "defaultMessage": "Stop"
+  },
+  "viewerStart.enabled": {
+    "defaultMessage": "Enabled"
+  },
+  "viewerStart.preview": {
+    "defaultMessage": "Preview Start"
+  },
+  "viewerStart.previewTitle": {
+    "defaultMessage": "Fly the camera to this start point now"
+  },
+  "viewerStart.setToCurrentView": {
+    "defaultMessage": "Set To Current View"
+  },
+  "viewerStart.setToCurrentViewTitle": {
+    "defaultMessage": "Move this start point to the current editor camera position and direction"
+  },
+  "viewerStart.tip": {
+    "defaultMessage": "💡 Pressing Start flies the camera here first, so visitors always begin from this view. The marker is only visible while editing. The scene thumbnail still sets where the scene opens."
   }
 }

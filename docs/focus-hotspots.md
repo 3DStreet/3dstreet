@@ -31,6 +31,40 @@ HyperCard-style click-through experiences.
    hotspot registers as a playable capability with mode-manager, so the
    Play UI appears once the scene has at least one (no traffic or
    vehicle needed). Stop returns to editing.
+6. Optional: add a **Viewer Start** layer (Add Layer card) to pin where
+   Start begins. Frame the opening shot and press **Set To Current
+   View** in its panel (**Preview Start** replays the glide). Without
+   one, Start simply begins wherever the camera is.
+
+## Viewer Start (`viewer-start`)
+
+The explicit starting vantage for a viewer session, as a discrete entity
+(`src/aframe-components/play/viewer-start.js`) rather than scene
+metadata: its position/rotation _is_ the camera pose, so it is
+selectable, movable with the gizmo, undoable, and shows up in the layers
+list with its own badge. Distinct from the scene thumbnail, which still
+sets where a scene _loads_; Viewer Start sets where **Start** goes,
+which fixes the previous inconsistency (Start used to begin wherever the
+author had left the camera).
+
+- **Editor marker:** a procedural camera body + wireframe frustum
+  (facing local -Z) set as the entity's `mesh`; visible only in control
+  mode `editor`, hidden via `setAttribute('visible', false)` in
+  view/play/drive. Nothing but position/rotation/`viewer-start`
+  serializes.
+- **Play:** the `viewer-start` system glides the shared editor/viewer
+  camera to the pose on `play-mode-start` (`controls.focusCameraState`,
+  the snapshot-glide path) and, for editor-origin sessions only,
+  restores the pre-Start pose on `play-mode-stop`. Skipped when the
+  scene's playable capabilities include drive or fly, since those borrow
+  the rig camera for the whole session.
+- **Playable:** registers a `viewer-start` playable check (any enabled
+  instance), so a start point alone surfaces Start — an FPS-style
+  look-around needs no hotspot or traffic.
+- **Roles are open:** `viewer-start` is a role component like
+  `drive-controls`; future spawn semantics (pedestrian/FPS controls, a
+  default vehicle) can hang off it rather than each inventing a start
+  marker.
 
 **Visitor (viewer / embed):**
 
@@ -79,6 +113,9 @@ composes with it for a link-time camera override.
   during playback by design. The system also registers a
   `focus-hotspot` playable check (any hotspot with `enabled: true`) so
   the Start button surfaces for hotspot-only scenes.
+- **Layers badge:** `getEntityIcon` (`src/editor/lib/entity.js`) shows
+  a hotspot badge for any entity carrying `focus-hotspot` (the role,
+  not the host geometry) and a start badge for `viewer-start`.
 - **All camera motion reuses the editor controls** (shared with the
   viewer since #1848): `controls.focus()` — which already honors
   `focus-camera-pose` — for the fly-in, `controls.focusCameraState()`
