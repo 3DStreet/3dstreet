@@ -2,6 +2,34 @@ import Events from './Events';
 import { isStreetLevelNav } from './nav-experimental/flag.js';
 import { captureNavDiscovery } from './navAnalytics.js';
 import { resolveClickSelection } from './cascadingSelection.js';
+import useStore from '@/store';
+
+// OSM click-to-upgrade (#1930): an empty-space click in osm3d mode probes
+// the streamed street ways under the cursor's ground point and surfaces an
+// upgrade candidate for the OsmUpgradeChip. Pure read — the actual upgrade
+// runs from the chip through osm-streets' upgradeWayAt.
+function probeOsmWayAtCursor(mouseCursor) {
+  const streetsEl = document.querySelector('[osm-streets]');
+  const comp = streetsEl && streetsEl.components['osm-streets'];
+  if (!comp) return null;
+  const ray = mouseCursor.components.raycaster?.raycaster?.ray;
+  if (!ray || ray.direction.y >= 0) return null;
+  const t = -ray.origin.y / ray.direction.y;
+  if (!Number.isFinite(t) || t < 0 || t > 10000) return null;
+  const worldPoint = {
+    x: ray.origin.x + ray.direction.x * t,
+    y: 0,
+    z: ray.origin.z + ray.direction.z * t
+  };
+  const hit = comp.wayAtPoint(worldPoint);
+  if (!hit || hit.alreadyUpgraded) return null;
+  return {
+    wayId: hit.way.wayId,
+    class: hit.way.class,
+    distance: hit.distance,
+    worldPoint
+  };
+}
 
 export function initRaycaster(inspector) {
   // Use cursor="rayOrigin: mouse".
@@ -124,6 +152,14 @@ export function initRaycaster(inspector) {
       // Feature-discovery: count a viewport click that actually selects an
       // entity (a click on empty space deselects — not a "select").
       if (intersectedEl) captureNavDiscovery('select');
+      // Empty-space click: offer OSM street upgrade when the ground point
+      // under the cursor lands near a streamed way (#1930); a click that
+      // selects an entity clears any pending offer.
+      useStore
+        .getState()
+        .setOsmWayCandidate(
+          intersectedEl ? null : probeOsmWayAtCursor(mouseCursor)
+        );
       inspector.selectEntity(intersectedEl);
       // Force the cursor component to trigger again an intersection to show hover box on the original intersected el inside the street-segment.
       mouseCursor.components.cursor.clearCurrentIntersection(false);
@@ -144,6 +180,19 @@ export function initRaycaster(inspector) {
     }
     event.preventDefault();
     onUpPosition.set(event.clientX, event.clientY);
+    // Empty-space clicks never reach handleClick — A-Frame's cursor only
+    // emits `click` when an entity is intersected, and osm3d ground layers
+    // are raycaster-ignored. Probe for an OSM street way here instead
+    // (#1930): a stationary mouseup with no intersected entity offers the
+    // way under the cursor's ground point for upgrade. Entity clicks are
+    // handled (and the offer cleared) in handleClick.
+    if (
+      event.detail <= 1 &&
+      onDownPosition.distanceTo(onUpPosition) <= CLICK_MAX_DRAG_PX &&
+      !getIntersectedEl()
+    ) {
+      useStore.getState().setOsmWayCandidate(probeOsmWayAtCursor(mouseCursor));
+    }
   }
 
   /**
