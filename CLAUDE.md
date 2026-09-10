@@ -67,6 +67,8 @@ public/
 
 **Utilities:** `create-from-json`, `gltf-part`, `screentock`, `measure-line`
 
+**Focus hotspots + embed (#1315):** `focus-hotspot` marks any entity (typically a semitransparent block from the Add Layer card) as clickable in viewer mode — the system owns one pointer raycast, click glides the camera in via the editor controls (honoring an author-set `focus-camera-pose`), opens the `FocusHotspotPanel` info overlay (title/description authored in `FocusHotspotSidebar`), and "Back to overview"/Escape returns to the pre-click pose. `?embed=true` = viewer with app chrome stripped for iframes (snippet in ShareModal). Entry point: `docs/focus-hotspots.md`.
+
 ## Play Mode & Viewer
 
 Unified Viewer presentation with a Start/Stop play lifecycle. Playing is presentation-only (nothing persists, no edit permission needed). Code lives in `src/aframe-components/play/` plus `mode-manager.js`.

@@ -139,6 +139,32 @@ function ShareModal() {
     return window.location.href;
   };
 
+  // Chrome-free viewer for iframing into another site (?embed=true).
+  // The scene opens at its saved start view; focus hotspots stay clickable.
+  const getEmbedSnippet = () => {
+    const sceneId = STREET.utils.getCurrentSceneId();
+    if (!sceneId) return null;
+    const embedUrl = `https://3dstreet.app/?embed=true#/scenes/${sceneId}`;
+    return `<iframe src="${embedUrl}" width="100%" height="480" style="border:0;" allow="fullscreen; xr-spatial-tracking" allowfullscreen></iframe>`;
+  };
+
+  const copyEmbedToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      STREET.notify.successMessage(
+        intl.formatMessage({
+          id: 'shareModal.embedCopied',
+          defaultMessage: 'Embed code copied to clipboard'
+        })
+      );
+      posthog.capture('share_embed_copied', {
+        scene_id: STREET.utils.getCurrentSceneId()
+      });
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
   const handleEmailShare = () => {
     const sceneTitle =
       sceneData?.title ||
@@ -479,6 +505,31 @@ function ShareModal() {
                   </Button>
                 </div>
               </div>
+
+              {/* Embed section — iframe snippet for a chrome-free viewer */}
+              {getEmbedSnippet() && (
+                <div className={styles.shareUrlSection}>
+                  <div className={styles.urlInputWrapper}>
+                    <textarea
+                      readOnly
+                      value={getEmbedSnippet()}
+                      className={styles.urlTextarea}
+                      rows={3}
+                    />
+                    <Button
+                      onClick={() => copyEmbedToClipboard(getEmbedSnippet())}
+                      leadingIcon={<Copy32Icon />}
+                      variant="toolbtn"
+                      className={styles.copyButton}
+                    >
+                      <FormattedMessage
+                        id="shareModal.copyEmbed"
+                        defaultMessage="Copy Embed Code"
+                      />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

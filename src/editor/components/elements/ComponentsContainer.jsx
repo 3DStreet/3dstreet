@@ -51,6 +51,13 @@ export default class ComponentsContainer extends React.Component {
     if (entity.components?.geometry) {
       approved.push({ value: 'street-generated-grass', label: 'Grass' });
     }
+    // Any visible object can become a clickable viewer hotspot — a
+    // semitransparent block, an uploaded model, a splat placeholder.
+    approved.push({
+      value: 'focus-hotspot',
+      label: 'Focus Hotspot',
+      attrValue: 'title: Point of interest'
+    });
     if (this.canFlattenTerrain()) {
       approved.push({
         value: 'geo-flatten',
