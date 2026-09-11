@@ -292,6 +292,18 @@
     outline: none;
   }
 
+  // Long names truncate with an ellipsis so the inline badge stays visible
+  // right after the name; the label keeps clear of the absolutely
+  // positioned expand arrow at the row's right edge.
+  .entity .entityPrint {
+    padding-right: 18px;
+  }
+  .entity .entityName {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   // Role badges (hotspot): inline after the name, before the expand arrow,
   // always visible, passive.
   .entityBadges {
