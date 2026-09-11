@@ -12,7 +12,7 @@ const isSingleProperty = AFRAME.schema.isSingleProperty;
 // panel header reads e.g. "Clones 2" instead of "street-generated-clones__2".
 const GENERATED_COMPONENT_LABELS = {
   'focus-hotspot': 'Focus Hotspot',
-  'viewer-start': 'Viewer Start',
+  'viewer-start': 'Starting View',
   'street-generated-clones': 'Clones',
   'street-generated-striping': 'Striping',
   'street-generated-stencil': 'Stencils',

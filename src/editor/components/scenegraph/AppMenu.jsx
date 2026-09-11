@@ -21,7 +21,11 @@ import {
   cutSelectedEntity,
   pasteFromClipboard
 } from '../../lib/clipboard.js';
-import { cloneSelectedEntity, removeSelectedEntity } from '../../lib/entity.js';
+import {
+  cloneSelectedEntity,
+  removeSelectedEntity,
+  ensureViewerStartAtCurrentView
+} from '../../lib/entity.js';
 import { editShortcuts } from '../../lib/editShortcuts.js';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { SUPPORTED_LOCALES } from '@/editor/i18n/config';
@@ -733,6 +737,22 @@ const AppMenu = ({ currentUser }) => {
             </Menubar.Item>
             <PlanViewMenuItem />
             <Menubar.Separator className="MenubarSeparator" />
+            <Menubar.Item
+              className="MenubarItem"
+              onClick={() => {
+                // The scene's Starting View (viewer-start): where visitors
+                // open the scene and where Start flies. Creates it on first
+                // use, moves it after, and selects it either way.
+                ensureViewerStartAtCurrentView({ select: true });
+                STREET.notify.successMessage('Starting View set to current');
+                posthog.capture('set_starting_view_clicked');
+              }}
+            >
+              <FormattedMessage
+                id="appMenu.view.setStartingView"
+                defaultMessage="Set as Starting View"
+              />
+            </Menubar.Item>
             <Menubar.Item
               className="MenubarItem"
               onClick={() => {

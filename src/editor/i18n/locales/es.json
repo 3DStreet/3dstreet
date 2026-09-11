@@ -113,6 +113,7 @@
   "appMenu.view.navigationControls": "Controles de navegación",
   "appMenu.view.navigationControls.experimental": "Experimental",
   "appMenu.view.navigationControls.standard": "Estándar",
+  "appMenu.view.setStartingView": "Definir como vista inicial",
   "appMenu.view.showGrid": "Mostrar cuadrícula",
   "appMenu.view.showPanels": "Mostrar paneles",
   "appMenu.view.snapshotRender": "Captura y renderizado...",
@@ -853,5 +854,5 @@
   "viewerStart.previewTitle": "Llevar la cámara a este punto de inicio ahora",
   "viewerStart.setToCurrentView": "Fijar a la vista actual",
   "viewerStart.setToCurrentViewTitle": "Mover este punto de inicio a la posición y dirección actuales de la cámara del editor",
-  "viewerStart.tip": "💡 La vista inicial de la escena: los visitantes abren la escena aquí e Iniciar vuela hasta aquí. Fijar una miniatura de la escena la mueve a la vista capturada. El marcador solo es visible al editar; tú sigues editando desde donde lo dejaste."
+  "viewerStart.tip": "💡 Los visitantes abren la escena desde esta vista e Iniciar vuela hasta aquí. Fijar una miniatura de la escena también la mueve a la vista capturada. El marcador solo es visible al editar; tú sigues editando desde donde lo dejaste."
 }

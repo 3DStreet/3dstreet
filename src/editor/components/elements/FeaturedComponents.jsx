@@ -102,7 +102,7 @@ const ROLE_SECTIONS = {
   'viewer-start': {
     icon: faPlay,
     removeConfirmMessage:
-      'Remove the start view? Visitors will open the scene at the default view instead.'
+      'Remove the Starting View? Visitors will open the scene at the default view instead.'
   }
 };
 

@@ -113,6 +113,7 @@
   "appMenu.view.navigationControls": "Commandes de navigation",
   "appMenu.view.navigationControls.experimental": "Expérimental",
   "appMenu.view.navigationControls.standard": "Standard",
+  "appMenu.view.setStartingView": "Définir comme vue de départ",
   "appMenu.view.showGrid": "Afficher la grille",
   "appMenu.view.showPanels": "Afficher les panneaux",
   "appMenu.view.snapshotRender": "Capture et rendu...",
@@ -853,5 +854,5 @@
   "viewerStart.previewTitle": "Déplacer la caméra vers ce point de départ maintenant",
   "viewerStart.setToCurrentView": "Définir sur la vue actuelle",
   "viewerStart.setToCurrentViewTitle": "Déplacer ce point de départ à la position et l'orientation actuelles de la caméra de l'éditeur",
-  "viewerStart.tip": "💡 La vue de départ de la scène : les visiteurs ouvrent la scène ici et Démarrer y amène la caméra. Définir une vignette de la scène la déplace vers la vue capturée. Le repère n'est visible qu'en édition ; vous continuez d'éditer là où vous vous étiez arrêté."
+  "viewerStart.tip": "💡 Les visiteurs ouvrent la scène depuis cette vue et Démarrer y amène la caméra. Définir une vignette de la scène la déplace aussi vers la vue capturée. Le repère n'est visible qu'en édition ; vous continuez d'éditer là où vous vous étiez arrêté."
 }

@@ -48,7 +48,7 @@ export const ViewerStartSectionControls = ({ entity }) => {
       <div className="tip">
         <FormattedMessage
           id="viewerStart.tip"
-          defaultMessage="💡 The scene's start view: visitors open the scene here and Start flies here. Setting a scene thumbnail moves it to the captured view. The marker is only visible while editing; you still edit from wherever you left off."
+          defaultMessage="💡 Visitors open the scene from this view and Start flies here. Setting a scene thumbnail also moves it to the captured view. The marker is only visible while editing; you still edit from wherever you left off."
         />
       </div>
     </div>

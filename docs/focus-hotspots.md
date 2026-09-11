@@ -27,7 +27,8 @@ HyperCard-style click-through experiences.
 3. Frame the shot you want visitors to land on, press **Set Focus View**
    (writes `focus-camera-pose`, the same mechanism as the long-press
    Focus button). **Preview Focus** replays the glide.
-4. The scene's _start_ camera is the **Viewer Start** (below). Setting
+4. The scene's _start_ camera is the **Starting View** (below; the
+   component is `viewer-start`). Setting
    a scene thumbnail in the capture modal moves it (creating it if the
    scene has none), so "the thumbnail view" and "where visitors begin"
    are one thing.
@@ -35,12 +36,13 @@ HyperCard-style click-through experiences.
    hotspot registers as a playable capability with mode-manager, so the
    Play UI appears once the scene has at least one (no traffic or
    vehicle needed). Stop returns to editing.
-6. To move the start view later, select the Viewer Start layer,
-   re-frame and press **Set To Current View** in its panel
-   (**Preview Start** replays the glide). Without one, visitors and
-   Start use the legacy default snapshot pose, if any.
+6. Or frame the opening shot and choose **View › Set as Starting
+   View**: it creates the Starting View layer (or moves it) and selects
+   it. Re-frame and press **Set To Current View** in its panel to move
+   it again (**Preview Start** replays the glide). Without one, visitors
+   and Start use the legacy default snapshot pose, if any.
 
-## Viewer Start (`viewer-start`)
+## Starting View (`viewer-start`)
 
 The scene's start pose, as a discrete entity
 (`src/aframe-components/play/viewer-start.js`) rather than scene
@@ -48,27 +50,28 @@ metadata: its position/rotation/`fov` _is_ the camera pose, so it is
 selectable, movable with the gizmo, undoable, and shows up in the layers
 list. One per scene: it is pinned to the top of the layers list, is not
 draggable, cloning it is refused, and there is no Add Layer card. It is
-created by exactly one action, which also moves it if it exists:
-**Set as thumbnail** in the capture modal. Opt-in: nothing shows until
-that happens. Deleting the layer is the off switch (no enabled toggle).
+created by exactly two actions, both of which move it if it exists:
+**Set as thumbnail** in the capture modal and **View › Set as Starting
+View** (which also selects it). Opt-in: nothing shows until one of those
+happens. Deleting the layer is the off switch (no enabled toggle).
 
 **One start pose, three consumers.** A scene used to carry three camera
 poses with no relation between them (autosaved editor pose, default
-snapshot pose used at load, Viewer Start used by Start). Now
+snapshot pose used at load, Starting View used by Start). Now
 (`src/tested/scene-camera-pose.js`, unit-tested):
 
-| Launch                                  | Opens at                                        |
-| --------------------------------------- | ----------------------------------------------- |
-| `?camera=` deep link                    | the link's pose                                 |
-| `?viewer=true` / `?embed=true`          | Viewer Start › default snapshot › autosave      |
-| editor, not the scene's author          | same as viewer                                  |
-| editor, the scene's author / local file | autosaved editor pose › Viewer Start › snapshot |
+| Launch                                  | Opens at                                         |
+| --------------------------------------- | ------------------------------------------------ |
+| `?camera=` deep link                    | the link's pose                                  |
+| `?viewer=true` / `?embed=true`          | Starting View › default snapshot › autosave      |
+| editor, not the scene's author          | same as viewer                                   |
+| editor, the scene's author / local file | autosaved editor pose › Starting View › snapshot |
 
-Pressing **Start** glides to the same start pose (Viewer Start › default
+Pressing **Start** glides to the same start pose (Starting View › default
 snapshot, via `viewer-start` system `getStartCameraState()`; the viewport
 hands the snapshot pose over as the fallback on `newScene`). The
 capture modal's **Set as thumbnail** calls `ensureViewerStartAtCurrentView`
-so a thumbnail always has a matching Viewer Start; older scenes without
+so a thumbnail always has a matching Starting View; older scenes without
 one keep loading at their snapshot pose, unchanged.
 
 - **Editor marker:** a small camera-body mesh (so the selection raycast
@@ -103,7 +106,7 @@ one keep loading at their snapshot pose, unchanged.
   their _first_ hotspot click. Clicking another hotspot mid-focus
   switches directly. There is no close/dismiss on the panel: Back is
   the one way out, so it stays up while focused.
-- **Fixed camera** (Viewer Start `freeLook: false`): in viewer mode the
+- **Fixed camera** (Starting View `freeLook: false`): in viewer mode the
   visitor's orbit/pan/zoom/fly input is ignored; only hotspot clicks and
   Back move the camera. The `viewer-start` system sets
   `controls.inputLocked` while the scene is in control mode `viewer`
@@ -168,7 +171,7 @@ composes with it for a link-time camera override.
 - **One pose representation.** `focus-camera-pose` stores the full
   camera pose in the entity's frame (`relativePosition`,
   `relativeRotation` in degrees/YXZ, `fov`) and `controls.focus()` hands
-  a stored pose to `focusCameraState()`, the same glide the Viewer Start
+  a stored pose to `focusCameraState()`, the same glide the Starting View
   and snapshots use, so the visitor lands exactly as the author framed
   it (off-center, tighter lens). Capture/resolve live in
   `src/editor/lib/focusPose.js` (unit-tested). Poses saved before

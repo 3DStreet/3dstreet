@@ -192,7 +192,7 @@ export function cloneEntity(entity) {
   // One start pose per scene: the viewer-start system only ever honors the
   // first, so a second copy would silently do nothing.
   if (entity?.hasAttribute?.('viewer-start')) {
-    STREET.notify.warningMessage('A scene has one Viewer Start');
+    STREET.notify.warningMessage('A scene has one Starting View');
     return;
   }
   return AFRAME.INSPECTOR.execute('entityclone', entity);
@@ -1000,18 +1000,19 @@ export function setViewerStartToCurrentView(entity, { notify = true } = {}) {
     property: 'fov',
     value: values.fov
   });
-  if (notify) STREET.notify.successMessage('Viewer start set to current view');
+  if (notify) STREET.notify.successMessage('Starting View set to current');
 }
 
-/** The scene's Viewer Start entity or null. One per scene; see cloneEntity. */
+/** The scene's Starting View (viewer-start) entity or null. One per scene. */
 export function getViewerStartEntity() {
   return document.querySelector('[viewer-start]');
 }
 
 /**
- * Move the scene's Viewer Start to the current editor view, creating it if
- * the scene has none. The only creation path is "set thumbnail", so the
- * thumbnail view and the start pose are one thing. Returns the entity.
+ * Move the scene's Starting View (viewer-start) to the current editor
+ * view, creating it if the scene has none. Two callers: "set thumbnail"
+ * (so the thumbnail view and the start pose are one thing) and View › Set
+ * as Starting View. Returns the entity.
  */
 export function ensureViewerStartAtCurrentView({ select = false } = {}) {
   const existing = getViewerStartEntity();
@@ -1027,7 +1028,7 @@ export function ensureViewerStartAtCurrentView({ select = false } = {}) {
       position: values.position,
       rotation: values.rotation,
       'viewer-start': { fov: values.fov },
-      'data-layer-name': 'Viewer Start'
+      'data-layer-name': 'Starting View'
     }
   };
   // entitycreate selects the new entity once it has loaded; when called
