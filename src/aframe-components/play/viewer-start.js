@@ -18,9 +18,7 @@ import useStore from '../../store.js';
  *
  * The component draws a procedural camera-body + frustum marker that only
  * shows in editor control mode (never in view/play/drive, never saved —
- * only position/rotation/viewer-start serialize). The system registers a
- * playable capability so a scene with just a start point still lights up
- * the Play UI (an FPS-style look-around, a hotspot tour with no traffic).
+ * only position/rotation/viewer-start serialize).
  *
  * Drive/fly own the camera for the whole session when present (they borrow
  * the rig, "drive wins"), so the glide is skipped in that case.
@@ -190,18 +188,11 @@ AFRAME.registerSystem('viewer-start', {
     this.sceneEl.addEventListener('play-mode-stop', relock);
     this.sceneEl.addEventListener('mode-changed', relock);
 
-    // Playable capability: a start point alone is something for Start to
-    // do. Registered on `loaded` so it's independent of system init order.
-    const registerPlayable = () => {
-      this.sceneEl.systems['mode-manager']?.registerPlayableCheck(
-        'viewer-start',
-        () => !!this.getActive()
-      );
-    };
-    if (this.sceneEl.hasLoaded) registerPlayable();
-    else {
-      this.sceneEl.addEventListener('loaded', registerPlayable, { once: true });
-    }
+    // Deliberately NOT a playable capability: set-thumbnail creates a
+    // Starting View implicitly, so counting it would give every scene with
+    // a thumbnail a Start button that does nothing visible. Hotspots,
+    // traffic and vehicles surface Start; when they do, Start still glides
+    // here.
   },
 
   register(component) {

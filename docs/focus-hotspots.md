@@ -89,9 +89,10 @@ one keep loading at their snapshot pose, unchanged.
   playable capabilities include drive or fly, since those borrow the rig
   camera for the whole session ("drive wins": a drivable car is
   effectively its own start point).
-- **Playable:** registers a `viewer-start` playable check (any
-  instance), so a start point alone surfaces Start — an FPS-style
-  look-around needs no hotspot or traffic.
+- **Not playable by itself:** set-thumbnail creates a Starting View
+  implicitly, so it must not surface Start on its own (every scene with
+  a thumbnail would get a do-nothing Start button). Hotspots, traffic
+  and vehicles make a scene playable; Start then glides here.
 - **Roles are open:** `viewer-start` is a role component like
   `drive-controls`; future camera controls (a look-at target / object,
   pedestrian or FPS spawn semantics) hang off its schema rather than
