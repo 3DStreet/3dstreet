@@ -85,6 +85,11 @@
       }
 
       window.addEventListener('message', (e) => {
+        // Only the embedder drives this page, and it is same-origin. Not a
+        // security boundary: the page renders whatever GLB it is handed and
+        // posts the thumbnail back to that same window, so the worst a
+        // stray sender achieves is a screenshot of its own model.
+        if (e.source !== window.parent) return;
         const data = e.data;
         if (!data || typeof data !== 'object') return;
         if (data.type !== '3dstreet:load-blob') return;
