@@ -122,14 +122,21 @@ const MeshDetailsModal = ({
   // Briefly true after a successful "Recapture thumbnail" click, to flash a
   // checkmark on the button as feedback (the live capture is otherwise silent).
   const [thumbCaptured, setThumbCaptured] = useState(false);
-  // Stage of an in-flight "Reoptimize" run ('downloading' | 'optimizing' |
-  // 'uploading'), or null when idle. Doubles as the button's disabled flag.
-  const [reoptimizeStage, setReoptimizeStage] = useState(null);
-  // Outcome and failure for the reoptimize action. Kept out of the modal-wide
-  // `error` so both render on their own line under the Size row, next to the
-  // text they are about, rather than at the bottom of the modal.
-  const [reoptimizeResult, setReoptimizeResult] = useState(null);
-  const [reoptimizeError, setReoptimizeError] = useState(null);
+  // Reoptimize progress/outcome, keyed by assetId:
+  //   { [assetId]: { stage?: 'downloading'|'optimizing'|'uploading',
+  //                  result?: string, error?: string } }
+  //
+  // Keyed rather than a single value because a run outlives the modal's view
+  // of it: navigating away must not cancel the download/optimize/upload —
+  // the work is expensive and the doc update is still worth having — so the
+  // status has to belong to the asset it describes. Rendering just reads the
+  // current asset's entry, which means navigating away hides it, navigating
+  // back shows it again (still running, or its outcome), and the button
+  // can't start a second run on an asset that already has one in flight.
+  // Kept out of the modal-wide `error` so it renders under the Size row it
+  // is about rather than at the bottom of the modal.
+  const [reoptimizeByAsset, setReoptimizeByAsset] = useState({});
+  const reoptimizeStatus = reoptimizeByAsset[assetId];
   const t = useSharedMessages();
 
   const [name, setName] = useState('');
@@ -171,21 +178,15 @@ const MeshDetailsModal = ({
     };
   }, [assetId, ownerUid]);
 
-  // Switching assets cancels a reoptimize still running for the previous one
-  // and clears its status. Without this, A's "Downloading…" stays on screen
-  // under B, and A's completion would write A's optimization stats onto B's
-  // doc via the setData below. Cancelling (rather than just ignoring the
-  // result) also stops the download/upload actually in flight.
-  const reoptimizeRunRef = useRef(null);
+  // Which asset the modal is showing right now, readable from an async
+  // reoptimize that started on a different one. A run keeps going after the
+  // user navigates away (see reoptimizeByAsset), so the only thing that has
+  // to be scoped is the UI: `data` belongs to whatever asset is on screen,
+  // and writing A's optimization stats into B's row is the bug this guards.
+  const shownAssetIdRef = useRef(assetId);
   useEffect(() => {
-    setReoptimizeStage(null);
-    setReoptimizeResult(null);
-    setReoptimizeError(null);
-    return () => {
-      reoptimizeRunRef.current?.abort();
-      reoptimizeRunRef.current = null;
-    };
-  }, [assetId, ownerUid]);
+    shownAssetIdRef.current = assetId;
+  }, [assetId]);
 
   // Load the asset's transcode/optimization jobs (owner-only by rules) so the
   // modal can show optimization status. Best-effort: failure just hides the row.
@@ -509,67 +510,60 @@ const MeshDetailsModal = ({
   // (pipeline skipped, or nothing smaller than what's already served) is
   // reported as a message, not an error — the asset is left exactly as it was.
   const onReoptimize = async () => {
-    if (!isOwner || !data || reoptimizeStage) return;
-    setReoptimizeResult(null);
-    setReoptimizeError(null);
-    const controller = new AbortController();
-    reoptimizeRunRef.current = controller;
-    const isStale = () =>
-      controller.signal.aborted || reoptimizeRunRef.current !== controller;
+    if (!isOwner || !data || reoptimizeStatus?.stage) return;
+    const runAssetId = assetId;
+    const isShown = () => shownAssetIdRef.current === runAssetId;
+    // Status always lands under `runAssetId`, whether or not that asset is
+    // still on screen — the run is not cancelled, so its outcome stays
+    // available for when the user navigates back to it.
+    const setStatus = (patch) =>
+      setReoptimizeByAsset((prev) => ({ ...prev, [runAssetId]: patch }));
+
+    setStatus({ stage: 'downloading' });
     try {
       const { reoptimizeAsset } = await import('@shared/asset-upload');
       const result = await reoptimizeAsset(data, {
         ownerUid,
-        signal: controller.signal,
-        // A stage can still be reported between the abort and the next
-        // await point; dropping it keeps the previous asset's progress off
-        // the new asset's row.
-        onStatus: (stage) => {
-          if (!isStale()) setReoptimizeStage(stage);
-        }
+        onStatus: (stage) => setStatus({ stage })
       });
-      // Aborts reject rather than resolve, but the window between the last
-      // await and here is not covered by that — check before touching state.
-      if (isStale()) return;
       if (!result.ok) {
-        setReoptimizeResult(
-          result.reason === 'not_smaller_than_current'
-            ? t('reoptimizeAlreadyOptimal')
-            : t('reoptimizeNoChange', { reason: result.reason })
-        );
+        setStatus({
+          result:
+            result.reason === 'not_smaller_than_current'
+              ? t('reoptimizeAlreadyOptimal')
+              : t('reoptimizeNoChange', { reason: result.reason })
+        });
         return;
       }
       // Reflect the new variant without closing: the Size row reads
       // optimizedSourceSize, and the preview/download use optimizedSourceUrl.
-      setData((prev) =>
-        prev
-          ? {
-              ...prev,
-              optimizedSourceUrl: result.newUrl,
-              optimizedSourcePath: result.newPath,
-              optimizedSourceSize: result.bytesAfter,
-              optimizationMetadata: result.metadata
-            }
-          : prev
-      );
+      // Only when this asset is the one on screen — `data` is whatever the
+      // modal currently shows, so applying A's result while B is displayed
+      // would overwrite B's row with A's numbers. Navigating back to A
+      // re-reads the doc, which by then carries the same values.
+      if (isShown()) {
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                optimizedSourceUrl: result.newUrl,
+                optimizedSourcePath: result.newPath,
+                optimizedSourceSize: result.bytesAfter,
+                optimizationMetadata: result.metadata
+              }
+            : prev
+        );
+      }
       const saved = Math.max(0, result.bytesBefore - result.bytesAfter);
-      setReoptimizeResult(
-        t('reoptimizeDone', {
+      setStatus({
+        result: t('reoptimizeDone', {
           size: formatBytes(result.bytesAfter),
           saved: formatBytes(saved)
         })
-      );
+      });
     } catch (err) {
-      // A cancelled run is not a failure: the user navigated away, and the
-      // effect above has already cleared this asset's status.
-      if (isStale() || err?.name === 'AbortError') return;
       console.error('[MeshDetailsModal] reoptimize failed', err);
-      setReoptimizeError(err.message || t('reoptimizeFailed'));
-    } finally {
-      if (reoptimizeRunRef.current === controller) {
-        reoptimizeRunRef.current = null;
-        setReoptimizeStage(null);
-      }
+      setStatus({ error: err.message || t('reoptimizeFailed') });
     }
   };
 
@@ -585,7 +579,7 @@ const MeshDetailsModal = ({
       <button
         type="button"
         onClick={onReoptimize}
-        disabled={!!reoptimizeStage}
+        disabled={!!reoptimizeStatus?.stage}
         className={styles.retryOptimizeBtn}
       >
         {label}
@@ -852,18 +846,18 @@ const MeshDetailsModal = ({
                   );
                 })()}
               </div>
-              {(reoptimizeStage || reoptimizeError || reoptimizeResult) && (
+              {reoptimizeStatus && (
                 <div
                   className={
-                    reoptimizeError
+                    reoptimizeStatus.error
                       ? styles.reoptimizeStatusError
                       : styles.reoptimizeStatus
                   }
                 >
-                  {reoptimizeError ||
-                    (reoptimizeStage
-                      ? t(REOPTIMIZE_STAGE_MESSAGE[reoptimizeStage])
-                      : reoptimizeResult)}
+                  {reoptimizeStatus.error ||
+                    (reoptimizeStatus.stage
+                      ? t(REOPTIMIZE_STAGE_MESSAGE[reoptimizeStatus.stage])
+                      : reoptimizeStatus.result)}
                 </div>
               )}
               {optimizationLabel && (

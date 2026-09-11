@@ -1,7 +1,9 @@
 /**
  * Regression guard for the cross-asset navigation race in the Reoptimize
  * action: a run started on asset A must not write A's optimization stats,
- * progress or outcome onto asset B when the user navigates mid-run.
+ * progress or outcome onto asset B when the user navigates mid-run — while
+ * still running to completion, because the download/optimize/upload is
+ * expensive and A's doc update is worth having either way.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
@@ -61,6 +63,15 @@ vi.mock('@shared/asset-upload', () => ({
 const { default: MeshDetailsModal } =
   await import('../../../src/shared/assets/components/MeshDetailsModal.jsx');
 
+const RESULT_A = {
+  ok: true,
+  newUrl: 'https://example.test/a-opt.glb',
+  newPath: `users/${OWNER}/assets/meshes/a-optimized-2.glb`,
+  bytesAfter: 1_000,
+  bytesBefore: 10_000_000,
+  metadata: { optimizationSkipped: false }
+};
+
 function renderModal(assetId) {
   return render(
     <MeshDetailsModal assetId={assetId} ownerUid={OWNER} onClose={() => {}} />
@@ -75,7 +86,7 @@ describe('MeshDetailsModal — reoptimize across asset navigation', () => {
     vi.clearAllMocks();
   });
 
-  it('cancels the run and drops its result when the user navigates away', async () => {
+  it('keeps running after the user navigates away, without touching the new asset', async () => {
     const { rerender } = renderModal(ASSET_A.assetId);
     const button = await screen.findByRole('button', {
       name: /retry optimization/i
@@ -87,6 +98,9 @@ describe('MeshDetailsModal — reoptimize across asset navigation', () => {
     await waitFor(() => expect(reoptimizeCalls).toHaveLength(1));
     const run = reoptimizeCalls[0];
     expect(run.asset.assetId).toBe(ASSET_A.assetId);
+    // The work is deliberately NOT cancellable from here: no signal is
+    // handed over, so navigating away cannot abort the transfer.
+    expect(run.opts.signal).toBeUndefined();
 
     // Navigate to B while A's run is still pending.
     await act(async () => {
@@ -102,26 +116,21 @@ describe('MeshDetailsModal — reoptimize across asset navigation', () => {
       expect(getAsset).toHaveBeenCalledWith(ASSET_B.assetId, OWNER)
     );
 
-    // The in-flight download/upload is actually cancelled, not just ignored.
-    expect(run.opts.signal.aborted).toBe(true);
-
-    // A finishing late must not touch B.
+    // A finishing late must leave B's row alone.
     await act(async () => {
-      run.resolveRun({
-        ok: true,
-        newUrl: 'https://example.test/a-opt.glb',
-        newPath: `users/${OWNER}/assets/meshes/a-optimized-2.glb`,
-        bytesAfter: 1_000,
-        bytesBefore: 10_000_000,
-        metadata: { optimizationSkipped: false }
-      });
+      run.resolveRun(RESULT_A);
     });
 
     expect(screen.queryByText(/Reoptimized/i)).toBeNull();
     expect(screen.queryByText(/Downloading|Optimizing|Uploading/i)).toBeNull();
+    // B's Size row still shows B's own size, with no optimized variant —
+    // A's result must not have been merged into the displayed doc.
+    const sizeRow = screen.getByText('Size:').parentElement;
+    expect(sizeRow.textContent).toContain('2.0 MB');
+    expect(sizeRow.textContent).not.toContain('→');
   });
 
-  it('clears a previous asset in-progress status on navigation', async () => {
+  it("shows the finished run's outcome again on returning to that asset", async () => {
     const { rerender } = renderModal(ASSET_A.assetId);
     const button = await screen.findByRole('button', {
       name: /retry optimization/i
@@ -131,7 +140,44 @@ describe('MeshDetailsModal — reoptimize across asset navigation', () => {
     });
     await waitFor(() => expect(reoptimizeCalls).toHaveLength(1));
 
-    // Report a stage, as the real module does while downloading.
+    await act(async () => {
+      rerender(
+        <MeshDetailsModal
+          assetId={ASSET_B.assetId}
+          ownerUid={OWNER}
+          onClose={() => {}}
+        />
+      );
+    });
+    await act(async () => {
+      reoptimizeCalls[0].resolveRun(RESULT_A);
+    });
+    expect(screen.queryByText(/Reoptimized/i)).toBeNull();
+
+    // Back to A: its outcome is still there, because the status is keyed by
+    // asset rather than reset on navigation.
+    await act(async () => {
+      rerender(
+        <MeshDetailsModal
+          assetId={ASSET_A.assetId}
+          ownerUid={OWNER}
+          onClose={() => {}}
+        />
+      );
+    });
+    await waitFor(() => expect(screen.getByText(/Reoptimized/i)).toBeTruthy());
+  });
+
+  it('scopes in-progress status to the asset it belongs to', async () => {
+    const { rerender } = renderModal(ASSET_A.assetId);
+    const button = await screen.findByRole('button', {
+      name: /retry optimization/i
+    });
+    await act(async () => {
+      button.click();
+    });
+    await waitFor(() => expect(reoptimizeCalls).toHaveLength(1));
+
     await act(async () => {
       reoptimizeCalls[0].opts.onStatus('downloading');
     });
@@ -148,7 +194,8 @@ describe('MeshDetailsModal — reoptimize across asset navigation', () => {
     });
     expect(screen.queryByText(/Downloading/i)).toBeNull();
 
-    // A stage reported after the switch is dropped rather than shown under B.
+    // A stage reported after the switch belongs to A, so it must not appear
+    // while B is on screen.
     await act(async () => {
       reoptimizeCalls[0].opts.onStatus('uploading');
     });
