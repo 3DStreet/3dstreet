@@ -186,6 +186,9 @@ AFRAME.registerSystem('focus-hotspot', {
     this.sceneEl.addEventListener('mode-changed', (evt) => {
       if (evt.detail.to !== 'viewer') this.clearFocus();
     });
+    // Play Reset is a fresh run: drop the focused hotspot and the overview
+    // stash (the viewer-start system moves the camera back to the start).
+    this.sceneEl.addEventListener('play-mode-reset', () => this.clearFocus());
 
     // Playable capability: an enabled hotspot is something for Start to
     // do (viewer presentation makes it clickable), so the Play UI lights

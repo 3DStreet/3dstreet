@@ -187,18 +187,11 @@ composes with it for a link-time camera override.
 
 ## Open follow-ups (from playtesting, 2026-09-10)
 
-- **Badge collision:** the hotspot bullseye collided with the name text
-  and the expand arrow on layers with children. The badge now renders
-  inside the label right after the name (`EntityLabel` `trailing`);
-  re-verify on long names and nested layers.
-- **Reset in play mode is a no-op for hotspot scenes.** Expected: Reset
-  returns the camera to the start pose (`viewer-start` system
-  `goToStart()`), and presumably clears any focused hotspot.
 - **Fixed-camera viewer option.** An author may want to disable free
   look in viewer mode so the hotspot camera is fixed: the visitor can
-  only click hotspots / return to overview, not orbit or pan. Likely a
-  scene-level (Viewer Start?) setting that gates the controls in
-  control mode `viewer`.
+  only click hotspots / return to overview, not orbit, pan, zoom or
+  fly. Design discussion pending (where the setting lives, and which
+  inputs it gates).
 
 ## Stretch ideas (not built)
 

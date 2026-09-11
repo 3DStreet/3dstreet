@@ -150,8 +150,10 @@ AFRAME.registerSystem('viewer-start', {
     this._fallbackStartPose = null;
     this._onPlayStart = this._onPlayStart.bind(this);
     this._onPlayStop = this._onPlayStop.bind(this);
+    this._onPlayReset = this._onPlayReset.bind(this);
     this.sceneEl.addEventListener('play-mode-start', this._onPlayStart);
     this.sceneEl.addEventListener('play-mode-stop', this._onPlayStop);
+    this.sceneEl.addEventListener('play-mode-reset', this._onPlayReset);
 
     // Playable capability: a start point alone is something for Start to
     // do. Registered on `loaded` so it's independent of system init order.
@@ -207,20 +209,31 @@ AFRAME.registerSystem('viewer-start', {
     return true;
   },
 
-  _onPlayStart() {
-    this._restoreState = null;
-    if (!this.getStartCameraState()) return;
-    // Drive/fly borrow the rig camera for the whole session; the start
-    // vantage only applies to sessions that keep the shared viewer camera.
-    // Ask the playable registry rather than the DOM so a hidden/disabled
-    // vehicle (which drive-mode itself ignores) doesn't suppress the glide.
+  // Drive/fly borrow the rig camera for the whole session; the start
+  // vantage only applies to sessions that keep the shared viewer camera.
+  // Ask the playable registry rather than the DOM so a hidden/disabled
+  // vehicle (which drive-mode itself ignores) doesn't suppress the glide.
+  _sessionKeepsViewerCamera() {
     const caps =
       this.sceneEl.systems['mode-manager']?.getPlayableCapabilities() || [];
-    if (caps.includes('drive-controls') || caps.includes('fly-controls')) {
+    return !caps.includes('drive-controls') && !caps.includes('fly-controls');
+  },
+
+  _onPlayStart() {
+    this._restoreState = null;
+    if (!this.getStartCameraState() || !this._sessionKeepsViewerCamera()) {
       return;
     }
     const origin = useStore.getState().playEntryOrigin;
     if (origin === 'editor') this._restoreState = editorCameraState();
+    this.goToStart();
+  },
+
+  // Reset = a fresh run from the start pose (the same "put actors back at
+  // spawn" contract vehicles honor). The hotspot system clears its own
+  // focus/overview state on the same event; this only moves the camera.
+  _onPlayReset() {
+    if (!this._sessionKeepsViewerCamera()) return;
     this.goToStart();
   },
 
