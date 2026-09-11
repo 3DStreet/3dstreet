@@ -21,12 +21,6 @@ const AdvancedComponents = ({ entity }) => {
     <div className="advanced-components">
       <div className="advanced-warning">
         <p>
-          <FormattedMessage
-            id="advancedComponents.explainer"
-            defaultMessage="Showing all raw component data stored in the scene JSON for this entity."
-          />
-        </p>
-        <p>
           ⚠️{' '}
           <FormattedMessage
             id="advancedComponents.warning"

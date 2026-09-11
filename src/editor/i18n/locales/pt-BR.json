@@ -76,7 +76,6 @@
   "addLayer.tab.trafficControl": "🚧 Controle",
   "addLayer.tab.vehicles": "🚗 Veículos",
   "addLayer.unsupportedFileType": "Tipo de arquivo não suportado: {fileName}. Formatos suportados: GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ.",
-  "advancedComponents.explainer": "Mostrando todos os dados brutos dos componentes armazenados no JSON da cena para esta entidade.",
   "advancedComponents.warning": "Aviso: editar dados brutos de componentes pode causar danos inesperados à cena que você não poderá desfazer. Salve uma cópia da sua cena se quiser mexer nesses dados por sua conta e risco.",
   "aiChatPanel.inputPlaceholder": "Digite um comando ou digite /help para ver as opções",
   "appMenu.edit": "Editar",

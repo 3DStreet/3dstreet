@@ -76,7 +76,6 @@
   "addLayer.tab.trafficControl": "🚧 Contrôle",
   "addLayer.tab.vehicles": "🚗 Véhicules",
   "addLayer.unsupportedFileType": "Type de fichier non pris en charge : {fileName}. Formats pris en charge : GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ.",
-  "advancedComponents.explainer": "Affichage de toutes les données brutes des composants enregistrées dans le JSON de la scène pour cette entité.",
   "advancedComponents.warning": "Avertissement : la modification des données brutes des composants peut endommager la scène de manière inattendue et irréversible. Enregistrez une copie de votre scène si vous souhaitez les modifier à vos risques et périls.",
   "aiChatPanel.inputPlaceholder": "Tapez une commande ou tapez /help pour voir les options",
   "appMenu.edit": "Édition",

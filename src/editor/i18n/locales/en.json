@@ -230,9 +230,6 @@
   "addLayer.unsupportedFileType": {
     "defaultMessage": "Unsupported file type: {fileName}. Supported formats: GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ."
   },
-  "advancedComponents.explainer": {
-    "defaultMessage": "Showing all raw component data stored in the scene JSON for this entity."
-  },
   "advancedComponents.warning": {
     "defaultMessage": "Warning: editing raw component data may cause unexpected scene damage that you cannot undo. Save a copy of your scene if you want to tinker with these at your own risk."
   },
