@@ -83,14 +83,33 @@ service cloud.firestore {
       // Long-term, `size` should be set server-side from the actual Storage
       // object; this rule is the short-term guard.
       //
+      // The optimized-variant fields (optimizedSourcePath / optimizedSourceSize)
+      // are deliberately NOT frozen: the "Reoptimize" action re-runs the client
+      // optimization pipeline over the original and repoints the doc at a new
+      // optimized file. Neither field can be used to spoof quota — the tally
+      // reads `size` only and asset-quota.js explicitly excludes
+      // optimizedSourceSize as a platform-derived artifact. The old optimized
+      // object is left unreferenced and reclaimed by the monthly
+      // cleanupOrphanedStorage job. optimizedSourcePath is still constrained to
+      // the user's own folder, matching the create rule, so a client can't
+      // repoint the doc at another user's bytes and keep them alive.
+      //
       // Uses diff().affectedKeys() so legacy docs missing optional fields
       // (e.g. AI-generated images without optimizedSourceSize) update cleanly:
       // a field absent from both before and after never appears in affectedKeys.
       allow update: if request.auth != null
         && request.auth.uid == userId
         && !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['size', 'optimizedSourceSize', 'storagePath',
-                     'optimizedSourcePath', 'userId'])
+            .hasAny(['size', 'storagePath', 'userId'])
+        // Only validated when actually changed, so an untouched legacy value
+        // can never block an unrelated update (e.g. a soft delete). Requiring
+        // `is string` makes removing the field a clean deny rather than a
+        // rule-evaluation error on null.
+        && (!request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['optimizedSourcePath'])
+            || (request.resource.data.optimizedSourcePath is string
+                && request.resource.data.optimizedSourcePath
+                    .matches('^users/' + userId + '/.*')))
         // visibility is mutable (privacy toggle, future feature) but must
         // remain a valid enum value when present.
         && (!('visibility' in request.resource.data.keys())

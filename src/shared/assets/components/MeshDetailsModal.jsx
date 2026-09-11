@@ -21,11 +21,20 @@ import {
   getServedUrl
 } from '../utils.js';
 import { isEditableTarget } from '@shared/utils/dom.js';
+import { useSharedMessages } from '@shared/i18n/sharedMessages.js';
 import styles from './MeshDetailsModal.module.scss';
 
 // User-editable attribution fields. `title` deliberately is NOT here — the
 // asset doc's `name` (Display name) is the single source of truth for the
 // model title. sourceName / generator are diagnostic, surfaced read-only.
+// Stages reported by reoptimizeAsset(), mapped to their shared-message ids
+// so the button can say what it is doing in the user's language.
+const REOPTIMIZE_STAGE_MESSAGE = {
+  downloading: 'reoptimizeDownloading',
+  optimizing: 'reoptimizeOptimizing',
+  uploading: 'reoptimizeUploading'
+};
+
 const ATTRIBUTION_FIELDS = ['author', 'license', 'source'];
 
 const EMPTY_ATTRIBUTION = {
@@ -113,6 +122,15 @@ const MeshDetailsModal = ({
   // Briefly true after a successful "Recapture thumbnail" click, to flash a
   // checkmark on the button as feedback (the live capture is otherwise silent).
   const [thumbCaptured, setThumbCaptured] = useState(false);
+  // Stage of an in-flight "Reoptimize" run ('downloading' | 'optimizing' |
+  // 'uploading'), or null when idle. Doubles as the button's disabled flag.
+  const [reoptimizeStage, setReoptimizeStage] = useState(null);
+  // Outcome and failure for the reoptimize action. Kept out of the modal-wide
+  // `error` so both render on their own line under the Size row, next to the
+  // text they are about, rather than at the bottom of the modal.
+  const [reoptimizeResult, setReoptimizeResult] = useState(null);
+  const [reoptimizeError, setReoptimizeError] = useState(null);
+  const t = useSharedMessages();
 
   const [name, setName] = useState('');
   const [savedName, setSavedName] = useState('');
@@ -468,6 +486,78 @@ const MeshDetailsModal = ({
     setTimeout(() => setThumbCaptured(false), 1500);
   };
 
+  // Re-run the current optimization pipeline over the ORIGINAL and repoint the
+  // doc at the result. Useful when the asset was uploaded before a pipeline
+  // improvement, or when its optimization was skipped (worker timeout) and it
+  // has been serving the unoptimized original ever since. A "no win" outcome
+  // (pipeline skipped, or nothing smaller than what's already served) is
+  // reported as a message, not an error — the asset is left exactly as it was.
+  const onReoptimize = async () => {
+    if (!isOwner || !data || reoptimizeStage) return;
+    setReoptimizeResult(null);
+    setReoptimizeError(null);
+    try {
+      const { reoptimizeAsset } = await import('@shared/asset-upload');
+      const result = await reoptimizeAsset(data, {
+        ownerUid,
+        onStatus: setReoptimizeStage
+      });
+      if (!result.ok) {
+        setReoptimizeResult(
+          result.reason === 'not_smaller_than_current'
+            ? t('reoptimizeAlreadyOptimal')
+            : t('reoptimizeNoChange', { reason: result.reason })
+        );
+        return;
+      }
+      // Reflect the new variant without closing: the Size row reads
+      // optimizedSourceSize, and the preview/download use optimizedSourceUrl.
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              optimizedSourceUrl: result.newUrl,
+              optimizedSourcePath: result.newPath,
+              optimizedSourceSize: result.bytesAfter,
+              optimizationMetadata: result.metadata
+            }
+          : prev
+      );
+      const saved = Math.max(0, result.bytesBefore - result.bytesAfter);
+      setReoptimizeResult(
+        t('reoptimizeDone', {
+          size: formatBytes(result.bytesAfter),
+          saved: formatBytes(saved)
+        })
+      );
+    } catch (err) {
+      console.error('[MeshDetailsModal] reoptimize failed', err);
+      setReoptimizeError(err.message || t('reoptimizeFailed'));
+    } finally {
+      setReoptimizeStage(null);
+    }
+  };
+
+  // Inline "re-run the pipeline" control, rendered inside the Size row next
+  // to whatever that row says about the current optimization. Owner-only and
+  // GLB-only (splats are transcoded server-side by the RAD job instead), and
+  // it reports its own progress in place while running.
+  const reoptimizeButton = (label) => {
+    const isGlb = !!data && data.type !== 'splat';
+    if (!isOwner || loading || !isGlb || data?.deleted) return null;
+    // Spacing comes from the button's own margin.
+    return (
+      <button
+        type="button"
+        onClick={onReoptimize}
+        disabled={!!reoptimizeStage}
+        className={styles.retryOptimizeBtn}
+      >
+        {label}
+      </button>
+    );
+  };
+
   // Use mousedown, not click: a `click` fires on the common ancestor of
   // mousedown+mouseup, so dragging from an input inside the modal to a
   // mouseup on the backdrop would land `click` on the backdrop and close.
@@ -691,6 +781,10 @@ const MeshDetailsModal = ({
                 <span className={styles.metaLabel}>Size:</span>
                 {(() => {
                   const opt = getOptimizationDisplay(data);
+                  // The re-run affordance lives in this row because this row
+                  // is the reason to press it: it states what the asset is
+                  // serving today ("Optimization skipped", "−42%", or nothing
+                  // at all for a pre-pipeline upload).
                   if (opt.skipReason) {
                     return (
                       <>
@@ -698,6 +792,7 @@ const MeshDetailsModal = ({
                         <span className={styles.optimizationNote}>
                           ({opt.skipReason})
                         </span>
+                        {reoptimizeButton(t('reoptimizeRetry'))}
                       </>
                     );
                   }
@@ -708,12 +803,34 @@ const MeshDetailsModal = ({
                         <span className={styles.optimizationSaved}>
                           (−{opt.savePct}%)
                         </span>
+                        {reoptimizeButton(t('reoptimizeAgain'))}
                       </>
                     );
                   }
-                  return formatBytes(opt.origSize);
+                  // No optimization metadata at all — a GLB uploaded before
+                  // the pipeline existed, so there is no note to follow.
+                  return (
+                    <>
+                      {formatBytes(opt.origSize)}
+                      {reoptimizeButton(t('reoptimizeStart'))}
+                    </>
+                  );
                 })()}
               </div>
+              {(reoptimizeStage || reoptimizeError || reoptimizeResult) && (
+                <div
+                  className={
+                    reoptimizeError
+                      ? styles.reoptimizeStatusError
+                      : styles.reoptimizeStatus
+                  }
+                >
+                  {reoptimizeError ||
+                    (reoptimizeStage
+                      ? t(REOPTIMIZE_STAGE_MESSAGE[reoptimizeStage])
+                      : reoptimizeResult)}
+                </div>
+              )}
               {optimizationLabel && (
                 <div>
                   <span className={styles.metaLabel}>Optimization:</span>

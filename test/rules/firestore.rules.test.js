@@ -102,6 +102,37 @@ describe('firestore.rules — users/{uid}/assets/{assetId} update', () => {
     await assertFails(updateDoc(assetRef(ownerDb()), { size: 1 }));
   });
 
+  it('blocks client from mutating storagePath', async () => {
+    await assertFails(
+      updateDoc(assetRef(ownerDb()), {
+        storagePath: `users/${UID}/assets/images/elsewhere.jpg`
+      })
+    );
+  });
+
+  // The "Reoptimize" action repoints the doc at a freshly optimized GLB, so
+  // both optimized-variant fields must be writable after create. Neither can
+  // spoof quota: the tally reads `size`, and asset-quota.js excludes
+  // optimizedSourceSize.
+  it('allows repointing the optimized variant (reoptimize)', async () => {
+    await assertSucceeds(
+      updateDoc(assetRef(ownerDb()), {
+        optimizedSourcePath: `users/${UID}/assets/meshes/${ASSET_ID}-optimized-2.glb`,
+        optimizedSourceUrl: 'https://example.test/opt-2.glb',
+        optimizedSourceSize: 4242,
+        updatedAt: serverTimestamp()
+      })
+    );
+  });
+
+  it('blocks pointing the optimized variant outside the owner folder', async () => {
+    await assertFails(
+      updateDoc(assetRef(ownerDb()), {
+        optimizedSourcePath: `users/${OTHER_UID}/assets/meshes/stolen.glb`
+      })
+    );
+  });
+
   it('blocks non-owner from updating', async () => {
     const otherDb = testEnv.authenticatedContext(OTHER_UID).firestore();
     await assertFails(updateDoc(assetRef(otherDb), { deleted: true }));

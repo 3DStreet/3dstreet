@@ -956,6 +956,75 @@ const SHARED_MESSAGES = {
     'pt-BR':
       '{filename} não é um arquivo glTF válido. Exporte um único arquivo .glb e tente novamente.',
     fr: "{filename} n'est pas un fichier glTF valide. Exportez un seul fichier .glb et réessayez."
+  },
+
+  // Re-running the optimization pipeline on an existing asset, from the Size
+  // row of the mesh details modal (shared/asset-upload/reoptimizeAsset.js).
+  // Three labels for the same action, matching what that row already says:
+  // optimization was skipped / there is a variant to improve on / the upload
+  // predates the pipeline entirely.
+  reoptimizeRetry: {
+    en: 'Retry optimization',
+    es: 'Reintentar optimización',
+    'pt-BR': 'Tentar otimizar de novo',
+    fr: "Réessayer l'optimisation"
+  },
+  reoptimizeAgain: {
+    en: 'Reoptimize',
+    es: 'Reoptimizar',
+    'pt-BR': 'Reotimizar',
+    fr: 'Réoptimiser'
+  },
+  reoptimizeStart: {
+    en: 'Optimize',
+    es: 'Optimizar',
+    'pt-BR': 'Otimizar',
+    fr: 'Optimiser'
+  },
+  // In-place progress on the button itself.
+  reoptimizeDownloading: {
+    en: 'Downloading…',
+    es: 'Descargando…',
+    'pt-BR': 'Baixando…',
+    fr: 'Téléchargement…'
+  },
+  reoptimizeOptimizing: {
+    en: 'Optimizing…',
+    es: 'Optimizando…',
+    'pt-BR': 'Otimizando…',
+    fr: 'Optimisation…'
+  },
+  reoptimizeUploading: {
+    en: 'Uploading…',
+    es: 'Subiendo…',
+    'pt-BR': 'Enviando…',
+    fr: 'Téléversement…'
+  },
+  // Outcomes. A no-win run is reported as a message, not an error: the asset
+  // is left exactly as it was.
+  reoptimizeDone: {
+    en: 'Reoptimized — {size} (saved {saved}).',
+    es: 'Reoptimizado — {size} (ahorro de {saved}).',
+    'pt-BR': 'Reotimizado — {size} (economia de {saved}).',
+    fr: 'Réoptimisé — {size} ({saved} économisés).'
+  },
+  reoptimizeAlreadyOptimal: {
+    en: 'Already optimal — the current pipeline produced nothing smaller.',
+    es: 'Ya es óptimo: el proceso actual no produjo nada más pequeño.',
+    'pt-BR': 'Já está ótimo — o processo atual não gerou nada menor.',
+    fr: "Déjà optimal — le traitement actuel n'a rien produit de plus petit."
+  },
+  reoptimizeNoChange: {
+    en: 'No change ({reason}).',
+    es: 'Sin cambios ({reason}).',
+    'pt-BR': 'Sem alterações ({reason}).',
+    fr: 'Aucun changement ({reason}).'
+  },
+  reoptimizeFailed: {
+    en: 'Reoptimize failed',
+    es: 'Error al reoptimizar',
+    'pt-BR': 'Falha ao reotimizar',
+    fr: 'Échec de la réoptimisation'
   }
 };
 
