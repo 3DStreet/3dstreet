@@ -32,7 +32,8 @@ export const isContainer = (entity) => {
 const BADGE_TITLES = defineMessages({
   'focus-hotspot': {
     id: 'entity.badge.focusHotspot',
-    defaultMessage: 'Focus hotspot: clickable in view mode'
+    defaultMessage:
+      'Focus hotspot: clickable in view mode. Click to fly the camera to it.'
   }
 });
 
@@ -73,6 +74,13 @@ class Entity extends React.Component {
   };
 
   onDoubleClick = () => Events.emit('objectfocus', this.props.entity.object3D);
+
+  // Badge click: focus the camera on this layer right away (the badge lives
+  // inside the clickable row, so don't also toggle selection).
+  focusFromBadge = (event) => {
+    event.stopPropagation();
+    Events.emit('objectfocus', this.props.entity.object3D);
+  };
 
   toggleVisibility = (event) => {
     // The eye lives inside the clickable row — don't also select/focus it.
@@ -293,18 +301,22 @@ class Entity extends React.Component {
       </span>
     );
 
-    // Passive role badges (hotspot target): always visible in the badge bar.
+    // Role badges (hotspot target): always visible in the badge bar, in a
+    // fixed slot left of the eye; clicking one focuses the layer.
     const badges = getEntityBadges(entity);
     const badgesNode = badges.length ? (
       <span className="entityBadges">
         {badges.map((badge) => (
-          <span
+          <button
             key={badge.key}
+            type="button"
             className="entityBadge"
             title={intl.formatMessage(BADGE_TITLES[badge.key])}
+            onClick={this.focusFromBadge}
+            onDoubleClick={(event) => event.stopPropagation()}
           >
             <AwesomeIcon icon={badge.icon} size={12} />
-          </span>
+          </button>
         ))}
       </span>
     ) : null;
@@ -324,6 +336,7 @@ class Entity extends React.Component {
       active: this.props.isSelected,
       entity: true,
       novisible: !visible,
+      'has-badges': badges.length > 0,
       option: true,
       // Drag and drop classes
       dragging: isDragging,

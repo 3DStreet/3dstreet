@@ -343,7 +343,7 @@
   "driveControls.tipStart": "Pressione Iniciar e dirija com WASD / setas",
   "driveControls.tipsHeading": "💡 Dicas de direção",
   "editorUpgradeModal.alreadyPro": "Você já é um membro Pro — tente essa ação novamente para continuar.",
-  "entity.badge.focusHotspot": "Ponto clicável: ativo no modo de visualização",
+  "entity.badge.focusHotspot": "Ponto clicável: ativo no modo de visualização. Clique para levar a câmera até ele.",
   "entity.cloneEntity": "Clonar entidade",
   "entity.dragToReorder": "Arraste para reordenar",
   "entity.removeEntity": "Remover entidade",

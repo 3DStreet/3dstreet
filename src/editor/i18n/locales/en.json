@@ -1032,7 +1032,7 @@
     "defaultMessage": "You're already a Pro member — try that action again to continue."
   },
   "entity.badge.focusHotspot": {
-    "defaultMessage": "Focus hotspot: clickable in view mode"
+    "defaultMessage": "Focus hotspot: clickable in view mode. Click to fly the camera to it."
   },
   "entity.cloneEntity": {
     "defaultMessage": "Clone entity"

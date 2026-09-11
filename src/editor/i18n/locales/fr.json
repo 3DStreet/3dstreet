@@ -343,7 +343,7 @@
   "driveControls.tipStart": "Appuie sur Démarrer, puis conduis avec WASD / flèches",
   "driveControls.tipsHeading": "💡 Conseils de conduite",
   "editorUpgradeModal.alreadyPro": "Vous êtes déjà membre Pro — réessayez cette action pour continuer.",
-  "entity.badge.focusHotspot": "Point cliquable : actif en mode visualisation",
+  "entity.badge.focusHotspot": "Point cliquable : actif en mode visualisation. Cliquez pour y amener la caméra.",
   "entity.cloneEntity": "Cloner l'entité",
   "entity.dragToReorder": "Glisser pour réorganiser",
   "entity.removeEntity": "Supprimer l'entité",

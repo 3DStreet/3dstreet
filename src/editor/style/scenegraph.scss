@@ -6,11 +6,24 @@
   overflow: auto;
   width: auto;
 
-  // Layers container
+  // Layers container. Thin scrollbar so a classic (non-overlay) scrollbar
+  // on Windows does not eat the row's right edge where the eye lives.
   .layers {
     overflow-y: auto;
     flex: 1 1 auto;
     min-height: 0;
+    scrollbar-width: thin;
+    scrollbar-color: variables.$lightgray-300 transparent;
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background-color: variables.$lightgray-300;
+      border-radius: 3px;
+    }
   }
 
   // Empty state for the layers panel
@@ -273,6 +286,9 @@
   .entityIcons {
     margin-left: 0;
   }
+  .entity .entityPrint {
+    margin-left: 2px;
+  }
 
   // Inline rename input (context menu → Rename): swaps in for .entityName,
   // matching its 14px type inside the row. Twin of the properties-panel
@@ -292,10 +308,16 @@
     outline: none;
   }
 
-  // Long names truncate with an ellipsis; the label keeps clear of the
-  // absolutely positioned badge/toggle bar at the row's right edge (#1980).
-  .entity .entityPrint {
+  // Long names truncate with an ellipsis. The label only reserves room for
+  // the absolutely positioned badge/toggle bar (#1980) when something in it
+  // is always visible (a role badge, a hidden entity's slashed eye); on
+  // other rows the name runs the full width and the hover-revealed eye
+  // overlays it on the row's own background.
+  .entity.has-badges .entityPrint {
     padding-right: 44px;
+  }
+  .entity.novisible:not(.has-badges) .entityPrint {
+    padding-right: 24px;
   }
   .entity .entityName {
     flex: 0 1 auto;
@@ -314,26 +336,26 @@
     align-items: center;
     gap: 2px;
     z-index: 1;
+    padding-left: 4px;
+  }
+  .entity:hover .entityRowBar,
+  .entity.active .entityRowBar,
+  .entity:focus .entityRowBar {
+    background: variables.$purple-900;
   }
 
-  // Role badges (hotspot target): always visible, passive.
+  // Role badges (hotspot target): always visible, in a fixed slot left of
+  // the eye. Also a button: click focuses the camera on the layer.
   .entityBadges {
     display: inline-flex;
     align-items: center;
     flex: none;
     gap: 2px;
-    color: variables.$lightgray-300;
-  }
-  .entityBadge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
   }
 
+  .entityBadge,
   .entityVisibilityToggle {
-    display: none;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 18px;
@@ -350,16 +372,16 @@
       color: variables.$white;
       background: variables.$black-300;
     }
-
-    // A hidden entity's slashed eye stays visible as the row's state
-    // indicator; every other row reveals the eye on hover.
-    &.is-entity-hidden {
-      display: inline-flex;
-    }
   }
 
+  // The eye always occupies its slot so the badge never shifts; it is only
+  // shown on hover, except a hidden entity's slashed eye, which stays
+  // visible as the row's state indicator.
+  .entityVisibilityToggle:not(.is-entity-hidden) {
+    visibility: hidden;
+  }
   .entity:hover .entityVisibilityToggle {
-    display: inline-flex;
+    visibility: visible;
   }
 
   .entityActions {
