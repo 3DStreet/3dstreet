@@ -1000,7 +1000,9 @@ export function setViewerStartToCurrentView(entity, { notify = true } = {}) {
     property: 'fov',
     value: values.fov
   });
-  if (notify) STREET.notify.successMessage('Starting View set to current');
+  if (notify) {
+    STREET.notify.successMessage('Starting View set to current camera view');
+  }
 }
 
 /** The scene's Starting View (viewer-start) entity or null. One per scene. */

@@ -744,7 +744,9 @@ const AppMenu = ({ currentUser }) => {
                 // open the scene and where Start flies. Creates it on first
                 // use, moves it after, and selects it either way.
                 ensureViewerStartAtCurrentView({ select: true });
-                STREET.notify.successMessage('Starting View set to current');
+                STREET.notify.successMessage(
+                  'Starting View set to current camera view'
+                );
                 posthog.capture('set_starting_view_clicked');
               }}
             >
