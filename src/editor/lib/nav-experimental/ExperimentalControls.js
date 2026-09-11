@@ -91,6 +91,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // mode-manager's activateSceneCamera() sets `controls.enabled = false`)
     // would keep writing the now-unrendered editor camera.
     this._enabled = true;
+    // Fixed-camera viewer (viewer-start freeLook: false): user input off
+    // (drag, wheel, keys, double-click, per-tick WASD drain) while scripted
+    // glides (focus, focusCameraState, the scene-load fly-in) still run
+    // through the runner. Distinct from `enabled`, which also cancels
+    // tweens because drive/WebXR take the camera away entirely.
+    this._inputLocked = false;
     this.center = new THREE.Vector3();
     this.panSpeed = 0.002;
     // Legacy field used only by the ActionBar +/- buttons (_zoomActionBar),
@@ -963,9 +969,26 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
   }
 
+  get inputLocked() {
+    return this._inputLocked;
+  }
+
+  set inputLocked(value) {
+    const next = !!value;
+    if (next === this._inputLocked) return;
+    this._inputLocked = next;
+    if (next) {
+      if (this._wasd) this._wasd.clearHeldKeys();
+      if (this._drag && this._latch && this._latch.isActive()) {
+        this._drag.endGesture();
+      }
+    }
+  }
+
   _isInactive() {
     return (
       !this.enabled ||
+      this._inputLocked ||
       this._disabledByOrtho ||
       this._compass.planViewActive ||
       this._compass.isCompassAnimating()

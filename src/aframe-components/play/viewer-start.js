@@ -33,7 +33,11 @@ AFRAME.registerComponent('viewer-start', {
     // Vertical field of view in degrees (camera `fov`; the saved
     // cameraState shape calls it `zoom`). Future camera controls (a look-at
     // target, an orbit radius) hang off this schema too.
-    fov: { default: 60 }
+    fov: { default: 60 },
+    // false = fixed camera in viewer mode: visitors can only click hotspots
+    // and go Back; orbit/pan/zoom/fly input is ignored (the viewer-start
+    // system locks the shared controls' user input while in `viewer`).
+    freeLook: { default: true }
   },
 
   init() {
@@ -48,16 +52,19 @@ AFRAME.registerComponent('viewer-start', {
   },
 
   update() {
-    if (!this._helperCamera) return;
-    this._helperCamera.fov = this.data.fov;
-    this._helperCamera.updateProjectionMatrix();
-    this._helper.update();
+    if (this._helperCamera) {
+      this._helperCamera.fov = this.data.fov;
+      this._helperCamera.updateProjectionMatrix();
+      this._helper.update();
+    }
+    this.system?.applyInputLock();
   },
 
   remove() {
     this.el.sceneEl.removeEventListener('mode-changed', this._onModeChanged);
     this.el.removeObject3D('mesh');
     this.system?.unregister(this);
+    this.system?.applyInputLock();
   },
 
   _onModeChanged(evt) {
@@ -154,6 +161,7 @@ AFRAME.registerSystem('viewer-start', {
     this.sceneEl.addEventListener('play-mode-start', this._onPlayStart);
     this.sceneEl.addEventListener('play-mode-stop', this._onPlayStop);
     this.sceneEl.addEventListener('play-mode-reset', this._onPlayReset);
+    this.sceneEl.addEventListener('mode-changed', () => this.applyInputLock());
 
     // Playable capability: a start point alone is something for Start to
     // do. Registered on `loaded` so it's independent of system init order.
@@ -181,6 +189,22 @@ AFRAME.registerSystem('viewer-start', {
   // if a hand-edited scene carries more). Deleting it is the off switch.
   getActive() {
     return this.sceneEl.querySelector('[viewer-start]');
+  },
+
+  // Fixed camera: lock the shared controls' user input while the scene is
+  // in control mode `viewer` and the Viewer Start says freeLook: false.
+  // Re-evaluated on mode changes and on any viewer-start update/removal;
+  // editor mode is always unlocked. `applyInputLock` is idempotent.
+  applyInputLock() {
+    const controls = window.AFRAME?.INSPECTOR?.controls;
+    if (!controls) return;
+    const el = this.getActive();
+    const mode = this.sceneEl.systems['mode-manager']?.getMode();
+    const fixed =
+      mode === 'viewer' &&
+      !!el &&
+      el.components?.['viewer-start']?.data?.freeLook === false;
+    controls.inputLocked = fixed;
   },
 
   // Legacy start pose for scenes without a Viewer Start entity: the default

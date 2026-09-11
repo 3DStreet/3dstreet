@@ -99,12 +99,19 @@ one keep loading at their snapshot pose, unchanged.
 - See-through hotspots pulse gently; hovering brightens any hotspot and
   shows a pointer cursor.
 - Click → camera glides to the author's focus view (or bbox framing if
-  none was set), the info panel opens bottom-left with title,
-  description and **Back to overview**.
+  none was set), the info panel opens bottom-left with the layer name,
+  the description and **Back**.
 - Back / Escape returns the camera to wherever the visitor was before
   their _first_ hotspot click. Clicking another hotspot mid-focus
-  switches directly. The panel's ✕ closes the text but leaves the
-  camera in place.
+  switches directly. There is no close/dismiss on the panel: Back is
+  the one way out, so it stays up while focused.
+- **Fixed camera** (Viewer Start `freeLook: false`): in viewer mode the
+  visitor's orbit/pan/zoom/fly input is ignored; only hotspot clicks and
+  Back move the camera. The `viewer-start` system sets
+  `controls.inputLocked` while the scene is in control mode `viewer`
+  (editor mode is always free); scripted glides still run, since the
+  lock is separate from the `enabled` flag drive/WebXR use to take the
+  camera away.
 
 **Embed:** `https://3dstreet.app/?embed=true#/scenes/UUID` — viewer mode
 with the app switcher and the edit/auth dock stripped (title + byline
@@ -184,14 +191,6 @@ composes with it for a link-time camera override.
   block never swallows clicks on the content behind it. "Ghost" is read
   off the live materials (`isGhost()`), so an author toggling a material
   transparent flips the behavior without a separate setting.
-
-## Open follow-ups (from playtesting, 2026-09-10)
-
-- **Fixed-camera viewer option.** An author may want to disable free
-  look in viewer mode so the hotspot camera is fixed: the visitor can
-  only click hotspots / return to overview, not orbit, pan, zoom or
-  fly. Design discussion pending (where the setting lives, and which
-  inputs it gates).
 
 ## Stretch ideas (not built)
 
