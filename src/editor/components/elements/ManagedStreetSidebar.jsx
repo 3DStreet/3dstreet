@@ -916,10 +916,8 @@ const ManagedStreetSidebar = ({ entity }) => {
         <div className="advancedComponentsContainer">
           {/* Transform rows lived in ComponentsContainer before this panel
               replaced it — keep them reachable under Advanced. */}
-          <div className="sidepanelContent">
-            <CommonComponents entity={entity} />
-          </div>
-          <AdvancedComponents entity={entity} show hideButton />
+          <CommonComponents entity={entity} />
+          <AdvancedComponents entity={entity} />
         </div>
       )}
     </div>

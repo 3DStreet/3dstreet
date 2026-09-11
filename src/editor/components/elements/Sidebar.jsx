@@ -25,7 +25,7 @@ import DriveControlsSidebar from './DriveControlsSidebar';
 import FlyControlsSidebar from './FlyControlsSidebar';
 import StreetTrafficReplaySidebar from './StreetTrafficReplaySidebar';
 import UserLayersSidebar from './UserLayersSidebar';
-import AdvancedComponents from './AdvancedComponents';
+import PanelFooter from './PanelFooter';
 import AssetInfoPanel from './AssetInfoPanel';
 import EntityLabel from '../scenegraph/EntityLabel';
 import { commonMessages } from '@/editor/i18n/commonMessages';
@@ -223,25 +223,19 @@ export default class Sidebar extends React.Component {
               {entity.getAttribute('drive-controls') && (
                 <>
                   <DriveControlsSidebar entity={entity} />
-                  <div className="propertyRow">
-                    <AdvancedComponents entity={entity} />
-                  </div>
+                  <PanelFooter entity={entity} />
                 </>
               )}
               {entity.getAttribute('fly-controls') && (
                 <>
                   <FlyControlsSidebar entity={entity} />
-                  <div className="propertyRow">
-                    <AdvancedComponents entity={entity} />
-                  </div>
+                  <PanelFooter entity={entity} />
                 </>
               )}
               {entity.getAttribute('street-traffic-replay') && (
                 <>
                   <StreetTrafficReplaySidebar entity={entity} />
-                  <div className="propertyRow">
-                    <AdvancedComponents entity={entity} />
-                  </div>
+                  <PanelFooter entity={entity} />
                 </>
               )}
               {entity.getAttribute('shape') && <ShapeSidebar entity={entity} />}

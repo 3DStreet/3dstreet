@@ -122,6 +122,18 @@ the standard TransformControls gizmo. Code in `src/editor/lib/gizmos/`; doc is
 
 **AI tool surface (WebMCP primary, MCP relay fallback):** one registry (`src/editor/lib/commands/registry.js`) feeds three consumers: the in-editor Gemini chat, WebMCP (`src/editor/lib/mcp/useWebMCP.js` registers the same tools with `document.modelContext` so a browser-embedded agent — Chrome 149+ origin trial / ChatGPT desktop browser — calls them in-process, no relay; this is the primary agent interface), and the MCP relay (fallback for clients without WebMCP such as Claude Desktop/Code: tab = MCP server, external `3dstreet-mcp` npm relay bridges stdio↔localhost WS; design in #1582; retire once those clients read WebMCP natively). Shared executor `callToolAsMCPContent` in `src/editor/lib/mcp/dispatch.js`; entry point: `docs/webmcp.md`.
 
+**Properties panel & scene graph UI (#1979–#1982):** every entity panel shares
+one compact footer (`PanelFooter.jsx`: Add Component select + Advanced pill;
+the raw component list in `AdvancedComponents.jsx` always opens with a
+data-damage warning). Transform (position/rotation/scale) is a named
+collapsible section like geometry/material; named sections persist their
+collapsed state per device via `editor/lib/panelPrefs.js` (localStorage,
+shared across entities; shift-click a header to apply to all sections in
+view). The position label toggles to a read-only GeoLoc readout on geospatial
+scenes (pref also in panelPrefs). Scene graph rows: expand arrow left of the
+name, and a right-justified overlay bar carries passive role badges plus the
+hover-revealed visibility eye (slashed eye stays visible when hidden).
+
 **Layer Reordering:** Drag-and-drop reordering of layers within the same parent in the SceneGraph. Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
 
 ## Asset System

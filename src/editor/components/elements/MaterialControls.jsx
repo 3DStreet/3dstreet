@@ -90,7 +90,7 @@ const MaterialControls = ({ entity }) => {
 
   return (
     <div className="details material-controls">
-      <Collapsible>
+      <Collapsible sectionKey="material">
         <div className="componentHeader collapsible-header">
           <span className="componentTitle" title="material">
             <span>material</span>

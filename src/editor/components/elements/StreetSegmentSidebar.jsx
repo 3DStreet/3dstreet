@@ -654,7 +654,7 @@ const StreetSegmentSidebar = ({ entity }) => {
             name={key}
           />
         ))}
-        <div className="segment-footer">
+        <div className="panel-footer">
           {/* The Add Component select sits directly in the footer — one
               click opens the component list, no intermediate button. */}
           <AddGeneratorComponent entity={entity} />
@@ -672,7 +672,7 @@ const StreetSegmentSidebar = ({ entity }) => {
       </div>
       {showAdvanced && (
         <div className="advancedComponentsContainer">
-          <AdvancedComponents entity={entity} show hideButton />
+          <AdvancedComponents entity={entity} />
         </div>
       )}
     </div>

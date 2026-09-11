@@ -642,27 +642,29 @@ a.help-linkhover {
   }
 }
 
+/* Add Component select: compact footer affordance (#1982) — a dashed pill
+   the height of the Advanced button, everywhere (was a large centered select
+   before the segment panel design generalized). */
 #addComponentContainer {
-  align-items: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 20px 10px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
 
   #addComponent {
-    width: 300px; // Slightly smaller than 348px for other component widths
+    width: 100%;
 
     .select__control {
-      padding: 12px 16px !important;
-      background: rgba(50, 50, 50, 0.8);
-      border: 1px solid variables.$purple-400;
-      border-radius: 10px;
+      padding: 0 4px 0 10px !important;
+      min-height: 32px;
+      height: 32px;
+      border: 1px dashed variables.$purple-400;
+      border-radius: 8px;
+      background: transparent;
       box-sizing: border-box;
       white-space: nowrap;
-      min-height: 48px; // Match other input heights
 
       &:hover {
-        border-color: variables.$purple-700;
+        border-style: solid;
       }
 
       &--is-focused {
@@ -672,13 +674,25 @@ a.help-linkhover {
     }
 
     .select__placeholder {
-      color: variables.$white;
+      color: variables.$lightgray-100;
+      font-size: 13px;
       font-weight: 400;
-      font-size: 16px;
     }
 
     .select__single-value {
       color: variables.$white;
+    }
+
+    .select__value-container {
+      padding: 0;
+      height: 30px;
+      font-size: 13px;
+    }
+
+    .select__indicator {
+      height: 30px;
+      display: flex;
+      align-items: center;
     }
 
     .select__menu {
@@ -700,6 +714,68 @@ a.help-linkhover {
         }
       }
     }
+  }
+}
+
+/* Compact properties-panel footer (#1982): Add Component select + Advanced
+   pill on one row, the design introduced by the segment panel (#1753), now
+   shared by every entity panel. */
+.panel-footer {
+  display: flex;
+  gap: 8px;
+  margin: 10px 12px 14px;
+  padding-top: 12px;
+  border-top: 1px solid variables.$black-800;
+}
+
+.advanced-btn {
+  flex: none;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: variables.$bgalphadark;
+  color: variables.$lightgray-100;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover {
+    color: variables.$white;
+    background: variables.$gray-200;
+  }
+  &.is-open {
+    background: variables.$purple-400;
+    color: variables.$white;
+  }
+}
+
+/* Explainer + warning shown at the top of the raw Advanced component list. */
+.advanced-warning {
+  margin: 0 12px 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: variables.$bgalphadark;
+  color: variables.$lightgray-300;
+  font-size: 12px;
+  line-height: 1.45;
+
+  p {
+    margin: 0;
+  }
+
+  p + p {
+    margin-top: 6px;
+  }
+}
+
+/* A row label that doubles as a display toggle (position/geoloc, #1979). */
+.propertyRow .text.label-toggle {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+
+  &:hover {
+    color: variables.$white;
   }
 }
 
@@ -1451,68 +1527,10 @@ a.help-linkhover {
     }
   }
 
-  /* footer */
-  .segment-footer {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-    padding-top: 12px;
-    border-top: 1px solid variables.$black-800;
-  }
-  .advanced-btn {
-    flex: none;
-    height: 32px;
-    padding: 0 12px;
-    border: 0;
-    border-radius: 8px;
-    background: variables.$bgalphadark;
-    color: variables.$lightgray-100;
-    font-size: 13px;
-    font-family: inherit;
-    cursor: pointer;
-    &:hover {
-      color: variables.$white;
-      background: variables.$gray-200;
-    }
-    &.is-open {
-      background: variables.$purple-400;
-      color: variables.$white;
-    }
-  }
-  /* Add Component select lives directly in the footer, styled like the
-     dashed add affordance from the design at compact height. */
-  #addComponentContainer {
-    flex: 1 1 0;
-    min-width: 0;
-    padding: 0;
-    #addComponent {
-      width: 100%;
-      .select__control {
-        padding: 0 4px 0 10px !important;
-        min-height: 32px;
-        height: 32px;
-        border: 1px dashed variables.$purple-400;
-        border-radius: 8px;
-        background: transparent;
-        &:hover {
-          border-style: solid;
-        }
-      }
-      .select__placeholder {
-        color: variables.$lightgray-100;
-        font-size: 13px;
-      }
-      .select__value-container {
-        padding: 0;
-        height: 30px;
-        font-size: 13px;
-      }
-      .select__indicator {
-        height: 30px;
-        display: flex;
-        align-items: center;
-      }
-    }
+  /* footer — layout comes from the shared .panel-footer; the segment block
+     already carries the panel's side padding. */
+  .panel-footer {
+    margin: 10px 0 0;
   }
   .advancedComponentsContainer {
     margin-top: 10px;

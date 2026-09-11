@@ -1,17 +1,13 @@
-import { useState } from 'react';
 import PropTypes from 'prop-types';
+import { FormattedMessage } from 'react-intl';
 import Component from './Component';
 import DEFAULT_COMPONENTS from './DefaultComponents';
 import { isGeneratorComponent } from '../../lib/featuredComponents';
-import { Button } from '../elements';
-import posthog from 'posthog-js';
-// `show` (with `hideButton`) lets a parent own the toggle — the segment
-// panel's footer "Advanced" button drives this list without the built-in
-// Show/Hide button. Uncontrolled default behavior is unchanged.
-const AdvancedComponents = ({ entity, show, hideButton }) => {
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const isOpen = show !== undefined ? show : showAdvanced;
 
+// The raw component list behind every panel's "Advanced" pill (#1982). The
+// parent owns the toggle (PanelFooter, or the segment / managed-street
+// footers); this renders the explainer + warning and the component sections.
+const AdvancedComponents = ({ entity }) => {
   const components = entity ? entity.components : {};
   const definedComponents = Object.keys(components).filter((key) => {
     // Skip default transform components and generator components (fully shown in
@@ -21,41 +17,39 @@ const AdvancedComponents = ({ entity, show, hideButton }) => {
     return DEFAULT_COMPONENTS.indexOf(key) === -1 && !isGeneratorComponent(key);
   });
 
-  const toggleAdvanced = () => {
-    posthog.capture('toggleAdvanced', { showAdvanced });
-    setShowAdvanced(!showAdvanced);
-  };
-
   return (
     <div className="advanced-components">
-      {!hideButton && (
-        <div className="details">
-          <div className="propertyRow">
-            <Button variant="toolbtn" onClick={toggleAdvanced}>
-              {showAdvanced ? 'Hide Advanced' : 'Show Advanced'}
-            </Button>
-          </div>
+      <div className="advanced-warning">
+        <p>
+          <FormattedMessage
+            id="advancedComponents.explainer"
+            defaultMessage="Showing all raw component data stored in the scene JSON for this entity."
+          />
+        </p>
+        <p>
+          ⚠️{' '}
+          <FormattedMessage
+            id="advancedComponents.warning"
+            defaultMessage="Warning: editing raw component data may cause unexpected scene damage that you cannot undo. Save a copy of your scene if you want to tinker with these at your own risk."
+          />
+        </p>
+      </div>
+      {definedComponents.sort().map((key) => (
+        <div key={key} className={'details'}>
+          <Component
+            isCollapsed={definedComponents.length > 2}
+            component={components[key]}
+            entity={entity}
+            name={key}
+          />
         </div>
-      )}
-      {isOpen &&
-        definedComponents.sort().map((key) => (
-          <div key={key} className={'details'}>
-            <Component
-              isCollapsed={definedComponents.length > 2}
-              component={components[key]}
-              entity={entity}
-              name={key}
-            />
-          </div>
-        ))}
+      ))}
     </div>
   );
 };
 
 AdvancedComponents.propTypes = {
-  entity: PropTypes.object,
-  show: PropTypes.bool,
-  hideButton: PropTypes.bool
+  entity: PropTypes.object
 };
 
 export default AdvancedComponents;
