@@ -1,8 +1,8 @@
-/* global AFRAME, THREE */
+/* global AFRAME, THREE, STREET */
 import useStore from '../../store.js';
 
 /**
- * `viewer-start` — the scene's explicit starting vantage for a visitor.
+ * `viewer-start`, the scene's explicit starting vantage for a visitor.
  *
  * A discrete, one-per-scene entity (Add Layer → "Viewer Start") whose
  * position/rotation/fov IS the scene's start pose: visitors open the scene
@@ -16,7 +16,7 @@ import useStore from '../../store.js';
  * returns an editor-origin session to the pre-Start pose.
  *
  * The component draws a procedural camera-body + frustum marker that only
- * shows in editor control mode (never in view/play/drive, never saved —
+ * shows in editor control mode (never in view/play/drive, never saved,
  * only position/rotation/viewer-start serialize).
  *
  * Drive/fly own the camera for the whole session when present (they borrow
@@ -45,6 +45,16 @@ AFRAME.registerComponent('viewer-start', {
   },
 
   init() {
+    // One per scene, enforced here so every creation route (paste, the
+    // AI tools, hand-edited JSON) is covered, not only the clone button:
+    // a second instance strips itself and stays a plain entity.
+    const active = this.system?.getActive();
+    if (active && active !== this.el) {
+      this._duplicate = true;
+      STREET.notify.warningMessage('A scene has one Starting View');
+      setTimeout(() => this.el.removeAttribute('viewer-start'));
+      return;
+    }
     this._onModeChanged = this._onModeChanged.bind(this);
     this._buildMarker();
     this.update();
@@ -52,10 +62,10 @@ AFRAME.registerComponent('viewer-start', {
     this._applyVisibility(
       this.el.sceneEl.systems['mode-manager']?.getMode() ?? 'editor'
     );
-    this.system?.register(this);
   },
 
   update() {
+    if (this._duplicate) return;
     if (this._helperCamera) {
       this._helperCamera.fov = this.data.fov;
       this._helperCamera.updateProjectionMatrix();
@@ -65,9 +75,13 @@ AFRAME.registerComponent('viewer-start', {
   },
 
   remove() {
+    if (this._duplicate) return;
     this.el.sceneEl.removeEventListener('mode-changed', this._onModeChanged);
     this.el.removeObject3D('mesh');
-    this.system?.unregister(this);
+    this._body.geometry.dispose();
+    this._body.material.dispose();
+    this._helper.dispose();
+    this._body = this._helper = this._helperCamera = null;
     this.system?.applyInputLock();
   },
 
@@ -99,6 +113,7 @@ AFRAME.registerComponent('viewer-start', {
     );
     body.position.set(0, 0, 0.35);
     group.add(body);
+    this._body = body;
 
     this._helperCamera = new THREE.PerspectiveCamera(
       this.data.fov,
@@ -158,7 +173,6 @@ function editorCameraState() {
 
 AFRAME.registerSystem('viewer-start', {
   init() {
-    this.entries = new Set();
     this._restoreState = null;
     this._onPlayStart = this._onPlayStart.bind(this);
     this._onPlayStop = this._onPlayStop.bind(this);
@@ -191,14 +205,6 @@ AFRAME.registerSystem('viewer-start', {
     // a thumbnail a Start button that does nothing visible. Hotspots,
     // traffic and vehicles surface Start; when they do, Start still glides
     // here.
-  },
-
-  register(component) {
-    this.entries.add(component);
-  },
-
-  unregister(component) {
-    this.entries.delete(component);
   },
 
   // The scene's Viewer Start (one per scene by design; first in DOM order

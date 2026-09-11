@@ -299,12 +299,13 @@ function Toolbar() {
       e.preventDefault();
       const playMode = getPlayModeSystem();
       const hotspotSystem = AFRAME.scenes[0]?.systems?.['focus-hotspot'];
-      if (playMode?.isPlaying) {
-        useStore.getState().stopPlaying();
-      } else if (hotspotSystem?.focusedEl) {
-        // A focused hotspot is one level deeper than View-idle: Escape
-        // backs out to the overview before it ever reaches the editor.
+      if (hotspotSystem?.focusedEl) {
+        // A focused hotspot is one level deeper than playing: Escape backs
+        // out to the overview before it ever stops the session (focus is
+        // only possible while playing, so this check comes first).
         hotspotSystem.returnToOverview();
+      } else if (playMode?.isPlaying) {
+        useStore.getState().stopPlaying();
       } else {
         handleEnterEditor();
       }

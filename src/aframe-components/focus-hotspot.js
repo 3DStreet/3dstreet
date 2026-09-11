@@ -1,7 +1,7 @@
 /* global AFRAME, THREE */
 // focus-hotspot: author-placed clickable regions for the Viewer.
 //
-// A hotspot is any entity carrying this component — typically a
+// A hotspot is any entity carrying this component, typically a
 // semitransparent massing block over part of the geospatial layer, but any
 // mesh (GLB, primitive, splat placeholder) works. In viewer mode the
 // `focus-hotspot` system raycasts the pointer against registered hotspots:
@@ -66,9 +66,13 @@ AFRAME.registerComponent('focus-hotspot', {
   },
 
   _markMaterialsDirty() {
-    // Restore before the base values go stale (an author editing material
-    // color/opacity in the editor, a model swapping its mesh).
-    this.resetMaterials();
+    // Forget the captured base values (an author editing material
+    // color/opacity in the editor, a model swapping its mesh) without
+    // writing them back: `componentchanged` fires after A-Frame has already
+    // applied the author's new value to the live material, so a restore
+    // here would overwrite the edit with the stale capture. Effects are
+    // never live in the editor, so there is nothing to undo.
+    this.materialStates = [];
     this._materialsDirty = true;
   },
 
@@ -383,7 +387,6 @@ AFRAME.registerSystem('focus-hotspot', {
       title: el.getAttribute('data-layer-name') || '',
       description: component.data.description
     });
-    this.sceneEl.emit('hotspot-focus-changed', { el }, false);
   },
 
   returnToOverview() {
@@ -403,7 +406,6 @@ AFRAME.registerSystem('focus-hotspot', {
     if (useStore.getState().focusedHotspot) {
       useStore.getState().setFocusedHotspot(null);
     }
-    this.sceneEl.emit('hotspot-focus-changed', { el: null }, false);
   },
 
   _restoreFocusedVisibility() {
