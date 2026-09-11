@@ -403,6 +403,7 @@
   "focusHotspot.enabled": "Ativado",
   "focusHotspot.previewFocus": "Pré-visualizar foco",
   "focusHotspot.previewFocusTitle": "Leva a câmera até este ponto de interesse agora",
+  "focusHotspot.removeConfirm": "Remover o ponto clicável desta entidade? Ele deixará de ser clicável no modo de visualização.",
   "focusHotspot.setFocusView": "Definir vista de foco",
   "focusHotspot.setFocusViewTitle": "Salva a câmera atual do editor como a vista para a qual os visitantes voam ao clicar neste ponto de interesse",
   "focusHotspot.tip": "💡 No modo de visualização, os visitantes clicam aqui para se aproximar e ler o painel de informações (o nome da camada é o título), e depois voltam à visão geral. Pontos translúcidos pulsam e se ocultam enquanto estão em foco.",
@@ -852,6 +853,7 @@
   "viewer.stop": "Parar",
   "viewerStart.preview": "Pré-visualizar início",
   "viewerStart.previewTitle": "Levar a câmera para este ponto de início agora",
+  "viewerStart.removeConfirm": "Remover a vista inicial? Os visitantes abrirão a cena na vista padrão.",
   "viewerStart.setToCurrentView": "Definir para a vista atual",
   "viewerStart.setToCurrentViewTitle": "Mover este ponto de início para a posição e direção atuais da câmera do editor",
   "viewerStart.tip": "💡 Os visitantes abrem a cena a partir desta vista e Iniciar voa para cá. Definir uma miniatura da cena também a move para a vista capturada. O marcador só fica visível durante a edição; você continua editando de onde parou."

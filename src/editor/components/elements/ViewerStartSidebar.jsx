@@ -19,6 +19,19 @@ export const ViewerStartSectionControls = ({ entity }) => {
       <div className="sidebar-buttons-small">
         <Button
           variant="toolbtn"
+          onClick={preview}
+          title={intl.formatMessage({
+            id: 'viewerStart.previewTitle',
+            defaultMessage: 'Fly the camera to this start point now'
+          })}
+        >
+          <FormattedMessage
+            id="viewerStart.preview"
+            defaultMessage="Preview Start"
+          />
+        </Button>
+        <Button
+          variant="toolbtn"
           onClick={() => setViewerStartToCurrentView(entity)}
           title={intl.formatMessage({
             id: 'viewerStart.setToCurrentViewTitle',
@@ -29,19 +42,6 @@ export const ViewerStartSectionControls = ({ entity }) => {
           <FormattedMessage
             id="viewerStart.setToCurrentView"
             defaultMessage="Set To Current View"
-          />
-        </Button>
-        <Button
-          variant="toolbtn"
-          onClick={preview}
-          title={intl.formatMessage({
-            id: 'viewerStart.previewTitle',
-            defaultMessage: 'Fly the camera to this start point now'
-          })}
-        >
-          <FormattedMessage
-            id="viewerStart.preview"
-            defaultMessage="Preview Start"
           />
         </Button>
       </div>

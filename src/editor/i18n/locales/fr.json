@@ -403,6 +403,7 @@
   "focusHotspot.enabled": "Activé",
   "focusHotspot.previewFocus": "Aperçu du focus",
   "focusHotspot.previewFocusTitle": "Déplace la caméra vers ce point d'intérêt maintenant",
+  "focusHotspot.removeConfirm": "Retirer le point cliquable de cette entité ? Il ne sera plus cliquable en mode visualisation.",
   "focusHotspot.setFocusView": "Définir la vue de focus",
   "focusHotspot.setFocusViewTitle": "Enregistre la caméra actuelle de l'éditeur comme la vue vers laquelle les visiteurs volent quand ils cliquent sur ce point d'intérêt",
   "focusHotspot.tip": "💡 En mode visualisation, les visiteurs cliquent ici pour s'approcher et lire le panneau d'information (le nom du calque en est le titre), puis reviennent à la vue d'ensemble. Les points translucides pulsent et se masquent tant qu'ils sont ciblés.",
@@ -852,6 +853,7 @@
   "viewer.stop": "Arrêter",
   "viewerStart.preview": "Aperçu du départ",
   "viewerStart.previewTitle": "Déplacer la caméra vers ce point de départ maintenant",
+  "viewerStart.removeConfirm": "Retirer la vue de départ ? Les visiteurs ouvriront la scène sur la vue par défaut.",
   "viewerStart.setToCurrentView": "Définir sur la vue actuelle",
   "viewerStart.setToCurrentViewTitle": "Déplacer ce point de départ à la position et l'orientation actuelles de la caméra de l'éditeur",
   "viewerStart.tip": "💡 Les visiteurs ouvrent la scène depuis cette vue et Démarrer y amène la caméra. Définir une vignette de la scène la déplace aussi vers la vue capturée. Le repère n'est visible qu'en édition ; vous continuez d'éditer là où vous vous étiez arrêté."

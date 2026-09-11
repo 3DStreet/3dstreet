@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { defineMessages, useIntl } from 'react-intl';
 import Component from './Component';
 import MaterialControls from './MaterialControls';
 import OpacitySliderRow from '../widgets/OpacitySliderRow';
@@ -96,13 +97,23 @@ function getSectionChildren(name, entity) {
 const ROLE_SECTIONS = {
   'focus-hotspot': {
     icon: faBullseye,
-    removeConfirmMessage:
-      'Remove the focus hotspot from this entity? It will no longer be clickable in view mode.'
+    removeConfirmMessage: defineMessages({
+      m: {
+        id: 'focusHotspot.removeConfirm',
+        defaultMessage:
+          'Remove the focus hotspot from this entity? It will no longer be clickable in view mode.'
+      }
+    }).m
   },
   'viewer-start': {
     icon: faPlay,
-    removeConfirmMessage:
-      'Remove the Starting View? Visitors will open the scene at the default view instead.'
+    removeConfirmMessage: defineMessages({
+      m: {
+        id: 'viewerStart.removeConfirm',
+        defaultMessage:
+          'Remove the Starting View? Visitors will open the scene at the default view instead.'
+      }
+    }).m
   }
 };
 
@@ -111,6 +122,7 @@ const ROLE_SECTIONS = {
 // above Advanced Components. Geometry and generators reuse the generic
 // schema-driven Component widget; material gets a curated panel (MaterialControls).
 const FeaturedComponents = ({ entity }) => {
+  const intl = useIntl();
   const components = entity ? entity.components : {};
   const featured = getFeaturedComponentNames(entity);
 
@@ -140,7 +152,11 @@ const FeaturedComponents = ({ entity }) => {
                   <AwesomeIcon icon={ROLE_SECTIONS[name].icon} size={12} />
                 ) : undefined
               }
-              removeConfirmMessage={ROLE_SECTIONS[name]?.removeConfirmMessage}
+              removeConfirmMessage={
+                ROLE_SECTIONS[name]
+                  ? intl.formatMessage(ROLE_SECTIONS[name].removeConfirmMessage)
+                  : undefined
+              }
             >
               {getSectionChildren(name, entity)}
             </Component>

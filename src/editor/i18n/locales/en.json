@@ -1211,6 +1211,9 @@
   "focusHotspot.previewFocusTitle": {
     "defaultMessage": "Fly the camera to this hotspot now"
   },
+  "focusHotspot.removeConfirm": {
+    "defaultMessage": "Remove the focus hotspot from this entity? It will no longer be clickable in view mode."
+  },
   "focusHotspot.setFocusView": {
     "defaultMessage": "Set Focus View"
   },
@@ -2557,6 +2560,9 @@
   },
   "viewerStart.previewTitle": {
     "defaultMessage": "Fly the camera to this start point now"
+  },
+  "viewerStart.removeConfirm": {
+    "defaultMessage": "Remove the Starting View? Visitors will open the scene at the default view instead."
   },
   "viewerStart.setToCurrentView": {
     "defaultMessage": "Set To Current View"

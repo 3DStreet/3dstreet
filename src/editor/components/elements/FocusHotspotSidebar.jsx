@@ -104,6 +104,19 @@ export const FocusHotspotSectionControls = ({ entity }) => {
         <div className="sidebar-buttons-small">
           <Button
             variant="toolbtn"
+            onClick={() => Events.emit('objectfocus', entity.object3D)}
+            title={intl.formatMessage({
+              id: 'focusHotspot.previewFocusTitle',
+              defaultMessage: 'Fly the camera to this hotspot now'
+            })}
+          >
+            <FormattedMessage
+              id="focusHotspot.previewFocus"
+              defaultMessage="Preview Focus"
+            />
+          </Button>
+          <Button
+            variant="toolbtn"
             onClick={() => setFocusCameraPose(entity)}
             title={intl.formatMessage({
               id: 'focusHotspot.setFocusViewTitle',
@@ -114,19 +127,6 @@ export const FocusHotspotSectionControls = ({ entity }) => {
             <FormattedMessage
               id="focusHotspot.setFocusView"
               defaultMessage="Set Focus View"
-            />
-          </Button>
-          <Button
-            variant="toolbtn"
-            onClick={() => Events.emit('objectfocus', entity.object3D)}
-            title={intl.formatMessage({
-              id: 'focusHotspot.previewFocusTitle',
-              defaultMessage: 'Fly the camera to this hotspot now'
-            })}
-          >
-            <FormattedMessage
-              id="focusHotspot.previewFocus"
-              defaultMessage="Preview Focus"
             />
           </Button>
         </div>
