@@ -7,19 +7,11 @@ import StreetCrossSectionStrip from './StreetCrossSectionStrip';
 import AdvancedComponents from './AdvancedComponents';
 import CommonComponents from './CommonComponents';
 import EntityLabel from '../scenegraph/EntityLabel';
-import { IconButton } from './StreetSegmentSidebar';
+import EntityActionButtons, { IconButton } from './EntityActionButtons';
 import Events from '../../lib/Events';
 import { saveString } from '@/editor/lib/utils';
-import {
-  canRenameEntity,
-  cloneEntity,
-  removeSelectedEntity,
-  setFocusCameraPose,
-  createUniqueId
-} from '@/editor/lib/entity.js';
+import { canRenameEntity, createUniqueId } from '@/editor/lib/entity.js';
 import useStore from '@/store.js';
-import { commonMessages } from '@/editor/i18n/commonMessages';
-import { ArrowsPointingInwardIcon, Copy32Icon, TrashIcon } from '@shared/icons';
 import { StreetToShapesGraphic } from '@/editor/components/modals/ConfirmModal/StreetToShapesGraphic';
 
 // Condensed managed-street sidebar (#1753 companion, design option 3a):
@@ -552,27 +544,7 @@ const ManagedStreetSidebar = ({ entity }) => {
           <span className="segment-title">
             <EntityLabel entity={entity} editable={canRenameEntity(entity)} />
           </span>
-          <div className="segment-actions">
-            <IconButton
-              title={intl.formatMessage(commonMessages.focus)}
-              onClick={() => Events.emit('objectfocus', entity.object3D)}
-              onLongPress={() => setFocusCameraPose(entity)}
-            >
-              <ArrowsPointingInwardIcon />
-            </IconButton>
-            <IconButton
-              title={intl.formatMessage(commonMessages.duplicate)}
-              onClick={() => cloneEntity(entity)}
-            >
-              <Copy32Icon />
-            </IconButton>
-            <IconButton
-              title={intl.formatMessage(commonMessages.delete)}
-              onClick={() => removeSelectedEntity()}
-            >
-              <TrashIcon />
-            </IconButton>
-          </div>
+          <EntityActionButtons entity={entity} />
         </div>
         <StreetCrossSectionStrip entity={entity} variant="street" />
       </div>
@@ -916,10 +888,8 @@ const ManagedStreetSidebar = ({ entity }) => {
         <div className="advancedComponentsContainer">
           {/* Transform rows lived in ComponentsContainer before this panel
               replaced it — keep them reachable under Advanced. */}
-          <div className="sidepanelContent">
-            <CommonComponents entity={entity} />
-          </div>
-          <AdvancedComponents entity={entity} show hideButton />
+          <CommonComponents entity={entity} />
+          <AdvancedComponents entity={entity} />
         </div>
       )}
     </div>

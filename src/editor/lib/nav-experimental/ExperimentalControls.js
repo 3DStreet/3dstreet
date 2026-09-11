@@ -41,6 +41,7 @@
 
 import './navTuningComponent.js';
 import { streetFocusPose } from '../streetFocus.js';
+import { resolveFocusPose } from '../focusPose.js';
 import { isStreetLevelNav, isWasdNav } from './flag.js';
 import { ModifierState } from './modifierState.js';
 import { GestureLatch } from './gestureLatch.js';
@@ -90,6 +91,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // mode-manager's activateSceneCamera() sets `controls.enabled = false`)
     // would keep writing the now-unrendered editor camera.
     this._enabled = true;
+    // Fixed-camera viewer (viewer-start freeLook: false): user input off
+    // (drag, wheel, keys, double-click, per-tick WASD drain) while scripted
+    // glides (focus, focusCameraState, the scene-load fly-in) still run
+    // through the runner. Distinct from `enabled`, which also cancels
+    // tweens because drive/WebXR take the camera away entirely.
+    this._inputLocked = false;
     this.center = new THREE.Vector3();
     this.panSpeed = 0.002;
     // Legacy field used only by the ActionBar +/- buttons (_zoomActionBar),
@@ -440,6 +447,27 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // all tween-gated; focus was the one ungated writer, so F mid-tween had
     // two per-frame camera writers fighting (PR #1851 review).
     this._cancelCameraTween();
+
+    // The Starting View has no geometry to frame: focusing it means going
+    // to the pose it stores, the same glide as Preview Start / Play.
+    const viewerStartEl = target.el;
+    if (viewerStartEl?.hasAttribute?.('viewer-start')) {
+      viewerStartEl.sceneEl?.systems?.['viewer-start']?.goToStart(
+        viewerStartEl
+      );
+      return;
+    }
+
+    // A fully captured focus-camera-pose (orientation + fov, lookAt false)
+    // is a stored camera state in the entity's frame: glide straight to it
+    // through the same path as snapshots and the Viewer Start, no look-at
+    // reconstruction. Legacy position-only poses fall through below.
+    const storedPose = target.el?.getAttribute?.('focus-camera-pose');
+    if (storedPose && storedPose.lookAt === false) {
+      this.focusCameraState(resolveFocusPose(target, storedPose));
+      return;
+    }
+
     const camera = this._camera;
     const fa = this._focusAnimation;
 
@@ -951,9 +979,26 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
   }
 
+  get inputLocked() {
+    return this._inputLocked;
+  }
+
+  set inputLocked(value) {
+    const next = !!value;
+    if (next === this._inputLocked) return;
+    this._inputLocked = next;
+    if (next) {
+      if (this._wasd) this._wasd.clearHeldKeys();
+      if (this._drag && this._latch && this._latch.isActive()) {
+        this._drag.endGesture();
+      }
+    }
+  }
+
   _isInactive() {
     return (
       !this.enabled ||
+      this._inputLocked ||
       this._disabledByOrtho ||
       this._compass.planViewActive ||
       this._compass.isCompassAnimating()

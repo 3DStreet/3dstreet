@@ -1,11 +1,10 @@
 import CommonComponents from './CommonComponents';
-import AdvancedComponents from './AdvancedComponents';
 import FeaturedComponents from './FeaturedComponents';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Events from '../../lib/Events';
 import MixinMetadata from './MixinMetadata';
-import AddGeneratorComponent from './AddGeneratorComponent';
+import PanelFooter from './PanelFooter';
 
 export default class ComponentsContainer extends React.Component {
   static propTypes = {
@@ -51,6 +50,13 @@ export default class ComponentsContainer extends React.Component {
     if (entity.components?.geometry) {
       approved.push({ value: 'street-generated-grass', label: 'Grass' });
     }
+    // Any visible object can become a clickable viewer hotspot — a
+    // semitransparent block, an uploaded model, a splat placeholder.
+    approved.push({
+      value: 'focus-hotspot',
+      label: 'Focus Hotspot',
+      attrValue: ''
+    });
     if (this.canFlattenTerrain()) {
       approved.push({
         value: 'geo-flatten',
@@ -81,9 +87,7 @@ export default class ComponentsContainer extends React.Component {
             <p>⚠️ Transformations disabled for this layer.</p>
           </div>
         ) : (
-          <div className="sidepanelContent">
-            <CommonComponents entity={entity} />
-          </div>
+          <CommonComponents entity={entity} />
         )}
         {!!entity.mixinEls.length && (
           <div className="details">
@@ -91,15 +95,10 @@ export default class ComponentsContainer extends React.Component {
           </div>
         )}
         {!featuredFirst && featured}
-        {this.getApprovedComponents().length > 0 && (
-          <AddGeneratorComponent
-            entity={entity}
-            components={this.getApprovedComponents()}
-          />
-        )}
-        <div className="advancedComponentsContainer">
-          <AdvancedComponents entity={entity} />
-        </div>
+        <PanelFooter
+          entity={entity}
+          addComponents={this.getApprovedComponents()}
+        />
       </div>
     );
   }

@@ -80,6 +80,13 @@ real meshes for terrain flattening.
 
 **Utilities:** `create-from-json`, `gltf-part`, `screentock`, `measure-line`
 
+**Focus hotspots & Starting View (#1315):** `focus-hotspot` makes an entity
+clickable while playing (click glides the camera in and opens an info panel);
+`viewer-start` is the one-per-scene Starting View whose pose is where every
+scene opens and where Start/Reset glide. Both are play-mode features: read the
+[play mode and viewer guidance](docs/agent-context/play-mode.md) before
+touching them. Entry point: `docs/focus-hotspots.md`.
+
 ## Play Mode & Viewer
 
 Playing is presentation-only: nothing persists and no edit permission is needed.

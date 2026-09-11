@@ -1088,3 +1088,19 @@ export const SignInAppleIconSVG = () => (
     </g>
   </svg>
 );
+
+// Layers-panel icon for the `viewer-start` entity: a ring carrying a play
+// triangle — the scene's start view (where visitors open it and where a
+// viewer session starts: hotspot tour, look-around, future spawn roles).
+export const ViewerStartIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle cx="12" cy="12" r="10.5" stroke="#00FFFF" strokeWidth="1.8" />
+    <path d="M9.2 7.4V16.6L16.4 12L9.2 7.4Z" fill="#00FFFF" />
+  </svg>
+);

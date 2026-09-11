@@ -71,6 +71,12 @@
   "addLayer.card.flyableHelicopter.name": {
     "defaultMessage": "Flyable Helicopter"
   },
+  "addLayer.card.focusHotspot.desc": {
+    "defaultMessage": "A semitransparent clickable block for view mode. Visitors click it to fly the camera in and read your title and description, then return to the overview."
+  },
+  "addLayer.card.focusHotspot.name": {
+    "defaultMessage": "Focus Hotspot"
+  },
   "addLayer.card.grassBox.desc": {
     "defaultMessage": "Add a large green ground slab with animated instanced grass. The box dimensions, color, and grass options (density, blade height) are all editable in the properties panel."
   },
@@ -224,6 +230,9 @@
   "addLayer.unsupportedFileType": {
     "defaultMessage": "Unsupported file type: {fileName}. Supported formats: GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ."
   },
+  "advancedComponents.warning": {
+    "defaultMessage": "Warning: editing raw component data may cause unexpected scene damage that you cannot undo. Save a copy of your scene if you want to tinker with these at your own risk."
+  },
   "aiChatPanel.inputPlaceholder": {
     "defaultMessage": "Type a command or type /help for options"
   },
@@ -334,6 +343,9 @@
   },
   "appMenu.view.navigationControls.standard": {
     "defaultMessage": "Standard"
+  },
+  "appMenu.view.setStartingView": {
+    "defaultMessage": "Set as Starting View"
   },
   "appMenu.view.showGrid": {
     "defaultMessage": "Show Grid"
@@ -1016,6 +1028,9 @@
   "editorUpgradeModal.alreadyPro": {
     "defaultMessage": "You're already a Pro member — try that action again to continue."
   },
+  "entity.badge.focusHotspot": {
+    "defaultMessage": "Focus hotspot: clickable in view mode. Click to fly the camera to it."
+  },
   "entity.cloneEntity": {
     "defaultMessage": "Clone entity"
   },
@@ -1183,6 +1198,33 @@
   },
   "flyModeControls.yawRate": {
     "defaultMessage": "Yaw rate"
+  },
+  "focusHotspot.description": {
+    "defaultMessage": "Description"
+  },
+  "focusHotspot.descriptionPlaceholder": {
+    "defaultMessage": "Shown in the info panel when a visitor clicks…"
+  },
+  "focusHotspot.enabled": {
+    "defaultMessage": "Enabled"
+  },
+  "focusHotspot.previewFocus": {
+    "defaultMessage": "Preview Focus"
+  },
+  "focusHotspot.previewFocusTitle": {
+    "defaultMessage": "Fly the camera to this hotspot now"
+  },
+  "focusHotspot.removeConfirm": {
+    "defaultMessage": "Remove the focus hotspot from this entity? It will no longer be clickable in view mode."
+  },
+  "focusHotspot.setFocusView": {
+    "defaultMessage": "Set Focus View"
+  },
+  "focusHotspot.setFocusViewTitle": {
+    "defaultMessage": "Save the current editor camera as the view visitors fly to when they click this hotspot"
+  },
+  "focusHotspot.tip": {
+    "defaultMessage": "💡 In view mode visitors click this to fly in and read the info panel (the layer name is its title), then return to the overview. See-through hotspots pulse and hide themselves while focused."
   },
   "geoModal.centerpoint": {
     "defaultMessage": "Centerpoint"
@@ -2324,14 +2366,23 @@
   "sidebar.geoloc": {
     "defaultMessage": "GeoLoc"
   },
+  "sidebar.geolocSwitchToPosition": {
+    "defaultMessage": "Click to show position instead."
+  },
   "sidebar.geolocTitle": {
     "defaultMessage": "Latitude, longitude, true bearing (degrees clockwise from true north, “T”). Read-only: edit position and rotation to change it."
   },
   "sidebar.managedBy": {
     "defaultMessage": "Managed by"
   },
+  "sidebar.positionSwitchToGeoloc": {
+    "defaultMessage": "Click to show geolocated position (lat/lon) instead."
+  },
   "sidebar.selectObject": {
     "defaultMessage": "Select an object to edit properties."
+  },
+  "sidebar.transform": {
+    "defaultMessage": "Transform"
   },
   "signInModal.message": {
     "defaultMessage": "Sign in to save and share scenes."
@@ -2436,7 +2487,7 @@
     "defaultMessage": "Rename layers by clicking on the layer, then the Rename button in the right-hand properties panel"
   },
   "userLayers.tipVisibility": {
-    "defaultMessage": "Toggle layer visibility by using the switch on the left on each row of the layers panel"
+    "defaultMessage": "Toggle layer visibility with the eye icon that appears on the right when hovering a row of the layers panel"
   },
   "userLayers.tipsHeading": {
     "defaultMessage": "Tips"
@@ -2452,6 +2503,9 @@
   },
   "viewer.editingCopyWarning": {
     "defaultMessage": "This is an unsaved copy. Click Save to make your own copy."
+  },
+  "viewer.hotspotBack": {
+    "defaultMessage": "Back"
   },
   "viewer.pause": {
     "defaultMessage": "Pause"
@@ -2506,5 +2560,23 @@
   },
   "viewer.stop": {
     "defaultMessage": "Stop"
+  },
+  "viewerStart.preview": {
+    "defaultMessage": "Preview Start"
+  },
+  "viewerStart.previewTitle": {
+    "defaultMessage": "Fly the camera to this start point now"
+  },
+  "viewerStart.removeConfirm": {
+    "defaultMessage": "Remove the Starting View? Visitors will open the scene at the default view instead."
+  },
+  "viewerStart.setToCurrentView": {
+    "defaultMessage": "Set To Current View"
+  },
+  "viewerStart.setToCurrentViewTitle": {
+    "defaultMessage": "Move this start point to the current editor camera position and direction"
+  },
+  "viewerStart.tip": {
+    "defaultMessage": "💡 Visitors open the scene from this view and Start flies here. Setting a scene thumbnail also moves it to the captured view. The marker is only visible while editing; you still edit from wherever you left off."
   }
 }
