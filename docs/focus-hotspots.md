@@ -35,7 +35,9 @@ HyperCard-style click-through experiences.
 5. Press **Start** to try the visitor experience in place: an enabled
    hotspot registers as a playable capability with mode-manager, so the
    Play UI appears once the scene has at least one (no traffic or
-   vehicle needed). Stop returns to editing.
+   vehicle needed). Hotspots are only live while playing, so this is
+   exactly what a visitor gets after pressing Start. Stop returns to
+   editing.
 6. Or frame the opening shot and choose **View › Set as Starting
    View**: it creates the Starting View layer (or moves it) and selects
    it. Re-frame and press **Set To Current View** in its panel to move
@@ -106,13 +108,13 @@ one keep loading at their snapshot pose, unchanged.
   their _first_ hotspot click. Clicking another hotspot mid-focus
   switches directly. There is no close/dismiss on the panel: Back is
   the one way out, so it stays up while focused.
-- **Fixed camera** (Starting View `freeLook: false`): in viewer mode the
+- **Fixed camera** (Starting View `freeLook: false`): while playing, the
   visitor's orbit/pan/zoom/fly input is ignored; only hotspot clicks and
   Back move the camera. The `viewer-start` system sets
-  `controls.inputLocked` while the scene is in control mode `viewer`
-  (editor mode is always free); scripted glides still run, since the
-  lock is separate from the `enabled` flag drive/WebXR use to take the
-  camera away.
+  `controls.inputLocked` during an active play session in control mode
+  `viewer` (idle viewer and the editor are always free); scripted glides
+  still run, since the lock is separate from the `enabled` flag
+  drive/WebXR use to take the camera away.
 
 **Embed:** `https://3dstreet.app/?embed=true#/scenes/UUID` — viewer mode
 with the app switcher and the edit/auth dock stripped (title + byline
@@ -192,6 +194,14 @@ composes with it for a link-time camera override.
   block never swallows clicks on the content behind it. "Ghost" is read
   off the live materials (`isGhost()`), so an author toggling a material
   transparent flips the behavior without a separate setting.
+
+## Open follow-ups
+
+- **Auto-start for visitors.** Until then a visitor to a hotspot-only
+  scene opens onto a static scene and must press Start. Planned: an
+  author setting (likely on the Starting View) to start on load, with
+  the "welcome modal" / intro-animation ideas as the auto-start-off
+  presentation. Drive/fly scenes must not auto-start (camera hijack).
 
 ## Stretch ideas (not built)
 

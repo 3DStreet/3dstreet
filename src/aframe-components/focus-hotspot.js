@@ -18,9 +18,12 @@
 //
 // The system is the single pointer owner: components never bind their own
 // listeners, so N hotspots still cost one raycast per throttled pointer
-// move. Interaction is gated to control mode `viewer` (mode-manager) — in
-// the editor the standard selection raycaster owns the mouse, and drive/fly
-// own the camera. Entry point doc: docs/focus-hotspots.md.
+// move. Hotspots are a Play feature ("Play means the experience is live"):
+// interaction, the pulse and the pointer cursor are gated to an active play
+// session in control mode `viewer`, and Stop/Reset tear focus down through
+// the same play-mode events vehicles honor. Idle viewer mode is a static
+// scene. In the editor the selection raycaster owns the mouse, and
+// drive/fly own the camera. Entry point doc: docs/focus-hotspots.md.
 import useStore from '../store.js';
 
 const HOVER_OPACITY_BOOST = 0.25;
@@ -182,15 +185,18 @@ AFRAME.registerSystem('focus-hotspot', {
       });
     }
 
-    // Leaving viewer control mode (editor reopens, drive/fly starts) ends
-    // the visitor interaction: unhide, unhighlight, close the panel. The
-    // overview stash dies with it — a fresh viewer session starts clean.
+    // Any play boundary ends the visitor interaction: unhide, unhighlight,
+    // close the panel, drop the overview stash. Start clears too so a
+    // session never inherits a focused hotspot; Reset is a fresh run (the
+    // viewer-start system moves the camera back to the start). Leaving
+    // viewer control mode (editor reopens, drive/fly starts) does the same.
+    const clear = () => this.clearFocus();
+    this.sceneEl.addEventListener('play-mode-start', clear);
+    this.sceneEl.addEventListener('play-mode-stop', clear);
+    this.sceneEl.addEventListener('play-mode-reset', clear);
     this.sceneEl.addEventListener('mode-changed', (evt) => {
       if (evt.detail.to !== 'viewer') this.clearFocus();
     });
-    // Play Reset is a fresh run: drop the focused hotspot and the overview
-    // stash (the viewer-start system moves the camera back to the start).
-    this.sceneEl.addEventListener('play-mode-reset', () => this.clearFocus());
 
     // Playable capability: an enabled hotspot is something for Start to
     // do (viewer presentation makes it clickable), so the Play UI lights
@@ -240,12 +246,13 @@ AFRAME.registerSystem('focus-hotspot', {
     return this.hotspots.size > 0;
   },
 
-  // Hotspots are a viewer-presentation feature: inactive in the editor
-  // (selection raycaster owns the mouse) and while drive/fly borrow the
-  // camera. Play (traffic sim) keeps control mode `viewer`, so hotspots
-  // stay clickable during playback by design.
+  // Live only during an active play session in control mode `viewer`:
+  // inactive in idle viewer mode (static scene), in the editor (selection
+  // raycaster owns the mouse) and while drive/fly borrow the camera. Paused
+  // play keeps hotspots live: the visitor froze the traffic, not the tour.
   isInteractive() {
     return (
+      !!this.sceneEl.systems['play-mode']?.isPlaying &&
       this.sceneEl.systems['mode-manager']?.getMode() === 'viewer' &&
       !useStore.getState().isInspectorEnabled
     );
@@ -347,6 +354,7 @@ AFRAME.registerSystem('focus-hotspot', {
   focusHotspot(el) {
     const component = el.components['focus-hotspot'];
     if (!component || !component.data.enabled) return;
+    if (!this.isInteractive()) return;
     if (this.focusedEl === el) return;
 
     if (!this.overviewCameraState) {

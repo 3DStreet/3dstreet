@@ -34,9 +34,9 @@ AFRAME.registerComponent('viewer-start', {
     // cameraState shape calls it `zoom`). Future camera controls (a look-at
     // target, an orbit radius) hang off this schema too.
     fov: { default: 60 },
-    // false = fixed camera in viewer mode: visitors can only click hotspots
+    // false = fixed camera while playing: visitors can only click hotspots
     // and go Back; orbit/pan/zoom/fly input is ignored (the viewer-start
-    // system locks the shared controls' user input while in `viewer`).
+    // system locks the shared controls' user input during play in `viewer`).
     freeLook: { default: true }
   },
 
@@ -161,7 +161,12 @@ AFRAME.registerSystem('viewer-start', {
     this.sceneEl.addEventListener('play-mode-start', this._onPlayStart);
     this.sceneEl.addEventListener('play-mode-stop', this._onPlayStop);
     this.sceneEl.addEventListener('play-mode-reset', this._onPlayReset);
-    this.sceneEl.addEventListener('mode-changed', () => this.applyInputLock());
+    // The fixed-camera lock is a Play feature: re-evaluated on every play
+    // boundary and on mode changes (an editor reopen mid-play unlocks).
+    const relock = () => this.applyInputLock();
+    this.sceneEl.addEventListener('play-mode-start', relock);
+    this.sceneEl.addEventListener('play-mode-stop', relock);
+    this.sceneEl.addEventListener('mode-changed', relock);
 
     // Playable capability: a start point alone is something for Start to
     // do. Registered on `loaded` so it's independent of system init order.
@@ -191,17 +196,17 @@ AFRAME.registerSystem('viewer-start', {
     return this.sceneEl.querySelector('[viewer-start]');
   },
 
-  // Fixed camera: lock the shared controls' user input while the scene is
-  // in control mode `viewer` and the Viewer Start says freeLook: false.
-  // Re-evaluated on mode changes and on any viewer-start update/removal;
-  // editor mode is always unlocked. `applyInputLock` is idempotent.
+  // Fixed camera: lock the shared controls' user input while a play
+  // session is active in control mode `viewer` and the Starting View says
+  // freeLook: false. Idle viewer mode and the editor are always unlocked.
+  // Idempotent; also re-run on any viewer-start update/removal.
   applyInputLock() {
     const controls = window.AFRAME?.INSPECTOR?.controls;
     if (!controls) return;
     const el = this.getActive();
-    const mode = this.sceneEl.systems['mode-manager']?.getMode();
     const fixed =
-      mode === 'viewer' &&
+      !!this.sceneEl.systems['play-mode']?.isPlaying &&
+      this.sceneEl.systems['mode-manager']?.getMode() === 'viewer' &&
       !!el &&
       el.components?.['viewer-start']?.data?.freeLook === false;
     controls.inputLocked = fixed;
