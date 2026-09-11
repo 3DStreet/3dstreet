@@ -2,9 +2,9 @@
 
 Author-placed clickable regions for the Viewer. Built for the
 "semitransparent clickable building blocks over the geospatial layer"
-use case — click a block, fly in to the detail (e.g. a Gaussian splat
+use case, click a block, fly in to the detail (e.g. a Gaussian splat
 scan of an existing treatment overlaid with a rendered GLB), read the
-author's info panel, return to the overview — but deliberately generic:
+author's info panel, return to the overview, but deliberately generic:
 any entity can be a hotspot, so scenes can be stretched into
 HyperCard-style click-through experiences.
 
@@ -54,7 +54,10 @@ draggable, cloning it is refused, and there is no Add Layer card. It is
 created by exactly two actions, both of which move it if it exists:
 **Set as thumbnail** in the capture modal and **View › Set as Starting
 View** (which also selects it). Opt-in: nothing shows until one of those
-happens. Deleting the layer is the off switch (no enabled toggle).
+happens. Deleting the layer is the off switch (no enabled toggle): once a
+scene has had one, saving writes `memory.viewerStartMigrated: true`, so the
+legacy default-snapshot pose is never migrated back into an entity on a
+later load (the snapshot itself keeps its pose for the gallery).
 
 **One start pose.** A scene used to carry three camera poses with no
 relation between them (autosaved editor pose, default snapshot pose used
@@ -179,7 +182,7 @@ Nothing in the load path depends on auth.
   them when leaving the viewer; bases are re-captured on `material`
   component changes and mesh swaps. Only materials the author made
   transparent get opacity effects. Caveat: a GLB whose materials are
-  shared across entities will highlight all sharers — use a dedicated
+  shared across entities will highlight all sharers, use a dedicated
   ghost block over such models.
 - **Ghost hide-on-focus uses `setAttribute('visible', …)`** (the
   batching-safe path) and the picker skips invisible hotspots so a hidden
