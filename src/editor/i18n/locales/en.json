@@ -341,9 +341,6 @@
   "appMenu.view.navigationControls.standard": {
     "defaultMessage": "Standard"
   },
-  "appMenu.view.setStartView": {
-    "defaultMessage": "Set Start View to Current"
-  },
   "appMenu.view.showGrid": {
     "defaultMessage": "Show Grid"
   },

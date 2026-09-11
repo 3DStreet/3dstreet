@@ -35,9 +35,8 @@ HyperCard-style click-through experiences.
    hotspot registers as a playable capability with mode-manager, so the
    Play UI appears once the scene has at least one (no traffic or
    vehicle needed). Stop returns to editing.
-6. Or set the start view directly: **View › Set Start View to
-   Current** creates the Viewer Start at the current view (or moves it).
-   Re-frame and press **Set To Current View** in its panel to move it
+6. To move the start view later, select the Viewer Start layer,
+   re-frame and press **Set To Current View** in its panel
    (**Preview Start** replays the glide). Without one, visitors and
    Start use the legacy default snapshot pose, if any.
 
@@ -49,10 +48,9 @@ metadata: its position/rotation/`fov` _is_ the camera pose, so it is
 selectable, movable with the gizmo, undoable, and shows up in the layers
 list. One per scene: it is pinned to the top of the layers list, is not
 draggable, cloning it is refused, and there is no Add Layer card. It is
-created by exactly two actions, both of which move it if it exists:
-**Set as thumbnail** in the capture modal and **View › Set Start View to
-Current**. Opt-in: nothing shows until one of those happens. Deleting
-the layer is the off switch (no enabled toggle).
+created by exactly one action, which also moves it if it exists:
+**Set as thumbnail** in the capture modal. Opt-in: nothing shows until
+that happens. Deleting the layer is the off switch (no enabled toggle).
 
 **One start pose, three consumers.** A scene used to carry three camera
 poses with no relation between them (autosaved editor pose, default

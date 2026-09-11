@@ -113,7 +113,6 @@
   "appMenu.view.navigationControls": "Controles de navegación",
   "appMenu.view.navigationControls.experimental": "Experimental",
   "appMenu.view.navigationControls.standard": "Estándar",
-  "appMenu.view.setStartView": "Fijar vista inicial a la actual",
   "appMenu.view.showGrid": "Mostrar cuadrícula",
   "appMenu.view.showPanels": "Mostrar paneles",
   "appMenu.view.snapshotRender": "Captura y renderizado...",

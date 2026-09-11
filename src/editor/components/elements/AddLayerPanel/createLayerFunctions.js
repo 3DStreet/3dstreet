@@ -438,8 +438,9 @@ export function createFocusHotspot(position) {
       geometry: `primitive: box; width: 10; height: ${height}; depth: 10;`,
       material:
         'color: #4fc3f7; transparent: true; opacity: 0.35; roughness: 0.6;',
-      'focus-hotspot': 'title: Point of interest',
-      'data-layer-name': 'Focus Hotspot • Clickable Block'
+      'focus-hotspot': '',
+      // The layer name doubles as the viewer info panel's title.
+      'data-layer-name': 'Point of Interest'
     }
   };
   AFRAME.INSPECTOR.execute('entitycreate', definition);

@@ -26,8 +26,10 @@ import useStore from '../store.js';
 const HOVER_OPACITY_BOOST = 0.25;
 const HOVER_EMISSIVE = new THREE.Color('#4fc3f7');
 const HOVER_EMISSIVE_INTENSITY = 0.5;
-const PULSE_PERIOD_MS = 2400;
-const PULSE_AMPLITUDE = 0.12;
+const PULSE_PERIOD_MS = 2000;
+// Peak opacity added on top of the author's base (a 0.35 ghost breathes to
+// ~0.7): large enough to read as an invitation, not a flicker.
+const PULSE_AMPLITUDE = 0.35;
 const CLICK_SLOP_PX = 6;
 const HOVER_THROTTLE_MS = 40;
 

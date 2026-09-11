@@ -113,7 +113,6 @@
   "appMenu.view.navigationControls": "Commandes de navigation",
   "appMenu.view.navigationControls.experimental": "Expérimental",
   "appMenu.view.navigationControls.standard": "Standard",
-  "appMenu.view.setStartView": "Définir la vue de départ sur la vue actuelle",
   "appMenu.view.showGrid": "Afficher la grille",
   "appMenu.view.showPanels": "Afficher les panneaux",
   "appMenu.view.snapshotRender": "Capture et rendu...",

@@ -1010,9 +1010,8 @@ export function getViewerStartEntity() {
 
 /**
  * Move the scene's Viewer Start to the current editor view, creating it if
- * the scene has none. The only creation paths: "set thumbnail" (so the
- * thumbnail view and the start pose are one thing) and View › Set Start
- * View. Returns the entity.
+ * the scene has none. The only creation path is "set thumbnail", so the
+ * thumbnail view and the start pose are one thing. Returns the entity.
  */
 export function ensureViewerStartAtCurrentView({ select = false } = {}) {
   const existing = getViewerStartEntity();
