@@ -1,7 +1,7 @@
 /* global AFRAME, STREET */
 import { useEffect } from 'react';
 import { FormattedMessage } from 'react-intl';
-import { faArrowLeft, faXmark } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import posthog from 'posthog-js';
 import useStore from '@/store';
 import { Button } from '../Button';
@@ -12,12 +12,13 @@ const getHotspotSystem = () =>
   AFRAME.scenes[0]?.systems?.['focus-hotspot'] ?? null;
 
 /**
- * Viewer overlay for a focused hotspot: the author's title and
- * description plus the "Back to overview" affordance that returns the
- * camera to where the visitor was before their first hotspot click.
- * State is mirrored from the focus-hotspot A-Frame system via the store;
- * the panel never owns the focus lifecycle, it only renders and forwards
- * the two exits (back / close) to the system.
+ * Viewer overlay for a focused hotspot: the layer name as title, the
+ * author's description, and one exit, Back, which returns the camera to
+ * where the visitor was before their first hotspot click (Escape does the
+ * same). There is deliberately no close/dismiss: while focused the panel
+ * is the visitor's only way out, so it stays until they take it. State is
+ * mirrored from the focus-hotspot A-Frame system via the store; the panel
+ * never owns the focus lifecycle.
  */
 export const FocusHotspotPanel = () => {
   const focusedHotspot = useStore((state) => state.focusedHotspot);
@@ -33,19 +34,9 @@ export const FocusHotspotPanel = () => {
   if (!focusedHotspot) return null;
 
   const handleBack = () => getHotspotSystem()?.returnToOverview();
-  // Close dismisses the panel but leaves the camera where it is — the
-  // visitor may want to keep exploring the detail area free of UI.
-  const handleClose = () => getHotspotSystem()?.clearFocus();
 
   return (
     <div className={`clickable ${styles.panel}`}>
-      <button
-        className={styles.closeButton}
-        onClick={handleClose}
-        aria-label="Close"
-      >
-        <AwesomeIcon icon={faXmark} size={14} />
-      </button>
       {focusedHotspot.title && (
         <h2 className={styles.title}>{focusedHotspot.title}</h2>
       )}
@@ -57,10 +48,7 @@ export const FocusHotspotPanel = () => {
         onClick={handleBack}
         leadingIcon={<AwesomeIcon icon={faArrowLeft} size={14} />}
       >
-        <FormattedMessage
-          id="viewer.hotspotBackToOverview"
-          defaultMessage="Back to overview"
-        />
+        <FormattedMessage id="viewer.hotspotBack" defaultMessage="Back" />
       </Button>
     </div>
   );

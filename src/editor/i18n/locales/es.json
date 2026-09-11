@@ -831,7 +831,7 @@
   "viewer.editCopyTitle": "Abre el editor — al guardar se creará tu propia copia",
   "viewer.editTitle": "Abre el editor",
   "viewer.editingCopyWarning": "Esta es una copia sin guardar. Haz clic en Guardar para crear tu propia copia.",
-  "viewer.hotspotBackToOverview": "Volver a la vista general",
+  "viewer.hotspotBack": "Volver",
   "viewer.pause": "Pausar",
   "viewer.pauseTitle": "Pausa la simulación",
   "viewer.play": "Iniciar",

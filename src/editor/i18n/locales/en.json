@@ -2495,8 +2495,8 @@
   "viewer.editingCopyWarning": {
     "defaultMessage": "This is an unsaved copy. Click Save to make your own copy."
   },
-  "viewer.hotspotBackToOverview": {
-    "defaultMessage": "Back to overview"
+  "viewer.hotspotBack": {
+    "defaultMessage": "Back"
   },
   "viewer.pause": {
     "defaultMessage": "Pause"
