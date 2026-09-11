@@ -797,17 +797,23 @@ export function Viewport(inspector) {
     const viewerStart = sceneEl.systems['viewer-start'];
     viewerStart?.setFallbackStartPose(snapshotCameraState);
     const params = new URLSearchParams(window.location.search);
-    controls.newSceneCameraZoom(
-      pickLoadCameraState({
-        urlCameraState,
-        viewerLaunch:
-          params.get('viewer') === 'true' || params.get('embed') === 'true',
-        isOwner: !authorId || authorId === auth.currentUser?.uid,
-        startCameraState:
-          viewerStart?.getStartCameraState() || snapshotCameraState,
-        editorCameraState
-      })
-    );
+    const flyIn = () =>
+      controls.newSceneCameraZoom(
+        pickLoadCameraState({
+          urlCameraState,
+          viewerLaunch:
+            params.get('viewer') === 'true' || params.get('embed') === 'true',
+          isOwner: !authorId || authorId === auth.currentUser?.uid,
+          startCameraState:
+            viewerStart?.getStartCameraState() || snapshotCameraState,
+          editorCameraState
+        })
+      );
+    // The Starting View entity's transform is only real once it has
+    // loaded (a frame after newScene at most); reading it earlier yields
+    // the origin.
+    if (viewerStart) viewerStart.whenReady(flyIn);
+    else flyIn();
   });
 
   Events.on('cameratoggle', (data) => {

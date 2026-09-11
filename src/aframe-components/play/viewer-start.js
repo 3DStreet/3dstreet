@@ -120,10 +120,12 @@ AFRAME.registerComponent('viewer-start', {
 });
 
 /**
- * World-space camera state ({ position, rotation } in the snapshot
+ * World-space camera state ({ position, rotation, zoom } in the snapshot
  * cameraState shape ExperimentalControls.focusCameraState consumes) for a
  * viewer-start entity: the entity's world transform, camera looking down
- * its local -Z.
+ * its local -Z. Only meaningful once the entity has loaded: until then
+ * A-Frame's default position/rotation components report zeros (callers on
+ * the scene-load path go through the system's `whenReady`).
  */
 export function viewerStartCameraState(el) {
   const obj = el.object3D;
@@ -236,6 +238,21 @@ AFRAME.registerSystem('viewer-start', {
   // snapshot's camera state, handed over by the viewport on scene load.
   setFallbackStartPose(cameraState) {
     this._fallbackStartPose = cameraState || null;
+  },
+
+  // Run `cb` once the Starting View entity (if any) has loaded, so its
+  // transform is real. On scene load the newScene event fires right after
+  // the entities are appended, before A-Frame has applied their
+  // position/rotation; reading the pose then yields the origin (the
+  // "camera at 0 0 0 facing -Z" bug). Synchronous when there is nothing
+  // to wait for.
+  whenReady(cb) {
+    const el = this.getActive();
+    if (el && !el.hasLoaded) {
+      el.addEventListener('loaded', () => cb(), { once: true });
+      return;
+    }
+    cb();
   },
 
   // The scene's effective start pose: the Viewer Start entity if there is
