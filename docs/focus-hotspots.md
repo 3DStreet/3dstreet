@@ -195,13 +195,28 @@ composes with it for a link-time camera override.
   off the live materials (`isGhost()`), so an author toggling a material
   transparent flips the behavior without a separate setting.
 
-## Open follow-ups
+## Visitor entry: first-entry Start and auto-start
 
-- **Auto-start for visitors.** Until then a visitor to a hotspot-only
-  scene opens onto a static scene and must press Start. Planned: an
-  author setting (likely on the Starting View) to start on load, with
-  the "welcome modal" / intro-animation ideas as the auto-start-off
-  presentation. Drive/fly scenes must not auto-start (camera hijack).
+- **First-entry Start.** A viewer-origin session with a playable scene
+  and Play idle shows one large centered Start (viewer `Toolbar`,
+  `hasPlayedThisScene`) instead of the small shuttle, for every playable
+  kind (hotspots, traffic, the car). After the first Start (or an
+  auto-start) the small shuttle takes over, including after a Stop.
+  Owners never see it: they enter the viewer through Start.
+- **`autoStart`** on the Starting View (default **off**): a viewer-origin
+  entry starts Play as soon as the scene is presented (viewer mode,
+  editor closed), skipping Start's glide so the load fly-in finishes on
+  its own. Armed per scene load in the `viewer-start` system, consumed by
+  any Start. Drive/fly scenes never auto-start (the vehicle takes the
+  camera). Off by default for two reasons that will outlive this PR: the
+  visitor's press is the user gesture browsers require before audio can
+  play, and it is the de facto "everything has loaded" gate the
+  deterministic simulation relies on. **Known limitation:** an
+  auto-started scene whose streets are still loading starts traffic
+  non-deterministically; the vehicle press-to-play is the reference
+  behavior if load-gating is ever needed.
+- The "welcome modal" / intro-animation ideas are presentations of the
+  auto-start-off state and are not built.
 
 ## Stretch ideas (not built)
 

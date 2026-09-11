@@ -160,6 +160,23 @@ function Toolbar() {
   const setModal = useStore((s) => s.setModal);
   const hasPlayable = useHasPlayable();
   const controlMode = useControlMode();
+  // First-entry call-to-action: until Play has run once for this scene
+  // load, the idle Start is a large centered button instead of the small
+  // shuttle, so a visitor knows what to press (hotspot tour, traffic, or
+  // the car). After the first Start (or an auto-start) the small shuttle
+  // is enough. Reset per scene load. Owners never see it: they enter the
+  // viewer through Start.
+  const [hasPlayedThisScene, setHasPlayedThisScene] = useState(false);
+  useEffect(() => {
+    if (isPlaying) setHasPlayedThisScene(true);
+  }, [isPlaying]);
+  useEffect(() => {
+    const sceneEl = AFRAME.scenes[0] || document.querySelector('a-scene');
+    if (!sceneEl) return undefined;
+    const reset = () => setHasPlayedThisScene(false);
+    sceneEl.addEventListener('newScene', reset);
+    return () => sceneEl.removeEventListener('newScene', reset);
+  }, []);
   const [authorId, setAuthorId] = useState(null);
   const [authorUsername, setAuthorUsername] = useState(null);
 
@@ -342,7 +359,7 @@ function Toolbar() {
           Drive still requires an explicit action, so a visitor is never
           dropped into a vehicle they didn't ask for. Static scenes
           (hasPlayable === false) show nothing. */}
-      {hasPlayable && (
+      {hasPlayable && (isPlaying || hasPlayedThisScene) && (
         <div id="viewer-shuttle" className={`clickable ${styles.shuttleDock}`}>
           <div className={primaryStyles.wrapper}>
             <Tooltip.Provider>
@@ -434,6 +451,22 @@ function Toolbar() {
               )}
             </Tooltip.Provider>
           </div>
+        </div>
+      )}
+
+      {/* First-entry Start: large and centered until Play has run once
+          for this scene load (see hasPlayedThisScene). */}
+      {hasPlayable && !isPlaying && !hasPlayedThisScene && (
+        <div className={`clickable ${styles.startCta}`}>
+          <button
+            id="viewer-start-cta"
+            type="button"
+            className={styles.startCtaButton}
+            onClick={() => getPlayModeSystem()?.start()}
+          >
+            <AwesomeIcon icon={faPlay} size={28} />
+            <FormattedMessage id="viewer.play" defaultMessage="Start" />
+          </button>
         </div>
       )}
 

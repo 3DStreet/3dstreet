@@ -37,7 +37,14 @@ AFRAME.registerComponent('viewer-start', {
     // false = fixed camera while playing: visitors can only click hotspots
     // and go Back; orbit/pan/zoom/fly input is ignored (the viewer-start
     // system locks the shared controls' user input during play in `viewer`).
-    freeLook: { default: true }
+    freeLook: { default: true },
+    // true = a viewer-origin entry (?viewer / ?embed / a non-owner landing
+    // in the viewer) starts Play on arrival, no click. Off by default:
+    // the visitor's press is the audio-unlock gesture browsers require and
+    // the de facto "everything finished loading" gate the deterministic
+    // sim relies on (see docs/focus-hotspots.md). Drive/fly never
+    // auto-start regardless (they take the camera).
+    autoStart: { default: false }
   },
 
   init() {
@@ -158,6 +165,19 @@ AFRAME.registerSystem('viewer-start', {
     this._onPlayStart = this._onPlayStart.bind(this);
     this._onPlayStop = this._onPlayStop.bind(this);
     this._onPlayReset = this._onPlayReset.bind(this);
+    // Auto-start arms per scene load and fires once the scene is presented
+    // (control mode viewer, editor closed). Both orders happen: ?viewer=
+    // sets viewer mode before the scene loads; a non-owner is switched to
+    // the viewer after auth resolves, i.e. after newScene.
+    this._autoStartPending = false;
+    this._autoStarting = false;
+    this.sceneEl.addEventListener('newScene', () => {
+      this._autoStartPending = true;
+      setTimeout(() => this._tryAutoStart(), 0);
+    });
+    this.sceneEl.addEventListener('mode-changed', (evt) => {
+      if (evt.detail.to === 'viewer') setTimeout(() => this._tryAutoStart(), 0);
+    });
     this.sceneEl.addEventListener('play-mode-start', this._onPlayStart);
     this.sceneEl.addEventListener('play-mode-stop', this._onPlayStop);
     this.sceneEl.addEventListener('play-mode-reset', this._onPlayReset);
@@ -248,8 +268,31 @@ AFRAME.registerSystem('viewer-start', {
     return !caps.includes('drive-controls') && !caps.includes('fly-controls');
   },
 
+  _tryAutoStart() {
+    if (!this._autoStartPending) return;
+    const el = this.getActive();
+    if (!el?.components?.['viewer-start']?.data?.autoStart) return;
+    const playMode = this.sceneEl.systems['play-mode'];
+    if (!playMode || playMode.isPlaying) return;
+    if (this.sceneEl.systems['mode-manager']?.getMode() !== 'viewer') return;
+    if (useStore.getState().isInspectorEnabled) return;
+    if (!this._sessionKeepsViewerCamera()) return; // never into a vehicle
+    this._autoStartPending = false;
+    // Skip Start's glide: the scene-load fly-in is already heading to the
+    // Starting View and should finish on its own.
+    this._autoStarting = true;
+    try {
+      playMode.start({ origin: 'viewer' });
+    } finally {
+      this._autoStarting = false;
+    }
+  },
+
   _onPlayStart() {
     this._restoreState = null;
+    // Any Start (manual or auto) consumes the arm for this scene load.
+    this._autoStartPending = false;
+    if (this._autoStarting) return;
     if (!this.getStartCameraState() || !this._sessionKeepsViewerCamera()) {
       return;
     }
