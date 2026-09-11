@@ -4,13 +4,17 @@ import useStore from '../../store.js';
 /**
  * `viewer-start` — the scene's explicit starting vantage for a visitor.
  *
- * A discrete entity (Add Layer → "Viewer Start") whose position/rotation IS
- * the camera pose Play starts from: pressing Start glides the shared
- * editor/viewer camera to it, so a hotspot tour (or any viewer-side
- * experience) begins from the same place every time regardless of where
- * the author's camera happens to be. Stop returns an editor-origin session
- * to the pre-Start pose. The scene thumbnail keeps defining the pose a
- * scene LOADS at; this entity defines where Start goes.
+ * A discrete, one-per-scene entity (Add Layer → "Viewer Start") whose
+ * position/rotation/fov IS the scene's start pose: visitors open the scene
+ * here (viewer/embed launches, non-owners in the editor) and pressing Start
+ * glides the shared editor/viewer camera here, so a hotspot tour (or any
+ * viewer-side experience) begins from the same place every time. Setting a
+ * scene thumbnail also moves this entity to the captured view, so the
+ * thumbnail and the start pose stay one thing. Scenes without one fall
+ * back to the legacy default-snapshot pose (`setFallbackStartPose`). The
+ * owner's own editor session lands on their autosaved editor pose instead
+ * (src/tested/scene-camera-pose.js). Stop returns an editor-origin session
+ * to the pre-Start pose.
  *
  * The component draws a procedural camera-body + frustum marker that only
  * shows in editor control mode (never in view/play/drive, never saved —
@@ -23,21 +27,31 @@ import useStore from '../../store.js';
  */
 
 const MARKER_COLOR = '#7c4dff';
-const CAMERA_OFFSET_Z = 0; // pose origin = entity origin; body sits behind
 
 AFRAME.registerComponent('viewer-start', {
   schema: {
-    enabled: { default: true }
+    // Vertical field of view in degrees (camera `fov`; the saved
+    // cameraState shape calls it `zoom`). Future camera controls (a look-at
+    // target, an orbit radius) hang off this schema too.
+    fov: { default: 60 }
   },
 
   init() {
     this._onModeChanged = this._onModeChanged.bind(this);
     this._buildMarker();
+    this.update();
     this.el.sceneEl.addEventListener('mode-changed', this._onModeChanged);
     this._applyVisibility(
       this.el.sceneEl.systems['mode-manager']?.getMode() ?? 'editor'
     );
     this.system?.register(this);
+  },
+
+  update() {
+    if (!this._helperCamera) return;
+    this._helperCamera.fov = this.data.fov;
+    this._helperCamera.updateProjectionMatrix();
+    this._helper.update();
   },
 
   remove() {
@@ -56,55 +70,36 @@ AFRAME.registerComponent('viewer-start', {
     this.el.setAttribute('visible', mode === 'editor');
   },
 
-  // Camera-shaped body + a wireframe frustum pointing down local -Z, the
-  // direction the camera will face. Meshes (not just lines) so the editor
-  // selection raycast can pick the entity in the viewport.
+  // A small camera body (a mesh, so the editor selection raycast can pick
+  // the entity) plus THREE.CameraHelper on a throwaway camera for the
+  // frustum, which draws the real field of view for free. The helper
+  // normally copies its camera's world matrix; pinning its local matrix
+  // to identity keeps it in the entity's space as a child of the group.
   _buildMarker() {
     const group = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: MARKER_COLOR,
-      roughness: 0.5,
-      transparent: true,
-      opacity: 0.9
-    });
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.5), bodyMat);
-    body.position.set(0, 0, 0.35 + CAMERA_OFFSET_Z);
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.4, 0.5),
+      new THREE.MeshStandardMaterial({
+        color: MARKER_COLOR,
+        roughness: 0.5,
+        transparent: true,
+        opacity: 0.9
+      })
+    );
+    body.position.set(0, 0, 0.35);
     group.add(body);
 
-    const lens = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.14, 0.18, 0.25, 20),
-      bodyMat
+    this._helperCamera = new THREE.PerspectiveCamera(
+      this.data.fov,
+      16 / 10,
+      0.1,
+      2.5
     );
-    lens.rotation.x = Math.PI / 2;
-    lens.position.set(0, 0, 0.0 + CAMERA_OFFSET_Z);
-    group.add(lens);
-
-    // Frustum: apex at the pose origin, opening toward -Z.
-    const depth = 2.2;
-    const hw = 1.1;
-    const hh = 0.7;
-    const apex = [0, 0, CAMERA_OFFSET_Z];
-    const c = [
-      [-hw, hh, -depth],
-      [hw, hh, -depth],
-      [hw, -hh, -depth],
-      [-hw, -hh, -depth]
-    ];
-    const pts = [];
-    for (let i = 0; i < 4; i++) {
-      pts.push(...apex, ...c[i]);
-      pts.push(...c[i], ...c[(i + 1) % 4]);
-    }
-    // Small "up" tick on the far rectangle so roll reads at a glance.
-    pts.push(-0.25, hh, -depth, 0, hh + 0.3, -depth);
-    pts.push(0, hh + 0.3, -depth, 0.25, hh, -depth);
-    const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-    const lines = new THREE.LineSegments(
-      geom,
-      new THREE.LineBasicMaterial({ color: MARKER_COLOR })
-    );
-    group.add(lines);
+    this._helper = new THREE.CameraHelper(this._helperCamera);
+    this._helper.matrix = new THREE.Matrix4();
+    this._helper.material.color.set(MARKER_COLOR);
+    this._helper.material.vertexColors = false;
+    group.add(this._helper);
 
     this.el.setObject3D('mesh', group);
   }
@@ -126,7 +121,8 @@ export function viewerStartCameraState(el) {
   const rotation = new THREE.Euler().setFromQuaternion(quaternion, 'XYZ');
   return {
     position: { x: position.x, y: position.y, z: position.z },
-    rotation: { x: rotation.x, y: rotation.y, z: rotation.z }
+    rotation: { x: rotation.x, y: rotation.y, z: rotation.z },
+    zoom: el.components?.['viewer-start']?.data?.fov || 60
   };
 }
 
@@ -151,6 +147,7 @@ AFRAME.registerSystem('viewer-start', {
   init() {
     this.entries = new Set();
     this._restoreState = null;
+    this._fallbackStartPose = null;
     this._onPlayStart = this._onPlayStart.bind(this);
     this._onPlayStop = this._onPlayStop.bind(this);
     this.sceneEl.addEventListener('play-mode-start', this._onPlayStart);
@@ -178,29 +175,41 @@ AFRAME.registerSystem('viewer-start', {
     this.entries.delete(component);
   },
 
-  // First enabled viewer-start in DOM order (one per scene is the intended
-  // authoring; the DOM sweep keeps property toggles visible immediately).
+  // The scene's Viewer Start (one per scene by design; first in DOM order
+  // if a hand-edited scene carries more). Deleting it is the off switch.
   getActive() {
-    return (
-      Array.from(this.sceneEl.querySelectorAll('[viewer-start]')).find(
-        (el) => el.components?.['viewer-start']?.data?.enabled
-      ) || null
-    );
+    return this.sceneEl.querySelector('[viewer-start]');
+  },
+
+  // Legacy start pose for scenes without a Viewer Start entity: the default
+  // snapshot's camera state, handed over by the viewport on scene load.
+  setFallbackStartPose(cameraState) {
+    this._fallbackStartPose = cameraState || null;
+  },
+
+  // The scene's effective start pose: the Viewer Start entity if there is
+  // one, else the legacy snapshot pose, else null. One accessor for the
+  // load fly-in and for Start.
+  getStartCameraState() {
+    const el = this.getActive();
+    if (el) return viewerStartCameraState(el);
+    return this._fallbackStartPose;
   },
 
   // Glide the shared camera to the start pose. Public so the sidebar's
   // Preview button and Play share one path.
-  goToStart(el = this.getActive()) {
+  goToStart(el = null) {
     const controls = window.AFRAME?.INSPECTOR?.controls;
-    if (!el || !controls?.focusCameraState) return false;
-    controls.focusCameraState(viewerStartCameraState(el));
+    if (!controls?.focusCameraState) return false;
+    const state = el ? viewerStartCameraState(el) : this.getStartCameraState();
+    if (!state) return false;
+    controls.focusCameraState(state);
     return true;
   },
 
   _onPlayStart() {
     this._restoreState = null;
-    const startEl = this.getActive();
-    if (!startEl) return;
+    if (!this.getStartCameraState()) return;
     // Drive/fly borrow the rig camera for the whole session; the start
     // vantage only applies to sessions that keep the shared viewer camera.
     // Ask the playable registry rather than the DOM so a hidden/disabled
@@ -212,7 +221,7 @@ AFRAME.registerSystem('viewer-start', {
     }
     const origin = useStore.getState().playEntryOrigin;
     if (origin === 'editor') this._restoreState = editorCameraState();
-    this.goToStart(startEl);
+    this.goToStart();
   },
 
   _onPlayStop() {

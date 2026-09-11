@@ -1,5 +1,6 @@
 import posthog from 'posthog-js';
 import useStore from '@/store.js';
+import { resolveSavedCameraStates } from '@/tested/scene-camera-pose.js';
 import {
   createScene,
   updateScene,
@@ -64,15 +65,6 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
     return;
   }
 
-  // Resolve camera state: explicit snapshot > auto-saved > null (default)
-  let defaultSnapshotCameraState = memoryData?.cameraState || null;
-  if (memoryData?.snapshots?.length > 0) {
-    const defaultSnapshot = memoryData.snapshots.find((s) => s.isDefault);
-    if (defaultSnapshot?.cameraState) {
-      defaultSnapshotCameraState = defaultSnapshot.cameraState;
-    }
-  }
-
   const processStreetDataForDuplicateIds = (data) => {
     // Keep track of IDs we've seen during processing
     const seenIds = new Set();
@@ -110,9 +102,11 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
   STREET.utils.resolveSplatAssetUrls(streetContainerEl);
   useStore.getState().updateLoadingProgress(80, 'Finalizing scene...');
 
-  // Emit newScene with snapshot camera state if available
+  // A locally opened file has no author, so the viewport treats the opener
+  // as the owner and lands on the file's autosaved editor pose.
   AFRAME.scenes[0].emit('newScene', {
-    snapshotCameraState: defaultSnapshotCameraState
+    ...resolveSavedCameraStates(memoryData),
+    authorId: null
   });
 }
 

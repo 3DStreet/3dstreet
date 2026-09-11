@@ -19,6 +19,8 @@ import { captureNavDiscovery } from './navAnalytics.js';
 import Events from './Events';
 import { isBatched, syncBatchedSubtree } from '../../batch-models';
 import useStore from '@/store';
+import { auth } from '@shared/services/firebase';
+import { pickLoadCameraState } from '@/tested/scene-camera-pose.js';
 // variables used by OrientedBoxHelper
 const auxEuler = new THREE.Euler();
 const auxPosition = new THREE.Vector3();
@@ -783,9 +785,29 @@ export function Viewport(inspector) {
   });
 
   sceneEl.addEventListener('newScene', (event) => {
-    // Check if there's a snapshot camera state passed with the event
-    const snapshotCameraState = event.detail?.snapshotCameraState;
-    controls.newSceneCameraZoom(snapshotCameraState);
+    // Load fly-in target. The scene's entities already exist here, so the
+    // viewer-start system can report the Viewer Start entity's pose; the
+    // legacy snapshot pose is its fallback (and Start's, via the system).
+    const {
+      snapshotCameraState = null,
+      editorCameraState = null,
+      urlCameraState = null,
+      authorId = null
+    } = event.detail || {};
+    const viewerStart = sceneEl.systems['viewer-start'];
+    viewerStart?.setFallbackStartPose(snapshotCameraState);
+    const params = new URLSearchParams(window.location.search);
+    controls.newSceneCameraZoom(
+      pickLoadCameraState({
+        urlCameraState,
+        viewerLaunch:
+          params.get('viewer') === 'true' || params.get('embed') === 'true',
+        isOwner: !authorId || authorId === auth.currentUser?.uid,
+        startCameraState:
+          viewerStart?.getStartCameraState() || snapshotCameraState,
+        editorCameraState
+      })
+    );
   });
 
   Events.on('cameratoggle', (data) => {

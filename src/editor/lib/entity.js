@@ -4,6 +4,8 @@ import capitalize from 'lodash-es/capitalize';
 import Events from './Events';
 import { equal } from './utils';
 import posthog from 'posthog-js';
+import { faBullseye } from '@fortawesome/free-solid-svg-icons';
+import { captureFocusPose } from './focusPose.js';
 import {
   GeospatialIcon,
   ManagedStreetIcon,
@@ -14,7 +16,6 @@ import {
   LayersIcon,
   Object24IconCyan,
   ShapeIcon,
-  HotspotIcon,
   ViewerStartIcon
 } from '@shared/icons';
 
@@ -188,6 +189,12 @@ export function reorderEntityRelativeTo(entity, targetEntity, insertionMode) {
  * @returns {Element} The clone
  */
 export function cloneEntity(entity) {
+  // One start pose per scene: the viewer-start system only ever honors the
+  // first, so a second copy would silently do nothing.
+  if (entity?.hasAttribute?.('viewer-start')) {
+    STREET.notify.warningMessage('A scene has one Viewer Start');
+    return;
+  }
   return AFRAME.INSPECTOR.execute('entityclone', entity);
 }
 
@@ -730,11 +737,6 @@ export function getEntityIcon(entity) {
   if (entity.getAttribute('viewer-start')) {
     return <ViewerStartIcon />;
   }
-  // Any mesh can be a hotspot (ghost block, splat, imported model), so the
-  // badge marks the role rather than the host geometry.
-  if (entity.getAttribute('focus-hotspot')) {
-    return <HotspotIcon />;
-  }
 
   // Check for class-based icons
   if (entity.classList.contains('autocreated')) {
@@ -754,6 +756,20 @@ export function getEntityIcon(entity) {
     default:
       return <Object24IconCyan />;
   }
+}
+
+/**
+ * Status badges for a scene-graph row: role components attached to an
+ * entity, shown inline after the name, in addition to (never instead of)
+ * the entity's type icon. Passive: each is a { key, icon }; the row owns
+ * the tooltip text (Entity.jsx, so the strings are extractable).
+ */
+export function getEntityBadges(entity) {
+  const badges = [];
+  if (entity.hasAttribute('focus-hotspot')) {
+    badges.push({ key: 'focus-hotspot', icon: faBullseye });
+  }
+  return badges;
 }
 
 const NOT_COMPONENTS = ['id', 'class', 'mixin'];
@@ -938,10 +954,11 @@ export function exportEntityToObject(entity) {
  * position/rotation (expressed in its parent's space), so "where I'm looking
  * now" becomes where Start begins. Two entityupdate commands, both undoable.
  */
-export function setViewerStartToCurrentView(entity) {
+// Current editor camera pose expressed in `parent`'s space, as the
+// position/rotation/fov component values a viewer-start entity stores.
+function viewerStartValuesFromCamera(parent) {
   const camera = AFRAME.INSPECTOR.camera;
   camera.updateMatrixWorld();
-  const parent = entity.object3D.parent;
   parent.updateMatrixWorld(true);
   const worldPos = new THREE.Vector3();
   const worldQuat = new THREE.Quaternion();
@@ -953,39 +970,82 @@ export function setViewerStartToCurrentView(entity) {
   const localQuat = parentQuat.invert().multiply(worldQuat);
   const euler = new THREE.Euler().setFromQuaternion(localQuat, 'YXZ');
   const deg = THREE.MathUtils.radToDeg;
+  return {
+    position: { x: localPos.x, y: localPos.y, z: localPos.z },
+    rotation: { x: deg(euler.x), y: deg(euler.y), z: deg(euler.z) },
+    fov: camera.fov || 60
+  };
+}
+
+/**
+ * Write the current editor camera's world pose into a viewer-start entity's
+ * position/rotation/fov (expressed in its parent's space), so "where I'm
+ * looking now" becomes the scene's start pose. Undoable entityupdates.
+ */
+export function setViewerStartToCurrentView(entity, { notify = true } = {}) {
+  const values = viewerStartValuesFromCamera(entity.object3D.parent);
   AFRAME.INSPECTOR.execute('entityupdate', {
     entity,
     component: 'position',
-    value: { x: localPos.x, y: localPos.y, z: localPos.z }
+    value: values.position
   });
   AFRAME.INSPECTOR.execute('entityupdate', {
     entity,
     component: 'rotation',
-    value: { x: deg(euler.x), y: deg(euler.y), z: deg(euler.z) }
+    value: values.rotation
   });
-  STREET.notify.successMessage('Viewer start set to current view');
+  AFRAME.INSPECTOR.execute('entityupdate', {
+    entity,
+    component: 'viewer-start',
+    property: 'fov',
+    value: values.fov
+  });
+  if (notify) STREET.notify.successMessage('Viewer start set to current view');
+}
+
+/** The scene's Viewer Start entity or null. One per scene; see cloneEntity. */
+export function getViewerStartEntity() {
+  return document.querySelector('[viewer-start]');
+}
+
+/**
+ * Move the scene's Viewer Start to the current editor view, creating it if
+ * the scene has none. The only creation paths: "set thumbnail" (so the
+ * thumbnail view and the start pose are one thing) and View › Set Start
+ * View. Returns the entity.
+ */
+export function ensureViewerStartAtCurrentView({ select = false } = {}) {
+  const existing = getViewerStartEntity();
+  if (existing) {
+    setViewerStartToCurrentView(existing, { notify: false });
+    if (select) AFRAME.INSPECTOR.selectEntity(existing);
+    return existing;
+  }
+  const parent = document.querySelector(AFRAME.INSPECTOR.config.defaultParent);
+  const values = viewerStartValuesFromCamera(parent.object3D);
+  const definition = {
+    components: {
+      position: values.position,
+      rotation: values.rotation,
+      'viewer-start': { fov: values.fov },
+      'data-layer-name': 'Viewer Start'
+    }
+  };
+  // entitycreate selects the new entity once it has loaded; when called
+  // from set-thumbnail, put the author's selection back afterwards.
+  const previous = AFRAME.INSPECTOR.selectedEntity;
+  return AFRAME.INSPECTOR.execute('entitycreate', definition, () => {
+    if (!select) AFRAME.INSPECTOR.selectEntity(previous || null);
+  });
 }
 
 export function setFocusCameraPose(entity) {
-  const camera = AFRAME.INSPECTOR.camera;
-  const cameraPositionRelativeToEntity = entity.object3D.worldToLocal(
-    camera.position.clone()
+  // Full pose (position + orientation + fov) in the entity's frame, so the
+  // focus glide lands exactly as framed. One undoable write either way.
+  const pose = captureFocusPose(entity.object3D, AFRAME.INSPECTOR.camera);
+  AFRAME.INSPECTOR.execute(
+    entity.hasAttribute('focus-camera-pose') ? 'entityupdate' : 'componentadd',
+    { entity, component: 'focus-camera-pose', value: pose }
   );
-  if (entity.hasAttribute('focus-camera-pose')) {
-    AFRAME.INSPECTOR.execute('entityupdate', {
-      entity: entity,
-      component: 'focus-camera-pose',
-      property: 'relativePosition',
-      value: cameraPositionRelativeToEntity
-    });
-  } else {
-    AFRAME.INSPECTOR.execute('componentadd', {
-      entity: entity,
-      component: 'focus-camera-pose',
-      value: {
-        relativePosition: cameraPositionRelativeToEntity
-      }
-    });
-  }
   STREET.notify.successMessage('Focus camera pose set');
 }

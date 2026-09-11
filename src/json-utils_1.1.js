@@ -1,4 +1,5 @@
 import useStore from './store';
+import { resolveSavedCameraStates } from './tested/scene-camera-pose';
 import { createUniqueId } from './editor/lib/entity';
 import { beginBatching, BATCHING_ENABLED } from './batch-models';
 import { decodeCameraStateFromParam } from './editor/lib/cameraUtils';
@@ -1167,33 +1168,16 @@ AFRAME.registerComponent('set-loader-from-hash', {
             );
           }
 
-          // Resolve camera state: explicit snapshot > auto-saved > null (default)
-          let defaultSnapshotCameraState = jsonData.memory?.cameraState || null;
-          if (
-            jsonData.memory?.snapshots &&
-            jsonData.memory.snapshots.length > 0
-          ) {
-            const defaultSnapshot = jsonData.memory.snapshots.find(
-              (s) => s.isDefault
-            );
-            if (defaultSnapshot && defaultSnapshot.cameraState) {
-              defaultSnapshotCameraState = defaultSnapshot.cameraState;
-            }
-          }
-          // A ?camera= vantage deep link wins over the scene's default
-          // snapshot pose.
-          if (urlCameraState) {
-            defaultSnapshotCameraState = urlCameraState;
-          }
-          if (defaultSnapshotCameraState) {
-            console.log(
-              '[set-loader-from-hash] Resolved camera state:',
-              defaultSnapshotCameraState
-            );
-            // Store it temporarily on the scene element for the newScene event
-            AFRAME.scenes[0].defaultSnapshotCameraState =
-              defaultSnapshotCameraState;
-          }
+          // Saved poses: legacy start pose (default snapshot > autosave) and
+          // the author's editor pose (autosave > snapshot). A ?camera=
+          // vantage deep link wins over both; the viewport's newScene
+          // handler picks between them (src/tested/scene-camera-pose.js)
+          // once the viewer-start entity, if any, exists in the DOM.
+          AFRAME.scenes[0].pendingSceneLoadCamera = {
+            ...resolveSavedCameraStates(jsonData.memory),
+            urlCameraState: urlCameraState || null,
+            authorId: jsonData.author || null
+          };
           useStore.getState().updateLoadingProgress(50, 'Creating scene...');
           STREET.utils.createElementsFromJSON(jsonData, false);
           const sceneId = getUUIDFromPath(requestURL);
@@ -1315,13 +1299,11 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
   useStore.getState().updateLoadingProgress(90, 'Finalizing...');
   STREET.notify.successMessage('Scene loaded');
 
-  // Pass snapshot camera state if available
-  const snapshotCameraState = AFRAME.scenes[0].defaultSnapshotCameraState;
-  AFRAME.scenes[0].emit('newScene', {
-    snapshotCameraState: snapshotCameraState
-  });
-  // Clean up temporary storage
-  delete AFRAME.scenes[0].defaultSnapshotCameraState;
+  // Saved camera poses (set by the hash loader) ride along on newScene so
+  // the viewport can pick the load pose; see src/tested/scene-camera-pose.js.
+  const pending = AFRAME.scenes[0].pendingSceneLoadCamera || {};
+  delete AFRAME.scenes[0].pendingSceneLoadCamera;
+  AFRAME.scenes[0].emit('newScene', { ...pending });
 }
 
 STREET.utils.createElementsFromJSON = createElementsFromJSON;

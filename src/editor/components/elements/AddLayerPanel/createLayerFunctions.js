@@ -445,21 +445,6 @@ export function createFocusHotspot(position) {
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
-export function createViewerStart(position) {
-  // The scene's explicit Play starting vantage (see play/viewer-start.js).
-  // Spawned at eye height above the drop point, facing -Z like a camera;
-  // authors then press "Set To Current View" in its sidebar to capture the
-  // exact framing they want visitors to begin from.
-  const definition = {
-    components: {
-      position: groundedPositionString(position, 1.6),
-      'viewer-start': '',
-      'data-layer-name': 'Viewer Start'
-    }
-  };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
-}
-
 /**
  * Spawn a flyable-helicopter entity (see play-mode-helicopter.js).
  * The visual is the procedural `helicopter-mesh` (MH-65 Dolphin-class
