@@ -41,6 +41,7 @@
 
 import './navTuningComponent.js';
 import { streetFocusPose } from '../streetFocus.js';
+import { resolveFocusPose } from '../focusPose.js';
 import { isStreetLevelNav, isWasdNav } from './flag.js';
 import { ModifierState } from './modifierState.js';
 import { GestureLatch } from './gestureLatch.js';
@@ -440,6 +441,17 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // all tween-gated; focus was the one ungated writer, so F mid-tween had
     // two per-frame camera writers fighting (PR #1851 review).
     this._cancelCameraTween();
+
+    // A fully captured focus-camera-pose (orientation + fov, lookAt false)
+    // is a stored camera state in the entity's frame: glide straight to it
+    // through the same path as snapshots and the Viewer Start, no look-at
+    // reconstruction. Legacy position-only poses fall through below.
+    const storedPose = target.el?.getAttribute?.('focus-camera-pose');
+    if (storedPose && storedPose.lookAt === false) {
+      this.focusCameraState(resolveFocusPose(target, storedPose));
+      return;
+    }
+
     const camera = this._camera;
     const fa = this._focusAnimation;
 
