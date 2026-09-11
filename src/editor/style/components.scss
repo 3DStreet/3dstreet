@@ -717,6 +717,43 @@ a.help-linkhover {
   }
 }
 
+/* Entity-panel header action buttons: the segment/managed-street icon
+   treatment (28px pills), shared by every entity sidepanel header via
+   EntityActionButtons. Radix tooltips (instant, with kbd hints) replace
+   native titles. */
+.segment-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  flex: none;
+}
+.segment-actions-divider {
+  width: 1px;
+  background: variables.$gray-200;
+  margin: 4px 4px;
+}
+.segment-action-btn {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px !important;
+  background: variables.$bgalphadark;
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+  &:hover:not(:disabled) {
+    background: variables.$gray-200;
+  }
+  &:disabled {
+    opacity: 0.35;
+  }
+}
+
 /* Compact properties-panel footer (#1982): Add Component select + Advanced
    pill on one row, the design introduced by the segment panel (#1753), now
    shared by every entity panel. */
@@ -1049,39 +1086,6 @@ a.help-linkhover {
     font-weight: 500;
     color: variables.$white;
   }
-  .segment-actions {
-    display: flex;
-    align-items: stretch;
-    gap: 2px;
-    flex: none;
-  }
-  .segment-actions-divider {
-    width: 1px;
-    background: variables.$gray-200;
-    margin: 4px 4px;
-  }
-  .segment-action-btn {
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-    padding: 0 !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px !important;
-    background: variables.$bgalphadark;
-    svg {
-      width: 14px;
-      height: 14px;
-    }
-    &:hover:not(:disabled) {
-      background: variables.$gray-200;
-    }
-    &:disabled {
-      opacity: 0.35;
-    }
-  }
-
   /* --- segment block / compact rows --- */
   .segment-block {
     padding: 10px 12px 14px;
@@ -1577,6 +1581,9 @@ a.help-linkhover {
     display: inline-flex;
     align-items: center;
     min-width: 0;
+    // Cancel entity.scss's stray global indent so the entity icon sits at
+    // the same 12px inset as the cross-section strip and compact rows.
+    margin-left: 0;
     font-size: 16px;
     font-weight: 500;
     color: variables.$white;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useIntl } from 'react-intl';
+import { Tooltip } from 'radix-ui';
 import Component from './StreetSegmentComponent';
 import PropertyRow from './PropertyRow';
 import StreetCrossSectionStrip from './StreetCrossSectionStrip';
@@ -16,21 +17,19 @@ import {
   cloneEntity,
   removeSelectedEntity,
   reorderEntityRelativeTo,
-  setFocusCameraPose,
   getEntityDisplayName
 } from '../../lib/entity';
 import EntityLabel from '../scenegraph/EntityLabel';
+import EntityActionButtons, {
+  ActionTooltip,
+  IconButton
+} from './EntityActionButtons';
 import { getTravelledWaySegments } from '@/aframe-components/street-layout-utils';
 import {
   StreetSurfaceIcon,
   ArrowLeftIcon,
-  ArrowRightIcon,
-  ArrowsPointingInwardIcon,
-  Copy32Icon,
-  TrashIcon
+  ArrowRightIcon
 } from '@shared/icons';
-import { Button } from '../elements';
-import Events from '../../lib/Events';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { isGeneratorComponent } from '../../lib/featuredComponents';
 import { captureSegmentEdit, SEGMENT_OPS } from '../../lib/segmentAnalytics';
@@ -49,36 +48,6 @@ import {
 // entityupdate path.
 
 const componentName = 'street-segment';
-
-// 28px icon action button used in the segment and managed-street panel
-// headers (exported for ManagedStreetSidebar).
-export const IconButton = ({
-  title,
-  disabled,
-  onClick,
-  onLongPress,
-  children
-}) => (
-  <Button
-    variant="custom"
-    className="segment-action-btn"
-    title={title}
-    disabled={disabled}
-    onClick={onClick}
-    onLongPress={onLongPress}
-    longPressDelay={onLongPress ? 1500 : undefined}
-  >
-    {children}
-  </Button>
-);
-
-IconButton.propTypes = {
-  title: PropTypes.string,
-  disabled: PropTypes.bool,
-  onClick: PropTypes.func,
-  onLongPress: PropTypes.func,
-  children: PropTypes.node
-};
 
 // Width in metres with the user's units preference, plus per-type preset
 // pills. The pills are curated design values per unit system (see
@@ -525,59 +494,51 @@ const StreetSegmentSidebar = ({ entity }) => {
           </span>
           <div className="segment-actions">
             {segmentPos !== -1 && (
-              <>
-                <IconButton
-                  title={intl.formatMessage({
+              <Tooltip.Provider>
+                <ActionTooltip
+                  label={intl.formatMessage({
                     id: 'segmentSidebar.moveLeft',
                     defaultMessage: 'Move Left'
                   })}
-                  disabled={segmentPos === 0}
-                  onClick={() => moveSegment(-1)}
                 >
-                  <ArrowLeftIcon />
-                </IconButton>
-                <IconButton
-                  title={intl.formatMessage({
+                  <IconButton
+                    disabled={segmentPos === 0}
+                    onClick={() => moveSegment(-1)}
+                  >
+                    <ArrowLeftIcon />
+                  </IconButton>
+                </ActionTooltip>
+                <ActionTooltip
+                  label={intl.formatMessage({
                     id: 'segmentSidebar.moveRight',
                     defaultMessage: 'Move Right'
                   })}
-                  disabled={segmentPos === travelledWaySiblings.length - 1}
-                  onClick={() => moveSegment(1)}
                 >
-                  <ArrowRightIcon />
-                </IconButton>
+                  <IconButton
+                    disabled={segmentPos === travelledWaySiblings.length - 1}
+                    onClick={() => moveSegment(1)}
+                  >
+                    <ArrowRightIcon />
+                  </IconButton>
+                </ActionTooltip>
                 <div className="segment-actions-divider" />
-              </>
+              </Tooltip.Provider>
             )}
-            <IconButton
-              title={intl.formatMessage(commonMessages.focus)}
-              onClick={() => Events.emit('objectfocus', entity.object3D)}
-              onLongPress={() => setFocusCameraPose(entity)}
-            >
-              <ArrowsPointingInwardIcon />
-            </IconButton>
-            <IconButton
-              title={intl.formatMessage(commonMessages.duplicate)}
-              onClick={() => {
+            <EntityActionButtons
+              entity={entity}
+              onDuplicate={() => {
                 captureSegmentEdit(SEGMENT_OPS.DUPLICATED, {
                   segment_type: data.type
                 });
                 cloneEntity(entity);
               }}
-            >
-              <Copy32Icon />
-            </IconButton>
-            <IconButton
-              title={intl.formatMessage(commonMessages.delete)}
-              onClick={() => {
+              onDelete={() => {
                 captureSegmentEdit(SEGMENT_OPS.REMOVED, {
                   segment_type: data.type
                 });
                 removeSelectedEntity();
               }}
-            >
-              <TrashIcon />
-            </IconButton>
+            />
           </div>
         </div>
         <StreetCrossSectionStrip entity={entity} />
