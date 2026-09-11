@@ -989,6 +989,10 @@ a.help-linkhover {
   align-items: center;
   margin: 0 0 8px;
   padding: 0;
+  // Full width even inside a flex parent (the geo controls), where a
+  // shrink-to-content row squeezes its badges and buttons into wraps.
+  width: 100%;
+  box-sizing: border-box;
   min-height: 32px;
   min-width: 0;
   font-size: 14px;
@@ -1348,6 +1352,18 @@ a.help-linkhover {
   .componentTitle .componentIcon svg {
     width: 14px;
     height: 14px;
+  }
+  // The remove button must not grow the header: sections with and
+  // without one share one height.
+  .componentHeaderActions .button {
+    display: flex;
+    align-items: center;
+    height: 16px;
+    padding: 0;
+    svg {
+      width: 14px;
+      height: 14px;
+    }
   }
 }
 .properties-panel .collapsible.component ~ .collapsible.component {
