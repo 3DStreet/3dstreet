@@ -171,6 +171,22 @@ const MeshDetailsModal = ({
     };
   }, [assetId, ownerUid]);
 
+  // Switching assets cancels a reoptimize still running for the previous one
+  // and clears its status. Without this, A's "Downloading…" stays on screen
+  // under B, and A's completion would write A's optimization stats onto B's
+  // doc via the setData below. Cancelling (rather than just ignoring the
+  // result) also stops the download/upload actually in flight.
+  const reoptimizeRunRef = useRef(null);
+  useEffect(() => {
+    setReoptimizeStage(null);
+    setReoptimizeResult(null);
+    setReoptimizeError(null);
+    return () => {
+      reoptimizeRunRef.current?.abort();
+      reoptimizeRunRef.current = null;
+    };
+  }, [assetId, ownerUid]);
+
   // Load the asset's transcode/optimization jobs (owner-only by rules) so the
   // modal can show optimization status. Best-effort: failure just hides the row.
   useEffect(() => {
@@ -496,12 +512,25 @@ const MeshDetailsModal = ({
     if (!isOwner || !data || reoptimizeStage) return;
     setReoptimizeResult(null);
     setReoptimizeError(null);
+    const controller = new AbortController();
+    reoptimizeRunRef.current = controller;
+    const isStale = () =>
+      controller.signal.aborted || reoptimizeRunRef.current !== controller;
     try {
       const { reoptimizeAsset } = await import('@shared/asset-upload');
       const result = await reoptimizeAsset(data, {
         ownerUid,
-        onStatus: setReoptimizeStage
+        signal: controller.signal,
+        // A stage can still be reported between the abort and the next
+        // await point; dropping it keeps the previous asset's progress off
+        // the new asset's row.
+        onStatus: (stage) => {
+          if (!isStale()) setReoptimizeStage(stage);
+        }
       });
+      // Aborts reject rather than resolve, but the window between the last
+      // await and here is not covered by that — check before touching state.
+      if (isStale()) return;
       if (!result.ok) {
         setReoptimizeResult(
           result.reason === 'not_smaller_than_current'
@@ -531,10 +560,16 @@ const MeshDetailsModal = ({
         })
       );
     } catch (err) {
+      // A cancelled run is not a failure: the user navigated away, and the
+      // effect above has already cleared this asset's status.
+      if (isStale() || err?.name === 'AbortError') return;
       console.error('[MeshDetailsModal] reoptimize failed', err);
       setReoptimizeError(err.message || t('reoptimizeFailed'));
     } finally {
-      setReoptimizeStage(null);
+      if (reoptimizeRunRef.current === controller) {
+        reoptimizeRunRef.current = null;
+        setReoptimizeStage(null);
+      }
     }
   };
 

@@ -28,19 +28,17 @@ describe('sharedMessages', () => {
   });
 
   it.each(LOCALES)('has a %s string for every id', (locale) => {
-    const untranslated = IDS.filter((id) => {
-      const translated = formatSharedMessage(id, null, { locale });
-      const english = formatSharedMessage(id, null, { locale: 'en' });
-      // A locale that falls through to DEFAULT_LOCALE returns the English
-      // string. Identical text is legitimate for some short labels, so only
-      // flag it when the entry has no key for this locale at all.
+    // Matching the key only at the start of a line: a bare `includes` would
+    // also hit the same text inside a message body (a French string
+    // containing "es:", say) and hide a genuinely missing translation.
+    // Both shapes appear in the table — bare `en:` and quoted `'pt-BR':`.
+    const keyAtLineStart = new RegExp(`^\\s+'?${locale}'?:`, 'm');
+    const missing = IDS.filter((id) => {
       const start = TABLE.indexOf(`  ${id}: {`);
       const chunk = TABLE.slice(start, TABLE.indexOf('\n  },', start));
-      const key = locale === 'en' ? 'en:' : `'${locale}':`;
-      const hasKey = chunk.includes(key) || chunk.includes(`${locale}:`);
-      return !hasKey && translated === english;
+      return !keyAtLineStart.test(chunk);
     });
-    expect(untranslated).toEqual([]);
+    expect(missing).toEqual([]);
   });
 
   it('interpolates values into a template', () => {

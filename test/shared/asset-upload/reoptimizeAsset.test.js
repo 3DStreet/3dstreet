@@ -200,6 +200,20 @@ describe('reoptimizeAsset', () => {
     await expect(reoptimizeAsset(ASSET)).rejects.toThrow('aborted');
   });
 
+  it('re-raises a cancelled pipeline as an abort, not a "no change" outcome', async () => {
+    // optimizeGlb reports an abort as just another skip reason; rendering it
+    // as "No change (aborted)." would be wrong once a cancel is wired up.
+    optimizeGlb.mockResolvedValue({
+      blob: optimizedBlob(3_000),
+      metadata: { optimizationSkipped: true, reason: 'aborted' }
+    });
+    await expect(reoptimizeAsset(ASSET)).rejects.toMatchObject({
+      name: 'AbortError'
+    });
+    expect(uploadToStorage).not.toHaveBeenCalled();
+    expect(updateAsset).not.toHaveBeenCalled();
+  });
+
   it('requires an identifiable asset', async () => {
     await expect(reoptimizeAsset({ storageUrl: 'x' })).rejects.toThrow(
       'assetId'

@@ -125,6 +125,24 @@ describe('firestore.rules — users/{uid}/assets/{assetId} update', () => {
     );
   });
 
+  it('blocks a traversal segment in the optimized path', async () => {
+    // Passes the `^users/<uid>/` prefix check but escapes the folder; such a
+    // reference would also keep a file the orphan GC should reclaim alive.
+    await assertFails(
+      updateDoc(assetRef(ownerDb()), {
+        optimizedSourcePath: `users/${UID}/../${OTHER_UID}/assets/meshes/x.glb`
+      })
+    );
+  });
+
+  it('still allows a normal optimized path containing dots', async () => {
+    await assertSucceeds(
+      updateDoc(assetRef(ownerDb()), {
+        optimizedSourcePath: `users/${UID}/assets/meshes/my..model.glb`
+      })
+    );
+  });
+
   it('blocks pointing the optimized variant outside the owner folder', async () => {
     await assertFails(
       updateDoc(assetRef(ownerDb()), {

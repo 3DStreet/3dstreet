@@ -88,6 +88,13 @@ export async function reoptimizeAsset(
   onStatus?.('optimizing');
   const { blob, metadata } = await optimizeGlb(originalBlob, { signal });
   if (metadata.optimizationSkipped) {
+    // optimizeGlb reports an abort as just another skip reason. Everything
+    // else here is a legitimate "no win" outcome the caller shows to the
+    // user; a cancellation is not, and must not render as
+    // "No change (aborted)." Re-raise it as the abort it was.
+    if (metadata.reason === 'aborted') {
+      throw new DOMException('Reoptimize cancelled', 'AbortError');
+    }
     return { ok: false, reason: metadata.reason, metadata };
   }
 
