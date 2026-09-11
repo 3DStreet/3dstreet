@@ -33,13 +33,13 @@
  * and then drops it.
  */
 
-const GLB_MAGIC = 0x46546c67; // 'glTF' little-endian
+import { hasGlbMagic } from './glbMagic.js';
+
 const CHUNK_JSON = 0x4e4f534a; // 'JSON' little-endian
 
 function readGlbJsonChunk(buffer) {
   const view = new DataView(buffer);
-  const magic = view.byteLength >= 4 ? view.getUint32(0, true) : 0;
-  if (magic !== GLB_MAGIC) {
+  if (!hasGlbMagic(view)) {
     // Not GLB binary — self-contained .gltf uploads pass their JSON straight
     // through here. Throws on non-JSON input, caught by the caller.
     return JSON.parse(new TextDecoder().decode(buffer));

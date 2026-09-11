@@ -72,6 +72,7 @@
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "lodash-es": "^4.17.23",
+    "meshoptimizer": "^1.2.0",
     "nanoid": "^5.1.6",
     "pbf": "^5.1.2",
     "posthog-js": "^1.356.1",

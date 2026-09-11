@@ -34,6 +34,7 @@
          resulting blob as the asset thumbnail. Same stabilisation pattern
          as @shopify/screenshot-glb: poster-dismissed → 3× rAF →
          modelViewer.toBlob(). -->
+
     <model-viewer
       id="mv"
       loading="eager"
@@ -87,26 +88,11 @@
         const data = e.data;
         if (!data || typeof data !== 'object') return;
         if (data.type !== '3dstreet:load-blob') return;
-        // Prefer the blob-URL form: parent does URL.createObjectURL on its
-        // side and posts the (tiny) URL string. Avoids structuredClone of
-        // 10-50 MB of bytes that postMessage(blob) would do. fetch() works
-        // because the parent's blob URL is reachable from the same-origin
-        // iframe; we then create our own blob URL scoped to this document.
-        // The old { blob } payload is still accepted in case a deployed
-        // copy of this HTML is cached and a newer parent talks to it.
-        if (data.url) {
-          fetch(data.url)
-            .then((r) => r.blob())
-            .then(loadFromBlob)
-            .catch((err) => {
-              post({
-                type: '3dstreet:screenshot-error',
-                error: 'failed to fetch blob url: ' + err
-              });
-            });
-        } else if (data.blob) {
-          loadFromBlob(data.blob);
-        }
+        // Structured clone hands over a handle to the same blob (no byte
+        // copy). Deliberately NOT a blob: URL for us to fetch() — that form
+        // failed with "TypeError: Failed to fetch" under memory pressure at
+        // sizes as small as ~12 MB. See captureThumbnail.js.
+        loadFromBlob(data.blob);
       });
 
       mv.addEventListener('error', (e) => {

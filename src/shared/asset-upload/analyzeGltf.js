@@ -22,8 +22,7 @@
  */
 
 import { formatSharedMessage } from '../i18n/sharedMessages';
-
-const GLB_MAGIC = 0x46546c67; // 'glTF' little-endian
+import { hasGlbMagic } from './glbMagic.js';
 
 export function isGltfJsonFile(file) {
   return (file?.name || '').toLowerCase().endsWith('.gltf');
@@ -71,7 +70,7 @@ export async function analyzeGltfFile(file) {
     return { status: 'invalid', externalRefs: [] };
   }
   const view = new DataView(buffer);
-  if (view.byteLength >= 4 && view.getUint32(0, true) === GLB_MAGIC) {
+  if (hasGlbMagic(view)) {
     return { status: 'binary', externalRefs: [] };
   }
   let json;
