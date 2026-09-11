@@ -79,12 +79,14 @@ on the next save), so there is exactly one place a start pose lives. An
 owner who wants "open where I left off" deletes the Starting View.
 Nothing in the load path depends on auth.
 
-- **Editor marker:** a small camera-body mesh (so the selection raycast
-  can pick it) plus a `THREE.CameraHelper` frustum that draws the real
-  `fov`, set as the entity's `mesh`; visible only in control mode
-  `editor`, hidden via `setAttribute('visible', false)` in
-  view/play/drive. Nothing but position/rotation/`viewer-start`
-  serializes.
+- **No geometry:** the entity is a camera pose, not a thing in the
+  scene, so it draws nothing and cannot be picked in the viewport (an
+  earlier marker's frustum lines, raycast with a one-unit threshold, ate
+  every click while the camera sat on it after a load). Select it from
+  the layers list. Focusing it (double-click, Focus, F) glides to the
+  pose itself, the same as Preview Start: `ExperimentalControls.focus`
+  routes `viewer-start` targets to the system's `goToStart`. Nothing but
+  position/rotation/`viewer-start` serializes.
 - **Play:** the system glides the shared editor/viewer camera to the
   start pose on `play-mode-start` (`controls.focusCameraState`, which
   honors `fov` as `zoom`) and, for editor-origin sessions only, restores

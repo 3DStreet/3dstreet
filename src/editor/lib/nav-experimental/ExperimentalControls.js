@@ -448,6 +448,16 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // two per-frame camera writers fighting (PR #1851 review).
     this._cancelCameraTween();
 
+    // The Starting View has no geometry to frame: focusing it means going
+    // to the pose it stores, the same glide as Preview Start / Play.
+    const viewerStartEl = target.el;
+    if (viewerStartEl?.hasAttribute?.('viewer-start')) {
+      viewerStartEl.sceneEl?.systems?.['viewer-start']?.goToStart(
+        viewerStartEl
+      );
+      return;
+    }
+
     // A fully captured focus-camera-pose (orientation + fov, lookAt false)
     // is a stored camera state in the entity's frame: glide straight to it
     // through the same path as snapshots and the Viewer Start, no look-at

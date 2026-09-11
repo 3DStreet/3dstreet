@@ -15,18 +15,16 @@ import useStore from '../../store.js';
  * at the autosaved editor pose (src/tested/scene-camera-pose.js). Stop
  * returns an editor-origin session to the pre-Start pose.
  *
- * The component draws a small procedural camera-body marker that only
- * shows in editor control mode (never in view/play/drive, never saved:
- * only position/rotation/viewer-start serialize). The marker is not
- * raycastable: the editor camera sits exactly on it after a scene load,
- * and a pickable object there swallows every click (select it from the
- * layers list instead).
+ * The entity has no geometry: it is a camera pose, not a thing in the
+ * scene. Select it from the layers list (pinned to the top); focusing it
+ * (double-click, the Focus button, F) glides the camera to the pose
+ * itself, the same as Preview Start (ExperimentalControls.focus routes
+ * viewer-start targets to goToStart). Only position/rotation/viewer-start
+ * serialize.
  *
  * Drive/fly own the camera for the whole session when present (they borrow
  * the rig, "drive wins"), so the glide is skipped in that case.
  */
-
-const MARKER_COLOR = '#7c4dff';
 
 AFRAME.registerComponent('viewer-start', {
   schema: {
@@ -58,14 +56,7 @@ AFRAME.registerComponent('viewer-start', {
       setTimeout(() => this.el.removeAttribute('viewer-start'));
       return;
     }
-    this._onModeChanged = this._onModeChanged.bind(this);
-    this.el.setAttribute('data-ignore-raycaster', '');
-    this._buildMarker();
     this.update();
-    this.el.sceneEl.addEventListener('mode-changed', this._onModeChanged);
-    this._applyVisibility(
-      this.el.sceneEl.systems['mode-manager']?.getMode() ?? 'editor'
-    );
   },
 
   update() {
@@ -75,41 +66,7 @@ AFRAME.registerComponent('viewer-start', {
 
   remove() {
     if (this._duplicate) return;
-    this.el.sceneEl.removeEventListener('mode-changed', this._onModeChanged);
-    this.el.removeObject3D('mesh');
-    this._body.geometry.dispose();
-    this._body.material.dispose();
-    this._body = null;
     this.system?.applyInputLock();
-  },
-
-  _onModeChanged(evt) {
-    this._applyVisibility(evt.detail.to);
-  },
-
-  // setAttribute('visible') rather than object3D.visible: mesh batching
-  // reads the attribute (see CLAUDE.md "Shared gotchas").
-  _applyVisibility(mode) {
-    this.el.setAttribute('visible', mode === 'editor');
-  },
-
-  // A small camera body behind the start point (the camera looks down
-  // local -Z from the entity origin). No frustum lines: a CameraHelper's
-  // LineSegments are raycast with a one-unit threshold, so with the editor
-  // camera parked on the marker every click hit it.
-  _buildMarker() {
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(0.6, 0.4, 0.5),
-      new THREE.MeshStandardMaterial({
-        color: MARKER_COLOR,
-        roughness: 0.5,
-        transparent: true,
-        opacity: 0.9
-      })
-    );
-    body.position.set(0, 0, 0.35);
-    this._body = body;
-    this.el.setObject3D('mesh', body);
   }
 });
 
