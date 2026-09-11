@@ -1100,7 +1100,7 @@ export const ViewerStartIcon = () => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="1.8" />
-    <path d="M9.5 8.2V15.8L15.5 12L9.5 8.2Z" fill="white" />
+    <circle cx="12" cy="12" r="10.5" stroke="#00FFFF" strokeWidth="1.8" />
+    <path d="M9.2 7.4V16.6L16.4 12L9.2 7.4Z" fill="#00FFFF" />
   </svg>
 );

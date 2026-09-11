@@ -342,7 +342,7 @@
     "driveControls.tipStart": "Press Start, then drive with WASD / arrows",
     "driveControls.tipsHeading": "💡 Drive tips",
     "editorUpgradeModal.alreadyPro": "You're already a Pro member — try that action again to continue.",
-    "entity.badge.focusHotspot": "Focus hotspot: clickable in view mode",
+    "entity.badge.focusHotspot": "Focus hotspot: clickable in view mode. Click to fly the camera to it.",
     "entity.cloneEntity": "Clone entity",
     "entity.dragToReorder": "Drag to reorder",
     "entity.removeEntity": "Remove entity",
@@ -825,7 +825,7 @@
     "units.switchTo": "Switch to {units} units",
     "userLayers.tipContain": "User Layers contain all objects you add to your scene",
     "userLayers.tipRename": "Rename layers by clicking on the layer, then the Rename button in the right-hand properties panel",
-    "userLayers.tipVisibility": "Toggle layer visibility by using the switch on the left on each row of the layers panel",
+    "userLayers.tipVisibility": "Toggle layer visibility with the eye icon that appears on the right when hovering a row of the layers panel",
     "userLayers.tipsHeading": "Tips",
     "viewer.byAuthor": "by {username}",
     "viewer.editCopyTitle": "Open the editor — saving will create your own copy",
@@ -855,7 +855,11 @@
     "viewerStart.removeConfirm": "Remove the Starting View? Visitors will open the scene at the default view instead.",
     "viewerStart.setToCurrentView": "Set To Current View",
     "viewerStart.setToCurrentViewTitle": "Move this start point to the current editor camera position and direction",
-    "viewerStart.tip": "💡 Visitors open the scene from this view and Start flies here. Setting a scene thumbnail also moves it to the captured view. The marker is only visible while editing; you still edit from wherever you left off."
+    "viewerStart.tip": "💡 Visitors open the scene from this view and Start flies here. Setting a scene thumbnail also moves it to the captured view. The marker is only visible while editing; you still edit from wherever you left off.",
+    "advancedComponents.warning": "Warning: editing raw component data may cause unexpected scene damage that you cannot undo. Save a copy of your scene if you want to tinker with these at your own risk.",
+    "sidebar.geolocSwitchToPosition": "Click to show position instead.",
+    "sidebar.positionSwitchToGeoloc": "Click to show geolocated position (lat/lon) instead.",
+    "sidebar.transform": "Transform"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1200,7 +1204,7 @@
     "driveControls.tipStart": "Press Start, then drive with WASD / arrows",
     "driveControls.tipsHeading": "💡 Drive tips",
     "editorUpgradeModal.alreadyPro": "You're already a Pro member — try that action again to continue.",
-    "entity.badge.focusHotspot": "Focus hotspot: clickable in view mode",
+    "entity.badge.focusHotspot": "Focus hotspot: clickable in view mode. Click to fly the camera to it.",
     "entity.cloneEntity": "Clone entity",
     "entity.dragToReorder": "Drag to reorder",
     "entity.removeEntity": "Remove entity",
@@ -1683,7 +1687,7 @@
     "units.switchTo": "Switch to {units} units",
     "userLayers.tipContain": "User Layers contain all objects you add to your scene",
     "userLayers.tipRename": "Rename layers by clicking on the layer, then the Rename button in the right-hand properties panel",
-    "userLayers.tipVisibility": "Toggle layer visibility by using the switch on the left on each row of the layers panel",
+    "userLayers.tipVisibility": "Toggle layer visibility with the eye icon that appears on the right when hovering a row of the layers panel",
     "userLayers.tipsHeading": "Tips",
     "viewer.byAuthor": "by {username}",
     "viewer.editCopyTitle": "Open the editor — saving will create your own copy",
@@ -1713,7 +1717,11 @@
     "viewerStart.removeConfirm": "Remove the Starting View? Visitors will open the scene at the default view instead.",
     "viewerStart.setToCurrentView": "Set To Current View",
     "viewerStart.setToCurrentViewTitle": "Move this start point to the current editor camera position and direction",
-    "viewerStart.tip": "💡 Visitors open the scene from this view and Start flies here. Setting a scene thumbnail also moves it to the captured view. The marker is only visible while editing; you still edit from wherever you left off."
+    "viewerStart.tip": "💡 Visitors open the scene from this view and Start flies here. Setting a scene thumbnail also moves it to the captured view. The marker is only visible while editing; you still edit from wherever you left off.",
+    "advancedComponents.warning": "Warning: editing raw component data may cause unexpected scene damage that you cannot undo. Save a copy of your scene if you want to tinker with these at your own risk.",
+    "sidebar.geolocSwitchToPosition": "Click to show position instead.",
+    "sidebar.positionSwitchToGeoloc": "Click to show geolocated position (lat/lon) instead.",
+    "sidebar.transform": "Transform"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2058,7 +2066,7 @@
     "driveControls.tipStart": "Press Start, then drive with WASD / arrows",
     "driveControls.tipsHeading": "💡 Drive tips",
     "editorUpgradeModal.alreadyPro": "You're already a Pro member — try that action again to continue.",
-    "entity.badge.focusHotspot": "Focus hotspot: clickable in view mode",
+    "entity.badge.focusHotspot": "Focus hotspot: clickable in view mode. Click to fly the camera to it.",
     "entity.cloneEntity": "Clone entity",
     "entity.dragToReorder": "Drag to reorder",
     "entity.removeEntity": "Remove entity",
@@ -2541,7 +2549,7 @@
     "units.switchTo": "Switch to {units} units",
     "userLayers.tipContain": "User Layers contain all objects you add to your scene",
     "userLayers.tipRename": "Rename layers by clicking on the layer, then the Rename button in the right-hand properties panel",
-    "userLayers.tipVisibility": "Toggle layer visibility by using the switch on the left on each row of the layers panel",
+    "userLayers.tipVisibility": "Toggle layer visibility with the eye icon that appears on the right when hovering a row of the layers panel",
     "userLayers.tipsHeading": "Tips",
     "viewer.byAuthor": "by {username}",
     "viewer.editCopyTitle": "Open the editor — saving will create your own copy",
@@ -2571,6 +2579,10 @@
     "viewerStart.removeConfirm": "Remove the Starting View? Visitors will open the scene at the default view instead.",
     "viewerStart.setToCurrentView": "Set To Current View",
     "viewerStart.setToCurrentViewTitle": "Move this start point to the current editor camera position and direction",
-    "viewerStart.tip": "💡 Visitors open the scene from this view and Start flies here. Setting a scene thumbnail also moves it to the captured view. The marker is only visible while editing; you still edit from wherever you left off."
+    "viewerStart.tip": "💡 Visitors open the scene from this view and Start flies here. Setting a scene thumbnail also moves it to the captured view. The marker is only visible while editing; you still edit from wherever you left off.",
+    "advancedComponents.warning": "Warning: editing raw component data may cause unexpected scene damage that you cannot undo. Save a copy of your scene if you want to tinker with these at your own risk.",
+    "sidebar.geolocSwitchToPosition": "Click to show position instead.",
+    "sidebar.positionSwitchToGeoloc": "Click to show geolocated position (lat/lon) instead.",
+    "sidebar.transform": "Transform"
   }
 }

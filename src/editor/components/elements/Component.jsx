@@ -180,7 +180,12 @@ export default class Component extends React.Component {
     const componentName = this.props.name;
 
     return (
-      <Collapsible collapsed={this.props.isCollapsed}>
+      <Collapsible
+        collapsed={this.props.isCollapsed}
+        // Collapse preference is remembered per component name across
+        // entities (#1981); instances (`__2`…) share their base name's pref.
+        sectionKey={componentName.split('__')[0]}
+      >
         <div className="componentHeader collapsible-header">
           <span className="componentTitle" title={componentName}>
             {this.props.icon && (

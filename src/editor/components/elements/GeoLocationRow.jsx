@@ -18,6 +18,10 @@ const messages = defineMessages({
     id: 'sidebar.geolocTitle',
     defaultMessage:
       'Latitude, longitude, true bearing (degrees clockwise from true north, “T”). Read-only: edit position and rotation to change it.'
+  },
+  switchToPosition: {
+    id: 'sidebar.geolocSwitchToPosition',
+    defaultMessage: 'Click to show position instead.'
   }
 });
 
@@ -35,13 +39,12 @@ function readGeo(entity) {
 }
 
 /**
- * Read-only "geoloc" row under the transform rows: lat, lon, true bearing.
- * Same numbers the getGeoContext tool reports, so a person and an agent read
- * one truth; deliberately not an input — moving an entity is done with
- * position/rotation.
+ * The entity's live geo readout, kept fresh across entity moves and geo-layer
+ * changes; null while no geo layer is active. Shared by the GeoLoc row and
+ * the position/geoloc toggle (#1979), which needs to know geo availability
+ * even while showing the position row.
  */
-export default function GeoLocationRow({ entity }) {
-  const intl = useIntl();
+export function useEntityGeo(entity) {
   const [geo, setGeo] = useState(() => readGeo(entity));
 
   useEffect(() => {
@@ -69,23 +72,46 @@ export default function GeoLocationRow({ entity }) {
     };
   }, [entity]);
 
-  if (!geo) return null;
-  const bearing = geo.managedStreet
-    ? geo.managedStreet.centerlineBearingDeg
-    : geo.headingDeg;
-  const title = intl.formatMessage(messages.title);
+  return geo;
+}
+
+/**
+ * Read-only "geoloc" row: lat, lon, true bearing. Same numbers the
+ * getGeoContext tool reports, so a person and an agent read one truth;
+ * deliberately not an input — moving an entity is done with
+ * position/rotation. With `onLabelClick` the label doubles as the toggle
+ * back to the three.js position row (#1979).
+ */
+export default function GeoLocationRow({ entity, onLabelClick }) {
+  const intl = useIntl();
+  const liveGeo = useEntityGeo(entity);
+
+  if (!liveGeo) return null;
+  const bearing = liveGeo.managedStreet
+    ? liveGeo.managedStreet.centerlineBearingDeg
+    : liveGeo.headingDeg;
+  let title = intl.formatMessage(messages.title);
+  if (onLabelClick) {
+    title += '\n' + intl.formatMessage(messages.switchToPosition);
+  }
   return (
     <div className="propertyRow">
-      <label className="text" title={title} style={{ textTransform: 'none' }}>
+      <label
+        className={'text' + (onLabelClick ? ' label-toggle' : '')}
+        title={title}
+        style={{ textTransform: 'none' }}
+        onClick={onLabelClick}
+      >
         {intl.formatMessage(messages.geoloc)}
       </label>
       <span className="geoReadoutValue" title={title}>
-        {formatGeoLoc(geo.latitude, geo.longitude, bearing)}
+        {formatGeoLoc(liveGeo.latitude, liveGeo.longitude, bearing)}
       </span>
     </div>
   );
 }
 
 GeoLocationRow.propTypes = {
-  entity: PropTypes.object.isRequired
+  entity: PropTypes.object.isRequired,
+  onLabelClick: PropTypes.func
 };

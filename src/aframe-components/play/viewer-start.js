@@ -15,15 +15,16 @@ import useStore from '../../store.js';
  * at the autosaved editor pose (src/tested/scene-camera-pose.js). Stop
  * returns an editor-origin session to the pre-Start pose.
  *
- * The component draws a procedural camera-body + frustum marker that only
- * shows in editor control mode (never in view/play/drive, never saved,
- * only position/rotation/viewer-start serialize).
+ * The entity has no geometry: it is a camera pose, not a thing in the
+ * scene. Select it from the layers list (pinned to the top); focusing it
+ * (double-click, the Focus button, F) glides the camera to the pose
+ * itself, the same as Preview Start (ExperimentalControls.focus routes
+ * viewer-start targets to goToStart). Only position/rotation/viewer-start
+ * serialize.
  *
  * Drive/fly own the camera for the whole session when present (they borrow
  * the rig, "drive wins"), so the glide is skipped in that case.
  */
-
-const MARKER_COLOR = '#7c4dff';
 
 AFRAME.registerComponent('viewer-start', {
   schema: {
@@ -55,79 +56,17 @@ AFRAME.registerComponent('viewer-start', {
       setTimeout(() => this.el.removeAttribute('viewer-start'));
       return;
     }
-    this._onModeChanged = this._onModeChanged.bind(this);
-    this._buildMarker();
     this.update();
-    this.el.sceneEl.addEventListener('mode-changed', this._onModeChanged);
-    this._applyVisibility(
-      this.el.sceneEl.systems['mode-manager']?.getMode() ?? 'editor'
-    );
   },
 
   update() {
     if (this._duplicate) return;
-    if (this._helperCamera) {
-      this._helperCamera.fov = this.data.fov;
-      this._helperCamera.updateProjectionMatrix();
-      this._helper.update();
-    }
     this.system?.applyInputLock();
   },
 
   remove() {
     if (this._duplicate) return;
-    this.el.sceneEl.removeEventListener('mode-changed', this._onModeChanged);
-    this.el.removeObject3D('mesh');
-    this._body.geometry.dispose();
-    this._body.material.dispose();
-    this._helper.dispose();
-    this._body = this._helper = this._helperCamera = null;
     this.system?.applyInputLock();
-  },
-
-  _onModeChanged(evt) {
-    this._applyVisibility(evt.detail.to);
-  },
-
-  // setAttribute('visible') rather than object3D.visible: mesh batching
-  // reads the attribute (see CLAUDE.md "Shared gotchas").
-  _applyVisibility(mode) {
-    this.el.setAttribute('visible', mode === 'editor');
-  },
-
-  // A small camera body (a mesh, so the editor selection raycast can pick
-  // the entity) plus THREE.CameraHelper on a throwaway camera for the
-  // frustum, which draws the real field of view for free. The helper
-  // normally copies its camera's world matrix; pinning its local matrix
-  // to identity keeps it in the entity's space as a child of the group.
-  _buildMarker() {
-    const group = new THREE.Group();
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(0.6, 0.4, 0.5),
-      new THREE.MeshStandardMaterial({
-        color: MARKER_COLOR,
-        roughness: 0.5,
-        transparent: true,
-        opacity: 0.9
-      })
-    );
-    body.position.set(0, 0, 0.35);
-    group.add(body);
-    this._body = body;
-
-    this._helperCamera = new THREE.PerspectiveCamera(
-      this.data.fov,
-      16 / 10,
-      0.1,
-      2.5
-    );
-    this._helper = new THREE.CameraHelper(this._helperCamera);
-    this._helper.matrix = new THREE.Matrix4();
-    this._helper.material.color.set(MARKER_COLOR);
-    this._helper.material.vertexColors = false;
-    group.add(this._helper);
-
-    this.el.setObject3D('mesh', group);
   }
 });
 

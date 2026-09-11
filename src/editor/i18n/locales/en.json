@@ -230,6 +230,9 @@
   "addLayer.unsupportedFileType": {
     "defaultMessage": "Unsupported file type: {fileName}. Supported formats: GLB, GLTF, JPG, PNG, WebP, AVIF, PLY, SPLAT, SPZ."
   },
+  "advancedComponents.warning": {
+    "defaultMessage": "Warning: editing raw component data may cause unexpected scene damage that you cannot undo. Save a copy of your scene if you want to tinker with these at your own risk."
+  },
   "aiChatPanel.inputPlaceholder": {
     "defaultMessage": "Type a command or type /help for options"
   },
@@ -1026,7 +1029,7 @@
     "defaultMessage": "You're already a Pro member — try that action again to continue."
   },
   "entity.badge.focusHotspot": {
-    "defaultMessage": "Focus hotspot: clickable in view mode"
+    "defaultMessage": "Focus hotspot: clickable in view mode. Click to fly the camera to it."
   },
   "entity.cloneEntity": {
     "defaultMessage": "Clone entity"
@@ -2363,14 +2366,23 @@
   "sidebar.geoloc": {
     "defaultMessage": "GeoLoc"
   },
+  "sidebar.geolocSwitchToPosition": {
+    "defaultMessage": "Click to show position instead."
+  },
   "sidebar.geolocTitle": {
     "defaultMessage": "Latitude, longitude, true bearing (degrees clockwise from true north, “T”). Read-only: edit position and rotation to change it."
   },
   "sidebar.managedBy": {
     "defaultMessage": "Managed by"
   },
+  "sidebar.positionSwitchToGeoloc": {
+    "defaultMessage": "Click to show geolocated position (lat/lon) instead."
+  },
   "sidebar.selectObject": {
     "defaultMessage": "Select an object to edit properties."
+  },
+  "sidebar.transform": {
+    "defaultMessage": "Transform"
   },
   "signInModal.message": {
     "defaultMessage": "Sign in to save and share scenes."
@@ -2475,7 +2487,7 @@
     "defaultMessage": "Rename layers by clicking on the layer, then the Rename button in the right-hand properties panel"
   },
   "userLayers.tipVisibility": {
-    "defaultMessage": "Toggle layer visibility by using the switch on the left on each row of the layers panel"
+    "defaultMessage": "Toggle layer visibility with the eye icon that appears on the right when hovering a row of the layers panel"
   },
   "userLayers.tipsHeading": {
     "defaultMessage": "Tips"

@@ -7,7 +7,7 @@ import { ShapeSectionControls } from './ShapeSidebar';
 import { FocusHotspotSectionControls } from './FocusHotspotSidebar';
 import { ViewerStartSectionControls } from './ViewerStartSidebar';
 import { AwesomeIcon } from './AwesomeIcon';
-import { faBullseye, faPlay } from '@fortawesome/free-solid-svg-icons';
+import { faBullseye } from '@fortawesome/free-solid-svg-icons';
 import { getFeaturedComponentNames } from '../../lib/featuredComponents';
 
 // Low-level geometry props that are too advanced for the first-class section.
@@ -106,7 +106,7 @@ const ROLE_SECTIONS = {
     }).m
   },
   'viewer-start': {
-    icon: faPlay,
+    // No header icon: the layers-list type icon already says what it is.
     removeConfirmMessage: defineMessages({
       m: {
         id: 'viewerStart.removeConfirm',
@@ -148,7 +148,7 @@ const FeaturedComponents = ({ entity }) => {
                 name === 'shape' ? SHAPE_PROPERTY_RENDERERS : undefined
               }
               icon={
-                ROLE_SECTIONS[name] ? (
+                ROLE_SECTIONS[name]?.icon ? (
                   <AwesomeIcon icon={ROLE_SECTIONS[name].icon} size={12} />
                 ) : undefined
               }
