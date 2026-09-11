@@ -19,7 +19,6 @@ import { captureNavDiscovery } from './navAnalytics.js';
 import Events from './Events';
 import { isBatched, syncBatchedSubtree } from '../../batch-models';
 import useStore from '@/store';
-import { auth } from '@shared/services/firebase';
 import { pickLoadCameraState } from '@/tested/scene-camera-pose.js';
 // variables used by OrientedBoxHelper
 const auxEuler = new THREE.Euler();
@@ -784,28 +783,18 @@ export function Viewport(inspector) {
     Events.emit('camerachanged');
   });
 
-  sceneEl.addEventListener('newScene', (event) => {
-    // Load fly-in target. The scene's entities already exist here, so the
-    // viewer-start system can report the Viewer Start entity's pose; the
-    // legacy snapshot pose is its fallback (and Start's, via the system).
-    const {
-      snapshotCameraState = null,
-      editorCameraState = null,
-      urlCameraState = null,
-      authorId = null
-    } = event.detail || {};
+  // Load fly-in target: the Starting View entity if the scene has one,
+  // else the autosaved editor pose, else the default overview; a ?camera=
+  // deep link beats all (src/tested/scene-camera-pose.js). Same rule for
+  // owners and visitors, so nothing here depends on auth.
+  const onNewScene = (detail) => {
+    const { editorCameraState = null, urlCameraState = null } = detail || {};
     const viewerStart = sceneEl.systems['viewer-start'];
-    viewerStart?.setFallbackStartPose(snapshotCameraState);
-    const params = new URLSearchParams(window.location.search);
     const flyIn = () =>
       controls.newSceneCameraZoom(
         pickLoadCameraState({
           urlCameraState,
-          viewerLaunch:
-            params.get('viewer') === 'true' || params.get('embed') === 'true',
-          isOwner: !authorId || authorId === auth.currentUser?.uid,
-          startCameraState:
-            viewerStart?.getStartCameraState() || snapshotCameraState,
+          startCameraState: viewerStart?.getStartCameraState() || null,
           editorCameraState
         })
       );
@@ -814,7 +803,18 @@ export function Viewport(inspector) {
     // the origin.
     if (viewerStart) viewerStart.whenReady(flyIn);
     else flyIn();
-  });
+  };
+  sceneEl.addEventListener('newScene', (event) => onNewScene(event.detail));
+  // A cloud scene can finish loading before this viewport exists (fast
+  // response, slow editor boot), in which case its newScene event was
+  // emitted with nobody listening and the scene sat at the default
+  // overview. The loader parks the last payload on the scene element;
+  // replay it once, here.
+  if (sceneEl.lastNewSceneDetail) {
+    const detail = sceneEl.lastNewSceneDetail;
+    delete sceneEl.lastNewSceneDetail;
+    onNewScene(detail);
+  }
 
   Events.on('cameratoggle', (data) => {
     // Plan View intercept (KD-26): when

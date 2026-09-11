@@ -1,18 +1,16 @@
 /**
  * Scene start-pose resolution (pure, unit-tested).
  *
- * A scene has up to three saved camera poses:
- *   - the Viewer Start entity (`viewer-start`), when the author added one:
- *     THE start pose. Where visitors open the scene and where Start glides.
- *   - the default snapshot's camera state (legacy: set-thumbnail used to be
- *     the only way to pin the opening view; setting a thumbnail now also
- *     writes the Viewer Start, so this is the fallback for older scenes).
- *   - `memory.cameraState`, autosaved on every save: the author's own
- *     "where I left off" editor pose.
+ * One start pose: the Starting View entity (`viewer-start`). Everyone,
+ * owner or visitor, opens a scene there when it exists. Without one, the
+ * scene opens at the author's autosaved editor pose (`memory.cameraState`,
+ * written on every save), else the default overview. A `?camera=` deep
+ * link beats both.
  *
- * Owners opening their scene in the editor land where they left off; every
- * other launch (viewer/embed, a non-owner in the editor, a scene with no
- * editor pose) opens at the start pose. A `?camera=` deep link beats both.
+ * Older scenes pinned their opening view through the default snapshot's
+ * camera state (set-thumbnail used to be the only way). That is migrated
+ * into a Starting View entity at load (`legacyStartCameraState` +
+ * `hasViewerStart`), so there is exactly one place a start pose lives.
  */
 
 function defaultSnapshotState(memory) {
@@ -22,38 +20,36 @@ function defaultSnapshotState(memory) {
   return def?.cameraState || null;
 }
 
-/**
- * Split saved `memory` into the legacy start pose (snapshot > autosave) and
- * the editor pose (autosave > snapshot). Either may be null.
- */
+/** Saved poses out of `memory`; either may be null. */
 export function resolveSavedCameraStates(memory) {
-  const snapshot = defaultSnapshotState(memory);
-  const autosaved = memory?.cameraState || null;
   return {
-    snapshotCameraState: snapshot || autosaved,
-    editorCameraState: autosaved || snapshot
+    editorCameraState: memory?.cameraState || null,
+    legacyStartCameraState: defaultSnapshotState(memory)
   };
+}
+
+/** True if any entity in the saved data tree carries `viewer-start`. */
+export function hasViewerStart(entitiesData) {
+  if (!Array.isArray(entitiesData)) return false;
+  return entitiesData.some(
+    (e) =>
+      !!e &&
+      ((e.components && 'viewer-start' in e.components) ||
+        hasViewerStart(e.children))
+  );
 }
 
 /**
  * Pick the pose the load fly-in should end at.
  * @param {Object} o
- * @param {Object|null} o.urlCameraState  `?camera=` deep link, wins outright
- * @param {boolean} o.viewerLaunch        `?viewer=true` / `?embed=true`
- * @param {boolean} o.isOwner             current user authored the scene (or
- *                                        the scene has no author: local file)
- * @param {Object|null} o.startCameraState effective start pose
- *                                        (viewer-start entity > snapshot)
- * @param {Object|null} o.editorCameraState author's autosaved editor pose
+ * @param {Object|null} o.urlCameraState    `?camera=` deep link, wins outright
+ * @param {Object|null} o.startCameraState  the Starting View entity's pose
+ * @param {Object|null} o.editorCameraState autosaved editor pose
  */
 export function pickLoadCameraState({
   urlCameraState = null,
-  viewerLaunch = false,
-  isOwner = false,
   startCameraState = null,
   editorCameraState = null
 }) {
-  if (urlCameraState) return urlCameraState;
-  if (viewerLaunch || !isOwner) return startCameraState || null;
-  return editorCameraState || startCameraState || null;
+  return urlCameraState || startCameraState || editorCameraState || null;
 }

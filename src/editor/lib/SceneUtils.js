@@ -98,15 +98,16 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
 
   const correctedStreetData = processStreetDataForDuplicateIds(streetData);
 
+  STREET.utils.migrateDefaultSnapshotToViewerStart(
+    correctedStreetData,
+    memoryData
+  );
   STREET.utils.createEntities(correctedStreetData, streetContainerEl);
   STREET.utils.resolveSplatAssetUrls(streetContainerEl);
   useStore.getState().updateLoadingProgress(80, 'Finalizing scene...');
 
-  // A locally opened file has no author, so the viewport treats the opener
-  // as the owner and lands on the file's autosaved editor pose.
   AFRAME.scenes[0].emit('newScene', {
-    ...resolveSavedCameraStates(memoryData),
-    authorId: null
+    editorCameraState: resolveSavedCameraStates(memoryData).editorCameraState
   });
 }
 

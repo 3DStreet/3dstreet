@@ -41,8 +41,8 @@ HyperCard-style click-through experiences.
 6. Or frame the opening shot and choose **View › Set as Starting
    View**: it creates the Starting View layer (or moves it) and selects
    it. Re-frame and press **Set To Current View** in its panel to move
-   it again (**Preview Start** replays the glide). Without one, visitors
-   and Start use the legacy default snapshot pose, if any.
+   it again (**Preview Start** replays the glide). Without one, the scene
+   opens at the autosaved editor pose.
 
 ## Starting View (`viewer-start`)
 
@@ -57,24 +57,25 @@ created by exactly two actions, both of which move it if it exists:
 View** (which also selects it). Opt-in: nothing shows until one of those
 happens. Deleting the layer is the off switch (no enabled toggle).
 
-**One start pose, three consumers.** A scene used to carry three camera
-poses with no relation between them (autosaved editor pose, default
-snapshot pose used at load, Starting View used by Start). Now
-(`src/tested/scene-camera-pose.js`, unit-tested):
+**One start pose.** A scene used to carry three camera poses with no
+relation between them (autosaved editor pose, default snapshot pose used
+at load, Viewer Start used by Start). Now (`src/tested/scene-camera-pose.js`,
+unit-tested), for owners and visitors alike:
 
-| Launch                                  | Opens at                                         |
-| --------------------------------------- | ------------------------------------------------ |
-| `?camera=` deep link                    | the link's pose                                  |
-| `?viewer=true` / `?embed=true`          | Starting View › default snapshot › autosave      |
-| editor, not the scene's author          | same as viewer                                   |
-| editor, the scene's author / local file | autosaved editor pose › Starting View › snapshot |
+| Launch                    | Opens at                                     |
+| ------------------------- | -------------------------------------------- |
+| `?camera=` deep link      | the link's pose                              |
+| scene has a Starting View | the Starting View                            |
+| no Starting View          | autosaved editor pose (`memory.cameraState`) |
+| nothing saved             | default overview                             |
 
-Pressing **Start** glides to the same start pose (Starting View › default
-snapshot, via `viewer-start` system `getStartCameraState()`; the viewport
-hands the snapshot pose over as the fallback on `newScene`). The
-capture modal's **Set as thumbnail** calls `ensureViewerStartAtCurrentView`
-so a thumbnail always has a matching Starting View; older scenes without
-one keep loading at their snapshot pose, unchanged.
+Pressing **Start** (and Reset) glides to the same Starting View. Legacy
+scenes that pinned their opening view through the default snapshot's
+camera state get a Starting View synthesized at load
+(`migrateDefaultSnapshotToViewerStart` in `json-utils_1.1.js`; persisted
+on the next save), so there is exactly one place a start pose lives. An
+owner who wants "open where I left off" deletes the Starting View.
+Nothing in the load path depends on auth.
 
 - **Editor marker:** a small camera-body mesh (so the selection raycast
   can pick it) plus a `THREE.CameraHelper` frustum that draws the real
