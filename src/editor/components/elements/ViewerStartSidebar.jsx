@@ -15,7 +15,7 @@ export const ViewerStartSectionControls = ({ entity }) => {
     entity.sceneEl?.systems?.['viewer-start']?.goToStart(entity);
 
   return (
-    <>
+    <div className="roleSectionBody">
       <div className="sidebar-buttons-small">
         <Button
           variant="toolbtn"
@@ -45,15 +45,13 @@ export const ViewerStartSectionControls = ({ entity }) => {
           />
         </Button>
       </div>
-      <div className="propertyRow">
-        <div className="rounded bg-blue-50 p-2 text-gray-600">
-          <FormattedMessage
-            id="viewerStart.tip"
-            defaultMessage="💡 The scene's start view: visitors open the scene here and Start flies here. Setting a scene thumbnail moves it to the captured view. The marker is only visible while editing; you still edit from wherever you left off."
-          />
-        </div>
+      <div className="tip">
+        <FormattedMessage
+          id="viewerStart.tip"
+          defaultMessage="💡 The scene's start view: visitors open the scene here and Start flies here. Setting a scene thumbnail moves it to the captured view. The marker is only visible while editing; you still edit from wherever you left off."
+        />
       </div>
-    </>
+    </div>
   );
 };
 

@@ -82,15 +82,13 @@ export const FocusHotspotSectionControls = ({ entity }) => {
           />
         ) : null
       )}
-      <div className="propertyRow">
+      <div className="roleSectionBody">
         <div className="text">
           <FormattedMessage
             id="focusHotspot.description"
             defaultMessage="Description"
           />
         </div>
-      </div>
-      <div className="propertyRow">
         <TextArea
           id="focusHotspotDescription"
           name="focusHotspotDescription"
@@ -103,38 +101,36 @@ export const FocusHotspotSectionControls = ({ entity }) => {
             defaultMessage: 'Shown in the info panel when a visitor clicks…'
           })}
         />
-      </div>
-      <div className="sidebar-buttons-small">
-        <Button
-          variant="toolbtn"
-          onClick={() => setFocusCameraPose(entity)}
-          title={intl.formatMessage({
-            id: 'focusHotspot.setFocusViewTitle',
-            defaultMessage:
-              'Save the current editor camera as the view visitors fly to when they click this hotspot'
-          })}
-        >
-          <FormattedMessage
-            id="focusHotspot.setFocusView"
-            defaultMessage="Set Focus View"
-          />
-        </Button>
-        <Button
-          variant="toolbtn"
-          onClick={() => Events.emit('objectfocus', entity.object3D)}
-          title={intl.formatMessage({
-            id: 'focusHotspot.previewFocusTitle',
-            defaultMessage: 'Fly the camera to this hotspot now'
-          })}
-        >
-          <FormattedMessage
-            id="focusHotspot.previewFocus"
-            defaultMessage="Preview Focus"
-          />
-        </Button>
-      </div>
-      <div className="propertyRow">
-        <div className="rounded bg-blue-50 p-2 text-gray-600">
+        <div className="sidebar-buttons-small">
+          <Button
+            variant="toolbtn"
+            onClick={() => setFocusCameraPose(entity)}
+            title={intl.formatMessage({
+              id: 'focusHotspot.setFocusViewTitle',
+              defaultMessage:
+                'Save the current editor camera as the view visitors fly to when they click this hotspot'
+            })}
+          >
+            <FormattedMessage
+              id="focusHotspot.setFocusView"
+              defaultMessage="Set Focus View"
+            />
+          </Button>
+          <Button
+            variant="toolbtn"
+            onClick={() => Events.emit('objectfocus', entity.object3D)}
+            title={intl.formatMessage({
+              id: 'focusHotspot.previewFocusTitle',
+              defaultMessage: 'Fly the camera to this hotspot now'
+            })}
+          >
+            <FormattedMessage
+              id="focusHotspot.previewFocus"
+              defaultMessage="Preview Focus"
+            />
+          </Button>
+        </div>
+        <div className="tip">
           <FormattedMessage
             id="focusHotspot.tip"
             defaultMessage="💡 In view mode visitors click this to fly in and read the info panel (the layer name is its title), then return to the overview. See-through hotspots pulse and hide themselves while focused."

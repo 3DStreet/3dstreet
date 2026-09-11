@@ -1953,3 +1953,36 @@ a.help-linkhover {
     }
   }
 }
+
+// Body of a role component's featured bar (focus-hotspot, viewer-start):
+// curated controls that aren't label/value property rows. Even side
+// gutters matching the property rows' left inset; full-width fields.
+.roleSectionBody {
+  padding: 4px 15px 12px;
+  display: flex;
+  flex-direction: column;
+  row-gap: 8px;
+
+  .text {
+    color: variables.$lightgray-300;
+  }
+
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .sidebar-buttons-small {
+    width: auto;
+    margin-top: 0;
+  }
+
+  .tip {
+    border-radius: 6px;
+    background: variables.$darkgray-700;
+    color: variables.$lightgray-300;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+}
