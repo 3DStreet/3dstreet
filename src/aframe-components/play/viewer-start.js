@@ -6,7 +6,7 @@ import useStore from '../../store.js';
  *
  * A discrete, one-per-scene entity (Add Layer → "Viewer Start") whose
  * position/rotation/fov IS the scene's start pose: visitors open the scene
- * here (viewer/embed launches, non-owners in the editor) and pressing Start
+ * here (viewer launches, non-owners in the editor) and pressing Start
  * glides the shared editor/viewer camera here, so a hotspot tour (or any
  * viewer-side experience) begins from the same place every time. Setting a
  * scene thumbnail also moves this entity to the captured view, so the
@@ -35,7 +35,7 @@ AFRAME.registerComponent('viewer-start', {
     // and go Back; orbit/pan/zoom/fly input is ignored (the viewer-start
     // system locks the shared controls' user input during play in `viewer`).
     freeLook: { default: true },
-    // true = a viewer-origin entry (?viewer / ?embed / a non-owner landing
+    // true = a viewer-origin entry (?viewer / a non-owner landing
     // in the viewer) starts Play on arrival, no click. Off by default:
     // the visitor's press is the audio-unlock gesture browsers require and
     // the de facto "everything finished loading" gate the deterministic

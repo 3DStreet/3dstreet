@@ -155,7 +155,6 @@ function Toolbar() {
   const setIsInspectorEnabled = useStore((s) => s.setIsInspectorEnabled);
   const isPlaying = useStore((s) => s.isPlaying);
   const isPlayPaused = useStore((s) => s.isPlayPaused);
-  const isEmbedMode = useStore((s) => s.isEmbedMode);
   const { currentUser, isLoading: isAuthLoading } = useAuthContext() || {};
   const setModal = useStore((s) => s.setModal);
   const hasPlayable = useHasPlayable();
@@ -306,8 +305,7 @@ function Toolbar() {
         // A focused hotspot is one level deeper than View-idle: Escape
         // backs out to the overview before it ever reaches the editor.
         hotspotSystem.returnToOverview();
-      } else if (!useStore.getState().isEmbedMode) {
-        // Embeds are presentation-only — no keyboard path to the editor.
+      } else {
         handleEnterEditor();
       }
     };
@@ -331,9 +329,7 @@ function Toolbar() {
         <div className="scenegraph-panel hide viewer-header">
           <div id="left-panel-header">
             <div className="left-panel-header-row">
-              {/* Embeds keep the title/byline pill (attribution inside the
-                  iframe) but drop the app switcher and the auth dock. */}
-              {!isEmbedMode && <AppSwitcher />}
+              <AppSwitcher />
               <div className="scene-title clickable truncate">
                 <SceneEditTitle readOnly />
               </div>
@@ -475,66 +471,64 @@ function Toolbar() {
           visitor on a cloud scene is asked to sign in first. Same
           ProfileButton component as the editor, including its
           signed-out state. */}
-      {!isEmbedMode && (
-        <div id="viewer-right-dock" className={`clickable ${styles.rightDock}`}>
-          <div className={primaryStyles.wrapper}>
-            <Tooltip.Provider>
-              {/* Capture-only snapshot (#1824 Q2): instant capture +
-              non-blocking toast; no modal, no pause. The richer
-              Capture & Render flow stays an editor action. */}
-              <ViewerSnapshot />
-              <div className={primaryStyles.divider} />
-              {/* No "View only" label: the absence of edit controls plus an
-              Edit / Sign in to Edit action already says this isn't edit
-              mode; copy semantics surface via the unsaved-copy toast. */}
-              <ToolTip
-                content={
-                  needsAuthToEdit
+      <div id="viewer-right-dock" className={`clickable ${styles.rightDock}`}>
+        <div className={primaryStyles.wrapper}>
+          <Tooltip.Provider>
+            {/* Capture-only snapshot (#1824 Q2): instant capture +
+            non-blocking toast; no modal, no pause. The richer
+            Capture & Render flow stays an editor action. */}
+            <ViewerSnapshot />
+            <div className={primaryStyles.divider} />
+            {/* No "View only" label: the absence of edit controls plus an
+            Edit / Sign in to Edit action already says this isn't edit
+            mode; copy semantics surface via the unsaved-copy toast. */}
+            <ToolTip
+              content={
+                needsAuthToEdit
+                  ? intl.formatMessage({
+                      id: 'viewer.signInToEditTitle',
+                      defaultMessage:
+                        'Sign in to open the editor — saving will create your own copy'
+                    })
+                  : isAuthor
                     ? intl.formatMessage({
-                        id: 'viewer.signInToEditTitle',
-                        defaultMessage:
-                          'Sign in to open the editor — saving will create your own copy'
+                        id: 'viewer.editTitle',
+                        defaultMessage: 'Open the editor'
                       })
-                    : isAuthor
-                      ? intl.formatMessage({
-                          id: 'viewer.editTitle',
-                          defaultMessage: 'Open the editor'
-                        })
-                      : intl.formatMessage({
-                          id: 'viewer.editCopyTitle',
-                          defaultMessage:
-                            'Open the editor — saving will create your own copy'
-                        })
-                }
+                    : intl.formatMessage({
+                        id: 'viewer.editCopyTitle',
+                        defaultMessage:
+                          'Open the editor — saving will create your own copy'
+                      })
+              }
+            >
+              <Button
+                onClick={handleEnterEditor}
+                variant="toolbtn"
+                disabled={authPending}
               >
-                <Button
-                  onClick={handleEnterEditor}
-                  variant="toolbtn"
-                  disabled={authPending}
-                >
-                  {needsAuthToEdit ? (
-                    <FormattedMessage
-                      id="viewer.signInToEdit"
-                      defaultMessage="Sign in to Edit"
-                    />
-                  ) : (
-                    <FormattedMessage id="toolbar.edit" defaultMessage="Edit" />
-                  )}
-                </Button>
-              </ToolTip>
-            </Tooltip.Provider>
-          </div>
-          <ProfileButton
-            currentUser={currentUser}
-            isLoading={isAuthLoading}
-            onClick={() => {
-              if (isAuthLoading) return;
-              setModal(currentUser ? 'profile' : 'signin');
-            }}
-            tooltipSide="bottom"
-          />
+                {needsAuthToEdit ? (
+                  <FormattedMessage
+                    id="viewer.signInToEdit"
+                    defaultMessage="Sign in to Edit"
+                  />
+                ) : (
+                  <FormattedMessage id="toolbar.edit" defaultMessage="Edit" />
+                )}
+              </Button>
+            </ToolTip>
+          </Tooltip.Provider>
         </div>
-      )}
+        <ProfileButton
+          currentUser={currentUser}
+          isLoading={isAuthLoading}
+          onClick={() => {
+            if (isAuthLoading) return;
+            setModal(currentUser ? 'profile' : 'signin');
+          }}
+          tooltipSide="bottom"
+        />
+      </div>
     </>
   );
 }

@@ -1,7 +1,6 @@
-# Focus Hotspots & Embed Mode
+# Focus Hotspots
 
-Author-placed clickable regions for the Viewer, plus a chrome-free embed
-presentation for iframing scenes into other sites. Built for the
+Author-placed clickable regions for the Viewer. Built for the
 "semitransparent clickable building blocks over the geospatial layer"
 use case — click a block, fly in to the detail (e.g. a Gaussian splat
 scan of an existing treatment overlaid with a rendered GLB), read the
@@ -99,7 +98,7 @@ Nothing in the load path depends on auth.
   pedestrian or FPS spawn semantics) hang off its schema rather than
   each inventing a start marker.
 
-**Visitor (viewer / embed):**
+**Visitor (viewer):**
 
 - See-through hotspots pulse gently; hovering brightens any hotspot and
   shows a pointer cursor.
@@ -118,26 +117,17 @@ Nothing in the load path depends on auth.
   still run, since the lock is separate from the `enabled` flag
   drive/WebXR use to take the camera away.
 
-**Embed:** `https://3dstreet.app/?embed=true#/scenes/UUID` — viewer mode
-with the app switcher and the edit/auth dock stripped (title + byline
-pill stays as attribution; play shuttle appears if the scene is
-playable; Escape never opens the editor). The Share modal offers a
-copy-paste iframe snippet. The existing `?camera=` deep-link param
-composes with it for a link-time camera override.
-
 ## File map
 
-| Piece                                          | File                                                                  |
-| ---------------------------------------------- | --------------------------------------------------------------------- |
-| Component + system (pointer, camera, state)    | `src/aframe-components/focus-hotspot.js`                              |
-| Viewer info panel                              | `src/editor/components/elements/FocusHotspotPanel/`                   |
-| Authoring sidebar                              | `src/editor/components/elements/FocusHotspotSidebar.jsx`              |
-| Store mirror (`focusedHotspot`, `isEmbedMode`) | `src/store.js`                                                        |
-| Add Layer card                                 | `AddLayerPanel/{layersData,createLayerFunctions,addLayerMessages}.js` |
-| Add-component dropdown entry                   | `elements/ComponentsContainer.jsx` (`getApprovedComponents`)          |
-| Embed param + viewer entry                     | `src/editor/index.jsx`                                                |
-| Embed chrome gating + Escape laddering         | `src/editor/components/scenegraph/Toolbar.jsx`                        |
-| Share modal iframe snippet                     | `modals/ShareModal/ShareModal.component.jsx`                          |
+| Piece                                       | File                                                                  |
+| ------------------------------------------- | --------------------------------------------------------------------- |
+| Component + system (pointer, camera, state) | `src/aframe-components/focus-hotspot.js`                              |
+| Viewer info panel                           | `src/editor/components/elements/FocusHotspotPanel/`                   |
+| Authoring sidebar                           | `src/editor/components/elements/FocusHotspotSidebar.jsx`              |
+| Store mirror (`focusedHotspot`)             | `src/store.js`                                                        |
+| Add Layer card                              | `AddLayerPanel/{layersData,createLayerFunctions,addLayerMessages}.js` |
+| Add-component dropdown entry                | `elements/ComponentsContainer.jsx` (`getApprovedComponents`)          |
+| Share modal iframe snippet                  | `modals/ShareModal/ShareModal.component.jsx`                          |
 
 ## Design notes
 
@@ -225,6 +215,9 @@ composes with it for a link-time camera override.
 - Hotspot-to-hotspot links ("go to" another hotspot from the panel) for
   full click-adventure graphs.
 - Rich text / image URLs in the info pane.
-- An `?embed=…` allowlist / CORS review before advertising embeds
-  broadly (#1315 tracks the productization: querystring scheme, Pro
-  gating, image-preview fallback).
+- **Embed mode** (a chrome-free `?embed=true` viewer for iframes plus a
+  Share-modal snippet) was built and then removed from this PR: an
+  iframe anyone can place anywhere needs server-side embedding policy
+  first (allowlist / CORS / frame-ancestors). #1315 tracks the
+  productization (querystring scheme, Pro gating, image-preview
+  fallback); the code is in this branch's history.

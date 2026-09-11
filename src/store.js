@@ -335,11 +335,6 @@ const useStore = create(
         // the system writes it from focusHotspot()/clearFocus().
         focusedHotspot: null,
         setFocusedHotspot: (info) => set({ focusedHotspot: info }),
-        // Embed presentation (?embed=true): viewer mode with the app
-        // chrome (app switcher, edit/auth dock) stripped for iframes.
-        // Set once at boot from the URL param; never toggled at runtime.
-        isEmbedMode: false,
-        setIsEmbedMode: (value) => set({ isEmbedMode: value }),
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
           if (newIsInspectorEnabled) {
