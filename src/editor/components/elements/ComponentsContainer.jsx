@@ -56,7 +56,7 @@ export default class ComponentsContainer extends React.Component {
     approved.push({
       value: 'focus-hotspot',
       label: 'Focus Hotspot',
-      attrValue: 'title: Point of interest'
+      attrValue: ''
     });
     if (this.canFlattenTerrain()) {
       approved.push({

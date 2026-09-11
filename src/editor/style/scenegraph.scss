@@ -292,6 +292,17 @@
     outline: none;
   }
 
+  // Role badges (hotspot): inline after the name, before the expand arrow,
+  // always visible, passive.
+  .entityBadges {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    gap: 6px;
+    margin-left: 6px;
+    color: variables.$lightgray-300;
+  }
+
   .entityActions {
     display: none;
     margin: 0 14px;

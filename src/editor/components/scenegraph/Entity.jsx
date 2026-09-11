@@ -3,7 +3,8 @@ import PropTypes from 'prop-types';
 import { injectIntl } from 'react-intl';
 import classNames from 'classnames';
 import Events from '../../lib/Events';
-import { removeEntity, cloneEntity } from '../../lib/entity';
+import { removeEntity, cloneEntity, getEntityBadges } from '../../lib/entity';
+import { defineMessages } from 'react-intl';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import AssetUploadDot from '../elements/AssetUploadDot';
 import EntityContextMenu from './EntityContextMenu';
@@ -23,6 +24,15 @@ export const isContainer = (entity) => {
     entity.id === 'environment'
   );
 };
+
+// Tooltips for the passive role badges at the right of a row (keys from
+// getEntityBadges).
+const BADGE_TITLES = defineMessages({
+  'focus-hotspot': {
+    id: 'entity.badge.focusHotspot',
+    defaultMessage: 'Focus hotspot: clickable in view mode'
+  }
+});
 
 class Entity extends React.Component {
   static propTypes = {
@@ -194,7 +204,7 @@ class Entity extends React.Component {
 
     // Clone and remove buttons if not a-scene.
     const cloneButton =
-      tagName === 'a-scene' ? null : (
+      tagName === 'a-scene' || entity.hasAttribute('viewer-start') ? null : (
         <a
           onClick={() => cloneEntity(entity)}
           title={intl.formatMessage({
@@ -267,6 +277,22 @@ class Entity extends React.Component {
       </span>
     );
 
+    // Role badges (hotspot): inline right after the name, before the arrow.
+    const badges = getEntityBadges(entity);
+    const badgesNode = badges.length ? (
+      <span className="entityBadges">
+        {badges.map((badge) => (
+          <span
+            key={badge.key}
+            className="entityBadge"
+            title={intl.formatMessage(BADGE_TITLES[badge.key])}
+          >
+            <AwesomeIcon icon={badge.icon} size={12} />
+          </span>
+        ))}
+      </span>
+    ) : null;
+
     // Class name.
     const className = classNames({
       active: this.props.isSelected,
@@ -309,6 +335,7 @@ class Entity extends React.Component {
               entity={entity}
               forceEditing={isRenaming}
               onEditingEnd={() => this.props.setRenamingEntity(null)}
+              trailing={badgesNode}
             />
             <AssetUploadDot entity={entity} />
             {collapse}

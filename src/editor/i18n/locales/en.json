@@ -191,12 +191,6 @@
   "addLayer.card.uploadSplat.name": {
     "defaultMessage": "Upload Gaussian Splat"
   },
-  "addLayer.card.viewerStart.desc": {
-    "defaultMessage": "Where a visitor begins when they press Start. Place it, frame the view you want, then use \"Set To Current View\" in its panel. Only shown while editing."
-  },
-  "addLayer.card.viewerStart.name": {
-    "defaultMessage": "Viewer Start"
-  },
   "addLayer.onlyFirstFileAdded": {
     "defaultMessage": "Only the first file was added. Drop one file at a time."
   },
@@ -346,6 +340,9 @@
   },
   "appMenu.view.navigationControls.standard": {
     "defaultMessage": "Standard"
+  },
+  "appMenu.view.setStartView": {
+    "defaultMessage": "Set Start View to Current"
   },
   "appMenu.view.showGrid": {
     "defaultMessage": "Show Grid"
@@ -1028,6 +1025,9 @@
   "editorUpgradeModal.alreadyPro": {
     "defaultMessage": "You're already a Pro member — try that action again to continue."
   },
+  "entity.badge.focusHotspot": {
+    "defaultMessage": "Focus hotspot: clickable in view mode"
+  },
   "entity.cloneEntity": {
     "defaultMessage": "Clone entity"
   },
@@ -1205,17 +1205,11 @@
   "focusHotspot.enabled": {
     "defaultMessage": "Enabled"
   },
-  "focusHotspot.hideOnFocus": {
-    "defaultMessage": "Hide When Focused"
-  },
   "focusHotspot.previewFocus": {
     "defaultMessage": "Preview Focus"
   },
   "focusHotspot.previewFocusTitle": {
     "defaultMessage": "Fly the camera to this hotspot now"
-  },
-  "focusHotspot.pulse": {
-    "defaultMessage": "Pulse To Invite Click"
   },
   "focusHotspot.setFocusView": {
     "defaultMessage": "Set Focus View"
@@ -1224,10 +1218,7 @@
     "defaultMessage": "Save the current editor camera as the view visitors fly to when they click this hotspot"
   },
   "focusHotspot.tip": {
-    "defaultMessage": "💡 In view mode this becomes a clickable hotspot: visitors click it to fly in and read the info panel, then return to the overview."
-  },
-  "focusHotspot.title": {
-    "defaultMessage": "Title"
+    "defaultMessage": "💡 In view mode visitors click this to fly in and read the info panel (the layer name is its title), then return to the overview. See-through hotspots pulse and hide themselves while focused."
   },
   "geoModal.centerpoint": {
     "defaultMessage": "Centerpoint"
@@ -2561,9 +2552,6 @@
   "viewer.stop": {
     "defaultMessage": "Stop"
   },
-  "viewerStart.enabled": {
-    "defaultMessage": "Enabled"
-  },
   "viewerStart.preview": {
     "defaultMessage": "Preview Start"
   },
@@ -2577,6 +2565,6 @@
     "defaultMessage": "Move this start point to the current editor camera position and direction"
   },
   "viewerStart.tip": {
-    "defaultMessage": "💡 Pressing Start flies the camera here first, so visitors always begin from this view. The marker is only visible while editing. The scene thumbnail still sets where the scene opens."
+    "defaultMessage": "💡 The scene's start view: visitors open the scene here and Start flies here. Setting a scene thumbnail moves it to the captured view. The marker is only visible while editing; you still edit from wherever you left off."
   }
 }

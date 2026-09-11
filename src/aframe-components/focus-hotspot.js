@@ -7,9 +7,14 @@
 // `focus-hotspot` system raycasts the pointer against registered hotspots:
 // hovering highlights the mesh and shows a pointer cursor, clicking glides
 // the camera to the hotspot (honoring an author-set `focus-camera-pose`
-// vantage) and opens the FocusHotspotPanel overlay with the author's title
-// and description. "Back to overview" returns to the camera pose the
-// visitor had before their first hotspot click.
+// vantage) and opens the FocusHotspotPanel overlay with the layer name as
+// title plus the author's description. "Back to overview" returns to the
+// camera pose the visitor had before their first hotspot click.
+//
+// Behaviors, not settings: see-through ("ghost") hotspots breathe gently
+// to invite a click and hide themselves while focused so the detail they
+// cover is unobstructed; opaque hotspots rely on the hover highlight and
+// stay visible. Ghost = the author gave it a transparent material.
 //
 // The system is the single pointer owner: components never bind their own
 // listeners, so N hotspots still cost one raycast per throttled pointer
@@ -29,15 +34,7 @@ const HOVER_THROTTLE_MS = 40;
 AFRAME.registerComponent('focus-hotspot', {
   schema: {
     enabled: { default: true },
-    title: { type: 'string', default: '' },
-    description: { type: 'string', default: '' },
-    // Hide the hotspot mesh while focused — for ghost blocks placed OVER
-    // detailed content (a splat scan, an imported model) that the visitor
-    // should see unobstructed once zoomed in.
-    hideOnFocus: { default: false },
-    // Slow opacity breathing on transparent materials while in the viewer,
-    // signalling clickability before the visitor ever hovers.
-    pulse: { default: true }
+    description: { type: 'string', default: '' }
   },
 
   init() {
@@ -94,6 +91,13 @@ AFRAME.registerComponent('focus-hotspot', {
     this._materialsDirty = false;
   },
 
+  // See-through hotspot (any material the author made transparent): it
+  // breathes in the viewer and hides itself while focused.
+  isGhost() {
+    if (this._materialsDirty) this._captureMaterials();
+    return this.materialStates.some((s) => s.transparent && s.opacity < 1);
+  },
+
   setHovered(hovered) {
     if (this.hovered === hovered) return;
     this.hovered = hovered;
@@ -118,8 +122,8 @@ AFRAME.registerComponent('focus-hotspot', {
     let delta = 0;
     if (this.hovered) {
       delta = HOVER_OPACITY_BOOST;
-    } else if (this.data.pulse) {
-      // 0..PULSE_AMPLITUDE breathing wave.
+    } else {
+      // 0..PULSE_AMPLITUDE breathing wave (no-op on opaque materials).
       delta =
         (PULSE_AMPLITUDE / 2) *
         (1 + Math.sin((time / PULSE_PERIOD_MS) * Math.PI * 2));
@@ -256,9 +260,7 @@ AFRAME.registerSystem('focus-hotspot', {
     this._effectsActive = true;
     for (const component of this.hotspots) {
       if (!component.data.enabled) continue;
-      if (component.el === this.focusedEl && component.data.hideOnFocus) {
-        continue;
-      }
+      if (component.el === this.focusedEl && component.isGhost()) continue;
       component.tickEffects(time);
     }
   },
@@ -356,14 +358,16 @@ AFRAME.registerSystem('focus-hotspot', {
     const controls = window.AFRAME?.INSPECTOR?.controls;
     if (controls && controls.focus) controls.focus(el.object3D);
 
-    if (component.data.hideOnFocus) {
+    if (component.isGhost()) {
       component.resetMaterials();
       el.setAttribute('visible', false);
     }
 
     useStore.getState().setFocusedHotspot({
       entityId: el.id || el.object3D.uuid,
-      title: component.data.title,
+      // The layer name is the title: one name per thing, set where every
+      // other layer gets its name.
+      title: el.getAttribute('data-layer-name') || '',
       description: component.data.description
     });
     this.sceneEl.emit('hotspot-focus-changed', { el }, false);
@@ -392,10 +396,9 @@ AFRAME.registerSystem('focus-hotspot', {
   _restoreFocusedVisibility() {
     const el = this.focusedEl;
     if (!el) return;
-    const component = el.components['focus-hotspot'];
-    if (component && component.data.hideOnFocus) {
-      el.setAttribute('visible', true);
-    }
+    // Unhide unconditionally: the ghost test reads live materials, which
+    // the author may have changed while it was hidden.
+    if (el.components['focus-hotspot']) el.setAttribute('visible', true);
   },
 
   _captureCameraState() {

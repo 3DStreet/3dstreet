@@ -19,57 +19,85 @@ HyperCard-style click-through experiences.
    `focus-hotspot` component to any other entity (GLB, splat
    placeholder, primitive) via the properties panel's add-component
    dropdown.
-2. In the **Focus Hotspot** sidebar: set the info-pane **Title** and
-   **Description**, toggle **Hide When Focused** (for ghost blocks
-   placed over detail content) and **Pulse**.
+2. In the **Focus Hotspot** section of the properties panel: write the
+   info-pane **Description**. The layer name is the panel's title.
+   See-through hotspots (any transparent material) pulse to invite a
+   click and hide themselves while focused so the detail they cover is
+   unobstructed; opaque ones stay put. Behaviors, not settings.
 3. Frame the shot you want visitors to land on, press **Set Focus View**
    (writes `focus-camera-pose`, the same mechanism as the long-press
    Focus button). **Preview Focus** replays the glide.
-4. The scene's _start_ camera is the existing saved-view machinery
-   (default snapshot > auto-saved `memory.cameraState`), nothing new.
+4. The scene's _start_ camera is the **Viewer Start** (below). Setting
+   a scene thumbnail in the capture modal moves it (creating it if the
+   scene has none), so "the thumbnail view" and "where visitors begin"
+   are one thing.
 5. Press **Start** to try the visitor experience in place: an enabled
    hotspot registers as a playable capability with mode-manager, so the
    Play UI appears once the scene has at least one (no traffic or
    vehicle needed). Stop returns to editing.
-6. Optional: add a **Viewer Start** layer (Add Layer card) to pin where
-   Start begins. Frame the opening shot and press **Set To Current
-   View** in its panel (**Preview Start** replays the glide). Without
-   one, Start simply begins wherever the camera is.
+6. Or set the start view directly: **View › Set Start View to
+   Current** creates the Viewer Start at the current view (or moves it).
+   Re-frame and press **Set To Current View** in its panel to move it
+   (**Preview Start** replays the glide). Without one, visitors and
+   Start use the legacy default snapshot pose, if any.
 
 ## Viewer Start (`viewer-start`)
 
-The explicit starting vantage for a viewer session, as a discrete entity
+The scene's start pose, as a discrete entity
 (`src/aframe-components/play/viewer-start.js`) rather than scene
-metadata: its position/rotation _is_ the camera pose, so it is
+metadata: its position/rotation/`fov` _is_ the camera pose, so it is
 selectable, movable with the gizmo, undoable, and shows up in the layers
-list with its own badge. Distinct from the scene thumbnail, which still
-sets where a scene _loads_; Viewer Start sets where **Start** goes,
-which fixes the previous inconsistency (Start used to begin wherever the
-author had left the camera).
+list. One per scene: it is pinned to the top of the layers list, is not
+draggable, cloning it is refused, and there is no Add Layer card. It is
+created by exactly two actions, both of which move it if it exists:
+**Set as thumbnail** in the capture modal and **View › Set Start View to
+Current**. Opt-in: nothing shows until one of those happens. Deleting
+the layer is the off switch (no enabled toggle).
 
-- **Editor marker:** a procedural camera body + wireframe frustum
-  (facing local -Z) set as the entity's `mesh`; visible only in control
-  mode `editor`, hidden via `setAttribute('visible', false)` in
+**One start pose, three consumers.** A scene used to carry three camera
+poses with no relation between them (autosaved editor pose, default
+snapshot pose used at load, Viewer Start used by Start). Now
+(`src/tested/scene-camera-pose.js`, unit-tested):
+
+| Launch                                  | Opens at                                        |
+| --------------------------------------- | ----------------------------------------------- |
+| `?camera=` deep link                    | the link's pose                                 |
+| `?viewer=true` / `?embed=true`          | Viewer Start › default snapshot › autosave      |
+| editor, not the scene's author          | same as viewer                                  |
+| editor, the scene's author / local file | autosaved editor pose › Viewer Start › snapshot |
+
+Pressing **Start** glides to the same start pose (Viewer Start › default
+snapshot, via `viewer-start` system `getStartCameraState()`; the viewport
+hands the snapshot pose over as the fallback on `newScene`). The
+capture modal's **Set as thumbnail** calls `ensureViewerStartAtCurrentView`
+so a thumbnail always has a matching Viewer Start; older scenes without
+one keep loading at their snapshot pose, unchanged.
+
+- **Editor marker:** a small camera-body mesh (so the selection raycast
+  can pick it) plus a `THREE.CameraHelper` frustum that draws the real
+  `fov`, set as the entity's `mesh`; visible only in control mode
+  `editor`, hidden via `setAttribute('visible', false)` in
   view/play/drive. Nothing but position/rotation/`viewer-start`
   serializes.
-- **Play:** the `viewer-start` system glides the shared editor/viewer
-  camera to the pose on `play-mode-start` (`controls.focusCameraState`,
-  the snapshot-glide path) and, for editor-origin sessions only,
-  restores the pre-Start pose on `play-mode-stop`. Skipped when the
-  scene's playable capabilities include drive or fly, since those borrow
-  the rig camera for the whole session.
-- **Playable:** registers a `viewer-start` playable check (any enabled
+- **Play:** the system glides the shared editor/viewer camera to the
+  start pose on `play-mode-start` (`controls.focusCameraState`, which
+  honors `fov` as `zoom`) and, for editor-origin sessions only, restores
+  the pre-Start pose on `play-mode-stop`. Skipped when the scene's
+  playable capabilities include drive or fly, since those borrow the rig
+  camera for the whole session ("drive wins": a drivable car is
+  effectively its own start point).
+- **Playable:** registers a `viewer-start` playable check (any
   instance), so a start point alone surfaces Start — an FPS-style
   look-around needs no hotspot or traffic.
 - **Roles are open:** `viewer-start` is a role component like
-  `drive-controls`; future spawn semantics (pedestrian/FPS controls, a
-  default vehicle) can hang off it rather than each inventing a start
-  marker.
+  `drive-controls`; future camera controls (a look-at target / object,
+  pedestrian or FPS spawn semantics) hang off its schema rather than
+  each inventing a start marker.
 
 **Visitor (viewer / embed):**
 
-- Hotspots pulse gently; hovering brightens them and shows a pointer
-  cursor.
+- See-through hotspots pulse gently; hovering brightens any hotspot and
+  shows a pointer cursor.
 - Click → camera glides to the author's focus view (or bbox framing if
   none was set), the info panel opens bottom-left with title,
   description and **Back to overview**.
@@ -113,14 +141,34 @@ composes with it for a link-time camera override.
   during playback by design. The system also registers a
   `focus-hotspot` playable check (any hotspot with `enabled: true`) so
   the Start button surfaces for hotspot-only scenes.
-- **Layers badge:** `getEntityIcon` (`src/editor/lib/entity.js`) shows
-  a hotspot badge for any entity carrying `focus-hotspot` (the role,
-  not the host geometry) and a start badge for `viewer-start`.
+- **Layers badge:** `getEntityBadges` (`src/editor/lib/entity.js`)
+  returns passive inline badges for role components an entity carries
+  (a bullseye for `focus-hotspot`), rendered by `scenegraph/Entity.jsx`
+  after the name and before the expand arrow. They never replace the
+  entity's type icon: a hotspot building stays a building. A saved
+  `focus-camera-pose` deliberately gets no badge: it is a per-entity
+  setting with no row-level affordance (remove it under Advanced
+  Components). `viewer-start` is a type, so it keeps its own play icon
+  via `getEntityIcon`.
+- **Component bar:** `focus-hotspot` is a featured component
+  (`lib/featuredComponents.js`), so the properties panel renders it as
+  the standard collapsible bar (bullseye icon, title, remove) with the
+  curated `FocusHotspotSectionControls` as its body, like a street
+  generator, instead of a bespoke headerless block.
 - **All camera motion reuses the editor controls** (shared with the
-  viewer since #1848): `controls.focus()` — which already honors
-  `focus-camera-pose` — for the fly-in, `controls.focusCameraState()`
-  for the return glide. The overview pose is captured on the first
-  click and cleared when focus clears or the mode changes.
+  viewer since #1848): `controls.focus()` for the fly-in,
+  `controls.focusCameraState()` for the return glide. The overview pose
+  is captured on the first click and cleared when focus clears or the
+  mode changes.
+- **One pose representation.** `focus-camera-pose` stores the full
+  camera pose in the entity's frame (`relativePosition`,
+  `relativeRotation` in degrees/YXZ, `fov`) and `controls.focus()` hands
+  a stored pose to `focusCameraState()`, the same glide the Viewer Start
+  and snapshots use, so the visitor lands exactly as the author framed
+  it (off-center, tighter lens). Capture/resolve live in
+  `src/editor/lib/focusPose.js` (unit-tested). Poses saved before
+  rotation existed have `lookAt: true` (the schema default) and keep the
+  legacy stand-here-and-aim-at-the-center behavior; no migration.
 - **Persistence is free.** `focus-hotspot` and `focus-camera-pose` are
   ordinary schema components, so non-default values round-trip through
   scene save/load with no serializer changes.
@@ -131,17 +179,17 @@ composes with it for a link-time camera override.
   transparent get opacity effects. Caveat: a GLB whose materials are
   shared across entities will highlight all sharers — use a dedicated
   ghost block over such models.
-- **`hideOnFocus` uses `setAttribute('visible', …)`** (the batching-safe
-  path) and the picker skips invisible hotspots so a hidden block never
-  swallows clicks on the content behind it.
+- **Ghost hide-on-focus uses `setAttribute('visible', …)`** (the
+  batching-safe path) and the picker skips invisible hotspots so a hidden
+  block never swallows clicks on the content behind it. "Ghost" is read
+  off the live materials (`isGhost()`), so an author toggling a material
+  transparent flips the behavior without a separate setting.
 
 ## Stretch ideas (not built)
 
 - Hotspot-to-hotspot links ("go to" another hotspot from the panel) for
   full click-adventure graphs.
 - Rich text / image URLs in the info pane.
-- Per-hotspot camera _rotation_ in `focus-camera-pose` (today: position
-  only; look-at is the hotspot's center).
 - An `?embed=…` allowlist / CORS review before advertising embeds
   broadly (#1315 tracks the productization: querystring scheme, Pro
   gating, image-preview fallback).
