@@ -767,10 +767,10 @@ body.aframe-inspector-opened {
     }
 
     span {
-      font-weight: 500;
-      font-size: 16px;
+      font-weight: 600;
+      font-size: 17px;
       color: variables.$white;
-      line-height: 20px;
+      line-height: 22px;
     }
 
     // Inline rename: pencil appears on hover, clicking the name or pencil
@@ -852,7 +852,13 @@ body.aframe-inspector-opened {
     position: sticky;
     top: 0;
     z-index: 10;
-    background: variables.$darkgray-200;
+    // Header band: opaque (it covers scrolled rows) and a shade lighter
+    // than the panel so the selected entity's name reads as the title.
+    background-color: variables.$darkgray-200;
+    background-image: linear-gradient(
+      rgba(255, 255, 255, 0.06),
+      rgba(255, 255, 255, 0.06)
+    );
   }
 }
 

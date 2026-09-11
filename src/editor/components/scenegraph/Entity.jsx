@@ -272,7 +272,7 @@ class Entity extends React.Component {
         onClick={this.toggleVisibility}
         onDoubleClick={(event) => event.stopPropagation()}
       >
-        <AwesomeIcon icon={visible ? faEye : faEyeSlash} size={14} />
+        <AwesomeIcon icon={visible ? faEye : faEyeSlash} size={12} />
       </button>
     );
 

@@ -146,7 +146,7 @@
       flex-grow: 0;
       height: 40px;
       justify-content: center;
-      padding: 0 16px 0 4px;
+      padding: 0 6px 0 4px;
       box-sizing: border-box;
 
       > span {
@@ -237,7 +237,7 @@
   // Drag handle styling
   .drag-handle {
     transition: opacity 0.2s ease;
-    margin-right: 4px;
+    margin-right: 0;
     display: inline-flex;
     align-items: center;
     width: 16px; // Fixed width to ensure consistent spacing
@@ -271,7 +271,7 @@
 
   // Entity icons and actions
   .entityIcons {
-    margin-left: 2px;
+    margin-left: 0;
   }
 
   // Inline rename input (context menu → Rename): swaps in for .entityName,
@@ -295,7 +295,7 @@
   // Long names truncate with an ellipsis; the label keeps clear of the
   // absolutely positioned badge/toggle bar at the row's right edge (#1980).
   .entity .entityPrint {
-    padding-right: 52px;
+    padding-right: 44px;
   }
   .entity .entityName {
     flex: 0 1 auto;
@@ -312,7 +312,7 @@
     transform: translateY(-50%);
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 2px;
     z-index: 1;
   }
 
@@ -321,21 +321,29 @@
     display: inline-flex;
     align-items: center;
     flex: none;
-    gap: 6px;
+    gap: 2px;
     color: variables.$lightgray-300;
+  }
+  .entityBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
   }
 
   .entityVisibilityToggle {
     display: none;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     padding: 0;
     border: 0;
     border-radius: 4px;
     background: transparent;
     color: variables.$lightgray-300;
+    opacity: 0.85;
     cursor: pointer;
 
     &:hover {
@@ -398,7 +406,7 @@
     justify-content: center;
     flex: none;
     width: 16px;
-    margin-right: 2px;
+    margin-right: 0;
   }
 
   // Icons and buttons

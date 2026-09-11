@@ -15,9 +15,12 @@ import useStore from '../../store.js';
  * at the autosaved editor pose (src/tested/scene-camera-pose.js). Stop
  * returns an editor-origin session to the pre-Start pose.
  *
- * The component draws a procedural camera-body + frustum marker that only
- * shows in editor control mode (never in view/play/drive, never saved,
- * only position/rotation/viewer-start serialize).
+ * The component draws a small procedural camera-body marker that only
+ * shows in editor control mode (never in view/play/drive, never saved:
+ * only position/rotation/viewer-start serialize). The marker is not
+ * raycastable: the editor camera sits exactly on it after a scene load,
+ * and a pickable object there swallows every click (select it from the
+ * layers list instead).
  *
  * Drive/fly own the camera for the whole session when present (they borrow
  * the rig, "drive wins"), so the glide is skipped in that case.
@@ -56,6 +59,7 @@ AFRAME.registerComponent('viewer-start', {
       return;
     }
     this._onModeChanged = this._onModeChanged.bind(this);
+    this.el.setAttribute('data-ignore-raycaster', '');
     this._buildMarker();
     this.update();
     this.el.sceneEl.addEventListener('mode-changed', this._onModeChanged);
@@ -66,11 +70,6 @@ AFRAME.registerComponent('viewer-start', {
 
   update() {
     if (this._duplicate) return;
-    if (this._helperCamera) {
-      this._helperCamera.fov = this.data.fov;
-      this._helperCamera.updateProjectionMatrix();
-      this._helper.update();
-    }
     this.system?.applyInputLock();
   },
 
@@ -80,8 +79,7 @@ AFRAME.registerComponent('viewer-start', {
     this.el.removeObject3D('mesh');
     this._body.geometry.dispose();
     this._body.material.dispose();
-    this._helper.dispose();
-    this._body = this._helper = this._helperCamera = null;
+    this._body = null;
     this.system?.applyInputLock();
   },
 
@@ -95,13 +93,11 @@ AFRAME.registerComponent('viewer-start', {
     this.el.setAttribute('visible', mode === 'editor');
   },
 
-  // A small camera body (a mesh, so the editor selection raycast can pick
-  // the entity) plus THREE.CameraHelper on a throwaway camera for the
-  // frustum, which draws the real field of view for free. The helper
-  // normally copies its camera's world matrix; pinning its local matrix
-  // to identity keeps it in the entity's space as a child of the group.
+  // A small camera body behind the start point (the camera looks down
+  // local -Z from the entity origin). No frustum lines: a CameraHelper's
+  // LineSegments are raycast with a one-unit threshold, so with the editor
+  // camera parked on the marker every click hit it.
   _buildMarker() {
-    const group = new THREE.Group();
     const body = new THREE.Mesh(
       new THREE.BoxGeometry(0.6, 0.4, 0.5),
       new THREE.MeshStandardMaterial({
@@ -112,22 +108,8 @@ AFRAME.registerComponent('viewer-start', {
       })
     );
     body.position.set(0, 0, 0.35);
-    group.add(body);
     this._body = body;
-
-    this._helperCamera = new THREE.PerspectiveCamera(
-      this.data.fov,
-      16 / 10,
-      0.1,
-      2.5
-    );
-    this._helper = new THREE.CameraHelper(this._helperCamera);
-    this._helper.matrix = new THREE.Matrix4();
-    this._helper.material.color.set(MARKER_COLOR);
-    this._helper.material.vertexColors = false;
-    group.add(this._helper);
-
-    this.el.setObject3D('mesh', group);
+    this.el.setObject3D('mesh', body);
   }
 });
 
