@@ -98,15 +98,16 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
 
   const correctedStreetData = processStreetDataForDuplicateIds(streetData);
 
+  STREET.utils.migrateDefaultSnapshotToViewerStart(
+    correctedStreetData,
+    memoryData
+  );
   STREET.utils.createEntities(correctedStreetData, streetContainerEl);
   STREET.utils.resolveSplatAssetUrls(streetContainerEl);
   useStore.getState().updateLoadingProgress(80, 'Finalizing scene...');
 
-  // A locally opened file has no author, so the viewport treats the opener
-  // as the owner and lands on the file's autosaved editor pose.
-  AFRAME.scenes[0].emit('newScene', {
-    ...resolveSavedCameraStates(memoryData),
-    authorId: null
+  STREET.utils.emitNewScene({
+    editorCameraState: resolveSavedCameraStates(memoryData).editorCameraState
   });
 }
 
@@ -276,6 +277,15 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
   const currentCameraState = getCurrentCameraState();
   if (currentCameraState) {
     filteredData.memory.cameraState = currentCameraState;
+  }
+  // Once a scene has (or has had) a Starting View entity, the entity owns
+  // the start pose: the legacy default-snapshot pose is never migrated
+  // into one again, so deleting the entity stays deleted across loads.
+  if (
+    useStore.getState().viewerStartMigrated ||
+    document.querySelector('[viewer-start]')
+  ) {
+    filteredData.memory.viewerStartMigrated = true;
   }
 
   // If we have an existing scene ID, fetch and preserve snapshots from Firebase

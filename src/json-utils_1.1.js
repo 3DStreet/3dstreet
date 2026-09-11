@@ -1,5 +1,8 @@
 import useStore from './store';
-import { resolveSavedCameraStates } from './tested/scene-camera-pose';
+import {
+  resolveSavedCameraStates,
+  hasViewerStart
+} from './tested/scene-camera-pose';
 import { createUniqueId } from './editor/lib/entity';
 import { beginBatching, BATCHING_ENABLED } from './batch-models';
 import { decodeCameraStateFromParam } from './editor/lib/cameraUtils';
@@ -503,6 +506,68 @@ function migrateLegacyFlatteningShape(entitiesData) {
   };
   attachToTarget(entitiesData);
 }
+
+/**
+ * Legacy start pose → Starting View entity. Before the Starting View
+ * existed, set-thumbnail pinned the opening view through the default
+ * snapshot's camera state. There is now exactly one place a start pose
+ * lives, so a saved scene with a default-snapshot pose and no
+ * `viewer-start` entity gets one synthesized (top-level, at that pose)
+ * before its entities are created. Idempotent: the entity is saved with
+ * the scene on the next save and the check finds it from then on. The
+ * snapshot's cameraState itself is left alone (the gallery's "fly to this
+ * view" still reads it).
+ *
+ * Runs once per scene: `memory.viewerStartMigrated` (written on every save
+ * once the scene has, or has had, a Starting View entity) says the entity
+ * owns the start pose from then on, so deleting the entity and saving is a
+ * durable off switch and the snapshot pose is not resurrected on the next
+ * load. The store mirrors the flag for the save path.
+ */
+function migrateDefaultSnapshotToViewerStart(entitiesData, memory) {
+  const owned =
+    !!memory?.viewerStartMigrated ||
+    (Array.isArray(entitiesData) && hasViewerStart(entitiesData));
+  useStore.setState({ viewerStartMigrated: owned });
+  if (owned || !Array.isArray(entitiesData)) return;
+  const { legacyStartCameraState: state } = resolveSavedCameraStates(memory);
+  if (!state || !state.position) return;
+  useStore.setState({ viewerStartMigrated: true });
+  const rot = state.rotation || {};
+  // Saved rotations are radians applied as XYZ (see applyCameraState /
+  // the fly-in's scratch camera); A-Frame rotation is degrees, YXZ.
+  const quaternion = new THREE.Quaternion().setFromEuler(
+    new THREE.Euler(rot.x || 0, rot.y || 0, rot.z || 0, 'XYZ')
+  );
+  const euler = new THREE.Euler().setFromQuaternion(quaternion, 'YXZ');
+  const deg = THREE.MathUtils.radToDeg;
+  // Saved data's top level holds the scene's direct children; user layers
+  // live under the street-container entry. The Starting View is a user
+  // layer (pinned to the top of the list, saved with the scene), so it
+  // goes there; a file with no container entry falls back to top level.
+  const container = entitiesData.find((e) => e && e.id === 'street-container');
+  const target = container
+    ? (container.children = container.children || [])
+    : entitiesData;
+  target.push({
+    element: 'a-entity',
+    components: {
+      position: {
+        x: state.position.x || 0,
+        y: state.position.y || 0,
+        z: state.position.z || 0
+      },
+      rotation: { x: deg(euler.x), y: deg(euler.y), z: deg(euler.z) },
+      'viewer-start': { fov: state.zoom || 60 },
+      'data-layer-name': 'Starting View'
+    }
+  });
+  console.log(
+    '[migration] default snapshot pose → Starting View entity (viewer-start)'
+  );
+}
+STREET.utils.migrateDefaultSnapshotToViewerStart =
+  migrateDefaultSnapshotToViewerStart;
 
 function createEntities(entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
@@ -1168,15 +1233,10 @@ AFRAME.registerComponent('set-loader-from-hash', {
             );
           }
 
-          // Saved poses: legacy start pose (default snapshot > autosave) and
-          // the author's editor pose (autosave > snapshot). A ?camera=
-          // vantage deep link wins over both; the viewport's newScene
-          // handler picks between them (src/tested/scene-camera-pose.js)
-          // once the viewer-start entity, if any, exists in the DOM.
+          // A ?camera= deep link beats the scene's own start pose; it rides
+          // along to createElementsFromJSON, which resolves the load pose.
           AFRAME.scenes[0].pendingSceneLoadCamera = {
-            ...resolveSavedCameraStates(jsonData.memory),
-            urlCameraState: urlCameraState || null,
-            authorId: jsonData.author || null
+            urlCameraState: urlCameraState || null
           };
           useStore.getState().updateLoadingProgress(50, 'Creating scene...');
           STREET.utils.createElementsFromJSON(jsonData, false);
@@ -1294,19 +1354,40 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
 
   const streetContainerEl = document.getElementById('street-container');
 
+  // Start pose: the Starting View entity (migrated here from the legacy
+  // default-snapshot pose if needed) wins; the autosaved editor pose is
+  // the fallback; a ?camera= deep link (parked by the hash loader) beats
+  // both. The viewport's newScene handler picks (scene-camera-pose.js)
+  // once the entities exist in the DOM.
+  migrateDefaultSnapshotToViewerStart(streetObject.data, streetObject.memory);
   createEntities(streetObject.data, streetContainerEl);
   resolveSplatAssetUrls(streetContainerEl);
   useStore.getState().updateLoadingProgress(90, 'Finalizing...');
   STREET.notify.successMessage('Scene loaded');
 
-  // Saved camera poses (set by the hash loader) ride along on newScene so
-  // the viewport can pick the load pose; see src/tested/scene-camera-pose.js.
   const pending = AFRAME.scenes[0].pendingSceneLoadCamera || {};
   delete AFRAME.scenes[0].pendingSceneLoadCamera;
-  AFRAME.scenes[0].emit('newScene', { ...pending });
+  emitNewScene({
+    editorCameraState: resolveSavedCameraStates(streetObject.memory)
+      .editorCameraState,
+    urlCameraState: pending.urlCameraState || null
+  });
 }
 
 STREET.utils.createElementsFromJSON = createElementsFromJSON;
+
+/**
+ * Emit `newScene` with the saved camera poses the viewport's load fly-in
+ * picks from (src/tested/scene-camera-pose.js). The detail is also parked
+ * on the scene element for a viewport that initializes after this event
+ * (a fast cloud response on a slow editor boot); it replays the fly-in
+ * once on init and clears it. Every scene-load route emits through here.
+ */
+function emitNewScene(detail = {}) {
+  AFRAME.scenes[0].lastNewSceneDetail = { ...detail };
+  AFRAME.scenes[0].emit('newScene', { ...detail });
+}
+STREET.utils.emitNewScene = emitNewScene;
 
 /**
  * Re-resolve splat src from the Firestore asset doc after a scene load.

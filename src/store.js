@@ -119,12 +119,17 @@ const useStore = create(
         locationString: null,
         setLocationString: (newLocationString) =>
           set({ locationString: newLocationString }),
+        // True once the loaded scene's start pose is owned by a Starting
+        // View entity (present, or deliberately deleted); mirrors
+        // memory.viewerStartMigrated for the save path.
+        viewerStartMigrated: false,
         newScene: () =>
           set({
             sceneId: null,
             sceneTitle: null,
             authorId: null,
-            locationString: null
+            locationString: null,
+            viewerStartMigrated: false
           }),
         authorId: null, // not used anywhere yet, we still use the metadata component
         setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }), // not used anywhere yet
@@ -335,11 +340,6 @@ const useStore = create(
         // the system writes it from focusHotspot()/clearFocus().
         focusedHotspot: null,
         setFocusedHotspot: (info) => set({ focusedHotspot: info }),
-        // Embed presentation (?embed=true): viewer mode with the app
-        // chrome (app switcher, edit/auth dock) stripped for iframes.
-        // Set once at boot from the URL param; never toggled at runtime.
-        isEmbedMode: false,
-        setIsEmbedMode: (value) => set({ isEmbedMode: value }),
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
           if (newIsInspectorEnabled) {

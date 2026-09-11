@@ -1,11 +1,10 @@
-# Focus Hotspots & Embed Mode
+# Focus Hotspots
 
-Author-placed clickable regions for the Viewer, plus a chrome-free embed
-presentation for iframing scenes into other sites. Built for the
+Author-placed clickable regions for the Viewer. Built for the
 "semitransparent clickable building blocks over the geospatial layer"
-use case — click a block, fly in to the detail (e.g. a Gaussian splat
+use case, click a block, fly in to the detail (e.g. a Gaussian splat
 scan of an existing treatment overlaid with a rendered GLB), read the
-author's info panel, return to the overview — but deliberately generic:
+author's info panel, return to the overview, but deliberately generic:
 any entity can be a hotspot, so scenes can be stretched into
 HyperCard-style click-through experiences.
 
@@ -41,8 +40,8 @@ HyperCard-style click-through experiences.
 6. Or frame the opening shot and choose **View › Set as Starting
    View**: it creates the Starting View layer (or moves it) and selects
    it. Re-frame and press **Set To Current View** in its panel to move
-   it again (**Preview Start** replays the glide). Without one, visitors
-   and Start use the legacy default snapshot pose, if any.
+   it again (**Preview Start** replays the glide). Without one, the scene
+   opens at the autosaved editor pose.
 
 ## Starting View (`viewer-start`)
 
@@ -55,26 +54,30 @@ draggable, cloning it is refused, and there is no Add Layer card. It is
 created by exactly two actions, both of which move it if it exists:
 **Set as thumbnail** in the capture modal and **View › Set as Starting
 View** (which also selects it). Opt-in: nothing shows until one of those
-happens. Deleting the layer is the off switch (no enabled toggle).
+happens. Deleting the layer is the off switch (no enabled toggle): once a
+scene has had one, saving writes `memory.viewerStartMigrated: true`, so the
+legacy default-snapshot pose is never migrated back into an entity on a
+later load (the snapshot itself keeps its pose for the gallery).
 
-**One start pose, three consumers.** A scene used to carry three camera
-poses with no relation between them (autosaved editor pose, default
-snapshot pose used at load, Starting View used by Start). Now
-(`src/tested/scene-camera-pose.js`, unit-tested):
+**One start pose.** A scene used to carry three camera poses with no
+relation between them (autosaved editor pose, default snapshot pose used
+at load, Viewer Start used by Start). Now (`src/tested/scene-camera-pose.js`,
+unit-tested), for owners and visitors alike:
 
-| Launch                                  | Opens at                                         |
-| --------------------------------------- | ------------------------------------------------ |
-| `?camera=` deep link                    | the link's pose                                  |
-| `?viewer=true` / `?embed=true`          | Starting View › default snapshot › autosave      |
-| editor, not the scene's author          | same as viewer                                   |
-| editor, the scene's author / local file | autosaved editor pose › Starting View › snapshot |
+| Launch                    | Opens at                                     |
+| ------------------------- | -------------------------------------------- |
+| `?camera=` deep link      | the link's pose                              |
+| scene has a Starting View | the Starting View                            |
+| no Starting View          | autosaved editor pose (`memory.cameraState`) |
+| nothing saved             | default overview                             |
 
-Pressing **Start** glides to the same start pose (Starting View › default
-snapshot, via `viewer-start` system `getStartCameraState()`; the viewport
-hands the snapshot pose over as the fallback on `newScene`). The
-capture modal's **Set as thumbnail** calls `ensureViewerStartAtCurrentView`
-so a thumbnail always has a matching Starting View; older scenes without
-one keep loading at their snapshot pose, unchanged.
+Pressing **Start** (and Reset) glides to the same Starting View. Legacy
+scenes that pinned their opening view through the default snapshot's
+camera state get a Starting View synthesized at load
+(`migrateDefaultSnapshotToViewerStart` in `json-utils_1.1.js`; persisted
+on the next save), so there is exactly one place a start pose lives. An
+owner who wants "open where I left off" deletes the Starting View.
+Nothing in the load path depends on auth.
 
 - **Editor marker:** a small camera-body mesh (so the selection raycast
   can pick it) plus a `THREE.CameraHelper` frustum that draws the real
@@ -98,7 +101,7 @@ one keep loading at their snapshot pose, unchanged.
   pedestrian or FPS spawn semantics) hang off its schema rather than
   each inventing a start marker.
 
-**Visitor (viewer / embed):**
+**Visitor (viewer):**
 
 - See-through hotspots pulse gently; hovering brightens any hotspot and
   shows a pointer cursor.
@@ -117,26 +120,17 @@ one keep loading at their snapshot pose, unchanged.
   still run, since the lock is separate from the `enabled` flag
   drive/WebXR use to take the camera away.
 
-**Embed:** `https://3dstreet.app/?embed=true#/scenes/UUID` — viewer mode
-with the app switcher and the edit/auth dock stripped (title + byline
-pill stays as attribution; play shuttle appears if the scene is
-playable; Escape never opens the editor). The Share modal offers a
-copy-paste iframe snippet. The existing `?camera=` deep-link param
-composes with it for a link-time camera override.
-
 ## File map
 
-| Piece                                          | File                                                                  |
-| ---------------------------------------------- | --------------------------------------------------------------------- |
-| Component + system (pointer, camera, state)    | `src/aframe-components/focus-hotspot.js`                              |
-| Viewer info panel                              | `src/editor/components/elements/FocusHotspotPanel/`                   |
-| Authoring sidebar                              | `src/editor/components/elements/FocusHotspotSidebar.jsx`              |
-| Store mirror (`focusedHotspot`, `isEmbedMode`) | `src/store.js`                                                        |
-| Add Layer card                                 | `AddLayerPanel/{layersData,createLayerFunctions,addLayerMessages}.js` |
-| Add-component dropdown entry                   | `elements/ComponentsContainer.jsx` (`getApprovedComponents`)          |
-| Embed param + viewer entry                     | `src/editor/index.jsx`                                                |
-| Embed chrome gating + Escape laddering         | `src/editor/components/scenegraph/Toolbar.jsx`                        |
-| Share modal iframe snippet                     | `modals/ShareModal/ShareModal.component.jsx`                          |
+| Piece                                       | File                                                                  |
+| ------------------------------------------- | --------------------------------------------------------------------- |
+| Component + system (pointer, camera, state) | `src/aframe-components/focus-hotspot.js`                              |
+| Viewer info panel                           | `src/editor/components/elements/FocusHotspotPanel/`                   |
+| Authoring sidebar                           | `src/editor/components/elements/FocusHotspotSidebar.jsx`              |
+| Store mirror (`focusedHotspot`)             | `src/store.js`                                                        |
+| Add Layer card                              | `AddLayerPanel/{layersData,createLayerFunctions,addLayerMessages}.js` |
+| Add-component dropdown entry                | `elements/ComponentsContainer.jsx` (`getApprovedComponents`)          |
+| Share modal iframe snippet                  | `modals/ShareModal/ShareModal.component.jsx`                          |
 
 ## Design notes
 
@@ -188,7 +182,7 @@ composes with it for a link-time camera override.
   them when leaving the viewer; bases are re-captured on `material`
   component changes and mesh swaps. Only materials the author made
   transparent get opacity effects. Caveat: a GLB whose materials are
-  shared across entities will highlight all sharers — use a dedicated
+  shared across entities will highlight all sharers, use a dedicated
   ghost block over such models.
 - **Ghost hide-on-focus uses `setAttribute('visible', …)`** (the
   batching-safe path) and the picker skips invisible hotspots so a hidden
@@ -224,6 +218,9 @@ composes with it for a link-time camera override.
 - Hotspot-to-hotspot links ("go to" another hotspot from the panel) for
   full click-adventure graphs.
 - Rich text / image URLs in the info pane.
-- An `?embed=…` allowlist / CORS review before advertising embeds
-  broadly (#1315 tracks the productization: querystring scheme, Pro
-  gating, image-preview fallback).
+- **Embed mode** (a chrome-free `?embed=true` viewer for iframes plus a
+  Share-modal snippet) was built and then removed from this PR: an
+  iframe anyone can place anywhere needs server-side embedding policy
+  first (allowlist / CORS / frame-ancestors). #1315 tracks the
+  productization (querystring scheme, Pro gating, image-preview
+  fallback); the code is in this branch's history.

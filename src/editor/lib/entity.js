@@ -984,22 +984,15 @@ function viewerStartValuesFromCamera(parent) {
  */
 export function setViewerStartToCurrentView(entity, { notify = true } = {}) {
   const values = viewerStartValuesFromCamera(entity.object3D.parent);
-  AFRAME.INSPECTOR.execute('entityupdate', {
-    entity,
-    component: 'position',
-    value: values.position
-  });
-  AFRAME.INSPECTOR.execute('entityupdate', {
-    entity,
-    component: 'rotation',
-    value: values.rotation
-  });
-  AFRAME.INSPECTOR.execute('entityupdate', {
-    entity,
-    component: 'viewer-start',
-    property: 'fov',
-    value: values.fov
-  });
+  // One undo step for the whole pose.
+  AFRAME.INSPECTOR.execute('multi', [
+    ['entityupdate', { entity, component: 'position', value: values.position }],
+    ['entityupdate', { entity, component: 'rotation', value: values.rotation }],
+    [
+      'entityupdate',
+      { entity, component: 'viewer-start', property: 'fov', value: values.fov }
+    ]
+  ]);
   if (notify) {
     STREET.notify.successMessage('Starting View set to current camera view');
   }
@@ -1036,18 +1029,34 @@ export function ensureViewerStartAtCurrentView({ select = false } = {}) {
   // entitycreate selects the new entity once it has loaded; when called
   // from set-thumbnail, put the author's selection back afterwards.
   const previous = AFRAME.INSPECTOR.selectedEntity;
-  return AFRAME.INSPECTOR.execute('entitycreate', definition, () => {
+  // execute(cmdName, payload, optionalName, callback)
+  return AFRAME.INSPECTOR.execute('entitycreate', definition, undefined, () => {
     if (!select) AFRAME.INSPECTOR.selectEntity(previous || null);
   });
 }
 
 export function setFocusCameraPose(entity) {
   // Full pose (position + orientation + fov) in the entity's frame, so the
-  // focus glide lands exactly as framed. One undoable write either way.
+  // focus glide lands exactly as framed. One undo step either way. An
+  // existing pose is updated per property: a whole-object entityupdate
+  // would undo through A-Frame's merging setAttribute and leave a hybrid
+  // (old position, new rotation) behind.
   const pose = captureFocusPose(entity.object3D, AFRAME.INSPECTOR.camera);
-  AFRAME.INSPECTOR.execute(
-    entity.hasAttribute('focus-camera-pose') ? 'entityupdate' : 'componentadd',
-    { entity, component: 'focus-camera-pose', value: pose }
-  );
+  const component = 'focus-camera-pose';
+  if (entity.hasAttribute(component)) {
+    AFRAME.INSPECTOR.execute(
+      'multi',
+      Object.entries(pose).map(([property, value]) => [
+        'entityupdate',
+        { entity, component, property, value }
+      ])
+    );
+  } else {
+    AFRAME.INSPECTOR.execute('componentadd', {
+      entity,
+      component,
+      value: pose
+    });
+  }
   STREET.notify.successMessage('Focus camera pose set');
 }

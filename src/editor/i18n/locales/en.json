@@ -2306,9 +2306,6 @@
   "shareModal.changeThumbnail": {
     "defaultMessage": "Change Thumbnail"
   },
-  "shareModal.copyEmbed": {
-    "defaultMessage": "Copy Embed Code"
-  },
   "shareModal.copyUrl": {
     "defaultMessage": "Copy URL"
   },
@@ -2332,9 +2329,6 @@
   },
   "shareModal.emailTooltip": {
     "defaultMessage": "Share scene as a new email draft"
-  },
-  "shareModal.embedCopied": {
-    "defaultMessage": "Embed code copied to clipboard"
   },
   "shareModal.locationNotSet": {
     "defaultMessage": "Location not set"

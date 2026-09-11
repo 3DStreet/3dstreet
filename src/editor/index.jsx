@@ -30,13 +30,6 @@ function isViewerModeRequested() {
   return urlParams.get('viewer') === 'true';
 }
 
-// Embed presentation (?embed=true): viewer mode with the app chrome
-// stripped, for iframing a scene into another site. Implies viewer.
-function isEmbedModeRequested() {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('embed') === 'true';
-}
-
 function Inspector(configOverrides) {
   this.assetsLoader = new AssetsLoader();
   this.exporters = { gltf: new GLTFExporter() };
@@ -128,10 +121,7 @@ Inspector.prototype = {
     // If viewer mode is requested, switch to it after initialization is
     // complete. The camera flies to the scene's saved start view via
     // the newScene camera animation once it loads.
-    if (isEmbedModeRequested()) {
-      useStore.getState().setIsEmbedMode(true);
-    }
-    if (isViewerModeRequested() || isEmbedModeRequested()) {
+    if (isViewerModeRequested()) {
       useStore.getState().enterViewerMode();
     }
   },

@@ -1,23 +1,22 @@
-/* global AFRAME, THREE */
+/* global AFRAME, THREE, STREET */
 import useStore from '../../store.js';
 
 /**
- * `viewer-start` — the scene's explicit starting vantage for a visitor.
+ * `viewer-start`, the scene's explicit starting vantage for a visitor.
  *
  * A discrete, one-per-scene entity (Add Layer → "Viewer Start") whose
  * position/rotation/fov IS the scene's start pose: visitors open the scene
- * here (viewer/embed launches, non-owners in the editor) and pressing Start
+ * here (viewer launches, non-owners in the editor) and pressing Start
  * glides the shared editor/viewer camera here, so a hotspot tour (or any
  * viewer-side experience) begins from the same place every time. Setting a
  * scene thumbnail also moves this entity to the captured view, so the
- * thumbnail and the start pose stay one thing. Scenes without one fall
- * back to the legacy default-snapshot pose (`setFallbackStartPose`). The
- * owner's own editor session lands on their autosaved editor pose instead
- * (src/tested/scene-camera-pose.js). Stop returns an editor-origin session
- * to the pre-Start pose.
+ * thumbnail and the start pose stay one thing. Older scenes' default-
+ * snapshot poses are migrated into one at load; a scene without one opens
+ * at the autosaved editor pose (src/tested/scene-camera-pose.js). Stop
+ * returns an editor-origin session to the pre-Start pose.
  *
  * The component draws a procedural camera-body + frustum marker that only
- * shows in editor control mode (never in view/play/drive, never saved —
+ * shows in editor control mode (never in view/play/drive, never saved,
  * only position/rotation/viewer-start serialize).
  *
  * Drive/fly own the camera for the whole session when present (they borrow
@@ -36,7 +35,7 @@ AFRAME.registerComponent('viewer-start', {
     // and go Back; orbit/pan/zoom/fly input is ignored (the viewer-start
     // system locks the shared controls' user input during play in `viewer`).
     freeLook: { default: true },
-    // true = a viewer-origin entry (?viewer / ?embed / a non-owner landing
+    // true = a viewer-origin entry (?viewer / a non-owner landing
     // in the viewer) starts Play on arrival, no click. Off by default:
     // the visitor's press is the audio-unlock gesture browsers require and
     // the de facto "everything finished loading" gate the deterministic
@@ -46,6 +45,16 @@ AFRAME.registerComponent('viewer-start', {
   },
 
   init() {
+    // One per scene, enforced here so every creation route (paste, the
+    // AI tools, hand-edited JSON) is covered, not only the clone button:
+    // a second instance strips itself and stays a plain entity.
+    const active = this.system?.getActive();
+    if (active && active !== this.el) {
+      this._duplicate = true;
+      STREET.notify.warningMessage('A scene has one Starting View');
+      setTimeout(() => this.el.removeAttribute('viewer-start'));
+      return;
+    }
     this._onModeChanged = this._onModeChanged.bind(this);
     this._buildMarker();
     this.update();
@@ -53,10 +62,10 @@ AFRAME.registerComponent('viewer-start', {
     this._applyVisibility(
       this.el.sceneEl.systems['mode-manager']?.getMode() ?? 'editor'
     );
-    this.system?.register(this);
   },
 
   update() {
+    if (this._duplicate) return;
     if (this._helperCamera) {
       this._helperCamera.fov = this.data.fov;
       this._helperCamera.updateProjectionMatrix();
@@ -66,9 +75,13 @@ AFRAME.registerComponent('viewer-start', {
   },
 
   remove() {
+    if (this._duplicate) return;
     this.el.sceneEl.removeEventListener('mode-changed', this._onModeChanged);
     this.el.removeObject3D('mesh');
-    this.system?.unregister(this);
+    this._body.geometry.dispose();
+    this._body.material.dispose();
+    this._helper.dispose();
+    this._body = this._helper = this._helperCamera = null;
     this.system?.applyInputLock();
   },
 
@@ -100,6 +113,7 @@ AFRAME.registerComponent('viewer-start', {
     );
     body.position.set(0, 0, 0.35);
     group.add(body);
+    this._body = body;
 
     this._helperCamera = new THREE.PerspectiveCamera(
       this.data.fov,
@@ -159,9 +173,7 @@ function editorCameraState() {
 
 AFRAME.registerSystem('viewer-start', {
   init() {
-    this.entries = new Set();
     this._restoreState = null;
-    this._fallbackStartPose = null;
     this._onPlayStart = this._onPlayStart.bind(this);
     this._onPlayStop = this._onPlayStop.bind(this);
     this._onPlayReset = this._onPlayReset.bind(this);
@@ -195,14 +207,6 @@ AFRAME.registerSystem('viewer-start', {
     // here.
   },
 
-  register(component) {
-    this.entries.add(component);
-  },
-
-  unregister(component) {
-    this.entries.delete(component);
-  },
-
   // The scene's Viewer Start (one per scene by design; first in DOM order
   // if a hand-edited scene carries more). Deleting it is the off switch.
   getActive() {
@@ -225,12 +229,6 @@ AFRAME.registerSystem('viewer-start', {
     controls.inputLocked = fixed;
   },
 
-  // Legacy start pose for scenes without a Viewer Start entity: the default
-  // snapshot's camera state, handed over by the viewport on scene load.
-  setFallbackStartPose(cameraState) {
-    this._fallbackStartPose = cameraState || null;
-  },
-
   // Run `cb` once the Starting View entity (if any) has loaded, so its
   // transform is real. On scene load the newScene event fires right after
   // the entities are appended, before A-Frame has applied their
@@ -246,13 +244,12 @@ AFRAME.registerSystem('viewer-start', {
     cb();
   },
 
-  // The scene's effective start pose: the Viewer Start entity if there is
-  // one, else the legacy snapshot pose, else null. One accessor for the
-  // load fly-in and for Start.
+  // The scene's start pose: the Starting View entity's, or null. One
+  // accessor for the load fly-in, Start and Reset. (Legacy default-snapshot
+  // poses are migrated into an entity at load, so there is no other source.)
   getStartCameraState() {
     const el = this.getActive();
-    if (el) return viewerStartCameraState(el);
-    return this._fallbackStartPose;
+    return el ? viewerStartCameraState(el) : null;
   },
 
   // Glide the shared camera to the start pose. Public so the sidebar's
