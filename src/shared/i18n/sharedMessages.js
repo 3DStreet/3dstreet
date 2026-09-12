@@ -825,6 +825,39 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Enviando…',
     fr: 'Téléversement…'
   },
+  // In-flight upload stages, shared by every surface that shows one (see
+  // shared/assets/uploadStageLabels.js). "Preparing" covers the quota
+  // preflight: nothing is moving yet, so it must not say Uploading.
+  uploadStagePreparing: {
+    en: 'Preparing…',
+    es: 'Preparando…',
+    'pt-BR': 'Preparando…',
+    fr: 'Préparation…'
+  },
+  uploadStageOptimizing: {
+    en: 'Optimizing…',
+    es: 'Optimizando…',
+    'pt-BR': 'Otimizando…',
+    fr: 'Optimisation…'
+  },
+  uploadStageUploading: {
+    en: 'Uploading…',
+    es: 'Subiendo…',
+    'pt-BR': 'Enviando…',
+    fr: 'Téléversement…'
+  },
+  uploadStageUploadingPct: {
+    en: 'Uploading {pct}%',
+    es: 'Subiendo {pct}%',
+    'pt-BR': 'Enviando {pct}%',
+    fr: 'Téléversement {pct}%'
+  },
+  uploadStageFinishing: {
+    en: 'Finishing…',
+    es: 'Finalizando…',
+    'pt-BR': 'Finalizando…',
+    fr: 'Finalisation…'
+  },
   uploadAnAsset: {
     en: 'Upload an asset',
     es: 'Subir un recurso',

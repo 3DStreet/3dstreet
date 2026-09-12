@@ -4,8 +4,11 @@ import PropTypes from 'prop-types';
 import posthog from 'posthog-js';
 import useAssetUploadStatus, {
   STATUS_LABELS,
-  REASON_TEXT
+  REASON_TEXT,
+  getStatusText
 } from './useAssetUploadStatus';
+import { CANCELLABLE_UPLOAD_STAGES } from '@shared/assets/uploadStageLabels.js';
+import { useSharedMessages } from '@shared/i18n/sharedMessages.js';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
@@ -29,6 +32,7 @@ const formatStorage = () =>
 
 const AssetInfoPanel = ({ entity }) => {
   const intl = useIntl();
+  const t = useSharedMessages();
   const state = useAssetUploadStatus(entity);
   const [detailsOpen, setDetailsOpen] = useState(false);
   if (!state) return null;
@@ -61,10 +65,10 @@ const AssetInfoPanel = ({ entity }) => {
     useStore.getState().startCheckout('storage');
   };
 
+  // The percentage rides inside the stage label ("Uploading 42%") so this
+  // panel and the gallery's pending card read identically.
   let detail = '';
-  if (state.status === 'uploading' && state.progress > 0) {
-    detail = `${state.progress}%`;
-  } else if (
+  if (
     (state.status === 'uploaded' ||
       state.status === 'local' ||
       state.status === 'local_error') &&
@@ -99,9 +103,9 @@ const AssetInfoPanel = ({ entity }) => {
             display: 'inline-block'
           }}
         />
-        <strong style={{ color: meta.color }}>{meta.text}</strong>
+        <strong style={{ color: meta.color }}>{getStatusText(t, state)}</strong>
         {detail && <span style={{ opacity: 0.7 }}>· {detail}</span>}
-        {(state.status === 'uploading' || state.status === 'optimizing') && (
+        {CANCELLABLE_UPLOAD_STAGES.has(state.status) && (
           <button
             type="button"
             onClick={() => useCurrentUploadStore.getState().cancel()}

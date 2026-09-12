@@ -1,10 +1,19 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { auth } from '@shared/services/firebase.js';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
+import {
+  CANCELLABLE_UPLOAD_STAGES,
+  getUploadStageLabel
+} from '@shared/assets/uploadStageLabels.js';
 
+// `text` here is the fallback for states the shared stage table does not
+// cover. For in-flight stages use getStatusText() below, which reads the
+// same table as the gallery's pending card so both surfaces agree (#1989).
 export const STATUS_LABELS = {
-  optimizing: { color: '#f4a01a', text: 'Optimizing GLB…' },
+  validating: { color: '#f4a01a', text: 'Preparing…' },
+  optimizing: { color: '#f4a01a', text: 'Optimizing…' },
   uploading: { color: '#f4a01a', text: 'Uploading' },
+  finishing: { color: '#f4a01a', text: 'Finishing…' },
   uploaded: { color: '#2bb673', text: 'Cloud asset' },
   failed: { color: '#e0473d', text: 'Upload failed' },
   local: { color: '#7f7f7f', text: 'Temporary local preview' },
@@ -34,6 +43,17 @@ export const REASON_TEXT = {
 };
 
 const PERSISTENT_ATTRS = ['data-asset-id', 'data-asset-owner-uid'];
+
+/**
+ * User-facing text for a status from useAssetUploadStatus(): the shared
+ * stage label (with byte-weighted percentage while uploading) for in-flight
+ * stages, else this module's own label.
+ * @param {(id: string, values?: object) => string} t - useSharedMessages()
+ */
+export function getStatusText(t, state) {
+  const meta = STATUS_LABELS[state.status] || STATUS_LABELS.uploaded;
+  return getUploadStageLabel(t, state.status, state.progress) || meta.text;
+}
 
 // Subscription glue for navigator.onLine. The SDK silently retries network
 // errors mid-upload (we cap that at 30s), so while we wait we surface
@@ -116,7 +136,7 @@ export default function useAssetUploadStatus(entity) {
 
   // While offline mid-upload, the Firebase SDK silently retries. Surface that
   // so the user doesn't think a frozen "Uploading 42%" means we're stuck.
-  if (!isOnline && (status === 'uploading' || status === 'optimizing')) {
+  if (!isOnline && CANCELLABLE_UPLOAD_STAGES.has(status)) {
     status = 'waiting';
   }
 
