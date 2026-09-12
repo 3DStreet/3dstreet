@@ -23,6 +23,7 @@
 }
 
 .entityIcons {
+  position: relative;
   display: flex;
   align-items: center;
   // make 80% size and darker color for the svg icons
@@ -30,6 +31,19 @@
     width: 16px;
     height: 16px;
   }
+}
+
+// Asset upload status, pinned to the icon's upper right (AssetUploadDot).
+// The ring separates it from the icon strokes beneath; color is inline.
+.assetStatusDot {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px variables.$darkgray-800;
+  pointer-events: auto;
 }
 
 .badge {

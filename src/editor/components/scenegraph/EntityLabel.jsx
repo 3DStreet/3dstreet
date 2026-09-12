@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { getEntityIcon, getEntityDisplayName } from '../../lib/entity';
 import useAssetUploadStatus from '../elements/useAssetUploadStatus';
+import AssetUploadDot from '../elements/AssetUploadDot';
 import InlineEditInput from '../elements/InlineEditInput';
 import { Edit24Icon } from '@shared/icons';
 import { commonMessages } from '@/editor/i18n/commonMessages';
@@ -76,10 +77,20 @@ const EntityLabel = ({
     });
   };
 
+  // Upload status rides on the icon as a corner badge (amber/red only; a
+  // synced asset shows nothing) so it never collides with the name or
+  // the trailing role badges.
+  const iconWithStatus = icon && (
+    <span className="entityIcons">
+      {icon}
+      <AssetUploadDot entity={entity} />
+    </span>
+  );
+
   if (canEdit && editing) {
     return (
       <span className="entityPrint">
-        {icon && <span className="entityIcons">{icon}</span>}
+        {iconWithStatus}
         <InlineEditInput
           className="entityNameInput"
           defaultValue={displayName}
@@ -99,7 +110,7 @@ const EntityLabel = ({
 
   return (
     <span className={`entityPrint${canEdit ? ' editable' : ''}`}>
-      {icon && <span className="entityIcons">{icon}</span>}
+      {iconWithStatus}
       {displayName && (
         <span
           className="entityName"
