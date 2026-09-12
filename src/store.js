@@ -205,6 +205,14 @@ const useStore = create(
         // in-app replacement for window.confirm. See ConfirmModal.
         confirmProps: null,
         showConfirm: (props) => set({ modal: 'confirm', confirmProps: props }),
+        // OSM click-to-upgrade candidate (#1930): set when an empty-space
+        // viewport click lands near a streamed OSM street way in osm3d mode
+        // ({ wayId, class, worldPoint, distance }); the OsmUpgradeChip
+        // renders the "Generate Street" action for it (and osm-streets
+        // highlights the stretch). Cleared on entity selection, generate,
+        // or dismiss.
+        osmWayCandidate: null,
+        setOsmWayCandidate: (candidate) => set({ osmWayCandidate: candidate }),
         startCheckout: (postCheckout) => {
           // Snapshot the current modal so closing/completing the upgrade
           // flow lands the user back where they started (e.g. geo modal).
