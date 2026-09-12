@@ -37,7 +37,17 @@ vi.mock('../../../src/shared/assets/services/assetsService.js', () => ({
   }
 }));
 
-const copyAssetToLibrary = vi.fn(async () => ({ ok: true, assetId: 'new' }));
+const COPY_DOC = {
+  assetId: 'new',
+  userId: VIEWER,
+  storageUrl: 'https://example.test/new.glb'
+};
+const copyAssetToLibrary = vi.fn(async () => ({
+  ok: true,
+  assetId: 'new',
+  ownerUid: VIEWER,
+  asset: COPY_DOC
+}));
 vi.mock('@shared/asset-upload', () => ({
   copyAssetToLibrary: (...a) => copyAssetToLibrary(...a),
   reoptimizeAsset: vi.fn(),
@@ -47,12 +57,13 @@ vi.mock('@shared/asset-upload', () => ({
 const { default: MeshDetailsModal } =
   await import('../../../src/shared/assets/components/MeshDetailsModal.jsx');
 
-function renderModal() {
+function renderModal(extra = {}) {
   return render(
     <MeshDetailsModal
       assetId={ASSET.assetId}
       ownerUid={OWNER}
       onClose={() => {}}
+      {...extra}
     />
   );
 }
@@ -75,6 +86,16 @@ describe('MeshDetailsModal — copy to my library', () => {
       userId: OWNER
     });
     await screen.findByText(/Copied to your library/);
+  });
+
+  it('hands the new doc to onCopied and says the scene now uses the copy', async () => {
+    const onCopied = vi.fn(() => 2);
+    renderModal({ onCopied });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Copy to my library' })
+    );
+    await waitFor(() => expect(onCopied).toHaveBeenCalledWith(COPY_DOC));
+    await screen.findByText(/This scene now uses your copy/);
   });
 
   it('surfaces a failed copy as an error line', async () => {

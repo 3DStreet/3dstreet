@@ -13,6 +13,7 @@ import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { AssetDetailModal, formatBytes } from '@shared/assets';
+import { swapCloudAssetInScene } from '../../lib/asset-upload/swapCloudAsset';
 import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
 import useStore from '@/store.js';
 import { Button } from './Button';
@@ -235,6 +236,15 @@ const AssetInfoPanel = ({ entity }) => {
           ownerUid={state.ownerUid}
           type={state.type}
           onClose={() => setDetailsOpen(false)}
+          // Opened from an entity that uses this asset: a copy should take
+          // its place in the scene, not just land in the gallery. Fires even
+          // if the modal was closed while the copy ran.
+          onCopied={(copy) =>
+            swapCloudAssetInScene(
+              { assetId: state.assetId, ownerUid: state.ownerUid },
+              copy
+            )
+          }
           onUseForGenerator={(item) => openInGenerator(item, 'image')}
           onUseForVideo={(item) => openInGenerator(item, 'video')}
         />

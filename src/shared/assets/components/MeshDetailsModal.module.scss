@@ -340,6 +340,67 @@
   }
 }
 
+// Operation indicator for a multi-stage action the user is waiting on
+// ("Copy to my library"): a boxed row with a spinner while running, a check
+// or bang once settled, so it reads as progress rather than as one more
+// metadata line. Color carries the state; the glyph carries it without color.
+.opStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid variables.$darkgray-500;
+  border-left-width: 3px;
+  background: variables.$darkgray-800;
+  font-size: 12px;
+  line-height: 1.3;
+  color: variables.$lightgray-100;
+}
+
+.opStatusRunning {
+  border-left-color: variables.$purple-400;
+}
+
+.opStatusDone {
+  border-left-color: variables.$green-200;
+  .opGlyph {
+    color: variables.$green-200;
+  }
+}
+
+.opStatusError {
+  border-left-color: #e0473d;
+  color: #f0a09a;
+  .opGlyph {
+    color: #e0473d;
+  }
+}
+
+.opGlyph {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.opSpinner {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid variables.$darkgray-500;
+  border-top-color: variables.$purple-400;
+  animation: opSpin 0.8s linear infinite;
+}
+
+@keyframes opSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 // Text button with the icon-button chrome, for a non-primary action that
 // still needs a label ("Copy to my library").
 .secondaryButton {

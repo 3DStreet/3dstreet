@@ -55,6 +55,16 @@ const REOPTIMIZE_NO_WIN_MESSAGE = {
 // render in the error style like a thrown failure would.
 const REOPTIMIZE_PIPELINE_FAILURES = new Set(['timeout', 'worker_error']);
 
+// Stages reported by copyAssetToLibrary (its own 'downloading', then
+// uploadAsset's), mapped to shared-message ids for the operation indicator.
+const COPY_STAGE_MESSAGE = {
+  downloading: 'copyStageDownloading',
+  validating: 'copyStageDownloading',
+  optimizing: 'copyStageOptimizing',
+  uploading: 'copyStageUploading',
+  thumbnailing: 'copyStageFinishing'
+};
+
 const ATTRIBUTION_FIELDS = ['author', 'license', 'source'];
 
 const EMPTY_ATTRIBUTION = {
@@ -130,6 +140,7 @@ const MeshDetailsModal = ({
   ownerUid,
   onClose,
   onPlace,
+  onCopied,
   currentIndex,
   totalItems,
   onNavigate
@@ -629,7 +640,21 @@ const MeshDetailsModal = ({
         onStatus: (stage) => setCopyStatus({ stage })
       });
       if (result.ok) {
-        setCopyStatus({ text: t('copyToLibraryDone') });
+        // The host decides what a copy means (the entity panel swaps it
+        // into the scene). Runs even after the modal unmounted: the copy
+        // finished, and the scene should reflect it either way.
+        let swapped = false;
+        if (onCopied && result.asset) {
+          try {
+            swapped = !!onCopied(result.asset);
+          } catch (err) {
+            console.error('[MeshDetailsModal] onCopied failed', err);
+          }
+        }
+        setCopyStatus({
+          done: true,
+          text: t(swapped ? 'copyToLibraryDoneSwapped' : 'copyToLibraryDone')
+        });
       } else if (result.cancelled) {
         setCopyStatus(null);
       } else {
@@ -647,7 +672,7 @@ const MeshDetailsModal = ({
     }
   };
   const copyStatusText = copyStatus?.stage
-    ? t('copyToLibraryCopying')
+    ? t(COPY_STAGE_MESSAGE[copyStatus.stage] || 'copyToLibraryCopying')
     : (copyStatus?.text ?? null);
 
   // Inline "re-run the pipeline" control, rendered inside the Size row next
@@ -985,13 +1010,24 @@ const MeshDetailsModal = ({
             {error && <div className={styles.error}>{error}</div>}
             {copyStatusText && (
               <div
-                className={
+                className={`${styles.opStatus} ${
                   copyStatus?.error
-                    ? styles.reoptimizeStatusError
-                    : styles.reoptimizeStatus
-                }
+                    ? styles.opStatusError
+                    : copyStatus?.done
+                      ? styles.opStatusDone
+                      : styles.opStatusRunning
+                }`}
+                role="status"
+                aria-live="polite"
               >
-                {copyStatusText}
+                {copyStatus?.stage ? (
+                  <span className={styles.opSpinner} aria-hidden="true" />
+                ) : (
+                  <span className={styles.opGlyph} aria-hidden="true">
+                    {copyStatus?.error ? '!' : '✓'}
+                  </span>
+                )}
+                <span>{copyStatusText}</span>
               </div>
             )}
 
@@ -1005,7 +1041,9 @@ const MeshDetailsModal = ({
                       disabled={!!copyStatus?.stage}
                       className={styles.secondaryButton}
                     >
-                      {t('copyToLibrary')}
+                      {copyStatus?.stage
+                        ? t('copyToLibraryCopying')
+                        : t('copyToLibrary')}
                     </button>
                   </IconTooltip>
                 )}
@@ -1352,6 +1390,11 @@ MeshDetailsModal.propTypes = {
   assetId: PropTypes.string.isRequired,
   ownerUid: PropTypes.string.isRequired,
   onClose: PropTypes.func.isRequired,
+  // Optional: called with the new asset doc after "Copy to my library"
+  // succeeds, whether or not the modal is still open. The editor's entity
+  // panel uses it to swap the copy into the scene; the gallery leaves it
+  // undefined (nothing to swap). Also switches the success copy.
+  onCopied: PropTypes.func,
   // Optional: when provided, renders a "Place in scene" CTA. Called with
   // { assetId, ownerUid, storageUrl, name, type } when the user clicks it;
   // the modal closes itself after invoking. Only the gallery card open

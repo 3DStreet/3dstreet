@@ -1123,11 +1123,42 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Copiando para sua biblioteca…',
     fr: 'Copie dans votre bibliothèque…'
   },
+  copyStageDownloading: {
+    en: 'Downloading the original…',
+    es: 'Descargando el original…',
+    'pt-BR': 'Baixando o original…',
+    fr: "Téléchargement de l'original…"
+  },
+  copyStageOptimizing: {
+    en: 'Optimizing your copy…',
+    es: 'Optimizando tu copia…',
+    'pt-BR': 'Otimizando sua cópia…',
+    fr: 'Optimisation de votre copie…'
+  },
+  copyStageUploading: {
+    en: 'Uploading to your library…',
+    es: 'Subiendo a tu biblioteca…',
+    'pt-BR': 'Enviando para sua biblioteca…',
+    fr: 'Envoi dans votre bibliothèque…'
+  },
+  copyStageFinishing: {
+    en: 'Finishing up…',
+    es: 'Finalizando…',
+    'pt-BR': 'Finalizando…',
+    fr: 'Finalisation…'
+  },
   copyToLibraryDone: {
-    en: 'Copied to your library. Find it in your assets.',
-    es: 'Copiado a tu biblioteca. Lo encontrarás en tus recursos.',
-    'pt-BR': 'Copiado para sua biblioteca. Veja em seus recursos.',
-    fr: 'Copié dans votre bibliothèque. Retrouvez-le dans vos ressources.'
+    en: 'Copied to your library.',
+    es: 'Copiado a tu biblioteca.',
+    'pt-BR': 'Copiado para sua biblioteca.',
+    fr: 'Copié dans votre bibliothèque.'
+  },
+  // When the modal was opened from an entity: the scene now uses the copy.
+  copyToLibraryDoneSwapped: {
+    en: 'Copied to your library. This scene now uses your copy.',
+    es: 'Copiado a tu biblioteca. Esta escena ahora usa tu copia.',
+    'pt-BR': 'Copiado para sua biblioteca. Esta cena agora usa sua cópia.',
+    fr: 'Copié dans votre bibliothèque. Cette scène utilise maintenant votre copie.'
   },
   copyToLibraryFailed: {
     en: 'Could not copy this asset',

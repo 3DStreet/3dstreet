@@ -20,11 +20,15 @@
  * @param {object} [opts]
  * @param {(stage: string) => void} [opts.onStatus] - uploadAsset's stages,
  *   preceded by 'downloading'.
- * @returns {Promise<{ok: boolean, assetId?: string, error?: string,
- *   cancelled?: boolean}>} uploadAsset's result shape; never throws for the
- *   expected failures (offline, quota, busy) — they come back as `error`.
+ * @returns {Promise<{ok: boolean, assetId?: string, ownerUid?: string,
+ *   asset?: object, error?: string, cancelled?: boolean}>} uploadAsset's
+ *   result shape plus, on success, the new doc (`asset`) so a caller can
+ *   repoint scene entities at the copy. Never throws for the expected
+ *   failures (offline, quota, busy) — they come back as `error`.
  */
 
+import { auth } from '@shared/services/firebase.js';
+import { assetsService } from '@shared/assets';
 import { uploadAsset } from './uploadAsset.js';
 
 export async function copyAssetToLibrary(asset, { onStatus } = {}) {
@@ -53,7 +57,7 @@ export async function copyAssetToLibrary(asset, { onStatus } = {}) {
     type: blob.type || 'model/gltf-binary'
   });
 
-  return uploadAsset(file, {
+  const result = await uploadAsset(file, {
     onStatus,
     metadata: {
       ...(asset.name ? { name: asset.name } : {}),
@@ -61,4 +65,16 @@ export async function copyAssetToLibrary(asset, { onStatus } = {}) {
     },
     attribution: asset.attribution ?? null
   });
+  if (!result.ok) return result;
+
+  // The doc is written before uploadAsset resolves, so this is a plain read.
+  // Without it the caller only has an id and would have to guess the URL.
+  const ownerUid = auth.currentUser?.uid;
+  let copy = null;
+  try {
+    copy = await assetsService.getAsset(result.assetId, ownerUid);
+  } catch (err) {
+    console.warn('[copyAsset] could not read the new doc', err);
+  }
+  return { ...result, ownerUid, asset: copy };
 }
