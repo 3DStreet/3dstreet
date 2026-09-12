@@ -3,7 +3,8 @@ import PropTypes from 'prop-types';
 import { injectIntl } from 'react-intl';
 import classNames from 'classnames';
 import Events from '../../lib/Events';
-import { removeEntity, cloneEntity } from '../../lib/entity';
+import { removeEntity, cloneEntity, getEntityBadges } from '../../lib/entity';
+import { defineMessages } from 'react-intl';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import AssetUploadDot from '../elements/AssetUploadDot';
 import EntityContextMenu from './EntityContextMenu';
@@ -11,6 +12,8 @@ import EntityLabel from './EntityLabel';
 import {
   faCaretDown,
   faCaretRight,
+  faEye,
+  faEyeSlash,
   faGripVertical
 } from '@fortawesome/free-solid-svg-icons';
 
@@ -23,6 +26,16 @@ export const isContainer = (entity) => {
     entity.id === 'environment'
   );
 };
+
+// Tooltips for the passive role badges at the right of a row (keys from
+// getEntityBadges).
+const BADGE_TITLES = defineMessages({
+  'focus-hotspot': {
+    id: 'entity.badge.focusHotspot',
+    defaultMessage:
+      'Focus hotspot: clickable in view mode. Click to fly the camera to it.'
+  }
+});
 
 class Entity extends React.Component {
   static propTypes = {
@@ -62,7 +75,16 @@ class Entity extends React.Component {
 
   onDoubleClick = () => Events.emit('objectfocus', this.props.entity.object3D);
 
-  toggleVisibility = () => {
+  // Badge click: focus the camera on this layer right away (the badge lives
+  // inside the clickable row, so don't also toggle selection).
+  focusFromBadge = (event) => {
+    event.stopPropagation();
+    Events.emit('objectfocus', this.props.entity.object3D);
+  };
+
+  toggleVisibility = (event) => {
+    // The eye lives inside the clickable row — don't also select/focus it.
+    event.stopPropagation();
     const entity = this.props.entity;
     const visible = entity.object3D.visible;
     AFRAME.INSPECTOR.execute('entityupdate', {
@@ -194,7 +216,7 @@ class Entity extends React.Component {
 
     // Clone and remove buttons if not a-scene.
     const cloneButton =
-      tagName === 'a-scene' ? null : (
+      tagName === 'a-scene' || entity.hasAttribute('viewer-start') ? null : (
         <a
           onClick={() => cloneEntity(entity)}
           title={intl.formatMessage({
@@ -219,11 +241,17 @@ class Entity extends React.Component {
         />
       );
 
-    let collapse;
+    // Expand/collapse children arrow: left-justified before the name (#1980).
+    // Rows without children reserve no space — the name shifts left, an
+    // accepted inconsistency for a tighter row.
+    let collapse = null;
     if (entity.children.length > 0 && !isFiltering) {
       collapse = (
         <span
-          onClick={() => this.props.toggleExpandedCollapsed(entity)}
+          onClick={(event) => {
+            event.stopPropagation();
+            this.props.toggleExpandedCollapsed(entity);
+          }}
           className="collapsespace"
         >
           {isExpanded ? (
@@ -233,21 +261,27 @@ class Entity extends React.Component {
           )}
         </span>
       );
-    } else {
-      collapse = <span />;
     }
 
-    // Visibility button.
+    // Visibility toggle: eye icon in the row's right-justified badge bar,
+    // revealed on hover — except a hidden entity's slashed eye, which stays
+    // visible as the row's state indicator.
     const visible = entity.object3D.visible;
     const visibilityButton = (
-      <i
+      <button
+        type="button"
         title={intl.formatMessage({
           id: 'entity.toggleVisibility',
           defaultMessage: 'Toggle entity visibility'
         })}
-        className={'fa ' + (visible ? 'fa-eye' : 'fa-eye-slash')}
+        className={
+          'entityVisibilityToggle' + (visible ? '' : ' is-entity-hidden')
+        }
         onClick={this.toggleVisibility}
-      />
+        onDoubleClick={(event) => event.stopPropagation()}
+      >
+        <AwesomeIcon icon={visible ? faEye : faEyeSlash} size={12} />
+      </button>
     );
 
     // Drag handle - always reserve space for consistent alignment
@@ -267,11 +301,42 @@ class Entity extends React.Component {
       </span>
     );
 
+    // Role badges (hotspot target): always visible in the badge bar, in a
+    // fixed slot left of the eye; clicking one focuses the layer.
+    const badges = getEntityBadges(entity);
+    const badgesNode = badges.length ? (
+      <span className="entityBadges">
+        {badges.map((badge) => (
+          <button
+            key={badge.key}
+            type="button"
+            className="entityBadge"
+            title={intl.formatMessage(BADGE_TITLES[badge.key])}
+            onClick={this.focusFromBadge}
+            onDoubleClick={(event) => event.stopPropagation()}
+          >
+            <AwesomeIcon icon={badge.icon} size={12} />
+          </button>
+        ))}
+      </span>
+    ) : null;
+
+    // Right-justified badge/toggle bar overlaid on the row (#1980): passive
+    // badges first, then the visibility eye (and future animated-control
+    // toggles).
+    const badgeBar = (
+      <span className="entityRowBar">
+        {badgesNode}
+        {visibilityButton}
+      </span>
+    );
+
     // Class name.
     const className = classNames({
       active: this.props.isSelected,
       entity: true,
       novisible: !visible,
+      'has-badges': badges.length > 0,
       option: true,
       // Drag and drop classes
       dragging: isDragging,
@@ -304,14 +369,14 @@ class Entity extends React.Component {
               }}
             />
             {dragHandle}
-            {visibilityButton}
+            {collapse}
             <EntityLabel
               entity={entity}
               forceEditing={isRenaming}
               onEditingEnd={() => this.props.setRenamingEntity(null)}
             />
             <AssetUploadDot entity={entity} />
-            {collapse}
+            {badgeBar}
           </span>
           <span className="entityActions">
             {cloneButton}

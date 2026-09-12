@@ -30,12 +30,16 @@ const ASSET_TYPE_PREFIX_MESSAGES = {
  * `forceEditing` puts the label into edit mode from the outside (the scene
  * graph's context menu Rename item) without the hover pencil affordance;
  * `onEditingEnd` fires when that edit closes so the owner can clear its state.
+ * `trailing` renders right after the name text (the scene graph's role
+ * badges), inside the label so it never collides with the row's
+ * absolutely positioned expand arrow.
  */
 const EntityLabel = ({
   entity,
   editable = false,
   forceEditing = false,
-  onEditingEnd
+  onEditingEnd,
+  trailing = null
 }) => {
   const intl = useIntl();
   const state = useAssetUploadStatus(entity);
@@ -104,6 +108,7 @@ const EntityLabel = ({
           &nbsp;{displayName}
         </span>
       )}
+      {trailing}
       {canEdit && (
         <button
           type="button"
@@ -123,7 +128,8 @@ EntityLabel.propTypes = {
   entity: PropTypes.object,
   editable: PropTypes.bool,
   forceEditing: PropTypes.bool,
-  onEditingEnd: PropTypes.func
+  onEditingEnd: PropTypes.func,
+  trailing: PropTypes.node
 };
 
 export default EntityLabel;

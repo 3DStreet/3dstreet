@@ -1,8 +1,10 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { FormattedMessage } from 'react-intl';
+import Collapsible from '../Collapsible';
 import DEFAULT_COMPONENTS from './DefaultComponents';
 import PropertyRow from './PropertyRow';
-import GeoLocationRow from './GeoLocationRow';
+import PositionRow from './PositionRow';
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
 import { expandBatchedMeshesForExport } from '../../../batch-models';
@@ -36,7 +38,6 @@ export default class CommonComponents extends React.Component {
 
   renderCommonAttributes() {
     const entity = this.props.entity;
-    // return ['position', 'rotation', 'scale', 'visible']
     return ['position', 'rotation', 'scale'].map((componentName) => {
       // Anything that opts out of scaling (managed streets, shapes) hides the
       // row: the command layer refuses the write anyway, so showing it would
@@ -47,6 +48,11 @@ export default class CommonComponents extends React.Component {
       ) {
         return null;
       }
+      if (componentName === 'position') {
+        // Position or the read-only geolocated readout — the label toggles
+        // between them on geospatial scenes (#1979).
+        return <PositionRow key={componentName} entity={entity} />;
+      }
       const schema = AFRAME.components[componentName].schema;
       var data = entity.object3D[componentName];
       if (componentName === 'rotation') {
@@ -56,7 +62,7 @@ export default class CommonComponents extends React.Component {
           z: THREE.MathUtils.radToDeg(entity.object3D.rotation.z)
         };
       }
-      const row = (
+      return (
         <PropertyRow
           key={componentName}
           name={componentName}
@@ -67,10 +73,6 @@ export default class CommonComponents extends React.Component {
           entity={entity}
         />
       );
-      if (componentName !== 'position') return row;
-      // Read-only geographic readout under the position row whenever the
-      // geo layer is live (renders nothing otherwise).
-      return [row, <GeoLocationRow key="geo-location" entity={entity} />];
     });
   }
 
@@ -101,8 +103,25 @@ export default class CommonComponents extends React.Component {
       return <div />;
     }
 
+    // Transform is a named collapsible section like geometry/material (#1981)
+    // — but not deletable. `sidepanelContent` stays on the rows wrapper so
+    // the vec3 row styling keyed to it keeps applying.
     return (
-      <div className="collapsible-content">{this.renderCommonAttributes()}</div>
+      <Collapsible sectionKey="transform">
+        <div className="componentHeader collapsible-header">
+          <span className="componentTitle" title="Transform">
+            <span>
+              <FormattedMessage
+                id="sidebar.transform"
+                defaultMessage="Transform"
+              />
+            </span>
+          </span>
+        </div>
+        <div className="collapsible-content sidepanelContent">
+          {this.renderCommonAttributes()}
+        </div>
+      </Collapsible>
     );
   }
 }

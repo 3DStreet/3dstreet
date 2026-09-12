@@ -1,22 +1,13 @@
-import {
-  canRenameEntity,
-  cloneEntity,
-  removeSelectedEntity,
-  setFocusCameraPose
-} from '../../lib/entity';
+import { canRenameEntity } from '../../lib/entity';
 import { Button } from '../elements';
 import ComponentsContainer from './ComponentsContainer';
+import EntityActionButtons from './EntityActionButtons';
 import Events from '../../lib/Events';
 import Mixins from '../widgets/Mixins';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { FormattedMessage } from 'react-intl';
-import {
-  ArrowLeftHookIcon,
-  TrashIcon,
-  Copy32Icon,
-  ArrowsPointingInwardIcon
-} from '@shared/icons';
+import { ArrowLeftHookIcon } from '@shared/icons';
 import IntersectionSidebar from './IntersectionSidebar';
 import ManagedIntersectionSidebar from './ManagedIntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
@@ -26,10 +17,9 @@ import DriveControlsSidebar from './DriveControlsSidebar';
 import FlyControlsSidebar from './FlyControlsSidebar';
 import StreetTrafficReplaySidebar from './StreetTrafficReplaySidebar';
 import UserLayersSidebar from './UserLayersSidebar';
-import AdvancedComponents from './AdvancedComponents';
+import PanelFooter from './PanelFooter';
 import AssetInfoPanel from './AssetInfoPanel';
 import EntityLabel from '../scenegraph/EntityLabel';
-import { commonMessages } from '@/editor/i18n/commonMessages';
 export default class Sidebar extends React.Component {
   static propTypes = {
     entity: PropTypes.object
@@ -115,6 +105,20 @@ export default class Sidebar extends React.Component {
     const hasOwnHeader =
       isStreetSegment || !!entity.getAttribute('managed-street');
 
+    // Focus/Duplicate/Delete inline in the title row (the managed-street
+    // header treatment), for real entities only: the fixed pseudo-layers
+    // aren't clonable/deletable, and no-transform entities keep the old
+    // gating.
+    const isPseudoLayer =
+      entity.id === 'reference-layers' ||
+      entity.id === 'environment' ||
+      entity.id === 'street-container';
+    const showEntityActions =
+      !hasOwnHeader &&
+      !isPseudoLayer &&
+      entity.tagName !== 'A-SCENE' &&
+      !entity.hasAttribute('data-no-transform');
+
     return (
       <div className="properties-panel" tabIndex="0">
         <ShapeDrawInstructions />
@@ -123,6 +127,7 @@ export default class Sidebar extends React.Component {
             <div className="layersBlock">
               <EntityLabel entity={entity} editable={canRename} />
             </div>
+            {showEntityActions && <EntityActionButtons entity={entity} />}
           </div>
         )}
         {/* Sticky panel headers (the entity title row, and the segment /
@@ -179,37 +184,6 @@ export default class Sidebar extends React.Component {
               )}
               <div className="sidepanelContent">
                 <AssetInfoPanel entity={entity} />
-                {entity.hasAttribute('data-no-transform') ? (
-                  <></>
-                ) : (
-                  <div className="sidebar-buttons-small">
-                    <Button
-                      variant={'toolbtn'}
-                      onClick={() =>
-                        Events.emit('objectfocus', entity.object3D)
-                      }
-                      onLongPress={() => setFocusCameraPose(entity)}
-                      longPressDelay={1500} // Optional, defaults to 2000ms
-                      leadingIcon={<ArrowsPointingInwardIcon />}
-                    >
-                      <FormattedMessage {...commonMessages.focus} />
-                    </Button>
-                    <Button
-                      variant={'toolbtn'}
-                      onClick={() => cloneEntity(entity)}
-                      leadingIcon={<Copy32Icon />}
-                    >
-                      <FormattedMessage {...commonMessages.duplicate} />
-                    </Button>
-                    <Button
-                      variant={'toolbtn'}
-                      onClick={() => removeSelectedEntity()}
-                      leadingIcon={<TrashIcon />}
-                    >
-                      <FormattedMessage {...commonMessages.delete} />
-                    </Button>
-                  </div>
-                )}
                 {!!entity.mixinEls.length &&
                   !entity.classList.contains('autocreated') && (
                     <div className="details">
@@ -227,25 +201,19 @@ export default class Sidebar extends React.Component {
               {entity.getAttribute('drive-controls') && (
                 <>
                   <DriveControlsSidebar entity={entity} />
-                  <div className="propertyRow">
-                    <AdvancedComponents entity={entity} />
-                  </div>
+                  <PanelFooter entity={entity} />
                 </>
               )}
               {entity.getAttribute('fly-controls') && (
                 <>
                   <FlyControlsSidebar entity={entity} />
-                  <div className="propertyRow">
-                    <AdvancedComponents entity={entity} />
-                  </div>
+                  <PanelFooter entity={entity} />
                 </>
               )}
               {entity.getAttribute('street-traffic-replay') && (
                 <>
                   <StreetTrafficReplaySidebar entity={entity} />
-                  <div className="propertyRow">
-                    <AdvancedComponents entity={entity} />
-                  </div>
+                  <PanelFooter entity={entity} />
                 </>
               )}
               {entity.getAttribute('shape') && <ShapeSidebar entity={entity} />}

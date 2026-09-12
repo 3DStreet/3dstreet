@@ -57,7 +57,12 @@ class PropertyRow extends React.Component {
     noSelectEntity: PropTypes.bool,
     onEntityUpdate: PropTypes.func,
     onValueChange: PropTypes.func,
-    rightElement: PropTypes.node
+    rightElement: PropTypes.node,
+    // Makes the row label itself an affordance (the position/geoloc display
+    // toggle, #1979). `labelTitle` is appended to the default schema tooltip so the
+    // affordance can be explained.
+    onLabelClick: PropTypes.func,
+    labelTitle: PropTypes.string
   };
 
   static defaultProps = {
@@ -262,10 +267,11 @@ class PropertyRow extends React.Component {
     return (
       <div className="propertyRow">
         <label
-          htmlFor={this.id}
-          className="text"
-          title={title}
+          htmlFor={props.onLabelClick ? undefined : this.id}
+          className={'text' + (props.onLabelClick ? ' label-toggle' : '')}
+          title={props.labelTitle ? title + '\n' + props.labelTitle : title}
           style={props.label ? { textTransform: 'none' } : null}
+          onClick={props.onLabelClick}
         >
           {props.label || props.name}
         </label>

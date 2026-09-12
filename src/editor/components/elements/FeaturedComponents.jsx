@@ -1,8 +1,13 @@
 import PropTypes from 'prop-types';
+import { defineMessages, useIntl } from 'react-intl';
 import Component from './Component';
 import MaterialControls from './MaterialControls';
 import OpacitySliderRow from '../widgets/OpacitySliderRow';
 import { ShapeSectionControls } from './ShapeSidebar';
+import { FocusHotspotSectionControls } from './FocusHotspotSidebar';
+import { ViewerStartSectionControls } from './ViewerStartSidebar';
+import { AwesomeIcon } from './AwesomeIcon';
+import { faBullseye } from '@fortawesome/free-solid-svg-icons';
 import { getFeaturedComponentNames } from '../../lib/featuredComponents';
 
 // Low-level geometry props that are too advanced for the first-class section.
@@ -66,14 +71,58 @@ function getHiddenProps(name, component) {
   if (name === 'shape') {
     return ['selectInside', 'curveType', 'filletRadius'];
   }
+  // The hotspot section renders every property through its own curated
+  // controls (labelled rows, a real textarea for the description, the
+  // focus-view buttons), so the generic rows are all hidden.
+  if (name === 'focus-hotspot') {
+    return Object.keys(component?.schema || {});
+  }
   return undefined;
 }
+
+function getSectionChildren(name, entity) {
+  if (name === 'shape') return <ShapeSectionControls entity={entity} />;
+  if (name === 'focus-hotspot') {
+    return <FocusHotspotSectionControls entity={entity} />;
+  }
+  if (name === 'viewer-start') {
+    return <ViewerStartSectionControls entity={entity} />;
+  }
+  return undefined;
+}
+
+// Role components get their badge/type icon in the bar header and a
+// removal prompt in the user's terms; other featured components keep the
+// generic "may corrupt your scene" prompt.
+const ROLE_SECTIONS = {
+  'focus-hotspot': {
+    icon: faBullseye,
+    removeConfirmMessage: defineMessages({
+      m: {
+        id: 'focusHotspot.removeConfirm',
+        defaultMessage:
+          'Remove the focus hotspot from this entity? It will no longer be clickable in view mode.'
+      }
+    }).m
+  },
+  'viewer-start': {
+    // No header icon: the layers-list type icon already says what it is.
+    removeConfirmMessage: defineMessages({
+      m: {
+        id: 'viewerStart.removeConfirm',
+        defaultMessage:
+          'Remove the Starting View? Visitors will open the scene at the default view instead.'
+      }
+    }).m
+  }
+};
 
 // Renders the first-class "featured" controls (geometry, material, and any
 // street-generated-* generator) expanded at the top of the properties sidebar,
 // above Advanced Components. Geometry and generators reuse the generic
 // schema-driven Component widget; material gets a curated panel (MaterialControls).
 const FeaturedComponents = ({ entity }) => {
+  const intl = useIntl();
   const components = entity ? entity.components : {};
   const featured = getFeaturedComponentNames(entity);
 
@@ -98,10 +147,18 @@ const FeaturedComponents = ({ entity }) => {
               propertyRenderers={
                 name === 'shape' ? SHAPE_PROPERTY_RENDERERS : undefined
               }
+              icon={
+                ROLE_SECTIONS[name]?.icon ? (
+                  <AwesomeIcon icon={ROLE_SECTIONS[name].icon} size={12} />
+                ) : undefined
+              }
+              removeConfirmMessage={
+                ROLE_SECTIONS[name]
+                  ? intl.formatMessage(ROLE_SECTIONS[name].removeConfirmMessage)
+                  : undefined
+              }
             >
-              {name === 'shape' ? (
-                <ShapeSectionControls entity={entity} />
-              ) : undefined}
+              {getSectionChildren(name, entity)}
             </Component>
           </div>
         );

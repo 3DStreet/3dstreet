@@ -154,6 +154,12 @@ export const customLayersData = [
     icon: '',
     handlerFunction: createFunctions.createFlyableHelicopter
   }),
+  card(m.focusHotspotName, m.focusHotspotDesc, {
+    img: '',
+    requiresPro: false,
+    icon: '',
+    handlerFunction: createFunctions.createFocusHotspot
+  }),
   card(m.raceTargetName, m.raceTargetDesc, {
     img: '',
     requiresPro: false,

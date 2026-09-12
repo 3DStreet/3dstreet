@@ -78,9 +78,6 @@ div.vec4 {
   border-top: 1px solid variables.$darkgray-700;
   width: 348px;
 }
-.collapsible:first-child {
-  border-bottom: 1px solid variables.$lightgray-200;
-}
 .collapsible:last-child {
   border-bottom: none;
 }
@@ -472,12 +469,9 @@ div.vec4 {
   }
 }
 // First-class featured controls (geometry / material / generators) shown
-// expanded above Advanced Components.
-.featured-components {
-  .details {
-    border-bottom: 1px solid variables.$darkgray-700;
-  }
-}
+// expanded above Advanced Components. Sections are separated by their
+// top rule alone (.collapsible.component ~ .collapsible.component); no
+// bottom rules.
 // Opacity slider row with live preview, introduced by the curated material
 // panel (#1741) and shared with the geo sidebar's map opacity (#1738).
 .opacity-row .opacity-slider {
@@ -642,27 +636,29 @@ a.help-linkhover {
   }
 }
 
+/* Add Component select: compact footer affordance (#1982) — a dashed pill
+   the height of the Advanced button, everywhere (was a large centered select
+   before the segment panel design generalized). */
 #addComponentContainer {
-  align-items: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 20px 10px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
 
   #addComponent {
-    width: 300px; // Slightly smaller than 348px for other component widths
+    width: 100%;
 
     .select__control {
-      padding: 12px 16px !important;
-      background: rgba(50, 50, 50, 0.8);
-      border: 1px solid variables.$purple-400;
-      border-radius: 10px;
+      padding: 0 4px 0 10px !important;
+      min-height: 32px;
+      height: 32px;
+      border: 1px dashed variables.$purple-400;
+      border-radius: 8px;
+      background: transparent;
       box-sizing: border-box;
       white-space: nowrap;
-      min-height: 48px; // Match other input heights
 
       &:hover {
-        border-color: variables.$purple-700;
+        border-style: solid;
       }
 
       &--is-focused {
@@ -672,13 +668,25 @@ a.help-linkhover {
     }
 
     .select__placeholder {
-      color: variables.$white;
+      color: variables.$lightgray-100;
+      font-size: 13px;
       font-weight: 400;
-      font-size: 16px;
     }
 
     .select__single-value {
       color: variables.$white;
+    }
+
+    .select__value-container {
+      padding: 0;
+      height: 30px;
+      font-size: 13px;
+    }
+
+    .select__indicator {
+      height: 30px;
+      display: flex;
+      align-items: center;
     }
 
     .select__menu {
@@ -700,6 +708,108 @@ a.help-linkhover {
         }
       }
     }
+  }
+}
+
+/* Entity-panel header action buttons: the segment/managed-street icon
+   treatment (28px pills), shared by every entity sidepanel header via
+   EntityActionButtons. Radix tooltips (instant, with kbd hints) replace
+   native titles. */
+.segment-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  flex: none;
+}
+.segment-actions-divider {
+  width: 1px;
+  background: variables.$gray-200;
+  margin: 4px 4px;
+}
+.segment-action-btn {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px !important;
+  background: variables.$bgalphadark;
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+  &:hover:not(:disabled) {
+    background: variables.$gray-200;
+  }
+  &:disabled {
+    opacity: 0.35;
+  }
+}
+
+/* Compact properties-panel footer (#1982): Add Component select + Advanced
+   pill on one row, the design introduced by the segment panel (#1753), now
+   shared by every entity panel. */
+.panel-footer {
+  display: flex;
+  gap: 8px;
+  margin: 10px 12px 14px;
+  padding-top: 12px;
+  border-top: 1px solid variables.$black-800;
+}
+
+.advanced-btn {
+  flex: none;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: variables.$bgalphadark;
+  color: variables.$lightgray-100;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover {
+    color: variables.$white;
+    background: variables.$gray-200;
+  }
+  &.is-open {
+    background: variables.$purple-400;
+    color: variables.$white;
+  }
+}
+
+/* Explainer + warning shown at the top of the raw Advanced component list. */
+.advanced-warning {
+  margin: 0 12px 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: variables.$bgalphadark;
+  color: variables.$lightgray-300;
+  font-size: 12px;
+  line-height: 1.45;
+
+  p {
+    margin: 0;
+  }
+
+  p + p {
+    margin-top: 6px;
+  }
+}
+
+/* A row label that doubles as a display toggle (position/geoloc, #1979):
+   reads as a plain label until hovered, then lifts like a button. */
+.propertyRow .text.label-toggle {
+  cursor: pointer;
+  margin-left: -4px;
+  padding: 2px 4px;
+  border-radius: 4px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: variables.$white;
   }
 }
 
@@ -782,6 +892,11 @@ a.help-linkhover {
 // Read-only geographic readout under the position row (GeoLocationRow).
 .propertyRow .geoReadoutValue {
   flex: 1;
+  // Same height as the vec3 input boxes it swaps in for, so toggling
+  // position/geoloc does not move the row.
+  display: flex;
+  align-items: center;
+  min-height: 32px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   color: #c8c8c8;
@@ -849,6 +964,419 @@ a.help-linkhover {
 .sidepanelContent .propertyRow .vec3-tool {
   width: 20px;
   margin-left: 0;
+}
+
+/* ============================================================
+   Compact property rows for the standard properties panel: the
+   street / segment sidebars' vocabulary (76px label column, 32px
+   controls, radius 8px, 8px rhythm) applied to every schema-driven
+   PropertyRow: numbers, strings, vec2/vec3, selects, toggles, color,
+   texture. `.segment-panel` (segment + managed street) carries its own
+   copy of these rules and is excluded so the two never fight.
+   ============================================================ */
+
+.properties-panel .collapsible-content:not(.segment-panel *) {
+  padding: 8px 12px 0;
+}
+.properties-panel .sidepanelContent:not(.segment-panel *) {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.properties-panel .propertyRow:not(.segment-panel *) {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 8px;
+  padding: 0;
+  // Full width even inside a flex parent (the geo controls), where a
+  // shrink-to-content row squeezes its badges and buttons into wraps.
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 32px;
+  min-width: 0;
+  font-size: 14px;
+
+  // Rows with a schema label: label column, control column; any further
+  // children (reset button, vec3 link tool, a right element) flow into
+  // auto columns to the right instead of wrapping onto a new grid row.
+  // 84px (the segment panel uses 76px): schema property names run longer
+  // than curated labels, and the ellipsis should stay rare. Rows built
+  // from other blocks (fake label/value pairs, tips) stay flex.
+  &:has(> .text) {
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr);
+    grid-auto-flow: column;
+    grid-auto-columns: auto;
+  }
+
+  > .fakePropertyRowLabel {
+    flex: none;
+    min-width: 84px;
+    max-width: 84px;
+    font-size: 13px;
+    font-weight: 400;
+    color: variables.$lightgray-200;
+  }
+  > .fakePropertyRowValue {
+    flex: 1 1 0;
+    min-width: 0;
+    margin-left: 0;
+    font-size: 14px;
+    .text-lg {
+      font-size: 14px;
+    }
+  }
+  // Tip blocks (shape drawing tips) span the row, with air above.
+  &:has(> .rounded) {
+    margin-top: 12px;
+  }
+  > .rounded {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  // Bare native selects (shape Curve Style) get the same box as the
+  // schema-driven ones.
+  .fakePropertyRowValue > select {
+    width: 100%;
+    min-width: 0;
+    height: 32px;
+    padding: 0 8px;
+    box-sizing: border-box;
+    font-size: 14px;
+    color: variables.$white;
+    background: variables.$bgalphadark;
+    border: 1px solid variables.$purple-400;
+    border-radius: 8px;
+  }
+
+  > .text {
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+    display: block;
+    font-size: 13px !important;
+    font-weight: 400;
+    color: variables.$lightgray-200 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  > .text.label-toggle {
+    margin-left: -4px;
+  }
+
+  /* plain string / number / texture-url inputs: one 32px box */
+  > input.string,
+  > input.number,
+  > input[type='text'],
+  .texture input {
+    width: 100%;
+    min-width: 0;
+    height: 32px;
+    padding: 0 10px !important;
+    box-sizing: border-box;
+    font-size: 14px;
+    line-height: 30px;
+    background: variables.$bgalphadark;
+    border: 1px solid variables.$purple-400;
+    border-radius: 8px;
+  }
+
+  /* number fields with axis / prefix / unit inside the box */
+  .inputBlock {
+    display: inline-flex;
+    align-items: center;
+    height: 32px;
+    margin: 0;
+    padding: 0 8px !important;
+    width: 100%;
+    min-width: 0;
+    background: variables.$bgalphadark;
+    border: 1px solid variables.$purple-400;
+    border-radius: 8px;
+    box-sizing: border-box;
+    input.number {
+      flex: 1 1 0;
+      min-width: 0;
+      width: 100% !important;
+      height: auto;
+      padding: 0 !important;
+      border: none;
+      background: transparent;
+      font-size: 13.5px;
+      color: variables.$white;
+    }
+    .axes,
+    .prefix {
+      flex: none;
+      width: auto;
+      height: auto;
+      margin-right: 4px;
+      font-size: 11px;
+      line-height: 1;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: variables.$lightgray-200;
+    }
+    .unit {
+      flex: none;
+      margin-left: 4px;
+      font-size: 11px;
+      color: variables.$lightgray-200;
+    }
+  }
+  .vec2,
+  .vec3 {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    gap: 3px;
+    .inputBlock {
+      flex: 1 1 0;
+      width: auto !important;
+      padding: 0 5px !important;
+      .axes {
+        margin-right: 3px;
+      }
+      input.number {
+        font-size: 13px;
+      }
+    }
+  }
+  // vec3 rows are the tightest in the panel (three boxes plus the reset
+  // and link tools): a narrower label column and gaps so each box keeps
+  // five or six significant digits.
+  &:has(> .vec2),
+  &:has(> .vec3),
+  &:has(> .geoReadoutValue) {
+    grid-template-columns: 72px minmax(0, 1fr);
+    column-gap: 5px;
+  }
+  .vec3-tool {
+    width: 18px;
+    margin-left: 0;
+  }
+
+  /* react-select */
+  .select-widget {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+  .select__control {
+    min-height: 32px;
+    padding: 0 !important;
+    background: variables.$bgalphadark;
+    border: 1px solid variables.$purple-400;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+  .select__value-container {
+    min-height: 30px;
+    padding: 0 4px 0 10px;
+    font-size: 14px;
+    flex-wrap: nowrap;
+  }
+  .select__value-container--is-multi {
+    height: auto;
+    padding: 3px 6px;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .select__indicator {
+    padding: 4px;
+  }
+  .select__multi-value {
+    margin: 0;
+    font-size: 12px;
+    border-radius: 4px;
+  }
+
+  /* boolean toggle: 34x18, left-aligned in the control column */
+  .checkboxAnim {
+    position: relative;
+    display: inline-block;
+    float: none;
+    justify-self: start;
+    width: 34px;
+    height: 18px;
+    margin: 0;
+    border: 1px solid variables.$lightgray-400;
+    border-radius: 9px;
+    box-sizing: border-box;
+    cursor: pointer;
+    &.checked {
+      background: variables.$lightgray-400;
+    }
+    input {
+      display: none;
+    }
+    label {
+      display: block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      background: variables.$lightgray-400;
+    }
+    input[type='checkbox']:checked + label {
+      left: 18px;
+      background: variables.$darkgray-800;
+    }
+  }
+
+  /* color: 22px swatch + hex in one 32px box */
+  .color-widget {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 6px 0 4px;
+    box-sizing: border-box;
+    min-width: 0;
+    background: variables.$bgalphadark;
+    border: 1px solid variables.$purple-400;
+    border-radius: 8px;
+    // !important: .details .propertyRow input forces width: 100% on every
+    // input in a section, which would stretch the swatch across the box.
+    input.color {
+      flex: 0 0 22px;
+      width: 22px !important;
+      min-width: 0;
+      height: 22px;
+      padding: 0;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      cursor: pointer;
+    }
+    input.color_value {
+      flex: 1 1 0;
+      min-width: 0;
+      width: auto !important;
+      height: auto;
+      padding: 0 !important;
+      border: 0;
+      background: transparent;
+      color: variables.$white;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+    }
+  }
+
+  /* texture: url box + preview swatch */
+  .texture {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    input {
+      flex: 1 1 0;
+      width: auto !important;
+    }
+    canvas {
+      flex: none;
+      border-radius: 4px;
+    }
+  }
+
+  .property-row-right-element {
+    margin-right: 0;
+  }
+}
+
+/* Model (mixin) picker at the top of a model entity's panel: same 32px
+   control as the compact rows. */
+.properties-panel .details .select-single__control:not(.segment-panel *) {
+  min-height: 32px;
+  padding: 0 4px 0 6px;
+  border-radius: 8px;
+}
+
+/* Rows placed straight in a section body (no .collapsible-content /
+   .sidepanelContent wrapper) carry the panel inset themselves. */
+.properties-panel .details > .propertyRow:not(.segment-panel *),
+.properties-panel .shape-sidebar > .propertyRow:not(.segment-panel *),
+.properties-panel .segmentRows > .propertyRow:not(.segment-panel *),
+.properties-panel .mixin-metadata .propertyRow:not(.segment-panel *) {
+  padding: 0 12px;
+}
+// Shape segment lengths: label top-aligned with the length so the corner
+// angle hangs below it, visually between the rows (see .shape-sidebar).
+.properties-panel .propertyRow.segmentRow:not(.segment-panel *) {
+  align-items: flex-start;
+  min-height: 24px;
+  margin: 2px 0;
+  > .fakePropertyRowLabel {
+    line-height: 20px;
+  }
+  > .fakePropertyRowValue {
+    line-height: 20px;
+  }
+}
+.properties-panel .mixin-metadata .propertyRow:not(.segment-panel *) > .string {
+  font-size: 14px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Section headers in the segment panel's generator-header voice: a
+   thin rule on top, small bold letter-spaced caps, the collapse caret in
+   place of the generator icon. */
+.properties-panel .collapsible:not(.segment-panel *) {
+  border-top: 1px solid variables.$black-800;
+  width: auto;
+  > .static {
+    padding: 10px 12px 6px;
+    background: transparent;
+    &:hover {
+      background: variables.$black-400;
+    }
+    .collapse-button {
+      margin: 0 8px 0 0;
+    }
+  }
+  .componentTitle span {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .componentTitle .componentIcon svg {
+    width: 14px;
+    height: 14px;
+  }
+  // The remove button must not grow the header: sections with and
+  // without one share one height.
+  .componentHeaderActions .button {
+    display: flex;
+    align-items: center;
+    height: 16px;
+    padding: 0;
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+}
+.properties-panel .collapsible.component ~ .collapsible.component {
+  width: auto;
+}
+
+/* Role component bodies (hotspot description, Starting View tip) use the
+   same label voice as the compact rows. */
+.properties-panel .roleSectionBody > .text {
+  font-size: 13px;
+  color: variables.$lightgray-200;
+  margin-bottom: 4px;
 }
 
 /* ============================================================
@@ -973,39 +1501,6 @@ a.help-linkhover {
     font-weight: 500;
     color: variables.$white;
   }
-  .segment-actions {
-    display: flex;
-    align-items: stretch;
-    gap: 2px;
-    flex: none;
-  }
-  .segment-actions-divider {
-    width: 1px;
-    background: variables.$gray-200;
-    margin: 4px 4px;
-  }
-  .segment-action-btn {
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-    padding: 0 !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px !important;
-    background: variables.$bgalphadark;
-    svg {
-      width: 14px;
-      height: 14px;
-    }
-    &:hover:not(:disabled) {
-      background: variables.$gray-200;
-    }
-    &:disabled {
-      opacity: 0.35;
-    }
-  }
-
   /* --- segment block / compact rows --- */
   .segment-block {
     padding: 10px 12px 14px;
@@ -1451,68 +1946,10 @@ a.help-linkhover {
     }
   }
 
-  /* footer */
-  .segment-footer {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-    padding-top: 12px;
-    border-top: 1px solid variables.$black-800;
-  }
-  .advanced-btn {
-    flex: none;
-    height: 32px;
-    padding: 0 12px;
-    border: 0;
-    border-radius: 8px;
-    background: variables.$bgalphadark;
-    color: variables.$lightgray-100;
-    font-size: 13px;
-    font-family: inherit;
-    cursor: pointer;
-    &:hover {
-      color: variables.$white;
-      background: variables.$gray-200;
-    }
-    &.is-open {
-      background: variables.$purple-400;
-      color: variables.$white;
-    }
-  }
-  /* Add Component select lives directly in the footer, styled like the
-     dashed add affordance from the design at compact height. */
-  #addComponentContainer {
-    flex: 1 1 0;
-    min-width: 0;
-    padding: 0;
-    #addComponent {
-      width: 100%;
-      .select__control {
-        padding: 0 4px 0 10px !important;
-        min-height: 32px;
-        height: 32px;
-        border: 1px dashed variables.$purple-400;
-        border-radius: 8px;
-        background: transparent;
-        &:hover {
-          border-style: solid;
-        }
-      }
-      .select__placeholder {
-        color: variables.$lightgray-100;
-        font-size: 13px;
-      }
-      .select__value-container {
-        padding: 0;
-        height: 30px;
-        font-size: 13px;
-      }
-      .select__indicator {
-        height: 30px;
-        display: flex;
-        align-items: center;
-      }
-    }
+  /* footer — layout comes from the shared .panel-footer; the segment block
+     already carries the panel's side padding. */
+  .panel-footer {
+    margin: 10px 0 0;
   }
   .advancedComponentsContainer {
     margin-top: 10px;
@@ -1559,6 +1996,9 @@ a.help-linkhover {
     display: inline-flex;
     align-items: center;
     min-width: 0;
+    // Cancel entity.scss's stray global indent so the entity icon sits at
+    // the same 12px inset as the cross-section strip and compact rows.
+    margin-left: 0;
     font-size: 16px;
     font-weight: 500;
     color: variables.$white;
@@ -1956,5 +2396,38 @@ a.help-linkhover {
       border-style: solid;
       color: variables.$white;
     }
+  }
+}
+
+// Body of a role component's featured bar (focus-hotspot, viewer-start):
+// curated controls that aren't label/value property rows. Even side
+// gutters matching the property rows' left inset; full-width fields.
+.roleSectionBody {
+  padding: 4px 15px 12px;
+  display: flex;
+  flex-direction: column;
+  row-gap: 8px;
+
+  .text {
+    color: variables.$lightgray-300;
+  }
+
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .sidebar-buttons-small {
+    width: auto;
+    margin-top: 0;
+  }
+
+  .tip {
+    border-radius: 6px;
+    background: variables.$darkgray-700;
+    color: variables.$lightgray-300;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.4;
   }
 }

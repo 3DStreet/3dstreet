@@ -424,6 +424,28 @@ export function createHighlightRing(position) {
   AFRAME.INSPECTOR.execute('entitycreate', definition);
 }
 
+export function createFocusHotspot(position) {
+  // A clickable ghost block for the viewer: a semitransparent massing box
+  // (building-box footprint) carrying the focus-hotspot component. In view
+  // mode it pulses to invite a click; clicking flies the camera in and opens
+  // the author's info panel. Semitransparency is plain geometry+material, so
+  // the block can be re-styled (or swapped for any mesh) in the properties
+  // panel. See docs/focus-hotspots.md.
+  const height = 12;
+  const definition = {
+    components: {
+      position: groundedPositionString(position, height / 2),
+      geometry: `primitive: box; width: 10; height: ${height}; depth: 10;`,
+      material:
+        'color: #4fc3f7; transparent: true; opacity: 0.35; roughness: 0.6;',
+      'focus-hotspot': '',
+      // The layer name doubles as the viewer info panel's title.
+      'data-layer-name': 'Point of Interest'
+    }
+  };
+  AFRAME.INSPECTOR.execute('entitycreate', definition);
+}
+
 /**
  * Spawn a flyable-helicopter entity (see play-mode-helicopter.js).
  * The visual is the procedural `helicopter-mesh` (MH-65 Dolphin-class
