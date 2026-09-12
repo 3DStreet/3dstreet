@@ -119,12 +119,17 @@ const useStore = create(
         locationString: null,
         setLocationString: (newLocationString) =>
           set({ locationString: newLocationString }),
+        // True once the loaded scene's start pose is owned by a Starting
+        // View entity (present, or deliberately deleted); mirrors
+        // memory.viewerStartMigrated for the save path.
+        viewerStartMigrated: false,
         newScene: () =>
           set({
             sceneId: null,
             sceneTitle: null,
             authorId: null,
-            locationString: null
+            locationString: null,
+            viewerStartMigrated: false
           }),
         authorId: null, // not used anywhere yet, we still use the metadata component
         setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }), // not used anywhere yet
@@ -329,6 +334,12 @@ const useStore = create(
         enterViewerMode: () => {
           useStore.getState().setIsInspectorEnabled(false);
         },
+        // Focus hotspot currently opened in the viewer, mirrored from the
+        // focus-hotspot A-Frame system so React can render the info panel.
+        // null | { entityId, title, description }. Never set directly —
+        // the system writes it from focusHotspot()/clearFocus().
+        focusedHotspot: null,
+        setFocusedHotspot: (info) => set({ focusedHotspot: info }),
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
           if (newIsInspectorEnabled) {

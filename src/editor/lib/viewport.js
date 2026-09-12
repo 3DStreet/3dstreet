@@ -19,6 +19,7 @@ import { captureNavDiscovery } from './navAnalytics.js';
 import Events from './Events';
 import { isBatched, syncBatchedSubtree } from '../../batch-models';
 import useStore from '@/store';
+import { pickLoadCameraState } from '@/tested/scene-camera-pose.js';
 // variables used by OrientedBoxHelper
 const auxEuler = new THREE.Euler();
 const auxPosition = new THREE.Vector3();
@@ -782,11 +783,38 @@ export function Viewport(inspector) {
     Events.emit('camerachanged');
   });
 
-  sceneEl.addEventListener('newScene', (event) => {
-    // Check if there's a snapshot camera state passed with the event
-    const snapshotCameraState = event.detail?.snapshotCameraState;
-    controls.newSceneCameraZoom(snapshotCameraState);
-  });
+  // Load fly-in target: the Starting View entity if the scene has one,
+  // else the autosaved editor pose, else the default overview; a ?camera=
+  // deep link beats all (src/tested/scene-camera-pose.js). Same rule for
+  // owners and visitors, so nothing here depends on auth.
+  const onNewScene = (detail) => {
+    const { editorCameraState = null, urlCameraState = null } = detail || {};
+    const viewerStart = sceneEl.systems['viewer-start'];
+    const flyIn = () =>
+      controls.newSceneCameraZoom(
+        pickLoadCameraState({
+          urlCameraState,
+          startCameraState: viewerStart?.getStartCameraState() || null,
+          editorCameraState
+        })
+      );
+    // The Starting View entity's transform is only real once it has
+    // loaded (a frame after newScene at most); reading it earlier yields
+    // the origin.
+    if (viewerStart) viewerStart.whenReady(flyIn);
+    else flyIn();
+  };
+  sceneEl.addEventListener('newScene', (event) => onNewScene(event.detail));
+  // A cloud scene can finish loading before this viewport exists (fast
+  // response, slow editor boot), in which case its newScene event was
+  // emitted with nobody listening and the scene sat at the default
+  // overview. The loader parks the last payload on the scene element;
+  // replay it once, here.
+  if (sceneEl.lastNewSceneDetail) {
+    const detail = sceneEl.lastNewSceneDetail;
+    delete sceneEl.lastNewSceneDetail;
+    onNewScene(detail);
+  }
 
   Events.on('cameratoggle', (data) => {
     // Plan View intercept (KD-26): when

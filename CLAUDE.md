@@ -10,6 +10,18 @@
 
 **License:** AGPL-3.0 (code) / CC BY-NC 4.0 (assets)
 
+## How to use this guide
+
+This file is the entry point for repository-wide conventions and commands.
+**Before planning, changing or reviewing a topic named below, read its linked
+guide and follow the relevant onward documentation links.** Apply the trigger
+wherever the work lives, including shared code, server functions and tests.
+The short summaries here do not replace the detailed rules and exceptions.
+
+These are ordinary Markdown files in this repository: open them explicitly;
+do not assume they have been loaded automatically. Keep detailed topic guidance
+in those files and maintain its read-before pointer here.
+
 ## Architecture
 
 Multi-application monorepo with shared components:
@@ -57,70 +69,47 @@ public/
 
 **Procedural:** `street-generated-*` (striping, stencil, pedestrians, rail, clones)
 
-**Curved streets (prototype):** assign a drawn polyline (shape) to a street via `managed-street.path` and the whole street bends along it — the PATH owns the curve controls (`shape.curveType`: linear default / smooth catmull-rom / arc fillets; the schema-less `street-path` role component reads them off the shape). One shared straight→curved mapping (`src/tested/street-path-utils.js`, unit-tested) bends surfaces (as `street-ribbon` geometry: segment, striping, rail, ground) and placements (clones/stencils/pedestrians remapped + tangent yaw); street-align lateral offsets and all straight-space layout code stay untouched. Entry point: `docs/curved-street-path.md`.
-
-**Geospatial:** `street-geo`, `google-maps-aerial`, `tiled-basemap` (tiled 2D raster basemap on 3d-tiles-renderer; providers/keys via `src/tested/basemap-providers.js` + `config/.env.*`, MapTiler primary — #1962; legacy `mapbox2d` migrates to it at load), `osm-buildings` (2.5D extruded OSM buildings from the basemap provider's vector tiles — MapTiler `tiles/v3` building layer, decoded in `src/tested/vector-tile-buildings.js`; worker pipeline in `src/osm/`, load radius centered on the camera's look-at ground point; the Overpass fetch/cache modules there are no longer used by buildings but are kept for future OSM import (#1930); worker code must never import `three`), `geojson`, `geo-flatten`
-
-**Terrain flattening (#1476):** any number of entities may carry `geo-flatten` (`mode: mesh` = flatten onto the entity's own mesh, for simple primitives; `mode: auto` = invisible footprint proxy plane at local y=0, for complex subtrees). A scene-level `geo-flatten` registry system feeds `google-maps-aerial`, which reconciles shapes in tick with per-entry matrix-change detection and a 150ms throttle (every shape update re-flattens all active tiles on CPU). Managed streets auto-attach `geo-flatten` (mode: auto) in init — same pattern as `street-align`/`street-ground` — so streets flatten terrain under their footprint by default. `street-geo.enableFlattening` (default true) is the master gate; the legacy single-shape `street-geo.flatteningShape` reference is migrated to a `geo-flatten` component at load (`migrateLegacyFlatteningShape` in `json-utils_1.1.js`). Never raycast a street's real meshes for flattening — slow, and terrain would snap to the tops of vehicles/trees.
+**Streets and geospatial:** curved street paths, basemaps, OSM buildings and
+terrain flattening span components, pure utilities and workers. **Read
+[streets and geospatial guidance](docs/agent-context/streets-and-geospatial.md)
+before planning, changing or reviewing those features**, including scene-load
+migrations. OSM worker code must never import `three`; never raycast a street's
+real meshes for terrain flattening.
 
 **Environment:** `street-environment`, `viewer-mode`, `ocean`
 
 **Utilities:** `create-from-json`, `gltf-part`, `screentock`, `measure-line`
 
+**Focus hotspots & Starting View (#1315):** `focus-hotspot` makes an entity
+clickable while playing (click glides the camera in and opens an info panel);
+`viewer-start` is the one-per-scene Starting View whose pose is where every
+scene opens and where Start/Reset glide. Both are play-mode features: read the
+[play mode and viewer guidance](docs/agent-context/play-mode.md) before
+touching them. Entry point: `docs/focus-hotspots.md`.
+
 ## Play Mode & Viewer
 
-Unified Viewer presentation with a Start/Stop play lifecycle. Playing is presentation-only (nothing persists, no edit permission needed). Code lives in `src/aframe-components/play/` plus `mode-manager.js`.
+Playing is presentation-only: nothing persists and no edit permission is needed.
+Hide/restore of static street clones must use the refcounted registry in
+`src/aframe-components/play/clone-visibility.js`.
 
-**Lifecycle:** `play-mode` system owns start/stop/pause/reset and emits `play-mode-start|stop|reset` scene events; features subscribe independently and do their own setup/teardown. The canonical clock is `scene-timer.simulationTime` — advanced by physics sub-steps while driving (deterministic, slow-motion on weak CPUs), else at wall-clock rate.
-
-**Mode arbitration:** `mode-manager` system arbitrates control modes (`editor` / `viewer` / `drive`) and aggregates per-feature "playable checks" that light up the Play UI. Edit and View share the editor's camera + controls (ExperimentalControls, the only viewport control class since the legacy THREE.EditorControls / `?nav=classic` scheme was retired in #1956) (#1848) — there is no separate viewer control scheme; drive mode (and WebXR) borrow the scene's `#cameraRig` camera via `activateSceneCamera()`/`activateEditorCamera()` and give it back.
-
-**Features (all play-mode subscribers, unaware of each other):**
-
-- `drive-mode` + `play-mode-vehicle` / `play-mode-physics` — Rapier raycast-wheel driving sim (WASM lazy-loaded on first Play); spawns the player car from a `[drive-controls]` entity; keyboard + gamepad input
-- `fly-mode` + `play-mode-helicopter` — GTA-style arcade helicopter (`fly-mode.js` is the eager bootstrap; the rig + flight model + audio are a lazy webpack chunk loaded on first Play to keep the core bundle under its 4 MiB budget; attitude-command cyclic + velocity-command vertical flight model in `heli-flight-model.js`, pure + unit-tested; releasing the climb key settles toward hover); spawns from a `[fly-controls]` entity (procedural `helicopter-mesh` visual); shares the Rapier world and the street/obstacle collider seeding (`scene-colliders.js`) with drive-mode; if both a drive and a fly entity exist, drive wins the session. Google 3D Tiles get trimesh colliders during play for both car and heli (`tiles-colliders.js`, tracks the tileset's LOD selection via `tile-visibility-change`)
-- `street-traffic` — animates the edit-time cast on `[managed-street][playable]` lanes (each static clone gets an animated twin; a lane with no clones plays empty by design), pure function of sim-time
-- `street-traffic-replay` — replays anonymized roadside-sensor manifests as agents on a linked managed-street; suppresses synthetic traffic on its target street
-- `race-target`, `collision-marker`, `best-times` — race finish gate, crash markers (session-only, stripped on stop/reset), localStorage best times
-
-**Shared gotchas:** hide/restore of static street clones during play goes through the refcounted registry in `play/clone-visibility.js` (never hide independently — double-hide breaks restore); visibility changes must use `setAttribute('visible', ...)`, never raw `object3D.visible` (mesh batching). Dev-only `?replay=sample` bootstrap (`play/replay-demo.js`) is gated out of production builds.
+**Read [play mode and viewer guidance](docs/agent-context/play-mode.md) before
+planning, changing or reviewing play features, simulation clocks, camera/mode
+handoffs, traffic, collisions or clone visibility.** This includes editor and
+WebXR integration as well as code under `src/aframe-components/play/`.
 
 ## Editor (React)
 
-**Architecture:** `AFRAME.INSPECTOR` global wraps A-Frame scene, uses Events.js + command pattern
+`AFRAME.INSPECTOR` wraps the A-Frame scene, with Events.js and undo/redo commands.
+State lives in `src/store.js` (Zustand).
 
-**Key Components:** MainWrapper (auth/modals) → SceneGraph (left) + PropertiesPanel (right) + Viewport (3D canvas)
+**`Inspector.execute` can refuse:** test for `TRANSFORM_REFUSED`, not a falsy
+return; success returns `undefined`. `data-no-transform` is a UI gate, not a
+command-layer transform-capability marker.
 
-**State:** `src/store.js` (Zustand) - scene metadata, modal state, save state, preferences
-
-**Commands:** `src/editor/lib/commands/` - undo/redo pattern (AddEntity, SetComponent, EntityReparent, etc.)
-
-**`Inspector.execute` can now refuse.** It returns the `TRANSFORM_REFUSED`
-symbol (`src/editor/lib/transformGuard.js`) instead of running a command that
-would violate a transform-capability marker on the target entity — test for the
-symbol, not for a falsy return, since the success path returns `undefined`. The
-markers are `data-transform-no-scale`, `data-transform-yaw-only` and
-`data-transform-no-reparent`; an entity opts in by carrying the attribute and
-the guard is otherwise entity-type-agnostic. They are **not** the same thing as
-the far more common `data-no-transform`, which is a UI gate only (it hides the
-properties-panel transform rows and the gizmo) and is enforced nowhere at the
-command layer. Coverage is every command route — properties panel, AI chat,
-gizmo, layers-panel reparent — but not a direct `setAttribute` from scene load
-or component code.
-
-**Shapes:** editor-drawn 2D polylines with an optional filled interior. The code
-spans `aframe-components/`, `editor/components/elements/`, `editor/lib/` and
-`editor/lib/commands/`; `docs/shapes.md` is the entry point and carries the file
-map, the vertex-editing commands and the sticky-style rule.
-
-**Street gizmos:** always-on viewport handles for managed streets (endpoint
-nodes that rewrite position/rotation/length, segment width bars), additive to
-the standard TransformControls gizmo. Code in `src/editor/lib/gizmos/`; doc is
-`docs/street-gizmos.md`.
-
-**AI tool surface (WebMCP primary, MCP relay fallback):** one registry (`src/editor/lib/commands/registry.js`) feeds three consumers: the in-editor Gemini chat, WebMCP (`src/editor/lib/mcp/useWebMCP.js` registers the same tools with `document.modelContext` so a browser-embedded agent — Chrome 149+ origin trial / ChatGPT desktop browser — calls them in-process, no relay; this is the primary agent interface), and the MCP relay (fallback for clients without WebMCP such as Claude Desktop/Code: tab = MCP server, external `3dstreet-mcp` npm relay bridges stdio↔localhost WS; design in #1582; retire once those clients read WebMCP natively). Shared executor `callToolAsMCPContent` in `src/editor/lib/mcp/dispatch.js`; entry point: `docs/webmcp.md`.
-
-**Layer Reordering:** Drag-and-drop reordering of layers within the same parent in the SceneGraph. Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
+**Read [editor guidance](docs/agent-context/editor.md) before planning, changing
+or reviewing editor commands, transforms, layers, shapes, street gizmos or AI
+tool integration**, including callers outside `src/editor/`.
 
 ## Asset System
 
@@ -142,47 +131,26 @@ the standard TransformControls gizmo. Code in `src/editor/lib/gizmos/`; doc is
 
 **Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated
 
-**Lifecycle emails:** one send path (`sendLifecycleEmail` in `public/functions/email/`) with per-stream Postmark routing, `emailPrefs` unsubscribe suppression, and transactional stop-rules on `emailLog`. Triggers: Auth onCreate (welcome), `stripeWebhook` (post-upgrade; failed-payment handler dormant — Stripe hosted dunning instead), hourly sweep (abandoned checkout, pricing nudge, geo-not-used), daily sweep (token exhaustion). Localized (en/es/pt-BR/fr, hand-written copy per locale in `templates.js`): recipient locale resolved from `socialProfile/{uid}` (`locale` explicit pick > `detectedLocale` captured at sign-in > en) via `email/locale.js`. Docs: `docs/email-lifecycle.md`.
+**Lifecycle emails:** one send path (`sendLifecycleEmail` in `public/functions/email/`) with per-stream Postmark routing, `emailPrefs` unsubscribe suppression, and transactional stop-rules on `emailLog`. Triggers: Auth onCreate (welcome), `stripeWebhook` (post-upgrade; failed-payment handler dormant — Stripe hosted dunning instead), hourly sweep (abandoned checkout, pricing nudge, geo-not-used), daily sweep (token exhaustion). Localized (en/es/pt-BR/fr, hand-written copy per locale in `templates.js`): recipient locale resolved from `socialProfile/{uid}` (`locale` explicit pick > `detectedLocale` captured at sign-in > en) via `email/locale.js`. Docs: [docs/email-lifecycle.md](docs/email-lifecycle.md).
 
 ## User Asset Upload
 
-Drag-and-drop GLB/image upload with client-side optimization, cloud persistence, quota enforcement, and per-entity status UI.
+Uploads span client placement, scene serialization, Firestore and Storage.
+Scene JSON carries the asset identity attributes and cloud URL; other asset
+metadata belongs in Firestore. Transient `blob:` placeholders must not be serialized.
 
-**Persistence — two identity attributes written to saved JSON:**
-
-- `data-asset-id` — Firestore doc id under the owner's subcollection
-- `data-asset-owner-uid` — needed to reconstruct the owner-only Firestore path (`users/{ownerUid}/assets/{assetId}`) without auth context (e.g. for anonymous viewers)
-
-The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens allow anonymous viewers to load the file without Firestore access.
-
-**`data-temporary-file` sentinel:** placeholder entities carrying a transient `blob:` URL are marked with this attribute; the scene serializer (`json-utils_1.1.js`) skips them. Removed by `uploadAndPlaceAsset.js` on success.
-
-**All other metadata** (`size`, `originalFilename`, etc.) lives in Firestore and is fetched on demand — never saved in the scene JSON.
-
-**Cloud Functions:**
-
-- `onAssetWritten` — Firestore trigger, maintains `users/{uid}/meta/usage.bytesUsed` via transaction. Only `size` (original) counts toward quota; `optimizedSourceSize` is excluded (platform cost).
-- `getUploadQuota` — callable, reads plan via `getAuth().getUser(uid)` (Admin SDK, always fresh custom claims). Returns `{ bytesUsed, planLimit, planName, allowed }`.
-
-**Plan limits (decimal):** total storage FREE 100 MB · PRO 5 GB · MAX 25 GB (reserved; no users today). Per-file caps are plan-scaled and type-agnostic (`MAX_FILE_BYTES_BY_PLAN` in `public/functions/asset-quota.js`, surfaced as `getUploadQuota().perFileLimit`): FREE 100 MB · PRO 1 GB · MAX 5 GB. Soft-enforced client-side + preflight; `storage.rules` holds a flat 5 GB hard ceiling.
-
-**Security rules:**
-
-- `size`, `storagePath`, `optimizedSourcePath`, `userId` immutable after create — prevents quota spoofing
-- Client hard-delete (`deleteDoc`) disallowed; UI soft-deletes (`deleted: true`); GC Cloud Function purges via Admin SDK
-- `users/{uid}/meta/usage` owner-readable, write-only via Cloud Functions
+**Read [asset upload guidance](docs/agent-context/asset-uploads.md) before
+planning, changing or reviewing uploads, asset persistence, quotas, deletion
+or asset security rules**, including anonymous scene loading.
 
 ## Generator
 
-**Structure:** Vanilla JS app (modify/create/video/gallery tabs) + React islands (auth, navigation, purchase modal)
+Vanilla JS with React islands; generation jobs and results persist server-side.
 
-**Island Architecture:** React components mounted via `mount-*.js` files into specific DOM elements
-
-**Workflow:** User prompt → token check → Firebase Cloud Function (fal.ai or Replicate) submits an async job → jobId → client polls; result saved to gallery server-side
-
-**Token system:** TokenSync syncs Firestore → Zustand, PurchaseModal for Stripe checkout. One-time gen-token packs (#1374, paid plans only, flat $0.10/token): `BuyTokensModal` (shared) → `createStripeSession` (mode `payment`, server-gated to Pro/Max) → `stripeWebhook` grants via idempotent transaction + `tokenLog` `type: 'purchase'` row; pack definitions mirrored in `public/functions/token-packs.js` + `pricing.js` (drift-guarded by `test/shared/pricing-sync.test.js`); purchased tokens survive the monthly top-up-to-floor refill (regression test: `test/core/token-packs.test.js`). Entry points: generator via `UpgradeModal.onAlreadyPro`; editor via `useStore.startBuyTokens()` (ScreenshotModal 4x pre-flight + `resource-exhausted` submit rejection, `EditorBuyTokensModal` adapter)
-
-**Async job queue:** All user-initiated AI generations use `users/{uid}/generationJobs/{jobId}` (provider-agnostic, survives a closed browser). Providers today: `replicate` (image→splat via SHARP, image→video via Veo/Kling/LTX, image→image via nano-banana/seedream/kontext — converge on one idempotent processor via webhook + poll + reconciler; results saved to the gallery server-side), `fal` (image→3D mesh via Hunyuan3D/TRELLIS and image→image via flux-2 edit — same convergent shape via `fal_webhook` → `falJobWebhook` + the shared `fetchFalPrediction` adapter), and `cloudrun` (`.ply`→RAD/LOD conversion via the `rad-converter` Cloud Run service; worker-writeback, `tokenCost: 0`, triggered by `onSplatAssetCreated`). A scheduled reconciler backstops all of them. Outcome emails (success and failure — "didn't finish, tokens refunded") send from the webhook in real time (after a ~10s open-tab ack grace so a watching tab suppresses them); the opt-in checkbox appears only while a job is rendering, defaults checked for every kind, and writes through post-submit via `setGenerationJobNotify`. Design: `docs/generation-job-queue.md`; RAD pipeline: `docs/rad-cloud-run-pipeline.md`.
+**Read [generation guidance](docs/agent-context/generation.md) before planning,
+changing or reviewing generator UI, generation jobs, provider callbacks,
+reconciliation, outcome emails, tokens or token purchases.** This also applies
+to shared components, editor entry points and Firebase functions.
 
 ## Shared Library (@shared/\*)
 
@@ -221,6 +189,9 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 - React → A-Frame: `entity.setAttribute()` or `AFRAME.INSPECTOR.execute()`
 - A-Frame → React: `Events.emit()` or `useStore.setState()`
 
+**Visibility:** use `setAttribute('visible', ...)`, never raw `object3D.visible`
+(mesh batching).
+
 **URL Hash Schemes:** Streetmix URL, StreetPlan URL, Cloud UUID (`#scenes/...`), Managed Street JSON
 
 **File Naming:** A-Frame: `kebab-case.js`, React: `PascalCase.js/jsx`, Styles: `.module.scss`
@@ -253,4 +224,4 @@ A-Frame 1.8.0 (loaded via CDN in index.html; ships super-three 0.184), Three.js 
 
 ---
 
-**Note:** This codebase is actively evolving. Please update this document when making significant changes!
+**Note:** This codebase is actively evolving. Please update this guide and the relevant linked topic guidance when making significant changes!

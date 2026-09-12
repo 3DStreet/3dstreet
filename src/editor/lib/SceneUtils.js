@@ -1,5 +1,6 @@
 import posthog from 'posthog-js';
 import useStore from '@/store.js';
+import { resolveSavedCameraStates } from '@/tested/scene-camera-pose.js';
 import {
   createScene,
   updateScene,
@@ -64,15 +65,6 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
     return;
   }
 
-  // Resolve camera state: explicit snapshot > auto-saved > null (default)
-  let defaultSnapshotCameraState = memoryData?.cameraState || null;
-  if (memoryData?.snapshots?.length > 0) {
-    const defaultSnapshot = memoryData.snapshots.find((s) => s.isDefault);
-    if (defaultSnapshot?.cameraState) {
-      defaultSnapshotCameraState = defaultSnapshot.cameraState;
-    }
-  }
-
   const processStreetDataForDuplicateIds = (data) => {
     // Keep track of IDs we've seen during processing
     const seenIds = new Set();
@@ -106,13 +98,16 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
 
   const correctedStreetData = processStreetDataForDuplicateIds(streetData);
 
+  STREET.utils.migrateDefaultSnapshotToViewerStart(
+    correctedStreetData,
+    memoryData
+  );
   STREET.utils.createEntities(correctedStreetData, streetContainerEl);
   STREET.utils.resolveSplatAssetUrls(streetContainerEl);
   useStore.getState().updateLoadingProgress(80, 'Finalizing scene...');
 
-  // Emit newScene with snapshot camera state if available
-  AFRAME.scenes[0].emit('newScene', {
-    snapshotCameraState: defaultSnapshotCameraState
+  STREET.utils.emitNewScene({
+    editorCameraState: resolveSavedCameraStates(memoryData).editorCameraState
   });
 }
 
@@ -282,6 +277,15 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
   const currentCameraState = getCurrentCameraState();
   if (currentCameraState) {
     filteredData.memory.cameraState = currentCameraState;
+  }
+  // Once a scene has (or has had) a Starting View entity, the entity owns
+  // the start pose: the legacy default-snapshot pose is never migrated
+  // into one again, so deleting the entity stays deleted across loads.
+  if (
+    useStore.getState().viewerStartMigrated ||
+    document.querySelector('[viewer-start]')
+  ) {
+    filteredData.memory.viewerStartMigrated = true;
   }
 
   // If we have an existing scene ID, fetch and preserve snapshots from Firebase

@@ -82,6 +82,10 @@ class SceneGraph extends React.Component {
   componentDidMount() {
     this.rebuildEntityOptions();
     Events.on('entityupdate', this.onEntityUpdate);
+    // Row badges (getEntityBadges) reflect role components, so a component
+    // added or removed on an entity re-renders the rows.
+    Events.on('componentadd', this.rebuildEntityOptions);
+    Events.on('componentremove', this.rebuildEntityOptions);
     Events.on('openassetspanel', this.showAssetsPanel);
     document.addEventListener('child-attached', this.onChildAttachedDetached);
     document.addEventListener('child-detached', this.onChildAttachedDetached);
@@ -93,6 +97,8 @@ class SceneGraph extends React.Component {
 
   componentWillUnmount() {
     Events.off('entityupdate', this.onEntityUpdate);
+    Events.off('componentadd', this.rebuildEntityOptions);
+    Events.off('componentremove', this.rebuildEntityOptions);
     Events.off('openassetspanel', this.showAssetsPanel);
     document.removeEventListener(
       'child-attached',
@@ -165,7 +171,12 @@ class SceneGraph extends React.Component {
   };
 
   canBeDragged = (entity) => {
-    return !isContainer(entity) && !entity.classList.contains('autocreated');
+    return (
+      !isContainer(entity) &&
+      !entity.classList.contains('autocreated') &&
+      // Pinned to the top of the list (see rebuildEntityOptions).
+      !entity.hasAttribute('viewer-start')
+    );
   };
 
   canBeDropTarget = (entity, draggedEntity) => {
@@ -178,6 +189,7 @@ class SceneGraph extends React.Component {
       entity.id === 'reference-layers' ||
       entity.id === 'environment' ||
       entity.id === 'cameraRig' ||
+      entity.hasAttribute('viewer-start') ||
       (entity.hasAttribute('street-segment') &&
         !draggedEntity.hasAttribute('street-segment'))
     ) {
@@ -273,7 +285,21 @@ class SceneGraph extends React.Component {
       treeIterate(streetContainer, 0);
     }
 
-    this.setState({ entities });
+    // The Viewer Start is a scene-level setting that happens to be an
+    // entity (a pseudo-system, one per scene), so it sits at the top of the
+    // list regardless of DOM order. It has no children, so moving its row
+    // alone keeps every other subtree contiguous.
+    const isStart = (o) =>
+      o.depth === 1 && o.entity.hasAttribute('viewer-start');
+    const ordered = [
+      ...entities.filter(isStart),
+      ...entities.filter((o) => !isStart(o))
+    ];
+    ordered.forEach((o, i) => {
+      o.id = 'sgnode' + i;
+    });
+
+    this.setState({ entities: ordered });
   };
 
   selectIndex = (index) => {

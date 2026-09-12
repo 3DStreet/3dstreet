@@ -6,11 +6,24 @@
   overflow: auto;
   width: auto;
 
-  // Layers container
+  // Layers container. Thin scrollbar so a classic (non-overlay) scrollbar
+  // on Windows does not eat the row's right edge where the eye lives.
   .layers {
     overflow-y: auto;
     flex: 1 1 auto;
     min-height: 0;
+    scrollbar-width: thin;
+    scrollbar-color: variables.$lightgray-300 transparent;
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background-color: variables.$lightgray-300;
+      border-radius: 3px;
+    }
   }
 
   // Empty state for the layers panel
@@ -146,7 +159,7 @@
       flex-grow: 0;
       height: 40px;
       justify-content: center;
-      padding: 0 16px 0 4px;
+      padding: 0 6px 0 4px;
       box-sizing: border-box;
 
       > span {
@@ -237,7 +250,7 @@
   // Drag handle styling
   .drag-handle {
     transition: opacity 0.2s ease;
-    margin-right: 4px;
+    margin-right: 0;
     display: inline-flex;
     align-items: center;
     width: 16px; // Fixed width to ensure consistent spacing
@@ -271,6 +284,9 @@
 
   // Entity icons and actions
   .entityIcons {
+    margin-left: 0;
+  }
+  .entity .entityPrint {
     margin-left: 2px;
   }
 
@@ -290,6 +306,82 @@
     border-radius: 4px;
     padding: 2px 4px;
     outline: none;
+  }
+
+  // Long names truncate with an ellipsis. The label only reserves room for
+  // the absolutely positioned badge/toggle bar (#1980) when something in it
+  // is always visible (a role badge, a hidden entity's slashed eye); on
+  // other rows the name runs the full width and the hover-revealed eye
+  // overlays it on the row's own background.
+  .entity.has-badges .entityPrint {
+    padding-right: 44px;
+  }
+  .entity.novisible:not(.has-badges) .entityPrint {
+    padding-right: 24px;
+  }
+  .entity .entityName {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // Right-justified badge/toggle bar overlaid on the row (#1980): passive
+  // role badges (always visible) + the visibility eye (hover-revealed).
+  .entityRowBar {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    z-index: 1;
+    padding-left: 4px;
+  }
+  .entity:hover .entityRowBar,
+  .entity.active .entityRowBar,
+  .entity:focus .entityRowBar {
+    background: variables.$purple-900;
+  }
+
+  // Role badges (hotspot target): always visible, in a fixed slot left of
+  // the eye. Also a button: click focuses the camera on the layer.
+  .entityBadges {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    gap: 2px;
+  }
+
+  .entityBadge,
+  .entityVisibilityToggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: variables.$lightgray-300;
+    opacity: 0.85;
+    cursor: pointer;
+
+    &:hover {
+      color: variables.$white;
+      background: variables.$black-300;
+    }
+  }
+
+  // The eye always occupies its slot so the badge never shifts; it is only
+  // shown on hover, except a hidden entity's slashed eye, which stays
+  // visible as the row's state indicator.
+  .entityVisibilityToggle:not(.is-entity-hidden) {
+    visibility: hidden;
+  }
+  .entity:hover .entityVisibilityToggle {
+    visibility: visible;
   }
 
   .entityActions {
@@ -321,55 +413,22 @@
     color: variables.$white-100;
   }
 
-  .fa-eye,
-  .fa-eye-slash {
-    color: variables.$lightgray-300;
-    background-repeat: no-repeat;
-    background-size: contain;
-    background-position: center;
-    width: 15px;
-    height: 15px;
-
-    &:before {
-      content: none;
-    }
-  }
-
-  .fa-eye {
-    background-image: url(variables.$faEye);
-  }
-
-  .fa-eye-slash {
-    background-image: url(variables.$faEyeSlash) !important;
-  }
-
   // ID styling
   .id {
     color: variables.$lightgray-600;
   }
 
-  // Collapse space styling
+  // Expand/collapse children arrow: left-justified before the entity name
+  // (#1980). Rows without children reserve no space, so names there sit
+  // further left — an accepted inconsistency.
   .collapsespace {
     color: variables.$white !important;
-    display: inline-block;
-    text-align: center;
-    width: 14px;
-    right: 0px;
-    position: absolute;
-    z-index: 1;
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-45%, -50%);
-      width: 20px;
-      height: 20px;
-      background: variables.$darkgray-800;
-      border-radius: 50%;
-      z-index: -1;
-    }
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 16px;
+    margin-right: 0;
   }
 
   // Icons and buttons

@@ -741,7 +741,9 @@ body.aframe-inspector-opened {
     display: flex;
     align-items: center;
     flex-shrink: 0;
-    padding: 8px 12px;
+    // Bottom padding gives the title row breathing room above the first
+    // section (Transform); left inset matches the panels' 12px rhythm.
+    padding: 8px 12px 12px;
 
     .icon-container {
       min-width: 24px;
@@ -778,6 +780,9 @@ body.aframe-inspector-opened {
       align-items: center;
       flex: 1 1 auto;
       min-width: 0;
+      // Cancel entity.scss's stray global indent: the entity icon aligns
+      // with the panel's 12px left rhythm (strip, compact rows).
+      margin-left: 0;
 
       &.editable .entityName {
         cursor: text;
