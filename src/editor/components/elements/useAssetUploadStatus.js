@@ -158,7 +158,18 @@ export default function useAssetUploadStatus(entity) {
       reason = 'asset_not_found';
     }
   }
-  const sizeBytes = remoteData?.size || upload?.sizeBytes || 0;
+  // The size the scene actually loads: the optimized variant when one is
+  // served, else the original. `size` on the doc is the quota-counted
+  // original and belongs in the details modal, not here.
+  const slotMeta = upload?.optimizationMetadata;
+  const slotServedBytes =
+    slotMeta && !slotMeta.optimizationSkipped ? slotMeta.outputBytes : 0;
+  const sizeBytes =
+    remoteData?.optimizedSourceSize ||
+    remoteData?.size ||
+    slotServedBytes ||
+    upload?.sizeBytes ||
+    0;
   const originalFilename =
     remoteData?.originalFilename || upload?.originalFilename || null;
   // Editable asset display name (defaults to originalFilename basename in

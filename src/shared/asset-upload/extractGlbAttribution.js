@@ -80,6 +80,9 @@ function inferSourceName(source, generator) {
   if (gen.includes('sketchfab')) return 'Sketchfab';
   if (gen.includes('blender')) return 'Blender';
   if (gen.includes('maya')) return 'Maya';
+  // Meshy exports carry no author/license/extras at all; the generator
+  // string ("meshy-scene") is the only provenance in the file.
+  if (gen.includes('meshy')) return 'Meshy AI';
   return '';
 }
 
