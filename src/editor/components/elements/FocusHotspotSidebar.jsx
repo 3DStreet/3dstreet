@@ -56,7 +56,10 @@ export const FocusHotspotSectionControls = ({ entity }) => {
       entity: pending.entity,
       component: componentName,
       property: 'description',
-      value: pending.value
+      value: pending.value,
+      // A flush can run right after the user selects a different entity —
+      // don't let the command yank the selection back here.
+      noSelectEntity: true
     });
   };
 
