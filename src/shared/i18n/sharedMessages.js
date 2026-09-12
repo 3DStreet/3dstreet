@@ -825,6 +825,39 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Enviando…',
     fr: 'Téléversement…'
   },
+  // In-flight upload stages, shared by every surface that shows one (see
+  // shared/assets/uploadStageLabels.js). "Preparing" covers the quota
+  // preflight: nothing is moving yet, so it must not say Uploading.
+  uploadStagePreparing: {
+    en: 'Preparing…',
+    es: 'Preparando…',
+    'pt-BR': 'Preparando…',
+    fr: 'Préparation…'
+  },
+  uploadStageOptimizing: {
+    en: 'Optimizing…',
+    es: 'Optimizando…',
+    'pt-BR': 'Otimizando…',
+    fr: 'Optimisation…'
+  },
+  uploadStageUploading: {
+    en: 'Uploading…',
+    es: 'Subiendo…',
+    'pt-BR': 'Enviando…',
+    fr: 'Téléversement…'
+  },
+  uploadStageUploadingPct: {
+    en: 'Uploading {pct}%',
+    es: 'Subiendo {pct}%',
+    'pt-BR': 'Enviando {pct}%',
+    fr: 'Téléversement {pct}%'
+  },
+  uploadStageFinishing: {
+    en: 'Finishing…',
+    es: 'Finalizando…',
+    'pt-BR': 'Finalizando…',
+    fr: 'Finalisation…'
+  },
   uploadAnAsset: {
     en: 'Upload an asset',
     es: 'Subir un recurso',
@@ -956,6 +989,151 @@ const SHARED_MESSAGES = {
     'pt-BR':
       '{filename} não é um arquivo glTF válido. Exporte um único arquivo .glb e tente novamente.',
     fr: "{filename} n'est pas un fichier glTF valide. Exportez un seul fichier .glb et réessayez."
+  },
+
+  // Re-running the optimization pipeline on an existing asset, from the Size
+  // row of the mesh details modal (shared/asset-upload/reoptimizeAsset.js).
+  // Three labels for the same action, matching what that row already says:
+  // optimization was skipped / there is a variant to improve on / the upload
+  // predates the pipeline entirely.
+  reoptimizeRetry: {
+    en: 'Retry optimization',
+    es: 'Reintentar optimización',
+    'pt-BR': 'Tentar otimizar de novo',
+    fr: "Réessayer l'optimisation"
+  },
+  reoptimizeAgain: {
+    en: 'Reoptimize',
+    es: 'Reoptimizar',
+    'pt-BR': 'Reotimizar',
+    fr: 'Réoptimiser'
+  },
+  reoptimizeStart: {
+    en: 'Optimize',
+    es: 'Optimizar',
+    'pt-BR': 'Otimizar',
+    fr: 'Optimiser'
+  },
+  // In-place progress on the button itself.
+  reoptimizeDownloading: {
+    en: 'Downloading…',
+    es: 'Descargando…',
+    'pt-BR': 'Baixando…',
+    fr: 'Téléchargement…'
+  },
+  reoptimizeOptimizing: {
+    en: 'Optimizing…',
+    es: 'Optimizando…',
+    'pt-BR': 'Otimizando…',
+    fr: 'Optimisation…'
+  },
+  reoptimizeUploading: {
+    en: 'Uploading…',
+    es: 'Subiendo…',
+    'pt-BR': 'Enviando…',
+    fr: 'Téléversement…'
+  },
+  // Outcomes. A no-win run is reported as a message, not an error: the asset
+  // is left exactly as it was.
+  reoptimizeDone: {
+    en: 'Reoptimized — {size} (saved {saved}).',
+    es: 'Reoptimizado — {size} (ahorro de {saved}).',
+    'pt-BR': 'Reotimizado — {size} (economia de {saved}).',
+    fr: 'Réoptimisé — {size} ({saved} économisés).'
+  },
+  reoptimizeAlreadyOptimal: {
+    en: 'Already optimal — the current pipeline produced nothing smaller.',
+    es: 'Ya es óptimo: el proceso actual no produjo nada más pequeño.',
+    'pt-BR': 'Já está ótimo — o processo atual não gerou nada menor.',
+    fr: "Déjà optimal — le traitement actuel n'a rien produit de plus petit."
+  },
+  reoptimizeAlreadyOptimized: {
+    en: 'Already optimized — this model has nothing left for the pipeline to do.',
+    es: 'Ya está optimizado: el proceso no tiene nada más que hacer con este modelo.',
+    'pt-BR':
+      'Já otimizado — o processo não tem mais nada a fazer neste modelo.',
+    fr: "Déjà optimisé — le traitement n'a plus rien à faire sur ce modèle."
+  },
+  reoptimizeNoChange: {
+    en: 'No change.',
+    es: 'Sin cambios.',
+    'pt-BR': 'Sem alterações.',
+    fr: 'Aucun changement.'
+  },
+  // The pipeline gave up rather than judged the model; the asset is unchanged.
+  reoptimizeTimedOut: {
+    en: 'Optimization timed out. The model is unchanged — try again on a faster device.',
+    es: 'La optimización agotó el tiempo. El modelo no cambió; inténtalo en un dispositivo más rápido.',
+    'pt-BR':
+      'A otimização excedeu o tempo. O modelo não mudou — tente em um dispositivo mais rápido.',
+    fr: "L'optimisation a expiré. Le modèle est inchangé — réessayez sur un appareil plus rapide."
+  },
+  reoptimizeWorkerError: {
+    en: 'Optimization failed on this model. It is unchanged.',
+    es: 'La optimización falló con este modelo. No cambió.',
+    'pt-BR': 'A otimização falhou neste modelo. Ele não mudou.',
+    fr: "L'optimisation a échoué sur ce modèle. Il est inchangé."
+  },
+  reoptimizeFailed: {
+    en: 'Reoptimize failed',
+    es: 'Error al reoptimizar',
+    'pt-BR': 'Falha ao reotimizar',
+    fr: 'Échec de la réoptimisation'
+  },
+  // Reversal of a lossy optimization: drops the optimized variant so the
+  // original is served again. Sibling of the Reoptimize button.
+  reoptimizeRemove: {
+    en: 'Remove optimized',
+    es: 'Quitar optimizado',
+    'pt-BR': 'Remover otimizado',
+    fr: "Retirer l'optimisé"
+  },
+  reoptimizeRemoved: {
+    en: 'Optimized version removed. The original is served again.',
+    es: 'Versión optimizada eliminada. Se vuelve a servir el original.',
+    'pt-BR': 'Versão otimizada removida. O original volta a ser usado.',
+    fr: "Version optimisée retirée. L'original est de nouveau servi."
+  },
+  reoptimizeRemoveFailed: {
+    en: 'Could not remove the optimized version',
+    es: 'No se pudo eliminar la versión optimizada',
+    'pt-BR': 'Não foi possível remover a versão otimizada',
+    fr: 'Impossible de retirer la version optimisée'
+  },
+
+  // "Copy to my library" on another user's asset in the mesh details modal
+  // (shared/asset-upload/copyAsset.js): downloads the original and uploads
+  // it as the viewer's own asset, so they can optimize and keep it.
+  copyToLibrary: {
+    en: 'Copy to my library',
+    es: 'Copiar a mi biblioteca',
+    'pt-BR': 'Copiar para minha biblioteca',
+    fr: 'Copier dans ma bibliothèque'
+  },
+  copyToLibraryHint: {
+    en: 'Makes your own copy: it uses your storage, gets optimized on upload, and stays even if the owner removes theirs.',
+    es: 'Crea tu propia copia: usa tu almacenamiento, se optimiza al subir y se conserva aunque el propietario elimine la suya.',
+    'pt-BR':
+      'Cria sua própria cópia: usa seu armazenamento, é otimizada no envio e permanece mesmo se o dono remover a dele.',
+    fr: "Crée votre propre copie : elle utilise votre stockage, est optimisée à l'envoi et reste même si le propriétaire supprime la sienne."
+  },
+  copyToLibraryCopying: {
+    en: 'Copying to your library…',
+    es: 'Copiando a tu biblioteca…',
+    'pt-BR': 'Copiando para sua biblioteca…',
+    fr: 'Copie dans votre bibliothèque…'
+  },
+  copyToLibraryDone: {
+    en: 'Copied to your library. Find it in your assets.',
+    es: 'Copiado a tu biblioteca. Lo encontrarás en tus recursos.',
+    'pt-BR': 'Copiado para sua biblioteca. Veja em seus recursos.',
+    fr: 'Copié dans votre bibliothèque. Retrouvez-le dans vos ressources.'
+  },
+  copyToLibraryFailed: {
+    en: 'Could not copy this asset',
+    es: 'No se pudo copiar este recurso',
+    'pt-BR': 'Não foi possível copiar este recurso',
+    fr: 'Impossible de copier cette ressource'
   }
 };
 

@@ -340,6 +340,30 @@
   }
 }
 
+// Text button with the icon-button chrome, for a non-primary action that
+// still needs a label ("Copy to my library").
+.secondaryButton {
+  padding: 8px 12px;
+  background: transparent;
+  color: variables.$lightgray-200;
+  border: 1px solid variables.$darkgray-500;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: variables.$darkgray-500;
+    color: variables.$lightgray-100;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
 .primaryButton {
   margin-left: auto;
   padding: 8px 16px;
@@ -497,4 +521,47 @@
   padding: 6px 8px;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 4px;
+}
+
+// Progress / outcome line for the "Reoptimize" action, rendered directly
+// under the Size row it is about. A skipped or no-win run is not an error —
+// it leaves the asset untouched and says so here.
+.reoptimizeStatus {
+  color: variables.$lightgray-300;
+  font-size: 12px;
+}
+
+.reoptimizeStatusError {
+  font-size: 12px;
+  color: #e0473d;
+}
+
+// Re-run-the-pipeline button, trailing the Size row, e.g.
+// "121.2 MB (Optimization skipped) [Retry optimization]". Same chrome as
+// .attributionEditBtn so the two read as the same kind of control, just
+// smaller to sit inside a metadata line.
+.retryOptimizeBtn {
+  margin-left: 6px;
+  padding: 1px 8px;
+  background: transparent;
+  color: variables.$lightgray-200;
+  border: 1px solid variables.$darkgray-500;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  font-style: normal;
+  vertical-align: baseline;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover:not(:disabled) {
+    background: variables.$darkgray-500;
+    color: variables.$lightgray-100;
+    border-color: variables.$darkgray-400;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }

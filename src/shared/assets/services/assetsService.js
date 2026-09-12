@@ -24,8 +24,10 @@ import {
   limit as firestoreLimit,
   startAfter,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  FieldValue
 } from 'firebase/firestore';
+import { createAggregateProgress } from '../uploadProgress.js';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@shared/services/firebase.js';
 import {
@@ -214,19 +216,25 @@ class AssetsServiceV2 {
       // IMPORTANT: Upload to Storage FIRST before creating Firestore doc
       // This ensures no orphaned Firestore documents if upload fails.
       //
-      // Original and optimized uploads run in parallel. Progress events only
-      // track the original (primary) upload so the UI stays coherent.
+      // Original and optimized uploads run in parallel behind one progress
+      // bar, so progress is byte-weighted across both: 100% only once every
+      // byte of every file is up (#1989 — the original alone hit 100% while
+      // the optimized variant was still transferring).
+      const reportProgress = createAggregateProgress(
+        [blob.size, optimizedFile?.size || 0],
+        (progress) => {
+          this.events.dispatchEvent(
+            new CustomEvent('uploadProgress', {
+              detail: { assetId, progress }
+            })
+          );
+        }
+      );
       const uploadPromises = [
         this.uploadToStorage(
           blob,
           storagePath,
-          (progress) => {
-            this.events.dispatchEvent(
-              new CustomEvent('uploadProgress', {
-                detail: { assetId, progress }
-              })
-            );
-          },
+          (progress) => reportProgress(0, progress),
           signal,
           // Tag so storage-level audit scripts can distinguish quota-counted
           // originals from platform-derived optimized artifacts.
@@ -246,7 +254,7 @@ class AssetsServiceV2 {
           this.uploadToStorage(
             optimizedFile,
             optimizedStoragePath,
-            null,
+            (progress) => reportProgress(1, progress),
             signal,
             // assetRole: 'optimized' marks this file as a platform-derived
             // artifact; quota scripts should exclude it from user quota.
@@ -260,6 +268,10 @@ class AssetsServiceV2 {
               err
             );
             optimizedStoragePath = null;
+            // The bar is byte-weighted across both files; count this one
+            // as finished (skipped) so aggregate progress can still reach
+            // 100 on its own rather than stalling at the original's share.
+            reportProgress(1, 100);
             return null;
           })
         );
@@ -840,9 +852,19 @@ class AssetsServiceV2 {
         updatedAt: serverTimestamp()
       });
 
+      // Consumers (useAssets, assetUploadStore) spread `updates` over their
+      // cached doc. A deleteField() sentinel is a truthy object, so spreading
+      // it verbatim would leave e.g. optimizedSourceUrl as a FieldValue and
+      // getServedUrl would serve "[object Object]". Any FieldValue goes out
+      // as undefined: for deleteField that is the truth, and for the rest
+      // (server-computed values) the cache has no better answer.
+      const eventUpdates = {};
+      for (const [key, value] of Object.entries(updates)) {
+        eventUpdates[key] = value instanceof FieldValue ? undefined : value;
+      }
       this.events.dispatchEvent(
         new CustomEvent('assetUpdated', {
-          detail: { assetId, userId, updates }
+          detail: { assetId, userId, updates: eventUpdates }
         })
       );
     } catch (error) {

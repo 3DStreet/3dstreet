@@ -5,7 +5,7 @@
  * which aren't loaded in the generator or bollardbuddy bundles.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -21,11 +21,40 @@ import {
   getServedUrl
 } from '../utils.js';
 import { isEditableTarget } from '@shared/utils/dom.js';
+import { useSharedMessages } from '@shared/i18n/sharedMessages.js';
+import {
+  clearReoptimizeRun,
+  getReoptimizeRun,
+  startReoptimizeRun,
+  subscribeReoptimizeRuns
+} from '../reoptimizeRuns.js';
 import styles from './MeshDetailsModal.module.scss';
 
 // User-editable attribution fields. `title` deliberately is NOT here — the
 // asset doc's `name` (Display name) is the single source of truth for the
 // model title. sourceName / generator are diagnostic, surfaced read-only.
+// Stages reported by reoptimizeAsset(), mapped to their shared-message ids
+// so the button can say what it is doing in the user's language.
+const REOPTIMIZE_STAGE_MESSAGE = {
+  downloading: 'reoptimizeDownloading',
+  optimizing: 'reoptimizeOptimizing',
+  uploading: 'reoptimizeUploading'
+};
+
+// `ok: false` reasons from reoptimizeAsset, mapped to copy. The pipeline
+// reports them as snake_case codes; they never reach the user verbatim.
+// Anything unmapped falls back to the generic reoptimizeNoChange line.
+const REOPTIMIZE_NO_WIN_MESSAGE = {
+  not_smaller_than_current: 'reoptimizeAlreadyOptimal',
+  not_smaller: 'reoptimizeAlreadyOptimal',
+  already_optimized: 'reoptimizeAlreadyOptimized',
+  timeout: 'reoptimizeTimedOut',
+  worker_error: 'reoptimizeWorkerError'
+};
+// These are the pipeline giving up, not a verdict on the model, so they
+// render in the error style like a thrown failure would.
+const REOPTIMIZE_PIPELINE_FAILURES = new Set(['timeout', 'worker_error']);
+
 const ATTRIBUTION_FIELDS = ['author', 'license', 'source'];
 
 const EMPTY_ATTRIBUTION = {
@@ -113,6 +142,21 @@ const MeshDetailsModal = ({
   // Briefly true after a successful "Recapture thumbnail" click, to flash a
   // checkmark on the button as feedback (the live capture is otherwise silent).
   const [thumbCaptured, setThumbCaptured] = useState(false);
+  // Reoptimize status lives in a module-level registry (reoptimizeRuns.js),
+  // keyed by asset, rather than in this component: a run keeps going after
+  // the modal closes or navigates to another asset, and work that keeps
+  // going must stay visible. Any instance showing that asset — including
+  // one opened later — reads the same progress and outcome.
+  const reoptimizeRun = useSyncExternalStore(subscribeReoptimizeRuns, () =>
+    getReoptimizeRun(assetId)
+  );
+  // Outcome of the "Remove optimized" action; local because it is instant.
+  const [removeStatus, setRemoveStatus] = useState(null);
+  // "Copy to my library" (non-owners): { stage } while running, then
+  // { text, error? }. Local: the upload itself shows in the gallery's pending
+  // card via currentUploadStore, so nothing is lost if the modal closes.
+  const [copyStatus, setCopyStatus] = useState(null);
+  const t = useSharedMessages();
 
   const [name, setName] = useState('');
   const [savedName, setSavedName] = useState('');
@@ -468,6 +512,181 @@ const MeshDetailsModal = ({
     setTimeout(() => setThumbCaptured(false), 1500);
   };
 
+  // Re-run the current optimization pipeline over the ORIGINAL and repoint the
+  // doc at the result. Useful when the asset was uploaded before a pipeline
+  // improvement, or when its optimization was skipped (worker timeout) and it
+  // has been serving the unoptimized original ever since. A "no win" outcome
+  // (pipeline skipped, or nothing smaller than what's already served) is
+  // reported as a message, not an error — the asset is left exactly as it was.
+  const onReoptimize = () => {
+    if (!isOwner || !data || reoptimizeRun?.stage) return;
+    setRemoveStatus(null);
+    startReoptimizeRun(data, { ownerUid });
+  };
+
+  // When a run for the asset on screen finishes, reflect the new variant
+  // without closing: the Size row reads optimizedSourceSize, and the
+  // preview/download use optimizedSourceUrl. Keyed on the new path so a
+  // modal opened after the run already carries the values from its own doc
+  // read, and a stale outcome from an earlier run is not re-applied.
+  useEffect(() => {
+    const result = reoptimizeRun?.result;
+    if (!result?.ok || !data || data.optimizedSourcePath === result.newPath) {
+      return;
+    }
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            optimizedSourceUrl: result.newUrl,
+            optimizedSourcePath: result.newPath,
+            optimizedSourceSize: result.bytesAfter,
+            optimizationMetadata: result.metadata
+          }
+        : prev
+    );
+  }, [reoptimizeRun, data]);
+
+  // The status line under the Size row. A "Remove optimized" outcome is the
+  // most recent thing that happened (onReoptimize clears it when a new run
+  // starts), so it wins over whatever the run registry still holds; then
+  // progress, outcome or failure of the run for this asset.
+  const noWinResult =
+    reoptimizeRun?.result && !reoptimizeRun.result.ok
+      ? reoptimizeRun.result
+      : null;
+  const noWinIsFailure =
+    !!noWinResult && REOPTIMIZE_PIPELINE_FAILURES.has(noWinResult.reason);
+  const reoptimizeStatusText = (() => {
+    if (removeStatus) return removeStatus.text;
+    if (!reoptimizeRun) return null;
+    if (reoptimizeRun.stage) {
+      return t(REOPTIMIZE_STAGE_MESSAGE[reoptimizeRun.stage]);
+    }
+    if (reoptimizeRun.error !== undefined) {
+      return reoptimizeRun.error || t('reoptimizeFailed');
+    }
+    const result = reoptimizeRun.result;
+    if (!result) return null;
+    if (!result.ok) {
+      return t(
+        REOPTIMIZE_NO_WIN_MESSAGE[result.reason] || 'reoptimizeNoChange'
+      );
+    }
+    return t('reoptimizeDone', {
+      size: formatBytes(result.bytesAfter),
+      saved: formatBytes(Math.max(0, result.bytesBefore - result.bytesAfter))
+    });
+  })();
+  const reoptimizeStatusIsError = removeStatus
+    ? !!removeStatus.error
+    : reoptimizeRun?.error !== undefined || noWinIsFailure;
+
+  // Reverse a lossy optimization: drop the optimized fields from the doc so
+  // everything serves the untouched original again. The optimized object is
+  // orphaned for the storage GC; Optimize brings a variant back.
+  const onRemoveOptimized = async () => {
+    if (!isOwner || !data?.optimizedSourceUrl || reoptimizeRun?.stage) return;
+    try {
+      const { removeOptimizedVariant } = await import('@shared/asset-upload');
+      await removeOptimizedVariant(data, { ownerUid });
+      clearReoptimizeRun(assetId);
+      setData((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        delete next.optimizedSourceUrl;
+        delete next.optimizedSourcePath;
+        delete next.optimizedSourceSize;
+        delete next.optimizationMetadata;
+        return next;
+      });
+      setRemoveStatus({ text: t('reoptimizeRemoved') });
+    } catch (err) {
+      console.error('[MeshDetailsModal] remove optimized failed', err);
+      setRemoveStatus({
+        error: true,
+        text: err.message || t('reoptimizeRemoveFailed')
+      });
+    }
+  };
+
+  // Non-owner path to the same outcome as Reoptimize: make an own copy of
+  // the original through the normal upload pipeline. GLB only (see
+  // copyAsset.js). Signed-out viewers do not get the button.
+  const canCopyToLibrary =
+    !isOwner &&
+    !!auth.currentUser &&
+    !loading &&
+    !!data &&
+    data.type !== 'splat' &&
+    !data.deleted;
+  const onCopyToLibrary = async () => {
+    if (!canCopyToLibrary || copyStatus?.stage) return;
+    setCopyStatus({ stage: 'downloading' });
+    try {
+      const { copyAssetToLibrary } = await import('@shared/asset-upload');
+      const result = await copyAssetToLibrary(data, {
+        onStatus: (stage) => setCopyStatus({ stage })
+      });
+      if (result.ok) {
+        setCopyStatus({ text: t('copyToLibraryDone') });
+      } else if (result.cancelled) {
+        setCopyStatus(null);
+      } else {
+        setCopyStatus({
+          error: true,
+          text: result.error || t('copyToLibraryFailed')
+        });
+      }
+    } catch (err) {
+      console.error('[MeshDetailsModal] copy to library failed', err);
+      setCopyStatus({
+        error: true,
+        text: err.message || t('copyToLibraryFailed')
+      });
+    }
+  };
+  const copyStatusText = copyStatus?.stage
+    ? t('copyToLibraryCopying')
+    : (copyStatus?.text ?? null);
+
+  // Inline "re-run the pipeline" control, rendered inside the Size row next
+  // to whatever that row says about the current optimization. Owner-only and
+  // GLB-only (splats are transcoded server-side by the RAD job instead), and
+  // it reports its own progress in place while running.
+  const reoptimizeButton = (label) => {
+    const isGlb = !!data && data.type !== 'splat';
+    if (!isOwner || loading || !isGlb || data?.deleted) return null;
+    // Spacing comes from the button's own margin.
+    return (
+      <button
+        type="button"
+        onClick={onReoptimize}
+        disabled={!!reoptimizeRun?.stage}
+        className={styles.retryOptimizeBtn}
+      >
+        {label}
+      </button>
+    );
+  };
+
+  // Sibling of the button above, only offered while a variant is served.
+  const removeOptimizedButton = () => {
+    if (!isOwner || loading || !data?.optimizedSourceUrl || data?.deleted) {
+      return null;
+    }
+    return (
+      <button
+        type="button"
+        onClick={onRemoveOptimized}
+        disabled={!!reoptimizeRun?.stage}
+        className={styles.retryOptimizeBtn}
+      >
+        {t('reoptimizeRemove')}
+      </button>
+    );
+  };
+
   // Use mousedown, not click: a `click` fires on the common ancestor of
   // mousedown+mouseup, so dragging from an input inside the modal to a
   // mouseup on the backdrop would land `click` on the backdrop and close.
@@ -691,6 +910,10 @@ const MeshDetailsModal = ({
                 <span className={styles.metaLabel}>Size:</span>
                 {(() => {
                   const opt = getOptimizationDisplay(data);
+                  // The re-run affordance lives in this row because this row
+                  // is the reason to press it: it states what the asset is
+                  // serving today ("Optimization skipped", "−42%", or nothing
+                  // at all for a pre-pipeline upload).
                   if (opt.skipReason) {
                     return (
                       <>
@@ -698,6 +921,7 @@ const MeshDetailsModal = ({
                         <span className={styles.optimizationNote}>
                           ({opt.skipReason})
                         </span>
+                        {reoptimizeButton(t('reoptimizeRetry'))}
                       </>
                     );
                   }
@@ -708,12 +932,32 @@ const MeshDetailsModal = ({
                         <span className={styles.optimizationSaved}>
                           (−{opt.savePct}%)
                         </span>
+                        {reoptimizeButton(t('reoptimizeAgain'))}
+                        {removeOptimizedButton()}
                       </>
                     );
                   }
-                  return formatBytes(opt.origSize);
+                  // No optimization metadata at all — a GLB uploaded before
+                  // the pipeline existed, so there is no note to follow.
+                  return (
+                    <>
+                      {formatBytes(opt.origSize)}
+                      {reoptimizeButton(t('reoptimizeStart'))}
+                    </>
+                  );
                 })()}
               </div>
+              {reoptimizeStatusText && (
+                <div
+                  className={
+                    reoptimizeStatusIsError
+                      ? styles.reoptimizeStatusError
+                      : styles.reoptimizeStatus
+                  }
+                >
+                  {reoptimizeStatusText}
+                </div>
+              )}
               {optimizationLabel && (
                 <div>
                   <span className={styles.metaLabel}>Optimization:</span>
@@ -739,9 +983,32 @@ const MeshDetailsModal = ({
             </div>
 
             {error && <div className={styles.error}>{error}</div>}
+            {copyStatusText && (
+              <div
+                className={
+                  copyStatus?.error
+                    ? styles.reoptimizeStatusError
+                    : styles.reoptimizeStatus
+                }
+              >
+                {copyStatusText}
+              </div>
+            )}
 
             <Tooltip.Provider>
               <div className={styles.controlButtons}>
+                {canCopyToLibrary && (
+                  <IconTooltip label={t('copyToLibraryHint')}>
+                    <button
+                      type="button"
+                      onClick={onCopyToLibrary}
+                      disabled={!!copyStatus?.stage}
+                      className={styles.secondaryButton}
+                    >
+                      {t('copyToLibrary')}
+                    </button>
+                  </IconTooltip>
+                )}
                 {isOwner &&
                   !loading &&
                   (data?.deleted ? (
@@ -832,30 +1099,28 @@ const MeshDetailsModal = ({
                 )}
                 {data?.optimizedSourceUrl ? (
                   <>
-                    <IconTooltip label="Download original">
-                      <button
-                        type="button"
-                        onClick={onDownloadOriginal}
-                        disabled={!data}
-                        className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
-                        aria-label="Download original"
-                      >
-                        <DownloadIcon />
-                        <span className={styles.downloadBtnLabel}>Orig</span>
-                      </button>
-                    </IconTooltip>
-                    <IconTooltip label="Download optimized">
-                      <button
-                        type="button"
-                        onClick={onDownloadOptimized}
-                        disabled={!data}
-                        className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
-                        aria-label="Download optimized"
-                      >
-                        <DownloadIcon />
-                        <span className={styles.downloadBtnLabel}>Opt</span>
-                      </button>
-                    </IconTooltip>
+                    <button
+                      type="button"
+                      onClick={onDownloadOriginal}
+                      disabled={!data}
+                      className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
+                    >
+                      <DownloadIcon />
+                      <span className={styles.downloadBtnLabel}>
+                        Download Original
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onDownloadOptimized}
+                      disabled={!data}
+                      className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
+                    >
+                      <DownloadIcon />
+                      <span className={styles.downloadBtnLabel}>
+                        Download Optimized
+                      </span>
+                    </button>
                   </>
                 ) : (
                   <IconTooltip label="Download">

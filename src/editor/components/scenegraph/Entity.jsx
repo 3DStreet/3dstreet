@@ -6,7 +6,6 @@ import Events from '../../lib/Events';
 import { removeEntity, cloneEntity, getEntityBadges } from '../../lib/entity';
 import { defineMessages } from 'react-intl';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
-import AssetUploadDot from '../elements/AssetUploadDot';
 import EntityContextMenu from './EntityContextMenu';
 import EntityLabel from './EntityLabel';
 import {
@@ -375,7 +374,6 @@ class Entity extends React.Component {
               forceEditing={isRenaming}
               onEditingEnd={() => this.props.setRenamingEntity(null)}
             />
-            <AssetUploadDot entity={entity} />
             {badgeBar}
           </span>
           <span className="entityActions">
