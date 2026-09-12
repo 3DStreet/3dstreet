@@ -24,7 +24,8 @@ import {
   setDoc,
   getDoc,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  deleteField
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -140,6 +141,26 @@ describe('firestore.rules — users/{uid}/assets/{assetId} update', () => {
       updateDoc(assetRef(ownerDb()), {
         optimizedSourcePath: `users/${UID}/assets/meshes/my..model.glb`
       })
+    );
+  });
+
+  // "Remove optimized" reverses a lossy optimization by deleting the variant
+  // fields, so the served URL falls back to the original.
+  it('allows removing the optimized variant fields', async () => {
+    await assertSucceeds(
+      updateDoc(assetRef(ownerDb()), {
+        optimizedSourcePath: deleteField(),
+        optimizedSourceUrl: deleteField(),
+        optimizedSourceSize: deleteField(),
+        optimizationMetadata: deleteField(),
+        updatedAt: serverTimestamp()
+      })
+    );
+  });
+
+  it('blocks nulling the optimized path (must be absent or a string)', async () => {
+    await assertFails(
+      updateDoc(assetRef(ownerDb()), { optimizedSourcePath: null })
     );
   });
 

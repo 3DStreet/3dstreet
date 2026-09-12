@@ -26,8 +26,19 @@
  *   storage but never quota, which counts `size` alone.
  */
 
+import { deleteField } from 'firebase/firestore';
 import { assetsService } from '@shared/assets';
 import { optimizeGlb } from './optimizeGlb.js';
+
+/**
+ * Worker budget for a manual re-run. Upload-time optimization uses
+ * optimizeGlb's 30s default because it sits inside an upload the user is
+ * waiting on; here the user explicitly asked for it and watches a progress
+ * line, so the pipeline gets three times as long before it is killed and the
+ * run reports "no change (timeout)". A 167 MB photogrammetry GLB that blows
+ * past 30s on a slow laptop is exactly the case this button exists for.
+ */
+export const REOPTIMIZE_TIMEOUT_MS = 90_000;
 
 /**
  * Optimized output is always GLB — the worker's writeBinary() emits a GLB
@@ -86,7 +97,10 @@ export async function reoptimizeAsset(
   const originalBlob = await response.blob();
 
   onStatus?.('optimizing');
-  const { blob, metadata } = await optimizeGlb(originalBlob, { signal });
+  const { blob, metadata } = await optimizeGlb(originalBlob, {
+    signal,
+    timeoutMs: REOPTIMIZE_TIMEOUT_MS
+  });
   if (metadata.optimizationSkipped) {
     // optimizeGlb reports an abort as just another skip reason. Everything
     // else here is a legitimate "no win" outcome the caller shows to the
@@ -147,4 +161,37 @@ export async function reoptimizeAsset(
     newUrl,
     metadata
   };
+}
+
+/**
+ * Undo an optimization: drop the optimized variant from the doc so every
+ * consumer (getServedUrl, asset-fallback, scene load) falls back to the
+ * untouched original. The simplify() step is lossy, and whether the result is
+ * "good enough" is the owner's call to make after looking at it — this is the
+ * reversal. Pressing Optimize again re-runs the pipeline from the original.
+ *
+ * Nothing is deleted from Storage: the optimized object is left unreferenced
+ * and reclaimed by the monthly cleanupOrphanedStorage job, the same disposal
+ * path a reoptimize relies on. The fields are removed rather than nulled
+ * because firestore.rules validates optimizedSourcePath only when present.
+ *
+ * @param {object} asset - The Firestore asset doc.
+ * @param {object} [opts]
+ * @param {string} [opts.ownerUid] - Defaults to the doc's own `userId`.
+ * @returns {Promise<{previousPath: string|null}>}
+ */
+export async function removeOptimizedVariant(asset, { ownerUid } = {}) {
+  const uid = ownerUid || asset?.userId;
+  if (!asset?.assetId || !uid) {
+    throw new Error(
+      'removeOptimizedVariant: asset must carry assetId and userId'
+    );
+  }
+  await assetsService.updateAsset(asset.assetId, uid, {
+    optimizedSourceUrl: deleteField(),
+    optimizedSourcePath: deleteField(),
+    optimizedSourceSize: deleteField(),
+    optimizationMetadata: deleteField()
+  });
+  return { previousPath: asset.optimizedSourcePath || null };
 }

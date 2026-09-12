@@ -102,15 +102,19 @@ service cloud.firestore {
         && !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['size', 'storagePath', 'userId'])
         // Only validated when actually changed, so an untouched legacy value
-        // can never block an unrelated update (e.g. a soft delete). Requiring
-        // `is string` makes removing the field a clean deny rather than a
-        // rule-evaluation error on null. The second pattern rejects any `..`
-        // path segment, which the prefix check alone would let through
-        // (`users/<uid>/../elsewhere.glb`) — storage.rules already stops the
-        // client writing there, but such a reference would keep a file the
-        // orphan GC should have reclaimed alive and skew its audit.
+        // can never block an unrelated update (e.g. a soft delete). Removing
+        // the field is allowed: "Remove optimized" reverses a lossy
+        // optimization by dropping the variant fields so the original is
+        // served again (removeOptimizedVariant). A null is still denied —
+        // `is string` fails on it rather than erroring the rule. The second
+        // pattern rejects any `..` path segment, which the prefix check alone
+        // would let through (`users/<uid>/../elsewhere.glb`) — storage.rules
+        // already stops the client writing there, but such a reference would
+        // keep a file the orphan GC should have reclaimed alive and skew its
+        // audit.
         && (!request.resource.data.diff(resource.data).affectedKeys()
               .hasAny(['optimizedSourcePath'])
+            || !('optimizedSourcePath' in request.resource.data)
             || (request.resource.data.optimizedSourcePath is string
                 && request.resource.data.optimizedSourcePath
                     .matches('^users/' + userId + '/.*')

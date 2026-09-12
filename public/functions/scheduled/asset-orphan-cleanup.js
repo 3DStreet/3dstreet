@@ -5,10 +5,11 @@
  * doc references and deletes them. Sources of orphans: failed uploads (file
  * landed but doc creation never happened), buggy code paths, files from
  * before the asset system existed, and the superseded optimized GLB left
- * behind every time an owner runs "Reoptimize" (shared/asset-upload/
- * reoptimizeAsset.js uploads to a new path and repoints the doc, so the
- * previous object is deliberately orphaned — this job is its only disposal
- * path, since clients cannot delete Storage objects).
+ * behind every time an owner runs "Reoptimize" or "Remove optimized"
+ * (shared/asset-upload/reoptimizeAsset.js uploads to a new path and repoints
+ * the doc, or drops the variant fields entirely, so the previous object is
+ * deliberately orphaned — this job is its only disposal path, since clients
+ * cannot delete Storage objects).
  *
  * Reference fields scanned across every asset doc (including soft-deleted —
  * those get hard-deleted by purgeSoftDeletedAssets). Dropping a field from

@@ -5,7 +5,7 @@
  * which aren't loaded in the generator or bollardbuddy bundles.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -22,6 +22,12 @@ import {
 } from '../utils.js';
 import { isEditableTarget } from '@shared/utils/dom.js';
 import { useSharedMessages } from '@shared/i18n/sharedMessages.js';
+import {
+  clearReoptimizeRun,
+  getReoptimizeRun,
+  startReoptimizeRun,
+  subscribeReoptimizeRuns
+} from '../reoptimizeRuns.js';
 import styles from './MeshDetailsModal.module.scss';
 
 // User-editable attribution fields. `title` deliberately is NOT here — the
@@ -122,21 +128,16 @@ const MeshDetailsModal = ({
   // Briefly true after a successful "Recapture thumbnail" click, to flash a
   // checkmark on the button as feedback (the live capture is otherwise silent).
   const [thumbCaptured, setThumbCaptured] = useState(false);
-  // Reoptimize progress/outcome, keyed by assetId:
-  //   { [assetId]: { stage?: 'downloading'|'optimizing'|'uploading',
-  //                  result?: string, error?: string } }
-  //
-  // Keyed rather than a single value because a run outlives the modal's view
-  // of it: navigating away must not cancel the download/optimize/upload —
-  // the work is expensive and the doc update is still worth having — so the
-  // status has to belong to the asset it describes. Rendering just reads the
-  // current asset's entry, which means navigating away hides it, navigating
-  // back shows it again (still running, or its outcome), and the button
-  // can't start a second run on an asset that already has one in flight.
-  // Kept out of the modal-wide `error` so it renders under the Size row it
-  // is about rather than at the bottom of the modal.
-  const [reoptimizeByAsset, setReoptimizeByAsset] = useState({});
-  const reoptimizeStatus = reoptimizeByAsset[assetId];
+  // Reoptimize status lives in a module-level registry (reoptimizeRuns.js),
+  // keyed by asset, rather than in this component: a run keeps going after
+  // the modal closes or navigates to another asset, and work that keeps
+  // going must stay visible. Any instance showing that asset — including
+  // one opened later — reads the same progress and outcome.
+  const reoptimizeRun = useSyncExternalStore(subscribeReoptimizeRuns, () =>
+    getReoptimizeRun(assetId)
+  );
+  // Outcome of the "Remove optimized" action; local because it is instant.
+  const [removeStatus, setRemoveStatus] = useState(null);
   const t = useSharedMessages();
 
   const [name, setName] = useState('');
@@ -177,16 +178,6 @@ const MeshDetailsModal = ({
       cancelled = true;
     };
   }, [assetId, ownerUid]);
-
-  // Which asset the modal is showing right now, readable from an async
-  // reoptimize that started on a different one. A run keeps going after the
-  // user navigates away (see reoptimizeByAsset), so the only thing that has
-  // to be scoped is the UI: `data` belongs to whatever asset is on screen,
-  // and writing A's optimization stats into B's row is the bug this guards.
-  const shownAssetIdRef = useRef(assetId);
-  useEffect(() => {
-    shownAssetIdRef.current = assetId;
-  }, [assetId]);
 
   // Load the asset's transcode/optimization jobs (owner-only by rules) so the
   // modal can show optimization status. Best-effort: failure just hides the row.
@@ -509,61 +500,85 @@ const MeshDetailsModal = ({
   // has been serving the unoptimized original ever since. A "no win" outcome
   // (pipeline skipped, or nothing smaller than what's already served) is
   // reported as a message, not an error — the asset is left exactly as it was.
-  const onReoptimize = async () => {
-    if (!isOwner || !data || reoptimizeStatus?.stage) return;
-    const runAssetId = assetId;
-    const isShown = () => shownAssetIdRef.current === runAssetId;
-    // Status always lands under `runAssetId`, whether or not that asset is
-    // still on screen — the run is not cancelled, so its outcome stays
-    // available for when the user navigates back to it.
-    const setStatus = (patch) =>
-      setReoptimizeByAsset((prev) => ({ ...prev, [runAssetId]: patch }));
+  const onReoptimize = () => {
+    if (!isOwner || !data || reoptimizeRun?.stage) return;
+    setRemoveStatus(null);
+    startReoptimizeRun(data, { ownerUid });
+  };
 
-    setStatus({ stage: 'downloading' });
+  // When a run for the asset on screen finishes, reflect the new variant
+  // without closing: the Size row reads optimizedSourceSize, and the
+  // preview/download use optimizedSourceUrl. Keyed on the new path so a
+  // modal opened after the run already carries the values from its own doc
+  // read, and a stale outcome from an earlier run is not re-applied.
+  useEffect(() => {
+    const result = reoptimizeRun?.result;
+    if (!result?.ok || !data || data.optimizedSourcePath === result.newPath) {
+      return;
+    }
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            optimizedSourceUrl: result.newUrl,
+            optimizedSourcePath: result.newPath,
+            optimizedSourceSize: result.bytesAfter,
+            optimizationMetadata: result.metadata
+          }
+        : prev
+    );
+  }, [reoptimizeRun, data]);
+
+  // The status line under the Size row: progress, outcome or failure of the
+  // run for this asset, else the outcome of a "Remove optimized".
+  const reoptimizeStatusText = (() => {
+    if (!reoptimizeRun) return removeStatus?.text ?? null;
+    if (reoptimizeRun.stage) {
+      return t(REOPTIMIZE_STAGE_MESSAGE[reoptimizeRun.stage]);
+    }
+    if (reoptimizeRun.error !== undefined) {
+      return reoptimizeRun.error || t('reoptimizeFailed');
+    }
+    const result = reoptimizeRun.result;
+    if (!result) return null;
+    if (!result.ok) {
+      return result.reason === 'not_smaller_than_current'
+        ? t('reoptimizeAlreadyOptimal')
+        : t('reoptimizeNoChange', { reason: result.reason });
+    }
+    return t('reoptimizeDone', {
+      size: formatBytes(result.bytesAfter),
+      saved: formatBytes(Math.max(0, result.bytesBefore - result.bytesAfter))
+    });
+  })();
+  const reoptimizeStatusIsError =
+    reoptimizeRun?.error !== undefined || !!removeStatus?.error;
+
+  // Reverse a lossy optimization: drop the optimized fields from the doc so
+  // everything serves the untouched original again. The optimized object is
+  // orphaned for the storage GC; Optimize brings a variant back.
+  const onRemoveOptimized = async () => {
+    if (!isOwner || !data?.optimizedSourceUrl || reoptimizeRun?.stage) return;
     try {
-      const { reoptimizeAsset } = await import('@shared/asset-upload');
-      const result = await reoptimizeAsset(data, {
-        ownerUid,
-        onStatus: (stage) => setStatus({ stage })
+      const { removeOptimizedVariant } = await import('@shared/asset-upload');
+      await removeOptimizedVariant(data, { ownerUid });
+      clearReoptimizeRun(assetId);
+      setData((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        delete next.optimizedSourceUrl;
+        delete next.optimizedSourcePath;
+        delete next.optimizedSourceSize;
+        delete next.optimizationMetadata;
+        return next;
       });
-      if (!result.ok) {
-        setStatus({
-          result:
-            result.reason === 'not_smaller_than_current'
-              ? t('reoptimizeAlreadyOptimal')
-              : t('reoptimizeNoChange', { reason: result.reason })
-        });
-        return;
-      }
-      // Reflect the new variant without closing: the Size row reads
-      // optimizedSourceSize, and the preview/download use optimizedSourceUrl.
-      // Only when this asset is the one on screen — `data` is whatever the
-      // modal currently shows, so applying A's result while B is displayed
-      // would overwrite B's row with A's numbers. Navigating back to A
-      // re-reads the doc, which by then carries the same values.
-      if (isShown()) {
-        setData((prev) =>
-          prev
-            ? {
-                ...prev,
-                optimizedSourceUrl: result.newUrl,
-                optimizedSourcePath: result.newPath,
-                optimizedSourceSize: result.bytesAfter,
-                optimizationMetadata: result.metadata
-              }
-            : prev
-        );
-      }
-      const saved = Math.max(0, result.bytesBefore - result.bytesAfter);
-      setStatus({
-        result: t('reoptimizeDone', {
-          size: formatBytes(result.bytesAfter),
-          saved: formatBytes(saved)
-        })
-      });
+      setRemoveStatus({ text: t('reoptimizeRemoved') });
     } catch (err) {
-      console.error('[MeshDetailsModal] reoptimize failed', err);
-      setStatus({ error: err.message || t('reoptimizeFailed') });
+      console.error('[MeshDetailsModal] remove optimized failed', err);
+      setRemoveStatus({
+        error: true,
+        text: err.message || t('reoptimizeRemoveFailed')
+      });
     }
   };
 
@@ -579,10 +594,27 @@ const MeshDetailsModal = ({
       <button
         type="button"
         onClick={onReoptimize}
-        disabled={!!reoptimizeStatus?.stage}
+        disabled={!!reoptimizeRun?.stage}
         className={styles.retryOptimizeBtn}
       >
         {label}
+      </button>
+    );
+  };
+
+  // Sibling of the button above, only offered while a variant is served.
+  const removeOptimizedButton = () => {
+    if (!isOwner || loading || !data?.optimizedSourceUrl || data?.deleted) {
+      return null;
+    }
+    return (
+      <button
+        type="button"
+        onClick={onRemoveOptimized}
+        disabled={!!reoptimizeRun?.stage}
+        className={styles.retryOptimizeBtn}
+      >
+        {t('reoptimizeRemove')}
       </button>
     );
   };
@@ -833,6 +865,7 @@ const MeshDetailsModal = ({
                           (−{opt.savePct}%)
                         </span>
                         {reoptimizeButton(t('reoptimizeAgain'))}
+                        {removeOptimizedButton()}
                       </>
                     );
                   }
@@ -846,18 +879,15 @@ const MeshDetailsModal = ({
                   );
                 })()}
               </div>
-              {reoptimizeStatus && (
+              {reoptimizeStatusText && (
                 <div
                   className={
-                    reoptimizeStatus.error
+                    reoptimizeStatusIsError
                       ? styles.reoptimizeStatusError
                       : styles.reoptimizeStatus
                   }
                 >
-                  {reoptimizeStatus.error ||
-                    (reoptimizeStatus.stage
-                      ? t(REOPTIMIZE_STAGE_MESSAGE[reoptimizeStatus.stage])
-                      : reoptimizeStatus.result)}
+                  {reoptimizeStatusText}
                 </div>
               )}
               {optimizationLabel && (
@@ -978,30 +1008,28 @@ const MeshDetailsModal = ({
                 )}
                 {data?.optimizedSourceUrl ? (
                   <>
-                    <IconTooltip label="Download original">
-                      <button
-                        type="button"
-                        onClick={onDownloadOriginal}
-                        disabled={!data}
-                        className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
-                        aria-label="Download original"
-                      >
-                        <DownloadIcon />
-                        <span className={styles.downloadBtnLabel}>Orig</span>
-                      </button>
-                    </IconTooltip>
-                    <IconTooltip label="Download optimized">
-                      <button
-                        type="button"
-                        onClick={onDownloadOptimized}
-                        disabled={!data}
-                        className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
-                        aria-label="Download optimized"
-                      >
-                        <DownloadIcon />
-                        <span className={styles.downloadBtnLabel}>Opt</span>
-                      </button>
-                    </IconTooltip>
+                    <button
+                      type="button"
+                      onClick={onDownloadOriginal}
+                      disabled={!data}
+                      className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
+                    >
+                      <DownloadIcon />
+                      <span className={styles.downloadBtnLabel}>
+                        Download Original
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onDownloadOptimized}
+                      disabled={!data}
+                      className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
+                    >
+                      <DownloadIcon />
+                      <span className={styles.downloadBtnLabel}>
+                        Download Optimized
+                      </span>
+                    </button>
                   </>
                 ) : (
                   <IconTooltip label="Download">

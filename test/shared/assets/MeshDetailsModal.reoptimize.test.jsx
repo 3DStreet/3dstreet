@@ -56,9 +56,14 @@ const reoptimizeAsset = vi.fn((asset, opts) => {
   reoptimizeCalls.push({ asset, opts, resolveRun });
   return promise;
 });
+const removeOptimizedVariant = vi.fn(async () => ({ previousPath: null }));
 vi.mock('@shared/asset-upload', () => ({
-  reoptimizeAsset: (...a) => reoptimizeAsset(...a)
+  reoptimizeAsset: (...a) => reoptimizeAsset(...a),
+  removeOptimizedVariant: (...a) => removeOptimizedVariant(...a)
 }));
+
+const { _resetReoptimizeRuns } =
+  await import('../../../src/shared/assets/reoptimizeRuns.js');
 
 const { default: MeshDetailsModal } =
   await import('../../../src/shared/assets/components/MeshDetailsModal.jsx');
@@ -81,6 +86,7 @@ function renderModal(assetId) {
 describe('MeshDetailsModal — reoptimize across asset navigation', () => {
   beforeEach(() => {
     reoptimizeCalls = [];
+    _resetReoptimizeRuns();
   });
   afterEach(() => {
     vi.clearAllMocks();
@@ -200,5 +206,83 @@ describe('MeshDetailsModal — reoptimize across asset navigation', () => {
       reoptimizeCalls[0].opts.onStatus('uploading');
     });
     expect(screen.queryByText(/Uploading/i)).toBeNull();
+  });
+
+  it('shows a run that outlived a closed modal when the modal is reopened', async () => {
+    const { unmount } = renderModal(ASSET_A.assetId);
+    const button = await screen.findByRole('button', {
+      name: /retry optimization/i
+    });
+    await act(async () => {
+      button.click();
+    });
+    await waitFor(() => expect(reoptimizeCalls).toHaveLength(1));
+    await act(async () => {
+      reoptimizeCalls[0].opts.onStatus('optimizing');
+    });
+
+    // Close the modal entirely. The run is not cancelled...
+    unmount();
+
+    // ...so a fresh instance must show it still in progress, with the
+    // button disabled, rather than the stale doc as if nothing were running.
+    renderModal(ASSET_A.assetId);
+    expect(await screen.findByText(/Optimizing/i)).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: /retry optimization/i }).disabled
+    ).toBe(true);
+
+    // And its outcome lands in the reopened modal, Size row included.
+    await act(async () => {
+      reoptimizeCalls[0].resolveRun(RESULT_A);
+    });
+    expect(await screen.findByText(/Reoptimized/i)).toBeTruthy();
+    const sizeRow = screen.getByText('Size:').parentElement;
+    expect(sizeRow.textContent).toContain('→');
+    expect(sizeRow.textContent).toContain('1 KB');
+  });
+
+  it('does not start a second run for an asset that already has one in flight', async () => {
+    renderModal(ASSET_A.assetId);
+    const button = await screen.findByRole('button', {
+      name: /retry optimization/i
+    });
+    await act(async () => {
+      button.click();
+      button.click();
+    });
+    await waitFor(() => expect(reoptimizeCalls).toHaveLength(1));
+  });
+
+  it('removes the optimized variant and falls back to the original', async () => {
+    const optimizedA = {
+      ...ASSET_A,
+      optimizedSourceUrl: RESULT_A.newUrl,
+      optimizedSourcePath: RESULT_A.newPath,
+      optimizedSourceSize: RESULT_A.bytesAfter,
+      optimizationMetadata: RESULT_A.metadata
+    };
+    getAsset.mockImplementationOnce(async () => optimizedA);
+    renderModal(ASSET_A.assetId);
+    const remove = await screen.findByRole('button', {
+      name: /remove optimized/i
+    });
+    expect(screen.getByText('Size:').parentElement.textContent).toContain('→');
+
+    await act(async () => {
+      remove.click();
+    });
+    await waitFor(() => expect(removeOptimizedVariant).toHaveBeenCalled());
+    expect(removeOptimizedVariant.mock.calls[0][0].assetId).toBe(
+      ASSET_A.assetId
+    );
+    expect(await screen.findByText(/Optimized version removed/i)).toBeTruthy();
+    const sizeRow = screen.getByText('Size:').parentElement;
+    expect(sizeRow.textContent).not.toContain('→');
+    expect(
+      screen.queryByRole('button', { name: /remove optimized/i })
+    ).toBeNull();
+    // The reversal is itself reversible: Optimize is offered again.
+    expect(screen.getByRole('button', { name: /^optimize$/i })).toBeTruthy();
   });
 });

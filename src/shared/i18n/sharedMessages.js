@@ -1025,6 +1025,26 @@ const SHARED_MESSAGES = {
     es: 'Error al reoptimizar',
     'pt-BR': 'Falha ao reotimizar',
     fr: 'Échec de la réoptimisation'
+  },
+  // Reversal of a lossy optimization: drops the optimized variant so the
+  // original is served again. Sibling of the Reoptimize button.
+  reoptimizeRemove: {
+    en: 'Remove optimized',
+    es: 'Quitar optimizado',
+    'pt-BR': 'Remover otimizado',
+    fr: "Retirer l'optimisé"
+  },
+  reoptimizeRemoved: {
+    en: 'Optimized version removed. The original is served again.',
+    es: 'Versión optimizada eliminada. Se vuelve a servir el original.',
+    'pt-BR': 'Versão otimizada removida. O original volta a ser usado.',
+    fr: "Version optimisée retirée. L'original est de nouveau servi."
+  },
+  reoptimizeRemoveFailed: {
+    en: 'Could not remove the optimized version',
+    es: 'No se pudo eliminar la versión optimizada',
+    'pt-BR': 'Não foi possível remover a versão otimizada',
+    fr: 'Impossible de retirer la version optimisée'
   }
 };
 

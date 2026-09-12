@@ -1,5 +1,9 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { reoptimizeAsset } from '../../../src/shared/asset-upload/reoptimizeAsset.js';
+import {
+  reoptimizeAsset,
+  removeOptimizedVariant,
+  REOPTIMIZE_TIMEOUT_MS
+} from '../../../src/shared/asset-upload/reoptimizeAsset.js';
 
 const uploadToStorage = vi.fn();
 const updateAsset = vi.fn();
@@ -18,6 +22,11 @@ vi.mock('@shared/assets', () => ({
 const optimizeGlb = vi.fn();
 vi.mock('../../../src/shared/asset-upload/optimizeGlb.js', () => ({
   optimizeGlb: (...args) => optimizeGlb(...args)
+}));
+
+const DELETE_SENTINEL = { __deleteField: true };
+vi.mock('firebase/firestore', () => ({
+  deleteField: () => DELETE_SENTINEL
 }));
 
 const ASSET = {
@@ -214,9 +223,48 @@ describe('reoptimizeAsset', () => {
     expect(updateAsset).not.toHaveBeenCalled();
   });
 
+  it('gives a manual run a longer worker budget than upload-time', async () => {
+    optimizeGlb.mockResolvedValue({
+      blob: optimizedBlob(3_000),
+      metadata: { optimizationSkipped: false }
+    });
+    await reoptimizeAsset(ASSET);
+    expect(REOPTIMIZE_TIMEOUT_MS).toBeGreaterThan(30_000);
+    expect(optimizeGlb).toHaveBeenCalledWith(
+      expect.any(Blob),
+      expect.objectContaining({ timeoutMs: REOPTIMIZE_TIMEOUT_MS })
+    );
+  });
+
   it('requires an identifiable asset', async () => {
     await expect(reoptimizeAsset({ storageUrl: 'x' })).rejects.toThrow(
       'assetId'
     );
+  });
+});
+
+describe('removeOptimizedVariant', () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it('deletes the four variant fields and nothing else', async () => {
+    updateAsset.mockResolvedValue(undefined);
+    const out = await removeOptimizedVariant(ASSET);
+    expect(updateAsset).toHaveBeenCalledWith('asset-1', 'user-abc', {
+      optimizedSourceUrl: DELETE_SENTINEL,
+      optimizedSourcePath: DELETE_SENTINEL,
+      optimizedSourceSize: DELETE_SENTINEL,
+      optimizationMetadata: DELETE_SENTINEL
+    });
+    expect(out.previousPath).toBe(ASSET.optimizedSourcePath);
+  });
+
+  it('never touches storage', async () => {
+    updateAsset.mockResolvedValue(undefined);
+    await removeOptimizedVariant(ASSET);
+    expect(uploadToStorage).not.toHaveBeenCalled();
+  });
+
+  it('requires an identifiable asset', async () => {
+    await expect(removeOptimizedVariant({})).rejects.toThrow(/assetId/);
   });
 });
