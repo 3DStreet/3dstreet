@@ -26,6 +26,7 @@ import {
   onSnapshot,
   serverTimestamp
 } from 'firebase/firestore';
+import { createAggregateProgress } from '../uploadProgress.js';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@shared/services/firebase.js';
 import {
@@ -214,19 +215,25 @@ class AssetsServiceV2 {
       // IMPORTANT: Upload to Storage FIRST before creating Firestore doc
       // This ensures no orphaned Firestore documents if upload fails.
       //
-      // Original and optimized uploads run in parallel. Progress events only
-      // track the original (primary) upload so the UI stays coherent.
+      // Original and optimized uploads run in parallel behind one progress
+      // bar, so progress is byte-weighted across both: 100% only once every
+      // byte of every file is up (#1989 — the original alone hit 100% while
+      // the optimized variant was still transferring).
+      const reportProgress = createAggregateProgress(
+        [blob.size, optimizedFile?.size || 0],
+        (progress) => {
+          this.events.dispatchEvent(
+            new CustomEvent('uploadProgress', {
+              detail: { assetId, progress }
+            })
+          );
+        }
+      );
       const uploadPromises = [
         this.uploadToStorage(
           blob,
           storagePath,
-          (progress) => {
-            this.events.dispatchEvent(
-              new CustomEvent('uploadProgress', {
-                detail: { assetId, progress }
-              })
-            );
-          },
+          (progress) => reportProgress(0, progress),
           signal,
           // Tag so storage-level audit scripts can distinguish quota-counted
           // originals from platform-derived optimized artifacts.
@@ -246,7 +253,7 @@ class AssetsServiceV2 {
           this.uploadToStorage(
             optimizedFile,
             optimizedStoragePath,
-            null,
+            (progress) => reportProgress(1, progress),
             signal,
             // assetRole: 'optimized' marks this file as a platform-derived
             // artifact; quota scripts should exclude it from user quota.

@@ -10,25 +10,24 @@
 
 import { useCurrentUploadStore } from '@shared/assets';
 import { formatBytes } from '../utils.js';
+import { useSharedMessages } from '@shared/i18n/sharedMessages.js';
+import { getUploadStageLabel } from '../uploadStageLabels.js';
 import styles from './Assets.module.scss';
 
 const CANCELLABLE_STATUSES = new Set(['validating', 'optimizing', 'uploading']);
 
-const STATUS_LABELS = {
-  validating: 'Validating…',
-  optimizing: 'Optimizing…',
-  uploading: 'Uploading…',
-  thumbnailing: 'Finishing…',
-  finishing: 'Finishing…'
-};
-
 const PendingUploadCard = () => {
   const upload = useCurrentUploadStore((s) => s.upload);
   const cancel = useCurrentUploadStore((s) => s.cancel);
+  const t = useSharedMessages();
   if (!upload) return null;
 
-  const label = STATUS_LABELS[upload.status] || 'Uploading…';
   const pct = Math.max(0, Math.min(100, Math.round(upload.progress || 0)));
+  // Same table as the editor's properties panel, so both say the same thing
+  // at the same moment (#1989).
+  const label =
+    getUploadStageLabel(t, upload.status, upload.progress) ||
+    t('uploadStageUploading');
 
   return (
     <div className={styles.pendingCard} title={upload.filename}>
