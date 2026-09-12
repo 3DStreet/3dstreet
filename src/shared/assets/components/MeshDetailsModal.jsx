@@ -28,6 +28,7 @@ import {
   startReoptimizeRun,
   subscribeReoptimizeRuns
 } from '../reoptimizeRuns.js';
+import { getCopyRun, startCopyRun, subscribeCopyRuns } from '../copyRuns.js';
 import styles from './MeshDetailsModal.module.scss';
 
 // User-editable attribution fields. `title` deliberately is NOT here — the
@@ -54,6 +55,16 @@ const REOPTIMIZE_NO_WIN_MESSAGE = {
 // These are the pipeline giving up, not a verdict on the model, so they
 // render in the error style like a thrown failure would.
 const REOPTIMIZE_PIPELINE_FAILURES = new Set(['timeout', 'worker_error']);
+
+// Stages reported by copyAssetToLibrary (its own 'downloading', then
+// uploadAsset's), mapped to shared-message ids for the operation indicator.
+const COPY_STAGE_MESSAGE = {
+  downloading: 'copyStageDownloading',
+  validating: 'copyStageDownloading',
+  optimizing: 'copyStageOptimizing',
+  uploading: 'copyStageUploading',
+  thumbnailing: 'copyStageFinishing'
+};
 
 const ATTRIBUTION_FIELDS = ['author', 'license', 'source'];
 
@@ -130,6 +141,7 @@ const MeshDetailsModal = ({
   ownerUid,
   onClose,
   onPlace,
+  onCopied,
   currentIndex,
   totalItems,
   onNavigate
@@ -152,10 +164,11 @@ const MeshDetailsModal = ({
   );
   // Outcome of the "Remove optimized" action; local because it is instant.
   const [removeStatus, setRemoveStatus] = useState(null);
-  // "Copy to my library" (non-owners): { stage } while running, then
-  // { text, error? }. Local: the upload itself shows in the gallery's pending
-  // card via currentUploadStore, so nothing is lost if the modal closes.
-  const [copyStatus, setCopyStatus] = useState(null);
+  // "Copy to my library" (non-owners). Registry-backed like reoptimize: the
+  // copy outlives the modal, and a reopened modal must show where it got to.
+  const copyRun = useSyncExternalStore(subscribeCopyRuns, () =>
+    getCopyRun(assetId)
+  );
   const t = useSharedMessages();
 
   const [name, setName] = useState('');
@@ -620,34 +633,25 @@ const MeshDetailsModal = ({
     !!data &&
     data.type !== 'splat' &&
     !data.deleted;
-  const onCopyToLibrary = async () => {
-    if (!canCopyToLibrary || copyStatus?.stage) return;
-    setCopyStatus({ stage: 'downloading' });
-    try {
-      const { copyAssetToLibrary } = await import('@shared/asset-upload');
-      const result = await copyAssetToLibrary(data, {
-        onStatus: (stage) => setCopyStatus({ stage })
-      });
-      if (result.ok) {
-        setCopyStatus({ text: t('copyToLibraryDone') });
-      } else if (result.cancelled) {
-        setCopyStatus(null);
-      } else {
-        setCopyStatus({
-          error: true,
-          text: result.error || t('copyToLibraryFailed')
-        });
-      }
-    } catch (err) {
-      console.error('[MeshDetailsModal] copy to library failed', err);
-      setCopyStatus({
-        error: true,
-        text: err.message || t('copyToLibraryFailed')
-      });
-    }
+  const onCopyToLibrary = () => {
+    if (!canCopyToLibrary || copyRun?.stage) return;
+    startCopyRun(data, { onCopied });
   };
+  const copyStatus = (() => {
+    if (!copyRun) return null;
+    if (copyRun.stage) return { stage: copyRun.stage };
+    if (copyRun.error !== undefined) {
+      return { error: true, text: copyRun.error || t('copyToLibraryFailed') };
+    }
+    return {
+      done: true,
+      text: t(
+        copyRun.swapped ? 'copyToLibraryDoneSwapped' : 'copyToLibraryDone'
+      )
+    };
+  })();
   const copyStatusText = copyStatus?.stage
-    ? t('copyToLibraryCopying')
+    ? t(COPY_STAGE_MESSAGE[copyStatus.stage] || 'copyToLibraryCopying')
     : (copyStatus?.text ?? null);
 
   // Inline "re-run the pipeline" control, rendered inside the Size row next
@@ -985,13 +989,24 @@ const MeshDetailsModal = ({
             {error && <div className={styles.error}>{error}</div>}
             {copyStatusText && (
               <div
-                className={
+                className={`${styles.opStatus} ${
                   copyStatus?.error
-                    ? styles.reoptimizeStatusError
-                    : styles.reoptimizeStatus
-                }
+                    ? styles.opStatusError
+                    : copyStatus?.done
+                      ? styles.opStatusDone
+                      : styles.opStatusRunning
+                }`}
+                role="status"
+                aria-live="polite"
               >
-                {copyStatusText}
+                {copyStatus?.stage ? (
+                  <span className={styles.opSpinner} aria-hidden="true" />
+                ) : (
+                  <span className={styles.opGlyph} aria-hidden="true">
+                    {copyStatus?.error ? '!' : '✓'}
+                  </span>
+                )}
+                <span>{copyStatusText}</span>
               </div>
             )}
 
@@ -1005,7 +1020,9 @@ const MeshDetailsModal = ({
                       disabled={!!copyStatus?.stage}
                       className={styles.secondaryButton}
                     >
-                      {t('copyToLibrary')}
+                      {copyStatus?.stage
+                        ? t('copyToLibraryCopying')
+                        : t('copyToLibrary')}
                     </button>
                   </IconTooltip>
                 )}
@@ -1352,6 +1369,12 @@ MeshDetailsModal.propTypes = {
   assetId: PropTypes.string.isRequired,
   ownerUid: PropTypes.string.isRequired,
   onClose: PropTypes.func.isRequired,
+  // Optional: called with the new asset doc after "Copy to my library"
+  // succeeds, from the run registry (copyRuns.js) so it fires whether or
+  // not the modal is still open. The editor's entity panel uses it to swap
+  // the copy into the scene; the gallery leaves it undefined (nothing to
+  // swap). A truthy return switches the success copy.
+  onCopied: PropTypes.func,
   // Optional: when provided, renders a "Place in scene" CTA. Called with
   // { assetId, ownerUid, storageUrl, name, type } when the user clicks it;
   // the modal closes itself after invoking. Only the gallery card open
