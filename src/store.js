@@ -208,7 +208,7 @@ const useStore = create(
         // OSM click-to-upgrade candidate (#1930): set when an empty-space
         // viewport click lands near a streamed OSM street way in osm3d mode
         // ({ wayId, class, worldPoint, distance }); the OsmUpgradeChip
-        // renders the "Generate 3D street" action for it (and osm-streets
+        // renders the "Generate Street" action for it (and osm-streets
         // highlights the stretch). Cleared on entity selection, generate,
         // or dismiss.
         osmWayCandidate: null,

@@ -50,7 +50,7 @@ Click-to-upgrade: an empty-space viewport click probes
 `src/editor/lib/raycaster.js` — the probe rides the container mouseup
 because A-Frame's cursor never emits `click` without an intersected
 entity); a nearby way fills `store.osmWayCandidate` and the
-`OsmUpgradeChip` offers **Generate 3D street** while `highlightWayAt`
+`OsmUpgradeChip` offers **Generate Street** while `highlightWayAt`
 draws the exact stretch it will create in a bright ribbon above the class
 tint. (UI copy says "generate", never "upgrade" — in this app "upgrade"
 means the paid plan; the code keeps the roadmap's LOD term.) The upgrade

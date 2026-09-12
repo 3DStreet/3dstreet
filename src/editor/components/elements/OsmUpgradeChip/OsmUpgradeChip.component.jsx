@@ -125,7 +125,7 @@ export const OsmUpgradeChip = () => {
         </span>
       </div>
       <button className={styles.generate} onClick={generate}>
-        Generate 3D street
+        Generate Street
       </button>
       <button
         className={styles.dismiss}

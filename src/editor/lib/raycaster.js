@@ -8,9 +8,13 @@ import useStore from '@/store';
 // the streamed street ways under the cursor's ground point and surfaces an
 // upgrade candidate for the OsmUpgradeChip. Pure read — the actual upgrade
 // runs from the chip through osm-streets' upgradeWayAt.
-function probeOsmWayAtCursor(mouseCursor) {
+function osmStreetsComponent() {
   const streetsEl = document.querySelector('[osm-streets]');
-  const comp = streetsEl && streetsEl.components['osm-streets'];
+  return (streetsEl && streetsEl.components['osm-streets']) || null;
+}
+
+function probeOsmWayAtCursor(mouseCursor) {
+  const comp = osmStreetsComponent();
   if (!comp) return null;
   const ray = mouseCursor.components.raycaster?.raycaster?.ray;
   if (!ray || ray.direction.y >= 0) return null;
@@ -102,7 +106,42 @@ export function initRaycaster(inspector) {
       if (resolved) Events.emit('raycastermouseenter', resolved);
       lastHoveredEl = resolved;
     }
+    updateOsmHover(resolved ? null : probeOsmWayAtCursor(mouseCursor));
   };
+
+  // Hover-to-highlight for OSM street ways (#1930), matching the hover box
+  // entities get: while the cursor is over empty ground near a streamed
+  // way, the stretch a click would generate is highlighted on the ground.
+  // While the generate chip is up, its own highlight (the clicked
+  // stretch) owns the ribbon and hover stands down, so moving the mouse
+  // toward the chip doesn't swap the preview from under the user.
+  let osmHover = null; // { wayId, worldPoint } currently highlighted
+  const OSM_HOVER_REBUILD_M = 2;
+  function updateOsmHover(hit) {
+    if (useStore.getState().osmWayCandidate) return;
+    const comp = osmStreetsComponent();
+    if (!comp) {
+      osmHover = null;
+      return;
+    }
+    if (!hit) {
+      if (osmHover) {
+        comp.clearHighlight();
+        osmHover = null;
+      }
+      return;
+    }
+    const moved =
+      !osmHover ||
+      osmHover.wayId !== hit.wayId ||
+      Math.hypot(
+        osmHover.worldPoint.x - hit.worldPoint.x,
+        osmHover.worldPoint.z - hit.worldPoint.z
+      ) > OSM_HOVER_REBUILD_M;
+    if (!moved) return;
+    comp.highlightWayAt(hit.worldPoint);
+    osmHover = { wayId: hit.wayId, worldPoint: hit.worldPoint };
+  }
 
   mouseCursor.addEventListener('click', handleClick);
   inspector.container.addEventListener('mousedown', onMouseDown);
@@ -112,6 +151,7 @@ export function initRaycaster(inspector) {
   inspector.sceneEl.canvas.addEventListener('mouseleave', () => {
     setTimeout(() => {
       Events.emit('raycastermouseleave', null);
+      updateOsmHover(null);
     });
   });
 

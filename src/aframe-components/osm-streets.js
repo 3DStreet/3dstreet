@@ -94,7 +94,7 @@ const HYDRATE_BBOX_PAD_M = 20;
  * same record cache backs:
  *
  * - `wayAtPoint(worldPoint)` — which street is under a clicked ground
- *   point (editor "Generate 3D street" affordance), and
+ *   point (editor "Generate Street" affordance), and
  * - `upgradeWayAt(worldPoint)` — mint real managed streets for the
  *   clicked stretch of that way: the stretch splits where other ways
  *   cross or terminate on it, each piece becomes ONE path-following
