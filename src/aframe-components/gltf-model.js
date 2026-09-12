@@ -9,6 +9,31 @@ import {
   BATCHING_ENABLED
 } from '../batch-models';
 
+// Progressive-LOD streaming spike (#1990): opt-in via `?progressive` in the URL or
+// localStorage.progressiveModels = 'true'. While enabled, every gltf-model loader is hooked
+// with needle-tools' gltf-progressive so needle-processed GLBs stream low-LOD-first; models
+// without needle LOD data load byte-for-byte unchanged, so hooking unconditionally is safe.
+// The library is imported dynamically because merely evaluating its module has side effects
+// (a decoder-reachability fetch, eager DRACO/KTX2 loader construction, a `Needle` global)
+// that must not run for users outside the spike.
+let progressiveSpike; // undefined = flag not read yet; null = off; Promise = module loading
+function getProgressiveSpike() {
+  if (progressiveSpike === undefined) {
+    let enabled = false;
+    try {
+      enabled =
+        new URLSearchParams(window.location.search).has('progressive') ||
+        window.localStorage.getItem('progressiveModels') === 'true';
+    } catch (e) {
+      // location/localStorage access can throw (privacy modes, workers) — spike stays off.
+    }
+    progressiveSpike = enabled
+      ? import('@needle-tools/gltf-progressive')
+      : null;
+  }
+  return progressiveSpike;
+}
+
 // Share one decoded THREE.Source across textures (within and across GLBs) that embed the
 // byte-identical image. The server bakes images[].extras.imageHash; GLTFLoader.loadImageSource
 // surfaces image extras on texture.userData, and at that point the Texture has only just been
@@ -243,6 +268,26 @@ export const gltfModelPlus = {
     }
     if (ktxLoader) {
       this.loader.setKTX2Loader(ktxLoader);
+    }
+    // #1990 spike: hook progressive streaming onto this loader. Chained into this.ready so
+    // loadModel() cannot race the hook registration. useNeedleProgressive only fills decoders
+    // the loader is still missing, so the A-Frame-provided DRACO/KTX2/meshopt above win.
+    const spike = getProgressiveSpike();
+    if (spike) {
+      const hooked = spike
+        .then(({ useNeedleProgressive }) => {
+          if (sceneEl.renderer) {
+            useNeedleProgressive(self.loader, sceneEl.renderer);
+          } else {
+            console.warn(
+              '[gltf-model] progressive spike: renderer unavailable at init; loader not hooked'
+            );
+          }
+        })
+        .catch((err) => {
+          console.warn('[gltf-model] progressive spike failed to load:', err);
+        });
+      this.ready = Promise.all([this.ready, hooked]).then(() => {});
     }
   },
 
