@@ -1339,6 +1339,12 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Excluir',
     fr: 'Supprimer'
   },
+  meshDeleteConfirm: {
+    en: 'Delete "{name}"?',
+    es: '¿Eliminar "{name}"?',
+    'pt-BR': 'Excluir "{name}"?',
+    fr: 'Supprimer « {name} » ?'
+  },
   meshSetThumbnail: {
     en: 'Set thumbnail from current view',
     es: 'Definir miniatura desde la vista actual',

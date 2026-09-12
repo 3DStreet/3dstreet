@@ -6,7 +6,7 @@
  * that entries exist in the table.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 
 const OWNER = 'user-abc';
 
@@ -33,6 +33,7 @@ vi.mock('../../../src/shared/assets/services/assetsService.js', () => ({
     getAsset: async () => ASSET,
     getAssetJobs: async () => [],
     updateAsset: vi.fn(),
+    deleteAsset: vi.fn(),
     events: { addEventListener: vi.fn(), removeEventListener: vi.fn() }
   }
 }));
@@ -78,6 +79,22 @@ describe('MeshDetailsModal localization', () => {
     await waitFor(() =>
       expect(screen.getByText(/Modèle · Chair/)).toBeTruthy()
     );
+  });
+
+  it('localizes the delete confirmation', async () => {
+    // Lives in a window.confirm template literal rather than JSX, so it does
+    // not show up in a sweep for text nodes and props.
+    localStorage.setItem('locale', 'fr');
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderModal();
+    const deleteButton = await screen.findByRole('button', {
+      name: 'Supprimer'
+    });
+    await act(async () => {
+      deleteButton.click();
+    });
+    expect(confirmSpy).toHaveBeenCalledWith('Supprimer « Chair » ?');
+    confirmSpy.mockRestore();
   });
 
   it('localizes the owner value, not just its label', async () => {

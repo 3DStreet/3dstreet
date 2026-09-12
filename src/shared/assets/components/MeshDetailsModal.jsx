@@ -447,7 +447,8 @@ const MeshDetailsModal = ({
 
   const onDelete = async () => {
     if (!isOwner || !data) return;
-    if (!window.confirm(`Delete "${savedName || data.originalFilename}"?`)) {
+    const label = savedName || data.originalFilename;
+    if (!window.confirm(t('meshDeleteConfirm', { name: label }))) {
       return;
     }
     try {
