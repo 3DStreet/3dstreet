@@ -144,6 +144,37 @@ export function initRaycaster(inspector) {
     }
     event.preventDefault();
     onUpPosition.set(event.clientX, event.clientY);
+    handleEmptySpaceClick(event);
+  }
+
+  // Click on empty space deselects (#1992). handleClick never runs for a
+  // miss — the cursor component only emits `click` when the press and
+  // release both landed on the same intersected entity — so the miss case
+  // is caught here, on the container mouseup that bubbles after it. A press
+  // that grabbed a viewport gizmo handle (transform gizmo, shape vertex,
+  // street node/width bar) sets inspector.gizmoCapturedPress (viewport.js):
+  // those helpers are invisible to the entity raycaster, so without the
+  // flag a zero-movement click on a handle would read as empty space and
+  // deselect the entity being manipulated.
+  function handleEmptySpaceClick(event) {
+    const gizmoCaptured = inspector.gizmoCapturedPress;
+    inspector.gizmoCapturedPress = false;
+    // Left button only, and only the first click of a multi-click — same
+    // rule as handleClick (the dblclick handler owns the second click).
+    if (event.button !== 0 || event.detail > 1 || gizmoCaptured) {
+      return;
+    }
+    if (onDownPosition.distanceTo(onUpPosition) > CLICK_MAX_DRAG_PX) {
+      return;
+    }
+    // When the click hit an entity, handleClick already ran (the cursor's
+    // clearCurrentIntersection(false) re-reads the still-current
+    // intersections synchronously, so getIntersectedEl() is not blanked by
+    // it) — nothing to do here.
+    if (!inspector.selectedEntity || getIntersectedEl()) {
+      return;
+    }
+    inspector.selectEntity(null);
   }
 
   /**
