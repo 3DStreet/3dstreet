@@ -24,7 +24,22 @@ lands (or fold what's durable into `docs/agent-context/`).
   - Duplicates (x2) loaded fine with their own LOD state; batching was not
     active in that editor session, so the BatchedMesh interaction is still
     unverified (Phase 1 excludes progressive URLs from batching regardless).
-- **Needle CLI facts (needle-cloud 3.x):** the command is `optimize`, not
+- **Needle deletion: NONE available (checked 2026-09-12, needle-cloud 2.5.0,
+  the latest release; there is no 3.x).** The CLI has no delete/remove command
+  (`settings, mcp, send-logs, login, logout, me, list, download, deploy,
+optimize, generate-material, generate-3d, ask`), its bundle makes no
+  `DELETE` request, its MCP server exposes no content-management tool, and
+  the cloud docs (`engine.needle.tools/docs/cloud/`) document no REST API
+  beyond outgoing webhooks. Deletion is web-UI only. Phase 2 GC therefore
+  writes an orphan ledger (`needleOrphans` or a field on the purged asset's
+  tombstone) and we ask Needle support for an API; the ledger is the manual
+  purge list until then.
+- **`--usecase world` works** on a fresh `--name`: `list --output json`
+  returns `url: https://cloud.needle.tools/-/assets/<viewId>-world/file`
+  (the spike's earlier "-product only" result was a name reuse). The worker
+  reads `url` from `list --output json` filtered by `title` = the `--name`
+  it passed (also `identifier`, `content_type: '3d-asset'`, `is_public`).
+- **Needle CLI facts (needle-cloud 2.5.0):** the command is `optimize`, not
   `upload`: `npx needle-cloud optimize <file.glb> --token <t> --progressive true
 --name <id>`. The env var `NEEDLE_CLOUD_TOKEN` was read but rejected as
   "not logged in"; `--token` works. `--usecase world` produced no `-world`
@@ -267,8 +282,8 @@ profile: 'world' } }` → write terminal job status. Failures →
 
 ## Risks / open questions
 
-1. **Needle Cloud deletion API unknown** — third-party copies of user data need a
-   GC path; orphan ledger + support inquiry; resolve before GA.
+1. **Needle Cloud has no deletion API** (verified, see State of work) — GC
+   writes an orphan ledger; ask Needle support; manual purge until then.
 2. **Public CDN privacy** — mitigated by skipping `private` assets + UI copy;
    existing `visibility` toggle is the opt-out.
 3. **Shared-texture-extension invariant** ("never swap a Source post-GPU-upload")
