@@ -111,22 +111,23 @@ export function initRaycaster(inspector) {
 
   // Hover-to-highlight for OSM street ways (#1930), matching the hover box
   // entities get: while the cursor is over empty ground near a streamed
-  // way, the stretch a click would generate is highlighted on the ground.
-  // While the generate chip is up, its own highlight (the clicked
-  // stretch) owns the ribbon and hover stands down, so moving the mouse
-  // toward the chip doesn't swap the preview from under the user.
+  // way, the stretch a click would generate is drawn in translucent red.
+  // The clicked way (the chip's candidate) is drawn in cyan by the chip
+  // and stays put; hovering any OTHER way still shows red on top of it.
+  // Hovering the selected way itself draws nothing extra.
   let osmHover = null; // { wayId, worldPoint } currently highlighted
   const OSM_HOVER_REBUILD_M = 2;
   function updateOsmHover(hit) {
-    if (useStore.getState().osmWayCandidate) return;
     const comp = osmStreetsComponent();
     if (!comp) {
       osmHover = null;
       return;
     }
+    const candidate = useStore.getState().osmWayCandidate;
+    if (hit && candidate && candidate.wayId === hit.wayId) hit = null;
     if (!hit) {
       if (osmHover) {
-        comp.clearHighlight();
+        comp.clearHighlight('hover');
         osmHover = null;
       }
       return;
@@ -139,7 +140,7 @@ export function initRaycaster(inspector) {
         osmHover.worldPoint.z - hit.worldPoint.z
       ) > OSM_HOVER_REBUILD_M;
     if (!moved) return;
-    comp.highlightWayAt(hit.worldPoint);
+    comp.highlightWayAt(hit.worldPoint, { kind: 'hover' });
     osmHover = { wayId: hit.wayId, worldPoint: hit.worldPoint };
   }
 

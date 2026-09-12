@@ -48,11 +48,16 @@ const RIBBON_BASE_Y = 0.3;
 // over by the street tint beneath them.
 const UPGRADED_STREET_Y = 0.5;
 
-// Highlight of the stretch about to be generated: above every class
-// ribbon, below the generated street.
-const HIGHLIGHT_Y = 0.46;
-const HIGHLIGHT_COLOR = '#ffd166';
+// Highlights of the stretch a click would generate: above every class
+// ribbon, below the generated street. Same convention as the editor's
+// entity helpers: translucent red for hover, cyan for the selection (the
+// chip's candidate). Both can show at once — hovering another way while
+// one is selected — so each is its own mesh; hover sits a hair higher.
 const HIGHLIGHT_WIDTH_PAD_M = 1.5;
+const HIGHLIGHT_KINDS = {
+  selected: { y: 0.46, color: '#1faaf2', opacity: 1 },
+  hover: { y: 0.47, color: '#ff0000', opacity: 0.45 }
+};
 
 // A click upgrades only the stretch of the way near the click, not the
 // whole way — an OSM way can run for kilometers. The stretch is clipped
@@ -130,6 +135,16 @@ AFRAME.registerComponent('osm-streets', {
     // stay on so the class-ordered heights resolve junctions.
     this.material = new THREE.MeshBasicMaterial({ vertexColors: true });
     this.applyOpacity();
+    this.highlightMeshes = { selected: null, hover: null };
+    this.highlightMaterials = {};
+    for (const [kind, style] of Object.entries(HIGHLIGHT_KINDS)) {
+      this.highlightMaterials[kind] = new THREE.MeshBasicMaterial({
+        vertexColors: true,
+        transparent: style.opacity < 1,
+        opacity: style.opacity,
+        depthWrite: style.opacity >= 1
+      });
+    }
     this.inFlight = new Set();
     this.failures = new Map();
     // Bumped by reset(): a tile fetch that started before a reset must
@@ -205,8 +220,13 @@ AFRAME.registerComponent('osm-streets', {
    * ribbon above the class tint. `clearHighlight()` removes it. Null /
    * unknown way clears too.
    */
-  highlightWayAt: function (worldPoint, maxDistM = DEFAULT_PICK_DISTANCE_M) {
-    this.clearHighlight();
+  highlightWayAt: function (
+    worldPoint,
+    { kind = 'selected', maxDistM = DEFAULT_PICK_DISTANCE_M } = {}
+  ) {
+    const style = HIGHLIGHT_KINDS[kind];
+    if (!style) throw new Error(`osm-streets: unknown highlight "${kind}"`);
+    this.clearHighlight(kind);
     if (!worldPoint) return;
     const hit = this.wayAtPoint(worldPoint, maxDistM);
     if (!hit) return;
@@ -223,8 +243,8 @@ AFRAME.registerComponent('osm-streets', {
         }
       ],
       {
-        y: HIGHLIGHT_Y,
-        color: HIGHLIGHT_COLOR,
+        y: style.y,
+        color: style.color,
         width: roadWidthMeters(hit.way.class) + HIGHLIGHT_WIDTH_PAD_M
       }
     );
@@ -233,15 +253,21 @@ AFRAME.registerComponent('osm-streets', {
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.setIndex(new THREE.BufferAttribute(indices, 1));
     geometry.computeBoundingSphere();
-    this.highlightMesh = new THREE.Mesh(geometry, this.material);
-    this.el.setObject3D('highlight', this.highlightMesh);
+    const mesh = new THREE.Mesh(geometry, this.highlightMaterials[kind]);
+    this.highlightMeshes[kind] = mesh;
+    this.el.setObject3D('highlight-' + kind, mesh);
   },
 
-  clearHighlight: function () {
-    if (!this.highlightMesh) return;
-    this.el.removeObject3D('highlight');
-    this.highlightMesh.geometry.dispose();
-    this.highlightMesh = null;
+  /** Remove one highlight kind, or every kind when `kind` is omitted. */
+  clearHighlight: function (kind) {
+    const kinds = kind ? [kind] : Object.keys(HIGHLIGHT_KINDS);
+    for (const k of kinds) {
+      const mesh = this.highlightMeshes[k];
+      if (!mesh) continue;
+      this.el.removeObject3D('highlight-' + k);
+      mesh.geometry.dispose();
+      this.highlightMeshes[k] = null;
+    }
   },
 
   removeTileMesh: function (key, entry) {
@@ -888,5 +914,8 @@ AFRAME.registerComponent('osm-streets', {
   remove: function () {
     this.reset();
     this.material.dispose();
+    for (const material of Object.values(this.highlightMaterials)) {
+      material.dispose();
+    }
   }
 });

@@ -73,7 +73,7 @@ export const OsmUpgradeChip = () => {
       setOsmWayCandidate(null);
       return undefined;
     }
-    comp.highlightWayAt(candidate.worldPoint);
+    comp.highlightWayAt(candidate.worldPoint, { kind: 'selected' });
     const plan = comp.upgradePlanAt(candidate.worldPoint);
     setBlocked(plan.reason === 'ok' ? null : BLOCKED_COPY[plan.reason]);
     let live = true;
@@ -88,7 +88,7 @@ export const OsmUpgradeChip = () => {
     });
     return () => {
       live = false;
-      comp.clearHighlight();
+      comp.clearHighlight('selected');
     };
   }, [candidate, setOsmWayCandidate]);
 
