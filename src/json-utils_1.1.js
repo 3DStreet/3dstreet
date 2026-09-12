@@ -1361,7 +1361,7 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
   // once the entities exist in the DOM.
   migrateDefaultSnapshotToViewerStart(streetObject.data, streetObject.memory);
   createEntities(streetObject.data, streetContainerEl);
-  resolveSplatAssetUrls(streetContainerEl);
+  resolveCloudAssetUrls(streetContainerEl);
   useStore.getState().updateLoadingProgress(90, 'Finalizing...');
   STREET.notify.successMessage('Scene loaded');
 
@@ -1390,49 +1390,67 @@ function emitNewScene(detail = {}) {
 STREET.utils.emitNewScene = emitNewScene;
 
 /**
- * Re-resolve splat src from the Firestore asset doc after a scene load.
+ * Re-resolve cloud-asset URLs from the Firestore asset doc after a scene load.
  *
- * A splat's `src` is baked into the saved scene at placement time. The
- * streaming-optimized .rad variant (optimizedSourceUrl) is produced async in
- * the cloud AFTER upload, so saved scenes usually carry the raw .ply storageUrl
- * and reload without LOD streaming. Here we re-resolve every splat that has an
- * asset identity (data-asset-id + data-asset-owner-uid) to the served URL
- * (optimizedSourceUrl ?? storageUrl). Assets are public-read so anonymous
- * viewers can fetch too. A real .ply→.rad swap reloads the splat (desired) —
- * the splat component's no-reload guard only skips a blob: oldSrc.
+ * A model's URL is baked into the saved scene at placement time, but what the
+ * asset serves changes afterwards: a splat's streaming .rad variant is produced
+ * async in the cloud AFTER upload, and a GLB's optimized variant changes every
+ * time the owner presses Reoptimize or Remove optimized. Here every entity
+ * with an asset identity (data-asset-id + data-asset-owner-uid) is repointed
+ * at the doc's served URL (optimizedSourceUrl ?? storageUrl), so existing
+ * scenes pick up the current variant instead of the one saved months ago.
+ * Assets are public-read so anonymous viewers can fetch too. A real swap
+ * reloads the model (desired); an unchanged URL is a no-op.
  *
  * Fire-and-forget: deliberately not awaited so it never blocks entity creation.
  */
-async function resolveSplatAssetUrls(containerEl) {
+async function resolveCloudAssetUrls(containerEl) {
   const root = containerEl || document;
-  const splatEls = root.querySelectorAll(
-    '[splat][data-asset-id][data-asset-owner-uid]'
+  const els = root.querySelectorAll(
+    '[splat][data-asset-id][data-asset-owner-uid], ' +
+      '[gltf-model][data-asset-id][data-asset-owner-uid]'
   );
-  if (!splatEls.length) return;
+  if (!els.length) return;
 
   const { assetsService, getServedUrl } = await import('@shared/assets');
-  for (const el of splatEls) {
+  for (const el of els) {
     const assetId = el.getAttribute('data-asset-id');
     const ownerUid = el.getAttribute('data-asset-owner-uid');
     try {
       const asset = await assetsService.getAsset(assetId, ownerUid);
       // getAsset returns soft-deleted docs (deleted:true) whose Storage object
       // may already be GC-purged. Re-resolving to that now-404 URL would clobber
-      // a src the splat could otherwise still render from cache, so skip it.
+      // a src the entity could otherwise still render from cache, so skip it.
       if (asset?.deleted) continue;
       const servedUrl = getServedUrl(asset);
       if (!servedUrl) continue;
-      const currentSrc = el.getAttribute('splat')?.src;
-      if (servedUrl !== currentSrc) {
-        console.log(
-          `[splat] re-resolved asset ${assetId} to served URL:`,
-          servedUrl
+      if (el.hasAttribute('splat')) {
+        const currentSrc = el.getAttribute('splat')?.src;
+        if (servedUrl !== currentSrc) {
+          console.log(
+            `[splat] re-resolved asset ${assetId} to served URL:`,
+            servedUrl
+          );
+          el.setAttribute('splat', 'src', servedUrl);
+        }
+      } else {
+        // The `model` property type parses `url(...)` away, but be tolerant
+        // of a raw string in case the attribute was set before init.
+        const currentSrc = String(el.getAttribute('gltf-model') || '').replace(
+          /^url\(|\)$/g,
+          ''
         );
-        el.setAttribute('splat', 'src', servedUrl);
+        if (servedUrl !== currentSrc) {
+          console.log(
+            `[gltf-model] re-resolved asset ${assetId} to served URL:`,
+            servedUrl
+          );
+          el.setAttribute('gltf-model', `url(${servedUrl})`);
+        }
       }
     } catch (err) {
-      console.warn(`[splat] could not re-resolve asset ${assetId}:`, err);
+      console.warn(`[asset] could not re-resolve asset ${assetId}:`, err);
     }
   }
 }
-STREET.utils.resolveSplatAssetUrls = resolveSplatAssetUrls;
+STREET.utils.resolveCloudAssetUrls = resolveCloudAssetUrls;

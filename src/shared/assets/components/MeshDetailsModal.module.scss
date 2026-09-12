@@ -340,6 +340,30 @@
   }
 }
 
+// Text button with the icon-button chrome, for a non-primary action that
+// still needs a label ("Copy to my library").
+.secondaryButton {
+  padding: 8px 12px;
+  background: transparent;
+  color: variables.$lightgray-200;
+  border: 1px solid variables.$darkgray-500;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: variables.$darkgray-500;
+    color: variables.$lightgray-100;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
 .primaryButton {
   margin-left: auto;
   padding: 8px 16px;

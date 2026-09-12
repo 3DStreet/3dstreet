@@ -10,6 +10,7 @@ export {
   uploadCapturedThumbnail
 } from './captureThumbnail.js';
 export { optimizeGlb } from './optimizeGlb.js';
+export { copyAssetToLibrary } from './copyAsset.js';
 export {
   reoptimizeAsset,
   removeOptimizedVariant,

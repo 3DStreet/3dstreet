@@ -152,6 +152,10 @@ const MeshDetailsModal = ({
   );
   // Outcome of the "Remove optimized" action; local because it is instant.
   const [removeStatus, setRemoveStatus] = useState(null);
+  // "Copy to my library" (non-owners): { stage } while running, then
+  // { text, error? }. Local: the upload itself shows in the gallery's pending
+  // card via currentUploadStore, so nothing is lost if the modal closes.
+  const [copyStatus, setCopyStatus] = useState(null);
   const t = useSharedMessages();
 
   const [name, setName] = useState('');
@@ -606,6 +610,46 @@ const MeshDetailsModal = ({
     }
   };
 
+  // Non-owner path to the same outcome as Reoptimize: make an own copy of
+  // the original through the normal upload pipeline. GLB only (see
+  // copyAsset.js). Signed-out viewers do not get the button.
+  const canCopyToLibrary =
+    !isOwner &&
+    !!auth.currentUser &&
+    !loading &&
+    !!data &&
+    data.type !== 'splat' &&
+    !data.deleted;
+  const onCopyToLibrary = async () => {
+    if (!canCopyToLibrary || copyStatus?.stage) return;
+    setCopyStatus({ stage: 'downloading' });
+    try {
+      const { copyAssetToLibrary } = await import('@shared/asset-upload');
+      const result = await copyAssetToLibrary(data, {
+        onStatus: (stage) => setCopyStatus({ stage })
+      });
+      if (result.ok) {
+        setCopyStatus({ text: t('copyToLibraryDone') });
+      } else if (result.cancelled) {
+        setCopyStatus(null);
+      } else {
+        setCopyStatus({
+          error: true,
+          text: result.error || t('copyToLibraryFailed')
+        });
+      }
+    } catch (err) {
+      console.error('[MeshDetailsModal] copy to library failed', err);
+      setCopyStatus({
+        error: true,
+        text: err.message || t('copyToLibraryFailed')
+      });
+    }
+  };
+  const copyStatusText = copyStatus?.stage
+    ? t('copyToLibraryCopying')
+    : (copyStatus?.text ?? null);
+
   // Inline "re-run the pipeline" control, rendered inside the Size row next
   // to whatever that row says about the current optimization. Owner-only and
   // GLB-only (splats are transcoded server-side by the RAD job instead), and
@@ -939,9 +983,32 @@ const MeshDetailsModal = ({
             </div>
 
             {error && <div className={styles.error}>{error}</div>}
+            {copyStatusText && (
+              <div
+                className={
+                  copyStatus?.error
+                    ? styles.reoptimizeStatusError
+                    : styles.reoptimizeStatus
+                }
+              >
+                {copyStatusText}
+              </div>
+            )}
 
             <Tooltip.Provider>
               <div className={styles.controlButtons}>
+                {canCopyToLibrary && (
+                  <IconTooltip label={t('copyToLibraryHint')}>
+                    <button
+                      type="button"
+                      onClick={onCopyToLibrary}
+                      disabled={!!copyStatus?.stage}
+                      className={styles.secondaryButton}
+                    >
+                      {t('copyToLibrary')}
+                    </button>
+                  </IconTooltip>
+                )}
                 {isOwner &&
                   !loading &&
                   (data?.deleted ? (

@@ -1099,6 +1099,41 @@ const SHARED_MESSAGES = {
     es: 'No se pudo eliminar la versión optimizada',
     'pt-BR': 'Não foi possível remover a versão otimizada',
     fr: 'Impossible de retirer la version optimisée'
+  },
+
+  // "Copy to my library" on another user's asset in the mesh details modal
+  // (shared/asset-upload/copyAsset.js): downloads the original and uploads
+  // it as the viewer's own asset, so they can optimize and keep it.
+  copyToLibrary: {
+    en: 'Copy to my library',
+    es: 'Copiar a mi biblioteca',
+    'pt-BR': 'Copiar para minha biblioteca',
+    fr: 'Copier dans ma bibliothèque'
+  },
+  copyToLibraryHint: {
+    en: 'Makes your own copy: it uses your storage, gets optimized on upload, and stays even if the owner removes theirs.',
+    es: 'Crea tu propia copia: usa tu almacenamiento, se optimiza al subir y se conserva aunque el propietario elimine la suya.',
+    'pt-BR':
+      'Cria sua própria cópia: usa seu armazenamento, é otimizada no envio e permanece mesmo se o dono remover a dele.',
+    fr: "Crée votre propre copie : elle utilise votre stockage, est optimisée à l'envoi et reste même si le propriétaire supprime la sienne."
+  },
+  copyToLibraryCopying: {
+    en: 'Copying to your library…',
+    es: 'Copiando a tu biblioteca…',
+    'pt-BR': 'Copiando para sua biblioteca…',
+    fr: 'Copie dans votre bibliothèque…'
+  },
+  copyToLibraryDone: {
+    en: 'Copied to your library. Find it in your assets.',
+    es: 'Copiado a tu biblioteca. Lo encontrarás en tus recursos.',
+    'pt-BR': 'Copiado para sua biblioteca. Veja em seus recursos.',
+    fr: 'Copié dans votre bibliothèque. Retrouvez-le dans vos ressources.'
+  },
+  copyToLibraryFailed: {
+    en: 'Could not copy this asset',
+    es: 'No se pudo copiar este recurso',
+    'pt-BR': 'Não foi possível copiar este recurso',
+    fr: 'Impossible de copier cette ressource'
   }
 };
 
