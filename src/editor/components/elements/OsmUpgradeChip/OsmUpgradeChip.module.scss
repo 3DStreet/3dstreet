@@ -50,6 +50,10 @@
   border-radius: 999px;
   padding: 6px 14px;
   font-size: 13px;
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
   cursor: pointer;
   white-space: nowrap;
 

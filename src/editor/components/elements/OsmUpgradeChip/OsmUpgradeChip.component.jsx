@@ -25,6 +25,16 @@ const streetsComponent = () =>
 // back to the class rules.
 const GENERATE_GRACE_MS = 1500;
 
+// User-facing copy per osm-streets `lastUpgradeOutcome.reason`.
+const BLOCKED_COPY = {
+  'no-way': 'No OpenStreetMap road found here.',
+  'already-generated': 'This road already has a generated street.',
+  'too-short': 'This stretch is too short to generate a street (under 20 m).',
+  'no-piece-long-enough':
+    'Every piece between junctions here is under 20 m, so there is nothing to generate. Roundabouts and dense junction clusters are not supported yet.',
+  error: 'Generating the street failed. See the console for details.'
+};
+
 const withTimeout = (promise, ms) =>
   Promise.race([
     promise,
@@ -36,6 +46,8 @@ export const OsmUpgradeChip = () => {
   const setOsmWayCandidate = useStore((state) => state.setOsmWayCandidate);
   // 'loading' | 'ready' | 'none'
   const [detail, setDetail] = useState({ status: 'loading', text: '' });
+  // Why a click here can't generate (copy), or null when it can.
+  const [blocked, setBlocked] = useState(null);
 
   // A candidate outlives the layer it was probed from when the map type
   // changes or a new scene loads (the store isn't scene-scoped): drop it
@@ -63,6 +75,8 @@ export const OsmUpgradeChip = () => {
       return undefined;
     }
     comp.highlightWayAt(candidate.worldPoint);
+    const plan = comp.upgradePlanAt(candidate.worldPoint);
+    setBlocked(plan.reason === 'ok' ? null : BLOCKED_COPY[plan.reason]);
     let live = true;
     setDetail({ status: 'loading', text: '' });
     comp.hydrateWayAt(candidate.worldPoint).then((result) => {
@@ -94,6 +108,13 @@ export const OsmUpgradeChip = () => {
     const created = comp.upgradeWayAt(candidate.worldPoint, {
       tags: hydrated?.tags || null
     });
+    if (created === 0) {
+      const reason = comp.lastUpgradeOutcome?.reason;
+      window.STREET?.notify?.errorMessage?.(
+        BLOCKED_COPY[reason] || BLOCKED_COPY.error
+      );
+      return;
+    }
     if (created > 0) {
       const from = hydrated?.facts?.name ? hydrated.facts.name : `OSM ${label}`;
       window.STREET?.notify?.successMessage?.(
@@ -105,11 +126,12 @@ export const OsmUpgradeChip = () => {
   };
 
   const detailText =
-    detail.status === 'loading'
+    blocked ||
+    (detail.status === 'loading'
       ? 'Looking up OSM details…'
       : detail.status === 'ready'
         ? detail.text
-        : `No OSM detail here, using ${label} defaults`;
+        : `No OSM detail here, using ${label} defaults`);
 
   return (
     <div className={`clickable ${styles.chip}`}>
@@ -124,7 +146,12 @@ export const OsmUpgradeChip = () => {
           {detailText}
         </span>
       </div>
-      <button className={styles.generate} onClick={generate}>
+      <button
+        className={styles.generate}
+        onClick={generate}
+        disabled={!!blocked}
+        title={blocked || undefined}
+      >
         Generate Street
       </button>
       <button

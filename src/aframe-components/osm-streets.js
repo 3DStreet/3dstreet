@@ -477,8 +477,43 @@ AFRAME.registerComponent('osm-streets', {
     { maxDistM = DEFAULT_PICK_DISTANCE_M, tags = null } = {}
   ) {
     const hit = this.wayAtPoint(worldPoint, maxDistM);
-    if (!hit || hit.alreadyUpgraded) return 0;
+    if (!hit) {
+      this.lastUpgradeOutcome = { reason: 'no-way' };
+      return 0;
+    }
+    if (hit.alreadyUpgraded) {
+      this.lastUpgradeOutcome = { reason: 'already-generated' };
+      return 0;
+    }
     return this.upgradeWay(hit.way, this.toLocalGround(worldPoint), tags);
+  },
+
+  /**
+   * Why the last `upgradeWayAt` / `upgradeWay` created nothing, or
+   * `{ reason: 'ok', created }`. Reasons: 'no-way', 'already-generated',
+   * 'too-short' (the clicked stretch is under the generate minimum),
+   * 'no-piece-long-enough' (every piece between junctions is under the
+   * minimum — roundabouts, dense junction clusters), 'error' (the
+   * command stack threw; `error` carries it). UI turns these into copy.
+   */
+  lastUpgradeOutcome: null,
+
+  /**
+   * Dry-run of `upgradeWayAt`: the same checks, no entities created.
+   * Lets the chip say up front that a click here can't generate.
+   */
+  upgradePlanAt: function (worldPoint, maxDistM = DEFAULT_PICK_DISTANCE_M) {
+    const hit = this.wayAtPoint(worldPoint, maxDistM);
+    if (!hit) return { reason: 'no-way' };
+    if (hit.alreadyUpgraded) return { reason: 'already-generated' };
+    const stretch = this.stretchToUpgrade(
+      hit.way,
+      this.toLocalGround(worldPoint)
+    );
+    if (!stretch) return { reason: 'too-short' };
+    const { pieces } = this.planUpgrade(hit.way, stretch);
+    if (pieces.length === 0) return { reason: 'no-piece-long-enough' };
+    return { reason: 'ok', pieces: pieces.length };
   },
 
   /**
@@ -545,11 +580,22 @@ AFRAME.registerComponent('osm-streets', {
    *   `loaded` events; the count is known synchronously.
    */
   upgradeWay: function (way, nearPoint = null, tags = null) {
-    if (this.isWayUpgraded(way.wayId)) return 0;
+    if (this.isWayUpgraded(way.wayId)) {
+      this.lastUpgradeOutcome = { reason: 'already-generated' };
+      return 0;
+    }
     const stretch = this.stretchToUpgrade(way, nearPoint);
-    if (!stretch) return 0;
+    if (!stretch) {
+      this.lastUpgradeOutcome = { reason: 'too-short' };
+      return 0;
+    }
     const { pieces, junctions } = this.planUpgrade(way, stretch);
-    if (pieces.length === 0) return 0; // all pieces below minimum
+    if (pieces.length === 0) {
+      // Every piece between junctions is under the minimum: a roundabout
+      // ring, a dense junction cluster.
+      this.lastUpgradeOutcome = { reason: 'no-piece-long-enough' };
+      return 0;
+    }
 
     this.clearHighlight();
     const commands = [];
@@ -572,7 +618,14 @@ AFRAME.registerComponent('osm-streets', {
         commands.push(this.intersectionCommand(junction));
       }
     }
-    this.executeCommands(commands);
+    try {
+      this.executeCommands(commands);
+    } catch (error) {
+      console.error('osm-streets: generate failed', error);
+      this.lastUpgradeOutcome = { reason: 'error', error };
+      return 0;
+    }
+    this.lastUpgradeOutcome = { reason: 'ok', created: pieces.length };
     return pieces.length;
   },
 
