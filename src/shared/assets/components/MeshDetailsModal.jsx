@@ -31,13 +31,17 @@ import {
 import { getCopyRun, startCopyRun, subscribeCopyRuns } from '../copyRuns.js';
 import styles from './MeshDetailsModal.module.scss';
 
-// User-editable attribution fields. `title` deliberately is NOT here — the
-// asset doc's `name` (Display name) is the single source of truth for the
-// model title. sourceName / generator are diagnostic, surfaced read-only.
+// RAD transcode job statuses, mapped to their shared-message ids.
+const JOB_STATUS_MESSAGE = {
+  queued: 'meshJobQueued',
+  running: 'meshJobRunning',
+  saving: 'meshJobSaving'
+};
+
 // Stages reported by reoptimizeAsset(), mapped to their shared-message ids
 // so the button can say what it is doing in the user's language.
 const REOPTIMIZE_STAGE_MESSAGE = {
-  downloading: 'reoptimizeDownloading',
+  downloading: 'reoptimizePreparing',
   optimizing: 'reoptimizeOptimizing',
   uploading: 'reoptimizeUploading'
 };
@@ -59,13 +63,16 @@ const REOPTIMIZE_PIPELINE_FAILURES = new Set(['timeout', 'worker_error']);
 // Stages reported by copyAssetToLibrary (its own 'downloading', then
 // uploadAsset's), mapped to shared-message ids for the operation indicator.
 const COPY_STAGE_MESSAGE = {
-  downloading: 'copyStageDownloading',
-  validating: 'copyStageDownloading',
+  downloading: 'copyStagePreparing',
+  validating: 'copyStagePreparing',
   optimizing: 'copyStageOptimizing',
   uploading: 'copyStageUploading',
   thumbnailing: 'copyStageFinishing'
 };
 
+// User-editable attribution fields. `title` deliberately is NOT here — the
+// asset doc's `name` (Display name) is the single source of truth for the
+// model title. sourceName / generator are diagnostic, surfaced read-only.
 const ATTRIBUTION_FIELDS = ['author', 'license', 'source'];
 
 const EMPTY_ATTRIBUTION = {
@@ -409,7 +416,7 @@ const MeshDetailsModal = ({
       setEditingAttribution(false);
     } catch (err) {
       console.error('[MeshDetailsModal] save failed', err);
-      setError(err.message || 'Save failed');
+      setError(err.message || t('meshSaveFailed'));
     } finally {
       setSaving(false);
     }
@@ -440,7 +447,8 @@ const MeshDetailsModal = ({
 
   const onDelete = async () => {
     if (!isOwner || !data) return;
-    if (!window.confirm(`Delete "${savedName || data.originalFilename}"?`)) {
+    const label = savedName || data.originalFilename;
+    if (!window.confirm(t('meshDeleteConfirm', { name: label }))) {
       return;
     }
     try {
@@ -448,7 +456,7 @@ const MeshDetailsModal = ({
       onClose();
     } catch (err) {
       console.error('[MeshDetailsModal] delete failed', err);
-      setError(err.message || 'Delete failed');
+      setError(err.message || t('meshDeleteFailed'));
     }
   };
 
@@ -468,7 +476,11 @@ const MeshDetailsModal = ({
           const limitMb = Math.round((quota.planLimit || 0) / 1000 / 1000);
           const restoreMb = (proposedBytes / 1000 / 1000).toFixed(1);
           setError(
-            `Not enough storage to restore (${restoreMb} MB needed; ${usedMb} / ${limitMb} MB used). Delete other assets or upgrade.`
+            t('meshRestoreQuota', {
+              needed: restoreMb,
+              used: usedMb,
+              limit: limitMb
+            })
           );
           return;
         }
@@ -487,7 +499,7 @@ const MeshDetailsModal = ({
       setData((prev) => (prev ? { ...prev, deleted: false } : prev));
     } catch (err) {
       console.error('[MeshDetailsModal] restore failed', err);
-      setError(err.message || 'Restore failed');
+      setError(err.message || t('meshRestoreFailed'));
     }
   };
 
@@ -516,9 +528,7 @@ const MeshDetailsModal = ({
     thumbUploadedRef.current = null;
     const result = uploadLiveCanvasThumbnail();
     if (result !== 'ok') {
-      setError(
-        'Could not capture the current view — wait for the splat to finish rendering, then try again.'
-      );
+      setError(t('meshCaptureFailed'));
       return;
     }
     setThumbCaptured(true);
@@ -736,17 +746,23 @@ const MeshDetailsModal = ({
   const optimizationLabel = hasOptimizedVariant
     ? isSplat
       ? KNOWN_FORMATS.rad
-      : 'Optimized variant ready'
+      : t('meshOptimizedReady')
     : activeOptimizeJob
-      ? `Optimizing… (${activeOptimizeJob.status})`
+      ? t('meshOptimizingJob', {
+          // Unknown statuses fall through untranslated rather than render a
+          // message id — the job's own vocabulary can outgrow this map.
+          status: JOB_STATUS_MESSAGE[activeOptimizeJob.status]
+            ? t(JOB_STATUS_MESSAGE[activeOptimizeJob.status])
+            : activeOptimizeJob.status
+        })
       : null;
 
   // Canonical "{Type} · {Source}" title — matches the gallery card overlay
   // and the image/video modal. The source label is the editable display name,
   // so the live `savedName` takes precedence over `data.name` (which only
   // refreshes after the doc reloads).
-  const title = `${isSplat ? 'Splat' : 'Model'} · ${
-    savedName || data?.name || data?.originalFilename || 'Untitled'
+  const title = `${isSplat ? t('meshTypeSplat') : t('meshTypeModel')} · ${
+    savedName || data?.name || data?.originalFilename || t('meshUntitled')
   }`;
   const showNav = onNavigate && totalItems > 1;
   const hasPrev = showNav && currentIndex > 0;
@@ -762,8 +778,8 @@ const MeshDetailsModal = ({
             e.stopPropagation();
             onNavigate('prev');
           }}
-          title="Previous (←)"
-          aria-label="Previous item"
+          title={`${t('meshPreviousItem')} (←)`}
+          aria-label={t('meshPreviousItem')}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -788,8 +804,8 @@ const MeshDetailsModal = ({
             e.stopPropagation();
             onNavigate('next');
           }}
-          title="Next (→)"
-          aria-label="Next item"
+          title={`${t('meshNextItem')} (→)`}
+          aria-label={t('meshNextItem')}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -831,7 +847,7 @@ const MeshDetailsModal = ({
             type="button"
             className={styles.closeBtn}
             onClick={handleClose}
-            aria-label="Close"
+            aria-label={t('close')}
           >
             <Cross24Icon />
           </button>
@@ -841,14 +857,16 @@ const MeshDetailsModal = ({
           <div className={styles.viewerArea}>
             {!loading && !data && (
               <div className={`${styles.placeholder} ${styles.error}`}>
-                Asset not available
+                {t('meshNotAvailable')}
               </div>
             )}
             {data && (
               <iframe
                 ref={iframeRef}
                 className={styles.viewerFrame}
-                title={savedName || data.originalFilename || '3D model'}
+                title={
+                  savedName || data.originalFilename || t('meshViewerTitle')
+                }
                 // Don't put the editable name in the iframe URL — the src
                 // string drives the iframe's load; baking savedName in
                 // would cause the viewer to reload on every Save name
@@ -861,16 +879,13 @@ const MeshDetailsModal = ({
           <div className={styles.sidebar}>
             {data?.deleted && (
               <div className={styles.deletedBanner} role="alert">
-                <strong>Marked for deletion</strong>
-                <span>
-                  This model will be permanently purged on the next cleanup
-                  pass. Restore it to keep using it in your scenes.
-                </span>
+                <strong>{t('meshDeletedTitle')}</strong>
+                <span>{t('meshDeletedBody')}</span>
               </div>
             )}
             <div className={styles.field}>
               <label className={styles.fieldLabel} htmlFor="meshAssetName">
-                Display name
+                {t('meshDisplayName')}
               </label>
               <input
                 id="meshAssetName"
@@ -901,17 +916,17 @@ const MeshDetailsModal = ({
                 disabled={saving}
                 className={styles.saveNameBtn}
               >
-                {saving ? 'Saving…' : 'Save changes'}
+                {saving ? t('meshSaving') : t('meshSaveChanges')}
               </button>
             )}
 
             <div className={styles.metaList}>
               <div>
-                <span className={styles.metaLabel}>File:</span>
+                <span className={styles.metaLabel}>{t('meshFieldFile')}</span>
                 {data?.originalFilename || '—'}
               </div>
               <div>
-                <span className={styles.metaLabel}>Size:</span>
+                <span className={styles.metaLabel}>{t('meshFieldSize')}</span>
                 {(() => {
                   const opt = getOptimizationDisplay(data);
                   // The re-run affordance lives in this row because this row
@@ -964,25 +979,31 @@ const MeshDetailsModal = ({
               )}
               {optimizationLabel && (
                 <div>
-                  <span className={styles.metaLabel}>Optimization:</span>
+                  <span className={styles.metaLabel}>
+                    {t('meshFieldOptimization')}
+                  </span>
                   {optimizationLabel}
                 </div>
               )}
               <div>
-                <span className={styles.metaLabel}>Format:</span>
+                <span className={styles.metaLabel}>{t('meshFieldFormat')}</span>
                 {formatLabel}
               </div>
               <div>
-                <span className={styles.metaLabel}>Uploaded:</span>
+                <span className={styles.metaLabel}>
+                  {t('meshFieldUploaded')}
+                </span>
                 {formatDate(data?.uploadedAt || data?.createdAt)}
               </div>
               <div>
-                <span className={styles.metaLabel}>Asset ID:</span>
+                <span className={styles.metaLabel}>
+                  {t('meshFieldAssetId')}
+                </span>
                 {assetId}
               </div>
               <div>
-                <span className={styles.metaLabel}>Owner:</span>
-                {isOwner ? 'you' : 'another user'}
+                <span className={styles.metaLabel}>{t('meshFieldOwner')}</span>
+                {isOwner ? t('meshOwnerYou') : t('meshOwnerOther')}
               </div>
             </div>
 
@@ -1029,13 +1050,13 @@ const MeshDetailsModal = ({
                 {isOwner &&
                   !loading &&
                   (data?.deleted ? (
-                    <IconTooltip label="Restore">
+                    <IconTooltip label={t('meshRestore')}>
                       <button
                         type="button"
                         onClick={onRestore}
                         disabled={!data}
                         className={`${styles.iconButton} ${styles.restoreBtn}`}
-                        aria-label="Restore"
+                        aria-label={t('meshRestore')}
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -1054,13 +1075,13 @@ const MeshDetailsModal = ({
                       </button>
                     </IconTooltip>
                   ) : (
-                    <IconTooltip label="Delete">
+                    <IconTooltip label={t('meshDelete')}>
                       <button
                         type="button"
                         onClick={onDelete}
                         disabled={!data}
                         className={`${styles.iconButton} ${styles.deleteBtn}`}
-                        aria-label="Delete"
+                        aria-label={t('meshDelete')}
                       >
                         <TrashIcon />
                       </button>
@@ -1070,8 +1091,8 @@ const MeshDetailsModal = ({
                   <IconTooltip
                     label={
                       thumbCaptured
-                        ? 'Thumbnail updated'
-                        : 'Set thumbnail from current view'
+                        ? t('meshThumbnailUpdated')
+                        : t('meshSetThumbnail')
                     }
                   >
                     <button
@@ -1079,7 +1100,7 @@ const MeshDetailsModal = ({
                       onClick={onRegenerateThumbnail}
                       disabled={!data}
                       className={styles.iconButton}
-                      aria-label="Set thumbnail from current view"
+                      aria-label={t('meshSetThumbnail')}
                     >
                       {thumbCaptured ? (
                         // Brief confirmation: checkmark
@@ -1124,7 +1145,7 @@ const MeshDetailsModal = ({
                     >
                       <DownloadIcon />
                       <span className={styles.downloadBtnLabel}>
-                        Download Original
+                        {t('meshDownloadOriginal')}
                       </span>
                     </button>
                     <button
@@ -1135,18 +1156,18 @@ const MeshDetailsModal = ({
                     >
                       <DownloadIcon />
                       <span className={styles.downloadBtnLabel}>
-                        Download Optimized
+                        {t('meshDownloadOptimized')}
                       </span>
                     </button>
                   </>
                 ) : (
-                  <IconTooltip label="Download">
+                  <IconTooltip label={t('meshDownload')}>
                     <button
                       type="button"
                       onClick={onDownloadOriginal}
                       disabled={!data}
                       className={styles.iconButton}
-                      aria-label="Download"
+                      aria-label={t('meshDownload')}
                     >
                       <DownloadIcon />
                     </button>
@@ -1159,7 +1180,7 @@ const MeshDetailsModal = ({
                     disabled={!data}
                     className={styles.primaryButton}
                   >
-                    Place in scene
+                    {t('meshPlaceInScene')}
                   </button>
                 )}
               </div>
@@ -1186,6 +1207,7 @@ const AttributionBlock = ({
   isOwner,
   disabled
 }) => {
+  const t = useSharedMessages();
   const composed = composeAttributionString(attribution);
   const hasAnything =
     composed ||
@@ -1197,7 +1219,7 @@ const AttributionBlock = ({
     return (
       <div className={styles.attributionGroup}>
         <div className={styles.attributionHeader}>
-          <span>Attribution</span>
+          <span>{t('meshAttribution')}</span>
           {isOwner && (
             <button
               type="button"
@@ -1205,7 +1227,7 @@ const AttributionBlock = ({
               onClick={onEnterEdit}
               disabled={disabled}
             >
-              Edit
+              {t('meshEdit')}
             </button>
           )}
         </div>
@@ -1213,8 +1235,8 @@ const AttributionBlock = ({
           <AttributionView attribution={attribution} composed={composed} />
         ) : (
           <div className={styles.attributionEmpty}>
-            No attribution info.
-            {isOwner && ' Click Edit to add one.'}
+            {t('meshNoAttribution')}
+            {isOwner && ` ${t('meshNoAttributionHint')}`}
           </div>
         )}
       </div>
@@ -1227,20 +1249,20 @@ const AttributionBlock = ({
   return (
     <div className={styles.attributionGroup}>
       <div className={styles.attributionHeader}>
-        <span>Attribution</span>
+        <span>{t('meshAttribution')}</span>
         <button
           type="button"
           className={styles.attributionEditBtn}
           onClick={onCancel}
           disabled={disabled}
         >
-          Cancel
+          {t('cancel')}
         </button>
       </div>
       <div className={styles.attributionFields}>
         <div className={styles.field}>
           <label className={styles.fieldLabel} htmlFor="meshAttrAuthor">
-            Author
+            {t('meshAuthor')}
           </label>
           <input
             id="meshAttrAuthor"
@@ -1254,7 +1276,7 @@ const AttributionBlock = ({
         </div>
         <div className={styles.field}>
           <label className={styles.fieldLabel} htmlFor="meshAttrLicense">
-            License
+            {t('meshLicense')}
           </label>
           <input
             id="meshAttrLicense"
@@ -1264,12 +1286,12 @@ const AttributionBlock = ({
             onChange={setField('license')}
             onKeyDown={onFieldKeyDown}
             disabled={disabled}
-            placeholder="e.g. CC-BY-4.0"
+            placeholder={t('meshLicensePlaceholder')}
           />
         </div>
         <div className={styles.field}>
           <label className={styles.fieldLabel} htmlFor="meshAttrSource">
-            Source URL
+            {t('meshSourceUrl')}
           </label>
           <input
             id="meshAttrSource"
@@ -1290,13 +1312,15 @@ const AttributionBlock = ({
         <div className={styles.attributionContext}>
           {attribution.sourceName && (
             <span>
-              <span className={styles.metaLabel}>Source:</span>
+              <span className={styles.metaLabel}>{t('meshFieldSource')}</span>
               {attribution.sourceName}
             </span>
           )}
           {attribution.generator && (
             <span>
-              <span className={styles.metaLabel}>Generator:</span>
+              <span className={styles.metaLabel}>
+                {t('meshFieldGenerator')}
+              </span>
               {attribution.generator}
             </span>
           )}
@@ -1337,8 +1361,11 @@ const safeHref = (url) => {
 };
 
 const AttributionView = ({ attribution, composed }) => {
+  const t = useSharedMessages();
   const { source, sourceName } = attribution;
-  const linkLabel = sourceName ? `View on ${sourceName}` : 'View source';
+  const linkLabel = sourceName
+    ? t('meshViewOn', { source: sourceName })
+    : t('meshViewSource');
   const href = safeHref(source);
   return (
     <div className={styles.attributionView}>

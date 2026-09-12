@@ -128,7 +128,7 @@ describe('MeshDetailsModal — reoptimize across asset navigation', () => {
     });
 
     expect(screen.queryByText(/Reoptimized/i)).toBeNull();
-    expect(screen.queryByText(/Downloading|Optimizing|Uploading/i)).toBeNull();
+    expect(screen.queryByText(/Preparing|Optimizing|Uploading/i)).toBeNull();
     // B's Size row still shows B's own size, with no optimized variant —
     // A's result must not have been merged into the displayed doc.
     const sizeRow = screen.getByText('Size:').parentElement;
@@ -187,7 +187,7 @@ describe('MeshDetailsModal — reoptimize across asset navigation', () => {
     await act(async () => {
       reoptimizeCalls[0].opts.onStatus('downloading');
     });
-    expect(screen.getByText(/Downloading/i)).toBeTruthy();
+    expect(screen.getByText(/Preparing/i)).toBeTruthy();
 
     await act(async () => {
       rerender(
@@ -198,7 +198,7 @@ describe('MeshDetailsModal — reoptimize across asset navigation', () => {
         />
       );
     });
-    expect(screen.queryByText(/Downloading/i)).toBeNull();
+    expect(screen.queryByText(/Preparing/i)).toBeNull();
 
     // A stage reported after the switch belongs to A, so it must not appear
     // while B is on screen.
