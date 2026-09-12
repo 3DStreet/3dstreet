@@ -51,6 +51,7 @@
     "@gltf-transform/functions": "^4.3.0",
     "@img-comparison-slider/react": "^8.0.2",
     "@mapbox/vector-tile": "^3.0.0",
+    "@needle-tools/gltf-progressive": "3.6.1",
     "@react-google-maps/api": "^2.20.8",
     "@sentry/react": "^10.40.0",
     "@sparkjsdev/spark": "^2.1.0",
