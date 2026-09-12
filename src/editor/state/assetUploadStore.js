@@ -4,7 +4,11 @@
  * Two slices:
  *   uploads — keyed by entity.id, holds in-flight upload state for an entity:
  *               { status, progress, sizeBytes, originalFilename }
- *             Status values: 'uploading' | 'optimizing' | 'failed' | 'local'.
+ *             Status values: the in-flight stages 'validating' |
+ *             'optimizing' | 'uploading' | 'finishing' (labelled by
+ *             shared/assets/uploadStageLabels.js, in step with
+ *             currentUploadStore), plus the entity-only outcomes 'failed' |
+ *             'local' | 'local_error'.
  *             Once an upload succeeds the entity gets data-asset-id +
  *             data-asset-owner-uid attrs and the in-flight slot can be cleared
  *             (the hook reads metadata from the assets cache instead).

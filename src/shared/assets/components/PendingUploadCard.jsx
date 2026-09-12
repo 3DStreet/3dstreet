@@ -11,10 +11,11 @@
 import { useCurrentUploadStore } from '@shared/assets';
 import { formatBytes } from '../utils.js';
 import { useSharedMessages } from '@shared/i18n/sharedMessages.js';
-import { getUploadStageLabel } from '../uploadStageLabels.js';
+import {
+  CANCELLABLE_UPLOAD_STAGES,
+  getUploadStageLabel
+} from '../uploadStageLabels.js';
 import styles from './Assets.module.scss';
-
-const CANCELLABLE_STATUSES = new Set(['validating', 'optimizing', 'uploading']);
 
 const PendingUploadCard = () => {
   const upload = useCurrentUploadStore((s) => s.upload);
@@ -52,7 +53,7 @@ const PendingUploadCard = () => {
             {formatBytes(upload.sizeBytes)}
           </div>
         )}
-        {CANCELLABLE_STATUSES.has(upload.status) && (
+        {CANCELLABLE_UPLOAD_STAGES.has(upload.status) && (
           <button
             type="button"
             className={styles.pendingCancelBtn}

@@ -25,6 +25,19 @@ export const UPLOAD_STAGE_MESSAGE_IDS = {
   finishing: 'uploadStageFinishing'
 };
 
+/**
+ * Stages during which the user may still cancel: the AbortSignal from
+ * currentUploadStore is honoured by the optimizer and the Storage upload.
+ * Once the asset doc exists (thumbnailing / finishing) there is nothing
+ * left to abort. Single source for the pending card's Cancel button and the
+ * editor properties panel's.
+ */
+export const CANCELLABLE_UPLOAD_STAGES = new Set([
+  'validating',
+  'optimizing',
+  'uploading'
+]);
+
 export function isUploadStage(status) {
   return Object.prototype.hasOwnProperty.call(UPLOAD_STAGE_MESSAGE_IDS, status);
 }

@@ -5,9 +5,9 @@ import posthog from 'posthog-js';
 import useAssetUploadStatus, {
   STATUS_LABELS,
   REASON_TEXT,
-  CANCELLABLE_STATUSES,
   getStatusText
 } from './useAssetUploadStatus';
+import { CANCELLABLE_UPLOAD_STAGES } from '@shared/assets/uploadStageLabels.js';
 import { useSharedMessages } from '@shared/i18n/sharedMessages.js';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
@@ -105,7 +105,7 @@ const AssetInfoPanel = ({ entity }) => {
         />
         <strong style={{ color: meta.color }}>{getStatusText(t, state)}</strong>
         {detail && <span style={{ opacity: 0.7 }}>· {detail}</span>}
-        {CANCELLABLE_STATUSES.has(state.status) && (
+        {CANCELLABLE_UPLOAD_STAGES.has(state.status) && (
           <button
             type="button"
             onClick={() => useCurrentUploadStore.getState().cancel()}

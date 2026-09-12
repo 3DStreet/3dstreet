@@ -267,6 +267,10 @@ class AssetsServiceV2 {
               err
             );
             optimizedStoragePath = null;
+            // The bar is byte-weighted across both files; count this one
+            // as finished (skipped) so aggregate progress can still reach
+            // 100 on its own rather than stalling at the original's share.
+            reportProgress(1, 100);
             return null;
           })
         );

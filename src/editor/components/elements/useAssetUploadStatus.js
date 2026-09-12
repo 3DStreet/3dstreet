@@ -1,7 +1,10 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { auth } from '@shared/services/firebase.js';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
-import { getUploadStageLabel } from '@shared/assets/uploadStageLabels.js';
+import {
+  CANCELLABLE_UPLOAD_STAGES,
+  getUploadStageLabel
+} from '@shared/assets/uploadStageLabels.js';
 
 // `text` here is the fallback for states the shared stage table does not
 // cover. For in-flight stages use getStatusText() below, which reads the
@@ -40,13 +43,6 @@ export const REASON_TEXT = {
 };
 
 const PERSISTENT_ATTRS = ['data-asset-id', 'data-asset-owner-uid'];
-
-/** In-flight stages that may be cancelled from the properties panel. */
-export const CANCELLABLE_STATUSES = new Set([
-  'validating',
-  'optimizing',
-  'uploading'
-]);
 
 /**
  * User-facing text for a status from useAssetUploadStatus(): the shared
@@ -140,7 +136,7 @@ export default function useAssetUploadStatus(entity) {
 
   // While offline mid-upload, the Firebase SDK silently retries. Surface that
   // so the user doesn't think a frozen "Uploading 42%" means we're stuck.
-  if (!isOnline && CANCELLABLE_STATUSES.has(status)) {
+  if (!isOnline && CANCELLABLE_UPLOAD_STAGES.has(status)) {
     status = 'waiting';
   }
 
