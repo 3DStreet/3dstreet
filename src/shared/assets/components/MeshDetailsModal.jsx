@@ -41,7 +41,7 @@ const JOB_STATUS_MESSAGE = {
 // Stages reported by reoptimizeAsset(), mapped to their shared-message ids
 // so the button can say what it is doing in the user's language.
 const REOPTIMIZE_STAGE_MESSAGE = {
-  downloading: 'reoptimizeDownloading',
+  downloading: 'reoptimizePreparing',
   optimizing: 'reoptimizeOptimizing',
   uploading: 'reoptimizeUploading'
 };
@@ -63,8 +63,8 @@ const REOPTIMIZE_PIPELINE_FAILURES = new Set(['timeout', 'worker_error']);
 // Stages reported by copyAssetToLibrary (its own 'downloading', then
 // uploadAsset's), mapped to shared-message ids for the operation indicator.
 const COPY_STAGE_MESSAGE = {
-  downloading: 'copyStageDownloading',
-  validating: 'copyStageDownloading',
+  downloading: 'copyStagePreparing',
+  validating: 'copyStagePreparing',
   optimizing: 'copyStageOptimizing',
   uploading: 'copyStageUploading',
   thumbnailing: 'copyStageFinishing'

@@ -1014,12 +1014,14 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Otimizar',
     fr: 'Optimiser'
   },
-  // In-place progress on the button itself.
-  reoptimizeDownloading: {
-    en: 'Downloading…',
-    es: 'Descargando…',
-    'pt-BR': 'Baixando…',
-    fr: 'Téléchargement…'
+  // In-place progress on the button itself. The first stage fetches the
+  // original glb, but that is an implementation detail: "Preparing" tells
+  // the user what the step is for, not how it works.
+  reoptimizePreparing: {
+    en: 'Preparing…',
+    es: 'Preparando…',
+    'pt-BR': 'Preparando…',
+    fr: 'Préparation…'
   },
   reoptimizeOptimizing: {
     en: 'Optimizing…',
@@ -1123,11 +1125,11 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Copiando para sua biblioteca…',
     fr: 'Copie dans votre bibliothèque…'
   },
-  copyStageDownloading: {
-    en: 'Downloading the original…',
-    es: 'Descargando el original…',
-    'pt-BR': 'Baixando o original…',
-    fr: "Téléchargement de l'original…"
+  copyStagePreparing: {
+    en: 'Preparing the original…',
+    es: 'Preparando el original…',
+    'pt-BR': 'Preparando o original…',
+    fr: "Préparation de l'original…"
   },
   copyStageOptimizing: {
     en: 'Optimizing your copy…',
