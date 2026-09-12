@@ -8,17 +8,49 @@ lands (or fold what's durable into `docs/agent-context/`).
 
 ## State of work
 
-- **Done (pushed on this branch):** Phase 0 spike scaffolding —
+- **Phase 0 spike: PASSED (2026-09-11, local, Meshy AI building GLB).** Results:
+  - Source `1001SCapitolSt` Meshy export: 76.2 MB, 1.67M tris, 3x 2048 JPEG,
+    no compression. Needle output: optimized (Draco+KTX2) 12.4 MB; progressive
+    initial file **3.7 MB** (mesh LOD2 = 417k tris, 512px textures embedded),
+    with mesh LOD0 (full 1.67M) and 1024/2048 texture LODs streamed on demand.
+  - In the editor via our `gltf-model` loader: progressive `model-loaded` in
+    **869 ms**; on close-up it fetched LOD0 + 2048 textures and refined to the
+    full mesh. The original file took 32.8 s to download and then froze the
+    main thread for >45 s while parsing.
+  - No `Texture is immutable` / WebGL errors across LOD swaps: the library
+    replaces the material's Texture and refcount-disposes the old one, which is
+    the pattern our shared-texture extension requires.
+  - Needle CLI upload+process round trip for 76 MB: ~2 min (upload ~1 min).
+  - Duplicates (x2) loaded fine with their own LOD state; batching was not
+    active in that editor session, so the BatchedMesh interaction is still
+    unverified (Phase 1 excludes progressive URLs from batching regardless).
+- **Needle CLI facts (needle-cloud 3.x):** the command is `optimize`, not
+  `upload`: `npx needle-cloud optimize <file.glb> --token <t> --progressive true
+--name <id>`. The env var `NEEDLE_CLOUD_TOKEN` was read but rejected as
+  "not logged in"; `--token` works. `--usecase world` produced no `-world`
+  variant; only `-product` exists. The CLI prints only the edit URL; get the
+  served URL from `needle-cloud list --token <t> --output json` (`url` field):
+  `https://cloud.needle.tools/-/assets/<viewId>-product/file`, with siblings
+  `<viewId>-optimized/file` (Draco+KTX2) and `<viewId>/file` (original).
+  Served with `access-control-allow-origin: *` and public `cache-control`
+  even though the list shows `is_public: false`.
+- **KTX2 is mandatory:** Needle output uses `KHR_texture_basisu`. A-Frame 1.8
+  configures a default Draco path but no KTX2 transcoder, so without the hook
+  the load fails with "setKTX2Loader must be called before loading KTX2
+  textures". The hook fills the missing KTX2 loader from Needle's CDN
+  (`cdn.needle.tools/static/three/0.179.1/basis2/`), a runtime third-party
+  dependency to decide on in Phase 1 (self-host the transcoder, or set
+  A-Frame's `ktx2TranscoderPath`).
+- **Done (pushed on this branch):** Phase 0 spike scaffolding,
   `@needle-tools/gltf-progressive@3.6.1` (exact pin) plus a flag-gated hook in
   `src/aframe-components/gltf-model.js`. Enable with `?progressive` in the URL or
-  `localStorage.progressiveModels = 'true'`. The library is dynamically imported
-  (module evaluation has side effects: a decoder-reachability fetch, eager
-  DRACO/KTX2 loader construction, a `Needle` global) and webpack code-splits it
-  into a lazy chunk, so the main bundle is unchanged with the flag off.
-  `useNeedleProgressive` only fills decoders the loader is missing, so A-Frame's
-  DRACO/KTX2/meshopt setup wins. Lint + core/modern test suites pass.
-- **Not done:** everything from "Phase 0 — Validation spike" step 1 onward. The
-  spike needs a Needle Cloud account (external credential) and a real browser.
+  `localStorage.progressiveModels = 'true'`; add `&debugprogressive` for the
+  library's LOD logs. The library is dynamically imported (module evaluation
+  has side effects) and webpack code-splits it into a lazy chunk.
+- **Open question raised by the numbers:** the >10 MB threshold may be too
+  high; a ~5 MB cutoff is plausible. Decide after processing a mid-size
+  (5-15 MB) upload and comparing against the client-side Draco+WebP result.
+- **Next:** Phase 1 runtime integration.
 
 ## Decisions already made
 
