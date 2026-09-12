@@ -7,25 +7,27 @@ import InlineEditInput from '../elements/InlineEditInput';
 import { Edit24Icon } from '@shared/icons';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 
+// No 'mesh' entry: 3D-model rows carry a distinct icon (#1999), so the
+// "glTF Model" type prefix would be redundant.
 const ASSET_TYPE_PREFIX_MESSAGES = {
-  mesh: { id: 'entity.assetTypeMesh', defaultMessage: 'glTF Model' },
   image: { id: 'entity.assetTypeImage', defaultMessage: 'Image' },
   video: { id: 'entity.assetTypeVideo', defaultMessage: 'Video' },
   splat: { id: 'entity.assetTypeSplat', defaultMessage: 'Splat' }
 };
 
 /**
- * Renders an entity's icon + display name. For entities backed by a cloud
- * asset (data-asset-id present), the asset `name` is used, prefixed with
- * a human-readable type label (e.g. "glTF Model • truck"). Other entities
- * fall back to the default lookup chain (data-layer-name → class → tag)
- * via getEntityDisplayName.
+ * Renders an entity's icon + display name. A user-set data-layer-name
+ * always wins — it names this one placement (#2000). Without one, entities
+ * backed by a cloud asset (data-asset-id present) show the asset `name`,
+ * prefixed with a human-readable type label for non-mesh types (e.g.
+ * "Image • logo"). Other entities fall back to the default lookup chain
+ * (class → tag) via getEntityDisplayName.
  *
  * With `editable`, hovering the name reveals a pencil and clicking edits it
  * in place: Enter (or blur) commits the rename through the undoable
- * entityupdate command, Escape reverts. Cloud-asset entities are excluded —
- * their displayed name comes from the Firestore asset, so a data-layer-name
- * rename would not be reflected.
+ * entityupdate command, Escape reverts. On an asset-backed entity the
+ * rename writes a per-instance data-layer-name; the shared Firestore asset
+ * keeps its own name.
  *
  * `forceEditing` puts the label into edit mode from the outside (the scene
  * graph's context menu Rename item) without the hover pencil affordance;
@@ -54,20 +56,25 @@ const EntityLabel = ({
   if (!entity) return null;
 
   const icon = getEntityIcon(entity);
+  const layerName = entity.getAttribute('data-layer-name');
   let override = null;
-  if (state?.assetId && state.name) {
+  if (!layerName && state?.assetId && state.name) {
     const prefixMessage = ASSET_TYPE_PREFIX_MESSAGES[state.type];
     const prefix = prefixMessage
       ? intl.formatMessage(prefixMessage)
       : undefined;
     override = prefix ? `${prefix} • ${state.name}` : state.name;
   }
-  const displayName = override || getEntityDisplayName(entity);
-  const canEdit = (editable || forceEditing) && !override;
+  const displayName = layerName || override || getEntityDisplayName(entity);
+  // What the rename input opens with: the bare instance/asset name, never
+  // the type-prefixed label — committing it unchanged writes nothing.
+  const editSeed =
+    layerName || (state?.assetId && state.name) || getEntityDisplayName(entity);
+  const canEdit = editable || forceEditing;
 
   const commitRename = (value) => {
     const newName = value.trim();
-    if (!newName || newName === displayName) return;
+    if (!newName || newName === editSeed) return;
     AFRAME.INSPECTOR.execute('entityupdate', {
       entity,
       component: 'data-layer-name',
@@ -82,7 +89,7 @@ const EntityLabel = ({
         {icon && <span className="entityIcons">{icon}</span>}
         <InlineEditInput
           className="entityNameInput"
-          defaultValue={displayName}
+          defaultValue={editSeed}
           onCommit={commitRename}
           onClose={() => {
             setEditing(false);
