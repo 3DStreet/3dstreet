@@ -28,6 +28,7 @@ import {
   startReoptimizeRun,
   subscribeReoptimizeRuns
 } from '../reoptimizeRuns.js';
+import { getCopyRun, startCopyRun, subscribeCopyRuns } from '../copyRuns.js';
 import styles from './MeshDetailsModal.module.scss';
 
 // User-editable attribution fields. `title` deliberately is NOT here — the
@@ -163,10 +164,11 @@ const MeshDetailsModal = ({
   );
   // Outcome of the "Remove optimized" action; local because it is instant.
   const [removeStatus, setRemoveStatus] = useState(null);
-  // "Copy to my library" (non-owners): { stage } while running, then
-  // { text, error? }. Local: the upload itself shows in the gallery's pending
-  // card via currentUploadStore, so nothing is lost if the modal closes.
-  const [copyStatus, setCopyStatus] = useState(null);
+  // "Copy to my library" (non-owners). Registry-backed like reoptimize: the
+  // copy outlives the modal, and a reopened modal must show where it got to.
+  const copyRun = useSyncExternalStore(subscribeCopyRuns, () =>
+    getCopyRun(assetId)
+  );
   const t = useSharedMessages();
 
   const [name, setName] = useState('');
@@ -631,46 +633,23 @@ const MeshDetailsModal = ({
     !!data &&
     data.type !== 'splat' &&
     !data.deleted;
-  const onCopyToLibrary = async () => {
-    if (!canCopyToLibrary || copyStatus?.stage) return;
-    setCopyStatus({ stage: 'downloading' });
-    try {
-      const { copyAssetToLibrary } = await import('@shared/asset-upload');
-      const result = await copyAssetToLibrary(data, {
-        onStatus: (stage) => setCopyStatus({ stage })
-      });
-      if (result.ok) {
-        // The host decides what a copy means (the entity panel swaps it
-        // into the scene). Runs even after the modal unmounted: the copy
-        // finished, and the scene should reflect it either way.
-        let swapped = false;
-        if (onCopied && result.asset) {
-          try {
-            swapped = !!onCopied(result.asset);
-          } catch (err) {
-            console.error('[MeshDetailsModal] onCopied failed', err);
-          }
-        }
-        setCopyStatus({
-          done: true,
-          text: t(swapped ? 'copyToLibraryDoneSwapped' : 'copyToLibraryDone')
-        });
-      } else if (result.cancelled) {
-        setCopyStatus(null);
-      } else {
-        setCopyStatus({
-          error: true,
-          text: result.error || t('copyToLibraryFailed')
-        });
-      }
-    } catch (err) {
-      console.error('[MeshDetailsModal] copy to library failed', err);
-      setCopyStatus({
-        error: true,
-        text: err.message || t('copyToLibraryFailed')
-      });
-    }
+  const onCopyToLibrary = () => {
+    if (!canCopyToLibrary || copyRun?.stage) return;
+    startCopyRun(data, { onCopied });
   };
+  const copyStatus = (() => {
+    if (!copyRun) return null;
+    if (copyRun.stage) return { stage: copyRun.stage };
+    if (copyRun.error !== undefined) {
+      return { error: true, text: copyRun.error || t('copyToLibraryFailed') };
+    }
+    return {
+      done: true,
+      text: t(
+        copyRun.swapped ? 'copyToLibraryDoneSwapped' : 'copyToLibraryDone'
+      )
+    };
+  })();
   const copyStatusText = copyStatus?.stage
     ? t(COPY_STAGE_MESSAGE[copyStatus.stage] || 'copyToLibraryCopying')
     : (copyStatus?.text ?? null);
@@ -1391,9 +1370,10 @@ MeshDetailsModal.propTypes = {
   ownerUid: PropTypes.string.isRequired,
   onClose: PropTypes.func.isRequired,
   // Optional: called with the new asset doc after "Copy to my library"
-  // succeeds, whether or not the modal is still open. The editor's entity
-  // panel uses it to swap the copy into the scene; the gallery leaves it
-  // undefined (nothing to swap). Also switches the success copy.
+  // succeeds, from the run registry (copyRuns.js) so it fires whether or
+  // not the modal is still open. The editor's entity panel uses it to swap
+  // the copy into the scene; the gallery leaves it undefined (nothing to
+  // swap). A truthy return switches the success copy.
   onCopied: PropTypes.func,
   // Optional: when provided, renders a "Place in scene" CTA. Called with
   // { assetId, ownerUid, storageUrl, name, type } when the user clicks it;

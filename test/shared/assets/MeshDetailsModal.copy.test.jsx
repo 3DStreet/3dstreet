@@ -54,6 +54,8 @@ vi.mock('@shared/asset-upload', () => ({
   removeOptimizedVariant: vi.fn()
 }));
 
+const { _resetCopyRuns } =
+  await import('../../../src/shared/assets/copyRuns.js');
 const { default: MeshDetailsModal } =
   await import('../../../src/shared/assets/components/MeshDetailsModal.jsx');
 
@@ -71,7 +73,19 @@ function renderModal(extra = {}) {
 describe('MeshDetailsModal — copy to my library', () => {
   afterEach(() => {
     vi.clearAllMocks();
+    _resetCopyRuns();
     authState.currentUser = { uid: VIEWER };
+  });
+
+  it('shows a finished copy again when the modal is reopened', async () => {
+    const { unmount } = renderModal();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Copy to my library' })
+    );
+    await screen.findByText(/Copied to your library/);
+    unmount();
+    renderModal();
+    await screen.findByText(/Copied to your library/);
   });
 
   it('offers the copy to a signed-in non-owner and calls copyAssetToLibrary with the doc', async () => {
