@@ -41,16 +41,42 @@ lands (or fold what's durable into `docs/agent-context/`).
   (`cdn.needle.tools/static/three/0.179.1/basis2/`), a runtime third-party
   dependency to decide on in Phase 1 (self-host the transcoder, or set
   A-Frame's `ktx2TranscoderPath`).
-- **Done (pushed on this branch):** Phase 0 spike scaffolding,
-  `@needle-tools/gltf-progressive@3.6.1` (exact pin) plus a flag-gated hook in
-  `src/aframe-components/gltf-model.js`. Enable with `?progressive` in the URL or
-  `localStorage.progressiveModels = 'true'`; add `&debugprogressive` for the
-  library's LOD logs. The library is dynamically imported (module evaluation
-  has side effects) and webpack code-splits it into a lazy chunk.
+- **Phase 1 runtime integration: DONE (2026-09-12, on this branch; browser
+  pass still pending).** The spike flag is gone; behavior is keyed purely off
+  the src URL:
+  - `src/tested/progressive-models.js` (in `src/tested/`, not `src/lib/`, so
+    the mocha suite covers it: `test/core/progressive-models.test.js`):
+    `isProgressiveModelUrl(src)` = hostname allowlist `PROGRESSIVE_MODEL_HOSTS`
+    (`cloud.needle.tools`), accepting `url(...)`-wrapped srcs;
+    `hookProgressiveLoader(loader, renderer)` = idempotent per-loader
+    `useNeedleProgressive`, lazy-imports the library (still a separate webpack
+    chunk; main bundle +0.5 KB), never rejects.
+  - `gltf-model.js` `loadModel()`: hooks the loader only for progressive srcs
+    (chained into `ready`), and skips the clone-template cache for them so each
+    instance parses and refines with its own LOD state.
+  - `batch-models.js` `getBatchProvider()`: `key: null` +
+    `skipReason: 'progressive-streaming model'` for progressive srcs (excludes
+    deferral, grouping and late repack; the reason shows in the batch log).
+  - `asset-fallback-system.js`: candidate list `[optimizedSourceUrl,
+storageUrl]`, tried per assetId per session, so an unreachable Needle CDN
+    falls back to the Firebase original (generic: also heals a stale token).
+  - **KTX2 transcoder decision:** keep the library default (Needle's CDN,
+    `cdn.needle.tools/static/three/0.179.1/basis2/`). It is only fetched when a
+    Needle-hosted model loads, so it adds no availability domain beyond the
+    model itself. Revisit only if we self-host models.
+  - `&debugprogressive` in the URL still enables the library's LOD logs.
+  - Editor pass to run (needs a processed Needle URL): place via a `gltf-model`
+    entity with the CDN URL, duplicate ×3 (batch log says "progressive-streaming
+    model", all copies refine on zoom), undo/delete, save/reload; block
+    `cloud.needle.tools` in DevTools on an entity carrying `data-asset-id` /
+    `data-asset-owner-uid` and confirm the storageUrl retry.
 - **Open question raised by the numbers:** the >10 MB threshold may be too
   high; a ~5 MB cutoff is plausible. Decide after processing a mid-size
   (5-15 MB) upload and comparing against the client-side Draco+WebP result.
-- **Next:** Phase 1 runtime integration.
+  Note #1978 / PR #1985 (merged) added a client-side meshopt `simplify` step
+  and a 30 s timeout, which changes the small-file baseline.
+- **Next:** Phase 2 processing pipeline (first: the Needle deletion-API
+  question, and the `needle-uploader/` worker contract).
 
 ## Decisions already made
 
@@ -145,7 +171,8 @@ Both need exclusions for progressive URLs (Phase 1).
 
 ## Phase 1 — Runtime integration
 
-- **New `src/lib/progressive-models.js`**: `isProgressiveModelUrl(src)` (hostname
+- **New `src/tested/progressive-models.js`** (planned as `src/lib/`; moved so
+  it is mocha-covered): `isProgressiveModelUrl(src)` (hostname
   test against the Needle CDN domains from Phase 0 — works for saved scenes with
   zero metadata, since scene JSON persists only the URL +
   `data-asset-id`/`data-asset-owner-uid`); `hookProgressiveLoader(loader, sceneEl)`
@@ -257,9 +284,9 @@ profile: 'world' } }` → write terminal job status. Failures →
 
 ## Critical files
 
-- `src/aframe-components/gltf-model.js` (spike hook already in; Phase 1 reworks
-  it) · `src/batch-models.js` (`getBatchProvider`) · `src/lib/progressive-models.js`
-  (new)
+- `src/aframe-components/gltf-model.js` · `src/batch-models.js`
+  (`getBatchProvider`) · `src/tested/progressive-models.js` (+
+  `test/core/progressive-models.test.js`)
 - `src/aframe-components/asset-fallback-system.js` · `src/shared/assets/utils.js`
   (`deriveOptimizationInfo` only)
 - `src/editor/lib/asset-upload/uploadAndPlaceAsset.js` (10MB split)

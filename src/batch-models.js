@@ -1,6 +1,7 @@
 /* global AFRAME, THREE, ImageBitmap */
 
 import { releaseSharedSource } from './sharedTextureSources';
+import { isProgressiveModelUrl } from './tested/progressive-models';
 
 // Static batching feature flag.
 // The flag is used to conditionnaly register the gltf-model component override and batch models, so it can't be
@@ -205,9 +206,15 @@ const BATCHABLE_SELECTOR = '[gltf-model], [gltf-part], [atlas-uvs]';
 function getBatchProvider(el) {
   const gltfModel = el.components?.['gltf-model'];
   if (gltfModel) {
+    const src = el.getAttribute('gltf-model');
+    // Progressive-streaming models (#1990) refine their meshes/textures at runtime, which a
+    // fixed-buffer BatchedMesh can't follow. A null key already excludes an entity from
+    // deferral, grouping and late repack; skipReason keeps the log honest about why.
+    const progressive = isProgressiveModelUrl(src);
     return {
       kind: 'gltf-model',
-      key: el.getAttribute('gltf-model'),
+      key: progressive ? null : src,
+      skipReason: progressive ? 'progressive-streaming model' : undefined,
       ownsResources: true,
       strip: () => gltfModel.removeMesh(),
       reload: () => gltfModel.update()
@@ -1451,12 +1458,13 @@ export async function batchModels(sceneEl) {
     );
   }
 
-  // Group by key. Missing-key entities have no model to load — just log + status, no BVH.
+  // Group by key. Missing-key entities either have no model to load or are excluded by their
+  // provider (see getBatchProvider skipReason) — just log + status, no BVH.
   const groups = new Map();
   for (const el of gltfEntities) {
     const key = getBatchKey(el);
     if (!key) {
-      const reason = 'no gltf-model src';
+      const reason = getBatchProvider(el)?.skipReason || 'no gltf-model src';
       console.log(`[batch-models] not batched ${describeEl(el)}: ${reason}`);
       setStatus(el, false, reason);
       continue;
