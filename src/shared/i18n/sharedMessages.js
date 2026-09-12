@@ -1165,6 +1165,319 @@ const SHARED_MESSAGES = {
     es: 'No se pudo copiar este recurso',
     'pt-BR': 'Não foi possível copiar este recurso',
     fr: 'Impossible de copier cette ressource'
+  },
+
+  // Mesh/splat details modal chrome (shared/assets/components/
+  // MeshDetailsModal.jsx).
+  meshPreviousItem: {
+    en: 'Previous item',
+    es: 'Elemento anterior',
+    'pt-BR': 'Item anterior',
+    fr: 'Élément précédent'
+  },
+  meshNextItem: {
+    en: 'Next item',
+    es: 'Elemento siguiente',
+    'pt-BR': 'Próximo item',
+    fr: 'Élément suivant'
+  },
+  meshTypeModel: {
+    en: 'Model',
+    es: 'Modelo',
+    'pt-BR': 'Modelo',
+    fr: 'Modèle'
+  },
+  // Kept untranslated: "splat" is the established term for the format.
+  meshTypeSplat: {
+    en: 'Splat',
+    es: 'Splat',
+    'pt-BR': 'Splat',
+    fr: 'Splat'
+  },
+  meshUntitled: {
+    en: 'Untitled',
+    es: 'Sin título',
+    'pt-BR': 'Sem título',
+    fr: 'Sans titre'
+  },
+  meshViewerTitle: {
+    en: '3D model',
+    es: 'Modelo 3D',
+    'pt-BR': 'Modelo 3D',
+    fr: 'Modèle 3D'
+  },
+  meshNotAvailable: {
+    en: 'Asset not available',
+    es: 'Recurso no disponible',
+    'pt-BR': 'Recurso não disponível',
+    fr: 'Actif non disponible'
+  },
+  meshDeletedTitle: {
+    en: 'Marked for deletion',
+    es: 'Marcado para eliminación',
+    'pt-BR': 'Marcado para exclusão',
+    fr: 'Marqué pour suppression'
+  },
+  meshDeletedBody: {
+    en: 'This model will be permanently purged on the next cleanup pass. Restore it to keep using it in your scenes.',
+    es: 'Este modelo se eliminará definitivamente en la próxima limpieza. Restáuralo para seguir usándolo en tus escenas.',
+    'pt-BR':
+      'Este modelo será excluído permanentemente na próxima limpeza. Restaure-o para continuar usando nas suas cenas.',
+    fr: "Ce modèle sera définitivement supprimé lors du prochain nettoyage. Restaurez-le pour continuer à l'utiliser dans vos scènes."
+  },
+  meshDisplayName: {
+    en: 'Display name',
+    es: 'Nombre visible',
+    'pt-BR': 'Nome de exibição',
+    fr: 'Nom affiché'
+  },
+  meshSaveChanges: {
+    en: 'Save changes',
+    es: 'Guardar cambios',
+    'pt-BR': 'Salvar alterações',
+    fr: 'Enregistrer les modifications'
+  },
+  meshSaving: {
+    en: 'Saving…',
+    es: 'Guardando…',
+    'pt-BR': 'Salvando…',
+    fr: 'Enregistrement…'
+  },
+  meshFieldFile: {
+    en: 'File:',
+    es: 'Archivo:',
+    'pt-BR': 'Arquivo:',
+    fr: 'Fichier :'
+  },
+  meshFieldSize: {
+    en: 'Size:',
+    es: 'Tamaño:',
+    'pt-BR': 'Tamanho:',
+    fr: 'Taille :'
+  },
+  meshFieldOptimization: {
+    en: 'Optimization:',
+    es: 'Optimización:',
+    'pt-BR': 'Otimização:',
+    fr: 'Optimisation :'
+  },
+  meshFieldFormat: {
+    en: 'Format:',
+    es: 'Formato:',
+    'pt-BR': 'Formato:',
+    fr: 'Format :'
+  },
+  meshFieldUploaded: {
+    en: 'Uploaded:',
+    es: 'Subido:',
+    'pt-BR': 'Enviado:',
+    fr: 'Téléversé :'
+  },
+  meshFieldAssetId: {
+    en: 'Asset ID:',
+    es: 'ID del recurso:',
+    'pt-BR': 'ID do recurso:',
+    fr: "ID de l'actif :"
+  },
+  meshFieldOwner: {
+    en: 'Owner:',
+    es: 'Propietario:',
+    'pt-BR': 'Proprietário:',
+    fr: 'Propriétaire :'
+  },
+  meshOwnerYou: {
+    en: 'you',
+    es: 'tú',
+    'pt-BR': 'você',
+    fr: 'vous'
+  },
+  meshOwnerOther: {
+    en: 'another user',
+    es: 'otro usuario',
+    'pt-BR': 'outro usuário',
+    fr: 'un autre utilisateur'
+  },
+  meshOptimizedReady: {
+    en: 'Optimized variant ready',
+    es: 'Variante optimizada lista',
+    'pt-BR': 'Variante otimizada pronta',
+    fr: 'Variante optimisée prête'
+  },
+  meshOptimizingJob: {
+    en: 'Optimizing… ({status})',
+    es: 'Optimizando… ({status})',
+    'pt-BR': 'Otimizando… ({status})',
+    fr: 'Optimisation… ({status})'
+  },
+  meshJobQueued: {
+    en: 'queued',
+    es: 'en cola',
+    'pt-BR': 'na fila',
+    fr: "en file d'attente"
+  },
+  meshJobRunning: {
+    en: 'running',
+    es: 'en curso',
+    'pt-BR': 'em execução',
+    fr: 'en cours'
+  },
+  meshJobSaving: {
+    en: 'saving',
+    es: 'guardando',
+    'pt-BR': 'salvando',
+    fr: 'enregistrement'
+  },
+  meshRestore: {
+    en: 'Restore',
+    es: 'Restaurar',
+    'pt-BR': 'Restaurar',
+    fr: 'Restaurer'
+  },
+  meshDelete: {
+    en: 'Delete',
+    es: 'Eliminar',
+    'pt-BR': 'Excluir',
+    fr: 'Supprimer'
+  },
+  meshSetThumbnail: {
+    en: 'Set thumbnail from current view',
+    es: 'Definir miniatura desde la vista actual',
+    'pt-BR': 'Definir miniatura a partir da vista atual',
+    fr: 'Définir la miniature depuis la vue actuelle'
+  },
+  meshThumbnailUpdated: {
+    en: 'Thumbnail updated',
+    es: 'Miniatura actualizada',
+    'pt-BR': 'Miniatura atualizada',
+    fr: 'Miniature mise à jour'
+  },
+  meshDownload: {
+    en: 'Download',
+    es: 'Descargar',
+    'pt-BR': 'Baixar',
+    fr: 'Télécharger'
+  },
+  meshDownloadOriginal: {
+    en: 'Download Original',
+    es: 'Descargar original',
+    'pt-BR': 'Baixar original',
+    fr: "Télécharger l'original"
+  },
+  meshDownloadOptimized: {
+    en: 'Download Optimized',
+    es: 'Descargar optimizado',
+    'pt-BR': 'Baixar otimizado',
+    fr: 'Télécharger la version optimisée'
+  },
+  meshPlaceInScene: {
+    en: 'Place in scene',
+    es: 'Colocar en la escena',
+    'pt-BR': 'Colocar na cena',
+    fr: 'Placer dans la scène'
+  },
+  meshSaveFailed: {
+    en: 'Save failed',
+    es: 'Error al guardar',
+    'pt-BR': 'Falha ao salvar',
+    fr: "Échec de l'enregistrement"
+  },
+  meshDeleteFailed: {
+    en: 'Delete failed',
+    es: 'Error al eliminar',
+    'pt-BR': 'Falha ao excluir',
+    fr: 'Échec de la suppression'
+  },
+  meshRestoreFailed: {
+    en: 'Restore failed',
+    es: 'Error al restaurar',
+    'pt-BR': 'Falha ao restaurar',
+    fr: 'Échec de la restauration'
+  },
+  meshCaptureFailed: {
+    en: 'Could not capture the current view — wait for the splat to finish rendering, then try again.',
+    es: 'No se pudo capturar la vista actual: espera a que el splat termine de renderizarse e inténtalo de nuevo.',
+    'pt-BR':
+      'Não foi possível capturar a vista atual — aguarde o splat terminar de renderizar e tente novamente.',
+    fr: 'Impossible de capturer la vue actuelle — attendez la fin du rendu du splat, puis réessayez.'
+  },
+  meshRestoreQuota: {
+    en: 'Not enough storage to restore ({needed} MB needed; {used} / {limit} MB used). Delete other assets or upgrade.',
+    es: 'No hay espacio suficiente para restaurar ({needed} MB necesarios; {used} / {limit} MB usados). Elimina otros recursos o mejora tu plan.',
+    'pt-BR':
+      'Espaço insuficiente para restaurar ({needed} MB necessários; {used} / {limit} MB usados). Exclua outros recursos ou faça upgrade.',
+    fr: "Stockage insuffisant pour restaurer ({needed} Mo nécessaires ; {used} / {limit} Mo utilisés). Supprimez d'autres actifs ou changez d'offre."
+  },
+  meshAttribution: {
+    en: 'Attribution',
+    es: 'Atribución',
+    'pt-BR': 'Atribuição',
+    fr: 'Attribution'
+  },
+  meshEdit: {
+    en: 'Edit',
+    es: 'Editar',
+    'pt-BR': 'Editar',
+    fr: 'Modifier'
+  },
+  meshNoAttribution: {
+    en: 'No attribution info.',
+    es: 'Sin información de atribución.',
+    'pt-BR': 'Sem informações de atribuição.',
+    fr: "Aucune information d'attribution."
+  },
+  meshNoAttributionHint: {
+    en: 'Click Edit to add one.',
+    es: 'Haz clic en Editar para añadir una.',
+    'pt-BR': 'Clique em Editar para adicionar uma.',
+    fr: 'Cliquez sur Modifier pour en ajouter une.'
+  },
+  meshAuthor: {
+    en: 'Author',
+    es: 'Autor',
+    'pt-BR': 'Autor',
+    fr: 'Auteur'
+  },
+  meshLicense: {
+    en: 'License',
+    es: 'Licencia',
+    'pt-BR': 'Licença',
+    fr: 'Licence'
+  },
+  meshSourceUrl: {
+    en: 'Source URL',
+    es: 'URL de origen',
+    'pt-BR': 'URL de origem',
+    fr: 'URL source'
+  },
+  meshLicensePlaceholder: {
+    en: 'e.g. CC-BY-4.0',
+    es: 'p. ej. CC-BY-4.0',
+    'pt-BR': 'ex.: CC-BY-4.0',
+    fr: 'p. ex. CC-BY-4.0'
+  },
+  meshFieldSource: {
+    en: 'Source:',
+    es: 'Origen:',
+    'pt-BR': 'Origem:',
+    fr: 'Source :'
+  },
+  meshFieldGenerator: {
+    en: 'Generator:',
+    es: 'Generador:',
+    'pt-BR': 'Gerador:',
+    fr: 'Générateur :'
+  },
+  meshViewOn: {
+    en: 'View on {source}',
+    es: 'Ver en {source}',
+    'pt-BR': 'Ver em {source}',
+    fr: 'Voir sur {source}'
+  },
+  meshViewSource: {
+    en: 'View source',
+    es: 'Ver origen',
+    'pt-BR': 'Ver origem',
+    fr: 'Voir la source'
   }
 };
 
