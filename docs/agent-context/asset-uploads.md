@@ -25,6 +25,8 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 
 **Security rules:**
 
-- `size`, `storagePath`, `optimizedSourcePath`, `userId` immutable after create — prevents quota spoofing
+- `size`, `storagePath`, `userId` immutable after create — prevents quota spoofing
+- `optimizedSourcePath` / `optimizedSourceSize` / `optimizedSourceUrl` are owner-mutable and removable (Reoptimize repoints the doc at a new optimized file; Remove optimized drops the fields via `deleteField()`). `optimizedSourcePath` must stay under `users/{uid}/` with no `..` segment on both create and update; it cannot spoof quota because the tally reads `size` only. Never cache a served URL by assetId as if it were permanent.
+- A superseded optimized object is not deleted: saved scenes bake the served URL into `gltf-model`. The orphan GC keeps any Storage object tagged `{ assetRole: 'optimized', assetId }` whose doc is still alive and reclaims it after the doc is purged.
 - Client hard-delete (`deleteDoc`) disallowed; UI soft-deletes (`deleted: true`); GC Cloud Function purges via Admin SDK
 - `users/{uid}/meta/usage` owner-readable, write-only via Cloud Functions

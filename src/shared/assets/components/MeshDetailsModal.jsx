@@ -41,6 +41,20 @@ const REOPTIMIZE_STAGE_MESSAGE = {
   uploading: 'reoptimizeUploading'
 };
 
+// `ok: false` reasons from reoptimizeAsset, mapped to copy. The pipeline
+// reports them as snake_case codes; they never reach the user verbatim.
+// Anything unmapped falls back to the generic reoptimizeNoChange line.
+const REOPTIMIZE_NO_WIN_MESSAGE = {
+  not_smaller_than_current: 'reoptimizeAlreadyOptimal',
+  not_smaller: 'reoptimizeAlreadyOptimal',
+  already_optimized: 'reoptimizeAlreadyOptimized',
+  timeout: 'reoptimizeTimedOut',
+  worker_error: 'reoptimizeWorkerError'
+};
+// These are the pipeline giving up, not a verdict on the model, so they
+// render in the error style like a thrown failure would.
+const REOPTIMIZE_PIPELINE_FAILURES = new Set(['timeout', 'worker_error']);
+
 const ATTRIBUTION_FIELDS = ['author', 'license', 'source'];
 
 const EMPTY_ATTRIBUTION = {
@@ -529,10 +543,19 @@ const MeshDetailsModal = ({
     );
   }, [reoptimizeRun, data]);
 
-  // The status line under the Size row: progress, outcome or failure of the
-  // run for this asset, else the outcome of a "Remove optimized".
+  // The status line under the Size row. A "Remove optimized" outcome is the
+  // most recent thing that happened (onReoptimize clears it when a new run
+  // starts), so it wins over whatever the run registry still holds; then
+  // progress, outcome or failure of the run for this asset.
+  const noWinResult =
+    reoptimizeRun?.result && !reoptimizeRun.result.ok
+      ? reoptimizeRun.result
+      : null;
+  const noWinIsFailure =
+    !!noWinResult && REOPTIMIZE_PIPELINE_FAILURES.has(noWinResult.reason);
   const reoptimizeStatusText = (() => {
-    if (!reoptimizeRun) return removeStatus?.text ?? null;
+    if (removeStatus) return removeStatus.text;
+    if (!reoptimizeRun) return null;
     if (reoptimizeRun.stage) {
       return t(REOPTIMIZE_STAGE_MESSAGE[reoptimizeRun.stage]);
     }
@@ -542,17 +565,18 @@ const MeshDetailsModal = ({
     const result = reoptimizeRun.result;
     if (!result) return null;
     if (!result.ok) {
-      return result.reason === 'not_smaller_than_current'
-        ? t('reoptimizeAlreadyOptimal')
-        : t('reoptimizeNoChange', { reason: result.reason });
+      return t(
+        REOPTIMIZE_NO_WIN_MESSAGE[result.reason] || 'reoptimizeNoChange'
+      );
     }
     return t('reoptimizeDone', {
       size: formatBytes(result.bytesAfter),
       saved: formatBytes(Math.max(0, result.bytesBefore - result.bytesAfter))
     });
   })();
-  const reoptimizeStatusIsError =
-    reoptimizeRun?.error !== undefined || !!removeStatus?.error;
+  const reoptimizeStatusIsError = removeStatus
+    ? !!removeStatus.error
+    : reoptimizeRun?.error !== undefined || noWinIsFailure;
 
   // Reverse a lossy optimization: drop the optimized fields from the doc so
   // everything serves the untouched original again. The optimized object is

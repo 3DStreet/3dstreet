@@ -1047,11 +1047,32 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Já está ótimo — o processo atual não gerou nada menor.',
     fr: "Déjà optimal — le traitement actuel n'a rien produit de plus petit."
   },
+  reoptimizeAlreadyOptimized: {
+    en: 'Already optimized — this model has nothing left for the pipeline to do.',
+    es: 'Ya está optimizado: el proceso no tiene nada más que hacer con este modelo.',
+    'pt-BR':
+      'Já otimizado — o processo não tem mais nada a fazer neste modelo.',
+    fr: "Déjà optimisé — le traitement n'a plus rien à faire sur ce modèle."
+  },
   reoptimizeNoChange: {
-    en: 'No change ({reason}).',
-    es: 'Sin cambios ({reason}).',
-    'pt-BR': 'Sem alterações ({reason}).',
-    fr: 'Aucun changement ({reason}).'
+    en: 'No change.',
+    es: 'Sin cambios.',
+    'pt-BR': 'Sem alterações.',
+    fr: 'Aucun changement.'
+  },
+  // The pipeline gave up rather than judged the model; the asset is unchanged.
+  reoptimizeTimedOut: {
+    en: 'Optimization timed out. The model is unchanged — try again on a faster device.',
+    es: 'La optimización agotó el tiempo. El modelo no cambió; inténtalo en un dispositivo más rápido.',
+    'pt-BR':
+      'A otimização excedeu o tempo. O modelo não mudou — tente em um dispositivo mais rápido.',
+    fr: "L'optimisation a expiré. Le modèle est inchangé — réessayez sur un appareil plus rapide."
+  },
+  reoptimizeWorkerError: {
+    en: 'Optimization failed on this model. It is unchanged.',
+    es: 'La optimización falló con este modelo. No cambió.',
+    'pt-BR': 'A otimização falhou neste modelo. Ele não mudou.',
+    fr: "L'optimisation a échoué sur ce modèle. Il est inchangé."
   },
   reoptimizeFailed: {
     en: 'Reoptimize failed',

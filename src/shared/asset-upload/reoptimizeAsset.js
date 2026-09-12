@@ -15,15 +15,15 @@
  * Lifecycle of the previous optimized file:
  *   The new GLB goes to a NEW path and the doc is repointed, rather than
  *   overwriting in place — the doc never points at a half-written object,
- *   and a failed upload leaves the existing variant serving. That leaves the
- *   old object unreferenced, which is exactly what the monthly
- *   cleanupOrphanedStorage job collects: it builds the referenced set from
- *   storagePath + optimizedSourcePath + thumbnailPath across every asset doc
- *   and deletes anything under users/*\/assets/ that nothing references and
- *   that is older than its 24h grace window. Clients cannot delete Storage
- *   objects themselves (storage.rules), so this is the only disposal path.
- *   Worst case the stale object lingers until the next monthly run; it costs
- *   storage but never quota, which counts `size` alone.
+ *   and a failed upload leaves the existing variant serving. The old object
+ *   is left in place on purpose: saved scenes bake the served URL into
+ *   `gltf-model` (uploadAndPlaceAsset), so it must keep resolving for as
+ *   long as the asset exists. The monthly cleanupOrphanedStorage job knows
+ *   this: it keeps any object tagged { assetRole: 'optimized', assetId }
+ *   whose assetId is a live doc, and reclaims it only after the doc itself is
+ *   purged (asset-gc.js). Clients cannot delete Storage objects themselves
+ *   (storage.rules). The superseded variant costs storage but never quota,
+ *   which counts `size` alone.
  */
 
 import { deleteField } from 'firebase/firestore';
@@ -129,7 +129,7 @@ export async function reoptimizeAsset(
 
   onStatus?.('uploading');
   // A fresh path per run, so the doc swap is atomic and the previous object
-  // stays readable until the GC collects it.
+  // stays readable for scenes that reference it (see header).
   const newPath = assetsService.getStoragePath(
     uid,
     asset.type,
@@ -170,10 +170,11 @@ export async function reoptimizeAsset(
  * "good enough" is the owner's call to make after looking at it — this is the
  * reversal. Pressing Optimize again re-runs the pipeline from the original.
  *
- * Nothing is deleted from Storage: the optimized object is left unreferenced
- * and reclaimed by the monthly cleanupOrphanedStorage job, the same disposal
- * path a reoptimize relies on. The fields are removed rather than nulled
- * because firestore.rules validates optimizedSourcePath only when present.
+ * Nothing is deleted from Storage: the optimized object stays readable for
+ * scenes that baked its URL in, and is reclaimed by cleanupOrphanedStorage
+ * once the asset doc is purged (same lifecycle as a reoptimize, see the
+ * header). The fields are removed rather than nulled because firestore.rules
+ * validates optimizedSourcePath only when present.
  *
  * @param {object} asset - The Firestore asset doc.
  * @param {object} [opts]

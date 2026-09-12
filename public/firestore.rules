@@ -90,9 +90,11 @@ service cloud.firestore {
       // reads `size` only and asset-quota.js explicitly excludes
       // optimizedSourceSize as a platform-derived artifact. The old optimized
       // object is left unreferenced and reclaimed by the monthly
-      // cleanupOrphanedStorage job. optimizedSourcePath is still constrained to
-      // the user's own folder, matching the create rule, so a client can't
-      // repoint the doc at another user's bytes and keep them alive.
+      // cleanupOrphanedStorage job once the asset is purged. optimizedSourcePath
+      // is constrained to the user's own folder so a client can't repoint the
+      // doc at another user's bytes and keep them alive. (The create rule does
+      // not check this field; a bad reference there only pins a Storage
+      // object against the orphan GC, it grants no access.)
       //
       // Uses diff().affectedKeys() so legacy docs missing optional fields
       // (e.g. AI-generated images without optimizedSourceSize) update cleanly:

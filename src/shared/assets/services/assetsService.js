@@ -24,7 +24,8 @@ import {
   limit as firestoreLimit,
   startAfter,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  FieldValue
 } from 'firebase/firestore';
 import { createAggregateProgress } from '../uploadProgress.js';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -851,9 +852,19 @@ class AssetsServiceV2 {
         updatedAt: serverTimestamp()
       });
 
+      // Consumers (useAssets, assetUploadStore) spread `updates` over their
+      // cached doc. A deleteField() sentinel is a truthy object, so spreading
+      // it verbatim would leave e.g. optimizedSourceUrl as a FieldValue and
+      // getServedUrl would serve "[object Object]". Any FieldValue goes out
+      // as undefined: for deleteField that is the truth, and for the rest
+      // (server-computed values) the cache has no better answer.
+      const eventUpdates = {};
+      for (const [key, value] of Object.entries(updates)) {
+        eventUpdates[key] = value instanceof FieldValue ? undefined : value;
+      }
       this.events.dispatchEvent(
         new CustomEvent('assetUpdated', {
-          detail: { assetId, userId, updates }
+          detail: { assetId, userId, updates: eventUpdates }
         })
       );
     } catch (error) {

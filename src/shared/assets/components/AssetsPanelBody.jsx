@@ -97,8 +97,10 @@ const AssetsPanelBody = ({
   const sentinelRef = useRef(null);
   const [filter, setFilter] = useState('all');
   const usage = useStorageUsage(isLoggedIn);
-  const currentUpload = useCurrentUploadStore((s) => s.upload);
-  const isUploading = !!currentUpload;
+  // Status only, never the whole upload object: that object is replaced on
+  // every progress tick and this component fans out to every gallery card.
+  const uploadStatus = useCurrentUploadStore((s) => s.upload?.status ?? null);
+  const isUploading = uploadStatus !== null;
 
   // Storage upsell state (#1644). The full-storage card's soft decline
   // ("free up space instead") hides it for this mount only — it returns next
@@ -246,7 +248,7 @@ const AssetsPanelBody = ({
           >
             {isUploading
               ? // Stage only, no percentage: a button label should not tick.
-                getUploadStageLabel(t, currentUpload.status) || t('uploading')
+                getUploadStageLabel(t, uploadStatus) || t('uploading')
               : t('upload')}
           </button>
           <button
