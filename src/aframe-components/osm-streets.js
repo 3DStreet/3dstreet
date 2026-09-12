@@ -132,7 +132,9 @@ AFRAME.registerComponent('osm-streets', {
     this.applyOpacity();
     this.inFlight = new Set();
     this.failures = new Map();
-    this.upgradedWayIds = new Set();
+    // Bumped by reset(): a tile fetch that started before a reset must
+    // not land its ways (stale origin / source) once it resolves.
+    this.epoch = 0;
     this.hydrated = new Map(); // wayId → Promise<{tags, facts}|null>
     this._camWorld = new THREE.Vector3();
     this._camDir = new THREE.Vector3();
@@ -167,6 +169,27 @@ AFRAME.registerComponent('osm-streets', {
     this.loadedTiles.clear();
     this.inFlight.clear();
     this.failures.clear();
+    this.epoch++;
+  },
+
+  /**
+   * Has this way already been generated into streets? Derived from the
+   * scene (every generated street and its path shape carry
+   * `data-osm-way-id`) rather than a component-side set, so undo, manual
+   * delete, save + reload and scene switches all stay consistent.
+   */
+  isWayUpgraded: function (wayId) {
+    return !!this.el.sceneEl.querySelector(
+      `[data-osm-way-id="${CSS.escape(String(wayId))}"]`
+    );
+  },
+
+  upgradedWayIdSet: function () {
+    const ids = new Set();
+    this.el.sceneEl.querySelectorAll('[data-osm-way-id]').forEach((el) => {
+      ids.add(el.getAttribute('data-osm-way-id'));
+    });
+    return ids;
   },
 
   applyOpacity: function () {
@@ -296,15 +319,22 @@ AFRAME.registerComponent('osm-streets', {
 
   loadTile: function (tile) {
     const { key } = tile;
+    const epoch = this.epoch;
     this.inFlight.add(key);
     this.fetchWays(tile)
       .then((ways) => {
+        // A reset() while in flight already cleared inFlight and may
+        // have re-requested this key under a new origin: drop the stale
+        // answer so the tile is never added twice (leaking the first
+        // mesh) or with data projected from the old origin.
+        if (epoch !== this.epoch) return;
         this.inFlight.delete(key);
         this.failures.delete(key);
         if (!this.el.isConnected) return;
         this.addTileWays(key, ways);
       })
       .catch((err) => {
+        if (epoch !== this.epoch) return;
         this.inFlight.delete(key);
         this.recordFailure(key, err);
       });
@@ -355,6 +385,8 @@ AFRAME.registerComponent('osm-streets', {
         localPolylineFromLatLon(origin, line)
       )
     }));
+    const previous = this.loadedTiles.get(key);
+    if (previous) this.removeTileMesh(key, previous);
     const mesh = this.buildTileMesh(ways);
     if (mesh) {
       // setObject3D (rather than object3D.add) so the editor's mesh
@@ -421,7 +453,7 @@ AFRAME.registerComponent('osm-streets', {
       maxDistM
     );
     if (!hit) return null;
-    hit.alreadyUpgraded = this.upgradedWayIds.has(hit.way.wayId);
+    hit.alreadyUpgraded = this.isWayUpgraded(hit.way.wayId);
     return hit;
   },
 
@@ -513,13 +545,12 @@ AFRAME.registerComponent('osm-streets', {
    *   `loaded` events; the count is known synchronously.
    */
   upgradeWay: function (way, nearPoint = null, tags = null) {
-    if (this.upgradedWayIds.has(way.wayId)) return 0;
+    if (this.isWayUpgraded(way.wayId)) return 0;
     const stretch = this.stretchToUpgrade(way, nearPoint);
     if (!stretch) return 0;
     const { pieces, junctions } = this.planUpgrade(way, stretch);
     if (pieces.length === 0) return 0; // all pieces below minimum
 
-    this.upgradedWayIds.add(way.wayId);
     this.clearHighlight();
     const commands = [];
     for (const piece of pieces) {
@@ -781,8 +812,9 @@ AFRAME.registerComponent('osm-streets', {
     if (!focus) return [];
     const point = { x: focus.x, z: focus.z };
     const candidates = [];
+    const upgraded = this.upgradedWayIdSet();
     for (const way of this.allWays()) {
-      if (this.upgradedWayIds.has(way.wayId)) continue;
+      if (upgraded.has(way.wayId)) continue;
       const hit = nearestWay([way], point, radiusM);
       if (hit) candidates.push(hit);
     }

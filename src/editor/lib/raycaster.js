@@ -186,7 +186,11 @@ export function initRaycaster(inspector) {
     // (#1930): a stationary mouseup with no intersected entity offers the
     // way under the cursor's ground point for upgrade. Entity clicks are
     // handled (and the offer cleared) in handleClick.
+    // Left button only: right/middle mouseups (context menu, orbit/pan
+    // in some control schemes) are not "clicks" and must not raise the
+    // chip. Revisit if a secondary-button gesture gets a meaning here.
     if (
+      event.button === 0 &&
       event.detail <= 1 &&
       onDownPosition.distanceTo(onUpPosition) <= CLICK_MAX_DRAG_PX &&
       !getIntersectedEl()

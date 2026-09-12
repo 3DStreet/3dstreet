@@ -37,9 +37,31 @@ export const OsmUpgradeChip = () => {
   // 'loading' | 'ready' | 'none'
   const [detail, setDetail] = useState({ status: 'loading', text: '' });
 
+  // A candidate outlives the layer it was probed from when the map type
+  // changes or a new scene loads (the store isn't scene-scoped): drop it
+  // rather than leave a chip pointing at a road that is no longer there.
+  useEffect(() => {
+    if (!candidate) return undefined;
+    const clear = () => setOsmWayCandidate(null);
+    const scene = AFRAME.scenes[0];
+    scene?.addEventListener('newScene', clear);
+    const observer = new MutationObserver(() => {
+      if (!streetsComponent()) clear();
+    });
+    if (scene) observer.observe(scene, { childList: true, subtree: true });
+    return () => {
+      scene?.removeEventListener('newScene', clear);
+      observer.disconnect();
+    };
+  }, [candidate, setOsmWayCandidate]);
+
   useEffect(() => {
     const comp = streetsComponent();
-    if (!comp || !candidate) return undefined;
+    if (!candidate) return undefined;
+    if (!comp) {
+      setOsmWayCandidate(null);
+      return undefined;
+    }
     comp.highlightWayAt(candidate.worldPoint);
     let live = true;
     setDetail({ status: 'loading', text: '' });
@@ -55,7 +77,7 @@ export const OsmUpgradeChip = () => {
       live = false;
       comp.clearHighlight();
     };
-  }, [candidate]);
+  }, [candidate, setOsmWayCandidate]);
 
   if (!candidate) return null;
 

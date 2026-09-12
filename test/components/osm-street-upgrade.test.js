@@ -218,7 +218,7 @@ describe('osm-streets upgrade (viewer creation path)', () => {
     const way = comp.allWays()[0];
     expect(stretchForWindow(way.polylines, { x: 0, z: 5 })).toBeNull();
     expect(comp.upgradeWay(way, { x: 0, z: 5 })).toBe(0);
-    // A too-short stretch must not burn the way's idempotency bit.
-    expect(comp.upgradedWayIds.has('way-stub')).toBe(false);
+    // A too-short stretch creates nothing, so the way stays generatable.
+    expect(comp.isWayUpgraded('way-stub')).toBe(false);
   });
 });

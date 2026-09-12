@@ -137,6 +137,25 @@ describe('crossSectionFromTags', () => {
     assert.strictEqual(d.filter((s) => s.direction === 'outbound').length, 1);
   });
 
+  it('never invents a lane: lanes=2 with lanes:forward=2 stays two lanes', () => {
+    const { segments, facts } = crossSectionFromTags(
+      { highway: 'residential', lanes: '2', 'lanes:forward': '2' },
+      {}
+    );
+    const d = drives(segments);
+    assert.strictEqual(d.length, 2);
+    assert.strictEqual(d.filter((s) => s.direction === 'inbound').length, 2);
+    assert.strictEqual(facts.lanes.value, 2);
+  });
+
+  it('clamps a malformed lanes:forward larger than lanes', () => {
+    const { segments } = crossSectionFromTags(
+      { highway: 'residential', lanes: '2', 'lanes:forward': '5' },
+      {}
+    );
+    assert.strictEqual(drives(segments).length, 2);
+  });
+
   it('gives a one-way lanes=1 street exactly one lane in the way direction', () => {
     const { segments, facts } = crossSectionFromTags(
       { highway: 'residential', oneway: 'yes', lanes: '1' },

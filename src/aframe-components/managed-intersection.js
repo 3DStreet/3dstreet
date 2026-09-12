@@ -55,6 +55,9 @@ const MIN_SNAPPED_STREET_LENGTH = 4;
 // Snaps wait until the signature watch has seen this many quiet intervals,
 // so they never chase transient mid-drag geometry (see init).
 const SETTLE_TICKS = 2;
+// Lateral slack for the candidate-street reach test (street-align
+// offsets + widest plausible travelled way).
+const CANDIDATE_LATERAL_MARGIN_M = 60;
 const UP_AXIS = new THREE.Vector3(0, 1, 0);
 
 // Same "counts as sidewalk" list as the streetmix parsers (kept local so this
@@ -200,11 +203,25 @@ AFRAME.registerComponent('managed-intersection', {
       .split(',')
       .map((s) => s.trim().replace(/^#/, ''))
       .filter(Boolean);
+    // Cheap reach test first: a street whose whole extent can't come
+    // within snapRadius is skipped before any segment walk, so the 400 ms
+    // signature poll stays O(nearby) rather than O(scene). The bound is
+    // generous (full length rather than half, plus a lateral margin) so
+    // a street sliding into range is always seen the tick it arrives.
+    this.el.object3D.getWorldPosition(this._vec);
+    const cx = this._vec.x;
+    const cz = this._vec.z;
+    const reach = this.data.snapRadius + CANDIDATE_LATERAL_MARGIN_M;
     const all = Array.from(
       this.el.sceneEl.querySelectorAll('a-entity[managed-street]')
     ).filter((street) => {
       const ms = street.components['managed-street'];
       if (!ms) return false;
+      street.object3D.getWorldPosition(this._vec);
+      const length = Number(ms.data.length) || 0;
+      if (Math.hypot(this._vec.x - cx, this._vec.z - cz) > length + reach) {
+        return false;
+      }
       if (ms.data.path) {
         // Path-following streets contribute arms from their curve's end
         // frames once the curve resolves (see collectArms); until then

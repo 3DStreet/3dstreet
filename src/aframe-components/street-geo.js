@@ -184,18 +184,24 @@ AFRAME.registerComponent('street-geo', {
         this[mapType + 'Update']();
       } else if (
         activeMap !== mapType &&
-        (this[mapType] || (mapType === 'osm3d' && this.osm3dBuilding))
+        (this[mapType] ||
+          (mapType === 'osm3d' && (this.osm3dBuilding || this.osm3dStreets)))
       ) {
-        // remove element(s) from DOM and from this object. osm3d is two
-        // elements (tiled ground + extruded buildings) that can exist
-        // independently: the ground is skipped without a provider key.
+        // remove element(s) from DOM and from this object. osm3d is three
+        // elements (tiled ground + extruded buildings + street ribbons)
+        // that can exist independently: the ground is skipped without a
+        // provider key.
         if (this[mapType]) {
           this.el.removeChild(this[mapType]);
           this[mapType] = null;
         }
-        if (mapType === 'osm3d' && this.osm3dBuilding) {
-          this.el.removeChild(this.osm3dBuilding);
-          this.osm3dBuilding = null;
+        if (mapType === 'osm3d') {
+          for (const key of ['osm3dBuilding', 'osm3dStreets']) {
+            if (this[key]) {
+              this.el.removeChild(this[key]);
+              this[key] = null;
+            }
+          }
         }
       }
     }

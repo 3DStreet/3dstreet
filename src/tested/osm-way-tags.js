@@ -231,7 +231,13 @@ export function crossSectionFromTags(tags = {}, way = {}) {
     const b = parseInt10(tags['lanes:backward']);
     if (lanesTag) {
       fwd = f ?? (b ? lanesTag - b : Math.ceil(lanesTag / 2));
-      bwd = Math.max(lanesTag - fwd, lanesTag === 1 ? 0 : 1);
+      // Never invent a lane the tags don't carry: lanes=2 +
+      // lanes:forward=2 is a two-way road whose second direction has no
+      // marked lane, not three lanes. Malformed lanes:forward > lanes
+      // clamps the split to what's tagged.
+      fwd = Math.min(Math.max(fwd, 0), lanesTag);
+      bwd = Math.max(lanesTag - fwd, 0);
+      if (fwd + bwd === 0) fwd = 1;
       facts.lanes = { value: lanesTag, source: 'osm' };
     } else if (f || b) {
       fwd = f ?? b;
