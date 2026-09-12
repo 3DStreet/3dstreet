@@ -27,12 +27,11 @@ const GENERATE_GRACE_MS = 1500;
 
 // User-facing copy per osm-streets `lastUpgradeOutcome.reason`.
 const BLOCKED_COPY = {
-  'no-way': 'No OpenStreetMap road found here.',
-  'already-generated': 'This road already has a generated street.',
-  'too-short': 'This stretch is too short to generate a street (under 20 m).',
-  'no-piece-long-enough':
-    'Every piece between junctions here is under 20 m, so there is nothing to generate. Roundabouts and dense junction clusters are not supported yet.',
-  error: 'Generating the street failed. See the console for details.'
+  'no-way': 'No OSM road here',
+  'already-generated': 'Street already generated',
+  'too-short': 'Too short to generate (min 20 m)',
+  'no-piece-long-enough': 'Junctions too close together (min 20 m apart)',
+  error: 'Generate failed, see console'
 };
 
 const withTimeout = (promise, ms) =>
