@@ -41,8 +41,8 @@ lands (or fold what's durable into `docs/agent-context/`).
   (`cdn.needle.tools/static/three/0.179.1/basis2/`), a runtime third-party
   dependency to decide on in Phase 1 (self-host the transcoder, or set
   A-Frame's `ktx2TranscoderPath`).
-- **Phase 1 runtime integration: DONE (2026-09-12, on this branch; browser
-  pass still pending).** The spike flag is gone; behavior is keyed purely off
+- **Phase 1 runtime integration: DONE (2026-09-12, on this branch; editor
+  pass passed the same day, see below).** The spike flag is gone; behavior is keyed purely off
   the src URL:
   - `src/tested/progressive-models.js` (in `src/tested/`, not `src/lib/`, so
     the mocha suite covers it: `test/core/progressive-models.test.js`):
@@ -65,11 +65,17 @@ storageUrl]`, tried per assetId per session, so an unreachable Needle CDN
     Needle-hosted model loads, so it adds no availability domain beyond the
     model itself. Revisit only if we self-host models.
   - `&debugprogressive` in the URL still enables the library's LOD logs.
-  - Editor pass to run (needs a processed Needle URL): place via a `gltf-model`
-    entity with the CDN URL, duplicate ×3 (batch log says "progressive-streaming
-    model", all copies refine on zoom), undo/delete, save/reload; block
-    `cloud.needle.tools` in DevTools on an entity carrying `data-asset-id` /
-    `data-asset-owner-uid` and confirm the storageUrl retry.
+  - **Editor pass (2026-09-12, local dev server, progressive-world URL
+    `https://cloud.needle.tools/-/assets/Zp9qu81CtVaR-1CtVaR-world/file.glb`):**
+    `model-loaded` in 608 ms at 58k tris with 128px textures; on close-up it
+    streamed mesh LOD5→0 (1.67M tris) and the 2048 texture LODs through our
+    loader, KTX2 transcoder fetched from Needle's CDN on demand. Three
+    duplicates each parsed their own instance (no clone-cache entry), all
+    stayed unbatched, no `Texture is immutable` / WebGL / uncaught errors;
+    removing a duplicate tore down cleanly. **Not covered:** save/reload
+    (URL persistence is unchanged by Phase 1) and the CDN-blocked → storageUrl
+    fallback (needs a real asset doc with a Needle `optimizedSourceUrl`, i.e.
+    Phase 2 writeback); test both on dev during Phase 2 end-to-end.
 - **Open question raised by the numbers:** the >10 MB threshold may be too
   high; a ~5 MB cutoff is plausible. Decide after processing a mid-size
   (5-15 MB) upload and comparing against the client-side Draco+WebP result.
