@@ -102,7 +102,7 @@ const RIBBON_OUTLINE_THRESHOLD_DEG = 30;
 // update() write the 8 corner positions we then copy into the fat-line
 // twin (`fatBox`) that actually renders. Its own material is invisible for
 // the helper's whole life; that is intentional, not a bug.
-class OrientedBoxHelper extends THREE.BoxHelper {
+export class OrientedBoxHelper extends THREE.BoxHelper {
   constructor(object, color = 0xffff00, fill = false) {
     super(object, color);
     this.helperColor = color;
@@ -422,6 +422,9 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       );
       this.object.rotation.copy(auxEuler);
       this.object.position.copy(auxLocalPosition);
+      // Bounds were measured at a temporary pose. Restore descendant render
+      // matrices too: this helper can run after the scene's matrix traversal.
+      this.object.updateWorldMatrix(true, true);
     }
 
     // Update helper position for all objects
@@ -794,6 +797,8 @@ export function Viewport(inspector) {
     easyGizmoControls.addEventListener('objectChange', () => {
       const object = easyGizmoControls.object;
       if (!object) return;
+      // Batched models and descendants render outside the entity hierarchy.
+      syncBatchedSubtree(object.el);
       selectionBox.setFromObject(object);
       updateHelpers(object);
     });
