@@ -221,22 +221,45 @@ export function initRaycaster(inspector) {
     }
     event.preventDefault();
     onUpPosition.set(event.clientX, event.clientY);
-    // Empty-space clicks never reach handleClick — A-Frame's cursor only
-    // emits `click` when an entity is intersected, and osm3d ground layers
-    // are raycaster-ignored. Probe for an OSM street way here instead
-    // (#1930): a stationary mouseup with no intersected entity offers the
-    // way under the cursor's ground point for upgrade. Entity clicks are
-    // handled (and the offer cleared) in handleClick.
-    // Left button only: right/middle mouseups (context menu, orbit/pan
-    // in some control schemes) are not "clicks" and must not raise the
-    // chip. Revisit if a secondary-button gesture gets a meaning here.
-    if (
-      event.button === 0 &&
-      event.detail <= 1 &&
-      onDownPosition.distanceTo(onUpPosition) <= CLICK_MAX_DRAG_PX &&
-      !getIntersectedEl()
-    ) {
-      useStore.getState().setOsmWayCandidate(probeOsmWayAtCursor(mouseCursor));
+    handleEmptySpaceClick(event);
+  }
+
+  // Empty-space clicks never reach handleClick — the cursor component only
+  // emits `click` when the press and release both landed on the same
+  // intersected entity — so the miss case is caught here, on the container
+  // mouseup that bubbles after it. Two things happen on a miss:
+  //   - deselect (#1992)
+  //   - probe for an OSM street way under the cursor's ground point and
+  //     offer it for upgrade (#1930); osm3d ground layers are
+  //     raycaster-ignored, so this is the only place a miss is seen. Entity
+  //     clicks are handled (and the offer cleared) in handleClick.
+  // A press that grabbed a viewport gizmo handle (transform gizmo, shape
+  // vertex, street node/width bar) sets inspector.gizmoCapturedPress
+  // (viewport.js): those helpers are invisible to the entity raycaster, so
+  // without the flag a zero-movement click on a handle would read as empty
+  // space and deselect the entity being manipulated.
+  function handleEmptySpaceClick(event) {
+    const gizmoCaptured = inspector.gizmoCapturedPress;
+    inspector.gizmoCapturedPress = false;
+    // Left button only, and only the first click of a multi-click — same
+    // rule as handleClick (the dblclick handler owns the second click).
+    // Right/middle mouseups (context menu, orbit/pan) are not "clicks".
+    if (event.button !== 0 || event.detail > 1 || gizmoCaptured) {
+      return;
+    }
+    if (onDownPosition.distanceTo(onUpPosition) > CLICK_MAX_DRAG_PX) {
+      return;
+    }
+    // When the click hit an entity, handleClick already ran (the cursor's
+    // clearCurrentIntersection(false) re-reads the still-current
+    // intersections synchronously, so getIntersectedEl() is not blanked by
+    // it) — nothing to do here.
+    if (getIntersectedEl()) {
+      return;
+    }
+    useStore.getState().setOsmWayCandidate(probeOsmWayAtCursor(mouseCursor));
+    if (inspector.selectedEntity) {
+      inspector.selectEntity(null);
     }
   }
 

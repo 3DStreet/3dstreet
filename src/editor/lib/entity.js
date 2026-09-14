@@ -16,6 +16,7 @@ import {
   VideoCameraIcon,
   LayersIcon,
   Object24IconCyan,
+  Geometry24Icon,
   ShapeIcon,
   ViewerStartIcon
 } from '@shared/icons';
@@ -745,6 +746,13 @@ export function getEntityIcon(entity) {
   // Check for class-based icons
   if (entity.classList.contains('autocreated')) {
     return <AutoIcon />;
+  }
+
+  // Primitive geometry reads differently from a 3D-model-backed entity
+  // (uploaded glTF or catalog mixin), so it gets its own icon (#1999);
+  // model rows keep the wireframe cube default below.
+  if (!entity.getAttribute('gltf-model') && entity.getAttribute('geometry')) {
+    return <Geometry24Icon />;
   }
 
   // Check for ID-based icons

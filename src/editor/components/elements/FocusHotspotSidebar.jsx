@@ -1,6 +1,6 @@
 /* global AFRAME */
 import PropTypes from 'prop-types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FormattedMessage, defineMessages, useIntl } from 'react-intl';
 import PropertyRow from './PropertyRow';
 import { Button } from './Button';
@@ -29,16 +29,59 @@ export const FocusHotspotSectionControls = ({ entity }) => {
   const [, setUpdateTrigger] = useState(0);
   const componentName = 'focus-hotspot';
   const component = entity?.components?.[componentName];
-  // Local draft so typing doesn't spam the undo stack; committed on blur.
+  // Local draft so typing doesn't spam the undo stack; committed on blur
+  // and after a typing pause (#1998) — the commit is an entityupdate
+  // command, which is what the cloud autosave listens for, so a
+  // description edit left sitting in the textarea still autosaves.
   const [descriptionDraft, setDescriptionDraft] = useState(
     component?.data?.description ?? ''
   );
+
+  // Pending commit for the idle debounce. The entry carries its own entity
+  // so a flush from a cleanup (entity switch, unmount) writes to the
+  // entity the text was typed on, not whatever is selected by then.
+  const pendingCommitRef = useRef(null);
+  const commitTimerRef = useRef(null);
+  const COMMIT_IDLE_MS = 2000;
+
+  const flushPendingCommit = () => {
+    clearTimeout(commitTimerRef.current);
+    const pending = pendingCommitRef.current;
+    pendingCommitRef.current = null;
+    if (!pending) return;
+    const pendingComponent = pending.entity?.components?.[componentName];
+    if (!pendingComponent) return;
+    if (pending.value === (pendingComponent.data?.description ?? '')) return;
+    AFRAME.INSPECTOR.execute('entityupdate', {
+      entity: pending.entity,
+      component: componentName,
+      property: 'description',
+      value: pending.value,
+      // A flush can run right after the user selects a different entity —
+      // don't let the command yank the selection back here.
+      noSelectEntity: true
+    });
+  };
 
   useEffect(() => {
     setDescriptionDraft(
       entity?.components?.[componentName]?.data?.description ?? ''
     );
+    return flushPendingCommit;
   }, [entity]);
+
+  // The debounce leaves a short window where the typed text is not yet
+  // committed (and so not yet autosaved) — warn on tab close during it.
+  const isDirty = descriptionDraft !== (component?.data?.description ?? '');
+  useEffect(() => {
+    if (!isDirty) return;
+    const onBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [isDirty]);
 
   useEffect(() => {
     const onEntityUpdate = (detail) => {
@@ -56,14 +99,12 @@ export const FocusHotspotSectionControls = ({ entity }) => {
 
   if (!component || !component.schema || !component.data) return null;
 
-  const commitDescription = () => {
-    if (descriptionDraft === component.data.description) return;
-    AFRAME.INSPECTOR.execute('entityupdate', {
-      entity,
-      component: componentName,
-      property: 'description',
-      value: descriptionDraft
-    });
+  const onDescriptionChange = (e) => {
+    const value = e.target.value;
+    setDescriptionDraft(value);
+    pendingCommitRef.current = { entity, value };
+    clearTimeout(commitTimerRef.current);
+    commitTimerRef.current = setTimeout(flushPendingCommit, COMMIT_IDLE_MS);
   };
 
   return (
@@ -94,8 +135,8 @@ export const FocusHotspotSectionControls = ({ entity }) => {
           name="focusHotspotDescription"
           rows={5}
           value={descriptionDraft}
-          onChange={(e) => setDescriptionDraft(e.target.value)}
-          onBlur={commitDescription}
+          onChange={onDescriptionChange}
+          onBlur={flushPendingCommit}
           placeholder={intl.formatMessage({
             id: 'focusHotspot.descriptionPlaceholder',
             defaultMessage: 'Shown in the info panel when a visitor clicks…'

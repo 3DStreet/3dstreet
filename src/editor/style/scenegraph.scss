@@ -109,11 +109,10 @@
     column-gap: 8px;
   }
 
-  // Layer styling
+  // Layer styling. No vertical margins: top-level rows sit flush like child
+  // rows, so every row in the tree gets the same spacing (#1994).
   .layer {
     width: 100%;
-    margin-top: 6px;
-    margin-bottom: 6px;
     overflow: hidden;
     display: flex;
     flex-direction: column;

@@ -690,6 +690,21 @@ export function Viewport(inspector) {
     });
   });
 
+  // Each gizmo dispatches 'mouseDown' only when a press actually grabs one
+  // of its handles. Record that on the inspector so the raycaster's
+  // empty-space-click deselection (raycaster.js, #1992) doesn't mistake a
+  // zero-movement click on a handle — invisible to the entity raycaster —
+  // for a click on nothing. The raycaster clears the flag on mouseup.
+  const markGizmoPress = () => {
+    inspector.gizmoCapturedPress = true;
+  };
+  [
+    transformControls,
+    shapeVertexControls,
+    streetNodeControls,
+    segmentWidthControls
+  ].forEach((gizmo) => gizmo.addEventListener('mouseDown', markGizmoPress));
+
   transformControls.addEventListener('mouseDown', () => {
     const object = transformControls.object;
     if (object) {
