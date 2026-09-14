@@ -105,6 +105,31 @@ const DEG = Math.PI / 180;
 const UP = new THREE.Vector3(0, 1, 0);
 const X_AXIS = new THREE.Vector3(1, 0, 0);
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
+const FRAME_SYSTEM = 'easy-gizmo-frame';
+
+function frameSystemFor(sceneEl) {
+  if (
+    !sceneEl ||
+    typeof AFRAME === 'undefined' ||
+    typeof AFRAME.registerSystem !== 'function'
+  ) {
+    return null;
+  }
+  if (!AFRAME.systems?.[FRAME_SYSTEM]) {
+    AFRAME.registerSystem(FRAME_SYSTEM, {
+      init() {
+        this.controls = null;
+      },
+      tick() {
+        this.controls?._advanceBeforeRender();
+      }
+    });
+  }
+  if (!sceneEl.systems?.[FRAME_SYSTEM] && sceneEl.initSystem) {
+    sceneEl.initSystem(FRAME_SYSTEM);
+  }
+  return sceneEl.systems?.[FRAME_SYSTEM] || null;
+}
 
 /**
  * The move plate's round-presentation pose in its group's frame. R_x(-90) lays
@@ -254,6 +279,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     this._pointerId = null;
     this._lastPointerType = 'mouse';
     this._wasOpen = false;
+    this._frameSystem = null;
 
     this._bindHandlers();
     this._build();
@@ -652,6 +678,8 @@ class EasyGizmoControls extends GizmoPointerControls {
       }
     }, IDLE_PROBE_INTERVAL_MS);
     this._addListeners();
+    this._frameSystem = frameSystemFor(this.sceneEl);
+    if (this._frameSystem) this._frameSystem.controls = this;
     return this;
   }
 
@@ -677,6 +705,10 @@ class EasyGizmoControls extends GizmoPointerControls {
       this._idleTimer = null;
     }
     this._removeListeners();
+    if (this._frameSystem?.controls === this) {
+      this._frameSystem.controls = null;
+    }
+    this._frameSystem = null;
     this.el = undefined;
     this.object = undefined;
     this.probe.excludeEl = null;
@@ -1155,29 +1187,28 @@ class EasyGizmoControls extends GizmoPointerControls {
   // --- per-frame --------------------------------------------------------
 
   /**
-   * The only per-frame hook available to an Object3D living in the editor's
-   * helper scene — and it runs up to TWICE per rendered frame, because that
-   * scene is traversed by the WebGL renderer and again by the CSS2D one.
-   *
-   * So the two kinds of work are separated. Layout is idempotent and runs on
-   * every traversal. The continuity advance is not — it measures how far the
-   * object travelled and spends a probe budget doing it — so it is gated on a
-   * frame token, and multiple pointer events inside one frame accumulate into
-   * one larger step rather than two advances.
+   * Layout runs from the helper-scene traversal, up to twice per rendered
+   * frame. Movement runs earlier, from the A-Frame system tick, so parents and
+   * children have their new pose before WebGL traverses the scene. Tests and
+   * non-A-Frame consumers retain the guarded traversal fallback.
    */
   updateMatrixWorld(force) {
     this._checkEditorClosedEdge();
     if (this.el && this.object && this.object.parent && this._inspectorOpen()) {
       this._layoutFrame();
-      if (this._frameChanged()) {
-        this._advance();
-        if (this._releasePending) {
-          const { reason, event } = this._releasePending;
-          this.endGesture(reason, event);
-        }
-      }
+      if (!this._frameSystem) this._advanceBeforeRender();
     }
     super.updateMatrixWorld(force);
+  }
+
+  _advanceBeforeRender() {
+    if (!this.el || !this.object || !this.object.parent) return;
+    if (!this._inspectorOpen() || !this._frameChanged()) return;
+    this._advance();
+    if (this._releasePending) {
+      const { reason, event } = this._releasePending;
+      this.endGesture(reason, event);
+    }
   }
 
   /**

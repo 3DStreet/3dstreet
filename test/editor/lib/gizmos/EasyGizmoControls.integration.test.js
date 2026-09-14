@@ -87,6 +87,7 @@ function fixture({ base = 0, cameraY = 10 } = {}) {
     el,
     object,
     mesh,
+    helpers,
     controls,
     commits
   };
@@ -159,6 +160,62 @@ function fixture({ base = 0, cameraY = 10 } = {}) {
 }
 
 describe('classified rays composed with real move gestures', () => {
+  it('advances queued movement from the scene tick before render traversal', () => {
+    const f = fixture();
+    const child = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 0.1, 0.1),
+      new THREE.MeshBasicMaterial()
+    );
+    child.position.x = 2;
+    f.object.add(child);
+    f.sceneEl.object3D.add(f.helpers);
+    const nativeSet = f.el.setAttribute.bind(f.el);
+    f.el.setAttribute = (name, value) => {
+      if (name === 'position') {
+        f.object.position.set(value.x, value.y, value.z);
+      } else if (name === 'rotation') {
+        f.object.rotation.set(
+          THREE.MathUtils.degToRad(value.x),
+          THREE.MathUtils.degToRad(value.y),
+          THREE.MathUtils.degToRad(value.z)
+        );
+      } else {
+        nativeSet(name, value);
+      }
+    };
+    f.sceneEl.systems = {};
+    f.sceneEl.initSystem = (name) => {
+      const definition = globalThis.AFRAME.systems[name];
+      const system = { ...definition, el: f.sceneEl, sceneEl: f.sceneEl };
+      system.init();
+      f.sceneEl.systems[name] = system;
+    };
+    vi.stubGlobal('AFRAME', {
+      INSPECTOR: f.inspector,
+      systems: {},
+      registerSystem(name, definition) {
+        this.systems[name] = definition;
+        f.sceneEl.initSystem(name);
+      }
+    });
+    f.surface(0);
+    f.attach();
+    f.start();
+    f.pointer('pointermove', new THREE.Vector3(1, 0, 0));
+
+    f.sceneEl.time += 16;
+    f.sceneEl.systems['easy-gizmo-frame'].tick();
+    f.sceneEl.object3D.updateMatrixWorld(true);
+
+    expect(f.object.position.x).toBeGreaterThan(0.5);
+    expect(child.matrixWorld.elements[12]).toBeCloseTo(
+      f.object.position.x + 2,
+      6
+    );
+    child.geometry.dispose();
+    child.material.dispose();
+  });
+
   for (const degrees of [30, 50]) {
     it(`follows the exact ${degrees} degree ramp without pitching the object`, () => {
       const f = fixture();
